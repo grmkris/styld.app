@@ -22,7 +22,7 @@ export const { style, vars } = defineConfig({
       hover: 'color-mix(in oklch, oklch(94.5% 0.01 76) 90%, oklch(19% 0.024 52))',
     },
     fontFamily: {
-      body: "'Hanken Grotesk', system-ui, sans-serif",
+      body: "'Hanken Grotesk Variable', 'Hanken Grotesk', system-ui, sans-serif",
       display: "'Sentient', Georgia, serif",
     },
     radius: { control: '3px' },

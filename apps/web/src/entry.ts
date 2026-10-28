@@ -1,3 +1,4 @@
+import '@fontsource-variable/hanken-grotesk/wght.css'
 import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import { Layer } from 'effect'
 import { browserAuthLayer } from '@styld/auth/client'

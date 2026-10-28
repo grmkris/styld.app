@@ -62,7 +62,7 @@ export const renderPage: Server.EntryModule['renderPage'] = (request) =>
 
 export const renderDocument: Server.DocumentRenderer = (renderedApplication, assets) =>
   Server.renderDocument(renderedApplication, assets, {
-    head: '<meta name="theme-color" content="#efede7"><link rel="icon" href="/favicon.svg">',
+    head: '<meta name="theme-color" content="#f1eee7"><link rel="icon" href="/favicon.svg">',
   }).replace(
     'content="width=device-width, initial-scale=1.0"',
     'content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"',

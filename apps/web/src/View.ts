@@ -143,8 +143,8 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
             h.img([
               h.Src('/brand/wordmark.svg'),
               h.Alt('Styld'),
-              h.Width('112'),
-              h.Height('53'),
+              h.Width('53'),
+              h.Height('20'),
               ...styled(h, brandMark()),
             ]),
           ],
