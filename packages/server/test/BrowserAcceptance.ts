@@ -34,10 +34,21 @@ export const verifyBrowser = async (browser: Browser, origin: string): Promise<v
   try {
     const page = await context.newPage()
     const errors = recordProblems(page)
+    const telemetry = recordTelemetry(page)
     const documentResponse = await page.goto(origin, { waitUntil: 'networkidle' })
     expect(documentResponse?.status()).toBe(200)
     expect(documentResponse?.headers()['content-security-policy']).toContain("frame-ancestors 'none'")
     expect(documentResponse?.headers()['x-frame-options']).toBe('DENY')
+    // Nothing leaves the page before the visitor answers the diagnostics prompt, even on exit.
+    const prompt = page.getByRole('region', { name: 'Diagnostics' })
+    await prompt.waitFor({ state: 'visible' })
+    await page.reload({ waitUntil: 'networkidle' })
+    // Longer than the SDK's 5 s auto-flush: without the consent gate it would have posted by now.
+    await page.waitForTimeout(6000)
+    expect(telemetry).toEqual([])
+    await page.getByRole('button', { name: 'Allow', exact: true }).click()
+    await prompt.waitFor({ state: 'hidden' })
+    expect((await context.cookies()).find((cookie) => cookie.name === 'styld_diagnostics')?.value).toBe('granted')
     expect(await page.locator('h1').textContent()).toBe('A wardrobe shaped by you.')
     // Compiled zyzz styles reach the page: the masthead lays out as a flex row on Atelier paper.
     expect(await page.locator('header').evaluate((element) => getComputedStyle(element).display)).toBe('flex')

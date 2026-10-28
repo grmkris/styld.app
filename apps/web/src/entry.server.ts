@@ -5,6 +5,7 @@ import { catalogVersion } from '@styld/i18n'
 import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
 import { Flags, init } from './App.ts'
 import { localeEndpoint, requestLocale } from './Locale.ts'
+import { consentFromCookies } from './TelemetryConsent.ts'
 import { view } from './View.ts'
 import { saveLocale } from './server/LocalePreference.ts'
 
@@ -26,6 +27,7 @@ const renderApplication = (
       timeZone: 'UTC',
       referenceTime: yield* Clock.currentTimeMillis,
       pathname: url.pathname,
+      telemetryConsent: consentFromCookies(request.headers.get('cookie')),
     }
     const rendered = yield* Server.renderToString(application, { ...options, flags })
     return Server.Rendered(rendered, {

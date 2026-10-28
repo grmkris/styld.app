@@ -9,6 +9,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 import { catalogVersion } from '@styld/i18n'
 import { Locale, localeEndpoint, parseLocale } from './Locale.ts'
 import { PasswordForm } from './PasswordForm.ts'
+import { TelemetryConsent, TelemetryConsentControl } from './TelemetryConsent.ts'
 
 export const Flags = Schema.Struct({
   locale: Locale,
@@ -16,6 +17,7 @@ export const Flags = Schema.Struct({
   timeZone: Schema.String,
   referenceTime: Schema.Number,
   pathname: Schema.String,
+  telemetryConsent: TelemetryConsent,
 })
 export type Flags = typeof Flags.Type
 
@@ -32,6 +34,7 @@ export const Model = Schema.Struct({
   context: Flags,
   localeSave: LocaleSave,
   auth: AuthState,
+  telemetry: Schema.Struct({ consent: TelemetryConsent, prompting: Schema.Boolean }),
 })
 export type Model = typeof Model.Type
 export const Message = defineMessageUnion({
@@ -47,6 +50,9 @@ export const Message = defineMessageUnion({
   RequestedSignOut: {},
   SucceededSignOut: {},
   FailedSignOut: {},
+  ChoseTelemetryConsent: { granted: Schema.Boolean },
+  RecordedTelemetryConsent: { granted: Schema.Boolean },
+  OpenedTelemetrySettings: {},
 })
 export type Message = typeof Message.Type
 
@@ -92,10 +98,25 @@ const SaveLocale = Command.define('SaveLocale', {
     }).pipe(Effect.catchTag('HttpClientError', () => Effect.succeed(Message.FailedSaveLocale()))),
 })
 
-type Services = HttpClient.HttpClient | BrowserAuth | PasswordForm
+const RecordTelemetryConsent = Command.define('RecordTelemetryConsent', {
+  args: { granted: Schema.Boolean },
+  messages: [Message.RecordedTelemetryConsent],
+  execute: ({ granted }) =>
+    Effect.gen(function* () {
+      yield* (yield* TelemetryConsentControl).record(granted)
+      return Message.RecordedTelemetryConsent({ granted })
+    }),
+})
+
+type Services = HttpClient.HttpClient | BrowserAuth | PasswordForm | TelemetryConsentControl
 
 export const init = (context: Flags): Update.Return<Model, Message, Services> => ({
-  model: { context, localeSave: LocaleSave.Saved(), auth: AuthState.Checking() },
+  model: {
+    context,
+    localeSave: LocaleSave.Saved(),
+    auth: AuthState.Checking(),
+    telemetry: { consent: context.telemetryConsent, prompting: context.telemetryConsent === 'undecided' },
+  },
   commands: [ReadSession()],
 })
 
@@ -133,4 +154,13 @@ export const update = (model: Model, message: Message): Update.Return<Model, Mes
         : { model },
     SucceededSignOut: () => ({ model: { ...model, auth: AuthState.SignedOut({ failed: false }) } }),
     FailedSignOut: () => ({ model: { ...model, auth: AuthState.Unavailable() } }),
+    ChoseTelemetryConsent: ({ granted }) => ({
+      model: { ...model, telemetry: { ...model.telemetry, prompting: false } },
+      commands: [RecordTelemetryConsent({ granted })],
+    }),
+    RecordedTelemetryConsent: ({ granted }) => {
+      const consent: TelemetryConsent = granted ? 'granted' : 'denied'
+      return { model: { ...model, telemetry: { consent, prompting: false } } }
+    },
+    OpenedTelemetrySettings: () => ({ model: { ...model, telemetry: { ...model.telemetry, prompting: true } } }),
   })

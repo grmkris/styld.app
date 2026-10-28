@@ -8,8 +8,11 @@ import { accountView } from './ViewAccount.ts'
 import {
   brand,
   brandMark,
+  consentActions,
+  consentBanner,
   emptyState,
   footer,
+  footerButton,
   footerLink,
   inspiration,
   intro,
@@ -86,6 +89,33 @@ const notFoundView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
     ],
   )
 
+/** Asks before any browser diagnostics are recorded; the footer reopens it to change the choice. */
+const consentPrompt = (locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.section(
+    [h.Role('region'), h.AriaLabel(format(locale, 'telemetryConsent.settings', {})), ...styled(h, consentBanner())],
+    [
+      h.p([], [format(locale, 'telemetryConsent.message', {})]),
+      h.div(styled(h, consentActions()), [
+        h.button(
+          [
+            h.Type('button'),
+            ...styled(h, primaryAction()),
+            h.OnClick(Message.ChoseTelemetryConsent({ granted: true })),
+          ],
+          [format(locale, 'telemetryConsent.allow', {})],
+        ),
+        h.button(
+          [
+            h.Type('button'),
+            ...styled(h, secondaryAction()),
+            h.OnClick(Message.ChoseTelemetryConsent({ granted: false })),
+          ],
+          [format(locale, 'telemetryConsent.decline', {})],
+        ),
+      ]),
+    ],
+  )
+
 export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
   const { locale, pathname } = model.context
   const isHome = pathname === homePath
@@ -114,8 +144,13 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
       isHome ? homeView(locale, h) : isLogin ? accountView(model, h) : notFoundView(locale, h),
       h.footer(styled(h, footer()), [
         h.span([], ['Styld']),
+        h.button(
+          [h.Type('button'), ...styled(h, footerButton()), h.OnClick(Message.OpenedTelemetrySettings())],
+          [format(locale, 'telemetryConsent.settings', {})],
+        ),
         h.a([h.Href('mailto:hello@styld.app'), ...styled(h, footerLink())], [format(locale, 'landing.contact', {})]),
       ]),
+      model.telemetry.prompting ? consentPrompt(locale, h) : h.empty,
     ]),
   }
 }

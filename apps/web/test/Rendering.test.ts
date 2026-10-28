@@ -2,8 +2,9 @@ import { Effect } from 'effect'
 import { expect, test } from 'vitest'
 import { catalogVersion } from '@styld/i18n'
 import * as Server from 'foldkit/experimental/server'
-import { LocaleSave, Message, init, update } from '../src/App.ts'
+import { LocaleSave, Message, init, update, type Flags } from '../src/App.ts'
 import { offeredLocales, requestLocale } from '../src/Locale.ts'
+import { consentCookie, consentFromCookies, type TelemetryConsent } from '../src/TelemetryConsent.ts'
 import { renderDocument, renderRequest } from '../src/entry.server.ts'
 
 const assets = { entryScript: '/entry.js', stylesheets: [], modulePreloads: [] }
@@ -66,7 +67,14 @@ test('language preference writes require same-origin POST and produce protected 
 })
 
 test('language changes serialize persistence and keep failure visible', () => {
-  const initial = init({ locale: 'en', catalogVersion, timeZone: 'UTC', referenceTime: 0, pathname: '/' }).model
+  const initial = init({
+    locale: 'en',
+    catalogVersion,
+    timeZone: 'UTC',
+    referenceTime: 0,
+    pathname: '/',
+    telemetryConsent: 'granted',
+  }).model
   const saving = update(initial, Message.SelectedLocale({ value: 'sl' }))
   expect(saving.commands?.[0]?.name).toBe('SaveLocale')
   expect(update(saving.model, Message.SelectedLocale({ value: 'en' })).commands).toBeUndefined()
@@ -91,4 +99,51 @@ test('only known test environments add the layout pseudo-locales', () => {
   expect(offeredLocales('prodution')).toEqual(['en', 'sl'])
   expect(offeredLocales('preview')).toEqual(['en', 'sl', 'en-XA', 'ar-XB'])
   expect(offeredLocales('local')).toEqual(['en', 'sl', 'en-XA', 'ar-XB'])
+})
+
+const flags = (telemetryConsent: TelemetryConsent): Flags => ({
+  locale: 'en',
+  catalogVersion,
+  timeZone: 'UTC',
+  referenceTime: 0,
+  pathname: '/',
+  telemetryConsent,
+})
+
+test('asks for diagnostics consent until the visitor decides, and lets them reopen the choice', () => {
+  const asking = init(flags('undecided')).model
+  expect(asking.telemetry).toEqual({ consent: 'undecided', prompting: true })
+  expect(init(flags('granted')).model.telemetry).toEqual({ consent: 'granted', prompting: false })
+  const choosing = update(asking, Message.ChoseTelemetryConsent({ granted: false }))
+  expect(choosing.model.telemetry.prompting).toBe(false)
+  expect(choosing.commands?.[0]?.name).toBe('RecordTelemetryConsent')
+  const declined = update(choosing.model, Message.RecordedTelemetryConsent({ granted: false })).model
+  expect(declined.telemetry).toEqual({ consent: 'denied', prompting: false })
+  const reopened = update(declined, Message.OpenedTelemetrySettings()).model
+  expect(reopened.telemetry).toEqual({ consent: 'denied', prompting: true })
+  expect(update(reopened, Message.RecordedTelemetryConsent({ granted: true })).model.telemetry.consent).toBe('granted')
+})
+
+test('reads only a recorded diagnostics choice from cookies', () => {
+  expect(consentFromCookies(undefined)).toBe('undecided')
+  expect(consentFromCookies('a=b; styld_diagnostics=granted')).toBe('granted')
+  expect(consentFromCookies('styld_diagnostics=denied')).toBe('denied')
+  expect(consentFromCookies('styld_diagnostics=yes; styld_diagnosticsx=granted')).toBe('undecided')
+  expect(consentCookie(true, true)).toBe('styld_diagnostics=granted; Path=/; Max-Age=15552000; SameSite=Lax; Secure')
+})
+
+const renderHome = async (cookie?: string) => {
+  const result = await Effect.runPromise(
+    renderRequest(new Request('https://styld.test/', cookie === undefined ? {} : { headers: { cookie } }), {
+      buildId: 'test',
+    }),
+  )
+  return Server.toResponse((app) => renderDocument(app, assets), result).text()
+}
+
+test('server rendering shows the consent prompt only to undecided visitors', async () => {
+  const prompt = 'record anonymous error and speed data'
+  expect(await renderHome()).toContain(prompt)
+  expect(await renderHome('styld_diagnostics=granted')).not.toContain(prompt)
+  expect(await renderHome('styld_diagnostics=denied')).not.toContain(prompt)
 })

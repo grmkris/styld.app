@@ -62,4 +62,27 @@ export const footer = style({
   borderBlockStartStyle: 'solid',
   borderBlockStartColor: 'rule',
 })
-export const footerLink = style({ marginInlineStart: 'auto', minBlockSize: '44px' })
+export const footerLink = style({ minBlockSize: '44px' })
+// A footer control that reads like the contact link.
+export const footerButton = style({
+  marginInlineStart: 'auto',
+  padding: '0',
+  borderWidth: '0',
+  backgroundColor: 'transparent !custom',
+  color: 'inherit !custom',
+  textDecoration: 'underline',
+  textUnderlineOffset: '0.2em',
+  cursor: 'pointer',
+})
+export const consentBanner = style({
+  position: 'sticky',
+  insetBlockEnd: '0',
+  display: 'grid',
+  gap: '0.75rem',
+  paddingBlock: '1rem calc(1rem + env(safe-area-inset-bottom))',
+  backgroundColor: 'paper',
+  borderBlockStartWidth: '1px',
+  borderBlockStartStyle: 'solid',
+  borderBlockStartColor: 'rule',
+})
+export const consentActions = style({ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' })

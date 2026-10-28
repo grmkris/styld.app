@@ -671,6 +671,12 @@
       "saveFailed": "Shranjevanje ni uspelo. Poskusi znova."
     }
   },
+  "telemetryConsent": {
+    "message": "Ali lahko Styld v tem brskalniku beleži anonimne podatke o napakah in hitrosti, da hitreje odpravimo težave? Ti podatki nikoli ne vključujejo vašega vnosa, fotografij ali podatkov o računu.",
+    "allow": "Dovoli",
+    "decline": "Ne, hvala",
+    "settings": "Diagnostika"
+  },
   "wardrobe": {
     "saveFailed": "Sprememb ni bilo mogoče shraniti. Poskusi znova.",
     "title": "Garderoba",

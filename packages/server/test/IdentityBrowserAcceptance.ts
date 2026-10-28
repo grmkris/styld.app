@@ -5,6 +5,8 @@ import { nextTraceExport, recordProblems, recordTelemetry } from './BrowserAccep
 /** Test-only identity created in native D1; no public seed route is deployed. */
 export const verifyBrowserIdentity = async (browser: Browser, origin: string): Promise<void> => {
   const context = await browser.newContext({ locale: 'en-US', viewport: { width: 390, height: 844 } })
+  // A visitor who already allowed diagnostics, so the credential checks below see real exports.
+  await context.addCookies([{ name: 'styld_diagnostics', value: 'granted', url: origin }])
   try {
     const page = await context.newPage()
     const errors = recordProblems(page)

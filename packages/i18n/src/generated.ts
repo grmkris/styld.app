@@ -1915,6 +1915,10 @@ export interface MessageArgumentsByKey<T = string> {
   'subscription.usageToday': { readonly used: string | number; readonly limit: string | number }
   'subscription.viewAll': Readonly<Record<string, never>>
   'subscription.viewPlans': Readonly<Record<string, never>>
+  'telemetryConsent.allow': Readonly<Record<string, never>>
+  'telemetryConsent.decline': Readonly<Record<string, never>>
+  'telemetryConsent.message': Readonly<Record<string, never>>
+  'telemetryConsent.settings': Readonly<Record<string, never>>
   'tourControls.back': Readonly<Record<string, never>>
   'tourControls.done': Readonly<Record<string, never>>
   'tourControls.next': Readonly<Record<string, never>>
@@ -2306,4 +2310,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'f1c45579c2682ed9aabb12dbc2bb5ba8c706b801e8705dea96f3fdb194ac8f9c'
+export const catalogVersion = '3bcac38761f53fd6bebe7f3c422e76cac4422859f530aabfa6e0f4c9079e1890'

@@ -25,6 +25,10 @@ export const secondaryAction = style({
   borderStyle: 'solid',
   borderColor: 'rule',
   borderRadius: 'control',
+  // Also used on buttons, which bring their own background and colour.
+  backgroundColor: 'transparent !custom',
+  color: 'inherit !custom',
+  cursor: 'pointer',
   ':active': { opacity: 0.8 },
   '@media (hover: hover) and (pointer: fine)': {
     ':hover': { backgroundColor: 'hover' },

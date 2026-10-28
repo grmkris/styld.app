@@ -5,9 +5,9 @@ import { Runtime } from 'foldkit'
 import { Flags, Model, init, update } from './App.ts'
 import { view } from './View.ts'
 import { passwordFormLayer } from './PasswordForm.ts'
-import { makeTelemetry } from './Telemetry.ts'
+import { startTelemetry, telemetryConsentLayer } from './Telemetry.ts'
 
-const telemetry = makeTelemetry(window.location.origin)
+const telemetry = startTelemetry(window.location.origin, document.cookie)
 
 const application = Runtime.makeApplication(
   telemetry.instrument({
@@ -21,6 +21,7 @@ const application = Runtime.makeApplication(
       FetchHttpClient.layer,
       browserAuthLayer(window.location.origin).pipe(Layer.orDie),
       passwordFormLayer(document),
+      telemetryConsentLayer(document),
     ),
   }),
 )

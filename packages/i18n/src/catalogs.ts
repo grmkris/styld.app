@@ -615,6 +615,11 @@ export const en: Readonly<Record<MessageKey, string>> = {
   'admin.curation.feature': 'Feature',
   'admin.curation.unfeature': 'Unfeature',
   'admin.curation.saveFailed': "Couldn't save. Try again.",
+  'telemetryConsent.message':
+    'Can Styld record anonymous error and speed data from this browser so we can fix problems faster? It never includes what you type, your photos or your account details.',
+  'telemetryConsent.allow': 'Allow',
+  'telemetryConsent.decline': 'No thanks',
+  'telemetryConsent.settings': 'Diagnostics',
   'wardrobe.saveFailed': 'The changes could not be saved. Try again.',
   'wardrobe.title': 'Wardrobe',
   'wardrobe.onYou': 'On you',
@@ -2998,6 +3003,11 @@ export const sl: Readonly<Record<MessageKey, string>> = {
   'admin.curation.feature': 'Izpostavi',
   'admin.curation.unfeature': 'Ne izpostavljaj',
   'admin.curation.saveFailed': 'Shranjevanje ni uspelo. Poskusi znova.',
+  'telemetryConsent.message':
+    'Ali lahko Styld v tem brskalniku beleži anonimne podatke o napakah in hitrosti, da hitreje odpravimo težave? Ti podatki nikoli ne vključujejo vašega vnosa, fotografij ali podatkov o računu.',
+  'telemetryConsent.allow': 'Dovoli',
+  'telemetryConsent.decline': 'Ne, hvala',
+  'telemetryConsent.settings': 'Diagnostika',
   'wardrobe.saveFailed': 'Sprememb ni bilo mogoče shraniti. Poskusi znova.',
   'wardrobe.title': 'Garderoba',
   'wardrobe.onYou': 'Na tebi',

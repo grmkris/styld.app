@@ -671,6 +671,12 @@
       "saveFailed": "Couldn't save. Try again."
     }
   },
+  "telemetryConsent": {
+    "message": "Can Styld record anonymous error and speed data from this browser so we can fix problems faster? It never includes what you type, your photos or your account details.",
+    "allow": "Allow",
+    "decline": "No thanks",
+    "settings": "Diagnostics"
+  },
   "wardrobe": {
     "saveFailed": "The changes could not be saved. Try again.",
     "title": "Wardrobe",
