@@ -1,6 +1,6 @@
 # Foundation handoff
 
-The current scope is a verified foundation for another agent to continue. The user deferred design work because a redesign and further stack changes are coming. Do not continue the full product rewrite without carrying forward that scope decision. The original v1 parity objective remains unfinished; `docs/DELIVERY.md` is its acceptance matrix.
+The current scope is a verified foundation for another agent to continue. The owner's stack changes have landed (zyzz styling, Effect browser telemetry through a same-origin relay, x18n, agent skills and a vendored Foldkit reference; see the latest `docs/STATUS.md` section). Landing-page and redesign work stays deferred until the owner asks for it. The original v1 parity objective remains unfinished; `docs/DELIVERY.md` is its acceptance matrix.
 
 ## Start here
 
@@ -23,13 +23,17 @@ Native Cloudflare logs/traces, release identity, bounded correlation metadata an
 
 Run `bun install --frozen-lockfile`, then `heavy --wait bun run check`. On this shared box, exit 75 means slot contention; retry through `heavy --wait`. The GitHub workflow runs the same check on a hosted runner with Bun 1.4.2 and Node 24; committing that workflow is not evidence of a completed hosted CI run.
 
-The full gate includes formatting, agent/skill provenance, generated i18n catalogs, workspace/browser dependency boundaries, an exact suppression census, negative checker fixtures, Effect/TypeScript diagnostics, checksum-verified typed Oxlint, Knip (normal and production), duplicate-code detection, unit tests, production build, native workerd/Chromium acceptance and bundle budgets. Canary files are temporary and removed after execution. No silent checker fallback is allowed.
+The full gate includes formatting, agent/skill provenance, the vendored Foldkit tree hash, generated i18n catalogs, x18n's strict catalog and hard-string check, workspace/browser dependency boundaries, an exact suppression census, negative checker fixtures, Effect/TypeScript diagnostics, checksum-verified typed Oxlint, Knip (normal and production), duplicate-code detection, unit tests, production build, native workerd/Chromium acceptance and bundle budgets. Canary files are temporary and removed after execution. No silent checker fallback is allowed.
 
 `tools/suppressions.json` records four existing reasoned directives. Explicit `any` and non-null assertions fail the census. Additions need an explained code review; do not regenerate a larger allowance just to make a gate green. The duplicate gate excludes only vendor/generated data. Browser assets are limited to 256 KiB gzip in total; SSR source to 3 MiB. These are foundation budgets, to be consciously reviewed as product features land.
 
 Knip recognizes Alchemy and Foldkit entrypoints explicitly. `tools/quality/graph.ts` checks package direction, export maps, declared workspace dependencies, cross-package relative imports and the transitive browser graph. Extend its policy when introducing an intentional package boundary. Avoid importing `@styld/auth`'s server barrel from browser code; use `/client` and `/config`.
 
 The final review closed a graph-check bypass through JavaScript/TSX files. Source discovery and suppression auditing now cover TS, TSX, MTS, CTS, JS, JSX, MJS and CJS, including infrastructure. Browser traversal resolves local barrels and TypeScript implementations of JavaScript imports, rejects bare Node built-ins, and requires explicit source extensions when resolution is ambiguous. Filesystem fixtures exercise those cases through the complete checker.
+
+## Skills
+
+Load `effect` before Effect work, `foldkit` before UI work, `zyzz` before styling, `styld-telemetry` before instrumenting, `x18n-check` before changing catalogs and `alchemy-domain` for Domain models. `repos/foldkit/` holds Foldkit's source, examples and conventions at the installed release.
 
 ## Next implementation work
 

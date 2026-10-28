@@ -2,6 +2,19 @@
 
 Status: active, foundation deployed to an isolated workers.dev preview. Full parity is not achieved.
 
+## Review and stack adoption — 2026-10-28
+
+Owner decisions after the foundation handoff: zyzz for styling, Maple for Effect browser telemetry kept inside Cloudflare, x18n for catalog tooling, official agent skills, a vendored Foldkit reference and current dependency pins. A code review of the foundation was folded in. Full parity is still not achieved; every DELIVERY matrix row remains pending.
+
+- **Skills and references.** Vendored the official Foldkit (`foldkit`, `generate-program`, `audit-program`), x18n (`x18n`, `x18n-setup`, `x18n-check`) and Cloudflare `workers-best-practices` skills with pinned provenance, plus local `effect`, `zyzz` and `styld-telemetry` skills. `repos/foldkit/` is a hash-verified snapshot of `foldkit@0.169.0` without Foldkit's own Effect copy (`bun run vendor:check`).
+- **Dependencies.** Effect 4.0.7, tagged Drizzle `1.0.0-rc.5` (no schema change), intl-messageformat 12.1.4, tsrs 0.20.1, oxfmt 0.75, oxc-parser 0.156. Held: oxlint 1.90 (the pinned tsrs-lint backend predates it) and Bun 1.4.4 (shared box toolchain). `@effect/platform-browser` is declared again as Foldkit's runtime peer.
+- **Review fixes.** The API Worker builds its auth stack and router once per isolate instead of per request; building inside the first request's context hung later requests, so the build runs with the constructor's services (unit-tested helper, CPU saving not measured). The edge adds a same-origin CSP with `frame-ancestors 'none'`, X-Frame-Options, nosniff, a referrer policy and HSTS. `/api/storage` no longer lists table names publicly. Pseudo-locales are offered only outside production. Wallet command IDs come from one helper that includes the conflict-checked inputs.
+- **Styling.** zyzz replaces `styles.css` with typed Atelier tokens, global document rules and per-view style modules through a Foldkit adapter; values are unchanged. Typecheck enforces tokens and value types; lint adds zyzz's rules.
+- **Telemetry.** Maple's Foldkit layer turns Commands and navigations into Effect spans and posts OTLP/JSON to the same origin; the API Worker relay allowlists and bounds them into structured Workers Logs. Server spans record `styld.browser.trace_id` from a valid `traceparent`. Replay, session rows, visitor IDs, storage and Command arguments are off. Native browser acceptance proves the flush and that no telemetry body contains the typed email or passwords.
+- **x18n.** `bun run translations:check` (`x18n check --strict`) fails on missing keys, invalid syntax, missing or stale translations and hard-coded view strings. placeholder-mismatch is off (x18n 0.1.2 plural false positives); unused keys are info while 2,251 of 2,296 keys await unported screens.
+- **Gates.** Knip production mode now covers every web module; the bundle budget measures assets a page loads (initial 228,512 gzip bytes of 256 KiB; all 287,491 of 512 KiB).
+- **Not changed, deliberately.** The password sign-in form still shows one error for wrong credentials, rate limits and outages; the email OTP flow replaces it. SSR still renders in UTC until a page shows dates. `AUTH_SESSION_KEYS` appears unused with stateful sessions (typecheck passes without it) but stays until the OTP and MCP OAuth work confirms no signed tokens need it. The repository has no git remote, so the CI workflow has never run.
+
 ## Foundation boundary review — 2026-10-28
 
 - Commit `2d21426` closes a reproduced dependency-check bypass: a browser entry importing a JavaScript file that imported `node:fs` previously passed with only the entry audited. Discovery and traversal now cover TS/TSX/MTS/CTS/JS/JSX/MJS/CJS, TypeScript import-equals declarations, extensionless barrels and explicit JavaScript imports backed by TypeScript source. Bare Node built-ins are rejected; unresolved or ambiguous local source imports fail rather than silently skipping an edge.
