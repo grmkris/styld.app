@@ -9,6 +9,11 @@ export default Alchemy.Stack(
   { providers: Cloudflare.providers(), state: Alchemy.localState() },
   Effect.gen(function* () {
     const api = yield* StyldWorker
-    return { url: api.url.as<string>() }
+    const website = yield* Cloudflare.Website.Foldkit('StyldWebsite', {
+      rootDir: 'apps/web',
+      env: { API: api },
+      workersDev: true,
+    })
+    return { apiUrl: api.url.as<string>(), url: website.url.as<string>() }
   }),
 )

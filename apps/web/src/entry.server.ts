@@ -1,0 +1,49 @@
+import { Clock, Effect } from 'effect'
+import * as Server from 'foldkit/experimental/server'
+import { catalogVersion } from '@styld/i18n'
+import { Flags, init } from './App.ts'
+import { localeEndpoint, requestLocale } from './Locale.ts'
+import { view } from './View.ts'
+import { saveLocale } from './server/LocalePreference.ts'
+
+export const application = { Flags, init, view }
+
+export const renderRequest = (
+  request: Request,
+  options: { readonly buildId?: string; readonly runtimeId?: string } = {},
+) =>
+  Effect.gen(function* () {
+    const url = new URL(request.url)
+    if (url.pathname === localeEndpoint) return yield* saveLocale(request)
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      return Server.Responded(new Response(null, { status: 405, headers: { allow: 'GET, HEAD' } }))
+    }
+    const flags: Flags = {
+      locale: requestLocale(request),
+      catalogVersion,
+      timeZone: 'UTC',
+      referenceTime: yield* Clock.currentTimeMillis,
+      pathname: url.pathname,
+    }
+    const rendered = yield* Server.renderToString(application, { ...options, flags })
+    return Server.Rendered(rendered, {
+      status: url.pathname === '/' ? 200 : 404,
+      headers: {
+        'cache-control': 'private, no-store',
+        vary: 'Accept-Language, Cookie',
+        'content-language': flags.locale,
+        'x-content-type-options': 'nosniff',
+        'referrer-policy': 'strict-origin-when-cross-origin',
+      },
+    })
+  }).pipe(Effect.withSpan('web.render'))
+
+export const renderPage: Server.EntryModule['renderPage'] = (request) => Effect.runPromise(renderRequest(request))
+
+export const renderDocument: Server.DocumentRenderer = (renderedApplication, assets) =>
+  Server.renderDocument(renderedApplication, assets, {
+    head: '<meta name="theme-color" content="#efede7"><link rel="icon" href="/favicon.svg">',
+  }).replace(
+    'content="width=device-width, initial-scale=1.0"',
+    'content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content"',
+  )

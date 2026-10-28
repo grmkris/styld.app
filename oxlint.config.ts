@@ -1,4 +1,13 @@
+import foldkitRecommended from '@foldkit/oxlint-plugin/recommended.json' with { type: 'json' }
 import { defineConfig } from 'oxlint'
+
+const foldkitRules = (rules: Readonly<Record<string, string>>) =>
+  Object.fromEntries(
+    Object.entries(rules).map(([rule, severity]) => {
+      if (severity !== 'error' && severity !== 'off') throw new Error('Unrecognized Foldkit rule severity: ' + severity)
+      return [rule, severity] as const
+    }),
+  )
 
 export default defineConfig({
   ignorePatterns: [
@@ -13,6 +22,7 @@ export default defineConfig({
   categories: { correctness: 'error', suspicious: 'error' },
   plugins: ['typescript', 'unicorn', 'oxc', 'import'],
   jsPlugins: [
+    { name: 'foldkit', specifier: '@foldkit/oxlint-plugin' },
     './tools/oxlint/anti-slop/index.ts',
     './tools/oxlint/anti-slop/effect/index.ts',
     'oxlint-plugin-complexity',
@@ -51,6 +61,12 @@ export default defineConfig({
     'complexity/complexity': ['error', { cyclomatic: 1000, cognitive: 15 }],
   },
   overrides: [
+    { files: ['apps/web/src/**/*.ts'], rules: foldkitRules(foldkitRecommended.rules) },
+    ...foldkitRecommended.overrides.map(({ excludeFiles, files, rules }) => ({
+      files: files.map((path) => 'apps/web/src/' + path),
+      ...(excludeFiles === undefined ? {} : { excludeFiles: excludeFiles.map((path) => 'apps/web/src/' + path) }),
+      rules: foldkitRules(rules),
+    })),
     // Catalog data and types are regenerated and compared byte-for-byte by i18n:check.
     { files: ['packages/i18n/src/generated.ts', 'packages/i18n/src/catalogs.ts'], rules: { 'max-lines': 'off' } },
     { files: ['tools/**'], rules: { 'no-console': 'off' } },
