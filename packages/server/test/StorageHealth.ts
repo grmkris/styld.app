@@ -1,3 +1,4 @@
+// Test-only storage probe: table names are not served by the deployed Worker.
 import type { QueryDatabaseClient } from '@alchemy.run/cloudflare/D1/QueryDatabase'
 import type { ReadWriteBucketClient } from '@alchemy.run/cloudflare/R2/ReadWriteBucket'
 import { Effect } from 'effect'

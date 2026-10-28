@@ -8,15 +8,13 @@ import { makeAuthHttp } from './AuthHttp.ts'
 import { DomainLive } from './DomainLive.ts'
 import { health } from './Health.ts'
 import { onFirstUse } from './IsolateCache.ts'
-import { storageHealth } from './StorageHealth.ts'
-import { StyldDatabase, StyldMedia } from './Resources.ts'
+import { StyldDatabase } from './Resources.ts'
 import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
 
 const Runtime = Layer.mergeAll(
   DomainLive,
   Cloudflare.Telemetry({ headSamplingRate: 1 }),
   Cloudflare.D1.QueryDatabaseBinding,
-  Cloudflare.R2.ReadWriteBucketBinding,
 )
 
 export class StyldWorker extends Cloudflare.Worker<StyldWorker, Cloudflare.WorkerShape>()('StyldWorker') {}
@@ -31,7 +29,6 @@ export default StyldWorker.make(
   },
   Effect.gen(function* () {
     const database = yield* Cloudflare.D1.QueryDatabase(StyldDatabase)
-    const media = yield* Cloudflare.R2.ReadWriteBucket(StyldMedia)
     // Bindings configured by the stack (including the web origin and secrets)
     // exist only in the deployed request runtime, not while Alchemy evaluates
     // the Worker declaration during planning. Build the application on the
@@ -58,7 +55,6 @@ export default StyldWorker.make(
         const routes = Layer.mergeAll(
           auth.layer,
           HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),
-          HttpRouter.add('GET', '/api/storage', storageHealth(database, media)),
         ).pipe(Layer.provide(AlchemyHttp.Platform))
         const handle = yield* HttpRouter.toHttpEffect(routes).pipe(Effect.orDie)
         return { handle, observabilityBase }

@@ -1,6 +1,7 @@
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import * as Alchemy from 'alchemy'
 import { Config, Effect } from 'effect'
+import { StyldMedia } from '@styld/server/Resources'
 import StyldWorkerLive, { StyldWorker } from '@styld/server/StyldWorker'
 
 /** Isolated v2 stack. The worker's stable URL is the only output used by acceptance tests. */
@@ -9,6 +10,8 @@ export default Alchemy.Stack(
   { providers: Cloudflare.providers(), state: Alchemy.localState() },
   Effect.gen(function* () {
     const release = yield* Config.String('STYLD_RELEASE')
+    // The stack owns the media bucket even while no Worker serves media yet.
+    yield* StyldMedia
     const api = yield* StyldWorker
     const website = yield* Cloudflare.Website.Foldkit('StyldWebsite', {
       rootDir: 'apps/web',
