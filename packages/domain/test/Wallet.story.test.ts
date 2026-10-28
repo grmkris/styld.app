@@ -16,7 +16,7 @@ import {
   ReservationConflict,
   ReserveCredits,
 } from '../src/Wallet/ReserveCredits.command.ts'
-import { CreditsSettled, SettleCredits } from '../src/Wallet/SettleCredits.command.ts'
+import { CreditsSettled, ReservationNotFound, SettleCredits } from '../src/Wallet/SettleCredits.command.ts'
 import { Wallet } from '../src/Wallet/Wallet.aggregate.ts'
 import { reserveCommandId, settleCommandId } from '../src/Wallet/WalletCommandIds.ts'
 
@@ -66,7 +66,7 @@ it.effect('allocates subscription first and refunds exactly once to the original
       }),
     ),
     Story.when(wallet, new SettleCredits({ operationId, outcome: 'refunded' })),
-    Story.then(wallet),
+    Story.rejected(new ReservationNotFound()),
     Story.state(wallet, (state) => expect(state).toMatchObject({ subscription: 10, purchased: 10, reservations: {} })),
   ),
 )
@@ -112,6 +112,42 @@ it.effect('derived command IDs keep a settled operation from being reserved agai
     Story.when(wallet, refund, { commandId: settleCommandId(refund) }),
     Story.then(wallet),
     Story.state(wallet, (state) => expect(state).toMatchObject({ subscription: 6, reservations: {} })),
+  ),
+)
+
+it.effect('a settle that arrives before its reservation is rejected and does not block the later settlement', () =>
+  story(
+    service,
+    Story.given(wallet, initialGrant),
+    Story.when(wallet, refund, { commandId: settleCommandId(refund) }),
+    Story.rejected(new ReservationNotFound()),
+    Story.when(wallet, new ReserveCredits({ operationId, fingerprint, amount: 4 }), {
+      commandId: reserveCommandId(new ReserveCredits({ operationId, fingerprint, amount: 4 })),
+    }),
+    Story.then(
+      wallet,
+      new CreditsReserved({
+        operationId,
+        fingerprint,
+        fromSubscription: 4,
+        fromPurchased: 0,
+        subscriptionAfter: 6,
+        purchasedAfter: 0,
+      }),
+    ),
+    // The rejection left no receipt, so the same settle ID now settles the hold.
+    Story.when(wallet, refund, { commandId: settleCommandId(refund) }),
+    Story.then(
+      wallet,
+      new CreditsSettled({
+        operationId,
+        outcome: 'refunded',
+        fromSubscription: 4,
+        fromPurchased: 0,
+        subscriptionAfter: 10,
+        purchasedAfter: 0,
+      }),
+    ),
   ),
 )
 

@@ -16,7 +16,7 @@ import {
   ReserveCredits,
   TooManyReservations,
 } from './ReserveCredits.command.ts'
-import { CreditsSettled, SettleCredits } from './SettleCredits.command.ts'
+import { CreditsSettled, ReservationNotFound, SettleCredits } from './SettleCredits.command.ts'
 import { WalletId } from './Wallet.id.ts'
 import { heldCredits, WalletState } from './WalletState.ts'
 
@@ -80,7 +80,7 @@ export class Wallet extends Domain.Aggregate('Wallet', {
     SettleCredits: Effect.fn(function* (state, command, { id }) {
       yield* requireService(id)
       const reservation = state.reservations[command.operationId]
-      if (reservation === undefined) return []
+      if (reservation === undefined) return yield* new ReservationNotFound()
       const refund = command.outcome === 'refunded'
       return [
         new CreditsSettled({

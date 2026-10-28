@@ -11,8 +11,10 @@ import type { SettleCredits } from './SettleCredits.command.ts'
  * business identity; never send a random or caller-chosen ID.
  *
  * Inputs the Wallet checks for conflicts (reservation fingerprint and amount,
- * the monthly grant) are part of the ID, so a changed payload still reaches
- * `decide` and is rejected instead of being answered from an old receipt.
+ * the monthly grant) are part of the ID, so a changed payload reaches `decide`
+ * and is rejected while its hold is pending. After settlement the Wallet keeps
+ * no record of the operation: the generation request, which owns the payload
+ * fingerprint, must refuse a changed payload for an operation it already ran.
  */
 export const reserveCommandId = (command: ReserveCredits): string =>
   `wallet/reserve/${command.operationId}/${command.fingerprint}/${command.amount}`
