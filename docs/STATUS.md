@@ -2,6 +2,13 @@
 
 Status: active, foundation deployed to an isolated workers.dev preview. Full parity is not achieved.
 
+## Diagnostics consent and repository — 2026-10-28
+
+- Owner decisions: the Safari/iOS 17.5 CSS baseline is accepted; browser diagnostics need explicit consent; production sampling and aggregation of browser telemetry are deferred until before launch. `AUTH_SESSION_KEYS` stays bound until the email OTP and MCP OAuth work shows whether anything needs signed sessions.
+- The repository is private at `github.com/grmkris/styld.app`. The hosted CI workflow passed its first run (`bun run check`, including native workerd/Chromium tests) at `f918c7e`.
+- Browser diagnostics now wait for a choice: a sticky prompt (Allow / No thanks) and a footer Diagnostics button to reopen it. The prompt copy is new in English and Slovenian, has no v1 equivalent and awaits owner review. Unit tests cover the states, cookie parsing and server rendering; browser acceptance proves nothing is posted before the choice, past the SDK's 5 s auto-flush (a build without the gate fails), and that Allow stores the grant.
+- Release `4ceddc8c2b5e417c5be1568559e01bcd02e0884c` is deployed to the isolated preview; `/api/health` reports it and deployed acceptance passed (1 test, 24 assertions), including the consent checks.
+
 ## Preview release after review — 2026-10-28
 
 - Commit `7ee1b45ad5e0449e430663f0beea4fe8ea0fa2e8` is deployed to the isolated preview (`https://styldappv2-styldedge-preview-vdqhe23kflepifq2.kristjan-grm11775.workers.dev`); `/api/health` reports that release. The plan updated the three Workers and created the telemetry rate-limit binding; no resource was deleted or replaced.
