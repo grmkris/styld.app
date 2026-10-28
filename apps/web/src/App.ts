@@ -1,4 +1,6 @@
-import { Effect, Schema } from 'effect'
+import { Effect, Predicate, Redacted, Schema } from 'effect'
+import { BrowserAuth } from '@styld/auth/client'
+import { AccountClaims } from '@styld/auth/config'
 import * as HttpClient from 'effect/http/HttpClient'
 import * as HttpClientRequest from 'effect/http/HttpClientRequest'
 import { Command, type Update } from 'foldkit'
@@ -6,6 +8,7 @@ import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { catalogVersion } from '@styld/i18n'
 import { Locale, localeEndpoint, parseLocale } from './Locale.ts'
+import { PasswordForm } from './PasswordForm.ts'
 
 export const Flags = Schema.Struct({
   locale: Locale,
@@ -17,14 +20,64 @@ export const Flags = Schema.Struct({
 export type Flags = typeof Flags.Type
 
 export const LocaleSave = defineTaggedUnion({ Saved: {}, Saving: { locale: Locale }, Failed: {} })
-export const Model = Schema.Struct({ context: Flags, localeSave: LocaleSave })
+export const AuthState = defineTaggedUnion({
+  Checking: {},
+  SignedOut: { failed: Schema.Boolean },
+  SigningIn: {},
+  SignedIn: { claims: AccountClaims },
+  SigningOut: { claims: AccountClaims },
+  Unavailable: {},
+})
+export const Model = Schema.Struct({
+  context: Flags,
+  localeSave: LocaleSave,
+  auth: AuthState,
+})
 export type Model = typeof Model.Type
 export const Message = defineMessageUnion({
   SelectedLocale: { value: Schema.String },
   SucceededSaveLocale: { locale: Locale },
   FailedSaveLocale: {},
+  SubmittedSignIn: {},
+  SucceededSignIn: { claims: AccountClaims },
+  FailedSignIn: {},
+  ReceivedSession: { claims: Schema.NullOr(AccountClaims) },
+  FailedReadSession: {},
+  RequestedSession: {},
+  RequestedSignOut: {},
+  SucceededSignOut: {},
+  FailedSignOut: {},
 })
 export type Message = typeof Message.Type
+
+export const SignIn = Command.define('SignIn', {
+  messages: [Message.SucceededSignIn, Message.FailedSignIn],
+  execute: Effect.gen(function* () {
+    const { auth } = yield* BrowserAuth
+    const credentials = yield* (yield* PasswordForm).take
+    const result = yield* auth.signIn({ email: credentials.email, password: Redacted.value(credentials.password) })
+    return Predicate.isTagged(result, 'Authenticated')
+      ? Message.SucceededSignIn({ claims: result.session.claims })
+      : Message.FailedSignIn()
+  }).pipe(Effect.catch(() => Effect.succeed(Message.FailedSignIn()))),
+})
+
+export const ReadSession = Command.define('ReadSession', {
+  messages: [Message.ReceivedSession, Message.FailedReadSession],
+  execute: Effect.gen(function* () {
+    const { auth } = yield* BrowserAuth
+    const session = yield* auth.getSession()
+    return Message.ReceivedSession({ claims: session?.claims ?? null })
+  }).pipe(Effect.catch(() => Effect.succeed(Message.FailedReadSession()))),
+})
+
+export const SignOut = Command.define('SignOut', {
+  messages: [Message.SucceededSignOut, Message.FailedSignOut],
+  execute: Effect.gen(function* () {
+    yield* (yield* BrowserAuth).auth.signOut()
+    return Message.SucceededSignOut()
+  }).pipe(Effect.catch(() => Effect.succeed(Message.FailedSignOut()))),
+})
 
 export const SaveLocale = Command.define('SaveLocale', {
   args: { locale: Locale },
@@ -39,11 +92,14 @@ export const SaveLocale = Command.define('SaveLocale', {
     }).pipe(Effect.catchTag('HttpClientError', () => Effect.succeed(Message.FailedSaveLocale()))),
 })
 
-export const init = (context: Flags): Update.Return<Model, Message, HttpClient.HttpClient> => ({
-  model: { context, localeSave: LocaleSave.Saved() },
+type Services = HttpClient.HttpClient | BrowserAuth | PasswordForm
+
+export const init = (context: Flags): Update.Return<Model, Message, Services> => ({
+  model: { context, localeSave: LocaleSave.Saved(), auth: AuthState.Checking() },
+  commands: [ReadSession()],
 })
 
-export const update = (model: Model, message: Message): Update.Return<Model, Message, HttpClient.HttpClient> =>
+export const update = (model: Model, message: Message): Update.Return<Model, Message, Services> =>
   Message.match(message, {
     SelectedLocale: ({ value }) => {
       const locale = parseLocale(value)
@@ -54,4 +110,27 @@ export const update = (model: Model, message: Message): Update.Return<Model, Mes
       model: { ...model, context: { ...model.context, locale }, localeSave: LocaleSave.Saved() },
     }),
     FailedSaveLocale: () => ({ model: { ...model, localeSave: LocaleSave.Failed() } }),
+    SubmittedSignIn: () => {
+      if (!AuthState.guards.SignedOut(model.auth)) return { model }
+      return {
+        model: { ...model, auth: AuthState.SigningIn() },
+        commands: [SignIn()],
+      }
+    },
+    SucceededSignIn: ({ claims }) => ({ model: { ...model, auth: AuthState.SignedIn({ claims }) } }),
+    FailedSignIn: () => ({ model: { ...model, auth: AuthState.SignedOut({ failed: true }) } }),
+    ReceivedSession: ({ claims }) => ({
+      model: {
+        ...model,
+        auth: claims === null ? AuthState.SignedOut({ failed: false }) : AuthState.SignedIn({ claims }),
+      },
+    }),
+    FailedReadSession: () => ({ model: { ...model, auth: AuthState.Unavailable() } }),
+    RequestedSession: () => ({ model: { ...model, auth: AuthState.Checking() }, commands: [ReadSession()] }),
+    RequestedSignOut: () =>
+      AuthState.guards.SignedIn(model.auth)
+        ? { model: { ...model, auth: AuthState.SigningOut({ claims: model.auth.claims }) }, commands: [SignOut()] }
+        : { model },
+    SucceededSignOut: () => ({ model: { ...model, auth: AuthState.SignedOut({ failed: false }) } }),
+    FailedSignOut: () => ({ model: { ...model, auth: AuthState.Unavailable() } }),
   })

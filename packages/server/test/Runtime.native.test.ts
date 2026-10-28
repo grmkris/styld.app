@@ -8,6 +8,7 @@ import * as HttpBody from 'effect/http/HttpBody'
 import * as HttpClient from 'effect/http/HttpClient'
 import { chromium } from 'playwright'
 import { verifyBrowser } from './BrowserAcceptance.ts'
+import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
 import RuntimeWorker from './RuntimeWorker.ts'
 import StyldWorkerLive, { StyldWorker } from '../src/StyldWorker.ts'
 
@@ -37,7 +38,7 @@ const Stack = Alchemy.Stack(
     // preview stack. Values are test-only and never leave this process.
     yield* styld.bind('RuntimeConfiguration', {
       env: {
-        AUTH_ORIGIN: 'http://localhost',
+        AUTH_ORIGIN: edge.url,
         STYLD_ENV: 'local',
         STYLD_RELEASE: 'native-test',
         AUTH_SECRET: Redacted.make('native-test-auth-secret-012345678901234567890123'),
@@ -88,6 +89,23 @@ test(
       yield* Effect.promise(() => verifyBrowser(browserInstance, styldUrl))
     }),
   ),
+  { timeout: 60000 },
+)
+
+test(
+  'signs in through the browser, retains the session across reloads and revokes it on logout',
+  Effect.scoped(
+    Effect.gen(function* () {
+      const { url, styldUrl } = yield* stack
+      const seeded = yield* HttpClient.post(`${url}/test/identity/seed-browser`)
+      expect(seeded.status).toBe(204)
+      const browserInstance = yield* Effect.acquireRelease(
+        Effect.promise(() => chromium.launch({ headless: true })),
+        (browser) => Effect.promise(() => browser.close()),
+      )
+      yield* Effect.promise(() => verifyBrowserIdentity(browserInstance, styldUrl))
+    }),
+  ).pipe(Effect.provide(FetchHttpClient.layer)),
   { timeout: 60000 },
 )
 
@@ -152,7 +170,7 @@ test(
 
     const valid = yield* HttpClient.post(`${styldUrl}/api/auth/getSession`, {
       headers: new Headers({
-        origin: 'http://localhost',
+        origin: new URL(styldUrl).origin,
         'content-type': 'application/json',
         'x-effect-auth-csrf': '1',
       }),
@@ -246,7 +264,7 @@ test(
     const call = (action: string, payload: object, cookie = '') =>
       HttpClient.post(`${styldUrl}/api/auth/${action}`, {
         headers: {
-          origin: 'http://localhost',
+          origin: new URL(styldUrl).origin,
           'content-type': 'application/json',
           'x-effect-auth-csrf': '1',
           cookie,
@@ -305,7 +323,7 @@ test(
     expect(seeded.status).toBe(204)
     const attempt = () =>
       HttpClient.post(`${styldUrl}/api/auth/signIn`, {
-        headers: { origin: 'http://localhost', 'content-type': 'application/json', 'x-effect-auth-csrf': '1' },
+        headers: { origin: new URL(styldUrl).origin, 'content-type': 'application/json', 'x-effect-auth-csrf': '1' },
         body: HttpBody.text(
           JSON.stringify({
             payload: { email: 'native-limited@example.invalid', password: 'native-identity-password-52' },

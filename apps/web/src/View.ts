@@ -2,7 +2,10 @@ import { direction, format, type Locale } from '@styld/i18n'
 import type { Document, Html, HtmlBuilder } from 'foldkit/html'
 import { LocaleSave, Message, type Model } from './App.ts'
 
+import { accountView } from './ViewAccount.ts'
+
 const homePath = '/'
+const loginPath = '/login'
 const browseAnchor = '#inspiration'
 const languages: ReadonlyArray<Readonly<{ locale: Locale; label: string }>> = [
   { locale: 'en', label: 'English' },
@@ -45,6 +48,7 @@ const homeView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
           h.h1([], [format(locale, 'landing.title', {})]),
           h.p([h.Class('lead')], [format(locale, 'landing.description', {})]),
           h.a([h.Href(browseAnchor), h.Class('primary-action')], [format(locale, 'landing.browse', {})]),
+          h.a([h.Href(loginPath), h.Class('secondary-action')], [format(locale, 'auth.signInWithEmail', {})]),
         ],
       ),
       h.section(
@@ -71,8 +75,10 @@ const notFoundView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
 export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
   const { locale, pathname } = model.context
   const isHome = pathname === homePath
+  const isLogin = pathname === loginPath || pathname === '/account'
   return {
-    title: format(locale, isHome ? 'landing.title' : 'common.notFoundTitle', {}) + ' | Styld',
+    title:
+      format(locale, isHome ? 'landing.title' : isLogin ? 'auth.signInTitle' : 'common.notFoundTitle', {}) + ' | Styld',
     lang: locale,
     dir: direction(locale) === 'rtl' ? 'Rtl' : 'Ltr',
     body: h.div(
@@ -88,7 +94,7 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
             languagePicker(model, h),
           ],
         ),
-        isHome ? homeView(locale, h) : notFoundView(locale, h),
+        isHome ? homeView(locale, h) : isLogin ? accountView(model, h) : notFoundView(locale, h),
         h.footer(
           [],
           [h.span([], ['Styld']), h.a([h.Href('mailto:hello@styld.app')], [format(locale, 'landing.contact', {})])],

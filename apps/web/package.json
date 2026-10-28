@@ -14,6 +14,7 @@
     "@alchemy.run/cloudflare": "catalog:",
     "@effect/platform-browser": "catalog:",
     "@foldkit/ui": "catalog:",
+    "@styld/auth": "workspace:*",
     "@styld/i18n": "workspace:*",
     "@styld/observability": "workspace:*",
     "effect": "catalog:",

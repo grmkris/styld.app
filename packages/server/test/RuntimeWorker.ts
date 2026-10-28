@@ -64,6 +64,14 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
       ),
       HttpRouter.add(
         'POST',
+        '/test/identity/seed-browser',
+        seedIdentity(database, 'native-browser').pipe(
+          Effect.orDie,
+          Effect.as(HttpServerResponse.empty({ status: 204 })),
+        ),
+      ),
+      HttpRouter.add(
+        'POST',
         '/test/identity/disable',
         disableIdentity(database).pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 }))),
       ),

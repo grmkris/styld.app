@@ -124,6 +124,60 @@ select {
 .primary-action:active {
   opacity: 0.8;
 }
+.secondary-action {
+  display: inline-flex;
+  align-items: center;
+  min-block-size: 48px;
+  padding: 0.65rem 1.5rem;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+}
+.secondary-action:active {
+  opacity: 0.8;
+}
+.auth-page {
+  max-inline-size: 32rem;
+  min-block-size: 65svh;
+  padding-block: clamp(3rem, 8vw, 6rem);
+}
+.auth-form {
+  display: grid;
+  gap: 0.65rem;
+  margin-block-start: 1.5rem;
+}
+.auth-form input {
+  font: inherit;
+  font-size: 1rem;
+  inline-size: 100%;
+  min-block-size: 48px;
+  padding: 0.65rem 0.8rem;
+  border: 1px solid var(--rule);
+  border-radius: 3px;
+  background: color-mix(in oklch, var(--paper) 88%, var(--ink));
+  color: var(--ink);
+}
+.auth-form input:user-invalid {
+  border-color: oklch(58% 0.16 25);
+}
+.auth-form button {
+  justify-self: start;
+  margin-block-start: 0.75rem;
+  border: 0;
+  cursor: pointer;
+}
+.form-error {
+  color: oklch(48% 0.16 25);
+}
+.account-details {
+  display: grid;
+  justify-items: start;
+  gap: 1.5rem;
+  overflow-wrap: anywhere;
+}
+.account-details dd {
+  margin: 0;
+  margin-block-end: 1rem;
+}
 .inspiration {
   display: flex;
   flex-direction: column;
@@ -153,5 +207,8 @@ footer a {
   }
   .primary-action:hover {
     opacity: 0.85;
+  }
+  .secondary-action:hover {
+    background: color-mix(in oklch, var(--paper) 90%, var(--ink));
   }
 }

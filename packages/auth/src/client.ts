@@ -1,4 +1,5 @@
 import * as AuthClient from '@yielded/auth/Client'
+import { Context, type Effect, Layer } from 'effect'
 
 import { AuthApi } from './config.ts'
 
@@ -11,3 +12,14 @@ export const makeAuthClient = (baseUrl: string) =>
   })
 
 export const authClientLayer = (baseUrl: string) => makeAuthClient(baseUrl).layerFetch
+
+export class BrowserAuth extends Context.Service<
+  BrowserAuth,
+  Effect.Success<ReturnType<typeof makeAuthClient>['make']>
+>()('@styld/auth/BrowserAuth') {}
+
+/** One client lifetime for the browser host; the trusted URL is supplied by its entrypoint. */
+export const browserAuthLayer = (baseUrl: string) => {
+  const definition = makeAuthClient(baseUrl)
+  return Layer.effect(BrowserAuth, definition).pipe(Layer.provide(definition.layerFetch))
+}

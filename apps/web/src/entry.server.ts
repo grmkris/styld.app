@@ -29,7 +29,7 @@ const renderApplication = (
     }
     const rendered = yield* Server.renderToString(application, { ...options, flags })
     return Server.Rendered(rendered, {
-      status: url.pathname === '/' ? 200 : 404,
+      status: ['/', '/login', '/account'].includes(url.pathname) ? 200 : 404,
       headers: {
         'cache-control': 'private, no-store',
         vary: 'Accept-Language, Cookie',
