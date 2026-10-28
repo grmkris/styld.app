@@ -1,11 +1,15 @@
 import { glob, readFile } from 'node:fs/promises'
 import { parseSync, Visitor } from 'oxc-parser'
 
-export const sourceFiles = async () => {
+export const sourceFiles = async (root = '.') => {
   const files: string[] = []
-  for await (const file of glob(['apps/**/*.ts', 'packages/**/*.ts', 'tools/**/*.ts', '*.ts'], {
-    exclude: ['**/node_modules/**', '**/dist/**', 'tools/oxlint/anti-slop/**'],
-  }))
+  const extensions = '{ts,tsx,mts,cts,js,jsx,mjs,cjs}'
+  for await (const file of glob(
+    ['apps', 'packages', 'tools', 'infra']
+      .map((directory) => `${directory}/**/*.${extensions}`)
+      .concat(`*.${extensions}`),
+    { cwd: root, exclude: ['**/node_modules/**', '**/dist/**', 'tools/oxlint/anti-slop/**'] },
+  ))
     files.push(file)
   return files.toSorted()
 }
@@ -34,6 +38,9 @@ export const importsOf = (file: string, source: string): string[] => {
     ExportAllDeclaration: (node) => add(node.source.value),
     TSImportType: (node) => {
       add(node.source.value)
+    },
+    TSImportEqualsDeclaration: (node) => {
+      if (node.moduleReference.type === 'TSExternalModuleReference') add(node.moduleReference.expression.value)
     },
     ImportExpression: (node) => add(node.source.type === 'Literal' ? node.source.value : undefined),
     CallExpression: (node) => {

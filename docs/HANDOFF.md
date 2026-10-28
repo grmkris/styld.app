@@ -29,6 +29,8 @@ The full gate includes formatting, agent/skill provenance, generated i18n catalo
 
 Knip recognizes Alchemy and Foldkit entrypoints explicitly. `tools/quality/graph.ts` checks package direction, export maps, declared workspace dependencies, cross-package relative imports and the transitive browser graph. Extend its policy when introducing an intentional package boundary. Avoid importing `@styld/auth`'s server barrel from browser code; use `/client` and `/config`.
 
+The final review closed a graph-check bypass through JavaScript/TSX files. Source discovery and suppression auditing now cover TS, TSX, MTS, CTS, JS, JSX, MJS and CJS, including infrastructure. Browser traversal resolves local barrels and TypeScript implementations of JavaScript imports, rejects bare Node built-ins, and requires explicit source extensions when resolution is ambiguous. Filesystem fixtures exercise those cases through the complete checker.
+
 ## Next implementation work
 
 Begin with identity parity: unified email OTP signup/login, Google, anonymous sessions and atomic merge, account lifecycle, then onboarding. Installed Yielded beta.46 source was inspected for `Email.makeCode`, `Email.makeRegistration`, proof storage and Drizzle/D1 adapters; no OTP implementation was started. Read those sources and validate the concrete proof/commit behavior before composing an adapter.

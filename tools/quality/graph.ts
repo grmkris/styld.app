@@ -1,4 +1,5 @@
 import { readFile } from 'node:fs/promises'
+import { isBuiltin } from 'node:module'
 import { dirname, posix } from 'node:path'
 import { Schema } from 'effect'
 import { importsOf, sourceFiles } from './source.ts'
@@ -32,6 +33,7 @@ export const checkDirection = (from: string, to: string) => {
 
 export const assertBrowserSafe = (file: string, specifier: string) => {
   if (
+    isBuiltin(specifier) ||
     /^(node:|bun:|cloudflare:|@alchemy\.run\/cloudflare|@yielded\/auth-persistence|@effect\/sql-|drizzle-orm)/.test(
       specifier,
     ) ||
@@ -77,8 +79,36 @@ const resolveEdge = (
   return destination
 }
 
-export const checkGraph = async () => {
-  const files = await sourceFiles()
+// Local source imports must resolve to audited files. Otherwise an extensionless
+// barrel or a JavaScript bridge could hide a server adapter from traversal.
+const sourceExtensions = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs']
+const sourceSubstitutions: Readonly<Record<string, readonly string[]>> = {
+  '.js': ['.ts', '.tsx'],
+  '.jsx': ['.tsx'],
+  '.mjs': ['.mts'],
+  '.cjs': ['.cts'],
+}
+const resolveSource = (target: string, files: ReadonlySet<string>) => {
+  if (files.has(target)) return target
+  const extension = posix.extname(target)
+  if (extension !== '' && !sourceExtensions.includes(extension)) {
+    if (target.includes('?') || target.includes('#')) throw new Error(`Unsupported source import: ${target}`)
+    return undefined
+  }
+  const candidates =
+    extension === ''
+      ? sourceExtensions.flatMap((suffix) => [`${target}${suffix}`, `${target}/index${suffix}`])
+      : (sourceSubstitutions[extension] ?? []).map((suffix) => `${target.slice(0, -extension.length)}${suffix}`)
+  const matches = candidates.filter((candidate) => files.has(candidate))
+  if (matches.length > 1) throw new Error(`Ambiguous source import: ${target}; use an explicit source extension`)
+  const resolved = matches[0]
+  if (resolved === undefined) throw new Error(`Unresolved source import: ${target}`)
+  return resolved
+}
+
+export const checkGraph = async (root = '.') => {
+  const files = await sourceFiles(root)
+  const fileSet = new Set(files)
   const workspaces: Workspace[] = []
   const dirs = new Set(
     files.filter((file) => /^(apps|packages)\//.test(file)).map((file) => file.split('/').slice(0, 2).join('/')),
@@ -87,7 +117,7 @@ export const checkGraph = async () => {
     workspaces.push({
       directory,
       manifest: Schema.decodeUnknownSync(Schema.fromJsonString(Manifest))(
-        await readFile(`${directory}/package.json`, 'utf8'),
+        await readFile(posix.join(root, directory, 'package.json'), 'utf8'),
       ),
     })
   const byName = new Map(workspaces.map((workspace) => [workspace.manifest.name, workspace]))
@@ -95,16 +125,20 @@ export const checkGraph = async () => {
   const imports = new Map<string, string[]>()
   for (const file of files) {
     const owner = workspaces.find(({ directory }) => file.startsWith(`${directory}/`))
-    const requests = importsOf(file, await readFile(file, 'utf8'))
+    const requests = importsOf(file, await readFile(posix.join(root, file), 'utf8'))
     imports.set(file, requests)
     edges.set(
       file,
-      requests.map((specifier) => resolveEdge(file, specifier, owner, byName)).filter((target) => target !== undefined),
+      requests.flatMap((specifier) => {
+        const target = resolveEdge(file, specifier, owner, byName)
+        const source = target === undefined ? undefined : resolveSource(target, fileSet)
+        return source === undefined ? [] : [source]
+      }),
     )
   }
   const visited = new Set<string>()
   const visitBrowser = (file: string) => {
-    if (visited.has(file) || !file.endsWith('.ts')) return
+    if (visited.has(file)) return
     visited.add(file)
     const requests = imports.get(file)
     if (requests === undefined) throw new Error(`Unresolved browser source ${file}`)
