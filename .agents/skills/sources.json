@@ -1,0 +1,29 @@
+{
+  "sources": [
+    {
+      "name": "alchemy-domain",
+      "source": "/tmp/styld-alchemy-domain-20261027/packages/domain/skills/alchemy-domain",
+      "retrievedAt": "2026-10-28"
+    },
+    {
+      "name": "durable-objects",
+      "source": "/home/kristjan/code/swarmm/.agents/skills/durable-objects",
+      "retrievedAt": "2026-10-28"
+    },
+    {
+      "name": "wrangler",
+      "source": "/home/kristjan/code/swarmm/.agents/skills/wrangler",
+      "retrievedAt": "2026-10-28"
+    },
+    {
+      "name": "unslop",
+      "source": "/home/kristjan/code/swarmm/.agents/skills/unslop",
+      "retrievedAt": "2026-10-28"
+    },
+    {
+      "name": "thermo-nuclear-code-quality-review",
+      "source": "/home/kristjan/code/swarmm/.agents/skills/thermo-nuclear-code-quality-review",
+      "retrievedAt": "2026-10-28"
+    }
+  ]
+}

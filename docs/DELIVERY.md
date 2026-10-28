@@ -17,23 +17,23 @@ V1 repository: `/home/kristjan/code/stylelab`. Frozen comparison commit: `dddf9d
 
 ## Feature acceptance matrix
 
-| Area | Required behavior | Status | Evidence |
-| --- | --- | --- | --- |
-| identity | anonymous sessions and merge; email OTP; Google; logout; account linking and deletion; roles/admin | pending | — |
-| onboarding | taste-first flow; style/body preferences; starter board/follows; retry-safe welcome email | pending | — |
-| wardrobe | upload/analyze; categories/colors/tags; edit/favorite/archive/delete; search; capacity and visibility | pending | — |
-| studio | boards/pins/collages; canvas editing; image/text/layout; undo and save; rendering; sharing; safety-filtered public reads | pending | — |
-| outfits | compose/render; try-on; outfit check and followups; calendar/planning; saved looks | pending | — |
-| scans | multi-photo scan; detect/extract garments; product shots; progress/retry/cancel; correct charging | pending | — |
-| stylist | chat threads/streaming/tools; wardrobe/catalog retrieval; persistent context and handoffs | pending | — |
-| catalog | shop identity/profile; feed sync/pagination/retirement; manual items; dictionary/AI classify; semantic/plain search and facets; click analytics | pending | — |
-| social | published profiles; feed pagination; follow; directories; public links; OG cards; unpublished-owner protections | pending | — |
-| safety | reports; two-way blocks; moderation; notices; admin restore/remove/dismiss; feed approvals and curation | pending | — |
-| billing | plans/credits; checkout/portal; Dodo signatures/events/dedupe; lazy customer; quotas/reserve/consume/refund | pending | — |
-| mcp | frozen tools and schemas; resources/apps; OAuth/CIMD/DCR; scopes/consent/revoke; signed-out browsing vs protected host auth | pending | — |
-| operations | activity/dashboard/admin/referral/feedback; email; analytics; provider receipts; job recovery | pending | — |
-| migration | stable IDs/timestamps/URLs; SQLite query equivalence; object transfer; vectors; auth import/session strategy; count/hash reconciliation | pending | — |
-| experience | en/sl; legal content; mobile/Safari/PWA; accessibility; empty/error/loading states; browser telemetry | pending | — |
+| Area       | Required behavior                                                                                                                               | Status  | Evidence |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------- | -------- |
+| identity   | anonymous sessions and merge; email OTP; Google; logout; account linking and deletion; roles/admin                                              | pending | —        |
+| onboarding | taste-first flow; style/body preferences; starter board/follows; retry-safe welcome email                                                       | pending | —        |
+| wardrobe   | upload/analyze; categories/colors/tags; edit/favorite/archive/delete; search; capacity and visibility                                           | pending | —        |
+| studio     | boards/pins/collages; canvas editing; image/text/layout; undo and save; rendering; sharing; safety-filtered public reads                        | pending | —        |
+| outfits    | compose/render; try-on; outfit check and followups; calendar/planning; saved looks                                                              | pending | —        |
+| scans      | multi-photo scan; detect/extract garments; product shots; progress/retry/cancel; correct charging                                               | pending | —        |
+| stylist    | chat threads/streaming/tools; wardrobe/catalog retrieval; persistent context and handoffs                                                       | pending | —        |
+| catalog    | shop identity/profile; feed sync/pagination/retirement; manual items; dictionary/AI classify; semantic/plain search and facets; click analytics | pending | —        |
+| social     | published profiles; feed pagination; follow; directories; public links; OG cards; unpublished-owner protections                                 | pending | —        |
+| safety     | reports; two-way blocks; moderation; notices; admin restore/remove/dismiss; feed approvals and curation                                         | pending | —        |
+| billing    | plans/credits; checkout/portal; Dodo signatures/events/dedupe; lazy customer; quotas/reserve/consume/refund                                     | pending | —        |
+| mcp        | frozen tools and schemas; resources/apps; OAuth/CIMD/DCR; scopes/consent/revoke; signed-out browsing vs protected host auth                     | pending | —        |
+| operations | activity/dashboard/admin/referral/feedback; email; analytics; provider receipts; job recovery                                                   | pending | —        |
+| migration  | stable IDs/timestamps/URLs; SQLite query equivalence; object transfer; vectors; auth import/session strategy; count/hash reconciliation         | pending | —        |
+| experience | en/sl; legal content; mobile/Safari/PWA; accessibility; empty/error/loading states; browser telemetry                                           | pending | —        |
 
 ## Proof levels
 
