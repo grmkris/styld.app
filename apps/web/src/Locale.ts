@@ -4,12 +4,16 @@ export const Locale = Schema.Literals(['en', 'sl', 'en-XA', 'ar-XB'])
 export type Locale = typeof Locale.Type
 export const localeEndpoint = '/locale'
 
-/** Pseudo-locales test text expansion and RTL layout; production offers only the reviewed languages.
- * @internal Exported for its test; the application reads `availableLocales`. */
-export const offeredLocales = (environment: string | undefined): ReadonlyArray<Locale> =>
-  environment === 'production' ? ['en', 'sl'] : ['en', 'sl', 'en-XA', 'ar-XB']
+const layoutTestEnvironments: ReadonlySet<string> = new Set(['local', 'preview'])
 
-export const availableLocales = offeredLocales(import.meta.env.VITE_STYLD_ENV)
+/** Pseudo-locales test text expansion and RTL layout. Only known test environments offer them;
+ * production and any unknown environment offer only the reviewed languages.
+ * @internal Exported for its test; the application reads `availableLocales`. */
+export const offeredLocales = (environment: string): ReadonlyArray<Locale> =>
+  layoutTestEnvironments.has(environment) ? ['en', 'sl', 'en-XA', 'ar-XB'] : ['en', 'sl']
+
+// An unset environment is a local development or test build.
+export const availableLocales = offeredLocales(import.meta.env.VITE_STYLD_ENV ?? 'local')
 
 export const parseLocale = (value: string | null | undefined): Locale | undefined =>
   Schema.is(Locale)(value) && availableLocales.includes(value) ? value : undefined

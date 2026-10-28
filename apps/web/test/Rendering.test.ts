@@ -86,8 +86,9 @@ test('RTL and expanded locales render without pretending to be Arabic translatio
   expect(Server.toResponse((app) => renderDocument(app, assets), missing).status).toBe(404)
 })
 
-test('production offers only the reviewed languages; other environments add the layout pseudo-locales', () => {
+test('only known test environments add the layout pseudo-locales', () => {
   expect(offeredLocales('production')).toEqual(['en', 'sl'])
+  expect(offeredLocales('prodution')).toEqual(['en', 'sl'])
   expect(offeredLocales('preview')).toEqual(['en', 'sl', 'en-XA', 'ar-XB'])
-  expect(offeredLocales(undefined)).toEqual(['en', 'sl', 'en-XA', 'ar-XB'])
+  expect(offeredLocales('local')).toEqual(['en', 'sl', 'en-XA', 'ar-XB'])
 })
