@@ -2,6 +2,15 @@
 
 Status: active, foundation deployed to an isolated workers.dev preview. Full parity is not achieved.
 
+## Preview release after review — 2026-10-28
+
+- Commit `7ee1b45ad5e0449e430663f0beea4fe8ea0fa2e8` is deployed to the isolated preview (`https://styldappv2-styldedge-preview-vdqhe23kflepifq2.kristjan-grm11775.workers.dev`); `/api/health` reports that release. The plan updated the three Workers and created the telemetry rate-limit binding; no resource was deleted or replaced.
+- Active versions at 100%: edge `0207060b-87b7-4a99-81e9-05f3d1950235`, website `1ce08195-5cc3-4ac9-8062-1d876f33596f`, API `ae572ecb-c538-4476-a135-a16cf818fb3b`.
+- Deployed acceptance passed (1 test, 22 assertions), including the CSP and anti-framing headers, the telemetry flush answered 204 by the relay and no credentials in telemetry bodies. `/api/storage` and `/.vite/manifest.json` answer 404; `favicon.svg` carries nosniff and a deny-all CSP.
+- Workers Logs readback: relayed browser spans are structured records indexed by field (`styld.browser.span` such as `SaveLocale` and `ReadSession`, outcome, duration, Foldkit message) beside the server's environment, release and correlation ID.
+- A burst of empty exports from one IP was throttled once Cloudflare's eventually consistent counter caught up (after 140 accepted, 16 then 52 of 80 got 429).
+- Screenshots of `/` and `/login` at 390 and 1280 px match the release before the zyzz port pixel for pixel.
+
 ## Independent review round — 2026-10-28
 
 Two reviewers read the changes since `370a0e2` independently (architecture/tooling and security/privacy/durable behaviour). No high-severity findings; every medium and most low findings are fixed with tests:
