@@ -21,10 +21,12 @@ export default defineConfig({
     autoDetect: true,
     // Language names are written in their own language and the brand is never translated.
     ignore: ['Styld', 'English', 'Slovenščina', 'English (expanded)', 'English (RTL)'],
-    // Only views carry user-facing copy: server code holds SQL and protocol strings, and
-    // `*.styles.ts`, `GlobalStyles.ts` and `zyzz.config.ts` hold CSS values.
+    // Files without user-facing copy: SQL, developer-only defect messages and CSS values.
+    // Everything else, including future server-rendered copy such as emails, is checked.
     ignoreByFile: {
-      'packages/**': ['/[\\s\\S]*/'],
+      'packages/auth/src/AttemptLimiter.ts': ['/[\\s\\S]*/'],
+      'packages/server/src/IsolateCache.ts': ['/[\\s\\S]*/'],
+      'packages/server/src/StyldWorker.ts': ['/[\\s\\S]*/'],
       'apps/web/src/**/*.styles.ts': ['/[\\s\\S]*/'],
       'apps/web/src/GlobalStyles.ts': ['/[\\s\\S]*/'],
       'apps/web/src/zyzz.config.ts': ['/[\\s\\S]*/'],
