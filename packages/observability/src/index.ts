@@ -10,6 +10,9 @@ const SafeText = Schema.String.check(
   Schema.isPattern(/^[A-Za-z0-9._:/-]+$/),
 )
 const Attempt = Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualTo(1), Schema.isLessThanOrEqualTo(1000))
+const CorrelationId = Schema.String.check(
+  Schema.isPattern(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
+)
 
 /** The only metadata accepted by the application telemetry seam. */
 export const ObservabilityMetadata = Schema.Struct({
@@ -17,7 +20,7 @@ export const ObservabilityMetadata = Schema.Struct({
   release: SafeText,
   component: SafeText,
   kind: Schema.optional(SafeText),
-  correlationId: Schema.optional(SafeText),
+  correlationId: Schema.optional(CorrelationId),
   operationId: Schema.optional(SafeText),
   jobId: Schema.optional(SafeText),
   attempt: Schema.optional(Attempt),
@@ -26,15 +29,23 @@ export type ObservabilityMetadata = typeof ObservabilityMetadata.Type
 
 export type ObservabilityBase = Pick<ObservabilityMetadata, 'environment' | 'release' | 'component'>
 
+const DeploymentIdentity = Schema.Struct({
+  environment: Environment,
+  release: SafeText,
+  component: Schema.Literals(['server', 'web', 'edge']),
+})
+
+export class InvalidDeploymentIdentity extends Schema.TaggedError<InvalidDeploymentIdentity>()(
+  'InvalidDeploymentIdentity',
+  {},
+) {}
+
 export const makeObservabilityBase = (input: {
   readonly environment: unknown
   readonly release: unknown
   readonly component: unknown
-}): ObservabilityBase => ({
-  environment: Option.getOrElse(Schema.decodeUnknownOption(Environment)(input.environment), () => 'local'),
-  release: safeText(input.release) ?? 'unreleased',
-  component: safeText(input.component) ?? 'unknown',
-})
+}) =>
+  Schema.decodeUnknownEffect(DeploymentIdentity)(input).pipe(Effect.mapError(() => InvalidDeploymentIdentity.make({})))
 
 type FetchHeaders = { readonly get: (name: string) => string | null }
 type EffectHeaders = { readonly get?: undefined; readonly [key: string]: string | undefined }
@@ -45,31 +56,16 @@ const readHeader = (headers: HeaderSource, name: string): string | undefined => 
   return value === undefined || value === '' ? undefined : value
 }
 
-const safeText = (value: unknown): string | undefined => {
-  const result = Schema.decodeUnknownOption(SafeText)(value)
-  return Option.getOrUndefined(result)
-}
-
-const safeAttempt = (value: unknown): number | undefined => {
-  if (typeof value !== 'string' || !/^[0-9]{1,4}$/.test(value)) return undefined
-  const parsed = Number(value)
-  return Schema.is(Attempt)(parsed) ? parsed : undefined
-}
-
 /**
- * Reads only the bounded correlation headers owned by Styld. Arbitrary headers,
- * bodies and query parameters never enter spans or logs.
+ * Only the edge-generated UUID crosses HTTP. Operation/job/attempt labels are
+ * assigned by trusted application operations, never derived from request headers.
  */
 export const metadataFromHeaders = (base: ObservabilityBase, headers: HeaderSource): ObservabilityMetadata => {
-  const candidate = {
-    ...base,
-    kind: safeText(readHeader(headers, 'x-styld-kind')),
-    correlationId: safeText(readHeader(headers, 'x-styld-correlation-id')),
-    operationId: safeText(readHeader(headers, 'x-styld-operation-id')),
-    jobId: safeText(readHeader(headers, 'x-styld-job-id')),
-    attempt: safeAttempt(readHeader(headers, 'x-styld-attempt')),
-  }
-  return Schema.decodeUnknownOption(ObservabilityMetadata)(candidate).pipe(Option.getOrElse(() => ({ ...base })))
+  const correlation = Schema.decodeUnknownOption(CorrelationId)(readHeader(headers, 'x-styld-correlation-id'))
+  return Option.match(correlation, {
+    onNone: () => ({ ...base, kind: 'http' }),
+    onSome: (correlationId) => ({ ...base, kind: 'http', correlationId }),
+  })
 }
 
 /** Convert the typed metadata to a record with no undefined optional fields. */

@@ -18,3 +18,12 @@ STYLD_RELEASE="$(git rev-parse HEAD)" heavy --wait bunx alchemy deploy \
 Read the plan and final resource outcomes, not just the process exit code. The pinned CLI has returned exit 0 on failed plans/uploads. Read back Worker deployment IDs, bindings and public access settings; check health, auth/CSRF, asset delivery and browser hydration against the returned edge URL. Local unit and workerd passes do not establish cloud acceptance.
 
 The native test stack deploys the production Foldkit artifact in workerd; Alchemy's ordinary Foldkit development host uses Node/Vite. `heavy --wait bun run test:native` rebuilds first and includes Chromium browser acceptance. Install the repository's pinned browser with `heavy --wait bunx playwright install chromium` if needed.
+
+The current isolated preview URL is `https://styldappv2-styldedge-preview-vdqhe23kflepifq2.kristjan-grm11775.workers.dev`. Verify it with:
+
+```sh
+STYLD_PREVIEW_URL="https://styldappv2-styldedge-preview-vdqhe23kflepifq2.kristjan-grm11775.workers.dev" \
+  heavy --wait bun test tools/preview.native.test.ts
+```
+
+That receipt is tied to the deployed release recorded in `docs/STATUS.md`; a later deploy must produce a new URL/version readback and rerun the test. Cloudflare bot controls may return Error 1010 to ad-hoc non-browser clients, so use the browser acceptance path when validating the public URL.

@@ -26,7 +26,7 @@ export default StyldWorker.make(
     // Keep local workerd and deployed Workers on the same supported date; telemetry needs >= 2026-07-28.
     compatibility: { date: '2026-10-19' },
     workersDev: { enabled: false, previewsEnabled: false },
-    observability: { enabled: true, logs: { enabled: true, invocationLogs: true } },
+    observability: { enabled: true, redactQueryString: true, logs: { enabled: true, invocationLogs: true } },
   },
   Effect.gen(function* () {
     const database = yield* Cloudflare.D1.QueryDatabase(StyldDatabase)
@@ -36,11 +36,11 @@ export default StyldWorker.make(
       // secrets) exist only in the deployed request runtime, not while
       // Alchemy evaluates the Worker declaration during planning.
       const env = yield* Cloudflare.Workers.WorkerEnvironment
-      const observabilityBase = makeObservabilityBase({
+      const observabilityBase = yield* makeObservabilityBase({
         environment: env.STYLD_ENV,
         release: env.STYLD_RELEASE,
         component: 'server',
-      })
+      }).pipe(Effect.orDie)
       const authOrigin: unknown = env.AUTH_ORIGIN
       if (typeof authOrigin !== 'string' || authOrigin.length === 0) {
         return yield* Effect.die(new Error('AUTH_ORIGIN binding is required'))

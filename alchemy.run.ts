@@ -16,6 +16,7 @@ export default Alchemy.Stack(
       compatibility: { date: '2026-10-19' },
       observability: {
         enabled: true,
+        redactQueryString: true,
         logs: { enabled: true, invocationLogs: true },
         traces: { enabled: true, headSamplingRate: 1 },
       },
@@ -31,6 +32,7 @@ export default Alchemy.Stack(
       workersDev: true,
       observability: {
         enabled: true,
+        redactQueryString: true,
         logs: { enabled: true, invocationLogs: true },
         traces: { enabled: true, headSamplingRate: 1 },
       },

@@ -18,7 +18,13 @@ describe('public edge routing', () => {
   test('passes request bodies, cookies, redirects and repeated response headers unchanged', async () => {
     const request = new Request('https://styld.test/api/auth/getSession?x=1', {
       method: 'POST',
-      headers: { cookie: 'session=test', origin: 'https://styld.test' },
+      headers: {
+        cookie: 'session=test',
+        origin: 'https://styld.test',
+        'x-styld-correlation-id': 'caller-controlled-secret',
+        'x-styld-job-id': 'caller-controlled-secret',
+        'x-styld-kind': 'caller-controlled-secret',
+      },
       body: '{}',
     })
     const headers = new Headers({ location: '/signed-in' })
@@ -27,9 +33,14 @@ describe('public edge routing', () => {
     const response = new Response('redirect', { status: 302, headers })
     const api = {
       fetch: async (received: Request) => {
-        expect(received).toBe(request)
+        expect(received.url).toBe(request.url)
+        expect(received.method).toBe(request.method)
         expect(await received.text()).toBe('{}')
         expect(received.headers.get('cookie')).toBe('session=test')
+        expect(received.headers.get('origin')).toBe('https://styld.test')
+        expect(received.headers.get('x-styld-correlation-id')).toMatch(/^[0-9a-f-]{36}$/)
+        expect(received.headers.has('x-styld-job-id')).toBe(false)
+        expect(received.headers.has('x-styld-kind')).toBe(false)
         return response
       },
     }

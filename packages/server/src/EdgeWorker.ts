@@ -12,10 +12,17 @@ const apiNamespaces = ['/api', '/rpc', '/mcp', '/.well-known', '/out', '/cdn'] a
 export const isApiPath = (path: string): boolean =>
   apiNamespaces.some((namespace) => path === namespace || path.startsWith(`${namespace}/`))
 
-/** Native transport boundary. Forward the original request and response so
- * streams, cookies, redirects, cancellation and WebSockets keep platform semantics. */
+/** Native transport boundary. Reserved telemetry fields belong to the edge;
+ * callers cannot choose log labels or smuggle payloads through correlation IDs.
+ * Request bodies and responses keep their native streaming semantics. */
 export default {
   fetch(request: Request, env: EdgeEnvironment): Promise<Response> {
-    return (isApiPath(new URL(request.url).pathname) ? env.API : env.WEBSITE).fetch(request)
+    const headers = new Headers(request.headers)
+    for (const name of request.headers.keys()) {
+      if (name.startsWith('x-styld-')) headers.delete(name)
+    }
+    headers.set('x-styld-correlation-id', crypto.randomUUID())
+    const forwarded = new Request(request, { headers })
+    return (isApiPath(new URL(request.url).pathname) ? env.API : env.WEBSITE).fetch(forwarded)
   },
 }

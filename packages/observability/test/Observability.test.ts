@@ -1,8 +1,15 @@
 import { Effect, Logger, References, Tracer } from 'effect'
 import { expect, test } from 'vitest'
-import { Environment, metadataAttributes, metadataFromHeaders, withObservability } from '../src/index.ts'
+import {
+  Environment,
+  makeObservabilityBase,
+  metadataAttributes,
+  metadataFromHeaders,
+  withObservability,
+} from '../src/index.ts'
 
 const base = { environment: 'preview' as const, release: 'release-123', component: 'server' }
+const correlationId = '00000000-0000-4000-8000-000000000001'
 
 test('accepts only bounded deployment and correlation metadata', () => {
   expect(Environment.literals).toEqual(['local', 'preview', 'production'])
@@ -10,7 +17,7 @@ test('accepts only bounded deployment and correlation metadata', () => {
     base,
     new Headers({
       'x-styld-kind': 'http',
-      'x-styld-correlation-id': 'corr-123',
+      'x-styld-correlation-id': correlationId,
       'x-styld-operation-id': 'op-123',
       'x-styld-job-id': 'job-123',
       'x-styld-attempt': '2',
@@ -20,19 +27,28 @@ test('accepts only bounded deployment and correlation metadata', () => {
   expect(metadata).toEqual({
     ...base,
     kind: 'http',
-    correlationId: 'corr-123',
-    operationId: 'op-123',
-    jobId: 'job-123',
-    attempt: 2,
+    correlationId,
   })
   expect(metadataAttributes(metadata)).not.toHaveProperty('authorization')
   expect(
     metadataFromHeaders(base, new Headers({ 'x-styld-correlation-id': 'prompt=ignore me', 'x-styld-attempt': '0' })),
-  ).toEqual(base)
+  ).toEqual({ ...base, kind: 'http' })
+})
+
+test('invalid deployment identity fails without logging the supplied value', async () => {
+  const failure = await Effect.runPromise(
+    makeObservabilityBase({
+      environment: 'invalid-private-input',
+      release: 'release-123',
+      component: 'server',
+    }).pipe(Effect.flip),
+  )
+  expect(failure.constructor.name).toBe('InvalidDeploymentIdentity')
+  expect(JSON.stringify(failure)).not.toContain('invalid-private-input')
 })
 
 test('withObservability annotates logs and forwards the same approved span fields', async () => {
-  const metadata = metadataFromHeaders(base, new Headers({ 'x-styld-correlation-id': 'corr-123' }))
+  const metadata = metadataFromHeaders(base, new Headers({ 'x-styld-correlation-id': correlationId }))
   const spans: Array<Tracer.NativeSpan> = []
   const tracer = Tracer.make({
     span(options) {
@@ -59,5 +75,8 @@ test('withObservability annotates logs and forwards the same approved span field
   expect(spans).toHaveLength(1)
   expect(Object.fromEntries(spans[0]?.attributes ?? [])).toEqual(metadataAttributes(metadata))
   expect(annotations[0]).toEqual(metadataAttributes(metadata))
-  expect(metadataFromHeaders(base, new Headers({ 'x-styld-job-id': 'x'.repeat(129) }))).toEqual(base)
+  expect(metadataFromHeaders(base, new Headers({ 'x-styld-job-id': 'x'.repeat(129) }))).toEqual({
+    ...base,
+    kind: 'http',
+  })
 })

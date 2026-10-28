@@ -10,7 +10,7 @@ import { saveLocale } from './server/LocalePreference.ts'
 
 export const application = { Flags, init, view }
 
-export const renderRequest = (
+const renderApplication = (
   request: Request,
   options: { readonly buildId?: string; readonly runtimeId?: string } = {},
 ) =>
@@ -38,19 +38,22 @@ export const renderRequest = (
         'referrer-policy': 'strict-origin-when-cross-origin',
       },
     })
-  }).pipe(
-    withObservability(
-      'styld.web.render',
-      metadataFromHeaders(
-        makeObservabilityBase({
-          environment: import.meta.env.VITE_STYLD_ENV ?? 'local',
-          release: import.meta.env.VITE_STYLD_RELEASE ?? 'local-build',
-          component: 'web',
-        }),
-        request.headers,
-      ),
-    ),
-  )
+  })
+
+export const renderRequest = (
+  request: Request,
+  options: { readonly buildId?: string; readonly runtimeId?: string } = {},
+) =>
+  Effect.gen(function* () {
+    const identity = yield* makeObservabilityBase({
+      environment: import.meta.env.VITE_STYLD_ENV ?? 'local',
+      release: import.meta.env.VITE_STYLD_RELEASE ?? 'local-build',
+      component: 'web',
+    }).pipe(Effect.orDie)
+    return yield* renderApplication(request, options).pipe(
+      withObservability('styld.web.render', metadataFromHeaders(identity, request.headers)),
+    )
+  })
 
 export const renderPage: Server.EntryModule['renderPage'] = (request) =>
   Effect.runPromise(renderRequest(request).pipe(Effect.provide(cloudflareTracer)))
