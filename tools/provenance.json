@@ -114,7 +114,7 @@
     },
     {
       "path": ".agents/skills/sources.json",
-      "sha256": "951ae2222b3b70cb81d2a754863b3f9147c9ce196de276d633bfb9c122ce13ac"
+      "sha256": "1ab87f3ab74650f42942343fe248c72708988978fa84c52504b30048a5343384"
     },
     {
       "path": ".agents/skills/thermo-nuclear-code-quality-review/LICENSE",
@@ -151,6 +151,10 @@
     {
       "path": ".agents/skills/wrangler/agents/openai.yaml",
       "sha256": "a1499d95abd8447558c535fe5554adcc3c9b988a0a39264a6283d430effe1e94"
+    },
+    {
+      "path": ".agents/skills/alchemy-domain/LICENSE",
+      "sha256": "50e6751797c50dedd75ef1b8a0d9e42f5f8472e9fbce91f34718e9f97b0c780a"
     }
   ]
 }
