@@ -30,6 +30,8 @@ Cloudflare image delivery replaces deterministic image transforms. Generative tr
 
 Native Cloudflare logs/traces are composed once at the host. Effect named spans and typed outcomes carry release/environment/correlation, job and attempt identifiers. Delayed work persists correlation separately from trace identity. Add explicit application metrics and failure/retry/projection/usage alerts. Keep raw personal payloads out of logs. Browser telemetry has an explicit bounded path. Validate failures and context isolation on the actual runtime.
 
+The initial Worker uses `Cloudflare.Telemetry({ headSamplingRate: 1 })` for acceptance visibility and the platform's invocation logs. Production sampling, retention and alert thresholds are infrastructure decisions, while the usage aggregate remains the financial record. Native local logs are empty for successful requests, so deployed trace/log readback is a required gate rather than inferred from process output.
+
 ## Delivery boundary
 
 Deliver an isolated preview at workers.dev, with safe test data and functioning provider paths. No production DNS cutover, destructive v1 migration or personal-data copying into preview. Provide a reconciled export/import rehearsal and documented production migration procedure as part of parity readiness.

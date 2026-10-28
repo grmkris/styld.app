@@ -18,6 +18,7 @@
         "@foldkit/oxlint-plugin": "0.15.3",
         "@formatjs/icu-messageformat-parser": "catalog:",
         "@oxlint/plugins": "1.89.0",
+        "@styld/server": "workspace:*",
         "@types/bun": "catalog:",
         "@types/node": "catalog:",
         "@yielded/effect-tsrs": "0.2.2",
@@ -55,6 +56,17 @@
       "dependencies": {
         "@formatjs/icu-messageformat-parser": "catalog:",
         "intl-messageformat": "catalog:",
+      },
+    },
+    "packages/server": {
+      "name": "@styld/server",
+      "dependencies": {
+        "@alchemy.run/cloudflare": "catalog:",
+        "@alchemy.run/domain": "catalog:",
+        "@styld/domain": "workspace:*",
+        "@styld/i18n": "workspace:*",
+        "alchemy": "catalog:",
+        "effect": "catalog:",
       },
     },
   },
@@ -526,6 +538,8 @@
     "@styld/domain": ["@styld/domain@workspace:packages/domain"],
 
     "@styld/i18n": ["@styld/i18n@workspace:packages/i18n"],
+
+    "@styld/server": ["@styld/server@workspace:packages/server"],
 
     "@tsrs/darwin-arm64": ["@tsrs/darwin-arm64@0.20.0-ts7.1.0-beta", "", { "os": "darwin", "cpu": "arm64" }, "sha512-mhHj8QGUmdJDBvJEnMXx5P/jvAKXYU3hy/z3qxrWBo8XHlbLES32PgC0ZpTRbJA960ReTpVqqvCOYaC6EL32/Q=="],
 

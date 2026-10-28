@@ -1,0 +1,17 @@
+{
+  "name": "@styld/server",
+  "private": true,
+  "type": "module",
+  "sideEffects": false,
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "dependencies": {
+    "@alchemy.run/cloudflare": "catalog:",
+    "@alchemy.run/domain": "catalog:",
+    "@styld/domain": "workspace:*",
+    "@styld/i18n": "workspace:*",
+    "alchemy": "catalog:",
+    "effect": "catalog:"
+  }
+}
