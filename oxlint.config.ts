@@ -27,9 +27,13 @@ export default defineConfig({
     './tools/oxlint/anti-slop/index.ts',
     './tools/oxlint/anti-slop/effect/index.ts',
     'oxlint-plugin-complexity',
+    { name: 'zyzz', specifier: 'zyzz/oxlint' },
   ],
   env: { es2024: true },
   rules: {
+    'zyzz/valid-styles': 'error',
+    'zyzz/no-conflicting-props': 'error',
+    'zyzz/no-unused': 'error',
     'typescript/no-explicit-any': 'error',
     'typescript/no-floating-promises': ['error', { ignoreVoid: false }],
     'typescript/no-misused-promises': 'error',

@@ -28,7 +28,8 @@
       "vite": "8.3.5",
       "vitest": "5.0.5",
       "@types/bun": "1.4.4",
-      "@types/node": "24.19.2"
+      "@types/node": "24.19.2",
+      "zyzz": "0.0.43"
     }
   },
   "type": "module",
@@ -88,7 +89,8 @@
     "tsrs": "0.20.1-ts7.1.0-beta",
     "typescript": "7.0.2",
     "vite": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "zyzz": "catalog:"
   },
   "overrides": {
     "@effect/platform-browser": "4.0.7",

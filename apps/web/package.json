@@ -17,7 +17,8 @@
     "@styld/i18n": "workspace:*",
     "@styld/observability": "workspace:*",
     "effect": "catalog:",
-    "foldkit": "catalog:"
+    "foldkit": "catalog:",
+    "zyzz": "catalog:"
   },
   "devDependencies": {
     "@foldkit/vite-plugin": "catalog:",

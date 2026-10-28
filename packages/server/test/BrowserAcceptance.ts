@@ -22,7 +22,11 @@ export const verifyBrowser = async (browser: Browser, origin: string): Promise<v
     expect(documentResponse?.headers()['content-security-policy']).toContain("frame-ancestors 'none'")
     expect(documentResponse?.headers()['x-frame-options']).toBe('DENY')
     expect(await page.locator('h1').textContent()).toBe('A wardrobe shaped by you.')
-    expect(await page.locator('.masthead').evaluate((element) => getComputedStyle(element).display)).toBe('flex')
+    // Compiled zyzz styles reach the page: the masthead lays out as a flex row on Atelier paper.
+    expect(await page.locator('header').evaluate((element) => getComputedStyle(element).display)).toBe('flex')
+    expect(await page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor)).toMatch(
+      /^oklch\(0\.945 /,
+    )
     await page.selectOption('#language', 'sl')
     await page.waitForFunction(() => document.documentElement.lang === 'sl')
     expect(await page.locator('h1').textContent()).toBe('Garderoba po tvojem okusu.')

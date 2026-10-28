@@ -9,7 +9,8 @@ export default {
       ignoreDependencies: ['@effect/language-service'],
     },
     'apps/web': {
-      entry: ['src/entry.ts!', 'src/entry.server.ts!', 'test/**/*.test.ts'],
+      // The zyzz Vite plugin discovers GlobalStyles.ts; nothing imports it.
+      entry: ['src/entry.ts!', 'src/entry.server.ts!', 'src/GlobalStyles.ts!', 'test/**/*.test.ts'],
       project: ['src/**/*.ts', 'test/**/*.ts'],
     },
     ...Object.fromEntries(

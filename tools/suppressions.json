@@ -1,9 +1,5 @@
 [
   {
-    "file": "apps/web/src/entry.ts",
-    "comment": "oxlint-disable-next-line import/no-unassigned-import -- Vite loads the application stylesheet for its side effects"
-  },
-  {
     "file": "packages/auth/src/AttemptLimiter.ts",
     "comment": "@effect-diagnostics-next-line unstableApiUsage:off -- The pinned Effect D1 adapter defines the native Worker database binding."
   },
