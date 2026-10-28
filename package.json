@@ -44,7 +44,9 @@
     "provenance:check": "bun tools/verify-provenance.ts",
     "test": "vitest run",
     "test:unit": "vitest run --exclude **/*.native.test.ts",
-    "check": "bun run format:check && bun run provenance:check && bun run typecheck && bun run lint && bun run test"
+    "check": "bun run format:check && bun run provenance:check && bun run i18n:check && bun run typecheck && bun run lint && bun run test",
+    "i18n:check": "bun tools/i18n-check.ts",
+    "i18n:generate": "bun tools/i18n-check.ts --write"
   },
   "devDependencies": {
     "@alchemy.run/cloudflare": "catalog:",
@@ -58,6 +60,7 @@
     "@effect/tsgo": "0.57.0",
     "@effect/vitest": "catalog:",
     "@foldkit/oxlint-plugin": "0.15.3",
+    "@formatjs/icu-messageformat-parser": "catalog:",
     "@oxlint/plugins": "1.89.0",
     "@types/bun": "catalog:",
     "@types/node": "catalog:",
