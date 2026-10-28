@@ -17,5 +17,13 @@ export const authInput = style({
 })
 export const submit = style({ justifySelf: 'start', marginBlockStart: '0.75rem' })
 export const formError = style({ color: 'error' })
+/** v1's pending line: the loader in the signal colour beside muted text. */
+export const pendingStatus = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '0.75rem',
+  color: 'muted',
+  '& > svg': { color: 'signal' },
+})
 export const accountDetails = style({ display: 'grid', justifyItems: 'start', gap: '1.5rem', overflowWrap: 'anywhere' })
 export const detailValue = style({ margin: '0', marginBlockEnd: '1rem' })

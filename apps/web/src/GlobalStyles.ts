@@ -39,4 +39,13 @@ global({
     outlineOffset: '4px',
   },
   '@media (hover: hover) and (pointer: fine)': { 'a:hover': { textDecorationThickness: '2px' } },
+  // DESIGN.md › Motion: under reduced motion everything ends at once; loaders keep turning.
+  '@media (prefers-reduced-motion: reduce)': {
+    '*:not([data-loader]), ::before, ::after': {
+      animationDuration: '0.01ms !important',
+      animationIterationCount: '1 !important',
+      transitionDuration: '0.01ms !important',
+      scrollBehavior: 'auto !important',
+    },
+  },
 })

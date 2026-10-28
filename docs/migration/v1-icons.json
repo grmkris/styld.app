@@ -1,0 +1,503 @@
+{
+  "AlertCircle": {
+    "phosphor": "warning-circle",
+    "files": 4
+  },
+  "AlertTriangle": {
+    "phosphor": "warning",
+    "files": 1
+  },
+  "AlignCenter": {
+    "phosphor": "text-align-center",
+    "files": 1
+  },
+  "AlignLeft": {
+    "phosphor": "text-align-left",
+    "files": 1
+  },
+  "AlignRight": {
+    "phosphor": "text-align-right",
+    "files": 1
+  },
+  "ArrowDown": {
+    "phosphor": "arrow-down",
+    "files": 2
+  },
+  "ArrowLeft": {
+    "phosphor": "arrow-left",
+    "files": 8
+  },
+  "ArrowRight": {
+    "phosphor": "arrow-right",
+    "files": 1
+  },
+  "ArrowUp": {
+    "phosphor": "arrow-up",
+    "files": 3
+  },
+  "ArrowUpRight": {
+    "phosphor": "arrow-up-right",
+    "files": 5
+  },
+  "ArrowUpToLine": {
+    "phosphor": "arrow-line-up",
+    "files": 1
+  },
+  "Ban": {
+    "phosphor": "prohibit",
+    "files": 2
+  },
+  "Bookmark": {
+    "phosphor": "bookmark-simple",
+    "files": 3
+  },
+  "Bot": {
+    "phosphor": "robot",
+    "files": 1
+  },
+  "CalendarDays": {
+    "phosphor": "calendar-dots",
+    "files": 3
+  },
+  "CalendarPlus": {
+    "phosphor": "calendar-plus",
+    "files": 1
+  },
+  "Camera": {
+    "phosphor": "camera",
+    "files": 16
+  },
+  "Check": {
+    "phosphor": "check",
+    "files": 42
+  },
+  "CheckCircle": {
+    "phosphor": "check-circle",
+    "files": 4
+  },
+  "CheckCircle2": {
+    "phosphor": "check-circle",
+    "files": 1,
+    "note": "Same Phosphor icon as CheckCircle."
+  },
+  "CheckSquare": {
+    "phosphor": "check-square",
+    "files": 2
+  },
+  "ChevronDown": {
+    "phosphor": "caret-down",
+    "files": 12
+  },
+  "ChevronLeft": {
+    "phosphor": "caret-left",
+    "files": 5
+  },
+  "ChevronRight": {
+    "phosphor": "caret-right",
+    "files": 7
+  },
+  "ChevronUp": {
+    "phosphor": "caret-up",
+    "files": 1
+  },
+  "ChevronsUpDown": {
+    "phosphor": "caret-up-down",
+    "files": 1
+  },
+  "Circle": {
+    "phosphor": "circle",
+    "files": 2
+  },
+  "CircleAlert": {
+    "phosphor": "warning-circle",
+    "files": 2,
+    "note": "Lucide alias of AlertCircle."
+  },
+  "CircleUserRound": {
+    "phosphor": "user-circle",
+    "files": 1
+  },
+  "Clipboard": {
+    "phosphor": "clipboard",
+    "files": 2
+  },
+  "ClipboardPaste": {
+    "phosphor": "clipboard-text",
+    "files": 1,
+    "note": "No paste variant; clipboard-text is the nearest."
+  },
+  "Clock": {
+    "phosphor": "clock",
+    "files": 2
+  },
+  "Cloud": {
+    "phosphor": "cloud",
+    "files": 1
+  },
+  "CloudDrizzle": {
+    "phosphor": "cloud-rain",
+    "files": 1,
+    "note": "No drizzle variant; shares cloud-rain with CloudRain."
+  },
+  "CloudLightning": {
+    "phosphor": "cloud-lightning",
+    "files": 1
+  },
+  "CloudMoon": {
+    "phosphor": "cloud-moon",
+    "files": 1
+  },
+  "CloudRain": {
+    "phosphor": "cloud-rain",
+    "files": 1
+  },
+  "CloudSun": {
+    "phosphor": "cloud-sun",
+    "files": 1
+  },
+  "Coins": {
+    "phosphor": "coins",
+    "files": 2
+  },
+  "Copy": {
+    "phosphor": "copy",
+    "files": 4
+  },
+  "Download": {
+    "phosphor": "download-simple",
+    "files": 2
+  },
+  "Ellipsis": {
+    "phosphor": "dots-three",
+    "files": 1
+  },
+  "ExternalLink": {
+    "phosphor": "arrow-square-out",
+    "files": 7
+  },
+  "EyeOff": {
+    "phosphor": "eye-slash",
+    "files": 1
+  },
+  "Flag": {
+    "phosphor": "flag",
+    "files": 1
+  },
+  "FolderHeart": {
+    "phosphor": "folder-star",
+    "files": 1,
+    "note": "No heart variant; folder-star marks a favourite folder."
+  },
+  "FolderOpen": {
+    "phosphor": "folder-open",
+    "files": 1
+  },
+  "Globe": {
+    "phosphor": "globe",
+    "files": 5
+  },
+  "GripVertical": {
+    "phosphor": "dots-six-vertical",
+    "files": 1
+  },
+  "Heart": {
+    "phosphor": "heart",
+    "files": 2
+  },
+  "HelpCircle": {
+    "phosphor": "question",
+    "files": 1
+  },
+  "History": {
+    "phosphor": "clock-counter-clockwise",
+    "files": 1
+  },
+  "Home": {
+    "phosphor": "house",
+    "files": 2
+  },
+  "Image": {
+    "phosphor": "image",
+    "files": 7
+  },
+  "ImageOff": {
+    "phosphor": "image-broken",
+    "files": 4
+  },
+  "ImagePlus": {
+    "phosphor": "image",
+    "files": 12,
+    "note": "No image-plus; use image beside an Add label, or camera-plus when the action takes a photo."
+  },
+  "ImageUp": {
+    "phosphor": "upload-simple",
+    "files": 1,
+    "note": "No image-up; upload-simple carries the action."
+  },
+  "Import": {
+    "phosphor": "tray-arrow-down",
+    "files": 1
+  },
+  "Info": {
+    "phosphor": "info",
+    "files": 1
+  },
+  "Layers": {
+    "phosphor": "stack",
+    "files": 6
+  },
+  "LayoutGrid": {
+    "phosphor": "squares-four",
+    "files": 3
+  },
+  "LayoutTemplate": {
+    "phosphor": "layout",
+    "files": 5
+  },
+  "Lightbulb": {
+    "phosphor": "lightbulb",
+    "files": 3
+  },
+  "Link": {
+    "phosphor": "link",
+    "files": 4
+  },
+  "Link2": {
+    "phosphor": "link-simple",
+    "files": 5
+  },
+  "Loader2": {
+    "phosphor": "circle-notch",
+    "files": 57
+  },
+  "Lock": {
+    "phosphor": "lock",
+    "files": 6
+  },
+  "LogOut": {
+    "phosphor": "sign-out",
+    "files": 2
+  },
+  "Luggage": {
+    "phosphor": "suitcase-rolling",
+    "files": 1
+  },
+  "Mail": {
+    "phosphor": "envelope-simple",
+    "files": 2
+  },
+  "MapPin": {
+    "phosphor": "map-pin",
+    "files": 3
+  },
+  "Maximize2": {
+    "phosphor": "arrows-out-simple",
+    "files": 3
+  },
+  "Menu": {
+    "phosphor": "list",
+    "files": 1
+  },
+  "MessageCircle": {
+    "phosphor": "chat-circle",
+    "files": 4
+  },
+  "MessageSquare": {
+    "phosphor": "chat",
+    "files": 6
+  },
+  "MessageSquarePlus": {
+    "phosphor": "chat",
+    "files": 3,
+    "note": "No plus variant; use chat beside an Add label."
+  },
+  "MessagesSquare": {
+    "phosphor": "chats",
+    "files": 1
+  },
+  "Minimize2": {
+    "phosphor": "arrows-in-simple",
+    "files": 1
+  },
+  "Minus": {
+    "phosphor": "minus",
+    "files": 1
+  },
+  "Moon": {
+    "phosphor": "moon",
+    "files": 1
+  },
+  "MoreHorizontal": {
+    "phosphor": "dots-three",
+    "files": 3,
+    "note": "Lucide alias of Ellipsis."
+  },
+  "Palette": {
+    "phosphor": "palette",
+    "files": 3
+  },
+  "PanelLeft": {
+    "phosphor": "sidebar-simple",
+    "files": 1
+  },
+  "PenLine": {
+    "phosphor": "pencil-line",
+    "files": 1
+  },
+  "Pencil": {
+    "phosphor": "pencil-simple",
+    "files": 4
+  },
+  "PersonStanding": {
+    "phosphor": "person",
+    "files": 1
+  },
+  "Phone": {
+    "phosphor": "phone",
+    "files": 1
+  },
+  "Pipette": {
+    "phosphor": "eyedropper",
+    "files": 1
+  },
+  "Plus": {
+    "phosphor": "plus",
+    "files": 17
+  },
+  "RefreshCw": {
+    "phosphor": "arrows-clockwise",
+    "files": 5
+  },
+  "RotateCcw": {
+    "phosphor": "arrow-counter-clockwise",
+    "files": 8
+  },
+  "RotateCw": {
+    "phosphor": "arrow-clockwise",
+    "files": 1
+  },
+  "Ruler": {
+    "phosphor": "ruler",
+    "files": 1
+  },
+  "Scan": {
+    "phosphor": "scan",
+    "files": 1
+  },
+  "ScanEye": {
+    "phosphor": "scan-smiley",
+    "files": 1,
+    "note": "No scan-eye; scan-smiley is the nearest, choose per screen."
+  },
+  "ScanLine": {
+    "phosphor": "scan",
+    "files": 2,
+    "note": "Shares scan with Scan."
+  },
+  "ScanSearch": {
+    "phosphor": "magnifying-glass",
+    "files": 2,
+    "note": "No scan-search; magnifying-glass carries the action."
+  },
+  "Scissors": {
+    "phosphor": "scissors",
+    "files": 1
+  },
+  "Search": {
+    "phosphor": "magnifying-glass",
+    "files": 11
+  },
+  "Settings": {
+    "phosphor": "gear-six",
+    "files": 1
+  },
+  "Settings2": {
+    "phosphor": "sliders",
+    "files": 2,
+    "note": "Lucide draws two sliders; sliders is the Phosphor equivalent."
+  },
+  "Shapes": {
+    "phosphor": "shapes",
+    "files": 6
+  },
+  "Share2": {
+    "phosphor": "share-network",
+    "files": 7
+  },
+  "Shield": {
+    "phosphor": "shield",
+    "files": 1
+  },
+  "Shirt": {
+    "phosphor": "t-shirt",
+    "files": 32
+  },
+  "ShoppingBag": {
+    "phosphor": "shopping-bag",
+    "files": 4
+  },
+  "SlidersHorizontal": {
+    "phosphor": "sliders-horizontal",
+    "files": 3
+  },
+  "Snowflake": {
+    "phosphor": "snowflake",
+    "files": 1
+  },
+  "Sparkles": {
+    "phosphor": "sparkle",
+    "files": 2
+  },
+  "Square": {
+    "phosphor": "square",
+    "files": 1
+  },
+  "Star": {
+    "phosphor": "star",
+    "files": 1
+  },
+  "Stethoscope": {
+    "phosphor": "stethoscope",
+    "files": 2
+  },
+  "StickyNote": {
+    "phosphor": "note",
+    "files": 4
+  },
+  "Store": {
+    "phosphor": "storefront",
+    "files": 8
+  },
+  "Sun": {
+    "phosphor": "sun",
+    "files": 2
+  },
+  "Tag": {
+    "phosphor": "tag",
+    "files": 1
+  },
+  "Trash2": {
+    "phosphor": "trash",
+    "files": 10
+  },
+  "Type": {
+    "phosphor": "text-t",
+    "files": 2
+  },
+  "Upload": {
+    "phosphor": "upload-simple",
+    "files": 2
+  },
+  "User": {
+    "phosphor": "user",
+    "files": 2
+  },
+  "X": {
+    "phosphor": "x",
+    "files": 22
+  },
+  "XCircle": {
+    "phosphor": "x-circle",
+    "files": 3
+  }
+}

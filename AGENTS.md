@@ -12,7 +12,7 @@ Only isolated v2 Cloudflare resources and a workers.dev preview are authorized. 
 
 ```bash
 bun install --frozen-lockfile
-heavy --wait bun run check          # the full gate CI runs: format, provenance, vendor, i18n, x18n, graph,
+heavy --wait bun run check          # the full gate CI runs: format, provenance, vendor, icons, i18n, x18n, graph,
                                     # suppressions, canaries, typecheck, lint, Knip, jscpd, unit, native, budgets
 bun run format                      # oxfmt; cheap gates run directly: format:check, graph:check, unused:check
 heavy --wait bun run typecheck      # effect-tsrs: TypeScript and Effect diagnostics
@@ -20,6 +20,7 @@ heavy --wait bun run lint           # Oxlint with the checksum-verified tsrs-lin
 heavy --wait bun run test:unit
 heavy --wait bun run test:native    # builds, then workerd + Chromium acceptance through the real edge
 bun run translations:check          # x18n; bun run i18n:generate after catalog edits
+bun run icons:generate              # after editing apps/web/src/icons.json (Phosphor, DESIGN.md › Icons)
 bun run --cwd apps/web dev          # Vite dev server; with the page open, foldkit_* MCP tools inspect it
 ```
 

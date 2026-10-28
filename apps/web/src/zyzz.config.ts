@@ -12,6 +12,8 @@ export const { style, vars } = defineConfig({
       muted: 'oklch(47% 0.014 60)',
       rule: 'oklch(81% 0.011 70)',
       focus: 'oklch(50% 0.095 248)',
+      // The one slate accent: state such as work in progress or the current selection (DESIGN.md › Signal).
+      signal: 'oklch(41% 0.075 248)',
       error: 'oklch(48% 0.16 25)',
       invalid: 'oklch(58% 0.16 25)',
       // Input fields and hovered secondary actions: paper tinted towards ink. These repeat the

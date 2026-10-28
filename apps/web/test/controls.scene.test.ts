@@ -1,5 +1,5 @@
 import { catalogVersion } from '@styld/i18n'
-import { expect, given, label, role, scene, submit } from 'foldkit/scene'
+import { expect, given, label, role, scene, selector, submit, within } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { test } from 'vitest'
 import { AuthState, LocaleSave, init, update } from '../src/App.ts'
@@ -17,6 +17,8 @@ test('a pending sign-in keeps its focusable button and ignores another submissio
     expect(pendingButton).toBeDisabled(),
     expect(pendingButton).toHaveAttr('aria-disabled', 'true'),
     expect(pendingButton).not.toHaveAttr('disabled'),
+    // The loader is hidden from assistive technology, so the button's name stays its label.
+    expect(within(pendingButton, selector('svg[data-loader]'))).toHaveAttr('aria-hidden', 'true'),
     // Enter still submits through an aria-disabled button; update starts no second sign-in.
     submit(role('form')),
     expect(pendingButton).toExist(),

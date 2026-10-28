@@ -2,6 +2,13 @@
 
 Status: active, foundation deployed to an isolated workers.dev preview. Full parity is not achieved.
 
+## Phosphor icons — 2026-10-28
+
+- Owner decision: Phosphor icons replace Lucide (compared side by side on Styld paper; Lucide is the most used set, which is why it reads as the default look). DESIGN.md › Icons: Light weight at 24px and up, Regular below, colour from the text, hidden from assistive technology beside a visible label.
+- `docs/migration/v1-icons.json` maps all 122 Lucide icons v1 imports (211 files at `dddf9d44`) to Phosphor; 13 entries carry a note where Phosphor has no exact match (for example ImagePlus, FolderHeart, ScanEye). Screens decide those when they are ported.
+- `tools/icons.ts` builds `apps/web/src/PhosphorIcons.ts` from the pinned `@phosphor-icons/core` 2.1.1 and the allowlist `apps/web/src/icons.json`, so only listed icons ship; `icons:check` in `bun run check` rejects an edited or stale module, an unknown or unsorted name, and a v1 mapping to a missing icon (each mutation tried).
+- First use, matching v1's sign-in: the `circle-notch` loader in the pending sign-in button and beside the session check status, in the new `signal` token. It is the first animation, so the reduced-motion rule from DESIGN.md › Motion landed with it; loaders are exempt. Checked in Chromium: under reduced motion the loader still runs, and focus stays on the pending button. Server rendering emits the hidden SVG (unit test), and the Scene test keeps the button's accessible name as its label.
+
 ## Foldkit agent tooling — 2026-10-28
 
 - `FOLDKIT.md` (Foldkit's own convention file for app code) is copied verbatim from the `repos/foldkit` snapshot; `vendor:check` rejects an edited or stale copy and `--pull` refreshes it. AGENTS.md points at it and keeps precedence.

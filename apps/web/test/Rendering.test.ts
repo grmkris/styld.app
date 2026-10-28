@@ -4,6 +4,7 @@ import { catalogVersion } from '@styld/i18n'
 import * as Server from 'foldkit/experimental/server'
 import { LocaleSave, Message, init, update, type Flags } from '../src/App.ts'
 import { offeredLocales, requestLocale } from '../src/Locale.ts'
+import { CircleNotchRegular } from '../src/PhosphorIcons.ts'
 import { consentCookie, consentFromCookies, type TelemetryConsent } from '../src/TelemetryConsent.ts'
 import { renderDocument, renderRequest } from '../src/entry.server.ts'
 
@@ -132,9 +133,9 @@ test('reads only a recorded diagnostics choice from cookies', () => {
   expect(consentCookie(true, true)).toBe('styld_diagnostics=granted; Path=/; Max-Age=15552000; SameSite=Lax; Secure')
 })
 
-const renderHome = async (cookie?: string) => {
+const renderPage = async (path: string, cookie?: string) => {
   const result = await Effect.runPromise(
-    renderRequest(new Request('https://styld.test/', cookie === undefined ? {} : { headers: { cookie } }), {
+    renderRequest(new Request(`https://styld.test${path}`, cookie === undefined ? {} : { headers: { cookie } }), {
       buildId: 'test',
     }),
   )
@@ -143,7 +144,16 @@ const renderHome = async (cookie?: string) => {
 
 test('server rendering shows the consent prompt only to undecided visitors', async () => {
   const prompt = 'record anonymous error and speed data'
-  expect(await renderHome()).toContain(prompt)
-  expect(await renderHome('styld_diagnostics=granted')).not.toContain(prompt)
-  expect(await renderHome('styld_diagnostics=denied')).not.toContain(prompt)
+  expect(await renderPage('/')).toContain(prompt)
+  expect(await renderPage('/', 'styld_diagnostics=granted')).not.toContain(prompt)
+  expect(await renderPage('/', 'styld_diagnostics=denied')).not.toContain(prompt)
+})
+
+test('server rendering draws the session check loader as an inline, hidden Phosphor icon', async () => {
+  const html = await renderPage('/login')
+  const status = /<p role="status"[^>]*>(<svg[^>]*>)<path d="([^"]+)"/.exec(html)
+  expect(status?.[1]).toContain('viewBox="0 0 256 256"')
+  expect(status?.[1]).toContain('aria-hidden="true"')
+  expect(status?.[1]).toContain('data-loader')
+  expect(status?.[2]).toBe(CircleNotchRegular)
 })

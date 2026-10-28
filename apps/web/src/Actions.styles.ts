@@ -4,6 +4,7 @@ import { style } from './zyzz.config.ts'
 export const primaryAction = style({
   display: 'inline-flex',
   alignItems: 'center',
+  gap: '0.5rem',
   minBlockSize: '48px',
   backgroundColor: 'ink',
   color: 'paper',
@@ -20,6 +21,7 @@ export const primaryAction = style({
 export const secondaryAction = style({
   display: 'inline-flex',
   alignItems: 'center',
+  gap: '0.5rem',
   minBlockSize: '48px',
   padding: '0.65rem 1.5rem',
   borderWidth: '1px',

@@ -4,10 +4,20 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { AuthState, Message, type Model } from './App.ts'
 import { actionButton } from './ActionButton.ts'
+import { loader } from './Icon.ts'
 import { primaryAction } from './Actions.styles.ts'
 import { passwordFormId } from './PasswordForm.ts'
 import { styled } from './Styled.ts'
-import { accountDetails, authForm, authInput, authPage, detailValue, formError, submit } from './ViewAccount.styles.ts'
+import {
+  accountDetails,
+  authForm,
+  authInput,
+  authPage,
+  detailValue,
+  formError,
+  pendingStatus,
+  submit,
+} from './ViewAccount.styles.ts'
 
 const signedInView = (claims: AccountClaims, pending: boolean, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.section(styled(h, accountDetails()), [
@@ -71,6 +81,7 @@ const signInForm = (pending: boolean, failed: boolean, locale: Locale, h: HtmlBu
               style: cx(primaryAction(), submit()),
               type: 'submit',
               isDisabled: pending,
+              leading: pending ? loader(h) : h.empty,
             },
             h,
           ),
@@ -85,7 +96,8 @@ export const accountView = (model: Model, h: HtmlBuilder<Message>): Html => {
     [h.Id('main'), ...styled(h, authPage())],
     [
       AuthState.match(model.auth, {
-        Checking: () => h.p([h.Role('status')], [format(locale, 'common.loading', {})]),
+        Checking: () =>
+          h.p([h.Role('status'), ...styled(h, pendingStatus())], [loader(h), format(locale, 'common.loading', {})]),
         SignedOut: ({ failed }) => signInForm(false, failed, locale, h),
         SigningIn: () => signInForm(true, false, locale, h),
         SignedIn: ({ claims }) => signedInView(claims, false, locale, h),

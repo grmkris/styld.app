@@ -31,7 +31,7 @@ there under the v1 name and value below, then use the token name:
 | ink-3 (secondary text)            | `oklch(47% 0.014 60)`                     | `muted`                                                                                 |
 | rule (hairline)                   | `oklch(81% 0.011 70)`                     | `rule`                                                                                  |
 | rule-2 (input edge, 3:1)          | `oklch(60% 0.012 66)`                     | add when needed                                                                         |
-| signal (the one slate accent)     | `oklch(41% 0.075 248)`                    | add when needed                                                                         |
+| signal (the one slate accent)     | `oklch(41% 0.075 248)`                    | `signal`                                                                                |
 | signal-ink (signal on ink)        | `oklch(96% 0.008 76)`                     | add when needed                                                                         |
 | focus                             | `oklch(50% 0.095 248)`                    | `focus`                                                                                 |
 | stock (card stock)                | `oklch(97.6% 0.007 82)`                   | add when needed                                                                         |
@@ -85,17 +85,30 @@ buttons through `actionButton` in `apps/web/src/ActionButton.ts`), and zyzz styl
 - Surfaces: paper page, card-stock cards with a hairline or a soft contact shadow, 2px corners. No card inside a card.
   No glass: no backdrop blur, no translucent chrome. Full card stock for the one object a screen is known by.
 
+## Icons
+
+- Phosphor (`@phosphor-icons/core`, pinned): the Light weight at 24px and larger, Regular below 24px, where Light turns
+  faint. One family; no icons from another set.
+- An icon takes the colour of the text beside it; the signal colours it only when it marks state (the loader, the current
+  tab).
+- Icons are hidden from assistive technology and sit beside a visible label that carries the meaning. An icon-only control
+  carries a translated `aria-label`; a standalone icon that means something gets `role="img"` and a translated label.
+- Only the icons listed in `apps/web/src/icons.json` ship: add the name under its weight and run `bun run icons:generate`.
+  `docs/migration/v1-icons.json` names the Phosphor icon for each one v1 used, with a note where Phosphor has no exact
+  match.
+- The loader is `circle-notch` (`loader` in `apps/web/src/Icon.ts`) beside the pending label or status, as in v1.
+
 ## Motion
 
 - Character: calm. 140ms for press and colour, 180ms for hover and menus, 240ms for dialogs and sheets; ease-out for
   arrivals, ease-in-out for toggles. One reveal at most on a public page, none on app screens; no stagger.
-- Under reduced motion everything ends at once (a global rule to add with the first animation); loaders keep turning.
+- Under reduced motion everything ends at once (`apps/web/src/GlobalStyles.ts`); loaders keep turning.
 
 ## Copy and chrome
 
 - No eyebrow above a head that says the same thing; where a head is figurative, the plain label becomes the head.
 - No middle-dot-joined meta (`A · B · C`): use a line break, a comma, a column or a `<dl>`. No arrow glued to a label.
-- No decorative status dot. No emoji as an icon (Lucide icons only). Sparkles only where AI is literally running right
+- No decorative status dot. No emoji as an icon; icons are Phosphor (Icons above). Sparkles only where AI is literally running right
   now.
 - Every data region draws loading (a skeleton in the shape of what is coming), empty (what belongs here and the one
   action that fills it), error (what broke and what to do) and full.
