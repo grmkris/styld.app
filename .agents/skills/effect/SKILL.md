@@ -23,7 +23,7 @@ Styld pins Effect 4 (see the root `package.json` catalog). Effect 3 habits and m
 - Reusable effectful functions use `Effect.fn('Styld.<Area>.<operation>')`, so every operation is a named span. Use `Effect.fnUntraced` for hot helpers that should not be spans.
 - Expected failures are `Schema.TaggedError` values in the error channel. Keep `Effect.die`/`orDie` for broken invariants and configuration that makes the runtime unusable.
 - Decode untrusted input with `Schema` at the boundary. Never trust identity, credit amounts or ownership from the browser.
-- Instrument only through Effect (`Effect.fn`, `Effect.withSpan`, `Effect.annotateCurrentSpan`, `Effect.log*`) and the bounded seam in `@styld/observability`. See the `styld-telemetry` skill when it exists. Never log tokens, signed URLs, prompts, images or raw request bodies.
+- Instrument only through Effect (`Effect.fn`, `Effect.withSpan`, `Effect.annotateCurrentSpan`, `Effect.log*`) and the bounded seam in `@styld/observability`. See the `styld-telemetry` skill. Never log tokens, signed URLs, prompts, images or raw request bodies.
 - Compose services with `Layer` at the host (Worker, SSR entry, browser entry). Build expensive layers once per runtime, not per request.
 - Browser code imports contracts only, never server adapters; `bun run graph:check` enforces this.
 
