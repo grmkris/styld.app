@@ -6,7 +6,8 @@
     ".": "./src/index.ts",
     "./client": "./src/client.ts",
     "./config": "./src/config.ts",
-    "./storage": "./src/storage.ts"
+    "./storage": "./src/storage.ts",
+    "./attempt-limiter": "./src/AttemptLimiter.ts"
   },
   "dependencies": {
     "@effect/sql-d1": "catalog:",

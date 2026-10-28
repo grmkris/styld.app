@@ -11,6 +11,7 @@ import { Redacted } from 'effect'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
+import { exerciseAttemptLimiter } from './AttemptLimiterFixture.ts'
 import { seedIdentity, disableIdentity } from './IdentityFixture.ts'
 import { makeAuthHttp } from '../src/AuthHttp.ts'
 import { DomainLive } from '../src/DomainLive.ts'
@@ -46,7 +47,33 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
         keys: [{ id: 'native-test', material: Redacted.make('bmF0aXZlLXRlc3Qta2V5LW1hdGVyaWFsLWxvbmc=') }],
       },
     })
-    const authHandle = yield* HttpRouter.toHttpEffect(auth.layer).pipe(Effect.orDie)
+    const identityRoutes = Layer.mergeAll(
+      auth.layer,
+      HttpRouter.add(
+        'POST',
+        '/test/identity/seed',
+        seedIdentity(database).pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 }))),
+      ),
+      HttpRouter.add(
+        'POST',
+        '/test/identity/seed-limited',
+        seedIdentity(database, 'native-limited').pipe(
+          Effect.orDie,
+          Effect.as(HttpServerResponse.empty({ status: 204 })),
+        ),
+      ),
+      HttpRouter.add(
+        'POST',
+        '/test/identity/disable',
+        disableIdentity(database).pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 }))),
+      ),
+      HttpRouter.add(
+        'POST',
+        '/test/identity/limits',
+        exerciseAttemptLimiter(database).pipe(Effect.orDie, Effect.flatMap(HttpServerResponse.json)),
+      ),
+    )
+    const authHandle = yield* HttpRouter.toHttpEffect(identityRoutes).pipe(Effect.orDie)
     const wallets = yield* Wallet
     const exercise = Effect.fn('Styld.acceptance.wallet')(function* () {
       const owner = UserId.make('native-test-owner')
@@ -84,15 +111,8 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
       fetch: Effect.gen(function* () {
         const request = yield* HttpServerRequest
         const url = new URL(request.url, 'http://local.invalid')
-        if (url.pathname.startsWith('/api/auth/')) return yield* authHandle
-        if (url.pathname === '/test/identity/seed' && request.method === 'POST') {
-          yield* seedIdentity(database).pipe(Effect.orDie)
-          return HttpServerResponse.empty({ status: 204 })
-        }
-        if (url.pathname === '/test/identity/disable' && request.method === 'POST') {
-          yield* disableIdentity(database).pipe(Effect.orDie)
-          return HttpServerResponse.empty({ status: 204 })
-        }
+        if (url.pathname.startsWith('/api/auth/') || url.pathname.startsWith('/test/identity/'))
+          return yield* authHandle
         if (url.pathname === '/intl')
           return yield* HttpServerResponse.json({
             en: format('en', 'catalog.pieces', { count: 2 }),

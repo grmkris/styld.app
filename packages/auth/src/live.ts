@@ -7,11 +7,11 @@ import { Effect, Layer, Redacted, Schema } from 'effect'
 import { eq } from 'drizzle-orm'
 import { accounts } from '@styld/db'
 
+import { passwordAttemptLimiter, type D1Source } from './AttemptLimiter.ts'
 import { AccountClaims, requirement } from './config.ts'
 import { AppAuth, Persistence, storage } from './storage.ts'
 
-// @effect-diagnostics-next-line unstableApiUsage:off -- The pinned Effect D1 adapter is the Worker persistence boundary.
-export type D1Source<R = never> = Effect.Effect<D1Client.D1ClientConfig['db'], never, R>
+export type { D1Source } from './AttemptLimiter.ts'
 
 export const makeAuthRuntime = <R>(raw: D1Source<R>, secret: Redacted.Redacted) => {
   const auth = AppAuth
@@ -52,6 +52,7 @@ export const makeAuthRuntime = <R>(raw: D1Source<R>, secret: Redacted.Redacted) 
     auth,
     layer: auth.layer.pipe(
       Layer.provide(claims),
+      Layer.provide(passwordAttemptLimiter(raw, secret)),
       Layer.provide(persistence),
       Layer.provide(WorkerdServices.layer),
       Layer.provide(Auth.AuthConfig.layer({ secret })),

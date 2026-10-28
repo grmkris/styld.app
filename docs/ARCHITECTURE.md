@@ -16,7 +16,7 @@ Monthly credits roll over up to twice the monthly grant, including held subscrip
 
 ## Authentication
 
-Yielded Auth is the chosen authentication library. Stateful sessions have no positive cookie cache: logout, account disablement and security-revision changes take effect on the next request. Port anonymous users/merge, email OTP, Google sign-in, sessions, account linking/deletion and MCP authorization with explicit storage adapters. MCP is bearer-only, HTTPS/loopback redirects, CIMD primary and compatible DCR, short-lived access tokens, consent re-read and immediate revoke. Dodo customer creation stays lazy at checkout and cannot block sign-in.
+Yielded Auth is the chosen authentication library. Stateful sessions have no positive cookie cache: logout, account disablement and security-revision changes take effect on the next request. Password attempt budgets use atomic D1 token buckets with database time and HMAC identifier keys; auth runtime recreation cannot reset them. Port anonymous users/merge, email OTP, Google sign-in, sessions, account linking/deletion and MCP authorization with explicit storage adapters. MCP is bearer-only, HTTPS/loopback redirects, CIMD primary and compatible DCR, short-lived access tokens, consent re-read and immediate revoke. Dodo customer creation stays lazy at checkout and cannot block sign-in.
 
 ## UI and localization
 

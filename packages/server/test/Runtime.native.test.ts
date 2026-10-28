@@ -203,6 +203,7 @@ test(
       database: {
         tables: [
           'accounts',
+          'auth_attempt_buckets',
           'styld_auth_credentials',
           'styld_auth_identifiers',
           'styld_auth_passwords',
@@ -292,6 +293,46 @@ test(
     expect(disable.status).toBe(204)
     const disabled = yield* call('getSession', {}, disabledCookie)
     expect(yield* disabled.json).toMatchObject({ _tag: 'Success', value: null })
+  }).pipe(Effect.provide(FetchHttpClient.layer)),
+  { timeout: 60000 },
+)
+
+test(
+  'retains password attempt budgets across separate application requests',
+  Effect.gen(function* () {
+    const { url, styldUrl } = yield* stack
+    const seeded = yield* HttpClient.post(`${url}/test/identity/seed-limited`)
+    expect(seeded.status).toBe(204)
+    const attempt = () =>
+      HttpClient.post(`${styldUrl}/api/auth/signIn`, {
+        headers: { origin: 'http://localhost', 'content-type': 'application/json', 'x-effect-auth-csrf': '1' },
+        body: HttpBody.text(
+          JSON.stringify({
+            payload: { email: 'native-limited@example.invalid', password: 'native-identity-password-52' },
+          }),
+          'application/json',
+        ),
+      })
+    for (let count = 0; count < 10; count += 1) {
+      const accepted = yield* attempt()
+      expect(yield* accepted.json).toMatchObject({ _tag: 'Success', value: { _tag: 'Authenticated' } })
+    }
+    const refused = yield* attempt()
+    expect(yield* refused.json).toMatchObject({ _tag: 'Failure', error: { _tag: 'PasswordRejected' } })
+  }).pipe(Effect.provide(FetchHttpClient.layer)),
+  { timeout: 60000 },
+)
+
+test(
+  'serializes attempt admission, retains fractional refill and expires private buckets',
+  Effect.gen(function* () {
+    const { url } = yield* stack
+    const response = yield* HttpClient.post(`${url}/test/identity/limits`)
+    expect(response.status).toBe(200)
+    const body: unknown = yield* response.json
+    expect(body).toMatchObject({ accepted: 3, rejected: 9, keysAreDigests: true, refilled: true, expired: true })
+    if (typeof body !== 'object' || body === null || !('fraction' in body)) throw new Error('Missing refill fraction')
+    expect(typeof body.fraction).toBe('number')
   }).pipe(Effect.provide(FetchHttpClient.layer)),
   { timeout: 60000 },
 )

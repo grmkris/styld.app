@@ -5,7 +5,7 @@ import * as WorkerdServices from '@yielded/auth/WorkerdServices'
 import { Clock, Effect, Redacted } from 'effect'
 
 /** Test-only fixture; this module is never imported by an application entrypoint. */
-export const seedIdentity = (database: QueryDatabaseClient) =>
+export const seedIdentity = (database: QueryDatabaseClient, id = 'native-identity') =>
   Effect.gen(function* () {
     const hashing = yield* Password.PasswordHashing
     const now = yield* Clock.currentTimeMillis
@@ -16,36 +16,20 @@ export const seedIdentity = (database: QueryDatabaseClient) =>
         .prepare(
           'INSERT INTO accounts (id, enabled, security_revision, display_name, created_at) VALUES (?, 1, ?, ?, ?)',
         )
-        .bind('native-identity', 'revision-1', 'Native Identity', now),
+        .bind(id, 'revision-1', 'Native Identity', now),
       database
         .prepare(
           'INSERT INTO styld_auth_identifiers (namespace, value, module_id, credential_id, subject_id, revision, verified_at, active) VALUES (?, ?, ?, ?, ?, ?, ?, 1)',
         )
-        .bind(
-          'email',
-          'native-identity@example.invalid',
-          moduleId,
-          'native-credential',
-          'native-identity',
-          'revision-1',
-          now,
-        ),
+        .bind('email', `${id}@example.invalid`, moduleId, `${id}-credential`, id, 'revision-1', now),
       database
         .prepare('INSERT INTO styld_auth_credentials (credential_id, subject_id, revision, active) VALUES (?, ?, ?, 1)')
-        .bind('native-credential', 'native-identity', 'revision-1'),
+        .bind(`${id}-credential`, id, 'revision-1'),
       database
         .prepare(
           'INSERT INTO styld_auth_passwords (module_id, subject_id, credential_id, credential_revision, verifier_version, verifier, normalization) VALUES (?, ?, ?, ?, ?, ?, ?)',
         )
-        .bind(
-          moduleId,
-          'native-identity',
-          'native-credential',
-          'revision-1',
-          'version-1',
-          Redacted.value(verifier),
-          'none',
-        ),
+        .bind(moduleId, id, `${id}-credential`, 'revision-1', 'version-1', Redacted.value(verifier), 'none'),
     ])
   }).pipe(Effect.provide(WorkerdServices.layer))
 
