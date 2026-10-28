@@ -20,7 +20,7 @@ Yielded Auth is the chosen authentication library. Stateful sessions have no pos
 
 ## UI and localization
 
-Foldkit owns Model/Message/update/view/Commands. Port Studio interactions, accessibility, gestures, mobile/Safari behavior, public SSR/OG and en/sl. Reuse v1 design assets and reviewed content. Preserve ICU catalogs in `@styld/i18n` over cached `intl-messageformat`; General Translation is optional reviewed authoring only. API errors use typed codes; presentation localizes. No runtime translation calls.
+Foldkit owns Model/Message/update/view/Commands. Port Studio interactions, accessibility, gestures, mobile/Safari behavior, public SSR/OG and en/sl. Reuse v1 design assets and reviewed content. Preserve ICU catalogs in `@styld/i18n` over cached `intl-messageformat`; General Translation is optional reviewed authoring only. x18n (`x18n.config.ts`, `bun run translations:check`) manages the catalogs and fails on missing keys, invalid syntax, stale or missing translations and hard-coded strings in views; its unused-key count tracks how much v1 copy is still unported. `tools/i18n-check.ts` remains the authority on ICU arguments and plural forms. API errors use typed codes; presentation localizes. No runtime translation calls.
 
 ## Providers and cost
 
