@@ -8,9 +8,17 @@ export default Alchemy.Stack(
   'StyldAppV2',
   { providers: Cloudflare.providers(), state: Alchemy.localState() },
   Effect.gen(function* () {
+    const release = yield* Config.String('STYLD_RELEASE')
     const api = yield* StyldWorker
     const website = yield* Cloudflare.Website.Foldkit('StyldWebsite', {
       rootDir: 'apps/web',
+      env: { VITE_STYLD_ENV: 'preview', VITE_STYLD_RELEASE: release },
+      compatibility: { date: '2026-10-19' },
+      observability: {
+        enabled: true,
+        logs: { enabled: true, invocationLogs: true },
+        traces: { enabled: true, headSamplingRate: 1 },
+      },
       workersDev: { enabled: false, previewsEnabled: false },
     })
     const edge = yield* Cloudflare.Worker('StyldEdge', {
@@ -27,25 +35,16 @@ export default Alchemy.Stack(
         traces: { enabled: true, headSamplingRate: 1 },
       },
     })
-    // Alchemy's Worker resource alias currently erases its binding generic;
-    // the runtime Resource.bind contract still accepts this provider payload.
-    // @ts-expect-error -- upstream Worker<Bindings> omits Resource<..., Binding>.
-    yield* api.bind('AUTH_ORIGIN', {
-      bindings: [
-        { type: 'plain_text', name: 'AUTH_ORIGIN', text: edge.url },
-        { type: 'plain_text', name: 'STYLD_ENV', text: 'preview' },
-        { type: 'plain_text', name: 'STYLD_RELEASE', text: 'preview' },
-        {
-          type: 'secret_text',
-          name: 'AUTH_SECRET',
-          text: Config.Redacted('STYLD_AUTH_SECRET'),
-        },
-        {
-          type: 'secret_text',
-          name: 'AUTH_SESSION_KEYS',
-          text: Config.Redacted('STYLD_AUTH_SESSION_KEYS'),
-        },
-      ],
+    // The env seam unwraps Redacted values into secret_text. Raw binding
+    // descriptors require strings and must never receive Config objects.
+    yield* api.bind('RuntimeConfiguration', {
+      env: {
+        AUTH_ORIGIN: edge.url,
+        STYLD_ENV: 'preview',
+        STYLD_RELEASE: release,
+        AUTH_SECRET: yield* Config.Redacted('STYLD_AUTH_SECRET'),
+        AUTH_SESSION_KEYS: yield* Config.Redacted('STYLD_AUTH_SESSION_KEYS'),
+      },
     })
     return { url: edge.url.as<string>() }
   }).pipe(Effect.provide(StyldWorkerLive)),

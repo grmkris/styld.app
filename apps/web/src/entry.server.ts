@@ -1,4 +1,5 @@
 import { Clock, Effect } from 'effect'
+import { layer as cloudflareTracer } from '@alchemy.run/cloudflare/Workers/CloudflareTracer'
 import * as Server from 'foldkit/experimental/server'
 import { catalogVersion } from '@styld/i18n'
 import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
@@ -41,13 +42,18 @@ export const renderRequest = (
     withObservability(
       'styld.web.render',
       metadataFromHeaders(
-        makeObservabilityBase({ environment: 'preview', release: options.buildId, component: 'web' }),
+        makeObservabilityBase({
+          environment: import.meta.env.VITE_STYLD_ENV ?? 'local',
+          release: import.meta.env.VITE_STYLD_RELEASE ?? 'local-build',
+          component: 'web',
+        }),
         request.headers,
       ),
     ),
   )
 
-export const renderPage: Server.EntryModule['renderPage'] = (request) => Effect.runPromise(renderRequest(request))
+export const renderPage: Server.EntryModule['renderPage'] = (request) =>
+  Effect.runPromise(renderRequest(request).pipe(Effect.provide(cloudflareTracer)))
 
 export const renderDocument: Server.DocumentRenderer = (renderedApplication, assets) =>
   Server.renderDocument(renderedApplication, assets, {

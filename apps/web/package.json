@@ -11,6 +11,7 @@
     "build": "vite build"
   },
   "dependencies": {
+    "@alchemy.run/cloudflare": "catalog:",
     "@effect/platform-browser": "catalog:",
     "@foldkit/ui": "catalog:",
     "@styld/i18n": "workspace:*",

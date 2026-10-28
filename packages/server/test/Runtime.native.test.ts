@@ -2,7 +2,7 @@ import { expect } from 'bun:test'
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import * as Alchemy from 'alchemy'
 import * as Test from 'alchemy/Test/Bun'
-import { Effect } from 'effect'
+import { Effect, Redacted } from 'effect'
 import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import * as HttpBody from 'effect/http/HttpBody'
 import * as HttpClient from 'effect/http/HttpClient'
@@ -35,25 +35,19 @@ const Stack = Alchemy.Stack(
     })
     // Native acceptance binds the same secret-text contract used by Alchemy's
     // preview stack. Values are test-only and never leave this process.
-    yield* styld.bind('AUTH_ORIGIN', {
-      bindings: [
-        { type: 'plain_text', name: 'AUTH_ORIGIN', text: 'http://localhost' },
-        { type: 'plain_text', name: 'STYLD_ENV', text: 'local' },
-        { type: 'plain_text', name: 'STYLD_RELEASE', text: 'native-test' },
-        {
-          type: 'plain_text',
-          name: 'AUTH_SECRET',
-          text: 'native-test-auth-secret-012345678901234567890123',
-        },
-        {
-          type: 'plain_text',
-          name: 'AUTH_SESSION_KEYS',
-          text: JSON.stringify({
+    yield* styld.bind('RuntimeConfiguration', {
+      env: {
+        AUTH_ORIGIN: 'http://localhost',
+        STYLD_ENV: 'local',
+        STYLD_RELEASE: 'native-test',
+        AUTH_SECRET: Redacted.make('native-test-auth-secret-012345678901234567890123'),
+        AUTH_SESSION_KEYS: Redacted.make(
+          JSON.stringify({
             activeKeyId: 'native-test',
             keys: [{ id: 'native-test', material: 'a'.repeat(43) }],
           }),
-        },
-      ],
+        ),
+      },
     })
     return {
       url: worker.url.as<string>(),

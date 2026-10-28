@@ -42,6 +42,7 @@
     "apps/web": {
       "name": "@styld/web",
       "dependencies": {
+        "@alchemy.run/cloudflare": "catalog:",
         "@effect/platform-browser": "catalog:",
         "@foldkit/ui": "catalog:",
         "@styld/i18n": "workspace:*",
