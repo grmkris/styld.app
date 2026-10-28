@@ -4,7 +4,9 @@
  * upstream commit and verified by a tree hash in `repos/sources.json`. A snapshot of
  * an installed package must match its catalog version, and skills vendored from the
  * same repository must share its commit. Upstream agent instructions are excluded or
- * renamed so no agent loads another project's rules as this repository's.
+ * renamed so no agent loads another project's rules as this repository's. Files an
+ * upstream ships for its consumers (Foldkit's `FOLDKIT.md`) are copied out verbatim,
+ * refreshed on pull and verified against the snapshot.
  *
  *   bun tools/vendored-repos.ts                     verify every snapshot (part of `bun run check`)
  *   bun tools/vendored-repos.ts --pull <name> <ref> replace a snapshot with the given tag or commit
@@ -24,6 +26,8 @@ const Snapshot = Schema.Struct({
   exclude: Schema.Array(Schema.String),
   /** Upstream-relative paths moved after extraction, e.g. agent instructions agents would auto-load. */
   rename: Schema.optional(Schema.Record(Schema.String, Schema.String)),
+  /** Snapshot files kept verbatim in the repository: repository path → snapshot-relative path. */
+  copies: Schema.optional(Schema.Record(Schema.String, Schema.String)),
   /** Catalog package this snapshot documents; `ref` must be `<package>@<catalog version>`. */
   package: Schema.optional(Schema.String),
   treeSha256: Schema.String,
@@ -90,6 +94,19 @@ const assertPinned = (
   }
 }
 
+/** Each copied file is byte-identical to its source in the snapshot. */
+const assertCopied = async (name: string, snapshot: Manifest[string]) => {
+  for (const [target, source] of Object.entries(snapshot.copies ?? {})) {
+    const [copy, original] = await Promise.all([
+      readFile(path.join(root, target)),
+      readFile(path.join(root, 'repos', name, source)),
+    ])
+    if (!copy.equals(original)) {
+      throw new Error(`${target} differs from repos/${name}/${source}; re-pull the snapshot, never edit the copy`)
+    }
+  }
+}
+
 const verify = async () => {
   const manifest = await readManifest()
   const catalog = Schema.decodeUnknownSync(Schema.fromJsonString(Catalog))(
@@ -105,6 +122,7 @@ const verify = async () => {
     if (actual.sha256 !== snapshot.treeSha256) {
       throw new Error(`repos/${name} differs from ${snapshot.repository}@${snapshot.commit}; re-pull it, never edit it`)
     }
+    await assertCopied(name, snapshot)
     console.log(`Verified repos/${name} (${actual.files} files) at ${snapshot.repository}@${snapshot.ref}`)
   }
 }
@@ -141,6 +159,9 @@ const pull = async (name: string, ref: string) => {
 
   const ignored = run('git', ['ls-files', '--others', '--ignored', '--exclude-standard', '--', `repos/${name}`]).trim()
   if (ignored !== '') throw new Error(`Git would drop vendored files; extend "exclude" instead:\n${ignored}`)
+  for (const [target, source] of Object.entries(current.copies ?? {})) {
+    await cp(path.join(root, 'repos', name, source), path.join(root, target))
+  }
   const tree = await treeSha256(path.join(root, 'repos', name))
   const next: Manifest = { ...manifest, [name]: { ...current, ref, commit, treeSha256: tree.sha256 } }
   await writeFile(manifestPath, `${JSON.stringify(next, null, 2)}\n`)

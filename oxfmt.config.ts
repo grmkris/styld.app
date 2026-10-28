@@ -12,6 +12,8 @@ export default defineConfig({
     '.agents/**',
     '.claude/**',
     'repos/**',
+    // Foldkit's verbatim conventions, verified against repos/foldkit by vendor:check.
+    'FOLDKIT.md',
     'docs/research/**',
     'docs/migration/v1-inventory.json',
     'tools/oxlint/anti-slop/**',
