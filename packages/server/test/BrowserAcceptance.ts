@@ -50,11 +50,13 @@ export const verifyBrowser = async (browser: Browser, origin: string): Promise<v
     await prompt.waitFor({ state: 'hidden' })
     expect((await context.cookies()).find((cookie) => cookie.name === 'styld_diagnostics')?.value).toBe('granted')
     expect(await page.locator('h1').textContent()).toBe('A wardrobe shaped by you.')
-    // Compiled zyzz styles reach the page: the masthead lays out as a flex row on Atelier paper.
+    // Compiled zyzz styles reach the page: the masthead lays out as a flex row on Gallery paper (#f1eee7),
+    // and the self-hosted font is in use.
     expect(await page.locator('header').evaluate((element) => getComputedStyle(element).display)).toBe('flex')
-    expect(await page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor)).toMatch(
-      /^oklch\(0\.945 /,
+    expect(await page.evaluate(() => getComputedStyle(document.documentElement).backgroundColor)).toBe(
+      'rgb(241, 238, 231)',
     )
+    expect(await page.evaluate(() => document.fonts.check('600 16px "Hanken Grotesk Variable"'))).toBe(true)
     await page.selectOption('#language', 'sl')
     await page.waitForFunction(() => document.documentElement.lang === 'sl')
     expect(await page.locator('h1').textContent()).toBe('Garderoba po tvojem okusu.')

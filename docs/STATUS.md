@@ -2,6 +2,13 @@
 
 Status: active, foundation deployed to an isolated workers.dev preview. Full parity is not achieved.
 
+## Gallery design — 2026-10-28
+
+- Owner decisions: the Gallery direction replaces Atelier; the port is reprioritised to the experience first (sign-in, boards and public profiles, the MCP server, AI on Cloudflare with one credit balance through AI Gateway with v1's own provider keys), shops last. v2 reuses v1's Google OAuth client and email sender.
+- The Gallery prototype lived only in `/tmp`; it is now in `docs/design/gallery/` (built site with the ten archived directions, its generator, data and the exploration scripts; the generator reproduces the site). Review screenshots, the shop photo cache and a raw wardrobe dump with a real user's id were left out.
+- v2 named Hanken Grotesk but never loaded it, so screens rendered in a system font. The variable font is now self-hosted from `@fontsource-variable/hanken-grotesk` 5.3.0 (latin and latin-ext); the wordmark and favicon are the STYLD logo v1 adopted after the baseline. That commit (`3422fe9`) alone was not green: lint rejected the side-effect CSS import (now allowed for `.css` only; other side-effect imports still fail) and Vite inlined the smallest font subset as a `data:` URL that the CSP's `font-src 'self'` blocked, which native browser acceptance caught. Fonts now always ship as files, and acceptance checks the paper colour and that the font is in use.
+- `DESIGN.md` is rewritten for Gallery, and the tokens, document defaults, actions and the existing screens (top bar, landing, inspiration, footer, diagnostics sheet, sign-in, account) follow it: one sans face, ink pills, stock fields, signal-underlined links, the prompt as a bottom sheet. The language picker keeps its label for assistive technology but hides it visually. Copy is unchanged; Gallery's landing copy names shops and waits for the catalog.
+
 ## Phosphor icons — 2026-10-28
 
 - Owner decision: Phosphor icons replace Lucide (compared side by side on Styld paper; Lucide is the most used set, which is why it reads as the default look). DESIGN.md › Icons: Light weight at 24px and up, Regular below, colour from the text, hidden from assistive technology beside a visible label.

@@ -1,44 +1,52 @@
 import { global } from 'zyzz/web'
 import { vars } from './zyzz.config.ts'
 
-// Document defaults. Component styles live beside the views that use them.
+// Document defaults (DESIGN.md › Type). Component styles live beside the views that use them.
 global({
   ':root': {
     colorScheme: 'light',
     fontFamily: vars.fontFamily.body,
+    fontSize: '16px',
     backgroundColor: vars.color.paper,
     color: vars.color.ink,
-    lineHeight: 1.55,
+    lineHeight: 1.5,
     fontSynthesis: 'none',
+    WebkitFontSmoothing: 'antialiased',
+    MozOsxFontSmoothing: 'grayscale',
   },
   '*': { boxSizing: 'border-box' },
   html: {
     WebkitTextSizeAdjust: '100%',
     WebkitTapHighlightColor: 'transparent',
     scrollbarGutter: 'stable',
+    overflowX: 'clip',
   },
   body: { margin: '0' },
-  'h1, h2, p': { margin: '0' },
-  'h1, h2': {
-    fontFamily: vars.fontFamily.display,
-    fontWeight: 300,
-    lineHeight: 1.12,
-    textWrap: 'balance',
-  },
-  h1: { fontSize: 'clamp(2.5rem, 1.5rem + 4vw, 5rem)', letterSpacing: '-0.022em', maxInlineSize: '15ch' },
-  h2: { fontSize: '2rem' },
+  'h1, h2, h3, p, dl, dd': { margin: '0' },
+  'h1, h2, h3': { textWrap: 'balance', overflowWrap: 'break-word', minInlineSize: '0' },
+  h1: { fontSize: '30px', lineHeight: 1.08, fontWeight: 600, letterSpacing: '-0.02em' },
+  h2: { fontSize: '22px', lineHeight: 1.2, fontWeight: 600, letterSpacing: '-0.01em' },
+  h3: { fontSize: '17px', lineHeight: 1.3, fontWeight: 600 },
   p: { maxInlineSize: '65ch', textWrap: 'pretty' },
-  a: { color: 'inherit', textUnderlineOffset: '0.2em', touchAction: 'manipulation' },
-  'button, select, input': { font: 'inherit', fontSize: '1rem', touchAction: 'manipulation' },
+  // A text link: semibold ink over a signal underline. Links styled as buttons drop it.
+  a: {
+    color: 'inherit',
+    fontWeight: 600,
+    textDecorationLine: 'underline',
+    textDecorationColor: vars.color.signal,
+    textDecorationThickness: '1.5px',
+    textUnderlineOffset: '4px',
+    touchAction: 'manipulation',
+  },
+  'button, select, input': { font: 'inherit', fontSize: '1rem', color: 'inherit', touchAction: 'manipulation' },
   // DESIGN.md: every control keeps at least a 44px touch target.
   'button, select': { minBlockSize: '44px' },
   ':focus-visible': {
     outlineWidth: '2px',
     outlineStyle: 'solid',
     outlineColor: vars.color.focus,
-    outlineOffset: '4px',
+    outlineOffset: '2px',
   },
-  '@media (hover: hover) and (pointer: fine)': { 'a:hover': { textDecorationThickness: '2px' } },
   // DESIGN.md › Motion: under reduced motion everything ends at once; loaders keep turning.
   '@media (prefers-reduced-motion: reduce)': {
     '*:not([data-loader]), ::before, ::after': {

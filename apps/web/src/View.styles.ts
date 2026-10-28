@@ -1,88 +1,121 @@
 import { style } from './zyzz.config.ts'
 
-// Styles for the site frame, masthead and landing views in View.ts.
+// Styles for the site frame, top bar, landing and footer in View.ts (Gallery: docs/design/gallery).
 export const site = style({
   maxInlineSize: '78rem',
   marginInline: 'auto',
-  paddingInline: 'max(1.25rem, env(safe-area-inset-left), env(safe-area-inset-right))',
+  paddingInline: 'max(20px, env(safe-area-inset-left), env(safe-area-inset-right))',
 })
 export const masthead = style({
   display: 'flex',
   flexWrap: 'wrap',
   alignItems: 'center',
-  gap: '1.5rem',
-  paddingBlock: 'calc(1rem + env(safe-area-inset-top)) 1rem',
+  gap: '8px 16px',
+  minBlockSize: '64px',
+  paddingBlock: 'calc(12px + env(safe-area-inset-top)) 4px',
 })
-export const brand = style({ display: 'inline-flex' })
-export const brandMark = style({ display: 'block' })
+export const brand = style({ display: 'inline-flex', alignItems: 'center', minBlockSize: '44px' })
+export const brandMark = style({ display: 'block', blockSize: '20px', inlineSize: 'auto' })
 export const picker = style({
   display: 'flex',
   flexWrap: 'wrap',
   alignItems: 'center',
-  gap: '0.6rem',
+  gap: '8px',
   marginInlineStart: 'auto',
+  fontSize: '14px',
+  color: 'ink2',
+})
+// The picker's label stays for assistive technology; the select itself says which language is on.
+export const visuallyHidden = style({
+  position: 'absolute',
+  inlineSize: '1px',
+  blockSize: '1px',
+  overflow: 'hidden',
+  clipPath: 'inset(50%)',
+  whiteSpace: 'nowrap',
 })
 export const pickerSelect = style({
   minBlockSize: '44px',
-  maxInlineSize: '100%',
-  padding: '0.45rem',
-  backgroundColor: 'transparent !custom',
-  color: 'inherit !custom',
-  borderWidth: '1px',
-  borderStyle: 'solid',
-  borderColor: 'muted',
-  borderRadius: 'control',
+  maxInlineSize: '11rem',
+  paddingInline: '14px',
+  borderWidth: '0',
+  borderRadius: 'pill',
+  backgroundColor: 'paper2',
+  color: 'ink',
+  fontSize: '14px',
+  fontWeight: 500,
+  cursor: 'pointer',
 })
 export const pickerError = style({ flexBasis: '100%' })
 export const intro = style({
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'start',
-  gap: '1.5rem',
-  paddingBlock: 'clamp(3rem, 10vw, 8rem)',
+  gap: '16px',
+  paddingBlock: 'clamp(24px, 8vw, 96px) clamp(40px, 8vw, 96px)',
 })
-export const lead = style({ fontSize: '1.2rem', maxInlineSize: '45ch', color: 'muted' })
+/** The landing statement: Gallery's display size, the one heavy head on a page. */
+export const heroTitle = style({
+  maxInlineSize: '14ch',
+  fontSize: 'clamp(46px, 34px + 3vw, 72px)',
+  lineHeight: 1,
+  fontWeight: 700,
+  letterSpacing: '-0.035em',
+})
+export const lead = style({ maxInlineSize: '32ch', paddingBlockEnd: '8px', fontSize: '17px', color: 'ink2' })
+export const heroActions = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' })
 export const inspiration = style({
   display: 'flex',
   flexDirection: 'column',
-  gap: '1rem',
-  paddingBlock: '2rem 5rem',
+  gap: '8px',
+  paddingBlock: '40px 80px',
   borderBlockStartWidth: '1px',
   borderBlockStartStyle: 'solid',
   borderBlockStartColor: 'rule',
-  scrollMarginBlockStart: '2rem',
+  scrollMarginBlockStart: '24px',
 })
-export const emptyState = style({ paddingBlock: '2rem', color: 'muted' })
+export const sectionNote = style({ color: 'ink2' })
+export const emptyState = style({ paddingBlock: '24px', color: 'ink2' })
 export const footer = style({
   display: 'flex',
   flexWrap: 'wrap',
-  gap: '1rem',
-  paddingBlock: '1.5rem calc(1.5rem + env(safe-area-inset-bottom))',
+  alignItems: 'center',
+  gap: '8px 24px',
+  paddingBlock: '24px calc(24px + env(safe-area-inset-bottom))',
   borderBlockStartWidth: '1px',
   borderBlockStartStyle: 'solid',
   borderBlockStartColor: 'rule',
+  fontSize: '14px',
+  color: 'ink2',
 })
-export const footerLink = style({ minBlockSize: '44px' })
-// A footer control that reads like the contact link.
+export const footerLink = style({ display: 'inline-flex', alignItems: 'center', minBlockSize: '44px' })
+// A footer control that reads like the contact link beside it.
 export const footerButton = style({
   marginInlineStart: 'auto',
   padding: '0',
   borderWidth: '0',
   backgroundColor: 'transparent !custom',
   color: 'inherit !custom',
-  textDecoration: 'underline',
-  textUnderlineOffset: '0.2em',
+  fontSize: '14px',
+  fontWeight: 600,
+  textDecorationLine: 'underline',
+  textDecorationColor: 'signal',
+  textDecorationThickness: '1.5px',
+  textUnderlineOffset: '4px',
   cursor: 'pointer',
 })
+/** The diagnostics prompt as a Gallery sheet: card stock rising from the bottom edge. */
 export const consentBanner = style({
   position: 'sticky',
   insetBlockEnd: '0',
   display: 'grid',
-  gap: '0.75rem',
-  paddingBlock: '1rem calc(1rem + env(safe-area-inset-bottom))',
-  backgroundColor: 'paper',
-  borderBlockStartWidth: '1px',
-  borderBlockStartStyle: 'solid',
-  borderBlockStartColor: 'rule',
+  gap: '16px',
+  marginInline: 'calc(-1 * max(20px, env(safe-area-inset-left), env(safe-area-inset-right)))',
+  paddingBlock: '20px calc(24px + env(safe-area-inset-bottom))',
+  paddingInline: 'max(20px, env(safe-area-inset-left), env(safe-area-inset-right))',
+  borderStartStartRadius: 'sheet',
+  borderStartEndRadius: 'sheet',
+  backgroundColor: 'stock',
+  boxShadow: '0 -8px 32px oklch(0 0 0 / 0.14) !custom',
 })
-export const consentActions = style({ display: 'flex', flexWrap: 'wrap', gap: '0.75rem' })
+export const consentActions = style({ display: 'flex', flexWrap: 'wrap', gap: '8px' })

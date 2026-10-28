@@ -7,7 +7,11 @@ export default defineConfig({
   environments: { client: { build: { manifest: true } } },
   // CSS browser baseline, made explicit: zyzz requires native light-dark() and emits CSS
   // nesting, so older browsers drop nested state rules (hover, active, user-invalid).
-  build: { cssTarget: ['chrome123', 'edge123', 'firefox120', 'safari17.5'] },
+  // Fonts always ship as files: the edge CSP allows `font-src 'self'`, not inlined data: URLs.
+  build: {
+    cssTarget: ['chrome123', 'edge123', 'firefox120', 'safari17.5'],
+    assetsInlineLimit: (file) => (file.endsWith('.woff2') ? false : undefined),
+  },
   // zyzz compiles styles before Foldkit's plugin sees the modules.
   plugins: [
     zyzz(),

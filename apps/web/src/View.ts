@@ -16,6 +16,8 @@ import {
   footer,
   footerButton,
   footerLink,
+  heroActions,
+  heroTitle,
   inspiration,
   intro,
   lead,
@@ -23,7 +25,9 @@ import {
   picker,
   pickerError,
   pickerSelect,
+  sectionNote,
   site,
+  visuallyHidden,
 } from './View.styles.ts'
 
 const homePath = '/'
@@ -49,7 +53,7 @@ const languagePicker = (model: Model, h: HtmlBuilder<Message>): Html => {
       onChange: (value) => Message.SelectedLocale({ value }),
       toView: (attributes) =>
         h.div(styled(h, picker()), [
-          h.label(attributes.label, [format(locale, 'auth.language', {})]),
+          h.label([...attributes.label, ...styled(h, visuallyHidden())], [format(locale, 'auth.language', {})]),
           h.select(
             [...attributes.select, ...styled(h, pickerSelect()), h.AriaBusy(pending)],
             languages
@@ -73,16 +77,18 @@ const homeView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
     [h.Id('main')],
     [
       h.section(styled(h, intro()), [
-        h.h1([], [format(locale, 'landing.title', {})]),
+        h.h1(styled(h, heroTitle()), [format(locale, 'landing.title', {})]),
         h.p(styled(h, lead()), [format(locale, 'landing.description', {})]),
-        h.a([h.Href(browseAnchor), ...styled(h, primaryAction())], [format(locale, 'landing.browse', {})]),
-        h.a([h.Href(loginPath), ...styled(h, secondaryAction())], [format(locale, 'auth.signInWithEmail', {})]),
+        h.div(styled(h, heroActions()), [
+          h.a([h.Href(browseAnchor), ...styled(h, primaryAction())], [format(locale, 'landing.browse', {})]),
+          h.a([h.Href(loginPath), ...styled(h, secondaryAction())], [format(locale, 'auth.signInWithEmail', {})]),
+        ]),
       ]),
       h.section(
         [h.Id('inspiration'), ...styled(h, inspiration())],
         [
           h.h2([], [format(locale, 'landing.feedTitle', {})]),
-          h.p([], [format(locale, 'landing.feedDescription', {})]),
+          h.p(styled(h, sectionNote()), [format(locale, 'landing.feedDescription', {})]),
           h.p(styled(h, emptyState()), [format(locale, 'landing.feedEmpty', {})]),
         ],
       ),

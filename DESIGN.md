@@ -1,94 +1,95 @@
 # Design: Styld
 
-The locked system, carried over from v1 (`stylelab/DESIGN.md` at `aef3042d`, 2026-10-25) with its implementation
-notes moved to zyzz and Foldkit. Every screen agent reads this first, and screens share it. Change it on purpose; the
-file is the rule. A redesign may replace it later; until the owner says so, it holds.
+**Gallery** is Styld v2's design (owner decision, 2026-10-28). It replaces v1's Atelier. The clickable prototype in
+`docs/design/gallery/` (open `site/index.html`) shows every main screen on mobile and desktop; this file states the
+rules. Every screen agent reads both first. When a screen is built, follow the prototype's layout and this file's rules;
+where they disagree, ask. Change this file on purpose; it is the rule.
 
-Calm Scandinavian (Arket, COS, Toteme): limewash paper, umber ink, one slate signal, Sentient light over Hanken
-Grotesk. Light mode only.
-
-## System
-
-- Genre: editorial
-- Shape of the first page: app screen (signed-in app); public pages are page scope
-- Theme: Atelier (Hallmark), seed `calm-scandinavian-fashion-wardrobe-1472·743c3c01·2026-10-25·r0`
-- Axes: light/roman-serif/cool · posture: restrained
-- Signature: the wardrobe grid of garment cutouts on paper. Garment photos keep their true colour: no filter, no tint.
+Things you could buy are photos from shops; things you own are cutouts on paper. One sans face, warm paper, umber ink,
+one slate signal. Pill-shaped actions, soft panels and sheets, photos with small corners. Light mode only.
 
 ## Tokens
 
 `apps/web/src/zyzz.config.ts` is the source of truth; never a literal colour or `font-family` outside it (the `zyzz`
-skill covers usage). It holds the tokens v2's screens use so far. When a screen needs one of v1's other roles, add it
-there under the v1 name and value below, then use the token name:
+skill covers usage). Add a token there before a screen needs a new value.
 
-| Role                              | v1 value                                  | v2 token                                                                                |
-| --------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------- |
-| paper (page)                      | `oklch(94.5% 0.01 76)`                    | `paper`                                                                                 |
-| paper-2 (quiet surface)           | `oklch(91.8% 0.013 74)`                   | add when needed                                                                         |
-| paper-3 (hover and focus surface) | `oklch(88% 0.015 72)`                     | add when needed                                                                         |
-| ink (text, primary fill)          | `oklch(19% 0.024 52)`                     | `ink`                                                                                   |
-| ink-2                             | `oklch(31% 0.018 54)`                     | add when needed                                                                         |
-| ink-3 (secondary text)            | `oklch(47% 0.014 60)`                     | `muted`                                                                                 |
-| rule (hairline)                   | `oklch(81% 0.011 70)`                     | `rule`                                                                                  |
-| rule-2 (input edge, 3:1)          | `oklch(60% 0.012 66)`                     | add when needed                                                                         |
-| signal (the one slate accent)     | `oklch(41% 0.075 248)`                    | `signal`                                                                                |
-| signal-ink (signal on ink)        | `oklch(96% 0.008 76)`                     | add when needed                                                                         |
-| focus                             | `oklch(50% 0.095 248)`                    | `focus`                                                                                 |
-| stock (card stock)                | `oklch(97.6% 0.007 82)`                   | add when needed                                                                         |
-| error                             | `oklch(52% 0.19 27)`                      | `error` is `oklch(48% 0.16 25)` and `invalid` `oklch(58% 0.16 25)` in v2's sign-in form |
-| success                           | `oklch(50% 0.12 150)`                     | add when needed                                                                         |
-| display font                      | `"Sentient", Georgia, serif`              | `fontFamily.display`                                                                    |
-| body font                         | `"Hanken Grotesk", system-ui, sans-serif` | `fontFamily.body`                                                                       |
-| card radius                       | `2px`                                     | add when needed                                                                         |
-| control and chip radius           | `3px`                                     | `radius.control`                                                                        |
+| Role                                                        | Value                 | Token              |
+| ----------------------------------------------------------- | --------------------- | ------------------ |
+| paper: the page; styld.app's own, so cutouts sit seamlessly | `#f1eee7`             | `paper`            |
+| paper-2: hovered controls, inactive chips, the search pill  | `#e7e2d9`             | `paper2`           |
+| stock: fields, sheets and cards above the paper             | `#fbf9f5`             | `stock`            |
+| ink: text and the primary fill                              | `#1c1410`             | `ink`              |
+| hovered ink fill                                            | ink 86% towards paper | `inkHover`         |
+| ink-2: secondary text and meta                              | `#5d554e`             | `ink2`             |
+| ink-3: counts, placeholders, the word in a divider          | `#8b827a`             | `ink3`             |
+| rule: hairlines and field edges                             | `#ddd6cc`             | `rule`             |
+| signal: the one slate accent                                | `#2f4f7c`             | `signal`           |
+| on-ink: text and icons on an ink fill                       | `#f7f4ee`             | `onInk`            |
+| focus ring                                                  | `#2f5bd3`             | `focus`            |
+| error text, invalid field edge                              | v2's own              | `error`, `invalid` |
 
-`field` and `hover` are v2's paper-to-ink mixes for input fields and hovered secondary actions; they stand in for
-paper-2/paper-3 until those tokens are added.
+Radii: `photo` 4px, `field` 12px, `panel` 16px, `sheet` 24px, `pill` for actions, chips and the search field. Spacing:
+a 20px page gutter (plus the safe-area insets), 16px between grid items, 8px between actions in a row.
+
+The prototype has more tokens that v2 adds with the first screen that needs them: `veil` and `scrim` (overlays on photos
+and behind sheets), `frost` (round buttons over photos), `shade-1` and `shade-2` (shadows), `line` (a hairline over a
+photo), and the catalog colour swatches (`--c-*`, v1's catalog classification colours).
 
 ### Signal
 
-The signal is the one slate accent: a link's underline, the current selection, state (active, in progress, published),
-focus. Under 4% of a screen. Never a warm accent; v1's old Maison gold maps to the signal when it marks an action,
-selection or state, to ink on a head, and to muted on meta.
+The signal marks a text link's underline and state: in progress, active, the current selection. Under 4% of a screen.
+Never a second accent colour.
 
 ## Type
 
-- **Display** (`fontFamily.display`): Sentient 300, sentence case, roman, one weight and one colour a head,
-  `text-wrap: balance`. Only on real heads: a page title, a section title, a statement, a figure at 1.6rem or larger.
-- **Small serif**: Sentient 400 for a name on a card or an `h3`, never under 16px, never a paragraph.
-- **Body and UI** (`fontFamily.body`): Hanken Grotesk 400, 500 for emphasis in controls. Line-height 1.55, measure 45
-  to 75ch.
-- **Labels**: the body face a step smaller, sentence case, untracked; the object in ink, the material or number in
-  muted. Never uppercase, small caps, or letter-spacing on a label.
-- A system mono for code and raw data (admin) only.
-- Never an italic word inside a roman head. Never serif running text.
-- Sentient's licence (ITF FFL) allows self-hosting for Styld's own site and images, not subsetting, converting, or
-  offering it as a font users set their own content in. Board text uses a separate user serif.
+One face: Hanken Grotesk, self-hosted as the variable font (`@fontsource-variable/hanken-grotesk`, latin and latin-ext).
+No serif.
+
+- **Display** 46px and up, line-height 1, weight 700, tracking −0.035em: the landing statement only.
+- **H1** 30px, line-height 1.08, weight 600, tracking −0.02em (26px inside a panel). **H2** 22px, 600, −0.01em. **H3**
+  17px, 600.
+- **Body** 16px, line-height 1.5, weight 400. Lede 17px in ink-2. Small text 13–14px. Labels 14px, weight 600.
+- Counts and prices use tabular figures. Sentence case everywhere; no uppercase, small caps or letter-spacing on labels.
+- Heads balance their lines; paragraphs wrap pretty and stay under 65ch.
 
 ## Controls
 
-The shared styles live in `apps/web/src/Actions.styles.ts`. Controls render through `@foldkit/ui`'s headless views (text
-buttons through `actionButton` in `apps/web/src/ActionButton.ts`), and zyzz styles them.
+Controls render through `@foldkit/ui`'s headless views (text buttons through `actionButton` in
+`apps/web/src/ActionButton.ts`), and zyzz styles them; the shared styles live in `apps/web/src/Actions.styles.ts`.
 
-- Primary (`primaryAction`): ink fill, paper text, 3px radius, 48px tall. One a screen; a dialog counts as its own
-  screen.
-- Secondary (`secondaryAction`): 1px hairline, transparent; hover tints the surface. Same radius and height.
-- Ghost: text in ink; hover tints the surface. Link: ink text with a signal underline.
-- Chips and tags: 3px radius, hairline border, sentence case. A full circle only for real circles: avatars, colour
-  dots, spinners, radio marks.
-- Fields: a 1px edge with 3:1 contrast, 3px radius; focus is an outline in `focus`, never a border change. Disabled:
-  half opacity, `not-allowed` cursor; fields and selects take the native attribute, buttons `aria-disabled` (Foldkit UI's
-  Button) so a pending one keeps focus.
+- **Primary** (`primaryAction`): an ink pill with on-ink text, 48px tall, 20px sides, 15px weight 600. Hover moves the
+  fill towards paper; press scales to 0.96. One per screen; full width at the end of a form or sheet.
+- **Secondary** (`secondaryAction`): the same pill with a 1.5px ink ring and no fill; hover tints it paper-2.
+- **Small**: 40px tall, 16px sides, 14px, with the touch target kept at 44px.
+- **Round**: 44px circles for icon-only actions; a frosted round over photos.
+- **Chips**: 36px pills, 14px weight 500 in ink-2; the selected chip is filled ink. Inactive chips in a wrapping set sit
+  on paper-2.
+- **Tabs**: text tabs; the current one is ink, weight 600, with a 2px ink underline.
+- **Search**: a 48px paper-2 pill with the search icon.
+- **Fields**: 52px tall, `field` radius, stock fill, a 1px rule edge, the label above in 14px weight 600. Focus is the
+  focus-coloured outline, never a border change; an invalid field takes the `invalid` edge.
+- **Text links**: semibold ink over a 1.5px signal underline, offset 4px.
+- **Dividers** with a word ("or"): rule lines either side of the word in ink-3.
 - Every control: default, hover, `:focus-visible` (instant, never transitioned), active, disabled, loading, error,
-  success. Motion on `transform` and `opacity` only; colour changes may transition. Hit target 44px on touch (a global
-  rule for buttons and selects).
-- Surfaces: paper page, card-stock cards with a hairline or a soft contact shadow, 2px corners. No card inside a card.
-  No glass: no backdrop blur, no translucent chrome. Full card stock for the one object a screen is known by.
+  success. Hit target 44px on touch (a global rule for buttons and selects).
+- Disabled: half opacity and a `not-allowed` cursor. Fields and selects take the native attribute; buttons are
+  `aria-disabled` (Foldkit UI's Button), so a pending one keeps focus.
+
+## Surfaces and layout
+
+- The page is paper. Stock lifts fields, sheets and cards above it; a card has a 16px panel radius and no card sits
+  inside another.
+- Photos keep their true colour: no filter, no tint, 4px corners. Shop pieces are photos; pieces you own are cutouts on
+  paper. The wardrobe grid of cutouts on paper is Styld's signature.
+- Sheets rise from the bottom edge with 24px top corners, stock fill and a soft shadow (the diagnostics prompt is one).
+- Translucency (frost, scrim, veil) only over photos and behind sheets; never blur behind text.
+- Mobile: a 64px top bar with the logo and one action. Desktop: a top bar with the logo, text navigation (the current
+  section underlined), the search pill and the avatar.
 
 ## Icons
 
-- Phosphor (`@phosphor-icons/core`, pinned): the Light weight at 24px and larger, Regular below 24px, where Light turns
-  faint. One family; no icons from another set.
+- Phosphor (`@phosphor-icons/core`, pinned): Regular below 24px (Gallery's 20px control icons), Light at 24px and
+  larger. One family; no icons from another set.
 - An icon takes the colour of the text beside it; the signal colours it only when it marks state (the loader, the current
   tab).
 - Icons are hidden from assistive technology and sit beside a visible label that carries the meaning. An icon-only control
@@ -100,16 +101,17 @@ buttons through `actionButton` in `apps/web/src/ActionButton.ts`), and zyzz styl
 
 ## Motion
 
-- Character: calm. 140ms for press and colour, 180ms for hover and menus, 240ms for dialogs and sheets; ease-out for
-  arrivals, ease-in-out for toggles. One reveal at most on a public page, none on app screens; no stagger.
+- Character: quick and quiet, on Gallery's curve `cubic-bezier(0.2, 0, 0, 1)`. 140ms for press and colour, 180ms for
+  hover and menus, 240ms for sheets and dialogs. Presses scale to 0.96. One reveal at most on a public page, none on app
+  screens; no stagger.
 - Under reduced motion everything ends at once (`apps/web/src/GlobalStyles.ts`); loaders keep turning.
 
 ## Copy and chrome
 
 - No eyebrow above a head that says the same thing; where a head is figurative, the plain label becomes the head.
 - No middle-dot-joined meta (`A · B · C`): use a line break, a comma, a column or a `<dl>`. No arrow glued to a label.
-- No decorative status dot. No emoji as an icon; icons are Phosphor (Icons above). Sparkles only where AI is literally running right
-  now.
+- No decorative status dot. No emoji as an icon; icons are Phosphor (Icons above). Sparkles only where AI is literally
+  running right now.
 - Every data region draws loading (a skeleton in the shape of what is coming), empty (what belongs here and the one
   action that fills it), error (what broke and what to do) and full.
 - Words in both `packages/i18n/catalogs/en.json` and `sl.json`, same keys; `bun run translations:check` fails on a

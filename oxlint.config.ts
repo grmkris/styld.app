@@ -50,6 +50,8 @@ export default defineConfig({
     'typescript/no-unsafe-call': 'error',
     'typescript/no-unsafe-member-access': 'error',
     'typescript/no-unsafe-return': 'error',
+    // Stylesheets are imported for their effect: the client entry imports the self-hosted font's CSS.
+    'import/no-unassigned-import': ['error', { allow: ['**/*.css'] }],
     'no-console': 'error',
     'no-empty': 'error',
     'no-unused-vars': [

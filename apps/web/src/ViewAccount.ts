@@ -13,7 +13,10 @@ import {
   authForm,
   authInput,
   authPage,
+  detailList,
+  detailTerm,
   detailValue,
+  fieldLabel,
   formError,
   pendingStatus,
   submit,
@@ -22,15 +25,12 @@ import {
 const signedInView = (claims: AccountClaims, pending: boolean, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.section(styled(h, accountDetails()), [
     h.h1([], [format(locale, 'account.title', {})]),
-    h.dl(
-      [],
-      [
-        h.dt([], [format(locale, 'account.name', {})]),
-        h.dd(styled(h, detailValue()), [claims.displayName]),
-        h.dt([], [format(locale, 'account.email', {})]),
-        h.dd(styled(h, detailValue()), [claims.email]),
-      ],
-    ),
+    h.dl(styled(h, detailList()), [
+      h.dt(styled(h, detailTerm()), [format(locale, 'account.name', {})]),
+      h.dd(styled(h, detailValue()), [claims.displayName]),
+      h.dt(styled(h, detailTerm()), [format(locale, 'account.email', {})]),
+      h.dd(styled(h, detailValue()), [claims.email]),
+    ]),
     actionButton(
       {
         label: format(locale, 'auth.signOut', {}),
@@ -50,7 +50,7 @@ const signInForm = (pending: boolean, failed: boolean, locale: Locale, h: HtmlBu
       h.form(
         [h.Id(passwordFormId), ...styled(h, authForm()), h.OnSubmit(Message.SubmittedSignIn()), h.AriaBusy(pending)],
         [
-          h.label([h.For('auth-email')], [format(locale, 'auth.email', {})]),
+          h.label([h.For('auth-email'), ...styled(h, fieldLabel())], [format(locale, 'auth.email', {})]),
           h.input([
             h.Id('auth-email'),
             ...styled(h, authInput()),
@@ -61,7 +61,7 @@ const signInForm = (pending: boolean, failed: boolean, locale: Locale, h: HtmlBu
             h.Maxlength(320),
             h.Readonly(pending),
           ]),
-          h.label([h.For('auth-password')], [format(locale, 'auth.password', {})]),
+          h.label([h.For('auth-password'), ...styled(h, fieldLabel())], [format(locale, 'auth.password', {})]),
           h.input([
             h.Id('auth-password'),
             ...styled(h, authInput()),
