@@ -11,6 +11,7 @@ import { Redacted } from 'effect'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
+import { seedIdentity, disableIdentity } from './IdentityFixture.ts'
 import { makeAuthHttp } from '../src/AuthHttp.ts'
 import { DomainLive } from '../src/DomainLive.ts'
 import { StyldDatabase, StyldMedia } from '../src/Resources.ts'
@@ -84,6 +85,14 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
         const request = yield* HttpServerRequest
         const url = new URL(request.url, 'http://local.invalid')
         if (url.pathname.startsWith('/api/auth/')) return yield* authHandle
+        if (url.pathname === '/test/identity/seed' && request.method === 'POST') {
+          yield* seedIdentity(database).pipe(Effect.orDie)
+          return HttpServerResponse.empty({ status: 204 })
+        }
+        if (url.pathname === '/test/identity/disable' && request.method === 'POST') {
+          yield* disableIdentity(database).pipe(Effect.orDie)
+          return HttpServerResponse.empty({ status: 204 })
+        }
         if (url.pathname === '/intl')
           return yield* HttpServerResponse.json({
             en: format('en', 'catalog.pieces', { count: 2 }),

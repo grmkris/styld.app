@@ -14,9 +14,8 @@ export const requirement = Sessions.AuthenticationRequirement.make({
   maximumAgeMillis: 300_000,
 })
 
-export const sessionOptions = Sessions.stateful({
-  cacheFor: 30_000,
-})
+// Revocation, account disablement and securityRevision changes must be visible on the next request.
+export const sessionOptions = Sessions.stateful()
 
 /** Shared browser/server contract. Add an action only when its payload and
  * success/error semantics are ready for every transport. */

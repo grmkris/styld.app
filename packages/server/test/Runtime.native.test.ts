@@ -235,3 +235,63 @@ test(
   }).pipe(Effect.provide(FetchHttpClient.layer)),
   { timeout: 60000 },
 )
+
+test(
+  'authenticates, rejects password signup, logs out and immediately invalidates disabled accounts',
+  Effect.gen(function* () {
+    const { url, styldUrl } = yield* stack
+    const seeded = yield* HttpClient.post(`${url}/test/identity/seed`)
+    expect(seeded.status).toBe(204)
+    const call = (action: string, payload: object, cookie = '') =>
+      HttpClient.post(`${styldUrl}/api/auth/${action}`, {
+        headers: {
+          origin: 'http://localhost',
+          'content-type': 'application/json',
+          'x-effect-auth-csrf': '1',
+          cookie,
+        },
+        body: HttpBody.text(JSON.stringify({ payload }), 'application/json'),
+      })
+    const credentials = { email: 'native-identity@example.invalid', password: 'native-identity-password-52' }
+    const denied = yield* call('signIn', { ...credentials, password: 'incorrect-password' })
+    expect(yield* denied.json).toMatchObject({ _tag: 'Failure' })
+    const signup = yield* call('register', credentials)
+    expect(signup.status).toBe(404)
+    const login = yield* call('signIn', credentials)
+    const loginBody = yield* login.text
+    expect(login.status, loginBody).toBe(200)
+    expect(JSON.parse(loginBody)).toMatchObject({
+      _tag: 'Success',
+      value: { _tag: 'Authenticated', session: { subjectId: 'native-identity' } },
+    })
+    const cookie = Object.entries(login.cookies.cookies)
+      .map(([name, value]) => `${name}=${value.value}`)
+      .join('; ')
+    expect(cookie.length).toBeGreaterThan(0)
+    const session = yield* call('getSession', {}, cookie)
+    expect(yield* session.json).toMatchObject({
+      _tag: 'Success',
+      value: { subjectId: 'native-identity', claims: { displayName: 'Native Identity', emailVerified: true } },
+    })
+    const cachedCookie = Object.entries({ ...login.cookies.cookies, ...session.cookies.cookies })
+      .map(([name, value]) => `${name}=${value.value}`)
+      .join('; ')
+    const logout = yield* call('signOut', {}, cachedCookie)
+    expect(yield* logout.json).toMatchObject({ _tag: 'Success' })
+    const stale = yield* call('getSession', {}, cachedCookie)
+    expect(yield* stale.json).toMatchObject({ _tag: 'Success', value: null })
+    const again = yield* call('signIn', credentials)
+    const againCookie = Object.entries(again.cookies.cookies)
+      .map(([name, value]) => `${name}=${value.value}`)
+      .join('; ')
+    const cachedSession = yield* call('getSession', {}, againCookie)
+    const disabledCookie = Object.entries({ ...again.cookies.cookies, ...cachedSession.cookies.cookies })
+      .map(([name, value]) => `${name}=${value.value}`)
+      .join('; ')
+    const disable = yield* HttpClient.post(`${url}/test/identity/disable`)
+    expect(disable.status).toBe(204)
+    const disabled = yield* call('getSession', {}, disabledCookie)
+    expect(yield* disabled.json).toMatchObject({ _tag: 'Success', value: null })
+  }).pipe(Effect.provide(FetchHttpClient.layer)),
+  { timeout: 60000 },
+)
