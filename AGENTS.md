@@ -20,9 +20,12 @@ heavy --wait bun run lint           # Oxlint with the checksum-verified tsrs-lin
 heavy --wait bun run test:unit
 heavy --wait bun run test:native    # builds, then workerd + Chromium acceptance through the real edge
 bun run translations:check          # x18n; bun run i18n:generate after catalog edits
+bun run --cwd apps/web dev          # Vite dev server; with the page open, foldkit_* MCP tools inspect it
 ```
 
 `heavy` exit 75 means the box is busy; retry it, never treat it as a failure, and never pipe it. Deploying the isolated preview and reading it back follows `docs/DEPLOYMENT.md`.
+
+The `foldkit-devtools` MCP server (`.mcp.json`) reads the running app's Model, Message history and Command arguments, time-travels, and dispatches Messages decoded against `Message`. It sees a Runtime only while the dev server runs and the page is open in a browser tab; the plain Vite server has no API Worker, so session reads fail there. Everything it returns enters the agent's context, so credentials and private data stay out of browser state (the password form keeps them in the DOM, never the Model).
 
 ## Stack
 

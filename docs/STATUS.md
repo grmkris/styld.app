@@ -5,6 +5,8 @@ Status: active, foundation deployed to an isolated workers.dev preview. Full par
 ## Foldkit agent tooling — 2026-10-28
 
 - `FOLDKIT.md` (Foldkit's own convention file for app code) is copied verbatim from the `repos/foldkit` snapshot; `vendor:check` rejects an edited or stale copy and `--pull` refreshes it. AGENTS.md points at it and keeps precedence.
+- The Foldkit DevTools MCP server (`@foldkit/devtools-mcp` 0.25.0, pinned with the Foldkit catalog) is registered in `.mcp.json` for Claude Code, Codex and Cursor, started with `bunx --no-install` (npx cannot read Bun's `catalog:` overrides, and a pinned local install never fetches). The application passes `devTools: { Message }`, so agents can dispatch decoded Messages in dev; production builds start no bridge.
+- `@foldkit/vite-plugin` 0.28.0 never started its MCP relay on Effect 4.0.6+: `relayId` reads `crypto.randomUUIDv4` as an Effect, which is now a method, and the forked fiber died silently (upstream foldkit/foldkit#1733, open). `patches/@foldkit%2Fvite-plugin@0.28.0.patch` makes it a call; drop the patch when an upstream release fixes it. Live check against the dev server, headless Chromium and the MCP server over stdio: the relay starts and publishes its record, `foldkit_list_runtimes` sees the tab, `foldkit_get_model` reads `root.telemetry`, dispatching `OpenedTelemetrySettings` reopens the consent prompt in the page, and an unknown Message is rejected by the schema. Without the patch the relay never starts. MCP clients must pass `XDG_RUNTIME_DIR` through to the server (the relay registry lives there); a client that strips the environment sees no dev server.
 
 ## Diagnostics consent and repository — 2026-10-28
 

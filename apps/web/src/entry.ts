@@ -2,7 +2,7 @@ import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import { Layer } from 'effect'
 import { browserAuthLayer } from '@styld/auth/client'
 import { Runtime } from 'foldkit'
-import { Flags, Model, init, update } from './App.ts'
+import { Flags, Message, Model, init, update } from './App.ts'
 import { view } from './View.ts'
 import { passwordFormLayer } from './PasswordForm.ts'
 import { startTelemetry, telemetryConsentLayer } from './Telemetry.ts'
@@ -17,6 +17,8 @@ const application = Runtime.makeApplication(
     update,
     view,
     container: document.getElementById('root'),
+    // The DevTools MCP may dispatch decoded Messages; the bridge only runs under Vite's dev server.
+    devTools: { Message },
     resources: Layer.mergeAll(
       FetchHttpClient.layer,
       browserAuthLayer(window.location.origin).pipe(Layer.orDie),
