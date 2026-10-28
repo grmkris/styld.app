@@ -6,26 +6,7 @@ import { AuthState, Message, type Model } from './App.ts'
 import { primaryAction } from './Actions.styles.ts'
 import { passwordFormId } from './PasswordForm.ts'
 import { styled } from './Styled.ts'
-import { style } from './zyzz.config.ts'
-
-const authPage = style({ maxInlineSize: '32rem', minBlockSize: '65svh', paddingBlock: 'clamp(3rem, 8vw, 6rem)' })
-const authForm = style({ display: 'grid', gap: '0.65rem', marginBlockStart: '1.5rem' })
-const authInput = style({
-  inlineSize: '100%',
-  minBlockSize: '48px',
-  padding: '0.65rem 0.8rem',
-  borderWidth: '1px',
-  borderStyle: 'solid',
-  borderColor: 'rule',
-  borderRadius: 'control',
-  backgroundColor: 'field',
-  color: 'ink',
-  ':user-invalid': { borderColor: 'invalid' },
-})
-const submit = style({ justifySelf: 'start', marginBlockStart: '0.75rem' })
-const formError = style({ color: 'error' })
-const accountDetails = style({ display: 'grid', justifyItems: 'start', gap: '1.5rem', overflowWrap: 'anywhere' })
-const detailValue = style({ margin: '0', marginBlockEnd: '1rem' })
+import { accountDetails, authForm, authInput, authPage, detailValue, formError, submit } from './ViewAccount.styles.ts'
 
 const signedInView = (claims: AccountClaims, pending: boolean, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.section(styled(h, accountDetails()), [

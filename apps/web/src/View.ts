@@ -5,7 +5,21 @@ import { primaryAction, secondaryAction } from './Actions.styles.ts'
 import { availableLocales } from './Locale.ts'
 import { styled } from './Styled.ts'
 import { accountView } from './ViewAccount.ts'
-import { style } from './zyzz.config.ts'
+import {
+  brand,
+  brandMark,
+  emptyState,
+  footer,
+  footerLink,
+  inspiration,
+  intro,
+  lead,
+  masthead,
+  picker,
+  pickerError,
+  pickerSelect,
+  site,
+} from './View.styles.ts'
 
 const homePath = '/'
 const loginPath = '/login'
@@ -16,69 +30,6 @@ const languages: ReadonlyArray<Readonly<{ locale: Locale; label: string }>> = [
   { locale: 'en-XA', label: 'English (expanded)' },
   { locale: 'ar-XB', label: 'English (RTL)' },
 ]
-
-const site = style({
-  maxInlineSize: '78rem',
-  marginInline: 'auto',
-  paddingInline: 'max(1.25rem, env(safe-area-inset-left), env(safe-area-inset-right))',
-})
-const masthead = style({
-  display: 'flex',
-  flexWrap: 'wrap',
-  alignItems: 'center',
-  gap: '1.5rem',
-  paddingBlock: 'calc(1rem + env(safe-area-inset-top)) 1rem',
-})
-const brand = style({ display: 'inline-flex' })
-const brandMark = style({ display: 'block' })
-const picker = style({
-  display: 'flex',
-  flexWrap: 'wrap',
-  alignItems: 'center',
-  gap: '0.6rem',
-  marginInlineStart: 'auto',
-})
-const pickerSelect = style({
-  minBlockSize: '44px',
-  maxInlineSize: '100%',
-  padding: '0.45rem',
-  backgroundColor: 'transparent !custom',
-  color: 'inherit !custom',
-  borderWidth: '1px',
-  borderStyle: 'solid',
-  borderColor: 'muted',
-  borderRadius: 'control',
-})
-const pickerError = style({ flexBasis: '100%' })
-const intro = style({
-  display: 'flex',
-  flexDirection: 'column',
-  alignItems: 'start',
-  gap: '1.5rem',
-  paddingBlock: 'clamp(3rem, 10vw, 8rem)',
-})
-const lead = style({ fontSize: '1.2rem', maxInlineSize: '45ch', color: 'muted' })
-const inspiration = style({
-  display: 'flex',
-  flexDirection: 'column',
-  gap: '1rem',
-  paddingBlock: '2rem 5rem',
-  borderBlockStartWidth: '1px',
-  borderBlockStartStyle: 'solid',
-  borderBlockStartColor: 'rule',
-  scrollMarginBlockStart: '2rem',
-})
-const emptyState = style({ paddingBlock: '2rem', color: 'muted' })
-const footer = style({
-  display: 'flex',
-  flexWrap: 'wrap',
-  gap: '1rem',
-  paddingBlock: '1.5rem calc(1.5rem + env(safe-area-inset-bottom))',
-  borderBlockStartWidth: '1px',
-  borderBlockStartStyle: 'solid',
-  borderBlockStartColor: 'rule',
-})
-const footerLink = style({ marginInlineStart: 'auto', minBlockSize: '44px' })
 
 const languagePicker = (model: Model, h: HtmlBuilder<Message>): Html => {
   const { locale } = model.context

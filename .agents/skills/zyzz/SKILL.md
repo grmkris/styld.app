@@ -11,7 +11,7 @@ Styling is zyzz (`zyzz/vite` in `apps/web/vite.config.ts`). There is no hand-wri
 
 - `apps/web/src/zyzz.config.ts` holds the tokens (`color`, `fontFamily`, `radius`) and the bound `style` helper with `output: 'html'`. It is the only place a literal colour or font family may appear. Add a token there before using a new value.
 - `apps/web/src/GlobalStyles.ts` holds document defaults through `global` from `zyzz/web`. The Vite plugin discovers it; nothing imports it.
-- Component styles sit beside the view that uses them as module-level `const name = style({...})` calls. Shared ones, such as `primaryAction`, live in `*.styles.ts`.
+- Component styles live in a sibling `<View>.styles.ts` (for example `View.styles.ts` beside `View.ts`) as exported module-level `const name = style({...})` calls; shared ones, such as `primaryAction`, live in `Actions.styles.ts`. Keeping CSS values out of view modules lets x18n's hard-string check read views as pure copy.
 - `apps/web/src/Styled.ts` turns an applied style into Foldkit attributes: `h.div(styled(h, card()), …)` or `[h.Id('x'), ...styled(h, card())]`. Combine styles with `cx(a(), b())` from `zyzz`; later arguments win.
 
 ## Rules
