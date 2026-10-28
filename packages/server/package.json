@@ -12,6 +12,7 @@
     "@styld/auth": "workspace:*",
     "@styld/domain": "workspace:*",
     "@styld/i18n": "workspace:*",
+    "@styld/observability": "workspace:*",
     "@yielded/auth": "catalog:",
     "alchemy": "catalog:",
     "effect": "catalog:"

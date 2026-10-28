@@ -45,6 +45,7 @@
         "@effect/platform-browser": "catalog:",
         "@foldkit/ui": "catalog:",
         "@styld/i18n": "workspace:*",
+        "@styld/observability": "workspace:*",
         "effect": "catalog:",
         "foldkit": "catalog:",
       },
@@ -94,6 +95,16 @@
         "intl-messageformat": "catalog:",
       },
     },
+    "packages/observability": {
+      "name": "@styld/observability",
+      "dependencies": {
+        "effect": "catalog:",
+      },
+      "devDependencies": {
+        "@effect/vitest": "catalog:",
+        "vitest": "catalog:",
+      },
+    },
     "packages/server": {
       "name": "@styld/server",
       "dependencies": {
@@ -102,6 +113,7 @@
         "@styld/auth": "workspace:*",
         "@styld/domain": "workspace:*",
         "@styld/i18n": "workspace:*",
+        "@styld/observability": "workspace:*",
         "@yielded/auth": "catalog:",
         "alchemy": "catalog:",
         "effect": "catalog:",
@@ -590,6 +602,8 @@
     "@styld/domain": ["@styld/domain@workspace:packages/domain"],
 
     "@styld/i18n": ["@styld/i18n@workspace:packages/i18n"],
+
+    "@styld/observability": ["@styld/observability@workspace:packages/observability"],
 
     "@styld/server": ["@styld/server@workspace:packages/server"],
 

@@ -1,6 +1,7 @@
 import { Clock, Effect } from 'effect'
 import * as Server from 'foldkit/experimental/server'
 import { catalogVersion } from '@styld/i18n'
+import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
 import { Flags, init } from './App.ts'
 import { localeEndpoint, requestLocale } from './Locale.ts'
 import { view } from './View.ts'
@@ -36,7 +37,15 @@ export const renderRequest = (
         'referrer-policy': 'strict-origin-when-cross-origin',
       },
     })
-  }).pipe(Effect.withSpan('web.render'))
+  }).pipe(
+    withObservability(
+      'styld.web.render',
+      metadataFromHeaders(
+        makeObservabilityBase({ environment: 'preview', release: options.buildId, component: 'web' }),
+        request.headers,
+      ),
+    ),
+  )
 
 export const renderPage: Server.EntryModule['renderPage'] = (request) => Effect.runPromise(renderRequest(request))
 

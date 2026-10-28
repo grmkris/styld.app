@@ -20,6 +20,8 @@ export default Alchemy.Stack(
     yield* api.bind('AUTH_ORIGIN', {
       bindings: [
         { type: 'plain_text', name: 'AUTH_ORIGIN', text: website.url },
+        { type: 'plain_text', name: 'STYLD_ENV', text: 'preview' },
+        { type: 'plain_text', name: 'STYLD_RELEASE', text: 'preview' },
         {
           type: 'secret_text',
           name: 'AUTH_SECRET',

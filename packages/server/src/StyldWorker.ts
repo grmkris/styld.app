@@ -1,11 +1,13 @@
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import { Effect, Layer } from 'effect'
+import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { decodeAuthSecret, decodeAuthSessionKeyring, makeAuthHttp } from './AuthHttp.ts'
 import { DomainLive } from './DomainLive.ts'
 import { health } from './Health.ts'
 import { StyldDatabase, StyldMedia } from './Resources.ts'
+import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
 
 const Runtime = Layer.mergeAll(DomainLive, Cloudflare.Telemetry({ headSamplingRate: 1 }))
 
@@ -22,6 +24,11 @@ export default StyldWorker.make(
     const database = yield* Cloudflare.D1.QueryDatabase(StyldDatabase)
     const media = yield* Cloudflare.R2.ReadWriteBucket(StyldMedia)
     const env = yield* Cloudflare.Workers.WorkerEnvironment
+    const observabilityBase = makeObservabilityBase({
+      environment: env.STYLD_ENV,
+      release: env.STYLD_RELEASE,
+      component: 'server',
+    })
     const authOrigin: unknown = env.AUTH_ORIGIN
     if (typeof authOrigin !== 'string' || authOrigin.length === 0) {
       return yield* Effect.die(new Error('AUTH_ORIGIN binding is required'))
@@ -57,7 +64,11 @@ export default StyldWorker.make(
     const handle = yield* HttpRouter.toHttpEffect(routes).pipe(Effect.orDie)
 
     return {
-      fetch: handle,
+      fetch: Effect.gen(function* () {
+        const request = yield* HttpServerRequest
+        const metadata = metadataFromHeaders(observabilityBase, request.headers)
+        return yield* handle.pipe(withObservability('styld.http', metadata))
+      }),
     }
   }).pipe(Effect.provide(Runtime)),
 )
