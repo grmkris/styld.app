@@ -10,6 +10,7 @@ import { Effect, Layer, Result } from 'effect'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { DomainLive } from '../src/DomainLive.ts'
+import { StyldDatabase, StyldMedia } from '../src/Resources.ts'
 
 // Only the local native-test stack imports this fixture. It has no production declaration.
 export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
@@ -19,6 +20,8 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
     compatibility: { date: '2026-10-19' },
   },
   Effect.gen(function* () {
+    const database = yield* Cloudflare.D1.QueryDatabase(StyldDatabase)
+    const media = yield* Cloudflare.R2.ReadWriteBucket(StyldMedia)
     const wallets = yield* Wallet
     const exercise = Effect.fn('Styld.acceptance.wallet')(function* () {
       const owner = UserId.make('native-test-owner')
@@ -70,8 +73,31 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
             Effect.orDie,
             Effect.flatMap((payload) => HttpServerResponse.json(payload).pipe(Effect.orDie)),
           )
+        if (url.pathname === '/storage') {
+          const tables = yield* database
+            .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
+            .all<{ name: string }>()
+          const mediaHealth = yield* media.head('health/sentinel').pipe(Effect.orDie)
+          return yield* HttpServerResponse.json({
+            database: {
+              tables: tables.results
+                .map((row) => row.name)
+                .filter((name) => !name.startsWith('__') && !name.startsWith('_cf_')),
+            },
+            media: { sentinel: mediaHealth !== null },
+          })
+        }
         return HttpServerResponse.empty({ status: 404 })
       }),
     }
-  }).pipe(Effect.provide(Layer.mergeAll(DomainLive, Cloudflare.Telemetry()))),
+  }).pipe(
+    Effect.provide(
+      Layer.mergeAll(
+        DomainLive,
+        Cloudflare.Telemetry(),
+        Cloudflare.D1.QueryDatabaseBinding,
+        Cloudflare.R2.ReadWriteBucketBinding,
+      ),
+    ),
+  ),
 ) {}

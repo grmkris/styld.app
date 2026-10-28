@@ -55,3 +55,26 @@ test(
   }).pipe(Effect.provide(FetchHttpClient.layer)),
   { timeout: 60000 },
 )
+
+test(
+  'serves the isolated D1 schema and R2 binding',
+  Effect.gen(function* () {
+    const { url } = yield* stack
+    const response = yield* HttpClient.get(`${url}/storage`)
+    expect(response.status).toBe(200)
+    expect(yield* response.json).toMatchObject({
+      database: {
+        tables: [
+          'accounts',
+          'styld_auth_credentials',
+          'styld_auth_identifiers',
+          'styld_auth_passwords',
+          'styld_auth_pending',
+          'styld_auth_sessions',
+        ],
+      },
+      media: { sentinel: false },
+    })
+  }).pipe(Effect.provide(FetchHttpClient.layer)),
+  { timeout: 60000 },
+)
