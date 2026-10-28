@@ -16,6 +16,7 @@ const Runtime = Layer.mergeAll(
   DomainLive,
   Cloudflare.Telemetry({ headSamplingRate: 1 }),
   Cloudflare.D1.QueryDatabaseBinding,
+  Cloudflare.Workers.RateLimitBinding,
 )
 
 // Alchemy's Worker bridge gives every event `Logger.consolePretty`, which reaches Workers Logs
@@ -34,6 +35,18 @@ export default StyldWorker.make(
   },
   Effect.gen(function* () {
     const database = yield* Cloudflare.D1.QueryDatabase(StyldDatabase)
+    // The browser telemetry relay is unauthenticated; each client IP may post 120 times a
+    // minute (the SDK flushes about twice every 5 seconds per tab).
+    const telemetryLimit = yield* Cloudflare.Workers.RateLimit('TELEMETRY_RATE_LIMIT', {
+      namespaceId: 2610281,
+      simple: { limit: 120, period: 60 },
+    })
+    // Telemetry is never worth an outage or an open door: a limiter error refuses the post.
+    const allowTelemetry = (client: string) =>
+      telemetryLimit.limit({ key: client }).pipe(
+        Effect.map(({ success }) => success),
+        Effect.orElseSucceed(() => false),
+      )
     // Bindings configured by the stack (including the web origin and secrets)
     // exist only in the deployed request runtime, not while Alchemy evaluates
     // the Worker declaration during planning. Build the application on the
@@ -60,7 +73,7 @@ export default StyldWorker.make(
         const routes = Layer.mergeAll(
           auth.layer,
           HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),
-          browserTelemetryRoutes(authOrigin),
+          browserTelemetryRoutes(authOrigin, allowTelemetry),
         ).pipe(Layer.provide(AlchemyHttp.Platform))
         const handle = yield* HttpRouter.toHttpEffect(routes).pipe(Effect.orDie)
         return { handle, observabilityBase }
