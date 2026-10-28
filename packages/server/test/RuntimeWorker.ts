@@ -5,6 +5,7 @@ import { GrantMonthlyCredits } from '@styld/domain/Wallet/GrantMonthlyCredits.co
 import { ReserveCredits } from '@styld/domain/Wallet/ReserveCredits.command'
 import { SettleCredits } from '@styld/domain/Wallet/SettleCredits.command'
 import { Wallet } from '@styld/domain/Wallet/Wallet.aggregate'
+import { monthlyGrantCommandId, reserveCommandId, settleCommandId } from '@styld/domain/Wallet/WalletCommandIds'
 import { format } from '@styld/i18n'
 import { Effect, Layer, Result } from 'effect'
 import { Redacted } from 'effect'
@@ -88,30 +89,22 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
     const wallets = yield* Wallet
     const exercise = Effect.fn('Styld.acceptance.wallet')(function* () {
       const owner = UserId.make('native-test-owner')
-      yield* wallets.send(owner, new GrantMonthlyCredits({ period: '2026-10', monthly: 10 }), {
-        commandId: 'grant:2026-10',
-      })
-      const compete = (id: string) =>
-        wallets
-          .send(
-            owner,
-            new ReserveCredits({
-              operationId: OperationId.make(id),
-              fingerprint: 'a'.repeat(64),
-              amount: 8,
-            }),
-            { commandId: `reserve:${id}` },
-          )
-          .pipe(Effect.result)
+      const grant = new GrantMonthlyCredits({ period: '2026-10', monthly: 10 })
+      yield* wallets.send(owner, grant, { commandId: monthlyGrantCommandId(grant) })
+      const compete = (id: string) => {
+        const command = new ReserveCredits({
+          operationId: OperationId.make(id),
+          fingerprint: 'a'.repeat(64),
+          amount: 8,
+        })
+        return wallets.send(owner, command, { commandId: reserveCommandId(command) }).pipe(Effect.result)
+      }
       const results = yield* Effect.all([compete('one'), compete('two')], { concurrency: 'unbounded' })
       const reserved = yield* wallets.state(owner)
       const operationId = Object.keys(reserved.reservations)[0]
       if (operationId !== undefined) {
-        yield* wallets.send(
-          owner,
-          new SettleCredits({ operationId: OperationId.make(operationId), outcome: 'refunded' }),
-          { commandId: 'settle' },
-        )
+        const refund = new SettleCredits({ operationId: OperationId.make(operationId), outcome: 'refunded' })
+        yield* wallets.send(owner, refund, { commandId: settleCommandId(refund) })
         yield* compete(operationId)
       }
       const settled = yield* wallets.state(owner)

@@ -7,6 +7,7 @@ import { GrantMonthlyCredits } from '@styld/domain/Wallet/GrantMonthlyCredits.co
 import { ReserveCredits } from '@styld/domain/Wallet/ReserveCredits.command'
 import { SettleCredits } from '@styld/domain/Wallet/SettleCredits.command'
 import { Wallet } from '@styld/domain/Wallet/Wallet.aggregate'
+import { monthlyGrantCommandId, reserveCommandId, settleCommandId } from '@styld/domain/Wallet/WalletCommandIds'
 import { Effect, Layer } from 'effect'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
@@ -25,16 +26,10 @@ export const recoveryRoutes = (database: QueryDatabaseClient, media: ReadWriteBu
   Effect.gen(function* () {
     const wallets = yield* Wallet
     const reserve = Effect.gen(function* () {
-      yield* wallets.send(owner, new GrantMonthlyCredits({ period: '2026-10', monthly: 10 }), {
-        commandId: 'recovery-grant',
-      })
-      yield* wallets.send(
-        owner,
-        new ReserveCredits({ operationId: operation, fingerprint: 'b'.repeat(64), amount: 8 }),
-        {
-          commandId: 'recovery-reserve',
-        },
-      )
+      const grant = new GrantMonthlyCredits({ period: '2026-10', monthly: 10 })
+      yield* wallets.send(owner, grant, { commandId: monthlyGrantCommandId(grant) })
+      const command = new ReserveCredits({ operationId: operation, fingerprint: 'b'.repeat(64), amount: 8 })
+      yield* wallets.send(owner, command, { commandId: reserveCommandId(command) })
     })
     const seed = Effect.gen(function* () {
       yield* seedIdentity(database, owner)
@@ -58,8 +53,8 @@ export const recoveryRoutes = (database: QueryDatabaseClient, media: ReadWriteBu
     })
     const settle = Effect.gen(function* () {
       const command = new SettleCredits({ operationId: operation, outcome: 'refunded' })
-      yield* wallets.send(owner, command, { commandId: 'recovery-settle' })
-      yield* wallets.send(owner, command, { commandId: 'recovery-settle' })
+      yield* wallets.send(owner, command, { commandId: settleCommandId(command) })
+      yield* wallets.send(owner, command, { commandId: settleCommandId(command) })
       // This transport receipt must still reject a fresh reservation after settlement.
       yield* reserve
       return HttpServerResponse.empty({ status: 204 })

@@ -18,6 +18,7 @@ import {
 } from '../src/Wallet/ReserveCredits.command.ts'
 import { CreditsSettled, SettleCredits } from '../src/Wallet/SettleCredits.command.ts'
 import { Wallet } from '../src/Wallet/Wallet.aggregate.ts'
+import { reserveCommandId, settleCommandId } from '../src/Wallet/WalletCommandIds.ts'
 
 const story = Story.make(Styld)
 const owner = UserId.make('usr_alice')
@@ -27,6 +28,7 @@ const fingerprint = 'a'.repeat(64)
 const service = Story.provide(CurrentActor, { userId: owner, service: true })
 const initialGrant = new MonthlyCreditsGranted({ period: '2026-10', monthly: 10, subscriptionAfter: 10 })
 const reserve = new ReserveCredits({ operationId, fingerprint, amount: 15 })
+const refund = new SettleCredits({ operationId, outcome: 'refunded' })
 const reserved = new CreditsReserved({
   operationId,
   fingerprint,
@@ -47,11 +49,11 @@ it.effect('allocates subscription first and refunds exactly once to the original
       initialGrant,
       new PurchasedCreditsGranted({ paymentId: 'purchase-one', amount: 10, purchasedAfter: 10 }),
     ),
-    Story.when(wallet, reserve, { commandId: 'reserve:generation-one' }),
+    Story.when(wallet, reserve, { commandId: reserveCommandId(reserve) }),
     Story.then(wallet, reserved),
-    Story.when(wallet, reserve, { commandId: 'reserve:generation-one' }),
+    Story.when(wallet, reserve, { commandId: reserveCommandId(reserve) }),
     Story.then(wallet),
-    Story.when(wallet, new SettleCredits({ operationId, outcome: 'refunded' }), { commandId: 'settle:generation-one' }),
+    Story.when(wallet, refund, { commandId: settleCommandId(refund) }),
     Story.then(
       wallet,
       new CreditsSettled({
@@ -66,6 +68,50 @@ it.effect('allocates subscription first and refunds exactly once to the original
     Story.when(wallet, new SettleCredits({ operationId, outcome: 'refunded' })),
     Story.then(wallet),
     Story.state(wallet, (state) => expect(state).toMatchObject({ subscription: 10, purchased: 10, reservations: {} })),
+  ),
+)
+
+it.effect('derived command IDs keep a settled operation from being reserved again', () =>
+  story(
+    service,
+    Story.given(wallet, initialGrant),
+    Story.when(wallet, new ReserveCredits({ operationId, fingerprint, amount: 4 }), {
+      commandId: reserveCommandId(new ReserveCredits({ operationId, fingerprint, amount: 4 })),
+    }),
+    Story.then(
+      wallet,
+      new CreditsReserved({
+        operationId,
+        fingerprint,
+        fromSubscription: 4,
+        fromPurchased: 0,
+        subscriptionAfter: 6,
+        purchasedAfter: 0,
+      }),
+    ),
+    Story.when(wallet, new SettleCredits({ operationId, outcome: 'consumed' }), {
+      commandId: settleCommandId(new SettleCredits({ operationId, outcome: 'consumed' })),
+    }),
+    Story.then(
+      wallet,
+      new CreditsSettled({
+        operationId,
+        outcome: 'consumed',
+        fromSubscription: 4,
+        fromPurchased: 0,
+        subscriptionAfter: 6,
+        purchasedAfter: 0,
+      }),
+    ),
+    // A redelivered reservation reuses its receipt: no second hold for a settled operation.
+    Story.when(wallet, new ReserveCredits({ operationId, fingerprint, amount: 4 }), {
+      commandId: reserveCommandId(new ReserveCredits({ operationId, fingerprint, amount: 4 })),
+    }),
+    Story.then(wallet),
+    // A late refund for the same operation is the same settlement and cannot return consumed credits.
+    Story.when(wallet, refund, { commandId: settleCommandId(refund) }),
+    Story.then(wallet),
+    Story.state(wallet, (state) => expect(state).toMatchObject({ subscription: 6, reservations: {} })),
   ),
 )
 
