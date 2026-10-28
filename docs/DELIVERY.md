@@ -9,7 +9,7 @@ V1 repository: `/home/kristjan/code/stylelab`. Frozen comparison commit: `dddf9d
 ## Work sequence
 
 1. Foundation: exact dependency family, tsrs/effect-tsrs, verified tsrs-lint, Oxfmt/Oxlint/anti-slop, graph/provenance/suppression gates, skills/MCP, tests and reproducible build.
-2. Runtime proof: Alchemy isolated preview, D1/Drizzle, R2, native telemetry, Foldkit SSR + client, en/sl, Yielded sessions, Domain reservation/job through a native Worker test. Native acceptance now exercises the actual application Worker and the built Foldkit website through the public edge, including browser hydration, locale persistence, and unauthenticated session reads with Origin/CSRF enforcement. Deployment, signed-in flows, job recovery and telemetry readback remain pending.
+2. Runtime proof: Alchemy isolated preview, D1/Drizzle, R2, native telemetry, Foldkit SSR + client, en/sl, Yielded sessions, Domain reservation/job through a native Worker test. Native acceptance now exercises the actual application Worker and the built Foldkit website through the public edge, including browser hydration, locale persistence, and unauthenticated session reads with Origin/CSRF enforcement. The isolated preview and native telemetry readback are accepted at the release recorded in STATUS; signed-in flows and job recovery remain pending.
 3. Port domain operations and UI by the parity matrix. Preserve source behavior and constraints, not just route names. Land coherent tested slices.
 4. Connect provider adapters, durable retries/refunds, auth flows, billing test mode and live-safe email. Exercise storage/restart/privacy failure cases.
 5. Rehearse import/export with fixtures and stable IDs; verify public links, image delivery, vectors, locale, mobile and MCP contracts.
