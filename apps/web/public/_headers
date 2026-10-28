@@ -1,0 +1,6 @@
+# Static files are served before the edge Worker runs, so they carry their own headers.
+# The policy only matters if a file is opened as a document, such as an SVG: nothing runs.
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Content-Security-Policy: default-src 'none'; img-src 'self' data:; style-src 'unsafe-inline'; frame-ancestors 'none'

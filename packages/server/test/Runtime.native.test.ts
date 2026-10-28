@@ -158,6 +158,11 @@ test(
     expect(yield* script.text).toContain('hydrate')
     expect(stylesheet.status, `edge asset ${stylesheetPath}`).toBe(200)
     expect(yield* stylesheet.text).toContain('--z-styld-color-paper')
+    // Static files bypass the edge Worker; public/_headers secures them, SVG documents included.
+    const icon = yield* HttpClient.get(`${styldUrl}/favicon.svg`)
+    expect(icon.status).toBe(200)
+    expect(icon.headers['x-content-type-options']).toBe('nosniff')
+    expect(icon.headers['content-security-policy']).toContain("default-src 'none'")
   }).pipe(Effect.provide(FetchHttpClient.layer)),
   { timeout: 60000 },
 )
