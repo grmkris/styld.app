@@ -28,6 +28,15 @@ const fingerprint = 'a'.repeat(64)
 const service = Story.provide(CurrentActor, { userId: owner, service: true })
 const initialGrant = new MonthlyCreditsGranted({ period: '2026-10', monthly: 10, subscriptionAfter: 10 })
 const reserve = new ReserveCredits({ operationId, fingerprint, amount: 15 })
+const reserveFour = new ReserveCredits({ operationId, fingerprint, amount: 4 })
+const reservedFour = new CreditsReserved({
+  operationId,
+  fingerprint,
+  fromSubscription: 4,
+  fromPurchased: 0,
+  subscriptionAfter: 6,
+  purchasedAfter: 0,
+})
 const refund = new SettleCredits({ operationId, outcome: 'refunded' })
 const reserved = new CreditsReserved({
   operationId,
@@ -75,20 +84,8 @@ it.effect('derived command IDs keep a settled operation from being reserved agai
   story(
     service,
     Story.given(wallet, initialGrant),
-    Story.when(wallet, new ReserveCredits({ operationId, fingerprint, amount: 4 }), {
-      commandId: reserveCommandId(new ReserveCredits({ operationId, fingerprint, amount: 4 })),
-    }),
-    Story.then(
-      wallet,
-      new CreditsReserved({
-        operationId,
-        fingerprint,
-        fromSubscription: 4,
-        fromPurchased: 0,
-        subscriptionAfter: 6,
-        purchasedAfter: 0,
-      }),
-    ),
+    Story.when(wallet, reserveFour, { commandId: reserveCommandId(reserveFour) }),
+    Story.then(wallet, reservedFour),
     Story.when(wallet, new SettleCredits({ operationId, outcome: 'consumed' }), {
       commandId: settleCommandId(new SettleCredits({ operationId, outcome: 'consumed' })),
     }),
@@ -104,9 +101,7 @@ it.effect('derived command IDs keep a settled operation from being reserved agai
       }),
     ),
     // A redelivered reservation reuses its receipt: no second hold for a settled operation.
-    Story.when(wallet, new ReserveCredits({ operationId, fingerprint, amount: 4 }), {
-      commandId: reserveCommandId(new ReserveCredits({ operationId, fingerprint, amount: 4 })),
-    }),
+    Story.when(wallet, reserveFour, { commandId: reserveCommandId(reserveFour) }),
     Story.then(wallet),
     // A late refund for the same operation is the same settlement and cannot return consumed credits.
     Story.when(wallet, refund, { commandId: settleCommandId(refund) }),
@@ -121,20 +116,8 @@ it.effect('a settle that arrives before its reservation is rejected and does not
     Story.given(wallet, initialGrant),
     Story.when(wallet, refund, { commandId: settleCommandId(refund) }),
     Story.rejected(new ReservationNotFound()),
-    Story.when(wallet, new ReserveCredits({ operationId, fingerprint, amount: 4 }), {
-      commandId: reserveCommandId(new ReserveCredits({ operationId, fingerprint, amount: 4 })),
-    }),
-    Story.then(
-      wallet,
-      new CreditsReserved({
-        operationId,
-        fingerprint,
-        fromSubscription: 4,
-        fromPurchased: 0,
-        subscriptionAfter: 6,
-        purchasedAfter: 0,
-      }),
-    ),
+    Story.when(wallet, reserveFour, { commandId: reserveCommandId(reserveFour) }),
+    Story.then(wallet, reservedFour),
     // The rejection left no receipt, so the same settle ID now settles the hold.
     Story.when(wallet, refund, { commandId: settleCommandId(refund) }),
     Story.then(
