@@ -7,8 +7,11 @@ import { SettleCredits } from '@styld/domain/Wallet/SettleCredits.command'
 import { Wallet } from '@styld/domain/Wallet/Wallet.aggregate'
 import { format } from '@styld/i18n'
 import { Effect, Layer, Result } from 'effect'
+import { Redacted } from 'effect'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
+import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
+import { makeAuthHttp } from '../src/AuthHttp.ts'
 import { DomainLive } from '../src/DomainLive.ts'
 import { StyldDatabase, StyldMedia } from '../src/Resources.ts'
 
@@ -18,10 +21,29 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
   {
     main: import.meta.url,
     compatibility: { date: '2026-10-19' },
+    env: {
+      AUTH_ORIGIN: 'http://localhost',
+      AUTH_SECRET: 'native-test-auth-secret-012345678901234567890123',
+      AUTH_SESSION_KEYS: JSON.stringify({
+        activeKeyId: 'native-test',
+        keys: [{ id: 'native-test', material: 'bmF0aXZlLXRlc3Qta2V5LW1hdGVyaWFsLWxvbmc=' }],
+      }),
+    },
   },
+  // oxlint-disable-next-line max-lines-per-function -- native acceptance fixture keeps all endpoints in one Worker.
   Effect.gen(function* () {
     const database = yield* Cloudflare.D1.QueryDatabase(StyldDatabase)
     const media = yield* Cloudflare.R2.ReadWriteBucket(StyldMedia)
+    const auth = makeAuthHttp(database, {
+      origin: 'http://localhost',
+      secret: Redacted.make('native-test-auth-secret-012345678901234567890123'),
+      secureCookies: false,
+      sessionKeys: {
+        activeKeyId: 'native-test',
+        keys: [{ id: 'native-test', material: Redacted.make('bmF0aXZlLXRlc3Qta2V5LW1hdGVyaWFsLWxvbmc=') }],
+      },
+    })
+    const authHandle = yield* HttpRouter.toHttpEffect(auth.layer).pipe(Effect.orDie)
     const wallets = yield* Wallet
     const exercise = Effect.fn('Styld.acceptance.wallet')(function* () {
       const owner = UserId.make('native-test-owner')
@@ -59,6 +81,7 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
       fetch: Effect.gen(function* () {
         const request = yield* HttpServerRequest
         const url = new URL(request.url, 'http://local.invalid')
+        if (url.pathname.startsWith('/api/auth/')) return yield* authHandle
         if (url.pathname === '/intl')
           return yield* HttpServerResponse.json({
             en: format('en', 'catalog.pieces', { count: 2 }),

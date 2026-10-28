@@ -1,4 +1,4 @@
-import { Auth, Password, Sessions } from '@yielded/auth'
+import { Auth, AuthContract, Password, Sessions } from '@yielded/auth'
 import { Schema } from 'effect'
 
 export const AccountClaims = Schema.Struct({
@@ -18,9 +18,18 @@ export const sessionOptions = Sessions.stateful({
   cacheFor: 30_000,
 })
 
+/** Shared browser/server contract. Add an action only when its payload and
+ * success/error semantics are ready for every transport. */
+export const AuthApi = AuthContract.make('styld/Auth', {
+  claims: AccountClaims,
+  basePath: '/api/auth',
+  actions: (sessions) => ({
+    signIn: AuthContract.passwordSignIn(sessions),
+  }),
+})
+
 export const makeAuth = () =>
-  Auth.make('styld/Auth', {
-    claims: AccountClaims,
+  Auth.make(AuthApi, {
     sessions: sessionOptions,
     strategies: { password: Password.make() },
     defaultStrategy: 'password',

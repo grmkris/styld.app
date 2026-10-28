@@ -99,8 +99,10 @@
       "dependencies": {
         "@alchemy.run/cloudflare": "catalog:",
         "@alchemy.run/domain": "catalog:",
+        "@styld/auth": "workspace:*",
         "@styld/domain": "workspace:*",
         "@styld/i18n": "workspace:*",
+        "@yielded/auth": "catalog:",
         "alchemy": "catalog:",
         "effect": "catalog:",
       },

@@ -4,6 +4,7 @@ import * as Alchemy from 'alchemy'
 import * as Test from 'alchemy/Test/Bun'
 import { Effect } from 'effect'
 import * as FetchHttpClient from 'effect/http/FetchHttpClient'
+import * as HttpBody from 'effect/http/HttpBody'
 import * as HttpClient from 'effect/http/HttpClient'
 import RuntimeWorker from './RuntimeWorker.ts'
 
@@ -75,6 +76,26 @@ test(
       },
       media: { sentinel: false },
     })
+  }).pipe(Effect.provide(FetchHttpClient.layer)),
+  { timeout: 60000 },
+)
+
+test(
+  'serves Yielded Auth session reads through the native Worker router',
+  Effect.gen(function* () {
+    const { url } = yield* stack
+    const response = yield* HttpClient.post(`${url}/api/auth/getSession`, {
+      headers: new Headers({
+        origin: 'http://localhost',
+        'content-type': 'application/json',
+        'x-effect-auth-csrf': '1',
+      }),
+      body: HttpBody.text('{}', 'application/json'),
+    })
+    const body = yield* response.text
+    expect(response.status, body).toBe(200)
+    const payload: unknown = JSON.parse(body)
+    expect(payload).toMatchObject({ _tag: 'Success' })
   }).pipe(Effect.provide(FetchHttpClient.layer)),
   { timeout: 60000 },
 )
