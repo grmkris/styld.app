@@ -7,6 +7,7 @@ import { decodeAuthSecret, decodeAuthSessionKeyring } from './AuthConfiguration.
 import { makeAuthHttp } from './AuthHttp.ts'
 import { DomainLive } from './DomainLive.ts'
 import { health } from './Health.ts'
+import { onFirstUse } from './IsolateCache.ts'
 import { storageHealth } from './StorageHealth.ts'
 import { StyldDatabase, StyldMedia } from './Resources.ts'
 import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
@@ -31,40 +32,45 @@ export default StyldWorker.make(
   Effect.gen(function* () {
     const database = yield* Cloudflare.D1.QueryDatabase(StyldDatabase)
     const media = yield* Cloudflare.R2.ReadWriteBucket(StyldMedia)
+    // Bindings configured by the stack (including the web origin and secrets)
+    // exist only in the deployed request runtime, not while Alchemy evaluates
+    // the Worker declaration during planning. Build the application on the
+    // first request and reuse it for every later request in this isolate.
+    const application = yield* onFirstUse((env: Cloudflare.Workers.WorkerEnvironment['Service']) =>
+      Effect.gen(function* () {
+        const observabilityBase = yield* makeObservabilityBase({
+          environment: env.STYLD_ENV,
+          release: env.STYLD_RELEASE,
+          component: 'server',
+        }).pipe(Effect.orDie)
+        const authOrigin: unknown = env.AUTH_ORIGIN
+        if (typeof authOrigin !== 'string' || authOrigin.length === 0) {
+          return yield* Effect.die(new Error('AUTH_ORIGIN binding is required'))
+        }
+        const authSessionKeys = yield* decodeAuthSessionKeyring(env.AUTH_SESSION_KEYS).pipe(Effect.orDie)
+        const authSecret = yield* decodeAuthSecret(env.AUTH_SECRET).pipe(Effect.orDie)
+        const auth = makeAuthHttp(database, {
+          origin: authOrigin,
+          secret: authSecret,
+          secureCookies: true,
+          sessionKeys: authSessionKeys,
+        })
+        const routes = Layer.mergeAll(
+          auth.layer,
+          HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),
+          HttpRouter.add('GET', '/api/storage', storageHealth(database, media)),
+        ).pipe(Layer.provide(AlchemyHttp.Platform))
+        const handle = yield* HttpRouter.toHttpEffect(routes).pipe(Effect.orDie)
+        return { handle, observabilityBase }
+      }),
+    )
     const fetch = Effect.gen(function* () {
-      // Bindings configured by the stack (including the web origin and
-      // secrets) exist only in the deployed request runtime, not while
-      // Alchemy evaluates the Worker declaration during planning.
       const env = yield* Cloudflare.Workers.WorkerEnvironment
-      const observabilityBase = yield* makeObservabilityBase({
-        environment: env.STYLD_ENV,
-        release: env.STYLD_RELEASE,
-        component: 'server',
-      }).pipe(Effect.orDie)
-      const authOrigin: unknown = env.AUTH_ORIGIN
-      if (typeof authOrigin !== 'string' || authOrigin.length === 0) {
-        return yield* Effect.die(new Error('AUTH_ORIGIN binding is required'))
-      }
-      const authSessionKeys = yield* decodeAuthSessionKeyring(env.AUTH_SESSION_KEYS).pipe(Effect.orDie)
-      const authSecret = yield* decodeAuthSecret(env.AUTH_SECRET).pipe(Effect.orDie)
-      const auth = makeAuthHttp(database, {
-        origin: authOrigin,
-        secret: authSecret,
-        secureCookies: true,
-        sessionKeys: authSessionKeys,
-      })
-      const routes = Layer.mergeAll(
-        auth.layer,
-        HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),
-        HttpRouter.add('GET', '/api/storage', storageHealth(database, media)),
-      ).pipe(Layer.provide(AlchemyHttp.Platform))
-      const handle = yield* HttpRouter.toHttpEffect(routes).pipe(Effect.orDie)
-      return Effect.gen(function* () {
-        const request = yield* HttpServerRequest
-        const metadata = metadataFromHeaders(observabilityBase, request.headers)
-        return yield* handle.pipe(withObservability('styld.http', metadata))
-      })
-    }).pipe(Effect.flatten)
+      const { handle, observabilityBase } = yield* application(env)
+      const request = yield* HttpServerRequest
+      const metadata = metadataFromHeaders(observabilityBase, request.headers)
+      return yield* handle.pipe(withObservability('styld.http', metadata))
+    })
     return { fetch }
   }).pipe(Effect.provide(Runtime)),
 )
