@@ -21,7 +21,9 @@ Styling is zyzz (`zyzz/vite` in `apps/web/vite.config.ts`). There is no hand-wri
 - Pass `style()` a literal object at module scope. Spreading imported records into a definition is outside zyzz's verified compiler scope.
 - No dynamic inline declarations. The edge CSP is `style-src 'self'`, so an inline `style` attribute is a violation that browser acceptance fails on. Model state with variants or `data-*` selectors instead.
 - Tests locate elements by role, text or landmark, never by generated class names.
-- `bun run lint` runs `zyzz/valid-styles`, `zyzz/no-conflicting-props` and `zyzz/no-unused`; `bun run typecheck` checks token names and values.
+- `bun run typecheck` rejects unknown properties, token names and value types; `bun run unused:production` reports unused styles; `bun run lint` runs `zyzz/valid-styles` for value markers such as a misplaced `!important`. zyzz's JSX and namespace rules cannot apply to Foldkit views.
+- The CSS baseline is Chrome/Edge 123, Firefox 120 and Safari 17.5 (`build.cssTarget`); zyzz emits native nesting that older browsers drop.
+- The token custom properties are never applied with `vars()`, so tokens resolve through their compiled fallbacks; derived tokens (`field`, `hover`) repeat their source literals.
 
 ## Reference
 

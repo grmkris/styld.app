@@ -30,6 +30,8 @@ global({
   p: { maxInlineSize: '65ch', textWrap: 'pretty' },
   a: { color: 'inherit', textUnderlineOffset: '0.2em', touchAction: 'manipulation' },
   'button, select, input': { font: 'inherit', fontSize: '1rem', touchAction: 'manipulation' },
+  // DESIGN.md: every control keeps at least a 44px touch target.
+  'button, select': { minBlockSize: '44px' },
   ':focus-visible': {
     outlineWidth: '2px',
     outlineStyle: 'solid',

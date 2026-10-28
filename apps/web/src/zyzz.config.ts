@@ -14,7 +14,8 @@ export const { style, vars } = defineConfig({
       focus: 'oklch(50% 0.095 248)',
       error: 'oklch(48% 0.16 25)',
       invalid: 'oklch(58% 0.16 25)',
-      // Input fields and hovered secondary actions: paper tinted towards ink.
+      // Input fields and hovered secondary actions: paper tinted towards ink. These repeat the
+      // paper and ink literals, so change them together.
       field: 'color-mix(in oklch, oklch(94.5% 0.01 76) 88%, oklch(19% 0.024 52))',
       hover: 'color-mix(in oklch, oklch(94.5% 0.01 76) 90%, oklch(19% 0.024 52))',
     },

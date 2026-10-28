@@ -31,9 +31,9 @@ export default defineConfig({
   ],
   env: { es2024: true },
   rules: {
+    // zyzz's no-conflicting-props checks JSX and no-unused checks namespaces, neither of which Styld
+    // uses; typecheck rejects unknown properties and tokens, and Knip reports unused styles.
     'zyzz/valid-styles': 'error',
-    'zyzz/no-conflicting-props': 'error',
-    'zyzz/no-unused': 'error',
     'typescript/no-explicit-any': 'error',
     'typescript/no-floating-promises': ['error', { ignoreVoid: false }],
     'typescript/no-misused-promises': 'error',
