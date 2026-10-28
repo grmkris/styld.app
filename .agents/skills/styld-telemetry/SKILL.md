@@ -10,7 +10,7 @@ Telemetry is Effect from the browser to the Durable Objects. Instrument only thr
 ## How it flows
 
 - **Browser.** `apps/web/src/Telemetry.ts` wraps the Foldkit program with Maple's Foldkit layer: Command spans under a `pageload`/`navigate` parent, crash and slow-phase spans. Effect's `HttpClient` sends `traceparent` on API calls. Spans go as OTLP/JSON to `/api/telemetry/v1/traces` on the same origin; no ingest key exists.
-- **Relay.** `packages/server/src/BrowserTelemetry.ts` admits same-origin JSON with a declared length of at most 256 KiB, keeps the attribute allowlist (with length caps), caps spans per request and logs one `styld.browser.span` record per span. Logs and metrics are acknowledged and dropped.
+- **Relay.** `packages/server/src/BrowserTelemetry.ts` admits same-origin JSON with a declared length of at most 1 MiB and a per-IP rate allowance (120 a minute, `TELEMETRY_RATE_LIMIT` binding), decodes spans one by one, keeps the attribute and `exception`-event allowlist (a `Map`, with length caps) and logs at most 100 `styld.browser.span` records per request. Logs, metrics and the SDK's session events are acknowledged and dropped; the browser reduces every URL to origin and route (`sanitizeUrl`) and masks element text.
 - **Server.** `Cloudflare.Telemetry` provides native traces; `withObservability` in `@styld/observability` adds one named span and the bounded `styld.*` fields to every request, including `styld.browser.trace_id` from a valid `traceparent`. Request handlers log with `Logger.consoleStructured` (set per request: Alchemy's bridge defaults to `consolePretty`, which arrives as one string), so Workers Logs indexes each field under `annotations.*`.
 
 ## Rules

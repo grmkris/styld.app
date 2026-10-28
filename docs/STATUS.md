@@ -2,6 +2,17 @@
 
 Status: active, foundation deployed to an isolated workers.dev preview. Full parity is not achieved.
 
+## Independent review round — 2026-10-28
+
+Two reviewers read the changes since `370a0e2` independently (architecture/tooling and security/privacy/durable behaviour). No high-severity findings; every medium and most low findings are fixed with tests:
+
+- **Isolate build.** A request arriving during another request's first build was cancelled as hung in workerd (reproduced by the reviewer). Concurrent first requests now build their own value; the first success is kept and failures are retried.
+- **Wallet.** An early settle stored an accepted no-op receipt that could leave a later hold unsettleable. A settle without a pending hold is now rejected (`ReservationNotFound`); rejections leave no receipt. After settlement the Wallet keeps no record of the operation, so the generation request must refuse a changed payload for an operation it already ran.
+- **Telemetry relay.** Per-IP rate limit (120/min), per-span decoding, a `Map` allowlist, exception details from span events, a 1 MiB body cap with 100 logged spans, discarded session events, route-only URLs and masked element text in the browser, and no `url.path`. API requests log structured objects (Alchemy's bridge default is a pretty string).
+- **Vendored Foldkit.** Its `CLAUDE.md`, `.claude`, `.claude-plugin` and `.agents` were being loaded into agent sessions; they are excluded and `AGENTS.md` is renamed `FOLDKIT_AGENTS.md`. `vendor:check` now ties the snapshot to the installed version and the Foldkit skill pins.
+- **Other.** Static files carry their own security headers (`public/_headers`); x18n checks server packages except three named files; pseudo-locales appear only in `local` and `preview`; the 44px control minimum and an explicit CSS baseline are back.
+- **Recorded, not changed.** zyzz token custom properties are never applied with `vars()` and derived tokens repeat their source literals. The relay's rate limit bounds one client, not a distributed flood; production needs sampling or aggregation before launch.
+
 ## Review and stack adoption — 2026-10-28
 
 Owner decisions after the foundation handoff: zyzz for styling, Maple for Effect browser telemetry kept inside Cloudflare, x18n for catalog tooling, official agent skills, a vendored Foldkit reference and current dependency pins. A code review of the foundation was folded in. Full parity is still not achieved; every DELIVERY matrix row remains pending.
