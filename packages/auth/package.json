@@ -13,7 +13,6 @@
     "@effect/sql-d1": "catalog:",
     "@styld/db": "workspace:*",
     "@yielded/auth": "catalog:",
-    "@yielded/auth-persistence": "catalog:",
     "@yielded/auth-persistence-drizzle": "catalog:",
     "drizzle-orm": "catalog:",
     "effect": "catalog:"

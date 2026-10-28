@@ -10,7 +10,9 @@ describe('Worker auth secret text', () => {
     const decoded = await Effect.runPromise(decodeAuthSessionKeyring(JSON.stringify(keyring)))
     expect(decoded.activeKeyId).toBe('current')
     expect(decoded.keys).toHaveLength(1)
-    expect(Redacted.value(decoded.keys[0]!.material)).toBe(material)
+    const key = decoded.keys[0]
+    if (key === undefined) throw new Error('Expected the decoded session signing key')
+    expect(Redacted.value(key.material)).toBe(material)
     expect(JSON.stringify(decoded)).not.toContain(material)
   })
 

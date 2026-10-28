@@ -2,7 +2,7 @@ import { expect } from 'bun:test'
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import * as Alchemy from 'alchemy'
 import * as Test from 'alchemy/Test/Bun'
-import { Effect, Redacted } from 'effect'
+import { Effect, Redacted, Schedule, Schema } from 'effect'
 import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import * as HttpBody from 'effect/http/HttpBody'
 import * as HttpClient from 'effect/http/HttpClient'
@@ -12,52 +12,71 @@ import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
 import RuntimeWorker from './RuntimeWorker.ts'
 import StyldWorkerLive, { StyldWorker } from '../src/StyldWorker.ts'
 
-const Stack = Alchemy.Stack(
-  'StyldLocalAcceptance',
-  {
-    providers: Cloudflare.providers(),
-    state: Alchemy.localState(),
-  },
-  Effect.gen(function* () {
-    const worker = yield* RuntimeWorker
-    const styld = yield* StyldWorker
-    // Execute the production SSR artifact in workerd. Website.Foldkit's dev
-    // mode runs Vite in Node, which cannot prove the deployed Worker behavior.
-    const website = yield* Cloudflare.Worker('NativeWebsite', {
-      main: 'apps/web/dist/server/fetch.js',
-      assets: { directory: 'apps/web/dist/client' },
-      compatibility: { date: '2026-10-19' },
-    })
-    const edge = yield* Cloudflare.Worker('NativeEdge', {
-      main: 'packages/server/src/EdgeWorker.ts',
-      env: { API: styld, WEBSITE: website },
-      assets: { directory: 'apps/web/dist/client' },
-      compatibility: { date: '2026-10-19' },
-    })
-    // Native acceptance binds the same secret-text contract used by Alchemy's
-    // preview stack. Values are test-only and never leave this process.
-    yield* styld.bind('RuntimeConfiguration', {
-      env: {
-        AUTH_ORIGIN: edge.url,
-        STYLD_ENV: 'local',
-        STYLD_RELEASE: 'native-test',
-        AUTH_SECRET: Redacted.make('native-test-auth-secret-012345678901234567890123'),
-        AUTH_SESSION_KEYS: Redacted.make(
-          JSON.stringify({
-            activeKeyId: 'native-test',
-            keys: [{ id: 'native-test', material: 'a'.repeat(43) }],
-          }),
-        ),
+const makeStack = (generation: string) =>
+  Alchemy.Stack(
+    'StyldLocalAcceptance',
+    {
+      providers: Cloudflare.providers(),
+      state: Alchemy.localState(),
+    },
+    Effect.gen(function* () {
+      const worker = yield* RuntimeWorker
+      yield* worker.bind('AcceptanceGeneration', { env: { TEST_GENERATION: generation } })
+      const styld = yield* StyldWorker
+      // Execute the production SSR artifact in workerd. Website.Foldkit's dev
+      // mode runs Vite in Node, which cannot prove the deployed Worker behavior.
+      const website = yield* Cloudflare.Worker('NativeWebsite', {
+        main: 'apps/web/dist/server/fetch.js',
+        assets: { directory: 'apps/web/dist/client' },
+        compatibility: { date: '2026-10-19' },
+      })
+      const edge = yield* Cloudflare.Worker('NativeEdge', {
+        main: 'packages/server/src/EdgeWorker.ts',
+        env: { API: styld, WEBSITE: website },
+        assets: { directory: 'apps/web/dist/client' },
+        compatibility: { date: '2026-10-19' },
+      })
+      // Native acceptance binds the same secret-text contract used by Alchemy's
+      // preview stack. Values are test-only and never leave this process.
+      yield* styld.bind('RuntimeConfiguration', {
+        env: {
+          AUTH_ORIGIN: edge.url,
+          STYLD_ENV: 'local',
+          STYLD_RELEASE: `native-${generation}`,
+          AUTH_SECRET: Redacted.make('native-test-auth-secret-012345678901234567890123'),
+          AUTH_SESSION_KEYS: Redacted.make(
+            JSON.stringify({
+              activeKeyId: 'native-test',
+              keys: [{ id: 'native-test', material: 'a'.repeat(43) }],
+            }),
+          ),
+        },
+      })
+      return {
+        url: worker.url.as<string>(),
+        styldUrl: edge.url.as<string>(),
+        apiUrl: styld.url.as<string>(),
+        websiteUrl: website.url.as<string>(),
+      }
+    }).pipe(Effect.provide(StyldWorkerLive)),
+  )
+
+const Stack = makeStack('before')
+
+class RestartPending extends Schema.TaggedError<RestartPending>()('RestartPending', {}) {}
+
+const authCall =
+  (origin: string) =>
+  (action: string, payload: object, cookie = '') =>
+    HttpClient.post(`${origin}/api/auth/${action}`, {
+      headers: {
+        origin: new URL(origin).origin,
+        'content-type': 'application/json',
+        'x-effect-auth-csrf': '1',
+        cookie,
       },
+      body: HttpBody.text(JSON.stringify({ payload }), 'application/json'),
     })
-    return {
-      url: worker.url.as<string>(),
-      styldUrl: edge.url.as<string>(),
-      apiUrl: styld.url.as<string>(),
-      websiteUrl: website.url.as<string>(),
-    }
-  }).pipe(Effect.provide(StyldWorkerLive)),
-)
 
 const { test, beforeAll, afterAll, deploy, destroy } = Test.make({
   providers: Cloudflare.providers(),
@@ -261,16 +280,7 @@ test(
     const { url, styldUrl } = yield* stack
     const seeded = yield* HttpClient.post(`${url}/test/identity/seed`)
     expect(seeded.status).toBe(204)
-    const call = (action: string, payload: object, cookie = '') =>
-      HttpClient.post(`${styldUrl}/api/auth/${action}`, {
-        headers: {
-          origin: new URL(styldUrl).origin,
-          'content-type': 'application/json',
-          'x-effect-auth-csrf': '1',
-          cookie,
-        },
-        body: HttpBody.text(JSON.stringify({ payload }), 'application/json'),
-      })
+    const call = authCall(styldUrl)
     const credentials = { email: 'native-identity@example.invalid', password: 'native-identity-password-52' }
     const denied = yield* call('signIn', { ...credentials, password: 'incorrect-password' })
     expect(yield* denied.json).toMatchObject({ _tag: 'Failure' })
@@ -353,4 +363,56 @@ test(
     expect(typeof body.fraction).toBe('number')
   }).pipe(Effect.provide(FetchHttpClient.layer)),
   { timeout: 60000 },
+)
+
+test(
+  'recovers native wallet receipts, auth sessions and R2 bytes after a Worker restart',
+  Effect.gen(function* () {
+    const { url, styldUrl } = yield* stack
+    expect((yield* HttpClient.post(`${url}/test/recovery/seed`)).status).toBe(204)
+    const callAuth = authCall(styldUrl)
+    const login = yield* callAuth('signIn', {
+      email: 'native-recovery@example.invalid',
+      password: 'native-identity-password-52',
+    })
+    expect(yield* login.json).toMatchObject({ _tag: 'Success', value: { _tag: 'Authenticated' } })
+    const cookie = Object.entries(login.cookies.cookies)
+      .map(([name, value]) => `${name}=${value.value}`)
+      .join('; ')
+    const read = () => HttpClient.get(`${url}/test/recovery/read`).pipe(Effect.flatMap((response) => response.json))
+    expect(yield* read()).toMatchObject({ generation: 'before', reads: 1, wallet: { subscription: 2 } })
+    expect(yield* read()).toMatchObject({ generation: 'before', reads: 2 })
+    const next = yield* deploy(makeStack('after'))
+    expect(next.url).toBe(url)
+    const recovered = yield* read().pipe(
+      Effect.filterOrFail(
+        Schema.is(Schema.Struct({ generation: Schema.Literal('after') })),
+        () => new RestartPending(),
+      ),
+      Effect.retry({ times: 100, schedule: Schedule.spaced('100 millis') }),
+    )
+    expect(recovered).toMatchObject({
+      generation: 'after',
+      reads: 1,
+      wallet: { subscription: 2, reservations: { 'recovery-operation': { fromSubscription: 8 } } },
+      media: 'survives-native-restart',
+    })
+    yield* HttpClient.get(`${next.apiUrl}/api/health`).pipe(
+      Effect.flatMap((response) => response.json),
+      Effect.filterOrFail(
+        Schema.is(Schema.Struct({ release: Schema.Literal('native-after') })),
+        () => new RestartPending(),
+      ),
+      Effect.retry({ times: 100, schedule: Schedule.spaced('100 millis') }),
+    )
+    expect(yield* (yield* callAuth('getSession', {}, cookie)).json).toMatchObject({
+      _tag: 'Success',
+      value: { subjectId: 'native-recovery' },
+    })
+    expect((yield* HttpClient.post(`${url}/test/recovery/replay`)).status).toBe(204)
+    expect(yield* read()).toMatchObject({ wallet: { subscription: 2 } })
+    expect((yield* HttpClient.post(`${url}/test/recovery/settle`)).status).toBe(204)
+    expect(yield* read()).toMatchObject({ wallet: { subscription: 10, reservations: {} } })
+  }).pipe(Effect.provide(FetchHttpClient.layer)),
+  { timeout: 120000 },
 )

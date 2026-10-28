@@ -50,7 +50,7 @@ export const Message = defineMessageUnion({
 })
 export type Message = typeof Message.Type
 
-export const SignIn = Command.define('SignIn', {
+const SignIn = Command.define('SignIn', {
   messages: [Message.SucceededSignIn, Message.FailedSignIn],
   execute: Effect.gen(function* () {
     const { auth } = yield* BrowserAuth
@@ -62,7 +62,7 @@ export const SignIn = Command.define('SignIn', {
   }).pipe(Effect.catch(() => Effect.succeed(Message.FailedSignIn()))),
 })
 
-export const ReadSession = Command.define('ReadSession', {
+const ReadSession = Command.define('ReadSession', {
   messages: [Message.ReceivedSession, Message.FailedReadSession],
   execute: Effect.gen(function* () {
     const { auth } = yield* BrowserAuth
@@ -71,7 +71,7 @@ export const ReadSession = Command.define('ReadSession', {
   }).pipe(Effect.catch(() => Effect.succeed(Message.FailedReadSession()))),
 })
 
-export const SignOut = Command.define('SignOut', {
+const SignOut = Command.define('SignOut', {
   messages: [Message.SucceededSignOut, Message.FailedSignOut],
   execute: Effect.gen(function* () {
     yield* (yield* BrowserAuth).auth.signOut()
@@ -79,7 +79,7 @@ export const SignOut = Command.define('SignOut', {
   }).pipe(Effect.catch(() => Effect.succeed(Message.FailedSignOut()))),
 })
 
-export const SaveLocale = Command.define('SaveLocale', {
+const SaveLocale = Command.define('SaveLocale', {
   args: { locale: Locale },
   messages: [Message.SucceededSaveLocale, Message.FailedSaveLocale],
   execute: ({ locale }) =>

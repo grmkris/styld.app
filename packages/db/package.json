@@ -8,8 +8,5 @@
   },
   "dependencies": {
     "drizzle-orm": "catalog:"
-  },
-  "devDependencies": {
-    "drizzle-kit": "catalog:"
   }
 }

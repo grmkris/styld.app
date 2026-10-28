@@ -3,11 +3,11 @@ import * as AlchemyHttp from 'alchemy/Http'
 import { Effect, Layer } from 'effect'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpRouter from 'effect/http/HttpRouter'
-import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { decodeAuthSecret, decodeAuthSessionKeyring } from './AuthConfiguration.ts'
 import { makeAuthHttp } from './AuthHttp.ts'
 import { DomainLive } from './DomainLive.ts'
 import { health } from './Health.ts'
+import { storageHealth } from './StorageHealth.ts'
 import { StyldDatabase, StyldMedia } from './Resources.ts'
 import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
 
@@ -53,24 +53,10 @@ export default StyldWorker.make(
         secureCookies: true,
         sessionKeys: authSessionKeys,
       })
-      const storage = Effect.gen(function* () {
-        const tables = yield* database
-          .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
-          .all<{ name: string }>()
-        const mediaHealth = yield* media.head('health/sentinel').pipe(Effect.orDie)
-        return yield* HttpServerResponse.json({
-          database: {
-            tables: tables.results
-              .map((row) => row.name)
-              .filter((name) => !name.startsWith('__') && !name.startsWith('_cf_')),
-          },
-          media: { sentinel: mediaHealth !== null },
-        })
-      })
       const routes = Layer.mergeAll(
         auth.layer,
-        HttpRouter.add('GET', '/api/health', health()),
-        HttpRouter.add('GET', '/api/storage', storage),
+        HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),
+        HttpRouter.add('GET', '/api/storage', storageHealth(database, media)),
       ).pipe(Layer.provide(AlchemyHttp.Platform))
       const handle = yield* HttpRouter.toHttpEffect(routes).pipe(Effect.orDie)
       return Effect.gen(function* () {

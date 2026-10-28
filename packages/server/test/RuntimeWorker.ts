@@ -13,9 +13,11 @@ import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { exerciseAttemptLimiter } from './AttemptLimiterFixture.ts'
 import { seedIdentity, disableIdentity } from './IdentityFixture.ts'
+import { recoveryRoutes } from './RecoveryFixture.ts'
 import { makeAuthHttp } from '../src/AuthHttp.ts'
 import { DomainLive } from '../src/DomainLive.ts'
 import { StyldDatabase, StyldMedia } from '../src/Resources.ts'
+import { storageHealth } from '../src/StorageHealth.ts'
 
 // Only the local native-test stack imports this fixture. It has no production declaration.
 export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
@@ -49,6 +51,7 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
     })
     const identityRoutes = Layer.mergeAll(
       auth.layer,
+      yield* recoveryRoutes(database, media),
       HttpRouter.add(
         'POST',
         '/test/identity/seed',
@@ -119,7 +122,11 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
       fetch: Effect.gen(function* () {
         const request = yield* HttpServerRequest
         const url = new URL(request.url, 'http://local.invalid')
-        if (url.pathname.startsWith('/api/auth/') || url.pathname.startsWith('/test/identity/'))
+        if (
+          url.pathname.startsWith('/api/auth/') ||
+          url.pathname.startsWith('/test/identity/') ||
+          url.pathname.startsWith('/test/recovery/')
+        )
           return yield* authHandle
         if (url.pathname === '/intl')
           return yield* HttpServerResponse.json({
@@ -135,20 +142,7 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
             Effect.orDie,
             Effect.flatMap((payload) => HttpServerResponse.json(payload).pipe(Effect.orDie)),
           )
-        if (url.pathname === '/storage') {
-          const tables = yield* database
-            .prepare("SELECT name FROM sqlite_master WHERE type = 'table' ORDER BY name")
-            .all<{ name: string }>()
-          const mediaHealth = yield* media.head('health/sentinel').pipe(Effect.orDie)
-          return yield* HttpServerResponse.json({
-            database: {
-              tables: tables.results
-                .map((row) => row.name)
-                .filter((name) => !name.startsWith('__') && !name.startsWith('_cf_')),
-            },
-            media: { sentinel: mediaHealth !== null },
-          })
-        }
+        if (url.pathname === '/storage') return yield* storageHealth(database, media)
         return HttpServerResponse.empty({ status: 404 })
       }),
     }
