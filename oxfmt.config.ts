@@ -11,6 +11,7 @@ export default defineConfig({
     '**/.wrangler/**',
     '.agents/**',
     '.claude/**',
+    'repos/**',
     'docs/research/**',
     'docs/migration/v1-inventory.json',
     'tools/oxlint/anti-slop/**',

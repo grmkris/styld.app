@@ -1,0 +1,13 @@
+{
+  "foldkit": {
+    "repository": "foldkit/foldkit",
+    "ref": "foldkit@0.169.0",
+    "commit": "7ee214268c602967937b80f6f20d1e831f2e8ab6",
+    "license": "MIT",
+    "exclude": [
+      "repos",
+      "packages/create-foldkit-app/templates/base/AGENTS.md"
+    ],
+    "treeSha256": "60a01ab34c8622b28fee89d566efeae453c6f4d03c2cde30c6411e6640c55e92"
+  }
+}
