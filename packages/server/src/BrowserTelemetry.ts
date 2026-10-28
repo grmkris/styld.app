@@ -40,8 +40,8 @@ export const TraceExport = Schema.Struct({
 export type TraceExport = typeof TraceExport.Type
 
 /** Browser span attributes worth keeping, with their maximum text length. Everything
- * else (full URLs with queries, user agent, session and visitor IDs, locale, time
- * zone, Command arguments) never leaves the request. */
+ * else (URL paths and full URLs, user agent, session and visitor IDs, locale, time
+ * zone, Command arguments) never leaves the request; span names carry fixed routes. */
 const allowed: Readonly<Record<string, number>> = {
   'maple.foldkit.message': maxText,
   'maple.foldkit.navigation_id': maxText,
@@ -54,7 +54,6 @@ const allowed: Readonly<Record<string, number>> = {
   'maple.exception.source': maxText,
   'http.request.method': maxText,
   'http.response.status_code': maxText,
-  'url.path': maxText,
   'error.type': maxText,
   'exception.type': maxText,
   'exception.message': maxText,

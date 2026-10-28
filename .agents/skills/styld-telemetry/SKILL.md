@@ -17,7 +17,7 @@ Telemetry is Effect from the browser to the Durable Objects. Instrument only thr
 
 - Name reusable operations with `Effect.fn('Styld.<Area>.<operation>')`; add context with `Effect.annotateCurrentSpan`/`Effect.annotateLogs` using `styld.*` keys of bounded cardinality.
 - New metadata fields go through `ObservabilityMetadata` with a schema and a test. Never derive operation, job or attempt labels from request headers.
-- Never record tokens, cookies, signed URLs, prompts, images, request bodies, emails or free text typed by a user. Browser Command arguments stay off (`commandArgs: 'none'`); navigation names use fixed routes (`routeName`).
+- Never record tokens, cookies, signed URLs, prompts, images, request bodies, emails or free text typed by a user. Browser Command arguments stay off (`commandArgs: 'none'`); navigation names use fixed routes (`routeName`), and the relay drops `url.path`/`url.full`, which the SDK records verbatim.
 - A new browser attribute needs an entry in the relay allowlist with a length cap and a privacy review, plus a case in `packages/server/test/BrowserTelemetry.test.ts`. Keep replay, session rows and visitor IDs off unless Kris decides otherwise.
 - Telemetry is sampled diagnostics, never the usage or billing ledger; that lives in the Wallet aggregate.
 - Browser acceptance asserts a trace export reaches the relay (204) and that no telemetry body contains credentials. Keep both when changing the flow.

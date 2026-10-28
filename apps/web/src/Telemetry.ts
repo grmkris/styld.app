@@ -2,7 +2,7 @@ import { MapleFoldkit } from '@maple-dev/effect-sdk/foldkit'
 
 const knownRoutes = new Set(['/', '/login', '/account'])
 
-/** Navigation spans carry a fixed route name, never a raw path that could hold personal data. */
+/** Navigation spans carry a fixed route name; the relay drops the raw `url.path` the SDK also records. */
 const routeName = (pathname: string): string => (knownRoutes.has(pathname) ? pathname : 'other')
 
 /** Browser telemetry as Effect spans: Foldkit Commands grouped under their page load or

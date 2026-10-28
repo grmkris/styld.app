@@ -32,6 +32,7 @@ const span = (overrides: Readonly<Record<string, unknown>> = {}) => ({
     { key: 'maple.foldkit.message', value: { stringValue: 'SucceededSaveLocale' } },
     { key: 'http.response.status_code', value: { intValue: '204' } },
     { key: 'url.full', value: { stringValue: 'https://styld.test/locale?token=secret' } },
+    { key: 'url.path', value: { stringValue: '/@private-person/looks' } },
     { key: 'user_agent.original', value: { stringValue: 'Mozilla/5.0 private' } },
     { key: 'session.id', value: { stringValue: 'session-secret' } },
     { key: 'maple.foldkit.arg.email', value: { stringValue: 'person@example.com' } },
@@ -73,7 +74,7 @@ test('records one bounded, allowlisted log per browser span', async () => {
   })
   expect(String(fields['styld.browser.exception.message'])).toHaveLength(256)
   const serialized = JSON.stringify(fields)
-  for (const secret of ['token=secret', 'Mozilla', 'session-secret', 'person@example.com'])
+  for (const secret of ['token=secret', '@private-person', 'Mozilla', 'session-secret', 'person@example.com'])
     expect(serialized).not.toContain(secret)
   expect(fields).not.toHaveProperty('styld.browser.parent_span_id')
 })
