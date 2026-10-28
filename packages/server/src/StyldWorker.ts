@@ -15,10 +15,12 @@ import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@
 const Runtime = Layer.mergeAll(
   DomainLive,
   Cloudflare.Telemetry({ headSamplingRate: 1 }),
-  // Workers Logs indexes the fields of logged objects, so every Effect log is one structured object.
-  Logger.layer([Logger.consoleStructured]),
   Cloudflare.D1.QueryDatabaseBinding,
 )
+
+// Alchemy's Worker bridge gives every event `Logger.consolePretty`, which reaches Workers Logs
+// as one string. Requests log structured objects instead, so Workers Logs indexes every field.
+const structuredLogs: ReadonlySet<Logger.Logger<unknown, unknown>> = new Set([Logger.consoleStructured])
 
 export class StyldWorker extends Cloudflare.Worker<StyldWorker, Cloudflare.WorkerShape>()('StyldWorker') {}
 
@@ -70,7 +72,7 @@ export default StyldWorker.make(
       const request = yield* HttpServerRequest
       const metadata = metadataFromHeaders(observabilityBase, request.headers)
       return yield* handle.pipe(withObservability('styld.http', metadata))
-    })
+    }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs))
     return { fetch }
   }).pipe(Effect.provide(Runtime)),
 )
