@@ -10,6 +10,10 @@ D1 with Drizzle owns identity/application relational data, wardrobe, profiles, s
 
 Model commands carry idempotency and request hashes. Provider accepted-but-response-lost is an explicit unknown state, reconciled by provider receipt where possible. Usage is reserved before execution, consumed after durable success or refunded once after known failure. Credentials, credit amounts and owner identity never come from trusted browser input.
 
+Domain beta.84 looks up a transport command ID before re-running `decide`. Transport IDs therefore remain server-owned and stable per internal operation. The generation request must own public idempotency keys and canonical payload fingerprints; direct public Wallet command access is forbidden. The Wallet retains only pending holds, and its durable receipts prevent a settled operation from being reserved again under its original server-generated command ID. Receipt retention or deletion must preserve that invariant.
+
+Monthly credits roll over up to twice the monthly grant, including held subscription credits. A plan downgrade may reduce unreserved subscription credits but never erases an in-flight hold. Refunds restore the original source pools, preserving purchased-credit ownership.
+
 ## Authentication
 
 Yielded Auth is the chosen authentication library. Port anonymous users/merge, email OTP, Google sign-in, sessions, account linking/deletion and MCP authorization with explicit storage adapters. MCP is bearer-only, HTTPS/loopback redirects, CIMD primary and compatible DCR, short-lived access tokens, consent re-read and immediate revoke. Dodo customer creation stays lazy at checkout and cannot block sign-in.
@@ -29,3 +33,5 @@ Native Cloudflare logs/traces are composed once at the host. Effect named spans 
 ## Delivery boundary
 
 Deliver an isolated preview at workers.dev, with safe test data and functioning provider paths. No production DNS cutover, destructive v1 migration or personal-data copying into preview. Provide a reconciled export/import rehearsal and documented production migration procedure as part of parity readiness.
+
+The pinned Domain `2.0.0-beta.84` does not export the skill's `Domain.verify(Model)` helper. Building the real model validates definitions through its kernel; a story test checks construction. Follow installed source where the bundled skill describes a newer API.

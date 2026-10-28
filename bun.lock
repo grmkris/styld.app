@@ -38,6 +38,18 @@
         "vitest": "catalog:",
       },
     },
+    "packages/domain": {
+      "name": "@styld/domain",
+      "dependencies": {
+        "@alchemy.run/domain": "catalog:",
+        "alchemy": "catalog:",
+        "effect": "catalog:",
+      },
+      "devDependencies": {
+        "@effect/vitest": "catalog:",
+        "vitest": "catalog:",
+      },
+    },
     "packages/i18n": {
       "name": "@styld/i18n",
       "dependencies": {
@@ -507,6 +519,8 @@
     "@sindresorhus/is": ["@sindresorhus/is@7.2.0", "", {}, "sha512-P1Cz1dWaFfR4IR+U13mqqiGsLFf1KbayybWwdd2vfctdV6hDpUkgCY0nKOLLTMSoRd/jJNjtbqzf13K8DCCXQw=="],
 
     "@speed-highlight/core": ["@speed-highlight/core@1.2.24", "", {}, "sha512-qeW2e1l78afw8VhRPfPQ1Gjj+KU5XFQ/OFV5ti6eTa9bruO7mJyZtA4vw0ofqmA3tKCkROE9xLk3VZoeRc98nw=="],
+
+    "@styld/domain": ["@styld/domain@workspace:packages/domain"],
 
     "@styld/i18n": ["@styld/i18n@workspace:packages/i18n"],
 
