@@ -10,23 +10,26 @@ import { Effect, Option, Scope } from 'effect'
  * service that captured that request's execution context or tracer hangs
  * every later request in workerd.
  *
- * Concurrent first callers share one build; an interrupted build is retried by
- * the next caller. The isolate scope is never closed (workerd has no teardown
- * hook), so the value must not own anything that needs cleanup.
+ * Concurrent first requests each build their own value rather than waiting
+ * on another request's build: workerd cancels a request that awaits I/O
+ * started by a different request. The first successful build is kept; a
+ * failed or interrupted build is retried by the next request. The isolate
+ * scope is never closed (workerd has no teardown hook), so the value must not
+ * own anything that needs cleanup.
  */
 export const onFirstUse = <I, A, E, R>(build: (input: I) => Effect.Effect<A, E, R>) =>
   Effect.gen(function* () {
     const constructor = yield* Effect.context<Exclude<R, Scope.Scope>>()
     const isolate = yield* Scope.make()
-    let first: Option.Option<I> = Option.none()
-    const cached = yield* Effect.cached(
-      Effect.suspend(() =>
-        Option.isSome(first) ? build(first.value) : Effect.die(new Error('onFirstUse ran without an input')),
-      ).pipe(Scope.provide(isolate)),
-    )
+    let built: Option.Option<A> = Option.none()
+    const keep = (value: A) =>
+      Effect.sync(() => {
+        if (Option.isNone(built)) built = Option.some(value)
+      })
     return (input: I): Effect.Effect<A, E> =>
-      Effect.suspend(() => {
-        if (Option.isNone(first)) first = Option.some(input)
-        return cached
-      }).pipe(Effect.updateContext((): typeof constructor => constructor))
+      Effect.suspend(() =>
+        Option.isSome(built)
+          ? Effect.succeed(built.value)
+          : build(input).pipe(Scope.provide(isolate), Effect.tap(keep)),
+      ).pipe(Effect.updateContext((): typeof constructor => constructor))
   })
