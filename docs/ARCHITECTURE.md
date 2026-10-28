@@ -2,7 +2,7 @@
 
 ## Runtime and public contracts
 
-One Cloudflare public origin replaces Caddy and Railway. An Alchemy Foldkit Website serves browser assets and public rendering; an internal Effect Worker owns typed application operations and Domain hosting. HTTP, MCP and durable jobs invoke the same operations. Preserve published MCP names/arguments, `/mcp`, `/mcp/app`, auth discovery and consent/revocation behavior. Preserve public profile/share/link contracts.
+One Cloudflare public origin replaces Caddy and Railway. A small public edge Worker routes explicit API namespaces to the internal Effect Worker and pages to the Alchemy Foldkit Website. Both internal Workers disable workers.dev and version preview URLs. The edge serves the Foldkit build's static assets directly: service-binding fetch bypasses the website's public asset router. Foldkit's generated SSR entry stays unmodified; beta.84 does not support a custom entry with `ssr.build`. The internal Effect Worker owns typed application operations and Domain hosting. HTTP, MCP and durable jobs invoke the same operations. Preserve published MCP names/arguments, `/mcp`, `/mcp/app`, auth discovery and consent/revocation behavior. Preserve public profile/share/link contracts.
 
 ## State ownership
 

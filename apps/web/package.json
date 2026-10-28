@@ -3,7 +3,8 @@
   "private": true,
   "type": "module",
   "sideEffects": [
-    "*.css"
+    "./src/entry.ts",
+    "**/*.css"
   ],
   "scripts": {
     "dev": "vite",

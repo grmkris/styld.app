@@ -11,15 +11,28 @@ export default Alchemy.Stack(
     const api = yield* StyldWorker
     const website = yield* Cloudflare.Website.Foldkit('StyldWebsite', {
       rootDir: 'apps/web',
-      env: { API: api },
+      workersDev: { enabled: false, previewsEnabled: false },
+    })
+    const edge = yield* Cloudflare.Worker('StyldEdge', {
+      main: 'packages/server/src/EdgeWorker.ts',
+      env: { API: api, WEBSITE: website },
+      // Service-binding fetch enters the SSR handler without the website's
+      // public asset router. Serve the same build's files at the public edge.
+      assets: { directory: 'apps/web/dist/client' },
+      compatibility: { date: '2026-10-19' },
       workersDev: true,
+      observability: {
+        enabled: true,
+        logs: { enabled: true, invocationLogs: true },
+        traces: { enabled: true, headSamplingRate: 1 },
+      },
     })
     // Alchemy's Worker resource alias currently erases its binding generic;
     // the runtime Resource.bind contract still accepts this provider payload.
     // @ts-expect-error -- upstream Worker<Bindings> omits Resource<..., Binding>.
     yield* api.bind('AUTH_ORIGIN', {
       bindings: [
-        { type: 'plain_text', name: 'AUTH_ORIGIN', text: website.url },
+        { type: 'plain_text', name: 'AUTH_ORIGIN', text: edge.url },
         { type: 'plain_text', name: 'STYLD_ENV', text: 'preview' },
         { type: 'plain_text', name: 'STYLD_RELEASE', text: 'preview' },
         {
@@ -34,6 +47,6 @@ export default Alchemy.Stack(
         },
       ],
     })
-    return { apiUrl: api.url.as<string>(), url: website.url.as<string>() }
+    return { url: edge.url.as<string>() }
   }).pipe(Effect.provide(StyldWorkerLive)),
 )

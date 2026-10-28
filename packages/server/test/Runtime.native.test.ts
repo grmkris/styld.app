@@ -6,7 +6,10 @@ import { Effect } from 'effect'
 import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import * as HttpBody from 'effect/http/HttpBody'
 import * as HttpClient from 'effect/http/HttpClient'
+import { chromium } from 'playwright'
+import { verifyBrowser } from './BrowserAcceptance.ts'
 import RuntimeWorker from './RuntimeWorker.ts'
+import StyldWorkerLive, { StyldWorker } from '../src/StyldWorker.ts'
 
 const Stack = Alchemy.Stack(
   'StyldLocalAcceptance',
@@ -16,8 +19,49 @@ const Stack = Alchemy.Stack(
   },
   Effect.gen(function* () {
     const worker = yield* RuntimeWorker
-    return { url: worker.url.as<string>() }
-  }),
+    const styld = yield* StyldWorker
+    // Execute the production SSR artifact in workerd. Website.Foldkit's dev
+    // mode runs Vite in Node, which cannot prove the deployed Worker behavior.
+    const website = yield* Cloudflare.Worker('NativeWebsite', {
+      main: 'apps/web/dist/server/fetch.js',
+      assets: { directory: 'apps/web/dist/client' },
+      compatibility: { date: '2026-10-19' },
+    })
+    const edge = yield* Cloudflare.Worker('NativeEdge', {
+      main: 'packages/server/src/EdgeWorker.ts',
+      env: { API: styld, WEBSITE: website },
+      assets: { directory: 'apps/web/dist/client' },
+      compatibility: { date: '2026-10-19' },
+    })
+    // Native acceptance binds the same secret-text contract used by Alchemy's
+    // preview stack. Values are test-only and never leave this process.
+    yield* styld.bind('AUTH_ORIGIN', {
+      bindings: [
+        { type: 'plain_text', name: 'AUTH_ORIGIN', text: 'http://localhost' },
+        { type: 'plain_text', name: 'STYLD_ENV', text: 'local' },
+        { type: 'plain_text', name: 'STYLD_RELEASE', text: 'native-test' },
+        {
+          type: 'plain_text',
+          name: 'AUTH_SECRET',
+          text: 'native-test-auth-secret-012345678901234567890123',
+        },
+        {
+          type: 'plain_text',
+          name: 'AUTH_SESSION_KEYS',
+          text: JSON.stringify({
+            activeKeyId: 'native-test',
+            keys: [{ id: 'native-test', material: 'a'.repeat(43) }],
+          }),
+        },
+      ],
+    })
+    return {
+      url: worker.url.as<string>(),
+      styldUrl: edge.url.as<string>(),
+      apiUrl: styld.url.as<string>(),
+      websiteUrl: website.url.as<string>(),
+    }
+  }).pipe(Effect.provide(StyldWorkerLive)),
 )
 
 const { test, beforeAll, afterAll, deploy, destroy } = Test.make({
@@ -27,8 +71,31 @@ const { test, beforeAll, afterAll, deploy, destroy } = Test.make({
   dev: true,
   sidecar: { omitEnv: ['CLOUDFLARE_'] },
 })
-const stack = beforeAll(deploy(Stack), { timeout: 120000 })
+// The local service-binding proxy may return 503 while a dependency is still
+// compiling. Its direct development URL waits for startup before dispatching.
+const stack = beforeAll(
+  deploy(Stack).pipe(
+    Effect.tap(({ apiUrl }) => HttpClient.get(`${apiUrl}/api/health`).pipe(Effect.provide(FetchHttpClient.layer))),
+    Effect.tap(({ websiteUrl }) => HttpClient.get(websiteUrl).pipe(Effect.provide(FetchHttpClient.layer))),
+  ),
+  { timeout: 120000 },
+)
 afterAll(destroy(Stack), { timeout: 60000 })
+
+test(
+  'hydrates the built website and persists locale changes in a browser',
+  Effect.scoped(
+    Effect.gen(function* () {
+      const { styldUrl } = yield* stack
+      const browserInstance = yield* Effect.acquireRelease(
+        Effect.promise(() => chromium.launch({ headless: true })),
+        (browser) => Effect.promise(() => browser.close()),
+      )
+      yield* Effect.promise(() => verifyBrowser(browserInstance, styldUrl))
+    }),
+  ),
+  { timeout: 60000 },
+)
 
 test(
   'formats Slovenian with the real Worker Intl implementation',
@@ -37,6 +104,81 @@ test(
     const response = yield* HttpClient.get(`${url}/intl`)
     expect(response.status).toBe(200)
     expect(yield* response.json).toMatchObject({ en: '2 pieces', sl: '102 kosa', plural: 'two', date: '1970' })
+  }).pipe(Effect.provide(FetchHttpClient.layer)),
+  { timeout: 60000 },
+)
+
+test(
+  'serves the built Foldkit document and assets through the public edge',
+  Effect.gen(function* () {
+    const { styldUrl } = yield* stack
+    const document = yield* HttpClient.get(styldUrl, { headers: { accept: 'text/html' } })
+    const html = yield* document.text
+    expect(document.status).toBe(200)
+    expect(document.headers['content-type']).toContain('text/html')
+    expect(html).toContain('A wardrobe shaped by you.')
+    const scriptPath = html.match(/<script type="module" crossorigin src="([^"]+)"/)?.[1]
+    const stylesheetPath = html.match(/<link rel="stylesheet" crossorigin href="([^"]+)"/)?.[1]
+    expect(scriptPath).toBeDefined()
+    expect(stylesheetPath).toBeDefined()
+    const script = yield* HttpClient.get(`${styldUrl}${scriptPath}`)
+    const stylesheet = yield* HttpClient.get(`${styldUrl}${stylesheetPath}`)
+    expect(script.status, `edge asset ${scriptPath}`).toBe(200)
+    expect(yield* script.text).toContain('hydrate')
+    expect(stylesheet.status, `edge asset ${stylesheetPath}`).toBe(200)
+    expect(yield* stylesheet.text).toContain('--paper')
+  }).pipe(Effect.provide(FetchHttpClient.layer)),
+  { timeout: 60000 },
+)
+
+test(
+  'serves health and storage through the actual application Worker',
+  Effect.gen(function* () {
+    const { styldUrl } = yield* stack
+    const health = yield* HttpClient.get(`${styldUrl}/api/health`)
+    expect(health.status).toBe(200)
+    expect(yield* health.json).toMatchObject({ service: 'styldappv2', status: 'ok' })
+
+    const storage = yield* HttpClient.get(`${styldUrl}/api/storage`)
+    expect(storage.status).toBe(200)
+    expect(yield* storage.json).toMatchObject({ media: { sentinel: false } })
+  }).pipe(Effect.provide(FetchHttpClient.layer)),
+  { timeout: 60000 },
+)
+
+test(
+  'enforces Origin and CSRF on the actual application Worker',
+  Effect.gen(function* () {
+    const { styldUrl } = yield* stack
+    const missingHeaders = yield* HttpClient.post(`${styldUrl}/api/auth/getSession`, {
+      headers: new Headers({ 'content-type': 'application/json' }),
+      body: HttpBody.text('{}', 'application/json'),
+    })
+    expect(missingHeaders.status).toBe(403)
+
+    const valid = yield* HttpClient.post(`${styldUrl}/api/auth/getSession`, {
+      headers: new Headers({
+        origin: 'http://localhost',
+        'content-type': 'application/json',
+        'x-effect-auth-csrf': '1',
+      }),
+      body: HttpBody.text('{}', 'application/json'),
+    })
+    expect(valid.status).toBe(200)
+    expect(yield* valid.json).toMatchObject({ _tag: 'Success' })
+
+    const wrongOrigin = yield* HttpClient.post(`${styldUrl}/api/auth/getSession`, {
+      headers: new Headers({
+        origin: 'https://evil.invalid',
+        'content-type': 'application/json',
+        'x-effect-auth-csrf': '1',
+      }),
+      body: HttpBody.text('{}', 'application/json'),
+    })
+    expect(wrongOrigin.status).toBe(403)
+
+    const unknownRoute = yield* HttpClient.get(`${styldUrl}/api/health-other`)
+    expect(unknownRoute.status).toBe(404)
   }).pipe(Effect.provide(FetchHttpClient.layer)),
   { timeout: 60000 },
 )
