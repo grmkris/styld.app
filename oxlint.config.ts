@@ -17,6 +17,8 @@ export default defineConfig({
     '.agents/**',
     '.claude/**',
     'repos/**',
+    // The Gallery design prototype: reference HTML and its generator scripts (docs/design/gallery/README.md).
+    'docs/design/**',
     'tools/oxlint/anti-slop/**',
   ],
   options: { typeAware: true, reportUnusedDisableDirectives: 'error' },

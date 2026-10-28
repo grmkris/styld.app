@@ -1,0 +1,442 @@
+[
+  {
+    "cat": "knitwear",
+    "title": "Pulover Crystal Bel",
+    "price": "24.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/08/e645a847-df6d-44e3-9aad-3f9eb2bf14cd.png",
+    "shop": "Secretstylex",
+    "id": "cati_01m5zwxgy6f26rzvhc6aj676zb"
+  },
+  {
+    "cat": "knitwear",
+    "title": "Pulover Crystal Črn",
+    "price": "24.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/08/972258c4-65f0-49ad-a774-138716361aef.png",
+    "shop": "Secretstylex",
+    "id": "cati_01m5zwxgy6f26rzvh0xs4c018k"
+  },
+  {
+    "cat": "knitwear",
+    "title": "Pulover Kylie Rdeč",
+    "price": "25.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/08/a2da16b7-053a-4a01-9dda-9657a0461769.jpg",
+    "shop": "Secretstylex",
+    "id": "cati_01m5zwxgy6f26rzv2xw9zvfh7z"
+  },
+  {
+    "cat": "knitwear",
+    "title": "Pulover Kylie Bež",
+    "price": "25.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/08/1c16f4f6-346a-46c6-85a2-b8384c0c8e59.png",
+    "shop": "Secretstylex",
+    "id": "cati_01m5zwxgy6f26rzv2fxesr779r"
+  },
+  {
+    "cat": "knitwear",
+    "title": "Pulover Kylie Bel",
+    "price": "25.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/08/8b4427a3-e28f-494a-afd0-8bcd0e744080.png",
+    "shop": "Secretstylex",
+    "id": "cati_01m5zwxgy6f26rzv25w7hp86v3"
+  },
+  {
+    "cat": "shirts_blouses",
+    "title": "Bluza Charlotte",
+    "price": "64.90",
+    "img": "https://avocado.si/wp-content/uploads/2026/10/bluza-charlotte-dsc04394.jpg",
+    "shop": "Avocado",
+    "id": "cati_01m5pwq87de4bbwag7b567ydzw"
+  },
+  {
+    "cat": "shirts_blouses",
+    "title": "Srajca Orelis",
+    "price": "49.90",
+    "img": "https://avocado.si/wp-content/uploads/2026/10/srajca-orelis-dsc04517.jpg",
+    "shop": "Avocado",
+    "id": "cati_01m5pwq87de4bbwafgsqzewpgc"
+  },
+  {
+    "cat": "shirts_blouses",
+    "title": "Srajca Satin Flowers",
+    "price": "44.90",
+    "img": "https://avocado.si/wp-content/uploads/2026/10/srajca-satin-flowers-dsc02132.jpg",
+    "shop": "Avocado",
+    "id": "cati_01m582jyvce4bbb7emwak7n5qs"
+  },
+  {
+    "cat": "shirts_blouses",
+    "title": "Bluza Ruffle Stripe Bordo",
+    "price": "49.90",
+    "img": "https://avocado.si/wp-content/uploads/2026/10/bluza-ruffle-stripe-bordo-dsc03599.jpg",
+    "shop": "Avocado",
+    "id": "cati_01m582jyvbe4bbb7dpwqt4nxqd"
+  },
+  {
+    "cat": "shirts_blouses",
+    "title": "Bluza Lace Ruffle",
+    "price": "49.90",
+    "img": "https://avocado.si/wp-content/uploads/2026/10/bluza-lace-ruffle-dsc02489.jpg",
+    "shop": "Avocado",
+    "id": "cati_01m582jyvbe4bbb7bxtjf898ez"
+  },
+  {
+    "cat": "dresses",
+    "title": "Obleka Annalisa – črna",
+    "price": "69.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/13-10.jpg",
+    "shop": "Stajling",
+    "id": "cati_01m5zwxregf26rzwzfghkf0sg1"
+  },
+  {
+    "cat": "dresses",
+    "title": "Obleka Annalisa – rjava",
+    "price": "69.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/17-4.jpg",
+    "shop": "Stajling",
+    "id": "cati_01m5zwxregf26rzwz6ycvp1r07"
+  },
+  {
+    "cat": "dresses",
+    "title": "Obleka Annalisa – bordo",
+    "price": "69.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/10-10.jpg",
+    "shop": "Stajling",
+    "id": "cati_01m5zwxregf26rzwysyr7ghfj0"
+  },
+  {
+    "cat": "dresses",
+    "title": "OBLEKA ENCA MODRA",
+    "price": "65.99",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/04/Enca-obleka-M-5.jpg",
+    "shop": "Joe & Luca",
+    "id": "cati_01m5xamwj6f26rtc1qvtg8q85s"
+  },
+  {
+    "cat": "dresses",
+    "title": "OBLEKA ENCA MALINA",
+    "price": "65.99",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/04/Enca-obleka-malina-6.jpg",
+    "shop": "Joe & Luca",
+    "id": "cati_01m5xamwj6f26rtc1anqjg8rzd"
+  },
+  {
+    "cat": "skirts",
+    "title": "KRILO NARIN ČRNO RUMENO",
+    "price": "19.99",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/06/Narin-krilo-RUM-11.jpg",
+    "shop": "Joe & Luca",
+    "id": "cati_01m5a151eje4bbdcasng64adxp"
+  },
+  {
+    "cat": "skirts",
+    "title": "Krilo Polka Dot",
+    "price": "39.90",
+    "img": "https://avocado.si/wp-content/uploads/2026/10/krilo-polka-dot-dsc03437.jpg",
+    "shop": "Avocado",
+    "id": "cati_01m582jyvce4bbb7e0pgf7y67e"
+  },
+  {
+    "cat": "skirts",
+    "title": "ERIKA krilo",
+    "price": "99.90",
+    "img": "https://meracollection.com/wp-content/uploads/2024/11/AF4A8723.jpg",
+    "shop": "Méra",
+    "id": "cati_01m569yd38f27sfbd6mq61adef"
+  },
+  {
+    "cat": "skirts",
+    "title": "VELOUR krilo",
+    "price": "99.90",
+    "img": "https://meracollection.com/wp-content/uploads/2025/11/Mera-kravice-43-scaled.jpg",
+    "shop": "Méra",
+    "id": "cati_01m569yd38f27sfb7e3kqwn4fv"
+  },
+  {
+    "cat": "skirts",
+    "title": "HLAČNO KRILO DANEJA BEŽ",
+    "price": "21.99",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2025/08/Daneja-hlacno-krilo-bez-7.jpg",
+    "shop": "Joe & Luca",
+    "id": "cati_01m569ya1kf27sfa66ntdd5en0"
+  },
+  {
+    "cat": "jeans",
+    "title": "Jeans Aisha",
+    "price": "34.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/1-21.jpg",
+    "shop": "Stajling",
+    "id": "cati_01m5zwxregf26rzwwkj9k15gpq"
+  },
+  {
+    "cat": "jeans",
+    "title": "Jeans Juliet",
+    "price": "39.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/4-19.jpg",
+    "shop": "Stajling",
+    "id": "cati_01m5zwxregf26rzwwf1fwrpzpn"
+  },
+  {
+    "cat": "jeans",
+    "title": "Hlače Jeans Barrel Long Gris",
+    "price": "69.90",
+    "img": "https://avocado.si/wp-content/uploads/2026/10/hlace-jeans-barrel-long-gris-dsc04539.jpg",
+    "shop": "Avocado",
+    "id": "cati_01m5pwq87de4bbwafzd99pkg30"
+  },
+  {
+    "cat": "jeans",
+    "title": "Jeans Hlače Sophie",
+    "price": "33.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/10/6163333b-d58e-4fda-859a-13ad6517958e.jpg",
+    "shop": "Secretstylex",
+    "id": "cati_01m5ma61txe4bbr6ekfgjfjaey"
+  },
+  {
+    "cat": "jeans",
+    "title": "Jeans Hlače Boheme",
+    "price": "33.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/10/345c390f-4696-40eb-9324-e6fdda852742.jpg",
+    "shop": "Secretstylex",
+    "id": "cati_01m5ma61txe4bbr6edvzvcvr3s"
+  },
+  {
+    "cat": "trousers",
+    "title": "HLAČE NENI TANKE RJAVE",
+    "price": "32.99",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/05/Ervina-majica-RUM-Neni-tanke-hlace-RJ-3.jpg",
+    "shop": "Joe & Luca",
+    "id": "cati_01m5zx46vvf26s14t3fcm00qb2"
+  },
+  {
+    "cat": "trousers",
+    "title": "HLAČE 7/8 LIV ČRNO SREBRNE",
+    "price": "49.72",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/07/Liv-7-8-hlace-C-SR-11.jpg",
+    "shop": "Joe & Luca",
+    "id": "cati_01m5xamwfnf26rtadqhsry9hqm"
+  },
+  {
+    "cat": "trousers",
+    "title": "Hlače Carolina – črna",
+    "price": "29.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2024/08/Carolina2.jpg",
+    "shop": "Stajling",
+    "id": "cati_01m5r5sj23e4bbyahzqh4qfezp"
+  },
+  {
+    "cat": "trousers",
+    "title": "Hlače Carolina – sv. rjava",
+    "price": "29.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/2d460ccc-f1b3-4c9d-896c-9feb02890198.png",
+    "shop": "Stajling",
+    "id": "cati_01m5r5sj22e4bbyahja4sy7mqx"
+  },
+  {
+    "cat": "trousers",
+    "title": "Mom Fit Hlače Joanna",
+    "price": "33.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/10/2473123b-210d-409a-aa00-36a17d6d5f55.jpg",
+    "shop": "Secretstylex",
+    "id": "cati_01m5ma61txe4bbr6f2m395vbta"
+  },
+  {
+    "cat": "outerwear",
+    "title": "Plašč Haven – črna",
+    "price": "62.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/11-11.jpg",
+    "shop": "Stajling",
+    "id": "cati_01m5zwxregf26rzwxyscm9mwep"
+  },
+  {
+    "cat": "outerwear",
+    "title": "Plašč Haven – rjava",
+    "price": "62.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/16-10.jpg",
+    "shop": "Stajling",
+    "id": "cati_01m5zwxregf26rzwxqvme6vage"
+  },
+  {
+    "cat": "outerwear",
+    "title": "Plašč Haven – bordo",
+    "price": "62.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/13-12.jpg",
+    "shop": "Stajling",
+    "id": "cati_01m5zwxregf26rzwxfgbmnkwcc"
+  },
+  {
+    "cat": "outerwear",
+    "title": "Plašč Haven – kamel",
+    "price": "62.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/18-4.jpg",
+    "shop": "Stajling",
+    "id": "cati_01m5zwxregf26rzwx6b60mb2pt"
+  },
+  {
+    "cat": "outerwear",
+    "title": "Plašč Haven – bež",
+    "price": "62.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/19-4.jpg",
+    "shop": "Stajling",
+    "id": "cati_01m5zwxregf26rzwwt8ehsxawn"
+  },
+  {
+    "cat": "suits_blazers",
+    "title": "Blazer Wrap Belt",
+    "price": "79.90",
+    "img": "https://avocado.si/wp-content/uploads/2026/10/blazer-wrap-belt-dsc02346-2.jpg",
+    "shop": "Avocado",
+    "id": "cati_01m582jyvbe4bbb7cd77xehh8x"
+  },
+  {
+    "cat": "suits_blazers",
+    "title": "PREMIUM suit krojen suknjič",
+    "price": "350.00",
+    "img": "https://meracollection.com/wp-content/uploads/2026/05/nikauran_meracollection_-4-scaled.jpg",
+    "shop": "Méra",
+    "id": "cati_01m569yd38f27sfbhgk0fqmn7b"
+  },
+  {
+    "cat": "suits_blazers",
+    "title": "Blazer Gaja",
+    "price": "32.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2025/09/18-5.jpg",
+    "shop": "Stajling",
+    "id": "cati_01m569w1k7f27sf113469qm1xk"
+  },
+  {
+    "cat": "suits_blazers",
+    "title": "Blazer Aria – rjava",
+    "price": "49.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2025/09/190.jpg",
+    "shop": "Stajling",
+    "id": "cati_01m569w1gwf27sf0zm944cgebk"
+  },
+  {
+    "cat": "suits_blazers",
+    "title": "Blazer Aria – bordo",
+    "price": "49.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2025/09/183.jpg",
+    "shop": "Stajling",
+    "id": "cati_01m569w1gwf27sf0zbgfgsyype"
+  },
+  {
+    "cat": "shoes",
+    "title": "Škornji Sage – črna",
+    "price": "49.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/10-11.jpg",
+    "shop": "Stajling",
+    "id": "cati_01m5zwxregf26rzww3abaqkcas"
+  },
+  {
+    "cat": "shoes",
+    "title": "Škornji Sage – rjava",
+    "price": "49.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/8-12.jpg",
+    "shop": "Stajling",
+    "id": "cati_01m5zwxregf26rzwvra62wf62w"
+  },
+  {
+    "cat": "shoes",
+    "title": "Škornji Olivia – črna",
+    "price": "52.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/10-9.jpg",
+    "shop": "Stajling",
+    "id": "cati_01m5ykvypmf26rxn5e6n5yt6p2"
+  },
+  {
+    "cat": "shoes",
+    "title": "Škornji Olivia – rjava",
+    "price": "52.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/1-19.jpg",
+    "shop": "Stajling",
+    "id": "cati_01m5ykvypmf26rxn57n6zrxmhd"
+  },
+  {
+    "cat": "shoes",
+    "title": "Škornji Elena – črna",
+    "price": "52.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/7-11.jpg",
+    "shop": "Stajling",
+    "id": "cati_01m5ykvypmf26rxn4sav5xw7ak"
+  },
+  {
+    "cat": "bags",
+    "title": "O My Bag torbica Kiki Midi Dark Cherry",
+    "price": "249.00",
+    "img": "https://extraordinary.si/wp-content/uploads/2026/09/Kiki-Midi-Dark-Cherry-Soft-Grain-Leather-Front.jpg",
+    "shop": "Extraordinary",
+    "id": "cati_01m5ym0w20f26rykk1j0wd751m"
+  },
+  {
+    "cat": "bags",
+    "title": "Ročno Izdelana Torbica",
+    "price": "75.00",
+    "img": "https://cdn.shopify.com/s/files/1/0928/5163/4506/files/IMG_9971.jpg?v=1788629929",
+    "shop": "Me Time",
+    "id": "cati_01m56axvfyfev97jqw416x9cf2"
+  },
+  {
+    "cat": "bags",
+    "title": "SIGNATURE Tote Bag",
+    "price": "59.90",
+    "img": "https://meracollection.com/wp-content/uploads/2022/12/IMG_3522-1.jpeg",
+    "shop": "Méra",
+    "id": "cati_01m569yd38f27sfbnqdrd3ne95"
+  },
+  {
+    "cat": "bags",
+    "title": "Torbica Coralina",
+    "price": "20.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2023/07/i-2144.jpg",
+    "shop": "Stajling",
+    "id": "cati_01m569w1k8f27sf1v2e814k5b6"
+  },
+  {
+    "cat": "bags",
+    "title": "Torbica Arlo",
+    "price": "18.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2024/01/1.png",
+    "shop": "Stajling",
+    "id": "cati_01m569w1k7f27sf1rbrzqka82m"
+  },
+  {
+    "cat": "jewelry",
+    "title": "MODNA BROŠKA ROŽA",
+    "price": "9.50",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2025/12/Lavi-tunika-C-SR-36-48-13.jpg",
+    "shop": "Joe & Luca",
+    "id": "cati_01m569ya1kf27sf7t3rx337rqc"
+  },
+  {
+    "cat": "jewelry",
+    "title": "MODNA BROŠKA BEŽ",
+    "price": "8.50",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/05/5.jpg",
+    "shop": "Joe & Luca",
+    "id": "cati_01m569ya1kf27sf7sycbgnzc7g"
+  },
+  {
+    "cat": "jewelry",
+    "title": "MODNA BROŠKA TIL",
+    "price": "8.50",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/05/6.jpg",
+    "shop": "Joe & Luca",
+    "id": "cati_01m569ya1kf27sf7sj91nxv5pe"
+  },
+  {
+    "cat": "jewelry",
+    "title": "MODNA BROŠKA BORDO",
+    "price": "8.50",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/05/4.jpg",
+    "shop": "Joe & Luca",
+    "id": "cati_01m569ya1kf27sf7sd5cn9z1ea"
+  },
+  {
+    "cat": "jewelry",
+    "title": "MODNA BROŠKA ČRNO ZLATA",
+    "price": "8.50",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/05/9.jpg",
+    "shop": "Joe & Luca",
+    "id": "cati_01m569ya1kf27sf7s17p97x221"
+  }
+]

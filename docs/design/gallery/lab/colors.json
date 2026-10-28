@@ -1,0 +1,464 @@
+[
+  {
+    "color": "black",
+    "title": "Obleka Annalisa – črna",
+    "price": "69.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/13-10.jpg",
+    "shop": "Stajling"
+  },
+  {
+    "color": "black",
+    "title": "Komplet Ruth – črna",
+    "price": "52.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/SPLET-600x800-8.jpg",
+    "shop": "Stajling"
+  },
+  {
+    "color": "black",
+    "title": "Plašč Haven – črna",
+    "price": "62.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/11-11.jpg",
+    "shop": "Stajling"
+  },
+  {
+    "color": "black",
+    "title": "Pulover Crystal Črn",
+    "price": "24.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/08/972258c4-65f0-49ad-a774-138716361aef.png",
+    "shop": "Secretstylex"
+  },
+  {
+    "color": "black",
+    "title": "Zimska Bunda Everly Črna",
+    "price": "98.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/10/Modna-zimska-dvojna-modna-podoba.png",
+    "shop": "Secretstylex"
+  },
+  {
+    "color": "black",
+    "title": "Škornji Olivia – črna",
+    "price": "52.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/10-9.jpg",
+    "shop": "Stajling"
+  },
+  {
+    "color": "white",
+    "title": "Pulover Crystal Bel",
+    "price": "24.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/08/e645a847-df6d-44e3-9aad-3f9eb2bf14cd.png",
+    "shop": "Secretstylex"
+  },
+  {
+    "color": "white",
+    "title": "Pulover Kylie Bel",
+    "price": "25.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/08/8b4427a3-e28f-494a-afd0-8bcd0e744080.png",
+    "shop": "Secretstylex"
+  },
+  {
+    "color": "white",
+    "title": "MAJICA NEI KR. BELA",
+    "price": "36.74",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/05/Nei-KR-majica-BE-5.jpg",
+    "shop": "Joe & Luca"
+  },
+  {
+    "color": "white",
+    "title": "MAJICA MIRAE UMAZANO BELA",
+    "price": "43.99",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/10/Mirae-majica-u.be-Keli-hlacno-krilo-olivna-25.jpg",
+    "shop": "Joe & Luca"
+  },
+  {
+    "color": "white",
+    "title": "TUNIKA ILDA BELA",
+    "price": "43.99",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/10/Ilda-tunika-bela-9.jpg",
+    "shop": "Joe & Luca"
+  },
+  {
+    "color": "white",
+    "title": "Bluza Cher Bela",
+    "price": "14.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2021/10/FB_IMG_1635259255650.jpg",
+    "shop": "Secretstylex"
+  },
+  {
+    "color": "grey",
+    "title": "Hlače Jeans Barrel Long Gris",
+    "price": "69.90",
+    "img": "https://avocado.si/wp-content/uploads/2026/10/hlace-jeans-barrel-long-gris-dsc04539.jpg",
+    "shop": "Avocado"
+  },
+  {
+    "color": "grey",
+    "title": "Plašč Megan Siv",
+    "price": "59.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/09/IMG-20261020-WA0272.jpg",
+    "shop": "Secretstylex"
+  },
+  {
+    "color": "grey",
+    "title": "Plašč Natalia Siv",
+    "price": "49.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/09/IMG-20261021-WA0003.jpg",
+    "shop": "Secretstylex"
+  },
+  {
+    "color": "grey",
+    "title": "Komplet Jessica Siv",
+    "price": "39.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/08/IMG-20261022-WA0071.jpg",
+    "shop": "Secretstylex"
+  },
+  {
+    "color": "grey",
+    "title": "Komplet Billie Siv",
+    "price": "44.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/08/IMG-20261022-WA0034.jpg",
+    "shop": "Secretstylex"
+  },
+  {
+    "color": "grey",
+    "title": "Pulover Lotus Siv",
+    "price": "25.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/08/be0dd56a-bb60-4a70-9ea4-1806f9b41dfa.png",
+    "shop": "Secretstylex"
+  },
+  {
+    "color": "beige",
+    "title": "Komplet Ruth – bež",
+    "price": "52.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/2-20.jpg",
+    "shop": "Stajling"
+  },
+  {
+    "color": "beige",
+    "title": "Plašč Haven – bež",
+    "price": "62.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/19-4.jpg",
+    "shop": "Stajling"
+  },
+  {
+    "color": "beige",
+    "title": "Pulover Kylie Bež",
+    "price": "25.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/08/1c16f4f6-346a-46c6-85a2-b8384c0c8e59.png",
+    "shop": "Secretstylex"
+  },
+  {
+    "color": "beige",
+    "title": "Zimski Plašč Sabrina Bež",
+    "price": "99.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/10/Zimska-eleganca-v-mestu.png",
+    "shop": "Secretstylex"
+  },
+  {
+    "color": "beige",
+    "title": "Plašč Sofia – bež",
+    "price": "59.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/14-9.jpg",
+    "shop": "Stajling"
+  },
+  {
+    "color": "beige",
+    "title": "Pulover Lenore Bež",
+    "price": "24.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/08/IMG-20260911-WA0097.jpg",
+    "shop": "Secretstylex"
+  },
+  {
+    "color": "brown",
+    "title": "HLAČE NENI TANKE RJAVE",
+    "price": "32.99",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/05/Ervina-majica-RUM-Neni-tanke-hlace-RJ-3.jpg",
+    "shop": "Joe & Luca"
+  },
+  {
+    "color": "brown",
+    "title": "Obleka Annalisa – rjava",
+    "price": "69.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/17-4.jpg",
+    "shop": "Stajling"
+  },
+  {
+    "color": "brown",
+    "title": "Komplet Ruth – rjava",
+    "price": "52.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/6-16.jpg",
+    "shop": "Stajling"
+  },
+  {
+    "color": "brown",
+    "title": "Plašč Haven – rjava",
+    "price": "62.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/16-10.jpg",
+    "shop": "Stajling"
+  },
+  {
+    "color": "brown",
+    "title": "Plašč Haven – kamel",
+    "price": "62.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/18-4.jpg",
+    "shop": "Stajling"
+  },
+  {
+    "color": "brown",
+    "title": "Škornji Olivia – rjava",
+    "price": "52.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/1-19.jpg",
+    "shop": "Stajling"
+  },
+  {
+    "color": "navy",
+    "title": "Jakna Navy Bomber",
+    "price": "79.90",
+    "img": "https://avocado.si/wp-content/uploads/2026/10/jakna-navy-bomber-dsc03097.jpg",
+    "shop": "Avocado"
+  },
+  {
+    "color": "navy",
+    "title": "Soft Brush™ Recikliran Top Temno Modra",
+    "price": "39.00",
+    "img": "https://cdn.shopify.com/s/files/1/0928/5163/4506/files/Soft_Brush_Recycled_Bra_Dark_Blue.jpg?v=1782557770",
+    "shop": "Me Time"
+  },
+  {
+    "color": "navy",
+    "title": "Soft Brush™ Široke Pajkice Temno Modra",
+    "price": "54.00",
+    "img": "https://cdn.shopify.com/s/files/1/0928/5163/4506/files/19.3.2026-Metime-627.jpg?v=1783091347",
+    "shop": "Me Time"
+  },
+  {
+    "color": "navy",
+    "title": "Elegantne Hlače Silky Črno/Modra",
+    "price": "69.00",
+    "img": "https://cdn.shopify.com/s/files/1/0928/5163/4506/files/19.3.2026-Metime-772.png?v=1788560116",
+    "shop": "Me Time"
+  },
+  {
+    "color": "navy",
+    "title": "HLAČE ARTE TEMNO MODRE",
+    "price": "41.90",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2024/11/Hlace-Arte-M-2.jpg",
+    "shop": "Joe & Luca"
+  },
+  {
+    "color": "navy",
+    "title": "TUNIKA GRACE TEMNO MODRA",
+    "price": "45.99",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/08/Grace-tunika-T.M.-3.jpg",
+    "shop": "Joe & Luca"
+  },
+  {
+    "color": "blue",
+    "title": "OBLEKA ENCA MODRA",
+    "price": "65.99",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/04/Enca-obleka-M-5.jpg",
+    "shop": "Joe & Luca"
+  },
+  {
+    "color": "blue",
+    "title": "obleka ADINA – modra jeans",
+    "price": "76.95",
+    "img": "https://www.fiore.si/wp-content/uploads/zenska-obleka-adinka-ovratnika-8.png",
+    "shop": "Fiore"
+  },
+  {
+    "color": "blue",
+    "title": "majica JASA – modra",
+    "price": "29.95",
+    "img": "https://www.fiore.si/wp-content/uploads/majica-jasa-modra-1.png",
+    "shop": "Fiore"
+  },
+  {
+    "color": "blue",
+    "title": "OBLEKA ADINKA MODRA JEANS",
+    "price": "76.99",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/10/Adinka-obleka-modra-48.jpg",
+    "shop": "Joe & Luca"
+  },
+  {
+    "color": "blue",
+    "title": "Obleka Lacy – modra",
+    "price": "42.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/3a77bba3-c44a-40cf-bf29-4368b943da2a.png",
+    "shop": "Stajling"
+  },
+  {
+    "color": "blue",
+    "title": "Tunika ILDA – modra",
+    "price": "43.95",
+    "img": "https://www.fiore.si/wp-content/uploads/zenska-tunika-ilda-modra-3.png",
+    "shop": "Fiore"
+  },
+  {
+    "color": "green",
+    "title": "Parka Jakna Nicole Olivna",
+    "price": "46.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/04/b24b7acf-f77d-40ce-8244-4f3fb7b73ddd.jpg",
+    "shop": "Secretstylex"
+  },
+  {
+    "color": "green",
+    "title": "majica JASA – zelena",
+    "price": "29.95",
+    "img": "https://www.fiore.si/wp-content/uploads/zenska-majica-jasa-zelena-2.png",
+    "shop": "Fiore"
+  },
+  {
+    "color": "green",
+    "title": "Tunika ARABESKA – zelena",
+    "price": "39.95",
+    "img": "https://www.fiore.si/wp-content/uploads/zenska-tunika-arabeska-zelena-3.png",
+    "shop": "Fiore"
+  },
+  {
+    "color": "green",
+    "title": "Komplet Misha Zelen",
+    "price": "39.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/10/IMG-20261022-WA0175.jpg",
+    "shop": "Secretstylex"
+  },
+  {
+    "color": "green",
+    "title": "TUNIKA SABRINA OLIVNA",
+    "price": "58.99",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/08/Sabrina-tunika-olivna-28.jpg",
+    "shop": "Joe & Luca"
+  },
+  {
+    "color": "green",
+    "title": "TUNIKA ARABESKA ZELENA",
+    "price": "39.99",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/10/Arabeska-tunika-zelena-2.jpg",
+    "shop": "Joe & Luca"
+  },
+  {
+    "color": "red",
+    "title": "Obleka Annalisa – bordo",
+    "price": "69.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/10-10.jpg",
+    "shop": "Stajling"
+  },
+  {
+    "color": "red",
+    "title": "Plašč Haven – bordo",
+    "price": "62.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/13-12.jpg",
+    "shop": "Stajling"
+  },
+  {
+    "color": "red",
+    "title": "Pulover Kylie Rdeč",
+    "price": "25.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/08/a2da16b7-053a-4a01-9dda-9657a0461769.jpg",
+    "shop": "Secretstylex"
+  },
+  {
+    "color": "red",
+    "title": "O My Bag torbica Kiki Midi Dark Cherry",
+    "price": "249.00",
+    "img": "https://extraordinary.si/wp-content/uploads/2026/09/Kiki-Midi-Dark-Cherry-Soft-Grain-Leather-Front.jpg",
+    "shop": "Extraordinary"
+  },
+  {
+    "color": "red",
+    "title": "Plašč Sofia – bordo",
+    "price": "59.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/18-3.jpg",
+    "shop": "Stajling"
+  },
+  {
+    "color": "red",
+    "title": "Jakna Clea – bordo",
+    "price": "39.90",
+    "img": "https://www.stajling.com/wp-content/uploads/2026/10/2-9.jpg",
+    "shop": "Stajling"
+  },
+  {
+    "color": "pink",
+    "title": "Jopa Molly Roza",
+    "price": "28.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/10/1790946727734.jpg",
+    "shop": "Secretstylex"
+  },
+  {
+    "color": "pink",
+    "title": "OBLEKA ENCA MALINA",
+    "price": "65.99",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/04/Enca-obleka-malina-6.jpg",
+    "shop": "Joe & Luca"
+  },
+  {
+    "color": "pink",
+    "title": "Komplet Misha Roza",
+    "price": "39.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/10/IMG-20261022-WA0181.jpg",
+    "shop": "Secretstylex"
+  },
+  {
+    "color": "pink",
+    "title": "MAJICA MIRAE ROZA",
+    "price": "43.99",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/10/Mirae-majica-roza-18.jpg",
+    "shop": "Joe & Luca"
+  },
+  {
+    "color": "pink",
+    "title": "OBLEKA KIMI LOSOS",
+    "price": "17.00",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2025/07/Kimi-obleka-losos-2-1.jpg",
+    "shop": "Joe & Luca"
+  },
+  {
+    "color": "pink",
+    "title": "Pulover Edie Roza",
+    "price": "24.90",
+    "img": "https://secretstylex.si/wp-content/uploads/2026/09/1792309659660.jpg",
+    "shop": "Secretstylex"
+  },
+  {
+    "color": "purple",
+    "title": "majica JASA – lila",
+    "price": "29.95",
+    "img": "https://www.fiore.si/wp-content/uploads/elegantna-zenska-majica-jasa-lila-2.png",
+    "shop": "Fiore"
+  },
+  {
+    "color": "purple",
+    "title": "Tunika ARABESKA – lila",
+    "price": "39.95",
+    "img": "https://www.fiore.si/wp-content/uploads/zenska-tunika-arabeska-lila-1.png",
+    "shop": "Fiore"
+  },
+  {
+    "color": "purple",
+    "title": "TUNIKA ARABESKA LILA",
+    "price": "39.99",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/10/Arabeska-tunika-Lila-6.jpg",
+    "shop": "Joe & Luca"
+  },
+  {
+    "color": "purple",
+    "title": "MAJICA JASA LILA",
+    "price": "29.99",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2026/10/Jasa-majica-Lila-Vinca-P-hlace-crna-18.jpg",
+    "shop": "Joe & Luca"
+  },
+  {
+    "color": "purple",
+    "title": "OBLEKA KSENIA LILA",
+    "price": "14.38",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2023/07/joeandlucashop-10.07.-0134.jpg",
+    "shop": "Joe & Luca"
+  },
+  {
+    "color": "purple",
+    "title": "TUNIKA ENEA SVETLO LILA",
+    "price": "29.99",
+    "img": "https://joeandlucashop.si/wp-content/uploads/2025/09/Enea-tunika-SV.LILA-1.jpg",
+    "shop": "Joe & Luca"
+  }
+]

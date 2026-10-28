@@ -1,0 +1,772 @@
+[
+  {
+    "cat": "knitwear",
+    "title": "TEMNO MODER PULOVER Z ZADRGO",
+    "price": "79.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/Sens_okt23_0607.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "knitwear",
+    "title": "RUMEN PULOVER Z ZADRGO",
+    "price": "79.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/Sens_okt23_0742.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "knitwear",
+    "title": "ČRN PULOVER Z ZADRGO – MERINO VOLNA",
+    "price": "114.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2025/11/696A2642.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "knitwear",
+    "title": "MODER PULOVER NA O IZREZ – BOMBAŽ",
+    "price": "79.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2025/11/696A2679.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "knitwear",
+    "title": "BEIGE PULOVER NA O IZREZ – BOMBAŽ",
+    "price": "79.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2025/11/696A2659.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "knitwear",
+    "title": "Men’s Fine Knitted Wool Pullover – Black or Gray",
+    "price": "400.00",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://www.utopiast.com/wp-content/uploads/2025/10/Sila_Kejzar_Knitted_pullover_gray_men_01.jpg",
+    "shop": "Utopiast",
+    "shopHandle": "utopiast"
+  },
+  {
+    "cat": "knitwear",
+    "title": "American Vintage jopa Razpark siva",
+    "price": "92.50",
+    "compareAt": "185.00",
+    "onSale": true,
+    "img": "https://extraordinary.si/wp-content/uploads/2022/09/AMERICAN_VINTAGE_PULOVER_MOSKI_MRAZ19AH22-POL-MODEL-1-large.jpg",
+    "shop": "Extraordinary",
+    "shopHandle": "extraordinary"
+  },
+  {
+    "cat": "knitwear",
+    "title": "Ecoalf Pulover Brun",
+    "price": "90.93",
+    "compareAt": "129.90",
+    "onSale": true,
+    "img": "https://extraordinary.si/wp-content/uploads/2023/08/0632MW23-161-ecoalf-pulover-brun-deep-navy-3.jpg",
+    "shop": "Extraordinary",
+    "shopHandle": "extraordinary"
+  },
+  {
+    "cat": "shirts_blouses",
+    "title": "SRAJCA S ČRNIMI DETAJLI SENS SLIM FIT",
+    "price": "69.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/Sens_okt23_0301-1.png",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "shirts_blouses",
+    "title": "SRAJCA S TEMNO MODRIMI DETAJLI SENS SLIM FIT",
+    "price": "69.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/sens_dodatki_nov20_0012.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "shirts_blouses",
+    "title": "TEMNO MODRA JERSEY SRAJCA OLYMP SLIM FIT",
+    "price": "79.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/Sens_okt23_0722.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "shirts_blouses",
+    "title": "SIVA SRAJCA OLYMP BODY FIT",
+    "price": "69.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/05316467-706x700-1.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "shirts_blouses",
+    "title": "BORDO SRAJCA OLYMP BODY FIT",
+    "price": "69.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/bordo-srajca.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "shirts_blouses",
+    "title": "MODRA SRAJCA OLYMP BODY FIT",
+    "price": "59.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/moska-modra-srajca.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "shirts_blouses",
+    "title": "ČRNA SRAJCA OLYMP SLIM FIT",
+    "price": "59.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/Group-110.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "shirts_blouses",
+    "title": "ČRNA SRAJCA OLYMP BODY FIT",
+    "price": "59.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/60906468-706x700-1.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "tops",
+    "title": "SPODNJA MAJICA KOŽNA, V IZREZ",
+    "price": "26.94",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/moska-spodnja-majica_kozna_V.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "tops",
+    "title": "SPODNJA MAJICA KOŽNA, OKROGEL IZREZ",
+    "price": "26.94",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/moska-spodnja-majica_kozna_U.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "tops",
+    "title": "SPODNJA MAJICA BELA, OKROGEL IZREZ",
+    "price": "26.94",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/moska-spodnja-majica_bela-1.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "tops",
+    "title": "2 BELI MAJICI KOMPLET",
+    "price": "34.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/Olymp-bela-majica-s-kratkimi-rokavi.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "tops",
+    "title": "2 ČRNI MAJICI KOMPLET",
+    "price": "34.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/Olymp-crna-majica-s-kratkimi-rokav_2.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "tops",
+    "title": "SPODNJA MAJICA KOŽNA, V IZREZ",
+    "price": "26.94",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/kozna.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "tops",
+    "title": "SPODNJA MAJICA ČRNA, V IZREZ",
+    "price": "26.94",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/CRNA.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "tops",
+    "title": "MAJICA S TISKOM VIJUGE",
+    "price": "25.16",
+    "compareAt": "35.95",
+    "onSale": true,
+    "img": "https://sens.si/wp-content/uploads/2024/12/SENS_Studio_retouched_95.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "jeans",
+    "title": "ČRN JEANS MOŠKE HLAČE",
+    "price": "139.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/Sens_okt23_0207.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "jeans",
+    "title": "MOŠKE HLAČE JEANS – SLIM",
+    "price": "129.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/11/Jeans-hlace-Slim-35-min.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "jeans",
+    "title": "MOŠKE HLAČE JEANS – S SLIM",
+    "price": "129.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/11/Modre-jeans-hlace-Slim-35-min-1.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "jeans",
+    "title": "MUD Jeans Hlače Extra Easy",
+    "price": "65.00",
+    "compareAt": "130.00",
+    "onSale": true,
+    "img": "https://extraordinary.si/wp-content/uploads/2024/04/mud-jeans-kavbojke-Extra-Easy-Fan-Stone-3.jpg",
+    "shop": "Extraordinary",
+    "shopHandle": "extraordinary"
+  },
+  {
+    "cat": "jeans",
+    "title": "MUD Jeans Hlače Daily Dunn",
+    "price": "70.00",
+    "compareAt": "140.00",
+    "onSale": true,
+    "img": "https://extraordinary.si/wp-content/uploads/2024/04/mud-jeans-kavbojke-daily-dunn-chalk-5.jpg",
+    "shop": "Extraordinary",
+    "shopHandle": "extraordinary"
+  },
+  {
+    "cat": "trousers",
+    "title": "ČRNE MOŠKE HLAČE LAKO Z ELASTIKO",
+    "price": "119.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/Sens2020_0342.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "trousers",
+    "title": "ČRNE MOŠKE HLAČE S SLIM Z RAVNIMI ŽEPI",
+    "price": "139.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/crne-eko-raven-zep.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "trousers",
+    "title": "ČRNE MOŠKE HLAČE SLIM S POŠEVNIMI ŽEPI",
+    "price": "139.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/SENS_Studio_retouched_3-1-min-1.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "trousers",
+    "title": "RJAVE CHINO HLAČE",
+    "price": "109.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2025/11/696A3096.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "trousers",
+    "title": "KARO MOŠKE HLAČE",
+    "price": "99.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/karo-hlace-JPEG.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "trousers",
+    "title": "BEŽ LANENE MOŠKE HLAČE",
+    "price": "119.95",
+    "compareAt": "159.95",
+    "onSale": true,
+    "img": "https://sens.si/wp-content/uploads/2024/10/SENS_jesen_belina_1159.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "trousers",
+    "title": "BORDO MOŠKE HLAČE",
+    "price": "139.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/SENS_jesen_belina_0618.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "trousers",
+    "title": "ČRNE MOŠKE HLAČE SUPER",
+    "price": "149.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/11/SENS_Studio_retouched_3-1-min.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "outerwear",
+    "title": "MOŠKI TELOVNIK ČRN S FAZONO",
+    "price": "159.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/Sens2020_0323a.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "outerwear",
+    "title": "MOŠKI ČRN PLAŠČ Z ODSTRANLJIVO KAPUCO",
+    "price": "389.90",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/Crn-plasc-Zuitable2.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "outerwear",
+    "title": "MOŠKI BEŽ PLAŠČ Z ODSTRANLJIVO KAPUCO",
+    "price": "389.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/Bez-plasc-Zuitable.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "outerwear",
+    "title": "MOŠKI VOLNEN PLAŠČ S KAŠMIRJEM",
+    "price": "369.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/Sens_izdelki22dec_WEB0055.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "outerwear",
+    "title": "MOŠKI TELOVNIK MODER Z VZORCEM",
+    "price": "134.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/moski-telovnik-svecan-porocni-1.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "outerwear",
+    "title": "MOŠKI TELOVNIK MODER VIJUGE",
+    "price": "98.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/Moder-telovnik-z-vzorcem.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "outerwear",
+    "title": "MOŠKI TELOVNIK S PAISLEY VZORCEM",
+    "price": "129.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/Moder-telovnik-z-rjavim-vzorcem.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "outerwear",
+    "title": "MOŠKI TELOVNIK TEMNO SIV S FAZONO",
+    "price": "159.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/Siv-telovnik-s-fazono.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "suits_blazers",
+    "title": "ČRN MOŠKI SUKNJIČ ROK S KAPUCO",
+    "price": "299.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/SENS_Studio_retouched_73-1.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "suits_blazers",
+    "title": "ČRN MOŠKI SUKNJIČ LORD",
+    "price": "339.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/i-2ZLGH6D-X5.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "suits_blazers",
+    "title": "SMOKING KOMPLET",
+    "price": "99.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/Sens_dodatki-dec2020_0075.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "suits_blazers",
+    "title": "KARO MOŠKI SUKNJIČ",
+    "price": "199.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/Karo-obleka.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "suits_blazers",
+    "title": "BORDO MOŠKI SUKNJIČ",
+    "price": "289.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/11/3_4-1.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "suits_blazers",
+    "title": "BEŽ LANEN MOŠKI SUKNJIČ",
+    "price": "329.95",
+    "compareAt": "379.95",
+    "onSale": true,
+    "img": "https://sens.si/wp-content/uploads/2024/10/SENS_jesen_belina_1179.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "suits_blazers",
+    "title": "ČRN JEANS MOŠKI SUKNJIČ SONI",
+    "price": "299.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/SENS_Studio_retouched_5-1.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "suits_blazers",
+    "title": "SIV JEANS MOŠKI SUKNJIČ RON",
+    "price": "299.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/SENS_Studio_retouched_118.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "shoes",
+    "title": "ČEVLJI MARINI ČRNI",
+    "price": "199.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/sens_dodatki_nov20_0186.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "shoes",
+    "title": "MOŠKI ČEVLJI SELLENG RJAVI",
+    "price": "149.95",
+    "compareAt": "165.95",
+    "onSale": true,
+    "img": "https://sens.si/wp-content/uploads/2024/10/moski-cevlji-rjavi-digel-selleng.png",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "shoes",
+    "title": "ČEVLJI MARINI MODRI",
+    "price": "189.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/sens_dodatki_nov20_0171-2.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "shoes",
+    "title": "ELEGANTNI ČEVLJI MARINI ČRNI",
+    "price": "189.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/sens_dodatki_nov20_0176-–-kopija.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "shoes",
+    "title": "ČEVLJI PAULO BELLINI MODRI",
+    "price": "119.37",
+    "compareAt": "198.95",
+    "onSale": true,
+    "img": "https://sens.si/wp-content/uploads/2024/10/moski-cevlji-PB.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "shoes",
+    "title": "SUPERGE DIGEL",
+    "price": "149.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/DIGEL-BELE-3.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "shoes",
+    "title": "Ursanina moški copati Natur iz volne",
+    "price": "25.99",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/svetlo-sivi-moski-copati-1.jpeg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "shoes",
+    "title": "URSANINA MOŠKI COPATI NATUR IZ VOLNE",
+    "price": "25.99",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/temno-sivi-moski-copati-1.jpeg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "bags",
+    "title": "MOŠKA TORBA",
+    "price": "119.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/crna-moska-torba.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "bags",
+    "title": "Extraordinary Torba",
+    "price": "25.00",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://extraordinary.si/wp-content/uploads/2024/11/extraordinary-tote-bag-platnena-torba-1.jpg",
+    "shop": "Extraordinary",
+    "shopHandle": "extraordinary"
+  },
+  {
+    "cat": "bags",
+    "title": "Rains torbica Box Bag Micro Black",
+    "price": "69.90",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://extraordinary.si/wp-content/uploads/2024/04/14120_black_rains-torbica-box-bag-micro-3.jpg",
+    "shop": "Extraordinary",
+    "shopHandle": "extraordinary"
+  },
+  {
+    "cat": "bags",
+    "title": "Rains Nahrbtnik Clip Front Backpack Blue dusk",
+    "price": "129.00",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://extraordinary.si/wp-content/uploads/2025/10/14890_bluedusk_rains-nahrbtnik-clip-front-3.jpg",
+    "shop": "Extraordinary",
+    "shopHandle": "extraordinary"
+  },
+  {
+    "cat": "bags",
+    "title": "Rains Nahrbtnik Black",
+    "price": "99.90",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://extraordinary.si/wp-content/uploads/2023/09/R13000-BLACK-rains-backpack-w3-nahrbtnik-1.jpg",
+    "shop": "Extraordinary",
+    "shopHandle": "extraordinary"
+  },
+  {
+    "cat": "bags",
+    "title": "Rains Nahrbtnik Green",
+    "price": "99.90",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://extraordinary.si/wp-content/uploads/2025/09/13000_Green_rains-nahrbtnik-vodoodporen-3.jpg",
+    "shop": "Extraordinary",
+    "shopHandle": "extraordinary"
+  },
+  {
+    "cat": "bags",
+    "title": "Rains Kozmetična Torbica Hilo Black",
+    "price": "44.90",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://extraordinary.si/wp-content/uploads/2025/10/15630_black_rains-kozmeticna-torbica-hilo-wash-bag-4.jpg",
+    "shop": "Extraordinary",
+    "shopHandle": "extraordinary"
+  },
+  {
+    "cat": "bags",
+    "title": "Rains Nahrbtnik Rolltop Large Green",
+    "price": "139.00",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://extraordinary.si/wp-content/uploads/2025/10/14590_green_rains-nahrbtnik-rolltop-rucksack-large-3.jpg",
+    "shop": "Extraordinary",
+    "shopHandle": "extraordinary"
+  },
+  {
+    "cat": "accessories",
+    "title": "KAPA SENS ČRNO SIVA BARVA",
+    "price": "34.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/696A3278-scaled.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "accessories",
+    "title": "ŠAL SENS SIVO ČRNE BARVE",
+    "price": "43.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/696A3274-scaled.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "accessories",
+    "title": "METULJČEK SENS SIV",
+    "price": "39.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/sens_dodatki_nov20_0048.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "accessories",
+    "title": "ELASTIČEN PAS",
+    "price": "39.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/sens_dodatki_nov20_0096.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "accessories",
+    "title": "MOŠKI PAS",
+    "price": "36.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/sens_dodatki_nov20_0102.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "accessories",
+    "title": "NARAMNICE",
+    "price": "29.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/Sens_dodatki-dec2020_0068.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "accessories",
+    "title": "METULJČEK SENS MODER",
+    "price": "39.95",
+    "compareAt": null,
+    "onSale": false,
+    "img": "https://sens.si/wp-content/uploads/2024/10/sens_dodatki_nov20_0052.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  },
+  {
+    "cat": "accessories",
+    "title": "ELASTIČEN PAS",
+    "price": "36.90",
+    "compareAt": "39.90",
+    "onSale": true,
+    "img": "https://sens.si/wp-content/uploads/2024/10/sens_dodatki_nov20_0098.jpg",
+    "shop": "Sens",
+    "shopHandle": "sens"
+  }
+]
