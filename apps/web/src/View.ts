@@ -1,6 +1,8 @@
+import { Select } from '@foldkit/ui'
 import { direction, format, type Locale } from '@styld/i18n'
 import type { Document, Html, HtmlBuilder } from 'foldkit/html'
 import { LocaleSave, Message, type Model } from './App.ts'
+import { actionButton } from './ActionButton.ts'
 import { primaryAction, secondaryAction } from './Actions.styles.ts'
 import { availableLocales } from './Locale.ts'
 import { styled } from './Styled.ts'
@@ -37,25 +39,33 @@ const languages: ReadonlyArray<Readonly<{ locale: Locale; label: string }>> = [
 const languagePicker = (model: Model, h: HtmlBuilder<Message>): Html => {
   const { locale } = model.context
   const pending = LocaleSave.guards.Saving(model.localeSave)
-  return h.div(styled(h, picker()), [
-    h.label([h.For('language')], [format(locale, 'auth.language', {})]),
-    h.select(
-      [
-        h.Id('language'),
-        ...styled(h, pickerSelect()),
-        h.Value(locale),
-        h.Disabled(pending),
-        h.AriaBusy(pending),
-        h.OnChange((value) => Message.SelectedLocale({ value })),
-      ],
-      languages
-        .filter((language) => availableLocales.includes(language.locale))
-        .map((language) => h.keyed('option')(language.locale, [h.Value(language.locale)], [language.label])),
-    ),
-    LocaleSave.guards.Failed(model.localeSave)
-      ? h.p([h.Role('alert'), ...styled(h, pickerError())], [format(locale, 'common.error', {})])
-      : h.empty,
-  ])
+  const failed = LocaleSave.guards.Failed(model.localeSave)
+  return Select.view(
+    {
+      id: 'language',
+      value: locale,
+      isDisabled: pending,
+      hasDescription: failed,
+      onChange: (value) => Message.SelectedLocale({ value }),
+      toView: (attributes) =>
+        h.div(styled(h, picker()), [
+          h.label(attributes.label, [format(locale, 'auth.language', {})]),
+          h.select(
+            [...attributes.select, ...styled(h, pickerSelect()), h.AriaBusy(pending)],
+            languages
+              .filter((language) => availableLocales.includes(language.locale))
+              .map((language) => h.keyed('option')(language.locale, [h.Value(language.locale)], [language.label])),
+          ),
+          failed
+            ? h.p(
+                [...attributes.description, h.Role('alert'), ...styled(h, pickerError())],
+                [format(locale, 'common.error', {})],
+              )
+            : h.empty,
+        ]),
+    },
+    h,
+  )
 }
 
 const homeView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
@@ -96,21 +106,21 @@ const consentPrompt = (locale: Locale, h: HtmlBuilder<Message>): Html =>
     [
       h.p([], [format(locale, 'telemetryConsent.message', {})]),
       h.div(styled(h, consentActions()), [
-        h.button(
-          [
-            h.Type('button'),
-            ...styled(h, primaryAction()),
-            h.OnClick(Message.ChoseTelemetryConsent({ granted: true })),
-          ],
-          [format(locale, 'telemetryConsent.allow', {})],
+        actionButton(
+          {
+            label: format(locale, 'telemetryConsent.allow', {}),
+            style: primaryAction(),
+            onClick: Message.ChoseTelemetryConsent({ granted: true }),
+          },
+          h,
         ),
-        h.button(
-          [
-            h.Type('button'),
-            ...styled(h, secondaryAction()),
-            h.OnClick(Message.ChoseTelemetryConsent({ granted: false })),
-          ],
-          [format(locale, 'telemetryConsent.decline', {})],
+        actionButton(
+          {
+            label: format(locale, 'telemetryConsent.decline', {}),
+            style: secondaryAction(),
+            onClick: Message.ChoseTelemetryConsent({ granted: false }),
+          },
+          h,
         ),
       ]),
     ],
@@ -144,9 +154,13 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
       isHome ? homeView(locale, h) : isLogin ? accountView(model, h) : notFoundView(locale, h),
       h.footer(styled(h, footer()), [
         h.span([], ['Styld']),
-        h.button(
-          [h.Type('button'), ...styled(h, footerButton()), h.OnClick(Message.OpenedTelemetrySettings())],
-          [format(locale, 'telemetryConsent.settings', {})],
+        actionButton(
+          {
+            label: format(locale, 'telemetryConsent.settings', {}),
+            style: footerButton(),
+            onClick: Message.OpenedTelemetrySettings(),
+          },
+          h,
         ),
         h.a([h.Href('mailto:hello@styld.app'), ...styled(h, footerLink())], [format(locale, 'landing.contact', {})]),
       ]),

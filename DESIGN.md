@@ -67,7 +67,8 @@ selection or state, to ink on a head, and to muted on meta.
 
 ## Controls
 
-The shared styles live in `apps/web/src/Actions.styles.ts`.
+The shared styles live in `apps/web/src/Actions.styles.ts`. Controls render through `@foldkit/ui`'s headless views (text
+buttons through `actionButton` in `apps/web/src/ActionButton.ts`), and zyzz styles them.
 
 - Primary (`primaryAction`): ink fill, paper text, 3px radius, 48px tall. One a screen; a dialog counts as its own
   screen.
@@ -76,7 +77,8 @@ The shared styles live in `apps/web/src/Actions.styles.ts`.
 - Chips and tags: 3px radius, hairline border, sentence case. A full circle only for real circles: avatars, colour
   dots, spinners, radio marks.
 - Fields: a 1px edge with 3:1 contrast, 3px radius; focus is an outline in `focus`, never a border change. Disabled:
-  half opacity, `not-allowed` cursor, the native attribute.
+  half opacity, `not-allowed` cursor; fields and selects take the native attribute, buttons `aria-disabled` (Foldkit UI's
+  Button) so a pending one keeps focus.
 - Every control: default, hover, `:focus-visible` (instant, never transitioned), active, disabled, loading, error,
   success. Motion on `transform` and `opacity` only; colour changes may transition. Hit target 44px on touch (a global
   rule for buttons and selects).

@@ -14,6 +14,7 @@ export const primaryAction = style({
   cursor: 'pointer',
   ':active': { opacity: 0.8 },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { opacity: 0.85 } },
+  '&[data-disabled]': { opacity: 0.5, cursor: 'not-allowed' },
 })
 
 export const secondaryAction = style({
@@ -33,4 +34,5 @@ export const secondaryAction = style({
   '@media (hover: hover) and (pointer: fine)': {
     ':hover': { backgroundColor: 'hover' },
   },
+  '&[data-disabled]': { opacity: 0.5, cursor: 'not-allowed' },
 })

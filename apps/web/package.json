@@ -13,6 +13,7 @@
   "dependencies": {
     "@alchemy.run/cloudflare": "catalog:",
     "@effect/platform-browser": "catalog:",
+    "@foldkit/ui": "catalog:",
     "@maple-dev/effect-sdk": "catalog:",
     "@styld/auth": "workspace:*",
     "@styld/i18n": "workspace:*",

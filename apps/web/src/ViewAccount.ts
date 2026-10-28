@@ -3,6 +3,7 @@ import { format, type Locale } from '@styld/i18n'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { AuthState, Message, type Model } from './App.ts'
+import { actionButton } from './ActionButton.ts'
 import { primaryAction } from './Actions.styles.ts'
 import { passwordFormId } from './PasswordForm.ts'
 import { styled } from './Styled.ts'
@@ -20,9 +21,14 @@ const signedInView = (claims: AccountClaims, pending: boolean, locale: Locale, h
         h.dd(styled(h, detailValue()), [claims.email]),
       ],
     ),
-    h.button(
-      [h.Type('button'), ...styled(h, primaryAction()), h.Disabled(pending), h.OnClick(Message.RequestedSignOut())],
-      [format(locale, 'auth.signOut', {})],
+    actionButton(
+      {
+        label: format(locale, 'auth.signOut', {}),
+        style: primaryAction(),
+        onClick: Message.RequestedSignOut(),
+        isDisabled: pending,
+      },
+      h,
     ),
   ])
 
@@ -59,9 +65,14 @@ const signInForm = (pending: boolean, failed: boolean, locale: Locale, h: HtmlBu
           failed
             ? h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, 'auth.signInError', {})])
             : h.empty,
-          h.button(
-            [h.Type('submit'), h.Disabled(pending), ...styled(h, cx(primaryAction(), submit()))],
-            [format(locale, pending ? 'auth.signingIn' : 'auth.signInWithEmail', {})],
+          actionButton(
+            {
+              label: format(locale, pending ? 'auth.signingIn' : 'auth.signInWithEmail', {}),
+              style: cx(primaryAction(), submit()),
+              type: 'submit',
+              isDisabled: pending,
+            },
+            h,
           ),
         ],
       ),
@@ -84,9 +95,13 @@ export const accountView = (model: Model, h: HtmlBuilder<Message>): Html => {
             [],
             [
               h.p([h.Role('alert')], [format(locale, 'common.error', {})]),
-              h.button(
-                [h.Type('button'), ...styled(h, primaryAction()), h.OnClick(Message.RequestedSession())],
-                [format(locale, 'common.retry', {})],
+              actionButton(
+                {
+                  label: format(locale, 'common.retry', {}),
+                  style: primaryAction(),
+                  onClick: Message.RequestedSession(),
+                },
+                h,
               ),
             ],
           ),
