@@ -1,13 +1,13 @@
 import { expect } from 'bun:test'
 import type { Browser } from 'playwright'
+import { recordProblems } from './BrowserAcceptance.ts'
 
 /** Test-only identity created in native D1; no public seed route is deployed. */
 export const verifyBrowserIdentity = async (browser: Browser, origin: string): Promise<void> => {
   const context = await browser.newContext({ locale: 'en-US', viewport: { width: 390, height: 844 } })
   try {
     const page = await context.newPage()
-    const errors: string[] = []
-    page.on('pageerror', (error) => errors.push(error.message))
+    const errors = recordProblems(page)
     await page.goto(new URL('/login', origin).toString(), { waitUntil: 'networkidle' })
     await page.locator('#auth-email').fill('native-browser@example.invalid')
     await page.locator('#auth-password').fill('incorrect-password')

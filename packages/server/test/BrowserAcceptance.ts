@@ -1,15 +1,26 @@
 import { expect } from 'bun:test'
-import type { Browser } from 'playwright'
+import type { Browser, Page } from 'playwright'
+
+/** Collects page errors and Content Security Policy violations reported by the browser. */
+export const recordProblems = (page: Page): string[] => {
+  const problems: string[] = []
+  page.on('pageerror', (error) => problems.push(error.message))
+  page.on('console', (message) => {
+    if (message.type() === 'error' && message.text().includes('Content Security Policy')) problems.push(message.text())
+  })
+  return problems
+}
 
 /** Run against either the native edge or the isolated deployed preview. */
 export const verifyBrowser = async (browser: Browser, origin: string): Promise<void> => {
   const context = await browser.newContext({ locale: 'en-US', viewport: { width: 390, height: 844 } })
   try {
     const page = await context.newPage()
-    const errors: string[] = []
-    page.on('pageerror', (error) => errors.push(error.message))
+    const errors = recordProblems(page)
     const documentResponse = await page.goto(origin, { waitUntil: 'networkidle' })
     expect(documentResponse?.status()).toBe(200)
+    expect(documentResponse?.headers()['content-security-policy']).toContain("frame-ancestors 'none'")
+    expect(documentResponse?.headers()['x-frame-options']).toBe('DENY')
     expect(await page.locator('h1').textContent()).toBe('A wardrobe shaped by you.')
     expect(await page.locator('.masthead').evaluate((element) => getComputedStyle(element).display)).toBe('flex')
     await page.selectOption('#language', 'sl')

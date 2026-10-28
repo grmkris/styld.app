@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'vitest'
+import { apiPolicy, documentPolicy } from '../src/EdgeSecurity.ts'
 import edge, { isApiPath } from '../src/EdgeWorker.ts'
 
 describe('public edge routing', () => {
@@ -50,8 +51,37 @@ describe('public edge routing', () => {
       },
     }
     const result = await edge.fetch(request, { API: api, WEBSITE: website })
-    expect(result).toBe(response)
-    expect(result.headers.getSetCookie()).toHaveLength(2)
     expect(result.status).toBe(302)
+    expect(result.headers.get('location')).toBe('/signed-in')
+    expect(result.headers.getSetCookie()).toEqual(['session=one; HttpOnly; Secure', 'csrf=two; Secure'])
+    expect(await result.text()).toBe('redirect')
+    expect(result.headers.get('content-security-policy')).toBe(apiPolicy)
+  })
+
+  test('secures website documents against framing and foreign scripts', async () => {
+    const page = new Response('<!doctype html>', {
+      status: 404,
+      headers: { 'content-type': 'text/html', 'cache-control': 'private, no-store' },
+    })
+    const result = await edge.fetch(new Request('https://styld.test/missing'), {
+      API: {
+        fetch: async () => {
+          throw new Error('Unexpected API request')
+        },
+      },
+      WEBSITE: { fetch: async () => page },
+    })
+    expect(result.status).toBe(404)
+    expect(await result.text()).toBe('<!doctype html>')
+    expect(Object.fromEntries(result.headers)).toMatchObject({
+      'cache-control': 'private, no-store',
+      'content-security-policy': documentPolicy,
+      'x-frame-options': 'DENY',
+      'x-content-type-options': 'nosniff',
+      'referrer-policy': 'strict-origin-when-cross-origin',
+      'strict-transport-security': 'max-age=31536000',
+    })
+    expect(documentPolicy).toContain("frame-ancestors 'none'")
+    expect(documentPolicy).toContain("script-src 'self'")
   })
 })

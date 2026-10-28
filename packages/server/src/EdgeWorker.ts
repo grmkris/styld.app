@@ -1,3 +1,7 @@
+// workerd treats a Worker module's named exports as entrypoints: exporting a
+// plain constant from this file fails every request with 502.
+import { apiPolicy, documentPolicy, withSecurityHeaders } from './EdgeSecurity.ts'
+
 type FetchService = {
   readonly fetch: (request: Request) => Promise<Response>
 }
@@ -14,15 +18,18 @@ export const isApiPath = (path: string): boolean =>
 
 /** Native transport boundary. Reserved telemetry fields belong to the edge;
  * callers cannot choose log labels or smuggle payloads through correlation IDs.
- * Request bodies and responses keep their native streaming semantics. */
+ * Request bodies and responses keep their native streaming semantics; the edge
+ * adds the security headers for every page and API response. */
 export default {
-  fetch(request: Request, env: EdgeEnvironment): Promise<Response> {
+  async fetch(request: Request, env: EdgeEnvironment): Promise<Response> {
     const headers = new Headers(request.headers)
     for (const name of request.headers.keys()) {
       if (name.startsWith('x-styld-')) headers.delete(name)
     }
     headers.set('x-styld-correlation-id', crypto.randomUUID())
     const forwarded = new Request(request, { headers })
-    return (isApiPath(new URL(request.url).pathname) ? env.API : env.WEBSITE).fetch(forwarded)
+    const api = isApiPath(new URL(request.url).pathname)
+    const response = await (api ? env.API : env.WEBSITE).fetch(forwarded)
+    return withSecurityHeaders(response, api ? apiPolicy : documentPolicy)
   },
 }
