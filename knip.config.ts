@@ -11,7 +11,7 @@ export default {
     'apps/web': {
       // The zyzz Vite plugin discovers GlobalStyles.ts; nothing imports it.
       entry: ['src/entry.ts!', 'src/entry.server.ts!', 'src/GlobalStyles.ts!', 'test/**/*.test.ts'],
-      project: ['src/**/*.ts', 'test/**/*.ts'],
+      project: ['src/**/*.ts!', 'test/**/*.ts'],
     },
     ...Object.fromEntries(
       ['auth', 'domain', 'observability', 'server'].map((name) => [
