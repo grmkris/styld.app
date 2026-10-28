@@ -1,6 +1,7 @@
 import { direction, format, type Locale } from '@styld/i18n'
 import type { Document, Html, HtmlBuilder } from 'foldkit/html'
 import { LocaleSave, Message, type Model } from './App.ts'
+import { availableLocales } from './Locale.ts'
 
 import { accountView } from './ViewAccount.ts'
 
@@ -29,7 +30,9 @@ const languagePicker = (model: Model, h: HtmlBuilder<Message>): Html => {
           h.AriaBusy(pending),
           h.OnChange((value) => Message.SelectedLocale({ value })),
         ],
-        languages.map((language) => h.keyed('option')(language.locale, [h.Value(language.locale)], [language.label])),
+        languages
+          .filter((language) => availableLocales.includes(language.locale))
+          .map((language) => h.keyed('option')(language.locale, [h.Value(language.locale)], [language.label])),
       ),
       LocaleSave.guards.Failed(model.localeSave)
         ? h.p([h.Role('alert')], [format(locale, 'common.error', {})])

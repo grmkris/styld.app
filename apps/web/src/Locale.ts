@@ -4,8 +4,14 @@ export const Locale = Schema.Literals(['en', 'sl', 'en-XA', 'ar-XB'])
 export type Locale = typeof Locale.Type
 export const localeEndpoint = '/locale'
 
+/** Pseudo-locales test text expansion and RTL layout; production offers only the reviewed languages. */
+export const offeredLocales = (environment: string | undefined): ReadonlyArray<Locale> =>
+  environment === 'production' ? ['en', 'sl'] : ['en', 'sl', 'en-XA', 'ar-XB']
+
+export const availableLocales = offeredLocales(import.meta.env.VITE_STYLD_ENV)
+
 export const parseLocale = (value: string | null | undefined): Locale | undefined =>
-  Schema.is(Locale)(value) ? value : undefined
+  Schema.is(Locale)(value) && availableLocales.includes(value) ? value : undefined
 
 const languageRange = (range: string): Locale | undefined => {
   const language = range.trim().toLowerCase().split('-')[0]

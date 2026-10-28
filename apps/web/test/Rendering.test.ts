@@ -3,7 +3,7 @@ import { expect, test } from 'vitest'
 import { catalogVersion } from '@styld/i18n'
 import * as Server from 'foldkit/experimental/server'
 import { LocaleSave, Message, init, update } from '../src/App.ts'
-import { requestLocale } from '../src/Locale.ts'
+import { offeredLocales, requestLocale } from '../src/Locale.ts'
 import { renderDocument, renderRequest } from '../src/entry.server.ts'
 
 const assets = { entryScript: '/entry.js', stylesheets: [], modulePreloads: [] }
@@ -84,4 +84,10 @@ test('RTL and expanded locales render without pretending to be Arabic translatio
   expect(html).toContain('English (RTL)')
   const missing = await Effect.runPromise(renderRequest(new Request('https://styld.test/missing'), { buildId: 'test' }))
   expect(Server.toResponse((app) => renderDocument(app, assets), missing).status).toBe(404)
+})
+
+test('production offers only the reviewed languages; other environments add the layout pseudo-locales', () => {
+  expect(offeredLocales('production')).toEqual(['en', 'sl'])
+  expect(offeredLocales('preview')).toEqual(['en', 'sl', 'en-XA', 'ar-XB'])
+  expect(offeredLocales(undefined)).toEqual(['en', 'sl', 'en-XA', 'ar-XB'])
 })
