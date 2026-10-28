@@ -5,7 +5,7 @@ description: Style Styld v2's Foldkit views with zyzz — Atelier tokens, typed 
 
 # zyzz in Styld v2
 
-Styling is zyzz (`zyzz/vite` in `apps/web/vite.config.ts`). There is no hand-written CSS and no Tailwind. The visual system is v1's Atelier: `/home/kristjan/code/stylelab/DESIGN.md` is the rule book for type, color roles and controls.
+Styling is zyzz (`zyzz/vite` in `apps/web/vite.config.ts`). There is no hand-written CSS and no Tailwind. The visual system is v1's Atelier: `DESIGN.md` at the repository root is the rule book for type, colour roles, controls and copy.
 
 ## Where things live
 
