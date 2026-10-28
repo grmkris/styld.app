@@ -21,7 +21,7 @@ export default defineConfig({
   ],
   options: { typeAware: true, reportUnusedDisableDirectives: 'error' },
   categories: { correctness: 'error', suspicious: 'error' },
-  plugins: ['typescript', 'unicorn', 'oxc', 'import'],
+  plugins: ['typescript', 'unicorn', 'oxc', 'import', 'promise', 'vitest'],
   jsPlugins: [
     { name: 'foldkit', specifier: '@foldkit/oxlint-plugin' },
     './tools/oxlint/anti-slop/index.ts',
@@ -34,6 +34,8 @@ export default defineConfig({
     // zyzz's no-conflicting-props checks JSX and no-unused checks namespaces, neither of which Styld
     // uses; typecheck rejects unknown properties and tokens, and Knip reports unused styles.
     'zyzz/valid-styles': 'error',
+    // @effect/vitest's it.effect is a test block too.
+    'vitest/no-standalone-expect': ['error', { additionalTestBlockFunctions: ['it.effect', 'it.live', 'it.scoped'] }],
     'typescript/no-explicit-any': 'error',
     'typescript/no-floating-promises': ['error', { ignoreVoid: false }],
     'typescript/no-misused-promises': 'error',
