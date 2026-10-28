@@ -1,14 +1,43 @@
-import { glob, readFile } from 'node:fs/promises'
+import { readFile } from 'node:fs/promises'
 import { gzipSync } from 'node:zlib'
+import { Schema } from 'effect'
 
-let clientGzip = 0
-let clientFiles = 0
-for await (const file of glob('apps/web/dist/client/assets/*.{js,css}')) {
-  clientGzip += gzipSync(await readFile(file)).byteLength
-  clientFiles += 1
+const Chunk = Schema.Struct({
+  file: Schema.String,
+  isEntry: Schema.optional(Schema.Boolean),
+  imports: Schema.optional(Schema.Array(Schema.String)),
+  css: Schema.optional(Schema.Array(Schema.String)),
+})
+const Manifest = Schema.Record(Schema.String, Chunk)
+const client = 'apps/web/dist/client'
+const manifest = Schema.decodeUnknownSync(Schema.fromJsonString(Manifest))(
+  await readFile('apps/web/dist/client/.vite/manifest.json', 'utf8'),
+)
+const gzipOf = async (file: string) => gzipSync(await readFile(`${client}/${file}`)).byteLength
+
+// Initial assets: the entry chunk, everything it imports statically, and their stylesheets.
+// Dynamic imports (such as the telemetry SDK's never-enabled replay recorder) load on demand.
+const initial = new Set<string>()
+const visit = (key: string) => {
+  const chunk = manifest[key]
+  if (chunk === undefined || initial.has(chunk.file)) return
+  initial.add(chunk.file)
+  for (const css of chunk.css ?? []) initial.add(css)
+  for (const imported of chunk.imports ?? []) visit(imported)
 }
+const entries = Object.entries(manifest).filter(([, chunk]) => chunk.isEntry === true)
+if (entries.length === 0) throw new Error('No browser entry in the client manifest; build before checking budgets')
+for (const [key] of entries) visit(key)
+const all = new Set(Object.values(manifest).flatMap((chunk) => [chunk.file, ...(chunk.css ?? [])]))
+
+let initialGzip = 0
+for (const file of initial) initialGzip += await gzipOf(file)
+let totalGzip = 0
+for (const file of all) totalGzip += await gzipOf(file)
 const server = await readFile('apps/web/dist/server/fetch.js')
-if (clientFiles === 0) throw new Error('No browser assets found; build before checking budgets')
-if (clientGzip > 262144) throw new Error(`Initial browser assets exceed the 256 KiB gzip budget: ${clientGzip}`)
+if (initialGzip > 262144) throw new Error(`Initial browser assets exceed the 256 KiB gzip budget: ${initialGzip}`)
+if (totalGzip > 524288) throw new Error(`All browser assets exceed the 512 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
-console.log(`Bundle budgets: browser ${clientGzip} gzip bytes; SSR ${server.byteLength} source bytes`)
+console.log(
+  `Bundle budgets: initial browser ${initialGzip} gzip bytes; all browser ${totalGzip}; SSR ${server.byteLength} source bytes`,
+)
