@@ -1,9 +1,10 @@
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import * as AlchemyHttp from 'alchemy/Http'
-import { Effect, Layer } from 'effect'
+import { Effect, Layer, Logger } from 'effect'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import { decodeAuthSecret, decodeAuthSessionKeyring } from './AuthConfiguration.ts'
+import { browserTelemetryRoutes } from './BrowserTelemetry.ts'
 import { makeAuthHttp } from './AuthHttp.ts'
 import { DomainLive } from './DomainLive.ts'
 import { health } from './Health.ts'
@@ -14,6 +15,8 @@ import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@
 const Runtime = Layer.mergeAll(
   DomainLive,
   Cloudflare.Telemetry({ headSamplingRate: 1 }),
+  // Workers Logs indexes the fields of logged objects, so every Effect log is one structured object.
+  Logger.layer([Logger.consoleStructured]),
   Cloudflare.D1.QueryDatabaseBinding,
 )
 
@@ -55,6 +58,7 @@ export default StyldWorker.make(
         const routes = Layer.mergeAll(
           auth.layer,
           HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),
+          browserTelemetryRoutes(authOrigin),
         ).pipe(Layer.provide(AlchemyHttp.Platform))
         const handle = yield* HttpRouter.toHttpEffect(routes).pipe(Effect.orDie)
         return { handle, observabilityBase }

@@ -80,3 +80,23 @@ test('withObservability annotates logs and forwards the same approved span field
     kind: 'http',
   })
 })
+
+test('joins server logs to a browser trace only through a valid traceparent', () => {
+  const trace = '4bf92f3577b34da6a3ce929d0e0e4736'
+  expect(metadataFromHeaders(base, new Headers({ traceparent: `00-${trace}-00f067aa0ba902b7-01` }))).toEqual({
+    ...base,
+    kind: 'http',
+    browserTraceId: trace,
+  })
+  for (const traceparent of [
+    `01-${trace}-00f067aa0ba902b7-01`,
+    `00-${'0'.repeat(32)}-00f067aa0ba902b7-01`,
+    `00-${trace.toUpperCase()}-00f067aa0ba902b7-01`,
+    `00-${trace}-00f067aa0ba902b7-01-extra`,
+    'prompt=ignore me',
+  ])
+    expect(metadataFromHeaders(base, new Headers({ traceparent }))).toEqual({ ...base, kind: 'http' })
+  expect(
+    metadataAttributes(metadataFromHeaders(base, new Headers({ traceparent: `00-${trace}-00f067aa0ba902b7-01` }))),
+  ).toMatchObject({ 'styld.browser.trace_id': trace })
+})

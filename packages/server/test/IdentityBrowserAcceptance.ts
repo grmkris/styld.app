@@ -1,6 +1,6 @@
 import { expect } from 'bun:test'
 import type { Browser } from 'playwright'
-import { recordProblems } from './BrowserAcceptance.ts'
+import { nextTraceExport, recordProblems, recordTelemetry } from './BrowserAcceptance.ts'
 
 /** Test-only identity created in native D1; no public seed route is deployed. */
 export const verifyBrowserIdentity = async (browser: Browser, origin: string): Promise<void> => {
@@ -8,6 +8,7 @@ export const verifyBrowserIdentity = async (browser: Browser, origin: string): P
   try {
     const page = await context.newPage()
     const errors = recordProblems(page)
+    const telemetry = recordTelemetry(page)
     await page.goto(new URL('/login', origin).toString(), { waitUntil: 'networkidle' })
     await page.locator('#auth-email').fill('native-browser@example.invalid')
     await page.locator('#auth-password').fill('incorrect-password')
@@ -37,8 +38,14 @@ export const verifyBrowserIdentity = async (browser: Browser, origin: string): P
       data: {},
     })
     expect(await replay.json()).toMatchObject({ _tag: 'Success', value: null })
+    const exported = nextTraceExport(page)
     await page.reload({ waitUntil: 'networkidle' })
+    expect(await exported).toBe(204)
     await page.locator('#auth-password').waitFor({ state: 'visible' })
+    // Telemetry carries Message tags and timings, never the credentials or account typed on the page.
+    expect(telemetry.length).toBeGreaterThan(0)
+    for (const secret of ['native-browser@example.invalid', 'native-identity-password-52', 'incorrect-password'])
+      expect(telemetry.join('\n')).not.toContain(secret)
     expect(errors).toEqual([])
   } finally {
     await context.close()

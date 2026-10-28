@@ -11,6 +11,23 @@ export const recordProblems = (page: Page): string[] => {
   return problems
 }
 
+const tracesPath = '/api/telemetry/v1/traces'
+
+/** Every browser telemetry body the page sends, so tests can assert what leaves it. */
+export const recordTelemetry = (page: Page): string[] => {
+  const bodies: string[] = []
+  page.on('request', (request) => {
+    if (new URL(request.url()).pathname.startsWith('/api/telemetry/')) bodies.push(request.postData() ?? '')
+  })
+  return bodies
+}
+
+/** Resolves with the relay's status for the next trace export, e.g. the flush on leaving a page. */
+export const nextTraceExport = (page: Page): Promise<number> =>
+  page
+    .waitForResponse((response) => new URL(response.url()).pathname === tracesPath, { timeout: 20000 })
+    .then((response) => response.status())
+
 /** Run against either the native edge or the isolated deployed preview. */
 export const verifyBrowser = async (browser: Browser, origin: string): Promise<void> => {
   const context = await browser.newContext({ locale: 'en-US', viewport: { width: 390, height: 844 } })
@@ -35,7 +52,10 @@ export const verifyBrowser = async (browser: Browser, origin: string): Promise<v
       httpOnly: true,
       sameSite: 'Lax',
     })
+    // Leaving the page flushes the Foldkit Command spans (SaveLocale) to the same-origin relay.
+    const exported = nextTraceExport(page)
     await page.reload({ waitUntil: 'networkidle' })
+    expect(await exported).toBe(204)
     expect(await page.locator('html').getAttribute('lang')).toBe('sl')
     await page.selectOption('#language', 'ar-XB')
     await page.waitForFunction(() => document.documentElement.dir === 'rtl')

@@ -42,6 +42,7 @@
       "dependencies": {
         "@alchemy.run/cloudflare": "catalog:",
         "@effect/platform-browser": "catalog:",
+        "@maple-dev/effect-sdk": "catalog:",
         "@styld/auth": "workspace:*",
         "@styld/i18n": "workspace:*",
         "@styld/observability": "workspace:*",
@@ -143,6 +144,7 @@
     "@effect/vitest": "4.0.7",
     "@foldkit/vite-plugin": "0.28.0",
     "@formatjs/icu-messageformat-parser": "3.5.22",
+    "@maple-dev/effect-sdk": "0.12.1",
     "@types/bun": "1.4.4",
     "@types/node": "24.19.2",
     "@yielded/auth": "0.1.0-beta.46",
@@ -347,6 +349,8 @@
     "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.6.0", "", {}, "sha512-T7jf+5zgsZHwNJ4lvQ7/aezbyk0nNX+zJVWpmHA7VYsEx7a7qr5Rg5IbtJFqkgze5Y2sruq1RUY8Q837Od7iFw=="],
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
+
+    "@maple-dev/effect-sdk": ["@maple-dev/effect-sdk@0.12.1", "", { "dependencies": { "std-env": "^4.0.0" }, "peerDependencies": { "effect": "^4.0.0" } }, "sha512-c1rImIAWvJTPUPwEXDQ3xE3bf89ZvJ2VUaj7lS5KxB3yUUUQtYIFaTKlNSEVKnLUxL5lRUUgxmU8r6BbdILbUQ=="],
 
     "@modelcontextprotocol/server": ["@modelcontextprotocol/server@2.0.0-alpha.4", "", { "dependencies": { "zod": "^4.2.0" } }, "sha512-/KEo3ZJ50HlagHp0lz2vPgfBZFtXHu6zTBXT9XqPc+4O9i4+IbBVWKq/a9yAfv/ifp0u3+mRo8SUk5kMKzhN8A=="],
 

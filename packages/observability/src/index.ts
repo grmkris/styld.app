@@ -13,6 +13,10 @@ const Attempt = Schema.Number.check(Schema.isInt(), Schema.isGreaterThanOrEqualT
 const CorrelationId = Schema.String.check(
   Schema.isPattern(/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/),
 )
+/** A W3C trace ID: 32 lowercase hex characters, not all zero. */
+export const TraceId = Schema.String.check(Schema.isPattern(/^(?!0{32})[0-9a-f]{32}$/))
+/** The trace ID inside a W3C `traceparent` header (`00-<trace>-<span>-<flags>`). */
+const Traceparent = Schema.String.check(Schema.isPattern(/^00-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/))
 
 /** The only metadata accepted by the application telemetry seam. */
 export const ObservabilityMetadata = Schema.Struct({
@@ -21,6 +25,7 @@ export const ObservabilityMetadata = Schema.Struct({
   component: SafeText,
   kind: Schema.optional(SafeText),
   correlationId: Schema.optional(CorrelationId),
+  browserTraceId: Schema.optional(TraceId),
   operationId: Schema.optional(SafeText),
   jobId: Schema.optional(SafeText),
   attempt: Schema.optional(Attempt),
@@ -57,15 +62,27 @@ const readHeader = (headers: HeaderSource, name: string): string | undefined => 
 }
 
 /**
- * Only the edge-generated UUID crosses HTTP. Operation/job/attempt labels are
- * assigned by trusted application operations, never derived from request headers.
+ * Only the edge-generated UUID and a browser `traceparent` cross HTTP, and only
+ * after strict validation. The browser trace ID joins server logs to the
+ * browser spans the telemetry relay records; Cloudflare's native trace cannot
+ * adopt an external parent yet. Operation/job/attempt labels are assigned by
+ * trusted application operations, never derived from request headers.
  */
 export const metadataFromHeaders = (base: ObservabilityBase, headers: HeaderSource): ObservabilityMetadata => {
-  const correlation = Schema.decodeUnknownOption(CorrelationId)(readHeader(headers, 'x-styld-correlation-id'))
-  return Option.match(correlation, {
-    onNone: () => ({ ...base, kind: 'http' }),
-    onSome: (correlationId) => ({ ...base, kind: 'http', correlationId }),
-  })
+  const correlationId = Option.getOrUndefined(
+    Schema.decodeUnknownOption(CorrelationId)(readHeader(headers, 'x-styld-correlation-id')),
+  )
+  const browserTraceId = Option.getOrUndefined(
+    Option.flatMap(Schema.decodeUnknownOption(Traceparent)(readHeader(headers, 'traceparent')), (traceparent) =>
+      Schema.decodeUnknownOption(TraceId)(traceparent.slice(3, 35)),
+    ),
+  )
+  return {
+    ...base,
+    kind: 'http',
+    ...(correlationId === undefined ? {} : { correlationId }),
+    ...(browserTraceId === undefined ? {} : { browserTraceId }),
+  }
 }
 
 /** Convert the typed metadata to a record with no undefined optional fields. */
@@ -77,6 +94,7 @@ export const metadataAttributes = (metadata: ObservabilityMetadata): Record<stri
   }
   if (metadata.kind !== undefined) attributes['styld.kind'] = metadata.kind
   if (metadata.correlationId !== undefined) attributes['styld.correlation_id'] = metadata.correlationId
+  if (metadata.browserTraceId !== undefined) attributes['styld.browser.trace_id'] = metadata.browserTraceId
   if (metadata.operationId !== undefined) attributes['styld.operation_id'] = metadata.operationId
   if (metadata.jobId !== undefined) attributes['styld.job_id'] = metadata.jobId
   if (metadata.attempt !== undefined) attributes['styld.attempt'] = metadata.attempt
