@@ -1,0 +1,238 @@
+import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client'
+import { Client as LegacyClient } from '@modelcontextprotocol/sdk/client/index.js'
+import { StreamableHTTPClientTransport as LegacyTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
+import { expect } from 'bun:test'
+import { Schema } from 'effect'
+
+/** Test-only acceptance: an MCP client's whole journey through the public edge. */
+
+type Jar = Map<string, string>
+type Tokens = { readonly access: string; readonly refresh: string }
+
+const redirectUri = 'http://127.0.0.1:43110/callback'
+const Endpoints = Schema.Struct({ authorization_endpoint: Schema.String, token_endpoint: Schema.String })
+const Registered = Schema.Struct({ client_id: Schema.String, grant_types: Schema.Array(Schema.String) })
+const TokenBody = Schema.Struct({
+  access_token: Schema.optional(Schema.String),
+  refresh_token: Schema.optional(Schema.String),
+})
+const base64url = (bytes: Uint8Array) =>
+  btoa(String.fromCharCode(...bytes))
+    .replaceAll('+', '-')
+    .replaceAll('/', '_')
+    .replaceAll('=', '')
+
+const remember = (jar: Jar, response: Response) => {
+  for (const header of response.headers.getSetCookie()) {
+    const [pair = ''] = header.split(';')
+    const separator = pair.indexOf('=')
+    if (separator > 0) jar.set(pair.slice(0, separator), pair.slice(separator + 1))
+  }
+}
+const cookies = (jar: Jar) => [...jar].map(([name, value]) => `${name}=${value}`).join('; ')
+
+const signIn = async (origin: string, jar: Jar) => {
+  const response = await fetch(`${origin}/api/auth/signIn`, {
+    method: 'POST',
+    headers: { origin, 'content-type': 'application/json', 'x-effect-auth-csrf': '1' },
+    body: JSON.stringify({ payload: { email: 'native-mcp@example.invalid', password: 'native-identity-password-52' } }),
+  })
+  expect(response.status).toBe(200)
+  remember(jar, response)
+}
+
+const discover = async (origin: string) => {
+  const resource = await fetch(`${origin}/.well-known/oauth-protected-resource/mcp`)
+  expect(await resource.json()).toMatchObject({ resource: `${origin}/mcp`, authorization_servers: [origin] })
+  const server = await fetch(`${origin}/.well-known/oauth-authorization-server`)
+  const metadata: unknown = await server.json()
+  expect(metadata).toMatchObject({
+    issuer: origin,
+    registration_endpoint: `${origin}/oauth/mcp/register`,
+    code_challenge_methods_supported: ['S256'],
+  })
+  const unauthenticated = await fetch(`${origin}/mcp`, { method: 'POST', body: '{}' })
+  expect(unauthenticated.status).toBe(401)
+  expect(unauthenticated.headers.get('www-authenticate')).toBe(
+    `Bearer resource_metadata="${origin}/.well-known/oauth-protected-resource/mcp", scope="styld"`,
+  )
+  expect((await fetch(`${origin}/mcp`)).status).toBe(405)
+  return Schema.decodeUnknownSync(Endpoints)(metadata)
+}
+
+const register = async (origin: string) => {
+  const refused = await fetch(`${origin}/oauth/mcp/register`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({ client_name: 'Custom scheme', redirect_uris: ['cursor://anysphere/oauth'] }),
+  })
+  expect(refused.status).toBe(400)
+  const response = await fetch(`${origin}/oauth/mcp/register`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      client_name: 'Native MCP test',
+      redirect_uris: [redirectUri],
+      grant_types: ['authorization_code', 'refresh_token', 'urn:ietf:params:oauth:grant-type:device_code'],
+    }),
+  })
+  expect(response.status).toBe(201)
+  const client = Schema.decodeUnknownSync(Registered)(await response.json())
+  expect(client.grant_types).toEqual(['authorization_code', 'refresh_token'])
+  return client.client_id
+}
+
+/** Follow the server's own redirects (the pending authorization moves into a private cookie). */
+const follow = async (start: URL, jar: Jar) => {
+  let response = await fetch(start, { headers: { cookie: cookies(jar) }, redirect: 'manual' })
+  remember(jar, response)
+  for (let hops = 0; hops < 3 && [302, 303].includes(response.status); hops++) {
+    const next = new URL(response.headers.get('location') ?? '/', start)
+    if (next.origin !== start.origin || next.pathname !== start.pathname) return response
+    response = await fetch(next, { headers: { cookie: cookies(jar) }, redirect: 'manual' })
+    remember(jar, response)
+  }
+  return response
+}
+
+/** Authorization code with PKCE: the login redirect, consent and the code exchange. */
+const authorize = async (
+  origin: string,
+  jar: Jar,
+  endpoints: Awaited<ReturnType<typeof discover>>,
+  clientId: string,
+) => {
+  const verifier = base64url(crypto.getRandomValues(new Uint8Array(32)))
+  const challenge = base64url(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(verifier))))
+  const url = new URL(endpoints.authorization_endpoint)
+  for (const [key, value] of Object.entries({
+    response_type: 'code',
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    code_challenge: challenge,
+    code_challenge_method: 'S256',
+    scope: 'styld',
+    state: 'native-state',
+    resource: `${origin}/mcp`,
+  }))
+    url.searchParams.set(key, value)
+  const consent = await follow(url, jar)
+  const page = await consent.text()
+  expect(consent.status, page.slice(0, 200)).toBe(200)
+  expect(consent.headers.get('content-security-policy')).toContain('form-action')
+  const action = /action="([^"]+)"/.exec(page)?.[1]?.replaceAll('&amp;', '&') ?? ''
+  const csrf = /name="csrf" value="([^"]+)"/.exec(page)?.[1] ?? ''
+  const approved = await fetch(new URL(action, origin), {
+    method: 'POST',
+    headers: { cookie: cookies(jar), origin, 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ csrf, decision: 'approve' }),
+    redirect: 'manual',
+  })
+  remember(jar, approved)
+  const location = new URL(approved.headers.get('location') ?? 'http://invalid/')
+  expect(`${location.origin}${location.pathname}`).toBe(redirectUri)
+  expect(location.searchParams.get('state')).toBe('native-state')
+  return exchange(endpoints, clientId, {
+    grant_type: 'authorization_code',
+    code: location.searchParams.get('code') ?? '',
+    redirect_uri: redirectUri,
+    code_verifier: verifier,
+    resource: `${origin}/mcp`,
+  })
+}
+
+const exchange = async (
+  endpoints: { readonly token_endpoint: string },
+  clientId: string,
+  form: Record<string, string>,
+) => {
+  const response = await fetch(endpoints.token_endpoint, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ ...form, client_id: clientId }),
+  })
+  const body = Schema.decodeUnknownSync(TokenBody)(await response.json())
+  return { status: response.status, tokens: { access: body.access_token ?? '', refresh: body.refresh_token ?? '' } }
+}
+
+/** The 2026-07-28 client (SDK 2.x) and an initialize-era client (SDK 1.x) both see and call the tools. */
+const useTools = async (origin: string, access: string) => {
+  const requestInit = { headers: { authorization: `Bearer ${access}` } }
+  const modern = new Client({ name: 'styld-native-modern', version: '1.0.0' })
+  await modern.connect(new StreamableHTTPClientTransport(new URL(`${origin}/mcp`), { requestInit }))
+  const legacy = new LegacyClient({ name: 'styld-native-legacy', version: '1.0.0' })
+  await legacy.connect(new LegacyTransport(new URL(`${origin}/mcp`), { requestInit }))
+  for (const client of [modern, legacy]) {
+    expect((await client.listTools()).tools.map(({ name }) => name)).toEqual(['account_get'])
+    const result = await client.callTool({ name: 'account_get', arguments: {} })
+    expect(result.structuredContent).toEqual({
+      accountId: 'native-mcp',
+      displayName: 'Native Identity',
+      email: 'native-mcp@example.invalid',
+      url: `${origin}/account`,
+    })
+    await client.close()
+  }
+}
+
+const mcpStatus = async (origin: string, access: string) =>
+  (
+    await fetch(`${origin}/mcp`, {
+      method: 'POST',
+      headers: {
+        authorization: `Bearer ${access}`,
+        'content-type': 'application/json',
+        accept: 'application/json, text/event-stream',
+      },
+      body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }),
+    })
+  ).status
+
+/** Refresh rotates; replaying a used refresh token ends the whole grant. */
+const rotate = async (
+  origin: string,
+  endpoints: { readonly token_endpoint: string },
+  clientId: string,
+  tokens: Tokens,
+) => {
+  const refresh = { grant_type: 'refresh_token', resource: `${origin}/mcp` }
+  const rotated = await exchange(endpoints, clientId, { ...refresh, refresh_token: tokens.refresh })
+  expect(rotated.status).toBe(200)
+  expect(rotated.tokens.refresh).not.toBe(tokens.refresh)
+  expect(await mcpStatus(origin, rotated.tokens.access)).toBe(200)
+  const replayed = await exchange(endpoints, clientId, { ...refresh, refresh_token: tokens.refresh })
+  expect(replayed.status).toBe(400)
+  expect(await mcpStatus(origin, rotated.tokens.access)).toBe(401)
+}
+
+export const verifyMcp = async (origin: string, fixtures: string): Promise<void> => {
+  expect((await fetch(`${fixtures}/test/identity/seed-mcp`, { method: 'POST' })).status).toBe(204)
+  const endpoints = await discover(origin)
+  const clientId = await register(origin)
+  const jar: Jar = new Map()
+  // Without a session the authorization request goes to the sign-in page first.
+  const anonymous = await follow(
+    new URL(
+      `${endpoints.authorization_endpoint}?response_type=code&client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&code_challenge=${'a'.repeat(43)}&code_challenge_method=S256&scope=styld&resource=${encodeURIComponent(`${origin}/mcp`)}`,
+    ),
+    new Map(),
+  )
+  expect(new URL(anonymous.headers.get('location') ?? 'http://invalid/', origin).pathname).toBe('/login/connect')
+  await signIn(origin, jar)
+  const first = await authorize(origin, jar, endpoints, clientId)
+  expect(first.status).toBe(200)
+  await useTools(origin, first.tokens.access)
+  await rotate(origin, endpoints, clientId, first.tokens)
+  const second = await authorize(origin, jar, endpoints, clientId)
+  const revoked = await fetch(`${origin}/oauth/mcp/revoke`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ token: second.tokens.access, client_id: clientId }),
+  })
+  expect(revoked.status).toBe(200)
+  expect(await mcpStatus(origin, second.tokens.access)).toBe(401)
+  const third = await authorize(origin, jar, endpoints, clientId)
+  expect(await mcpStatus(origin, third.tokens.access)).toBe(200)
+  expect((await fetch(`${fixtures}/test/identity/disable-mcp`, { method: 'POST' })).status).toBe(204)
+  expect(await mcpStatus(origin, third.tokens.access)).toBe(401)
+}

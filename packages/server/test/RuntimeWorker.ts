@@ -81,6 +81,19 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
       ),
       HttpRouter.add(
         'POST',
+        '/test/identity/seed-mcp',
+        seedIdentity(database, 'native-mcp').pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 }))),
+      ),
+      HttpRouter.add(
+        'POST',
+        '/test/identity/disable-mcp',
+        disableIdentity(database, 'native-mcp').pipe(
+          Effect.orDie,
+          Effect.as(HttpServerResponse.empty({ status: 204 })),
+        ),
+      ),
+      HttpRouter.add(
+        'POST',
         '/test/identity/limits',
         exerciseAttemptLimiter(database).pipe(Effect.orDie, Effect.flatMap(HttpServerResponse.json)),
       ),

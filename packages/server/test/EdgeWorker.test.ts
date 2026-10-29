@@ -92,4 +92,22 @@ describe('public edge routing', () => {
     expect(documentPolicy).toContain("frame-ancestors 'none'")
     expect(documentPolicy).toContain("script-src 'self'")
   })
+
+  test('keeps the policy the API sets for a document it renders, and only for the API', async () => {
+    const consentPolicy = "default-src 'none'; form-action 'self' http://127.0.0.1:43110; frame-ancestors 'none'"
+    const rendered = () =>
+      new Response('<form>', { headers: { 'content-type': 'text/html', 'content-security-policy': consentPolicy } })
+    const fromApi = await edge.fetch(new Request('https://styld.test/oauth/mcp/authorize'), {
+      API: { fetch: async () => rendered() },
+      WEBSITE: { fetch: async () => new Response('unused') },
+    })
+    expect(fromApi.headers.get('content-security-policy')).toBe(consentPolicy)
+    expect(fromApi.headers.get('x-frame-options')).toBe('DENY')
+    // A website response cannot loosen the document policy by setting its own.
+    const fromWebsite = await edge.fetch(new Request('https://styld.test/'), {
+      API: { fetch: async () => new Response('unused') },
+      WEBSITE: { fetch: async () => rendered() },
+    })
+    expect(fromWebsite.headers.get('content-security-policy')).toBe(documentPolicy)
+  })
 })

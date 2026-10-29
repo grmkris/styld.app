@@ -9,6 +9,7 @@
   "dependencies": {
     "@alchemy.run/cloudflare": "catalog:",
     "@alchemy.run/domain": "catalog:",
+    "@modelcontextprotocol/server": "catalog:",
     "@styld/auth": "workspace:*",
     "@styld/domain": "workspace:*",
     "@styld/i18n": "workspace:*",
@@ -17,5 +18,9 @@
     "@yielded/auth": "catalog:",
     "alchemy": "catalog:",
     "effect": "catalog:"
+  },
+  "devDependencies": {
+    "@modelcontextprotocol/client": "catalog:",
+    "@modelcontextprotocol/sdk": "catalog:"
   }
 }

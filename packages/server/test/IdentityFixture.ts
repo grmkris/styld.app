@@ -33,8 +33,8 @@ export const seedIdentity = (database: QueryDatabaseClient, id = 'native-identit
     ])
   }).pipe(Effect.provide(WorkerdServices.layer))
 
-export const disableIdentity = (database: QueryDatabaseClient) =>
+export const disableIdentity = (database: QueryDatabaseClient, id = 'native-identity') =>
   database
     .prepare('UPDATE accounts SET enabled = 0, security_revision = ? WHERE id = ?')
-    .bind('revision-disabled', 'native-identity')
+    .bind('revision-disabled', id)
     .run()

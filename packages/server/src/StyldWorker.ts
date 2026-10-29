@@ -10,6 +10,8 @@ import { makeAuthHttp } from './AuthHttp.ts'
 import { DomainLive } from './DomainLive.ts'
 import { health } from './Health.ts'
 import { onFirstUse } from './IsolateCache.ts'
+import { mcpRoutes } from './mcp/Route.ts'
+import { makeMcpOAuth } from './OAuth.ts'
 import { StyldDatabase } from './Resources.ts'
 import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
 
@@ -48,6 +50,16 @@ export default StyldWorker.make(
         Effect.map(({ success }) => success),
         Effect.orElseSucceed(() => false),
       )
+    // Dynamic client registration is open to anyone; each IP may register ten clients a minute.
+    const registrationLimit = yield* Cloudflare.Workers.RateLimit('OAUTH_REGISTER_RATE_LIMIT', {
+      namespaceId: 2610282,
+      simple: { limit: 10, period: 60 },
+    })
+    const allowRegistration = (client: string) =>
+      registrationLimit.limit({ key: client }).pipe(
+        Effect.map(({ success }) => success),
+        Effect.orElseSucceed(() => false),
+      )
     // Bindings configured by the stack (including the web origin and secrets)
     // exist only in the deployed request runtime, not while Alchemy evaluates
     // the Worker declaration during planning. Build the application on the
@@ -71,9 +83,13 @@ export default StyldWorker.make(
           secureCookies: true,
           sessionKeys: authSessionKeys,
         })
+        const db = yield* database.raw
+        const oauth = makeMcpOAuth(db, auth, { origin: authOrigin, keys: authSessionKeys, allowRegistration })
         const routes = Layer.mergeAll(
           auth.layer,
           apiRoutes(auth),
+          oauth.routes,
+          mcpRoutes(db, authOrigin, observabilityBase.release).pipe(Layer.provide(oauth.server)),
           HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),
           browserTelemetryRoutes(authOrigin, allowTelemetry),
         ).pipe(Layer.provide(AlchemyHttp.Platform))

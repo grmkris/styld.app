@@ -27,6 +27,10 @@ export default defineConfig({
       'packages/auth/src/AttemptLimiter.ts': ['/[\\s\\S]*/'],
       'packages/server/src/IsolateCache.ts': ['/[\\s\\S]*/'],
       'packages/server/src/StyldWorker.ts': ['/[\\s\\S]*/'],
+      // MCP and OAuth protocol text is written for assistants and OAuth clients, in English (MCP has no
+      // locale negotiation); the people who connect see only the website's own copy.
+      'packages/server/src/mcp/**/*.ts': ['/[\\s\\S]*/'],
+      'packages/server/src/OAuth.ts': ['/[\\s\\S]*/'],
       'apps/web/src/**/*.styles.ts': ['/[\\s\\S]*/'],
       'apps/web/src/GlobalStyles.ts': ['/[\\s\\S]*/'],
       'apps/web/src/zyzz.config.ts': ['/[\\s\\S]*/'],

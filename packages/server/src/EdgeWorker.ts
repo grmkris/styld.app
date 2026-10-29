@@ -30,6 +30,6 @@ export default {
     const forwarded = new Request(request, { headers })
     const api = isApiPath(new URL(request.url).pathname)
     const response = await (api ? env.API : env.WEBSITE).fetch(forwarded)
-    return withSecurityHeaders(response, api ? apiPolicy : documentPolicy)
+    return withSecurityHeaders(response, api ? apiPolicy : documentPolicy, api)
   },
 }

@@ -19,11 +19,14 @@ export const documentPolicy = [
 /** API responses are data, never documents. */
 export const apiPolicy = "default-src 'none'; frame-ancestors 'none'"
 
-export const withSecurityHeaders = (response: Response, policy: string): Response => {
+/** Add the edge's headers. `policy` applies unless the API Worker set its own policy for a
+ * document it renders (the OAuth consent page, whose form must post to the client's redirect). */
+export const withSecurityHeaders = (response: Response, policy: string, keepOwnPolicy = false): Response => {
   // A WebSocket upgrade must reach the client unchanged.
   if (response.status === 101) return response
   const headers = new Headers(response.headers)
-  headers.set('content-security-policy', policy)
+  const own = response.headers.get('content-security-policy')
+  headers.set('content-security-policy', keepOwnPolicy && own !== null ? own : policy)
   headers.set('x-frame-options', 'DENY')
   headers.set('x-content-type-options', 'nosniff')
   headers.set('referrer-policy', 'strict-origin-when-cross-origin')

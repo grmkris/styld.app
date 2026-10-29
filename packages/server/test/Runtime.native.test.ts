@@ -9,6 +9,7 @@ import * as HttpClient from 'effect/http/HttpClient'
 import { chromium } from 'playwright'
 import { verifyBrowser } from './BrowserAcceptance.ts'
 import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
+import { verifyMcp } from './McpAcceptance.ts'
 import RuntimeWorker from './RuntimeWorker.ts'
 import StyldWorkerLive, { StyldWorker } from '../src/StyldWorker.ts'
 
@@ -95,6 +96,15 @@ const stack = beforeAll(
   { timeout: 120000 },
 )
 afterAll(destroy(Stack), { timeout: 60000 })
+
+test(
+  'serves MCP to OAuth clients: discovery, registration, consent, both protocol eras, rotation and revocation',
+  Effect.gen(function* () {
+    const { url, styldUrl } = yield* stack
+    yield* Effect.promise(() => verifyMcp(styldUrl, url))
+  }),
+  { timeout: 120000 },
+)
 
 test(
   'hydrates the built website and persists locale changes in a browser',
@@ -245,6 +255,9 @@ test(
         tables: [
           'accounts',
           'auth_attempt_buckets',
+          'oauth_assertions',
+          'oauth_clients',
+          'oauth_grants',
           'styld_auth_credentials',
           'styld_auth_identifiers',
           'styld_auth_passwords',
