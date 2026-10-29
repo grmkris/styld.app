@@ -11,7 +11,7 @@ export type EdgeEnvironment = {
   readonly WEBSITE: FetchService
 }
 
-const apiNamespaces = ['/api', '/rpc', '/mcp', '/.well-known', '/out', '/cdn'] as const
+const apiNamespaces = ['/api', '/rpc', '/mcp', '/oauth', '/.well-known', '/out', '/cdn'] as const
 
 export const isApiPath = (path: string): boolean =>
   apiNamespaces.some((namespace) => path === namespace || path.startsWith(`${namespace}/`))

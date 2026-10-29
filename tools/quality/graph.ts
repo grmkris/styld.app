@@ -12,9 +12,18 @@ const Manifest = Schema.Struct({
 type Workspace = { readonly directory: string; readonly manifest: typeof Manifest.Type }
 
 const directions: Readonly<Record<string, readonly string[]>> = {
-  '@styld/web': ['@styld/auth', '@styld/i18n', '@styld/observability'],
-  '@styld/server': ['@styld/auth', '@styld/db', '@styld/domain', '@styld/i18n', '@styld/observability'],
+  '@styld/web': ['@styld/auth', '@styld/i18n', '@styld/observability', '@styld/protocol'],
+  '@styld/server': [
+    '@styld/auth',
+    '@styld/db',
+    '@styld/domain',
+    '@styld/i18n',
+    '@styld/observability',
+    '@styld/protocol',
+  ],
   '@styld/auth': ['@styld/db'],
+  // Browser-safe contracts: the typed API and the schemas assistants and the website share.
+  '@styld/protocol': ['@styld/auth'],
   '@styld/domain': [],
   '@styld/db': [],
   '@styld/i18n': [],

@@ -1,4 +1,4 @@
-import { Auth, AuthContract, Password, Sessions } from '@yielded/auth'
+import { Auth, AuthContract, Password, SessionContract, Sessions } from '@yielded/auth'
 import { Schema } from 'effect'
 
 export const AccountClaims = Schema.Struct({
@@ -25,6 +25,13 @@ export const AuthApi = AuthContract.make('styld/Auth', {
   actions: (sessions) => ({
     signIn: AuthContract.passwordSignIn(sessions),
   }),
+})
+
+/** The signed-in session for HttpApi endpoints: they declare `SessionHttp.RequireSession` and read
+ * `SessionHttp.CurrentSession`; the API Worker implements it with Yielded's session check. The name
+ * is the host-only secure cookie the API Worker sets in every environment. */
+export const SessionHttp = SessionContract.makeSessionHttpContract('styld/Session', AuthApi.sessions.Session, {
+  cookieName: '__Host-effect-auth-session',
 })
 
 export const makeAuth = () =>

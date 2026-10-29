@@ -33,6 +33,10 @@ test('domain cannot depend on persistence and browser cannot reach adapters thro
   expect(() => checkDirection('@styld/domain', '@styld/db')).toThrow('Forbidden dependency')
   expect(() => checkDirection('@styld/auth', '@styld/server')).toThrow('Forbidden dependency')
   expect(() => checkDirection('@styld/server', '@styld/auth')).not.toThrow()
+  // The shared contracts stay browser-safe: they may use auth's contract, never server code.
+  expect(() => checkDirection('@styld/protocol', '@styld/auth')).not.toThrow()
+  expect(() => checkDirection('@styld/protocol', '@styld/server')).toThrow('Forbidden dependency')
+  expect(() => checkDirection('@styld/web', '@styld/protocol')).not.toThrow()
   for (const file of ['packages/auth/src/storage.ts', 'packages/db/src/index.ts', 'apps/web/src/server/Secret.ts'])
     expect(() => assertBrowserSafe(file, '')).toThrow('Server adapter')
   expect(() => assertBrowserSafe('apps/web/src/entry.ts', 'node:fs')).toThrow('Server adapter')

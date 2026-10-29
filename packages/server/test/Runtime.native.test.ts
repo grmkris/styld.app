@@ -285,6 +285,10 @@ test(
     const seeded = yield* HttpClient.post(`${url}/test/identity/seed`)
     expect(seeded.status).toBe(204)
     const call = authCall(styldUrl)
+    // The typed API reads the same session: refused without one, the account with one.
+    const me = (cookie?: string) =>
+      HttpClient.get(`${styldUrl}/api/me`, cookie === undefined ? {} : { headers: new Headers({ cookie }) })
+    expect((yield* me()).status).toBe(401)
     const credentials = { email: 'native-identity@example.invalid', password: 'native-identity-password-52' }
     const denied = yield* call('signIn', { ...credentials, password: 'incorrect-password' })
     expect(yield* denied.json).toMatchObject({ _tag: 'Failure' })
@@ -301,6 +305,13 @@ test(
       .map(([name, value]) => `${name}=${value.value}`)
       .join('; ')
     expect(cookie.length).toBeGreaterThan(0)
+    const account = yield* me(cookie)
+    expect(account.status).toBe(200)
+    expect(yield* account.json).toEqual({
+      accountId: 'native-identity',
+      displayName: 'Native Identity',
+      email: 'native-identity@example.invalid',
+    })
     const session = yield* call('getSession', {}, cookie)
     expect(yield* session.json).toMatchObject({
       _tag: 'Success',
@@ -313,6 +324,7 @@ test(
     expect(yield* logout.json).toMatchObject({ _tag: 'Success' })
     const stale = yield* call('getSession', {}, cachedCookie)
     expect(yield* stale.json).toMatchObject({ _tag: 'Success', value: null })
+    expect((yield* me(cachedCookie)).status).toBe(401)
     const again = yield* call('signIn', credentials)
     const againCookie = Object.entries(again.cookies.cookies)
       .map(([name, value]) => `${name}=${value.value}`)
@@ -325,6 +337,7 @@ test(
     expect(disable.status).toBe(204)
     const disabled = yield* call('getSession', {}, disabledCookie)
     expect(yield* disabled.json).toMatchObject({ _tag: 'Success', value: null })
+    expect((yield* me(disabledCookie)).status).toBe(401)
   }).pipe(Effect.provide(FetchHttpClient.layer)),
   { timeout: 60000 },
 )

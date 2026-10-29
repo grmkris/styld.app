@@ -2,6 +2,13 @@
 
 Status: active, foundation deployed to an isolated workers.dev preview. Full parity is not achieved.
 
+## Overnight run: sign-in, wardrobe, MCP — 2026-10-29
+
+Plan: `/home/kristjan/.claude/plans/ticklish-popping-rivest.md` (owner-approved). One section per slice below.
+
+- **S0 preflight.** The `RAILWAY_API_TOKEN` in the environment is refused by Railway (account, project and team token forms), so v1's Google client and email token could not be pulled; Google waits for the owner. Email needs no token: `styld.app` is in the same Cloudflare account as v2 and is already set up for sending, so v2 will use the `send_email` Worker binding (Alchemy `Email.SendEmail`, no DNS change; under `alchemy dev` it writes `.eml` files, which the native tests read). The deploy token can manage Queues; the Images API answered 403 (the Worker binding is tried at deploy). Non-browser clients (curl, Bun, a Python and an MCP user agent) reach the preview without Cloudflare's Error 1010, so MCP hosts can connect.
+- **S1 spine.** New browser-safe `@styld/protocol` declares the typed API (`StyldApi`, effect HttpApi) once for the API Worker and the website; it may import only `@styld/auth`'s contract. `SessionHttp` (Yielded's `makeSessionHttpContract` on the `__Host-effect-auth-session` cookie) is the session requirement for endpoints; the API Worker implements it with Yielded's own session check and request middleware, so the typed API and the auth routes share one session rule. First endpoint: `GET /api/me`. The edge routes `/oauth` to the API Worker. Native test: `/api/me` refuses a signed-out request, returns the account after sign-in, and refuses after sign-out and after the account is disabled. Graph rules and tests cover the new package.
+
 ## Gallery design — 2026-10-28
 
 - Owner decisions: the Gallery direction replaces Atelier; the port is reprioritised to the experience first (sign-in, boards and public profiles, the MCP server, AI on Cloudflare with one credit balance through AI Gateway with v1's own provider keys), shops last. v2 reuses v1's Google OAuth client and email sender.

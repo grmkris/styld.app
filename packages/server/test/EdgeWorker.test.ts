@@ -8,14 +8,22 @@ describe('public edge routing', () => {
     '/api/auth/getSession',
     '/rpc/test',
     '/mcp',
+    '/oauth/mcp/token',
     '/.well-known/oauth-authorization-server',
     '/cdn/id',
     '/out/id',
   ])('routes the API namespace %s', (path) => expect(isApiPath(path)).toBe(true))
-  test.each(['/', '/@name', '/apiary', '/rpc-other', '/mcps', '/.well-known-example', '/outfit', '/cdn-old'])(
-    'keeps website path %s on the website',
-    (path) => expect(isApiPath(path)).toBe(false),
-  )
+  test.each([
+    '/',
+    '/@name',
+    '/apiary',
+    '/rpc-other',
+    '/mcps',
+    '/oauthx',
+    '/.well-known-example',
+    '/outfit',
+    '/cdn-old',
+  ])('keeps website path %s on the website', (path) => expect(isApiPath(path)).toBe(false))
   test('passes request bodies, cookies, redirects and repeated response headers unchanged', async () => {
     const request = new Request('https://styld.test/api/auth/getSession?x=1', {
       method: 'POST',

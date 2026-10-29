@@ -5,6 +5,7 @@ import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import { decodeAuthSecret, decodeAuthSessionKeyring } from './AuthConfiguration.ts'
 import { browserTelemetryRoutes } from './BrowserTelemetry.ts'
+import { apiRoutes } from './Api.ts'
 import { makeAuthHttp } from './AuthHttp.ts'
 import { DomainLive } from './DomainLive.ts'
 import { health } from './Health.ts'
@@ -72,6 +73,7 @@ export default StyldWorker.make(
         })
         const routes = Layer.mergeAll(
           auth.layer,
+          apiRoutes(auth),
           HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),
           browserTelemetryRoutes(authOrigin, allowTelemetry),
         ).pipe(Layer.provide(AlchemyHttp.Platform))

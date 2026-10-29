@@ -107,6 +107,13 @@
         "vitest": "catalog:",
       },
     },
+    "packages/protocol": {
+      "name": "@styld/protocol",
+      "dependencies": {
+        "@styld/auth": "workspace:*",
+        "effect": "catalog:",
+      },
+    },
     "packages/server": {
       "name": "@styld/server",
       "dependencies": {
@@ -116,6 +123,7 @@
         "@styld/domain": "workspace:*",
         "@styld/i18n": "workspace:*",
         "@styld/observability": "workspace:*",
+        "@styld/protocol": "workspace:*",
         "@yielded/auth": "catalog:",
         "alchemy": "catalog:",
         "effect": "catalog:",
@@ -608,6 +616,8 @@
     "@styld/i18n": ["@styld/i18n@workspace:packages/i18n"],
 
     "@styld/observability": ["@styld/observability@workspace:packages/observability"],
+
+    "@styld/protocol": ["@styld/protocol@workspace:packages/protocol"],
 
     "@styld/server": ["@styld/server@workspace:packages/server"],
 
