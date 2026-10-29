@@ -1,0 +1,48 @@
+import { style } from '../zyzz.config.ts'
+
+// Styles for the assistant views in Views.ts: the Gallery wardrobe grid inside a host's frame. Hosts block
+// web fonts, so the system face stands in for Hanken Grotesk.
+export const viewRoot = style({
+  display: 'grid',
+  gap: '16px',
+  padding: '16px',
+  backgroundColor: 'paper',
+  color: 'ink',
+  fontFamily: 'system-ui, -apple-system, "Segoe UI", sans-serif !custom',
+})
+export const heading = style({ fontSize: '22px', lineHeight: 1.2, fontWeight: 600, letterSpacing: '-0.01em' })
+export const empty = style({ color: 'ink2', fontSize: '16px' })
+export const grid = style({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+  gap: '12px 16px',
+  padding: '0',
+  margin: '0',
+  listStyleType: 'none',
+})
+export const tile = style({
+  display: 'grid',
+  gap: '6px',
+  inlineSize: '100%',
+  padding: '0',
+  borderWidth: '0',
+  backgroundColor: 'transparent !custom',
+  color: 'ink2',
+  textAlign: 'start',
+  cursor: 'pointer',
+})
+export const pictureFrame = style({ aspectRatio: '1 / 1', borderRadius: 'photo', backgroundColor: 'paper2' })
+export const picture = style({ inlineSize: '100%', blockSize: '100%', objectFit: 'contain' })
+export const caption = style({ fontSize: '14px', lineHeight: 1.3 })
+export const open = style({
+  justifySelf: 'start',
+  minBlockSize: '44px',
+  paddingInline: '20px',
+  borderRadius: 'pill',
+  borderWidth: '0',
+  backgroundColor: 'ink',
+  color: 'onInk',
+  fontSize: '15px',
+  fontWeight: 600,
+  cursor: 'pointer',
+})

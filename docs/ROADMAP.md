@@ -20,11 +20,11 @@ not aim for v1 parity.
 
 Kept, in order:
 
-1. Adding pieces from photos with real cut-outs (iteration 1).
+1. Adding pieces from photos, a held-up camera and video, with real cut-outs (iteration 1).
 2. The wardrobe inside ChatGPT and Claude, then go-live on styld.app (iteration 2).
 3. Virtual try-on and billing (iteration 3).
 4. Later, each with its own planning round:
-   - video capture, and outfit check (both extend the photo pipeline);
+   - recording video inside the app, and outfit check (both extend the capture pipeline);
    - boards and collages;
    - a public profile to show off a wardrobe;
    - the web stylist chat.
@@ -41,16 +41,28 @@ Parked (not built unless real demand appears):
 
 Not porting: guest accounts and the free wardrobe cap (owner, 2026-10-28).
 
-## Iteration 1: adding pieces from photos
+## Iteration 1: adding pieces from photos, the camera and video
+
+Iterations 1 and 2 are built together in the run of 2026-10-29, with video import added (owner).
 
 **Capture**
 
-- **The phone's own picker:** several photos at once, from the camera or the library.
-- **A Styld camera for a propped-up phone:**
-  - It notices a new garment in view and waits until the frame holds still for about a second.
-  - Then it shoots, with a flash and a sound. A shutter button also works.
-  - Stillness is found by comparing frames on the phone; no AI runs there.
-  - Photos upload in the background while the person carries on.
+- **The phone's own picker:** up to 30 photos at once, from the camera or the library.
+- **"Hold it up" camera:**
+  - The phone is propped up on the selfie camera; the back camera is one switch away.
+  - The person holds up one garment after another.
+  - The phone notices a change followed by about a second of stillness. It then sends a small frame to Clef-flash,
+    which says whether one garment is being held up, whether it is the front or the back, and whether it is the same
+    garment as the last shot.
+  - Only a "held up" answer fires the shutter, with a flash and haptic feedback. A shutter button always works.
+  - A back shot of the same garment becomes that piece's back photo.
+- **Video import:**
+  - A clip of up to 60 s from the phone's library, counted as 10 credits.
+  - The browser samples stills from it and uploads them with the video.
+  - Meta SAM 3.1 tracks every garment through the video.
+  - The best sampled still per garment is cut out with that garment's mask, ranked on sharpness, size, contact with
+    other garments and the frame edge.
+  - Recording inside the app comes next.
 
 **Processing each photo**
 
@@ -60,7 +72,10 @@ Not porting: guest accounts and the free wardrobe cap (owner, 2026-10-28).
    - Several garments, or an unsure answer, go to Meta SAM 3.1, which returns one mask per garment.
 3. **Suggest:** Clef-flash suggests each piece's category and subcategory. A confident answer is pre-filled; an unsure
    one is left for the person.
-4. **Colours** are read from the cut-out's own pixels.
+4. **Colours:** Clef-flash also suggests a main colour and an optional second one from the 13 swatches.
+
+Every photo and video still is first re-encoded through Images (EXIF and location removed, orientation applied), and
+only that copy reaches a provider.
 
 **Rules for the result**
 
@@ -85,8 +100,8 @@ Not porting: guest accounts and the free wardrobe cap (owner, 2026-10-28).
   experiment.
 - **Analytics:** every provider call (provider, model, units, estimated cost, time taken, outcome) and every keep or
   discard is written to Cloudflare Analytics Engine, beside the existing traces.
-- **Admin page:** one minimal page, open to an email allowlist, shows cost per provider and per day, keep rate and
-  failures.
+- **No admin page** (owner, 2026-10-29): spans, Workers Logs and Analytics Engine carry the numbers, and
+  `tools/ai-usage-report.ts` prints cost per provider and per day and keep rates.
 
 **Provider probe, 2026-10-29**
 
@@ -167,7 +182,7 @@ and frames of its Grok-generated ten-garment rail video.
 
 ## Later
 
-- **Video capture** uses SAM's video tracking.
+- **Recording video in the app** (import from the library comes in iteration 1).
 - **Outfit check** works from a photo of you wearing the clothes: it gives feedback and offers the pieces for the
   wardrobe through the same review tray.
 - **Boards and collages** use an existing canvas library, picked at that iteration. tldraw is out: it needs a paid

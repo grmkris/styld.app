@@ -158,5 +158,7 @@ export const checkGraph = async (root = '.') => {
     for (const target of edges.get(file) ?? []) visitBrowser(target)
   }
   visitBrowser('apps/web/src/entry.ts')
+  // The assistant views are a second browser program, served to ChatGPT and Claude.
+  if (fileSet.has('apps/web/src/assistant/entry.ts')) visitBrowser('apps/web/src/assistant/entry.ts')
   return { files: files.length, browserModules: visited.size }
 }

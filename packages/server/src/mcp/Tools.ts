@@ -24,7 +24,18 @@ export interface Tool<R> {
   readonly description: string
   readonly inputSchema: object
   readonly annotations: ToolAnnotations
+  /** Host metadata for the tool: MCP Apps (`ui`) and OpenAI extensions (`openai/*`). */
+  readonly meta?: Readonly<Record<string, unknown>>
   readonly run: (args: unknown) => Effect.Effect<unknown, ToolError, R>
+}
+
+/** A result that also carries data only the assistant's view reads (`_meta`), such as pictures, so it
+ * stays out of the model's context. */
+export class ViewResult {
+  constructor(
+    readonly value: object,
+    readonly meta: Readonly<Record<string, unknown>>,
+  ) {}
 }
 
 /** A tool without arguments. Effect reads `Schema.Struct({})` as any non-null value, so it renders
@@ -73,6 +84,7 @@ export const tool = <A, R>(definition: {
   readonly description: string
   readonly parameters: Schema.Codec<A, unknown>
   readonly annotations: ToolAnnotations
+  readonly meta?: Readonly<Record<string, unknown>>
   readonly handler: (input: A) => Effect.Effect<unknown, ToolError, R>
 }): Tool<R> => {
   const { parameters, handler, ...rest } = definition
@@ -101,15 +113,19 @@ export const renderTools = <R>(tools: ReadonlyArray<Tool<R>>) =>
     description: entry.description,
     inputSchema: entry.inputSchema,
     annotations: { title: entry.title, ...entry.annotations },
+    ...(entry.meta === undefined ? {} : { _meta: entry.meta }),
   }))
 
 const json = (value: unknown) => [{ type: 'text' as const, text: JSON.stringify(value) }]
 
 /** A success: the same JSON as text and, for objects, as structured content. */
-export const textAndStructured = (value: unknown): CallToolResult =>
-  Predicate.isObject(value) && !Array.isArray(value)
+export const textAndStructured = (value: unknown): CallToolResult => {
+  if (value instanceof ViewResult)
+    return { content: json(value.value), structuredContent: { ...value.value }, _meta: { ...value.meta } }
+  return Predicate.isObject(value) && !Array.isArray(value)
     ? { content: json(value), structuredContent: { ...value } }
     : { content: json(value) }
+}
 
 const errorResult = (error: ToolError): CallToolResult => ({
   isError: true,

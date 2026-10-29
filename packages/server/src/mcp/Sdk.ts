@@ -8,10 +8,11 @@
 import {
   createMcpHandler,
   isLegacyRequest,
+  ResourceNotFoundError,
   Server,
   WebStandardStreamableHTTPServerTransport,
 } from '@modelcontextprotocol/server'
-import type { CallToolResult } from '@modelcontextprotocol/server'
+import type { CallToolResult, ReadResourceResult } from '@modelcontextprotocol/server'
 
 /** What one request's server serves: the tool list and the call bound to its caller. */
 export type McpApp = {
@@ -19,14 +20,27 @@ export type McpApp = {
   readonly instructions: string
   readonly tools: ReadonlyArray<object>
   readonly call: (name: string, args: unknown) => Promise<CallToolResult>
+  /** The MCP Apps views (`ui://`), which hosts read to render tool results. */
+  readonly resources: ReadonlyArray<object>
+  readonly read: (uri: string) => ReadResourceResult | undefined
 }
 
 const serverFor = (app: McpApp) => {
   // The low-level Server serves the app's own pinned tools/list entries unchanged.
-  const server = new Server(app.serverInfo, { capabilities: { tools: {} }, instructions: app.instructions })
+  const server = new Server(app.serverInfo, {
+    capabilities: { tools: {}, resources: {} },
+    instructions: app.instructions,
+  })
   // SAFETY: tools/list serves the app's own rendered tool entries -- the SDK Tool type is narrower than these JSON Schema descriptors, which must pass through byte for byte
   server.setRequestHandler('tools/list', () => Promise.resolve({ tools: app.tools as never }))
   server.setRequestHandler('tools/call', (request) => app.call(request.params.name, request.params.arguments ?? {}))
+  // SAFETY: resources/list serves the app's own resource entries -- their `_meta.ui` objects are MCP Apps fields the SDK Resource type does not declare
+  server.setRequestHandler('resources/list', () => Promise.resolve({ resources: app.resources as never }))
+  server.setRequestHandler('resources/templates/list', () => Promise.resolve({ resourceTemplates: [] }))
+  server.setRequestHandler('resources/read', (request) => {
+    const found = app.read(request.params.uri)
+    return found === undefined ? Promise.reject(new ResourceNotFoundError(request.params.uri)) : Promise.resolve(found)
+  })
   return server
 }
 

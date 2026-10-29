@@ -4,6 +4,7 @@ import { tool, ToolError } from './Tools.ts'
 import type { D1 } from '../OAuth.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import type * as HttpClient from 'effect/http/HttpClient'
+import { viewTools } from './ViewTools.ts'
 import { wardrobeTools } from './WardrobeTools.ts'
 
 /** What assistants read first: what Styld is and how to treat tool output. The first paragraph
@@ -49,4 +50,5 @@ export const styldTools = (db: D1, origin: string, wardrobe: Wardrobe['Service']
       }),
   }),
   ...wardrobeTools(wardrobe, origin, http),
+  ...viewTools(wardrobe, origin),
 ]

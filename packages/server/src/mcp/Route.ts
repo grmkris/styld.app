@@ -8,6 +8,7 @@ import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import * as HttpClient from 'effect/http/HttpClient'
 import { type D1, McpOAuth } from '../OAuth.ts'
 import { challenge, McpScope } from './Policy.ts'
+import { readResource, resources } from './Resources.ts'
 import { instructions, styldTools } from './StyldTools.ts'
 import { callTool, renderTools } from './Tools.ts'
 
@@ -39,6 +40,41 @@ export const mcpRoutes = (db: D1, origin: string, release: string, wardrobe: War
       return routesFor(server, { db, origin, release, tools: styldTools(db, origin, wardrobe, http) })
     }),
   )
+
+/** Answer one authorized request with the tools and views, acting for `account`. */
+const answerFor = Effect.fnUntraced(function* (
+  served: {
+    readonly release: string
+    readonly tools: ReturnType<typeof styldTools>
+    readonly toolList: ReadonlyArray<object>
+  },
+  account: CurrentAccount['Service'],
+  body: unknown,
+) {
+  const { release, tools, toolList } = served
+  const request = yield* HttpServerRequest.HttpServerRequest
+  const services = yield* Effect.context()
+  const sdk = yield* Effect.promise(() => import('./Sdk.ts'))
+  const web = yield* HttpServerRequest.toWeb(request).pipe(Effect.orDie)
+  const response = yield* Effect.promise(() =>
+    sdk.answer(
+      web,
+      {
+        serverInfo: { name: 'styld', version: release },
+        instructions,
+        tools: toolList,
+        resources,
+        read: readResource,
+        call: (name, args) =>
+          Effect.runPromiseWith(services)(
+            callTool(tools, name, args).pipe(Effect.provideService(CurrentAccount, account)),
+          ),
+      },
+      body,
+    ),
+  )
+  return HttpServerResponse.fromWeb(response)
+})
 
 const routesFor = (
   server: McpOAuthServer,
@@ -94,26 +130,9 @@ const routesFor = (
     const body = yield* request.json.pipe(Effect.option)
     if (Option.isNone(body)) return parseError
     const account = CurrentAccount.of({ accountId: access.subjectId, via: 'assistant' })
-    const services = yield* Effect.context()
-    const sdk = yield* Effect.promise(() => import('./Sdk.ts'))
-    const web = yield* HttpServerRequest.toWeb(request).pipe(Effect.orDie)
-    const response = yield* Effect.promise(() =>
-      sdk.answer(
-        web,
-        {
-          serverInfo: { name: 'styld', version: release },
-          instructions,
-          tools: toolList,
-          call: (name, args) =>
-            Effect.runPromiseWith(services)(
-              callTool(tools, name, args).pipe(Effect.provideService(CurrentAccount, account)),
-            ),
-        },
-        body.value,
-      ),
-    )
-    return HttpServerResponse.fromWeb(response)
+    return yield* answerFor({ release, tools, toolList }, account, body.value)
   })
+
   const notAllowed = Effect.succeed(
     HttpServerResponse.text('Use POST for this stateless MCP endpoint.', { status: 405, headers: { allow: 'POST' } }),
   )

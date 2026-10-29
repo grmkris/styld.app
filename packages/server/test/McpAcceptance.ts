@@ -171,7 +171,12 @@ const useTools = async (origin: string, access: string) => {
       'piece_add',
       'piece_update',
       'piece_delete',
+      'wardrobe_show',
     ])
+    // Hosts read the view from the resource the tool names, through either protocol era.
+    const view = (await client.readResource({ uri: 'ui://styld/views-v1.html' })).contents[0]
+    expect(view).toMatchObject({ uri: 'ui://styld/views-v1.html', mimeType: 'text/html;profile=mcp-app' })
+    expect(view !== undefined && 'text' in view ? view.text : '').toContain('<div id="styld-view"></div>')
     const result = await client.callTool({ name: 'account_get', arguments: {} })
     expect(result.structuredContent).toEqual({
       accountId: 'native-mcp',

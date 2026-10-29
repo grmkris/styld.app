@@ -2445,4 +2445,5 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'authEmail.expiry':
     '{minutes, plural, one {Koda poteče čez # minuto.} two {Koda poteče čez # minuti.} few {Koda poteče čez # minute.} other {Koda poteče čez # minut.}}',
   'authEmail.ignore': 'Če te kode niste zahtevali, to e-poštno sporočilo prezrite. Kode nikoli ne delite z nikomer.',
+  'assistantView.openInStyld': 'Odpri v Styldu',
 }

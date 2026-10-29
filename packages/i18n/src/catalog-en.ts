@@ -2404,4 +2404,5 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'authEmail.instructions': 'Enter this code in Styld to continue:',
   'authEmail.expiry': '{minutes, plural, one {The code expires in # minute.} other {The code expires in # minutes.}}',
   'authEmail.ignore': "If you didn't ask for this code, ignore this email. Never share the code with anyone.",
+  'assistantView.openInStyld': 'Open in Styld',
 }

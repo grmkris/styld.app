@@ -3,6 +3,7 @@ import { Effect, Option } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
 import { describe, expect, test } from 'vitest'
 import { CurrentAccount } from '../src/CurrentAccount.ts'
+import { readResource, resources, viewsUri } from '../src/mcp/Resources.ts'
 import { instructions, styldTools } from '../src/mcp/StyldTools.ts'
 import { callTool, renderTools } from '../src/mcp/Tools.ts'
 import type { D1 } from '../src/OAuth.ts'
@@ -85,6 +86,7 @@ describe('MCP tools', () => {
       'piece_add',
       'piece_update',
       'piece_delete',
+      'wardrobe_show',
     ])
     expect(list.find(({ name }) => name === 'piece_delete')?.annotations).toMatchObject({ destructiveHint: true })
     for (const entry of list) {
@@ -94,6 +96,37 @@ describe('MCP tools', () => {
       expect(JSON.stringify(entry).length).toBeLessThanOrEqual(12 * 1024)
     }
     expect(instructions.split('\n\n')[0]?.length).toBeLessThanOrEqual(512)
+  })
+
+  test('shows the wardrobe in the Styld view, with the words in both languages', async () => {
+    const entry = renderTools(tools).find(({ name }) => name === 'wardrobe_show')
+    expect(entry).toMatchObject({ _meta: { ui: { resourceUri: viewsUri } } })
+    const result = await call('wardrobe_show', {})
+    expect(result.structuredContent).toMatchObject({
+      _tag: 'WardrobeView',
+      url: 'https://styld.test/wardrobe',
+      pieces: [
+        { name: 'Navy cable knit', category: 'top', url: `https://styld.test/wardrobe/${pieces[0]?.id}` },
+        { name: 'White tee' },
+        { name: 'Jeans', category: 'bottom' },
+      ],
+      labels: {
+        en: { wardrobeTitle: 'Wardrobe', openInStyld: 'Open in Styld' },
+        sl: { openInStyld: 'Odpri v Styldu' },
+      },
+    })
+    expect(result).toHaveProperty('_meta', {})
+  })
+
+  test('serves the view as one self-contained MCP Apps resource', () => {
+    expect(resources).toEqual([expect.objectContaining({ uri: viewsUri, mimeType: 'text/html;profile=mcp-app' })])
+    const read = readResource(viewsUri)
+    const html = read?.contents[0]?.text ?? ''
+    expect(html).toMatch(/^<!doctype html>/)
+    expect(html).toContain('<div id="styld-view"></div>')
+    // Nothing loads from the network: no external script, stylesheet or font.
+    expect(html).not.toMatch(/<script[^>]+src=|<link[^>]+href=|@import|url\(https?:/)
+    expect(readResource('ui://styld/other.html')).toBeUndefined()
   })
 
   test('answers with the account as text and structured content', async () => {

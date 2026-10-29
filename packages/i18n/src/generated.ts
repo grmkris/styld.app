@@ -396,6 +396,7 @@ export interface MessageArgumentsByKey<T = string> {
   'assistantPanel.title': Readonly<Record<string, never>>
   'assistantPanel.untitled': Readonly<Record<string, never>>
   'assistantPanel.viewAll': Readonly<Record<string, never>>
+  'assistantView.openInStyld': Readonly<Record<string, never>>
   'auth.alreadyHaveAccount': Readonly<Record<string, never>>
   'auth.autoCreateNote': Readonly<Record<string, never>>
   'auth.backToDashboard': Readonly<Record<string, never>>
@@ -2333,4 +2334,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '747f35c49449bbb8cb216590f68e660c4a30b953810455626f0c874864af615d'
+export const catalogVersion = 'ed44d1eb59645bb94d6bac757ce130e22adededb13895c4a5e78d96417e5c689'

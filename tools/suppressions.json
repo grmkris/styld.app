@@ -26,5 +26,9 @@
   {
     "file": "packages/server/src/wardrobe/Wardrobe.ts",
     "comment": "SAFETY: an R2 object's body is the stored image's bytes -- workers-types declares the body as ReadableStream<any>"
+  },
+  {
+    "file": "packages/server/src/mcp/Sdk.ts",
+    "comment": "SAFETY: resources/list serves the app's own resource entries -- their `_meta.ui` objects are MCP Apps fields the SDK Resource type does not declare"
   }
 ]

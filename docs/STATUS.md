@@ -2,6 +2,32 @@
 
 Status: active. Email-code sign-in, the wardrobe, MCP wardrobe tools and account deletion are deployed to the isolated workers.dev preview (release `66ffb1e`). Scope changed on 2026-10-29: v2 ports only the v1 behaviour worth keeping, in the order of `docs/ROADMAP.md`; the delivery matrix marks kept, later and parked rows.
 
+## Capture and assistant run — 2026-10-29
+
+Plan: `/home/kristjan/.claude/plans/ticklish-popping-rivest.md` (owner-approved): iterations 1 and 2 plus video import,
+deployed to the preview. One entry per slice.
+
+- **S1 assistant view (MCP Apps).**
+  - **The view:** a small client-only Foldkit program (`apps/web/src/assistant/`: `Views.ts`, `Bridge.ts`, `entry.ts`)
+    draws tool results inside ChatGPT and Claude.
+    - The bridge speaks the MCP Apps `ui/*` JSON-RPC over `postMessage`: the handshake, the tool result in, link
+      requests out.
+    - The view holds no copy of its own. The server sends its words from the catalogs in both languages, and the view
+      picks the host's.
+  - **The build:**
+    - `tools/assistant-views.ts` builds the view with its own Vite config (one IIFE, inlined into one HTML file).
+    - The server bundles the result as `packages/server/src/mcp/apps/AssistantViews.generated.ts`.
+    - `assistant-views:check` rebuilds and compares it as part of `check`, with a 384 KiB budget. It is 318 KB
+      today, mostly Effect and the Foldkit runtime (about 100 KB gzipped). The planned 150 KB was not reachable.
+    - The graph gate treats it as a second browser root.
+  - **The server side:**
+    - MCP now serves resources: `ui://styld/views-v1.html` (`text/html;profile=mcp-app`, no network access).
+    - Tools carry `_meta`, and results can carry data only the view reads.
+    - The first view tool is `wardrobe_show`.
+  - **Evidence:**
+    - Unit: the tool list, the view result in both languages, the self-contained resource, the view's Story tests.
+    - Native: SDK 2.x and 1.x clients read the resource through the OAuth journey.
+
 ## Scope and roadmap — 2026-10-29
 
 The owner decided the next iterations after the v1 feature inventory (`docs/migration/v1-features.md`), v1's production usage (`docs/migration/v1-usage-2026-10-29.md`: 20 real accounts, about 8 outside, no paying customer, 78% of AI spend on redrawn product shots) and the Meta/segmentation research handoff (spike commit `1461a78`).
