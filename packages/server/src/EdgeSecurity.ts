@@ -2,12 +2,14 @@
 
 /** Pages load only same-origin scripts, styles, images, fonts and API calls,
  * and no site may frame them. Foldkit's Flags are a JSON data block, which a
- * script policy does not govern. */
+ * script policy does not govern. `blob:` media is the person's own chosen video,
+ * which the page plays locally to sample its stills before uploading it. */
 export const documentPolicy = [
   "default-src 'self'",
   "script-src 'self'",
   "style-src 'self'",
   "img-src 'self' data: blob:",
+  "media-src 'self' blob:",
   "font-src 'self'",
   "connect-src 'self'",
   "object-src 'none'",
