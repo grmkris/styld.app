@@ -303,6 +303,15 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'account.fieldBodyType': 'Body type',
   'account.fieldOccasions': 'Occasions',
   'account.fieldStyleVibes': 'Style vibes',
+  'account.assistants.title': 'Use Styld in ChatGPT or Claude',
+  'account.assistants.description':
+    'Your assistant can search your wardrobe, add pieces from photos, and change or delete them. You approve the connection once in Styld.',
+  'account.deleteAccount': 'Delete account',
+  'account.deleteAccountConfirmTitle': 'Delete your account?',
+  'account.deleteAccountConfirmBody':
+    "This deletes your account, your wardrobe and its photos for good, and assistants you connected lose access. This can't be undone.",
+  'account.deleteAccountConfirm': 'Delete my account',
+  'account.deleteAccountFailed': "Styld couldn't delete your account just now. Try again in a moment.",
   'referral.title': 'Referrals',
   'referral.description': 'Invite friends and earn 3 bonus credits each when they subscribe.',
   'referral.yourCode': 'Your referral code',

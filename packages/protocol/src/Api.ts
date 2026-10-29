@@ -1,6 +1,6 @@
 import { SessionHttp } from '@styld/auth/config'
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
-import { Me } from './Account.ts'
+import { AccountUnavailable, Me } from './Account.ts'
 import {
   AddPiece,
   CreateUpload,
@@ -19,6 +19,8 @@ import {
 /** The signed-in person's account. */
 export class AccountApi extends HttpApiGroup.make('account')
   .add(HttpApiEndpoint.get('me', '/me', { success: Me }))
+  /** Delete the account, its wardrobe and photos, its sessions and assistants' access, for good. */
+  .add(HttpApiEndpoint.delete('deleteMe', '/me', { success: HttpApiSchema.NoContent, error: AccountUnavailable }))
   .middleware(SessionHttp.RequireSession)
   .prefix('/api') {}
 

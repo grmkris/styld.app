@@ -8,6 +8,7 @@ import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { fieldLabel, formError, textField } from '../Fields.styles.ts'
 import { backIcon, deleteIcon, editIcon, loader } from '../Icon.ts'
 import { wardrobeRouter } from '../route.ts'
+import { confirmActions } from '../ConfirmActions.ts'
 import { styled } from '../Styled.ts'
 import { Deletion, type Draft, Load, Message, type Model } from './Piece.ts'
 import { piecePickers, swatches } from './PieceFields.ts'
@@ -45,27 +46,19 @@ const confirmDelete = (model: Model, locale: Locale, h: HtmlBuilder<Message>): H
       Deletion.guards.Failed(model.deletion)
         ? h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, 'wardrobe.failedDelete', {})])
         : h.empty,
-      h.div(styled(h, styles.actions()), [
-        actionButton(
+      h.div(
+        styled(h, styles.actions()),
+        confirmActions(
           {
-            label: format(locale, deleting ? 'wardrobe.deleting' : 'wardrobe.deleteLabel', {}),
-            style: primaryAction(),
-            onClick: Message.ClickedConfirmDelete(),
-            isDisabled: deleting,
-            leading: deleting ? loader(h) : h.empty,
+            confirm: format(locale, deleting ? 'wardrobe.deleting' : 'wardrobe.deleteLabel', {}),
+            cancel: format(locale, 'common.cancel', {}),
+            onConfirm: Message.ClickedConfirmDelete(),
+            onCancel: Message.ClickedCancelDelete(),
+            busy: deleting,
           },
           h,
         ),
-        actionButton(
-          {
-            label: format(locale, 'common.cancel', {}),
-            style: secondaryAction(),
-            onClick: Message.ClickedCancelDelete(),
-            isDisabled: deleting,
-          },
-          h,
-        ),
-      ]),
+      ),
     ],
   )
 }

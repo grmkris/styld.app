@@ -12,6 +12,7 @@ import { catalogVersion, loadCatalog } from '@styld/i18n'
 import { Locale, localeEndpoint, parseLocale } from './Locale.ts'
 import * as Crypto from 'effect/Crypto'
 import * as AddPiece from './page/AddPiece.ts'
+import * as Account from './page/Account.ts'
 import * as Login from './page/Login.ts'
 import * as Piece from './page/Piece.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
@@ -19,6 +20,7 @@ import {
   AppRoute,
   accountRouter,
   connectionAuthorizePath,
+  homeRouter,
   loginRouter,
   needsSession,
   pieceRouter,
@@ -36,6 +38,8 @@ export const Flags = Schema.Struct({
   timeZone: Schema.String,
   referenceTime: Schema.Number,
   pathname: Schema.String,
+  /** The public origin the page was served from: assistants connect to its `/mcp`. */
+  origin: Schema.String,
   telemetryConsent: TelemetryConsent,
 })
 export type Flags = typeof Flags.Type
@@ -60,6 +64,7 @@ export const Model = Schema.Struct({
   wardrobe: Wardrobe.Model,
   piece: Piece.Model,
   addPiece: AddPiece.Model,
+  account: Account.Model,
   telemetry: Schema.Struct({ consent: TelemetryConsent, prompting: Schema.Boolean }),
 })
 export type Model = typeof Model.Type
@@ -73,11 +78,11 @@ export const Message = defineMessageUnion({
   ReceivedSession: { claims: Schema.NullOr(AccountClaims) },
   FailedReadSession: {},
   RequestedSession: {},
-  RequestedSignOut: {},
   SucceededSignOut: {},
   FailedSignOut: {},
   CompletedNavigate: {},
   GotLoginMessage: { message: Login.Message },
+  GotAccountMessage: { message: Account.Message },
   GotWardrobeMessage: { message: Wardrobe.Message },
   GotPieceMessage: { message: Piece.Message },
   GotAddPieceMessage: { message: AddPiece.Message },
@@ -178,6 +183,7 @@ export const init = (context: Flags): UpdateReturn => {
       wardrobe: Wardrobe.init(),
       piece,
       addPiece: AddPiece.init(),
+      account: Account.init(),
       telemetry: { consent: context.telemetryConsent, prompting: context.telemetryConsent === 'undecided' },
     },
     commands: [ReadSession(), ...pageCommands(route, piece)],
@@ -218,6 +224,31 @@ const foldLogin = Update.foldChild({
   write: (model: Model, nextLogin: Login.Model) => modifyFields(model, { login: () => nextLogin }),
   toParentMessage: (message: Login.Message) => Message.GotLoginMessage({ message }),
   foldOutMessage: foldLoginOutMessage,
+})
+
+/** Sign out of the session the page holds. */
+const requestSignOut = (model: Model): Update.Return<Model, Message, Services> => {
+  const { session } = model
+  if (!Session.guards.SignedIn(session)) return { model }
+  return {
+    model: modifyFields(model, { session: () => Session.SigningOut({ claims: session.claims }) }),
+    commands: [SignOut()],
+  }
+}
+
+const foldAccount = Update.foldChild({
+  update: Account.update,
+  read: (model: Model) => Option.some(model.account),
+  write: (model: Model, account: Account.Model) => modifyFields(model, { account: () => account }),
+  toParentMessage: (message: Account.Message) => Message.GotAccountMessage({ message }),
+  foldOutMessage: Account.OutMessage.match<Update.Step<Model, Message, Services>>({
+    RequestedSignOut: () => requestSignOut,
+    // The account is gone with its session: the visitor starts over on the home page.
+    DeletedAccount: () => (stepModel) => ({
+      model: modifyFields(stepModel, { session: () => Session.SignedOut() }),
+      commands: [Navigate({ href: homeRouter({}) })],
+    }),
+  }),
 })
 
 const foldWardrobe = Update.foldChild({
@@ -278,14 +309,6 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       model: modifyFields(model, { session: () => Session.Checking() }),
       commands: [ReadSession()],
     }),
-    RequestedSignOut: () => {
-      const { session } = model
-      if (!Session.guards.SignedIn(session)) return { model }
-      return {
-        model: modifyFields(model, { session: () => Session.SigningOut({ claims: session.claims }) }),
-        commands: [SignOut()],
-      }
-    },
     SucceededSignOut: () => ({
       model: modifyFields(model, { session: () => Session.SignedOut() }),
       commands: afterSignOut(model.route),
@@ -293,6 +316,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     FailedSignOut: () => ({ model: modifyFields(model, { session: () => Session.Unavailable() }) }),
     CompletedNavigate: () => ({ model }),
     GotLoginMessage: (got) => foldLogin(model, got.message),
+    GotAccountMessage: (got) => foldAccount(model, got.message),
     GotWardrobeMessage: (got) => foldWardrobe(model, got.message),
     GotPieceMessage: (got) => foldPiece(model, got.message),
     GotAddPieceMessage: (got) => foldAddPiece(model, got.message),

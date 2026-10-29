@@ -89,10 +89,11 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
       HttpRouter.add(
         'POST',
         '/test/identity/seed-wardrobe',
-        Effect.all([seedIdentity(database, 'native-wardrobe'), seedIdentity(database, 'native-wardrobe-other')]).pipe(
-          Effect.orDie,
-          Effect.as(HttpServerResponse.empty({ status: 204 })),
-        ),
+        Effect.all([
+          seedIdentity(database, 'native-wardrobe'),
+          seedIdentity(database, 'native-wardrobe-other'),
+          seedIdentity(database, 'native-farewell'),
+        ]).pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 }))),
       ),
       // Whether a stored photo still exists, to prove deletion removes it.
       HttpRouter.add(

@@ -4,9 +4,9 @@ import { describe, expect, test } from 'vitest'
 import { Message, Navigate, ReadSession, Session, init, update } from '../src/App.ts'
 import { Message as AddPieceMessage } from '../src/page/AddPiece.ts'
 import { AppRoute } from '../src/route.ts'
+import { pageAt } from './WardrobeFixtures.ts'
 
-const page = (pathname: string) =>
-  init({ locale: 'en', catalogVersion, timeZone: 'UTC', referenceTime: 0, pathname, telemetryConsent: 'denied' }).model
+const page = pageAt
 
 const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
 
@@ -72,8 +72,15 @@ describe('the session decides where a visitor belongs', () => {
 
 const opening = (pathname: string) =>
   (
-    init({ locale: 'en', catalogVersion, timeZone: 'UTC', referenceTime: 0, pathname, telemetryConsent: 'denied' })
-      .commands ?? []
+    init({
+      locale: 'en',
+      catalogVersion,
+      timeZone: 'UTC',
+      referenceTime: 0,
+      pathname,
+      origin: 'https://styld.test',
+      telemetryConsent: 'denied',
+    }).commands ?? []
   ).map(({ name }) => name)
 
 describe('the wardrobe pages', () => {

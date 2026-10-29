@@ -18,6 +18,7 @@ const wardrobe = (pieces: Pieces) =>
       timeZone: 'UTC',
       referenceTime: 0,
       pathname: '/wardrobe',
+      origin: 'https://styld.test',
       telemetryConsent: 'denied',
     }).model,
     {

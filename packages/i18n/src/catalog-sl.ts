@@ -312,6 +312,15 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'account.fieldBodyType': 'Postava',
   'account.fieldOccasions': 'Priložnosti',
   'account.fieldStyleVibes': 'Stilski vibe',
+  'account.assistants.title': 'Uporabite Styld v ChatGPT ali Claudu',
+  'account.assistants.description':
+    'Pomočnik lahko išče po vaši garderobi, dodaja kose s fotografij ter jih spreminja ali briše. Povezavo enkrat odobrite v Styldu.',
+  'account.deleteAccount': 'Izbriši račun',
+  'account.deleteAccountConfirmTitle': 'Želite izbrisati račun?',
+  'account.deleteAccountConfirmBody':
+    'S tem trajno izbrišete svoj račun, garderobo in njene fotografije, povezani pomočniki pa izgubijo dostop. Tega ni mogoče razveljaviti.',
+  'account.deleteAccountConfirm': 'Izbriši moj račun',
+  'account.deleteAccountFailed': 'Styld vašega računa trenutno ni mogel izbrisati. Poskusite znova čez trenutek.',
   'referral.title': 'Priporočila',
   'referral.description': 'Povabite prijatelje in ob njihovi naročnini oba prejmeta 3 bonus kredite.',
   'referral.yourCode': 'Vaša priporočilna koda',

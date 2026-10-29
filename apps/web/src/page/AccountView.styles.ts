@@ -31,3 +31,35 @@ export const pendingStatus = style({
   '& > svg': { color: 'signal' },
 })
 export const unavailable = style({ display: 'grid', justifyItems: 'start', gap: '16px' })
+export const section = style({
+  display: 'grid',
+  gap: '12px',
+  paddingBlock: '20px',
+  borderBlockStartWidth: '1px',
+  borderBlockStartStyle: 'solid',
+  borderBlockStartColor: 'rule',
+})
+export const sectionTitle = style({ fontSize: '17px', fontWeight: 600, margin: '0' })
+export const sectionText = style({ fontSize: '15px', color: 'ink2', margin: '0', lineHeight: 1.5 })
+export const steps = style({
+  display: 'grid',
+  gap: '6px',
+  margin: '0',
+  paddingInlineStart: '20px',
+  fontSize: '14px',
+  color: 'ink2',
+})
+export const hostName = style({ fontSize: '14px', fontWeight: 600, margin: '0' })
+/** The server address: selectable text on stock, so it can be copied by hand too. */
+export const serverUrl = style({
+  display: 'block',
+  padding: '12px 14px',
+  borderRadius: 'field',
+  backgroundColor: 'stock',
+  fontSize: '14px',
+  overflowWrap: 'anywhere',
+  userSelect: 'all',
+})
+export const rowActions = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '12px' })
+export const notice = style({ fontSize: '14px', color: 'ink2', margin: '0' })
+export const problem = style({ fontSize: '14px', color: 'error', margin: '0' })

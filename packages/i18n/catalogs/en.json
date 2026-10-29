@@ -327,7 +327,16 @@
     "fieldStyleGoal": "Style goal",
     "fieldBodyType": "Body type",
     "fieldOccasions": "Occasions",
-    "fieldStyleVibes": "Style vibes"
+    "fieldStyleVibes": "Style vibes",
+    "assistants": {
+      "title": "Use Styld in ChatGPT or Claude",
+      "description": "Your assistant can search your wardrobe, add pieces from photos, and change or delete them. You approve the connection once in Styld."
+    },
+    "deleteAccount": "Delete account",
+    "deleteAccountConfirmTitle": "Delete your account?",
+    "deleteAccountConfirmBody": "This deletes your account, your wardrobe and its photos for good, and assistants you connected lose access. This can't be undone.",
+    "deleteAccountConfirm": "Delete my account",
+    "deleteAccountFailed": "Styld couldn't delete your account just now. Try again in a moment."
   },
   "referral": {
     "title": "Referrals",

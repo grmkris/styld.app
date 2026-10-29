@@ -32,6 +32,7 @@ const renderApplication = (
       timeZone: 'UTC',
       referenceTime: yield* Clock.currentTimeMillis,
       pathname: url.pathname,
+      origin: url.origin,
       telemetryConsent: consentFromCookies(request.headers.get('cookie')),
     }
     const rendered = yield* Server.renderToString(application, { ...options, flags })

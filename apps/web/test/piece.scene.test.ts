@@ -23,6 +23,7 @@ const piecePage = (load: typeof Load.Type) =>
       timeZone: 'UTC',
       referenceTime: 0,
       pathname: `/wardrobe/${jeans.id}`,
+      origin: 'https://styld.test',
       telemetryConsent: 'denied',
     }).model,
     { session: () => Session.SignedIn({ claims }), piece: (piece) => modifyFields(piece, { load: () => load }) },

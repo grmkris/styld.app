@@ -74,6 +74,7 @@ test('language changes serialize persistence and keep failure visible', () => {
     timeZone: 'UTC',
     referenceTime: 0,
     pathname: '/',
+    origin: 'https://styld.test',
     telemetryConsent: 'granted',
   }).model
   const saving = update(initial, Message.SelectedLocale({ value: 'sl' }))
@@ -108,6 +109,7 @@ const flags = (telemetryConsent: TelemetryConsent): Flags => ({
   timeZone: 'UTC',
   referenceTime: 0,
   pathname: '/',
+  origin: 'https://styld.test',
   telemetryConsent,
 })
 

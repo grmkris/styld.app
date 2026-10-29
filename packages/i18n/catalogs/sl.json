@@ -327,7 +327,16 @@
     "fieldStyleGoal": "Stilski cilj",
     "fieldBodyType": "Postava",
     "fieldOccasions": "Priložnosti",
-    "fieldStyleVibes": "Stilski vibe"
+    "fieldStyleVibes": "Stilski vibe",
+    "assistants": {
+      "title": "Uporabite Styld v ChatGPT ali Claudu",
+      "description": "Pomočnik lahko išče po vaši garderobi, dodaja kose s fotografij ter jih spreminja ali briše. Povezavo enkrat odobrite v Styldu."
+    },
+    "deleteAccount": "Izbriši račun",
+    "deleteAccountConfirmTitle": "Želite izbrisati račun?",
+    "deleteAccountConfirmBody": "S tem trajno izbrišete svoj račun, garderobo in njene fotografije, povezani pomočniki pa izgubijo dostop. Tega ni mogoče razveljaviti.",
+    "deleteAccountConfirm": "Izbriši moj račun",
+    "deleteAccountFailed": "Styld vašega računa trenutno ni mogel izbrisati. Poskusite znova čez trenutek."
   },
   "referral": {
     "title": "Priporočila",

@@ -7,3 +7,10 @@ export const Me = Schema.Struct({
   email: Schema.String,
 })
 export type Me = typeof Me.Type
+
+/** The account could not be changed just now; the request may be retried. */
+export class AccountUnavailable extends Schema.TaggedError<AccountUnavailable>()(
+  'AccountUnavailable',
+  {},
+  { httpApiStatus: 503 },
+) {}

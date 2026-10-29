@@ -14,6 +14,7 @@ import {
   decodeRequestBindingKeyring,
 } from './AuthConfiguration.ts'
 import { browserTelemetryRoutes } from './BrowserTelemetry.ts'
+import { AccountLifecycle, makeAccountLifecycle } from './AccountLifecycle.ts'
 import { apiRoutes } from './Api.ts'
 import { makeAuthHttp, withRequestNetwork } from './AuthHttp.ts'
 import { DomainLive } from './DomainLive.ts'
@@ -25,7 +26,7 @@ import { emailSender, StyldDatabase, StyldEmail, StyldMedia, StyldPieceQueue } f
 import { wardrobeRoutes } from './wardrobe/Http.ts'
 import { GarmentCutout } from './wardrobe/Processing.ts'
 import { processingAttempts, settlePieceMessage } from './wardrobe/Queue.ts'
-import { makeWardrobe, Wardrobe } from './wardrobe/Wardrobe.ts'
+import { makeWardrobe, Wardrobe, type WardrobeBindings } from './wardrobe/Wardrobe.ts'
 import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
 
 // The server formats in every language: page renders and code emails.
@@ -54,6 +55,19 @@ const perClientLimit = (name: string, namespaceId: number, limit: number) =>
         Effect.orElseSucceed(() => false),
       )
   })
+
+/** One wardrobe and one account lifecycle per isolate, shared by the routes and the processing
+ * queue. Photos keep their original until the garment cut-out model replaces `keepOriginal`. */
+const storageServices = (bindings: WardrobeBindings) =>
+  Effect.gen(function* () {
+    const wardrobeService = yield* makeWardrobe(bindings)
+    const lifecycle = yield* makeAccountLifecycle(bindings)
+    return {
+      wardrobeService,
+      wardrobe: Layer.succeed(Wardrobe, wardrobeService),
+      lifecycle: Layer.succeed(AccountLifecycle, lifecycle),
+    }
+  }).pipe(Effect.provide([layerCryptoWeb, GarmentCutout.keepOriginal]))
 
 /** The auth origin and keyrings bound as secrets. Missing or malformed ones stop the Worker. */
 const authConfiguration = (env: Cloudflare.Workers.WorkerEnvironment['Service']) =>
@@ -123,19 +137,16 @@ export default StyldWorker.make(
           },
         })
         const db = yield* database.raw
-        // One wardrobe per isolate, shared by its routes and the processing queue. Photos keep
-        // their original until the garment cut-out model replaces `keepOriginal`.
-        const wardrobeService = yield* makeWardrobe({
+        const { wardrobeService, wardrobe, lifecycle } = yield* storageServices({
           database: db,
           bucket: yield* media.raw,
           images: yield* images.raw,
           queue: yield* pieceQueue.raw,
-        }).pipe(Effect.provide([layerCryptoWeb, GarmentCutout.keepOriginal]))
-        const wardrobe = Layer.succeed(Wardrobe, wardrobeService)
+        })
         const oauth = makeMcpOAuth(db, auth, { origin: authOrigin, keys: configuration.sessionKeys, allowRegistration })
         const routes = Layer.mergeAll(
           auth.layer,
-          apiRoutes(auth, wardrobe),
+          apiRoutes(auth, { wardrobe, lifecycle }),
           wardrobeRoutes(auth).pipe(Layer.provide(wardrobe)),
           oauth.routes,
           mcpRoutes(db, authOrigin, observabilityBase.release, wardrobeService).pipe(Layer.provide(oauth.server)),

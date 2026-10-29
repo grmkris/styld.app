@@ -1,9 +1,8 @@
-import { catalogVersion } from '@styld/i18n'
 import { Option } from 'effect'
 import { Command, click, expect, given, label, role, scene, selector, submit, text, type, within } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
-import { LocaleSave, Message, Navigate, Session, SignOut, init, update } from '../src/App.ts'
+import { LocaleSave, Message, Navigate, Session, SignOut, update } from '../src/App.ts'
 import {
   type Code,
   Message as LoginMessage,
@@ -14,10 +13,11 @@ import {
   WaitForCodeExpiry,
   WaitToResend,
 } from '../src/page/Login.ts'
+import { CopyServerUrl, DeleteAccount, Message as AccountMessage } from '../src/page/Account.ts'
 import { view } from '../src/View.ts'
+import { pageAt } from './WardrobeFixtures.ts'
 
-const page = (pathname: string) =>
-  init({ locale: 'en', catalogVersion, timeZone: 'UTC', referenceTime: 0, pathname, telemetryConsent: 'denied' }).model
+const page = pageAt
 
 const claims = { accountId: 'acc_1', displayName: 'ana', email: 'ana@example.com', emailVerified: true }
 
@@ -163,12 +163,13 @@ describe('email code sign-in', () => {
   })
 })
 
+const signedIn = () => modifyFields(page('/account'), { session: () => Session.SignedIn({ claims }) })
+
 describe('account', () => {
   test('a signed-in person sees who they are and signing out sends them to sign in', () => {
-    const signedIn = modifyFields(page('/account'), { session: () => Session.SignedIn({ claims }) })
     scene(
       { update, view },
-      given(signedIn),
+      given(signedIn()),
       expect(role('heading', { name: 'Account' })).toExist(),
       expect(text('ana@example.com')).toExist(),
       click(role('button', { name: 'Sign out' })),
@@ -177,6 +178,47 @@ describe('account', () => {
       Command.resolve(SignOut, Message.SucceededSignOut()),
       Command.expectExact(Navigate({ href: '/login' })),
       Command.resolve(Navigate({ href: '/login' }), Message.CompletedNavigate()),
+    )
+  })
+
+  test('shows the address assistants connect to and copies it', () => {
+    scene(
+      { update, view },
+      given(signedIn()),
+      expect(role('heading', { name: 'Use Styld in ChatGPT or Claude' })).toExist(),
+      expect(selector('#server-url')).toHaveText('https://styld.test/mcp'),
+      click(role('button', { name: 'Copy' })),
+      Command.expectExact(CopyServerUrl({ url: 'https://styld.test/mcp' })),
+      Command.resolve(CopyServerUrl, AccountMessage.SucceededCopyServerUrl()),
+      expect(role('status')).toHaveText('Copied'),
+    )
+    scene(
+      { update, view },
+      given(signedIn()),
+      click(role('button', { name: 'Copy' })),
+      Command.resolve(CopyServerUrl, AccountMessage.FailedCopyServerUrl()),
+      expect(role('alert')).toHaveText('Copy failed. Select the text and copy it manually.'),
+    )
+  })
+
+  test('deleting the account asks first, can be kept, and starts over on the home page when done', () => {
+    scene(
+      { update, view },
+      given(signedIn()),
+      click(role('button', { name: 'Delete account' })),
+      expect(role('heading', { name: 'Delete your account?' })).toExist(),
+      click(role('button', { name: 'Cancel' })),
+      expect(role('heading', { name: 'Delete your account?' })).not.toExist(),
+      click(role('button', { name: 'Delete account' })),
+      click(role('button', { name: 'Delete my account' })),
+      expect(role('button', { name: 'Delete my account' })).toBeDisabled(),
+      Command.expectExact(DeleteAccount),
+      Command.resolve(DeleteAccount, AccountMessage.FailedDeleteAccount()),
+      expect(role('alert')).toHaveText("Styld couldn't delete your account just now. Try again in a moment."),
+      click(role('button', { name: 'Delete my account' })),
+      Command.resolve(DeleteAccount, AccountMessage.SucceededDeleteAccount()),
+      Command.expectExact(Navigate({ href: '/' })),
+      Command.resolve(Navigate({ href: '/' }), Message.CompletedNavigate()),
     )
   })
 })

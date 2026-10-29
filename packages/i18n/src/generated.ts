@@ -13,6 +13,13 @@ export interface MessageArgumentsByKey<T = string> {
   'account.agents.revokeFailed': Readonly<Record<string, never>>
   'account.agents.revoked': Readonly<Record<string, never>>
   'account.agents.title': Readonly<Record<string, never>>
+  'account.assistants.description': Readonly<Record<string, never>>
+  'account.assistants.title': Readonly<Record<string, never>>
+  'account.deleteAccount': Readonly<Record<string, never>>
+  'account.deleteAccountConfirm': Readonly<Record<string, never>>
+  'account.deleteAccountConfirmBody': Readonly<Record<string, never>>
+  'account.deleteAccountConfirmTitle': Readonly<Record<string, never>>
+  'account.deleteAccountFailed': Readonly<Record<string, never>>
   'account.email': Readonly<Record<string, never>>
   'account.enableLocation': Readonly<Record<string, never>>
   'account.fieldBodyType': Readonly<Record<string, never>>
@@ -2326,4 +2333,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '603eb0ca8678e4d4966613a6b551eb8a2d755b958210942051524fec317ef9a5'
+export const catalogVersion = '747f35c49449bbb8cb216590f68e660c4a30b953810455626f0c874864af615d'

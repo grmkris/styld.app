@@ -145,3 +145,32 @@ export const verifyWardrobe = async (origin: string, fixtures: string): Promise<
   expect((await owner(`/api/pieces/${piece.id}`)).status).toBe(404)
   expect(await (await fetch(`${fixtures}/test/identity/media?key=${key}`)).json()).toEqual({ exists: false })
 }
+
+/** Deleting an account ends its access at once and removes its pieces and photos; the email and
+ * password no longer sign in. Runs after `verifyWardrobe`, which seeds the account. */
+export const verifyAccountDeletion = async (origin: string, fixtures: string): Promise<void> => {
+  const cookie = await signIn(origin, 'native-farewell')
+  const call = client(origin, cookie)
+  const photo = await upload(call, png)
+  expect((await put(origin, photo.path, png)).status).toBe(204)
+  const added = await json(call, '/api/pieces', 'POST', {
+    operationId: 'native-farewell-1',
+    uploadId: photo.uploadId,
+    category: 'dress',
+  })
+  expect(added.status).toBe(200)
+  const key = `accounts/native-farewell/uploads/${photo.uploadId}`
+  expect(await (await fetch(`${fixtures}/test/identity/media?key=${key}`)).json()).toEqual({ exists: true })
+  expect((await call('/api/me', { method: 'DELETE' })).status).toBe(204)
+  expect((await call('/api/me')).status).toBe(401)
+  expect((await call('/api/pieces')).status).toBe(401)
+  expect(await (await fetch(`${fixtures}/test/identity/media?key=${key}`)).json()).toEqual({ exists: false })
+  const again = await fetch(`${origin}/api/auth/signIn`, {
+    method: 'POST',
+    headers: { origin, 'content-type': 'application/json', 'x-effect-auth-csrf': '1' },
+    body: JSON.stringify({
+      payload: { email: 'native-farewell@example.invalid', password: 'native-identity-password-52' },
+    }),
+  })
+  expect(await again.json()).toMatchObject({ _tag: 'Failure' })
+}

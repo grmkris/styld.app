@@ -10,7 +10,7 @@ import { type Browser, chromium } from 'playwright'
 import { verifyBrowser } from './BrowserAcceptance.ts'
 import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
 import { verifyMcp } from './McpAcceptance.ts'
-import { verifyWardrobe } from './WardrobeAcceptance.ts'
+import { verifyAccountDeletion, verifyWardrobe } from './WardrobeAcceptance.ts'
 import RuntimeWorker from './RuntimeWorker.ts'
 import StyldWorkerLive, { StyldWorker } from '../src/StyldWorker.ts'
 
@@ -127,10 +127,11 @@ test(
 )
 
 test(
-  "keeps each account's pieces: upload checks, idempotent adds, queue processing, private images, edits and deletion",
+  "keeps each account's pieces (upload checks, idempotent adds, queue processing, private images, edits, deletion) and deletes accounts",
   Effect.gen(function* () {
     const { url, styldUrl } = yield* stack
     yield* Effect.promise(() => verifyWardrobe(styldUrl, url))
+    yield* Effect.promise(() => verifyAccountDeletion(styldUrl, url))
   }),
   { timeout: 60000 },
 )
