@@ -137,9 +137,24 @@ describe('adding a piece by hand', () => {
       message(Message.SubmittedPiece()),
       Command.expectExact(DrawOperationId),
       Command.resolve(DrawOperationId, Message.DrewOperationId({ operationId: 'op-2' })),
-      Command.resolve(UploadPhoto, Message.FailedUploadPhoto()),
+      Command.resolve(UploadPhoto, Message.FailedUploadPhoto({ notAPhoto: false })),
       message(Message.ChoseCategory({ category: 'top' })),
       model(({ attempt }) => expect(Option.isNone(attempt)).toBe(true)),
+    )
+  })
+
+  test('a file the server finds is no photo is reported on the photo, and the next try starts afresh', () => {
+    story(
+      update,
+      given(ready()),
+      message(Message.SubmittedPiece()),
+      Command.resolve(DrawOperationId, Message.DrewOperationId({ operationId: 'op-1' })),
+      Command.resolve(UploadPhoto, Message.FailedUploadPhoto({ notAPhoto: true })),
+      model(({ photoProblem, attempt, submission }) => {
+        expect(photoProblem).toEqual(Option.some('notAnImage'))
+        expect(Option.isNone(attempt)).toBe(true)
+        expect(Submission.guards.Idle(submission)).toBe(true)
+      }),
     )
   })
 

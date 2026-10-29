@@ -9,7 +9,10 @@ import type * as HttpApiClient from 'effect/http-api/HttpApiClient'
 export const csrfHeader = HttpClient.mapRequest(HttpClientRequest.setHeader('x-effect-auth-csrf', '1'))
 
 /** The photo's bytes did not get through; `addPiece` explains a refusal of the upload itself. */
-export class PhotoNotSent extends Schema.TaggedError<PhotoNotSent>()('PhotoNotSent', {}) {}
+export class PhotoNotSent extends Schema.TaggedError<PhotoNotSent>()('PhotoNotSent', {
+  /** The server looked at the bytes and found no photo it takes (415). */
+  notAPhoto: Schema.Boolean,
+}) {}
 
 /** Styld's typed API, called from the browser. The session travels as a same-origin cookie. */
 export class StyldClient extends Context.Service<
@@ -45,7 +48,7 @@ export const styldClientLayer = (origin: string) =>
             )
             .pipe(
               Effect.asVoid,
-              Effect.mapError(() => PhotoNotSent.make({})),
+              Effect.mapError((error) => PhotoNotSent.make({ notAPhoto: error.response?.status === 415 })),
             ),
       }
     }),

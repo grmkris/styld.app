@@ -32,6 +32,13 @@ export const dropZone = style({
   cursor: 'pointer',
   '&[data-drag-over]': { borderColor: 'ink', backgroundColor: 'paper2' },
   '&[aria-invalid="true"]': { borderColor: 'invalid' },
+  // The file input inside is hidden, so the label shows its keyboard focus.
+  '&:has(input:focus-visible)': {
+    outlineWidth: '2px',
+    outlineStyle: 'solid',
+    outlineColor: 'focus',
+    outlineOffset: '2px',
+  },
 })
 export const dropTitle = style({ color: 'ink', fontWeight: 600 })
 export const preview = style({
@@ -58,5 +65,12 @@ export const changePhoto = style({
   fontSize: '14px',
   fontWeight: 600,
   cursor: 'pointer',
+  // The file input inside is hidden, so the label shows its keyboard focus.
+  '&:has(input:focus-visible)': {
+    outlineWidth: '2px',
+    outlineStyle: 'solid',
+    outlineColor: 'focus',
+    outlineOffset: '2px',
+  },
 })
 export const submit = style({ inlineSize: '100%', marginBlockStart: '24px' })

@@ -20,6 +20,8 @@ global({
     WebkitTapHighlightColor: 'transparent',
     scrollbarGutter: 'stable',
     overflowX: 'clip',
+    // A focused field scrolls clear of the phone's tab bar instead of under it.
+    '@media (max-width: 899px)': { scrollPaddingBlockEnd: 'calc(88px + env(safe-area-inset-bottom))' },
   },
   body: { margin: '0' },
   'h1, h2, h3, p, dl, dd': { margin: '0' },

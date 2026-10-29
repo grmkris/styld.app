@@ -80,7 +80,7 @@ export const Message = defineMessageUnion({
   SubmittedPiece: {},
   DrewOperationId: { operationId: Schema.String },
   SucceededUploadPhoto: { uploadId: Schema.String },
-  FailedUploadPhoto: {},
+  FailedUploadPhoto: { notAPhoto: Schema.Boolean },
   SucceededAddPiece: { pieceId: Schema.String },
   FailedAddPiece: { retry: Schema.Literals(['same', 'fresh']) },
 })
@@ -129,7 +129,10 @@ export const UploadPhoto = Command.define('UploadPhoto', {
       const upload = yield* api.wardrobe.createUpload({ payload: { contentType, bytes: photo.size } })
       yield* sendPhoto(upload.path, photo)
       return Message.SucceededUploadPhoto({ uploadId: upload.uploadId })
-    }).pipe(Effect.orElseSucceed(() => Message.FailedUploadPhoto())),
+    }).pipe(
+      Effect.catchTag('PhotoNotSent', ({ notAPhoto }) => Effect.succeed(Message.FailedUploadPhoto({ notAPhoto }))),
+      Effect.orElseSucceed(() => Message.FailedUploadPhoto({ notAPhoto: false })),
+    ),
 })
 
 const AddPieceArgs = Schema.Struct({
@@ -311,7 +314,17 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         onNone: () => ({ model }),
         onSome: ({ operationId }) => proceed(model, operationId, Option.some(uploadId)),
       }),
-    FailedUploadPhoto: () => ({ model: modifyFields(model, { submission: () => Submission.Failed() }) }),
+    // A file the server finds is no photo is the photo's problem: say so there and start afresh.
+    FailedUploadPhoto: ({ notAPhoto }) =>
+      notAPhoto
+        ? {
+            model: modifyFields(model, {
+              attempt: () => Option.none(),
+              submission: () => Submission.Idle(),
+              photoProblem: () => Option.some<PhotoProblem>('notAnImage'),
+            }),
+          }
+        : { model: modifyFields(model, { submission: () => Submission.Failed() }) },
     SucceededAddPiece: ({ pieceId }) => ({ model, outMessage: OutMessage.AddedPiece({ pieceId }) }),
     FailedAddPiece: ({ retry }) => ({
       model: modifyFields(model, {

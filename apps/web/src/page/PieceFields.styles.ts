@@ -33,23 +33,21 @@ export const chip = style({
   '&[aria-pressed="true"]': { backgroundColor: 'ink', color: 'onInk' },
 })
 export const swatchSet = style({ display: 'flex', flexWrap: 'wrap', gap: '4px' })
-/** A swatch's 44px target; the chosen one wears an ink ring. */
+/** A swatch's 44px target; the chosen one wears an ink ring. The ring is the border, so the focus
+ * outline still shows around a chosen swatch. */
 export const swatch = style({
   display: 'inline-grid',
   placeItems: 'center',
   inlineSize: '44px',
   blockSize: '44px',
   padding: '0',
-  borderWidth: '0',
+  borderWidth: '2px',
+  borderStyle: 'solid',
+  borderColor: 'transparent !custom',
   borderRadius: 'pill',
   backgroundColor: 'transparent !custom',
   cursor: 'pointer',
-  '&[aria-pressed="true"]': {
-    outlineWidth: '2px',
-    outlineStyle: 'solid',
-    outlineColor: 'ink',
-    outlineOffset: '-3px',
-  },
+  '&[aria-pressed="true"]': { borderColor: 'ink' },
 })
 /** A colour dot; its `data-colour` picks the swatch, and a chosen dot's check takes the ink that reads on it. */
 export const swatchDot = style({
