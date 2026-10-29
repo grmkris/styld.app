@@ -1,6 +1,6 @@
 # Delivery status
 
-Status: active, foundation deployed to an isolated workers.dev preview. Full parity is not achieved.
+Status: active. Email-code sign-in, the wardrobe, MCP wardrobe tools and account deletion are deployed to the isolated workers.dev preview (release `66ffb1e`). Full parity is not achieved; see the delivery matrix.
 
 ## Overnight run: sign-in, wardrobe, MCP — 2026-10-29
 
@@ -56,6 +56,7 @@ Plan: `/home/kristjan/.claude/plans/ticklish-popping-rivest.md` (owner-approved)
     - **MCP** takes its piece schemas from the protocol, gives the photo import a 10 s timeout, and answers 503 when D1 does not answer the enabled check. Photo-import unit tests cover redirects, the per-hop https rule, type and size refusals.
     - **Keyboard focus (product, high).** It is visible on the photo picker and on chosen colour swatches.
     - **Smaller product fixes.** Focused fields scroll clear of the phone's tab bar, and a file that is no photo is reported on the photo ("That file isn't a photo we can use").
+  - Full gate passed: 163 type/Effect files with zero findings, 171 unit tests, 15 native workerd/Chromium tests with 196 assertions, initial browser bundle 236,022 gzip bytes. Release `66ffb1e886c180703a63f533d938092f1931acd4` is on the isolated preview (three Worker updates, one new binding `EMAIL_CODE_RATE_LIMIT`, no deletes); `/api/health` reports it, deployed acceptance passed (2 tests, 35 assertions, including the MCP discovery, challenge and registration checks), and a real code request through the new limits still delivered mail (SPF/DKIM/DMARC pass).
   - Remaining from the reviews (not done tonight):
     - **Security and durability:**
       - a scheduled cleanup of expired uploads, codes, OAuth grants and assertions (abandoned uploads keep their bytes in R2 until then);
