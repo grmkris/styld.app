@@ -76,9 +76,12 @@ export interface AnalyticsDataset {
 }
 
 /** Provider calls and review decisions as Analytics Engine data points, queried by
- * `tools/ai-usage-report.ts`. Calls: blobs (environment, release, provider, model, kind, outcome),
- * doubles (milliseconds, units, cost in micro-dollars). Reviews: blobs (environment, release, route,
- * provider, decision). A dataset that refuses a point never fails the work it describes. */
+ * `tools/ai-usage-report.ts`. Calls: index `call.<provider>.<kind>`, blobs (environment, release,
+ * provider, model, kind, outcome), doubles (milliseconds, units, cost in micro-dollars). Reviews: index
+ * `review.<decision>`, blobs (environment, release, route, provider, decision). Analytics Engine samples
+ * per index, so a rare call (a route, a video track) keeps its own index rather than sharing one with
+ * the bursts of thumbnails and suggestions a capture makes. A dataset that refuses a point never fails
+ * the work it describes. */
 export const analyticsEngine = (
   dataset: AnalyticsDataset,
   origin: { readonly environment: string; readonly release: string },
@@ -86,7 +89,7 @@ export const analyticsEngine = (
   call: (call) =>
     Effect.sync(() =>
       dataset.writeDataPoint({
-        indexes: ['call'],
+        indexes: [`call.${call.provider}.${call.kind}`],
         blobs: [origin.environment, origin.release, call.provider, call.model, call.kind, call.outcome],
         doubles: [call.milliseconds, call.units, call.costMicroUsd],
       }),
@@ -94,7 +97,7 @@ export const analyticsEngine = (
   review: (decision) =>
     Effect.sync(() =>
       dataset.writeDataPoint({
-        indexes: ['review'],
+        indexes: [`review.${decision.decision}`],
         blobs: [origin.environment, origin.release, decision.route, decision.provider, decision.decision],
         doubles: [1],
       }),

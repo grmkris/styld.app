@@ -6,8 +6,9 @@
  *
  * Reads `CLOUDFLARE_API_TOKEN` (Account Analytics read) and `CLOUDFLARE_ACCOUNT_ID` (default: the v2
  * preview account) from the environment and never prints them. Costs are list-price estimates; the
- * providers' invoices are the truth. Analytics Engine samples at high volume, so every sum is weighted
- * by `_sample_interval`.
+ * providers' invoices are the truth. Analytics Engine samples per index, so every sum is weighted by
+ * `_sample_interval`; indexes are `call.<provider>.<kind>` and `review.<decision>` (plain `call` and
+ * `review` before 2026-10-29 16:00).
  */
 import { Schema } from 'effect'
 
@@ -40,7 +41,7 @@ const calls = await query(`
          SUM(_sample_interval * double2) AS units,
          SUM(_sample_interval * double3) / 1000000 AS est_usd
   FROM StyldV2AiCalls
-  WHERE index1 = 'call' AND ${within}
+  WHERE index1 LIKE 'call%' AND ${within}
   GROUP BY provider, model, kind, outcome
   ORDER BY est_usd DESC
   FORMAT JSON`)
@@ -48,7 +49,7 @@ const calls = await query(`
 const reviews = await query(`
   SELECT blob3 AS route, blob4 AS provider, blob5 AS decision, SUM(_sample_interval) AS pieces
   FROM StyldV2AiCalls
-  WHERE index1 = 'review' AND ${within}
+  WHERE index1 LIKE 'review%' AND ${within}
   GROUP BY route, provider, decision
   ORDER BY pieces DESC
   FORMAT JSON`)

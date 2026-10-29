@@ -5,7 +5,7 @@ import { makeGarmentVision } from '../src/capture/Clef.ts'
 import { pngSize } from '../src/capture/CloudflareImages.ts'
 import { bestSightings, frameAt, type SampledStill } from '../src/capture/FrameRanking.ts'
 import { makeGarmentSegmenter } from '../src/capture/Meta.ts'
-import { CaptureMetrics } from '../src/capture/Metrics.ts'
+import { analyticsEngine, CaptureMetrics } from '../src/capture/Metrics.ts'
 import { type Box, cutOut, decodePng, encodePng, opaqueBounds, type Rgba } from '../src/capture/Pixels.ts'
 import { lineFrame, lineFrameSize, makeOutputLines, stillMasks, videoMasks } from '../src/capture/SamStream.ts'
 import { readMoov, videoFrameCount } from '../src/capture/VideoContainer.ts'
@@ -242,5 +242,35 @@ describe('Meta SAM', () => {
     )
     expect(Exit.isSuccess(tracked) && tracked.value.found.map(({ frame }) => frame)).toEqual([0, 24])
     expect(Exit.isSuccess(tracked) && tracked.value.framesBilled).toBe(50)
+  })
+})
+
+describe('provider metering', () => {
+  test('writes each call under its own provider and kind, with no account, prompt or picture', async () => {
+    const points: Array<unknown> = []
+    const metrics = analyticsEngine(
+      { writeDataPoint: (point) => points.push(point) },
+      { environment: 'preview', release: 'r1' },
+    )
+    await Effect.runPromise(
+      metrics.call({
+        provider: 'clef',
+        model: 'clef-flash',
+        kind: 'route',
+        outcome: 'ok',
+        milliseconds: 420,
+        units: 650,
+        costMicroUsd: 25,
+      }),
+    )
+    await Effect.runPromise(metrics.review({ route: 'tray', provider: 'any', decision: 'kept' }))
+    expect(points).toEqual([
+      {
+        indexes: ['call.clef.route'],
+        blobs: ['preview', 'r1', 'clef', 'clef-flash', 'route', 'ok'],
+        doubles: [420, 650, 25],
+      },
+      { indexes: ['review.kept'], blobs: ['preview', 'r1', 'tray', 'any', 'kept'], doubles: [1] },
+    ])
   })
 })
