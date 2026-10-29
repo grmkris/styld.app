@@ -2731,8 +2731,7 @@
     "addHint": "Photos, or a video of up to a minute along your rail. Every piece is cut out for you to keep or drop.",
     "chooseTitle": "Photos or a video",
     "chooseHint": "From your library",
-    "cameraTitle": "Take a photo",
-    "cameraHint": "One piece at a time",
+    "cameraTitle": "Or use your camera app",
     "notSupported": "{name} isn't a photo or video Styld can use",
     "tooLarge": "{name} is too large",
     "queueLabel": "Sending",
@@ -2760,6 +2759,21 @@
     "addCount": "{count, plural, one {Add # to my wardrobe} other {Add # to my wardrobe}}",
     "addFailed": "Couldn't add them. Try again.",
     "addMore": "Add more",
-    "done": "Done"
+    "done": "Done",
+    "holdUpTitle": "Hold pieces up",
+    "holdUpHint": "Your camera takes each one",
+    "camera": {
+      "title": "Camera",
+      "starting": "Starting the camera…",
+      "holdOne": "Hold one piece up, then keep still",
+      "checking": "Looking…",
+      "taken": "Got it. Next piece, or its back",
+      "tapToTake": "Tap the picture to take it",
+      "shutter": "Take a photo",
+      "count": "{count, plural, one {# taken} other {# taken}}",
+      "flip": "Switch camera",
+      "denied": "Camera access is off. Allow it in your browser's settings, or choose photos instead.",
+      "unavailable": "The camera can't start here. Choose photos instead."
+    }
   }
 }

@@ -560,7 +560,17 @@ export interface MessageArgumentsByKey<T = string> {
   'capture.addMore': Readonly<Record<string, never>>
   'capture.addTitle': Readonly<Record<string, never>>
   'capture.allowance': { readonly remaining: string | number; readonly daily: string | number }
-  'capture.cameraHint': Readonly<Record<string, never>>
+  'capture.camera.checking': Readonly<Record<string, never>>
+  'capture.camera.count': { readonly count: number }
+  'capture.camera.denied': Readonly<Record<string, never>>
+  'capture.camera.flip': Readonly<Record<string, never>>
+  'capture.camera.holdOne': Readonly<Record<string, never>>
+  'capture.camera.shutter': Readonly<Record<string, never>>
+  'capture.camera.starting': Readonly<Record<string, never>>
+  'capture.camera.taken': Readonly<Record<string, never>>
+  'capture.camera.tapToTake': Readonly<Record<string, never>>
+  'capture.camera.title': Readonly<Record<string, never>>
+  'capture.camera.unavailable': Readonly<Record<string, never>>
   'capture.cameraTitle': Readonly<Record<string, never>>
   'capture.chooseHint': Readonly<Record<string, never>>
   'capture.chooseTitle': Readonly<Record<string, never>>
@@ -569,6 +579,8 @@ export interface MessageArgumentsByKey<T = string> {
   'capture.failed': Readonly<Record<string, never>>
   'capture.finding': Readonly<Record<string, never>>
   'capture.foundTitle': { readonly count: number }
+  'capture.holdUpHint': Readonly<Record<string, never>>
+  'capture.holdUpTitle': Readonly<Record<string, never>>
   'capture.keepLabel': { readonly name: string | number }
   'capture.notSupported': { readonly name: string | number }
   'capture.preparingVideo': Readonly<Record<string, never>>
@@ -2367,4 +2379,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'd821dac9b55e08574f67273eab21d0c1ee70dde5e54737b7f8625af9a1428c23'
+export const catalogVersion = '54d8fb370c4939734c893ccd5c9455c7d1b3776122e56af0e2b030fd96956442'

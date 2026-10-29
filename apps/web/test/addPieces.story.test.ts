@@ -4,6 +4,7 @@ import { Option } from 'effect'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import { classify, Message, SendPhoto, SendVideo, Sending, init, update } from '../src/page/AddPieces.ts'
+import { Buzz, Message as CameraMessage, type Message as HeldCameraMessage } from '../src/page/HeldCamera.ts'
 
 const file = (name: string, type: string, bytes = 8) => new globalThis.File([new Uint8Array(bytes)], name, { type })
 const tee = file('tee.jpg', 'image/jpeg')
@@ -14,6 +15,9 @@ const rail = file('rail.mov', 'video/quicktime')
 const chosen = (first: File, ...rest: ReadonlyArray<File>) =>
   Message.GotDropMessage({ message: FileDrop.Message.DroppedFiles({ files: [first, ...rest] }) })
 
+/** A message from the held-up camera, as the page receives it. */
+const camera = (sent: HeldCameraMessage) => Message.GotHeldCameraMessage({ message: sent })
+
 /** Where a photo came from; a camera shot overrides it. */
 const picker: CaptureSource = 'picker'
 
@@ -22,6 +26,7 @@ const photoArgs = (index: number, photo: File, contentType: 'image/jpeg' | 'imag
   photo,
   contentType,
   source: picker,
+  side: Option.none(),
   operationId: Option.none(),
   uploadId: Option.none(),
 })
@@ -109,6 +114,27 @@ describe('choosing files to add', () => {
       Command.resolve(SendPhoto(retried), Message.SucceededSend({ index: 0 })),
       expectOutMessage({ _tag: 'SentEverything' }),
       model(({ items }) => expect(items.map(({ uploadId }) => uploadId)).toEqual([Option.some('up_1')])),
+    )
+  })
+
+  test('photos from the held-up camera go up as camera shots, and the tray waits for the camera to close', () => {
+    const shot = file('camera-1.jpg', 'image/jpeg')
+    const sent = SendPhoto({ ...photoArgs(0, shot, 'image/jpeg'), source: 'camera' })
+    story(
+      update,
+      given(init()),
+      message(Message.ClickedHoldUp()),
+      message(camera(CameraMessage.StartedCamera())),
+      message(camera(CameraMessage.TappedPicture({ check: shot, still: shot }))),
+      Command.expectHas(sent, Buzz),
+      Command.resolve(Buzz, CameraMessage.Buzzed()),
+      Command.resolve(sent, Message.SucceededSend({ index: 0 })),
+      // Sent while the camera is open: the page stays until the person is done.
+      model(({ items }) =>
+        expect(items.map(({ source, sending }) => [source, Sending.guards.Sent(sending)])).toEqual([['camera', true]]),
+      ),
+      message(camera(CameraMessage.ClickedDone())),
+      expectOutMessage({ _tag: 'SentEverything' }),
     )
   })
 })

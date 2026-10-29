@@ -136,6 +136,29 @@ deployed to the preview. One entry per slice.
     - The allowance went from 97 to 87: a video costs 10.
   - **Not yet proven:** an iPhone `.mov` (HEVC, rotation) and a full minute of video.
   - **Flake seen:** native D1 answered `SQLITE_BUSY` to the wardrobe seed once while another process held port 1337. It passed on the rerun.
+- **S8 held-up camera (web).**
+  - **"Hold pieces up"** on the add page opens the camera on the page, selfie side first, with a switch to the back
+    camera. The preview is mirrored; the photos are not.
+  - **`capture/Camera.ts`** is loaded only when the camera opens. A Foldkit Mount runs `getUserMedia`, reads a
+    64 px grey copy five times a second, and reports two things:
+    - the scene settling after it moved (`capture/Stillness.ts`: the room must change, then hold still for about
+      0.6 s, so an empty room or the same garment never shoots twice);
+    - a tap or Enter on the picture.
+  - **Each shot** is a 2048 px photo plus a 512 px copy for the check.
+  - **`HeldCamera`** is its own submodel. A settled picture goes to `POST /api/captures/check` (Clef: one garment
+    held up? which side? the same as the last shot?).
+    - A garment held up is taken: a buzz, a counter, and the photo joins the send queue as a camera capture with
+      its side.
+    - Anything else asks the person to hold one piece up.
+    - A failed check falls back to tapping.
+    - The tray waits until the person presses Done.
+  - **The camera app** stays available as a smaller link (the file input's `capture` hint).
+  - **Evidence:** unit tests of the stillness rules, and Story tests of check → take, nothing held up, a failed
+    check then a tap, a refused camera, and camera shots joining the queue while the tray waits.
+  - **Not yet proven:**
+    - the camera in a real browser (there is no fake-camera acceptance yet);
+    - Clef's held check on real held-up garments;
+    - pairing a back with its front in the tray: the server supports `pairsWith`, and the page sends only the side.
 
 ## Scope and roadmap — 2026-10-29
 

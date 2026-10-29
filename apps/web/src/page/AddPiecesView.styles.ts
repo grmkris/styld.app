@@ -41,6 +41,28 @@ export const source = style({
     outlineOffset: '2px',
   },
 })
+/** The phone's own camera app, offered quietly under the two main ways in. */
+export const cameraApp = style({
+  position: 'relative',
+  display: 'inline-flex',
+  alignItems: 'center',
+  justifySelf: 'start',
+  gap: '8px',
+  minBlockSize: '44px',
+  color: 'ink',
+  fontSize: '14px',
+  fontWeight: 600,
+  textDecorationLine: 'underline',
+  textDecorationColor: 'signal',
+  textUnderlineOffset: '4px',
+  cursor: 'pointer',
+  '&:has(input:focus-visible)': {
+    outlineWidth: '2px',
+    outlineStyle: 'solid',
+    outlineColor: 'focus',
+    outlineOffset: '2px',
+  },
+})
 export const sourceIcons = style({ display: 'flex', gap: '6px', color: 'ink', fontSize: '24px' })
 export const sourceTitle = style({ color: 'ink', fontSize: '15px', fontWeight: 600, textWrap: 'balance' })
 export const sourceHint = style({ fontSize: '13px' })

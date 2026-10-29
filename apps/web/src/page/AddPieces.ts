@@ -5,6 +5,7 @@ import {
   maximumImageBytes,
   maximumVideoBytes,
   OperationId,
+  Side,
   UploadId,
   VideoType,
 } from '@styld/protocol'
@@ -15,6 +16,7 @@ import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { FileNotSent, StyldClient } from '../StyldClient.ts'
+import * as HeldCamera from './HeldCamera.ts'
 
 // MODEL
 
@@ -43,6 +45,8 @@ export const Item = Schema.Struct({
   file: File.File,
   kind: Schema.Literals(['photo', 'video']),
   source: CaptureSource,
+  /** The side of the garment a held-up camera shot shows. */
+  side: Schema.Option(Side),
   operationId: Schema.Option(Schema.String),
   uploadId: Schema.Option(Schema.String),
   sending: Sending,
@@ -52,8 +56,10 @@ export type Item = typeof Item.Type
 export const Model = Schema.Struct({
   /** The picker: photos and videos from the library. */
   drop: FileDrop.Model,
-  /** The phone's own camera, one photo at a time. */
+  /** The phone's own camera app, one photo at a time. */
   camera: FileDrop.Model,
+  /** The camera on this page that takes a photo of each garment held up to it. */
+  held: HeldCamera.Model,
   /** Every file chosen on this page, in order; a file keeps its place, so its index names it. */
   items: Schema.Array(Item),
   rejected: Schema.Array(Schema.Struct({ name: Schema.String, problem: FileProblem })),
@@ -63,6 +69,7 @@ export type Model = typeof Model.Type
 export const init = (): Model => ({
   drop: FileDrop.init({ id: 'add-pieces' }),
   camera: FileDrop.init({ id: 'add-pieces-camera' }),
+  held: HeldCamera.init(),
   items: [],
   rejected: [],
 })
@@ -72,6 +79,8 @@ export const init = (): Model => ({
 export const Message = defineMessageUnion({
   GotDropMessage: { message: FileDrop.Message },
   GotCameraMessage: { message: FileDrop.Message },
+  GotHeldCameraMessage: { message: HeldCamera.Message },
+  ClickedHoldUp: {},
   SucceededSend: { index: Schema.Number },
   FailedSend: {
     index: Schema.Number,
@@ -114,6 +123,7 @@ const SendPhotoArgs = Schema.Struct({
   photo: File.File,
   contentType: ImageType,
   source: CaptureSource,
+  side: Schema.Option(Side),
   operationId: Schema.Option(Schema.String),
   uploadId: Schema.Option(Schema.String),
 })
@@ -156,7 +166,12 @@ export const SendPhoto = Command.define('SendPhoto', {
         Effect.gen(function* () {
           const api = yield* (yield* StyldClient).api
           return yield* api.capture.createCapture({
-            payload: { operationId, uploadId: upload.success, source: args.source },
+            payload: {
+              operationId,
+              uploadId: upload.success,
+              source: args.source,
+              ...Option.match(args.side, { onNone: () => ({}), onSome: (side) => ({ side }) }),
+            },
           })
         }),
       )
@@ -266,6 +281,7 @@ const commandFor = (item: Item, index: number) =>
         photo: item.file,
         contentType: Schema.decodeUnknownSync(ImageType)(File.mimeType(item.file)),
         source: item.source,
+        side: item.side,
         operationId: item.operationId,
         uploadId: item.uploadId,
       })
@@ -286,11 +302,14 @@ const pump = (model: Model) => {
   }
 }
 
-/** Every file has gone up: the review tray takes over. One that failed keeps the person here. */
+/** Every file has gone up: the review tray takes over. One that failed, or an open camera, keeps the
+ * person here. */
 const settled = (model: Model): UpdateReturn => {
   const next = pump(model)
   const done = next.model.items.every(({ sending }) => Sending.guards.Sent(sending))
-  return done && next.model.items.length > 0 ? { ...next, outMessage: OutMessage.SentEverything() } : next
+  return done && next.model.items.length > 0 && !HeldCamera.isOpen(next.model.held)
+    ? { ...next, outMessage: OutMessage.SentEverything() }
+    : next
 }
 
 const chose = (model: Model, files: ReadonlyArray<File.File>, source: CaptureSource): UpdateReturn => {
@@ -303,6 +322,7 @@ const chose = (model: Model, files: ReadonlyArray<File.File>, source: CaptureSou
             file,
             kind: sort.kind,
             source: sort.kind === 'video' ? 'video' : source,
+            side: Option.none(),
             operationId: Option.none(),
             uploadId: Option.none(),
             sending: Sending.Waiting(),
@@ -341,6 +361,51 @@ const foldCamera = Update.foldChild({
   foldOutMessage: foldFiles('camera'),
 })
 
+/** A photo from the held-up camera joins the queue like any other, with the side it shows. */
+const tookPhoto = (model: Model, photo: File.File, side: Option.Option<Side>): UpdateReturn =>
+  pump(
+    modifyFields(model, {
+      items: (items) => [
+        ...items,
+        {
+          key: `${items.length}:${File.name(photo)}`,
+          file: photo,
+          kind: 'photo' as const,
+          source: 'camera' as const,
+          side,
+          operationId: Option.none(),
+          uploadId: Option.none(),
+          sending: Sending.Waiting(),
+        },
+      ],
+    }),
+  )
+
+/** A photo the camera took joins the queue; closing the camera may hand over to the tray. */
+const heldCameraOut = HeldCamera.OutMessage.match<Update.StepWithOutMessage<Model, Message, OutMessage, Services>>({
+  TookPhoto:
+    ({ photo, side }) =>
+    (model) =>
+      tookPhoto(model, photo, side),
+  ClosedCamera: () => settled,
+})
+
+const foldHeldCamera = Update.foldChild({
+  update: HeldCamera.update,
+  read: (model: Model) => Option.some(model.held),
+  write: (model: Model, held: HeldCamera.Model) => modifyFields(model, { held: () => held }),
+  toParentMessage: (message: HeldCamera.Message) => Message.GotHeldCameraMessage({ message }),
+  foldOutMessage: heldCameraOut,
+})
+
+const foldHeldCameraOpen = Update.foldChildStep({
+  update: HeldCamera.open,
+  read: (model: Model) => Option.some(model.held),
+  write: (model: Model, held: HeldCamera.Model) => modifyFields(model, { held: () => held }),
+  toParentMessage: (message: HeldCamera.Message) => Message.GotHeldCameraMessage({ message }),
+  foldOutMessage: heldCameraOut,
+})
+
 const withItem = (model: Model, index: number, change: (item: Item) => Item) =>
   modifyFields(model, { items: (items) => items.map((item, at) => (at === index ? change(item) : item)) })
 
@@ -348,6 +413,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     GotDropMessage: ({ message: dropMessage }) => foldDrop(model, dropMessage),
     GotCameraMessage: ({ message: cameraMessage }) => foldCamera(model, cameraMessage),
+    GotHeldCameraMessage: ({ message: heldMessage }) => foldHeldCamera(model, heldMessage),
+    ClickedHoldUp: () => foldHeldCameraOpen(model),
     SucceededSend: ({ index }) => settled(withItem(model, index, (item) => ({ ...item, sending: Sending.Sent() }))),
     FailedSend: ({ index, problem, operationId, uploadId }) =>
       settled(

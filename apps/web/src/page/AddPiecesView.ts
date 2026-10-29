@@ -10,6 +10,8 @@ import { cameraIcon, loader, photoIcon, retryIcon, videoIcon } from '../Icon.ts'
 import { styled } from '../Styled.ts'
 import { type FileProblem, type Item, Message, type Model, type SendProblem, Sending } from './AddPieces.ts'
 import { backToWardrobe } from './PageBar.ts'
+import * as HeldCamera from './HeldCamera.ts'
+import * as HeldCameraView from './HeldCameraView.ts'
 import * as styles from './AddPiecesView.styles.ts'
 
 const fileProblemKey: { readonly [Problem in FileProblem]: MessageKey } = {
@@ -52,8 +54,8 @@ const library = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
     toParentMessage: (message) => Message.GotDropMessage({ message }),
   })
 
-/** The phone's camera, through the file input's `capture` hint; a computer offers its files instead. */
-const camera = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+/** The phone's own camera app, through the file input's `capture` hint; a computer offers its files. */
+const cameraApp = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.submodel({
     slotId: model.camera.id,
     model: model.camera,
@@ -62,17 +64,49 @@ const camera = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
       accept: ImageType.literals,
       toView: (attributes) =>
         h.label(
-          [...attributes.root, ...styled(h, styles.source())],
+          [...attributes.root, ...styled(h, styles.cameraApp())],
           [
-            h.span(styled(h, styles.sourceIcons()), [cameraIcon(h)]),
-            h.span(styled(h, styles.sourceTitle()), [format(locale, 'capture.cameraTitle', {})]),
-            h.span(styled(h, styles.sourceHint()), [format(locale, 'capture.cameraHint', {})]),
+            cameraIcon(h),
+            format(locale, 'capture.cameraTitle', {}),
             h.input([...attributes.input, h.Attribute('capture', 'environment')]),
           ],
         ),
     },
     toParentMessage: (message) => Message.GotCameraMessage({ message }),
   })
+
+/** The camera on this page: hold each garment up and it takes the photo. */
+const holdUp = (locale: Locale, h: HtmlBuilder<Message>): Html =>
+  Button.view(
+    {
+      onClick: Message.ClickedHoldUp(),
+      toView: (attributes) =>
+        h.button(
+          [...attributes.button, ...styled(h, styles.source())],
+          [
+            h.span(styled(h, styles.sourceIcons()), [cameraIcon(h)]),
+            h.span(styled(h, styles.sourceTitle()), [format(locale, 'capture.holdUpTitle', {})]),
+            h.span(styled(h, styles.sourceHint()), [format(locale, 'capture.holdUpHint', {})]),
+          ],
+        ),
+    },
+    h,
+  )
+
+const heldCamera = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.submodel({
+    slotId: 'held-camera',
+    model: model.held,
+    view: HeldCameraView.view,
+    viewInputs: { locale },
+    toParentMessage: (message) => Message.GotHeldCameraMessage({ message }),
+  })
+
+/** The ways in, or the open camera in their place. */
+const sources = (model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>
+  HeldCamera.isOpen(model.held)
+    ? [heldCamera(model, locale, h)]
+    : [h.div(styled(h, styles.sources()), [library(model, locale, h), holdUp(locale, h)]), cameraApp(model, locale, h)]
 
 const itemState = (item: Item, index: number, locale: Locale, h: HtmlBuilder<Message>): Html =>
   Sending.match(item.sending, {
@@ -131,7 +165,7 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
       h.div(styled(h, styles.pageBar()), [backToWardrobe(locale, h)]),
       h.h1([], [format(locale, 'capture.addTitle', {})]),
       h.p(styled(h, styles.lede()), [format(locale, 'capture.addHint', {})]),
-      h.div(styled(h, styles.sources()), [library(model, locale, h), camera(model, locale, h)]),
+      ...sources(model, locale, h),
       model.rejected.length === 0
         ? h.empty
         : h.ul(

@@ -2731,8 +2731,7 @@
     "addHint": "Fotografije ali video do ene minute vzdolž obešalnika. Vsak kos izrežemo, ti pa ga obdržiš ali zavržeš.",
     "chooseTitle": "Fotografije ali video",
     "chooseHint": "Iz tvoje galerije",
-    "cameraTitle": "Fotografiraj",
-    "cameraHint": "En kos naenkrat",
+    "cameraTitle": "Ali uporabi aplikacijo za kamero",
     "notSupported": "{name} ni fotografija ali video, ki ga Styld lahko uporabi",
     "tooLarge": "{name} je prevelik",
     "queueLabel": "Pošiljanje",
@@ -2760,6 +2759,21 @@
     "addCount": "{count, plural, one {Dodaj # v garderobo} two {Dodaj # v garderobo} few {Dodaj # v garderobo} other {Dodaj # v garderobo}}",
     "addFailed": "Ni jih bilo mogoče dodati. Poskusi znova.",
     "addMore": "Dodaj še",
-    "done": "Končano"
+    "done": "Končano",
+    "holdUpTitle": "Pokaži kose kameri",
+    "holdUpHint": "Kamera vsakega fotografira sama",
+    "camera": {
+      "title": "Kamera",
+      "starting": "Zaganjam kamero …",
+      "holdOne": "Pokaži en kos in ga drži pri miru",
+      "checking": "Gledam …",
+      "taken": "Imam. Naslednji kos ali njegov hrbet",
+      "tapToTake": "Tapni sliko, da jo posnameš",
+      "shutter": "Fotografiraj",
+      "count": "{count, plural, one {# posnet} two {# posneta} few {# posneti} other {# posnetih}}",
+      "flip": "Zamenjaj kamero",
+      "denied": "Dostop do kamere je izklopljen. Dovoli ga v nastavitvah brskalnika ali izberi fotografije.",
+      "unavailable": "Kamere tukaj ni mogoče zagnati. Izberi fotografije."
+    }
   }
 }
