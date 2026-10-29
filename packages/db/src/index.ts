@@ -4,6 +4,8 @@ export {
   captureFrames,
   captures,
   detections,
+  lookPieces,
+  looks,
   oauthGrants,
   operationReceipts,
   pieces,

@@ -6,6 +6,8 @@ import { AccountLifecycle } from './AccountLifecycle.ts'
 import type { makeAuthHttp } from './AuthHttp.ts'
 import { captureHandlers } from './capture/Http.ts'
 import type { Captures } from './capture/Service.ts'
+import { lookHandlers } from './looks/Http.ts'
+import type { Looks } from './looks/Looks.ts'
 import { type Admit, admitWith, wardrobeHandlers } from './wardrobe/Http.ts'
 import type { Wardrobe } from './wardrobe/Wardrobe.ts'
 
@@ -39,12 +41,14 @@ export const apiRoutes = (
     readonly wardrobe: Layer.Layer<Wardrobe>
     readonly lifecycle: Layer.Layer<AccountLifecycle>
     readonly captures: Layer.Layer<Captures>
+    readonly looks: Layer.Layer<Looks>
   },
 ) =>
   HttpApiBuilder.layer(StyldApi).pipe(
     Layer.provide(accountHandlers(admitWith(auth)).pipe(Layer.provide(services.lifecycle))),
     Layer.provide(wardrobeHandlers(admitWith(auth)).pipe(Layer.provide(services.wardrobe))),
     Layer.provide(captureHandlers(admitWith(auth)).pipe(Layer.provide(services.captures))),
+    Layer.provide(lookHandlers(admitWith(auth)).pipe(Layer.provide(services.looks))),
     Layer.provide(auth.router.securityLayer(SessionHttp)),
     auth.router.middleware,
     Layer.provide(auth.dependencies),

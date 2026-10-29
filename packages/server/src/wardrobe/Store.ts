@@ -2,6 +2,7 @@ import { accounts, detections, operationReceipts, pieces, uploads } from '@styld
 import { and, desc, eq, ne } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option, Schema } from 'effect'
+import { receiptQuery } from '../Receipts.ts'
 
 /** D1 did not answer; the request may be retried. */
 export class StoreUnavailable extends Schema.TaggedError<StoreUnavailable>()('StoreUnavailable', {}) {}
@@ -85,13 +86,7 @@ export const makeStore = (database: Parameters<typeof drizzle>[0]) => {
     findPieceForProcessing: (pieceId: string) =>
       attempt(() => db.select().from(pieces).where(eq(pieces.id, pieceId)).limit(1)).pipe(Effect.map(first)),
     findReceipt: (accountId: string, operationId: string) =>
-      attempt(() =>
-        db
-          .select()
-          .from(operationReceipts)
-          .where(and(eq(operationReceipts.accountId, accountId), eq(operationReceipts.operationId, operationId)))
-          .limit(1),
-      ).pipe(Effect.map(first)),
+      attempt(() => receiptQuery(db, accountId, operationId)).pipe(Effect.map(first)),
     /** The piece, its upload spent and the operation's receipt, as one atomic batch. The unique
      * upload id fails the whole batch when the upload already made a piece. */
     addPiece: (piece: PieceRow, receipt: ReceiptRow) =>

@@ -50,7 +50,8 @@ const refused = (reason: UploadRefused['reason']) => UploadRefused.make({ reason
 const stored = <A, R>(effect: Effect.Effect<A, StoreUnavailable, R>) => Effect.mapError(effect, unavailable)
 const nowDate = Effect.map(DateTime.now, DateTime.toDateUtc)
 
-const toPiece = (row: PieceRow) =>
+/** A stored piece as the protocol shows it. */
+export const toPiece = (row: PieceRow) =>
   Schema.decodeUnknownEffect(Piece)({
     id: row.id,
     name: row.name,

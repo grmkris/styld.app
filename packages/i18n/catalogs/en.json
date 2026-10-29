@@ -288,7 +288,8 @@
     "openProfileMenu": "Open profile menu",
     "models": "Models",
     "profile": "Public profile",
-    "useInHost": "Use Styld in ChatGPT or Claude"
+    "useInHost": "Use Styld in ChatGPT or Claude",
+    "looks": "Looks"
   },
   "account": {
     "title": "Account",
@@ -2775,5 +2776,18 @@
       "denied": "Camera access is off. Allow it in your browser's settings, or choose photos instead.",
       "unavailable": "The camera can't start here. Choose photos instead."
     }
+  },
+  "looks": {
+    "title": "Looks",
+    "hint": "Outfits your assistant put together from your pieces.",
+    "pieceCount": "{count, plural, one {# piece} other {# pieces}}",
+    "emptyTitle": "No looks yet",
+    "emptyHint": "Ask your assistant in ChatGPT or Claude to put a look together from your wardrobe.",
+    "loadFailed": "Your looks could not be loaded",
+    "backToLooks": "Back to looks",
+    "notFound": "This look is gone",
+    "delete": "Delete look",
+    "deleteConfirm": "Delete this look? Its pieces stay in your wardrobe.",
+    "deleteFailed": "Couldn't delete the look. Try again."
   }
 }

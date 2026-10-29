@@ -289,6 +289,8 @@ test(
           'capture_frames',
           'captures',
           'detections',
+          'look_pieces',
+          'looks',
           'oauth_assertions',
           'oauth_clients',
           'oauth_grants',

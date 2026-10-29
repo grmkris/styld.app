@@ -1,5 +1,6 @@
 export { AccountUnavailable, Me, RequestRefused } from './Account.ts'
-export { AccountApi, CaptureApi, StyldApi, WardrobeApi } from './Api.ts'
+export { AccountApi, CaptureApi, LookApi, StyldApi, WardrobeApi } from './Api.ts'
 export * from './Wardrobe.ts'
 export * from './AssistantView.ts'
 export * from './Capture.ts'
+export * from './Look.ts'

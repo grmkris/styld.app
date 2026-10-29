@@ -275,6 +275,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'nav.models': 'Modeli',
   'nav.profile': 'Javni profil',
   'nav.useInHost': 'Uporabi Styld v ChatGPT ali Claude',
+  'nav.looks': 'Videzi',
   'account.title': 'Račun',
   'account.agents.title': 'Povezani agenti',
   'account.agents.description':
@@ -2495,4 +2496,15 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.camera.flip': 'Zamenjaj kamero',
   'capture.camera.denied': 'Dostop do kamere je izklopljen. Dovoli ga v nastavitvah brskalnika ali izberi fotografije.',
   'capture.camera.unavailable': 'Kamere tukaj ni mogoče zagnati. Izberi fotografije.',
+  'looks.title': 'Videzi',
+  'looks.hint': 'Kombinacije, ki ti jih je asistent sestavil iz tvojih kosov.',
+  'looks.pieceCount': '{count, plural, one {# kos} two {# kosa} few {# kosi} other {# kosov}}',
+  'looks.emptyTitle': 'Še ni videzov',
+  'looks.emptyHint': 'Prosi asistenta v ChatGPT ali Claudu, naj ti sestavi videz iz tvoje garderobe.',
+  'looks.loadFailed': 'Tvojih videzov ni bilo mogoče naložiti',
+  'looks.backToLooks': 'Nazaj na videze',
+  'looks.notFound': 'Tega videza ni več',
+  'looks.delete': 'Izbriši videz',
+  'looks.deleteConfirm': 'Izbrišem ta videz? Kosi ostanejo v tvoji garderobi.',
+  'looks.deleteFailed': 'Videza ni bilo mogoče izbrisati. Poskusi znova.',
 }

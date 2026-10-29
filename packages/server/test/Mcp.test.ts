@@ -9,6 +9,7 @@ import { callTool, renderTools } from '../src/mcp/Tools.ts'
 import type { D1 } from '../src/OAuth.ts'
 import { challenge, hostedClientMetadata, redirectUriAllowed } from '../src/mcp/Policy.ts'
 import { Wardrobe } from '../src/wardrobe/Wardrobe.ts'
+import { Looks } from '../src/looks/Looks.ts'
 
 const accountRow = { displayName: 'Ana Novak', email: 'ana@example.com' }
 const database: D1 = {
@@ -55,7 +56,14 @@ const wardrobe = Wardrobe.of({
   failPiece: notUsed,
 })
 const offline = HttpClient.make(() => Effect.die('unit tests make no requests'))
-const tools = styldTools(database, 'https://styld.test', wardrobe, offline)
+/** Looks answer one saved look; anything else is not part of these tests. */
+const looks = Looks.of({
+  createLook: notUsed,
+  listLooks: () => Effect.succeed([]),
+  getLook: notUsed,
+  deleteLook: notUsed,
+})
+const tools = styldTools(database, 'https://styld.test', { wardrobe, looks }, offline)
 /** The JSON of a result's first text block. */
 const jsonOf = (result: {
   readonly content: ReadonlyArray<{ readonly type: string; readonly text?: string }>
@@ -88,6 +96,10 @@ describe('MCP tools', () => {
       'piece_update',
       'piece_delete',
       'wardrobe_show',
+      'look_create',
+      'look_list',
+      'look_get',
+      'look_delete',
     ])
     expect(list.find(({ name }) => name === 'piece_delete')?.annotations).toMatchObject({ destructiveHint: true })
     for (const entry of list) {

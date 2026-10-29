@@ -922,6 +922,17 @@ export interface MessageArgumentsByKey<T = string> {
   'landing.start': Readonly<Record<string, never>>
   'landing.terms': Readonly<Record<string, never>>
   'landing.title': Readonly<Record<string, never>>
+  'looks.backToLooks': Readonly<Record<string, never>>
+  'looks.delete': Readonly<Record<string, never>>
+  'looks.deleteConfirm': Readonly<Record<string, never>>
+  'looks.deleteFailed': Readonly<Record<string, never>>
+  'looks.emptyHint': Readonly<Record<string, never>>
+  'looks.emptyTitle': Readonly<Record<string, never>>
+  'looks.hint': Readonly<Record<string, never>>
+  'looks.loadFailed': Readonly<Record<string, never>>
+  'looks.notFound': Readonly<Record<string, never>>
+  'looks.pieceCount': { readonly count: number }
+  'looks.title': Readonly<Record<string, never>>
   'membership.features.outfitCheck.body': Readonly<Record<string, never>>
   'membership.features.outfitCheck.cost': { readonly count: number }
   'membership.features.outfitCheck.name': Readonly<Record<string, never>>
@@ -980,6 +991,7 @@ export interface MessageArgumentsByKey<T = string> {
   'nav.chat': Readonly<Record<string, never>>
   'nav.help': Readonly<Record<string, never>>
   'nav.home': Readonly<Record<string, never>>
+  'nav.looks': Readonly<Record<string, never>>
   'nav.models': Readonly<Record<string, never>>
   'nav.navigation': Readonly<Record<string, never>>
   'nav.newChat': Readonly<Record<string, never>>
@@ -2379,4 +2391,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '54d8fb370c4939734c893ccd5c9455c7d1b3776122e56af0e2b030fd96956442'
+export const catalogVersion = 'e8b5167f68bbd1d9d5a69780f0cd97f1e04a39365aa31a24d46b7a0357129885'

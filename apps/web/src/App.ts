@@ -14,6 +14,8 @@ import * as Crypto from 'effect/Crypto'
 import * as AddPieces from './page/AddPieces.ts'
 import * as Account from './page/Account.ts'
 import * as Login from './page/Login.ts'
+import * as Look from './page/Look.ts'
+import * as Looks from './page/Looks.ts'
 import * as Piece from './page/Piece.ts'
 import * as Review from './page/Review.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
@@ -23,6 +25,7 @@ import {
   connectionAuthorizePath,
   homeRouter,
   loginRouter,
+  looksRouter,
   needsSession,
   reviewRouter,
   routeFromPathname,
@@ -66,6 +69,8 @@ export const Model = Schema.Struct({
   piece: Piece.Model,
   addPieces: AddPieces.Model,
   review: Review.Model,
+  looks: Looks.Model,
+  look: Look.Model,
   account: Account.Model,
   telemetry: Schema.Struct({ consent: TelemetryConsent, prompting: Schema.Boolean }),
 })
@@ -89,6 +94,8 @@ export const Message = defineMessageUnion({
   GotPieceMessage: { message: Piece.Message },
   GotAddPiecesMessage: { message: AddPieces.Message },
   GotReviewMessage: { message: Review.Message },
+  GotLooksMessage: { message: Looks.Message },
+  GotLookMessage: { message: Look.Message },
   ChoseTelemetryConsent: { granted: Schema.Boolean },
   RecordedTelemetryConsent: { granted: Schema.Boolean },
   OpenedTelemetrySettings: {},
@@ -161,12 +168,14 @@ type UpdateReturn = Update.Return<Model, Message, Services>
 // INIT
 
 /** The Commands that open the page a route shows. */
-const pageCommands = (route: AppRoute, piece: Piece.Model) =>
+const pageCommands = (route: AppRoute, piece: Piece.Model, look: Look.Model) =>
   AppRoute.match(route, {
     Wardrobe: () => Command.mapMessages(Wardrobe.load(), (message) => Message.GotWardrobeMessage({ message })),
     Piece: () => Command.mapMessages(Piece.load(piece), (message) => Message.GotPieceMessage({ message })),
     AddPieces: () => [],
     Review: () => Command.mapMessages(Review.load(), (message) => Message.GotReviewMessage({ message })),
+    Looks: () => Command.mapMessages(Looks.load(), (message) => Message.GotLooksMessage({ message })),
+    Look: () => Command.mapMessages(Look.load(look), (message) => Message.GotLookMessage({ message })),
     Home: () => [],
     Login: () => [],
     LoginForConnection: () => [],
@@ -177,6 +186,7 @@ const pageCommands = (route: AppRoute, piece: Piece.Model) =>
 export const init = (context: Flags): UpdateReturn => {
   const route = routeFromPathname(context.pathname)
   const piece = Piece.init(AppRoute.guards.Piece(route) ? route.pieceId : '')
+  const look = Look.init(AppRoute.guards.Look(route) ? route.lookId : '')
   return {
     model: {
       context,
@@ -188,10 +198,12 @@ export const init = (context: Flags): UpdateReturn => {
       piece,
       addPieces: AddPieces.init(),
       review: Review.init(),
+      looks: Looks.init(),
+      look,
       account: Account.init(),
       telemetry: { consent: context.telemetryConsent, prompting: context.telemetryConsent === 'undecided' },
     },
-    commands: [ReadSession(), ...pageCommands(route, piece)],
+    commands: [ReadSession(), ...pageCommands(route, piece, look)],
   }
 }
 
@@ -209,6 +221,8 @@ const afterSignIn = (route: AppRoute) =>
     AddPieces: () => [],
     Review: () => [],
     Piece: () => [],
+    Looks: () => [],
+    Look: () => [],
     NotFound: () => [],
   })
 
@@ -274,6 +288,23 @@ const foldPiece = Update.foldChild({
   }),
 })
 
+const foldLooks = Update.foldChild({
+  update: Looks.update,
+  read: (model: Model) => Option.some(model.looks),
+  write: (model: Model, looks: Looks.Model) => modifyFields(model, { looks: () => looks }),
+  toParentMessage: (message: Looks.Message) => Message.GotLooksMessage({ message }),
+})
+
+const foldLook = Update.foldChild({
+  update: Look.update,
+  read: (model: Model) => Option.some(model.look),
+  write: (model: Model, look: Look.Model) => modifyFields(model, { look: () => look }),
+  toParentMessage: (message: Look.Message) => Message.GotLookMessage({ message }),
+  foldOutMessage: Look.OutMessage.match<Update.Step<Model, Message, Services>>({
+    DeletedLook: () => (stepModel) => ({ model: stepModel, commands: [Navigate({ href: looksRouter({}) })] }),
+  }),
+})
+
 const foldAddPieces = Update.foldChild({
   update: AddPieces.update,
   read: (model: Model) => Option.some(model.addPieces),
@@ -335,6 +366,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotPieceMessage: (got) => foldPiece(model, got.message),
     GotAddPiecesMessage: (got) => foldAddPieces(model, got.message),
     GotReviewMessage: (got) => foldReview(model, got.message),
+    GotLooksMessage: (got) => foldLooks(model, got.message),
+    GotLookMessage: (got) => foldLook(model, got.message),
     ChoseTelemetryConsent: ({ granted }) => ({
       model: modifyFields(model, { telemetry: (telemetry) => modifyFields(telemetry, { prompting: () => false }) }),
       commands: [RecordTelemetryConsent({ granted })],

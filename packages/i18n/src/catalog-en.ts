@@ -266,6 +266,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'nav.models': 'Models',
   'nav.profile': 'Public profile',
   'nav.useInHost': 'Use Styld in ChatGPT or Claude',
+  'nav.looks': 'Looks',
   'account.title': 'Account',
   'account.agents.title': 'Connected agents',
   'account.agents.description':
@@ -2451,4 +2452,15 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.camera.flip': 'Switch camera',
   'capture.camera.denied': "Camera access is off. Allow it in your browser's settings, or choose photos instead.",
   'capture.camera.unavailable': "The camera can't start here. Choose photos instead.",
+  'looks.title': 'Looks',
+  'looks.hint': 'Outfits your assistant put together from your pieces.',
+  'looks.pieceCount': '{count, plural, one {# piece} other {# pieces}}',
+  'looks.emptyTitle': 'No looks yet',
+  'looks.emptyHint': 'Ask your assistant in ChatGPT or Claude to put a look together from your wardrobe.',
+  'looks.loadFailed': 'Your looks could not be loaded',
+  'looks.backToLooks': 'Back to looks',
+  'looks.notFound': 'This look is gone',
+  'looks.delete': 'Delete look',
+  'looks.deleteConfirm': 'Delete this look? Its pieces stay in your wardrobe.',
+  'looks.deleteFailed': "Couldn't delete the look. Try again.",
 }

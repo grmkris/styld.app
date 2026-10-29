@@ -15,6 +15,7 @@ import {
   Reviewed,
   Tray,
 } from './Capture.ts'
+import { Look, LookId, LookNotFound, Looks } from './Look.ts'
 import {
   AddPiece,
   CreateUpload,
@@ -144,4 +145,24 @@ export class CaptureApi extends HttpApiGroup.make('capture')
   .prefix('/api') {}
 
 /** Styld's typed HTTP API: declared once, served by the API Worker and called by the website. */
-export class StyldApi extends HttpApi.make('styld').add(AccountApi).add(WardrobeApi).add(CaptureApi) {}
+/** The looks assistants made, for the website to show and delete; only assistants make them. */
+export class LookApi extends HttpApiGroup.make('look')
+  .add(HttpApiEndpoint.get('listLooks', '/looks', { success: Looks, error: WardrobeUnavailable }))
+  .add(
+    HttpApiEndpoint.get('getLook', '/looks/:lookId', {
+      params: { lookId: LookId },
+      success: Look,
+      error: [LookNotFound, WardrobeUnavailable],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.delete('deleteLook', '/looks/:lookId', {
+      params: { lookId: LookId },
+      success: HttpApiSchema.NoContent,
+      error: [LookNotFound, WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .middleware(SessionHttp.RequireSession)
+  .prefix('/api') {}
+
+export class StyldApi extends HttpApi.make('styld').add(AccountApi).add(WardrobeApi).add(CaptureApi).add(LookApi) {}

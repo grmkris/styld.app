@@ -3,6 +3,7 @@ import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { CurrentAccount } from '../CurrentAccount.ts'
+import type { Looks } from '../looks/Looks.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import * as HttpClient from 'effect/http/HttpClient'
@@ -27,7 +28,12 @@ const parseError = HttpServerResponse.jsonUnsafe(
 )
 
 /** `/mcp`: a stateless Streamable HTTP endpoint for an OAuth-verified, still enabled account. */
-export const mcpRoutes = (db: D1, origin: string, release: string, wardrobe: Wardrobe['Service']) =>
+export const mcpRoutes = (
+  db: D1,
+  origin: string,
+  release: string,
+  services: { readonly wardrobe: Wardrobe['Service']; readonly looks: Looks['Service'] },
+) =>
   Layer.unwrap(
     Effect.gen(function* () {
       const server = yield* McpOAuth.Service
@@ -37,7 +43,7 @@ export const mcpRoutes = (db: D1, origin: string, release: string, wardrobe: War
           FetchHttpClient.layer.pipe(Layer.provide(Layer.succeed(FetchHttpClient.RequestInit, { redirect: 'manual' }))),
         ),
       )
-      return routesFor(server, { db, origin, release, tools: styldTools(db, origin, wardrobe, http) })
+      return routesFor(server, { db, origin, release, tools: styldTools(db, origin, services, http) })
     }),
   )
 

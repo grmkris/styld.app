@@ -167,6 +167,26 @@ deployed to the preview. One entry per slice.
     - whether clothes the person wears pass the check (the review tray catches them);
     - pairing a back with its front in the tray: the server supports `pairsWith`, and the page sends only the
       side.
+- **S9 looks.**
+  - **D1:** `looks` (name, optional occasion) and `look_pieces` (order). Both cascade, so deleting a piece takes it
+    out of its looks and deleting an account takes its looks (migration `narrow_punisher`).
+  - **One `Looks` service** (`packages/server/src/looks/`) acts for `CurrentAccount`. Creating a look checks that
+    every piece is the account's own. One operation id makes one look; reusing it for another look is a
+    conflict. Receipts share one query (`Receipts.ts`) with the wardrobe's.
+  - **`CurrentAccount` is marked `@effect-leakable-service`:** it is per-request context, like a request, so
+    services name it in their methods on purpose.
+  - **Assistants** get `look_create`, `look_list`, `look_get` and `look_delete`. Results link each look and its
+    pieces on the website, and refusals say what to do.
+  - **The website** reads looks through `LookApi` (list, get, delete; only assistants make looks):
+    - `/looks`: cards with a collage of up to four pieces, the name and the occasion or piece count, and an empty
+      state that points to the assistant;
+    - `/looks/:id`: its pieces, and delete with an in-page confirmation;
+    - a Looks tab (coat-hanger icon) between Wardrobe and You.
+  - **Evidence:**
+    - Native MCP through the real OAuth journey: create a look from a piece; the same operation id returns it, a
+      changed request and another account's piece are refused, and it appears in the list. Deleting the piece
+      empties the look, and deleting the look removes it.
+    - Story tests of both pages; the routes open with their reads.
 
 ## Scope and roadmap — 2026-10-29
 

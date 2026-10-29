@@ -17,6 +17,7 @@ import {
 } from './AuthConfiguration.ts'
 import { browserTelemetryRoutes } from './BrowserTelemetry.ts'
 import { AccountLifecycle, makeAccountLifecycle } from './AccountLifecycle.ts'
+import { Looks, makeLooks } from './looks/Looks.ts'
 import { apiRoutes } from './Api.ts'
 import { makeAuthHttp, withCodeRequestPolicy } from './AuthHttp.ts'
 import { makeGarmentVision, type RunClef } from './capture/Clef.ts'
@@ -71,7 +72,7 @@ const perClientLimit = (name: string, namespaceId: number, limit: number) =>
       )
   })
 
-/** One wardrobe, one account lifecycle and one capture service per isolate, shared by the routes and
+/** One wardrobe, one account lifecycle, one capture service and the looks per isolate, shared by the routes and
  * the processing queue. Assistant-added pieces get the same cut-out providers as the tray. */
 const storageServices = <R>(
   bindings: WardrobeBindings,
@@ -85,13 +86,16 @@ const storageServices = <R>(
     const wardrobeService = yield* makeWardrobe(bindings)
     const lifecycleService = yield* makeAccountLifecycle(bindings)
     const capturesService = yield* makeCaptures(bindings)
+    const looksService = yield* makeLooks(bindings.database)
     return {
       wardrobeService,
       lifecycleService,
       capturesService,
+      looksService,
       wardrobe: Layer.succeed(Wardrobe, wardrobeService),
       lifecycle: Layer.succeed(AccountLifecycle, lifecycleService),
       captures: Layer.succeed(Captures, capturesService),
+      looks: Layer.succeed(Looks, looksService),
     }
   }).pipe(
     Effect.provide(Layer.mergeAll(layerCryptoWeb, pieceCutout(bindings.bucket)).pipe(Layer.provideMerge(providers))),
@@ -250,16 +254,18 @@ const makeApplication =
         dataset: yield* calls.raw,
         origin: { environment: observabilityBase.environment, release: observabilityBase.release },
       })
-      const { wardrobeService, lifecycleService, capturesService, wardrobe, lifecycle, captures } =
+      const { wardrobeService, lifecycleService, capturesService, looksService, wardrobe, lifecycle, captures, looks } =
         yield* storageServices({ database: db, bucket, images: imagesRaw, queue: yield* pieceQueue.raw }, providers)
       const oauth = makeMcpOAuth(db, auth, { origin: authOrigin, keys: configuration.sessionKeys, allowRegistration })
       const routes = Layer.mergeAll(
         auth.layer,
-        apiRoutes(auth, { wardrobe, lifecycle, captures }),
+        apiRoutes(auth, { wardrobe, lifecycle, captures, looks }),
         wardrobeRoutes(auth).pipe(Layer.provide(wardrobe)),
         captureRoutes(auth).pipe(Layer.provide(captures)),
         oauth.routes,
-        mcpRoutes(db, authOrigin, observabilityBase.release, wardrobeService).pipe(Layer.provide(oauth.server)),
+        mcpRoutes(db, authOrigin, observabilityBase.release, { wardrobe: wardrobeService, looks: looksService }).pipe(
+          Layer.provide(oauth.server),
+        ),
         HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),
         browserTelemetryRoutes(authOrigin, allowTelemetry),
       ).pipe(Layer.provide(AlchemyHttp.Platform))

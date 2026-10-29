@@ -90,6 +90,8 @@ describe('the wardrobe pages', () => {
     expect(opening('/wardrobe/pc_abc')).toEqual(['ReadSession', 'GetPiece'])
     expect(opening('/wardrobe/add')).toEqual(['ReadSession'])
     expect(opening('/wardrobe/review')).toEqual(['ReadSession', 'LoadTray'])
+    expect(opening('/looks')).toEqual(['ReadSession', 'ListLooks'])
+    expect(opening(`/looks/lk_${'a'.repeat(22)}`)).toEqual(['ReadSession', 'GetLook'])
   })
 
   test('the review tray opens once the files are sent, and the wardrobe once pieces are kept', () => {

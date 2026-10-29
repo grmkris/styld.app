@@ -172,6 +172,10 @@ const useTools = async (origin: string, access: string) => {
       'piece_update',
       'piece_delete',
       'wardrobe_show',
+      'look_create',
+      'look_list',
+      'look_get',
+      'look_delete',
     ])
     // Hosts read the view from the resource the tool names, through either protocol era.
     const view = (await client.readResource({ uri: 'ui://styld/views-v1.html' })).contents[0]
@@ -233,9 +237,30 @@ const addPieceThroughTools = async (origin: string, client: Client) => {
   expect(await structured(client, 'piece_update', { pieceId, colours: ['white'] })).toMatchObject({
     colours: ['white'],
   })
+  const lookId = await lookThroughTools(origin, client, pieceId)
   expect(await structured(client, 'piece_delete', { pieceId })).toEqual({ deleted: true, pieceId })
   const gone = await client.callTool({ name: 'piece_get', arguments: { pieceId } })
   expect(gone.isError).toBe(true)
+  // A deleted piece leaves its looks; deleting the look leaves nothing behind.
+  expect(await structured(client, 'look_get', { lookId })).toMatchObject({ id: lookId, pieces: [] })
+  expect(await structured(client, 'look_delete', { lookId })).toEqual({ deleted: true, lookId })
+  expect((await client.callTool({ name: 'look_get', arguments: { lookId } })).isError).toBe(true)
+}
+
+/** An assistant puts a look together from the piece, once per operation id, and only from this
+ * wardrobe's pieces. Returns the look's id. */
+const lookThroughTools = async (origin: string, client: Client, pieceId: string) => {
+  const create = { operationId: 'mcp-native-look-1', name: 'Weekend', occasion: 'Brunch', pieceIds: [pieceId] }
+  const look = await structured(client, 'look_create', create)
+  expect(look).toMatchObject({ name: 'Weekend', occasion: 'Brunch', pieces: [{ id: pieceId }] })
+  const lookId = Schema.decodeUnknownSync(Schema.String)(look['id'])
+  expect(look['url']).toBe(`${origin}/looks/${lookId}`)
+  expect(await structured(client, 'look_create', create)).toMatchObject({ id: lookId })
+  expect((await client.callTool({ name: 'look_create', arguments: { ...create, name: 'Other' } })).isError).toBe(true)
+  const stranger = { operationId: 'mcp-native-look-2', name: 'Not mine', pieceIds: [`pc_${'a'.repeat(22)}`] }
+  expect((await client.callTool({ name: 'look_create', arguments: stranger })).isError).toBe(true)
+  expect(await structured(client, 'look_list', {})).toMatchObject({ looks: [{ id: lookId }] })
+  return lookId
 }
 
 const mcpStatus = async (origin: string, access: string) =>

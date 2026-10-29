@@ -288,7 +288,8 @@
     "openProfileMenu": "Odpri profilni meni",
     "models": "Modeli",
     "profile": "Javni profil",
-    "useInHost": "Uporabi Styld v ChatGPT ali Claude"
+    "useInHost": "Uporabi Styld v ChatGPT ali Claude",
+    "looks": "Videzi"
   },
   "account": {
     "title": "Račun",
@@ -2775,5 +2776,18 @@
       "denied": "Dostop do kamere je izklopljen. Dovoli ga v nastavitvah brskalnika ali izberi fotografije.",
       "unavailable": "Kamere tukaj ni mogoče zagnati. Izberi fotografije."
     }
+  },
+  "looks": {
+    "title": "Videzi",
+    "hint": "Kombinacije, ki ti jih je asistent sestavil iz tvojih kosov.",
+    "pieceCount": "{count, plural, one {# kos} two {# kosa} few {# kosi} other {# kosov}}",
+    "emptyTitle": "Še ni videzov",
+    "emptyHint": "Prosi asistenta v ChatGPT ali Claudu, naj ti sestavi videz iz tvoje garderobe.",
+    "loadFailed": "Tvojih videzov ni bilo mogoče naložiti",
+    "backToLooks": "Nazaj na videze",
+    "notFound": "Tega videza ni več",
+    "delete": "Izbriši videz",
+    "deleteConfirm": "Izbrišem ta videz? Kosi ostanejo v tvoji garderobi.",
+    "deleteFailed": "Videza ni bilo mogoče izbrisati. Poskusi znova."
   }
 }

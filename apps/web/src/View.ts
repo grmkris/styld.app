@@ -7,14 +7,16 @@ import { actionButton } from './ActionButton.ts'
 import { primaryAction, secondaryAction } from './Actions.styles.ts'
 import { availableLocales } from './Locale.ts'
 import { styled } from './Styled.ts'
-import { homeTabIcon, wardrobeTabIcon } from './Icon.ts'
+import { homeTabIcon, looksTabIcon, wardrobeTabIcon } from './Icon.ts'
 import * as AddPiecesView from './page/AddPiecesView.ts'
 import * as ReviewView from './page/ReviewView.ts'
+import * as LooksView from './page/LooksView.ts'
+import * as LookView from './page/LookView.ts'
 import { accountView } from './page/AccountView.ts'
 import * as LoginView from './page/LoginView.ts'
 import * as PieceView from './page/PieceView.ts'
 import * as WardrobeView from './page/WardrobeView.ts'
-import { AppRoute, accountRouter, homeRouter, loginRouter, wardrobeRouter } from './route.ts'
+import { AppRoute, accountRouter, homeRouter, loginRouter, looksRouter, wardrobeRouter } from './route.ts'
 import {
   brand,
   brandMark,
@@ -173,11 +175,13 @@ const titleKey = AppRoute.match<MessageKey>({
   Wardrobe: () => 'wardrobe.title',
   AddPieces: () => 'capture.addTitle',
   Review: () => 'scan.toReview',
+  Looks: () => 'looks.title',
+  Look: () => 'looks.title',
   Piece: () => 'wardrobe.title',
   NotFound: () => 'common.notFoundTitle',
 })
 
-type Section = 'home' | 'wardrobe' | 'you'
+type Section = 'home' | 'wardrobe' | 'looks' | 'you'
 
 const sectionOf = AppRoute.match<Section | undefined>({
   Home: () => 'home',
@@ -185,13 +189,15 @@ const sectionOf = AppRoute.match<Section | undefined>({
   AddPieces: () => 'wardrobe',
   Review: () => 'wardrobe',
   Piece: () => 'wardrobe',
+  Looks: () => 'looks',
+  Look: () => 'looks',
   Account: () => 'you',
   Login: () => undefined,
   LoginForConnection: () => undefined,
   NotFound: () => undefined,
 })
 
-/** The built sections only: Home, Wardrobe and You (Gallery's tab bar). */
+/** The built sections only: Home, Wardrobe, Looks and You (Gallery's tab bar). */
 const appNavigation = (model: Model, initial: string, h: HtmlBuilder<Message>): Html => {
   const { locale } = model.context
   const current = sectionOf(model.route)
@@ -205,6 +211,7 @@ const appNavigation = (model: Model, initial: string, h: HtmlBuilder<Message>): 
     [
       item('home', homeRouter({}), format(locale, 'nav.home', {}), homeTabIcon(h)),
       item('wardrobe', wardrobeRouter({}), format(locale, 'nav.wardrobe', {}), wardrobeTabIcon(h)),
+      item('looks', looksRouter({}), format(locale, 'nav.looks', {}), looksTabIcon(h)),
       h.a(
         [
           h.Href(accountRouter({})),
@@ -264,6 +271,24 @@ const addPiecesPage = (model: Model, h: HtmlBuilder<Message>): Html =>
     toParentMessage: (message) => Message.GotAddPiecesMessage({ message }),
   })
 
+const looksPage = (model: Model, h: HtmlBuilder<Message>): Html =>
+  h.submodel({
+    slotId: 'looks',
+    model: model.looks,
+    view: LooksView.view,
+    viewInputs: { locale: model.context.locale },
+    toParentMessage: (message) => Message.GotLooksMessage({ message }),
+  })
+
+const lookPage = (model: Model, h: HtmlBuilder<Message>): Html =>
+  h.submodel({
+    slotId: 'look',
+    model: model.look,
+    view: LookView.view,
+    viewInputs: { locale: model.context.locale },
+    toParentMessage: (message) => Message.GotLookMessage({ message }),
+  })
+
 const reviewPage = (model: Model, h: HtmlBuilder<Message>): Html =>
   h.submodel({
     slotId: 'review',
@@ -306,6 +331,8 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
         Wardrobe: () => wardrobePage(model, h),
         AddPieces: () => addPiecesPage(model, h),
         Review: () => reviewPage(model, h),
+        Looks: () => looksPage(model, h),
+        Look: () => lookPage(model, h),
         Piece: () => piecePage(model, h),
         NotFound: () => notFoundView(locale, h),
       }),

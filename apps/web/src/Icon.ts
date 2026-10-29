@@ -3,6 +3,7 @@ import { controlIcon, loaderIcon, tabIcon } from './Icon.styles.ts'
 import {
   ArrowsClockwiseRegular,
   CameraRegular,
+  CoatHangerLight,
   CaretLeftRegular,
   CheckRegular,
   CircleNotchRegular,
@@ -64,3 +65,4 @@ export const retryIcon = control(ArrowsClockwiseRegular)
 /** 24px tab icons in the Light weight. */
 export const homeTabIcon = tab(HouseLight)
 export const wardrobeTabIcon = tab(TShirtLight)
+export const looksTabIcon = tab(CoatHangerLight)
