@@ -67,7 +67,9 @@
       "dependencies": {
         "@effect/sql-d1": "catalog:",
         "@styld/db": "workspace:*",
+        "@styld/i18n": "workspace:*",
         "@yielded/auth": "catalog:",
+        "@yielded/auth-persistence": "catalog:",
         "@yielded/auth-persistence-drizzle": "catalog:",
         "drizzle-orm": "catalog:",
         "effect": "catalog:",
@@ -173,6 +175,7 @@
     "@types/bun": "1.4.4",
     "@types/node": "24.19.2",
     "@yielded/auth": "0.1.0-beta.46",
+    "@yielded/auth-persistence": "0.1.0-beta.46",
     "@yielded/auth-persistence-drizzle": "0.1.0-beta.46",
     "alchemy": "2.0.0-beta.84",
     "drizzle-kit": "1.0.0-rc.5",

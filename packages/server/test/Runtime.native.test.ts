@@ -6,7 +6,7 @@ import { Effect, Redacted, Schedule, Schema } from 'effect'
 import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import * as HttpBody from 'effect/http/HttpBody'
 import * as HttpClient from 'effect/http/HttpClient'
-import { chromium } from 'playwright'
+import { type Browser, chromium } from 'playwright'
 import { verifyBrowser } from './BrowserAcceptance.ts'
 import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
 import { verifyMcp } from './McpAcceptance.ts'
@@ -50,6 +50,12 @@ const makeStack = (generation: string) =>
               activeKeyId: 'native-test',
               keys: [{ id: 'native-test', material: 'a'.repeat(43) }],
             }),
+          ),
+          AUTH_PROOF_KEYS: Redacted.make(
+            JSON.stringify({ activeKeyId: 'native-test', keys: [{ id: 'native-test', material: 'd'.repeat(43) }] }),
+          ),
+          AUTH_REQUEST_BINDING_KEYS: Redacted.make(
+            JSON.stringify({ activeKeyId: 'native-test', keys: [{ id: 'native-test', material: 'e'.repeat(43) }] }),
           ),
         },
       })
@@ -97,6 +103,19 @@ const stack = beforeAll(
 )
 afterAll(destroy(Stack), { timeout: 60000 })
 
+/** Run a browser acceptance against the public edge in a fresh headless Chromium. */
+const inBrowser = (verify: (browser: Browser, origin: string) => Promise<void>) =>
+  Effect.scoped(
+    Effect.gen(function* () {
+      const { styldUrl } = yield* stack
+      const browserInstance = yield* Effect.acquireRelease(
+        Effect.promise(() => chromium.launch({ headless: true })),
+        (browser) => Effect.promise(() => browser.close()),
+      )
+      yield* Effect.promise(() => verify(browserInstance, styldUrl))
+    }),
+  )
+
 test(
   'serves MCP to OAuth clients: discovery, registration, consent, both protocol eras, rotation and revocation',
   Effect.gen(function* () {
@@ -106,35 +125,13 @@ test(
   { timeout: 120000 },
 )
 
-test(
-  'hydrates the built website and persists locale changes in a browser',
-  Effect.scoped(
-    Effect.gen(function* () {
-      const { styldUrl } = yield* stack
-      const browserInstance = yield* Effect.acquireRelease(
-        Effect.promise(() => chromium.launch({ headless: true })),
-        (browser) => Effect.promise(() => browser.close()),
-      )
-      yield* Effect.promise(() => verifyBrowser(browserInstance, styldUrl))
-    }),
-  ),
-  { timeout: 60000 },
-)
+test('hydrates the built website and persists locale changes in a browser', inBrowser(verifyBrowser), {
+  timeout: 60000,
+})
 
 test(
-  'signs in through the browser, retains the session across reloads and revokes it on logout',
-  Effect.scoped(
-    Effect.gen(function* () {
-      const { url, styldUrl } = yield* stack
-      const seeded = yield* HttpClient.post(`${url}/test/identity/seed-browser`)
-      expect(seeded.status).toBe(204)
-      const browserInstance = yield* Effect.acquireRelease(
-        Effect.promise(() => chromium.launch({ headless: true })),
-        (browser) => Effect.promise(() => browser.close()),
-      )
-      yield* Effect.promise(() => verifyBrowserIdentity(browserInstance, styldUrl))
-    }),
-  ).pipe(Effect.provide(FetchHttpClient.layer)),
+  'creates an account with one email code, signs in again with the next, and revokes the session on logout',
+  inBrowser(verifyBrowserIdentity),
   { timeout: 60000 },
 )
 
@@ -259,9 +256,11 @@ test(
           'oauth_clients',
           'oauth_grants',
           'styld_auth_credentials',
+          'styld_auth_email_credentials',
           'styld_auth_identifiers',
           'styld_auth_passwords',
           'styld_auth_pending',
+          'styld_auth_proofs',
           'styld_auth_sessions',
         ],
       },

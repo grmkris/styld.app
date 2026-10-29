@@ -254,7 +254,17 @@
     "signInWithEmail": "Prijava z e-pošto",
     "autoCreateNote": "Ustvarili bomo račun, če ga še nimate",
     "sendCodeFailed": "Kode ni bilo mogoče poslati",
-    "resendCodeFailed": "Kode ni bilo mogoče znova poslati"
+    "resendCodeFailed": "Kode ni bilo mogoče znova poslati",
+    "connectAssistant": "Prijavite se, da Styld povežete s svojim asistentom.",
+    "problem": {
+      "invalidEmail": "Vnesite e-poštni naslov, na primer ana@example.com.",
+      "wrongCode": "Ta koda ni pravilna. Preverite e-pošto in poskusite znova.",
+      "expired": "Ta koda je potekla. Zahtevajte novo.",
+      "tooManyAttempts": "Preveč napačnih kod. Zahtevajte novo.",
+      "tooManyRequests": "Zahtevali ste več kod zapored. Počakajte minuto in poskusite znova.",
+      "unavailable": "Styld trenutno ne more poslati ali preveriti kod. Poskusite znova čez trenutek."
+    },
+    "resendSoon": "Novo kodo lahko zahtevate 30 sekund po zadnji."
   },
   "nav": {
     "home": "Domov",
@@ -2692,5 +2702,14 @@
         "Urejamo garderobo…"
       ]
     }
+  },
+  "authEmail": {
+    "subjectSignIn": "Vaša koda za prijavo v Styld je {code}",
+    "subjectRegistration": "Vaša koda za ustvarjanje računa Styld je {code}",
+    "headingSignIn": "Prijava v Styld",
+    "headingRegistration": "Ustvarite svoj račun Styld",
+    "instructions": "Za nadaljevanje vnesite to kodo v Styld:",
+    "expiry": "{minutes, plural, one {Koda poteče čez # minuto.} two {Koda poteče čez # minuti.} few {Koda poteče čez # minute.} other {Koda poteče čez # minut.}}",
+    "ignore": "Če te kode niste zahtevali, to e-poštno sporočilo prezrite. Kode nikoli ne delite z nikomer."
   }
 }

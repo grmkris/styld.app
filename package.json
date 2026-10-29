@@ -25,6 +25,7 @@
       "@modelcontextprotocol/client": "2.4.0",
       "@modelcontextprotocol/sdk": "1.32.2",
       "@yielded/auth": "0.1.0-beta.46",
+      "@yielded/auth-persistence": "0.1.0-beta.46",
       "@yielded/auth-persistence-drizzle": "0.1.0-beta.46",
       "drizzle-orm": "1.0.0-rc.5",
       "drizzle-kit": "1.0.0-rc.5",

@@ -1,5 +1,7 @@
-import { Auth, AuthContract, Password, SessionContract, Sessions } from '@yielded/auth'
+import { AuthContract, SessionContract, Sessions } from '@yielded/auth'
 import { Schema } from 'effect'
+
+import { emailEntryActions } from './EmailEntryContract.ts'
 
 export const AccountClaims = Schema.Struct({
   accountId: Schema.String,
@@ -9,8 +11,14 @@ export const AccountClaims = Schema.Struct({
 })
 export type AccountClaims = typeof AccountClaims.Type
 
+/** A password (knowledge) or a fresh email code (possession). Without the possession alternative an
+ * email-code proof does not satisfy the subject requirement and completion falls into pending
+ * authentication, which this installation does not configure (Y/sessions/module.ts:1306-1324). */
 export const requirement = Sessions.AuthenticationRequirement.make({
-  alternatives: [{ factors: ['knowledge'], userVerified: false, phishingResistant: false, minimumCredentials: 1 }],
+  alternatives: [
+    { factors: ['knowledge'], userVerified: false, phishingResistant: false, minimumCredentials: 1 },
+    { factors: ['possession'], userVerified: false, phishingResistant: false, minimumCredentials: 1 },
+  ],
   maximumAgeMillis: 300_000,
 })
 
@@ -24,6 +32,7 @@ export const AuthApi = AuthContract.make('styld/Auth', {
   basePath: '/api/auth',
   actions: (sessions) => ({
     signIn: AuthContract.passwordSignIn(sessions),
+    ...emailEntryActions(sessions),
   }),
 })
 
@@ -33,10 +42,3 @@ export const AuthApi = AuthContract.make('styld/Auth', {
 export const SessionHttp = SessionContract.makeSessionHttpContract('styld/Session', AuthApi.sessions.Session, {
   cookieName: '__Host-effect-auth-session',
 })
-
-export const makeAuth = () =>
-  Auth.make(AuthApi, {
-    sessions: sessionOptions,
-    strategies: { password: Password.make() },
-    defaultStrategy: 'password',
-  })

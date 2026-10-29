@@ -77,9 +77,9 @@ export const verifyBrowser = async (browser: Browser, origin: string): Promise<v
     await page.waitForFunction(() => document.documentElement.lang === 'en')
     const loginResponse = await page.goto(new URL('/login', origin).toString(), { waitUntil: 'networkidle' })
     expect(loginResponse?.status()).toBe(200)
-    await page.locator('#auth-password').waitFor({ state: 'visible' })
+    await page.getByLabel('Email').waitFor({ state: 'visible' })
     expect(await page.locator('h1').textContent()).toBe('Sign in to Styld')
-    expect(await page.locator('#auth-password').getAttribute('autocomplete')).toBe('current-password')
+    expect(await page.getByLabel('Email').getAttribute('autocomplete')).toBe('email')
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
     expect(errors).toEqual([])
   } finally {

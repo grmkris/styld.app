@@ -47,6 +47,21 @@ export const pickerSelect = style({
   cursor: 'pointer',
 })
 export const pickerError = style({ flexBasis: '100%' })
+/** The top bar's sign-in text link. */
+export const signInLink = style({ display: 'inline-flex', alignItems: 'center', minBlockSize: '44px' })
+/** The top bar's account link: the person's initial in an ink circle (Gallery `.av`). */
+export const accountLink = style({
+  display: 'inline-grid',
+  placeItems: 'center',
+  inlineSize: '44px',
+  blockSize: '44px',
+  borderRadius: 'pill',
+  backgroundColor: 'ink',
+  color: 'onInk',
+  fontSize: '14px',
+  fontWeight: 700,
+  textDecorationLine: 'none',
+})
 export const intro = style({
   display: 'flex',
   flexDirection: 'column',

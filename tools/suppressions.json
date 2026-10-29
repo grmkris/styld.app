@@ -8,6 +8,10 @@
     "comment": "@effect-diagnostics-next-line unstableApiUsage:off -- The pinned Effect D1 adapter is the Worker persistence boundary."
   },
   {
+    "file": "apps/web/src/entry.ts",
+    "comment": "@effect-diagnostics-next-line unstableApiUsage:off -- Effect's platform Web Crypto layer is the browser's only Crypto provider."
+  },
+  {
     "file": "packages/server/test/RuntimeWorker.ts",
     "comment": "oxlint-disable-next-line max-lines-per-function -- native acceptance fixture keeps all endpoints in one Worker."
   },

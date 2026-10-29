@@ -150,10 +150,21 @@ test('server rendering shows the consent prompt only to undecided visitors', asy
 })
 
 test('server rendering draws the session check loader as an inline, hidden Phosphor icon', async () => {
-  const html = await renderPage('/login')
+  const html = await renderPage('/account')
   const status = /<p role="status"[^>]*>(<svg[^>]*>)<path d="([^"]+)"/.exec(html)
   expect(status?.[1]).toContain('viewBox="0 0 256 256"')
   expect(status?.[1]).toContain('aria-hidden="true"')
   expect(status?.[1]).toContain('data-loader')
   expect(status?.[2]).toBe(CircleNotchRegular)
+})
+
+const statusOf = async (path: string) =>
+  Server.toResponse(
+    (app) => renderDocument(app, assets),
+    await Effect.runPromise(renderRequest(new Request(`https://styld.test${path}`), { buildId: 'test' })),
+  ).status
+
+test('every page answers 200 and paths beside them answer 404', async () => {
+  for (const path of ['/', '/login', '/login/connect', '/account']) expect(await statusOf(path)).toBe(200)
+  for (const path of ['/login/elsewhere', '/account/settings', '/connect']) expect(await statusOf(path)).toBe(404)
 })

@@ -21,7 +21,8 @@ const directions: Readonly<Record<string, readonly string[]>> = {
     '@styld/observability',
     '@styld/protocol',
   ],
-  '@styld/auth': ['@styld/db'],
+  // Auth writes the code email, in the person's language.
+  '@styld/auth': ['@styld/db', '@styld/i18n'],
   // Browser-safe contracts: the typed API and the schemas assistants and the website share.
   '@styld/protocol': ['@styld/auth'],
   '@styld/domain': [],
@@ -48,7 +49,8 @@ export const assertBrowserSafe = (file: string, specifier: string) => {
     ) ||
     /^packages\/(server|db)\//.test(file) ||
     /\/server\//.test(file) ||
-    (file.startsWith('packages/auth/src/') && !/^packages\/auth\/src\/(client|config)\.ts$/.test(file))
+    (file.startsWith('packages/auth/src/') &&
+      !/^packages\/auth\/src\/(client|config|EmailEntryContract)\.ts$/.test(file))
   ) {
     throw new Error(`Server adapter in browser graph: ${file} -> ${specifier}`)
   }

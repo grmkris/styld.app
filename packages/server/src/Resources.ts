@@ -11,3 +11,11 @@ export const StyldDatabase = Cloudflare.D1.Database('StyldV2Database', {
 export const StyldMedia = Cloudflare.R2.Bucket('StyldV2Media', {
   jurisdiction: 'eu',
 })
+
+/** Cloudflare Email Service's `send_email` binding, named `STYLD_EMAIL` in the Worker's env. The
+ * styld.app sending domain is already set up in this account, so the stack declares no sending
+ * domain or DNS record of its own. */
+export const StyldEmail = Cloudflare.Email.SendEmail('STYLD_EMAIL', { allowedSenderAddresses: ['noreply@styld.app'] })
+
+/** The sender every code email comes from. */
+export const emailSender = 'Styld <noreply@styld.app>'

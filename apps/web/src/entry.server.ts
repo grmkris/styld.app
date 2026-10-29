@@ -5,6 +5,7 @@ import { catalogVersion } from '@styld/i18n'
 import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
 import { Flags, init } from './App.ts'
 import { localeEndpoint, requestLocale } from './Locale.ts'
+import { AppRoute, routeFromPathname } from './route.ts'
 import { consentFromCookies } from './TelemetryConsent.ts'
 import { view } from './View.ts'
 import { saveLocale } from './server/LocalePreference.ts'
@@ -31,7 +32,7 @@ const renderApplication = (
     }
     const rendered = yield* Server.renderToString(application, { ...options, flags })
     return Server.Rendered(rendered, {
-      status: ['/', '/login', '/account'].includes(url.pathname) ? 200 : 404,
+      status: AppRoute.guards.NotFound(routeFromPathname(url.pathname)) ? 404 : 200,
       headers: {
         'cache-control': 'private, no-store',
         vary: 'Accept-Language, Cookie',

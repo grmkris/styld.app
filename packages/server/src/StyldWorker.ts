@@ -1,18 +1,25 @@
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import * as AlchemyHttp from 'alchemy/Http'
+import { ProofDispatchSink } from '@styld/auth'
+import { RuntimeContext } from 'alchemy/RuntimeContext'
 import { Effect, Layer, Logger } from 'effect'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpRouter from 'effect/http/HttpRouter'
-import { decodeAuthSecret, decodeAuthSessionKeyring } from './AuthConfiguration.ts'
+import {
+  decodeAuthSecret,
+  decodeAuthSessionKeyring,
+  decodeProofKeyring,
+  decodeRequestBindingKeyring,
+} from './AuthConfiguration.ts'
 import { browserTelemetryRoutes } from './BrowserTelemetry.ts'
 import { apiRoutes } from './Api.ts'
-import { makeAuthHttp } from './AuthHttp.ts'
+import { makeAuthHttp, withRequestNetwork } from './AuthHttp.ts'
 import { DomainLive } from './DomainLive.ts'
 import { health } from './Health.ts'
 import { onFirstUse } from './IsolateCache.ts'
 import { mcpRoutes } from './mcp/Route.ts'
 import { makeMcpOAuth } from './OAuth.ts'
-import { StyldDatabase } from './Resources.ts'
+import { emailSender, StyldDatabase, StyldEmail } from './Resources.ts'
 import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
 
 const Runtime = Layer.mergeAll(
@@ -20,6 +27,7 @@ const Runtime = Layer.mergeAll(
   Cloudflare.Telemetry({ headSamplingRate: 1 }),
   Cloudflare.D1.QueryDatabaseBinding,
   Cloudflare.Workers.RateLimitBinding,
+  Cloudflare.Email.SendBinding,
 )
 
 // Alchemy's Worker bridge gives every event `Logger.consolePretty`, which reaches Workers Logs
@@ -38,6 +46,7 @@ export default StyldWorker.make(
   },
   Effect.gen(function* () {
     const database = yield* Cloudflare.D1.QueryDatabase(StyldDatabase)
+    const email = yield* Cloudflare.Email.Send(yield* StyldEmail)
     // The browser telemetry relay is unauthenticated; each client IP may post 120 times a
     // minute (the SDK flushes about twice every 5 seconds per tab).
     const telemetryLimit = yield* Cloudflare.Workers.RateLimit('TELEMETRY_RATE_LIMIT', {
@@ -77,11 +86,20 @@ export default StyldWorker.make(
         }
         const authSessionKeys = yield* decodeAuthSessionKeyring(env.AUTH_SESSION_KEYS).pipe(Effect.orDie)
         const authSecret = yield* decodeAuthSecret(env.AUTH_SECRET).pipe(Effect.orDie)
+        const proofKeys = yield* decodeProofKeyring(env.AUTH_PROOF_KEYS).pipe(Effect.orDie)
+        const requestBindingKeys = yield* decodeRequestBindingKeyring(env.AUTH_REQUEST_BINDING_KEYS).pipe(Effect.orDie)
         const auth = makeAuthHttp(database, {
           origin: authOrigin,
           secret: authSecret,
           secureCookies: true,
           sessionKeys: authSessionKeys,
+          email: {
+            sender: yield* email.raw,
+            from: emailSender,
+            proofKeys,
+            requestBindingKeys,
+            returnTargets: ['/'],
+          },
         })
         const db = yield* database.raw
         const oauth = makeMcpOAuth(db, auth, { origin: authOrigin, keys: authSessionKeys, allowRegistration })
@@ -102,7 +120,18 @@ export default StyldWorker.make(
       const { handle, observabilityBase } = yield* application(env)
       const request = yield* HttpServerRequest
       const metadata = metadataFromHeaders(observabilityBase, request.headers)
-      return yield* handle.pipe(withObservability('styld.http', metadata))
+      // Code emails go out after the response, kept alive by this request's waitUntil. The sink
+      // closes over this request's live execution context: auth's services were built on first use
+      // and see only the deferred one, which refuses to run outside the handler.
+      const execution = yield* Cloudflare.Workers.WorkerExecutionContext
+      const runtime = yield* RuntimeContext
+      const dispatch = (work: Effect.Effect<void>) =>
+        execution.waitUntil(work).pipe(Effect.provideService(RuntimeContext, runtime))
+      return yield* handle.pipe(
+        Effect.provideService(ProofDispatchSink, dispatch),
+        withRequestNetwork(request.headers),
+        withObservability('styld.http', metadata),
+      )
     }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs))
     return { fetch }
   }).pipe(Effect.provide(Runtime)),

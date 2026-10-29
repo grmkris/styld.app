@@ -16,6 +16,7 @@ import { exerciseAttemptLimiter } from './AttemptLimiterFixture.ts'
 import { seedIdentity, disableIdentity } from './IdentityFixture.ts'
 import { recoveryRoutes } from './RecoveryFixture.ts'
 import { makeAuthHttp } from '../src/AuthHttp.ts'
+import { onFirstUse } from '../src/IsolateCache.ts'
 import { DomainLive } from '../src/DomainLive.ts'
 import { StyldDatabase, StyldMedia } from '../src/Resources.ts'
 import { storageHealth } from './StorageHealth.ts'
@@ -49,6 +50,20 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
         activeKeyId: 'native-test',
         keys: [{ id: 'native-test', material: Redacted.make('bmF0aXZlLXRlc3Qta2V5LW1hdGVyaWFsLWxvbmc=') }],
       },
+      // The fixture seeds password identities only; a code request here is a test bug.
+      email: {
+        sender: { send: () => Promise.reject(new Error('the runtime fixture sends no email')) },
+        from: 'Styld <noreply@styld.test>',
+        proofKeys: {
+          activeKeyId: 'native-test',
+          keys: [{ id: 'native-test', material: Redacted.make('b'.repeat(43)) }],
+        },
+        requestBindingKeys: {
+          activeKeyId: 'native-test',
+          keys: [{ id: 'native-test', material: Redacted.make('c'.repeat(43)) }],
+        },
+        returnTargets: ['/'],
+      },
     })
     const identityRoutes = Layer.mergeAll(
       auth.layer,
@@ -62,14 +77,6 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
         'POST',
         '/test/identity/seed-limited',
         seedIdentity(database, 'native-limited').pipe(
-          Effect.orDie,
-          Effect.as(HttpServerResponse.empty({ status: 204 })),
-        ),
-      ),
-      HttpRouter.add(
-        'POST',
-        '/test/identity/seed-browser',
-        seedIdentity(database, 'native-browser').pipe(
           Effect.orDie,
           Effect.as(HttpServerResponse.empty({ status: 204 })),
         ),
@@ -98,7 +105,9 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
         exerciseAttemptLimiter(database).pipe(Effect.orDie, Effect.flatMap(HttpServerResponse.json)),
       ),
     )
-    const authHandle = yield* HttpRouter.toHttpEffect(identityRoutes).pipe(Effect.orDie)
+    // Built on the first request, like the API Worker: auth validates its tables against D1, which
+    // Alchemy migrates only after it has evaluated this constructor.
+    const authHandle = yield* onFirstUse(() => HttpRouter.toHttpEffect(identityRoutes).pipe(Effect.orDie))
     const wallets = yield* Wallet
     const exercise = Effect.fn('Styld.acceptance.wallet')(function* () {
       const owner = UserId.make('native-test-owner')
@@ -133,7 +142,7 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
           url.pathname.startsWith('/test/identity/') ||
           url.pathname.startsWith('/test/recovery/')
         )
-          return yield* authHandle
+          return yield* yield* authHandle(undefined)
         if (url.pathname === '/intl')
           return yield* HttpServerResponse.json({
             en: format('en', 'catalog.pieces', { count: 2 }),

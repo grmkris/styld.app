@@ -1,0 +1,69 @@
+import { catalogVersion } from '@styld/i18n'
+import { Command, given, message, model, story } from 'foldkit/story'
+import { describe, expect, test } from 'vitest'
+import { Message, Navigate, ReadSession, Session, init, update } from '../src/App.ts'
+import { AppRoute } from '../src/route.ts'
+
+const page = (pathname: string) =>
+  init({ locale: 'en', catalogVersion, timeZone: 'UTC', referenceTime: 0, pathname, telemetryConsent: 'denied' }).model
+
+const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
+
+describe('the session decides where a visitor belongs', () => {
+  test('a visitor without a session is sent from their account to sign in', () => {
+    story(
+      update,
+      given(page('/account')),
+      message(Message.ReceivedSession({ claims: null })),
+      Command.expectExact(Navigate({ href: '/login' })),
+      Command.resolve(Navigate({ href: '/login' }), Message.CompletedNavigate()),
+      model(({ session }) => expect(Session.guards.SignedOut(session)).toBe(true)),
+    )
+  })
+
+  test('a signed-in visitor who opens sign-in goes straight to their account', () => {
+    story(
+      update,
+      given(page('/login')),
+      message(Message.ReceivedSession({ claims })),
+      model(({ session }) => expect(Session.guards.SignedIn(session)).toBe(true)),
+      Command.expectExact(Navigate({ href: '/account' })),
+      Command.resolve(Navigate({ href: '/account' }), Message.CompletedNavigate()),
+    )
+  })
+
+  test('a signed-in visitor sent to sign in by an assistant resumes its authorization', () => {
+    story(
+      update,
+      given(page('/login/connect')),
+      message(Message.ReceivedSession({ claims })),
+      model(({ session }) => expect(Session.guards.SignedIn(session)).toBe(true)),
+      Command.expectExact(Navigate({ href: '/oauth/mcp/authorize' })),
+      Command.resolve(Navigate({ href: '/oauth/mcp/authorize' }), Message.CompletedNavigate()),
+    )
+  })
+
+  test('pages open to everyone stay put whatever the session', () => {
+    for (const claimsRead of [null, claims])
+      story(
+        update,
+        given(page('/')),
+        message(Message.ReceivedSession({ claims: claimsRead })),
+        Command.expectNone(),
+        model(({ route }) => expect(route).toEqual(AppRoute.Home())),
+      )
+  })
+
+  test('an unreadable session offers a retry that reads it again', () => {
+    story(
+      update,
+      given(page('/account')),
+      message(Message.FailedReadSession()),
+      model(({ session }) => expect(Session.guards.Unavailable(session)).toBe(true)),
+      message(Message.RequestedSession()),
+      Command.expectExact(ReadSession),
+      Command.resolve(ReadSession, Message.ReceivedSession({ claims })),
+      model(({ session }) => expect(Session.guards.SignedIn(session)).toBe(true)),
+    )
+  })
+})

@@ -5,7 +5,11 @@ export const accounts = sqliteTable('accounts', {
   enabled: integer('enabled', { mode: 'boolean' }).notNull().default(true),
   securityRevision: text('security_revision').notNull(),
   displayName: text('display_name').notNull(),
-  createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  // A runtime default, not a column default: email registration inserts the account through a
+  // synchronous Yielded mapping callback that cannot read Effect's Clock.
+  createdAt: integer('created_at', { mode: 'timestamp_ms' })
+    .notNull()
+    .$defaultFn(() => new Date()),
 })
 
 export const authAttemptBuckets = sqliteTable(

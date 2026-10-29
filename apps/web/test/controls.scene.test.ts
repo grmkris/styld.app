@@ -1,28 +1,184 @@
 import { catalogVersion } from '@styld/i18n'
-import { expect, given, label, role, scene, selector, submit, within } from 'foldkit/scene'
+import { Option } from 'effect'
+import { Command, click, expect, given, label, role, scene, selector, submit, text, type, within } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
-import { test } from 'vitest'
-import { AuthState, LocaleSave, init, update } from '../src/App.ts'
+import { describe, test } from 'vitest'
+import { LocaleSave, Message, Navigate, Session, SignOut, init, update } from '../src/App.ts'
+import {
+  type Code,
+  Message as LoginMessage,
+  RequestCode,
+  ResendCode,
+  Step,
+  VerifyCode,
+  WaitForCodeExpiry,
+  WaitToResend,
+} from '../src/page/Login.ts'
 import { view } from '../src/View.ts'
 
 const page = (pathname: string) =>
   init({ locale: 'en', catalogVersion, timeZone: 'UTC', referenceTime: 0, pathname, telemetryConsent: 'denied' }).model
 
-test('a pending sign-in keeps its focusable button and ignores another submission', () => {
-  const signingIn = modifyFields(page('/login'), { auth: () => AuthState.SigningIn() })
-  const pendingButton = role('button', { name: 'Signing in...' })
-  scene(
-    { update, view },
-    given(signingIn),
-    expect(pendingButton).toBeDisabled(),
-    expect(pendingButton).toHaveAttr('aria-disabled', 'true'),
-    expect(pendingButton).not.toHaveAttr('disabled'),
-    // The loader is hidden from assistive technology, so the button's name stays its label.
-    expect(within(pendingButton, selector('svg[data-loader]'))).toHaveAttr('aria-hidden', 'true'),
-    // Enter still submits through an aria-disabled button; update starts no second sign-in.
-    submit(role('form')),
-    expect(pendingButton).toExist(),
-  )
+const claims = { accountId: 'acc_1', displayName: 'ana', email: 'ana@example.com', emailVerified: true }
+
+const sent = { flowId: 'flow_1', requestId: 'req_1', proofId: 'proof_1', keyId: 'key_1' }
+const resent = { flowId: 'flow_1', requestId: 'req_2', proofId: 'proof_2', keyId: 'key_1' }
+
+const awaitingCode = (pathname: string, code: Partial<Code> = {}) =>
+  modifyFields(page(pathname), {
+    login: (login) =>
+      modifyFields(login, {
+        email: () => 'ana@example.com',
+        step: () =>
+          Step.EnterCode({ code: { sent, use: 'open', rejections: 0, resent: false, canResend: false, ...code } }),
+      }),
+  })
+
+const codeField = label('Enter verification code')
+const verifyButton = role('button', { name: 'Verify code' })
+const resendButton = role('button', { name: 'Resend code' })
+
+describe('email code sign-in', () => {
+  test('a pending code request keeps its focusable button and ignores another submission', () => {
+    const sending = modifyFields(page('/login'), {
+      login: (login) => modifyFields(login, { email: () => 'ana@example.com', step: () => Step.SendingCode() }),
+    })
+    const pendingButton = role('button', { name: 'Sending code...' })
+    scene(
+      { update, view },
+      given(sending),
+      expect(pendingButton).toBeDisabled(),
+      expect(pendingButton).toHaveAttr('aria-disabled', 'true'),
+      expect(pendingButton).not.toHaveAttr('disabled'),
+      // The loader is hidden from assistive technology, so the button's name stays its label.
+      expect(within(pendingButton, selector('svg[data-loader]'))).toHaveAttr('aria-hidden', 'true'),
+      // Enter still submits through an aria-disabled button; update requests no second code.
+      submit(role('form')),
+      expect(pendingButton).toExist(),
+    )
+  })
+
+  test('an email that is not an address is refused before any code is sent', () => {
+    scene(
+      { update, view },
+      given(page('/login')),
+      type(label('Email'), 'ana.example.com'),
+      submit(role('form')),
+      expect(role('alert')).toHaveText('Enter an email address like ana@example.com.'),
+      expect(label('Email')).toHaveAttr('aria-invalid', 'true'),
+    )
+  })
+
+  test('a person signs in with the code from their email and lands on their account', () => {
+    scene(
+      { update, view },
+      given(page('/login')),
+      expect(
+        text("Enter your email and we'll send you a six-digit code. We'll create an account if you don't have one yet"),
+      ).toExist(),
+      type(label('Email'), '  ana@example.com '),
+      submit(role('form')),
+      Command.expectExact(RequestCode({ email: 'ana@example.com', flowId: Option.none() })),
+      Command.resolve(RequestCode, LoginMessage.SucceededRequestCode({ sent })),
+      Command.expectExact(WaitToResend({ requestId: 'req_1' }), WaitForCodeExpiry({ requestId: 'req_1' })),
+      expect(role('heading', { name: 'Check your email' })).toExist(),
+      expect(selector('strong')).toHaveText('ana@example.com'),
+      expect(codeField).toHaveAttr('autocomplete', 'one-time-code'),
+      // Scenes settle every Command before moving on; the lifetime settles as an older code's.
+      Command.resolveAll(
+        [WaitToResend, LoginMessage.ElapsedResendPause({ requestId: 'req_1' })],
+        [WaitForCodeExpiry, LoginMessage.ElapsedCodeLifetime({ requestId: 'req_0' })],
+      ),
+    )
+    scene(
+      { update, view },
+      given(awaitingCode('/login')),
+      submit(selector('#email-code')),
+      Command.expectExact(VerifyCode({ email: 'ana@example.com', sent })),
+      Command.resolve(VerifyCode, LoginMessage.SucceededVerifyCode({ claims })),
+      Command.expectExact(Navigate({ href: '/account' })),
+      Command.resolve(Navigate({ href: '/account' }), Message.CompletedNavigate()),
+      expect(role('link', { name: 'Account' })).toHaveText('A'),
+    )
+  })
+
+  test('a wrong code keeps the person on the code step, and the third one uses the code up', () => {
+    const wrongTry = [
+      submit(selector('#email-code')),
+      Command.resolve(VerifyCode, LoginMessage.FailedVerifyCode({ problem: 'wrongCode' })),
+    ] as const
+    scene(
+      { update, view },
+      given(awaitingCode('/login')),
+      ...wrongTry,
+      expect(role('alert')).toHaveText("That code isn't right. Check the email and try again."),
+      expect(codeField).toHaveAttr('aria-describedby', 'login-problem'),
+      ...wrongTry,
+      expect(verifyButton).toBeEnabled(),
+      ...wrongTry,
+      expect(role('alert')).toHaveText('Too many wrong codes. Ask for a new one.'),
+      expect(verifyButton).toBeDisabled(),
+      submit(selector('#email-code')),
+      Command.expectNone(),
+    )
+  })
+
+  test('resending waits out the pause, is announced, and another email starts over with the address kept', () => {
+    scene(
+      { update, view },
+      given(awaitingCode('/login')),
+      expect(resendButton).toBeDisabled(),
+      expect(resendButton).toHaveAttr('aria-describedby', 'login-resend-hint'),
+      expect(selector('#login-resend-hint')).toHaveText('You can ask for a new code 30 seconds after the last one.'),
+    )
+    scene(
+      { update, view },
+      given(awaitingCode('/login', { canResend: true })),
+      click(resendButton),
+      Command.expectExact(ResendCode({ email: 'ana@example.com', flowId: 'flow_1' })),
+      Command.resolve(ResendCode, LoginMessage.SucceededResendCode({ sent: resent })),
+      Command.resolveAll(
+        [WaitToResend, LoginMessage.ElapsedResendPause({ requestId: 'req_2' })],
+        [WaitForCodeExpiry, LoginMessage.ElapsedCodeLifetime({ requestId: 'req_2' })],
+      ),
+      expect(role('alert')).toHaveText('This code has expired. Ask for a new one.'),
+      expect(verifyButton).toBeDisabled(),
+      expect(resendButton).toBeEnabled(),
+      click(role('button', { name: 'Use a different email' })),
+      expect(role('heading', { name: 'Sign in to Styld' })).toExist(),
+      expect(label('Email')).toHaveValue('ana@example.com'),
+    )
+  })
+
+  test('signing in for an assistant returns to its pending authorization', () => {
+    scene(
+      { update, view },
+      given(awaitingCode('/login/connect')),
+      expect(text('Sign in to connect Styld to your assistant.')).toExist(),
+      submit(selector('#email-code')),
+      Command.resolve(VerifyCode, LoginMessage.SucceededVerifyCode({ claims })),
+      Command.expectExact(Navigate({ href: '/oauth/mcp/authorize' })),
+      Command.resolve(Navigate({ href: '/oauth/mcp/authorize' }), Message.CompletedNavigate()),
+    )
+  })
+})
+
+describe('account', () => {
+  test('a signed-in person sees who they are and signing out sends them to sign in', () => {
+    const signedIn = modifyFields(page('/account'), { session: () => Session.SignedIn({ claims }) })
+    scene(
+      { update, view },
+      given(signedIn),
+      expect(role('heading', { name: 'Account' })).toExist(),
+      expect(text('ana@example.com')).toExist(),
+      click(role('button', { name: 'Sign out' })),
+      expect(role('button', { name: 'Sign out' })).toBeDisabled(),
+      Command.expectExact(SignOut),
+      Command.resolve(SignOut, Message.SucceededSignOut()),
+      Command.expectExact(Navigate({ href: '/login' })),
+      Command.resolve(Navigate({ href: '/login' }), Message.CompletedNavigate()),
+    )
+  })
 })
 
 test('a failed language change describes the picker with its error', () => {

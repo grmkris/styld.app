@@ -1,3 +1,4 @@
+import type { EmailEntryOptions } from '@styld/auth'
 import type { Sessions } from '@yielded/auth'
 import { Effect, Redacted, Result, Schema } from 'effect'
 import * as Base64Url from 'effect/encoding/Base64Url'
@@ -25,7 +26,7 @@ const SessionKeyring = Schema.Struct({
 
 export class AuthHttpConfigurationError extends Schema.TaggedError<AuthHttpConfigurationError>()(
   'AuthHttpConfigurationError',
-  { reason: Schema.Literals(['session-keys', 'secret']) },
+  { reason: Schema.Literals(['session-keys', 'secret', 'proof-keys', 'request-binding-keys']) },
 ) {}
 
 export type AuthSessionKeyring = Sessions.SessionSigningKeyring
@@ -35,16 +36,35 @@ export type AuthHttpOptions = {
   readonly secureCookies: boolean
   readonly secret: Redacted.Redacted
   readonly sessionKeys: AuthSessionKeyring
+  readonly email: EmailEntryOptions
 }
 
-export const decodeAuthSessionKeyring = (value: unknown) =>
-  Schema.decodeUnknownEffect(Schema.fromJsonString(SessionKeyring))(value).pipe(
-    Effect.map(({ activeKeyId, keys }) => ({
-      activeKeyId,
-      keys: keys.map(({ id, material }) => ({ id, material: Redacted.make(material) })),
-    })),
-    Effect.mapError(() => AuthHttpConfigurationError.make({ reason: 'session-keys' })),
-  )
+type KeyringReason = 'session-keys' | 'proof-keys' | 'request-binding-keys'
+
+/** A JSON keyring: `{"activeKeyId":"k1","keys":[{"id":"k1","material":"<base64url, >=32 bytes>"}]}`.
+ * Yielded holds code and request-binding keyrings to 8 keys of at most 172 characters. */
+const decodeKeyring =
+  (reason: KeyringReason, limits: { readonly keys: number; readonly material: number }) => (value: unknown) =>
+    Schema.decodeUnknownEffect(
+      Schema.fromJsonString(
+        SessionKeyring.check(
+          Schema.makeFilter(
+            ({ keys }) =>
+              keys.length <= limits.keys && keys.every(({ material }) => material.length <= limits.material),
+          ),
+        ),
+      ),
+    )(value).pipe(
+      Effect.map(({ activeKeyId, keys }) => ({
+        activeKeyId,
+        keys: keys.map(({ id, material }) => ({ id, material: Redacted.make(material) })),
+      })),
+      Effect.mapError(() => AuthHttpConfigurationError.make({ reason })),
+    )
+
+export const decodeAuthSessionKeyring = decodeKeyring('session-keys', { keys: 16, material: 342 })
+export const decodeProofKeyring = decodeKeyring('proof-keys', { keys: 8, material: 172 })
+export const decodeRequestBindingKeyring = decodeKeyring('request-binding-keys', { keys: 8, material: 172 })
 
 export const decodeAuthSecret = (value: unknown) =>
   Schema.decodeUnknownEffect(Schema.String.check(Schema.isMinLength(32)))(value).pipe(

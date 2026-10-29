@@ -25,6 +25,7 @@ export default defineConfig({
     // Everything else, including future server-rendered copy such as emails, is checked.
     ignoreByFile: {
       'packages/auth/src/AttemptLimiter.ts': ['/[\\s\\S]*/'],
+      'packages/auth/src/EmailPersistence.ts': ['/[\\s\\S]*/'],
       'packages/server/src/IsolateCache.ts': ['/[\\s\\S]*/'],
       'packages/server/src/StyldWorker.ts': ['/[\\s\\S]*/'],
       // MCP and OAuth protocol text is written for assistants and OAuth clients, in English (MCP has no

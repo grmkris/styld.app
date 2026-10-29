@@ -1,12 +1,14 @@
 import { Select } from '@foldkit/ui'
-import { direction, format, type Locale } from '@styld/i18n'
+import { direction, format, type Locale, type MessageKey } from '@styld/i18n'
 import type { Document, Html, HtmlBuilder } from 'foldkit/html'
-import { LocaleSave, Message, type Model } from './App.ts'
+import { LocaleSave, Message, type Model, Session } from './App.ts'
 import { actionButton } from './ActionButton.ts'
 import { primaryAction, secondaryAction } from './Actions.styles.ts'
 import { availableLocales } from './Locale.ts'
 import { styled } from './Styled.ts'
-import { accountView } from './ViewAccount.ts'
+import { accountView } from './page/AccountView.ts'
+import * as LoginView from './page/LoginView.ts'
+import { AppRoute, accountRouter, homeRouter, loginRouter } from './route.ts'
 import {
   brand,
   brandMark,
@@ -25,13 +27,13 @@ import {
   picker,
   pickerError,
   pickerSelect,
+  accountLink,
   sectionNote,
+  signInLink,
   site,
   visuallyHidden,
 } from './View.styles.ts'
 
-const homePath = '/'
-const loginPath = '/login'
 const browseAnchor = '#inspiration'
 const languages: ReadonlyArray<Readonly<{ locale: Locale; label: string }>> = [
   { locale: 'en', label: 'English' },
@@ -81,7 +83,7 @@ const homeView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
         h.p(styled(h, lead()), [format(locale, 'landing.description', {})]),
         h.div(styled(h, heroActions()), [
           h.a([h.Href(browseAnchor), ...styled(h, primaryAction())], [format(locale, 'landing.browse', {})]),
-          h.a([h.Href(loginPath), ...styled(h, secondaryAction())], [format(locale, 'auth.signInWithEmail', {})]),
+          h.a([h.Href(loginRouter({})), ...styled(h, secondaryAction())], [format(locale, 'auth.signInWithEmail', {})]),
         ]),
       ]),
       h.section(
@@ -101,7 +103,7 @@ const notFoundView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
     [
       h.h1([], [format(locale, 'common.notFoundTitle', {})]),
       h.p([], [format(locale, 'common.notFoundDescription', {})]),
-      h.a([h.Href(homePath)], [format(locale, 'common.goHome', {})]),
+      h.a([h.Href(homeRouter({}))], [format(locale, 'common.goHome', {})]),
     ],
   )
 
@@ -132,19 +134,54 @@ const consentPrompt = (locale: Locale, h: HtmlBuilder<Message>): Html =>
     ],
   )
 
+/** The top bar's one action (Gallery): sign in, or your initial linking to your account. */
+const sessionLink = (model: Model, h: HtmlBuilder<Message>): Html => {
+  const { locale } = model.context
+  return Session.match(model.session, {
+    SignedIn: ({ claims }) =>
+      h.a(
+        [h.Href(accountRouter({})), h.AriaLabel(format(locale, 'account.title', {})), ...styled(h, accountLink())],
+        [claims.displayName.slice(0, 1).toUpperCase()],
+      ),
+    SigningOut: () => h.empty,
+    Checking: () => h.empty,
+    Unavailable: () => h.empty,
+    SignedOut: () =>
+      AppRoute.guards.Login(model.route) || AppRoute.guards.LoginForConnection(model.route)
+        ? h.empty
+        : h.a([h.Href(loginRouter({})), ...styled(h, signInLink())], [format(locale, 'landing.signIn', {})]),
+  })
+}
+
+const titleKey = AppRoute.match<MessageKey>({
+  Home: () => 'landing.title',
+  Login: () => 'auth.signInTitle',
+  LoginForConnection: () => 'auth.signInTitle',
+  Account: () => 'account.title',
+  NotFound: () => 'common.notFoundTitle',
+})
+
+const pageTitle = (model: Model) => format(model.context.locale, titleKey(model.route), {})
+
+const loginPage = (model: Model, forConnection: boolean, h: HtmlBuilder<Message>): Html =>
+  h.submodel({
+    slotId: 'login',
+    model: model.login,
+    view: LoginView.view,
+    viewInputs: { forConnection, locale: model.context.locale },
+    toParentMessage: (message) => Message.GotLoginMessage({ message }),
+  })
+
 export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
-  const { locale, pathname } = model.context
-  const isHome = pathname === homePath
-  const isLogin = pathname === loginPath || pathname === '/account'
+  const { locale } = model.context
   return {
-    title:
-      format(locale, isHome ? 'landing.title' : isLogin ? 'auth.signInTitle' : 'common.notFoundTitle', {}) + ' | Styld',
+    title: `${pageTitle(model)} | Styld`,
     lang: locale,
     dir: direction(locale) === 'rtl' ? 'Rtl' : 'Ltr',
     body: h.div(styled(h, site()), [
       h.header(styled(h, masthead()), [
         h.a(
-          [h.Href(homePath), ...styled(h, brand()), h.AriaLabel('Styld')],
+          [h.Href(homeRouter({})), ...styled(h, brand()), h.AriaLabel('Styld')],
           [
             h.img([
               h.Src('/brand/wordmark.svg'),
@@ -156,8 +193,15 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
           ],
         ),
         languagePicker(model, h),
+        sessionLink(model, h),
       ]),
-      isHome ? homeView(locale, h) : isLogin ? accountView(model, h) : notFoundView(locale, h),
+      AppRoute.match(model.route, {
+        Home: () => homeView(locale, h),
+        Login: () => loginPage(model, false, h),
+        LoginForConnection: () => loginPage(model, true, h),
+        Account: () => accountView(model, h),
+        NotFound: () => notFoundView(locale, h),
+      }),
       h.footer(styled(h, footer()), [
         h.span([], ['Styld']),
         actionButton(

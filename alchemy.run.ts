@@ -49,6 +49,8 @@ export default Alchemy.Stack(
         STYLD_RELEASE: release,
         AUTH_SECRET: yield* Config.Redacted('STYLD_AUTH_SECRET'),
         AUTH_SESSION_KEYS: yield* Config.Redacted('STYLD_AUTH_SESSION_KEYS'),
+        AUTH_PROOF_KEYS: yield* Config.Redacted('STYLD_AUTH_PROOF_KEYS'),
+        AUTH_REQUEST_BINDING_KEYS: yield* Config.Redacted('STYLD_AUTH_REQUEST_BINDING_KEYS'),
       },
     })
     return { url: edge.url.as<string>() }

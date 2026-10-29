@@ -396,6 +396,7 @@ export interface MessageArgumentsByKey<T = string> {
   'auth.checkYourEmail': Readonly<Record<string, never>>
   'auth.codeSentTo': Readonly<Record<string, never>>
   'auth.codeSentToEmail': Readonly<Record<string, never>>
+  'auth.connectAssistant': Readonly<Record<string, never>>
   'auth.continueWithGoogle': Readonly<Record<string, never>>
   'auth.didntReceiveCode': Readonly<Record<string, never>>
   'auth.email': Readonly<Record<string, never>>
@@ -407,8 +408,15 @@ export interface MessageArgumentsByKey<T = string> {
   'auth.noAccount': Readonly<Record<string, never>>
   'auth.orContinueWith': Readonly<Record<string, never>>
   'auth.password': Readonly<Record<string, never>>
+  'auth.problem.expired': Readonly<Record<string, never>>
+  'auth.problem.invalidEmail': Readonly<Record<string, never>>
+  'auth.problem.tooManyAttempts': Readonly<Record<string, never>>
+  'auth.problem.tooManyRequests': Readonly<Record<string, never>>
+  'auth.problem.unavailable': Readonly<Record<string, never>>
+  'auth.problem.wrongCode': Readonly<Record<string, never>>
   'auth.resendCode': Readonly<Record<string, never>>
   'auth.resendCodeFailed': Readonly<Record<string, never>>
+  'auth.resendSoon': Readonly<Record<string, never>>
   'auth.savePreferencesDescription': Readonly<Record<string, never>>
   'auth.savePreferencesTitle': Readonly<Record<string, never>>
   'auth.sendCode': Readonly<Record<string, never>>
@@ -431,6 +439,13 @@ export interface MessageArgumentsByKey<T = string> {
   'auth.verifyCode': Readonly<Record<string, never>>
   'auth.verifying': Readonly<Record<string, never>>
   'auth.yourName': Readonly<Record<string, never>>
+  'authEmail.expiry': { readonly minutes: number }
+  'authEmail.headingRegistration': Readonly<Record<string, never>>
+  'authEmail.headingSignIn': Readonly<Record<string, never>>
+  'authEmail.ignore': Readonly<Record<string, never>>
+  'authEmail.instructions': Readonly<Record<string, never>>
+  'authEmail.subjectRegistration': { readonly code: string | number }
+  'authEmail.subjectSignIn': { readonly code: string | number }
   'automations.autoDetectGarments': Readonly<Record<string, never>>
   'automations.autoDetectGarmentsDesc': Readonly<Record<string, never>>
   'automations.autoProductShots': Readonly<Record<string, never>>
@@ -2310,4 +2325,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '3bcac38761f53fd6bebe7f3c422e76cac4422859f530aabfa6e0f4c9079e1890'
+export const catalogVersion = '64837531615e2bcf55a8b6cbdb9dbd260aef5ebe2eebe9e29e008972f376679d'

@@ -1,15 +1,20 @@
-import { Effect, Predicate, Redacted, Schema } from 'effect'
+import { Effect, Option, Schema } from 'effect'
 import { BrowserAuth } from '@styld/auth/client'
 import { AccountClaims } from '@styld/auth/config'
 import * as HttpClient from 'effect/http/HttpClient'
 import * as HttpClientRequest from 'effect/http/HttpClientRequest'
-import { Command, type Update } from 'foldkit'
+import { Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
+import { load } from 'foldkit/navigation'
 import { defineTaggedUnion } from 'foldkit/schema'
+import { modifyFields } from 'foldkit/struct'
 import { catalogVersion } from '@styld/i18n'
 import { Locale, localeEndpoint, parseLocale } from './Locale.ts'
-import { PasswordForm } from './PasswordForm.ts'
+import * as Login from './page/Login.ts'
+import { AppRoute, accountRouter, connectionAuthorizePath, loginRouter, routeFromPathname } from './route.ts'
 import { TelemetryConsent, TelemetryConsentControl } from './TelemetryConsent.ts'
+
+// MODEL
 
 export const Flags = Schema.Struct({
   locale: Locale,
@@ -22,53 +27,50 @@ export const Flags = Schema.Struct({
 export type Flags = typeof Flags.Type
 
 export const LocaleSave = defineTaggedUnion({ Saved: {}, Saving: { locale: Locale }, Failed: {} })
-export const AuthState = defineTaggedUnion({
+
+/** The visitor's session as the browser last read it. */
+export const Session = defineTaggedUnion({
   Checking: {},
-  SignedOut: { failed: Schema.Boolean },
-  SigningIn: {},
+  SignedOut: {},
   SignedIn: { claims: AccountClaims },
   SigningOut: { claims: AccountClaims },
   Unavailable: {},
 })
+
 export const Model = Schema.Struct({
   context: Flags,
+  route: AppRoute,
   localeSave: LocaleSave,
-  auth: AuthState,
+  session: Session,
+  login: Login.Model,
   telemetry: Schema.Struct({ consent: TelemetryConsent, prompting: Schema.Boolean }),
 })
 export type Model = typeof Model.Type
+
+// MESSAGE
+
 export const Message = defineMessageUnion({
   SelectedLocale: { value: Schema.String },
   SucceededSaveLocale: { locale: Locale },
   FailedSaveLocale: {},
-  SubmittedSignIn: {},
-  SucceededSignIn: { claims: AccountClaims },
-  FailedSignIn: {},
   ReceivedSession: { claims: Schema.NullOr(AccountClaims) },
   FailedReadSession: {},
   RequestedSession: {},
   RequestedSignOut: {},
   SucceededSignOut: {},
   FailedSignOut: {},
+  CompletedNavigate: {},
+  GotLoginMessage: { message: Login.Message },
   ChoseTelemetryConsent: { granted: Schema.Boolean },
   RecordedTelemetryConsent: { granted: Schema.Boolean },
   OpenedTelemetrySettings: {},
 })
 export type Message = typeof Message.Type
 
-const SignIn = Command.define('SignIn', {
-  messages: [Message.SucceededSignIn, Message.FailedSignIn],
-  execute: Effect.gen(function* () {
-    const { auth } = yield* BrowserAuth
-    const credentials = yield* (yield* PasswordForm).take
-    const result = yield* auth.signIn({ email: credentials.email, password: Redacted.value(credentials.password) })
-    return Predicate.isTagged(result, 'Authenticated')
-      ? Message.SucceededSignIn({ claims: result.session.claims })
-      : Message.FailedSignIn()
-  }).pipe(Effect.catch(() => Effect.succeed(Message.FailedSignIn()))),
-})
+// COMMAND
 
-const ReadSession = Command.define('ReadSession', {
+/** @internal Exported for its tests. */
+export const ReadSession = Command.define('ReadSession', {
   messages: [Message.ReceivedSession, Message.FailedReadSession],
   execute: Effect.gen(function* () {
     const { auth } = yield* BrowserAuth
@@ -77,12 +79,21 @@ const ReadSession = Command.define('ReadSession', {
   }).pipe(Effect.catch(() => Effect.succeed(Message.FailedReadSession()))),
 })
 
-const SignOut = Command.define('SignOut', {
+/** @internal Exported for its tests. */
+export const SignOut = Command.define('SignOut', {
   messages: [Message.SucceededSignOut, Message.FailedSignOut],
   execute: Effect.gen(function* () {
     yield* (yield* BrowserAuth).auth.signOut()
     return Message.SucceededSignOut()
   }).pipe(Effect.catch(() => Effect.succeed(Message.FailedSignOut()))),
+})
+
+/** A full page load: the next page renders on the server for the new session.
+ * @internal Exported for its tests. */
+export const Navigate = Command.define('Navigate', {
+  args: { href: Schema.String },
+  messages: [Message.CompletedNavigate],
+  execute: ({ href }) => load(href).pipe(Effect.as(Message.CompletedNavigate())),
 })
 
 const SaveLocale = Command.define('SaveLocale', {
@@ -108,59 +119,109 @@ const RecordTelemetryConsent = Command.define('RecordTelemetryConsent', {
     }),
 })
 
-type Services = HttpClient.HttpClient | BrowserAuth | PasswordForm | TelemetryConsentControl
+type Services = HttpClient.HttpClient | BrowserAuth | Login.EmailSignIn | TelemetryConsentControl
+type UpdateReturn = Update.Return<Model, Message, Services>
 
-export const init = (context: Flags): Update.Return<Model, Message, Services> => ({
+// INIT
+
+export const init = (context: Flags): UpdateReturn => ({
   model: {
     context,
+    route: routeFromPathname(context.pathname),
     localeSave: LocaleSave.Saved(),
-    auth: AuthState.Checking(),
+    session: Session.Checking(),
+    login: Login.init(),
     telemetry: { consent: context.telemetryConsent, prompting: context.telemetryConsent === 'undecided' },
   },
   commands: [ReadSession()],
 })
 
-export const update = (model: Model, message: Message): Update.Return<Model, Message, Services> =>
-  Message.match(message, {
+// UPDATE
+
+/** Where a signed-in visitor belongs: sign-in pages hand over to the account, or back to the
+ * assistant's pending authorization. */
+const afterSignIn = (route: AppRoute) =>
+  AppRoute.match(route, {
+    Login: () => [Navigate({ href: accountRouter({}) })],
+    LoginForConnection: () => [Navigate({ href: connectionAuthorizePath })],
+    Home: () => [],
+    Account: () => [],
+    NotFound: () => [],
+  })
+
+/** Pages that need a session send a signed-out visitor to sign in. */
+const afterSignOut = (route: AppRoute) => (AppRoute.guards.Account(route) ? [Navigate({ href: loginRouter({}) })] : [])
+
+const foldLoginOutMessage = Login.OutMessage.match<Update.Step<Model, Message, Services>>({
+  SignedIn:
+    ({ claims }) =>
+    (stepModel) => ({
+      model: modifyFields(stepModel, { session: () => Session.SignedIn({ claims }) }),
+      commands: afterSignIn(stepModel.route),
+    }),
+})
+
+const foldLogin = Update.foldChild({
+  update: Login.update,
+  read: (model: Model) => Option.some(model.login),
+  write: (model: Model, nextLogin: Login.Model) => modifyFields(model, { login: () => nextLogin }),
+  toParentMessage: (message: Login.Message) => Message.GotLoginMessage({ message }),
+  foldOutMessage: foldLoginOutMessage,
+})
+
+export const update = (model: Model, message: Message): UpdateReturn =>
+  Message.match<UpdateReturn>(message, {
     SelectedLocale: ({ value }) => {
       const locale = parseLocale(value)
       if (locale === undefined || LocaleSave.guards.Saving(model.localeSave)) return { model }
-      return { model: { ...model, localeSave: LocaleSave.Saving({ locale }) }, commands: [SaveLocale({ locale })] }
-    },
-    SucceededSaveLocale: ({ locale }) => ({
-      model: { ...model, context: { ...model.context, locale }, localeSave: LocaleSave.Saved() },
-    }),
-    FailedSaveLocale: () => ({ model: { ...model, localeSave: LocaleSave.Failed() } }),
-    SubmittedSignIn: () => {
-      if (!AuthState.guards.SignedOut(model.auth)) return { model }
       return {
-        model: { ...model, auth: AuthState.SigningIn() },
-        commands: [SignIn()],
+        model: modifyFields(model, { localeSave: () => LocaleSave.Saving({ locale }) }),
+        commands: [SaveLocale({ locale })],
       }
     },
-    SucceededSignIn: ({ claims }) => ({ model: { ...model, auth: AuthState.SignedIn({ claims }) } }),
-    FailedSignIn: () => ({ model: { ...model, auth: AuthState.SignedOut({ failed: true }) } }),
-    ReceivedSession: ({ claims }) => ({
-      model: {
-        ...model,
-        auth: claims === null ? AuthState.SignedOut({ failed: false }) : AuthState.SignedIn({ claims }),
-      },
+    SucceededSaveLocale: ({ locale }) => ({
+      model: modifyFields(model, {
+        context: (context) => modifyFields(context, { locale: () => locale }),
+        localeSave: () => LocaleSave.Saved(),
+      }),
     }),
-    FailedReadSession: () => ({ model: { ...model, auth: AuthState.Unavailable() } }),
-    RequestedSession: () => ({ model: { ...model, auth: AuthState.Checking() }, commands: [ReadSession()] }),
-    RequestedSignOut: () =>
-      AuthState.guards.SignedIn(model.auth)
-        ? { model: { ...model, auth: AuthState.SigningOut({ claims: model.auth.claims }) }, commands: [SignOut()] }
-        : { model },
-    SucceededSignOut: () => ({ model: { ...model, auth: AuthState.SignedOut({ failed: false }) } }),
-    FailedSignOut: () => ({ model: { ...model, auth: AuthState.Unavailable() } }),
+    FailedSaveLocale: () => ({ model: modifyFields(model, { localeSave: () => LocaleSave.Failed() }) }),
+    ReceivedSession: ({ claims }) =>
+      claims === null
+        ? { model: modifyFields(model, { session: () => Session.SignedOut() }), commands: afterSignOut(model.route) }
+        : {
+            model: modifyFields(model, { session: () => Session.SignedIn({ claims }) }),
+            commands: afterSignIn(model.route),
+          },
+    FailedReadSession: () => ({ model: modifyFields(model, { session: () => Session.Unavailable() }) }),
+    RequestedSession: () => ({
+      model: modifyFields(model, { session: () => Session.Checking() }),
+      commands: [ReadSession()],
+    }),
+    RequestedSignOut: () => {
+      const { session } = model
+      if (!Session.guards.SignedIn(session)) return { model }
+      return {
+        model: modifyFields(model, { session: () => Session.SigningOut({ claims: session.claims }) }),
+        commands: [SignOut()],
+      }
+    },
+    SucceededSignOut: () => ({
+      model: modifyFields(model, { session: () => Session.SignedOut() }),
+      commands: afterSignOut(model.route),
+    }),
+    FailedSignOut: () => ({ model: modifyFields(model, { session: () => Session.Unavailable() }) }),
+    CompletedNavigate: () => ({ model }),
+    GotLoginMessage: (got) => foldLogin(model, got.message),
     ChoseTelemetryConsent: ({ granted }) => ({
-      model: { ...model, telemetry: { ...model.telemetry, prompting: false } },
+      model: modifyFields(model, { telemetry: (telemetry) => modifyFields(telemetry, { prompting: () => false }) }),
       commands: [RecordTelemetryConsent({ granted })],
     }),
     RecordedTelemetryConsent: ({ granted }) => {
       const consent: TelemetryConsent = granted ? 'granted' : 'denied'
-      return { model: { ...model, telemetry: { consent, prompting: false } } }
+      return { model: modifyFields(model, { telemetry: () => ({ consent, prompting: false }) }) }
     },
-    OpenedTelemetrySettings: () => ({ model: { ...model, telemetry: { ...model.telemetry, prompting: true } } }),
+    OpenedTelemetrySettings: () => ({
+      model: modifyFields(model, { telemetry: (telemetry) => modifyFields(telemetry, { prompting: () => true }) }),
+    }),
   })

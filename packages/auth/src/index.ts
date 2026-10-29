@@ -1,4 +1,5 @@
-export { AccountClaims, AuthApi, makeAuth, requirement, sessionOptions } from './config.ts'
+export { AccountClaims, AuthApi, requirement, sessionOptions } from './config.ts'
 export { authClientLayer, makeAuthClient } from './client.ts'
-export { makeAuthRuntime } from './live.ts'
-export { AppAuth, Persistence, authSchema, authTables, storage } from './storage.ts'
+export { ProofDispatchSink } from './EmailDelivery.ts'
+export { makeAuthRuntime, type EmailEntryOptions } from './live.ts'
+export { AppAuth, Persistence, authSchema, authTables, emailCredentials, makeAuth, proofs, storage } from './storage.ts'
