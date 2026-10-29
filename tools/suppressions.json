@@ -22,5 +22,9 @@
   {
     "file": "packages/server/test/Mcp.test.ts",
     "comment": "SAFETY: the fake database answers only the account_get query -- its row has exactly the displayName and email shape that query selects"
+  },
+  {
+    "file": "packages/server/src/wardrobe/Wardrobe.ts",
+    "comment": "SAFETY: an R2 object's body is the stored image's bytes -- workers-types declares the body as ReadableStream<any>"
   }
 ]

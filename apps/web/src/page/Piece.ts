@@ -1,0 +1,242 @@
+import { Category, Colour, Piece, PieceId, Subcategory, UpdatePiece } from '@styld/protocol'
+import { Duration, Effect, Option, Schema } from 'effect'
+import { Command, type Update } from 'foldkit'
+import { defineMessageUnion } from 'foldkit/message'
+import { defineTaggedUnion } from 'foldkit/schema'
+import { modifyFields } from 'foldkit/struct'
+import { StyldClient } from '../StyldClient.ts'
+import { toggleColour } from './PieceFields.ts'
+
+// MODEL
+
+export const Load = defineTaggedUnion({
+  Loading: {},
+  Loaded: { piece: Piece },
+  Missing: {},
+  Failed: {},
+})
+
+export const Deletion = defineTaggedUnion({ Idle: {}, Confirming: {}, Deleting: {}, Failed: {} })
+
+/** The edit form's values; nothing reaches the piece until it is saved. */
+export const Draft = Schema.Struct({
+  name: Schema.String,
+  notes: Schema.String,
+  category: Category,
+  subcategory: Schema.Option(Subcategory),
+  colours: Schema.Array(Colour),
+  saving: Schema.Boolean,
+  failed: Schema.Boolean,
+})
+export type Draft = typeof Draft.Type
+
+export const Model = Schema.Struct({
+  pieceId: Schema.String,
+  load: Load,
+  deletion: Deletion,
+  draft: Schema.Option(Draft),
+})
+export type Model = typeof Model.Type
+
+export const init = (pieceId: string): Model => ({
+  pieceId,
+  load: Load.Loading(),
+  deletion: Deletion.Idle(),
+  draft: Option.none(),
+})
+
+// MESSAGE
+
+export const Message = defineMessageUnion({
+  SucceededGetPiece: { piece: Piece },
+  FailedGetPiece: { missing: Schema.Boolean },
+  ElapsedRefreshPause: {},
+  ClickedRetry: {},
+  ClickedDelete: {},
+  ClickedCancelDelete: {},
+  ClickedConfirmDelete: {},
+  SucceededDeletePiece: {},
+  FailedDeletePiece: {},
+  ClickedEdit: {},
+  ClickedCancelEdit: {},
+  UpdatedName: { value: Schema.String },
+  UpdatedNotes: { value: Schema.String },
+  ChoseCategory: { category: Category },
+  ChoseSubcategory: { subcategory: Schema.Option(Subcategory) },
+  ToggledColour: { colour: Colour },
+  SubmittedEdit: {},
+  SucceededUpdatePiece: { piece: Piece },
+  FailedUpdatePiece: {},
+})
+export type Message = typeof Message.Type
+
+export const OutMessage = defineMessageUnion({ DeletedPiece: {} })
+export type OutMessage = typeof OutMessage.Type
+
+// COMMAND
+
+const refreshPause = Duration.seconds(2)
+
+/** A malformed id names no piece, so it is missing without asking. */
+const pieceIdOf = (pieceId: string) => Schema.decodeUnknownEffect(PieceId)(pieceId)
+
+/** @internal Exported for its tests. */
+export const GetPiece = Command.define('GetPiece', {
+  args: { pieceId: Schema.String },
+  messages: [Message.SucceededGetPiece, Message.FailedGetPiece],
+  execute: ({ pieceId }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const piece = yield* api.wardrobe.getPiece({ params: { pieceId: yield* pieceIdOf(pieceId) } })
+      return Message.SucceededGetPiece({ piece })
+    }).pipe(
+      Effect.catchTags({
+        PieceNotFound: () => Effect.succeed(Message.FailedGetPiece({ missing: true })),
+        SchemaError: () => Effect.succeed(Message.FailedGetPiece({ missing: true })),
+      }),
+      Effect.orElseSucceed(() => Message.FailedGetPiece({ missing: false })),
+    ),
+})
+
+/** @internal Exported for its tests. */
+export const WaitToRefreshPiece = Command.define('WaitToRefreshPiece', {
+  messages: [Message.ElapsedRefreshPause],
+  execute: Effect.sleep(refreshPause).pipe(Effect.as(Message.ElapsedRefreshPause())),
+})
+
+/** @internal Exported for its tests. */
+export const DeletePiece = Command.define('DeletePiece', {
+  args: { pieceId: Schema.String },
+  messages: [Message.SucceededDeletePiece, Message.FailedDeletePiece],
+  execute: ({ pieceId }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      yield* api.wardrobe.deletePiece({ params: { pieceId: yield* pieceIdOf(pieceId) } })
+      return Message.SucceededDeletePiece()
+    }).pipe(
+      // A piece already gone is the outcome the person asked for.
+      Effect.catchTag('PieceNotFound', () => Effect.succeed(Message.SucceededDeletePiece())),
+      Effect.orElseSucceed(() => Message.FailedDeletePiece()),
+    ),
+})
+
+/** @internal Exported for its tests. */
+export const SavePiece = Command.define('SavePiece', {
+  args: { pieceId: Schema.String, changes: UpdatePiece },
+  messages: [Message.SucceededUpdatePiece, Message.FailedUpdatePiece],
+  execute: ({ pieceId, changes }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const piece = yield* api.wardrobe.updatePiece({
+        params: { pieceId: yield* pieceIdOf(pieceId) },
+        payload: changes,
+      })
+      return Message.SucceededUpdatePiece({ piece })
+    }).pipe(Effect.orElseSucceed(() => Message.FailedUpdatePiece())),
+})
+
+/** The Commands that open the page. */
+export const load = (model: Model) => [GetPiece({ pieceId: model.pieceId })]
+
+// UPDATE
+
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient>
+
+const draftOf = (piece: Piece): Draft => ({
+  name: piece.name ?? '',
+  notes: piece.notes ?? '',
+  category: piece.category,
+  subcategory: Option.fromNullishOr(piece.subcategory),
+  colours: piece.colours,
+  saving: false,
+  failed: false,
+})
+
+/** The saved form, as the API takes it: an empty name or note is no name or note. */
+const changesOf = (draft: Draft): typeof UpdatePiece.Type => {
+  const name = draft.name.trim()
+  const notes = draft.notes.trim()
+  return {
+    name: name.length === 0 ? null : name,
+    notes: notes.length === 0 ? null : notes,
+    category: draft.category,
+    subcategory: Option.getOrNull(draft.subcategory),
+    colours: draft.colours,
+  }
+}
+
+const editDraft = (model: Model, change: (draft: Draft) => Draft): UpdateReturn => ({
+  model: modifyFields(model, {
+    draft: Option.map((draft) => modifyFields(change(draft), { failed: () => false })),
+  }),
+})
+
+const submittedEdit = (model: Model): UpdateReturn =>
+  Option.match(model.draft, {
+    onNone: () => ({ model }),
+    onSome: (draft) =>
+      draft.saving
+        ? { model }
+        : {
+            model: modifyFields(model, { draft: () => Option.some(modifyFields(draft, { saving: () => true })) }),
+            commands: [SavePiece({ pieceId: model.pieceId, changes: changesOf(draft) })],
+          },
+  })
+
+const loaded = (model: Model, piece: Piece): UpdateReturn => ({
+  model: modifyFields(model, { load: () => Load.Loaded({ piece }) }),
+  commands: piece.status === 'processing' ? [WaitToRefreshPiece()] : [],
+})
+
+export const update = (model: Model, message: Message): UpdateReturn =>
+  Message.match<UpdateReturn>(message, {
+    SucceededGetPiece: ({ piece }) => loaded(model, piece),
+    FailedGetPiece: ({ missing }) =>
+      Load.guards.Loaded(model.load)
+        ? { model }
+        : { model: modifyFields(model, { load: () => (missing ? Load.Missing() : Load.Failed()) }) },
+    ElapsedRefreshPause: () => ({ model, commands: [GetPiece({ pieceId: model.pieceId })] }),
+    ClickedRetry: () => ({
+      model: modifyFields(model, { load: () => Load.Loading() }),
+      commands: [GetPiece({ pieceId: model.pieceId })],
+    }),
+    ClickedDelete: () => ({ model: modifyFields(model, { deletion: () => Deletion.Confirming() }) }),
+    ClickedCancelDelete: () => ({ model: modifyFields(model, { deletion: () => Deletion.Idle() }) }),
+    ClickedConfirmDelete: () =>
+      Deletion.guards.Deleting(model.deletion)
+        ? { model }
+        : {
+            model: modifyFields(model, { deletion: () => Deletion.Deleting() }),
+            commands: [DeletePiece({ pieceId: model.pieceId })],
+          },
+    SucceededDeletePiece: () => ({ model, outMessage: OutMessage.DeletedPiece() }),
+    FailedDeletePiece: () => ({ model: modifyFields(model, { deletion: () => Deletion.Failed() }) }),
+    ClickedEdit: () => {
+      const shown = model.load
+      return Load.guards.Loaded(shown)
+        ? { model: modifyFields(model, { draft: () => Option.some(draftOf(shown.piece)) }) }
+        : { model }
+    },
+    ClickedCancelEdit: () => ({ model: modifyFields(model, { draft: () => Option.none() }) }),
+    UpdatedName: ({ value }) => editDraft(model, (draft) => modifyFields(draft, { name: () => value })),
+    UpdatedNotes: ({ value }) => editDraft(model, (draft) => modifyFields(draft, { notes: () => value })),
+    // A shelf belongs to its category, so a new category clears it.
+    ChoseCategory: ({ category }) =>
+      editDraft(model, (draft) =>
+        draft.category === category
+          ? draft
+          : modifyFields(draft, { category: () => category, subcategory: () => Option.none() }),
+      ),
+    ChoseSubcategory: ({ subcategory }) =>
+      editDraft(model, (draft) => modifyFields(draft, { subcategory: () => subcategory })),
+    ToggledColour: ({ colour }) => editDraft(model, (draft) => modifyFields(draft, { colours: toggleColour(colour) })),
+    SubmittedEdit: () => submittedEdit(model),
+    SucceededUpdatePiece: ({ piece }) => ({
+      model: modifyFields(model, { load: () => Load.Loaded({ piece }), draft: () => Option.none() }),
+    }),
+    FailedUpdatePiece: () => ({
+      model: modifyFields(model, {
+        draft: Option.map((draft) => modifyFields(draft, { saving: () => false, failed: () => true })),
+      }),
+    }),
+  })

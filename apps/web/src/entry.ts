@@ -3,13 +3,18 @@ import * as BrowserCrypto from '@effect/platform-browser/BrowserCrypto'
 import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import { Layer } from 'effect'
 import { browserAuthLayer } from '@styld/auth/client'
+import { loadCatalog, normalizeLocale } from '@styld/i18n'
 import { Runtime } from 'foldkit'
 import { Flags, Message, Model, init, update } from './App.ts'
 import { view } from './View.ts'
 import { emailSignInLayer } from './EmailSignIn.ts'
+import { styldClientLayer } from './StyldClient.ts'
 import { startTelemetry, telemetryConsentLayer } from './Telemetry.ts'
 
 const telemetry = startTelemetry(window.location.origin, document.cookie)
+
+// Only the page's language ships with it; another one loads when the person switches to it.
+await loadCatalog(normalizeLocale(document.documentElement.lang))
 
 const application = Runtime.makeApplication(
   telemetry.instrument({
@@ -23,13 +28,12 @@ const application = Runtime.makeApplication(
     devTools: { Message },
     resources: Layer.mergeAll(
       FetchHttpClient.layer,
-      emailSignInLayer(document).pipe(
-        Layer.provideMerge(browserAuthLayer(window.location.origin)),
-        // @effect-diagnostics-next-line unstableApiUsage:off -- Effect's platform Web Crypto layer is the browser's only Crypto provider.
-        Layer.provide(BrowserCrypto.layer),
-        Layer.orDie,
-      ),
+      styldClientLayer(window.location.origin).pipe(Layer.provide(FetchHttpClient.layer)),
+      emailSignInLayer(document).pipe(Layer.provideMerge(browserAuthLayer(window.location.origin)), Layer.orDie),
       telemetryConsentLayer(document),
+    ).pipe(
+      // @effect-diagnostics-next-line unstableApiUsage:off -- Effect's platform Web Crypto layer is the browser's only Crypto provider.
+      Layer.provideMerge(BrowserCrypto.layer),
     ),
   }),
 )

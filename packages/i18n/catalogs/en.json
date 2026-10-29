@@ -1049,7 +1049,8 @@
       "outerwear": "Outerwear",
       "shoes": "Shoes",
       "accessory": "Accessories"
-    }
+    },
+    "deletePieceConfirmBody": "This removes it from your wardrobe. This can't be undone."
   },
   "chat": {
     "placeholder": "Type your message...",

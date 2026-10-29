@@ -32,6 +32,10 @@ const all = new Set(Object.values(manifest).flatMap((chunk) => [chunk.file, ...(
 
 let initialGzip = 0
 for (const file of initial) initialGzip += await gzipOf(file)
+// Every page loads one language's messages before it hydrates; count the largest one.
+const catalogs = Object.entries(manifest).filter(([key]) => /packages\/i18n\/src\/catalog-[a-z]+\.ts$/.test(key))
+if (catalogs.length === 0) throw new Error('No language catalog chunk in the client manifest')
+initialGzip += Math.max(...(await Promise.all(catalogs.map(([, chunk]) => gzipOf(chunk.file)))))
 let totalGzip = 0
 for (const file of all) totalGzip += await gzipOf(file)
 const server = await readFile('apps/web/dist/server/fetch.js')

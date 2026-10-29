@@ -1,8 +1,10 @@
+import { provideAllCatalogs } from '@styld/i18n/all'
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import * as AlchemyHttp from 'alchemy/Http'
 import { ProofDispatchSink } from '@styld/auth'
 import { RuntimeContext } from 'alchemy/RuntimeContext'
-import { Effect, Layer, Logger } from 'effect'
+import { layerCryptoWeb } from '@yielded/auth/WebCrypto'
+import { Effect, Layer, Logger, Stream } from 'effect'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import {
@@ -19,8 +21,15 @@ import { health } from './Health.ts'
 import { onFirstUse } from './IsolateCache.ts'
 import { mcpRoutes } from './mcp/Route.ts'
 import { makeMcpOAuth } from './OAuth.ts'
-import { emailSender, StyldDatabase, StyldEmail } from './Resources.ts'
+import { emailSender, StyldDatabase, StyldEmail, StyldMedia, StyldPieceQueue } from './Resources.ts'
+import { wardrobeRoutes } from './wardrobe/Http.ts'
+import { GarmentCutout } from './wardrobe/Processing.ts'
+import { processingAttempts, settlePieceMessage } from './wardrobe/Queue.ts'
+import { makeWardrobe, Wardrobe } from './wardrobe/Wardrobe.ts'
 import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
+
+// The server formats in every language: page renders and code emails.
+provideAllCatalogs()
 
 const Runtime = Layer.mergeAll(
   DomainLive,
@@ -28,7 +37,38 @@ const Runtime = Layer.mergeAll(
   Cloudflare.D1.QueryDatabaseBinding,
   Cloudflare.Workers.RateLimitBinding,
   Cloudflare.Email.SendBinding,
+  Cloudflare.R2.ReadWriteBucketBinding,
+  Cloudflare.Images.ImagesBinding,
+  Cloudflare.Queues.WriteQueueBinding,
+  Cloudflare.Queues.EventSourceLive,
 )
+
+/** A per-IP limit of `limit` requests a minute. A limiter error refuses: a limit is never worth an
+ * outage or an open door. */
+const perClientLimit = (name: string, namespaceId: number, limit: number) =>
+  Effect.gen(function* () {
+    const limiter = yield* Cloudflare.Workers.RateLimit(name, { namespaceId, simple: { limit, period: 60 } })
+    return (client: string) =>
+      limiter.limit({ key: client }).pipe(
+        Effect.map(({ success }) => success),
+        Effect.orElseSucceed(() => false),
+      )
+  })
+
+/** The auth origin and keyrings bound as secrets. Missing or malformed ones stop the Worker. */
+const authConfiguration = (env: Cloudflare.Workers.WorkerEnvironment['Service']) =>
+  Effect.gen(function* () {
+    const origin: unknown = env.AUTH_ORIGIN
+    if (typeof origin !== 'string' || origin.length === 0)
+      return yield* Effect.die(new Error('AUTH_ORIGIN binding is required'))
+    return {
+      origin,
+      sessionKeys: yield* decodeAuthSessionKeyring(env.AUTH_SESSION_KEYS).pipe(Effect.orDie),
+      secret: yield* decodeAuthSecret(env.AUTH_SECRET).pipe(Effect.orDie),
+      proofKeys: yield* decodeProofKeyring(env.AUTH_PROOF_KEYS).pipe(Effect.orDie),
+      requestBindingKeys: yield* decodeRequestBindingKeyring(env.AUTH_REQUEST_BINDING_KEYS).pipe(Effect.orDie),
+    }
+  })
 
 // Alchemy's Worker bridge gives every event `Logger.consolePretty`, which reaches Workers Logs
 // as one string. Requests log structured objects instead, so Workers Logs indexes every field.
@@ -47,28 +87,15 @@ export default StyldWorker.make(
   Effect.gen(function* () {
     const database = yield* Cloudflare.D1.QueryDatabase(StyldDatabase)
     const email = yield* Cloudflare.Email.Send(yield* StyldEmail)
+    const media = yield* Cloudflare.R2.ReadWriteBucket(StyldMedia)
+    const images = yield* Cloudflare.Images.Images('STYLD_IMAGES')
+    const pieceQueueResource = yield* StyldPieceQueue
+    const pieceQueue = yield* Cloudflare.Queues.WriteQueue(pieceQueueResource)
     // The browser telemetry relay is unauthenticated; each client IP may post 120 times a
     // minute (the SDK flushes about twice every 5 seconds per tab).
-    const telemetryLimit = yield* Cloudflare.Workers.RateLimit('TELEMETRY_RATE_LIMIT', {
-      namespaceId: 2610281,
-      simple: { limit: 120, period: 60 },
-    })
-    // Telemetry is never worth an outage or an open door: a limiter error refuses the post.
-    const allowTelemetry = (client: string) =>
-      telemetryLimit.limit({ key: client }).pipe(
-        Effect.map(({ success }) => success),
-        Effect.orElseSucceed(() => false),
-      )
+    const allowTelemetry = yield* perClientLimit('TELEMETRY_RATE_LIMIT', 2610281, 120)
     // Dynamic client registration is open to anyone; each IP may register ten clients a minute.
-    const registrationLimit = yield* Cloudflare.Workers.RateLimit('OAUTH_REGISTER_RATE_LIMIT', {
-      namespaceId: 2610282,
-      simple: { limit: 10, period: 60 },
-    })
-    const allowRegistration = (client: string) =>
-      registrationLimit.limit({ key: client }).pipe(
-        Effect.map(({ success }) => success),
-        Effect.orElseSucceed(() => false),
-      )
+    const allowRegistration = yield* perClientLimit('OAUTH_REGISTER_RATE_LIMIT', 2610282, 10)
     // Bindings configured by the stack (including the web origin and secrets)
     // exist only in the deployed request runtime, not while Alchemy evaluates
     // the Worker declaration during planning. Build the application on the
@@ -80,39 +107,43 @@ export default StyldWorker.make(
           release: env.STYLD_RELEASE,
           component: 'server',
         }).pipe(Effect.orDie)
-        const authOrigin: unknown = env.AUTH_ORIGIN
-        if (typeof authOrigin !== 'string' || authOrigin.length === 0) {
-          return yield* Effect.die(new Error('AUTH_ORIGIN binding is required'))
-        }
-        const authSessionKeys = yield* decodeAuthSessionKeyring(env.AUTH_SESSION_KEYS).pipe(Effect.orDie)
-        const authSecret = yield* decodeAuthSecret(env.AUTH_SECRET).pipe(Effect.orDie)
-        const proofKeys = yield* decodeProofKeyring(env.AUTH_PROOF_KEYS).pipe(Effect.orDie)
-        const requestBindingKeys = yield* decodeRequestBindingKeyring(env.AUTH_REQUEST_BINDING_KEYS).pipe(Effect.orDie)
+        const configuration = yield* authConfiguration(env)
+        const authOrigin = configuration.origin
         const auth = makeAuthHttp(database, {
           origin: authOrigin,
-          secret: authSecret,
+          secret: configuration.secret,
           secureCookies: true,
-          sessionKeys: authSessionKeys,
+          sessionKeys: configuration.sessionKeys,
           email: {
             sender: yield* email.raw,
             from: emailSender,
-            proofKeys,
-            requestBindingKeys,
+            proofKeys: configuration.proofKeys,
+            requestBindingKeys: configuration.requestBindingKeys,
             returnTargets: ['/'],
           },
         })
         const db = yield* database.raw
-        const oauth = makeMcpOAuth(db, auth, { origin: authOrigin, keys: authSessionKeys, allowRegistration })
+        // One wardrobe per isolate, shared by its routes and the processing queue. Photos keep
+        // their original until the garment cut-out model replaces `keepOriginal`.
+        const wardrobeService = yield* makeWardrobe({
+          database: db,
+          bucket: yield* media.raw,
+          images: yield* images.raw,
+          queue: yield* pieceQueue.raw,
+        }).pipe(Effect.provide([layerCryptoWeb, GarmentCutout.keepOriginal]))
+        const wardrobe = Layer.succeed(Wardrobe, wardrobeService)
+        const oauth = makeMcpOAuth(db, auth, { origin: authOrigin, keys: configuration.sessionKeys, allowRegistration })
         const routes = Layer.mergeAll(
           auth.layer,
-          apiRoutes(auth),
+          apiRoutes(auth, wardrobe),
+          wardrobeRoutes(auth).pipe(Layer.provide(wardrobe)),
           oauth.routes,
-          mcpRoutes(db, authOrigin, observabilityBase.release).pipe(Layer.provide(oauth.server)),
+          mcpRoutes(db, authOrigin, observabilityBase.release, wardrobeService).pipe(Layer.provide(oauth.server)),
           HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),
           browserTelemetryRoutes(authOrigin, allowTelemetry),
         ).pipe(Layer.provide(AlchemyHttp.Platform))
         const handle = yield* HttpRouter.toHttpEffect(routes).pipe(Effect.orDie)
-        return { handle, observabilityBase }
+        return { handle, observabilityBase, wardrobe: wardrobeService }
       }),
     )
     const fetch = Effect.gen(function* () {
@@ -133,6 +164,15 @@ export default StyldWorker.make(
         withObservability('styld.http', metadata),
       )
     }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs))
+    yield* Cloudflare.Queues.consumeQueueMessages(
+      pieceQueueResource,
+      { batchSize: 10, maxRetries: processingAttempts, retryDelay: '10 seconds' },
+      (messages) =>
+        Effect.gen(function* () {
+          const { wardrobe } = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
+          yield* Stream.runForEach(messages, (message) => settlePieceMessage(wardrobe, message))
+        }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
+    )
     return { fetch }
   }).pipe(Effect.provide(Runtime)),
 )

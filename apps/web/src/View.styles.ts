@@ -134,3 +134,77 @@ export const consentBanner = style({
   boxShadow: '0 -8px 32px oklch(0 0 0 / 0.14) !custom',
 })
 export const consentActions = style({ display: 'flex', flexWrap: 'wrap', gap: '8px' })
+
+/** Room under the page for the phone's tab bar. */
+export const withTabBar = style({
+  paddingBlockEnd: 'calc(72px + env(safe-area-inset-bottom))',
+  '@media (min-width: 900px)': { paddingBlockEnd: '0' },
+})
+/** The app's sections: a tab bar on the phone's bottom edge, text navigation in the desktop top bar. */
+export const appNav = style({
+  position: 'fixed',
+  insetInline: '0',
+  insetBlockEnd: '0',
+  zIndex: 4,
+  display: 'flex',
+  justifyContent: 'space-around',
+  paddingBlock: '8px calc(8px + env(safe-area-inset-bottom))',
+  paddingInline: '4px',
+  borderBlockStartWidth: '1px',
+  borderBlockStartStyle: 'solid',
+  borderBlockStartColor: 'rule',
+  backgroundColor: 'paper',
+  '@media (min-width: 900px)': {
+    position: 'static',
+    justifyContent: 'flex-start',
+    gap: '24px',
+    padding: '0',
+    borderBlockStartWidth: '0',
+    backgroundColor: 'transparent !custom',
+  },
+})
+export const navItem = style({
+  display: 'grid',
+  justifyItems: 'center',
+  gap: '2px',
+  minInlineSize: '64px',
+  minBlockSize: '48px',
+  paddingBlockStart: '4px',
+  color: 'ink3',
+  fontSize: '11px',
+  fontWeight: 500,
+  textDecorationLine: 'none',
+  '&[aria-current="page"]': { color: 'ink', fontWeight: 700 },
+  '@media (min-width: 900px)': {
+    display: 'inline-flex',
+    alignItems: 'center',
+    minInlineSize: 'auto',
+    minBlockSize: '44px',
+    padding: '0',
+    color: 'ink2',
+    fontSize: '15px',
+    '&[aria-current="page"]': {
+      color: 'ink',
+      fontWeight: 600,
+      textDecorationLine: 'underline',
+      textDecorationColor: 'ink',
+      textDecorationThickness: '2px',
+      textUnderlineOffset: '8px',
+    },
+  },
+})
+/** Tab icons belong to the phone's tab bar only. */
+export const navIcon = style({ display: 'inline-flex', '@media (min-width: 900px)': { display: 'none' } })
+/** The desktop top bar already carries the account initial. */
+export const phoneOnly = style({ '@media (min-width: 900px)': { display: 'none' } })
+export const navAvatar = style({
+  display: 'grid',
+  placeItems: 'center',
+  inlineSize: '24px',
+  blockSize: '24px',
+  borderRadius: 'pill',
+  backgroundColor: 'ink',
+  color: 'onInk',
+  fontSize: '10px',
+  fontWeight: 700,
+})

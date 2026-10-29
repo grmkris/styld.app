@@ -98,7 +98,7 @@ describe('email code sign-in', () => {
       Command.resolve(VerifyCode, LoginMessage.SucceededVerifyCode({ claims })),
       Command.expectExact(Navigate({ href: '/account' })),
       Command.resolve(Navigate({ href: '/account' }), Message.CompletedNavigate()),
-      expect(role('link', { name: 'Account' })).toHaveText('A'),
+      expect(role('link', { name: 'Account' })).toHaveAttr('href', '/account'),
     )
   })
 

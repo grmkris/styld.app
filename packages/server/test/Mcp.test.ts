@@ -1,10 +1,13 @@
-import { Effect } from 'effect'
+import { type Piece, PieceId } from '@styld/protocol'
+import { Effect, Option } from 'effect'
+import * as HttpClient from 'effect/http/HttpClient'
 import { describe, expect, test } from 'vitest'
 import { CurrentAccount } from '../src/CurrentAccount.ts'
 import { instructions, styldTools } from '../src/mcp/StyldTools.ts'
 import { callTool, renderTools } from '../src/mcp/Tools.ts'
 import type { D1 } from '../src/OAuth.ts'
 import { challenge, hostedClientMetadata, redirectUriAllowed } from '../src/mcp/Policy.ts'
+import { Wardrobe } from '../src/wardrobe/Wardrobe.ts'
 
 const accountRow = { displayName: 'Ana Novak', email: 'ana@example.com' }
 const database: D1 = {
@@ -16,7 +19,41 @@ const database: D1 = {
     }),
   }),
 }
-const tools = styldTools(database, 'https://styld.test')
+const piece = (id: string, fields: Partial<Piece>): Piece => ({
+  id: PieceId.make(`pc_${id.padEnd(22, '0')}`),
+  name: null,
+  notes: null,
+  category: 'top',
+  subcategory: null,
+  colours: [],
+  status: 'ready',
+  source: 'website',
+  createdAt: '2026-10-29T00:00:00.000Z',
+  updatedAt: '2026-10-29T00:00:00.000Z',
+  ...fields,
+})
+const pieces = [
+  piece('a', { name: 'Navy cable knit', colours: ['navy'] }),
+  piece('b', { name: 'White tee', colours: ['white'] }),
+  piece('c', { name: 'Jeans', category: 'bottom', subcategory: 'jeans', colours: ['blue', 'navy'] }),
+]
+/** Answers reads from three pieces; anything else is not part of these tests. */
+const notUsed = () => Effect.die('not used by these tests')
+const wardrobe = Wardrobe.of({
+  listPieces: () => Effect.succeed(pieces),
+  getPiece: notUsed,
+  createUpload: notUsed,
+  receiveUpload: notUsed,
+  pieceAddedBy: () => Effect.succeed(Option.none()),
+  addPiece: notUsed,
+  updatePiece: notUsed,
+  deletePiece: notUsed,
+  pieceImage: notUsed,
+  processPiece: notUsed,
+  failPiece: notUsed,
+})
+const offline = HttpClient.make(() => Effect.die('unit tests make no requests'))
+const tools = styldTools(database, 'https://styld.test', wardrobe, offline)
 /** The JSON of a result's first text block. */
 const jsonOf = (result: {
   readonly content: ReadonlyArray<{ readonly type: string; readonly text?: string }>
@@ -31,7 +68,7 @@ const call = (name: string, args: unknown) =>
 describe('MCP tools', () => {
   test('lists closed, budgeted tools with noun_verb names', () => {
     const list = renderTools(tools)
-    expect(list).toEqual([
+    expect(list.slice(0, 1)).toEqual([
       {
         name: 'account_get',
         title: 'Your Styld account',
@@ -40,6 +77,16 @@ describe('MCP tools', () => {
         annotations: { title: 'Your Styld account', readOnlyHint: true, openWorldHint: false },
       },
     ])
+    expect(list.map(({ name }) => name)).toEqual([
+      'account_get',
+      'piece_search',
+      'piece_get',
+      'upload_create',
+      'piece_add',
+      'piece_update',
+      'piece_delete',
+    ])
+    expect(list.find(({ name }) => name === 'piece_delete')?.annotations).toMatchObject({ destructiveHint: true })
     for (const entry of list) {
       expect(entry.name).toMatch(/^[a-z]+_[a-z]+$/)
       expect(`mcp__styld__${entry.name}`.length).toBeLessThanOrEqual(64)
@@ -71,6 +118,57 @@ describe('MCP tools', () => {
     expect(refusal).toMatchObject({ code: 'invalid_arguments', retryable: false })
     expect(JSON.stringify(refusal)).toContain('accountId')
     expect(JSON.stringify(refusal)).not.toContain('someone-else-secret')
+  })
+})
+
+describe('MCP wardrobe tools', () => {
+  test('searches by words, category and colour, newest first, a page at a time', async () => {
+    const navy = await call('piece_search', { colour: 'navy', limit: 1 })
+    expect(navy.structuredContent).toMatchObject({
+      pieces: [{ name: 'Navy cable knit', url: `https://styld.test/wardrobe/${pieces[0]?.id}` }],
+      nextCursor: '1',
+    })
+    expect(await call('piece_search', { colour: 'navy', cursor: '1' })).toMatchObject({
+      structuredContent: { pieces: [{ name: 'Jeans' }], nextCursor: null },
+    })
+    expect(await call('piece_search', { query: 'TEE' })).toMatchObject({
+      structuredContent: { pieces: [{ name: 'White tee' }] },
+    })
+    expect(await call('piece_search', { category: 'bottom', query: 'tee' })).toMatchObject({
+      structuredContent: { pieces: [] },
+    })
+  })
+
+  test('never shows an image address', async () => {
+    const result = await call('piece_search', {})
+    expect(JSON.stringify(result)).not.toContain('/cdn/')
+  })
+
+  test('adds from exactly one of a photo address or an upload', async () => {
+    const both = await call('piece_add', {
+      operationId: 'op-both-0001',
+      imageUrl: 'https://photos.example/knit.jpg',
+      uploadId: `up_${'a'.repeat(22)}`,
+      category: 'top',
+    })
+    expect(jsonOf(both)).toMatchObject({ code: 'invalid_arguments' })
+    expect(jsonOf(await call('piece_add', { operationId: 'op-none-0001', category: 'top' }))).toMatchObject({
+      code: 'invalid_arguments',
+    })
+  })
+
+  test('fetches photo addresses only over plain https', async () => {
+    for (const imageUrl of [
+      'http://photos.example/knit.jpg',
+      'https://photos.example:8443/knit.jpg',
+      'https://me:pw@photos.example/k.jpg',
+    ])
+      expect(jsonOf(await call('piece_add', { operationId: 'op-url-00001', imageUrl, category: 'top' }))).toMatchObject(
+        {
+          code: 'photo_refused',
+          retryable: false,
+        },
+      )
   })
 })
 

@@ -8,19 +8,8 @@ import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { loader } from '../Icon.ts'
 import { styled } from '../Styled.ts'
 import { type Code, codeFormId, Message as LoginMessage, type Model, type Problem, Step } from './Login.ts'
-import {
-  authForm,
-  authInput,
-  authPage,
-  emailShown,
-  fieldLabel,
-  formError,
-  lede,
-  linkButton,
-  loginActions,
-  notice,
-  submit,
-} from './LoginView.styles.ts'
+import { fieldLabel, formError, textField } from '../Fields.styles.ts'
+import { authForm, authPage, emailShown, lede, linkButton, loginActions, notice, submit } from './LoginView.styles.ts'
 
 const problemKey: { readonly [Key in Problem]: MessageKey } = {
   invalidEmail: 'auth.problem.invalidEmail',
@@ -58,7 +47,7 @@ const emailStep = (model: Model, sending: boolean, locale: Locale, h: HtmlBuilde
       h.label([h.For('login-email'), ...styled(h, fieldLabel())], [format(locale, 'auth.email', {})]),
       h.input([
         h.Id('login-email'),
-        ...styled(h, authInput()),
+        ...styled(h, textField()),
         h.Name('email'),
         h.Type('email'),
         h.Autocomplete('email'),
@@ -101,7 +90,7 @@ const codeStep = (model: Model, step: Step, code: Code, locale: Locale, h: HtmlB
         h.label([h.For('login-code'), ...styled(h, fieldLabel())], [format(locale, 'auth.enterVerificationCode', {})]),
         h.input([
           h.Id('login-code'),
-          ...styled(h, authInput()),
+          ...styled(h, textField()),
           h.Name('code'),
           h.Type('text'),
           h.InputMode('numeric'),

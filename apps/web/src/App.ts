@@ -8,10 +8,24 @@ import { defineMessageUnion } from 'foldkit/message'
 import { load } from 'foldkit/navigation'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
-import { catalogVersion } from '@styld/i18n'
+import { catalogVersion, loadCatalog } from '@styld/i18n'
 import { Locale, localeEndpoint, parseLocale } from './Locale.ts'
+import * as Crypto from 'effect/Crypto'
+import * as AddPiece from './page/AddPiece.ts'
 import * as Login from './page/Login.ts'
-import { AppRoute, accountRouter, connectionAuthorizePath, loginRouter, routeFromPathname } from './route.ts'
+import * as Piece from './page/Piece.ts'
+import * as Wardrobe from './page/Wardrobe.ts'
+import {
+  AppRoute,
+  accountRouter,
+  connectionAuthorizePath,
+  loginRouter,
+  needsSession,
+  pieceRouter,
+  routeFromPathname,
+  wardrobeRouter,
+} from './route.ts'
+import type { StyldClient } from './StyldClient.ts'
 import { TelemetryConsent, TelemetryConsentControl } from './TelemetryConsent.ts'
 
 // MODEL
@@ -43,6 +57,9 @@ export const Model = Schema.Struct({
   localeSave: LocaleSave,
   session: Session,
   login: Login.Model,
+  wardrobe: Wardrobe.Model,
+  piece: Piece.Model,
+  addPiece: AddPiece.Model,
   telemetry: Schema.Struct({ consent: TelemetryConsent, prompting: Schema.Boolean }),
 })
 export type Model = typeof Model.Type
@@ -61,6 +78,9 @@ export const Message = defineMessageUnion({
   FailedSignOut: {},
   CompletedNavigate: {},
   GotLoginMessage: { message: Login.Message },
+  GotWardrobeMessage: { message: Wardrobe.Message },
+  GotPieceMessage: { message: Piece.Message },
+  GotAddPieceMessage: { message: AddPiece.Message },
   ChoseTelemetryConsent: { granted: Schema.Boolean },
   RecordedTelemetryConsent: { granted: Schema.Boolean },
   OpenedTelemetrySettings: {},
@@ -105,6 +125,8 @@ const SaveLocale = Command.define('SaveLocale', {
       yield* HttpClient.filterStatusOk(client).execute(
         HttpClientRequest.post(localeEndpoint).pipe(HttpClientRequest.bodyUrlParams({ locale })),
       )
+      // The new language's messages arrive before the page switches to them.
+      yield* Effect.promise(() => loadCatalog(locale))
       return Message.SucceededSaveLocale({ locale })
     }).pipe(Effect.catchTag('HttpClientError', () => Effect.succeed(Message.FailedSaveLocale()))),
 })
@@ -119,22 +141,48 @@ const RecordTelemetryConsent = Command.define('RecordTelemetryConsent', {
     }),
 })
 
-type Services = HttpClient.HttpClient | BrowserAuth | Login.EmailSignIn | TelemetryConsentControl
+type Services =
+  | HttpClient.HttpClient
+  | BrowserAuth
+  | Login.EmailSignIn
+  | TelemetryConsentControl
+  | StyldClient
+  | Crypto.Crypto
 type UpdateReturn = Update.Return<Model, Message, Services>
 
 // INIT
 
-export const init = (context: Flags): UpdateReturn => ({
-  model: {
-    context,
-    route: routeFromPathname(context.pathname),
-    localeSave: LocaleSave.Saved(),
-    session: Session.Checking(),
-    login: Login.init(),
-    telemetry: { consent: context.telemetryConsent, prompting: context.telemetryConsent === 'undecided' },
-  },
-  commands: [ReadSession()],
-})
+/** The Commands that open the page a route shows. */
+const pageCommands = (route: AppRoute, piece: Piece.Model) =>
+  AppRoute.match(route, {
+    Wardrobe: () => Command.mapMessages(Wardrobe.load(), (message) => Message.GotWardrobeMessage({ message })),
+    Piece: () => Command.mapMessages(Piece.load(piece), (message) => Message.GotPieceMessage({ message })),
+    AddPiece: () => [],
+    Home: () => [],
+    Login: () => [],
+    LoginForConnection: () => [],
+    Account: () => [],
+    NotFound: () => [],
+  })
+
+export const init = (context: Flags): UpdateReturn => {
+  const route = routeFromPathname(context.pathname)
+  const piece = Piece.init(AppRoute.guards.Piece(route) ? route.pieceId : '')
+  return {
+    model: {
+      context,
+      route,
+      localeSave: LocaleSave.Saved(),
+      session: Session.Checking(),
+      login: Login.init(),
+      wardrobe: Wardrobe.init(),
+      piece,
+      addPiece: AddPiece.init(),
+      telemetry: { consent: context.telemetryConsent, prompting: context.telemetryConsent === 'undecided' },
+    },
+    commands: [ReadSession(), ...pageCommands(route, piece)],
+  }
+}
 
 // UPDATE
 
@@ -146,11 +194,14 @@ const afterSignIn = (route: AppRoute) =>
     LoginForConnection: () => [Navigate({ href: connectionAuthorizePath })],
     Home: () => [],
     Account: () => [],
+    Wardrobe: () => [],
+    AddPiece: () => [],
+    Piece: () => [],
     NotFound: () => [],
   })
 
 /** Pages that need a session send a signed-out visitor to sign in. */
-const afterSignOut = (route: AppRoute) => (AppRoute.guards.Account(route) ? [Navigate({ href: loginRouter({}) })] : [])
+const afterSignOut = (route: AppRoute) => (needsSession(route) ? [Navigate({ href: loginRouter({}) })] : [])
 
 const foldLoginOutMessage = Login.OutMessage.match<Update.Step<Model, Message, Services>>({
   SignedIn:
@@ -167,6 +218,35 @@ const foldLogin = Update.foldChild({
   write: (model: Model, nextLogin: Login.Model) => modifyFields(model, { login: () => nextLogin }),
   toParentMessage: (message: Login.Message) => Message.GotLoginMessage({ message }),
   foldOutMessage: foldLoginOutMessage,
+})
+
+const foldWardrobe = Update.foldChild({
+  update: Wardrobe.update,
+  read: (model: Model) => Option.some(model.wardrobe),
+  write: (model: Model, wardrobe: Wardrobe.Model) => modifyFields(model, { wardrobe: () => wardrobe }),
+  toParentMessage: (message: Wardrobe.Message) => Message.GotWardrobeMessage({ message }),
+})
+
+const foldPiece = Update.foldChild({
+  update: Piece.update,
+  read: (model: Model) => Option.some(model.piece),
+  write: (model: Model, piece: Piece.Model) => modifyFields(model, { piece: () => piece }),
+  toParentMessage: (message: Piece.Message) => Message.GotPieceMessage({ message }),
+  foldOutMessage: Piece.OutMessage.match<Update.Step<Model, Message, Services>>({
+    DeletedPiece: () => (stepModel) => ({ model: stepModel, commands: [Navigate({ href: wardrobeRouter({}) })] }),
+  }),
+})
+
+const foldAddPiece = Update.foldChild({
+  update: AddPiece.update,
+  read: (model: Model) => Option.some(model.addPiece),
+  write: (model: Model, addPiece: AddPiece.Model) => modifyFields(model, { addPiece: () => addPiece }),
+  toParentMessage: (message: AddPiece.Message) => Message.GotAddPieceMessage({ message }),
+  foldOutMessage: AddPiece.OutMessage.match<Update.Step<Model, Message, Services>>({
+    AddedPiece:
+      ({ pieceId }) =>
+      (stepModel) => ({ model: stepModel, commands: [Navigate({ href: pieceRouter({ pieceId }) })] }),
+  }),
 })
 
 export const update = (model: Model, message: Message): UpdateReturn =>
@@ -213,6 +293,9 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     FailedSignOut: () => ({ model: modifyFields(model, { session: () => Session.Unavailable() }) }),
     CompletedNavigate: () => ({ model }),
     GotLoginMessage: (got) => foldLogin(model, got.message),
+    GotWardrobeMessage: (got) => foldWardrobe(model, got.message),
+    GotPieceMessage: (got) => foldPiece(model, got.message),
+    GotAddPieceMessage: (got) => foldAddPiece(model, got.message),
     ChoseTelemetryConsent: ({ granted }) => ({
       model: modifyFields(model, { telemetry: (telemetry) => modifyFields(telemetry, { prompting: () => false }) }),
       commands: [RecordTelemetryConsent({ granted })],

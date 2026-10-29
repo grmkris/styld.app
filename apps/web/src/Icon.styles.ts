@@ -14,3 +14,9 @@ export const loaderIcon = style({
   animationTimingFunction: 'linear',
   animationIterationCount: 'infinite',
 })
+
+/** A control icon: 20px, Regular weight (DESIGN.md › Icons). */
+export const controlIcon = style({ inlineSize: '20px', blockSize: '20px', flex: 'none' })
+
+/** A tab icon: 24px, Light weight. */
+export const tabIcon = style({ inlineSize: '24px', blockSize: '24px', flex: 'none' })

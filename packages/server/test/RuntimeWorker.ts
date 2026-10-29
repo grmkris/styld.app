@@ -1,3 +1,4 @@
+import { provideAllCatalogs } from '@styld/i18n/all'
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import { CurrentActor } from '@styld/domain/CurrentActor.context'
 import { UserId, OperationId } from '@styld/domain/Identity'
@@ -20,6 +21,9 @@ import { onFirstUse } from '../src/IsolateCache.ts'
 import { DomainLive } from '../src/DomainLive.ts'
 import { StyldDatabase, StyldMedia } from '../src/Resources.ts'
 import { storageHealth } from './StorageHealth.ts'
+
+// The server formats in every language: page renders and code emails.
+provideAllCatalogs()
 
 // Only the local native-test stack imports this fixture. It has no production declaration.
 export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
@@ -80,6 +84,26 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
           Effect.orDie,
           Effect.as(HttpServerResponse.empty({ status: 204 })),
         ),
+      ),
+      // An owner and a second account for the wardrobe's isolation checks.
+      HttpRouter.add(
+        'POST',
+        '/test/identity/seed-wardrobe',
+        Effect.all([seedIdentity(database, 'native-wardrobe'), seedIdentity(database, 'native-wardrobe-other')]).pipe(
+          Effect.orDie,
+          Effect.as(HttpServerResponse.empty({ status: 204 })),
+        ),
+      ),
+      // Whether a stored photo still exists, to prove deletion removes it.
+      HttpRouter.add(
+        'GET',
+        '/test/identity/media',
+        Effect.gen(function* () {
+          const request = yield* HttpServerRequest
+          const key = new URL(request.url, 'http://local.invalid').searchParams.get('key') ?? ''
+          const object = yield* media.head(key).pipe(Effect.orDie)
+          return yield* HttpServerResponse.json({ exists: object !== null }).pipe(Effect.orDie)
+        }),
       ),
       HttpRouter.add(
         'POST',

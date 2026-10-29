@@ -2054,6 +2054,7 @@ export interface MessageArgumentsByKey<T = string> {
   'wardrobe.deleteItemConfirmBody': Readonly<Record<string, never>>
   'wardrobe.deleteItemConfirmTitle': Readonly<Record<string, never>>
   'wardrobe.deleteLabel': Readonly<Record<string, never>>
+  'wardrobe.deletePieceConfirmBody': Readonly<Record<string, never>>
   'wardrobe.deletedItems': { readonly count: string | number }
   'wardrobe.deleting': Readonly<Record<string, never>>
   'wardrobe.detailsLabel': Readonly<Record<string, never>>
@@ -2325,4 +2326,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '64837531615e2bcf55a8b6cbdb9dbd260aef5ebe2eebe9e29e008972f376679d'
+export const catalogVersion = '603eb0ca8678e4d4966613a6b551eb8a2d755b958210942051524fec317ef9a5'

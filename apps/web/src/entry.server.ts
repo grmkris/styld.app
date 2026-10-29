@@ -1,3 +1,4 @@
+import { provideAllCatalogs } from '@styld/i18n/all'
 import { Clock, Effect } from 'effect'
 import { layer as cloudflareTracer } from '@alchemy.run/cloudflare/Workers/CloudflareTracer'
 import * as Server from 'foldkit/experimental/server'
@@ -9,6 +10,9 @@ import { AppRoute, routeFromPathname } from './route.ts'
 import { consentFromCookies } from './TelemetryConsent.ts'
 import { view } from './View.ts'
 import { saveLocale } from './server/LocalePreference.ts'
+
+// The server formats in every language: page renders and code emails.
+provideAllCatalogs()
 
 export const application = { Flags, init, view }
 

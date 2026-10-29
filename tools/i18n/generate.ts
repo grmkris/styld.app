@@ -28,10 +28,14 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
 export const catalogVersion = ${JSON.stringify(catalogVersion)}
 `,
-    'catalogs.ts': `${banner}
+    // One module per language, so the browser loads only the language it shows.
+    'catalog-en.ts': `${banner}
 import type { MessageKey } from './generated.ts'
-export const en: Readonly<Record<MessageKey, string>> = ${JSON.stringify(en, null, 2)}
-export const sl: Readonly<Record<MessageKey, string>> = ${JSON.stringify(sl, null, 2)}
+export const catalog: Readonly<Record<MessageKey, string>> = ${JSON.stringify(en, null, 2)}
+`,
+    'catalog-sl.ts': `${banner}
+import type { MessageKey } from './generated.ts'
+export const catalog: Readonly<Record<MessageKey, string>> = ${JSON.stringify(sl, null, 2)}
 `,
   }
 }

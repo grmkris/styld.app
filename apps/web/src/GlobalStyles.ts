@@ -41,6 +41,16 @@ global({
   'button, select, input': { font: 'inherit', fontSize: '1rem', color: 'inherit', touchAction: 'manipulation' },
   // DESIGN.md: every control keeps at least a 44px touch target.
   'button, select': { minBlockSize: '44px' },
+  // Foldkit UI hides a file input behind its label with this class name.
+  '.sr-only': {
+    position: 'absolute',
+    inlineSize: '1px',
+    blockSize: '1px',
+    overflow: 'hidden',
+    clipPath: 'inset(50%)',
+    whiteSpace: 'nowrap',
+  },
+  textarea: { font: 'inherit', fontSize: '1rem', color: 'inherit' },
   ':focus-visible': {
     outlineWidth: '2px',
     outlineStyle: 'solid',

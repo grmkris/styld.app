@@ -165,6 +165,8 @@ const statusOf = async (path: string) =>
   ).status
 
 test('every page answers 200 and paths beside them answer 404', async () => {
-  for (const path of ['/', '/login', '/login/connect', '/account']) expect(await statusOf(path)).toBe(200)
-  for (const path of ['/login/elsewhere', '/account/settings', '/connect']) expect(await statusOf(path)).toBe(404)
+  for (const path of ['/', '/login', '/login/connect', '/account', '/wardrobe', '/wardrobe/add', '/wardrobe/pc_abc'])
+    expect(await statusOf(path)).toBe(200)
+  for (const path of ['/login/elsewhere', '/account/settings', '/connect', '/wardrobe/add/more'])
+    expect(await statusOf(path)).toBe(404)
 })

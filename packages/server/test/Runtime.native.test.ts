@@ -10,6 +10,7 @@ import { type Browser, chromium } from 'playwright'
 import { verifyBrowser } from './BrowserAcceptance.ts'
 import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
 import { verifyMcp } from './McpAcceptance.ts'
+import { verifyWardrobe } from './WardrobeAcceptance.ts'
 import RuntimeWorker from './RuntimeWorker.ts'
 import StyldWorkerLive, { StyldWorker } from '../src/StyldWorker.ts'
 
@@ -123,6 +124,15 @@ test(
     yield* Effect.promise(() => verifyMcp(styldUrl, url))
   }),
   { timeout: 120000 },
+)
+
+test(
+  "keeps each account's pieces: upload checks, idempotent adds, queue processing, private images, edits and deletion",
+  Effect.gen(function* () {
+    const { url, styldUrl } = yield* stack
+    yield* Effect.promise(() => verifyWardrobe(styldUrl, url))
+  }),
+  { timeout: 60000 },
 )
 
 test('hydrates the built website and persists locale changes in a browser', inBrowser(verifyBrowser), {
@@ -255,6 +265,8 @@ test(
           'oauth_assertions',
           'oauth_clients',
           'oauth_grants',
+          'operation_receipts',
+          'pieces',
           'styld_auth_credentials',
           'styld_auth_email_credentials',
           'styld_auth_identifiers',
@@ -262,6 +274,7 @@ test(
           'styld_auth_pending',
           'styld_auth_proofs',
           'styld_auth_sessions',
+          'uploads',
         ],
       },
       media: { sentinel: false },

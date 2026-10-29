@@ -163,7 +163,15 @@ const useTools = async (origin: string, access: string) => {
   const legacy = new LegacyClient({ name: 'styld-native-legacy', version: '1.0.0' })
   await legacy.connect(new LegacyTransport(new URL(`${origin}/mcp`), { requestInit }))
   for (const client of [modern, legacy]) {
-    expect((await client.listTools()).tools.map(({ name }) => name)).toEqual(['account_get'])
+    expect((await client.listTools()).tools.map(({ name }) => name)).toEqual([
+      'account_get',
+      'piece_search',
+      'piece_get',
+      'upload_create',
+      'piece_add',
+      'piece_update',
+      'piece_delete',
+    ])
     const result = await client.callTool({ name: 'account_get', arguments: {} })
     expect(result.structuredContent).toEqual({
       accountId: 'native-mcp',
@@ -171,8 +179,58 @@ const useTools = async (origin: string, access: string) => {
       email: 'native-mcp@example.invalid',
       url: `${origin}/account`,
     })
-    await client.close()
   }
+  await addPieceThroughTools(origin, modern)
+  await modern.close()
+  await legacy.close()
+}
+
+/** A 1x1 PNG, the smallest photo the upload checks accept. */
+const png = Uint8Array.from(
+  atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='),
+  (character) => character.charCodeAt(0),
+)
+
+const Structured = Schema.Struct({ structuredContent: Schema.Record(Schema.String, Schema.Unknown) })
+const structured = async (client: Client, name: string, args: Record<string, unknown>) =>
+  Schema.decodeUnknownSync(Structured)(await client.callTool({ name, arguments: args })).structuredContent
+
+/** An assistant uploads a photo, adds it, finds it, changes it and deletes it: the same wardrobe
+ * operations the website uses, acting for the token's account. */
+const addPieceThroughTools = async (origin: string, client: Client) => {
+  const upload = Schema.decodeUnknownSync(Schema.Struct({ uploadId: Schema.String, uploadUrl: Schema.String }))(
+    await structured(client, 'upload_create', { contentType: 'image/png', bytes: png.byteLength }),
+  )
+  expect(upload.uploadUrl.startsWith(`${origin}/api/uploads/`)).toBe(true)
+  const put = await fetch(upload.uploadUrl, {
+    method: 'PUT',
+    headers: { 'content-type': 'image/png' },
+    body: new Blob([png]),
+  })
+  expect(put.status).toBe(204)
+  const add = {
+    operationId: 'mcp-native-add-1',
+    uploadId: upload.uploadId,
+    category: 'shoes',
+    subcategory: 'sneakers',
+    name: 'White trainers',
+  }
+  const added = await structured(client, 'piece_add', add)
+  expect(added).toMatchObject({ name: 'White trainers', source: 'assistant', status: 'processing' })
+  const pieceId = Schema.decodeUnknownSync(Schema.String)(added['id'])
+  expect(added['url']).toBe(`${origin}/wardrobe/${pieceId}`)
+  // The same operation id returns the same piece instead of adding a second one.
+  expect(await structured(client, 'piece_add', add)).toMatchObject({ id: pieceId })
+  expect(await structured(client, 'piece_search', { query: 'trainers' })).toMatchObject({
+    pieces: [{ id: pieceId }],
+    nextCursor: null,
+  })
+  expect(await structured(client, 'piece_update', { pieceId, colours: ['white'] })).toMatchObject({
+    colours: ['white'],
+  })
+  expect(await structured(client, 'piece_delete', { pieceId })).toEqual({ deleted: true, pieceId })
+  const gone = await client.callTool({ name: 'piece_get', arguments: { pieceId } })
+  expect(gone.isError).toBe(true)
 }
 
 const mcpStatus = async (origin: string, access: string) =>

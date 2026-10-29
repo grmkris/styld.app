@@ -19,6 +19,7 @@
     "@styld/auth": "workspace:*",
     "@styld/i18n": "workspace:*",
     "@styld/observability": "workspace:*",
+    "@styld/protocol": "workspace:*",
     "effect": "catalog:",
     "foldkit": "catalog:",
     "zyzz": "catalog:"

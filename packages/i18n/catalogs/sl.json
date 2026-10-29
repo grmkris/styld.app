@@ -1049,7 +1049,8 @@
       "outerwear": "Vrhnja oblačila",
       "shoes": "Obutev",
       "accessory": "Dodatki"
-    }
+    },
+    "deletePieceConfirmBody": "S tem ga odstranite iz garderobe. Tega ni mogoče razveljaviti."
   },
   "chat": {
     "placeholder": "Vnesite sporočilo...",

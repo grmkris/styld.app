@@ -3,6 +3,9 @@ import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { CurrentAccount } from '../CurrentAccount.ts'
+import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
+import * as FetchHttpClient from 'effect/http/FetchHttpClient'
+import * as HttpClient from 'effect/http/HttpClient'
 import { type D1, McpOAuth } from '../OAuth.ts'
 import { challenge, McpScope } from './Policy.ts'
 import { instructions, styldTools } from './StyldTools.ts'
@@ -23,16 +26,33 @@ const parseError = HttpServerResponse.jsonUnsafe(
 )
 
 /** `/mcp`: a stateless Streamable HTTP endpoint for an OAuth-verified, still enabled account. */
-export const mcpRoutes = (db: D1, origin: string, release: string) =>
+export const mcpRoutes = (db: D1, origin: string, release: string, wardrobe: Wardrobe['Service']) =>
   Layer.unwrap(
     Effect.gen(function* () {
       const server = yield* McpOAuth.Service
-      return routesFor(server, db, origin, release)
+      // Photos an assistant points at are fetched without following redirects; ImageImport does.
+      const http = yield* HttpClient.HttpClient.pipe(
+        Effect.provide(
+          FetchHttpClient.layer.pipe(Layer.provide(Layer.succeed(FetchHttpClient.RequestInit, { redirect: 'manual' }))),
+        ),
+      )
+      return routesFor(server, { db, origin, release, tools: styldTools(db, origin, wardrobe, http) })
     }),
   )
 
-const routesFor = (server: McpOAuthServer, db: D1, origin: string, release: string) => {
-  const tools = styldTools(db, origin)
+const routesFor = (
+  server: McpOAuthServer,
+  {
+    db,
+    release,
+    tools,
+  }: {
+    readonly db: D1
+    readonly origin: string
+    readonly release: string
+    readonly tools: ReturnType<typeof styldTools>
+  },
+) => {
   const toolList = renderTools(tools)
   const post = Effect.gen(function* () {
     const request = yield* HttpServerRequest.HttpServerRequest

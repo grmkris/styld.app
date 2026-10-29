@@ -5,22 +5,7 @@ export const authPage = style({ maxInlineSize: '30rem', minBlockSize: '65svh', p
 export const authForm = style({ display: 'grid', gap: '8px', marginBlockStart: '16px' })
 export const lede = style({ color: 'ink2' })
 export const emailShown = style({ color: 'ink', fontWeight: 600, overflowWrap: 'anywhere' })
-export const fieldLabel = style({ marginBlockStart: '16px', fontSize: '14px', fontWeight: 600 })
-export const authInput = style({
-  inlineSize: '100%',
-  minBlockSize: '52px',
-  paddingInline: '16px',
-  borderWidth: '1px',
-  borderStyle: 'solid',
-  borderColor: 'rule',
-  borderRadius: 'field',
-  backgroundColor: 'stock',
-  color: 'ink',
-  fontSize: '16px',
-  '&[aria-invalid="true"]': { borderColor: 'invalid' },
-})
 export const submit = style({ inlineSize: '100%', marginBlockStart: '16px' })
-export const formError = style({ marginBlockStart: '8px', fontSize: '14px', color: 'error' })
 export const notice = style({ marginBlockStart: '8px', fontSize: '14px', color: 'ink2' })
 export const loginActions = style({
   display: 'flex',

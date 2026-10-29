@@ -1,4 +1,4 @@
 {
-  "light": [],
-  "regular": ["circle-notch"]
+  "light": ["house", "t-shirt"],
+  "regular": ["caret-left", "check", "circle-notch", "image", "pencil-simple", "plus", "trash"]
 }
