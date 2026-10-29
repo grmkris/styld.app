@@ -1,4 +1,4 @@
-import { type Piece, PieceId } from '@styld/protocol'
+import { type Piece, PieceId, PieceNotFound } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
 import { describe, expect, test } from 'vitest'
@@ -51,7 +51,12 @@ const wardrobe = Wardrobe.of({
   addPiece: notUsed,
   updatePiece: notUsed,
   deletePiece: notUsed,
-  pieceImage: notUsed,
+  // The first piece has a thumbnail; the others cannot be read, and the view goes without them.
+  pieceImage: (pieceId) =>
+    Effect.gen(function* () {
+      if (pieceId !== pieces[0]?.id) return yield* PieceNotFound.make({})
+      return { body: new Blob(['webp']).stream(), contentType: 'image/webp', version: 'v1' }
+    }),
   processPiece: notUsed,
   failPiece: notUsed,
 })
@@ -128,7 +133,10 @@ describe('MCP tools', () => {
         sl: { openInStyld: 'Odpri v Styldu' },
       },
     })
-    expect(result).toHaveProperty('_meta', {})
+    // Pictures travel in `_meta`, out of the model's context, as data URLs the host's sandbox can show.
+    expect(result).toHaveProperty('_meta', {
+      'styld/images': { [pieces[0]?.id ?? '']: `data:image/webp;base64,${btoa('webp')}` },
+    })
   })
 
   test('serves the view as one self-contained MCP Apps resource', () => {

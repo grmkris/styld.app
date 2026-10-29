@@ -2,7 +2,7 @@ import { Effect } from 'effect'
 import type { WardrobeBindings } from '../wardrobe/Wardrobe.ts'
 import { type CaptureMetrics, counted, prices } from './Metrics.ts'
 import { ProviderFailed, type WorkingCopies } from './Providers.ts'
-import { collect } from './Streams.ts'
+import { collect } from '../Streams.ts'
 
 type Images = WardrobeBindings['images']
 type ImageTransform = Parameters<ReturnType<Images['input']>['transform']>[0]

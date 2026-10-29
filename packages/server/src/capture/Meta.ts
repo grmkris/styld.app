@@ -3,7 +3,7 @@ import * as Base64 from 'effect/encoding/Base64'
 import { type CaptureMetrics, counted, prices } from './Metrics.ts'
 import { type Picture, ProviderFailed, ProviderOutcomeUnknown, type StoredVideo } from './Providers.ts'
 import { lineFrame, lineFrameSize, makeOutputLines, stillMasks, videoMasks } from './SamStream.ts'
-import { type ByteStream, pump } from './Streams.ts'
+import { type ByteStream, pump } from '../Streams.ts'
 
 /** What the Meta adapter needs: the API, its key, a way to read stored videos, and `fetch`. Workers send
  * a streamed body with a known length only through `FixedLengthStream`, so the adapter uses `fetch`

@@ -1,6 +1,9 @@
 import { type ViewLabels, WardrobeView } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
-import { Effect, Schema } from 'effect'
+import { type Piece, type ViewImages } from '@styld/protocol'
+import { Effect, Option, Record, Schema } from 'effect'
+import * as Base64 from 'effect/encoding/Base64'
+import { collect } from '../Streams.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { showsView } from './Resources.ts'
 import { tool, ToolError, ViewResult } from './Tools.ts'
@@ -28,6 +31,29 @@ const unavailable = () =>
     retryable: true,
   })
 
+/** The view shows this many pieces with pictures; their thumbnails ride in the result's `_meta`, out of
+ * the model's context, because a host's sandbox cannot load Styld's private image routes. */
+const viewImageLimit = 24
+
+/** A piece's thumbnail as a data URL, or nothing when it cannot be read. */
+const thumbnailOf = (wardrobe: Wardrobe['Service'], piece: Piece) =>
+  wardrobe.pieceImage(piece.id, 'thumb').pipe(
+    Effect.flatMap(({ body, contentType }) =>
+      Effect.tryPromise({ try: () => collect(body), catch: () => 'unreadable' as const }).pipe(
+        Effect.map((bytes) => `data:${contentType};base64,${Base64.encode(bytes)}`),
+      ),
+    ),
+    Effect.option,
+    Effect.map((url) => Option.map(url, (data) => [piece.id, data] as const)),
+  )
+
+/** Thumbnails of the first pieces the view shows, read a few at a time. */
+const thumbnails = (wardrobe: Wardrobe['Service'], pieces: ReadonlyArray<Piece>) =>
+  Effect.map(
+    Effect.forEach(pieces.slice(0, viewImageLimit), (piece) => thumbnailOf(wardrobe, piece), { concurrency: 6 }),
+    (found): ViewImages => Record.fromEntries(found.flatMap(Option.toArray)),
+  )
+
 /** Tools whose results a host draws with Styld's view (MCP Apps). */
 export const viewTools = (wardrobe: Wardrobe['Service'], origin: string) => [
   tool({
@@ -51,7 +77,7 @@ export const viewTools = (wardrobe: Wardrobe['Service'], origin: string) => [
           url: `${origin}/wardrobe`,
           labels: { en: labelsIn('en'), sl: labelsIn('sl') },
         })
-        return new ViewResult(view, {})
+        return new ViewResult(view, { 'styld/images': yield* thumbnails(wardrobe, pieces) })
       }),
   }),
 ]

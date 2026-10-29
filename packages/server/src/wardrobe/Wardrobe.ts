@@ -21,7 +21,7 @@ import type { RuntimeContext } from 'alchemy/RuntimeContext'
 import { Context, DateTime, Effect, Option, Predicate, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
-import { type ByteStream, pump } from '../capture/Streams.ts'
+import { type ByteStream, pump } from '../Streams.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { type ImageSize, imageSizes, isVideoContainer, sniffImageType, uploadKey } from './Media.ts'
 import { GarmentCutout, type WorkMessage } from './Processing.ts'
@@ -430,7 +430,9 @@ const images = (parts: Parts) => ({
         })),
       ),
     )
-    return { ...image, version: `${piece.id}.${piece.updatedAt.getTime()}.${size}` }
+    // Callers only read the picture, so it is typed as any byte stream, Worker or DOM.
+    const body: ByteStream = image.body
+    return { body, contentType: image.contentType, version: `${piece.id}.${piece.updatedAt.getTime()}.${size}` }
   }),
 })
 

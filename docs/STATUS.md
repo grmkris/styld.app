@@ -187,6 +187,16 @@ deployed to the preview. One entry per slice.
       changed request and another account's piece are refused, and it appears in the list. Deleting the piece
       empties the look, and deleting the look removes it.
     - Story tests of both pages; the routes open with their reads.
+- **S10 pictures in the assistant view.**
+  - `wardrobe_show` now sends thumbnails of the first 24 pieces with its result. They are WebP data URLs under
+    `_meta["styld/images"]`, read six at a time through the same owner-checked `pieceImage`. They stay out of
+    the model's context, and the host's sandbox can show them without reaching Styld's private image routes.
+  - A piece whose picture cannot be read is shown without one.
+  - `Streams.ts` moved to the server package root, since wardrobe, capture and MCP share it. `pieceImage` types
+    its body as the structural `ByteStream`, so callers read it without a cast between the Worker and DOM
+    stream types.
+  - **Evidence:** a unit test that the view result carries the readable thumbnail and skips the unreadable ones.
+  - **Not yet proven:** the view inside ChatGPT and Claude with real pictures (owner).
 
 ## Scope and roadmap — 2026-10-29
 
