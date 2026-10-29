@@ -1,6 +1,6 @@
 # Delivery status
 
-Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `23a2cb9`). Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `a158d38`). Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
 
 ## Capture and assistant run — 2026-10-29
 
@@ -301,6 +301,14 @@ deployed to the preview. One entry per slice.
     - a `Photo | Video` union for queue items;
     - the `StyldClient` lazy import caching a failure;
     - Message names in the shared piece pickers (`ChoseCategory`).
+
+- **Final readback** (release `a158d38`, `/api/health` reports it):
+  - real providers, with the myinbox session: one garment → a transparent cut-out kept as a piece; the rail
+    photo → 10 cut-outs; the rail video sent in 11 s → 10 cut-outs;
+  - the fake-camera held-up shot → checked once, taken and uploaded, with the queue summary announced;
+  - no page errors in any run.
+  - The preview account's tray now holds the test captures (about 60 pieces), which the owner can review or
+    remove.
 
 - **Deferred from this run** (the plan's drop order, so the time went to review and a clean base):
   - the look card view in ChatGPT and Claude;
