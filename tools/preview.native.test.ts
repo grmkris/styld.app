@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test'
+import { Schema } from 'effect'
 import { chromium } from 'playwright'
 import { verifyBrowser } from '../packages/server/test/BrowserAcceptance.ts'
 
@@ -33,3 +34,48 @@ test('deployed preview serves API/auth contracts and the hydrated website', asyn
     await browser.close()
   }
 }, 60000)
+
+test('deployed preview offers MCP to OAuth clients: discovery, challenge, registration', async () => {
+  const at = (path: string) => new URL(path, origin).toString()
+  const resource = await fetch(at('/.well-known/oauth-protected-resource/mcp'))
+  expect(resource.status).toBe(200)
+  expect(await resource.json()).toMatchObject({
+    resource: at('/mcp'),
+    authorization_servers: [origin.origin],
+    scopes_supported: ['styld'],
+  })
+  const server = await fetch(at('/.well-known/oauth-authorization-server'))
+  expect(server.status).toBe(200)
+  expect(await server.json()).toMatchObject({
+    issuer: origin.origin,
+    registration_endpoint: at('/oauth/mcp/register'),
+    code_challenge_methods_supported: ['S256'],
+  })
+  const challenged = await fetch(at('/mcp'), {
+    method: 'POST',
+    headers: { 'content-type': 'application/json', accept: 'application/json, text/event-stream' },
+    body: JSON.stringify({ jsonrpc: '2.0', id: 1, method: 'tools/list', params: {} }),
+  })
+  expect(challenged.status).toBe(401)
+  expect(challenged.headers.get('www-authenticate')).toContain(
+    `resource_metadata="${at('/.well-known/oauth-protected-resource/mcp')}"`,
+  )
+  expect((await fetch(at('/mcp'))).status).toBe(405)
+  const register = (redirect: string) =>
+    fetch(at('/oauth/mcp/register'), {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({
+        client_name: 'Styld preview acceptance',
+        redirect_uris: [redirect],
+        token_endpoint_auth_method: 'none',
+      }),
+    })
+  expect((await register('cursor://anysphere.cursor-retrieval/oauth')).status).toBe(400)
+  const registered = await register('http://127.0.0.1:33418/callback')
+  expect(registered.status).toBe(201)
+  const { client_id: clientId } = Schema.decodeUnknownSync(Schema.Struct({ client_id: Schema.String }))(
+    await registered.json(),
+  )
+  expect(clientId).toMatch(/^dcr_[0-9a-f]{32}$/)
+}, 30000)
