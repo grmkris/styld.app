@@ -198,6 +198,14 @@ deployed to the preview. One entry per slice.
   - **Evidence:** a unit test that the view result carries the readable thumbnail and skips the unreadable ones.
   - **Not yet proven:** the view inside ChatGPT and Claude with real pictures (owner).
 
+- **Metering fix** (release `6e25e28`).
+  - Analytics Engine samples per index. With every provider call under one index (`call`), the preview stored 40
+    points standing for 103 normalisations, and no route or video-track call appeared at all.
+  - Calls are now indexed `call.<provider>.<kind>` and reviews `review.<decision>`, and the report reads both
+    forms.
+  - **Readback:** after the deploy, a capture pass wrote `call.clef.route` (2 points for 2 photos) beside its
+    other calls.
+
 - **Deferred from this run** (the plan's drop order, so the time went to review and a clean base):
   - the look card view in ChatGPT and Claude;
   - pairing a back shot with its front in the tray;
