@@ -22,7 +22,7 @@ import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { type ImageSize, imageSizes, sniffImageType, uploadKey } from './Media.ts'
-import { GarmentCutout, type ProcessPiece } from './Processing.ts'
+import { GarmentCutout, type WorkMessage } from './Processing.ts'
 import { makeStore, type PieceRow, type Store, type StoreUnavailable, type UploadRow } from './Store.ts'
 
 type Runtime<Client extends { readonly raw: Effect.Effect<unknown> | Effect.Effect<unknown, never, RuntimeContext> }> =
@@ -33,7 +33,7 @@ export interface WardrobeBindings {
   readonly database: Parameters<typeof makeStore>[0]
   readonly bucket: Runtime<Cloudflare.R2.ReadWriteBucketClient>
   readonly images: Runtime<Cloudflare.Images.ImagesClient>
-  readonly queue: { send(message: ProcessPiece): Promise<unknown> }
+  readonly queue: { send(message: WorkMessage): Promise<unknown> }
 }
 
 /** An upload path stays valid this long after it is handed out. */
@@ -56,7 +56,8 @@ const toPiece = (row: PieceRow) =>
     source: row.source,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
-  }).pipe(Effect.mapError(unavailable))
+    // Only the service writes rows, through the same schemas; a row that does not decode is a bug.
+  }).pipe(Effect.orDie)
 
 /** Why an upload cannot take these bytes, if it cannot. The bytes' own signature decides their
  * type, not the request's header. */
@@ -159,6 +160,8 @@ const uploads = (parts: Parts) => ({
     if (Option.isNone(row) || (yield* parts.digest(input.token)) !== row.value.tokenDigest)
       return yield* refused('notFound')
     const upload = row.value
+    // An account closed for deletion takes no more photos.
+    if (!(yield* stored(parts.store.accountEnabled(upload.accountId)))) return yield* refused('notFound')
     const refusal = receiveRefusal(upload, input, DateTime.toEpochMillis(yield* DateTime.now))
     if (Option.isSome(refusal)) return yield* refused(refusal.value)
     yield* Effect.tryPromise({
@@ -180,13 +183,25 @@ const replay = (parts: Parts, accountId: string, pieceId: string) =>
     return yield* toPiece(row.value)
   })
 
-/** A batch the store refused: another operation used the upload first, or D1 failed. */
-const addFailure = (parts: Parts, uploadId: string) =>
-  stored(parts.store.findUpload(uploadId)).pipe(
-    Effect.flatMap((latest) =>
-      Effect.fail(Option.exists(latest, ({ status }) => status === 'used') ? refused('alreadyUsed') : unavailable()),
-    ),
-  )
+/** A batch the store refused. If the same operation committed after all (a lost answer or a
+ * concurrent repeat), its receipt answers; otherwise another operation used the upload, or D1
+ * failed. */
+const addFailure = (
+  parts: Parts,
+  input: {
+    readonly accountId: string
+    readonly operationId: string
+    readonly uploadId: string
+    readonly inputDigest: string
+  },
+) =>
+  Effect.gen(function* () {
+    const receipt = yield* stored(parts.store.findReceipt(input.accountId, input.operationId))
+    if (Option.isSome(receipt) && receipt.value.inputDigest === input.inputDigest)
+      return yield* replay(parts, input.accountId, receipt.value.result)
+    const latest = yield* stored(parts.store.findUpload(input.uploadId))
+    return yield* Option.exists(latest, ({ status }) => status === 'used') ? refused('alreadyUsed') : unavailable()
+  })
 
 /** What an add means apart from its operation id: a repeat of the same meaning replays it. */
 const addMeaning = (input: AddPiece) =>
@@ -251,11 +266,18 @@ const adding = (parts: Parts) => ({
       result: row.id,
       createdAt: now,
     }
-    yield* parts.store
-      .addPiece(row, receiptRow)
-      .pipe(Effect.catchTag('StoreUnavailable', () => addFailure(parts, input.uploadId)))
-    // The piece exists either way; a lost message is scheduled again by a replay.
-    yield* enqueue(parts, row.id).pipe(Effect.ignore)
+    const committed = yield* parts.store.addPiece(row, receiptRow).pipe(
+      Effect.as(Option.none<Piece>()),
+      Effect.catchTag('StoreUnavailable', () =>
+        addFailure(parts, { accountId, operationId: input.operationId, uploadId: input.uploadId, inputDigest }).pipe(
+          Effect.map(Option.some),
+        ),
+      ),
+    )
+    if (Option.isSome(committed)) return committed.value
+    // The piece is stored; if its message is lost, the add answers retryable and the retry with
+    // the same operation id replays it, which schedules the processing again.
+    yield* enqueue(parts, row.id)
     return yield* toPiece(row)
   }),
 })
@@ -281,10 +303,12 @@ const editing = (parts: Parts) => ({
   }),
   deletePiece: Effect.fn('Styld.Wardrobe.deletePiece')(function* (pieceId: PieceId) {
     const { accountId } = yield* CurrentAccount
+    // Photos first: if the row's delete fails, a retry finds the piece and finishes.
+    const piece = yield* ownPiece(parts)(pieceId)
+    const keys = [...new Set([piece.originalKey, piece.imageKey].filter(Predicate.isNotNull))]
+    yield* Effect.tryPromise({ try: () => parts.bindings.bucket.delete(keys), catch: unavailable })
     const deleted = yield* stored(parts.store.deletePiece(accountId, pieceId))
     if (Option.isNone(deleted)) return yield* PieceNotFound.make({})
-    const keys = [...new Set([deleted.value.originalKey, deleted.value.imageKey].filter(Predicate.isNotNull))]
-    yield* Effect.tryPromise({ try: () => parts.bindings.bucket.delete(keys), catch: unavailable })
   }),
 })
 

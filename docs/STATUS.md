@@ -43,6 +43,37 @@ Plan: `/home/kristjan/.claude/plans/ticklish-popping-rivest.md` (owner-approved)
   - Full gate passed: 162 type/Effect files with zero findings, 165 unit tests, 15 native workerd/Chromium tests with 192 assertions, initial browser bundle 235,827 gzip bytes.
   - Deployed: release `cd241be5c558d33d160d1f19076f8ba90515d531` is on the isolated preview (three Worker updates, no resource changes); `/api/health` reports it and deployed acceptance passed (1 test, 25 assertions). On the preview, the test inbox account signed in with a real code, added a piece and deleted itself: `DELETE /api/me` 204, its old cookie then 401 on `/api/me` and `/api/pieces`, and the same address next received "Your code to create a Styld account", so its identifiers are gone (the code was left unused).
 
+- **S7 review.** Three independent reviews ran on the night's work: security/privacy/durable behaviour, architecture/tooling, and the product in Chromium on the preview at 390 and 1280 px (signed in with a real code, a piece added, edited and deleted, the account deleted at the end).
+  - Fixed:
+    - **Code guessing (security, high).** Yielded's per-address code limits counted per isolate, so spreading requests over isolates allowed thousands of guesses a day. Two durable per-address budgets now apply (D1 buckets keyed by an HMAC of the address): 5 code requests and 10 code tries an hour, the same for known and new addresses. The per-network limit is a Workers RateLimit binding (5 a minute), provided per request.
+    - **Deletion that could not finish (security, high).** After access ends, the rest of a deletion is queued as well as tried at once, and is safe to repeat; it also removes the codes stored with the address and sweeps photos again at the end. Uploads to a closed account are refused.
+    - **Typed API changes without the website's own Origin/CSRF header (security).** Every mutation now goes through Yielded's admission and answers 403 (`RequestRefused`) otherwise; native tests check a bare DELETE, a foreign Origin and a JSON POST without the header.
+    - **Upload tokens in traces (security).** `token` joins the query parameters Effect's tracer redacts; not yet confirmed in a deployed trace.
+    - **Pieces stuck in processing (both).** A lost queue message makes the add answer retryable, so the retry with the same operation id schedules it again. A failed "mark failed" retries the message instead of dropping it, and the queue settles each message exactly once (unit tests).
+    - **Duplicate piece on a lost answer or concurrent repeat (both).** The add re-reads its receipt before calling the upload used.
+    - **Deleting a piece removes its photo first**, so a failed row delete can be retried.
+    - **Images revalidate** (`no-cache` with the ETag), so a processed image shows at once.
+    - **MCP** takes its piece schemas from the protocol, gives the photo import a 10 s timeout, and answers 503 when D1 does not answer the enabled check. Photo-import unit tests cover redirects, the per-hop https rule, type and size refusals.
+    - **Keyboard focus (product, high).** It is visible on the photo picker and on chosen colour swatches.
+    - **Smaller product fixes.** Focused fields scroll clear of the phone's tab bar, and a file that is no photo is reported on the photo ("That file isn't a photo we can use").
+  - Remaining from the reviews (not done tonight):
+    - **Security and durability:**
+      - a scheduled cleanup of expired uploads, codes, OAuth grants and assertions (abandoned uploads keep their bytes in R2 until then);
+      - a per-account upload quota;
+      - one `Accounts` read shared by `account_get` and `/api/me`;
+      - one session-cookie helper for the raw routes (the image route answers 401 when D1 fails).
+    - **Foundations for the next slices:**
+      - the `GarmentCutout` port needs an idempotency key and an outcome-unknown error, plus a Domain generation with a credit reservation, before a paid model plugs in;
+      - search and import-from-photo belong in the `Wardrobe` service rather than the MCP projection;
+      - the website's bundle budget does not count the typed client that signed-in pages load (about 11 KB);
+      - the page's origin and the OAuth issuer have different sources and will differ on a custom domain.
+    - **Product:**
+      - focus moves to the page body after most state changes;
+      - signed-out protected pages render before the redirect, and sign-in always lands on the account rather than where the visitor was going;
+      - Slovenian mixes formal and informal address, and "Omara" with "Garderoba" (owner review);
+      - touch targets for category chips are 36 px;
+      - several Gallery differences: the top bar holds the language picker, the desktop add button is round, and some heading sizes differ.
+
 ## Gallery design — 2026-10-28
 
 - Owner decisions: the Gallery direction replaces Atelier; the port is reprioritised to the experience first (sign-in, boards and public profiles, the MCP server, AI on Cloudflare with one credit balance through AI Gateway with v1's own provider keys), shops last. v2 reuses v1's Google OAuth client and email sender.

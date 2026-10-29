@@ -1,25 +1,40 @@
 import type * as Cloudflare from '@alchemy.run/cloudflare'
 import { Effect, Schema } from 'effect'
-import { ProcessPiece } from './Processing.ts'
+import type { AccountLifecycle } from '../AccountLifecycle.ts'
+import { WorkMessage } from './Processing.ts'
 import type { Wardrobe } from './Wardrobe.ts'
 
-/** Delivery attempts for a piece's processing before it is shown as failed. */
+/** Delivery attempts before a piece shows as failed; a deletion is retried as many times. */
 export const processingAttempts = 3
 
+type Outcome = 'ack' | 'retry'
+
 /** Settle one queue message exactly once: done, retried later, or after the last attempt marked
- * failed. A body that is not a piece message can never succeed, so it is dropped. */
-export const settlePieceMessage = (wardrobe: Wardrobe['Service'], message: Cloudflare.Queues.Message) =>
-  Schema.decodeUnknownEffect(ProcessPiece)(message.body).pipe(
-    Effect.flatMap(({ pieceId }) =>
-      wardrobe.processPiece(pieceId).pipe(
-        Effect.as<'ack' | 'retry'>('ack'),
-        Effect.catch(() =>
-          message.attempts >= processingAttempts
-            ? wardrobe.failPiece(pieceId).pipe(Effect.ignore, Effect.as<'ack' | 'retry'>('ack'))
-            : Effect.succeed<'ack' | 'retry'>('retry'),
-        ),
-      ),
+ * failed. A body that is no known message can never succeed, so it is dropped. */
+export const settleMessage = (
+  services: { readonly wardrobe: Wardrobe['Service']; readonly lifecycle: AccountLifecycle['Service'] },
+  message: Cloudflare.Queues.Message,
+) => {
+  const retryOrGiveUp = (giveUp: Effect.Effect<unknown, unknown>) =>
+    message.attempts >= processingAttempts
+      ? giveUp.pipe(
+          Effect.as<Outcome>('ack'),
+          Effect.orElseSucceed((): Outcome => 'retry'),
+        )
+      : Effect.succeed<Outcome>('retry')
+  return Schema.decodeUnknownEffect(WorkMessage)(message.body).pipe(
+    Effect.flatMap((work) =>
+      'pieceId' in work
+        ? services.wardrobe.processPiece(work.pieceId).pipe(
+            Effect.as<Outcome>('ack'),
+            Effect.catch(() => retryOrGiveUp(services.wardrobe.failPiece(work.pieceId))),
+          )
+        : services.lifecycle.finishDeletion(work.finishDeletionOf).pipe(
+            Effect.as<Outcome>('ack'),
+            Effect.orElseSucceed((): Outcome => 'retry'),
+          ),
     ),
-    Effect.orElseSucceed((): 'ack' | 'retry' => 'ack'),
+    Effect.orElseSucceed((): Outcome => 'ack'),
     Effect.flatMap((outcome) => Effect.sync(() => (outcome === 'ack' ? message.ack() : message.retry()))),
   )
+}

@@ -8,7 +8,7 @@ import { SettleCredits } from '@styld/domain/Wallet/SettleCredits.command'
 import { Wallet } from '@styld/domain/Wallet/Wallet.aggregate'
 import { monthlyGrantCommandId, reserveCommandId, settleCommandId } from '@styld/domain/Wallet/WalletCommandIds'
 import { format } from '@styld/i18n'
-import { Effect, Layer, Result } from 'effect'
+import { Effect, Layer, Result, Schedule } from 'effect'
 import { Redacted } from 'effect'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpRouter from 'effect/http/HttpRouter'
@@ -16,7 +16,7 @@ import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { exerciseAttemptLimiter } from './AttemptLimiterFixture.ts'
 import { seedIdentity, disableIdentity } from './IdentityFixture.ts'
 import { recoveryRoutes } from './RecoveryFixture.ts'
-import { makeAuthHttp } from '../src/AuthHttp.ts'
+import { makeAuthHttp, withCodeRequestPolicy } from '../src/AuthHttp.ts'
 import { onFirstUse } from '../src/IsolateCache.ts'
 import { DomainLive } from '../src/DomainLive.ts'
 import { StyldDatabase, StyldMedia } from '../src/Resources.ts'
@@ -89,11 +89,11 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
       HttpRouter.add(
         'POST',
         '/test/identity/seed-wardrobe',
-        Effect.all([
-          seedIdentity(database, 'native-wardrobe'),
-          seedIdentity(database, 'native-wardrobe-other'),
-          seedIdentity(database, 'native-farewell'),
-        ]).pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 }))),
+        // Local D1 answers SQLITE_BUSY while another test writes; each seed is one atomic batch,
+        // so it is retried on its own.
+        Effect.forEach(['native-wardrobe', 'native-wardrobe-other', 'native-farewell'], (id) =>
+          seedIdentity(database, id).pipe(Effect.retry({ times: 20, schedule: Schedule.spaced('150 millis') })),
+        ).pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 }))),
       ),
       // Whether a stored photo still exists, to prove deletion removes it.
       HttpRouter.add(
@@ -167,7 +167,10 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
           url.pathname.startsWith('/test/identity/') ||
           url.pathname.startsWith('/test/recovery/')
         )
-          return yield* yield* authHandle(undefined)
+          // The fixture sends no codes; its auth still needs the per-request code policy.
+          return yield* (yield* authHandle(undefined)).pipe(
+            withCodeRequestPolicy(request.headers, () => Effect.succeed(true)),
+          )
         if (url.pathname === '/intl')
           return yield* HttpServerResponse.json({
             en: format('en', 'catalog.pieces', { count: 2 }),

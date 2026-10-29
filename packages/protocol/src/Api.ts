@@ -1,6 +1,6 @@
 import { SessionHttp } from '@styld/auth/config'
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
-import { AccountUnavailable, Me } from './Account.ts'
+import { AccountUnavailable, Me, RequestRefused } from './Account.ts'
 import {
   AddPiece,
   CreateUpload,
@@ -20,7 +20,12 @@ import {
 export class AccountApi extends HttpApiGroup.make('account')
   .add(HttpApiEndpoint.get('me', '/me', { success: Me }))
   /** Delete the account, its wardrobe and photos, its sessions and assistants' access, for good. */
-  .add(HttpApiEndpoint.delete('deleteMe', '/me', { success: HttpApiSchema.NoContent, error: AccountUnavailable }))
+  .add(
+    HttpApiEndpoint.delete('deleteMe', '/me', {
+      success: HttpApiSchema.NoContent,
+      error: [AccountUnavailable, RequestRefused],
+    }),
+  )
   .middleware(SessionHttp.RequireSession)
   .prefix('/api') {}
 
@@ -39,14 +44,14 @@ export class WardrobeApi extends HttpApiGroup.make('wardrobe')
     HttpApiEndpoint.post('createUpload', '/uploads', {
       payload: CreateUpload,
       success: Upload,
-      error: WardrobeUnavailable,
+      error: [WardrobeUnavailable, RequestRefused],
     }),
   )
   .add(
     HttpApiEndpoint.post('addPiece', '/pieces', {
       payload: AddPiece,
       success: Piece,
-      error: [UploadRefused, SubcategoryMismatch, OperationConflict, WardrobeUnavailable],
+      error: [UploadRefused, SubcategoryMismatch, OperationConflict, WardrobeUnavailable, RequestRefused],
     }),
   )
   .add(
@@ -54,14 +59,14 @@ export class WardrobeApi extends HttpApiGroup.make('wardrobe')
       params: { pieceId: PieceId },
       payload: UpdatePiece,
       success: Piece,
-      error: [PieceNotFound, SubcategoryMismatch, WardrobeUnavailable],
+      error: [PieceNotFound, SubcategoryMismatch, WardrobeUnavailable, RequestRefused],
     }),
   )
   .add(
     HttpApiEndpoint.delete('deletePiece', '/pieces/:pieceId', {
       params: { pieceId: PieceId },
       success: HttpApiSchema.NoContent,
-      error: [PieceNotFound, WardrobeUnavailable],
+      error: [PieceNotFound, WardrobeUnavailable, RequestRefused],
     }),
   )
   .middleware(SessionHttp.RequireSession)

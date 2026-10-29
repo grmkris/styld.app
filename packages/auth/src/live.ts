@@ -8,7 +8,7 @@ import { Effect, Layer, Redacted, Schema } from 'effect'
 import { eq } from 'drizzle-orm'
 import { accounts } from '@styld/db'
 
-import { passwordAttemptLimiter, type D1Source } from './AttemptLimiter.ts'
+import { emailEntryBudgetLayer, passwordAttemptLimiter, type D1Source } from './AttemptLimiter.ts'
 import { AccountClaims, requirement } from './config.ts'
 import {
   emailDeliveryLayer,
@@ -116,6 +116,7 @@ export const makeAuthRuntime = <R>(raw: D1Source<R>, secret: Redacted.Redacted, 
       Layer.provide(passwordClaims),
       Layer.provide(emailClaims),
       Layer.provide(passwordAttemptLimiter(raw, secret)),
+      Layer.provide(emailEntryBudgetLayer(raw, secret)),
       // Closest provider wins: keep the explicit ProofPersistence ahead of `persistence` in case a
       // future managed role (password reset) also provides one.
       Layer.provide(emailPersistence),

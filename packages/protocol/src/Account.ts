@@ -14,3 +14,11 @@ export class AccountUnavailable extends Schema.TaggedError<AccountUnavailable>()
   {},
   { httpApiStatus: 503 },
 ) {}
+
+/** A change the server refused before running it: it did not come from the website itself (wrong
+ * Origin or missing CSRF header). */
+export class RequestRefused extends Schema.TaggedError<RequestRefused>()(
+  'RequestRefused',
+  {},
+  { httpApiStatus: 403 },
+) {}

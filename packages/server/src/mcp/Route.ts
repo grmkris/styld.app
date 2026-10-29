@@ -83,8 +83,10 @@ const routesFor = (
     // A disabled account loses its assistants at once, whatever tokens they hold.
     const enabled = yield* Effect.tryPromise(() =>
       db.prepare('SELECT 1 AS ok FROM accounts WHERE id = ? AND enabled = 1').bind(access.subjectId).first<unknown>(),
-    ).pipe(Effect.orElseSucceed(() => null))
-    if (enabled === null)
+    ).pipe(Effect.option)
+    // D1 did not answer: the token may be fine, so the client should retry rather than re-authorize.
+    if (Option.isNone(enabled)) return HttpServerResponse.empty({ status: 503, headers: noStore })
+    if (enabled.value === null)
       return HttpServerResponse.empty({
         status: 401,
         headers: { ...noStore, 'www-authenticate': challenge(server.resourceMetadata, 'invalid_token') },

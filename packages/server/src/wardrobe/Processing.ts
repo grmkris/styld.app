@@ -4,6 +4,13 @@ import { Context, Effect, Layer, Schema } from 'effect'
 export const ProcessPiece = Schema.Struct({ pieceId: Schema.String })
 export type ProcessPiece = typeof ProcessPiece.Type
 
+/** Queue message: finish deleting an account whose access has already ended. */
+export const FinishAccountDeletion = Schema.Struct({ finishDeletionOf: Schema.String })
+
+/** Every message the Worker's queue carries. */
+export const WorkMessage = Schema.Union([ProcessPiece, FinishAccountDeletion])
+export type WorkMessage = typeof WorkMessage.Type
+
 /** The cut-out step could not produce an image this time; the queue retries it. */
 export class CutoutFailed extends Schema.TaggedError<CutoutFailed>()('CutoutFailed', {}) {}
 

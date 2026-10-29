@@ -10,6 +10,8 @@ export class ImportRefused extends Schema.TaggedError<ImportRefused>()('ImportRe
 }) {}
 
 const maximumRedirects = 3
+/** A photo server slower than this is treated as unreachable, so an assistant's call never hangs. */
+const fetchTimeout = '10 seconds'
 
 const refuse = (reason: ImportRefused['reason']) => ImportRefused.make({ reason })
 
@@ -59,15 +61,22 @@ const photoFrom = (response: HttpClientResponse.HttpClientResponse) =>
     const contentType = imageTypeOf(response.headers)
     if (Option.isNone(contentType)) return yield* refuse('notAnImage')
     if (Number(response.headers['content-length'] ?? 0) > maximumImageBytes) return yield* refuse('tooLarge')
-    return { contentType: contentType.value, bytes: yield* readCapped(response.stream) }
+    return {
+      contentType: contentType.value,
+      bytes: yield* readCapped(response.stream).pipe(
+        Effect.timeout(fetchTimeout),
+        Effect.catchTag('TimeoutError', () => Effect.fail(refuse('notReached'))),
+      ),
+    }
   })
 
 export const importImage = Effect.fn('Styld.Mcp.importImage')(function* (address: string) {
   const client = yield* HttpClient.HttpClient
   const fetchHop = (url: URL) =>
-    client
-      .execute(HttpClientRequest.get(url, { headers: { accept: 'image/*' } }))
-      .pipe(Effect.mapError(() => refuse('notReached')))
+    client.execute(HttpClientRequest.get(url, { headers: { accept: 'image/*' } })).pipe(
+      Effect.timeout(fetchTimeout),
+      Effect.mapError(() => refuse('notReached')),
+    )
   let url = yield* Option.match(allowedUrl(address), {
     onNone: () => Effect.fail(refuse('notHttps')),
     onSome: Effect.succeed,

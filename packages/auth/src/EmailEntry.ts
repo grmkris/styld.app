@@ -1,6 +1,6 @@
 import { Auth, Email, Hooks, Identity, Operations, Proofs, Schema as AuthSchema, Sessions } from '@yielded/auth'
 import { hooksLayer } from '@yielded/auth/Persistence'
-import { DateTime, Effect, Layer, Option, Predicate, Schema } from 'effect'
+import { Context, DateTime, Effect, Layer, Option, Predicate, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
 
@@ -42,6 +42,23 @@ const registrationFor = (email: string): EmailRegistration => ({
 })
 
 const encoder = new TextEncoder()
+
+/** Per address, per hour: codes asked for and codes tried. A person needs one or two of each; the
+ * budgets bound code guessing for an address to a few hundred tries a day. */
+export const emailBudgets = {
+  request: { limit: 5, windowMillis: 3_600_000 },
+  complete: { limit: 10, windowMillis: 3_600_000 },
+} as const
+
+/** Durable per-address budgets, supplied by the host (D1 in `AttemptLimiter.ts`). The same budget
+ * applies whether or not the address has an account, so a refusal reveals nothing. */
+export class EmailEntryBudget extends Context.Service<
+  EmailEntryBudget,
+  {
+    readonly request: (email: string) => Effect.Effect<boolean>
+    readonly complete: (email: string) => Effect.Effect<boolean>
+  }
+>()('@styld/auth/EmailEntryBudget') {}
 
 /** Same classification as Yielded's internal `emailCompletionFailure` (Y/email/errors.ts:116-137). */
 const completionFailure = (error: unknown) => {
@@ -149,6 +166,7 @@ const requestHandler = <Claims extends Auth.ClaimsCodec, Id extends string, Sess
       // Validate the return target on both branches: only sign-in checks it inside Yielded, and a
       // branch-dependent rejection would reveal whether the address has an account.
       yield* (yield* Email.EmailReturnTargets).resolve(input.returnTarget)
+      if (!(yield* (yield* EmailEntryBudget).request(input.email))) return yield* Proofs.ProofIngressDenied.make({})
       const identifier = Identity.LoginIdentifier.make({ namespace: 'email', value: input.email })
       const existing = yield* (yield* Email.EmailSignInTargets).lookup({ moduleId, identifier })
       const receipt = Option.isSome(existing)
@@ -254,6 +272,8 @@ const completeHandler = <Claims extends Auth.ClaimsCodec, Id extends string, Ses
   modules.Complete.credentialHandlerLayer(
     Effect.fn('Styld.EmailEntry.complete')(function* (input) {
       const returnTarget = yield* (yield* Email.EmailReturnTargets).resolve(input.returnTarget)
+      // Every try counts against the address, so guesses spread over many codes stay bounded.
+      if (!(yield* (yield* EmailEntryBudget).complete(input.email))) return yield* Email.EmailRejected.make({})
       // Verification starts here; later claims/session work must not move the proof time.
       const verifiedAt = yield* DateTime.now
       const targets = yield* Email.EmailSignInTargets
@@ -291,7 +311,6 @@ const bindEntry = <Claims extends Auth.ClaimsCodec, const Id extends string, con
       Layer.provide([code.proof.emailLayer, registration.proof.emailLayer]),
       Layer.provide(code.binding.layer),
       Layer.provide(hooksLayer),
-      Layer.merge(Proofs.HostIngressLimiter.layer()),
     ),
     { completion: true },
   )

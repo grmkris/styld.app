@@ -1,7 +1,7 @@
 import {
+  AddPiece,
   Category,
   Colour,
-  Colours,
   CreateUpload,
   ImageType,
   OperationId,
@@ -9,8 +9,8 @@ import {
   type Piece,
   PieceId,
   type PieceNotFound,
-  Subcategory,
   type SubcategoryMismatch,
+  UpdatePiece,
   UploadId,
   type UploadRefused,
   type WardrobeUnavailable,
@@ -132,12 +132,9 @@ const matches = (
   )
 }
 
-const PieceFields = {
-  category: Category,
-  subcategory: Schema.optionalKey(Subcategory),
-  colours: Schema.optionalKey(Colours),
-  name: Schema.optionalKey(Schema.String.check(Schema.isTrimmed(), Schema.isMinLength(1), Schema.isMaxLength(80))),
-}
+/** The piece's fields as the protocol defines them, so the website and assistants accept the same. */
+const { category, subcategory, colours, name } = AddPiece.fields
+const PieceFields = { category, subcategory, colours, name }
 
 const PieceAdd = Schema.Struct({
   operationId: OperationId,
@@ -227,16 +224,7 @@ const writeTools = (
     title: 'Change a piece',
     description:
       'Change the name, notes, category, subcategory or colours of a piece. Fields left out stay as they are; null clears a name, notes or subcategory.',
-    parameters: Schema.Struct({
-      pieceId: PieceId,
-      name: Schema.optionalKey(
-        Schema.NullOr(Schema.String.check(Schema.isTrimmed(), Schema.isMinLength(1), Schema.isMaxLength(80))),
-      ),
-      notes: Schema.optionalKey(Schema.NullOr(Schema.String.check(Schema.isMaxLength(500)))),
-      category: Schema.optionalKey(Category),
-      subcategory: Schema.optionalKey(Schema.NullOr(Subcategory)),
-      colours: Schema.optionalKey(Colours),
-    }),
+    parameters: Schema.Struct({ pieceId: PieceId, ...UpdatePiece.fields }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     handler: ({ pieceId, ...changes }) =>
       wardrobe.updatePiece(pieceId, changes).pipe(Effect.map(show), Effect.mapError(asToolError)),

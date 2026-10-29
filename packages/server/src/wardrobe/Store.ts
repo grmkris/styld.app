@@ -1,4 +1,4 @@
-import { operationReceipts, pieces, uploads } from '@styld/db'
+import { accounts, operationReceipts, pieces, uploads } from '@styld/db'
 import { and, desc, eq } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option, Schema } from 'effect'
@@ -18,11 +18,34 @@ const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catc
 
 const first = <A>(rows: ReadonlyArray<A>) => Option.fromNullishOr(rows[0])
 
+/** Uploads, and whether their account still takes photos. */
+const uploadQueries = (db: ReturnType<typeof drizzle>) => ({
+  accountEnabled: (accountId: string) =>
+    attempt(() =>
+      db
+        .select({ id: accounts.id })
+        .from(accounts)
+        .where(and(eq(accounts.id, accountId), eq(accounts.enabled, true)))
+        .limit(1),
+    ).pipe(Effect.map((rows) => rows.length === 1)),
+  insertUpload: (row: UploadRow) => attempt(() => db.insert(uploads).values(row)).pipe(Effect.asVoid),
+  findUpload: (uploadId: string) =>
+    attempt(() => db.select().from(uploads).where(eq(uploads.id, uploadId)).limit(1)).pipe(Effect.map(first)),
+  markUploadReceived: (uploadId: string) =>
+    attempt(() =>
+      db
+        .update(uploads)
+        .set({ status: 'received' })
+        .where(and(eq(uploads.id, uploadId), eq(uploads.status, 'pending'))),
+    ).pipe(Effect.asVoid),
+})
+
 /** The wardrobe's rows in D1. Every read and write of a person's rows names their account, so
  * one account can never reach another's pieces. */
 export const makeStore = (database: Parameters<typeof drizzle>[0]) => {
   const db = drizzle(database)
   return {
+    ...uploadQueries(db),
     listPieces: (accountId: string) =>
       attempt(() => db.select().from(pieces).where(eq(pieces.accountId, accountId)).orderBy(desc(pieces.createdAt))),
     findPiece: (accountId: string, pieceId: string) =>
@@ -36,16 +59,6 @@ export const makeStore = (database: Parameters<typeof drizzle>[0]) => {
     /** For the processing queue, which acts for no one in particular. */
     findPieceForProcessing: (pieceId: string) =>
       attempt(() => db.select().from(pieces).where(eq(pieces.id, pieceId)).limit(1)).pipe(Effect.map(first)),
-    insertUpload: (row: UploadRow) => attempt(() => db.insert(uploads).values(row)).pipe(Effect.asVoid),
-    findUpload: (uploadId: string) =>
-      attempt(() => db.select().from(uploads).where(eq(uploads.id, uploadId)).limit(1)).pipe(Effect.map(first)),
-    markUploadReceived: (uploadId: string) =>
-      attempt(() =>
-        db
-          .update(uploads)
-          .set({ status: 'received' })
-          .where(and(eq(uploads.id, uploadId), eq(uploads.status, 'pending'))),
-      ).pipe(Effect.asVoid),
     findReceipt: (accountId: string, operationId: string) =>
       attempt(() =>
         db

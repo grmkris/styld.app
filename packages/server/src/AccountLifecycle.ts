@@ -17,7 +17,7 @@ const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catc
 /** R2 deletes at most this many keys per call. */
 const deleteBatch = 1000
 
-const make = (bindings: Pick<WardrobeBindings, 'database' | 'bucket'>) =>
+const make = (bindings: Pick<WardrobeBindings, 'database' | 'bucket' | 'queue'>) =>
   Effect.gen(function* () {
     const crypto = yield* Crypto.Crypto
     const db = drizzle(bindings.database)
@@ -42,11 +42,8 @@ const make = (bindings: Pick<WardrobeBindings, 'database' | 'bucket'>) =>
       } while (cursor !== undefined)
     })
 
-    /** Delete an account and everything it owns. Access ends first (disabled, a new security
-     * revision, no sessions, no assistant grants), so a failure later leaves a closed account a
-     * retry finishes; photos go next, then the auth rows and the account, whose pieces, uploads
-     * and receipts cascade with it. */
-    const deleteAccount = Effect.fn('Styld.Account.delete')(function* (accountId: string) {
+    /** Access ends at once: disabled, a new security revision, no sessions, no assistant grants. */
+    const closeAccount = Effect.fnUntraced(function* (accountId: string) {
       const revision = Base64Url.encode(yield* crypto.randomBytes(16).pipe(Effect.mapError(unavailable)))
       yield* attempt(() =>
         db.batch([
@@ -54,6 +51,17 @@ const make = (bindings: Pick<WardrobeBindings, 'database' | 'bucket'>) =>
           ofSubject(authTables.sessions, accountId),
           db.delete(oauthGrants).where(eq(oauthGrants.subjectId, accountId)),
         ]),
+      )
+    })
+
+    /** Remove what a closed account owns: photos, codes sent to its addresses, its auth rows and
+     * the account (its pieces, uploads and receipts cascade). Safe to run again; the photos are
+     * swept again last, for any upload that landed meanwhile. */
+    const finishDeletion = Effect.fn('Styld.Account.finishDeletion')(function* (accountId: string) {
+      const addresses = yield* attempt(() =>
+        db.all<{ value: string }>(
+          sql`select ${sql.identifier('value')} as value from ${authTables.identifiers} where ${sql.identifier('subject_id')} = ${accountId}`,
+        ),
       )
       yield* sweepPhotos(accountId)
       yield* attempt(() =>
@@ -63,12 +71,30 @@ const make = (bindings: Pick<WardrobeBindings, 'database' | 'bucket'>) =>
           ofSubject(authTables.passwords, accountId),
           ofSubject(authTables.credentials, accountId),
           ofSubject(authTables.identifiers, accountId),
+          // Codes keep the address in their binding; they go with the account.
+          ...addresses.map(({ value }) =>
+            db.run(
+              sql`delete from ${authTables.proofs} where json_extract(${sql.identifier('binding')}, '$.identifier.value') = ${value}`,
+            ),
+          ),
           db.delete(accounts).where(eq(accounts.id, accountId)),
         ]),
       )
+      yield* sweepPhotos(accountId)
     })
 
-    return { deleteAccount }
+    /** Delete an account and everything it owns. Once access has ended, the rest is queued as well
+     * as tried at once: if it fails here, the queue finishes it, since the person can no longer
+     * ask again. */
+    const deleteAccount = Effect.fn('Styld.Account.delete')(function* (accountId: string) {
+      yield* closeAccount(accountId)
+      yield* attempt(() => bindings.queue.send({ finishDeletionOf: accountId })).pipe(
+        Effect.catch(() => finishDeletion(accountId)),
+      )
+      yield* finishDeletion(accountId).pipe(Effect.ignore)
+    })
+
+    return { deleteAccount, finishDeletion }
   })
 
 /** Account termination, owned by the application: Yielded's `SubjectLifecycle` leaves it to us. */
@@ -76,5 +102,5 @@ export class AccountLifecycle extends Context.Service<AccountLifecycle, Effect.S
   '@styld/server/AccountLifecycle',
 ) {}
 
-export const makeAccountLifecycle = (bindings: Pick<WardrobeBindings, 'database' | 'bucket'>) =>
+export const makeAccountLifecycle = (bindings: Pick<WardrobeBindings, 'database' | 'bucket' | 'queue'>) =>
   Effect.map(make(bindings), (service) => AccountLifecycle.of(service))

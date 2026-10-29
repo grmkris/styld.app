@@ -1,5 +1,6 @@
 import { SessionHttp } from '@styld/auth/config'
-import { maximumImageBytes, PieceId, StyldApi, UploadId, type UploadRefused } from '@styld/protocol'
+import { maximumImageBytes, PieceId, RequestRefused, StyldApi, UploadId, type UploadRefused } from '@styld/protocol'
+import type { AuthRequest } from '@yielded/auth/Auth'
 import { Effect, Layer, Option, Redacted, Schema } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
 import * as HttpRouter from 'effect/http/HttpRouter'
@@ -15,20 +16,32 @@ const asSessionAccount = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
     return yield* Effect.provideService(effect, CurrentAccount, { accountId: claims.accountId, via: 'session' })
   })
 
+/** Admits a change only from the website itself (its Origin and CSRF header), before it runs. */
+export type Admit = <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E | RequestRefused, R | AuthRequest>
+
+/** Yielded's mutation admission as the protocol's refusal. */
+export const admitWith =
+  (auth: ReturnType<typeof makeAuthHttp>): Admit =>
+  (effect) =>
+    auth.router.protect(effect).pipe(Effect.catchTag('HookDenied', () => Effect.fail(RequestRefused.make({}))))
+
 /** The website's wardrobe endpoints: each one is the matching `Wardrobe` operation for the session's
- * account. */
-export const WardrobeHandlers = HttpApiBuilder.group(StyldApi, 'wardrobe', (handlers) =>
-  Effect.gen(function* () {
-    const wardrobe = yield* Wardrobe
-    return handlers
-      .handle('listPieces', () => asSessionAccount(wardrobe.listPieces()).pipe(Effect.map((pieces) => ({ pieces }))))
-      .handle('getPiece', ({ params }) => asSessionAccount(wardrobe.getPiece(params.pieceId)))
-      .handle('createUpload', ({ payload }) => asSessionAccount(wardrobe.createUpload(payload)))
-      .handle('addPiece', ({ payload }) => asSessionAccount(wardrobe.addPiece(payload)))
-      .handle('updatePiece', ({ params, payload }) => asSessionAccount(wardrobe.updatePiece(params.pieceId, payload)))
-      .handle('deletePiece', ({ params }) => asSessionAccount(wardrobe.deletePiece(params.pieceId)))
-  }),
-)
+ * account; changes are admitted first. */
+export const wardrobeHandlers = (admit: Admit) =>
+  HttpApiBuilder.group(StyldApi, 'wardrobe', (handlers) =>
+    Effect.gen(function* () {
+      const wardrobe = yield* Wardrobe
+      return handlers
+        .handle('listPieces', () => asSessionAccount(wardrobe.listPieces()).pipe(Effect.map((pieces) => ({ pieces }))))
+        .handle('getPiece', ({ params }) => asSessionAccount(wardrobe.getPiece(params.pieceId)))
+        .handle('createUpload', ({ payload }) => admit(asSessionAccount(wardrobe.createUpload(payload))))
+        .handle('addPiece', ({ payload }) => admit(asSessionAccount(wardrobe.addPiece(payload))))
+        .handle('updatePiece', ({ params, payload }) =>
+          admit(asSessionAccount(wardrobe.updatePiece(params.pieceId, payload))),
+        )
+        .handle('deletePiece', ({ params }) => admit(asSessionAccount(wardrobe.deletePiece(params.pieceId))))
+    }),
+  )
 
 const refusalStatus: { readonly [Reason in UploadRefused['reason']]: number } = {
   notFound: 404,
@@ -107,7 +120,8 @@ const pieceImage = (auth: ReturnType<typeof makeAuthHttp>) =>
         Effect.provideService(CurrentAccount, { accountId: accountId.value, via: 'session' }),
         Effect.map(({ body, contentType, version }) => {
           const etag = `"${version}"`
-          const headers = { etag, 'cache-control': 'private, max-age=86400', vary: 'Cookie' }
+          // Revalidated every time: a processed photo replaces the image behind the same address.
+          const headers = { etag, 'cache-control': 'private, no-cache', vary: 'Cookie' }
           return request.headers['if-none-match'] === etag
             ? HttpServerResponse.empty({ status: 304, headers })
             : HttpServerResponse.raw(body, { status: 200, contentType, headers })

@@ -56,21 +56,10 @@ const waitUntilReady = async (call: Call, pieceId: string) => {
   return 'processing'
 }
 
-/** Seed the two accounts. Local D1 answers SQLITE_BUSY while another test writes, so the seed is
- * tried a few times; any other failure ends the test. */
-const seed = async (fixtures: string) => {
-  for (let attempt = 0; attempt < 10; attempt += 1) {
-    const response = await fetch(`${fixtures}/test/identity/seed-wardrobe`, { method: 'POST' })
-    if (response.status !== 500) return response.status
-    await Bun.sleep(200)
-  }
-  return 500
-}
-
 /** A photo goes up, becomes a piece, is processed by the queue and shown through the Images
  * binding, only to its owner; edits, replays and deletion behave as the protocol says. */
 export const verifyWardrobe = async (origin: string, fixtures: string): Promise<void> => {
-  expect(await seed(fixtures)).toBe(204)
+  expect((await fetch(`${fixtures}/test/identity/seed-wardrobe`, { method: 'POST' })).status).toBe(204)
   const owner = client(origin, await signIn(origin, 'native-wardrobe'))
   const other = client(origin, await signIn(origin, 'native-wardrobe-other'))
   expect((await fetch(`${origin}/api/pieces`)).status).toBe(401)
@@ -161,6 +150,24 @@ export const verifyAccountDeletion = async (origin: string, fixtures: string): P
   expect(added.status).toBe(200)
   const key = `accounts/native-farewell/uploads/${photo.uploadId}`
   expect(await (await fetch(`${fixtures}/test/identity/media?key=${key}`)).json()).toEqual({ exists: true })
+  // A change from anywhere but the website itself is refused before it runs.
+  const bare = (method: string, path: string) => fetch(`${origin}${path}`, { method, headers: { cookie } })
+  expect((await bare('DELETE', '/api/me')).status).toBe(403)
+  expect(
+    (
+      await fetch(`${origin}/api/me`, {
+        method: 'DELETE',
+        headers: { cookie, origin: 'https://evil.invalid', 'x-effect-auth-csrf': '1' },
+      })
+    ).status,
+  ).toBe(403)
+  const unadmitted = await fetch(`${origin}/api/uploads`, {
+    method: 'POST',
+    headers: { cookie, 'content-type': 'application/json' },
+    body: JSON.stringify({ contentType: 'image/png', bytes: png.byteLength }),
+  })
+  expect(unadmitted.status).toBe(403)
+  expect((await call('/api/me')).status).toBe(200)
   expect((await call('/api/me', { method: 'DELETE' })).status).toBe(204)
   expect((await call('/api/me')).status).toBe(401)
   expect((await call('/api/pieces')).status).toBe(401)

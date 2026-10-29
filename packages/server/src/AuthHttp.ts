@@ -23,16 +23,27 @@ export const makeAuthHttp = (database: QueryDatabaseClient, options: AuthHttpOpt
   }
 }
 
-/** The network a code request comes from, for the per-network request limit. A Worker has no
- * socket peer, so the key is the visitor address Cloudflare sets in `cf-connecting-ip` (absent
- * only under local tooling, where every request shares one bucket). Provided per request. */
-export const withRequestNetwork =
-  (headers: Headers.Headers) =>
+/** Per request, the network a code request comes from and whether it may ask for another. A
+ * Worker has no socket peer, so the key is the visitor address Cloudflare sets in
+ * `cf-connecting-ip` (absent only under local tooling, where every request shares one key). The
+ * limit is the host's, shared by every isolate; Yielded's default would count per isolate. */
+export const withCodeRequestPolicy =
+  (headers: Headers.Headers, allow: (networkKey: string) => Effect.Effect<boolean>) =>
   <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-    Effect.provideService(
-      effect,
-      Proofs.ProofRequestContext,
-      Effect.succeed({ networkKey: Redacted.make(headers['cf-connecting-ip'] ?? 'unknown') }),
+    effect.pipe(
+      Effect.provideService(
+        Proofs.ProofRequestContext,
+        Effect.succeed({ networkKey: Redacted.make(headers['cf-connecting-ip'] ?? 'unknown') }),
+      ),
+      Effect.provideService(
+        Proofs.HostIngressLimiter,
+        Proofs.HostIngressLimiter.of({
+          check: ({ networkKey }) =>
+            allow(Redacted.value(networkKey)).pipe(
+              Effect.flatMap((allowed) => (allowed ? Effect.void : Effect.fail(Proofs.ProofIngressDenied.make({})))),
+            ),
+        }),
+      ),
     )
 
 export const makeAuthHandler = (database: QueryDatabaseClient, options: AuthHttpOptions) => {
