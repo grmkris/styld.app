@@ -123,7 +123,9 @@ export const makeGarmentVision = (run: RunClef, metrics: CaptureMetrics['Service
       questions: {
         held: {
           type: 'noul',
-          instructions: 'Is exactly one garment being held up or shown to the camera, fully in view and still?',
+          // Stillness on the page already shows someone brought it in and holds it still. Asked whether it is
+          // "held up", Clef rated a lone tee 0.45; as the main subject 0.92, and a rail of ten 0.02.
+          instructions: 'Is exactly one garment the main subject of the picture, fully in view?',
         },
         side: {
           type: 'choice',
