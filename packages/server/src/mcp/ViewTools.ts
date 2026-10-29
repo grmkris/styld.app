@@ -35,11 +35,22 @@ const unavailable = () =>
  * the model's context, because a host's sandbox cannot load Styld's private image routes. */
 const viewImageLimit = 24
 
-/** A piece's thumbnail as a data URL, or nothing when it cannot be read. */
+/** A thumbnail larger than this is not one: the image service fell back to the stored original. */
+const largestThumbnail = 200 * 1024
+
+/** A piece's thumbnail as a data URL, or nothing when it cannot be read or is not a small WebP. */
 const thumbnailOf = (wardrobe: Wardrobe['Service'], piece: Piece) =>
   wardrobe.pieceImage(piece.id, 'thumb').pipe(
+    Effect.filterOrFail(
+      ({ contentType }) => contentType === 'image/webp',
+      () => 'notThumbnail' as const,
+    ),
     Effect.flatMap(({ body, contentType }) =>
       Effect.tryPromise({ try: () => collect(body), catch: () => 'unreadable' as const }).pipe(
+        Effect.filterOrFail(
+          (bytes) => bytes.byteLength <= largestThumbnail,
+          () => 'notThumbnail' as const,
+        ),
         Effect.map((bytes) => `data:${contentType};base64,${Base64.encode(bytes)}`),
       ),
     ),

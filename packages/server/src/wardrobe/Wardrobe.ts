@@ -451,6 +451,9 @@ const processing = (parts: Parts) => ({
   }),
   /** The queue gave up on a piece: show it as failed rather than processing forever. */
   failPiece: Effect.fn('Styld.Wardrobe.failPiece')(function* (pieceId: string) {
+    const row = yield* stored(parts.store.findPieceForProcessing(pieceId))
+    if (Option.isNone(row) || row.value.status !== 'processing') return
+    yield* parts.cutout.release({ accountId: row.value.accountId, pieceId }).pipe(Effect.mapError(unavailable))
     yield* stored(
       parts.store.finishProcessing(pieceId, { status: 'failed', imageKey: null, updatedAt: yield* nowDate }),
     )

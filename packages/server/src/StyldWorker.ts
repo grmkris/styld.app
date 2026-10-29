@@ -195,6 +195,8 @@ const declareBindings = Effect.gen(function* () {
   const allowTelemetry = yield* perClientLimit('TELEMETRY_RATE_LIMIT', 2610281, 120)
   // Dynamic client registration is open to anyone; each IP may register ten clients a minute.
   const allowRegistration = yield* perClientLimit('OAUTH_REGISTER_RATE_LIMIT', 2610282, 10)
+  // The camera's garment check calls Clef; each account may check 40 frames a minute, a few a second at most.
+  const allowCheck = yield* perClientLimit('CAPTURE_CHECK_RATE_LIMIT', 2610284, 40)
   // Sign-in codes are real mail from styld.app; each network may ask for five a minute.
   const codeRequests = yield* Cloudflare.Workers.RateLimit('EMAIL_CODE_RATE_LIMIT', {
     namespaceId: 2610283,
@@ -211,6 +213,7 @@ const declareBindings = Effect.gen(function* () {
     calls,
     allowTelemetry,
     allowRegistration,
+    allowCheck,
     codeRequests,
   }
 })
@@ -227,6 +230,7 @@ const makeApplication =
     calls,
     allowTelemetry,
     allowRegistration,
+    allowCheck,
     codeRequests,
   }: Effect.Success<typeof declareBindings>) =>
   (env: Cloudflare.Workers.WorkerEnvironment['Service']) =>
@@ -259,7 +263,7 @@ const makeApplication =
       const oauth = makeMcpOAuth(db, auth, { origin: authOrigin, keys: configuration.sessionKeys, allowRegistration })
       const routes = Layer.mergeAll(
         auth.layer,
-        apiRoutes(auth, { wardrobe, lifecycle, captures, looks }),
+        apiRoutes(auth, { wardrobe, lifecycle, captures, looks }, { allowCheck }),
         wardrobeRoutes(auth).pipe(Layer.provide(wardrobe)),
         captureRoutes(auth).pipe(Layer.provide(captures)),
         oauth.routes,

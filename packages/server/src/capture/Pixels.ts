@@ -1,4 +1,6 @@
 import { convertIndexedToRgb, decode, encode } from 'fast-png'
+import { Effect } from 'effect'
+import { ProviderFailed } from './Providers.ts'
 
 /** A picture in memory: four bytes a pixel (red, green, blue, alpha), rows top to bottom. */
 export interface Rgba {
@@ -53,6 +55,14 @@ const toRgba = (width: number, height: number, source: ArrayLike<number>, channe
 }
 
 /** Encode RGBA as a PNG with transparency. */
+/** Decode a PNG a provider made. One that does not decode is the provider's failure, and trying the same
+ * picture again would fail the same way. */
+export const decodedPng = (bytes: Uint8Array) =>
+  Effect.try({
+    try: () => decodePng(bytes),
+    catch: () => new ProviderFailed({ provider: 'cloudflare-images', retryable: false }),
+  })
+
 export const encodePng = (picture: Rgba): Uint8Array =>
   encode({ width: picture.width, height: picture.height, data: picture.data, channels: 4, depth: 8 })
 

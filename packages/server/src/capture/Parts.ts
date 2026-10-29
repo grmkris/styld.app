@@ -63,3 +63,8 @@ export const enqueueCapture = (parts: Parts, captureId: string) =>
   Effect.tryPromise({ try: () => parts.bindings.queue.send({ captureId }), catch: unavailable }).pipe(Effect.asVoid)
 
 export const storedAs = <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.mapError(effect, unavailable)
+
+/** The Wallet operation holding a capture's credits. Captures made before holds were recorded on the row
+ * hold under `capture/<id>`. */
+export const holdOf = (capture: { readonly id: string; readonly hold: string | null }) =>
+  capture.hold ?? `capture/${capture.id}`

@@ -59,6 +59,7 @@ const refusalStatus: { readonly [Reason in UploadRefused['reason']]: number } = 
   alreadyUsed: 409,
   tooLarge: 413,
   notAnImage: 415,
+  tooLong: 413,
   wrongType: 415,
 }
 

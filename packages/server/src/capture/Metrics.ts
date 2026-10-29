@@ -87,7 +87,7 @@ export const analyticsEngine = (
   origin: { readonly environment: string; readonly release: string },
 ): CaptureMetrics['Service'] => ({
   call: (call) =>
-    Effect.sync(() =>
+    Effect.try(() =>
       dataset.writeDataPoint({
         indexes: [`call.${call.provider}.${call.kind}`],
         blobs: [origin.environment, origin.release, call.provider, call.model, call.kind, call.outcome],
@@ -95,7 +95,7 @@ export const analyticsEngine = (
       }),
     ).pipe(Effect.ignore),
   review: (decision) =>
-    Effect.sync(() =>
+    Effect.try(() =>
       dataset.writeDataPoint({
         indexes: [`review.${decision.decision}`],
         blobs: [origin.environment, origin.release, decision.route, decision.provider, decision.decision],

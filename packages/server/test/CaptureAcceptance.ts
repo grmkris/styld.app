@@ -172,7 +172,8 @@ export const verifyCaptures = async (origin: string, fixtures: string): Promise<
   )
   const key = (uploadId: string) => `accounts/${me.accountId}/uploads/${uploadId}`
   expect(await exists(fixtures, key(video))).toBe(true)
-  expect((await owner(`/api/captures/${first}`, { method: 'DELETE' })).status).toBe(204)
+  // A capture whose pieces were kept stays: those pieces show its pictures.
+  expect((await owner(`/api/captures/${first}`, { method: 'DELETE' })).status).toBe(404)
   expect((await owner(`/api/captures/${clip}`, { method: 'DELETE' })).status).toBe(204)
   expect((await owner(`/api/captures/${lastCapture}`, { method: 'DELETE' })).status).toBe(204)
   expect(await exists(fixtures, key(video))).toBe(false)

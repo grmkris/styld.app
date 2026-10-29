@@ -2,6 +2,7 @@ import { SessionHttp } from '@styld/auth/config'
 import { StyldApi } from '@styld/protocol'
 import { Effect, Layer } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
+import type { RuntimeContext } from 'alchemy/RuntimeContext'
 import { AccountLifecycle } from './AccountLifecycle.ts'
 import type { makeAuthHttp } from './AuthHttp.ts'
 import { captureHandlers } from './capture/Http.ts'
@@ -43,11 +44,12 @@ export const apiRoutes = (
     readonly captures: Layer.Layer<Captures>
     readonly looks: Layer.Layer<Looks>
   },
+  limits: { readonly allowCheck: (accountId: string) => Effect.Effect<boolean, never, RuntimeContext> },
 ) =>
   HttpApiBuilder.layer(StyldApi).pipe(
     Layer.provide(accountHandlers(admitWith(auth)).pipe(Layer.provide(services.lifecycle))),
     Layer.provide(wardrobeHandlers(admitWith(auth)).pipe(Layer.provide(services.wardrobe))),
-    Layer.provide(captureHandlers(admitWith(auth)).pipe(Layer.provide(services.captures))),
+    Layer.provide(captureHandlers(admitWith(auth), limits.allowCheck).pipe(Layer.provide(services.captures))),
     Layer.provide(lookHandlers(admitWith(auth)).pipe(Layer.provide(services.looks))),
     Layer.provide(auth.router.securityLayer(SessionHttp)),
     auth.router.middleware,

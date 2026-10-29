@@ -11,6 +11,8 @@ export interface CapturePolicy {
   readonly routeConfidence: number
   /** How sure it must be that a garment is held up before the camera shoots. */
   readonly heldConfidence: number
+  /** How sure it must be that a shot shows the same garment as the last one (its back). */
+  readonly samePieceConfidence: number
   readonly dailyAllowance: number
   readonly credits: { readonly photo: number; readonly video: number }
 }
@@ -31,6 +33,7 @@ export const capturePolicy = (env: Readonly<Record<string, unknown>>): CapturePo
   single: choice(env['CUTOUT_SINGLE'], ['cloudflare', 'sam'], 'cloudflare'),
   routeConfidence: number(env['CUTOUT_ROUTE_CONFIDENCE'], 0.75),
   heldConfidence: number(env['CAMERA_HELD_CONFIDENCE'], 0.7),
+  samePieceConfidence: number(env['CAMERA_SAME_PIECE_CONFIDENCE'], 0.6),
   dailyAllowance: number(env['DAILY_ALLOWANCE'], 100),
   credits: { photo: 1, video: 10 },
 })

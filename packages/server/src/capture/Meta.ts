@@ -4,6 +4,7 @@ import { type CaptureMetrics, counted, prices } from './Metrics.ts'
 import { type Picture, ProviderFailed, ProviderOutcomeUnknown, type StoredVideo } from './Providers.ts'
 import { lineFrame, lineFrameSize, makeOutputLines, stillMasks, videoMasks } from './SamStream.ts'
 import { type ByteStream, pump } from '../Streams.ts'
+import { blankRanges } from './VideoContainer.ts'
 
 /** What the Meta adapter needs: the API, its key, a way to read stored videos, and `fetch`. Workers send
  * a streamed body with a known length only through `FixedLengthStream`, so the adapter uses `fetch`
@@ -76,7 +77,7 @@ const respond = (
   onSendFailure: () => ProviderFailed | ProviderOutcomeUnknown,
 ) =>
   Effect.tryPromise({
-    try: () =>
+    try: (signal) =>
       settings.fetch(`${settings.apiBase}/v1/responses`, {
         method: 'POST',
         headers: { authorization: `Bearer ${Redacted.value(settings.apiKey)}`, 'content-type': 'application/json' },
@@ -86,6 +87,7 @@ const respond = (
           input: [{ type: 'message', role: 'user', content }],
           metadata: { include_confidence: 'true', mask_encoding: 'one_bit' },
         }),
+        signal,
       }),
     catch: onSendFailure,
   }).pipe(
@@ -106,7 +108,9 @@ const segmentStill = (settings: MetaSettings) =>
       settings.metrics,
       respond(settings, content, () => failed(true)).pipe(
         Effect.flatMap((body) => readLines(body, () => true)),
-        Effect.map(({ lines }) => stillMasks(lines)),
+        // An answer SAM sent but Styld cannot read would read the same way again.
+        Effect.flatMap(({ lines }) => Effect.try({ try: () => stillMasks(lines), catch: () => failed(false) })),
+        Effect.timeoutOrElse({ duration: '90 seconds', orElse: () => Effect.fail(failed(true)) }),
       ),
       { provider: 'meta-sam', model, kind: 'segment' },
       () => ({ units: 1, costMicroUsd: prices.samPerImage }),
@@ -131,33 +135,53 @@ const multipartFrame = (video: StoredVideo, nowMillis: number) => {
   }
 }
 
-/** Stream a stored video to Meta's Files API without holding it in memory. */
+/** Stream a stored video to Meta's Files API without holding it in memory, its metadata blanked on the
+ * way. A read that fails midway aborts the request rather than leaving it waiting for bytes. */
 const sendVideo = (settings: MetaSettings, video: StoredVideo, frame: ReturnType<typeof multipartFrame>) =>
-  Effect.tryPromise({
-    try: async () => {
-      const source = await settings.readVideo(video.key)
-      if (source === null) throw new Error('The stored video is gone')
-      const { readable, writable } = new FixedLengthStream(frame.head.byteLength + video.bytes + frame.tail.byteLength)
-      const writer = writable.getWriter()
-      const sending = (async () => {
-        await writer.write(frame.head)
-        await pump(source, { write: (chunk) => writer.write(chunk), close: () => Promise.resolve() })
-        await writer.write(frame.tail)
-        await writer.close()
-      })()
-      const answer = await settings.fetch(`${settings.apiBase}/v1/files`, {
-        method: 'POST',
-        headers: {
-          authorization: `Bearer ${Redacted.value(settings.apiKey)}`,
-          'content-type': `multipart/form-data; boundary=${frame.boundary}`,
-        },
-        // SAFETY: FixedLengthStream's readable is a Worker runtime stream -- the fetch type here is the DOM lib's, which names its own ReadableStream
-        body: readable as never,
-      })
-      await sending
-      return answer
-    },
-    catch: () => failed(true),
+  Effect.gen(function* () {
+    const source = yield* Effect.tryPromise({ try: () => settings.readVideo(video.key), catch: () => failed(true) })
+    // The stored video is gone; trying again cannot bring it back.
+    if (source === null) return yield* failed(false)
+    return yield* Effect.tryPromise({
+      try: async (signal) => {
+        const { readable, writable } = new FixedLengthStream(
+          frame.head.byteLength + video.bytes + frame.tail.byteLength,
+        )
+        const writer = writable.getWriter()
+        let offset = 0
+        const sending = (async () => {
+          await writer.write(frame.head)
+          await pump(source, {
+            write: (chunk) => {
+              const blanked = blankRanges(chunk, offset, video.metadata)
+              offset += chunk.byteLength
+              return writer.write(blanked)
+            },
+            close: () => Promise.resolve(),
+          })
+          await writer.write(frame.tail)
+          await writer.close()
+        })().catch(async (error: unknown) => {
+          await writer.abort(error)
+          throw error
+        })
+        const [answer] = await Promise.all([
+          settings.fetch(`${settings.apiBase}/v1/files`, {
+            method: 'POST',
+            headers: {
+              authorization: `Bearer ${Redacted.value(settings.apiKey)}`,
+              'content-type': `multipart/form-data; boundary=${frame.boundary}`,
+            },
+            // SAFETY: FixedLengthStream's readable is a Worker runtime stream -- the fetch type here is the DOM lib's, which names its own ReadableStream
+            body: readable as never,
+            signal,
+          }),
+          sending,
+        ])
+        return answer
+      },
+      catch: () => failed(true),
+    })
   })
 
 /** Upload a stored video to Meta and return its file id. */
@@ -166,7 +190,9 @@ const uploadVideo = (settings: MetaSettings) =>
     const frame = multipartFrame(video, yield* Clock.currentTimeMillis)
     const response = yield* counted(
       settings.metrics,
-      sendVideo(settings, video, frame),
+      sendVideo(settings, video, frame).pipe(
+        Effect.timeoutOrElse({ duration: '5 minutes', orElse: () => Effect.fail(failed(true)) }),
+      ),
       { provider: 'meta-sam', model: 'files', kind: 'upload' },
       () => ({ units: video.bytes, costMicroUsd: 0 }),
     )
@@ -193,11 +219,18 @@ const trackVideo = (settings: MetaSettings) =>
       settings.metrics,
       respond(settings, content, unknown).pipe(
         Effect.flatMap((body) => readLines(body, wanted)),
-        Effect.map(({ lines, end }) => ({
-          found: videoMasks(lines),
-          framesBilled: end.framesBilled ?? 0,
-          frameSize: lines.map(lineFrameSize).find((size) => size !== undefined),
-        })),
+        // Meta billed the frames once it answered: an answer Styld cannot read is an unknown outcome.
+        Effect.flatMap(({ lines, end }) =>
+          Effect.try({
+            try: () => ({
+              found: videoMasks(lines),
+              framesBilled: end.framesBilled ?? 0,
+              frameSize: lines.map(lineFrameSize).find((size) => size !== undefined),
+            }),
+            catch: unknown,
+          }),
+        ),
+        Effect.timeoutOrElse({ duration: '10 minutes', orElse: () => Effect.fail(unknown()) }),
       ),
       { provider: 'meta-sam', model, kind: 'track' },
       ({ framesBilled }) => ({ units: framesBilled, costMicroUsd: framesBilled * prices.samPerFrame }),
@@ -205,9 +238,27 @@ const trackVideo = (settings: MetaSettings) =>
     )
   })
 
-/** Meta SAM 3.1 through `api.meta.ai`: stills inline, videos through the Files API. */
+/** Delete an uploaded video at Meta. Tracking already settled, so a failure is only logged. */
+const forgetVideo = (settings: MetaSettings) =>
+  Effect.fn('Styld.Capture.forgetVideo')(function* (fileId: string) {
+    yield* Effect.tryPromise({
+      try: (signal) =>
+        settings.fetch(`${settings.apiBase}/v1/files/${encodeURIComponent(fileId)}`, {
+          method: 'DELETE',
+          headers: { authorization: `Bearer ${Redacted.value(settings.apiKey)}` },
+          signal,
+        }),
+      catch: () => failed(true),
+    }).pipe(
+      Effect.timeoutOrElse({ duration: '30 seconds', orElse: () => Effect.fail(failed(true)) }),
+      Effect.ignore({ log: true, message: 'Styld.Capture.forgetVideo could not delete a video at Meta' }),
+    )
+  })
+
+/** Meta SAM 3.1 through `api.meta.ai`: stills inline, videos through the Files API, deleted once tracked. */
 export const makeGarmentSegmenter = (settings: MetaSettings) => ({
   still: segmentStill(settings),
   upload: uploadVideo(settings),
   track: trackVideo(settings),
+  forget: forgetVideo(settings),
 })

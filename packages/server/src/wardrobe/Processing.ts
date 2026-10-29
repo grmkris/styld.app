@@ -28,9 +28,15 @@ export class GarmentCutout extends Context.Service<
       readonly originalKey: string
       readonly contentType: string
     }) => Effect.Effect<{ readonly imageKey: string }, CutoutFailed>
+    /** The queue gave up on the piece: anything `cut` held for it is let go. */
+    readonly release: (input: {
+      readonly accountId: string
+      readonly pieceId: string
+    }) => Effect.Effect<void, CutoutFailed>
   }
 >()('@styld/server/GarmentCutout') {
   static readonly keepOriginal = Layer.succeed(this, {
     cut: ({ originalKey }) => Effect.succeed({ imageKey: originalKey }),
+    release: () => Effect.void,
   })
 }

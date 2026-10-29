@@ -162,7 +162,7 @@ export type UpdatePiece = typeof UpdatePiece.Type
 
 export class PieceNotFound extends Schema.TaggedError<PieceNotFound>()('PieceNotFound', {}, { httpApiStatus: 404 }) {}
 
-/** A photo Styld will not take, and why. */
+/** A photo or video Styld will not take, and why. `tooLong` is a video over a minute. */
 export class UploadRefused extends Schema.TaggedError<UploadRefused>()(
   'UploadRefused',
   {
@@ -174,6 +174,7 @@ export class UploadRefused extends Schema.TaggedError<UploadRefused>()(
       'tooLarge',
       'notAnImage',
       'wrongType',
+      'tooLong',
     ]),
   },
   { httpApiStatus: 422 },

@@ -8,7 +8,14 @@ import { makeGarmentSegmenter } from '../src/capture/Meta.ts'
 import { analyticsEngine, CaptureMetrics } from '../src/capture/Metrics.ts'
 import { type Box, cutOut, decodePng, encodePng, opaqueBounds, type Rgba } from '../src/capture/Pixels.ts'
 import { lineFrame, lineFrameSize, makeOutputLines, stillMasks, videoMasks } from '../src/capture/SamStream.ts'
-import { readMoov, videoFrameCount } from '../src/capture/VideoContainer.ts'
+import {
+  blankRanges,
+  findMoov,
+  metadataRanges,
+  readMoov,
+  videoDurationMs,
+  videoFrameCount,
+} from '../src/capture/VideoContainer.ts'
 
 const fixture = (name: string) => readFileSync(new URL(`fixtures/capture/${name}`, import.meta.url))
 const bytes = (name: string) => new Uint8Array(fixture(name))
@@ -132,6 +139,31 @@ describe('video stills', () => {
       )
       expect(moov === undefined ? undefined : videoFrameCount(moov)).toBe(frames)
     }
+  })
+
+  test('measures a clip and finds its metadata boxes, which blanking turns into free space', async () => {
+    const clip = bytes('rail-ten-640.mp4')
+    const moov = await findMoov(
+      (offset, length) => Promise.resolve(clip.subarray(offset, offset + length)),
+      clip.length,
+    )
+    if (moov === undefined) throw new Error('the clip has a moov box')
+    expect(moov.offset).toBe(32)
+    expect(videoDurationMs(moov.bytes)).toBeGreaterThan(9_900)
+    expect(videoDurationMs(moov.bytes)).toBeLessThan(10_200)
+    const ranges = metadataRanges(moov.bytes, moov.offset)
+    expect(ranges.length).toBeGreaterThan(0)
+    // Blanked in uneven chunks, as the upload streams it: every metadata box becomes `free` and zeros.
+    const sent = new Uint8Array(clip.length)
+    for (let at = 0; at < clip.length; at += 1000) sent.set(blankRanges(clip.subarray(at, at + 1000), at, ranges), at)
+    for (const { start, end } of ranges) {
+      expect(new TextDecoder().decode(sent.subarray(start + 4, start + 8))).toBe('free')
+      expect(sent.subarray(start + 8, end).every((value) => value === 0)).toBe(true)
+      expect(sent.subarray(start, start + 4)).toEqual(clip.subarray(start, start + 4))
+    }
+    // Everything else is untouched, so offsets and sizes still hold.
+    const outside = (at: number) => ranges.every(({ start, end }) => at < start + 4 || at >= end)
+    expect(Array.from(clip.keys()).every((at) => !outside(at) || sent[at] === clip[at])).toBe(true)
   })
 
   test('maps a still to the frame on screen at its time', () => {

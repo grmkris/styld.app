@@ -1,5 +1,5 @@
 import { captureFrames, captures, detections, operationReceipts, pieces, uploads } from '@styld/db'
-import { and, desc, eq, inArray, ne, or } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, ne, or } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Array, Effect, Option } from 'effect'
 import { StoreUnavailable } from '../wardrobe/Store.ts'
@@ -62,13 +62,17 @@ const captureRows = (db: Database) => ({
   updateCapture: (captureId: string, changes: Partial<CaptureRow>) =>
     attempt(() => db.update(captures).set(changes).where(eq(captures.id, captureId))).pipe(Effect.asVoid),
   /** The capture's detections and its new status, together. Detections from an earlier attempt are
-   * replaced, so a retried capture never shows a piece twice. */
+   * replaced, so a retried capture never shows a piece twice; a capture no longer processing keeps its
+   * status. */
   finishCapture: (captureId: string, found: ReadonlyArray<DetectionRow>, changes: Partial<CaptureRow>) =>
     attempt(() =>
       db.batch([
         db.delete(detections).where(and(eq(detections.captureId, captureId), eq(detections.status, 'review'))),
         ...found.map((detection) => db.insert(detections).values(detection)),
-        db.update(captures).set(changes).where(eq(captures.id, captureId)),
+        db
+          .update(captures)
+          .set(changes)
+          .where(and(eq(captures.id, captureId), eq(captures.status, 'processing'))),
       ]),
     ).pipe(Effect.asVoid),
   deleteCapture: (accountId: string, captureId: string) =>
@@ -78,15 +82,6 @@ const captureRows = (db: Database) => ({
         .where(and(eq(captures.id, captureId), eq(captures.accountId, accountId)))
         .returning(),
     ).pipe(Effect.map(first)),
-  /** Whether any piece still shows this stored photo. */
-  sourceInUse: (accountId: string, key: string) =>
-    attempt(() =>
-      db
-        .select({ id: pieces.id })
-        .from(pieces)
-        .where(and(eq(pieces.accountId, accountId), or(eq(pieces.originalKey, key), eq(pieces.imageKey, key))))
-        .limit(1),
-    ).pipe(Effect.map((rows) => rows.length > 0)),
 })
 
 /** What the review tray reads: open captures and the detections waiting in them. */
@@ -133,7 +128,7 @@ const trayRows = (db: Database) => ({
         .where(and(eq(detections.id, detectionId), eq(detections.accountId, accountId)))
         .limit(1),
     ).pipe(Effect.map(first)),
-  /** The front detection a back shot pairs with, if it is still open. */
+  /** Give the front detection a back shot pairs with its back, if it is still open; whether one was. */
   attachBack: (accountId: string, captureId: string, backKey: string) =>
     attempt(() =>
       db
@@ -146,8 +141,77 @@ const trayRows = (db: Database) => ({
             eq(detections.status, 'review'),
             eq(detections.preselected, true),
           ),
+        )
+        .returning({ id: detections.id }),
+    ).pipe(Effect.map((rows) => rows.length > 0)),
+})
+
+/** Moving a capture between states only from the state it was read in, so two requests or two queue
+ * deliveries never both act on it. Each answers whether it moved the capture. */
+const transitionRows = (db: Database) => ({
+  /** Move a capture the person asked to try again, if it is still as they saw it. */
+  retryCapture: (
+    accountId: string,
+    captureId: string,
+    seen: { readonly status: CaptureRow['status']; readonly attempt: number; readonly updatedAt: Date },
+    changes: Partial<CaptureRow>,
+  ) =>
+    attempt(() =>
+      db
+        .update(captures)
+        .set(changes)
+        .where(
+          and(
+            eq(captures.id, captureId),
+            eq(captures.accountId, accountId),
+            eq(captures.status, seen.status),
+            eq(captures.attempt, seen.attempt),
+            eq(captures.updatedAt, seen.updatedAt),
+          ),
+        )
+        .returning({ id: captures.id }),
+    ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** Mark a video as handed to Meta, unless a delivery already did. */
+  claimTracking: (captureId: string, at: Date) =>
+    attempt(() =>
+      db
+        .update(captures)
+        .set({ trackingStartedAt: at })
+        .where(and(eq(captures.id, captureId), eq(captures.status, 'processing'), isNull(captures.trackingStartedAt)))
+        .returning({ id: captures.id }),
+    ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** Whether any of the capture's detections became a piece. */
+  hasKept: (captureId: string) =>
+    attempt(() =>
+      db
+        .select({ id: detections.id })
+        .from(detections)
+        .where(and(eq(detections.captureId, captureId), eq(detections.status, 'kept')))
+        .limit(1),
+    ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** Which of these stored objects a piece of the account still shows, as its photo, image or back. */
+  keysInUse: (accountId: string, keys: ReadonlyArray<string>) =>
+    Effect.map(
+      // Each key is bound three times, so a chunk holds 30 of them.
+      Effect.forEach(Array.chunksOf(keys, 30), (chunk) =>
+        attempt(() =>
+          db
+            .select({ originalKey: pieces.originalKey, imageKey: pieces.imageKey, backImageKey: pieces.backImageKey })
+            .from(pieces)
+            .where(
+              and(
+                eq(pieces.accountId, accountId),
+                or(
+                  inArray(pieces.originalKey, [...chunk]),
+                  inArray(pieces.imageKey, [...chunk]),
+                  inArray(pieces.backImageKey, [...chunk]),
+                ),
+              ),
+            ),
         ),
-    ).pipe(Effect.asVoid),
+      ),
+      (rows) => new Set(rows.flat().flatMap((row) => [row.originalKey, row.imageKey, row.backImageKey])),
+    ),
 })
 
 const reviewRows = (db: Database) => ({
@@ -195,7 +259,7 @@ const reviewRows = (db: Database) => ({
  * reads name only the capture it was handed. */
 export const makeCaptureStore = (database: Parameters<typeof drizzle>[0]) => {
   const db = drizzle(database)
-  return { ...captureRows(db), ...trayRows(db), ...reviewRows(db) }
+  return { ...captureRows(db), ...trayRows(db), ...reviewRows(db), ...transitionRows(db) }
 }
 
 export type CaptureStore = ReturnType<typeof makeCaptureStore>

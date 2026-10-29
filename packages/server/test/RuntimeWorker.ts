@@ -137,7 +137,9 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
       HttpRouter.add(
         'POST',
         '/test/identity/disable-mcp',
+        // Local D1 answers SQLITE_BUSY while another test writes, like the seeds above.
         disableIdentity(database, 'native-mcp').pipe(
+          Effect.retry({ times: 20, schedule: Schedule.spaced('150 millis') }),
           Effect.orDie,
           Effect.as(HttpServerResponse.empty({ status: 204 })),
         ),

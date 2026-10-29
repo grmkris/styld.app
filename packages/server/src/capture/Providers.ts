@@ -74,11 +74,13 @@ export class PictureWork extends Context.Service<
   }
 >()('@styld/server/PictureWork') {}
 
-/** A video SAM should track, already stored in Styld's bucket. */
+/** A video SAM should track, already stored in Styld's bucket. Its metadata boxes (where a phone keeps
+ * the place it was recorded) are blanked on the way to Meta. */
 export interface StoredVideo {
   readonly key: string
   readonly bytes: number
   readonly contentType: 'video/mp4' | 'video/quicktime'
+  readonly metadata: ReadonlyArray<{ readonly start: number; readonly end: number }>
 }
 
 /** Meta SAM 3.1: every instance of a concept, with a mask per instance (and per frame, for a video). */
@@ -105,5 +107,7 @@ export class GarmentSegmenter extends Context.Service<
       },
       ProviderFailed | ProviderOutcomeUnknown
     >
+    /** Delete an uploaded video at Meta once it is tracked; a failure is logged, never raised. */
+    readonly forget: (fileId: string) => Effect.Effect<void>
   }
 >()('@styld/server/GarmentSegmenter') {}

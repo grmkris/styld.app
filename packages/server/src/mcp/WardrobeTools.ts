@@ -49,6 +49,7 @@ const uploadRecovery: Readonly<Record<string, { message: string; recovery: strin
     recovery: 'Call piece_search to find it, or upload a new photo.',
   },
   tooLarge: { message: 'The photo is larger than 15 MB.', recovery: 'Use a smaller photo.' },
+  tooLong: { message: 'The video is longer than a minute.', recovery: 'Use a clip of a minute or less.' },
   notAnImage: {
     message: 'The file is not a JPEG, PNG, WebP, AVIF or GIF image.',
     recovery: 'Use a photo in one of those formats.',

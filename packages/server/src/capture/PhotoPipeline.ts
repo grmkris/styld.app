@@ -1,7 +1,7 @@
 import { Effect, Option } from 'effect'
 import { CaptureConfig } from './Policy.ts'
 import { type Parts, captureKey, readObject, unavailable, writeObject } from './Parts.ts'
-import { type Box, cutOut, decodePng, encodePng, opaqueBounds, crop, type Rgba } from './Pixels.ts'
+import { type Box, cutOut, decodedPng, encodePng, opaqueBounds, crop, type Rgba } from './Pixels.ts'
 import { GarmentSegmenter, GarmentVision, PictureWork, type WorkingCopies } from './Providers.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
 
@@ -17,11 +17,14 @@ export interface CutPiece {
 /** Ignore specks: a garment covers at least this share of the photo. */
 const minimumShare = 0.004
 
+/** At most this many pieces from one photo, the largest first: each costs a thumbnail and a suggestion. */
+const maximumPieces = 20
+
 /** Background removal for a photo of one garment: the foreground, cropped to what is opaque. */
-const foregroundPiece = (original: Uint8Array) =>
+export const foregroundPiece = (original: Uint8Array) =>
   Effect.gen(function* () {
     const work = yield* PictureWork
-    const foreground = decodePng(yield* work.foreground(original))
+    const foreground = yield* decodedPng(yield* work.foreground(original))
     const bounds = opaqueBounds(foreground)
     if (bounds === undefined) return []
     const piece = crop(foreground, bounds)
@@ -47,11 +50,14 @@ export const segmentedPieces = (
     return [{ png: encodePng(piece), bounds: mask.bounds, area, track: mask.track, confidence: mask.confidence }]
   })
 
-const samPieces = (copies: WorkingCopies) =>
+/** SAM for every garment in a photo's working copy, the largest first. */
+export const samPieces = (copies: WorkingCopies) =>
   Effect.gen(function* () {
     const segmenter = yield* GarmentSegmenter
     const found = yield* segmenter.still({ bytes: copies.jpeg, contentType: 'image/jpeg' }, 'clothing')
-    return segmentedPieces(decodePng(copies.png), found)
+    return segmentedPieces(yield* decodedPng(copies.png), found)
+      .toSorted((a, b) => b.area - a.area)
+      .slice(0, maximumPieces)
   })
 
 /** The piece a camera shot is about: the largest, nearest the middle. Clothes the person wears also show. */
@@ -73,31 +79,34 @@ export const detectionsOf = (
   pieces: ReadonlyArray<CutPiece>,
   preselect: (piece: CutPiece) => boolean,
 ) =>
-  Effect.forEach(pieces, (piece) =>
-    Effect.gen(function* () {
-      const id = yield* parts.randomId('dt')
-      const key = captureKey(capture.accountId, capture.id, `${id}.png`)
-      yield* writeObject(parts, key, piece.png, 'image/png')
-      const small = yield* (yield* PictureWork).thumbnail(piece.png, 512)
-      const suggestion = yield* (yield* GarmentVision).suggest({ bytes: small, contentType: 'image/webp' })
-      return {
-        id,
-        captureId: capture.id,
-        accountId: capture.accountId,
-        status: 'review',
-        cutoutKey: key,
-        sourceKey,
-        backCutoutKey: null,
-        track: piece.track,
-        confidence: piece.confidence,
-        preselected: preselect(piece) && suggestion.category !== undefined,
-        suggestedCategory: suggestion.category ?? null,
-        suggestedSubcategory: suggestion.subcategory ?? null,
-        suggestedColours: suggestion.colours,
-        pieceId: null,
-        createdAt: capture.createdAt,
-      } satisfies DetectionRow
-    }),
+  Effect.forEach(
+    pieces,
+    (piece) =>
+      Effect.gen(function* () {
+        const id = yield* parts.randomId('dt')
+        const key = captureKey(capture.accountId, capture.id, `${id}.png`)
+        yield* writeObject(parts, key, piece.png, 'image/png')
+        const small = yield* (yield* PictureWork).thumbnail(piece.png, 512)
+        const suggestion = yield* (yield* GarmentVision).suggest({ bytes: small, contentType: 'image/webp' })
+        return {
+          id,
+          captureId: capture.id,
+          accountId: capture.accountId,
+          status: 'review',
+          cutoutKey: key,
+          sourceKey,
+          backCutoutKey: null,
+          track: piece.track,
+          confidence: piece.confidence,
+          preselected: preselect(piece) && suggestion.category !== undefined,
+          suggestedCategory: suggestion.category ?? null,
+          suggestedSubcategory: suggestion.subcategory ?? null,
+          suggestedColours: suggestion.colours,
+          pieceId: null,
+          createdAt: capture.createdAt,
+        } satisfies DetectionRow
+      }),
+    { concurrency: 4 },
   )
 
 /** A detection that keeps the original photo: providers off, or nothing could be cut out. */
@@ -132,22 +141,21 @@ const cutPieces = (original: Uint8Array, copies: WorkingCopies, single: boolean)
   })
 
 /** Cut a photo into the pieces it shows. Returns the detections and how the photo was routed. */
-export const processPhoto = (parts: Parts, capture: CaptureRow) =>
-  Effect.gen(function* () {
-    const policy = yield* CaptureConfig
-    if (policy.providers === 'off')
-      return { found: [yield* originalOnly(parts, capture, capture.originalKey)], route: null, provider: 'off' }
-    const original = yield* readObject(parts, capture.originalKey)
-    if (Option.isNone(original)) return yield* unavailable()
-    const copies = yield* (yield* PictureWork).workingCopies(original.value)
-    const route = yield* (yield* GarmentVision).route({ bytes: copies.small, contentType: 'image/jpeg' })
-    const sure = route.confidence >= policy.routeConfidence
-    if (route.garments === 'none' && sure) return { found: [], route, provider: 'clef' }
-    const single = route.garments === 'one' && sure && policy.single === 'cloudflare'
-    const { pieces, provider } = yield* cutPieces(original.value, copies, single)
-    const held = capture.source === 'camera' ? heldPiece(pieces, copies.width, copies.height) : undefined
-    const found = yield* detectionsOf(parts, capture, capture.originalKey, pieces, (piece) =>
-      held === undefined ? true : piece === held,
-    )
-    return { found, route, provider }
-  })
+export const processPhoto = Effect.fn('Styld.Capture.processPhoto')(function* (parts: Parts, capture: CaptureRow) {
+  const policy = yield* CaptureConfig
+  if (policy.providers === 'off')
+    return { found: [yield* originalOnly(parts, capture, capture.originalKey)], route: null, provider: 'off' }
+  const original = yield* readObject(parts, capture.originalKey)
+  if (Option.isNone(original)) return yield* unavailable()
+  const copies = yield* (yield* PictureWork).workingCopies(original.value)
+  const route = yield* (yield* GarmentVision).route({ bytes: copies.small, contentType: 'image/jpeg' })
+  const sure = route.confidence >= policy.routeConfidence
+  if (route.garments === 'none' && sure) return { found: [], route, provider: 'clef' }
+  const single = route.garments === 'one' && sure && policy.single === 'cloudflare'
+  const { pieces, provider } = yield* cutPieces(original.value, copies, single)
+  const held = capture.source === 'camera' ? heldPiece(pieces, copies.width, copies.height) : undefined
+  const found = yield* detectionsOf(parts, capture, capture.originalKey, pieces, (piece) =>
+    held === undefined ? true : piece === held,
+  )
+  return { found, route, provider }
+})

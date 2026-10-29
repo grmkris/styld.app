@@ -1,5 +1,6 @@
 import { Context, Effect } from 'effect'
-import { creating, reading, retrying } from './Captures.ts'
+import { creating, reading } from './Captures.ts'
+import { retrying } from './Retrying.ts'
 import { CaptureMetrics } from './Metrics.ts'
 import { type CaptureBindings, makeParts } from './Parts.ts'
 import { CaptureConfig } from './Policy.ts'

@@ -1,5 +1,5 @@
 import type * as Cloudflare from '@alchemy.run/cloudflare'
-import { Effect, Schema } from 'effect'
+import { Cause, Effect, Schema } from 'effect'
 import type { AccountLifecycle } from '../AccountLifecycle.ts'
 import type { Captures } from '../capture/Service.ts'
 import { WorkMessage } from './Processing.ts'
@@ -11,7 +11,9 @@ export const processingAttempts = 3
 type Outcome = 'ack' | 'retry'
 
 /** Settle one queue message exactly once: done, retried later, or after the last attempt marked
- * failed. A body that is no known message can never succeed, so it is dropped. */
+ * failed. Any failure counts, defects too, so a capture never stays processing because its pipeline
+ * threw; each is logged with its cause. A body that is no known message can never succeed, so it is
+ * dropped. */
 export const settleMessage = (
   services: {
     readonly wardrobe: Wardrobe['Service']
@@ -20,28 +22,31 @@ export const settleMessage = (
   },
   message: Cloudflare.Queues.Message,
 ) => {
+  const logged = (cause: Cause.Cause<unknown>) =>
+    Effect.logWarning('Styld.Queue work failed').pipe(
+      Effect.annotateLogs({ 'styld.queue.attempt': message.attempts, 'styld.queue.cause': Cause.pretty(cause) }),
+    )
   const retryOrGiveUp = (giveUp: Effect.Effect<unknown, unknown>) =>
     message.attempts >= processingAttempts
       ? giveUp.pipe(
           Effect.as<Outcome>('ack'),
-          Effect.orElseSucceed((): Outcome => 'retry'),
+          Effect.catchCause((cause) => Effect.as(logged(cause), 'retry' as const)),
         )
       : Effect.succeed<Outcome>('retry')
+  const work = (run: Effect.Effect<unknown, unknown>, giveUp: Effect.Effect<unknown, unknown>) =>
+    run.pipe(
+      Effect.as<Outcome>('ack'),
+      Effect.catchCause((cause) => Effect.andThen(logged(cause), retryOrGiveUp(giveUp))),
+    )
   return Schema.decodeUnknownEffect(WorkMessage)(message.body).pipe(
-    Effect.flatMap((work) => {
-      if ('pieceId' in work)
-        return services.wardrobe.processPiece(work.pieceId).pipe(
-          Effect.as<Outcome>('ack'),
-          Effect.catch(() => retryOrGiveUp(services.wardrobe.failPiece(work.pieceId))),
-        )
-      if ('captureId' in work)
-        return services.captures.processCapture(work.captureId).pipe(
-          Effect.as<Outcome>('ack'),
-          Effect.catch(() => retryOrGiveUp(services.captures.failCapture(work.captureId))),
-        )
-      return services.lifecycle.finishDeletion(work.finishDeletionOf).pipe(
+    Effect.flatMap((body) => {
+      if ('pieceId' in body)
+        return work(services.wardrobe.processPiece(body.pieceId), services.wardrobe.failPiece(body.pieceId))
+      if ('captureId' in body)
+        return work(services.captures.processCapture(body.captureId), services.captures.failCapture(body.captureId))
+      return services.lifecycle.finishDeletion(body.finishDeletionOf).pipe(
         Effect.as<Outcome>('ack'),
-        Effect.orElseSucceed((): Outcome => 'retry'),
+        Effect.catchCause((cause) => Effect.as(logged(cause), 'retry' as const)),
       )
     }),
     Effect.orElseSucceed((): Outcome => 'ack'),

@@ -6,6 +6,9 @@ import { SettleCredits } from '@styld/domain/Wallet/SettleCredits.command'
 import { Wallet } from '@styld/domain/Wallet/Wallet.aggregate'
 import { reserveCommandId, settleCommandId } from '@styld/domain/Wallet/WalletCommandIds'
 import { Context, DateTime, Effect, Layer, Predicate } from 'effect'
+import * as Crypto from 'effect/Crypto'
+import * as Hex from 'effect/encoding/Hex'
+import { layerCryptoWeb } from '@yielded/auth/WebCrypto'
 
 /** The UTC day an instant falls on, and the start of the next one. */
 const dayOf = (now: DateTime.Utc) => DateTime.formatIso(now).slice(0, 10)
@@ -15,12 +18,6 @@ const unavailable = () => CaptureUnavailable.make({})
 
 /** Act as the service on an account's wallet: only trusted server code holds this authority. */
 const as = (accountId: string) => Effect.provideService(CurrentActor, { userId: UserId.make(accountId), service: true })
-
-const fingerprint = (operationId: string, credits: number) =>
-  Effect.promise(async () => {
-    const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${operationId}:${credits}`))
-    return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('')
-  })
 
 /** Capture metering through the Wallet (Domain owns usage reservations): credits are held when work is
  * accepted, then consumed after it succeeds or refunded once after it fails. Billing later only adds
@@ -46,6 +43,12 @@ export class Usage extends Context.Service<
       this,
       Effect.gen(function* () {
         const wallets = yield* Wallet
+        const crypto = yield* Crypto.Crypto
+        // What the Wallet compares when the same reservation arrives again: the operation and its amount.
+        const fingerprintOf = (operationId: string, credits: number) =>
+          crypto
+            .digest('SHA-256', new TextEncoder().encode(`${operationId}:${credits}`))
+            .pipe(Effect.map(Hex.encode), Effect.mapError(unavailable))
         return {
           reserve: Effect.fn('Styld.Usage.reserve')(function* (
             accountId: string,
@@ -55,7 +58,7 @@ export class Usage extends Context.Service<
             const now = yield* DateTime.now
             const command = new ReserveCredits({
               operationId: OperationId.make(operationId),
-              fingerprint: yield* fingerprint(operationId, credits),
+              fingerprint: yield* fingerprintOf(operationId, credits),
               amount: credits,
               day: dayOf(now),
               dailyAllowance,
@@ -88,5 +91,5 @@ export class Usage extends Context.Service<
           }),
         }
       }),
-    )
+    ).pipe(Layer.provide(layerCryptoWeb))
 }

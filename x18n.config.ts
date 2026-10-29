@@ -19,8 +19,9 @@ export default defineConfig({
   },
   extract: {
     autoDetect: true,
-    // Language names are written in their own language and the brand is never translated.
-    ignore: ['Styld', 'English', 'Slovenščina', 'English (expanded)', 'English (RTL)'],
+    // Language names are written in their own language and the brand is never translated. Log events
+    // (`Styld.<Area>.<operation> …`) are read by operators in Workers Logs, never shown to people.
+    ignore: ['Styld', 'English', 'Slovenščina', 'English (expanded)', 'English (RTL)', '/^Styld\\.[A-Za-z]+/'],
     // Files without user-facing copy: SQL, developer-only defect messages and CSS values.
     // Everything else, including future server-rendered copy such as emails, is checked.
     ignoreByFile: {

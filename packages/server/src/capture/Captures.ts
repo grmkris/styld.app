@@ -1,6 +1,5 @@
 import {
   CaptureId,
-  CaptureNotFound,
   type CreateCapture,
   type CreateVideoCapture,
   type HeldCheckAnswer,
@@ -8,13 +7,14 @@ import {
   Tray,
   UploadRefused,
 } from '@styld/protocol'
-import { DateTime, Effect, Option, Predicate, Schema } from 'effect'
+import { Array, DateTime, Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { CaptureConfig } from './Policy.ts'
-import { type Parts, enqueueCapture, storedAs, unavailable } from './Parts.ts'
+import { type Parts, enqueueCapture, holdOf, storedAs, unavailable } from './Parts.ts'
 import { GarmentVision } from './Providers.ts'
 import type { CaptureRow, DetectionRow, FrameRow } from './Store.ts'
 import { Usage } from './Usage.ts'
+import { findMoov, videoDurationMs, videoFrameCount } from './VideoContainer.ts'
 
 const now = Effect.map(DateTime.now, DateTime.toDateUtc)
 
@@ -29,13 +29,40 @@ const usableUpload = (parts: Parts, accountId: string, uploadId: string) =>
     return row.value
   })
 
-/** The receipt of an operation already run: the same capture for the same meaning, a conflict otherwise. */
+/** The receipt of an operation already run: the same capture for the same meaning, a conflict otherwise.
+ * A capture still processing is handed to the queue again, in case the first message never left. */
 const replayed = (parts: Parts, accountId: string, operationId: string, inputDigest: string) =>
   Effect.gen(function* () {
     const receipt = yield* storedAs(parts.wardrobeStore.findReceipt(accountId, operationId))
-    if (Option.isNone(receipt)) return Option.none<string>()
+    if (Option.isNone(receipt)) return Option.none<{ readonly captureId: CaptureId }>()
     if (receipt.value.inputDigest !== inputDigest) return yield* OperationConflict.make({})
-    return Option.some(receipt.value.result)
+    const capture = yield* storedAs(parts.store.findCapture(accountId, receipt.value.result))
+    if (Option.isSome(capture) && capture.value.status === 'processing') yield* enqueueCapture(parts, capture.value.id)
+    return Option.some({ captureId: CaptureId.make(receipt.value.result) })
+  })
+
+/** A video Styld tracks: a minute at most, at up to 60 frames a second. Meta bills every frame. */
+const longestVideoMs = 61_000
+const mostVideoFrames = 61 * 60
+
+/** The video's real length and frame count, read from its container in the bucket; the browser's word
+ * for them is not what is billed. */
+const measureVideo = (parts: Parts, video: { readonly objectKey: string; readonly bytes: number }) =>
+  Effect.gen(function* () {
+    const moov = yield* Effect.tryPromise({
+      try: () =>
+        findMoov(async (offset, length) => {
+          const object = await parts.bindings.bucket.get(video.objectKey, { range: { offset, length } })
+          return object === null ? new Uint8Array() : new Uint8Array(await object.arrayBuffer())
+        }, video.bytes),
+      catch: unavailable,
+    })
+    const durationMs = moov === undefined ? undefined : videoDurationMs(moov.bytes)
+    const frameCount = moov === undefined ? undefined : videoFrameCount(moov.bytes)
+    if (durationMs === undefined || frameCount === undefined) return yield* UploadRefused.make({ reason: 'wrongType' })
+    if (durationMs > longestVideoMs || frameCount > mostVideoFrames)
+      return yield* UploadRefused.make({ reason: 'tooLong' })
+    return { durationMs, frameCount }
   })
 
 /** Hold the credits, then write the capture; give them back if the write fails. */
@@ -48,7 +75,7 @@ const admit = (
 ) =>
   Effect.gen(function* () {
     const usage = yield* Usage
-    yield* usage.reserve(capture.accountId, `capture/${capture.id}`, capture.credits)
+    yield* usage.reserve(capture.accountId, holdOf(capture), capture.credits)
     yield* parts.store
       .createCapture(capture, frames, {
         accountId: capture.accountId,
@@ -59,7 +86,11 @@ const admit = (
         createdAt: capture.createdAt,
       })
       .pipe(
-        Effect.tapError(() => usage.settle(capture.accountId, `capture/${capture.id}`, 'refunded').pipe(Effect.ignore)),
+        Effect.tapError(() =>
+          usage
+            .settle(capture.accountId, holdOf(capture), 'refunded')
+            .pipe(Effect.ignore({ log: true, message: 'Styld.Capture.admit could not refund a failed capture' })),
+        ),
         Effect.mapError(unavailable),
       )
     yield* enqueueCapture(parts, capture.id)
@@ -72,6 +103,9 @@ const baseCapture = (
   upload: { readonly id: string; readonly objectKey: string; readonly contentType: string; readonly bytes: number },
   at: Date,
 ): Omit<CaptureRow, 'kind' | 'source' | 'credits'> => ({
+  hold: `capture/${id}`,
+  attempt: 0,
+  trackingStartedAt: null,
   id,
   accountId,
   status: 'processing',
@@ -103,7 +137,7 @@ export const creating = (parts: Parts) => ({
       JSON.stringify(['photo', input.uploadId, input.source, input.side ?? null, input.pairsWith ?? null]),
     )
     const earlier = yield* replayed(parts, accountId, input.operationId, inputDigest)
-    if (Option.isSome(earlier)) return { captureId: CaptureId.make(earlier.value) }
+    if (Option.isSome(earlier)) return earlier.value
     const upload = yield* usableUpload(parts, accountId, input.uploadId)
     if (!upload.contentType.startsWith('image/')) return yield* UploadRefused.make({ reason: 'wrongType' })
     const policy = yield* CaptureConfig
@@ -123,29 +157,33 @@ export const creating = (parts: Parts) => ({
       JSON.stringify(['video', input.videoUploadId, input.stills.map(({ uploadId }) => uploadId)]),
     )
     const earlier = yield* replayed(parts, accountId, input.operationId, inputDigest)
-    if (Option.isSome(earlier)) return { captureId: CaptureId.make(earlier.value) }
+    if (Option.isSome(earlier)) return earlier.value
     const video = yield* usableUpload(parts, accountId, input.videoUploadId)
     if (!video.contentType.startsWith('video/')) return yield* UploadRefused.make({ reason: 'wrongType' })
-    const stills = yield* Effect.forEach(input.stills, (still) => usableUpload(parts, accountId, still.uploadId))
+    const uploads = yield* Effect.forEach(input.stills, (still) => usableUpload(parts, accountId, still.uploadId))
+    if (uploads.some(({ contentType }) => !contentType.startsWith('image/')))
+      return yield* UploadRefused.make({ reason: 'wrongType' })
+    const measured = yield* measureVideo(parts, video)
     const policy = yield* CaptureConfig
     const id = yield* parts.randomId('cp')
     const capture: CaptureRow = {
       ...baseCapture(accountId, id, video, yield* now),
       kind: 'video',
       source: 'video',
-      durationMs: input.durationMs,
+      durationMs: measured.durationMs,
+      frameCount: measured.frameCount,
       width: input.width,
       height: input.height,
       credits: policy.credits.video,
     }
-    const frames: Array<FrameRow> = input.stills.map((still, idx) => ({
+    const frames = Array.zipWith(input.stills, uploads, (still, upload): FrameRow => ({
       captureId: id,
-      idx,
+      idx: 0,
       uploadId: still.uploadId,
-      objectKey: stills[idx]?.objectKey ?? '',
+      objectKey: upload.objectKey,
       atMs: still.atMs,
       sharpness: still.sharpness,
-    }))
+    })).map((frame, idx) => ({ ...frame, idx }))
     return yield* admit(parts, capture, frames, inputDigest, input.operationId)
   }),
 })
@@ -193,44 +231,7 @@ export const reading = (parts: Parts) => ({
     return {
       held: answer.held >= policy.heldConfidence,
       side: answer.side,
-      samePrevious: answer.samePrevious >= 0.6,
+      samePrevious: answer.samePrevious >= policy.samePieceConfidence,
     } satisfies HeldCheckAnswer
   }),
 })
-
-/** Try a failed or unknown capture again, or remove one. */
-export const retrying = (parts: Parts) => ({
-  retry: Effect.fn('Styld.Capture.retry')(function* (captureId: CaptureId) {
-    const { accountId } = yield* CurrentAccount
-    const found = yield* storedAs(parts.store.findCapture(accountId, captureId))
-    if (Option.isNone(found) || (found.value.status !== 'failed' && found.value.status !== 'unknown'))
-      return yield* CaptureNotFound.make({})
-    // A retry is free: a failed capture was refunded and an unknown one still holds its credits.
-    yield* storedAs(
-      parts.store.updateCapture(found.value.id, { status: 'processing', errorCode: null, updatedAt: yield* now }),
-    )
-    yield* enqueueCapture(parts, found.value.id)
-  }),
-  remove: Effect.fn('Styld.Capture.remove')(function* (captureId: CaptureId) {
-    const { accountId } = yield* CurrentAccount
-    const found = yield* storedAs(parts.store.findCapture(accountId, captureId))
-    if (Option.isNone(found) || found.value.status === 'processing') return yield* CaptureNotFound.make({})
-    const capture = found.value
-    // An unknown outcome may have been billed by the provider, so it is consumed rather than refunded.
-    if (capture.settlement === 'held') yield* (yield* Usage).settle(accountId, `capture/${capture.id}`, 'consumed')
-    const frames = yield* storedAs(parts.store.frames(capture.id))
-    yield* storedAs(parts.store.deleteCapture(accountId, captureId))
-    yield* removeObjects(parts, accountId, capture, frames)
-  }),
-})
-
-/** The capture's own folder, and its photo or video and stills unless a kept piece still shows them. */
-const removeObjects = (parts: Parts, accountId: string, capture: CaptureRow, frames: ReadonlyArray<FrameRow>) =>
-  Effect.gen(function* () {
-    const prefix = `accounts/${accountId}/captures/${capture.id}/`
-    const listed = yield* Effect.tryPromise({ try: () => parts.bindings.bucket.list({ prefix }), catch: unavailable })
-    const keys = listed.objects.map(({ key }) => key)
-    for (const source of [capture.originalKey, ...frames.map(({ objectKey }) => objectKey)])
-      if (!(yield* storedAs(parts.store.sourceInUse(accountId, source)))) keys.push(source)
-    if (keys.length > 0) yield* Effect.tryPromise({ try: () => parts.bindings.bucket.delete(keys), catch: unavailable })
-  }).pipe(Effect.catchIf(Predicate.isTagged('CaptureUnavailable'), () => Effect.void))

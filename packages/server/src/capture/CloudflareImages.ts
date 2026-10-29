@@ -40,20 +40,25 @@ export const makePictureWork = (images: Images, metrics: CaptureMetrics['Service
           return collect(result.image())
         },
         catch: failed,
-      }),
+      }).pipe(Effect.timeoutOrElse({ duration: '30 seconds', orElse: () => Effect.fail(failed()) })),
       { provider: 'cloudflare-images', model: options.segment === undefined ? 'transform' : 'segment', kind },
       () => ({ units: 1, costMicroUsd: prices.imagesPerTransform }),
     )
   const sized = { width: workingSize, height: workingSize, fit: 'scale-down' } as const
   return {
     workingCopies: Effect.fn('Styld.Capture.workingCopies')(function* (original: Uint8Array) {
-      const png = yield* transform(original, 'normalise', sized, { format: 'image/png' })
-      const jpeg = yield* transform(original, 'normalise', sized, { format: 'image/jpeg', quality: 88 })
-      const small = yield* transform(
-        original,
-        'normalise',
-        { width: 768, height: 768, fit: 'scale-down' },
-        { format: 'image/jpeg', quality: 80 },
+      const [png, jpeg, small] = yield* Effect.all(
+        [
+          transform(original, 'normalise', sized, { format: 'image/png' }),
+          transform(original, 'normalise', sized, { format: 'image/jpeg', quality: 88 }),
+          transform(
+            original,
+            'normalise',
+            { width: 768, height: 768, fit: 'scale-down' },
+            { format: 'image/jpeg', quality: 80 },
+          ),
+        ],
+        { concurrency: 3 },
       )
       return { ...pngSize(png), png, jpeg, small } satisfies WorkingCopies
     }),

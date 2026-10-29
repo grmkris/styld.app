@@ -56,6 +56,7 @@ const ask = (
   counted(
     metrics,
     Effect.tryPromise({ try: () => run(request), catch: () => failed(true) }).pipe(
+      Effect.timeoutOrElse({ duration: '30 seconds', orElse: () => Effect.fail(failed(true)) }),
       Effect.flatMap((raw) => Schema.decodeUnknownEffect(Answer)(raw).pipe(Effect.mapError(() => failed(false)))),
     ),
     { provider: 'clef', model: 'clef-flash', kind },

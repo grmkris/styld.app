@@ -1,6 +1,7 @@
 import { DetectionId, StyldApi } from '@styld/protocol'
 import { Effect, Layer, Option, Result, Schema } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
+import type { RuntimeContext } from 'alchemy/RuntimeContext'
 import * as Encoding from 'effect/encoding/Base64'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
@@ -9,11 +10,21 @@ import { CurrentAccount } from '../CurrentAccount.ts'
 import { type Admit, asSessionAccount, cookieAccount } from '../wardrobe/Http.ts'
 import { Captures } from './Service.ts'
 
-/** A frame the camera sent; an undecodable one is empty, which the decision model refuses. */
-const decodeBase64 = (text: string) => Result.getOrElse(Encoding.decode(text), () => new Uint8Array())
+/** A frame the camera sent, if it is a JPEG: the camera sends nothing else. */
+const jpegOf = (text: string) =>
+  Option.filter(
+    Result.getSuccess(Encoding.decode(text)),
+    (bytes) => bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff,
+  )
+
+/** The answer for a frame Styld does not check: not a JPEG, or past the account's pace. */
+const notChecked = { held: false, side: 'unclear', samePrevious: false } as const
 
 /** The website's capture endpoints, each the matching `Captures` operation for the session's account. */
-export const captureHandlers = (admit: Admit) =>
+export const captureHandlers = (
+  admit: Admit,
+  allowCheck: (accountId: string) => Effect.Effect<boolean, never, RuntimeContext>,
+) =>
   HttpApiBuilder.group(StyldApi, 'capture', (handlers) =>
     Effect.gen(function* () {
       const captures = yield* Captures
@@ -27,10 +38,14 @@ export const captureHandlers = (admit: Admit) =>
         .handle('check', ({ payload }) =>
           admit(
             asSessionAccount(
-              captures.check(
-                decodeBase64(payload.frame),
-                Option.map(Option.fromNullishOr(payload.previous), decodeBase64),
-              ),
+              Effect.gen(function* () {
+                const { accountId } = yield* CurrentAccount
+                const frame = jpegOf(payload.frame)
+                // Each check calls Clef, so a frame past the account's pace is answered without one.
+                if (Option.isNone(frame) || !(yield* allowCheck(accountId))) return notChecked
+                const previous = Option.flatMap(Option.fromNullishOr(payload.previous), jpegOf)
+                return yield* captures.check(frame.value, previous)
+              }),
             ),
           ),
         )

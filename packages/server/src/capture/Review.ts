@@ -9,7 +9,7 @@ import {
 } from '@styld/protocol'
 import { DateTime, Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import { CaptureMetrics } from './Metrics.ts'
+import { CaptureMetrics, type ReviewDecision } from './Metrics.ts'
 import { type Parts, storedAs, unavailable } from './Parts.ts'
 import type { DetectionRow } from './Store.ts'
 
@@ -49,14 +49,21 @@ const pieceOf = (
   }
 }
 
-/** The content type of each detection's source photo: the person's own upload for a photo capture, a
- * sampled JPEG still for a video. */
-const sourceTypes = (parts: Parts, accountId: string, found: ReadonlyArray<DetectionRow>) =>
+/** Where each detection came from: its source photo's content type (the person's own upload for a photo
+ * capture, a sampled JPEG still for a video) and how its capture was routed and cut, for keep rates. */
+const sourcesOf = (parts: Parts, accountId: string, found: ReadonlyArray<DetectionRow>) =>
   Effect.map(
     storedAs(parts.store.capturesOf(accountId, [...new Set(found.map(({ captureId }) => captureId))])),
     (rows) => {
       const originals = new Map(rows.map((row) => [row.originalKey, row.contentType]))
-      return (detection: DetectionRow) => originals.get(detection.sourceKey) ?? 'image/jpeg'
+      const byId = new Map(rows.map((row) => [row.id, row]))
+      return {
+        typeOf: (detection: DetectionRow) => originals.get(detection.sourceKey) ?? 'image/jpeg',
+        originOf: (detection: DetectionRow) => {
+          const capture = byId.get(detection.captureId)
+          return { route: capture?.route ?? capture?.kind ?? 'unknown', provider: capture?.provider ?? 'unknown' }
+        },
+      }
     },
   )
 
@@ -70,16 +77,25 @@ const finishedCaptures = (parts: Parts, found: ReadonlyArray<DetectionRow>, deci
     )
   })
 
-/** One review metric per decision, for keep rates. */
-const countDecisions = (input: Review) =>
+/** One review metric per decision, with the route and provider that made the piece, for keep rates. */
+const countDecisions = (
+  input: Review,
+  open: ReadonlyMap<string, DetectionRow>,
+  originOf: (detection: DetectionRow) => { readonly route: string; readonly provider: string },
+) =>
   Effect.gen(function* () {
     const metrics = yield* CaptureMetrics
-    yield* Effect.forEach(input.keep, (keep) =>
-      metrics.review({ route: 'tray', provider: 'any', decision: keep.useOriginal === true ? 'original' : 'kept' }),
-    )
-    yield* Effect.forEach(input.discard, () =>
-      metrics.review({ route: 'tray', provider: 'any', decision: 'discarded' }),
-    )
+    const decisions: ReadonlyArray<{ readonly id: string; readonly decision: ReviewDecision['decision'] }> = [
+      ...input.keep.map(
+        (keep) => ({ id: keep.detectionId, decision: keep.useOriginal === true ? 'original' : 'kept' }) as const,
+      ),
+      ...input.discard.map((id) => ({ id, decision: 'discarded' }) as const),
+    ]
+    yield* Effect.forEach(decisions, ({ id, decision }) => {
+      const detection = open.get(id)
+      const origin = detection === undefined ? { route: 'unknown', provider: 'unknown' } : originOf(detection)
+      return metrics.review({ ...origin, decision })
+    })
   })
 
 /** The person's decisions on waiting pieces: kept ones become pieces, the rest are dropped. Replaying an
@@ -98,7 +114,7 @@ export const reviewing = (parts: Parts) => ({
     const open = new Map(found.filter(({ status }) => status === 'review').map((row) => [row.id, row]))
     if (ids.some((id) => !open.has(id))) return yield* CaptureNotFound.make({})
     const at = DateTime.toDateUtc(yield* DateTime.now)
-    const typeOf = yield* sourceTypes(parts, accountId, found)
+    const { typeOf, originOf } = yield* sourcesOf(parts, accountId, found)
     const kept = yield* Effect.forEach(input.keep, (keep) =>
       Effect.map(parts.randomId('pc'), (pieceId) => ({ keep, pieceId, detection: open.get(keep.detectionId) })),
     )
@@ -123,7 +139,7 @@ export const reviewing = (parts: Parts) => ({
         now: at,
       }),
     )
-    yield* countDecisions(input)
+    yield* countDecisions(input, open, originOf)
     return { pieceIds: pieceIds.map((id) => PieceId.make(id)) }
   }),
 })

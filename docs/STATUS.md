@@ -206,6 +206,65 @@ deployed to the preview. One entry per slice.
   - **Readback:** after the deploy, a capture pass wrote `call.clef.route` (2 points for 2 photos) beside its
     other calls.
 
+- **Review round (server).** Three independent reviews: Effect and architecture, the Foldkit web code, and
+  security and durable behaviour. They found no cross-account access. Fixed on the server:
+  - **Cost bounds:**
+    - The server reads a video's real length and frame count from its container when the capture is made, and
+      refuses anything over a minute or 3,660 frames (`tooLong`). It no longer trusts the browser's word.
+    - Stills must be images.
+    - A photo yields at most 20 pieces.
+    - The camera's garment check is rate-limited per account (40 a minute; `CAPTURE_CHECK_RATE_LIMIT`) and
+      answers "not held" without calling Clef for anything but a JPEG.
+  - **Credits:**
+    - A refunded capture holds its credits again, under a new Wallet operation (`hold`), before a retry runs.
+      Retries are capped at three (`attempt`).
+    - The status changes first and the settlement follows. A capture that is no longer processing but still
+      holds credits has them settled on its next delivery: kept results consume, a failure refunds.
+    - Removing a failed capture refunds it; removing an unknown one consumes, since it may have been billed.
+    - `piece_add`'s credit stays held across queue attempts and comes back only when the queue gives up
+      (`GarmentCutout.release`).
+  - **Durable processing:**
+    - The queue retries defects as well as typed failures, and logs each failure's cause.
+    - A replayed create re-sends the queue message for a capture still processing.
+    - Retry and remove move a capture only from the state it was read in.
+    - A capture stuck processing for 30 minutes can be retried or removed.
+    - A video is handed to Meta at most once per try (`tracking_started_at`, claimed atomically). A delivery that
+      finds it handed over without a result ends `unknown` instead of paying again.
+    - A finished capture's status is never overwritten by a late delivery.
+    - Processing skips accounts closed for deletion.
+  - **Providers:**
+    - Every Meta, Clef and Images call has a timeout; Meta's also carry the cancellation signal.
+    - SAM output that does not parse is a typed failure: refused for a still, unknown for a video.
+    - A PNG that does not decode is a refusal.
+    - The video upload aborts on a read error, and a missing video is not retried.
+    - Working copies run concurrently; a video's stills are prepared once each; suggestions run four at a time.
+  - **Privacy:**
+    - Videos reach Meta with their `udta`/`meta` boxes blanked (type `free`, zeros), without moving a byte
+      elsewhere in the file; phones keep location there.
+    - Each video is deleted at Meta once tracked.
+    - Removal never deletes a picture a piece shows (cut-out, back or original), refuses captures with kept
+      pieces, lists R2 page by page, and logs what it could not delete.
+  - **Smaller:**
+    - Review decisions record the route and provider that made each piece.
+    - Metric writes cannot fail the work they measure.
+    - The Wallet fingerprint goes through Effect's `Crypto` service.
+    - `wardrobe_show` sends only small WebP thumbnails.
+    - The back-shot pairing counts only when a front was updated.
+    - x18n ignores `Styld.*` log event names.
+    - The native disable fixture retries on a busy local D1.
+  - **Evidence:**
+    - unit tests of video measurement and metadata blanking on the rail clip (every other byte unchanged);
+    - native: a reviewed capture can no longer be removed and its photo stays;
+    - the full gate.
+  - **Still open from the reviews:**
+    - a dead-letter queue (stuck captures recover through the 30-minute rule instead);
+    - an upload rate limit, a storage quota, and sweeping uploads that were never used;
+    - deleting a finished capture's video and unused stills;
+    - charging videos by frame;
+    - the Wallet's limit of 256 pending holds under a flood of stuck captures;
+    - a final sweep after account deletion for jobs still running;
+    - hand review of any future `pieces` table rebuild, since `look_pieces` now cascades from it.
+
 - **Deferred from this run** (the plan's drop order, so the time went to review and a clean base):
   - the look card view in ChatGPT and Claude;
   - pairing a back shot with its front in the tray;

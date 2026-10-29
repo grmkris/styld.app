@@ -140,6 +140,14 @@ export const captures = sqliteTable(
     height: integer('height'),
     credits: integer('credits').notNull(),
     settlement: text('settlement', { enum: ['held', 'consumed', 'refunded'] }).notNull(),
+    /** The Wallet operation holding this capture's credits: a retry after a refund holds them again
+     * under a new one. Captures made before it existed hold under `capture/<id>`. */
+    hold: text('hold'),
+    /** How many times the person asked to try again; a capture is retried a few times at most. */
+    attempt: integer('attempt').notNull().default(0),
+    /** When the video was handed to Meta to track. A delivery that finds it set but no result does not
+     * track again, which could pay twice; the capture waits as `unknown` instead. */
+    trackingStartedAt: integer('tracking_started_at', { mode: 'timestamp_ms' }),
     errorCode: text('error_code'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
