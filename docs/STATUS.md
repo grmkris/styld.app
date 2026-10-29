@@ -135,8 +135,7 @@ deployed to the preview. One entry per slice.
       tops), all ticked, within about 40 s of opening the tray.
     - The allowance went from 97 to 87: a video costs 10.
   - **Not yet proven:** an iPhone `.mov` (HEVC, rotation) and a full minute of video.
-  - **Flake seen:** native D1 answered `SQLITE_BUSY` to the wardrobe seed once while another process held port
-    1337. It passed on the rerun.
+  - **Flake seen:** native D1 answered `SQLITE_BUSY` to the wardrobe seed once while another process held port 1337. It passed on the rerun.
 
 ## Scope and roadmap — 2026-10-29
 
