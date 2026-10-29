@@ -2,8 +2,23 @@ import { SessionHttp } from '@styld/auth/config'
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
 import { AccountUnavailable, Me, RequestRefused } from './Account.ts'
 import {
+  CaptureCreated,
+  CaptureId,
+  CaptureNotFound,
+  CaptureUnavailable,
+  CreateCapture,
+  CreateVideoCapture,
+  DailyLimitReached,
+  HeldCheckAnswer,
+  HeldCheckRequest,
+  Review,
+  Reviewed,
+  Tray,
+} from './Capture.ts'
+import {
   AddPiece,
   CreateUpload,
+  CreateVideoUpload,
   OperationConflict,
   Piece,
   PieceId,
@@ -48,6 +63,13 @@ export class WardrobeApi extends HttpApiGroup.make('wardrobe')
     }),
   )
   .add(
+    HttpApiEndpoint.post('createVideoUpload', '/uploads/video', {
+      payload: CreateVideoUpload,
+      success: Upload,
+      error: [WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .add(
     HttpApiEndpoint.post('addPiece', '/pieces', {
       payload: AddPiece,
       success: Piece,
@@ -72,5 +94,54 @@ export class WardrobeApi extends HttpApiGroup.make('wardrobe')
   .middleware(SessionHttp.RequireSession)
   .prefix('/api') {}
 
+/** Photos and videos on their way to pieces. Upload first (`createUpload`/`createVideoUpload`), then
+ * create a capture; its pieces wait in the tray until the person reviews them. */
+export class CaptureApi extends HttpApiGroup.make('capture')
+  .add(
+    HttpApiEndpoint.post('createCapture', '/captures', {
+      payload: CreateCapture,
+      success: CaptureCreated,
+      error: [UploadRefused, OperationConflict, DailyLimitReached, CaptureUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post('createVideoCapture', '/captures/video', {
+      payload: CreateVideoCapture,
+      success: CaptureCreated,
+      error: [UploadRefused, OperationConflict, DailyLimitReached, CaptureUnavailable, RequestRefused],
+    }),
+  )
+  .add(HttpApiEndpoint.get('tray', '/captures/tray', { success: Tray, error: CaptureUnavailable }))
+  .add(
+    HttpApiEndpoint.post('review', '/captures/review', {
+      payload: Review,
+      success: Reviewed,
+      error: [CaptureNotFound, OperationConflict, CaptureUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post('retry', '/captures/:captureId/retry', {
+      params: { captureId: CaptureId },
+      success: HttpApiSchema.NoContent,
+      error: [CaptureNotFound, DailyLimitReached, CaptureUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.delete('remove', '/captures/:captureId', {
+      params: { captureId: CaptureId },
+      success: HttpApiSchema.NoContent,
+      error: [CaptureNotFound, CaptureUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post('check', '/captures/check', {
+      payload: HeldCheckRequest,
+      success: HeldCheckAnswer,
+      error: [CaptureUnavailable, RequestRefused],
+    }),
+  )
+  .middleware(SessionHttp.RequireSession)
+  .prefix('/api') {}
+
 /** Styld's typed HTTP API: declared once, served by the API Worker and called by the website. */
-export class StyldApi extends HttpApi.make('styld').add(AccountApi).add(WardrobeApi) {}
+export class StyldApi extends HttpApi.make('styld').add(AccountApi).add(WardrobeApi).add(CaptureApi) {}

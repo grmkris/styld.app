@@ -1024,7 +1024,8 @@
         "hats": "Hats",
         "jewelry": "Jewellery",
         "other": "Other",
-        "__unfiled": "No subcategory"
+        "__unfiled": "No subcategory",
+        "jumpsuit": "Jumpsuits"
       },
       "editCategories": "Edit categories",
       "editHint": "Main categories stay fixed. Arrange the subcategories your way.",

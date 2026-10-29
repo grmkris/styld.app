@@ -77,8 +77,13 @@ export const pieces = sqliteTable(
     colours: text('colours', { mode: 'json' }).notNull().$type<ReadonlyArray<string>>(),
     status: text('status', { enum: ['processing', 'ready', 'failed'] }).notNull(),
     source: text('source', { enum: ['website', 'assistant'] }).notNull(),
-    /** One photo makes at most one piece, so a second add of the same upload fails as a whole. */
-    uploadId: text('upload_id').notNull().unique(),
+    /** The photo an added piece came from. Pieces from a reviewed capture point at their detection
+     * instead, and one photo can hold several of them. */
+    uploadId: text('upload_id').unique(),
+    /** The detection a reviewed piece came from: one detection makes at most one piece. */
+    detectionId: text('detection_id').unique(),
+    /** The back of the garment, when the camera saw it. */
+    backImageKey: text('back_image_key'),
     /** The photo as it arrived; the shown image once the cutout step has run. */
     originalKey: text('original_key').notNull(),
     imageKey: text('image_key'),
@@ -108,6 +113,85 @@ export const uploads = sqliteTable(
   (table) => [index('uploads_account').on(table.accountId), index('uploads_expiry').on(table.expiresAt)],
 )
 
+/** A photo or a video on its way to pieces. Its credits are held in the Wallet until it settles. */
+export const captures = sqliteTable(
+  'captures',
+  {
+    id: text('id').primaryKey(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    kind: text('kind', { enum: ['photo', 'video'] }).notNull(),
+    source: text('source', { enum: ['picker', 'camera', 'video', 'assistant'] }).notNull(),
+    status: text('status', { enum: ['processing', 'review', 'done', 'failed', 'unknown'] }).notNull(),
+    uploadId: text('upload_id').notNull().unique(),
+    originalKey: text('original_key').notNull(),
+    contentType: text('content_type').notNull(),
+    bytes: integer('bytes').notNull(),
+    side: text('side', { enum: ['front', 'back', 'unclear'] }),
+    pairsWith: text('pairs_with'),
+    route: text('route'),
+    routeConfidence: real('route_confidence'),
+    provider: text('provider'),
+    providerFileId: text('provider_file_id'),
+    frameCount: integer('frame_count'),
+    durationMs: integer('duration_ms'),
+    width: integer('width'),
+    height: integer('height'),
+    credits: integer('credits').notNull(),
+    settlement: text('settlement', { enum: ['held', 'consumed', 'refunded'] }).notNull(),
+    errorCode: text('error_code'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [index('captures_account_created').on(table.accountId, table.createdAt)],
+)
+
+/** The stills the browser sampled from a video, uploaded beside it. */
+export const captureFrames = sqliteTable(
+  'capture_frames',
+  {
+    captureId: text('capture_id')
+      .notNull()
+      .references(() => captures.id, { onDelete: 'cascade' }),
+    idx: integer('idx').notNull(),
+    uploadId: text('upload_id').notNull().unique(),
+    objectKey: text('object_key').notNull(),
+    atMs: integer('at_ms').notNull(),
+    sharpness: text('sharpness', { mode: 'json' }).notNull().$type<ReadonlyArray<number>>(),
+  },
+  (table) => [primaryKey({ columns: [table.captureId, table.idx] })],
+)
+
+/** A piece found in a capture, waiting for the person to keep or discard it. */
+export const detections = sqliteTable(
+  'detections',
+  {
+    id: text('id').primaryKey(),
+    captureId: text('capture_id')
+      .notNull()
+      .references(() => captures.id, { onDelete: 'cascade' }),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    status: text('status', { enum: ['review', 'kept', 'discarded'] }).notNull(),
+    /** The cut-out; none when the original photo is the only picture. */
+    cutoutKey: text('cutout_key'),
+    /** The photo or video still the piece was found in. */
+    sourceKey: text('source_key').notNull(),
+    backCutoutKey: text('back_cutout_key'),
+    track: text('track'),
+    confidence: real('confidence'),
+    preselected: integer('preselected', { mode: 'boolean' }).notNull(),
+    suggestedCategory: text('suggested_category'),
+    suggestedSubcategory: text('suggested_subcategory'),
+    suggestedColours: text('suggested_colours', { mode: 'json' }).notNull().$type<ReadonlyArray<string>>(),
+    pieceId: text('piece_id'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [index('detections_capture').on(table.captureId), index('detections_account').on(table.accountId)],
+)
+
 /** The answer to each operation id, so a repeated request returns it instead of acting twice. */
 export const operationReceipts = sqliteTable(
   'operation_receipts',
@@ -133,4 +217,7 @@ export const appSchema = {
   pieces,
   uploads,
   operationReceipts,
+  captures,
+  captureFrames,
+  detections,
 }

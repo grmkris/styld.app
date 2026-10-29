@@ -51,6 +51,13 @@ export default Alchemy.Stack(
         AUTH_SESSION_KEYS: yield* Config.Redacted('STYLD_AUTH_SESSION_KEYS'),
         AUTH_PROOF_KEYS: yield* Config.Redacted('STYLD_AUTH_PROOF_KEYS'),
         AUTH_REQUEST_BINDING_KEYS: yield* Config.Redacted('STYLD_AUTH_REQUEST_BINDING_KEYS'),
+        // Capture providers (docs/ROADMAP.md › Iteration 1): Clef routes, Cloudflare cuts out one garment,
+        // Meta SAM splits several and tracks videos. `CUTOUT_SINGLE=sam` sends single garments to SAM too.
+        STYLD_PROVIDERS: 'live',
+        CUTOUT_SINGLE: 'cloudflare',
+        DAILY_ALLOWANCE: '100',
+        META_API_BASE: 'https://api.meta.ai',
+        META_API_KEY: yield* Config.Redacted('META_MUSE_API_KEY'),
       },
     })
     return { url: edge.url.as<string>() }

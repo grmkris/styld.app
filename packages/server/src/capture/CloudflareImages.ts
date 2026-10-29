@@ -1,0 +1,72 @@
+import { Effect } from 'effect'
+import type { WardrobeBindings } from '../wardrobe/Wardrobe.ts'
+import { type CaptureMetrics, counted, prices } from './Metrics.ts'
+import { ProviderFailed, type WorkingCopies } from './Providers.ts'
+import { collect } from './Streams.ts'
+
+type Images = WardrobeBindings['images']
+type ImageTransform = Parameters<ReturnType<Images['input']>['transform']>[0]
+type ImageOutput = Parameters<ReturnType<Images['input']>['output']>[0]
+
+const failed = () => new ProviderFailed({ provider: 'cloudflare-images', retryable: true })
+
+/** The bytes as the stream the Images binding reads. */
+const streamOf = (bytes: Uint8Array) =>
+  // SAFETY: a Response body is the Worker runtime's own ReadableStream -- the server package types globals with the DOM lib and the Images binding with workers-types
+  new Response(bytes.slice().buffer).body as never
+
+/** The width and height a PNG declares in its IHDR chunk. */
+export const pngSize = (png: Uint8Array) => {
+  const view = new DataView(png.buffer, png.byteOffset, png.byteLength)
+  return png.byteLength >= 24 ? { width: view.getUint32(16), height: view.getUint32(20) } : { width: 0, height: 0 }
+}
+
+/** Styld's working copies of a photo are at most this wide or tall. */
+const workingSize = 2048
+
+/** Cloudflare Images through the Worker binding: working copies, background removal, thumbnails. */
+export const makePictureWork = (images: Images, metrics: CaptureMetrics['Service']) => {
+  const transform = (
+    bytes: Uint8Array,
+    kind: 'normalise' | 'foreground',
+    options: ImageTransform,
+    output: ImageOutput,
+  ) =>
+    counted(
+      metrics,
+      Effect.tryPromise({
+        try: async () => {
+          const result = await images.input(streamOf(bytes)).transform(options).output(output)
+          return collect(result.image())
+        },
+        catch: failed,
+      }),
+      { provider: 'cloudflare-images', model: options.segment === undefined ? 'transform' : 'segment', kind },
+      () => ({ units: 1, costMicroUsd: prices.imagesPerTransform }),
+    )
+  const sized = { width: workingSize, height: workingSize, fit: 'scale-down' } as const
+  return {
+    workingCopies: Effect.fn('Styld.Capture.workingCopies')(function* (original: Uint8Array) {
+      const png = yield* transform(original, 'normalise', sized, { format: 'image/png' })
+      const jpeg = yield* transform(original, 'normalise', sized, { format: 'image/jpeg', quality: 88 })
+      const small = yield* transform(
+        original,
+        'normalise',
+        { width: 768, height: 768, fit: 'scale-down' },
+        { format: 'image/jpeg', quality: 80 },
+      )
+      return { ...pngSize(png), png, jpeg, small } satisfies WorkingCopies
+    }),
+    foreground: Effect.fn('Styld.Capture.foreground')(function* (original: Uint8Array) {
+      return yield* transform(original, 'foreground', { ...sized, segment: 'foreground' }, { format: 'image/png' })
+    }),
+    thumbnail: Effect.fn('Styld.Capture.thumbnail')(function* (image: Uint8Array, width: number) {
+      return yield* transform(
+        image,
+        'normalise',
+        { width, height: width, fit: 'scale-down' },
+        { format: 'image/webp', quality: 75 },
+      )
+    }),
+  }
+}

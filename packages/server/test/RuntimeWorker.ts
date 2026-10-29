@@ -95,6 +95,14 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
           seedIdentity(database, id).pipe(Effect.retry({ times: 20, schedule: Schedule.spaced('150 millis') })),
         ).pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 }))),
       ),
+      // An owner and a second account for the capture tray's isolation and allowance checks.
+      HttpRouter.add(
+        'POST',
+        '/test/identity/seed-capture',
+        Effect.forEach(['native-capture', 'native-capture-other'], (id) =>
+          seedIdentity(database, id).pipe(Effect.retry({ times: 20, schedule: Schedule.spaced('150 millis') })),
+        ).pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 }))),
+      ),
       // Whether a stored photo still exists, to prove deletion removes it.
       HttpRouter.add(
         'GET',

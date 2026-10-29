@@ -18,6 +18,7 @@ export const Subcategory = Schema.Literals([
   'mini',
   'midi',
   'maxi',
+  'jumpsuit',
   'coats',
   'jackets',
   'blazers',
@@ -43,7 +44,7 @@ export type Subcategory = typeof Subcategory.Type
 export const subcategories: { readonly [Key in Category]: ReadonlyArray<Subcategory> } = {
   top: ['short_sleeve', 'long_sleeve', 'sleeveless', 'sport', 'other'],
   bottom: ['jeans', 'trousers', 'leggings', 'shorts', 'skirts', 'loungewear', 'sport', 'other'],
-  dress: ['mini', 'midi', 'maxi', 'sport', 'other'],
+  dress: ['mini', 'midi', 'maxi', 'jumpsuit', 'sport', 'other'],
   outerwear: ['coats', 'jackets', 'blazers', 'vests', 'sport', 'other'],
   shoes: ['sneakers', 'boots', 'heels', 'sandals', 'flats', 'sport', 'other'],
   accessory: ['glasses', 'belts', 'bags', 'scarves', 'hats', 'jewelry', 'other'],
@@ -91,6 +92,13 @@ export type ImageType = typeof ImageType.Type
 
 export const maximumImageBytes = 15 * 1024 * 1024
 
+/** A wardrobe video: the containers phones record and Meta SAM reads. */
+export const VideoType = Schema.Literals(['video/mp4', 'video/quicktime'])
+export type VideoType = typeof VideoType.Type
+
+/** The most a Worker request carries is 100 MB; a minute of 1080p phone video fits under this. */
+export const maximumVideoBytes = 95 * 1024 * 1024
+
 const Name = Schema.String.check(Schema.isTrimmed(), Schema.isMinLength(1), Schema.isMaxLength(80))
 const Notes = Schema.String.check(Schema.isMaxLength(500))
 
@@ -121,6 +129,12 @@ export const Pieces = Schema.Struct({ pieces: Schema.Array(Piece) })
 export const CreateUpload = Schema.Struct({
   contentType: ImageType,
   bytes: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: maximumImageBytes })),
+})
+
+/** An upload for a wardrobe video, streamed rather than read whole. */
+export const CreateVideoUpload = Schema.Struct({
+  contentType: VideoType,
+  bytes: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: maximumVideoBytes })),
 })
 
 /** Where to send the photo's bytes: `PUT` the exact `path`, with the declared content type and

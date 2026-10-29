@@ -7,8 +7,11 @@ export type ProcessPiece = typeof ProcessPiece.Type
 /** Queue message: finish deleting an account whose access has already ended. */
 export const FinishAccountDeletion = Schema.Struct({ finishDeletionOf: Schema.String })
 
+/** Queue message: cut a photo or video into the pieces waiting in the tray. */
+export const ProcessCapture = Schema.Struct({ captureId: Schema.String })
+
 /** Every message the Worker's queue carries. */
-export const WorkMessage = Schema.Union([ProcessPiece, FinishAccountDeletion])
+export const WorkMessage = Schema.Union([ProcessPiece, FinishAccountDeletion, ProcessCapture])
 export type WorkMessage = typeof WorkMessage.Type
 
 /** The cut-out step could not produce an image this time; the queue retries it. */

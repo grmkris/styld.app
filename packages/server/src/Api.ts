@@ -4,6 +4,8 @@ import { Effect, Layer } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
 import { AccountLifecycle } from './AccountLifecycle.ts'
 import type { makeAuthHttp } from './AuthHttp.ts'
+import { captureHandlers } from './capture/Http.ts'
+import type { Captures } from './capture/Service.ts'
 import { type Admit, admitWith, wardrobeHandlers } from './wardrobe/Http.ts'
 import type { Wardrobe } from './wardrobe/Wardrobe.ts'
 
@@ -33,11 +35,16 @@ const accountHandlers = (admit: Admit) =>
  * security implements `SessionHttp.RequireSession`. */
 export const apiRoutes = (
   auth: ReturnType<typeof makeAuthHttp>,
-  services: { readonly wardrobe: Layer.Layer<Wardrobe>; readonly lifecycle: Layer.Layer<AccountLifecycle> },
+  services: {
+    readonly wardrobe: Layer.Layer<Wardrobe>
+    readonly lifecycle: Layer.Layer<AccountLifecycle>
+    readonly captures: Layer.Layer<Captures>
+  },
 ) =>
   HttpApiBuilder.layer(StyldApi).pipe(
     Layer.provide(accountHandlers(admitWith(auth)).pipe(Layer.provide(services.lifecycle))),
     Layer.provide(wardrobeHandlers(admitWith(auth)).pipe(Layer.provide(services.wardrobe))),
+    Layer.provide(captureHandlers(admitWith(auth)).pipe(Layer.provide(services.captures))),
     Layer.provide(auth.router.securityLayer(SessionHttp)),
     auth.router.middleware,
     Layer.provide(auth.dependencies),

@@ -15,6 +15,9 @@ export const StyldMedia = Cloudflare.R2.Bucket('StyldV2Media', {
 /** New pieces wait here for their photo to be prepared (`wardrobe/Processing.ts`). */
 export const StyldPieceQueue = Cloudflare.Queues.Queue('StyldV2PieceProcessing')
 
+/** Every capture provider call and review decision, for cost and keep rates (`tools/ai-usage-report.ts`). */
+export const StyldAiCalls = Cloudflare.AnalyticsEngine.Dataset('StyldV2AiCalls')
+
 /** Cloudflare Email Service's `send_email` binding, named `STYLD_EMAIL` in the Worker's env. The
  * styld.app sending domain is already set up in this account, so the stack declares no sending
  * domain or DNS record of its own. */

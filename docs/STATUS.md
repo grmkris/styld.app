@@ -39,6 +39,52 @@ deployed to the preview. One entry per slice.
     events exist yet (the server had never called it), so the new fields are required.
   - **Evidence:** stories (daily first, reset each day, same-day refund, a free account's limit, a retry after
     midnight) and the native Durable Object fixtures.
+- **S2 + S4 capture backbone (server).**
+  - **Providers** (`packages/server/src/capture/`): three ports, each with an adapter.
+    - `GarmentVision`: Clef-flash through the Workers AI binding, for routing, suggestions and the camera check.
+    - `PictureWork`: the Images binding, for working copies, background removal and thumbnails.
+    - `GarmentSegmenter`: Meta SAM 3.1 through `api.meta.ai`. Stills are sent inline. Videos are streamed to the
+      Files API with a `FixedLengthStream`, and SAM's answer keeps only the lines of the wanted frames.
+  - **Failures:**
+    - A refusal is `ProviderFailed{retryable}`. Meta's intermittent `model_not_found` 404 counts as retryable and is
+      retried briefly in place.
+    - A broken stream after Meta accepted the work is `ProviderOutcomeUnknown`. The capture then waits as `unknown`
+      with its credits held, and is never retried on its own.
+  - **Metering:** every provider call writes one Analytics Engine row with provider, model, kind, outcome,
+    milliseconds, units and estimated cost. Rows carry no account, prompt or image.
+  - **Captures** (D1 `captures`, `capture_frames`, `detections`; migration `safe_lyja`): a photo or video becomes
+    detections that wait in the tray.
+    - **Order of writes:** credits are held through `Usage` → Wallet first, then one D1 batch with the receipt, then
+      the queue. A failed batch refunds the hold.
+    - **Processing:**
+      - A photo goes to Clef, then to background removal (one garment, sure) or SAM.
+      - A video goes to SAM tracking, and the best still per track is cut from the browser's sampled stills.
+      - A refusal fails the capture and refunds it; the last failed attempt does too. A back shot becomes its
+        front's back.
+    - **Review:** kept detections become ready pieces in one batch, once per operation id.
+    - **Removal:** removing a capture deletes its folder, photo, video and stills, except photos a kept piece shows.
+  - **Assistant adds:** `piece_add` now runs the same cut-out (the largest garment) for one photo credit. Past the
+    limit, or when nothing can be cut out, the piece keeps its original.
+  - **Uploads:** `pieces.upload_id` is nullable, and pieces gain `detection_id` and `back_image_key`. Videos (mp4/mov,
+    at most 95 MB) stream into R2 at their declared length and are checked by signature after they land. Pieces
+    can be jumpsuits (en/sl labels).
+  - **Policy** from the Worker's env:
+    - `STYLD_PROVIDERS` (`live`/`off`);
+    - `CUTOUT_SINGLE` (`cloudflare`/`sam`): the experiment switch;
+    - the confidence thresholds;
+    - `DAILY_ALLOWANCE` (100). A photo costs 1 credit, a video 10.
+  - **Evidence:**
+    - **Unit:** recorded real SAM and Clef answers through the parsers and adapters (every chunking, frame filter,
+      refusal vs retry, unknown after a broken stream), the cut-out of a drawn tee against its truth mask
+      (IoU > 0.98), MP4 frame counts, and still ranking.
+    - **Native** (workerd, providers off): photo → tray → review → ready piece, once per operation id; isolation
+      from a second account; a video with its still; the daily limit refusing with 429; removal deleting photos,
+      the video and its still while a kept piece's photo stays.
+    - **Live** (`tools/provider-live.ts`, earlier today, from this box): SAM split the rail clip into 10 tracks.
+  - **Not yet proven:**
+    - the real providers from the deployed Worker (S5);
+    - the `unknown` and refusal paths end to end (unit-level only);
+    - an iPhone `.mov`.
 
 ## Scope and roadmap — 2026-10-29
 

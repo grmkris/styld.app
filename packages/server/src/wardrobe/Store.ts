@@ -1,5 +1,5 @@
-import { accounts, operationReceipts, pieces, uploads } from '@styld/db'
-import { and, desc, eq } from 'drizzle-orm'
+import { accounts, detections, operationReceipts, pieces, uploads } from '@styld/db'
+import { and, desc, eq, ne } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option, Schema } from 'effect'
 
@@ -40,12 +40,37 @@ const uploadQueries = (db: ReturnType<typeof drizzle>) => ({
     ).pipe(Effect.asVoid),
 })
 
+/** A photo one capture shared between pieces is deleted only with the last one showing it. */
+const sharedPhotoQueries = (db: ReturnType<typeof drizzle>) => ({
+  /** Whether another piece, or a piece still waiting in the tray, shows this photo. */
+  originalInUse: (accountId: string, key: string, exceptPieceId: string) =>
+    Effect.all([
+      attempt(() =>
+        db
+          .select({ id: pieces.id })
+          .from(pieces)
+          .where(and(eq(pieces.accountId, accountId), eq(pieces.originalKey, key), ne(pieces.id, exceptPieceId)))
+          .limit(1),
+      ),
+      attempt(() =>
+        db
+          .select({ id: detections.id })
+          .from(detections)
+          .where(
+            and(eq(detections.accountId, accountId), eq(detections.sourceKey, key), eq(detections.status, 'review')),
+          )
+          .limit(1),
+      ),
+    ]).pipe(Effect.map(([others, waiting]) => others.length > 0 || waiting.length > 0)),
+})
+
 /** The wardrobe's rows in D1. Every read and write of a person's rows names their account, so
  * one account can never reach another's pieces. */
 export const makeStore = (database: Parameters<typeof drizzle>[0]) => {
   const db = drizzle(database)
   return {
     ...uploadQueries(db),
+    ...sharedPhotoQueries(db),
     listPieces: (accountId: string) =>
       attempt(() => db.select().from(pieces).where(eq(pieces.accountId, accountId)).orderBy(desc(pieces.createdAt))),
     findPiece: (accountId: string, pieceId: string) =>
@@ -74,7 +99,10 @@ export const makeStore = (database: Parameters<typeof drizzle>[0]) => {
         try: () =>
           db.batch([
             db.insert(pieces).values(piece),
-            db.update(uploads).set({ status: 'used' }).where(eq(uploads.id, piece.uploadId)),
+            db
+              .update(uploads)
+              .set({ status: 'used' })
+              .where(eq(uploads.id, piece.uploadId ?? '')),
             db.insert(operationReceipts).values(receipt),
           ]),
         catch: () => StoreUnavailable.make({}),
@@ -99,7 +127,8 @@ export const makeStore = (database: Parameters<typeof drizzle>[0]) => {
         Effect.tap((deleted) =>
           Option.match(deleted, {
             onNone: () => Effect.void,
-            onSome: ({ uploadId }) => attempt(() => db.delete(uploads).where(eq(uploads.id, uploadId))),
+            onSome: ({ uploadId }) =>
+              uploadId === null ? Effect.void : attempt(() => db.delete(uploads).where(eq(uploads.id, uploadId))),
           }),
         ),
       ),

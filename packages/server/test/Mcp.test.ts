@@ -45,6 +45,7 @@ const wardrobe = Wardrobe.of({
   getPiece: notUsed,
   createUpload: notUsed,
   receiveUpload: notUsed,
+  receiveVideoUpload: notUsed,
   pieceAddedBy: () => Effect.succeed(Option.none()),
   addPiece: notUsed,
   updatePiece: notUsed,

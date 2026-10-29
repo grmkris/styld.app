@@ -1,0 +1,154 @@
+import { Schema } from 'effect'
+import { Category, Colours, OperationId, PieceId, Subcategory, UploadId } from './Wardrobe.ts'
+
+export const CaptureId = Schema.String.check(Schema.isPattern(/^cp_[A-Za-z0-9_-]{22}$/)).pipe(Schema.brand('CaptureId'))
+export type CaptureId = typeof CaptureId.Type
+export const DetectionId = Schema.String.check(Schema.isPattern(/^dt_[A-Za-z0-9_-]{22}$/)).pipe(
+  Schema.brand('DetectionId'),
+)
+export type DetectionId = typeof DetectionId.Type
+
+/** Where a capture came from: the phone's picker, Styld's camera, or a video. */
+export const CaptureSource = Schema.Literals(['picker', 'camera', 'video'])
+export type CaptureSource = typeof CaptureSource.Type
+
+/**
+ * A photo or video on its way to pieces:
+ * - `processing`: being cut out;
+ * - `review`: its pieces wait for the person;
+ * - `done`: every piece was kept or discarded;
+ * - `failed`: it could not be processed (credits returned);
+ * - `unknown`: a provider took the work and its answer was lost; it waits for the person to try again.
+ */
+export const CaptureStatus = Schema.Literals(['processing', 'review', 'done', 'failed', 'unknown'])
+export type CaptureStatus = typeof CaptureStatus.Type
+
+/** Which side of a garment the camera saw. A back shot pairs with the front shot before it. */
+export const Side = Schema.Literals(['front', 'back', 'unclear'])
+export type Side = typeof Side.Type
+
+export const CreateCapture = Schema.Struct({
+  operationId: OperationId,
+  uploadId: UploadId,
+  source: CaptureSource,
+  side: Schema.optionalKey(Side),
+  pairsWith: Schema.optionalKey(CaptureId),
+})
+export type CreateCapture = typeof CreateCapture.Type
+
+/** 64 relative sharpness values (8×8 tiles, row by row), each from 0 to 1. */
+const Sharpness = Schema.Array(Schema.Number.check(Schema.isBetween({ minimum: 0, maximum: 1 }))).check(
+  Schema.isMinLength(64),
+  Schema.isMaxLength(64),
+)
+
+/** A still the browser sampled from the video, uploaded beside it. */
+export const VideoStill = Schema.Struct({
+  uploadId: UploadId,
+  atMs: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  sharpness: Sharpness,
+})
+
+export const CreateVideoCapture = Schema.Struct({
+  operationId: OperationId,
+  videoUploadId: UploadId,
+  durationMs: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 61_000 })),
+  width: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 8192 })),
+  height: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 8192 })),
+  stills: Schema.Array(VideoStill).check(Schema.isMinLength(1), Schema.isMaxLength(120)),
+})
+export type CreateVideoCapture = typeof CreateVideoCapture.Type
+
+export const CaptureCreated = Schema.Struct({ captureId: CaptureId })
+
+/** What the decision model suggested for a piece; the person confirms or changes it. */
+export const Suggestion = Schema.Struct({
+  category: Schema.NullOr(Category),
+  subcategory: Schema.NullOr(Subcategory),
+  colours: Colours,
+})
+
+/** One piece found in a capture, waiting for the person. */
+export const Detection = Schema.Struct({
+  id: DetectionId,
+  /** Whether the tray offers it ticked: clothes the person is wearing in a camera shot are not. */
+  preselected: Schema.Boolean,
+  /** Whether a cut-out exists; without one the original photo is the only picture. */
+  hasCutout: Schema.Boolean,
+  suggestion: Suggestion,
+  /** The back of the same garment, from a camera shot that followed. */
+  hasBack: Schema.Boolean,
+})
+export type Detection = typeof Detection.Type
+
+export const TrayCapture = Schema.Struct({
+  id: CaptureId,
+  source: CaptureSource,
+  status: CaptureStatus,
+  detections: Schema.Array(Detection),
+  createdAt: Schema.String,
+})
+export type TrayCapture = typeof TrayCapture.Type
+
+/** Every capture still waiting for the person, newest first, and today's free allowance. */
+export const Tray = Schema.Struct({
+  captures: Schema.Array(TrayCapture),
+  allowance: Schema.Struct({ remaining: Schema.Int, daily: Schema.Int }),
+})
+export type Tray = typeof Tray.Type
+
+const Name = Schema.String.check(Schema.isTrimmed(), Schema.isMinLength(1), Schema.isMaxLength(80))
+
+/** One piece the person keeps, with the details they confirmed. */
+export const Keep = Schema.Struct({
+  detectionId: DetectionId,
+  category: Category,
+  subcategory: Schema.optionalKey(Subcategory),
+  colours: Schema.optionalKey(Colours),
+  name: Schema.optionalKey(Name),
+  /** Keep the original photo instead of the cut-out. */
+  useOriginal: Schema.optionalKey(Schema.Boolean),
+})
+export type Keep = typeof Keep.Type
+
+export const Review = Schema.Struct({
+  operationId: OperationId,
+  keep: Schema.Array(Keep).check(Schema.isMaxLength(200)),
+  discard: Schema.Array(DetectionId).check(Schema.isMaxLength(200)),
+})
+export type Review = typeof Review.Type
+
+export const Reviewed = Schema.Struct({ pieceIds: Schema.Array(PieceId) })
+export type Reviewed = typeof Reviewed.Type
+
+/** The camera asks whether one garment is being held up. Frames are small JPEGs, base64 encoded. */
+export const HeldCheckRequest = Schema.Struct({
+  frame: Schema.String.check(Schema.isMaxLength(400_000)),
+  previous: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(400_000))),
+})
+export const HeldCheckAnswer = Schema.Struct({
+  held: Schema.Boolean,
+  side: Side,
+  samePrevious: Schema.Boolean,
+})
+export type HeldCheckAnswer = typeof HeldCheckAnswer.Type
+
+/** Today's free allowance is spent. */
+export class DailyLimitReached extends Schema.TaggedError<DailyLimitReached>()(
+  'DailyLimitReached',
+  { resetsAt: Schema.String },
+  { httpApiStatus: 429 },
+) {}
+
+export class CaptureNotFound extends Schema.TaggedError<CaptureNotFound>()(
+  'CaptureNotFound',
+  {},
+  { httpApiStatus: 404 },
+) {}
+
+/** Capture work could not run just now; try again. */
+export class CaptureUnavailable extends Schema.TaggedError<CaptureUnavailable>()(
+  'CaptureUnavailable',
+  {},
+  { httpApiStatus: 503 },
+) {}

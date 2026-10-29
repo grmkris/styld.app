@@ -8,6 +8,7 @@ import * as HttpBody from 'effect/http/HttpBody'
 import * as HttpClient from 'effect/http/HttpClient'
 import { type Browser, chromium } from 'playwright'
 import { verifyBrowser } from './BrowserAcceptance.ts'
+import { nativeDailyAllowance, verifyCaptures } from './CaptureAcceptance.ts'
 import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
 import { verifyMcp } from './McpAcceptance.ts'
 import { verifyAccountDeletion, verifyWardrobe } from './WardrobeAcceptance.ts'
@@ -45,6 +46,9 @@ const makeStack = (generation: string) =>
           AUTH_ORIGIN: edge.url,
           STYLD_ENV: 'local',
           STYLD_RELEASE: `native-${generation}`,
+          // Capture providers stay off natively: each capture keeps its original photo as one detection.
+          STYLD_PROVIDERS: 'off',
+          DAILY_ALLOWANCE: String(nativeDailyAllowance),
           AUTH_SECRET: Redacted.make('native-test-auth-secret-012345678901234567890123'),
           AUTH_SESSION_KEYS: Redacted.make(
             JSON.stringify({
@@ -134,6 +138,15 @@ test(
     yield* Effect.promise(() => verifyAccountDeletion(styldUrl, url))
   }),
   { timeout: 60000 },
+)
+
+test(
+  'turns photos and videos into captures that wait for review, meters them daily, and keeps them private',
+  Effect.gen(function* () {
+    const { url, styldUrl } = yield* stack
+    yield* Effect.promise(() => verifyCaptures(styldUrl, url))
+  }),
+  { timeout: 90000 },
 )
 
 test('hydrates the built website and persists locale changes in a browser', inBrowser(verifyBrowser), {
@@ -263,6 +276,9 @@ test(
         tables: [
           'accounts',
           'auth_attempt_buckets',
+          'capture_frames',
+          'captures',
+          'detections',
           'oauth_assertions',
           'oauth_clients',
           'oauth_grants',

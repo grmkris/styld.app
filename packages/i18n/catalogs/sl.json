@@ -1024,7 +1024,8 @@
         "hats": "Klobuki",
         "jewelry": "Nakit",
         "other": "Ostalo",
-        "__unfiled": "Brez podkategorije"
+        "__unfiled": "Brez podkategorije",
+        "jumpsuit": "Kombinezoni"
       },
       "editCategories": "Uredi kategorije",
       "editHint": "Glavne kategorije so stalne. Podkategorije uredi po svoje.",

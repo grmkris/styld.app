@@ -9,6 +9,7 @@
   "dependencies": {
     "@alchemy.run/cloudflare": "catalog:",
     "@alchemy.run/domain": "catalog:",
+    "@meta-sam/parser": "catalog:",
     "@modelcontextprotocol/server": "catalog:",
     "@styld/auth": "workspace:*",
     "@styld/db": "workspace:*",
@@ -19,7 +20,8 @@
     "@yielded/auth": "catalog:",
     "alchemy": "catalog:",
     "drizzle-orm": "catalog:",
-    "effect": "catalog:"
+    "effect": "catalog:",
+    "fast-png": "catalog:"
   },
   "devDependencies": {
     "@modelcontextprotocol/client": "catalog:",

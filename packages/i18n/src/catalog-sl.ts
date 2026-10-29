@@ -980,6 +980,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.shelves.labels.jewelry': 'Nakit',
   'wardrobe.shelves.labels.other': 'Ostalo',
   'wardrobe.shelves.labels.__unfiled': 'Brez podkategorije',
+  'wardrobe.shelves.labels.jumpsuit': 'Kombinezoni',
   'wardrobe.shelves.editCategories': 'Uredi kategorije',
   'wardrobe.shelves.editHint': 'Glavne kategorije so stalne. Podkategorije uredi po svoje.',
   'wardrobe.shelves.categoryLabel': 'Kategorija',

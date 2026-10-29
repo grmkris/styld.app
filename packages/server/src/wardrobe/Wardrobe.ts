@@ -2,6 +2,7 @@ import type * as Cloudflare from '@alchemy.run/cloudflare'
 import {
   type AddPiece,
   type CreateUpload,
+  type CreateVideoUpload,
   OperationConflict,
   type OperationId,
   Piece,
@@ -20,8 +21,9 @@ import type { RuntimeContext } from 'alchemy/RuntimeContext'
 import { Context, DateTime, Effect, Option, Predicate, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
+import { type ByteStream, pump } from '../capture/Streams.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import { type ImageSize, imageSizes, sniffImageType, uploadKey } from './Media.ts'
+import { type ImageSize, imageSizes, isVideoContainer, sniffImageType, uploadKey } from './Media.ts'
 import { GarmentCutout, type WorkMessage } from './Processing.ts'
 import { makeStore, type PieceRow, type Store, type StoreUnavailable, type UploadRow } from './Store.ts'
 
@@ -35,6 +37,10 @@ export interface WardrobeBindings {
   readonly images: Runtime<Cloudflare.Images.ImagesClient>
   readonly queue: { send(message: WorkMessage): Promise<unknown> }
 }
+
+/** A video's request body, as the Worker runtime streams it. */
+export type VideoBody =
+  Parameters<FixedLengthStream['writable']['getWriter']> extends [] ? Request['body'] & object : never
 
 /** An upload path stays valid this long after it is handed out. */
 const uploadLifetime = { minutes: 15 }
@@ -71,6 +77,21 @@ const receiveRefusal = (
   if (input.contentType !== upload.contentType) return Option.some('wrongType')
   if (input.body.byteLength === 0 || input.body.byteLength > upload.bytes) return Option.some('tooLarge')
   if (!Option.contains(sniffImageType(input.body), upload.contentType)) return Option.some('notAnImage')
+  return Option.none()
+}
+
+/** Why a video upload cannot take this stream, if it cannot. The stored bytes' signature is checked
+ * after they land, since the stream is not read whole. */
+const videoRefusal = (
+  upload: UploadRow,
+  input: { readonly contentType: string; readonly bytes: number },
+  nowMillis: number,
+): Option.Option<UploadRefused['reason']> => {
+  if (upload.status !== 'pending') return Option.some('alreadyUsed')
+  if (upload.expiresAt.getTime() <= nowMillis) return Option.some('expired')
+  if (input.contentType !== upload.contentType || !upload.contentType.startsWith('video/'))
+    return Option.some('wrongType')
+  if (input.bytes !== upload.bytes) return Option.some('tooLarge')
   return Option.none()
 }
 
@@ -123,9 +144,21 @@ const reads = (parts: Parts) => ({
   }),
 })
 
+/** The upload a path's token unlocks. A wrong token, and an account closed for deletion, both read as
+ * not found. */
+const tokenUpload = (parts: Parts, uploadId: string, token: string) =>
+  Effect.gen(function* () {
+    const row = yield* stored(parts.store.findUpload(uploadId))
+    if (Option.isNone(row) || (yield* parts.digest(token)) !== row.value.tokenDigest) return yield* refused('notFound')
+    if (!(yield* stored(parts.store.accountEnabled(row.value.accountId)))) return yield* refused('notFound')
+    return row.value
+  })
+
 const uploads = (parts: Parts) => ({
   /** Hand out a one-time upload path; its token is stored only as a digest. */
-  createUpload: Effect.fn('Styld.Wardrobe.createUpload')(function* (input: typeof CreateUpload.Type) {
+  createUpload: Effect.fn('Styld.Wardrobe.createUpload')(function* (
+    input: typeof CreateUpload.Type | typeof CreateVideoUpload.Type,
+  ) {
     const { accountId } = yield* CurrentAccount
     const uploadId = `up_${yield* parts.randomToken(16)}`
     const token = yield* parts.randomToken(32)
@@ -156,12 +189,7 @@ const uploads = (parts: Parts) => ({
     readonly contentType: string
     readonly body: Uint8Array
   }) {
-    const row = yield* stored(parts.store.findUpload(input.uploadId))
-    if (Option.isNone(row) || (yield* parts.digest(input.token)) !== row.value.tokenDigest)
-      return yield* refused('notFound')
-    const upload = row.value
-    // An account closed for deletion takes no more photos.
-    if (!(yield* stored(parts.store.accountEnabled(upload.accountId)))) return yield* refused('notFound')
+    const upload = yield* tokenUpload(parts, input.uploadId, input.token)
     const refusal = receiveRefusal(upload, input, DateTime.toEpochMillis(yield* DateTime.now))
     if (Option.isSome(refusal)) return yield* refused(refusal.value)
     yield* Effect.tryPromise({
@@ -169,6 +197,54 @@ const uploads = (parts: Parts) => ({
         parts.bindings.bucket.put(upload.objectKey, input.body, { httpMetadata: { contentType: upload.contentType } }),
       catch: unavailable,
     })
+    yield* stored(parts.store.markUploadReceived(upload.id))
+  }),
+})
+
+/** Stream a body of a known length into the bucket. A FixedLengthStream tells R2 the length up front,
+ * and fails if the body is any other length. */
+const streamInto = (parts: Parts, key: string, contentType: string, bytes: number, body: ByteStream) =>
+  Effect.tryPromise({
+    try: async () => {
+      const { readable, writable } = new FixedLengthStream(bytes)
+      const writer = writable.getWriter()
+      await Promise.all([
+        // SAFETY: FixedLengthStream's readable is the Worker runtime's stream R2 takes -- the global ReadableStream name resolves to the DOM lib's here
+        parts.bindings.bucket.put(key, readable as never, { httpMetadata: { contentType } }),
+        pump(body, { write: (chunk) => writer.write(chunk), close: () => writer.close() }),
+      ])
+    },
+    catch: unavailable,
+  })
+
+/** The first bytes of a stored object, enough for a container signature. */
+const storedHead = (parts: Parts, key: string) =>
+  Effect.tryPromise({
+    try: async () => {
+      const object = await parts.bindings.bucket.get(key, { range: { offset: 0, length: 12 } })
+      return object === null ? new Uint8Array() : new Uint8Array(await object.arrayBuffer())
+    },
+    catch: unavailable,
+  })
+
+const videoUploads = (parts: Parts) => ({
+  /** Store a video's bytes against its upload, streamed into the bucket rather than read whole. The
+   * stream must be exactly the declared length, and the stored bytes must be an MP4 or MOV file. */
+  receiveVideoUpload: Effect.fn('Styld.Wardrobe.receiveVideoUpload')(function* (input: {
+    readonly uploadId: string
+    readonly token: string
+    readonly contentType: string
+    readonly bytes: number
+    readonly body: ByteStream
+  }) {
+    const upload = yield* tokenUpload(parts, input.uploadId, input.token)
+    const refusal = videoRefusal(upload, input, DateTime.toEpochMillis(yield* DateTime.now))
+    if (Option.isSome(refusal)) return yield* refused(refusal.value)
+    yield* streamInto(parts, upload.objectKey, upload.contentType, input.bytes, input.body)
+    if (!isVideoContainer(yield* storedHead(parts, upload.objectKey))) {
+      yield* Effect.tryPromise({ try: () => parts.bindings.bucket.delete(upload.objectKey), catch: unavailable })
+      return yield* refused('notAnImage')
+    }
     yield* stored(parts.store.markUploadReceived(upload.id))
   }),
 })
@@ -218,6 +294,8 @@ const newPiece = (
   notes: null,
   category: input.category,
   subcategory: input.subcategory ?? null,
+  detectionId: null,
+  backImageKey: null,
   colours: input.colours ?? [],
   status: 'processing',
   source: context.via === 'assistant' ? 'assistant' : 'website',
@@ -305,7 +383,14 @@ const editing = (parts: Parts) => ({
     const { accountId } = yield* CurrentAccount
     // Photos first: if the row's delete fails, a retry finds the piece and finishes.
     const piece = yield* ownPiece(parts)(pieceId)
-    const keys = [...new Set([piece.originalKey, piece.imageKey].filter(Predicate.isNotNull))]
+    // A reviewed piece shares its photo with the other pieces found in it; that photo goes with the last.
+    const originalShared =
+      piece.detectionId !== null && (yield* stored(parts.store.originalInUse(accountId, piece.originalKey, piece.id)))
+    const keys = [
+      ...new Set(
+        [originalShared ? null : piece.originalKey, piece.imageKey, piece.backImageKey].filter(Predicate.isNotNull),
+      ),
+    ].filter((key) => !originalShared || key !== piece.originalKey)
     yield* Effect.tryPromise({ try: () => parts.bindings.bucket.delete(keys), catch: unavailable })
     const deleted = yield* stored(parts.store.deletePiece(accountId, pieceId))
     if (Option.isNone(deleted)) return yield* PieceNotFound.make({})
@@ -338,7 +423,10 @@ const images = (parts: Parts) => ({
     }).pipe(
       // The transform consumed the first read, so the stored photo is read again.
       Effect.catchTag('WardrobeUnavailable', () =>
-        Effect.map(read, (again) => ({ body: again.body, contentType: piece.contentType })),
+        Effect.map(read, (again) => ({
+          body: again.body,
+          contentType: again.httpMetadata?.contentType ?? piece.contentType,
+        })),
       ),
     )
     return { ...image, version: `${piece.id}.${piece.updatedAt.getTime()}.${size}` }
@@ -382,6 +470,7 @@ const make = (bindings: WardrobeBindings) =>
     return {
       ...reads(parts),
       ...uploads(parts),
+      ...videoUploads(parts),
       ...adding(parts),
       ...editing(parts),
       ...images(parts),

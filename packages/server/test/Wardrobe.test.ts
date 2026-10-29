@@ -52,6 +52,7 @@ const services = (
         getPiece: notUsed,
         createUpload: notUsed,
         receiveUpload: notUsed,
+        receiveVideoUpload: notUsed,
         pieceAddedBy: notUsed,
         addPiece: notUsed,
         updatePiece: notUsed,
@@ -61,6 +62,7 @@ const services = (
         failPiece: (pieceId) => Effect.sync(() => failed.push(pieceId)).pipe(Effect.andThen(failPiece)),
       }),
       lifecycle: { deleteAccount: notUsed, finishDeletion: () => Effect.void } satisfies AccountLifecycle['Service'],
+      captures: { processCapture: notUsed, failCapture: notUsed },
     },
   }
 }

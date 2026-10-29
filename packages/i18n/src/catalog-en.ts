@@ -966,6 +966,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.shelves.labels.jewelry': 'Jewellery',
   'wardrobe.shelves.labels.other': 'Other',
   'wardrobe.shelves.labels.__unfiled': 'No subcategory',
+  'wardrobe.shelves.labels.jumpsuit': 'Jumpsuits',
   'wardrobe.shelves.editCategories': 'Edit categories',
   'wardrobe.shelves.editHint': 'Main categories stay fixed. Arrange the subcategories your way.',
   'wardrobe.shelves.categoryLabel': 'Category',

@@ -25,6 +25,10 @@ export const sniffImageType = (bytes: Uint8Array): Option.Option<ImageType> => {
   return Option.none()
 }
 
+/** Whether the bytes start an ISO base media file (MP4, or QuickTime MOV): a `ftyp` box first. */
+export const isVideoContainer = (head: Uint8Array) =>
+  startsWith(head, ascii('ftyp'), 4) && !startsWith(head, ascii('avif'), 8) && !startsWith(head, ascii('avis'), 8)
+
 /** The sizes the website shows: a grid thumbnail and the piece's own page. */
 export const imageSizes = { thumb: 480, full: 1600 } as const
 export type ImageSize = keyof typeof imageSizes

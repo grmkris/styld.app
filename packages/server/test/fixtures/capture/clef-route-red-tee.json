@@ -1,0 +1,27 @@
+{
+  "model": "clef-flash",
+  "answers": {
+    "garments": {
+      "type": "choice",
+      "choice": "one",
+      "probabilities": { "none": 0.0245, "one": 0.9672, "several": 0.0083 },
+      "confidence": 0.9042
+    },
+    "category": {
+      "type": "choice",
+      "choice": "top",
+      "probabilities": {
+        "top": 0.8054,
+        "bottom": 0.0122,
+        "dress": 0.1198,
+        "outerwear": 0.0236,
+        "shoes": 0.003,
+        "accessory": 0.0058,
+        "none": 0.0302
+      },
+      "confidence": 0.6087
+    },
+    "worn": { "type": "noul", "noul": 0.0144 }
+  },
+  "usage": { "input_tokens": 1054, "output_tokens": 0 }
+}

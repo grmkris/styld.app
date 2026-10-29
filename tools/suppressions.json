@@ -30,5 +30,21 @@
   {
     "file": "packages/server/src/mcp/Sdk.ts",
     "comment": "SAFETY: resources/list serves the app's own resource entries -- their `_meta.ui` objects are MCP Apps fields the SDK Resource type does not declare"
+  },
+  {
+    "file": "packages/server/src/StyldWorker.ts",
+    "comment": "SAFETY: Clef-flash is a Workers AI model newer than the pinned workers-types model list -- the request is the System One API shape Clef.ts builds and documents"
+  },
+  {
+    "file": "packages/server/src/capture/CloudflareImages.ts",
+    "comment": "SAFETY: a Response body is the Worker runtime's own ReadableStream -- the server package types globals with the DOM lib and the Images binding with workers-types"
+  },
+  {
+    "file": "packages/server/src/capture/Meta.ts",
+    "comment": "SAFETY: FixedLengthStream's readable is a Worker runtime stream -- the fetch type here is the DOM lib's, which names its own ReadableStream"
+  },
+  {
+    "file": "packages/server/src/wardrobe/Wardrobe.ts",
+    "comment": "SAFETY: FixedLengthStream's readable is the Worker runtime's stream R2 takes -- the global ReadableStream name resolves to the DOM lib's here"
   }
 ]

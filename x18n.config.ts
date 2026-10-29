@@ -33,6 +33,9 @@ export default defineConfig({
       // locale negotiation); the people who connect see only the website's own copy.
       'packages/server/src/mcp/**/*.ts': ['/[\\s\\S]*/'],
       'packages/server/src/OAuth.ts': ['/[\\s\\S]*/'],
+      // Questions put to the decision model and provider protocol text; no person ever reads them.
+      'packages/server/src/capture/Clef.ts': ['/[\\s\\S]*/'],
+      'packages/server/src/capture/Meta.ts': ['/[\\s\\S]*/'],
       'apps/web/src/**/*.styles.ts': ['/[\\s\\S]*/'],
       'apps/web/src/GlobalStyles.ts': ['/[\\s\\S]*/'],
       'apps/web/src/zyzz.config.ts': ['/[\\s\\S]*/'],

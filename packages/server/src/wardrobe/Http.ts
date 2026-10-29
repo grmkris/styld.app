@@ -1,5 +1,13 @@
 import { SessionHttp } from '@styld/auth/config'
-import { maximumImageBytes, PieceId, RequestRefused, StyldApi, UploadId, type UploadRefused } from '@styld/protocol'
+import {
+  maximumImageBytes,
+  maximumVideoBytes,
+  PieceId,
+  RequestRefused,
+  StyldApi,
+  UploadId,
+  UploadRefused,
+} from '@styld/protocol'
 import type { AuthRequest } from '@yielded/auth/Auth'
 import { Effect, Layer, Option, Redacted, Schema } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
@@ -10,7 +18,7 @@ import type { makeAuthHttp } from '../AuthHttp.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { Wardrobe } from './Wardrobe.ts'
 
-const asSessionAccount = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+export const asSessionAccount = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
   Effect.gen(function* () {
     const { claims } = yield* SessionHttp.CurrentSession
     return yield* Effect.provideService(effect, CurrentAccount, { accountId: claims.accountId, via: 'session' })
@@ -35,6 +43,7 @@ export const wardrobeHandlers = (admit: Admit) =>
         .handle('listPieces', () => asSessionAccount(wardrobe.listPieces()).pipe(Effect.map((pieces) => ({ pieces }))))
         .handle('getPiece', ({ params }) => asSessionAccount(wardrobe.getPiece(params.pieceId)))
         .handle('createUpload', ({ payload }) => admit(asSessionAccount(wardrobe.createUpload(payload))))
+        .handle('createVideoUpload', ({ payload }) => admit(asSessionAccount(wardrobe.createUpload(payload))))
         .handle('addPiece', ({ payload }) => admit(asSessionAccount(wardrobe.addPiece(payload))))
         .handle('updatePiece', ({ params, payload }) =>
           admit(asSessionAccount(wardrobe.updatePiece(params.pieceId, payload))),
@@ -67,30 +76,35 @@ const receiveUpload = Effect.gen(function* () {
     // Refuse an oversized photo before reading it; the body is at most 15 MB and read whole.
     const declared = Number(request.headers['content-length'] ?? Number.NaN)
     if (!Number.isSafeInteger(declared)) return HttpServerResponse.empty({ status: 411 })
-    if (declared > maximumImageBytes)
+    const contentType = request.headers['content-type'] ?? ''
+    // A video streams into the bucket; a photo is at most 15 MB and read whole.
+    const video = contentType.startsWith('video/')
+    if (declared > (video ? maximumVideoBytes : maximumImageBytes))
       return yield* HttpServerResponse.json({ _tag: 'UploadRefused', reason: 'tooLarge' }, { status: 413 })
-    const body = yield* request.arrayBuffer.pipe(Effect.orDie)
-    return yield* wardrobe
-      .receiveUpload({
-        uploadId: target.value.uploadId,
-        token: target.value.token,
-        contentType: request.headers['content-type'] ?? '',
-        body: new Uint8Array(body),
-      })
-      .pipe(
-        Effect.as(HttpServerResponse.empty({ status: 204 })),
-        Effect.catchTags({
-          UploadRefused: ({ reason }) =>
-            HttpServerResponse.json({ _tag: 'UploadRefused', reason }, { status: refusalStatus[reason] }),
-          WardrobeUnavailable: () => Effect.succeed(HttpServerResponse.empty({ status: 503 })),
-        }),
-        Effect.orDie,
-      )
+    const upload = { uploadId: target.value.uploadId, token: target.value.token, contentType }
+    const received = video
+      ? Effect.flatMap(HttpServerRequest.toWeb(request).pipe(Effect.orDie), (web) =>
+          web.body === null
+            ? Effect.fail(UploadRefused.make({ reason: 'tooLarge' }))
+            : wardrobe.receiveVideoUpload({ ...upload, bytes: declared, body: web.body }),
+        )
+      : Effect.flatMap(request.arrayBuffer.pipe(Effect.orDie), (body) =>
+          wardrobe.receiveUpload({ ...upload, body: new Uint8Array(body) }),
+        )
+    return yield* received.pipe(
+      Effect.as(HttpServerResponse.empty({ status: 204 })),
+      Effect.catchTags({
+        UploadRefused: ({ reason }) =>
+          HttpServerResponse.json({ _tag: 'UploadRefused', reason }, { status: refusalStatus[reason] }),
+        WardrobeUnavailable: () => Effect.succeed(HttpServerResponse.empty({ status: 503 })),
+      }),
+      Effect.orDie,
+    )
   })
 })
 
 /** The signed-in account behind the website's session cookie, for routes outside the typed API. */
-const cookieAccount = (auth: ReturnType<typeof makeAuthHttp>) =>
+export const cookieAccount = (auth: ReturnType<typeof makeAuthHttp>) =>
   Effect.gen(function* () {
     const api = yield* auth.runtime.auth
     return Effect.gen(function* () {

@@ -7,7 +7,8 @@ const png = Uint8Array.from(
   (character) => character.charCodeAt(0),
 )
 
-const signIn = async (origin: string, id: string) => {
+/** Sign a seeded account in with its password; the session cookie comes back. */
+export const signIn = async (origin: string, id: string) => {
   const response = await fetch(`${origin}/api/auth/signIn`, {
     method: 'POST',
     headers: { origin, 'content-type': 'application/json', 'x-effect-auth-csrf': '1' },
@@ -20,7 +21,8 @@ const signIn = async (origin: string, id: string) => {
     .join('; ')
 }
 
-const client =
+/** Requests the website would send for the signed-in account. */
+export const client =
   (origin: string, cookie: string) =>
   (path: string, init: RequestInit = {}) => {
     const headers = new Headers({ origin, cookie, 'x-effect-auth-csrf': '1', 'content-type': 'application/json' })
@@ -28,7 +30,7 @@ const client =
     return fetch(`${origin}${path}`, { ...init, headers })
   }
 
-type Call = ReturnType<typeof client>
+export type Call = ReturnType<typeof client>
 
 const json = (call: Call, path: string, method: string, body: unknown) =>
   call(path, { method, body: JSON.stringify(body) })

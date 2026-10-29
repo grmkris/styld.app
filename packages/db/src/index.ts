@@ -1,1 +1,11 @@
-export { accounts, appSchema, oauthGrants, operationReceipts, pieces, uploads } from './schema.ts'
+export {
+  accounts,
+  appSchema,
+  captureFrames,
+  captures,
+  detections,
+  oauthGrants,
+  operationReceipts,
+  pieces,
+  uploads,
+} from './schema.ts'
