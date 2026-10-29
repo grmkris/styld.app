@@ -8,6 +8,7 @@ import * as HttpBody from 'effect/http/HttpBody'
 import * as HttpClient from 'effect/http/HttpClient'
 import { type Browser, chromium } from 'playwright'
 import { verifyBrowser } from './BrowserAcceptance.ts'
+import { verifyCaptureJourney } from './CaptureBrowserAcceptance.ts'
 import { nativeDailyAllowance, verifyCaptures } from './CaptureAcceptance.ts'
 import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
 import { verifyMcp } from './McpAcceptance.ts'
@@ -145,6 +146,15 @@ test(
   Effect.gen(function* () {
     const { url, styldUrl } = yield* stack
     yield* Effect.promise(() => verifyCaptures(styldUrl, url))
+  }),
+  { timeout: 90000 },
+)
+
+test(
+  'adds photos through the picker, keeps the ticked ones from the review tray and shows them in the wardrobe',
+  Effect.gen(function* () {
+    const { url } = yield* stack
+    yield* inBrowser((browser, origin) => verifyCaptureJourney(browser, origin, url))
   }),
   { timeout: 90000 },
 )

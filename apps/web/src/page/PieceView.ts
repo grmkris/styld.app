@@ -6,7 +6,7 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { fieldLabel, formError, textField } from '../Fields.styles.ts'
-import { backIcon, deleteIcon, editIcon, loader } from '../Icon.ts'
+import { deleteIcon, editIcon, loader } from '../Icon.ts'
 import { wardrobeRouter } from '../route.ts'
 import { confirmActions } from '../ConfirmActions.ts'
 import { styled } from '../Styled.ts'
@@ -14,19 +14,10 @@ import { Deletion, type Draft, Load, Message, type Model } from './Piece.ts'
 import { piecePickers, swatches } from './PieceFields.ts'
 import { pieceLabel } from './WardrobeView.ts'
 import { categoryName, subcategoryName } from './WardrobeWords.ts'
+import { backToWardrobe } from './PageBar.ts'
 import * as styles from './PieceView.styles.ts'
 
 const fullPath = (piece: Piece) => `/cdn/pieces/${piece.id}/full`
-
-const backLink = (locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.a(
-    [
-      h.Href(wardrobeRouter({})),
-      h.AriaLabel(format(locale, 'wardrobe.backToWardrobe', {})),
-      ...styled(h, styles.round()),
-    ],
-    [backIcon(h)],
-  )
 
 const whatItIs = (piece: Piece, locale: Locale) =>
   [categoryName(piece.category), ...(piece.subcategory === null ? [] : [subcategoryName(piece.subcategory)])]
@@ -211,7 +202,7 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
   h.main(
     [h.Id('main'), ...styled(h, styles.piecePage())],
     [
-      h.div(styled(h, styles.pageBar()), [backLink(locale, h)]),
+      h.div(styled(h, styles.pageBar()), [backToWardrobe(locale, h)]),
       ...Load.match(model.load, {
         Loading: () => [
           h.p([h.Role('status'), ...styled(h, styles.status())], [loader(h), format(locale, 'common.loading', {})]),

@@ -554,6 +554,38 @@ export interface MessageArgumentsByKey<T = string> {
   'calendarPanel.dragHint': Readonly<Record<string, never>>
   'calendarPanel.paletteTitle': Readonly<Record<string, never>>
   'calendarPanel.selectDayHint': Readonly<Record<string, never>>
+  'capture.addCount': { readonly count: number }
+  'capture.addFailed': Readonly<Record<string, never>>
+  'capture.addHint': Readonly<Record<string, never>>
+  'capture.addMore': Readonly<Record<string, never>>
+  'capture.addTitle': Readonly<Record<string, never>>
+  'capture.allowance': { readonly remaining: string | number; readonly daily: string | number }
+  'capture.cameraHint': Readonly<Record<string, never>>
+  'capture.cameraTitle': Readonly<Record<string, never>>
+  'capture.chooseHint': Readonly<Record<string, never>>
+  'capture.chooseTitle': Readonly<Record<string, never>>
+  'capture.done': Readonly<Record<string, never>>
+  'capture.empty': Readonly<Record<string, never>>
+  'capture.failed': Readonly<Record<string, never>>
+  'capture.finding': Readonly<Record<string, never>>
+  'capture.foundTitle': { readonly count: number }
+  'capture.keepLabel': { readonly name: string | number }
+  'capture.notSupported': { readonly name: string | number }
+  'capture.preparingVideo': Readonly<Record<string, never>>
+  'capture.problem.dailyLimit': Readonly<Record<string, never>>
+  'capture.problem.network': Readonly<Record<string, never>>
+  'capture.problem.refused': Readonly<Record<string, never>>
+  'capture.problem.videoTooLong': Readonly<Record<string, never>>
+  'capture.problem.videoUnreadable': Readonly<Record<string, never>>
+  'capture.queueLabel': Readonly<Record<string, never>>
+  'capture.remove': Readonly<Record<string, never>>
+  'capture.reviewHint': Readonly<Record<string, never>>
+  'capture.seeFound': { readonly count: number }
+  'capture.sent': Readonly<Record<string, never>>
+  'capture.tooLarge': { readonly name: string | number }
+  'capture.unknown': Readonly<Record<string, never>>
+  'capture.useOriginal': Readonly<Record<string, never>>
+  'capture.waiting': Readonly<Record<string, never>>
   'catalog.allCities': Readonly<Record<string, never>>
   'catalog.allShops': Readonly<Record<string, never>>
   'catalog.alreadyOwned': Readonly<Record<string, never>>
@@ -2335,4 +2367,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'fdd9cd16c556d268e449a32a68d3631e57d76a3c7df1eeec34f7e0a2ae174289'
+export const catalogVersion = 'd821dac9b55e08574f67273eab21d0c1ee70dde5e54737b7f8625af9a1428c23'

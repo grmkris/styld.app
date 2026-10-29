@@ -1,4 +1,15 @@
 {
   "light": ["house", "t-shirt"],
-  "regular": ["caret-left", "check", "circle-notch", "image", "pencil-simple", "plus", "trash"]
+  "regular": [
+    "arrows-clockwise",
+    "camera",
+    "caret-left",
+    "check",
+    "circle-notch",
+    "image",
+    "pencil-simple",
+    "plus",
+    "trash",
+    "video-camera"
+  ]
 }

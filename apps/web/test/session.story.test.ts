@@ -2,7 +2,8 @@ import { catalogVersion } from '@styld/i18n'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import { Message, Navigate, ReadSession, Session, init, update } from '../src/App.ts'
-import { Message as AddPieceMessage } from '../src/page/AddPiece.ts'
+import { Message as AddPiecesMessage } from '../src/page/AddPieces.ts'
+import { Message as ReviewMessage } from '../src/page/Review.ts'
 import { AppRoute } from '../src/route.ts'
 import { pageAt } from './WardrobeFixtures.ts'
 
@@ -88,16 +89,24 @@ describe('the wardrobe pages', () => {
     expect(opening('/wardrobe')).toEqual(['ReadSession', 'ListPieces'])
     expect(opening('/wardrobe/pc_abc')).toEqual(['ReadSession', 'GetPiece'])
     expect(opening('/wardrobe/add')).toEqual(['ReadSession'])
+    expect(opening('/wardrobe/review')).toEqual(['ReadSession', 'LoadTray'])
   })
 
-  test('a piece just added opens on its own page', () => {
+  test('the review tray opens once the files are sent, and the wardrobe once pieces are kept', () => {
     story(
       update,
       given(page('/wardrobe/add')),
-      message(Message.GotAddPieceMessage({ message: AddPieceMessage.SucceededAddPiece({ pieceId: 'pc_new' }) })),
-      Command.expectExact(Navigate({ href: '/wardrobe/pc_new' })),
-      Command.resolve(Navigate({ href: '/wardrobe/pc_new' }), Message.CompletedNavigate()),
-      model(({ route }) => expect(AppRoute.guards.AddPiece(route)).toBe(true)),
+      message(Message.GotAddPiecesMessage({ message: AddPiecesMessage.ClickedReview() })),
+      Command.expectExact(Navigate({ href: '/wardrobe/review' })),
+      Command.resolve(Navigate({ href: '/wardrobe/review' }), Message.CompletedNavigate()),
+    )
+    story(
+      update,
+      given(page('/wardrobe/review')),
+      message(Message.GotReviewMessage({ message: ReviewMessage.SucceededReview({ count: 2 }) })),
+      Command.expectExact(Navigate({ href: '/wardrobe' })),
+      Command.resolve(Navigate({ href: '/wardrobe' }), Message.CompletedNavigate()),
+      model(({ route }) => expect(AppRoute.guards.Review(route)).toBe(true)),
     )
   })
 })

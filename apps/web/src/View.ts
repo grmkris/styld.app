@@ -8,7 +8,8 @@ import { primaryAction, secondaryAction } from './Actions.styles.ts'
 import { availableLocales } from './Locale.ts'
 import { styled } from './Styled.ts'
 import { homeTabIcon, wardrobeTabIcon } from './Icon.ts'
-import * as AddPieceView from './page/AddPieceView.ts'
+import * as AddPiecesView from './page/AddPiecesView.ts'
+import * as ReviewView from './page/ReviewView.ts'
 import { accountView } from './page/AccountView.ts'
 import * as LoginView from './page/LoginView.ts'
 import * as PieceView from './page/PieceView.ts'
@@ -170,7 +171,8 @@ const titleKey = AppRoute.match<MessageKey>({
   LoginForConnection: () => 'auth.signInTitle',
   Account: () => 'account.title',
   Wardrobe: () => 'wardrobe.title',
-  AddPiece: () => 'wardrobe.addPieceTitle',
+  AddPieces: () => 'capture.addTitle',
+  Review: () => 'scan.toReview',
   Piece: () => 'wardrobe.title',
   NotFound: () => 'common.notFoundTitle',
 })
@@ -180,7 +182,8 @@ type Section = 'home' | 'wardrobe' | 'you'
 const sectionOf = AppRoute.match<Section | undefined>({
   Home: () => 'home',
   Wardrobe: () => 'wardrobe',
-  AddPiece: () => 'wardrobe',
+  AddPieces: () => 'wardrobe',
+  Review: () => 'wardrobe',
   Piece: () => 'wardrobe',
   Account: () => 'you',
   Login: () => undefined,
@@ -252,13 +255,22 @@ const piecePage = (model: Model, h: HtmlBuilder<Message>): Html =>
     toParentMessage: (message) => Message.GotPieceMessage({ message }),
   })
 
-const addPiecePage = (model: Model, h: HtmlBuilder<Message>): Html =>
+const addPiecesPage = (model: Model, h: HtmlBuilder<Message>): Html =>
   h.submodel({
-    slotId: 'add-piece',
-    model: model.addPiece,
-    view: AddPieceView.view,
+    slotId: 'add-pieces',
+    model: model.addPieces,
+    view: AddPiecesView.view,
     viewInputs: { locale: model.context.locale },
-    toParentMessage: (message) => Message.GotAddPieceMessage({ message }),
+    toParentMessage: (message) => Message.GotAddPiecesMessage({ message }),
+  })
+
+const reviewPage = (model: Model, h: HtmlBuilder<Message>): Html =>
+  h.submodel({
+    slotId: 'review',
+    model: model.review,
+    view: ReviewView.view,
+    viewInputs: { locale: model.context.locale },
+    toParentMessage: (message) => Message.GotReviewMessage({ message }),
   })
 
 export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
@@ -292,7 +304,8 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
         LoginForConnection: () => loginPage(model, true, h),
         Account: () => accountView(model, h),
         Wardrobe: () => wardrobePage(model, h),
-        AddPiece: () => addPiecePage(model, h),
+        AddPieces: () => addPiecesPage(model, h),
+        Review: () => reviewPage(model, h),
         Piece: () => piecePage(model, h),
         NotFound: () => notFoundView(locale, h),
       }),

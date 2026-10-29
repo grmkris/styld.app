@@ -82,9 +82,51 @@ deployed to the preview. One entry per slice.
       the video and its still while a kept piece's photo stays.
     - **Live** (`tools/provider-live.ts`, earlier today, from this box): SAM split the rail clip into 10 tracks.
   - **Not yet proven:**
-    - the real providers from the deployed Worker (S5);
     - the `unknown` and refusal paths end to end (unit-level only);
     - an iPhone `.mov`.
+- **S5 real providers on the preview** (release `c527c1e`).
+  - **Deploy:** adds the Workers AI binding and the `StyldV2AiCalls` Analytics Engine dataset, migrates D1, and
+    reads Meta's key from the operator's `META_MUSE_API_KEY`. The plan touched v2 resources only.
+  - **Acceptance** (`tools/preview-capture.ts`, signed in with a myinbox code):
+    - **One garment** (the drawn red tee): Clef routes it to background removal. The cut-out is a PNG with 44% of
+      its pixels transparent, and Clef suggests a red short-sleeve top. Kept as a ready piece with a thumbnail, in
+      13 s.
+    - **The rail frame:** SAM finds 10 garments with 10 cut-outs and suggested categories, in 19 s.
+  - **Found by the preview:** deployed D1 refuses a statement with more than 100 bound parameters, and the rail's
+    10-detection insert had 150; local workerd accepts it. Rows now go one statement each and id lists in chunks
+    of 90. The failed rail capture was refunded, as designed: the allowance read 97 after three paid captures and
+    one refund.
+  - **Metering:** `tools/ai-usage-report.ts` reads Analytics Engine back. It showed Images normalise, SAM segment,
+    Clef suggest, Images foreground and a review decision, about $0.036 in list prices for the run. Rows arrive
+    with a delay of minutes.
+- **S6 add pieces and the review tray (web).**
+  - **`/wardrobe/add`:**
+    - Two ways in: the library (photos and videos, several at once) and the phone's camera, through the file
+      input's `capture` hint.
+    - Each file goes up as it is chosen, two at a time, under its own operation id. A photo that fails on the
+      network keeps its id and upload, so trying again makes one capture.
+    - A video is sampled in the browser by `capture/Sampler.ts`, loaded on demand: a still every 0.5 s (every 1 s
+      past 30 s), at most 1280 px, with 8×8 tile sharpness. The clip and its stills go up, then one video capture
+      is made.
+    - When everything is sent, the review tray opens.
+  - **`/wardrobe/review`** (Gallery add.html):
+    - Found pieces in a grid with a 44 px tick. Ticked when suggested, and faded when not.
+    - "Edit" opens the piece with the category, shelf, colour and name pickers and "Use the original photo".
+    - Ticking a piece without a category opens it.
+    - While captures are cut out, the tray asks again every 2 s.
+    - Failed, half-finished and empty captures offer Try again and Remove.
+    - The footer, above the tab bar, says "Add N to my wardrobe". It keeps the ticked pieces and drops the rest
+      in one idempotent review, then opens the wardrobe.
+    - Today's allowance shows under the title.
+  - **Removed:** the hand-add page it replaces (one photo plus a required category). Copy is in en/sl
+    (`capture.*`; the Slovenian awaits the owner).
+  - **Evidence:**
+    - Story tests for both programs and the sampler's pure parts.
+    - Native Chromium: three photos through the picker, two kept with a category, the third dropped. The wardrobe
+      shows the two, the tray is empty, and the page has no errors or CSP violations.
+  - **Not yet proven:**
+    - Video sampling in a real browser: Playwright's Chromium cannot decode H.264.
+    - The phone camera.
 
 ## Scope and roadmap — 2026-10-29
 

@@ -7,7 +7,7 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction } from '../Actions.styles.ts'
 import { addIcon, loader } from '../Icon.ts'
-import { addPieceRouter, pieceRouter } from '../route.ts'
+import { addPiecesRouter, pieceRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { categories } from './PieceFields.ts'
 import { Message, type Model, Pieces } from './Wardrobe.ts'
@@ -79,7 +79,7 @@ const loadedView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, 
     return h.section(styled(h, styles.message()), [
       h.h2(styled(h, styles.messageTitle()), [format(locale, 'wardrobe.closetEmptyTitle', {})]),
       h.p([], [format(locale, 'wardrobe.createMenuAddPieceHint', {})]),
-      h.a([h.Href(addPieceRouter({})), ...styled(h, primaryAction())], [format(locale, 'wardrobe.scanPhotosCta', {})]),
+      h.a([h.Href(addPiecesRouter({})), ...styled(h, primaryAction())], [format(locale, 'wardrobe.scanPhotosCta', {})]),
     ])
   const shown = Option.match(model.category, {
     onNone: () => pieces,
@@ -139,8 +139,8 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
         h.h1(styled(h, styles.pageTitle()), [format(locale, 'wardrobe.title', {})]),
         h.a(
           [
-            h.Href(addPieceRouter({})),
-            h.AriaLabel(format(locale, 'wardrobe.createMenuAddPiece', {})),
+            h.Href(addPiecesRouter({})),
+            h.AriaLabel(format(locale, 'capture.addTitle', {})),
             ...styled(h, styles.addRound()),
           ],
           [addIcon(h)],

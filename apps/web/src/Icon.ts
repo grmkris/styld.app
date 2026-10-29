@@ -1,6 +1,8 @@
 import type { Attribute, Html, HtmlBuilder } from 'foldkit/html'
 import { controlIcon, loaderIcon, tabIcon } from './Icon.styles.ts'
 import {
+  ArrowsClockwiseRegular,
+  CameraRegular,
   CaretLeftRegular,
   CheckRegular,
   CircleNotchRegular,
@@ -10,6 +12,7 @@ import {
   PlusRegular,
   TShirtLight,
   TrashRegular,
+  VideoCameraRegular,
 } from './PhosphorIcons.ts'
 import { styled } from './Styled.ts'
 
@@ -54,6 +57,9 @@ export const photoIcon = control(ImageRegular)
 export const editIcon = control(PencilSimpleRegular)
 export const addIcon = control(PlusRegular)
 export const deleteIcon = control(TrashRegular)
+export const cameraIcon = control(CameraRegular)
+export const videoIcon = control(VideoCameraRegular)
+export const retryIcon = control(ArrowsClockwiseRegular)
 
 /** 24px tab icons in the Light weight. */
 export const homeTabIcon = tab(HouseLight)

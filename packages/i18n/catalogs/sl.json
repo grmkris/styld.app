@@ -2725,5 +2725,41 @@
   },
   "assistantView": {
     "openInStyld": "Odpri v Styldu"
+  },
+  "capture": {
+    "addTitle": "Dodaj kose",
+    "addHint": "Fotografije ali video do ene minute vzdolž obešalnika. Vsak kos izrežemo, ti pa ga obdržiš ali zavržeš.",
+    "chooseTitle": "Fotografije ali video",
+    "chooseHint": "Iz tvoje galerije",
+    "cameraTitle": "Fotografiraj",
+    "cameraHint": "En kos naenkrat",
+    "notSupported": "{name} ni fotografija ali video, ki ga Styld lahko uporabi",
+    "tooLarge": "{name} je prevelik",
+    "queueLabel": "Pošiljanje",
+    "waiting": "Čaka",
+    "preparingVideo": "Berem video …",
+    "sent": "Poslano",
+    "problem": {
+      "dailyLimit": "Današnji brezplačni kosi so porabljeni. Poskusi znova jutri.",
+      "videoTooLong": "Video je lahko dolg največ eno minuto",
+      "videoUnreadable": "Tega videa tukaj ni mogoče prebrati",
+      "refused": "Te datoteke ni mogoče uporabiti",
+      "network": "Ni poslano"
+    },
+    "seeFound": "{count, plural, one {Poglej, kaj je v # datoteki} two {Poglej, kaj je v # datotekah} few {Poglej, kaj je v # datotekah} other {Poglej, kaj je v # datotekah}}",
+    "foundTitle": "{count, plural, =0 {Zaenkrat ni najdenega} one {Najden # kos} two {Najdena # kosa} few {Najdeni # kosi} other {Najdenih # kosov}}",
+    "reviewHint": "Izrezani so in pripravljeni. Odznači vse, kar ni tvoje.",
+    "allowance": "Danes še {remaining} od {daily} brezplačnih",
+    "finding": "Iščem kose …",
+    "failed": "Tega ni bilo mogoče obdelati. Kredit je vrnjen.",
+    "unknown": "Ta se je ustavil na pol poti. Nov poskus ne stane nič.",
+    "empty": "Tukaj ni najdenih oblačil.",
+    "remove": "Odstrani",
+    "keepLabel": "Obdrži {name}",
+    "useOriginal": "Uporabi izvirno fotografijo",
+    "addCount": "{count, plural, one {Dodaj # v garderobo} two {Dodaj # v garderobo} few {Dodaj # v garderobo} other {Dodaj # v garderobo}}",
+    "addFailed": "Ni jih bilo mogoče dodati. Poskusi znova.",
+    "addMore": "Dodaj še",
+    "done": "Končano"
   }
 }

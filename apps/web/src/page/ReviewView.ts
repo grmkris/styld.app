@@ -1,0 +1,315 @@
+import { Button } from '@foldkit/ui'
+import type { Detection, TrayCapture } from '@styld/protocol'
+import { format, type Locale } from '@styld/i18n'
+import { Option } from 'effect'
+import { Submodel } from 'foldkit'
+import type { Html, HtmlBuilder } from 'foldkit/html'
+import { cx } from 'zyzz'
+import { actionButton } from '../ActionButton.ts'
+import { primaryAction, secondaryAction } from '../Actions.styles.ts'
+import { fieldLabel, formError, textField } from '../Fields.styles.ts'
+import { backIcon, checkIcon, editIcon, loader } from '../Icon.ts'
+import { addPiecesRouter } from '../route.ts'
+import { styled } from '../Styled.ts'
+import { piecePickers } from './PieceFields.ts'
+import { type Decision, keptOf, Message, type Model, Saving, Tray } from './Review.ts'
+import { categoryName, subcategoryName } from './WardrobeWords.ts'
+import { backToWardrobe } from './PageBar.ts'
+import { round } from './PageBar.styles.ts'
+import { message as messageSection, messageTitle } from './WardrobeView.styles.ts'
+import * as styles from './ReviewView.styles.ts'
+
+/** A found piece's picture; the API Worker serves it to its owner only. */
+const picturePath = (detection: Detection, decision: Decision | undefined) =>
+  `/cdn/detections/${detection.id}/${decision?.useOriginal === true || !detection.hasCutout ? 'original' : 'cutout'}`
+
+/** What a found piece is called: the person's name for it, else its kind, else a prompt to say. */
+const label = (decision: Decision | undefined, locale: Locale) => {
+  const name = decision?.name.trim() ?? ''
+  if (name.length > 0) return name
+  return Option.match(decision?.category ?? Option.none(), {
+    onNone: () => format(locale, 'wardrobe.addPieceCategoryPlaceholder', {}),
+    onSome: (category) => format(locale, categoryName(category), {}),
+  })
+}
+
+const kind = (decision: Decision | undefined, locale: Locale) =>
+  Option.match(decision?.subcategory ?? Option.none(), {
+    onNone: () => '',
+    onSome: (subcategory) => format(locale, subcategoryName(subcategory), {}),
+  })
+
+const foundTile = (detection: Detection, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  const decision = model.decisions[detection.id]
+  const kept = decision?.keep === true
+  const name = label(decision, locale)
+  return h.keyed('li')(
+    detection.id,
+    [],
+    [
+      h.figure(styled(h, styles.found()), [
+        h.img([
+          h.Src(picturePath(detection, decision)),
+          h.Alt(name),
+          h.Loading('lazy'),
+          ...(kept ? [] : [h.DataAttribute('dropped', '')]),
+          ...styled(h, styles.foundImage()),
+        ]),
+        Button.view(
+          {
+            onClick: Message.ToggledKeep({ detectionId: detection.id }),
+            toView: (attributes) =>
+              h.button(
+                [
+                  ...attributes.button,
+                  h.AriaPressed(String(kept)),
+                  h.AriaLabel(format(locale, 'capture.keepLabel', { name })),
+                  ...styled(h, styles.tick()),
+                ],
+                [checkIcon(h)],
+              ),
+          },
+          h,
+        ),
+        h.figcaption(styled(h, styles.caption()), [
+          h.span(styled(h, styles.captionText()), [
+            h.span(styled(h, styles.captionName()), [name]),
+            h.span(styled(h, styles.captionKind()), [kind(decision, locale)]),
+          ]),
+          Button.view(
+            {
+              onClick: Message.ClickedEdit({ detectionId: detection.id }),
+              toView: (attributes) =>
+                h.button(
+                  [
+                    ...attributes.button,
+                    h.AriaLabel(format(locale, 'scan.editItemLabel', { category: name })),
+                    ...styled(h, styles.edit()),
+                  ],
+                  [editIcon(h)],
+                ),
+            },
+            h,
+          ),
+        ]),
+      ]),
+    ],
+  )
+}
+
+const pendingTile = (capture: TrayCapture, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.keyed('li')(
+    capture.id,
+    [],
+    [
+      h.div(
+        [h.Role('status'), ...styled(h, styles.pending())],
+        [h.span(styled(h, styles.pendingLabel()), [loader(h), format(locale, 'capture.finding', {})])],
+      ),
+    ],
+  )
+
+/** A capture that waits for the person: it failed, stopped halfway, or found nothing. */
+const notice = (capture: TrayCapture, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  const busy = Option.contains(model.acting, capture.id)
+  const canRetry = capture.status === 'failed' || capture.status === 'unknown'
+  const text =
+    capture.status === 'unknown' ? 'capture.unknown' : capture.status === 'failed' ? 'capture.failed' : 'capture.empty'
+  return h.keyed('div')(capture.id, styled(h, styles.notice()), [
+    h.p([], [format(locale, text, {})]),
+    h.div(styled(h, styles.noticeActions()), [
+      canRetry
+        ? actionButton(
+            {
+              label: format(locale, 'common.tryAgain', {}),
+              style: secondaryAction(),
+              isDisabled: busy,
+              onClick: Message.ClickedRetryCapture({ captureId: capture.id }),
+            },
+            h,
+          )
+        : h.empty,
+      actionButton(
+        {
+          label: format(locale, 'capture.remove', {}),
+          style: secondaryAction(),
+          isDisabled: busy,
+          onClick: Message.ClickedRemoveCapture({ captureId: capture.id }),
+        },
+        h,
+      ),
+    ]),
+  ])
+}
+
+/** The open piece: its picture, the original photo instead, what it is and its name. */
+const editor = (detection: Detection, decision: Decision, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.section(
+    [h.AriaLabel(label(decision, locale)), ...styled(h, styles.editor())],
+    [
+      h.img([
+        h.Src(picturePath(detection, decision)),
+        h.Alt(label(decision, locale)),
+        ...styled(h, styles.editorImage()),
+      ]),
+      detection.hasCutout
+        ? h.label(styled(h, styles.original()), [
+            h.input([
+              h.Type('checkbox'),
+              h.Checked(decision.useOriginal),
+              h.OnChange(() => Message.ToggledUseOriginal()),
+            ]),
+            format(locale, 'capture.useOriginal', {}),
+          ])
+        : h.empty,
+      ...piecePickers(
+        {
+          category: decision.category,
+          categoryMissing: false,
+          subcategory: decision.subcategory,
+          colours: decision.colours,
+          coloursLegend: 'wardrobe.addPieceColorsLabel',
+          messages: Message,
+        },
+        locale,
+        h,
+      ),
+      h.label([h.For('found-name'), ...styled(h, fieldLabel())], [format(locale, 'wardrobe.nameOptionalLabel', {})]),
+      h.input([
+        h.Id('found-name'),
+        h.Type('text'),
+        h.Maxlength(80),
+        h.Autocomplete('off'),
+        h.Value(decision.name),
+        h.OnInput((value) => Message.UpdatedName({ value })),
+        ...styled(h, textField()),
+      ]),
+    ],
+  )
+
+const footer = (model: Model, locale: Locale, h: HtmlBuilder<Message>, editing: boolean): Html => {
+  const count = keptOf(model).length
+  const busy = Saving.guards.Preparing(model.saving) || Saving.guards.Saving(model.saving)
+  return h.div(styled(h, styles.footer()), [
+    h.div(styled(h, styles.footerInner()), [
+      Saving.guards.Failed(model.saving)
+        ? h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, 'capture.addFailed', {})])
+        : h.empty,
+      editing
+        ? actionButton(
+            {
+              label: format(locale, 'capture.done', {}),
+              style: cx(primaryAction(), styles.wide()),
+              onClick: Message.ClickedDoneEditing(),
+            },
+            h,
+          )
+        : actionButton(
+            {
+              label: format(locale, busy ? 'wardrobe.addingPieces' : 'capture.addCount', { count }),
+              style: cx(primaryAction(), styles.wide()),
+              isDisabled: busy || count === 0,
+              leading: busy ? loader(h) : h.empty,
+              onClick: Message.ClickedAdd(),
+            },
+            h,
+          ),
+    ]),
+  ])
+}
+
+const trayView = (captures: ReadonlyArray<TrayCapture>, model: Model, locale: Locale, h: HtmlBuilder<Message>) => {
+  const found = captures.flatMap(({ detections }) => detections)
+  const waiting = captures.filter(({ status }) => status === 'processing')
+  const needing = captures.filter(
+    ({ status, detections }) =>
+      status === 'failed' || status === 'unknown' || (status === 'review' && detections.length === 0),
+  )
+  if (captures.length === 0)
+    return [
+      h.section(styled(h, messageSection()), [
+        h.h2(styled(h, messageTitle()), [format(locale, 'scan.listEmpty', {})]),
+        h.a([h.Href(addPiecesRouter({})), ...styled(h, primaryAction())], [format(locale, 'capture.addTitle', {})]),
+      ]),
+    ]
+  return [
+    h.ul(styled(h, styles.grid()), [
+      ...waiting.map((capture) => pendingTile(capture, locale, h)),
+      ...found.map((detection) => foundTile(detection, model, locale, h)),
+    ]),
+    ...needing.map((capture) => notice(capture, model, locale, h)),
+    found.length > 0 ? footer(model, locale, h, false) : h.empty,
+  ]
+}
+
+const openPiece = (model: Model) =>
+  Option.flatMap(model.editing, (id) => {
+    const detection = Tray.guards.Loaded(model.tray)
+      ? model.tray.tray.captures.flatMap(({ detections }) => detections).find((each) => each.id === id)
+      : undefined
+    const decision = model.decisions[id]
+    return detection === undefined || decision === undefined ? Option.none() : Option.some({ detection, decision })
+  })
+
+const header = (model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => {
+  if (!Tray.guards.Loaded(model.tray)) return [h.h1([], [format(locale, 'scan.toReview', {})])]
+  const { captures, allowance } = model.tray.tray
+  const count = captures.reduce((sum, { detections }) => sum + detections.length, 0)
+  return [
+    h.h1([], [format(locale, 'capture.foundTitle', { count })]),
+    count > 0 ? h.p(styled(h, styles.lede()), [format(locale, 'capture.reviewHint', {})]) : h.empty,
+    h.p(styled(h, styles.allowance()), [format(locale, 'capture.allowance', allowance)]),
+  ]
+}
+
+/** The review tray: what was found in the person's photos and videos, ticked to keep. */
+export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) => {
+  const open = openPiece(model)
+  return h.main(
+    [h.Id('main'), ...styled(h, styles.reviewPage())],
+    [
+      h.div(styled(h, styles.pageBar()), [
+        Option.isSome(open)
+          ? Button.view(
+              {
+                onClick: Message.ClickedDoneEditing(),
+                toView: (attributes) =>
+                  h.button(
+                    [...attributes.button, h.AriaLabel(format(locale, 'common.back', {})), ...styled(h, round())],
+                    [backIcon(h)],
+                  ),
+              },
+              h,
+            )
+          : backToWardrobe(locale, h),
+        h.a([h.Href(addPiecesRouter({})), ...styled(h, styles.addMore())], [format(locale, 'capture.addMore', {})]),
+      ]),
+      ...Option.match(open, {
+        onSome: ({ detection, decision }) => [editor(detection, decision, locale, h), footer(model, locale, h, true)],
+        onNone: () => [
+          ...header(model, locale, h),
+          ...Tray.match(model.tray, {
+            Loading: () => [h.p([h.Role('status'), ...styled(h, styles.lede())], [loader(h)])],
+            Failed: () => [
+              h.section(
+                [h.Role('alert'), ...styled(h, messageSection())],
+                [
+                  h.h2(styled(h, messageTitle()), [format(locale, 'scan.listError', {})]),
+                  actionButton(
+                    {
+                      label: format(locale, 'common.tryAgain', {}),
+                      style: secondaryAction(),
+                      onClick: Message.ClickedRetryLoad(),
+                    },
+                    h,
+                  ),
+                ],
+              ),
+            ],
+            Loaded: ({ tray }) => trayView(tray.captures, model, locale, h),
+          }),
+        ],
+      }),
+    ],
+  )
+})

@@ -11,10 +11,11 @@ import { modifyFields } from 'foldkit/struct'
 import { catalogVersion, loadCatalog } from '@styld/i18n'
 import { Locale, localeEndpoint, parseLocale } from './Locale.ts'
 import * as Crypto from 'effect/Crypto'
-import * as AddPiece from './page/AddPiece.ts'
+import * as AddPieces from './page/AddPieces.ts'
 import * as Account from './page/Account.ts'
 import * as Login from './page/Login.ts'
 import * as Piece from './page/Piece.ts'
+import * as Review from './page/Review.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
 import {
   AppRoute,
@@ -23,7 +24,7 @@ import {
   homeRouter,
   loginRouter,
   needsSession,
-  pieceRouter,
+  reviewRouter,
   routeFromPathname,
   wardrobeRouter,
 } from './route.ts'
@@ -63,7 +64,8 @@ export const Model = Schema.Struct({
   login: Login.Model,
   wardrobe: Wardrobe.Model,
   piece: Piece.Model,
-  addPiece: AddPiece.Model,
+  addPieces: AddPieces.Model,
+  review: Review.Model,
   account: Account.Model,
   telemetry: Schema.Struct({ consent: TelemetryConsent, prompting: Schema.Boolean }),
 })
@@ -85,7 +87,8 @@ export const Message = defineMessageUnion({
   GotAccountMessage: { message: Account.Message },
   GotWardrobeMessage: { message: Wardrobe.Message },
   GotPieceMessage: { message: Piece.Message },
-  GotAddPieceMessage: { message: AddPiece.Message },
+  GotAddPiecesMessage: { message: AddPieces.Message },
+  GotReviewMessage: { message: Review.Message },
   ChoseTelemetryConsent: { granted: Schema.Boolean },
   RecordedTelemetryConsent: { granted: Schema.Boolean },
   OpenedTelemetrySettings: {},
@@ -162,7 +165,8 @@ const pageCommands = (route: AppRoute, piece: Piece.Model) =>
   AppRoute.match(route, {
     Wardrobe: () => Command.mapMessages(Wardrobe.load(), (message) => Message.GotWardrobeMessage({ message })),
     Piece: () => Command.mapMessages(Piece.load(piece), (message) => Message.GotPieceMessage({ message })),
-    AddPiece: () => [],
+    AddPieces: () => [],
+    Review: () => Command.mapMessages(Review.load(), (message) => Message.GotReviewMessage({ message })),
     Home: () => [],
     Login: () => [],
     LoginForConnection: () => [],
@@ -182,7 +186,8 @@ export const init = (context: Flags): UpdateReturn => {
       login: Login.init(),
       wardrobe: Wardrobe.init(),
       piece,
-      addPiece: AddPiece.init(),
+      addPieces: AddPieces.init(),
+      review: Review.init(),
       account: Account.init(),
       telemetry: { consent: context.telemetryConsent, prompting: context.telemetryConsent === 'undecided' },
     },
@@ -201,7 +206,8 @@ const afterSignIn = (route: AppRoute) =>
     Home: () => [],
     Account: () => [],
     Wardrobe: () => [],
-    AddPiece: () => [],
+    AddPieces: () => [],
+    Review: () => [],
     Piece: () => [],
     NotFound: () => [],
   })
@@ -268,15 +274,23 @@ const foldPiece = Update.foldChild({
   }),
 })
 
-const foldAddPiece = Update.foldChild({
-  update: AddPiece.update,
-  read: (model: Model) => Option.some(model.addPiece),
-  write: (model: Model, addPiece: AddPiece.Model) => modifyFields(model, { addPiece: () => addPiece }),
-  toParentMessage: (message: AddPiece.Message) => Message.GotAddPieceMessage({ message }),
-  foldOutMessage: AddPiece.OutMessage.match<Update.Step<Model, Message, Services>>({
-    AddedPiece:
-      ({ pieceId }) =>
-      (stepModel) => ({ model: stepModel, commands: [Navigate({ href: pieceRouter({ pieceId }) })] }),
+const foldAddPieces = Update.foldChild({
+  update: AddPieces.update,
+  read: (model: Model) => Option.some(model.addPieces),
+  write: (model: Model, addPieces: AddPieces.Model) => modifyFields(model, { addPieces: () => addPieces }),
+  toParentMessage: (message: AddPieces.Message) => Message.GotAddPiecesMessage({ message }),
+  foldOutMessage: AddPieces.OutMessage.match<Update.Step<Model, Message, Services>>({
+    SentEverything: () => (stepModel) => ({ model: stepModel, commands: [Navigate({ href: reviewRouter({}) })] }),
+  }),
+})
+
+const foldReview = Update.foldChild({
+  update: Review.update,
+  read: (model: Model) => Option.some(model.review),
+  write: (model: Model, review: Review.Model) => modifyFields(model, { review: () => review }),
+  toParentMessage: (message: Review.Message) => Message.GotReviewMessage({ message }),
+  foldOutMessage: Review.OutMessage.match<Update.Step<Model, Message, Services>>({
+    AddedPieces: () => (stepModel) => ({ model: stepModel, commands: [Navigate({ href: wardrobeRouter({}) })] }),
   }),
 })
 
@@ -319,7 +333,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotAccountMessage: (got) => foldAccount(model, got.message),
     GotWardrobeMessage: (got) => foldWardrobe(model, got.message),
     GotPieceMessage: (got) => foldPiece(model, got.message),
-    GotAddPieceMessage: (got) => foldAddPiece(model, got.message),
+    GotAddPiecesMessage: (got) => foldAddPieces(model, got.message),
+    GotReviewMessage: (got) => foldReview(model, got.message),
     ChoseTelemetryConsent: ({ granted }) => ({
       model: modifyFields(model, { telemetry: (telemetry) => modifyFields(telemetry, { prompting: () => false }) }),
       commands: [RecordTelemetryConsent({ granted })],

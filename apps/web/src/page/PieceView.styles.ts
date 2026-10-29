@@ -12,20 +12,6 @@ export const piecePage = style({
   },
 })
 export const pageBar = style({ display: 'flex', alignItems: 'center', gap: '8px', gridColumn: '1 / -1' })
-/** A 44px round icon action (Gallery `.round`). */
-export const round = style({
-  display: 'inline-grid',
-  placeItems: 'center',
-  inlineSize: '44px',
-  blockSize: '44px',
-  padding: '0',
-  borderWidth: '0',
-  borderRadius: 'pill',
-  backgroundColor: 'transparent !custom',
-  color: 'ink',
-  cursor: 'pointer',
-  '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2' } },
-})
 export const photo = style({
   display: 'block',
   inlineSize: '100%',

@@ -2725,5 +2725,41 @@
   },
   "assistantView": {
     "openInStyld": "Open in Styld"
+  },
+  "capture": {
+    "addTitle": "Add pieces",
+    "addHint": "Photos, or a video of up to a minute along your rail. Every piece is cut out for you to keep or drop.",
+    "chooseTitle": "Photos or a video",
+    "chooseHint": "From your library",
+    "cameraTitle": "Take a photo",
+    "cameraHint": "One piece at a time",
+    "notSupported": "{name} isn't a photo or video Styld can use",
+    "tooLarge": "{name} is too large",
+    "queueLabel": "Sending",
+    "waiting": "Waiting",
+    "preparingVideo": "Reading the video…",
+    "sent": "Sent",
+    "problem": {
+      "dailyLimit": "Today's free pieces are used up. Try again tomorrow.",
+      "videoTooLong": "Videos can be up to a minute long",
+      "videoUnreadable": "This video can't be read here",
+      "refused": "This file can't be used",
+      "network": "Didn't send"
+    },
+    "seeFound": "{count, plural, one {See what's in # file} other {See what's in # files}}",
+    "foundTitle": "{count, plural, =0 {Nothing found yet} one {# piece found} other {# pieces found}}",
+    "reviewHint": "They're cut out and ready. Untick anything that isn't yours.",
+    "allowance": "{remaining} of {daily} free today",
+    "finding": "Finding pieces…",
+    "failed": "This one couldn't be processed. Its credit is back.",
+    "unknown": "This one stopped halfway. Trying again won't cost anything.",
+    "empty": "No clothes found here.",
+    "remove": "Remove",
+    "keepLabel": "Keep {name}",
+    "useOriginal": "Use the original photo",
+    "addCount": "{count, plural, one {Add # to my wardrobe} other {Add # to my wardrobe}}",
+    "addFailed": "Couldn't add them. Try again.",
+    "addMore": "Add more",
+    "done": "Done"
   }
 }
