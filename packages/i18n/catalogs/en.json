@@ -2775,7 +2775,11 @@
       "flip": "Switch camera",
       "denied": "Camera access is off. Allow it in your browser's settings, or choose photos instead.",
       "unavailable": "The camera can't start here. Choose photos instead."
-    }
+    },
+    "retryFile": "Try {name} again",
+    "queueSummary": "{sent} of {total} sent{failed, plural, =0 {} one {, # didn't go} other {, # didn't go}}",
+    "actionFailed": "That didn't work. Try again.",
+    "stale": "Can't refresh right now; this may be out of date."
   },
   "looks": {
     "title": "Looks",

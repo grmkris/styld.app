@@ -29,8 +29,10 @@ export type Camera = typeof Camera.Type
 export const Model = Schema.Struct({
   camera: Camera,
   facing: Facing,
-  /** A garment check is on its way; scenes that settle meanwhile are let go. */
-  checking: Schema.Boolean,
+  /** The garment check on its way, by number. Only its own answer counts: a tap, a flip or closing the
+   * camera lets it go, and scenes that settle meanwhile are let go too. */
+  pendingCheck: Schema.Option(Schema.Number),
+  checksSent: Schema.Number,
   shots: Schema.Number,
   /** The small copy of the last photo taken, so the check can tell the back of the same garment. */
   lastCheck: Schema.Option(File.File),
@@ -40,7 +42,8 @@ export type Model = typeof Model.Type
 export const init = (): Model => ({
   camera: Camera.Closed(),
   facing: 'user',
-  checking: false,
+  pendingCheck: Option.none(),
+  checksSent: 0,
   shots: 0,
   lastCheck: Option.none(),
 })
@@ -50,16 +53,15 @@ export const isOpen = (model: Model) => !Camera.guards.Closed(model.camera)
 // MESSAGE
 
 export const Message = defineMessageUnion({
-  ClickedOpen: {},
   ClickedDone: {},
   ClickedFlip: {},
   StartedCamera: {},
   FailedCamera: { reason: Schema.Literals(['denied', 'unavailable']) },
   SettledScene: { check: File.File, still: File.File },
   TappedPicture: { check: File.File, still: File.File },
-  CheckedHeld: { check: File.File, still: File.File, held: Schema.Boolean, side: Side },
-  FailedCheck: {},
-  Buzzed: {},
+  SucceededCheckHeld: { token: Schema.Number, check: File.File, still: File.File, held: Schema.Boolean, side: Side },
+  FailedCheckHeld: { token: Schema.Number },
+  CompletedBuzz: {},
 })
 export type Message = typeof Message.Type
 
@@ -72,58 +74,58 @@ export type OutMessage = typeof OutMessage.Type
 
 // MOUNT
 
-/** Run the camera in the element it is mounted on, loading the camera code only then.
+/** Run the camera in the element it is mounted on, loading the camera code only then. Code that fails
+ * to load (offline, or a newer release) reports the camera as unavailable.
  * @internal Exported for its tests. */
 export const WatchCamera = Mount.defineStream('WatchCamera', {
   args: { facing: Facing },
   messages: [Message.StartedCamera, Message.FailedCamera, Message.SettledScene, Message.TappedPicture],
   execute: ({ element, facing }) =>
     Stream.unwrap(
-      Effect.map(
-        Effect.promise(() => import('../capture/Camera.ts')),
-        ({ watchCamera }) => watchCamera(element, facing),
+      Effect.tryPromise(() => import('../capture/Camera.ts')).pipe(
+        Effect.map(({ watchCamera }) =>
+          watchCamera(element, facing).pipe(
+            Stream.map((event) => {
+              if (event.kind === 'started') return Message.StartedCamera()
+              if (event.kind === 'failed') return Message.FailedCamera({ reason: event.reason })
+              return event.kind === 'settled'
+                ? Message.SettledScene({ check: event.check, still: event.still })
+                : Message.TappedPicture({ check: event.check, still: event.still })
+            }),
+          ),
+        ),
+        Effect.orElseSucceed(() => Stream.make(Message.FailedCamera({ reason: 'unavailable' }))),
       ),
-    ).pipe(
-      Stream.map((event) => {
-        if (event.kind === 'started') return Message.StartedCamera()
-        if (event.kind === 'failed') return Message.FailedCamera({ reason: event.reason })
-        return event.kind === 'settled'
-          ? Message.SettledScene({ check: event.check, still: event.still })
-          : Message.TappedPicture({ check: event.check, still: event.still })
-      }),
     ),
 })
 
 // COMMAND
 
 const base64Of = (file: File.File) =>
-  Effect.map(
-    Effect.promise(() => file.arrayBuffer()),
-    (bytes) => Base64.encode(new Uint8Array(bytes)),
-  )
+  Effect.tryPromise(() => file.arrayBuffer()).pipe(Effect.map((bytes) => Base64.encode(new Uint8Array(bytes))))
 
-/** Ask whether one garment is held up in the settled picture, and which side shows.
+/** Ask whether one garment is shown in the settled picture, and which side.
  * @internal Exported for its tests. */
 export const CheckHeld = Command.define('CheckHeld', {
-  args: { check: File.File, still: File.File, previous: Schema.Option(File.File) },
-  messages: [Message.CheckedHeld, Message.FailedCheck],
-  execute: ({ check, still, previous }) =>
+  args: { token: Schema.Number, check: File.File, still: File.File, previous: Schema.Option(File.File) },
+  messages: [Message.SucceededCheckHeld, Message.FailedCheckHeld],
+  execute: ({ token, check, still, previous }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       const frame = yield* base64Of(check)
       const earlier = Option.isSome(previous) ? { previous: yield* base64Of(previous.value) } : {}
       const answer = yield* api.capture.check({ payload: { frame, ...earlier } })
-      return Message.CheckedHeld({ check, still, held: answer.held, side: answer.side })
-    }).pipe(Effect.orElseSucceed(() => Message.FailedCheck())),
+      return Message.SucceededCheckHeld({ token, check, still, held: answer.held, side: answer.side })
+    }).pipe(Effect.orElseSucceed(() => Message.FailedCheckHeld({ token }))),
 })
 
 /** A short buzz on phones that have one, when a photo is taken.
  * @internal Exported for its tests. */
 export const Buzz = Command.define('Buzz', {
-  messages: [Message.Buzzed],
+  messages: [Message.CompletedBuzz],
   execute: Effect.sync(() => {
     if ('vibrate' in navigator) navigator.vibrate(40)
-    return Message.Buzzed()
+    return Message.CompletedBuzz()
   }),
 })
 
@@ -133,10 +135,14 @@ type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Styl
 
 const watching = (hint: Hint) => Camera.Watching({ hint })
 
+/** Whether an answer is for the check still pending, with the camera still watching. */
+const awaited = (model: Model, token: number) =>
+  Camera.guards.Watching(model.camera) && Option.contains(model.pendingCheck, token)
+
 const took = (model: Model, photo: File.File, check: File.File, side: Option.Option<Side>): UpdateReturn => ({
   model: modifyFields(model, {
     camera: () => watching('taken'),
-    checking: () => false,
+    pendingCheck: () => Option.none(),
     shots: (shots) => shots + 1,
     lastCheck: () => Option.some(check),
   }),
@@ -144,14 +150,28 @@ const took = (model: Model, photo: File.File, check: File.File, side: Option.Opt
   outMessage: OutMessage.TookPhoto({ photo, side }),
 })
 
+/** A settled picture goes to the garment check, unless one is already out. */
+const settled = (model: Model, check: File.File, still: File.File): UpdateReturn => {
+  if (Option.isSome(model.pendingCheck) || !Camera.guards.Watching(model.camera)) return { model }
+  const token = model.checksSent
+  return {
+    model: modifyFields(model, {
+      pendingCheck: () => Option.some(token),
+      checksSent: (sent) => sent + 1,
+      camera: () => watching('checking'),
+    }),
+    commands: [CheckHeld({ token, check, still, previous: model.lastCheck })],
+  }
+}
+
 /** Open the camera; the page calls this when the person chooses to hold pieces up. */
-export const open = (model: Model): UpdateReturn => update(model, Message.ClickedOpen())
+export const open = (model: Model): UpdateReturn =>
+  isOpen(model) ? { model } : { model: modifyFields(model, { camera: () => Camera.Starting() }) }
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
-    ClickedOpen: () => ({ model: modifyFields(model, { camera: () => Camera.Starting() }) }),
     ClickedDone: () => ({
-      model: modifyFields(model, { camera: () => Camera.Closed(), checking: () => false }),
+      model: modifyFields(model, { camera: () => Camera.Closed(), pendingCheck: () => Option.none() }),
       outMessage: OutMessage.ClosedCamera(),
     }),
     // A new facing mounts a new camera; the old one stops as its element goes.
@@ -159,24 +179,28 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       model: modifyFields(model, {
         facing: (facing) => (facing === 'user' ? 'environment' : 'user'),
         camera: () => Camera.Starting(),
-        checking: () => false,
+        pendingCheck: () => Option.none(),
       }),
     }),
-    StartedCamera: () => ({ model: modifyFields(model, { camera: () => watching('holdOne') }) }),
-    FailedCamera: ({ reason }) => ({ model: modifyFields(model, { camera: () => Camera.Failed({ reason }) }) }),
-    SettledScene: ({ check, still }) =>
-      model.checking || !Camera.guards.Watching(model.camera)
-        ? { model }
-        : {
-            model: modifyFields(model, { checking: () => true, camera: () => watching('checking') }),
-            commands: [CheckHeld({ check, still, previous: model.lastCheck })],
-          },
-    TappedPicture: ({ check, still }) => took(model, still, check, Option.none()),
-    CheckedHeld: ({ check, still, held, side }) =>
-      held && Camera.guards.Watching(model.camera)
+    StartedCamera: () =>
+      Camera.guards.Starting(model.camera)
+        ? { model: modifyFields(model, { camera: () => watching('holdOne') }) }
+        : { model },
+    FailedCamera: ({ reason }) =>
+      isOpen(model) ? { model: modifyFields(model, { camera: () => Camera.Failed({ reason }) }) } : { model },
+    SettledScene: ({ check, still }) => settled(model, check, still),
+    TappedPicture: ({ check, still }) =>
+      Camera.guards.Watching(model.camera) ? took(model, still, check, Option.none()) : { model },
+    SucceededCheckHeld: ({ token, check, still, held, side }) => {
+      if (!awaited(model, token)) return { model }
+      return held
         ? took(model, still, check, side === 'unclear' ? Option.none() : Option.some(side))
-        : { model: modifyFields(model, { checking: () => false, camera: () => watching('holdOne') }) },
+        : { model: modifyFields(model, { pendingCheck: () => Option.none(), camera: () => watching('holdOne') }) }
+    },
     // Without the check, the camera still takes a photo by hand.
-    FailedCheck: () => ({ model: modifyFields(model, { checking: () => false, camera: () => watching('tapToTake') }) }),
-    Buzzed: () => ({ model }),
+    FailedCheckHeld: ({ token }) =>
+      awaited(model, token)
+        ? { model: modifyFields(model, { pendingCheck: () => Option.none(), camera: () => watching('tapToTake') }) }
+        : { model },
+    CompletedBuzz: () => ({ model }),
   })

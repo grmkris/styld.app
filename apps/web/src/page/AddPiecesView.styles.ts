@@ -92,6 +92,8 @@ export const queueRow = style({
   borderBlockEndStyle: 'solid',
   borderBlockEndColor: 'rule',
 })
+/** The queue's one-line summary, read out as it changes. */
+export const summary = style({ marginBlockStart: '16px', fontSize: '14px', color: 'ink2' })
 export const queueIcon = style({ display: 'inline-grid', color: 'ink2', fontSize: '20px' })
 export const queueName = style({
   flexGrow: 1,

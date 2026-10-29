@@ -1,6 +1,7 @@
 import { FileDrop } from '@foldkit/ui'
 import {
   CaptureSource,
+  CreateVideoCapture,
   ImageType,
   maximumImageBytes,
   maximumVideoBytes,
@@ -49,6 +50,9 @@ export const Item = Schema.Struct({
   side: Schema.Option(Side),
   operationId: Schema.Option(Schema.String),
   uploadId: Schema.Option(Schema.String),
+  /** A video sampled and uploaded whose capture request got no answer: trying again sends the same
+   * request, so the server makes one capture. */
+  prepared: Schema.Option(CreateVideoCapture),
   sending: Sending,
 })
 export type Item = typeof Item.Type
@@ -87,13 +91,15 @@ export const Message = defineMessageUnion({
     problem: SendProblem,
     operationId: Schema.Option(Schema.String),
     uploadId: Schema.Option(Schema.String),
+    prepared: Schema.Option(CreateVideoCapture),
   },
   ClickedRetry: { index: Schema.Number },
   ClickedReview: {},
 })
 export type Message = typeof Message.Type
 
-export const OutMessage = defineMessageUnion({ SentEverything: {} })
+/** Every chosen file is sent, or the person chose to see what the sent ones found. */
+export const OutMessage = defineMessageUnion({ FinishedSending: {} })
 export type OutMessage = typeof OutMessage.Type
 
 // COMMAND
@@ -113,7 +119,12 @@ const problemOf = (error: unknown): SendProblem => {
   if (Predicate.isTagged(error, 'DailyLimitReached')) return 'dailyLimit'
   if (Predicate.isTagged(error, 'VideoNotSampled'))
     return Predicate.hasProperty(error, 'reason') && error.reason === 'tooLong' ? 'videoTooLong' : 'videoUnreadable'
-  if (Predicate.isTagged(error, 'UploadRefused')) return 'refused'
+  if (
+    Predicate.isTagged(error, 'UploadRefused') ||
+    Predicate.isTagged(error, 'OperationConflict') ||
+    Predicate.isTagged(error, 'RequestRefused')
+  )
+    return 'refused'
   if (error instanceof FileNotSent && error.refused) return 'refused'
   return 'network'
 }
@@ -158,6 +169,7 @@ export const SendPhoto = Command.define('SendPhoto', {
           problem,
           operationId: keep ? Option.some(operationId) : Option.none(),
           uploadId: keep ? uploadId : Option.none(),
+          prepared: Option.none(),
         })
       }
       const upload = yield* Effect.result(uploadOnce(args.photo, args.contentType, args.uploadId))
@@ -184,6 +196,7 @@ export const SendPhoto = Command.define('SendPhoto', {
           problem: 'network',
           operationId: Option.none(),
           uploadId: Option.none(),
+          prepared: Option.none(),
         }),
       ),
     ),
@@ -199,54 +212,66 @@ const sendStill = (still: { readonly jpeg: Blob; readonly atMs: number; readonly
     return { uploadId: created.uploadId, atMs: still.atMs, sharpness: still.sharpness }
   })
 
+/** Sample a video's stills in the browser and upload the clip and its stills: the capture request, ready
+ * to send. Code that fails to load is a network failure, worth trying again. */
+const prepareVideo = (video: File.File, contentType: VideoType) =>
+  Effect.gen(function* () {
+    const { sampleVideo } = yield* Effect.tryPromise(() => import('../capture/Sampler.ts'))
+    const sampled = yield* sampleVideo(video)
+    const { api: loadApi, sendFile } = yield* StyldClient
+    const api = yield* loadApi
+    const operationId = yield* operationIdOf(Option.none())
+    const clip = yield* api.wardrobe.createVideoUpload({ payload: { contentType, bytes: video.size } })
+    yield* sendFile(clip.path, video)
+    const stills = yield* Effect.forEach(sampled.stills, sendStill, { concurrency: 3 })
+    return yield* Schema.decodeUnknownEffect(CreateVideoCapture)({
+      operationId,
+      videoUploadId: clip.uploadId,
+      durationMs: sampled.durationMs,
+      width: sampled.width,
+      height: sampled.height,
+      stills,
+    })
+  })
+
 const SendVideoArgs = Schema.Struct({
   index: Schema.Number,
   video: File.File,
   contentType: VideoType,
-  operationId: Schema.Option(Schema.String),
+  prepared: Schema.Option(CreateVideoCapture),
 })
 
-/** Sample a video's stills in the browser, upload the clip and its stills, then make it a capture.
- * Trying again samples and uploads afresh under a new operation id.
+/** Sample and upload a video, then make it a capture. A capture request that got no answer is kept and
+ * sent again as it was; any other failure starts over.
  * @internal Exported for its tests. */
 export const SendVideo = Command.define('SendVideo', {
   args: SendVideoArgs.fields,
   messages: [Message.SucceededSend, Message.FailedSend],
   execute: (args) =>
     Effect.gen(function* () {
-      const { sampleVideo } = yield* Effect.promise(() => import('../capture/Sampler.ts'))
-      const sampled = yield* sampleVideo(args.video)
-      const { api: loadApi, sendFile } = yield* StyldClient
-      const api = yield* loadApi
-      const operationId = yield* operationIdOf(args.operationId)
-      const clip = yield* api.wardrobe.createVideoUpload({
-        payload: { contentType: args.contentType, bytes: args.video.size },
-      })
-      yield* sendFile(clip.path, args.video)
-      const stills = yield* Effect.forEach(sampled.stills, sendStill, { concurrency: 3 })
-      yield* api.capture.createVideoCapture({
-        payload: {
-          operationId,
-          videoUploadId: clip.uploadId,
-          durationMs: sampled.durationMs,
-          width: sampled.width,
-          height: sampled.height,
-          stills,
-        },
-      })
+      const failed = (error: unknown, prepared: Option.Option<CreateVideoCapture>) => {
+        const problem = problemOf(error)
+        return Message.FailedSend({
+          index: args.index,
+          problem,
+          operationId: Option.none(),
+          uploadId: Option.none(),
+          prepared: problem === 'network' ? prepared : Option.none(),
+        })
+      }
+      const ready = Option.isSome(args.prepared)
+        ? Result.succeed(args.prepared.value)
+        : yield* Effect.result(prepareVideo(args.video, args.contentType))
+      if (Result.isFailure(ready)) return failed(ready.failure, Option.none())
+      const created = yield* Effect.result(
+        Effect.gen(function* () {
+          const api = yield* (yield* StyldClient).api
+          return yield* api.capture.createVideoCapture({ payload: ready.success })
+        }),
+      )
+      if (Result.isFailure(created)) return failed(created.failure, Option.some(ready.success))
       return Message.SucceededSend({ index: args.index })
-    }).pipe(
-      Effect.catch((error) =>
-        Effect.succeed(
-          Message.FailedSend({
-            index: args.index,
-            problem: problemOf(error),
-            operationId: Option.none(),
-            uploadId: Option.none(),
-          }),
-        ),
-      ),
-    ),
+    }),
 })
 
 // UPDATE
@@ -274,7 +299,7 @@ const commandFor = (item: Item, index: number) =>
         index,
         video: item.file,
         contentType: Schema.decodeUnknownSync(VideoType)(File.mimeType(item.file)),
-        operationId: item.operationId,
+        prepared: item.prepared,
       })
     : SendPhoto({
         index,
@@ -308,7 +333,7 @@ const settled = (model: Model): UpdateReturn => {
   const next = pump(model)
   const done = next.model.items.every(({ sending }) => Sending.guards.Sent(sending))
   return done && next.model.items.length > 0 && !HeldCamera.isOpen(next.model.held)
-    ? { ...next, outMessage: OutMessage.SentEverything() }
+    ? { ...next, outMessage: OutMessage.FinishedSending() }
     : next
 }
 
@@ -325,6 +350,7 @@ const chose = (model: Model, files: ReadonlyArray<File.File>, source: CaptureSou
             side: Option.none(),
             operationId: Option.none(),
             uploadId: Option.none(),
+            prepared: Option.none(),
             sending: Sending.Waiting(),
           },
         ]
@@ -375,6 +401,7 @@ const tookPhoto = (model: Model, photo: File.File, side: Option.Option<Side>): U
           side,
           operationId: Option.none(),
           uploadId: Option.none(),
+          prepared: Option.none(),
           sending: Sending.Waiting(),
         },
       ],
@@ -416,15 +443,35 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotHeldCameraMessage: ({ message: heldMessage }) => foldHeldCamera(model, heldMessage),
     ClickedHoldUp: () => foldHeldCameraOpen(model),
     SucceededSend: ({ index }) => settled(withItem(model, index, (item) => ({ ...item, sending: Sending.Sent() }))),
-    FailedSend: ({ index, problem, operationId, uploadId }) =>
-      settled(
-        withItem(model, index, (item) => ({ ...item, operationId, uploadId, sending: Sending.Failed({ problem }) })),
-      ),
+    FailedSend: ({ index, problem, operationId, uploadId, prepared }) => {
+      const failed = withItem(model, index, (item) => ({
+        ...item,
+        operationId,
+        uploadId,
+        prepared,
+        sending: Sending.Failed({ problem }),
+      }))
+      // Today's allowance is spent: the files still waiting would be refused the same way.
+      return settled(
+        problem === 'dailyLimit'
+          ? modifyFields(failed, {
+              items: (items) =>
+                items.map((item) =>
+                  Sending.guards.Waiting(item.sending) ? { ...item, sending: Sending.Failed({ problem }) } : item,
+                ),
+            })
+          : failed,
+      )
+    },
     ClickedRetry: ({ index }) =>
       pump(
         withItem(model, index, (item) =>
           Sending.guards.Failed(item.sending) ? { ...item, sending: Sending.Waiting() } : item,
         ),
       ),
-    ClickedReview: () => ({ model, outMessage: OutMessage.SentEverything() }),
+    // The page offers this only once nothing is waiting or on its way, so no upload is cut short.
+    ClickedReview: () =>
+      model.items.some(({ sending }) => Sending.guards.Waiting(sending) || Sending.guards.Sending(sending))
+        ? { model }
+        : { model, outMessage: OutMessage.FinishedSending() },
   })

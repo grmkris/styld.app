@@ -554,6 +554,7 @@ export interface MessageArgumentsByKey<T = string> {
   'calendarPanel.dragHint': Readonly<Record<string, never>>
   'calendarPanel.paletteTitle': Readonly<Record<string, never>>
   'calendarPanel.selectDayHint': Readonly<Record<string, never>>
+  'capture.actionFailed': Readonly<Record<string, never>>
   'capture.addCount': { readonly count: number }
   'capture.addFailed': Readonly<Record<string, never>>
   'capture.addHint': Readonly<Record<string, never>>
@@ -590,10 +591,13 @@ export interface MessageArgumentsByKey<T = string> {
   'capture.problem.videoTooLong': Readonly<Record<string, never>>
   'capture.problem.videoUnreadable': Readonly<Record<string, never>>
   'capture.queueLabel': Readonly<Record<string, never>>
+  'capture.queueSummary': { readonly sent: string | number; readonly total: string | number; readonly failed: number }
   'capture.remove': Readonly<Record<string, never>>
+  'capture.retryFile': { readonly name: string | number }
   'capture.reviewHint': Readonly<Record<string, never>>
   'capture.seeFound': { readonly count: number }
   'capture.sent': Readonly<Record<string, never>>
+  'capture.stale': Readonly<Record<string, never>>
   'capture.tooLarge': { readonly name: string | number }
   'capture.unknown': Readonly<Record<string, never>>
   'capture.useOriginal': Readonly<Record<string, never>>
@@ -2391,4 +2395,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'e8b5167f68bbd1d9d5a69780f0cd97f1e04a39365aa31a24d46b7a0357129885'
+export const catalogVersion = '2a40b72cccd81ca1e43e6254d40fb454ade5dce8ef2cb14bfe778063d9aea53a'

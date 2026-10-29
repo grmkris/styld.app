@@ -8,24 +8,22 @@ import { loader } from '../Icon.ts'
 import { lookRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { Message, type Model, Saved } from './Looks.ts'
-import { pieceLabel } from './WardrobeView.ts'
 import { message as messageSection, messageTitle } from './WardrobeView.styles.ts'
 import * as styles from './LooksView.styles.ts'
 
 /** Up to four of a look's pieces, laid out together. */
-const collage = <Message>(look: Look, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const collage = <Message>(look: Look, h: HtmlBuilder<Message>): Html =>
   h.div(
     styled(h, styles.collage()),
-    look.pieces
-      .slice(0, 4)
-      .map((piece) =>
-        h.img([
-          h.Src(`/cdn/pieces/${piece.id}/thumb`),
-          h.Alt(pieceLabel(piece, locale)),
-          h.Loading('lazy'),
-          ...styled(h, styles.collageImage()),
-        ]),
-      ),
+    look.pieces.slice(0, 4).map((piece) =>
+      h.img([
+        h.Src(`/cdn/pieces/${piece.id}/thumb`),
+        // The card's name says what the look is; listing every piece would drown it.
+        h.Alt(''),
+        h.Loading('lazy'),
+        ...styled(h, styles.collageImage()),
+      ]),
+    ),
   )
 
 const card = (look: Look, locale: Locale, h: HtmlBuilder<Message>): Html =>
@@ -36,7 +34,7 @@ const card = (look: Look, locale: Locale, h: HtmlBuilder<Message>): Html =>
       h.a(
         [h.Href(lookRouter({ lookId: look.id })), ...styled(h, styles.card())],
         [
-          collage(look, locale, h),
+          collage(look, h),
           h.span(styled(h, styles.cardName()), [look.name]),
           h.span(styled(h, styles.cardMeta()), [
             look.occasion ?? format(locale, 'looks.pieceCount', { count: look.pieces.length }),
@@ -46,30 +44,24 @@ const card = (look: Look, locale: Locale, h: HtmlBuilder<Message>): Html =>
     ],
   )
 
-/** The looks assistants put together; the website shows, opens and deletes them. */
-export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
+/** Looks that could not be read, and trying again. */
+export const couldNotLoad = <Message>(locale: Locale, h: HtmlBuilder<Message>, onRetry: Message): Html =>
+  h.section(
+    [h.Role('alert'), ...styled(h, messageSection())],
+    [
+      h.h2(styled(h, messageTitle()), [format(locale, 'looks.loadFailed', {})]),
+      actionButton({ label: format(locale, 'common.tryAgain', {}), style: secondaryAction(), onClick: onRetry }, h),
+    ],
+  )
+
+const looksPage = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.main(
     [h.Id('main'), ...styled(h, styles.looksPage())],
     [
       h.h1([], [format(locale, 'looks.title', {})]),
       ...Saved.match(model.saved, {
         Loading: () => [h.p([h.Role('status')], [loader(h)])],
-        Failed: () => [
-          h.section(
-            [h.Role('alert'), ...styled(h, messageSection())],
-            [
-              h.h2(styled(h, messageTitle()), [format(locale, 'looks.loadFailed', {})]),
-              actionButton(
-                {
-                  label: format(locale, 'common.tryAgain', {}),
-                  style: secondaryAction(),
-                  onClick: Message.ClickedRetry(),
-                },
-                h,
-              ),
-            ],
-          ),
-        ],
+        Failed: () => [couldNotLoad(locale, h, Message.ClickedRetry())],
         Loaded: ({ looks }) =>
           looks.length === 0
             ? [
@@ -87,5 +79,9 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
               ],
       }),
     ],
-  ),
+  )
+
+/** The looks assistants put together; the website shows, opens and deletes them. */
+export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
+  looksPage(model, locale, h),
 )

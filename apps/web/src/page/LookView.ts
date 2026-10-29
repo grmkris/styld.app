@@ -11,7 +11,8 @@ import { styled } from '../Styled.ts'
 import { Deletion, Message, type Model, Shown } from './Look.ts'
 import { round } from './PageBar.styles.ts'
 import { pieceLabel } from './WardrobeView.ts'
-import { caption, cut, cutImage, grid, message as messageSection, messageTitle } from './WardrobeView.styles.ts'
+import { caption, cut, cutImage, grid } from './WardrobeView.styles.ts'
+import { couldNotLoad } from './LooksView.ts'
 import * as styles from './LooksView.styles.ts'
 
 const backToLooks = (locale: Locale, h: HtmlBuilder<Message>): Html =>
@@ -70,12 +71,7 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
       ...Shown.match(model.shown, {
         Loading: () => [h.p([h.Role('status')], [loader(h)])],
         NotFound: () => [h.h1([], [format(locale, 'looks.notFound', {})])],
-        Failed: () => [
-          h.section(
-            [h.Role('alert'), ...styled(h, messageSection())],
-            [h.h2(styled(h, messageTitle()), [format(locale, 'looks.loadFailed', {})])],
-          ),
-        ],
+        Failed: () => [h.h1([], [format(locale, 'looks.title', {})]), couldNotLoad(locale, h, Message.ClickedRetry())],
         Loaded: ({ look }) => [
           h.h1([], [look.name]),
           look.occasion === null ? h.empty : h.p(styled(h, styles.lede()), [look.occasion]),

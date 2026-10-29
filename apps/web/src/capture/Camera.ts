@@ -80,7 +80,11 @@ export const watchCamera = (host: Element, facing: 'user' | 'environment') =>
         tapped = true
       }
       const key = (event: Event) => {
-        if (event instanceof KeyboardEvent && (event.key === 'Enter' || event.key === ' ')) tapped = true
+        if (event instanceof KeyboardEvent && (event.key === 'Enter' || event.key === ' ')) {
+          // Space would scroll the page as well as take the photo.
+          event.preventDefault()
+          tapped = true
+        }
       }
       yield* Effect.acquireRelease(
         Effect.sync(() => {

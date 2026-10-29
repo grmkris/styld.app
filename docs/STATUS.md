@@ -265,6 +265,43 @@ deployed to the preview. One entry per slice.
     - a final sweep after account deletion for jobs still running;
     - hand review of any future `pieces` table rebuild, since `look_pieces` now cascades from it.
 
+- **Review round (web).** Fixed from the Foldkit review:
+  - **Camera:**
+    - Each garment check carries a number, and only the answer to the pending one counts. A late answer can no
+      longer reopen a camera the person closed, or take the same garment twice after a tap.
+    - The status line and count sit outside the shutter button, so screen readers announce them.
+    - Space no longer scrolls the page.
+    - Code that fails to load reports the camera as unavailable instead of hanging on "Starting".
+  - **Add page:**
+    - "See what's in N files" appears only once nothing is waiting or sending, so leaving can't cut an upload
+      short. The OutMessage is renamed `FinishedSending`.
+    - A video's capture request that got no answer is kept and resent with the same operation id and uploads,
+      so a retry can't make a duplicate.
+    - A chunk that fails to load is a retryable network problem, not an app crash.
+    - After the day's limit, the files still waiting are not sent.
+    - An unreadable video offers no pointless retry. Conflicts and refusals are not offered retries either.
+    - One live summary reads out the queue, and retry buttons name their file.
+  - **Review tray:**
+    - Polling is one refresh at a time and keeps going after a failed refresh, with an out-of-date note.
+    - Retrying or removing a capture reports success or failure per capture.
+    - The open editor has a heading.
+    - `DrewOperationId` is renamed `CompletedDrawOperationId`.
+  - **Looks:** collage images have empty alt text, so a card's name is its look's name; a look that can't load
+    offers a retry and has a heading.
+  - **Sampler:** listens for `seeked` before it seeks.
+  - **Shared pieces:** the review's retry and remove Commands share one helper, the looks pages share one "could
+    not load" section, and the native fixture shares one busy-database retry.
+  - **Evidence:** Story tests of late answers after Done and after a tap, a settle during a check, single-flight
+    polling and recovery, and failed and successful capture actions; the full gate.
+  - **Still open from the review:**
+    - focus moving to the opened camera or editor;
+    - skeletons for the review and look loading states;
+    - Scene tests of the add, review and looks pages;
+    - Command execution tests with a stub client;
+    - a `Photo | Video` union for queue items;
+    - the `StyldClient` lazy import caching a failure;
+    - Message names in the shared piece pickers (`ChoseCategory`).
+
 - **Deferred from this run** (the plan's drop order, so the time went to review and a clean base):
   - the look card view in ChatGPT and Claude;
   - pairing a back shot with its front in the tray;

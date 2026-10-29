@@ -111,12 +111,15 @@ const pendingTile = (capture: TrayCapture, locale: Locale, h: HtmlBuilder<Messag
 
 /** A capture that waits for the person: it failed, stopped halfway, or found nothing. */
 const notice = (capture: TrayCapture, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const busy = Option.contains(model.acting, capture.id)
+  const busy = model.acting.includes(capture.id)
   const canRetry = capture.status === 'failed' || capture.status === 'unknown'
   const text =
     capture.status === 'unknown' ? 'capture.unknown' : capture.status === 'failed' ? 'capture.failed' : 'capture.empty'
   return h.keyed('div')(capture.id, styled(h, styles.notice()), [
     h.p([], [format(locale, text, {})]),
+    model.actionFailed.includes(capture.id)
+      ? h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, 'capture.actionFailed', {})])
+      : h.empty,
     h.div(styled(h, styles.noticeActions()), [
       canRetry
         ? actionButton(
@@ -147,6 +150,7 @@ const editor = (detection: Detection, decision: Decision, locale: Locale, h: Htm
   h.section(
     [h.AriaLabel(label(decision, locale)), ...styled(h, styles.editor())],
     [
+      h.h1([], [label(decision, locale)]),
       h.img([
         h.Src(picturePath(detection, decision)),
         h.Alt(label(decision, locale)),
@@ -259,6 +263,9 @@ const header = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Readonly
     h.h1([], [format(locale, 'capture.foundTitle', { count })]),
     count > 0 ? h.p(styled(h, styles.lede()), [format(locale, 'capture.reviewHint', {})]) : h.empty,
     h.p(styled(h, styles.allowance()), [format(locale, 'capture.allowance', allowance)]),
+    model.stale
+      ? h.p([h.Role('status'), ...styled(h, styles.allowance())], [format(locale, 'capture.stale', {})])
+      : h.empty,
   ]
 }
 

@@ -27,8 +27,8 @@ const sendProblemKey: { readonly [Problem in SendProblem]: MessageKey } = {
   network: 'capture.problem.network',
 }
 
-/** Problems that trying again can fix. */
-const retryable: ReadonlySet<SendProblem> = new Set(['network', 'videoUnreadable'])
+/** Problems that trying again can fix: an unreadable video reads the same way twice. */
+const retryable: ReadonlySet<SendProblem> = new Set(['network'])
 
 const pickerTypes: ReadonlyArray<string> = [...ImageType.literals, ...VideoType.literals]
 
@@ -112,10 +112,10 @@ const itemState = (item: Item, index: number, locale: Locale, h: HtmlBuilder<Mes
   Sending.match(item.sending, {
     Waiting: () => h.span(styled(h, styles.queueDone()), [format(locale, 'capture.waiting', {})]),
     Sending: () =>
-      h.span(
-        [h.Role('status'), ...styled(h, styles.queueState())],
-        [loader(h), format(locale, item.kind === 'video' ? 'capture.preparingVideo' : 'wardrobe.uploadingImage', {})],
-      ),
+      h.span(styled(h, styles.queueState()), [
+        loader(h),
+        format(locale, item.kind === 'video' ? 'capture.preparingVideo' : 'wardrobe.uploadingImage', {}),
+      ]),
     Sent: () => h.span(styled(h, styles.queueDone()), [format(locale, 'capture.sent', {})]),
     Failed: ({ problem }) =>
       h.span(styled(h, styles.queueState()), [
@@ -128,7 +128,7 @@ const itemState = (item: Item, index: number, locale: Locale, h: HtmlBuilder<Mes
                   h.button(
                     [
                       ...attributes.button,
-                      h.AriaLabel(format(locale, 'common.tryAgain', {})),
+                      h.AriaLabel(format(locale, 'capture.retryFile', { name: File.name(item.file) })),
                       ...styled(h, styles.retry()),
                     ],
                     [retryIcon(h)],
@@ -155,6 +155,24 @@ const queue = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
       )
 
 const sentCount = (model: Model) => model.items.filter(({ sending }) => Sending.guards.Sent(sending)).length
+const failedCount = (model: Model) => model.items.filter(({ sending }) => Sending.guards.Failed(sending)).length
+const pending = (model: Model) =>
+  model.items.some(({ sending }) => Sending.guards.Waiting(sending) || Sending.guards.Sending(sending))
+
+/** One summary of the queue, always present, so assistive technology hears each change. */
+const summary = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.p(
+    [h.Role('status'), h.AriaLive('polite'), ...styled(h, styles.summary())],
+    model.items.length === 0
+      ? []
+      : [
+          format(locale, 'capture.queueSummary', {
+            sent: sentCount(model),
+            total: model.items.length,
+            failed: failedCount(model),
+          }),
+        ],
+  )
 
 /** Add pieces: photos or a video from the library, or photos from the camera. Each goes up as it is
  * chosen; the review tray shows what was found. */
@@ -172,8 +190,10 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
             [h.Role('alert'), ...styled(h, styles.problems())],
             model.rejected.map(({ name, problem }) => h.li([], [format(locale, fileProblemKey[problem], { name })])),
           ),
+      summary(model, locale, h),
       queue(model, locale, h),
-      sentCount(model) === 0
+      // Offered once nothing is waiting or on its way: leaving the page would cut an upload short.
+      sentCount(model) === 0 || pending(model)
         ? h.empty
         : actionButton(
             {

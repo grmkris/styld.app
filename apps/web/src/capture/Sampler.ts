@@ -1,4 +1,4 @@
-import { Effect, Schema } from 'effect'
+import { Effect, Fiber, Schema } from 'effect'
 
 /** The browser could not play the video, or it runs longer than a minute. */
 export class VideoNotSampled extends Schema.TaggedError<VideoNotSampled>()('VideoNotSampled', {
@@ -102,8 +102,10 @@ const jpegOf = (video: HTMLVideoElement) =>
 
 const still = (video: HTMLVideoElement, atMs: number) =>
   Effect.gen(function* () {
+    // Listen first: a seek to a frame already decoded can finish before a later listener is added.
+    const seeked = yield* Effect.forkChild(next(video, 'seeked', 10))
     video.currentTime = atMs / 1000
-    yield* next(video, 'seeked', 10)
+    yield* Fiber.join(seeked)
     const { grey, width, height } = greyOf(video)
     return { jpeg: yield* jpegOf(video), atMs, sharpness: tileSharpness(grey, width, height) }
   })

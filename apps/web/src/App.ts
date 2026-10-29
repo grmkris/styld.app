@@ -311,7 +311,7 @@ const foldAddPieces = Update.foldChild({
   write: (model: Model, addPieces: AddPieces.Model) => modifyFields(model, { addPieces: () => addPieces }),
   toParentMessage: (message: AddPieces.Message) => Message.GotAddPiecesMessage({ message }),
   foldOutMessage: AddPieces.OutMessage.match<Update.Step<Model, Message, Services>>({
-    SentEverything: () => (stepModel) => ({ model: stepModel, commands: [Navigate({ href: reviewRouter({}) })] }),
+    FinishedSending: () => (stepModel) => ({ model: stepModel, commands: [Navigate({ href: reviewRouter({}) })] }),
   }),
 })
 

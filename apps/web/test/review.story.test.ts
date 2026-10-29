@@ -49,7 +49,7 @@ describe('the review tray', () => {
       given(init()),
       message(Message.SucceededLoadTray({ tray: tray([{ status: 'processing', detections: [] }]) })),
       Command.expectExact(RefreshTray),
-      Command.resolve(RefreshTray, Message.SucceededLoadTray({ tray: found })),
+      Command.resolve(RefreshTray, Message.SucceededRefreshTray({ tray: found })),
       Command.expectNone(),
       model((current) => expect(keptOf(current)).toHaveLength(2)),
     )
@@ -94,7 +94,7 @@ describe('the review tray', () => {
       message(Message.SucceededLoadTray({ tray: found })),
       message(Message.ToggledKeep({ detectionId: id('dt', 2) })),
       message(Message.ClickedAdd()),
-      Command.resolve(DrawOperationId, Message.DrewOperationId({ operationId: 'op-1' })),
+      Command.resolve(DrawOperationId, Message.CompletedDrawOperationId({ operationId: 'op-1' })),
       Command.expectExact(sent),
       Command.resolve(sent, Message.FailedReview({ retry: 'same' })),
       message(Message.ClickedAdd()),
@@ -105,7 +105,32 @@ describe('the review tray', () => {
     )
   })
 
-  test('a failed capture is tried again or removed, and the tray is read again after either', () => {
+  test('polls one refresh at a time, and keeps polling after a refresh fails', () => {
+    const processing = tray([{ status: 'processing', detections: [] }])
+    // A read of the tray while a refresh is already out does not start another.
+    story(
+      update,
+      given({ ...init(), refreshing: true }),
+      message(Message.SucceededLoadTray({ tray: processing })),
+      Command.expectNone(),
+      model(({ refreshing }) => expect(refreshing).toBe(true)),
+    )
+    story(
+      update,
+      given(init()),
+      message(Message.SucceededLoadTray({ tray: processing })),
+      Command.resolve(RefreshTray, Message.FailedRefreshTray()),
+      model(({ stale }) => expect(stale).toBe(true)),
+      Command.expectExact(RefreshTray),
+      Command.resolve(RefreshTray, Message.SucceededRefreshTray({ tray: found })),
+      model(({ stale, refreshing }) => {
+        expect(stale).toBe(false)
+        expect(refreshing).toBe(false)
+      }),
+    )
+  })
+
+  test('a failed try or removal says so on its capture, and the tray is read again after a success', () => {
     const failed = { ...tray([{ status: 'review', detections: [] }]) }
     const captureId = id('cp', 0)
     story(
@@ -113,13 +138,19 @@ describe('the review tray', () => {
       given(init()),
       message(Message.SucceededLoadTray({ tray: failed })),
       message(Message.ClickedRetryCapture({ captureId })),
-      model(({ acting }) => expect(acting).toEqual(Option.some(captureId))),
-      Command.resolve(RetryCapture({ captureId }), Message.CompletedCaptureAction()),
-      Command.resolve(LoadTray, Message.SucceededLoadTray({ tray: failed })),
+      model(({ acting }) => expect(acting).toEqual([captureId])),
+      Command.resolve(RetryCapture({ captureId }), Message.FailedCaptureAction({ captureId })),
+      model(({ acting, actionFailed }) => {
+        expect(acting).toEqual([])
+        expect(actionFailed).toEqual([captureId])
+      }),
       message(Message.ClickedRemoveCapture({ captureId })),
-      Command.resolve(RemoveCapture({ captureId }), Message.CompletedCaptureAction()),
+      Command.resolve(RemoveCapture({ captureId }), Message.SucceededCaptureAction({ captureId })),
       Command.resolve(LoadTray, Message.SucceededLoadTray({ tray: tray([]) })),
-      model(({ acting }) => expect(acting).toEqual(Option.none())),
+      model(({ acting, actionFailed }) => {
+        expect(acting).toEqual([])
+        expect(actionFailed).toEqual([])
+      }),
     )
   })
 })

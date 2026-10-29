@@ -2496,6 +2496,11 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.camera.flip': 'Zamenjaj kamero',
   'capture.camera.denied': 'Dostop do kamere je izklopljen. Dovoli ga v nastavitvah brskalnika ali izberi fotografije.',
   'capture.camera.unavailable': 'Kamere tukaj ni mogoče zagnati. Izberi fotografije.',
+  'capture.retryFile': 'Poskusi znova: {name}',
+  'capture.queueSummary':
+    'Poslano {sent} od {total}{failed, plural, =0 {} one {, # ni šla} two {, # nista šli} few {, # niso šle} other {, # jih ni šlo}}',
+  'capture.actionFailed': 'Ni uspelo. Poskusi znova.',
+  'capture.stale': 'Trenutno ni mogoče osvežiti; prikaz morda ni najnovejši.',
   'looks.title': 'Videzi',
   'looks.hint': 'Kombinacije, ki ti jih je asistent sestavil iz tvojih kosov.',
   'looks.pieceCount': '{count, plural, one {# kos} two {# kosa} few {# kosi} other {# kosov}}',

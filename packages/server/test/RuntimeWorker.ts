@@ -20,6 +20,15 @@ import { makeAuthHttp, withCodeRequestPolicy } from '../src/AuthHttp.ts'
 import { onFirstUse } from '../src/IsolateCache.ts'
 import { DomainLive } from '../src/DomainLive.ts'
 import { StyldDatabase, StyldMedia } from '../src/Resources.ts'
+
+/** Local D1 answers SQLITE_BUSY while another test (or another session's workerd) writes. Each fixture
+ * write is one atomic batch, so it is retried on its own until the database is free. */
+const whenFree = <A, E, R>(write: Effect.Effect<A, E, R>) =>
+  write.pipe(Effect.retry({ times: 20, schedule: Schedule.spaced('150 millis') }))
+
+/** A fixture write retried while the database is busy, answered with 204. */
+const doneWhenFree = <A, E, R>(write: Effect.Effect<A, E, R>) =>
+  whenFree(write).pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 })))
 import { storageHealth } from './StorageHealth.ts'
 
 // The server formats in every language: page renders and code emails.
@@ -89,29 +98,25 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
       HttpRouter.add(
         'POST',
         '/test/identity/seed-wardrobe',
-        // Local D1 answers SQLITE_BUSY while another test writes; each seed is one atomic batch,
-        // so it is retried on its own.
-        Effect.forEach(['native-wardrobe', 'native-wardrobe-other', 'native-farewell'], (id) =>
-          seedIdentity(database, id).pipe(Effect.retry({ times: 20, schedule: Schedule.spaced('150 millis') })),
-        ).pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 }))),
+        doneWhenFree(
+          Effect.forEach(['native-wardrobe', 'native-wardrobe-other', 'native-farewell'], (id) =>
+            whenFree(seedIdentity(database, id)),
+          ),
+        ),
       ),
       // An owner and a second account for the capture tray's isolation and allowance checks.
       HttpRouter.add(
         'POST',
         '/test/identity/seed-capture',
-        Effect.forEach(['native-capture', 'native-capture-other'], (id) =>
-          seedIdentity(database, id).pipe(Effect.retry({ times: 20, schedule: Schedule.spaced('150 millis') })),
-        ).pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 }))),
+        doneWhenFree(
+          Effect.forEach(['native-capture', 'native-capture-other'], (id) => whenFree(seedIdentity(database, id))),
+        ),
       ),
       // The account the browser's capture journey signs in as.
       HttpRouter.add(
         'POST',
         '/test/identity/seed-capture-browser',
-        seedIdentity(database, 'native-capture-browser').pipe(
-          Effect.retry({ times: 20, schedule: Schedule.spaced('150 millis') }),
-          Effect.orDie,
-          Effect.as(HttpServerResponse.empty({ status: 204 })),
-        ),
+        doneWhenFree(seedIdentity(database, 'native-capture-browser')),
       ),
       // Whether a stored photo still exists, to prove deletion removes it.
       HttpRouter.add(
@@ -134,16 +139,7 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
         '/test/identity/seed-mcp',
         seedIdentity(database, 'native-mcp').pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 }))),
       ),
-      HttpRouter.add(
-        'POST',
-        '/test/identity/disable-mcp',
-        // Local D1 answers SQLITE_BUSY while another test writes, like the seeds above.
-        disableIdentity(database, 'native-mcp').pipe(
-          Effect.retry({ times: 20, schedule: Schedule.spaced('150 millis') }),
-          Effect.orDie,
-          Effect.as(HttpServerResponse.empty({ status: 204 })),
-        ),
-      ),
+      HttpRouter.add('POST', '/test/identity/disable-mcp', doneWhenFree(disableIdentity(database, 'native-mcp'))),
       HttpRouter.add(
         'POST',
         '/test/identity/limits',

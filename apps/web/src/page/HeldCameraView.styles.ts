@@ -3,6 +3,8 @@ import { style } from '../zyzz.config.ts'
 // Styles for the held-up camera in HeldCameraView.ts (Gallery has no screen for it; it follows add.html's panels).
 /** The live picture: as tall as a phone allows, with the controls beneath it. */
 export const panel = style({ display: 'grid', gap: '12px', marginBlockStart: '16px' })
+/** The picture with its count and status over it. */
+export const frame = style({ position: 'relative' })
 export const picture = style({
   position: 'relative',
   overflow: 'hidden',
@@ -39,6 +41,8 @@ export const status = style({
   fontSize: '14px',
   fontWeight: 600,
   textAlign: 'center',
+  // Taps go through to the picture beneath, which is the shutter.
+  pointerEvents: 'none',
   '&[data-hint="taken"]': { backgroundColor: 'ink', color: 'onInk' },
 })
 export const count = style({

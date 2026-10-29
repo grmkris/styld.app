@@ -29,6 +29,7 @@ export const init = (lookId: string): Model => ({ lookId, shown: Shown.Loading()
 export const Message = defineMessageUnion({
   SucceededGetLook: { look: LookContract },
   FailedGetLook: { notFound: Schema.Boolean },
+  ClickedRetry: {},
   ClickedDelete: {},
   ClickedCancelDelete: {},
   ClickedConfirmDelete: {},
@@ -83,6 +84,10 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SucceededGetLook: ({ look }) => ({ model: modifyFields(model, { shown: () => Shown.Loaded({ look }) }) }),
     FailedGetLook: ({ notFound }) => ({
       model: modifyFields(model, { shown: () => (notFound ? Shown.NotFound() : Shown.Failed()) }),
+    }),
+    ClickedRetry: () => ({
+      model: modifyFields(model, { shown: () => Shown.Loading() }),
+      commands: [GetLook({ lookId: model.lookId })],
     }),
     ClickedDelete: () => ({ model: modifyFields(model, { deletion: () => Deletion.Confirming() }) }),
     ClickedCancelDelete: () =>

@@ -1,6 +1,7 @@
 import { format, type Locale, type MessageKey } from '@styld/i18n'
 import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
+import { Option } from 'effect'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
@@ -26,36 +27,42 @@ const statusText = (model: Model, locale: Locale) =>
 
 const hintOf = (model: Model) => (Camera.guards.Watching(model.camera) ? model.camera.hint : 'starting')
 
-/** The live picture. It is the shutter too: a tap or Enter takes a photo. Flipping the camera mounts a
- * new one under a new key. */
+/** The live picture, which is the shutter too: a tap or Enter takes a photo. Its count and what the
+ * camera is doing sit beside it, outside the button, so assistive technology reads them. Flipping the
+ * camera mounts a new one under a new key. */
 const picture = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.keyed('div')(
-    model.facing,
-    [
-      h.Role('button'),
-      h.Tabindex(0),
-      h.AriaLabel(format(locale, 'capture.camera.shutter', {})),
-      h.OnMount(WatchCamera({ facing: model.facing })),
-      ...styled(h, styles.picture()),
-    ],
-    [
-      h.video([
-        h.Attribute('playsinline', ''),
-        h.Attribute('muted', ''),
-        h.Attribute('autoplay', ''),
-        h.DataAttribute('facing', model.facing),
-        h.AriaHidden(true),
-        ...styled(h, styles.video()),
-      ]),
-      model.shots === 0
-        ? h.empty
-        : h.span(styled(h, styles.count()), [format(locale, 'capture.camera.count', { count: model.shots })]),
-      h.p(
-        [h.Role('status'), h.AriaLive('polite'), h.DataAttribute('hint', hintOf(model)), ...styled(h, styles.status())],
-        [model.checking || Camera.guards.Starting(model.camera) ? loader(h) : h.empty, statusText(model, locale)],
-      ),
-    ],
-  )
+  h.div(styled(h, styles.frame()), [
+    h.keyed('div')(
+      model.facing,
+      [
+        h.Role('button'),
+        h.Tabindex(0),
+        h.AriaLabel(format(locale, 'capture.camera.shutter', {})),
+        h.OnMount(WatchCamera({ facing: model.facing })),
+        ...styled(h, styles.picture()),
+      ],
+      [
+        h.video([
+          h.Attribute('playsinline', ''),
+          h.Attribute('muted', ''),
+          h.Attribute('autoplay', ''),
+          h.DataAttribute('facing', model.facing),
+          h.AriaHidden(true),
+          ...styled(h, styles.video()),
+        ]),
+      ],
+    ),
+    model.shots === 0
+      ? h.empty
+      : h.span(styled(h, styles.count()), [format(locale, 'capture.camera.count', { count: model.shots })]),
+    h.p(
+      [h.Role('status'), h.AriaLive('polite'), h.DataAttribute('hint', hintOf(model)), ...styled(h, styles.status())],
+      [
+        Option.isSome(model.pendingCheck) || Camera.guards.Starting(model.camera) ? loader(h) : h.empty,
+        statusText(model, locale),
+      ],
+    ),
+  ])
 
 const panel = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.section(

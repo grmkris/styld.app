@@ -52,8 +52,13 @@ export const Model = Schema.Struct({
   /** The found piece being edited; the grid waits behind it. */
   editing: Schema.Option(Schema.String),
   saving: Saving,
-  /** A capture being tried again or removed. */
-  acting: Schema.Option(Schema.String),
+  /** Captures being tried again or removed, and the ones whose last try or removal failed. */
+  acting: Schema.Array(Schema.String),
+  actionFailed: Schema.Array(Schema.String),
+  /** A refresh is on its way, so a new read of the tray does not start a second one. */
+  refreshing: Schema.Boolean,
+  /** The last refresh failed: the tray shown may be out of date. */
+  stale: Schema.Boolean,
 })
 export type Model = typeof Model.Type
 
@@ -62,7 +67,10 @@ export const init = (): Model => ({
   decisions: {},
   editing: Option.none(),
   saving: Saving.Idle(),
-  acting: Option.none(),
+  acting: [],
+  actionFailed: [],
+  refreshing: false,
+  stale: false,
 })
 
 // MESSAGE
@@ -80,12 +88,15 @@ export const Message = defineMessageUnion({
   UpdatedName: { value: Schema.String },
   ToggledUseOriginal: {},
   ClickedAdd: {},
-  DrewOperationId: { operationId: Schema.String },
+  CompletedDrawOperationId: { operationId: Schema.String },
   SucceededReview: { count: Schema.Number },
   FailedReview: { retry: Schema.Literals(['same', 'fresh']) },
   ClickedRetryCapture: { captureId: Schema.String },
   ClickedRemoveCapture: { captureId: Schema.String },
-  CompletedCaptureAction: {},
+  SucceededRefreshTray: { tray: TrayContract },
+  FailedRefreshTray: {},
+  SucceededCaptureAction: { captureId: Schema.String },
+  FailedCaptureAction: { captureId: Schema.String },
 })
 export type Message = typeof Message.Type
 
@@ -111,16 +122,22 @@ export const LoadTray = Command.define('LoadTray', {
 /** The tray again after a pause, while a capture is still being cut out.
  * @internal Exported for its tests. */
 export const RefreshTray = Command.define('RefreshTray', {
-  messages: [Message.SucceededLoadTray, Message.FailedLoadTray],
-  execute: Effect.delay(readTray, refreshPause),
+  messages: [Message.SucceededRefreshTray, Message.FailedRefreshTray],
+  execute: Effect.gen(function* () {
+    const api = yield* (yield* StyldClient).api
+    return Message.SucceededRefreshTray({ tray: yield* api.capture.tray() })
+  }).pipe(
+    Effect.delay(refreshPause),
+    Effect.orElseSucceed(() => Message.FailedRefreshTray()),
+  ),
 })
 
 /** @internal Exported for its tests. */
 export const DrawOperationId = Command.define('DrawOperationId', {
-  messages: [Message.DrewOperationId],
+  messages: [Message.CompletedDrawOperationId],
   execute: Effect.gen(function* () {
     const operationId = yield* (yield* Crypto.Crypto).randomUUIDv4()
-    return Message.DrewOperationId({ operationId })
+    return Message.CompletedDrawOperationId({ operationId })
   }).pipe(Effect.orDie),
 })
 
@@ -174,26 +191,34 @@ export const SendReview = Command.define('SendReview', {
     ),
 })
 
+/** Ask the API to act on one capture, and say whether it did. */
+const onCapture = (
+  captureId: string,
+  act: (
+    api: Effect.Success<StyldClient['Service']['api']>,
+    params: { readonly captureId: CaptureId },
+  ) => Effect.Effect<unknown, unknown>,
+) =>
+  Effect.gen(function* () {
+    const api = yield* (yield* StyldClient).api
+    yield* act(api, { captureId: yield* Schema.decodeUnknownEffect(CaptureId)(captureId) })
+  }).pipe(
+    Effect.as(Message.SucceededCaptureAction({ captureId })),
+    Effect.orElseSucceed(() => Message.FailedCaptureAction({ captureId })),
+  )
+
 /** @internal Exported for its tests. */
 export const RetryCapture = Command.define('RetryCapture', {
   args: { captureId: Schema.String },
-  messages: [Message.CompletedCaptureAction],
-  execute: ({ captureId }) =>
-    Effect.gen(function* () {
-      const api = yield* (yield* StyldClient).api
-      yield* api.capture.retry({ params: { captureId: yield* Schema.decodeUnknownEffect(CaptureId)(captureId) } })
-    }).pipe(Effect.ignore, Effect.as(Message.CompletedCaptureAction())),
+  messages: [Message.SucceededCaptureAction, Message.FailedCaptureAction],
+  execute: ({ captureId }) => onCapture(captureId, (api, params) => api.capture.retry({ params })),
 })
 
 /** @internal Exported for its tests. */
 export const RemoveCapture = Command.define('RemoveCapture', {
   args: { captureId: Schema.String },
-  messages: [Message.CompletedCaptureAction],
-  execute: ({ captureId }) =>
-    Effect.gen(function* () {
-      const api = yield* (yield* StyldClient).api
-      yield* api.capture.remove({ params: { captureId: yield* Schema.decodeUnknownEffect(CaptureId)(captureId) } })
-    }).pipe(Effect.ignore, Effect.as(Message.CompletedCaptureAction())),
+  messages: [Message.SucceededCaptureAction, Message.FailedCaptureAction],
+  execute: ({ captureId }) => onCapture(captureId, (api, params) => api.capture.remove({ params })),
 })
 
 /** The Commands that open the page. */
@@ -223,11 +248,18 @@ const loaded = (model: Model, tray: TrayContract): UpdateReturn => {
       .flatMap(({ detections }) => detections)
       .map((detection) => [detection.id, model.decisions[detection.id] ?? suggested(detection)] as const),
   )
-  const processing = tray.captures.some(({ status }) => status === 'processing')
-  return {
-    model: modifyFields(model, { tray: () => Tray.Loaded({ tray }), decisions: () => decisions }),
-    commands: processing ? [RefreshTray()] : [],
-  }
+  return polling(
+    modifyFields(model, { tray: () => Tray.Loaded({ tray }), decisions: () => decisions, stale: () => false }),
+  )
+}
+
+/** Ask again after a pause while a capture is still being cut out; one refresh at a time. */
+const polling = (model: Model): UpdateReturn => {
+  const processing =
+    Tray.guards.Loaded(model.tray) && model.tray.tray.captures.some(({ status }) => status === 'processing')
+  return processing && !model.refreshing
+    ? { model: modifyFields(model, { refreshing: () => true }), commands: [RefreshTray()] }
+    : { model }
 }
 
 /** The pieces that will be added: ticked, with a category. */
@@ -334,7 +366,7 @@ const editHandlers = (model: Model) => ({
 const savingHandlers = (model: Model) => ({
   ToggledKeep: ({ detectionId }: { readonly detectionId: string }) => toggled(model, detectionId),
   ClickedAdd: () => clickedAdd(model),
-  DrewOperationId: ({ operationId }: { readonly operationId: string }): UpdateReturn =>
+  CompletedDrawOperationId: ({ operationId }: { readonly operationId: string }): UpdateReturn =>
     Saving.guards.Preparing(model.saving) ? send(model, operationId) : { model },
   SucceededReview: ({ count }: { readonly count: number }): UpdateReturn => ({
     model: modifyFields(model, { saving: () => Saving.Idle() }),
@@ -357,6 +389,22 @@ const savingHandlers = (model: Model) => ({
         },
 })
 
+/** Try a capture again or remove it, once at a time per capture. */
+const act = (
+  model: Model,
+  captureId: string,
+  command: ReturnType<typeof RetryCapture> | ReturnType<typeof RemoveCapture>,
+): UpdateReturn =>
+  model.acting.includes(captureId)
+    ? { model }
+    : {
+        model: modifyFields(model, {
+          acting: (acting) => [...acting, captureId],
+          actionFailed: (failed) => failed.filter((id) => id !== captureId),
+        }),
+        commands: [command],
+      }
+
 /** Reading the tray, and trying a capture again or removing it. */
 const trayHandlers = (model: Model) => ({
   SucceededLoadTray: ({ tray }: { readonly tray: TrayContract }) => loaded(model, tray),
@@ -367,17 +415,23 @@ const trayHandlers = (model: Model) => ({
     model: modifyFields(model, { tray: () => Tray.Loading() }),
     commands: [LoadTray()],
   }),
-  ClickedRetryCapture: ({ captureId }: { readonly captureId: string }): UpdateReturn => ({
-    model: modifyFields(model, { acting: () => Option.some(captureId) }),
-    commands: [RetryCapture({ captureId })],
-  }),
-  ClickedRemoveCapture: ({ captureId }: { readonly captureId: string }): UpdateReturn => ({
-    model: modifyFields(model, { acting: () => Option.some(captureId) }),
-    commands: [RemoveCapture({ captureId })],
-  }),
-  CompletedCaptureAction: (): UpdateReturn => ({
-    model: modifyFields(model, { acting: () => Option.none() }),
+  SucceededRefreshTray: ({ tray }: { readonly tray: TrayContract }) =>
+    loaded(modifyFields(model, { refreshing: () => false }), tray),
+  // A failed refresh keeps the tray shown, says it may be out of date, and keeps asking.
+  FailedRefreshTray: (): UpdateReturn => polling(modifyFields(model, { refreshing: () => false, stale: () => true })),
+  ClickedRetryCapture: ({ captureId }: { readonly captureId: string }): UpdateReturn =>
+    act(model, captureId, RetryCapture({ captureId })),
+  ClickedRemoveCapture: ({ captureId }: { readonly captureId: string }): UpdateReturn =>
+    act(model, captureId, RemoveCapture({ captureId })),
+  SucceededCaptureAction: ({ captureId }: { readonly captureId: string }): UpdateReturn => ({
+    model: modifyFields(model, { acting: (acting) => acting.filter((id) => id !== captureId) }),
     commands: [LoadTray()],
+  }),
+  FailedCaptureAction: ({ captureId }: { readonly captureId: string }): UpdateReturn => ({
+    model: modifyFields(model, {
+      acting: (acting) => acting.filter((id) => id !== captureId),
+      actionFailed: (failed) => [...failed, captureId],
+    }),
   }),
 })
 

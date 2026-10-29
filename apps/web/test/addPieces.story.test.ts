@@ -62,7 +62,7 @@ describe('choosing files to add', () => {
       Command.expectHas(SendPhoto(photoArgs(2, coat, 'image/webp'))),
       Command.resolve(SendPhoto(photoArgs(1, jeans, 'image/png')), Message.SucceededSend({ index: 1 })),
       Command.resolve(SendPhoto(photoArgs(2, coat, 'image/webp')), Message.SucceededSend({ index: 2 })),
-      expectOutMessage({ _tag: 'SentEverything' }),
+      expectOutMessage({ _tag: 'FinishedSending' }),
     )
   })
 
@@ -72,11 +72,17 @@ describe('choosing files to add', () => {
       given(init()),
       message(chosen(rail)),
       Command.expectExact(
-        SendVideo({ index: 0, video: rail, contentType: 'video/quicktime', operationId: Option.none() }),
+        SendVideo({ index: 0, video: rail, contentType: 'video/quicktime', prepared: Option.none() }),
       ),
       Command.resolve(
-        SendVideo({ index: 0, video: rail, contentType: 'video/quicktime', operationId: Option.none() }),
-        Message.FailedSend({ index: 0, problem: 'videoTooLong', operationId: Option.none(), uploadId: Option.none() }),
+        SendVideo({ index: 0, video: rail, contentType: 'video/quicktime', prepared: Option.none() }),
+        Message.FailedSend({
+          index: 0,
+          problem: 'videoTooLong',
+          operationId: Option.none(),
+          uploadId: Option.none(),
+          prepared: Option.none(),
+        }),
       ),
       model(({ items }) => expect(items[0]?.sending).toEqual(Sending.Failed({ problem: 'videoTooLong' }))),
       message(Message.GotCameraMessage({ message: FileDrop.Message.DroppedFiles({ files: [tee] }) })),
@@ -107,12 +113,13 @@ describe('choosing files to add', () => {
           problem: 'network',
           operationId: Option.some('op-1'),
           uploadId: Option.some('up_1'),
+          prepared: Option.none(),
         }),
       ),
       message(Message.ClickedRetry({ index: 0 })),
       Command.expectExact(SendPhoto(retried)),
       Command.resolve(SendPhoto(retried), Message.SucceededSend({ index: 0 })),
-      expectOutMessage({ _tag: 'SentEverything' }),
+      expectOutMessage({ _tag: 'FinishedSending' }),
       model(({ items }) => expect(items.map(({ uploadId }) => uploadId)).toEqual([Option.some('up_1')])),
     )
   })
@@ -127,14 +134,14 @@ describe('choosing files to add', () => {
       message(camera(CameraMessage.StartedCamera())),
       message(camera(CameraMessage.TappedPicture({ check: shot, still: shot }))),
       Command.expectHas(sent, Buzz),
-      Command.resolve(Buzz, CameraMessage.Buzzed()),
+      Command.resolve(Buzz, CameraMessage.CompletedBuzz()),
       Command.resolve(sent, Message.SucceededSend({ index: 0 })),
       // Sent while the camera is open: the page stays until the person is done.
       model(({ items }) =>
         expect(items.map(({ source, sending }) => [source, Sending.guards.Sent(sending)])).toEqual([['camera', true]]),
       ),
       message(camera(CameraMessage.ClickedDone())),
-      expectOutMessage({ _tag: 'SentEverything' }),
+      expectOutMessage({ _tag: 'FinishedSending' }),
     )
   })
 })

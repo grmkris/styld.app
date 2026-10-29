@@ -2775,7 +2775,11 @@
       "flip": "Zamenjaj kamero",
       "denied": "Dostop do kamere je izklopljen. Dovoli ga v nastavitvah brskalnika ali izberi fotografije.",
       "unavailable": "Kamere tukaj ni mogoče zagnati. Izberi fotografije."
-    }
+    },
+    "retryFile": "Poskusi znova: {name}",
+    "queueSummary": "Poslano {sent} od {total}{failed, plural, =0 {} one {, # ni šla} two {, # nista šli} few {, # niso šle} other {, # jih ni šlo}}",
+    "actionFailed": "Ni uspelo. Poskusi znova.",
+    "stale": "Trenutno ni mogoče osvežiti; prikaz morda ni najnovejši."
   },
   "looks": {
     "title": "Videzi",
