@@ -23,6 +23,18 @@ touched. `v1-inventory.json` beside this file lists v1's files; this file lists 
   `shared/` = `packages/shared/src/`, `db/` = `packages/db/src/schema/`. Procedures are written `router.procedure`.
 - A feature is at parity only when `DELIVERY.md` carries its acceptance evidence. This file records scope, not proof.
 
+## Owner decisions, 2026-10-29
+
+`docs/ROADMAP.md` records what v2 keeps, in what order, and what is parked. In short:
+
+- **Kept:** wardrobe capture with real cut-outs, the wardrobe in ChatGPT and Claude, looks made by the assistant, try-on
+  and billing. Later: video, outfit check, boards and collages, a public profile and the web stylist chat.
+- **Parked:** the shop catalog, feed and follow, share links, referrals, the wheel, the calendar, onboarding funnels,
+  favourites, archive, Jev and AI-redrawn product shots.
+
+The v2 column below still records what exists. `docs/migration/v1-usage-2026-10-29.md` has the production numbers
+behind these decisions.
+
 ## Rules that run through v1
 
 - **One plan, "member":** $19.99 a month or $199 a year, 500 credits a month (`shared/subscription-plans.ts`).

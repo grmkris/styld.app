@@ -1,6 +1,20 @@
 # Delivery status
 
-Status: active. Email-code sign-in, the wardrobe, MCP wardrobe tools and account deletion are deployed to the isolated workers.dev preview (release `66ffb1e`). Full parity is not achieved; see the delivery matrix.
+Status: active. Email-code sign-in, the wardrobe, MCP wardrobe tools and account deletion are deployed to the isolated workers.dev preview (release `66ffb1e`). Scope changed on 2026-10-29: v2 ports only the v1 behaviour worth keeping, in the order of `docs/ROADMAP.md`; the delivery matrix marks kept, later and parked rows.
+
+## Scope and roadmap — 2026-10-29
+
+The owner decided the next iterations after the v1 feature inventory (`docs/migration/v1-features.md`), v1's production usage (`docs/migration/v1-usage-2026-10-29.md`: 20 real accounts, about 8 outside, no paying customer, 78% of AI spend on redrawn product shots) and the Meta/segmentation research handoff (spike commit `1461a78`).
+
+- **Iteration 1:** photos to real cut-outs.
+  - Capture: the picker, plus a camera that shoots when the frame goes still.
+  - Processing: Clef-flash routes each photo (Cloudflare background removal for one garment, Meta SAM for several) and suggests the category.
+  - Review: a "To review" tray.
+  - Limits and tracking: free with a daily cap, metered in the usage ledger, provider calls in Analytics Engine, a minimal admin page.
+- **Iteration 2:** MCP Apps wardrobe view and look cards, the ChatGPT sidebar entry and @-mentions, and looks made by the assistant. Then go-live on styld.app with real v1 wardrobes imported.
+- **Iteration 3:** try-on, together with billing.
+- **Parked:** catalog, feed and follow, share links, referrals, wheel, calendar, onboarding funnels, favourites and archive.
+- **Remaining risks:** SAM from a Worker, background removal through the Images binding, Clef accuracy, and the camera on iPhone Safari.
 
 ## Overnight run: sign-in, wardrobe, MCP — 2026-10-29
 

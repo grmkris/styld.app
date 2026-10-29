@@ -1,6 +1,6 @@
 # Styld v2
 
-Read `docs/DELIVERY.md`, `docs/ARCHITECTURE.md` and `docs/STATUS.md` before substantial work. This is a full rewrite with v1 feature parity, not a demonstration or compatibility proxy.
+Read `docs/DELIVERY.md`, `docs/ARCHITECTURE.md` and `docs/STATUS.md` before substantial work. This is a clean rewrite that ports only the v1 behaviour worth keeping, not a demonstration or compatibility proxy; `docs/ROADMAP.md` holds the owner's kept and parked scope and the iteration order.
 
 ## Ownership and workflow
 
@@ -66,10 +66,10 @@ Browser code imports contracts, never server adapters. Foldkit views are pure, u
 
 Logs/spans omit tokens, signed URLs, prompts, images and raw user bodies. Native traces carry safe operation/release/correlation metadata; sampled telemetry is not the usage ledger.
 
-Tests verify behavior, real storage semantics and public contracts. In-memory, native workerd, deployed preview and live-provider acceptance are different evidence levels. Every feature in the baseline must be mapped to v2 implementation and acceptance; test counts alone do not prove parity.
+Tests verify behavior, real storage semantics and public contracts. In-memory, native workerd, deployed preview and live-provider acceptance are different evidence levels. Every kept feature must be mapped to v2 implementation and acceptance; test counts alone do not prove a feature.
 
-Before completion, run multiple reviewer rounds for architecture/tooling, security/privacy/durable behavior, and actual browser/product parity. Resolve findings, rerun final integration gates and verify the deployed release. Keep `docs/STATUS.md` factual and all unfinished requirements visible.
+Before completion, run multiple reviewer rounds for architecture/tooling, security/privacy/durable behavior, and the actual browser product. Resolve findings, rerun final integration gates and verify the deployed release. Keep `docs/STATUS.md` factual and all unfinished requirements visible.
 
 ## Definition of done
 
-A change is done when `heavy --wait bun run check` passes on the commit, touched code has zero lint, Effect and suppression debt, behaviour has a test at the right evidence level, `docs/STATUS.md` states what changed and what remains, and, for anything user-facing or deployed, the preview is redeployed and its acceptance and readback recorded. Never claim parity for a feature without its acceptance evidence in `docs/DELIVERY.md`.
+A change is done when `heavy --wait bun run check` passes on the commit, touched code has zero lint, Effect and suppression debt, behaviour has a test at the right evidence level, `docs/STATUS.md` states what changed and what remains, and, for anything user-facing or deployed, the preview is redeployed and its acceptance and readback recorded. Never claim a feature done without its acceptance evidence in `docs/DELIVERY.md`.
