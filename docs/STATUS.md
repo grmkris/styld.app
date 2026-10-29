@@ -14,7 +14,12 @@ The owner decided the next iterations after the v1 feature inventory (`docs/migr
 - **Iteration 2:** MCP Apps wardrobe view and look cards, the ChatGPT sidebar entry and @-mentions, and looks made by the assistant. Then go-live on styld.app with real v1 wardrobes imported.
 - **Iteration 3:** try-on, together with billing.
 - **Parked:** catalog, feed and follow, share links, referrals, wheel, calendar, onboarding funnels, favourites and archive.
-- **Remaining risks:** SAM from a Worker, background removal through the Images binding, Clef accuracy, and the camera on iPhone Safari.
+- **Provider probe (throwaway Worker in the v2 account, deleted after; synthetic images only):**
+  - Meta answers a Worker directly, with `sam-3.1` listed and no relay needed.
+  - Cloudflare background removal works through the Images binding: IoU 0.86–0.9995 on the drawn garments, with enclosed holes kept as background.
+  - SAM found all 10 garments on a rail frame in one "clothing" call, at IoU 0.99 on the single garments.
+  - Clef-flash routed 7 of 7 images correctly, named 5 of 5 categories and gave plausible categories for 10 of 10 crops, at about $0.00005 a call.
+  - Details: ROADMAP › Provider probe. Still open: the camera on iPhone Safari.
 
 ## Overnight run: sign-in, wardrobe, MCP — 2026-10-29
 

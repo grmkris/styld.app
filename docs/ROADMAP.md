@@ -88,14 +88,30 @@ Not porting: guest accounts and the free wardrobe cap (owner, 2026-10-28).
 - **Admin page:** one minimal page, open to an email allowlist, shows cost per provider and per day, keep rate and
   failures.
 
-**First steps, because they carry the risk**
+**Provider probe, 2026-10-29**
 
-1. One SAM 3.1 call from the preview Worker. The spike reached Meta through an IPv6 relay on netcup, because Meta's
-   IPv4 route listed fewer models. If the Worker is refused, the call goes through that relay.
-2. Cloudflare background removal through the Images binding. It is documented for URL transforms, shown for the binding
-   only in a blog post, and open beta.
-3. Measure how accurately Clef-flash routes and categorises.
-4. The auto-shooting camera on iPhone Safari.
+A throwaway Worker in the v2 account was deleted after the run. It used synthetic images only: the spike's drawn garments
+and frames of its Grok-generated ten-garment rail video.
+
+- **Meta from a Worker works directly.** The Worker lists all nine Meta models, `sam-3.1` included, so no relay is
+  needed. SAM calls took 1.4–3.6 s.
+- **Cloudflare background removal works through the Images binding.**
+  - It returns a transparent PNG in 1.0–4.9 s.
+  - On the drawn garments: IoU 0.9995 for the shirt; 0.95 for the tee, which kept the background in its neck hole;
+    0.86 for the dress, which kept the gap between the straps.
+  - Scene photos come back as everything salient (hands, rail, bag), as expected.
+- **SAM splits garments.**
+  - One "clothing" call found all 10 garments on the rail, with partly hidden ones cut where they are hidden.
+  - On the single drawn garments it scored IoU 0.99 and 0.985, better than Cloudflare on enclosed holes, but its masks
+    are one-bit with hard edges.
+- **Clef-flash routes and categorises well.**
+  - It said "one" or "several" correctly for all 7 images. The scene photo came back unsure (0.39), so it would go to
+    SAM.
+  - Categories were right for all 5 whole images and plausible for all 10 SAM crops (a cardigan as a top at 0.62).
+  - It took 0.5–1.4 s and about 1,050–1,360 input tokens, roughly $0.00005 a call.
+- **What follows:** which provider handles single garments is decided on real, consented photos through the config
+  switch; a hybrid (Cloudflare's soft edges inside SAM's mask) is one experiment.
+- **Still open:** the auto-shooting camera on iPhone Safari.
 
 **Provider facts** (read 2026-10-29; recheck before budgeting)
 
