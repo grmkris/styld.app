@@ -19,6 +19,8 @@ const keepAs = async (page: Page, category: string) => {
 export const verifyCaptureJourney = async (browser: Browser, origin: string, fixtures: string): Promise<void> => {
   expect((await fetch(`${fixtures}/test/identity/seed-capture-browser`, { method: 'POST' })).status).toBe(204)
   const context = await browser.newContext({ locale: 'en-US', viewport: { width: 390, height: 844 } })
+  // A visitor who already answered the diagnostics prompt, which otherwise rises over the page's actions.
+  await context.addCookies([{ name: 'styld_diagnostics', value: 'denied', url: origin }])
   try {
     const signIn = await context.request.post(`${origin}/api/auth/signIn`, {
       headers: { origin, 'x-effect-auth-csrf': '1' },
