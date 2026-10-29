@@ -41,6 +41,7 @@ Plan: `/home/kristjan/.claude/plans/ticklish-popping-rivest.md` (owner-approved)
   - Evidence: Scene tests (confirm, cancel, failure, success to home); native: an account with a stored photo is deleted, its old cookie is refused at once, its photo is gone from R2 and its password no longer signs in. Assistant grants are deleted by the same batch but not yet exercised by a native test.
   - New copy: `account.assistants.*`, `account.deleteAccount*` (sl awaits owner review).
   - Full gate passed: 162 type/Effect files with zero findings, 165 unit tests, 15 native workerd/Chromium tests with 192 assertions, initial browser bundle 235,827 gzip bytes.
+  - Deployed: release `cd241be5c558d33d160d1f19076f8ba90515d531` is on the isolated preview (three Worker updates, no resource changes); `/api/health` reports it and deployed acceptance passed (1 test, 25 assertions). On the preview, the test inbox account signed in with a real code, added a piece and deleted itself: `DELETE /api/me` 204, its old cookie then 401 on `/api/me` and `/api/pieces`, and the same address next received "Your code to create a Styld account", so its identifiers are gone (the code was left unused).
 
 ## Gallery design — 2026-10-28
 
