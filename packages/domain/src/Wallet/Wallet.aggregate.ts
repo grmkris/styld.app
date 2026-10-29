@@ -24,7 +24,14 @@ import { heldCredits, WalletState } from './WalletState.ts'
 export class Wallet extends Domain.Aggregate('Wallet', {
   id: WalletId,
   state: WalletState,
-  initial: { subscription: 0, purchased: 0, period: null, monthly: 0, reservations: {} },
+  initial: {
+    daily: { day: null, remaining: 0 },
+    subscription: 0,
+    purchased: 0,
+    period: null,
+    monthly: 0,
+    reservations: {},
+  },
   commands: [GrantPurchasedCredits, GrantMonthlyCredits, ReserveCredits, SettleCredits],
   decide: {
     GrantPurchasedCredits: Effect.fn(function* (state, command, { id }) {
@@ -56,20 +63,26 @@ export class Wallet extends Domain.Aggregate('Wallet', {
       if (previous !== undefined) {
         if (
           previous.fingerprint !== command.fingerprint ||
-          previous.fromSubscription + previous.fromPurchased !== command.amount
+          previous.fromDaily + previous.fromSubscription + previous.fromPurchased !== command.amount
         )
           return yield* new ReservationConflict()
         return []
       }
       if (Object.keys(state.reservations).length >= maximumPendingReservations) return yield* new TooManyReservations()
-      const available = state.subscription + state.purchased
+      // The free allowance is spent first, then subscription credits, then purchased ones.
+      const daily = state.daily.day === command.day ? state.daily.remaining : command.dailyAllowance
+      const available = daily + state.subscription + state.purchased
       if (command.amount > available) return yield* new InsufficientCredits({ available, required: command.amount })
-      const fromSubscription = Math.min(state.subscription, command.amount)
-      const fromPurchased = command.amount - fromSubscription
+      const fromDaily = Math.min(daily, command.amount)
+      const fromSubscription = Math.min(state.subscription, command.amount - fromDaily)
+      const fromPurchased = command.amount - fromDaily - fromSubscription
       return [
         new CreditsReserved({
           operationId: command.operationId,
           fingerprint: command.fingerprint,
+          day: command.day,
+          fromDaily,
+          dailyAfter: daily - fromDaily,
           fromSubscription,
           fromPurchased,
           subscriptionAfter: state.subscription - fromSubscription,
@@ -82,10 +95,14 @@ export class Wallet extends Domain.Aggregate('Wallet', {
       const reservation = state.reservations[command.operationId]
       if (reservation === undefined) return yield* new ReservationNotFound()
       const refund = command.outcome === 'refunded'
+      // A refund returns the free allowance only on the day it was spent; tomorrow already has its own.
+      const sameDay = state.daily.day === reservation.day
       return [
         new CreditsSettled({
           operationId: command.operationId,
           outcome: command.outcome,
+          fromDaily: reservation.fromDaily,
+          dailyAfter: state.daily.remaining + (refund && sameDay ? reservation.fromDaily : 0),
           fromSubscription: reservation.fromSubscription,
           fromPurchased: reservation.fromPurchased,
           subscriptionAfter: state.subscription + (refund ? reservation.fromSubscription : 0),
@@ -104,12 +121,15 @@ export class Wallet extends Domain.Aggregate('Wallet', {
     }),
     CreditsReserved: (state, event) => ({
       ...state,
+      daily: { day: event.day, remaining: event.dailyAfter },
       subscription: event.subscriptionAfter,
       purchased: event.purchasedAfter,
       reservations: {
         ...state.reservations,
         [event.operationId]: {
           fingerprint: event.fingerprint,
+          day: event.day,
+          fromDaily: event.fromDaily,
           fromSubscription: event.fromSubscription,
           fromPurchased: event.fromPurchased,
         },
@@ -117,6 +137,7 @@ export class Wallet extends Domain.Aggregate('Wallet', {
     }),
     CreditsSettled: (state, event) => ({
       ...state,
+      daily: { ...state.daily, remaining: event.dailyAfter },
       subscription: event.subscriptionAfter,
       purchased: event.purchasedAfter,
       reservations: Record.remove(state.reservations, event.operationId),

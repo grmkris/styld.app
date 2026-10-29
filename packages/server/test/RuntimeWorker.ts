@@ -143,6 +143,9 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
           operationId: OperationId.make(id),
           fingerprint: 'a'.repeat(64),
           amount: 8,
+          // No free allowance here: this fixture proves the subscription pool serializes reservations.
+          day: '2026-10-29',
+          dailyAllowance: 0,
         })
         return wallets.send(owner, command, { commandId: reserveCommandId(command) }).pipe(Effect.result)
       }

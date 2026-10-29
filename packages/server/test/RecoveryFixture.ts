@@ -28,7 +28,13 @@ export const recoveryRoutes = (database: QueryDatabaseClient, media: ReadWriteBu
     const reserve = Effect.gen(function* () {
       const grant = new GrantMonthlyCredits({ period: '2026-10', monthly: 10 })
       yield* wallets.send(owner, grant, { commandId: monthlyGrantCommandId(grant) })
-      const command = new ReserveCredits({ operationId: operation, fingerprint: 'b'.repeat(64), amount: 8 })
+      const command = new ReserveCredits({
+        operationId: operation,
+        fingerprint: 'b'.repeat(64),
+        amount: 8,
+        day: '2026-10-29',
+        dailyAllowance: 0,
+      })
       yield* wallets.send(owner, command, { commandId: reserveCommandId(command) })
     })
     const seed = Effect.gen(function* () {

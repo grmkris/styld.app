@@ -27,6 +27,18 @@ deployed to the preview. One entry per slice.
   - **Evidence:**
     - Unit: the tool list, the view result in both languages, the self-contained resource, the view's Story tests.
     - Native: SDK 2.x and 1.x clients read the resource through the OAuth journey.
+- **S3 daily allowance (Domain).**
+  - **The model:** the Wallet gains a free daily pool. `ReserveCredits` now carries the UTC `day` and that day's
+    `dailyAllowance`, both from the server, so `decide` stays pure.
+  - **How it spends:** the pool is spent before subscription and purchased credits, and resets rather than
+    accumulates on a new day.
+  - **Refunds** return to the pool only on the day it was spent.
+  - **Retries:** neither field is part of the reservation's command id, so a retry across midnight is the same
+    reservation.
+  - **Events:** `CreditsReserved` and `CreditsSettled` record `day`, `fromDaily` and `dailyAfter`. No deployed Wallet
+    events exist yet (the server had never called it), so the new fields are required.
+  - **Evidence:** stories (daily first, reset each day, same-day refund, a free account's limit, a retry after
+    midnight) and the native Durable Object fixtures.
 
 ## Scope and roadmap — 2026-10-29
 

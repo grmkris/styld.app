@@ -14,6 +14,8 @@ export class ReservationNotFound extends Domain.Rejection('ReservationNotFound')
 export class CreditsSettled extends Domain.Event('CreditsSettled', {
   operationId: OperationId,
   outcome: Settlement,
+  fromDaily: Credits,
+  dailyAfter: Credits,
   fromSubscription: Credits,
   fromPurchased: Credits,
   subscriptionAfter: Credits,
