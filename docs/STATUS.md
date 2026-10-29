@@ -124,9 +124,19 @@ deployed to the preview. One entry per slice.
     - Story tests for both programs and the sampler's pure parts.
     - Native Chromium: three photos through the picker, two kept with a category, the third dropped. The wardrobe
       shows the two, the tray is empty, and the page has no errors or CSP violations.
-  - **Not yet proven:**
-    - Video sampling in a real browser: Playwright's Chromium cannot decode H.264.
-    - The phone camera.
+  - **Not yet proven:** the phone camera.
+- **S7 video import on the preview** (release `637af98`).
+  - **The first real browser run failed every video as unreadable:** the document policy blocked `blob:` media,
+    so the page could not play the chosen file to sample it. `media-src 'self' blob:` fixes it. The diagnostics
+    prompt now rises above a page's sticky action.
+  - **Acceptance** (Playwright Chromium against the preview, the 10-garment rail clip, 10 s, H.264, 640 px):
+    - Choosing the file sent the clip and its 20 stills in 14 s.
+    - SAM tracked it, and the tray showed 10 cut-outs with suggested categories (bottoms, dress, outerwear,
+      tops), all ticked, within about 40 s of opening the tray.
+    - The allowance went from 97 to 87: a video costs 10.
+  - **Not yet proven:** an iPhone `.mov` (HEVC, rotation) and a full minute of video.
+  - **Flake seen:** native D1 answered `SQLITE_BUSY` to the wardrobe seed once while another process held port
+    1337. It passed on the rerun.
 
 ## Scope and roadmap — 2026-10-29
 
