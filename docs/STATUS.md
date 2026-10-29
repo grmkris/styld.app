@@ -1,6 +1,6 @@
 # Delivery status
 
-Status: active. Email-code sign-in, the wardrobe, MCP wardrobe tools and account deletion are deployed to the isolated workers.dev preview (release `66ffb1e`). Scope changed on 2026-10-29: v2 ports only the v1 behaviour worth keeping, in the order of `docs/ROADMAP.md`; the delivery matrix marks kept, later and parked rows.
+Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `23a2cb9`). Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
 
 ## Capture and assistant run — 2026-10-29
 
@@ -197,6 +197,12 @@ deployed to the preview. One entry per slice.
     stream types.
   - **Evidence:** a unit test that the view result carries the readable thumbnail and skips the unreadable ones.
   - **Not yet proven:** the view inside ChatGPT and Claude with real pictures (owner).
+
+- **Deferred from this run** (the plan's drop order, so the time went to review and a clean base):
+  - the look card view in ChatGPT and Claude;
+  - pairing a back shot with its front in the tray;
+  - the ChatGPT sidebar entry and @-mentions;
+  - a rate limit on the camera's garment check.
 
 ## Scope and roadmap — 2026-10-29
 
