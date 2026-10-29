@@ -1,7 +1,7 @@
 import { captureFrames, captures, detections, operationReceipts, pieces, uploads } from '@styld/db'
 import { and, desc, eq, inArray, ne, or } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
-import { Effect, Option } from 'effect'
+import { Array, Effect, Option } from 'effect'
 import { StoreUnavailable } from '../wardrobe/Store.ts'
 
 export type CaptureRow = typeof captures.$inferSelect
@@ -15,17 +15,27 @@ const first = <A>(rows: ReadonlyArray<A>) => Option.fromNullishOr(rows[0])
 
 type Database = ReturnType<typeof drizzle>
 
+/** D1 binds at most 100 parameters to a statement. Rows are written one statement each, and id lists
+ * go in chunks small enough to leave room for the rest of the statement. */
+const chunked = (ids: ReadonlyArray<string>) => Array.chunksOf(ids, 90).map((chunk) => [...chunk])
+
+/** A read over many ids: one query per chunk, the rows together. */
+const readIn = <A>(ids: ReadonlyArray<string>, query: (chunk: Array<string>) => Promise<ReadonlyArray<A>>) =>
+  Effect.map(
+    Effect.forEach(chunked(ids), (chunk) => attempt(() => query(chunk))),
+    (rows) => rows.flat(),
+  )
+
 const captureRows = (db: Database) => ({
   /** The capture, its uploads spent, its stills and the operation's receipt, as one atomic batch. */
   createCapture: (capture: CaptureRow, frames: ReadonlyArray<FrameRow>, receipt: ReceiptRow) =>
     attempt(() =>
       db.batch([
         db.insert(captures).values(capture),
-        db
-          .update(uploads)
-          .set({ status: 'used' })
-          .where(inArray(uploads.id, [capture.uploadId, ...frames.map(({ uploadId }) => uploadId)])),
-        ...(frames.length === 0 ? [] : [db.insert(captureFrames).values([...frames])]),
+        ...chunked([capture.uploadId, ...frames.map(({ uploadId }) => uploadId)]).map((chunk) =>
+          db.update(uploads).set({ status: 'used' }).where(inArray(uploads.id, chunk)),
+        ),
+        ...frames.map((frame) => db.insert(captureFrames).values(frame)),
         db.insert(operationReceipts).values(receipt),
       ]),
     ).pipe(Effect.asVoid),
@@ -41,14 +51,12 @@ const captureRows = (db: Database) => ({
   captureForProcessing: (captureId: string) =>
     attempt(() => db.select().from(captures).where(eq(captures.id, captureId)).limit(1)).pipe(Effect.map(first)),
   capturesOf: (accountId: string, captureIds: ReadonlyArray<string>) =>
-    captureIds.length === 0
-      ? Effect.succeed([])
-      : attempt(() =>
-          db
-            .select()
-            .from(captures)
-            .where(and(eq(captures.accountId, accountId), inArray(captures.id, [...captureIds]))),
-        ),
+    readIn(captureIds, (chunk) =>
+      db
+        .select()
+        .from(captures)
+        .where(and(eq(captures.accountId, accountId), inArray(captures.id, chunk))),
+    ),
   frames: (captureId: string) =>
     attempt(() => db.select().from(captureFrames).where(eq(captureFrames.captureId, captureId))),
   updateCapture: (captureId: string, changes: Partial<CaptureRow>) =>
@@ -59,7 +67,7 @@ const captureRows = (db: Database) => ({
     attempt(() =>
       db.batch([
         db.delete(detections).where(and(eq(detections.captureId, captureId), eq(detections.status, 'review'))),
-        ...(found.length === 0 ? [] : [db.insert(detections).values([...found])]),
+        ...found.map((detection) => db.insert(detections).values(detection)),
         db.update(captures).set(changes).where(eq(captures.id, captureId)),
       ]),
     ).pipe(Effect.asVoid),
@@ -94,35 +102,29 @@ const trayRows = (db: Database) => ({
           .orderBy(desc(captures.createdAt))
           .limit(200),
       )
-      const found =
-        open.length === 0
-          ? []
-          : yield* attempt(() =>
-              db
-                .select()
-                .from(detections)
-                .where(
-                  and(
-                    eq(detections.accountId, accountId),
-                    eq(detections.status, 'review'),
-                    inArray(
-                      detections.captureId,
-                      open.map(({ id }) => id),
-                    ),
-                  ),
-                ),
-            )
-      return { captures: open, detections: found }
-    }),
-  detections: (accountId: string, ids: ReadonlyArray<string>) =>
-    ids.length === 0
-      ? Effect.succeed([])
-      : attempt(() =>
+      const found = yield* readIn(
+        open.map(({ id }) => id),
+        (chunk) =>
           db
             .select()
             .from(detections)
-            .where(and(eq(detections.accountId, accountId), inArray(detections.id, [...ids]))),
-        ),
+            .where(
+              and(
+                eq(detections.accountId, accountId),
+                eq(detections.status, 'review'),
+                inArray(detections.captureId, chunk),
+              ),
+            ),
+      )
+      return { captures: open, detections: found }
+    }),
+  detections: (accountId: string, ids: ReadonlyArray<string>) =>
+    readIn(ids, (chunk) =>
+      db
+        .select()
+        .from(detections)
+        .where(and(eq(detections.accountId, accountId), inArray(detections.id, chunk))),
+    ),
   findDetection: (accountId: string, detectionId: string) =>
     attempt(() =>
       db
@@ -161,41 +163,32 @@ const reviewRows = (db: Database) => ({
     attempt(() =>
       db.batch([
         db.insert(operationReceipts).values(input.receipt),
-        ...(input.pieces.length === 0 ? [] : [db.insert(pieces).values([...input.pieces])]),
+        ...input.pieces.map((piece) => db.insert(pieces).values(piece)),
         ...input.kept.map(({ detectionId, pieceId }) =>
           db
             .update(detections)
             .set({ status: 'kept', pieceId })
             .where(and(eq(detections.id, detectionId), eq(detections.status, 'review'))),
         ),
-        ...(input.discarded.length === 0
-          ? []
-          : [
-              db
-                .update(detections)
-                .set({ status: 'discarded' })
-                .where(and(inArray(detections.id, [...input.discarded]), eq(detections.status, 'review'))),
-            ]),
-        ...(input.finished.length === 0
-          ? []
-          : [
-              db
-                .update(captures)
-                .set({ status: 'done', updatedAt: input.now })
-                .where(inArray(captures.id, [...input.finished])),
-            ]),
+        ...chunked(input.discarded).map((chunk) =>
+          db
+            .update(detections)
+            .set({ status: 'discarded' })
+            .where(and(inArray(detections.id, chunk), eq(detections.status, 'review'))),
+        ),
+        ...chunked(input.finished).map((chunk) =>
+          db.update(captures).set({ status: 'done', updatedAt: input.now }).where(inArray(captures.id, chunk)),
+        ),
       ]),
     ).pipe(Effect.asVoid),
   /** How many of the capture's detections still wait. */
   openDetections: (captureIds: ReadonlyArray<string>) =>
-    captureIds.length === 0
-      ? Effect.succeed([])
-      : attempt(() =>
-          db
-            .select({ captureId: detections.captureId, id: detections.id })
-            .from(detections)
-            .where(and(inArray(detections.captureId, [...captureIds]), eq(detections.status, 'review'))),
-        ),
+    readIn(captureIds, (chunk) =>
+      db
+        .select({ captureId: detections.captureId, id: detections.id })
+        .from(detections)
+        .where(and(inArray(detections.captureId, chunk), eq(detections.status, 'review'))),
+    ),
 })
 
 /** Captures and their detections in D1. Reads and writes for a person name their account; the queue's
