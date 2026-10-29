@@ -155,10 +155,18 @@ deployed to the preview. One entry per slice.
   - **The camera app** stays available as a smaller link (the file input's `capture` hint).
   - **Evidence:** unit tests of the stillness rules, and Story tests of check → take, nothing held up, a failed
     check then a tap, a refused camera, and camera shots joining the queue while the tray waits.
+  - **Preview** (release `89dcc60`): Chromium's fake camera played a backdrop, then the drawn red tee sliding in
+    and holding still.
+    - The page started the camera and saw the scene settle. Clef confirmed one garment on the first check, and the
+      photo was taken (counter "1 taken") and uploaded as a camera capture. No page errors.
+    - **Calibration:** asked whether a garment is "held up", Clef rated the lone tee 0.45, under the 0.7 threshold,
+      so nothing was ever taken. Asked whether exactly one garment is the picture's main subject, it rated the tee
+      0.92 and the 10-garment rail 0.02. The page's stillness already shows someone holding it.
   - **Not yet proven:**
-    - the camera in a real browser (there is no fake-camera acceptance yet);
-    - Clef's held check on real held-up garments;
-    - pairing a back with its front in the tray: the server supports `pairsWith`, and the page sends only the side.
+    - a real phone, with a person holding real clothes;
+    - whether clothes the person wears pass the check (the review tray catches them);
+    - pairing a back with its front in the tray: the server supports `pairsWith`, and the page sends only the
+      side.
 
 ## Scope and roadmap — 2026-10-29
 
