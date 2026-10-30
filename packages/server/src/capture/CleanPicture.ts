@@ -1,5 +1,5 @@
 import type { CapturePolicy } from './Policy.ts'
-import type { Comparison, Judgement } from './Providers.ts'
+import type { Comparison, Judgement, TurnComparison } from './Providers.ts'
 
 type PicturePolicy = CapturePolicy['pictures']
 
@@ -21,4 +21,12 @@ export const gateFor = (comparison: Comparison, policy: PicturePolicy): 'ready' 
   const likeness = Math.min(comparison.same, comparison.faithful)
   if (likeness >= policy.show) return 'ready'
   return likeness < policy.reject ? 'rejected' : 'proposed'
+}
+
+/** Whether a turn is kept, from its checked frames beside the clean picture: every frame keeps the colour, and keeps
+ * the logo or print when the garment has one (most frames see one). A plain garment has no print to keep: on the
+ * preview, plain navy trousers turned faithfully were answered 0.06 for print (30 October). */
+export const turnKept = (frames: ReadonlyArray<TurnComparison>, policy: CapturePolicy['turns']) => {
+  const printed = frames.filter((frame) => frame.printed >= 0.5).length > frames.length / 2
+  return frames.every((frame) => frame.colour >= policy.colour && (!printed || frame.print >= policy.print))
 }

@@ -156,6 +156,8 @@ const turnQuestions = {
   },
   colour: { type: 'noul', instructions: 'Is the colour the same as in the second image?' },
   print: { type: 'noul', instructions: 'Is the logo or print the same as in the second image?' },
+  // A plain garment has no print to keep: asked so the print floor applies only to garments that have one.
+  printed: { type: 'noul', instructions: 'Does the garment in the second image show a logo, text or a print?' },
 } as const
 
 const verdicts: ReadonlyArray<Verdict> = ['ready', 'improve', 'repair', 'fragment']
@@ -243,6 +245,7 @@ const pictureChecks = (run: RunClef, metrics: CaptureMetrics['Service']) => ({
       same: noulOf(answer, 'same'),
       colour: noulOf(answer, 'colour'),
       print: noulOf(answer, 'print'),
+      printed: noulOf(answer, 'printed'),
     } satisfies TurnComparison
   }),
 })

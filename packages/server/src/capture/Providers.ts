@@ -82,11 +82,13 @@ export class GarmentVision extends Context.Service<
   }
 >()('@styld/server/GarmentVision') {}
 
-/** How a frame of a turn compares with the clean picture (0–1): the same garment, its colour, and its logo or print. */
+/** How a frame of a turn compares with the clean picture (0–1): the same garment, its colour, its logo or print, and
+ * whether the clean picture shows a logo or print at all. */
 export interface TurnComparison {
   readonly same: number
   readonly colour: number
   readonly print: number
+  readonly printed: number
 }
 
 /** Styld's working copies of a photo: re-encoded (orientation applied, metadata gone), at most 2048 px.

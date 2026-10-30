@@ -2,6 +2,8 @@ import { readFileSync } from 'node:fs'
 import { Effect, Predicate, Redacted, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { makeGarmentVision } from '../src/capture/Clef.ts'
+import { turnKept } from '../src/capture/CleanPicture.ts'
+import { capturePolicy } from '../src/capture/Policy.ts'
 import { CaptureMetrics } from '../src/capture/Metrics.ts'
 import { makeMuseGenerator } from '../src/capture/Muse.ts'
 import { makeVeoGenerator } from '../src/capture/Veo.ts'
@@ -140,14 +142,29 @@ describe("the decision model on a turn's frame", () => {
       asked.push(request)
       return Promise.resolve({
         model: 'clef-flash',
-        answers: { same: { noul: 0.91 }, colour: { noul: 0.88 }, print: { noul: 0.71 } },
+        answers: { same: { noul: 0.91 }, colour: { noul: 0.88 }, print: { noul: 0.71 }, printed: { noul: 0.93 } },
       })
     }, CaptureMetrics.discarding)
     expect(await Effect.runPromise(vision.compareTurn(picture(1), picture(2)))).toEqual({
       same: 0.91,
       colour: 0.88,
       print: 0.71,
+      printed: 0.93,
     })
-    expect(asked[0]).toMatchObject({ questions: { same: {}, colour: {}, print: {} } })
+    expect(asked[0]).toMatchObject({ questions: { same: {}, colour: {}, print: {}, printed: {} } })
+  })
+})
+
+/** A checked frame of a turn, as Clef answers it. */
+const frame = (colour: number, print: number, printed: number) => ({ same: 0.8, colour, print, printed })
+
+describe("a turn's gate", () => {
+  const policy = capturePolicy({}).turns
+  test('keeps colour on every frame, and the print only for a garment that has one', () => {
+    // Plain navy trousers on the preview: colour kept, no print to keep.
+    expect(turnKept([frame(0.93, 0.06, 0.05), frame(0.95, 0.1, 0.02), frame(0.94, 0.2, 0.1)], policy)).toBe(true)
+    expect(turnKept([frame(0.93, 0.9, 0.9), frame(0.92, 0.4, 0.9), frame(0.95, 0.8, 0.8)], policy)).toBe(false)
+    expect(turnKept([frame(0.93, 0.9, 0.9), frame(0.79, 0.9, 0.9), frame(0.95, 0.8, 0.8)], policy)).toBe(false)
+    expect(turnKept([frame(0.93, 0.7, 0.9), frame(0.92, 0.6, 0.9), frame(0.95, 0.8, 0.2)], policy)).toBe(true)
   })
 })

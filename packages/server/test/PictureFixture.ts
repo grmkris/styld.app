@@ -113,11 +113,12 @@ const clef = Effect.gen(function* () {
     const judged = { red: verdict('improve'), green: verdict('repair'), blue: verdict('fragment') }[real]
     return yield* HttpServerResponse.json({ model: 'clef-flash', answers: { picture: judged, face: noul(0.01) } })
   }
-  // A turn's frame beside its clean front: the recorded take keeps the garment, its colour and its print.
+  // A turn's frame beside its clean front: the recorded take keeps the garment and its colour; the shirt is plain, so
+  // there is no print to keep, and its print is answered low, as Clef answered plain trousers on the preview.
   if ('colour' in body.questions)
     return yield* HttpServerResponse.json({
       model: 'clef-flash',
-      answers: { same: noul(0.9), colour: noul(0.9), print: noul(0.85) },
+      answers: { same: noul(0.9), colour: noul(0.9), print: noul(0.06), printed: noul(0.04) },
     })
   if ('same' in body.questions) {
     const [same, faithful] = real === 'red' ? [0.93, 0.91] : [0.7, 0.75]

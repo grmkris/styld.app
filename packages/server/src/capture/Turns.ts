@@ -15,6 +15,7 @@ import { PieceNotFound, SheetRefused, type TurnLayout, TurnRefused } from '@styl
 import { DateTime, Effect, Match, Option, Predicate, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { turnView } from '../wardrobe/Shown.ts'
+import { turnKept } from './CleanPicture.ts'
 import { hanger } from './Hanger.ts'
 import {
   enqueueTurn,
@@ -227,18 +228,23 @@ const laidOut = (sheet: Rgba, layout: TurnLayout) =>
   sheet.width === layout.columns * layout.width &&
   sheet.height === Math.ceil(layout.frames / layout.columns) * layout.height
 
-/** How the turn's checked frames compare with the clean picture: the weakest colour and print, the average sameness. */
+/** How the turn's checked frames compare with the clean picture: whether it is kept (`turnKept`), and the weakest
+ * colour and print and the average sameness, as the turn records them. */
 const checked = (sheet: Rgba, layout: TurnLayout, clean: Rgba) =>
   Effect.gen(function* () {
     const vision = yield* GarmentVision
+    const policy = (yield* CaptureConfig).turns
     const front = png(flatten(shrink(clean, 512)))
     const answers = yield* Effect.forEach(checkedFrames(layout.frames), (index) =>
       vision.compareTurn(png(flatten(cellOf(sheet, layout, index))), front),
     )
     return {
-      colour: Math.min(...answers.map(({ colour }) => colour)),
-      print: Math.min(...answers.map(({ print }) => print)),
-      same: answers.reduce((sum, { same }) => sum + same, 0) / answers.length,
+      kept: turnKept(answers, policy),
+      scores: {
+        colour: Math.min(...answers.map(({ colour }) => colour)),
+        print: Math.min(...answers.map(({ print }) => print)),
+        same: answers.reduce((sum, { same }) => sum + same, 0) / answers.length,
+      },
     }
   })
 
@@ -287,10 +293,8 @@ const acceptSheet = (parts: Parts, pieceId: string, layout: TurnLayout, bytes: U
     if (Option.isNone(turn)) return yield* PieceNotFound.make({})
     if (turn.value.state !== 'video-ready') return turnView(turn.value, yield* now)
     const { sheet, clean } = yield* sheetAndFront(parts, pieceId, layout, bytes)
-    const policy = (yield* CaptureConfig).turns
     // A check the decision model cannot answer now leaves the turn waiting for the same sheet again.
-    const scores = yield* checked(sheet, layout, clean).pipe(Effect.mapError(unavailable))
-    const kept = scores.colour >= policy.colour && scores.print >= policy.print
+    const { kept, scores } = yield* checked(sheet, layout, clean).pipe(Effect.mapError(unavailable))
     const sheetKey = turnKey(accountId, pieceId, 'sheet.png')
     if (kept) yield* writeObject(parts, sheetKey, bytes, 'image/png')
     yield* move(parts, pieceId, ['video-ready'], {
