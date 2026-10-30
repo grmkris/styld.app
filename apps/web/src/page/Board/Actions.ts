@@ -64,6 +64,10 @@ export const addedImage = (model: Model, imageId: BoardImageId): UpdateReturn =>
   )
 }
 
+/** A picture pinned on the board goes back on the table. */
+export const placedPicture = (model: Model, imageId: BoardImageId): UpdateReturn =>
+  added(model, (id) => ImageItem.make({ id, imageId, ...landing(model.items, 420) }))
+
 /** Change one item and keep it selected, as one undo step. */
 const changed = (model: Model, id: string, change: (item: BoardItem) => BoardItem): UpdateReturn =>
   Option.match(findItem(model.items, id), {

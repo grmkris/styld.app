@@ -1,17 +1,26 @@
 import { format, type Locale } from '@styld/i18n'
-import { type BoardItem, type Paper, type Piece, PieceItem, TextItem } from '@styld/protocol'
+import {
+  type BoardItem,
+  ImageItem,
+  type Paper,
+  type Piece,
+  PieceItem,
+  PicturePin,
+  PiecePin,
+  TextItem,
+} from '@styld/protocol'
 import { Array, Option, Schema } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../../ActionButton.ts'
-import { secondaryAction } from '../../Actions.styles.ts'
 import { backIcon, loader } from '../../Icon.ts'
-import { boardsRouter, lookRouter } from '../../route.ts'
+import { boardRouter, lookRouter } from '../../route.ts'
 import { styled } from '../../Styled.ts'
 import { MeasurePaper } from './Commands.ts'
-import { itemContent, itemStyle, pieceImage, placement } from './Table.ts'
+import { boardImage, itemContent, itemStyle, pieceImage, placement } from './Table.ts'
 import { type KeyStep, Message } from './Message.ts'
-import { BoardState, Gesture, LookSave, type Model, Saving, Toast, Upload } from './Model.ts'
+import { Gesture, LookSave, type Model, Saving, Toast, Upload } from './Model.ts'
+import { boardStateView } from './Unready.ts'
 import * as styles from './View.styles.ts'
 import { selectionView, toolbarView } from './ViewTools.ts'
 
@@ -209,49 +218,71 @@ const lookView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
     NoPieces: () => h.p([h.Role('status'), ...styled(h, styles.fine())], [format(locale, 'board.lookNoPieces', {})]),
   })
 
+const trayPiece = (piece: Piece, isOn: boolean, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  const name = piece.name ?? format(locale, 'board.pieceFallback', {})
+  return h.keyed('li')(
+    piece.id,
+    [],
+    [
+      h.button(
+        [
+          h.Type('button'),
+          h.AriaPressed(isOn ? 'true' : 'false'),
+          h.AriaLabel(format(locale, isOn ? 'board.takePiece' : 'board.addPiece', { name })),
+          ...styled(h, styles.trayPiece()),
+          h.OnClick(Message.ClickedWardrobePiece({ pieceId: piece.id })),
+        ],
+        [h.img([h.Src(pieceImage(piece.id)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.trayImage())])],
+      ),
+    ],
+  )
+}
+
+/** A picture pinned on the board but off its table: a tap lays it back. */
+const trayPicture = (imageId: PicturePin['imageId'], locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.keyed('li')(
+    imageId,
+    [],
+    [
+      h.button(
+        [
+          h.Type('button'),
+          h.AriaPressed('false'),
+          h.AriaLabel(format(locale, 'board.placePicture', {})),
+          ...styled(h, styles.trayPiece()),
+          h.OnClick(Message.ClickedPinnedPicture({ imageId })),
+        ],
+        [h.img([h.Src(boardImage(imageId, 'thumb')), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.trayImage())])],
+      ),
+    ],
+  )
+
+/** The tray: what is pinned on the board first, then the rest of the wardrobe. */
 const trayView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const onTable = new Set(Array.flatMap(model.items, (item) => (Schema.is(PieceItem)(item) ? [item.pieceId] : [])))
+  const picturesOnTable = new Set(
+    Array.flatMap(model.items, (item) => (Schema.is(ImageItem)(item) ? [item.imageId] : [])),
+  )
+  const pinnedPieces = Array.flatMap(model.pins, (pin) =>
+    Schema.is(PiecePin)(pin) && pin.piece.status === 'ready' ? [pin.piece] : [],
+  )
+  const pinnedIds = new Set(pinnedPieces.map(({ id }) => id))
+  const offTable = Array.flatMap(model.pins, (pin) =>
+    Schema.is(PicturePin)(pin) && !picturesOnTable.has(pin.imageId) ? [pin.imageId] : [],
+  )
   const body = AsyncData.matchData(model.wardrobe.pieces, {
     onEmpty: () => h.p([h.Role('status'), ...styled(h, styles.fine())], [loader(h)]),
     onFailure: () => h.p([h.Role('alert'), ...styled(h, styles.fine())], [format(locale, 'board.wardrobeFailed', {})]),
-    onData: (pieces) =>
-      Array.match(
-        Array.filter(pieces, (piece) => piece.status === 'ready'),
-        {
-          onEmpty: () => h.p(styled(h, styles.fine()), [format(locale, 'board.wardrobeEmpty', {})]),
-          onNonEmpty: (ready) =>
-            h.ul(
-              styled(h, styles.trayList()),
-              Array.map(ready, (piece) => {
-                const name = piece.name ?? format(locale, 'board.pieceFallback', {})
-                const isOn = onTable.has(piece.id)
-                return h.keyed('li')(
-                  piece.id,
-                  [],
-                  [
-                    h.button(
-                      [
-                        h.Type('button'),
-                        h.AriaPressed(isOn ? 'true' : 'false'),
-                        h.AriaLabel(format(locale, isOn ? 'board.takePiece' : 'board.addPiece', { name })),
-                        ...styled(h, styles.trayPiece()),
-                        h.OnClick(Message.ClickedWardrobePiece({ pieceId: piece.id })),
-                      ],
-                      [
-                        h.img([
-                          h.Src(pieceImage(piece.id)),
-                          h.Alt(''),
-                          h.Loading('lazy'),
-                          ...styled(h, styles.trayImage()),
-                        ]),
-                      ],
-                    ),
-                  ],
-                )
-              }),
-            ),
-        },
-      ),
+    onData: (pieces) => {
+      const rest = Array.filter(pieces, (piece) => piece.status === 'ready' && !pinnedIds.has(piece.id))
+      const offered = [...pinnedPieces, ...rest]
+      return offered.length + offTable.length === 0
+        ? h.p(styled(h, styles.fine()), [format(locale, 'board.wardrobeEmpty', {})])
+        : h.ul(styled(h, styles.trayList()), [
+            ...Array.map(offTable, (imageId) => trayPicture(imageId, locale, h)),
+            ...Array.map(offered, (piece) => trayPiece(piece, onTable.has(piece.id), locale, h)),
+          ])
+    },
   })
   return h.section(
     [h.AriaLabelledBy('board-tray'), h.DataAttribute('tray', ''), ...styled(h, styles.tray())],
@@ -262,7 +293,10 @@ const trayView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
 const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.page()), [
     h.header(styled(h, styles.header()), [
-      h.a([h.Href(boardsRouter({})), ...styled(h, styles.back())], [backIcon(h), format(locale, 'board.back', {})]),
+      h.a(
+        [h.Href(boardRouter({ boardId: model.boardId })), ...styled(h, styles.back())],
+        [backIcon(h), format(locale, 'studio.backToBoard', {})],
+      ),
       h.h1(styled(h, styles.title()), [name]),
       statusView(model, locale, h),
     ]),
@@ -279,29 +313,6 @@ const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: 
     ]),
   ])
 
-const notReady = (text: string, retry: boolean, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.div(styled(h, styles.page()), [
-    h.a([h.Href(boardsRouter({})), ...styled(h, styles.back())], [backIcon(h), format(locale, 'board.back', {})]),
-    h.p([h.Role(retry ? 'alert' : 'status')], [text]),
-    retry
-      ? actionButton(
-          { label: format(locale, 'board.retry', {}), style: secondaryAction(), onClick: Message.ClickedRetry() },
-          h,
-        )
-      : h.empty,
-  ])
-
 export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
-  h.main(
-    [h.Id('main')],
-    [
-      BoardState.match(model.board, {
-        Loading: () =>
-          h.div(styled(h, styles.page()), [h.p([h.Role('status')], [loader(h), format(locale, 'board.loading', {})])]),
-        Failed: () => notReady(format(locale, 'board.failed', {}), true, locale, h),
-        Missing: () => notReady(format(locale, 'board.missing', {}), false, locale, h),
-        Ready: ({ name, paper }) => readyView(model, name, paper, locale, h),
-      }),
-    ],
-  ),
+  boardStateView(model.board, (name, paper) => readyView(model, name, paper, locale, h), locale, h),
 )

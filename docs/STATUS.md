@@ -11,7 +11,24 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
 - **Order:** pins and the collage, MCP for boards, profiles with model checks, public pages and link previews, saves,
   follows, blocks and the feed, Explore, curation and search, the wishlist and Add from a link, generated pictures and
   mood boards, then review rounds. Each step is deployed to the preview and read back.
-- **Built so far:** nothing beyond these documents.
+- **Built so far (M1, on main, not yet deployed):**
+  - The table's placement rules live in `@styld/protocol` (`fb7b2c9`), shared by the editor and, next, the server and
+    the assistants.
+  - Pins (`a774956`): the new `board_pins` table pins pieces, looks and pictures, newest first. Placing a piece on the
+    table pins it in the same batch; pinning leaves the table's version alone; taking a pin off clears it from the
+    table, deletes a picture with its bytes, and moves the version on. Pins, unpins and table saves replay by
+    operation id; a save's receipt lands only at the loaded version. Lists carry summaries (table, four newest pins,
+    count). Evidence: a `node:sqlite` migration test and native API acceptance.
+  - The board page: `/boards/:id` shows the collage as a card above the grid of pins, with Add (a sheet of the
+    wardrobe's pieces and the person's looks), taking a pin off, and the board's settings (rename, delete after a
+    second ask). The editor moved to `/boards/:id/collage`; its tray offers the board's pins first, pictures taken
+    off the table included. A board reloads when its page comes back into view, unless a change of its own is
+    waiting. Copy reuses v1's reviewed `studio.*`; new `board.*` keys are in both languages (Slovenian awaits review).
+    Evidence: Story tests and the native browser walk (new board, collage, pins, unpin, rename, desktop, Slovenian).
+  - **Bundle:** the owner's one raise for this iteration lifts the first-load budget from 307,200 to 368,640 gzip
+    bytes (`tools/bundle-check.ts`). Measured with the board page: 309,017 first load, 568,360 all assets, 1,582,534 SSR
+    source bytes.
+- **Next:** "Add to a board" from a piece and a look, then MCP board tools (M2).
 - **Shared with the capture session:** migrations are generated one at a time; public delivery reuses its rule for a
   piece's shown picture; generated pictures reuse its Muse provider.
 - **Still to settle in spikes:** Clef and Llama Guard thresholds on fixtures in English and Slovenian, drawing text

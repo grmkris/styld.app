@@ -140,13 +140,25 @@ const verifyHome = async (page: Page, origin: string) => {
   await page.getByRole('button', { name: 'Worn today' }).waitFor({ state: 'visible' })
 }
 
-const verifyBoard = async (context: BrowserContext, page: Page, origin: string) => {
+/** A new board opens on its page: an empty collage above nothing pinned yet, with the navigation; its collage
+ * opens the editor. */
+const openNewBoard = async (page: Page, origin: string) => {
   await page.goto(`${origin}/boards`, { waitUntil: 'networkidle' })
   await page.getByRole('heading', { name: 'Boards', level: 1 }).waitFor({ state: 'visible' })
   await page.getByLabel('Name').fill('Weekend')
   await page.getByRole('button', { name: 'New board' }).click()
-  await page.waitForURL(/\/boards\/bd_/)
+  await page.waitForURL(/\/boards\/bd_[^/]+$/)
+  await page.getByRole('heading', { name: 'Weekend', level: 1 }).waitFor({ state: 'visible' })
+  await page.getByText('Nothing pinned yet').waitFor({ state: 'visible' })
+  expect(await page.getByRole('navigation', { name: 'Navigation' }).isVisible()).toBe(true)
+  await expectNoSidewaysScroll(page)
+  await page.getByRole('link', { name: 'Open the collage Weekend' }).click()
+  await page.waitForURL(/\/boards\/bd_[^/]+\/collage$/)
   await page.getByRole('heading', { name: 'Weekend' }).waitFor({ state: 'visible' })
+}
+
+const verifyBoard = async (context: BrowserContext, page: Page, origin: string) => {
+  await openNewBoard(page, origin)
   // The editor has the whole phone screen: the navigation pill would sit over the tray of pieces.
   expect(await page.getByRole('navigation', { name: 'Navigation' }).isVisible()).toBe(false)
   await expectNoSidewaysScroll(page)
@@ -226,6 +238,30 @@ const verifyBoard = async (context: BrowserContext, page: Page, origin: string) 
   await page.getByText('Saved as a look.').waitFor({ state: 'visible' })
   await page.getByRole('link', { name: 'Open the look' }).click()
   await page.getByRole('heading', { name: 'Weekend' }).waitFor({ state: 'visible' })
+  await verifyBoardPage(page, origin)
+}
+
+/** The board's page: what the collage placed is pinned, newest first, with the picture; a pin comes off the
+ * board; the board is renamed from its settings. */
+const verifyBoardPage = async (page: Page, origin: string) => {
+  await page.goto(`${origin}/boards`, { waitUntil: 'networkidle' })
+  await page.getByRole('link', { name: 'Open Weekend' }).click()
+  await page.getByRole('heading', { name: 'Weekend', level: 1 }).waitFor({ state: 'visible' })
+  await page.getByText('4 pins').waitFor({ state: 'visible' })
+  for (const name of ['Cable knit', 'Denim shorts', 'Derby shoes', 'A picture'])
+    await page.getByRole('img', { name, exact: true }).first().waitFor({ state: 'visible' })
+  await page.getByRole('button', { name: 'Take Derby shoes off the board' }).click()
+  await page.getByText('3 pins').waitFor({ state: 'visible' })
+  await shoot(page, 'phone-board-page')
+
+  await page.getByRole('button', { name: 'Board settings' }).click()
+  const name = page.getByLabel('Board name')
+  await name.fill('Weekend away')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await page.getByRole('heading', { name: 'Weekend away', level: 1 }).waitFor({ state: 'visible' })
+  await page.reload({ waitUntil: 'networkidle' })
+  await page.getByRole('heading', { name: 'Weekend away', level: 1 }).waitFor({ state: 'visible' })
+  await page.getByText('3 pins').waitFor({ state: 'visible' })
 }
 
 const verifyAskAndWardrobe = async (page: Page, origin: string) => {
@@ -296,7 +332,10 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
     await page.getByRole('img', { name: /^Today’s outfit:/ }).waitFor({ state: 'visible' })
     await shoot(page, 'desktop-home')
     await page.goto(`${origin}/boards`, { waitUntil: 'networkidle' })
-    await page.getByRole('link', { name: 'Open Weekend' }).click()
+    await page.getByRole('link', { name: 'Open Weekend away' }).click()
+    await page.getByRole('heading', { name: 'Weekend away', level: 1 }).waitFor({ state: 'visible' })
+    await shoot(page, 'desktop-board-page')
+    await page.getByRole('link', { name: 'Open the collage Weekend away' }).click()
     await page.getByRole('button', { name: 'Text: Weekend in Piran' }).waitFor({ state: 'visible' })
     await shoot(page, 'desktop-board')
     // The same pages in Slovenian: the day in Slovenian, the board's words from the catalog.
@@ -307,7 +346,9 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
     await shoot(page, 'desktop-home-sl')
     await page.goto(`${origin}/boards`, { waitUntil: 'networkidle' })
     await page.getByRole('heading', { name: 'Zbirke', level: 1 }).waitFor({ state: 'visible' })
-    await page.getByRole('link', { name: 'Odpri: Weekend' }).click()
+    await page.getByRole('link', { name: 'Odpri: Weekend away' }).click()
+    await page.getByText('3 kartice').waitFor({ state: 'visible' })
+    await page.getByRole('link', { name: 'Odpri kolaž Weekend away' }).click()
     await page.getByRole('button', { name: 'Besedilo: Weekend in Piran' }).waitFor({ state: 'visible' })
     await page.getByRole('button', { name: 'Shrani kot videz' }).waitFor({ state: 'visible' })
     await shoot(page, 'desktop-board-sl')

@@ -59,7 +59,11 @@ export const saveNow = (model: Model, generation: number): UpdateReturn => {
 /** The server took the table. Changes made while it was on its way are saved next. */
 export const saved = (model: Model, board: Board): UpdateReturn => {
   const dirty = Saving.guards.InFlight(model.saving) && model.saving.dirty
-  const next = modifyFields(model, { version: () => board.version, saving: () => Saving.Saved() })
+  const next = modifyFields(model, {
+    version: () => board.version,
+    pins: () => board.pins,
+    saving: () => Saving.Saved(),
+  })
   return dirty ? scheduled(next) : { model: next }
 }
 

@@ -39,8 +39,10 @@ initialGzip += Math.max(...(await Promise.all(catalogs.map(([, chunk]) => gzipOf
 let totalGzip = 0
 for (const file of all) totalGzip += await gzipOf(file)
 const server = await readFile('apps/web/dist/server/fetch.js')
-// Raised from 256 and 512 KiB by the owner on 2026-10-30 for Gallery 2 and boards (docs/STATUS.md › Overnight run).
-if (initialGzip > 307200) throw new Error(`Initial browser assets exceed the 300 KiB gzip budget: ${initialGzip}`)
+// Raised from 256 and 512 KiB by the owner on 2026-10-30 for Gallery 2 and boards (docs/STATUS.md › Overnight run),
+// and the initial budget once more, to 360 KiB, for boards, profiles and social, because Foldkit ships every page in
+// the first load (owner, 2026-10-30; docs/STATUS.md › Plan: boards, profiles and social).
+if (initialGzip > 368640) throw new Error(`Initial browser assets exceed the 360 KiB gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

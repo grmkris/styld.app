@@ -1,5 +1,5 @@
-import { FileDrop } from '@foldkit/ui'
-import { Board, BoardImageId, BoardItemId, LookId, Paper, TextStyle } from '@styld/protocol'
+import { Dialog, FileDrop } from '@foldkit/ui'
+import { Board, BoardImageId, BoardItemId, Look, LookId, Paper, PinId, TextStyle } from '@styld/protocol'
 import * as WardrobePage from '../Wardrobe.ts'
 import { Schema } from 'effect'
 import { File } from 'foldkit'
@@ -46,6 +46,7 @@ export const Message = defineMessageUnion({
   ClickedTidy: {},
   ClickedAddText: { text: Schema.String },
   ClickedWardrobePiece: { pieceId: Schema.String },
+  ClickedPinnedPicture: { imageId: BoardImageId },
   ClickedFlip: { id: Schema.String },
   ClickedDuplicate: { id: Schema.String },
   ClickedForward: { id: Schema.String },
@@ -74,6 +75,34 @@ export const Message = defineMessageUnion({
   CompletedReadClipboard: { files: Schema.Array(File.File) },
   SucceededAddImage: { imageId: BoardImageId },
   FailedAddImage: { refused: Schema.Boolean },
+
+  /** The page came back into view: another device or an assistant may have changed the board. */
+  BecameVisible: {},
+  SucceededReloadBoard: { board: Board },
+  FailedReloadBoard: {},
+
+  ClickedSettings: {},
+  GotSettingsMessage: { message: Dialog.Message },
+  UpdatedNameDraft: { value: Schema.String },
+  SubmittedRename: {},
+  SucceededRename: { board: Board },
+  FailedRename: {},
+  ClickedDeleteBoard: {},
+  ClickedKeepBoard: {},
+  ClickedConfirmDelete: {},
+  SucceededDeleteBoard: {},
+  FailedDeleteBoard: {},
+  CompletedLeaveBoard: {},
+
+  ClickedUnpin: { pinId: PinId },
+  ClickedAddPins: {},
+  GotPickerMessage: { message: Dialog.Message },
+  ToggledPick: { pick: Schema.String },
+  SubmittedPicks: {},
+  SucceededLoadLooks: { looks: Schema.Array(Look) },
+  FailedLoadLooks: {},
+  SucceededPins: { board: Board },
+  FailedPins: {},
 
   ClickedSaveLook: {},
   SucceededSaveLook: { lookId: LookId },

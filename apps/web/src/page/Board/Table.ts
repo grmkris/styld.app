@@ -11,7 +11,7 @@ import * as styles from './View.styles.ts'
 // and Home show it as it is.
 
 export const pieceImage = (pieceId: string) => `/cdn/pieces/${pieceId}/thumb`
-const boardImage = (imageId: string, size: 'thumb' | 'full' = 'full') => `/cdn/boards/images/${imageId}/${size}`
+export const boardImage = (imageId: string, size: 'thumb' | 'full' = 'full') => `/cdn/boards/images/${imageId}/${size}`
 
 /** Where an item lies, as the custom properties its styles read. The browser sets them through the CSSOM
  * after the data loads; the edge CSP would refuse them as an inline attribute in server-rendered HTML. */

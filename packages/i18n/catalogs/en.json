@@ -2832,7 +2832,6 @@
     "deleteFailed": "Couldn't delete the look. Try again."
   },
   "board": {
-    "back": "Boards",
     "loading": "Opening your board…",
     "failed": "This board didn’t open.",
     "missing": "This board isn’t here any more.",
@@ -2895,7 +2894,16 @@
     "deleteConfirm": "Delete this board for good? Your pieces and looks stay.",
     "deleteYes": "Delete",
     "deleteKeep": "Keep it",
-    "deleteFailed": "The board wasn’t deleted. Try again."
+    "deleteFailed": "The board wasn’t deleted. Try again.",
+    "unpin": "Take {name} off the board",
+    "pinsTitle": "Pinned",
+    "pinsEmptyHint": "Add pieces and looks from your wardrobe, or paste a picture on the collage.",
+    "pickerTitle": "Add to {name}",
+    "pickerEmpty": "Everything in your wardrobe is on this board.",
+    "pickSelected": "{count, plural, =0 {Add} one {Add # thing} other {Add # things}}",
+    "looksFailed": "Your looks didn’t load.",
+    "placePicture": "Lay this picture on the collage",
+    "unpinPicture": "Take the picture off the board"
   },
   "boards": {
     "title": "Boards",

@@ -14,6 +14,7 @@ import {
   lookRequested,
   paperSelected,
   picturesChosen,
+  placedPicture,
   removed,
   styleSelected,
   textUpdated,
@@ -34,6 +35,7 @@ import {
 } from './Gestures.ts'
 import { Message } from './Message.ts'
 import { BoardState, fromBoard, LookSave, type Model, Saving, Upload } from './Model.ts'
+import { pageSteps } from './Page.ts'
 
 /** The Commands that open the board: the board, the wardrobe for the tray, and a first batch of ids. */
 export const load = (model: Model): ReadonlyArray<Command.Command<Message, never, Services>> => [
@@ -90,6 +92,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedTidy: () => committed(model, model.items, tidied(model.items)),
     ClickedAddText: ({ text }) => addedText(model, text),
     ClickedWardrobePiece: ({ pieceId }) => addedPiece(model, pieceId),
+    ClickedPinnedPicture: ({ imageId }) => placedPicture(model, imageId),
     ClickedFlip: ({ id }) => flipped(model, id),
     ClickedDuplicate: ({ id }) => duplicated(model, id),
     ClickedForward: ({ id }) => layered(model, id, 'forward'),
@@ -116,6 +119,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     CompletedReadClipboard: ({ files }) => picturesChosen(model, files),
     SucceededAddImage: ({ imageId }) => addedImage(model, imageId),
     FailedAddImage: ({ refused }) => ({ model: modifyFields(model, { upload: () => Upload.Failed({ refused }) }) }),
+    ...pageSteps(model),
     ClickedSaveLook: () => lookRequested(model),
     SucceededSaveLook: ({ lookId }) => ({ model: modifyFields(model, { look: () => LookSave.Saved({ lookId }) }) }),
     FailedSaveLook: () => ({ model: modifyFields(model, { look: () => LookSave.Failed() }) }),

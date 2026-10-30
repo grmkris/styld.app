@@ -1,4 +1,4 @@
-import { Effect, Option, Schema, Stream } from 'effect'
+import { Duration, Effect, Option, Schema, Stream } from 'effect'
 import { Subscription } from 'foldkit'
 import * as Dom from 'foldkit/dom'
 import * as WardrobePage from '../Wardrobe.ts'
@@ -112,3 +112,21 @@ const { refreshWhileProcessing } = Subscription.lift(WardrobePage.subscriptions)
 /** The table's own listeners, and the tray's pieces asked for again while one is processing (under its own key:
  * the app's wardrobe has the same entry). */
 export const subscriptions = { ...tableSubscriptions, trayRefreshWhileProcessing: refreshWhileProcessing }
+
+/** The page coming back into view, or its window back into focus: an assistant or another device may have changed
+ * the board meanwhile. The two arrive together on a phone, so a burst counts once. */
+const visibleAgain = () =>
+  Stream.merge(
+    Stream.fromEventListener(document, 'visibilitychange').pipe(
+      Stream.filter(() => document.visibilityState === 'visible'),
+    ),
+    Stream.fromEventListener(window, 'focus'),
+  ).pipe(
+    Stream.debounce(Duration.millis(300)),
+    Stream.map(() => Message.BecameVisible()),
+  )
+
+/** What a board's page listens for, the grid's and the collage's alike. */
+export const pageSubscriptions = Subscription.make<Model, Message>()((entry) => ({
+  boardVisible: entry({}, { modelToDependencies: () => ({}), dependenciesToStream: visibleAgain }),
+}))

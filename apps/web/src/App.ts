@@ -163,7 +163,9 @@ type UpdateReturn = Update.Return<Model, Message, Services>
 /** The Commands that open a page that loads whole each time. */
 const pageCommands = (route: AppRoute, piece: Piece.Model, look: Look.Model, board: BoardModel.Model) =>
   Match.value(route).pipe(
-    Match.tag('Board', () => Command.mapMessages(Board.load(board), (message) => Message.GotBoardMessage({ message }))),
+    Match.tag('Board', 'BoardCollage', () =>
+      Command.mapMessages(Board.load(board), (message) => Message.GotBoardMessage({ message })),
+    ),
     Match.tag('Piece', () => Command.mapMessages(Piece.load(piece), (message) => Message.GotPieceMessage({ message }))),
     Match.tag('Review', () => Command.mapMessages(Review.load(), (message) => Message.GotReviewMessage({ message }))),
     Match.tag('Look', () => Command.mapMessages(Look.load(look), (message) => Message.GotLookMessage({ message }))),
@@ -175,7 +177,9 @@ export const init = (context: Flags, url?: Url): UpdateReturn => {
   const route = url === undefined ? routeFromPathname(context.pathname) : routeFromUrl(url)
   const piece = Piece.init(AppRoute.guards.Piece(route) ? route.pieceId : '')
   const look = Look.init(AppRoute.guards.Look(route) ? route.lookId : '')
-  const board = BoardModel.init(AppRoute.guards.Board(route) ? route.boardId : '')
+  const board = BoardModel.init(
+    AppRoute.guards.Board(route) || AppRoute.guards.BoardCollage(route) ? route.boardId : '',
+  )
   const opened = Update.combine<Model, Message, Services>(
     {
       context,
@@ -368,9 +372,17 @@ export const subscriptions = Subscription.aggregate(
     read: (model) => Option.some(model.wardrobe),
     toParentMessage: (message) => Message.GotWardrobeMessage({ message }),
   }),
-  // The board's hands, keys, pasted pictures and dropped files listen only while a board is open.
+  // A board's page listens for coming back into view; its collage editor also for hands, keys, pasted pictures and
+  // dropped files.
+  Subscription.lift(BoardSubscription.pageSubscriptions)<Model, Message>({
+    read: (model) =>
+      AppRoute.guards.Board(model.route) || AppRoute.guards.BoardCollage(model.route)
+        ? Option.some(model.board)
+        : Option.none(),
+    toParentMessage: (message) => Message.GotBoardMessage({ message }),
+  }),
   Subscription.lift(BoardSubscription.subscriptions)<Model, Message>({
-    read: (model) => (AppRoute.guards.Board(model.route) ? Option.some(model.board) : Option.none()),
+    read: (model) => (AppRoute.guards.BoardCollage(model.route) ? Option.some(model.board) : Option.none()),
     toParentMessage: (message) => Message.GotBoardMessage({ message }),
   }),
 )

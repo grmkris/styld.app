@@ -29,7 +29,10 @@ export const AppRoute = defineRouteUnion({
    * search stays in the address, so coming back to Ask brings it back. */
   Ask: { q: Schema.Option(Schema.String) },
   Boards: {},
+  /** A board: its collage above the grid of its pins. */
   Board: { boardId: Schema.String },
+  /** The editor of a board's collage, which has the whole screen. */
+  BoardCollage: { boardId: Schema.String },
   NotFound: { path: Schema.String },
 })
 export type AppRoute = typeof AppRoute.Type
@@ -51,6 +54,12 @@ export const askRouter = pipe(
 )
 export const boardsRouter = pipe(literal('boards'), mapTo(AppRoute.Boards))
 export const boardRouter = pipe(literal('boards'), slash(string('boardId')), mapTo(AppRoute.Board))
+export const boardCollageRouter = pipe(
+  literal('boards'),
+  slash(string('boardId')),
+  slash(literal('collage')),
+  mapTo(AppRoute.BoardCollage),
+)
 
 // `/wardrobe/add` and `/wardrobe/review` are declared before `/wardrobe/:pieceId`, which would otherwise take them.
 const parser = oneOf(
@@ -64,6 +73,7 @@ const parser = oneOf(
   lookRouter,
   looksRouter,
   askRouter,
+  boardCollageRouter,
   boardRouter,
   boardsRouter,
   homeRouter,
@@ -94,7 +104,8 @@ export const needsSession = (route: AppRoute) =>
   AppRoute.guards.Look(route) ||
   AppRoute.guards.Ask(route) ||
   AppRoute.guards.Boards(route) ||
-  AppRoute.guards.Board(route)
+  AppRoute.guards.Board(route) ||
+  AppRoute.guards.BoardCollage(route)
 
 /** The pages the navigation moves between. They keep their place: each opens at once from what the app already
  * has, while every other page loads whole. */
@@ -115,6 +126,7 @@ export const tabOf = AppRoute.match<Option.Option<Tab>>({
   Piece: () => Option.none(),
   Look: () => Option.none(),
   Board: () => Option.none(),
+  BoardCollage: () => Option.none(),
   NotFound: () => Option.none(),
 })
 

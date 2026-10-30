@@ -1,7 +1,8 @@
-import { FileDrop } from '@foldkit/ui'
-import { Board, BoardItem, BoardItemId, LookId, Paper } from '@styld/protocol'
+import { Dialog, FileDrop } from '@foldkit/ui'
+import { Board, BoardItem, BoardItemId, Look, LookId, Paper, Pin } from '@styld/protocol'
 import * as WardrobePage from '../Wardrobe.ts'
 import { Option, Schema } from 'effect'
+import { AsyncData } from 'foldkit'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { Pointer } from './Geometry.ts'
@@ -78,6 +79,22 @@ export const LookSave = defineTaggedUnion({
 })
 export type LookSave = typeof LookSave.Type
 
+/** Pinning from the picker, or taking a pin off the board. */
+export const PinWork = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {} })
+export type PinWork = typeof PinWork.Type
+
+/** Renaming the board from its settings. */
+export const Rename = defineTaggedUnion({ Idle: {}, Saving: {}, Failed: {} })
+export type Rename = typeof Rename.Type
+
+/** Deleting the board: asked once more, then sent. */
+export const Removal = defineTaggedUnion({ Idle: {}, Confirming: {}, Deleting: {}, Failed: {} })
+export type Removal = typeof Removal.Type
+
+/** The person's looks, for the picker. */
+export const LooksData = AsyncData.Schema(Schema.Array(Look), Schema.Literal('Unavailable'))
+export type LooksData = typeof LooksData.schema.Type
+
 /** "Removed. Undo": the table as it was before the removal, offered back for a few seconds. */
 export const Toast = defineTaggedUnion({
   Hidden: {},
@@ -90,6 +107,18 @@ export const Model = Schema.Struct({
   board: BoardState,
   version: Schema.Int,
   items: Schema.Array(BoardItem),
+  /** What is pinned on the board, newest first. */
+  pins: Schema.Array(Pin),
+  pinWork: PinWork,
+  /** The settings sheet: the name being typed, a rename and a deletion. */
+  settings: Dialog.Model,
+  nameDraft: Schema.String,
+  rename: Rename,
+  removal: Removal,
+  /** The sheet that pins pieces and looks, and what is ticked in it (`piece:<id>`, `look:<id>`). */
+  picker: Dialog.Model,
+  picks: Schema.Array(Schema.String),
+  looks: LooksData.schema,
   /** Items on their way out, kept on the page until their exit animation ends. */
   leaving: Schema.Array(BoardItem),
   maybeSelectedId: Schema.Option(Schema.String),
@@ -119,6 +148,15 @@ export const init = (boardId: string): Model => ({
   board: BoardState.Loading(),
   version: 0,
   items: [],
+  pins: [],
+  pinWork: PinWork.Idle(),
+  settings: Dialog.init({ id: 'board-settings' }),
+  nameDraft: '',
+  rename: Rename.Idle(),
+  removal: Removal.Idle(),
+  picker: Dialog.init({ id: 'board-picker' }),
+  picks: [],
+  looks: AsyncData.Idle(),
   leaving: [],
   maybeSelectedId: Option.none(),
   gesture: Gesture.Idle(),
@@ -143,4 +181,5 @@ export const fromBoard = (model: Model, board: Board): Model =>
     board: () => BoardState.Ready({ name: board.name, paper: board.paper }),
     version: () => board.version,
     items: () => board.items,
+    pins: () => board.pins,
   })

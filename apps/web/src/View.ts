@@ -12,6 +12,7 @@ import { askTabIcon, boardsTabIcon, homeTabIcon, wardrobeTabIcon } from './Icon.
 import * as AddPiecesView from './page/AddPieces/View.ts'
 import * as AskView from './page/AskView.ts'
 import * as TodayView from './page/TodayView.ts'
+import * as BoardPageView from './page/Board/PageView.ts'
 import * as BoardView from './page/Board/View.ts'
 import * as BoardsView from './page/BoardsView.ts'
 import * as ReviewView from './page/ReviewView.ts'
@@ -197,6 +198,7 @@ const titleKey = AppRoute.match<MessageKey>({
   Ask: () => 'ask.title',
   Boards: () => 'boards.title',
   Board: () => 'boards.title',
+  BoardCollage: () => 'boards.title',
   Piece: () => 'wardrobe.title',
   NotFound: () => 'common.notFoundTitle',
 })
@@ -214,6 +216,7 @@ const sectionOf = AppRoute.match<Section | undefined>({
   Ask: () => 'ask',
   Boards: () => 'boards',
   Board: () => 'boards',
+  BoardCollage: () => 'boards',
   Account: () => 'you',
   Login: () => undefined,
   LoginForConnection: () => undefined,
@@ -239,7 +242,7 @@ const appNavigation = (model: Model, initial: string, h: HtmlBuilder<Message>): 
   return h.nav(
     [
       h.AriaLabel(format(locale, 'nav.navigation', {})),
-      ...styled(h, AppRoute.guards.Board(model.route) ? cx(appNav(), navBesideTable()) : appNav()),
+      ...styled(h, AppRoute.guards.BoardCollage(model.route) ? cx(appNav(), navBesideTable()) : appNav()),
     ],
     [
       item('home', homeRouter({}), format(locale, 'nav.home', {}), homeTabIcon(h)),
@@ -392,6 +395,15 @@ const boardPage = (model: Model, h: HtmlBuilder<Message>): Html =>
   h.submodel({
     slotId: 'board',
     model: model.board,
+    view: BoardPageView.view,
+    viewInputs: { locale: model.context.locale },
+    toParentMessage: (message) => Message.GotBoardMessage({ message }),
+  })
+
+const collagePage = (model: Model, h: HtmlBuilder<Message>): Html =>
+  h.submodel({
+    slotId: 'board-collage',
+    model: model.board,
     view: BoardView.view,
     viewInputs: { locale: model.context.locale },
     toParentMessage: (message) => Message.GotBoardMessage({ message }),
@@ -442,6 +454,7 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
         Ask: () => askPage(model, h),
         Boards: () => boardsPage(model, h),
         Board: () => boardPage(model, h),
+        BoardCollage: () => collagePage(model, h),
         Piece: () => piecePage(model, h),
         NotFound: () => notFoundView(locale, h),
       }),

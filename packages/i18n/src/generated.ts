@@ -498,7 +498,6 @@ export interface MessageArgumentsByKey<T = string> {
   'board.addPicture': Readonly<Record<string, never>>
   'board.addPiece': { readonly name: string | number }
   'board.addText': Readonly<Record<string, never>>
-  'board.back': Readonly<Record<string, never>>
   'board.backward': Readonly<Record<string, never>>
   'board.count': { readonly count: number }
   'board.delete': Readonly<Record<string, never>>
@@ -518,6 +517,7 @@ export interface MessageArgumentsByKey<T = string> {
   'board.lookNoPieces': Readonly<Record<string, never>>
   'board.lookSaved': Readonly<Record<string, never>>
   'board.lookSaving': Readonly<Record<string, never>>
+  'board.looksFailed': Readonly<Record<string, never>>
   'board.missing': Readonly<Record<string, never>>
   'board.newText': Readonly<Record<string, never>>
   'board.openLook': Readonly<Record<string, never>>
@@ -530,10 +530,16 @@ export interface MessageArgumentsByKey<T = string> {
   'board.paper_slate': Readonly<Record<string, never>>
   'board.paper_stock': Readonly<Record<string, never>>
   'board.paste': Readonly<Record<string, never>>
+  'board.pickSelected': { readonly count: number }
+  'board.pickerEmpty': Readonly<Record<string, never>>
+  'board.pickerTitle': { readonly name: string | number }
   'board.picture': Readonly<Record<string, never>>
   'board.pictureFailed': Readonly<Record<string, never>>
   'board.pictureRefused': Readonly<Record<string, never>>
   'board.pieceFallback': Readonly<Record<string, never>>
+  'board.pinsEmptyHint': Readonly<Record<string, never>>
+  'board.pinsTitle': Readonly<Record<string, never>>
+  'board.placePicture': Readonly<Record<string, never>>
   'board.redo': Readonly<Record<string, never>>
   'board.remove': Readonly<Record<string, never>>
   'board.removed': Readonly<Record<string, never>>
@@ -556,6 +562,8 @@ export interface MessageArgumentsByKey<T = string> {
   'board.turnHandle': Readonly<Record<string, never>>
   'board.undo': Readonly<Record<string, never>>
   'board.undoRemove': Readonly<Record<string, never>>
+  'board.unpin': { readonly name: string | number }
+  'board.unpinPicture': Readonly<Record<string, never>>
   'board.wardrobe': Readonly<Record<string, never>>
   'board.wardrobeEmpty': Readonly<Record<string, never>>
   'board.wardrobeFailed': Readonly<Record<string, never>>
@@ -2552,4 +2560,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '5c7c4f096ea57e0a45ad8943a1f13cd65c1107bbd09a7a6ac6349348eee7c55c'
+export const catalogVersion = '4e14dcbd4d9eb63ad3d9f64aa9f697702c51f70a1a89c44240af9ea1662fe72d'
