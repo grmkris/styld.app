@@ -332,41 +332,14 @@ test(
     expect(response.status).toBe(200)
     expect(yield* response.json).toMatchObject({
       database: {
-        tables: [
-          'accounts',
-          'auth_attempt_buckets',
-          'blocks',
-          'board_images',
-          'board_items',
-          'board_pins',
-          'boards',
-          'capture_frames',
-          'captures',
-          'content_checks',
-          'detections',
-          'follows',
-          'look_pieces',
-          'looks',
-          'oauth_assertions',
-          'oauth_clients',
-          'oauth_grants',
-          'operation_receipts',
-          'piece_pictures',
-          'piece_turns',
-          'pieces',
-          'profiles',
-          'reports',
-          'saves',
-          'styld_auth_credentials',
-          'styld_auth_email_credentials',
-          'styld_auth_identifiers',
-          'styld_auth_passwords',
-          'styld_auth_pending',
-          'styld_auth_proofs',
-          'styld_auth_sessions',
-          'uploads',
-          'worn_pieces',
-        ],
+        // Every table, in SQLite's name order.
+        tables: (
+          'accounts auth_attempt_buckets blocks board_images board_items board_pins boards capture_frames ' +
+          'captures content_checks detections follows look_pieces looks oauth_assertions oauth_clients ' +
+          'oauth_grants operation_receipts piece_pictures piece_turns pieces profiles reports saves ' +
+          'styld_auth_credentials styld_auth_email_credentials styld_auth_identifiers styld_auth_passwords ' +
+          'styld_auth_pending styld_auth_proofs styld_auth_sessions uploads worn_pieces'
+        ).split(' '),
       },
       media: { sentinel: false },
     })

@@ -1,10 +1,11 @@
 import { Handle, PieceId, PublicPiecePage, PublicProfile } from '@styld/protocol'
-import { Effect, Predicate, Schema } from 'effect'
-import { Command, type Update } from 'foldkit'
+import { Effect, Option, Predicate, Schema } from 'effect'
+import { Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
+import * as People from './People.ts'
 
 // What anyone may see of a person: their published profile at `/@handle`, and a piece of theirs on its own page.
 // Both are read signed out; anything private, unpublished or held back by Styld's check reads as not there.
@@ -28,10 +29,20 @@ export const Shown = defineTaggedUnion({
 })
 export type Shown = typeof Shown.Type
 
-export const Model = Schema.Struct({ target: Target, shown: Shown, tab: PersonTab })
+export const Model = Schema.Struct({ target: Target, shown: Shown, tab: PersonTab, people: People.Model })
 export type Model = typeof Model.Type
 
-export const init = (target: Target): Model => ({ target, shown: Shown.Loading(), tab: 'boards' })
+export const init = (target: Target): Model => ({
+  target,
+  shown: Shown.Loading(),
+  tab: 'boards',
+  people: People.init(
+    Target.match(target, {
+      Person: ({ handle }) => People.Subject.Person({ handle }),
+      Piece: ({ pieceId }) => People.Subject.Piece({ pieceId }),
+    }),
+  ),
+})
 
 // MESSAGE
 
@@ -41,6 +52,7 @@ export const Message = defineMessageUnion({
   FailedLoadVisit: { missing: Schema.Boolean },
   ClickedRetry: {},
   ChoseTab: { tab: PersonTab },
+  GotPeopleMessage: { message: People.Message },
 })
 export type Message = typeof Message.Type
 
@@ -89,11 +101,19 @@ const loadTarget = (target: Target): Command.Command<Message, never, StyldClient
 /** The Commands that open the page. */
 export const load = (model: Model): ReadonlyArray<Command.Command<Message, never, StyldClient>> => [
   loadTarget(model.target),
+  ...Command.mapMessages(People.load(model.people), (message) => Message.GotPeopleMessage({ message })),
 ]
 
 // UPDATE
 
 type UpdateReturn = Update.Return<Model, Message, StyldClient>
+
+const foldPeople = Update.foldChild({
+  update: People.update,
+  read: (model: Model) => Option.some(model.people),
+  write: (model: Model, people: People.Model) => modifyFields(model, { people: () => people }),
+  toParentMessage: (message: People.Message) => Message.GotPeopleMessage({ message }),
+})
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
@@ -107,4 +127,5 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       commands: [loadTarget(model.target)],
     }),
     ChoseTab: ({ tab }) => ({ model: modifyFields(model, { tab: () => tab }) }),
+    GotPeopleMessage: (got) => foldPeople(model, got.message),
   })

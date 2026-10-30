@@ -1,13 +1,14 @@
 import { catalogVersion } from '@styld/i18n'
-import { PublicBoard, PublicLookPage, PublicPiecePage, PublicProfile } from '@styld/protocol'
+import { PublicBoard, PublicLookPage, PublicPiecePage, PublicProfile, Relation } from '@styld/protocol'
 import { Schema } from 'effect'
 import { click, expect, given, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
-import { init, Session, update } from '../src/App.ts'
+import { init, Message, Session, update } from '../src/App.ts'
 import { BoardState } from '../src/page/Board/Model.ts'
 import { Shown as LookShown } from '../src/page/Look.ts'
-import { Shown } from '../src/page/Visit.ts'
+import { Message as PeopleMessage } from '../src/page/People.ts'
+import { Message as VisitMessage, Shown } from '../src/page/Visit.ts'
 import { view } from '../src/View.ts'
 
 const knit = { id: `pc_${'knit'.padEnd(22, 'x')}`, name: 'Navy knit', category: 'top', subcategory: null, colours: [] }
@@ -64,6 +65,7 @@ describe('a public profile', () => {
       expect(role('heading', { name: 'Nika Kovač' })).toExist(),
       expect(text('@nika.kovac · Maribor')).toExist(),
       expect(text('Red, black and one good coat.')).toExist(),
+      expect(role('link', { name: 'Sign in to follow' })).toHaveAttr('href', '/login'),
       expect(role('link', { name: /Coats/ })).toHaveAttr('href', `/boards/bd_${'coats'.padEnd(22, 'x')}`),
       click(role('button', { name: 'Looks' })),
       expect(role('button', { name: 'Looks' })).toHaveAttr('aria-pressed', 'true'),
@@ -139,6 +141,28 @@ describe('a public profile', () => {
       expect(text('Office')).toExist(),
       expect(role('link', { name: 'Navy knit' })).toHaveAttr('href', `/pieces/${knit.id}`),
       expect(role('button', { name: 'Delete' })).toBeAbsent(),
+    )
+  })
+
+  test('offers a signed-in visitor Follow, Report and Block, and a piece Save', () => {
+    const relation = Schema.decodeUnknownSync(Relation)({ handle: 'nika.kovac', following: false, blocked: false })
+    const shown = visiting('/@nika.kovac', Shown.Person({ profile: nika }))
+    const known = update(
+      shown,
+      Message.GotVisitMessage({
+        message: VisitMessage.GotPeopleMessage({ message: PeopleMessage.SucceededLoadRelation({ relation }) }),
+      }),
+    ).model
+    scene(
+      { update, view },
+      given(known),
+      expect(role('button', { name: 'Follow' })).toHaveAttr('aria-pressed', 'false'),
+      expect(role('button', { name: 'Report profile' })).toExist(),
+      expect(role('button', { name: 'Block @nika.kovac' })).toExist(),
+      click(role('button', { name: 'Report profile' })),
+      expect(text("What's wrong with it?")).toExist(),
+      expect(role('radio', { name: 'Spam or a scam' })).toExist(),
+      expect(role('button', { name: 'Send report' })).toHaveAttr('aria-disabled', 'true'),
     )
   })
 })

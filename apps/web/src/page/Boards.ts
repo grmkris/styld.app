@@ -1,4 +1,4 @@
-import { Board, BoardName, BoardSummary, OperationId } from '@styld/protocol'
+import { Board, BoardName, BoardSummary, OperationId, SavedThing } from '@styld/protocol'
 import { Effect, Option, Result, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import { AsyncData, Command, Update } from 'foldkit'
@@ -13,6 +13,10 @@ import { StyldClient } from '../StyldClient.ts'
 export const BoardsData = AsyncData.Schema(Schema.Array(BoardSummary), Schema.Literal('Unavailable'))
 export type BoardsData = typeof BoardsData.schema.Type
 
+/** What the person saved from others, newest first. */
+export const SavedData = AsyncData.Schema(Schema.Array(SavedThing), Schema.Literal('Unavailable'))
+export type SavedData = typeof SavedData.schema.Type
+
 export const Creating = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {} })
 
 export const Model = Schema.Struct({
@@ -20,10 +24,16 @@ export const Model = Schema.Struct({
   /** The new board's name as typed; empty means the default name. */
   name: Schema.String,
   creating: Creating,
+  saved: SavedData.schema,
 })
 export type Model = typeof Model.Type
 
-export const init = (): Model => ({ boards: AsyncData.Idle(), name: '', creating: Creating.Idle() })
+export const init = (): Model => ({
+  boards: AsyncData.Idle(),
+  name: '',
+  creating: Creating.Idle(),
+  saved: AsyncData.Idle(),
+})
 
 // MESSAGE
 
@@ -35,6 +45,8 @@ export const Message = defineMessageUnion({
   SubmittedNewBoard: { defaultName: Schema.String },
   SucceededCreateBoard: { board: Board },
   FailedCreateBoard: {},
+  SucceededListSaved: { saved: Schema.Array(SavedThing) },
+  FailedListSaved: {},
 })
 export type Message = typeof Message.Type
 
@@ -59,6 +71,14 @@ export const ListBoards = Command.define('ListBoards', {
   ),
 })
 
+const ListSaved = Command.define('ListSaved', {
+  messages: [Message.SucceededListSaved, Message.FailedListSaved],
+  execute: Effect.gen(function* () {
+    const api = yield* (yield* StyldClient).api
+    return Message.SucceededListSaved({ saved: (yield* api.social.listSaved()).saved })
+  }).pipe(Effect.orElseSucceed(() => Message.FailedListSaved())),
+})
+
 /** @internal Exported for its tests. */
 export const CreateBoard = Command.define('CreateBoard', {
   args: { name: Schema.String },
@@ -79,13 +99,23 @@ export const CreateBoard = Command.define('CreateBoard', {
 type Services = StyldClient | Crypto.Crypto
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Services>
 
-/** Opening the page: the boards already here stay while they are asked for again; a first visit asks. */
-export const revisit = Update.refresh<Model, Message, ReadonlyArray<BoardSummary>, 'Unavailable', StyldClient>({
+const refreshBoards = Update.refresh<Model, Message, ReadonlyArray<BoardSummary>, 'Unavailable', StyldClient>({
   read: (model: Model) => Option.some(model.boards),
   revalidate: AsyncData.revalidateOrLoad,
   write: (model: Model, boards: BoardsData) => modifyFields(model, { boards: () => boards }),
   load: ListBoards(),
 })
+
+const refreshSaved = Update.refresh<Model, Message, ReadonlyArray<SavedThing>, 'Unavailable', StyldClient>({
+  read: (model: Model) => Option.some(model.saved),
+  revalidate: AsyncData.revalidateOrLoad,
+  write: (model: Model, saved: SavedData) => modifyFields(model, { saved: () => saved }),
+  load: ListSaved(),
+})
+
+/** Opening the page: the boards and saves already here stay while they are asked for again; a first visit asks. */
+export const revisit = (model: Model): Update.Return<Model, Message, StyldClient> =>
+  Update.combine<Model, Message, StyldClient>(model, [refreshBoards, refreshSaved])
 
 /** A board as its list shows it: its table, its newest pins and how many. */
 const summaryOf = (board: Board): BoardSummary => ({
@@ -116,7 +146,13 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     FailedListBoards: () => ({
       model: modifyFields(model, { boards: (boards) => AsyncData.settle(boards, Result.fail('Unavailable' as const)) }),
     }),
-    ClickedRetry: () => revisit(model),
+    ClickedRetry: () => refreshBoards(model),
+    SucceededListSaved: ({ saved }) => ({
+      model: modifyFields(model, { saved: () => SavedData.Success({ data: saved }) }),
+    }),
+    FailedListSaved: () => ({
+      model: modifyFields(model, { saved: (saved) => AsyncData.settle(saved, Result.fail('Unavailable' as const)) }),
+    }),
     UpdatedName: ({ value }) => ({ model: modifyFields(model, { name: () => value }) }),
     SubmittedNewBoard: ({ defaultName }) =>
       Creating.guards.Sending(model.creating)

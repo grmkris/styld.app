@@ -1,4 +1,4 @@
-import { BoardSummary, Day, Piece, PieceId } from '@styld/protocol'
+import { BoardSummary, Day, Feed, Piece, PieceId } from '@styld/protocol'
 import { Array, Clock, Effect, Option, Result, Schema } from 'effect'
 import { AsyncData, Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
@@ -24,6 +24,9 @@ export const TableMotion = defineTaggedUnion({ Still: {}, Spun: {} })
 /** The last board with something on its table, if any. */
 export const LastBoardData = AsyncData.Schema(Schema.Option(BoardSummary), Schema.Literal('Unavailable'))
 export type LastBoardData = typeof LastBoardData.schema.Type
+/** What people the person follows made public lately. */
+export const FeedData = AsyncData.Schema(Feed, Schema.Literal('Unavailable'))
+export type FeedData = typeof FeedData.schema.Type
 /** How many pieces wait in the review tray. */
 export const TrayData = AsyncData.Schema(Schema.Int, Schema.Literal('Unavailable'))
 export type TrayData = typeof TrayData.schema.Type
@@ -38,6 +41,7 @@ export const Model = Schema.Struct({
   worn: Worn,
   lastBoard: LastBoardData.schema,
   tray: TrayData.schema,
+  feed: FeedData.schema,
 })
 export type Model = typeof Model.Type
 
@@ -48,6 +52,7 @@ export const init = (): Model => ({
   worn: Worn.NotYet(),
   lastBoard: AsyncData.Idle(),
   tray: AsyncData.Idle(),
+  feed: AsyncData.Idle(),
 })
 
 // MESSAGE
@@ -60,6 +65,8 @@ export const Message = defineMessageUnion({
   FailedListBoards: {},
   SucceededReadTray: { waiting: Schema.Int },
   FailedReadTray: {},
+  SucceededReadFeed: { feed: Feed },
+  FailedReadFeed: {},
   ClickedSpin: {},
   /** The pieces on the table when Wear this was pressed. */
   ClickedWear: { pieceIds: Schema.Array(PieceId) },
@@ -111,6 +118,16 @@ export const ListBoards = Command.define('ListBoards', {
 })
 
 /** @internal Exported for its tests. */
+/** @internal Exported for its tests. */
+export const ReadFeed = Command.define('ReadFeed', {
+  messages: [Message.SucceededReadFeed, Message.FailedReadFeed],
+  execute: Effect.gen(function* () {
+    const api = yield* (yield* StyldClient).api
+    return Message.SucceededReadFeed({ feed: yield* api.social.feed({ query: {} }) })
+  }).pipe(Effect.orElseSucceed(() => Message.FailedReadFeed())),
+})
+
+/** @internal Exported for its tests. */
 export const ReadTray = Command.define('ReadTray', {
   messages: [Message.SucceededReadTray, Message.FailedReadTray],
   execute: Effect.gen(function* () {
@@ -156,6 +173,12 @@ export const enter = (model: Model): Update.Return<Model, Message, StyldClient> 
       write: (current: Model, tray: TrayData) => modifyFields(current, { tray: () => tray }),
       load: ReadTray(),
     }),
+    Update.refresh<Model, Message, Feed, 'Unavailable', StyldClient>({
+      read: (current: Model) => Option.some(current.feed),
+      revalidate: AsyncData.revalidateOrLoad,
+      write: (current: Model, feed: FeedData) => modifyFields(current, { feed: () => feed }),
+      load: ReadFeed(),
+    }),
   ])
 
 /** The outfit on the table now: what was worn today, else today's choice for this Spin. */
@@ -194,6 +217,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     FailedListBoards: () => ({
       model: modifyFields(model, { lastBoard: (lastBoard) => AsyncData.settle(lastBoard, unavailable) }),
     }),
+    SucceededReadFeed: ({ feed }) => ({ model: modifyFields(model, { feed: () => FeedData.Success({ data: feed }) }) }),
+    FailedReadFeed: () => ({ model: modifyFields(model, { feed: (feed) => AsyncData.settle(feed, unavailable) }) }),
     SucceededReadTray: ({ waiting }) => ({
       model: modifyFields(model, { tray: () => TrayData.Success({ data: waiting }) }),
     }),

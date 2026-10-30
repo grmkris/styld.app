@@ -69,10 +69,11 @@ describe('the session decides where a visitor belongs', () => {
       given(page('/')),
       message(Message.ReceivedSession({ claims })),
       // The table is laid from the wardrobe's pieces, which every page shares.
-      Command.expectExact(Today.DetermineDay, Today.ListBoards, Today.ReadTray, Wardrobe.ListPieces),
+      Command.expectExact(Today.DetermineDay, Today.ListBoards, Today.ReadTray, Today.ReadFeed, Wardrobe.ListPieces),
       Command.resolve(Wardrobe.ListPieces, Wardrobe.Message.FailedListPieces()),
       Command.resolve(Today.ListBoards, Today.Message.FailedListBoards()),
       Command.resolve(Today.ReadTray, Today.Message.FailedReadTray()),
+      Command.resolve(Today.ReadFeed, Today.Message.FailedReadFeed()),
       Command.resolve(Today.DetermineDay, Today.Message.CompletedDetermineDay({ day: thursday })),
       // Knowing the day, Home asks what was worn on it.
       Command.resolve(Today.ReadWorn, Today.Message.FailedReadWorn()),

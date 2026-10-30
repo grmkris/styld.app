@@ -1,0 +1,92 @@
+import { Relation } from '@styld/protocol'
+import { Option, Schema } from 'effect'
+import { Command, given, message, model, story } from 'foldkit/story'
+import { describe, expect, test } from 'vitest'
+import {
+  init,
+  Message,
+  Reporting,
+  SendReport,
+  SetBlocked,
+  SetFollowing,
+  SetSaved,
+  Standing,
+  Subject,
+  update,
+  Work,
+} from '../src/page/People.ts'
+
+const relation = (changes: Partial<{ following: boolean; blocked: boolean }> = {}) =>
+  Schema.decodeUnknownSync(Relation)({ handle: 'nika.kovac', following: false, blocked: false, ...changes })
+const person = init(Subject.Person({ handle: 'nika.kovac' }))
+const known = update(person, Message.SucceededLoadRelation({ relation: relation() })).model
+const pieceId = `pc_${'knit'.padEnd(22, 'x')}`
+
+describe('what a visitor does with someone', () => {
+  test('follows them, and a block asks once more and ends the follow', () => {
+    story(
+      update,
+      given(known),
+      message(Message.ClickedFollow({ following: true })),
+      Command.resolve(
+        SetFollowing({ handle: 'nika.kovac', following: true }),
+        Message.SucceededSetRelation({ relation: relation({ following: true }) }),
+      ),
+      model(({ standing }) => expect(standing).toEqual(Standing.Known({ relation: relation({ following: true }) }))),
+      message(Message.ClickedBlock()),
+      model(({ confirmingBlock }) => expect(confirmingBlock).toBe(true)),
+      message(Message.ClickedKeepUnblocked()),
+      message(Message.ClickedBlock()),
+      message(Message.ClickedConfirmBlock({ blocked: true })),
+      Command.resolve(
+        SetBlocked({ handle: 'nika.kovac', blocked: true }),
+        Message.SucceededSetRelation({ relation: relation({ blocked: true }) }),
+      ),
+      model(({ standing, confirmingBlock, work }) => {
+        expect(standing).toEqual(Standing.Known({ relation: relation({ blocked: true }) }))
+        expect(confirmingBlock).toBe(false)
+        expect(Work.guards.Idle(work)).toBe(true)
+      }),
+    )
+  })
+
+  test('saves a piece, and says when it did not go through', () => {
+    story(
+      update,
+      given(init(Subject.Piece({ pieceId }))),
+      message(Message.ClickedSave({ saved: true })),
+      Command.resolve(SetSaved({ pieceId, saved: true }), Message.SucceededSetSaved({ saved: true })),
+      model(({ saved }) => expect(saved).toBe(true)),
+      message(Message.ClickedSave({ saved: false })),
+      Command.resolve(SetSaved({ pieceId, saved: false }), Message.FailedPeopleWork()),
+      model(({ saved, work }) => {
+        expect(saved).toBe(true)
+        expect(Work.guards.Failed(work)).toBe(true)
+      }),
+    )
+  })
+
+  test('reports with a reason and words, and an hour of too many reports says so', () => {
+    const subject = Subject.Person({ handle: 'nika.kovac' })
+    story(
+      update,
+      given(known),
+      message(Message.ClickedReport()),
+      message(Message.SubmittedReport()),
+      model(({ reporting }) => expect(reporting).toEqual(Reporting.Open({ reason: Option.none(), note: '' }))),
+      message(Message.ChoseReportReason({ reason: 'spam' })),
+      message(Message.UpdatedReportNote({ value: 'Selling followers' })),
+      message(Message.SubmittedReport()),
+      Command.resolve(
+        SendReport({ subject, reason: 'spam', note: 'Selling followers' }),
+        Message.FailedReport({ tooMany: true }),
+      ),
+      model(({ reporting }) => expect(reporting).toEqual(Reporting.Failed({ tooMany: true }))),
+      message(Message.ClickedReport()),
+      message(Message.ChoseReportReason({ reason: 'hate' })),
+      message(Message.SubmittedReport()),
+      Command.resolve(SendReport({ subject, reason: 'hate', note: '' }), Message.SucceededReport()),
+      model(({ reporting }) => expect(Reporting.guards.Sent(reporting)).toBe(true)),
+    )
+  })
+})

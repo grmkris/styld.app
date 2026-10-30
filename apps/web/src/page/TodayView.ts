@@ -19,6 +19,7 @@ import { pageHead } from './PageHead.ts'
 import { title as headTitle } from './PageHead.styles.ts'
 import * as styles from './TodayView.styles.ts'
 import { pieceLabel } from './WardrobeWords.ts'
+import { feedView } from './FeedView.ts'
 
 const intlLocale = (locale: Locale) => (locale === 'sl' ? 'sl' : 'en')
 
@@ -237,6 +238,6 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
   (model, { locale, pieces }, h) =>
     h.main(
       [h.Id('main'), ...styled(h, styles.page())],
-      [todayView(model, pieces, locale, h), pickUpView(model, pieces, locale, h)],
+      [todayView(model, pieces, locale, h), pickUpView(model, pieces, locale, h), feedView(model.feed, locale, h)],
     ),
 )

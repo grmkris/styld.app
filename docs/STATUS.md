@@ -278,7 +278,20 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
     of one person in a row.
   - Evidence: MCP unit tests, and native API acceptance of a save, own-save refused, follow, the feed, a block both
     ways (follow ended, save hidden, signed-out still shown), unblock, and three reports hiding a board.
-- **Next:** M4's web (Save, Follow, the report and block sheets, Saved, the Home feed), then its gate and deploy.
+- **M4, people on the website:**
+  - On `/@handle`, a signed-in visitor gets Follow (pressed while following), Report profile and Block. A block asks
+    once more, with v1's copy; signed out, there is a way to sign in instead.
+  - A public piece's page has Save and Report piece.
+  - The report form uses v1's reasons, note, sending, sent, failed and too-many copy.
+  - Home shows "From people you follow" once the feed has something; Boards shows "Saved from others".
+  - Evidence: story tests for follow, block, save and the report flow; scene tests for the visitor's actions and the
+    sign-in link.
+  - Open:
+    - Save and Report on a visitor's board and look pages;
+    - the Save motion into Boards;
+    - lists of who one follows and blocked on the website (the API and the tools have them);
+    - a browser walk of following and the feed.
+- **Next:** gate, land and deploy M4, then M5 (Explore, curation, moods and search).
 - **Shared with the capture session:** migrations are generated one at a time; public delivery reuses its rule for a
   piece's shown picture; generated pictures reuse its Muse provider.
 - **Still to settle in spikes:** Clef and Llama Guard thresholds on fixtures in English and Slovenian, drawing text

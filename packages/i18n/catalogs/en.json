@@ -1937,6 +1937,13 @@
     "emptyHint": "Add a full-body photo of yourself to try clothes on.",
     "manage": "Manage photos"
   },
+  "people": {
+    "saved": "Saved",
+    "signInToFollow": "Sign in to follow",
+    "actionFailed": "That didn't go through. Try again.",
+    "fromFollowing": "From people you follow",
+    "savedFromOthers": "Saved from others"
+  },
   "profile": {
     "public": {
       "metaTitle": "{name} (@{username}) on Styld",
@@ -2347,7 +2354,8 @@
       "media": "Report picture",
       "pin": "Report pin",
       "profile": "Report profile",
-      "try_on": "Report try-on"
+      "try_on": "Report try-on",
+      "piece": "Report piece"
     },
     "reportDialog": {
       "title": {
@@ -2357,7 +2365,8 @@
         "media": "Report this picture",
         "pin": "Report this pin",
         "profile": "Report this profile",
-        "try_on": "Report this try-on"
+        "try_on": "Report this try-on",
+        "piece": "Report this piece"
       },
       "description": "Tell us what's wrong. Styld reviews every report, and whoever posted it is never told who reported it.",
       "reasonLegend": "What's wrong with it?",

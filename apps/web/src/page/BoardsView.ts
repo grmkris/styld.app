@@ -16,6 +16,7 @@ import { stillTable } from './Board/Table.ts'
 import { Creating, Message, type Model } from './Boards.ts'
 import * as styles from './BoardsView.styles.ts'
 import { pageHead, pageTitle } from './PageHead.ts'
+import { savedView } from './SavedView.ts'
 
 const tileView = (board: BoardSummary, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.keyed('li')(
@@ -132,6 +133,7 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
       ]),
       createForm(model, locale, h),
       listView(model, locale, h),
+      savedView(model.saved, locale, h),
     ],
   ),
 )

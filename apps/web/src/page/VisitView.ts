@@ -8,6 +8,7 @@ import { avatar } from '../Avatar.ts'
 import { loader } from '../Icon.ts'
 import { styled } from '../Styled.ts'
 import { publicPieceImage } from './Board/Table.ts'
+import * as PeopleView from './PeopleView.ts'
 import { boardCard, byline, lookTile, pieceTile, tileGrid } from './PublicTiles.ts'
 import { Message, type Model, type PersonTab, Shown } from './Visit.ts'
 import * as styles from './VisitView.styles.ts'
@@ -60,9 +61,19 @@ const tabContent = (profile: PublicProfile, tab: PersonTab, locale: Locale, h: H
 }
 
 /** A published profile: the avatar, name, handle and city, the bio, then its Boards, Looks and Pieces. */
-const personView = (profile: PublicProfile, current: PersonTab, locale: Locale, h: HtmlBuilder<Message>): Html => {
+/** Follow, block, save and report, for whoever is visiting. */
+const peopleActions = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.submodel({
+    slotId: 'visit-people',
+    model: model.people,
+    view: PeopleView.view,
+    viewInputs: { locale },
+    toParentMessage: (message) => Message.GotPeopleMessage({ message }),
+  })
+
+const personView = (model: Model, profile: PublicProfile, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const tabs = tabsOf(profile)
-  const tab = tabs.includes(current) ? current : 'boards'
+  const tab = tabs.includes(model.tab) ? model.tab : 'boards'
   return h.div(styled(h, styles.page()), [
     h.header(styled(h, styles.person()), [
       avatar(profile.name, profile.tone, 'large', h),
@@ -71,6 +82,7 @@ const personView = (profile: PublicProfile, current: PersonTab, locale: Locale, 
         profile.city === null ? `@${profile.handle}` : `@${profile.handle} · ${profile.city}`,
       ]),
       profile.bio === null ? h.empty : h.p(styled(h, styles.bio()), [profile.bio]),
+      peopleActions(model, locale, h),
     ]),
     h.div(
       [h.Role('group'), h.AriaLabel(profile.name), ...styled(h, styles.tabs())],
@@ -91,7 +103,7 @@ const personView = (profile: PublicProfile, current: PersonTab, locale: Locale, 
 }
 
 /** A piece on its own page: its cut-out, what it is and whose. */
-const pieceView = ({ piece, by }: PublicPiecePage, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const pieceView = (model: Model, { piece, by }: PublicPiecePage, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.page()), [
     h.img([
       h.Src(publicPieceImage(piece.id, 'full')),
@@ -100,6 +112,7 @@ const pieceView = ({ piece, by }: PublicPiecePage, locale: Locale, h: HtmlBuilde
     ]),
     h.h1(styled(h, styles.name()), [pieceLabel(piece, locale)]),
     byline(by, locale, h),
+    peopleActions(model, locale, h),
   ])
 
 /** Someone's profile or piece, as anyone sees it. */
@@ -118,8 +131,8 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
               h,
             ),
           ]),
-        Person: ({ profile }) => personView(profile, model.tab, locale, h),
-        Piece: ({ page }) => pieceView(page, locale, h),
+        Person: ({ profile }) => personView(model, profile, locale, h),
+        Piece: ({ page }) => pieceView(model, page, locale, h),
       }),
     ],
   ),

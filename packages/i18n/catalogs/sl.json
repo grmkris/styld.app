@@ -1937,6 +1937,13 @@
     "emptyHint": "Dodaj svojo fotografijo cele postave, da lahko pomerjaš oblačila.",
     "manage": "Upravljaj fotografije"
   },
+  "people": {
+    "saved": "Shranjeno",
+    "signInToFollow": "Prijavi se, da slediš",
+    "actionFailed": "Ni uspelo. Poskusi znova.",
+    "fromFollowing": "Od ljudi, ki jim slediš",
+    "savedFromOthers": "Shranjeno od drugih"
+  },
   "profile": {
     "public": {
       "metaTitle": "{name} (@{username}) na Styld",
@@ -2347,7 +2354,8 @@
       "media": "Prijavi sliko",
       "pin": "Prijavi kartico",
       "profile": "Prijavi profil",
-      "try_on": "Prijavi pomerjanje"
+      "try_on": "Prijavi pomerjanje",
+      "piece": "Prijavi kos"
     },
     "reportDialog": {
       "title": {
@@ -2357,7 +2365,8 @@
         "media": "Prijavi to sliko",
         "pin": "Prijavi to kartico",
         "profile": "Prijavi ta profil",
-        "try_on": "Prijavi to pomerjanje"
+        "try_on": "Prijavi to pomerjanje",
+        "piece": "Prijavi ta kos"
       },
       "description": "Povej nam, kaj je narobe. Styld pregleda vsako prijavo, avtor pa nikoli ne izve, kdo jo je poslal.",
       "reasonLegend": "Kaj je narobe?",
