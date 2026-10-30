@@ -2,11 +2,13 @@ import { Option } from 'effect'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import {
+  BuildTurnSheet,
   ChoosePicture,
   DeletePiece,
   Deletion,
   GetPiece,
   Load,
+  MakeTurn,
   Message,
   OutMessage,
   RedrawPicture,
@@ -178,6 +180,63 @@ describe('a piece you own', () => {
         Message.FailedRedrawPicture({ problem: 'dailyLimit', operationId: 'redraw-0001' }),
       ),
       model(({ redraw }) => expect(Option.flatMap(redraw, ({ operationId }) => operationId)).toEqual(Option.none())),
+    )
+  })
+
+  test('a turn is asked for, waited on while it is made, then cut into frames here once', () => {
+    const clean = pieceFixture('jeans', { picture: { state: 'ready', shows: 'clean', version: 1 } })
+    const building = pieceFixture('jeans', {
+      picture: { state: 'ready', shows: 'clean', version: 1 },
+      turn: { state: 'building', version: 7 },
+    })
+    const ready = pieceFixture('jeans', {
+      picture: { state: 'ready', shows: 'clean', version: 1 },
+      turn: {
+        state: 'ready',
+        version: 8,
+        layout: { frames: 30, columns: 6, width: 288, height: 384, pivot: [0.5, 0.027] },
+      },
+    })
+    story(
+      update,
+      given(update(init(piece.id), Message.SucceededGetPiece({ piece: clean })).model),
+      message(Message.ClickedMakeTurn()),
+      Command.expectExact(MakeTurn({ pieceId: piece.id })),
+      Command.resolve(MakeTurn, Message.SucceededMakeTurn({ turn: { state: 'making', version: 6 } })),
+      Command.expectExact(WaitToRefreshPiece),
+      Command.resolve(WaitToRefreshPiece, Message.ElapsedRefreshPause()),
+      Command.resolve(GetPiece, Message.SucceededGetPiece({ piece: building })),
+      Command.expectExact(BuildTurnSheet({ pieceId: piece.id, version: 7 })),
+      model(({ turnWork }) => expect(turnWork).toBe('building')),
+      Command.resolve(
+        BuildTurnSheet,
+        Message.SucceededBuildTurnSheet({ turn: ready.turn ?? { state: 'failed', version: 0 } }),
+      ),
+      Command.expectNone(),
+      model(({ load, turnWork }) => {
+        expect(turnWork).toBe('idle')
+        expect(Load.guards.Loaded(load) && load.piece.turn?.state).toBe('ready')
+      }),
+    )
+  })
+
+  test('a refused turn says why, and a device that cannot cut the frames says so', () => {
+    const clean = pieceFixture('jeans', { picture: { state: 'ready', shows: 'clean', version: 1 } })
+    const showing = update(init(piece.id), Message.SucceededGetPiece({ piece: clean })).model
+    story(
+      update,
+      given(showing),
+      message(Message.ClickedMakeTurn()),
+      Command.resolve(MakeTurn, Message.FailedMakeTurn({ problem: 'dailyLimit' })),
+      model(({ turnProblem, turnWork }) =>
+        expect({ turnProblem, turnWork }).toEqual({ turnProblem: Option.some('dailyLimit'), turnWork: 'idle' }),
+      ),
+    )
+    story(
+      update,
+      given(showing),
+      message(Message.FailedBuildTurnSheet()),
+      model(({ turnProblem }) => expect(turnProblem).toEqual(Option.some('build'))),
     )
   })
 

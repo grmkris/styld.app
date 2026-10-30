@@ -2540,6 +2540,19 @@ export interface MessageArgumentsByKey<T = string> {
   'wardrobe.tryOnResult.tryAgain': Readonly<Record<string, never>>
   'wardrobe.tryOnTitle': Readonly<Record<string, never>>
   'wardrobe.tryOnTruncated': { readonly count: string | number }
+  'wardrobe.turn.building': Readonly<Record<string, never>>
+  'wardrobe.turn.cost': Readonly<Record<string, never>>
+  'wardrobe.turn.failed': Readonly<Record<string, never>>
+  'wardrobe.turn.make': Readonly<Record<string, never>>
+  'wardrobe.turn.making': Readonly<Record<string, never>>
+  'wardrobe.turn.play': Readonly<Record<string, never>>
+  'wardrobe.turn.problem.build': Readonly<Record<string, never>>
+  'wardrobe.turn.problem.busy': Readonly<Record<string, never>>
+  'wardrobe.turn.problem.dailyLimit': Readonly<Record<string, never>>
+  'wardrobe.turn.problem.network': Readonly<Record<string, never>>
+  'wardrobe.turn.problem.off': Readonly<Record<string, never>>
+  'wardrobe.turn.problem.picture': Readonly<Record<string, never>>
+  'wardrobe.turn.ready': Readonly<Record<string, never>>
   'wardrobe.updatingProductShot': Readonly<Record<string, never>>
   'wardrobe.uploadFirstItem': Readonly<Record<string, never>>
   'wardrobe.uploadImage': Readonly<Record<string, never>>
@@ -2560,4 +2573,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '4e14dcbd4d9eb63ad3d9f64aa9f697702c51f70a1a89c44240af9ea1662fe72d'
+export const catalogVersion = '234ac6071bd2b734f5d1929d69938a17c36fcf5d108287fbf64fbae82320ab80'

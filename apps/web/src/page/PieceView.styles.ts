@@ -71,3 +71,12 @@ export const proposalImage = style({
   borderRadius: 'photo',
   backgroundColor: 'stock',
 })
+/** The turn's player: the picture itself is the button that turns it. */
+export const turnButton = style({
+  display: 'block',
+  padding: '0',
+  borderWidth: '0',
+  backgroundColor: 'transparent !custom',
+  cursor: 'pointer',
+  touchAction: 'manipulation',
+})

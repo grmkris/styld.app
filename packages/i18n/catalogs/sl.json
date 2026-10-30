@@ -1091,6 +1091,23 @@
       "backfillAction": "Naredi čiste slike",
       "backfillSent": "Rišem čiste slike. Vsaka se pokaže, ko je pripravljena.",
       "backfillFailed": "Čistih slik ni bilo mogoče naročiti. Poskusite znova."
+    },
+    "turn": {
+      "make": "Zavrti ga",
+      "cost": "5 kreditov, ki jih vrnemo, če vrtenje ne nastane.",
+      "making": "Pripravljam vrtenje. Traja približno dve minuti.",
+      "building": "Dokončujem vrtenje …",
+      "ready": "Tapnite sliko, da se zavrti.",
+      "failed": "Vrtenje ni nastalo, zato so vam krediti vrnjeni.",
+      "play": "Zavrti",
+      "problem": {
+        "busy": "Vrtenje tega kosa se že pripravlja.",
+        "picture": "Ta kos najprej potrebuje čisto sliko.",
+        "off": "Vrtenje je izklopljeno.",
+        "dailyLimit": "Današnji krediti so porabljeni. Poskusite znova jutri.",
+        "network": "Vrtenja ni bilo mogoče naročiti. Poskusite znova.",
+        "build": "Vrtenja ni bilo mogoče pripraviti na tej napravi. Odprite kos znova, da poskusite še enkrat."
+      }
     }
   },
   "chat": {

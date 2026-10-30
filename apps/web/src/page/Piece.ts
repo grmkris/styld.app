@@ -6,11 +6,13 @@ import {
   Piece,
   PieceId,
   PiecePicture,
+  PieceTurn,
   Subcategory,
+  TurnLayout,
   UpdatePiece,
 } from '@styld/protocol'
 import { Duration, Effect, Option, Predicate, Schema } from 'effect'
-import { Command, Update } from 'foldkit'
+import { Command, Mount, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
@@ -55,6 +57,11 @@ export const Redraw = Schema.Struct({
 })
 export type Redraw = typeof Redraw.Type
 
+/** Why a turn was not made: the API's refusals, the day's credits, no answer, or a device that could not cut the
+ * turn's video into frames. */
+export const TurnProblem = Schema.Literals(['busy', 'picture', 'off', 'dailyLimit', 'network', 'build'])
+export type TurnProblem = typeof TurnProblem.Type
+
 export const Model = Schema.Struct({
   pieceId: Schema.String,
   load: Load,
@@ -63,6 +70,9 @@ export const Model = Schema.Struct({
   redraw: Schema.Option(Redraw),
   /** Whether a change of the picture shown is on its way, or failed. */
   choosing: Schema.Literals(['idle', 'sending', 'failed']),
+  /** The turn this page is asking for, or building the frames of. */
+  turnWork: Schema.Literals(['idle', 'asking', 'building']),
+  turnProblem: Schema.Option(TurnProblem),
   saveToBoard: SaveToBoard.Model,
 })
 export type Model = typeof Model.Type
@@ -74,6 +84,8 @@ export const init = (pieceId: string): Model => ({
   draft: Option.none(),
   redraw: Option.none(),
   choosing: 'idle',
+  turnWork: 'idle',
+  turnProblem: Option.none(),
   saveToBoard: SaveToBoard.init({ kind: 'piece', id: pieceId }),
 })
 
@@ -108,6 +120,12 @@ export const Message = defineMessageUnion({
   SubmittedRedraw: {},
   SucceededRedrawPicture: { picture: PiecePicture },
   FailedRedrawPicture: { problem: RedrawProblem, operationId: Schema.String },
+  ClickedMakeTurn: {},
+  SucceededMakeTurn: { turn: PieceTurn },
+  FailedMakeTurn: { problem: TurnProblem },
+  SucceededBuildTurnSheet: { turn: PieceTurn },
+  FailedBuildTurnSheet: {},
+  ShowedTurn: {},
   GotSaveToBoardMessage: { message: SaveToBoard.Message },
 })
 export type Message = typeof Message.Type
@@ -227,6 +245,65 @@ export const RedrawPicture = Command.define('RedrawPicture', {
     }).pipe(Effect.orDie),
 })
 
+/** What a refused turn means for the owner. */
+const turnProblemOf = (error: unknown): TurnProblem => {
+  if (Predicate.isTagged(error, 'DailyLimitReached')) return 'dailyLimit'
+  if (Predicate.isTagged(error, 'TurnRefused') && Predicate.hasProperty(error, 'reason'))
+    return Schema.decodeUnknownOption(TurnProblem)(error.reason).pipe(Option.getOrElse(() => 'network' as const))
+  return 'network'
+}
+
+/** @internal Exported for its tests. */
+export const MakeTurn = Command.define('MakeTurn', {
+  args: { pieceId: Schema.String },
+  messages: [Message.SucceededMakeTurn, Message.FailedMakeTurn],
+  execute: ({ pieceId }) =>
+    Effect.gen(function* () {
+      const operationId = yield* Schema.decodeUnknownEffect(OperationId)(yield* (yield* Crypto.Crypto).randomUUIDv4())
+      const api = yield* (yield* StyldClient).api
+      return yield* api.capture
+        .makeTurn({ params: { pieceId: yield* pieceIdOf(pieceId) }, payload: { operationId } })
+        .pipe(
+          Effect.map((turn) => Message.SucceededMakeTurn({ turn })),
+          Effect.catch((error) => Effect.succeed(Message.FailedMakeTurn({ problem: turnProblemOf(error) }))),
+        )
+    }).pipe(Effect.orElseSucceed(() => Message.FailedMakeTurn({ problem: 'network' }))),
+})
+
+/** Cut the turn's video into its frame sheet here, loading the video code only then, and hand the sheet to Styld.
+ * @internal Exported for its tests. */
+export const BuildTurnSheet = Command.define('BuildTurnSheet', {
+  args: { pieceId: Schema.String, version: Schema.Number },
+  messages: [Message.SucceededBuildTurnSheet, Message.FailedBuildTurnSheet],
+  execute: ({ pieceId, version }) =>
+    Effect.gen(function* () {
+      const { buildSheet } = yield* Effect.tryPromise(() => import('../turn/BuildSheet.ts'))
+      const client = yield* StyldClient
+      const video = yield* client.readFile(`/cdn/turns/${pieceId}/video?v=${version}`)
+      const front = yield* client.readFile(`/cdn/turns/${pieceId}/front?v=${version}`)
+      const built = yield* buildSheet(new Blob([new Uint8Array(video)], { type: 'video/mp4' }), front)
+      const api = yield* client.api
+      const turn = yield* api.capture.turnSheet({ params: { pieceId: yield* pieceIdOf(pieceId) }, payload: built })
+      return Message.SucceededBuildTurnSheet({ turn })
+    }).pipe(Effect.orElseSucceed(() => Message.FailedBuildTurnSheet())),
+})
+
+/** Play a ready turn on the canvas it is mounted on, loading the player only then. */
+export const ShowTurn = Mount.define('ShowTurn', {
+  args: { pieceId: Schema.String, version: Schema.Number, layout: TurnLayout },
+  messages: [Message.ShowedTurn],
+  execute: ({ element, pieceId, version, layout }) =>
+    Effect.tryPromise(() => import('../turn/Player.ts')).pipe(
+      Effect.flatMap(({ playTurn }) =>
+        element instanceof HTMLCanvasElement
+          ? playTurn(element, `/cdn/turns/${pieceId}/sheet?v=${version}`, layout)
+          : Effect.void,
+      ),
+      Effect.ignore,
+      Effect.as(Message.ShowedTurn()),
+    ),
+})
+
 /** The Commands that open the page. */
 export const load = (model: Model) => [GetPiece({ pieceId: model.pieceId })]
 
@@ -277,10 +354,49 @@ const submittedEdit = (model: Model): UpdateReturn =>
           },
   })
 
-/** A piece still processing, or with a drawing on its way, is asked for again until it settles. */
-const loaded = (model: Model, piece: Piece): UpdateReturn => ({
-  model: modifyFields(model, { load: () => Load.Loaded({ piece }) }),
-  commands: piece.status === 'processing' || piece.picture?.state === 'drawing' ? [WaitToRefreshPiece()] : [],
+/** A piece still processing, or with a drawing or a turn on its way, is asked for again until it settles; a turn
+ * whose video is ready is cut into frames here, once. */
+const loaded = (model: Model, piece: Piece): UpdateReturn => {
+  const waiting = piece.status === 'processing' || piece.picture?.state === 'drawing' || piece.turn?.state === 'making'
+  const build = piece.turn?.state === 'building' && model.turnWork === 'idle'
+  return {
+    model: modifyFields(model, {
+      load: () => Load.Loaded({ piece }),
+      turnWork: (work) => (build ? 'building' : work),
+    }),
+    commands: [
+      ...(waiting ? [WaitToRefreshPiece()] : []),
+      ...(build && piece.turn !== undefined
+        ? [BuildTurnSheet({ pieceId: piece.id, version: piece.turn.version })]
+        : []),
+    ],
+  }
+}
+
+/** The loaded piece with its turn as the API last answered it. */
+const withTurn = (model: Model, turn: PieceTurn): UpdateReturn => {
+  const shown = model.load
+  const settled = modifyFields(model, { turnWork: () => 'idle' as const })
+  return Load.guards.Loaded(shown) ? loaded(settled, { ...shown.piece, turn }) : { model: settled }
+}
+
+const turnUpdates = (model: Model) => ({
+  ClickedMakeTurn: (): UpdateReturn =>
+    model.turnWork === 'idle'
+      ? {
+          model: modifyFields(model, { turnWork: () => 'asking' as const, turnProblem: () => Option.none() }),
+          commands: [MakeTurn({ pieceId: model.pieceId })],
+        }
+      : { model },
+  SucceededMakeTurn: ({ turn }: { readonly turn: PieceTurn }): UpdateReturn => withTurn(model, turn),
+  FailedMakeTurn: ({ problem }: { readonly problem: TurnProblem }): UpdateReturn => ({
+    model: modifyFields(model, { turnWork: () => 'idle' as const, turnProblem: () => Option.some(problem) }),
+  }),
+  SucceededBuildTurnSheet: ({ turn }: { readonly turn: PieceTurn }): UpdateReturn => withTurn(model, turn),
+  FailedBuildTurnSheet: (): UpdateReturn => ({
+    model: modifyFields(model, { turnWork: () => 'idle' as const, turnProblem: () => Option.some('build' as const) }),
+  }),
+  ShowedTurn: (): UpdateReturn => ({ model }),
 })
 
 const editRedraw = (model: Model, change: (redraw: Redraw) => Redraw): UpdateReturn => ({
@@ -400,4 +516,5 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       }),
     }),
     ...pictureUpdates(model),
+    ...turnUpdates(model),
   })

@@ -14,6 +14,9 @@ export class FileNotSent extends Schema.TaggedError<FileNotSent>()('FileNotSent'
   refused: Schema.Boolean,
 }) {}
 
+/** A stored file could not be read back. */
+export class FileNotRead extends Schema.TaggedError<FileNotRead>()('FileNotRead', {}) {}
+
 /** Styld's typed API, called from the browser. The session travels as a same-origin cookie. */
 export class StyldClient extends Context.Service<
   StyldClient,
@@ -22,6 +25,8 @@ export class StyldClient extends Context.Service<
     readonly api: Effect.Effect<HttpApiClient.ForApi<typeof StyldApi>>
     /** Send a photo's or video's bytes to the path `createUpload` or `createVideoUpload` returned. */
     readonly sendFile: (path: string, file: Blob) => Effect.Effect<void, FileNotSent>
+    /** Read one of the account's stored files from its same-origin path, such as a turn's video. */
+    readonly readFile: (path: string) => Effect.Effect<Uint8Array, FileNotRead>
   }
 >()('@styld/web/StyldClient') {}
 
@@ -52,6 +57,12 @@ export const styldClientLayer = (origin: string) =>
                 FileNotSent.make({ refused: error.response?.status === 415 || error.response?.status === 413 }),
               ),
             ),
+        readFile: (path) =>
+          client.get(new URL(path, origin).toString()).pipe(
+            Effect.flatMap((response) => response.arrayBuffer),
+            Effect.map((buffer) => new Uint8Array(buffer)),
+            Effect.mapError(() => FileNotRead.make({})),
+          ),
       }
     }),
   )

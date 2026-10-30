@@ -10,7 +10,7 @@ import { deleteIcon, editIcon, loader } from '../Icon.ts'
 import { wardrobeRouter } from '../route.ts'
 import { confirmActions } from '../ConfirmActions.ts'
 import { styled } from '../Styled.ts'
-import { Deletion, type Draft, Load, Message, type Model, type Redraw } from './Piece.ts'
+import { Deletion, type Draft, Load, Message, type Model, type Redraw, ShowTurn } from './Piece.ts'
 import { piecePickers, swatches } from './PieceFields.ts'
 import { categoryName, pieceLabel, subcategoryName } from './WardrobeWords.ts'
 import { backToWardrobe } from './PageBar.ts'
@@ -269,6 +269,7 @@ const pieceDetails = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
       : h.empty,
     piece.colours.length > 0 ? swatches(piece.colours, locale, h) : h.empty,
     picturePanel(piece, model, locale, h),
+    turnLine(piece, model, locale, h),
     piece.status === 'ready'
       ? h.submodel({
           slotId: 'piece-save-to-board',
@@ -310,8 +311,66 @@ const pieceDetails = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
         ]),
   ])
 
+/** The piece's picture: its turn, played on tap, once the clean picture it shows has one ready; else the image. */
+const shownPicture = (piece: Piece, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  const turn = piece.turn
+  if (turn?.state !== 'ready' || turn.layout === undefined || piece.picture?.shows !== 'clean')
+    return h.img([h.Src(fullPath(piece)), h.Alt(pieceLabel(piece, locale)), ...styled(h, styles.photo())])
+  return h.button(
+    [
+      h.Type('button'),
+      h.AriaLabel(format(locale, 'wardrobe.turn.play', {})),
+      h.AriaPressed('false'),
+      ...styled(h, styles.turnButton()),
+    ],
+    [
+      h.canvas([
+        h.Role('img'),
+        h.AriaLabel(pieceLabel(piece, locale)),
+        h.OnMount(ShowTurn({ pieceId: piece.id, version: turn.version, layout: turn.layout })),
+        ...styled(h, styles.photo()),
+      ]),
+    ],
+  )
+}
+
+/** Where the piece's turn stands, and the way to ask for one when its clean picture shows. */
+const turnLine = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  if (piece.picture?.shows !== 'clean') return h.empty
+  const turn = piece.turn
+  const problem = Option.match(model.turnProblem, {
+    onNone: () => h.empty,
+    onSome: (reason) =>
+      h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, `wardrobe.turn.problem.${reason}`, {})]),
+  })
+  if (turn?.state === 'making' || turn?.state === 'building' || model.turnWork === 'building')
+    return h.p(
+      [h.Role('status'), ...styled(h, styles.status())],
+      [loader(h), format(locale, turn?.state === 'making' ? 'wardrobe.turn.making' : 'wardrobe.turn.building', {})],
+    )
+  if (turn?.state === 'ready') return h.p(styled(h, styles.pictureNote()), [format(locale, 'wardrobe.turn.ready', {})])
+  return h.div(styled(h, styles.picturePanel()), [
+    turn?.state === 'failed'
+      ? h.p(styled(h, styles.pictureNote()), [format(locale, 'wardrobe.turn.failed', {})])
+      : h.empty,
+    problem,
+    actionButton(
+      {
+        label: format(locale, 'wardrobe.turn.make', {}),
+        style: secondaryAction(),
+        onClick: Message.ClickedMakeTurn(),
+        isDisabled: model.turnWork === 'asking',
+        leading: model.turnWork === 'asking' ? loader(h) : h.empty,
+        describedBy: 'turn-cost',
+      },
+      h,
+    ),
+    h.p([h.Id('turn-cost'), ...styled(h, styles.pictureNote())], [format(locale, 'wardrobe.turn.cost', {})]),
+  ])
+}
+
 const loadedView = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
-  h.img([h.Src(fullPath(piece)), h.Alt(pieceLabel(piece, locale)), ...styled(h, styles.photo())]),
+  shownPicture(piece, locale, h),
   Option.match(model.draft, {
     onNone: () => pieceDetails(piece, model, locale, h),
     onSome: (draft) =>
