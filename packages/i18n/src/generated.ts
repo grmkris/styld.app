@@ -1795,10 +1795,12 @@ export interface MessageArgumentsByKey<T = string> {
   'share.linkOff': Readonly<Record<string, never>>
   'share.linkOn': Readonly<Record<string, never>>
   'share.linkTitle': Readonly<Record<string, never>>
+  'share.look.metaDescription': Readonly<Record<string, never>>
   'share.lookText': { readonly name: string | number }
   'share.nativeShare': Readonly<Record<string, never>>
   'share.onWhatsApp': Readonly<Record<string, never>>
   'share.onX': Readonly<Record<string, never>>
+  'share.piece.metaDescription': Readonly<Record<string, never>>
   'share.profileFailed': Readonly<Record<string, never>>
   'share.publicOn': { readonly username: string | number }
   'share.publicTitle': Readonly<Record<string, never>>
@@ -2599,4 +2601,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '05d74d361d6f8f47c2ba2df6576d094da6da9e34f9072f1a86537a65cdab2416'
+export const catalogVersion = 'e8db239995aa2de3e88c009fcd4ac1355df06479caf9b37ab3d9cd038f2ee8e8'

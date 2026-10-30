@@ -27,7 +27,8 @@ export default Alchemy.Stack(
     })
     const edge = yield* Cloudflare.Worker('StyldEdge', {
       main: 'packages/server/src/EdgeWorker.ts',
-      env: { API: api, WEBSITE: website },
+      // The preview stays out of search engines; link previews still read its pages.
+      env: { API: api, WEBSITE: website, ROBOTS: 'noindex' },
       // Service-binding fetch enters the SSR handler without the website's
       // public asset router. Serve the same build's files at the public edge.
       assets: { directory: 'apps/web/dist/client' },

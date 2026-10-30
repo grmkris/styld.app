@@ -12,6 +12,8 @@ import {
   UpdateProfile,
 } from './Profile.ts'
 import {
+  PageMeta,
+  PageMetaQuery,
   PublicBoard,
   PublicLookPage,
   PublicNotFound,
@@ -423,6 +425,13 @@ class PublicApi extends HttpApiGroup.make('public')
     HttpApiEndpoint.get('piece', '/public/pieces/:pieceId', {
       params: { pieceId: PieceId },
       success: PublicPiecePage,
+      error: [PublicNotFound, PublicSlowDown, WardrobeUnavailable],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.get('meta', '/public/meta', {
+      query: PageMetaQuery,
+      success: PageMeta,
       error: [PublicNotFound, PublicSlowDown, WardrobeUnavailable],
     }),
   )

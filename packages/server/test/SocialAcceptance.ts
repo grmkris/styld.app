@@ -117,6 +117,14 @@ const shownPieces = async (origin: string, until: (ids: ReadonlyArray<string>) =
   throw new Error('The profile never showed its pieces')
 }
 
+/** A page as a link preview reads it: its HTML, with what its head says. */
+const previewOf = async (origin: string, path: string) => {
+  const page = await fetch(`${origin}${path}`, { headers: { 'user-agent': 'facebookexternalhit/1.1' } })
+  expect(page.status).toBe(200)
+  expect(page.headers.get('x-robots-tag')).toBe('noindex')
+  return page.text()
+}
+
 /** A public board, read signed out: pictures shown, a piece only once it has a cut-out (its photo never goes
  * public), nothing private on it, and everything gone the moment it goes private or the wardrobe is hidden. */
 const verifyPublicPages = async (origin: string, fixtures: string, owner: Call) => {
@@ -160,12 +168,21 @@ const verifyPublicPages = async (origin: string, fixtures: string, owner: Call) 
   expect(await waitUntilReady(owner, later)).toBe('ready')
   expect((await fetch(`${fixtures}/test/social/cutout/${later}`, { method: 'POST' })).status).toBe(204)
   expect(await shownPieces(origin, (ids) => ids.includes(later))).toEqual([later, pieceId])
+  const board = await previewOf(origin, `/boards/${boardId}`)
+  expect(board).toContain('<meta property="og:title" content="Coats on Styld">')
+  expect(board).toContain(`<meta property="og:image" content="${origin}/cdn/public/`)
+  expect(board).toContain(`<link rel="canonical" href="${origin}/boards/${boardId}">`)
+  expect(await previewOf(origin, '/@nika.kovac')).toContain('content="Nika Kovač (@nika.kovac) on Styld"')
+  const moved = await fetch(`${origin}/share/board/${boardId}`, { redirect: 'manual' })
+  expect(moved.status).toBe(301)
+  expect(moved.headers.get('location')).toBe(`${origin}/boards/${boardId}`)
   const page = Schema.decodeUnknownSync(Schema.Struct({ piece: Schema.Record(Schema.String, Schema.Unknown) }))(
     await (await anyone(`/api/public/pieces/${pieceId}`)).json(),
   )
   expect(Object.keys(page.piece).toSorted()).toEqual(['category', 'colours', 'id', 'name', 'subcategory'])
   await send(owner, visibility, 'PUT', { visibility: 'private' })
   expect((await anyone(`/api/public/boards/${boardId}`)).status).toBe(404)
+  expect(await previewOf(origin, `/boards/${boardId}`)).not.toContain('og:title')
   expect((await anyone(`/cdn/public/pictures/${imageId}/thumb`)).status).toBe(404)
   expect((await anyone(`/cdn/public/pieces/${pieceId}/thumb`)).status).toBe(200)
   await send(owner, '/api/profile', 'PATCH', { wardrobeShown: false })

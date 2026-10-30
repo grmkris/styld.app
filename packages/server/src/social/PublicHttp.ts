@@ -1,3 +1,4 @@
+import type { Locale } from '@styld/i18n'
 import { BoardImageId, PieceId, PublicSlowDown, StyldApi } from '@styld/protocol'
 import type { RuntimeContext } from 'alchemy/RuntimeContext'
 import { Effect, Layer, Option, Schema } from 'effect'
@@ -7,11 +8,18 @@ import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { type ShownImage, ShownSize } from '../wardrobe/Http.ts'
 import { PublicPages } from './Public.ts'
+import { pageMeta } from './PublicMeta.ts'
 
 /** A per-network limit on public reads: false over the limit, or when the limiter fails. */
 export type AllowRead = (client: string) => Effect.Effect<boolean, never, RuntimeContext>
 
 const clientOf = Effect.map(HttpServerRequest, (request) => request.headers['cf-connecting-ip'] ?? 'unknown')
+
+/** A link preview's language: Slovenian when the reader asks for it first, English otherwise (crawlers mostly
+ * ask for nothing). */
+const readerLocale = Effect.map(HttpServerRequest, (request): Locale =>
+  (request.headers['accept-language'] ?? '').trim().toLowerCase().startsWith('sl') ? 'sl' : 'en',
+)
 
 /** A read past the network's limit is refused before it reaches D1. */
 const limited =
@@ -33,6 +41,9 @@ export const publicHandlers = (allowRead: AllowRead) =>
         .handle('board', ({ params }) => within(pages.board(params.boardId)))
         .handle('look', ({ params }) => within(pages.look(params.lookId)))
         .handle('piece', ({ params }) => within(pages.piece(params.pieceId)))
+        .handle('meta', ({ query }) =>
+          within(Effect.flatMap(readerLocale, (locale) => pageMeta(pages, query.path, locale))),
+        )
     }),
   )
 

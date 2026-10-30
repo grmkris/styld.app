@@ -42,7 +42,7 @@ const makeStack = (generation: string) =>
       })
       const edge = yield* Cloudflare.Worker('NativeEdge', {
         main: 'packages/server/src/EdgeWorker.ts',
-        env: { API: styld, WEBSITE: website },
+        env: { API: styld, WEBSITE: website, ROBOTS: 'noindex' },
         assets: { directory: 'apps/web/dist/client' },
         compatibility: { date: '2026-10-19' },
       })

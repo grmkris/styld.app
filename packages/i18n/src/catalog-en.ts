@@ -1966,6 +1966,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'share.onX': 'Share on X',
   'share.onWhatsApp': 'Share on WhatsApp',
   'share.visibility.public': 'Public',
+  'share.look.metaDescription': 'A look on Styld.',
+  'share.piece.metaDescription': 'A piece on Styld.',
   'share.board.crumb': 'Boards',
   'share.board.start': 'Start your board',
   'share.board.openBoard': 'See the whole board',

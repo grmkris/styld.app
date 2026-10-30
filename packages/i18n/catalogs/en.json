@@ -2139,6 +2139,12 @@
     "visibility": {
       "public": "Public"
     },
+    "look": {
+      "metaDescription": "A look on Styld."
+    },
+    "piece": {
+      "metaDescription": "A piece on Styld."
+    },
     "board": {
       "crumb": "Boards",
       "start": "Start your board",

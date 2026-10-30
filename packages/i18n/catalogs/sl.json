@@ -2139,6 +2139,12 @@
     "visibility": {
       "public": "Javno"
     },
+    "look": {
+      "metaDescription": "Videz na Styld."
+    },
+    "piece": {
+      "metaDescription": "Kos na Styld."
+    },
     "board": {
       "crumb": "Zbirke",
       "start": "Začni svojo zbirko",

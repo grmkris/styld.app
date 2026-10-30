@@ -96,6 +96,17 @@ export type PublicLookPage = typeof PublicLookPage.Type
 export const PublicPiecePage = Schema.Struct({ piece: PublicPiece, by: Author })
 export type PublicPiecePage = typeof PublicPiecePage.Type
 
+/** What a link preview shows of a public page, in the reader's language; `image` is a `/cdn/public` path. */
+export const PageMeta = Schema.Struct({
+  title: Schema.String,
+  description: Schema.String,
+  image: Schema.NullOr(Schema.String),
+})
+export type PageMeta = typeof PageMeta.Type
+
+/** The page a preview is for: `/@handle`, `/boards/:id`, `/looks/:id` or `/pieces/:id`. */
+export const PageMetaQuery = Schema.Struct({ path: Schema.String.check(Schema.isMaxLength(200)) })
+
 /** Nothing public here: missing, private, unpublished, or held back by Styld's check, alike. */
 export class PublicNotFound extends Schema.TaggedError<PublicNotFound>()(
   'PublicNotFound',

@@ -229,7 +229,24 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
     violations).
   - Open: link previews and `X-Robots-Tag` (M3e), follow and share buttons (M4), and the owner's own way to their
     `/@handle` from the profile editor.
-- **Next:** M3e, link previews (`EdgeMeta.ts`, the `HTMLRewriter`, `/cdn/og`), then deploying M3 to the preview.
+- **M3e, link previews:**
+  - The edge reads a public page's preview from `/api/public/meta` while the page renders, waiting at most 1.5 s.
+    It then sets the title and adds the description, Open Graph tags, Twitter's card and the canonical link with an
+    `HTMLRewriter`.
+  - A private, unpublished or held-back page gets no preview, and a slow or failed read sends the page unchanged.
+  - The copy is v1's `profile.public.meta*` and `share.board.meta*`, plus new `share.look`/`share.piece` lines, in
+    the reader's language.
+  - The picture is the page's first public cut-out or picture.
+  - `/share/board/:id` answers 301 to the board.
+  - The preview's edge sends `X-Robots-Tag: noindex`; nothing uses `robots.txt Disallow`.
+  - Evidence: unit tests for escaping, the tags, the redirect and the read; native acceptance of a board's and a
+    profile's tags as a crawler sees them, a private board without them, and the redirect.
+  - Open:
+    - A composed card at `/cdn/og` (up to four cut-outs, drawn with the Images binding) replaces the single picture
+      later.
+    - The owner checks a real preview in a messaging app once deployed.
+- **Next:** deploy M3 to the preview, read it back, and walk it in a browser; then M4 (saves, follows, blocks,
+  reports and the feed).
 - **Shared with the capture session:** migrations are generated one at a time; public delivery reuses its rule for a
   piece's shown picture; generated pictures reuse its Muse provider.
 - **Still to settle in spikes:** Clef and Llama Guard thresholds on fixtures in English and Slovenian, drawing text

@@ -110,4 +110,40 @@ describe('public edge routing', () => {
     })
     expect(fromWebsite.headers.get('content-security-policy')).toBe(documentPolicy)
   })
+
+  test('sends v1 share links to the board and keeps a preview deployment out of search engines', async () => {
+    const unused = { fetch: async () => new Response('unused') }
+    const board = `bd_${'a'.repeat(22)}`
+    const moved = await edge.fetch(new Request(`https://styld.test/share/board/${board}`), {
+      API: unused,
+      WEBSITE: unused,
+    })
+    expect(moved.status).toBe(301)
+    expect(moved.headers.get('location')).toBe(`https://styld.test/boards/${board}`)
+    const page = await edge.fetch(new Request('https://styld.test/'), {
+      API: unused,
+      WEBSITE: { fetch: async () => new Response('<!doctype html>', { headers: { 'content-type': 'text/html' } }) },
+      ROBOTS: 'noindex',
+    })
+    expect(page.headers.get('x-robots-tag')).toBe('noindex')
+  })
+
+  test('reads a public page’s preview from the API Worker while the page renders, in the reader’s language', async () => {
+    const asked: Array<{ readonly url: string; readonly language: string | null }> = []
+    const api = {
+      fetch: async (request: Request) => {
+        asked.push({ url: request.url, language: request.headers.get('accept-language') })
+        return Response.json({ title: 'Nika on Styld', description: 'Boards', image: null })
+      },
+    }
+    const page = await edge.fetch(
+      new Request('https://styld.test/@nika.kovac', { headers: { 'accept-language': 'sl' } }),
+      {
+        API: api,
+        WEBSITE: { fetch: async () => new Response('<!doctype html>', { headers: { 'content-type': 'text/html' } }) },
+      },
+    )
+    expect(page.status).toBe(200)
+    expect(asked).toEqual([{ url: 'https://styld.test/api/public/meta?path=%2F%40nika.kovac', language: 'sl' }])
+  })
 })

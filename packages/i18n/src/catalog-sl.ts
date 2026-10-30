@@ -1994,6 +1994,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'share.onX': 'Deli na X',
   'share.onWhatsApp': 'Deli na WhatsApp',
   'share.visibility.public': 'Javno',
+  'share.look.metaDescription': 'Videz na Styld.',
+  'share.piece.metaDescription': 'Kos na Styld.',
   'share.board.crumb': 'Zbirke',
   'share.board.start': 'Začni svojo zbirko',
   'share.board.openBoard': 'Poglej celotno zbirko',
