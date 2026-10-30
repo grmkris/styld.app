@@ -14,6 +14,8 @@ import type { Looks } from './looks/Looks.ts'
 import { type Admit, admitWith, wardrobeHandlers } from './wardrobe/Http.ts'
 import type { Wardrobe } from './wardrobe/Wardrobe.ts'
 import { wornHandlers } from './worn/Http.ts'
+import { profileHandlers } from './social/Http.ts'
+import type { Profiles } from './social/Profiles.ts'
 import type { Worn } from './worn/Worn.ts'
 
 const accountHandlers = (admit: Admit) =>
@@ -49,6 +51,7 @@ export const apiRoutes = (
     readonly looks: Layer.Layer<Looks>
     readonly boards: Layer.Layer<Boards>
     readonly worn: Layer.Layer<Worn>
+    readonly profiles: Layer.Layer<Profiles>
   },
   limits: { readonly allowCheck: (accountId: string) => Effect.Effect<boolean, never, RuntimeContext> },
 ) =>
@@ -59,6 +62,7 @@ export const apiRoutes = (
     Layer.provide(lookHandlers(admitWith(auth)).pipe(Layer.provide(services.looks))),
     Layer.provide(boardHandlers(admitWith(auth)).pipe(Layer.provide(services.boards))),
     Layer.provide(wornHandlers(admitWith(auth)).pipe(Layer.provide(services.worn))),
+    Layer.provide(profileHandlers(admitWith(auth)).pipe(Layer.provide(services.profiles))),
     Layer.provide(auth.router.securityLayer(SessionHttp)),
     auth.router.middleware,
     Layer.provide(auth.dependencies),

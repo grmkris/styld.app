@@ -3,7 +3,8 @@ import { Dialog } from '@foldkit/ui'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import * as Ask from '../src/page/Ask.ts'
-import { matching, normalise } from '../src/page/AskSearch.ts'
+import { normalise } from '@styld/protocol'
+import { matching } from '../src/page/AskSearch.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const knit = pieceFixture('knit', {

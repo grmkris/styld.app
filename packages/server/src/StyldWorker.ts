@@ -19,6 +19,7 @@ import { browserTelemetryRoutes } from './BrowserTelemetry.ts'
 import { AccountLifecycle, makeAccountLifecycle } from './AccountLifecycle.ts'
 import { Looks, makeLooks } from './looks/Looks.ts'
 import { Boards, makeBoards } from './boards/Boards.ts'
+import { makeProfiles, Profiles } from './social/Profiles.ts'
 import { boardRoutes } from './boards/Http.ts'
 import { makeWorn, Worn } from './worn/Worn.ts'
 import { apiRoutes } from './Api.ts'
@@ -100,6 +101,7 @@ const storageServices = <R>(
     const capturesService = yield* makeCaptures(bindings)
     const looksService = yield* makeLooks(bindings.database)
     const boardsService = yield* makeBoards(bindings)
+    const profilesService = makeProfiles(bindings.database)
     return {
       wardrobeService,
       lifecycleService,
@@ -112,6 +114,8 @@ const storageServices = <R>(
       looks: Layer.succeed(Looks, looksService),
       boards: Layer.succeed(Boards, boardsService),
       worn: Layer.succeed(Worn, makeWorn(bindings.database)),
+      profilesService,
+      profiles: Layer.succeed(Profiles, profilesService),
     }
   }).pipe(
     Effect.provide(Layer.mergeAll(layerCryptoWeb, pieceCutout(bindings.bucket)).pipe(Layer.provideMerge(providers))),
@@ -324,6 +328,7 @@ const makeApplication =
           looks: looksService,
           captures: capturesService,
           boards: services.boardsService,
+          profiles: services.profilesService,
         }).pipe(Layer.provide(oauth.server)),
         HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),
         browserTelemetryRoutes(authOrigin, allowTelemetry),

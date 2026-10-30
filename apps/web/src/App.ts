@@ -26,6 +26,7 @@ import * as Board from './page/Board/Update.ts'
 import * as Boards from './page/Boards.ts'
 import * as Login from './page/Login.ts'
 import * as Look from './page/Look.ts'
+import * as ProfileEditor from './page/ProfileEditor.ts'
 import * as Looks from './page/Looks.ts'
 import * as Piece from './page/Piece.ts'
 import * as Review from './page/Review.ts'
@@ -90,6 +91,7 @@ export const Model = Schema.Struct({
   review: Review.Model,
   looks: Looks.Model,
   look: Look.Model,
+  profile: ProfileEditor.Model,
   today: Today.Model,
   ask: Ask.Model,
   boards: Boards.Model,
@@ -169,6 +171,9 @@ const pageCommands = (route: AppRoute, piece: Piece.Model, look: Look.Model, boa
     Match.tag('Piece', () => Command.mapMessages(Piece.load(piece), (message) => Message.GotPieceMessage({ message }))),
     Match.tag('Review', () => Command.mapMessages(Review.load(), (message) => Message.GotReviewMessage({ message }))),
     Match.tag('Look', () => Command.mapMessages(Look.load(look), (message) => Message.GotLookMessage({ message }))),
+    Match.tag('Profile', () =>
+      Command.mapMessages(ProfileEditor.load(), (message) => Message.GotProfileMessage({ message })),
+    ),
     Match.orElse(() => []),
   )
 
@@ -193,6 +198,7 @@ export const init = (context: Flags, url?: Url): UpdateReturn => {
       review: Review.init(),
       looks: Looks.init(),
       look,
+      profile: ProfileEditor.init(),
       today: Today.init(),
       ask: Ask.init(),
       boards: Boards.init(),
@@ -303,6 +309,13 @@ const foldLooks = Update.foldChild({
   read: (model: Model) => Option.some(model.looks),
   write: (model: Model, looks: Looks.Model) => modifyFields(model, { looks: () => looks }),
   toParentMessage: (message: Looks.Message) => Message.GotLooksMessage({ message }),
+})
+
+const foldProfile = Update.foldChild({
+  update: ProfileEditor.update,
+  read: (model: Model) => Option.some(model.profile),
+  write: (model: Model, profile: ProfileEditor.Model) => modifyFields(model, { profile: () => profile }),
+  toParentMessage: (message: ProfileEditor.Message) => Message.GotProfileMessage({ message }),
 })
 
 const foldLook = Update.foldChild({
@@ -446,6 +459,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotReviewMessage: (got) => foldReview(model, got.message),
     GotLooksMessage: (got) => foldLooks(model, got.message),
     GotLookMessage: (got) => foldLook(model, got.message),
+    GotProfileMessage: (got) => foldProfile(model, got.message),
     GotTodayMessage: (got) => foldToday(model, got.message),
     GotAskMessage: (got) => foldAsk(model, got.message),
     GotBoardsMessage: (got) => foldBoards(model, got.message),

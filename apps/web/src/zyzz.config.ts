@@ -39,6 +39,10 @@ export const { style, vars } = defineConfig({
       tintSage: '#c3cbb7',
       tintSlate: '#bec8d4',
       tintClay: '#dcc0ad',
+      // The other avatar tones behind a person's initials (with the tints above and ink).
+      toneStone: '#d3cdc3',
+      tonePlum: '#cfc1ca',
+      toneOlive: '#cdcbad',
       focus: '#2f5bd3',
       error: 'oklch(48% 0.16 25)',
       invalid: 'oklch(58% 0.16 25)',

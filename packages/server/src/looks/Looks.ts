@@ -77,7 +77,7 @@ const make = (database: Parameters<typeof makeLookStore>[0]) =>
         const at = DateTime.toDateUtc(yield* DateTime.now)
         yield* stored(
           store.createLook(
-            { id, accountId, name: input.name, occasion: input.occasion ?? null, createdAt: at },
+            { id, accountId, name: input.name, occasion: input.occasion ?? null, createdAt: at, sharedAt: null },
             pieceIds,
             {
               accountId,

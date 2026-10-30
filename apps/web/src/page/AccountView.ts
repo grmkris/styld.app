@@ -34,7 +34,7 @@ import {
   unavailable,
 } from './AccountView.styles.ts'
 import { pageHead, pageTitle } from './PageHead.ts'
-import { assistantsSection } from '../route.ts'
+import { assistantsSection, profileRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 
@@ -142,6 +142,11 @@ const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, h) =>
           h.span(styled(h, identityName()), [inputs.claims.displayName]),
           h.span(styled(h, identityEmail()), [inputs.claims.email]),
         ]),
+      ]),
+      h.section(styled(h, section()), [
+        h.h2([], [format(inputs.locale, 'profile.card.title', {})]),
+        h.p([], [format(inputs.locale, 'profile.card.setUp', {})]),
+        h.a([h.Href(profileRouter({}))], [format(inputs.locale, 'profile.editor.mode.edit', {})]),
       ]),
       assistants(model, inputs, h),
       h.section(styled(h, section()), [

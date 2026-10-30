@@ -13,6 +13,7 @@ import { verifyCameraJourney, verifyCaptureJourney, verifyLongVideoJourney } fro
 import { verifyGalleryJourney } from './GalleryBrowserAcceptance.ts'
 import { nativeDailyAllowance, verifyCaptures } from './CaptureAcceptance.ts'
 import { verifyGallery } from './GalleryAcceptance.ts'
+import { verifySocial } from './SocialAcceptance.ts'
 import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
 import { verifyMcp } from './McpAcceptance.ts'
 import { verifyAccountDeletion, verifyWardrobe } from './WardrobeAcceptance.ts'
@@ -115,10 +116,10 @@ afterAll(destroy(Stack), { timeout: 60000 })
 
 /** Run a browser acceptance against the public edge in a fresh headless Chromium, whose camera is
  * Chromium's own stand-in picture, allowed without asking. */
-const inBrowser = (verify: (browser: Browser, origin: string) => Promise<void>) =>
+const inBrowser = (verify: (browser: Browser, origin: string, testUrl: string) => Promise<void>) =>
   Effect.scoped(
     Effect.gen(function* () {
-      const { styldUrl } = yield* stack
+      const { url, styldUrl } = yield* stack
       const browserInstance = yield* Effect.acquireRelease(
         Effect.promise(() =>
           chromium.launch({
@@ -128,16 +129,20 @@ const inBrowser = (verify: (browser: Browser, origin: string) => Promise<void>) 
         ),
         (browser) => Effect.promise(() => browser.close()),
       )
-      yield* Effect.promise(() => verify(browserInstance, styldUrl))
+      yield* Effect.promise(() => verify(browserInstance, styldUrl, url))
     }),
   )
 
-test(
-  'serves MCP to OAuth clients: discovery, registration, consent, both protocol eras, rotation and revocation',
+/** Run an HTTP acceptance against the public edge, with the test Worker's URL for its seeds. */
+const overHttp = (verify: (origin: string, testUrl: string) => Promise<void>) =>
   Effect.gen(function* () {
     const { url, styldUrl } = yield* stack
-    yield* Effect.promise(() => verifyMcp(styldUrl, url))
-  }),
+    yield* Effect.promise(() => verify(styldUrl, url))
+  })
+
+test(
+  'serves MCP to OAuth clients: discovery, registration, consent, both protocol eras, rotation and revocation',
+  overHttp(verifyMcp),
   { timeout: 120000 },
 )
 
@@ -153,55 +158,41 @@ test(
 
 test(
   "keeps each account's boards (idempotent creates, versioned saves, refused items, private pictures), worn days and website looks",
-  Effect.gen(function* () {
-    const { url, styldUrl } = yield* stack
-    yield* Effect.promise(() => verifyGallery(styldUrl, url))
-  }),
+  overHttp(verifyGallery),
   { timeout: 60000 },
 )
 
+test('keeps profiles: a handle that is free and not reserved, published only with one', overHttp(verifySocial), {
+  timeout: 60000,
+})
+
 test(
   'turns photos and videos into captures that wait for review, meters them daily, and keeps them private',
-  Effect.gen(function* () {
-    const { url, styldUrl } = yield* stack
-    yield* Effect.promise(() => verifyCaptures(styldUrl, url))
-  }),
+  overHttp(verifyCaptures),
   { timeout: 90000 },
 )
 
 test(
   'adds photos through the picker, keeps the ticked ones from the review tray and shows them in the wardrobe',
-  Effect.gen(function* () {
-    const { url } = yield* stack
-    yield* inBrowser((browser, origin) => verifyCaptureJourney(browser, origin, url))
-  }),
+  inBrowser(verifyCaptureJourney),
   { timeout: 90000 },
 )
 
 test(
   'opens the camera over the whole page, takes a piece front then back, and pairs them in the tray',
-  Effect.gen(function* () {
-    const { url } = yield* stack
-    yield* inBrowser((browser, origin) => verifyCameraJourney(browser, origin, url))
-  }),
+  inBrowser(verifyCameraJourney),
   { timeout: 90000 },
 )
 
 test(
   'cuts a long, turned video into upright parts in the browser and stops at the daily allowance',
-  Effect.gen(function* () {
-    const { url } = yield* stack
-    yield* inBrowser((browser, origin) => verifyLongVideoJourney(browser, origin, url))
-  }),
+  inBrowser(verifyLongVideoJourney),
   { timeout: 120000 },
 )
 
 test(
   "lays out today's table (Spin, Wear this), a board by hand (move, pinch, label, picture, undo, save as a look), Ask and the Wardrobe's tabs",
-  Effect.gen(function* () {
-    const { url } = yield* stack
-    yield* inBrowser((browser, origin) => verifyGalleryJourney(browser, origin, url))
-  }),
+  inBrowser(verifyGalleryJourney),
   { timeout: 120000 },
 )
 
@@ -338,6 +329,7 @@ test(
           'boards',
           'capture_frames',
           'captures',
+          'content_checks',
           'detections',
           'look_pieces',
           'looks',
@@ -348,6 +340,7 @@ test(
           'piece_pictures',
           'piece_turns',
           'pieces',
+          'profiles',
           'styld_auth_credentials',
           'styld_auth_email_credentials',
           'styld_auth_identifiers',

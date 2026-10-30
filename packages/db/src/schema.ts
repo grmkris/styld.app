@@ -227,6 +227,8 @@ export const looks = sqliteTable(
     name: text('name').notNull(),
     occasion: text('occasion'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    /** When the person shared the look; it is public only while this is set and its check lets it. */
+    sharedAt: integer('shared_at', { mode: 'timestamp_ms' }),
   },
   (table) => [index('looks_account_created').on(table.accountId, table.createdAt)],
 )
@@ -258,10 +260,25 @@ export const boards = sqliteTable(
     name: text('name').notNull(),
     paper: text('paper', { enum: ['paper', 'stock', 'sand', 'sage', 'slate', 'clay'] }).notNull(),
     version: integer('version').notNull(),
+    /** Private boards are the owner's; a public one is on their profile once its check lets it. */
+    visibility: text('visibility', { enum: ['private', 'public'] })
+      .notNull()
+      .default('private'),
+    /** Up to three moods from the fixed list, for Explore. */
+    moods: text('moods', { mode: 'json' }).notNull().default([]).$type<ReadonlyArray<string>>(),
+    /** When the board last went public: the feed and Explore sort by it. */
+    publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
+    /** When an admin featured it in Explore. */
+    featuredAt: integer('featured_at', { mode: 'timestamp_ms' }),
+    /** The name, folded the way search folds what people type. */
+    searchText: text('search_text').notNull().default(''),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
   },
-  (table) => [index('boards_account_updated').on(table.accountId, table.updatedAt)],
+  (table) => [
+    index('boards_account_updated').on(table.accountId, table.updatedAt),
+    index('boards_public').on(table.visibility, table.publishedAt),
+  ],
 )
 
 /** A picture put on a board. Its bytes stay where the photo upload left them, under the account's prefix. */
@@ -332,6 +349,60 @@ export const boardPins = sqliteTable(
     uniqueIndex('board_pins_image').on(table.imageId),
     index('board_pins_piece').on(table.pieceId),
     index('board_pins_look').on(table.lookId),
+  ],
+)
+
+/** A person's public face: a handle, a name, a city and a bio, published or not. Only an admin marks the house
+ * account or features a profile. */
+export const profiles = sqliteTable(
+  'profiles',
+  {
+    accountId: text('account_id')
+      .primaryKey()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    handle: text('handle').unique(),
+    name: text('name').notNull(),
+    city: text('city'),
+    bio: text('bio'),
+    tone: text('tone', { enum: ['sand', 'sage', 'slate', 'clay', 'stone', 'plum', 'olive', 'ink'] }).notNull(),
+    published: integer('published', { mode: 'boolean' }).notNull(),
+    publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
+    wardrobeShown: integer('wardrobe_shown', { mode: 'boolean' }).notNull(),
+    house: integer('house', { mode: 'boolean' }).notNull().default(false),
+    featuredAt: integer('featured_at', { mode: 'timestamp_ms' }),
+    /** The name and handle, folded the way search folds what people type. */
+    searchText: text('search_text').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [index('profiles_published').on(table.published, table.featuredAt)],
+)
+
+/** The model's check of something public: the digest of what it read, and what it answered. The operation that
+ * changes the content writes `pending` with the new digest; an answer lands only on the digest it read. */
+export const contentChecks = sqliteTable(
+  'content_checks',
+  {
+    targetKind: text('target_kind', { enum: ['profile', 'board', 'piece', 'picture', 'look'] }).notNull(),
+    targetId: text('target_id').notNull(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    digest: text('digest').notNull(),
+    state: text('state', { enum: ['pending', 'passed', 'unsure', 'failed'] }).notNull(),
+    reason: text('reason'),
+    suggestedMoods: text('suggested_moods', { mode: 'json' }).$type<ReadonlyArray<string>>(),
+    model: text('model'),
+    attempts: integer('attempts').notNull(),
+    /** Hidden by reports or by an admin, whatever the model said. */
+    hidden: text('hidden', { enum: ['reports', 'admin'] }),
+    requestedAt: integer('requested_at', { mode: 'timestamp_ms' }).notNull(),
+    checkedAt: integer('checked_at', { mode: 'timestamp_ms' }),
+  },
+  (table) => [
+    primaryKey({ columns: [table.targetKind, table.targetId] }),
+    index('content_checks_state').on(table.state, table.requestedAt),
+    index('content_checks_account').on(table.accountId),
   ],
 )
 
@@ -454,6 +525,8 @@ export const appSchema = {
   boardImages,
   boardItems,
   boardPins,
+  profiles,
+  contentChecks,
   wornPieces,
   piecePictures,
   pieceTurns,

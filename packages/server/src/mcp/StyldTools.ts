@@ -10,6 +10,8 @@ import { wardrobeTools } from './WardrobeTools.ts'
 import type { Looks } from '../looks/Looks.ts'
 import type { Boards } from '../boards/Boards.ts'
 import { boardMcpTools } from './BoardTools.ts'
+import { profileTools } from './ProfileTools.ts'
+import type { Profiles } from '../social/Profiles.ts'
 import type { Captures } from '../capture/Service.ts'
 import { pictureTools } from './PictureTools.ts'
 
@@ -40,11 +42,13 @@ export const styldTools = (
     looks,
     captures,
     boards,
+    profiles,
   }: {
     readonly wardrobe: Wardrobe['Service']
     readonly looks: Looks['Service']
     readonly captures: Pick<Captures['Service'], 'redrawPicture'>
     readonly boards: Boards['Service']
+    readonly profiles: Profiles['Service']
   },
   http: HttpClient.HttpClient,
 ) => [
@@ -76,4 +80,5 @@ export const styldTools = (
   ...lookTools(looks, origin),
   ...pictureTools(captures, origin),
   ...boardMcpTools(boards, wardrobe, origin, http),
+  ...profileTools(profiles, origin),
 ]

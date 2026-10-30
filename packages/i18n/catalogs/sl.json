@@ -2020,7 +2020,13 @@
       "removeCover": "Odstrani",
       "coverFailed": "Naslovne fotografije ni bilo mogoče shraniti.",
       "featuredPrivate": "{kind, select, collage {Kolaž \"{name}\" je v zasebni zbirki, zato ga tvoja stran ne prikaže. Naredi zbirko javno ali izpostavi nekaj javnega.} other {Zbirka \"{name}\" je zasebna, zato je tvoja stran ne prikaže. Naredi jo javno ali izpostavi nekaj javnega.}}",
-      "featuredOpenPrivate": "Odpri"
+      "featuredOpenPrivate": "Odpri",
+      "saved": "Shranjeno",
+      "cityLabel": "Kraj",
+      "toneLabel": "Barva avatarja",
+      "wardrobeShown": "Pokaži mojo omaro na profilu",
+      "publish": "Objavi",
+      "unpublish": "Naredi zasebnega"
     },
     "links": {
       "aria": "{kind}, {label}",
@@ -2078,6 +2084,16 @@
       "visits": "{count, plural, one {# obisk} two {# obiska} few {# obiski} other {# obiskov}} s Styla",
       "visitsWindow": "v zadnjih {days} dneh",
       "followers": "{count, plural, one {# sledilec} two {# sledilca} few {# sledilci} other {# sledilcev}}"
+    },
+    "tones": {
+      "sand": "Pesek",
+      "sage": "Žajbelj",
+      "slate": "Skrilavec",
+      "clay": "Glina",
+      "stone": "Kamen",
+      "plum": "Sliva",
+      "olive": "Oliva",
+      "ink": "Črnilo"
     }
   },
   "share": {

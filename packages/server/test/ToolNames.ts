@@ -24,4 +24,7 @@ export const toolNames = [
   'picture_pin',
   'collage_arrange',
   'collage_set',
+  'profile_get',
+  'profile_update',
+  'profile_publish',
 ]

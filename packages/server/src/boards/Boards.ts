@@ -11,6 +11,7 @@ import {
   OperationConflict,
   PinRefused,
   type RemovePins,
+  searchText,
   type UpdateBoard,
   UploadRefused,
 } from '@styld/protocol'
@@ -85,6 +86,11 @@ const changes = (parts: Parts) => ({
       name: input.name,
       paper: 'paper',
       version: 0,
+      visibility: 'private',
+      moods: [],
+      publishedAt: null,
+      featuredAt: null,
+      searchText: searchText(input.name),
       createdAt: at,
       updatedAt: at,
     }
@@ -103,7 +109,7 @@ const changes = (parts: Parts) => ({
     const { accountId } = yield* CurrentAccount
     const updated = yield* stored(
       parts.store.updateBoard(accountId, boardId, {
-        ...(input.name === undefined ? {} : { name: input.name }),
+        ...(input.name === undefined ? {} : { name: input.name, searchText: searchText(input.name) }),
         ...(input.paper === undefined ? {} : { paper: input.paper }),
         updatedAt: yield* nowDate,
       }),

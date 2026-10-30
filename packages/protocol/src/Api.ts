@@ -1,6 +1,7 @@
 import { SessionHttp } from '@styld/auth/config'
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
 import { AccountUnavailable, Me, RequestRefused } from './Account.ts'
+import { HandleReserved, HandleTaken, Profile, ProfileNeedsHandle, PublishProfile, UpdateProfile } from './Profile.ts'
 import {
   CaptureCreated,
   CaptureId,
@@ -342,6 +343,26 @@ export class WornApi extends HttpApiGroup.make('worn')
   .middleware(SessionHttp.RequireSession)
   .prefix('/api') {}
 
+/** The person's public profile: a handle, a name, a city and a bio, published or not. */
+export class ProfileApi extends HttpApiGroup.make('profile')
+  .add(HttpApiEndpoint.get('getProfile', '/profile', { success: Profile, error: WardrobeUnavailable }))
+  .add(
+    HttpApiEndpoint.patch('updateProfile', '/profile', {
+      payload: UpdateProfile,
+      success: Profile,
+      error: [HandleTaken, HandleReserved, WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.put('publishProfile', '/profile/published', {
+      payload: PublishProfile,
+      success: Profile,
+      error: [ProfileNeedsHandle, WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .middleware(SessionHttp.RequireSession)
+  .prefix('/api') {}
+
 /** Styld's typed HTTP API: declared once, served by the API Worker and called by the website. */
 export class StyldApi extends HttpApi.make('styld')
   .add(AccountApi)
@@ -349,4 +370,5 @@ export class StyldApi extends HttpApi.make('styld')
   .add(CaptureApi)
   .add(LookApi)
   .add(BoardApi)
-  .add(WornApi) {}
+  .add(WornApi)
+  .add(ProfileApi) {}

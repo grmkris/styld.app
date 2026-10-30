@@ -2020,7 +2020,13 @@
       "removeCover": "Remove",
       "coverFailed": "Couldn't save the cover.",
       "featuredPrivate": "{kind, select, collage {The collage \"{name}\" is on a private board, so your page doesn't show it. Make its board public, or feature something that is public.} other {The board \"{name}\" is private, so your page doesn't show it. Make it public, or feature something that is public.}}",
-      "featuredOpenPrivate": "Open it"
+      "featuredOpenPrivate": "Open it",
+      "saved": "Saved",
+      "cityLabel": "City",
+      "toneLabel": "Avatar colour",
+      "wardrobeShown": "Show my wardrobe on my profile",
+      "publish": "Make it public",
+      "unpublish": "Make it private"
     },
     "links": {
       "aria": "{kind}, {label}",
@@ -2078,6 +2084,16 @@
       "visits": "{count, plural, one {# visit} other {# visits}} from Styld",
       "visitsWindow": "in the last {days} days",
       "followers": "{count, plural, one {# follower} other {# followers}}"
+    },
+    "tones": {
+      "sand": "Sand",
+      "sage": "Sage",
+      "slate": "Slate",
+      "clay": "Clay",
+      "stone": "Stone",
+      "plum": "Plum",
+      "olive": "Olive",
+      "ink": "Ink"
     }
   },
   "share": {

@@ -122,6 +122,14 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
           Effect.forEach(['native-boards', 'native-boards-other'], (id) => whenFree(seedIdentity(database, id))),
         ),
       ),
+      // Two people for profiles, public boards and what others may see.
+      HttpRouter.add(
+        'POST',
+        '/test/identity/seed-social',
+        doneWhenFree(
+          Effect.forEach(['native-social', 'native-social-other'], (id) => whenFree(seedIdentity(database, id))),
+        ),
+      ),
       // The account the browser's Gallery 2 journey (Home, boards, Ask) signs in as.
       HttpRouter.add(
         'POST',

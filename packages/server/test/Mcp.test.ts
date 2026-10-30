@@ -2,6 +2,7 @@ import {
   type ArrangeBoard,
   Board,
   BoardVersionConflict,
+  Handle,
   type Piece,
   PieceId,
   PieceNotFound,
@@ -20,6 +21,7 @@ import { challenge, hostedClientMetadata, redirectUriAllowed } from '../src/mcp/
 import { Wardrobe } from '../src/wardrobe/Wardrobe.ts'
 import { Looks } from '../src/looks/Looks.ts'
 import { Boards } from '../src/boards/Boards.ts'
+import { Profiles } from '../src/social/Profiles.ts'
 import { toolNames } from './ToolNames.ts'
 
 const accountRow = { displayName: 'Ana Novak', email: 'ana@example.com' }
@@ -141,7 +143,22 @@ const boards = Boards.of({
   addBoardImage: notUsed,
   boardImage: notUsed,
 })
-const tools = styldTools(database, 'https://styld.test', { wardrobe, looks, captures, boards }, offline)
+/** The profile: Ana's, published with a handle. */
+const profiles = Profiles.of({
+  getProfile: () =>
+    Effect.succeed({
+      handle: Schema.decodeUnknownSync(Handle)('ana.novak'),
+      name: 'Ana Novak',
+      city: 'Ljubljana',
+      bio: null,
+      tone: 'sage',
+      published: true,
+      wardrobeShown: true,
+    }),
+  updateProfile: notUsed,
+  publishProfile: notUsed,
+})
+const tools = styldTools(database, 'https://styld.test', { wardrobe, looks, captures, boards, profiles }, offline)
 /** The JSON of a result's first text block. */
 const jsonOf = (result: {
   readonly content: ReadonlyArray<{ readonly type: string; readonly text?: string }>
@@ -264,6 +281,14 @@ describe('MCP tools', () => {
     })
     expect(result.isError).toBe(true)
     expect(jsonOf(result)).toMatchObject({ code: 'version_conflict', retryable: true })
+  })
+
+  test('gives the profile its public link once it has a handle', async () => {
+    expect((await call('profile_get', {})).structuredContent).toMatchObject({
+      handle: 'ana.novak',
+      published: true,
+      url: 'https://styld.test/@ana.novak',
+    })
   })
 
   test('answers with the account as text and structured content', async () => {

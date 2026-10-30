@@ -11,6 +11,7 @@ import * as BoardMessage from './page/Board/Message.ts'
 import * as Boards from './page/Boards.ts'
 import * as Login from './page/Login.ts'
 import * as Look from './page/Look.ts'
+import * as ProfileEditor from './page/ProfileEditor.ts'
 import * as Looks from './page/Looks.ts'
 import * as Piece from './page/Piece.ts'
 import * as Review from './page/Review.ts'
@@ -45,6 +46,7 @@ export const Message = defineMessageUnion({
   GotReviewMessage: { message: Review.Message },
   GotLooksMessage: { message: Looks.Message },
   GotLookMessage: { message: Look.Message },
+  GotProfileMessage: { message: ProfileEditor.Message },
   GotTodayMessage: { message: Today.Message },
   GotAskMessage: { message: Ask.Message },
   GotBoardsMessage: { message: Boards.Message },

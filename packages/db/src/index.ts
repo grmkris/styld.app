@@ -7,6 +7,7 @@ export {
   boards,
   captureFrames,
   captures,
+  contentChecks,
   detections,
   lookPieces,
   looks,
@@ -15,6 +16,7 @@ export {
   piecePictures,
   pieceTurns,
   pieces,
+  profiles,
   uploads,
   wornPieces,
 } from './schema.ts'

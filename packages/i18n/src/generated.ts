@@ -1462,6 +1462,7 @@ export interface MessageArgumentsByKey<T = string> {
   'profile.editor.change': Readonly<Record<string, never>>
   'profile.editor.changeCover': Readonly<Record<string, never>>
   'profile.editor.changePhoto': Readonly<Record<string, never>>
+  'profile.editor.cityLabel': Readonly<Record<string, never>>
   'profile.editor.claim': Readonly<Record<string, never>>
   'profile.editor.copyLink': Readonly<Record<string, never>>
   'profile.editor.coverFailed': Readonly<Record<string, never>>
@@ -1490,12 +1491,16 @@ export interface MessageArgumentsByKey<T = string> {
   'profile.editor.photoSaved': Readonly<Record<string, never>>
   'profile.editor.previewHint': Readonly<Record<string, never>>
   'profile.editor.publicNote': Readonly<Record<string, never>>
+  'profile.editor.publish': Readonly<Record<string, never>>
   'profile.editor.removeCover': Readonly<Record<string, never>>
   'profile.editor.removeLink': { readonly label: string | number }
   'profile.editor.saveFailed': Readonly<Record<string, never>>
+  'profile.editor.saved': Readonly<Record<string, never>>
   'profile.editor.statusPrivate': Readonly<Record<string, never>>
   'profile.editor.statusPublic': Readonly<Record<string, never>>
   'profile.editor.title': Readonly<Record<string, never>>
+  'profile.editor.toneLabel': Readonly<Record<string, never>>
+  'profile.editor.unpublish': Readonly<Record<string, never>>
   'profile.editor.usernameChecking': Readonly<Record<string, never>>
   'profile.editor.usernameHint': Readonly<Record<string, never>>
   'profile.editor.usernameLabel': Readonly<Record<string, never>>
@@ -1506,6 +1511,7 @@ export interface MessageArgumentsByKey<T = string> {
   'profile.editor.usernameStatus.reserved': Readonly<Record<string, never>>
   'profile.editor.usernameStatus.taken': Readonly<Record<string, never>>
   'profile.editor.view': Readonly<Record<string, never>>
+  'profile.editor.wardrobeShown': Readonly<Record<string, never>>
   'profile.links.aria': { readonly kind: string | number; readonly label: string | number }
   'profile.links.email': Readonly<Record<string, never>>
   'profile.links.facebook': Readonly<Record<string, never>>
@@ -1577,6 +1583,14 @@ export interface MessageArgumentsByKey<T = string> {
   'profile.shop.visits': { readonly count: number }
   'profile.shop.visitsWindow': { readonly days: string | number }
   'profile.shop.websiteInvalid': Readonly<Record<string, never>>
+  'profile.tones.clay': Readonly<Record<string, never>>
+  'profile.tones.ink': Readonly<Record<string, never>>
+  'profile.tones.olive': Readonly<Record<string, never>>
+  'profile.tones.plum': Readonly<Record<string, never>>
+  'profile.tones.sage': Readonly<Record<string, never>>
+  'profile.tones.sand': Readonly<Record<string, never>>
+  'profile.tones.slate': Readonly<Record<string, never>>
+  'profile.tones.stone': Readonly<Record<string, never>>
   'referral.copyLink': Readonly<Record<string, never>>
   'referral.creditsEarned': Readonly<Record<string, never>>
   'referral.description': Readonly<Record<string, never>>
@@ -2573,4 +2587,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '234ac6071bd2b734f5d1929d69938a17c36fcf5d108287fbf64fbae82320ab80'
+export const catalogVersion = 'b6227705049e114d30dbf175c8d47cfe49b5e2aa10f4bbf58922cc0849f4098d'

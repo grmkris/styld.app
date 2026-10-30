@@ -62,7 +62,11 @@ const boardRows = (db: Database) => ({
         .where(and(eq(boards.id, boardId), eq(boards.accountId, accountId)))
         .limit(1),
     ).pipe(Effect.map(first)),
-  updateBoard: (accountId: string, boardId: string, changes: Partial<Pick<BoardRow, 'name' | 'paper' | 'updatedAt'>>) =>
+  updateBoard: (
+    accountId: string,
+    boardId: string,
+    changes: Partial<Pick<BoardRow, 'name' | 'paper' | 'searchText' | 'updatedAt'>>,
+  ) =>
     attempt(() =>
       db
         .update(boards)

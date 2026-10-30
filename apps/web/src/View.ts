@@ -18,6 +18,7 @@ import * as BoardsView from './page/BoardsView.ts'
 import * as ReviewView from './page/ReviewView.ts'
 import * as LooksView from './page/LooksView.ts'
 import * as LookView from './page/LookView.ts'
+import * as ProfileEditorView from './page/ProfileEditorView.ts'
 import { accountView } from './page/AccountView.ts'
 import * as LoginView from './page/LoginView.ts'
 import * as PieceView from './page/PieceView.ts'
@@ -195,6 +196,7 @@ const titleKey = AppRoute.match<MessageKey>({
   Review: () => 'scan.toReview',
   Looks: () => 'looks.title',
   Look: () => 'looks.title',
+  Profile: () => 'profile.editor.title',
   Ask: () => 'ask.title',
   Boards: () => 'boards.title',
   Board: () => 'boards.title',
@@ -213,6 +215,7 @@ const sectionOf = AppRoute.match<Section | undefined>({
   Piece: () => 'wardrobe',
   Looks: () => 'wardrobe',
   Look: () => 'wardrobe',
+  Profile: () => 'you',
   Ask: () => 'ask',
   Boards: () => 'boards',
   Board: () => 'boards',
@@ -350,6 +353,15 @@ const looksPage = (model: Model, h: HtmlBuilder<Message>): Html =>
     toParentMessage: (message) => Message.GotLooksMessage({ message }),
   })
 
+const profilePage = (model: Model, h: HtmlBuilder<Message>): Html =>
+  h.submodel({
+    slotId: 'profile',
+    model: model.profile,
+    view: ProfileEditorView.view,
+    viewInputs: { locale: model.context.locale },
+    toParentMessage: (message) => Message.GotProfileMessage({ message }),
+  })
+
 const lookPage = (model: Model, h: HtmlBuilder<Message>): Html =>
   h.submodel({
     slotId: 'look',
@@ -451,6 +463,7 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
         Review: () => reviewPage(model, h),
         Looks: () => looksPage(model, h),
         Look: () => lookPage(model, h),
+        Profile: () => profilePage(model, h),
         Ask: () => askPage(model, h),
         Boards: () => boardsPage(model, h),
         Board: () => boardPage(model, h),

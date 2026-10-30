@@ -18,6 +18,8 @@ export const AppRoute = defineRouteUnion({
   /** Sign-in for an assistant's connection: success returns to the OAuth authorization. */
   LoginForConnection: {},
   Account: {},
+  /** The person's public profile, edited. */
+  Profile: {},
   Wardrobe: {},
   AddPieces: {},
   /** Pieces found in the person's photos and videos, waiting for them to keep or drop. */
@@ -41,6 +43,7 @@ export const homeRouter = pipe(root, mapTo(AppRoute.Home))
 export const loginRouter = pipe(literal('login'), mapTo(AppRoute.Login))
 const loginForConnectionRouter = pipe(literal('login'), slash(literal('connect')), mapTo(AppRoute.LoginForConnection))
 export const accountRouter = pipe(literal('account'), mapTo(AppRoute.Account))
+export const profileRouter = pipe(literal('profile'), mapTo(AppRoute.Profile))
 export const wardrobeRouter = pipe(literal('wardrobe'), mapTo(AppRoute.Wardrobe))
 export const addPiecesRouter = pipe(literal('wardrobe'), slash(literal('add')), mapTo(AppRoute.AddPieces))
 export const reviewRouter = pipe(literal('wardrobe'), slash(literal('review')), mapTo(AppRoute.Review))
@@ -66,6 +69,7 @@ const parser = oneOf(
   loginForConnectionRouter,
   loginRouter,
   accountRouter,
+  profileRouter,
   addPiecesRouter,
   reviewRouter,
   pieceRouter,
@@ -96,6 +100,7 @@ export const routeFromPathname = (pathname: string): AppRoute =>
 /** Pages that only make sense signed in. */
 export const needsSession = (route: AppRoute) =>
   AppRoute.guards.Account(route) ||
+  AppRoute.guards.Profile(route) ||
   AppRoute.guards.Wardrobe(route) ||
   AppRoute.guards.AddPieces(route) ||
   AppRoute.guards.Review(route) ||
@@ -121,6 +126,7 @@ export const tabOf = AppRoute.match<Option.Option<Tab>>({
   Account: () => Option.some('Account'),
   Login: () => Option.none(),
   LoginForConnection: () => Option.none(),
+  Profile: () => Option.none(),
   AddPieces: () => Option.none(),
   Review: () => Option.none(),
   Piece: () => Option.none(),
