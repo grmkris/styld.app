@@ -10,6 +10,23 @@ export interface Mask {
   readonly raster: Uint8Array
 }
 
+/** Whether `mask` covers a picture's pixel at `column`, `row`. */
+const covers = (mask: Mask, column: number, row: number) =>
+  (mask.raster[(row - mask.bounds.top) * (mask.bounds.right - mask.bounds.left) + column - mask.bounds.left] ?? 0) !== 0
+
+/** How much of `mask` `other` covers too (0–1): the share of its pixels inside both. */
+export const overlapShare = (mask: Mask, other: Mask) => {
+  const inside = mask.raster.reduce((sum, value) => sum + (value === 0 ? 0 : 1), 0)
+  if (inside === 0) return 0
+  let shared = 0
+  const right = Math.min(mask.bounds.right, other.bounds.right)
+  const bottom = Math.min(mask.bounds.bottom, other.bounds.bottom)
+  for (let row = Math.max(mask.bounds.top, other.bounds.top); row < bottom; row++)
+    for (let column = Math.max(mask.bounds.left, other.bounds.left); column < right; column++)
+      if (covers(mask, column, row) && covers(other, column, row)) shared++
+  return shared / inside
+}
+
 /** Decode a PNG a provider made. One that does not decode is the provider's failure, and trying the same
  * picture again would fail the same way. */
 export const decodedPng = (bytes: Uint8Array) =>
