@@ -1,4 +1,4 @@
-import { Effect, Predicate, Redacted, Schedule, Schema } from 'effect'
+import { Effect, Option, Predicate, Redacted, Schedule, Schema } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
 import { type CaptureMetrics, counted, prices } from './Metrics.ts'
 import { type Picture, ProviderFailed, ProviderOutcomeUnknown, type TurnRequest, type TurnStatus } from './Providers.ts'
@@ -89,6 +89,27 @@ const videoOf = (settings: VeoSettings, video: typeof Video.Type) =>
         catch: () => failed(true),
       }).pipe(Effect.timeoutOrElse({ duration: '60 seconds', orElse: () => Effect.fail(failed(true)) }))
 
+const GatewayError = Schema.Struct({ error: Schema.Struct({ type: Schema.String }) })
+
+/** A refused request, with its status and the gateway's error type on the span (both bounded, neither secret): the
+ * only way to tell a key the gateway turned down from a request it could not take. */
+const refusal = (response: Response) =>
+  Effect.gen(function* () {
+    const body = yield* Effect.tryPromise(() => response.json()).pipe(Effect.orElseSucceed(() => undefined))
+    const type = Schema.decodeUnknownOption(GatewayError)(body).pipe(Option.map(({ error }) => error.type.slice(0, 40)))
+    yield* Effect.annotateCurrentSpan({
+      'styld.provider.status': response.status,
+      'styld.provider.error': Option.getOrElse(type, () => 'unknown'),
+    })
+    yield* Effect.logWarning('Styld.Turn refused').pipe(
+      Effect.annotateLogs({
+        'styld.provider.status': response.status,
+        'styld.provider.error': Option.getOrElse(type, () => 'unknown'),
+      }),
+    )
+    return yield* failed(retryableStatus(response.status))
+  })
+
 const outcomeOf = (error: ProviderFailed | ProviderOutcomeUnknown) =>
   Predicate.isTagged(error, 'ProviderOutcomeUnknown') ? ('unknown' as const) : ('failed' as const)
 
@@ -99,9 +120,7 @@ export const makeVeoGenerator = (settings: VeoSettings) => ({
   model,
   start: Effect.fn('Styld.Turn.start')(function* (request: TurnRequest) {
     const send = post(settings, 'start', startBody(request)).pipe(
-      Effect.flatMap((response) =>
-        response.ok ? json(response) : Effect.fail(failed(retryableStatus(response.status))),
-      ),
+      Effect.flatMap((response) => (response.ok ? json(response) : refusal(response))),
       Effect.flatMap((answer) => Schema.decodeUnknownEffect(Started)(answer).pipe(Effect.mapError(unknown))),
       Effect.map(({ operation }) => operation),
     )
