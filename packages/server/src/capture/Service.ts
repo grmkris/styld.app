@@ -5,11 +5,19 @@ import { CaptureMetrics } from './Metrics.ts'
 import { type CaptureBindings, makeParts } from './Parts.ts'
 import { CaptureConfig } from './Policy.ts'
 import { processing } from './Processing.ts'
-import { GarmentSegmenter, GarmentVision, PictureWork } from './Providers.ts'
+import { picturing } from './Pictures.ts'
+import { GarmentSegmenter, GarmentVision, ImageGenerator, PictureWork } from './Providers.ts'
 import { detectionPictures, reviewing } from './Review.ts'
 import { Usage } from './Usage.ts'
 
-type Requirements = GarmentVision | PictureWork | GarmentSegmenter | Usage | CaptureConfig | CaptureMetrics
+type Requirements =
+  | GarmentVision
+  | PictureWork
+  | GarmentSegmenter
+  | ImageGenerator
+  | Usage
+  | CaptureConfig
+  | CaptureMetrics
 
 /** Every capture operation, with the providers, metering and policy it was built with. Callers provide
  * only `CurrentAccount` (for a person's operations). */
@@ -28,6 +36,7 @@ const make = (bindings: CaptureBindings) =>
       ...reviewing(parts),
       ...detectionPictures(parts),
       ...processing(parts),
+      ...picturing(parts),
     }
     return {
       createCapture: bound(operations.createCapture),
@@ -40,6 +49,8 @@ const make = (bindings: CaptureBindings) =>
       detectionPicture: bound(operations.detectionPicture),
       processCapture: bound(operations.processCapture),
       failCapture: bound(operations.failCapture),
+      processPicture: bound(operations.processPicture),
+      failPicture: bound(operations.failPicture),
     }
   })
 

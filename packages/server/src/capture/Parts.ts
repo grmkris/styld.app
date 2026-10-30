@@ -58,6 +58,16 @@ export const writeObject = (parts: Parts, key: string, bytes: Uint8Array, conten
     catch: unavailable,
   }).pipe(Effect.asVoid)
 
+/** Where a piece's clean picture lives: a new name for each drawing, so a cached old one is never served. */
+export const pictureKey = (accountId: string, pieceId: string, version: number) =>
+  `${accountPrefix(accountId)}pieces/${pieceId}/clean-${version}.png`
+
+/** Tell the queue a piece's clean picture is waiting to be drawn. */
+export const enqueuePicture = (parts: Parts, pieceId: string) =>
+  Effect.tryPromise({ try: () => parts.bindings.queue.send({ cleanPictureOf: pieceId }), catch: unavailable }).pipe(
+    Effect.asVoid,
+  )
+
 /** Tell the queue a capture is ready to process. */
 export const enqueueCapture = (parts: Parts, captureId: string) =>
   Effect.tryPromise({ try: () => parts.bindings.queue.send({ captureId }), catch: unavailable }).pipe(Effect.asVoid)

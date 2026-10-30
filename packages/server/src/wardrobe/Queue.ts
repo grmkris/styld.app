@@ -18,7 +18,7 @@ export const settleMessage = (
   services: {
     readonly wardrobe: Wardrobe['Service']
     readonly lifecycle: AccountLifecycle['Service']
-    readonly captures: Pick<Captures['Service'], 'processCapture' | 'failCapture'>
+    readonly captures: Pick<Captures['Service'], 'processCapture' | 'failCapture' | 'processPicture' | 'failPicture'>
   },
   message: Cloudflare.Queues.Message,
 ) => {
@@ -44,6 +44,11 @@ export const settleMessage = (
         return work(services.wardrobe.processPiece(body.pieceId), services.wardrobe.failPiece(body.pieceId))
       if ('captureId' in body)
         return work(services.captures.processCapture(body.captureId), services.captures.failCapture(body.captureId))
+      if ('cleanPictureOf' in body)
+        return work(
+          services.captures.processPicture(body.cleanPictureOf),
+          services.captures.failPicture(body.cleanPictureOf),
+        )
       return services.lifecycle.finishDeletion(body.finishDeletionOf).pipe(
         Effect.as<Outcome>('ack'),
         Effect.catchCause((cause) => Effect.as(logged(cause), 'retry' as const)),

@@ -1,5 +1,5 @@
 import type { Category, Colour, Subcategory } from '@styld/protocol'
-import { Context, type Effect, type Option, Schema } from 'effect'
+import { Context, Effect, type Option, Schema } from 'effect'
 import type { Found } from './SamStream.ts'
 
 /** A picture handed to a provider: Styld's own re-encoded copy, never the person's original file. */
@@ -150,10 +150,21 @@ export interface DrawRequest {
   readonly hint: Option.Option<string>
 }
 
-/** An image model that draws a clean product picture of a garment from its cut-out (Meta Muse Image by default).
- * A refusal it did not bill fails with `ProviderFailed`; an answer lost after it took the work is unknown, so the
- * picture is never drawn twice on its own. */
+/** An image model that draws a clean product picture of a garment from its cut-out (Meta Muse Image by default),
+ * named as each picture records it. A refusal it did not bill fails with `ProviderFailed`; an answer lost after it
+ * took the work is unknown, so the picture is never drawn twice on its own. */
 export class ImageGenerator extends Context.Service<
   ImageGenerator,
-  { readonly draw: (request: DrawRequest) => Effect.Effect<Picture, ProviderFailed | ProviderOutcomeUnknown> }
->()('@styld/server/ImageGenerator') {}
+  {
+    readonly provider: string
+    readonly model: string
+    readonly draw: (request: DrawRequest) => Effect.Effect<Picture, ProviderFailed | ProviderOutcomeUnknown>
+  }
+>()('@styld/server/ImageGenerator') {
+  /** No image model: every drawing is refused, so pieces keep their photos. */
+  static readonly off = {
+    provider: 'off',
+    model: 'off',
+    draw: () => Effect.fail(new ProviderFailed({ provider: 'off', retryable: false })),
+  }
+}

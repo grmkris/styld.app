@@ -11,6 +11,7 @@ export {
   looks,
   oauthGrants,
   operationReceipts,
+  piecePictures,
   pieces,
   uploads,
   wornPieces,

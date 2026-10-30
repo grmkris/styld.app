@@ -58,6 +58,8 @@ export default Alchemy.Stack(
         DAILY_ALLOWANCE: '100',
         META_API_BASE: 'https://api.meta.ai',
         META_API_KEY: yield* Config.Redacted('META_MUSE_API_KEY'),
+        // Clean pictures of kept cut-outs (docs/ROADMAP.md › Clean pictures): Clef judges, Meta Muse Image draws.
+        CLEAN_PICTURES: 'muse',
       },
     })
     return { url: edge.url.as<string>() }

@@ -10,8 +10,11 @@ export const FinishAccountDeletion = Schema.Struct({ finishDeletionOf: Schema.St
 /** Queue message: cut a photo or video into the pieces waiting in the tray. */
 export const ProcessCapture = Schema.Struct({ captureId: Schema.String })
 
+/** Queue message: draw a kept piece's clean picture, or carry on with one a delivery left. */
+export const CleanPicture = Schema.Struct({ cleanPictureOf: Schema.String })
+
 /** Every message the Worker's queue carries. */
-export const WorkMessage = Schema.Union([ProcessPiece, FinishAccountDeletion, ProcessCapture])
+export const WorkMessage = Schema.Union([ProcessPiece, FinishAccountDeletion, ProcessCapture, CleanPicture])
 export type WorkMessage = typeof WorkMessage.Type
 
 /** The cut-out step could not produce an image this time; the queue retries it. */

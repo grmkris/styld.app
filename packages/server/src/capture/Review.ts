@@ -10,7 +10,8 @@ import {
 import { DateTime, Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { CaptureMetrics, type ReviewDecision } from './Metrics.ts'
-import { type Parts, storedAs, unavailable } from './Parts.ts'
+import { enqueuePicture, type Parts, storedAs, unavailable } from './Parts.ts'
+import { CaptureConfig } from './Policy.ts'
 import type { DetectionRow } from './Store.ts'
 
 const decodeReviewed = Schema.decodeUnknownEffect(Schema.fromJsonString(Reviewed))
@@ -48,6 +49,29 @@ const pieceOf = (
     updatedAt: at,
   }
 }
+
+/** A clean picture waiting to be drawn for each kept piece shown as its cut-out, when an image model is set. A piece
+ * kept as its original photo never leaves Styld. */
+const picturesFor = (pieces: ReadonlyArray<ReturnType<typeof pieceOf>>, at: Date) =>
+  Effect.gen(function* () {
+    if ((yield* CaptureConfig).pictures.generator === 'off') return []
+    return pieces
+      .filter(({ imageKey, originalKey }) => imageKey !== originalKey)
+      .map(({ id, accountId }) => ({
+        pieceId: id,
+        accountId,
+        state: 'queued' as const,
+        version: 0,
+        createdAt: at,
+        updatedAt: at,
+      }))
+  })
+
+/** Hand pictures to the queue: after the batch that stored them, and again for those still waiting when the same
+ * review is replayed, so a send lost between the two is made up. The job draws a picture once however often it is
+ * sent. */
+const sendPictures = (parts: Parts, pieceIds: ReadonlyArray<string>) =>
+  Effect.forEach(pieceIds, (pieceId) => enqueuePicture(parts, pieceId), { discard: true })
 
 /** Where each detection came from: its source photo's content type (the person's own upload for a photo
  * capture, a sampled JPEG still for a video) and how its capture was routed and cut, for keep rates. */
@@ -105,10 +129,12 @@ export const reviewing = (parts: Parts) => ({
     const { accountId } = yield* CurrentAccount
     const inputDigest = yield* parts.digest(JSON.stringify([input.keep, input.discard]))
     const receipt = yield* storedAs(parts.wardrobeStore.findReceipt(accountId, input.operationId))
-    if (Option.isSome(receipt))
-      return receipt.value.inputDigest === inputDigest
-        ? yield* decodeReviewed(receipt.value.result).pipe(Effect.orDie)
-        : yield* OperationConflict.make({})
+    if (Option.isSome(receipt)) {
+      if (receipt.value.inputDigest !== inputDigest) return yield* OperationConflict.make({})
+      const reviewed = yield* decodeReviewed(receipt.value.result).pipe(Effect.orDie)
+      yield* sendPictures(parts, yield* storedAs(parts.store.waitingPictures(reviewed.pieceIds)))
+      return reviewed
+    }
     const ids: ReadonlyArray<string> = [...input.keep.map(({ detectionId }) => detectionId), ...input.discard]
     const found = yield* storedAs(parts.store.detections(accountId, ids))
     const open = new Map(found.filter(({ status }) => status === 'review').map((row) => [row.id, row]))
@@ -122,12 +148,14 @@ export const reviewing = (parts: Parts) => ({
       detection === undefined ? [] : [pieceOf(accountId, pieceId, detection, typeOf(detection), keep, at)],
     )
     const pieceIds = pieces.map(({ id }) => id)
+    const pictures = yield* picturesFor(pieces, at)
     yield* storedAs(
       parts.store.review({
         pieces,
         kept: kept.map(({ keep, pieceId }) => ({ detectionId: keep.detectionId, pieceId })),
         discarded: input.discard,
         finished: yield* finishedCaptures(parts, found, ids),
+        pictures,
         receipt: {
           accountId,
           operationId: input.operationId,
@@ -140,6 +168,10 @@ export const reviewing = (parts: Parts) => ({
       }),
     )
     yield* countDecisions(input, open, originOf)
+    yield* sendPictures(
+      parts,
+      pictures.map(({ pieceId }) => pieceId),
+    )
     return { pieceIds: pieceIds.map((id) => PieceId.make(id)) }
   }),
 })

@@ -1,4 +1,4 @@
-import { captureFrames, captures, detections, operationReceipts, pieces, uploads } from '@styld/db'
+import { captureFrames, captures, detections, operationReceipts, piecePictures, pieces, uploads } from '@styld/db'
 import { and, desc, eq, inArray, isNull, ne, or } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Array, Effect, Option } from 'effect'
@@ -9,6 +9,9 @@ export type FrameRow = typeof captureFrames.$inferSelect
 export type DetectionRow = typeof detections.$inferSelect
 type PieceRow = typeof pieces.$inferSelect
 type ReceiptRow = typeof operationReceipts.$inferSelect
+export type PictureRow = typeof piecePictures.$inferSelect
+export type PictureState = PictureRow['state']
+type NewPicture = typeof piecePictures.$inferInsert
 
 const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: () => StoreUnavailable.make({}) })
 const first = <A>(rows: ReadonlyArray<A>) => Option.fromNullishOr(rows[0])
@@ -286,6 +289,8 @@ const reviewRows = (db: Database) => ({
     readonly kept: ReadonlyArray<{ readonly detectionId: string; readonly pieceId: string }>
     readonly discarded: ReadonlyArray<string>
     readonly finished: ReadonlyArray<string>
+    /** Clean pictures to draw for the kept pieces, queued with them. */
+    readonly pictures: ReadonlyArray<NewPicture>
     readonly receipt: ReceiptRow
     readonly now: Date
   }) =>
@@ -293,6 +298,7 @@ const reviewRows = (db: Database) => ({
       db.batch([
         db.insert(operationReceipts).values(input.receipt),
         ...input.pieces.map((piece) => db.insert(pieces).values(piece)),
+        ...input.pictures.map((picture) => db.insert(piecePictures).values(picture)),
         ...input.kept.map(({ detectionId, pieceId }) =>
           db
             .update(detections)
@@ -322,9 +328,42 @@ const reviewRows = (db: Database) => ({
 
 /** Captures and their detections in D1. Reads and writes for a person name their account; the queue's
  * reads name only the capture it was handed. */
+/** Pieces' clean pictures. Only the picture job and the person's choice write them, and every write moves a picture
+ * on only from a state it was read in, so two deliveries of one message never both draw it. */
+const pictureRows = (db: Database) => ({
+  findPicture: (pieceId: string) =>
+    attempt(() => db.select().from(piecePictures).where(eq(piecePictures.pieceId, pieceId)).limit(1)).pipe(
+      Effect.map(first),
+    ),
+  /** Move a picture on from one of `from`, with `changes`; whether it moved. */
+  movePicture: (pieceId: string, from: ReadonlyArray<PictureState>, changes: Partial<PictureRow>) =>
+    attempt(() =>
+      db
+        .update(piecePictures)
+        .set(changes)
+        .where(and(eq(piecePictures.pieceId, pieceId), inArray(piecePictures.state, [...from])))
+        .returning({ pieceId: piecePictures.pieceId }),
+    ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** The pieces among `pieceIds` whose picture still waits for the queue. */
+  waitingPictures: (pieceIds: ReadonlyArray<string>) =>
+    readIn(pieceIds, (chunk) =>
+      db
+        .select({ pieceId: piecePictures.pieceId })
+        .from(piecePictures)
+        .where(and(inArray(piecePictures.pieceId, chunk), eq(piecePictures.state, 'queued'))),
+    ).pipe(Effect.map((rows) => rows.map(({ pieceId }) => pieceId))),
+})
+
 export const makeCaptureStore = (database: Parameters<typeof drizzle>[0]) => {
   const db = drizzle(database)
-  return { ...captureRows(db), ...trayRows(db), ...pairRows(db), ...reviewRows(db), ...transitionRows(db) }
+  return {
+    ...captureRows(db),
+    ...trayRows(db),
+    ...pairRows(db),
+    ...reviewRows(db),
+    ...transitionRows(db),
+    ...pictureRows(db),
+  }
 }
 
 export type CaptureStore = ReturnType<typeof makeCaptureStore>

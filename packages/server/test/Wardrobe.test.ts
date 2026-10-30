@@ -62,7 +62,7 @@ const services = (
         failPiece: (pieceId) => Effect.sync(() => failed.push(pieceId)).pipe(Effect.andThen(failPiece)),
       }),
       lifecycle: { deleteAccount: notUsed, finishDeletion: () => Effect.void } satisfies AccountLifecycle['Service'],
-      captures: { processCapture: notUsed, failCapture: notUsed },
+      captures: { processCapture: notUsed, failCapture: notUsed, processPicture: notUsed, failPicture: notUsed },
     },
   }
 }
@@ -97,6 +97,26 @@ describe('the processing queue', () => {
     const junk = message({ unexpected: true })
     await Effect.runPromise(settleMessage(services(Effect.void).services, junk.message))
     expect(junk.settled).toEqual(['ack'])
+  })
+
+  test('hands a clean picture to the picture job, and gives it up after the last attempt', async () => {
+    const seen: Array<string> = []
+    const busy = {
+      ...services(Effect.void).services,
+      captures: {
+        processCapture: notUsed,
+        failCapture: notUsed,
+        processPicture: (pieceId: string) =>
+          Effect.sync(() => seen.push(`draw ${pieceId}`)).pipe(Effect.andThen(Effect.fail('busy'))),
+        failPicture: (pieceId: string) => Effect.sync(() => seen.push(`give up ${pieceId}`)),
+      },
+    }
+    const first = message({ cleanPictureOf: 'pc_1' }, 1)
+    await Effect.runPromise(settleMessage(busy, first.message))
+    const last = message({ cleanPictureOf: 'pc_1' }, processingAttempts)
+    await Effect.runPromise(settleMessage(busy, last.message))
+    expect([first.settled, last.settled]).toEqual([['retry'], ['ack']])
+    expect(seen).toEqual(['draw pc_1', 'draw pc_1', 'give up pc_1'])
   })
 })
 

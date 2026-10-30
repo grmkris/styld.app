@@ -60,6 +60,8 @@ const outcomeOf = (error: ProviderFailed | ProviderOutcomeUnknown) =>
 /** Meta Muse Image as Styld's image generator. A request that was sent but got no answer may have been drawn and
  * billed, so it is unknown and never resent. */
 export const makeMuseGenerator = (settings: MuseSettings) => ({
+  provider: 'meta-muse',
+  model,
   draw: Effect.fn('Styld.Picture.draw')(function* (request: DrawRequest) {
     const send = Effect.tryPromise({
       try: (signal) =>

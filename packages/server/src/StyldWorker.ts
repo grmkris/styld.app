@@ -30,7 +30,8 @@ import { makeGarmentSegmenter } from './capture/Meta.ts'
 import { type AnalyticsDataset, analyticsEngine, CaptureMetrics as CaptureMetricsService } from './capture/Metrics.ts'
 import { pieceCutout } from './capture/PieceCutout.ts'
 import { CaptureConfig, capturePolicy } from './capture/Policy.ts'
-import { GarmentSegmenter, GarmentVision, PictureWork } from './capture/Providers.ts'
+import { makeMuseGenerator } from './capture/Muse.ts'
+import { GarmentSegmenter, GarmentVision, ImageGenerator, PictureWork } from './capture/Providers.ts'
 import { Captures, makeCaptures } from './capture/Service.ts'
 import { Usage } from './capture/Usage.ts'
 import { DomainLive } from './DomainLive.ts'
@@ -80,7 +81,7 @@ const perClientLimit = (name: string, namespaceId: number, limit: number) =>
 const storageServices = <R>(
   bindings: WardrobeBindings,
   providers: Layer.Layer<
-    GarmentVision | PictureWork | GarmentSegmenter | Usage | CaptureConfig | CaptureMetricsService,
+    GarmentVision | PictureWork | GarmentSegmenter | ImageGenerator | Usage | CaptureConfig | CaptureMetricsService,
     never,
     R
   >,
@@ -121,20 +122,21 @@ const captureProviders = (
   const metrics = analyticsEngine(runtime.dataset, runtime.origin)
   const apiKey: unknown = env.META_API_KEY
   const apiBase: unknown = env.META_API_BASE
+  const meta = {
+    apiBase: typeof apiBase === 'string' && apiBase.length > 0 ? apiBase : 'https://api.meta.ai',
+    apiKey: Redacted.make(typeof apiKey === 'string' ? apiKey : ''),
+    fetch: (input: string, init: RequestInit) => globalThis.fetch(input, init),
+    metrics,
+  }
   return Layer.mergeAll(
     Layer.succeed(CaptureConfig, policy),
     Layer.succeed(GarmentVision, makeGarmentVision(runtime.runClef, metrics)),
     Layer.succeed(PictureWork, makePictureWork(runtime.images, metrics)),
     Layer.succeed(
       GarmentSegmenter,
-      makeGarmentSegmenter({
-        apiBase: typeof apiBase === 'string' && apiBase.length > 0 ? apiBase : 'https://api.meta.ai',
-        apiKey: Redacted.make(typeof apiKey === 'string' ? apiKey : ''),
-        fetch: (input, init) => globalThis.fetch(input, init),
-        readVideo: async (key) => (await runtime.bucket.get(key))?.body ?? null,
-        metrics,
-      }),
+      makeGarmentSegmenter({ ...meta, readVideo: async (key) => (await runtime.bucket.get(key))?.body ?? null }),
     ),
+    Layer.succeed(ImageGenerator, policy.pictures.generator === 'muse' ? makeMuseGenerator(meta) : ImageGenerator.off),
     Usage.layer(policy.dailyAllowance),
     Layer.succeed(CaptureMetricsService, metrics),
   )
