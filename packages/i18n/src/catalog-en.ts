@@ -2409,7 +2409,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'assistantView.openInStyld': 'Open in Styld',
   'capture.addTitle': 'Add pieces',
   'capture.addHint':
-    'Photos, or a video along your rail of up to 15 minutes. Every piece is cut out for you to keep or drop.',
+    'Photos, or a video of up to 15 minutes: film from about a metre away and move slowly, so each piece is whole in the frame. Every piece is cut out for you to keep or drop.',
   'capture.chooseTitle': 'Photos or a video',
   'capture.chooseHint': 'From your library',
   'capture.notSupported': "{name} isn't a photo or video Styld can use",
@@ -2432,6 +2432,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.failed': "This one couldn't be processed. Its credit is back.",
   'capture.unknown': "This one stopped halfway. Trying again won't cost anything.",
   'capture.empty': 'No clothes found here.',
+  'capture.emptyVideo':
+    'No whole garment in this part of the video. Film from about a metre away and move slowly, so each piece fits in the frame.',
   'capture.remove': 'Remove',
   'capture.keepLabel': 'Keep {name}',
   'capture.useOriginal': 'Use the original photo',

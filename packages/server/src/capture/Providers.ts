@@ -32,6 +32,9 @@ export interface Suggestion {
   readonly confidence: number
   readonly subcategory: Subcategory | undefined
   readonly colours: ReadonlyArray<Colour>
+  /** How likely the piece is one whole garment, shown completely, rather than part of one, several, or not
+   * clothing (0–1). */
+  readonly whole: number
 }
 
 /** The camera's question: is one garment being held up, which side shows, is it the last one again? */

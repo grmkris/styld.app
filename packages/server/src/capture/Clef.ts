@@ -66,6 +66,32 @@ const ask = (
     },
   )
 
+/** What the decision model is asked about each cut-out piece. */
+const suggestQuestions = {
+  category: { type: 'choice', instructions: 'What is this piece?', criteria: categoryCriteria },
+  subcategory: {
+    type: 'choice',
+    instructions: 'Which kind of piece is it most precisely?',
+    criteria: Object.fromEntries(Subcategory.literals.map((name) => [name, name.replaceAll('_', ' ')])),
+  },
+  colour: { type: 'choice', instructions: 'What is its main colour?', criteria: colourCriteria },
+  secondColour: {
+    type: 'choice',
+    instructions: 'Does it have a clear second colour? Pick none if not.',
+    criteria: { ...colourCriteria, none: 'No second colour' },
+  },
+  whole: {
+    type: 'choice',
+    instructions: 'What does this cut-out show?',
+    criteria: {
+      whole: 'One whole garment, shown completely',
+      part: 'Part of a garment: cut off, mostly hidden, or a thin strip',
+      several: 'More than one garment together',
+      notGarment: 'Not clothing',
+    },
+  },
+}
+
 const state = 'A person photographed clothes to add them to their wardrobe.'
 
 /** Clef-flash as Styld's decision model: route a photo, suggest a piece's details, confirm a held garment. */
@@ -96,20 +122,7 @@ export const makeGarmentVision = (run: RunClef, metrics: CaptureMetrics['Service
       model: 'clef-flash',
       state: 'One piece cut out of a photo of clothes.',
       images: [imageOf(picture)],
-      questions: {
-        category: { type: 'choice', instructions: 'What is this piece?', criteria: categoryCriteria },
-        subcategory: {
-          type: 'choice',
-          instructions: 'Which kind of piece is it most precisely?',
-          criteria: Object.fromEntries(Subcategory.literals.map((name) => [name, name.replaceAll('_', ' ')])),
-        },
-        colour: { type: 'choice', instructions: 'What is its main colour?', criteria: colourCriteria },
-        secondColour: {
-          type: 'choice',
-          instructions: 'Does it have a clear second colour? Pick none if not.',
-          criteria: { ...colourCriteria, none: 'No second colour' },
-        },
-      },
+      questions: suggestQuestions,
     })
     return suggestionOf(answer)
   }),
@@ -172,5 +185,10 @@ const suggestionOf = (answer: Answer): Suggestion => {
     confidence,
     subcategory: Option.getOrUndefined(subcategory),
     colours: [...Option.toArray(main), ...Option.toArray(second)],
+    // An answer without the question offers the piece as before, preselected.
+    whole: Option.match(choiceOf(answer, 'whole'), {
+      onNone: () => 0.5,
+      onSome: ({ probabilities }) => probabilities['whole'] ?? 0,
+    }),
   }
 }

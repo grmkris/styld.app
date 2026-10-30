@@ -2450,7 +2450,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'assistantView.openInStyld': 'Odpri v Styldu',
   'capture.addTitle': 'Dodaj kose',
   'capture.addHint':
-    'Fotografije ali video vzdolž obešalnika do 15 minut. Vsak kos izrežemo, ti pa ga obdržiš ali zavržeš.',
+    'Fotografije ali video do 15 minut: snemaj z razdalje približno enega metra in počasi, da je vsak kos ves v kadru. Vsak kos izrežemo, ti pa ga obdržiš ali zavržeš.',
   'capture.chooseTitle': 'Fotografije ali video',
   'capture.chooseHint': 'Iz tvoje galerije',
   'capture.notSupported': '{name} ni fotografija ali video, ki ga Styld lahko uporabi',
@@ -2476,6 +2476,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.failed': 'Tega ni bilo mogoče obdelati. Kredit je vrnjen.',
   'capture.unknown': 'Ta se je ustavil na pol poti. Nov poskus ne stane nič.',
   'capture.empty': 'Tukaj ni najdenih oblačil.',
+  'capture.emptyVideo':
+    'V tem delu videa ni celega oblačila. Snemaj z razdalje približno enega metra in počasi, da je vsak kos ves v kadru.',
   'capture.remove': 'Odstrani',
   'capture.keepLabel': 'Obdrži {name}',
   'capture.useOriginal': 'Uporabi izvirno fotografijo',

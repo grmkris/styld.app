@@ -2729,7 +2729,7 @@
   },
   "capture": {
     "addTitle": "Dodaj kose",
-    "addHint": "Fotografije ali video vzdolž obešalnika do 15 minut. Vsak kos izrežemo, ti pa ga obdržiš ali zavržeš.",
+    "addHint": "Fotografije ali video do 15 minut: snemaj z razdalje približno enega metra in počasi, da je vsak kos ves v kadru. Vsak kos izrežemo, ti pa ga obdržiš ali zavržeš.",
     "chooseTitle": "Fotografije ali video",
     "chooseHint": "Iz tvoje galerije",
     "notSupported": "{name} ni fotografija ali video, ki ga Styld lahko uporabi",
@@ -2754,6 +2754,7 @@
     "failed": "Tega ni bilo mogoče obdelati. Kredit je vrnjen.",
     "unknown": "Ta se je ustavil na pol poti. Nov poskus ne stane nič.",
     "empty": "Tukaj ni najdenih oblačil.",
+    "emptyVideo": "V tem delu videa ni celega oblačila. Snemaj z razdalje približno enega metra in počasi, da je vsak kos ves v kadru.",
     "remove": "Odstrani",
     "keepLabel": "Obdrži {name}",
     "useOriginal": "Uporabi izvirno fotografijo",

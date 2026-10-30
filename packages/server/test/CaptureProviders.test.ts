@@ -6,7 +6,7 @@ import { pngSize } from '../src/capture/CloudflareImages.ts'
 import { bestSightings, frameAt, type SampledStill } from '../src/capture/FrameRanking.ts'
 import { makeGarmentSegmenter } from '../src/capture/Meta.ts'
 import { analyticsEngine, CaptureMetrics } from '../src/capture/Metrics.ts'
-import { cutterFor } from '../src/capture/PhotoPipeline.ts'
+import { cutterFor, verdictOf } from '../src/capture/PhotoPipeline.ts'
 import { type Box, cutOut, decodePng, encodePng, fitMask, opaqueBounds, type Rgba } from '../src/capture/Pixels.ts'
 import { lineFrame, lineFrameSize, makeOutputLines, stillMasks, videoMasks } from '../src/capture/SamStream.ts'
 import {
@@ -252,11 +252,19 @@ describe('Clef-flash', () => {
           subcategory: chose('long_sleeve', 0.7),
           colour: chose('navy', 0.6),
           secondColour: chose('white', 0.4),
+          whole: chose('part', 0.7),
         },
       }).suggest(picture),
     )
     expect(suggestion).toEqual(
-      Exit.succeed({ category: 'bottom', confidence: 0.8, subcategory: undefined, colours: ['navy', 'white'] }),
+      Exit.succeed({
+        category: 'bottom',
+        confidence: 0.8,
+        subcategory: undefined,
+        colours: ['navy', 'white'],
+        // `chose` gives only the chosen answer a probability, so "whole" has none.
+        whole: 0,
+      }),
     )
   })
 
@@ -287,6 +295,17 @@ describe('photo routing', () => {
     expect(cutterFor('picker', { garments: 'several', confidence: 0.9 }, policy)).toBe('sam')
     expect(cutterFor('picker', { garments: 'none', confidence: 0.9 }, policy)).toBe('none')
     expect(cutterFor('picker', { garments: 'none', confidence: 0.5 }, policy)).toBe('sam')
+  })
+
+  test('a whole garment is preselected, part of one offered unticked, and a scrap dropped', () => {
+    expect([0.95, 0.5, 0.49, 0.2, 0.19, 0].map(verdictOf)).toEqual([
+      'preselect',
+      'preselect',
+      'offer',
+      'offer',
+      'drop',
+      'drop',
+    ])
   })
 
   test('a camera shot goes to SAM even as one garment: background removal would keep the person', () => {

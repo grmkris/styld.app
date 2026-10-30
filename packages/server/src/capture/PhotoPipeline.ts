@@ -71,7 +71,15 @@ const heldPiece = (pieces: ReadonlyArray<CutPiece>, width: number, height: numbe
   )
 }
 
-/** Store each cut-out and ask the decision model about it, as detections waiting in the tray. */
+/** What happens to a cut-out, by how likely the decision model thinks it is one whole garment. On the owner's
+ * real captures (2026-10-30: a rail filmed close up, a try-on video, held-up shots, a drawn rail; 119 cut-outs),
+ * every usable piece scored at least 0.5 and nearly all scraps, slivers and cut-off pieces under 0.2.
+ * @internal Exported for its tests. */
+export const verdictOf = (whole: number): 'drop' | 'offer' | 'preselect' =>
+  whole < 0.2 ? 'drop' : whole < 0.5 ? 'offer' : 'preselect'
+
+/** Ask the decision model about each cut-out and store the ones worth showing, as detections waiting in the
+ * tray: a whole garment preselected, part of one offered unticked, a scrap dropped. */
 export const detectionsOf = (
   parts: Parts,
   capture: CaptureRow,
@@ -83,12 +91,14 @@ export const detectionsOf = (
     pieces,
     (piece) =>
       Effect.gen(function* () {
+        const small = yield* (yield* PictureWork).thumbnail(piece.png, 512)
+        const suggestion = yield* (yield* GarmentVision).suggest({ bytes: small, contentType: 'image/webp' })
+        const verdict = verdictOf(suggestion.whole)
+        if (verdict === 'drop') return []
         const id = yield* parts.randomId('dt')
         const key = captureKey(capture.accountId, capture.id, `${id}.png`)
         yield* writeObject(parts, key, piece.png, 'image/png')
-        const small = yield* (yield* PictureWork).thumbnail(piece.png, 512)
-        const suggestion = yield* (yield* GarmentVision).suggest({ bytes: small, contentType: 'image/webp' })
-        return {
+        const detection = {
           id,
           captureId: capture.id,
           accountId: capture.accountId,
@@ -98,16 +108,17 @@ export const detectionsOf = (
           backCutoutKey: null,
           track: piece.track,
           confidence: piece.confidence,
-          preselected: preselect(piece) && suggestion.category !== undefined,
+          preselected: preselect(piece) && suggestion.category !== undefined && verdict === 'preselect',
           suggestedCategory: suggestion.category ?? null,
           suggestedSubcategory: suggestion.subcategory ?? null,
           suggestedColours: suggestion.colours,
           pieceId: null,
           createdAt: capture.createdAt,
         } satisfies DetectionRow
+        return [detection]
       }),
     { concurrency: 4 },
-  )
+  ).pipe(Effect.map((found) => found.flat()))
 
 /** A detection that keeps the original photo: providers off, or nothing could be cut out. */
 export const originalOnly = (parts: Parts, capture: CaptureRow, sourceKey: string) =>

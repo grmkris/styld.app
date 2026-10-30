@@ -576,6 +576,7 @@ export interface MessageArgumentsByKey<T = string> {
   'capture.chooseTitle': Readonly<Record<string, never>>
   'capture.done': Readonly<Record<string, never>>
   'capture.empty': Readonly<Record<string, never>>
+  'capture.emptyVideo': Readonly<Record<string, never>>
   'capture.failed': Readonly<Record<string, never>>
   'capture.finding': Readonly<Record<string, never>>
   'capture.foundTitle': { readonly count: number }
@@ -2396,4 +2397,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'bc600e03152a704223cef8e997298ff087cdc7f9f1441bd72db754819b8a5dc8'
+export const catalogVersion = '7b4a266ccd8ea967af50d79ba26d6f6b0b907ace54ca5bae360079dda0cd4db3'

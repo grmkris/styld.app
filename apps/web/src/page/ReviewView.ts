@@ -113,8 +113,9 @@ const pendingTile = (capture: TrayCapture, locale: Locale, h: HtmlBuilder<Messag
 const notice = (capture: TrayCapture, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const busy = model.acting.includes(capture.id)
   const canRetry = capture.status === 'failed' || capture.status === 'unknown'
-  const text =
-    capture.status === 'unknown' ? 'capture.unknown' : capture.status === 'failed' ? 'capture.failed' : 'capture.empty'
+  // A video part with nothing whole in it was most likely filmed too close: say how to film it.
+  const empty = capture.source === 'video' ? 'capture.emptyVideo' : 'capture.empty'
+  const text = capture.status === 'unknown' ? 'capture.unknown' : capture.status === 'failed' ? 'capture.failed' : empty
   return h.keyed('div')(capture.id, styled(h, styles.notice()), [
     h.p([], [format(locale, text, {})]),
     model.actionFailed.includes(capture.id)
