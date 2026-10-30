@@ -10,6 +10,7 @@ import { looksRouter, pieceRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { Deletion, Message, type Model, Sharing, Shown } from './Look.ts'
 import { publicToggle } from './PublicToggle.ts'
+import * as PeopleView from './PeopleView.ts'
 import { byline, pieceTile, tileGrid } from './PublicTiles.ts'
 import * as SaveToBoardView from './SaveToBoardView.ts'
 import { round } from './PageBar.styles.ts'
@@ -78,6 +79,13 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
           h.h1([], [page.look.name]),
           page.look.occasion === null ? h.empty : h.p(styled(h, styles.lede()), [page.look.occasion]),
           byline(page.by, locale, h),
+          h.submodel({
+            slotId: 'look-people',
+            model: model.people,
+            view: PeopleView.view,
+            viewInputs: { locale },
+            toParentMessage: (message) => Message.GotPeopleMessage({ message }),
+          }),
           tileGrid(
             page.look.pieces.map((piece) => ({ id: piece.id, tile: pieceTile(piece, locale, h) })),
             h,

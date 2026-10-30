@@ -55,10 +55,13 @@ describe('what a visitor does with someone', () => {
       update,
       given(init(Subject.Piece({ pieceId }))),
       message(Message.ClickedSave({ saved: true })),
-      Command.resolve(SetSaved({ pieceId, saved: true }), Message.SucceededSetSaved({ saved: true })),
+      Command.resolve(
+        SetSaved({ subject: Subject.Piece({ pieceId }), saved: true }),
+        Message.SucceededSetSaved({ saved: true }),
+      ),
       model(({ saved }) => expect(saved).toBe(true)),
       message(Message.ClickedSave({ saved: false })),
-      Command.resolve(SetSaved({ pieceId, saved: false }), Message.FailedPeopleWork()),
+      Command.resolve(SetSaved({ subject: Subject.Piece({ pieceId }), saved: false }), Message.FailedPeopleWork()),
       model(({ saved, work }) => {
         expect(saved).toBe(true)
         expect(Work.guards.Failed(work)).toBe(true)

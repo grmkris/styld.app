@@ -12,6 +12,7 @@ import {
   PublicBoard,
   Visibility,
 } from '@styld/protocol'
+import * as People from '../People.ts'
 import * as WardrobePage from '../Wardrobe.ts'
 import { Option, Schema } from 'effect'
 import { AsyncData } from 'foldkit'
@@ -139,6 +140,8 @@ export const Model = Schema.Struct({
   publishing: Publishing,
   /** The board's moods for Explore, as last saved. */
   moods: Schema.Array(Mood),
+  /** Saving and reporting it, when it is someone else's. */
+  people: People.Model,
   /** The sheet that pins pieces and looks, and what is ticked in it (`piece:<id>`, `look:<id>`). */
   picker: Dialog.Model,
   picks: Schema.Array(Schema.String),
@@ -182,6 +185,7 @@ export const init = (boardId: string): Model => ({
   check: Option.none(),
   publishing: Publishing.Idle(),
   moods: [],
+  people: People.init(People.Subject.Board({ boardId })),
   picker: Dialog.init({ id: 'board-picker' }),
   picks: [],
   looks: AsyncData.Idle(),

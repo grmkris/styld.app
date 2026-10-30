@@ -1,4 +1,4 @@
-import { Handle, PieceId, Relation, ReportReason, reportNoteLength } from '@styld/protocol'
+import { BoardId, Handle, LookId, PieceId, Relation, ReportReason, reportNoteLength } from '@styld/protocol'
 import { Effect, Option, Predicate, Schema } from 'effect'
 import { Command, type Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
@@ -12,7 +12,12 @@ import { StyldClient } from '../StyldClient.ts'
 // MODEL
 
 /** Whose page this is: a person by handle, or one of their pieces. */
-export const Subject = defineTaggedUnion({ Person: { handle: Schema.String }, Piece: { pieceId: Schema.String } })
+export const Subject = defineTaggedUnion({
+  Person: { handle: Schema.String },
+  Piece: { pieceId: Schema.String },
+  Board: { boardId: Schema.String },
+  Look: { lookId: Schema.String },
+})
 export type Subject = typeof Subject.Type
 
 /** Where the visitor stands with the person, once read; unknown signed out. */
@@ -119,14 +124,44 @@ export const SetBlocked = Command.define('SetBlocked', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedPeopleWork())),
 })
 
+/** What a save is of: a piece, a look or a board; a person is followed, not saved. */
+const saveTargetOf = (subject: Subject) =>
+  Subject.match(subject, {
+    Person: () => Effect.fail('person' as const),
+    Piece: ({ pieceId }) =>
+      Effect.map(Schema.decodeUnknownEffect(PieceId)(pieceId), (id) => ({ _tag: 'SavedPiece' as const, pieceId: id })),
+    Board: ({ boardId }) =>
+      Effect.map(Schema.decodeUnknownEffect(BoardId)(boardId), (id) => ({ _tag: 'SavedBoard' as const, boardId: id })),
+    Look: ({ lookId }) =>
+      Effect.map(Schema.decodeUnknownEffect(LookId)(lookId), (id) => ({ _tag: 'SavedLook' as const, lookId: id })),
+  })
+
+/** What a report is about. */
+const reportTargetOf = (subject: Subject) =>
+  Subject.match(subject, {
+    Person: ({ handle }) => Effect.map(handleOf(handle), (id) => ({ _tag: 'ReportedProfile' as const, handle: id })),
+    Piece: ({ pieceId }) =>
+      Effect.map(Schema.decodeUnknownEffect(PieceId)(pieceId), (id) => ({
+        _tag: 'ReportedPiece' as const,
+        pieceId: id,
+      })),
+    Board: ({ boardId }) =>
+      Effect.map(Schema.decodeUnknownEffect(BoardId)(boardId), (id) => ({
+        _tag: 'ReportedBoard' as const,
+        boardId: id,
+      })),
+    Look: ({ lookId }) =>
+      Effect.map(Schema.decodeUnknownEffect(LookId)(lookId), (id) => ({ _tag: 'ReportedLook' as const, lookId: id })),
+  })
+
 /** @internal Exported for its tests. */
 export const SetSaved = Command.define('SetSaved', {
-  args: { pieceId: Schema.String, saved: Schema.Boolean },
+  args: { subject: Subject, saved: Schema.Boolean },
   messages: [Message.SucceededSetSaved, Message.FailedPeopleWork],
-  execute: ({ pieceId, saved }) =>
+  execute: ({ subject, saved }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
-      const target = { _tag: 'SavedPiece' as const, pieceId: yield* Schema.decodeUnknownEffect(PieceId)(pieceId) }
+      const target = yield* saveTargetOf(subject)
       const answer = yield* api.social.setSaved({ payload: { target, saved } })
       return Message.SucceededSetSaved({ saved: answer.saved })
     }).pipe(Effect.orElseSucceed(() => Message.FailedPeopleWork())),
@@ -139,9 +174,7 @@ export const SendReport = Command.define('SendReport', {
   execute: ({ subject, reason, note }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
-      const target = Subject.guards.Person(subject)
-        ? { _tag: 'ReportedProfile' as const, handle: yield* handleOf(subject.handle) }
-        : { _tag: 'ReportedPiece' as const, pieceId: yield* Schema.decodeUnknownEffect(PieceId)(subject.pieceId) }
+      const target = yield* reportTargetOf(subject)
       const words = note.trim().slice(0, reportNoteLength)
       yield* api.social.report({ payload: { target, reason, ...(words.length > 0 ? { note: words } : {}) } })
       return Message.SucceededReport()
@@ -195,9 +228,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       model: modifyFields(model, { standing: () => Standing.Known({ relation }), work: () => Work.Idle() }),
     }),
     ClickedSave: ({ saved }) =>
-      Subject.guards.Piece(model.subject)
-        ? sending(model, SetSaved({ pieceId: model.subject.pieceId, saved }))
-        : { model },
+      Subject.guards.Person(model.subject) ? { model } : sending(model, SetSaved({ subject: model.subject, saved })),
     SucceededSetSaved: ({ saved }) => ({ model: modifyFields(model, { saved: () => saved, work: () => Work.Idle() }) }),
     FailedPeopleWork: () => ({ model: modifyFields(model, { work: () => Work.Failed() }) }),
     ClickedReport: () => ({

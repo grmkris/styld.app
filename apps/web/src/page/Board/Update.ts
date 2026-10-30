@@ -36,6 +36,7 @@ import {
 import { Message } from './Message.ts'
 import { BoardState, fromBoard, LookSave, type Model, Saving, Upload } from './Model.ts'
 import { pageSteps } from './Page.ts'
+import * as People from '../People.ts'
 
 /** The Commands that open the board: the board, the wardrobe for the tray, and a first batch of ids. */
 export const load = (model: Model): ReadonlyArray<Command.Command<Message, never, Services>> => [
@@ -49,6 +50,13 @@ const foldWardrobe = Update.foldChild({
   read: (model: Model) => Option.some(model.wardrobe),
   write: (model: Model, wardrobe: WardrobePage.Model) => modifyFields(model, { wardrobe: () => wardrobe }),
   toParentMessage: (message: WardrobePage.Message) => Message.GotWardrobeMessage({ message }),
+})
+
+const foldPeople = Update.foldChild({
+  update: People.update,
+  read: (model: Model) => Option.some(model.people),
+  write: (model: Model, people: People.Model) => modifyFields(model, { people: () => people }),
+  toParentMessage: (message: People.Message) => Message.GotPeopleMessage({ message }),
 })
 
 const foldDrop = Update.foldChild({
@@ -77,6 +85,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       model: modifyFields(model, { board: () => BoardState.Visiting({ board }) }),
     }),
     GotWardrobeMessage: (got) => foldWardrobe(model, got.message),
+    GotPeopleMessage: (got) => foldPeople(model, got.message),
     CompletedMakeIds: ({ ids }) => ({ model: modifyFields(model, { ids: (pool) => [...pool, ...ids] }) }),
     MeasuredPaper: ({ width }) => ({ model: modifyFields(model, { pxPerUnit: () => unitsPerPixel(width) }) }),
     PressedItem: ({ id, pointer, isTouch }) => pressedItem(model, id, pointer, isTouch),

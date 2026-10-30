@@ -7,9 +7,14 @@ import * as styles from './PageView.styles.ts'
 import { fromPublic, stillTable } from './Table.ts'
 
 /** A public board as others see it: its name and whose it is, its collage, then the pins they may see. */
-export const visitingView = <Message>(board: PublicBoard, locale: Locale, h: HtmlBuilder<Message>): Html =>
+export const visitingView = <Message>(
+  board: PublicBoard,
+  actions: Html,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html =>
   h.div(styled(h, styles.page()), [
-    h.header(styled(h, styles.head()), [h.h1([], [board.name]), byline(board.by, locale, h)]),
+    h.header(styled(h, styles.head()), [h.h1([], [board.name]), byline(board.by, locale, h), actions]),
     board.items.length === 0
       ? h.empty
       : h.div(styled(h, styles.collage()), [stillTable(board.items, board.paper, [], h, fromPublic)]),

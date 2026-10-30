@@ -287,7 +287,6 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   - Evidence: story tests for follow, block, save and the report flow; scene tests for the visitor's actions and the
     sign-in link.
   - Open:
-    - Save and Report on a visitor's board and look pages;
     - the Save motion into Boards;
     - lists of who one follows and blocked on the website (the API and the tools have them);
     - a browser walk of following and the feed.
@@ -336,6 +335,8 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
 - **People and boards in Ask:** once typing pauses (or on a suggestion), Ask also searches people and public
   boards on the server and shows them under "In your wardrobe" as People and Boards. An answer for a query since
   changed is dropped. Evidence: Ask stories for the search and a stale answer.
+- **Save and Report on others' boards and looks:** a visitor's board and look pages carry Save (into Saved from
+  others) and Report board or Report look, through the same actions as a piece's page. Evidence: the visitor scenes.
 - **Next:** gate, land and deploy M5; then the open items above, then M6 (the wishlist and Add from a link).
 - **Shared with the capture session:** migrations are generated one at a time; public delivery reuses its rule for a
   piece's shown picture; generated pictures reuse its Muse provider.

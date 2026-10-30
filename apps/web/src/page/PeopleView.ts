@@ -94,6 +94,17 @@ const reportForm = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html
       ),
   })
 
+/** Save something someone else made public, and report it. */
+const saveAndReport = (model: Model, report: string, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
+  toggle(
+    format(locale, model.saved ? 'people.saved' : 'feed.save', {}),
+    model.saved,
+    Message.ClickedSave({ saved: !model.saved }),
+    h,
+  ),
+  button(report, Message.ClickedReport(), h),
+]
+
 /** Follow and block a person, or ask to sign in first. */
 const personActions = (model: Model, handle: string, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>
   Standing.match(model.standing, {
@@ -150,15 +161,9 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
       styled(h, styles.actions()),
       Subject.match(model.subject, {
         Person: ({ handle }) => personActions(model, handle, locale, h),
-        Piece: () => [
-          toggle(
-            format(locale, model.saved ? 'people.saved' : 'feed.save', {}),
-            model.saved,
-            Message.ClickedSave({ saved: !model.saved }),
-            h,
-          ),
-          button(format(locale, 'safety.report.piece', {}), Message.ClickedReport(), h),
-        ],
+        Piece: () => saveAndReport(model, format(locale, 'safety.report.piece', {}), locale, h),
+        Board: () => saveAndReport(model, format(locale, 'safety.report.board', {}), locale, h),
+        Look: () => saveAndReport(model, format(locale, 'safety.report.look', {}), locale, h),
       }),
     ),
     Work.guards.Sending(model.work) ? h.p([h.Role('status')], [loader(h)]) : h.empty,

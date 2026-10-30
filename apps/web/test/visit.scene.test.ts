@@ -119,6 +119,8 @@ describe('a public profile', () => {
       expect(role('link', { name: /By Nika Kovač/ })).toHaveAttr('href', '/@nika.kovac'),
       expect(role('link', { name: 'Navy knit' })).toHaveAttr('href', `/pieces/${knit.id}`),
       expect(role('button', { name: 'Board settings' })).toBeAbsent(),
+      expect(role('button', { name: 'Save' })).toHaveAttr('aria-pressed', 'false'),
+      expect(role('button', { name: 'Report board' })).toExist(),
     )
     const page = Schema.decodeUnknownSync(PublicLookPage)({
       look: {
@@ -141,6 +143,7 @@ describe('a public profile', () => {
       expect(text('Office')).toExist(),
       expect(role('link', { name: 'Navy knit' })).toHaveAttr('href', `/pieces/${knit.id}`),
       expect(role('button', { name: 'Delete' })).toBeAbsent(),
+      expect(role('button', { name: 'Report look' })).toExist(),
     )
   })
 

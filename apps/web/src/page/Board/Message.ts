@@ -11,6 +11,7 @@ import {
   PublicBoard,
   TextStyle,
 } from '@styld/protocol'
+import * as People from '../People.ts'
 import * as WardrobePage from '../Wardrobe.ts'
 import { Schema } from 'effect'
 import { File } from 'foldkit'
@@ -100,6 +101,7 @@ export const Message = defineMessageUnion({
   SucceededRename: { board: Board },
   FailedRename: {},
   ToggledPublic: { isPublic: Schema.Boolean },
+  GotPeopleMessage: { message: People.Message },
   ToggledMood: { mood: Mood },
   SucceededSetMoods: { board: Board },
   FailedSetMoods: {},

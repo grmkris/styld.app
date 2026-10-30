@@ -10,6 +10,7 @@ import { textField } from '../../Fields.styles.ts'
 import { addIcon, backIcon, checkIcon, closeIcon, editIcon, loader } from '../../Icon.ts'
 import { boardCollageRouter, boardsRouter, lookRouter, pieceRouter } from '../../route.ts'
 import { styled } from '../../Styled.ts'
+import * as PeopleView from '../PeopleView.ts'
 import { publicToggle } from '../PublicToggle.ts'
 import { bottomSheet } from '../Sheet.ts'
 import { Message } from './Message.ts'
@@ -411,6 +412,13 @@ const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: 
 
 /** A board's page: its collage as a card that opens the editor, then its pins, newest first. */
 export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) => {
-  const visiting = (board: PublicBoard) => visitingView(board, locale, h)
+  const actions = h.submodel({
+    slotId: 'board-people',
+    model: model.people,
+    view: PeopleView.view,
+    viewInputs: { locale },
+    toParentMessage: (message) => Message.GotPeopleMessage({ message }),
+  })
+  const visiting = (board: PublicBoard) => visitingView(board, actions, locale, h)
   return boardStateView(model.board, (name, paper) => readyView(model, name, paper, locale, h), locale, h, visiting)
 })
