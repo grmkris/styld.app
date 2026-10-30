@@ -140,6 +140,29 @@ routing, following Foldkit's own website. Other pages keep full loads.
     - Ask's full load is held under 0.02.
   - **Bundle:** the first load is now 300,211 of 307,200 gzip bytes, and the Dialog is most of this commit's growth.
     About 7 KB of headroom is left; the next large addition needs a lazy chunk or a budget decision.
+- **Preview release `1e15f12` and the walk on it:**
+  - **Deploys.** All three Workers updated, nothing else in the plan:
+    - worker `3f6c0900-b480-43dd-b921-821f185c05b5` (version `11d879ac-5c89-4aa1-a8b3-d902b216bc57`);
+    - website `94fa13e0-c5fa-48ca-adcd-c455bc7d8888` (version `56961a02-5825-4f57-ae26-9ea8765b7bbe`);
+    - edge `450859cb-8be2-46c7-8084-b6f927e43e97` (version `1454b02f-6275-4b00-8534-9082de72f741`).
+  - **Readback.** Health reports release `1e15f127…`. `tools/preview.native.test.ts` passes 3/3, including the new
+    check that the preloaded font, the entry script and the Anton file are served `public, max-age=31536000,
+    immutable`.
+  - **The walk.** The same walk as the first measurement: headless Chromium, 375×812, Slovenian, a real emailed
+    code. It ran on a normal connection, then on Slow 4G with 4× CPU.
+    - Every tab tap stays in the page, with 0 layout shift, settling in 53–335ms.
+    - The title is always at 72px, and focus is on it.
+    - Full loads of Home, Ask and Wardrobe shift 0 on both connections.
+    - Before: Home 0.37, Boards 0.16, Ask 0.10 (all full reloads).
+    - Typing a search moves the stylist card down under the results (0.11). That is a direct response to typing;
+      left as is.
+  - **Thumbnails.**
+    - One Cable knit thumbnail failed once after an in-page tap; a probe right after found every `/cdn` image
+      answering 200.
+    - Thumbnails are `private, no-cache`, so a full load revalidates each one, and Home's table fills in after it
+      settles. Serving versioned thumbnails as immutable is the follow-up.
+  - **`Referer`.** The app's logs never record it. Whether Cloudflare's invocation logs keep it (it now carries
+    `?q=` for requests from Ask) is unverified. If they do, documents should send `strict-origin`.
 - **A flaky native test, not ours:** twice tonight the MCP OAuth acceptance answered 500 from
   `/test/identity/disable-mcp` with `D1_ERROR: database is locked: SQLITE_BUSY` in local workerd. Each time it passed
   on a rerun with no change.
