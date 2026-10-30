@@ -1,6 +1,6 @@
 # Delivery status
 
-Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `42baae7`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `4f6815f`, with clean pictures and the boards' pins). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
 
 ## Clean pictures, milestone A — 2026-10-30
 
@@ -52,10 +52,23 @@ source; a clean picture is a marked drawing beside it.
   - A credit held for a piece deleted before its drawing ends stays held for that day.
   - Pictures share the capture queue: a large backfill delays captures by minutes. The plan's remedy is a
     separate queue.
+- **Preview** (release `4f6815f`, deployed after a full gate: unit 324, native 21, initial bundle 311,187 gzip):
+  `/api/health` reports the release and the deployed acceptance passes (3 tests). On the preview test account,
+  with real providers:
+  - **The first keep:** a kept tee was judged ready (Clef 0.73, face 0.012) and stayed as its photo after 7.7 s.
+  - **A redraw with a hint:** Muse drew in 9.8 s ($0.01). The drawing was keyed on green and checked: same 0.26,
+    faithful 0.34, so it was dropped, its file deleted and the credit refunded (allowance unchanged at 36). That
+    is the right call for this fixture, a flat illustration of a tee that Muse draws as a photographed one; the
+    spike recorded the same pair at 0.28.
+  - **Analytics Engine** has `call.meta-muse.draw`, `call.clef.judge`/`compare`, `picture.kept-real` and
+    `picture.rejected`.
+  - **Workers Logs** for the hour show `Styld.Picture` spans and no `data:image`, `b64_json` or hint text.
 - **Open:**
-  - Preview deploy and readback: a real keep, the owner's backfill, the `piece_pictures` rows,
-    `call.meta-muse.draw` and logs with no images or hints.
+  - A drawing shown or offered on a real photographed garment: the owner's backfill (about $0.21 for 21 pieces,
+    the owner's tap).
   - The owner's phone test.
+  - Whether a paid redraw scored under 0.5 should be offered instead of dropped. The spike found Clef scores
+    repaired garments low even when they look right.
   - Milestone B, the 5-credit turn, waits for Styld's own Vercel AI Gateway key.
   - Milestone C, scanning by video with one card per garment.
 
