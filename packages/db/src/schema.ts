@@ -330,6 +330,87 @@ export const wornPieces = sqliteTable(
   ],
 )
 
+/** A piece's clean picture: an image model's drawing of the garment from its kept cut-out, checked against it
+ * (owner, 2026-10-30). One row per piece, written only by the picture job and the person's choice; the real
+ * photo on the piece is never replaced. `state` moves only from the state it was read in. */
+export const piecePictures = sqliteTable(
+  'piece_pictures',
+  {
+    pieceId: text('piece_id')
+      .primaryKey()
+      .references(() => pieces.id, { onDelete: 'cascade' }),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    state: text('state', {
+      enum: ['queued', 'generating', 'checking', 'ready', 'proposed', 'rejected', 'retake', 'kept-real', 'failed'],
+    }).notNull(),
+    /** What the person chose to show; none follows the state (ready shows the drawing, proposed the photo). */
+    shown: text('shown', { enum: ['clean', 'photo'] }),
+    /** The keyed drawing, `accounts/<a>/pieces/<id>/clean-<version>.png`. */
+    cleanKey: text('clean_key'),
+    /** Counts drawings: each redraw is the next version, and image URLs carry it. */
+    version: integer('version').notNull(),
+    keyColour: text('key_colour', { enum: ['green', 'magenta'] }),
+    provider: text('provider'),
+    model: text('model'),
+    /** The decision model's verdict on the cut-out, and its answers about the drawing (0–1). */
+    judge: text('judge', { enum: ['ready', 'improve', 'repair', 'fragment'] }),
+    judgeConfidence: real('judge_confidence'),
+    face: real('face'),
+    same: real('same'),
+    faithful: real('faithful'),
+    /** The person's own words on a redraw, sent with the prompt; never logged. */
+    hint: text('hint'),
+    /** A redraw's credit reservation, settled when the drawing ends. */
+    hold: text('hold'),
+    /** When a delivery claimed the drawing; a claim older than the queue's patience is an unknown outcome. */
+    claimedAt: integer('claimed_at', { mode: 'timestamp_ms' }),
+    errorCode: text('error_code'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [index('piece_pictures_account').on(table.accountId)],
+)
+
+/** A piece's turn: its clean picture on a hanger turning a quarter-turn, made on request for credits (owner,
+ * 2026-10-30). The video model's job is kept as `operation` before polling; the phone packs the video's frames
+ * into `sheetKey`, laid out as `layout` says. */
+export const pieceTurns = sqliteTable(
+  'piece_turns',
+  {
+    pieceId: text('piece_id')
+      .primaryKey()
+      .references(() => pieces.id, { onDelete: 'cascade' }),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    state: text('state', {
+      enum: ['requested', 'anchoring', 'generating', 'video-ready', 'ready', 'rejected', 'failed'],
+    }).notNull(),
+    hold: text('hold'),
+    provider: text('provider'),
+    model: text('model'),
+    operation: text('operation', { mode: 'json' }),
+    videoKey: text('video_key'),
+    sheetKey: text('sheet_key'),
+    layout: text('layout', { mode: 'json' }).$type<{
+      readonly frames: number
+      readonly columns: number
+      readonly width: number
+      readonly height: number
+      readonly pivot: readonly [number, number]
+    }>(),
+    colour: real('colour'),
+    print: real('print'),
+    same: real('same'),
+    errorCode: text('error_code'),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [index('piece_turns_account').on(table.accountId)],
+)
+
 export const appSchema = {
   accounts,
   authAttemptBuckets,
@@ -348,4 +429,6 @@ export const appSchema = {
   boardImages,
   boardItems,
   wornPieces,
+  piecePictures,
+  pieceTurns,
 }
