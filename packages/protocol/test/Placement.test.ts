@@ -1,16 +1,20 @@
 import { Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 import {
+  arranged,
   type BoardItem,
   BoardItemId,
   boardHeight,
   boardWidth,
+  landed,
   landing,
   PieceId,
   PieceItem,
   piecesOnTable,
   raised,
   stepped,
+  TableLabel,
+  TablePiece,
   TextItem,
   tidied,
 } from '../src/index.ts'
@@ -84,5 +88,29 @@ describe('the stack', () => {
   test('a look made from the table lists its pieces from the top down', () => {
     const items = [piece('a', 1), label('t', 3), piece('b', 2)]
     expect(piecesOnTable(items)).toEqual([pieceId('b'), pieceId('a')])
+  })
+})
+
+describe('an assistant laying out a table', () => {
+  test('a piece lands like one tapped in the editor, and a label lands across the middle', () => {
+    const items = laidOut(2)
+    const tapped = landed(items, TablePiece.make({ pieceId: pieceId('new') }), itemId('new'))
+    expect(tapped).toMatchObject({ _tag: 'PieceItem', pieceId: pieceId('new'), x: 320, y: 860, size: 380, z: 3 })
+    const headline = landed(items, TableLabel.make({ text: 'Rain', style: 'headline' }), itemId('rain'))
+    expect(headline).toMatchObject({ _tag: 'TextItem', text: 'Rain', x: boardWidth / 2, y: 860 })
+  })
+
+  test('an outfit layout puts things in an outfit’s places in stacking order, keeping their sizes', () => {
+    const items = [piece('b', 2), piece('a', 1), label('t', 3)]
+    const outfit = arranged(items, 'outfit')
+    expect(outfit.map(({ id }) => id)).toEqual([itemId('a'), itemId('b'), itemId('t')])
+    expect(outfit.map(({ x, y }) => [x, y])).toEqual([
+      [290, 320],
+      [720, 300],
+      [boardWidth / 2, 860],
+    ])
+    expect(outfit.every(({ size }) => size === 400)).toBe(true)
+    expect(arranged(items, 'keep')).toBe(items)
+    expect(arranged(items, 'tidy')).toEqual(tidied(items))
   })
 })

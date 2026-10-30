@@ -1,5 +1,14 @@
-import { type Piece, PieceId, PieceNotFound, PictureRefused, type RedrawPicture } from '@styld/protocol'
-import { Effect, Option } from 'effect'
+import {
+  type ArrangeBoard,
+  Board,
+  BoardVersionConflict,
+  type Piece,
+  PieceId,
+  PieceNotFound,
+  PictureRefused,
+  type RedrawPicture,
+} from '@styld/protocol'
+import { Effect, Option, Schema } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
 import { describe, expect, test } from 'vitest'
 import { CurrentAccount } from '../src/CurrentAccount.ts'
@@ -10,6 +19,8 @@ import type { D1 } from '../src/OAuth.ts'
 import { challenge, hostedClientMetadata, redirectUriAllowed } from '../src/mcp/Policy.ts'
 import { Wardrobe } from '../src/wardrobe/Wardrobe.ts'
 import { Looks } from '../src/looks/Looks.ts'
+import { Boards } from '../src/boards/Boards.ts'
+import { toolNames } from './ToolNames.ts'
 
 const accountRow = { displayName: 'Ana Novak', email: 'ana@example.com' }
 const database: D1 = {
@@ -79,7 +90,58 @@ const captures = {
       return { state: 'drawing' as const, shows: 'photo' as const, version: 1 }
     }),
 }
-const tools = styldTools(database, 'https://styld.test', { wardrobe, looks, captures }, offline)
+/** Boards: one board, an arrangement that records what it was asked, and a table that was saved meanwhile. */
+const board = Schema.decodeUnknownSync(Board)({
+  id: `bd_${'autumn'.padEnd(22, 'x')}`,
+  name: 'Autumn',
+  paper: 'sage',
+  version: 3,
+  items: [
+    {
+      _tag: 'PieceItem',
+      id: `bi_${'knit'.padEnd(22, 'x')}`,
+      pieceId: pieces[0]?.id,
+      x: 300,
+      y: 320,
+      size: 380,
+      turn: 0,
+      z: 1,
+      flipped: false,
+    },
+    {
+      _tag: 'TextItem',
+      id: `bi_${'rain'.padEnd(22, 'x')}`,
+      text: 'Rain',
+      style: 'headline',
+      x: 500,
+      y: 600,
+      size: 360,
+      turn: 0,
+      z: 2,
+      flipped: false,
+    },
+  ],
+  pins: [
+    { _tag: 'PiecePin', id: `pn_${'knit'.padEnd(22, 'x')}`, piece: pieces[0], addedAt: '2026-10-30T08:00:00.000Z' },
+  ],
+  updatedAt: '2026-10-30T08:00:00.000Z',
+})
+const arrangements: Array<ArrangeBoard> = []
+const boards = Boards.of({
+  listBoards: () => Effect.succeed([]),
+  getBoard: () => Effect.succeed(board),
+  createBoard: notUsed,
+  updateBoard: notUsed,
+  deleteBoard: notUsed,
+  saveBoardItems: notUsed,
+  arrangeBoard: (_boardId, input) => Effect.sync(() => arrangements.push(input)).pipe(Effect.as(board)),
+  setTable: () => Effect.fail(BoardVersionConflict.make({ version: 4 })),
+  addPins: notUsed,
+  removePins: notUsed,
+  addBoardImage: notUsed,
+  boardImage: notUsed,
+})
+const tools = styldTools(database, 'https://styld.test', { wardrobe, looks, captures, boards }, offline)
 /** The JSON of a result's first text block. */
 const jsonOf = (result: {
   readonly content: ReadonlyArray<{ readonly type: string; readonly text?: string }>
@@ -103,21 +165,7 @@ describe('MCP tools', () => {
         annotations: { title: 'Your Styld account', readOnlyHint: true, openWorldHint: false },
       },
     ])
-    expect(list.map(({ name }) => name)).toEqual([
-      'account_get',
-      'piece_search',
-      'piece_get',
-      'upload_create',
-      'piece_add',
-      'piece_update',
-      'piece_delete',
-      'wardrobe_show',
-      'look_create',
-      'look_list',
-      'look_get',
-      'look_delete',
-      'picture_redraw',
-    ])
+    expect(list.map(({ name }) => name)).toEqual(toolNames)
     expect(list.find(({ name }) => name === 'piece_delete')?.annotations).toMatchObject({ destructiveHint: true })
     for (const entry of list) {
       expect(entry.name).toMatch(/^[a-z]+_[a-z]+$/)
@@ -160,6 +208,62 @@ describe('MCP tools', () => {
     // Nothing loads from the network: no external script, stylesheet or font.
     expect(html).not.toMatch(/<script[^>]+src=|<link[^>]+href=|@import|url\(https?:/)
     expect(readResource('ui://styld/other.html')).toBeUndefined()
+  })
+
+  test('lays out a collage from flat things, each one exactly one of a piece, a picture or a label', async () => {
+    const knit = pieces[0]?.id ?? ''
+    const result = await call('collage_arrange', {
+      boardId: board.id,
+      operationId: 'arrange-0001',
+      layout: 'outfit',
+      add: [{ pieceId: knit }, { text: 'Rain', style: 'headline' }],
+    })
+    expect(result.structuredContent).toMatchObject({ id: board.id, url: `https://styld.test/boards/${board.id}` })
+    expect(arrangements.at(-1)).toEqual({
+      operationId: 'arrange-0001',
+      layout: 'outfit',
+      add: [
+        { _tag: 'TablePiece', pieceId: knit },
+        { _tag: 'TableLabel', text: 'Rain', style: 'headline' },
+      ],
+    })
+    const twice = await call('collage_arrange', {
+      boardId: board.id,
+      operationId: 'arrange-0002',
+      layout: 'keep',
+      add: [{ pieceId: knit, text: 'Rain' }],
+    })
+    expect(jsonOf(twice)).toMatchObject({ code: 'invalid_arguments', retryable: false })
+    expect(arrangements).toHaveLength(1)
+  })
+
+  test('shows a board in the Styld view: its collage, its pins and their pictures, out of the model’s context', async () => {
+    const entry = renderTools(tools).find(({ name }) => name === 'board_show')
+    expect(entry).toMatchObject({ _meta: { ui: { resourceUri: viewsUri } } })
+    const result = await call('board_show', { boardId: board.id })
+    const knit = pieces[0]?.id ?? ''
+    expect(result.structuredContent).toMatchObject({
+      _tag: 'BoardView',
+      name: 'Autumn',
+      paper: 'sage',
+      url: `https://styld.test/boards/${board.id}`,
+      pins: [{ name: 'Navy cable knit', image: `piece:${knit}`, url: `https://styld.test/wardrobe/${knit}` }],
+      labels: { en: { pinned: 'Pinned', openInStyld: 'Open in Styld' }, sl: { pinned: 'V zbirki' } },
+    })
+    expect(result).toHaveProperty('_meta', {
+      'styld/images': { [`piece:${knit}`]: `data:image/webp;base64,${btoa('webp')}` },
+    })
+  })
+
+  test('tells the assistant to read the board again when its collage changed meanwhile', async () => {
+    const result = await call('collage_set', {
+      boardId: board.id,
+      operationId: 'set-000001',
+      version: 3,
+      items: [{ text: 'Rain', x: 500, y: 600, size: 360 }],
+    })
+    expect(result.isError).toBe(true)
+    expect(jsonOf(result)).toMatchObject({ code: 'version_conflict', retryable: true })
   })
 
   test('answers with the account as text and structured content', async () => {

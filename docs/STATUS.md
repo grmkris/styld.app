@@ -98,7 +98,26 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   - **Bundle:** the owner's one raise for this iteration lifts the first-load budget from 307,200 to 368,640 gzip
     bytes (`tools/bundle-check.ts`). Measured with the board page: 309,017 first load, 568,360 all assets, 1,582,534 SSR
     source bytes.
-- **Next:** "Add to a board" from a piece and a look, then MCP board tools (M2).
+  - "Save to board" from a piece's page and a look's page (`2012c66`): the person's boards with their pin counts, or a
+    new one by name; v1's reviewed `saveToBoard.*` copy.
+  - **Preview:** deployed by the capture session at `4f6815f` after a green full gate (native 21/21, the board walk
+    included); `/api/health` reports that release; D1 holds `board_pins`.
+- **M2, assistants make boards (built, not yet deployed):**
+  - Tools: `board_list`, `board_get`, `board_create`, `board_update`, `board_delete`, `pin_add`, `pin_remove`,
+    `picture_pin` (a picture from a public https address, through the same guarded import as `piece_add`),
+    `collage_arrange` (things added where they land, then `keep`, `tidy` or `outfit`) and `collage_set` (an exact
+    table from the version read). Every change replays by operation id.
+  - The Boards service gains `arrangeBoard` (it reads the board as it is, once more if an editor saved meanwhile) and
+    `setTable`; the table's save is one core shared with the editor's save. Placement for things an assistant adds
+    (`landed`, `arranged`) lives in `@styld/protocol` beside the editor's.
+  - `board_show` draws the board inside ChatGPT and Claude: the collage as a still table, then the pins, pictures as
+    data URLs in `_meta` (at most 24, the collage's first). The view's resource is now `ui://styld/views-v2.html`;
+    its HTML is 350,358 of 393,216 bytes.
+  - The instructions say how to make a board for a request.
+  - Evidence: unit tests for the tools, their refusals and `board_show`; protocol tests for landing and layouts;
+    view stories; native MCP acceptance creates, pins, arranges, replays, sets exactly (a stale version is refused),
+    shows and lists a board through both protocol eras.
+- **Next:** M3, profiles, model checks, public pages and link previews.
 - **Shared with the capture session:** migrations are generated one at a time; public delivery reuses its rule for a
   piece's shown picture; generated pictures reuse its Muse provider.
 - **Still to settle in spikes:** Clef and Llama Guard thresholds on fixtures in English and Slovenian, drawing text

@@ -4,6 +4,7 @@ import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import type { Captures } from '../capture/Service.ts'
+import type { Boards } from '../boards/Boards.ts'
 import type { Looks } from '../looks/Looks.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import * as FetchHttpClient from 'effect/http/FetchHttpClient'
@@ -37,6 +38,7 @@ export const mcpRoutes = (
     readonly wardrobe: Wardrobe['Service']
     readonly looks: Looks['Service']
     readonly captures: Pick<Captures['Service'], 'redrawPicture'>
+    readonly boards: Boards['Service']
   },
 ) =>
   Layer.unwrap(

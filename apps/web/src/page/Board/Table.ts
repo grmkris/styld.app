@@ -1,5 +1,5 @@
-import type { BoardItem, Paper } from '@styld/protocol'
-import { ImageItem, PieceItem, TextItem } from '@styld/protocol'
+import type { BoardItem, ImageItem, Paper } from '@styld/protocol'
+import { PieceItem, TextItem } from '@styld/protocol'
 import { Array, Schema } from 'effect'
 import type { Attribute, Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
@@ -24,18 +24,29 @@ export const placement = (item: BoardItem) => ({
   zIndex: String(item.z),
 })
 
+/** Where a piece's or a picture's image comes from: Styld's own routes on the website, data URLs inside an
+ * assistant's sandboxed view. None draws nothing. */
+export type ImageSource = (item: PieceItem | ImageItem, size: 'thumb' | 'full') => string | undefined
+
+const fromStyld: ImageSource = (item, size) =>
+  Schema.is(PieceItem)(item) ? pieceImage(item.pieceId) : boardImage(item.imageId, size)
+
 export const itemContent = <Message>(
   item: BoardItem,
   h: HtmlBuilder<Message>,
   size: 'thumb' | 'full' = 'full',
+  source: ImageSource = fromStyld,
 ): Html => {
-  if (Schema.is(PieceItem)(item))
-    return h.img([h.Src(pieceImage(item.pieceId)), h.Alt(''), h.Draggable(false), ...styled(h, styles.cutout())])
   if (Schema.is(TextItem)(item))
     return h.span([h.DataAttribute('style', item.style), ...styled(h, styles.label())], [item.text])
-  return Schema.is(ImageItem)(item)
-    ? h.img([h.Src(boardImage(item.imageId, size)), h.Alt(''), h.Draggable(false), ...styled(h, styles.picture())])
-    : h.empty
+  const image = source(item, size)
+  if (image === undefined) return h.empty
+  return h.img([
+    h.Src(image),
+    h.Alt(''),
+    h.Draggable(false),
+    ...styled(h, Schema.is(PieceItem)(item) ? styles.cutout() : styles.picture()),
+  ])
 }
 
 /** An item's frame: square for a piece or a picture, the text's own shape for a label. */
@@ -49,6 +60,7 @@ export const stillTable = <Message>(
   paper: Paper,
   attributes: ReadonlyArray<Attribute<Message>>,
   h: HtmlBuilder<Message>,
+  source: ImageSource = fromStyld,
 ): Html =>
   h.div(
     [h.DataAttribute('paper', paper), ...styled(h, cx(styles.paper(), styles.still())), ...attributes],
@@ -56,7 +68,7 @@ export const stillTable = <Message>(
       h.keyed('div')(
         item.id,
         [h.AriaHidden(true), ...styled(h, itemStyle(item)), h.Style(placement(item))],
-        [itemContent(item, h, 'thumb')],
+        [itemContent(item, h, 'thumb', source)],
       ),
     ),
   )

@@ -1,6 +1,6 @@
 /**
  * The assistant views (`apps/web/src/assistant`) as one self-contained HTML file, served to ChatGPT and
- * Claude as the MCP Apps resource `ui://styld/views-v1.html`. The build inlines its script and styles,
+ * Claude as the MCP Apps resource `ui://styld/views-v2.html`. The build inlines its script and styles,
  * because hosts load the file into a sandboxed frame without network access, and the server bundles the
  * result as a generated module, so a deploy never builds the view.
  *

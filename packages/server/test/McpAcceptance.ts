@@ -3,6 +3,7 @@ import { Client as LegacyClient } from '@modelcontextprotocol/sdk/client/index.j
 import { StreamableHTTPClientTransport as LegacyTransport } from '@modelcontextprotocol/sdk/client/streamableHttp.js'
 import { expect } from 'bun:test'
 import { Schema } from 'effect'
+import { toolNames } from './ToolNames.ts'
 
 /** Test-only acceptance: an MCP client's whole journey through the public edge. */
 
@@ -163,24 +164,10 @@ const useTools = async (origin: string, access: string) => {
   const legacy = new LegacyClient({ name: 'styld-native-legacy', version: '1.0.0' })
   await legacy.connect(new LegacyTransport(new URL(`${origin}/mcp`), { requestInit }))
   for (const client of [modern, legacy]) {
-    expect((await client.listTools()).tools.map(({ name }) => name)).toEqual([
-      'account_get',
-      'piece_search',
-      'piece_get',
-      'upload_create',
-      'piece_add',
-      'piece_update',
-      'piece_delete',
-      'wardrobe_show',
-      'look_create',
-      'look_list',
-      'look_get',
-      'look_delete',
-      'picture_redraw',
-    ])
+    expect((await client.listTools()).tools.map(({ name }) => name)).toEqual(toolNames)
     // Hosts read the view from the resource the tool names, through either protocol era.
-    const view = (await client.readResource({ uri: 'ui://styld/views-v1.html' })).contents[0]
-    expect(view).toMatchObject({ uri: 'ui://styld/views-v1.html', mimeType: 'text/html;profile=mcp-app' })
+    const view = (await client.readResource({ uri: 'ui://styld/views-v2.html' })).contents[0]
+    expect(view).toMatchObject({ uri: 'ui://styld/views-v2.html', mimeType: 'text/html;profile=mcp-app' })
     expect(view !== undefined && 'text' in view ? view.text : '').toContain('<div id="styld-view"></div>')
     const result = await client.callTool({ name: 'account_get', arguments: {} })
     expect(result.structuredContent).toEqual({
@@ -239,6 +226,7 @@ const addPieceThroughTools = async (origin: string, client: Client) => {
     colours: ['white'],
   })
   const lookId = await lookThroughTools(origin, client, pieceId)
+  await boardThroughTools(origin, client, pieceId, lookId)
   expect(await structured(client, 'piece_delete', { pieceId })).toEqual({ deleted: true, pieceId })
   const gone = await client.callTool({ name: 'piece_get', arguments: { pieceId } })
   expect(gone.isError).toBe(true)
@@ -262,6 +250,61 @@ const lookThroughTools = async (origin: string, client: Client, pieceId: string)
   expect((await client.callTool({ name: 'look_create', arguments: stranger })).isError).toBe(true)
   expect(await structured(client, 'look_list', {})).toMatchObject({ looks: [{ id: lookId }] })
   return lookId
+}
+
+/** An assistant makes a board: starts it once per operation id, pins the piece and the look, lays the collage out
+ * as an outfit with a headline, sets it exactly from the version it read (a stale version is refused), shows it in
+ * the Styld view and finds it in the list. */
+const boardThroughTools = async (origin: string, client: Client, pieceId: string, lookId: string) => {
+  const create = { operationId: 'mcp-native-board-1', name: 'Brunch' }
+  const board = await structured(client, 'board_create', create)
+  const boardId = Schema.decodeUnknownSync(Schema.String)(board['id'])
+  expect(board).toMatchObject({ name: 'Brunch', version: 0, pins: [], table: [], url: `${origin}/boards/${boardId}` })
+  expect(await structured(client, 'board_create', create)).toMatchObject({ id: boardId })
+  const pin = { boardId, operationId: 'mcp-native-pin-1', pieceIds: [pieceId], lookIds: [lookId] }
+  expect(await structured(client, 'pin_add', pin)).toMatchObject({
+    version: 0,
+    pins: [
+      { kind: 'piece', piece: { id: pieceId } },
+      { kind: 'look', look: { id: lookId, pieceIds: [pieceId] } },
+    ],
+  })
+  const arrange = {
+    boardId,
+    operationId: 'mcp-native-arrange-1',
+    layout: 'outfit',
+    add: [{ pieceId }, { text: 'Brunch', style: 'headline' }],
+  }
+  const arranged = await structured(client, 'collage_arrange', arrange)
+  expect(arranged).toMatchObject({
+    version: 1,
+    table: [
+      { pieceId, x: 290, y: 320 },
+      { text: 'Brunch', x: 500 },
+    ],
+  })
+  expect(await structured(client, 'collage_arrange', arrange)).toMatchObject({ version: 1 })
+  const stale = { boardId, operationId: 'mcp-native-set-1', version: 0, items: [] }
+  expect((await client.callTool({ name: 'collage_set', arguments: stale })).isError).toBe(true)
+  const exact = {
+    boardId,
+    operationId: 'mcp-native-set-2',
+    version: 1,
+    items: [{ pieceId, x: 500, y: 600, size: 500 }],
+  }
+  expect(await structured(client, 'collage_set', exact)).toMatchObject({
+    version: 2,
+    table: [{ pieceId, x: 500, y: 600, size: 500, turn: 0 }],
+  })
+  const shown = await client.callTool({ name: 'board_show', arguments: { boardId } })
+  expect(shown.structuredContent).toMatchObject({
+    _tag: 'BoardView',
+    name: 'Brunch',
+    url: `${origin}/boards/${boardId}`,
+  })
+  expect(await structured(client, 'board_list', {})).toMatchObject({
+    boards: [{ id: boardId, pinCount: 2, onTable: 1 }],
+  })
 }
 
 const mcpStatus = async (origin: string, access: string) =>

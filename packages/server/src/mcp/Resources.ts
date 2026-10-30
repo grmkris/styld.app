@@ -2,7 +2,7 @@ import { assistantViews } from './apps/AssistantViews.generated.ts'
 
 /** The MCP Apps view every Styld tool with a picture renders into (SEP-1865). The version in the URI
  * changes when a view's contract changes, because hosts cache resources by URI. */
-export const viewsUri = 'ui://styld/views-v1.html'
+export const viewsUri = 'ui://styld/views-v2.html'
 const viewsMimeType = 'text/html;profile=mcp-app'
 
 /** No network, no frames: the view receives everything through the host bridge. */
@@ -15,7 +15,7 @@ export const resources = [
   {
     uri: viewsUri,
     name: 'Styld',
-    description: 'Shows your Styld wardrobe and looks.',
+    description: 'Shows your Styld wardrobe and boards.',
     mimeType: viewsMimeType,
     _meta: viewsMeta,
   },

@@ -1,7 +1,20 @@
-import { type ViewLabels, WardrobeView } from '@styld/protocol'
+import {
+  type Board,
+  BoardId,
+  type BoardImageId,
+  BoardView,
+  type BoardViewLabels,
+  type PieceId,
+  type Pin,
+  type ViewLabels,
+  type ViewPin,
+  WardrobeView,
+} from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import { type Piece, type ViewImages } from '@styld/protocol'
-import { Effect, Option, Record, Schema } from 'effect'
+import { Array, Effect, Match, Option, Predicate, Record, Schema } from 'effect'
+import type { Boards } from '../boards/Boards.ts'
+import type { CurrentAccount } from '../CurrentAccount.ts'
 import * as Base64 from 'effect/encoding/Base64'
 import { collect } from '../Streams.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
@@ -38,9 +51,12 @@ const viewImageLimit = 24
 /** A thumbnail larger than this is not one: the image service fell back to the stored original. */
 const largestThumbnail = 200 * 1024
 
-/** A piece's thumbnail as a data URL, or nothing when it cannot be read or is not a small WebP. */
-const thumbnailOf = (wardrobe: Wardrobe['Service'], piece: Piece) =>
-  wardrobe.pieceImage(piece.id, 'thumb').pipe(
+type Thumbnail = { readonly body: Parameters<typeof collect>[0]; readonly contentType: string }
+type ThumbnailRead = readonly [string, Effect.Effect<Thumbnail, unknown, CurrentAccount>]
+
+/** A thumbnail as a data URL under its key, or nothing when it cannot be read or is not a small WebP. */
+const thumbnailAt = (key: string, read: Effect.Effect<Thumbnail, unknown, CurrentAccount>) =>
+  read.pipe(
     Effect.filterOrFail(
       ({ contentType }) => contentType === 'image/webp',
       () => 'notThumbnail' as const,
@@ -55,18 +71,84 @@ const thumbnailOf = (wardrobe: Wardrobe['Service'], piece: Piece) =>
       ),
     ),
     Effect.option,
-    Effect.map((url) => Option.map(url, (data) => [piece.id, data] as const)),
+    Effect.map((url) => Option.map(url, (data) => [key, data] as const)),
   )
 
-/** Thumbnails of the first pieces the view shows, read a few at a time. */
-const thumbnails = (wardrobe: Wardrobe['Service'], pieces: ReadonlyArray<Piece>) =>
+/** Read a few at a time, the first `viewImageLimit` of them. */
+const readThumbnails = (reads: ReadonlyArray<ThumbnailRead>) =>
   Effect.map(
-    Effect.forEach(pieces.slice(0, viewImageLimit), (piece) => thumbnailOf(wardrobe, piece), { concurrency: 6 }),
+    Effect.forEach(reads.slice(0, viewImageLimit), ([key, read]) => thumbnailAt(key, read), { concurrency: 6 }),
     (found): ViewImages => Record.fromEntries(found.flatMap(Option.toArray)),
   )
 
+/** Thumbnails of the first pieces the view shows, keyed by piece id. */
+const thumbnails = (wardrobe: Wardrobe['Service'], pieces: ReadonlyArray<Piece>) =>
+  readThumbnails(pieces.map((piece) => [piece.id, wardrobe.pieceImage(piece.id, 'thumb')] as const))
+
+/** A board's view words in one language, from the reviewed catalogs. */
+const boardLabelsIn = (locale: Locale): BoardViewLabels => ({
+  pinned: format(locale, 'board.pinsTitle', {}),
+  empty: format(locale, 'studio.emptyGridTitle', {}),
+  picture: format(locale, 'board.picture', {}),
+  openInStyld: format(locale, 'assistantView.openInStyld', {}),
+})
+
+/** What a pin shows in the view: the key of its picture (a look shows its first piece) and where it opens. */
+const viewPin =
+  (origin: string) =>
+  (pin: Pin): ViewPin =>
+    Match.value(pin).pipe(
+      Match.tagsExhaustive({
+        PiecePin: ({ id, piece }) => ({
+          id,
+          name: piece.name,
+          image: `piece:${piece.id}`,
+          url: `${origin}/wardrobe/${piece.id}`,
+        }),
+        PicturePin: ({ id, imageId }) => ({ id, name: null, image: `picture:${imageId}`, url: null }),
+        LookPin: ({ id, look }) => ({
+          id,
+          name: look.name,
+          image: `piece:${look.pieces[0]?.id ?? ''}`,
+          url: `${origin}/looks/${look.id}`,
+        }),
+      }),
+    )
+
+/** The board's thumbnails, the collage's first, each picture once. */
+const boardThumbnails = (wardrobe: Wardrobe['Service'], boards: Boards['Service'], board: Board) => {
+  const ofPiece = (pieceId: PieceId): ThumbnailRead => [`piece:${pieceId}`, wardrobe.pieceImage(pieceId, 'thumb')]
+  const ofPicture = (imageId: BoardImageId): ThumbnailRead => [
+    `picture:${imageId}`,
+    boards
+      .boardImage(imageId, 'thumb')
+      .pipe(Effect.flatMap(Option.match({ onNone: () => Effect.fail('missing' as const), onSome: Effect.succeed }))),
+  ]
+  const onTable = board.items
+    .toSorted((a, b) => a.z - b.z)
+    .flatMap((item) =>
+      Match.value(item).pipe(
+        Match.tagsExhaustive({
+          PieceItem: ({ pieceId }) => [ofPiece(pieceId)],
+          ImageItem: ({ imageId }) => [ofPicture(imageId)],
+          TextItem: () => [],
+        }),
+      ),
+    )
+  const pinned = board.pins.flatMap((pin) =>
+    Match.value(pin).pipe(
+      Match.tagsExhaustive({
+        PiecePin: ({ piece }) => [ofPiece(piece.id)],
+        PicturePin: ({ imageId }) => [ofPicture(imageId)],
+        LookPin: ({ look }) => look.pieces.slice(0, 1).map((piece) => ofPiece(piece.id)),
+      }),
+    ),
+  )
+  return readThumbnails(Array.dedupeWith([...onTable, ...pinned], ([left], [right]) => left === right))
+}
+
 /** Tools whose results a host draws with Styld's view (MCP Apps). */
-export const viewTools = (wardrobe: Wardrobe['Service'], origin: string) => [
+export const viewTools = (wardrobe: Wardrobe['Service'], boards: Boards['Service'], origin: string) => [
   tool({
     name: 'wardrobe_show',
     title: 'Show your wardrobe',
@@ -89,6 +171,40 @@ export const viewTools = (wardrobe: Wardrobe['Service'], origin: string) => [
           labels: { en: labelsIn('en'), sl: labelsIn('sl') },
         })
         return new ViewResult(view, { 'styld/images': yield* thumbnails(wardrobe, pieces) })
+      }),
+  }),
+  tool({
+    name: 'board_show',
+    title: 'Show a board',
+    description:
+      'Shows a board as the person sees it: its collage, then what is pinned on it. Use board_get for its ids and placements.',
+    parameters: Schema.Struct({ boardId: BoardId }),
+    annotations: { readOnlyHint: true, openWorldHint: false },
+    meta: showsView,
+    handler: ({ boardId }) =>
+      Effect.gen(function* () {
+        const board = yield* boards.getBoard(boardId).pipe(
+          Effect.mapError((error) =>
+            Predicate.isTagged(error, 'BoardNotFound')
+              ? new ToolError({
+                  code: 'not_found',
+                  message: 'There is no board with that id for this account.',
+                  recovery: 'Call board_list to find it.',
+                  retryable: false,
+                })
+              : unavailable(),
+          ),
+        )
+        const pins = board.pins.map(viewPin(origin))
+        const view = BoardView.make({
+          name: board.name,
+          paper: board.paper,
+          items: board.items,
+          pins,
+          url: `${origin}/boards/${board.id}`,
+          labels: { en: boardLabelsIn('en'), sl: boardLabelsIn('sl') },
+        })
+        return new ViewResult(view, { 'styld/images': yield* boardThumbnails(wardrobe, boards, board) })
       }),
   }),
 ]

@@ -248,7 +248,12 @@ export const wardrobeTools = (wardrobe: Wardrobe['Service'], origin: string, htt
 }
 
 /** Download the photo an assistant points at into a fresh upload. */
-const uploadFrom = (wardrobe: Wardrobe['Service'], http: HttpClient.HttpClient, origin: string, imageUrl: string) =>
+export const uploadFrom = (
+  wardrobe: Wardrobe['Service'],
+  http: HttpClient.HttpClient,
+  origin: string,
+  imageUrl: string,
+) =>
   Effect.gen(function* () {
     const { contentType, bytes } = yield* importImage(imageUrl)
     // The photo goes through the same upload checks as one an assistant PUTs itself.

@@ -99,16 +99,18 @@ const storageServices = <R>(
     const lifecycleService = yield* makeAccountLifecycle(bindings)
     const capturesService = yield* makeCaptures(bindings)
     const looksService = yield* makeLooks(bindings.database)
+    const boardsService = yield* makeBoards(bindings)
     return {
       wardrobeService,
       lifecycleService,
       capturesService,
       looksService,
+      boardsService,
       wardrobe: Layer.succeed(Wardrobe, wardrobeService),
       lifecycle: Layer.succeed(AccountLifecycle, lifecycleService),
       captures: Layer.succeed(Captures, capturesService),
       looks: Layer.succeed(Looks, looksService),
-      boards: Layer.succeed(Boards, yield* makeBoards(bindings)),
+      boards: Layer.succeed(Boards, boardsService),
       worn: Layer.succeed(Worn, makeWorn(bindings.database)),
     }
   }).pipe(
@@ -321,6 +323,7 @@ const makeApplication =
           wardrobe: wardrobeService,
           looks: looksService,
           captures: capturesService,
+          boards: services.boardsService,
         }).pipe(Layer.provide(oauth.server)),
         HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),
         browserTelemetryRoutes(authOrigin, allowTelemetry),

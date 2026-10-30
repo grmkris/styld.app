@@ -46,3 +46,6 @@ export const open = style({
   fontWeight: 600,
   cursor: 'pointer',
 })
+export const subheading = style({ marginBlockEnd: '8px', fontSize: '17px', fontWeight: 600 })
+/** A board's collage inside the host's frame: no wider than a phone's. */
+export const table = style({ maxInlineSize: '420px' })

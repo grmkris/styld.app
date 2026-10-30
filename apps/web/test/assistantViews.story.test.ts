@@ -1,4 +1,4 @@
-import { PieceId, WardrobeView } from '@styld/protocol'
+import { BoardView, PieceId, WardrobeView } from '@styld/protocol'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import { Message, OpenLink, Showing, init, update } from '../src/assistant/Views.ts'
@@ -22,6 +22,21 @@ const wardrobe = WardrobeView.make({
   ],
   url: 'https://styld.test/wardrobe',
   labels: { en: labels, sl: { ...labels, openInStyld: 'Odpri v Styldu' } },
+})
+
+const boardLabels = {
+  pinned: 'Pinned',
+  empty: 'Nothing pinned yet',
+  picture: 'A picture',
+  openInStyld: 'Open in Styld',
+}
+const board = BoardView.make({
+  name: 'Autumn',
+  paper: 'sage',
+  items: [],
+  pins: [{ id: 'pn_1', name: 'Navy knit', image: `piece:pc_${'a'.repeat(22)}`, url: 'https://styld.test/w/1' }],
+  url: 'https://styld.test/boards/1',
+  labels: { en: boardLabels, sl: { ...boardLabels, pinned: 'V zbirki' } },
 })
 
 describe('the assistant view', () => {
@@ -56,6 +71,35 @@ describe('the assistant view', () => {
       Command.expectExact(OpenLink({ url: 'https://styld.test/w/1' })),
       Command.resolve(OpenLink, Message.CompletedOpen()),
       model((shown) => expect(shown).toEqual(init().model)),
+    )
+  })
+
+  test('shows a board after the wardrobe, keeping the pictures it already has', () => {
+    story(
+      update,
+      given(init().model),
+      message(
+        Message.ReceivedHost({
+          input: {
+            _tag: 'ShowedResult',
+            view: wardrobe,
+            images: { [`pc_${'a'.repeat(22)}`]: 'data:image/webp;base64,AA' },
+          },
+        }),
+      ),
+      message(
+        Message.ReceivedHost({
+          input: {
+            _tag: 'ShowedResult',
+            view: board,
+            images: { [`piece:pc_${'a'.repeat(22)}`]: 'data:image/webp;base64,BB' },
+          },
+        }),
+      ),
+      model(({ showing, images }) => {
+        expect(Showing.guards.Board(showing)).toBe(true)
+        expect(Object.keys(images)).toHaveLength(2)
+      }),
     )
   })
 })

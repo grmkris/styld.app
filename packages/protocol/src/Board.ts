@@ -138,6 +138,45 @@ export const RemovePins = Schema.Struct({
 })
 export type RemovePins = typeof RemovePins.Type
 
+/** Something to lay on a board's table without an id of its own: the server gives it one. */
+export const TablePiece = Schema.TaggedStruct('TablePiece', { pieceId: PieceId })
+export const TablePicture = Schema.TaggedStruct('TablePicture', { imageId: BoardImageId })
+export const TableLabel = Schema.TaggedStruct('TableLabel', { text: LabelText, style: TextStyle })
+export const TableThing = Schema.Union([TablePiece, TablePicture, TableLabel])
+export type TableThing = typeof TableThing.Type
+
+/** How a table is laid out after things are added: left where they land, on an even grid, or in an outfit's
+ * places (top, layer, bottom, shoes, an accessory). */
+export const TableLayout = Schema.Literals(['keep', 'tidy', 'outfit'])
+export type TableLayout = typeof TableLayout.Type
+
+/** Add things to the table and lay it out, from whatever version it is at. */
+export const ArrangeBoard = Schema.Struct({
+  operationId: OperationId,
+  layout: TableLayout,
+  add: Schema.optionalKey(Schema.Array(TableThing).check(Schema.isMaxLength(20))),
+})
+export type ArrangeBoard = typeof ArrangeBoard.Type
+
+/** One thing exactly where it lies; the list's order is the stacking, first at the bottom. */
+export const PlacedThing = Schema.Struct({
+  thing: TableThing,
+  x: placement.x,
+  y: placement.y,
+  size: placement.size,
+  turn: Schema.optionalKey(placement.turn),
+  flipped: Schema.optionalKey(Schema.Boolean),
+})
+export type PlacedThing = typeof PlacedThing.Type
+
+/** The whole table, placed exactly, replacing what was saved, from the version it was read at. */
+export const SetTable = Schema.Struct({
+  operationId: OperationId,
+  version: Schema.Int,
+  items: Schema.Array(PlacedThing).check(Schema.isMaxLength(maximumBoardItems)),
+})
+export type SetTable = typeof SetTable.Type
+
 /** A received photo upload becomes a picture on the board. */
 export const AddBoardImage = Schema.Struct({ operationId: OperationId, uploadId: UploadId })
 export type AddBoardImage = typeof AddBoardImage.Type
@@ -155,10 +194,10 @@ export class BoardVersionConflict extends Schema.TaggedError<BoardVersionConflic
 ) {}
 
 /** A thing on the table the board cannot hold: a piece that is neither the person's nor pinned on the board, a
- * picture from another board, or two things with one id. */
+ * picture from another board, two things with one id, or more than a table holds. */
 export class BoardItemRefused extends Schema.TaggedError<BoardItemRefused>()(
   'BoardItemRefused',
-  { reason: Schema.Literals(['pieceNotFound', 'imageNotFound', 'duplicateId']) },
+  { reason: Schema.Literals(['pieceNotFound', 'imageNotFound', 'duplicateId', 'tableFull']) },
   { httpApiStatus: 422 },
 ) {}
 
