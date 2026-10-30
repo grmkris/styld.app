@@ -2333,7 +2333,8 @@
       "weekend": "Weekend",
       "evening": "Evening",
       "sport": "Sport"
-    }
+    },
+    "moodsLabel": "Moods for Explore"
   },
   "feed": {
     "label": "Your feed",

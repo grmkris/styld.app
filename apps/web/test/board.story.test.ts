@@ -37,6 +37,7 @@ const board = Schema.decodeUnknownSync(Board)({
   version: 3,
   items: [knit, shorts],
   pins: [],
+  moods: [],
   visibility: 'private',
   check: null,
   updatedAt: '2026-10-30T08:00:00.000Z',

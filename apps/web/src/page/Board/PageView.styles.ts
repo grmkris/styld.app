@@ -155,4 +155,7 @@ export const picked = style({
 })
 export const field = style({ display: 'grid', gap: '6px', fontSize: '14px', fontWeight: 600 })
 export const actions = style({ display: 'flex', flexWrap: 'wrap', gap: '8px' })
+export const sharing = style({ display: 'grid', gap: '6px', paddingBlockStart: '12px' })
+export const moodsLabel = style({ margin: '0', fontSize: '15px', fontWeight: 600 })
+export const moods = style({ display: 'flex', flexWrap: 'wrap', gap: '6px' })
 export const danger = style({ display: 'grid', gap: '8px', paddingBlockStart: '12px', color: 'ink2', fontSize: '14px' })

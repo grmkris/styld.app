@@ -1,6 +1,6 @@
 import { Dialog } from '@foldkit/ui'
 import { format, type Locale } from '@styld/i18n'
-import { type Look, LookPin, type Paper, type Piece, type Pin, PiecePin, type PublicBoard } from '@styld/protocol'
+import { type Look, LookPin, Mood, type Paper, type Piece, type Pin, PiecePin, type PublicBoard } from '@styld/protocol'
 import { Array, Match, Option, Schema } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
@@ -16,6 +16,7 @@ import { Message } from './Message.ts'
 import { boardStateView } from './Unready.ts'
 import { visitingView } from './Visiting.ts'
 import { type Model, PinWork, Publishing, Removal, Rename } from './Model.ts'
+import { chip } from '../ExploreView.styles.ts'
 import * as styles from './PageView.styles.ts'
 import { boardImage, pieceImage, stillTable } from './Table.ts'
 
@@ -290,6 +291,26 @@ const sharingView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Htm
     h,
   )
 
+/** The board's moods for Explore: up to three of the six. */
+const moodsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.div(styled(h, styles.sharing()), [
+    h.p(styled(h, styles.moodsLabel()), [format(locale, 'explore.moodsLabel', {})]),
+    h.div(
+      [h.Role('group'), h.AriaLabel(format(locale, 'explore.moodsLabel', {})), ...styled(h, styles.moods())],
+      Mood.literals.map((mood) =>
+        h.button(
+          [
+            h.Type('button'),
+            h.AriaPressed(String(model.moods.includes(mood))),
+            h.OnClick(Message.ToggledMood({ mood })),
+            ...styled(h, chip()),
+          ],
+          [format(locale, `explore.moods.${mood}`, {})],
+        ),
+      ),
+    ),
+  ])
+
 const settingsBody = (
   model: Model,
   locale: Locale,
@@ -334,6 +355,7 @@ const settingsBody = (
       ],
     ),
     sharingView(model, locale, h),
+    moodsView(model, locale, h),
     removalView(model, locale, h),
   ]
 }

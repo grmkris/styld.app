@@ -1,5 +1,5 @@
 import { Dialog } from '@foldkit/ui'
-import type { Board, Look } from '@styld/protocol'
+import { type Board, type Look, maximumMoods, type Mood } from '@styld/protocol'
 import { Array, Option } from 'effect'
 import { AsyncData, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
@@ -25,6 +25,7 @@ import {
   PinThings,
   ReloadBoard,
   RenameBoard,
+  SetBoardMoods,
   SetBoardVisibility,
   UnpinThings,
 } from './PageCommands.ts'
@@ -98,6 +99,21 @@ const renamed = (model: Model, board: Board): UpdateReturn =>
       rename: () => Rename.Idle(),
     }),
   )
+
+/** A mood on or off, saved at once; a fourth waits until one is taken off. */
+const moodToggled = (model: Model, mood: Mood): UpdateReturn => {
+  const moods = model.moods.includes(mood)
+    ? model.moods.filter((each) => each !== mood)
+    : model.moods.length < maximumMoods
+      ? [...model.moods, mood]
+      : model.moods
+  return moods === model.moods
+    ? { model }
+    : {
+        model: modifyFields(model, { moods: () => moods }),
+        commands: [SetBoardMoods({ boardId: model.boardId, moods })],
+      }
+}
 
 /** Public or private, from the settings; the sheet stays open to show what Styld's check says. */
 const publicToggled = (model: Model, isPublic: boolean): UpdateReturn =>
@@ -208,6 +224,9 @@ type PageTag =
   | 'SucceededRename'
   | 'FailedRename'
   | 'ToggledPublic'
+  | 'ToggledMood'
+  | 'SucceededSetMoods'
+  | 'FailedSetMoods'
   | 'SucceededSetVisibility'
   | 'FailedSetVisibility'
   | 'ClickedDeleteBoard'
@@ -240,6 +259,9 @@ export const pageSteps = (
   SucceededRename: ({ board }) => renamed(model, board),
   FailedRename: () => ({ model: modifyFields(model, { rename: () => Rename.Failed() }) }),
   ToggledPublic: ({ isPublic }) => publicToggled(model, isPublic),
+  ToggledMood: ({ mood }) => moodToggled(model, mood),
+  SucceededSetMoods: ({ board }) => ({ model: withSharing(model, board) }),
+  FailedSetMoods: () => ({ model }),
   SucceededSetVisibility: ({ board }) => ({
     model: modifyFields(withSharing(model, board), { publishing: () => Publishing.Idle() }),
   }),

@@ -65,7 +65,9 @@ const boardRows = (db: Database) => ({
   updateBoard: (
     accountId: string,
     boardId: string,
-    changes: Partial<Pick<BoardRow, 'name' | 'paper' | 'searchText' | 'visibility' | 'publishedAt' | 'updatedAt'>>,
+    changes: Partial<
+      Pick<BoardRow, 'name' | 'paper' | 'searchText' | 'moods' | 'visibility' | 'publishedAt' | 'updatedAt'>
+    >,
   ) =>
     attempt(() =>
       db

@@ -13,6 +13,7 @@ import {
   LabelText,
   LookId,
   maximumBoardItems,
+  Mood,
   maximumItemSize,
   minimumItemSize,
   OperationId,
@@ -31,6 +32,7 @@ import {
   type TableThing,
   TextStyle,
   type UploadRefused,
+  UpdateBoard,
   Visibility,
   type WardrobeUnavailable,
 } from '@styld/protocol'
@@ -166,6 +168,7 @@ const shownBoard = (origin: string) => (board: Board) => ({
   id: board.id,
   name: board.name,
   paper: board.paper,
+  moods: board.moods,
   version: board.version,
   visibility: board.visibility,
   check: board.check,
@@ -250,12 +253,8 @@ const boardTools = (boards: Boards['Service'], origin: string) => {
     tool({
       name: 'board_update',
       title: 'Rename a board',
-      description: `Rename a board or change its paper (${Paper.literals.join(', ')}). Fields left out stay as they are.`,
-      parameters: Schema.Struct({
-        boardId: BoardId,
-        name: Schema.optionalKey(BoardName),
-        paper: Schema.optionalKey(Paper),
-      }),
+      description: `Rename a board, change its paper (${Paper.literals.join(', ')}) or set its moods for Explore (up to three of ${Mood.literals.join(', ')}). Fields left out stay as they are.`,
+      parameters: Schema.Struct({ boardId: BoardId, ...UpdateBoard.fields }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       handler: ({ boardId, ...changes }) =>
         boards.updateBoard(boardId, changes).pipe(Effect.map(show), Effect.mapError(asToolError)),

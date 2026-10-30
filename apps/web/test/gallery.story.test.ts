@@ -70,6 +70,7 @@ describe('boards', () => {
     version: 0,
     items: [],
     pins: [],
+    moods: [],
     visibility: 'private',
     check: null,
     updatedAt: '2026-10-30T08:00:00.000Z',

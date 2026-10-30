@@ -2134,6 +2134,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'explore.moods.weekend': 'Weekend',
   'explore.moods.evening': 'Evening',
   'explore.moods.sport': 'Sport',
+  'explore.moodsLabel': 'Moods for Explore',
   'feed.label': 'Your feed',
   'feed.forYou': 'For you',
   'feed.following': 'Following',

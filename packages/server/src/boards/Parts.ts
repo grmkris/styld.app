@@ -136,6 +136,8 @@ export const shown = (parts: Parts, rows: ReadonlyArray<BoardRow>) =>
         version: row.version,
         items: items.filter(({ boardId }) => boardId === row.id).map(shownItem),
         pins: pinsOf(row.id),
+        // Only the service writes moods, through the protocol's literals; others were never stored.
+        moods: row.moods,
         visibility: row.visibility,
         check: checks.get(row.id) ?? null,
         updatedAt: row.updatedAt.toISOString(),

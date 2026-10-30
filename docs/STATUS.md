@@ -327,9 +327,13 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   - Evidence: a scene test of the sections, a person's link, and choosing a mood, which reloads.
   - Open:
     - the five-tab navigation (Home, Explore, Ask, Wardrobe, Boards), with You moving out of the tabs;
-    - choosing a board's moods in its settings and through `board_update`;
     - people and boards in Ask's search;
     - the landing's inspiration from Edits from Styld.
+- **Board moods:**
+  - A board carries up to three of the six moods. The owner picks them in the board's settings, each saved as it is
+    picked, and assistants set them through `board_update`.
+  - Explore's mood chips and search's mood words find boards by them.
+  - Evidence: a story of picking with a fourth refused, and native acceptance of Explore filtering by mood.
 - **Next:** gate, land and deploy M5; then the open items above, then M6 (the wishlist and Add from a link).
 - **Shared with the capture session:** migrations are generated one at a time; public delivery reuses its rule for a
   piece's shown picture; generated pictures reuse its Muse provider.

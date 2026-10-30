@@ -116,6 +116,7 @@ const changes = (parts: Parts) => ({
       parts.store.updateBoard(accountId, boardId, {
         ...(input.name === undefined ? {} : { name: input.name, searchText: searchText(input.name) }),
         ...(input.paper === undefined ? {} : { paper: input.paper }),
+        ...(input.moods === undefined ? {} : { moods: [...new Set(input.moods)] }),
         updatedAt: yield* nowDate,
       }),
     )

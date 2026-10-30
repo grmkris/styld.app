@@ -6,6 +6,7 @@ import {
   CheckStatus,
   Look,
   LookId,
+  Mood,
   Paper,
   Pin,
   PublicBoard,
@@ -136,6 +137,8 @@ export const Model = Schema.Struct({
   visibility: Visibility,
   check: Schema.Option(CheckStatus),
   publishing: Publishing,
+  /** The board's moods for Explore, as last saved. */
+  moods: Schema.Array(Mood),
   /** The sheet that pins pieces and looks, and what is ticked in it (`piece:<id>`, `look:<id>`). */
   picker: Dialog.Model,
   picks: Schema.Array(Schema.String),
@@ -178,6 +181,7 @@ export const init = (boardId: string): Model => ({
   visibility: 'private',
   check: Option.none(),
   publishing: Publishing.Idle(),
+  moods: [],
   picker: Dialog.init({ id: 'board-picker' }),
   picks: [],
   looks: AsyncData.Idle(),
@@ -205,6 +209,7 @@ export const withSharing = (model: Model, board: Board): Model =>
     board: () => BoardState.Ready({ name: board.name, paper: board.paper }),
     visibility: () => board.visibility,
     check: () => Option.fromNullishOr(board.check),
+    moods: () => board.moods,
   })
 
 /** The board as the server last confirmed it. */

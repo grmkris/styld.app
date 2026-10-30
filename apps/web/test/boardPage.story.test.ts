@@ -23,6 +23,7 @@ import {
   PinThings,
   ReloadBoard,
   RenameBoard,
+  SetBoardMoods,
   SetBoardVisibility,
   UnpinThings,
 } from '../src/page/Board/PageCommands.ts'
@@ -60,6 +61,7 @@ const board = Schema.decodeUnknownSync(Board)({
   version: 2,
   items: [knitOnTable],
   pins: [knitPin],
+  moods: [],
   visibility: 'private',
   check: null,
   updatedAt: '2026-10-30T08:00:00.000Z',
@@ -117,6 +119,22 @@ describe('a board page', () => {
         expect(Publishing.guards.Idle(publishing)).toBe(true)
         expect(version).toBe(2)
       }),
+    )
+  })
+
+  test('moods are saved as they are picked, at most three', () => {
+    story(
+      update,
+      given(modifyFields(open, { moods: () => ['rain', 'office', 'weekend'] })),
+      message(Message.ToggledMood({ mood: 'sport' })),
+      model(({ moods }) => expect(moods).toEqual(['rain', 'office', 'weekend'])),
+      message(Message.ToggledMood({ mood: 'office' })),
+      Command.expectExact(SetBoardMoods({ boardId: board.id, moods: ['rain', 'weekend'] })),
+      Command.resolve(
+        SetBoardMoods({ boardId: board.id, moods: ['rain', 'weekend'] }),
+        Message.SucceededSetMoods({ board: withPins([knitPin], { moods: ['rain', 'weekend'] }) }),
+      ),
+      model(({ moods }) => expect(moods).toEqual(['rain', 'weekend'])),
     )
   })
 

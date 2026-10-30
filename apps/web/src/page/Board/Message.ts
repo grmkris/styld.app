@@ -1,5 +1,16 @@
 import { Dialog, FileDrop } from '@foldkit/ui'
-import { Board, BoardImageId, BoardItemId, Look, LookId, Paper, PinId, PublicBoard, TextStyle } from '@styld/protocol'
+import {
+  Board,
+  BoardImageId,
+  BoardItemId,
+  Look,
+  LookId,
+  Mood,
+  Paper,
+  PinId,
+  PublicBoard,
+  TextStyle,
+} from '@styld/protocol'
 import * as WardrobePage from '../Wardrobe.ts'
 import { Schema } from 'effect'
 import { File } from 'foldkit'
@@ -89,6 +100,9 @@ export const Message = defineMessageUnion({
   SucceededRename: { board: Board },
   FailedRename: {},
   ToggledPublic: { isPublic: Schema.Boolean },
+  ToggledMood: { mood: Mood },
+  SucceededSetMoods: { board: Board },
+  FailedSetMoods: {},
   SucceededSetVisibility: { board: Board },
   FailedSetVisibility: { needsProfile: Schema.Boolean },
   ClickedDeleteBoard: {},

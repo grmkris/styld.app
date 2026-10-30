@@ -253,8 +253,18 @@ const verifyDiscovery = async (origin: string, owner: Call) => {
     )
   expect((await search('kovač')).people.map(({ handle }) => handle)).toContain('nika.kovac')
   expect((await search('rainy')).boards.map(({ board }) => board.id)).toEqual([boardId])
-  const newest = Schema.decodeUnknownSync(Newest)(await (await fetch(`${origin}/api/public/explore`)).json()).newest
-  expect(newest.map(({ board }) => board.id)).toContain(boardId)
+  const newest = async (mood = '') =>
+    Schema.decodeUnknownSync(Newest)(await (await fetch(`${origin}/api/public/explore${mood}`)).json()).newest.map(
+      ({ board }) => board.id,
+    )
+  expect(await newest()).toContain(boardId)
+  expect(
+    await (await send(owner, `/api/boards/${boardId}`, 'PATCH', { moods: ['office', 'rain'] })).json(),
+  ).toMatchObject({
+    moods: ['office', 'rain'],
+  })
+  expect(await newest('?mood=office')).toContain(boardId)
+  expect(await newest('?mood=sport')).not.toContain(boardId)
   await send(owner, `/api/boards/${boardId}`, 'PATCH', { name: 'Rainy walks [[unsure]]' })
   await settled(() => owner(`/api/boards/${boardId}`), 'unsure')
   expect((await search('rainy')).boards).toEqual([])

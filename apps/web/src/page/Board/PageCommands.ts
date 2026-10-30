@@ -1,4 +1,4 @@
-import { BoardId, BoardName, LookId, OperationId, PieceId, PinId } from '@styld/protocol'
+import { BoardId, BoardName, LookId, Mood, OperationId, PieceId, PinId } from '@styld/protocol'
 import { Effect, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import { Command } from 'foldkit'
@@ -59,6 +59,18 @@ export const SetBoardVisibility = Command.define('SetBoardVisibility', {
       Effect.catchTag('ProfileNotPublished', () => Effect.succeed(Message.FailedSetVisibility({ needsProfile: true }))),
       Effect.orElseSucceed(() => Message.FailedSetVisibility({ needsProfile: false })),
     ),
+})
+
+/** Save the board's moods for Explore. */
+export const SetBoardMoods = Command.define('SetBoardMoods', {
+  args: { boardId: Schema.String, moods: Schema.Array(Mood) },
+  messages: [Message.SucceededSetMoods, Message.FailedSetMoods],
+  execute: ({ boardId, moods }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const board = yield* api.board.updateBoard({ params: { boardId: yield* boardIdOf(boardId) }, payload: { moods } })
+      return Message.SucceededSetMoods({ board })
+    }).pipe(Effect.orElseSucceed(() => Message.FailedSetMoods())),
 })
 
 /** Delete the board; one already gone counts as deleted. */

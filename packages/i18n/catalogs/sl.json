@@ -2333,7 +2333,8 @@
       "weekend": "Vikend",
       "evening": "Večer",
       "sport": "Šport"
-    }
+    },
+    "moodsLabel": "Razpoloženja za Razišči"
   },
   "feed": {
     "label": "Tvoje novosti",

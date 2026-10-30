@@ -1,5 +1,6 @@
 import { Schema } from 'effect'
 import { CheckStatus, Visibility } from './Check.ts'
+import { maximumMoods, Mood } from './Mood.ts'
 import { Look, LookId } from './Look.ts'
 import { OperationId, Piece, PieceId, UploadId } from './Wardrobe.ts'
 
@@ -91,6 +92,8 @@ export const Board = Schema.Struct({
   version: Schema.Int,
   items: Schema.Array(BoardItem),
   pins: Schema.Array(Pin),
+  /** Up to three moods, for Explore. */
+  moods: Schema.Array(Mood),
   visibility: Visibility,
   /** The model's check, once the board has been public; others see it only while the check lets them. */
   check: Schema.NullOr(CheckStatus),
@@ -116,7 +119,12 @@ export const Boards = Schema.Struct({ boards: Schema.Array(BoardSummary) })
 export const CreateBoard = Schema.Struct({ operationId: OperationId, name: BoardName })
 export type CreateBoard = typeof CreateBoard.Type
 
-export const UpdateBoard = Schema.Struct({ name: Schema.optionalKey(BoardName), paper: Schema.optionalKey(Paper) })
+export const UpdateBoard = Schema.Struct({
+  name: Schema.optionalKey(BoardName),
+  paper: Schema.optionalKey(Paper),
+  /** Up to three moods, for Explore. */
+  moods: Schema.optionalKey(Schema.Array(Mood).check(Schema.isMaxLength(maximumMoods))),
+})
 export type UpdateBoard = typeof UpdateBoard.Type
 
 /** The whole table, replacing what was saved, from the version the editor started with. Pieces it places are

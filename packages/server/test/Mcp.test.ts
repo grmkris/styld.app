@@ -131,6 +131,7 @@ const board = Schema.decodeUnknownSync(Board)({
   pins: [
     { _tag: 'PiecePin', id: `pn_${'knit'.padEnd(22, 'x')}`, piece: pieces[0], addedAt: '2026-10-30T08:00:00.000Z' },
   ],
+  moods: [],
   visibility: 'private',
   check: null,
   updatedAt: '2026-10-30T08:00:00.000Z',

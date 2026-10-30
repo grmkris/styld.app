@@ -1,18 +1,9 @@
 import { Schema } from 'effect'
+import { Mood } from './Mood.ts'
 import { Author, PublicBoardSummary } from './Public.ts'
 
 // Explore and search across people and boards (Boards, profiles and social, M5). Only what passed Styld's check
 // shows here: an unsure check keeps something on its own links but out of discovery, and so do reports on a profile.
-
-/** The design's six moods, for a board and Explore's chips. */
-export const Mood = Schema.Literals(['knitwear', 'rain', 'office', 'weekend', 'evening', 'sport'])
-export type Mood = typeof Mood.Type
-
-/** At most three moods on a board. */
-export const maximumMoods = 3
-
-export const SetMoods = Schema.Struct({ moods: Schema.Array(Mood).check(Schema.isMaxLength(maximumMoods)) })
-export type SetMoods = typeof SetMoods.Type
 
 /** A public board as discovery shows it: whose it is and its moods. */
 export const FoundBoard = Schema.Struct({ board: PublicBoardSummary, by: Author, moods: Schema.Array(Mood) })
