@@ -1,6 +1,36 @@
 # Delivery status
 
-Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `0ba572d`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `3a757e1`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+
+## Cut-out quality — 2026-10-30
+
+The owner's first real captures came out poorly: held-up camera shots kept the person, and a 6:51 rail video gave
+mostly scraps. Diagnosis (preview D1 and R2, read-only), fixes so far, and the research that follows.
+
+- **Diagnosis.**
+  - Held-up shots: Clef rightly called each one garment (0.83–0.94), which routed it to Cloudflare background removal.
+    That keeps the whole foreground, so the person came out with the garment. The research behind that route
+    (`~/code/meta-hackathon`, 2026-10-27) tested it only on crops of single laid-out garments.
+  - The video: 14 parts gave 165 detections, and 151 were kept because every one with a category is preselected.
+    Contact sheets of three parts (39 cut-outs) show about 5 recognisable garments and none whole: pieces cut off by
+    the frame, slivers of garments hanging edge-on, scraps. Nothing rejects a SAM track. SAM itself was tested only on
+    synthetic clips before this; the handoff asked for review first and capture guidance, which v2 does not have yet.
+  - Scaling a SAM mask onto a larger still mapped the first column to source column -1, which drew a one-pixel line
+    beside many video cut-outs.
+- **Fixed** (commit `3a757e1`, release `3a757e1` on the preview):
+  - Camera shots always go to SAM; the piece nearest the middle stays preselected (`cutterFor`, unit-tested).
+  - Each scaled mask pixel takes the source pixel under its centre and stays outside the mask's box when its centre
+    does; the new test fails on the old code.
+  - Preview: the owner's black-tee shot sent again as a camera capture now gives the tee alone (preselected, "top,
+    short sleeve") and the worn trousers as a separate unticked piece, in 10.7 s; the test detections were discarded.
+  - Full gate: 219 unit tests, 18 native tests. Deployed acceptance passed (2 tests, 35 assertions).
+- **Open.**
+  - Video: no quality gate, every track preselected, no merging across parts, no filming guidance.
+  - A photo from the library that shows a person (a mirror selfie) still goes to background removal when Clef calls it
+    one garment.
+  - The owner's preview wardrobe holds 151 pieces from that video; deleting them waits for the owner.
+  - Research (owner-approved, $10 cap): real fixtures, a rubric and whole-pipeline variants, explored in the
+    meta-hackathon harness and confirmed on the preview.
 
 ## Long videos and a simpler add page — 2026-10-30
 
