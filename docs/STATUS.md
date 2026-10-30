@@ -44,13 +44,19 @@ mostly scraps. Diagnosis (preview D1 and R2, read-only), fixes so far, and the r
     unticked (before the gate, parts like these gave about a dozen preselected scraps each);
   - the owner's open-jacket shot as a camera capture: the whole jacket, preselected;
   - all test captures were discarded or removed afterwards.
+- **Owner's account reset** (2026-10-30, at the owner's request): the old preview account was closed with the app's own
+  steps and its deletion job queued; no rows or stored files remain. The owner now uses
+  `styld-wardrobe.kris@myinbox.lol` (myinbox, so codes can be read for them).
+- **Try-on video on the preview** (first 3 minutes of the 14-minute video, uploaded through the add page): 6 parts sent
+  in 81 s and processed within about 2 minutes, 35 credits. Ticked: jeans, a trench coat, a sweater, a long coat, a
+  puffer and a jacket, plus the same jacket again from the next part; 12 partial pieces offered unticked. No person
+  or rack in any ticked cut-out; gaps remain where hands or hair covered a garment.
 - **Open.**
   - A library photo that shows a person still goes to background removal when Clef calls it one garment, and Clef
     rates "person plus garment" as whole (seen on the preview). Next: ask the route call whether a person is in it.
   - The same garment seen in several video parts or try-on segments is not merged.
   - Analysis clips are 720 px; the research ran at 960 (SAM's cap is 1024, the price is per frame).
   - A guided capture mode (one garment at a time, whole in frame), as the research handoff recommends.
-  - The owner's preview wardrobe holds 151 pieces from the first video; deleting them waits for the owner.
 
 ## Long videos and a simpler add page — 2026-10-30
 
