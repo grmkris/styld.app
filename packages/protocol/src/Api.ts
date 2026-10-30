@@ -17,6 +17,7 @@ import {
 } from './Capture.ts'
 import {
   AddBoardImage,
+  AddPins,
   Board,
   BoardId,
   BoardImage,
@@ -25,6 +26,8 @@ import {
   BoardVersionConflict,
   Boards,
   CreateBoard,
+  PinRefused,
+  RemovePins,
   SaveBoardItems,
   UpdateBoard,
 } from './Board.ts'
@@ -215,8 +218,9 @@ export class LookApi extends HttpApiGroup.make('look')
   .middleware(SessionHttp.RequireSession)
   .prefix('/api') {}
 
-/** Boards: tables the person lays their pieces, labels and pictures on. A picture goes up as a photo
- * upload first (`wardrobe.createUpload`, then a `PUT`) and joins the board with `addBoardImage`. */
+/** Boards: the pieces, looks and pictures the person pins, and the table they lay some of them on. A picture
+ * goes up as a photo upload first (`wardrobe.createUpload`, then a `PUT`) and joins the board with
+ * `addBoardImage`. */
 export class BoardApi extends HttpApiGroup.make('board')
   .add(HttpApiEndpoint.get('listBoards', '/boards', { success: Boards, error: WardrobeUnavailable }))
   .add(
@@ -253,7 +257,30 @@ export class BoardApi extends HttpApiGroup.make('board')
       params: { boardId: BoardId },
       payload: SaveBoardItems,
       success: Board,
-      error: [BoardNotFound, BoardVersionConflict, BoardItemRefused, WardrobeUnavailable, RequestRefused],
+      error: [
+        BoardNotFound,
+        BoardVersionConflict,
+        BoardItemRefused,
+        OperationConflict,
+        WardrobeUnavailable,
+        RequestRefused,
+      ],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post('addPins', '/boards/:boardId/pins', {
+      params: { boardId: BoardId },
+      payload: AddPins,
+      success: Board,
+      error: [BoardNotFound, PinRefused, OperationConflict, WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post('removePins', '/boards/:boardId/pins/remove', {
+      params: { boardId: BoardId },
+      payload: RemovePins,
+      success: Board,
+      error: [BoardNotFound, OperationConflict, WardrobeUnavailable, RequestRefused],
     }),
   )
   .add(

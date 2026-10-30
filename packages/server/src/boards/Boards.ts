@@ -1,5 +1,6 @@
 import {
   type AddBoardImage,
+  type AddPins,
   Board,
   type BoardId,
   type BoardImage,
@@ -7,11 +8,16 @@ import {
   BoardImageId,
   BoardItemRefused,
   BoardNotFound,
+  BoardSummary,
   BoardVersionConflict,
   type CreateBoard,
   ImageItem,
+  type Look,
+  maximumBoardPins,
   OperationConflict,
   PieceItem,
+  PinRefused,
+  type RemovePins,
   type SaveBoardItems,
   type UpdateBoard,
   UploadRefused,
@@ -21,12 +27,21 @@ import { Array, Context, DateTime, Effect, Match, Option, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { CurrentAccount } from '../CurrentAccount.ts'
+import { shownLooks } from '../looks/Looks.ts'
+import { type LookStore, makeLookStore } from '../looks/Store.ts'
 import { deliverImage, type ImageBindings } from '../wardrobe/Delivery.ts'
 import type { ShownImage } from '../wardrobe/Http.ts'
 import type { ImageSize } from '../wardrobe/Media.ts'
 import { makeStore, type Store, type StoreUnavailable } from '../wardrobe/Store.ts'
-import { usableUpload, type WardrobeBindings } from '../wardrobe/Wardrobe.ts'
-import { type BoardItemRow, type BoardRow, type BoardStore, makeBoardStore } from './Store.ts'
+import { toPiece, usableUpload, type WardrobeBindings } from '../wardrobe/Wardrobe.ts'
+import {
+  type BoardItemRow,
+  type BoardPinRow,
+  type BoardRow,
+  type BoardStore,
+  makeBoardStore,
+  type PinRemoval,
+} from './Store.ts'
 
 /** The bindings boards keep their rows and pictures in. */
 export interface BoardBindings extends ImageBindings {
@@ -39,6 +54,9 @@ const nowDate = Effect.map(DateTime.now, DateTime.toDateUtc)
 
 /** R2 deletes at most this many keys per call. */
 const deleteBatch = 1000
+
+/** How many of its newest pins a board in a list shows. */
+const coverPins = 4
 
 /** A stored item as the protocol shows it. */
 const shownItem = (row: BoardItemRow) => {
@@ -75,10 +93,58 @@ const itemRow = (item: BoardItem): Omit<BoardItemRow, 'boardId'> => {
   )
 }
 
-/** Boards as the protocol shows them, each with its items. */
-const shown = (store: BoardStore, rows: ReadonlyArray<BoardRow>) =>
+interface Parts {
+  readonly bindings: BoardBindings
+  readonly store: BoardStore
+  readonly wardrobeStore: Store
+  readonly lookStore: LookStore
+  readonly newId: (prefix: 'bd' | 'bm' | 'pn') => Effect.Effect<string, WardrobeUnavailable>
+  readonly digest: (text: string) => Effect.Effect<string, WardrobeUnavailable>
+}
+
+type PinWithPiece = Effect.Success<ReturnType<BoardStore['pinsOf']>>[number]
+
+/** The looks these pins hold, by id. */
+const pinnedLooks = (parts: Parts, pins: ReadonlyArray<PinWithPiece>) =>
   Effect.gen(function* () {
-    const items = yield* stored(store.itemsOf(rows.map(({ id }) => id)))
+    const lookIds = [...new Set(pins.flatMap(({ pin }) => (pin.lookId === null ? [] : [pin.lookId])))]
+    if (lookIds.length === 0) return new Map<string, Look>()
+    const looks = yield* shownLooks(parts.lookStore, yield* stored(parts.lookStore.looksById(lookIds)))
+    return new Map(looks.map((look) => [look.id, look]))
+  })
+
+/** A stored pin as the protocol shows it, to be decoded with its board; a pin whose piece, look or picture is
+ * gone shows nothing. */
+const shownPin = (row: PinWithPiece, looks: ReadonlyMap<string, Look>) =>
+  Effect.gen(function* () {
+    const base = { id: row.pin.id, addedAt: row.pin.createdAt.toISOString() }
+    const look = row.pin.lookId === null ? undefined : looks.get(row.pin.lookId)
+    const shownRow: ReadonlyArray<object> =
+      row.pin.kind === 'piece' && row.piece !== null
+        ? [{ _tag: 'PiecePin', ...base, piece: yield* toPiece(row.piece) }]
+        : row.pin.kind === 'picture' && row.pin.imageId !== null
+          ? [{ _tag: 'PicturePin', ...base, imageId: row.pin.imageId }]
+          : row.pin.kind === 'look' && look !== undefined
+            ? [{ _tag: 'LookPin', ...base, look }]
+            : []
+    return shownRow
+  })
+
+const shownPins = (parts: Parts, pins: ReadonlyArray<PinWithPiece>) =>
+  Effect.gen(function* () {
+    const looks = yield* pinnedLooks(parts, pins)
+    const shownRows = yield* Effect.forEach(pins, (row) =>
+      Effect.map(shownPin(row, looks), (shownRow) => ({ boardId: row.pin.boardId, pins: shownRow })),
+    )
+    return (boardId: string) => shownRows.filter((row) => row.boardId === boardId).flatMap((row) => row.pins)
+  })
+
+/** Boards as the protocol shows them, each with its table and pins. */
+const shown = (parts: Parts, rows: ReadonlyArray<BoardRow>) =>
+  Effect.gen(function* () {
+    const ids = rows.map(({ id }) => id)
+    const items = yield* stored(parts.store.itemsOf(ids))
+    const pinsOf = yield* shownPins(parts, yield* stored(parts.store.pinsOf(ids)))
     return yield* Effect.forEach(rows, (row) =>
       // Only the service writes rows, through the same schemas; a row that does not decode is a bug.
       Schema.decodeUnknownEffect(Board)({
@@ -87,18 +153,31 @@ const shown = (store: BoardStore, rows: ReadonlyArray<BoardRow>) =>
         paper: row.paper,
         version: row.version,
         items: items.filter(({ boardId }) => boardId === row.id).map(shownItem),
+        pins: pinsOf(row.id),
         updatedAt: row.updatedAt.toISOString(),
       }).pipe(Effect.orDie),
     )
   })
 
-interface Parts {
-  readonly bindings: BoardBindings
-  readonly store: BoardStore
-  readonly wardrobeStore: Store
-  readonly newId: (prefix: 'bd' | 'bm') => Effect.Effect<string, WardrobeUnavailable>
-  readonly digest: (text: string) => Effect.Effect<string, WardrobeUnavailable>
-}
+/** Boards in a list: each with its table, its newest pins and how many it holds. */
+const summaries = (parts: Parts, rows: ReadonlyArray<BoardRow>) =>
+  Effect.gen(function* () {
+    const ids = rows.map(({ id }) => id)
+    const items = yield* stored(parts.store.itemsOf(ids))
+    const coverOf = yield* shownPins(parts, yield* stored(parts.store.coversOf(ids, coverPins)))
+    const counts = yield* stored(parts.store.pinCounts(ids))
+    return yield* Effect.forEach(rows, (row) =>
+      Schema.decodeUnknownEffect(BoardSummary)({
+        id: row.id,
+        name: row.name,
+        paper: row.paper,
+        items: items.filter(({ boardId }) => boardId === row.id).map(shownItem),
+        cover: coverOf(row.id),
+        pinCount: counts.get(row.id) ?? 0,
+        updatedAt: row.updatedAt.toISOString(),
+      }).pipe(Effect.orDie),
+    )
+  })
 
 const ownBoard = (parts: Parts, accountId: string, boardId: string) =>
   Effect.flatMap(stored(parts.store.findBoard(accountId, boardId)), (row) =>
@@ -107,7 +186,7 @@ const ownBoard = (parts: Parts, accountId: string, boardId: string) =>
 
 const one = (parts: Parts, accountId: string, boardId: string) =>
   Effect.gen(function* () {
-    const [board] = yield* shown(parts.store, [yield* ownBoard(parts, accountId, boardId)])
+    const [board] = yield* shown(parts, [yield* ownBoard(parts, accountId, boardId)])
     return board ?? (yield* BoardNotFound.make({}))
   })
 
@@ -115,7 +194,7 @@ const reads = (parts: Parts) => ({
   /** The account's boards, the most recently changed first. */
   listBoards: Effect.fn('Styld.Boards.list')(function* () {
     const { accountId } = yield* CurrentAccount
-    return yield* shown(parts.store, yield* stored(parts.store.listBoards(accountId)))
+    return yield* summaries(parts, yield* stored(parts.store.listBoards(accountId)))
   }),
   getBoard: Effect.fn('Styld.Boards.get')(function* (boardId: BoardId) {
     const { accountId } = yield* CurrentAccount
@@ -123,15 +202,28 @@ const reads = (parts: Parts) => ({
   }),
 })
 
+/** What an operation id already did, if anything: its result for the same command and input; anything else
+ * under that id is a conflict. */
+const receiptFor = (parts: Parts, accountId: string, operationId: string, command: string, inputDigest: string) =>
+  Effect.gen(function* () {
+    const receipt = yield* stored(parts.store.findReceipt(accountId, operationId))
+    if (Option.isNone(receipt)) return Option.none<string>()
+    if (receipt.value.inputDigest !== inputDigest || receipt.value.command !== command)
+      return yield* OperationConflict.make({})
+    return Option.some(receipt.value.result)
+  })
+
+/** A receipt for an operation the account is about to commit. */
+const receiptRow = (accountId: string, operationId: string, command: string, inputDigest: string, result: string) =>
+  Effect.map(nowDate, (createdAt) => ({ accountId, operationId, command, inputDigest, result, createdAt }))
+
 /** The board an operation id already created, if any: the same board for the same name. Another name, or a
  * repeat after that board was deleted, is a conflict. */
 const createdBefore = (parts: Parts, accountId: string, operationId: string, inputDigest: string) =>
   Effect.gen(function* () {
-    const receipt = yield* stored(parts.store.findReceipt(accountId, operationId))
-    if (Option.isNone(receipt)) return Option.none<Board>()
-    if (receipt.value.inputDigest !== inputDigest || receipt.value.command !== 'createBoard')
-      return yield* OperationConflict.make({})
-    const board = yield* one(parts, accountId, receipt.value.result).pipe(
+    const created = yield* receiptFor(parts, accountId, operationId, 'createBoard', inputDigest)
+    if (Option.isNone(created)) return Option.none<Board>()
+    const board = yield* one(parts, accountId, created.value).pipe(
       Effect.catchTag('BoardNotFound', () => Effect.fail(OperationConflict.make({}))),
     )
     return Option.some(board)
@@ -155,14 +247,14 @@ const changes = (parts: Parts) => ({
       createdAt: at,
       updatedAt: at,
     }
-    const receiptRow = { accountId, operationId: input.operationId, command: 'createBoard', inputDigest, result: id }
-    const committed = yield* Effect.option(parts.store.createBoard(board, { ...receiptRow, createdAt: at }))
+    const receipt = yield* receiptRow(accountId, input.operationId, 'createBoard', inputDigest, id)
+    const committed = yield* Effect.option(parts.store.createBoard(board, receipt))
     if (Option.isNone(committed)) {
       // A concurrent repeat of the operation may have committed first; its board answers.
       const repeat = yield* createdBefore(parts, accountId, input.operationId, inputDigest)
       return Option.isSome(repeat) ? repeat.value : yield* unavailable()
     }
-    const [created] = yield* shown(parts.store, [board])
+    const [created] = yield* shown(parts, [board])
     return created ?? (yield* unavailable())
   }),
   /** Rename the board or change its paper. Its table is untouched, so the version stays. */
@@ -176,7 +268,7 @@ const changes = (parts: Parts) => ({
       }),
     )
     if (Option.isNone(updated)) return yield* BoardNotFound.make({})
-    const [board] = yield* shown(parts.store, [updated.value])
+    const [board] = yield* shown(parts, [updated.value])
     return board ?? (yield* BoardNotFound.make({}))
   }),
   /** Delete the board, its items and its pictures' bytes. */
@@ -194,14 +286,16 @@ const changes = (parts: Parts) => ({
   }),
 })
 
-/** Why a table cannot be saved, if it cannot: two items with one id, a piece that is not the account's, or a
- * picture that is not on this board. */
+/** Why a table cannot be saved, if it cannot: two items with one id, a piece that is neither the account's nor
+ * pinned on the board, or a picture that is not on this board. */
 const tableRefusal = (parts: Parts, accountId: string, boardId: string, items: ReadonlyArray<BoardItem>) =>
   Effect.gen(function* () {
     if (new Set(items.map(({ id }) => id)).size !== items.length) return Option.some('duplicateId' as const)
     const pieceIds = [...new Set(items.filter(Schema.is(PieceItem)).map(({ pieceId }) => pieceId))]
     const owned = yield* stored(parts.store.ownPieces(accountId, pieceIds))
-    if (pieceIds.some((id) => !owned.has(id))) return Option.some('pieceNotFound' as const)
+    const others = pieceIds.filter((id) => !owned.has(id))
+    const pinned = others.length === 0 ? new Set<string>() : yield* stored(parts.store.piecesPinned(boardId, others))
+    if (others.some((id) => !pinned.has(id))) return Option.some('pieceNotFound' as const)
     const imageIds = [...new Set(items.filter(Schema.is(ImageItem)).map(({ imageId }) => imageId))]
     const onBoard = yield* stored(parts.store.imagesOn(boardId, imageIds))
     if (imageIds.some((id) => !onBoard.has(id))) return Option.some('imageNotFound' as const)
@@ -215,18 +309,136 @@ const lostSave = (parts: Parts, accountId: string, boardId: string, version: num
     return yield* board.version === version ? unavailable() : BoardVersionConflict.make({ version: board.version })
   })
 
+/** New pins for things a board does not hold yet, the first of them newest. */
+const newPins = (
+  parts: Parts,
+  boardId: string,
+  targets: ReadonlyArray<Pick<BoardPinRow, 'kind' | 'pieceId' | 'lookId' | 'imageId'>>,
+  at: Date,
+) =>
+  Effect.forEach(targets, (target, index) =>
+    Effect.map(parts.newId('pn'), (id): BoardPinRow => ({
+      id,
+      boardId,
+      ...target,
+      createdAt: new Date(at.getTime() + targets.length - index),
+    })),
+  )
+
+const pieceTarget = (pieceId: string) => ({ kind: 'piece' as const, pieceId, lookId: null, imageId: null })
+const lookTarget = (lookId: string) => ({ kind: 'look' as const, pieceId: null, lookId, imageId: null })
+
 const tables = (parts: Parts) => ({
-  /** Replace the board's table with the editor's, from the version the editor loaded; a board saved since
-   * answers its current version instead. */
+  /** Replace the board's table with the editor's, from the version the editor loaded, pinning the pieces it
+   * places; a board saved since answers its current version instead. The same operation id answers the
+   * board as it is now. */
   saveBoardItems: Effect.fn('Styld.Boards.saveItems')(function* (boardId: BoardId, input: SaveBoardItems) {
     const { accountId } = yield* CurrentAccount
+    const inputDigest = yield* parts.digest(JSON.stringify([boardId, input.version, input.items]))
+    const command = 'saveBoardItems'
+    if (Option.isSome(yield* receiptFor(parts, accountId, input.operationId, command, inputDigest)))
+      return yield* one(parts, accountId, boardId)
     const board = yield* ownBoard(parts, accountId, boardId)
     if (board.version !== input.version) return yield* BoardVersionConflict.make({ version: board.version })
     const refusal = yield* tableRefusal(parts, accountId, boardId, input.items)
     if (Option.isSome(refusal)) return yield* BoardItemRefused.make({ reason: refusal.value })
-    const save = { accountId, boardId, version: input.version, items: input.items.map(itemRow), at: yield* nowDate }
+    const placed = [...new Set(input.items.filter(Schema.is(PieceItem)).map(({ pieceId }) => pieceId))]
+    const pinned = yield* stored(parts.store.piecesPinned(boardId, placed))
+    const at = yield* nowDate
+    const save = {
+      accountId,
+      boardId,
+      version: input.version,
+      items: input.items.map(itemRow),
+      pins: yield* newPins(parts, boardId, placed.filter((id) => !pinned.has(id)).map(pieceTarget), at),
+      receipt: yield* receiptRow(accountId, input.operationId, command, inputDigest, boardId),
+      at,
+    }
     const counted = yield* parts.store.saveItems(save).pipe(Effect.orElseSucceed(() => Option.none()))
-    if (Option.isNone(counted)) return yield* lostSave(parts, accountId, boardId, input.version)
+    if (Option.isSome(counted)) return yield* one(parts, accountId, boardId)
+    // A concurrent repeat of the operation may have committed first; the board answers then.
+    if (Option.isSome(yield* receiptFor(parts, accountId, input.operationId, command, inputDigest)))
+      return yield* one(parts, accountId, boardId)
+    return yield* lostSave(parts, accountId, boardId, input.version)
+  }),
+})
+
+/** Why these pieces and looks cannot be pinned, if they cannot. */
+const pinRefusal = (
+  parts: Parts,
+  accountId: string,
+  boardId: string,
+  pieceIds: ReadonlyArray<string>,
+  lookIds: ReadonlyArray<string>,
+) =>
+  Effect.gen(function* () {
+    if (pieceIds.length + lookIds.length === 0) return Option.some('nothingToPin' as const)
+    const owned = yield* stored(parts.store.ownPieces(accountId, pieceIds))
+    if (pieceIds.some((id) => !owned.has(id))) return Option.some('pieceNotFound' as const)
+    const ownLooks = yield* stored(parts.lookStore.ownLooks(accountId, lookIds))
+    if (lookIds.some((id) => !ownLooks.has(id))) return Option.some('lookNotFound' as const)
+    const held = (yield* stored(parts.store.pinCounts([boardId]))).get(boardId) ?? 0
+    if (held + pieceIds.length + lookIds.length > maximumBoardPins) return Option.some('boardFull' as const)
+    return Option.none()
+  })
+
+const pinning = (parts: Parts) => ({
+  /** Pin the account's pieces and looks on the board, the first of them newest; what is pinned already stays
+   * where it is. The same operation id answers the board as it is now. */
+  addPins: Effect.fn('Styld.Boards.addPins')(function* (boardId: BoardId, input: AddPins) {
+    const { accountId } = yield* CurrentAccount
+    const pieceIds = [...new Set(input.pieceIds ?? [])]
+    const lookIds = [...new Set(input.lookIds ?? [])]
+    const inputDigest = yield* parts.digest(JSON.stringify([boardId, pieceIds, lookIds]))
+    if (Option.isSome(yield* receiptFor(parts, accountId, input.operationId, 'addPins', inputDigest)))
+      return yield* one(parts, accountId, boardId)
+    yield* ownBoard(parts, accountId, boardId)
+    const refusal = yield* pinRefusal(parts, accountId, boardId, pieceIds, lookIds)
+    if (Option.isSome(refusal)) return yield* PinRefused.make({ reason: refusal.value })
+    const at = yield* nowDate
+    const pins = yield* newPins(parts, boardId, [...pieceIds.map(pieceTarget), ...lookIds.map(lookTarget)], at)
+    const receipt = yield* receiptRow(accountId, input.operationId, 'addPins', inputDigest, boardId)
+    const committed = yield* Effect.option(parts.store.addPins(accountId, boardId, pins, receipt, at))
+    if (
+      Option.isNone(committed) &&
+      Option.isNone(yield* receiptFor(parts, accountId, input.operationId, 'addPins', inputDigest))
+    )
+      return yield* unavailable()
+    return yield* one(parts, accountId, boardId)
+  }),
+  /** Take pins off the board and their pieces and pictures off its table; a picture taken off is deleted.
+   * The table changes, so its version moves on. The same operation id answers the board as it is now. */
+  removePins: Effect.fn('Styld.Boards.removePins')(function* (boardId: BoardId, input: RemovePins) {
+    const { accountId } = yield* CurrentAccount
+    const pinIds = [...new Set(input.pinIds)]
+    const inputDigest = yield* parts.digest(JSON.stringify([boardId, pinIds]))
+    if (Option.isSome(yield* receiptFor(parts, accountId, input.operationId, 'removePins', inputDigest)))
+      return yield* one(parts, accountId, boardId)
+    yield* ownBoard(parts, accountId, boardId)
+    const pins = yield* stored(parts.store.pinsOn(boardId, pinIds))
+    const imageIds = pins.flatMap(({ imageId }) => (imageId === null ? [] : [imageId]))
+    const keys = yield* stored(parts.store.imageKeysOf(boardId, imageIds))
+    const removal: PinRemoval = {
+      accountId,
+      boardId,
+      pinIds,
+      pieceIds: pins.flatMap(({ pieceId }) => (pieceId === null ? [] : [pieceId])),
+      imageIds,
+      receipt: yield* receiptRow(accountId, input.operationId, 'removePins', inputDigest, boardId),
+      at: yield* nowDate,
+    }
+    const committed = yield* Effect.option(parts.store.removePins(removal))
+    if (Option.isNone(committed)) {
+      if (Option.isNone(yield* receiptFor(parts, accountId, input.operationId, 'removePins', inputDigest)))
+        return yield* unavailable()
+      return yield* one(parts, accountId, boardId)
+    }
+    // The rows are gone; bytes a failed delete leaves behind sit under the account's prefix, which account
+    // deletion clears.
+    if (keys.length > 0)
+      yield* Effect.ignore(
+        Effect.tryPromise({ try: () => parts.bindings.bucket.delete([...keys]), catch: unavailable }),
+      )
     return yield* one(parts, accountId, boardId)
   }),
 })
@@ -270,10 +482,11 @@ const pictures = (parts: Parts) => ({
     const upload = yield* usableUpload(parts.wardrobeStore, accountId, input.uploadId)
     if (!upload.contentType.startsWith('image/')) return yield* UploadRefused.make({ reason: 'wrongType' })
     const id = yield* parts.newId('bm')
+    const pinId = yield* parts.newId('pn')
     const at = yield* nowDate
-    const receiptRow = { accountId, operationId: input.operationId, command: 'addBoardImage', inputDigest, result: id }
+    const added = yield* receiptRow(accountId, input.operationId, 'addBoardImage', inputDigest, id)
     const image = { id, accountId, boardId, contentType: upload.contentType, createdAt: at }
-    const committed = yield* parts.store.addImage(image, upload.id, { ...receiptRow, createdAt: at }).pipe(
+    const committed = yield* parts.store.addImage(image, pinId, upload.id, added).pipe(
       Effect.as(Option.none<BoardImage>()),
       Effect.catchTag('StoreUnavailable', () =>
         addImageFailure(parts, { ...input, accountId, boardId, inputDigest }).pipe(Effect.map(Option.some)),
@@ -301,6 +514,7 @@ const make = (bindings: BoardBindings) =>
       bindings,
       store: makeBoardStore(bindings.database),
       wardrobeStore: makeStore(bindings.database),
+      lookStore: makeLookStore(bindings.database),
       newId: (prefix) =>
         Effect.map(crypto.randomBytes(16), (bytes) => `${prefix}_${Base64Url.encode(bytes)}`).pipe(
           Effect.mapError(unavailable),
@@ -308,7 +522,7 @@ const make = (bindings: BoardBindings) =>
       digest: (text) =>
         Effect.map(crypto.digest('SHA-256', encoder.encode(text)), Base64Url.encode).pipe(Effect.mapError(unavailable)),
     }
-    return { ...reads(parts), ...changes(parts), ...tables(parts), ...pictures(parts) }
+    return { ...reads(parts), ...changes(parts), ...tables(parts), ...pinning(parts), ...pictures(parts) }
   })
 
 /** Boards, for the website. Every operation acts for `CurrentAccount`, which HTTP provides per request, so no

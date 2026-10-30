@@ -26,6 +26,13 @@ const addedPiece = async (origin: string, call: Call, operationId: string) =>
 const itemId = (letter: string) => `bi_${letter.repeat(22)}`
 const placement = { x: 500, y: 625, size: 320, turn: -4.5, flipped: false }
 
+let saves = 0
+/** Save a board's table from a version, each call under a fresh operation id. */
+const putTable = (call: Call, boardId: string, version: number, items: ReadonlyArray<object>) => {
+  saves += 1
+  return send(call, `/api/boards/${boardId}/items`, 'PUT', { operationId: `native-table-${saves}`, version, items })
+}
+
 /** A table is saved whole from the version its editor loaded; a stale version, another account's piece, a
  * picture that is not on the board and a repeated id are refused, and nothing changes. */
 const saveTables = async (owner: Call, boardId: string, pieceId: string, strangerPieceId: string) => {
@@ -41,14 +48,24 @@ const saveTables = async (owner: Call, boardId: string, pieceId: string, strange
   }
   const items = [pieceItem, textItem]
   const path = `/api/boards/${boardId}/items`
-  const saved = await send(owner, path, 'PUT', { version: 0, items })
+  const save = { operationId: 'native-table-first', version: 0, items }
+  const saved = await send(owner, path, 'PUT', save)
   expect(saved.status).toBe(200)
-  expect(await saved.json()).toMatchObject({ id: boardId, version: 1, items })
-  const stale = await send(owner, path, 'PUT', { version: 0, items: [] })
+  // Placing a piece pins it on the board.
+  expect(await saved.json()).toMatchObject({
+    id: boardId,
+    version: 1,
+    items,
+    pins: [{ _tag: 'PiecePin', piece: { id: pieceId } }],
+  })
+  // The same save again answers the board as it is; the same operation id for another table is a conflict.
+  expect(await (await send(owner, path, 'PUT', save)).json()).toMatchObject({ version: 1, items })
+  expect((await send(owner, path, 'PUT', { ...save, items: [] })).status).toBe(409)
+  const stale = await putTable(owner, boardId, 0, [])
   expect(stale.status).toBe(409)
   expect(await stale.json()).toMatchObject({ _tag: 'BoardVersionConflict', version: 1 })
   const refusal = async (table: ReadonlyArray<object>, reason: string) => {
-    const refused = await send(owner, path, 'PUT', { version: 1, items: table })
+    const refused = await putTable(owner, boardId, 1, table)
     expect(refused.status).toBe(422)
     expect(await refused.json()).toMatchObject({ _tag: 'BoardItemRefused', reason })
   }
@@ -70,8 +87,7 @@ const raceSaves = async (
   version: number,
   tables: readonly [ReadonlyArray<object>, ReadonlyArray<object>],
 ) => {
-  const path = `/api/boards/${boardId}/items`
-  const answers = await Promise.all(tables.map((items) => send(owner, path, 'PUT', { version, items })))
+  const answers = await Promise.all(tables.map((items) => putTable(owner, boardId, version, items)))
   expect(answers.map(({ status }) => status).toSorted((a, b) => a - b)).toEqual([200, 409])
   const won = answers.findIndex(({ status }) => status === 200)
   expect(await answers[1 - won]?.json()).toMatchObject({ _tag: 'BoardVersionConflict', version: version + 1 })
@@ -107,13 +123,104 @@ const addPicture = async (origin: string, owner: Call, other: Call, boardId: str
   return { imageId, uploadId: add.uploadId }
 }
 
+const Pinned = Schema.Struct({
+  version: Schema.Int,
+  items: Schema.Array(Schema.Struct({ _tag: Schema.String })),
+  pins: Schema.Array(
+    Schema.Struct({
+      _tag: Schema.String,
+      id: Schema.String,
+      piece: Schema.optionalKey(Identified),
+      look: Schema.optionalKey(Identified),
+      imageId: Schema.optionalKey(Schema.String),
+    }),
+  ),
+})
+const pinnedOf = async (response: Response) => {
+  expect(response.status).toBe(200)
+  return Schema.decodeUnknownSync(Pinned)(await response.json())
+}
+/** What a board's pins hold, newest first. */
+const held = (board: typeof Pinned.Type) =>
+  board.pins.map((pin) => pin.piece?.id ?? pin.look?.id ?? pin.imageId ?? pin.id)
+
+/** Pins: the account's pieces and looks pinned once each per operation, newest first, without moving the
+ * table's version; a piece placed on the table is pinned with it; taking a pin off takes its piece off the
+ * table, and a picture taken off is deleted with its bytes. */
+const verifyPins = async (
+  origin: string,
+  fixtures: string,
+  accounts: { readonly owner: Call; readonly other: Call },
+  boardId: string,
+  ids: {
+    readonly pieceId: string
+    readonly secondPieceId: string
+    readonly strangerPieceId: string
+    readonly imageId: string
+  },
+) => {
+  const { owner, other } = accounts
+  const { pieceId, secondPieceId, strangerPieceId, imageId } = ids
+  const path = `/api/boards/${boardId}/pins`
+  const before = await pinnedOf(await owner(`/api/boards/${boardId}`))
+  expect(held(before)).toEqual([imageId, pieceId])
+
+  const pin = { operationId: 'native-pins-0001', pieceIds: [secondPieceId, pieceId] }
+  const pinned = await pinnedOf(await send(owner, path, 'POST', pin))
+  expect(held(pinned)).toEqual([secondPieceId, imageId, pieceId])
+  expect(pinned.version).toBe(before.version)
+  expect(held(await pinnedOf(await send(owner, path, 'POST', pin)))).toEqual(held(pinned))
+  expect((await send(owner, path, 'POST', { ...pin, pieceIds: [pieceId] })).status).toBe(409)
+  const refused = async (body: object, reason: string) => {
+    const answer = await send(owner, path, 'POST', body)
+    expect(answer.status).toBe(422)
+    expect(await answer.json()).toMatchObject({ _tag: 'PinRefused', reason })
+  }
+  await refused({ operationId: 'native-pins-0002', pieceIds: [strangerPieceId] }, 'pieceNotFound')
+  await refused({ operationId: 'native-pins-0003', pieceIds: [] }, 'nothingToPin')
+  await refused({ operationId: 'native-pins-0004', lookIds: [`lk_${'z'.repeat(22)}`] }, 'lookNotFound')
+
+  const lookId = await idOf(
+    await send(owner, '/api/looks', 'POST', { operationId: 'native-pins-look', name: 'Pinned', pieceIds: [pieceId] }),
+  )
+  const withLook = await pinnedOf(
+    await send(owner, path, 'POST', { operationId: 'native-pins-0005', lookIds: [lookId] }),
+  )
+  expect(held(withLook)).toEqual([lookId, secondPieceId, imageId, pieceId])
+
+  // A second picture, placed with the second piece, then both taken off.
+  const add = { operationId: 'native-pins-image', uploadId: await receivedPhoto(origin, owner) }
+  const { imageId: pictureId } = Schema.decodeUnknownSync(Schema.Struct({ imageId: Schema.String }))(
+    await (await send(owner, `/api/boards/${boardId}/images`, 'POST', add)).json(),
+  )
+  const table = [
+    { _tag: 'PieceItem', id: itemId('p'), ...placement, z: 1, pieceId: secondPieceId },
+    { _tag: 'ImageItem', id: itemId('q'), ...placement, z: 2, imageId: pictureId },
+  ]
+  const placed = await pinnedOf(await putTable(owner, boardId, withLook.version, table))
+  expect(placed.items).toHaveLength(2)
+  expect(held(placed)).toEqual([pictureId, lookId, secondPieceId, imageId, pieceId])
+  const off = placed.pins.filter((each) => each.piece?.id === secondPieceId || each.imageId === pictureId)
+  const removal = { operationId: 'native-pins-off', pinIds: off.map((each) => each.id) }
+  const removed = await pinnedOf(await send(owner, `${path}/remove`, 'POST', removal))
+  expect(removed.items).toEqual([])
+  expect(removed.version).toBe(placed.version + 1)
+  expect(held(removed)).toEqual([lookId, imageId, pieceId])
+  expect(held(await pinnedOf(await send(owner, `${path}/remove`, 'POST', removal)))).toEqual(held(removed))
+  expect((await owner(`/cdn/boards/images/${pictureId}/thumb`)).status).toBe(404)
+  const key = `accounts/native-boards/uploads/${add.uploadId}`
+  expect(await (await fetch(`${fixtures}/test/identity/media?key=${key}`)).json()).toEqual({ exists: false })
+  expect((await send(other, `${path}/remove`, 'POST', { ...removal, operationId: 'native-pins-y' })).status).toBe(404)
+  expect(await (await owner('/api/boards')).json()).toMatchObject({ boards: [{ id: boardId, pinCount: 3 }] })
+}
+
 /** Boards: created once per operation, listed, saved whole with a version, renamed, given pictures, private to
  * their owner, and deleted with their pictures' bytes. */
 const verifyBoards = async (
   origin: string,
   fixtures: string,
   accounts: { readonly owner: Call; readonly other: Call },
-  pieces: { readonly pieceId: string; readonly strangerPieceId: string },
+  pieces: { readonly pieceId: string; readonly secondPieceId: string; readonly strangerPieceId: string },
 ) => {
   const { owner, other } = accounts
   expect((await fetch(`${origin}/api/boards`)).status).toBe(401)
@@ -132,17 +239,21 @@ const verifyBoards = async (
 
   const { imageId, uploadId } = await addPicture(origin, owner, other, boardId)
   const table = [...items, { _tag: 'ImageItem', id: itemId('c'), ...placement, z: 2, imageId }]
-  const saved = await send(owner, `/api/boards/${boardId}/items`, 'PUT', { version: 1, items: table })
+  const saved = await putTable(owner, boardId, 1, table)
   expect(await saved.json()).toMatchObject({ version: 2, items: table })
-  expect(await (await owner('/api/boards')).json()).toMatchObject({ boards: [{ id: boardId, version: 2 }] })
+  expect(await (await owner('/api/boards')).json()).toMatchObject({ boards: [{ id: boardId, pinCount: 2 }] })
   await raceSaves(owner, boardId, 2, [table, items])
   await raceSaves(owner, boardId, 3, [[], []])
+  await verifyPins(origin, fixtures, { owner, other }, boardId, { ...pieces, imageId })
 
   // Another account cannot see, change or delete the board.
   expect(await (await other('/api/boards')).json()).toEqual({ boards: [] })
   expect((await other(`/api/boards/${boardId}`)).status).toBe(404)
   expect((await send(other, `/api/boards/${boardId}`, 'PATCH', { name: 'Mine now' })).status).toBe(404)
-  expect((await send(other, `/api/boards/${boardId}/items`, 'PUT', { version: 2, items: [] })).status).toBe(404)
+  expect((await putTable(other, boardId, 2, [])).status).toBe(404)
+  expect(
+    (await send(other, `/api/boards/${boardId}/pins`, 'POST', { operationId: 'native-pins-x', pieceIds: [] })).status,
+  ).toBe(404)
   expect((await other(`/api/boards/${boardId}`, { method: 'DELETE' })).status).toBe(404)
 
   const key = `accounts/native-boards/uploads/${uploadId}`
@@ -209,7 +320,10 @@ const verifyWebLook = async (origin: string, cookie: string, pieceId: string, st
     body: JSON.stringify({ ...create, operationId: 'native-web-look-3' }),
   })
   expect(unadmitted.status).toBe(403)
-  expect(await (await owner('/api/looks')).json()).toMatchObject({ looks: [{ id: lookId }] })
+  const { looks } = Schema.decodeUnknownSync(Schema.Struct({ looks: Schema.Array(Identified) }))(
+    await (await owner('/api/looks')).json(),
+  )
+  expect(looks.map(({ id }) => id)).toContain(lookId)
 }
 
 /** Deleting the account takes its boards, pictures and worn days with it, the pictures' bytes included. */
@@ -238,7 +352,7 @@ export const verifyGallery = async (origin: string, fixtures: string): Promise<v
   const pieceId = await addedPiece(origin, owner, 'native-board-piece-1')
   const secondPieceId = await addedPiece(origin, owner, 'native-board-piece-2')
   const strangerPieceId = await addedPiece(origin, other, 'native-board-piece-3')
-  await verifyBoards(origin, fixtures, { owner, other }, { pieceId, strangerPieceId })
+  await verifyBoards(origin, fixtures, { owner, other }, { pieceId, secondPieceId, strangerPieceId })
   await verifyWebLook(origin, cookie, pieceId, strangerPieceId)
   await verifyWorn(owner, other, [pieceId, secondPieceId], strangerPieceId)
   await verifyAccountDeletion(origin, fixtures, owner, pieceId)

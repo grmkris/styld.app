@@ -25,6 +25,10 @@ export const boardHandlers = (admit: Admit) =>
         .handle('saveBoardItems', ({ params, payload }) =>
           admit(asSessionAccount(boards.saveBoardItems(params.boardId, payload))),
         )
+        .handle('addPins', ({ params, payload }) => admit(asSessionAccount(boards.addPins(params.boardId, payload))))
+        .handle('removePins', ({ params, payload }) =>
+          admit(asSessionAccount(boards.removePins(params.boardId, payload))),
+        )
         .handle('addBoardImage', ({ params, payload }) =>
           admit(asSessionAccount(boards.addBoardImage(params.boardId, payload))),
         )

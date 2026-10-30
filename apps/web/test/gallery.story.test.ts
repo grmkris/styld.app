@@ -1,4 +1,4 @@
-import { Board, Day } from '@styld/protocol'
+import { Board, BoardSummary, Day } from '@styld/protocol'
 import { Array, Option, Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
@@ -69,7 +69,17 @@ describe('boards', () => {
     paper: 'paper',
     version: 0,
     items: [],
+    pins: [],
     updatedAt: '2026-10-30T08:00:00.000Z',
+  })
+  const listed = Schema.decodeUnknownSync(BoardSummary)({
+    id: created.id,
+    name: created.name,
+    paper: created.paper,
+    items: [],
+    cover: [],
+    pinCount: 0,
+    updatedAt: created.updatedAt,
   })
 
   test('a new board without a name takes the default one, and opens once it exists', () => {
@@ -93,8 +103,8 @@ describe('boards', () => {
       given(modifyFields(Boards.init(), { boards: () => Boards.BoardsData.Failure({ error: 'Unavailable' }) })),
       message(Boards.Message.ClickedRetry()),
       Command.expectExact(Boards.ListBoards),
-      Command.resolve(Boards.ListBoards, Boards.Message.SucceededListBoards({ boards: [created] })),
-      model(({ boards }) => expect(boards).toEqual(Boards.BoardsData.Success({ data: [created] }))),
+      Command.resolve(Boards.ListBoards, Boards.Message.SucceededListBoards({ boards: [listed] })),
+      model(({ boards }) => expect(boards).toEqual(Boards.BoardsData.Success({ data: [listed] }))),
     )
   })
 })

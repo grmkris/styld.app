@@ -1,5 +1,5 @@
 import { format, type Locale } from '@styld/i18n'
-import type { Board } from '@styld/protocol'
+import type { BoardSummary } from '@styld/protocol'
 import { Array, Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
@@ -17,7 +17,7 @@ import { Creating, Message, type Model } from './Boards.ts'
 import * as styles from './BoardsView.styles.ts'
 import { pageHead, pageTitle } from './PageHead.ts'
 
-const tileView = (board: Board, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const tileView = (board: BoardSummary, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.keyed('li')(
     board.id,
     [],
@@ -31,7 +31,7 @@ const tileView = (board: Board, locale: Locale, h: HtmlBuilder<Message>): Html =
         [
           stillTable(board.items, board.paper, [], h),
           h.span(styled(h, styles.tileName()), [board.name]),
-          h.span(styled(h, styles.tileMeta()), [format(locale, 'boards.items', { count: board.items.length })]),
+          h.span(styled(h, styles.tileMeta()), [format(locale, 'studio.pinCount', { count: board.pinCount })]),
         ],
       ),
     ],

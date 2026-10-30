@@ -2883,7 +2883,6 @@
     "loading": "Nalagam tvoje zbirke …",
     "failed": "Tvoje zbirke se niso naložile.",
     "retry": "Poskusi znova",
-    "items": "{count, plural, one {# stvar} two {# stvari} few {# stvari} other {# stvari}}",
     "open": "Odpri: {name}"
   },
   "ask": {

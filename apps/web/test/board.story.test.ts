@@ -36,6 +36,7 @@ const board = Schema.decodeUnknownSync(Board)({
   paper: 'paper',
   version: 3,
   items: [knit, shorts],
+  pins: [],
   updatedAt: '2026-10-30T08:00:00.000Z',
 })
 

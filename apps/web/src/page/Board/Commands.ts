@@ -64,14 +64,17 @@ export const SaveItems = Command.define('SaveItems', {
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       const id = yield* boardIdOf(boardId)
+      const operationId = yield* Schema.decodeUnknownEffect(OperationId)(yield* (yield* Crypto.Crypto).randomUUIDv4())
       const current = api.board
         .getBoard({ params: { boardId: id } })
         .pipe(Effect.map((board) => Message.ReplacedByNewerBoard({ board })))
-      return yield* api.board.saveBoardItems({ params: { boardId: id }, payload: { version, items } }).pipe(
-        Effect.map((board) => Message.SucceededSaveItems({ board })),
-        // Saved elsewhere first, or a piece on the table left the wardrobe: show the board as it is now.
-        Effect.catchTags({ BoardVersionConflict: () => current, BoardItemRefused: () => current }),
-      )
+      return yield* api.board
+        .saveBoardItems({ params: { boardId: id }, payload: { operationId, version, items } })
+        .pipe(
+          Effect.map((board) => Message.SucceededSaveItems({ board })),
+          // Saved elsewhere first, or a piece on the table left the wardrobe: show the board as it is now.
+          Effect.catchTags({ BoardVersionConflict: () => current, BoardItemRefused: () => current }),
+        )
     }).pipe(Effect.orElseSucceed(() => Message.FailedSaveItems())),
 })
 

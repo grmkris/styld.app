@@ -2554,7 +2554,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'boards.loading': 'Loading your boards…',
   'boards.failed': 'Your boards didn’t load.',
   'boards.retry': 'Try again',
-  'boards.items': '{count, plural, one {# thing} other {# things}}',
   'boards.open': 'Open {name}',
   'ask.title': 'Ask',
   'ask.searchLabel': 'Search your wardrobe',

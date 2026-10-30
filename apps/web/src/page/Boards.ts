@@ -1,4 +1,4 @@
-import { Board, BoardName, OperationId } from '@styld/protocol'
+import { Board, BoardName, BoardSummary, OperationId } from '@styld/protocol'
 import { Effect, Option, Result, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import { AsyncData, Command, Update } from 'foldkit'
@@ -10,7 +10,7 @@ import { StyldClient } from '../StyldClient.ts'
 // MODEL
 
 /** The person's boards as last read, kept on screen while they are asked for again. */
-export const BoardsData = AsyncData.Schema(Schema.Array(Board), Schema.Literal('Unavailable'))
+export const BoardsData = AsyncData.Schema(Schema.Array(BoardSummary), Schema.Literal('Unavailable'))
 export type BoardsData = typeof BoardsData.schema.Type
 
 export const Creating = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {} })
@@ -28,7 +28,7 @@ export const init = (): Model => ({ boards: AsyncData.Idle(), name: '', creating
 // MESSAGE
 
 export const Message = defineMessageUnion({
-  SucceededListBoards: { boards: Schema.Array(Board) },
+  SucceededListBoards: { boards: Schema.Array(BoardSummary) },
   FailedListBoards: {},
   ClickedRetry: {},
   UpdatedName: { value: Schema.String },
@@ -75,18 +75,29 @@ type Services = StyldClient | Crypto.Crypto
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Services>
 
 /** Opening the page: the boards already here stay while they are asked for again; a first visit asks. */
-export const revisit = Update.refresh<Model, Message, ReadonlyArray<Board>, 'Unavailable', StyldClient>({
+export const revisit = Update.refresh<Model, Message, ReadonlyArray<BoardSummary>, 'Unavailable', StyldClient>({
   read: (model: Model) => Option.some(model.boards),
   revalidate: AsyncData.revalidateOrLoad,
   write: (model: Model, boards: BoardsData) => modifyFields(model, { boards: () => boards }),
   load: ListBoards(),
 })
 
+/** A board as its list shows it: its table, its newest pins and how many. */
+const summaryOf = (board: Board): BoardSummary => ({
+  id: board.id,
+  name: board.name,
+  paper: board.paper,
+  items: board.items,
+  cover: board.pins.slice(0, 4),
+  pinCount: board.pins.length,
+  updatedAt: board.updatedAt,
+})
+
 const created = (model: Model, board: Board): UpdateReturn => ({
   model: modifyFields(model, {
     creating: () => Creating.Idle(),
     name: () => '',
-    boards: (boards) => AsyncData.map(boards, (list) => [board, ...list]),
+    boards: (boards) => AsyncData.map(boards, (list) => [summaryOf(board), ...list]),
   }),
   outMessage: OutMessage.CreatedBoard({ boardId: board.id }),
 })

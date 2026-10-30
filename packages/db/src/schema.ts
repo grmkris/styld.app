@@ -1,4 +1,4 @@
-import { index, integer, primaryKey, real, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { index, integer, primaryKey, real, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 
 export const accounts = sqliteTable('accounts', {
   id: text('id').primaryKey(),
@@ -310,6 +310,31 @@ export const boardItems = sqliteTable(
   ],
 )
 
+/** What is pinned on a board: a piece, a look or a picture put on it. The board's grid shows its pins, newest
+ * first; its table places some of them. A piece or look is pinned once per board, and deleting it unpins it. */
+export const boardPins = sqliteTable(
+  'board_pins',
+  {
+    id: text('id').primaryKey(),
+    boardId: text('board_id')
+      .notNull()
+      .references(() => boards.id, { onDelete: 'cascade' }),
+    kind: text('kind', { enum: ['piece', 'picture', 'look'] }).notNull(),
+    pieceId: text('piece_id').references(() => pieces.id, { onDelete: 'cascade' }),
+    imageId: text('image_id').references(() => boardImages.id, { onDelete: 'cascade' }),
+    lookId: text('look_id').references(() => looks.id, { onDelete: 'cascade' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    index('board_pins_board').on(table.boardId, table.createdAt),
+    uniqueIndex('board_pins_board_piece').on(table.boardId, table.pieceId),
+    uniqueIndex('board_pins_board_look').on(table.boardId, table.lookId),
+    uniqueIndex('board_pins_image').on(table.imageId),
+    index('board_pins_piece').on(table.pieceId),
+    index('board_pins_look').on(table.lookId),
+  ],
+)
+
 /** What the person wore on a day (their own calendar day, `2026-10-30`), in the outfit's order. Deleting a
  * piece takes it out of the days it was worn. The key's prefix serves reads by account and day. */
 export const wornPieces = sqliteTable(
@@ -428,6 +453,7 @@ export const appSchema = {
   boards,
   boardImages,
   boardItems,
+  boardPins,
   wornPieces,
   piecePictures,
   pieceTurns,

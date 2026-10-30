@@ -3,6 +3,7 @@ export {
   appSchema,
   boardImages,
   boardItems,
+  boardPins,
   boards,
   captureFrames,
   captures,

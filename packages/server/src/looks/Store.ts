@@ -46,6 +46,27 @@ export const makeLookStore = (database: Parameters<typeof drizzle>[0]) => {
       attempt(() =>
         db.select().from(looks).where(eq(looks.accountId, accountId)).orderBy(desc(looks.createdAt)).limit(200),
       ),
+    /** These looks, whoever's they are: a board's pins read the looks pinned on it. */
+    looksById: (lookIds: ReadonlyArray<string>) =>
+      Effect.map(
+        Effect.forEach(chunked(lookIds), (chunk) =>
+          attempt(() => db.select().from(looks).where(inArray(looks.id, chunk))),
+        ),
+        (rows) => rows.flat(),
+      ),
+    /** Which of these looks belong to the account. */
+    ownLooks: (accountId: string, lookIds: ReadonlyArray<string>) =>
+      Effect.map(
+        Effect.forEach(chunked(lookIds), (chunk) =>
+          attempt(() =>
+            db
+              .select({ id: looks.id })
+              .from(looks)
+              .where(and(eq(looks.accountId, accountId), inArray(looks.id, chunk))),
+          ),
+        ),
+        (rows) => new Set(rows.flat().map(({ id }) => id)),
+      ),
     findLook: (accountId: string, lookId: string) =>
       attempt(() =>
         db

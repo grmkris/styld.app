@@ -19,7 +19,7 @@ const unavailable = () => WardrobeUnavailable.make({})
 const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
 
 /** Looks as the protocol shows them, each with the pieces still in the wardrobe. */
-const shown = (store: LookStore, rows: ReadonlyArray<LookRow>) =>
+export const shownLooks = (store: LookStore, rows: ReadonlyArray<LookRow>) =>
   Effect.gen(function* () {
     const found = yield* stored(store.piecesOf(rows.map(({ id }) => id)))
     return yield* Effect.forEach(rows, (row) =>
@@ -56,7 +56,7 @@ const make = (database: Parameters<typeof makeLookStore>[0]) =>
       Effect.gen(function* () {
         const row = yield* stored(store.findLook(accountId, lookId))
         if (Option.isNone(row)) return yield* LookNotFound.make({})
-        const [look] = yield* shown(store, [row.value])
+        const [look] = yield* shownLooks(store, [row.value])
         return look ?? (yield* LookNotFound.make({}))
       })
     return {
@@ -93,7 +93,7 @@ const make = (database: Parameters<typeof makeLookStore>[0]) =>
       }),
       listLooks: Effect.fn('Styld.Looks.list')(function* () {
         const { accountId } = yield* CurrentAccount
-        return yield* shown(store, yield* stored(store.listLooks(accountId)))
+        return yield* shownLooks(store, yield* stored(store.listLooks(accountId)))
       }),
       getLook: Effect.fn('Styld.Looks.get')(function* (lookId: LookId) {
         const { accountId } = yield* CurrentAccount

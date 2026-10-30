@@ -1,5 +1,5 @@
 import { format, type Locale } from '@styld/i18n'
-import type { Board, Piece } from '@styld/protocol'
+import type { BoardSummary, Piece } from '@styld/protocol'
 import { Array, Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
@@ -192,7 +192,7 @@ const todayView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuil
   )
 }
 
-const boardCard = (board: Board, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const boardCard = (board: BoardSummary, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.a(
     [h.Href(boardRouter({ boardId: board.id })), ...styled(h, styles.card())],
     [

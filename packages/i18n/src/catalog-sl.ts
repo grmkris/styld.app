@@ -2603,7 +2603,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'boards.loading': 'Nalagam tvoje zbirke …',
   'boards.failed': 'Tvoje zbirke se niso naložile.',
   'boards.retry': 'Poskusi znova',
-  'boards.items': '{count, plural, one {# stvar} two {# stvari} few {# stvari} other {# stvari}}',
   'boards.open': 'Odpri: {name}',
   'ask.title': 'Vprašaj',
   'ask.searchLabel': 'Išči po garderobi',

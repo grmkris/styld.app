@@ -2883,7 +2883,6 @@
     "loading": "Loading your boards…",
     "failed": "Your boards didn’t load.",
     "retry": "Try again",
-    "items": "{count, plural, one {# thing} other {# things}}",
     "open": "Open {name}"
   },
   "ask": {

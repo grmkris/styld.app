@@ -1,5 +1,6 @@
 import { Schema } from 'effect'
-import { OperationId, PieceId, UploadId } from './Wardrobe.ts'
+import { Look, LookId } from './Look.ts'
+import { OperationId, Piece, PieceId, UploadId } from './Wardrobe.ts'
 
 /** Opaque ids: a kind prefix and 22 base64url characters (16 random bytes). The website makes item ids
  * itself, because items appear while the person edits and are saved together. */
@@ -13,12 +14,17 @@ export const BoardImageId = Schema.String.check(Schema.isPattern(/^bm_[A-Za-z0-9
   Schema.brand('BoardImageId'),
 )
 export type BoardImageId = typeof BoardImageId.Type
+export const PinId = Schema.String.check(Schema.isPattern(/^pn_[A-Za-z0-9_-]{22}$/)).pipe(Schema.brand('PinId'))
+export type PinId = typeof PinId.Type
 
 /** A board's table is a sheet 1000 units across and 1250 down (4:5); placements are in those units. */
 export const boardWidth = 1000
 export const boardHeight = 1250
-/** The most things one board holds. */
+/** The most things one board's table holds. */
 export const maximumBoardItems = 60
+/** The most things pinned on one board, and the most one call pins or unpins. */
+export const maximumBoardPins = 500
+export const pinsAtOnce = 50
 export const minimumItemSize = 40
 export const maximumItemSize = 1200
 
@@ -58,18 +64,49 @@ export type ImageItem = typeof ImageItem.Type
 export const BoardItem = Schema.Union([PieceItem, TextItem, ImageItem])
 export type BoardItem = typeof BoardItem.Type
 
+/** One of the person's pieces pinned on the board. */
+export const PiecePin = Schema.TaggedStruct('PiecePin', { id: PinId, piece: Piece, addedAt: Schema.String })
+export type PiecePin = typeof PiecePin.Type
+/** A picture on the board: pasted, dropped or chosen. */
+export const PicturePin = Schema.TaggedStruct('PicturePin', {
+  id: PinId,
+  imageId: BoardImageId,
+  addedAt: Schema.String,
+})
+export type PicturePin = typeof PicturePin.Type
+/** One of the person's looks pinned on the board. */
+export const LookPin = Schema.TaggedStruct('LookPin', { id: PinId, look: Look, addedAt: Schema.String })
+export type LookPin = typeof LookPin.Type
+
+export const Pin = Schema.Union([PiecePin, PicturePin, LookPin])
+export type Pin = typeof Pin.Type
+
+/** A board: its pins, newest first, and its table, which places some of them. */
 export const Board = Schema.Struct({
   id: BoardId,
   name: Schema.String,
   paper: Paper,
-  /** Bumped by every save; a save names the version it started from. */
+  /** Bumped by every save of the table; a save names the version it started from. Pinning leaves it. */
   version: Schema.Int,
   items: Schema.Array(BoardItem),
+  pins: Schema.Array(Pin),
   updatedAt: Schema.String,
 })
 export type Board = typeof Board.Type
 
-export const Boards = Schema.Struct({ boards: Schema.Array(Board) })
+/** A board in a list: its table, its newest pins for a cover and how many it holds. */
+export const BoardSummary = Schema.Struct({
+  id: BoardId,
+  name: Schema.String,
+  paper: Paper,
+  items: Schema.Array(BoardItem),
+  cover: Schema.Array(Pin),
+  pinCount: Schema.Int,
+  updatedAt: Schema.String,
+})
+export type BoardSummary = typeof BoardSummary.Type
+
+export const Boards = Schema.Struct({ boards: Schema.Array(BoardSummary) })
 
 export const CreateBoard = Schema.Struct({ operationId: OperationId, name: BoardName })
 export type CreateBoard = typeof CreateBoard.Type
@@ -77,12 +114,29 @@ export type CreateBoard = typeof CreateBoard.Type
 export const UpdateBoard = Schema.Struct({ name: Schema.optionalKey(BoardName), paper: Schema.optionalKey(Paper) })
 export type UpdateBoard = typeof UpdateBoard.Type
 
-/** The whole table, replacing what was saved, from the version the editor started with. */
+/** The whole table, replacing what was saved, from the version the editor started with. Pieces it places are
+ * pinned on the board too. */
 export const SaveBoardItems = Schema.Struct({
+  operationId: OperationId,
   version: Schema.Int,
   items: Schema.Array(BoardItem).check(Schema.isMaxLength(maximumBoardItems)),
 })
 export type SaveBoardItems = typeof SaveBoardItems.Type
+
+/** Pin pieces and looks on a board, newest first; what is pinned already stays where it is. */
+export const AddPins = Schema.Struct({
+  operationId: OperationId,
+  pieceIds: Schema.optionalKey(Schema.Array(PieceId).check(Schema.isMaxLength(pinsAtOnce))),
+  lookIds: Schema.optionalKey(Schema.Array(LookId).check(Schema.isMaxLength(pinsAtOnce))),
+})
+export type AddPins = typeof AddPins.Type
+
+/** Take pins off a board, and off its table; a picture taken off is deleted. */
+export const RemovePins = Schema.Struct({
+  operationId: OperationId,
+  pinIds: Schema.Array(PinId).check(Schema.isMinLength(1), Schema.isMaxLength(pinsAtOnce)),
+})
+export type RemovePins = typeof RemovePins.Type
 
 /** A received photo upload becomes a picture on the board. */
 export const AddBoardImage = Schema.Struct({ operationId: OperationId, uploadId: UploadId })
@@ -100,10 +154,17 @@ export class BoardVersionConflict extends Schema.TaggedError<BoardVersionConflic
   { httpApiStatus: 409 },
 ) {}
 
-/** A thing on the table the board cannot hold: a piece that is not the person's, a picture from another
- * board, or two things with one id. */
+/** A thing on the table the board cannot hold: a piece that is neither the person's nor pinned on the board, a
+ * picture from another board, or two things with one id. */
 export class BoardItemRefused extends Schema.TaggedError<BoardItemRefused>()(
   'BoardItemRefused',
   { reason: Schema.Literals(['pieceNotFound', 'imageNotFound', 'duplicateId']) },
+  { httpApiStatus: 422 },
+) {}
+
+/** What cannot be pinned: a piece or look that is not the person's, nothing at all, or more than a board holds. */
+export class PinRefused extends Schema.TaggedError<PinRefused>()(
+  'PinRefused',
+  { reason: Schema.Literals(['pieceNotFound', 'lookNotFound', 'nothingToPin', 'boardFull']) },
   { httpApiStatus: 422 },
 ) {}

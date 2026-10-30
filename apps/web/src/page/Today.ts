@@ -1,4 +1,4 @@
-import { Board, Day, Piece, PieceId } from '@styld/protocol'
+import { BoardSummary, Day, Piece, PieceId } from '@styld/protocol'
 import { Array, Clock, Effect, Option, Result, Schema } from 'effect'
 import { AsyncData, Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
@@ -22,7 +22,7 @@ export type Worn = typeof Worn.Type
 export const TableMotion = defineTaggedUnion({ Still: {}, Spun: {} })
 
 /** The last board with something on its table, if any. */
-export const LastBoardData = AsyncData.Schema(Schema.Option(Board), Schema.Literal('Unavailable'))
+export const LastBoardData = AsyncData.Schema(Schema.Option(BoardSummary), Schema.Literal('Unavailable'))
 export type LastBoardData = typeof LastBoardData.schema.Type
 /** How many pieces wait in the review tray. */
 export const TrayData = AsyncData.Schema(Schema.Int, Schema.Literal('Unavailable'))
@@ -56,7 +56,7 @@ export const Message = defineMessageUnion({
   CompletedDetermineDay: { day: Day },
   SucceededReadWorn: { pieceIds: Schema.Array(PieceId) },
   FailedReadWorn: {},
-  SucceededListBoards: { maybeBoard: Schema.Option(Board) },
+  SucceededListBoards: { maybeBoard: Schema.Option(BoardSummary) },
   FailedListBoards: {},
   SucceededReadTray: { waiting: Schema.Int },
   FailedReadTray: {},
@@ -144,7 +144,7 @@ export const enter = (model: Model): Update.Return<Model, Message, StyldClient> 
       model: modifyFields(current, { motion: () => TableMotion.Still() }),
       commands: [DetermineDay()],
     }),
-    Update.refresh<Model, Message, Option.Option<Board>, 'Unavailable', StyldClient>({
+    Update.refresh<Model, Message, Option.Option<BoardSummary>, 'Unavailable', StyldClient>({
       read: (current: Model) => Option.some(current.lastBoard),
       revalidate: AsyncData.revalidateOrLoad,
       write: (current: Model, lastBoard: LastBoardData) => modifyFields(current, { lastBoard: () => lastBoard }),
