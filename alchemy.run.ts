@@ -63,6 +63,9 @@ export default Alchemy.Stack(
         CLEAN_PICTURES: 'muse',
         // What people make public is checked by Clef-flash (pictures) and Llama Guard 3 (words) before others see it.
         CHECKS: 'live',
+        // Accounts whose assistants get the curation tools (feature, house, hide, reports, checks): their sign-in
+        // emails, comma-separated, from the owner's `.env.preview.local`; none when unset.
+        STYLD_ADMIN_EMAILS: yield* Config.String('STYLD_ADMIN_EMAILS').pipe(Config.orElse(() => Config.succeed(''))),
         // Turns on a hanger: Veo 3.1 Lite through the Vercel AI Gateway. Until Styld has a gateway key of its own,
         // the owner chose the existing one (30 October); STYLD_AI_GATEWAY_API_KEY takes over once it is set.
         TURNS: 'veo',

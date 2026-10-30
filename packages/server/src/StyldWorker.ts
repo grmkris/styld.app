@@ -24,6 +24,7 @@ import { makePublicPages, PublicPages } from './social/Public.ts'
 import { publicImageRoutes } from './social/PublicHttp.ts'
 import { makeSocial, Social } from './social/Social.ts'
 import { Discovery, makeDiscovery } from './social/Discovery.ts'
+import { adminEmails, makeCuration } from './social/Curation.ts'
 import { boardRoutes } from './boards/Http.ts'
 import { makeWorn, Worn } from './worn/Worn.ts'
 import { apiRoutes } from './Api.ts'
@@ -127,6 +128,7 @@ const storageServices = <R>(
     const socialService = yield* makeSocial(bindings.database, publicPagesService, checksService)
     const discoveryService = makeDiscovery(bindings.database, publicPagesService)
     return {
+      curationService: makeCuration(bindings.database, checksService),
       discoveryService,
       discovery: Layer.succeed(Discovery, discoveryService),
       publicPages: Layer.succeed(PublicPages, publicPagesService),
@@ -396,7 +398,13 @@ const makeApplication =
         boardRoutes(auth).pipe(Layer.provide(boards)),
         captureRoutes(auth).pipe(Layer.provide(captures)),
         oauth.routes,
-        mcpRoutes(db, authOrigin, observabilityBase.release, toolServices(services)).pipe(Layer.provide(oauth.server)),
+        mcpRoutes(
+          db,
+          authOrigin,
+          observabilityBase.release,
+          { ...toolServices(services), curation: services.curationService },
+          adminEmails(env.STYLD_ADMIN_EMAILS),
+        ).pipe(Layer.provide(oauth.server)),
         HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),
         browserTelemetryRoutes(authOrigin, allowTelemetry),
       ).pipe(Layer.provide(AlchemyHttp.Platform))

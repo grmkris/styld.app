@@ -25,6 +25,8 @@ import { Profiles } from '../src/social/Profiles.ts'
 import { toolNames } from './ToolNames.ts'
 import { Discovery } from '../src/social/Discovery.ts'
 import { Social } from '../src/social/Social.ts'
+import { curationTools } from '../src/mcp/CurationTools.ts'
+import { adminEmails, Curation, isAdmin } from '../src/social/Curation.ts'
 
 const accountRow = { displayName: 'Ana Novak', email: 'ana@example.com' }
 const database: D1 = {
@@ -441,5 +443,37 @@ describe('MCP authorization', () => {
     expect(challenge(metadata, 'invalid_token')).toBe(
       `Bearer resource_metadata="${metadata}", scope="styld", error="invalid_token"`,
     )
+  })
+})
+
+describe('curation for admins', () => {
+  test('keeps its tools out of the members’ list, under noun_verb names', () => {
+    const curation = Curation.of({
+      targetOf: notUsed,
+      featureBoard: notUsed,
+      featureProfile: notUsed,
+      markHouse: notUsed,
+      hide: notUsed,
+      reports: notUsed,
+      checks: notUsed,
+      rerun: notUsed,
+    })
+    const names = curationTools(curation).map(({ name }) => name)
+    expect(names.toSorted()).toEqual(
+      ['check_list', 'check_rerun', 'curation_feature', 'curation_hide', 'curation_house', 'report_list'].toSorted(),
+    )
+    for (const name of names) {
+      expect(toolNames).not.toContain(name)
+      expect(name).toMatch(/^[a-z]+_[a-z]+$/)
+    }
+  })
+
+  test('knows an admin by the email they sign in with, in any case', () => {
+    const admins = adminEmails(' Kris@Styld.app , ,ops@styld.app')
+    expect([...admins]).toEqual(['kris@styld.app', 'ops@styld.app'])
+    expect(isAdmin(admins, { email: 'KRIS@styld.app' })).toBe(true)
+    expect(isAdmin(admins, { email: 'someone@styld.app' })).toBe(false)
+    expect(isAdmin(admins, { email: null })).toBe(false)
+    expect(isAdmin(adminEmails(undefined), { email: 'kris@styld.app' })).toBe(false)
   })
 })

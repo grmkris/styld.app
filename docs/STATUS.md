@@ -310,8 +310,17 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   - Tools `explore_get` and `search_public`.
   - Evidence: MCP unit tests, and native API acceptance of search by accented name and by board name, Explore's
     newest, and an unsure board leaving search while its link still works.
-- **Next:** M5b (the curation tools for admins, board moods, the Explore tab and five-tab navigation, people and
-  boards in Ask's search).
+- **M5b, curation for admins:**
+  - Tools `curation_feature` (a board or person in Explore), `curation_house` (the house account, which may take the
+    reserved `styld`), `curation_hide` (hide or restore whatever the check said), `report_list`, `check_list` and
+    `check_rerun`.
+  - They are listed only to accounts whose sign-in email is in `STYLD_ADMIN_EMAILS`, read in the same D1 read as
+    the enabled check. Anyone else gets them refused as unknown tools.
+  - The preview reads the setting from the owner's `.env.preview.local` and has no admins while it is unset.
+  - Evidence: unit tests that the curation tools stay out of the members' list, keep noun_verb names, and that admins
+    are known by email in any case.
+  - Open: the owner adds `STYLD_ADMIN_EMAILS`, then marks `@styld` and features boards from an assistant.
+- **Next:** M5c (board moods, the Explore tab and five-tab navigation, people and boards in Ask's search).
 - **Shared with the capture session:** migrations are generated one at a time; public delivery reuses its rule for a
   piece's shown picture; generated pictures reuse its Muse provider.
 - **Still to settle in spikes:** Clef and Llama Guard thresholds on fixtures in English and Slovenian, drawing text

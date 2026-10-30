@@ -8,6 +8,8 @@ import * as HttpClient from 'effect/http/HttpClient'
 import { type D1, McpOAuth } from '../OAuth.ts'
 import { challenge, McpScope } from './Policy.ts'
 import { readResource, resources } from './Resources.ts'
+import { type Curation, isAdmin } from '../social/Curation.ts'
+import { curationTools } from './CurationTools.ts'
 import { instructions, styldTools, type ToolServices } from './StyldTools.ts'
 import { callTool, renderTools } from './Tools.ts'
 
@@ -26,7 +28,13 @@ const parseError = HttpServerResponse.jsonUnsafe(
 )
 
 /** `/mcp`: a stateless Streamable HTTP endpoint for an OAuth-verified, still enabled account. */
-export const mcpRoutes = (db: D1, origin: string, release: string, services: ToolServices) =>
+export const mcpRoutes = (
+  db: D1,
+  origin: string,
+  release: string,
+  services: ToolServices & { readonly curation: Curation['Service'] },
+  admins: ReadonlySet<string>,
+) =>
   Layer.unwrap(
     Effect.gen(function* () {
       const server = yield* McpOAuth.Service
@@ -36,7 +44,15 @@ export const mcpRoutes = (db: D1, origin: string, release: string, services: Too
           FetchHttpClient.layer.pipe(Layer.provide(Layer.succeed(FetchHttpClient.RequestInit, { redirect: 'manual' }))),
         ),
       )
-      return routesFor(server, { db, origin, release, tools: styldTools(db, origin, services, http) })
+      const tools = styldTools(db, origin, services, http)
+      return routesFor(server, {
+        db,
+        origin,
+        release,
+        tools,
+        adminTools: [...tools, ...curationTools(services.curation)],
+        admins,
+      })
     }),
   )
 
@@ -44,7 +60,7 @@ export const mcpRoutes = (db: D1, origin: string, release: string, services: Too
 const answerFor = Effect.fnUntraced(function* (
   served: {
     readonly release: string
-    readonly tools: ReturnType<typeof styldTools>
+    readonly tools: ReadonlyArray<ReturnType<typeof styldTools>[number]>
     readonly toolList: ReadonlyArray<object>
   },
   account: CurrentAccount['Service'],
@@ -81,14 +97,20 @@ const routesFor = (
     db,
     release,
     tools,
+    adminTools,
+    admins,
   }: {
     readonly db: D1
     readonly origin: string
     readonly release: string
     readonly tools: ReturnType<typeof styldTools>
+    readonly adminTools: ReadonlyArray<ReturnType<typeof styldTools>[number]>
+    readonly admins: ReadonlySet<string>
   },
 ) => {
-  const toolList = renderTools(tools)
+  const member = { release, tools, toolList: renderTools(tools) }
+  const admin = { release, tools: adminTools, toolList: renderTools(adminTools) }
+  const servedFor = (row: unknown) => (isAdmin(admins, row) ? admin : member)
   const post = Effect.gen(function* () {
     const request = yield* HttpServerRequest.HttpServerRequest
     const token = bearer(request.headers['authorization'])
@@ -116,8 +138,14 @@ const routesFor = (
         headers: { ...noStore, 'www-authenticate': challenge(server.resourceMetadata, 'insufficient_scope') },
       })
     // A disabled account loses its assistants at once, whatever tokens they hold.
+    // The same read says whether the account is on the admin list, by the email it signs in with.
     const enabled = yield* Effect.tryPromise(() =>
-      db.prepare('SELECT 1 AS ok FROM accounts WHERE id = ? AND enabled = 1').bind(access.subjectId).first<unknown>(),
+      db
+        .prepare(
+          'SELECT (SELECT i.value FROM styld_auth_identifiers i WHERE i.subject_id = a.id AND i.active = 1 LIMIT 1) AS email FROM accounts a WHERE a.id = ? AND a.enabled = 1',
+        )
+        .bind(access.subjectId)
+        .first<unknown>(),
     ).pipe(Effect.option)
     // D1 did not answer: the token may be fine, so the client should retry rather than re-authorize.
     if (Option.isNone(enabled)) return HttpServerResponse.empty({ status: 503, headers: noStore })
@@ -129,7 +157,7 @@ const routesFor = (
     const body = yield* request.json.pipe(Effect.option)
     if (Option.isNone(body)) return parseError
     const account = CurrentAccount.of({ accountId: access.subjectId, via: 'assistant' })
-    return yield* answerFor({ release, tools, toolList }, account, body.value)
+    return yield* answerFor(servedFor(enabled.value), account, body.value)
   })
 
   const notAllowed = Effect.succeed(
