@@ -63,6 +63,7 @@ const make = (bindings: CaptureBindings) =>
       processTurn: bound(operations.processTurn),
       failTurn: bound(operations.failTurn),
       makeTurn: bound(operations.makeTurn),
+      acceptSheet: bound(operations.acceptSheet),
       turnFile: bound(operations.turnFile),
     }
   })

@@ -35,8 +35,10 @@ export interface CapturePolicy {
     readonly reject: number
     readonly face: number
   }
-  /** Who turns clean pictures on their hangers: `veo` (Veo 3.1 Lite through the Vercel AI Gateway) or `off`. */
-  readonly turns: { readonly generator: 'veo' | 'off' }
+  /** Who turns clean pictures on their hangers: `veo` (Veo 3.1 Lite through the Vercel AI Gateway) or `off`; and the
+   * floors every checked frame must reach, beside the clean picture, for a turn to be kept: colour and logo or print
+   * (the 30 October comparison's gate, which every good take passed and the drifting models failed). */
+  readonly turns: { readonly generator: 'veo' | 'off'; readonly colour: number; readonly print: number }
 }
 
 export class CaptureConfig extends Context.Service<CaptureConfig, CapturePolicy>()('@styld/server/CaptureConfig') {}
@@ -65,5 +67,5 @@ export const capturePolicy = (env: Readonly<Record<string, unknown>>): CapturePo
     reject: number(env['CLEAN_PICTURE_REJECT'], 0.5),
     face: 0.3,
   },
-  turns: { generator: choice(env['TURNS'], ['veo', 'off'], 'off') },
+  turns: { generator: choice(env['TURNS'], ['veo', 'off'], 'off'), colour: 0.8, print: 0.6 },
 })

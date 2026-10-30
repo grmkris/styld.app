@@ -10,6 +10,7 @@ import {
   ProviderFailed,
   type Route,
   type Suggestion,
+  type TurnComparison,
   type Verdict,
 } from './Providers.ts'
 
@@ -146,6 +147,17 @@ const compareQuestions = {
   faithful: { type: 'noul', instructions: 'Are its colour, print, logos and details the same as in the second image?' },
 } as const
 
+/** What the decision model is asked about a frame of a turn beside the clean picture it ends on: three of the eight
+ * dimensions the 30 October spike asked (`meta-hackathon/out/styld-clean-turn/gate2.ts`), the ones its gate kept. */
+const turnQuestions = {
+  same: {
+    type: 'noul',
+    instructions: 'Is it the same garment as in the second image, seen from a slightly different angle?',
+  },
+  colour: { type: 'noul', instructions: 'Is the colour the same as in the second image?' },
+  print: { type: 'noul', instructions: 'Is the logo or print the same as in the second image?' },
+} as const
+
 const verdicts: ReadonlyArray<Verdict> = ['ready', 'improve', 'repair', 'fragment']
 
 /** The judgement in an answer. Without a readable verdict the cut-out is treated as needing a redraw, and a face is
@@ -198,6 +210,43 @@ const routeOf = (answer: Answer): Route => {
 }
 
 /** Clef-flash as Styld's decision model: route a photo, suggest a piece's details, confirm a held garment. */
+/** The decision model on clean pictures and turns: a kept cut-out, a drawing beside it, a turn's frame beside its
+ * front. */
+const pictureChecks = (run: RunClef, metrics: CaptureMetrics['Service']) => ({
+  judge: Effect.fn('Styld.Picture.judge')(function* (cutout: Picture) {
+    const answer = yield* ask(run, metrics, 'judge', {
+      model: 'clef-flash',
+      state: 'One piece of clothing cut out of a photo, to show in a wardrobe app.',
+      images: [imageOf(cutout)],
+      questions: judgeQuestions,
+    })
+    return judgementOf(answer)
+  }),
+  compare: Effect.fn('Styld.Picture.compare')(function* (drawn: Picture, real: Picture) {
+    const answer = yield* ask(run, metrics, 'compare', {
+      model: 'clef-flash',
+      state: 'The first image is a generated product picture; the second is a real photo of a garment.',
+      images: [imageOf(drawn), imageOf(real)],
+      questions: compareQuestions,
+    })
+    return { same: noulOf(answer, 'same'), faithful: noulOf(answer, 'faithful') } satisfies Comparison
+  }),
+  compareTurn: Effect.fn('Styld.Turn.compare')(function* (frame: Picture, front: Picture) {
+    const answer = yield* ask(run, metrics, 'compare', {
+      model: 'clef-flash',
+      state:
+        'The first image is a frame of a garment turning on a hanger, partly turned; the second is the same product photographed from the front.',
+      images: [imageOf(frame), imageOf(front)],
+      questions: turnQuestions,
+    })
+    return {
+      same: noulOf(answer, 'same'),
+      colour: noulOf(answer, 'colour'),
+      print: noulOf(answer, 'print'),
+    } satisfies TurnComparison
+  }),
+})
+
 export const makeGarmentVision = (run: RunClef, metrics: CaptureMetrics['Service']) => ({
   route: Effect.fn('Styld.Capture.route')(function* (picture: Picture) {
     const answer = yield* ask(run, metrics, 'route', {
@@ -246,24 +295,7 @@ export const makeGarmentVision = (run: RunClef, metrics: CaptureMetrics['Service
       holding: noulOf(answer, 'holding'),
     }
   }),
-  judge: Effect.fn('Styld.Picture.judge')(function* (cutout: Picture) {
-    const answer = yield* ask(run, metrics, 'judge', {
-      model: 'clef-flash',
-      state: 'One piece of clothing cut out of a photo, to show in a wardrobe app.',
-      images: [imageOf(cutout)],
-      questions: judgeQuestions,
-    })
-    return judgementOf(answer)
-  }),
-  compare: Effect.fn('Styld.Picture.compare')(function* (drawn: Picture, real: Picture) {
-    const answer = yield* ask(run, metrics, 'compare', {
-      model: 'clef-flash',
-      state: 'The first image is a generated product picture; the second is a real photo of a garment.',
-      images: [imageOf(drawn), imageOf(real)],
-      questions: compareQuestions,
-    })
-    return { same: noulOf(answer, 'same'), faithful: noulOf(answer, 'faithful') } satisfies Comparison
-  }),
+  ...pictureChecks(run, metrics),
 })
 
 const decodeCategory = Schema.decodeUnknownOption(Category)

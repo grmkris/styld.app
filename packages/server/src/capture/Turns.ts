@@ -1,22 +1,40 @@
 import {
   chromaKey,
+  crop,
   decodePng,
   encodePng,
   fitSide,
+  flatten,
   frontAnchor,
   keyColourFor,
   onKey,
   type Rgba,
   shrink,
 } from '@styld/imaging'
-import { PieceNotFound, TurnRefused } from '@styld/protocol'
+import { PieceNotFound, SheetRefused, type TurnLayout, TurnRefused } from '@styld/protocol'
 import { DateTime, Effect, Match, Option, Predicate, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { turnView } from '../wardrobe/Shown.ts'
 import { hanger } from './Hanger.ts'
-import { enqueueTurn, type Parts, readObject, readPixels, storedAs, turnKey, writeObject } from './Parts.ts'
+import {
+  enqueueTurn,
+  type Parts,
+  readObject,
+  readPixels,
+  storedAs,
+  turnKey,
+  unavailable,
+  writeObject,
+} from './Parts.ts'
 import { CaptureConfig } from './Policy.ts'
-import { ImageGenerator, type Picture, type ProviderFailed, type TurnStatus, VideoGenerator } from './Providers.ts'
+import {
+  GarmentVision,
+  ImageGenerator,
+  type Picture,
+  type ProviderFailed,
+  type TurnStatus,
+  VideoGenerator,
+} from './Providers.ts'
 import type { PictureRow, TurnRow, TurnState } from './Store.ts'
 import { Usage } from './Usage.ts'
 
@@ -179,6 +197,38 @@ const poll = (parts: Parts, turn: TurnRow) =>
     })
   })
 
+/** The frames of a sheet the decision model checks: five spread over the turn, as in the 30 October gate. */
+const checkedFrames = (frames: number) => [0.27, 0.4, 0.5, 0.67, 0.87].map((share) => Math.round(share * (frames - 1)))
+
+/** Cell `index` of a frame sheet. */
+const cellOf = (sheet: Rgba, layout: TurnLayout, index: number) =>
+  crop(sheet, {
+    left: (index % layout.columns) * layout.width,
+    top: Math.floor(index / layout.columns) * layout.height,
+    right: ((index % layout.columns) + 1) * layout.width,
+    bottom: (Math.floor(index / layout.columns) + 1) * layout.height,
+  })
+
+/** Whether a sheet is laid out as it says: whole cells, as many as its frames, in its columns. */
+const laidOut = (sheet: Rgba, layout: TurnLayout) =>
+  sheet.width === layout.columns * layout.width &&
+  sheet.height === Math.ceil(layout.frames / layout.columns) * layout.height
+
+/** How the turn's checked frames compare with the clean picture: the weakest colour and print, the average sameness. */
+const checked = (sheet: Rgba, layout: TurnLayout, clean: Rgba) =>
+  Effect.gen(function* () {
+    const vision = yield* GarmentVision
+    const front = png(flatten(shrink(clean, 512)))
+    const answers = yield* Effect.forEach(checkedFrames(layout.frames), (index) =>
+      vision.compareTurn(png(flatten(cellOf(sheet, layout, index))), front),
+    )
+    return {
+      colour: Math.min(...answers.map(({ colour }) => colour)),
+      print: Math.min(...answers.map(({ print }) => print)),
+      same: answers.reduce((sum, { same }) => sum + same, 0) / answers.length,
+    }
+  })
+
 /** The queue side of turns. */
 export const turning = (parts: Parts) => ({
   /** Carry a piece's turn a step further: start it, poll it, or settle its credits once it ended. A turn waiting for
@@ -204,6 +254,44 @@ export const turning = (parts: Parts) => ({
     yield* settleTurn(parts, pieceId)
   }),
 })
+
+/** A sheet laid out as it says, and the clean picture to check it against; refused without either. */
+const sheetAndFront = (parts: Parts, pieceId: string, layout: TurnLayout, bytes: Uint8Array) =>
+  Effect.gen(function* () {
+    const sheet = Option.filter(decoded(bytes), (pixels) => laidOut(pixels, layout))
+    const picture = cleanPicture(yield* storedAs(parts.store.findPicture(pieceId)))
+    const clean = Option.isNone(picture) ? Option.none<Rgba>() : yield* readPixels(parts, picture.value.cleanKey)
+    if (Option.isNone(sheet) || Option.isNone(clean)) return yield* SheetRefused.make({})
+    return { sheet: sheet.value, clean: clean.value }
+  })
+
+/** The frame sheet the owner's browser cut from a turn's video: kept when every checked frame keeps the clean
+ * picture's colour and print, with the turn's credits consumed; dropped otherwise, with them refunded. */
+const acceptSheet = (parts: Parts, pieceId: string, layout: TurnLayout, bytes: Uint8Array) =>
+  Effect.gen(function* () {
+    const { accountId } = yield* CurrentAccount
+    const turn = yield* storedAs(parts.wardrobeStore.turnOf(accountId, pieceId))
+    if (Option.isNone(turn)) return yield* PieceNotFound.make({})
+    if (turn.value.state !== 'video-ready') return turnView(turn.value, yield* now)
+    const { sheet, clean } = yield* sheetAndFront(parts, pieceId, layout, bytes)
+    const policy = (yield* CaptureConfig).turns
+    // A check the decision model cannot answer now leaves the turn waiting for the same sheet again.
+    const scores = yield* checked(sheet, layout, clean).pipe(Effect.mapError(unavailable))
+    const kept = scores.colour >= policy.colour && scores.print >= policy.print
+    const sheetKey = turnKey(accountId, pieceId, 'sheet.png')
+    if (kept) yield* writeObject(parts, sheetKey, bytes, 'image/png')
+    yield* move(parts, pieceId, ['video-ready'], {
+      ...scores,
+      state: kept ? 'ready' : 'rejected',
+      ...(kept ? { sheetKey, layout } : {}),
+    })
+    yield* settleTurn(parts, pieceId)
+    const settled = yield* storedAs(parts.store.findTurn(pieceId))
+    return turnView(
+      Option.getOrElse(settled, () => turn.value),
+      yield* now,
+    )
+  })
 
 /** The owner's piece, if it can turn: turns are on and it has a clean picture shown or offered. */
 const turnablePiece = (parts: Parts, accountId: string, pieceId: string) =>
@@ -261,6 +349,10 @@ const files = {
 
 /** The owner's request for a turn, and the files it makes. */
 export const askingTurns = (parts: Parts) => ({
+  /** Take the frame sheet the owner's browser built from the turn's video. */
+  acceptSheet: Effect.fn('Styld.Turn.sheet')(function* (pieceId: string, layout: TurnLayout, sheet: Uint8Array) {
+    return yield* acceptSheet(parts, pieceId, layout, sheet)
+  }),
   /** One of a turn's files for its owner: the video the browser cuts into frames, the front frame the turn ends on,
    * or the frame sheet the piece page plays. */
   turnFile: Effect.fn('Styld.Turn.file')(function* (pieceId: string, which: keyof typeof files) {

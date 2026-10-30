@@ -18,6 +18,7 @@
     "@maple-dev/effect-sdk": "catalog:",
     "@styld/auth": "workspace:*",
     "@styld/i18n": "workspace:*",
+    "@styld/imaging": "workspace:*",
     "@styld/observability": "workspace:*",
     "@styld/protocol": "workspace:*",
     "effect": "catalog:",

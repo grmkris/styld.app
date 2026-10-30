@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { Effect, Predicate, Redacted, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
+import { makeGarmentVision } from '../src/capture/Clef.ts'
 import { CaptureMetrics } from '../src/capture/Metrics.ts'
 import { makeMuseGenerator } from '../src/capture/Muse.ts'
 import { makeVeoGenerator } from '../src/capture/Veo.ts'
@@ -129,5 +130,24 @@ describe("Muse's side view", () => {
     expect(sent.images).toHaveLength(1)
     expect(sent.prompt).toContain('Show a strict side profile')
     expect(sent.prompt).toContain('flat green #00ff00 background')
+  })
+})
+
+describe("the decision model on a turn's frame", () => {
+  test('asks whether the frame keeps the garment, its colour and its print, beside the clean front', async () => {
+    const asked: Array<unknown> = []
+    const vision = makeGarmentVision((request) => {
+      asked.push(request)
+      return Promise.resolve({
+        model: 'clef-flash',
+        answers: { same: { noul: 0.91 }, colour: { noul: 0.88 }, print: { noul: 0.71 } },
+      })
+    }, CaptureMetrics.discarding)
+    expect(await Effect.runPromise(vision.compareTurn(picture(1), picture(2)))).toEqual({
+      same: 0.91,
+      colour: 0.88,
+      print: 0.71,
+    })
+    expect(asked[0]).toMatchObject({ questions: { same: {}, colour: {}, print: {} } })
   })
 })

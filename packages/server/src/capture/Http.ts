@@ -1,4 +1,4 @@
-import { DetectionId, PieceId, StyldApi } from '@styld/protocol'
+import { DetectionId, PieceId, SheetRefused, StyldApi } from '@styld/protocol'
 import { Effect, Layer, Option, Result, Schema } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
 import type { RuntimeContext } from 'alchemy/RuntimeContext'
@@ -41,6 +41,18 @@ export const captureHandlers = (
         .handle('undrawnPictures', () => asSessionAccount(captures.undrawnPictures()))
         .handle('makeTurn', ({ params, payload }) =>
           admit(asSessionAccount(captures.makeTurn(params.pieceId, payload.operationId))),
+        )
+        .handle('turnSheet', ({ params, payload }) =>
+          admit(
+            asSessionAccount(
+              Effect.gen(function* () {
+                const sheet = yield* Effect.fromResult(Encoding.decode(payload.sheet)).pipe(
+                  Effect.mapError(() => SheetRefused.make({})),
+                )
+                return yield* captures.acceptSheet(params.pieceId, payload.layout, sheet)
+              }),
+            ),
+          ),
         )
         .handle('drawPictures', () => admit(asSessionAccount(captures.drawPictures())))
         .handle('check', ({ payload }) =>

@@ -50,8 +50,10 @@ import {
   Pieces,
   PieceTurn,
   RedrawPicture,
+  SheetRefused,
   SubcategoryMismatch,
   TurnRefused,
+  TurnSheet,
   UpdatePiece,
   Upload,
   UploadRefused,
@@ -196,6 +198,14 @@ export class CaptureApi extends HttpApiGroup.make('capture')
       payload: MakeTurn,
       success: PieceTurn,
       error: [PieceNotFound, TurnRefused, DailyLimitReached, CaptureUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post('turnSheet', '/pieces/:pieceId/turn/sheet', {
+      params: { pieceId: PieceId },
+      payload: TurnSheet,
+      success: PieceTurn,
+      error: [PieceNotFound, SheetRefused, CaptureUnavailable, RequestRefused],
     }),
   )
   .middleware(SessionHttp.RequireSession)

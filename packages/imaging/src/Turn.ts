@@ -17,7 +17,7 @@ export const trimmed = (picture: Rgba, threshold = 8) => {
 }
 
 /** One channel of `picture` at a fractional position, blended from its four neighbours. */
-const sampled = (picture: Rgba, x: number, y: number, channel: number) => {
+export const sampled = (picture: Rgba, x: number, y: number, channel: number) => {
   const left = Math.max(0, Math.min(picture.width - 1, Math.floor(x)))
   const top = Math.max(0, Math.min(picture.height - 1, Math.floor(y)))
   const right = Math.min(picture.width - 1, left + 1)

@@ -156,6 +156,16 @@ export type PieceTurn = typeof PieceTurn.Type
 /** Ask for a turn: `POST /api/pieces/:pieceId/turn`, a new `operationId` each time. */
 export const MakeTurn = Schema.Struct({ operationId: OperationId })
 
+/** The frame sheet the owner's browser cut from a turn's video: a PNG, base64, laid out as `layout` says. At most
+ * 12 MB of base64, about 9 MB of PNG. */
+export const TurnSheet = Schema.Struct({
+  layout: TurnLayout,
+  sheet: Schema.String.check(Schema.isMaxLength(12 * 1024 * 1024)),
+})
+
+/** A frame sheet that is not a PNG laid out as it says, or a turn with no clean picture left to check it against. */
+export class SheetRefused extends Schema.TaggedError<SheetRefused>()('SheetRefused', {}, { httpApiStatus: 422 }) {}
+
 /** Show the drawing or the photo: `PUT /api/pieces/:pieceId/picture`. */
 export const ChoosePicture = Schema.Struct({ use: PictureChoice })
 

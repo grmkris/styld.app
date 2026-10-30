@@ -52,13 +52,13 @@ const unreadable = () => VideoNotSampled.make({ reason: 'unreadable' })
 const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: unreadable })
 
 /** The video file, read lazily from the device: Mediabunny keeps at most 8 MiB of it in memory. */
-const opened = (file: Blob) =>
+export const opened = (file: Blob) =>
   Effect.acquireRelease(
     Effect.sync(() => new Input({ formats: [MP4, QTFF], source: new BlobSource(file) })),
     (input) => Effect.sync(() => input.dispose()),
   )
 
-const videoTrack = (input: Input) =>
+export const videoTrack = (input: Input) =>
   Effect.flatMap(
     attempt(() => input.getPrimaryVideoTrack()),
     (track) => (track === null ? Effect.fail(unreadable()) : Effect.succeed(track)),
@@ -104,7 +104,7 @@ export const inspectVideo = (file: Blob) =>
   )
 
 /** A 2D context for a canvas of `size`. */
-const drawing = (size: { readonly width: number; readonly height: number }) => {
+export const drawing = (size: { readonly width: number; readonly height: number }) => {
   const canvas = new OffscreenCanvas(size.width, size.height)
   const context = canvas.getContext('2d')
   return context === null ? Effect.fail(unreadable()) : Effect.succeed({ canvas, context })

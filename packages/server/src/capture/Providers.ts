@@ -77,8 +77,17 @@ export class GarmentVision extends Context.Service<
     ) => Effect.Effect<HeldCheck, ProviderFailed>
     readonly judge: (cutout: Picture) => Effect.Effect<Judgement, ProviderFailed>
     readonly compare: (drawn: Picture, real: Picture) => Effect.Effect<Comparison, ProviderFailed>
+    /** A frame of a turn beside the clean picture it ends on. */
+    readonly compareTurn: (frame: Picture, front: Picture) => Effect.Effect<TurnComparison, ProviderFailed>
   }
 >()('@styld/server/GarmentVision') {}
+
+/** How a frame of a turn compares with the clean picture (0–1): the same garment, its colour, and its logo or print. */
+export interface TurnComparison {
+  readonly same: number
+  readonly colour: number
+  readonly print: number
+}
 
 /** Styld's working copies of a photo: re-encoded (orientation applied, metadata gone), at most 2048 px.
  * `png` and `jpeg` have the same size, so masks found on one apply to the other. */
