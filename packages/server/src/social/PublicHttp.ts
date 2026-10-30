@@ -6,7 +6,8 @@ import { HttpApiBuilder } from 'effect/http-api'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
-import { type ShownImage, ShownSize } from '../wardrobe/Http.ts'
+import type { makeAuthHttp } from '../AuthHttp.ts'
+import { cookieAccount, type ShownImage, ShownSize } from '../wardrobe/Http.ts'
 import { PublicPages } from './Public.ts'
 import { pageMeta } from './PublicMeta.ts'
 
@@ -30,17 +31,21 @@ const limited =
       return yield* read
     })
 
-/** The public pages' endpoints: anyone may read them, signed in or not, a few hundred times a minute. */
-export const publicHandlers = (allowRead: AllowRead) =>
+/** The public pages' endpoints: anyone may read them, signed in or not, a few hundred times a minute. A signed-in
+ * reader sees nothing of someone a block stands between. */
+export const publicHandlers = (auth: ReturnType<typeof makeAuthHttp>, allowRead: AllowRead) =>
   HttpApiBuilder.group(StyldApi, 'public', (handlers) =>
     Effect.gen(function* () {
       const pages = yield* PublicPages
       const within = limited(allowRead)
+      const reader = yield* cookieAccount(auth)
+      const read = <A, E, R>(page: (viewer: Option.Option<string>) => Effect.Effect<A, E, R>) =>
+        within(Effect.flatMap(reader, page))
       return handlers
-        .handle('profile', ({ params }) => within(pages.profile(params.handle)))
-        .handle('board', ({ params }) => within(pages.board(params.boardId)))
-        .handle('look', ({ params }) => within(pages.look(params.lookId)))
-        .handle('piece', ({ params }) => within(pages.piece(params.pieceId)))
+        .handle('profile', ({ params }) => read((viewer) => pages.profile(params.handle, viewer)))
+        .handle('board', ({ params }) => read((viewer) => pages.board(params.boardId, viewer)))
+        .handle('look', ({ params }) => read((viewer) => pages.look(params.lookId, viewer)))
+        .handle('piece', ({ params }) => read((viewer) => pages.piece(params.pieceId, viewer)))
         .handle('meta', ({ query }) =>
           within(Effect.flatMap(readerLocale, (locale) => pageMeta(pages, query.path, locale))),
         )

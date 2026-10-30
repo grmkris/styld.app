@@ -1,6 +1,7 @@
+import { appSchema as coreSchema } from './schema.ts'
+import { blocks, follows, reports, saves } from './social.ts'
 export {
   accounts,
-  appSchema,
   boardImages,
   boardItems,
   boardPins,
@@ -20,3 +21,7 @@ export {
   uploads,
   wornPieces,
 } from './schema.ts'
+export { blocks, follows, reports, saves } from './social.ts'
+
+/** Every table the application reads and writes. */
+export const appSchema = { ...coreSchema, saves, follows, blocks, reports }

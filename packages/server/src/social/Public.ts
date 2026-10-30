@@ -23,6 +23,7 @@ import { shownImage } from '../wardrobe/Shown.ts'
 import type { PictureRow, PieceRow, StoreUnavailable } from '../wardrobe/Store.ts'
 import type { ProfileRow } from './ProfileStore.ts'
 import { makePublicStore, type PublicStore } from './PublicStore.ts'
+import { makeSocialStore, type SocialStore } from './SocialStore.ts'
 
 // What others may see. One rule throughout: a thing is shown while its owner's profile is published and shown, its
 // owner made it public, and Styld's check of it passed or was unsure (unsure stays on its own links; discovery,
@@ -63,10 +64,21 @@ const publicPiece = (piece: PieceRow) =>
     colours: piece.colours,
   })
 
-const authorOf = (row: ProfileRow): Option.Option<Author> =>
+export const authorOf = (row: ProfileRow): Option.Option<Author> =>
   row.published
     ? Schema.decodeUnknownOption(Author)({ handle: row.handle, name: row.name, tone: row.tone })
     : Option.none()
+
+/** A public board as a list shows it: its table, its newest pins and how many. */
+export const summaryOf = (board: PublicBoard): PublicBoardSummary => ({
+  id: board.id,
+  name: board.name,
+  paper: board.paper,
+  items: board.items,
+  cover: board.pins.slice(0, 4),
+  pinCount: board.pins.length,
+  publishedAt: board.publishedAt,
+})
 
 /** What others may see of a board's pins and table, given which pieces and looks they may see. */
 interface Seen {
@@ -99,7 +111,10 @@ interface Reader {
   readonly store: PublicStore
   readonly boards: BoardStore
   readonly looks: LookStore
+  readonly social: SocialStore
   readonly checks: Checks['Service']
+  /** Who is reading, when signed in: a block either way hides the other's things from them. */
+  readonly viewer: Option.Option<string>
 }
 
 /** The owner's profile and byline, while others may see the profile. */
@@ -108,7 +123,11 @@ const shownProfile = (r: Reader, row: ProfileRow) =>
     const author = authorOf(row)
     if (Option.isNone(author)) return Option.none<{ readonly row: ProfileRow; readonly author: Author }>()
     const check = (yield* r.checks.statuses('profile', [row.accountId])).get(row.accountId)
-    return shownToOthers(check) ? Option.some({ row, author: author.value }) : Option.none()
+    if (!shownToOthers(check)) return Option.none()
+    const reader = Option.getOrNull(r.viewer)
+    const blocked =
+      reader !== null && reader !== row.accountId && (yield* stored(r.social.blockedBetween(reader, row.accountId)))
+    return blocked ? Option.none() : Option.some({ row, author: author.value })
   })
 const ownerOf = (r: Reader, accountId: string) =>
   Effect.flatMap(stored(r.store.profileOf(accountId)), (row) =>
@@ -235,8 +254,12 @@ const shownPiece = (r: Reader, pieceId: string) =>
     return { row, piece, owner }
   })
 
-const pages = (r: Reader) => ({
-  profile: Effect.fn('Styld.Public.profile')(function* (handle: string) {
+/** The same reader, for one visitor. */
+const readBy = (r: Reader, viewer: Option.Option<string>): Reader => ({ ...r, viewer })
+
+const pages = (base: Reader) => ({
+  profile: Effect.fn('Styld.Public.profile')(function* (handle: string, viewer: Option.Option<string> = Option.none()) {
+    const r = readBy(base, viewer)
     const row = yield* Effect.flatMap(stored(r.store.publishedProfile(handle)), orNotFound)
     const { author } = yield* Effect.flatMap(shownProfile(r, row), orNotFound)
     const boards = yield* summaries(r, row.accountId, yield* stored(r.store.publicBoards(row.accountId)))
@@ -246,7 +269,8 @@ const pages = (r: Reader) => ({
       : null
     return { ...author, city: row.city, bio: row.bio, boards, looks, pieces }
   }),
-  board: Effect.fn('Styld.Public.board')(function* (boardId: string) {
+  board: Effect.fn('Styld.Public.board')(function* (boardId: string, viewer: Option.Option<string> = Option.none()) {
+    const r = readBy(base, viewer)
     const { row, owner } = yield* shownBoard(r, boardId)
     const items = yield* stored(r.boards.itemsOf([row.id]))
     const pins = yield* stored(r.boards.pinsOf([row.id]))
@@ -261,14 +285,15 @@ const pages = (r: Reader) => ({
       publishedAt: (row.publishedAt ?? row.updatedAt).toISOString(),
     })
   }),
-  look: Effect.fn('Styld.Public.look')(function* (lookId: string) {
+  look: Effect.fn('Styld.Public.look')(function* (lookId: string, viewer: Option.Option<string> = Option.none()) {
+    const r = readBy(base, viewer)
     const row = yield* Effect.flatMap(stored(r.store.look(lookId)), orNotFound)
     const owner = yield* Effect.flatMap(ownerOf(r, row.accountId), orNotFound)
     const [look] = yield* shownLooks(r, row.accountId, [row])
     return { look: yield* orNotFound(Option.fromNullishOr(look)), by: owner.author }
   }),
-  piece: Effect.fn('Styld.Public.piece')(function* (pieceId: string) {
-    const { piece, owner } = yield* shownPiece(r, pieceId)
+  piece: Effect.fn('Styld.Public.piece')(function* (pieceId: string, viewer: Option.Option<string> = Option.none()) {
+    const { piece, owner } = yield* shownPiece(readBy(base, viewer), pieceId)
     return { piece, by: owner.author }
   }),
 })
@@ -317,7 +342,10 @@ const make = (
       store: makePublicStore(bindings.database),
       boards: makeBoardStore(bindings.database),
       looks: makeLookStore(bindings.database),
+      social: makeSocialStore(bindings.database),
       checks,
+      // Pictures are not gated by blocks: their ids are random, and every page that names one applies blocks.
+      viewer: Option.none(),
     }
     const encoder = new TextEncoder()
     const versionOf = (key: string, size: ImageSize) =>

@@ -12,6 +12,20 @@ import {
   UpdateProfile,
 } from './Profile.ts'
 import {
+  CreateReport,
+  Feed,
+  FeedQuery,
+  NotWithYourself,
+  People,
+  Relation,
+  Saved,
+  SavedState,
+  SetBlocked,
+  SetFollowing,
+  SetSaved,
+  TooManyReports,
+} from './Social.ts'
+import {
   PageMeta,
   PageMetaQuery,
   PublicBoard,
@@ -437,6 +451,52 @@ class PublicApi extends HttpApiGroup.make('public')
   )
   .prefix('/api') {}
 
+/** What the person does with others: saves, follows, blocks, reports and the Following feed. */
+class SocialApi extends HttpApiGroup.make('social')
+  .add(HttpApiEndpoint.get('listSaved', '/saved', { success: Saved, error: WardrobeUnavailable }))
+  .add(
+    HttpApiEndpoint.put('setSaved', '/saved', {
+      payload: SetSaved,
+      success: SavedState,
+      error: [PublicNotFound, NotWithYourself, WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.get('relation', '/people/:handle', {
+      params: { handle: Handle },
+      success: Relation,
+      error: [PublicNotFound, NotWithYourself, WardrobeUnavailable],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.put('setFollowing', '/people/:handle/following', {
+      params: { handle: Handle },
+      payload: SetFollowing,
+      success: Relation,
+      error: [PublicNotFound, NotWithYourself, WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.put('setBlocked', '/people/:handle/blocked', {
+      params: { handle: Handle },
+      payload: SetBlocked,
+      success: Relation,
+      error: [PublicNotFound, NotWithYourself, WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .add(HttpApiEndpoint.get('following', '/following', { success: People, error: WardrobeUnavailable }))
+  .add(HttpApiEndpoint.get('blocked', '/blocked', { success: People, error: WardrobeUnavailable }))
+  .add(
+    HttpApiEndpoint.post('report', '/reports', {
+      payload: CreateReport,
+      success: HttpApiSchema.NoContent,
+      error: [PublicNotFound, NotWithYourself, TooManyReports, WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .add(HttpApiEndpoint.get('feed', '/feed', { query: FeedQuery, success: Feed, error: WardrobeUnavailable }))
+  .middleware(SessionHttp.RequireSession)
+  .prefix('/api') {}
+
 /** Styld's typed HTTP API: declared once, served by the API Worker and called by the website. */
 export class StyldApi extends HttpApi.make('styld')
   .add(AccountApi)
@@ -446,4 +506,5 @@ export class StyldApi extends HttpApi.make('styld')
   .add(BoardApi)
   .add(WornApi)
   .add(ProfileApi)
-  .add(PublicApi) {}
+  .add(PublicApi)
+  .add(SocialApi) {}

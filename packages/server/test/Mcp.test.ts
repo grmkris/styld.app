@@ -23,6 +23,7 @@ import { Looks } from '../src/looks/Looks.ts'
 import { Boards } from '../src/boards/Boards.ts'
 import { Profiles } from '../src/social/Profiles.ts'
 import { toolNames } from './ToolNames.ts'
+import { Social } from '../src/social/Social.ts'
 
 const accountRow = { displayName: 'Ana Novak', email: 'ana@example.com' }
 const database: D1 = {
@@ -163,7 +164,24 @@ const profiles = Profiles.of({
   updateProfile: notUsed,
   publishProfile: notUsed,
 })
-const tools = styldTools(database, 'https://styld.test', { wardrobe, looks, captures, boards, profiles }, offline)
+/** Social: nothing saved or followed yet; anything else is not part of these tests. */
+const social = Social.of({
+  listSaved: () => Effect.succeed({ saved: [] }),
+  setSaved: notUsed,
+  relation: notUsed,
+  setFollowing: notUsed,
+  setBlocked: notUsed,
+  following: () => Effect.succeed({ people: [] }),
+  blocked: notUsed,
+  feed: notUsed,
+  report: notUsed,
+})
+const tools = styldTools(
+  database,
+  'https://styld.test',
+  { wardrobe, looks, captures, boards, profiles, social },
+  offline,
+)
 /** The JSON of a result's first text block. */
 const jsonOf = (result: {
   readonly content: ReadonlyArray<{ readonly type: string; readonly text?: string }>

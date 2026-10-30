@@ -129,7 +129,10 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
         'POST',
         '/test/identity/seed-social',
         doneWhenFree(
-          Effect.forEach(['native-social', 'native-social-other'], (id) => whenFree(seedIdentity(database, id))),
+          Effect.forEach(
+            ['native-social', 'native-social-other', 'native-social-third', 'native-social-fourth'],
+            (id) => whenFree(seedIdentity(database, id)),
+          ),
         ),
       ),
       // The person whose profile and public board a signed-out browser visits.

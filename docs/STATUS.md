@@ -260,7 +260,25 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
       29 KB WebP from `/cdn/public`).
     - Board: `/boards/bd_xAA4SsaoKuzQ1yDiVVI-Qg`; profile: `/@kris.preview`.
   - Still open: the owner's check of a real preview in a messaging app.
-- **Next:** M4 (saves, follows, blocks, reports and the feed); its migration is generated.
+- **M4, people (server and assistants; web next):**
+  - The migration `saves_follows_blocks_reports` adds `saves`, `follows`, `blocks` and `reports`, each cascading from
+    accounts; the tables live in `packages/db/src/social.ts`.
+  - `/api/saved`, `/api/people/:handle{,/following,/blocked}`, `/api/following`, `/api/blocked`, `/api/reports` and
+    `/api/feed`, and the tools `saved_list`, `save_set`, `follow_set`, `following_list`, `block_set`,
+    `report_create` and `feed_get`.
+  - **Saves** are bookmarks of others' public pieces, looks and boards, shown while still public to the saver.
+  - **Follows** are private and one-way.
+  - **Blocks:** a block hides each person from the other on every public read, ends follows both ways and is never
+    told. Pictures are not gated by blocks (recorded deviation).
+  - **Reports** use v1's reasons and limits (10 an hour, 500-character note). A report re-judges the target in place,
+    keeping its verdict until the new one lands; three reporters hide a board, look or piece. Profiles only leave
+    discovery, which M5 applies.
+  - **The feed** is a query over follows: boards that went public, pins on public boards, shared looks and pieces in
+    shown wardrobes. Each is gated as discovery is, on a passed check, then merged by time and interleaved at most two
+    of one person in a row.
+  - Evidence: MCP unit tests, and native API acceptance of a save, own-save refused, follow, the feed, a block both
+    ways (follow ended, save hidden, signed-out still shown), unblock, and three reports hiding a board.
+- **Next:** M4's web (Save, Follow, the report and block sheets, Saved, the Home feed), then its gate and deploy.
 - **Shared with the capture session:** migrations are generated one at a time; public delivery reuses its rule for a
   piece's shown picture; generated pictures reuse its Muse provider.
 - **Still to settle in spikes:** Clef and Llama Guard thresholds on fixtures in English and Slovenian, drawing text

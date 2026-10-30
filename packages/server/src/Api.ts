@@ -18,6 +18,8 @@ import { profileHandlers } from './social/Http.ts'
 import type { Profiles } from './social/Profiles.ts'
 import type { PublicPages } from './social/Public.ts'
 import { type AllowRead, publicHandlers } from './social/PublicHttp.ts'
+import type { Social } from './social/Social.ts'
+import { socialHandlers } from './social/SocialHttp.ts'
 import type { Worn } from './worn/Worn.ts'
 
 const accountHandlers = (admit: Admit) =>
@@ -55,6 +57,7 @@ export const apiRoutes = (
     readonly worn: Layer.Layer<Worn>
     readonly profiles: Layer.Layer<Profiles>
     readonly publicPages: Layer.Layer<PublicPages>
+    readonly social: Layer.Layer<Social>
   },
   limits: {
     readonly allowCheck: (accountId: string) => Effect.Effect<boolean, never, RuntimeContext>
@@ -69,7 +72,8 @@ export const apiRoutes = (
     Layer.provide(boardHandlers(admitWith(auth)).pipe(Layer.provide(services.boards))),
     Layer.provide(wornHandlers(admitWith(auth)).pipe(Layer.provide(services.worn))),
     Layer.provide(profileHandlers(admitWith(auth)).pipe(Layer.provide(services.profiles))),
-    Layer.provide(publicHandlers(limits.allowRead).pipe(Layer.provide(services.publicPages))),
+    Layer.provide(publicHandlers(auth, limits.allowRead).pipe(Layer.provide(services.publicPages))),
+    Layer.provide(socialHandlers(admitWith(auth)).pipe(Layer.provide(services.social))),
     Layer.provide(auth.router.securityLayer(SessionHttp)),
     auth.router.middleware,
     Layer.provide(auth.dependencies),

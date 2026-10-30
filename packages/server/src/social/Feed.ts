@@ -1,0 +1,188 @@
+import { boardPins, boards, looks, pieces, profiles } from '@styld/db'
+import { type Author, type FeedItem, WardrobeUnavailable } from '@styld/protocol'
+import { and, desc, eq, inArray, isNotNull, lt } from 'drizzle-orm'
+import { drizzle } from 'drizzle-orm/d1'
+import { DateTime, Effect, Option } from 'effect'
+import type { Checks } from '../safety/Checks.ts'
+import { type PublicPages, summaryOf } from './Public.ts'
+import type { SocialStore } from './SocialStore.ts'
+
+// The Following feed is a query over follows, not a table of its own: a second writer of what is public would have to
+// follow every unpublish, failed check and block. Four bounded reads, newest first, each gated as discovery is (a
+// passed check, not an unsure one), merged by time and interleaved so nobody fills it.
+
+/** Items a page of the feed shows, and how many of one person's in a row at most. */
+const pageSize = 20
+const maxRun = 2
+
+const unavailable = () => WardrobeUnavailable.make({})
+const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: unavailable })
+
+interface Candidate {
+  readonly kind: 'board' | 'pin' | 'look' | 'piece'
+  readonly id: string
+  readonly boardId: string
+  readonly accountId: string
+  readonly at: Date
+}
+
+/** Reorder so that no more than `run` items of one person come in a row, keeping the order otherwise. */
+export const interleaved = <A>(items: ReadonlyArray<A>, personOf: (item: A) => string, run = maxRun): Array<A> => {
+  const waiting = [...items]
+  const placed: Array<A> = []
+  while (waiting.length > 0) {
+    const last = placed.slice(-run).map(personOf)
+    const full = last.length === run && last.every((person) => person === last[0])
+    const index = full ? waiting.findIndex((item) => personOf(item) !== last[0]) : 0
+    const [next] = waiting.splice(index === -1 ? 0 : index, 1)
+    if (next !== undefined) placed.push(next)
+  }
+  return placed
+}
+
+const candidates = (database: Parameters<typeof drizzle>[0], people: ReadonlyArray<string>, before: Date) =>
+  Effect.gen(function* () {
+    const db = drizzle(database)
+    const ids = [...people]
+    const went = yield* attempt(() =>
+      db
+        .select({ id: boards.id, accountId: boards.accountId, at: boards.publishedAt })
+        .from(boards)
+        .where(and(inArray(boards.accountId, ids), eq(boards.visibility, 'public'), lt(boards.publishedAt, before)))
+        .orderBy(desc(boards.publishedAt))
+        .limit(pageSize),
+    )
+    const pinned = yield* attempt(() =>
+      db
+        .select({ id: boardPins.id, boardId: boards.id, accountId: boards.accountId, at: boardPins.createdAt })
+        .from(boardPins)
+        .innerJoin(boards, eq(boards.id, boardPins.boardId))
+        .where(and(inArray(boards.accountId, ids), eq(boards.visibility, 'public'), lt(boardPins.createdAt, before)))
+        .orderBy(desc(boardPins.createdAt))
+        .limit(pageSize),
+    )
+    const shared = yield* attempt(() =>
+      db
+        .select({ id: looks.id, accountId: looks.accountId, at: looks.sharedAt })
+        .from(looks)
+        .where(and(inArray(looks.accountId, ids), isNotNull(looks.sharedAt), lt(looks.sharedAt, before)))
+        .orderBy(desc(looks.sharedAt))
+        .limit(pageSize),
+    )
+    const added = yield* attempt(() =>
+      db
+        .select({ id: pieces.id, accountId: pieces.accountId, at: pieces.createdAt })
+        .from(pieces)
+        .innerJoin(profiles, eq(profiles.accountId, pieces.accountId))
+        .where(
+          and(
+            inArray(pieces.accountId, ids),
+            eq(pieces.status, 'ready'),
+            eq(profiles.wardrobeShown, true),
+            lt(pieces.createdAt, before),
+          ),
+        )
+        .orderBy(desc(pieces.createdAt))
+        .limit(pageSize),
+    )
+    const all: ReadonlyArray<Candidate> = [
+      ...went.flatMap(({ id, accountId, at }) =>
+        at === null ? [] : [{ kind: 'board' as const, id, boardId: id, accountId, at }],
+      ),
+      ...pinned.map(({ id, boardId, accountId, at }) => ({ kind: 'pin' as const, id, boardId, accountId, at })),
+      ...shared.flatMap(({ id, accountId, at }) =>
+        at === null ? [] : [{ kind: 'look' as const, id, boardId: '', accountId, at }],
+      ),
+      ...added.map(({ id, accountId, at }) => ({ kind: 'piece' as const, id, boardId: '', accountId, at })),
+    ]
+    return all.toSorted((left, right) => right.at.getTime() - left.at.getTime()).slice(0, pageSize)
+  })
+
+/** The feed's page for the account, from `cursor` (an instant) back. */
+export const feedFor = (
+  services: {
+    readonly database: Parameters<typeof drizzle>[0]
+    readonly pages: PublicPages['Service']
+    readonly social: SocialStore
+    readonly checks: Checks['Service']
+  },
+  viewer: string,
+  cursor: string | undefined,
+) =>
+  Effect.gen(function* () {
+    const followed = yield* services.social.followees(viewer).pipe(Effect.mapError(unavailable))
+    const blocked = yield* services.social.blockedAmong(viewer, followed).pipe(Effect.mapError(unavailable))
+    const people = followed.filter((accountId) => !blocked.has(accountId))
+    if (people.length === 0) return { items: [], cursor: null }
+    const parsed = cursor === undefined ? Option.none() : DateTime.make(cursor)
+    const before = Option.match(parsed, { onNone: () => new Date(8.64e15), onSome: DateTime.toDateUtc })
+    const found = yield* candidates(services.database, people, before)
+    const passed = yield* passedOnly(services.checks, found)
+    const items = yield* Effect.forEach(passed, (candidate) => shown(services.pages, candidate, viewer), {
+      concurrency: 8,
+    })
+    const kept = items.flatMap(Option.toArray)
+    const last = found.at(-1)
+    return {
+      items: interleaved(kept, ({ by }) => by.handle),
+      cursor: found.length < pageSize || last === undefined ? null : last.at.toISOString(),
+    }
+  })
+
+/** Discovery's gate: only what passed Styld's check, never what it was unsure of. */
+const ok = (check: { readonly state: string; readonly hidden: boolean } | undefined) =>
+  check !== undefined && check.state === 'passed' && !check.hidden
+
+const passedOnly = (checks: Checks['Service'], found: ReadonlyArray<Candidate>) =>
+  Effect.gen(function* () {
+    const ids = (kind: 'board' | 'look' | 'piece') =>
+      found
+        .filter((candidate) =>
+          kind === 'board' ? candidate.kind === 'board' || candidate.kind === 'pin' : candidate.kind === kind,
+        )
+        .map((candidate) => (kind === 'board' ? candidate.boardId : candidate.id))
+    const boardChecks = yield* checks.statuses('board', ids('board'))
+    const lookChecks = yield* checks.statuses('look', ids('look'))
+    const pieceChecks = yield* checks.statuses('piece', ids('piece'))
+    return found.filter((candidate) =>
+      candidate.kind === 'look'
+        ? ok(lookChecks.get(candidate.id))
+        : candidate.kind === 'piece'
+          ? ok(pieceChecks.get(candidate.id))
+          : ok(boardChecks.get(candidate.boardId)),
+    )
+  })
+
+/** One candidate as the feed shows it, read through the public pages' rules for this viewer. */
+const shown = (pages: PublicPages['Service'], candidate: Candidate, viewer: string) => {
+  const at = candidate.at.toISOString()
+  const reader = Option.some(viewer)
+  const item: Effect.Effect<FeedItem | undefined, unknown> =
+    candidate.kind === 'look'
+      ? Effect.map(pages.look(candidate.id, reader), ({ look, by }): FeedItem => ({ _tag: 'SharedLook', look, by, at }))
+      : candidate.kind === 'piece'
+        ? Effect.map(pages.piece(candidate.id, reader), ({ piece, by }): FeedItem => ({
+            _tag: 'AddedPiece',
+            piece,
+            by,
+            at,
+          }))
+        : Effect.map(pages.board(candidate.boardId, reader), (board): FeedItem | undefined => {
+            const by: Author = board.by
+            if (candidate.kind === 'board')
+              return {
+                _tag: 'BoardWentPublic',
+                board: summaryOf(board),
+                by,
+                at,
+              }
+            const pin = board.pins.find(({ id }) => id === candidate.id)
+            return pin === undefined
+              ? undefined
+              : { _tag: 'PinnedOnBoard', pin, boardId: board.id, boardName: board.name, by, at }
+          })
+  return item.pipe(
+    Effect.map(Option.fromNullishOr),
+    Effect.orElseSucceed(() => Option.none<FeedItem>()),
+  )
+}

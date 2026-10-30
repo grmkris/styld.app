@@ -12,6 +12,8 @@ import type { Boards } from '../boards/Boards.ts'
 import { boardMcpTools } from './BoardTools.ts'
 import { profileTools } from './ProfileTools.ts'
 import type { Profiles } from '../social/Profiles.ts'
+import type { Social } from '../social/Social.ts'
+import { socialTools } from './SocialTools.ts'
 import type { Captures } from '../capture/Service.ts'
 import { pictureTools } from './PictureTools.ts'
 
@@ -33,23 +35,21 @@ const unavailable = () =>
     retryable: true,
   })
 
+/** The services the tools project. */
+export interface ToolServices {
+  readonly wardrobe: Wardrobe['Service']
+  readonly looks: Looks['Service']
+  readonly captures: Pick<Captures['Service'], 'redrawPicture'>
+  readonly boards: Boards['Service']
+  readonly profiles: Profiles['Service']
+  readonly social: Social['Service']
+}
+
 /** Styld's MCP tools: thin projections of the same reads and writes the website uses. */
 export const styldTools = (
   db: D1,
   origin: string,
-  {
-    wardrobe,
-    looks,
-    captures,
-    boards,
-    profiles,
-  }: {
-    readonly wardrobe: Wardrobe['Service']
-    readonly looks: Looks['Service']
-    readonly captures: Pick<Captures['Service'], 'redrawPicture'>
-    readonly boards: Boards['Service']
-    readonly profiles: Profiles['Service']
-  },
+  { wardrobe, looks, captures, boards, profiles, social }: ToolServices,
   http: HttpClient.HttpClient,
 ) => [
   tool({
@@ -81,4 +81,5 @@ export const styldTools = (
   ...pictureTools(captures, origin),
   ...boardMcpTools(boards, wardrobe, origin, http),
   ...profileTools(profiles, origin),
+  ...socialTools(social),
 ]

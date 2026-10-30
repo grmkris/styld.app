@@ -3,17 +3,12 @@ import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import type { Captures } from '../capture/Service.ts'
-import type { Boards } from '../boards/Boards.ts'
-import type { Profiles } from '../social/Profiles.ts'
-import type { Looks } from '../looks/Looks.ts'
-import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import * as HttpClient from 'effect/http/HttpClient'
 import { type D1, McpOAuth } from '../OAuth.ts'
 import { challenge, McpScope } from './Policy.ts'
 import { readResource, resources } from './Resources.ts'
-import { instructions, styldTools } from './StyldTools.ts'
+import { instructions, styldTools, type ToolServices } from './StyldTools.ts'
 import { callTool, renderTools } from './Tools.ts'
 
 type McpOAuthServer = typeof McpOAuth.Service.Service
@@ -31,18 +26,7 @@ const parseError = HttpServerResponse.jsonUnsafe(
 )
 
 /** `/mcp`: a stateless Streamable HTTP endpoint for an OAuth-verified, still enabled account. */
-export const mcpRoutes = (
-  db: D1,
-  origin: string,
-  release: string,
-  services: {
-    readonly wardrobe: Wardrobe['Service']
-    readonly looks: Looks['Service']
-    readonly captures: Pick<Captures['Service'], 'redrawPicture'>
-    readonly boards: Boards['Service']
-    readonly profiles: Profiles['Service']
-  },
-) =>
+export const mcpRoutes = (db: D1, origin: string, release: string, services: ToolServices) =>
   Layer.unwrap(
     Effect.gen(function* () {
       const server = yield* McpOAuth.Service

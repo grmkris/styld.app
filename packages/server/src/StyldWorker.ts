@@ -22,6 +22,7 @@ import { Boards, makeBoards } from './boards/Boards.ts'
 import { makeProfiles, Profiles } from './social/Profiles.ts'
 import { makePublicPages, PublicPages } from './social/Public.ts'
 import { publicImageRoutes } from './social/PublicHttp.ts'
+import { makeSocial, Social } from './social/Social.ts'
 import { boardRoutes } from './boards/Http.ts'
 import { makeWorn, Worn } from './worn/Worn.ts'
 import { apiRoutes } from './Api.ts'
@@ -120,9 +121,12 @@ const storageServices = <R>(
     const looksService = yield* makeLooks(bindings.database, checksService)
     const boardsService = yield* makeBoards(bindings, checksService)
     const profilesService = makeProfiles(bindings.database, checksService)
-    const publicPages = Layer.succeed(PublicPages, yield* makePublicPages(bindings, checksService))
+    const publicPagesService = yield* makePublicPages(bindings, checksService)
+    const socialService = yield* makeSocial(bindings.database, publicPagesService, checksService)
     return {
-      publicPages,
+      publicPages: Layer.succeed(PublicPages, publicPagesService),
+      socialService,
+      social: Layer.succeed(Social, socialService),
       checksService,
       wardrobeService,
       lifecycleService,
@@ -382,6 +386,7 @@ const makeApplication =
           captures: capturesService,
           boards: services.boardsService,
           profiles: services.profilesService,
+          social: services.socialService,
         }).pipe(Layer.provide(oauth.server)),
         HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),
         browserTelemetryRoutes(authOrigin, allowTelemetry),

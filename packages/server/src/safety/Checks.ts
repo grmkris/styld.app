@@ -229,6 +229,19 @@ const checkRows = (db: Database) => ({
       ),
       (rows) => new Map(Array.flatten(rows).map((row) => [row.targetId, statusOf(row)])),
     ),
+  /** A new verdict on the target as it is now, replacing the one it had without a pending state in between. */
+  rejudged: (target: CheckTarget, digest: string, verdict: Verdict) =>
+    Effect.flatMap(nowDate, (at) =>
+      attempt(() =>
+        db
+          .update(contentChecks)
+          .set({ digest, state: verdict.state, reason: verdict.reason, model: verdict.model, checkedAt: at })
+          .where(targetIs(target)),
+      ),
+    ),
+  /** Hide the target from others whatever the model says, until an admin restores it. */
+  hide: (target: CheckTarget, by: 'reports' | 'admin') =>
+    attempt(() => db.update(contentChecks).set({ hidden: by }).where(targetIs(target))).pipe(Effect.asVoid),
 })
 
 const make = (bindings: CheckBindings) =>
@@ -291,6 +304,17 @@ const make = (bindings: CheckBindings) =>
         const known = yield* rows.pending(target, shown.value.accountId, yield* digestOf(shown.value))
         if (Option.isNone(known)) yield* enqueue([target])
         return true
+      }),
+      /** A report: the target is hidden once enough people reported it, and the model looks at it again; its
+       * earlier verdict stands until the new one lands, and stays if the model does not answer. */
+      reported: Effect.fn('Styld.Checks.reported')(function* (target: CheckTarget, hide: boolean) {
+        if (hide) yield* rows.hide(target, 'reports')
+        const shown = yield* shownBy(db, target)
+        if (Option.isNone(shown) || !shown.value.public) return
+        const digest = yield* digestOf(shown.value)
+        const content: Content = { texts: shown.value.texts, pictures: yield* picturesOf(bindings, shown.value) }
+        const verdict = yield* judge.judge(content).pipe(Effect.option)
+        if (Option.isSome(verdict)) yield* rows.rejudged(target, digest, verdict.value)
       }),
     }
   })

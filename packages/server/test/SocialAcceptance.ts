@@ -192,6 +192,48 @@ const verifyPublicPages = async (origin: string, fixtures: string, owner: Call) 
   expect((await anyone('/api/public/profiles/nika.kovac')).status).toBe(404)
 }
 
+const Feed = Schema.Struct({ items: Schema.Array(Schema.Struct({ _tag: Schema.String })) })
+
+/** Saves, follows, the feed, blocks both ways and reports: what one person does with another's public things. */
+const verifyPeople = async (origin: string, owner: Call, other: Call, reporters: ReadonlyArray<Call>) => {
+  await send(owner, '/api/profile/published', 'PUT', { published: true })
+  const boardId = await idOf(
+    await send(owner, '/api/boards', 'POST', { operationId: 'native-social-9', name: 'Knits' }),
+  )
+  await send(owner, `/api/boards/${boardId}/visibility`, 'PUT', { visibility: 'public' })
+  await send(other, '/api/profile', 'PATCH', { handle: 'luka.other', name: 'Luka' })
+  await send(other, '/api/profile/published', 'PUT', { published: true })
+  const board = { _tag: 'SavedBoard', boardId }
+  await refusal(await send(owner, '/api/saved', 'PUT', { target: board, saved: true }), 422, 'NotWithYourself')
+  expect(await (await send(other, '/api/saved', 'PUT', { target: board, saved: true })).json()).toEqual({ saved: true })
+  expect(await (await other('/api/saved')).json()).toMatchObject({
+    saved: [{ _tag: 'SavedBoard', board: { id: boardId, name: 'Knits' }, by: { handle: 'nika.kovac' } }],
+  })
+  const following = await send(other, '/api/people/nika.kovac/following', 'PUT', { following: true })
+  expect(await following.json()).toEqual({ handle: 'nika.kovac', following: true, blocked: false })
+  expect(await (await other('/api/following')).json()).toMatchObject({ people: [{ handle: 'nika.kovac' }] })
+  const feed = Schema.decodeUnknownSync(Feed)(await (await other('/api/feed')).json())
+  expect(feed.items.map(({ _tag }) => _tag)).toContain('BoardWentPublic')
+  // A block hides each from the other, ends the follow and drops the save from view; signed out, all still shows.
+  expect(await (await send(owner, '/api/people/luka.other/blocked', 'PUT', { blocked: true })).json()).toMatchObject({
+    blocked: true,
+  })
+  expect((await other('/api/people/nika.kovac')).status).toBe(404)
+  expect((await other('/api/public/profiles/nika.kovac')).status).toBe(404)
+  expect((await fetch(`${origin}/api/public/profiles/nika.kovac`)).status).toBe(200)
+  expect(await (await other('/api/following')).json()).toEqual({ people: [] })
+  expect(await (await other('/api/saved')).json()).toEqual({ saved: [] })
+  await send(owner, '/api/people/luka.other/blocked', 'PUT', { blocked: false })
+  expect(await (await other('/api/saved')).json()).toMatchObject({ saved: [{ _tag: 'SavedBoard' }] })
+  // Three people's reports hide the board from everyone; one's own cannot be reported.
+  const reported = { target: { _tag: 'ReportedBoard', boardId }, reason: 'spam' }
+  await refusal(await send(owner, '/api/reports', 'POST', reported), 422, 'NotWithYourself')
+  for (const reporter of [other, ...reporters])
+    expect((await send(reporter, '/api/reports', 'POST', reported)).status).toBe(204)
+  expect((await fetch(`${origin}/api/public/boards/${boardId}`)).status).toBe(404)
+  expect(await (await owner(`/api/boards/${boardId}`)).json()).toMatchObject({ check: { hidden: true } })
+}
+
 /** Profiles and what other people may see of each account. */
 export const verifySocial = async (origin: string, fixtures: string): Promise<void> => {
   expect((await fetch(`${fixtures}/test/identity/seed-social`, { method: 'POST' })).status).toBe(204)
@@ -200,4 +242,7 @@ export const verifySocial = async (origin: string, fixtures: string): Promise<vo
   await verifyProfiles(origin, owner, other)
   await verifyChecks(origin, owner)
   await verifyPublicPages(origin, fixtures, owner)
+  const third = client(origin, await signIn(origin, 'native-social-third'))
+  const reporters = [third, client(origin, await signIn(origin, 'native-social-fourth'))]
+  await verifyPeople(origin, owner, other, reporters)
 }

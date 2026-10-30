@@ -29,4 +29,11 @@ export const toolNames = [
   'profile_get',
   'profile_update',
   'profile_publish',
+  'saved_list',
+  'save_set',
+  'follow_set',
+  'following_list',
+  'block_set',
+  'report_create',
+  'feed_get',
 ]
