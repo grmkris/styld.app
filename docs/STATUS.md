@@ -337,7 +337,18 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   changed is dropped. Evidence: Ask stories for the search and a stale answer.
 - **Save and Report on others' boards and looks:** a visitor's board and look pages carry Save (into Saved from
   others) and Report board or Report look, through the same actions as a piece's page. Evidence: the visitor scenes.
-- **Next:** gate, land and deploy M5; then the open items above, then M6 (the wishlist and Add from a link).
+- **Preview (M5):** deployed from `d9506df`; `/api/health` reports release
+  `d9506dfebf1407d96121cc4a3af8d36696c6953a`.
+  - The plan updated the three Workers. There was no migration, and nothing was created or deleted.
+  - `tools/preview.native.test.ts` passed 3/3.
+  - Signed out, `/api/public/explore` lists `@kris.preview` among people and its public board among the newest,
+    `/api/public/search?q=kris` finds the profile, and `/explore` serves.
+  - Edits from Styld and Featured are empty until an admin, listed in `STYLD_ADMIN_EMAILS`, marks the house account
+    and features boards.
+- **Next:**
+  - the five-tab navigation, with Explore as a tab that keeps its place;
+  - the landing's Edits from Styld;
+  - M6 (the wishlist and Add from a link).
 - **Shared with the capture session:** migrations are generated one at a time; public delivery reuses its rule for a
   piece's shown picture; generated pictures reuse its Muse provider.
 - **Still to settle in spikes:** Clef and Llama Guard thresholds on fixtures in English and Slovenian, drawing text
