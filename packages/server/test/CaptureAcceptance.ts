@@ -3,8 +3,9 @@ import { expect } from 'bun:test'
 import { Schema } from 'effect'
 import { type Call, client, signIn } from './WardrobeAcceptance.ts'
 
-/** The daily allowance the native stack configures: a photo costs 1, a video 10. */
-export const nativeDailyAllowance = 12
+/** The daily allowance the native stack configures: a photo costs 1, a video 5 for each started
+ * half-minute. Seven lets a long video's first part through and stops its second. */
+export const nativeDailyAllowance = 7
 
 const fixture = (name: string) => new Uint8Array(readFileSync(new URL(`fixtures/capture/${name}`, import.meta.url)))
 
@@ -115,9 +116,9 @@ const verifyPhoto = async (origin: string, owner: Call, other: Call) => {
   return { photo, first }
 }
 
-/** A video and its stills cost ten credits; the last free credit goes, then the day refuses more. */
+/** A short video and its stills cost five credits; the last free credit goes, then the day refuses more. */
 const verifyAllowance = async (origin: string, owner: Call) => {
-  // A video and its sampled still cost ten credits, and wait as the still.
+  // A 2-second video and its sampled still cost five credits (one started half-minute), and wait as the still.
   const video = await uploaded(owner, origin, fixture('tiny-rail.mp4'), 'video/mp4')
   const still = await uploaded(owner, origin, fixture('rail-frame.jpg'), 'image/jpeg')
   const clip = await captureId(
@@ -132,7 +133,7 @@ const verifyAllowance = async (origin: string, owner: Call) => {
   )
   const afterVideo = await processed(owner, clip)
   expect(afterVideo.capture.detections).toHaveLength(1)
-  expect(afterVideo.tray.allowance.remaining).toBe(nativeDailyAllowance - 11)
+  expect(afterVideo.tray.allowance.remaining).toBe(nativeDailyAllowance - 6)
 
   // The last free credit goes, then the day's allowance refuses more until tomorrow.
   const last = await uploaded(owner, origin, fixture('blue-dress.png'), 'image/png')

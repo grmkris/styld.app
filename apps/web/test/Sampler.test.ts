@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'vitest'
-import { stillTimes, tileSharpness } from '../src/capture/Sampler.ts'
+import { tileSharpness } from '../src/capture/Frames.ts'
+import { stillTimes } from '../src/capture/Sampler.ts'
 
 describe('sampling a video', () => {
   test('takes a still every half second up to 30 s, and every second up to a minute', () => {

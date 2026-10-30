@@ -1,9 +1,12 @@
 import { FileDrop } from '@foldkit/ui'
-import type { CaptureSource } from '@styld/protocol'
-import { Option } from 'effect'
+import { type CaptureSource, CreateVideoCapture } from '@styld/protocol'
+import { Option, Schema } from 'effect'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
-import { classify, Message, SendPhoto, SendVideo, Sending, init, update } from '../src/page/AddPieces.ts'
+import { InspectVideo, KeepAwake, SendPhoto, SendVideo, SendVideoPart } from '../src/page/AddPieces/Commands.ts'
+import { Message, type VideoPlan } from '../src/page/AddPieces/Message.ts'
+import { init, Sending } from '../src/page/AddPieces/Model.ts'
+import { classify, update } from '../src/page/AddPieces/Update.ts'
 import { Buzz, Message as CameraMessage, type Message as HeldCameraMessage } from '../src/page/HeldCamera.ts'
 
 const file = (name: string, type: string, bytes = 8) => new globalThis.File([new Uint8Array(bytes)], name, { type })
@@ -11,9 +14,41 @@ const tee = file('tee.jpg', 'image/jpeg')
 const jeans = file('jeans.png', 'image/png')
 const coat = file('coat.webp', 'image/webp')
 const rail = file('rail.mov', 'video/quicktime')
+const closet = file('closet.mp4', 'video/mp4')
 
-const chosen = (first: File, ...rest: ReadonlyArray<File>) =>
-  Message.GotDropMessage({ message: FileDrop.Message.DroppedFiles({ files: [first, ...rest] }) })
+const first = { index: 0, startMs: 0, endMs: 30_000 }
+const second = { index: 1, startMs: 30_000, endMs: 60_000 }
+const third = { index: 2, startMs: 60_000, endMs: 75_000 }
+const parts = [first, second, third]
+const cutInParts: VideoPlan = { route: 'parts', durationMs: 75_000, parts }
+
+/** A part's capture request, as `SendVideoPart` prepares it. */
+const request = Schema.decodeUnknownSync(CreateVideoCapture)({
+  operationId: 'op-part-1',
+  videoUploadId: `up_${'v'.repeat(22)}`,
+  durationMs: 30_000,
+  width: 406,
+  height: 720,
+  stills: [{ uploadId: `up_${'s'.repeat(22)}`, atMs: 0, sharpness: Array.from({ length: 64 }, () => 0.5) }],
+})
+
+const partOf = (part: typeof first, prepared = Option.none<typeof request>()) =>
+  SendVideoPart({ index: 0, video: rail, part, prepared })
+
+const failedOn = (problem: 'network' | 'dailyLimit', prepared = Option.none<typeof request>()) =>
+  Message.FailedSend({ index: 0, problem, operationId: Option.none(), uploadId: Option.none(), prepared })
+
+/** The rail is read as three parts and the first goes up. */
+const readThenSendFirstPart = [
+  Command.resolve(
+    InspectVideo({ index: 0, video: rail }),
+    Message.SucceededInspectVideo({ index: 0, plan: cutInParts }),
+  ),
+  Command.resolve(partOf(first), Message.SucceededSendVideoPart({ index: 0, part: 0 })),
+]
+
+const chosen = (one: File, ...rest: ReadonlyArray<File>) =>
+  Message.GotDropMessage({ message: FileDrop.Message.DroppedFiles({ files: [one, ...rest] }) })
 
 /** A message from the held-up camera, as the page receives it. */
 const camera = (sent: HeldCameraMessage) => Message.GotHeldCameraMessage({ message: sent })
@@ -35,6 +70,8 @@ describe('choosing files to add', () => {
   test('photos and videos are taken by type and size; anything else is named and left out', () => {
     expect(classify(tee)).toEqual({ kind: 'photo' })
     expect(classify(rail)).toEqual({ kind: 'video' })
+    // A video of any size: this device reads it and sends small parts.
+    expect(classify(file('long.mp4', 'video/mp4', 200 * 1024 * 1024))).toEqual({ kind: 'video' })
     expect(classify(file('notes.pdf', 'application/pdf'))).toEqual({ problem: 'notSupported' })
     expect(classify(file('huge.jpg', 'image/jpeg', 15 * 1024 * 1024 + 1))).toEqual({ problem: 'tooLarge' })
     story(
@@ -66,33 +103,84 @@ describe('choosing files to add', () => {
     )
   })
 
-  test('a video is sampled and sent as one capture, and the camera marks its photos as camera shots', () => {
+  test('a long video is read, then sent part by part; trying again resends a lost request and resumes', () => {
     story(
       update,
       given(init()),
       message(chosen(rail)),
+      Command.expectExact(InspectVideo({ index: 0, video: rail }), KeepAwake),
+      Command.resolve(KeepAwake, Message.CompletedKeepAwake()),
+      ...readThenSendFirstPart,
+      // The answer to part 2's request was lost: the request is kept.
+      Command.resolve(partOf(second), failedOn('network', Option.some(request))),
+      model(({ items }) => {
+        expect(items[0]?.partsSent).toBe(1)
+        expect(items[0]?.sending).toEqual(Sending.Failed({ problem: 'network' }))
+      }),
+      message(Message.ClickedRetry({ index: 0 })),
+      Command.expectExact(partOf(second, Option.some(request)), KeepAwake),
+      Command.resolve(KeepAwake, Message.CompletedKeepAwake()),
+      Command.resolve(partOf(second, Option.some(request)), Message.SucceededSendVideoPart({ index: 0, part: 1 })),
+      Command.resolve(partOf(third), Message.SucceededSendVideoPart({ index: 0, part: 2 })),
+      expectOutMessage({ _tag: 'FinishedSending' }),
+      model(({ items }) => expect(items[0]?.sending).toEqual(Sending.Sent())),
+    )
+  })
+
+  test("the day's allowance stops a video partway, and a late answer for another part changes nothing", () => {
+    story(
+      update,
+      given(init()),
+      message(chosen(rail)),
+      Command.resolve(KeepAwake, Message.CompletedKeepAwake()),
+      ...readThenSendFirstPart,
+      Command.resolve(partOf(second), failedOn('dailyLimit')),
+      message(Message.SucceededSendVideoPart({ index: 0, part: 0 })),
+      Command.expectNone(),
+      model(({ items }) => {
+        expect(items[0]?.partsSent).toBe(1)
+        expect(items[0]?.sending).toEqual(Sending.Failed({ problem: 'dailyLimit' }))
+      }),
+    )
+  })
+
+  test('one video is read at a time while photos still go, and a video this browser cannot cut goes whole', () => {
+    story(
+      update,
+      given(init()),
+      message(chosen(rail, closet, tee)),
       Command.expectExact(
-        SendVideo({ index: 0, video: rail, contentType: 'video/quicktime', prepared: Option.none() }),
+        InspectVideo({ index: 0, video: rail }),
+        SendPhoto(photoArgs(2, tee, 'image/jpeg')),
+        KeepAwake,
+      ),
+      model(({ items }) =>
+        expect(items.map(({ sending }) => Sending.guards.Sending(sending))).toEqual([true, false, true]),
+      ),
+      Command.resolve(KeepAwake, Message.CompletedKeepAwake()),
+      Command.resolve(SendPhoto(photoArgs(2, tee, 'image/jpeg')), Message.SucceededSend({ index: 2 })),
+      Command.resolve(
+        InspectVideo({ index: 0, video: rail }),
+        Message.SucceededInspectVideo({ index: 0, plan: { route: 'whole', durationMs: 20_000, parts: [] } }),
       ),
       Command.resolve(
         SendVideo({ index: 0, video: rail, contentType: 'video/quicktime', prepared: Option.none() }),
+        Message.SucceededSend({ index: 0 }),
+      ),
+      // The second video starts only now.
+      Command.expectExact(InspectVideo({ index: 1, video: closet }), KeepAwake),
+      Command.resolve(KeepAwake, Message.CompletedKeepAwake()),
+      Command.resolve(
+        InspectVideo({ index: 1, video: closet }),
         Message.FailedSend({
-          index: 0,
+          index: 1,
           problem: 'videoTooLong',
           operationId: Option.none(),
           uploadId: Option.none(),
           prepared: Option.none(),
         }),
       ),
-      model(({ items }) => expect(items[0]?.sending).toEqual(Sending.Failed({ problem: 'videoTooLong' }))),
-      message(Message.GotCameraMessage({ message: FileDrop.Message.DroppedFiles({ files: [tee] }) })),
-      Command.expectExact(SendPhoto({ ...photoArgs(1, tee, 'image/jpeg'), source: 'camera' })),
-      Command.resolve(
-        SendPhoto({ ...photoArgs(1, tee, 'image/jpeg'), source: 'camera' }),
-        Message.SucceededSend({ index: 1 }),
-      ),
-      // One file failed, so the page stays and offers the tray for what did go up.
-      Command.expectNone(),
+      model(({ items }) => expect(items[1]?.sending).toEqual(Sending.Failed({ problem: 'videoTooLong' }))),
     )
   })
 

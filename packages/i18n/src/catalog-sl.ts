@@ -2450,10 +2450,9 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'assistantView.openInStyld': 'Odpri v Styldu',
   'capture.addTitle': 'Dodaj kose',
   'capture.addHint':
-    'Fotografije ali video do ene minute vzdolž obešalnika. Vsak kos izrežemo, ti pa ga obdržiš ali zavržeš.',
+    'Fotografije ali video vzdolž obešalnika do 15 minut. Vsak kos izrežemo, ti pa ga obdržiš ali zavržeš.',
   'capture.chooseTitle': 'Fotografije ali video',
   'capture.chooseHint': 'Iz tvoje galerije',
-  'capture.cameraTitle': 'Ali uporabi aplikacijo za kamero',
   'capture.notSupported': '{name} ni fotografija ali video, ki ga Styld lahko uporabi',
   'capture.tooLarge': '{name} je prevelik',
   'capture.queueLabel': 'Pošiljanje',
@@ -2461,10 +2460,12 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.preparingVideo': 'Berem video …',
   'capture.sent': 'Poslano',
   'capture.problem.dailyLimit': 'Današnji brezplačni kosi so porabljeni. Poskusi znova jutri.',
-  'capture.problem.videoTooLong': 'Video je lahko dolg največ eno minuto',
+  'capture.problem.videoTooLong': 'Video je lahko dolg največ 15 minut',
   'capture.problem.videoUnreadable': 'Tega videa tukaj ni mogoče prebrati',
   'capture.problem.refused': 'Te datoteke ni mogoče uporabiti',
   'capture.problem.network': 'Ni poslano',
+  'capture.problem.videoPartial':
+    'Današnji brezplačni krediti so pokrili {sent} od {parts} delov. Preostanek pošlji jutri.',
   'capture.seeFound':
     '{count, plural, one {Poglej, kaj je v # datoteki} two {Poglej, kaj je v # datotekah} few {Poglej, kaj je v # datotekah} other {Poglej, kaj je v # datotekah}}',
   'capture.foundTitle':
@@ -2501,6 +2502,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
     'Poslano {sent} od {total}{failed, plural, =0 {} one {, # ni šla} two {, # nista šli} few {, # niso šle} other {, # jih ni šlo}}',
   'capture.actionFailed': 'Ni uspelo. Poskusi znova.',
   'capture.stale': 'Trenutno ni mogoče osvežiti; prikaz morda ni najnovejši.',
+  'capture.readingPart': 'Berem video, del {part} od {parts}',
   'looks.title': 'Videzi',
   'looks.hint': 'Kombinacije, ki ti jih je asistent sestavil iz tvojih kosov.',
   'looks.pieceCount': '{count, plural, one {# kos} two {# kosa} few {# kosi} other {# kosov}}',

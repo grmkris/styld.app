@@ -1,17 +1,8 @@
-import { Effect, Fiber, Schema } from 'effect'
+import { Effect, Fiber } from 'effect'
+import { type SampledStill, sharpnessOf, stillEdge, VideoNotSampled } from './Frames.ts'
 
-/** The browser could not play the video, or it runs longer than a minute. */
-export class VideoNotSampled extends Schema.TaggedError<VideoNotSampled>()('VideoNotSampled', {
-  reason: Schema.Literals(['unreadable', 'tooLong']),
-}) {}
-
-/** One still of the video, as the server receives it beside the clip. */
-export interface SampledStill {
-  readonly jpeg: Blob
-  readonly atMs: number
-  /** 64 relative sharpness values, 8×8 tiles row by row, each from 0 to 1. */
-  readonly sharpness: ReadonlyArray<number>
-}
+/** A minute, with a second's grace for a phone's rounding: the longest clip sent whole. */
+const longestMs = 61_000
 
 export interface SampledVideo {
   readonly durationMs: number
@@ -19,14 +10,6 @@ export interface SampledVideo {
   readonly height: number
   readonly stills: ReadonlyArray<SampledStill>
 }
-
-/** A minute, with a second's grace for a phone's rounding. */
-const longestMs = 61_000
-/** Stills are at most this long on their long edge: enough for a garment's cut-out, small to upload. */
-const stillEdge = 1280
-/** Sharpness is measured on a small grey copy, this wide. */
-const measureWidth = 128
-const tiles = 8
 
 const unreadable = () => VideoNotSampled.make({ reason: 'unreadable' })
 
@@ -49,45 +32,6 @@ export const stillTimes = (durationMs: number) => {
   return Array.from({ length: Math.max(1, Math.floor((durationMs - 1) / step) + 1) }, (_, index) => index * step)
 }
 
-/** Relative sharpness of each tile: the mean absolute Laplacian of its grey pixels, squashed into 0–1. */
-export const tileSharpness = (grey: Uint8ClampedArray | Uint8Array, width: number, height: number) => {
-  const sums = Array.from({ length: tiles * tiles }, () => 0)
-  const counts = Array.from({ length: tiles * tiles }, () => 0)
-  for (let row = 1; row < height - 1; row++)
-    for (let column = 1; column < width - 1; column++) {
-      const at = row * width + column
-      const laplacian =
-        4 * (grey[at] ?? 0) -
-        (grey[at - 1] ?? 0) -
-        (grey[at + 1] ?? 0) -
-        (grey[at - width] ?? 0) -
-        (grey[at + width] ?? 0)
-      const tile =
-        Math.min(tiles - 1, Math.floor((row * tiles) / height)) * tiles + Math.floor((column * tiles) / width)
-      sums[tile] = (sums[tile] ?? 0) + Math.abs(laplacian)
-      counts[tile] = (counts[tile] ?? 0) + 1
-    }
-  return sums.map((sum, tile) => {
-    const mean = sum / Math.max(1, counts[tile] ?? 0)
-    return mean / (mean + 10)
-  })
-}
-
-/** The grey values of a small copy of the current frame. */
-const greyOf = (video: HTMLVideoElement) => {
-  const width = measureWidth
-  const height = Math.max(tiles, Math.round((measureWidth * video.videoHeight) / video.videoWidth))
-  const canvas = new OffscreenCanvas(width, height)
-  const context = canvas.getContext('2d', { willReadFrequently: true })
-  if (context === null) return { grey: new Uint8Array(width * height), width, height }
-  context.drawImage(video, 0, 0, width, height)
-  const { data } = context.getImageData(0, 0, width, height)
-  const grey = new Uint8Array(width * height)
-  for (let at = 0; at < grey.length; at++)
-    grey[at] = ((data[at * 4] ?? 0) * 77 + (data[at * 4 + 1] ?? 0) * 150 + (data[at * 4 + 2] ?? 0) * 29) >> 8
-  return { grey, width, height }
-}
-
 /** The current frame as a JPEG, at most `stillEdge` on its long edge. */
 const jpegOf = (video: HTMLVideoElement) =>
   Effect.tryPromise({
@@ -106,8 +50,8 @@ const still = (video: HTMLVideoElement, atMs: number) =>
     const seeked = yield* Effect.forkChild(next(video, 'seeked', 10))
     video.currentTime = atMs / 1000
     yield* Fiber.join(seeked)
-    const { grey, width, height } = greyOf(video)
-    return { jpeg: yield* jpegOf(video), atMs, sharpness: tileSharpness(grey, width, height) }
+    const sharpness = sharpnessOf(video, video.videoWidth, video.videoHeight)
+    return { jpeg: yield* jpegOf(video), atMs, sharpness } satisfies SampledStill
   })
 
 /** Stills of a video file, sampled in the browser: the server tracks garments through the clip and cuts

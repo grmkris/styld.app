@@ -11,6 +11,15 @@ person or a real wardrobe.
 - `rail-frame.jpg`: frame 80 of the spike's Grok-generated ten-garment rail video, at 1280 × 704.
 - `rail-ten-640.mp4`: the same video scaled to 640 px wide. The deployed preview test uses it.
 - `tiny-rail.mp4`: the spike's 160 × 112, 8 fps, 48-frame H.264 clip.
+- `long-rail.mp4`: a 140-second test pattern with a red corner box, H.264 at 320 × 180 and 12 fps, a mono
+  AAC tone, flagged as turned 90°. The browser cuts it into five parts and must draw them upright. Made with:
+
+  ```sh
+  ffmpeg -f lavfi -i "testsrc2=size=320x180:rate=12:duration=140" -f lavfi -i "sine=frequency=440:duration=140" \
+    -vf "drawbox=x=0:y=0:w=40:h=40:color=red:t=fill" -c:v libx264 -preset veryslow -crf 45 -g 24 \
+    -pix_fmt yuv420p -c:a aac -b:a 16k -ac 1 -shortest -movflags +faststart plain.mp4
+  ffmpeg -display_rotation 90 -i plain.mp4 -c copy -movflags +faststart long-rail.mp4
+  ```
 
 **Recorded provider answers**
 

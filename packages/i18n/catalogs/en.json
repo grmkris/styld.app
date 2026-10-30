@@ -2729,10 +2729,9 @@
   },
   "capture": {
     "addTitle": "Add pieces",
-    "addHint": "Photos, or a video of up to a minute along your rail. Every piece is cut out for you to keep or drop.",
+    "addHint": "Photos, or a video along your rail of up to 15 minutes. Every piece is cut out for you to keep or drop.",
     "chooseTitle": "Photos or a video",
     "chooseHint": "From your library",
-    "cameraTitle": "Or use your camera app",
     "notSupported": "{name} isn't a photo or video Styld can use",
     "tooLarge": "{name} is too large",
     "queueLabel": "Sending",
@@ -2741,10 +2740,11 @@
     "sent": "Sent",
     "problem": {
       "dailyLimit": "Today's free pieces are used up. Try again tomorrow.",
-      "videoTooLong": "Videos can be up to a minute long",
+      "videoTooLong": "Videos can be up to 15 minutes long",
       "videoUnreadable": "This video can't be read here",
       "refused": "This file can't be used",
-      "network": "Didn't send"
+      "network": "Didn't send",
+      "videoPartial": "Today's free allowance covered {sent} of {parts} parts. Send the rest tomorrow."
     },
     "seeFound": "{count, plural, one {See what's in # file} other {See what's in # files}}",
     "foundTitle": "{count, plural, =0 {Nothing found yet} one {# piece found} other {# pieces found}}",
@@ -2779,7 +2779,8 @@
     "retryFile": "Try {name} again",
     "queueSummary": "{sent} of {total} sent{failed, plural, =0 {} one {, # didn't go} other {, # didn't go}}",
     "actionFailed": "That didn't work. Try again.",
-    "stale": "Can't refresh right now; this may be out of date."
+    "stale": "Can't refresh right now; this may be out of date.",
+    "readingPart": "Reading the video, part {part} of {parts}"
   },
   "looks": {
     "title": "Looks",

@@ -2729,10 +2729,9 @@
   },
   "capture": {
     "addTitle": "Dodaj kose",
-    "addHint": "Fotografije ali video do ene minute vzdolž obešalnika. Vsak kos izrežemo, ti pa ga obdržiš ali zavržeš.",
+    "addHint": "Fotografije ali video vzdolž obešalnika do 15 minut. Vsak kos izrežemo, ti pa ga obdržiš ali zavržeš.",
     "chooseTitle": "Fotografije ali video",
     "chooseHint": "Iz tvoje galerije",
-    "cameraTitle": "Ali uporabi aplikacijo za kamero",
     "notSupported": "{name} ni fotografija ali video, ki ga Styld lahko uporabi",
     "tooLarge": "{name} je prevelik",
     "queueLabel": "Pošiljanje",
@@ -2741,10 +2740,11 @@
     "sent": "Poslano",
     "problem": {
       "dailyLimit": "Današnji brezplačni kosi so porabljeni. Poskusi znova jutri.",
-      "videoTooLong": "Video je lahko dolg največ eno minuto",
+      "videoTooLong": "Video je lahko dolg največ 15 minut",
       "videoUnreadable": "Tega videa tukaj ni mogoče prebrati",
       "refused": "Te datoteke ni mogoče uporabiti",
-      "network": "Ni poslano"
+      "network": "Ni poslano",
+      "videoPartial": "Današnji brezplačni krediti so pokrili {sent} od {parts} delov. Preostanek pošlji jutri."
     },
     "seeFound": "{count, plural, one {Poglej, kaj je v # datoteki} two {Poglej, kaj je v # datotekah} few {Poglej, kaj je v # datotekah} other {Poglej, kaj je v # datotekah}}",
     "foundTitle": "{count, plural, =0 {Zaenkrat ni najdenega} one {Najden # kos} two {Najdena # kosa} few {Najdeni # kosi} other {Najdenih # kosov}}",
@@ -2779,7 +2779,8 @@
     "retryFile": "Poskusi znova: {name}",
     "queueSummary": "Poslano {sent} od {total}{failed, plural, =0 {} one {, # ni šla} two {, # nista šli} few {, # niso šle} other {, # jih ni šlo}}",
     "actionFailed": "Ni uspelo. Poskusi znova.",
-    "stale": "Trenutno ni mogoče osvežiti; prikaz morda ni najnovejši."
+    "stale": "Trenutno ni mogoče osvežiti; prikaz morda ni najnovejši.",
+    "readingPart": "Berem video, del {part} od {parts}"
   },
   "looks": {
     "title": "Videzi",

@@ -1,18 +1,20 @@
 import { Button, FileDrop } from '@foldkit/ui'
 import { ImageType, VideoType } from '@styld/protocol'
 import { format, type Locale, type MessageKey } from '@styld/i18n'
+import { Option } from 'effect'
 import { File, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
-import { actionButton } from '../ActionButton.ts'
-import { primaryAction } from '../Actions.styles.ts'
-import { cameraIcon, loader, photoIcon, retryIcon, videoIcon } from '../Icon.ts'
-import { styled } from '../Styled.ts'
-import { type FileProblem, type Item, Message, type Model, type SendProblem, Sending } from './AddPieces.ts'
-import { backToWardrobe } from './PageBar.ts'
-import * as HeldCamera from './HeldCamera.ts'
-import * as HeldCameraView from './HeldCameraView.ts'
-import * as styles from './AddPiecesView.styles.ts'
+import { actionButton } from '../../ActionButton.ts'
+import { primaryAction } from '../../Actions.styles.ts'
+import { cameraIcon, loader, photoIcon, retryIcon, videoIcon } from '../../Icon.ts'
+import { styled } from '../../Styled.ts'
+import { Message, type SendProblem } from './Message.ts'
+import { type FileProblem, type Item, type Model, Sending } from './Model.ts'
+import { backToWardrobe } from '../PageBar.ts'
+import * as HeldCamera from '../HeldCamera.ts'
+import * as HeldCameraView from '../HeldCameraView.ts'
+import * as styles from './View.styles.ts'
 
 const fileProblemKey: { readonly [Problem in FileProblem]: MessageKey } = {
   notSupported: 'capture.notSupported',
@@ -27,8 +29,9 @@ const sendProblemKey: { readonly [Problem in SendProblem]: MessageKey } = {
   network: 'capture.problem.network',
 }
 
-/** Problems that trying again can fix: an unreadable video reads the same way twice. */
-const retryable: ReadonlySet<SendProblem> = new Set(['network'])
+/** Problems that trying again can fix: an unreadable video reads the same way twice. A video the day's
+ * allowance stopped resumes at its next part tomorrow. */
+const retryable: ReadonlySet<SendProblem> = new Set(['network', 'dailyLimit'])
 
 const pickerTypes: ReadonlyArray<string> = [...ImageType.literals, ...VideoType.literals]
 
@@ -52,27 +55,6 @@ const library = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
         ),
     },
     toParentMessage: (message) => Message.GotDropMessage({ message }),
-  })
-
-/** The phone's own camera app, through the file input's `capture` hint; a computer offers its files. */
-const cameraApp = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.submodel({
-    slotId: model.camera.id,
-    model: model.camera,
-    view: FileDrop.view,
-    viewInputs: {
-      accept: ImageType.literals,
-      toView: (attributes) =>
-        h.label(
-          [...attributes.root, ...styled(h, styles.cameraApp())],
-          [
-            cameraIcon(h),
-            format(locale, 'capture.cameraTitle', {}),
-            h.input([...attributes.input, h.Attribute('capture', 'environment')]),
-          ],
-        ),
-    },
-    toParentMessage: (message) => Message.GotCameraMessage({ message }),
   })
 
 /** The camera on this page: hold each garment up and it takes the photo. */
@@ -106,20 +88,37 @@ const heldCamera = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html
 const sources = (model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>
   HeldCamera.isOpen(model.held)
     ? [heldCamera(model, locale, h)]
-    : [h.div(styled(h, styles.sources()), [library(model, locale, h), holdUp(locale, h)]), cameraApp(model, locale, h)]
+    : [h.div(styled(h, styles.sources()), [library(model, locale, h), holdUp(locale, h)])]
+
+/** What a file on its way is doing: a photo uploading, a video being read, or the part of it on its way. */
+const sendingText = (item: Item, locale: Locale) => {
+  if (item.kind === 'photo') return format(locale, 'wardrobe.uploadingImage', {})
+  return Option.match(
+    Option.filter(item.plan, ({ route }) => route === 'parts'),
+    {
+      onNone: () => format(locale, 'capture.preparingVideo', {}),
+      onSome: ({ parts }) => format(locale, 'capture.readingPart', { part: item.partsSent + 1, parts: parts.length }),
+    },
+  )
+}
+
+/** Why a file stopped. A video the day's allowance stopped partway says how much of it went. */
+const failedText = (item: Item, problem: SendProblem, locale: Locale) =>
+  problem === 'dailyLimit' && item.partsSent > 0
+    ? format(locale, 'capture.problem.videoPartial', {
+        sent: item.partsSent,
+        parts: Option.match(item.plan, { onNone: () => item.partsSent, onSome: ({ parts }) => parts.length }),
+      })
+    : format(locale, sendProblemKey[problem], {})
 
 const itemState = (item: Item, index: number, locale: Locale, h: HtmlBuilder<Message>): Html =>
   Sending.match(item.sending, {
     Waiting: () => h.span(styled(h, styles.queueDone()), [format(locale, 'capture.waiting', {})]),
-    Sending: () =>
-      h.span(styled(h, styles.queueState()), [
-        loader(h),
-        format(locale, item.kind === 'video' ? 'capture.preparingVideo' : 'wardrobe.uploadingImage', {}),
-      ]),
+    Sending: () => h.span(styled(h, styles.queueState()), [loader(h), sendingText(item, locale)]),
     Sent: () => h.span(styled(h, styles.queueDone()), [format(locale, 'capture.sent', {})]),
     Failed: ({ problem }) =>
       h.span(styled(h, styles.queueState()), [
-        h.span(styled(h, styles.queueFailed()), [format(locale, sendProblemKey[problem], {})]),
+        h.span(styled(h, styles.queueFailed()), [failedText(item, problem, locale)]),
         retryable.has(problem)
           ? Button.view(
               {

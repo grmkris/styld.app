@@ -8,7 +8,7 @@ import * as HttpBody from 'effect/http/HttpBody'
 import * as HttpClient from 'effect/http/HttpClient'
 import { type Browser, chromium } from 'playwright'
 import { verifyBrowser } from './BrowserAcceptance.ts'
-import { verifyCaptureJourney } from './CaptureBrowserAcceptance.ts'
+import { verifyCaptureJourney, verifyLongVideoJourney } from './CaptureBrowserAcceptance.ts'
 import { nativeDailyAllowance, verifyCaptures } from './CaptureAcceptance.ts'
 import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
 import { verifyMcp } from './McpAcceptance.ts'
@@ -157,6 +157,15 @@ test(
     yield* inBrowser((browser, origin) => verifyCaptureJourney(browser, origin, url))
   }),
   { timeout: 90000 },
+)
+
+test(
+  'cuts a long, turned video into upright parts in the browser and stops at the daily allowance',
+  Effect.gen(function* () {
+    const { url } = yield* stack
+    yield* inBrowser((browser, origin) => verifyLongVideoJourney(browser, origin, url))
+  }),
+  { timeout: 120000 },
 )
 
 test('hydrates the built website and persists locale changes in a browser', inBrowser(verifyBrowser), {

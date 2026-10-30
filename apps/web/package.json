@@ -22,6 +22,7 @@
     "@styld/protocol": "workspace:*",
     "effect": "catalog:",
     "foldkit": "catalog:",
+    "mediabunny": "catalog:",
     "zyzz": "catalog:"
   },
   "devDependencies": {

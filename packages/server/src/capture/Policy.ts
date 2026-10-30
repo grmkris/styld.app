@@ -14,7 +14,8 @@ export interface CapturePolicy {
   /** How sure it must be that a shot shows the same garment as the last one (its back). */
   readonly samePieceConfidence: number
   readonly dailyAllowance: number
-  readonly credits: { readonly photo: number; readonly video: number }
+  /** A photo's price, and a video's for each started half-minute of it (about 10 a minute). */
+  readonly credits: { readonly photo: number; readonly videoHalfMinute: number }
 }
 
 export class CaptureConfig extends Context.Service<CaptureConfig, CapturePolicy>()('@styld/server/CaptureConfig') {}
@@ -35,5 +36,5 @@ export const capturePolicy = (env: Readonly<Record<string, unknown>>): CapturePo
   heldConfidence: number(env['CAMERA_HELD_CONFIDENCE'], 0.7),
   samePieceConfidence: number(env['CAMERA_SAME_PIECE_CONFIDENCE'], 0.6),
   dailyAllowance: number(env['DAILY_ALLOWANCE'], 100),
-  credits: { photo: 1, video: 10 },
+  credits: { photo: 1, videoHalfMinute: 5 },
 })

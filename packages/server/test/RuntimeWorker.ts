@@ -21,10 +21,10 @@ import { onFirstUse } from '../src/IsolateCache.ts'
 import { DomainLive } from '../src/DomainLive.ts'
 import { StyldDatabase, StyldMedia } from '../src/Resources.ts'
 
-/** Local D1 answers SQLITE_BUSY while another test (or another session's workerd) writes. Each fixture
+/** Local D1 answers SQLITE_BUSY for a while when another test (or another session's workerd) writes. Each fixture
  * write is one atomic batch, so it is retried on its own until the database is free. */
 const whenFree = <A, E, R>(write: Effect.Effect<A, E, R>) =>
-  write.pipe(Effect.retry({ times: 20, schedule: Schedule.spaced('150 millis') }))
+  write.pipe(Effect.retry({ times: 60, schedule: Schedule.spaced('200 millis') }))
 
 /** A fixture write retried while the database is busy, answered with 204. */
 const doneWhenFree = <A, E, R>(write: Effect.Effect<A, E, R>) =>
@@ -118,6 +118,12 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
         '/test/identity/seed-capture-browser',
         doneWhenFree(seedIdentity(database, 'native-capture-browser')),
       ),
+      // The account the browser's long-video journey signs in as.
+      HttpRouter.add(
+        'POST',
+        '/test/identity/seed-video-browser',
+        doneWhenFree(seedIdentity(database, 'native-video-browser')),
+      ),
       // Whether a stored photo still exists, to prove deletion removes it.
       HttpRouter.add(
         'GET',
@@ -127,6 +133,18 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
           const key = new URL(request.url, 'http://local.invalid').searchParams.get('key') ?? ''
           const object = yield* media.head(key).pipe(Effect.orDie)
           return yield* HttpServerResponse.json({ exists: object !== null }).pipe(Effect.orDie)
+        }),
+      ),
+      // A stored object's bytes, to check what the browser actually sent.
+      HttpRouter.add(
+        'GET',
+        '/test/identity/media-bytes',
+        Effect.gen(function* () {
+          const request = yield* HttpServerRequest
+          const key = new URL(request.url, 'http://local.invalid').searchParams.get('key') ?? ''
+          const object = yield* media.get(key).pipe(Effect.orDie)
+          if (object === null) return HttpServerResponse.empty({ status: 404 })
+          return HttpServerResponse.uint8Array(new Uint8Array(yield* object.arrayBuffer().pipe(Effect.orDie)))
         }),
       ),
       HttpRouter.add(

@@ -11,7 +11,9 @@ import { modifyFields } from 'foldkit/struct'
 import { catalogVersion, loadCatalog } from '@styld/i18n'
 import { Locale, localeEndpoint, parseLocale } from './Locale.ts'
 import * as Crypto from 'effect/Crypto'
-import * as AddPieces from './page/AddPieces.ts'
+import * as AddPiecesMessage from './page/AddPieces/Message.ts'
+import * as AddPiecesModel from './page/AddPieces/Model.ts'
+import * as AddPieces from './page/AddPieces/Update.ts'
 import * as Account from './page/Account.ts'
 import * as Login from './page/Login.ts'
 import * as Look from './page/Look.ts'
@@ -67,7 +69,7 @@ export const Model = Schema.Struct({
   login: Login.Model,
   wardrobe: Wardrobe.Model,
   piece: Piece.Model,
-  addPieces: AddPieces.Model,
+  addPieces: AddPiecesModel.Model,
   review: Review.Model,
   looks: Looks.Model,
   look: Look.Model,
@@ -92,7 +94,7 @@ export const Message = defineMessageUnion({
   GotAccountMessage: { message: Account.Message },
   GotWardrobeMessage: { message: Wardrobe.Message },
   GotPieceMessage: { message: Piece.Message },
-  GotAddPiecesMessage: { message: AddPieces.Message },
+  GotAddPiecesMessage: { message: AddPiecesMessage.Message },
   GotReviewMessage: { message: Review.Message },
   GotLooksMessage: { message: Looks.Message },
   GotLookMessage: { message: Look.Message },
@@ -196,7 +198,7 @@ export const init = (context: Flags): UpdateReturn => {
       login: Login.init(),
       wardrobe: Wardrobe.init(),
       piece,
-      addPieces: AddPieces.init(),
+      addPieces: AddPiecesModel.init(),
       review: Review.init(),
       looks: Looks.init(),
       look,
@@ -308,9 +310,9 @@ const foldLook = Update.foldChild({
 const foldAddPieces = Update.foldChild({
   update: AddPieces.update,
   read: (model: Model) => Option.some(model.addPieces),
-  write: (model: Model, addPieces: AddPieces.Model) => modifyFields(model, { addPieces: () => addPieces }),
-  toParentMessage: (message: AddPieces.Message) => Message.GotAddPiecesMessage({ message }),
-  foldOutMessage: AddPieces.OutMessage.match<Update.Step<Model, Message, Services>>({
+  write: (model: Model, addPieces: AddPiecesModel.Model) => modifyFields(model, { addPieces: () => addPieces }),
+  toParentMessage: (message: AddPiecesMessage.Message) => Message.GotAddPiecesMessage({ message }),
+  foldOutMessage: AddPiecesMessage.OutMessage.match<Update.Step<Model, Message, Services>>({
     FinishedSending: () => (stepModel) => ({ model: stepModel, commands: [Navigate({ href: reviewRouter({}) })] }),
   }),
 })

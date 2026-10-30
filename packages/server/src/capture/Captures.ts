@@ -174,7 +174,8 @@ export const creating = (parts: Parts) => ({
       frameCount: measured.frameCount,
       width: input.width,
       height: input.height,
-      credits: policy.credits.video,
+      // Priced by its measured length: a 30-second part of a long video is 5 credits.
+      credits: Math.max(1, Math.ceil(measured.durationMs / 30_000)) * policy.credits.videoHalfMinute,
     }
     const frames = Array.zipWith(input.stills, uploads, (still, upload): FrameRow => ({
       captureId: id,

@@ -572,7 +572,6 @@ export interface MessageArgumentsByKey<T = string> {
   'capture.camera.tapToTake': Readonly<Record<string, never>>
   'capture.camera.title': Readonly<Record<string, never>>
   'capture.camera.unavailable': Readonly<Record<string, never>>
-  'capture.cameraTitle': Readonly<Record<string, never>>
   'capture.chooseHint': Readonly<Record<string, never>>
   'capture.chooseTitle': Readonly<Record<string, never>>
   'capture.done': Readonly<Record<string, never>>
@@ -588,10 +587,12 @@ export interface MessageArgumentsByKey<T = string> {
   'capture.problem.dailyLimit': Readonly<Record<string, never>>
   'capture.problem.network': Readonly<Record<string, never>>
   'capture.problem.refused': Readonly<Record<string, never>>
+  'capture.problem.videoPartial': { readonly sent: string | number; readonly parts: string | number }
   'capture.problem.videoTooLong': Readonly<Record<string, never>>
   'capture.problem.videoUnreadable': Readonly<Record<string, never>>
   'capture.queueLabel': Readonly<Record<string, never>>
   'capture.queueSummary': { readonly sent: string | number; readonly total: string | number; readonly failed: number }
+  'capture.readingPart': { readonly part: string | number; readonly parts: string | number }
   'capture.remove': Readonly<Record<string, never>>
   'capture.retryFile': { readonly name: string | number }
   'capture.reviewHint': Readonly<Record<string, never>>
@@ -2395,4 +2396,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '2a40b72cccd81ca1e43e6254d40fb454ade5dce8ef2cb14bfe778063d9aea53a'
+export const catalogVersion = 'bc600e03152a704223cef8e997298ff087cdc7f9f1441bd72db754819b8a5dc8'

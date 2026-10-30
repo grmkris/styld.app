@@ -1,6 +1,6 @@
-import { style } from '../zyzz.config.ts'
+import { style } from '../../zyzz.config.ts'
 
-// Styles for adding pieces in AddPiecesView.ts (Gallery: add.html's scan step, before the found grid).
+// Styles for adding pieces in View.ts (Gallery: add.html's scan step, before the found grid).
 export const addPage = style({ display: 'grid', gap: '8px', maxInlineSize: '36rem', paddingBlock: '8px 48px' })
 export const pageBar = style({ display: 'flex', alignItems: 'center', gap: '8px' })
 export const lede = style({ color: 'ink2' })
@@ -34,28 +34,6 @@ export const source = style({
   ':active': { transform: 'scale(0.98)' },
   '&[data-drag-over]': { borderColor: 'ink', backgroundColor: 'paper2' },
   // The file input inside is hidden, so the label shows its keyboard focus.
-  '&:has(input:focus-visible)': {
-    outlineWidth: '2px',
-    outlineStyle: 'solid',
-    outlineColor: 'focus',
-    outlineOffset: '2px',
-  },
-})
-/** The phone's own camera app, offered quietly under the two main ways in. */
-export const cameraApp = style({
-  position: 'relative',
-  display: 'inline-flex',
-  alignItems: 'center',
-  justifySelf: 'start',
-  gap: '8px',
-  minBlockSize: '44px',
-  color: 'ink',
-  fontSize: '14px',
-  fontWeight: 600,
-  textDecorationLine: 'underline',
-  textDecorationColor: 'signal',
-  textUnderlineOffset: '4px',
-  cursor: 'pointer',
   '&:has(input:focus-visible)': {
     outlineWidth: '2px',
     outlineStyle: 'solid',
