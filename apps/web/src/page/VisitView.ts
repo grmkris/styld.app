@@ -1,5 +1,5 @@
 import { format, type Locale } from '@styld/i18n'
-import type { PublicPiecePage, PublicProfile } from '@styld/protocol'
+import type { Mood, PublicPiecePage, PublicProfile } from '@styld/protocol'
 import { Option } from 'effect'
 import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
@@ -11,7 +11,8 @@ import { styled } from '../Styled.ts'
 import { publicPieceImage } from './Board/Table.ts'
 import * as PeopleView from './PeopleView.ts'
 import { boardCard, byline, lookTile, pieceTile, tileGrid } from './PublicTiles.ts'
-import { exploreView } from './ExploreView.ts'
+import { exploreSections } from './ExploreView.ts'
+import { page as explorePage } from './ExploreView.styles.ts'
 import { Message, type Model, type PersonTab, Shown, Target } from './Visit.ts'
 import * as styles from './VisitView.styles.ts'
 import { pieceLabel } from './WardrobeWords.ts'
@@ -118,26 +119,41 @@ const pieceView = (model: Model, { piece, by }: PublicPiecePage, locale: Locale,
   ])
 
 /** Someone's profile or piece, as anyone sees it. */
+/** Explore: one title above whatever it shows, so a tab arriving on it keeps the title focused as it loads. */
+const exploreMain = (model: Model, mood: Option.Option<Mood>, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.div(styled(h, explorePage()), [
+    h.h1([], [format(locale, 'explore.title', {})]),
+    ...(Shown.guards.Explore(model.shown)
+      ? exploreSections(model.shown.explore, mood, locale, h)
+      : Shown.guards.Failed(model.shown)
+        ? [failedView(locale, h)]
+        : [h.p([h.Role('status')], [loader(h)])]),
+  ])
+
+const failedView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.div(styled(h, styles.page()), [
+    h.p([h.Role('alert')], [format(locale, 'common.error', {})]),
+    actionButton(
+      { label: format(locale, 'common.retry', {}), style: secondaryAction(), onClick: Message.ClickedRetry() },
+      h,
+    ),
+  ])
+
 export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
   h.main(
     [h.Id('main')],
     [
-      Shown.match(model.shown, {
-        Loading: () => h.p([h.Role('status')], [loader(h)]),
-        Missing: () => h.h1([], [format(locale, 'common.notFoundTitle', {})]),
-        Failed: () =>
-          h.div(styled(h, styles.page()), [
-            h.p([h.Role('alert')], [format(locale, 'common.error', {})]),
-            actionButton(
-              { label: format(locale, 'common.retry', {}), style: secondaryAction(), onClick: Message.ClickedRetry() },
-              h,
-            ),
-          ]),
-        Person: ({ profile }) => personView(model, profile, locale, h),
-        Piece: ({ page }) => pieceView(model, page, locale, h),
-        Explore: ({ explore }) =>
-          exploreView(explore, Target.guards.Explore(model.target) ? model.target.mood : Option.none(), locale, h),
-      }),
+      Target.guards.Explore(model.target)
+        ? exploreMain(model, model.target.mood, locale, h)
+        : Shown.match(model.shown, {
+            Loading: () => h.p([h.Role('status')], [loader(h)]),
+            Missing: () => h.h1([], [format(locale, 'common.notFoundTitle', {})]),
+            Failed: () => failedView(locale, h),
+            Person: ({ profile }) => personView(model, profile, locale, h),
+            Piece: ({ page }) => pieceView(model, page, locale, h),
+            // Explore is drawn above; a stray answer for it elsewhere shows nothing.
+            Explore: () => h.empty,
+          }),
     ],
   ),
 )

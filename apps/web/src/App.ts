@@ -175,7 +175,7 @@ const pageCommands = (
   },
 ) =>
   Match.value(route).pipe(
-    Match.tag('Person', 'PublicPiece', 'Explore', () =>
+    Match.tag('Person', 'PublicPiece', () =>
       Command.mapMessages(Visit.load(pages.visit), (message) => Message.GotVisitMessage({ message })),
     ),
     Match.tag('Board', 'BoardCollage', () =>

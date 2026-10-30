@@ -138,7 +138,7 @@ export const needsSession = (route: AppRoute) =>
 
 /** The pages the navigation moves between. They keep their place: each opens at once from what the app already
  * has, while every other page loads whole. */
-export const Tab = Schema.Literals(['Home', 'Wardrobe', 'Looks', 'Ask', 'Boards', 'Account'])
+export const Tab = Schema.Literals(['Home', 'Explore', 'Wardrobe', 'Looks', 'Ask', 'Boards', 'Account'])
 export type Tab = typeof Tab.Type
 
 export const tabOf = AppRoute.match<Option.Option<Tab>>({
@@ -159,7 +159,7 @@ export const tabOf = AppRoute.match<Option.Option<Tab>>({
   BoardCollage: () => Option.none(),
   Person: () => Option.none(),
   PublicPiece: () => Option.none(),
-  Explore: () => Option.none(),
+  Explore: () => Option.some('Explore'),
   NotFound: () => Option.none(),
 })
 

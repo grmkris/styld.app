@@ -7,6 +7,7 @@ import * as Ask from './page/Ask.ts'
 import * as Boards from './page/Boards.ts'
 import * as Looks from './page/Looks.ts'
 import * as Today from './page/Today.ts'
+import * as Visit from './page/Visit.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
 import type { AppRoute } from './route.ts'
 
@@ -64,6 +65,13 @@ const foldAskEnter = (query: Option.Option<string>) =>
     toParentMessage: (message: Ask.Message) => Message.GotAskMessage({ message }),
   })
 
+const foldExploreEnter = Update.foldChildStep({
+  update: Visit.enterExplore,
+  read: (model: Model) => Option.some(model.visit),
+  write: (model: Model, visit: Visit.Model) => modifyFields(model, { visit: () => visit }),
+  toParentMessage: (message: Visit.Message) => Message.GotVisitMessage({ message }),
+})
+
 export const openHome: ReadonlyArray<Step> = [foldTodayEnter, foldWardrobeRevisit]
 /** What opening a tab page asks for. Home needs a session: a cookie with the request, or `afterSignIn`. */
 export const openPage = (route: AppRoute, hasSessionCookie: boolean): ReadonlyArray<Step> =>
@@ -73,5 +81,6 @@ export const openPage = (route: AppRoute, hasSessionCookie: boolean): ReadonlyAr
     Match.tag('Ask', ({ q }) => [foldWardrobeRevisit, foldAskEnter(q)]),
     Match.tag('Looks', () => [foldLooksRevisit]),
     Match.tag('Boards', () => [foldBoardsRevisit]),
+    Match.tag('Explore', () => [foldExploreEnter]),
     Match.orElse(() => []),
   )

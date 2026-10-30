@@ -309,7 +309,7 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
       await verifyBoard(phone, page, origin)
       await verifyAskAndWardrobe(page, origin)
       await expectSameTitleTops(page, origin)
-      await expectSteadyFullLoads(page, origin, ['/', '/wardrobe', '/looks', '/boards', '/ask', '/account'])
+      await expectSteadyFullLoads(page, origin, ['/', '/explore', '/wardrobe', '/looks', '/boards', '/ask', '/account'])
       await expectInstantTabs(page, origin)
       await expectSlovenianSearch(phone, page, origin)
     } catch (error) {

@@ -80,16 +80,16 @@ const moodChips = (current: Option.Option<Mood>, locale: Locale, h: HtmlBuilder<
     ],
   )
 
-/** Explore: Edits from Styld, featured boards, people to follow, then the newest boards in the chosen mood. */
-export const exploreView = (
+/** Explore's sections under its title: Edits from Styld, featured boards, people to follow, then the newest boards in
+ * the chosen mood. */
+export const exploreSections = (
   explore: Explore,
   mood: Option.Option<Mood>,
   locale: Locale,
   h: HtmlBuilder<Message>,
-): Html => {
+): ReadonlyArray<Html> => {
   const isEmpty = [explore.edits, explore.featured, explore.people, explore.newest].every((part) => part.length === 0)
-  return h.div(styled(h, styles.page()), [
-    h.h1([], [format(locale, 'explore.title', {})]),
+  return [
     boardsRow('explore-edits', format(locale, 'explore.edits', {}), explore.edits, locale, h),
     boardsRow('explore-featured', format(locale, 'explore.featured', {}), explore.featured, locale, h),
     explore.people.length === 0
@@ -107,5 +107,5 @@ export const exploreView = (
     moodChips(mood, locale, h),
     boardsRow('explore-newest', format(locale, 'explore.newest', {}), explore.newest, locale, h),
     isEmpty ? h.p(styled(h, styles.empty()), [format(locale, 'explore.empty', {})]) : h.empty,
-  ])
+  ]
 }

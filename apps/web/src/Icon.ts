@@ -21,6 +21,7 @@ import {
   CaretLeftRegular,
   CheckRegular,
   CircleNotchRegular,
+  CompassLight,
   HouseLight,
   ImageRegular,
   PencilSimpleRegular,
@@ -91,6 +92,7 @@ export const closeIcon = control(XRegular)
 
 /** 24px tab icons in the Light weight. */
 export const homeTabIcon = tab(HouseLight)
+export const exploreTabIcon = tab(CompassLight)
 export const wardrobeTabIcon = tab(TShirtLight)
 export const askTabIcon = tab(MagnifyingGlassLight)
 export const boardsTabIcon = tab(SquaresFourLight)

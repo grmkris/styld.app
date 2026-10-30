@@ -345,8 +345,12 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
     `/api/public/search?q=kris` finds the profile, and `/explore` serves.
   - Edits from Styld and Featured are empty until an admin, listed in `STYLD_ADMIN_EMAILS`, marks the house account
     and features boards.
+- **Five tabs:**
+  - The navigation is the design's Home, Explore, Ask, Wardrobe and Boards. You (the account) is the initial in the
+    masthead.
+  - Explore is a tab: it keeps its place and mood between tabs, and is asked for again behind.
+  - Evidence: the native instant-tabs walk taps Explore, and Explore loads steady.
 - **Next:**
-  - the five-tab navigation, with Explore as a tab that keeps its place;
   - the landing's Edits from Styld;
   - M6 (the wishlist and Add from a link).
 - **Shared with the capture session:** migrations are generated one at a time; public delivery reuses its rule for a

@@ -8,7 +8,7 @@ import { actionButton } from './ActionButton.ts'
 import { primaryAction, secondaryAction } from './Actions.styles.ts'
 import { availableLocales } from './Locale.ts'
 import { styled } from './Styled.ts'
-import { askTabIcon, boardsTabIcon, homeTabIcon, wardrobeTabIcon } from './Icon.ts'
+import { askTabIcon, boardsTabIcon, exploreTabIcon, homeTabIcon, wardrobeTabIcon } from './Icon.ts'
 import * as AddPiecesView from './page/AddPieces/View.ts'
 import * as AskView from './page/AskView.ts'
 import * as TodayView from './page/TodayView.ts'
@@ -25,10 +25,11 @@ import * as LoginView from './page/LoginView.ts'
 import * as PieceView from './page/PieceView.ts'
 import * as WardrobeView from './page/WardrobeView.ts'
 import {
-  AppRoute,
   accountRouter,
+  AppRoute,
   askRouter,
   boardsRouter,
+  exploreRouter,
   homeRouter,
   loginRouter,
   tabOf,
@@ -187,6 +188,18 @@ const sessionLink = (model: Model, h: HtmlBuilder<Message>): Html => {
   })
 }
 
+/** You, in the masthead while the navigation shows: your initial, blank while the session is read. */
+const youLink = (model: Model, initial: string, h: HtmlBuilder<Message>): Html =>
+  h.a(
+    [
+      h.Href(accountRouter({})),
+      h.AriaLabel(format(model.context.locale, 'nav.account', {})),
+      ...(sectionOf(model.route) === 'you' ? [h.AriaCurrent('page')] : []),
+      ...styled(h, initial === '' ? cx(navAvatar(), navAvatarPending()) : navAvatar()),
+    ],
+    [initial],
+  )
+
 const titleKey = AppRoute.match<MessageKey>({
   Home: () => 'landing.title',
   Login: () => 'auth.signInTitle',
@@ -209,7 +222,7 @@ const titleKey = AppRoute.match<MessageKey>({
   NotFound: () => 'common.notFoundTitle',
 })
 
-type Section = 'home' | 'wardrobe' | 'ask' | 'boards' | 'you'
+type Section = 'home' | 'explore' | 'wardrobe' | 'ask' | 'boards' | 'you'
 
 const sectionOf = AppRoute.match<Section | undefined>({
   Home: () => 'home',
@@ -229,12 +242,12 @@ const sectionOf = AppRoute.match<Section | undefined>({
   LoginForConnection: () => undefined,
   Person: () => undefined,
   PublicPiece: () => undefined,
-  Explore: () => undefined,
+  Explore: () => 'explore',
   NotFound: () => undefined,
 })
 
-/** Gallery 2's navigation: Home, Wardrobe, Ask in the middle, Boards, and you. A floating glass pill on the
- * phone, a rail on the desktop's left edge; it keeps its place while a page cross-fades. */
+/** Gallery 2's navigation: Home, Explore, Ask in the middle, Wardrobe and Boards; you are in the masthead. A
+ * floating glass pill on the phone, a rail on the desktop's left edge; it keeps its place while a page cross-fades. */
 const appNavigation = (model: Model, initial: string, h: HtmlBuilder<Message>): Html => {
   const { locale } = model.context
   const current = sectionOf(model.route)
@@ -256,7 +269,7 @@ const appNavigation = (model: Model, initial: string, h: HtmlBuilder<Message>): 
     ],
     [
       item('home', homeRouter({}), format(locale, 'nav.home', {}), homeTabIcon(h)),
-      item('wardrobe', wardrobeRouter({}), format(locale, 'nav.wardrobe', {}), wardrobeTabIcon(h)),
+      item('explore', exploreRouter({}), format(locale, 'explore.title', {}), exploreTabIcon(h)),
       // Ask keeps its search: coming back from another tab brings it back.
       item(
         'ask',
@@ -265,16 +278,8 @@ const appNavigation = (model: Model, initial: string, h: HtmlBuilder<Message>): 
         askTabIcon(h),
         true,
       ),
+      item('wardrobe', wardrobeRouter({}), format(locale, 'nav.wardrobe', {}), wardrobeTabIcon(h)),
       item('boards', boardsRouter({}), format(locale, 'nav.boards', {}), boardsTabIcon(h)),
-      item(
-        'you',
-        accountRouter({}),
-        format(locale, 'nav.account', {}),
-        h.span(
-          [h.AriaHidden(true), ...styled(h, initial === '' ? cx(navAvatar(), navAvatarPending()) : navAvatar())],
-          [initial],
-        ),
-      ),
     ],
   )
 }
@@ -467,7 +472,7 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
             ]),
           ],
         ),
-        initial === undefined ? sessionLink(model, h) : h.empty,
+        initial === undefined ? sessionLink(model, h) : youLink(model, initial, h),
       ]),
       AppRoute.match(model.route, {
         Home: () => homePage(model, h),

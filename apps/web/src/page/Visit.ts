@@ -142,6 +142,17 @@ export const load = (model: Model): ReadonlyArray<Command.Command<Message, never
 
 type UpdateReturn = Update.Return<Model, Message, StyldClient>
 
+/** Opening Explore as a tab: what it showed stays while it is asked for again; a first visit asks. */
+export const enterExplore = (model: Model): UpdateReturn => {
+  const mood = Target.guards.Explore(model.target) ? model.target.mood : Option.none()
+  return Shown.guards.Explore(model.shown)
+    ? { model, commands: [LoadExplore({ mood })] }
+    : {
+        model: modifyFields(model, { target: () => Target.Explore({ mood }), shown: () => Shown.Loading() }),
+        commands: [LoadExplore({ mood })],
+      }
+}
+
 const foldPeople = Update.foldChild({
   update: People.update,
   read: (model: Model) => Option.some(model.people),
