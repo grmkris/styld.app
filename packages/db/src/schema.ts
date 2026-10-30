@@ -246,6 +246,90 @@ export const lookPieces = sqliteTable(
   (table) => [primaryKey({ columns: [table.lookId, table.pieceId] }), index('look_pieces_piece').on(table.pieceId)],
 )
 
+/** A board: a table the person lays their pieces, labels and pictures on. `version` counts saves of the
+ * table, so an editor that loaded an older table cannot overwrite a newer one. */
+export const boards = sqliteTable(
+  'boards',
+  {
+    id: text('id').primaryKey(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    name: text('name').notNull(),
+    paper: text('paper', { enum: ['paper', 'stock', 'sand', 'sage', 'slate', 'clay'] }).notNull(),
+    version: integer('version').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [index('boards_account_updated').on(table.accountId, table.updatedAt)],
+)
+
+/** A picture put on a board. Its bytes stay where the photo upload left them, under the account's prefix. */
+export const boardImages = sqliteTable(
+  'board_images',
+  {
+    id: text('id').primaryKey(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    boardId: text('board_id')
+      .notNull()
+      .references(() => boards.id, { onDelete: 'cascade' }),
+    objectKey: text('object_key').notNull(),
+    contentType: text('content_type').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [index('board_images_board').on(table.boardId)],
+)
+
+/** What lies on a board's table: one of the person's pieces, a text label or a picture, and where. Deleting
+ * a piece takes it off its boards. */
+export const boardItems = sqliteTable(
+  'board_items',
+  {
+    boardId: text('board_id')
+      .notNull()
+      .references(() => boards.id, { onDelete: 'cascade' }),
+    id: text('id').notNull(),
+    kind: text('kind', { enum: ['piece', 'text', 'image'] }).notNull(),
+    pieceId: text('piece_id').references(() => pieces.id, { onDelete: 'cascade' }),
+    imageId: text('image_id').references(() => boardImages.id, { onDelete: 'cascade' }),
+    text: text('text'),
+    textStyle: text('text_style', { enum: ['label', 'headline'] }),
+    x: real('x').notNull(),
+    y: real('y').notNull(),
+    size: real('size').notNull(),
+    turn: real('turn').notNull(),
+    z: integer('z').notNull(),
+    flipped: integer('flipped', { mode: 'boolean' }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.boardId, table.id] }),
+    index('board_items_piece').on(table.pieceId),
+    index('board_items_image').on(table.imageId),
+  ],
+)
+
+/** What the person wore on a day (their own calendar day, `2026-10-30`), in the outfit's order. Deleting a
+ * piece takes it out of the days it was worn. The key's prefix serves reads by account and day. */
+export const wornPieces = sqliteTable(
+  'worn_pieces',
+  {
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    day: text('day').notNull(),
+    pieceId: text('piece_id')
+      .notNull()
+      .references(() => pieces.id, { onDelete: 'cascade' }),
+    position: integer('position').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.accountId, table.day, table.pieceId] }),
+    index('worn_pieces_piece').on(table.pieceId),
+  ],
+)
+
 export const appSchema = {
   accounts,
   authAttemptBuckets,
@@ -260,4 +344,8 @@ export const appSchema = {
   detections,
   looks,
   lookPieces,
+  boards,
+  boardImages,
+  boardItems,
+  wornPieces,
 }

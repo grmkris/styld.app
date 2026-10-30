@@ -1,6 +1,9 @@
 export {
   accounts,
   appSchema,
+  boardImages,
+  boardItems,
+  boards,
   captureFrames,
   captures,
   detections,
@@ -10,4 +13,5 @@ export {
   operationReceipts,
   pieces,
   uploads,
+  wornPieces,
 } from './schema.ts'
