@@ -20,6 +20,7 @@ import { AccountLifecycle, makeAccountLifecycle } from './AccountLifecycle.ts'
 import { Looks, makeLooks } from './looks/Looks.ts'
 import { Boards, makeBoards } from './boards/Boards.ts'
 import { boardRoutes } from './boards/Http.ts'
+import { makeWorn, Worn } from './worn/Worn.ts'
 import { apiRoutes } from './Api.ts'
 import { makeAuthHttp, withCodeRequestPolicy } from './AuthHttp.ts'
 import { makeGarmentVision, type RunClef } from './capture/Clef.ts'
@@ -74,8 +75,8 @@ const perClientLimit = (name: string, namespaceId: number, limit: number) =>
       )
   })
 
-/** One wardrobe, one account lifecycle, one capture service, the looks and the boards per isolate, shared by the
- * routes and the processing queue. Assistant-added pieces get the same cut-out providers as the tray. */
+/** One wardrobe, one account lifecycle, one capture service, the looks, boards and worn days per isolate, shared
+ * by the routes and the processing queue. Assistant-added pieces get the same cut-out providers as the tray. */
 const storageServices = <R>(
   bindings: WardrobeBindings,
   providers: Layer.Layer<
@@ -99,6 +100,7 @@ const storageServices = <R>(
       captures: Layer.succeed(Captures, capturesService),
       looks: Layer.succeed(Looks, looksService),
       boards: Layer.succeed(Boards, yield* makeBoards(bindings)),
+      worn: Layer.succeed(Worn, makeWorn(bindings.database)),
     }
   }).pipe(
     Effect.provide(Layer.mergeAll(layerCryptoWeb, pieceCutout(bindings.bucket)).pipe(Layer.provideMerge(providers))),

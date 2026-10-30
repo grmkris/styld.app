@@ -13,6 +13,8 @@ import { lookHandlers } from './looks/Http.ts'
 import type { Looks } from './looks/Looks.ts'
 import { type Admit, admitWith, wardrobeHandlers } from './wardrobe/Http.ts'
 import type { Wardrobe } from './wardrobe/Wardrobe.ts'
+import { wornHandlers } from './worn/Http.ts'
+import type { Worn } from './worn/Worn.ts'
 
 const accountHandlers = (admit: Admit) =>
   HttpApiBuilder.group(StyldApi, 'account', (handlers) =>
@@ -46,6 +48,7 @@ export const apiRoutes = (
     readonly captures: Layer.Layer<Captures>
     readonly looks: Layer.Layer<Looks>
     readonly boards: Layer.Layer<Boards>
+    readonly worn: Layer.Layer<Worn>
   },
   limits: { readonly allowCheck: (accountId: string) => Effect.Effect<boolean, never, RuntimeContext> },
 ) =>
@@ -55,6 +58,7 @@ export const apiRoutes = (
     Layer.provide(captureHandlers(admitWith(auth), limits.allowCheck).pipe(Layer.provide(services.captures))),
     Layer.provide(lookHandlers(admitWith(auth)).pipe(Layer.provide(services.looks))),
     Layer.provide(boardHandlers(admitWith(auth)).pipe(Layer.provide(services.boards))),
+    Layer.provide(wornHandlers(admitWith(auth)).pipe(Layer.provide(services.worn))),
     Layer.provide(auth.router.securityLayer(SessionHttp)),
     auth.router.middleware,
     Layer.provide(auth.dependencies),
