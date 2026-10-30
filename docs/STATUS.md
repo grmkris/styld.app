@@ -320,7 +320,17 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   - Evidence: unit tests that the curation tools stay out of the members' list, keep noun_verb names, and that admins
     are known by email in any case.
   - Open: the owner adds `STYLD_ADMIN_EMAILS`, then marks `@styld` and features boards from an assistant.
-- **Next:** M5c (board moods, the Explore tab and five-tab navigation, people and boards in Ask's search).
+- **M5c, Explore on the website:**
+  - `/explore`, readable signed out, shows Edits from Styld, featured boards, people to follow, mood chips (All and
+    the six moods, in en and sl) and the newest public boards in the chosen mood.
+  - Home links to it under the feed, or in its place.
+  - Evidence: a scene test of the sections, a person's link, and choosing a mood, which reloads.
+  - Open:
+    - the five-tab navigation (Home, Explore, Ask, Wardrobe, Boards), with You moving out of the tabs;
+    - choosing a board's moods in its settings and through `board_update`;
+    - people and boards in Ask's search;
+    - the landing's inspiration from Edits from Styld.
+- **Next:** gate, land and deploy M5; then the open items above, then M6 (the wishlist and Add from a link).
 - **Shared with the capture session:** migrations are generated one at a time; public delivery reuses its rule for a
   piece's shown picture; generated pictures reuse its Muse provider.
 - **Still to settle in spikes:** Clef and Llama Guard thresholds on fixtures in English and Slovenian, drawing text

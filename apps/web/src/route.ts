@@ -41,6 +41,8 @@ export const AppRoute = defineRouteUnion({
   Person: { handle: Schema.String },
   /** A piece as others see it, from a public profile, board or look. */
   PublicPiece: { pieceId: Schema.String },
+  /** Edits from Styld, featured boards, people to follow and the newest public boards. */
+  Explore: {},
   NotFound: { path: Schema.String },
 })
 export type AppRoute = typeof AppRoute.Type
@@ -83,6 +85,7 @@ const atHandle = param<{ readonly handle: string }>(
 )
 export const personRouter = pipe(atHandle, mapTo(AppRoute.Person))
 export const publicPieceRouter = pipe(literal('pieces'), slash(string('pieceId')), mapTo(AppRoute.PublicPiece))
+export const exploreRouter = pipe(literal('explore'), mapTo(AppRoute.Explore))
 
 // `/wardrobe/add` and `/wardrobe/review` are declared before `/wardrobe/:pieceId`, which would otherwise take them.
 const parser = oneOf(
@@ -101,6 +104,7 @@ const parser = oneOf(
   boardRouter,
   boardsRouter,
   publicPieceRouter,
+  exploreRouter,
   personRouter,
   homeRouter,
 )
@@ -155,6 +159,7 @@ export const tabOf = AppRoute.match<Option.Option<Tab>>({
   BoardCollage: () => Option.none(),
   Person: () => Option.none(),
   PublicPiece: () => Option.none(),
+  Explore: () => Option.none(),
   NotFound: () => Option.none(),
 })
 

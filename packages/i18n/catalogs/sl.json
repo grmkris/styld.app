@@ -2318,6 +2318,23 @@
     "cantFollow": "Temu profilu ni mogoče slediti.",
     "tooMany": "V eni uri je bilo sledenj preveč. Poskusi znova pozneje."
   },
+  "explore": {
+    "title": "Razišči",
+    "edits": "Izbor Stylda",
+    "featured": "Izpostavljeno",
+    "people": "Ljudje, ki jim lahko slediš",
+    "newest": "Najnovejše zbirke",
+    "allMoods": "Vse",
+    "empty": "Tu še ni nič javnega.",
+    "moods": {
+      "knitwear": "Pletenine",
+      "rain": "Dež",
+      "office": "Pisarna",
+      "weekend": "Vikend",
+      "evening": "Večer",
+      "sport": "Šport"
+    }
+  },
   "feed": {
     "label": "Tvoje novosti",
     "forYou": "Za tebe",

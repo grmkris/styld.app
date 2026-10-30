@@ -1,14 +1,14 @@
 import { catalogVersion } from '@styld/i18n'
-import { PublicBoard, PublicLookPage, PublicPiecePage, PublicProfile, Relation } from '@styld/protocol'
+import { Explore, PublicBoard, PublicLookPage, PublicPiecePage, PublicProfile, Relation } from '@styld/protocol'
 import { Schema } from 'effect'
-import { click, expect, given, role, scene, text } from 'foldkit/scene'
+import { click, Command, expect, given, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { init, Message, Session, update } from '../src/App.ts'
 import { BoardState } from '../src/page/Board/Model.ts'
 import { Shown as LookShown } from '../src/page/Look.ts'
 import { Message as PeopleMessage } from '../src/page/People.ts'
-import { Message as VisitMessage, Shown } from '../src/page/Visit.ts'
+import { LoadExplore, Message as VisitMessage, Shown } from '../src/page/Visit.ts'
 import { view } from '../src/View.ts'
 
 const knit = { id: `pc_${'knit'.padEnd(22, 'x')}`, name: 'Navy knit', category: 'top', subcategory: null, colours: [] }
@@ -163,6 +163,23 @@ describe('a public profile', () => {
       expect(text("What's wrong with it?")).toExist(),
       expect(role('radio', { name: 'Spam or a scam' })).toExist(),
       expect(role('button', { name: 'Send report' })).toHaveAttr('aria-disabled', 'true'),
+    )
+  })
+
+  test('Explore shows Edits from Styld, people to follow and the newest boards, and filters by mood', () => {
+    const found = { board: nika.boards[0], by, moods: ['rain'] }
+    const explore = Schema.decodeUnknownSync(Explore)({ edits: [found], featured: [], people: [by], newest: [found] })
+    scene(
+      { update, view },
+      given(visiting('/explore', Shown.Explore({ explore }))),
+      expect(role('heading', { name: 'Explore' })).toExist(),
+      expect(role('heading', { name: 'Edits from Styld' })).toExist(),
+      expect(role('heading', { name: 'People to follow' })).toExist(),
+      expect(role('link', { name: /^Nika Kovač/ })).toHaveAttr('href', '/@nika.kovac'),
+      expect(role('button', { name: 'All' })).toHaveAttr('aria-pressed', 'true'),
+      click(role('button', { name: 'Rain' })),
+      Command.resolve(LoadExplore, VisitMessage.SucceededLoadExplore({ explore })),
+      expect(role('button', { name: 'Rain' })).toHaveAttr('aria-pressed', 'true'),
     )
   })
 })

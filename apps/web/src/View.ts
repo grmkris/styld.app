@@ -205,6 +205,7 @@ const titleKey = AppRoute.match<MessageKey>({
   Piece: () => 'wardrobe.title',
   Person: () => 'profile.public.people',
   PublicPiece: () => 'profile.public.pieces',
+  Explore: () => 'explore.title',
   NotFound: () => 'common.notFoundTitle',
 })
 
@@ -228,6 +229,7 @@ const sectionOf = AppRoute.match<Section | undefined>({
   LoginForConnection: () => undefined,
   Person: () => undefined,
   PublicPiece: () => undefined,
+  Explore: () => undefined,
   NotFound: () => undefined,
 })
 
@@ -485,6 +487,7 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
         Piece: () => piecePage(model, h),
         Person: () => visitPage(model, h),
         PublicPiece: () => visitPage(model, h),
+        Explore: () => visitPage(model, h),
         NotFound: () => notFoundView(locale, h),
       }),
       initial === undefined ? h.empty : appNavigation(model, initial, h),

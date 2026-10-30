@@ -175,7 +175,7 @@ const pageCommands = (
   },
 ) =>
   Match.value(route).pipe(
-    Match.tag('Person', 'PublicPiece', () =>
+    Match.tag('Person', 'PublicPiece', 'Explore', () =>
       Command.mapMessages(Visit.load(pages.visit), (message) => Message.GotVisitMessage({ message })),
     ),
     Match.tag('Board', 'BoardCollage', () =>
@@ -202,11 +202,7 @@ export const init = (context: Flags, url?: Url): UpdateReturn => {
   const board = BoardModel.init(
     AppRoute.guards.Board(route) || AppRoute.guards.BoardCollage(route) ? route.boardId : '',
   )
-  const visit = Visit.init(
-    AppRoute.guards.PublicPiece(route)
-      ? Visit.Target.Piece({ pieceId: route.pieceId })
-      : Visit.Target.Person({ handle: AppRoute.guards.Person(route) ? route.handle : '' }),
-  )
+  const visit = Visit.init(Visit.targetFor(route))
   const opened = Update.combine<Model, Message, Services>(
     {
       context,

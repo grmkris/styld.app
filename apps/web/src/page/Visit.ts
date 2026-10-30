@@ -1,9 +1,10 @@
-import { Handle, PieceId, PublicPiecePage, PublicProfile } from '@styld/protocol'
-import { Effect, Option, Predicate, Schema } from 'effect'
+import { Explore, Handle, Mood, PieceId, PublicPiecePage, PublicProfile } from '@styld/protocol'
+import { Effect, Match, Option, Predicate, Schema } from 'effect'
 import { Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
+import type { AppRoute } from '../route.ts'
 import { StyldClient } from '../StyldClient.ts'
 import * as People from './People.ts'
 
@@ -13,7 +14,12 @@ import * as People from './People.ts'
 // MODEL
 
 /** Whose page this is: a person by handle, or one of their pieces. */
-export const Target = defineTaggedUnion({ Person: { handle: Schema.String }, Piece: { pieceId: Schema.String } })
+export const Target = defineTaggedUnion({
+  Person: { handle: Schema.String },
+  Piece: { pieceId: Schema.String },
+  /** Explore, in one mood or all. */
+  Explore: { mood: Schema.Option(Mood) },
+})
 export type Target = typeof Target.Type
 
 /** The profile's tabs; Pieces shows only when its owner shows the wardrobe. */
@@ -26,11 +32,22 @@ export const Shown = defineTaggedUnion({
   Failed: {},
   Person: { profile: PublicProfile },
   Piece: { page: PublicPiecePage },
+  Explore: { explore: Explore },
 })
 export type Shown = typeof Shown.Type
 
 export const Model = Schema.Struct({ target: Target, shown: Shown, tab: PersonTab, people: People.Model })
 export type Model = typeof Model.Type
+
+/** Which public page a route opens; any other route keeps an empty one. */
+export const targetFor = (route: AppRoute): Target =>
+  Match.value(route).pipe(
+    Match.withReturnType<Target>(),
+    Match.tag('Person', ({ handle }) => Target.Person({ handle })),
+    Match.tag('PublicPiece', ({ pieceId }) => Target.Piece({ pieceId })),
+    Match.tag('Explore', () => Target.Explore({ mood: Option.none() })),
+    Match.orElse(() => Target.Person({ handle: '' })),
+  )
 
 export const init = (target: Target): Model => ({
   target,
@@ -40,6 +57,8 @@ export const init = (target: Target): Model => ({
     Target.match(target, {
       Person: ({ handle }) => People.Subject.Person({ handle }),
       Piece: ({ pieceId }) => People.Subject.Piece({ pieceId }),
+      // Explore has nobody in particular: an empty handle reads no relation.
+      Explore: () => People.Subject.Person({ handle: '' }),
     }),
   ),
 })
@@ -49,6 +68,8 @@ export const init = (target: Target): Model => ({
 export const Message = defineMessageUnion({
   SucceededLoadPerson: { profile: PublicProfile },
   SucceededLoadPublicPiece: { page: PublicPiecePage },
+  SucceededLoadExplore: { explore: Explore },
+  ChoseMood: { mood: Schema.Option(Mood) },
   FailedLoadVisit: { missing: Schema.Boolean },
   ClickedRetry: {},
   ChoseTab: { tab: PersonTab },
@@ -92,10 +113,23 @@ const LoadPublicPiece = Command.define('LoadPublicPiece', {
     ),
 })
 
+/** @internal Exported for its tests. */
+export const LoadExplore = Command.define('LoadExplore', {
+  args: { mood: Schema.Option(Mood) },
+  messages: [Message.SucceededLoadExplore, Message.FailedLoadVisit],
+  execute: ({ mood }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const explore = yield* api.public.explore({ query: Option.isSome(mood) ? { mood: mood.value } : {} })
+      return Message.SucceededLoadExplore({ explore })
+    }).pipe(Effect.orElseSucceed(() => Message.FailedLoadVisit({ missing: false }))),
+})
+
 const loadTarget = (target: Target): Command.Command<Message, never, StyldClient> =>
   Target.match(target, {
     Person: ({ handle }) => LoadPerson({ handle }),
     Piece: ({ pieceId }) => LoadPublicPiece({ pieceId }),
+    Explore: ({ mood }) => LoadExplore({ mood }),
   })
 
 /** The Commands that open the page. */
@@ -119,6 +153,13 @@ export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     SucceededLoadPerson: ({ profile }) => ({ model: modifyFields(model, { shown: () => Shown.Person({ profile }) }) }),
     SucceededLoadPublicPiece: ({ page }) => ({ model: modifyFields(model, { shown: () => Shown.Piece({ page }) }) }),
+    SucceededLoadExplore: ({ explore }) => ({
+      model: modifyFields(model, { shown: () => Shown.Explore({ explore }) }),
+    }),
+    ChoseMood: ({ mood }) => ({
+      model: modifyFields(model, { target: () => Target.Explore({ mood }) }),
+      commands: [LoadExplore({ mood })],
+    }),
     FailedLoadVisit: ({ missing }) => ({
       model: modifyFields(model, { shown: () => (missing ? Shown.Missing() : Shown.Failed()) }),
     }),

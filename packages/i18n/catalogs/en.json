@@ -2318,6 +2318,23 @@
     "cantFollow": "This profile can't be followed.",
     "tooMany": "That's a lot of following for one hour. Try again later."
   },
+  "explore": {
+    "title": "Explore",
+    "edits": "Edits from Styld",
+    "featured": "Featured",
+    "people": "People to follow",
+    "newest": "Newest boards",
+    "allMoods": "All",
+    "empty": "Nothing public here yet.",
+    "moods": {
+      "knitwear": "Knitwear",
+      "rain": "Rain",
+      "office": "Office",
+      "weekend": "Weekend",
+      "evening": "Evening",
+      "sport": "Sport"
+    }
+  },
   "feed": {
     "label": "Your feed",
     "forYou": "For you",

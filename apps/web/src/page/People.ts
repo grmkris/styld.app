@@ -156,7 +156,9 @@ export const SendReport = Command.define('SendReport', {
 
 /** The Commands that open the page: where the visitor stands with the person. */
 export const load = (model: Model): ReadonlyArray<Command.Command<Message, never, StyldClient>> =>
-  Subject.guards.Person(model.subject) ? [LoadRelation({ handle: model.subject.handle })] : []
+  Subject.guards.Person(model.subject) && model.subject.handle.length > 0
+    ? [LoadRelation({ handle: model.subject.handle })]
+    : []
 
 // UPDATE
 

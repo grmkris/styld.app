@@ -1,5 +1,6 @@
 import { format, type Locale } from '@styld/i18n'
 import type { PublicPiecePage, PublicProfile } from '@styld/protocol'
+import { Option } from 'effect'
 import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
@@ -10,7 +11,8 @@ import { styled } from '../Styled.ts'
 import { publicPieceImage } from './Board/Table.ts'
 import * as PeopleView from './PeopleView.ts'
 import { boardCard, byline, lookTile, pieceTile, tileGrid } from './PublicTiles.ts'
-import { Message, type Model, type PersonTab, Shown } from './Visit.ts'
+import { exploreView } from './ExploreView.ts'
+import { Message, type Model, type PersonTab, Shown, Target } from './Visit.ts'
 import * as styles from './VisitView.styles.ts'
 import { pieceLabel } from './WardrobeWords.ts'
 
@@ -133,6 +135,8 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
           ]),
         Person: ({ profile }) => personView(model, profile, locale, h),
         Piece: ({ page }) => pieceView(model, page, locale, h),
+        Explore: ({ explore }) =>
+          exploreView(explore, Target.guards.Explore(model.target) ? model.target.mood : Option.none(), locale, h),
       }),
     ],
   ),
