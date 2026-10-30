@@ -1,5 +1,5 @@
 import { FileDrop } from '@foldkit/ui'
-import { CaptureSource, CreateVideoCapture, Side } from '@styld/protocol'
+import { CaptureId, CaptureSource, CreateVideoCapture, Side } from '@styld/protocol'
 import { Schema } from 'effect'
 import { File } from 'foldkit'
 import { defineTaggedUnion } from 'foldkit/schema'
@@ -30,6 +30,10 @@ export const Item = Schema.Struct({
   source: CaptureSource,
   /** The side of the garment a held-up camera shot shows. */
   side: Schema.Option(Side),
+  /** A back shot's front, by its place in the list: the back goes once the front has, to pair with it. */
+  front: Schema.Option(Schema.Number),
+  /** The capture the file became, once sent. */
+  captureId: Schema.Option(CaptureId),
   operationId: Schema.Option(Schema.String),
   uploadId: Schema.Option(Schema.String),
   /** A video, or a part of one, sampled and uploaded whose capture request got no answer: trying again

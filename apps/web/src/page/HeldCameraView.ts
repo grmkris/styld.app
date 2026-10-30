@@ -14,6 +14,7 @@ const hintKey: { readonly [Key in Hint]: MessageKey } = {
   holdOne: 'capture.camera.holdOne',
   checking: 'capture.camera.checking',
   taken: 'capture.camera.taken',
+  showBack: 'capture.camera.showBack',
   notSeen: 'capture.camera.notSeen',
   tapToTake: 'capture.camera.tapToTake',
 }
@@ -53,9 +54,9 @@ const picture = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
         ]),
       ],
     ),
-    model.shots === 0
+    model.pieces === 0
       ? h.empty
-      : h.span(styled(h, styles.count()), [format(locale, 'capture.camera.count', { count: model.shots })]),
+      : h.span(styled(h, styles.count()), [format(locale, 'capture.camera.count', { count: model.pieces })]),
     h.p(
       [h.Role('status'), h.AriaLive('polite'), h.DataAttribute('hint', hintOf(model)), ...styled(h, styles.status())],
       [
@@ -79,6 +80,16 @@ const panel = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
           },
           h,
         ),
+        model.step === 'back'
+          ? actionButton(
+              {
+                label: format(locale, 'capture.camera.skipBack', {}),
+                style: secondaryAction(),
+                onClick: Message.ClickedSkipBack(),
+              },
+              h,
+            )
+          : h.empty,
         actionButton(
           {
             label: format(locale, 'capture.done', {}),

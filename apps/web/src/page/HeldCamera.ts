@@ -12,8 +12,13 @@ import { StyldClient } from '../StyldClient.ts'
 const Facing = Schema.Literals(['user', 'environment'])
 type Facing = typeof Facing.Type
 
+/** Which side of the garment in view the camera takes next: its front, then its back, so each piece
+ * comes with both. */
+export const Step = Schema.Literals(['front', 'back'])
+export type Step = typeof Step.Type
+
 /** What the camera panel tells the person while it watches. */
-export const Hint = Schema.Literals(['holdOne', 'checking', 'taken', 'notSeen', 'tapToTake'])
+export const Hint = Schema.Literals(['holdOne', 'checking', 'taken', 'showBack', 'notSeen', 'tapToTake'])
 export type Hint = typeof Hint.Type
 
 export const Camera = defineTaggedUnion({
@@ -24,16 +29,19 @@ export const Camera = defineTaggedUnion({
 })
 export type Camera = typeof Camera.Type
 
-/** The held-up camera: the phone faces the person, who holds up one garment at a time; when the
- * picture settles the garment check confirms it and the photo is taken. A tap takes one by hand. */
+/** The held-up camera: the phone faces the person, who holds up one garment at a time, front and then
+ * back; when the picture settles the garment check confirms it and the photo is taken. A tap takes one
+ * by hand, and the back may be skipped. */
 export const Model = Schema.Struct({
   camera: Camera,
   facing: Facing,
+  step: Step,
   /** The garment check on its way, by number. Only its own answer counts: a tap, a flip or closing the
    * camera lets it go, and scenes that settle meanwhile are let go too. */
   pendingCheck: Schema.Option(Schema.Number),
   checksSent: Schema.Number,
-  shots: Schema.Number,
+  /** Pieces taken: each front starts one. */
+  pieces: Schema.Number,
   /** The small copy of the last photo taken, so the check can tell the back of the same garment. */
   lastCheck: Schema.Option(File.File),
 })
@@ -42,9 +50,10 @@ export type Model = typeof Model.Type
 export const init = (): Model => ({
   camera: Camera.Closed(),
   facing: 'user',
+  step: 'front',
   pendingCheck: Option.none(),
   checksSent: 0,
-  shots: 0,
+  pieces: 0,
   lastCheck: Option.none(),
 })
 
@@ -55,20 +64,29 @@ export const isOpen = (model: Model) => !Camera.guards.Closed(model.camera)
 export const Message = defineMessageUnion({
   ClickedDone: {},
   ClickedFlip: {},
+  ClickedSkipBack: {},
   StartedCamera: {},
   FailedCamera: { reason: Schema.Literals(['denied', 'unavailable']) },
   SettledScene: { check: File.File, still: File.File },
   StayedStill: { check: File.File, still: File.File },
   TappedPicture: { check: File.File, still: File.File },
-  SucceededCheckHeld: { token: Schema.Number, check: File.File, still: File.File, held: Schema.Boolean, side: Side },
+  SucceededCheckHeld: {
+    token: Schema.Number,
+    check: File.File,
+    still: File.File,
+    held: Schema.Boolean,
+    side: Side,
+    samePrevious: Schema.Boolean,
+  },
   FailedCheckHeld: { token: Schema.Number },
   CompletedBuzz: {},
 })
 export type Message = typeof Message.Type
 
-/** A photo taken, with the side of the garment the check saw; and the camera closed. */
+/** A photo taken, of a piece's front or of its back; and the camera closed. A back belongs to the front
+ * taken before it. */
 export const OutMessage = defineMessageUnion({
-  TookPhoto: { photo: File.File, side: Schema.Option(Side) },
+  TookPhoto: { photo: File.File, side: Step },
   ClosedCamera: {},
 })
 export type OutMessage = typeof OutMessage.Type
@@ -122,7 +140,7 @@ export const CheckHeld = Command.define('CheckHeld', {
       const frame = yield* base64Of(check)
       const earlier = Option.isSome(previous) ? { previous: yield* base64Of(previous.value) } : {}
       const answer = yield* api.capture.check({ payload: { frame, ...earlier } })
-      return Message.SucceededCheckHeld({ token, check, still, held: answer.held, side: answer.side })
+      return Message.SucceededCheckHeld({ token, check, still, ...answer })
     }).pipe(Effect.orElseSucceed(() => Message.FailedCheckHeld({ token }))),
 })
 
@@ -146,16 +164,26 @@ const watching = (hint: Hint) => Camera.Watching({ hint })
 const awaited = (model: Model, token: number) =>
   Camera.guards.Watching(model.camera) && Option.contains(model.pendingCheck, token)
 
-const took = (model: Model, photo: File.File, check: File.File, side: Option.Option<Side>): UpdateReturn => ({
+/** A front starts a piece and asks for its back; a back completes it. */
+const took = (model: Model, photo: File.File, check: File.File, side: Step): UpdateReturn => ({
   model: modifyFields(model, {
-    camera: () => watching('taken'),
+    camera: () => watching(side === 'front' ? 'showBack' : 'taken'),
+    step: () => (side === 'front' ? 'back' : 'front'),
     pendingCheck: () => Option.none(),
-    shots: (shots) => shots + 1,
+    pieces: (pieces) => (side === 'front' ? pieces + 1 : pieces),
     lastCheck: () => Option.some(check),
   }),
   commands: [Buzz()],
   outMessage: OutMessage.TookPhoto({ photo, side }),
 })
+
+/** What a garment the check saw held up becomes. At the front step, a new piece. At the back step, the
+ * piece's back once it shows anything but a front; the front just taken, still held, is not taken again,
+ * and another garment's front starts a new piece, leaving the last one without a back. */
+const shotOf = (step: Step, side: Side, samePrevious: boolean): Option.Option<Step> => {
+  if (step === 'front' || side !== 'front') return Option.some(step)
+  return samePrevious ? Option.none() : Option.some('front')
+}
 
 /** A settled picture goes to the garment check, unless one is already out. */
 const settled = (model: Model, check: File.File, still: File.File): UpdateReturn => {
@@ -178,9 +206,24 @@ export const open = (model: Model): UpdateReturn =>
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     ClickedDone: () => ({
-      model: modifyFields(model, { camera: () => Camera.Closed(), pendingCheck: () => Option.none() }),
+      model: modifyFields(model, {
+        camera: () => Camera.Closed(),
+        step: () => 'front',
+        pendingCheck: () => Option.none(),
+      }),
       outMessage: OutMessage.ClosedCamera(),
     }),
+    // The piece goes without its back; a check on its way would have taken one.
+    ClickedSkipBack: () =>
+      model.step === 'back'
+        ? {
+            model: modifyFields(model, {
+              step: () => 'front',
+              pendingCheck: () => Option.none(),
+              camera: (camera) => (Camera.guards.Watching(camera) ? watching('taken') : camera),
+            }),
+          }
+        : { model },
     // A new facing mounts a new camera; the old one stops as its element goes.
     ClickedFlip: () => ({
       model: modifyFields(model, {
@@ -196,16 +239,24 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     FailedCamera: ({ reason }) =>
       isOpen(model) ? { model: modifyFields(model, { camera: () => Camera.Failed({ reason }) }) } : { model },
     SettledScene: ({ check, still }) => settled(model, check, still),
-    // Held still a while longer: look again, unless the garment was just taken and is still being held.
+    // Held still a while longer: look again, unless the garment was just taken and is still being held,
+    // front or back. Only turning it, or the next piece, moves the picture enough to look again.
     StayedStill: ({ check, still }) =>
-      Camera.guards.Watching(model.camera) && model.camera.hint === 'taken' ? { model } : settled(model, check, still),
+      Camera.guards.Watching(model.camera) && (model.camera.hint === 'taken' || model.camera.hint === 'showBack')
+        ? { model }
+        : settled(model, check, still),
     TappedPicture: ({ check, still }) =>
-      Camera.guards.Watching(model.camera) ? took(model, still, check, Option.none()) : { model },
-    SucceededCheckHeld: ({ token, check, still, held, side }) => {
+      Camera.guards.Watching(model.camera) ? took(model, still, check, model.step) : { model },
+    SucceededCheckHeld: ({ token, check, still, held, side, samePrevious }) => {
       if (!awaited(model, token)) return { model }
-      return held
-        ? took(model, still, check, side === 'unclear' ? Option.none() : Option.some(side))
-        : { model: modifyFields(model, { pendingCheck: () => Option.none(), camera: () => watching('notSeen') }) }
+      if (!held)
+        return { model: modifyFields(model, { pendingCheck: () => Option.none(), camera: () => watching('notSeen') }) }
+      return Option.match(shotOf(model.step, side, samePrevious), {
+        onSome: (shot) => took(model, still, check, shot),
+        onNone: () => ({
+          model: modifyFields(model, { pendingCheck: () => Option.none(), camera: () => watching('showBack') }),
+        }),
+      })
     },
     // Without the check, the camera still takes a photo by hand.
     FailedCheckHeld: ({ token }) =>

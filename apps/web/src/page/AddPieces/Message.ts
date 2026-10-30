@@ -1,5 +1,5 @@
 import { FileDrop } from '@foldkit/ui'
-import { CreateVideoCapture } from '@styld/protocol'
+import { CaptureId, CreateVideoCapture } from '@styld/protocol'
 import { Schema } from 'effect'
 import { defineMessageUnion } from 'foldkit/message'
 import * as HeldCamera from '../HeldCamera.ts'
@@ -26,7 +26,7 @@ export const Message = defineMessageUnion({
   GotDropMessage: { message: FileDrop.Message },
   GotHeldCameraMessage: { message: HeldCamera.Message },
   ClickedHoldUp: {},
-  SucceededSend: { index: Schema.Number },
+  SucceededSend: { index: Schema.Number, captureId: CaptureId },
   SucceededInspectVideo: { index: Schema.Number, plan: VideoPlan },
   SucceededSendVideoPart: { index: Schema.Number, part: Schema.Number },
   FailedSend: {

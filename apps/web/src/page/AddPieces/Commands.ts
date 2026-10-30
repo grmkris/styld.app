@@ -1,4 +1,13 @@
-import { CaptureSource, CreateVideoCapture, ImageType, OperationId, Side, UploadId, VideoType } from '@styld/protocol'
+import {
+  CaptureId,
+  CaptureSource,
+  CreateVideoCapture,
+  ImageType,
+  OperationId,
+  Side,
+  UploadId,
+  VideoType,
+} from '@styld/protocol'
 import { Effect, Option, Predicate, Result, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import { Command, File } from 'foldkit'
@@ -34,6 +43,8 @@ const SendPhotoArgs = Schema.Struct({
   contentType: ImageType,
   source: CaptureSource,
   side: Schema.Option(Side),
+  /** The front capture a back shot pairs with. */
+  pairsWith: Schema.Option(CaptureId),
   operationId: Schema.Option(Schema.String),
   uploadId: Schema.Option(Schema.String),
 })
@@ -81,12 +92,13 @@ export const SendPhoto = Command.define('SendPhoto', {
               uploadId: upload.success,
               source: args.source,
               ...Option.match(args.side, { onNone: () => ({}), onSome: (side) => ({ side }) }),
+              ...Option.match(args.pairsWith, { onNone: () => ({}), onSome: (pairsWith) => ({ pairsWith }) }),
             },
           })
         }),
       )
       if (Result.isFailure(created)) return failed(Option.some(upload.success), created.failure)
-      return Message.SucceededSend({ index: args.index })
+      return Message.SucceededSend({ index: args.index, captureId: created.success.captureId })
     }).pipe(
       Effect.orElseSucceed(() =>
         Message.FailedSend({
@@ -157,7 +169,7 @@ const sendVideoCapture = <Succeeded extends Message, E>(
   index: number,
   prepared: Option.Option<CreateVideoCapture>,
   prepare: Effect.Effect<CreateVideoCapture, E, StyldClient | Crypto.Crypto>,
-  succeeded: Succeeded,
+  succeeded: (captureId: CaptureId) => Succeeded,
 ) =>
   Effect.gen(function* () {
     const ready = Option.isSome(prepared) ? Result.succeed(prepared.value) : yield* Effect.result(prepare)
@@ -169,7 +181,7 @@ const sendVideoCapture = <Succeeded extends Message, E>(
       }),
     )
     if (Result.isFailure(created)) return failedVideo(index, created.failure, Option.some(ready.success))
-    return succeeded
+    return succeeded(created.success.captureId)
   })
 
 const SendVideoArgs = Schema.Struct({
@@ -193,7 +205,7 @@ export const SendVideo = Command.define('SendVideo', {
         const sampled = yield* sampleVideo(args.video)
         return yield* uploadVideoCapture({ ...sampled, clip: args.video, contentType: args.contentType })
       }),
-      Message.SucceededSend({ index: args.index }),
+      (captureId) => Message.SucceededSend({ index: args.index, captureId }),
     ),
 })
 
@@ -222,6 +234,6 @@ export const SendVideoPart = Command.define('SendVideoPart', {
         const cut = yield* cutPart(video, part)
         return yield* uploadVideoCapture({ ...cut, contentType: 'video/mp4' })
       }),
-      Message.SucceededSendVideoPart({ index, part: part.index }),
+      () => Message.SucceededSendVideoPart({ index, part: part.index }),
     ),
 })

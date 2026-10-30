@@ -46,7 +46,19 @@ const videoCommand = (item: Item, index: number, plan: Option.Option<VideoPlan>)
     : SendVideoPart({ index, video: item.file, part, prepared: item.prepared })
 }
 
-const commandFor = (item: Item, index: number) =>
+/** The capture a back shot's front became; none if the front went nowhere. */
+const frontCapture = (model: Model, item: Item) =>
+  Option.flatMap(item.front, (at) => Option.flatMap(Option.fromNullishOr(model.items[at]), (front) => front.captureId))
+
+/** A back shot whose front is still on its way waits for it, so it can pair. One whose front failed goes
+ * on its own. */
+const awaitsFront = (model: Model, item: Item) =>
+  Option.exists(item.front, (at) => {
+    const front = model.items[at]
+    return front !== undefined && (Sending.guards.Waiting(front.sending) || Sending.guards.Sending(front.sending))
+  })
+
+const commandFor = (model: Model, item: Item, index: number) =>
   item.kind === 'video'
     ? videoCommand(item, index, item.plan)
     : SendPhoto({
@@ -55,12 +67,13 @@ const commandFor = (item: Item, index: number) =>
         contentType: Schema.decodeUnknownSync(ImageType)(File.mimeType(item.file)),
         source: item.source,
         side: item.side,
+        pairsWith: frontCapture(model, item),
         operationId: item.operationId,
         uploadId: item.uploadId,
       })
 
-/** Which waiting files start now: up to two on their way at once, and a video only when no other is
- * being read, since a phone cuts one video at a time. */
+/** Which waiting files start now: up to two on their way at once, a video only when no other is being
+ * read, since a phone cuts one video at a time, and a back shot only after its front. */
 const startable = (model: Model) => {
   const free = concurrentSends - model.items.filter(({ sending }) => Sending.guards.Sending(sending)).length
   return model.items.reduce<{
@@ -70,7 +83,8 @@ const startable = (model: Model) => {
     (state, item, index) =>
       state.starting.length >= free ||
       !Sending.guards.Waiting(item.sending) ||
-      (item.kind === 'video' && state.videoBusy)
+      (item.kind === 'video' && state.videoBusy) ||
+      awaitsFront(model, item)
         ? state
         : { starting: [...state.starting, { item, index }], videoBusy: state.videoBusy || item.kind === 'video' },
     { starting: [], videoBusy: model.items.some(isReadingVideo) },
@@ -85,7 +99,7 @@ const pump = (model: Model) => {
   )
   return {
     model: modifyFields(model, { items: () => items }),
-    commands: starting.map(({ item, index }) => commandFor(item, index)),
+    commands: starting.map(({ item, index }) => commandFor(model, item, index)),
   }
 }
 
@@ -104,13 +118,16 @@ const newItem = (
   file: File.File,
   kind: Item['kind'],
   source: CaptureSource,
-  side: Option.Option<Side>,
+  side: Option.Option<Side> = Option.none(),
+  front: Option.Option<number> = Option.none(),
 ): Item => ({
   key,
   file,
   kind,
   source,
   side,
+  front,
+  captureId: Option.none(),
   operationId: Option.none(),
   uploadId: Option.none(),
   prepared: Option.none(),
@@ -129,7 +146,6 @@ const chose = (model: Model, files: ReadonlyArray<File.File>): UpdateReturn => {
             file,
             sort.kind,
             sort.kind === 'video' ? 'video' : 'picker',
-            Option.none(),
           ),
         ]
       : [],
@@ -154,13 +170,20 @@ const foldDrop = Update.foldChild({
   }),
 })
 
-/** A photo from the held-up camera joins the queue like any other, with the side it shows. */
-const tookPhoto = (model: Model, photo: File.File, side: Option.Option<Side>): UpdateReturn =>
-  pump(
+/** A photo from the held-up camera joins the queue like any other, with the side it shows; a back with
+ * the front taken before it. */
+const tookPhoto = (model: Model, photo: File.File, side: HeldCamera.Step): UpdateReturn => {
+  const front = model.items.findLastIndex((item) => item.source === 'camera' && Option.contains(item.side, 'front'))
+  const pairs = side === 'back' && front >= 0 ? Option.some(front) : Option.none()
+  return pump(
     modifyFields(model, {
-      items: (items) => [...items, newItem(`${items.length}:${File.name(photo)}`, photo, 'photo', 'camera', side)],
+      items: (items) => [
+        ...items,
+        newItem(`${items.length}:${File.name(photo)}`, photo, 'photo', 'camera', Option.some(side), pairs),
+      ],
     }),
   )
+}
 
 /** A photo the camera took joins the queue; closing the camera may hand over to the tray. */
 const heldCameraOut = HeldCamera.OutMessage.match<Update.StepWithOutMessage<Model, Message, OutMessage, Services>>({
@@ -193,7 +216,7 @@ const withItem = (model: Model, index: number, change: (item: Item) => Item) =>
 /** Carry on with a video that is still being sent: its next part, or the whole of it. */
 const continueVideo = (model: Model, index: number): UpdateReturn => {
   const item = model.items[index]
-  return item === undefined ? { model } : { model, commands: [commandFor(item, index)] }
+  return item === undefined ? { model } : { model, commands: [commandFor(model, item, index)] }
 }
 
 /** A part went: send the next one, or the video is done. A late answer for another part changes nothing. */
@@ -235,7 +258,10 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotDropMessage: ({ message: dropMessage }) => foldDrop(model, dropMessage),
     GotHeldCameraMessage: ({ message: heldMessage }) => foldHeldCamera(model, heldMessage),
     ClickedHoldUp: () => foldHeldCameraOpen(model),
-    SucceededSend: ({ index }) => settled(withItem(model, index, (item) => ({ ...item, sending: Sending.Sent() }))),
+    SucceededSend: ({ index, captureId }) =>
+      settled(
+        withItem(model, index, (item) => ({ ...item, captureId: Option.some(captureId), sending: Sending.Sent() })),
+      ),
     SucceededInspectVideo: ({ index, plan }) =>
       continueVideo(
         withItem(model, index, (item) => ({ ...item, plan: Option.some(plan) })),

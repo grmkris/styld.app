@@ -1,7 +1,7 @@
 import { Option } from 'effect'
 import { Command, expectNoOutMessage, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
-import { Buzz, Camera, CheckHeld, init, Message, open, update } from '../src/page/HeldCamera.ts'
+import { Buzz, Camera, CheckHeld, init, Message, type Model, open, update } from '../src/page/HeldCamera.ts'
 
 const shot = (name: string) => new globalThis.File(['jpeg'], name, { type: 'image/jpeg' })
 const check = shot('check-1.jpg')
@@ -10,21 +10,40 @@ const still = shot('camera-1.jpg')
 const watching = () => update(open(init()).model, Message.StartedCamera()).model
 const firstCheck = CheckHeld({ token: 0, check, still, previous: Option.none() })
 
+/** The garment check's answer to check `token`. */
+const answered = (token: number, held: boolean, side: 'front' | 'back' | 'unclear', samePrevious = false) =>
+  Message.SucceededCheckHeld({ token, check, still, held, side, samePrevious })
+
+/** A front just taken: the camera waits for the garment's back. */
+const frontTaken = (): Model => {
+  const checking = update(watching(), Message.SettledScene({ check, still })).model
+  return update(checking, answered(0, true, 'front')).model
+}
+
+/** The next settled picture, its check against the front, and the check's answer. */
+const turned = (token: number, side: 'front' | 'back' | 'unclear', samePrevious: boolean) => {
+  const sent = CheckHeld({ token, check, still, previous: Option.some(check) })
+  return [
+    message(Message.SettledScene({ check, still })),
+    Command.resolve(sent, answered(token, true, side, samePrevious)),
+  ] as const
+}
+
 describe('the held-up camera', () => {
-  test('a settled picture is checked, and a garment held up is taken with the side it shows', () => {
+  test('a settled picture is checked, and a garment held up is taken as a front that asks for its back', () => {
     story(
       update,
       given(watching()),
       message(Message.SettledScene({ check, still })),
       Command.expectExact(firstCheck),
       model(({ pendingCheck }) => expect(pendingCheck).toEqual(Option.some(0))),
-      Command.resolve(firstCheck, Message.SucceededCheckHeld({ token: 0, check, still, held: true, side: 'front' })),
-      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: Option.some('front') }),
+      Command.resolve(firstCheck, answered(0, true, 'front')),
+      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: 'front' }),
       Command.resolve(Buzz, Message.CompletedBuzz()),
-      model(({ shots, lastCheck, camera }) => {
-        expect(shots).toBe(1)
+      model(({ pieces, lastCheck, camera }) => {
+        expect(pieces).toBe(1)
         expect(lastCheck).toEqual(Option.some(check))
-        expect(camera).toEqual(Camera.Watching({ hint: 'taken' }))
+        expect(camera).toEqual(Camera.Watching({ hint: 'showBack' }))
       }),
     )
   })
@@ -35,7 +54,7 @@ describe('the held-up camera', () => {
       given({ ...watching(), pendingCheck: Option.some(3) }),
       message(Message.SettledScene({ check, still })),
       Command.expectNone(),
-      model(({ shots }) => expect(shots).toBe(0)),
+      model(({ pieces }) => expect(pieces).toBe(0)),
     )
   })
 
@@ -46,18 +65,18 @@ describe('the held-up camera', () => {
       given(checking),
       message(Message.ClickedDone()),
       expectOutMessage({ _tag: 'ClosedCamera' }),
-      message(Message.SucceededCheckHeld({ token: 0, check, still, held: false, side: 'unclear' })),
+      message(answered(0, false, 'unclear')),
       model(({ camera }) => expect(Camera.guards.Closed(camera)).toBe(true)),
     )
     story(
       update,
       given(checking),
       message(Message.TappedPicture({ check, still })),
-      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: Option.none() }),
+      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: 'front' }),
       Command.resolve(Buzz, Message.CompletedBuzz()),
-      message(Message.SucceededCheckHeld({ token: 0, check, still, held: true, side: 'front' })),
+      message(answered(0, true, 'front')),
       expectNoOutMessage(),
-      model(({ shots }) => expect(shots).toBe(1)),
+      model(({ pieces }) => expect(pieces).toBe(1)),
     )
   })
 
@@ -67,16 +86,16 @@ describe('the held-up camera', () => {
       update,
       given(watching()),
       message(Message.SettledScene({ check, still })),
-      Command.resolve(firstCheck, Message.SucceededCheckHeld({ token: 0, check, still, held: false, side: 'unclear' })),
+      Command.resolve(firstCheck, answered(0, false, 'unclear')),
       model(({ camera }) => expect(camera).toEqual(Camera.Watching({ hint: 'notSeen' }))),
       message(Message.StayedStill({ check, still })),
-      Command.resolve(second, Message.SucceededCheckHeld({ token: 1, check, still, held: true, side: 'front' })),
-      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: Option.some('front') }),
+      Command.resolve(second, answered(1, true, 'front')),
+      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: 'front' }),
       Command.resolve(Buzz, Message.CompletedBuzz()),
       message(Message.StayedStill({ check, still })),
       Command.expectNone(),
-      model(({ shots, pendingCheck }) => {
-        expect(shots).toBe(1)
+      model(({ pieces, pendingCheck }) => {
+        expect(pieces).toBe(1)
         expect(pendingCheck).toEqual(Option.none())
       }),
     )
@@ -88,16 +107,66 @@ describe('the held-up camera', () => {
       update,
       given(watching()),
       message(Message.SettledScene({ check, still })),
-      Command.resolve(firstCheck, Message.SucceededCheckHeld({ token: 0, check, still, held: false, side: 'unclear' })),
-      model(({ camera, shots }) => {
+      Command.resolve(firstCheck, answered(0, false, 'unclear')),
+      model(({ camera, pieces }) => {
         expect(camera).toEqual(Camera.Watching({ hint: 'notSeen' }))
-        expect(shots).toBe(0)
+        expect(pieces).toBe(0)
       }),
       message(Message.SettledScene({ check, still })),
       Command.resolve(second, Message.FailedCheckHeld({ token: 1 })),
       model(({ camera }) => expect(camera).toEqual(Camera.Watching({ hint: 'tapToTake' }))),
       message(Message.TappedPicture({ check, still })),
-      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: Option.none() }),
+      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: 'front' }),
+      Command.resolve(Buzz, Message.CompletedBuzz()),
+    )
+  })
+
+  test('turned around, the garment is taken as its back; the front still held up is not taken twice', () => {
+    story(
+      update,
+      given(frontTaken()),
+      ...turned(1, 'front', true),
+      expectNoOutMessage(),
+      model(({ camera, step, pendingCheck }) => {
+        expect(camera).toEqual(Camera.Watching({ hint: 'showBack' }))
+        expect(step).toBe('back')
+        expect(pendingCheck).toEqual(Option.none())
+      }),
+      // Held still, the front is not looked at again: only turning it moves the picture.
+      message(Message.StayedStill({ check, still })),
+      Command.expectNone(),
+      ...turned(2, 'unclear', true),
+      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: 'back' }),
+      Command.resolve(Buzz, Message.CompletedBuzz()),
+      model(({ camera, step, pieces }) => {
+        expect(camera).toEqual(Camera.Watching({ hint: 'taken' }))
+        expect(step).toBe('front')
+        expect(pieces).toBe(1)
+      }),
+    )
+  })
+
+  test("another garment's front starts a new piece; the back can be skipped, by hand or with a tap", () => {
+    story(
+      update,
+      given(frontTaken()),
+      ...turned(1, 'front', false),
+      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: 'front' }),
+      Command.resolve(Buzz, Message.CompletedBuzz()),
+      model(({ step, pieces }) => {
+        expect(step).toBe('back')
+        expect(pieces).toBe(2)
+      }),
+      message(Message.ClickedSkipBack()),
+      model(({ camera, step }) => {
+        expect(camera).toEqual(Camera.Watching({ hint: 'taken' }))
+        expect(step).toBe('front')
+      }),
+      message(Message.TappedPicture({ check, still })),
+      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: 'front' }),
+      Command.resolve(Buzz, Message.CompletedBuzz()),
+      message(Message.TappedPicture({ check, still })),
+      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: 'back' }),
       Command.resolve(Buzz, Message.CompletedBuzz()),
     )
   })

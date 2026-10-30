@@ -1,5 +1,5 @@
 import { FileDrop } from '@foldkit/ui'
-import { type CaptureSource, CreateVideoCapture } from '@styld/protocol'
+import { CaptureId, type CaptureSource, CreateVideoCapture } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
@@ -66,9 +66,15 @@ const photoArgs = (index: number, photo: File, contentType: 'image/jpeg' | 'imag
   contentType,
   source: picker,
   side: Option.none(),
+  pairsWith: Option.none<CaptureId>(),
   operationId: Option.none(),
   uploadId: Option.none(),
 })
+
+const captureOf = (index: number) => CaptureId.make(`cp_${String(index).padStart(22, '0')}`)
+
+/** The file at `index` became a capture. */
+const succeeded = (index: number) => Message.SucceededSend({ index, captureId: captureOf(index) })
 
 describe('choosing files to add', () => {
   test('photos and videos are taken by type and size; anything else is named and left out', () => {
@@ -99,10 +105,10 @@ describe('choosing files to add', () => {
       model(({ items }) =>
         expect(items.map(({ sending }) => Sending.guards.Sending(sending))).toEqual([true, true, false]),
       ),
-      Command.resolve(SendPhoto(photoArgs(0, tee, 'image/jpeg')), Message.SucceededSend({ index: 0 })),
+      Command.resolve(SendPhoto(photoArgs(0, tee, 'image/jpeg')), succeeded(0)),
       Command.expectHas(SendPhoto(photoArgs(2, coat, 'image/webp'))),
-      Command.resolve(SendPhoto(photoArgs(1, jeans, 'image/png')), Message.SucceededSend({ index: 1 })),
-      Command.resolve(SendPhoto(photoArgs(2, coat, 'image/webp')), Message.SucceededSend({ index: 2 })),
+      Command.resolve(SendPhoto(photoArgs(1, jeans, 'image/png')), succeeded(1)),
+      Command.resolve(SendPhoto(photoArgs(2, coat, 'image/webp')), succeeded(2)),
       expectOutMessage({ _tag: 'FinishedSending' }),
     )
   })
@@ -136,14 +142,14 @@ describe('choosing files to add', () => {
       given(init()),
       message(chosen(tee)),
       model((current) => expect(screenOn(current)).toBe(false)),
-      Command.resolve(SendPhoto(photoArgs(0, tee, 'image/jpeg')), Message.SucceededSend({ index: 0 })),
+      Command.resolve(SendPhoto(photoArgs(0, tee, 'image/jpeg')), succeeded(0)),
     )
     story(
       update,
       given(init()),
       message(chosen(rail, tee)),
       model((current) => expect(screenOn(current)).toBe(true)),
-      Command.resolve(SendPhoto(photoArgs(1, tee, 'image/jpeg')), Message.SucceededSend({ index: 1 })),
+      Command.resolve(SendPhoto(photoArgs(1, tee, 'image/jpeg')), succeeded(1)),
       ...readThenSendFirstPart,
       // The same dependency between parts: the lock is held, not asked for again.
       model((current) => expect(screenOn(current)).toBe(true)),
@@ -177,14 +183,14 @@ describe('choosing files to add', () => {
       model(({ items }) =>
         expect(items.map(({ sending }) => Sending.guards.Sending(sending))).toEqual([true, false, true]),
       ),
-      Command.resolve(SendPhoto(photoArgs(2, tee, 'image/jpeg')), Message.SucceededSend({ index: 2 })),
+      Command.resolve(SendPhoto(photoArgs(2, tee, 'image/jpeg')), succeeded(2)),
       Command.resolve(
         InspectVideo({ index: 0, video: rail }),
         Message.SucceededInspectVideo({ index: 0, plan: { route: 'whole', durationMs: 20_000, parts: [] } }),
       ),
       Command.resolve(
         SendVideo({ index: 0, video: rail, contentType: 'video/quicktime', prepared: Option.none() }),
-        Message.SucceededSend({ index: 0 }),
+        succeeded(0),
       ),
       // The second video starts only now.
       Command.expectExact(InspectVideo({ index: 1, video: closet })),
@@ -224,7 +230,7 @@ describe('choosing files to add', () => {
       ),
       message(Message.ClickedRetry({ index: 0 })),
       Command.expectExact(SendPhoto(retried)),
-      Command.resolve(SendPhoto(retried), Message.SucceededSend({ index: 0 })),
+      Command.resolve(SendPhoto(retried), succeeded(0)),
       expectOutMessage({ _tag: 'FinishedSending' }),
       model(({ items }) => expect(items.map(({ uploadId }) => uploadId)).toEqual([Option.some('up_1')])),
     )
@@ -232,7 +238,7 @@ describe('choosing files to add', () => {
 
   test('photos from the held-up camera go up as camera shots, and the tray waits for the camera to close', () => {
     const shot = file('camera-1.jpg', 'image/jpeg')
-    const sent = SendPhoto({ ...photoArgs(0, shot, 'image/jpeg'), source: 'camera' })
+    const sent = SendPhoto({ ...photoArgs(0, shot, 'image/jpeg'), source: 'camera', side: Option.some('front') })
     story(
       update,
       given(init()),
@@ -241,13 +247,53 @@ describe('choosing files to add', () => {
       message(camera(CameraMessage.TappedPicture({ check: shot, still: shot }))),
       Command.expectHas(sent, Buzz),
       Command.resolve(Buzz, CameraMessage.CompletedBuzz()),
-      Command.resolve(sent, Message.SucceededSend({ index: 0 })),
+      Command.resolve(sent, succeeded(0)),
       // Sent while the camera is open: the page stays until the person is done.
       model(({ items }) =>
         expect(items.map(({ source, sending }) => [source, Sending.guards.Sent(sending)])).toEqual([['camera', true]]),
       ),
       message(camera(CameraMessage.ClickedDone())),
       expectOutMessage({ _tag: 'FinishedSending' }),
+    )
+  })
+
+  test("a garment's back waits for its front to be sent, then goes with the capture it pairs with", () => {
+    const front = file('camera-1.jpg', 'image/jpeg')
+    const back = file('camera-2.jpg', 'image/jpeg')
+    const shot = { ...photoArgs(0, front, 'image/jpeg'), source: 'camera' as const }
+    const sendFront = SendPhoto({ ...shot, side: Option.some('front') })
+    const sendBack = SendPhoto({
+      ...shot,
+      index: 1,
+      photo: back,
+      side: Option.some('back'),
+      pairsWith: Option.some(captureOf(0)),
+    })
+    // The front is on its way when the back is taken.
+    const opened = [Message.ClickedHoldUp(), camera(CameraMessage.StartedCamera())].reduce(
+      (current, next) => update(current, next).model,
+      init(),
+    )
+    const frontTaken = update(opened, camera(CameraMessage.TappedPicture({ check: front, still: front })))
+    expect(frontTaken.commands?.find(({ name }) => name === 'SendPhoto')?.args).toEqual(sendFront.args)
+    story(
+      update,
+      given(frontTaken.model),
+      message(camera(CameraMessage.TappedPicture({ check: back, still: back }))),
+      Command.expectExact(Buzz),
+      Command.resolve(Buzz, CameraMessage.CompletedBuzz()),
+      // Two could go at once, but the back waits for its front's capture.
+      model(({ items }) =>
+        expect(items.map(({ sending }) => [Sending.guards.Sending(sending), Sending.guards.Waiting(sending)])).toEqual([
+          [true, false],
+          [false, true],
+        ]),
+      ),
+      message(succeeded(0)),
+      Command.resolve(sendBack, succeeded(1)),
+      model(({ items }) =>
+        expect(items.map(({ captureId }) => captureId)).toEqual([0, 1].map((at) => Option.some(captureOf(at)))),
+      ),
     )
   })
 })
