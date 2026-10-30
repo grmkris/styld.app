@@ -9,6 +9,9 @@ export interface CapturePolicy {
   readonly single: 'cloudflare' | 'sam'
   /** How sure the decision model must be before a photo counts as one garment, or none. */
   readonly routeConfidence: number
+  /** How a SAM mask becomes a cut-out's edge: `refined` snaps it to the photo's own edges (`Matte.ts`);
+   * `stepped` scales it by nearest pixel, as before, for comparing the two on the preview. */
+  readonly edges: 'refined' | 'stepped'
   /** How sure it must be that a garment is held up before the camera shoots. */
   readonly heldConfidence: number
   /** How sure it must be that a shot shows the same garment as the last one (its back). */
@@ -33,6 +36,7 @@ export const capturePolicy = (env: Readonly<Record<string, unknown>>): CapturePo
   providers: choice(env['STYLD_PROVIDERS'], ['live', 'off'], 'off'),
   single: choice(env['CUTOUT_SINGLE'], ['cloudflare', 'sam'], 'cloudflare'),
   routeConfidence: number(env['CUTOUT_ROUTE_CONFIDENCE'], 0.75),
+  edges: choice(env['CUTOUT_EDGES'], ['refined', 'stepped'], 'refined'),
   heldConfidence: number(env['CAMERA_HELD_CONFIDENCE'], 0.7),
   samePieceConfidence: number(env['CAMERA_SAME_PIECE_CONFIDENCE'], 0.6),
   dailyAllowance: number(env['DAILY_ALLOWANCE'], 100),

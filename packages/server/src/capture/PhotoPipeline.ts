@@ -1,7 +1,8 @@
 import { Effect, Option } from 'effect'
+import { refinedCutOut } from './Matte.ts'
 import { CaptureConfig, type CapturePolicy } from './Policy.ts'
 import { type Parts, captureKey, readObject, unavailable, writeObject } from './Parts.ts'
-import { type Box, cutOut, decodedPng, encodePng, opaqueBounds, crop, type Rgba } from './Pixels.ts'
+import { type Box, cutOut, decodedPng, encodePng, fitMask, opaqueBounds, crop, type Rgba } from './Pixels.ts'
 import { GarmentSegmenter, GarmentVision, PictureWork, type Route, type WorkingCopies } from './Providers.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
 
@@ -33,7 +34,8 @@ export const foregroundPiece = (original: Uint8Array) =>
     return [{ png: encodePng(piece), bounds, area, track: '0', confidence: 1 }]
   })
 
-/** SAM for every garment in a photo: each mask cut from the real pixels of the working copy. */
+/** Each SAM mask, in `from` coordinates (SAM's frame, or the picture itself), cut from the picture's real
+ * pixels: with its edge refined against the photo, or scaled by nearest pixel. */
 export const segmentedPieces = (
   picture: Rgba,
   found: ReadonlyArray<{
@@ -42,12 +44,20 @@ export const segmentedPieces = (
     readonly track: string
     readonly confidence: number
   }>,
+  from: { readonly width: number; readonly height: number },
+  edges: CapturePolicy['edges'],
 ) =>
   found.flatMap((mask): ReadonlyArray<CutPiece> => {
-    const area = mask.raster.reduce((sum, value) => sum + (value === 0 ? 0 : 1), 0)
-    if (area < minimumShare * picture.width * picture.height) return []
-    const piece = cutOut(picture, mask)
-    return [{ png: encodePng(piece), bounds: mask.bounds, area, track: mask.track, confidence: mask.confidence }]
+    const smallest = minimumShare * picture.width * picture.height
+    const { track, confidence } = mask
+    if (edges === 'refined') {
+      const { piece, bounds, area } = refinedCutOut(picture, mask, from)
+      return piece.width === 0 || area < smallest ? [] : [{ png: encodePng(piece), bounds, area, track, confidence }]
+    }
+    const fitted = fitMask(mask, from, picture)
+    const area = fitted.raster.reduce((sum, value) => sum + (value === 0 ? 0 : 1), 0)
+    if (area < smallest) return []
+    return [{ png: encodePng(cutOut(picture, fitted)), bounds: fitted.bounds, area, track, confidence }]
   })
 
 /** SAM for every garment in a photo's working copy, the largest first. */
@@ -55,7 +65,8 @@ export const samPieces = (copies: WorkingCopies) =>
   Effect.gen(function* () {
     const segmenter = yield* GarmentSegmenter
     const found = yield* segmenter.still({ bytes: copies.jpeg, contentType: 'image/jpeg' }, 'clothing')
-    return segmentedPieces(yield* decodedPng(copies.png), found)
+    const picture = yield* decodedPng(copies.png)
+    return segmentedPieces(picture, found, picture, (yield* CaptureConfig).edges)
       .toSorted((a, b) => b.area - a.area)
       .slice(0, maximumPieces)
   })

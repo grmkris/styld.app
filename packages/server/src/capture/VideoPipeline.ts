@@ -1,8 +1,8 @@
 import { Array, DateTime, Effect, Option, Record, Schema } from 'effect'
 import { bestSightings, frameAt, type SampledStill, type TrackSighting } from './FrameRanking.ts'
 import { type Parts, readObject, storedAs, unavailable } from './Parts.ts'
-import { decodedPng, fitMask } from './Pixels.ts'
-import { CaptureConfig } from './Policy.ts'
+import { decodedPng } from './Pixels.ts'
+import { CaptureConfig, type CapturePolicy } from './Policy.ts'
 import { type CutPiece, detectionsOf, originalOnly, segmentedPieces } from './PhotoPipeline.ts'
 import { GarmentSegmenter, PictureWork, ProviderOutcomeUnknown } from './Providers.ts'
 import type { CaptureRow, FrameRow } from './Store.ts'
@@ -38,6 +38,7 @@ const cutFromStills = (
   best: ReadonlyArray<{ readonly sighting: TrackSighting; readonly still: SampledStill & { readonly key: string } }>,
   masks: ReadonlyMap<string, { readonly bounds: TrackSighting['bounds']; readonly raster: Uint8Array }>,
   frameSize: { readonly width: number; readonly height: number },
+  edges: CapturePolicy['edges'],
 ) =>
   Effect.forEach(
     Record.toEntries(Array.groupBy(best, ({ still }) => still.key)),
@@ -50,10 +51,12 @@ const cutFromStills = (
         return sightings.flatMap(({ sighting }) => {
           const mask = masks.get(`${sighting.track}@${sighting.frame}`)
           if (mask === undefined) return []
-          const fitted = fitMask(mask, frameSize, picture)
-          return segmentedPieces(picture, [{ ...fitted, track: sighting.track, confidence: sighting.confidence }]).map(
-            (piece): CutPiece & { readonly key: string } => ({ ...piece, key }),
-          )
+          return segmentedPieces(
+            picture,
+            [{ ...mask, track: sighting.track, confidence: sighting.confidence }],
+            frameSize,
+            edges,
+          ).map((piece): CutPiece & { readonly key: string } => ({ ...piece, key }))
         })
       }),
     { concurrency: 2 },
@@ -115,7 +118,7 @@ export const processVideo = Effect.fn('Styld.Capture.processVideo')(function* (
   const best = bestSightings(sightings, sized)
     .toSorted((a, b) => b.sighting.area - a.sighting.area)
     .slice(0, maximumPieces)
-  const pieces = yield* cutFromStills(parts, best, masks, frameSize)
+  const pieces = yield* cutFromStills(parts, best, masks, frameSize, policy.edges)
   const found = yield* Effect.forEach(pieces, (piece) => detectionsOf(parts, capture, piece.key, [piece], () => true), {
     concurrency: 4,
   })

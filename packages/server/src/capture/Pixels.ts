@@ -125,9 +125,7 @@ export const fitMask = (
   from: { readonly width: number; readonly height: number },
   to: { readonly width: number; readonly height: number },
 ): Mask => {
-  const turned = from.width > from.height !== to.width > to.height
-  const source = turned ? turnQuarter(mask, from) : mask
-  const sourceSize = turned ? { width: from.height, height: from.width } : from
+  const { mask: source, size: sourceSize } = upright(mask, from, to)
   const scaleX = to.width / sourceSize.width
   const scaleY = to.height / sourceSize.height
   const bounds = {
@@ -152,6 +150,17 @@ export const fitMask = (
     }
   return { bounds, raster }
 }
+
+/** A mask of a `from` picture turned a quarter clockwise when `from` and `to` disagree on portrait or
+ * landscape (a phone video's rotation flag), with the size it is now in. */
+export const upright = (
+  mask: Mask,
+  from: { readonly width: number; readonly height: number },
+  to: { readonly width: number; readonly height: number },
+) =>
+  from.width > from.height !== to.width > to.height
+    ? { mask: turnQuarter(mask, from), size: { width: from.height, height: from.width } }
+    : { mask, size: from }
 
 /** The mask of a `size` picture turned a quarter clockwise. */
 const turnQuarter = (mask: Mask, size: { readonly width: number; readonly height: number }): Mask => {
