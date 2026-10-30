@@ -30,16 +30,24 @@ export interface ReviewDecision {
   readonly decision: 'kept' | 'discarded' | 'original'
 }
 
-/** Where provider calls and review decisions are counted (Workers Analytics Engine). */
+/** Where a clean picture ended, who drew it (`none` when nothing was drawn), and whether its owner asked for it. */
+export interface PictureOutcome {
+  readonly state: 'ready' | 'proposed' | 'rejected' | 'retake' | 'kept-real' | 'failed'
+  readonly provider: string
+  readonly asked: boolean
+}
+
+/** Where provider calls, review decisions and clean pictures' ends are counted (Workers Analytics Engine). */
 export class CaptureMetrics extends Context.Service<
   CaptureMetrics,
   {
     readonly call: (call: ProviderCall) => Effect.Effect<void>
     readonly review: (decision: ReviewDecision) => Effect.Effect<void>
+    readonly picture: (outcome: PictureOutcome) => Effect.Effect<void>
   }
 >()('@styld/server/CaptureMetrics') {
   /** For tests and for runs without a dataset. */
-  static readonly discarding = { call: () => Effect.void, review: () => Effect.void }
+  static readonly discarding = { call: () => Effect.void, review: () => Effect.void, picture: () => Effect.void }
   static readonly discard = Layer.succeed(this, this.discarding)
 }
 
@@ -91,7 +99,8 @@ export interface AnalyticsDataset {
 /** Provider calls and review decisions as Analytics Engine data points, queried by
  * `tools/ai-usage-report.ts`. Calls: index `call.<provider>.<kind>`, blobs (environment, release,
  * provider, model, kind, outcome), doubles (milliseconds, units, cost in micro-dollars). Reviews: index
- * `review.<decision>`, blobs (environment, release, route, provider, decision). Analytics Engine samples
+ * `review.<decision>`, blobs (environment, release, route, provider, decision). Pictures: index `picture.<state>`,
+ * blobs (environment, release, state, provider, `redraw` or `first`). Analytics Engine samples
  * per index, so a rare call (a route, a video track) keeps its own index rather than sharing one with
  * the bursts of thumbnails and suggestions a capture makes. A dataset that refuses a point never fails
  * the work it describes. */
@@ -112,6 +121,20 @@ export const analyticsEngine = (
       dataset.writeDataPoint({
         indexes: [`review.${decision.decision}`],
         blobs: [origin.environment, origin.release, decision.route, decision.provider, decision.decision],
+        doubles: [1],
+      }),
+    ).pipe(Effect.ignore),
+  picture: (outcome) =>
+    Effect.try(() =>
+      dataset.writeDataPoint({
+        indexes: [`picture.${outcome.state}`],
+        blobs: [
+          origin.environment,
+          origin.release,
+          outcome.state,
+          outcome.provider,
+          outcome.asked ? 'redraw' : 'first',
+        ],
         doubles: [1],
       }),
     ).pipe(Effect.ignore),

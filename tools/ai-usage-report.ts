@@ -7,8 +7,8 @@
  * Reads `CLOUDFLARE_API_TOKEN` (Account Analytics read) and `CLOUDFLARE_ACCOUNT_ID` (default: the v2
  * preview account) from the environment and never prints them. Costs are list-price estimates; the
  * providers' invoices are the truth. Analytics Engine samples per index, so every sum is weighted by
- * `_sample_interval`; indexes are `call.<provider>.<kind>` and `review.<decision>` (plain `call` and
- * `review` before 2026-10-29 16:00).
+ * `_sample_interval`; indexes are `call.<provider>.<kind>`, `review.<decision>` (plain `call` and
+ * `review` before 2026-10-29 16:00) and `picture.<state>`, where each clean picture ended (from 2026-10-30).
  */
 import { Schema } from 'effect'
 
@@ -58,5 +58,15 @@ console.log(`Provider calls, ${environment}, last ${days} days`)
 console.table(calls)
 const total = calls.reduce((sum, row) => sum + Number(row['est_usd'] ?? 0), 0)
 console.log(`Estimated total: $${total.toFixed(4)}`)
+const pictures = await query(`
+  SELECT blob3 AS state, blob4 AS provider, blob5 AS asked, SUM(_sample_interval) AS pictures
+  FROM StyldV2AiCalls
+  WHERE index1 LIKE 'picture.%' AND ${within}
+  GROUP BY state, provider, asked
+  ORDER BY pictures DESC
+  FORMAT JSON`)
+
 console.log('Review decisions')
 console.table(reviews)
+console.log('Clean pictures: shown (ready), offered (proposed), dropped (rejected), retake, kept-real, failed')
+console.table(pictures)

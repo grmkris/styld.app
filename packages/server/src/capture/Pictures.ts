@@ -3,6 +3,7 @@ import { DateTime, Effect, Option, Schedule } from 'effect'
 import { gateFor, planFor } from './CleanPicture.ts'
 import { type Parts, pictureKey, readObject, storedAs, unavailable, writeObject } from './Parts.ts'
 import { crop, decodePng, encodePng, opaqueBounds, opaqueShare, type Rgba } from './Pixels.ts'
+import { CaptureMetrics } from './Metrics.ts'
 import { CaptureConfig } from './Policy.ts'
 import { GarmentVision, ImageGenerator, type Picture } from './Providers.ts'
 import type { PictureRow, PictureState } from './Store.ts'
@@ -57,12 +58,27 @@ const framed = (keyed: Rgba) => {
   })
 }
 
+const finished: ReadonlyArray<PictureState> = ['ready', 'proposed', 'rejected', 'retake', 'kept-real', 'failed']
+
 /** Move a picture on from one of `from`; whether it moved. Every write goes through here, so two deliveries never
- * both act on one state. */
-const move = (parts: Parts, pieceId: string, from: ReadonlyArray<PictureState>, changes: Partial<PictureRow>) =>
+ * both act on one state, and each picture's end is counted once. */
+const move = (
+  parts: Parts,
+  picture: Pick<PictureRow, 'pieceId' | 'provider' | 'hold'>,
+  from: ReadonlyArray<PictureState>,
+  changes: Partial<PictureRow>,
+) =>
   Effect.gen(function* () {
-    const moved = yield* storedAs(parts.store.movePicture(pieceId, from, { ...changes, updatedAt: yield* now }))
-    if (moved && changes.state !== undefined) yield* Effect.annotateCurrentSpan('styld.picture.state', changes.state)
+    const { state } = changes
+    const moved = yield* storedAs(parts.store.movePicture(picture.pieceId, from, { ...changes, updatedAt: yield* now }))
+    if (!moved || state === undefined) return moved
+    yield* Effect.annotateCurrentSpan('styld.picture.state', state)
+    if (finished.includes(state))
+      yield* (yield* CaptureMetrics).picture({
+        state,
+        provider: changes.provider ?? picture.provider ?? 'none',
+        asked: picture.hold !== null,
+      })
     return moved
   })
 
@@ -70,13 +86,13 @@ const remove = (parts: Parts, key: string | null) =>
   key === null ? Effect.void : Effect.tryPromise({ try: () => parts.bindings.bucket.delete(key), catch: unavailable })
 
 /** A drawing that cannot finish: the photo stays the piece's picture. */
-const end = (parts: Parts, pieceId: string, from: PictureState, errorCode: string) =>
-  move(parts, pieceId, [from], { state: 'failed', errorCode })
+const end = (parts: Parts, picture: PictureRow, from: PictureState, errorCode: string) =>
+  move(parts, picture, [from], { state: 'failed', errorCode })
 
 /** A stored drawing that cannot be checked ends, and its file goes. */
 const endChecking = (parts: Parts, picture: PictureRow, errorCode: string) =>
   Effect.gen(function* () {
-    if (yield* move(parts, picture.pieceId, ['checking'], { state: 'failed', errorCode, cleanKey: null }))
+    if (yield* move(parts, picture, ['checking'], { state: 'failed', errorCode, cleanKey: null }))
       yield* remove(parts, picture.cleanKey)
   })
 
@@ -87,8 +103,8 @@ const check = (parts: Parts, picture: PictureRow, drawn: Rgba, real: Rgba) =>
     const comparison = yield* (yield* GarmentVision).compare(sent(drawn, judgedAt), sent(real, judgedAt))
     const scores = { same: comparison.same, faithful: comparison.faithful }
     const gate = gateFor(comparison, policy)
-    if (gate !== 'rejected') return yield* move(parts, picture.pieceId, ['checking'], { ...scores, state: gate })
-    if (yield* move(parts, picture.pieceId, ['checking'], { ...scores, state: 'rejected', cleanKey: null }))
+    if (gate !== 'rejected') return yield* move(parts, picture, ['checking'], { ...scores, state: gate })
+    if (yield* move(parts, picture, ['checking'], { ...scores, state: 'rejected', cleanKey: null }))
       yield* remove(parts, picture.cleanKey)
     return true
   })
@@ -110,26 +126,26 @@ const draw = (parts: Parts, claimed: PictureRow, front: Rgba, back: Option.Optio
       .pipe(
         Effect.map(Option.some),
         Effect.catchTag('ProviderOutcomeUnknown', () =>
-          Effect.as(end(parts, pieceId, 'generating', 'unknown'), Option.none<Picture>()),
+          Effect.as(end(parts, claimed, 'generating', 'unknown'), Option.none<Picture>()),
         ),
         Effect.catchTag('ProviderFailed', (error) =>
           error.retryable
             ? Effect.andThen(
-                move(parts, pieceId, ['generating'], {
+                move(parts, claimed, ['generating'], {
                   state: 'queued',
                   version: claimed.version - 1,
                   claimedAt: null,
                 }),
                 Effect.fail(error),
               )
-            : Effect.as(end(parts, pieceId, 'generating', 'refused'), Option.none<Picture>()),
+            : Effect.as(end(parts, claimed, 'generating', 'refused'), Option.none<Picture>()),
         ),
       )
     const ended = Option.none<{ readonly clean: Rgba; readonly checking: PictureRow }>()
     if (Option.isNone(answer)) return ended
     const keyed = Option.flatMap(decoded(answer.value.bytes), (drawn) => chromaKey(shrink(drawn, keyedAt), key))
     if (Option.isNone(keyed)) {
-      yield* end(parts, pieceId, 'generating', 'key')
+      yield* end(parts, claimed, 'generating', 'key')
       return ended
     }
     const clean = framed(keyed.value)
@@ -140,11 +156,11 @@ const draw = (parts: Parts, claimed: PictureRow, front: Rgba, back: Option.Optio
       Effect.orElseSucceed(() => false),
     )
     if (!written) {
-      yield* end(parts, pieceId, 'generating', 'unavailable')
+      yield* end(parts, claimed, 'generating', 'unavailable')
       return ended
     }
     // A delivery that gave up on the picture meanwhile has ended it; its drawing goes.
-    if (!(yield* move(parts, pieceId, ['generating'], { state: 'checking', cleanKey }))) {
+    if (!(yield* move(parts, claimed, ['generating'], { state: 'checking', cleanKey }))) {
       yield* remove(parts, cleanKey)
       return ended
     }
@@ -162,12 +178,12 @@ const start = (parts: Parts, picture: PictureRow) =>
     const piece = yield* storedAs(parts.wardrobeStore.findPiece(picture.accountId, pieceId))
     if (Option.isNone(piece)) return
     const front = yield* cutoutAt(parts, piece.value.imageKey)
-    if (Option.isNone(front)) return yield* move(parts, pieceId, ['queued'], { state: 'kept-real' })
+    if (Option.isNone(front)) return yield* move(parts, picture, ['queued'], { state: 'kept-real' })
     const judgement = yield* (yield* GarmentVision).judge(sent(front.value, judgedAt))
     const judged = { judge: judgement.verdict, judgeConfidence: judgement.confidence, face: judgement.face }
     const asked = picture.hold !== null && judgement.face < policy.face
     const { plan } = asked ? { plan: 'draw' as const } : planFor(judgement, policy)
-    if (plan !== 'draw') return yield* move(parts, pieceId, ['queued'], { ...judged, state: plan })
+    if (plan !== 'draw') return yield* move(parts, picture, ['queued'], { ...judged, state: plan })
     const generator = yield* ImageGenerator
     const claim = {
       ...judged,
@@ -180,7 +196,7 @@ const start = (parts: Parts, picture: PictureRow) =>
       cleanKey: null,
       errorCode: null,
     }
-    if (!(yield* move(parts, pieceId, ['queued'], claim))) return
+    if (!(yield* move(parts, picture, ['queued'], claim))) return
     yield* remove(parts, picture.cleanKey)
     const back = yield* cutoutAt(parts, piece.value.backImageKey)
     const drawn = yield* draw(parts, { ...picture, ...claim }, front.value, back)
@@ -196,8 +212,6 @@ const checkStored = (parts: Parts, picture: PictureRow) =>
     if (Option.isNone(drawn) || Option.isNone(real)) return yield* endChecking(parts, picture, 'missing')
     yield* check(parts, picture, drawn.value, real.value)
   })
-
-const finished: ReadonlyArray<PictureState> = ['ready', 'proposed', 'rejected', 'retake', 'kept-real', 'failed']
 
 /** A redraw's credit, once its drawing ended: consumed for a drawing the owner can see, refunded otherwise. The Wallet
  * answers a repeated settle as done, so the hold is cleared only after it settled, and whoever comes next settles a
@@ -224,7 +238,7 @@ export const picturing = (parts: Parts) => ({
     if (!(yield* storedAs(parts.wardrobeStore.accountEnabled(picture.accountId)))) return
     if (picture.state === 'queued') yield* start(parts, picture)
     else if (picture.state === 'checking') yield* checkStored(parts, picture)
-    else if (isStale(picture, yield* now)) yield* end(parts, pieceId, 'generating', 'unknown')
+    else if (isStale(picture, yield* now)) yield* end(parts, picture, 'generating', 'unknown')
     yield* settleHold(parts, pieceId)
   }),
   /** The last attempt failed: the photo stays. A drawing that may have been made counts as unknown. */
@@ -232,8 +246,8 @@ export const picturing = (parts: Parts) => ({
     const found = yield* storedAs(parts.store.findPicture(pieceId))
     if (Option.isNone(found)) return
     const picture = found.value
-    if (picture.state === 'queued') yield* end(parts, pieceId, 'queued', 'gave-up')
-    else if (picture.state === 'generating') yield* end(parts, pieceId, 'generating', 'unknown')
+    if (picture.state === 'queued') yield* end(parts, picture, 'queued', 'gave-up')
+    else if (picture.state === 'generating') yield* end(parts, picture, 'generating', 'unknown')
     else if (picture.state === 'checking') yield* endChecking(parts, picture, 'gave-up')
     yield* settleHold(parts, pieceId)
   }),
