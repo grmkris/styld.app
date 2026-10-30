@@ -78,6 +78,8 @@ routing, following Foldkit's own website. Other pages keep full loads.
     - SSR tests check that a cookie draws the nav and the skeleton, and that no tab page carries an inline style.
     - The browser journey adds up every layout shift (taps included) and holds each full load of Home, Wardrobe,
       Looks, Boards and Account under 0.02.
+- **The app's Message union has its own module** (`apps/web/src/Message.ts`, re-exported from `App.ts`), so the
+  navigation can build Messages without importing the app. The capture session confirmed no conflict.
 
 ## Overnight run: Gallery 2 and the table — 2026-10-30
 

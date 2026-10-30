@@ -4,12 +4,12 @@ import { AccountClaims } from '@styld/auth/config'
 import * as HttpClient from 'effect/http/HttpClient'
 import * as HttpClientRequest from 'effect/http/HttpClientRequest'
 import { Command, Subscription, Update } from 'foldkit'
-import { defineMessageUnion } from 'foldkit/message'
 import { load } from 'foldkit/navigation'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { catalogVersion, loadCatalog } from '@styld/i18n'
 import { Locale, localeEndpoint, parseLocale } from './Locale.ts'
+import { Message } from './Message.ts'
 import * as Crypto from 'effect/Crypto'
 import * as AddPiecesMessage from './page/AddPieces/Message.ts'
 import * as AddPiecesModel from './page/AddPieces/Model.ts'
@@ -96,33 +96,7 @@ export type Model = typeof Model.Type
 
 // MESSAGE
 
-export const Message = defineMessageUnion({
-  SelectedLocale: { value: Schema.String },
-  SucceededSaveLocale: { locale: Locale },
-  FailedSaveLocale: {},
-  ReceivedSession: { claims: Schema.NullOr(AccountClaims) },
-  FailedReadSession: {},
-  RequestedSession: {},
-  SucceededSignOut: {},
-  FailedSignOut: {},
-  CompletedNavigate: {},
-  GotLoginMessage: { message: Login.Message },
-  GotAccountMessage: { message: Account.Message },
-  GotWardrobeMessage: { message: Wardrobe.Message },
-  GotPieceMessage: { message: Piece.Message },
-  GotAddPiecesMessage: { message: AddPiecesMessage.Message },
-  GotReviewMessage: { message: Review.Message },
-  GotLooksMessage: { message: Looks.Message },
-  GotLookMessage: { message: Look.Message },
-  GotTodayMessage: { message: Today.Message },
-  GotAskMessage: { message: Ask.Message },
-  GotBoardsMessage: { message: Boards.Message },
-  GotBoardMessage: { message: BoardMessage.Message },
-  ChoseTelemetryConsent: { granted: Schema.Boolean },
-  RecordedTelemetryConsent: { granted: Schema.Boolean },
-  OpenedTelemetrySettings: {},
-})
-export type Message = typeof Message.Type
+export { Message }
 
 // COMMAND
 
