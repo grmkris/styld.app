@@ -12,11 +12,9 @@ table"), and boards are tables you arrange yourself. `DESIGN.md` states the rule
 - `proto.js` is the prototype's motion and its few live actions: Spin, Wear this, Save flying into Boards, the +
   sheet, Try with mine. Its springs are CSS `linear()` curves sampled by `spring()` in `build.py`.
 
-## What V2 takes now (owner, 2026-10-30)
+## What V2 takes
 
-Only the parts about your own wardrobe. Other people stay parked, as in `docs/ROADMAP.md`.
-
-**Taken now:**
+**Taken first (owner, 2026-10-30), for your own wardrobe:**
 - The navigation: Home, Wardrobe, **Ask** in the middle, Boards. You is reached through the avatar.
 - Home's **table**:
   - the day in the logo's condensed face (Anton), its one use;
@@ -30,9 +28,18 @@ Only the parts about your own wardrobe. Other people stay parked, as in `docs/RO
   `../canvas-spike/`). A board can be saved as a look.
 - Motion: springs, the sheet growing out of its button, page transitions, and reduced-motion fallbacks.
 
-**Not now:**
-- The feed, Explore, people and their profiles, Try with mine on someone else's piece, fit badges ("Goes with 4 of
-  yours"), and the wishlist ("Want one like it"). All of these depend on other people's content.
-- Weather on the table. The headline is the day and date until it arrives.
+**Taken next (owner, 2026-10-30; `docs/ROADMAP.md`, Boards, profiles and social):**
+- The navigation becomes Home, Explore, Ask, Wardrobe, Boards.
+- A board is its collage above a grid of pins (`board`), with Saved from others and People you follow on Boards.
+- Other people: profiles (`person`), their pieces (`pin`) and looks (`outfit`), Save and Follow, and From people you
+  follow on Home.
+- Explore (`explore`) with Edits from Styld, moods and People to follow.
+- The wishlist (`wishlist`) and Add from a link.
+- The Ask panel searching clothes, people and boards (`ask-desktop`).
+
+**Not taken:**
+- Fit badges ("Goes with 4 of yours", "You own 2 like these") stay parked.
+- Try with mine on someone else's piece comes with try-on.
+- Weather on the table waits; the headline is the day and date until it arrives.
 
 Shops were never part of Gallery 2.

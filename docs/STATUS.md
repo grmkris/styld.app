@@ -2,6 +2,21 @@
 
 Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `42baae7`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
 
+## Plan: boards, profiles and social — 2026-10-30
+
+The owner un-parked social and planned the next iteration in a grilling session; `docs/ROADMAP.md` (Boards, profiles
+and social) holds the decisions, `docs/ARCHITECTURE.md` the recorded deviations, and `DESIGN.md` the new screens. The
+design is the Gallery 2 prototype (`docs/design/gallery-2/`).
+
+- **Order:** pins and the collage, MCP for boards, profiles with model checks, public pages and link previews, saves,
+  follows, blocks and the feed, Explore, curation and search, the wishlist and Add from a link, generated pictures and
+  mood boards, then review rounds. Each step is deployed to the preview and read back.
+- **Built so far:** nothing beyond these documents.
+- **Shared with the capture session:** migrations are generated one at a time; public delivery reuses its rule for a
+  piece's shown picture; generated pictures reuse its Muse provider.
+- **Still to settle in spikes:** Clef and Llama Guard thresholds on fixtures in English and Slovenian, drawing text
+  with the Images binding for link previews, and Muse for prompts without a garment.
+
 ## Camera test fixes and person routing — 2026-10-30
 
 The owner's afternoon test on the preview: 9 camera shots, 5 pieces kept, judged "quite ugly". Diagnosis and the

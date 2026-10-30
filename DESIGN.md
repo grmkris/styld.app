@@ -6,8 +6,8 @@ table you arrange yourself. It replaced Gallery 1 (2026-10-28), which replaced v
 
 The prototypes:
 
-- `docs/design/gallery-2/` (open `site/index.html`) is the current one. Its README says which parts v2 takes now:
-  your own wardrobe only, no feed or other people.
+- `docs/design/gallery-2/` (open `site/index.html`) is the current one. Its README says which parts v2 takes: since
+  2026-10-30 all of it except fit badges, and Try with mine, which comes with try-on.
 - `docs/design/gallery/` is Gallery 1, kept for screens Gallery 2 doesn't redraw.
 - `docs/design/canvas-spike/` is the table's proof of concept.
 
@@ -48,7 +48,8 @@ are glass: the `glass` fill and a `glassEdge` hairline.
 
 The prototype has more tokens that v2 adds with the first screen that needs them: `veil` and `scrim` (overlays on photos
 and behind sheets), `frost` (round buttons over photos), `shade-1` and `shade-2` (shadows), `line` (a hairline over a
-photo), and the catalog colour swatches (`--c-*`, v1's catalog classification colours).
+photo), the avatar tones (`--t-*`, the ground behind a person's initials) and the catalog colour swatches (`--c-*`,
+v1's catalog classification colours).
 
 ### Signal
 
@@ -109,13 +110,14 @@ Controls render through `@foldkit/ui`'s headless views (text buttons through `ac
   paper. The wardrobe grid of cutouts on paper is Styld's signature.
 - Sheets rise from the bottom edge with 24px top corners, stock fill and a soft shadow (the diagnostics prompt is one).
 - Translucency (frost, scrim, veil) only over photos and behind sheets; never blur behind text.
-- **Navigation (signed in): Home, Wardrobe, Ask, Boards.** Ask sits in the middle as a filled ink circle, the one
-  thing to do from anywhere. You is reached through the avatar.
-- **Mobile:** a floating glass pill at the bottom carries the four items. The top bar keeps the logo and the avatar.
+- **Navigation (signed in): Home, Explore, Ask, Wardrobe, Boards** (owner, 2026-10-30). Ask sits in the middle as a
+  filled ink circle, the one thing to do from anywhere. You is reached through the avatar.
+- **Mobile:** a floating glass pill at the bottom carries the five items. The top bar keeps the logo and the avatar.
   The board editor is the exception: it has the whole screen and its own way back to Boards, because the pill would
   sit over its tray of pieces.
 - **Desktop:** the same items in a floating glass rail on the left, with the avatar under it.
-- **Signed out:** the top bar keeps the logo and "Sign in".
+- **Signed out:** the top bar keeps the logo, Explore and "Sign in". Public pages (a profile, a public board, a shared
+  look or piece, Explore) read the same as signed in; Sign in appears only when the visitor saves, follows or reports.
 - **Glass:** the floating nav and the Ask panel are glass at the owner's request. They are the only blur behind text,
   and under `prefers-reduced-transparency` they are solid stock.
 
@@ -137,6 +139,25 @@ on Home and the surface of a board.
   - Escape cancels a drag;
   - ⌘Z undoes.
 
+### Boards, people and Explore
+
+Follow the prototype's `board`, `boards`, `person`, `explore`, `pin`, `wishlist` and `ask-desktop` screens.
+
+- **A board** opens on its collage, a still table, above a grid of its pins; the collage opens the editor. Pins you own
+  are cutouts on paper. Someone else's piece carries a credit chip (their initials avatar and "Luka's"), a picture keeps
+  the `photo` radius, and a generated picture carries a small "Generated" mark.
+- **Save** is a round button on other people's pieces, looks and boards. The saved thumbnail flies into the Boards item
+  on `springBounce`, which bumps its count; under reduced motion the button just turns saved.
+- **Avatars** are initials on one of the tone tokens; there are no photo avatars yet.
+- **A profile** (`person`): the avatar, name, handle and city, the bio, Follow and Share, then Boards, Looks and Pieces
+  tabs.
+- **Explore** (`explore`): the search field, Edits from Styld, mood chips, newest boards and People to follow.
+- **The Ask panel** (`ask-desktop`): "Search your clothes, people and boards", suggestions, then the Add clothes cards
+  (Add a piece, Add from a link, Scan your clothes, Film your wardrobe). Results come in three sections: in your
+  wardrobe, people, boards.
+- **Your public things** say where they stand in one quiet line under their title: publishing while the check runs,
+  public, public but not in Explore, or not shown, with the reason.
+
 ## Icons
 
 - Phosphor (`@phosphor-icons/core`, pinned): Regular below 24px (Gallery's 20px control icons), Light at 24px and
@@ -157,7 +178,7 @@ on Home and the surface of a board.
   hover and menus. Presses scale to 0.96.
 - **Things that travel** use springs, sampled into CSS `linear()` curves: the critically damped `spring` (≈600ms) and
   the slightly bouncy `springBounce`. These are pieces settling on a table, Spin shuffling the outfit, the + sheet
-  growing out of its button, and an item leaving the board.
+  growing out of its button, an item leaving the board, and a saved thing flying into Boards.
 - **Spin** staggers its pieces by 40ms, the one stagger in the app. One reveal at most on a public page.
 - **Tab changes** happen inside the page and cross-fade in 180ms through Foldkit's `viewTransition`. The navigation
   keeps its place (`view-transition-name: styld-nav`), a page seen before shows at once, and the runtime skips the

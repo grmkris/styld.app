@@ -23,17 +23,17 @@ Kept, in order:
 
 1. Adding pieces from photos, a held-up camera and video, with real cut-outs (iteration 1).
 2. The wardrobe inside ChatGPT and Claude, then go-live on styld.app (iteration 2).
-3. Virtual try-on and billing (iteration 3).
-4. Later, each with its own planning round:
+3. Boards, public profiles and social, built next on the preview (owner, 2026-10-30; see "Boards, profiles and
+   social" below). Going live on styld.app stays its own step.
+4. Virtual try-on and billing (iteration 3).
+5. Later, each with its own planning round:
    - recording video inside the app, and outfit check (both extend the capture pipeline);
-   - a public profile to show off a wardrobe;
    - the web stylist chat.
 
 Parked (not built unless real demand appears):
 
-- the Slovenian shop catalog;
-- the feed and follow, directories and share links, with the moderation and safety work that exists only for public
-  content;
+- the Slovenian shop catalog and its shop directory;
+- fit badges ("Goes with 4 of yours", "You own 2 like these");
 - referrals, the daily wheel, the calendar and v1's onboarding funnels;
 - favourites and archive;
 - Jev outfit ideas, which were on in production but unused.
@@ -59,7 +59,8 @@ an image model redrawing the garment from its cut-out gives a clean product pict
 ## Gallery 2 and boards (owner, 2026-10-30)
 
 The owner chose the Gallery 2 redesign (`docs/design/gallery-2/`) and moved boards up from Later. Both were built in
-the overnight run of 2026-10-30, next to the iterations below. Gallery 2 is taken for the person's own wardrobe only:
+the overnight run of 2026-10-30, next to the iterations below. Gallery 2 was first taken for the person's own
+wardrobe only:
 
 - the navigation: Home, Wardrobe, Ask, Boards;
 - Home's table: Spin and Wear this, with "Pick up where you left off";
@@ -67,7 +68,8 @@ the overnight run of 2026-10-30, next to the iterations below. Gallery 2 is take
 - Ask: search your wardrobe, the hand-off to the assistants, and the + sheet into capture;
 - boards.
 
-The feed, Explore, other people, Try with mine, fit badges and the wishlist stay parked with the feed and follow.
+Explore, other people and the wishlist come with "Boards, profiles and social" below. Fit badges stay parked, and Try
+with mine comes with try-on.
 
 **Boards** are the table, built in Foldkit itself with no canvas library: pieces, text labels and your own pictures,
 moved, pinched, turned, layered and undone, saved whole with a version, and savable as a look.
@@ -75,7 +77,84 @@ moved, pinched, turned, layered and undone, saved whole with a version, and sava
 - **Why not a library:** the spike in `docs/design/canvas-spike/` (v1 repository era, 2026-10-30) did this in about
   1,200 lines and kept 60 fps with 50 pieces. That replaced the earlier plan of an existing library (tldraw out over
   its licence; Excalidraw, Konva or Fabric through `Mount`).
-- **Not yet:** MCP tools for boards, and sharing.
+- **Next:** the pins grid, MCP tools for boards and sharing, in "Boards, profiles and social" below.
+
+## Boards, profiles and social (owner, 2026-10-30)
+
+Planned with the owner on 2026-10-30, once Gallery 2 was on the preview. It brings the public profile forward and
+un-parks the feed, follow and share links, with the safety work public content needs. All of it is built and accepted
+on the workers.dev preview; going live on styld.app stays its own step. The design is the Gallery 2 prototype
+(`docs/design/gallery-2/`: `board`, `boards`, `person`, `explore`, `pin`, `wishlist` and `ask-desktop`).
+
+**Boards**
+
+- A board is a scrolling grid of pins with one collage on top. Today's table editor becomes the collage.
+- Pins are your pieces, your looks, your pictures and other people's public pieces, credited. Text labels live only
+  on the collage.
+- New pins come first; there is no reordering, no captions and no comments. A board's cover is its collage, or else
+  its first four pins.
+
+**Public and private**
+
+- Everything is private by default. Public means on your profile, in Explore and feeds, and shareable by link, with a
+  link preview.
+- A public profile at `/@handle`: a name, the handle, an optional city, a short bio and an initials avatar, with
+  Boards, Looks and Pieces tabs. The wardrobe tab can be hidden; looks are shared one at a time.
+- Original photos and pieces still in the review tray are never public. Someone else's piece on your board shows only
+  while its owner keeps it public.
+
+**Moderation, decided by a model**
+
+- Nothing reaches anyone else until an automatic check passes: Clef for pictures, a Workers AI text model for words.
+- A pass is public everywhere. An unsure answer stays on the profile and its link, but out of Explore, feeds and
+  search. A fail is hidden from others, and its owner sees why.
+- A report runs the check again with the reporter's reason, and three reporters hide the item. A reported profile only
+  drops out of discovery.
+- There is no human review queue. Admins, an email allowlist, have MCP tools to hide or restore anything, to feature
+  boards and people, and to read reports and check results.
+
+**People**
+
+- Save is one tap into Saved; "Add to a board" and the board editor's tray go on from there. A saved board is a
+  bookmark of the original.
+- Follow is one-way and needs no approval. Nobody sees anyone else's follows, followers or counts. Home shows "From
+  people you follow", newest first.
+- Blocking hides two people from each other and removes their follows; the blocked person is never told.
+- There are no notifications.
+
+**Explore and search**
+
+- Explore opens on Edits from Styld (the house account, `@styld`, with its own wardrobe and generated pictures) and on
+  boards and people the admins feature. Below them come any public board and person that passed the check, newest
+  first, by mood.
+- Moods come from a fixed list. The publish check suggests up to three, and the owner can change them.
+- Ask searches the wardrobe on the device as today, plus people and public boards on the server, with a "people I
+  follow" filter. Questions go to the assistants. There are no embeddings.
+- The navigation becomes Home, Explore, Ask, Wardrobe, Boards.
+
+**Wishlist and links**
+
+- "Want one like it" keeps someone's piece as a private wish, and a link can become a wish too. "Got it" opens
+  capture.
+- Add from a link: a product page becomes a piece through the review tray (directly when an assistant adds it), or a
+  wish. When a shop refuses the page, Styld asks for a photo or a screenshot.
+
+**Generated pictures**
+
+- Anyone can generate a picture for a board, for 1 credit from the daily allowance. Prompts can be creative and can
+  use people and the board's pieces as references, but never a real person's likeness. Generated pictures are marked,
+  checked like any picture and can be shared.
+- "Make a mood board": from one sentence, Styld generates two to four pictures, picks matching pieces from the
+  wardrobe and lays out the collage.
+
+**In ChatGPT and Claude**
+
+- Assistants can do whatever the person asks: boards, pins, the collage, pictures, mood boards, the profile,
+  publishing, saves, follows and search. A board view draws the board inside the host.
+- Anything other people wrote is data for the assistant, never instructions.
+
+**Order:** pins and the collage, then MCP for boards, then profiles, checks and public pages, then saves, follows and
+the feed, then Explore and search, then the wishlist and links, then generated pictures and mood boards.
 
 ## Iteration 1: adding pieces from photos, the camera and video
 
@@ -222,5 +301,4 @@ and frames of its Grok-generated ten-garment rail video.
 - **Recording video in the app** (import from the library comes in iteration 1).
 - **Outfit check** works from a photo of you wearing the clothes: it gives feedback and offers the pieces for the
   wardrobe through the same review tray.
-- **A public profile,** and the safety it needs.
 - **The web stylist chat.**

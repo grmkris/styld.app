@@ -34,6 +34,20 @@ Browser telemetry is Effect-native as well, and nothing is captured until the vi
 
 The initial Worker uses `Cloudflare.Telemetry({ headSamplingRate: 1 })` for acceptance visibility and the platform's invocation logs. Production sampling, retention and alert thresholds are infrastructure decisions, while the usage aggregate remains the financial record. Native local logs are empty for successful requests, so deployed trace/log readback is a required gate rather than inferred from process output.
 
+## Boards, profiles and social (planned 2026-10-30)
+
+Decisions and recorded deviations for the iteration in `docs/ROADMAP.md` (Boards, profiles and social).
+
+- **Visibility has one predicate per level.** `link` (a profile and its links) and `discovery` (Explore, feeds, search) are each one SQL predicate that every public read, page, list, feed, search result, MCP answer and pin uses, with blocks applied in both directions. The owner always reads their own content.
+- **Checks have one writer per change.** The operation that changes public content sets its check to pending with the content's digest in the same D1 batch; a check result is written only where the digest still matches, so an answer about older content is dropped. Model answers decide (Clef for pictures, a Workers AI text model for words); there is no human queue, and admins act through admin-only MCP tools.
+- **The feed is a query over follows,** not a written activity table, which would be a second writer of visibility that unpublishing, failed checks and blocks would have to rewrite.
+- **Generated pictures and mood boards** keep their lifecycle in D1 rows driven by a queue, with Wallet holds reserved before each provider call and settled or refunded once, as captures do. The Domain owns only the usage reservations; this is a deviation from "Domain owns generation lifecycles", recorded here.
+- **Public media** has its own routes. Visibility is checked on every request before any cache, the stored original is never served, and a failed transform answers 503 rather than raw bytes. Image bytes are not gated by blocks: ids are 128-bit random, and every surface that reveals an id applies blocks.
+- **Public pages** read through an API group with no session middleware that reads an optional visitor. The edge injects title and Open Graph tags into the server-rendered HTML for public URLs, because SSR runs no Commands and has no data; link-preview images are drawn with the Cloudflare Images binding.
+- **Rate limits** use Workers RateLimit bindings, whose periods are 10 or 60 seconds, so v1's hourly limits become per-minute limits.
+- **MCP** renders one tool list for members and one for admins (an email allowlist from config). Admin tools need an admin actor in their type, so a member's call cannot reach them.
+- **The preview stays out of search engines** through `X-Robots-Tag: noindex`, never a `robots.txt` disallow, which would also stop link-preview crawlers.
+
 ## Delivery boundary
 
 Deliver an isolated preview at workers.dev, with safe test data and functioning provider paths. No production DNS cutover, destructive v1 migration or personal-data copying into preview. Provide a reconciled export/import rehearsal and documented production migration procedure as part of parity readiness.
