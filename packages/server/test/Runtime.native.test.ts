@@ -9,6 +9,7 @@ import * as HttpClient from 'effect/http/HttpClient'
 import { type Browser, chromium } from 'playwright'
 import { verifyBrowser } from './BrowserAcceptance.ts'
 import { verifyCameraJourney, verifyCaptureJourney, verifyLongVideoJourney } from './CaptureBrowserAcceptance.ts'
+import { verifyGalleryJourney } from './GalleryBrowserAcceptance.ts'
 import { nativeDailyAllowance, verifyCaptures } from './CaptureAcceptance.ts'
 import { verifyGallery } from './GalleryAcceptance.ts'
 import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
@@ -189,6 +190,15 @@ test(
   Effect.gen(function* () {
     const { url } = yield* stack
     yield* inBrowser((browser, origin) => verifyLongVideoJourney(browser, origin, url))
+  }),
+  { timeout: 120000 },
+)
+
+test(
+  "lays out today's table (Spin, Wear this), a board by hand (move, pinch, label, picture, undo, save as a look), Ask and the Wardrobe's tabs",
+  Effect.gen(function* () {
+    const { url } = yield* stack
+    yield* inBrowser((browser, origin) => verifyGalleryJourney(browser, origin, url))
   }),
   { timeout: 120000 },
 )
