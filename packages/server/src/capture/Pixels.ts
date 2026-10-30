@@ -1,16 +1,8 @@
-import { decodePng, type Rgba } from '@styld/imaging'
+import { type Box, crop, decodePng, type Rgba } from '@styld/imaging'
 import { Effect } from 'effect'
 import { ProviderFailed } from './Providers.ts'
 
-export { decodePng, encodePng, type Rgba } from '@styld/imaging'
-
-/** A rectangle in pixels: `left`/`top` inclusive, `right`/`bottom` exclusive. */
-export interface Box {
-  readonly left: number
-  readonly top: number
-  readonly right: number
-  readonly bottom: number
-}
+export { type Box, crop, decodePng, encodePng, opaqueBounds, type Rgba } from '@styld/imaging'
 
 /** A one-bit mask covering `bounds` of a picture: one byte a pixel, non-zero inside the garment. */
 export interface Mask {
@@ -26,20 +18,6 @@ export const decodedPng = (bytes: Uint8Array) =>
     catch: () => new ProviderFailed({ provider: 'cloudflare-images', retryable: false }),
   })
 
-/** The pixels of `box`, clamped to the picture. */
-export const crop = (picture: Rgba, box: Box): Rgba => {
-  const left = Math.max(0, Math.min(picture.width, box.left))
-  const top = Math.max(0, Math.min(picture.height, box.top))
-  const width = Math.max(0, Math.min(picture.width, box.right) - left)
-  const height = Math.max(0, Math.min(picture.height, box.bottom) - top)
-  const data = new Uint8Array(width * height * 4)
-  for (let row = 0; row < height; row++) {
-    const from = ((top + row) * picture.width + left) * 4
-    data.set(picture.data.subarray(from, from + width * 4), row * width * 4)
-  }
-  return { width, height, data }
-}
-
 /** The garment alone: the original pixels inside `mask`, transparent elsewhere, cropped to the mask's box. */
 export const cutOut = (picture: Rgba, mask: Mask): Rgba => {
   const piece = crop(picture, mask.bounds)
@@ -51,23 +29,6 @@ export const cutOut = (picture: Rgba, mask: Mask): Rgba => {
       if (!inside) data[(row * piece.width + column) * 4 + 3] = 0
     }
   return { width: piece.width, height: piece.height, data }
-}
-
-/** The smallest box holding every pixel more opaque than `threshold`, or none for a blank picture. */
-export const opaqueBounds = (picture: Rgba, threshold = 16): Box | undefined => {
-  let left = picture.width
-  let top = picture.height
-  let right = 0
-  let bottom = 0
-  for (let row = 0; row < picture.height; row++)
-    for (let column = 0; column < picture.width; column++)
-      if ((picture.data[(row * picture.width + column) * 4 + 3] ?? 0) > threshold) {
-        left = Math.min(left, column)
-        top = Math.min(top, row)
-        right = Math.max(right, column + 1)
-        bottom = Math.max(bottom, row + 1)
-      }
-  return right > left && bottom > top ? { left, top, right, bottom } : undefined
 }
 
 /** How much of the picture is opaque, from 0 to 1. */

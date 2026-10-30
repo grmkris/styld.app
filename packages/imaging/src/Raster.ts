@@ -97,3 +97,42 @@ export const flatten = (picture: Rgba, ground = 236): Rgba => {
   }
   return { width: picture.width, height: picture.height, data }
 }
+
+/** A rectangle in pixels: `left`/`top` inclusive, `right`/`bottom` exclusive. */
+export interface Box {
+  readonly left: number
+  readonly top: number
+  readonly right: number
+  readonly bottom: number
+}
+
+/** The pixels of `box`, clamped to the picture. */
+export const crop = (picture: Rgba, box: Box): Rgba => {
+  const left = Math.max(0, Math.min(picture.width, box.left))
+  const top = Math.max(0, Math.min(picture.height, box.top))
+  const width = Math.max(0, Math.min(picture.width, box.right) - left)
+  const height = Math.max(0, Math.min(picture.height, box.bottom) - top)
+  const data = new Uint8Array(width * height * 4)
+  for (let row = 0; row < height; row++) {
+    const from = ((top + row) * picture.width + left) * 4
+    data.set(picture.data.subarray(from, from + width * 4), row * width * 4)
+  }
+  return { width, height, data }
+}
+
+/** The smallest box holding every pixel more opaque than `threshold`, or none for a blank picture. */
+export const opaqueBounds = (picture: Rgba, threshold = 16): Box | undefined => {
+  let left = picture.width
+  let top = picture.height
+  let right = 0
+  let bottom = 0
+  for (let row = 0; row < picture.height; row++)
+    for (let column = 0; column < picture.width; column++)
+      if ((picture.data[(row * picture.width + column) * 4 + 3] ?? 0) > threshold) {
+        left = Math.min(left, column)
+        top = Math.min(top, row)
+        right = Math.max(right, column + 1)
+        bottom = Math.max(bottom, row + 1)
+      }
+  return right > left && bottom > top ? { left, top, right, bottom } : undefined
+}
