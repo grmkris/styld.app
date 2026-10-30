@@ -21,6 +21,7 @@ import {
   identityEmail,
   identityName,
   identityText,
+  linkedSection,
   nameSkeleton,
   notice,
   problem,
@@ -33,6 +34,7 @@ import {
   unavailable,
 } from './AccountView.styles.ts'
 import { pageHead, pageTitle } from './PageHead.ts'
+import { assistantsSection } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 
@@ -45,36 +47,40 @@ type Inputs = {
 
 const assistants = (model: Model, { locale, origin }: Inputs, h: HtmlBuilder<Message>): Html => {
   const url = `${origin}/mcp`
-  return h.section(styled(h, section()), [
-    h.h2(styled(h, sectionTitle()), [format(locale, 'account.assistants.title', {})]),
-    h.p(styled(h, sectionText()), [format(locale, 'account.assistants.description', {})]),
-    h.p(styled(h, hostName()), ['Claude']),
-    h.ol(styled(h, steps()), [
-      h.li([], [format(locale, 'connect.claude.first', {})]),
-      h.li([], [format(locale, 'connect.claude.second', {})]),
-    ]),
-    h.p(styled(h, hostName()), ['ChatGPT']),
-    h.ol(styled(h, steps()), [
-      h.li([], [format(locale, 'connect.chatgpt.first', {})]),
-      h.li([], [format(locale, 'connect.chatgpt.second', {})]),
-    ]),
-    h.code([h.Id('server-url'), ...styled(h, serverUrl())], [url]),
-    h.div(styled(h, rowActions()), [
-      actionButton(
-        {
-          label: format(locale, 'connect.copy', {}),
-          style: secondaryAction(),
-          onClick: Message.ClickedCopyServerUrl({ url }),
-        },
-        h,
-      ),
-      Copy.match(model.copy, {
-        Idle: () => h.empty,
-        Copied: () => h.p([h.Role('status'), ...styled(h, notice())], [format(locale, 'connect.copied', {})]),
-        Failed: () => h.p([h.Role('alert'), ...styled(h, problem())], [format(locale, 'connect.copyFailed', {})]),
-      }),
-    ]),
-  ])
+  // Ask's stylist links here.
+  return h.section(
+    [h.Id(assistantsSection), ...styled(h, cx(section(), linkedSection()))],
+    [
+      h.h2(styled(h, sectionTitle()), [format(locale, 'account.assistants.title', {})]),
+      h.p(styled(h, sectionText()), [format(locale, 'account.assistants.description', {})]),
+      h.p(styled(h, hostName()), ['Claude']),
+      h.ol(styled(h, steps()), [
+        h.li([], [format(locale, 'connect.claude.first', {})]),
+        h.li([], [format(locale, 'connect.claude.second', {})]),
+      ]),
+      h.p(styled(h, hostName()), ['ChatGPT']),
+      h.ol(styled(h, steps()), [
+        h.li([], [format(locale, 'connect.chatgpt.first', {})]),
+        h.li([], [format(locale, 'connect.chatgpt.second', {})]),
+      ]),
+      h.code([h.Id('server-url'), ...styled(h, serverUrl())], [url]),
+      h.div(styled(h, rowActions()), [
+        actionButton(
+          {
+            label: format(locale, 'connect.copy', {}),
+            style: secondaryAction(),
+            onClick: Message.ClickedCopyServerUrl({ url }),
+          },
+          h,
+        ),
+        Copy.match(model.copy, {
+          Idle: () => h.empty,
+          Copied: () => h.p([h.Role('status'), ...styled(h, notice())], [format(locale, 'connect.copied', {})]),
+          Failed: () => h.p([h.Role('alert'), ...styled(h, problem())], [format(locale, 'connect.copyFailed', {})]),
+        }),
+      ]),
+    ],
+  )
 }
 
 const deletion = (model: Model, { locale }: Inputs, h: HtmlBuilder<Message>): Html => {

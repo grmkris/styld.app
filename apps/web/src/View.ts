@@ -1,6 +1,6 @@
 import { Select } from '@foldkit/ui'
 import { direction, format, type Locale, type MessageKey } from '@styld/i18n'
-import { Option } from 'effect'
+import { Option, String } from 'effect'
 import type { Document, Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { LocaleSave, Message, type Model, Session } from './App.ts'
@@ -244,7 +244,14 @@ const appNavigation = (model: Model, initial: string, h: HtmlBuilder<Message>): 
     [
       item('home', homeRouter({}), format(locale, 'nav.home', {}), homeTabIcon(h)),
       item('wardrobe', wardrobeRouter({}), format(locale, 'nav.wardrobe', {}), wardrobeTabIcon(h)),
-      item('ask', askRouter({}), format(locale, 'nav.ask', {}), askTabIcon(h), true),
+      // Ask keeps its search: coming back from another tab brings it back.
+      item(
+        'ask',
+        askRouter({ q: Option.liftPredicate(model.ask.query.trim(), String.isNonEmpty) }),
+        format(locale, 'nav.ask', {}),
+        askTabIcon(h),
+        true,
+      ),
       item('boards', boardsRouter({}), format(locale, 'nav.boards', {}), boardsTabIcon(h)),
       item(
         'you',

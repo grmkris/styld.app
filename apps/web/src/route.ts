@@ -1,5 +1,15 @@
 import { Equivalence, Option, Schema, pipe } from 'effect'
-import { defineRouteUnion, literal, mapTo, oneOf, parseUrlWithFallback, root, slash, string } from 'foldkit/route'
+import {
+  defineRouteUnion,
+  literal,
+  mapTo,
+  oneOf,
+  parseUrlWithFallback,
+  query,
+  root,
+  slash,
+  string,
+} from 'foldkit/route'
 
 /** Every page of the website. A route both parses its URL and builds its link. */
 export const AppRoute = defineRouteUnion({
@@ -15,8 +25,9 @@ export const AppRoute = defineRouteUnion({
   Piece: { pieceId: Schema.String },
   Looks: {},
   Look: { lookId: Schema.String },
-  /** Search your wardrobe, ask the stylist through an assistant, or add clothes (Gallery 2's middle button). */
-  Ask: {},
+  /** Search your wardrobe, ask the stylist through an assistant, or add clothes (Gallery 2's middle button). The
+   * search stays in the address, so coming back to Ask brings it back. */
+  Ask: { q: Schema.Option(Schema.String) },
   Boards: {},
   Board: { boardId: Schema.String },
   NotFound: { path: Schema.String },
@@ -33,7 +44,11 @@ export const reviewRouter = pipe(literal('wardrobe'), slash(literal('review')), 
 export const pieceRouter = pipe(literal('wardrobe'), slash(string('pieceId')), mapTo(AppRoute.Piece))
 export const looksRouter = pipe(literal('looks'), mapTo(AppRoute.Looks))
 export const lookRouter = pipe(literal('looks'), slash(string('lookId')), mapTo(AppRoute.Look))
-export const askRouter = pipe(literal('ask'), mapTo(AppRoute.Ask))
+export const askRouter = pipe(
+  literal('ask'),
+  query(Schema.Struct({ q: Schema.OptionFromOptional(Schema.String) })),
+  mapTo(AppRoute.Ask),
+)
 export const boardsRouter = pipe(literal('boards'), mapTo(AppRoute.Boards))
 export const boardRouter = pipe(literal('boards'), slash(string('boardId')), mapTo(AppRoute.Board))
 
@@ -106,6 +121,9 @@ export const tabOf = AppRoute.match<Option.Option<Tab>>({
 /** Whether two routes show the same tab page. */
 export const isSameTab = (left: AppRoute, right: AppRoute) =>
   Option.makeEquivalence(Equivalence.String)(tabOf(left), tabOf(right))
+
+/** The section of the account page about connecting an assistant, linked from Ask. */
+export const assistantsSection = 'assistants'
 
 /** Where an assistant's connection resumes once the person has signed in (Yielded keeps the pending
  * authorization in a private cookie). */

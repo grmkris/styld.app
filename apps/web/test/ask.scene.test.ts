@@ -1,0 +1,80 @@
+import { catalogVersion } from '@styld/i18n'
+import type { Piece } from '@styld/protocol'
+import { expect, given, role, scene, text } from 'foldkit/scene'
+import { modifyFields } from 'foldkit/struct'
+import { describe, test } from 'vitest'
+import { Session, init, update } from '../src/App.ts'
+import { PiecesData } from '../src/page/Wardrobe.ts'
+import { view } from '../src/View.ts'
+import { pieceFixture } from './WardrobeFixtures.ts'
+
+const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
+
+const askWith = (pieces: ReadonlyArray<Piece>, query = '') =>
+  modifyFields(
+    init({
+      locale: 'en',
+      catalogVersion,
+      timeZone: 'UTC',
+      referenceTime: 0,
+      pathname: '/ask',
+      origin: 'https://styld.test',
+      telemetryConsent: 'denied',
+    }).model,
+    {
+      session: () => Session.SignedIn({ claims }),
+      wardrobe: (current) => modifyFields(current, { pieces: () => PiecesData.Success({ data: pieces }) }),
+      ask: (current) => modifyFields(current, { query: () => query }),
+    },
+  )
+
+const tee = pieceFixture('tee', { name: 'White tee', category: 'top', colours: ['white'] })
+const boots = pieceFixture('boots', { category: 'shoes', status: 'processing' })
+
+describe('Ask', () => {
+  test('an empty wardrobe says what belongs here and the one way to fill it, with no empty suggestions', () => {
+    scene(
+      { update, view },
+      given(askWith([boots])),
+      expect(role('heading', { name: 'Nothing to search yet' })).toExist(),
+      expect(role('link', { name: 'Add clothes' })).toHaveAttr('href', '/wardrobe/add'),
+      expect(role('group', { name: 'Suggestions' })).not.toExist(),
+    )
+  })
+
+  test('suggestions come from the pieces that are ready: their kinds, then their colours', () => {
+    scene(
+      { update, view },
+      given(askWith([tee, boots])),
+      expect(role('button', { name: 'Tops' })).toExist(),
+      expect(role('button', { name: 'White' })).toExist(),
+      expect(role('button', { name: 'Shoes' })).not.toExist(),
+    )
+  })
+
+  test('what was found sits under one head; nothing found says so once and offers a way on', () => {
+    scene(
+      { update, view },
+      given(askWith([tee], 'tee')),
+      expect(role('heading', { name: 'In your wardrobe' })).toExist(),
+      expect(text('1 piece')).toExist(),
+      expect(role('link', { name: 'White tee' })).toHaveAttr('href', `/wardrobe/${tee.id}`),
+    )
+    scene(
+      { update, view },
+      given(askWith([tee], 'zzz')),
+      expect(text('Nothing in your wardrobe matches “zzz”.')).toExist(),
+      expect(text('0 pieces')).not.toExist(),
+      expect(role('button', { name: 'Tops' })).toExist(),
+    )
+  })
+
+  test('the stylist hands over to the account’s section on connecting an assistant', () => {
+    scene(
+      { update, view },
+      given(askWith([tee])),
+      expect(role('link', { name: 'Connect ChatGPT or Claude' })).toHaveAttr('href', '/account#assistants'),
+      expect(role('button', { name: 'Add' })).toHaveAttr('aria-haspopup', 'dialog'),
+    )
+  })
+})

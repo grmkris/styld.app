@@ -25,6 +25,8 @@ export const identityEmail = style({ fontSize: '14px', color: 'ink2' })
 export const avatarSkeleton = style({ flex: 'none', inlineSize: '60px', blockSize: '60px', borderRadius: 'pill' })
 export const nameSkeleton = style({ inlineSize: '9em', fontSize: '17px' })
 export const emailSkeleton = style({ inlineSize: '14em', fontSize: '14px' })
+/** A section other pages link to: it lands a little below the top of the screen. */
+export const linkedSection = style({ scrollMarginBlockStart: '16px' })
 export const unavailable = style({ display: 'grid', justifyItems: 'start', gap: '16px' })
 export const section = style({
   display: 'grid',

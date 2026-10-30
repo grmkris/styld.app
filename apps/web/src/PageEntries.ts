@@ -51,12 +51,13 @@ export const foldAskLeave = Update.foldChildStep({
   toParentMessage: (message: Ask.Message) => Message.GotAskMessage({ message }),
 })
 
-const foldAskEnter = Update.foldChildStep({
-  update: Ask.enter,
-  read: (model: Model) => Option.some(model.ask),
-  write: (model: Model, ask: Ask.Model) => modifyFields(model, { ask: () => ask }),
-  toParentMessage: (message: Ask.Message) => Message.GotAskMessage({ message }),
-})
+const foldAskEnter = (query: Option.Option<string>) =>
+  Update.foldChildStep({
+    update: Ask.enter(query),
+    read: (model: Model) => Option.some(model.ask),
+    write: (model: Model, ask: Ask.Model) => modifyFields(model, { ask: () => ask }),
+    toParentMessage: (message: Ask.Message) => Message.GotAskMessage({ message }),
+  })
 
 export const openHome: ReadonlyArray<Step> = [foldTodayEnter, foldWardrobeRevisit]
 /** What opening a tab page asks for. Home needs a session: a cookie with the request, or `afterSignIn`. */
@@ -64,7 +65,7 @@ export const openPage = (route: AppRoute, hasSessionCookie: boolean): ReadonlyAr
   Match.value(route).pipe(
     Match.tag('Home', () => (hasSessionCookie ? openHome : [])),
     Match.tag('Wardrobe', () => [foldWardrobeRevisit]),
-    Match.tag('Ask', () => [foldWardrobeRevisit, foldAskEnter]),
+    Match.tag('Ask', ({ q }) => [foldWardrobeRevisit, foldAskEnter(q)]),
     Match.tag('Looks', () => [foldLooksRevisit]),
     Match.tag('Boards', () => [foldBoardsRevisit]),
     Match.orElse(() => []),

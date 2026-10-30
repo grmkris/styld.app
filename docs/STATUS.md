@@ -109,6 +109,37 @@ routing, following Foldkit's own website. Other pages keep full loads.
     and "hlače" for bottoms.
   - Only ready pieces match.
   - Opening a tab page moved out of App.ts into `PageEntries.ts`.
+- **Ask rebuilt:**
+  - **The field:** `form role=search`, so Enter shows what was found and closes the keyboard.
+    - Phone hints: `enterkeyhint=search`, no autocapitalise or autocorrect.
+    - The placeholder says what it searches ("Search your wardrobe" / "Išči po garderobi") and ends in an ellipsis
+      if it is cut.
+    - The browser's own clear button is hidden. A quiet 44px clear refocuses the field.
+    - The search stays in the address (`/ask?q=…`, written 300ms after typing pauses with `replaceUrl`), so coming
+      back to Ask brings it back.
+  - **The +:** the black 52px circle is gone. A quiet + inside the pill opens a `@foldkit/ui` Dialog as a sheet
+    rising from the bottom:
+    - a scrim, a grab bar, "Add", a close button and the two ways to add;
+    - Escape and the scrim close it, and focus goes in and back;
+    - it is drawn only while open, because the dialog lays itself out with inline styles the CSP refuses in server
+      HTML.
+  - **The states:**
+    - Suggestions sit in one fixed 44px row, built from ready pieces: their kinds, then their three commonest
+      colours. There is no heading.
+    - An empty wardrobe says what belongs here and offers "Add clothes".
+    - Loading draws the chip row's shape.
+    - Results sit under "In your wardrobe" with the count.
+    - Nothing found says so once and offers Clear and the suggestions.
+  - **The stylist** is a secondary pill with its icon, linking to the account's assistants section
+    (`/account#assistants`).
+  - **Captions** are shared with the Wardrobe (`pieceLabel` in `WardrobeWords.ts`).
+  - **Tests:**
+    - Story and scene tests cover these states.
+    - The browser journey searches in Slovenian (čevlji, cevlji, obutev, "črne, čevlji", "modra, čevlji"), opens
+      the sheet, closes it with Escape and checks focus returns to the +.
+    - Ask's full load is held under 0.02.
+  - **Bundle:** the first load is now 300,211 of 307,200 gzip bytes, and the Dialog is most of this commit's growth.
+    About 7 KB of headroom is left; the next large addition needs a lazy chunk or a budget decision.
 - **A flaky native test, not ours:** twice tonight the MCP OAuth acceptance answered 500 from
   `/test/identity/disable-mcp` with `D1_ERROR: database is locked: SQLITE_BUSY` in local workerd. Each time it passed
   on a rerun with no change.

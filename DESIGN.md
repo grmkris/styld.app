@@ -90,7 +90,8 @@ Controls render through `@foldkit/ui`'s headless views (text buttons through `ac
 - **Chips**: 36px pills, 14px weight 500 in ink-2; the selected chip is filled ink. Inactive chips in a wrapping set sit
   on paper-2.
 - **Tabs**: text tabs; the current one is ink, weight 600, with a 2px ink underline.
-- **Search**: a 48px paper-2 pill with the search icon.
+- **Search**: a 52px stock pill ringed in rule (ink while focused) with the search icon, after the prototype's
+  `.askbar`. On Ask the clear and the + sit inside it as quiet 44px rounds, and the + opens a sheet from the bottom.
 - **Fields**: 52px tall, `field` radius, stock fill, a 1px rule edge, the label above in 14px weight 600. Focus is the
   focus-coloured outline, never a border change; an invalid field takes the `invalid` edge.
 - **Text links**: semibold ink over a 1.5px signal underline, offset 4px.

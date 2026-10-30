@@ -2889,14 +2889,14 @@
   "ask": {
     "title": "Vprašaj",
     "searchLabel": "Išči po garderobi",
-    "placeholder": "Temno modro, čevlji, lanena srajca …",
+    "placeholder": "Išči po garderobi",
     "clear": "Počisti iskanje",
     "add": "Dodaj",
     "addClothes": "Dodaj oblačila",
     "addClothesHint": "Fotografije, video ali kose pokaži kameri",
     "newBoard": "Začni zbirko",
     "newBoardHint": "Na mizo položi kose, besede in slike",
-    "suggestions": "Poskusi",
+    "suggestions": "Predlogi",
     "found": "{count, plural, one {# kos} two {# kosa} few {# kosi} other {# kosov}}",
     "noResults": "Nič v tvoji garderobi se ne ujema z »{query}«.",
     "failed": "Tvoja garderoba se ni naložila.",
@@ -2911,7 +2911,11 @@
       "outerwear": "vrhnja oblačila",
       "shoes": "čevlji, čevelj, obutev",
       "accessory": "dodatki, dodatek"
-    }
+    },
+    "inWardrobe": "V tvoji garderobi",
+    "emptyTitle": "Še ni česa iskati",
+    "emptyHint": "Dodaj oblačila in tu jih najdeš po imenu, barvi ali vrsti.",
+    "sheetTitle": "Dodaj"
   },
   "today": {
     "title": "Danes",

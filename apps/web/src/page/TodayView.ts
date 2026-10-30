@@ -18,7 +18,7 @@ import type { PiecesData } from './Wardrobe.ts'
 import { pageHead } from './PageHead.ts'
 import { title as headTitle } from './PageHead.styles.ts'
 import * as styles from './TodayView.styles.ts'
-import { categoryName } from './WardrobeWords.ts'
+import { pieceLabel } from './WardrobeWords.ts'
 
 const intlLocale = (locale: Locale) => (locale === 'sl' ? 'sl' : 'en')
 
@@ -44,8 +44,6 @@ const longDate = (day: string, locale: Locale) =>
     month: 'long',
     timeZone: 'UTC',
   }).format(dateOf(day))
-
-const pieceLabel = (piece: Piece, locale: Locale) => piece.name ?? format(locale, categoryName(piece.category), {})
 
 /** The table: the outfit's pieces in their slots. Spin brings in new ones, which drop onto the paper. */
 const tableView = (model: Model, pieces: ReadonlyArray<Piece>, locale: Locale, h: HtmlBuilder<Message>): Html => {

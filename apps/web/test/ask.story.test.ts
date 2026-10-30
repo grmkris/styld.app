@@ -1,3 +1,5 @@
+import { Option } from 'effect'
+import { Dialog } from '@foldkit/ui'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import * as Ask from '../src/page/Ask.ts'
@@ -69,8 +71,49 @@ describe('searching your wardrobe', () => {
       message(Ask.Message.SucceededLoadSearchLanguages()),
       model((current) => expect(Ask.SearchLanguages.guards.Both(current.languages)).toBe(true)),
     )
-    expect(Ask.enter(Ask.init()).commands?.map(({ name }) => name)).toEqual(['LoadSearchLanguages'])
-    expect(Ask.enter({ ...Ask.init(), languages: Ask.SearchLanguages.Both() }).commands).toBeUndefined()
+    expect(Ask.enter(Option.none())(Ask.init()).commands?.map(({ name }) => name)).toEqual(['LoadSearchLanguages'])
+    expect(Ask.enter(Option.none())({ ...Ask.init(), languages: Ask.SearchLanguages.Both() }).commands).toBeUndefined()
     expect(Command).toBeDefined()
+  })
+
+  test('the address follows the search once typing pauses, and only the newest search is written', () => {
+    story(
+      Ask.update,
+      given({ ...Ask.init(), query: 'knit' }),
+      message(Ask.Message.ElapsedQueryPause({ query: 'kn' })),
+      Command.expectNone(),
+      message(Ask.Message.ElapsedQueryPause({ query: 'knit' })),
+      Command.expectExact(Ask.WriteQuery),
+      Command.resolve(Ask.WriteQuery, Ask.Message.CompletedWriteQuery()),
+      model(({ query }) => expect(query).toBe('knit')),
+    )
+  })
+
+  test('Enter shows what was found; clearing empties the search and goes back to the field', () => {
+    story(
+      Ask.update,
+      given({ ...Ask.init(), query: 'shoes' }),
+      message(Ask.Message.SubmittedSearch()),
+      Command.expectExact(Ask.WriteQuery, Ask.FocusResults),
+      Command.resolve(Ask.WriteQuery, Ask.Message.CompletedWriteQuery()),
+      Command.resolve(Ask.FocusResults, Ask.Message.CompletedFocus()),
+      message(Ask.Message.ClickedClear()),
+      model(({ query }) => expect(query).toBe('')),
+      Command.expectExact(Ask.WriteQuery, Ask.FocusSearch),
+      Command.resolve(Ask.WriteQuery, Ask.Message.CompletedWriteQuery()),
+      Command.resolve(Ask.FocusSearch, Ask.Message.CompletedFocus()),
+    )
+  })
+
+  test('the + opens the sheet as a dialog, and leaving Ask closes it', () => {
+    story(
+      Ask.update,
+      given(Ask.init()),
+      message(Ask.Message.ClickedAdd()),
+      model(({ addSheet }) => expect(addSheet.isOpen).toBe(true)),
+      Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+    )
+    const open = Ask.update(Ask.init(), Ask.Message.ClickedAdd()).model
+    expect(Ask.leave(open).model.addSheet.isOpen).toBe(false)
   })
 })

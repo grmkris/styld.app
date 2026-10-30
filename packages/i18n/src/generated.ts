@@ -371,8 +371,11 @@ export interface MessageArgumentsByKey<T = string> {
   'ask.addClothes': Readonly<Record<string, never>>
   'ask.addClothesHint': Readonly<Record<string, never>>
   'ask.clear': Readonly<Record<string, never>>
+  'ask.emptyHint': Readonly<Record<string, never>>
+  'ask.emptyTitle': Readonly<Record<string, never>>
   'ask.failed': Readonly<Record<string, never>>
   'ask.found': { readonly count: number }
+  'ask.inWardrobe': Readonly<Record<string, never>>
   'ask.newBoard': Readonly<Record<string, never>>
   'ask.newBoardHint': Readonly<Record<string, never>>
   'ask.noResults': { readonly query: string | number }
@@ -385,6 +388,7 @@ export interface MessageArgumentsByKey<T = string> {
   'ask.searchWords.outerwear': Readonly<Record<string, never>>
   'ask.searchWords.shoes': Readonly<Record<string, never>>
   'ask.searchWords.top': Readonly<Record<string, never>>
+  'ask.sheetTitle': Readonly<Record<string, never>>
   'ask.stylistLink': Readonly<Record<string, never>>
   'ask.stylistText': Readonly<Record<string, never>>
   'ask.stylistTitle': Readonly<Record<string, never>>
@@ -2526,4 +2530,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '0ecc55c1376379e9345a4c461e459c7db34321719a7062e10aa1e5bd039cb7b4'
+export const catalogVersion = 'abcb3ff7011a958c178394f37e41328dc90c3048ab92c05814e8bdde333902e7'

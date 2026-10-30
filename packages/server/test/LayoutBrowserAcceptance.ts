@@ -116,3 +116,25 @@ export const expectInstantTabs = async (page: Page, origin: string) => {
   await page.waitForURL(/\/boards\/bd_/)
   expect(await page.evaluate(() => document.documentElement.dataset['kept'] ?? 'new')).toBe('new')
 }
+
+/** Ask in Slovenian finds pieces the way people type, in either language, and its + sheet opens and closes like
+ * a sheet: Escape shuts it and focus returns to the +. */
+export const expectSlovenianSearch = async (context: BrowserContext, page: Page, origin: string) => {
+  await context.addCookies([{ name: 'styld_locale', value: 'sl', url: origin }])
+  await page.goto(`${origin}/ask`, { waitUntil: 'networkidle' })
+  const field = page.getByRole('searchbox')
+  for (const query of ['čevlji', 'cevlji', 'obutev', 'črne, čevlji']) {
+    await field.fill(query)
+    await page.getByRole('link', { name: 'Derby shoes' }).waitFor({ state: 'visible' })
+  }
+  await field.fill('modra, čevlji')
+  await page.getByText('Nič v tvoji garderobi se ne ujema z »modra, čevlji«.').waitFor({ state: 'visible' })
+  await field.press('Enter')
+  const add = page.getByRole('button', { name: 'Dodaj', exact: true })
+  await add.click()
+  await page.getByRole('dialog', { name: 'Dodaj' }).waitFor({ state: 'visible' })
+  await page.keyboard.press('Escape')
+  await page.getByRole('dialog').waitFor({ state: 'detached' })
+  expect(await add.evaluate((button) => button === document.activeElement)).toBe(true)
+  await context.addCookies([{ name: 'styld_locale', value: 'en', url: origin }])
+}

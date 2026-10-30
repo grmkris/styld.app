@@ -2889,14 +2889,14 @@
   "ask": {
     "title": "Ask",
     "searchLabel": "Search your wardrobe",
-    "placeholder": "Navy, shoes, the linen shirt…",
+    "placeholder": "Search your wardrobe",
     "clear": "Clear the search",
     "add": "Add",
     "addClothes": "Add clothes",
     "addClothesHint": "Photos, a video, or hold pieces up to the camera",
     "newBoard": "Start a board",
     "newBoardHint": "Lay pieces, words and pictures on a table",
-    "suggestions": "Try",
+    "suggestions": "Suggestions",
     "found": "{count, plural, one {# piece} other {# pieces}}",
     "noResults": "Nothing in your wardrobe matches “{query}”.",
     "failed": "Your wardrobe didn’t load.",
@@ -2911,7 +2911,11 @@
       "outerwear": "outerwear",
       "shoes": "shoes, shoe, footwear",
       "accessory": "accessory, accessories"
-    }
+    },
+    "inWardrobe": "In your wardrobe",
+    "emptyTitle": "Nothing to search yet",
+    "emptyHint": "Add clothes and find them here by name, colour or kind.",
+    "sheetTitle": "Add"
   },
   "today": {
     "title": "Today",

@@ -14,15 +14,10 @@ import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { categories } from './PieceFields.ts'
 import { Message, type Model } from './Wardrobe.ts'
-import { categoryName, subcategoryName } from './WardrobeWords.ts'
+import { categoryName, pieceLabel } from './WardrobeWords.ts'
 import * as styles from './WardrobeView.styles.ts'
 import { wardrobeTabs } from './WardrobeTabs.ts'
 import { addPiecesAction, pageHead, pageTitle } from './PageHead.ts'
-
-/** A piece's name, or what it is when it has none. */
-export const pieceLabel = (piece: Piece, locale: Locale) =>
-  piece.name ??
-  format(locale, piece.subcategory === null ? categoryName(piece.category) : subcategoryName(piece.subcategory), {})
 
 /** The small image of a piece; the API Worker serves it to its owner only. */
 const thumbnailPath = (piece: Piece) => `/cdn/pieces/${piece.id}/thumb`

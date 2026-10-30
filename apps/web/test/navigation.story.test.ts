@@ -60,7 +60,7 @@ describe('following a link', () => {
 
   test('only a change of tab cross-fades', () => {
     expect(isTabChange(AppRoute.Home(), AppRoute.Wardrobe())).toBe(true)
-    expect(isTabChange(AppRoute.Ask(), AppRoute.Ask())).toBe(false)
+    expect(isTabChange(AppRoute.Ask({ q: Option.none() }), AppRoute.Ask({ q: Option.none() }))).toBe(false)
   })
 })
 
@@ -75,7 +75,7 @@ describe('opening a tab page inside the page', () => {
       ),
       message(Message.ChangedUrl({ url: urlOf('/ask') })),
       model(({ route, wardrobe }) => {
-        expect(route).toEqual(AppRoute.Ask())
+        expect(route).toEqual(AppRoute.Ask({ q: Option.none() }))
         expect(wardrobe.pieces).toEqual(PiecesData.Refreshing({ data: [tee] }))
       }),
       Command.expectExact(ListPieces, LoadSearchLanguages, ScrollToTop, FocusPageTitle),
@@ -130,7 +130,7 @@ describe('opening a tab page inside the page', () => {
       message(Message.ChangedUrl({ url: urlOf('/wardrobe/add') })),
       Command.expectExact(Navigate),
       Command.resolve(Navigate, Message.CompletedNavigate()),
-      model(({ route }) => expect(route).toEqual(AppRoute.Ask())),
+      model(({ route }) => expect(route).toEqual(AppRoute.Ask({ q: Option.none() }))),
     )
     expect(NavigateInternal.name).toBe('NavigateInternal')
   })
