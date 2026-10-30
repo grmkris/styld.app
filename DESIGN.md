@@ -109,6 +109,8 @@ Controls render through `@foldkit/ui`'s headless views (text buttons through `ac
 - **Navigation (signed in): Home, Wardrobe, Ask, Boards.** Ask sits in the middle as a filled ink circle, the one
   thing to do from anywhere. You is reached through the avatar.
 - **Mobile:** a floating glass pill at the bottom carries the four items. The top bar keeps the logo and the avatar.
+  The board editor is the exception: it has the whole screen and its own way back to Boards, because the pill would
+  sit over its tray of pieces.
 - **Desktop:** the same items in a floating glass rail on the left, with the avatar under it.
 - **Signed out:** the top bar keeps the logo and "Sign in".
 - **Glass:** the floating nav and the Ask panel are glass at the owner's request. They are the only blur behind text,

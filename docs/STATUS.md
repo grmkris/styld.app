@@ -100,6 +100,43 @@ Choices made on common sense:
 - Boards have no MCP tools and no sharing.
 - No weather on the table.
 - Real devices are unchecked: iPhone Safari's pinch and paste were only exercised in Chromium.
+- **A label near the 90% wrap cap** can wrap in a smaller preview and not in the editor. Measured on the preview: its
+  width was 88.6% of the paper. Font and paper scaled exactly together, but headless Chromium on Linux rounds glyph
+  widths, which pushed the smaller copy over the cap. macOS and iOS use fractional widths. Wrapping only at typed line
+  breaks would make it exact, but a long label would then run off the paper.
+
+**Preview release and browser walk (2026-10-30, `f794902`):**
+
+- **Deploys:** from the clean main checkout with `docs/DEPLOYMENT.md`'s commands; every plan only updated Workers. In order:
+  - `a7a3e5d`: worker `a198adc1-d66d-4c95-ae6d-21870c2ced56`, website `4b8eb191-8b32-4375-b2e3-b7bab7123962`.
+  - `cd12040`: worker `9068d019-95d6-4be6-ae38-c3880676ea96`, website `94c4654e-8ddb-4e0c-919b-bc737e22fa7d`, edge
+    `fcd71581-1602-4783-9fb7-7250bd99f6bd`.
+  - **`f794902`**:
+    - worker deployment `7c0c2164-31da-4886-872b-2754a9f588c0` (version `571b66d3-27b8-4738-b777-c2b601b65ccf`);
+    - website deployment `651e8ef9-9471-4a3e-bff4-d0762d4886d0` (version `87a9d008-d58b-4dd4-acb0-09b17795aa6f`);
+    - the edge was unchanged at `fcd71581-1602-4783-9fb7-7250bd99f6bd` (version `249b3945-1fae-4659-8a07-e3cd995ba1f7`).
+- **Readback:** health reports `status: ok` and release `f7949024b76954641c93dea110cf54df95555bb2`.
+  `tools/preview.native.test.ts` passes 2/2.
+- **Browser walk** on the preview URL: headless Chromium at 390×844 with touch, then 1440×900.
+  - Signed in with a real emailed code (myinbox), using the preview's test account, which holds the capture
+    session's test pieces.
+  - The four acceptance cut-outs were added through the website's own API.
+  - Then: Home, Spin (`Denim shorts, Tops, Derby shoes` became `Denim shorts, Cable knit, Derby shoes`), a board by
+    hand (three pieces, a headline label, saved, save as a look), Ask with the + sheet, then desktop Home and the
+    board.
+  - Result: no page error, no CSP violation, no element past the page's edge on Home, the board or Ask, and no nav
+    pill over the board's tray.
+- **Found by the walk and fixed** (each landed green: 249 unit, 21 native, bundle 289,012 / 307,200):
+  - `cd12040`: a wardrobe of only tops laid out one piece, and Spin seemed to do nothing. Home now links to adding
+    a top, trousers or a skirt, or shoes, whichever a whole outfit lacks; a dress stands in for a top and a bottom.
+  - `fed44c7`: Home offered an empty board to pick up, a large blank card. On a desktop the tray card stretched to
+    the board card's height.
+  - `9017196`: once a query was typed, Ask ran 6px past a phone's edge, because the page's `auto` column grew to the
+    search field's own width. The native acceptance now measures every element's edge on Home, the board and Ask:
+    it failed before the fix and passes after. `scrollWidth` can't see this, because the page clips sideways
+    overflow.
+  - `f794902`: the floating nav sat over the board editor's tray on a phone. The editor now has the whole screen,
+    as `DESIGN.md` records.
 
 ## Guided camera, front and back — 2026-10-30
 
