@@ -37,7 +37,7 @@ export const capturePolicy = (env: Readonly<Record<string, unknown>>): CapturePo
   single: choice(env['CUTOUT_SINGLE'], ['cloudflare', 'sam'], 'cloudflare'),
   routeConfidence: number(env['CUTOUT_ROUTE_CONFIDENCE'], 0.75),
   edges: choice(env['CUTOUT_EDGES'], ['refined', 'stepped'], 'refined'),
-  heldConfidence: number(env['CAMERA_HELD_CONFIDENCE'], 0.7),
+  heldConfidence: number(env['CAMERA_HELD_CONFIDENCE'], 0.6),
   samePieceConfidence: number(env['CAMERA_SAME_PIECE_CONFIDENCE'], 0.6),
   dailyAllowance: number(env['DAILY_ALLOWANCE'], 100),
   credits: { photo: 1, videoHalfMinute: 5 },

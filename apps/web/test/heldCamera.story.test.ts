@@ -61,6 +61,27 @@ describe('the held-up camera', () => {
     )
   })
 
+  test('held still after a no, the camera looks again; held still after a photo, it takes nothing more', () => {
+    const second = CheckHeld({ token: 1, check, still, previous: Option.none() })
+    story(
+      update,
+      given(watching()),
+      message(Message.SettledScene({ check, still })),
+      Command.resolve(firstCheck, Message.SucceededCheckHeld({ token: 0, check, still, held: false, side: 'unclear' })),
+      model(({ camera }) => expect(camera).toEqual(Camera.Watching({ hint: 'notSeen' }))),
+      message(Message.StayedStill({ check, still })),
+      Command.resolve(second, Message.SucceededCheckHeld({ token: 1, check, still, held: true, side: 'front' })),
+      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: Option.some('front') }),
+      Command.resolve(Buzz, Message.CompletedBuzz()),
+      message(Message.StayedStill({ check, still })),
+      Command.expectNone(),
+      model(({ shots, pendingCheck }) => {
+        expect(shots).toBe(1)
+        expect(pendingCheck).toEqual(Option.none())
+      }),
+    )
+  })
+
   test('nothing held up asks for one piece; without the check a tap still takes the photo', () => {
     const second = CheckHeld({ token: 1, check, still, previous: Option.none() })
     story(
@@ -69,7 +90,7 @@ describe('the held-up camera', () => {
       message(Message.SettledScene({ check, still })),
       Command.resolve(firstCheck, Message.SucceededCheckHeld({ token: 0, check, still, held: false, side: 'unclear' })),
       model(({ camera, shots }) => {
-        expect(camera).toEqual(Camera.Watching({ hint: 'holdOne' }))
+        expect(camera).toEqual(Camera.Watching({ hint: 'notSeen' }))
         expect(shots).toBe(0)
       }),
       message(Message.SettledScene({ check, still })),

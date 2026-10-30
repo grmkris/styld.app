@@ -2770,6 +2770,7 @@
       "holdOne": "Pokaži en kos in ga drži pri miru",
       "checking": "Gledam …",
       "taken": "Imam. Naslednji kos ali njegov hrbet",
+      "notSeen": "Drži ga stran od sebe, razprtega in celega v kadru, ali tapni sliko",
       "tapToTake": "Tapni sliko, da jo posnameš",
       "shutter": "Fotografiraj",
       "count": "{count, plural, one {# posnet} two {# posneta} few {# posneti} other {# posnetih}}",

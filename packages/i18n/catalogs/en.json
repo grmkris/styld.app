@@ -2770,6 +2770,7 @@
       "holdOne": "Hold one piece up, then keep still",
       "checking": "Looking…",
       "taken": "Got it. Next piece, or its back",
+      "notSeen": "Hold it away from you, spread out and all in view, or tap the picture",
       "tapToTake": "Tap the picture to take it",
       "shutter": "Take a photo",
       "count": "{count, plural, one {# taken} other {# taken}}",

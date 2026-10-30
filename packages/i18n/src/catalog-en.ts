@@ -2448,6 +2448,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.camera.holdOne': 'Hold one piece up, then keep still',
   'capture.camera.checking': 'Looking…',
   'capture.camera.taken': 'Got it. Next piece, or its back',
+  'capture.camera.notSeen': 'Hold it away from you, spread out and all in view, or tap the picture',
   'capture.camera.tapToTake': 'Tap the picture to take it',
   'capture.camera.shutter': 'Take a photo',
   'capture.camera.count': '{count, plural, one {# taken} other {# taken}}',

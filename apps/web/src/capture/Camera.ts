@@ -1,12 +1,12 @@
 import { Clock, Effect, Queue, Schedule, Stream } from 'effect'
 import { startWatch, watchFrame } from './Stillness.ts'
 
-/** What the camera reports: it started, it could not, or a photo was taken (by holding still, or by a
- * tap on the picture) with a small copy for the garment check. */
+/** What the camera reports: it started, it could not, or a photo was taken (by holding still, by staying
+ * still a while longer, or by a tap on the picture) with a small copy for the garment check. */
 export type CameraEvent =
   | { readonly kind: 'started' }
   | { readonly kind: 'failed'; readonly reason: 'denied' | 'unavailable' }
-  | { readonly kind: 'settled' | 'tapped'; readonly check: File; readonly still: File }
+  | { readonly kind: 'settled' | 'again' | 'tapped'; readonly check: File; readonly still: File }
 
 /** Grey frames for the stillness watch are this wide. */
 const watchWidth = 64
@@ -41,7 +41,7 @@ const jpeg = (video: HTMLVideoElement, edge: number, name: string) =>
     catch: () => failed('unavailable'),
   })
 
-const shot = (video: HTMLVideoElement, kind: 'settled' | 'tapped') =>
+const shot = (video: HTMLVideoElement, kind: 'settled' | 'again' | 'tapped') =>
   Effect.gen(function* () {
     const stamp = (yield* Clock.currentTimeMillis).toString(36)
     const check = yield* jpeg(video, checkEdge, `check-${stamp}.jpg`)
@@ -64,7 +64,7 @@ const openCamera = (facing: 'user' | 'environment') =>
   )
 
 /** Run the camera inside `host` (which holds a `<video>`) until the page lets it go: report each time
- * the scene settles after moving, and each tap on the picture. */
+ * the scene settles after moving or stays settled a while longer, and each tap on the picture. */
 export const watchCamera = (host: Element, facing: 'user' | 'environment') =>
   Stream.callback<CameraEvent>((queue) =>
     Effect.gen(function* () {
@@ -106,7 +106,7 @@ export const watchCamera = (host: Element, facing: 'user' | 'environment') =>
       const tick = Effect.gen(function* () {
         const next = watchFrame(watch, grey(video, canvas))
         watch = next.watch
-        const kind = tapped ? 'tapped' : next.settled ? 'settled' : undefined
+        const kind = tapped ? 'tapped' : next.settle
         tapped = false
         if (kind !== undefined) Queue.offerUnsafe(queue, yield* shot(video, kind))
       })

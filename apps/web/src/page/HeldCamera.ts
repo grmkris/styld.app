@@ -13,7 +13,7 @@ const Facing = Schema.Literals(['user', 'environment'])
 type Facing = typeof Facing.Type
 
 /** What the camera panel tells the person while it watches. */
-export const Hint = Schema.Literals(['holdOne', 'checking', 'taken', 'tapToTake'])
+export const Hint = Schema.Literals(['holdOne', 'checking', 'taken', 'notSeen', 'tapToTake'])
 export type Hint = typeof Hint.Type
 
 export const Camera = defineTaggedUnion({
@@ -58,6 +58,7 @@ export const Message = defineMessageUnion({
   StartedCamera: {},
   FailedCamera: { reason: Schema.Literals(['denied', 'unavailable']) },
   SettledScene: { check: File.File, still: File.File },
+  StayedStill: { check: File.File, still: File.File },
   TappedPicture: { check: File.File, still: File.File },
   SucceededCheckHeld: { token: Schema.Number, check: File.File, still: File.File, held: Schema.Boolean, side: Side },
   FailedCheckHeld: { token: Schema.Number },
@@ -79,7 +80,13 @@ export type OutMessage = typeof OutMessage.Type
  * @internal Exported for its tests. */
 export const WatchCamera = Mount.defineStream('WatchCamera', {
   args: { facing: Facing },
-  messages: [Message.StartedCamera, Message.FailedCamera, Message.SettledScene, Message.TappedPicture],
+  messages: [
+    Message.StartedCamera,
+    Message.FailedCamera,
+    Message.SettledScene,
+    Message.StayedStill,
+    Message.TappedPicture,
+  ],
   execute: ({ element, facing }) =>
     Stream.unwrap(
       Effect.tryPromise(() => import('../capture/Camera.ts')).pipe(
@@ -88,9 +95,9 @@ export const WatchCamera = Mount.defineStream('WatchCamera', {
             Stream.map((event) => {
               if (event.kind === 'started') return Message.StartedCamera()
               if (event.kind === 'failed') return Message.FailedCamera({ reason: event.reason })
-              return event.kind === 'settled'
-                ? Message.SettledScene({ check: event.check, still: event.still })
-                : Message.TappedPicture({ check: event.check, still: event.still })
+              const pictures = { check: event.check, still: event.still }
+              if (event.kind === 'settled') return Message.SettledScene(pictures)
+              return event.kind === 'again' ? Message.StayedStill(pictures) : Message.TappedPicture(pictures)
             }),
           ),
         ),
@@ -189,13 +196,16 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     FailedCamera: ({ reason }) =>
       isOpen(model) ? { model: modifyFields(model, { camera: () => Camera.Failed({ reason }) }) } : { model },
     SettledScene: ({ check, still }) => settled(model, check, still),
+    // Held still a while longer: look again, unless the garment was just taken and is still being held.
+    StayedStill: ({ check, still }) =>
+      Camera.guards.Watching(model.camera) && model.camera.hint === 'taken' ? { model } : settled(model, check, still),
     TappedPicture: ({ check, still }) =>
       Camera.guards.Watching(model.camera) ? took(model, still, check, Option.none()) : { model },
     SucceededCheckHeld: ({ token, check, still, held, side }) => {
       if (!awaited(model, token)) return { model }
       return held
         ? took(model, still, check, side === 'unclear' ? Option.none() : Option.some(side))
-        : { model: modifyFields(model, { pendingCheck: () => Option.none(), camera: () => watching('holdOne') }) }
+        : { model: modifyFields(model, { pendingCheck: () => Option.none(), camera: () => watching('notSeen') }) }
     },
     // Without the check, the camera still takes a photo by hand.
     FailedCheckHeld: ({ token }) =>

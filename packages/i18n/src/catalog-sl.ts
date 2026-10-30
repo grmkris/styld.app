@@ -2493,6 +2493,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.camera.holdOne': 'Pokaži en kos in ga drži pri miru',
   'capture.camera.checking': 'Gledam …',
   'capture.camera.taken': 'Imam. Naslednji kos ali njegov hrbet',
+  'capture.camera.notSeen': 'Drži ga stran od sebe, razprtega in celega v kadru, ali tapni sliko',
   'capture.camera.tapToTake': 'Tapni sliko, da jo posnameš',
   'capture.camera.shutter': 'Fotografiraj',
   'capture.camera.count': '{count, plural, one {# posnet} two {# posneta} few {# posneti} other {# posnetih}}',

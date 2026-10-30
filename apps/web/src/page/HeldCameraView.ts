@@ -14,6 +14,7 @@ const hintKey: { readonly [Key in Hint]: MessageKey } = {
   holdOne: 'capture.camera.holdOne',
   checking: 'capture.camera.checking',
   taken: 'capture.camera.taken',
+  notSeen: 'capture.camera.notSeen',
   tapToTake: 'capture.camera.tapToTake',
 }
 
