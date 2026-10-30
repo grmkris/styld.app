@@ -1,0 +1,529 @@
+/* Styld landing: the endless zoom sketch. Gallery 2 tokens (apps/web/src/zyzz.config.ts), copied as literals because
+   this page stands alone. The zoom itself is CSS animation on `scale` and `rotate`; zoom.js only writes the layers,
+   their keyframes and the words, which production would render on the server with zyzz classes. */
+
+@font-face {
+  font-family: 'Anton';
+  src: url('fonts/anton-latin.23aab0b2.woff2') format('woff2');
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Anton';
+  src: url('fonts/anton-latin-ext.ae1a8ac1.woff2') format('woff2');
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+@font-face {
+  font-family: 'Hanken Grotesk';
+  src: url('fonts/hanken-grotesk-latin-wght-normal.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Hanken Grotesk';
+  src: url('fonts/hanken-grotesk-latin-ext-wght-normal.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+:root {
+  --paper: #f1eee7;
+  --paper2: #e7e2d9;
+  --stock: #fbf9f5;
+  --ink: #1c1410;
+  --ink2: #5d554e;
+  --ink3: #8b827a;
+  --rule: #ddd6cc;
+  --signal: #2f4f7c;
+  --on-ink: #f7f4ee;
+  --focus: #2f5bd3;
+  --sand: #e0d3b8;
+  --sage: #c3cbb7;
+  --slate: #bec8d4;
+  --clay: #dcc0ad;
+  --glass: oklch(0.985 0.005 80 / 0.74);
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 16px/1.5 'Hanken Grotesk', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+
+a {
+  color: inherit;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Sketch controls, not part of the design. */
+.sketch-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px 16px;
+  padding: 8px 20px;
+  background: var(--paper2);
+  color: var(--ink2);
+  font-size: 13px;
+}
+.sketch-bar label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.sketch-bar select {
+  font: inherit;
+  color: var(--ink);
+  background: var(--stock);
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  padding: 4px 6px;
+}
+
+.top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 16px 20px;
+}
+.logo {
+  font: 400 28px/1 'Anton', sans-serif;
+  text-decoration: none;
+}
+.top nav {
+  display: flex;
+  gap: 20px;
+  font-weight: 600;
+  font-size: 15px;
+}
+.top nav a {
+  text-decoration-color: var(--signal);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+}
+
+.hero {
+  display: grid;
+  gap: 32px;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 8px 20px 56px;
+}
+@media (min-width: 900px) {
+  .hero {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 460px);
+    align-items: center;
+    gap: 72px;
+    padding-top: 40px;
+  }
+}
+
+h1 {
+  margin: 0;
+  font-size: clamp(46px, 6.4vw, 66px);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.lede {
+  margin: 18px 0 0;
+  max-width: 46ch;
+  font-size: 17px;
+  color: var(--ink2);
+  text-wrap: pretty;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 28px;
+}
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 20px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+  transition:
+    background-color 140ms var(--ease),
+    scale 140ms var(--ease);
+}
+.primary {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+.secondary {
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+}
+.primary:active,
+.secondary:active {
+  scale: 0.96;
+}
+@media (hover: hover) {
+  .primary:hover {
+    background: color-mix(in srgb, var(--ink) 86%, var(--paper));
+  }
+  .secondary:hover {
+    background: var(--paper2);
+  }
+}
+
+/* The stage: a table (4:5, the table radius) that zooms into itself forever. */
+.stage {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  margin: 0;
+  justify-self: center;
+  container-type: inline-size;
+}
+/* The table's edge: a hairline and a soft shadow, so the sheet reads against the page whichever paper fills it. */
+.stage::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  aspect-ratio: 4 / 5;
+  border-radius: 6.5cqw;
+  box-shadow:
+    0 0 0 1px var(--rule),
+    0 14px 40px -14px oklch(0 0 0 / 0.22);
+}
+.zoom {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  background: var(--paper);
+  /* clip-path, not overflow + radius, so Safari clips the composited layers too. */
+  clip-path: inset(1px round 6.5cqw);
+  isolation: isolate;
+}
+
+/* Each level is one scene. All levels share the stage's box; scale and rotate place each one inside the window of
+   the scene before it. The keyframes come from zoom.js: an exponential curve per level, so the zoom keeps one speed. */
+.level {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: 1.2cqw;
+  background: var(--bg);
+  animation-iteration-count: infinite;
+  backface-visibility: hidden;
+}
+.zoom.still .level {
+  animation: none;
+  scale: var(--still-scale);
+  rotate: var(--still-turn);
+  z-index: var(--still-z);
+}
+.zoom.paused .level,
+.zoom.paused ~ .captions .caption {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .zoom .level {
+    animation: none;
+    scale: var(--still-scale);
+    rotate: var(--still-turn);
+    z-index: var(--still-z);
+  }
+  .stage .pause {
+    display: none;
+  }
+}
+
+/* How a level looks lying inside the scene before it. Drawn as its own bleed, so it scales with it. */
+.frame-polaroid {
+  box-shadow:
+    0 0 0 3.6cqw var(--stock),
+    0 2cqw 7cqw 3cqw oklch(0 0 0 / 0.13);
+}
+.frame-card {
+  border-radius: 4cqw;
+  box-shadow:
+    0 0 0 2.6cqw var(--stock),
+    0 0 0 2.9cqw var(--rule),
+    0 2cqw 7cqw 2cqw oklch(0 0 0 / 0.1);
+}
+.frame-screen {
+  border-radius: 5cqw;
+  box-shadow:
+    0 0 0 2.4cqw #2b221d,
+    0 2cqw 7cqw 3cqw oklch(0 0 0 / 0.2);
+}
+.frame-pin {
+  box-shadow: 0 2cqw 6cqw 1cqw oklch(0 0 0 / 0.2);
+}
+
+/* Inside a scene. Positions are in % of the table; type in cqw so it scales with the stage. */
+.piece {
+  position: absolute;
+  height: auto;
+  user-select: none;
+  pointer-events: none;
+}
+.window {
+  position: absolute;
+  left: calc(50% - 50% / var(--zoom-scale));
+  top: calc(50% - 50% / var(--zoom-scale));
+  width: calc(100% / var(--zoom-scale));
+  height: calc(100% / var(--zoom-scale));
+}
+.day,
+.board-label {
+  position: absolute;
+  inset-inline-start: 6%;
+  top: 3.5%;
+  margin: 0;
+  font: 400 14cqw/1 'Anton', sans-serif;
+  white-space: nowrap;
+}
+.board-label {
+  font-size: 13cqw;
+}
+
+.camera-title,
+.camera-hint {
+  position: absolute;
+  inset-inline: 6%;
+  margin: 0;
+  text-align: center;
+  color: var(--on-ink);
+}
+.camera-title {
+  top: 5.5%;
+  font-weight: 600;
+  font-size: 5.4cqw;
+}
+.camera-hint {
+  top: 13%;
+  font-size: 3.8cqw;
+  opacity: 0.72;
+}
+.bracket {
+  position: absolute;
+  width: 7cqw;
+  height: 7cqw;
+  border: 0 solid var(--on-ink);
+}
+.bracket.tl {
+  left: -2.6cqw;
+  top: -2.6cqw;
+  border-width: 0.9cqw 0 0 0.9cqw;
+  border-top-left-radius: 2.4cqw;
+}
+.bracket.tr {
+  right: -2.6cqw;
+  top: -2.6cqw;
+  border-width: 0.9cqw 0.9cqw 0 0;
+  border-top-right-radius: 2.4cqw;
+}
+.bracket.bl {
+  left: -2.6cqw;
+  bottom: -2.6cqw;
+  border-width: 0 0 0.9cqw 0.9cqw;
+  border-bottom-left-radius: 2.4cqw;
+}
+.bracket.br {
+  right: -2.6cqw;
+  bottom: -2.6cqw;
+  border-width: 0 0.9cqw 0.9cqw 0;
+  border-bottom-right-radius: 2.4cqw;
+}
+.shutter {
+  position: absolute;
+  left: 50%;
+  top: 81%;
+  width: 15cqw;
+  height: 15cqw;
+  translate: -50% 0;
+  border: 1.3cqw solid var(--on-ink);
+  border-radius: 50%;
+}
+
+.wardrobe-title {
+  position: absolute;
+  inset-inline-start: 6%;
+  top: 2.6%;
+  margin: 0;
+  font-weight: 600;
+  font-size: 7cqw;
+  letter-spacing: -0.02em;
+}
+.wardrobe-count {
+  position: absolute;
+  inset-inline-end: 6%;
+  top: 4.4%;
+  margin: 0;
+  font-size: 3.8cqw;
+  color: var(--ink3);
+  font-variant-numeric: tabular-nums;
+}
+
+.bubble {
+  position: absolute;
+  inset-inline-end: 6%;
+  top: 5%;
+  max-width: 66%;
+  margin: 0;
+  padding: 2.6cqw 4cqw;
+  border-radius: 5cqw;
+  background: var(--paper2);
+  font-size: 4cqw;
+  line-height: 1.35;
+}
+.app-chip {
+  position: absolute;
+  inset-inline-start: 0;
+  top: -7.4cqw;
+  font: 400 3.8cqw/1 'Anton', sans-serif;
+  color: var(--ink2);
+}
+.answer {
+  position: absolute;
+  inset-inline: 7%;
+  top: 73.5%;
+  margin: 0;
+  font-size: 4cqw;
+  line-height: 1.35;
+}
+.composer {
+  position: absolute;
+  inset-inline: 6%;
+  top: 86%;
+  display: flex;
+  align-items: center;
+  height: 9cqw;
+  margin: 0;
+  padding: 0 4cqw;
+  border-radius: 999px;
+  box-shadow: inset 0 0 0 0.35cqw var(--rule);
+  color: var(--ink3);
+  font-size: 3.8cqw;
+}
+
+/* The one control on the zoom: motion that plays on its own for more than five seconds needs a pause (WCAG 2.2.2). */
+.pause {
+  position: absolute;
+  right: 3.4cqw;
+  top: calc(125cqw - 3.4cqw - 44px);
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: var(--ink);
+  cursor: pointer;
+  transition: scale 140ms var(--ease);
+}
+.pause:active {
+  scale: 0.96;
+}
+.pause svg {
+  width: 20px;
+  height: 20px;
+}
+
+.captions {
+  position: relative;
+  display: grid;
+  min-height: 3.2em;
+  margin-top: 16px;
+  font-size: 17px;
+  color: var(--ink2);
+  text-align: center;
+}
+.captions:empty {
+  display: none;
+}
+.caption {
+  grid-area: 1 / 1;
+  margin: 0;
+  opacity: 0;
+  text-wrap: balance;
+  animation-iteration-count: infinite;
+}
+.zoom.still ~ .captions .caption {
+  animation: none;
+}
+.zoom.still ~ .captions .caption:first-child {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .captions .caption {
+    animation: none;
+  }
+  .captions .caption:first-child {
+    opacity: 1;
+  }
+}
+
+/* The quiet page below the hero: still type, no motion. */
+.features {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 48px 20px 64px;
+  border-top: 1px solid var(--rule);
+}
+.features h2 {
+  margin: 0 0 24px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.features dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: 28px 32px;
+  margin: 0;
+}
+.features dt {
+  font-size: 17px;
+  font-weight: 600;
+}
+.features dd {
+  margin: 6px 0 0;
+  color: var(--ink2);
+  max-width: 40ch;
+  text-wrap: pretty;
+}
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 24px 20px 48px;
+  font-size: 14px;
+  color: var(--ink2);
+}

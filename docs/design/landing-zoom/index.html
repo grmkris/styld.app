@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f1eee7" />
+    <title>Styld landing: endless zoom sketch</title>
+    <link rel="preload" href="fonts/hanken-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="zoom.css" />
+    <script type="module" src="zoom.js"></script>
+  </head>
+  <body>
+    <form class="sketch-bar" aria-label="Sketch controls">
+      <strong>Sketch</strong>
+      <label>Subject
+        <select name="subject">
+          <option value="days">Days on the table</option>
+          <option value="product">The product loop</option>
+        </select>
+      </label>
+      <label>Language
+        <select name="lang">
+          <option value="en">English</option>
+          <option value="sl">Slovenščina</option>
+          <option value="en-XA">en-XA (long)</option>
+          <option value="ar-XB">ar-XB (RTL)</option>
+        </select>
+      </label>
+      <label>Motion
+        <select name="motion">
+          <option value="on">On</option>
+          <option value="reduce">Reduced</option>
+        </select>
+      </label>
+    </form>
+
+    <header class="top">
+      <a class="logo" href="#">STYLD</a>
+      <nav>
+        <a href="#" data-t="explore"></a>
+        <a href="#" data-t="signIn"></a>
+      </nav>
+    </header>
+
+    <main>
+      <section class="hero">
+        <div class="copy">
+          <h1 data-t="title"></h1>
+          <p class="lede" data-t="lede"></p>
+          <div class="actions">
+            <a class="primary" href="#" data-t="start"></a>
+            <a class="secondary" href="#" data-t="explore"></a>
+          </div>
+        </div>
+        <figure class="stage" role="img">
+          <div class="zoom" aria-hidden="true"></div>
+          <button class="pause" type="button"></button>
+          <figcaption class="captions" aria-hidden="true"></figcaption>
+        </figure>
+      </section>
+
+      <section class="features">
+        <h2 data-t="featuresTitle"></h2>
+        <dl></dl>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <a href="#" data-t="privacy"></a>
+      <a href="#" data-t="terms"></a>
+      <a href="#" data-t="contact"></a>
+    </footer>
+  </body>
+</html>
