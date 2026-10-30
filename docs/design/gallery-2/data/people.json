@@ -1,0 +1,438 @@
+{
+ "people": {
+  "luka": {
+   "name": "Luka Novak",
+   "handle": "luka.novak",
+   "city": "Ljubljana",
+   "bio": "Navy, always. Football on Thursdays.",
+   "tone": "slate",
+   "following": true
+  },
+  "nika": {
+   "name": "Nika Kovač",
+   "handle": "nika.kovac",
+   "city": "Maribor",
+   "bio": "Red, black and one good coat.",
+   "tone": "clay",
+   "following": true
+  },
+  "marko": {
+   "name": "Marko Horvat",
+   "handle": "marko.h",
+   "city": "Celje",
+   "bio": "Shirts and white trainers, not much else.",
+   "tone": "sage",
+   "following": false
+  },
+  "tina": {
+   "name": "Tina Zupan",
+   "handle": "tina.zupan",
+   "city": "Koper",
+   "bio": "Stripes by the sea, grey in town.",
+   "tone": "plum",
+   "following": false
+  },
+  "styld": {
+   "name": "Styld",
+   "handle": "styld",
+   "city": "",
+   "bio": "Edits from Styld.",
+   "tone": "ink",
+   "following": true
+  }
+ },
+ "pieces": {
+  "coat-navy": [
+   "Navy wool overcoat",
+   "Outerwear",
+   "luka",
+   "cut"
+  ],
+  "shirt-white-trim": [
+   "White shirt, navy trim",
+   "Shirts",
+   "luka",
+   "cut"
+  ],
+  "shirt-black": [
+   "Black shirt",
+   "Shirts",
+   "luka",
+   "cut"
+  ],
+  "derby-black-2": [
+   "Black cap-toe shoes",
+   "Shoes",
+   "luka",
+   "cut"
+  ],
+  "derby-brown": [
+   "Brown derbies",
+   "Shoes",
+   "luka",
+   "cut"
+  ],
+  "oxford-navy": [
+   "Navy oxfords",
+   "Shoes",
+   "luka",
+   "cut"
+  ],
+  "sneaker-white": [
+   "White leather trainers",
+   "Shoes",
+   "luka",
+   "cut"
+  ],
+  "backpack-black": [
+   "Black backpack",
+   "Bags",
+   "luka",
+   "cut"
+  ],
+  "beanie": [
+   "Grey beanie",
+   "Accessories",
+   "luka",
+   "cut"
+  ],
+  "scarf": [
+   "Grey wool scarf",
+   "Accessories",
+   "luka",
+   "cut"
+  ],
+  "belt-woven": [
+   "Black woven belt",
+   "Accessories",
+   "luka",
+   "cut"
+  ],
+  "shirt-grey": [
+   "Grey shirt",
+   "Shirts",
+   "marko",
+   "cut"
+  ],
+  "shirt-burgundy": [
+   "Burgundy shirt",
+   "Shirts",
+   "marko",
+   "cut"
+  ],
+  "derby-navy": [
+   "Navy brogues",
+   "Shoes",
+   "marko",
+   "cut"
+  ],
+  "backpack-blue": [
+   "Blue backpack",
+   "Bags",
+   "marko",
+   "cut"
+  ],
+  "belt-tan": [
+   "Tan woven belt",
+   "Accessories",
+   "marko",
+   "cut"
+  ],
+  "backpack-green": [
+   "Green backpack",
+   "Bags",
+   "styld",
+   "cut"
+  ],
+  "rolltop-green": [
+   "Green roll-top",
+   "Bags",
+   "styld",
+   "cut"
+  ],
+  "bag-micro": [
+   "Small black bag",
+   "Bags",
+   "styld",
+   "cut"
+  ],
+  "shirt-red": [
+   "Red shirt",
+   "Shirts",
+   "nika",
+   "cut"
+  ],
+  "pumps-black": [
+   "Black pumps",
+   "Shoes",
+   "nika",
+   "cut"
+  ],
+  "bag-burgundy": [
+   "Burgundy bag",
+   "Bags",
+   "nika",
+   "cut"
+  ],
+  "brooch": [
+   "Flower brooch",
+   "Accessories",
+   "nika",
+   "cut"
+  ],
+  "coat-camel": [
+   "Camel coat",
+   "Outerwear",
+   "nika",
+   "photo"
+  ],
+  "coat-grey": [
+   "Grey wrap coat",
+   "Outerwear",
+   "nika",
+   "photo"
+  ],
+  "look-black-jacket": [
+   "Black cropped jacket",
+   "Outerwear",
+   "nika",
+   "photo"
+  ],
+  "dress-sheer": [
+   "Sheer black dress",
+   "Dresses",
+   "nika",
+   "photo"
+  ],
+  "trousers-grey": [
+   "Grey pleated trousers",
+   "Trousers",
+   "nika",
+   "photo"
+  ],
+  "trousers-wide": [
+   "Black wide trousers",
+   "Trousers",
+   "nika",
+   "photo"
+  ],
+  "look-grey-suit": [
+   "Grey skirt suit",
+   "Suits",
+   "tina",
+   "photo"
+  ],
+  "look-navy-blouse": [
+   "Navy bow blouse",
+   "Shirts",
+   "tina",
+   "photo"
+  ],
+  "dress-stripe": [
+   "Striped maxi dress",
+   "Dresses",
+   "tina",
+   "photo"
+  ],
+  "jeans-grey": [
+   "Grey wide jeans",
+   "Jeans",
+   "tina",
+   "photo"
+  ]
+ },
+ "fit": {
+  "coat-navy": [
+   4,
+   [
+    "knit-cable-navy",
+    "shirt-sky",
+    "derby-black"
+   ]
+  ],
+  "derby-brown": [
+   6,
+   [
+    "shirt-denim",
+    "knit-cable-navy",
+    "polo-navy"
+   ]
+  ],
+  "shirt-burgundy": [
+   3,
+   [
+    "knit-navy",
+    "shorts-denim",
+    "derby-black"
+   ]
+  ],
+  "backpack-green": [
+   5,
+   [
+    "fleece-cream",
+    "hoodie-grey",
+    "converse-high"
+   ]
+  ],
+  "scarf": [
+   4,
+   [
+    "knit-cable-navy",
+    "fleece-cream",
+    "turtleneck-black"
+   ]
+  ],
+  "shirt-black": [
+   3,
+   [
+    "crew-grey",
+    "derby-black",
+    "shorts-denim"
+   ]
+  ],
+  "beanie": [
+   5,
+   [
+    "hoodie-grey",
+    "fleece-cream",
+    "converse-high"
+   ]
+  ],
+  "sneaker-white": "own:af1-white"
+ },
+ "looks": {
+  "monday-meeting": {
+   "name": "Monday meeting",
+   "by": "luka",
+   "keys": [
+    "coat-navy",
+    "shirt-white-trim",
+    "derby-brown",
+    "belt-woven"
+   ],
+   "own": [
+    [
+     "shirt-white-trim",
+     "shirt-sky"
+    ],
+    [
+     "derby-brown",
+     "derby-black"
+    ]
+   ]
+  },
+  "rain-run": {
+   "name": "Rain run",
+   "by": "luka",
+   "keys": [
+    "backpack-black",
+    "beanie",
+    "scarf",
+    "sneaker-white"
+   ],
+   "own": [
+    [
+     "sneaker-white",
+     "af1-white"
+    ]
+   ]
+  },
+  "friday-dinner": {
+   "name": "Friday dinner",
+   "by": "nika",
+   "keys": [
+    "shirt-red",
+    "pumps-black",
+    "bag-burgundy",
+    "brooch"
+   ],
+   "own": []
+  }
+ },
+ "boards": {
+  "navy-always": {
+   "name": "Navy, always",
+   "by": "luka",
+   "pins": [
+    "coat-navy",
+    "shirt-black",
+    "oxford-navy",
+    "backpack-black",
+    "scarf",
+    "derby-black-2"
+   ],
+   "own": 3
+  },
+  "camel-grey": {
+   "name": "Camel and grey",
+   "by": "nika",
+   "pins": [
+    "coat-camel",
+    "coat-grey",
+    "pumps-black",
+    "trousers-grey",
+    "bag-burgundy",
+    "look-black-jacket"
+   ],
+   "own": 0
+  },
+  "one-red": {
+   "name": "Black, one red thing",
+   "by": "nika",
+   "pins": [
+    "shirt-red",
+    "look-black-jacket",
+    "trousers-wide",
+    "brooch",
+    "dress-sheer"
+   ],
+   "own": 0
+  },
+  "by-the-sea": {
+   "name": "By the sea",
+   "by": "tina",
+   "pins": [
+    "dress-stripe",
+    "look-navy-blouse",
+    "jeans-grey",
+    "look-grey-suit"
+   ],
+   "own": 0
+  },
+  "shirts": {
+   "name": "Shirts",
+   "by": "marko",
+   "pins": [
+    "shirt-grey",
+    "shirt-burgundy",
+    "derby-navy",
+    "sneaker-white",
+    "belt-tan",
+    "backpack-blue"
+   ],
+   "own": 2
+  },
+  "layers-november": {
+   "name": "Layers for November",
+   "by": "styld",
+   "pins": [
+    "coat-navy",
+    "scarf",
+    "beanie",
+    "derby-brown"
+   ],
+   "own": 2
+  },
+  "rain-dressed": {
+   "name": "Rain, but dressed",
+   "by": "styld",
+   "pins": [
+    "backpack-green",
+    "rolltop-green",
+    "beanie",
+    "sneaker-white"
+   ],
+   "own": 1
+  }
+ }
+}

@@ -2,6 +2,35 @@
 
 Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `8ab11aa`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
 
+## Overnight run: Gallery 2 and the table — 2026-10-30
+
+The owner chose Gallery 2 ("your clothes are the interface") and moved boards up from Later. This run builds both for
+the person's own wardrobe, from the plan approved that evening. It works in its own worktree
+(`~/code/styldappv2.wt/redesign`) and lands each green slice on main with `--ff-only`. It owns the night's migrations;
+the capture session agreed.
+
+Owner decisions (2026-10-30):
+
+- **Scope:** your own wardrobe only. Feed, Explore, people, Try with mine, fit badges and wishlist stay parked.
+- **Canvas:** the table is built in Foldkit itself, with no library and nothing mounted. Its features are text labels,
+  your own pictures, a piece menu with animated exits and Undo, and saving a board as a look.
+- **Bundle budget:** raised once and recorded here.
+
+Choices made on common sense:
+
+- **Navigation:** Home, Wardrobe, Ask in the middle, Boards; You through the avatar. Looks become a Wardrobe tab.
+- **No weather tonight:** the table's headline is the day and date in Anton.
+- **Glass** only on the floating nav and the Ask panel, as `DESIGN.md` now says.
+
+- **S0, design source and docs:**
+  - `docs/design/gallery-2/` holds the built prototype, its sources and a README saying what v2 takes now.
+  - `docs/design/canvas-spike/` holds the table's proof of concept.
+  - `DESIGN.md` is rewritten for Gallery 2: Anton in two places, the navigation, glass, the table, springs and page
+    transitions.
+  - `docs/ROADMAP.md` moves boards up and replaces the canvas-library line.
+  - `docs/DELIVERY.md` gains a design row, and studio is now in progress.
+- **Contract** (`d96f8b8`): boards, worn days and a website `createLook` (`packages/protocol/src/{Board,Worn}.ts`).
+
 ## Guided camera, front and back — 2026-10-30
 
 The owner's held-up sweater was never noticed, and they asked for a camera that looks good and makes every piece

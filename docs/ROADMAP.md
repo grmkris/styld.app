@@ -25,7 +25,6 @@ Kept, in order:
 3. Virtual try-on and billing (iteration 3).
 4. Later, each with its own planning round:
    - recording video inside the app, and outfit check (both extend the capture pipeline);
-   - boards and collages;
    - a public profile to show off a wardrobe;
    - the web stylist chat.
 
@@ -40,6 +39,27 @@ Parked (not built unless real demand appears):
 - AI-redrawn product shots as a piece's main image.
 
 Not porting: guest accounts and the free wardrobe cap (owner, 2026-10-28).
+
+## Gallery 2 and boards (owner, 2026-10-30)
+
+The owner chose the Gallery 2 redesign (`docs/design/gallery-2/`) and moved boards up from Later. Both were built in
+the overnight run of 2026-10-30, next to the iterations below. Gallery 2 is taken for the person's own wardrobe only:
+
+- the navigation: Home, Wardrobe, Ask, Boards;
+- Home's table: Spin and Wear this, with "Pick up where you left off";
+- Wardrobe with Pieces and Looks;
+- Ask: search your wardrobe, the hand-off to the assistants, and the + sheet into capture;
+- boards.
+
+The feed, Explore, other people, Try with mine, fit badges and the wishlist stay parked with the feed and follow.
+
+**Boards** are the table, built in Foldkit itself with no canvas library: pieces, text labels and your own pictures,
+moved, pinched, turned, layered and undone, saved whole with a version, and savable as a look.
+
+- **Why not a library:** the spike in `docs/design/canvas-spike/` (v1 repository era, 2026-10-30) did this in about
+  1,200 lines and kept 60 fps with 50 pieces. That replaced the earlier plan of an existing library (tldraw out over
+  its licence; Excalidraw, Konva or Fabric through `Mount`).
+- **Not yet:** MCP tools for boards, and sharing.
 
 ## Iteration 1: adding pieces from photos, the camera and video
 
@@ -185,8 +205,5 @@ and frames of its Grok-generated ten-garment rail video.
 - **Recording video in the app** (import from the library comes in iteration 1).
 - **Outfit check** works from a photo of you wearing the clothes: it gives feedback and offers the pieces for the
   wardrobe through the same review tray.
-- **Boards and collages** use an existing canvas library, picked at that iteration. tldraw is out: it needs a paid
-  licence with no published price, and its domain-locked key would treat assistant iframes as unlicensed. Excalidraw
-  (MIT, React) and framework-free Konva or Fabric are the candidates. Foldkit hosts them through `Mount`.
 - **A public profile,** and the safety it needs.
 - **The web stylist chat.**

@@ -1,0 +1,127 @@
+/* Styld's Gallery tokens, as v2 declares them in apps/web/src/zyzz.config.ts. In v2 these rules become zyzz styles. */
+:root {
+  --paper: #f1eee7;
+  --paper-2: #e7e2d9;
+  --stock: #fbf9f5;
+  --ink: #1c1410;
+  --ink-hover: color-mix(in oklab, #1c1410 86%, #f1eee7);
+  --ink-2: #5d554e;
+  --ink-3: #8b827a;
+  --rule: #ddd6cc;
+  --on-ink: #f7f4ee;
+  --focus: #2f5bd3;
+  --error: oklch(48% 0.16 25);
+  --font: "Hanken Grotesk", system-ui, sans-serif;
+  --spring: linear(0, 0.0357, 0.1183, 0.2215, 0.3294, 0.433, 0.5273, 0.6104, 0.6819, 0.7423, 0.7925, 0.8339, 0.8677, 0.895, 0.9171, 0.9347, 0.9487, 0.9598, 0.9686, 0.9755, 0.9809, 0.9852, 0.9885, 0.9911, 0.9931, 0.9947, 0.9959, 0.9968, 0.9976, 0.9981, 0.9986, 0.9989, 1);
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+}
+
+* { box-sizing: border-box; margin: 0; }
+html, body { overflow-x: clip; }
+body { background: var(--paper); color: var(--ink); font: 16px/1.45 var(--font); -webkit-font-smoothing: antialiased; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+.page { width: min(100% - 32px, 1080px); margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 0 48px; }
+.head { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding-top: 8px; }
+.title { font-size: 32px; font-weight: 700; line-height: 1.1; letter-spacing: -0.02em; }
+.hint { max-width: 60ch; margin-top: 8px; color: var(--ink-2); text-wrap: pretty; }
+.fine { font-size: 13px; color: var(--ink-3); text-wrap: pretty; }
+
+/* EN / SL */
+.seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 999px; background: var(--paper-2); }
+.seg-option { min-width: 44px; min-height: 36px; padding: 0 12px; border: 0; border-radius: 999px; background: transparent; font-size: 14px; font-weight: 600; color: var(--ink-2); cursor: pointer; transition: background-color 140ms var(--ease), color 140ms var(--ease); }
+.seg-option.is-on { background: var(--stock); color: var(--ink); box-shadow: 0 1px 2px rgb(28 20 16 / 0.12); }
+
+.stage { display: grid; gap: 28px; margin-top: 16px; }
+.board { display: grid; gap: 12px; }
+
+.tools { display: flex; flex-wrap: wrap; gap: 8px; }
+.tool { min-height: 40px; padding: 0 16px; border: 0; border-radius: 999px; background: var(--paper-2); font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 140ms var(--ease), background-color 140ms var(--ease); }
+.tool:active:not(:disabled) { transform: scale(0.96); }
+.tool:disabled { opacity: 0.45; cursor: default; }
+@media (hover: hover) and (pointer: fine) { .tool:hover:not(:disabled) { background: color-mix(in oklab, var(--paper-2) 80%, var(--ink)); } }
+
+/* The table. Positions are in table units: 1000 across, so one unit is 0.1cqw of the paper. */
+.paper {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  container-type: inline-size;
+  isolation: isolate;
+  overflow: hidden;
+  border-radius: 28px;
+  background: var(--paper);
+  box-shadow: inset 0 0 0 1px var(--rule);
+  touch-action: pan-y;
+  user-select: none;
+  -webkit-user-select: none;
+}
+.piece {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 40cqw;
+  aspect-ratio: 1;
+  translate: calc(var(--x) * 0.1cqw - 50%) calc(var(--y) * 0.1cqw - 50%);
+  rotate: var(--r);
+  scale: var(--k);
+  border-radius: calc(18px / var(--k));
+  mix-blend-mode: darken;
+  touch-action: none;
+  cursor: grab;
+  -webkit-touch-callout: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: translate 560ms var(--spring), rotate 560ms var(--spring), scale 560ms var(--spring);
+  animation: piece-in 520ms var(--spring) both;
+}
+.piece.is-held { cursor: grabbing; transition: none; }
+.piece .cut { display: block; width: 100%; height: 100%; object-fit: contain; pointer-events: none; -webkit-user-drag: none; }
+.piece::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; }
+.piece.is-selected::after { border: calc(1.5px / var(--k)) dashed var(--ink); }
+.piece:focus-visible { outline: none; }
+.piece:focus-visible::after { border: calc(2px / var(--k)) solid var(--focus); }
+@keyframes piece-in { from { opacity: 0; transform: translateY(-6%) scale(0.92); } }
+
+/* The corner: 44px to grab, a 26px ink dot to see, kept that size however the piece is scaled. */
+.handle {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  width: 44px;
+  height: 44px;
+  translate: 50% 50%;
+  scale: calc(1 / var(--k));
+  touch-action: none;
+  cursor: nwse-resize;
+}
+.handle::before { content: ""; position: absolute; inset: 9px; border-radius: 50%; background: var(--ink); box-shadow: 0 0 0 3px var(--paper); }
+
+.selection { display: flex; align-items: center; justify-content: space-between; gap: 12px; min-height: 44px; }
+.count { font-weight: 600; font-variant-numeric: tabular-nums; }
+.remove { min-height: 44px; padding: 0 18px; border: 0; border-radius: 999px; background: var(--ink); color: var(--on-ink); font-size: 15px; font-weight: 600; cursor: pointer; transition: transform 140ms var(--ease); }
+.remove:active { transform: scale(0.96); }
+.saved { font-size: 13px; color: var(--ink-3); text-align: right; }
+.saved.is-failed { color: var(--error); }
+
+/* The wardrobe tray */
+.tray-title { font-size: 20px; font-weight: 700; letter-spacing: -0.01em; }
+.tray-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 8px; margin-top: 12px; padding: 0; list-style: none; }
+.tray-piece { display: grid; justify-items: center; gap: 4px; width: 100%; padding: 8px 6px 10px; border: 0; border-radius: 18px; background: var(--stock); cursor: pointer; transition: transform 140ms var(--ease), box-shadow 140ms var(--ease); }
+.tray-piece img { width: 64px; height: 64px; object-fit: contain; mix-blend-mode: darken; pointer-events: none; }
+.tray-piece:active { transform: scale(0.96); }
+.tray-piece.is-on { box-shadow: inset 0 0 0 1.5px var(--ink); }
+.tray-name { font-size: 12px; font-weight: 600; line-height: 1.25; text-align: center; text-wrap: balance; }
+
+.foot { display: grid; gap: 8px; margin-top: 36px; padding-top: 16px; border-top: 1px solid var(--rule); }
+.foot-links { display: flex; flex-wrap: wrap; gap: 16px; }
+.txt { min-height: 44px; padding: 0; border: 0; background: none; color: var(--ink); font-size: 14px; font-weight: 600; text-decoration: underline; text-decoration-color: var(--ink-3); text-underline-offset: 4px; cursor: pointer; }
+
+@media (min-width: 900px) {
+  .stage { grid-template-columns: minmax(0, 560px) minmax(0, 1fr); align-items: start; gap: 48px; }
+  .tray { position: sticky; top: 24px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .piece { transition: none; animation: none; }
+  .tool, .remove, .tray-piece, .seg-option { transition: none; }
+}

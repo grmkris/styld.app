@@ -1,12 +1,22 @@
 # Design: Styld
 
-**Gallery** is Styld v2's design (owner decision, 2026-10-28). It replaces v1's Atelier. The clickable prototype in
-`docs/design/gallery/` (open `site/index.html`) shows every main screen on mobile and desktop; this file states the
-rules. Every screen agent reads both first. When a screen is built, follow the prototype's layout and this file's rules;
-where they disagree, ask. Change this file on purpose; it is the rule.
+**Gallery 2** is Styld v2's design (owner decision, 2026-10-30): Gallery's paper, ink and cutouts, with one idea
+added. **Your clothes are the interface.** Home opens on today's outfit laid out on paper (the table), and a board is a
+table you arrange yourself. It replaced Gallery 1 (2026-10-28), which replaced v1's Atelier.
 
-Things you could buy are photos from shops; things you own are cutouts on paper. One sans face, warm paper, umber ink,
-one slate signal. Pill-shaped actions, soft panels and sheets, photos with small corners. Light mode only.
+The prototypes:
+
+- `docs/design/gallery-2/` (open `site/index.html`) is the current one. Its README says which parts v2 takes now:
+  your own wardrobe only, no feed or other people.
+- `docs/design/gallery/` is Gallery 1, kept for screens Gallery 2 doesn't redraw.
+- `docs/design/canvas-spike/` is the table's proof of concept.
+
+This file states the rules, and every screen agent reads it and the prototype first. When a screen is built, follow the
+prototype's layout and this file's rules; where they disagree, ask. Change this file on purpose; it is the rule.
+
+Things you own are cutouts on paper. One sans face, plus the logo's condensed face in exactly two places (Type). Warm
+paper, umber ink, one slate signal. Pill-shaped actions, soft panels and sheets, photos with small corners. Light mode
+only.
 
 ## Tokens
 
@@ -28,8 +38,13 @@ skill covers usage). Add a token there before a screen needs a new value.
 | focus ring                                                  | `#2f5bd3`             | `focus`            |
 | error text, invalid field edge                              | v2's own              | `error`, `invalid` |
 
-Radii: `photo` 4px, `field` 12px, `panel` 16px, `sheet` 24px, `pill` for actions, chips and the search field. Spacing:
-a 20px page gutter (plus the safe-area insets), 16px between grid items, 8px between actions in a row.
+Radii: `photo` 4px, `field` 12px, `panel` 16px, `sheet` 24px, `table` 28px (the paper of a table), `pill` for actions,
+chips, the search field and the floating nav. Spacing: a 20px page gutter (plus the safe-area insets), 16px between grid
+items, 8px between actions in a row.
+
+A board's paper takes one of six colours (`Paper` in `packages/protocol/src/Board.ts`): paper, stock, and the quiet tints
+`sand`, `sage`, `slate` and `clay`. They are tokens, used only as a table's ground. The floating nav and the Ask panel
+are glass: the `glass` fill and a `glassEdge` hairline.
 
 The prototype has more tokens that v2 adds with the first screen that needs them: `veil` and `scrim` (overlays on photos
 and behind sheets), `frost` (round buttons over photos), `shade-1` and `shade-2` (shadows), `line` (a hairline over a
@@ -42,8 +57,16 @@ Never a second accent colour.
 
 ## Type
 
-One face: Hanken Grotesk, self-hosted as the variable font (`@fontsource-variable/hanken-grotesk`, latin and latin-ext).
-No serif.
+Hanken Grotesk is the face, self-hosted as the variable font (`@fontsource-variable/hanken-grotesk`, latin and
+latin-ext). No serif.
+
+The logo's voice is **Anton**, a condensed display face, self-hosted as one subset file. It is used in exactly two
+places:
+
+- **The table's headline:** today's day and date on Home, e.g. `THU 30`.
+- **A headline label someone puts on their own board.**
+
+Never on chrome, titles or buttons.
 
 - **Display** 46px and up, line-height 1, weight 700, tracking −0.035em: the landing statement only.
 - **H1** 30px, line-height 1.08, weight 600, tracking −0.02em (26px inside a panel). **H2** 22px, 600, −0.01em. **H3**
@@ -83,8 +106,31 @@ Controls render through `@foldkit/ui`'s headless views (text buttons through `ac
   paper. The wardrobe grid of cutouts on paper is Styld's signature.
 - Sheets rise from the bottom edge with 24px top corners, stock fill and a soft shadow (the diagnostics prompt is one).
 - Translucency (frost, scrim, veil) only over photos and behind sheets; never blur behind text.
-- Mobile: a 64px top bar with the logo and one action. Desktop: a top bar with the logo, text navigation (the current
-  section underlined), the search pill and the avatar.
+- **Navigation (signed in): Home, Wardrobe, Ask, Boards.** Ask sits in the middle as a filled ink circle, the one
+  thing to do from anywhere. You is reached through the avatar.
+- **Mobile:** a floating glass pill at the bottom carries the four items. The top bar keeps the logo and the avatar.
+- **Desktop:** the same items in a floating glass rail on the left, with the avatar under it.
+- **Signed out:** the top bar keeps the logo and "Sign in".
+- **Glass:** the floating nav and the Ask panel are glass at the owner's request. They are the only blur behind text,
+  and under `prefers-reduced-transparency` they are solid stock.
+
+### The table
+
+The table is Gallery 2's signature: a sheet of paper (4:5, `table` radius) with things laid on it. It is today's outfit
+on Home and the surface of a board.
+
+- **Cutouts and pictures:** cutouts lie straight on the paper with no frame. A picture the person adds keeps the
+  `photo` radius.
+- **Placement:** in table units, 1000 across. The browser sets each item's position, size and turn as CSS custom
+  properties through the CSSOM. The edge CSP forbids inline `style` attributes, so tables render in the browser after
+  their data loads, never on the server.
+- **Selection:** a dashed ink ring, and an ink dot on the corner that resizes and turns.
+- **Gestures:**
+  - one finger moves;
+  - two fingers pinch to resize and turn;
+  - arrows, + and −, [ and ], and Delete do the same from the keyboard;
+  - Escape cancels a drag;
+  - ⌘Z undoes.
 
 ## Icons
 
@@ -101,10 +147,16 @@ Controls render through `@foldkit/ui`'s headless views (text buttons through `ac
 
 ## Motion
 
-- Character: quick and quiet, on Gallery's curve `cubic-bezier(0.2, 0, 0, 1)`. 140ms for press and colour, 180ms for
-  hover and menus, 240ms for sheets and dialogs. Presses scale to 0.96. One reveal at most on a public page, none on app
-  screens; no stagger.
-- Under reduced motion everything ends at once (`apps/web/src/GlobalStyles.ts`); loaders keep turning.
+- **Character:** quick and quiet. Every motion answers something the person did.
+- **Press, colour and hover** use Gallery's curve `cubic-bezier(0.2, 0, 0, 1)`: 140ms for press and colour, 180ms for
+  hover and menus. Presses scale to 0.96.
+- **Things that travel** use springs, sampled into CSS `linear()` curves: the critically damped `spring` (≈600ms) and
+  the slightly bouncy `springBounce`. These are pieces settling on a table, Spin shuffling the outfit, the + sheet
+  growing out of its button, and an item leaving the board.
+- **Spin** staggers its pieces by 40ms, the one stagger in the app. One reveal at most on a public page.
+- **Page transitions** are cross-document View Transitions: the nav stays put while the page cross-fades.
+- **Reduced motion:** everything ends at once (`apps/web/src/GlobalStyles.ts`); loaders keep turning.
+- **Reduced transparency:** glass turns solid.
 
 ## Copy and chrome
 
