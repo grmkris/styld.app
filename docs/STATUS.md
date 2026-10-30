@@ -2,6 +2,63 @@
 
 Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `42baae7`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
 
+## Clean pictures, milestone A — 2026-10-30
+
+The owner's decisions are in `docs/ROADMAP.md` (Clean pictures, the turn and video scans). The real photo stays the
+source; a clean picture is a marked drawing beside it.
+
+- **The job** (`fb4db12`): a review that keeps cut-outs queues a picture for each in the same batch. A replayed
+  review sends the waiting ones again. Clef judges the 512 px cut-out:
+  - ready, or a face (≥ 0.3), keeps the photo;
+  - a fragment asks for a retake;
+  - anything else is drawn.
+- **Drawing** (same commit): the drawing is claimed first. Muse draws it on green, or on magenta for a green garment.
+  The result is keyed, cropped and stored as `clean-<version>.png`.
+- **The check:** Clef compares the drawing with the cut-out. The weaker of same and faithful decides:
+  - from 0.8 the drawing is shown;
+  - from 0.5 it is offered;
+  - below that it is dropped and its file deleted.
+- **Failures:** every write is a conditional move. Muse refusing ends the picture; Muse busy hands it back to the
+  queue; an answer lost on the way, or a claim older than 3 minutes, ends as unknown and is never drawn again.
+- **Serving** (`e64c258`): `Piece.picture` is `{ state, shows, version }`.
+  - `shownImage` is the one rule for which image a piece shows, shared with the boards session.
+  - `/cdn/pieces/:id/photo|clean/:size` serves either picture.
+  - `PUT /api/pieces/:id/picture` chooses between them.
+  - Deleting a piece deletes its drawings.
+- **Redraw and backfill** (`84a41bb`):
+  - A redraw holds 1 credit, with the owner's words in the prompt (at most 80 characters, never logged). It is
+    drawn whatever Clef's verdict unless a face may show. The credit is consumed for a drawing the owner can see,
+    refunded otherwise.
+  - Backfill: `GET`/`POST /api/pictures` counts and queues every kept cut-out without a picture, free.
+  - Assistants get the same redraw as `picture_redraw`.
+- **Web** (`56012a3`):
+  - The piece page shows the "AI-cleaned picture" label and lets the owner switch between drawing and photo.
+  - A proposed drawing appears beside the photo, to take.
+  - The redraw form asks for a description and states the price.
+  - Retakes and failed drawings say why the photo stays.
+  - The wardrobe shows a "Make clean pictures" line.
+  - Image addresses carry the version.
+  - The initial bundle went from 300,692 to 303,338 gzip bytes.
+- **Measuring** (`11e175f`): `picture.<state>` points in Analytics Engine, listed by `tools/ai-usage-report.ts`, so
+  Muse's share of shown drawings can decide the default.
+- **Evidence:**
+  - Unit: the keyer, Muse's request, retries and unknown outcomes, Clef judge/compare on recorded answers, the
+    gates, and the shown-image rule.
+  - Native (`cdd1a78`): the job, D1, R2, the queue and the Wallet with stand-ins for Clef and Muse, which answer
+    by colour (`PictureFixture.ts`). `CLEF_API_BASE` exists for that run only.
+- **Simplifications to know:**
+  - A redraw replaces the last drawing: if it fails, the photo shows.
+  - Pieces added outside a review (upload, assistant) are queued by backfill, not when added.
+  - A credit held for a piece deleted before its drawing ends stays held for that day.
+  - Pictures share the capture queue: a large backfill delays captures by minutes. The plan's remedy is a
+    separate queue.
+- **Open:**
+  - Preview deploy and readback: a real keep, the owner's backfill, the `piece_pictures` rows,
+    `call.meta-muse.draw` and logs with no images or hints.
+  - The owner's phone test.
+  - Milestone B, the 5-credit turn, waits for Styld's own Vercel AI Gateway key.
+  - Milestone C, scanning by video with one card per garment.
+
 ## Plan: boards, profiles and social — 2026-10-30
 
 The owner un-parked social and planned the next iteration in a grilling session; `docs/ROADMAP.md` (Boards, profiles
