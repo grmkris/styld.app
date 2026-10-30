@@ -8,7 +8,6 @@ import { matching } from '../src/page/AskView.ts'
 import * as Boards from '../src/page/Boards.ts'
 import { missingFrom, outfitFor } from '../src/page/Outfit.ts'
 import * as Today from '../src/page/Today.ts'
-import * as Wardrobe from '../src/page/Wardrobe.ts'
 import { headline } from '../src/page/TodayView.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
@@ -48,19 +47,16 @@ describe("today's table", () => {
   })
 
   test('Wear this records the outfit on the table for today, once', () => {
-    const ready = modifyFields(Today.init(), {
-      maybeDay: () => Option.some(thursday),
-      pieces: () => Today.Pieces.Loaded({ pieces: wardrobe }),
-    })
-    const worn = Today.tableOutfit(ready).map(({ piece }) => piece.id)
+    const ready = modifyFields(Today.init(), { maybeDay: () => Option.some(thursday) })
+    const worn = Today.tableOutfit(ready, wardrobe).map(({ piece }) => piece.id)
     story(
       Today.update,
       given(ready),
-      message(Today.Message.ClickedWear()),
+      message(Today.Message.ClickedWear({ pieceIds: worn })),
       Command.expectExact(Today.Wear),
       Command.resolve(Today.Wear, Today.Message.SucceededWear({ pieceIds: worn })),
       model((current) => expect(Today.Worn.guards.Worn(current.worn)).toBe(true)),
-      message(Today.Message.ClickedWear()),
+      message(Today.Message.ClickedWear({ pieceIds: worn })),
       Command.expectNone(),
     )
   })
@@ -94,11 +90,11 @@ describe('boards', () => {
   test('a list that did not load asks again', () => {
     story(
       Boards.update,
-      given(modifyFields(Boards.init(), { boards: () => Boards.BoardList.Failed() })),
+      given(modifyFields(Boards.init(), { boards: () => Boards.BoardsData.Failure({ error: 'Unavailable' }) })),
       message(Boards.Message.ClickedRetry()),
       Command.expectExact(Boards.ListBoards),
       Command.resolve(Boards.ListBoards, Boards.Message.SucceededListBoards({ boards: [created] })),
-      model(({ boards }) => expect(Boards.BoardList.guards.Loaded(boards)).toBe(true)),
+      model(({ boards }) => expect(boards).toEqual(Boards.BoardsData.Success({ data: [created] }))),
     )
   })
 })
@@ -112,18 +108,13 @@ describe('Ask', () => {
     expect(ids('', 'en')).toHaveLength(4)
   })
 
-  test('a wardrobe that did not load asks again, through the wardrobe page it shares', () => {
+  test('a wardrobe that did not load asks again, through the one list of pieces every page shares', () => {
     story(
       Ask.update,
-      given(
-        modifyFields(Ask.init(), {
-          wardrobe: (wardrobe_) => modifyFields(wardrobe_, { pieces: () => Wardrobe.Pieces.Failed() }),
-        }),
-      ),
+      given(Ask.init()),
       message(Ask.Message.ClickedRetry()),
-      Command.expectExact(Wardrobe.ListPieces),
-      Command.resolve(Wardrobe.ListPieces, Wardrobe.Message.SucceededListPieces({ pieces: wardrobe })),
-      model((current) => expect(Wardrobe.Pieces.guards.Loaded(current.wardrobe.pieces)).toBe(true)),
+      expectOutMessage(Ask.OutMessage.RequestedPieces()),
+      model((current) => expect(current).toEqual(Ask.init())),
     )
   })
 })

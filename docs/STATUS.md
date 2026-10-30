@@ -42,6 +42,16 @@ routing, following Foldkit's own website. Other pages keep full loads.
   - Looks gets the same + as Wardrobe, so the Pieces/Looks tabs stay put.
   - The Slovenian nav label "Omara" becomes "Garderoba", like the page title (awaits owner review).
   - The browser journey checks that every tab page's title starts at the same height.
+- **One list of pieces, kept on screen while refreshed:**
+  - The tab pages' lists are Foldkit `AsyncData`: the pieces, the looks, the boards, and Home's last board and tray.
+  - Each page has a `revisit` built on `Update.refresh` with `AsyncData.revalidateOrLoad`:
+    - a first visit loads;
+    - data already here stays on screen (`Refreshing`) while it is asked for again;
+    - a request on its way isn't repeated;
+    - a failed refresh keeps the data (`Stale`).
+  - The app's wardrobe list is the only one. Home and Ask read it; their retry buttons hand off to it.
+  - The 2-second refresh while a piece is processing is now a Subscription. The board editor has its own copy of
+    the list, which refreshes under its own key.
 
 ## Overnight run: Gallery 2 and the table — 2026-10-30
 

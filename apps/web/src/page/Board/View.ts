@@ -1,7 +1,7 @@
 import { format, type Locale } from '@styld/i18n'
 import { type BoardItem, type Paper, type Piece, PieceItem, TextItem } from '@styld/protocol'
 import { Array, Option, Schema } from 'effect'
-import { Submodel } from 'foldkit'
+import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../../ActionButton.ts'
 import { secondaryAction } from '../../Actions.styles.ts'
@@ -11,7 +11,6 @@ import { styled } from '../../Styled.ts'
 import { MeasurePaper } from './Commands.ts'
 import { itemContent, itemStyle, pieceImage, placement } from './Table.ts'
 import { type KeyStep, Message } from './Message.ts'
-import { Pieces as WardrobePieces } from '../Wardrobe.ts'
 import { BoardState, Gesture, LookSave, type Model, Saving, Toast, Upload } from './Model.ts'
 import * as styles from './View.styles.ts'
 import { selectionView, toolbarView } from './ViewTools.ts'
@@ -50,8 +49,8 @@ const pieceName = (pieces: ReadonlyArray<Piece>, pieceId: string, locale: Locale
     () => format(locale, 'board.pieceFallback', {}),
   )
 
-const wardrobePieces = (model: Model) =>
-  WardrobePieces.guards.Loaded(model.wardrobe.pieces) ? model.wardrobe.pieces.pieces : []
+const wardrobePieces = (model: Model): ReadonlyArray<Piece> =>
+  Option.getOrElse(AsyncData.getData(model.wardrobe.pieces), () => [])
 
 /** What an item is called for assistive technology. */
 const itemLabel = (model: Model, item: BoardItem, locale: Locale) => {
@@ -212,10 +211,10 @@ const lookView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
 
 const trayView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const onTable = new Set(Array.flatMap(model.items, (item) => (Schema.is(PieceItem)(item) ? [item.pieceId] : [])))
-  const body = WardrobePieces.match(model.wardrobe.pieces, {
-    Loading: () => h.p([h.Role('status'), ...styled(h, styles.fine())], [loader(h)]),
-    Failed: () => h.p([h.Role('alert'), ...styled(h, styles.fine())], [format(locale, 'board.wardrobeFailed', {})]),
-    Loaded: ({ pieces }) =>
+  const body = AsyncData.matchData(model.wardrobe.pieces, {
+    onEmpty: () => h.p([h.Role('status'), ...styled(h, styles.fine())], [loader(h)]),
+    onFailure: () => h.p([h.Role('alert'), ...styled(h, styles.fine())], [format(locale, 'board.wardrobeFailed', {})]),
+    onData: (pieces) =>
       Array.match(
         Array.filter(pieces, (piece) => piece.status === 'ready'),
         {

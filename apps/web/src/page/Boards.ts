@@ -1,7 +1,7 @@
 import { Board, BoardName, OperationId } from '@styld/protocol'
-import { Effect, Schema } from 'effect'
+import { Effect, Option, Result, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
-import { Command, type Update } from 'foldkit'
+import { AsyncData, Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
@@ -9,24 +9,21 @@ import { StyldClient } from '../StyldClient.ts'
 
 // MODEL
 
-export const BoardList = defineTaggedUnion({
-  Loading: {},
-  Loaded: { boards: Schema.Array(Board) },
-  Failed: {},
-})
-export type BoardList = typeof BoardList.Type
+/** The person's boards as last read, kept on screen while they are asked for again. */
+export const BoardsData = AsyncData.Schema(Schema.Array(Board), Schema.Literal('Unavailable'))
+export type BoardsData = typeof BoardsData.schema.Type
 
 export const Creating = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {} })
 
 export const Model = Schema.Struct({
-  boards: BoardList,
+  boards: BoardsData.schema,
   /** The new board's name as typed; empty means the default name. */
   name: Schema.String,
   creating: Creating,
 })
 export type Model = typeof Model.Type
 
-export const init = (): Model => ({ boards: BoardList.Loading(), name: '', creating: Creating.Idle() })
+export const init = (): Model => ({ boards: AsyncData.Idle(), name: '', creating: Creating.Idle() })
 
 // MESSAGE
 
@@ -72,19 +69,24 @@ export const CreateBoard = Command.define('CreateBoard', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedCreateBoard())),
 })
 
-export const load = () => [ListBoards()]
-
 // UPDATE
 
 type Services = StyldClient | Crypto.Crypto
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Services>
 
+/** Opening the page: the boards already here stay while they are asked for again; a first visit asks. */
+export const revisit = Update.refresh<Model, Message, ReadonlyArray<Board>, 'Unavailable', StyldClient>({
+  read: (model: Model) => Option.some(model.boards),
+  revalidate: AsyncData.revalidateOrLoad,
+  write: (model: Model, boards: BoardsData) => modifyFields(model, { boards: () => boards }),
+  load: ListBoards(),
+})
+
 const created = (model: Model, board: Board): UpdateReturn => ({
   model: modifyFields(model, {
     creating: () => Creating.Idle(),
     name: () => '',
-    boards: (boards) =>
-      BoardList.guards.Loaded(boards) ? BoardList.Loaded({ boards: [board, ...boards.boards] }) : boards,
+    boards: (boards) => AsyncData.map(boards, (list) => [board, ...list]),
   }),
   outMessage: OutMessage.CreatedBoard({ boardId: board.id }),
 })
@@ -92,13 +94,12 @@ const created = (model: Model, board: Board): UpdateReturn => ({
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     SucceededListBoards: ({ boards }) => ({
-      model: modifyFields(model, { boards: () => BoardList.Loaded({ boards }) }),
+      model: modifyFields(model, { boards: () => BoardsData.Success({ data: boards }) }),
     }),
-    FailedListBoards: () => ({ model: modifyFields(model, { boards: () => BoardList.Failed() }) }),
-    ClickedRetry: () => ({
-      model: modifyFields(model, { boards: () => BoardList.Loading() }),
-      commands: [ListBoards()],
+    FailedListBoards: () => ({
+      model: modifyFields(model, { boards: (boards) => AsyncData.settle(boards, Result.fail('Unavailable' as const)) }),
     }),
+    ClickedRetry: () => revisit(model),
     UpdatedName: ({ value }) => ({ model: modifyFields(model, { name: () => value }) }),
     SubmittedNewBoard: ({ defaultName }) =>
       Creating.guards.Sending(model.creating)

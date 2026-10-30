@@ -7,6 +7,7 @@ import { Message, Navigate, ReadSession, Session, init, update } from '../src/Ap
 import { Message as AddPiecesMessage } from '../src/page/AddPieces/Message.ts'
 import { Message as ReviewMessage } from '../src/page/Review.ts'
 import * as Today from '../src/page/Today.ts'
+import * as Wardrobe from '../src/page/Wardrobe.ts'
 import { AppRoute } from '../src/route.ts'
 import { pageAt } from './WardrobeFixtures.ts'
 
@@ -66,8 +67,9 @@ describe('the session decides where a visitor belongs', () => {
       update,
       given(page('/')),
       message(Message.ReceivedSession({ claims })),
-      Command.expectExact(Today.DetermineDay, Today.ListPieces, Today.ListBoards, Today.ReadTray),
-      Command.resolve(Today.ListPieces, Today.Message.FailedListPieces()),
+      // The table is laid from the wardrobe's pieces, which every page shares.
+      Command.expectExact(Today.DetermineDay, Today.ListBoards, Today.ReadTray, Wardrobe.ListPieces),
+      Command.resolve(Wardrobe.ListPieces, Wardrobe.Message.FailedListPieces()),
       Command.resolve(Today.ListBoards, Today.Message.FailedListBoards()),
       Command.resolve(Today.ReadTray, Today.Message.FailedReadTray()),
       Command.resolve(Today.DetermineDay, Today.Message.CompletedDetermineDay({ day: thursday })),

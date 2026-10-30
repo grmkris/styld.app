@@ -1,7 +1,7 @@
 import { format, type Locale } from '@styld/i18n'
 import { Category, type Piece } from '@styld/protocol'
 import { Array, Option, String } from 'effect'
-import { Submodel } from 'foldkit'
+import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
 import { secondaryAction } from '../Actions.styles.ts'
@@ -9,7 +9,7 @@ import { addIcon, boardsTabIcon, cameraIcon, closeIcon, loader, searchIcon, styl
 import { accountRouter, addPiecesRouter, boardsRouter, pieceRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { Message, type Model } from './Ask.ts'
-import { Pieces } from './Wardrobe.ts'
+import type { PiecesData } from './Wardrobe.ts'
 import * as styles from './AskView.styles.ts'
 import { categoryName, colourName, subcategoryName } from './WardrobeWords.ts'
 import { pageHead, pageTitle } from './PageHead.ts'
@@ -158,10 +158,10 @@ const resultsView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale,
   ])
 }
 
-const wardrobeView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  Pieces.match(model.wardrobe.pieces, {
-    Loading: () => h.p([h.Role('status'), ...styled(h, styles.note())], [loader(h)]),
-    Failed: () =>
+const wardrobeView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  AsyncData.matchData(pieces, {
+    onEmpty: () => h.p([h.Role('status'), ...styled(h, styles.note())], [loader(h)]),
+    onFailure: () =>
       h.div(styled(h, styles.section()), [
         h.p([h.Role('alert')], [format(locale, 'ask.failed', {})]),
         actionButton(
@@ -173,8 +173,8 @@ const wardrobeView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Ht
           h,
         ),
       ]),
-    Loaded: ({ pieces }) =>
-      String.isNonEmpty(model.query.trim()) ? resultsView(pieces, model, locale, h) : suggestions(pieces, locale, h),
+    onData: (list) =>
+      String.isNonEmpty(model.query.trim()) ? resultsView(list, model, locale, h) : suggestions(list, locale, h),
   })
 
 /** The stylist lives in ChatGPT and Claude, with the wardrobe connected; the website hands over. */
@@ -185,15 +185,16 @@ const stylistView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
     h.a([h.Href(accountRouter({}))], [stylistIcon(h), ' ', format(locale, 'ask.stylistLink', {})]),
   ])
 
-export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
-  h.main(
-    [h.Id('main'), ...styled(h, styles.page())],
-    [
-      pageHead(pageTitle(format(locale, 'ask.title', {}), h), Option.none(), h),
-      searchBar(model, locale, h),
-      model.isAdding ? addSheet(locale, h) : h.empty,
-      wardrobeView(model, locale, h),
-      stylistView(locale, h),
-    ],
-  ),
+export const view = Submodel.defineView<Model, Message, { readonly locale: Locale; readonly pieces: PiecesData }>(
+  (model, { locale, pieces }, h) =>
+    h.main(
+      [h.Id('main'), ...styled(h, styles.page())],
+      [
+        pageHead(pageTitle(format(locale, 'ask.title', {}), h), Option.none(), h),
+        searchBar(model, locale, h),
+        model.isAdding ? addSheet(locale, h) : h.empty,
+        wardrobeView(model, pieces, locale, h),
+        stylistView(locale, h),
+      ],
+    ),
 )

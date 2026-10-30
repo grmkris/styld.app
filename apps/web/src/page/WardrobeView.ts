@@ -2,7 +2,7 @@ import { Button } from '@foldkit/ui'
 import type { Category, Piece } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import { Option } from 'effect'
-import { Submodel } from 'foldkit'
+import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction } from '../Actions.styles.ts'
@@ -10,7 +10,7 @@ import { loader } from '../Icon.ts'
 import { addPiecesRouter, pieceRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { categories } from './PieceFields.ts'
-import { Message, type Model, Pieces } from './Wardrobe.ts'
+import { Message, type Model } from './Wardrobe.ts'
 import { categoryName, subcategoryName } from './WardrobeWords.ts'
 import * as styles from './WardrobeView.styles.ts'
 import { wardrobeTabs } from './WardrobeTabs.ts'
@@ -139,10 +139,10 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
     [
       pageHead(pageTitle(format(locale, 'wardrobe.title', {}), h), Option.some(addPiecesAction(locale, h)), h),
       wardrobeTabs('pieces', locale, h),
-      Pieces.match(model.pieces, {
-        Loading: () => loadingView(locale, h),
-        Loaded: ({ pieces }) => loadedView(pieces, model, locale, h),
-        Failed: () => failedView(locale, h),
+      AsyncData.matchData(model.pieces, {
+        onEmpty: () => loadingView(locale, h),
+        onFailure: () => failedView(locale, h),
+        onData: (pieces) => loadedView(pieces, model, locale, h),
       }),
     ],
   ),

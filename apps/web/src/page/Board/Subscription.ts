@@ -1,6 +1,7 @@
 import { Effect, Option, Schema, Stream } from 'effect'
 import { Subscription } from 'foldkit'
 import * as Dom from 'foldkit/dom'
+import * as WardrobePage from '../Wardrobe.ts'
 import type { Pointer } from './Geometry.ts'
 import { Message } from './Message.ts'
 import { Gesture, type Model } from './Model.ts'
@@ -83,7 +84,7 @@ const pasteStream = () =>
 /** While a hand is on the table the whole page reports the pointer, so a finger that leaves an item (or a
  * second finger anywhere) still moves it. Keys, pasted pictures and dropped files work from anywhere on the
  * board's page. */
-export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
+const tableSubscriptions = Subscription.make<Model, Message>()((entry) => ({
   documentPointer: entry(
     { isActive: Schema.Boolean },
     {
@@ -102,3 +103,12 @@ export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
   documentPaste: entry({}, { modelToDependencies: () => ({}), dependenciesToStream: pasteStream }),
   documentDrop: entry({}, { modelToDependencies: () => ({}), dependenciesToStream: dropStream }),
 }))
+
+const { refreshWhileProcessing } = Subscription.lift(WardrobePage.subscriptions)<Model, Message>({
+  read: (model) => Option.some(model.wardrobe),
+  toParentMessage: (message) => Message.GotWardrobeMessage({ message }),
+})
+
+/** The table's own listeners, and the tray's pieces asked for again while one is processing (under its own key:
+ * the app's wardrobe has the same entry). */
+export const subscriptions = { ...tableSubscriptions, trayRefreshWhileProcessing: refreshWhileProcessing }

@@ -1,7 +1,7 @@
 import type { Look } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import { Option } from 'effect'
-import { Submodel } from 'foldkit'
+import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
 import { secondaryAction } from '../Actions.styles.ts'
@@ -9,7 +9,7 @@ import { loader } from '../Icon.ts'
 import { lookRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { wardrobeTabs } from './WardrobeTabs.ts'
-import { Message, type Model, Saved } from './Looks.ts'
+import { Message, type Model } from './Looks.ts'
 import { message as messageSection, messageTitle } from './WardrobeView.styles.ts'
 import * as styles from './LooksView.styles.ts'
 import { addPiecesAction, pageHead, pageTitle } from './PageHead.ts'
@@ -63,10 +63,10 @@ const looksPage = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html 
     [
       pageHead(pageTitle(format(locale, 'wardrobe.title', {}), h), Option.some(addPiecesAction(locale, h)), h),
       wardrobeTabs('looks', locale, h),
-      ...Saved.match(model.saved, {
-        Loading: () => [h.p([h.Role('status')], [loader(h)])],
-        Failed: () => [couldNotLoad(locale, h, Message.ClickedRetry())],
-        Loaded: ({ looks }) =>
+      ...AsyncData.matchData(model.saved, {
+        onEmpty: () => [h.p([h.Role('status')], [loader(h)])],
+        onFailure: () => [couldNotLoad(locale, h, Message.ClickedRetry())],
+        onData: (looks) =>
           looks.length === 0
             ? [
                 h.section(styled(h, messageSection()), [

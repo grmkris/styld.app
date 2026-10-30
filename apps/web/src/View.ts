@@ -318,7 +318,7 @@ const homePage = (model: Model, h: HtmlBuilder<Message>): Html =>
         slotId: 'today',
         model: model.today,
         view: TodayView.view,
-        viewInputs: { locale: model.context.locale },
+        viewInputs: { locale: model.context.locale, pieces: model.wardrobe.pieces },
         toParentMessage: (message) => Message.GotTodayMessage({ message }),
       }),
     SigningOut: () => h.main([h.Id('main')]),
@@ -333,7 +333,7 @@ const askPage = (model: Model, h: HtmlBuilder<Message>): Html =>
     slotId: 'ask',
     model: model.ask,
     view: AskView.view,
-    viewInputs: { locale: model.context.locale },
+    viewInputs: { locale: model.context.locale, pieces: model.wardrobe.pieces },
     toParentMessage: (message) => Message.GotAskMessage({ message }),
   })
 

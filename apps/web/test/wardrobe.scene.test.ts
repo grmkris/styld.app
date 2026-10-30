@@ -4,13 +4,14 @@ import { Command, click, expect, given, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { Session, init, update } from '../src/App.ts'
-import { ListPieces, Message as WardrobeMessage, Pieces } from '../src/page/Wardrobe.ts'
+import { AsyncData } from 'foldkit'
+import { ListPieces, Message as WardrobeMessage, PiecesData } from '../src/page/Wardrobe.ts'
 import { view } from '../src/View.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
 
-const wardrobe = (pieces: Pieces) =>
+const wardrobe = (pieces: PiecesData) =>
   modifyFields(
     init({
       locale: 'en',
@@ -27,7 +28,7 @@ const wardrobe = (pieces: Pieces) =>
     },
   )
 
-const loaded = (...pieces: ReadonlyArray<Piece>) => wardrobe(Pieces.Loaded({ pieces }))
+const loaded = (...pieces: ReadonlyArray<Piece>) => wardrobe(PiecesData.Success({ data: pieces }))
 
 const tee = pieceFixture('tee', { name: 'White tee' })
 const jeans = pieceFixture('jeans', { category: 'bottom', subcategory: 'jeans' })
@@ -35,7 +36,7 @@ const boots = pieceFixture('boots', { category: 'shoes', status: 'processing' })
 
 describe('the wardrobe page', () => {
   test('draws the shape of the grid while the pieces load', () => {
-    scene({ update, view }, given(wardrobe(Pieces.Loading())), expect(role('status')).toHaveText('Loading pieces…'))
+    scene({ update, view }, given(wardrobe(AsyncData.Loading())), expect(role('status')).toHaveText('Loading pieces…'))
   })
 
   test('shows each piece by name, or by what it is, with a chip for every category it holds', () => {
@@ -71,7 +72,7 @@ describe('the wardrobe page', () => {
   test('a wardrobe that cannot load says what broke and how to try again', () => {
     scene(
       { update, view },
-      given(wardrobe(Pieces.Failed())),
+      given(wardrobe(PiecesData.Failure({ error: 'Unavailable' }))),
       expect(role('alert')).toHaveText('Could not load pieces. Try again.'),
       click(role('button', { name: 'Try again' })),
       expect(role('status')).toHaveText('Loading pieces…'),

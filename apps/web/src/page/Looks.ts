@@ -1,24 +1,20 @@
 import { Look } from '@styld/protocol'
-import { Effect, Schema } from 'effect'
-import { Command, type Update } from 'foldkit'
+import { Effect, Option, Result, Schema } from 'effect'
+import { AsyncData, Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
-import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
 
 // MODEL
 
-export const Saved = defineTaggedUnion({
-  Loading: {},
-  Loaded: { looks: Schema.Array(Look) },
-  Failed: {},
-})
-export type Saved = typeof Saved.Type
+/** The saved looks as last read, kept on screen while they are asked for again. */
+export const SavedData = AsyncData.Schema(Schema.Array(Look), Schema.Literal('Unavailable'))
+export type SavedData = typeof SavedData.schema.Type
 
-export const Model = Schema.Struct({ saved: Saved })
+export const Model = Schema.Struct({ saved: SavedData.schema })
 export type Model = typeof Model.Type
 
-export const init = (): Model => ({ saved: Saved.Loading() })
+export const init = (): Model => ({ saved: AsyncData.Idle() })
 
 // MESSAGE
 
@@ -41,16 +37,25 @@ export const ListLooks = Command.define('ListLooks', {
   }).pipe(Effect.orElseSucceed(() => Message.FailedListLooks())),
 })
 
-/** The Commands that open the page. */
-export const load = () => [ListLooks()]
-
 // UPDATE
 
 type UpdateReturn = Update.Return<Model, Message, StyldClient>
 
+/** Opening the page: the looks already here stay while they are asked for again; a first visit asks. */
+export const revisit = Update.refresh<Model, Message, ReadonlyArray<Look>, 'Unavailable', StyldClient>({
+  read: (model: Model) => Option.some(model.saved),
+  revalidate: AsyncData.revalidateOrLoad,
+  write: (model: Model, saved: SavedData) => modifyFields(model, { saved: () => saved }),
+  load: ListLooks(),
+})
+
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
-    SucceededListLooks: ({ looks }) => ({ model: modifyFields(model, { saved: () => Saved.Loaded({ looks }) }) }),
-    FailedListLooks: () => ({ model: modifyFields(model, { saved: () => Saved.Failed() }) }),
-    ClickedRetry: () => ({ model: modifyFields(model, { saved: () => Saved.Loading() }), commands: [ListLooks()] }),
+    SucceededListLooks: ({ looks }) => ({
+      model: modifyFields(model, { saved: () => SavedData.Success({ data: looks }) }),
+    }),
+    FailedListLooks: () => ({
+      model: modifyFields(model, { saved: (saved) => AsyncData.settle(saved, Result.fail('Unavailable' as const)) }),
+    }),
+    ClickedRetry: () => revisit(model),
   })

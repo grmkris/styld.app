@@ -1,7 +1,7 @@
 import { format, type Locale } from '@styld/i18n'
 import type { Board } from '@styld/protocol'
 import { Array, Option } from 'effect'
-import { Submodel } from 'foldkit'
+import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
@@ -11,7 +11,7 @@ import { addIcon, loader } from '../Icon.ts'
 import { boardRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { stillTable } from './Board/Table.ts'
-import { BoardList, Creating, Message, type Model } from './Boards.ts'
+import { Creating, Message, type Model } from './Boards.ts'
 import * as styles from './BoardsView.styles.ts'
 import { pageHead, pageTitle } from './PageHead.ts'
 
@@ -78,10 +78,10 @@ const createForm = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html
 }
 
 const listView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  BoardList.match(model.boards, {
-    Loading: () =>
+  AsyncData.matchData(model.boards, {
+    onEmpty: () =>
       h.p([h.Role('status'), ...styled(h, styles.note())], [loader(h), format(locale, 'boards.loading', {})]),
-    Failed: () =>
+    onFailure: () =>
       h.div(styled(h, styles.head()), [
         h.p([h.Role('alert')], [format(locale, 'boards.failed', {})]),
         actionButton(
@@ -89,7 +89,7 @@ const listView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
           h,
         ),
       ]),
-    Loaded: ({ boards }) =>
+    onData: (boards) =>
       Array.match(boards, {
         onEmpty: () => h.p(styled(h, styles.note()), [format(locale, 'boards.empty', {})]),
         onNonEmpty: (some) =>

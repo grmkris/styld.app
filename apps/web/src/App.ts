@@ -1,4 +1,4 @@
-import { Effect, Option, Schema } from 'effect'
+import { Effect, Match, Option, Schema } from 'effect'
 import { BrowserAuth } from '@styld/auth/client'
 import { AccountClaims } from '@styld/auth/config'
 import * as HttpClient from 'effect/http/HttpClient'
@@ -189,32 +189,63 @@ type UpdateReturn = Update.Return<Model, Message, Services>
 
 // INIT
 
-/** The Commands that open the page a route shows. */
+/** The Commands that open a page that loads whole each time. */
 const pageCommands = (route: AppRoute, piece: Piece.Model, look: Look.Model, board: BoardModel.Model) =>
-  AppRoute.match(route, {
-    Boards: () => Command.mapMessages(Boards.load(), (message) => Message.GotBoardsMessage({ message })),
-    Board: () => Command.mapMessages(Board.load(board), (message) => Message.GotBoardMessage({ message })),
-    Ask: () => Command.mapMessages(Ask.load(), (message) => Message.GotAskMessage({ message })),
-    Wardrobe: () => Command.mapMessages(Wardrobe.load(), (message) => Message.GotWardrobeMessage({ message })),
-    Piece: () => Command.mapMessages(Piece.load(piece), (message) => Message.GotPieceMessage({ message })),
-    AddPieces: () => [],
-    Review: () => Command.mapMessages(Review.load(), (message) => Message.GotReviewMessage({ message })),
-    Looks: () => Command.mapMessages(Looks.load(), (message) => Message.GotLooksMessage({ message })),
-    Look: () => Command.mapMessages(Look.load(look), (message) => Message.GotLookMessage({ message })),
-    Home: () => [],
-    Login: () => [],
-    LoginForConnection: () => [],
-    Account: () => [],
-    NotFound: () => [],
-  })
+  Match.value(route).pipe(
+    Match.tag('Board', () => Command.mapMessages(Board.load(board), (message) => Message.GotBoardMessage({ message }))),
+    Match.tag('Piece', () => Command.mapMessages(Piece.load(piece), (message) => Message.GotPieceMessage({ message }))),
+    Match.tag('Review', () => Command.mapMessages(Review.load(), (message) => Message.GotReviewMessage({ message }))),
+    Match.tag('Look', () => Command.mapMessages(Look.load(look), (message) => Message.GotLookMessage({ message }))),
+    Match.orElse(() => []),
+  )
+
+type Step = Update.Step<Model, Message, Services>
+
+/** Opening a page that shows the pieces: the ones already here stay while they are asked for again. */
+const foldWardrobeRevisit = Update.foldChildStep({
+  update: Wardrobe.revisit,
+  read: (model: Model) => Option.some(model.wardrobe),
+  write: (model: Model, wardrobe: Wardrobe.Model) => modifyFields(model, { wardrobe: () => wardrobe }),
+  toParentMessage: (message: Wardrobe.Message) => Message.GotWardrobeMessage({ message }),
+})
+
+const foldLooksRevisit = Update.foldChildStep({
+  update: Looks.revisit,
+  read: (model: Model) => Option.some(model.looks),
+  write: (model: Model, looks: Looks.Model) => modifyFields(model, { looks: () => looks }),
+  toParentMessage: (message: Looks.Message) => Message.GotLooksMessage({ message }),
+})
+
+const foldBoardsRevisit = Update.foldChildStep({
+  update: Boards.revisit,
+  read: (model: Model) => Option.some(model.boards),
+  write: (model: Model, boards: Boards.Model) => modifyFields(model, { boards: () => boards }),
+  toParentMessage: (message: Boards.Message) => Message.GotBoardsMessage({ message }),
+})
+
+const foldTodayEnter = Update.foldChildStep({
+  update: Today.enter,
+  read: (model: Model) => Option.some(model.today),
+  write: (model: Model, today: Today.Model) => modifyFields(model, { today: () => today }),
+  toParentMessage: (message: Today.Message) => Message.GotTodayMessage({ message }),
+})
+
+/** What opening a tab page asks for. Home waits for the session (`afterSignIn`). */
+const openPage = (route: AppRoute): ReadonlyArray<Step> =>
+  Match.value(route).pipe(
+    Match.tag('Wardrobe', 'Ask', () => [foldWardrobeRevisit]),
+    Match.tag('Looks', () => [foldLooksRevisit]),
+    Match.tag('Boards', () => [foldBoardsRevisit]),
+    Match.orElse(() => []),
+  )
 
 export const init = (context: Flags): UpdateReturn => {
   const route = routeFromPathname(context.pathname)
   const piece = Piece.init(AppRoute.guards.Piece(route) ? route.pieceId : '')
   const look = Look.init(AppRoute.guards.Look(route) ? route.lookId : '')
   const board = BoardModel.init(AppRoute.guards.Board(route) ? route.boardId : '')
-  return {
-    model: {
+  const opened = Update.combine<Model, Message, Services>(
+    {
       context,
       route,
       localeSave: LocaleSave.Saved(),
@@ -233,32 +264,28 @@ export const init = (context: Flags): UpdateReturn => {
       account: Account.init(),
       telemetry: { consent: context.telemetryConsent, prompting: context.telemetryConsent === 'undecided' },
     },
-    commands: [ReadSession(), ...pageCommands(route, piece, look, board)],
+    openPage(route),
+  )
+  return {
+    model: opened.model,
+    commands: [ReadSession(), ...pageCommands(route, piece, look, board), ...(opened.commands ?? [])],
   }
 }
 
 // UPDATE
 
 /** Where a signed-in visitor belongs: sign-in pages hand over to the account, or back to the
- * assistant's pending authorization. */
-const afterSignIn = (route: AppRoute) =>
-  AppRoute.match(route, {
-    Login: () => [Navigate({ href: accountRouter({}) })],
-    LoginForConnection: () => [Navigate({ href: connectionAuthorizePath })],
-    // Home is today's table once the session is known: its data needs the session.
-    Home: () => Command.mapMessages(Today.load(), (message) => Message.GotTodayMessage({ message })),
-    Account: () => [],
-    Wardrobe: () => [],
-    AddPieces: () => [],
-    Review: () => [],
-    Piece: () => [],
-    Looks: () => [],
-    Look: () => [],
-    Ask: () => [],
-    Boards: () => [],
-    Board: () => [],
-    NotFound: () => [],
-  })
+ * assistant's pending authorization. Home is today's table once the session is known. */
+const afterSignIn =
+  (route: AppRoute): Step =>
+  (model) =>
+    Match.value(route).pipe(
+      Match.withReturnType<UpdateReturn>(),
+      Match.tag('Login', () => ({ model, commands: [Navigate({ href: accountRouter({}) })] })),
+      Match.tag('LoginForConnection', () => ({ model, commands: [Navigate({ href: connectionAuthorizePath })] })),
+      Match.tag('Home', () => Update.combine<Model, Message, Services>(model, [foldTodayEnter, foldWardrobeRevisit])),
+      Match.orElse(() => ({ model })),
+    )
 
 /** Pages that need a session send a signed-out visitor to sign in. */
 const afterSignOut = (route: AppRoute) => (needsSession(route) ? [Navigate({ href: loginRouter({}) })] : [])
@@ -266,10 +293,8 @@ const afterSignOut = (route: AppRoute) => (needsSession(route) ? [Navigate({ hre
 const foldLoginOutMessage = Login.OutMessage.match<Update.Step<Model, Message, Services>>({
   SignedIn:
     ({ claims }) =>
-    (stepModel) => ({
-      model: modifyFields(stepModel, { session: () => Session.SignedIn({ claims }) }),
-      commands: afterSignIn(stepModel.route),
-    }),
+    (stepModel) =>
+      afterSignIn(stepModel.route)(modifyFields(stepModel, { session: () => Session.SignedIn({ claims }) })),
 })
 
 const foldLogin = Update.foldChild({
@@ -344,6 +369,7 @@ const foldToday = Update.foldChild({
   read: (model: Model) => Option.some(model.today),
   write: (model: Model, today: Today.Model) => modifyFields(model, { today: () => today }),
   toParentMessage: (message: Today.Message) => Message.GotTodayMessage({ message }),
+  foldOutMessage: Today.OutMessage.match<Step>({ RequestedPieces: () => foldWardrobeRevisit }),
 })
 
 const foldAsk = Update.foldChild({
@@ -351,6 +377,7 @@ const foldAsk = Update.foldChild({
   read: (model: Model) => Option.some(model.ask),
   write: (model: Model, ask: Ask.Model) => modifyFields(model, { ask: () => ask }),
   toParentMessage: (message: Ask.Message) => Message.GotAskMessage({ message }),
+  foldOutMessage: Ask.OutMessage.match<Step>({ RequestedPieces: () => foldWardrobeRevisit }),
 })
 
 const foldBoards = Update.foldChild({
@@ -389,6 +416,11 @@ export const subscriptions = Subscription.aggregate(
     read: (model) => Option.some(model.addPieces),
     toParentMessage: (message) => Message.GotAddPiecesMessage({ message }),
   }),
+  // The pieces are asked for again while one is processing, whichever page shows them.
+  Subscription.lift(Wardrobe.subscriptions)<Model, Message>({
+    read: (model) => Option.some(model.wardrobe),
+    toParentMessage: (message) => Message.GotWardrobeMessage({ message }),
+  }),
   // The board's hands, keys, pasted pictures and dropped files listen only while a board is open.
   Subscription.lift(BoardSubscription.subscriptions)<Model, Message>({
     read: (model) => (AppRoute.guards.Board(model.route) ? Option.some(model.board) : Option.none()),
@@ -426,10 +458,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ReceivedSession: ({ claims }) =>
       claims === null
         ? { model: modifyFields(model, { session: () => Session.SignedOut() }), commands: afterSignOut(model.route) }
-        : {
-            model: modifyFields(model, { session: () => Session.SignedIn({ claims }) }),
-            commands: afterSignIn(model.route),
-          },
+        : afterSignIn(model.route)(modifyFields(model, { session: () => Session.SignedIn({ claims }) })),
     FailedReadSession: () => ({ model: modifyFields(model, { session: () => Session.Unavailable() }) }),
     RequestedSession: () => ({
       model: modifyFields(model, { session: () => Session.Checking() }),

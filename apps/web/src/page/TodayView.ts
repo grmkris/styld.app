@@ -1,7 +1,7 @@
 import { format, type Locale } from '@styld/i18n'
 import type { Board, Piece } from '@styld/protocol'
 import { Array, Option } from 'effect'
-import { Submodel } from 'foldkit'
+import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
@@ -11,7 +11,8 @@ import { addPiecesRouter, boardRouter, reviewRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { stillTable } from './Board/Table.ts'
 import { asItems, type Missing, missingFrom } from './Outfit.ts'
-import { Message, type Model, Pieces, tableOutfit, Worn } from './Today.ts'
+import { Message, type Model, tableOutfit, Worn } from './Today.ts'
+import type { PiecesData } from './Wardrobe.ts'
 import { pageHead } from './PageHead.ts'
 import { title as headTitle } from './PageHead.styles.ts'
 import * as styles from './TodayView.styles.ts'
@@ -46,7 +47,7 @@ const pieceLabel = (piece: Piece, locale: Locale) => piece.name ?? format(locale
 
 /** The table: the outfit's pieces in their slots. Spin brings in new ones, which drop onto the paper. */
 const tableView = (model: Model, pieces: ReadonlyArray<Piece>, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const outfit = tableOutfit(model)
+  const outfit = tableOutfit(model, pieces)
   if (Array.isReadonlyArrayEmpty(pieces.filter((piece) => piece.status === 'ready')))
     return h.div(styled(h, styles.placeholder()), [
       h.div(styled(h, styles.placeholderBody()), [
@@ -60,7 +61,7 @@ const tableView = (model: Model, pieces: ReadonlyArray<Piece>, locale: Locale, h
   ])
 }
 
-const wearButton = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+const wearButton = (model: Model, pieces: ReadonlyArray<Piece>, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const isWorn = Worn.guards.Worn(model.worn) && model.spin === 0
   const saving = Worn.guards.Saving(model.worn)
   return actionButton(
@@ -68,7 +69,7 @@ const wearButton = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html
       label: format(locale, isWorn ? 'today.worn' : saving ? 'today.wearing' : 'today.wear', {}),
       leading: isWorn ? checkIcon(h) : saving ? loader(h) : h.empty,
       style: isWorn ? cx(primaryAction(), styles.worn()) : cx(primaryAction(), styles.wear()),
-      onClick: Message.ClickedWear(),
+      onClick: Message.ClickedWear({ pieceIds: tableOutfit(model, pieces).map(({ piece }) => piece.id) }),
       isDisabled: saving,
     },
     h,
@@ -110,8 +111,9 @@ const noteView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
   )
 }
 
-const todayView = (model: Model, day: string, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.section(
+const todayView = (model: Model, day: string, pieces: PiecesData, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  const loaded = Option.getOrElse(AsyncData.getData(pieces), (): ReadonlyArray<Piece> => [])
+  return h.section(
     [h.AriaLabelledBy('today-headline'), ...styled(h, styles.today())],
     [
       pageHead(
@@ -126,13 +128,13 @@ const todayView = (model: Model, day: string, locale: Locale, h: HtmlBuilder<Mes
         Option.none(),
         h,
       ),
-      Pieces.match(model.pieces, {
-        Loading: () =>
+      AsyncData.matchData(pieces, {
+        onEmpty: () =>
           h.div(
             [h.Role('status'), ...styled(h, styles.placeholder())],
             [loader(h), format(locale, 'today.loading', {})],
           ),
-        Failed: () =>
+        onFailure: () =>
           h.div(styled(h, styles.placeholder()), [
             h.div(styled(h, styles.placeholderBody()), [
               h.p([h.Role('alert')], [format(locale, 'today.failed', {})]),
@@ -142,11 +144,11 @@ const todayView = (model: Model, day: string, locale: Locale, h: HtmlBuilder<Mes
               ),
             ]),
           ]),
-        Loaded: ({ pieces }) => tableView(model, pieces, locale, h),
+        onData: (list) => tableView(model, list, locale, h),
       }),
-      Pieces.guards.Loaded(model.pieces) && model.pieces.pieces.length > 0
+      Array.isReadonlyArrayNonEmpty(loaded)
         ? h.div(styled(h, styles.actions()), [
-            wearButton(model, locale, h),
+            wearButton(model, loaded, locale, h),
             h.button(
               [
                 h.Type('button'),
@@ -160,11 +162,10 @@ const todayView = (model: Model, day: string, locale: Locale, h: HtmlBuilder<Mes
           ])
         : h.empty,
       noteView(model, locale, h),
-      Pieces.guards.Loaded(model.pieces) && model.pieces.pieces.some((piece) => piece.status === 'ready')
-        ? missingView(model.pieces.pieces, locale, h)
-        : h.empty,
+      loaded.some((piece) => piece.status === 'ready') ? missingView(loaded, locale, h) : h.empty,
     ],
   )
+}
 
 const boardCard = (board: Board, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.a(
@@ -177,19 +178,23 @@ const boardCard = (board: Board, locale: Locale, h: HtmlBuilder<Message>): Html 
   )
 
 const pickUpView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  const waiting = Option.getOrElse(AsyncData.getData(model.tray), () => 0)
   const cards = [
-    ...(model.waiting > 0
+    ...(waiting > 0
       ? [
           h.a(
             [h.Href(reviewRouter({})), ...styled(h, styles.card())],
             [
-              h.span(styled(h, styles.cardTitle()), [format(locale, 'today.waiting', { count: model.waiting })]),
+              h.span(styled(h, styles.cardTitle()), [format(locale, 'today.waiting', { count: waiting })]),
               h.span(styled(h, styles.cardAction()), [format(locale, 'today.review', {})]),
             ],
           ),
         ]
       : []),
-    ...Option.match(model.maybeBoard, { onNone: () => [], onSome: (board) => [boardCard(board, locale, h)] }),
+    ...Option.match(Option.flatten(AsyncData.getData(model.lastBoard)), {
+      onNone: () => [],
+      onSome: (board) => [boardCard(board, locale, h)],
+    }),
   ]
   return Array.match(cards, {
     onEmpty: () => h.empty,
@@ -201,15 +206,16 @@ const pickUpView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html
   })
 }
 
-export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
-  h.main(
-    [h.Id('main'), ...styled(h, styles.page())],
-    [
-      Option.match(model.maybeDay, {
-        onNone: () => h.div([h.Role('status'), ...styled(h, styles.placeholder())], [loader(h)]),
-        onSome: (day) => todayView(model, day, locale, h),
-      }),
-      pickUpView(model, locale, h),
-    ],
-  ),
+export const view = Submodel.defineView<Model, Message, { readonly locale: Locale; readonly pieces: PiecesData }>(
+  (model, { locale, pieces }, h) =>
+    h.main(
+      [h.Id('main'), ...styled(h, styles.page())],
+      [
+        Option.match(model.maybeDay, {
+          onNone: () => h.div([h.Role('status'), ...styled(h, styles.placeholder())], [loader(h)]),
+          onSome: (day) => todayView(model, day, pieces, locale, h),
+        }),
+        pickUpView(model, locale, h),
+      ],
+    ),
 )
