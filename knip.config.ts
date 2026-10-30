@@ -27,6 +27,7 @@ export default {
       ]),
     ),
     'packages/db': { project: ['src/**/*.ts!'] },
+    'packages/imaging': { project: ['src/**/*.ts!'] },
     'packages/i18n': { project: ['src/**/*.ts!'] },
   },
   // Vendored source is checked byte-for-byte against its recorded upstream hash.

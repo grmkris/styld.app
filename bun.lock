@@ -102,6 +102,13 @@
         "intl-messageformat": "catalog:",
       },
     },
+    "packages/imaging": {
+      "name": "@styld/imaging",
+      "dependencies": {
+        "effect": "catalog:",
+        "fast-png": "catalog:",
+      },
+    },
     "packages/observability": {
       "name": "@styld/observability",
       "dependencies": {
@@ -129,13 +136,13 @@
         "@styld/db": "workspace:*",
         "@styld/domain": "workspace:*",
         "@styld/i18n": "workspace:*",
+        "@styld/imaging": "workspace:*",
         "@styld/observability": "workspace:*",
         "@styld/protocol": "workspace:*",
         "@yielded/auth": "catalog:",
         "alchemy": "catalog:",
         "drizzle-orm": "catalog:",
         "effect": "catalog:",
-        "fast-png": "catalog:",
       },
       "devDependencies": {
         "@modelcontextprotocol/client": "catalog:",
@@ -636,6 +643,8 @@
     "@styld/domain": ["@styld/domain@workspace:packages/domain"],
 
     "@styld/i18n": ["@styld/i18n@workspace:packages/i18n"],
+
+    "@styld/imaging": ["@styld/imaging@workspace:packages/imaging"],
 
     "@styld/observability": ["@styld/observability@workspace:packages/observability"],
 

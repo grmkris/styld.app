@@ -15,13 +15,13 @@
     "@styld/db": "workspace:*",
     "@styld/domain": "workspace:*",
     "@styld/i18n": "workspace:*",
+    "@styld/imaging": "workspace:*",
     "@styld/observability": "workspace:*",
     "@styld/protocol": "workspace:*",
     "@yielded/auth": "catalog:",
     "alchemy": "catalog:",
     "drizzle-orm": "catalog:",
-    "effect": "catalog:",
-    "fast-png": "catalog:"
+    "effect": "catalog:"
   },
   "devDependencies": {
     "@modelcontextprotocol/client": "catalog:",

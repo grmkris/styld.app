@@ -1,3 +1,4 @@
+import { onBorder } from '@styld/imaging'
 import { type Box, type Mask, type Rgba, upright } from './Pixels.ts'
 
 /** A size in pixels. */
@@ -181,12 +182,6 @@ const neighbours = (at: number, width: number, height: number) => {
   const x = at % width
   const y = Math.floor(at / width)
   return [x > 0 ? at - 1 : -1, x < width - 1 ? at + 1 : -1, y > 0 ? at - width : -1, y < height - 1 ? at + width : -1]
-}
-
-const onBorder = (at: number, width: number, height: number) => {
-  const x = at % width
-  const y = Math.floor(at / width)
-  return x === 0 || y === 0 || x === width - 1 || y === height - 1
 }
 
 /** Number the part of `chosen` pixels around `start` as `part`: its size, and whether it touches the border. */

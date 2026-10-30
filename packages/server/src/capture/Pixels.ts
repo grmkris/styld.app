@@ -1,13 +1,8 @@
-import { convertIndexedToRgb, decode, encode } from 'fast-png'
+import { decodePng, type Rgba } from '@styld/imaging'
 import { Effect } from 'effect'
 import { ProviderFailed } from './Providers.ts'
 
-/** A picture in memory: four bytes a pixel (red, green, blue, alpha), rows top to bottom. */
-export interface Rgba {
-  readonly width: number
-  readonly height: number
-  readonly data: Uint8Array
-}
+export { decodePng, encodePng, type Rgba } from '@styld/imaging'
 
 /** A rectangle in pixels: `left`/`top` inclusive, `right`/`bottom` exclusive. */
 export interface Box {
@@ -23,38 +18,6 @@ export interface Mask {
   readonly raster: Uint8Array
 }
 
-const sample8 = (value: number, depth: number) => (depth === 16 ? value >> 8 : value)
-
-/** Decode a PNG (the Images binding's output) into RGBA, whatever its colour type and depth. */
-export const decodePng = (bytes: Uint8Array): Rgba => {
-  const png = decode(bytes)
-  if (png.palette !== undefined) {
-    const rgb = convertIndexedToRgb(png)
-    return toRgba(png.width, png.height, rgb, png.palette[0]?.length ?? 3, 8)
-  }
-  return toRgba(png.width, png.height, png.data, png.channels, png.depth)
-}
-
-/** Where a pixel's alpha sits for a PNG's channel count, if it has one. */
-const alphaOffset = (channels: number) => (channels === 2 ? 1 : channels === 4 ? 3 : -1)
-
-const toRgba = (width: number, height: number, source: ArrayLike<number>, channels: number, depth: number): Rgba => {
-  const data = new Uint8Array(width * height * 4)
-  const sample = (at: number) => sample8(source[at] ?? 0, depth)
-  const grey = channels <= 2
-  const alpha = alphaOffset(channels)
-  for (let pixel = 0; pixel < width * height; pixel++) {
-    const at = pixel * channels
-    const red = sample(at)
-    data[pixel * 4] = red
-    data[pixel * 4 + 1] = grey ? red : sample(at + 1)
-    data[pixel * 4 + 2] = grey ? red : sample(at + 2)
-    data[pixel * 4 + 3] = alpha < 0 ? 255 : sample(at + alpha)
-  }
-  return { width, height, data }
-}
-
-/** Encode RGBA as a PNG with transparency. */
 /** Decode a PNG a provider made. One that does not decode is the provider's failure, and trying the same
  * picture again would fail the same way. */
 export const decodedPng = (bytes: Uint8Array) =>
@@ -62,9 +25,6 @@ export const decodedPng = (bytes: Uint8Array) =>
     try: () => decodePng(bytes),
     catch: () => new ProviderFailed({ provider: 'cloudflare-images', retryable: false }),
   })
-
-export const encodePng = (picture: Rgba): Uint8Array =>
-  encode({ width: picture.width, height: picture.height, data: picture.data, channels: 4, depth: 8 })
 
 /** The pixels of `box`, clamped to the picture. */
 export const crop = (picture: Rgba, box: Box): Rgba => {

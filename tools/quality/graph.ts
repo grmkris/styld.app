@@ -12,12 +12,13 @@ const Manifest = Schema.Struct({
 type Workspace = { readonly directory: string; readonly manifest: typeof Manifest.Type }
 
 const directions: Readonly<Record<string, readonly string[]>> = {
-  '@styld/web': ['@styld/auth', '@styld/i18n', '@styld/observability', '@styld/protocol'],
+  '@styld/web': ['@styld/auth', '@styld/i18n', '@styld/imaging', '@styld/observability', '@styld/protocol'],
   '@styld/server': [
     '@styld/auth',
     '@styld/db',
     '@styld/domain',
     '@styld/i18n',
+    '@styld/imaging',
     '@styld/observability',
     '@styld/protocol',
   ],
@@ -28,6 +29,8 @@ const directions: Readonly<Record<string, readonly string[]>> = {
   '@styld/domain': [],
   '@styld/db': [],
   '@styld/i18n': [],
+  // Pure pixel work, the same in the Worker and the browser: keying a drawn picture, shrinking, flattening.
+  '@styld/imaging': [],
   '@styld/observability': [],
 }
 
