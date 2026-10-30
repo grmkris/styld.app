@@ -79,3 +79,23 @@ test('deployed preview offers MCP to OAuth clients: discovery, challenge, regist
   )
   expect(clientId).toMatch(/^dcr_[0-9a-f]{32}$/)
 }, 30000)
+
+const onPreview = (path: string) => new URL(path, origin).toString()
+
+test('deployed preview keeps static files for good and asks for its face with the document', async () => {
+  const page = await (await fetch(onPreview('/login'))).text()
+  const preload = /<link rel="preload" href="([^"]+\.woff2)" as="font" type="font\/woff2" crossorigin>/.exec(page)?.[1]
+  const script = /<script type="module" crossorigin src="([^"]+)"/.exec(page)?.[1]
+  const anton = /url\(['"]?(\/fonts\/anton-latin\.[0-9a-f]{8}\.woff2)/.exec(
+    await (await fetch(onPreview(/<link rel="stylesheet" crossorigin href="([^"]+)"/.exec(page)?.[1] ?? '/'))).text(),
+  )?.[1]
+  for (const path of [preload, script, anton]) {
+    expect(path).toBeDefined()
+    const response = await fetch(onPreview(path ?? '/'))
+    expect({ path, status: response.status, cache: response.headers.get('cache-control') }).toEqual({
+      path,
+      status: 200,
+      cache: 'public, max-age=31536000, immutable',
+    })
+  }
+})
