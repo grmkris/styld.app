@@ -291,7 +291,15 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
     - the Save motion into Boards;
     - lists of who one follows and blocked on the website (the API and the tools have them);
     - a browser walk of following and the feed.
-- **Next:** gate, land and deploy M4, then M5 (Explore, curation, moods and search).
+- **Preview (M4):** deployed from `f470631`; `/api/health` reports release
+  `f4706316fa3d0958d5c1b71f027b0f5e3821103c`.
+  - The plan updated the database (the `saves_follows_blocks_reports` migration) and the three Workers. It created
+    and deleted nothing.
+  - `tools/preview.native.test.ts` passed 3/3.
+  - Signed out, `/api/feed` answers 401. Signed in, `/api/saved`, `/api/following`, `/api/blocked` and `/api/feed`
+    answer 200 on the migrated D1, and following oneself answers 422 `NotWithYourself`.
+  - Still to read back: a follow, save and block between two real accounts (the preview has one test account).
+- **Next:** M5 (Explore, curation, moods and search).
 - **Shared with the capture session:** migrations are generated one at a time; public delivery reuses its rule for a
   piece's shown picture; generated pictures reuse its Muse provider.
 - **Still to settle in spikes:** Clef and Llama Guard thresholds on fixtures in English and Slovenian, drawing text
