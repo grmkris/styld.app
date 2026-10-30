@@ -1,17 +1,14 @@
 import { lookPieces, looks, operationReceipts, pieces } from '@styld/db'
 import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
-import { Array, Effect, Option } from 'effect'
+import { Effect, Option } from 'effect'
 import { receiptQuery } from '../Receipts.ts'
-import { StoreUnavailable } from '../wardrobe/Store.ts'
+import { chunked, ownPieceIds, StoreUnavailable } from '../wardrobe/Store.ts'
 
 export type LookRow = typeof looks.$inferSelect
 type ReceiptRow = typeof operationReceipts.$inferSelect
 
 const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: () => StoreUnavailable.make({}) })
-
-/** D1 binds at most 100 parameters to a statement, so id lists go in chunks. */
-const chunked = (ids: ReadonlyArray<string>) => Array.chunksOf(ids, 90).map((chunk) => [...chunk])
 
 /** Looks and their pieces in D1. Every read and write names the account. */
 export const makeLookStore = (database: Parameters<typeof drizzle>[0]) => {
@@ -42,18 +39,7 @@ export const makeLookStore = (database: Parameters<typeof drizzle>[0]) => {
         ]),
       ).pipe(Effect.asVoid),
     /** Which of these pieces belong to the account. */
-    ownPieces: (accountId: string, pieceIds: ReadonlyArray<string>) =>
-      Effect.map(
-        Effect.forEach(chunked(pieceIds), (chunk) =>
-          attempt(() =>
-            db
-              .select({ id: pieces.id })
-              .from(pieces)
-              .where(and(eq(pieces.accountId, accountId), inArray(pieces.id, chunk))),
-          ),
-        ),
-        (rows) => new Set(rows.flat().map(({ id }) => id)),
-      ),
+    ownPieces: (accountId: string, pieceIds: ReadonlyArray<string>) => ownPieceIds(db, accountId, pieceIds),
     findReceipt: (accountId: string, operationId: string) =>
       attempt(() => receiptQuery(db, accountId, operationId)).pipe(Effect.map((rows) => Option.fromNullishOr(rows[0]))),
     listLooks: (accountId: string) =>

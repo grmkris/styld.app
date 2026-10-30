@@ -18,6 +18,8 @@ import {
 import { browserTelemetryRoutes } from './BrowserTelemetry.ts'
 import { AccountLifecycle, makeAccountLifecycle } from './AccountLifecycle.ts'
 import { Looks, makeLooks } from './looks/Looks.ts'
+import { Boards, makeBoards } from './boards/Boards.ts'
+import { boardRoutes } from './boards/Http.ts'
 import { apiRoutes } from './Api.ts'
 import { makeAuthHttp, withCodeRequestPolicy } from './AuthHttp.ts'
 import { makeGarmentVision, type RunClef } from './capture/Clef.ts'
@@ -72,8 +74,8 @@ const perClientLimit = (name: string, namespaceId: number, limit: number) =>
       )
   })
 
-/** One wardrobe, one account lifecycle, one capture service and the looks per isolate, shared by the routes and
- * the processing queue. Assistant-added pieces get the same cut-out providers as the tray. */
+/** One wardrobe, one account lifecycle, one capture service, the looks and the boards per isolate, shared by the
+ * routes and the processing queue. Assistant-added pieces get the same cut-out providers as the tray. */
 const storageServices = <R>(
   bindings: WardrobeBindings,
   providers: Layer.Layer<
@@ -96,6 +98,7 @@ const storageServices = <R>(
       lifecycle: Layer.succeed(AccountLifecycle, lifecycleService),
       captures: Layer.succeed(Captures, capturesService),
       looks: Layer.succeed(Looks, looksService),
+      boards: Layer.succeed(Boards, yield* makeBoards(bindings)),
     }
   }).pipe(
     Effect.provide(Layer.mergeAll(layerCryptoWeb, pieceCutout(bindings.bucket)).pipe(Layer.provideMerge(providers))),
@@ -258,13 +261,17 @@ const makeApplication =
         dataset: yield* calls.raw,
         origin: { environment: observabilityBase.environment, release: observabilityBase.release },
       })
-      const { wardrobeService, lifecycleService, capturesService, looksService, wardrobe, lifecycle, captures, looks } =
-        yield* storageServices({ database: db, bucket, images: imagesRaw, queue: yield* pieceQueue.raw }, providers)
+      const services = yield* storageServices(
+        { database: db, bucket, images: imagesRaw, queue: yield* pieceQueue.raw },
+        providers,
+      )
+      const { wardrobeService, lifecycleService, capturesService, looksService, wardrobe, captures, boards } = services
       const oauth = makeMcpOAuth(db, auth, { origin: authOrigin, keys: configuration.sessionKeys, allowRegistration })
       const routes = Layer.mergeAll(
         auth.layer,
-        apiRoutes(auth, { wardrobe, lifecycle, captures, looks }, { allowCheck }),
+        apiRoutes(auth, services, { allowCheck }),
         wardrobeRoutes(auth).pipe(Layer.provide(wardrobe)),
+        boardRoutes(auth).pipe(Layer.provide(boards)),
         captureRoutes(auth).pipe(Layer.provide(captures)),
         oauth.routes,
         mcpRoutes(db, authOrigin, observabilityBase.release, { wardrobe: wardrobeService, looks: looksService }).pipe(

@@ -5,6 +5,8 @@ import { HttpApiBuilder } from 'effect/http-api'
 import type { RuntimeContext } from 'alchemy/RuntimeContext'
 import { AccountLifecycle } from './AccountLifecycle.ts'
 import type { makeAuthHttp } from './AuthHttp.ts'
+import { boardHandlers } from './boards/Http.ts'
+import type { Boards } from './boards/Boards.ts'
 import { captureHandlers } from './capture/Http.ts'
 import type { Captures } from './capture/Service.ts'
 import { lookHandlers } from './looks/Http.ts'
@@ -43,6 +45,7 @@ export const apiRoutes = (
     readonly lifecycle: Layer.Layer<AccountLifecycle>
     readonly captures: Layer.Layer<Captures>
     readonly looks: Layer.Layer<Looks>
+    readonly boards: Layer.Layer<Boards>
   },
   limits: { readonly allowCheck: (accountId: string) => Effect.Effect<boolean, never, RuntimeContext> },
 ) =>
@@ -51,6 +54,7 @@ export const apiRoutes = (
     Layer.provide(wardrobeHandlers(admitWith(auth)).pipe(Layer.provide(services.wardrobe))),
     Layer.provide(captureHandlers(admitWith(auth), limits.allowCheck).pipe(Layer.provide(services.captures))),
     Layer.provide(lookHandlers(admitWith(auth)).pipe(Layer.provide(services.looks))),
+    Layer.provide(boardHandlers(admitWith(auth)).pipe(Layer.provide(services.boards))),
     Layer.provide(auth.router.securityLayer(SessionHttp)),
     auth.router.middleware,
     Layer.provide(auth.dependencies),

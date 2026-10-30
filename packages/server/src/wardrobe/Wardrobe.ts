@@ -1,4 +1,3 @@
-import type * as Cloudflare from '@alchemy.run/cloudflare'
 import {
   type AddPiece,
   type CreateUpload,
@@ -17,24 +16,19 @@ import {
   WardrobeUnavailable,
   subcategoryFits,
 } from '@styld/protocol'
-import type { RuntimeContext } from 'alchemy/RuntimeContext'
 import { Context, DateTime, Effect, Option, Predicate, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { type ByteStream, pump } from '../Streams.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import { type ImageSize, imageSizes, isVideoContainer, sniffImageType, uploadKey } from './Media.ts'
+import { deliverImage, type ImageBindings } from './Delivery.ts'
+import { type ImageSize, isVideoContainer, sniffImageType, uploadKey } from './Media.ts'
 import { GarmentCutout, type WorkMessage } from './Processing.ts'
 import { makeStore, type PieceRow, type Store, type StoreUnavailable, type UploadRow } from './Store.ts'
 
-type Runtime<Client extends { readonly raw: Effect.Effect<unknown> | Effect.Effect<unknown, never, RuntimeContext> }> =
-  Effect.Success<Client['raw']>
-
 /** The Cloudflare bindings the wardrobe stores into, as Alchemy's runtime objects. */
-export interface WardrobeBindings {
+export interface WardrobeBindings extends ImageBindings {
   readonly database: Parameters<typeof makeStore>[0]
-  readonly bucket: Runtime<Cloudflare.R2.ReadWriteBucketClient>
-  readonly images: Runtime<Cloudflare.Images.ImagesClient>
   readonly queue: { send(message: WorkMessage): Promise<unknown> }
 }
 
@@ -96,8 +90,8 @@ const videoRefusal = (
   return Option.none()
 }
 
-/** Why an upload cannot become a piece, if it cannot. */
-const addRefusal = (upload: Option.Option<UploadRow>): Option.Option<UploadRefused['reason']> =>
+/** Why an upload cannot make something, if it cannot. */
+const useRefusal = (upload: Option.Option<UploadRow>): Option.Option<UploadRefused['reason']> =>
   Option.match(upload, {
     onNone: () => Option.some('notFound'),
     onSome: ({ status }) =>
@@ -107,6 +101,16 @@ const addRefusal = (upload: Option.Option<UploadRow>): Option.Option<UploadRefus
           ? Option.some('alreadyUsed')
           : Option.none(),
   })
+
+/** A received upload of the account that has not made anything yet: what a piece or a board's picture is
+ * made from. Another account's upload reads as not found. */
+export const usableUpload = Effect.fnUntraced(function* (store: Store, accountId: string, uploadId: string) {
+  const upload = Option.filter(yield* stored(store.findUpload(uploadId)), (row) => row.accountId === accountId)
+  const refusal = useRefusal(upload)
+  if (Option.isSome(refusal) || Option.isNone(upload))
+    return yield* refused(Option.getOrElse(refusal, () => 'notFound'))
+  return upload.value
+})
 
 /** The subcategory after a change: the one it names, else the current one if the (new) category
  * still has it. */
@@ -328,15 +332,9 @@ const adding = (parts: Parts) => ({
         : yield* OperationConflict.make({})
     if (input.subcategory !== undefined && !subcategoryFits(input.category, input.subcategory))
       return yield* SubcategoryMismatch.make({})
-    const upload = Option.filter(
-      yield* stored(parts.store.findUpload(input.uploadId)),
-      (row) => row.accountId === accountId,
-    )
-    const refusal = addRefusal(upload)
-    if (Option.isSome(refusal) || Option.isNone(upload))
-      return yield* refused(Option.getOrElse(refusal, () => 'notFound'))
+    const upload = yield* usableUpload(parts.store, accountId, input.uploadId)
     const now = yield* nowDate
-    const row = newPiece(input, upload.value, { id: `pc_${yield* parts.randomToken(16)}`, via, now })
+    const row = newPiece(input, upload, { id: `pc_${yield* parts.randomToken(16)}`, via, now })
     const receiptRow = {
       accountId,
       operationId: input.operationId,
@@ -403,36 +401,13 @@ const images = (parts: Parts) => ({
    * served as it was stored. */
   pieceImage: Effect.fn('Styld.Wardrobe.pieceImage')(function* (pieceId: PieceId, size: ImageSize) {
     const piece = yield* ownPiece(parts)(pieceId)
-    const read = Effect.tryPromise({
-      try: () => parts.bindings.bucket.get(piece.imageKey ?? piece.originalKey),
-      catch: unavailable,
-    }).pipe(
-      Effect.flatMap((object) => (object === null ? Effect.fail(PieceNotFound.make({})) : Effect.succeed(object))),
+    const image = yield* deliverImage(
+      parts.bindings,
+      { key: piece.imageKey ?? piece.originalKey, contentType: piece.contentType },
+      size,
     )
-    const object = yield* read
-    const image = yield* Effect.tryPromise({
-      try: async () => {
-        // SAFETY: an R2 object's body is the stored image's bytes -- workers-types declares the body as ReadableStream<any>
-        const bytes = object.body as Parameters<WardrobeBindings['images']['input']>[0]
-        const result = await parts.bindings.images
-          .input(bytes)
-          .transform({ width: imageSizes[size], fit: 'scale-down' })
-          .output({ format: 'image/webp', quality: 82 })
-        return { body: result.image(), contentType: result.contentType() }
-      },
-      catch: unavailable,
-    }).pipe(
-      // The transform consumed the first read, so the stored photo is read again.
-      Effect.catchTag('WardrobeUnavailable', () =>
-        Effect.map(read, (again) => ({
-          body: again.body,
-          contentType: again.httpMetadata?.contentType ?? piece.contentType,
-        })),
-      ),
-    )
-    // Callers only read the picture, so it is typed as any byte stream, Worker or DOM.
-    const body: ByteStream = image.body
-    return { body, contentType: image.contentType, version: `${piece.id}.${piece.updatedAt.getTime()}.${size}` }
+    if (Option.isNone(image)) return yield* PieceNotFound.make({})
+    return { ...image.value, version: `${piece.id}.${piece.updatedAt.getTime()}.${size}` }
   }),
 })
 

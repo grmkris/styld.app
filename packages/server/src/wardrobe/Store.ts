@@ -1,7 +1,7 @@
 import { accounts, detections, operationReceipts, pieces, uploads } from '@styld/db'
-import { and, desc, eq, ne } from 'drizzle-orm'
+import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
-import { Effect, Option, Schema } from 'effect'
+import { Array, Effect, Option, Schema } from 'effect'
 import { receiptQuery } from '../Receipts.ts'
 
 /** D1 did not answer; the request may be retried. */
@@ -18,6 +18,36 @@ export type PieceChanges = Partial<
 const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: () => StoreUnavailable.make({}) })
 
 const first = <A>(rows: ReadonlyArray<A>) => Option.fromNullishOr(rows[0])
+
+/** D1 binds at most 100 parameters to a statement, so id lists go in chunks. */
+export const chunked = (ids: ReadonlyArray<string>) => Array.chunksOf(ids, 90).map((chunk) => [...chunk])
+
+/** Which of these pieces belong to the account. */
+export const ownPieceIds = (db: ReturnType<typeof drizzle>, accountId: string, pieceIds: ReadonlyArray<string>) =>
+  Effect.map(
+    Effect.forEach(chunked(pieceIds), (chunk) =>
+      attempt(() =>
+        db
+          .select({ id: pieces.id })
+          .from(pieces)
+          .where(and(eq(pieces.accountId, accountId), inArray(pieces.id, chunk))),
+      ),
+    ),
+    (rows) => new Set(rows.flat().map(({ id }) => id)),
+  )
+
+/** The key of an upload the account received and has not used, read inside the statement that records what
+ * the upload makes. Once the upload is spent it reads as null, which a NOT NULL column refuses, failing the
+ * whole batch: spending the upload and recording what it made are one atomic step. */
+export const receivedUploadKey = (db: ReturnType<typeof drizzle>, accountId: string, uploadId: string) =>
+  sql<string>`${db
+    .select({ key: uploads.objectKey })
+    .from(uploads)
+    .where(and(eq(uploads.id, uploadId), eq(uploads.accountId, accountId), eq(uploads.status, 'received')))}`
+
+/** Spend an upload, in the batch that records what it made. */
+export const spendUpload = (db: ReturnType<typeof drizzle>, uploadId: string) =>
+  db.update(uploads).set({ status: 'used' }).where(eq(uploads.id, uploadId))
 
 /** Uploads, and whether their account still takes photos. */
 const uploadQueries = (db: ReturnType<typeof drizzle>) => ({
@@ -94,10 +124,7 @@ export const makeStore = (database: Parameters<typeof drizzle>[0]) => {
         try: () =>
           db.batch([
             db.insert(pieces).values(piece),
-            db
-              .update(uploads)
-              .set({ status: 'used' })
-              .where(eq(uploads.id, piece.uploadId ?? '')),
+            spendUpload(db, piece.uploadId ?? ''),
             db.insert(operationReceipts).values(receipt),
           ]),
         catch: () => StoreUnavailable.make({}),

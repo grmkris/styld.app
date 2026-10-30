@@ -7,6 +7,7 @@ import {
   StyldApi,
   UploadId,
   UploadRefused,
+  type WardrobeUnavailable,
 } from '@styld/protocol'
 import type { AuthRequest } from '@yielded/auth/Auth'
 import { Effect, Layer, Option, Redacted, Schema } from 'effect'
@@ -16,6 +17,7 @@ import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import type { makeAuthHttp } from '../AuthHttp.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
+import type { DeliveredImage } from './Delivery.ts'
 import { Wardrobe } from './Wardrobe.ts'
 
 export const asSessionAccount = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
@@ -64,7 +66,9 @@ const refusalStatus: { readonly [Reason in UploadRefused['reason']]: number } = 
 }
 
 const UploadTarget = Schema.Struct({ uploadId: UploadId, token: Schema.String })
-const ImageTarget = Schema.Struct({ pieceId: PieceId, size: Schema.Literals(['thumb', 'full']) })
+/** The sizes an image route serves (`imageSizes`). */
+export const ShownSize = Schema.Literals(['thumb', 'full'])
+const ImageTarget = Schema.Struct({ pieceId: PieceId, size: ShownSize })
 
 /** `PUT /api/uploads/:uploadId?token=`: a photo's bytes. The token in the query string, which Workers
  * logs redact, is the only credential, so an assistant can upload without the website's cookie. */
@@ -119,34 +123,54 @@ export const cookieAccount = (auth: ReturnType<typeof makeAuthHttp>) =>
     })
   }).pipe(Effect.provide(auth.dependencies))
 
-/** `GET /cdn/pieces/:pieceId/:size`: a piece's image for its owner only. Another account's piece
- * answers 404, like a missing one. */
-const pieceImage = (auth: ReturnType<typeof makeAuthHttp>) =>
+/** An image a route shows, and the version its ETag names. */
+export type ShownImage = DeliveredImage & { readonly version: string }
+
+/** A `GET` route that shows an image to its owner only, through the website's session cookie: 401 signed
+ * out, and 404 for another account's image, like a missing one. */
+export const ownerImage = <A, I extends Readonly<Record<string, string | undefined>>>(
+  auth: ReturnType<typeof makeAuthHttp>,
+  target: Schema.ConstraintCodec<A, I, never, unknown>,
+  find: (target: A) => Effect.Effect<Option.Option<ShownImage>, WardrobeUnavailable, CurrentAccount>,
+) =>
   Effect.gen(function* () {
-    const wardrobe = yield* Wardrobe
     const account = yield* cookieAccount(auth)
     return Effect.gen(function* () {
       const accountId = yield* account
       if (Option.isNone(accountId)) return HttpServerResponse.empty({ status: 401 })
-      const target = yield* HttpRouter.schemaPathParams(ImageTarget).pipe(Effect.option)
-      if (Option.isNone(target)) return HttpServerResponse.empty({ status: 404 })
+      const params = yield* HttpRouter.schemaPathParams(target).pipe(Effect.option)
+      if (Option.isNone(params)) return HttpServerResponse.empty({ status: 404 })
       const request = yield* HttpServerRequest.HttpServerRequest
-      return yield* wardrobe.pieceImage(target.value.pieceId, target.value.size).pipe(
+      return yield* find(params.value).pipe(
         Effect.provideService(CurrentAccount, { accountId: accountId.value, via: 'session' }),
-        Effect.map(({ body, contentType, version }) => {
-          const etag = `"${version}"`
-          // Revalidated every time: a processed photo replaces the image behind the same address.
-          const headers = { etag, 'cache-control': 'private, no-cache', vary: 'Cookie' }
-          return request.headers['if-none-match'] === etag
-            ? HttpServerResponse.empty({ status: 304, headers })
-            : HttpServerResponse.raw(body, { status: 200, contentType, headers })
-        }),
-        Effect.catchTags({
-          PieceNotFound: () => Effect.succeed(HttpServerResponse.empty({ status: 404 })),
-          WardrobeUnavailable: () => Effect.succeed(HttpServerResponse.empty({ status: 503 })),
-        }),
+        Effect.map(
+          Option.match({
+            onNone: () => HttpServerResponse.empty({ status: 404 }),
+            onSome: ({ body, contentType, version }) => {
+              const etag = `"${version}"`
+              // Revalidated every time: a processed photo replaces the image behind the same address.
+              const headers = { etag, 'cache-control': 'private, no-cache', vary: 'Cookie' }
+              return request.headers['if-none-match'] === etag
+                ? HttpServerResponse.empty({ status: 304, headers })
+                : HttpServerResponse.raw(body, { status: 200, contentType, headers })
+            },
+          }),
+        ),
+        Effect.catchTag('WardrobeUnavailable', () => Effect.succeed(HttpServerResponse.empty({ status: 503 }))),
       )
     })
+  })
+
+/** `GET /cdn/pieces/:pieceId/:size`: a piece's image for its owner only. */
+const pieceImage = (auth: ReturnType<typeof makeAuthHttp>) =>
+  Effect.gen(function* () {
+    const wardrobe = yield* Wardrobe
+    return yield* ownerImage(auth, ImageTarget, ({ pieceId, size }) =>
+      wardrobe.pieceImage(pieceId, size).pipe(
+        Effect.map(Option.some),
+        Effect.catchTag('PieceNotFound', () => Effect.succeed(Option.none<ShownImage>())),
+      ),
+    )
   })
 
 /** The wardrobe's routes outside the typed API: photo uploads and images. */
