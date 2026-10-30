@@ -355,18 +355,23 @@ export const wornPieces = sqliteTable(
   ],
 )
 
+/** The key of a row that belongs to one piece, and its owner's account: it goes with either. */
+const pieceOwned = () => ({
+  pieceId: text('piece_id')
+    .primaryKey()
+    .references(() => pieces.id, { onDelete: 'cascade' }),
+  accountId: text('account_id')
+    .notNull()
+    .references(() => accounts.id, { onDelete: 'cascade' }),
+})
+
 /** A piece's clean picture: an image model's drawing of the garment from its kept cut-out, checked against it
  * (owner, 2026-10-30). One row per piece, written only by the picture job and the person's choice; the real
  * photo on the piece is never replaced. `state` moves only from the state it was read in. */
 export const piecePictures = sqliteTable(
   'piece_pictures',
   {
-    pieceId: text('piece_id')
-      .primaryKey()
-      .references(() => pieces.id, { onDelete: 'cascade' }),
-    accountId: text('account_id')
-      .notNull()
-      .references(() => accounts.id, { onDelete: 'cascade' }),
+    ...pieceOwned(),
     state: text('state', {
       enum: ['queued', 'generating', 'checking', 'ready', 'proposed', 'rejected', 'retake', 'kept-real', 'failed'],
     }).notNull(),
@@ -404,12 +409,7 @@ export const piecePictures = sqliteTable(
 export const pieceTurns = sqliteTable(
   'piece_turns',
   {
-    pieceId: text('piece_id')
-      .primaryKey()
-      .references(() => pieces.id, { onDelete: 'cascade' }),
-    accountId: text('account_id')
-      .notNull()
-      .references(() => accounts.id, { onDelete: 'cascade' }),
+    ...pieceOwned(),
     state: text('state', {
       enum: ['requested', 'anchoring', 'generating', 'video-ready', 'ready', 'rejected', 'failed'],
     }).notNull(),
