@@ -2,6 +2,7 @@ import { SessionHttp } from '@styld/auth/config'
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
 import { AccountUnavailable, Me, RequestRefused } from './Account.ts'
 import { ProfileNotPublished, SetVisibility, ShareLook } from './Check.ts'
+import { Explore, ExploreQuery, SearchQuery, SearchResults } from './Explore.ts'
 import {
   Handle,
   HandleReserved,
@@ -440,6 +441,20 @@ class PublicApi extends HttpApiGroup.make('public')
       params: { pieceId: PieceId },
       success: PublicPiecePage,
       error: [PublicNotFound, PublicSlowDown, WardrobeUnavailable],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.get('explore', '/public/explore', {
+      query: ExploreQuery,
+      success: Explore,
+      error: [PublicSlowDown, WardrobeUnavailable],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.get('search', '/public/search', {
+      query: SearchQuery,
+      success: SearchResults,
+      error: [PublicSlowDown, WardrobeUnavailable],
     }),
   )
   .add(

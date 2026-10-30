@@ -257,6 +257,41 @@ const shownPiece = (r: Reader, pieceId: string) =>
 /** The same reader, for one visitor. */
 const readBy = (r: Reader, viewer: Option.Option<string>): Reader => ({ ...r, viewer })
 
+/** Discovery's gate: a check that passed, never one that was unsure, and nothing hidden. */
+const passedForDiscovery = (check: CheckStatus | undefined) =>
+  check !== undefined && check.state === 'passed' && !check.hidden
+
+/** Public boards of any owners as discovery shows them, in the order given: each owner's profile and each board
+ * must have passed its check, and no block may stand between owner and reader. */
+const discovered = (r: Reader, rows: ReadonlyArray<BoardRow>) =>
+  Effect.gen(function* () {
+    const boardChecks = yield* r.checks.statuses(
+      'board',
+      rows.map(({ id }) => id),
+    )
+    const owners = [...new Set(rows.map(({ accountId }) => accountId))]
+    const profileChecks = yield* r.checks.statuses('profile', owners)
+    const found = yield* Effect.forEach(owners, (accountId) =>
+      Effect.gen(function* () {
+        if (!passedForDiscovery(profileChecks.get(accountId))) return []
+        const owner = yield* ownerOf(r, accountId)
+        if (Option.isNone(owner)) return []
+        const theirs = rows.filter((row) => row.accountId === accountId && passedForDiscovery(boardChecks.get(row.id)))
+        const shown = yield* summaries(r, accountId, theirs)
+        return shown.map((board) => ({
+          board,
+          by: owner.value.author,
+          moods: theirs.find(({ id }) => id === board.id)?.moods ?? [],
+        }))
+      }),
+    )
+    const byId = new Map(found.flat().map((entry): [string, (typeof found)[number][number]] => [entry.board.id, entry]))
+    return rows.flatMap(({ id }) => {
+      const entry = byId.get(id)
+      return entry === undefined ? [] : [entry]
+    })
+  })
+
 const pages = (base: Reader) => ({
   profile: Effect.fn('Styld.Public.profile')(function* (handle: string, viewer: Option.Option<string> = Option.none()) {
     const r = readBy(base, viewer)
@@ -292,6 +327,15 @@ const pages = (base: Reader) => ({
     const [look] = yield* shownLooks(r, row.accountId, [row])
     return { look: yield* orNotFound(Option.fromNullishOr(look)), by: owner.author }
   }),
+  /** Boards for Explore and search, gated as discovery is. */
+  discover: (rows: ReadonlyArray<BoardRow>, viewer: Option.Option<string>) => discovered(readBy(base, viewer), rows),
+  /** Whether others may find this person: a published profile whose check passed, with no block in between. */
+  findable: (accountId: string, viewer: Option.Option<string>) =>
+    Effect.gen(function* () {
+      const r = readBy(base, viewer)
+      if (!passedForDiscovery((yield* r.checks.statuses('profile', [accountId])).get(accountId))) return Option.none()
+      return Option.map(yield* ownerOf(r, accountId), ({ author }) => author)
+    }),
   piece: Effect.fn('Styld.Public.piece')(function* (pieceId: string, viewer: Option.Option<string> = Option.none()) {
     const { piece, owner } = yield* shownPiece(readBy(base, viewer), pieceId)
     return { piece, by: owner.author }

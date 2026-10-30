@@ -299,7 +299,19 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   - Signed out, `/api/feed` answers 401. Signed in, `/api/saved`, `/api/following`, `/api/blocked` and `/api/feed`
     answer 200 on the migrated D1, and following oneself answers 422 `NotWithYourself`.
   - Still to read back: a follow, save and block between two real accounts (the preview has one test account).
-- **Next:** M5 (Explore, curation, moods and search).
+- **M5a, discovery (server and assistants):**
+  - Signed out or in, `/api/public/explore?mood=` serves Edits from Styld (house accounts' public boards), featured
+    boards, people to follow (featured first) and the newest public boards, in one of the six moods if asked.
+  - `/api/public/search?q=` finds people by name and handle (an exact handle first) and public boards by name or a
+    mood word in English or Slovenian. It uses the same fold as the on-device search, matched with `LIKE` on
+    `search_text`.
+  - Discovery shows only what passed its check: never unsure, never hidden, never a profile three people reported,
+    and never across a block.
+  - Tools `explore_get` and `search_public`.
+  - Evidence: MCP unit tests, and native API acceptance of search by accented name and by board name, Explore's
+    newest, and an unsure board leaving search while its link still works.
+- **Next:** M5b (the curation tools for admins, board moods, the Explore tab and five-tab navigation, people and
+  boards in Ask's search).
 - **Shared with the capture session:** migrations are generated one at a time; public delivery reuses its rule for a
   piece's shown picture; generated pictures reuse its Muse provider.
 - **Still to settle in spikes:** Clef and Llama Guard thresholds on fixtures in English and Slovenian, drawing text

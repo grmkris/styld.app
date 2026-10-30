@@ -23,6 +23,7 @@ import { Looks } from '../src/looks/Looks.ts'
 import { Boards } from '../src/boards/Boards.ts'
 import { Profiles } from '../src/social/Profiles.ts'
 import { toolNames } from './ToolNames.ts'
+import { Discovery } from '../src/social/Discovery.ts'
 import { Social } from '../src/social/Social.ts'
 
 const accountRow = { displayName: 'Ana Novak', email: 'ana@example.com' }
@@ -176,10 +177,15 @@ const social = Social.of({
   feed: notUsed,
   report: notUsed,
 })
+/** Discovery: nothing public yet. */
+const discovery = Discovery.of({
+  explore: () => Effect.succeed({ edits: [], featured: [], people: [], newest: [] }),
+  search: () => Effect.succeed({ people: [], boards: [] }),
+})
 const tools = styldTools(
   database,
   'https://styld.test',
-  { wardrobe, looks, captures, boards, profiles, social },
+  { wardrobe, looks, captures, boards, profiles, social, discovery },
   offline,
 )
 /** The JSON of a result's first text block. */

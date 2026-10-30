@@ -14,6 +14,8 @@ import { profileTools } from './ProfileTools.ts'
 import type { Profiles } from '../social/Profiles.ts'
 import type { Social } from '../social/Social.ts'
 import { socialTools } from './SocialTools.ts'
+import type { Discovery } from '../social/Discovery.ts'
+import { discoveryTools } from './DiscoveryTools.ts'
 import type { Captures } from '../capture/Service.ts'
 import { pictureTools } from './PictureTools.ts'
 
@@ -43,13 +45,14 @@ export interface ToolServices {
   readonly boards: Boards['Service']
   readonly profiles: Profiles['Service']
   readonly social: Social['Service']
+  readonly discovery: Discovery['Service']
 }
 
 /** Styld's MCP tools: thin projections of the same reads and writes the website uses. */
 export const styldTools = (
   db: D1,
   origin: string,
-  { wardrobe, looks, captures, boards, profiles, social }: ToolServices,
+  { wardrobe, looks, captures, boards, profiles, social, discovery }: ToolServices,
   http: HttpClient.HttpClient,
 ) => [
   tool({
@@ -82,4 +85,5 @@ export const styldTools = (
   ...boardMcpTools(boards, wardrobe, origin, http),
   ...profileTools(profiles, origin),
   ...socialTools(social),
+  ...discoveryTools(discovery, origin),
 ]

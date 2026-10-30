@@ -23,6 +23,7 @@ import { makeProfiles, Profiles } from './social/Profiles.ts'
 import { makePublicPages, PublicPages } from './social/Public.ts'
 import { publicImageRoutes } from './social/PublicHttp.ts'
 import { makeSocial, Social } from './social/Social.ts'
+import { Discovery, makeDiscovery } from './social/Discovery.ts'
 import { boardRoutes } from './boards/Http.ts'
 import { makeWorn, Worn } from './worn/Worn.ts'
 import { apiRoutes } from './Api.ts'
@@ -43,6 +44,7 @@ import { DomainLive } from './DomainLive.ts'
 import { health } from './Health.ts'
 import { onFirstUse } from './IsolateCache.ts'
 import { mcpRoutes } from './mcp/Route.ts'
+import type { ToolServices } from './mcp/StyldTools.ts'
 import { makeMcpOAuth } from './OAuth.ts'
 import {
   emailSender,
@@ -123,7 +125,10 @@ const storageServices = <R>(
     const profilesService = makeProfiles(bindings.database, checksService)
     const publicPagesService = yield* makePublicPages(bindings, checksService)
     const socialService = yield* makeSocial(bindings.database, publicPagesService, checksService)
+    const discoveryService = makeDiscovery(bindings.database, publicPagesService)
     return {
+      discoveryService,
+      discovery: Layer.succeed(Discovery, discoveryService),
       publicPages: Layer.succeed(PublicPages, publicPagesService),
       socialService,
       social: Layer.succeed(Social, socialService),
@@ -145,6 +150,17 @@ const storageServices = <R>(
   }).pipe(
     Effect.provide(Layer.mergeAll(layerCryptoWeb, pieceCutout(bindings.bucket)).pipe(Layer.provideMerge(providers))),
   )
+
+/** The services the assistants' tools project. */
+const toolServices = (services: Effect.Success<ReturnType<typeof storageServices>>): ToolServices => ({
+  wardrobe: services.wardrobeService,
+  looks: services.looksService,
+  captures: services.capturesService,
+  boards: services.boardsService,
+  profiles: services.profilesService,
+  social: services.socialService,
+  discovery: services.discoveryService,
+})
 
 /** The capture providers and policy from the Worker's environment. */
 const captureProviders = (
@@ -370,7 +386,7 @@ const makeApplication =
         judge,
         providers,
       )
-      const { wardrobeService, lifecycleService, capturesService, looksService, wardrobe, captures, boards } = services
+      const { wardrobeService, lifecycleService, capturesService, wardrobe, captures, boards } = services
       const oauth = makeMcpOAuth(db, auth, { origin: authOrigin, keys: configuration.sessionKeys, allowRegistration })
       const routes = Layer.mergeAll(
         auth.layer,
@@ -380,14 +396,7 @@ const makeApplication =
         boardRoutes(auth).pipe(Layer.provide(boards)),
         captureRoutes(auth).pipe(Layer.provide(captures)),
         oauth.routes,
-        mcpRoutes(db, authOrigin, observabilityBase.release, {
-          wardrobe: wardrobeService,
-          looks: looksService,
-          captures: capturesService,
-          boards: services.boardsService,
-          profiles: services.profilesService,
-          social: services.socialService,
-        }).pipe(Layer.provide(oauth.server)),
+        mcpRoutes(db, authOrigin, observabilityBase.release, toolServices(services)).pipe(Layer.provide(oauth.server)),
         HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),
         browserTelemetryRoutes(authOrigin, allowTelemetry),
       ).pipe(Layer.provide(AlchemyHttp.Platform))

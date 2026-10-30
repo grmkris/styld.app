@@ -234,6 +234,33 @@ const verifyPeople = async (origin: string, owner: Call, other: Call, reporters:
   expect(await (await owner(`/api/boards/${boardId}`)).json()).toMatchObject({ check: { hidden: true } })
 }
 
+const Found = Schema.Struct({
+  people: Schema.Array(Schema.Struct({ handle: Schema.String })),
+  boards: Schema.Array(Schema.Struct({ board: Schema.Struct({ id: Schema.String }) })),
+})
+const Newest = Schema.Struct({ newest: Schema.Array(Schema.Struct({ board: Schema.Struct({ id: Schema.String }) })) })
+
+/** Search and Explore, signed out: people by name and handle, boards by name; a board the check is unsure of stays
+ * on its link and leaves discovery. */
+const verifyDiscovery = async (origin: string, owner: Call) => {
+  const boardId = await idOf(
+    await send(owner, '/api/boards', 'POST', { operationId: 'native-social-10', name: 'Rainy walks' }),
+  )
+  await send(owner, `/api/boards/${boardId}/visibility`, 'PUT', { visibility: 'public' })
+  const search = async (q: string) =>
+    Schema.decodeUnknownSync(Found)(
+      await (await fetch(`${origin}/api/public/search?q=${encodeURIComponent(q)}`)).json(),
+    )
+  expect((await search('kovač')).people.map(({ handle }) => handle)).toContain('nika.kovac')
+  expect((await search('rainy')).boards.map(({ board }) => board.id)).toEqual([boardId])
+  const newest = Schema.decodeUnknownSync(Newest)(await (await fetch(`${origin}/api/public/explore`)).json()).newest
+  expect(newest.map(({ board }) => board.id)).toContain(boardId)
+  await send(owner, `/api/boards/${boardId}`, 'PATCH', { name: 'Rainy walks [[unsure]]' })
+  await settled(() => owner(`/api/boards/${boardId}`), 'unsure')
+  expect((await search('rainy')).boards).toEqual([])
+  expect((await fetch(`${origin}/api/public/boards/${boardId}`)).status).toBe(200)
+}
+
 /** Profiles and what other people may see of each account. */
 export const verifySocial = async (origin: string, fixtures: string): Promise<void> => {
   expect((await fetch(`${fixtures}/test/identity/seed-social`, { method: 'POST' })).status).toBe(204)
@@ -245,4 +272,5 @@ export const verifySocial = async (origin: string, fixtures: string): Promise<vo
   const third = client(origin, await signIn(origin, 'native-social-third'))
   const reporters = [third, client(origin, await signIn(origin, 'native-social-fourth'))]
   await verifyPeople(origin, owner, other, reporters)
+  await verifyDiscovery(origin, owner)
 }

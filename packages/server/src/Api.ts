@@ -16,6 +16,7 @@ import type { Wardrobe } from './wardrobe/Wardrobe.ts'
 import { wornHandlers } from './worn/Http.ts'
 import { profileHandlers } from './social/Http.ts'
 import type { Profiles } from './social/Profiles.ts'
+import type { Discovery } from './social/Discovery.ts'
 import type { PublicPages } from './social/Public.ts'
 import { type AllowRead, publicHandlers } from './social/PublicHttp.ts'
 import type { Social } from './social/Social.ts'
@@ -57,6 +58,7 @@ export const apiRoutes = (
     readonly worn: Layer.Layer<Worn>
     readonly profiles: Layer.Layer<Profiles>
     readonly publicPages: Layer.Layer<PublicPages>
+    readonly discovery: Layer.Layer<Discovery>
     readonly social: Layer.Layer<Social>
   },
   limits: {
@@ -72,7 +74,11 @@ export const apiRoutes = (
     Layer.provide(boardHandlers(admitWith(auth)).pipe(Layer.provide(services.boards))),
     Layer.provide(wornHandlers(admitWith(auth)).pipe(Layer.provide(services.worn))),
     Layer.provide(profileHandlers(admitWith(auth)).pipe(Layer.provide(services.profiles))),
-    Layer.provide(publicHandlers(auth, limits.allowRead).pipe(Layer.provide(services.publicPages))),
+    Layer.provide(
+      publicHandlers(auth, limits.allowRead).pipe(
+        Layer.provide(Layer.mergeAll(services.publicPages, services.discovery)),
+      ),
+    ),
     Layer.provide(socialHandlers(admitWith(auth)).pipe(Layer.provide(services.social))),
     Layer.provide(auth.router.securityLayer(SessionHttp)),
     auth.router.middleware,

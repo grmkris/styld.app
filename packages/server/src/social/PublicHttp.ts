@@ -8,6 +8,7 @@ import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import type { makeAuthHttp } from '../AuthHttp.ts'
 import { cookieAccount, type ShownImage, ShownSize } from '../wardrobe/Http.ts'
+import { Discovery } from './Discovery.ts'
 import { PublicPages } from './Public.ts'
 import { pageMeta } from './PublicMeta.ts'
 
@@ -37,6 +38,7 @@ export const publicHandlers = (auth: ReturnType<typeof makeAuthHttp>, allowRead:
   HttpApiBuilder.group(StyldApi, 'public', (handlers) =>
     Effect.gen(function* () {
       const pages = yield* PublicPages
+      const discovery = yield* Discovery
       const within = limited(allowRead)
       const reader = yield* cookieAccount(auth)
       const read = <A, E, R>(page: (viewer: Option.Option<string>) => Effect.Effect<A, E, R>) =>
@@ -46,6 +48,8 @@ export const publicHandlers = (auth: ReturnType<typeof makeAuthHttp>, allowRead:
         .handle('board', ({ params }) => read((viewer) => pages.board(params.boardId, viewer)))
         .handle('look', ({ params }) => read((viewer) => pages.look(params.lookId, viewer)))
         .handle('piece', ({ params }) => read((viewer) => pages.piece(params.pieceId, viewer)))
+        .handle('explore', ({ query }) => read((viewer) => discovery.explore(Option.fromNullishOr(query.mood), viewer)))
+        .handle('search', ({ query }) => read((viewer) => discovery.search(query.q, viewer)))
         .handle('meta', ({ query }) =>
           within(Effect.flatMap(readerLocale, (locale) => pageMeta(pages, query.path, locale))),
         )

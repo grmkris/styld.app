@@ -36,4 +36,6 @@ export const toolNames = [
   'block_set',
   'report_create',
   'feed_get',
+  'explore_get',
+  'search_public',
 ]
