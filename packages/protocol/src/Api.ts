@@ -15,7 +15,21 @@ import {
   Reviewed,
   Tray,
 } from './Capture.ts'
-import { Look, LookId, LookNotFound, Looks } from './Look.ts'
+import {
+  AddBoardImage,
+  Board,
+  BoardId,
+  BoardImage,
+  BoardItemRefused,
+  BoardNotFound,
+  BoardVersionConflict,
+  Boards,
+  CreateBoard,
+  SaveBoardItems,
+  UpdateBoard,
+} from './Board.ts'
+import { CreateLook, Look, LookId, LookNotFound, Looks } from './Look.ts'
+import { Day, WearPieces, WornDay, WornDays, WornRange } from './Worn.ts'
 import {
   AddPiece,
   CreateUpload,
@@ -144,10 +158,17 @@ export class CaptureApi extends HttpApiGroup.make('capture')
   .middleware(SessionHttp.RequireSession)
   .prefix('/api') {}
 
-/** Styld's typed HTTP API: declared once, served by the API Worker and called by the website. */
-/** The looks assistants made, for the website to show and delete; only assistants make them. */
+/** Looks: outfits from the person's own pieces. Assistants make them, and so does the website when a
+ * board or today's table is saved as a look. */
 export class LookApi extends HttpApiGroup.make('look')
   .add(HttpApiEndpoint.get('listLooks', '/looks', { success: Looks, error: WardrobeUnavailable }))
+  .add(
+    HttpApiEndpoint.post('createLook', '/looks', {
+      payload: CreateLook,
+      success: Look,
+      error: [PieceNotFound, OperationConflict, WardrobeUnavailable, RequestRefused],
+    }),
+  )
   .add(
     HttpApiEndpoint.get('getLook', '/looks/:lookId', {
       params: { lookId: LookId },
@@ -165,4 +186,90 @@ export class LookApi extends HttpApiGroup.make('look')
   .middleware(SessionHttp.RequireSession)
   .prefix('/api') {}
 
-export class StyldApi extends HttpApi.make('styld').add(AccountApi).add(WardrobeApi).add(CaptureApi).add(LookApi) {}
+/** Boards: tables the person lays their pieces, labels and pictures on. A picture goes up as a photo
+ * upload first (`wardrobe.createUpload`, then a `PUT`) and joins the board with `addBoardImage`. */
+export class BoardApi extends HttpApiGroup.make('board')
+  .add(HttpApiEndpoint.get('listBoards', '/boards', { success: Boards, error: WardrobeUnavailable }))
+  .add(
+    HttpApiEndpoint.post('createBoard', '/boards', {
+      payload: CreateBoard,
+      success: Board,
+      error: [OperationConflict, WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.get('getBoard', '/boards/:boardId', {
+      params: { boardId: BoardId },
+      success: Board,
+      error: [BoardNotFound, WardrobeUnavailable],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.patch('updateBoard', '/boards/:boardId', {
+      params: { boardId: BoardId },
+      payload: UpdateBoard,
+      success: Board,
+      error: [BoardNotFound, WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.delete('deleteBoard', '/boards/:boardId', {
+      params: { boardId: BoardId },
+      success: HttpApiSchema.NoContent,
+      error: [BoardNotFound, WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.put('saveBoardItems', '/boards/:boardId/items', {
+      params: { boardId: BoardId },
+      payload: SaveBoardItems,
+      success: Board,
+      error: [BoardNotFound, BoardVersionConflict, BoardItemRefused, WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post('addBoardImage', '/boards/:boardId/images', {
+      params: { boardId: BoardId },
+      payload: AddBoardImage,
+      success: BoardImage,
+      error: [BoardNotFound, UploadRefused, OperationConflict, WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .middleware(SessionHttp.RequireSession)
+  .prefix('/api') {}
+
+/** What the person wore, by day: "Wear this" on today's table records it. */
+export class WornApi extends HttpApiGroup.make('worn')
+  .add(
+    HttpApiEndpoint.get('listWorn', '/worn', {
+      query: WornRange,
+      success: WornDays,
+      error: WardrobeUnavailable,
+    }),
+  )
+  .add(
+    HttpApiEndpoint.put('wearPieces', '/worn/:day', {
+      params: { day: Day },
+      payload: WearPieces,
+      success: WornDay,
+      error: [PieceNotFound, WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.delete('clearWorn', '/worn/:day', {
+      params: { day: Day },
+      success: HttpApiSchema.NoContent,
+      error: [WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .middleware(SessionHttp.RequireSession)
+  .prefix('/api') {}
+
+/** Styld's typed HTTP API: declared once, served by the API Worker and called by the website. */
+export class StyldApi extends HttpApi.make('styld')
+  .add(AccountApi)
+  .add(WardrobeApi)
+  .add(CaptureApi)
+  .add(LookApi)
+  .add(BoardApi)
+  .add(WornApi) {}
