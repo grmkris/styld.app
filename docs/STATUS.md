@@ -245,8 +245,18 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
     - A composed card at `/cdn/og` (up to four cut-outs, drawn with the Images binding) replaces the single picture
       later.
     - The owner checks a real preview in a messaging app once deployed.
-- **Next:** deploy M3 to the preview, read it back, and walk it in a browser; then M4 (saves, follows, blocks,
-  reports and the feed).
+- **Preview (M3):** deployed from `abe4a2f` on 30 October.
+  - `/api/health` reports release `abe4a2fa6c40fdd648b3115470eeb42fe79bbf7b`.
+  - The plan updated 3 Workers and created the edge's `ROBOTS` and the API's `PUBLIC_READ_RATE_LIMIT` bindings. It
+    deleted nothing, and there was no migration.
+  - `tools/preview.native.test.ts` passed 3/3.
+  - Signed out, pages carry `x-robots-tag: noindex`, `/share/board/:id` answers 301 to the board, and a public miss
+    answers 404 (`PublicNotFound`).
+  - Still to read back on the preview:
+    - the live judge (Clef-flash and Llama Guard 3) on a published profile and board;
+    - a public board's link preview;
+    - the owner's check in a messaging app.
+- **Next:** M4 (saves, follows, blocks, reports and the feed); its migration is generated.
 - **Shared with the capture session:** migrations are generated one at a time; public delivery reuses its rule for a
   piece's shown picture; generated pictures reuse its Muse provider.
 - **Still to settle in spikes:** Clef and Llama Guard thresholds on fixtures in English and Slovenian, drawing text
