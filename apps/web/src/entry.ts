@@ -8,6 +8,7 @@ import { Runtime } from 'foldkit'
 import { Flags, Message, Model, init, subscriptions, update } from './App.ts'
 import { view } from './View.ts'
 import { emailSignInLayer } from './EmailSignIn.ts'
+import { isTabChange, routing } from './Navigation.ts'
 import { styldClientLayer } from './StyldClient.ts'
 import { startTelemetry, telemetryConsentLayer } from './Telemetry.ts'
 
@@ -25,6 +26,10 @@ const application = Runtime.makeApplication(
     view,
     subscriptions,
     container: document.getElementById('root'),
+    // Tab pages switch inside the page and cross-fade; every other link loads whole (Navigation.ts).
+    routing,
+    viewTransition: ({ previousModel, model }: Runtime.ViewTransitionContext<Model, Message>) =>
+      isTabChange(previousModel.route, model.route),
     // The DevTools MCP may dispatch decoded Messages; the bridge only runs under Vite's dev server.
     devTools: { Message },
     resources: Layer.mergeAll(

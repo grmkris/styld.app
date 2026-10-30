@@ -17,7 +17,7 @@ import { saveLocale } from './server/LocalePreference.ts'
 // The server formats in every language: page renders and code emails.
 provideAllCatalogs()
 
-export const application = { Flags, init, view }
+export const application = { Flags, routing: {}, init, view }
 
 const renderApplication = (
   request: Request,
@@ -39,7 +39,7 @@ const renderApplication = (
       telemetryConsent: consentFromCookies(request.headers.get('cookie')),
       hasSessionCookie: (request.headers.get('cookie') ?? '').includes(`${SessionHttp.cookieName}=`),
     }
-    const rendered = yield* Server.renderToString(application, { ...options, flags })
+    const rendered = yield* Server.renderToString(application, { ...options, url: request.url, flags })
     return Server.Rendered(rendered, {
       status: AppRoute.guards.NotFound(routeFromPathname(url.pathname)) ? 404 : 200,
       headers: {

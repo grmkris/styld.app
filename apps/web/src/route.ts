@@ -1,4 +1,4 @@
-import { Option, Schema, pipe } from 'effect'
+import { Equivalence, Option, Schema, pipe } from 'effect'
 import { defineRouteUnion, literal, mapTo, oneOf, parseUrlWithFallback, root, slash, string } from 'foldkit/route'
 
 /** Every page of the website. A route both parses its URL and builds its link. */
@@ -54,12 +54,19 @@ const parser = oneOf(
   homeRouter,
 )
 
+/** The page for a URL; unknown paths are NotFound. */
+export const routeFromUrl = parseUrlWithFallback(parser, AppRoute.NotFound)
+
 /** The page for a request path; unknown paths are NotFound. */
 export const routeFromPathname = (pathname: string): AppRoute =>
-  parseUrlWithFallback(
-    parser,
-    AppRoute.NotFound,
-  )({ protocol: 'https:', host: 'styld', port: Option.none(), pathname, search: Option.none(), hash: Option.none() })
+  routeFromUrl({
+    protocol: 'https:',
+    host: 'styld',
+    port: Option.none(),
+    pathname,
+    search: Option.none(),
+    hash: Option.none(),
+  })
 
 /** Pages that only make sense signed in. */
 export const needsSession = (route: AppRoute) =>
@@ -95,6 +102,10 @@ export const tabOf = AppRoute.match<Option.Option<Tab>>({
   Board: () => Option.none(),
   NotFound: () => Option.none(),
 })
+
+/** Whether two routes show the same tab page. */
+export const isSameTab = (left: AppRoute, right: AppRoute) =>
+  Option.makeEquivalence(Equivalence.String)(tabOf(left), tabOf(right))
 
 /** Where an assistant's connection resumes once the person has signed in (Yielded keeps the pending
  * authorization in a private cookie). */

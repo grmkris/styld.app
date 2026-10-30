@@ -4,7 +4,12 @@ import { fileURLToPath } from 'node:url'
 import { Schema } from 'effect'
 import type { Browser, BrowserContext, Locator, Page } from 'playwright'
 import { recordProblems } from './BrowserAcceptance.ts'
-import { expectSameTitleTops, expectSteadyFullLoads, recordLayoutShifts } from './LayoutBrowserAcceptance.ts'
+import {
+  expectInstantTabs,
+  expectSameTitleTops,
+  expectSteadyFullLoads,
+  recordLayoutShifts,
+} from './LayoutBrowserAcceptance.ts'
 import { type Call, client, signIn } from './WardrobeAcceptance.ts'
 
 const fixture = (name: string) => fileURLToPath(new URL(`fixtures/gallery/${name}`, import.meta.url))
@@ -259,6 +264,7 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
       await verifyAskAndWardrobe(page, origin)
       await expectSameTitleTops(page, origin)
       await expectSteadyFullLoads(page, origin, ['/', '/wardrobe', '/looks', '/boards', '/account'])
+      await expectInstantTabs(page, origin)
     } catch (error) {
       await shoot(page, 'phone-failure')
       if (shots !== undefined) {

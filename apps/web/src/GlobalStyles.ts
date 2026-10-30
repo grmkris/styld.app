@@ -108,6 +108,16 @@ global({
     outlineColor: vars.color.focus,
     outlineOffset: '2px',
   },
+  // DESIGN.md › Motion: a tab change cross-fades the page while the navigation stays where it is. The runtime skips
+  // the transition under reduced motion.
+  '::view-transition-old(root), ::view-transition-new(root)': {
+    animationDuration: '180ms',
+    animationTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  },
+  '::view-transition-old(styld-nav)': { display: 'none' },
+  '::view-transition-new(styld-nav)': { animationName: 'none' },
+  // After a tab change the page's title takes focus for screen readers; a heading is not a control to ring.
+  '#main h1:focus': { outlineWidth: '0' },
   // DESIGN.md › Motion: under reduced motion everything ends at once; loaders keep turning.
   '@media (prefers-reduced-motion: reduce)': {
     '*:not([data-loader]), ::before, ::after': {

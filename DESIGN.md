@@ -158,9 +158,10 @@ on Home and the surface of a board.
   the slightly bouncy `springBounce`. These are pieces settling on a table, Spin shuffling the outfit, the + sheet
   growing out of its button, and an item leaving the board.
 - **Spin** staggers its pieces by 40ms, the one stagger in the app. One reveal at most on a public page.
-- **Page transitions** are not on yet. Cross-document View Transitions reject a promise when a navigation cuts one
-  short, and the page reports it before its module script can handle it (the CSP allows no inline script).
-  Turning them on needs a small early script served from `public/`.
+- **Tab changes** happen inside the page and cross-fade in 180ms through Foldkit's `viewTransition`. The navigation
+  keeps its place (`view-transition-name: styld-nav`), a page seen before shows at once, and the runtime skips the
+  fade under reduced motion. Every other page loads whole, without a transition. Cross-document View Transitions stay
+  off: an aborted one rejects before the module script can catch it, and the CSP allows no inline script.
 - **Reduced motion:** everything ends at once (`apps/web/src/GlobalStyles.ts`); loaders keep turning.
 - **Reduced transparency:** glass turns solid.
 

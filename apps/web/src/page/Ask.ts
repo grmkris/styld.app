@@ -35,6 +35,11 @@ export type OutMessage = typeof OutMessage.Type
 
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage>
 
+/** Leaving Ask closes the + sheet. */
+export const leave = (model: Model): Update.Return<Model, Message> => ({
+  model: modifyFields(model, { isAdding: () => false }),
+})
+
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     UpdatedQuery: ({ value }) => ({ model: modifyFields(model, { query: () => value }) }),

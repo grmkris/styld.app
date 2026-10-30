@@ -157,6 +157,8 @@ export const appNav = style({
   WebkitBackdropFilter: 'blur(24px) saturate(160%)',
   boxShadow: 'inset 0 0 0 1px oklch(1 0 0 / 0.6), 0 2px 6px oklch(0 0 0 / 0.1), 0 20px 48px oklch(0 0 0 / 0.1) !custom',
   translate: '-50% 0',
+  // Stays put while a tab change cross-fades the page under it (GlobalStyles.ts).
+  viewTransitionName: 'styld-nav',
   '@media (min-width: 900px)': {
     insetBlockEnd: 'auto',
     insetBlockStart: '50%',

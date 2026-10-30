@@ -62,3 +62,57 @@ export const expectSteadyFullLoads = async (page: Page, origin: string, paths: R
     expect({ path, shift: await settledShift(page) }).toEqual({ path, shift: 'steady' })
   }
 }
+
+const shiftSoFar = (page: Page) => page.evaluate(() => Number(document.documentElement.dataset['layoutShift'] ?? '0'))
+
+/** After a tap on a tab: still the same document, nothing moved, at the top, the title focused. */
+const arrivedInPlace = async (page: Page, path: string, shiftBefore: number) => {
+  await page.waitForURL((url) => url.pathname === path)
+  await page.waitForFunction(() => document.querySelector('[data-skeleton]') === null)
+  await page.waitForTimeout(400)
+  const arrived = await page.evaluate(() => ({
+    kept: document.documentElement.dataset['kept'] === 'yes',
+    top: window.scrollY,
+    focused: document.activeElement?.matches('main h1') ?? false,
+  }))
+  const moved = (await shiftSoFar(page)) - shiftBefore
+  expect({ path, ...arrived, steady: moved < 0.02 }).toEqual({ path, kept: true, top: 0, focused: true, steady: true })
+}
+
+const tap = async (page: Page, path: string) => {
+  const before = await shiftSoFar(page)
+  await page.locator(`a[href="${path}"]`).first().click()
+  await arrivedInPlace(page, path, before)
+}
+
+/** Moving between tab pages stays in the page: the navigation is never redrawn, a page seen before shows at once,
+ * Back and Forward work, quick taps settle on the last one, and other pages still load whole. */
+export const expectInstantTabs = async (page: Page, origin: string) => {
+  await page.goto(`${origin}/`, { waitUntil: 'networkidle' })
+  await page.waitForFunction(() => document.querySelector('[data-skeleton]') === null)
+  await page.evaluate(() => {
+    document.documentElement.dataset['kept'] = 'yes'
+  })
+  for (const path of ['/wardrobe', '/looks', '/ask', '/boards', '/account', '/']) await tap(page, path)
+  // A page seen before is drawn from what the app has: no skeleton, even for a moment.
+  await page.locator('a[href="/wardrobe"]').first().click()
+  await page.waitForURL((url) => url.pathname === '/wardrobe')
+  expect(await page.locator('[data-skeleton]').count()).toBe(0)
+  await page.goBack()
+  await arrivedInPlace(page, '/', await shiftSoFar(page))
+  await page.goBack()
+  await arrivedInPlace(page, '/account', await shiftSoFar(page))
+  await page.goForward()
+  await arrivedInPlace(page, '/', await shiftSoFar(page))
+  // Quick taps end where the last one pointed.
+  await page.locator('a[href="/wardrobe"]').first().click()
+  await page.locator('a[href="/ask"]').first().click()
+  await page.waitForURL((url) => url.pathname === '/ask')
+  expect(await page.evaluate(() => document.documentElement.dataset['kept'])).toBe('yes')
+  // A board is not a tab: it loads whole, in a new document.
+  await page.locator('a[href="/boards"]').first().click()
+  await page.waitForURL((url) => url.pathname === '/boards')
+  await page.locator('a[href^="/boards/bd_"]').first().click()
+  await page.waitForURL(/\/boards\/bd_/)
+  expect(await page.evaluate(() => document.documentElement.dataset['kept'] ?? 'new')).toBe('new')
+}

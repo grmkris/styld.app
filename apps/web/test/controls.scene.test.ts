@@ -2,7 +2,8 @@ import { Option } from 'effect'
 import { Command, click, expect, given, label, role, scene, selector, submit, text, type, within } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
-import { LocaleSave, Message, Navigate, Session, SignOut, update } from '../src/App.ts'
+import { LocaleSave, Message, Session, SignOut, update } from '../src/App.ts'
+import { Navigate } from '../src/Navigation.ts'
 import {
   type Code,
   Message as LoginMessage,

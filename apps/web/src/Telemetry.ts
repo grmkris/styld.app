@@ -3,7 +3,7 @@ import { MapleFoldkit } from '@maple-dev/effect-sdk/foldkit'
 import { Effect, Layer } from 'effect'
 import { consentCookie, consentFromCookies, TelemetryConsentControl } from './TelemetryConsent.ts'
 
-const knownRoutes = new Set(['/', '/login', '/account'])
+const knownRoutes = new Set(['/', '/login', '/account', '/wardrobe', '/looks', '/ask', '/boards'])
 
 /** Navigation spans carry a fixed route name; the relay drops the raw `url.path` the SDK also records. */
 const routeName = (pathname: string): string => (knownRoutes.has(pathname) ? pathname : 'other')

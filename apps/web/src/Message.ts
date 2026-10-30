@@ -1,6 +1,8 @@
 import { Schema } from 'effect'
 import { AccountClaims } from '@styld/auth/config'
 import { defineMessageUnion } from 'foldkit/message'
+import { UrlRequest } from 'foldkit/navigation'
+import { Url } from 'foldkit/url'
 import { Locale } from './Locale.ts'
 import * as Account from './page/Account.ts'
 import * as AddPiecesMessage from './page/AddPieces/Message.ts'
@@ -27,6 +29,14 @@ export const Message = defineMessageUnion({
   SucceededSignOut: {},
   FailedSignOut: {},
   CompletedNavigate: {},
+  /** A link was followed: between tab pages it stays in the page, everywhere else it loads whole. */
+  ClickedLink: { request: UrlRequest },
+  /** The address changed in the page: a tab page was opened, or Back or Forward went to one. */
+  ChangedUrl: { url: Url },
+  CompletedNavigateInternal: {},
+  CompletedScrollToTop: {},
+  CompletedScrollToAnchor: {},
+  CompletedFocusPageTitle: {},
   GotLoginMessage: { message: Login.Message },
   GotAccountMessage: { message: Account.Message },
   GotWardrobeMessage: { message: Wardrobe.Message },

@@ -4,12 +4,12 @@ import { AccountClaims } from '@styld/auth/config'
 import * as HttpClient from 'effect/http/HttpClient'
 import * as HttpClientRequest from 'effect/http/HttpClientRequest'
 import { Command, Subscription, Update } from 'foldkit'
-import { load } from 'foldkit/navigation'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { catalogVersion, loadCatalog } from '@styld/i18n'
 import { Locale, localeEndpoint, parseLocale } from './Locale.ts'
 import { Message } from './Message.ts'
+import { arrive, followLink, Navigate } from './Navigation.ts'
 import * as Crypto from 'effect/Crypto'
 import * as AddPiecesMessage from './page/AddPieces/Message.ts'
 import * as AddPiecesModel from './page/AddPieces/Model.ts'
@@ -35,13 +35,17 @@ import {
   boardRouter,
   connectionAuthorizePath,
   homeRouter,
+  isSameTab,
   loginRouter,
   looksRouter,
   needsSession,
   reviewRouter,
   routeFromPathname,
+  routeFromUrl,
+  tabOf,
   wardrobeRouter,
 } from './route.ts'
+import { type Url, toString as urlToString } from 'foldkit/url'
 import type { StyldClient } from './StyldClient.ts'
 import { TelemetryConsent, TelemetryConsentControl } from './TelemetryConsent.ts'
 
@@ -117,14 +121,6 @@ export const SignOut = Command.define('SignOut', {
     yield* (yield* BrowserAuth).auth.signOut()
     return Message.SucceededSignOut()
   }).pipe(Effect.catch(() => Effect.succeed(Message.FailedSignOut()))),
-})
-
-/** A full page load: the next page renders on the server for the new session.
- * @internal Exported for its tests. */
-export const Navigate = Command.define('Navigate', {
-  args: { href: Schema.String },
-  messages: [Message.CompletedNavigate],
-  execute: ({ href }) => load(href).pipe(Effect.as(Message.CompletedNavigate())),
 })
 
 const SaveLocale = Command.define('SaveLocale', {
@@ -204,6 +200,13 @@ const foldTodayEnter = Update.foldChildStep({
   toParentMessage: (message: Today.Message) => Message.GotTodayMessage({ message }),
 })
 
+const foldAskLeave = Update.foldChildStep({
+  update: Ask.leave,
+  read: (model: Model) => Option.some(model.ask),
+  write: (model: Model, ask: Ask.Model) => modifyFields(model, { ask: () => ask }),
+  toParentMessage: (message: Ask.Message) => Message.GotAskMessage({ message }),
+})
+
 const openHome: ReadonlyArray<Step> = [foldTodayEnter, foldWardrobeRevisit]
 /** What opening a tab page asks for. Home needs a session: a cookie with the request, or `afterSignIn`. */
 const openPage = (route: AppRoute, hasSessionCookie: boolean): ReadonlyArray<Step> =>
@@ -215,8 +218,9 @@ const openPage = (route: AppRoute, hasSessionCookie: boolean): ReadonlyArray<Ste
     Match.orElse(() => []),
   )
 
-export const init = (context: Flags): UpdateReturn => {
-  const route = routeFromPathname(context.pathname)
+/** The page opens at the URL the browser or the server hands over; tests may give the path in the Flags alone. */
+export const init = (context: Flags, url?: Url): UpdateReturn => {
+  const route = url === undefined ? routeFromPathname(context.pathname) : routeFromUrl(url)
   const piece = Piece.init(AppRoute.guards.Piece(route) ? route.pieceId : '')
   const look = Look.init(AppRoute.guards.Look(route) ? route.lookId : '')
   const board = BoardModel.init(AppRoute.guards.Board(route) ? route.boardId : '')
@@ -249,6 +253,20 @@ export const init = (context: Flags): UpdateReturn => {
 }
 
 // UPDATE
+
+/** The address changed in the page: its tab opens with what the app has, refreshed behind; any other page loads. */
+const changedUrl = (model: Model, url: Url): UpdateReturn => {
+  const route = routeFromUrl(url)
+  if (Option.isNone(tabOf(route))) return { model, commands: [Navigate({ href: urlToString(url) })] }
+  const moved = modifyFields(model, { route: () => route })
+  if (isSameTab(model.route, route))
+    return Option.isSome(url.hash) ? { model: moved, commands: arrive(url.hash) } : { model: moved }
+  return Update.combine<Model, Message, Services>(moved, [
+    foldAskLeave,
+    ...openPage(route, true),
+    (stepModel) => ({ model: stepModel, commands: arrive(url.hash) }),
+  ])
+}
 
 /** Where a signed-in visitor belongs: sign-in hands over to the account or the assistant's authorization. */
 const afterSignIn =
@@ -447,6 +465,15 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     }),
     FailedSignOut: () => ({ model: modifyFields(model, { session: () => Session.Unavailable() }) }),
     CompletedNavigate: () => ({ model }),
+    ClickedLink: ({ request }) => ({
+      model,
+      commands: followLink(model.route, Session.guards.SignedIn(model.session), request),
+    }),
+    ChangedUrl: ({ url }) => changedUrl(model, url),
+    CompletedNavigateInternal: () => ({ model }),
+    CompletedScrollToTop: () => ({ model }),
+    CompletedScrollToAnchor: () => ({ model }),
+    CompletedFocusPageTitle: () => ({ model }),
     GotLoginMessage: (got) => foldLogin(model, got.message),
     GotAccountMessage: (got) => foldAccount(model, got.message),
     GotWardrobeMessage: (got) => foldWardrobe(model, got.message),

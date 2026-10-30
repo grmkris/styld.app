@@ -78,6 +78,27 @@ routing, following Foldkit's own website. Other pages keep full loads.
     - SSR tests check that a cookie draws the nav and the skeleton, and that no tab page carries an inline style.
     - The browser journey adds up every layout shift (taps included) and holds each full load of Home, Wardrobe,
       Looks, Boards and Account under 0.02.
+- **Tabs switch inside the page.**
+  - Home, Wardrobe, Looks, Ask, Boards and You are routed in the browser with Foldkit's `routing` and
+    `Runtime.hydrate`, after Foldkit's own website. The server renders by URL.
+  - `Navigation.followLink`:
+    - between tab pages, for someone signed in, pushes the address;
+    - on the current tab, scrolls back up;
+    - for a section of the page, pushes and scrolls there;
+    - for everything else, including the board editor, pieces, looks, capture and sign-in, loads whole.
+  - On `ChangedUrl` the tab's page opens with what the app already has, through the pages' `revisit`, refreshed
+    behind it. Ask closes its + sheet, and the new page starts at the top with its title focused (`Dom.focus`).
+  - Tab changes cross-fade through `viewTransition`, with the navigation named so it stays put. The runtime catches
+    aborted transitions and skips them under reduced motion.
+  - The telemetry route names include the tab pages.
+  - Story tests cover the link rules and opening a seen, cold or in-flight page.
+  - The browser journey walks Home → Wardrobe → Looks → Ask → Boards → Account → Home, then Back, Back, Forward, and
+    quick taps. It checks:
+    - the document is never reloaded;
+    - nothing moves (under 0.02);
+    - each page starts at the top with its title focused;
+    - a page seen before shows no skeleton;
+    - a board still loads whole.
 - **The app's Message union has its own module** (`apps/web/src/Message.ts`, re-exported from `App.ts`), so the
   navigation can build Messages without importing the app. The capture session confirmed no conflict.
 
