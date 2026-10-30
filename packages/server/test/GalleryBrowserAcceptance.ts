@@ -356,7 +356,8 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
     await page.goto(`${origin}/boards`, { waitUntil: 'networkidle' })
     await page.getByRole('heading', { name: 'Zbirke', level: 1 }).waitFor({ state: 'visible' })
     await page.getByRole('link', { name: 'Odpri: Weekend away' }).click()
-    await page.getByText('3 kartice').waitFor({ state: 'visible' })
+    // Four pins: the piece taken off was saved back from its own page.
+    await page.getByText('4 kartice').waitFor({ state: 'visible' })
     await page.getByRole('link', { name: 'Odpri kolaž Weekend away' }).click()
     await page.getByRole('button', { name: 'Besedilo: Weekend in Piran' }).waitFor({ state: 'visible' })
     await page.getByRole('button', { name: 'Shrani kot videz' }).waitFor({ state: 'visible' })

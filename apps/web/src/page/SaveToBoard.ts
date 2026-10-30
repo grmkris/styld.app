@@ -80,7 +80,8 @@ export const ListBoardsToSaveTo = Command.define('ListBoardsToSaveTo', {
   }),
 })
 
-/** Pin the target on a board, a new one first when it has only a name. */
+/** Pin the target on a board, a new one first when it has only a name.
+ * @internal Exported for its tests. */
 export const SaveTo = Command.define('SaveTo', {
   args: { target: Target, boardId: Schema.Option(Schema.String), boardName: Schema.String },
   messages: [Message.SucceededSave, Message.FailedSave],
@@ -146,6 +147,7 @@ export const foldInto = <Parent extends { readonly saveToBoard: Model }, ParentM
     toParentMessage,
   })
 
+/** @internal Exported for its tests. */
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     ClickedSave: () => opened(model),
