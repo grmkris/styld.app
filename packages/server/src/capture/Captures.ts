@@ -220,19 +220,25 @@ export const reading = (parts: Parts) => ({
       allowance: { remaining, daily: policy.dailyAllowance },
     }).pipe(Effect.orDie)
   }),
-  check: Effect.fn('Styld.Capture.check')(function* (frame: Uint8Array, previous: Option.Option<Uint8Array>) {
+  check: Effect.fn('Styld.Capture.check')(function* (
+    frame: Uint8Array,
+    previous: Option.Option<Uint8Array>,
+    layout: 'held' | 'flat',
+  ) {
     const vision = yield* GarmentVision
     const policy = yield* CaptureConfig
     const answer = yield* vision
       .checkHeld(
         { bytes: frame, contentType: 'image/jpeg' },
         Option.map(previous, (bytes) => ({ bytes, contentType: 'image/jpeg' as const })),
+        layout,
       )
       .pipe(Effect.mapError(unavailable))
     return {
       held: answer.held >= policy.heldConfidence,
       side: answer.side,
       samePrevious: answer.samePrevious >= policy.samePieceConfidence,
+      holding: answer.holding >= policy.heldConfidence,
     } satisfies HeldCheckAnswer
   }),
 })

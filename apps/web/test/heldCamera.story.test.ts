@@ -10,9 +10,14 @@ const still = shot('camera-1.jpg')
 const watching = () => update(open(init()).model, Message.StartedCamera()).model
 const firstCheck = CheckHeld({ token: 0, check, still, previous: Option.none() })
 
-/** The garment check's answer to check `token`. */
-const answered = (token: number, held: boolean, side: 'front' | 'back' | 'unclear', samePrevious = false) =>
-  Message.SucceededCheckHeld({ token, check, still, held, side, samePrevious })
+/** The garment check's answer to check `token`; a garment shown is held up by hand unless `holding` says not. */
+const answered = (
+  token: number,
+  held: boolean,
+  side: 'front' | 'back' | 'unclear',
+  samePrevious = false,
+  holding = held,
+) => Message.SucceededCheckHeld({ token, check, still, held, side, samePrevious, holding })
 
 /** A front just taken: the camera waits for the garment's back. */
 const frontTaken = (): Model => {
@@ -121,26 +126,38 @@ describe('the held-up camera', () => {
     )
   })
 
-  test('turned around, the garment is taken as its back; the front still held up is not taken twice', () => {
+  test('turned around, the garment is taken as its back, even when its plain back looks like a front', () => {
     story(
       update,
       given(frontTaken()),
-      ...turned(1, 'front', true),
-      expectNoOutMessage(),
-      model(({ camera, step, pendingCheck }) => {
-        expect(camera).toEqual(Camera.Watching({ hint: 'showBack' }))
-        expect(step).toBe('back')
-        expect(pendingCheck).toEqual(Option.none())
-      }),
       // Held still, the front is not looked at again: only turning it moves the picture.
       message(Message.StayedStill({ check, still })),
       Command.expectNone(),
-      ...turned(2, 'unclear', true),
+      // The owner's printed tee, turned: the check called its plain back a front of the same garment.
+      ...turned(1, 'front', true),
       expectOutMessage({ _tag: 'TookPhoto', photo: still, side: 'back' }),
       Command.resolve(Buzz, Message.CompletedBuzz()),
       model(({ camera, step, pieces }) => {
         expect(camera).toEqual(Camera.Watching({ hint: 'taken' }))
         expect(step).toBe('front')
+        expect(pieces).toBe(1)
+      }),
+    )
+  })
+
+  test('clothes shown but not held up, such as on the bed behind, are not taken', () => {
+    story(
+      update,
+      given(frontTaken()),
+      message(Message.SettledScene({ check, still })),
+      Command.resolve(
+        CheckHeld({ token: 1, check, still, previous: Option.some(check) }),
+        answered(1, true, 'front', false, false),
+      ),
+      expectNoOutMessage(),
+      model(({ camera, step, pieces }) => {
+        expect(camera).toEqual(Camera.Watching({ hint: 'notSeen' }))
+        expect(step).toBe('back')
         expect(pieces).toBe(1)
       }),
     )

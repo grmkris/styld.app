@@ -126,13 +126,21 @@ export const makeGarmentVision = (run: RunClef, metrics: CaptureMetrics['Service
     })
     return suggestionOf(answer)
   }),
-  checkHeld: Effect.fn('Styld.Capture.checkHeld')(function* (picture: Picture, previous: Option.Option<Picture>) {
+  checkHeld: Effect.fn('Styld.Capture.checkHeld')(function* (
+    picture: Picture,
+    previous: Option.Option<Picture>,
+    layout: 'held' | 'flat',
+  ) {
     const images = [imageOf(picture), ...Option.toArray(Option.map(previous, imageOf))]
+    const scene =
+      layout === 'flat'
+        ? 'A phone camera looking down at clothes laid flat.'
+        : 'A camera frame of someone showing clothes to their phone.'
     const answer = yield* ask(run, metrics, 'check', {
       model: 'clef-flash',
       state: Option.isSome(previous)
-        ? 'The first image is a camera frame now; the second is the last garment photographed.'
-        : 'A camera frame of someone showing clothes to their phone.',
+        ? `${scene} The first image is the camera frame now; the second is the last garment photographed.`
+        : scene,
       images,
       questions: {
         held: {
@@ -146,6 +154,9 @@ export const makeGarmentVision = (run: RunClef, metrics: CaptureMetrics['Service
           instructions: 'Which side of the garment faces the camera?',
           criteria: { front: 'The front', back: 'The back', unclear: 'Cannot tell' },
         },
+        // Clothes lying on a bed behind someone who walked off to fetch the next piece are the main subject
+        // too (owner's test, 30 October): a held-up shot needs the hands.
+        holding: { type: 'noul', instructions: 'Is a person holding the garment up with their hands?' },
         ...(Option.isSome(previous)
           ? { samePrevious: { type: 'noul', instructions: 'Is it the same garment as in the second image?' } }
           : {}),
@@ -155,7 +166,12 @@ export const makeGarmentVision = (run: RunClef, metrics: CaptureMetrics['Service
       onNone: (): HeldCheck['side'] => 'unclear',
       onSome: ({ choice }): HeldCheck['side'] => (choice === 'front' || choice === 'back' ? choice : 'unclear'),
     })
-    return { held: noulOf(answer, 'held'), side, samePrevious: noulOf(answer, 'samePrevious') }
+    return {
+      held: noulOf(answer, 'held'),
+      side,
+      samePrevious: noulOf(answer, 'samePrevious'),
+      holding: noulOf(answer, 'holding'),
+    }
   }),
 })
 

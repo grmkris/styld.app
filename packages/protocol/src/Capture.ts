@@ -121,15 +121,22 @@ export type Review = typeof Review.Type
 export const Reviewed = Schema.Struct({ pieceIds: Schema.Array(PieceId) })
 export type Reviewed = typeof Reviewed.Type
 
-/** The camera asks whether one garment is being held up. Frames are small JPEGs, base64 encoded. */
+/** How the camera sees a garment: held up to it by a person, or laid flat with the phone above. */
+export const CameraLayout = Schema.Literals(['held', 'flat'])
+export type CameraLayout = typeof CameraLayout.Type
+
+/** The camera asks whether one garment is shown. Frames are small JPEGs, base64 encoded. */
 export const HeldCheckRequest = Schema.Struct({
   frame: Schema.String.check(Schema.isMaxLength(400_000)),
   previous: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(400_000))),
+  layout: Schema.optionalKey(CameraLayout),
 })
 export const HeldCheckAnswer = Schema.Struct({
   held: Schema.Boolean,
   side: Side,
   samePrevious: Schema.Boolean,
+  /** Whether a person holds it up: a garment lying on a bed behind the camera is not held. */
+  holding: Schema.Boolean,
 })
 export type HeldCheckAnswer = typeof HeldCheckAnswer.Type
 

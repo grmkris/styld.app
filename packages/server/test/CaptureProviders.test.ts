@@ -275,10 +275,11 @@ describe('Clef-flash', () => {
           held: { noul: 0.91 },
           side: { choice: 'back', probabilities: { back: 0.8 } },
           samePrevious: { noul: 0.88 },
+          holding: { noul: 0.97 },
         },
-      }).checkHeld(picture, Option.some(picture)),
+      }).checkHeld(picture, Option.some(picture), 'held'),
     )
-    expect(held).toEqual(Exit.succeed({ held: 0.91, side: 'back', samePrevious: 0.88 }))
+    expect(held).toEqual(Exit.succeed({ held: 0.91, side: 'back', samePrevious: 0.88, holding: 0.97 }))
     const down = await errorOf(
       makeGarmentVision(() => Promise.reject(new Error('down')), CaptureMetrics.discarding).route(picture),
     )

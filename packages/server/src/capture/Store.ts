@@ -148,22 +148,36 @@ const pairRows = (db: Database) => {
         ),
     )
   return {
-    /** Give the front detection a back shot pairs with its back, if it is still open; whether one was. */
+    /** Give the front shot's piece its back, if it is still open; whether it was. The piece is the ticked one,
+     * or else the surest: a front whose only cut-out came out unticked still gets its back. */
     attachBack: (accountId: string, captureId: string, backKey: string) =>
-      attempt(() =>
-        db
-          .update(detections)
-          .set({ backCutoutKey: backKey })
-          .where(
-            and(
-              eq(detections.accountId, accountId),
-              eq(detections.captureId, captureId),
-              eq(detections.status, 'review'),
-              eq(detections.preselected, true),
-            ),
-          )
-          .returning({ id: detections.id }),
-      ).pipe(Effect.map((rows) => rows.length > 0)),
+      Effect.gen(function* () {
+        const front = first(
+          yield* attempt(() =>
+            db
+              .select({ id: detections.id })
+              .from(detections)
+              .where(
+                and(
+                  eq(detections.accountId, accountId),
+                  eq(detections.captureId, captureId),
+                  eq(detections.status, 'review'),
+                ),
+              )
+              .orderBy(desc(detections.preselected), desc(detections.confidence))
+              .limit(1),
+          ),
+        )
+        if (Option.isNone(front)) return false
+        const rows = yield* attempt(() =>
+          db
+            .update(detections)
+            .set({ backCutoutKey: backKey })
+            .where(and(eq(detections.id, front.value.id), eq(detections.status, 'review')))
+            .returning({ id: detections.id }),
+        )
+        return rows.length > 0
+      }),
     /** A back shot of `frontCaptureId` that finished before its front and waits in the tray on its own, with
      * its open detections. */
     waitingBack: (accountId: string, frontCaptureId: string) =>

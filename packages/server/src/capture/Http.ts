@@ -18,7 +18,7 @@ const jpegOf = (text: string) =>
   )
 
 /** The answer for a frame Styld does not check: not a JPEG, or past the account's pace. */
-const notChecked = { held: false, side: 'unclear', samePrevious: false } as const
+const notChecked = { held: false, side: 'unclear', samePrevious: false, holding: false } as const
 
 /** The website's capture endpoints, each the matching `Captures` operation for the session's account. */
 export const captureHandlers = (
@@ -44,7 +44,7 @@ export const captureHandlers = (
                 // Each check calls Clef, so a frame past the account's pace is answered without one.
                 if (Option.isNone(frame) || !(yield* allowCheck(accountId))) return notChecked
                 const previous = Option.flatMap(Option.fromNullishOr(payload.previous), jpegOf)
-                return yield* captures.check(frame.value, previous)
+                return yield* captures.check(frame.value, previous, payload.layout ?? 'held')
               }),
             ),
           ),

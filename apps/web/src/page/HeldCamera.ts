@@ -89,6 +89,7 @@ export const Message = defineMessageUnion({
     held: Schema.Boolean,
     side: Side,
     samePrevious: Schema.Boolean,
+    holding: Schema.Boolean,
   },
   FailedCheckHeld: { token: Schema.Number },
   CompletedBuzz: {},
@@ -183,7 +184,7 @@ export const WatchCamera = Mount.defineStream('WatchCamera', {
 const base64Of = (file: File.File) =>
   Effect.tryPromise(() => file.arrayBuffer()).pipe(Effect.map((bytes) => Base64.encode(new Uint8Array(bytes))))
 
-/** Ask whether one garment is shown in the settled picture, and which side.
+/** Ask whether one garment is shown in the settled picture, which side, and whether a person holds it.
  * @internal Exported for its tests. */
 export const CheckHeld = Command.define('CheckHeld', {
   args: { token: Schema.Number, check: File.File, still: File.File, previous: Schema.Option(File.File) },
@@ -193,7 +194,7 @@ export const CheckHeld = Command.define('CheckHeld', {
       const api = yield* (yield* StyldClient).api
       const frame = yield* base64Of(check)
       const earlier = Option.isSome(previous) ? { previous: yield* base64Of(previous.value) } : {}
-      const answer = yield* api.capture.check({ payload: { frame, ...earlier } })
+      const answer = yield* api.capture.check({ payload: { frame, layout: 'held', ...earlier } })
       return Message.SucceededCheckHeld({ token, check, still, ...answer })
     }).pipe(Effect.orElseSucceed(() => Message.FailedCheckHeld({ token }))),
 })
@@ -234,12 +235,10 @@ const took = (model: Model, photo: File.File, check: File.File, side: Step): Upd
 })
 
 /** What a garment the check saw held up becomes. At the front step, a new piece. At the back step, the
- * piece's back once it shows anything but a front; the front just taken, still held, is not taken again,
- * and another garment's front starts a new piece, leaving the last one without a back. */
-const shotOf = (step: Step, side: Side, samePrevious: boolean): Option.Option<Step> => {
-  if (step === 'front' || side !== 'front') return Option.some(step)
-  return samePrevious ? Option.none() : Option.some('front')
-}
+ * piece's back: a plain back looks like a front to the check, so only another garment's front starts a new
+ * piece instead, leaving the last one without a back. */
+const shotOf = (step: Step, side: Side, samePrevious: boolean): Step =>
+  step === 'back' && side === 'front' && !samePrevious ? 'front' : step
 
 /** A settled picture goes to the garment check, unless one is already out. */
 const settled = (model: Model, check: File.File, still: File.File): UpdateReturn => {
@@ -304,16 +303,13 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         : settled(model, check, still),
     TappedPicture: ({ check, still }) =>
       Camera.guards.Watching(model.camera) ? took(model, still, check, model.step) : { model },
-    SucceededCheckHeld: ({ token, check, still, held, side, samePrevious }) => {
+    // A garment shown but not held, such as clothes on the bed while the person fetches the next piece, is
+    // not taken.
+    SucceededCheckHeld: ({ token, check, still, held, side, samePrevious, holding }) => {
       if (!awaited(model, token)) return { model }
-      if (!held)
-        return { model: modifyFields(model, { pendingCheck: () => Option.none(), camera: () => watching('notSeen') }) }
-      return Option.match(shotOf(model.step, side, samePrevious), {
-        onSome: (shot) => took(model, still, check, shot),
-        onNone: () => ({
-          model: modifyFields(model, { pendingCheck: () => Option.none(), camera: () => watching('showBack') }),
-        }),
-      })
+      return held && holding
+        ? took(model, still, check, shotOf(model.step, side, samePrevious))
+        : { model: modifyFields(model, { pendingCheck: () => Option.none(), camera: () => watching('notSeen') }) }
     },
     // Without the check, the camera still takes a photo by hand.
     FailedCheckHeld: ({ token }) =>

@@ -50,12 +50,14 @@ const attachBack = (
   parts: Parts,
   accountId: string,
   frontCaptureId: string,
-  detections: ReadonlyArray<Pick<DetectionRow, 'cutoutKey' | 'sourceKey' | 'preselected'>>,
+  detections: ReadonlyArray<Pick<DetectionRow, 'cutoutKey' | 'sourceKey' | 'preselected' | 'confidence'>>,
 ) =>
   Effect.gen(function* () {
-    // The piece the camera saw held up; failing that, the largest. Without a cut-out (providers off) the
+    // The piece the camera saw held up; failing that, the surest. Without a cut-out (providers off) the
     // back is the photo itself, as the front is.
-    const back = detections.find(({ preselected }) => preselected) ?? detections[0]
+    const back =
+      detections.find(({ preselected }) => preselected) ??
+      detections.toSorted((one, other) => (other.confidence ?? 0) - (one.confidence ?? 0))[0]
     if (back === undefined) return false
     // The front may already be decided; then the back waits in the tray on its own.
     return yield* storedAs(parts.store.attachBack(accountId, frontCaptureId, back.cutoutKey ?? back.sourceKey))

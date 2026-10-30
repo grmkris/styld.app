@@ -37,11 +37,12 @@ export interface Suggestion {
   readonly whole: number
 }
 
-/** The camera's question: is one garment being held up, which side shows, is it the last one again? */
+/** The camera's question: is one garment shown, which side, is it the last one again, does a person hold it? */
 export interface HeldCheck {
   readonly held: number
   readonly side: 'front' | 'back' | 'unclear'
   readonly samePrevious: number
+  readonly holding: number
 }
 
 /** Cloudflare Clef-flash: typed questions about a picture, each answered with probabilities. */
@@ -50,7 +51,11 @@ export class GarmentVision extends Context.Service<
   {
     readonly route: (picture: Picture) => Effect.Effect<Route, ProviderFailed>
     readonly suggest: (picture: Picture) => Effect.Effect<Suggestion, ProviderFailed>
-    readonly checkHeld: (picture: Picture, previous: Option.Option<Picture>) => Effect.Effect<HeldCheck, ProviderFailed>
+    readonly checkHeld: (
+      picture: Picture,
+      previous: Option.Option<Picture>,
+      layout: 'held' | 'flat',
+    ) => Effect.Effect<HeldCheck, ProviderFailed>
   }
 >()('@styld/server/GarmentVision') {}
 
