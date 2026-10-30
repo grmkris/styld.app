@@ -99,6 +99,19 @@ routing, following Foldkit's own website. Other pages keep full loads.
     - each page starts at the top with its title focused;
     - a page seen before shows no skeleton;
     - a board still loads whole.
+- **Ask's search forgives the way people type** (`page/AskSearch.ts`):
+  - It ignores case, accents (č, š, ž, đ) and punctuation, so commas work.
+  - Every typed word must match the start of a word the piece answers to, or the same word with another
+    Slovenian or English ending: "črne" finds black, "jakna" jackets, "obleka" dresses, "modro" navy and blue.
+  - It reads the piece's name and notes, and its category, shelf and colours in both languages. Opening Ask loads
+    the other language's catalog once.
+  - `ask.searchWords.*` adds the everyday words a category's name misses, such as "čevlji" and "obutev" for shoes,
+    and "hlače" for bottoms.
+  - Only ready pieces match.
+  - Opening a tab page moved out of App.ts into `PageEntries.ts`.
+- **A flaky native test, not ours:** twice tonight the MCP OAuth acceptance answered 500 from
+  `/test/identity/disable-mcp` with `D1_ERROR: database is locked: SQLITE_BUSY` in local workerd. Each time it passed
+  on a rerun with no change.
 - **The app's Message union has its own module** (`apps/web/src/Message.ts`, re-exported from `App.ts`), so the
   navigation can build Messages without importing the app. The capture session confirmed no conflict.
 

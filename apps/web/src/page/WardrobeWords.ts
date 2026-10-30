@@ -7,3 +7,5 @@ export const categoryName = (category: Category) => `wardrobe.mainCategories.${c
 export const subcategoryName = (subcategory: Subcategory) =>
   `wardrobe.shelves.labels.${subcategory}` as const satisfies MessageKey
 export const colourName = (colour: Colour) => `wardrobe.addPieceColor_${colour}` as const satisfies MessageKey
+/** The words people use for a category, beyond its name ("čevlji" for shoes), which Ask's search also matches. */
+export const searchWordsName = (category: Category) => `ask.searchWords.${category}` as const satisfies MessageKey

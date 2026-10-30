@@ -2903,7 +2903,15 @@
     "retry": "Poskusi znova",
     "stylistTitle": "Vprašaj stilista",
     "stylistText": "Styldov stilist odgovarja v ChatGPT in Claude, s povezano garderobo: kaj se poda k čemu in kaj obleči nocoj.",
-    "stylistLink": "Poveži ChatGPT ali Claude"
+    "stylistLink": "Poveži ChatGPT ali Claude",
+    "searchWords": {
+      "top": "majica, majice, zgornji del",
+      "bottom": "hlače, spodnji del",
+      "dress": "obleka, obleke",
+      "outerwear": "vrhnja oblačila",
+      "shoes": "čevlji, čevelj, obutev",
+      "accessory": "dodatki, dodatek"
+    }
   },
   "today": {
     "title": "Danes",

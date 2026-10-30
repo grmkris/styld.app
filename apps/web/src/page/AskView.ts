@@ -8,34 +8,18 @@ import { secondaryAction } from '../Actions.styles.ts'
 import { addIcon, boardsTabIcon, cameraIcon, closeIcon, loader, searchIcon, stylistIcon } from '../Icon.ts'
 import { accountRouter, addPiecesRouter, boardsRouter, pieceRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
-import { Message, type Model } from './Ask.ts'
+import { Message, type Model, SearchLanguages } from './Ask.ts'
+import { matching } from './AskSearch.ts'
 import type { PiecesData } from './Wardrobe.ts'
 import * as styles from './AskView.styles.ts'
-import { categoryName, colourName, subcategoryName } from './WardrobeWords.ts'
+import { categoryName } from './WardrobeWords.ts'
 import { pageHead, pageTitle } from './PageHead.ts'
 
 const sheetId = 'ask-add-sheet'
 
-/** Everything a piece answers to in this language: its name, category, shelf and colours. */
-const wordsOf = (piece: Piece, locale: Locale) =>
-  String.toLowerCase(
-    [
-      piece.name ?? '',
-      format(locale, categoryName(piece.category), {}),
-      piece.subcategory === null ? '' : format(locale, subcategoryName(piece.subcategory), {}),
-      ...piece.colours.map((colour) => format(locale, colourName(colour), {})),
-    ].join(' '),
-  )
-
-/** The pieces that match every word of the query.
- * @internal Exported for its tests. */
-export const matching = (pieces: ReadonlyArray<Piece>, query: string, locale: Locale): ReadonlyArray<Piece> => {
-  const words = Array.filter(String.split(String.toLowerCase(query.trim()), /\s+/), String.isNonEmpty)
-  return Array.filter(pieces, (piece) => {
-    const text = wordsOf(piece, locale)
-    return piece.status === 'ready' && Array.every(words, (word) => text.includes(word))
-  })
-}
+/** The languages the search reads a piece's words in: the page's first, and the other once it has loaded. */
+const searchLocales = (model: Model, locale: Locale): ReadonlyArray<Locale> =>
+  SearchLanguages.guards.Both(model.languages) ? [locale, locale === 'sl' ? 'en' : 'sl'] : [locale]
 
 const searchBar = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.bar()), [
@@ -125,7 +109,7 @@ const suggestions = (pieces: ReadonlyArray<Piece>, locale: Locale, h: HtmlBuilde
 }
 
 const resultsView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const found = matching(pieces, model.query, locale)
+  const found = matching(pieces, model.query, searchLocales(model, locale))
   return h.section(styled(h, styles.section()), [
     h.p([h.Role('status'), ...styled(h, styles.count())], [format(locale, 'ask.found', { count: found.length })]),
     Array.match(found, {

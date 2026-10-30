@@ -1,0 +1,76 @@
+import { Command, given, message, model, story } from 'foldkit/story'
+import { describe, expect, test } from 'vitest'
+import * as Ask from '../src/page/Ask.ts'
+import { matching, normalise } from '../src/page/AskSearch.ts'
+import { pieceFixture } from './WardrobeFixtures.ts'
+
+const knit = pieceFixture('knit', {
+  category: 'top',
+  subcategory: 'long_sleeve',
+  colours: ['navy'],
+  name: 'Cable knit',
+})
+const shirt = pieceFixture('shirt', { category: 'top', colours: ['blue'], name: 'Oxford shirt' })
+const shorts = pieceFixture('shorts', {
+  category: 'bottom',
+  subcategory: 'shorts',
+  colours: ['blue'],
+  name: 'Denim shorts',
+})
+const trousers = pieceFixture('trousers', { category: 'bottom', colours: ['green'], name: null })
+const derbies = pieceFixture('derbies', { category: 'shoes', colours: ['black'], name: 'Derby shoes' })
+const jacket = pieceFixture('jacket', { category: 'outerwear', subcategory: 'jackets', colours: ['black'], name: null })
+const dress = pieceFixture('dress', { category: 'dress', colours: ['white'], name: null })
+const drying = pieceFixture('drying', { category: 'shoes', status: 'processing', name: 'New boots' })
+const wardrobe = [knit, shirt, shorts, trousers, derbies, jacket, dress, drying]
+const found = (query: string, locales: ReadonlyArray<'en' | 'sl'>) =>
+  matching(wardrobe, query, locales).map((piece) => piece.id)
+
+describe('searching your wardrobe', () => {
+  test('any case, accents or not, and commas between words', () => {
+    expect(normalise('  Črne, ČEVLJI. ')).toBe('crne cevlji')
+    expect(normalise('Đon')).toBe('don')
+  })
+
+  test('in English: by name, category or colour, a word started or with an ending', () => {
+    expect(found('knit', ['en'])).toEqual([knit.id])
+    expect(found('green', ['en'])).toEqual([trousers.id])
+    expect(found('Derby, shoes', ['en'])).toEqual([derbies.id])
+    expect(found('SHOES', ['en'])).toEqual([derbies.id])
+    expect(found('shoe', ['en'])).toEqual([derbies.id])
+    expect(found('nothing like this', ['en'])).toEqual([])
+  })
+
+  test('in Slovenian: the words people use, with any ending, with or without č, š and ž', () => {
+    const sl = ['sl'] as const
+    expect(found('čevlji', sl)).toEqual([derbies.id])
+    expect(found('cevlji', sl)).toEqual([derbies.id])
+    expect(found('obutev', sl)).toEqual([derbies.id])
+    expect(found('črne', sl)).toEqual([derbies.id, jacket.id])
+    expect(found('modro', sl)).toEqual([knit.id, shirt.id, shorts.id])
+    expect(found('jakna', sl)).toEqual([jacket.id])
+    expect(found('obleka', sl)).toEqual([dress.id])
+    expect(found('zelene hlače', sl)).toEqual([trousers.id])
+    expect(found('modra, čevlji', sl)).toEqual([])
+  })
+
+  test('both languages at once, once the other has loaded, and only pieces that are ready', () => {
+    // The jacket has no name: on a Slovenian page "outerwear" finds it only once English has loaded.
+    expect(found('outerwear', ['sl'])).toEqual([])
+    expect(found('outerwear', ['sl', 'en'])).toEqual([jacket.id])
+    expect(found('boots', ['en'])).toEqual([])
+    expect(found('', ['en'])).toHaveLength(7)
+  })
+
+  test('opening Ask loads the other language once', () => {
+    story(
+      Ask.update,
+      given(Ask.init()),
+      message(Ask.Message.SucceededLoadSearchLanguages()),
+      model((current) => expect(Ask.SearchLanguages.guards.Both(current.languages)).toBe(true)),
+    )
+    expect(Ask.enter(Ask.init()).commands?.map(({ name }) => name)).toEqual(['LoadSearchLanguages'])
+    expect(Ask.enter({ ...Ask.init(), languages: Ask.SearchLanguages.Both() }).commands).toBeUndefined()
+    expect(Command).toBeDefined()
+  })
+})

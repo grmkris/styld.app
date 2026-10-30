@@ -15,6 +15,7 @@ import {
   ScrollToAnchor,
   ScrollToTop,
 } from '../src/Navigation.ts'
+import { LoadSearchLanguages, Message as AskMessage } from '../src/page/Ask.ts'
 import { ListLooks, Message as LooksMessage } from '../src/page/Looks.ts'
 import { ListPieces, Message as WardrobeMessage, PiecesData } from '../src/page/Wardrobe.ts'
 import { AppRoute } from '../src/route.ts'
@@ -77,8 +78,9 @@ describe('opening a tab page inside the page', () => {
         expect(route).toEqual(AppRoute.Ask())
         expect(wardrobe.pieces).toEqual(PiecesData.Refreshing({ data: [tee] }))
       }),
-      Command.expectExact(ListPieces, ScrollToTop, FocusPageTitle),
+      Command.expectExact(ListPieces, LoadSearchLanguages, ScrollToTop, FocusPageTitle),
       Command.resolve(ListPieces, WardrobeMessage.SucceededListPieces({ pieces: [tee] })),
+      Command.resolve(LoadSearchLanguages, AskMessage.SucceededLoadSearchLanguages()),
       Command.resolve(ScrollToTop, Message.CompletedScrollToTop()),
       Command.resolve(FocusPageTitle, Message.CompletedFocusPageTitle()),
       model(({ wardrobe }) => expect(AsyncData.isSuccess(wardrobe.pieces)).toBe(true)),

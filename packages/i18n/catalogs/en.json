@@ -2903,7 +2903,15 @@
     "retry": "Try again",
     "stylistTitle": "Ask the stylist",
     "stylistText": "Styld’s stylist answers in ChatGPT and Claude, with your wardrobe connected: what goes with what, and what to wear tonight.",
-    "stylistLink": "Connect ChatGPT or Claude"
+    "stylistLink": "Connect ChatGPT or Claude",
+    "searchWords": {
+      "top": "top, tops",
+      "bottom": "bottom, bottoms, pants",
+      "dress": "dress, dresses",
+      "outerwear": "outerwear",
+      "shoes": "shoes, shoe, footwear",
+      "accessory": "accessory, accessories"
+    }
   },
   "today": {
     "title": "Today",

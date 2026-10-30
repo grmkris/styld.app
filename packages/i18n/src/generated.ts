@@ -379,6 +379,12 @@ export interface MessageArgumentsByKey<T = string> {
   'ask.placeholder': Readonly<Record<string, never>>
   'ask.retry': Readonly<Record<string, never>>
   'ask.searchLabel': Readonly<Record<string, never>>
+  'ask.searchWords.accessory': Readonly<Record<string, never>>
+  'ask.searchWords.bottom': Readonly<Record<string, never>>
+  'ask.searchWords.dress': Readonly<Record<string, never>>
+  'ask.searchWords.outerwear': Readonly<Record<string, never>>
+  'ask.searchWords.shoes': Readonly<Record<string, never>>
+  'ask.searchWords.top': Readonly<Record<string, never>>
   'ask.stylistLink': Readonly<Record<string, never>>
   'ask.stylistText': Readonly<Record<string, never>>
   'ask.stylistTitle': Readonly<Record<string, never>>
@@ -2520,4 +2526,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '6c2f3a58c2e574a4366b87eb9d360a039d05882c31a1aa91343ac7b967d54334'
+export const catalogVersion = '0ecc55c1376379e9345a4c461e459c7db34321719a7062e10aa1e5bd039cb7b4'

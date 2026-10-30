@@ -4,7 +4,7 @@ import { modifyFields } from 'foldkit/struct'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import * as Ask from '../src/page/Ask.ts'
-import { matching } from '../src/page/AskView.ts'
+import { matching } from '../src/page/AskSearch.ts'
 import * as Boards from '../src/page/Boards.ts'
 import { missingFrom, outfitFor } from '../src/page/Outfit.ts'
 import * as Today from '../src/page/Today.ts'
@@ -17,7 +17,7 @@ const greenTrousers = pieceFixture('green-trousers', { category: 'bottom', colou
 const blackShoes = pieceFixture('black-shoes', { category: 'shoes', colours: ['black'], name: 'Derby shoes' })
 const wardrobe = [redTop, navyKnit, greenTrousers, blackShoes]
 const thursday = Schema.decodeUnknownSync(Day)('2026-10-29')
-const ids = (query: string, locale: 'en' | 'sl') => matching(wardrobe, query, locale).map((piece) => piece.id)
+const ids = (query: string, locale: 'en' | 'sl') => matching(wardrobe, query, [locale]).map((piece) => piece.id)
 
 describe("today's table", () => {
   test('an outfit takes one piece a slot, and never two loud colours together', () => {

@@ -2623,6 +2623,12 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'ask.stylistText':
     'Styldov stilist odgovarja v ChatGPT in Claude, s povezano garderobo: kaj se poda k čemu in kaj obleči nocoj.',
   'ask.stylistLink': 'Poveži ChatGPT ali Claude',
+  'ask.searchWords.top': 'majica, majice, zgornji del',
+  'ask.searchWords.bottom': 'hlače, spodnji del',
+  'ask.searchWords.dress': 'obleka, obleke',
+  'ask.searchWords.outerwear': 'vrhnja oblačila',
+  'ask.searchWords.shoes': 'čevlji, čevelj, obutev',
+  'ask.searchWords.accessory': 'dodatki, dodatek',
   'today.title': 'Danes',
   'today.outfit': 'Današnja oprava: {names}',
   'today.loading': 'Pripravljam današnjo opravo …',
