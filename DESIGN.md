@@ -58,7 +58,9 @@ Never a second accent colour.
 ## Type
 
 Hanken Grotesk is the face, self-hosted as the variable font (`@fontsource-variable/hanken-grotesk`, latin and
-latin-ext). No serif.
+latin-ext). No serif. The document preloads it (latin-ext only for Slovenian), and until it lands text draws in
+`Hanken Grotesk Fallback`: the local Arial resized to Hanken's measured width, ascent and descent, so lines break
+where they will once it swaps in. Static files are named after their content and cached for good (`public/_headers`).
 
 The logo's voice is **Anton**, a condensed display face, self-hosted as one subset file. It is used in exactly two
 places:

@@ -58,7 +58,8 @@ export const { style, vars } = defineConfig({
       swatchPurple: '#7d4ca6',
     },
     fontFamily: {
-      body: "'Hanken Grotesk Variable', 'Hanken Grotesk', system-ui, sans-serif",
+      // The fallback is Arial sized to Hanken's metrics (GlobalStyles.ts), so text keeps its place when the face lands.
+      body: "'Hanken Grotesk Variable', 'Hanken Grotesk Fallback', system-ui, sans-serif",
       // The logo's condensed voice: the table's headline and headline labels on a board, nowhere else.
       voice: "'Anton', 'Hanken Grotesk Variable', sans-serif",
     },

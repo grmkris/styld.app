@@ -5,7 +5,7 @@ import { vars } from './zyzz.config.ts'
 // browser fetches a file only when a glyph of its range is drawn, so pages without it never load it.
 fontFace({
   fontFamily: 'Anton',
-  src: "url('/fonts/anton-latin.woff2') format('woff2')",
+  src: "url('/fonts/anton-latin.23aab0b2.woff2') format('woff2')",
   fontDisplay: 'swap',
   fontWeight: 400,
   unicodeRange:
@@ -13,11 +13,34 @@ fontFace({
 })
 fontFace({
   fontFamily: 'Anton',
-  src: "url('/fonts/anton-latin-ext.woff2') format('woff2')",
+  src: "url('/fonts/anton-latin-ext.ae1a8ac1.woff2') format('woff2')",
   fontDisplay: 'swap',
   fontWeight: 400,
   unicodeRange:
     'U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329, U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C4, U+2113, U+2C60-2C7F, U+A720-A7FF',
+})
+
+// Hanken Grotesk's stand-in until the face arrives: the local Arial (Helvetica, Liberation Sans) resized to Hanken's
+// width and given its ascent and descent, so lines break and sit where they will once it swaps in. Measured in
+// Chromium on an English and Slovenian sample at 100px (Hanken 400: 9010 wide, ascent 100, descent 30; Arial 400:
+// 8971; Hanken 600: 9064; Arial Bold: 9660). Semibold text falls back to Arial Bold, which runs wider.
+fontFace({
+  fontFamily: 'Hanken Grotesk Fallback',
+  src: "local('Arial'), local('ArialMT'), local('Helvetica'), local('Liberation Sans')",
+  fontWeight: '100 500',
+  sizeAdjust: '100.44%',
+  ascentOverride: '99.57%',
+  descentOverride: '29.87%',
+  lineGapOverride: '0%',
+})
+fontFace({
+  fontFamily: 'Hanken Grotesk Fallback',
+  src: "local('Arial Bold'), local('Arial-BoldMT'), local('Helvetica Bold'), local('Liberation Sans Bold')",
+  fontWeight: '501 900',
+  sizeAdjust: '93.83%',
+  ascentOverride: '106.58%',
+  descentOverride: '31.97%',
+  lineGapOverride: '0%',
 })
 
 // Document defaults (DESIGN.md › Type). Component styles live beside the views that use them.

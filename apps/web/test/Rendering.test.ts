@@ -160,6 +160,19 @@ test('server rendering draws the session check loader as an inline, hidden Phosp
   expect(status?.[2]).toBe(CircleNotchRegular)
 })
 
+const facePreloads = (html: string) =>
+  [
+    ...html.matchAll(/<link rel="preload" href="[^"]*\/([a-z-]+)[^"/]*" as="font" type="font\/woff2" crossorigin>/g),
+  ].map((match) => match[1])
+
+test('the document asks for its face up front: Latin always, the Slovenian letters only for Slovenian', async () => {
+  expect(facePreloads(await renderPage('/', 'styld_locale=en'))).toEqual(['hanken-grotesk-latin-wght-normal'])
+  expect(facePreloads(await renderPage('/', 'styld_locale=sl'))).toEqual([
+    'hanken-grotesk-latin-wght-normal',
+    'hanken-grotesk-latin-ext-wght-normal',
+  ])
+})
+
 const statusOf = async (path: string) =>
   Server.toResponse(
     (app) => renderDocument(app, assets),
