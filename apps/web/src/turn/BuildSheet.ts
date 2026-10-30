@@ -1,8 +1,8 @@
 import {
   armsRow,
-  chromaKey,
   clipAbove,
   decodePng,
+  keyOut,
   packSheet,
   pickedFrames,
   type Rgba,
@@ -11,7 +11,7 @@ import {
   silhouetteWidth,
   turnEnd,
 } from '@styld/imaging'
-import { Effect, Option, Schema, Stream } from 'effect'
+import { Effect, Schema, Stream } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
 import { type InputVideoTrack, VideoSampleSink } from 'mediabunny'
 import { drawing, opened, videoTrack } from '../capture/VideoParts.ts'
@@ -21,8 +21,9 @@ export class SheetNotBuilt extends Schema.TaggedError<SheetNotBuilt>()('SheetNot
 
 const failed = () => SheetNotBuilt.make({})
 
-// Frames are read at half the turn's 720 by 1280 canvas, and probed at an eighth to find where the turn stops.
-const frameSize = { width: 360, height: 640 }
+// Frames are read at three eighths of the turn's 720 by 1280 canvas, enough for 288 by 384 cells, and probed at an
+// eighth to find where the turn stops.
+const frameSize = { width: 270, height: 480 }
 const probeSize = { width: 90, height: 160 }
 
 type Canvas = Effect.Success<ReturnType<typeof drawing>>
@@ -48,11 +49,7 @@ const probe = (track: InputVideoTrack) =>
           sample.draw(canvas.context, 0, 0, probeSize.width, probeSize.height)
           const pixels = pixelsOf(canvas)
           key ??= keyOf(pixels)
-          const keyed = chromaKey(pixels, key)
-          seen.push({
-            timestamp: sample.timestamp,
-            width: Option.match(keyed, { onNone: () => 0, onSome: silhouetteWidth }),
-          })
+          seen.push({ timestamp: sample.timestamp, width: silhouetteWidth(keyOut(pixels, key)) })
           sample.close()
         }),
       ),
@@ -72,9 +69,7 @@ const framesAt = (track: InputVideoTrack, timestamps: ReadonlyArray<number>, key
           if (sample === null) return yield* failed()
           sample.draw(canvas.context, 0, 0, frameSize.width, frameSize.height)
           sample.close()
-          const keyed = chromaKey(pixelsOf(canvas), key)
-          if (Option.isNone(keyed)) return yield* failed()
-          frames.push(keyed.value)
+          frames.push(keyOut(pixelsOf(canvas), key))
         }),
       ),
     )

@@ -109,10 +109,10 @@ const unmix = (data: Uint8Array, at: number, alpha: number, backing: readonly [n
   }
 }
 
-/** Key a drawn picture's flat background out: transparent where the key colour dominates, the garment opaque, and
- * the edge between feathered, its colour unmixed from the background so no green or magenta fringe remains. None
- * when the result fails v1's checks: a border that is not mostly key colour, nothing removed, or the garment gone. */
-export const chromaKey = (picture: Rgba, key: KeyColour): Option.Option<Rgba> => {
+/** A picture's flat key colour taken out: transparent where the key dominates, opaque garment, the edge between
+ * feathered with its colour unmixed from the background so no green or magenta fringe remains; and the counts v1's
+ * checks read. */
+const keyed = (picture: Rgba, key: KeyColour) => {
   const { width, height } = picture
   const total = width * height
   const keyPixels = keyPixelsOf(picture, key)
@@ -131,8 +131,19 @@ export const chromaKey = (picture: Rgba, key: KeyColour): Option.Option<Rgba> =>
     else unmix(data, at, alpha, backing)
     data[at * 4 + 3] = Math.round(alpha * 255)
   }
+  return { picture: { width, height, data }, counts }
+}
+
+/** A frame of a turn keyed, whatever share of it the garment covers: a garment in side view can be a sliver. */
+export const keyOut = (picture: Rgba, key: KeyColour): Rgba => keyed(picture, key).picture
+
+/** Key a drawn picture's flat background out, as `keyOut` does. None when the result fails v1's checks: a border that is
+ * not mostly key colour, nothing removed, or the garment gone. */
+export const chromaKey = (picture: Rgba, key: KeyColour): Option.Option<Rgba> => {
+  const { picture: result, counts } = keyed(picture, key)
+  const total = picture.width * picture.height
   const borderIsKey = counts.borderKey >= borderKeyShare * counts.border
   const removed = counts.cleared >= clearShare * total
   const garmentRemains = counts.opaque >= opaqueShare * total
-  return borderIsKey && removed && garmentRemains ? Option.some({ width, height, data }) : Option.none()
+  return borderIsKey && removed && garmentRemains ? Option.some(result) : Option.none()
 }
