@@ -18,6 +18,9 @@ import * as styles from './AskView.styles.ts'
 import { pageHead, pageTitle } from './PageHead.ts'
 import type { PiecesData } from './Wardrobe.ts'
 import { categoryName, colourName, pieceLabel } from './WardrobeWords.ts'
+import { personTile } from './ExploreView.ts'
+import * as exploreStyles from './ExploreView.styles.ts'
+import { boardCard, byline } from './PublicTiles.ts'
 
 /** The languages the search reads a piece's words in: the page's first, and the other once it has loaded. */
 const searchLocales = (model: Model, locale: Locale): ReadonlyArray<Locale> =>
@@ -174,6 +177,50 @@ const resultsView = (ready: ReadonlyArray<Piece>, model: Model, locale: Locale, 
   )
 }
 
+/** People and public boards for the same words, once the server has answered for them. */
+const publicResults = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  Option.match(
+    Option.filter(model.found, ({ query }) => query === model.query),
+    {
+      onNone: () => h.empty,
+      onSome: ({ results }) =>
+        h.div(styled(h, styles.section()), [
+          results.people.length === 0
+            ? h.empty
+            : h.section(
+                [h.AriaLabelledBy('ask-people'), ...styled(h, styles.section())],
+                [
+                  h.h2(
+                    [h.Id('ask-people'), ...styled(h, styles.resultsTitle())],
+                    [format(locale, 'profile.public.people', {})],
+                  ),
+                  h.ul(
+                    styled(h, exploreStyles.people()),
+                    results.people.map((person) => personTile(person, h)),
+                  ),
+                ],
+              ),
+          results.boards.length === 0
+            ? h.empty
+            : h.section(
+                [h.AriaLabelledBy('ask-boards'), ...styled(h, styles.section())],
+                [
+                  h.h2(
+                    [h.Id('ask-boards'), ...styled(h, styles.resultsTitle())],
+                    [format(locale, 'profile.public.boards', {})],
+                  ),
+                  h.ul(
+                    styled(h, exploreStyles.boards()),
+                    results.boards.map(({ board, by }) =>
+                      h.keyed('li')(board.id, [], [boardCard(board, locale, h), byline(by, locale, h)]),
+                    ),
+                  ),
+                ],
+              ),
+        ]),
+    },
+  )
+
 const wardrobeView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuilder<Message>): Html =>
   AsyncData.matchData(pieces, {
     onEmpty: () => loadingView(locale, h),
@@ -189,7 +236,7 @@ const wardrobeView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlB
       const ready = list.filter(isReady)
       if (Array.isReadonlyArrayEmpty(ready)) return emptyView(locale, h)
       return String.isNonEmpty(model.query.trim())
-        ? resultsView(ready, model, locale, h)
+        ? h.div(styled(h, styles.section()), [resultsView(ready, model, locale, h), publicResults(model, locale, h)])
         : suggestionsView(ready, locale, h)
     },
   })

@@ -1,9 +1,9 @@
-import { Option } from 'effect'
+import { Option, Schema } from 'effect'
 import { Dialog } from '@foldkit/ui'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import * as Ask from '../src/page/Ask.ts'
-import { normalise } from '@styld/protocol'
+import { normalise, SearchResults } from '@styld/protocol'
 import { matching } from '../src/page/AskSearch.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
@@ -28,6 +28,11 @@ const drying = pieceFixture('drying', { category: 'shoes', status: 'processing',
 const wardrobe = [knit, shirt, shorts, trousers, derbies, jacket, dress, drying]
 const found = (query: string, locales: ReadonlyArray<'en' | 'sl'>) =>
   matching(wardrobe, query, locales).map((piece) => piece.id)
+
+const knitResults = Schema.decodeUnknownSync(SearchResults)({
+  people: [{ handle: 'nika.kovac', name: 'Nika Kovač', tone: 'clay' }],
+  boards: [],
+})
 
 describe('searching your wardrobe', () => {
   test('any case, accents or not, and commas between words', () => {
@@ -84,9 +89,22 @@ describe('searching your wardrobe', () => {
       message(Ask.Message.ElapsedQueryPause({ query: 'kn' })),
       Command.expectNone(),
       message(Ask.Message.ElapsedQueryPause({ query: 'knit' })),
-      Command.expectExact(Ask.WriteQuery),
+      Command.expectExact(Ask.WriteQuery, Ask.SearchPublic),
       Command.resolve(Ask.WriteQuery, Ask.Message.CompletedWriteQuery()),
-      model(({ query }) => expect(query).toBe('knit')),
+      Command.resolve(Ask.SearchPublic, Ask.Message.SucceededSearchPublic({ query: 'knit', results: knitResults })),
+      model((searched) => {
+        expect(searched.query).toBe('knit')
+        expect(searched.found).toEqual(Option.some({ query: 'knit', results: knitResults }))
+      }),
+    )
+  })
+
+  test('people and boards found for an older query are dropped', () => {
+    story(
+      Ask.update,
+      given({ ...Ask.init(), query: 'knitwear' }),
+      message(Ask.Message.SucceededSearchPublic({ query: 'knit', results: knitResults })),
+      model((searched) => expect(searched.found).toEqual(Option.none())),
     )
   })
 

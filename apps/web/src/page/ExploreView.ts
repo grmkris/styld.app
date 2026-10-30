@@ -35,7 +35,8 @@ const boardsRow = (
         ],
       )
 
-const personTile = (person: Author, h: HtmlBuilder<Message>) =>
+/** A person: their initials, name and handle, linking to their profile. */
+export const personTile = <Message>(person: Author, h: HtmlBuilder<Message>) =>
   h.keyed('li')(
     person.handle,
     [],
