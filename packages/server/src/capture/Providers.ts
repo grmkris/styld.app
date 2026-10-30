@@ -121,3 +121,20 @@ export class GarmentSegmenter extends Context.Service<
     readonly forget: (fileId: string) => Effect.Effect<void>
   }
 >()('@styld/server/GarmentSegmenter') {}
+
+/** What a clean picture is drawn from: the front's cut-out, the back's when the camera took one, the colour to draw
+ * it on, and the person's own words on a redraw. Cut-outs only: never a photo of a person. */
+export interface DrawRequest {
+  readonly front: Picture
+  readonly back: Option.Option<Picture>
+  readonly key: 'green' | 'magenta'
+  readonly hint: Option.Option<string>
+}
+
+/** An image model that draws a clean product picture of a garment from its cut-out (Meta Muse Image by default).
+ * A refusal it did not bill fails with `ProviderFailed`; an answer lost after it took the work is unknown, so the
+ * picture is never drawn twice on its own. */
+export class ImageGenerator extends Context.Service<
+  ImageGenerator,
+  { readonly draw: (request: DrawRequest) => Effect.Effect<Picture, ProviderFailed | ProviderOutcomeUnknown> }
+>()('@styld/server/ImageGenerator') {}

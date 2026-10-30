@@ -2,9 +2,20 @@ import { Clock, Context, Effect, Layer } from 'effect'
 
 /** One provider call, as Analytics Engine records it. Never an account, a prompt or a picture. */
 export interface ProviderCall {
-  readonly provider: 'clef' | 'cloudflare-images' | 'meta-sam'
+  readonly provider: 'clef' | 'cloudflare-images' | 'meta-sam' | 'meta-muse'
   readonly model: string
-  readonly kind: 'route' | 'suggest' | 'check' | 'normalise' | 'foreground' | 'segment' | 'upload' | 'track'
+  readonly kind:
+    | 'route'
+    | 'suggest'
+    | 'check'
+    | 'normalise'
+    | 'foreground'
+    | 'segment'
+    | 'upload'
+    | 'track'
+    | 'draw'
+    | 'judge'
+    | 'compare'
   readonly outcome: 'ok' | 'failed' | 'unknown'
   readonly milliseconds: number
   /** What the provider bills by: tokens, images or frames. */
@@ -39,6 +50,8 @@ export const prices = {
   imagesPerTransform: 500,
   samPerImage: 2500,
   samPerFrame: 200,
+  // Muse Image bills a flat $0.01 for each picture it returns (Meta's pricing page, 2026-10-27).
+  musePerImage: 10_000,
 } as const
 
 /** Time `effect` and count it as one provider call, whatever its outcome. */
