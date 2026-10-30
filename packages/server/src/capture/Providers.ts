@@ -159,6 +159,11 @@ export class ImageGenerator extends Context.Service<
     readonly provider: string
     readonly model: string
     readonly draw: (request: DrawRequest) => Effect.Effect<Picture, ProviderFailed | ProviderOutcomeUnknown>
+    /** The front anchor of a turn (the clean picture on its hanger, on the key colour) as a strict side view. */
+    readonly profile: (
+      front: Picture,
+      key: 'green' | 'magenta',
+    ) => Effect.Effect<Picture, ProviderFailed | ProviderOutcomeUnknown>
   }
 >()('@styld/server/ImageGenerator') {
   /** No image model: every drawing is refused, so pieces keep their photos. */
@@ -166,5 +171,40 @@ export class ImageGenerator extends Context.Service<
     provider: 'off',
     model: 'off',
     draw: () => Effect.fail(new ProviderFailed({ provider: 'off', retryable: false })),
+    profile: () => Effect.fail(new ProviderFailed({ provider: 'off', retryable: false })),
+  }
+}
+
+/** What a turn is made from: the side view as its first frame and the clean front as its last, on one key colour,
+ * both 720 by 1280 with the hanger's apex in the same place. */
+export interface TurnRequest {
+  readonly side: Picture
+  readonly front: Picture
+  readonly key: 'green' | 'magenta'
+}
+
+/** Where a started turn stands: still being made, made (an MP4), or ended without a video. */
+export type TurnStatus =
+  | { readonly _tag: 'Pending' }
+  | { readonly _tag: 'Done'; readonly video: { readonly bytes: Uint8Array; readonly contentType: 'video/mp4' } }
+  | { readonly _tag: 'Failed' }
+
+/** A video model that turns a clean picture on its hanger, from side view to front (Veo 3.1 Lite by default). Starting
+ * is asynchronous: the job, an opaque value the provider returns, is kept and polled. */
+export class VideoGenerator extends Context.Service<
+  VideoGenerator,
+  {
+    readonly provider: string
+    readonly model: string
+    readonly start: (request: TurnRequest) => Effect.Effect<unknown, ProviderFailed | ProviderOutcomeUnknown>
+    readonly status: (operation: unknown) => Effect.Effect<TurnStatus, ProviderFailed>
+  }
+>()('@styld/server/VideoGenerator') {
+  /** No video model: every turn is refused before it holds anything. */
+  static readonly off = {
+    provider: 'off',
+    model: 'off',
+    start: () => Effect.fail(new ProviderFailed({ provider: 'off', retryable: false })),
+    status: () => Effect.succeed<TurnStatus>({ _tag: 'Failed' }),
   }
 }

@@ -60,6 +60,12 @@ export default Alchemy.Stack(
         META_API_KEY: yield* Config.Redacted('META_MUSE_API_KEY'),
         // Clean pictures of kept cut-outs (docs/ROADMAP.md › Clean pictures): Clef judges, Meta Muse Image draws.
         CLEAN_PICTURES: 'muse',
+        // Turns on a hanger: Veo 3.1 Lite through the Vercel AI Gateway. Until Styld has a gateway key of its own,
+        // the owner chose the existing one (30 October); STYLD_AI_GATEWAY_API_KEY takes over once it is set.
+        TURNS: 'veo',
+        VIDEO_GATEWAY_API_KEY: yield* Config.Redacted('STYLD_AI_GATEWAY_API_KEY').pipe(
+          Config.orElse(() => Config.Redacted('AI_GATEWAY_API_KEY')),
+        ),
       },
     })
     return { url: edge.url.as<string>() }

@@ -38,3 +38,6 @@ person or a real wardrobe.
   garment (person-routing spike, `meta-hackathon/research/2026-10-30/styld-person-routing-and-video-merge.md`).
   Only the answer is kept, never the photo; the spike's `personAny` question is stored under `person`, as
   `Clef.ts` asks it.
+- `veo-start-black-tee.json`: the Vercel AI Gateway's answer to starting Veo 3.1 Lite on the black tee's side view and
+  clean front (spike `meta-hackathon/out/styld-clean-turn/takes/black-tee-lite-1`, 2026-10-30): the job id the
+  gateway keeps. Status answers in `Turn.test.ts` follow `@ai-sdk/gateway` 4's schema; none was recorded.

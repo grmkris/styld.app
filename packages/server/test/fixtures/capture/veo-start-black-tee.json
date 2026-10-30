@@ -1,0 +1,14 @@
+{
+  "operation": {
+    "gatewayJobId": "job_0BYEYWZRW9C4TACYDWV4CPB1F6"
+  },
+  "warnings": [],
+  "providerMetadata": {
+    "gateway": {
+      "asyncJob": {
+        "jobId": "job_0BYEYWZRW9C4TACYDWV4CPB1F6",
+        "status": "queued"
+      }
+    }
+  }
+}

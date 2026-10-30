@@ -19,7 +19,13 @@ export interface CapturePolicy {
   readonly dailyAllowance: number
   /** A photo's price, a video's for each started half-minute of it (about 10 a minute), and a redrawn clean picture's
    * (owner, 30 October: the first drawing is free). */
-  readonly credits: { readonly photo: number; readonly videoHalfMinute: number; readonly redraw: number }
+  readonly credits: {
+    readonly photo: number
+    readonly videoHalfMinute: number
+    readonly redraw: number
+    /** A clean picture turning on its hanger (owner, 30 October). */
+    readonly turn: number
+  }
   /** Clean pictures drawn from kept cut-outs (owner, 30 October): who draws them (`off` keeps every real photo), and
    * the decision model's bars. A drawing at least `show` like the cut-out is shown; below `reject` it is dropped;
    * between, the person chooses. A cut-out at least `face` likely to show a face is never sent on. */
@@ -29,6 +35,8 @@ export interface CapturePolicy {
     readonly reject: number
     readonly face: number
   }
+  /** Who turns clean pictures on their hangers: `veo` (Veo 3.1 Lite through the Vercel AI Gateway) or `off`. */
+  readonly turns: { readonly generator: 'veo' | 'off' }
 }
 
 export class CaptureConfig extends Context.Service<CaptureConfig, CapturePolicy>()('@styld/server/CaptureConfig') {}
@@ -50,11 +58,12 @@ export const capturePolicy = (env: Readonly<Record<string, unknown>>): CapturePo
   heldConfidence: number(env['CAMERA_HELD_CONFIDENCE'], 0.6),
   samePieceConfidence: number(env['CAMERA_SAME_PIECE_CONFIDENCE'], 0.6),
   dailyAllowance: number(env['DAILY_ALLOWANCE'], 100),
-  credits: { photo: 1, videoHalfMinute: 5, redraw: 1 },
+  credits: { photo: 1, videoHalfMinute: 5, redraw: 1, turn: 5 },
   pictures: {
     generator: choice(env['CLEAN_PICTURES'], ['muse', 'off'], 'off'),
     show: number(env['CLEAN_PICTURE_SHOW'], 0.8),
     reject: number(env['CLEAN_PICTURE_REJECT'], 0.5),
     face: 0.3,
   },
+  turns: { generator: choice(env['TURNS'], ['veo', 'off'], 'off') },
 })

@@ -36,6 +36,8 @@ export default defineConfig({
       'packages/server/src/OAuth.ts': ['/[\\s\\S]*/'],
       // Questions put to the decision model and provider protocol text; no person ever reads them.
       'packages/server/src/capture/Clef.ts': ['/[\\s\\S]*/'],
+      'packages/server/src/capture/TurnPrompt.ts': ['/[\\s\\S]*/'],
+      'packages/server/src/capture/Veo.ts': ['/[\\s\\S]*/'],
       'packages/server/src/capture/Meta.ts': ['/[\\s\\S]*/'],
       // The prompt an image model draws a clean picture from, and Muse's protocol text.
       'packages/server/src/capture/CleanPrompt.ts': ['/[\\s\\S]*/'],

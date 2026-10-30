@@ -1,0 +1,140 @@
+import { Effect, Predicate, Redacted, Schedule, Schema } from 'effect'
+import * as Base64 from 'effect/encoding/Base64'
+import { type CaptureMetrics, counted, prices } from './Metrics.ts'
+import { type Picture, ProviderFailed, ProviderOutcomeUnknown, type TurnRequest, type TurnStatus } from './Providers.ts'
+import { turnPrompt } from './TurnPrompt.ts'
+
+/** What the Veo adapter needs: the Vercel AI Gateway, its key, and `fetch`. */
+export interface VeoSettings {
+  readonly apiBase: string
+  readonly apiKey: Redacted.Redacted
+  readonly fetch: (input: string, init: RequestInit) => Promise<Response>
+  readonly metrics: CaptureMetrics['Service']
+}
+
+// Veo 3.1 Lite: the 30 October comparison kept prints and colours as well as Veo 3.1 Fast at $0.12 a 4 s take
+// instead of $0.40; both Seedance models drifted (`meta-hackathon/out/styld-clean-turn/REPORT-turn-models.md`).
+const model = 'google/veo-3.1-lite-generate-001'
+const seconds = 4
+const failed = (retryable: boolean) => new ProviderFailed({ provider: 'vercel-gateway', retryable })
+const unknown = () => new ProviderOutcomeUnknown({ provider: 'vercel-gateway' })
+
+const Started = Schema.Struct({ operation: Schema.Unknown })
+const Video = Schema.Union([
+  Schema.Struct({ type: Schema.Literal('url'), url: Schema.String, mediaType: Schema.String }),
+  Schema.Struct({ type: Schema.Literal('base64'), data: Schema.String, mediaType: Schema.String }),
+])
+const Status = Schema.Union([
+  Schema.Struct({ status: Schema.Literal('pending') }),
+  Schema.Struct({ status: Schema.Literal('completed'), videos: Schema.Array(Video) }),
+  Schema.Struct({ status: Schema.Literals(['error', 'cancelled']) }),
+])
+
+/** The gateway's video protocol (AI SDK `@ai-sdk/gateway` 4, video model specification 4), called directly so the
+ * Worker carries no SDK. */
+const headers = (settings: VeoSettings) => ({
+  authorization: `Bearer ${Redacted.value(settings.apiKey)}`,
+  'content-type': 'application/json',
+  'ai-gateway-protocol-version': '0.0.1',
+  'ai-gateway-auth-method': 'api-key',
+  'ai-video-model-specification-version': '4',
+  'ai-model-id': model,
+})
+
+const frame = (picture: Picture, frameType: 'first_frame' | 'last_frame') => ({
+  frameType,
+  image: { type: 'file', mediaType: picture.contentType, data: Base64.encode(picture.bytes) },
+})
+
+/** The start request: 4 s, portrait 720p, no sound, no people, first frame the side view, last frame the front. */
+const startBody = (request: TurnRequest) =>
+  JSON.stringify({
+    prompt: turnPrompt(request.key),
+    n: 1,
+    aspectRatio: '9:16',
+    resolution: '1280x720',
+    duration: seconds,
+    generateAudio: false,
+    providerOptions: { vertex: { personGeneration: 'dont_allow', resizeMode: 'pad' } },
+    frameImages: [frame(request.side, 'first_frame'), frame(request.front, 'last_frame')],
+  })
+
+/** Throttling and server errors were not billed and may pass on a later try; any other refusal would repeat. */
+const retryableStatus = (status: number) => status === 408 || status === 429 || status >= 500
+
+const post = (settings: VeoSettings, path: string, body: string) =>
+  Effect.tryPromise({
+    try: (signal) =>
+      settings.fetch(`${settings.apiBase}/video-model/${path}`, {
+        method: 'POST',
+        headers: headers(settings),
+        body,
+        signal,
+      }),
+    catch: unknown,
+  })
+
+const json = (response: Response) => Effect.tryPromise({ try: () => response.json(), catch: () => failed(true) })
+
+/** A finished video's bytes: fetched from where the gateway put it, or decoded when it came inline. */
+const videoOf = (settings: VeoSettings, video: typeof Video.Type) =>
+  video.type === 'base64'
+    ? Effect.fromResult(Base64.decode(video.data)).pipe(Effect.mapError(() => failed(false)))
+    : Effect.tryPromise({
+        try: async (signal) => {
+          const response = await settings.fetch(video.url, { method: 'GET', signal })
+          if (!response.ok) throw new Error(String(response.status))
+          return new Uint8Array(await response.arrayBuffer())
+        },
+        catch: () => failed(true),
+      }).pipe(Effect.timeoutOrElse({ duration: '60 seconds', orElse: () => Effect.fail(failed(true)) }))
+
+const outcomeOf = (error: ProviderFailed | ProviderOutcomeUnknown) =>
+  Predicate.isTagged(error, 'ProviderOutcomeUnknown') ? ('unknown' as const) : ('failed' as const)
+
+/** Veo 3.1 Lite through the Vercel AI Gateway as Styld's turn maker. A start that was sent but got no answer may have
+ * made and billed a job, so it is unknown and never resent; the job's id is kept before it is polled. */
+export const makeVeoGenerator = (settings: VeoSettings) => ({
+  provider: 'vercel-gateway',
+  model,
+  start: Effect.fn('Styld.Turn.start')(function* (request: TurnRequest) {
+    const send = post(settings, 'start', startBody(request)).pipe(
+      Effect.flatMap((response) =>
+        response.ok ? json(response) : Effect.fail(failed(retryableStatus(response.status))),
+      ),
+      Effect.flatMap((answer) => Schema.decodeUnknownEffect(Started)(answer).pipe(Effect.mapError(unknown))),
+      Effect.map(({ operation }) => operation),
+    )
+    return yield* counted(
+      settings.metrics,
+      send.pipe(
+        Effect.retry({
+          times: 2,
+          schedule: Schedule.exponential('1 second'),
+          while: (error) => Predicate.isTagged(error, 'ProviderFailed') && error.retryable,
+        }),
+        Effect.timeoutOrElse({ duration: '60 seconds', orElse: () => Effect.fail(unknown()) }),
+      ),
+      { provider: 'vercel-gateway', model, kind: 'turn' },
+      () => ({ units: seconds, costMicroUsd: seconds * prices.veoLitePerSecond }),
+      outcomeOf,
+    )
+  }),
+  /** Where a started job stands. A status the gateway could not give now is retryable; the job itself is untouched. */
+  status: Effect.fn('Styld.Turn.status')(function* (operation: unknown) {
+    const response = yield* post(settings, 'status', JSON.stringify({ operation })).pipe(
+      Effect.mapError(() => failed(true)),
+      Effect.timeoutOrElse({ duration: '30 seconds', orElse: () => Effect.fail(failed(true)) }),
+    )
+    if (!response.ok) return yield* failed(retryableStatus(response.status))
+    const answer = yield* Effect.flatMap(json(response), (body) =>
+      Schema.decodeUnknownEffect(Status)(body).pipe(Effect.mapError(() => failed(false))),
+    )
+    if (answer.status === 'pending') return { _tag: 'Pending' } satisfies TurnStatus
+    if (answer.status !== 'completed') return { _tag: 'Failed' } satisfies TurnStatus
+    const [video] = answer.videos
+    if (video === undefined) return { _tag: 'Failed' } satisfies TurnStatus
+    const bytes = yield* videoOf(settings, video)
+    return { _tag: 'Done', video: { bytes, contentType: 'video/mp4' } } satisfies TurnStatus
+  }),
+})

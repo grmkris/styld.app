@@ -31,7 +31,8 @@ import { type AnalyticsDataset, analyticsEngine, CaptureMetrics as CaptureMetric
 import { pieceCutout } from './capture/PieceCutout.ts'
 import { CaptureConfig, capturePolicy } from './capture/Policy.ts'
 import { makeMuseGenerator } from './capture/Muse.ts'
-import { GarmentSegmenter, GarmentVision, ImageGenerator, PictureWork } from './capture/Providers.ts'
+import { GarmentSegmenter, GarmentVision, ImageGenerator, PictureWork, VideoGenerator } from './capture/Providers.ts'
+import { makeVeoGenerator } from './capture/Veo.ts'
 import { Captures, makeCaptures } from './capture/Service.ts'
 import { Usage } from './capture/Usage.ts'
 import { DomainLive } from './DomainLive.ts'
@@ -81,7 +82,14 @@ const perClientLimit = (name: string, namespaceId: number, limit: number) =>
 const storageServices = <R>(
   bindings: WardrobeBindings,
   providers: Layer.Layer<
-    GarmentVision | PictureWork | GarmentSegmenter | ImageGenerator | Usage | CaptureConfig | CaptureMetricsService,
+    | GarmentVision
+    | PictureWork
+    | GarmentSegmenter
+    | ImageGenerator
+    | VideoGenerator
+    | Usage
+    | CaptureConfig
+    | CaptureMetricsService,
     never,
     R
   >,
@@ -122,6 +130,8 @@ const captureProviders = (
   const metrics = analyticsEngine(runtime.dataset, runtime.origin)
   const apiKey: unknown = env.META_API_KEY
   const apiBase: unknown = env.META_API_BASE
+  const videoKey: unknown = env.VIDEO_GATEWAY_API_KEY
+  const videoBase: unknown = env.VIDEO_GATEWAY_BASE
   const meta = {
     apiBase: typeof apiBase === 'string' && apiBase.length > 0 ? apiBase : 'https://api.meta.ai',
     apiKey: Redacted.make(typeof apiKey === 'string' ? apiKey : ''),
@@ -137,6 +147,18 @@ const captureProviders = (
       makeGarmentSegmenter({ ...meta, readVideo: async (key) => (await runtime.bucket.get(key))?.body ?? null }),
     ),
     Layer.succeed(ImageGenerator, policy.pictures.generator === 'muse' ? makeMuseGenerator(meta) : ImageGenerator.off),
+    Layer.succeed(
+      VideoGenerator,
+      policy.turns.generator === 'veo'
+        ? makeVeoGenerator({
+            apiBase:
+              typeof videoBase === 'string' && videoBase.length > 0 ? videoBase : 'https://ai-gateway.vercel.sh/v4/ai',
+            apiKey: Redacted.make(typeof videoKey === 'string' ? videoKey : ''),
+            fetch: meta.fetch,
+            metrics,
+          })
+        : VideoGenerator.off,
+    ),
     Usage.layer(policy.dailyAllowance),
     Layer.succeed(CaptureMetricsService, metrics),
   )

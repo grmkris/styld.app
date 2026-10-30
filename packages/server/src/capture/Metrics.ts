@@ -2,7 +2,7 @@ import { Clock, Context, Effect, Layer } from 'effect'
 
 /** One provider call, as Analytics Engine records it. Never an account, a prompt or a picture. */
 export interface ProviderCall {
-  readonly provider: 'clef' | 'cloudflare-images' | 'meta-sam' | 'meta-muse'
+  readonly provider: 'clef' | 'cloudflare-images' | 'meta-sam' | 'meta-muse' | 'vercel-gateway'
   readonly model: string
   readonly kind:
     | 'route'
@@ -16,6 +16,8 @@ export interface ProviderCall {
     | 'draw'
     | 'judge'
     | 'compare'
+    | 'profile'
+    | 'turn'
   readonly outcome: 'ok' | 'failed' | 'unknown'
   readonly milliseconds: number
   /** What the provider bills by: tokens, images or frames. */
@@ -60,6 +62,8 @@ export const prices = {
   samPerFrame: 200,
   // Muse Image bills a flat $0.01 for each picture it returns (Meta's pricing page, 2026-10-27).
   musePerImage: 10_000,
+  // Veo 3.1 Lite through the Vercel AI Gateway bills $0.03 a second of video (gateway balance, 30 October).
+  veoLitePerSecond: 30_000,
 } as const
 
 /** Time `effect` and count it as one provider call, whatever its outcome. */
