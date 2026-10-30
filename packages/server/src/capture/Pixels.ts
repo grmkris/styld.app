@@ -139,12 +139,16 @@ export const fitMask = (
   const width = bounds.right - bounds.left
   const height = bounds.bottom - bounds.top
   const sourceWidth = source.bounds.right - source.bounds.left
+  const sourceHeight = source.bounds.bottom - source.bounds.top
   const raster = new Uint8Array(Math.max(0, width * height))
+  // Each pixel takes the source pixel under its centre. One whose centre falls outside the mask's box (the
+  // rounded-out edge) stays outside: an index past the row would wrap into the row before.
   for (let row = 0; row < height; row++)
     for (let column = 0; column < width; column++) {
-      const x = Math.floor((bounds.left + column) / scaleX) - source.bounds.left
-      const y = Math.floor((bounds.top + row) / scaleY) - source.bounds.top
-      raster[row * width + column] = source.raster[y * sourceWidth + x] ?? 0
+      const x = Math.floor((bounds.left + column + 0.5) / scaleX) - source.bounds.left
+      const y = Math.floor((bounds.top + row + 0.5) / scaleY) - source.bounds.top
+      const inside = x >= 0 && x < sourceWidth && y >= 0 && y < sourceHeight
+      raster[row * width + column] = inside ? (source.raster[y * sourceWidth + x] ?? 0) : 0
     }
   return { bounds, raster }
 }

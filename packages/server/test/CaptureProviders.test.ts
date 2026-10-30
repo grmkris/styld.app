@@ -6,7 +6,8 @@ import { pngSize } from '../src/capture/CloudflareImages.ts'
 import { bestSightings, frameAt, type SampledStill } from '../src/capture/FrameRanking.ts'
 import { makeGarmentSegmenter } from '../src/capture/Meta.ts'
 import { analyticsEngine, CaptureMetrics } from '../src/capture/Metrics.ts'
-import { type Box, cutOut, decodePng, encodePng, opaqueBounds, type Rgba } from '../src/capture/Pixels.ts'
+import { cutterFor } from '../src/capture/PhotoPipeline.ts'
+import { type Box, cutOut, decodePng, encodePng, fitMask, opaqueBounds, type Rgba } from '../src/capture/Pixels.ts'
 import { lineFrame, lineFrameSize, makeOutputLines, stillMasks, videoMasks } from '../src/capture/SamStream.ts'
 import {
   blankRanges,
@@ -121,6 +122,29 @@ describe('cut-outs from real pixels', () => {
     expect(opaqueBounds(piece)).toBeDefined()
   })
 
+  test('a mask scaled onto a larger still keeps its own shape, and takes nothing from the row before', () => {
+    // SAM's 406 px frame onto a 720 px still, as for a portrait video. The mask fills only its right half,
+    // so its left edge rounds outwards when scaled.
+    const width = 10
+    const height = 6
+    const raster = Uint8Array.from({ length: width * height }, (_, at) => (at % width >= 5 ? 1 : 0))
+    const fitted = fitMask(
+      { bounds: { left: 37, top: 100, right: 37 + width, bottom: 100 + height }, raster },
+      { width: 406, height: 720 },
+      { width: 720, height: 1280 },
+    )
+    const fittedWidth = fitted.bounds.right - fitted.bounds.left
+    const rows = Array.from({ length: fitted.bounds.bottom - fitted.bounds.top }, (_row, row) =>
+      Array.from({ length: fittedWidth }, (_column, column) => fitted.raster[row * fittedWidth + column] ?? 0),
+    )
+    const filledFrom = Math.ceil((37 + 5) * (720 / 406)) - fitted.bounds.left
+    // The empty half stays empty in every row, including the first column that used to wrap.
+    for (const row of rows) expect(row.slice(0, filledFrom - 1).every((value) => value === 0)).toBe(true)
+    // The filled half is filled; the edge rounded outwards is not part of the mask.
+    for (const row of rows.slice(1, -1)) expect(row.slice(filledFrom + 1, -1).every((value) => value === 1)).toBe(true)
+    expect(rows[0]?.every((value) => value === 0)).toBe(true)
+  })
+
   test('reads a PNG size from its header', () => {
     expect(pngSize(bytes('red-tee.png'))).toEqual({ width: 768, height: 768 })
   })
@@ -231,6 +255,23 @@ describe('Clef-flash', () => {
       makeGarmentVision(() => Promise.reject(new Error('down')), CaptureMetrics.discarding).route(picture),
     )
     expect(down).toMatchObject({ _tag: 'ProviderFailed', retryable: true })
+  })
+})
+
+describe('photo routing', () => {
+  const policy = { single: 'cloudflare', routeConfidence: 0.75 } as const
+
+  test('one garment it is sure of goes to background removal; several, or an unsure answer, to SAM', () => {
+    expect(cutterFor('picker', { garments: 'one', confidence: 0.9 }, policy)).toBe('cloudflare')
+    expect(cutterFor('picker', { garments: 'one', confidence: 0.6 }, policy)).toBe('sam')
+    expect(cutterFor('picker', { garments: 'several', confidence: 0.9 }, policy)).toBe('sam')
+    expect(cutterFor('picker', { garments: 'none', confidence: 0.9 }, policy)).toBe('none')
+    expect(cutterFor('picker', { garments: 'none', confidence: 0.5 }, policy)).toBe('sam')
+  })
+
+  test('a camera shot goes to SAM even as one garment: background removal would keep the person', () => {
+    expect(cutterFor('camera', { garments: 'one', confidence: 0.94 }, policy)).toBe('sam')
+    expect(cutterFor('camera', { garments: 'none', confidence: 0.9 }, policy)).toBe('none')
   })
 })
 

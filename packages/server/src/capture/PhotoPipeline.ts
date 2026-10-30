@@ -1,8 +1,8 @@
 import { Effect, Option } from 'effect'
-import { CaptureConfig } from './Policy.ts'
+import { CaptureConfig, type CapturePolicy } from './Policy.ts'
 import { type Parts, captureKey, readObject, unavailable, writeObject } from './Parts.ts'
 import { type Box, cutOut, decodedPng, encodePng, opaqueBounds, crop, type Rgba } from './Pixels.ts'
-import { GarmentSegmenter, GarmentVision, PictureWork, type WorkingCopies } from './Providers.ts'
+import { GarmentSegmenter, GarmentVision, PictureWork, type Route, type WorkingCopies } from './Providers.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
 
 /** One garment cut out of a photo, before it is stored. */
@@ -129,11 +129,27 @@ export const originalOnly = (parts: Parts, capture: CaptureRow, sourceKey: strin
     createdAt: capture.createdAt,
   }))
 
-/** The pieces of a photo the decision model did not call empty: background removal for a confident
- * single garment (falling back to SAM when it finds nothing), SAM otherwise. */
-const cutPieces = (original: Uint8Array, copies: WorkingCopies, single: boolean) =>
+/** Who cuts a photo out: nobody when the decision model is sure it shows no garment; background removal
+ * for one garment it is sure of; SAM otherwise. A camera shot always goes to SAM, because the person
+ * holding the garment is in it, and background removal keeps everything in the foreground.
+ * @internal Exported for its tests. */
+export const cutterFor = (
+  source: CaptureRow['source'],
+  route: Route,
+  policy: Pick<CapturePolicy, 'single' | 'routeConfidence'>,
+): 'none' | 'cloudflare' | 'sam' => {
+  const sure = route.confidence >= policy.routeConfidence
+  if (route.garments === 'none' && sure) return 'none'
+  return source !== 'camera' && route.garments === 'one' && sure && policy.single === 'cloudflare'
+    ? 'cloudflare'
+    : 'sam'
+}
+
+/** The pieces of a photo the decision model did not call empty: background removal (falling back to SAM
+ * when it finds nothing), or SAM. */
+const cutPieces = (original: Uint8Array, copies: WorkingCopies, cutter: 'cloudflare' | 'sam') =>
   Effect.gen(function* () {
-    if (!single) return { pieces: yield* samPieces(copies), provider: 'sam' }
+    if (cutter === 'sam') return { pieces: yield* samPieces(copies), provider: 'sam' }
     const foreground = yield* foregroundPiece(original)
     return foreground.length > 0
       ? { pieces: foreground, provider: 'cloudflare' }
@@ -149,10 +165,9 @@ export const processPhoto = Effect.fn('Styld.Capture.processPhoto')(function* (p
   if (Option.isNone(original)) return yield* unavailable()
   const copies = yield* (yield* PictureWork).workingCopies(original.value)
   const route = yield* (yield* GarmentVision).route({ bytes: copies.small, contentType: 'image/jpeg' })
-  const sure = route.confidence >= policy.routeConfidence
-  if (route.garments === 'none' && sure) return { found: [], route, provider: 'clef' }
-  const single = route.garments === 'one' && sure && policy.single === 'cloudflare'
-  const { pieces, provider } = yield* cutPieces(original.value, copies, single)
+  const cutter = cutterFor(capture.source, route, policy)
+  if (cutter === 'none') return { found: [], route, provider: 'clef' }
+  const { pieces, provider } = yield* cutPieces(original.value, copies, cutter)
   const held = capture.source === 'camera' ? heldPiece(pieces, copies.width, copies.height) : undefined
   const found = yield* detectionsOf(parts, capture, capture.originalKey, pieces, (piece) =>
     held === undefined ? true : piece === held,
