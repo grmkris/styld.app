@@ -41,3 +41,5 @@ person or a real wardrobe.
 - `veo-start-black-tee.json`: the Vercel AI Gateway's answer to starting Veo 3.1 Lite on the black tee's side view and
   clean front (spike `meta-hackathon/out/styld-clean-turn/takes/black-tee-lite-1`, 2026-10-30): the job id the
   gateway keeps. Status answers in `Turn.test.ts` follow `@ai-sdk/gateway` 4's schema; none was recorded.
+- `veo-turn-black-tee.mp4`: the video that start answered, Veo 3.1 Lite's 4 s turn of the black tee on magenta from
+  its side view to its clean front (720 × 1280, 24 fps, H.264), as the gateway returned it.

@@ -113,6 +113,12 @@ const clef = Effect.gen(function* () {
     const judged = { red: verdict('improve'), green: verdict('repair'), blue: verdict('fragment') }[real]
     return yield* HttpServerResponse.json({ model: 'clef-flash', answers: { picture: judged, face: noul(0.01) } })
   }
+  // A turn's frame beside its clean front: the recorded take keeps the garment, its colour and its print.
+  if ('colour' in body.questions)
+    return yield* HttpServerResponse.json({
+      model: 'clef-flash',
+      answers: { same: noul(0.9), colour: noul(0.9), print: noul(0.85) },
+    })
   if ('same' in body.questions) {
     const [same, faithful] = real === 'red' ? [0.93, 0.91] : [0.7, 0.75]
     return yield* HttpServerResponse.json({
@@ -137,14 +143,36 @@ const muse = (media: ReadWriteBucketClient) =>
     return yield* HttpServerResponse.json({ data: [{ b64_json }] })
   }).pipe(Effect.orDie)
 
-/** The drawings the Muse stand-in answers with, put by the test from its recorded fixtures. */
+/** The drawings the Muse stand-in answers with, and the turn the gateway stand-in finishes, put by the test from its
+ * recorded fixtures. */
 const answer = (media: ReadWriteBucketClient) =>
   Effect.gen(function* () {
     const request = yield* HttpServerRequest
-    const key = new URL(request.url, 'http://local.invalid').searchParams.get('key') === 'magenta' ? 'magenta' : 'green'
-    yield* media.put(`test/muse-answers/${key}.png`, new Uint8Array(yield* request.arrayBuffer))
+    const key = new URL(request.url, 'http://local.invalid').searchParams.get('key')
+    const name = key === 'magenta' ? 'magenta.png' : key === 'video' ? 'turn.mp4' : 'green.png'
+    yield* media.put(`test/muse-answers/${name}`, new Uint8Array(yield* request.arrayBuffer))
     return HttpServerResponse.empty({ status: 204 })
   }).pipe(Effect.orDie)
+
+/** The gateway's video protocol: a job started, pending the first time it is asked about, then done with the recorded
+ * turn, inline as base64 (the protocol's other form, beside a link to fetch). */
+const gateway = (media: ReadWriteBucketClient) => ({
+  start: HttpServerResponse.json({ operation: { gatewayJobId: 'job_native' }, warnings: [] }).pipe(Effect.orDie),
+  status: Effect.gen(function* () {
+    const asked = yield* media.head('test/gateway-asked')
+    if (asked === null) {
+      yield* media.put('test/gateway-asked', 'once')
+      return yield* HttpServerResponse.json({ status: 'pending' })
+    }
+    const video = yield* media.get('test/muse-answers/turn.mp4')
+    if (video === null) return yield* HttpServerResponse.json({ status: 'error', error: 'no recorded turn' })
+    const data = Base64.encode(new Uint8Array(yield* video.arrayBuffer()))
+    return yield* HttpServerResponse.json({
+      status: 'completed',
+      videos: [{ type: 'base64', data, mediaType: 'video/mp4' }],
+    })
+  }).pipe(Effect.orDie),
+})
 
 /** The prompts Muse was sent, oldest first. */
 const prompts = (media: ReadWriteBucketClient) =>
@@ -168,4 +196,6 @@ export const pictureRoutes = (database: QueryDatabaseClient, media: ReadWriteBuc
     HttpRouter.add('POST', '/test/pictures/meta/v1/images/edits', muse(media)),
     HttpRouter.add('PUT', '/test/pictures/answer', answer(media)),
     HttpRouter.add('GET', '/test/pictures/prompts', prompts(media)),
+    HttpRouter.add('POST', '/test/pictures/gateway/video-model/start', gateway(media).start),
+    HttpRouter.add('POST', '/test/pictures/gateway/video-model/status', gateway(media).status),
   )

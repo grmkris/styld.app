@@ -9,6 +9,7 @@ import * as HttpClient from 'effect/http/HttpClient'
 import { type Browser, chromium } from 'playwright'
 import { verifyBrowser } from './BrowserAcceptance.ts'
 import { pictureEnvironment, verifyCleanPictures } from './CleanPictureAcceptance.ts'
+import { verifyTurn } from './TurnAcceptance.ts'
 import { verifyCameraJourney, verifyCaptureJourney, verifyLongVideoJourney } from './CaptureBrowserAcceptance.ts'
 import { verifyGalleryJourney } from './GalleryBrowserAcceptance.ts'
 import { nativeDailyAllowance, verifyCaptures } from './CaptureAcceptance.ts'
@@ -154,6 +155,13 @@ test(
     yield* Effect.promise(() => verifyAccountDeletion(styldUrl, url))
   }),
   { timeout: 120000 },
+)
+
+// After the clean pictures above: the green shirt's taken drawing is what turns.
+test(
+  'turns a clean picture on its hanger: made on the queue, cut into frames here, checked, played on tap',
+  inBrowser(verifyTurn),
+  { timeout: 200000 },
 )
 
 test(

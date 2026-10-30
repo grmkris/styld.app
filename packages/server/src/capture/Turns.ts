@@ -40,9 +40,9 @@ import { Usage } from './Usage.ts'
 
 const now = Effect.map(DateTime.now, DateTime.toDateUtc)
 
-// Veo 3.1 Lite answers a 4 s turn in one to two minutes (30 October). The job asks every 15 s and gives up after
-// 15 min; a claim older than 5 min belongs to a delivery that died, perhaps after the video model took the work.
-const pollSeconds = 15
+// Veo 3.1 Lite answers a 4 s turn in one to two minutes (30 October). The job asks every 15 s (`turns.pollSeconds`)
+// and gives up after 15 min; a claim older than 5 min belongs to a delivery that died, perhaps after the video model
+// took the work.
 const patienceMillis = 15 * 60 * 1000
 const claimMillis = 5 * 60 * 1000
 
@@ -165,7 +165,7 @@ const start = (parts: Parts, turn: TurnRow) =>
       }))
     )
       return false
-    yield* enqueueTurn(parts, pieceId, pollSeconds)
+    yield* enqueueTurn(parts, pieceId, (yield* CaptureConfig).turns.pollSeconds)
     return true
   })
 
@@ -174,6 +174,7 @@ const start = (parts: Parts, turn: TurnRow) =>
 const poll = (parts: Parts, turn: TurnRow) =>
   Effect.gen(function* () {
     const { pieceId, accountId } = turn
+    const { pollSeconds } = (yield* CaptureConfig).turns
     const started = startedOf(turn)
     if (Option.isNone(started)) return yield* end(parts, pieceId, 'generating', 'unknown')
     if ((yield* now).getTime() - started.value.startedAt > patienceMillis)

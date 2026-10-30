@@ -12,6 +12,10 @@ export const pictureEnvironment = (fixtures: Output.Output<string | undefined>) 
   CLEF_API_BASE: Output.interpolate`${fixtures}/test/pictures/clef`,
   META_API_BASE: Output.interpolate`${fixtures}/test/pictures/meta`,
   META_API_KEY: Redacted.make('native-test-meta-key'),
+  TURNS: 'veo',
+  TURN_POLL_SECONDS: '1',
+  VIDEO_GATEWAY_BASE: Output.interpolate`${fixtures}/test/pictures/gateway`,
+  VIDEO_GATEWAY_API_KEY: Redacted.make('native-test-gateway-key'),
 })
 
 const fixture = (name: string) => readFileSync(new URL(`fixtures/capture/${name}`, import.meta.url))
@@ -28,9 +32,11 @@ const Picture = Schema.Struct({ state: Schema.String, shows: Schema.String, vers
 const Piece = Schema.Struct({ id: Schema.String, picture: Schema.optionalKey(Picture) })
 const Backfill = Schema.Struct({ pieces: Schema.Number })
 const Prompts = Schema.Struct({ prompts: Schema.Array(Schema.String) })
-const Allowance = Schema.Struct({ allowance: Schema.Struct({ remaining: Schema.Number }) })
+/** What the tray says of the account's credits today. */
+export const Allowance = Schema.Struct({ allowance: Schema.Struct({ remaining: Schema.Number }) })
 
-const decoded = async <A>(schema: Schema.Decoder<A>, response: Response) => {
+/** A 200 answer's body, decoded. */
+export const decoded = async <A>(schema: Schema.Decoder<A>, response: Response) => {
   expect(response.status).toBe(200)
   return Schema.decodeUnknownSync(schema)(await response.json())
 }

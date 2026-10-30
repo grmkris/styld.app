@@ -1,0 +1,79 @@
+import { readFileSync } from 'node:fs'
+import { expect } from 'bun:test'
+import { Schema } from 'effect'
+import type { Browser } from 'playwright'
+import { recordProblems } from './BrowserAcceptance.ts'
+import { Allowance, decoded } from './CleanPictureAcceptance.ts'
+import { picturesAccount, seededPieces } from './PictureFixture.ts'
+import { client, signIn } from './WardrobeAcceptance.ts'
+
+const Turn = Schema.Struct({ state: Schema.String, version: Schema.Number, layout: Schema.optionalKey(Schema.Unknown) })
+const Piece = Schema.Struct({ turn: Schema.optionalKey(Turn) })
+
+/** A piece's clean picture turns on its hanger, made by the queue and finished in the owner's browser: the turn is
+ * asked for with its 5 credits held, the video model's job is kept and polled until its video is stored, the piece page
+ * cuts the video into frames in Chromium, Clef checks them, and the turn plays on tap with its credits consumed once.
+ * The video model and Clef are the fixture's stand-ins; the video is a recorded Veo 3.1 Lite take. Runs after
+ * `verifyCleanPictures`, on its green shirt, whose offered drawing the owner took. */
+export const verifyTurn = async (browser: Browser, origin: string, fixtures: string) => {
+  const take = readFileSync(new URL('fixtures/capture/veo-turn-black-tee.mp4', import.meta.url))
+  expect(
+    (await fetch(`${fixtures}/test/pictures/answer?key=video`, { method: 'PUT', body: new Uint8Array(take) })).status,
+  ).toBe(204)
+  const owner = client(origin, await signIn(origin, picturesAccount))
+  const remaining = async () => (await decoded(Allowance, await owner('/api/captures/tray'))).allowance.remaining
+  const before = await remaining()
+  const asked = await owner(`/api/pieces/${seededPieces.green}/turn`, {
+    method: 'POST',
+    body: JSON.stringify({ operationId: 'native-turn-0001' }),
+  })
+  expect((await decoded(Turn, asked)).state).toBe('making')
+  expect(await remaining()).toBe(before - 5)
+  // A second turn while one is made is refused; the photo-only piece has no clean picture to turn.
+  const again = { method: 'POST', body: JSON.stringify({ operationId: 'native-turn-0002' }) }
+  expect((await owner(`/api/pieces/${seededPieces.green}/turn`, again)).status).toBe(409)
+  expect((await owner(`/api/pieces/${seededPieces.photo}/turn`, again)).status).toBe(409)
+  // Muse draws the side view, the video model is asked once while pending and then answers with the take.
+  let state = 'making'
+  for (let attempt = 0; attempt < 160 && state === 'making'; attempt += 1) {
+    await Bun.sleep(250)
+    state = (await decoded(Piece, await owner(`/api/pieces/${seededPieces.green}`))).turn?.state ?? 'none'
+  }
+  expect(state).toBe('building')
+
+  const context = await browser.newContext({ locale: 'en-US', viewport: { width: 390, height: 844 }, hasTouch: true })
+  await context.addCookies([{ name: 'styld_diagnostics', value: 'denied', url: origin }])
+  const signedIn = await context.request.post(`${origin}/api/auth/signIn`, {
+    headers: { origin, 'x-effect-auth-csrf': '1' },
+    data: { payload: { email: `${picturesAccount}@example.invalid`, password: 'native-identity-password-52' } },
+  })
+  expect(signedIn.status()).toBe(200)
+  try {
+    const page = await context.newPage()
+    const problems = recordProblems(page)
+    const consoled: Array<string> = []
+    page.on('console', (message) => {
+      if (message.type() === 'error' || message.type() === 'warning') consoled.push(message.text())
+    })
+    await page.goto(`${origin}/wardrobe/${seededPieces.green}`, { waitUntil: 'networkidle' })
+    // The page cuts the stored video into frames, sends them, and the checked turn replaces the still.
+    await page
+      .getByText('Tap the picture to turn it.')
+      .waitFor({ state: 'visible', timeout: 120000 })
+      .catch(async (error: unknown) => {
+        const shown = await page.locator('main').innerText()
+        throw new Error(`the turn did not get ready: ${String(error)}\n${shown}\n${consoled.join('\n')}`)
+      })
+    const player = page.getByRole('button', { name: 'Turn it' })
+    await player.locator('canvas').waitFor({ state: 'visible' })
+    await player.click()
+    expect(await player.getAttribute('aria-pressed')).toBe('true')
+    expect(problems).toEqual([])
+  } finally {
+    await context.close()
+  }
+  const turned = await decoded(Piece, await owner(`/api/pieces/${seededPieces.green}`))
+  expect(turned.turn).toMatchObject({ state: 'ready', layout: { frames: 30, columns: 6 } })
+  expect((await owner(`/cdn/turns/${seededPieces.green}/sheet?v=${turned.turn?.version}`)).status).toBe(200)
+  expect(await remaining()).toBe(before - 5)
+}
