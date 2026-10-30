@@ -76,7 +76,8 @@ export const openHome: ReadonlyArray<Step> = [foldTodayEnter, foldWardrobeRevisi
 /** What opening a tab page asks for. Home needs a session: a cookie with the request, or `afterSignIn`. */
 export const openPage = (route: AppRoute, hasSessionCookie: boolean): ReadonlyArray<Step> =>
   Match.value(route).pipe(
-    Match.tag('Home', () => (hasSessionCookie ? openHome : [])),
+    // Signed out, Home is the landing, which shows Edits from Styld.
+    Match.tag('Home', () => (hasSessionCookie ? openHome : [foldExploreEnter])),
     Match.tag('Wardrobe', () => [foldWardrobeEnter]),
     Match.tag('Ask', ({ q }) => [foldWardrobeRevisit, foldAskEnter(q)]),
     Match.tag('Looks', () => [foldLooksRevisit]),

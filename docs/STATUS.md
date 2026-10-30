@@ -350,8 +350,10 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
     masthead.
   - Explore is a tab: it keeps its place and mood between tabs, and is asked for again behind.
   - Evidence: the native instant-tabs walk taps Explore, and Explore loads steady.
+- **The landing's inspiration:** signed out, Home's "A place to begin" shows Edits from Styld (or the newest public
+  boards before there are any), with a way to Explore. The section keeps its room while they load. Evidence: a
+  scene test.
 - **Next:**
-  - the landing's Edits from Styld;
   - M6 (the wishlist and Add from a link).
 - **Shared with the capture session:** migrations are generated one at a time; public delivery reuses its rule for a
   piece's shown picture; generated pictures reuse its Muse provider.

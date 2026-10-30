@@ -185,4 +185,16 @@ describe('a public profile', () => {
       expect(role('button', { name: 'Rain' })).toHaveAttr('aria-pressed', 'true'),
     )
   })
+
+  test('the landing shows Edits from Styld to someone signed out', () => {
+    const found = { board: nika.boards[0], by, moods: [] }
+    const explore = Schema.decodeUnknownSync(Explore)({ edits: [found], featured: [], people: [], newest: [] })
+    scene(
+      { update, view },
+      given(visiting('/', Shown.Explore({ explore }))),
+      expect(role('heading', { name: 'A place to begin' })).toExist(),
+      expect(role('link', { name: /Coats/ })).toHaveAttr('href', `/boards/bd_${'coats'.padEnd(22, 'x')}`),
+      expect(role('link', { name: 'Explore' })).toHaveAttr('href', '/explore'),
+    )
+  })
 })

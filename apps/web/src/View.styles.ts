@@ -230,3 +230,5 @@ export const navAvatar = style({
 })
 /** The avatar while the session is read: the same circle, blank until the initial is known. */
 export const navAvatarPending = style({ backgroundColor: 'paper2' })
+/** The landing's boards keep their room while they load, so nothing below them moves when they arrive. */
+export const inspirationGrid = style({ display: 'grid', gap: '12px', minBlockSize: '420px', alignContent: 'start' })

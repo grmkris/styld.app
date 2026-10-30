@@ -47,6 +47,7 @@ import {
   heroActions,
   heroTitle,
   inspiration,
+  inspirationGrid,
   intro,
   lead,
   masthead,
@@ -68,6 +69,9 @@ import {
   withTabBar,
 } from './View.styles.ts'
 import { visuallyHidden } from './VisuallyHidden.styles.ts'
+import { boards as exploreBoards } from './page/ExploreView.styles.ts'
+import { boardCard, byline } from './page/PublicTiles.ts'
+import * as Visit from './page/Visit.ts'
 
 const browseAnchor = '#inspiration'
 const languages: ReadonlyArray<Readonly<{ locale: Locale; label: string }>> = [
@@ -109,8 +113,28 @@ const languagePicker = (model: Model, h: HtmlBuilder<Message>): Html => {
   )
 }
 
-const homeView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.main(
+/** The landing's inspiration: Edits from Styld, or the newest public boards before there are any. */
+const inspirationBoards = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  const shown = model.visit.shown
+  const boards = Visit.Shown.guards.Explore(shown)
+    ? (shown.explore.edits.length > 0 ? shown.explore.edits : shown.explore.newest).slice(0, 6)
+    : []
+  return boards.length === 0
+    ? h.div(styled(h, inspirationGrid()), [h.p(styled(h, emptyState()), [format(locale, 'landing.feedEmpty', {})])])
+    : h.div(styled(h, inspirationGrid()), [
+        h.ul(
+          styled(h, exploreBoards()),
+          boards.map(({ board, by }) =>
+            h.keyed('li')(board.id, [], [boardCard(board, locale, h), byline(by, locale, h)]),
+          ),
+        ),
+        h.a([h.Href(exploreRouter({}))], [format(locale, 'explore.title', {})]),
+      ])
+}
+
+const homeView = (model: Model, h: HtmlBuilder<Message>): Html => {
+  const { locale } = model.context
+  return h.main(
     [h.Id('main')],
     [
       h.section(styled(h, intro()), [
@@ -126,11 +150,12 @@ const homeView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
         [
           h.h2([], [format(locale, 'landing.feedTitle', {})]),
           h.p(styled(h, sectionNote()), [format(locale, 'landing.feedDescription', {})]),
-          h.p(styled(h, emptyState()), [format(locale, 'landing.feedEmpty', {})]),
+          inspirationBoards(model, locale, h),
         ],
       ),
     ],
   )
+}
 
 const notFoundView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.main(
@@ -404,7 +429,7 @@ const todayPage = (model: Model, h: HtmlBuilder<Message>): Html =>
   })
 
 const homePage = (model: Model, h: HtmlBuilder<Message>): Html =>
-  showsToday(model) ? todayPage(model, h) : homeView(model.context.locale, h)
+  showsToday(model) ? todayPage(model, h) : homeView(model, h)
 
 const askPage = (model: Model, h: HtmlBuilder<Message>): Html =>
   h.submodel({
