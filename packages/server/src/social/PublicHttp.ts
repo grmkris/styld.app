@@ -1,0 +1,83 @@
+import { BoardImageId, PieceId, PublicSlowDown, StyldApi } from '@styld/protocol'
+import type { RuntimeContext } from 'alchemy/RuntimeContext'
+import { Effect, Layer, Option, Schema } from 'effect'
+import { HttpApiBuilder } from 'effect/http-api'
+import * as HttpRouter from 'effect/http/HttpRouter'
+import { HttpServerRequest } from 'effect/http/HttpServerRequest'
+import * as HttpServerResponse from 'effect/http/HttpServerResponse'
+import { type ShownImage, ShownSize } from '../wardrobe/Http.ts'
+import { PublicPages } from './Public.ts'
+
+/** A per-network limit on public reads: false over the limit, or when the limiter fails. */
+export type AllowRead = (client: string) => Effect.Effect<boolean, never, RuntimeContext>
+
+const clientOf = Effect.map(HttpServerRequest, (request) => request.headers['cf-connecting-ip'] ?? 'unknown')
+
+/** A read past the network's limit is refused before it reaches D1. */
+const limited =
+  (allowRead: AllowRead) =>
+  <A, E, R>(read: Effect.Effect<A, E, R>) =>
+    Effect.gen(function* () {
+      if (!(yield* allowRead(yield* clientOf))) return yield* PublicSlowDown.make({})
+      return yield* read
+    })
+
+/** The public pages' endpoints: anyone may read them, signed in or not, a few hundred times a minute. */
+export const publicHandlers = (allowRead: AllowRead) =>
+  HttpApiBuilder.group(StyldApi, 'public', (handlers) =>
+    Effect.gen(function* () {
+      const pages = yield* PublicPages
+      const within = limited(allowRead)
+      return handlers
+        .handle('profile', ({ params }) => within(pages.profile(params.handle)))
+        .handle('board', ({ params }) => within(pages.board(params.boardId)))
+        .handle('look', ({ params }) => within(pages.look(params.lookId)))
+        .handle('piece', ({ params }) => within(pages.piece(params.pieceId)))
+    }),
+  )
+
+const PieceTarget = Schema.Struct({ pieceId: PieceId, size: ShownSize })
+const PictureTarget = Schema.Struct({ imageId: BoardImageId, size: ShownSize })
+
+/** A public image route: anyone may load it while its page is public; revalidated on every view, so going
+ * private or failing a check takes it down at once. */
+const publicImage = <A, I extends Readonly<Record<string, string | undefined>>>(
+  allowRead: AllowRead,
+  target: Schema.ConstraintCodec<A, I, never, unknown>,
+  find: (target: A) => Effect.Effect<Option.Option<ShownImage>, unknown>,
+) =>
+  Effect.gen(function* () {
+    if (!(yield* allowRead(yield* clientOf))) return HttpServerResponse.empty({ status: 429 })
+    const params = yield* HttpRouter.schemaPathParams(target).pipe(Effect.option)
+    if (Option.isNone(params)) return HttpServerResponse.empty({ status: 404 })
+    const request = yield* HttpServerRequest
+    const shown = yield* find(params.value).pipe(Effect.option)
+    if (Option.isNone(shown)) return HttpServerResponse.empty({ status: 503 })
+    if (Option.isNone(shown.value)) return HttpServerResponse.empty({ status: 404 })
+    const { body, contentType, version } = shown.value.value
+    const etag = `"${version}"`
+    const headers = { etag, 'cache-control': 'public, no-cache' }
+    return request.headers['if-none-match'] === etag
+      ? HttpServerResponse.empty({ status: 304, headers })
+      : HttpServerResponse.raw(body, { status: 200, contentType, headers })
+  })
+
+/** `GET /cdn/public/pieces/:pieceId/:size` and `GET /cdn/public/pictures/:imageId/:size`: what public pages show. */
+export const publicImageRoutes = (allowRead: AllowRead) =>
+  Layer.unwrap(
+    Effect.gen(function* () {
+      const pages = yield* PublicPages
+      return Layer.mergeAll(
+        HttpRouter.add(
+          'GET',
+          '/cdn/public/pieces/:pieceId/:size',
+          publicImage(allowRead, PieceTarget, ({ pieceId, size }) => pages.pieceImage(pieceId, size)),
+        ),
+        HttpRouter.add(
+          'GET',
+          '/cdn/public/pictures/:imageId/:size',
+          publicImage(allowRead, PictureTarget, ({ imageId, size }) => pages.pictureImage(imageId, size)),
+        ),
+      )
+    }),
+  )

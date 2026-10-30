@@ -20,6 +20,8 @@ import { AccountLifecycle, makeAccountLifecycle } from './AccountLifecycle.ts'
 import { Looks, makeLooks } from './looks/Looks.ts'
 import { Boards, makeBoards } from './boards/Boards.ts'
 import { makeProfiles, Profiles } from './social/Profiles.ts'
+import { makePublicPages, PublicPages } from './social/Public.ts'
+import { publicImageRoutes } from './social/PublicHttp.ts'
 import { boardRoutes } from './boards/Http.ts'
 import { makeWorn, Worn } from './worn/Worn.ts'
 import { apiRoutes } from './Api.ts'
@@ -118,7 +120,9 @@ const storageServices = <R>(
     const looksService = yield* makeLooks(bindings.database, checksService)
     const boardsService = yield* makeBoards(bindings, checksService)
     const profilesService = makeProfiles(bindings.database, checksService)
+    const publicPages = Layer.succeed(PublicPages, yield* makePublicPages(bindings, checksService))
     return {
+      publicPages,
       checksService,
       wardrobeService,
       lifecycleService,
@@ -262,6 +266,8 @@ const declareBindings = Effect.gen(function* () {
   const allowRegistration = yield* perClientLimit('OAUTH_REGISTER_RATE_LIMIT', 2610282, 10)
   // The camera's garment check calls Clef; each account may check 40 frames a minute, a few a second at most.
   const allowCheck = yield* perClientLimit('CAPTURE_CHECK_RATE_LIMIT', 2610284, 40)
+  // Public pages and their pictures are open to anyone; each network may read 300 a minute.
+  const allowRead = yield* perClientLimit('PUBLIC_READ_RATE_LIMIT', 2610285, 300)
   // Sign-in codes are real mail from styld.app; each network may ask for five a minute.
   const codeRequests = yield* Cloudflare.Workers.RateLimit('EMAIL_CODE_RATE_LIMIT', {
     namespaceId: 2610283,
@@ -281,6 +287,7 @@ const declareBindings = Effect.gen(function* () {
     allowTelemetry,
     allowRegistration,
     allowCheck,
+    allowRead,
     codeRequests,
   }
 })
@@ -321,6 +328,7 @@ const makeApplication =
     allowTelemetry,
     allowRegistration,
     allowCheck,
+    allowRead,
     codeRequests,
   }: Effect.Success<typeof declareBindings>) =>
   (env: Cloudflare.Workers.WorkerEnvironment['Service']) =>
@@ -362,7 +370,8 @@ const makeApplication =
       const oauth = makeMcpOAuth(db, auth, { origin: authOrigin, keys: configuration.sessionKeys, allowRegistration })
       const routes = Layer.mergeAll(
         auth.layer,
-        apiRoutes(auth, services, { allowCheck }),
+        apiRoutes(auth, services, { allowCheck, allowRead }),
+        publicImageRoutes(allowRead).pipe(Layer.provide(services.publicPages)),
         wardrobeRoutes(auth).pipe(Layer.provide(wardrobe)),
         boardRoutes(auth).pipe(Layer.provide(boards)),
         captureRoutes(auth).pipe(Layer.provide(captures)),

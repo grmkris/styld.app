@@ -2,7 +2,23 @@ import { SessionHttp } from '@styld/auth/config'
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
 import { AccountUnavailable, Me, RequestRefused } from './Account.ts'
 import { ProfileNotPublished, SetVisibility, ShareLook } from './Check.ts'
-import { HandleReserved, HandleTaken, Profile, ProfileNeedsHandle, PublishProfile, UpdateProfile } from './Profile.ts'
+import {
+  Handle,
+  HandleReserved,
+  HandleTaken,
+  Profile,
+  ProfileNeedsHandle,
+  PublishProfile,
+  UpdateProfile,
+} from './Profile.ts'
+import {
+  PublicBoard,
+  PublicLookPage,
+  PublicNotFound,
+  PublicPiecePage,
+  PublicProfile,
+  PublicSlowDown,
+} from './Public.ts'
 import {
   CaptureCreated,
   CaptureId,
@@ -380,6 +396,38 @@ export class ProfileApi extends HttpApiGroup.make('profile')
   .middleware(SessionHttp.RequireSession)
   .prefix('/api') {}
 
+/** What anyone may read, signed in or not: published profiles, public boards, shared looks and their pieces. */
+class PublicApi extends HttpApiGroup.make('public')
+  .add(
+    HttpApiEndpoint.get('profile', '/public/profiles/:handle', {
+      params: { handle: Handle },
+      success: PublicProfile,
+      error: [PublicNotFound, PublicSlowDown, WardrobeUnavailable],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.get('board', '/public/boards/:boardId', {
+      params: { boardId: BoardId },
+      success: PublicBoard,
+      error: [PublicNotFound, PublicSlowDown, WardrobeUnavailable],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.get('look', '/public/looks/:lookId', {
+      params: { lookId: LookId },
+      success: PublicLookPage,
+      error: [PublicNotFound, PublicSlowDown, WardrobeUnavailable],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.get('piece', '/public/pieces/:pieceId', {
+      params: { pieceId: PieceId },
+      success: PublicPiecePage,
+      error: [PublicNotFound, PublicSlowDown, WardrobeUnavailable],
+    }),
+  )
+  .prefix('/api') {}
+
 /** Styld's typed HTTP API: declared once, served by the API Worker and called by the website. */
 export class StyldApi extends HttpApi.make('styld')
   .add(AccountApi)
@@ -388,4 +436,5 @@ export class StyldApi extends HttpApi.make('styld')
   .add(LookApi)
   .add(BoardApi)
   .add(WornApi)
-  .add(ProfileApi) {}
+  .add(ProfileApi)
+  .add(PublicApi) {}

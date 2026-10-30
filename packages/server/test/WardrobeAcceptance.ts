@@ -54,7 +54,7 @@ export const receivedPhoto = async (origin: string, call: Call) => {
   return photo.uploadId
 }
 
-const waitUntilReady = async (call: Call, pieceId: string) => {
+export const waitUntilReady = async (call: Call, pieceId: string) => {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const { status } = Schema.decodeUnknownSync(Schema.Struct({ status: Schema.String }))(
       await (await call(`/api/pieces/${pieceId}`)).json(),

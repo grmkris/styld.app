@@ -1,15 +1,4 @@
-import {
-  boardImages,
-  boardItems,
-  boardPins,
-  boards,
-  contentChecks,
-  lookPieces,
-  looks,
-  pieces,
-  piecePictures,
-  profiles,
-} from '@styld/db'
+import { boardImages, boardItems, boards, contentChecks, looks, pieces, piecePictures, profiles } from '@styld/db'
 import { CheckReason, CheckState, type CheckStatus, WardrobeUnavailable } from '@styld/protocol'
 import { and, eq, inArray, isNotNull } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
@@ -19,6 +8,7 @@ import * as Base64Url from 'effect/encoding/Base64Url'
 import type { Picture } from '../capture/Providers.ts'
 import { collect } from '../Streams.ts'
 import { deliverImage, type ImageBindings } from '../wardrobe/Delivery.ts'
+import { reachedThrough } from '../social/PublicStore.ts'
 import { shownImage } from '../wardrobe/Shown.ts'
 import { chunked } from '../wardrobe/Store.ts'
 import { type Content, ContentJudge, type Verdict } from './Judge.ts'
@@ -120,26 +110,7 @@ const pieceReachable = (db: Database, piece: typeof pieces.$inferSelect) =>
     ))[0]
     if (owner === undefined || !owner.published) return false
     if (owner.wardrobeShown) return true
-    const onBoard = yield* attempt(() =>
-      db
-        .select({ id: boardPins.id })
-        .from(boardPins)
-        .innerJoin(boards, eq(boards.id, boardPins.boardId))
-        .where(
-          and(eq(boardPins.pieceId, piece.id), eq(boards.accountId, piece.accountId), eq(boards.visibility, 'public')),
-        )
-        .limit(1),
-    )
-    if (onBoard.length > 0) return true
-    const inLook = yield* attempt(() =>
-      db
-        .select({ id: looks.id })
-        .from(lookPieces)
-        .innerJoin(looks, eq(looks.id, lookPieces.lookId))
-        .where(and(eq(lookPieces.pieceId, piece.id), isNotNull(looks.sharedAt)))
-        .limit(1),
-    )
-    return inLook.length > 0
+    return yield* reachedThrough(db, piece.accountId, piece.id, false).pipe(Effect.mapError(unavailable))
   })
 
 const pieceShows = (db: Database, pieceId: string) =>

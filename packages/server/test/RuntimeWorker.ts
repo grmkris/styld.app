@@ -17,6 +17,7 @@ import { exerciseAttemptLimiter } from './AttemptLimiterFixture.ts'
 import { seedIdentity, disableIdentity } from './IdentityFixture.ts'
 import { pictureRoutes } from './PictureFixture.ts'
 import { recoveryRoutes } from './RecoveryFixture.ts'
+import { socialRoutes } from './SocialFixture.ts'
 import { makeAuthHttp, withCodeRequestPolicy } from '../src/AuthHttp.ts'
 import { onFirstUse } from '../src/IsolateCache.ts'
 import { DomainLive } from '../src/DomainLive.ts'
@@ -83,6 +84,7 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
       auth.layer,
       yield* recoveryRoutes(database, media),
       pictureRoutes(database, media),
+      socialRoutes(database, media),
       HttpRouter.add(
         'POST',
         '/test/identity/seed',
@@ -233,7 +235,8 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
           url.pathname.startsWith('/api/auth/') ||
           url.pathname.startsWith('/test/identity/') ||
           url.pathname.startsWith('/test/recovery/') ||
-          url.pathname.startsWith('/test/pictures/')
+          url.pathname.startsWith('/test/pictures/') ||
+          url.pathname.startsWith('/test/social/')
         )
           // The fixture sends no codes; its auth still needs the per-request code policy.
           return yield* (yield* authHandle(undefined)).pipe(
