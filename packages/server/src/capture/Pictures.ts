@@ -58,7 +58,10 @@ const framed = (keyed: Rgba) => {
   })
 }
 
-const finished: ReadonlyArray<PictureState> = ['ready', 'proposed', 'rejected', 'retake', 'kept-real', 'failed']
+const ends = ['ready', 'proposed', 'rejected', 'retake', 'kept-real', 'failed'] as const
+
+/** Whether a picture has ended: shown, offered, dropped, sent for a retake, kept as its photo or failed. */
+const hasEnded = (state: PictureState): state is (typeof ends)[number] => ends.some((end) => end === state)
 
 /** Move a picture on from one of `from`; whether it moved. Every write goes through here, so two deliveries never
  * both act on one state, and each picture's end is counted once. */
@@ -73,7 +76,7 @@ const move = (
     const moved = yield* storedAs(parts.store.movePicture(picture.pieceId, from, { ...changes, updatedAt: yield* now }))
     if (!moved || state === undefined) return moved
     yield* Effect.annotateCurrentSpan('styld.picture.state', state)
-    if (finished.includes(state))
+    if (hasEnded(state))
       yield* (yield* CaptureMetrics).picture({
         state,
         provider: changes.provider ?? picture.provider ?? 'none',
@@ -221,7 +224,7 @@ export const settleHold = (parts: Parts, pieceId: string) =>
     const found = yield* storedAs(parts.store.findPicture(pieceId))
     if (Option.isNone(found)) return
     const { accountId, hold, state } = found.value
-    if (hold === null || !finished.includes(state)) return
+    if (hold === null || !hasEnded(state)) return
     const outcome = state === 'ready' || state === 'proposed' ? 'consumed' : 'refunded'
     yield* (yield* Usage).settle(accountId, hold, outcome)
     yield* storedAs(parts.store.movePicture(pieceId, [state], { hold: null }))
