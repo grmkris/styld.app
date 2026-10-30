@@ -1,5 +1,16 @@
 import { Dialog, FileDrop } from '@foldkit/ui'
-import { Board, BoardItem, BoardItemId, CheckStatus, Look, LookId, Paper, Pin, Visibility } from '@styld/protocol'
+import {
+  Board,
+  BoardItem,
+  BoardItemId,
+  CheckStatus,
+  Look,
+  LookId,
+  Paper,
+  Pin,
+  PublicBoard,
+  Visibility,
+} from '@styld/protocol'
 import * as WardrobePage from '../Wardrobe.ts'
 import { Option, Schema } from 'effect'
 import { AsyncData } from 'foldkit'
@@ -15,6 +26,8 @@ export const BoardState = defineTaggedUnion({
   Failed: {},
   Missing: {},
   Ready: { name: Schema.String, paper: Paper },
+  /** Someone else's public board, or the person's own read signed out: shown as others see it. */
+  Visiting: { board: PublicBoard },
 })
 export type BoardState = typeof BoardState.Type
 

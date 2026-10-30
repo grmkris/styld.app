@@ -18,6 +18,7 @@ import * as BoardsView from './page/BoardsView.ts'
 import * as ReviewView from './page/ReviewView.ts'
 import * as LooksView from './page/LooksView.ts'
 import * as LookView from './page/LookView.ts'
+import * as VisitView from './page/VisitView.ts'
 import * as ProfileEditorView from './page/ProfileEditorView.ts'
 import { accountView } from './page/AccountView.ts'
 import * as LoginView from './page/LoginView.ts'
@@ -202,6 +203,8 @@ const titleKey = AppRoute.match<MessageKey>({
   Board: () => 'boards.title',
   BoardCollage: () => 'boards.title',
   Piece: () => 'wardrobe.title',
+  Person: () => 'profile.public.people',
+  PublicPiece: () => 'profile.public.pieces',
   NotFound: () => 'common.notFoundTitle',
 })
 
@@ -223,6 +226,8 @@ const sectionOf = AppRoute.match<Section | undefined>({
   Account: () => 'you',
   Login: () => undefined,
   LoginForConnection: () => undefined,
+  Person: () => undefined,
+  PublicPiece: () => undefined,
   NotFound: () => undefined,
 })
 
@@ -362,6 +367,15 @@ const profilePage = (model: Model, h: HtmlBuilder<Message>): Html =>
     toParentMessage: (message) => Message.GotProfileMessage({ message }),
   })
 
+const visitPage = (model: Model, h: HtmlBuilder<Message>): Html =>
+  h.submodel({
+    slotId: 'visit',
+    model: model.visit,
+    view: VisitView.view,
+    viewInputs: { locale: model.context.locale },
+    toParentMessage: (message) => Message.GotVisitMessage({ message }),
+  })
+
 const lookPage = (model: Model, h: HtmlBuilder<Message>): Html =>
   h.submodel({
     slotId: 'look',
@@ -469,6 +483,8 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
         Board: () => boardPage(model, h),
         BoardCollage: () => collagePage(model, h),
         Piece: () => piecePage(model, h),
+        Person: () => visitPage(model, h),
+        PublicPiece: () => visitPage(model, h),
         NotFound: () => notFoundView(locale, h),
       }),
       initial === undefined ? h.empty : appNavigation(model, initial, h),

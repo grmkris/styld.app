@@ -1,9 +1,11 @@
-import { Equivalence, Option, Schema, pipe } from 'effect'
+import { Effect, Equivalence, Option, Schema, pipe } from 'effect'
 import {
   defineRouteUnion,
   literal,
   mapTo,
   oneOf,
+  param,
+  ParseError,
   parseUrlWithFallback,
   query,
   root,
@@ -35,6 +37,10 @@ export const AppRoute = defineRouteUnion({
   Board: { boardId: Schema.String },
   /** The editor of a board's collage, which has the whole screen. */
   BoardCollage: { boardId: Schema.String },
+  /** A person's published profile, `/@handle`, readable signed out. */
+  Person: { handle: Schema.String },
+  /** A piece as others see it, from a public profile, board or look. */
+  PublicPiece: { pieceId: Schema.String },
   NotFound: { path: Schema.String },
 })
 export type AppRoute = typeof AppRoute.Type
@@ -64,6 +70,20 @@ export const boardCollageRouter = pipe(
   mapTo(AppRoute.BoardCollage),
 )
 
+/** `/@nika.kovac`: the segment after its `@` is the handle. */
+const atHandle = param<{ readonly handle: string }>(
+  '@handle',
+  (segment) => {
+    const at = segment.startsWith('%40') ? 3 : segment.startsWith('@') ? 1 : 0
+    return at > 0 && segment.length > at
+      ? Effect.succeed({ handle: segment.slice(at) })
+      : Effect.fail(new ParseError({ message: 'Expected @handle', expected: '@handle', actual: segment }))
+  },
+  ({ handle }) => `@${handle}`,
+)
+export const personRouter = pipe(atHandle, mapTo(AppRoute.Person))
+export const publicPieceRouter = pipe(literal('pieces'), slash(string('pieceId')), mapTo(AppRoute.PublicPiece))
+
 // `/wardrobe/add` and `/wardrobe/review` are declared before `/wardrobe/:pieceId`, which would otherwise take them.
 const parser = oneOf(
   loginForConnectionRouter,
@@ -80,6 +100,8 @@ const parser = oneOf(
   boardCollageRouter,
   boardRouter,
   boardsRouter,
+  publicPieceRouter,
+  personRouter,
   homeRouter,
 )
 
@@ -106,10 +128,8 @@ export const needsSession = (route: AppRoute) =>
   AppRoute.guards.Review(route) ||
   AppRoute.guards.Piece(route) ||
   AppRoute.guards.Looks(route) ||
-  AppRoute.guards.Look(route) ||
   AppRoute.guards.Ask(route) ||
   AppRoute.guards.Boards(route) ||
-  AppRoute.guards.Board(route) ||
   AppRoute.guards.BoardCollage(route)
 
 /** The pages the navigation moves between. They keep their place: each opens at once from what the app already
@@ -133,6 +153,8 @@ export const tabOf = AppRoute.match<Option.Option<Tab>>({
   Look: () => Option.none(),
   Board: () => Option.none(),
   BoardCollage: () => Option.none(),
+  Person: () => Option.none(),
+  PublicPiece: () => Option.none(),
   NotFound: () => Option.none(),
 })
 

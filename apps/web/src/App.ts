@@ -29,6 +29,7 @@ import * as Look from './page/Look.ts'
 import * as ProfileEditor from './page/ProfileEditor.ts'
 import * as Looks from './page/Looks.ts'
 import * as Piece from './page/Piece.ts'
+import * as Visit from './page/Visit.ts'
 import * as Review from './page/Review.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
 import {
@@ -96,6 +97,7 @@ export const Model = Schema.Struct({
   ask: Ask.Model,
   boards: Boards.Model,
   board: BoardModel.Model,
+  visit: Visit.Model,
   account: Account.Model,
   telemetry: Schema.Struct({ consent: TelemetryConsent, prompting: Schema.Boolean }),
 })
@@ -163,14 +165,29 @@ type UpdateReturn = Update.Return<Model, Message, Services>
 // INIT
 
 /** The Commands that open a page that loads whole each time. */
-const pageCommands = (route: AppRoute, piece: Piece.Model, look: Look.Model, board: BoardModel.Model) =>
+const pageCommands = (
+  route: AppRoute,
+  pages: {
+    readonly piece: Piece.Model
+    readonly look: Look.Model
+    readonly board: BoardModel.Model
+    readonly visit: Visit.Model
+  },
+) =>
   Match.value(route).pipe(
-    Match.tag('Board', 'BoardCollage', () =>
-      Command.mapMessages(Board.load(board), (message) => Message.GotBoardMessage({ message })),
+    Match.tag('Person', 'PublicPiece', () =>
+      Command.mapMessages(Visit.load(pages.visit), (message) => Message.GotVisitMessage({ message })),
     ),
-    Match.tag('Piece', () => Command.mapMessages(Piece.load(piece), (message) => Message.GotPieceMessage({ message }))),
+    Match.tag('Board', 'BoardCollage', () =>
+      Command.mapMessages(Board.load(pages.board), (message) => Message.GotBoardMessage({ message })),
+    ),
+    Match.tag('Piece', () =>
+      Command.mapMessages(Piece.load(pages.piece), (message) => Message.GotPieceMessage({ message })),
+    ),
     Match.tag('Review', () => Command.mapMessages(Review.load(), (message) => Message.GotReviewMessage({ message }))),
-    Match.tag('Look', () => Command.mapMessages(Look.load(look), (message) => Message.GotLookMessage({ message }))),
+    Match.tag('Look', () =>
+      Command.mapMessages(Look.load(pages.look), (message) => Message.GotLookMessage({ message })),
+    ),
     Match.tag('Profile', () =>
       Command.mapMessages(ProfileEditor.load(), (message) => Message.GotProfileMessage({ message })),
     ),
@@ -184,6 +201,11 @@ export const init = (context: Flags, url?: Url): UpdateReturn => {
   const look = Look.init(AppRoute.guards.Look(route) ? route.lookId : '')
   const board = BoardModel.init(
     AppRoute.guards.Board(route) || AppRoute.guards.BoardCollage(route) ? route.boardId : '',
+  )
+  const visit = Visit.init(
+    AppRoute.guards.PublicPiece(route)
+      ? Visit.Target.Piece({ pieceId: route.pieceId })
+      : Visit.Target.Person({ handle: AppRoute.guards.Person(route) ? route.handle : '' }),
   )
   const opened = Update.combine<Model, Message, Services>(
     {
@@ -203,6 +225,7 @@ export const init = (context: Flags, url?: Url): UpdateReturn => {
       ask: Ask.init(),
       boards: Boards.init(),
       board,
+      visit,
       account: Account.init(),
       telemetry: { consent: context.telemetryConsent, prompting: context.telemetryConsent === 'undecided' },
     },
@@ -210,7 +233,7 @@ export const init = (context: Flags, url?: Url): UpdateReturn => {
   )
   return {
     model: opened.model,
-    commands: [ReadSession(), ...pageCommands(route, piece, look, board), ...(opened.commands ?? [])],
+    commands: [ReadSession(), ...pageCommands(route, { piece, look, board, visit }), ...(opened.commands ?? [])],
   }
 }
 
@@ -326,6 +349,13 @@ const foldLook = Update.foldChild({
   foldOutMessage: Look.OutMessage.match<Update.Step<Model, Message, Services>>({
     DeletedLook: () => (stepModel) => ({ model: stepModel, commands: [Navigate({ href: looksRouter({}) })] }),
   }),
+})
+
+const foldVisit = Update.foldChild({
+  update: Visit.update,
+  read: (model: Model) => Option.some(model.visit),
+  write: (model: Model, visit: Visit.Model) => modifyFields(model, { visit: () => visit }),
+  toParentMessage: (message: Visit.Message) => Message.GotVisitMessage({ message }),
 })
 
 const foldToday = Update.foldChild({
@@ -464,6 +494,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotAskMessage: (got) => foldAsk(model, got.message),
     GotBoardsMessage: (got) => foldBoards(model, got.message),
     GotBoardMessage: (got) => foldBoard(model, got.message),
+    GotVisitMessage: (got) => foldVisit(model, got.message),
     ChoseTelemetryConsent: ({ granted }) => ({
       model: modifyFields(model, { telemetry: (telemetry) => modifyFields(telemetry, { prompting: () => false }) }),
       commands: [RecordTelemetryConsent({ granted })],

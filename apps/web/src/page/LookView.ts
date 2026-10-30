@@ -10,6 +10,7 @@ import { looksRouter, pieceRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { Deletion, Message, type Model, Sharing, Shown } from './Look.ts'
 import { publicToggle } from './PublicToggle.ts'
+import { byline, pieceTile, tileGrid } from './PublicTiles.ts'
 import * as SaveToBoardView from './SaveToBoardView.ts'
 import { round } from './PageBar.styles.ts'
 import { pieceLabel } from './WardrobeWords.ts'
@@ -69,10 +70,19 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
   h.main(
     [h.Id('main'), ...styled(h, styles.looksPage())],
     [
-      h.div([], [backToLooks(locale, h)]),
+      Shown.guards.Visiting(model.shown) ? h.empty : h.div([], [backToLooks(locale, h)]),
       ...Shown.match(model.shown, {
         Loading: () => [h.p([h.Role('status')], [loader(h)])],
         NotFound: () => [h.h1([], [format(locale, 'looks.notFound', {})])],
+        Visiting: ({ page }) => [
+          h.h1([], [page.look.name]),
+          page.look.occasion === null ? h.empty : h.p(styled(h, styles.lede()), [page.look.occasion]),
+          byline(page.by, locale, h),
+          tileGrid(
+            page.look.pieces.map((piece) => ({ id: piece.id, tile: pieceTile(piece, locale, h) })),
+            h,
+          ),
+        ],
         Failed: () => [h.h1([], [format(locale, 'looks.title', {})]), couldNotLoad(locale, h, Message.ClickedRetry())],
         Loaded: ({ look }) => [
           h.h1([], [look.name]),

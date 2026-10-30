@@ -1,4 +1,4 @@
-import { Look as LookContract, LookId } from '@styld/protocol'
+import { Look as LookContract, LookId, PublicLookPage } from '@styld/protocol'
 import { Effect, Schema } from 'effect'
 import type * as Crypto from 'effect/Crypto'
 import { Command, Update } from 'foldkit'
@@ -13,6 +13,8 @@ import * as SaveToBoard from './SaveToBoard.ts'
 export const Shown = defineTaggedUnion({
   Loading: {},
   Loaded: { look: LookContract },
+  /** Someone else's shared look, or the person's own read signed out: shown as others see it. */
+  Visiting: { page: PublicLookPage },
   NotFound: {},
   Failed: {},
 })
@@ -47,6 +49,7 @@ export const init = (lookId: string): Model => ({
 export const Message = defineMessageUnion({
   SucceededGetLook: { look: LookContract },
   FailedGetLook: { notFound: Schema.Boolean },
+  SucceededVisitLook: { page: PublicLookPage },
   ClickedRetry: {},
   ToggledShared: { shared: Schema.Boolean },
   SucceededShareLook: { look: LookContract },
@@ -65,9 +68,20 @@ export type OutMessage = typeof OutMessage.Type
 
 // COMMAND
 
+/** A look as others see it, once it is shared and Styld's check lets them. */
+const visitLook = (lookId: string) =>
+  Effect.gen(function* () {
+    const api = yield* (yield* StyldClient).api
+    const page = yield* api.public.look({ params: { lookId: yield* Schema.decodeUnknownEffect(LookId)(lookId) } })
+    return Message.SucceededVisitLook({ page })
+  }).pipe(
+    Effect.catchTag('PublicNotFound', () => Effect.succeed(Message.FailedGetLook({ notFound: true }))),
+    Effect.orElseSucceed(() => Message.FailedGetLook({ notFound: false })),
+  )
+
 const GetLook = Command.define('GetLook', {
   args: { lookId: Schema.String },
-  messages: [Message.SucceededGetLook, Message.FailedGetLook],
+  messages: [Message.SucceededGetLook, Message.FailedGetLook, Message.SucceededVisitLook],
   execute: ({ lookId }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
@@ -75,10 +89,11 @@ const GetLook = Command.define('GetLook', {
       return Message.SucceededGetLook({ look: yield* api.look.getLook({ params: { lookId: id } }) })
     }).pipe(
       Effect.catchTags({
-        LookNotFound: () => Effect.succeed(Message.FailedGetLook({ notFound: true })),
         SchemaError: () => Effect.succeed(Message.FailedGetLook({ notFound: true })),
+        WardrobeUnavailable: () => Effect.succeed(Message.FailedGetLook({ notFound: false })),
       }),
-      Effect.orElseSucceed(() => Message.FailedGetLook({ notFound: false })),
+      // Not this account's look, or nobody signed in: it may be shared.
+      Effect.catch(() => visitLook(lookId)),
     ),
 })
 
@@ -124,6 +139,7 @@ const foldSaveToBoard = SaveToBoard.foldInto<Model, Message>((message) => Messag
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     SucceededGetLook: ({ look }) => ({ model: modifyFields(model, { shown: () => Shown.Loaded({ look }) }) }),
+    SucceededVisitLook: ({ page }) => ({ model: modifyFields(model, { shown: () => Shown.Visiting({ page }) }) }),
     FailedGetLook: ({ notFound }) => ({
       model: modifyFields(model, { shown: () => (notFound ? Shown.NotFound() : Shown.Failed()) }),
     }),

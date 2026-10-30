@@ -31,6 +31,14 @@ export type ImageSource = (item: PieceItem | ImageItem, size: 'thumb' | 'full') 
 const fromStyld: ImageSource = (item, size) =>
   Schema.is(PieceItem)(item) ? pieceImage(item.pieceId) : boardImage(item.imageId, size)
 
+/** What others see of a public board: its pieces' and pictures' public addresses. */
+export const publicPieceImage = (pieceId: string, size: 'thumb' | 'full' = 'thumb') =>
+  `/cdn/public/pieces/${pieceId}/${size}`
+export const publicPicture = (imageId: string, size: 'thumb' | 'full' = 'full') =>
+  `/cdn/public/pictures/${imageId}/${size}`
+export const fromPublic: ImageSource = (item, size) =>
+  Schema.is(PieceItem)(item) ? publicPieceImage(item.pieceId) : publicPicture(item.imageId, size)
+
 export const itemContent = <Message>(
   item: BoardItem,
   h: HtmlBuilder<Message>,

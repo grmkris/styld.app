@@ -1,5 +1,5 @@
 import { Dialog, FileDrop } from '@foldkit/ui'
-import { Board, BoardImageId, BoardItemId, Look, LookId, Paper, PinId, TextStyle } from '@styld/protocol'
+import { Board, BoardImageId, BoardItemId, Look, LookId, Paper, PinId, PublicBoard, TextStyle } from '@styld/protocol'
 import * as WardrobePage from '../Wardrobe.ts'
 import { Schema } from 'effect'
 import { File } from 'foldkit'
@@ -25,6 +25,7 @@ export type KeyStep = typeof KeyStep.Type
 export const Message = defineMessageUnion({
   SucceededLoadBoard: { board: Board },
   FailedLoadBoard: { missing: Schema.Boolean },
+  SucceededVisitBoard: { board: PublicBoard },
   GotWardrobeMessage: { message: WardrobePage.Message },
   CompletedMakeIds: { ids: Schema.Array(BoardItemId) },
   MeasuredPaper: { width: Schema.Number },

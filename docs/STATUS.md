@@ -167,7 +167,7 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   - Account links to it. Tools `profile_get`, `profile_update` and `profile_publish`.
   - Evidence: Story tests, MCP unit tests, native API acceptance (handles taken, reserved and invalid; publishing).
     Full gate green before landing, native 22/22, bundle 315,309 first load.
-- **M3b, checks of what goes public (built in `~/code/styldappv2.wt/m3`, not yet on main):**
+- **M3b, checks of what goes public (`f92575f`, on main, not yet deployed):**
   - `safety/Judge.ts`:
     - Clef-flash scores up to three pictures (a minor at 0.3 fails; another harm at 0.85 fails, at 0.5 is unsure;
       words addressed to an assistant are unsure).
@@ -196,12 +196,40 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   - Open:
     - The check is marked pending right after the content's write, not in its batch (ARCHITECTURE › deviations).
     - There is no sweep yet for checks still pending after the queue's five attempts.
-    - Pieces that become ready after publishing are not yet queued: the capture session's processing must call
-      `Checks.changed`.
     - The thresholds are uncalibrated (the spike on fixtures in en and sl is still to run).
     - Calls are not yet metered in Analytics Engine.
-- **Next:** M3c, public delivery (`/cdn/public/*` and the visibility predicate), then the public pages and link
-  previews.
+  - Full gate before landing: unit 352, native 23/23, first load 319,032 bytes.
+- **A public piece's picture is checked again (`0c1843f`):** processing finishing, review making pieces, a clean
+  picture moving state, a redraw and the owner's choice of picture call `PieceChanged`. While others can see the
+  piece, its check goes back to pending and the queue checks it again. A check it cannot mark is logged and never
+  fails the work.
+- **M3c, public reads (`e74c043`):**
+  - `PublicApi` serves `/api/public/{profiles/:handle,boards/:id,looks/:id,pieces/:id}` signed out, limited to 300
+    reads a minute per network (`PUBLIC_READ_RATE_LIMIT`).
+  - A thing shows while its owner's profile is published, the thing is public, and its check and the profile's passed
+    or were unsure and were not hidden. Anything else reads as not there.
+  - A piece shows only its cut-out or clean drawing, never the photo it came from, and only through its owner's
+    shown wardrobe, public boards or shared looks.
+  - Pictures come from `/cdn/public/{pieces,pictures}/:id/:size` as Images-binding WebP, with `fallback: 'none'`,
+    `public, no-cache` and an ETag, so going private takes them down on the next view.
+  - Evidence: native API acceptance covers:
+    - a picture pin shown and its WebP served;
+    - a piece's photo refused until it has a cut-out, then shown with a 304 on revalidation;
+    - a piece added after publishing checked and shown;
+    - no notes on a public piece;
+    - private, hidden-wardrobe and unpublished states each taking everything down.
+- **M3d, visitor pages (`1f87e14`):**
+  - `/@handle` shows a published profile: avatar, name, handle and city, bio, then Boards, Looks and Pieces (Pieces
+    only when the owner shows the wardrobe). `/pieces/:id` shows a public piece.
+  - `/boards/:id` and `/looks/:id` show their owner their own page; a visitor, signed in or not, sees the public view,
+    read only, with a byline to the profile.
+  - The copy is v1's `profile.public.*` and `share.byline`.
+  - Evidence: scene tests (profile tabs, hidden wardrobe, missing profile, piece page, visitor board and look) and a
+    native Chromium walk signed out (profile, its public board, a private board's address reading as gone, no CSP
+    violations).
+  - Open: link previews and `X-Robots-Tag` (M3e), follow and share buttons (M4), and the owner's own way to their
+    `/@handle` from the profile editor.
+- **Next:** M3e, link previews (`EdgeMeta.ts`, the `HTMLRewriter`, `/cdn/og`), then deploying M3 to the preview.
 - **Shared with the capture session:** migrations are generated one at a time; public delivery reuses its rule for a
   piece's shown picture; generated pictures reuse its Muse provider.
 - **Still to settle in spikes:** Clef and Llama Guard thresholds on fixtures in English and Slovenian, drawing text

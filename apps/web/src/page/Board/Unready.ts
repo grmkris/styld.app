@@ -1,5 +1,5 @@
 import { format, type Locale } from '@styld/i18n'
-import type { Paper } from '@styld/protocol'
+import type { Paper, PublicBoard } from '@styld/protocol'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../../ActionButton.ts'
 import { secondaryAction } from '../../Actions.styles.ts'
@@ -26,12 +26,14 @@ const notReady = (text: string, retry: boolean, locale: Locale, h: HtmlBuilder<M
   ])
 
 /** A board's page while the board loads, if it failed to (with Try again) or is gone; the board itself once
- * it is ready. The page and its collage editor show these alike. */
+ * it is ready. The page and its collage editor show these alike; someone else's public board shows as `visiting`
+ * has it, and in the editor as gone. */
 export const boardStateView = (
   board: BoardState,
   ready: (name: string, paper: Paper) => Html,
   locale: Locale,
   h: HtmlBuilder<Message>,
+  visiting: (board: PublicBoard) => Html = () => notReady(format(locale, 'board.missing', {}), false, locale, h),
 ): Html =>
   h.main(
     [h.Id('main')],
@@ -42,6 +44,7 @@ export const boardStateView = (
         Failed: () => notReady(format(locale, 'board.failed', {}), true, locale, h),
         Missing: () => notReady(format(locale, 'board.missing', {}), false, locale, h),
         Ready: ({ name, paper }) => ready(name, paper),
+        Visiting: ({ board: shown }) => visiting(shown),
       }),
     ],
   )

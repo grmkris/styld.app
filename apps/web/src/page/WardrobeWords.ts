@@ -11,6 +11,6 @@ export const colourName = (colour: Colour) => `wardrobe.addPieceColor_${colour}`
 export const searchWordsName = (category: Category) => `ask.searchWords.${category}` as const satisfies MessageKey
 
 /** A piece's name, or what it is when it has none: the same caption on every page. */
-export const pieceLabel = (piece: Piece, locale: Locale) =>
+export const pieceLabel = (piece: Pick<Piece, 'name' | 'category' | 'subcategory'>, locale: Locale) =>
   piece.name ??
   format(locale, piece.subcategory === null ? categoryName(piece.category) : subcategoryName(piece.subcategory), {})

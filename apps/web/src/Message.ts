@@ -16,6 +16,7 @@ import * as Looks from './page/Looks.ts'
 import * as Piece from './page/Piece.ts'
 import * as Review from './page/Review.ts'
 import * as Today from './page/Today.ts'
+import * as Visit from './page/Visit.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
 
 /** Everything that can happen in the website: its own Messages and each page's, wrapped. Its own module so the
@@ -51,6 +52,7 @@ export const Message = defineMessageUnion({
   GotAskMessage: { message: Ask.Message },
   GotBoardsMessage: { message: Boards.Message },
   GotBoardMessage: { message: BoardMessage.Message },
+  GotVisitMessage: { message: Visit.Message },
   ChoseTelemetryConsent: { granted: Schema.Boolean },
   RecordedTelemetryConsent: { granted: Schema.Boolean },
   OpenedTelemetrySettings: {},

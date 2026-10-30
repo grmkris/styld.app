@@ -1,0 +1,144 @@
+import { catalogVersion } from '@styld/i18n'
+import { PublicBoard, PublicLookPage, PublicPiecePage, PublicProfile } from '@styld/protocol'
+import { Schema } from 'effect'
+import { click, expect, given, role, scene, text } from 'foldkit/scene'
+import { modifyFields } from 'foldkit/struct'
+import { describe, test } from 'vitest'
+import { init, Session, update } from '../src/App.ts'
+import { BoardState } from '../src/page/Board/Model.ts'
+import { Shown as LookShown } from '../src/page/Look.ts'
+import { Shown } from '../src/page/Visit.ts'
+import { view } from '../src/View.ts'
+
+const knit = { id: `pc_${'knit'.padEnd(22, 'x')}`, name: 'Navy knit', category: 'top', subcategory: null, colours: [] }
+const nika = Schema.decodeUnknownSync(PublicProfile)({
+  handle: 'nika.kovac',
+  name: 'Nika Kovač',
+  city: 'Maribor',
+  bio: 'Red, black and one good coat.',
+  tone: 'clay',
+  boards: [
+    {
+      id: `bd_${'coats'.padEnd(22, 'x')}`,
+      name: 'Coats',
+      paper: 'paper',
+      items: [],
+      cover: [
+        {
+          _tag: 'PublicPiecePin',
+          id: `pn_${'knit'.padEnd(22, 'x')}`,
+          piece: knit,
+          addedAt: '2026-10-30T08:00:00.000Z',
+        },
+      ],
+      pinCount: 1,
+      publishedAt: '2026-10-30T08:00:00.000Z',
+    },
+  ],
+  looks: [],
+  pieces: [knit],
+})
+
+const opened = (pathname: string) =>
+  modifyFields(
+    init({
+      locale: 'en',
+      catalogVersion,
+      timeZone: 'UTC',
+      referenceTime: 0,
+      pathname,
+      origin: 'https://styld.test',
+      telemetryConsent: 'denied',
+    }).model,
+    { session: () => Session.SignedOut() },
+  )
+const visiting = (pathname: string, shown: Shown) =>
+  modifyFields(opened(pathname), { visit: (visit) => modifyFields(visit, { shown: () => shown }) })
+const by = { handle: 'nika.kovac', name: 'Nika Kovač', tone: 'clay' }
+
+describe('a public profile', () => {
+  test('shows the person and their public boards, looks and pieces, signed out', () => {
+    scene(
+      { update, view },
+      given(visiting('/@nika.kovac', Shown.Person({ profile: nika }))),
+      expect(role('heading', { name: 'Nika Kovač' })).toExist(),
+      expect(text('@nika.kovac · Maribor')).toExist(),
+      expect(text('Red, black and one good coat.')).toExist(),
+      expect(role('link', { name: /Coats/ })).toHaveAttr('href', `/boards/bd_${'coats'.padEnd(22, 'x')}`),
+      click(role('button', { name: 'Looks' })),
+      expect(role('button', { name: 'Looks' })).toHaveAttr('aria-pressed', 'true'),
+      expect(text('Nothing here yet.')).toExist(),
+      click(role('button', { name: 'Pieces' })),
+      expect(role('link', { name: 'Navy knit' })).toHaveAttr('href', `/pieces/${knit.id}`),
+    )
+  })
+
+  test('keeps the wardrobe off when its owner hides it, and a missing profile says so', () => {
+    scene(
+      { update, view },
+      given(visiting('/@nika.kovac', Shown.Person({ profile: { ...nika, pieces: null } }))),
+      expect(role('button', { name: 'Pieces' })).toBeAbsent(),
+    )
+    scene(
+      { update, view },
+      given(visiting('/@nobody', Shown.Missing())),
+      expect(role('heading', { name: 'Page not found' })).toExist(),
+    )
+  })
+
+  test('shows a public piece with whose it is', () => {
+    const page = Schema.decodeUnknownSync(PublicPiecePage)({
+      piece: knit,
+      by: { handle: 'nika.kovac', name: 'Nika Kovač', tone: 'clay' },
+    })
+    scene(
+      { update, view },
+      given(visiting(`/pieces/${knit.id}`, Shown.Piece({ page }))),
+      expect(role('heading', { name: 'Navy knit' })).toExist(),
+      expect(role('img', { name: 'Navy knit' })).toHaveAttr('src', `/cdn/public/pieces/${knit.id}/full`),
+      expect(role('link', { name: /By Nika Kovač/ })).toHaveAttr('href', '/@nika.kovac'),
+    )
+  })
+
+  test('shows someone else’s public board and shared look to a visitor, read only', () => {
+    const board = Schema.decodeUnknownSync(PublicBoard)({
+      ...nika.boards[0],
+      pins: nika.boards[0]?.cover ?? [],
+      by,
+    })
+    scene(
+      { update, view },
+      given(
+        modifyFields(opened(`/boards/${board.id}`), {
+          board: (page) => modifyFields(page, { board: () => BoardState.Visiting({ board }) }),
+        }),
+      ),
+      expect(role('heading', { name: 'Coats' })).toExist(),
+      expect(role('link', { name: /By Nika Kovač/ })).toHaveAttr('href', '/@nika.kovac'),
+      expect(role('link', { name: 'Navy knit' })).toHaveAttr('href', `/pieces/${knit.id}`),
+      expect(role('button', { name: 'Board settings' })).toBeAbsent(),
+    )
+    const page = Schema.decodeUnknownSync(PublicLookPage)({
+      look: {
+        id: `lk_${'monday'.padEnd(22, 'x')}`,
+        name: 'Monday',
+        occasion: 'Office',
+        pieces: [knit],
+        sharedAt: '2026-10-30T08:00:00.000Z',
+      },
+      by,
+    })
+    scene(
+      { update, view },
+      given(
+        modifyFields(opened(`/looks/${page.look.id}`), {
+          look: (look) => modifyFields(look, { shown: () => LookShown.Visiting({ page }) }),
+        }),
+      ),
+      expect(role('heading', { name: 'Monday' })).toExist(),
+      expect(text('Office')).toExist(),
+      expect(role('link', { name: 'Navy knit' })).toHaveAttr('href', `/pieces/${knit.id}`),
+      expect(role('button', { name: 'Delete' })).toBeAbsent(),
+    )
+  })
+})

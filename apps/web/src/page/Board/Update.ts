@@ -73,6 +73,9 @@ export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     SucceededLoadBoard: ({ board }) => ({ model: fromBoard(model, board) }),
     FailedLoadBoard: ({ missing }) => loadFailed(model, missing),
+    SucceededVisitBoard: ({ board }) => ({
+      model: modifyFields(model, { board: () => BoardState.Visiting({ board }) }),
+    }),
     GotWardrobeMessage: (got) => foldWardrobe(model, got.message),
     CompletedMakeIds: ({ ids }) => ({ model: modifyFields(model, { ids: (pool) => [...pool, ...ids] }) }),
     MeasuredPaper: ({ width }) => ({ model: modifyFields(model, { pxPerUnit: () => unitsPerPixel(width) }) }),

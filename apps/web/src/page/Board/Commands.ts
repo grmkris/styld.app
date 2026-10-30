@@ -19,18 +19,30 @@ const longestSide = 2048
 
 const boardIdOf = (id: string) => Schema.decodeUnknownEffect(BoardId)(id)
 
+/** A board as others see it, once it is public and Styld's check lets them. */
+const visitBoard = (boardId: string) =>
+  Effect.gen(function* () {
+    const api = yield* (yield* StyldClient).api
+    const board = yield* api.public.board({ params: { boardId: yield* boardIdOf(boardId) } })
+    return Message.SucceededVisitBoard({ board })
+  }).pipe(
+    Effect.catchTag('PublicNotFound', () => Effect.succeed(Message.FailedLoadBoard({ missing: true }))),
+    Effect.orElseSucceed(() => Message.FailedLoadBoard({ missing: false })),
+  )
+
 export const LoadBoard = Command.define('LoadBoard', {
   args: { boardId: Schema.String },
-  messages: [Message.SucceededLoadBoard, Message.FailedLoadBoard],
+  messages: [Message.SucceededLoadBoard, Message.FailedLoadBoard, Message.SucceededVisitBoard],
   execute: ({ boardId }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       const board = yield* api.board.getBoard({ params: { boardId: yield* boardIdOf(boardId) } })
       return Message.SucceededLoadBoard({ board })
     }).pipe(
-      Effect.catchTag('BoardNotFound', () => Effect.succeed(Message.FailedLoadBoard({ missing: true }))),
       Effect.catchTag('SchemaError', () => Effect.succeed(Message.FailedLoadBoard({ missing: true }))),
-      Effect.orElseSucceed(() => Message.FailedLoadBoard({ missing: false })),
+      Effect.catchTag('WardrobeUnavailable', () => Effect.succeed(Message.FailedLoadBoard({ missing: false }))),
+      // Not this account's board, or nobody signed in: it may be public.
+      Effect.catch(() => visitBoard(boardId)),
     ),
 })
 

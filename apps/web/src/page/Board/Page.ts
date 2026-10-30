@@ -69,6 +69,7 @@ const boardName = (model: Model) =>
     Failed: () => '',
     Missing: () => '',
     Ready: ({ name }) => name,
+    Visiting: ({ board }) => board.name,
   })
 
 /** The settings sheet opens on the board's name, with nothing pending. */

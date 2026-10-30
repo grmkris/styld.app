@@ -1,0 +1,126 @@
+import { format, type Locale } from '@styld/i18n'
+import type { PublicPiecePage, PublicProfile } from '@styld/protocol'
+import { Submodel } from 'foldkit'
+import type { Html, HtmlBuilder } from 'foldkit/html'
+import { actionButton } from '../ActionButton.ts'
+import { secondaryAction } from '../Actions.styles.ts'
+import { avatar } from '../Avatar.ts'
+import { loader } from '../Icon.ts'
+import { styled } from '../Styled.ts'
+import { publicPieceImage } from './Board/Table.ts'
+import { boardCard, byline, lookTile, pieceTile, tileGrid } from './PublicTiles.ts'
+import { Message, type Model, type PersonTab, Shown } from './Visit.ts'
+import * as styles from './VisitView.styles.ts'
+import { pieceLabel } from './WardrobeWords.ts'
+
+const tabLabel = (tab: PersonTab, locale: Locale) =>
+  format(
+    locale,
+    tab === 'boards' ? 'profile.public.boards' : tab === 'looks' ? 'profile.public.looks' : 'profile.public.pieces',
+    {},
+  )
+
+const tabsOf = (profile: PublicProfile): ReadonlyArray<PersonTab> =>
+  profile.pieces === null ? ['boards', 'looks'] : ['boards', 'looks', 'pieces']
+
+const emptyOr = (tiles: Html, isEmpty: boolean, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  isEmpty ? h.p(styled(h, styles.empty()), [format(locale, 'profile.public.empty', {})]) : tiles
+
+const tabContent = (profile: PublicProfile, tab: PersonTab, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  if (tab === 'boards')
+    return emptyOr(
+      h.ul(
+        styled(h, styles.boards()),
+        profile.boards.map((board) => h.keyed('li')(board.id, [], [boardCard(board, locale, h)])),
+      ),
+      profile.boards.length === 0,
+      locale,
+      h,
+    )
+  if (tab === 'looks')
+    return emptyOr(
+      tileGrid(
+        profile.looks.map((look) => ({ id: look.id, tile: lookTile(look, h) })),
+        h,
+      ),
+      profile.looks.length === 0,
+      locale,
+      h,
+    )
+  const pieces = profile.pieces ?? []
+  return emptyOr(
+    tileGrid(
+      pieces.map((piece) => ({ id: piece.id, tile: pieceTile(piece, locale, h) })),
+      h,
+    ),
+    pieces.length === 0,
+    locale,
+    h,
+  )
+}
+
+/** A published profile: the avatar, name, handle and city, the bio, then its Boards, Looks and Pieces. */
+const personView = (profile: PublicProfile, current: PersonTab, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  const tabs = tabsOf(profile)
+  const tab = tabs.includes(current) ? current : 'boards'
+  return h.div(styled(h, styles.page()), [
+    h.header(styled(h, styles.person()), [
+      avatar(profile.name, profile.tone, 'large', h),
+      h.h1(styled(h, styles.name()), [profile.name]),
+      h.p(styled(h, styles.handle()), [
+        profile.city === null ? `@${profile.handle}` : `@${profile.handle} · ${profile.city}`,
+      ]),
+      profile.bio === null ? h.empty : h.p(styled(h, styles.bio()), [profile.bio]),
+    ]),
+    h.div(
+      [h.Role('group'), h.AriaLabel(profile.name), ...styled(h, styles.tabs())],
+      tabs.map((each) =>
+        h.button(
+          [
+            h.Type('button'),
+            h.AriaPressed(String(each === tab)),
+            ...styled(h, styles.tab()),
+            h.OnClick(Message.ChoseTab({ tab: each })),
+          ],
+          [tabLabel(each, locale)],
+        ),
+      ),
+    ),
+    tabContent(profile, tab, locale, h),
+  ])
+}
+
+/** A piece on its own page: its cut-out, what it is and whose. */
+const pieceView = ({ piece, by }: PublicPiecePage, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.div(styled(h, styles.page()), [
+    h.img([
+      h.Src(publicPieceImage(piece.id, 'full')),
+      h.Alt(pieceLabel(piece, locale)),
+      ...styled(h, styles.pieceImage()),
+    ]),
+    h.h1(styled(h, styles.name()), [pieceLabel(piece, locale)]),
+    byline(by, locale, h),
+  ])
+
+/** Someone's profile or piece, as anyone sees it. */
+export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
+  h.main(
+    [h.Id('main')],
+    [
+      Shown.match(model.shown, {
+        Loading: () => h.p([h.Role('status')], [loader(h)]),
+        Missing: () => h.h1([], [format(locale, 'common.notFoundTitle', {})]),
+        Failed: () =>
+          h.div(styled(h, styles.page()), [
+            h.p([h.Role('alert')], [format(locale, 'common.error', {})]),
+            actionButton(
+              { label: format(locale, 'common.retry', {}), style: secondaryAction(), onClick: Message.ClickedRetry() },
+              h,
+            ),
+          ]),
+        Person: ({ profile }) => personView(profile, model.tab, locale, h),
+        Piece: ({ page }) => pieceView(page, locale, h),
+      }),
+    ],
+  ),
+)

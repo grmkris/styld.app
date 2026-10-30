@@ -15,6 +15,7 @@ import { verifyGalleryJourney } from './GalleryBrowserAcceptance.ts'
 import { nativeDailyAllowance, verifyCaptures } from './CaptureAcceptance.ts'
 import { verifyGallery } from './GalleryAcceptance.ts'
 import { verifySocial } from './SocialAcceptance.ts'
+import { verifyPublicJourney } from './SocialBrowserAcceptance.ts'
 import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
 import { verifyMcp } from './McpAcceptance.ts'
 import { verifyAccountDeletion, verifyWardrobe } from './WardrobeAcceptance.ts'
@@ -173,6 +174,9 @@ test(
 )
 
 test('keeps profiles and checks whatever goes public first', overHttp(verifySocial), { timeout: 60000 })
+test('shows a published profile and its public board to a signed-out visitor', inBrowser(verifyPublicJourney), {
+  timeout: 60000,
+})
 
 test(
   'turns photos and videos into captures that wait for review, meters them daily, and keeps them private',

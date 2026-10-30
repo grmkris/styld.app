@@ -1,6 +1,6 @@
 import { Dialog } from '@foldkit/ui'
 import { format, type Locale } from '@styld/i18n'
-import { type Look, LookPin, type Paper, type Piece, type Pin, PiecePin } from '@styld/protocol'
+import { type Look, LookPin, type Paper, type Piece, type Pin, PiecePin, type PublicBoard } from '@styld/protocol'
 import { Array, Match, Option, Schema } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
@@ -14,6 +14,7 @@ import { publicToggle } from '../PublicToggle.ts'
 import { bottomSheet } from '../Sheet.ts'
 import { Message } from './Message.ts'
 import { boardStateView } from './Unready.ts'
+import { visitingView } from './Visiting.ts'
 import { type Model, PinWork, Publishing, Removal, Rename } from './Model.ts'
 import * as styles from './PageView.styles.ts'
 import { boardImage, pieceImage, stillTable } from './Table.ts'
@@ -387,6 +388,7 @@ const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: 
   ])
 
 /** A board's page: its collage as a card that opens the editor, then its pins, newest first. */
-export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
-  boardStateView(model.board, (name, paper) => readyView(model, name, paper, locale, h), locale, h),
-)
+export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) => {
+  const visiting = (board: PublicBoard) => visitingView(board, locale, h)
+  return boardStateView(model.board, (name, paper) => readyView(model, name, paper, locale, h), locale, h, visiting)
+})
