@@ -1,4 +1,5 @@
 import { Schema } from 'effect'
+import { CheckStatus, Visibility } from './Check.ts'
 import { Look, LookId } from './Look.ts'
 import { OperationId, Piece, PieceId, UploadId } from './Wardrobe.ts'
 
@@ -90,6 +91,9 @@ export const Board = Schema.Struct({
   version: Schema.Int,
   items: Schema.Array(BoardItem),
   pins: Schema.Array(Pin),
+  visibility: Visibility,
+  /** The model's check, once the board has been public; others see it only while the check lets them. */
+  check: Schema.NullOr(CheckStatus),
   updatedAt: Schema.String,
 })
 export type Board = typeof Board.Type
@@ -102,6 +106,7 @@ export const BoardSummary = Schema.Struct({
   items: Schema.Array(BoardItem),
   cover: Schema.Array(Pin),
   pinCount: Schema.Int,
+  visibility: Visibility,
   updatedAt: Schema.String,
 })
 export type BoardSummary = typeof BoardSummary.Type

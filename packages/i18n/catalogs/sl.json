@@ -2116,6 +2116,22 @@
     "nativeShare": "Deli prek …",
     "copyLink": "Kopiraj povezavo",
     "copied": "Kopirano",
+    "check": {
+      "pending": "Styld jo preverja. Drugi jo vidijo, ko je preverjanje končano.",
+      "unsure": "Na tvojem profilu in na njeni povezavi, ne pa v Razišči in iskanju.",
+      "failed": "Skrito pred drugimi: {reason}.",
+      "hidden": "Skrito pred drugimi zaradi prijav.",
+      "reasons": {
+        "sexual": "videti je kot golota ali spolna vsebina",
+        "minor": "morda prikazuje otroka na način, ki ga Styld ne dovoli",
+        "violence": "videti je nasilno",
+        "hate": "videti je sovražno",
+        "selfHarm": "morda prikazuje samopoškodovanje",
+        "spam": "videti je kot neželena vsebina",
+        "instructions": "vsebuje besede, namenjene pomočnikom UI",
+        "other": "ne ustreza pravilom Stylda"
+      }
+    },
     "linkCopied": "Povezava kopirana",
     "copyFailed": "Povezave ni bilo mogoče kopirati",
     "onX": "Deli na X",

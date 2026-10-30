@@ -29,6 +29,9 @@ export const boardHandlers = (admit: Admit) =>
         .handle('removePins', ({ params, payload }) =>
           admit(asSessionAccount(boards.removePins(params.boardId, payload))),
         )
+        .handle('setBoardVisibility', ({ params, payload }) =>
+          admit(asSessionAccount(boards.setBoardVisibility(params.boardId, payload))),
+        )
         .handle('addBoardImage', ({ params, payload }) =>
           admit(asSessionAccount(boards.addBoardImage(params.boardId, payload))),
         )

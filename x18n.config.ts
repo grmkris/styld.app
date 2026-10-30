@@ -42,6 +42,8 @@ export default defineConfig({
       // The prompt an image model draws a clean picture from, and Muse's protocol text.
       'packages/server/src/capture/CleanPrompt.ts': ['/[\\s\\S]*/'],
       'packages/server/src/capture/Muse.ts': ['/[\\s\\S]*/'],
+      // The questions the content check puts to Clef and Llama Guard.
+      'packages/server/src/safety/Judge.ts': ['/[\\s\\S]*/'],
       'apps/web/src/**/*.styles.ts': ['/[\\s\\S]*/'],
       'apps/web/src/GlobalStyles.ts': ['/[\\s\\S]*/'],
       'apps/web/src/zyzz.config.ts': ['/[\\s\\S]*/'],

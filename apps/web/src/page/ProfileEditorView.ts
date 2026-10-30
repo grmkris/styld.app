@@ -5,6 +5,7 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { avatar } from '../Avatar.ts'
+import { checkNotice } from './CheckNotice.ts'
 import { textField } from '../Fields.styles.ts'
 import { loader } from '../Icon.ts'
 import { styled } from '../Styled.ts'
@@ -168,6 +169,7 @@ const publicView = (profile: Profile, model: Model, locale: Locale, h: HtmlBuild
               ? `@${profile.handle}`
               : format(locale, 'profile.card.private', { username: profile.handle }),
           ]),
+      profile.published ? checkNotice(profile.check, locale, h) : h.empty,
       Publishing.match(model.publishing, {
         Idle: () => h.empty,
         Sending: () => h.p([h.Role('status')], [loader(h)]),

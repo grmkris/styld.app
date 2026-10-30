@@ -1,4 +1,5 @@
 import {
+  type CheckStatus,
   type Handle,
   HandleReserved,
   HandleTaken,
@@ -13,6 +14,7 @@ import {
 } from '@styld/protocol'
 import { Context, DateTime, Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
+import type { Checks } from '../safety/Checks.ts'
 import type { StoreUnavailable } from '../wardrobe/Store.ts'
 import { makeProfileStore, type ProfileRow, type ProfileStore } from './ProfileStore.ts'
 
@@ -28,7 +30,7 @@ const toneFor = (accountId: string): Tone => {
 }
 
 /** A profile as the protocol shows it. */
-const shown = (row: ProfileRow): Profile =>
+const shown = (row: ProfileRow, check: Option.Option<CheckStatus>): Profile =>
   // Only the service writes rows, through the same schemas; a row that does not decode is a bug.
   Schema.decodeUnknownSync(Profile)({
     handle: row.handle,
@@ -38,6 +40,7 @@ const shown = (row: ProfileRow): Profile =>
     tone: row.tone,
     published: row.published,
     wardrobeShown: row.wardrobeShown,
+    check: Option.getOrNull(check),
   })
 
 /** The account's profile as stored, or the one it would have: its signup name, unpublished, wardrobe shown. */
@@ -86,12 +89,24 @@ const saved = (store: ProfileStore, row: ProfileRow) =>
       ),
     )
 
-const make = (database: Parameters<typeof makeProfileStore>[0]) => {
+const make = (database: Parameters<typeof makeProfileStore>[0], checks: Checks['Service']) => {
   const store = makeProfileStore(database)
+  /** A published profile is checked as it is now, and a shown wardrobe's pieces through the queue. */
+  const checked = (row: ProfileRow, wardrobeNewlyShown: boolean) =>
+    Effect.gen(function* () {
+      const target = { kind: 'profile' as const, id: row.accountId }
+      if (!row.published) return shown(row, yield* checks.status(target))
+      const check = yield* checks.checkNow(target)
+      if (row.wardrobeShown && wardrobeNewlyShown) {
+        const pieceIds = yield* stored(store.readyPieceIds(row.accountId))
+        yield* checks.checkLater(pieceIds.map((id) => ({ kind: 'piece' as const, id })))
+      }
+      return shown(row, check)
+    })
   return {
     getProfile: Effect.fn('Styld.Profiles.get')(function* () {
       const { accountId } = yield* CurrentAccount
-      return shown(yield* current(store, accountId))
+      return shown(yield* current(store, accountId), yield* checks.status({ kind: 'profile', id: accountId }))
     }),
     /** Change the profile; a new handle must be free and not reserved. */
     updateProfile: Effect.fn('Styld.Profiles.update')(function* (input: UpdateProfile) {
@@ -99,7 +114,8 @@ const make = (database: Parameters<typeof makeProfileStore>[0]) => {
       const before = yield* current(store, accountId)
       if (input.handle !== undefined && input.handle !== before.handle) yield* claimable(store, accountId, input.handle)
       const next = { ...before, ...input, updatedAt: yield* nowDate }
-      return shown(yield* saved(store, { ...next, searchText: searchText(next.name, next.handle) }))
+      const row = yield* saved(store, { ...next, searchText: searchText(next.name, next.handle) })
+      return yield* checked(row, !before.wardrobeShown)
     }),
     /** Publish the profile, which needs a handle, or take it down. */
     publishProfile: Effect.fn('Styld.Profiles.publish')(function* (input: PublishProfile) {
@@ -112,7 +128,7 @@ const make = (database: Parameters<typeof makeProfileStore>[0]) => {
       const row = yield* saved(store, { ...before, published: input.published, publishedAt, updatedAt: at }).pipe(
         Effect.catchTag('HandleTaken', () => Effect.fail(unavailable())),
       )
-      return shown(row)
+      return yield* checked(row, !before.published)
     }),
   }
 }
@@ -120,5 +136,6 @@ const make = (database: Parameters<typeof makeProfileStore>[0]) => {
 /** Profiles: the person's public face. Every operation acts for `CurrentAccount`. */
 export class Profiles extends Context.Service<Profiles, ReturnType<typeof make>>()('@styld/server/Profiles') {}
 
-/** Profiles over the Worker's database. Build it once per isolate. */
-export const makeProfiles = (database: Parameters<typeof makeProfileStore>[0]) => Profiles.of(make(database))
+/** Profiles over the Worker's database, checked by the Worker's checks. Build it once per isolate. */
+export const makeProfiles = (database: Parameters<typeof makeProfileStore>[0], checks: Checks['Service']) =>
+  Profiles.of(make(database, checks))

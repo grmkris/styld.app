@@ -80,6 +80,7 @@ const looks = Looks.of({
   createLook: notUsed,
   listLooks: () => Effect.succeed([]),
   getLook: notUsed,
+  shareLook: notUsed,
   deleteLook: notUsed,
 })
 /** Redraws: the first piece is drawn again; the second shows its original photo, which is never sent on. */
@@ -126,6 +127,8 @@ const board = Schema.decodeUnknownSync(Board)({
   pins: [
     { _tag: 'PiecePin', id: `pn_${'knit'.padEnd(22, 'x')}`, piece: pieces[0], addedAt: '2026-10-30T08:00:00.000Z' },
   ],
+  visibility: 'private',
+  check: null,
   updatedAt: '2026-10-30T08:00:00.000Z',
 })
 const arrangements: Array<ArrangeBoard> = []
@@ -141,6 +144,7 @@ const boards = Boards.of({
   addPins: notUsed,
   removePins: notUsed,
   addBoardImage: notUsed,
+  setBoardVisibility: notUsed,
   boardImage: notUsed,
 })
 /** The profile: Ana's, published with a handle. */
@@ -154,6 +158,7 @@ const profiles = Profiles.of({
       tone: 'sage',
       published: true,
       wardrobeShown: true,
+      check: { state: 'passed', reason: null, hidden: false },
     }),
   updateProfile: notUsed,
   publishProfile: notUsed,

@@ -22,6 +22,7 @@ export const lookHandlers = (admit: Admit) =>
           ),
         )
         .handle('getLook', ({ params }) => asSessionAccount(looks.getLook(params.lookId)))
+        .handle('shareLook', ({ params, payload }) => admit(asSessionAccount(looks.shareLook(params.lookId, payload))))
         .handle('deleteLook', ({ params }) => admit(asSessionAccount(looks.deleteLook(params.lookId))))
     }),
   )

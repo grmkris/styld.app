@@ -43,6 +43,24 @@ export const RenameBoard = Command.define('RenameBoard', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedRename())),
 })
 
+/** Make the board public on the person's profile, or private again. */
+export const SetBoardVisibility = Command.define('SetBoardVisibility', {
+  args: { boardId: Schema.String, isPublic: Schema.Boolean },
+  messages: [Message.SucceededSetVisibility, Message.FailedSetVisibility],
+  execute: ({ boardId, isPublic }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const board = yield* api.board.setBoardVisibility({
+        params: { boardId: yield* boardIdOf(boardId) },
+        payload: { visibility: isPublic ? 'public' : 'private' },
+      })
+      return Message.SucceededSetVisibility({ board })
+    }).pipe(
+      Effect.catchTag('ProfileNotPublished', () => Effect.succeed(Message.FailedSetVisibility({ needsProfile: true }))),
+      Effect.orElseSucceed(() => Message.FailedSetVisibility({ needsProfile: false })),
+    ),
+})
+
 /** Delete the board; one already gone counts as deleted. */
 export const DeleteBoard = Command.define('DeleteBoard', {
   args: { boardId: Schema.String },

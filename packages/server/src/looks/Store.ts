@@ -76,6 +76,14 @@ export const makeLookStore = (database: Parameters<typeof drizzle>[0]) => {
           .limit(1),
       ).pipe(Effect.map((rows) => Option.fromNullishOr(rows[0]))),
     piecesOf,
+    /** Share the look from this time, or stop sharing it. */
+    setShared: (accountId: string, lookId: string, sharedAt: Date | null) =>
+      attempt(() =>
+        db
+          .update(looks)
+          .set({ sharedAt })
+          .where(and(eq(looks.id, lookId), eq(looks.accountId, accountId))),
+      ).pipe(Effect.asVoid),
     deleteLook: (accountId: string, lookId: string) =>
       attempt(() =>
         db

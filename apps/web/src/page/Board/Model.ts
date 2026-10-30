@@ -1,5 +1,5 @@
 import { Dialog, FileDrop } from '@foldkit/ui'
-import { Board, BoardItem, BoardItemId, Look, LookId, Paper, Pin } from '@styld/protocol'
+import { Board, BoardItem, BoardItemId, CheckStatus, Look, LookId, Paper, Pin, Visibility } from '@styld/protocol'
 import * as WardrobePage from '../Wardrobe.ts'
 import { Option, Schema } from 'effect'
 import { AsyncData } from 'foldkit'
@@ -87,6 +87,10 @@ export type PinWork = typeof PinWork.Type
 export const Rename = defineTaggedUnion({ Idle: {}, Saving: {}, Failed: {} })
 export type Rename = typeof Rename.Type
 
+/** Making the board public or private from its settings; a board goes public only from a published profile. */
+export const Publishing = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: { needsProfile: Schema.Boolean } })
+export type Publishing = typeof Publishing.Type
+
 /** Deleting the board: asked once more, then sent. */
 export const Removal = defineTaggedUnion({ Idle: {}, Confirming: {}, Deleting: {}, Failed: {} })
 export type Removal = typeof Removal.Type
@@ -115,6 +119,10 @@ export const Model = Schema.Struct({
   nameDraft: Schema.String,
   rename: Rename,
   removal: Removal,
+  /** Who sees the board, and Styld's check of it once it has been public. */
+  visibility: Visibility,
+  check: Schema.Option(CheckStatus),
+  publishing: Publishing,
   /** The sheet that pins pieces and looks, and what is ticked in it (`piece:<id>`, `look:<id>`). */
   picker: Dialog.Model,
   picks: Schema.Array(Schema.String),
@@ -154,6 +162,9 @@ export const init = (boardId: string): Model => ({
   nameDraft: '',
   rename: Rename.Idle(),
   removal: Removal.Idle(),
+  visibility: 'private',
+  check: Option.none(),
+  publishing: Publishing.Idle(),
   picker: Dialog.init({ id: 'board-picker' }),
   picks: [],
   looks: AsyncData.Idle(),
@@ -175,10 +186,17 @@ export const init = (boardId: string): Model => ({
   drop: FileDrop.init({ id: 'board-pictures' }),
 })
 
-/** The board as the server last confirmed it. */
-export const fromBoard = (model: Model, board: Board): Model =>
+/** Who sees the board as the server last confirmed it: its name, visibility and check. */
+export const withSharing = (model: Model, board: Board): Model =>
   modifyFields(model, {
     board: () => BoardState.Ready({ name: board.name, paper: board.paper }),
+    visibility: () => board.visibility,
+    check: () => Option.fromNullishOr(board.check),
+  })
+
+/** The board as the server last confirmed it. */
+export const fromBoard = (model: Model, board: Board): Model =>
+  modifyFields(withSharing(model, board), {
     version: () => board.version,
     items: () => board.items,
     pins: () => board.pins,

@@ -15,6 +15,9 @@ export const StyldMedia = Cloudflare.R2.Bucket('StyldV2Media', {
 /** New pieces wait here for their photo to be prepared (`wardrobe/Processing.ts`). */
 export const StyldPieceQueue = Cloudflare.Queues.Queue('StyldV2PieceProcessing')
 
+/** The model's checks of what people make public, retried while a model does not answer. */
+export const StyldChecksQueue = Cloudflare.Queues.Queue('StyldV2Checks')
+
 /** Every capture provider call and review decision, for cost and keep rates (`tools/ai-usage-report.ts`). */
 export const StyldAiCalls = Cloudflare.AnalyticsEngine.Dataset('StyldV2AiCalls')
 

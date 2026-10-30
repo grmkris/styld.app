@@ -95,6 +95,7 @@ const summaryOf = (board: Board): BoardSummary => ({
   items: board.items,
   cover: board.pins.slice(0, 4),
   pinCount: board.pins.length,
+  visibility: board.visibility,
   updatedAt: board.updatedAt,
 })
 

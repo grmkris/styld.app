@@ -6,6 +6,8 @@ import {
   DeleteLook,
   Deletion,
   Message as LookMessage,
+  ShareLook,
+  Sharing,
   Shown,
   init as initLook,
   update as updateLook,
@@ -19,6 +21,8 @@ const weekend: LookContract = {
   name: 'Weekend',
   occasion: 'Brunch',
   pieces: [pieceFixture('tee', { name: 'White tee' }), pieceFixture('jeans', { category: 'bottom' })],
+  shared: false,
+  check: null,
   createdAt: '2026-10-29T12:00:00.000Z',
 }
 
@@ -43,6 +47,24 @@ describe('one look', () => {
       given(initLook(lookId)),
       message(LookMessage.FailedGetLook({ notFound: true })),
       model(({ shown }) => expect(Shown.guards.NotFound(shown)).toBe(true)),
+    )
+  })
+
+  test('sharing a look needs a published profile, and shows the shared look with its check', () => {
+    const shared = { ...weekend, shared: true, check: { state: 'passed', reason: null, hidden: false } } as const
+    story(
+      updateLook,
+      given(initLook(lookId)),
+      message(LookMessage.SucceededGetLook({ look: weekend })),
+      message(LookMessage.ToggledShared({ shared: true })),
+      Command.resolve(ShareLook({ lookId, shared: true }), LookMessage.FailedShareLook({ needsProfile: true })),
+      model(({ sharing }) => expect(sharing).toEqual(Sharing.Failed({ needsProfile: true }))),
+      message(LookMessage.ToggledShared({ shared: true })),
+      Command.resolve(ShareLook({ lookId, shared: true }), LookMessage.SucceededShareLook({ look: shared })),
+      model(({ shown, sharing }) => {
+        expect(shown).toEqual(Shown.Loaded({ look: shared }))
+        expect(Sharing.guards.Idle(sharing)).toBe(true)
+      }),
     )
   })
 

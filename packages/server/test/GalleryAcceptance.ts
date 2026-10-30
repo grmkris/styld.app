@@ -8,13 +8,13 @@ const send = (call: Call, path: string, method: string, body: unknown) =>
   call(path, { method, body: JSON.stringify(body) })
 
 const Identified = Schema.Struct({ id: Schema.String })
-const idOf = async (response: Response) => {
+export const idOf = async (response: Response) => {
   expect(response.status).toBe(200)
   return Schema.decodeUnknownSync(Identified)(await response.json()).id
 }
 
 /** A piece added from a received photo: its id. */
-const addedPiece = async (origin: string, call: Call, operationId: string) =>
+export const addedPiece = async (origin: string, call: Call, operationId: string) =>
   idOf(
     await send(call, '/api/pieces', 'POST', {
       operationId,

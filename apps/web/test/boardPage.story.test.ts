@@ -6,7 +6,16 @@ import { modifyFields } from 'foldkit/struct'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import { Message } from '../src/page/Board/Message.ts'
-import { BoardState, fromBoard, init, type Model, PinWork, Removal, Saving } from '../src/page/Board/Model.ts'
+import {
+  BoardState,
+  fromBoard,
+  init,
+  type Model,
+  PinWork,
+  Publishing,
+  Removal,
+  Saving,
+} from '../src/page/Board/Model.ts'
 import {
   DeleteBoard,
   LeaveBoard,
@@ -14,6 +23,7 @@ import {
   PinThings,
   ReloadBoard,
   RenameBoard,
+  SetBoardVisibility,
   UnpinThings,
 } from '../src/page/Board/PageCommands.ts'
 import { update } from '../src/page/Board/Update.ts'
@@ -29,6 +39,8 @@ const look = Schema.decodeUnknownSync(Look)({
   name: 'Monday',
   occasion: null,
   pieces: [knit],
+  shared: false,
+  check: null,
   createdAt: '2026-10-30T07:00:00.000Z',
 })
 const knitOnTable = PieceItem.make({
@@ -48,6 +60,8 @@ const board = Schema.decodeUnknownSync(Board)({
   version: 2,
   items: [knitOnTable],
   pins: [knitPin],
+  visibility: 'private',
+  check: null,
   updatedAt: '2026-10-30T08:00:00.000Z',
 })
 const open: Model = fromBoard(init(board.id), board)
@@ -74,6 +88,35 @@ describe('a board page', () => {
         expect(settings.isOpen).toBe(false)
       }),
       Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
+    )
+  })
+
+  test('going public needs a published profile, and then shows what Styld’s check says', () => {
+    const pending = { state: 'pending', reason: null, hidden: false } as const
+    story(
+      update,
+      given(open),
+      message(Message.ToggledPublic({ isPublic: true })),
+      Command.expectExact(SetBoardVisibility({ boardId: board.id, isPublic: true })),
+      Command.resolve(
+        SetBoardVisibility({ boardId: board.id, isPublic: true }),
+        Message.FailedSetVisibility({ needsProfile: true }),
+      ),
+      model(({ visibility, publishing }) => {
+        expect(visibility).toBe('private')
+        expect(publishing).toEqual(Publishing.Failed({ needsProfile: true }))
+      }),
+      message(Message.ToggledPublic({ isPublic: true })),
+      Command.resolve(
+        SetBoardVisibility({ boardId: board.id, isPublic: true }),
+        Message.SucceededSetVisibility({ board: withPins([knitPin], { visibility: 'public', check: pending }) }),
+      ),
+      model(({ visibility, check, publishing, version }) => {
+        expect(visibility).toBe('public')
+        expect(check).toEqual(Option.some(pending))
+        expect(Publishing.guards.Idle(publishing)).toBe(true)
+        expect(version).toBe(2)
+      }),
     )
   })
 

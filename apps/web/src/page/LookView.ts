@@ -8,7 +8,8 @@ import { formError } from '../Fields.styles.ts'
 import { backIcon, loader } from '../Icon.ts'
 import { looksRouter, pieceRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
-import { Deletion, Message, type Model, Shown } from './Look.ts'
+import { Deletion, Message, type Model, Sharing, Shown } from './Look.ts'
+import { publicToggle } from './PublicToggle.ts'
 import * as SaveToBoardView from './SaveToBoardView.ts'
 import { round } from './PageBar.styles.ts'
 import { pieceLabel } from './WardrobeWords.ts'
@@ -106,6 +107,21 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
             viewInputs: { locale },
             toParentMessage: (message) => Message.GotSaveToBoardMessage({ message }),
           }),
+          publicToggle(
+            {
+              id: 'look-public',
+              isPublic: look.shared,
+              check: look.check,
+              work: Sharing.match(model.sharing, {
+                Idle: () => 'idle' as const,
+                Sending: () => 'sending' as const,
+                Failed: ({ needsProfile }) => (needsProfile ? ('needsProfile' as const) : ('failed' as const)),
+              }),
+              onToggle: (shared) => Message.ToggledShared({ shared }),
+            },
+            locale,
+            h,
+          ),
           h.div([], deletion(model, locale, h)),
         ],
       }),

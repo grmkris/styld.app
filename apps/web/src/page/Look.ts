@@ -21,10 +21,15 @@ export type Shown = typeof Shown.Type
 export const Deletion = defineTaggedUnion({ Idle: {}, Confirming: {}, Deleting: {}, Failed: {} })
 export type Deletion = typeof Deletion.Type
 
+/** Sharing the look on the profile, or no longer; only a published profile shares. */
+export const Sharing = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: { needsProfile: Schema.Boolean } })
+export type Sharing = typeof Sharing.Type
+
 export const Model = Schema.Struct({
   lookId: Schema.String,
   shown: Shown,
   deletion: Deletion,
+  sharing: Sharing,
   saveToBoard: SaveToBoard.Model,
 })
 export type Model = typeof Model.Type
@@ -33,6 +38,7 @@ export const init = (lookId: string): Model => ({
   lookId,
   shown: Shown.Loading(),
   deletion: Deletion.Idle(),
+  sharing: Sharing.Idle(),
   saveToBoard: SaveToBoard.init({ kind: 'look', id: lookId }),
 })
 
@@ -42,6 +48,9 @@ export const Message = defineMessageUnion({
   SucceededGetLook: { look: LookContract },
   FailedGetLook: { notFound: Schema.Boolean },
   ClickedRetry: {},
+  ToggledShared: { shared: Schema.Boolean },
+  SucceededShareLook: { look: LookContract },
+  FailedShareLook: { needsProfile: Schema.Boolean },
   ClickedDelete: {},
   ClickedCancelDelete: {},
   ClickedConfirmDelete: {},
@@ -70,6 +79,24 @@ const GetLook = Command.define('GetLook', {
         SchemaError: () => Effect.succeed(Message.FailedGetLook({ notFound: true })),
       }),
       Effect.orElseSucceed(() => Message.FailedGetLook({ notFound: false })),
+    ),
+})
+
+/** @internal Exported for its tests. */
+export const ShareLook = Command.define('ShareLook', {
+  args: { lookId: Schema.String, shared: Schema.Boolean },
+  messages: [Message.SucceededShareLook, Message.FailedShareLook],
+  execute: ({ lookId, shared }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const look = yield* api.look.shareLook({
+        params: { lookId: yield* Schema.decodeUnknownEffect(LookId)(lookId) },
+        payload: { shared },
+      })
+      return Message.SucceededShareLook({ look })
+    }).pipe(
+      Effect.catchTag('ProfileNotPublished', () => Effect.succeed(Message.FailedShareLook({ needsProfile: true }))),
+      Effect.orElseSucceed(() => Message.FailedShareLook({ needsProfile: false })),
     ),
 })
 
@@ -103,6 +130,19 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedRetry: () => ({
       model: modifyFields(model, { shown: () => Shown.Loading() }),
       commands: [GetLook({ lookId: model.lookId })],
+    }),
+    ToggledShared: ({ shared }) =>
+      Sharing.guards.Sending(model.sharing)
+        ? { model }
+        : {
+            model: modifyFields(model, { sharing: () => Sharing.Sending() }),
+            commands: [ShareLook({ lookId: model.lookId, shared })],
+          },
+    SucceededShareLook: ({ look }) => ({
+      model: modifyFields(model, { shown: () => Shown.Loaded({ look }), sharing: () => Sharing.Idle() }),
+    }),
+    FailedShareLook: ({ needsProfile }) => ({
+      model: modifyFields(model, { sharing: () => Sharing.Failed({ needsProfile }) }),
     }),
     ClickedDelete: () => ({ model: modifyFields(model, { deletion: () => Deletion.Confirming() }) }),
     ClickedCancelDelete: () =>

@@ -5,8 +5,29 @@ import { AsyncData, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import type { Services, UpdateReturn } from './Edits.ts'
 import { Message } from './Message.ts'
-import { BoardState, fromBoard, Gesture, LooksData, type Model, PinWork, Removal, Rename, Saving } from './Model.ts'
-import { DeleteBoard, LeaveBoard, LoadLooks, PinThings, ReloadBoard, RenameBoard, UnpinThings } from './PageCommands.ts'
+import {
+  BoardState,
+  fromBoard,
+  Gesture,
+  LooksData,
+  type Model,
+  PinWork,
+  Publishing,
+  Removal,
+  Rename,
+  Saving,
+  withSharing,
+} from './Model.ts'
+import {
+  DeleteBoard,
+  LeaveBoard,
+  LoadLooks,
+  PinThings,
+  ReloadBoard,
+  RenameBoard,
+  SetBoardVisibility,
+  UnpinThings,
+} from './PageCommands.ts'
 
 // The board page's own steps: its settings sheet, its pins and the picker that adds them, and catching up when
 // the page comes back into view.
@@ -77,6 +98,15 @@ const renamed = (model: Model, board: Board): UpdateReturn =>
     }),
   )
 
+/** Public or private, from the settings; the sheet stays open to show what Styld's check says. */
+const publicToggled = (model: Model, isPublic: boolean): UpdateReturn =>
+  Publishing.guards.Sending(model.publishing)
+    ? { model }
+    : {
+        model: modifyFields(model, { publishing: () => Publishing.Sending() }),
+        commands: [SetBoardVisibility({ boardId: model.boardId, isPublic })],
+      }
+
 const deletionConfirmed = (model: Model): UpdateReturn => ({
   model: modifyFields(model, { removal: () => Removal.Deleting() }),
   commands: [DeleteBoard({ boardId: model.boardId })],
@@ -129,7 +159,9 @@ const picksSubmitted = (model: Model): UpdateReturn =>
 const pinsChanged = (model: Model, board: Board): UpdateReturn =>
   closePicker(
     modifyFields(
-      board.version === model.version ? modifyFields(model, { pins: () => board.pins }) : fromBoard(model, board),
+      board.version === model.version
+        ? modifyFields(withSharing(model, board), { pins: () => board.pins })
+        : fromBoard(model, board),
       {
         pinWork: () => PinWork.Idle(),
         picks: () => [],
@@ -153,10 +185,7 @@ const reloaded = (model: Model, board: Board): UpdateReturn => {
   if (!Saving.guards.Saved(model.saving) || !Gesture.guards.Idle(model.gesture)) return { model }
   if (board.version === model.version)
     return {
-      model: modifyFields(model, {
-        pins: () => board.pins,
-        board: () => BoardState.Ready({ name: board.name, paper: board.paper }),
-      }),
+      model: modifyFields(withSharing(model, board), { pins: () => board.pins }),
     }
   return {
     model: modifyFields(fromBoard(model, board), {
@@ -177,6 +206,9 @@ type PageTag =
   | 'SubmittedRename'
   | 'SucceededRename'
   | 'FailedRename'
+  | 'ToggledPublic'
+  | 'SucceededSetVisibility'
+  | 'FailedSetVisibility'
   | 'ClickedDeleteBoard'
   | 'ClickedKeepBoard'
   | 'ClickedConfirmDelete'
@@ -206,6 +238,13 @@ export const pageSteps = (
   SubmittedRename: () => renameSubmitted(model),
   SucceededRename: ({ board }) => renamed(model, board),
   FailedRename: () => ({ model: modifyFields(model, { rename: () => Rename.Failed() }) }),
+  ToggledPublic: ({ isPublic }) => publicToggled(model, isPublic),
+  SucceededSetVisibility: ({ board }) => ({
+    model: modifyFields(withSharing(model, board), { publishing: () => Publishing.Idle() }),
+  }),
+  FailedSetVisibility: ({ needsProfile }) => ({
+    model: modifyFields(model, { publishing: () => Publishing.Failed({ needsProfile }) }),
+  }),
   ClickedDeleteBoard: () => ({ model: modifyFields(model, { removal: () => Removal.Confirming() }) }),
   ClickedKeepBoard: () => ({ model: modifyFields(model, { removal: () => Removal.Idle() }) }),
   ClickedConfirmDelete: () => deletionConfirmed(model),

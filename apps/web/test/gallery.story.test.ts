@@ -70,6 +70,8 @@ describe('boards', () => {
     version: 0,
     items: [],
     pins: [],
+    visibility: 'private',
+    check: null,
     updatedAt: '2026-10-30T08:00:00.000Z',
   })
   const listed = Schema.decodeUnknownSync(BoardSummary)({
@@ -79,6 +81,7 @@ describe('boards', () => {
     items: [],
     cover: [],
     pinCount: 0,
+    visibility: 'private',
     updatedAt: created.updatedAt,
   })
 

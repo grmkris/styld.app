@@ -1,5 +1,6 @@
 import {
   Board,
+  type BoardId,
   type BoardItem,
   BoardNotFound,
   BoardSummary,
@@ -8,8 +9,11 @@ import {
   WardrobeUnavailable,
 } from '@styld/protocol'
 import { DateTime, Effect, Match, Option, Schema } from 'effect'
+import { CurrentAccount } from '../CurrentAccount.ts'
 import { shownLooks } from '../looks/Looks.ts'
 import { type LookStore } from '../looks/Store.ts'
+import type { Checks } from '../safety/Checks.ts'
+import type { ProfileStore } from '../social/ProfileStore.ts'
 import { type ImageBindings } from '../wardrobe/Delivery.ts'
 import { type Store, type StoreUnavailable } from '../wardrobe/Store.ts'
 import { toPiece, type WardrobeBindings } from '../wardrobe/Wardrobe.ts'
@@ -69,6 +73,8 @@ export interface Parts {
   readonly store: BoardStore
   readonly wardrobeStore: Store
   readonly lookStore: LookStore
+  readonly profileStore: ProfileStore
+  readonly checks: Checks['Service']
   readonly newId: (prefix: 'bd' | 'bm' | 'pn' | 'bi') => Effect.Effect<string, WardrobeUnavailable>
   readonly digest: (text: string) => Effect.Effect<string, WardrobeUnavailable>
 }
@@ -80,7 +86,11 @@ export const pinnedLooks = (parts: Parts, pins: ReadonlyArray<PinWithPiece>) =>
   Effect.gen(function* () {
     const lookIds = [...new Set(pins.flatMap(({ pin }) => (pin.lookId === null ? [] : [pin.lookId])))]
     if (lookIds.length === 0) return new Map<string, Look>()
-    const looks = yield* shownLooks(parts.lookStore, yield* stored(parts.lookStore.looksById(lookIds)))
+    const looks = yield* shownLooks(
+      parts.lookStore,
+      yield* stored(parts.lookStore.looksById(lookIds)),
+      yield* parts.checks.statuses('look', lookIds),
+    )
     return new Map(looks.map((look) => [look.id, look]))
   })
 
@@ -116,6 +126,7 @@ export const shown = (parts: Parts, rows: ReadonlyArray<BoardRow>) =>
     const ids = rows.map(({ id }) => id)
     const items = yield* stored(parts.store.itemsOf(ids))
     const pinsOf = yield* shownPins(parts, yield* stored(parts.store.pinsOf(ids)))
+    const checks = yield* parts.checks.statuses('board', ids)
     return yield* Effect.forEach(rows, (row) =>
       // Only the service writes rows, through the same schemas; a row that does not decode is a bug.
       Schema.decodeUnknownEffect(Board)({
@@ -125,6 +136,8 @@ export const shown = (parts: Parts, rows: ReadonlyArray<BoardRow>) =>
         version: row.version,
         items: items.filter(({ boardId }) => boardId === row.id).map(shownItem),
         pins: pinsOf(row.id),
+        visibility: row.visibility,
+        check: checks.get(row.id) ?? null,
         updatedAt: row.updatedAt.toISOString(),
       }).pipe(Effect.orDie),
     )
@@ -145,6 +158,7 @@ export const summaries = (parts: Parts, rows: ReadonlyArray<BoardRow>) =>
         items: items.filter(({ boardId }) => boardId === row.id).map(shownItem),
         cover: coverOf(row.id),
         pinCount: counts.get(row.id) ?? 0,
+        visibility: row.visibility,
         updatedAt: row.updatedAt.toISOString(),
       }).pipe(Effect.orDie),
     )
@@ -202,6 +216,31 @@ export const newPins = (
       createdAt: new Date(at.getTime() + targets.length - index),
     })),
   )
+
+/** The account's pieces pinned on a public board that have never been checked go to the queue: the board puts
+ * them in front of others. */
+export const pinnedPiecesChecked = (parts: Parts, accountId: string, boardId: string) =>
+  Effect.gen(function* () {
+    const pieceIds = (yield* stored(parts.store.pinsOf([boardId]))).flatMap(({ piece }) =>
+      piece !== null && piece.accountId === accountId ? [piece.id] : [],
+    )
+    const known = yield* parts.checks.statuses('piece', pieceIds)
+    yield* parts.checks.checkLater(
+      pieceIds.filter((id) => !known.has(id)).map((id) => ({ kind: 'piece' as const, id })),
+    )
+  })
+
+/** An edit of a board, after which a public board's check is pending again and its new pieces are checked. */
+export const rechecked =
+  <I, A, E, R>(parts: Parts, edit: (boardId: BoardId, input: I) => Effect.Effect<A, E, R>) =>
+  (boardId: BoardId, input: I) =>
+    Effect.tap(edit(boardId, input), () =>
+      Effect.gen(function* () {
+        if (!(yield* parts.checks.changed({ kind: 'board', id: boardId }))) return
+        const { accountId } = yield* CurrentAccount
+        yield* pinnedPiecesChecked(parts, accountId, boardId)
+      }),
+    )
 
 export const pieceTarget = (pieceId: string) => ({ kind: 'piece' as const, pieceId, lookId: null, imageId: null })
 export const lookTarget = (lookId: string) => ({ kind: 'look' as const, pieceId: null, lookId, imageId: null })

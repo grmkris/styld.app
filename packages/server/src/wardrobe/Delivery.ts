@@ -28,6 +28,9 @@ export const deliverImage = Effect.fnUntraced(function* (
   bindings: ImageBindings,
   stored: { readonly key: string; readonly contentType: string },
   size: ImageSize,
+  /** `none` for anything others see: a failed transform answers no image rather than the stored bytes, which may
+   * be an original photo with its metadata. */
+  options: { readonly fallback: 'stored' | 'none' } = { fallback: 'stored' },
 ) {
   const read = Effect.tryPromise({ try: () => bindings.bucket.get(stored.key), catch: unavailable })
   const object = yield* read
@@ -45,13 +48,15 @@ export const deliverImage = Effect.fnUntraced(function* (
     catch: unavailable,
   }).pipe(
     // The transform consumed the first read, so the stored photo is read again.
-    Effect.catchTag('WardrobeUnavailable', () =>
-      Effect.map(read, (again) =>
-        Option.map(Option.fromNullishOr(again), ({ body, httpMetadata }): DeliveredImage => ({
-          body,
-          contentType: httpMetadata?.contentType ?? stored.contentType,
-        })),
-      ),
+    Effect.catchTag('WardrobeUnavailable', (error) =>
+      options.fallback === 'none'
+        ? Effect.fail(error)
+        : Effect.map(read, (again) =>
+            Option.map(Option.fromNullishOr(again), ({ body, httpMetadata }): DeliveredImage => ({
+              body,
+              contentType: httpMetadata?.contentType ?? stored.contentType,
+            })),
+          ),
     ),
   )
 })

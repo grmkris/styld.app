@@ -4,7 +4,7 @@ import * as AlchemyHttp from 'alchemy/Http'
 import { type EmailEntryOptions, ProofDispatchSink } from '@styld/auth'
 import { RuntimeContext } from 'alchemy/RuntimeContext'
 import { layerCryptoWeb } from '@yielded/auth/WebCrypto'
-import { Effect, Layer, Logger, Redacted, Stream } from 'effect'
+import { Effect, Layer, Logger, Option, Redacted, Stream } from 'effect'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import * as UrlParams from 'effect/http/UrlParams'
@@ -41,7 +41,18 @@ import { health } from './Health.ts'
 import { onFirstUse } from './IsolateCache.ts'
 import { mcpRoutes } from './mcp/Route.ts'
 import { makeMcpOAuth } from './OAuth.ts'
-import { emailSender, StyldAiCalls, StyldDatabase, StyldEmail, StyldMedia, StyldPieceQueue } from './Resources.ts'
+import {
+  emailSender,
+  StyldAiCalls,
+  StyldChecksQueue,
+  StyldDatabase,
+  StyldEmail,
+  StyldMedia,
+  StyldPieceQueue,
+} from './Resources.ts'
+import { type CheckBindings, makeChecks } from './safety/Checks.ts'
+import { contentJudge, type RunGuard } from './safety/Judge.ts'
+import { checkAttempts, settleCheck } from './safety/Queue.ts'
 import { wardrobeRoutes } from './wardrobe/Http.ts'
 import { processingAttempts, settleMessage } from './wardrobe/Queue.ts'
 import { makeWardrobe, Wardrobe, type WardrobeBindings } from './wardrobe/Wardrobe.ts'
@@ -81,7 +92,8 @@ const perClientLimit = (name: string, namespaceId: number, limit: number) =>
 /** One wardrobe, one account lifecycle, one capture service, the looks, boards and worn days per isolate, shared
  * by the routes and the processing queue. Assistant-added pieces get the same cut-out providers as the tray. */
 const storageServices = <R>(
-  bindings: WardrobeBindings,
+  bindings: WardrobeBindings & { readonly checksQueue: CheckBindings['queue'] },
+  judge: ReturnType<typeof contentJudge>,
   providers: Layer.Layer<
     | GarmentVision
     | PictureWork
@@ -96,13 +108,15 @@ const storageServices = <R>(
   >,
 ) =>
   Effect.gen(function* () {
+    const checksService = yield* makeChecks({ ...bindings, queue: bindings.checksQueue }).pipe(Effect.provide(judge))
     const wardrobeService = yield* makeWardrobe(bindings)
     const lifecycleService = yield* makeAccountLifecycle(bindings)
     const capturesService = yield* makeCaptures(bindings)
-    const looksService = yield* makeLooks(bindings.database)
-    const boardsService = yield* makeBoards(bindings)
-    const profilesService = makeProfiles(bindings.database)
+    const looksService = yield* makeLooks(bindings.database, checksService)
+    const boardsService = yield* makeBoards(bindings, checksService)
+    const profilesService = makeProfiles(bindings.database, checksService)
     return {
+      checksService,
       wardrobeService,
       lifecycleService,
       capturesService,
@@ -233,6 +247,8 @@ const declareBindings = Effect.gen(function* () {
   const images = yield* Cloudflare.Images.Images('STYLD_IMAGES')
   const pieceQueueResource = yield* StyldPieceQueue
   const pieceQueue = yield* Cloudflare.Queues.WriteQueue(pieceQueueResource)
+  const checksQueueResource = yield* StyldChecksQueue
+  const checksQueue = yield* Cloudflare.Queues.WriteQueue(checksQueueResource)
   // Clef-flash (Workers AI) routes photos and suggests details; provider calls are counted in Analytics Engine.
   const ai = yield* Cloudflare.Workers.AI('AI')
   const calls = yield* Cloudflare.AnalyticsEngine.WriteDataset(yield* StyldAiCalls)
@@ -255,6 +271,8 @@ const declareBindings = Effect.gen(function* () {
     images,
     pieceQueueResource,
     pieceQueue,
+    checksQueueResource,
+    checksQueue,
     ai,
     calls,
     allowTelemetry,
@@ -264,6 +282,28 @@ const declareBindings = Effect.gen(function* () {
   }
 })
 
+/** Clef and the judge of what people make public, over the Workers AI binding. */
+const workersModels = (
+  env: Cloudflare.Workers.WorkerEnvironment['Service'],
+  aiRaw: Effect.Success<Effect.Success<typeof declareBindings>['ai']['raw']>,
+) => {
+  // SAFETY: Clef-flash is a Workers AI model newer than the pinned workers-types model list -- the request is the System One API shape Clef.ts builds and documents
+  const workersAi: RunClef = (request) => aiRaw.run('@cf/cloudflare/clef-flash' as never, request as never)
+  // Native acceptance only: the local stack cannot reach Workers AI, so it names a stand-in for Clef.
+  const clefStandIn: unknown = env.CLEF_API_BASE
+  const runClef: RunClef =
+    typeof clefStandIn === 'string' && clefStandIn.length > 0
+      ? (request) => askStandIn(clefStandIn, request)
+      : workersAi
+  const runGuard: RunGuard = ({ messages }) =>
+    aiRaw.run('@cf/meta/llama-guard-3-8b', { messages: messages.map((message) => ({ ...message })) })
+  // Only native acceptance names the stand-in judge.
+  return {
+    runClef,
+    judge: contentJudge(env.CHECKS === 'stand-in' ? Option.none() : Option.some({ runClef, runGuard })),
+  }
+}
+
 /** The application over the Worker's bindings, built from the request runtime's environment. */
 const makeApplication =
   ({
@@ -272,6 +312,7 @@ const makeApplication =
     media,
     images,
     pieceQueue,
+    checksQueue,
     ai,
     calls,
     allowTelemetry,
@@ -295,23 +336,23 @@ const makeApplication =
       const db = yield* database.raw
       const bucket = yield* media.raw
       const imagesRaw = yield* images.raw
-      const aiRaw = yield* ai.raw
-      // SAFETY: Clef-flash is a Workers AI model newer than the pinned workers-types model list -- the request is the System One API shape Clef.ts builds and documents
-      const workersAi: RunClef = (request) => aiRaw.run('@cf/cloudflare/clef-flash' as never, request as never)
-      // Native acceptance only: the local stack cannot reach Workers AI, so it names a stand-in for Clef.
-      const clefStandIn: unknown = env.CLEF_API_BASE
+      const { runClef, judge } = workersModels(env, yield* ai.raw)
       const providers = captureProviders(env, {
-        runClef:
-          typeof clefStandIn === 'string' && clefStandIn.length > 0
-            ? (request) => askStandIn(clefStandIn, request)
-            : workersAi,
+        runClef,
         images: imagesRaw,
         bucket,
         dataset: yield* calls.raw,
         origin: { environment: observabilityBase.environment, release: observabilityBase.release },
       })
       const services = yield* storageServices(
-        { database: db, bucket, images: imagesRaw, queue: yield* pieceQueue.raw },
+        {
+          database: db,
+          bucket,
+          images: imagesRaw,
+          queue: yield* pieceQueue.raw,
+          checksQueue: yield* checksQueue.raw,
+        },
+        judge,
         providers,
       )
       const { wardrobeService, lifecycleService, capturesService, looksService, wardrobe, captures, boards } = services
@@ -340,6 +381,7 @@ const makeApplication =
         wardrobe: wardrobeService,
         lifecycle: lifecycleService,
         captures: capturesService,
+        checks: services.checksService,
         allowCodeRequest,
       }
     })
@@ -386,6 +428,15 @@ export default StyldWorker.make(
         Effect.gen(function* () {
           const services = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
           yield* Stream.runForEach(messages, (message) => settleMessage(services, message))
+        }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
+    )
+    yield* Cloudflare.Queues.consumeQueueMessages(
+      bindings.checksQueueResource,
+      { batchSize: 10, maxRetries: checkAttempts, retryDelay: '30 seconds' },
+      (messages) =>
+        Effect.gen(function* () {
+          const { checks } = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
+          yield* Stream.runForEach(messages, (message) => settleCheck(checks, message))
         }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
     )
     return { fetch }

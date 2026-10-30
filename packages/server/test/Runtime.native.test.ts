@@ -54,6 +54,8 @@ const makeStack = (generation: string) =>
           STYLD_RELEASE: `native-${generation}`,
           // Capture providers stay off natively: each capture keeps its original photo as one detection.
           STYLD_PROVIDERS: 'off',
+          // The stand-in judge decides checks: `[[fail]]` and `[[unsure]]` in public text.
+          CHECKS: 'stand-in',
           ...pictureEnvironment(worker.url),
           DAILY_ALLOWANCE: String(nativeDailyAllowance),
           AUTH_SECRET: Redacted.make('native-test-auth-secret-012345678901234567890123'),
@@ -170,9 +172,7 @@ test(
   { timeout: 60000 },
 )
 
-test('keeps profiles: a handle that is free and not reserved, published only with one', overHttp(verifySocial), {
-  timeout: 60000,
-})
+test('keeps profiles and checks whatever goes public first', overHttp(verifySocial), { timeout: 60000 })
 
 test(
   'turns photos and videos into captures that wait for review, meters them daily, and keeps them private',

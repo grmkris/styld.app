@@ -12,6 +12,7 @@ import {
   PinRefused,
   type RemovePins,
   searchText,
+  type SetVisibility,
   type UpdateBoard,
   UploadRefused,
 } from '@styld/protocol'
@@ -20,6 +21,8 @@ import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { makeLookStore } from '../looks/Store.ts'
+import type { Checks } from '../safety/Checks.ts'
+import { makeProfileStore, requirePublished } from '../social/ProfileStore.ts'
 import { deliverImage } from '../wardrobe/Delivery.ts'
 import type { ShownImage } from '../wardrobe/Http.ts'
 import type { ImageSize } from '../wardrobe/Media.ts'
@@ -34,7 +37,9 @@ import {
   one,
   ownBoard,
   pieceTarget,
+  pinnedPiecesChecked,
   receiptFor,
+  rechecked,
   receiptRow,
   shown,
   stored,
@@ -213,6 +218,28 @@ const pinning = (parts: Parts) => ({
   }),
 })
 
+const publishing = (parts: Parts) => ({
+  /** Make the board public, which needs a published profile, or private again. A public board is checked as it
+   * is now, and its own pieces through the queue; others see it once the check lets them. */
+  setBoardVisibility: Effect.fn('Styld.Boards.setVisibility')(function* (boardId: BoardId, input: SetVisibility) {
+    const { accountId } = yield* CurrentAccount
+    const board = yield* ownBoard(parts, accountId, boardId)
+    if (input.visibility === 'public') yield* requirePublished(parts.profileStore, accountId)
+    const goesPublic = input.visibility === 'public' && board.visibility !== 'public'
+    yield* stored(
+      parts.store.updateBoard(accountId, boardId, {
+        visibility: input.visibility,
+        publishedAt: goesPublic ? yield* nowDate : board.publishedAt,
+      }),
+    )
+    if (input.visibility === 'public') {
+      yield* parts.checks.checkNow({ kind: 'board', id: boardId })
+      yield* pinnedPiecesChecked(parts, accountId, boardId)
+    }
+    return yield* one(parts, accountId, boardId)
+  }),
+})
+
 /** The answer to an operation id that already added a picture: the same picture, while its board exists. */
 const replayImage = (parts: Parts, accountId: string, imageId: string) =>
   Effect.gen(function* () {
@@ -276,7 +303,7 @@ const pictures = (parts: Parts) => ({
   }),
 })
 
-const make = (bindings: BoardBindings) =>
+const make = (bindings: BoardBindings, checks: Checks['Service']) =>
   Effect.gen(function* () {
     const crypto = yield* Crypto.Crypto
     const encoder = new TextEncoder()
@@ -285,6 +312,8 @@ const make = (bindings: BoardBindings) =>
       store: makeBoardStore(bindings.database),
       wardrobeStore: makeStore(bindings.database),
       lookStore: makeLookStore(bindings.database),
+      profileStore: makeProfileStore(bindings.database),
+      checks,
       newId: (prefix) =>
         Effect.map(crypto.randomBytes(16), (bytes) => `${prefix}_${Base64Url.encode(bytes)}`).pipe(
           Effect.mapError(unavailable),
@@ -292,7 +321,19 @@ const make = (bindings: BoardBindings) =>
       digest: (text) =>
         Effect.map(crypto.digest('SHA-256', encoder.encode(text)), Base64Url.encode).pipe(Effect.mapError(unavailable)),
     }
-    return { ...reads(parts), ...changes(parts), ...tables(parts), ...pinning(parts), ...pictures(parts) }
+    const edits = { ...changes(parts), ...tables(parts), ...pinning(parts), ...pictures(parts) }
+    return {
+      ...reads(parts),
+      ...edits,
+      ...publishing(parts),
+      updateBoard: rechecked(parts, edits.updateBoard),
+      saveBoardItems: rechecked(parts, edits.saveBoardItems),
+      arrangeBoard: rechecked(parts, edits.arrangeBoard),
+      setTable: rechecked(parts, edits.setTable),
+      addPins: rechecked(parts, edits.addPins),
+      removePins: rechecked(parts, edits.removePins),
+      addBoardImage: rechecked(parts, edits.addBoardImage),
+    }
   })
 
 /** Boards, for the website. Every operation acts for `CurrentAccount`, which HTTP provides per request, so no
@@ -301,5 +342,6 @@ export class Boards extends Context.Service<Boards, Effect.Success<ReturnType<ty
   '@styld/server/Boards',
 ) {}
 
-/** Boards over the Worker's bindings. Build it once per isolate. */
-export const makeBoards = (bindings: BoardBindings) => Effect.map(make(bindings), (service) => Boards.of(service))
+/** Boards over the Worker's bindings, checked by the Worker's checks. Build it once per isolate. */
+export const makeBoards = (bindings: BoardBindings, checks: Checks['Service']) =>
+  Effect.map(make(bindings, checks), (service) => Boards.of(service))

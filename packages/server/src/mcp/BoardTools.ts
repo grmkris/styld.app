@@ -23,6 +23,7 @@ import {
   PinId,
   type PinRefused,
   pinsAtOnce,
+  type ProfileNotPublished,
   TableLabel,
   TableLayout,
   TablePicture,
@@ -30,6 +31,7 @@ import {
   type TableThing,
   TextStyle,
   type UploadRefused,
+  Visibility,
   type WardrobeUnavailable,
 } from '@styld/protocol'
 import { Effect, Match, Schema } from 'effect'
@@ -46,6 +48,7 @@ type BoardFailure =
   | PinRefused
   | OperationConflict
   | UploadRefused
+  | ProfileNotPublished
   | WardrobeUnavailable
 
 const refused = (code: string, message: string, recovery: string) =>
@@ -99,6 +102,12 @@ const asToolError = (error: BoardFailure): ToolError =>
           'Use a new operationId for a new change.',
         ),
       UploadRefused: () => refused('photo_refused', 'That picture could not be used.', 'Try another picture address.'),
+      ProfileNotPublished: () =>
+        refused(
+          'profile_not_published',
+          'A board goes public only from a published profile.',
+          'Ask the person whether to publish their profile with profile_publish first.',
+        ),
       WardrobeUnavailable: () =>
         new ToolError({
           code: 'unavailable',
@@ -158,6 +167,8 @@ const shownBoard = (origin: string) => (board: Board) => ({
   name: board.name,
   paper: board.paper,
   version: board.version,
+  visibility: board.visibility,
+  check: board.check,
   url: `${origin}/boards/${board.id}`,
   pins: board.pins.map(shownPin(origin)),
   table: board.items.toSorted((a, b) => a.z - b.z).map(shownItem),
@@ -168,6 +179,7 @@ const shownSummary = (origin: string) => (board: BoardSummary) => ({
   name: board.name,
   pinCount: board.pinCount,
   onTable: board.items.length,
+  visibility: board.visibility,
   updatedAt: board.updatedAt,
   url: `${origin}/boards/${board.id}`,
 })
@@ -247,6 +259,16 @@ const boardTools = (boards: Boards['Service'], origin: string) => {
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       handler: ({ boardId, ...changes }) =>
         boards.updateBoard(boardId, changes).pipe(Effect.map(show), Effect.mapError(asToolError)),
+    }),
+    tool({
+      name: 'board_publish',
+      title: 'Make a board public or private',
+      description:
+        'Make a board public on the person’s published profile, at its link, or private again. Only when the person asks. Styld checks a public board before others see it: `check.state` is passed (shown everywhere), unsure (on the profile and its link only), failed (hidden from others, with a reason) or pending (being checked).',
+      parameters: Schema.Struct({ boardId: BoardId, visibility: Visibility }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      handler: ({ boardId, visibility }) =>
+        boards.setBoardVisibility(boardId, { visibility }).pipe(Effect.map(show), Effect.mapError(asToolError)),
     }),
     tool({
       name: 'board_delete',

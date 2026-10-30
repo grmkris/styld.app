@@ -1,6 +1,7 @@
 import { SessionHttp } from '@styld/auth/config'
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
 import { AccountUnavailable, Me, RequestRefused } from './Account.ts'
+import { ProfileNotPublished, SetVisibility, ShareLook } from './Check.ts'
 import { HandleReserved, HandleTaken, Profile, ProfileNeedsHandle, PublishProfile, UpdateProfile } from './Profile.ts'
 import {
   CaptureCreated,
@@ -237,6 +238,14 @@ export class LookApi extends HttpApiGroup.make('look')
       error: [LookNotFound, WardrobeUnavailable, RequestRefused],
     }),
   )
+  .add(
+    HttpApiEndpoint.put('shareLook', '/looks/:lookId/shared', {
+      params: { lookId: LookId },
+      payload: ShareLook,
+      success: Look,
+      error: [LookNotFound, ProfileNotPublished, WardrobeUnavailable, RequestRefused],
+    }),
+  )
   .middleware(SessionHttp.RequireSession)
   .prefix('/api') {}
 
@@ -303,6 +312,14 @@ export class BoardApi extends HttpApiGroup.make('board')
       payload: RemovePins,
       success: Board,
       error: [BoardNotFound, OperationConflict, WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.put('setBoardVisibility', '/boards/:boardId/visibility', {
+      params: { boardId: BoardId },
+      payload: SetVisibility,
+      success: Board,
+      error: [BoardNotFound, ProfileNotPublished, WardrobeUnavailable, RequestRefused],
     }),
   )
   .add(

@@ -6,13 +6,14 @@ import {
   maximumLookPieces,
   type OperationConflict,
   type PieceNotFound,
+  type ProfileNotPublished,
   type WardrobeUnavailable,
 } from '@styld/protocol'
 import { Effect, Match, Schema } from 'effect'
 import type { Looks } from '../looks/Looks.ts'
 import { tool, ToolError } from './Tools.ts'
 
-type LookFailure = LookNotFound | PieceNotFound | OperationConflict | WardrobeUnavailable
+type LookFailure = LookNotFound | PieceNotFound | OperationConflict | ProfileNotPublished | WardrobeUnavailable
 
 /** Every look refusal as a tool error the assistant can act on. */
 const asToolError = (error: LookFailure): ToolError =>
@@ -37,6 +38,13 @@ const asToolError = (error: LookFailure): ToolError =>
           code: 'operation_conflict',
           message: 'That operationId was already used for a different change.',
           recovery: 'Use a new operationId for a new look.',
+          retryable: false,
+        }),
+      ProfileNotPublished: () =>
+        new ToolError({
+          code: 'profile_not_published',
+          message: 'A look is shared only on a published profile.',
+          recovery: 'Ask the person whether to publish their profile with profile_publish first.',
           retryable: false,
         }),
       WardrobeUnavailable: () =>
@@ -87,6 +95,16 @@ export const lookTools = (looks: Looks['Service'], origin: string) => {
       parameters: Schema.Struct({ lookId: LookId }),
       annotations: { readOnlyHint: true, openWorldHint: false },
       handler: ({ lookId }) => looks.getLook(lookId).pipe(Effect.map(show), Effect.mapError(asToolError)),
+    }),
+    tool({
+      name: 'look_share',
+      title: 'Share a look or stop sharing it',
+      description:
+        'Share a saved look on the person’s published profile, or stop sharing it. Only when the person asks. Styld checks a shared look before others see it; `check.state` says where that stands.',
+      parameters: Schema.Struct({ lookId: LookId, shared: Schema.Boolean }),
+      annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+      handler: ({ lookId, shared }) =>
+        looks.shareLook(lookId, { shared }).pipe(Effect.map(show), Effect.mapError(asToolError)),
     }),
     tool({
       name: 'look_delete',

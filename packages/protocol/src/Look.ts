@@ -1,4 +1,5 @@
 import { Schema } from 'effect'
+import { CheckStatus } from './Check.ts'
 import { OperationId, Piece, PieceId } from './Wardrobe.ts'
 
 export const LookId = Schema.String.check(Schema.isPattern(/^lk_[A-Za-z0-9_-]{22}$/)).pipe(Schema.brand('LookId'))
@@ -24,6 +25,9 @@ export const Look = Schema.Struct({
   occasion: Schema.NullOr(Schema.String),
   /** Its pieces still in the wardrobe; a deleted piece leaves its looks. */
   pieces: Schema.Array(Piece),
+  /** Shared looks are on the profile once their check lets them. */
+  shared: Schema.Boolean,
+  check: Schema.NullOr(CheckStatus),
   createdAt: Schema.String,
 })
 export type Look = typeof Look.Type

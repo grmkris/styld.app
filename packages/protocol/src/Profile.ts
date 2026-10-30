@@ -1,4 +1,5 @@
 import { Schema } from 'effect'
+import { CheckStatus } from './Check.ts'
 
 /** A public handle, `@nika.kovac`: 3–30 lowercase letters, digits, `_` and single inner dots, the Instagram
  * shape (v1's rule), so one can be carried over unchanged. */
@@ -69,6 +70,8 @@ export const Profile = Schema.Struct({
   published: Schema.Boolean,
   /** Whether the profile's Pieces tab shows the wardrobe. */
   wardrobeShown: Schema.Boolean,
+  /** The model's check, once published; others see the profile only while the check lets them. */
+  check: Schema.NullOr(CheckStatus),
 })
 export type Profile = typeof Profile.Type
 

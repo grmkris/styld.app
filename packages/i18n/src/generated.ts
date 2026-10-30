@@ -1775,6 +1775,18 @@ export interface MessageArgumentsByKey<T = string> {
   'share.button': Readonly<Record<string, never>>
   'share.byline': { readonly name: string | number }
   'share.bylineNote': Readonly<Record<string, never>>
+  'share.check.failed': { readonly reason: string | number }
+  'share.check.hidden': Readonly<Record<string, never>>
+  'share.check.pending': Readonly<Record<string, never>>
+  'share.check.reasons.hate': Readonly<Record<string, never>>
+  'share.check.reasons.instructions': Readonly<Record<string, never>>
+  'share.check.reasons.minor': Readonly<Record<string, never>>
+  'share.check.reasons.other': Readonly<Record<string, never>>
+  'share.check.reasons.selfHarm': Readonly<Record<string, never>>
+  'share.check.reasons.sexual': Readonly<Record<string, never>>
+  'share.check.reasons.spam': Readonly<Record<string, never>>
+  'share.check.reasons.violence': Readonly<Record<string, never>>
+  'share.check.unsure': Readonly<Record<string, never>>
   'share.copied': Readonly<Record<string, never>>
   'share.copyFailed': Readonly<Record<string, never>>
   'share.copyLink': Readonly<Record<string, never>>
@@ -2587,4 +2599,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'b6227705049e114d30dbf175c8d47cfe49b5e2aa10f4bbf58922cc0849f4098d'
+export const catalogVersion = '05d74d361d6f8f47c2ba2df6576d094da6da9e34f9072f1a86537a65cdab2416'

@@ -1,16 +1,20 @@
 import {
+  type CheckStatus,
   type CreateLook,
   Look,
   type LookId,
   LookNotFound,
   OperationConflict,
   PieceNotFound,
+  type ShareLook,
   WardrobeUnavailable,
 } from '@styld/protocol'
 import { Context, DateTime, Effect, Option, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { CurrentAccount } from '../CurrentAccount.ts'
+import type { Checks } from '../safety/Checks.ts'
+import { makeProfileStore, type ProfileStore, requirePublished } from '../social/ProfileStore.ts'
 import { toPiece } from '../wardrobe/Wardrobe.ts'
 import type { StoreUnavailable } from '../wardrobe/Store.ts'
 import { type LookRow, type LookStore, makeLookStore } from './Store.ts'
@@ -18,8 +22,9 @@ import { type LookRow, type LookStore, makeLookStore } from './Store.ts'
 const unavailable = () => WardrobeUnavailable.make({})
 const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
 
-/** Looks as the protocol shows them, each with the pieces still in the wardrobe. */
-export const shownLooks = (store: LookStore, rows: ReadonlyArray<LookRow>) =>
+/** Looks as the protocol shows them, each with the pieces still in the wardrobe and its check, if it has been
+ * shared. */
+export const shownLooks = (store: LookStore, rows: ReadonlyArray<LookRow>, checks: ReadonlyMap<string, CheckStatus>) =>
   Effect.gen(function* () {
     const found = yield* stored(store.piecesOf(rows.map(({ id }) => id)))
     return yield* Effect.forEach(rows, (row) =>
@@ -34,16 +39,51 @@ export const shownLooks = (store: LookStore, rows: ReadonlyArray<LookRow>) =>
           name: row.name,
           occasion: row.occasion,
           pieces: lookPieces,
+          shared: row.sharedAt !== null,
+          check: checks.get(row.id) ?? null,
           createdAt: row.createdAt.toISOString(),
         }).pipe(Effect.orDie)
       }),
     )
   })
 
-const make = (database: Parameters<typeof makeLookStore>[0]) =>
+/** Share the look on the profile, which needs a published profile, or stop sharing it. A shared look is checked
+ * as it is now, and its pieces through the queue. */
+const sharing = (
+  store: LookStore,
+  profileStore: ProfileStore,
+  checks: Checks['Service'],
+  one: (accountId: string, lookId: string) => Effect.Effect<Look, LookNotFound | WardrobeUnavailable>,
+) => {
+  return Effect.fn('Styld.Looks.share')(function* (lookId: LookId, input: ShareLook) {
+    const { accountId } = yield* CurrentAccount
+    const row = yield* stored(store.findLook(accountId, lookId))
+    if (Option.isNone(row)) return yield* LookNotFound.make({})
+    if (!input.shared) {
+      yield* stored(store.setShared(accountId, lookId, null))
+      return yield* one(accountId, lookId)
+    }
+    yield* requirePublished(profileStore, accountId)
+    yield* stored(store.setShared(accountId, lookId, row.value.sharedAt ?? DateTime.toDateUtc(yield* DateTime.now)))
+    yield* checks.checkNow({ kind: 'look', id: lookId })
+    const pieceIds = (yield* stored(store.piecesOf([lookId]))).map(({ piece }) => piece.id)
+    yield* checks.checkLater(pieceIds.map((id) => ({ kind: 'piece' as const, id })))
+    return yield* one(accountId, lookId)
+  })
+}
+
+const make = (database: Parameters<typeof makeLookStore>[0], checks: Checks['Service']) =>
   Effect.gen(function* () {
     const crypto = yield* Crypto.Crypto
     const store = makeLookStore(database)
+    const looksShown = (rows: ReadonlyArray<LookRow>) =>
+      Effect.flatMap(
+        checks.statuses(
+          'look',
+          rows.map(({ id }) => id),
+        ),
+        (statuses) => shownLooks(store, rows, statuses),
+      )
     const digest = (text: string) =>
       crypto
         .digest('SHA-256', new TextEncoder().encode(text))
@@ -56,7 +96,7 @@ const make = (database: Parameters<typeof makeLookStore>[0]) =>
       Effect.gen(function* () {
         const row = yield* stored(store.findLook(accountId, lookId))
         if (Option.isNone(row)) return yield* LookNotFound.make({})
-        const [look] = yield* shownLooks(store, [row.value])
+        const [look] = yield* looksShown([row.value])
         return look ?? (yield* LookNotFound.make({}))
       })
     return {
@@ -93,12 +133,13 @@ const make = (database: Parameters<typeof makeLookStore>[0]) =>
       }),
       listLooks: Effect.fn('Styld.Looks.list')(function* () {
         const { accountId } = yield* CurrentAccount
-        return yield* shownLooks(store, yield* stored(store.listLooks(accountId)))
+        return yield* looksShown(yield* stored(store.listLooks(accountId)))
       }),
       getLook: Effect.fn('Styld.Looks.get')(function* (lookId: LookId) {
         const { accountId } = yield* CurrentAccount
         return yield* one(accountId, lookId)
       }),
+      shareLook: sharing(store, makeProfileStore(database), checks, one),
       deleteLook: Effect.fn('Styld.Looks.delete')(function* (lookId: LookId) {
         const { accountId } = yield* CurrentAccount
         if (!(yield* stored(store.deleteLook(accountId, lookId)))) return yield* LookNotFound.make({})
@@ -110,6 +151,6 @@ const make = (database: Parameters<typeof makeLookStore>[0]) =>
  * provide per request, so no operation takes whose looks they are from its input. */
 export class Looks extends Context.Service<Looks, Effect.Success<ReturnType<typeof make>>>()('@styld/server/Looks') {}
 
-/** Looks over the Worker's database. Build it once per isolate. */
-export const makeLooks = (database: Parameters<typeof makeLookStore>[0]) =>
-  Effect.map(make(database), (service) => Looks.of(service))
+/** Looks over the Worker's database, checked by the Worker's checks. Build it once per isolate. */
+export const makeLooks = (database: Parameters<typeof makeLookStore>[0], checks: Checks['Service']) =>
+  Effect.map(make(database, checks), (service) => Looks.of(service))

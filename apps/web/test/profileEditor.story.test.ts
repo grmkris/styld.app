@@ -21,6 +21,7 @@ const unnamed = Schema.decodeUnknownSync(Profile)({
   tone: 'sand',
   published: false,
   wardrobeShown: true,
+  check: null,
 })
 const nika = Schema.decodeUnknownSync(Profile)({ ...unnamed, handle: 'nika.kovac', city: 'Maribor' })
 

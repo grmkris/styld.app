@@ -117,7 +117,50 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   - Evidence: unit tests for the tools, their refusals and `board_show`; protocol tests for landing and layouts;
     view stories; native MCP acceptance creates, pins, arranges, replays, sets exactly (a stale version is refused),
     shows and lists a board through both protocol eras.
-- **Next:** M3, profiles, model checks, public pages and link previews.
+- **M3a, profiles (`0003c47`, on main, not yet deployed):**
+  - The migration `profiles_and_checks` adds `profiles`, `content_checks`, a board's visibility, moods, publish,
+    feature and search columns, and `looks.shared_at`.
+  - `/profile` edits the handle (v1's rule, the reserved list), name, city, bio (160), avatar tone (initials on one of
+    eight tones) and whether the wardrobe shows. A profile is published only with a handle; a handle someone else took,
+    even between the check and the write, is refused.
+  - Account links to it. Tools `profile_get`, `profile_update` and `profile_publish`.
+  - Evidence: Story tests, MCP unit tests, native API acceptance (handles taken, reserved and invalid; publishing).
+    Full gate green before landing, native 22/22, bundle 315,309 first load.
+- **M3b, checks of what goes public (built in `~/code/styldappv2.wt/m3`, not yet on main):**
+  - `safety/Judge.ts`:
+    - Clef-flash scores up to three pictures (a minor at 0.3 fails; another harm at 0.85 fails, at 0.5 is unsure;
+      words addressed to an assistant are unsure).
+    - Llama Guard 3 reads the words. S1, S3, S4 and S9–S12 fail; other hazards are unsure.
+    - A model gets 20 seconds. Pictures go as WebP thumbnails delivered with `fallback: 'none'`, so a stored original
+      never reaches a model.
+    - Native acceptance names a stand-in judge (`CHECKS=stand-in`). The preview runs `CHECKS=live`.
+  - `safety/Checks.ts` checks profiles, boards, looks and pieces, but only while their owner has made them public.
+    - A piece is public while its owner's published profile reaches it: through the shown wardrobe, one of their
+      public boards or a shared look. Someone else's board never publishes it.
+    - Each check records the digest of what the model read. An answer lands only on that digest, and unchanged content
+      is not judged again.
+    - Publishing, a board going public and a look being shared are checked at once. A board's pieces and a shown
+      wardrobe go through the new `StyldV2Checks` queue (five attempts, 30 s apart).
+    - An edit of a public board (rename, table, pins, picture) or of a published profile is checked again.
+  - Web:
+    - The board's settings and a look's page have a Public switch, which needs a published profile.
+    - The owner sees "being checked", "kept out of Explore and search" or "hidden from others" with the reason, on
+      the board, the look and the profile. The copy reuses v1's `share.*`, plus new `share.check.*` keys.
+  - Tools `board_publish` and `look_share` return the check state.
+  - Evidence:
+    - Story tests for the switch and sharing; MCP unit tests.
+    - Native API acceptance: a board refused before the profile is published; checks passing at once; an edit failing
+      through the queue; the verdict staying after the board goes private; an unsure bio; sharing a look and taking
+      it back.
+  - Open:
+    - The check is marked pending right after the content's write, not in its batch (ARCHITECTURE › deviations).
+    - There is no sweep yet for checks still pending after the queue's five attempts.
+    - Pieces that become ready after publishing are not yet queued: the capture session's processing must call
+      `Checks.changed`.
+    - The thresholds are uncalibrated (the spike on fixtures in en and sl is still to run).
+    - Calls are not yet metered in Analytics Engine.
+- **Next:** M3c, public delivery (`/cdn/public/*` and the visibility predicate), then the public pages and link
+  previews.
 - **Shared with the capture session:** migrations are generated one at a time; public delivery reuses its rule for a
   piece's shown picture; generated pictures reuse its Muse provider.
 - **Still to settle in spikes:** Clef and Llama Guard thresholds on fixtures in English and Slovenian, drawing text

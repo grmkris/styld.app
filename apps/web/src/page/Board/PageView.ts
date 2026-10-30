@@ -10,10 +10,11 @@ import { textField } from '../../Fields.styles.ts'
 import { addIcon, backIcon, checkIcon, closeIcon, editIcon, loader } from '../../Icon.ts'
 import { boardCollageRouter, boardsRouter, lookRouter, pieceRouter } from '../../route.ts'
 import { styled } from '../../Styled.ts'
+import { publicToggle } from '../PublicToggle.ts'
 import { bottomSheet } from '../Sheet.ts'
 import { Message } from './Message.ts'
 import { boardStateView } from './Unready.ts'
-import { type Model, PinWork, Removal, Rename } from './Model.ts'
+import { type Model, PinWork, Publishing, Removal, Rename } from './Model.ts'
 import * as styles from './PageView.styles.ts'
 import { boardImage, pieceImage, stillTable } from './Table.ts'
 
@@ -270,6 +271,24 @@ const removalView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Htm
     }),
   )
 
+/** Who sees the board: private, or public on the published profile once Styld's check lets others. */
+const sharingView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  publicToggle(
+    {
+      id: 'board-public',
+      isPublic: model.visibility === 'public',
+      check: Option.getOrNull(model.check),
+      work: Publishing.match(model.publishing, {
+        Idle: () => 'idle' as const,
+        Sending: () => 'sending' as const,
+        Failed: ({ needsProfile }) => (needsProfile ? ('needsProfile' as const) : ('failed' as const)),
+      }),
+      onToggle: (isPublic) => Message.ToggledPublic({ isPublic }),
+    },
+    locale,
+    h,
+  )
+
 const settingsBody = (
   model: Model,
   locale: Locale,
@@ -313,6 +332,7 @@ const settingsBody = (
         ]),
       ],
     ),
+    sharingView(model, locale, h),
     removalView(model, locale, h),
   ]
 }

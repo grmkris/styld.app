@@ -13,6 +13,7 @@ const autumn = Schema.decodeUnknownSync(BoardSummary)({
   items: [],
   cover: [],
   pinCount: 3,
+  visibility: 'private',
   updatedAt: '2026-10-30T08:00:00.000Z',
 })
 const fresh = init({ kind: 'piece', id: `pc_${'knit'.padEnd(22, 'x')}` })
