@@ -155,8 +155,9 @@ const judged = (verdict: 'ready' | 'improve' | 'repair' | 'fragment', face = 0.0
 })
 
 describe('what happens to a kept cut-out and to its drawing', () => {
-  test('a clean one stays, a held or holed one is drawn, a fragment asks for a retake, a face sends nothing', () => {
-    expect(planFor(judged('ready'), policy)).toEqual({ plan: 'kept-real' })
+  test('every whole one is drawn, clean or not, a fragment asks for a retake, a face sends nothing', () => {
+    expect(planFor(judged('ready'), policy)).toEqual({ plan: 'draw' })
+    expect(planFor(judged('ready', 0.3), policy)).toEqual({ plan: 'kept-real', reason: 'face' })
     expect(planFor(judged('improve'), policy)).toEqual({ plan: 'draw' })
     expect(planFor(judged('repair'), policy)).toEqual({ plan: 'draw' })
     expect(planFor(judged('fragment'), policy)).toEqual({ plan: 'retake' })

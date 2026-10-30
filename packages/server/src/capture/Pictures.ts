@@ -168,9 +168,9 @@ const draw = (parts: Parts, claimed: PictureRow, front: Rgba, back: Option.Optio
     return Option.some({ clean, checking: { ...claimed, state: 'checking' as const, cleanKey } })
   })
 
-/** A queued picture: judge the cut-out, then keep the photo, ask for a retake, or claim and draw it. A redraw the
- * owner asked for (it holds a credit) is drawn whatever the verdict, unless a face may show. The claim drops the last
- * drawing: a redraw replaces it. */
+/** A queued picture: judge the cut-out, then keep the photo (a face may show), ask for a retake (a fragment), or claim
+ * and draw it. A redraw the owner asked for (it holds a credit) is drawn whatever the verdict, unless a face may show.
+ * The claim drops the last drawing: a redraw replaces it. */
 const start = (parts: Parts, picture: PictureRow) =>
   Effect.gen(function* () {
     const policy = (yield* CaptureConfig).pictures

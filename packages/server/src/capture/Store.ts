@@ -8,7 +8,7 @@ import {
   pieces,
   uploads,
 } from '@styld/db'
-import { and, desc, eq, inArray, isNotNull, isNull, ne, or } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Array, Effect, Option } from 'effect'
 import { StoreUnavailable } from '../wardrobe/Store.ts'
@@ -339,6 +339,20 @@ const reviewRows = (db: Database) => ({
 
 /** Captures and their detections in D1. Reads and writes for a person name their account; the queue's
  * reads name only the capture it was handed. */
+/** The account's ready pieces that show a cut-out: the only pictures that may be sent to be drawn. */
+const shownCutouts = (accountId: string) =>
+  and(
+    eq(pieces.accountId, accountId),
+    eq(pieces.status, 'ready'),
+    isNotNull(pieces.imageKey),
+    ne(pieces.imageKey, pieces.originalKey),
+  )
+
+/** A picture kept as its photo only because its cut-out was judged clean, before every piece was drawn (owner,
+ * 2026-10-31). One kept because a face may show stays kept. */
+const keptClean = (face: number) =>
+  and(eq(piecePictures.state, 'kept-real'), eq(piecePictures.judge, 'ready'), lt(piecePictures.face, face))
+
 /** Pieces' clean pictures. Only the picture job and the person's choice write them, and every write moves a picture
  * on only from a state it was read in, so two deliveries of one message never both draw it. */
 const pictureRows = (db: Database) => ({
@@ -365,23 +379,30 @@ const pictureRows = (db: Database) => ({
     const [head, ...rest] = pictures.map((picture) => db.insert(piecePictures).values(picture).onConflictDoNothing())
     return head === undefined ? Effect.void : attempt(() => db.batch([head, ...rest])).pipe(Effect.asVoid)
   },
-  /** The account's kept cut-outs no drawing was ever asked for. A piece kept as its photo is not one. */
-  undrawnPieces: (accountId: string) =>
+  /** The account's kept cut-outs not drawn yet: no drawing was ever asked for, or the cut-out was kept as clean. A
+   * piece kept as its photo, or whose face at or above `face` may show, is not one. */
+  undrawnPieces: (accountId: string, face: number) =>
     attempt(() =>
       db
         .select({ id: pieces.id })
         .from(pieces)
         .leftJoin(piecePictures, eq(piecePictures.pieceId, pieces.id))
+        .where(and(shownCutouts(accountId), or(isNull(piecePictures.pieceId), keptClean(face)))),
+    ).pipe(Effect.map((rows) => rows.map(({ id }) => id))),
+  /** Queue again the account's cut-outs kept as clean, leaving any picture a concurrent request moved on. */
+  requeueKeptClean: (accountId: string, face: number, at: Date) =>
+    attempt(() =>
+      db
+        .update(piecePictures)
+        .set({ state: 'queued', updatedAt: at })
         .where(
           and(
-            eq(pieces.accountId, accountId),
-            eq(pieces.status, 'ready'),
-            isNotNull(pieces.imageKey),
-            ne(pieces.imageKey, pieces.originalKey),
-            isNull(piecePictures.pieceId),
+            eq(piecePictures.accountId, accountId),
+            keptClean(face),
+            inArray(piecePictures.pieceId, db.select({ id: pieces.id }).from(pieces).where(shownCutouts(accountId))),
           ),
         ),
-    ).pipe(Effect.map((rows) => rows.map(({ id }) => id))),
+    ).pipe(Effect.asVoid),
   /** The account's pictures still waiting for the queue. */
   queuedPicturesOf: (accountId: string) =>
     attempt(() =>

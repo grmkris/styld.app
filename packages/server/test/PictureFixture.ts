@@ -15,8 +15,8 @@ import { seedIdentity } from './IdentityFixture.ts'
 export const picturesAccount = 'native-pictures'
 const prefix = `accounts/${picturesAccount}`
 
-/** The seeded pieces: a red tee to draw, a green shirt to draw on magenta, a blue scrap too small to draw, and a
- * piece kept as its photo. */
+/** The seeded pieces: a red tee to draw, kept as clean before every piece was drawn; a green shirt to draw on
+ * magenta; a blue scrap too small to draw; and a piece kept as its photo. */
 export const seededPieces = {
   red: `pc_${'nativepicturesred'.padEnd(22, '0')}`,
   green: `pc_${'nativepicturesgreen'.padEnd(22, '0')}`,
@@ -72,6 +72,13 @@ const seed = (database: QueryDatabaseClient, media: ReadWriteBucketClient) =>
       insert.bind(
         ...pieceRow(seededPieces.photo, `${prefix}/uploads/photo`, `${prefix}/uploads/photo`, 'image/png', now),
       ),
+    )
+    rows.push(
+      database
+        .prepare(
+          "INSERT INTO piece_pictures (piece_id, account_id, state, version, judge, judge_confidence, face, created_at, updated_at) VALUES (?, ?, 'kept-real', 0, 'ready', 0.9, 0.01, ?, ?)",
+        )
+        .bind(seededPieces.red, picturesAccount, now, now),
     )
     yield* database.batch(rows)
   })

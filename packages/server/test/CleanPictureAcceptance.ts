@@ -70,7 +70,8 @@ export const verifyCleanPictures = async (origin: string, fixtures: string) => {
   const owner = client(origin, await signIn(origin, picturesAccount))
   const prompts = async () => (await decoded(Prompts, await fetch(`${fixtures}/test/pictures/prompts`))).prompts
 
-  // Three kept cut-outs have no picture; the piece kept as its photo is not one of them. Asking twice queues once.
+  // Three kept cut-outs are not drawn yet, the red tee kept as clean among them; the piece kept as its photo is not
+  // one of them. Asking twice queues once.
   expect(await decoded(Backfill, await owner('/api/pictures'))).toEqual({ pieces: 3 })
   expect(await decoded(Backfill, await owner('/api/pictures', { method: 'POST' }))).toEqual({ pieces: 3 })
   expect(await decoded(Backfill, await owner('/api/pictures', { method: 'POST' }))).toEqual({ pieces: 0 })

@@ -46,8 +46,8 @@ The owner's test on the preview showed that real cut-outs of clothes held up or 
 where hands or hair were, droop. A cut-out keeps only the pixels the camera saw. Spikes (STATUS, 30 October) showed that
 an image model redrawing the garment from its cut-out gives a clean product picture.
 
-- **Clean pictures:** after a keep, Clef judges the cut-out: kept as it is when it is already clean, redrawn when it
-  needs it, a retake asked for when it is only a fragment. Muse Image (Meta) draws the picture by default; Gemini 3.1
+- **Clean pictures:** after a keep, Clef judges the cut-out: every piece is redrawn, even one already clean (owner,
+  2026-10-31), a retake asked for when it is only a fragment, and the photo kept when a face may show. Muse Image (Meta) draws the picture by default; Gemini 3.1
   Flash Lite Image, v1's model, can replace it by configuration. Clef checks the drawing against the cut-out: shown
   when it matches, offered for the person to choose when unsure, dropped when it does not. The first clean picture
   is free; a redraw, with an optional hint, costs 1 credit. Existing pieces can be given clean pictures too.
