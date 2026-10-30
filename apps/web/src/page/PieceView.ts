@@ -15,6 +15,7 @@ import { piecePickers, swatches } from './PieceFields.ts'
 import { categoryName, pieceLabel, subcategoryName } from './WardrobeWords.ts'
 import { backToWardrobe } from './PageBar.ts'
 import * as styles from './PieceView.styles.ts'
+import * as SaveToBoardView from './SaveToBoardView.ts'
 
 /** The picture the piece shows; a new drawing, or a change of picture, is a new address. */
 const fullPath = (piece: Piece) =>
@@ -268,6 +269,15 @@ const pieceDetails = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
       : h.empty,
     piece.colours.length > 0 ? swatches(piece.colours, locale, h) : h.empty,
     picturePanel(piece, model, locale, h),
+    piece.status === 'ready'
+      ? h.submodel({
+          slotId: 'piece-save-to-board',
+          model: model.saveToBoard,
+          view: SaveToBoardView.view,
+          viewInputs: { locale },
+          toParentMessage: (message) => Message.GotSaveToBoardMessage({ message }),
+        })
+      : h.empty,
     Deletion.guards.Idle(model.deletion)
       ? h.div(styled(h, styles.actions()), [
           actionButton(

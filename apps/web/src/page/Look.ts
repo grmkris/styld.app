@@ -1,10 +1,12 @@
 import { Look as LookContract, LookId } from '@styld/protocol'
 import { Effect, Schema } from 'effect'
-import { Command, type Update } from 'foldkit'
+import type * as Crypto from 'effect/Crypto'
+import { Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
+import * as SaveToBoard from './SaveToBoard.ts'
 
 // MODEL
 
@@ -19,10 +21,20 @@ export type Shown = typeof Shown.Type
 export const Deletion = defineTaggedUnion({ Idle: {}, Confirming: {}, Deleting: {}, Failed: {} })
 export type Deletion = typeof Deletion.Type
 
-export const Model = Schema.Struct({ lookId: Schema.String, shown: Shown, deletion: Deletion })
+export const Model = Schema.Struct({
+  lookId: Schema.String,
+  shown: Shown,
+  deletion: Deletion,
+  saveToBoard: SaveToBoard.Model,
+})
 export type Model = typeof Model.Type
 
-export const init = (lookId: string): Model => ({ lookId, shown: Shown.Loading(), deletion: Deletion.Idle() })
+export const init = (lookId: string): Model => ({
+  lookId,
+  shown: Shown.Loading(),
+  deletion: Deletion.Idle(),
+  saveToBoard: SaveToBoard.init({ kind: 'look', id: lookId }),
+})
 
 // MESSAGE
 
@@ -35,6 +47,7 @@ export const Message = defineMessageUnion({
   ClickedConfirmDelete: {},
   SucceededDeleteLook: {},
   FailedDeleteLook: {},
+  GotSaveToBoardMessage: { message: SaveToBoard.Message },
 })
 export type Message = typeof Message.Type
 
@@ -77,7 +90,9 @@ export const load = (model: Model) => [GetLook({ lookId: model.lookId })]
 
 // UPDATE
 
-type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient>
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
+
+const foldSaveToBoard = SaveToBoard.foldInto<Model, Message>((message) => Message.GotSaveToBoardMessage({ message }))
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
@@ -103,4 +118,5 @@ export const update = (model: Model, message: Message): UpdateReturn =>
           },
     SucceededDeleteLook: () => ({ model, outMessage: OutMessage.DeletedLook() }),
     FailedDeleteLook: () => ({ model: modifyFields(model, { deletion: () => Deletion.Failed() }) }),
+    GotSaveToBoardMessage: (got) => foldSaveToBoard(model, got.message),
   })

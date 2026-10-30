@@ -44,14 +44,19 @@ export type OutMessage = typeof OutMessage.Type
 
 // COMMAND
 
+/** The person's boards, as their list shows them. */
+export const boardSummaries = Effect.gen(function* () {
+  const api = yield* (yield* StyldClient).api
+  return (yield* api.board.listBoards()).boards
+})
+
 /** @internal Exported for its tests. */
 export const ListBoards = Command.define('ListBoards', {
   messages: [Message.SucceededListBoards, Message.FailedListBoards],
-  execute: Effect.gen(function* () {
-    const api = yield* (yield* StyldClient).api
-    const { boards } = yield* api.board.listBoards()
-    return Message.SucceededListBoards({ boards })
-  }).pipe(Effect.orElseSucceed(() => Message.FailedListBoards())),
+  execute: boardSummaries.pipe(
+    Effect.map((boards) => Message.SucceededListBoards({ boards })),
+    Effect.orElseSucceed(() => Message.FailedListBoards()),
+  ),
 })
 
 /** @internal Exported for its tests. */

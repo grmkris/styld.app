@@ -262,6 +262,15 @@ const verifyBoardPage = async (page: Page, origin: string) => {
   await page.reload({ waitUntil: 'networkidle' })
   await page.getByRole('heading', { name: 'Weekend away', level: 1 }).waitFor({ state: 'visible' })
   await page.getByText('3 pins').waitFor({ state: 'visible' })
+
+  // The piece taken off goes back on from its own page.
+  await page.goto(`${origin}/wardrobe`, { waitUntil: 'networkidle' })
+  await page.getByRole('link', { name: 'Derby shoes' }).first().click()
+  await page.getByRole('button', { name: 'Save to board' }).click()
+  await page.getByRole('button', { name: /^Weekend away/ }).click()
+  await page.getByText('Saved to Weekend away').waitFor({ state: 'visible' })
+  await page.getByRole('link', { name: 'Open', exact: true }).click()
+  await page.getByText('4 pins').waitFor({ state: 'visible' })
 }
 
 const verifyAskAndWardrobe = async (page: Page, origin: string) => {

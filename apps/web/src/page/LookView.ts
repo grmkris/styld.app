@@ -9,6 +9,7 @@ import { backIcon, loader } from '../Icon.ts'
 import { looksRouter, pieceRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { Deletion, Message, type Model, Shown } from './Look.ts'
+import * as SaveToBoardView from './SaveToBoardView.ts'
 import { round } from './PageBar.styles.ts'
 import { pieceLabel } from './WardrobeWords.ts'
 import { caption, cut, cutImage, grid } from './WardrobeView.styles.ts'
@@ -98,6 +99,13 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
               ),
             ),
           ),
+          h.submodel({
+            slotId: 'look-save-to-board',
+            model: model.saveToBoard,
+            view: SaveToBoardView.view,
+            viewInputs: { locale },
+            toParentMessage: (message) => Message.GotSaveToBoardMessage({ message }),
+          }),
           h.div([], deletion(model, locale, h)),
         ],
       }),

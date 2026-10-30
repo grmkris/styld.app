@@ -10,7 +10,7 @@ import { textField } from '../../Fields.styles.ts'
 import { addIcon, backIcon, checkIcon, closeIcon, editIcon, loader } from '../../Icon.ts'
 import { boardCollageRouter, boardsRouter, lookRouter, pieceRouter } from '../../route.ts'
 import { styled } from '../../Styled.ts'
-import { grab, quiet, scrim, sheet, sheetHead, sheetTitle } from '../AskView.styles.ts'
+import { bottomSheet } from '../Sheet.ts'
 import { Message } from './Message.ts'
 import { boardStateView } from './Unready.ts'
 import { type Model, PinWork, Removal, Rename } from './Model.ts'
@@ -131,46 +131,6 @@ const pinsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
       }),
     ],
   )
-
-/** A sheet from the bottom edge, after Ask's: drawn only while open, its layout set in the browser. */
-const sheetView = (
-  slotId: string,
-  dialog: Dialog.Model,
-  title: string,
-  body: (info: Dialog.RenderInfo) => ReadonlyArray<Html>,
-  toParentMessage: (message: Dialog.Message) => Message,
-  locale: Locale,
-  h: HtmlBuilder<Message>,
-): Html =>
-  h.submodel({
-    slotId,
-    model: dialog,
-    view: Dialog.view,
-    viewInputs: {
-      toView: (info: Dialog.RenderInfo) =>
-        h.dialog(
-          [...info.dialog],
-          [
-            h.div([...info.backdrop, ...styled(h, scrim())]),
-            h.div(
-              [...info.panel, ...styled(h, sheet())],
-              [
-                h.span([h.AriaHidden(true), ...styled(h, grab())]),
-                h.div(styled(h, sheetHead()), [
-                  h.h2([...info.title, ...styled(h, sheetTitle())], [title]),
-                  h.button(
-                    [...info.closeButton, h.AriaLabel(format(locale, 'common.close', {})), ...styled(h, quiet())],
-                    [closeIcon(h)],
-                  ),
-                ]),
-                h.div(styled(h, styles.sheetBody()), body(info)),
-              ],
-            ),
-          ],
-        ),
-    },
-    toParentMessage,
-  })
 
 const pickButton = (pick: string, label: string, content: Html, model: Model, h: HtmlBuilder<Message>): Html => {
   const isPicked = model.picks.includes(pick)
@@ -381,24 +341,26 @@ const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: 
     collageView(model, name, paper, locale, h),
     pinsView(model, locale, h),
     model.settings.isOpen
-      ? sheetView(
-          'board-settings',
-          model.settings,
-          format(locale, 'studio.boardSettings', {}),
-          (info) => settingsBody(model, locale, h, info),
-          (message) => Message.GotSettingsMessage({ message }),
-          locale,
+      ? bottomSheet(
+          {
+            dialog: model.settings,
+            title: format(locale, 'studio.boardSettings', {}),
+            body: (info) => [h.div(styled(h, styles.sheetBody()), settingsBody(model, locale, h, info))],
+            toParentMessage: (message) => Message.GotSettingsMessage({ message }),
+            locale,
+          },
           h,
         )
       : h.empty,
     model.picker.isOpen
-      ? sheetView(
-          'board-picker',
-          model.picker,
-          format(locale, 'board.pickerTitle', { name }),
-          () => pickerBody(model, locale, h),
-          (message) => Message.GotPickerMessage({ message }),
-          locale,
+      ? bottomSheet(
+          {
+            dialog: model.picker,
+            title: format(locale, 'board.pickerTitle', { name }),
+            body: () => [h.div(styled(h, styles.sheetBody()), pickerBody(model, locale, h))],
+            toParentMessage: (message) => Message.GotPickerMessage({ message }),
+            locale,
+          },
           h,
         )
       : h.empty,

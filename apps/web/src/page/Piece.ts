@@ -10,12 +10,13 @@ import {
   UpdatePiece,
 } from '@styld/protocol'
 import { Duration, Effect, Option, Predicate, Schema } from 'effect'
-import { Command, type Update } from 'foldkit'
+import { Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
 import { toggleColour } from './PieceFields.ts'
+import * as SaveToBoard from './SaveToBoard.ts'
 import * as Crypto from 'effect/Crypto'
 
 // MODEL
@@ -62,6 +63,7 @@ export const Model = Schema.Struct({
   redraw: Schema.Option(Redraw),
   /** Whether a change of the picture shown is on its way, or failed. */
   choosing: Schema.Literals(['idle', 'sending', 'failed']),
+  saveToBoard: SaveToBoard.Model,
 })
 export type Model = typeof Model.Type
 
@@ -72,6 +74,7 @@ export const init = (pieceId: string): Model => ({
   draft: Option.none(),
   redraw: Option.none(),
   choosing: 'idle',
+  saveToBoard: SaveToBoard.init({ kind: 'piece', id: pieceId }),
 })
 
 // MESSAGE
@@ -105,6 +108,7 @@ export const Message = defineMessageUnion({
   SubmittedRedraw: {},
   SucceededRedrawPicture: { picture: PiecePicture },
   FailedRedrawPicture: { problem: RedrawProblem, operationId: Schema.String },
+  GotSaveToBoardMessage: { message: SaveToBoard.Message },
 })
 export type Message = typeof Message.Type
 
@@ -230,6 +234,8 @@ export const load = (model: Model) => [GetPiece({ pieceId: model.pieceId })]
 
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
 
+const foldSaveToBoard = SaveToBoard.foldInto<Model, Message>((message) => Message.GotSaveToBoardMessage({ message }))
+
 const draftOf = (piece: Piece): Draft => ({
   name: piece.name ?? '',
   notes: piece.notes ?? '',
@@ -343,6 +349,7 @@ const pictureUpdates = (model: Model) => ({
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
+    GotSaveToBoardMessage: (got) => foldSaveToBoard(model, got.message),
     SucceededGetPiece: ({ piece }) => loaded(model, piece),
     FailedGetPiece: ({ missing }) =>
       Load.guards.Loaded(model.load)
