@@ -36,7 +36,6 @@ export const Message = defineMessageUnion({
     uploadId: Schema.Option(Schema.String),
     prepared: Schema.Option(CreateVideoCapture),
   },
-  CompletedKeepAwake: {},
   ClickedRetry: { index: Schema.Number },
   ClickedReview: {},
 })

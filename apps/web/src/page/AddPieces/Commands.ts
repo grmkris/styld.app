@@ -225,12 +225,3 @@ export const SendVideoPart = Command.define('SendVideoPart', {
       Message.SucceededSendVideoPart({ index, part: part.index }),
     ),
 })
-
-/** Keep the screen on while a video is read: a phone that sleeps stops the work. Refused is fine. */
-export const KeepAwake = Command.define('KeepAwake', {
-  messages: [Message.CompletedKeepAwake],
-  execute: Effect.tryPromise(() => navigator.wakeLock.request('screen')).pipe(
-    Effect.ignore,
-    Effect.as(Message.CompletedKeepAwake()),
-  ),
-})

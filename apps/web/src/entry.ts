@@ -5,7 +5,7 @@ import { Layer } from 'effect'
 import { browserAuthLayer } from '@styld/auth/client'
 import { loadCatalog, normalizeLocale } from '@styld/i18n'
 import { Runtime } from 'foldkit'
-import { Flags, Message, Model, init, update } from './App.ts'
+import { Flags, Message, Model, init, subscriptions, update } from './App.ts'
 import { view } from './View.ts'
 import { emailSignInLayer } from './EmailSignIn.ts'
 import { styldClientLayer } from './StyldClient.ts'
@@ -23,6 +23,7 @@ const application = Runtime.makeApplication(
     init,
     update,
     view,
+    subscriptions,
     container: document.getElementById('root'),
     // The DevTools MCP may dispatch decoded Messages; the bridge only runs under Vite's dev server.
     devTools: { Message },

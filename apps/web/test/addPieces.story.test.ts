@@ -3,9 +3,10 @@ import { type CaptureSource, CreateVideoCapture } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
-import { InspectVideo, KeepAwake, SendPhoto, SendVideo, SendVideoPart } from '../src/page/AddPieces/Commands.ts'
+import { InspectVideo, SendPhoto, SendVideo, SendVideoPart } from '../src/page/AddPieces/Commands.ts'
 import { Message, type VideoPlan } from '../src/page/AddPieces/Message.ts'
-import { init, Sending } from '../src/page/AddPieces/Model.ts'
+import { init, type Model, Sending } from '../src/page/AddPieces/Model.ts'
+import { subscriptions } from '../src/page/AddPieces/Subscription.ts'
 import { classify, update } from '../src/page/AddPieces/Update.ts'
 import { Buzz, Message as CameraMessage, type Message as HeldCameraMessage } from '../src/page/HeldCamera.ts'
 
@@ -49,6 +50,9 @@ const readThenSendFirstPart = [
 
 const chosen = (one: File, ...rest: ReadonlyArray<File>) =>
   Message.GotDropMessage({ message: FileDrop.Message.DroppedFiles({ files: [one, ...rest] }) })
+
+/** Whether the add page asks for the screen to stay on. */
+const screenOn = (current: Model) => subscriptions.screenAwake.modelToDependencies(current).readingVideo
 
 /** A message from the held-up camera, as the page receives it. */
 const camera = (sent: HeldCameraMessage) => Message.GotHeldCameraMessage({ message: sent })
@@ -108,8 +112,7 @@ describe('choosing files to add', () => {
       update,
       given(init()),
       message(chosen(rail)),
-      Command.expectExact(InspectVideo({ index: 0, video: rail }), KeepAwake),
-      Command.resolve(KeepAwake, Message.CompletedKeepAwake()),
+      Command.expectExact(InspectVideo({ index: 0, video: rail })),
       ...readThenSendFirstPart,
       // The answer to part 2's request was lost: the request is kept.
       Command.resolve(partOf(second), failedOn('network', Option.some(request))),
@@ -118,12 +121,34 @@ describe('choosing files to add', () => {
         expect(items[0]?.sending).toEqual(Sending.Failed({ problem: 'network' }))
       }),
       message(Message.ClickedRetry({ index: 0 })),
-      Command.expectExact(partOf(second, Option.some(request)), KeepAwake),
-      Command.resolve(KeepAwake, Message.CompletedKeepAwake()),
+      Command.expectExact(partOf(second, Option.some(request))),
       Command.resolve(partOf(second, Option.some(request)), Message.SucceededSendVideoPart({ index: 0, part: 1 })),
       Command.resolve(partOf(third), Message.SucceededSendVideoPart({ index: 0, part: 2 })),
       expectOutMessage({ _tag: 'FinishedSending' }),
       model(({ items }) => expect(items[0]?.sending).toEqual(Sending.Sent())),
+    )
+  })
+
+  test('the screen stays on while a video is read, from its first part to its last, and not after', () => {
+    // A photo going up does not hold the screen on.
+    story(
+      update,
+      given(init()),
+      message(chosen(tee)),
+      model((current) => expect(screenOn(current)).toBe(false)),
+      Command.resolve(SendPhoto(photoArgs(0, tee, 'image/jpeg')), Message.SucceededSend({ index: 0 })),
+    )
+    story(
+      update,
+      given(init()),
+      message(chosen(rail, tee)),
+      model((current) => expect(screenOn(current)).toBe(true)),
+      Command.resolve(SendPhoto(photoArgs(1, tee, 'image/jpeg')), Message.SucceededSend({ index: 1 })),
+      ...readThenSendFirstPart,
+      // The same dependency between parts: the lock is held, not asked for again.
+      model((current) => expect(screenOn(current)).toBe(true)),
+      Command.resolve(partOf(second), failedOn('dailyLimit')),
+      model((current) => expect(screenOn(current)).toBe(false)),
     )
   })
 
@@ -132,7 +157,6 @@ describe('choosing files to add', () => {
       update,
       given(init()),
       message(chosen(rail)),
-      Command.resolve(KeepAwake, Message.CompletedKeepAwake()),
       ...readThenSendFirstPart,
       Command.resolve(partOf(second), failedOn('dailyLimit')),
       message(Message.SucceededSendVideoPart({ index: 0, part: 0 })),
@@ -149,15 +173,10 @@ describe('choosing files to add', () => {
       update,
       given(init()),
       message(chosen(rail, closet, tee)),
-      Command.expectExact(
-        InspectVideo({ index: 0, video: rail }),
-        SendPhoto(photoArgs(2, tee, 'image/jpeg')),
-        KeepAwake,
-      ),
+      Command.expectExact(InspectVideo({ index: 0, video: rail }), SendPhoto(photoArgs(2, tee, 'image/jpeg'))),
       model(({ items }) =>
         expect(items.map(({ sending }) => Sending.guards.Sending(sending))).toEqual([true, false, true]),
       ),
-      Command.resolve(KeepAwake, Message.CompletedKeepAwake()),
       Command.resolve(SendPhoto(photoArgs(2, tee, 'image/jpeg')), Message.SucceededSend({ index: 2 })),
       Command.resolve(
         InspectVideo({ index: 0, video: rail }),
@@ -168,8 +187,7 @@ describe('choosing files to add', () => {
         Message.SucceededSend({ index: 0 }),
       ),
       // The second video starts only now.
-      Command.expectExact(InspectVideo({ index: 1, video: closet }), KeepAwake),
-      Command.resolve(KeepAwake, Message.CompletedKeepAwake()),
+      Command.expectExact(InspectVideo({ index: 1, video: closet })),
       Command.resolve(
         InspectVideo({ index: 1, video: closet }),
         Message.FailedSend({

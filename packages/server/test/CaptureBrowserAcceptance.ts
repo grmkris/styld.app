@@ -7,6 +7,29 @@ import { recordProblems } from './BrowserAcceptance.ts'
 
 const fixture = (name: string) => fileURLToPath(new URL(`fixtures/capture/${name}`, import.meta.url))
 
+/** A stand-in screen wake lock that counts the locks the page asks for and gives back. */
+const countedWakeLock = `
+  const counts = { requested: 0, released: 0 }
+  globalThis.styldWakeLocks = counts
+  Object.defineProperty(navigator, 'wakeLock', {
+    configurable: true,
+    value: {
+      request: async () => {
+        counts.requested += 1
+        const sentinel = new EventTarget()
+        let released = false
+        sentinel.release = async () => {
+          if (released) return
+          released = true
+          counts.released += 1
+          sentinel.dispatchEvent(new Event('release'))
+        }
+        return sentinel
+      },
+    },
+  })
+`
+
 /** Say what an unnamed found piece is: ticking it opens it, a category keeps it, Done closes it. */
 const keepAs = async (page: Page, category: string) => {
   await page.getByRole('button', { name: 'Keep Pick a category' }).first().click()
@@ -72,6 +95,7 @@ export const verifyLongVideoJourney = async (browser: Browser, origin: string, f
   expect((await fetch(`${fixtures}/test/identity/seed-video-browser`, { method: 'POST' })).status).toBe(204)
   const context = await browser.newContext({ locale: 'en-US', viewport: { width: 390, height: 844 } })
   await context.addCookies([{ name: 'styld_diagnostics', value: 'denied', url: origin }])
+  await context.addInitScript({ content: countedWakeLock })
   try {
     const signIn = await context.request.post(`${origin}/api/auth/signIn`, {
       headers: { origin, 'x-effect-auth-csrf': '1' },
@@ -88,6 +112,9 @@ export const verifyLongVideoJourney = async (browser: Browser, origin: string, f
     await page.goto(`${origin}/wardrobe/add`, { waitUntil: 'networkidle' })
     await page.locator('input[type="file"][multiple]').setInputFiles([fixture('long-rail.mp4')])
     await page.getByText("Today's free allowance covered 1 of 5 parts").waitFor({ state: 'visible', timeout: 90000 })
+    // One wake lock held the screen on through both parts, and went back once the video stopped.
+    await page.waitForFunction('globalThis.styldWakeLocks.released > 0', undefined, { timeout: 5000 })
+    expect(await page.evaluate('globalThis.styldWakeLocks')).toEqual({ requested: 1, released: 1 })
 
     // Both parts went up; the second was refused when it asked for credits.
     expect(created.length).toBe(2)

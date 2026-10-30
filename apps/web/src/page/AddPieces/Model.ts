@@ -42,6 +42,9 @@ export const Item = Schema.Struct({
 })
 export type Item = typeof Item.Type
 
+/** A video being read and sent, part by part: a phone that sleeps meanwhile stops the work. */
+export const isReadingVideo = (item: Item) => item.kind === 'video' && Sending.guards.Sending(item.sending)
+
 export const Model = Schema.Struct({
   /** The picker: photos and videos from the library. */
   drop: FileDrop.Model,

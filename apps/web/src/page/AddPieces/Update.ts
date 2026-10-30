@@ -5,10 +5,10 @@ import type * as Crypto from 'effect/Crypto'
 import { File, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import type { StyldClient } from '../../StyldClient.ts'
-import { InspectVideo, KeepAwake, SendPhoto, SendVideo, SendVideoPart } from './Commands.ts'
+import { InspectVideo, SendPhoto, SendVideo, SendVideoPart } from './Commands.ts'
 import * as HeldCamera from '../HeldCamera.ts'
 import { Message, OutMessage, type VideoPlan } from './Message.ts'
-import { type FileProblem, type Item, type Model, Sending } from './Model.ts'
+import { type FileProblem, type Item, isReadingVideo, type Model, Sending } from './Model.ts'
 
 // UPDATE
 
@@ -59,8 +59,6 @@ const commandFor = (item: Item, index: number) =>
         uploadId: item.uploadId,
       })
 
-const isSendingVideo = (item: Item) => item.kind === 'video' && Sending.guards.Sending(item.sending)
-
 /** Which waiting files start now: up to two on their way at once, and a video only when no other is
  * being read, since a phone cuts one video at a time. */
 const startable = (model: Model) => {
@@ -75,11 +73,11 @@ const startable = (model: Model) => {
       (item.kind === 'video' && state.videoBusy)
         ? state
         : { starting: [...state.starting, { item, index }], videoBusy: state.videoBusy || item.kind === 'video' },
-    { starting: [], videoBusy: model.items.some(isSendingVideo) },
+    { starting: [], videoBusy: model.items.some(isReadingVideo) },
   ).starting
 }
 
-/** Start the files that can go now. A video starting holds the screen awake. */
+/** Start the files that can go now. */
 const pump = (model: Model) => {
   const starting = startable(model)
   const items = model.items.map((item, index) =>
@@ -87,10 +85,7 @@ const pump = (model: Model) => {
   )
   return {
     model: modifyFields(model, { items: () => items }),
-    commands: [
-      ...starting.map(({ item, index }) => commandFor(item, index)),
-      ...(starting.some(({ item }) => item.kind === 'video') ? [KeepAwake()] : []),
-    ],
+    commands: starting.map(({ item, index }) => commandFor(item, index)),
   }
 }
 
@@ -248,7 +243,6 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       ),
     SucceededSendVideoPart: ({ index, part }) => sentPart(model, index, part),
     FailedSend: (failure) => failedSend(model, failure),
-    CompletedKeepAwake: () => ({ model }),
     // Trying again resumes where it stopped: the same photo upload, the next part of a video.
     ClickedRetry: ({ index }) =>
       pump(

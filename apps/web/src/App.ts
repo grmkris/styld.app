@@ -3,7 +3,7 @@ import { BrowserAuth } from '@styld/auth/client'
 import { AccountClaims } from '@styld/auth/config'
 import * as HttpClient from 'effect/http/HttpClient'
 import * as HttpClientRequest from 'effect/http/HttpClientRequest'
-import { Command, Update } from 'foldkit'
+import { Command, Subscription, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { load } from 'foldkit/navigation'
 import { defineTaggedUnion } from 'foldkit/schema'
@@ -13,6 +13,7 @@ import { Locale, localeEndpoint, parseLocale } from './Locale.ts'
 import * as Crypto from 'effect/Crypto'
 import * as AddPiecesMessage from './page/AddPieces/Message.ts'
 import * as AddPiecesModel from './page/AddPieces/Model.ts'
+import * as AddPiecesSubscription from './page/AddPieces/Subscription.ts'
 import * as AddPieces from './page/AddPieces/Update.ts'
 import * as Account from './page/Account.ts'
 import * as Login from './page/Login.ts'
@@ -316,6 +317,15 @@ const foldAddPieces = Update.foldChild({
     FinishedSending: () => (stepModel) => ({ model: stepModel, commands: [Navigate({ href: reviewRouter({}) })] }),
   }),
 })
+
+/** Ongoing work the pages ask for. The add page keeps its own after the person moves on: a video still
+ * being sent keeps the screen on wherever they are. */
+export const subscriptions = Subscription.aggregate(
+  Subscription.lift(AddPiecesSubscription.subscriptions)<Model, Message>({
+    read: (model) => Option.some(model.addPieces),
+    toParentMessage: (message) => Message.GotAddPiecesMessage({ message }),
+  }),
+)
 
 const foldReview = Update.foldChild({
   update: Review.update,
