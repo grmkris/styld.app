@@ -343,6 +343,8 @@ const turnLine = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Mes
     onSome: (reason) =>
       h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, `wardrobe.turn.problem.${reason}`, {})]),
   })
+  const unbuilt = turn?.state === 'building' && Option.contains(model.turnProblem, 'build')
+  if (unbuilt) return problem
   if (turn?.state === 'making' || turn?.state === 'building' || model.turnWork === 'building')
     return h.p(
       [h.Role('status'), ...styled(h, styles.status())],

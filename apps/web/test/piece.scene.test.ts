@@ -113,6 +113,27 @@ describe('the piece page', () => {
     )
   })
 
+  test('a clean picture offers its turn and its price, and a device that cannot cut the frames says so', () => {
+    const clean = { ...jeans, picture: { state: 'ready', shows: 'clean', version: 1 } } as const
+    scene(
+      { update, view },
+      given(piecePage(Load.Loaded({ piece: clean }))),
+      expect(role('button', { name: 'Make it turn' })).toExist(),
+      expect(text('5 credits, refunded if no turn comes of it.')).toExist(),
+    )
+    const building = { ...clean, turn: { state: 'building', version: 3 } } as const
+    scene(
+      { update, view },
+      given(
+        modifyFields(piecePage(Load.Loaded({ piece: building })), {
+          piece: (piece) => modifyFields(piece, { turnProblem: () => Option.some('build' as const) }),
+        }),
+      ),
+      expect(role('alert')).toHaveText('The turn could not be prepared on this device. Open the piece again to retry.'),
+      expect(role('button', { name: 'Make it turn' })).not.toExist(),
+    )
+  })
+
   test('a missing piece says so and leads back to the wardrobe', () => {
     scene(
       { update, view },
