@@ -237,9 +237,12 @@ describe('video stills', () => {
 describe('Clef-flash', () => {
   const picture = { bytes: bytes('red-tee.png'), contentType: 'image/png' } as const
 
-  test('routes one garment to background removal and the rail to SAM', async () => {
+  test('reads how many garments show and whether a person does, assuming one when unanswered', async () => {
+    const held = await run(answering(JSON.parse(text('clef-route-held-person.json'))).route(picture))
+    expect(held).toEqual(Exit.succeed({ garments: 'one', confidence: 0.8612, person: 0.9258 }))
+    // Recorded before the person question: a person is assumed, which keeps it from background removal.
     const one = await run(answering(JSON.parse(text('clef-route-red-tee.json'))).route(picture))
-    expect(one).toEqual(Exit.succeed({ garments: 'one', confidence: 0.9672 }))
+    expect(one).toEqual(Exit.succeed({ garments: 'one', confidence: 0.9672, person: 1 }))
     const several = await run(answering(JSON.parse(text('clef-route-rail-ten.json'))).route(picture))
     expect(Exit.isSuccess(several) && several.value.garments).toBe('several')
   })
@@ -287,15 +290,18 @@ describe('Clef-flash', () => {
   })
 })
 
+/** A route with nobody in the picture. */
+const route = (garments: 'none' | 'one' | 'several', confidence: number) => ({ garments, confidence, person: 0.02 })
+
 describe('photo routing', () => {
   const policy = { single: 'cloudflare', routeConfidence: 0.75 } as const
 
   test('one garment it is sure of goes to background removal; several, or an unsure answer, to SAM', () => {
-    expect(cutterFor('picker', { garments: 'one', confidence: 0.9 }, policy)).toBe('cloudflare')
-    expect(cutterFor('picker', { garments: 'one', confidence: 0.6 }, policy)).toBe('sam')
-    expect(cutterFor('picker', { garments: 'several', confidence: 0.9 }, policy)).toBe('sam')
-    expect(cutterFor('picker', { garments: 'none', confidence: 0.9 }, policy)).toBe('none')
-    expect(cutterFor('picker', { garments: 'none', confidence: 0.5 }, policy)).toBe('sam')
+    expect(cutterFor(route('one', 0.9), policy)).toBe('cloudflare')
+    expect(cutterFor(route('one', 0.6), policy)).toBe('sam')
+    expect(cutterFor(route('several', 0.9), policy)).toBe('sam')
+    expect(cutterFor(route('none', 0.9), policy)).toBe('none')
+    expect(cutterFor(route('none', 0.5), policy)).toBe('sam')
   })
 
   test('a whole garment is preselected, part of one offered unticked, and a scrap dropped', () => {
@@ -309,9 +315,13 @@ describe('photo routing', () => {
     ])
   })
 
-  test('a camera shot goes to SAM even as one garment: background removal would keep the person', () => {
-    expect(cutterFor('camera', { garments: 'one', confidence: 0.94 }, policy)).toBe('sam')
-    expect(cutterFor('camera', { garments: 'none', confidence: 0.9 }, policy)).toBe('none')
+  test('a photo with a person goes to SAM even as one garment: background removal would keep the person', () => {
+    // The recorded answer for someone holding up one garment: sure of one, and a person.
+    expect(cutterFor({ garments: 'one', confidence: 0.8612, person: 0.9258 }, policy)).toBe('sam')
+    expect(cutterFor({ garments: 'one', confidence: 0.94, person: 0.5 }, policy)).toBe('sam')
+    // A piece laid flat, nobody in the picture, from the camera or the library alike.
+    expect(cutterFor({ garments: 'one', confidence: 0.94, person: 0.04 }, policy)).toBe('cloudflare')
+    expect(cutterFor({ garments: 'none', confidence: 0.9, person: 0.9 }, policy)).toBe('none')
   })
 })
 

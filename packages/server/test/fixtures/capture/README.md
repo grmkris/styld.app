@@ -28,3 +28,7 @@ person or a real wardrobe.
 - `sam-still-rail.sse`, `sam-still-red-tee.sse`: SAM 3.1 still streams recorded from a Cloudflare Worker on
   2026-10-29, with the prompts "clothing" and "t-shirt".
 - `clef-route-*.json`: the Clef-flash answers from the same probe.
+- `clef-route-held-person.json`: Clef-flash's answer, on 2026-10-30, for a real photo of someone holding up one
+  garment (person-routing spike, `meta-hackathon/research/2026-10-30/styld-person-routing-and-video-merge.md`).
+  Only the answer is kept, never the photo; the spike's `personAny` question is stored under `person`, as
+  `Clef.ts` asks it.

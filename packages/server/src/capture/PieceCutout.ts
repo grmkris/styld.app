@@ -4,7 +4,7 @@ import { CutoutFailed, GarmentCutout } from '../wardrobe/Processing.ts'
 import type { WardrobeBindings } from '../wardrobe/Wardrobe.ts'
 import { CaptureMetrics } from './Metrics.ts'
 import { CaptureConfig } from './Policy.ts'
-import { foregroundPiece, samPieces } from './PhotoPipeline.ts'
+import { cutterFor, foregroundPiece, samPieces } from './PhotoPipeline.ts'
 import { GarmentSegmenter, GarmentVision, PictureWork } from './Providers.ts'
 import { Usage } from './Usage.ts'
 
@@ -17,7 +17,7 @@ const largestGarment = (original: Uint8Array) =>
     const policy = yield* CaptureConfig
     const copies = yield* (yield* PictureWork).workingCopies(original)
     const route = yield* (yield* GarmentVision).route({ bytes: copies.small, contentType: 'image/jpeg' })
-    if (route.garments === 'one' && route.confidence >= policy.routeConfidence && policy.single === 'cloudflare') {
+    if (cutterFor(route, policy) === 'cloudflare') {
       const [foreground] = yield* foregroundPiece(original)
       if (foreground !== undefined) return Option.some(foreground.png)
     }

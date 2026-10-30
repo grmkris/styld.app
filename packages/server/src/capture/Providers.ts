@@ -24,6 +24,8 @@ export class ProviderOutcomeUnknown extends Schema.TaggedError<ProviderOutcomeUn
 export interface Route {
   readonly garments: 'none' | 'one' | 'several'
   readonly confidence: number
+  /** How likely any part of a person shows (0–1): someone wearing or holding the clothes, or only a hand. */
+  readonly person: number
 }
 
 /** What the decision model suggests for one cut-out piece. */

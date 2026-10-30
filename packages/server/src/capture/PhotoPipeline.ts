@@ -151,18 +151,21 @@ export const originalOnly = (parts: Parts, capture: CaptureRow, sourceKey: strin
     createdAt: capture.createdAt,
   }))
 
+/** Whether a photo shows any part of a person. */
+const showsPerson = (route: Route) => route.person >= 0.5
+
 /** Who cuts a photo out: nobody when the decision model is sure it shows no garment; background removal
- * for one garment it is sure of; SAM otherwise. A camera shot always goes to SAM, because the person
- * holding the garment is in it, and background removal keeps everything in the foreground.
+ * for one garment it is sure of, with nobody in the picture, such as a piece laid flat; SAM otherwise.
+ * Background removal keeps everything in the foreground, so a person holding or wearing the garment would
+ * come out with it (11 of 26 such photos in the spike).
  * @internal Exported for its tests. */
 export const cutterFor = (
-  source: CaptureRow['source'],
   route: Route,
   policy: Pick<CapturePolicy, 'single' | 'routeConfidence'>,
 ): 'none' | 'cloudflare' | 'sam' => {
   const sure = route.confidence >= policy.routeConfidence
   if (route.garments === 'none' && sure) return 'none'
-  return source !== 'camera' && route.garments === 'one' && sure && policy.single === 'cloudflare'
+  return route.garments === 'one' && sure && !showsPerson(route) && policy.single === 'cloudflare'
     ? 'cloudflare'
     : 'sam'
 }
@@ -187,10 +190,13 @@ export const processPhoto = Effect.fn('Styld.Capture.processPhoto')(function* (p
   if (Option.isNone(original)) return yield* unavailable()
   const copies = yield* (yield* PictureWork).workingCopies(original.value)
   const route = yield* (yield* GarmentVision).route({ bytes: copies.small, contentType: 'image/jpeg' })
-  const cutter = cutterFor(capture.source, route, policy)
+  const cutter = cutterFor(route, policy)
   if (cutter === 'none') return { found: [], route, provider: 'clef' }
   const { pieces, provider } = yield* cutPieces(original.value, copies, cutter)
-  const held = capture.source === 'camera' ? heldPiece(pieces, copies.width, copies.height) : undefined
+  // With a person in the picture, the piece is the one held up or shown, as in a camera shot: clothes the
+  // person wears are offered unticked.
+  const held =
+    capture.source === 'camera' || showsPerson(route) ? heldPiece(pieces, copies.width, copies.height) : undefined
   const found = yield* detectionsOf(parts, capture, capture.originalKey, pieces, (piece) =>
     held === undefined ? true : piece === held,
   )

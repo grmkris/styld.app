@@ -94,6 +94,38 @@ const suggestQuestions = {
 
 const state = 'A person photographed clothes to add them to their wardrobe.'
 
+/** How many garments a photo shows, and whether a person does: the route's questions. */
+const routeQuestions = {
+  garments: {
+    type: 'choice',
+    instructions: 'How many separate garments, shoes or accessories are clearly visible?',
+    criteria: { none: 'None', one: 'Exactly one', several: 'Two or more' },
+  },
+  // Found the person in 26 of 26 photos with one, with one false alarm in 18 without (person-routing spike,
+  // 2026-10-30); asked as this two-way choice there, so it is asked the same way here.
+  person: {
+    type: 'choice',
+    instructions: 'Is any part of a person visible: a face, hair, skin, hands, arms or legs?',
+    criteria: { yes: 'Yes', no: 'No' },
+  },
+} as const
+
+const routeOf = (answer: Answer): Route => {
+  // Without an answer a person is assumed, which keeps the photo away from background removal.
+  const person = Option.match(choiceOf(answer, 'person'), {
+    onNone: () => 1,
+    onSome: ({ probabilities }) => probabilities['yes'] ?? 0,
+  })
+  return Option.match(choiceOf(answer, 'garments'), {
+    onNone: (): Route => ({ garments: 'several', confidence: 0, person }),
+    onSome: ({ choice, probabilities }): Route => ({
+      garments: choice === 'none' || choice === 'one' ? choice : 'several',
+      confidence: probabilities[choice] ?? 0,
+      person,
+    }),
+  })
+}
+
 /** Clef-flash as Styld's decision model: route a photo, suggest a piece's details, confirm a held garment. */
 export const makeGarmentVision = (run: RunClef, metrics: CaptureMetrics['Service']) => ({
   route: Effect.fn('Styld.Capture.route')(function* (picture: Picture) {
@@ -101,21 +133,9 @@ export const makeGarmentVision = (run: RunClef, metrics: CaptureMetrics['Service
       model: 'clef-flash',
       state,
       images: [imageOf(picture)],
-      questions: {
-        garments: {
-          type: 'choice',
-          instructions: 'How many separate garments, shoes or accessories are clearly visible?',
-          criteria: { none: 'None', one: 'Exactly one', several: 'Two or more' },
-        },
-      },
+      questions: routeQuestions,
     })
-    return Option.match(choiceOf(answer, 'garments'), {
-      onNone: (): Route => ({ garments: 'several', confidence: 0 }),
-      onSome: ({ choice, probabilities }): Route => ({
-        garments: choice === 'none' || choice === 'one' ? choice : 'several',
-        confidence: probabilities[choice] ?? 0,
-      }),
-    })
+    return routeOf(answer)
   }),
   suggest: Effect.fn('Styld.Capture.suggest')(function* (picture: Picture) {
     const answer = yield* ask(run, metrics, 'suggest', {
