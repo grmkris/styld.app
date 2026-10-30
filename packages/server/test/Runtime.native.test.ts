@@ -8,6 +8,7 @@ import * as HttpBody from 'effect/http/HttpBody'
 import * as HttpClient from 'effect/http/HttpClient'
 import { type Browser, chromium } from 'playwright'
 import { verifyBrowser } from './BrowserAcceptance.ts'
+import { pictureEnvironment, verifyCleanPictures } from './CleanPictureAcceptance.ts'
 import { verifyCameraJourney, verifyCaptureJourney, verifyLongVideoJourney } from './CaptureBrowserAcceptance.ts'
 import { verifyGalleryJourney } from './GalleryBrowserAcceptance.ts'
 import { nativeDailyAllowance, verifyCaptures } from './CaptureAcceptance.ts'
@@ -51,6 +52,7 @@ const makeStack = (generation: string) =>
           STYLD_RELEASE: `native-${generation}`,
           // Capture providers stay off natively: each capture keeps its original photo as one detection.
           STYLD_PROVIDERS: 'off',
+          ...pictureEnvironment(worker.url),
           DAILY_ALLOWANCE: String(nativeDailyAllowance),
           AUTH_SECRET: Redacted.make('native-test-auth-secret-012345678901234567890123'),
           AUTH_SESSION_KEYS: Redacted.make(
@@ -140,13 +142,13 @@ test(
 )
 
 test(
-  "keeps each account's pieces (upload checks, idempotent adds, queue processing, private images, edits, deletion) and deletes accounts",
+  "keeps each account's pieces (upload checks, idempotent adds, queue processing, private images, edits, clean pictures, deletion) and deletes accounts",
   Effect.gen(function* () {
     const { url, styldUrl } = yield* stack
-    yield* Effect.promise(() => verifyWardrobe(styldUrl, url))
+    yield* Effect.promise(() => verifyWardrobe(styldUrl, url).then(() => verifyCleanPictures(styldUrl, url)))
     yield* Effect.promise(() => verifyAccountDeletion(styldUrl, url))
   }),
-  { timeout: 60000 },
+  { timeout: 120000 },
 )
 
 test(

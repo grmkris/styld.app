@@ -23,7 +23,7 @@ import { boardRoutes } from './boards/Http.ts'
 import { makeWorn, Worn } from './worn/Worn.ts'
 import { apiRoutes } from './Api.ts'
 import { makeAuthHttp, withCodeRequestPolicy } from './AuthHttp.ts'
-import { makeGarmentVision, type RunClef } from './capture/Clef.ts'
+import { type ClefRequest, makeGarmentVision, type RunClef } from './capture/Clef.ts'
 import { makePictureWork } from './capture/CloudflareImages.ts'
 import { captureRoutes } from './capture/Http.ts'
 import { makeGarmentSegmenter } from './capture/Meta.ts'
@@ -142,6 +142,17 @@ const captureProviders = (
   )
 }
 
+/** Clef asked over HTTP, as a stand-in answers it on the native stack. */
+const askStandIn = async (url: string, request: ClefRequest): Promise<unknown> => {
+  const response = await globalThis.fetch(url, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(request),
+  })
+  if (!response.ok) throw new Error(`Clef stand-in answered ${response.status}`)
+  return response.json()
+}
+
 /** A Workers RateLimit binding's runtime object as a check: false when over the limit or failing. */
 const sharedLimit = (limiter: { limit(options: { key: string }): Promise<{ success: boolean }> }) => (key: string) =>
   Effect.tryPromise(() => limiter.limit({ key })).pipe(
@@ -257,9 +268,15 @@ const makeApplication =
       const bucket = yield* media.raw
       const imagesRaw = yield* images.raw
       const aiRaw = yield* ai.raw
+      // SAFETY: Clef-flash is a Workers AI model newer than the pinned workers-types model list -- the request is the System One API shape Clef.ts builds and documents
+      const workersAi: RunClef = (request) => aiRaw.run('@cf/cloudflare/clef-flash' as never, request as never)
+      // Native acceptance only: the local stack cannot reach Workers AI, so it names a stand-in for Clef.
+      const clefStandIn: unknown = env.CLEF_API_BASE
       const providers = captureProviders(env, {
-        // SAFETY: Clef-flash is a Workers AI model newer than the pinned workers-types model list -- the request is the System One API shape Clef.ts builds and documents
-        runClef: (request) => aiRaw.run('@cf/cloudflare/clef-flash' as never, request as never),
+        runClef:
+          typeof clefStandIn === 'string' && clefStandIn.length > 0
+            ? (request) => askStandIn(clefStandIn, request)
+            : workersAi,
         images: imagesRaw,
         bucket,
         dataset: yield* calls.raw,

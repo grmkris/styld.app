@@ -67,7 +67,8 @@ const captureId = async (response: Response) => {
   return Schema.decodeUnknownSync(Schema.Struct({ captureId: Schema.String }))(await response.json()).captureId
 }
 
-const exists = async (fixtures: string, key: string) =>
+/** Whether a stored object still exists, read through the fixture Worker. */
+export const exists = async (fixtures: string, key: string) =>
   Schema.decodeUnknownSync(Schema.Struct({ exists: Schema.Boolean }))(
     await (await fetch(`${fixtures}/test/identity/media?key=${encodeURIComponent(key)}`)).json(),
   ).exists

@@ -176,6 +176,7 @@ const useTools = async (origin: string, access: string) => {
       'look_list',
       'look_get',
       'look_delete',
+      'picture_redraw',
     ])
     // Hosts read the view from the resource the tool names, through either protocol era.
     const view = (await client.readResource({ uri: 'ui://styld/views-v1.html' })).contents[0]

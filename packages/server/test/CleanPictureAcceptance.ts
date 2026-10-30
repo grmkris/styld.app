@@ -1,0 +1,119 @@
+import { readFileSync } from 'node:fs'
+import { expect } from 'bun:test'
+import * as Output from 'alchemy/Output'
+import { Redacted, Schema } from 'effect'
+import { exists } from './CaptureAcceptance.ts'
+import { picturesAccount, seededPieces } from './PictureFixture.ts'
+import { type Call, client, signIn } from './WardrobeAcceptance.ts'
+
+/** The API Worker's settings for clean pictures on the native stack: Clef and Muse are the fixture's stand-ins. */
+export const pictureEnvironment = (fixtures: Output.Output<string | undefined>) => ({
+  CLEAN_PICTURES: 'muse',
+  CLEF_API_BASE: Output.interpolate`${fixtures}/test/pictures/clef`,
+  META_API_BASE: Output.interpolate`${fixtures}/test/pictures/meta`,
+  META_API_KEY: Redacted.make('native-test-meta-key'),
+})
+
+const fixture = (name: string) => readFileSync(new URL(`fixtures/capture/${name}`, import.meta.url))
+
+/** Muse's recorded drawing of the red tee on green, as PNG bytes. */
+const museTee = () => {
+  const recorded = Schema.decodeUnknownSync(
+    Schema.fromJsonString(Schema.Struct({ data: Schema.Tuple([Schema.Struct({ b64_json: Schema.String })]) })),
+  )(fixture('muse-edit-red-tee.json').toString('utf8'))
+  return Uint8Array.from(atob(recorded.data[0].b64_json), (character) => character.charCodeAt(0))
+}
+
+const Picture = Schema.Struct({ state: Schema.String, shows: Schema.String, version: Schema.Number })
+const Piece = Schema.Struct({ id: Schema.String, picture: Schema.optionalKey(Picture) })
+const Backfill = Schema.Struct({ pieces: Schema.Number })
+const Prompts = Schema.Struct({ prompts: Schema.Array(Schema.String) })
+const Allowance = Schema.Struct({ allowance: Schema.Struct({ remaining: Schema.Number }) })
+
+const decoded = async <A>(schema: Schema.Decoder<A>, response: Response) => {
+  expect(response.status).toBe(200)
+  return Schema.decodeUnknownSync(schema)(await response.json())
+}
+
+/** The piece once its clean picture is no longer being drawn. */
+const settled = async (call: Call, pieceId: string) => {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    const piece = await decoded(Piece, await call(`/api/pieces/${pieceId}`))
+    if (piece.picture?.state !== 'drawing') return piece
+    await Bun.sleep(250)
+  }
+  throw new Error(`the picture of ${pieceId} is still being drawn`)
+}
+
+const redraw = (call: Call, pieceId: string, body: object) =>
+  call(`/api/pieces/${pieceId}/picture/redraw`, { method: 'POST', body: JSON.stringify(body) })
+
+/** Kept cut-outs get clean pictures through the queue: Clef judges each, Muse draws the ones worth drawing on their
+ * key colour, the drawing is keyed, stored and checked, then shown, offered or dropped. A redraw costs a credit once,
+ * however often it is asked; a photo is never sent; deleting a piece deletes its drawings. Clef and Muse are the
+ * fixture's stand-ins (PictureFixture.ts). */
+export const verifyCleanPictures = async (origin: string, fixtures: string) => {
+  expect((await fetch(`${fixtures}/test/pictures/seed`, { method: 'POST' })).status).toBe(204)
+  for (const [key, bytes] of [
+    ['green', museTee()],
+    ['magenta', new Uint8Array(fixture('muse-green-shirt.png'))],
+  ] as const)
+    expect((await fetch(`${fixtures}/test/pictures/answer?key=${key}`, { method: 'PUT', body: bytes })).status).toBe(
+      204,
+    )
+  const owner = client(origin, await signIn(origin, picturesAccount))
+  const prompts = async () => (await decoded(Prompts, await fetch(`${fixtures}/test/pictures/prompts`))).prompts
+
+  // Three kept cut-outs have no picture; the piece kept as its photo is not one of them. Asking twice queues once.
+  expect(await decoded(Backfill, await owner('/api/pictures'))).toEqual({ pieces: 3 })
+  expect(await decoded(Backfill, await owner('/api/pictures', { method: 'POST' }))).toEqual({ pieces: 3 })
+  expect(await decoded(Backfill, await owner('/api/pictures', { method: 'POST' }))).toEqual({ pieces: 0 })
+
+  // The red tee is drawn and matches, so it shows; the green shirt is drawn on magenta and offered; the scrap asks
+  // for a retake and is never drawn; the photo has no picture.
+  expect((await settled(owner, seededPieces.red)).picture).toEqual({ state: 'ready', shows: 'clean', version: 1 })
+  expect((await settled(owner, seededPieces.green)).picture).toEqual({ state: 'proposed', shows: 'photo', version: 1 })
+  expect((await settled(owner, seededPieces.blue)).picture).toEqual({ state: 'retake', shows: 'photo', version: 0 })
+  expect((await settled(owner, seededPieces.photo)).picture).toBeUndefined()
+  const drawn = await prompts()
+  expect(drawn).toHaveLength(2)
+  expect(drawn.filter((prompt) => prompt.includes('magenta #ff00ff'))).toHaveLength(1)
+  const tee = `accounts/${picturesAccount}/pieces/${seededPieces.red}`
+  expect(await exists(fixtures, `${tee}/clean-1.png`)).toBe(true)
+  for (const which of ['full', 'photo/full', 'clean/full'])
+    expect((await owner(`/cdn/pieces/${seededPieces.red}/${which}`)).status).toBe(200)
+  expect((await owner(`/cdn/pieces/${seededPieces.blue}/clean/full`)).status).toBe(404)
+
+  // The owner takes the offered drawing; a scrap has none to take.
+  const choose = (pieceId: string) =>
+    owner(`/api/pieces/${pieceId}/picture`, { method: 'PUT', body: JSON.stringify({ use: 'clean' }) })
+  expect((await decoded(Piece, await choose(seededPieces.green))).picture).toEqual({
+    state: 'proposed',
+    shows: 'clean',
+    version: 1,
+  })
+  expect((await choose(seededPieces.blue)).status).toBe(409)
+
+  // A redraw holds a credit, sends the owner's words, replaces the drawing and consumes the credit once.
+  const before = (await decoded(Allowance, await owner('/api/captures/tray'))).allowance.remaining
+  const asked = { operationId: 'native-redraw-0001', hint: 'a red cotton tee' }
+  expect(await decoded(Picture, await redraw(owner, seededPieces.red, asked))).toEqual({
+    state: 'drawing',
+    shows: 'photo',
+    version: 1,
+  })
+  expect((await redraw(owner, seededPieces.red, asked)).status).toBe(200)
+  expect((await settled(owner, seededPieces.red)).picture).toEqual({ state: 'ready', shows: 'clean', version: 2 })
+  const sent = await prompts()
+  expect(sent).toHaveLength(3)
+  expect(sent.at(-1)).toContain('Its owner describes it as: a red cotton tee.')
+  expect((await decoded(Allowance, await owner('/api/captures/tray'))).allowance.remaining).toBe(before - 1)
+  expect(await exists(fixtures, `${tee}/clean-1.png`)).toBe(false)
+  expect(await exists(fixtures, `${tee}/clean-2.png`)).toBe(true)
+  // A photo never leaves Styld.
+  expect((await redraw(owner, seededPieces.photo, { operationId: 'native-redraw-0002' })).status).toBe(409)
+
+  // Deleting the piece deletes its drawing.
+  expect((await owner(`/api/pieces/${seededPieces.red}`, { method: 'DELETE' })).status).toBe(204)
+  expect(await exists(fixtures, `${tee}/clean-2.png`)).toBe(false)
+}

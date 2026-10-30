@@ -15,6 +15,7 @@ import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { exerciseAttemptLimiter } from './AttemptLimiterFixture.ts'
 import { seedIdentity, disableIdentity } from './IdentityFixture.ts'
+import { pictureRoutes } from './PictureFixture.ts'
 import { recoveryRoutes } from './RecoveryFixture.ts'
 import { makeAuthHttp, withCodeRequestPolicy } from '../src/AuthHttp.ts'
 import { onFirstUse } from '../src/IsolateCache.ts'
@@ -81,6 +82,7 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
     const identityRoutes = Layer.mergeAll(
       auth.layer,
       yield* recoveryRoutes(database, media),
+      pictureRoutes(database, media),
       HttpRouter.add(
         'POST',
         '/test/identity/seed',
@@ -222,7 +224,8 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
         if (
           url.pathname.startsWith('/api/auth/') ||
           url.pathname.startsWith('/test/identity/') ||
-          url.pathname.startsWith('/test/recovery/')
+          url.pathname.startsWith('/test/recovery/') ||
+          url.pathname.startsWith('/test/pictures/')
         )
           // The fixture sends no codes; its auth still needs the per-request code policy.
           return yield* (yield* authHandle(undefined)).pipe(
