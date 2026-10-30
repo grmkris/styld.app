@@ -6,8 +6,9 @@ import { type CaptureBindings, makeParts } from './Parts.ts'
 import { CaptureConfig } from './Policy.ts'
 import { processing } from './Processing.ts'
 import { picturing } from './Pictures.ts'
-import { GarmentSegmenter, GarmentVision, ImageGenerator, PictureWork } from './Providers.ts'
+import { GarmentSegmenter, GarmentVision, ImageGenerator, PictureWork, VideoGenerator } from './Providers.ts'
 import { redrawing } from './Redraw.ts'
+import { askingTurns, turning } from './Turns.ts'
 import { detectionPictures, reviewing } from './Review.ts'
 import { Usage } from './Usage.ts'
 
@@ -16,6 +17,7 @@ type Requirements =
   | PictureWork
   | GarmentSegmenter
   | ImageGenerator
+  | VideoGenerator
   | Usage
   | CaptureConfig
   | CaptureMetrics
@@ -39,6 +41,8 @@ const make = (bindings: CaptureBindings) =>
       ...processing(parts),
       ...picturing(parts),
       ...redrawing(parts),
+      ...turning(parts),
+      ...askingTurns(parts),
     }
     return {
       createCapture: bound(operations.createCapture),
@@ -56,6 +60,10 @@ const make = (bindings: CaptureBindings) =>
       redrawPicture: bound(operations.redrawPicture),
       undrawnPictures: bound(operations.undrawnPictures),
       drawPictures: bound(operations.drawPictures),
+      processTurn: bound(operations.processTurn),
+      failTurn: bound(operations.failTurn),
+      makeTurn: bound(operations.makeTurn),
+      turnFile: bound(operations.turnFile),
     }
   })
 

@@ -13,8 +13,11 @@ export const ProcessCapture = Schema.Struct({ captureId: Schema.String })
 /** Queue message: draw a kept piece's clean picture, or carry on with one a delivery left. */
 export const CleanPicture = Schema.Struct({ cleanPictureOf: Schema.String })
 
+/** Queue message: carry a piece's turn on a hanger a step further. */
+export const MakeTurn = Schema.Struct({ turnOf: Schema.String })
+
 /** Every message the Worker's queue carries. */
-export const WorkMessage = Schema.Union([ProcessPiece, FinishAccountDeletion, ProcessCapture, CleanPicture])
+export const WorkMessage = Schema.Union([ProcessPiece, FinishAccountDeletion, ProcessCapture, CleanPicture, MakeTurn])
 export type WorkMessage = typeof WorkMessage.Type
 
 /** The cut-out step could not produce an image this time; the queue retries it. */

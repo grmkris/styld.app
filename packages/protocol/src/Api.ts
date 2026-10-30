@@ -36,6 +36,7 @@ import { Day, WearPieces, WornDay, WornDays, WornRange } from './Worn.ts'
 import {
   AddPiece,
   ChoosePicture,
+  MakeTurn,
   CreateUpload,
   CreateVideoUpload,
   NoCleanPicture,
@@ -47,8 +48,10 @@ import {
   PictureRefused,
   PiecePicture,
   Pieces,
+  PieceTurn,
   RedrawPicture,
   SubcategoryMismatch,
+  TurnRefused,
   UpdatePiece,
   Upload,
   UploadRefused,
@@ -185,6 +188,14 @@ export class CaptureApi extends HttpApiGroup.make('capture')
     HttpApiEndpoint.post('drawPictures', '/pictures', {
       success: PictureBackfill,
       error: [CaptureUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post('makeTurn', '/pieces/:pieceId/turn', {
+      params: { pieceId: PieceId },
+      payload: MakeTurn,
+      success: PieceTurn,
+      error: [PieceNotFound, TurnRefused, DailyLimitReached, CaptureUnavailable, RequestRefused],
     }),
   )
   .middleware(SessionHttp.RequireSession)

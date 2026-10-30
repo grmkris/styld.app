@@ -13,6 +13,7 @@ export {
   oauthGrants,
   operationReceipts,
   piecePictures,
+  pieceTurns,
   pieces,
   uploads,
   wornPieces,

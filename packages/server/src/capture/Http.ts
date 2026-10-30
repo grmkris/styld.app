@@ -1,4 +1,4 @@
-import { DetectionId, StyldApi } from '@styld/protocol'
+import { DetectionId, PieceId, StyldApi } from '@styld/protocol'
 import { Effect, Layer, Option, Result, Schema } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
 import type { RuntimeContext } from 'alchemy/RuntimeContext'
@@ -39,6 +39,9 @@ export const captureHandlers = (
           admit(asSessionAccount(captures.redrawPicture(params.pieceId, payload))),
         )
         .handle('undrawnPictures', () => asSessionAccount(captures.undrawnPictures()))
+        .handle('makeTurn', ({ params, payload }) =>
+          admit(asSessionAccount(captures.makeTurn(params.pieceId, payload.operationId))),
+        )
         .handle('drawPictures', () => admit(asSessionAccount(captures.drawPictures())))
         .handle('check', ({ payload }) =>
           admit(
@@ -61,36 +64,62 @@ const PictureTarget = Schema.Struct({
   detectionId: DetectionId,
   which: Schema.Literals(['cutout', 'original', 'back']),
 })
+const TurnTarget = Schema.Struct({ pieceId: PieceId, which: Schema.Literals(['video', 'front', 'sheet']) })
 
-/** `GET /cdn/detections/:detectionId/:which`: a waiting piece's picture, for its owner only. Cut-outs
- * keep their transparency. Another account's detection answers 404, like a missing one. */
+/** One stored file for its owner only, through the website's session cookie: 401 signed out, 404 for another
+ * account's file, like a missing one. Each file's address names it for good, so it is cached privately. */
+const ownerFile = <A, E, R, Account>(
+  account: Effect.Effect<Option.Option<string>, never, Account>,
+  params: Effect.Effect<A, E, R>,
+  read: (
+    target: A,
+  ) => Effect.Effect<
+    Option.Option<{ readonly bytes: Uint8Array; readonly contentType: string }>,
+    unknown,
+    CurrentAccount
+  >,
+) =>
+  Effect.gen(function* () {
+    const accountId = yield* account
+    if (Option.isNone(accountId)) return HttpServerResponse.empty({ status: 401 })
+    const target = yield* params.pipe(Effect.option)
+    if (Option.isNone(target)) return HttpServerResponse.empty({ status: 404 })
+    const file = yield* read(target.value).pipe(
+      Effect.provideService(CurrentAccount, { accountId: accountId.value, via: 'session' }),
+      Effect.orElseSucceed(() => Option.none()),
+    )
+    return Option.match(file, {
+      onNone: () => HttpServerResponse.empty({ status: 404 }),
+      onSome: ({ bytes, contentType }) =>
+        HttpServerResponse.uint8Array(bytes, {
+          contentType,
+          headers: { 'cache-control': 'private, max-age=3600', vary: 'Cookie' },
+        }),
+    })
+  })
+
+/** `GET /cdn/detections/:detectionId/:which`: a waiting piece's picture, cut-outs with their transparency; and
+ * `GET /cdn/turns/:pieceId/:which`: a turn's video, front frame or frame sheet. Both for their owner only. */
 export const captureRoutes = (auth: ReturnType<typeof makeAuthHttp>) =>
   Layer.unwrap(
     Effect.gen(function* () {
       const captures = yield* Captures
       const account = yield* cookieAccount(auth)
-      return HttpRouter.add(
-        'GET',
-        '/cdn/detections/:detectionId/:which',
-        Effect.gen(function* () {
-          const accountId = yield* account
-          if (Option.isNone(accountId)) return HttpServerResponse.empty({ status: 401 })
-          const target = yield* HttpRouter.schemaPathParams(PictureTarget).pipe(Effect.option)
-          if (Option.isNone(target)) return HttpServerResponse.empty({ status: 404 })
-          const picture = yield* captures.detectionPicture(target.value.detectionId, target.value.which).pipe(
-            Effect.provideService(CurrentAccount, { accountId: accountId.value, via: 'session' }),
-            Effect.orElseSucceed(() => Option.none()),
-          )
-          return Option.match(picture, {
-            onNone: () => HttpServerResponse.empty({ status: 404 }),
-            onSome: ({ bytes, contentType }) =>
-              HttpServerResponse.uint8Array(bytes, {
-                contentType,
-                // A detection's pictures never change; only its owner may read them.
-                headers: { 'cache-control': 'private, max-age=3600', vary: 'Cookie' },
-              }),
-          })
-        }),
+      return Layer.mergeAll(
+        HttpRouter.add(
+          'GET',
+          '/cdn/detections/:detectionId/:which',
+          ownerFile(account, HttpRouter.schemaPathParams(PictureTarget), ({ detectionId, which }) =>
+            captures.detectionPicture(detectionId, which),
+          ),
+        ),
+        HttpRouter.add(
+          'GET',
+          '/cdn/turns/:pieceId/:which',
+          ownerFile(account, HttpRouter.schemaPathParams(TurnTarget), ({ pieceId, which }) =>
+            captures.turnFile(pieceId, which),
+          ),
+        ),
       )
     }),
   )

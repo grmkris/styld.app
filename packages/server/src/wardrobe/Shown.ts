@@ -1,5 +1,5 @@
-import type { PictureChoice, PiecePicture } from '@styld/protocol'
-import type { PictureRow, PieceRow } from './Store.ts'
+import type { PictureChoice, PiecePicture, PieceTurn } from '@styld/protocol'
+import type { PictureRow, PieceRow, TurnRow } from './Store.ts'
 
 // A claim older than Muse's 90 s timeout plus the keying belongs to a delivery that died: its drawing may have been
 // made and billed, so it is never drawn again on its own, and the piece shows its photo.
@@ -49,3 +49,27 @@ export const pictureView = (picture: PictureRow, at: Date): PiecePicture => ({
   shows: shows(picture),
   version: picture.version,
 })
+
+// A turn no step has moved for this long has lost its delivery; it shows as failed and may be asked for again.
+const turnPatienceMillis = 20 * 60 * 1000
+
+const turnStates: Record<TurnRow['state'], PieceTurn['state']> = {
+  requested: 'making',
+  anchoring: 'making',
+  generating: 'making',
+  'video-ready': 'building',
+  ready: 'ready',
+  rejected: 'failed',
+  failed: 'failed',
+}
+
+/** A piece's turn as its owner sees it: the layout of its frames once it is ready. */
+export const turnView = (turn: TurnRow, at: Date): PieceTurn => {
+  const state = turnStates[turn.state]
+  const lost = state === 'making' && at.getTime() - turn.updatedAt.getTime() > turnPatienceMillis
+  return {
+    state: lost ? 'failed' : state,
+    version: turn.updatedAt.getTime(),
+    ...(turn.state === 'ready' && turn.layout !== null ? { layout: turn.layout } : {}),
+  }
+}

@@ -1,4 +1,4 @@
-import { accounts, detections, operationReceipts, piecePictures, pieces, uploads } from '@styld/db'
+import { accounts, detections, operationReceipts, piecePictures, pieceTurns, pieces, uploads } from '@styld/db'
 import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Array, Effect, Option, Schema } from 'effect'
@@ -11,6 +11,7 @@ export type PieceRow = typeof pieces.$inferSelect
 export type UploadRow = typeof uploads.$inferSelect
 export type ReceiptRow = typeof operationReceipts.$inferSelect
 export type PictureRow = typeof piecePictures.$inferSelect
+export type TurnRow = typeof pieceTurns.$inferSelect
 
 export type PieceChanges = Partial<
   Pick<PieceRow, 'name' | 'notes' | 'category' | 'subcategory' | 'colours' | 'updatedAt'>
@@ -100,6 +101,16 @@ const sharedPhotoQueries = (db: ReturnType<typeof drizzle>) => ({
 const pictureQueries = (db: ReturnType<typeof drizzle>) => ({
   picturesOf: (accountId: string) =>
     attempt(() => db.select().from(piecePictures).where(eq(piecePictures.accountId, accountId))),
+  turnsOf: (accountId: string) =>
+    attempt(() => db.select().from(pieceTurns).where(eq(pieceTurns.accountId, accountId))),
+  turnOf: (accountId: string, pieceId: string) =>
+    attempt(() =>
+      db
+        .select()
+        .from(pieceTurns)
+        .where(and(eq(pieceTurns.pieceId, pieceId), eq(pieceTurns.accountId, accountId)))
+        .limit(1),
+    ).pipe(Effect.map(first)),
   pictureOf: (accountId: string, pieceId: string) =>
     attempt(() =>
       db

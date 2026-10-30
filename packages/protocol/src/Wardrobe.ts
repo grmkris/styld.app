@@ -128,6 +128,34 @@ export const PiecePicture = Schema.Struct({
 })
 export type PiecePicture = typeof PiecePicture.Type
 
+/** A piece's turn (owner, 2026-10-30): its clean picture on a wooden hanger turning from the side to the front, made
+ * on request for credits. `making` while the video model works; `building` while the owner's browser cuts the video
+ * into frames; `ready` with the frame sheet's layout; `failed` when no turn came of it (its credits came back). */
+export const TurnState = Schema.Literals(['making', 'building', 'ready', 'failed'])
+export type TurnState = typeof TurnState.Type
+
+/** How a turn's frame sheet is laid out: `frames` cells of `width` by `height` in `columns`, the hanger's apex at
+ * `pivot` (fractions of a cell). */
+export const TurnLayout = Schema.Struct({
+  frames: Schema.Int.check(Schema.isBetween({ minimum: 2, maximum: 60 })),
+  columns: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 12 })),
+  width: Schema.Int.check(Schema.isBetween({ minimum: 32, maximum: 1024 })),
+  height: Schema.Int.check(Schema.isBetween({ minimum: 32, maximum: 1024 })),
+  pivot: Schema.Tuple([Schema.Number, Schema.Number]),
+})
+export type TurnLayout = typeof TurnLayout.Type
+
+export const PieceTurn = Schema.Struct({
+  state: TurnState,
+  /** Changes with every new turn and sheet; turn addresses carry it. */
+  version: Schema.Int,
+  layout: Schema.optionalKey(TurnLayout),
+})
+export type PieceTurn = typeof PieceTurn.Type
+
+/** Ask for a turn: `POST /api/pieces/:pieceId/turn`, a new `operationId` each time. */
+export const MakeTurn = Schema.Struct({ operationId: OperationId })
+
 /** Show the drawing or the photo: `PUT /api/pieces/:pieceId/picture`. */
 export const ChoosePicture = Schema.Struct({ use: PictureChoice })
 
@@ -156,6 +184,8 @@ export const Piece = Schema.Struct({
   updatedAt: Schema.String,
   /** Absent for a piece no drawing was ever asked for. */
   picture: Schema.optionalKey(PiecePicture),
+  /** Absent for a piece never asked to turn. */
+  turn: Schema.optionalKey(PieceTurn),
 })
 export type Piece = typeof Piece.Type
 
@@ -227,6 +257,14 @@ export class SubcategoryMismatch extends Schema.TaggedError<SubcategoryMismatch>
 export class PictureRefused extends Schema.TaggedError<PictureRefused>()(
   'PictureRefused',
   { reason: Schema.Literals(['photo', 'face', 'busy', 'off']) },
+  { httpApiStatus: 409 },
+) {}
+
+/** Why a piece cannot turn now: it has no clean picture to turn (`picture`), a turn is already being made (`busy`),
+ * or turns are off (`off`). */
+export class TurnRefused extends Schema.TaggedError<TurnRefused>()(
+  'TurnRefused',
+  { reason: Schema.Literals(['picture', 'busy', 'off']) },
   { httpApiStatus: 409 },
 ) {}
 

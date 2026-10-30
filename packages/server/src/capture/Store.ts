@@ -1,4 +1,13 @@
-import { captureFrames, captures, detections, operationReceipts, piecePictures, pieces, uploads } from '@styld/db'
+import {
+  captureFrames,
+  captures,
+  detections,
+  operationReceipts,
+  piecePictures,
+  pieceTurns,
+  pieces,
+  uploads,
+} from '@styld/db'
 import { and, desc, eq, inArray, isNotNull, isNull, ne, or } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Array, Effect, Option } from 'effect'
@@ -12,6 +21,8 @@ type ReceiptRow = typeof operationReceipts.$inferSelect
 export type PictureRow = typeof piecePictures.$inferSelect
 export type PictureState = PictureRow['state']
 type NewPicture = typeof piecePictures.$inferInsert
+export type TurnRow = typeof pieceTurns.$inferSelect
+export type TurnState = TurnRow['state']
 
 const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: () => StoreUnavailable.make({}) })
 const first = <A>(rows: ReadonlyArray<A>) => Option.fromNullishOr(rows[0])
@@ -389,6 +400,26 @@ const pictureRows = (db: Database) => ({
     ).pipe(Effect.map((rows) => rows.map(({ pieceId }) => pieceId))),
 })
 
+/** Pieces' turns. Only the turn job and the owner's request write them, each move from the state it was read in. */
+const turnRows = (db: Database) => ({
+  findTurn: (pieceId: string) =>
+    attempt(() => db.select().from(pieceTurns).where(eq(pieceTurns.pieceId, pieceId)).limit(1)).pipe(Effect.map(first)),
+  /** Move a turn on from one of `from`, with `changes`; whether it moved. */
+  moveTurn: (pieceId: string, from: ReadonlyArray<TurnState>, changes: Partial<TurnRow>) =>
+    attempt(() =>
+      db
+        .update(pieceTurns)
+        .set(changes)
+        .where(and(eq(pieceTurns.pieceId, pieceId), inArray(pieceTurns.state, [...from])))
+        .returning({ pieceId: pieceTurns.pieceId }),
+    ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** A turn the owner asked for, unless the piece already has one; whether it was added. */
+  addTurn: (turn: typeof pieceTurns.$inferInsert) =>
+    attempt(() =>
+      db.insert(pieceTurns).values(turn).onConflictDoNothing().returning({ pieceId: pieceTurns.pieceId }),
+    ).pipe(Effect.map((rows) => rows.length > 0)),
+})
+
 export const makeCaptureStore = (database: Parameters<typeof drizzle>[0]) => {
   const db = drizzle(database)
   return {
@@ -398,6 +429,7 @@ export const makeCaptureStore = (database: Parameters<typeof drizzle>[0]) => {
     ...reviewRows(db),
     ...transitionRows(db),
     ...pictureRows(db),
+    ...turnRows(db),
   }
 }
 

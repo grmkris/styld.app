@@ -1,3 +1,4 @@
+import { decodePng, type Rgba } from '@styld/imaging'
 import { CaptureUnavailable } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import * as Crypto from 'effect/Crypto'
@@ -12,7 +13,7 @@ import { makeCaptureStore } from './Store.ts'
 export interface CaptureBindings {
   readonly database: WardrobeBindings['database']
   readonly bucket: WardrobeBindings['bucket']
-  readonly queue: { send(message: WorkMessage): Promise<unknown> }
+  readonly queue: { send(message: WorkMessage, options?: { readonly delaySeconds?: number }): Promise<unknown> }
 }
 
 export const unavailable = () => CaptureUnavailable.make({})
@@ -52,6 +53,20 @@ export const readObject = (parts: Parts, key: string) =>
     catch: unavailable,
   })
 
+/** A stored PNG's pixels: none when it is gone, or is not a PNG. */
+export const readPixels = (parts: Parts, key: string) =>
+  readObject(parts, key).pipe(
+    Effect.map(
+      Option.flatMap((bytes) => {
+        try {
+          return Option.some(decodePng(bytes))
+        } catch {
+          return Option.none<Rgba>()
+        }
+      }),
+    ),
+  )
+
 export const writeObject = (parts: Parts, key: string, bytes: Uint8Array, contentType: string) =>
   Effect.tryPromise({
     try: () => parts.bindings.bucket.put(key, bytes, { httpMetadata: { contentType } }),
@@ -61,6 +76,21 @@ export const writeObject = (parts: Parts, key: string, bytes: Uint8Array, conten
 /** Where a piece's clean picture lives: a new name for each drawing, so a cached old one is never served. */
 export const pictureKey = (accountId: string, pieceId: string, version: number) =>
   `${piecePrefix(accountId, pieceId)}clean-${version}.png`
+
+/** Where a piece's turn keeps its files: its two anchor frames, its video and its frame sheet. */
+export const turnKey = (
+  accountId: string,
+  pieceId: string,
+  name: 'front.png' | 'side.png' | 'turn.mp4' | 'sheet.png',
+) => `${piecePrefix(accountId, pieceId)}turn-${name}`
+
+/** Tell the queue a piece's turn has a step waiting, now or after `delaySeconds` (polling the video model). */
+export const enqueueTurn = (parts: Parts, pieceId: string, delaySeconds?: number) =>
+  Effect.tryPromise({
+    try: () =>
+      parts.bindings.queue.send({ turnOf: pieceId }, delaySeconds === undefined ? undefined : { delaySeconds }),
+    catch: unavailable,
+  }).pipe(Effect.asVoid)
 
 /** Tell the queue a piece's clean picture is waiting to be drawn. */
 export const enqueuePicture = (parts: Parts, pieceId: string) =>

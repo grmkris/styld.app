@@ -10,6 +10,7 @@ import {
   PieceNotFound,
   type PieceId,
   type PiecePicture,
+  type PieceTurn,
   type Subcategory,
   SubcategoryMismatch,
   type UpdatePiece,
@@ -27,7 +28,7 @@ import { CurrentAccount } from '../CurrentAccount.ts'
 import { deliverImage, type ImageBindings } from './Delivery.ts'
 import { type ImageSize, isVideoContainer, piecePrefix, sniffImageType, uploadKey } from './Media.ts'
 import { GarmentCutout, type WorkMessage } from './Processing.ts'
-import { pictureView, shownImage, shows } from './Shown.ts'
+import { pictureView, shownImage, shows, turnView } from './Shown.ts'
 import {
   makeStore,
   type PictureRow,
@@ -55,8 +56,8 @@ const refused = (reason: UploadRefused['reason']) => UploadRefused.make({ reason
 const stored = <A, R>(effect: Effect.Effect<A, StoreUnavailable, R>) => Effect.mapError(effect, unavailable)
 const nowDate = Effect.map(DateTime.now, DateTime.toDateUtc)
 
-/** A stored piece as the protocol shows it, with its clean picture when one was asked for. */
-export const toPiece = (row: PieceRow, picture?: PiecePicture) =>
+/** A stored piece as the protocol shows it, with its clean picture and its turn when they were asked for. */
+export const toPiece = (row: PieceRow, picture?: PiecePicture, turn?: PieceTurn) =>
   Schema.decodeUnknownEffect(Piece)({
     id: row.id,
     name: row.name,
@@ -69,6 +70,7 @@ export const toPiece = (row: PieceRow, picture?: PiecePicture) =>
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     ...(picture === undefined ? {} : { picture }),
+    ...(turn === undefined ? {} : { turn }),
     // Only the service writes rows, through the same schemas; a row that does not decode is a bug.
   }).pipe(Effect.orDie)
 
@@ -151,11 +153,17 @@ const ownPiece = (parts: Parts) =>
 const pictureRow = (parts: Parts, accountId: string, pieceId: string) =>
   Effect.map(stored(parts.store.pictureOf(accountId, pieceId)), Option.getOrUndefined)
 
-/** A piece as its owner sees it, with its clean picture. */
+/** A piece as its owner sees it, with its clean picture and its turn. */
 const ownerPiece = (parts: Parts, accountId: string, row: PieceRow) =>
   Effect.gen(function* () {
     const picture = yield* pictureRow(parts, accountId, row.id)
-    return yield* toPiece(row, picture === undefined ? undefined : pictureView(picture, yield* nowDate))
+    const turn = Option.getOrUndefined(yield* stored(parts.store.turnOf(accountId, row.id)))
+    const at = yield* nowDate
+    return yield* toPiece(
+      row,
+      picture === undefined ? undefined : pictureView(picture, at),
+      turn === undefined ? undefined : turnView(turn, at),
+    )
   })
 
 const enqueue = (parts: Parts, pieceId: string) =>
@@ -166,10 +174,16 @@ const reads = (parts: Parts) => ({
     const { accountId } = yield* CurrentAccount
     const rows = yield* stored(parts.store.listPieces(accountId))
     const pictures = new Map((yield* stored(parts.store.picturesOf(accountId))).map((row) => [row.pieceId, row]))
+    const turns = new Map((yield* stored(parts.store.turnsOf(accountId))).map((row) => [row.pieceId, row]))
     const at = yield* nowDate
     return yield* Effect.forEach(rows, (row) => {
       const picture = pictures.get(row.id)
-      return toPiece(row, picture === undefined ? undefined : pictureView(picture, at))
+      const turn = turns.get(row.id)
+      return toPiece(
+        row,
+        picture === undefined ? undefined : pictureView(picture, at),
+        turn === undefined ? undefined : turnView(turn, at),
+      )
     })
   }),
   getPiece: Effect.fn('Styld.Wardrobe.getPiece')(function* (pieceId: PieceId) {
@@ -407,7 +421,7 @@ const editing = (parts: Parts) => ({
     const at = yield* nowDate
     const chosen = yield* stored(parts.store.choosePicture(accountId, pieceId, use, at))
     if (Option.isNone(chosen)) return yield* NoCleanPicture.make({})
-    return yield* toPiece(piece, pictureView(chosen.value, at))
+    return yield* ownerPiece(parts, accountId, piece)
   }),
   updatePiece: Effect.fn('Styld.Wardrobe.updatePiece')(function* (pieceId: PieceId, input: UpdatePiece) {
     const { accountId } = yield* CurrentAccount

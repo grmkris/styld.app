@@ -7,8 +7,8 @@ import type { AccountLifecycle } from '../src/AccountLifecycle.ts'
 import { importImage } from '../src/mcp/ImageImport.ts'
 import { sniffImageType } from '../src/wardrobe/Media.ts'
 import { processingAttempts, settleMessage } from '../src/wardrobe/Queue.ts'
-import { pictureView, shownImage } from '../src/wardrobe/Shown.ts'
-import type { PictureRow } from '../src/wardrobe/Store.ts'
+import { pictureView, shownImage, turnView } from '../src/wardrobe/Shown.ts'
+import type { PictureRow, TurnRow } from '../src/wardrobe/Store.ts'
 import { Wardrobe } from '../src/wardrobe/Wardrobe.ts'
 
 const png = Uint8Array.from(
@@ -65,7 +65,14 @@ const services = (
         failPiece: (pieceId) => Effect.sync(() => failed.push(pieceId)).pipe(Effect.andThen(failPiece)),
       }),
       lifecycle: { deleteAccount: notUsed, finishDeletion: () => Effect.void } satisfies AccountLifecycle['Service'],
-      captures: { processCapture: notUsed, failCapture: notUsed, processPicture: notUsed, failPicture: notUsed },
+      captures: {
+        processCapture: notUsed,
+        failCapture: notUsed,
+        processPicture: notUsed,
+        failPicture: notUsed,
+        processTurn: notUsed,
+        failTurn: notUsed,
+      },
     },
   }
 }
@@ -112,6 +119,8 @@ describe('the processing queue', () => {
         processPicture: (pieceId: string) =>
           Effect.sync(() => seen.push(`draw ${pieceId}`)).pipe(Effect.andThen(CaptureUnavailable.make({}))),
         failPicture: (pieceId: string) => Effect.sync(() => seen.push(`give up ${pieceId}`)),
+        processTurn: notUsed,
+        failTurn: notUsed,
       },
     }
     const first = message({ cleanPictureOf: 'pc_1' }, 1)
@@ -234,5 +243,63 @@ describe('the picture a piece shows', () => {
     })
     expect(pictureView(pictureRow('rejected', { cleanKey: null }), at).state).toBe('failed')
     expect(pictureView(pictureRow('retake', { cleanKey: null }), at).state).toBe('retake')
+  })
+})
+
+/** A piece's turn in `state`, last moved at `updatedAt`. */
+const turnRow = (state: TurnRow['state'], updatedAt: Date, changes: Partial<TurnRow> = {}): TurnRow => ({
+  pieceId: 'pc_1',
+  accountId: 'ac_1',
+  state,
+  hold: null,
+  provider: 'vercel-gateway',
+  model: 'google/veo-3.1-lite-generate-001',
+  operation: null,
+  videoKey: null,
+  sheetKey: null,
+  layout: null,
+  colour: null,
+  print: null,
+  same: null,
+  errorCode: null,
+  createdAt: new Date(0),
+  updatedAt,
+  ...changes,
+})
+
+describe("a piece's turn", () => {
+  test('is being made, built in the browser, ready with its layout, or failed, and a lost one shows as failed', () => {
+    const at = new Date(60 * 60 * 1000)
+    const recently = new Date(at.getTime() - 60_000)
+    expect(turnView(turnRow('generating', recently), at)).toEqual({ state: 'making', version: recently.getTime() })
+    expect(turnView(turnRow('video-ready', recently), at).state).toBe('building')
+    expect(turnView(turnRow('generating', new Date(0)), at).state).toBe('failed')
+    const layout = { frames: 30, columns: 6, width: 384, height: 448, pivot: [0.5, 0.027] as const }
+    expect(turnView(turnRow('ready', recently, { layout }), at)).toEqual({
+      state: 'ready',
+      version: recently.getTime(),
+      layout,
+    })
+    expect(turnView(turnRow('rejected', recently), at).state).toBe('failed')
+  })
+
+  test('takes its next step from the queue, and gives up after the last attempt', async () => {
+    const seen: Array<string> = []
+    const working = {
+      ...services(Effect.void).services,
+      captures: {
+        processCapture: notUsed,
+        failCapture: notUsed,
+        processPicture: notUsed,
+        failPicture: notUsed,
+        processTurn: (pieceId: string) =>
+          Effect.sync(() => seen.push(`turn ${pieceId}`)).pipe(Effect.andThen(CaptureUnavailable.make({}))),
+        failTurn: (pieceId: string) => Effect.sync(() => seen.push(`give up ${pieceId}`)),
+      },
+    }
+    const last = message({ turnOf: 'pc_1' }, processingAttempts)
+    await Effect.runPromise(settleMessage(working, last.message))
+    expect(last.settled).toEqual(['ack'])
+    expect(seen).toEqual(['turn pc_1', 'give up pc_1'])
   })
 })

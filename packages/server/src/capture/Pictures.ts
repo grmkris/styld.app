@@ -1,7 +1,7 @@
 import { chromaKey, flatten, keyColourFor, shrink } from '@styld/imaging'
 import { DateTime, Effect, Option, Schedule } from 'effect'
 import { gateFor, planFor } from './CleanPicture.ts'
-import { type Parts, pictureKey, readObject, storedAs, unavailable, writeObject } from './Parts.ts'
+import { type Parts, pictureKey, readPixels, storedAs, unavailable, writeObject } from './Parts.ts'
 import { crop, decodePng, encodePng, opaqueBounds, opaqueShare, type Rgba } from './Pixels.ts'
 import { CaptureMetrics } from './Metrics.ts'
 import { CaptureConfig } from './Policy.ts'
@@ -31,14 +31,10 @@ const decoded = (bytes: Uint8Array) => {
 
 /** A stored cut-out's pixels: none when it is gone, or is a photo rather than a cut-out (no transparency), which
  * never leaves Styld. */
-const cutoutAt = (parts: Parts, key: string | null) =>
+export const cutoutAt = (parts: Parts, key: string | null) =>
   key === null
     ? Effect.succeed(Option.none<Rgba>())
-    : readObject(parts, key).pipe(
-        Effect.map((bytes) =>
-          Option.flatMap(bytes, decoded).pipe(Option.filter((picture) => opaqueShare(picture) < 0.98)),
-        ),
-      )
+    : readPixels(parts, key).pipe(Effect.map(Option.filter((picture) => opaqueShare(picture) < 0.98)))
 
 const asPng = (picture: Rgba): Picture => ({ bytes: encodePng(picture), contentType: 'image/png' })
 
