@@ -1,0 +1,40 @@
+{
+  "model": "clef-flash",
+  "answers": {
+    "garments": {
+      "type": "choice",
+      "choice": "one",
+      "probabilities": {
+        "none": 0.038,
+        "one": 0.9388,
+        "several": 0.0232
+      },
+      "confidence": 0.8249
+    },
+    "person": {
+      "type": "choice",
+      "choice": "no",
+      "probabilities": {
+        "yes": 0.0058,
+        "no": 0.9942
+      },
+      "confidence": 0.9769
+    },
+    "scene": {
+      "type": "choice",
+      "choice": "flat",
+      "probabilities": {
+        "held": 0.0097,
+        "flat": 0.9535,
+        "hanging": 0.014,
+        "worn": 0.0083,
+        "other": 0.0145
+      },
+      "confidence": 0.8871
+    }
+  },
+  "usage": {
+    "input_tokens": 941,
+    "output_tokens": 0
+  }
+}

@@ -6,7 +6,7 @@ import { pngSize } from '../src/capture/CloudflareImages.ts'
 import { bestSightings, frameAt, type SampledStill } from '../src/capture/FrameRanking.ts'
 import { makeGarmentSegmenter } from '../src/capture/Meta.ts'
 import { analyticsEngine, CaptureMetrics } from '../src/capture/Metrics.ts'
-import { cutterFor, verdictOf } from '../src/capture/PhotoPipeline.ts'
+import { cutterFor, holding, verdictOf } from '../src/capture/PhotoPipeline.ts'
 import { type Box, cutOut, decodePng, encodePng, fitMask, opaqueBounds, type Rgba } from '../src/capture/Pixels.ts'
 import { lineFrame, lineFrameSize, makeOutputLines, stillMasks, videoMasks } from '../src/capture/SamStream.ts'
 import {
@@ -250,6 +250,18 @@ describe('Clef-flash', () => {
     expect(Exit.isSuccess(several) && several.value.garments).toBe('several')
   })
 
+  test('reads the scene when it is fairly sure of it, and none when unanswered or unsure', async () => {
+    // A real photo of one garment laid out, from the person-routing spike (only the answer is kept).
+    const laid = await run(answering(JSON.parse(text('clef-route-laid-flat.json'))).route(picture))
+    expect(laid).toEqual(Exit.succeed({ garments: 'one', confidence: 0.9388, person: 0.0058, scene: 'flat' }))
+    const unanswered = await run(answering(JSON.parse(text('clef-route-held-person.json'))).route(picture))
+    expect(Exit.isSuccess(unanswered) && 'scene' in unanswered.value).toBe(false)
+    const unsure = await run(
+      answering({ answers: { garments: chose('several', 0.9), scene: chose('flat', 0.45) } }).route(picture),
+    )
+    expect(Exit.isSuccess(unsure) && 'scene' in unsure.value).toBe(false)
+  })
+
   test('suggests only a subcategory that fits and a second colour it is fairly sure of', async () => {
     const suggestion = await run(
       answering({
@@ -325,6 +337,18 @@ describe('photo routing', () => {
     // A piece laid flat, nobody in the picture, from the camera or the library alike.
     expect(cutterFor({ garments: 'one', confidence: 0.94, person: 0.04 }, policy)).toBe('cloudflare')
     expect(cutterFor({ garments: 'none', confidence: 0.9, person: 0.9 }, policy)).toBe('none')
+  })
+
+  test('a camera shot or a person makes one piece the subject, unless the pieces are laid out', () => {
+    const library = { source: 'picker' } as const
+    const camera = { source: 'camera' } as const
+    expect(holding(library, route('several', 0.9))).toBe(false)
+    expect(holding(camera, route('several', 0.9))).toBe(true)
+    expect(holding(library, { ...route('several', 0.9), person: 0.93 })).toBe(true)
+    expect(holding(library, { ...route('several', 0.9), person: 0.93, scene: 'worn' })).toBe(true)
+    // Pieces laid out on a bed with a hand at the edge, or under the camera held above them.
+    expect(holding(library, { ...route('several', 0.9), person: 0.93, scene: 'flat' })).toBe(false)
+    expect(holding(camera, { ...route('one', 0.9), scene: 'flat' })).toBe(false)
   })
 })
 

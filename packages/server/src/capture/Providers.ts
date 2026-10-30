@@ -20,12 +20,18 @@ export class ProviderOutcomeUnknown extends Schema.TaggedError<ProviderOutcomeUn
   provider: Schema.String,
 }) {}
 
+/** How a photo shows the clothes: held up, laid out on a bed, table or floor, on hangers, worn, or none of these (a
+ * product photo). */
+export type Scene = 'held' | 'flat' | 'hanging' | 'worn' | 'other'
+
 /** How many garments a photo shows, as the decision model judged it. */
 export interface Route {
   readonly garments: 'none' | 'one' | 'several'
   readonly confidence: number
   /** How likely any part of a person shows (0–1): someone wearing or holding the clothes, or only a hand. */
   readonly person: number
+  /** The scene, when the decision model is fairly sure of it. */
+  readonly scene?: Scene
 }
 
 /** What the decision model suggests for one cut-out piece. */

@@ -9,6 +9,7 @@ import {
   type Picture,
   ProviderFailed,
   type Route,
+  type Scene,
   type Suggestion,
   type TurnComparison,
   type Verdict,
@@ -193,7 +194,30 @@ const routeQuestions = {
     instructions: 'Is any part of a person visible: a face, hair, skin, hands, arms or legs?',
     criteria: { yes: 'Yes', no: 'No' },
   },
+  // On the person-routing spike's 44 labelled photos (2026-10-31), every one of 10 laid out was answered flat at
+  // 0.91 or more; of the rest only two drawers of folded clothes were (0.54 and 0.70), no photo held up or worn.
+  scene: {
+    type: 'choice',
+    instructions: 'How are the clothes shown?',
+    criteria: {
+      held: "Held up or shown in someone's hands",
+      flat: 'Laid out on a bed, table or floor',
+      hanging: 'Hanging on hangers, a rail or a hook',
+      worn: 'Worn by a person',
+      other: 'None of these, such as a product photo',
+    },
+  },
 } as const
+
+const scenes: ReadonlyArray<Scene> = ['held', 'flat', 'hanging', 'worn', 'other']
+
+/** The scene the decision model chose, when it gave it at least even odds. */
+const sceneOf = (answer: Answer) =>
+  Option.flatMap(choiceOf(answer, 'scene'), ({ choice, probabilities }) =>
+    (probabilities[choice] ?? 0) >= 0.5
+      ? Option.fromNullishOr(scenes.find((scene) => scene === choice))
+      : Option.none(),
+  )
 
 const routeOf = (answer: Answer): Route => {
   // Without an answer a person is assumed, which keeps the photo away from background removal.
@@ -201,12 +225,14 @@ const routeOf = (answer: Answer): Route => {
     onNone: () => 1,
     onSome: ({ probabilities }) => probabilities['yes'] ?? 0,
   })
+  const scene = Option.match(sceneOf(answer), { onNone: () => ({}), onSome: (found) => ({ scene: found }) })
   return Option.match(choiceOf(answer, 'garments'), {
-    onNone: (): Route => ({ garments: 'several', confidence: 0, person }),
+    onNone: (): Route => ({ garments: 'several', confidence: 0, person, ...scene }),
     onSome: ({ choice, probabilities }): Route => ({
       garments: choice === 'none' || choice === 'one' ? choice : 'several',
       confidence: probabilities[choice] ?? 0,
       person,
+      ...scene,
     }),
   })
 }

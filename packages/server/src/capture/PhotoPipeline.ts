@@ -154,6 +154,12 @@ export const originalOnly = (parts: Parts, capture: CaptureRow, sourceKey: strin
 /** Whether a photo shows any part of a person. */
 const showsPerson = (route: Route) => route.person >= 0.5
 
+/** Whether a photo is about one piece held up or shown: a camera shot, or a person in the picture, whose worn clothes
+ * are offered unticked. Pieces laid out are all the subject, even with a hand at the edge or from the camera.
+ * @internal Exported for its tests. */
+export const holding = (capture: Pick<CaptureRow, 'source'>, route: Route) =>
+  route.scene !== 'flat' && (capture.source === 'camera' || showsPerson(route))
+
 /** Who cuts a photo out: nobody when the decision model is sure it shows no garment; background removal
  * for one garment it is sure of, with nobody in the picture, such as a piece laid flat; SAM otherwise.
  * Background removal keeps everything in the foreground, so a person holding or wearing the garment would
@@ -193,10 +199,7 @@ export const processPhoto = Effect.fn('Styld.Capture.processPhoto')(function* (p
   const cutter = cutterFor(route, policy)
   if (cutter === 'none') return { found: [], route, provider: 'clef' }
   const { pieces, provider } = yield* cutPieces(original.value, copies, cutter)
-  // With a person in the picture, the piece is the one held up or shown, as in a camera shot: clothes the
-  // person wears are offered unticked.
-  const held =
-    capture.source === 'camera' || showsPerson(route) ? heldPiece(pieces, copies.width, copies.height) : undefined
+  const held = holding(capture, route) ? heldPiece(pieces, copies.width, copies.height) : undefined
   const found = yield* detectionsOf(parts, capture, capture.originalKey, pieces, (piece) =>
     held === undefined ? true : piece === held,
   )
