@@ -3,7 +3,6 @@ import { style } from '../zyzz.config.ts'
 // Styles for the account page in AccountView.ts (Gallery: docs/design/gallery/site/s/account.html).
 export const accountPage = style({
   maxInlineSize: '30rem',
-  minBlockSize: '65svh',
   paddingBlock: '0 40px',
 })
 export const identity = style({ display: 'flex', alignItems: 'center', gap: '16px', marginBlock: '24px' })
@@ -22,14 +21,10 @@ export const avatar = style({
 export const identityText = style({ display: 'grid', gap: '2px', minInlineSize: '0', overflowWrap: 'anywhere' })
 export const identityName = style({ fontSize: '17px', fontWeight: 600 })
 export const identityEmail = style({ fontSize: '14px', color: 'ink2' })
-/** v1's pending line: the loader in the signal colour beside secondary text. */
-export const pendingStatus = style({
-  display: 'flex',
-  alignItems: 'center',
-  gap: '12px',
-  color: 'ink2',
-  '& > svg': { color: 'signal' },
-})
+/** The identity box while the session is read: the avatar's circle, the name's line and the email's. */
+export const avatarSkeleton = style({ flex: 'none', inlineSize: '60px', blockSize: '60px', borderRadius: 'pill' })
+export const nameSkeleton = style({ inlineSize: '9em', fontSize: '17px' })
+export const emailSkeleton = style({ inlineSize: '14em', fontSize: '14px' })
 export const unavailable = style({ display: 'grid', justifyItems: 'start', gap: '16px' })
 export const section = style({
   display: 'grid',

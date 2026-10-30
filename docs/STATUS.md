@@ -52,6 +52,32 @@ routing, following Foldkit's own website. Other pages keep full loads.
   - The app's wardrobe list is the only one. Home and Ask read it; their retry buttons hand off to it.
   - The 2-second refresh while a piece is processing is now a Subscription. The board editor has its own copy of
     the list, which refreshes under its own key.
+- **Each page drawn in its final shape before its data:**
+  - **The nav doesn't blink.** While the session is read for a request that came with a session cookie, the nav
+    shows with a blank avatar of the same size.
+  - **Home starts at once.** With that cookie, Home draws today's table:
+    - the headline's line kept with "Today" for screen readers;
+    - the 4:5 paper;
+    - the outline of Wear this and Spin.
+
+    It starts loading at init rather than after the session read. The page's title is "Today".
+
+  - **Pick-up arrives in one piece,** once the table and its answers are in.
+  - **Spin only.** The drop-in plays only after Spin, not on every load.
+  - **The footer stays below the fold.** Tab pages' `main` reaches the bottom of the screen without stretching its
+    rows.
+  - **Skeletons in the shape of what is coming:**
+    - Wardrobe: the 44px category row and captioned squares.
+    - Looks: the hint and cards.
+    - Boards: tiles with their paper.
+    - Account: the identity box.
+
+    They use `Skeleton.styles.ts` (quiet paper-2, no shimmer) and are `aria-hidden` beside a hidden status line.
+
+  - **Tests:**
+    - SSR tests check that a cookie draws the nav and the skeleton, and that no tab page carries an inline style.
+    - The browser journey adds up every layout shift (taps included) and holds each full load of Home, Wardrobe,
+      Looks, Boards and Account under 0.02.
 
 ## Overnight run: Gallery 2 and the table — 2026-10-30
 

@@ -25,14 +25,6 @@ export const picker = style({
   color: 'ink2',
 })
 // The picker's label stays for assistive technology; the select itself says which language is on.
-export const visuallyHidden = style({
-  position: 'absolute',
-  inlineSize: '1px',
-  blockSize: '1px',
-  overflow: 'hidden',
-  clipPath: 'inset(50%)',
-  whiteSpace: 'nowrap',
-})
 export const pickerSelect = style({
   minBlockSize: '44px',
   maxInlineSize: '11rem',
@@ -137,6 +129,12 @@ export const consentBanner = style({
 export const consentActions = style({ display: 'flex', flexWrap: 'wrap', gap: '8px' })
 
 /** Room for the navigation: under the page on the phone, beside it on the desktop. */
+/** A tab page's main region reaches at least to the bottom of the screen, so the footer waits below the fold while
+ * the page fills in. The top bar is 64px, or 60px under the status bar. Its rows keep their own heights rather than
+ * stretching into the space. */
+export const tabPage = style({
+  '& > main': { minBlockSize: 'calc(100svh - max(64px, 60px + env(safe-area-inset-top)))', alignContent: 'start' },
+})
 export const withTabBar = style({
   paddingBlockEnd: 'calc(104px + env(safe-area-inset-bottom))',
   '@media (min-width: 900px)': { paddingBlockEnd: '0', paddingInlineStart: '112px' },
@@ -228,3 +226,5 @@ export const navAvatar = style({
   fontSize: '13px',
   fontWeight: 700,
 })
+/** The avatar while the session is read: the same circle, blank until the initial is known. */
+export const navAvatarPending = style({ backgroundColor: 'paper2' })

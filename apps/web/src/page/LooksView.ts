@@ -3,11 +3,13 @@ import { format, type Locale } from '@styld/i18n'
 import { Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
+import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { secondaryAction } from '../Actions.styles.ts'
-import { loader } from '../Icon.ts'
 import { lookRouter } from '../route.ts'
+import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
+import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { wardrobeTabs } from './WardrobeTabs.ts'
 import { Message, type Model } from './Looks.ts'
 import { message as messageSection, messageTitle } from './WardrobeView.styles.ts'
@@ -57,6 +59,24 @@ export const couldNotLoad = <Message>(locale: Locale, h: HtmlBuilder<Message>, o
     ],
   )
 
+const skeletonCards = ['a', 'b'] as const
+
+/** The shape of what is coming: the hint, and two cards with a square for the pieces, a name and a line. */
+const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
+  h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
+  h.span([h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, cx(line(), styles.ledeSkeleton()))]),
+  h.ul(
+    [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.grid())],
+    skeletonCards.map((slot) =>
+      h.keyed('li')(slot, styled(h, styles.card()), [
+        h.span(styled(h, cx(block(), styles.collageSkeleton()))),
+        h.span(styled(h, cx(line(), styles.nameSkeleton()))),
+        h.span(styled(h, cx(line(), styles.metaSkeleton()))),
+      ]),
+    ),
+  ),
+]
+
 const looksPage = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.main(
     [h.Id('main'), ...styled(h, styles.looksPage())],
@@ -64,7 +84,7 @@ const looksPage = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html 
       pageHead(pageTitle(format(locale, 'wardrobe.title', {}), h), Option.some(addPiecesAction(locale, h)), h),
       wardrobeTabs('looks', locale, h),
       ...AsyncData.matchData(model.saved, {
-        onEmpty: () => [h.p([h.Role('status')], [loader(h)])],
+        onEmpty: () => loadingView(locale, h),
         onFailure: () => [couldNotLoad(locale, h, Message.ClickedRetry())],
         onData: (looks) =>
           looks.length === 0

@@ -70,8 +70,11 @@ export const pieceState = style({
   color: 'signal',
 })
 export const pieceFailed = style({ fontSize: '12px', color: 'error' })
-/** The loading grid: blank squares in the shape of the pieces to come. */
-export const placeholder = style({ aspectRatio: '1 / 1', borderRadius: 'panel', backgroundColor: 'paper2' })
+/** The loading row and grid: the category row's height, and squares with captions where the pieces will be. */
+export const categoryRowSkeleton = style({ display: 'flex', alignItems: 'center', gap: '20px', minBlockSize: '44px' })
+export const filterSkeleton = style({ inlineSize: '56px', fontSize: '15px' })
+export const tileSkeleton = style({ inlineSize: '100%', aspectRatio: '1 / 1' })
+export const captionSkeleton = style({ fontSize: '13px' })
 export const message = style({
   display: 'grid',
   justifyItems: 'start',

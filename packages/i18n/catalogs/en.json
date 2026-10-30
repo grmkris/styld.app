@@ -2906,6 +2906,7 @@
     "stylistLink": "Connect ChatGPT or Claude"
   },
   "today": {
+    "title": "Today",
     "outfit": "Today’s outfit: {names}",
     "loading": "Laying out today’s outfit…",
     "empty": "Add clothes and today’s outfit appears here.",

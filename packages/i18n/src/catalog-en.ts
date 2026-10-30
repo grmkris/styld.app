@@ -2574,6 +2574,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'ask.stylistText':
     'Styld’s stylist answers in ChatGPT and Claude, with your wardrobe connected: what goes with what, and what to wear tonight.',
   'ask.stylistLink': 'Connect ChatGPT or Claude',
+  'today.title': 'Today',
   'today.outfit': 'Today’s outfit: {names}',
   'today.loading': 'Laying out today’s outfit…',
   'today.empty': 'Add clothes and today’s outfit appears here.',

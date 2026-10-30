@@ -18,6 +18,9 @@ export const Worn = defineTaggedUnion({
 })
 export type Worn = typeof Worn.Type
 
+/** Whether the table was just spun: only then do its pieces drop in. Opening Home shows the table as it lies. */
+export const TableMotion = defineTaggedUnion({ Still: {}, Spun: {} })
+
 /** The last board with something on its table, if any. */
 export const LastBoardData = AsyncData.Schema(Schema.Option(Board), Schema.Literal('Unavailable'))
 export type LastBoardData = typeof LastBoardData.schema.Type
@@ -31,6 +34,7 @@ export const Model = Schema.Struct({
   /** Today in the person's own time zone, read in the browser. */
   maybeDay: Schema.Option(Day),
   spin: Schema.Int,
+  motion: TableMotion,
   worn: Worn,
   lastBoard: LastBoardData.schema,
   tray: TrayData.schema,
@@ -40,6 +44,7 @@ export type Model = typeof Model.Type
 export const init = (): Model => ({
   maybeDay: Option.none(),
   spin: 0,
+  motion: TableMotion.Still(),
   worn: Worn.NotYet(),
   lastBoard: AsyncData.Idle(),
   tray: AsyncData.Idle(),
@@ -135,7 +140,10 @@ const unavailable = Result.fail('Unavailable' as const)
 /** Opening Home: today is read again, and where they left off is kept on screen while it is asked for again. */
 export const enter = (model: Model): Update.Return<Model, Message, StyldClient> =>
   Update.combine<Model, Message, StyldClient>(model, [
-    (current) => ({ model: current, commands: [DetermineDay()] }),
+    (current) => ({
+      model: modifyFields(current, { motion: () => TableMotion.Still() }),
+      commands: [DetermineDay()],
+    }),
     Update.refresh<Model, Message, Option.Option<Board>, 'Unavailable', StyldClient>({
       read: (current: Model) => Option.some(current.lastBoard),
       revalidate: AsyncData.revalidateOrLoad,
@@ -190,7 +198,13 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       model: modifyFields(model, { tray: () => TrayData.Success({ data: waiting }) }),
     }),
     FailedReadTray: () => ({ model: modifyFields(model, { tray: (tray) => AsyncData.settle(tray, unavailable) }) }),
-    ClickedSpin: () => ({ model: modifyFields(model, { spin: (spin) => spin + 1, worn: () => Worn.NotYet() }) }),
+    ClickedSpin: () => ({
+      model: modifyFields(model, {
+        spin: (spin) => spin + 1,
+        worn: () => Worn.NotYet(),
+        motion: () => TableMotion.Spun(),
+      }),
+    }),
     ClickedWear: ({ pieceIds }) => wear(model, pieceIds),
     SucceededWear: ({ pieceIds }) => ({
       model: modifyFields(model, { worn: () => Worn.Worn({ pieceIds }), spin: () => 0 }),

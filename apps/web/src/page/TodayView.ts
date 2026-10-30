@@ -8,10 +8,12 @@ import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { addIcon, checkIcon, loader, spinIcon } from '../Icon.ts'
 import { addPiecesRouter, boardRouter, reviewRouter } from '../route.ts'
+import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
+import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { stillTable } from './Board/Table.ts'
 import { asItems, type Missing, missingFrom } from './Outfit.ts'
-import { Message, type Model, tableOutfit, Worn } from './Today.ts'
+import { Message, type Model, TableMotion, tableOutfit, Worn } from './Today.ts'
 import type { PiecesData } from './Wardrobe.ts'
 import { pageHead } from './PageHead.ts'
 import { title as headTitle } from './PageHead.styles.ts'
@@ -56,7 +58,7 @@ const tableView = (model: Model, pieces: ReadonlyArray<Piece>, locale: Locale, h
       ]),
     ])
   const names = outfit.map(({ piece }) => pieceLabel(piece, locale)).join(', ')
-  return h.div(styled(h, styles.table()), [
+  return h.div(TableMotion.guards.Spun(model.motion) ? styled(h, styles.table()) : [], [
     stillTable(asItems(outfit), 'paper', [h.Role('img'), h.AriaLabel(format(locale, 'today.outfit', { names }))], h),
   ])
 }
@@ -111,56 +113,81 @@ const noteView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
   )
 }
 
-const todayView = (model: Model, day: string, pieces: PiecesData, locale: Locale, h: HtmlBuilder<Message>): Html => {
+/** The day in the logo's voice. Before the browser knows it, the line keeps its height and says "Today". */
+const headlineView = (maybeDay: Option.Option<string>, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  pageHead(
+    h.h1(
+      [
+        h.Id('today-headline'),
+        ...Option.match(maybeDay, { onNone: () => [], onSome: (day) => [h.AriaLabel(longDate(day, locale))] }),
+        ...styled(h, cx(headTitle(), styles.headline())),
+      ],
+      Option.match(maybeDay, {
+        onNone: () => [h.span(styled(h, visuallyHidden()), [format(locale, 'today.title', {})])],
+        onSome: (day) => [headline(day, locale)],
+      }),
+    ),
+    Option.none(),
+    h,
+  )
+
+const tableArea = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  AsyncData.matchData(pieces, {
+    onEmpty: () =>
+      h.div([h.Role('status'), ...styled(h, styles.placeholder())], [loader(h), format(locale, 'today.loading', {})]),
+    onFailure: () =>
+      h.div(styled(h, styles.placeholder()), [
+        h.div(styled(h, styles.placeholderBody()), [
+          h.p([h.Role('alert')], [format(locale, 'today.failed', {})]),
+          actionButton(
+            { label: format(locale, 'today.retry', {}), style: secondaryAction(), onClick: Message.ClickedRetry() },
+            h,
+          ),
+        ]),
+      ]),
+    onData: (list) => tableView(model, list, locale, h),
+  })
+
+/** Nothing is asked for yet, or the first answer is on its way. */
+const isPending = (data: AsyncData.AsyncData<unknown, unknown>) => AsyncData.isIdle(data) || AsyncData.isLoading(data)
+
+/** Wear this and Spin. Their shape waits for the pieces; a wardrobe with none has neither. */
+const actionsView = (
+  model: Model,
+  pieces: PiecesData,
+  loaded: ReadonlyArray<Piece>,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html => {
+  if (Array.isReadonlyArrayNonEmpty(loaded))
+    return h.div(styled(h, styles.actions()), [
+      wearButton(model, loaded, locale, h),
+      h.button(
+        [
+          h.Type('button'),
+          h.AriaLabel(format(locale, 'today.spin', {})),
+          h.Title(format(locale, 'today.spin', {})),
+          ...styled(h, styles.spin()),
+          h.OnClick(Message.ClickedSpin()),
+        ],
+        [spinIcon(h)],
+      ),
+    ])
+  if (!isPending(pieces)) return h.empty
+  return h.div(
+    [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.actions())],
+    [h.span(styled(h, cx(block(), styles.wearSkeleton()))), h.span(styled(h, cx(block(), styles.spinSkeleton())))],
+  )
+}
+
+const todayView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const loaded = Option.getOrElse(AsyncData.getData(pieces), (): ReadonlyArray<Piece> => [])
   return h.section(
     [h.AriaLabelledBy('today-headline'), ...styled(h, styles.today())],
     [
-      pageHead(
-        h.h1(
-          [
-            h.Id('today-headline'),
-            h.AriaLabel(longDate(day, locale)),
-            ...styled(h, cx(headTitle(), styles.headline())),
-          ],
-          [headline(day, locale)],
-        ),
-        Option.none(),
-        h,
-      ),
-      AsyncData.matchData(pieces, {
-        onEmpty: () =>
-          h.div(
-            [h.Role('status'), ...styled(h, styles.placeholder())],
-            [loader(h), format(locale, 'today.loading', {})],
-          ),
-        onFailure: () =>
-          h.div(styled(h, styles.placeholder()), [
-            h.div(styled(h, styles.placeholderBody()), [
-              h.p([h.Role('alert')], [format(locale, 'today.failed', {})]),
-              actionButton(
-                { label: format(locale, 'today.retry', {}), style: secondaryAction(), onClick: Message.ClickedRetry() },
-                h,
-              ),
-            ]),
-          ]),
-        onData: (list) => tableView(model, list, locale, h),
-      }),
-      Array.isReadonlyArrayNonEmpty(loaded)
-        ? h.div(styled(h, styles.actions()), [
-            wearButton(model, loaded, locale, h),
-            h.button(
-              [
-                h.Type('button'),
-                h.AriaLabel(format(locale, 'today.spin', {})),
-                h.Title(format(locale, 'today.spin', {})),
-                ...styled(h, styles.spin()),
-                h.OnClick(Message.ClickedSpin()),
-              ],
-              [spinIcon(h)],
-            ),
-          ])
-        : h.empty,
+      headlineView(model.maybeDay, locale, h),
+      tableArea(model, pieces, locale, h),
+      actionsView(model, pieces, loaded, locale, h),
       noteView(model, locale, h),
       loaded.some((piece) => piece.status === 'ready') ? missingView(loaded, locale, h) : h.empty,
     ],
@@ -177,7 +204,9 @@ const boardCard = (board: Board, locale: Locale, h: HtmlBuilder<Message>): Html 
     ],
   )
 
-const pickUpView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+/** Where they left off, drawn once the table and its own answers are in, so it arrives in one piece below them. */
+const pickUpView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  if ([pieces, model.lastBoard, model.tray].some(isPending)) return h.empty
   const waiting = Option.getOrElse(AsyncData.getData(model.tray), () => 0)
   const cards = [
     ...(waiting > 0
@@ -210,12 +239,6 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
   (model, { locale, pieces }, h) =>
     h.main(
       [h.Id('main'), ...styled(h, styles.page())],
-      [
-        Option.match(model.maybeDay, {
-          onNone: () => h.div([h.Role('status'), ...styled(h, styles.placeholder())], [loader(h)]),
-          onSome: (day) => todayView(model, day, pieces, locale, h),
-        }),
-        pickUpView(model, locale, h),
-      ],
+      [todayView(model, pieces, locale, h), pickUpView(model, pieces, locale, h)],
     ),
 )

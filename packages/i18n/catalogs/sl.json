@@ -2906,6 +2906,7 @@
     "stylistLink": "Poveži ChatGPT ali Claude"
   },
   "today": {
+    "title": "Danes",
     "outfit": "Današnja oprava: {names}",
     "loading": "Pripravljam današnjo opravo …",
     "empty": "Dodaj oblačila in tu se pokaže današnja oprava.",

@@ -3,6 +3,7 @@ import { format, type Locale } from '@styld/i18n'
 import { Option } from 'effect'
 import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
+import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { Message as AppMessage, type Model as AppModel, Session } from '../App.ts'
@@ -13,13 +14,15 @@ import { Copy, Deletion, Message, type Model } from './Account.ts'
 import {
   accountPage,
   avatar,
+  avatarSkeleton,
+  emailSkeleton,
   hostName,
   identity,
   identityEmail,
   identityName,
   identityText,
+  nameSkeleton,
   notice,
-  pendingStatus,
   problem,
   rowActions,
   section,
@@ -30,6 +33,8 @@ import {
   unavailable,
 } from './AccountView.styles.ts'
 import { pageHead, pageTitle } from './PageHead.ts'
+import { block, line } from '../Skeleton.styles.ts'
+import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 
 type Inputs = {
   readonly claims: AccountClaims
@@ -150,8 +155,25 @@ const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, h) =>
   ),
 )
 
+/** While the session is read: the page's head, and the shape of who they are. */
 const checking = (locale: Locale, h: HtmlBuilder<AppMessage>): Html =>
-  h.p([h.Role('status'), ...styled(h, pendingStatus())], [loader(h), format(locale, 'common.loading', {})])
+  h.section(
+    [],
+    [
+      pageHead(pageTitle(format(locale, 'account.title', {}), h), Option.none(), h),
+      h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
+      h.div(
+        [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, identity())],
+        [
+          h.span(styled(h, cx(block(), avatarSkeleton()))),
+          h.span(styled(h, identityText()), [
+            h.span(styled(h, cx(line(), nameSkeleton()))),
+            h.span(styled(h, cx(line(), emailSkeleton()))),
+          ]),
+        ],
+      ),
+    ],
+  )
 
 const signedIn = (model: AppModel, claims: AccountClaims, signingOut: boolean, h: HtmlBuilder<AppMessage>): Html =>
   h.submodel({

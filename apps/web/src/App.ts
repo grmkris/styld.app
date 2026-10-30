@@ -230,9 +230,11 @@ const foldTodayEnter = Update.foldChildStep({
   toParentMessage: (message: Today.Message) => Message.GotTodayMessage({ message }),
 })
 
-/** What opening a tab page asks for. Home waits for the session (`afterSignIn`). */
-const openPage = (route: AppRoute): ReadonlyArray<Step> =>
+const openHome: ReadonlyArray<Step> = [foldTodayEnter, foldWardrobeRevisit]
+/** What opening a tab page asks for. Home needs a session: a cookie with the request, or `afterSignIn`. */
+const openPage = (route: AppRoute, hasSessionCookie: boolean): ReadonlyArray<Step> =>
   Match.value(route).pipe(
+    Match.tag('Home', () => (hasSessionCookie ? openHome : [])),
     Match.tag('Wardrobe', 'Ask', () => [foldWardrobeRevisit]),
     Match.tag('Looks', () => [foldLooksRevisit]),
     Match.tag('Boards', () => [foldBoardsRevisit]),
@@ -264,7 +266,7 @@ export const init = (context: Flags): UpdateReturn => {
       account: Account.init(),
       telemetry: { consent: context.telemetryConsent, prompting: context.telemetryConsent === 'undecided' },
     },
-    openPage(route),
+    openPage(route, context.hasSessionCookie === true),
   )
   return {
     model: opened.model,
@@ -274,8 +276,7 @@ export const init = (context: Flags): UpdateReturn => {
 
 // UPDATE
 
-/** Where a signed-in visitor belongs: sign-in pages hand over to the account, or back to the
- * assistant's pending authorization. Home is today's table once the session is known. */
+/** Where a signed-in visitor belongs: sign-in hands over to the account or the assistant's authorization. */
 const afterSignIn =
   (route: AppRoute): Step =>
   (model) =>
@@ -283,7 +284,9 @@ const afterSignIn =
       Match.withReturnType<UpdateReturn>(),
       Match.tag('Login', () => ({ model, commands: [Navigate({ href: accountRouter({}) })] })),
       Match.tag('LoginForConnection', () => ({ model, commands: [Navigate({ href: connectionAuthorizePath })] })),
-      Match.tag('Home', () => Update.combine<Model, Message, Services>(model, [foldTodayEnter, foldWardrobeRevisit])),
+      Match.tag('Home', () =>
+        model.context.hasSessionCookie === true ? { model } : Update.combine<Model, Message, Services>(model, openHome),
+      ),
       Match.orElse(() => ({ model })),
     )
 

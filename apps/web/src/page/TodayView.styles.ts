@@ -27,13 +27,15 @@ export const today = style({
 /** The table's headline: the day in the logo's condensed voice, its one use on a page. */
 export const headline = style({
   margin: '0',
+  // The line keeps its height before the day is known.
+  minBlockSize: '0.95em',
   fontFamily: 'voice',
   fontSize: 'clamp(52px, 40px + 4vw, 76px)',
   fontWeight: 400,
   lineHeight: 0.95,
   letterSpacing: '0.005em',
 })
-/** Wraps the still table: its pieces drop in one after another. */
+/** Wraps the still table after a Spin: its new pieces drop in one after another. */
 export const table = style({
   '& > * > *': {
     animationName: dropIn,
@@ -60,6 +62,9 @@ export const placeholder = style({
 export const placeholderBody = style({ display: 'grid', justifyItems: 'center', gap: '12px' })
 export const actions = style({ display: 'flex', alignItems: 'center', gap: '8px' })
 export const wear = style({ flexGrow: 1 })
+/** Wear this and Spin in outline while the pieces load: the same row, the same sizes. */
+export const wearSkeleton = style({ flexGrow: 1, blockSize: '48px', borderRadius: 'pill' })
+export const spinSkeleton = style({ flex: 'none', inlineSize: '48px', blockSize: '48px', borderRadius: 'pill' })
 /** Worn today: done, not disabled. */
 export const worn = style({
   flexGrow: 1,

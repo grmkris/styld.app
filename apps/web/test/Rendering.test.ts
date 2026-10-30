@@ -6,6 +6,7 @@ import { LocaleSave, Message, init, update, type Flags } from '../src/App.ts'
 import { offeredLocales, requestLocale } from '../src/Locale.ts'
 import { CircleNotchRegular } from '../src/PhosphorIcons.ts'
 import { consentCookie, consentFromCookies, type TelemetryConsent } from '../src/TelemetryConsent.ts'
+import { SessionHttp } from '@styld/auth/config'
 import { renderDocument, renderRequest } from '../src/entry.server.ts'
 
 const assets = { entryScript: '/entry.js', stylesheets: [], modulePreloads: [] }
@@ -151,13 +152,31 @@ test('server rendering shows the consent prompt only to undecided visitors', asy
   expect(await renderPage('/', 'styld_diagnostics=denied')).not.toContain(prompt)
 })
 
-test('server rendering draws the session check loader as an inline, hidden Phosphor icon', async () => {
-  const html = await renderPage('/account')
-  const status = /<p role="status"[^>]*>(<svg[^>]*>)<path d="([^"]+)"/.exec(html)
+const sessionCookie = `${SessionHttp.cookieName}=test`
+
+test('server rendering draws the table’s loader as an inline, hidden Phosphor icon', async () => {
+  const html = await renderPage('/', sessionCookie)
+  const status = /<div role="status"[^>]*>(<svg[^>]*>)<path d="([^"]+)"/.exec(html)
   expect(status?.[1]).toContain('viewBox="0 0 256 256"')
   expect(status?.[1]).toContain('aria-hidden="true"')
   expect(status?.[1]).toContain('data-loader')
   expect(status?.[2]).toBe(CircleNotchRegular)
+})
+
+test('with a session cookie, the server draws the navigation and today’s table in their final shape', async () => {
+  const html = await renderPage('/', sessionCookie)
+  expect(html).toContain('aria-label="Navigation"')
+  expect(html).toContain('data-skeleton')
+  expect(html).toContain('id="today-headline"')
+  expect(html).not.toContain('A wardrobe shaped by you.')
+})
+
+test('tab pages carry no inline style, which the page’s CSP would refuse', async () => {
+  for (const path of ['/', '/wardrobe', '/looks', '/boards', '/ask', '/account'])
+    expect({ path, inline: (await renderPage(path, sessionCookie)).includes(' style="') }).toEqual({
+      path,
+      inline: false,
+    })
 })
 
 const facePreloads = (html: string) =>

@@ -9,7 +9,9 @@ import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { textField } from '../Fields.styles.ts'
 import { addIcon, loader } from '../Icon.ts'
 import { boardRouter } from '../route.ts'
+import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
+import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { stillTable } from './Board/Table.ts'
 import { Creating, Message, type Model } from './Boards.ts'
 import * as styles from './BoardsView.styles.ts'
@@ -77,10 +79,30 @@ const createForm = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html
   )
 }
 
+const skeletonTiles = ['a', 'b'] as const
+
+/** The shape of what is coming: board tiles with their paper, a name and a line. */
+const loadingView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.div(
+    [],
+    [
+      h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'boards.loading', {})]),
+      h.ul(
+        [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.grid())],
+        skeletonTiles.map((slot) =>
+          h.keyed('li')(slot, styled(h, styles.tile()), [
+            h.span(styled(h, cx(block(), styles.paperSkeleton()))),
+            h.span(styled(h, cx(line(), styles.nameSkeleton()))),
+            h.span(styled(h, cx(line(), styles.metaSkeleton()))),
+          ]),
+        ),
+      ),
+    ],
+  )
+
 const listView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   AsyncData.matchData(model.boards, {
-    onEmpty: () =>
-      h.p([h.Role('status'), ...styled(h, styles.note())], [loader(h), format(locale, 'boards.loading', {})]),
+    onEmpty: () => loadingView(locale, h),
     onFailure: () =>
       h.div(styled(h, styles.head()), [
         h.p([h.Role('alert')], [format(locale, 'boards.failed', {})]),

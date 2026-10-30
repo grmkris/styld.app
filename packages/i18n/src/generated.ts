@@ -2119,6 +2119,7 @@ export interface MessageArgumentsByKey<T = string> {
   'today.retry': Readonly<Record<string, never>>
   'today.review': Readonly<Record<string, never>>
   'today.spin': Readonly<Record<string, never>>
+  'today.title': Readonly<Record<string, never>>
   'today.waiting': { readonly count: number }
   'today.wear': Readonly<Record<string, never>>
   'today.wearFailed': Readonly<Record<string, never>>
@@ -2519,4 +2520,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '29bf40a82cc8531b0b095c11dd4fccaf6719d4f2b7d62639954e289f0fced386'
+export const catalogVersion = '6c2f3a58c2e574a4366b87eb9d360a039d05882c31a1aa91343ac7b967d54334'

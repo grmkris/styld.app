@@ -1,5 +1,6 @@
 import { Select } from '@foldkit/ui'
 import { direction, format, type Locale, type MessageKey } from '@styld/i18n'
+import { Option } from 'effect'
 import type { Document, Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { LocaleSave, Message, type Model, Session } from './App.ts'
@@ -20,7 +21,16 @@ import { accountView } from './page/AccountView.ts'
 import * as LoginView from './page/LoginView.ts'
 import * as PieceView from './page/PieceView.ts'
 import * as WardrobeView from './page/WardrobeView.ts'
-import { AppRoute, accountRouter, askRouter, boardsRouter, homeRouter, loginRouter, wardrobeRouter } from './route.ts'
+import {
+  AppRoute,
+  accountRouter,
+  askRouter,
+  boardsRouter,
+  homeRouter,
+  loginRouter,
+  tabOf,
+  wardrobeRouter,
+} from './route.ts'
 import {
   brand,
   brandMark,
@@ -44,14 +54,16 @@ import {
   navBesideTable,
   navAsk,
   navAvatar,
+  navAvatarPending,
   navItem,
   navLabel,
   sectionNote,
   signInLink,
   site,
-  visuallyHidden,
+  tabPage,
   withTabBar,
 } from './View.styles.ts'
+import { visuallyHidden } from './VisuallyHidden.styles.ts'
 
 const browseAnchor = '#inspiration'
 const languages: ReadonlyArray<Readonly<{ locale: Locale; label: string }>> = [
@@ -238,22 +250,50 @@ const appNavigation = (model: Model, initial: string, h: HtmlBuilder<Message>): 
         'you',
         accountRouter({}),
         format(locale, 'nav.account', {}),
-        h.span([h.AriaHidden(true), ...styled(h, navAvatar())], [initial]),
+        h.span(
+          [h.AriaHidden(true), ...styled(h, initial === '' ? cx(navAvatar(), navAvatarPending()) : navAvatar())],
+          [initial],
+        ),
       ),
     ],
   )
 }
 
-const signedInInitial = (model: Model) =>
+/** The avatar's initial while the navigation shows: once signed in, and while the session is read for a request
+ * that came with a session cookie, when it is blank (`''`) until the initial is known. Undefined hides the
+ * navigation. */
+const navigationInitial = (model: Model) =>
   Session.match(model.session, {
     SignedIn: ({ claims }) => claims.displayName.slice(0, 1).toUpperCase(),
     SigningOut: ({ claims }) => claims.displayName.slice(0, 1).toUpperCase(),
-    Checking: () => undefined,
+    Checking: () => (model.context.hasSessionCookie === true && Option.isSome(tabOf(model.route)) ? '' : undefined),
     SignedOut: () => undefined,
     Unavailable: () => undefined,
   })
 
-const pageTitle = (model: Model) => format(model.context.locale, titleKey(model.route), {})
+/** Tab pages keep the footer below the fold while they fill in, so nothing on screen moves. */
+const siteStyle = (hasNavigation: boolean, isTab: boolean) => {
+  if (hasNavigation) return isTab ? cx(site(), withTabBar(), tabPage()) : cx(site(), withTabBar())
+  return isTab ? cx(site(), tabPage()) : site()
+}
+
+/** Home is today's table for someone signed in, or on their way in with a session cookie; the landing page
+ * otherwise. */
+const showsToday = (model: Model) =>
+  Session.match(model.session, {
+    SignedIn: () => true,
+    SigningOut: () => true,
+    Checking: () => model.context.hasSessionCookie === true,
+    SignedOut: () => false,
+    Unavailable: () => false,
+  })
+
+const pageTitle = (model: Model) =>
+  format(
+    model.context.locale,
+    AppRoute.guards.Home(model.route) && showsToday(model) ? 'today.title' : titleKey(model.route),
+    {},
+  )
 
 const loginPage = (model: Model, forConnection: boolean, h: HtmlBuilder<Message>): Html =>
   h.submodel({
@@ -311,22 +351,17 @@ const lookPage = (model: Model, h: HtmlBuilder<Message>): Html =>
 
 /** Home: today's table for a signed-in person, the landing page for everyone else. While the session is read,
  * a request that came with a session cookie waits quietly instead of flashing the landing page. */
-const homePage = (model: Model, h: HtmlBuilder<Message>): Html =>
-  Session.match(model.session, {
-    SignedIn: () =>
-      h.submodel({
-        slotId: 'today',
-        model: model.today,
-        view: TodayView.view,
-        viewInputs: { locale: model.context.locale, pieces: model.wardrobe.pieces },
-        toParentMessage: (message) => Message.GotTodayMessage({ message }),
-      }),
-    SigningOut: () => h.main([h.Id('main')]),
-    Checking: () =>
-      model.context.hasSessionCookie === true ? h.main([h.Id('main')]) : homeView(model.context.locale, h),
-    SignedOut: () => homeView(model.context.locale, h),
-    Unavailable: () => homeView(model.context.locale, h),
+const todayPage = (model: Model, h: HtmlBuilder<Message>): Html =>
+  h.submodel({
+    slotId: 'today',
+    model: model.today,
+    view: TodayView.view,
+    viewInputs: { locale: model.context.locale, pieces: model.wardrobe.pieces },
+    toParentMessage: (message) => Message.GotTodayMessage({ message }),
   })
+
+const homePage = (model: Model, h: HtmlBuilder<Message>): Html =>
+  showsToday(model) ? todayPage(model, h) : homeView(model.context.locale, h)
 
 const askPage = (model: Model, h: HtmlBuilder<Message>): Html =>
   h.submodel({
@@ -366,12 +401,12 @@ const reviewPage = (model: Model, h: HtmlBuilder<Message>): Html =>
 
 export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
   const { locale } = model.context
-  const initial = signedInInitial(model)
+  const initial = navigationInitial(model)
   return {
     title: `${pageTitle(model)} | Styld`,
     lang: locale,
     dir: direction(locale) === 'rtl' ? 'Rtl' : 'Ltr',
-    body: h.div(styled(h, initial === undefined ? site() : cx(site(), withTabBar())), [
+    body: h.div(styled(h, siteStyle(initial !== undefined, Option.isSome(tabOf(model.route)))), [
       h.header(styled(h, masthead()), [
         h.a(
           [h.Href(homeRouter({})), ...styled(h, brand()), h.AriaLabel('Styld')],

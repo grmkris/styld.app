@@ -4,11 +4,14 @@ import { format, type Locale } from '@styld/i18n'
 import { Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
+import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction } from '../Actions.styles.ts'
 import { loader } from '../Icon.ts'
 import { addPiecesRouter, pieceRouter } from '../route.ts'
+import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
+import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { categories } from './PieceFields.ts'
 import { Message, type Model } from './Wardrobe.ts'
 import { categoryName, subcategoryName } from './WardrobeWords.ts'
@@ -111,15 +114,28 @@ const loadedView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, 
   ])
 }
 
+const skeletonTiles = ['a', 'b', 'c', 'd', 'e', 'f'] as const
+
+/** The shape of what is coming: the category row and six captioned squares, where the pieces will be. */
 const loadingView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.wardrobePage()), [
-    h.p(
-      [h.Role('status'), ...styled(h, styles.pieceState())],
-      [loader(h), format(locale, 'wardrobe.shelves.loadingPieces', {})],
+    h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'wardrobe.shelves.loadingPieces', {})]),
+    h.div(
+      [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.categoryRowSkeleton())],
+      [
+        h.span(styled(h, cx(line(), styles.filterSkeleton()))),
+        h.span(styled(h, cx(line(), styles.filterSkeleton()))),
+        h.span(styled(h, cx(line(), styles.filterSkeleton()))),
+      ],
     ),
     h.ul(
-      [h.AriaHidden(true), ...styled(h, styles.grid())],
-      Array.from({ length: 6 }, (_, index) => h.keyed('li')(String(index), styled(h, styles.placeholder()))),
+      [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.grid())],
+      skeletonTiles.map((slot) =>
+        h.keyed('li')(slot, styled(h, styles.cut()), [
+          h.span(styled(h, cx(block(), styles.tileSkeleton()))),
+          h.span(styled(h, cx(line(), styles.captionSkeleton()))),
+        ]),
+      ),
     ),
   ])
 

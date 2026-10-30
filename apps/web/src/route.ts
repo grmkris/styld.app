@@ -74,6 +74,28 @@ export const needsSession = (route: AppRoute) =>
   AppRoute.guards.Boards(route) ||
   AppRoute.guards.Board(route)
 
+/** The pages the navigation moves between. They keep their place: each opens at once from what the app already
+ * has, while every other page loads whole. */
+export const Tab = Schema.Literals(['Home', 'Wardrobe', 'Looks', 'Ask', 'Boards', 'Account'])
+export type Tab = typeof Tab.Type
+
+export const tabOf = AppRoute.match<Option.Option<Tab>>({
+  Home: () => Option.some('Home'),
+  Wardrobe: () => Option.some('Wardrobe'),
+  Looks: () => Option.some('Looks'),
+  Ask: () => Option.some('Ask'),
+  Boards: () => Option.some('Boards'),
+  Account: () => Option.some('Account'),
+  Login: () => Option.none(),
+  LoginForConnection: () => Option.none(),
+  AddPieces: () => Option.none(),
+  Review: () => Option.none(),
+  Piece: () => Option.none(),
+  Look: () => Option.none(),
+  Board: () => Option.none(),
+  NotFound: () => Option.none(),
+})
+
 /** Where an assistant's connection resumes once the person has signed in (Yielded keeps the pending
  * authorization in a private cookie). */
 export const connectionAuthorizePath = '/oauth/mcp/authorize'

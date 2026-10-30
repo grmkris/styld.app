@@ -28,6 +28,10 @@ export const tile = style({
   transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
   ':active': { transform: 'scale(0.98)' },
 })
+/** The loading tiles: the board's paper, its name and the line under it. */
+export const paperSkeleton = style({ inlineSize: '100%', aspectRatio: '4 / 5', borderRadius: 'table' })
+export const nameSkeleton = style({ marginInline: '4px', fontSize: '15px' })
+export const metaSkeleton = style({ inlineSize: '30%', marginInline: '4px', fontSize: '13px' })
 export const tileName = style({ paddingInline: '4px', fontSize: '15px', fontWeight: 600 })
 export const tileMeta = style({ paddingInline: '4px', fontSize: '13px', fontWeight: 400, color: 'ink3' })
 export const note = style({ color: 'ink2' })
