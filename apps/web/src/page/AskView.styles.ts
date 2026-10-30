@@ -14,7 +14,7 @@ export const page = style({
   display: 'grid',
   gridTemplateColumns: 'minmax(0, 1fr)',
   gap: '20px',
-  paddingBlock: '8px 40px',
+  paddingBlock: '0 40px',
 })
 export const bar = style({ display: 'flex', alignItems: 'center', gap: '8px' })
 export const search = style({

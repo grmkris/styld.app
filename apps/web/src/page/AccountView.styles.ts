@@ -4,7 +4,7 @@ import { style } from '../zyzz.config.ts'
 export const accountPage = style({
   maxInlineSize: '30rem',
   minBlockSize: '65svh',
-  paddingBlock: 'clamp(24px, 6vw, 72px)',
+  paddingBlock: '0 40px',
 })
 export const identity = style({ display: 'flex', alignItems: 'center', gap: '16px', marginBlock: '24px' })
 export const avatar = style({

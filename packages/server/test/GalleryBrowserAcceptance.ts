@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { Schema } from 'effect'
 import type { Browser, BrowserContext, Locator, Page } from 'playwright'
 import { recordProblems } from './BrowserAcceptance.ts'
+import { expectSameTitleTops } from './LayoutBrowserAcceptance.ts'
 import { type Call, client, signIn } from './WardrobeAcceptance.ts'
 
 const fixture = (name: string) => fileURLToPath(new URL(`fixtures/gallery/${name}`, import.meta.url))
@@ -230,9 +231,9 @@ const verifyAskAndWardrobe = async (page: Page, origin: string) => {
   await expectNoSidewaysScroll(page)
   await shoot(page, 'phone-ask')
   await page.goto(`${origin}/wardrobe`, { waitUntil: 'networkidle' })
-  await page.getByRole('link', { name: 'Looks' }).click()
+  await page.getByRole('link', { name: 'Looks', exact: true }).click()
   await page.waitForURL(`${origin}/looks`)
-  await page.getByRole('link', { name: 'Pieces' }).waitFor({ state: 'visible' })
+  await page.getByRole('link', { name: 'Pieces', exact: true }).waitFor({ state: 'visible' })
 }
 
 /** Gallery 2 for the person's own wardrobe: today's table (Spin, Wear this), a board laid out by hand (moved,
@@ -255,6 +256,7 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
       await verifyHome(page, origin)
       await verifyBoard(phone, page, origin)
       await verifyAskAndWardrobe(page, origin)
+      await expectSameTitleTops(page, origin)
     } catch (error) {
       await shoot(page, 'phone-failure')
       if (shots !== undefined) {

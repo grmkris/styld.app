@@ -1,5 +1,6 @@
 import type { Look } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
+import { Option } from 'effect'
 import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
@@ -11,6 +12,7 @@ import { wardrobeTabs } from './WardrobeTabs.ts'
 import { Message, type Model, Saved } from './Looks.ts'
 import { message as messageSection, messageTitle } from './WardrobeView.styles.ts'
 import * as styles from './LooksView.styles.ts'
+import { addPiecesAction, pageHead, pageTitle } from './PageHead.ts'
 
 /** Up to four of a look's pieces, laid out together. */
 const collage = <Message>(look: Look, h: HtmlBuilder<Message>): Html =>
@@ -59,7 +61,7 @@ const looksPage = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html 
   h.main(
     [h.Id('main'), ...styled(h, styles.looksPage())],
     [
-      h.h1([], [format(locale, 'wardrobe.title', {})]),
+      pageHead(pageTitle(format(locale, 'wardrobe.title', {}), h), Option.some(addPiecesAction(locale, h)), h),
       wardrobeTabs('looks', locale, h),
       ...Saved.match(model.saved, {
         Loading: () => [h.p([h.Role('status')], [loader(h)])],

@@ -6,7 +6,7 @@ import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction } from '../Actions.styles.ts'
-import { addIcon, loader } from '../Icon.ts'
+import { loader } from '../Icon.ts'
 import { addPiecesRouter, pieceRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { categories } from './PieceFields.ts'
@@ -14,6 +14,7 @@ import { Message, type Model, Pieces } from './Wardrobe.ts'
 import { categoryName, subcategoryName } from './WardrobeWords.ts'
 import * as styles from './WardrobeView.styles.ts'
 import { wardrobeTabs } from './WardrobeTabs.ts'
+import { addPiecesAction, pageHead, pageTitle } from './PageHead.ts'
 
 /** A piece's name, or what it is when it has none. */
 export const pieceLabel = (piece: Piece, locale: Locale) =>
@@ -136,17 +137,7 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
   h.main(
     [h.Id('main'), ...styled(h, styles.wardrobePage())],
     [
-      h.div(styled(h, styles.pageHead()), [
-        h.h1(styled(h, styles.pageTitle()), [format(locale, 'wardrobe.title', {})]),
-        h.a(
-          [
-            h.Href(addPiecesRouter({})),
-            h.AriaLabel(format(locale, 'capture.addTitle', {})),
-            ...styled(h, styles.addRound()),
-          ],
-          [addIcon(h)],
-        ),
-      ]),
+      pageHead(pageTitle(format(locale, 'wardrobe.title', {}), h), Option.some(addPiecesAction(locale, h)), h),
       wardrobeTabs('pieces', locale, h),
       Pieces.match(model.pieces, {
         Loading: () => loadingView(locale, h),

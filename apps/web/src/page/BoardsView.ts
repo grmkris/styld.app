@@ -1,6 +1,6 @@
 import { format, type Locale } from '@styld/i18n'
 import type { Board } from '@styld/protocol'
-import { Array } from 'effect'
+import { Array, Option } from 'effect'
 import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
@@ -13,6 +13,7 @@ import { styled } from '../Styled.ts'
 import { stillTable } from './Board/Table.ts'
 import { BoardList, Creating, Message, type Model } from './Boards.ts'
 import * as styles from './BoardsView.styles.ts'
+import { pageHead, pageTitle } from './PageHead.ts'
 
 const tileView = (board: Board, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.keyed('li')(
@@ -104,7 +105,7 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
     [h.Id('main'), ...styled(h, styles.page())],
     [
       h.div(styled(h, styles.head()), [
-        h.h1([], [format(locale, 'boards.title', {})]),
+        pageHead(pageTitle(format(locale, 'boards.title', {}), h), Option.none(), h),
         h.p(styled(h, styles.intro()), [format(locale, 'boards.intro', {})]),
       ]),
       createForm(model, locale, h),

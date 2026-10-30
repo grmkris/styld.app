@@ -1,7 +1,7 @@
 import { style } from '../zyzz.config.ts'
 
 // Styles for the looks in LooksView.ts and LookView.ts (Gallery: looks.html, a board's collage).
-export const looksPage = style({ display: 'grid', gap: '12px', paddingBlock: '8px 40px' })
+export const looksPage = style({ display: 'grid', gap: '12px', paddingBlock: '0 40px' })
 export const lede = style({ color: 'ink2' })
 /** Looks as cards: two on a phone, more on a wide screen. */
 export const grid = style({

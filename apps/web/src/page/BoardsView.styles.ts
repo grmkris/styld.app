@@ -1,7 +1,7 @@
 import { style } from '../zyzz.config.ts'
 
 // Boards: your tables (Gallery 2: docs/design/gallery-2/site/v2/boards.html).
-export const page = style({ display: 'grid', gap: '24px', paddingBlock: '8px 40px' })
+export const page = style({ display: 'grid', gap: '24px', paddingBlock: '0 40px' })
 export const head = style({ display: 'grid', gap: '6px' })
 export const intro = style({ color: 'ink2' })
 export const create = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: '8px' })

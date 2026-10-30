@@ -1,25 +1,7 @@
 import { style } from '../zyzz.config.ts'
 
 // Styles for the wardrobe in WardrobeView.ts (Gallery: wardrobe.html, wardrobe-desktop.html).
-export const wardrobePage = style({ display: 'grid', gap: '12px', paddingBlock: '8px 40px' })
-export const pageHead = style({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '16px' })
-export const pageTitle = style({ fontSize: '30px', lineHeight: 1.08, fontWeight: 600, letterSpacing: '-0.02em' })
-/** The dark round action that adds a piece (Gallery `.round.dark`). */
-export const addRound = style({
-  display: 'inline-grid',
-  placeItems: 'center',
-  inlineSize: '44px',
-  blockSize: '44px',
-  flex: 'none',
-  borderRadius: 'pill',
-  backgroundColor: 'ink',
-  color: 'onInk',
-  transitionProperty: 'transform, background-color',
-  transitionDuration: '140ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
-  ':active': { transform: 'scale(0.96)' },
-  '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'inkHover' } },
-})
+export const wardrobePage = style({ display: 'grid', gap: '12px', paddingBlock: '0 40px' })
 /** Category filters as text with counts; the current one is ink and bold (Gallery `.cats`). */
 export const categoryRow = style({
   display: 'flex',

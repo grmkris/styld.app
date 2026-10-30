@@ -1,6 +1,6 @@
 import { format, type Locale } from '@styld/i18n'
 import { Category, type Piece } from '@styld/protocol'
-import { Array, String } from 'effect'
+import { Array, Option, String } from 'effect'
 import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
@@ -12,6 +12,7 @@ import { Message, type Model } from './Ask.ts'
 import { Pieces } from './Wardrobe.ts'
 import * as styles from './AskView.styles.ts'
 import { categoryName, colourName, subcategoryName } from './WardrobeWords.ts'
+import { pageHead, pageTitle } from './PageHead.ts'
 
 const sheetId = 'ask-add-sheet'
 
@@ -188,7 +189,7 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
   h.main(
     [h.Id('main'), ...styled(h, styles.page())],
     [
-      h.h1([], [format(locale, 'ask.title', {})]),
+      pageHead(pageTitle(format(locale, 'ask.title', {}), h), Option.none(), h),
       searchBar(model, locale, h),
       model.isAdding ? addSheet(locale, h) : h.empty,
       wardrobeView(model, locale, h),

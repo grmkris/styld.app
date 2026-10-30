@@ -254,7 +254,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'auth.problem.unavailable': 'Styld trenutno ne more poslati ali preveriti kod. Poskusite znova čez trenutek.',
   'auth.resendSoon': 'Novo kodo lahko zahtevate 30 sekund po zadnji.',
   'nav.home': 'Domov',
-  'nav.wardrobe': 'Omara',
+  'nav.wardrobe': 'Garderoba',
   'nav.catalog': 'Trgovine',
   'nav.chat': 'Pogovor',
   'nav.account': 'Račun',

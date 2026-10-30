@@ -12,6 +12,8 @@ import { styled } from '../Styled.ts'
 import { stillTable } from './Board/Table.ts'
 import { asItems, type Missing, missingFrom } from './Outfit.ts'
 import { Message, type Model, Pieces, tableOutfit, Worn } from './Today.ts'
+import { pageHead } from './PageHead.ts'
+import { title as headTitle } from './PageHead.styles.ts'
 import * as styles from './TodayView.styles.ts'
 import { categoryName } from './WardrobeWords.ts'
 
@@ -112,9 +114,17 @@ const todayView = (model: Model, day: string, locale: Locale, h: HtmlBuilder<Mes
   h.section(
     [h.AriaLabelledBy('today-headline'), ...styled(h, styles.today())],
     [
-      h.h1(
-        [h.Id('today-headline'), h.AriaLabel(longDate(day, locale)), ...styled(h, styles.headline())],
-        [headline(day, locale)],
+      pageHead(
+        h.h1(
+          [
+            h.Id('today-headline'),
+            h.AriaLabel(longDate(day, locale)),
+            ...styled(h, cx(headTitle(), styles.headline())),
+          ],
+          [headline(day, locale)],
+        ),
+        Option.none(),
+        h,
       ),
       Pieces.match(model.pieces, {
         Loading: () =>

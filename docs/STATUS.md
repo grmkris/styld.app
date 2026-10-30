@@ -2,6 +2,47 @@
 
 Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `8ab11aa`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
 
+## Instant tabs and steady pages — 2026-10-30
+
+The owner tapped through Home, Wardrobe, Boards and Ask on a phone and saw the layout jump, and found Ask's search
+broken. Measured on the preview (375×812, every layout-shift entry with its sources):
+
+| Page     | CLS before |
+| -------- | ---------- |
+| Home     | 0.37       |
+| Boards   | 0.16       |
+| Ask      | 0.10       |
+| Wardrobe | 0.0001     |
+
+The causes:
+
+- Every tap reloaded the whole document.
+- The nav and Home only drew after the session read.
+- Loading states didn't have the loaded pages' shape.
+- Titles started at four different heights.
+- Static files revalidated on every load, and fonts swapped late.
+
+The owner chose **instant tabs**: Home, Wardrobe, Looks, Boards, Ask and You switch inside the page with Foldkit's
+routing, following Foldkit's own website. Other pages keep full loads.
+
+- **Static files and fonts** (`37c7635`):
+  - `public/_headers` serves `/assets/*` and `/fonts/*` as `immutable`.
+  - The Anton files carry their content hash; `tools/public-fonts.test.ts` checks it.
+  - The document preloads Hanken (latin-ext only for Slovenian).
+  - Until Hanken lands, text draws in Arial resized to Hanken's measured metrics:
+    - weight 400: size-adjust 100.44%, ascent 99.57%, descent 29.87%;
+    - Arial Bold for 600: size-adjust 93.83%.
+
+    On an English and Slovenian sample at 335px, this breaks every block exactly as Hanken does (476px against
+    476px; plain Arial gives 498px).
+- **One page head:**
+  - `page/PageHead.ts`: 8px under the top bar, then one row at least 44px tall. The title sits at its start; the
+    round action, or an empty slot of the same size, sits at its end.
+  - Every tab page uses it, including Home's Anton day.
+  - Looks gets the same + as Wardrobe, so the Pieces/Looks tabs stay put.
+  - The Slovenian nav label "Omara" becomes "Garderoba", like the page title (awaits owner review).
+  - The browser journey checks that every tab page's title starts at the same height.
+
 ## Overnight run: Gallery 2 and the table — 2026-10-30
 
 The owner chose Gallery 2 ("your clothes are the interface") and moved boards up from Later. This run builds both for

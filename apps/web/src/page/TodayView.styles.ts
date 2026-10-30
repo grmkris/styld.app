@@ -12,7 +12,7 @@ const dropIn = keyframes(
 export const page = style({
   display: 'grid',
   gap: '28px',
-  paddingBlock: '4px 40px',
+  paddingBlock: '0 40px',
   '@media (min-width: 900px)': {
     gridTemplateColumns: 'minmax(0, 560px) minmax(0, 1fr)',
     alignItems: 'start',

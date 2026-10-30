@@ -1,5 +1,6 @@
 import type { AccountClaims } from '@styld/auth/config'
 import { format, type Locale } from '@styld/i18n'
+import { Option } from 'effect'
 import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
@@ -28,6 +29,7 @@ import {
   steps,
   unavailable,
 } from './AccountView.styles.ts'
+import { pageHead, pageTitle } from './PageHead.ts'
 
 type Inputs = {
   readonly claims: AccountClaims
@@ -122,7 +124,7 @@ const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, h) =>
   h.section(
     [],
     [
-      h.h1([], [format(inputs.locale, 'account.title', {})]),
+      pageHead(pageTitle(format(inputs.locale, 'account.title', {}), h), Option.none(), h),
       h.div(styled(h, identity()), [
         h.span([h.AriaHidden(true), ...styled(h, avatar())], [inputs.claims.displayName.slice(0, 1).toUpperCase()]),
         h.div(styled(h, identityText()), [
