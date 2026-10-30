@@ -138,7 +138,10 @@ describe('cut-outs from real pixels', () => {
     // The original pixels survive untouched inside the mask, and the PNG round-trips.
     const again = decodePng(encodePng(piece))
     expect(again).toMatchObject({ width: piece.width, height: piece.height })
-    expect(again.data).toEqual(piece.data)
+    // Compared as bytes: a deep toEqual walks the 2.3 million entries one by one and took seconds under load.
+    expect(again.data.length === piece.data.length && again.data.every((value, at) => value === piece.data[at])).toBe(
+      true,
+    )
     expect(opaqueBounds(piece)).toBeDefined()
   })
 
