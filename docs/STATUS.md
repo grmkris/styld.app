@@ -252,10 +252,14 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   - `tools/preview.native.test.ts` passed 3/3.
   - Signed out, pages carry `x-robots-tag: noindex`, `/share/board/:id` answers 301 to the board, and a public miss
     answers 404 (`PublicNotFound`).
-  - Still to read back on the preview:
-    - the live judge (Clef-flash and Llama Guard 3) on a published profile and board;
-    - a public board's link preview;
-    - the owner's check in a messaging app.
+  - Live readback on the preview test account (`@kris.preview`, left published for the owner to try):
+    - publishing the profile and making a board public both passed the live judge at once;
+    - of three pinned pieces, two passed Clef through the queue within about 10 s and show publicly. The third, a
+      shoe, stays hidden: it shows its photo, or its check held it back. The admin tools (M5) will show which;
+    - the board's link preview, read as a crawler, has its title, line, address and a cut-out as `og:image` (a
+      29 KB WebP from `/cdn/public`).
+    - Board: `/boards/bd_xAA4SsaoKuzQ1yDiVVI-Qg`; profile: `/@kris.preview`.
+  - Still open: the owner's check of a real preview in a messaging app.
 - **Next:** M4 (saves, follows, blocks, reports and the feed); its migration is generated.
 - **Shared with the capture session:** migrations are generated one at a time; public delivery reuses its rule for a
   piece's shown picture; generated pictures reuse its Muse provider.
