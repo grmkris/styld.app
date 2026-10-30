@@ -21,7 +21,6 @@ export const picker = style({
   flexWrap: 'wrap',
   alignItems: 'center',
   gap: '8px',
-  marginInlineStart: 'auto',
   fontSize: '14px',
   color: 'ink2',
 })
@@ -137,76 +136,92 @@ export const consentBanner = style({
 })
 export const consentActions = style({ display: 'flex', flexWrap: 'wrap', gap: '8px' })
 
-/** Room under the page for the phone's tab bar. */
+/** Room for the navigation: under the page on the phone, beside it on the desktop. */
 export const withTabBar = style({
-  paddingBlockEnd: 'calc(72px + env(safe-area-inset-bottom))',
-  '@media (min-width: 900px)': { paddingBlockEnd: '0' },
+  paddingBlockEnd: 'calc(104px + env(safe-area-inset-bottom))',
+  '@media (min-width: 900px)': { paddingBlockEnd: '0', paddingInlineStart: '112px' },
 })
-/** The app's sections: a tab bar on the phone's bottom edge, text navigation in the desktop top bar. */
+/** Gallery 2's navigation: a floating glass pill above the phone's bottom edge, a rail on the desktop's
+ * left. Glass is allowed here and on the Ask panel only (DESIGN.md › Surfaces); it turns solid under
+ * reduced transparency. */
 export const appNav = style({
   position: 'fixed',
-  insetInline: '0',
-  insetBlockEnd: '0',
-  zIndex: 4,
+  insetBlockEnd: 'calc(16px + env(safe-area-inset-bottom))',
+  insetInlineStart: '50%',
+  zIndex: 6,
   display: 'flex',
-  justifyContent: 'space-around',
-  paddingBlock: '8px calc(8px + env(safe-area-inset-bottom))',
-  paddingInline: '4px',
-  borderBlockStartWidth: '1px',
-  borderBlockStartStyle: 'solid',
-  borderBlockStartColor: 'rule',
-  backgroundColor: 'paper',
+  alignItems: 'center',
+  gap: '4px',
+  padding: '6px',
+  borderRadius: 'pill',
+  backgroundColor: 'glass',
+  backdropFilter: 'blur(24px) saturate(160%)',
+  WebkitBackdropFilter: 'blur(24px) saturate(160%)',
+  boxShadow: 'inset 0 0 0 1px oklch(1 0 0 / 0.6), 0 2px 6px oklch(0 0 0 / 0.1), 0 20px 48px oklch(0 0 0 / 0.1) !custom',
+  translate: '-50% 0',
   '@media (min-width: 900px)': {
-    position: 'static',
-    justifyContent: 'flex-start',
-    gap: '24px',
-    padding: '0',
-    borderBlockStartWidth: '0',
-    backgroundColor: 'transparent !custom',
+    insetBlockEnd: 'auto',
+    insetBlockStart: '50%',
+    insetInlineStart: '24px',
+    flexDirection: 'column',
+    translate: '0 -50%',
+  },
+  '@media (prefers-reduced-transparency: reduce)': {
+    backgroundColor: 'stock',
+    backdropFilter: 'none',
+    WebkitBackdropFilter: 'none',
   },
 })
 export const navItem = style({
+  position: 'relative',
   display: 'grid',
-  justifyItems: 'center',
-  gap: '2px',
-  minInlineSize: '64px',
-  minBlockSize: '48px',
-  paddingBlockStart: '4px',
-  color: 'ink3',
-  fontSize: '11px',
-  fontWeight: 500,
+  placeItems: 'center',
+  inlineSize: '52px',
+  blockSize: '52px',
+  borderRadius: 'pill',
+  color: 'ink2',
   textDecorationLine: 'none',
-  '&[aria-current="page"]': { color: 'ink', fontWeight: 700 },
-  '@media (min-width: 900px)': {
-    display: 'inline-flex',
-    alignItems: 'center',
-    minInlineSize: 'auto',
-    minBlockSize: '44px',
-    padding: '0',
-    color: 'ink2',
-    fontSize: '15px',
-    '&[aria-current="page"]': {
-      color: 'ink',
-      fontWeight: 600,
-      textDecorationLine: 'underline',
-      textDecorationColor: 'ink',
-      textDecorationThickness: '2px',
-      textUnderlineOffset: '8px',
-    },
-  },
+  transitionProperty: 'transform, background-color, color',
+  transitionDuration: '140ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  ':active': { transform: 'scale(0.96)' },
+  '&[aria-current="page"]': { backgroundColor: 'paper2', color: 'ink' },
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { color: 'ink' } },
 })
-/** Tab icons belong to the phone's tab bar only. */
-export const navIcon = style({ display: 'inline-flex', '@media (min-width: 900px)': { display: 'none' } })
-/** The desktop top bar already carries the account initial. */
-export const phoneOnly = style({ '@media (min-width: 900px)': { display: 'none' } })
+/** Ask, the one thing to do from anywhere: a filled ink circle in the middle. */
+export const navAsk = style({
+  inlineSize: '60px',
+  blockSize: '60px',
+  backgroundColor: 'ink',
+  color: 'onInk',
+  boxShadow: '0 4px 14px oklch(0 0 0 / 0.16) !custom',
+  '&[aria-current="page"]': {
+    backgroundColor: 'ink',
+    color: 'onInk',
+    outlineWidth: '2px',
+    outlineStyle: 'solid',
+    outlineColor: 'ink',
+    outlineOffset: '3px',
+  },
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { color: 'onInk', backgroundColor: 'inkHover' } },
+})
+/** The visible label stays for assistive technology only; the icon carries the look (Gallery 2). */
+export const navLabel = style({
+  position: 'absolute',
+  inlineSize: '1px',
+  blockSize: '1px',
+  overflow: 'hidden',
+  clipPath: 'inset(50%)',
+  whiteSpace: 'nowrap',
+})
 export const navAvatar = style({
   display: 'grid',
   placeItems: 'center',
-  inlineSize: '24px',
-  blockSize: '24px',
+  inlineSize: '32px',
+  blockSize: '32px',
   borderRadius: 'pill',
   backgroundColor: 'ink',
   color: 'onInk',
-  fontSize: '10px',
+  fontSize: '13px',
   fontWeight: 700,
 })

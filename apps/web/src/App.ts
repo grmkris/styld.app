@@ -16,6 +16,13 @@ import * as AddPiecesModel from './page/AddPieces/Model.ts'
 import * as AddPiecesSubscription from './page/AddPieces/Subscription.ts'
 import * as AddPieces from './page/AddPieces/Update.ts'
 import * as Account from './page/Account.ts'
+import * as Ask from './page/Ask.ts'
+import * as Today from './page/Today.ts'
+import * as BoardMessage from './page/Board/Message.ts'
+import * as BoardModel from './page/Board/Model.ts'
+import * as BoardSubscription from './page/Board/Subscription.ts'
+import * as Board from './page/Board/Update.ts'
+import * as Boards from './page/Boards.ts'
 import * as Login from './page/Login.ts'
 import * as Look from './page/Look.ts'
 import * as Looks from './page/Looks.ts'
@@ -25,6 +32,7 @@ import * as Wardrobe from './page/Wardrobe.ts'
 import {
   AppRoute,
   accountRouter,
+  boardRouter,
   connectionAuthorizePath,
   homeRouter,
   loginRouter,
@@ -48,6 +56,9 @@ export const Flags = Schema.Struct({
   /** The public origin the page was served from: assistants connect to its `/mcp`. */
   origin: Schema.String,
   telemetryConsent: TelemetryConsent,
+  /** A session cookie came with the request: Home waits for the session instead of showing the landing page
+   * to someone who is signed in. Only a hint; the session is read in the browser. */
+  hasSessionCookie: Schema.optionalKey(Schema.Boolean),
 })
 export type Flags = typeof Flags.Type
 
@@ -74,6 +85,10 @@ export const Model = Schema.Struct({
   review: Review.Model,
   looks: Looks.Model,
   look: Look.Model,
+  today: Today.Model,
+  ask: Ask.Model,
+  boards: Boards.Model,
+  board: BoardModel.Model,
   account: Account.Model,
   telemetry: Schema.Struct({ consent: TelemetryConsent, prompting: Schema.Boolean }),
 })
@@ -99,6 +114,10 @@ export const Message = defineMessageUnion({
   GotReviewMessage: { message: Review.Message },
   GotLooksMessage: { message: Looks.Message },
   GotLookMessage: { message: Look.Message },
+  GotTodayMessage: { message: Today.Message },
+  GotAskMessage: { message: Ask.Message },
+  GotBoardsMessage: { message: Boards.Message },
+  GotBoardMessage: { message: BoardMessage.Message },
   ChoseTelemetryConsent: { granted: Schema.Boolean },
   RecordedTelemetryConsent: { granted: Schema.Boolean },
   OpenedTelemetrySettings: {},
@@ -171,8 +190,11 @@ type UpdateReturn = Update.Return<Model, Message, Services>
 // INIT
 
 /** The Commands that open the page a route shows. */
-const pageCommands = (route: AppRoute, piece: Piece.Model, look: Look.Model) =>
+const pageCommands = (route: AppRoute, piece: Piece.Model, look: Look.Model, board: BoardModel.Model) =>
   AppRoute.match(route, {
+    Boards: () => Command.mapMessages(Boards.load(), (message) => Message.GotBoardsMessage({ message })),
+    Board: () => Command.mapMessages(Board.load(board), (message) => Message.GotBoardMessage({ message })),
+    Ask: () => Command.mapMessages(Ask.load(), (message) => Message.GotAskMessage({ message })),
     Wardrobe: () => Command.mapMessages(Wardrobe.load(), (message) => Message.GotWardrobeMessage({ message })),
     Piece: () => Command.mapMessages(Piece.load(piece), (message) => Message.GotPieceMessage({ message })),
     AddPieces: () => [],
@@ -190,6 +212,7 @@ export const init = (context: Flags): UpdateReturn => {
   const route = routeFromPathname(context.pathname)
   const piece = Piece.init(AppRoute.guards.Piece(route) ? route.pieceId : '')
   const look = Look.init(AppRoute.guards.Look(route) ? route.lookId : '')
+  const board = BoardModel.init(AppRoute.guards.Board(route) ? route.boardId : '')
   return {
     model: {
       context,
@@ -203,10 +226,14 @@ export const init = (context: Flags): UpdateReturn => {
       review: Review.init(),
       looks: Looks.init(),
       look,
+      today: Today.init(),
+      ask: Ask.init(),
+      boards: Boards.init(),
+      board,
       account: Account.init(),
       telemetry: { consent: context.telemetryConsent, prompting: context.telemetryConsent === 'undecided' },
     },
-    commands: [ReadSession(), ...pageCommands(route, piece, look)],
+    commands: [ReadSession(), ...pageCommands(route, piece, look, board)],
   }
 }
 
@@ -218,7 +245,8 @@ const afterSignIn = (route: AppRoute) =>
   AppRoute.match(route, {
     Login: () => [Navigate({ href: accountRouter({}) })],
     LoginForConnection: () => [Navigate({ href: connectionAuthorizePath })],
-    Home: () => [],
+    // Home is today's table once the session is known: its data needs the session.
+    Home: () => Command.mapMessages(Today.load(), (message) => Message.GotTodayMessage({ message })),
     Account: () => [],
     Wardrobe: () => [],
     AddPieces: () => [],
@@ -226,6 +254,9 @@ const afterSignIn = (route: AppRoute) =>
     Piece: () => [],
     Looks: () => [],
     Look: () => [],
+    Ask: () => [],
+    Boards: () => [],
+    Board: () => [],
     NotFound: () => [],
   })
 
@@ -308,6 +339,39 @@ const foldLook = Update.foldChild({
   }),
 })
 
+const foldToday = Update.foldChild({
+  update: Today.update,
+  read: (model: Model) => Option.some(model.today),
+  write: (model: Model, today: Today.Model) => modifyFields(model, { today: () => today }),
+  toParentMessage: (message: Today.Message) => Message.GotTodayMessage({ message }),
+})
+
+const foldAsk = Update.foldChild({
+  update: Ask.update,
+  read: (model: Model) => Option.some(model.ask),
+  write: (model: Model, ask: Ask.Model) => modifyFields(model, { ask: () => ask }),
+  toParentMessage: (message: Ask.Message) => Message.GotAskMessage({ message }),
+})
+
+const foldBoards = Update.foldChild({
+  update: Boards.update,
+  read: (model: Model) => Option.some(model.boards),
+  write: (model: Model, boards: Boards.Model) => modifyFields(model, { boards: () => boards }),
+  toParentMessage: (message: Boards.Message) => Message.GotBoardsMessage({ message }),
+  foldOutMessage: Boards.OutMessage.match<Update.Step<Model, Message, Services>>({
+    CreatedBoard:
+      ({ boardId }) =>
+      (stepModel) => ({ model: stepModel, commands: [Navigate({ href: boardRouter({ boardId }) })] }),
+  }),
+})
+
+const foldBoard = Update.foldChild({
+  update: Board.update,
+  read: (model: Model) => Option.some(model.board),
+  write: (model: Model, board: BoardModel.Model) => modifyFields(model, { board: () => board }),
+  toParentMessage: (message: BoardMessage.Message) => Message.GotBoardMessage({ message }),
+})
+
 const foldAddPieces = Update.foldChild({
   update: AddPieces.update,
   read: (model: Model) => Option.some(model.addPieces),
@@ -324,6 +388,11 @@ export const subscriptions = Subscription.aggregate(
   Subscription.lift(AddPiecesSubscription.subscriptions)<Model, Message>({
     read: (model) => Option.some(model.addPieces),
     toParentMessage: (message) => Message.GotAddPiecesMessage({ message }),
+  }),
+  // The board's hands, keys, pasted pictures and dropped files listen only while a board is open.
+  Subscription.lift(BoardSubscription.subscriptions)<Model, Message>({
+    read: (model) => (AppRoute.guards.Board(model.route) ? Option.some(model.board) : Option.none()),
+    toParentMessage: (message) => Message.GotBoardMessage({ message }),
   }),
 )
 
@@ -380,6 +449,10 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotReviewMessage: (got) => foldReview(model, got.message),
     GotLooksMessage: (got) => foldLooks(model, got.message),
     GotLookMessage: (got) => foldLook(model, got.message),
+    GotTodayMessage: (got) => foldToday(model, got.message),
+    GotAskMessage: (got) => foldAsk(model, got.message),
+    GotBoardsMessage: (got) => foldBoards(model, got.message),
+    GotBoardMessage: (got) => foldBoard(model, got.message),
     ChoseTelemetryConsent: ({ granted }) => ({
       model: modifyFields(model, { telemetry: (telemetry) => modifyFields(telemetry, { prompting: () => false }) }),
       commands: [RecordTelemetryConsent({ granted })],

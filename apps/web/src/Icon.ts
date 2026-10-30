@@ -1,9 +1,23 @@
 import type { Attribute, Html, HtmlBuilder } from 'foldkit/html'
 import { controlIcon, loaderIcon, tabIcon } from './Icon.styles.ts'
 import {
+  ArrowClockwiseRegular,
+  ArrowCounterClockwiseRegular,
+  ArrowDownRegular,
+  ArrowsLeftRightRegular,
+  ArrowUpRegular,
+  ChatCircleRegular,
+  ClipboardTextRegular,
+  CopyRegular,
+  MagnifyingGlassLight,
+  MagnifyingGlassRegular,
+  ShuffleRegular,
+  SquaresFourLight,
+  SquaresFourRegular,
+  TextTRegular,
+  XRegular,
   ArrowsClockwiseRegular,
   CameraRegular,
-  CoatHangerLight,
   CaretLeftRegular,
   CheckRegular,
   CircleNotchRegular,
@@ -61,8 +75,22 @@ export const deleteIcon = control(TrashRegular)
 export const cameraIcon = control(CameraRegular)
 export const videoIcon = control(VideoCameraRegular)
 export const retryIcon = control(ArrowsClockwiseRegular)
+export const undoIcon = control(ArrowCounterClockwiseRegular)
+export const redoIcon = control(ArrowClockwiseRegular)
+export const tidyIcon = control(SquaresFourRegular)
+export const textIcon = control(TextTRegular)
+export const pasteIcon = control(ClipboardTextRegular)
+export const flipIcon = control(ArrowsLeftRightRegular)
+export const copyIcon = control(CopyRegular)
+export const forwardIcon = control(ArrowUpRegular)
+export const backwardIcon = control(ArrowDownRegular)
+export const spinIcon = control(ShuffleRegular)
+export const searchIcon = control(MagnifyingGlassRegular)
+export const stylistIcon = control(ChatCircleRegular)
+export const closeIcon = control(XRegular)
 
 /** 24px tab icons in the Light weight. */
 export const homeTabIcon = tab(HouseLight)
 export const wardrobeTabIcon = tab(TShirtLight)
-export const looksTabIcon = tab(CoatHangerLight)
+export const askTabIcon = tab(MagnifyingGlassLight)
+export const boardsTabIcon = tab(SquaresFourLight)

@@ -2,6 +2,7 @@ import { provideAllCatalogs } from '@styld/i18n/all'
 import { Clock, Effect } from 'effect'
 import { layer as cloudflareTracer } from '@alchemy.run/cloudflare/Workers/CloudflareTracer'
 import * as Server from 'foldkit/experimental/server'
+import { SessionHttp } from '@styld/auth/config'
 import { catalogVersion } from '@styld/i18n'
 import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
 import { Flags, init } from './App.ts'
@@ -34,6 +35,7 @@ const renderApplication = (
       pathname: url.pathname,
       origin: url.origin,
       telemetryConsent: consentFromCookies(request.headers.get('cookie')),
+      hasSessionCookie: (request.headers.get('cookie') ?? '').includes(`${SessionHttp.cookieName}=`),
     }
     const rendered = yield* Server.renderToString(application, { ...options, flags })
     return Server.Rendered(rendered, {

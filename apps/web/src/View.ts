@@ -7,8 +7,12 @@ import { actionButton } from './ActionButton.ts'
 import { primaryAction, secondaryAction } from './Actions.styles.ts'
 import { availableLocales } from './Locale.ts'
 import { styled } from './Styled.ts'
-import { homeTabIcon, looksTabIcon, wardrobeTabIcon } from './Icon.ts'
+import { askTabIcon, boardsTabIcon, homeTabIcon, wardrobeTabIcon } from './Icon.ts'
 import * as AddPiecesView from './page/AddPieces/View.ts'
+import * as AskView from './page/AskView.ts'
+import * as TodayView from './page/TodayView.ts'
+import * as BoardView from './page/Board/View.ts'
+import * as BoardsView from './page/BoardsView.ts'
 import * as ReviewView from './page/ReviewView.ts'
 import * as LooksView from './page/LooksView.ts'
 import * as LookView from './page/LookView.ts'
@@ -16,7 +20,7 @@ import { accountView } from './page/AccountView.ts'
 import * as LoginView from './page/LoginView.ts'
 import * as PieceView from './page/PieceView.ts'
 import * as WardrobeView from './page/WardrobeView.ts'
-import { AppRoute, accountRouter, homeRouter, loginRouter, looksRouter, wardrobeRouter } from './route.ts'
+import { AppRoute, accountRouter, askRouter, boardsRouter, homeRouter, loginRouter, wardrobeRouter } from './route.ts'
 import {
   brand,
   brandMark,
@@ -37,10 +41,10 @@ import {
   pickerSelect,
   accountLink,
   appNav,
+  navAsk,
   navAvatar,
-  navIcon,
   navItem,
-  phoneOnly,
+  navLabel,
   sectionNote,
   signInLink,
   site,
@@ -177,11 +181,14 @@ const titleKey = AppRoute.match<MessageKey>({
   Review: () => 'scan.toReview',
   Looks: () => 'looks.title',
   Look: () => 'looks.title',
+  Ask: () => 'ask.title',
+  Boards: () => 'boards.title',
+  Board: () => 'boards.title',
   Piece: () => 'wardrobe.title',
   NotFound: () => 'common.notFoundTitle',
 })
 
-type Section = 'home' | 'wardrobe' | 'looks' | 'you'
+type Section = 'home' | 'wardrobe' | 'ask' | 'boards' | 'you'
 
 const sectionOf = AppRoute.match<Section | undefined>({
   Home: () => 'home',
@@ -189,36 +196,45 @@ const sectionOf = AppRoute.match<Section | undefined>({
   AddPieces: () => 'wardrobe',
   Review: () => 'wardrobe',
   Piece: () => 'wardrobe',
-  Looks: () => 'looks',
-  Look: () => 'looks',
+  Looks: () => 'wardrobe',
+  Look: () => 'wardrobe',
+  Ask: () => 'ask',
+  Boards: () => 'boards',
+  Board: () => 'boards',
   Account: () => 'you',
   Login: () => undefined,
   LoginForConnection: () => undefined,
   NotFound: () => undefined,
 })
 
-/** The built sections only: Home, Wardrobe, Looks and You (Gallery's tab bar). */
+/** Gallery 2's navigation: Home, Wardrobe, Ask in the middle, Boards, and you. A floating glass pill on the
+ * phone, a rail on the desktop's left edge; it keeps its place while a page cross-fades. */
 const appNavigation = (model: Model, initial: string, h: HtmlBuilder<Message>): Html => {
   const { locale } = model.context
   const current = sectionOf(model.route)
-  const item = (section: Section, href: string, label: string, icon: Html, extra: ReadonlyArray<Html> = []) =>
+  const item = (section: Section, href: string, label: string, content: Html, ask = false) =>
     h.a(
-      [h.Href(href), ...(current === section ? [h.AriaCurrent('page')] : []), ...styled(h, navItem())],
-      [h.span(styled(h, navIcon()), [icon]), label, ...extra],
+      [
+        h.Href(href),
+        h.AriaLabel(label),
+        h.Title(label),
+        ...(current === section ? [h.AriaCurrent('page')] : []),
+        ...styled(h, ask ? cx(navItem(), navAsk()) : navItem()),
+      ],
+      [content, h.span(styled(h, navLabel()), [label])],
     )
   return h.nav(
     [h.AriaLabel(format(locale, 'nav.navigation', {})), ...styled(h, appNav())],
     [
       item('home', homeRouter({}), format(locale, 'nav.home', {}), homeTabIcon(h)),
       item('wardrobe', wardrobeRouter({}), format(locale, 'nav.wardrobe', {}), wardrobeTabIcon(h)),
-      item('looks', looksRouter({}), format(locale, 'nav.looks', {}), looksTabIcon(h)),
-      h.a(
-        [
-          h.Href(accountRouter({})),
-          ...(current === 'you' ? [h.AriaCurrent('page')] : []),
-          ...styled(h, cx(navItem(), phoneOnly())),
-        ],
-        [h.span([h.AriaHidden(true), ...styled(h, navAvatar())], [initial]), format(locale, 'nav.account', {})],
+      item('ask', askRouter({}), format(locale, 'nav.ask', {}), askTabIcon(h), true),
+      item('boards', boardsRouter({}), format(locale, 'nav.boards', {}), boardsTabIcon(h)),
+      item(
+        'you',
+        accountRouter({}),
+        format(locale, 'nav.account', {}),
+        h.span([h.AriaHidden(true), ...styled(h, navAvatar())], [initial]),
       ),
     ],
   )
@@ -289,6 +305,52 @@ const lookPage = (model: Model, h: HtmlBuilder<Message>): Html =>
     toParentMessage: (message) => Message.GotLookMessage({ message }),
   })
 
+/** Home: today's table for a signed-in person, the landing page for everyone else. While the session is read,
+ * a request that came with a session cookie waits quietly instead of flashing the landing page. */
+const homePage = (model: Model, h: HtmlBuilder<Message>): Html =>
+  Session.match(model.session, {
+    SignedIn: () =>
+      h.submodel({
+        slotId: 'today',
+        model: model.today,
+        view: TodayView.view,
+        viewInputs: { locale: model.context.locale },
+        toParentMessage: (message) => Message.GotTodayMessage({ message }),
+      }),
+    SigningOut: () => h.main([h.Id('main')]),
+    Checking: () =>
+      model.context.hasSessionCookie === true ? h.main([h.Id('main')]) : homeView(model.context.locale, h),
+    SignedOut: () => homeView(model.context.locale, h),
+    Unavailable: () => homeView(model.context.locale, h),
+  })
+
+const askPage = (model: Model, h: HtmlBuilder<Message>): Html =>
+  h.submodel({
+    slotId: 'ask',
+    model: model.ask,
+    view: AskView.view,
+    viewInputs: { locale: model.context.locale },
+    toParentMessage: (message) => Message.GotAskMessage({ message }),
+  })
+
+const boardsPage = (model: Model, h: HtmlBuilder<Message>): Html =>
+  h.submodel({
+    slotId: 'boards',
+    model: model.boards,
+    view: BoardsView.view,
+    viewInputs: { locale: model.context.locale },
+    toParentMessage: (message) => Message.GotBoardsMessage({ message }),
+  })
+
+const boardPage = (model: Model, h: HtmlBuilder<Message>): Html =>
+  h.submodel({
+    slotId: 'board',
+    model: model.board,
+    view: BoardView.view,
+    viewInputs: { locale: model.context.locale },
+    toParentMessage: (message) => Message.GotBoardMessage({ message }),
+  })
+
 const reviewPage = (model: Model, h: HtmlBuilder<Message>): Html =>
   h.submodel({
     slotId: 'review',
@@ -319,12 +381,10 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
             ]),
           ],
         ),
-        initial === undefined ? h.empty : appNavigation(model, initial, h),
-        languagePicker(model, h),
-        sessionLink(model, h),
+        initial === undefined ? sessionLink(model, h) : h.empty,
       ]),
       AppRoute.match(model.route, {
-        Home: () => homeView(locale, h),
+        Home: () => homePage(model, h),
         Login: () => loginPage(model, false, h),
         LoginForConnection: () => loginPage(model, true, h),
         Account: () => accountView(model, h),
@@ -333,11 +393,16 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
         Review: () => reviewPage(model, h),
         Looks: () => looksPage(model, h),
         Look: () => lookPage(model, h),
+        Ask: () => askPage(model, h),
+        Boards: () => boardsPage(model, h),
+        Board: () => boardPage(model, h),
         Piece: () => piecePage(model, h),
         NotFound: () => notFoundView(locale, h),
       }),
+      initial === undefined ? h.empty : appNavigation(model, initial, h),
       h.footer(styled(h, footer()), [
         h.span([], ['Styld']),
+        languagePicker(model, h),
         actionButton(
           {
             label: format(locale, 'telemetryConsent.settings', {}),

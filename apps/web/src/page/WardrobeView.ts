@@ -13,6 +13,7 @@ import { categories } from './PieceFields.ts'
 import { Message, type Model, Pieces } from './Wardrobe.ts'
 import { categoryName, subcategoryName } from './WardrobeWords.ts'
 import * as styles from './WardrobeView.styles.ts'
+import { wardrobeTabs } from './WardrobeTabs.ts'
 
 /** A piece's name, or what it is when it has none. */
 export const pieceLabel = (piece: Piece, locale: Locale) =>
@@ -146,6 +147,7 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
           [addIcon(h)],
         ),
       ]),
+      wardrobeTabs('pieces', locale, h),
       Pieces.match(model.pieces, {
         Loading: () => loadingView(locale, h),
         Loaded: ({ pieces }) => loadedView(pieces, model, locale, h),

@@ -367,6 +367,23 @@ export interface MessageArgumentsByKey<T = string> {
   'admin.webhooks.time': Readonly<Record<string, never>>
   'admin.webhooks.title': Readonly<Record<string, never>>
   'admin.webhooks.type': Readonly<Record<string, never>>
+  'ask.add': Readonly<Record<string, never>>
+  'ask.addClothes': Readonly<Record<string, never>>
+  'ask.addClothesHint': Readonly<Record<string, never>>
+  'ask.clear': Readonly<Record<string, never>>
+  'ask.failed': Readonly<Record<string, never>>
+  'ask.found': { readonly count: number }
+  'ask.newBoard': Readonly<Record<string, never>>
+  'ask.newBoardHint': Readonly<Record<string, never>>
+  'ask.noResults': { readonly query: string | number }
+  'ask.placeholder': Readonly<Record<string, never>>
+  'ask.retry': Readonly<Record<string, never>>
+  'ask.searchLabel': Readonly<Record<string, never>>
+  'ask.stylistLink': Readonly<Record<string, never>>
+  'ask.stylistText': Readonly<Record<string, never>>
+  'ask.stylistTitle': Readonly<Record<string, never>>
+  'ask.suggestions': Readonly<Record<string, never>>
+  'ask.title': Readonly<Record<string, never>>
   'assistant.composerPlaceholder': Readonly<Record<string, never>>
   'assistant.empty': Readonly<Record<string, never>>
   'assistant.loading': Readonly<Record<string, never>>
@@ -468,6 +485,84 @@ export interface MessageArgumentsByKey<T = string> {
   'automations.spentThisPeriod': { readonly spent: string | number; readonly cap: string | number }
   'automations.subtitle': Readonly<Record<string, never>>
   'automations.title': Readonly<Record<string, never>>
+  'board.addPicture': Readonly<Record<string, never>>
+  'board.addPiece': { readonly name: string | number }
+  'board.addText': Readonly<Record<string, never>>
+  'board.back': Readonly<Record<string, never>>
+  'board.backward': Readonly<Record<string, never>>
+  'board.count': { readonly count: number }
+  'board.delete': Readonly<Record<string, never>>
+  'board.deleteConfirm': Readonly<Record<string, never>>
+  'board.deleteFailed': Readonly<Record<string, never>>
+  'board.deleteKeep': Readonly<Record<string, never>>
+  'board.deleteYes': Readonly<Record<string, never>>
+  'board.dropHere': Readonly<Record<string, never>>
+  'board.duplicate': Readonly<Record<string, never>>
+  'board.empty': Readonly<Record<string, never>>
+  'board.failed': Readonly<Record<string, never>>
+  'board.flip': Readonly<Record<string, never>>
+  'board.forward': Readonly<Record<string, never>>
+  'board.keys': Readonly<Record<string, never>>
+  'board.loading': Readonly<Record<string, never>>
+  'board.lookFailed': Readonly<Record<string, never>>
+  'board.lookNoPieces': Readonly<Record<string, never>>
+  'board.lookSaved': Readonly<Record<string, never>>
+  'board.lookSaving': Readonly<Record<string, never>>
+  'board.missing': Readonly<Record<string, never>>
+  'board.newText': Readonly<Record<string, never>>
+  'board.openLook': Readonly<Record<string, never>>
+  'board.paper': Readonly<Record<string, never>>
+  'board.paperColour': Readonly<Record<string, never>>
+  'board.paper_clay': Readonly<Record<string, never>>
+  'board.paper_paper': Readonly<Record<string, never>>
+  'board.paper_sage': Readonly<Record<string, never>>
+  'board.paper_sand': Readonly<Record<string, never>>
+  'board.paper_slate': Readonly<Record<string, never>>
+  'board.paper_stock': Readonly<Record<string, never>>
+  'board.paste': Readonly<Record<string, never>>
+  'board.picture': Readonly<Record<string, never>>
+  'board.pictureFailed': Readonly<Record<string, never>>
+  'board.pictureRefused': Readonly<Record<string, never>>
+  'board.pieceFallback': Readonly<Record<string, never>>
+  'board.redo': Readonly<Record<string, never>>
+  'board.remove': Readonly<Record<string, never>>
+  'board.removed': Readonly<Record<string, never>>
+  'board.replaced': Readonly<Record<string, never>>
+  'board.retry': Readonly<Record<string, never>>
+  'board.saveFailed': Readonly<Record<string, never>>
+  'board.saveLook': Readonly<Record<string, never>>
+  'board.saved': Readonly<Record<string, never>>
+  'board.saving': Readonly<Record<string, never>>
+  'board.selected': Readonly<Record<string, never>>
+  'board.sending': { readonly count: number }
+  'board.styleHeadline': Readonly<Record<string, never>>
+  'board.styleLabel': Readonly<Record<string, never>>
+  'board.takePiece': { readonly name: string | number }
+  'board.text': Readonly<Record<string, never>>
+  'board.textItem': { readonly text: string | number }
+  'board.textStyle': Readonly<Record<string, never>>
+  'board.tidy': Readonly<Record<string, never>>
+  'board.tools': Readonly<Record<string, never>>
+  'board.turnHandle': Readonly<Record<string, never>>
+  'board.undo': Readonly<Record<string, never>>
+  'board.undoRemove': Readonly<Record<string, never>>
+  'board.wardrobe': Readonly<Record<string, never>>
+  'board.wardrobeEmpty': Readonly<Record<string, never>>
+  'board.wardrobeFailed': Readonly<Record<string, never>>
+  'boards.create': Readonly<Record<string, never>>
+  'boards.createFailed': Readonly<Record<string, never>>
+  'boards.creating': Readonly<Record<string, never>>
+  'boards.defaultName': Readonly<Record<string, never>>
+  'boards.empty': Readonly<Record<string, never>>
+  'boards.failed': Readonly<Record<string, never>>
+  'boards.intro': Readonly<Record<string, never>>
+  'boards.items': { readonly count: number }
+  'boards.loading': Readonly<Record<string, never>>
+  'boards.name': Readonly<Record<string, never>>
+  'boards.new': Readonly<Record<string, never>>
+  'boards.open': { readonly name: string | number }
+  'boards.retry': Readonly<Record<string, never>>
+  'boards.title': Readonly<Record<string, never>>
   'calendar.addOutfit': Readonly<Record<string, never>>
   'calendar.aiGenerateFailed': Readonly<Record<string, never>>
   'calendar.aiGenerateLabel': Readonly<Record<string, never>>
@@ -996,7 +1091,9 @@ export interface MessageArgumentsByKey<T = string> {
   'nav.account': Readonly<Record<string, never>>
   'nav.activity': Readonly<Record<string, never>>
   'nav.admin': Readonly<Record<string, never>>
+  'nav.ask': Readonly<Record<string, never>>
   'nav.assistant': Readonly<Record<string, never>>
+  'nav.boards': Readonly<Record<string, never>>
   'nav.calendar': Readonly<Record<string, never>>
   'nav.catalog': Readonly<Record<string, never>>
   'nav.chat': Readonly<Record<string, never>>
@@ -2009,6 +2106,22 @@ export interface MessageArgumentsByKey<T = string> {
   'telemetryConsent.decline': Readonly<Record<string, never>>
   'telemetryConsent.message': Readonly<Record<string, never>>
   'telemetryConsent.settings': Readonly<Record<string, never>>
+  'today.addClothes': Readonly<Record<string, never>>
+  'today.empty': Readonly<Record<string, never>>
+  'today.failed': Readonly<Record<string, never>>
+  'today.keepGoing': Readonly<Record<string, never>>
+  'today.loading': Readonly<Record<string, never>>
+  'today.outfit': { readonly names: string | number }
+  'today.pickUp': Readonly<Record<string, never>>
+  'today.retry': Readonly<Record<string, never>>
+  'today.review': Readonly<Record<string, never>>
+  'today.spin': Readonly<Record<string, never>>
+  'today.waiting': { readonly count: number }
+  'today.wear': Readonly<Record<string, never>>
+  'today.wearFailed': Readonly<Record<string, never>>
+  'today.wearing': Readonly<Record<string, never>>
+  'today.worn': Readonly<Record<string, never>>
+  'today.wornNote': Readonly<Record<string, never>>
   'tourControls.back': Readonly<Record<string, never>>
   'tourControls.done': Readonly<Record<string, never>>
   'tourControls.next': Readonly<Record<string, never>>
@@ -2364,6 +2477,7 @@ export interface MessageArgumentsByKey<T = string> {
   'wardrobe.statusProcessing': Readonly<Record<string, never>>
   'wardrobe.stylistThinking': Readonly<Record<string, never>>
   'wardrobe.suggestions': Readonly<Record<string, never>>
+  'wardrobe.tabPieces': Readonly<Record<string, never>>
   'wardrobe.takePhoto': Readonly<Record<string, never>>
   'wardrobe.thePieces': Readonly<Record<string, never>>
   'wardrobe.title': Readonly<Record<string, never>>
@@ -2402,4 +2516,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'a8d348589db40546c9e8fa721a8273806efa6c4f7f87f336d453acf36e9eed42'
+export const catalogVersion = 'b39e1f9f499cc057443303ccc5248e9b1f1d551f07dd3d16deae82795edc28ba'

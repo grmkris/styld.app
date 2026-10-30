@@ -15,6 +15,10 @@ export const AppRoute = defineRouteUnion({
   Piece: { pieceId: Schema.String },
   Looks: {},
   Look: { lookId: Schema.String },
+  /** Search your wardrobe, ask the stylist through an assistant, or add clothes (Gallery 2's middle button). */
+  Ask: {},
+  Boards: {},
+  Board: { boardId: Schema.String },
   NotFound: { path: Schema.String },
 })
 export type AppRoute = typeof AppRoute.Type
@@ -29,6 +33,9 @@ export const reviewRouter = pipe(literal('wardrobe'), slash(literal('review')), 
 export const pieceRouter = pipe(literal('wardrobe'), slash(string('pieceId')), mapTo(AppRoute.Piece))
 export const looksRouter = pipe(literal('looks'), mapTo(AppRoute.Looks))
 export const lookRouter = pipe(literal('looks'), slash(string('lookId')), mapTo(AppRoute.Look))
+export const askRouter = pipe(literal('ask'), mapTo(AppRoute.Ask))
+export const boardsRouter = pipe(literal('boards'), mapTo(AppRoute.Boards))
+export const boardRouter = pipe(literal('boards'), slash(string('boardId')), mapTo(AppRoute.Board))
 
 // `/wardrobe/add` and `/wardrobe/review` are declared before `/wardrobe/:pieceId`, which would otherwise take them.
 const parser = oneOf(
@@ -41,6 +48,9 @@ const parser = oneOf(
   wardrobeRouter,
   lookRouter,
   looksRouter,
+  askRouter,
+  boardRouter,
+  boardsRouter,
   homeRouter,
 )
 
@@ -59,7 +69,10 @@ export const needsSession = (route: AppRoute) =>
   AppRoute.guards.Review(route) ||
   AppRoute.guards.Piece(route) ||
   AppRoute.guards.Looks(route) ||
-  AppRoute.guards.Look(route)
+  AppRoute.guards.Look(route) ||
+  AppRoute.guards.Ask(route) ||
+  AppRoute.guards.Boards(route) ||
+  AppRoute.guards.Board(route)
 
 /** Where an assistant's connection resumes once the person has signed in (Yielded keeps the pending
  * authorization in a private cookie). */

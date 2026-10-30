@@ -1,13 +1,18 @@
 import { catalogVersion } from '@styld/i18n'
+import { Day } from '@styld/protocol'
+import { Option, Schema } from 'effect'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import { Message, Navigate, ReadSession, Session, init, update } from '../src/App.ts'
 import { Message as AddPiecesMessage } from '../src/page/AddPieces/Message.ts'
 import { Message as ReviewMessage } from '../src/page/Review.ts'
+import * as Today from '../src/page/Today.ts'
 import { AppRoute } from '../src/route.ts'
 import { pageAt } from './WardrobeFixtures.ts'
 
 const page = pageAt
+
+const thursday = Schema.decodeUnknownSync(Day)('2026-10-29')
 
 const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
 
@@ -47,14 +52,32 @@ describe('the session decides where a visitor belongs', () => {
   })
 
   test('pages open to everyone stay put whatever the session', () => {
-    for (const claimsRead of [null, claims])
-      story(
-        update,
-        given(page('/')),
-        message(Message.ReceivedSession({ claims: claimsRead })),
-        Command.expectNone(),
-        model(({ route }) => expect(route).toEqual(AppRoute.Home())),
-      )
+    story(
+      update,
+      given(page('/')),
+      message(Message.ReceivedSession({ claims: null })),
+      Command.expectNone(),
+      model(({ route }) => expect(route).toEqual(AppRoute.Home())),
+    )
+  })
+
+  test('a signed-in visitor stays on Home, which lays out the table for today', () => {
+    story(
+      update,
+      given(page('/')),
+      message(Message.ReceivedSession({ claims })),
+      Command.expectExact(Today.DetermineDay, Today.ListPieces, Today.ListBoards, Today.ReadTray),
+      Command.resolve(Today.ListPieces, Today.Message.FailedListPieces()),
+      Command.resolve(Today.ListBoards, Today.Message.FailedListBoards()),
+      Command.resolve(Today.ReadTray, Today.Message.FailedReadTray()),
+      Command.resolve(Today.DetermineDay, Today.Message.CompletedDetermineDay({ day: thursday })),
+      // Knowing the day, Home asks what was worn on it.
+      Command.resolve(Today.ReadWorn, Today.Message.FailedReadWorn()),
+      model(({ route, today }) => {
+        expect(route).toEqual(AppRoute.Home())
+        expect(today.maybeDay).toEqual(Option.some(thursday))
+      }),
+    )
   })
 
   test('an unreadable session offers a retry that reads it again', () => {

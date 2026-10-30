@@ -1,15 +1,28 @@
 {
-  "light": ["coat-hanger", "house", "t-shirt"],
+  "light": ["house", "magnifying-glass", "squares-four", "t-shirt"],
   "regular": [
+    "arrow-clockwise",
+    "arrow-counter-clockwise",
+    "arrow-down",
+    "arrow-up",
     "arrows-clockwise",
+    "arrows-left-right",
     "camera",
     "caret-left",
+    "chat-circle",
     "check",
     "circle-notch",
+    "clipboard-text",
+    "copy",
     "image",
+    "magnifying-glass",
     "pencil-simple",
     "plus",
+    "shuffle",
+    "squares-four",
+    "text-t",
     "trash",
-    "video-camera"
+    "video-camera",
+    "x"
   ]
 }

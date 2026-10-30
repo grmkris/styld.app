@@ -7,6 +7,7 @@ import { secondaryAction } from '../Actions.styles.ts'
 import { loader } from '../Icon.ts'
 import { lookRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
+import { wardrobeTabs } from './WardrobeTabs.ts'
 import { Message, type Model, Saved } from './Looks.ts'
 import { message as messageSection, messageTitle } from './WardrobeView.styles.ts'
 import * as styles from './LooksView.styles.ts'
@@ -58,7 +59,8 @@ const looksPage = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html 
   h.main(
     [h.Id('main'), ...styled(h, styles.looksPage())],
     [
-      h.h1([], [format(locale, 'looks.title', {})]),
+      h.h1([], [format(locale, 'wardrobe.title', {})]),
+      wardrobeTabs('looks', locale, h),
       ...Saved.match(model.saved, {
         Loading: () => [h.p([h.Role('status')], [loader(h)])],
         Failed: () => [couldNotLoad(locale, h, Message.ClickedRetry())],

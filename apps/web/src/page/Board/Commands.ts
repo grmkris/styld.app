@@ -1,0 +1,203 @@
+import { BoardId, BoardItem, BoardItemId, boardWidth, ImageType, OperationId, Paper, PieceId } from '@styld/protocol'
+import { Array, Duration, Effect, Option, Predicate, Queue, Schema, Stream } from 'effect'
+import * as Crypto from 'effect/Crypto'
+import * as Base64Url from 'effect/encoding/Base64Url'
+import { Command, File, Mount } from 'foldkit'
+import { StyldClient } from '../../StyldClient.ts'
+import { Message } from './Message.ts'
+
+// COMMAND
+
+/** How long a change waits for the next before the table is saved. */
+const saveWait = Duration.millis(700)
+/** How long an item's exit plays before it leaves the page. */
+const exitDuration = Duration.millis(240)
+/** How long "Removed. Undo" stays. */
+const toastDuration = Duration.seconds(5)
+/** A picture is shrunk to at most this many pixels on its longer side before it goes up. */
+const longestSide = 2048
+
+const boardIdOf = (id: string) => Schema.decodeUnknownEffect(BoardId)(id)
+
+export const LoadBoard = Command.define('LoadBoard', {
+  args: { boardId: Schema.String },
+  messages: [Message.SucceededLoadBoard, Message.FailedLoadBoard],
+  execute: ({ boardId }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const board = yield* api.board.getBoard({ params: { boardId: yield* boardIdOf(boardId) } })
+      return Message.SucceededLoadBoard({ board })
+    }).pipe(
+      Effect.catchTag('BoardNotFound', () => Effect.succeed(Message.FailedLoadBoard({ missing: true }))),
+      Effect.catchTag('SchemaError', () => Effect.succeed(Message.FailedLoadBoard({ missing: true }))),
+      Effect.orElseSucceed(() => Message.FailedLoadBoard({ missing: false })),
+    ),
+})
+
+/** Fresh item ids: 16 random bytes each, like every Styld id. */
+export const MakeIds = Command.define('MakeIds', {
+  messages: [Message.CompletedMakeIds],
+  execute: Effect.gen(function* () {
+    const crypto = yield* Crypto.Crypto
+    const ids = yield* Effect.forEach(
+      Array.makeBy(12, () => undefined),
+      () =>
+        crypto
+          .randomBytes(16)
+          .pipe(Effect.flatMap((bytes) => Schema.decodeUnknownEffect(BoardItemId)(`bi_${Base64Url.encode(bytes)}`))),
+    )
+    return Message.CompletedMakeIds({ ids })
+  }).pipe(Effect.orDie),
+})
+
+export const WaitToSave = Command.define('WaitToSave', {
+  args: { generation: Schema.Int },
+  messages: [Message.ElapsedSaveWait],
+  execute: ({ generation }) => Effect.sleep(saveWait).pipe(Effect.as(Message.ElapsedSaveWait({ generation }))),
+})
+
+/** Save the whole table from the version it started with. A newer save elsewhere wins: the editor shows it. */
+export const SaveItems = Command.define('SaveItems', {
+  args: { boardId: Schema.String, version: Schema.Int, items: Schema.Array(BoardItem) },
+  messages: [Message.SucceededSaveItems, Message.ReplacedByNewerBoard, Message.FailedSaveItems],
+  execute: ({ boardId, version, items }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const id = yield* boardIdOf(boardId)
+      const current = api.board
+        .getBoard({ params: { boardId: id } })
+        .pipe(Effect.map((board) => Message.ReplacedByNewerBoard({ board })))
+      return yield* api.board.saveBoardItems({ params: { boardId: id }, payload: { version, items } }).pipe(
+        Effect.map((board) => Message.SucceededSaveItems({ board })),
+        // Saved elsewhere first, or a piece on the table left the wardrobe: show the board as it is now.
+        Effect.catchTags({ BoardVersionConflict: () => current, BoardItemRefused: () => current }),
+      )
+    }).pipe(Effect.orElseSucceed(() => Message.FailedSaveItems())),
+})
+
+export const UpdatePaper = Command.define('UpdatePaper', {
+  args: { boardId: Schema.String, paper: Paper },
+  messages: [Message.SucceededUpdateBoard, Message.FailedUpdateBoard],
+  execute: ({ boardId, paper }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const board = yield* api.board.updateBoard({ params: { boardId: yield* boardIdOf(boardId) }, payload: { paper } })
+      return Message.SucceededUpdateBoard({ board })
+    }).pipe(Effect.orElseSucceed(() => Message.FailedUpdateBoard())),
+})
+
+export const WaitForExit = Command.define('WaitForExit', {
+  args: { id: Schema.String },
+  messages: [Message.CompletedExit],
+  execute: ({ id }) => Effect.sleep(exitDuration).pipe(Effect.as(Message.CompletedExit({ id }))),
+})
+
+export const WaitForToast = Command.define('WaitForToast', {
+  args: { generation: Schema.Int },
+  messages: [Message.ElapsedToast],
+  execute: ({ generation }) => Effect.sleep(toastDuration).pipe(Effect.as(Message.ElapsedToast({ generation }))),
+})
+
+const pictureTypes: ReadonlyArray<string> = ImageType.literals
+
+/** Shrink a picture to at most 2048px and re-encode it as WebP. Drawing it afresh drops the photo's
+ * metadata, its location included. */
+const prepared = (file: File.File) =>
+  Effect.tryPromise({
+    try: async () => {
+      const bitmap = await createImageBitmap(file)
+      const scale = Math.min(1, longestSide / Math.max(bitmap.width, bitmap.height))
+      const canvas = new OffscreenCanvas(Math.round(bitmap.width * scale), Math.round(bitmap.height * scale))
+      canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
+      bitmap.close()
+      return canvas.convertToBlob({ type: 'image/webp', quality: 0.86 })
+    },
+    catch: () => 'Unreadable' as const,
+  })
+
+/** Send one picture and put it on the board: upload its bytes, then claim the upload for the board. */
+export const AddImage = Command.define('AddImage', {
+  args: { boardId: Schema.String, file: File.File },
+  messages: [Message.SucceededAddImage, Message.FailedAddImage],
+  execute: ({ boardId, file }) =>
+    Effect.gen(function* () {
+      if (!pictureTypes.includes(File.mimeType(file))) return Message.FailedAddImage({ refused: true })
+      const { api: loadApi, sendFile } = yield* StyldClient
+      const api = yield* loadApi
+      const picture = yield* prepared(file)
+      const created = yield* api.wardrobe.createUpload({ payload: { contentType: 'image/webp', bytes: picture.size } })
+      yield* sendFile(created.path, picture)
+      const operationId = yield* Schema.decodeUnknownEffect(OperationId)(yield* (yield* Crypto.Crypto).randomUUIDv4())
+      const { imageId } = yield* api.board.addBoardImage({
+        params: { boardId: yield* boardIdOf(boardId) },
+        payload: { operationId, uploadId: created.uploadId },
+      })
+      return Message.SucceededAddImage({ imageId })
+    }).pipe(
+      Effect.catchIf(
+        (error) => Predicate.isTagged(error, 'UploadRefused') || Predicate.isTagged(error, 'FileNotSent'),
+        () => Effect.succeed(Message.FailedAddImage({ refused: true })),
+      ),
+      Effect.orElseSucceed(() => Message.FailedAddImage({ refused: false })),
+    ),
+})
+
+/** The pictures on the clipboard, read when the person taps Paste (the only way a phone's browser shares
+ * them). The browser asks for permission first. */
+export const ReadClipboard = Command.define('ReadClipboard', {
+  messages: [Message.CompletedReadClipboard],
+  execute: Effect.tryPromise({
+    try: async () => {
+      const items = await navigator.clipboard.read()
+      const blobs = await Promise.all(
+        items.flatMap((item) =>
+          item.types.filter((type) => type.startsWith('image/')).map((type) => item.getType(type)),
+        ),
+      )
+      return blobs.map((blob, index) => new globalThis.File([blob], `pasted-${index}`, { type: blob.type }))
+    },
+    catch: () => 'ClipboardRefused' as const,
+  }).pipe(
+    Effect.map((files) => Message.CompletedReadClipboard({ files })),
+    Effect.orElseSucceed(() => Message.CompletedReadClipboard({ files: [] })),
+  ),
+})
+
+/** The board's pieces, from the top of the stack down, become a look named after the board. */
+export const SaveLook = Command.define('SaveLook', {
+  args: { name: Schema.String, pieceIds: Schema.Array(PieceId) },
+  messages: [Message.SucceededSaveLook, Message.FailedSaveLook],
+  execute: ({ name, pieceIds }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const operationId = yield* Schema.decodeUnknownEffect(OperationId)(yield* (yield* Crypto.Crypto).randomUUIDv4())
+      const look = yield* api.look.createLook({ payload: { operationId, name, pieceIds } })
+      return Message.SucceededSaveLook({ lookId: look.id })
+    }).pipe(Effect.orElseSucceed(() => Message.FailedSaveLook())),
+})
+
+// MOUNT
+
+/** Reports the paper's width whenever it changes, so pointer travel in pixels converts to table units. */
+export const MeasurePaper = Mount.defineStream('MeasurePaper', {
+  messages: [Message.MeasuredPaper],
+  execute: ({ element }) =>
+    Stream.callback<typeof Message.MeasuredPaper.Type>((queue) =>
+      Effect.acquireRelease(
+        Effect.sync(() => {
+          const observer = new ResizeObserver((entries) => {
+            const width = Option.fromNullishOr(entries[0]?.contentRect.width)
+            if (Option.isSome(width) && width.value > 0) {
+              Queue.offerUnsafe(queue, Message.MeasuredPaper({ width: width.value }))
+            }
+          })
+          observer.observe(element)
+          return observer
+        }),
+        (observer) => Effect.sync(() => observer.disconnect()),
+      ).pipe(Effect.flatMap(() => Effect.never)),
+    ),
+})
+
+/** Table units per page pixel, from the paper's measured width. */
+export const unitsPerPixel = (width: number) => width / boardWidth

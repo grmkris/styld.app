@@ -1,6 +1,6 @@
 import { defineConfig } from 'zyzz'
 
-/** Styld's Gallery tokens (`DESIGN.md`, prototype in `docs/design/gallery`). Light mode only.
+/** Styld's Gallery 2 tokens (`DESIGN.md`, prototype in `docs/design/gallery-2`). Light mode only.
  * Styles compile to `class`/`style` attributes that `Styled.ts` hands to Foldkit. */
 export const { style, vars } = defineConfig({
   id: 'styld',
@@ -27,6 +27,18 @@ export const { style, vars } = defineConfig({
       onInk: '#f7f4ee',
       // Gallery's scrim: round controls and chips over a photo, such as the camera's picture.
       scrim: 'oklch(0.2 0.02 50 / 0.4)',
+      // Gallery 2's glass: the floating nav and the Ask panel only (DESIGN.md › Surfaces), with its bright edge.
+      glass: 'oklch(0.985 0.005 80 / 0.74)',
+      glassEdge: 'oklch(1 0 0 / 0.6)',
+      // Soft shadows for things that float: the nav, sheets, a held piece.
+      shade1: 'oklch(0 0 0 / 0.05)',
+      shade2: 'oklch(0 0 0 / 0.1)',
+      shade3: 'oklch(0 0 0 / 0.16)',
+      // A board's paper tints (`Paper` in packages/protocol/src/Board.ts), used only as a table's ground.
+      tintSand: '#e0d3b8',
+      tintSage: '#c3cbb7',
+      tintSlate: '#bec8d4',
+      tintClay: '#dcc0ad',
       focus: '#2f5bd3',
       error: 'oklch(48% 0.16 25)',
       invalid: 'oklch(58% 0.16 25)',
@@ -47,7 +59,9 @@ export const { style, vars } = defineConfig({
     },
     fontFamily: {
       body: "'Hanken Grotesk Variable', 'Hanken Grotesk', system-ui, sans-serif",
+      // The logo's condensed voice: the table's headline and headline labels on a board, nowhere else.
+      voice: "'Anton', 'Hanken Grotesk Variable', sans-serif",
     },
-    radius: { photo: '4px', field: '12px', panel: '16px', sheet: '24px', pill: '999px' },
+    radius: { photo: '4px', field: '12px', panel: '16px', sheet: '24px', table: '28px', pill: '999px' },
   },
 })
