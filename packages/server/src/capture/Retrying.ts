@@ -91,6 +91,11 @@ export const retrying = (parts: Parts) => ({
     // A failed capture gets its credits back; an unknown or stuck one may have been billed, so it is consumed.
     if (capture.settlement === 'held')
       yield* (yield* Usage).settle(accountId, holdOf(capture), capture.status === 'failed' ? 'refunded' : 'consumed')
+    // A back shot folded into this one goes first, with its photo: nothing else shows it.
+    for (const back of yield* storedAs(parts.store.foldedBacks(accountId, capture.id))) {
+      yield* storedAs(parts.store.deleteCapture(accountId, back.id))
+      yield* removeObjects(parts, back, [])
+    }
     const frames = yield* storedAs(parts.store.frames(capture.id))
     yield* storedAs(parts.store.deleteCapture(accountId, captureId))
     yield* removeObjects(parts, capture, frames)

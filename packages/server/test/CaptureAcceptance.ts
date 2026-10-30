@@ -37,7 +37,12 @@ const Tray = Schema.Struct({
       id: Schema.String,
       status: Schema.String,
       detections: Schema.Array(
-        Schema.Struct({ id: Schema.String, preselected: Schema.Boolean, hasCutout: Schema.Boolean }),
+        Schema.Struct({
+          id: Schema.String,
+          preselected: Schema.Boolean,
+          hasCutout: Schema.Boolean,
+          hasBack: Schema.Boolean,
+        }),
       ),
     }),
   ),
@@ -152,6 +157,60 @@ const verifyAllowance = async (origin: string, owner: Call) => {
   return { video, still, clip, last, lastCapture }
 }
 
+/** The tray once each front shot's piece has its back. */
+const paired = async (call: Call, fronts: ReadonlyArray<string>) => {
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    const current = await tray(call)
+    const backed = fronts.every((front) =>
+      current.captures.some(({ id, detections }) => id === front && detections.some(({ hasBack }) => hasBack)),
+    )
+    if (backed) return current
+    await Bun.sleep(250)
+  }
+  throw new Error(`a back shot of ${fronts.join(', ')} was not paired`)
+}
+
+/** A camera's back shot becomes the back of its front shot's piece, whether the front was in the tray
+ * first or the two finished together; removing the front removes its back's photo. */
+const verifyPairing = async (origin: string, fixtures: string, call: Call) => {
+  const shot = async (operationId: string, name: string, side: 'front' | 'back', pairsWith?: string) => {
+    const uploadId = await uploaded(call, origin, fixture(name), 'image/png')
+    const created = await post(call, '/api/captures', {
+      operationId,
+      uploadId,
+      source: 'camera',
+      side,
+      ...(pairsWith === undefined ? {} : { pairsWith }),
+    })
+    return { uploadId, captureId: await captureId(created) }
+  }
+  const front = await shot('native-pair-0001', 'red-tee.png', 'front')
+  await processed(call, front.captureId)
+  const back = await shot('native-pair-0002', 'green-shirt.png', 'back', front.captureId)
+  // Sent one after the other, as the camera sends them: either may finish first.
+  const second = await shot('native-pair-0003', 'blue-dress.png', 'front')
+  const secondBack = await shot('native-pair-0004', 'green-shirt.png', 'back', second.captureId)
+  const current = await paired(call, [front.captureId, second.captureId])
+  expect(current.captures.map(({ id }) => id).toSorted()).toEqual([front.captureId, second.captureId].toSorted())
+  expect(current.allowance.remaining).toBe(nativeDailyAllowance - 4)
+  const detectionId = current.captures.find(({ id }) => id === front.captureId)?.detections[0]?.id ?? ''
+  const picture = await call(`/cdn/detections/${detectionId}/back`)
+  expect(picture.status).toBe(200)
+  expect(new Uint8Array(await picture.arrayBuffer())).toEqual(fixture('green-shirt.png'))
+
+  const me = Schema.decodeUnknownSync(Schema.Struct({ accountId: Schema.String }))(await (await call('/api/me')).json())
+  const key = (uploadId: string) => `accounts/${me.accountId}/uploads/${uploadId}`
+  for (const [shotFront, shotBack] of [
+    [front, back],
+    [second, secondBack],
+  ] as const) {
+    expect((await call(`/api/captures/${shotFront.captureId}`, { method: 'DELETE' })).status).toBe(204)
+    expect(await exists(fixtures, key(shotFront.uploadId))).toBe(false)
+    expect(await exists(fixtures, key(shotBack.uploadId))).toBe(false)
+  }
+  expect((await tray(call)).captures).toEqual([])
+}
+
 /** A photo and a video become captures that wait in the tray, only for their owner, and become pieces
  * when reviewed. Each costs today's free credits until they run out; removing a capture deletes its
  * photos. Providers are off natively, so each capture keeps its original photo as one detection. */
@@ -166,6 +225,7 @@ export const verifyCaptures = async (origin: string, fixtures: string): Promise<
   })
   const { photo, first } = await verifyPhoto(origin, owner, other)
   const { video, still, clip, last, lastCapture } = await verifyAllowance(origin, owner)
+  await verifyPairing(origin, fixtures, other)
 
   // Removing captures deletes their photos and the video's stills; a kept piece's photo stays.
   const me = Schema.decodeUnknownSync(Schema.Struct({ accountId: Schema.String }))(

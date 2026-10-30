@@ -45,18 +45,31 @@ const fail = (parts: Parts, captureId: string, code: string) =>
     yield* settlePending(parts, latest)
   })
 
-/** A back shot's cut-out becomes the back of the front shot's piece, and stops waiting on its own. */
+/** A back shot's cut-out becomes the back of the front shot's piece; whether it did. */
 const attachBack = (
   parts: Parts,
   accountId: string,
   frontCaptureId: string,
-  detections: ReadonlyArray<{ readonly id: string; readonly cutoutKey: string | null; readonly preselected: boolean }>,
+  detections: ReadonlyArray<Pick<DetectionRow, 'cutoutKey' | 'sourceKey' | 'preselected'>>,
 ) =>
   Effect.gen(function* () {
-    const back = detections.find(({ preselected, cutoutKey }) => preselected && cutoutKey !== null)
-    if (back?.cutoutKey === undefined || back.cutoutKey === null) return false
+    // The piece the camera saw held up; failing that, the largest. Without a cut-out (providers off) the
+    // back is the photo itself, as the front is.
+    const back = detections.find(({ preselected }) => preselected) ?? detections[0]
+    if (back === undefined) return false
     // The front may already be decided; then the back waits in the tray on its own.
-    return yield* storedAs(parts.store.attachBack(accountId, frontCaptureId, back.cutoutKey))
+    return yield* storedAs(parts.store.attachBack(accountId, frontCaptureId, back.cutoutKey ?? back.sourceKey))
+  })
+
+/** A back shot waiting in the tray becomes its front's back, if the front is in the tray too. Both
+ * shots look for the other once stored, so whichever finishes second pairs them; pairing twice is
+ * harmless. */
+const pairBack = (parts: Parts, accountId: string, frontCaptureId: string) =>
+  Effect.gen(function* () {
+    const waiting = yield* storedAs(parts.store.waitingBack(accountId, frontCaptureId))
+    if (Option.isNone(waiting)) return
+    if (yield* attachBack(parts, accountId, frontCaptureId, waiting.value.detections))
+      yield* storedAs(parts.store.foldBack(waiting.value.capture.id, yield* now))
   })
 
 const pipeline = (parts: Parts, capture: CaptureRow) =>
@@ -90,25 +103,23 @@ const run = (parts: Parts, capture: CaptureRow) =>
     ),
   )
 
-/** Store what the pipeline found, fold a back shot into its front, and consume the held credits. */
+/** Store what the pipeline found, consume the held credits, and pair a camera shot with its other side. */
 const record = (parts: Parts, capture: CaptureRow, result: Result) =>
   Effect.gen(function* () {
-    // A back shot of the garment before it becomes that piece's back; it does not wait on its own.
-    const pairsWith = capture.side === 'back' ? capture.pairsWith : null
-    const paired = pairsWith === null ? false : yield* attachBack(parts, capture.accountId, pairsWith, result.found)
-    const found = paired
-      ? result.found.map((detection) => ({ ...detection, status: 'discarded' as const }))
-      : result.found
     yield* storedAs(
-      parts.store.finishCapture(capture.id, found, {
-        status: paired ? 'done' : 'review',
+      parts.store.finishCapture(capture.id, result.found, {
+        status: 'review',
         route: result.route?.garments ?? null,
         routeConfidence: result.route?.confidence ?? null,
         provider: result.provider,
         updatedAt: yield* now,
       }),
     )
-    yield* settlePending(parts, { ...capture, status: paired ? 'done' : 'review' })
+    yield* settlePending(parts, { ...capture, status: 'review' })
+    // A back shot of the garment before it becomes that piece's back and stops waiting on its own.
+    if (capture.side === 'back' && capture.pairsWith !== null)
+      yield* pairBack(parts, capture.accountId, capture.pairsWith)
+    else if (capture.source === 'camera') yield* pairBack(parts, capture.accountId, capture.id)
   })
 
 /** The queue side of captures: process one, or give up on it after the last attempt. */

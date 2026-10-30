@@ -128,23 +128,74 @@ const trayRows = (db: Database) => ({
         .where(and(eq(detections.id, detectionId), eq(detections.accountId, accountId)))
         .limit(1),
     ).pipe(Effect.map(first)),
-  /** Give the front detection a back shot pairs with its back, if it is still open; whether one was. */
-  attachBack: (accountId: string, captureId: string, backKey: string) =>
+})
+
+/** Front and back camera shots of one garment, paired once both are stored. */
+const pairRows = (db: Database) => {
+  /** The back shots of `frontCaptureId` in `status`: waiting in the tray, or folded into it. */
+  const backsOf = (accountId: string, frontCaptureId: string, status: 'review' | 'done') =>
     attempt(() =>
       db
-        .update(detections)
-        .set({ backCutoutKey: backKey })
+        .select()
+        .from(captures)
         .where(
           and(
-            eq(detections.accountId, accountId),
-            eq(detections.captureId, captureId),
-            eq(detections.status, 'review'),
-            eq(detections.preselected, true),
+            eq(captures.accountId, accountId),
+            eq(captures.pairsWith, frontCaptureId),
+            eq(captures.side, 'back'),
+            eq(captures.status, status),
           ),
+        ),
+    )
+  return {
+    /** Give the front detection a back shot pairs with its back, if it is still open; whether one was. */
+    attachBack: (accountId: string, captureId: string, backKey: string) =>
+      attempt(() =>
+        db
+          .update(detections)
+          .set({ backCutoutKey: backKey })
+          .where(
+            and(
+              eq(detections.accountId, accountId),
+              eq(detections.captureId, captureId),
+              eq(detections.status, 'review'),
+              eq(detections.preselected, true),
+            ),
+          )
+          .returning({ id: detections.id }),
+      ).pipe(Effect.map((rows) => rows.length > 0)),
+    /** A back shot of `frontCaptureId` that finished before its front and waits in the tray on its own, with
+     * its open detections. */
+    waitingBack: (accountId: string, frontCaptureId: string) =>
+      Effect.gen(function* () {
+        const back = first(yield* backsOf(accountId, frontCaptureId, 'review'))
+        if (Option.isNone(back)) return Option.none()
+        const found = yield* attempt(() =>
+          db
+            .select()
+            .from(detections)
+            .where(and(eq(detections.captureId, back.value.id), eq(detections.status, 'review'))),
         )
-        .returning({ id: detections.id }),
-    ).pipe(Effect.map((rows) => rows.length > 0)),
-})
+        return Option.some({ capture: back.value, detections: found })
+      }),
+    /** The back shots folded into `frontCaptureId`, which leave with it. */
+    foldedBacks: (accountId: string, frontCaptureId: string) => backsOf(accountId, frontCaptureId, 'done'),
+    /** A back shot folded into its front: its own detections leave the tray and the capture is done. */
+    foldBack: (captureId: string, updatedAt: Date) =>
+      attempt(() =>
+        db.batch([
+          db
+            .update(detections)
+            .set({ status: 'discarded' })
+            .where(and(eq(detections.captureId, captureId), eq(detections.status, 'review'))),
+          db
+            .update(captures)
+            .set({ status: 'done', updatedAt })
+            .where(and(eq(captures.id, captureId), eq(captures.status, 'review'))),
+        ]),
+      ).pipe(Effect.asVoid),
+  }
+}
 
 /** Moving a capture between states only from the state it was read in, so two requests or two queue
  * deliveries never both act on it. Each answers whether it moved the capture. */
@@ -259,7 +310,7 @@ const reviewRows = (db: Database) => ({
  * reads name only the capture it was handed. */
 export const makeCaptureStore = (database: Parameters<typeof drizzle>[0]) => {
   const db = drizzle(database)
-  return { ...captureRows(db), ...trayRows(db), ...reviewRows(db), ...transitionRows(db) }
+  return { ...captureRows(db), ...trayRows(db), ...pairRows(db), ...reviewRows(db), ...transitionRows(db) }
 }
 
 export type CaptureStore = ReturnType<typeof makeCaptureStore>
