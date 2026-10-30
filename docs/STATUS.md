@@ -1,6 +1,6 @@
 # Delivery status
 
-Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `3a757e1`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `2f0467a`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
 
 ## Cut-out quality — 2026-10-30
 
@@ -24,13 +24,33 @@ mostly scraps. Diagnosis (preview D1 and R2, read-only), fixes so far, and the r
   - Preview: the owner's black-tee shot sent again as a camera capture now gives the tee alone (preselected, "top,
     short sleeve") and the worn trousers as a separate unticked piece, in 10.7 s; the test detections were discarded.
   - Full gate: 219 unit tests, 18 native tests. Deployed acceptance passed (2 tests, 35 assertions).
+- **Research** (owner-approved, $10 cap, about $0.62 spent; private report and scripts in
+  `~/code/meta-hackathon/out/styld-cutout-research/REPORT.md`):
+  - Meta answers this key only over IPv6 from the dev box (IPv4 lists no models).
+  - SAM caps a mask raster at 1024 px, and Styld dropped every larger mask: the main garment of a large photo vanished
+    without an error. Fixed (`927c7b7`): the raster is scaled to its box; the test fails on the old code. On the
+    owner's held-up shots, 5 of the 6 garments now come out whole (Clef 0.85–0.95), up from 3.
+  - Specific nouns ("jacket", "coat", "dress") made SAM 3.1 return nothing where "clothing" found the garment.
+  - Clef's "is this one whole garment?" separates usable cut-outs: of 119 at 960 px, the 16 usable ones scored
+    0.497–0.95 and 93 of the 103 others under 0.2. A rail filmed close up has nothing whole in it (75 cut-outs, the
+    best 0.37): that needs filming guidance, not another model.
+- **Whole-garment gate** (`3107e42`, `2f0467a`): the Clef call each cut-out already gets also asks whether it shows one
+  whole garment. At 0.5 or above the piece is offered ticked, from 0.2 unticked, below that it is dropped before it is
+  stored. A video part that keeps nothing says how to film; the add page gives the same advice. Full gate: 222 unit
+  tests, 18 native tests.
+- **Preview** (release `2f0467a`, `/api/health` reports it, deployed acceptance 2 tests and 35 assertions):
+  - the synthetic 10-garment rail: 10 offered, 10 preselected;
+  - one minute of the close-up rail: part 1 kept nothing and showed the filming notice, part 2 offered one piece
+    unticked (before the gate, parts like these gave about a dozen preselected scraps each);
+  - the owner's open-jacket shot as a camera capture: the whole jacket, preselected;
+  - all test captures were discarded or removed afterwards.
 - **Open.**
-  - Video: no quality gate, every track preselected, no merging across parts, no filming guidance.
-  - A photo from the library that shows a person (a mirror selfie) still goes to background removal when Clef calls it
-    one garment.
-  - The owner's preview wardrobe holds 151 pieces from that video; deleting them waits for the owner.
-  - Research (owner-approved, $10 cap): real fixtures, a rubric and whole-pipeline variants, explored in the
-    meta-hackathon harness and confirmed on the preview.
+  - A library photo that shows a person still goes to background removal when Clef calls it one garment, and Clef
+    rates "person plus garment" as whole (seen on the preview). Next: ask the route call whether a person is in it.
+  - The same garment seen in several video parts or try-on segments is not merged.
+  - Analysis clips are 720 px; the research ran at 960 (SAM's cap is 1024, the price is per frame).
+  - A guided capture mode (one garment at a time, whole in frame), as the research handoff recommends.
+  - The owner's preview wardrobe holds 151 pieces from the first video; deleting them waits for the owner.
 
 ## Long videos and a simpler add page — 2026-10-30
 
