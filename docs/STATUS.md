@@ -1,6 +1,61 @@
 # Delivery status
 
-Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `8bc632d`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `8ab11aa`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+
+## Guided camera, front and back — 2026-10-30
+
+The owner's held-up sweater was never noticed, and they asked for a camera that looks good and makes every piece
+come with both sides, for a later turning preview on a hanger (meta-hack's interactive garment spike).
+
+- **Noticing a held garment** (`ceb69e6`):
+  - A hand-held garment sways and never went perfectly still, so the camera waited forever. A scene now also
+    settles after about a second without real movement.
+  - A scene that stays put is looked at again twice, about 2.4 s apart.
+  - After a "no", the hint says to hold the piece away from the body, spread out and fully in view, or to tap.
+  - Clef's "one garment, main subject" bar is 0.6 (was 0.7).
+- **Front, then back** (`b25fb13`):
+  - Each front taken asks for that garment's back.
+  - A turned garment (the check sees a back, or cannot tell) is taken as the back.
+  - The front still held up is not taken twice.
+  - Another garment's front starts a new piece; that piece goes without a back.
+  - A tap takes either side, and "Skip the back" moves on.
+  - On the add page a back waits for its front's capture and is sent with `pairsWith`.
+- **Pairing on the server** (`c8cd261`):
+  - Each shot looks for the other once stored, so whichever the queue finishes second pairs them.
+  - Before, a back that finished first stood alone in the tray.
+  - With no cut-out (providers off) the back is the photo itself.
+  - Removing a front removes its folded back and that back's photo.
+- **Full screen** (`8ab11aa`):
+  - The camera is a modal dialog over the whole page: the picture edge to edge, corner marks, Front/Back steps, and
+    the count.
+  - A round shutter whose ring fills in quarters as the picture settles, and is full while the check looks.
+  - Each photo flashes and flies into the stack, which is the Done button.
+  - Focus starts on the shutter and Escape closes. The page behind is inert and does not scroll.
+  - The screen stays on while the camera is open.
+  - No new library: Foldkit's dialog helpers, zyzz keyframes, DESIGN.md's curve and timings; reduced motion ends
+    the flash and the flight at once.
+- **Evidence**:
+  - Unit: stillness levels.
+  - Story: the back step, the same front, another garment's front, skip, taps, and a back waiting for its front.
+  - Native workerd (real D1, both orders): a back paired after its front, and a pair sent together; removing
+    deletes both photos.
+  - Native Chromium on the stand-in camera:
+    - the dialog covers 390×844 with the shutter focused;
+    - Enter takes the front and the steps move to Back;
+    - a click takes the back;
+    - the wake lock is held while the camera is open;
+    - Escape leads to a tray of one piece with its back;
+    - no CSP problems.
+  - Preview release `8ab11aa`: `/api/health` reports it, deployed acceptance 2 tests.
+- **Budget**: the initial bundle is 259,575 of 262,144 gzip bytes, so about 2.5 KB is left. The next screen work
+  needs a lazy chunk or a budget decision.
+- **Open**:
+  - Not yet tried on a real phone (owner): whether swaying garments settle, the "back" answers from Clef on real
+    turned garments, and the flight's landing point at other screen sizes.
+  - The tray and the wardrobe do not show the back yet. The turning preview from the two real photos is the next
+    step, to be proposed first.
+  - Each side costs a credit, so a piece with its back costs 2.
+  - On desktop Chromium the scrollbar gutter is turned off while the camera is open.
 
 ## Cut-out spikes — 2026-10-30
 
