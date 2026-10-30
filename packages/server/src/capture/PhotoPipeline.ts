@@ -71,9 +71,9 @@ const heldPiece = (pieces: ReadonlyArray<CutPiece>, width: number, height: numbe
   )
 }
 
-/** What happens to a cut-out, by how likely the decision model thinks it is one whole garment. On the owner's
- * real captures (2026-10-30: a rail filmed close up, a try-on video, held-up shots, a drawn rail; 119 cut-outs),
- * every usable piece scored at least 0.5 and nearly all scraps, slivers and cut-off pieces under 0.2.
+/** What happens to a cut-out, by how likely the decision model thinks it is one whole garment. On 119 cut-outs
+ * from real videos (2026-10-30: a rail filmed close up, a try-on video, garments held up, a drawn rail), 15 of the
+ * 16 usable pieces scored at least 0.5 and the 16th 0.497; 93 of the 103 others scored under 0.2.
  * @internal Exported for its tests. */
 export const verdictOf = (whole: number): 'drop' | 'offer' | 'preselect' =>
   whole < 0.2 ? 'drop' : whole < 0.5 ? 'offer' : 'preselect'
