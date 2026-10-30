@@ -2,7 +2,7 @@ import { CaptureUnavailable } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
-import { accountPrefix } from '../wardrobe/Media.ts'
+import { accountPrefix, piecePrefix } from '../wardrobe/Media.ts'
 import type { WorkMessage } from '../wardrobe/Processing.ts'
 import { makeStore } from '../wardrobe/Store.ts'
 import type { WardrobeBindings } from '../wardrobe/Wardrobe.ts'
@@ -60,7 +60,7 @@ export const writeObject = (parts: Parts, key: string, bytes: Uint8Array, conten
 
 /** Where a piece's clean picture lives: a new name for each drawing, so a cached old one is never served. */
 export const pictureKey = (accountId: string, pieceId: string, version: number) =>
-  `${accountPrefix(accountId)}pieces/${pieceId}/clean-${version}.png`
+  `${piecePrefix(accountId, pieceId)}clean-${version}.png`
 
 /** Tell the queue a piece's clean picture is waiting to be drawn. */
 export const enqueuePicture = (parts: Parts, pieceId: string) =>

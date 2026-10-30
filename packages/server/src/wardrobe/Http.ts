@@ -51,6 +51,9 @@ export const wardrobeHandlers = (admit: Admit) =>
           admit(asSessionAccount(wardrobe.updatePiece(params.pieceId, payload))),
         )
         .handle('deletePiece', ({ params }) => admit(asSessionAccount(wardrobe.deletePiece(params.pieceId))))
+        .handle('choosePicture', ({ params, payload }) =>
+          admit(asSessionAccount(wardrobe.choosePicture(params.pieceId, payload.use))),
+        )
     }),
   )
 
@@ -69,6 +72,8 @@ const UploadTarget = Schema.Struct({ uploadId: UploadId, token: Schema.String })
 /** The sizes an image route serves (`imageSizes`). */
 export const ShownSize = Schema.Literals(['thumb', 'full'])
 const ImageTarget = Schema.Struct({ pieceId: PieceId, size: ShownSize })
+/** One picture of a piece in particular: its photo, or its clean drawing (ready or proposed). */
+const PictureTarget = Schema.Struct({ pieceId: PieceId, which: Schema.Literals(['photo', 'clean']), size: ShownSize })
 
 /** `PUT /api/uploads/:uploadId?token=`: a photo's bytes. The token in the query string, which Workers
  * logs redact, is the only credential, so an assistant can upload without the website's cookie. */
@@ -161,16 +166,22 @@ export const ownerImage = <A, I extends Readonly<Record<string, string | undefin
     })
   })
 
-/** `GET /cdn/pieces/:pieceId/:size`: a piece's image for its owner only. */
+/** `GET /cdn/pieces/:pieceId/:size`: the picture a piece shows, and `GET /cdn/pieces/:pieceId/:which/:size`: its
+ * photo or its clean drawing, for its owner only. */
 const pieceImage = (auth: ReturnType<typeof makeAuthHttp>) =>
   Effect.gen(function* () {
     const wardrobe = yield* Wardrobe
-    return yield* ownerImage(auth, ImageTarget, ({ pieceId, size }) =>
-      wardrobe.pieceImage(pieceId, size).pipe(
+    const found = (image: ReturnType<typeof wardrobe.pieceImage>) =>
+      image.pipe(
         Effect.map(Option.some),
         Effect.catchTag('PieceNotFound', () => Effect.succeed(Option.none<ShownImage>())),
+      )
+    return {
+      shown: yield* ownerImage(auth, ImageTarget, ({ pieceId, size }) => found(wardrobe.pieceImage(pieceId, size))),
+      either: yield* ownerImage(auth, PictureTarget, ({ pieceId, which, size }) =>
+        found(wardrobe.pieceImage(pieceId, size, which)),
       ),
-    )
+    }
   })
 
 /** The wardrobe's routes outside the typed API: photo uploads and images. */
@@ -178,6 +189,11 @@ export const wardrobeRoutes = (auth: ReturnType<typeof makeAuthHttp>) =>
   Layer.mergeAll(
     Layer.unwrap(Effect.map(receiveUpload, (handler) => HttpRouter.add('PUT', '/api/uploads/:uploadId', handler))),
     Layer.unwrap(
-      Effect.map(pieceImage(auth), (handler) => HttpRouter.add('GET', '/cdn/pieces/:pieceId/:size', handler)),
+      Effect.map(pieceImage(auth), ({ shown, either }) =>
+        Layer.mergeAll(
+          HttpRouter.add('GET', '/cdn/pieces/:pieceId/:size', shown),
+          HttpRouter.add('GET', '/cdn/pieces/:pieceId/:which/:size', either),
+        ),
+      ),
     ),
   )

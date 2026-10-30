@@ -1,4 +1,4 @@
-import { accounts, detections, operationReceipts, pieces, uploads } from '@styld/db'
+import { accounts, detections, operationReceipts, piecePictures, pieces, uploads } from '@styld/db'
 import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Array, Effect, Option, Schema } from 'effect'
@@ -10,6 +10,7 @@ export class StoreUnavailable extends Schema.TaggedError<StoreUnavailable>()('St
 export type PieceRow = typeof pieces.$inferSelect
 export type UploadRow = typeof uploads.$inferSelect
 export type ReceiptRow = typeof operationReceipts.$inferSelect
+export type PictureRow = typeof piecePictures.$inferSelect
 
 export type PieceChanges = Partial<
   Pick<PieceRow, 'name' | 'notes' | 'category' | 'subcategory' | 'colours' | 'updatedAt'>
@@ -95,6 +96,35 @@ const sharedPhotoQueries = (db: ReturnType<typeof drizzle>) => ({
     ]).pipe(Effect.map(([others, waiting]) => others.length > 0 || waiting.length > 0)),
 })
 
+/** Pieces' clean pictures as their owner reads and chooses them. The picture job writes everything else. */
+const pictureQueries = (db: ReturnType<typeof drizzle>) => ({
+  picturesOf: (accountId: string) =>
+    attempt(() => db.select().from(piecePictures).where(eq(piecePictures.accountId, accountId))),
+  pictureOf: (accountId: string, pieceId: string) =>
+    attempt(() =>
+      db
+        .select()
+        .from(piecePictures)
+        .where(and(eq(piecePictures.pieceId, pieceId), eq(piecePictures.accountId, accountId)))
+        .limit(1),
+    ).pipe(Effect.map(first)),
+  /** Show the drawing or the photo; only a drawing that is ready or proposed can be chosen. The picture, if chosen. */
+  choosePicture: (accountId: string, pieceId: string, shown: 'clean' | 'photo', at: Date) =>
+    attempt(() =>
+      db
+        .update(piecePictures)
+        .set({ shown, updatedAt: at })
+        .where(
+          and(
+            eq(piecePictures.pieceId, pieceId),
+            eq(piecePictures.accountId, accountId),
+            inArray(piecePictures.state, ['ready', 'proposed']),
+          ),
+        )
+        .returning(),
+    ).pipe(Effect.map(first)),
+})
+
 /** The wardrobe's rows in D1. Every read and write of a person's rows names their account, so
  * one account can never reach another's pieces. */
 export const makeStore = (database: Parameters<typeof drizzle>[0]) => {
@@ -102,6 +132,7 @@ export const makeStore = (database: Parameters<typeof drizzle>[0]) => {
   return {
     ...uploadQueries(db),
     ...sharedPhotoQueries(db),
+    ...pictureQueries(db),
     listPieces: (accountId: string) =>
       attempt(() => db.select().from(pieces).where(eq(pieces.accountId, accountId)).orderBy(desc(pieces.createdAt))),
     findPiece: (accountId: string, pieceId: string) =>

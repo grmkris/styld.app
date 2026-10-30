@@ -7,6 +7,8 @@ import type { AccountLifecycle } from '../src/AccountLifecycle.ts'
 import { importImage } from '../src/mcp/ImageImport.ts'
 import { sniffImageType } from '../src/wardrobe/Media.ts'
 import { processingAttempts, settleMessage } from '../src/wardrobe/Queue.ts'
+import { pictureView, shownImage } from '../src/wardrobe/Shown.ts'
+import type { PictureRow } from '../src/wardrobe/Store.ts'
 import { Wardrobe } from '../src/wardrobe/Wardrobe.ts'
 
 const png = Uint8Array.from(
@@ -58,6 +60,7 @@ const services = (
         updatePiece: notUsed,
         deletePiece: notUsed,
         pieceImage: notUsed,
+        choosePicture: notUsed,
         processPiece: () => processPiece,
         failPiece: (pieceId) => Effect.sync(() => failed.push(pieceId)).pipe(Effect.andThen(failPiece)),
       }),
@@ -171,5 +174,65 @@ describe('photos assistants point at', () => {
       }),
     ).toBe('tooLarge')
     expect(await run('https://a.example/p', {})).toBe('notReached')
+  })
+})
+
+/** A piece's clean picture row in `state`, with a drawing stored unless `cleanKey` says otherwise. */
+const pictureRow = (state: PictureRow['state'], changes: Partial<PictureRow> = {}): PictureRow => ({
+  pieceId: 'pc_1',
+  accountId: 'ac_1',
+  state,
+  shown: null,
+  cleanKey: 'accounts/ac_1/pieces/pc_1/clean-2.png',
+  version: 2,
+  keyColour: 'green',
+  provider: 'meta-muse',
+  model: 'muse-image-1.0',
+  judge: 'improve',
+  judgeConfidence: 0.9,
+  face: 0.01,
+  same: 0.9,
+  faithful: 0.9,
+  hint: null,
+  hold: null,
+  claimedAt: new Date(0),
+  errorCode: null,
+  createdAt: new Date(0),
+  updatedAt: new Date(0),
+  ...changes,
+})
+const cutout = {
+  imageKey: 'accounts/ac_1/captures/cp_1/cutout.png',
+  originalKey: 'photo.jpg',
+  contentType: 'image/jpeg',
+}
+
+describe('the picture a piece shows', () => {
+  test('is a ready drawing, a proposed one once chosen, and the photo when chosen or when there is no drawing', () => {
+    expect(shownImage(cutout, pictureRow('ready'))).toEqual({
+      key: 'accounts/ac_1/pieces/pc_1/clean-2.png',
+      contentType: 'image/png',
+    })
+    expect(shownImage(cutout, pictureRow('ready', { shown: 'photo' })).key).toBe(cutout.imageKey)
+    expect(shownImage(cutout, pictureRow('proposed')).key).toBe(cutout.imageKey)
+    expect(shownImage(cutout, pictureRow('proposed', { shown: 'clean' })).contentType).toBe('image/png')
+    expect(shownImage(cutout, pictureRow('rejected', { cleanKey: null, shown: 'clean' })).key).toBe(cutout.imageKey)
+    expect(shownImage(cutout, undefined)).toEqual({ key: cutout.imageKey, contentType: 'image/jpeg' })
+    expect(shownImage({ ...cutout, imageKey: null }, undefined).key).toBe('photo.jpg')
+  })
+
+  test('tells its owner where the drawing stands, and shows a claim no delivery finished as failed', () => {
+    const at = new Date(10 * 60 * 1000)
+    expect(pictureView(pictureRow('ready'), at)).toEqual({ state: 'ready', shows: 'clean', version: 2 })
+    expect(pictureView(pictureRow('generating', { claimedAt: new Date(at.getTime() - 60_000) }), at).state).toBe(
+      'drawing',
+    )
+    expect(pictureView(pictureRow('generating'), at)).toMatchObject({ state: 'failed', shows: 'photo' })
+    expect(pictureView(pictureRow('kept-real', { cleanKey: null }), at)).toMatchObject({
+      state: 'kept',
+      shows: 'photo',
+    })
+    expect(pictureView(pictureRow('rejected', { cleanKey: null }), at).state).toBe('failed')
+    expect(pictureView(pictureRow('retake', { cleanKey: null }), at).state).toBe('retake')
   })
 })

@@ -57,6 +57,7 @@ const wardrobe = Wardrobe.of({
       if (pieceId !== pieces[0]?.id) return yield* PieceNotFound.make({})
       return { body: new Blob(['webp']).stream(), contentType: 'image/webp', version: 'v1' }
     }),
+  choosePicture: notUsed,
   processPiece: notUsed,
   failPiece: notUsed,
 })

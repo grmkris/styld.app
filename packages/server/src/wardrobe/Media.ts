@@ -4,6 +4,9 @@ import { Option } from 'effect'
 /** Every object of an account sits under one prefix, so deleting an account is one sweep. */
 export const accountPrefix = (accountId: string) => `accounts/${accountId}/`
 
+/** Where a piece's own files live beside its photo: its clean drawings. */
+export const piecePrefix = (accountId: string, pieceId: string) => `${accountPrefix(accountId)}pieces/${pieceId}/`
+
 export const uploadKey = (accountId: string, uploadId: string) => `${accountPrefix(accountId)}uploads/${uploadId}`
 
 const startsWith = (bytes: Uint8Array, signature: ReadonlyArray<number>, offset = 0) =>

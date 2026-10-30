@@ -6,6 +6,7 @@ import { crop, decodePng, encodePng, opaqueBounds, opaqueShare, type Rgba } from
 import { CaptureConfig } from './Policy.ts'
 import { GarmentVision, ImageGenerator, type Picture } from './Providers.ts'
 import type { PictureRow, PictureState } from './Store.ts'
+import { isStale } from '../wardrobe/Shown.ts'
 
 const now = Effect.map(DateTime.now, DateTime.toDateUtc)
 
@@ -16,14 +17,6 @@ const drawnFrom = 1024
 const keyedAt = 1280
 // The room left around a keyed garment, as a share of its longer side.
 const margin = 0.03
-// A claim older than Muse's 90 s timeout plus the keying belongs to a delivery that died: its drawing may have been
-// made and billed, so it is never drawn again on its own.
-const patienceMillis = 3 * 60 * 1000
-
-/** Whether a claimed drawing has outlived any delivery that could still finish it. */
-const isStale = (picture: Pick<PictureRow, 'state' | 'claimedAt'>, at: Date) =>
-  picture.state === 'generating' &&
-  (picture.claimedAt === null || at.getTime() - picture.claimedAt.getTime() > patienceMillis)
 
 /** A PNG's pixels, or none for bytes that are not one. */
 const decoded = (bytes: Uint8Array) => {

@@ -2,11 +2,14 @@ import {
   type AddPiece,
   type CreateUpload,
   type CreateVideoUpload,
+  NoCleanPicture,
   OperationConflict,
+  type PictureChoice,
   type OperationId,
   Piece,
   PieceNotFound,
   type PieceId,
+  type PiecePicture,
   type Subcategory,
   SubcategoryMismatch,
   type UpdatePiece,
@@ -22,9 +25,17 @@ import * as Base64Url from 'effect/encoding/Base64Url'
 import { type ByteStream, pump } from '../Streams.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { deliverImage, type ImageBindings } from './Delivery.ts'
-import { type ImageSize, isVideoContainer, sniffImageType, uploadKey } from './Media.ts'
+import { type ImageSize, isVideoContainer, piecePrefix, sniffImageType, uploadKey } from './Media.ts'
 import { GarmentCutout, type WorkMessage } from './Processing.ts'
-import { makeStore, type PieceRow, type Store, type StoreUnavailable, type UploadRow } from './Store.ts'
+import { pictureView, shownImage, shows } from './Shown.ts'
+import {
+  makeStore,
+  type PictureRow,
+  type PieceRow,
+  type Store,
+  type StoreUnavailable,
+  type UploadRow,
+} from './Store.ts'
 
 /** The Cloudflare bindings the wardrobe stores into, as Alchemy's runtime objects. */
 export interface WardrobeBindings extends ImageBindings {
@@ -44,8 +55,8 @@ const refused = (reason: UploadRefused['reason']) => UploadRefused.make({ reason
 const stored = <A, R>(effect: Effect.Effect<A, StoreUnavailable, R>) => Effect.mapError(effect, unavailable)
 const nowDate = Effect.map(DateTime.now, DateTime.toDateUtc)
 
-/** A stored piece as the protocol shows it. */
-export const toPiece = (row: PieceRow) =>
+/** A stored piece as the protocol shows it, with its clean picture when one was asked for. */
+export const toPiece = (row: PieceRow, picture?: PiecePicture) =>
   Schema.decodeUnknownEffect(Piece)({
     id: row.id,
     name: row.name,
@@ -57,6 +68,7 @@ export const toPiece = (row: PieceRow) =>
     source: row.source,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    ...(picture === undefined ? {} : { picture }),
     // Only the service writes rows, through the same schemas; a row that does not decode is a bug.
   }).pipe(Effect.orDie)
 
@@ -135,6 +147,17 @@ const ownPiece = (parts: Parts) =>
     return yield* Option.match(row, { onNone: () => Effect.fail(PieceNotFound.make({})), onSome: Effect.succeed })
   })
 
+/** The piece's clean picture row, if a drawing was ever asked for. */
+const pictureRow = (parts: Parts, accountId: string, pieceId: string) =>
+  Effect.map(stored(parts.store.pictureOf(accountId, pieceId)), Option.getOrUndefined)
+
+/** A piece as its owner sees it, with its clean picture. */
+const ownerPiece = (parts: Parts, accountId: string, row: PieceRow) =>
+  Effect.gen(function* () {
+    const picture = yield* pictureRow(parts, accountId, row.id)
+    return yield* toPiece(row, picture === undefined ? undefined : pictureView(picture, yield* nowDate))
+  })
+
 const enqueue = (parts: Parts, pieceId: string) =>
   Effect.tryPromise({ try: () => parts.bindings.queue.send({ pieceId }), catch: unavailable })
 
@@ -142,10 +165,16 @@ const reads = (parts: Parts) => ({
   listPieces: Effect.fn('Styld.Wardrobe.listPieces')(function* () {
     const { accountId } = yield* CurrentAccount
     const rows = yield* stored(parts.store.listPieces(accountId))
-    return yield* Effect.forEach(rows, toPiece)
+    const pictures = new Map((yield* stored(parts.store.picturesOf(accountId))).map((row) => [row.pieceId, row]))
+    const at = yield* nowDate
+    return yield* Effect.forEach(rows, (row) => {
+      const picture = pictures.get(row.id)
+      return toPiece(row, picture === undefined ? undefined : pictureView(picture, at))
+    })
   }),
   getPiece: Effect.fn('Styld.Wardrobe.getPiece')(function* (pieceId: PieceId) {
-    return yield* toPiece(yield* ownPiece(parts)(pieceId))
+    const { accountId } = yield* CurrentAccount
+    return yield* ownerPiece(parts, accountId, yield* ownPiece(parts)(pieceId))
   }),
 })
 
@@ -359,7 +388,27 @@ const adding = (parts: Parts) => ({
   }),
 })
 
+/** A piece's clean drawings, every version, which go with it. */
+const deleteDrawings = (parts: Parts, accountId: string, pieceId: string) =>
+  Effect.gen(function* () {
+    const listed = yield* Effect.tryPromise({
+      try: () => parts.bindings.bucket.list({ prefix: piecePrefix(accountId, pieceId) }),
+      catch: unavailable,
+    })
+    const keys = listed.objects.map(({ key }) => key)
+    if (keys.length > 0) yield* Effect.tryPromise({ try: () => parts.bindings.bucket.delete(keys), catch: unavailable })
+  })
+
 const editing = (parts: Parts) => ({
+  /** Show the clean drawing or the photo. Only a drawing that is ready or proposed can be chosen. */
+  choosePicture: Effect.fn('Styld.Wardrobe.choosePicture')(function* (pieceId: PieceId, use: PictureChoice) {
+    const { accountId } = yield* CurrentAccount
+    const piece = yield* ownPiece(parts)(pieceId)
+    const at = yield* nowDate
+    const chosen = yield* stored(parts.store.choosePicture(accountId, pieceId, use, at))
+    if (Option.isNone(chosen)) return yield* NoCleanPicture.make({})
+    return yield* toPiece(piece, pictureView(chosen.value, at))
+  }),
   updatePiece: Effect.fn('Styld.Wardrobe.updatePiece')(function* (pieceId: PieceId, input: UpdatePiece) {
     const { accountId } = yield* CurrentAccount
     const current = yield* toPiece(yield* ownPiece(parts)(pieceId))
@@ -376,7 +425,10 @@ const editing = (parts: Parts) => ({
         updatedAt: yield* nowDate,
       }),
     )
-    return yield* Option.match(updated, { onNone: () => Effect.fail(PieceNotFound.make({})), onSome: toPiece })
+    return yield* Option.match(updated, {
+      onNone: () => Effect.fail(PieceNotFound.make({})),
+      onSome: (row) => ownerPiece(parts, accountId, row),
+    })
   }),
   deletePiece: Effect.fn('Styld.Wardrobe.deletePiece')(function* (pieceId: PieceId) {
     const { accountId } = yield* CurrentAccount
@@ -391,23 +443,41 @@ const editing = (parts: Parts) => ({
       ),
     ].filter((key) => !originalShared || key !== piece.originalKey)
     yield* Effect.tryPromise({ try: () => parts.bindings.bucket.delete(keys), catch: unavailable })
+    yield* deleteDrawings(parts, accountId, pieceId)
     const deleted = yield* stored(parts.store.deletePiece(accountId, pieceId))
     if (Option.isNone(deleted)) return yield* PieceNotFound.make({})
   }),
 })
 
+/** The stored image behind one of a piece's pictures: the one it shows, its photo, or its clean drawing. */
+const pictureImage = (piece: PieceRow, picture: PictureRow | undefined, which: 'shown' | 'photo' | 'clean') => {
+  if (which === 'shown') return Option.some(shownImage(piece, picture))
+  if (which === 'photo') return Option.some(shownImage(piece, undefined))
+  const drawn = picture?.cleanKey ?? null
+  return drawn !== null && (picture?.state === 'ready' || picture?.state === 'proposed')
+    ? Option.some({ key: drawn, contentType: 'image/png' })
+    : Option.none()
+}
+
 const images = (parts: Parts) => ({
-  /** The piece's image, resized to WebP by the Images binding. A photo it cannot transform is
-   * served as it was stored. */
-  pieceImage: Effect.fn('Styld.Wardrobe.pieceImage')(function* (pieceId: PieceId, size: ImageSize) {
+  /** One of the piece's pictures (the one it shows unless asked), resized to WebP by the Images binding. A photo
+   * it cannot transform is served as it was stored. */
+  pieceImage: Effect.fn('Styld.Wardrobe.pieceImage')(function* (
+    pieceId: PieceId,
+    size: ImageSize,
+    which: 'shown' | 'photo' | 'clean' = 'shown',
+  ) {
+    const { accountId } = yield* CurrentAccount
     const piece = yield* ownPiece(parts)(pieceId)
-    const image = yield* deliverImage(
-      parts.bindings,
-      { key: piece.imageKey ?? piece.originalKey, contentType: piece.contentType },
-      size,
-    )
+    const picture = yield* pictureRow(parts, accountId, pieceId)
+    const source = pictureImage(piece, picture, which)
+    if (Option.isNone(source)) return yield* PieceNotFound.make({})
+    const image = yield* deliverImage(parts.bindings, source.value, size)
     if (Option.isNone(image)) return yield* PieceNotFound.make({})
-    return { ...image.value, version: `${piece.id}.${piece.updatedAt.getTime()}.${size}` }
+    // A new drawing, or a change of which picture shows, is a new version of the shown image.
+    const drawing =
+      which === 'photo' ? 'photo' : `${which === 'clean' ? 'clean' : shows(picture)}${picture?.version ?? 0}`
+    return { ...image.value, version: `${piece.id}.${piece.updatedAt.getTime()}.${drawing}.${size}` }
   }),
 })
 

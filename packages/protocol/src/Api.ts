@@ -32,8 +32,10 @@ import { CreateLook, Look, LookId, LookNotFound, Looks } from './Look.ts'
 import { Day, WearPieces, WornDay, WornDays, WornRange } from './Worn.ts'
 import {
   AddPiece,
+  ChoosePicture,
   CreateUpload,
   CreateVideoUpload,
+  NoCleanPicture,
   OperationConflict,
   Piece,
   PieceId,
@@ -104,6 +106,14 @@ export class WardrobeApi extends HttpApiGroup.make('wardrobe')
       params: { pieceId: PieceId },
       success: HttpApiSchema.NoContent,
       error: [PieceNotFound, WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.put('choosePicture', '/pieces/:pieceId/picture', {
+      params: { pieceId: PieceId },
+      payload: ChoosePicture,
+      success: Piece,
+      error: [PieceNotFound, NoCleanPicture, WardrobeUnavailable, RequestRefused],
     }),
   )
   .middleware(SessionHttp.RequireSession)

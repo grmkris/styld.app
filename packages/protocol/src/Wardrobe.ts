@@ -109,6 +109,28 @@ export type PieceStatus = typeof PieceStatus.Type
 /** Who added the piece: the person on the website, or an assistant on their behalf. */
 export const PieceSource = Schema.Literals(['website', 'assistant'])
 
+/** A piece's clean picture (owner, 2026-10-30): an image model's drawing of the garment from its kept cut-out, shown
+ * beside the real photo and marked as AI-cleaned. `drawing` while it is made; `ready` when shown on its own; `proposed`
+ * when the person chooses; `retake` when the cut-out shows too little of the garment; `kept` when the photo was
+ * already clean or showed a face; `failed` when no drawing came of it. */
+export const PictureState = Schema.Literals(['drawing', 'ready', 'proposed', 'retake', 'kept', 'failed'])
+export type PictureState = typeof PictureState.Type
+
+/** Which picture a piece shows: the clean drawing or the person's own photo. */
+export const PictureChoice = Schema.Literals(['clean', 'photo'])
+export type PictureChoice = typeof PictureChoice.Type
+
+export const PiecePicture = Schema.Struct({
+  state: PictureState,
+  shows: PictureChoice,
+  /** Counts drawings; image addresses carry it, so a new drawing is never served from a cache. */
+  version: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+})
+export type PiecePicture = typeof PiecePicture.Type
+
+/** Show the drawing or the photo: `PUT /api/pieces/:pieceId/picture`. */
+export const ChoosePicture = Schema.Struct({ use: PictureChoice })
+
 export const Piece = Schema.Struct({
   id: PieceId,
   name: Schema.NullOr(Name),
@@ -121,6 +143,8 @@ export const Piece = Schema.Struct({
   /** ISO 8601 instants. */
   createdAt: Schema.String,
   updatedAt: Schema.String,
+  /** Absent for a piece no drawing was ever asked for. */
+  picture: Schema.optionalKey(PiecePicture),
 })
 export type Piece = typeof Piece.Type
 
@@ -185,6 +209,13 @@ export class SubcategoryMismatch extends Schema.TaggedError<SubcategoryMismatch>
   'SubcategoryMismatch',
   {},
   { httpApiStatus: 422 },
+) {}
+
+/** The piece has no clean drawing to show or choose: none was made, or it was dropped. */
+export class NoCleanPicture extends Schema.TaggedError<NoCleanPicture>()(
+  'NoCleanPicture',
+  {},
+  { httpApiStatus: 409 },
 ) {}
 
 /** The operation id was already used for a different change. */
