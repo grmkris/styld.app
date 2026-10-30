@@ -10,6 +10,7 @@ import { catalogVersion, loadCatalog } from '@styld/i18n'
 import { Locale, localeEndpoint, parseLocale } from './Locale.ts'
 import { Message } from './Message.ts'
 import { arrive, followLink, Navigate } from './Navigation.ts'
+import { foldAskLeave, foldWardrobeRevisit, openHome, openPage, type Step } from './PageEntries.ts'
 import * as Crypto from 'effect/Crypto'
 import * as AddPiecesMessage from './page/AddPieces/Message.ts'
 import * as AddPiecesModel from './page/AddPieces/Model.ts'
@@ -148,7 +149,7 @@ const RecordTelemetryConsent = Command.define('RecordTelemetryConsent', {
     }),
 })
 
-type Services =
+export type Services =
   | HttpClient.HttpClient
   | BrowserAuth
   | Login.EmailSignIn
@@ -166,55 +167,6 @@ const pageCommands = (route: AppRoute, piece: Piece.Model, look: Look.Model, boa
     Match.tag('Piece', () => Command.mapMessages(Piece.load(piece), (message) => Message.GotPieceMessage({ message }))),
     Match.tag('Review', () => Command.mapMessages(Review.load(), (message) => Message.GotReviewMessage({ message }))),
     Match.tag('Look', () => Command.mapMessages(Look.load(look), (message) => Message.GotLookMessage({ message }))),
-    Match.orElse(() => []),
-  )
-
-type Step = Update.Step<Model, Message, Services>
-
-/** Opening a page that shows the pieces: the ones already here stay while they are asked for again. */
-const foldWardrobeRevisit = Update.foldChildStep({
-  update: Wardrobe.revisit,
-  read: (model: Model) => Option.some(model.wardrobe),
-  write: (model: Model, wardrobe: Wardrobe.Model) => modifyFields(model, { wardrobe: () => wardrobe }),
-  toParentMessage: (message: Wardrobe.Message) => Message.GotWardrobeMessage({ message }),
-})
-
-const foldLooksRevisit = Update.foldChildStep({
-  update: Looks.revisit,
-  read: (model: Model) => Option.some(model.looks),
-  write: (model: Model, looks: Looks.Model) => modifyFields(model, { looks: () => looks }),
-  toParentMessage: (message: Looks.Message) => Message.GotLooksMessage({ message }),
-})
-
-const foldBoardsRevisit = Update.foldChildStep({
-  update: Boards.revisit,
-  read: (model: Model) => Option.some(model.boards),
-  write: (model: Model, boards: Boards.Model) => modifyFields(model, { boards: () => boards }),
-  toParentMessage: (message: Boards.Message) => Message.GotBoardsMessage({ message }),
-})
-
-const foldTodayEnter = Update.foldChildStep({
-  update: Today.enter,
-  read: (model: Model) => Option.some(model.today),
-  write: (model: Model, today: Today.Model) => modifyFields(model, { today: () => today }),
-  toParentMessage: (message: Today.Message) => Message.GotTodayMessage({ message }),
-})
-
-const foldAskLeave = Update.foldChildStep({
-  update: Ask.leave,
-  read: (model: Model) => Option.some(model.ask),
-  write: (model: Model, ask: Ask.Model) => modifyFields(model, { ask: () => ask }),
-  toParentMessage: (message: Ask.Message) => Message.GotAskMessage({ message }),
-})
-
-const openHome: ReadonlyArray<Step> = [foldTodayEnter, foldWardrobeRevisit]
-/** What opening a tab page asks for. Home needs a session: a cookie with the request, or `afterSignIn`. */
-const openPage = (route: AppRoute, hasSessionCookie: boolean): ReadonlyArray<Step> =>
-  Match.value(route).pipe(
-    Match.tag('Home', () => (hasSessionCookie ? openHome : [])),
-    Match.tag('Wardrobe', 'Ask', () => [foldWardrobeRevisit]),
-    Match.tag('Looks', () => [foldLooksRevisit]),
-    Match.tag('Boards', () => [foldBoardsRevisit]),
     Match.orElse(() => []),
   )
 
