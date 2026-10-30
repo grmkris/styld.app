@@ -112,6 +112,14 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
           Effect.forEach(['native-capture', 'native-capture-other'], (id) => whenFree(seedIdentity(database, id))),
         ),
       ),
+      // An owner and a second account for the boards', worn days' and website looks' isolation checks.
+      HttpRouter.add(
+        'POST',
+        '/test/identity/seed-boards',
+        doneWhenFree(
+          Effect.forEach(['native-boards', 'native-boards-other'], (id) => whenFree(seedIdentity(database, id))),
+        ),
+      ),
       // The account the browser's capture journey signs in as.
       HttpRouter.add(
         'POST',

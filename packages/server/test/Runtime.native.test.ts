@@ -10,6 +10,7 @@ import { type Browser, chromium } from 'playwright'
 import { verifyBrowser } from './BrowserAcceptance.ts'
 import { verifyCameraJourney, verifyCaptureJourney, verifyLongVideoJourney } from './CaptureBrowserAcceptance.ts'
 import { nativeDailyAllowance, verifyCaptures } from './CaptureAcceptance.ts'
+import { verifyGallery } from './GalleryAcceptance.ts'
 import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
 import { verifyMcp } from './McpAcceptance.ts'
 import { verifyAccountDeletion, verifyWardrobe } from './WardrobeAcceptance.ts'
@@ -143,6 +144,15 @@ test(
     const { url, styldUrl } = yield* stack
     yield* Effect.promise(() => verifyWardrobe(styldUrl, url))
     yield* Effect.promise(() => verifyAccountDeletion(styldUrl, url))
+  }),
+  { timeout: 60000 },
+)
+
+test(
+  "keeps each account's boards (idempotent creates, versioned saves, refused items, private pictures), worn days and website looks",
+  Effect.gen(function* () {
+    const { url, styldUrl } = yield* stack
+    yield* Effect.promise(() => verifyGallery(styldUrl, url))
   }),
   { timeout: 60000 },
 )
@@ -310,6 +320,9 @@ test(
         tables: [
           'accounts',
           'auth_attempt_buckets',
+          'board_images',
+          'board_items',
+          'boards',
           'capture_frames',
           'captures',
           'detections',
@@ -328,6 +341,7 @@ test(
           'styld_auth_proofs',
           'styld_auth_sessions',
           'uploads',
+          'worn_pieces',
         ],
       },
       media: { sentinel: false },

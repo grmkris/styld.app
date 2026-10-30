@@ -55,8 +55,9 @@ const make = (bindings: Pick<WardrobeBindings, 'database' | 'bucket' | 'queue'>)
     })
 
     /** Remove what a closed account owns: photos, codes sent to its addresses, its auth rows and
-     * the account (its pieces, uploads and receipts cascade). Safe to run again; the photos are
-     * swept again last, for any upload that landed meanwhile. */
+     * the account (its pieces, uploads, receipts, captures, looks, boards and worn days cascade; board
+     * pictures keep their upload's key under the prefix). Safe to run again; the photos are swept
+     * again last, for any upload that landed meanwhile. */
     const finishDeletion = Effect.fn('Styld.Account.finishDeletion')(function* (accountId: string) {
       const addresses = yield* attempt(() =>
         db.all<{ value: string }>(

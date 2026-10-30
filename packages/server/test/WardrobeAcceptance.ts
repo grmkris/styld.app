@@ -47,6 +47,13 @@ const upload = async (call: Call, bytes: Uint8Array<ArrayBuffer>, contentType = 
 const put = (origin: string, path: string, bytes: Uint8Array<ArrayBuffer>, contentType = 'image/png') =>
   fetch(`${origin}${path}`, { method: 'PUT', headers: { 'content-type': contentType }, body: new Blob([bytes]) })
 
+/** A photo uploaded and received, ready to become something: its upload id. */
+export const receivedPhoto = async (origin: string, call: Call) => {
+  const photo = await upload(call, png)
+  expect((await put(origin, photo.path, png)).status).toBe(204)
+  return photo.uploadId
+}
+
 const waitUntilReady = async (call: Call, pieceId: string) => {
   for (let attempt = 0; attempt < 60; attempt += 1) {
     const { status } = Schema.decodeUnknownSync(Schema.Struct({ status: Schema.String }))(
