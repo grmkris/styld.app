@@ -70,6 +70,8 @@ const move = (
   Effect.gen(function* () {
     const { state } = changes
     const moved = yield* storedAs(parts.store.movePicture(picture.pieceId, from, { ...changes, updatedAt: yield* now }))
+    // A drawing that shows, stops showing or is dropped changes what others see of a public piece.
+    if (moved) yield* parts.pieceChanged.changed(picture.pieceId)
     if (!moved || state === undefined) return moved
     yield* Effect.annotateCurrentSpan('styld.picture.state', state)
     if (hasEnded(state))

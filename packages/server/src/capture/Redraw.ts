@@ -63,6 +63,8 @@ const queueRedraw = (
       yield* usage.settle(accountId, hold, 'refunded')
       return yield* PictureRefused.make({ reason: 'busy' })
     }
+    // A drawing being redrawn stops showing; the photo shows meanwhile.
+    yield* parts.pieceChanged.changed(pieceId)
     yield* enqueuePicture(parts, pieceId)
   })
 

@@ -8,6 +8,7 @@ import type { WorkMessage } from '../wardrobe/Processing.ts'
 import { makeStore } from '../wardrobe/Store.ts'
 import type { WardrobeBindings } from '../wardrobe/Wardrobe.ts'
 import { makeCaptureStore } from './Store.ts'
+import { PieceChanged } from '../safety/PieceChanged.ts'
 
 /** The Cloudflare bindings captures read and write. */
 export interface CaptureBindings {
@@ -30,6 +31,7 @@ export const makeParts = (bindings: CaptureBindings) =>
       )
     return {
       bindings,
+      pieceChanged: yield* PieceChanged,
       store: makeCaptureStore(bindings.database),
       wardrobeStore: makeStore(bindings.database),
       randomId,

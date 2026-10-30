@@ -37,6 +37,7 @@ import {
   type StoreUnavailable,
   type UploadRow,
 } from './Store.ts'
+import { PieceChanged } from '../safety/PieceChanged.ts'
 
 /** The Cloudflare bindings the wardrobe stores into, as Alchemy's runtime objects. */
 export interface WardrobeBindings extends ImageBindings {
@@ -138,6 +139,7 @@ interface Parts {
   readonly bindings: WardrobeBindings
   readonly store: Store
   readonly cutout: GarmentCutout['Service']
+  readonly pieceChanged: PieceChanged['Service']
   readonly randomToken: (bytes: number) => Effect.Effect<string, WardrobeUnavailable>
   readonly digest: (text: string) => Effect.Effect<string, WardrobeUnavailable>
 }
@@ -421,6 +423,7 @@ const editing = (parts: Parts) => ({
     const at = yield* nowDate
     const chosen = yield* stored(parts.store.choosePicture(accountId, pieceId, use, at))
     if (Option.isNone(chosen)) return yield* NoCleanPicture.make({})
+    yield* parts.pieceChanged.changed(pieceId)
     return yield* ownerPiece(parts, accountId, piece)
   }),
   updatePiece: Effect.fn('Styld.Wardrobe.updatePiece')(function* (pieceId: PieceId, input: UpdatePiece) {
@@ -507,6 +510,7 @@ const processing = (parts: Parts) => ({
       contentType: row.value.contentType,
     })
     yield* stored(parts.store.finishProcessing(pieceId, { status: 'ready', imageKey, updatedAt: yield* nowDate }))
+    yield* parts.pieceChanged.changed(pieceId)
   }),
   /** The queue gave up on a piece: show it as failed rather than processing forever. */
   failPiece: Effect.fn('Styld.Wardrobe.failPiece')(function* (pieceId: string) {
@@ -527,6 +531,7 @@ const make = (bindings: WardrobeBindings) =>
       bindings,
       store: makeStore(bindings.database),
       cutout: yield* GarmentCutout,
+      pieceChanged: yield* PieceChanged,
       randomToken: (bytes) =>
         crypto.randomBytes(bytes).pipe(Effect.map(Base64Url.encode), Effect.mapError(unavailable)),
       digest: (text) =>

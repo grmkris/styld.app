@@ -52,6 +52,7 @@ import {
 } from './Resources.ts'
 import { type CheckBindings, makeChecks } from './safety/Checks.ts'
 import { contentJudge, type RunGuard } from './safety/Judge.ts'
+import { pieceChangedLayer } from './safety/PieceChanged.ts'
 import { checkAttempts, settleCheck } from './safety/Queue.ts'
 import { wardrobeRoutes } from './wardrobe/Http.ts'
 import { processingAttempts, settleMessage } from './wardrobe/Queue.ts'
@@ -109,9 +110,11 @@ const storageServices = <R>(
 ) =>
   Effect.gen(function* () {
     const checksService = yield* makeChecks({ ...bindings, queue: bindings.checksQueue }).pipe(Effect.provide(judge))
-    const wardrobeService = yield* makeWardrobe(bindings)
+    // A piece whose shown picture changes is checked again while others can see it.
+    const pieceChanged = pieceChangedLayer(checksService)
+    const wardrobeService = yield* makeWardrobe(bindings).pipe(Effect.provide(pieceChanged))
     const lifecycleService = yield* makeAccountLifecycle(bindings)
-    const capturesService = yield* makeCaptures(bindings)
+    const capturesService = yield* makeCaptures(bindings).pipe(Effect.provide(pieceChanged))
     const looksService = yield* makeLooks(bindings.database, checksService)
     const boardsService = yield* makeBoards(bindings, checksService)
     const profilesService = makeProfiles(bindings.database, checksService)

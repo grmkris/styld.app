@@ -172,6 +172,7 @@ export const reviewing = (parts: Parts) => ({
       parts,
       pictures.map(({ pieceId }) => pieceId),
     )
+    yield* Effect.forEach(pieceIds, (pieceId) => parts.pieceChanged.changed(pieceId), { discard: true })
     return { pieceIds: pieceIds.map((id) => PieceId.make(id)) }
   }),
 })
