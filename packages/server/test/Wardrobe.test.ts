@@ -1,4 +1,4 @@
-import { WardrobeUnavailable } from '@styld/protocol'
+import { CaptureUnavailable, WardrobeUnavailable } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
 import * as HttpClientResponse from 'effect/http/HttpClientResponse'
@@ -107,7 +107,7 @@ describe('the processing queue', () => {
         processCapture: notUsed,
         failCapture: notUsed,
         processPicture: (pieceId: string) =>
-          Effect.sync(() => seen.push(`draw ${pieceId}`)).pipe(Effect.andThen(Effect.fail('busy'))),
+          Effect.sync(() => seen.push(`draw ${pieceId}`)).pipe(Effect.andThen(CaptureUnavailable.make({}))),
         failPicture: (pieceId: string) => Effect.sync(() => seen.push(`give up ${pieceId}`)),
       },
     }
