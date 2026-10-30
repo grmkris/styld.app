@@ -81,6 +81,16 @@ export const outfitFor = (pieces: ReadonlyArray<Piece>, seed: string): ReadonlyA
   return [...base, ...outerwear, ...shoes, ...accessory]
 }
 
+/** A slot a whole outfit still needs. */
+export type Missing = 'top' | 'bottom' | 'shoes'
+
+/** What the wardrobe lacks for a whole outfit: a top and a bottom (a dress stands in for both), and shoes. */
+export const missingFrom = (pieces: ReadonlyArray<Piece>): ReadonlyArray<Missing> => {
+  const has = (category: Category) => ofCategory(pieces, category).length > 0
+  const hasDress = has('dress')
+  return Array.filter(['top', 'bottom', 'shoes'] as const, (slot) => !has(slot) && (slot === 'shoes' || !hasDress))
+}
+
 /** The outfit as a still table: each piece in its slot, keyed by the piece so a Spin brings new ones in. */
 export const asItems = (outfit: ReadonlyArray<Placed>): ReadonlyArray<BoardItem> =>
   outfit.map(({ slot, piece }, index) => {

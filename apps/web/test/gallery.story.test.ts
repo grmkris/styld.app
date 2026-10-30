@@ -6,7 +6,7 @@ import { describe, expect, test } from 'vitest'
 import * as Ask from '../src/page/Ask.ts'
 import { matching } from '../src/page/AskView.ts'
 import * as Boards from '../src/page/Boards.ts'
-import { outfitFor } from '../src/page/Outfit.ts'
+import { missingFrom, outfitFor } from '../src/page/Outfit.ts'
 import * as Today from '../src/page/Today.ts'
 import * as Wardrobe from '../src/page/Wardrobe.ts'
 import { headline } from '../src/page/TodayView.ts'
@@ -34,6 +34,12 @@ describe("today's table", () => {
 
   test('the same day and Spin always lay out the same outfit', () => {
     expect(outfitFor(wardrobe, '2026-10-29:3')).toEqual(outfitFor(wardrobe, '2026-10-29:3'))
+  })
+
+  test('a wardrobe short of a whole outfit says what it lacks; a dress stands in for a top and a bottom', () => {
+    expect(missingFrom([redTop])).toEqual(['bottom', 'shoes'])
+    expect(missingFrom(wardrobe)).toEqual([])
+    expect(missingFrom([pieceFixture('dress', { category: 'dress' })])).toEqual(['shoes'])
   })
 
   test('the headline is the day in the visitor’s language', () => {

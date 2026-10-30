@@ -89,6 +89,25 @@ export const note = style({
   color: 'ink2',
   '&[data-tone="error"]': { color: 'error' },
 })
+/** What a whole outfit still needs, as small ways into adding pieces. */
+export const missing = style({ display: 'flex', flexWrap: 'wrap', gap: '8px' })
+export const missingLink = style({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: '6px',
+  minBlockSize: '40px',
+  paddingInline: '14px',
+  borderRadius: 'pill',
+  backgroundColor: 'paper2',
+  color: 'ink',
+  fontSize: '14px',
+  fontWeight: 600,
+  textDecorationLine: 'none',
+  transitionProperty: 'transform',
+  transitionDuration: '160ms',
+  transitionTimingFunction: 'ease-out',
+  ':active': { transform: 'scale(0.96)' },
+})
 export const pickUp = style({
   display: 'grid',
   gap: '12px',

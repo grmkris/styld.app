@@ -6,11 +6,11 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
-import { checkIcon, loader, spinIcon } from '../Icon.ts'
+import { addIcon, checkIcon, loader, spinIcon } from '../Icon.ts'
 import { addPiecesRouter, boardRouter, reviewRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { stillTable } from './Board/Table.ts'
-import { asItems } from './Outfit.ts'
+import { asItems, type Missing, missingFrom } from './Outfit.ts'
 import { Message, type Model, Pieces, tableOutfit, Worn } from './Today.ts'
 import * as styles from './TodayView.styles.ts'
 import { categoryName } from './WardrobeWords.ts'
@@ -73,6 +73,28 @@ const wearButton = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html
   )
 }
 
+const missingLabel = {
+  top: 'today.addTop',
+  bottom: 'today.addBottom',
+  shoes: 'today.addShoes',
+} as const satisfies Record<Missing, string>
+
+/** A wardrobe short of a whole outfit says what to add, each a way into adding pieces. */
+const missingView = (pieces: ReadonlyArray<Piece>, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  Array.match(missingFrom(pieces), {
+    onEmpty: () => h.empty,
+    onNonEmpty: (missing) =>
+      h.div(
+        styled(h, styles.missing()),
+        missing.map((slot) =>
+          h.a(
+            [h.Href(addPiecesRouter({})), ...styled(h, styles.missingLink())],
+            [addIcon(h), format(locale, missingLabel[slot], {})],
+          ),
+        ),
+      ),
+  })
+
 const noteView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const failed = Worn.guards.Failed(model.worn)
   const text = failed
@@ -128,6 +150,9 @@ const todayView = (model: Model, day: string, locale: Locale, h: HtmlBuilder<Mes
           ])
         : h.empty,
       noteView(model, locale, h),
+      Pieces.guards.Loaded(model.pieces) && model.pieces.pieces.some((piece) => piece.status === 'ready')
+        ? missingView(model.pieces.pieces, locale, h)
+        : h.empty,
     ],
   )
 

@@ -2635,6 +2635,9 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'today.wornNote': 'Zabeleženo za danes.',
   'today.wearFailed': 'Ni se shranilo. Poskusi znova.',
   'today.spin': 'Zavrti za drugo opravo',
+  'today.addTop': 'Dodaj zgornji del',
+  'today.addBottom': 'Dodaj hlače ali krilo',
+  'today.addShoes': 'Dodaj čevlje',
   'today.pickUp': 'Kar te čaka',
   'today.waiting':
     '{count, plural, one {# kos te čaka} two {# kosa te čakata} few {# kosi te čakajo} other {# kosov te čaka}}',

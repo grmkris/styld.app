@@ -2106,7 +2106,10 @@ export interface MessageArgumentsByKey<T = string> {
   'telemetryConsent.decline': Readonly<Record<string, never>>
   'telemetryConsent.message': Readonly<Record<string, never>>
   'telemetryConsent.settings': Readonly<Record<string, never>>
+  'today.addBottom': Readonly<Record<string, never>>
   'today.addClothes': Readonly<Record<string, never>>
+  'today.addShoes': Readonly<Record<string, never>>
+  'today.addTop': Readonly<Record<string, never>>
   'today.empty': Readonly<Record<string, never>>
   'today.failed': Readonly<Record<string, never>>
   'today.keepGoing': Readonly<Record<string, never>>
@@ -2516,4 +2519,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'b39e1f9f499cc057443303ccc5248e9b1f1d551f07dd3d16deae82795edc28ba'
+export const catalogVersion = '052d4c66777d8046ca7245d0fd194d139882e6fa7ee0de98a45afe5619650a3e'
