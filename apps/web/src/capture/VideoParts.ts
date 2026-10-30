@@ -44,8 +44,8 @@ export interface CutPart {
 /** The longest video sent whole, where this browser cannot cut it. */
 const longestWholeMs = 61_000
 
-/** About 1 Mbit/s: plenty for 720 px at 4 frames a second, and a 30-second part stays near 4 MB. */
-const analysisBitrate = 1_000_000
+/** About 1.5 Mbit/s: plenty for 1024 px at 4 frames a second, and a 30-second part stays near 6 MB. */
+const analysisBitrate = 1_500_000
 
 const unreadable = () => VideoNotSampled.make({ reason: 'unreadable' })
 
@@ -124,7 +124,7 @@ const clipWriter = (canvas: OffscreenCanvas) =>
       Exit.isSuccess(exit) ? Effect.void : Effect.promise(() => output.cancel().catch(() => undefined)),
   )
 
-/** Cut one part of a video: its frames drawn upright into a 720 px analysis clip at 4 frames a second, and
+/** Cut one part of a video: its frames drawn upright into a 1024 px analysis clip at 4 frames a second, and
  * every fourth frame kept as a 1280 px still with its sharpness. Only this part is ever held in memory. */
 export const cutPart = (file: Blob, part: Part) =>
   Effect.scoped(

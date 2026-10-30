@@ -18,8 +18,9 @@ const framesPerStill = 4
 /** Meta bills at least 50 frames a request; a tail shorter than that joins the part before it. */
 const shortestTailMs = 50 * frameMs
 
-/** Analysis clips are at most this long on their long edge. */
-export const analysisEdge = 720
+/** Analysis clips are at most this long on their long edge: SAM's own cap on a mask, so its masks come back
+ * at the clip's full size. Meta charges by the frame, not the pixel. */
+export const analysisEdge = 1024
 
 /** One part of a video: where it starts and ends, in milliseconds from the start of the video. */
 export interface Part {
