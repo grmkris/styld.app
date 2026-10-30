@@ -137,3 +137,4 @@ export const card = style({
 })
 export const cardTitle = style({ fontWeight: 600 })
 export const cardAction = style({ fontSize: '14px', fontWeight: 600, color: 'ink2' })
+export const explore = style({ display: 'inline-flex', alignItems: 'center', minBlockSize: '44px', fontWeight: 600 })

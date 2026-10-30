@@ -3,7 +3,6 @@ import type { FeedItem } from '@styld/protocol'
 import { Match, Option } from 'effect'
 import { AsyncData } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
-import { exploreRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import * as styles from './FeedView.styles.ts'
 import { boardCard, byline, lookTile, pieceTile, pinTile, tileGrid } from './PublicTiles.ts'
@@ -33,18 +32,13 @@ const itemKey = (item: FeedItem) =>
     }),
   )
 
-/** The way to Explore, under the feed or in its place. */
-const exploreLink = <Message>(locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.a([h.Href(exploreRouter({})), ...styled(h, styles.explore())], [format(locale, 'explore.title', {})])
-
-/** From people you follow: what they made public lately, once there is something; then the way to Explore. */
+/** From people you follow: what they made public lately, once there is something. */
 export const feedView = <Message>(feed: FeedData, locale: Locale, h: HtmlBuilder<Message>): Html =>
   Option.match(AsyncData.getData(feed), {
-    // Drawn once the feed has answered, below everything else, so that nothing moves.
     onNone: () => h.empty,
     onSome: ({ items }) =>
       items.length === 0
-        ? exploreLink(locale, h)
+        ? h.empty
         : h.section(
             [h.AriaLabelledBy('following-feed'), ...styled(h, styles.feed())],
             [
@@ -53,7 +47,6 @@ export const feedView = <Message>(feed: FeedData, locale: Locale, h: HtmlBuilder
                 items.map((item) => ({ id: itemKey(item), tile: itemTile(item, locale, h) })),
                 h,
               ),
-              exploreLink(locale, h),
             ],
           ),
   })

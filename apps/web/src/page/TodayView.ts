@@ -7,7 +7,7 @@ import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { addIcon, checkIcon, loader, spinIcon } from '../Icon.ts'
-import { addPiecesRouter, boardRouter, reviewRouter } from '../route.ts'
+import { addPiecesRouter, boardRouter, exploreRouter, reviewRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
@@ -126,7 +126,10 @@ const headlineView = (maybeDay: Option.Option<string>, locale: Locale, h: HtmlBu
         onSome: (day) => [headline(day, locale)],
       }),
     ),
-    Option.none(),
+    // Explore sits in the head from the first paint, so nothing below it moves when it arrives.
+    Option.some(
+      h.a([h.Href(exploreRouter({})), ...styled(h, styles.explore())], [format(locale, 'explore.title', {})]),
+    ),
     h,
   )
 
