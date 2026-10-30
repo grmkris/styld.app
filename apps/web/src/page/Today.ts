@@ -1,5 +1,5 @@
 import { Board, Day, Piece, PieceId } from '@styld/protocol'
-import { Clock, Effect, Option, Schema } from 'effect'
+import { Array, Clock, Effect, Option, Schema } from 'effect'
 import { Command, type Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
@@ -106,7 +106,8 @@ export const ListBoards = Command.define('ListBoards', {
   messages: [Message.SucceededListBoards, Message.FailedListBoards],
   execute: Effect.gen(function* () {
     const { boards } = yield* (yield* (yield* StyldClient).api).board.listBoards()
-    return Message.SucceededListBoards({ maybeBoard: Option.fromNullishOr(boards[0]) })
+    // An empty board is nothing to pick up: the newest one with something on its table.
+    return Message.SucceededListBoards({ maybeBoard: Array.findFirst(boards, (board) => board.items.length > 0) })
   }).pipe(Effect.orElseSucceed(() => Message.FailedListBoards())),
 })
 

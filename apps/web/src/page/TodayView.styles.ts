@@ -116,6 +116,7 @@ export const pickUp = style({
 export const cards = style({
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))',
+  alignItems: 'start',
   gap: '12px',
 })
 export const card = style({
