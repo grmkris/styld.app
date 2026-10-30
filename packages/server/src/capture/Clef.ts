@@ -2,7 +2,16 @@ import { Category, Colour, Subcategory, subcategoryFits } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
 import { type CaptureMetrics, counted, prices } from './Metrics.ts'
-import { type HeldCheck, type Picture, ProviderFailed, type Route, type Suggestion } from './Providers.ts'
+import {
+  type Comparison,
+  type HeldCheck,
+  type Judgement,
+  type Picture,
+  ProviderFailed,
+  type Route,
+  type Suggestion,
+  type Verdict,
+} from './Providers.ts'
 
 /** A Clef-flash request (Workers AI `@cf/cloudflare/clef-flash`, the System One API). */
 export interface ClefRequest {
@@ -50,7 +59,7 @@ const colourCriteria = Object.fromEntries(Colour.literals.map((colour) => [colou
 const ask = (
   run: RunClef,
   metrics: CaptureMetrics['Service'],
-  kind: 'route' | 'suggest' | 'check',
+  kind: 'route' | 'suggest' | 'check' | 'judge' | 'compare',
   request: ClefRequest,
 ) =>
   counted(
@@ -93,6 +102,68 @@ const suggestQuestions = {
 }
 
 const state = 'A person photographed clothes to add them to their wardrobe.'
+
+/** What the held-up camera asks about a settled frame, and about the last photo when there is one. */
+const heldQuestions = (withPrevious: boolean) => ({
+  held: {
+    type: 'noul',
+    // Stillness on the page already shows someone brought it in and holds it still. Asked whether it is
+    // "held up", Clef rated a lone tee 0.45; as the main subject 0.92, and a rail of ten 0.02.
+    instructions: 'Is exactly one garment the main subject of the picture, fully in view?',
+  },
+  side: {
+    type: 'choice',
+    instructions: 'Which side of the garment faces the camera?',
+    criteria: { front: 'The front', back: 'The back', unclear: 'Cannot tell' },
+  },
+  // Clothes lying on a bed behind someone who walked off to fetch the next piece are the main subject
+  // too (owner's test, 30 October): a held-up shot needs the hands.
+  holding: { type: 'noul', instructions: 'Is a person holding the garment up with their hands?' },
+  ...(withPrevious
+    ? { samePrevious: { type: 'noul', instructions: 'Is it the same garment as in the second image?' } }
+    : {}),
+})
+
+/** What the decision model is asked about a kept cut-out before a clean picture is drawn from it (owner's
+ * decision, 30 October: keep it, draw it, or ask for a retake). A face is asked about so none is ever sent on. */
+const judgeQuestions = {
+  picture: {
+    type: 'choice',
+    instructions: 'How good is this picture of the garment, to show as its product picture?',
+    criteria: {
+      ready: 'Clean and whole, as a shop would show it',
+      improve: 'The whole garment shows, but crumpled, held, folded or a little cut off',
+      repair: 'Parts are missing or covered: holes where hands, hair or a body were, or a large part cut off',
+      fragment: 'Only a small part of the garment shows: too little to tell what it looks like',
+    },
+  },
+  face: { type: 'noul', instructions: "Is any part of a person's face visible?" },
+} as const
+
+/** What the decision model is asked about a drawn picture beside the real cut-out. */
+const compareQuestions = {
+  same: { type: 'noul', instructions: 'Is it the same garment as in the second image?' },
+  faithful: { type: 'noul', instructions: 'Are its colour, print, logos and details the same as in the second image?' },
+} as const
+
+const verdicts: ReadonlyArray<Verdict> = ['ready', 'improve', 'repair', 'fragment']
+
+/** The judgement in an answer. Without a readable verdict the cut-out is treated as needing a redraw, and a face is
+ * assumed without an answer about it, so nothing unanswered is sent on. */
+const judgementOf = (answer: Answer): Judgement => {
+  const face = Option.match(Option.fromNullishOr(answer.answers['face']), {
+    onNone: () => 1,
+    onSome: () => noulOf(answer, 'face'),
+  })
+  return Option.match(choiceOf(answer, 'picture'), {
+    onNone: () => ({ verdict: 'improve', confidence: 0, face }),
+    onSome: ({ choice, probabilities }) => ({
+      verdict: verdicts.find((verdict) => verdict === choice) ?? 'improve',
+      confidence: probabilities[choice] ?? 0,
+      face,
+    }),
+  })
+}
 
 /** How many garments a photo shows, and whether a person does: the route's questions. */
 const routeQuestions = {
@@ -162,25 +233,7 @@ export const makeGarmentVision = (run: RunClef, metrics: CaptureMetrics['Service
         ? `${scene} The first image is the camera frame now; the second is the last garment photographed.`
         : scene,
       images,
-      questions: {
-        held: {
-          type: 'noul',
-          // Stillness on the page already shows someone brought it in and holds it still. Asked whether it is
-          // "held up", Clef rated a lone tee 0.45; as the main subject 0.92, and a rail of ten 0.02.
-          instructions: 'Is exactly one garment the main subject of the picture, fully in view?',
-        },
-        side: {
-          type: 'choice',
-          instructions: 'Which side of the garment faces the camera?',
-          criteria: { front: 'The front', back: 'The back', unclear: 'Cannot tell' },
-        },
-        // Clothes lying on a bed behind someone who walked off to fetch the next piece are the main subject
-        // too (owner's test, 30 October): a held-up shot needs the hands.
-        holding: { type: 'noul', instructions: 'Is a person holding the garment up with their hands?' },
-        ...(Option.isSome(previous)
-          ? { samePrevious: { type: 'noul', instructions: 'Is it the same garment as in the second image?' } }
-          : {}),
-      },
+      questions: heldQuestions(Option.isSome(previous)),
     })
     const side = Option.match(choiceOf(answer, 'side'), {
       onNone: (): HeldCheck['side'] => 'unclear',
@@ -192,6 +245,24 @@ export const makeGarmentVision = (run: RunClef, metrics: CaptureMetrics['Service
       samePrevious: noulOf(answer, 'samePrevious'),
       holding: noulOf(answer, 'holding'),
     }
+  }),
+  judge: Effect.fn('Styld.Picture.judge')(function* (cutout: Picture) {
+    const answer = yield* ask(run, metrics, 'judge', {
+      model: 'clef-flash',
+      state: 'One piece of clothing cut out of a photo, to show in a wardrobe app.',
+      images: [imageOf(cutout)],
+      questions: judgeQuestions,
+    })
+    return judgementOf(answer)
+  }),
+  compare: Effect.fn('Styld.Picture.compare')(function* (drawn: Picture, real: Picture) {
+    const answer = yield* ask(run, metrics, 'compare', {
+      model: 'clef-flash',
+      state: 'The first image is a generated product picture; the second is a real photo of a garment.',
+      images: [imageOf(drawn), imageOf(real)],
+      questions: compareQuestions,
+    })
+    return { same: noulOf(answer, 'same'), faithful: noulOf(answer, 'faithful') } satisfies Comparison
   }),
 })
 

@@ -28,6 +28,12 @@ person or a real wardrobe.
 - `sam-still-rail.sse`, `sam-still-red-tee.sse`: SAM 3.1 still streams recorded from a Cloudflare Worker on
   2026-10-29, with the prompts "clothing" and "t-shirt".
 - `clef-route-*.json`: the Clef-flash answers from the same probe.
+- `muse-edit-red-tee.json`: Meta Muse Image's answer, on 2026-10-30, to the clean-picture prompt with the drawn red tee
+  (cut out through `red-tee-truth.png`, on grey) as its reference; the picture is scaled to 240 × 360 to keep it small.
+- `muse-green-shirt.png`: Muse's picture of the drawn green shirt on magenta, from the same run, at 320 × 480.
+- `clef-judge-red-tee.json`, `clef-judge-dress-fragment.json`: Clef-flash's judgement of the red tee's cut-out and of
+  a corner crop of `blue-dress.png`; `clef-compare-red-tee.json`: Clef comparing Muse's red tee with the drawn one.
+  Recorded 2026-10-30 with the questions in `Clef.ts`.
 - `clef-route-held-person.json`: Clef-flash's answer, on 2026-10-30, for a real photo of someone holding up one
   garment (person-routing spike, `meta-hackathon/research/2026-10-30/styld-person-routing-and-video-merge.md`).
   Only the answer is kept, never the photo; the spike's `personAny` question is stored under `person`, as

@@ -1,0 +1,5 @@
+{
+  "model": "clef-flash",
+  "answers": { "same": { "type": "noul", "noul": 0.2827 }, "faithful": { "type": "noul", "noul": 0.4404 } },
+  "usage": { "input_tokens": 1573, "output_tokens": 0 }
+}

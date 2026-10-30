@@ -1,0 +1,13 @@
+{
+  "model": "clef-flash",
+  "answers": {
+    "picture": {
+      "type": "choice",
+      "choice": "fragment",
+      "probabilities": { "ready": 0.0642, "improve": 0.0762, "repair": 0.2438, "fragment": 0.6158 },
+      "confidence": 0.2647
+    },
+    "face": { "type": "noul", "noul": 0.0064 }
+  },
+  "usage": { "input_tokens": 408, "output_tokens": 0 }
+}

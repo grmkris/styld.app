@@ -1,10 +1,13 @@
 import { readFileSync } from 'node:fs'
 import { Effect, Exit, Option, Redacted, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
+import { makeGarmentVision } from '../src/capture/Clef.ts'
+import { gateFor, planFor } from '../src/capture/CleanPicture.ts'
 import { cleanPrompt } from '../src/capture/CleanPrompt.ts'
 import { CaptureMetrics } from '../src/capture/Metrics.ts'
 import { makeMuseGenerator } from '../src/capture/Muse.ts'
 import { decodePng } from '../src/capture/Pixels.ts'
+import { capturePolicy } from '../src/capture/Policy.ts'
 import type { DrawRequest } from '../src/capture/Providers.ts'
 
 const fixture = (name: string) => readFileSync(new URL(`fixtures/capture/${name}`, import.meta.url))
@@ -108,5 +111,69 @@ describe('Meta Muse Image', () => {
       provider: 'meta-muse',
     })
     expect(lost.seen).toHaveLength(1)
+  })
+})
+
+/** Clef answering with a recorded answer. */
+const clef = (name: string) =>
+  makeGarmentVision(() => Promise.resolve(JSON.parse(fixture(name).toString('utf8'))), CaptureMetrics.discarding)
+
+const policy = capturePolicy({}).pictures
+
+describe('the decision model on a kept cut-out', () => {
+  test('reads a clean drawn tee as ready, a scrap of a dress as a fragment, and no face in either', async () => {
+    const ready = await Effect.runPromise(clef('clef-judge-red-tee.json').judge(cutout))
+    expect(ready).toMatchObject({ verdict: 'ready' })
+    expect(ready.face).toBeLessThan(0.05)
+    const scrap = await Effect.runPromise(clef('clef-judge-dress-fragment.json').judge(cutout))
+    expect(scrap.verdict).toBe('fragment')
+  })
+
+  test('reads how like the cut-out a drawing is: Muse turned the flat drawn tee into a photographed one', async () => {
+    const compared = await Effect.runPromise(clef('clef-compare-red-tee.json').compare(cutout, cutout))
+    expect(compared.same).toBeCloseTo(0.2827)
+    expect(compared.faithful).toBeCloseTo(0.4404)
+    expect(gateFor(compared, policy)).toBe('rejected')
+  })
+
+  test('assumes a face and a redraw when the answers are missing, so nothing unanswered is sent on', async () => {
+    const blank = makeGarmentVision(
+      () => Promise.resolve({ model: 'clef-flash', answers: {} }),
+      CaptureMetrics.discarding,
+    )
+    const judged = await Effect.runPromise(blank.judge(cutout))
+    expect(judged).toEqual({ verdict: 'improve', confidence: 0, face: 1 })
+    expect(planFor(judged, policy)).toEqual({ plan: 'kept-real', reason: 'face' })
+  })
+})
+
+/** A judgement of a kept cut-out, sure of `verdict`. */
+const judged = (verdict: 'ready' | 'improve' | 'repair' | 'fragment', face = 0.01) => ({
+  verdict,
+  confidence: 0.9,
+  face,
+})
+
+describe('what happens to a kept cut-out and to its drawing', () => {
+  test('a clean one stays, a held or holed one is drawn, a fragment asks for a retake, a face sends nothing', () => {
+    expect(planFor(judged('ready'), policy)).toEqual({ plan: 'kept-real' })
+    expect(planFor(judged('improve'), policy)).toEqual({ plan: 'draw' })
+    expect(planFor(judged('repair'), policy)).toEqual({ plan: 'draw' })
+    expect(planFor(judged('fragment'), policy)).toEqual({ plan: 'retake' })
+    expect(planFor(judged('improve', 0.3), policy)).toEqual({ plan: 'kept-real', reason: 'face' })
+    expect(planFor(judged('improve', 0.29), policy)).toEqual({ plan: 'draw' })
+  })
+
+  test('a drawing is shown from 0.8, offered from 0.5, dropped below, by the weaker of its two answers', () => {
+    expect(gateFor({ same: 0.8, faithful: 0.95 }, policy)).toBe('ready')
+    expect(gateFor({ same: 0.95, faithful: 0.79 }, policy)).toBe('proposed')
+    expect(gateFor({ same: 0.5, faithful: 0.9 }, policy)).toBe('proposed')
+    expect(gateFor({ same: 0.49, faithful: 0.9 }, policy)).toBe('rejected')
+  })
+
+  test('is off unless the Worker names a generator', () => {
+    expect(capturePolicy({}).pictures.generator).toBe('off')
+    expect(capturePolicy({ CLEAN_PICTURES: 'muse' }).pictures.generator).toBe('muse')
+    expect(capturePolicy({ CLEAN_PICTURES: 'dall-e' }).pictures.generator).toBe('off')
   })
 })

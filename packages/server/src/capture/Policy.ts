@@ -19,6 +19,15 @@ export interface CapturePolicy {
   readonly dailyAllowance: number
   /** A photo's price, and a video's for each started half-minute of it (about 10 a minute). */
   readonly credits: { readonly photo: number; readonly videoHalfMinute: number }
+  /** Clean pictures drawn from kept cut-outs (owner, 30 October): who draws them (`off` keeps every real photo), and
+   * the decision model's bars. A drawing at least `show` like the cut-out is shown; below `reject` it is dropped;
+   * between, the person chooses. A cut-out at least `face` likely to show a face is never sent on. */
+  readonly pictures: {
+    readonly generator: 'muse' | 'off'
+    readonly show: number
+    readonly reject: number
+    readonly face: number
+  }
 }
 
 export class CaptureConfig extends Context.Service<CaptureConfig, CapturePolicy>()('@styld/server/CaptureConfig') {}
@@ -41,4 +50,10 @@ export const capturePolicy = (env: Readonly<Record<string, unknown>>): CapturePo
   samePieceConfidence: number(env['CAMERA_SAME_PIECE_CONFIDENCE'], 0.6),
   dailyAllowance: number(env['DAILY_ALLOWANCE'], 100),
   credits: { photo: 1, videoHalfMinute: 5 },
+  pictures: {
+    generator: choice(env['CLEAN_PICTURES'], ['muse', 'off'], 'off'),
+    show: number(env['CLEAN_PICTURE_SHOW'], 0.8),
+    reject: number(env['CLEAN_PICTURE_REJECT'], 0.5),
+    face: 0.3,
+  },
 })

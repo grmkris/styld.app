@@ -47,6 +47,23 @@ export interface HeldCheck {
   readonly holding: number
 }
 
+/** How good a kept cut-out is as the piece's picture: already clean, whole but held or crumpled, missing parts, or
+ * too little of the garment to draw from. */
+export type Verdict = 'ready' | 'improve' | 'repair' | 'fragment'
+
+/** The decision model's judgement of a kept cut-out, and how likely a face shows in it (0–1). */
+export interface Judgement {
+  readonly verdict: Verdict
+  readonly confidence: number
+  readonly face: number
+}
+
+/** How a drawn picture compares with the real cut-out (0–1): the same garment, and faithful colour, print and logos. */
+export interface Comparison {
+  readonly same: number
+  readonly faithful: number
+}
+
 /** Cloudflare Clef-flash: typed questions about a picture, each answered with probabilities. */
 export class GarmentVision extends Context.Service<
   GarmentVision,
@@ -58,6 +75,8 @@ export class GarmentVision extends Context.Service<
       previous: Option.Option<Picture>,
       layout: 'held' | 'flat',
     ) => Effect.Effect<HeldCheck, ProviderFailed>
+    readonly judge: (cutout: Picture) => Effect.Effect<Judgement, ProviderFailed>
+    readonly compare: (drawn: Picture, real: Picture) => Effect.Effect<Comparison, ProviderFailed>
   }
 >()('@styld/server/GarmentVision') {}
 
