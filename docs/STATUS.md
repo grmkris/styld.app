@@ -1,6 +1,39 @@
 # Delivery status
 
-Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `2f0467a`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `8bc632d`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+
+## Cut-out spikes — 2026-10-30
+
+Owner-approved spikes, built in this repository so the winners are already in place.
+
+- **Refined edges** (`53e7768`, live): `packages/server/src/capture/Matte.ts`.
+  - **How it works.**
+    - A SAM mask is spread smoothly onto the still or photo.
+    - A guided filter snaps its edge to the photo's own edges, within 3 px of SAM's edge.
+    - Specks are dropped and pinholes filled; hand-sized holes are kept.
+    - The soft edge takes the garment's colour, not the background's.
+    - Rows are processed in strips, to keep memory low.
+  - **Evidence.**
+    - Against the drawn tee's true outline, edge error falls from 0.078–0.120 (stepped) to 0.008–0.018.
+    - `tools/cutout-lab.ts` cuts saved real masks both ways. On 52 garments: 46 ms median, 0.5 s at most.
+    - At 3× zoom the staircase edges and white notches are gone.
+  - `CUTOUT_EDGES=stepped` keeps the old way for comparison.
+- **1024 px analysis clips** (`8bc632d`, live):
+  - Clips match SAM's mask cap, at the same price per frame, at 1.5 Mbit/s (about 6 MB per part).
+  - Preview: one minute of the try-on video went up as two 576×1024 parts, processed in 32 s and 47 s. In the
+    owner's tray, the trench coat's contour follows the fabric where the 720 px version was notched.
+  - The first attempt from the dev box stalled before sending anything. A second run worked; the cause is unknown.
+- **Product photos** (`tools/product-photo-lab.ts`, not in the app):
+  - FLUX.2 [klein] 4B redrew six real cut-outs in 3–6 s at about $0.0012 each, but changed the garments:
+    - a print was lost;
+    - a pattern and a badge were invented;
+    - jeans came back as different trousers.
+  - Only a trench coat came back close. The model takes references only under 512 px.
+  - FLUX 3 Image Klein (about $0.009) refused inline references and needs an https link.
+  - Not tried yet: GPT Image 2.5 (can return a transparent background) and Nano Banana 2.1.
+  - A product photo would only ever sit beside the real cut-out.
+- Results are shown privately on the tailnet (`http://netcup.tail5acf67.ts.net:4334/cutout-lab.html`, served from
+  the research folder; not in Git).
 
 ## Cut-out quality — 2026-10-30
 
