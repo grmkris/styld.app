@@ -1,6 +1,47 @@
 # Delivery status
 
-Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `4f6815f`, with clean pictures and the boards' pins). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `281ba6c`, with clean pictures, turns on a hanger, and the boards' pins, profiles and checks). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+
+## The turn on a hanger, milestone B — 2026-10-30
+
+A piece's clean picture turns on a wooden hanger, made on request for 5 credits. The owner chose to use the existing
+Vercel AI Gateway key until Styld has its own; `STYLD_AI_GATEWAY_API_KEY` takes over once set.
+
+- **Providers** (`9d6eafc`): Veo 3.1 Lite through the gateway's video protocol, called directly, without the AI SDK.
+  Muse draws a strict side view. The prompts come from the MIT interactive-garment starter.
+- **Anchors** (`a576368`): the clean picture is top-centred on 720 × 1280, under the keyed Muse hanger from the
+  hanger-rail proof. The side view is fitted to its length and apex (`@styld/imaging`).
+- **The job** (`a20914d`, `66d4749`):
+  - It claims the turn, lays both frames on the key colour and draws the side view once (kept for retries).
+  - It starts Veo with JPEG frames and keeps the job id before polling. Delayed messages poll every 15 s, for up to
+    15 minutes, and the MP4 is stored.
+  - Refusals, lost answers and timeouts refund the credits; a start whose answer was lost is never resent.
+- **Frames on the phone** (`4fb99f2`, `4801e3f`): Workers cannot decode video, so the piece page cuts the turn into 30
+  frames with Mediabunny.
+  - It finds where the turn stops (97% of the final width), keys each frame without the single-picture checks, cuts
+    the hook and packs a sheet about the hanger's apex.
+  - Clef checks 5 frames against the clean picture: colour ≥ 0.8 on every one, and print ≥ 0.6 only for a garment
+    that shows one (`281ba6c`).
+  - A kept turn consumes its credits; a dropped one refunds them.
+- **Page** (`7c4ba4a`, `662f342`): "Make it turn" with its price, progress notes, and a picture that turns to its side
+  and back on each tap. The starter's reversible playhead (MIT) drives it; reduced motion jumps instead.
+- **Evidence:**
+  - Unit: the gateway adapter, the side view, the anchors, the sheet, the gate.
+  - Native (`1052813`, 23 pass): the request, the queue, a stand-in gateway answering with a recorded Veo take,
+    Chromium cutting the frames, play on tap, and credits consumed once.
+- **Preview, release `281ba6c`**, with real providers on the test account's navy trousers from the rail photo:
+  - Veo answered in about 2 minutes; the phone-size Chromium cut the frames in 10 s.
+  - Kept: colour 0.947, print 0.028 (plain), sameness 0.695. It plays on tap.
+  - 5 credits consumed once.
+  - Two earlier tries found two faults:
+    - the gateway answered 413 to PNG frames, hence JPEG (`66d4749`); the refusal's status is now logged (`efbf0dd`);
+    - the print floor dropped the plain trousers, hence the `printed` question.
+  - Spend: 3 Veo takes ($0.36, one of them a probe from the box) and 2 Muse calls ($0.02), on the shared key.
+- **Open:**
+  - The player's canvas is blank until its code and the 2 MB sheet load; show the still meanwhile.
+  - Styld's own gateway key.
+  - The owner's phone test of a turn.
+  - A gateway that refuses a start shows only its status, not its message.
 
 ## Clean pictures, milestone A — 2026-10-30
 
