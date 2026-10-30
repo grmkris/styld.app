@@ -312,26 +312,36 @@ const pieceDetails = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
   ])
 
 /** The piece's picture: its turn, played on tap, once the clean picture it shows has one ready; else the image. */
-const shownPicture = (piece: Piece, locale: Locale, h: HtmlBuilder<Message>): Html => {
+const shownPicture = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const turn = piece.turn
-  if (turn?.state !== 'ready' || turn.layout === undefined || piece.picture?.shows !== 'clean')
-    return h.img([h.Src(fullPath(piece)), h.Alt(pieceLabel(piece, locale)), ...styled(h, styles.photo())])
-  return h.button(
-    [
-      h.Type('button'),
-      h.AriaLabel(format(locale, 'wardrobe.turn.play', {})),
-      h.AriaPressed('false'),
-      ...styled(h, styles.turnButton()),
-    ],
-    [
-      h.canvas([
-        h.Role('img'),
-        h.AriaLabel(pieceLabel(piece, locale)),
-        h.OnMount(ShowTurn({ pieceId: piece.id, version: turn.version, layout: turn.layout })),
-        ...styled(h, styles.photo()),
-      ]),
-    ],
-  )
+  const still = (underPlayer: boolean) =>
+    h.img([
+      h.Src(fullPath(piece)),
+      h.Alt(pieceLabel(piece, locale)),
+      ...(underPlayer ? [h.AriaHidden(true)] : []),
+      ...styled(h, styles.photo()),
+    ])
+  if (turn?.state !== 'ready' || turn.layout === undefined || piece.picture?.shows !== 'clean') return still(false)
+  // The still stays under the player until its sheet has loaded and drawn its first frame.
+  return h.div(styled(h, styles.turnStack()), [
+    model.turnShown ? h.empty : still(true),
+    h.button(
+      [
+        h.Type('button'),
+        h.AriaLabel(format(locale, 'wardrobe.turn.play', {})),
+        h.AriaPressed('false'),
+        ...styled(h, styles.turnButton()),
+      ],
+      [
+        h.canvas([
+          h.Role('img'),
+          h.AriaLabel(pieceLabel(piece, locale)),
+          h.OnMount(ShowTurn({ pieceId: piece.id, version: turn.version, layout: turn.layout })),
+          ...styled(h, styles.photo()),
+        ]),
+      ],
+    ),
+  ])
 }
 
 /** Where the piece's turn stands, and the way to ask for one when its clean picture shows. */
@@ -372,7 +382,7 @@ const turnLine = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Mes
 }
 
 const loadedView = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
-  shownPicture(piece, locale, h),
+  shownPicture(piece, model, locale, h),
   Option.match(model.draft, {
     onNone: () => pieceDetails(piece, model, locale, h),
     onSome: (draft) =>

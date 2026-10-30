@@ -1,11 +1,18 @@
 import { catalogVersion } from '@styld/i18n'
 import { Option } from 'effect'
-import { Command, click, expect, given, role, scene, submit, text, type } from 'foldkit/scene'
+import { Command, Mount, click, expect, given, role, scene, submit, text, type } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { Message, Session, init, update } from '../src/App.ts'
 import { Navigate } from '../src/Navigation.ts'
-import { ChoosePicture, DeletePiece, Load, Message as PieceMessage, RedrawPicture } from '../src/page/Piece.ts'
+import {
+  ChoosePicture,
+  DeletePiece,
+  Load,
+  Message as PieceMessage,
+  RedrawPicture,
+  ShowTurn,
+} from '../src/page/Piece.ts'
 import { view } from '../src/View.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
@@ -131,6 +138,23 @@ describe('the piece page', () => {
       ),
       expect(role('alert')).toHaveText('The turn could not be prepared on this device. Open the piece again to retry.'),
       expect(role('button', { name: 'Make it turn' })).not.toExist(),
+    )
+  })
+
+  test('a ready turn shows the still until its player has drawn, then the player alone', () => {
+    const layout = { frames: 30, columns: 6, width: 288, height: 384, pivot: [0.5, 0.027] } as const
+    const turned = {
+      ...jeans,
+      picture: { state: 'ready', shows: 'clean', version: 1 },
+      turn: { state: 'ready', version: 9, layout },
+    } as const
+    scene(
+      { update, view },
+      given(piecePage(Load.Loaded({ piece: turned }))),
+      expect(role('button', { name: 'Turn it' })).toExist(),
+      expect(text('Tap the picture to turn it.')).toExist(),
+      Mount.expectExact(ShowTurn({ pieceId: turned.id, version: 9, layout })),
+      Mount.resolve(ShowTurn, PieceMessage.ShowedTurn()),
     )
   })
 

@@ -80,3 +80,5 @@ export const turnButton = style({
   cursor: 'pointer',
   touchAction: 'manipulation',
 })
+/** The still and the turn's player in one place, the player on top: until the player draws, the still shows. */
+export const turnStack = style({ display: 'grid', '& > *': { gridArea: '1 / 1' } })

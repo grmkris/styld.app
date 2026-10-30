@@ -73,6 +73,8 @@ export const Model = Schema.Struct({
   /** The turn this page is asking for, or building the frames of. */
   turnWork: Schema.Literals(['idle', 'asking', 'building']),
   turnProblem: Schema.Option(TurnProblem),
+  /** Whether the turn's player has drawn its first frame; until then the still shows under it. */
+  turnShown: Schema.Boolean,
   saveToBoard: SaveToBoard.Model,
 })
 export type Model = typeof Model.Type
@@ -85,6 +87,7 @@ export const init = (pieceId: string): Model => ({
   redraw: Option.none(),
   choosing: 'idle',
   turnWork: 'idle',
+  turnShown: false,
   turnProblem: Option.none(),
   saveToBoard: SaveToBoard.init({ kind: 'piece', id: pieceId }),
 })
@@ -396,7 +399,7 @@ const turnUpdates = (model: Model) => ({
   FailedBuildTurnSheet: (): UpdateReturn => ({
     model: modifyFields(model, { turnWork: () => 'idle' as const, turnProblem: () => Option.some('build' as const) }),
   }),
-  ShowedTurn: (): UpdateReturn => ({ model }),
+  ShowedTurn: (): UpdateReturn => ({ model: modifyFields(model, { turnShown: () => true }) }),
 })
 
 const editRedraw = (model: Model, change: (redraw: Redraw) => Redraw): UpdateReturn => ({
