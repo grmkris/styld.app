@@ -30,6 +30,76 @@ Choices made on common sense:
   - `docs/ROADMAP.md` moves boards up and replaces the canvas-library line.
   - `docs/DELIVERY.md` gains a design row, and studio is now in progress.
 - **Contract** (`d96f8b8`): boards, worn days and a website `createLook` (`packages/protocol/src/{Board,Worn}.ts`).
+- **Server** (`75ba8ad`…`0f6669e`, built in a parallel worktree and cherry-picked):
+  - One migration, `20261030082446_gallery_boards`. It only creates `boards`, `board_images`, `board_items`,
+    `worn_pieces` and their indexes; nothing existing is altered.
+  - **Board saves** are whole and versioned. A stale or racing save answers `BoardVersionConflict`, checked inside
+    the D1 batch itself.
+  - **Items:** a foreign piece, another board's picture or a repeated id is refused (`BoardItemRefused`).
+  - **Pictures:** a picture claims a received photo upload atomically. It is served owner-only at
+    `/cdn/boards/images/:id/:size` through the shared Images transform (`wardrobe/Delivery.ts`).
+  - **Worn days** replace a day's pieces, and a range reads at most 62 days.
+  - **Looks:** `createLook` is open to the website.
+  - **Account deletion** still removes everything: the tables cascade, and the pictures' files sit under the
+    account's prefix.
+  - `GalleryAcceptance.ts` is the native API evidence.
+- **S1, budget** (`c732020`):
+  - The first load goes from 256 to 300 KiB gzip and all assets from 512 to 700 KiB.
+  - Measured after the night's work: first load 288,379 bytes, all assets 546,804, SSR 1,415,393 source bytes.
+- **S1–S5, the website** (`06cc30b`):
+  - **Navigation:** a floating glass pill on the phone (Home, Wardrobe, Ask in the middle, Boards, you) and a left
+    rail on the desktop. The language picker is in the footer.
+  - **Home:**
+    - the day in Anton, which is self-hosted and fetched only when drawn;
+    - today's outfit as cut-outs on paper, with Spin (plain rules, at most one loud colour, repeatable per day and
+      Spin) and Wear this (worn days, kept across reloads);
+    - "Pick up where you left off": pieces waiting in the tray, and the last board.
+  - **Boards:** the list shows each table as its preview. The editor is Foldkit-native:
+    - drag, a two-finger pinch, the corner handle, keys, Escape and undo;
+    - text labels in a plain or headline style;
+    - pictures by choosing, dropping anywhere on the page, ⌘V or a Paste button, shrunk to 2048 px and re-encoded
+      as WebP in the browser, which drops their metadata;
+    - flip, duplicate, layer order, and take off with an exit and "Undo";
+    - the paper's colour;
+    - saving behind the editing, with a newer save elsewhere or a deleted piece reloading the board;
+    - save as a look.
+  - **Ask:** search your wardrobe by name, category and colour in your language; the stylist's hand-off to the
+    assistants; the + sheet into capture and boards.
+  - **Wardrobe:** Pieces and Looks tabs.
+  - **Copy:** English and Slovenian throughout. **The Slovenian awaits the owner's review**, in the `board`,
+    `boards`, `ask` and `today` namespaces, plus `nav.ask`, `nav.boards` and `wardrobe.tabPieces`. Boards are
+    "Zbirke", matching v1.
+- **Tests:**
+  - Story tests cover the gestures as Message sequences, saving, take off and Undo, the outfit rules, the
+    headline in both languages, Wear this, board creation and search.
+  - **Browser acceptance** (`2beccc8`, `GalleryBrowserAcceptance.ts`): workerd and Chromium with four real
+    cut-outs run Home (Spin, Wear this, reload), a board by hand (drag, pinch, keyboard, label, upload, take off
+    and Undo, reload with all five things kept, save as a look and open it), Ask, the Wardrobe's tabs, and the
+    same pages in Slovenian on a desktop. It finished with no page error and no CSP violation.
+  - `heavy --wait bun run check` is green on `2beccc8`: 248 unit tests, 21 native, 0 clones.
+
+**Deviations, with reasons:**
+
+- **Piece actions:** a selection toolbar instead of a Foldkit UI Menu. One tap beats two on a phone, and the
+  buttons are as accessible.
+- **"Removed. Undo":** a small status region rather than Foldkit UI's Toast; one toast and one timer.
+- **Exits:** a CSS exit with a timed removal rather than the Animation Submodel; the item plays out and leaves.
+- **The board's tray** sits under the table on a phone, so a tapped piece lands in view. On a desktop it takes
+  the side column.
+- **Page transitions are off.** Chromium rejected aborted cross-document transitions on pages that navigate by
+  script (creating a board, signing in). The page reports this before its module script runs, and the CSP
+  allows no inline script, so it can't be caught. The fix is an early script served from `public/`.
+- **Text labels** land across the middle and their frame fits the words; other items land in an outfit's
+  places, so tapped pieces never pile up.
+
+**Left open:**
+
+- A picture taken off a board stays in R2 until its board is deleted.
+- `saveBoardItems` has no operation id: a save whose answer is lost and then retried answers
+  `BoardVersionConflict`, and the editor reloads the board.
+- Boards have no MCP tools and no sharing.
+- No weather on the table.
+- Real devices are unchecked: iPhone Safari's pinch and paste were only exercised in Chromium.
 
 ## Guided camera, front and back — 2026-10-30
 
