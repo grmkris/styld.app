@@ -1,7 +1,8 @@
+import { raised } from '@styld/protocol'
 import { Match, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { committed, findItem, type UpdateReturn, withItem } from './Edits.ts'
-import { dragged, nudged, type Placement, type Pointer, pinched, raised, turned } from './Geometry.ts'
+import { dragged, nudged, type Placement, type Pointer, pinched, turned } from './Geometry.ts'
 import type { KeyStep } from './Message.ts'
 import { Gesture, type Model } from './Model.ts'
 

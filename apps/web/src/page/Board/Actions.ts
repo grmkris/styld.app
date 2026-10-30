@@ -7,14 +7,18 @@ import {
   type Paper,
   PieceId,
   PieceItem,
+  landing,
+  piecesOnTable,
+  settle,
+  stepped,
   TextItem,
   type TextStyle,
+  topZ,
 } from '@styld/protocol'
 import { Array, Option, Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { AddImage, SaveLook, UpdatePaper, WaitForExit, WaitForToast } from './Commands.ts'
 import { committed, findItem, refillIds, takeId, type UpdateReturn, withItem } from './Edits.ts'
-import { landing, piecesOnTable, settle, stepped, topZ } from './Geometry.ts'
 import { BoardState, LookSave, type Model, Toast, Upload } from './Model.ts'
 
 /** The most pictures one paste or drop sends at once. */

@@ -1,4 +1,5 @@
 import { FileDrop } from '@foldkit/ui'
+import { tidied } from '@styld/protocol'
 import { Option } from 'effect'
 import { Command, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
@@ -22,7 +23,6 @@ import {
 import * as WardrobePage from '../Wardrobe.ts'
 import { LoadBoard, MakeIds, ReadClipboard, unitsPerPixel } from './Commands.ts'
 import { committed, redone, replaced, saved, saveNow, type Services, type UpdateReturn, undone } from './Edits.ts'
-import { tidied } from './Geometry.ts'
 import {
   keyed,
   movedPointer,
