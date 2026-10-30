@@ -25,6 +25,8 @@ export const { style, vars } = defineConfig({
       signal: '#2f4f7c',
       // Text and icons on an ink fill.
       onInk: '#f7f4ee',
+      // Gallery's scrim: round controls and chips over a photo, such as the camera's picture.
+      scrim: 'oklch(0.2 0.02 50 / 0.4)',
       focus: '#2f5bd3',
       error: 'oklch(48% 0.16 25)',
       invalid: 'oklch(58% 0.16 25)',

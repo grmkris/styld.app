@@ -32,6 +32,10 @@ const settlesWithoutMoving = 3
 /** What a frame did: settled a scene that moved, settled the same scene again, or nothing. */
 export type Settle = 'settled' | 'again' | undefined
 
+/** How close a scene that moved is to settling, in quarters: 0 while nothing moved, 4 as it settles. */
+export const settlingOf = (watch: Watch): number =>
+  watch.moved ? Math.min(4, Math.round(4 * Math.max(watch.still / settleFrames, watch.calm / calmFrames))) : 0
+
 /** The mean absolute difference between two grey frames of the same size. */
 const frameChange = (previous: Uint8Array, next: Uint8Array) => {
   let total = 0

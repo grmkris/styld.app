@@ -118,6 +118,12 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
         '/test/identity/seed-capture-browser',
         doneWhenFree(seedIdentity(database, 'native-capture-browser')),
       ),
+      // The account the browser's camera journey signs in as.
+      HttpRouter.add(
+        'POST',
+        '/test/identity/seed-camera-browser',
+        doneWhenFree(seedIdentity(database, 'native-camera-browser')),
+      ),
       // The account the browser's long-video journey signs in as.
       HttpRouter.add(
         'POST',

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'vitest'
-import { startWatch, type Watch, watchFrame } from '../src/capture/Stillness.ts'
+import { settlingOf, startWatch, type Watch, watchFrame } from '../src/capture/Stillness.ts'
 
 const frame = (value: number) => new Uint8Array(64).fill(value)
 
@@ -25,6 +25,16 @@ describe('watching for a garment held still', () => {
     const moving = [frame(160), frame(90), frame(170)]
     const held = Array.from({ length: 8 }, () => frame(170))
     expect(settles([...empty, ...moving, ...held])).toEqual([7])
+  })
+
+  test("the shutter's ring fills in quarters as a moved scene calms, and empties once it settles", () => {
+    let watch: Watch = startWatch
+    const levels = [frame(100), frame(170), frame(170), frame(170), frame(170), frame(170)].map((grey) => {
+      watch = watchFrame(watch, grey).watch
+      return settlingOf(watch)
+    })
+    // Nothing moved yet, then moving, then three still frames settle it.
+    expect(levels).toEqual([0, 0, 1, 3, 0, 0])
   })
 
   test('a garment held by hand that never stops swaying still settles, after about a second', () => {

@@ -1,11 +1,13 @@
 import { Clock, Effect, Queue, Schedule, Stream } from 'effect'
-import { startWatch, watchFrame } from './Stillness.ts'
+import { settlingOf, startWatch, watchFrame } from './Stillness.ts'
 
-/** What the camera reports: it started, it could not, or a photo was taken (by holding still, by staying
- * still a while longer, or by a tap on the picture) with a small copy for the garment check. */
+/** What the camera reports: it started, it could not, how close the picture is to settling, or a photo
+ * was taken (by holding still, by staying still a while longer, or by a tap on the shutter) with a small
+ * copy for the garment check. */
 export type CameraEvent =
   | { readonly kind: 'started' }
   | { readonly kind: 'failed'; readonly reason: 'denied' | 'unavailable' }
+  | { readonly kind: 'settling'; readonly level: number }
   | { readonly kind: 'settled' | 'again' | 'tapped'; readonly check: File; readonly still: File }
 
 /** Grey frames for the stillness watch are this wide. */
@@ -63,8 +65,9 @@ const openCamera = (facing: 'user' | 'environment') =>
     (stream) => Effect.sync(() => stream.getTracks().forEach((track) => track.stop())),
   )
 
-/** Run the camera inside `host` (which holds a `<video>`) until the page lets it go: report each time
- * the scene settles after moving or stays settled a while longer, and each tap on the picture. */
+/** Run the camera inside `host` (which holds a `<video>`) until the page lets it go: report how close the
+ * scene is to settling, each time it settles after moving or stays settled a while longer, and each tap
+ * on an element marked `data-shutter` (the picture, and the shutter button, which a key presses too). */
 export const watchCamera = (host: Element, facing: 'user' | 'environment') =>
   Stream.callback<CameraEvent>((queue) =>
     Effect.gen(function* () {
@@ -76,25 +79,14 @@ export const watchCamera = (host: Element, facing: 'user' | 'environment') =>
       Queue.offerUnsafe(queue, { kind: 'started' })
       // A tap is answered on the next tick, so every photo is taken inside this stream's scope.
       let tapped = false
-      const tap = () => {
-        tapped = true
-      }
-      const key = (event: Event) => {
-        if (event instanceof KeyboardEvent && (event.key === 'Enter' || event.key === ' ')) {
-          // Space would scroll the page as well as take the photo.
-          event.preventDefault()
-          tapped = true
-        }
+      const tap = (event: Event) => {
+        if (event.target instanceof Element && event.target.closest('[data-shutter]') !== null) tapped = true
       }
       yield* Effect.acquireRelease(
-        Effect.sync(() => {
-          host.addEventListener('click', tap)
-          host.addEventListener('keydown', key)
-        }),
+        Effect.sync(() => host.addEventListener('click', tap)),
         () =>
           Effect.sync(() => {
             host.removeEventListener('click', tap)
-            host.removeEventListener('keydown', key)
             video.srcObject = null
           }),
       )
@@ -103,9 +95,14 @@ export const watchCamera = (host: Element, facing: 'user' | 'environment') =>
         Math.max(1, Math.round((watchWidth * video.videoHeight) / Math.max(1, video.videoWidth))),
       )
       let watch = startWatch
+      let level = 0
       const tick = Effect.gen(function* () {
         const next = watchFrame(watch, grey(video, canvas))
         watch = next.watch
+        // Only a change is reported: a few a second while the picture calms down.
+        const settling = settlingOf(next.watch)
+        if (settling !== level) Queue.offerUnsafe(queue, { kind: 'settling', level: settling })
+        level = settling
         const kind = tapped ? 'tapped' : next.settle
         tapped = false
         if (kind !== undefined) Queue.offerUnsafe(queue, yield* shot(video, kind))

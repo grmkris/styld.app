@@ -81,6 +81,69 @@ export const verifyCaptureJourney = async (browser: Browser, origin: string, fix
   }
 }
 
+const PairedTray = Schema.Struct({
+  captures: Schema.Array(Schema.Struct({ detections: Schema.Array(Schema.Struct({ hasBack: Schema.Boolean })) })),
+})
+
+/** The held-up camera on Chromium's stand-in camera, whose picture never settles, so the shutter takes each
+ * photo. It opens over the whole page with the shutter focused and the screen kept on, takes a piece's
+ * front and then asks for its back, and closes on Escape. The two photos become one piece with its back in
+ * the review tray. */
+export const verifyCameraJourney = async (browser: Browser, origin: string, fixtures: string): Promise<void> => {
+  expect((await fetch(`${fixtures}/test/identity/seed-camera-browser`, { method: 'POST' })).status).toBe(204)
+  const context = await browser.newContext({
+    locale: 'en-US',
+    viewport: { width: 390, height: 844 },
+    permissions: ['camera'],
+  })
+  await context.addCookies([{ name: 'styld_diagnostics', value: 'denied', url: origin }])
+  await context.addInitScript({ content: countedWakeLock })
+  try {
+    const signIn = await context.request.post(`${origin}/api/auth/signIn`, {
+      headers: { origin, 'x-effect-auth-csrf': '1' },
+      data: { payload: { email: 'native-camera-browser@example.invalid', password: 'native-identity-password-52' } },
+    })
+    expect(signIn.status()).toBe(200)
+    const page = await context.newPage()
+    const problems = recordProblems(page)
+    await page.goto(`${origin}/wardrobe/add`, { waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: /Hold pieces up/ }).click()
+    const camera = page.getByRole('dialog', { name: 'Camera' })
+    await camera.getByText('Hold one piece up, then keep still').waitFor({ state: 'visible', timeout: 15000 })
+    // Full screen, with the shutter focused: Enter takes the front.
+    expect(await camera.boundingBox()).toEqual({ x: 0, y: 0, width: 390, height: 844 })
+    expect(await page.evaluate("document.activeElement?.getAttribute('aria-label')")).toBe('Take a photo')
+    await page.keyboard.press('Enter')
+    await camera.getByText('Now show its back, or tap the picture').waitFor({ state: 'visible' })
+    await camera.getByText('1 taken').waitFor({ state: 'visible' })
+    expect(await camera.locator('[aria-current="step"]').textContent()).toBe('Back')
+    await camera.getByRole('button', { name: 'Skip the back' }).waitFor({ state: 'visible' })
+    await camera.getByRole('button', { name: 'Take a photo' }).click()
+    await camera.getByText('Got it. Show the next piece').waitFor({ state: 'visible' })
+    expect(await camera.locator('[aria-current="step"]').textContent()).toBe('Front')
+    expect(await page.evaluate('globalThis.styldWakeLocks')).toEqual({ requested: 1, released: 0 })
+
+    // Escape closes the camera; with both photos sent the review tray takes over, a new page that holds no
+    // lock on the screen.
+    await page.keyboard.press('Escape')
+    await page.waitForURL(`${origin}/wardrobe/review`, { timeout: 30000 })
+    let paired = false
+    for (let attempt = 0; attempt < 80 && !paired; attempt += 1) {
+      const tray = Schema.decodeUnknownSync(PairedTray)(
+        await (await context.request.get(`${origin}/api/captures/tray`)).json(),
+      )
+      paired = tray.captures.length === 1 && tray.captures[0]?.detections[0]?.hasBack === true
+      if (!paired) await Bun.sleep(250)
+    }
+    expect(paired).toBe(true)
+    await page.reload({ waitUntil: 'networkidle' })
+    await page.getByRole('heading', { name: '1 piece found' }).waitFor({ state: 'visible', timeout: 30000 })
+    expect(problems).toEqual([])
+  } finally {
+    await context.close()
+  }
+}
+
 const Created = Schema.Struct({
   videoUploadId: Schema.String,
   width: Schema.Number,

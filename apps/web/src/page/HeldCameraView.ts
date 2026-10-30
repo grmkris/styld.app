@@ -4,10 +4,10 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import { Option } from 'effect'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
-import { primaryAction, secondaryAction } from '../Actions.styles.ts'
-import { loader } from '../Icon.ts'
+import { secondaryAction } from '../Actions.styles.ts'
+import { checkIcon, loader, retryIcon } from '../Icon.ts'
 import { styled } from '../Styled.ts'
-import { Camera, type Hint, Message, type Model, WatchCamera } from './HeldCamera.ts'
+import { Camera, type Hint, HoldScreen, Message, type Model, screenId, ShowPhoto, WatchCamera } from './HeldCamera.ts'
 import * as styles from './HeldCameraView.styles.ts'
 
 const hintKey: { readonly [Key in Hint]: MessageKey } = {
@@ -29,34 +29,87 @@ const statusText = (model: Model, locale: Locale) =>
 
 const hintOf = (model: Model) => (Camera.guards.Watching(model.camera) ? model.camera.hint : 'starting')
 
-/** The live picture, which is the shutter too: a tap or Enter takes a photo. Its count and what the
- * camera is doing sit beside it, outside the button, so assistive technology reads them. Flipping the
- * camera mounts a new one under a new key. */
-const picture = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.div(styled(h, styles.frame()), [
-    h.keyed('div')(
-      model.facing,
-      [
-        h.Role('button'),
-        h.Tabindex(0),
-        h.AriaLabel(format(locale, 'capture.camera.shutter', {})),
-        h.OnMount(WatchCamera({ facing: model.facing })),
-        ...styled(h, styles.picture()),
-      ],
-      [
-        h.video([
-          h.Attribute('playsinline', ''),
-          h.Attribute('muted', ''),
-          h.Attribute('autoplay', ''),
-          h.DataAttribute('facing', model.facing),
-          h.AriaHidden(true),
-          ...styled(h, styles.video()),
-        ]),
-      ],
+/** How far the ring round the shutter has filled, in quarters: as the picture calms down, and all the
+ * way while the check looks. */
+const settleOf = (model: Model) => (hintOf(model) === 'checking' ? 4 : model.settle)
+
+/** The front and back steps, the current one marked. */
+const steps = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.p(
+    styled(h, styles.steps()),
+    (['front', 'back'] as const).map((step) =>
+      h.span(
+        [...(model.step === step ? [h.AriaCurrent('step')] : []), ...styled(h, styles.step())],
+        [format(locale, step === 'front' ? 'capture.camera.front' : 'capture.camera.back', {})],
+      ),
     ),
+  )
+
+/** The round shutter, whose ring fills as the picture settles. The camera takes the photo on a press, as
+ * on a tap on the picture. */
+const shutter = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.button(
+    [
+      h.Type('button'),
+      h.DataAttribute('shutter', ''),
+      h.AriaLabel(format(locale, 'capture.camera.shutter', {})),
+      ...styled(h, styles.shutter()),
+    ],
+    [
+      h.svg(
+        [h.ViewBox('0 0 80 80'), h.AriaHidden(true), ...styled(h, styles.ring())],
+        [
+          h.circle([...ringCircle(h), ...styled(h, styles.ringTrack())]),
+          h.circle([
+            ...ringCircle(h),
+            h.DataAttribute('settle', String(settleOf(model))),
+            ...styled(h, styles.ringFill()),
+          ]),
+        ],
+      ),
+      h.span(styled(h, styles.shutterDisc())),
+    ],
+  )
+
+const ringCircle = (h: HtmlBuilder<Message>) => [
+  h.Attribute('cx', '40'),
+  h.Attribute('cy', '40'),
+  h.Attribute('r', '37'),
+  h.Attribute('pathLength', '100'),
+]
+
+/** Done, shown as the stack of photos taken: each new photo flies into it from the picture. */
+const stack = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.button(
+    [h.Type('button'), h.OnClick(Message.ClickedDone()), ...styled(h, cx(styles.press(), styles.stack()))],
+    [
+      h.span(styled(h, styles.stackFrame()), [
+        Option.match(model.lastCheck, {
+          onNone: () => checkIcon(h),
+          onSome: (photo) =>
+            h.keyed('img')(`shot-${model.shots}`, [
+              h.Alt(''),
+              h.OnMount(ShowPhoto({ photo })),
+              ...styled(h, styles.stackPhoto()),
+            ]),
+        }),
+      ]),
+      h.span([], [format(locale, 'capture.done', {})]),
+    ],
+  )
+
+/** The steps and the count, over the top of the picture. */
+const top = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.div(styled(h, cx(styles.bar(), styles.top())), [
+    steps(model, locale, h),
     model.pieces === 0
       ? h.empty
       : h.span(styled(h, styles.count()), [format(locale, 'capture.camera.count', { count: model.pieces })]),
+  ])
+
+/** What the camera is doing, the way past the back, and the controls, over the bottom of the picture. */
+const bottom = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.div(styled(h, cx(styles.bar(), styles.bottom())), [
     h.p(
       [h.Role('status'), h.AriaLive('polite'), h.DataAttribute('hint', hintOf(model)), ...styled(h, styles.status())],
       [
@@ -64,45 +117,69 @@ const picture = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
         statusText(model, locale),
       ],
     ),
+    model.step === 'back'
+      ? h.button(
+          [h.Type('button'), h.OnClick(Message.ClickedSkipBack()), ...styled(h, cx(styles.press(), styles.skip()))],
+          [format(locale, 'capture.camera.skipBack', {})],
+        )
+      : h.empty,
+    h.div(styled(h, styles.controls()), [
+      stack(model, locale, h),
+      shutter(model, locale, h),
+      h.button(
+        [
+          h.Type('button'),
+          h.AriaLabel(format(locale, 'capture.camera.flip', {})),
+          h.OnClick(Message.ClickedFlip()),
+          ...styled(h, cx(styles.press(), styles.round())),
+        ],
+        [retryIcon(h)],
+      ),
+    ]),
   ])
 
-const panel = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.section(
-    [h.AriaLabel(format(locale, 'capture.camera.title', {})), ...styled(h, styles.panel())],
+/** The camera's own picture, edge to edge, with the frame to hold a piece in and the bars over it. A tap
+ * on the picture takes a photo. Flipping the camera mounts a new one under a new key. */
+const picture = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.keyed('div')(
+    model.facing,
+    [h.OnMount(WatchCamera({ facing: model.facing })), ...styled(h, styles.stage())],
     [
-      picture(model, locale, h),
-      h.div(styled(h, styles.controls()), [
-        actionButton(
-          {
-            label: format(locale, 'capture.camera.flip', {}),
-            style: secondaryAction(),
-            onClick: Message.ClickedFlip(),
-          },
-          h,
-        ),
-        model.step === 'back'
-          ? actionButton(
-              {
-                label: format(locale, 'capture.camera.skipBack', {}),
-                style: secondaryAction(),
-                onClick: Message.ClickedSkipBack(),
-              },
-              h,
-            )
-          : h.empty,
-        actionButton(
-          {
-            label: format(locale, 'capture.done', {}),
-            style: cx(primaryAction(), styles.grow()),
-            onClick: Message.ClickedDone(),
-          },
-          h,
-        ),
+      h.video([
+        h.Attribute('playsinline', ''),
+        h.Attribute('muted', ''),
+        h.Attribute('autoplay', ''),
+        h.DataAttribute('facing', model.facing),
+        h.DataAttribute('shutter', ''),
+        h.AriaHidden(true),
+        ...styled(h, styles.video()),
       ]),
+      h.div([h.AriaHidden(true), h.DataAttribute('hint', hintOf(model)), ...styled(h, styles.guide())]),
+      model.shots === 0
+        ? h.empty
+        : h.keyed('div')(`flash-${model.shots}`, [h.AriaHidden(true), ...styled(h, styles.flash())]),
+      top(model, locale, h),
+      bottom(model, locale, h),
     ],
   )
 
-/** The held-up camera, open on the add page; nothing while it is closed. */
+/** The camera screen: a modal dialog over the whole page while the camera starts and watches. */
+const screen = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.dialog(
+    [
+      h.Id(screenId),
+      h.Open(true),
+      h.AriaModal(true),
+      h.AriaLabel(format(locale, 'capture.camera.title', {})),
+      h.OnCancelPreventDefault(Message.ClickedDone()),
+      h.OnMount(HoldScreen()),
+      ...styled(h, styles.screen()),
+    ],
+    [picture(model, locale, h)],
+  )
+
+/** The held-up camera, full screen over the add page while it watches; a message in the page when it
+ * cannot start; nothing while it is closed. */
 export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
   Camera.match(model.camera, {
     Closed: () => h.empty,
@@ -117,7 +194,7 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
           ),
         ],
       ),
-    Starting: () => panel(model, locale, h),
-    Watching: () => panel(model, locale, h),
+    Starting: () => screen(model, locale, h),
+    Watching: () => screen(model, locale, h),
   }),
 )

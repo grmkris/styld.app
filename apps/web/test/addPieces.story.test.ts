@@ -52,7 +52,7 @@ const chosen = (one: File, ...rest: ReadonlyArray<File>) =>
   Message.GotDropMessage({ message: FileDrop.Message.DroppedFiles({ files: [one, ...rest] }) })
 
 /** Whether the add page asks for the screen to stay on. */
-const screenOn = (current: Model) => subscriptions.screenAwake.modelToDependencies(current).readingVideo
+const screenOn = (current: Model) => subscriptions.screenAwake.modelToDependencies(current).awake
 
 /** A message from the held-up camera, as the page receives it. */
 const camera = (sent: HeldCameraMessage) => Message.GotHeldCameraMessage({ message: sent })

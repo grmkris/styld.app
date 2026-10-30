@@ -8,7 +8,7 @@ import * as HttpBody from 'effect/http/HttpBody'
 import * as HttpClient from 'effect/http/HttpClient'
 import { type Browser, chromium } from 'playwright'
 import { verifyBrowser } from './BrowserAcceptance.ts'
-import { verifyCaptureJourney, verifyLongVideoJourney } from './CaptureBrowserAcceptance.ts'
+import { verifyCameraJourney, verifyCaptureJourney, verifyLongVideoJourney } from './CaptureBrowserAcceptance.ts'
 import { nativeDailyAllowance, verifyCaptures } from './CaptureAcceptance.ts'
 import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
 import { verifyMcp } from './McpAcceptance.ts'
@@ -109,13 +109,19 @@ const stack = beforeAll(
 )
 afterAll(destroy(Stack), { timeout: 60000 })
 
-/** Run a browser acceptance against the public edge in a fresh headless Chromium. */
+/** Run a browser acceptance against the public edge in a fresh headless Chromium, whose camera is
+ * Chromium's own stand-in picture, allowed without asking. */
 const inBrowser = (verify: (browser: Browser, origin: string) => Promise<void>) =>
   Effect.scoped(
     Effect.gen(function* () {
       const { styldUrl } = yield* stack
       const browserInstance = yield* Effect.acquireRelease(
-        Effect.promise(() => chromium.launch({ headless: true })),
+        Effect.promise(() =>
+          chromium.launch({
+            headless: true,
+            args: ['--use-fake-ui-for-media-stream', '--use-fake-device-for-media-stream'],
+          }),
+        ),
         (browser) => Effect.promise(() => browser.close()),
       )
       yield* Effect.promise(() => verify(browserInstance, styldUrl))
@@ -155,6 +161,15 @@ test(
   Effect.gen(function* () {
     const { url } = yield* stack
     yield* inBrowser((browser, origin) => verifyCaptureJourney(browser, origin, url))
+  }),
+  { timeout: 90000 },
+)
+
+test(
+  'opens the camera over the whole page, takes a piece front then back, and pairs them in the tray',
+  Effect.gen(function* () {
+    const { url } = yield* stack
+    yield* inBrowser((browser, origin) => verifyCameraJourney(browser, origin, url))
   }),
   { timeout: 90000 },
 )

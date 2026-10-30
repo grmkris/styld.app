@@ -2,6 +2,8 @@ import { Side } from '@styld/protocol'
 import { Effect, Option, Schema, Stream } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
 import { Command, File, Mount, type Update } from 'foldkit'
+import { DEVTOOLS_HOST_ID } from 'foldkit/devtools-host'
+import * as Dom from 'foldkit/dom'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
@@ -42,6 +44,10 @@ export const Model = Schema.Struct({
   checksSent: Schema.Number,
   /** Pieces taken: each front starts one. */
   pieces: Schema.Number,
+  /** Photos taken, fronts and backs: each flashes and flies to the stack. */
+  shots: Schema.Number,
+  /** How close the picture is to settling, in quarters, for the ring round the shutter. */
+  settle: Schema.Number,
   /** The small copy of the last photo taken, so the check can tell the back of the same garment. */
   lastCheck: Schema.Option(File.File),
 })
@@ -54,10 +60,15 @@ export const init = (): Model => ({
   pendingCheck: Option.none(),
   checksSent: 0,
   pieces: 0,
+  shots: 0,
+  settle: 0,
   lastCheck: Option.none(),
 })
 
 export const isOpen = (model: Model) => !Camera.guards.Closed(model.camera)
+
+/** Whether the camera screen is up: starting or watching, not closed or refused. */
+export const isLive = (model: Model) => Camera.guards.Starting(model.camera) || Camera.guards.Watching(model.camera)
 
 // MESSAGE
 
@@ -67,6 +78,7 @@ export const Message = defineMessageUnion({
   ClickedSkipBack: {},
   StartedCamera: {},
   FailedCamera: { reason: Schema.Literals(['denied', 'unavailable']) },
+  SettlingScene: { level: Schema.Number },
   SettledScene: { check: File.File, still: File.File },
   StayedStill: { check: File.File, still: File.File },
   TappedPicture: { check: File.File, still: File.File },
@@ -80,6 +92,8 @@ export const Message = defineMessageUnion({
   },
   FailedCheckHeld: { token: Schema.Number },
   CompletedBuzz: {},
+  HeldScreen: {},
+  ShowedPhoto: {},
 })
 export type Message = typeof Message.Type
 
@@ -93,6 +107,44 @@ export type OutMessage = typeof OutMessage.Type
 
 // MOUNT
 
+/** The camera screen's element. */
+export const screenId = 'camera-screen'
+
+/** Hold the camera screen, the dialog it is mounted on, as modal while it is in the page: the page behind
+ * goes inert and stops scrolling, focus starts on the shutter and stays on the screen, and Escape asks to
+ * close it. */
+export const HoldScreen = Mount.define('HoldScreen', {
+  messages: [Message.HeldScreen],
+  execute: ({ element }) =>
+    Effect.acquireRelease(
+      Dom.showDialog(`#${element.id}`, {
+        isModal: true,
+        focusSelector: 'button[data-shutter]',
+        allowedOutsideSelectors: [`#${DEVTOOLS_HOST_ID}`],
+      }).pipe(
+        Effect.tap((acquired) => (acquired ? Dom.lockScroll : Effect.void)),
+        Effect.orElseSucceed(() => false),
+      ),
+      (acquired) => (acquired ? Dom.releaseDialogResources(element.id) : Effect.void),
+    ).pipe(Effect.as(Message.HeldScreen())),
+})
+
+/** Show a photo taken here in the image it is mounted on, for as long as the image is in the page. */
+export const ShowPhoto = Mount.define('ShowPhoto', {
+  args: { photo: File.File },
+  messages: [Message.ShowedPhoto],
+  execute: ({ element, photo }) =>
+    Effect.acquireRelease(
+      Effect.sync(() => URL.createObjectURL(photo)),
+      (url) => Effect.sync(() => URL.revokeObjectURL(url)),
+    ).pipe(
+      Effect.map((url) => {
+        if (element instanceof HTMLImageElement) element.src = url
+        return Message.ShowedPhoto()
+      }),
+    ),
+})
+
 /** Run the camera in the element it is mounted on, loading the camera code only then. Code that fails
  * to load (offline, or a newer release) reports the camera as unavailable.
  * @internal Exported for its tests. */
@@ -101,6 +153,7 @@ export const WatchCamera = Mount.defineStream('WatchCamera', {
   messages: [
     Message.StartedCamera,
     Message.FailedCamera,
+    Message.SettlingScene,
     Message.SettledScene,
     Message.StayedStill,
     Message.TappedPicture,
@@ -113,6 +166,7 @@ export const WatchCamera = Mount.defineStream('WatchCamera', {
             Stream.map((event) => {
               if (event.kind === 'started') return Message.StartedCamera()
               if (event.kind === 'failed') return Message.FailedCamera({ reason: event.reason })
+              if (event.kind === 'settling') return Message.SettlingScene({ level: event.level })
               const pictures = { check: event.check, still: event.still }
               if (event.kind === 'settled') return Message.SettledScene(pictures)
               return event.kind === 'again' ? Message.StayedStill(pictures) : Message.TappedPicture(pictures)
@@ -171,6 +225,8 @@ const took = (model: Model, photo: File.File, check: File.File, side: Step): Upd
     step: () => (side === 'front' ? 'back' : 'front'),
     pendingCheck: () => Option.none(),
     pieces: (pieces) => (side === 'front' ? pieces + 1 : pieces),
+    shots: (shots) => shots + 1,
+    settle: () => 0,
     lastCheck: () => Option.some(check),
   }),
   commands: [Buzz()],
@@ -238,6 +294,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         : { model },
     FailedCamera: ({ reason }) =>
       isOpen(model) ? { model: modifyFields(model, { camera: () => Camera.Failed({ reason }) }) } : { model },
+    SettlingScene: ({ level }) => ({ model: modifyFields(model, { settle: () => level }) }),
     SettledScene: ({ check, still }) => settled(model, check, still),
     // Held still a while longer: look again, unless the garment was just taken and is still being held,
     // front or back. Only turning it, or the next piece, moves the picture enough to look again.
@@ -264,4 +321,6 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         ? { model: modifyFields(model, { pendingCheck: () => Option.none(), camera: () => watching('tapToTake') }) }
         : { model },
     CompletedBuzz: () => ({ model }),
+    HeldScreen: () => ({ model }),
+    ShowedPhoto: () => ({ model }),
   })
