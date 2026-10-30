@@ -1,6 +1,29 @@
 # Delivery status
 
-Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `8ab11aa`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `42baae7`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+
+## Camera test fixes and person routing — 2026-10-30
+
+The owner's afternoon test on the preview: 9 camera shots, 5 pieces kept, judged "quite ugly". Diagnosis and the
+owner's decisions are in this session's notes; the decisions are a flat-lay capture mode as the main way in and a
+capped test of image models before any generated product photo.
+
+- **Back step** (`5131e9f`): the camera checked a turned printed tee about ten times but never took its back. The
+  check called the plain back a front of the same garment, which the camera read as not turned yet. At the back
+  step a garment is now taken as the back unless the check sees another garment's front (Story).
+- **Only what a person holds** (`5131e9f`): 3 of 9 shots were the empty room while the owner fetched the next
+  piece, with clothes on the bed as the main subject. The check also asks whether a person holds the garment up
+  (Clef `holding`), and a held-up shot needs it (Story). The check request names its layout, `held` or `flat`.
+- **Pairing** (`5131e9f`): a back joins its front's best cut-out even when that one came out unticked; before, it
+  stood alone. Covered natively only where the front is ticked (providers off always tick it).
+- **Photos with a person go to SAM** (`42baae7`, item 1 of the research brief): Clef's route also asks whether
+  any part of a person shows; background removal takes only one garment with nobody in the picture, such as a
+  piece laid flat. With a person, the held or shown piece is preselected. The assistant's photo import follows the
+  same rule. Unit tests with the spike's recorded answer for a held-up garment.
+- **Preview** release `42baae7`: `/api/health` reports it, deployed acceptance 3 tests.
+- **Open**: the flat-lay camera mode; the image-model test; the turning hanger rail proof (research handoff
+  `styld-hanger-rail-handoff.md`, Stage A outside v2); the owner's wardrobe still holds the broken fragments from
+  the try-on video.
 
 ## Instant tabs and steady pages — 2026-10-30
 
