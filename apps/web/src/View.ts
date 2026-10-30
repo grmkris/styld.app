@@ -41,6 +41,7 @@ import {
   pickerSelect,
   accountLink,
   appNav,
+  navBesideTable,
   navAsk,
   navAvatar,
   navItem,
@@ -224,7 +225,10 @@ const appNavigation = (model: Model, initial: string, h: HtmlBuilder<Message>): 
       [content, h.span(styled(h, navLabel()), [label])],
     )
   return h.nav(
-    [h.AriaLabel(format(locale, 'nav.navigation', {})), ...styled(h, appNav())],
+    [
+      h.AriaLabel(format(locale, 'nav.navigation', {})),
+      ...styled(h, AppRoute.guards.Board(model.route) ? cx(appNav(), navBesideTable()) : appNav()),
+    ],
     [
       item('home', homeRouter({}), format(locale, 'nav.home', {}), homeTabIcon(h)),
       item('wardrobe', wardrobeRouter({}), format(locale, 'nav.wardrobe', {}), wardrobeTabIcon(h)),

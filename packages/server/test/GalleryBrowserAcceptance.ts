@@ -140,6 +140,8 @@ const verifyBoard = async (context: BrowserContext, page: Page, origin: string) 
   await page.getByRole('button', { name: 'New board' }).click()
   await page.waitForURL(/\/boards\/bd_/)
   await page.getByRole('heading', { name: 'Weekend' }).waitFor({ state: 'visible' })
+  // The editor has the whole phone screen: the navigation pill would sit over the tray of pieces.
+  expect(await page.getByRole('navigation', { name: 'Navigation' }).isVisible()).toBe(false)
   await expectNoSidewaysScroll(page)
   for (const name of ['Cable knit', 'Denim shorts', 'Derby shoes'])
     await page.getByRole('button', { name: `Put ${name} on the table` }).click()

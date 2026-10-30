@@ -172,6 +172,9 @@ export const appNav = style({
     WebkitBackdropFilter: 'none',
   },
 })
+/** The board editor has the whole phone screen, with its own way back to Boards: the pill would sit over its
+ * tray of pieces. The desktop rail stays beside it. */
+export const navBesideTable = style({ '@media (max-width: 899px)': { display: 'none' } })
 export const navItem = style({
   position: 'relative',
   display: 'grid',
