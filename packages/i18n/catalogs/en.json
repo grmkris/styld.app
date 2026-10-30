@@ -1064,7 +1064,34 @@
       "accessory": "Accessories"
     },
     "deletePieceConfirmBody": "This removes it from your wardrobe. This can't be undone.",
-    "tabPieces": "Pieces"
+    "tabPieces": "Pieces",
+    "picture": {
+      "cleaned": "AI-cleaned picture",
+      "drawing": "Drawing a clean picture…",
+      "proposed": "A clean picture is ready. Use it instead of your photo?",
+      "use": "Use this picture",
+      "showPhoto": "Show my photo",
+      "showClean": "Show the clean picture",
+      "retake": "Too little of this piece showed to draw it. Take it again, or say what it is and redraw.",
+      "failed": "No clean picture came of it, so your photo stays.",
+      "chooseFailed": "The picture could not be changed. Try again.",
+      "redraw": "Redraw",
+      "hintLabel": "What is it? (optional)",
+      "hintPlaceholder": "a black wool beanie",
+      "redrawCost": "Costs 1 credit, refunded if no picture comes of it.",
+      "problem": {
+        "busy": "A clean picture of this piece is already being drawn.",
+        "face": "A face may show in this cut-out, so it is not sent to be drawn.",
+        "photo": "This piece shows your original photo, which is never sent to be drawn.",
+        "off": "Clean pictures are switched off.",
+        "dailyLimit": "Today's credits are used up. Try again tomorrow.",
+        "network": "The drawing could not be asked for. Try again."
+      },
+      "backfill": "{count, plural, one {# piece has no clean picture yet.} other {# pieces have no clean picture yet.}}",
+      "backfillAction": "Make clean pictures",
+      "backfillSent": "Drawing clean pictures. Each appears when it is ready.",
+      "backfillFailed": "The clean pictures could not be asked for. Try again."
+    }
   },
   "chat": {
     "placeholder": "Type your message...",

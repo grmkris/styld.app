@@ -6,7 +6,7 @@ import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
-import { primaryAction } from '../Actions.styles.ts'
+import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { loader } from '../Icon.ts'
 import { addPiecesRouter, pieceRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
@@ -19,8 +19,35 @@ import * as styles from './WardrobeView.styles.ts'
 import { wardrobeTabs } from './WardrobeTabs.ts'
 import { addPiecesAction, pageHead, pageTitle } from './PageHead.ts'
 
-/** The small image of a piece; the API Worker serves it to its owner only. */
-const thumbnailPath = (piece: Piece) => `/cdn/pieces/${piece.id}/thumb`
+/** The small image of a piece; the API Worker serves it to its owner only. A new drawing is a new address. */
+const thumbnailPath = (piece: Piece) =>
+  `/cdn/pieces/${piece.id}/thumb${piece.picture === undefined ? '' : `?v=${piece.picture.shows}${piece.picture.version}`}`
+
+/** The kept cut-outs with no clean picture yet, and a free way to ask for theirs. */
+const backfillLine = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  if (model.backfill === 'sent')
+    return h.p(
+      [h.Role('status'), ...styled(h, styles.backfill())],
+      [format(locale, 'wardrobe.picture.backfillSent', {})],
+    )
+  if (model.undrawn === 0) return h.empty
+  return h.div(styled(h, styles.backfill()), [
+    h.p([], [format(locale, 'wardrobe.picture.backfill', { count: model.undrawn })]),
+    model.backfill === 'failed'
+      ? h.p([h.Role('alert')], [format(locale, 'wardrobe.picture.backfillFailed', {})])
+      : h.empty,
+    actionButton(
+      {
+        label: format(locale, 'wardrobe.picture.backfillAction', {}),
+        style: secondaryAction(),
+        onClick: Message.ClickedDrawPictures(),
+        isDisabled: model.backfill === 'sending',
+        leading: model.backfill === 'sending' ? loader(h) : h.empty,
+      },
+      h,
+    ),
+  ])
+}
 
 const sameFilter = (shown: Option.Option<Category>, filter: Option.Option<Category>) =>
   Option.isNone(filter) ? Option.isNone(shown) : Option.contains(shown, filter.value)
@@ -89,6 +116,7 @@ const loadedView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, 
     .map((category) => ({ category, total: pieces.filter((piece) => piece.category === category).length }))
     .filter(({ total }) => total > 0)
   return h.div(styled(h, styles.wardrobePage()), [
+    backfillLine(model, locale, h),
     h.div(
       [
         h.Role('group'),

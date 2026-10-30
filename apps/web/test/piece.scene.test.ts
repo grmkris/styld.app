@@ -1,10 +1,11 @@
 import { catalogVersion } from '@styld/i18n'
-import { Command, click, expect, given, role, scene, text } from 'foldkit/scene'
+import { Option } from 'effect'
+import { Command, click, expect, given, role, scene, submit, text, type } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { Message, Session, init, update } from '../src/App.ts'
 import { Navigate } from '../src/Navigation.ts'
-import { DeletePiece, Load, Message as PieceMessage } from '../src/page/Piece.ts'
+import { ChoosePicture, DeletePiece, Load, Message as PieceMessage, RedrawPicture } from '../src/page/Piece.ts'
 import { view } from '../src/View.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
@@ -68,6 +69,47 @@ describe('the piece page', () => {
       expect(role('button', { name: 'Jeans' })).not.toExist(),
       click(role('button', { name: 'Cancel' })),
       expect(text('Bottoms, Jeans')).toExist(),
+    )
+  })
+
+  test('a proposed clean picture waits beside the photo until the owner takes it', () => {
+    const proposed = { ...jeans, picture: { state: 'proposed', shows: 'photo', version: 2 } } as const
+    const taken = { ...jeans, picture: { state: 'proposed', shows: 'clean', version: 2 } } as const
+    scene(
+      { update, view },
+      given(piecePage(Load.Loaded({ piece: proposed }))),
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('src', `/cdn/pieces/${proposed.id}/full?v=photo2`),
+      expect(role('img', { name: 'AI-cleaned picture' })).toHaveAttr(
+        'src',
+        `/cdn/pieces/${proposed.id}/clean/thumb?v=2`,
+      ),
+      click(role('button', { name: 'Use this picture' })),
+      Command.resolve(
+        ChoosePicture({ pieceId: proposed.id, use: 'clean' }),
+        PieceMessage.SucceededChoosePicture({ piece: taken }),
+      ),
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('src', `/cdn/pieces/${proposed.id}/full?v=clean2`),
+      expect(text('AI-cleaned picture')).toExist(),
+      expect(role('button', { name: 'Show my photo' })).toExist(),
+    )
+  })
+
+  test('redrawing asks what the piece is, and says what a credit buys', () => {
+    const shown = pieceFixture('jeans', { picture: { state: 'retake', shows: 'photo', version: 0 } })
+    scene(
+      { update, view },
+      given(piecePage(Load.Loaded({ piece: shown }))),
+      expect(text(/Too little of this piece showed/)).toExist(),
+      click(role('button', { name: 'Redraw' })),
+      type(role('textbox', { name: 'What is it? (optional)' }), 'a navy wool scarf'),
+      expect(text('Costs 1 credit, refunded if no picture comes of it.')).toExist(),
+      submit(role('form')),
+      expect(role('button', { name: 'Redraw' })).toBeDisabled(),
+      Command.resolve(
+        RedrawPicture({ pieceId: shown.id, hint: 'a navy wool scarf', operationId: Option.none() }),
+        PieceMessage.FailedRedrawPicture({ problem: 'face', operationId: 'redraw-0001' }),
+      ),
+      expect(role('alert')).toHaveText('A face may show in this cut-out, so it is not sent to be drawn.'),
     )
   })
 

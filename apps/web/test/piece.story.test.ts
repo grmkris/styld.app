@@ -2,12 +2,14 @@ import { Option } from 'effect'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import {
+  ChoosePicture,
   DeletePiece,
   Deletion,
   GetPiece,
   Load,
   Message,
   OutMessage,
+  RedrawPicture,
   SavePiece,
   WaitToRefreshPiece,
   init,
@@ -103,6 +105,79 @@ describe('a piece you own', () => {
         expect(Option.isNone(draft)).toBe(true)
         expect(Load.guards.Loaded(load) && load.piece.name).toBe('Dark jeans')
       }),
+    )
+  })
+
+  test('a proposed clean picture is chosen in place of the photo', () => {
+    const proposed = pieceFixture('jeans', { picture: { state: 'proposed', shows: 'photo', version: 1 } })
+    const chosen = pieceFixture('jeans', { picture: { state: 'proposed', shows: 'clean', version: 1 } })
+    const shown = update(init(piece.id), Message.SucceededGetPiece({ piece: proposed })).model
+    const sending = update(shown, Message.ClickedShowPicture({ use: 'clean' })).model
+    expect(update(sending, Message.ClickedShowPicture({ use: 'clean' })).commands ?? []).toEqual([])
+    story(
+      update,
+      given(shown),
+      message(Message.ClickedShowPicture({ use: 'clean' })),
+      Command.expectExact(ChoosePicture({ pieceId: piece.id, use: 'clean' })),
+      Command.resolve(ChoosePicture, Message.SucceededChoosePicture({ piece: chosen })),
+      model(({ load, choosing }) => {
+        expect(choosing).toBe('idle')
+        expect(Load.guards.Loaded(load) && load.piece.picture?.shows).toBe('clean')
+      }),
+    )
+  })
+
+  test('a redraw sends the owner’s words, then the page waits for the new drawing', () => {
+    const ready = pieceFixture('jeans', { picture: { state: 'ready', shows: 'clean', version: 1 } })
+    story(
+      update,
+      given(update(init(piece.id), Message.SucceededGetPiece({ piece: ready })).model),
+      message(Message.ClickedRedraw()),
+      message(Message.UpdatedHint({ value: ' dark selvedge jeans ' })),
+      message(Message.SubmittedRedraw()),
+      Command.expectExact(
+        RedrawPicture({ pieceId: piece.id, hint: ' dark selvedge jeans ', operationId: Option.none() }),
+      ),
+      Command.resolve(
+        RedrawPicture,
+        Message.SucceededRedrawPicture({ picture: { state: 'drawing', shows: 'photo', version: 1 } }),
+      ),
+      model(({ redraw, load }) => {
+        expect(Option.isNone(redraw)).toBe(true)
+        expect(Load.guards.Loaded(load) && load.piece.picture?.state).toBe('drawing')
+      }),
+      Command.expectExact(WaitToRefreshPiece),
+      Command.resolve(WaitToRefreshPiece, Message.ElapsedRefreshPause()),
+      Command.resolve(
+        GetPiece,
+        Message.SucceededGetPiece({
+          piece: pieceFixture('jeans', { picture: { state: 'ready', shows: 'clean', version: 2 } }),
+        }),
+      ),
+      Command.expectNone(),
+    )
+  })
+
+  test('a redraw whose answer was lost is sent again as the same operation; a refusal is not', () => {
+    const ready = pieceFixture('jeans', { picture: { state: 'failed', shows: 'photo', version: 1 } })
+    story(
+      update,
+      given(update(init(piece.id), Message.SucceededGetPiece({ piece: ready })).model),
+      message(Message.ClickedRedraw()),
+      message(Message.SubmittedRedraw()),
+      Command.resolve(RedrawPicture, Message.FailedRedrawPicture({ problem: 'network', operationId: 'redraw-0001' })),
+      model(({ redraw }) =>
+        expect(Option.map(redraw, ({ problem, operationId }) => ({ problem, operationId }))).toEqual(
+          Option.some({ problem: Option.some('network'), operationId: Option.some('redraw-0001') }),
+        ),
+      ),
+      message(Message.SubmittedRedraw()),
+      Command.expectExact(RedrawPicture({ pieceId: piece.id, hint: '', operationId: Option.some('redraw-0001') })),
+      Command.resolve(
+        RedrawPicture,
+        Message.FailedRedrawPicture({ problem: 'dailyLimit', operationId: 'redraw-0001' }),
+      ),
+      model(({ redraw }) => expect(Option.flatMap(redraw, ({ operationId }) => operationId)).toEqual(Option.none())),
     )
   })
 

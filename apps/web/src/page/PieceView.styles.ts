@@ -59,3 +59,15 @@ export const notesField = style({
   resize: 'vertical',
 })
 export const status = style({ display: 'flex', alignItems: 'center', gap: '8px', color: 'signal' })
+/** The clean picture's panel: what it is, where it stands and what the owner can do with it. */
+export const picturePanel = style({ display: 'grid', gap: '8px', marginBlockStart: '8px' })
+export const cleanedLabel = style({ fontSize: '13px', fontWeight: 500, color: 'ink3' })
+export const pictureNote = style({ fontSize: '14px', color: 'ink2' })
+export const proposal = style({ display: 'flex', alignItems: 'center', gap: '12px' })
+export const proposalImage = style({
+  inlineSize: '88px',
+  blockSize: '88px',
+  objectFit: 'contain',
+  borderRadius: 'photo',
+  backgroundColor: 'stock',
+})

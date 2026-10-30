@@ -15,13 +15,18 @@ import type { AppRoute } from './route.ts'
 
 export type Step = Update.Step<Model, Message, Services>
 
+const foldWardrobe = (update: typeof Wardrobe.revisit) =>
+  Update.foldChildStep({
+    update,
+    read: (model: Model) => Option.some(model.wardrobe),
+    write: (model: Model, wardrobe: Wardrobe.Model) => modifyFields(model, { wardrobe: () => wardrobe }),
+    toParentMessage: (message: Wardrobe.Message) => Message.GotWardrobeMessage({ message }),
+  })
+
 /** Opening a page that shows the pieces: the ones already here stay while they are asked for again. */
-export const foldWardrobeRevisit = Update.foldChildStep({
-  update: Wardrobe.revisit,
-  read: (model: Model) => Option.some(model.wardrobe),
-  write: (model: Model, wardrobe: Wardrobe.Model) => modifyFields(model, { wardrobe: () => wardrobe }),
-  toParentMessage: (message: Wardrobe.Message) => Message.GotWardrobeMessage({ message }),
-})
+export const foldWardrobeRevisit = foldWardrobe(Wardrobe.revisit)
+/** Opening the wardrobe itself: its pieces, and how many have no clean picture yet. */
+const foldWardrobeEnter = foldWardrobe(Wardrobe.enter)
 
 const foldLooksRevisit = Update.foldChildStep({
   update: Looks.revisit,
@@ -64,7 +69,7 @@ export const openHome: ReadonlyArray<Step> = [foldTodayEnter, foldWardrobeRevisi
 export const openPage = (route: AppRoute, hasSessionCookie: boolean): ReadonlyArray<Step> =>
   Match.value(route).pipe(
     Match.tag('Home', () => (hasSessionCookie ? openHome : [])),
-    Match.tag('Wardrobe', () => [foldWardrobeRevisit]),
+    Match.tag('Wardrobe', () => [foldWardrobeEnter]),
     Match.tag('Ask', ({ q }) => [foldWardrobeRevisit, foldAskEnter(q)]),
     Match.tag('Looks', () => [foldLooksRevisit]),
     Match.tag('Boards', () => [foldBoardsRevisit]),

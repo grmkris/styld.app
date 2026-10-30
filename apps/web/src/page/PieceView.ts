@@ -1,4 +1,4 @@
-import type { Piece } from '@styld/protocol'
+import type { Piece, PiecePicture } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import { Option } from 'effect'
 import { Submodel } from 'foldkit'
@@ -10,13 +10,15 @@ import { deleteIcon, editIcon, loader } from '../Icon.ts'
 import { wardrobeRouter } from '../route.ts'
 import { confirmActions } from '../ConfirmActions.ts'
 import { styled } from '../Styled.ts'
-import { Deletion, type Draft, Load, Message, type Model } from './Piece.ts'
+import { Deletion, type Draft, Load, Message, type Model, type Redraw } from './Piece.ts'
 import { piecePickers, swatches } from './PieceFields.ts'
 import { categoryName, pieceLabel, subcategoryName } from './WardrobeWords.ts'
 import { backToWardrobe } from './PageBar.ts'
 import * as styles from './PieceView.styles.ts'
 
-const fullPath = (piece: Piece) => `/cdn/pieces/${piece.id}/full`
+/** The picture the piece shows; a new drawing, or a change of picture, is a new address. */
+const fullPath = (piece: Piece) =>
+  `/cdn/pieces/${piece.id}/full${piece.picture === undefined ? '' : `?v=${piece.picture.shows}${piece.picture.version}`}`
 
 const whatItIs = (piece: Piece, locale: Locale) =>
   [categoryName(piece.category), ...(piece.subcategory === null ? [] : [subcategoryName(piece.subcategory)])]
@@ -116,6 +118,141 @@ const editForm = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Html =
     ],
   )
 
+const redrawForm = (redraw: Redraw, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.form(
+    [h.OnSubmit(Message.SubmittedRedraw()), h.AriaBusy(redraw.sending), ...styled(h, styles.editForm())],
+    [
+      h.label([h.For('picture-hint'), ...styled(h, fieldLabel())], [format(locale, 'wardrobe.picture.hintLabel', {})]),
+      h.input([
+        h.Id('picture-hint'),
+        h.Name('hint'),
+        h.Type('text'),
+        h.Maxlength(80),
+        h.Value(redraw.hint),
+        h.Placeholder(format(locale, 'wardrobe.picture.hintPlaceholder', {})),
+        h.OnInput((value) => Message.UpdatedHint({ value })),
+        ...styled(h, textField()),
+      ]),
+      h.p(styled(h, styles.pictureNote()), [format(locale, 'wardrobe.picture.redrawCost', {})]),
+      Option.match(redraw.problem, {
+        onNone: () => h.empty,
+        onSome: (problem) =>
+          h.p(
+            [h.Role('alert'), ...styled(h, formError())],
+            [format(locale, `wardrobe.picture.problem.${problem}`, {})],
+          ),
+      }),
+      h.div(styled(h, styles.actions()), [
+        actionButton(
+          {
+            label: format(locale, 'wardrobe.picture.redraw', {}),
+            style: primaryAction(),
+            type: 'submit',
+            isDisabled: redraw.sending,
+            leading: redraw.sending ? loader(h) : h.empty,
+          },
+          h,
+        ),
+        actionButton(
+          {
+            label: format(locale, 'common.cancel', {}),
+            style: secondaryAction(),
+            onClick: Message.ClickedCancelRedraw(),
+            isDisabled: redraw.sending,
+          },
+          h,
+        ),
+      ]),
+    ],
+  )
+
+/** What the owner can do with the picture it shows: swap it for the other one, take a proposed drawing, redraw. */
+const pictureChoices = (picture: PiecePicture, model: Model, locale: Locale, h: HtmlBuilder<Message>) => {
+  const choose = (use: 'clean' | 'photo', key: 'wardrobe.picture.showPhoto' | 'wardrobe.picture.showClean') =>
+    actionButton(
+      {
+        label: format(locale, key, {}),
+        style: secondaryAction(),
+        onClick: Message.ClickedShowPicture({ use }),
+        isDisabled: model.choosing === 'sending',
+      },
+      h,
+    )
+  const drawn = picture.state === 'ready' || picture.state === 'proposed'
+  return [
+    drawn && picture.shows === 'clean' ? choose('photo', 'wardrobe.picture.showPhoto') : h.empty,
+    picture.state === 'ready' && picture.shows === 'photo' ? choose('clean', 'wardrobe.picture.showClean') : h.empty,
+    actionButton(
+      {
+        label: format(locale, 'wardrobe.picture.redraw', {}),
+        style: secondaryAction(),
+        onClick: Message.ClickedRedraw(),
+      },
+      h,
+    ),
+  ]
+}
+
+/** A proposed drawing beside the photo it would replace, for the owner to take or leave. */
+const proposal = (piece: Piece, picture: PiecePicture, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.div(styled(h, styles.proposal()), [
+    h.img([
+      h.Src(`/cdn/pieces/${piece.id}/clean/thumb?v=${picture.version}`),
+      h.Alt(format(locale, 'wardrobe.picture.cleaned', {})),
+      ...styled(h, styles.proposalImage()),
+    ]),
+    h.div(
+      [],
+      [
+        h.p(styled(h, styles.pictureNote()), [format(locale, 'wardrobe.picture.proposed', {})]),
+        actionButton(
+          {
+            label: format(locale, 'wardrobe.picture.use', {}),
+            style: primaryAction(),
+            onClick: Message.ClickedShowPicture({ use: 'clean' }),
+          },
+          h,
+        ),
+      ],
+    ),
+  ])
+
+const pictureStatus = (picture: PiecePicture, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  if (picture.state === 'drawing')
+    return h.p(
+      [h.Role('status'), ...styled(h, styles.status())],
+      [loader(h), format(locale, 'wardrobe.picture.drawing', {})],
+    )
+  if (picture.state === 'retake' || picture.state === 'failed')
+    return h.p(styled(h, styles.pictureNote()), [format(locale, `wardrobe.picture.${picture.state}`, {})])
+  return picture.shows === 'clean'
+    ? h.p(styled(h, styles.cleanedLabel()), [format(locale, 'wardrobe.picture.cleaned', {})])
+    : h.empty
+}
+
+/** The piece's clean picture: none for a piece that never had one asked for. */
+const picturePanel = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  const picture = piece.picture
+  if (picture === undefined) return h.empty
+  return h.section(
+    [h.AriaLabel(format(locale, 'wardrobe.picture.cleaned', {})), ...styled(h, styles.picturePanel())],
+    [
+      pictureStatus(picture, locale, h),
+      picture.state === 'proposed' && picture.shows === 'photo' ? proposal(piece, picture, locale, h) : h.empty,
+      model.choosing === 'failed'
+        ? h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, 'wardrobe.picture.chooseFailed', {})])
+        : h.empty,
+      Option.match(model.redraw, {
+        onNone: () =>
+          picture.state === 'drawing'
+            ? h.empty
+            : h.div(styled(h, styles.actions()), pictureChoices(picture, model, locale, h)),
+        onSome: (redraw) => redrawForm(redraw, locale, h),
+      }),
+    ],
+  )
+}
+
 const pieceDetails = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.details()), [
     h.h1(styled(h, styles.pieceName()), [pieceLabel(piece, locale)]),
@@ -130,6 +267,7 @@ const pieceDetails = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
       ? h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, 'wardrobe.itemProcessFailed', {})])
       : h.empty,
     piece.colours.length > 0 ? swatches(piece.colours, locale, h) : h.empty,
+    picturePanel(piece, model, locale, h),
     Deletion.guards.Idle(model.deletion)
       ? h.div(styled(h, styles.actions()), [
           actionButton(

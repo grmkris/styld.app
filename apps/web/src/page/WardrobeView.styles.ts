@@ -83,3 +83,11 @@ export const message = style({
   color: 'ink2',
 })
 export const messageTitle = style({ fontSize: '17px', fontWeight: 600, color: 'ink' })
+/** The line offering clean pictures for pieces without one. */
+export const backfill = style({
+  display: 'flex',
+  flexWrap: 'wrap',
+  alignItems: 'center',
+  gap: '8px 16px',
+  color: 'ink2',
+})

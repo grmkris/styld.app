@@ -1,11 +1,22 @@
-import { Category, Colour, Piece, PieceId, Subcategory, UpdatePiece } from '@styld/protocol'
-import { Duration, Effect, Option, Schema } from 'effect'
+import {
+  Category,
+  Colour,
+  OperationId,
+  PictureChoice,
+  Piece,
+  PieceId,
+  PiecePicture,
+  Subcategory,
+  UpdatePiece,
+} from '@styld/protocol'
+import { Duration, Effect, Option, Predicate, Schema } from 'effect'
 import { Command, type Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
 import { toggleColour } from './PieceFields.ts'
+import * as Crypto from 'effect/Crypto'
 
 // MODEL
 
@@ -30,11 +41,27 @@ export const Draft = Schema.Struct({
 })
 export type Draft = typeof Draft.Type
 
+/** Why a redraw was not asked for: the API's refusals, the day's credits, or no answer. */
+export const RedrawProblem = Schema.Literals(['busy', 'face', 'photo', 'off', 'dailyLimit', 'network'])
+export type RedrawProblem = typeof RedrawProblem.Type
+
+/** The owner asking for a new drawing: their words about the piece, and the operation a retry repeats. */
+export const Redraw = Schema.Struct({
+  hint: Schema.String,
+  sending: Schema.Boolean,
+  problem: Schema.Option(RedrawProblem),
+  operationId: Schema.Option(Schema.String),
+})
+export type Redraw = typeof Redraw.Type
+
 export const Model = Schema.Struct({
   pieceId: Schema.String,
   load: Load,
   deletion: Deletion,
   draft: Schema.Option(Draft),
+  redraw: Schema.Option(Redraw),
+  /** Whether a change of the picture shown is on its way, or failed. */
+  choosing: Schema.Literals(['idle', 'sending', 'failed']),
 })
 export type Model = typeof Model.Type
 
@@ -43,6 +70,8 @@ export const init = (pieceId: string): Model => ({
   load: Load.Loading(),
   deletion: Deletion.Idle(),
   draft: Option.none(),
+  redraw: Option.none(),
+  choosing: 'idle',
 })
 
 // MESSAGE
@@ -67,6 +96,15 @@ export const Message = defineMessageUnion({
   SubmittedEdit: {},
   SucceededUpdatePiece: { piece: Piece },
   FailedUpdatePiece: {},
+  ClickedShowPicture: { use: PictureChoice },
+  SucceededChoosePicture: { piece: Piece },
+  FailedChoosePicture: {},
+  ClickedRedraw: {},
+  ClickedCancelRedraw: {},
+  UpdatedHint: { value: Schema.String },
+  SubmittedRedraw: {},
+  SucceededRedrawPicture: { picture: PiecePicture },
+  FailedRedrawPicture: { problem: RedrawProblem, operationId: Schema.String },
 })
 export type Message = typeof Message.Type
 
@@ -135,12 +173,62 @@ export const SavePiece = Command.define('SavePiece', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedUpdatePiece())),
 })
 
+/** @internal Exported for its tests. */
+export const ChoosePicture = Command.define('ChoosePicture', {
+  args: { pieceId: Schema.String, use: PictureChoice },
+  messages: [Message.SucceededChoosePicture, Message.FailedChoosePicture],
+  execute: ({ pieceId, use }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const piece = yield* api.wardrobe.choosePicture({
+        params: { pieceId: yield* pieceIdOf(pieceId) },
+        payload: { use },
+      })
+      return Message.SucceededChoosePicture({ piece })
+    }).pipe(Effect.orElseSucceed(() => Message.FailedChoosePicture())),
+})
+
+/** What a refused redraw means for the owner. */
+const redrawProblemOf = (error: unknown): RedrawProblem => {
+  if (Predicate.isTagged(error, 'DailyLimitReached')) return 'dailyLimit'
+  if (Predicate.isTagged(error, 'PictureRefused') && Predicate.hasProperty(error, 'reason'))
+    return Schema.decodeUnknownOption(RedrawProblem)(error.reason).pipe(Option.getOrElse(() => 'network' as const))
+  return 'network'
+}
+
+/** @internal Exported for its tests. */
+export const RedrawPicture = Command.define('RedrawPicture', {
+  args: { pieceId: Schema.String, hint: Schema.String, operationId: Schema.Option(Schema.String) },
+  messages: [Message.SucceededRedrawPicture, Message.FailedRedrawPicture],
+  execute: ({ pieceId, hint, operationId }) =>
+    Effect.gen(function* () {
+      // A retry repeats the operation, so a lost answer never costs a second credit.
+      const id = Option.isSome(operationId) ? operationId.value : yield* (yield* Crypto.Crypto).randomUUIDv4()
+      const words = hint.trim()
+      const api = yield* (yield* StyldClient).api
+      return yield* api.capture
+        .redrawPicture({
+          params: { pieceId: yield* pieceIdOf(pieceId) },
+          payload: {
+            operationId: yield* Schema.decodeUnknownEffect(OperationId)(id),
+            ...(words.length === 0 ? {} : { hint: words.slice(0, 80) }),
+          },
+        })
+        .pipe(
+          Effect.map((picture) => Message.SucceededRedrawPicture({ picture })),
+          Effect.catch((error) =>
+            Effect.succeed(Message.FailedRedrawPicture({ problem: redrawProblemOf(error), operationId: id })),
+          ),
+        )
+    }).pipe(Effect.orDie),
+})
+
 /** The Commands that open the page. */
 export const load = (model: Model) => [GetPiece({ pieceId: model.pieceId })]
 
 // UPDATE
 
-type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient>
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
 
 const draftOf = (piece: Piece): Draft => ({
   name: piece.name ?? '',
@@ -183,9 +271,74 @@ const submittedEdit = (model: Model): UpdateReturn =>
           },
   })
 
+/** A piece still processing, or with a drawing on its way, is asked for again until it settles. */
 const loaded = (model: Model, piece: Piece): UpdateReturn => ({
   model: modifyFields(model, { load: () => Load.Loaded({ piece }) }),
-  commands: piece.status === 'processing' ? [WaitToRefreshPiece()] : [],
+  commands: piece.status === 'processing' || piece.picture?.state === 'drawing' ? [WaitToRefreshPiece()] : [],
+})
+
+const editRedraw = (model: Model, change: (redraw: Redraw) => Redraw): UpdateReturn => ({
+  model: modifyFields(model, { redraw: Option.map(change) }),
+})
+
+const submittedRedraw = (model: Model): UpdateReturn =>
+  Option.match(model.redraw, {
+    onNone: () => ({ model }),
+    onSome: (redraw) =>
+      redraw.sending
+        ? { model }
+        : {
+            model: modifyFields(model, {
+              redraw: () => Option.some(modifyFields(redraw, { sending: () => true, problem: () => Option.none() })),
+            }),
+            commands: [RedrawPicture({ pieceId: model.pieceId, hint: redraw.hint, operationId: redraw.operationId })],
+          },
+  })
+
+/** A drawing on its way: the piece shows its photo meanwhile and is asked for again until the drawing settles. */
+const redrawing = (model: Model, picture: PiecePicture): UpdateReturn => {
+  const shown = model.load
+  if (!Load.guards.Loaded(shown)) return { model: modifyFields(model, { redraw: () => Option.none() }) }
+  return loaded(modifyFields(model, { redraw: () => Option.none() }), { ...shown.piece, picture })
+}
+
+const pictureUpdates = (model: Model) => ({
+  ClickedShowPicture: ({ use }: { readonly use: PictureChoice }): UpdateReturn =>
+    model.choosing === 'sending'
+      ? { model }
+      : {
+          model: modifyFields(model, { choosing: () => 'sending' as const }),
+          commands: [ChoosePicture({ pieceId: model.pieceId, use })],
+        },
+  SucceededChoosePicture: ({ piece }: { readonly piece: Piece }): UpdateReturn => ({
+    model: modifyFields(model, { load: () => Load.Loaded({ piece }), choosing: () => 'idle' as const }),
+  }),
+  FailedChoosePicture: (): UpdateReturn => ({ model: modifyFields(model, { choosing: () => 'failed' as const }) }),
+  ClickedRedraw: (): UpdateReturn => ({
+    model: modifyFields(model, {
+      redraw: () => Option.some({ hint: '', sending: false, problem: Option.none(), operationId: Option.none() }),
+    }),
+  }),
+  ClickedCancelRedraw: (): UpdateReturn => ({ model: modifyFields(model, { redraw: () => Option.none() }) }),
+  UpdatedHint: ({ value }: { readonly value: string }): UpdateReturn =>
+    editRedraw(model, (redraw) => modifyFields(redraw, { hint: () => value })),
+  SubmittedRedraw: (): UpdateReturn => submittedRedraw(model),
+  SucceededRedrawPicture: ({ picture }: { readonly picture: PiecePicture }): UpdateReturn => redrawing(model, picture),
+  FailedRedrawPicture: ({
+    problem,
+    operationId,
+  }: {
+    readonly problem: RedrawProblem
+    readonly operationId: string
+  }): UpdateReturn =>
+    editRedraw(model, (redraw) =>
+      modifyFields(redraw, {
+        sending: () => false,
+        problem: () => Option.some(problem),
+        // A refusal answered the operation; only a lost answer is tried again as the same one.
+        operationId: () => (problem === 'network' ? Option.some(operationId) : Option.none()),
+      }),
+    ),
 })
 
 export const update = (model: Model, message: Message): UpdateReturn =>
@@ -239,4 +392,5 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         draft: Option.map((draft) => modifyFields(draft, { saving: () => false, failed: () => true })),
       }),
     }),
+    ...pictureUpdates(model),
   })

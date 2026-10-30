@@ -1064,7 +1064,34 @@
       "accessory": "Dodatki"
     },
     "deletePieceConfirmBody": "S tem ga odstranite iz garderobe. Tega ni mogoče razveljaviti.",
-    "tabPieces": "Kosi"
+    "tabPieces": "Kosi",
+    "picture": {
+      "cleaned": "Slika, očiščena z umetno inteligenco",
+      "drawing": "Rišem čisto sliko …",
+      "proposed": "Čista slika je pripravljena. Jo želite uporabiti namesto svoje fotografije?",
+      "use": "Uporabi to sliko",
+      "showPhoto": "Pokaži mojo fotografijo",
+      "showClean": "Pokaži čisto sliko",
+      "retake": "Tega kosa se je videlo premalo, da bi ga narisali. Fotografirajte ga znova ali povejte, kaj je, in ga narišite znova.",
+      "failed": "Čista slika ni nastala, zato ostane vaša fotografija.",
+      "chooseFailed": "Slike ni bilo mogoče zamenjati. Poskusite znova.",
+      "redraw": "Nariši znova",
+      "hintLabel": "Kaj je to? (neobvezno)",
+      "hintPlaceholder": "črna volnena kapa",
+      "redrawCost": "Stane 1 kredit, ki ga vrnemo, če slika ne nastane.",
+      "problem": {
+        "busy": "Čista slika tega kosa se že riše.",
+        "face": "Na tem izrezu je morda videti obraz, zato ga ne pošljemo v risanje.",
+        "photo": "Ta kos kaže vašo izvirno fotografijo, ki je nikoli ne pošljemo v risanje.",
+        "off": "Čiste slike so izklopljene.",
+        "dailyLimit": "Današnji krediti so porabljeni. Poskusite znova jutri.",
+        "network": "Risanja ni bilo mogoče naročiti. Poskusite znova."
+      },
+      "backfill": "{count, plural, one {# kos še nima čiste slike.} two {# kosa še nimata čiste slike.} few {# kosi še nimajo čiste slike.} other {# kosov še nima čiste slike.}}",
+      "backfillAction": "Naredi čiste slike",
+      "backfillSent": "Rišem čiste slike. Vsaka se pokaže, ko je pripravljena.",
+      "backfillFailed": "Čistih slik ni bilo mogoče naročiti. Poskusite znova."
+    }
   },
   "chat": {
     "placeholder": "Vnesite sporočilo...",

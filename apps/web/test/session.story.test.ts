@@ -112,7 +112,7 @@ const opening = (pathname: string) =>
 
 describe('the wardrobe pages', () => {
   test('each page asks for what it shows as it opens', () => {
-    expect(opening('/wardrobe')).toEqual(['ReadSession', 'ListPieces'])
+    expect(opening('/wardrobe')).toEqual(['ReadSession', 'ListPieces', 'CountUndrawn'])
     expect(opening('/wardrobe/pc_abc')).toEqual(['ReadSession', 'GetPiece'])
     expect(opening('/wardrobe/add')).toEqual(['ReadSession'])
     expect(opening('/wardrobe/review')).toEqual(['ReadSession', 'LoadTray'])

@@ -2352,6 +2352,29 @@ export interface MessageArgumentsByKey<T = string> {
   'wardrobe.photosLabel': Readonly<Record<string, never>>
   'wardrobe.pickFromImage': Readonly<Record<string, never>>
   'wardrobe.pickItems': Readonly<Record<string, never>>
+  'wardrobe.picture.backfill': { readonly count: number }
+  'wardrobe.picture.backfillAction': Readonly<Record<string, never>>
+  'wardrobe.picture.backfillFailed': Readonly<Record<string, never>>
+  'wardrobe.picture.backfillSent': Readonly<Record<string, never>>
+  'wardrobe.picture.chooseFailed': Readonly<Record<string, never>>
+  'wardrobe.picture.cleaned': Readonly<Record<string, never>>
+  'wardrobe.picture.drawing': Readonly<Record<string, never>>
+  'wardrobe.picture.failed': Readonly<Record<string, never>>
+  'wardrobe.picture.hintLabel': Readonly<Record<string, never>>
+  'wardrobe.picture.hintPlaceholder': Readonly<Record<string, never>>
+  'wardrobe.picture.problem.busy': Readonly<Record<string, never>>
+  'wardrobe.picture.problem.dailyLimit': Readonly<Record<string, never>>
+  'wardrobe.picture.problem.face': Readonly<Record<string, never>>
+  'wardrobe.picture.problem.network': Readonly<Record<string, never>>
+  'wardrobe.picture.problem.off': Readonly<Record<string, never>>
+  'wardrobe.picture.problem.photo': Readonly<Record<string, never>>
+  'wardrobe.picture.proposed': Readonly<Record<string, never>>
+  'wardrobe.picture.redraw': Readonly<Record<string, never>>
+  'wardrobe.picture.redrawCost': Readonly<Record<string, never>>
+  'wardrobe.picture.retake': Readonly<Record<string, never>>
+  'wardrobe.picture.showClean': Readonly<Record<string, never>>
+  'wardrobe.picture.showPhoto': Readonly<Record<string, never>>
+  'wardrobe.picture.use': Readonly<Record<string, never>>
   'wardrobe.pieceCount': { readonly count: number }
   'wardrobe.pieces': Readonly<Record<string, never>>
   'wardrobe.piecesLoadError': Readonly<Record<string, never>>
@@ -2529,4 +2552,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '0ed63b8b2f326f8129cbd100eb6d0f736986d0c09cc64ac91c88c1fbc28d36a4'
+export const catalogVersion = '5c7c4f096ea57e0a45ad8943a1f13cd65c1107bbd09a7a6ac6349348eee7c55c'
