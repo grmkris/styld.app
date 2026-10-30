@@ -85,6 +85,23 @@ export const lineFrameSize = (line: string): { readonly width: number; readonly 
     : { width: Number(match[1]), height: Number(match[2]) }
 }
 
+/** A mask raster resized to `to`, each pixel taking the source pixel under its centre. */
+const scaleRaster = (
+  raster: Uint8Array,
+  from: { readonly width: number; readonly height: number },
+  to: { readonly width: number; readonly height: number },
+) => {
+  const scaled = new Uint8Array(to.width * to.height)
+  for (let row = 0; row < to.height; row++) {
+    const y = Math.min(from.height - 1, Math.floor(((row + 0.5) * from.height) / to.height))
+    for (let column = 0; column < to.width; column++) {
+      const x = Math.min(from.width - 1, Math.floor(((column + 0.5) * from.width) / to.width))
+      scaled[row * to.width + column] = raster[y * from.width + x] ?? 0
+    }
+  }
+  return scaled
+}
+
 const masksOf = (kind: 'image' | 'video', lines: ReadonlyArray<string>): ReadonlyArray<Found> => {
   const parser = formats.segmentation[kind]().createParser()
   parser.push(lines.map((line) => `${line}\n`).join(''))
@@ -93,11 +110,23 @@ const masksOf = (kind: 'image' | 'video', lines: ReadonlyArray<string>): Readonl
     const bounds: Box = record.bounds
     const width = bounds.right - bounds.left
     const height = bounds.bottom - bounds.top
-    if (width < 1 || height < 1 || width !== record.mask.width || height !== record.mask.height) return []
+    if (width < 1 || height < 1 || record.mask.width < 1 || record.mask.height < 1) return []
     const raster = decodeMaskToRaster(record.mask)
-    if (raster.length !== width * height) return []
+    if (raster.length !== record.mask.width * record.mask.height) return []
+    // SAM caps a mask's raster at 1024 px on its long side, so a larger garment comes with a smaller raster.
+    // It is scaled to its box here; dropping it lost the main garment of most phone photos.
+    const sized =
+      record.mask.width === width && record.mask.height === height
+        ? raster
+        : scaleRaster(raster, record.mask, { width, height })
     return [
-      { track: record.objectId, frame: frameIndexOf(record) ?? 0, confidence: record.confidence ?? 0, bounds, raster },
+      {
+        track: record.objectId,
+        frame: frameIndexOf(record) ?? 0,
+        confidence: record.confidence ?? 0,
+        bounds,
+        raster: sized,
+      },
     ]
   })
 }

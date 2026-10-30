@@ -88,6 +88,14 @@ const railFrame = { bytes: bytes('rail-frame.jpg'), contentType: 'image/jpeg' } 
 const refusedWith = (code: number) =>
   errorOf(segmenter(() => new Response('{}', { status: code })).still(railFrame, 'clothing'))
 
+/** A recorded SAM line on a picture twice the size: the same mask raster under a box twice as large, which is
+ * how SAM answers for a garment over 1024 px. */
+const doubled = (line: string) =>
+  line.replace(/<\|box;x1=(\d+);y1=(\d+);x2=(\d+);y2=(\d+);w=(\d+);h=(\d+)/, (_match, ...values: Array<string>) => {
+    const [x1, y1, x2, y2, w, h] = values.slice(0, 6).map(Number)
+    return `<|box;x1=${2 * (x1 ?? 0)};y1=${2 * (y1 ?? 0)};x2=${2 * (x2 ?? 0) + 1};y2=${2 * (y2 ?? 0) + 1};w=${2 * (w ?? 0)};h=${2 * (h ?? 0)}`
+  })
+
 describe('SAM answers', () => {
   test('a still finds every garment on the rail, whatever the chunking', () => {
     for (const chunk of [64, 977, 1 << 20]) {
@@ -95,6 +103,18 @@ describe('SAM answers', () => {
       expect(end.completed).toBe(true)
       expect(stillMasks(lines)).toHaveLength(10)
     }
+  })
+
+  test("a garment larger than SAM's 1024 px raster cap is scaled to its box, not dropped", () => {
+    const { lines } = linesOf(text('sam-still-red-tee.sse'))
+    const [original] = stillMasks(lines)
+    const [large] = stillMasks(lines.map(doubled))
+    if (original === undefined || large === undefined) throw new Error('both answers hold the tee')
+    const width = (mask: typeof original) => mask.bounds.right - mask.bounds.left
+    expect(width(large)).toBe(2 * width(original))
+    expect(large.raster.length).toBe(width(large) * (large.bounds.bottom - large.bounds.top))
+    const area = (mask: typeof original) => mask.raster.reduce((sum, value) => sum + (value === 0 ? 0 : 1), 0)
+    expect(area(large)).toBe(4 * area(original))
   })
 
   test('a video keeps only the frames asked for, and reports the frames billed and the frame size', () => {
