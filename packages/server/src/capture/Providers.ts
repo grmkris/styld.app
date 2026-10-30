@@ -109,6 +109,8 @@ export class PictureWork extends Context.Service<
     readonly foreground: (original: Uint8Array) => Effect.Effect<Uint8Array, ProviderFailed>
     /** A small WebP of a stored image, for assistant views. */
     readonly thumbnail: (image: Uint8Array, width: number) => Effect.Effect<Uint8Array, ProviderFailed>
+    /** An opaque picture as a JPEG, for a provider that takes only small requests (the video model's frames). */
+    readonly jpeg: (image: Uint8Array) => Effect.Effect<Uint8Array, ProviderFailed>
   }
 >()('@styld/server/PictureWork') {}
 

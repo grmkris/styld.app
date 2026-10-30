@@ -65,6 +65,9 @@ export const makePictureWork = (images: Images, metrics: CaptureMetrics['Service
     foreground: Effect.fn('Styld.Capture.foreground')(function* (original: Uint8Array) {
       return yield* transform(original, 'foreground', { ...sized, segment: 'foreground' }, { format: 'image/png' })
     }),
+    jpeg: Effect.fn('Styld.Capture.jpeg')(function* (image: Uint8Array) {
+      return yield* transform(image, 'normalise', sized, { format: 'image/jpeg', quality: 92 })
+    }),
     thumbnail: Effect.fn('Styld.Capture.thumbnail')(function* (image: Uint8Array, width: number) {
       return yield* transform(
         image,

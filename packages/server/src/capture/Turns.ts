@@ -31,6 +31,7 @@ import {
   GarmentVision,
   ImageGenerator,
   type Picture,
+  PictureWork,
   type ProviderFailed,
   type TurnStatus,
   VideoGenerator,
@@ -51,6 +52,14 @@ const Started = Schema.Struct({ job: Schema.Unknown, startedAt: Schema.Number })
 const startedOf = (turn: TurnRow) => Schema.decodeUnknownOption(Started)(turn.operation)
 
 const png = (picture: Rgba): Picture => ({ bytes: encodePng(picture), contentType: 'image/png' })
+
+/** An opaque frame as the video model takes it: a JPEG, made by the Images binding; the PNG where the binding cannot
+ * (the native stack), whose small test frames the stand-in takes. */
+const jpegOf = (picture: Rgba) =>
+  Effect.gen(function* () {
+    const bytes = yield* (yield* PictureWork).jpeg(encodePng(picture))
+    return { bytes, contentType: 'image/jpeg' } satisfies Picture
+  }).pipe(Effect.orElseSucceed(() => png(picture)))
 
 interface TurnVideo {
   readonly bytes: Uint8Array
@@ -146,8 +155,11 @@ const start = (parts: Parts, turn: TurnRow) =>
     )
     if (side === 'ended') return false
     if (Option.isNone(side)) return yield* end(parts, pieceId, 'anchoring', 'side')
+    // The gateway refuses large requests (413 on two 720 by 1280 PNGs, 30 October): the frames go as JPEG, as the spike
+    // sent them.
+    const [first, last] = yield* Effect.all([jpegOf(onKey(side.value, key)), jpegOf(onKey(front, key))])
     const video = yield* VideoGenerator
-    const job = yield* video.start({ side: png(onKey(side.value, key)), front: png(onKey(front, key)), key }).pipe(
+    const job = yield* video.start({ side: first, front: last, key }).pipe(
       Effect.map(Option.some),
       Effect.catchTags({
         ProviderFailed: (error) => Effect.as(providerEnded(parts, pieceId)(error), Option.none()),
