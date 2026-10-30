@@ -14,6 +14,26 @@ const shoot = async (page: Page, name: string) => {
   if (shots !== undefined) await page.screenshot({ path: `${shots}/${name}.png`, fullPage: true })
 }
 
+/** Nothing on a phone page reaches past the page's edge. The page clips sideways overflow, so `scrollWidth`
+ * can't see it: each element's own edge is measured against the page's box, except inside a box that scrolls
+ * or clips its contents. */
+const expectNoSidewaysScroll = async (page: Page) =>
+  expect(
+    await page.locator('main').evaluate((main) => {
+      const edge = document.documentElement.getBoundingClientRect().right
+      const contained = (element: Element) => {
+        for (let at = element.parentElement; at !== null && at !== main; at = at.parentElement)
+          if (getComputedStyle(at).overflowX !== 'visible') return true
+        return false
+      }
+      return [main, ...main.querySelectorAll('*')]
+        .filter((element) => !contained(element))
+        .map((element) => ({ element, past: Math.round(element.getBoundingClientRect().right - edge) }))
+        .filter(({ past }) => past > 0)
+        .map(({ element, past }) => `${element.tagName.toLowerCase()}.${element.className} +${String(past)}px`)
+    }),
+  ).toEqual([])
+
 const IdOf = Schema.Struct({ id: Schema.String, status: Schema.String })
 const UploadOf = Schema.Struct({ uploadId: Schema.String, path: Schema.String })
 
@@ -94,6 +114,7 @@ const verifyHome = async (page: Page, origin: string) => {
   const table = page.getByRole('img', { name: /^Today’s outfit:/ })
   await table.waitFor({ state: 'visible' })
   expect(await page.locator('#today-headline').textContent()).toMatch(/^[A-Z]{3} \d{1,2}$/)
+  await expectNoSidewaysScroll(page)
   await shoot(page, 'phone-home')
   // Spin until the outfit changes; with two tops some spins repeat the same one.
   const before = await table.getAttribute('aria-label')
@@ -119,6 +140,7 @@ const verifyBoard = async (context: BrowserContext, page: Page, origin: string) 
   await page.getByRole('button', { name: 'New board' }).click()
   await page.waitForURL(/\/boards\/bd_/)
   await page.getByRole('heading', { name: 'Weekend' }).waitFor({ state: 'visible' })
+  await expectNoSidewaysScroll(page)
   for (const name of ['Cable knit', 'Denim shorts', 'Derby shoes'])
     await page.getByRole('button', { name: `Put ${name} on the table` }).click()
   const knit = page.getByRole('button', { name: 'Cable knit', exact: true })
@@ -203,6 +225,7 @@ const verifyAskAndWardrobe = async (page: Page, origin: string) => {
   await page.getByRole('link', { name: 'Cable knit' }).waitFor({ state: 'visible' })
   await page.getByRole('button', { name: 'Add', exact: true }).click()
   await page.getByRole('link', { name: /Add clothes/ }).waitFor({ state: 'visible' })
+  await expectNoSidewaysScroll(page)
   await shoot(page, 'phone-ask')
   await page.goto(`${origin}/wardrobe`, { waitUntil: 'networkidle' })
   await page.getByRole('link', { name: 'Looks' }).click()

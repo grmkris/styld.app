@@ -8,13 +8,21 @@ const grow = keyframes(
   { id: 'styld-ask-sheet-grow' },
 )
 
-export const page = style({ display: 'grid', gap: '20px', paddingBlock: '8px 40px' })
+// One column no wider than the page: an `auto` column grew to the search field's own width once the clear
+// button showed, and the page ran sideways on a phone.
+export const page = style({
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr)',
+  gap: '20px',
+  paddingBlock: '8px 40px',
+})
 export const bar = style({ display: 'flex', alignItems: 'center', gap: '8px' })
 export const search = style({
   display: 'flex',
   flexGrow: 1,
   alignItems: 'center',
   gap: '10px',
+  minInlineSize: '0',
   minBlockSize: '52px',
   paddingInline: '16px 6px',
   borderRadius: 'pill',
