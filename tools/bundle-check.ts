@@ -39,8 +39,9 @@ initialGzip += Math.max(...(await Promise.all(catalogs.map(([, chunk]) => gzipOf
 let totalGzip = 0
 for (const file of all) totalGzip += await gzipOf(file)
 const server = await readFile('apps/web/dist/server/fetch.js')
-if (initialGzip > 262144) throw new Error(`Initial browser assets exceed the 256 KiB gzip budget: ${initialGzip}`)
-if (totalGzip > 524288) throw new Error(`All browser assets exceed the 512 KiB gzip budget: ${totalGzip}`)
+// Raised from 256 and 512 KiB by the owner on 2026-10-30 for Gallery 2 and boards (docs/STATUS.md › Overnight run).
+if (initialGzip > 307200) throw new Error(`Initial browser assets exceed the 300 KiB gzip budget: ${initialGzip}`)
+if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(
   `Bundle budgets: initial browser ${initialGzip} gzip bytes; all browser ${totalGzip}; SSR ${server.byteLength} source bytes`,
