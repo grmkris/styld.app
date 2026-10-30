@@ -15,8 +15,9 @@ not aim for v1 parity.
     30 days.
   - Nobody ever paid.
   - Nobody followed, reported, blocked or referred anyone.
-- **Where v1's money went:** $19.30 of its $24.68 AI spend went on Gemini redrawing product shots, which v2 replaces
-  with real cut-outs.
+- **Where v1's money went:** $19.30 of its $24.68 AI spend went on Gemini redrawing product shots, for every piece
+  at $0.034. v2 redraws only the pieces whose cut-out needs it, with Muse Image at $0.01, and keeps the real cut-out
+  as the source (owner, 2026-10-30; see "Clean pictures" below).
 
 Kept, in order:
 
@@ -35,10 +36,25 @@ Parked (not built unless real demand appears):
   content;
 - referrals, the daily wheel, the calendar and v1's onboarding funnels;
 - favourites and archive;
-- Jev outfit ideas, which were on in production but unused;
-- AI-redrawn product shots as a piece's main image.
+- Jev outfit ideas, which were on in production but unused.
 
 Not porting: guest accounts and the free wardrobe cap (owner, 2026-10-28).
+
+## Clean pictures, the turn and video scans (owner, 2026-10-30)
+
+The owner's test on the preview showed that real cut-outs of clothes held up or worn look poor: finger dents, holes
+where hands or hair were, droop. A cut-out keeps only the pixels the camera saw. Spikes (STATUS, 30 October) showed that
+an image model redrawing the garment from its cut-out gives a clean product picture.
+
+- **Clean pictures:** after a keep, Clef judges the cut-out: kept as it is when it is already clean, redrawn when it
+  needs it, a retake asked for when it is only a fragment. Muse Image (Meta) draws the picture by default; Gemini 3.1
+  Flash Lite Image, v1's model, can replace it by configuration. Clef checks the drawing against the cut-out: shown
+  when it matches, offered for the person to choose when unsure, dropped when it does not. The first clean picture
+  is free; a redraw, with an optional hint, costs 1 credit. Existing pieces can be given clean pictures too.
+- **The turn:** on request, the clean picture on a wooden hanger turns a quarter-turn (Veo 3.1 Lite), for 5 credits.
+- **Video scans:** filming pieces one by one, hand-held, is the main way to add many pieces; a garment seen in several
+  parts of a video becomes one card.
+- Generated pictures and turns are presentation assets beside the real photo, never a replacement for it.
 
 ## Gallery 2 and boards (owner, 2026-10-30)
 
@@ -99,8 +115,9 @@ only that copy reaches a provider.
 
 **Rules for the result**
 
-- **Real pixels only:** the main image is always the real cut-out. If the cut-out is poor, the piece keeps its original
-  photo. Nothing is redrawn by AI.
+- **The real photo is the source:** the real cut-out, or the original photo, is always kept and one tap away. A
+  piece may show a clean picture an image model drew from it, always marked as such (owner, 2026-10-30, replacing
+  "real pixels only"; see "Clean pictures" below).
 - **Originals are kept:** the original photo stays private, next to the cut-out, so a better model can process it again
   later.
 - **Review first:** every result waits in a "To review" tray. The person keeps it, discards it, or keeps the original
