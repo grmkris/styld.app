@@ -1,5 +1,5 @@
 import { captureFrames, captures, detections, operationReceipts, piecePictures, pieces, uploads } from '@styld/db'
-import { and, desc, eq, inArray, isNull, ne, or } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNotNull, isNull, ne, or } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Array, Effect, Option } from 'effect'
 import { StoreUnavailable } from '../wardrobe/Store.ts'
@@ -344,6 +344,41 @@ const pictureRows = (db: Database) => ({
         .where(and(eq(piecePictures.pieceId, pieceId), inArray(piecePictures.state, [...from])))
         .returning({ pieceId: piecePictures.pieceId }),
     ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** A picture the owner asked for, unless the piece already has one; whether it was added. */
+  addPicture: (picture: NewPicture) =>
+    attempt(() =>
+      db.insert(piecePictures).values(picture).onConflictDoNothing().returning({ pieceId: piecePictures.pieceId }),
+    ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** Queue pictures for pieces that have none, leaving any a concurrent request added. */
+  addPictures: (pictures: ReadonlyArray<NewPicture>) => {
+    const [head, ...rest] = pictures.map((picture) => db.insert(piecePictures).values(picture).onConflictDoNothing())
+    return head === undefined ? Effect.void : attempt(() => db.batch([head, ...rest])).pipe(Effect.asVoid)
+  },
+  /** The account's kept cut-outs no drawing was ever asked for. A piece kept as its photo is not one. */
+  undrawnPieces: (accountId: string) =>
+    attempt(() =>
+      db
+        .select({ id: pieces.id })
+        .from(pieces)
+        .leftJoin(piecePictures, eq(piecePictures.pieceId, pieces.id))
+        .where(
+          and(
+            eq(pieces.accountId, accountId),
+            eq(pieces.status, 'ready'),
+            isNotNull(pieces.imageKey),
+            ne(pieces.imageKey, pieces.originalKey),
+            isNull(piecePictures.pieceId),
+          ),
+        ),
+    ).pipe(Effect.map((rows) => rows.map(({ id }) => id))),
+  /** The account's pictures still waiting for the queue. */
+  queuedPicturesOf: (accountId: string) =>
+    attempt(() =>
+      db
+        .select({ pieceId: piecePictures.pieceId })
+        .from(piecePictures)
+        .where(and(eq(piecePictures.accountId, accountId), eq(piecePictures.state, 'queued'))),
+    ).pipe(Effect.map((rows) => rows.map(({ pieceId }) => pieceId))),
   /** The pieces among `pieceIds` whose picture still waits for the queue. */
   waitingPictures: (pieceIds: ReadonlyArray<string>) =>
     readIn(pieceIds, (chunk) =>

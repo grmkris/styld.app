@@ -1,4 +1,4 @@
-import { type Piece, PieceId, PieceNotFound } from '@styld/protocol'
+import { type Piece, PieceId, PieceNotFound, PictureRefused, type RedrawPicture } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
 import { describe, expect, test } from 'vitest'
@@ -69,7 +69,17 @@ const looks = Looks.of({
   getLook: notUsed,
   deleteLook: notUsed,
 })
-const tools = styldTools(database, 'https://styld.test', { wardrobe, looks }, offline)
+/** Redraws: the first piece is drawn again; the second shows its original photo, which is never sent on. */
+const redraws: Array<{ readonly pieceId: string; readonly input: RedrawPicture }> = []
+const captures = {
+  redrawPicture: (pieceId: string, input: RedrawPicture) =>
+    Effect.gen(function* () {
+      if (pieceId !== pieces[0]?.id) return yield* PictureRefused.make({ reason: 'photo' })
+      redraws.push({ pieceId, input })
+      return { state: 'drawing' as const, shows: 'photo' as const, version: 1 }
+    }),
+}
+const tools = styldTools(database, 'https://styld.test', { wardrobe, looks, captures }, offline)
 /** The JSON of a result's first text block. */
 const jsonOf = (result: {
   readonly content: ReadonlyArray<{ readonly type: string; readonly text?: string }>
@@ -106,6 +116,7 @@ describe('MCP tools', () => {
       'look_list',
       'look_get',
       'look_delete',
+      'picture_redraw',
     ])
     expect(list.find(({ name }) => name === 'piece_delete')?.annotations).toMatchObject({ destructiveHint: true })
     for (const entry of list) {
@@ -161,6 +172,26 @@ describe('MCP tools', () => {
       url: 'https://styld.test/account',
     })
     expect(jsonOf(result)).toEqual(result.structuredContent)
+  })
+
+  test('asks for a redraw with the owner’s words, and says why a photo cannot be drawn', async () => {
+    const first = pieces[0]?.id ?? ''
+    const asked = await call('picture_redraw', {
+      pieceId: first,
+      operationId: 'redraw-0001',
+      hint: 'a navy cable knit',
+    })
+    expect(asked.structuredContent).toEqual({
+      pieceId: first,
+      picture: { state: 'drawing', shows: 'photo', version: 1 },
+      url: `https://styld.test/wardrobe/${first}`,
+    })
+    expect(redraws).toEqual([{ pieceId: first, input: { operationId: 'redraw-0001', hint: 'a navy cable knit' } }])
+    const photo = await call('picture_redraw', { pieceId: pieces[1]?.id, operationId: 'redraw-0002' })
+    expect(photo.isError).toBe(true)
+    expect(jsonOf(photo)).toMatchObject({ code: 'picture_refused', retryable: false })
+    const long = await call('picture_redraw', { pieceId: first, operationId: 'redraw-0003', hint: 'x'.repeat(81) })
+    expect(jsonOf(long)).toMatchObject({ code: 'invalid_arguments' })
   })
 
   test('refuses unknown tools and unknown arguments without echoing values', async () => {

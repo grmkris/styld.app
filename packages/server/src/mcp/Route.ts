@@ -3,6 +3,7 @@ import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { CurrentAccount } from '../CurrentAccount.ts'
+import type { Captures } from '../capture/Service.ts'
 import type { Looks } from '../looks/Looks.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import * as FetchHttpClient from 'effect/http/FetchHttpClient'
@@ -32,7 +33,11 @@ export const mcpRoutes = (
   db: D1,
   origin: string,
   release: string,
-  services: { readonly wardrobe: Wardrobe['Service']; readonly looks: Looks['Service'] },
+  services: {
+    readonly wardrobe: Wardrobe['Service']
+    readonly looks: Looks['Service']
+    readonly captures: Pick<Captures['Service'], 'redrawPicture'>
+  },
 ) =>
   Layer.unwrap(
     Effect.gen(function* () {

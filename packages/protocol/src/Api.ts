@@ -40,7 +40,11 @@ import {
   Piece,
   PieceId,
   PieceNotFound,
+  PictureBackfill,
+  PictureRefused,
+  PiecePicture,
   Pieces,
+  RedrawPicture,
   SubcategoryMismatch,
   UpdatePiece,
   Upload,
@@ -162,6 +166,21 @@ export class CaptureApi extends HttpApiGroup.make('capture')
     HttpApiEndpoint.post('check', '/captures/check', {
       payload: HeldCheckRequest,
       success: HeldCheckAnswer,
+      error: [CaptureUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post('redrawPicture', '/pieces/:pieceId/picture/redraw', {
+      params: { pieceId: PieceId },
+      payload: RedrawPicture,
+      success: PiecePicture,
+      error: [PieceNotFound, PictureRefused, DailyLimitReached, CaptureUnavailable, RequestRefused],
+    }),
+  )
+  .add(HttpApiEndpoint.get('undrawnPictures', '/pictures', { success: PictureBackfill, error: CaptureUnavailable }))
+  .add(
+    HttpApiEndpoint.post('drawPictures', '/pictures', {
+      success: PictureBackfill,
       error: [CaptureUnavailable, RequestRefused],
     }),
   )

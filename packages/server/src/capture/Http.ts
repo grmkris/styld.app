@@ -35,6 +35,11 @@ export const captureHandlers = (
         .handle('review', ({ payload }) => admit(asSessionAccount(captures.review(payload))))
         .handle('retry', ({ params }) => admit(asSessionAccount(captures.retry(params.captureId))))
         .handle('remove', ({ params }) => admit(asSessionAccount(captures.remove(params.captureId))))
+        .handle('redrawPicture', ({ params, payload }) =>
+          admit(asSessionAccount(captures.redrawPicture(params.pieceId, payload))),
+        )
+        .handle('undrawnPictures', () => asSessionAccount(captures.undrawnPictures()))
+        .handle('drawPictures', () => admit(asSessionAccount(captures.drawPictures())))
         .handle('check', ({ payload }) =>
           admit(
             asSessionAccount(

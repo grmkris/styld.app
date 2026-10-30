@@ -6,6 +6,7 @@ import { crop, decodePng, encodePng, opaqueBounds, opaqueShare, type Rgba } from
 import { CaptureConfig } from './Policy.ts'
 import { GarmentVision, ImageGenerator, type Picture } from './Providers.ts'
 import type { PictureRow, PictureState } from './Store.ts'
+import { Usage } from './Usage.ts'
 import { isStale } from '../wardrobe/Shown.ts'
 
 const now = Effect.map(DateTime.now, DateTime.toDateUtc)
@@ -150,7 +151,9 @@ const draw = (parts: Parts, claimed: PictureRow, front: Rgba, back: Option.Optio
     return Option.some({ clean, checking: { ...claimed, state: 'checking' as const, cleanKey } })
   })
 
-/** A queued picture: judge the cut-out, then keep the photo, ask for a retake, or claim and draw it. */
+/** A queued picture: judge the cut-out, then keep the photo, ask for a retake, or claim and draw it. A redraw the
+ * owner asked for (it holds a credit) is drawn whatever the verdict, unless a face may show. The claim drops the last
+ * drawing: a redraw replaces it. */
 const start = (parts: Parts, picture: PictureRow) =>
   Effect.gen(function* () {
     const policy = (yield* CaptureConfig).pictures
@@ -162,7 +165,8 @@ const start = (parts: Parts, picture: PictureRow) =>
     if (Option.isNone(front)) return yield* move(parts, pieceId, ['queued'], { state: 'kept-real' })
     const judgement = yield* (yield* GarmentVision).judge(sent(front.value, judgedAt))
     const judged = { judge: judgement.verdict, judgeConfidence: judgement.confidence, face: judgement.face }
-    const { plan } = planFor(judgement, policy)
+    const asked = picture.hold !== null && judgement.face < policy.face
+    const { plan } = asked ? { plan: 'draw' as const } : planFor(judgement, policy)
     if (plan !== 'draw') return yield* move(parts, pieceId, ['queued'], { ...judged, state: plan })
     const generator = yield* ImageGenerator
     const claim = {
@@ -173,9 +177,11 @@ const start = (parts: Parts, picture: PictureRow) =>
       provider: generator.provider,
       model: generator.model,
       claimedAt: yield* now,
+      cleanKey: null,
       errorCode: null,
     }
     if (!(yield* move(parts, pieceId, ['queued'], claim))) return
+    yield* remove(parts, picture.cleanKey)
     const back = yield* cutoutAt(parts, piece.value.backImageKey)
     const drawn = yield* draw(parts, { ...picture, ...claim }, front.value, back)
     if (Option.isSome(drawn)) yield* check(parts, drawn.value.checking, drawn.value.clean, front.value)
@@ -191,18 +197,35 @@ const checkStored = (parts: Parts, picture: PictureRow) =>
     yield* check(parts, picture, drawn.value, real.value)
   })
 
+const finished: ReadonlyArray<PictureState> = ['ready', 'proposed', 'rejected', 'retake', 'kept-real', 'failed']
+
+/** A redraw's credit, once its drawing ended: consumed for a drawing the owner can see, refunded otherwise. The Wallet
+ * answers a repeated settle as done, so the hold is cleared only after it settled, and whoever comes next settles a
+ * hold a delivery left. */
+export const settleHold = (parts: Parts, pieceId: string) =>
+  Effect.gen(function* () {
+    const found = yield* storedAs(parts.store.findPicture(pieceId))
+    if (Option.isNone(found)) return
+    const { accountId, hold, state } = found.value
+    if (hold === null || !finished.includes(state)) return
+    const outcome = state === 'ready' || state === 'proposed' ? 'consumed' : 'refunded'
+    yield* (yield* Usage).settle(accountId, hold, outcome)
+    yield* storedAs(parts.store.movePicture(pieceId, [state], { hold: null }))
+  })
+
 /** The queue side of clean pictures. */
 export const picturing = (parts: Parts) => ({
   /** Carry a piece's clean picture as far as it goes. A drawing claimed by a delivery still within its patience is
-   * left to it; a finished picture is left as it is. */
+   * left to it; a finished one only has a redraw's credit settled. */
   processPicture: Effect.fn('Styld.Picture.process')(function* (pieceId: string) {
     const found = yield* storedAs(parts.store.findPicture(pieceId))
     if (Option.isNone(found)) return
     const picture = found.value
     if (!(yield* storedAs(parts.wardrobeStore.accountEnabled(picture.accountId)))) return
-    if (picture.state === 'queued') return yield* start(parts, picture)
-    if (picture.state === 'checking') return yield* checkStored(parts, picture)
-    if (isStale(picture, yield* now)) yield* end(parts, pieceId, 'generating', 'unknown')
+    if (picture.state === 'queued') yield* start(parts, picture)
+    else if (picture.state === 'checking') yield* checkStored(parts, picture)
+    else if (isStale(picture, yield* now)) yield* end(parts, pieceId, 'generating', 'unknown')
+    yield* settleHold(parts, pieceId)
   }),
   /** The last attempt failed: the photo stays. A drawing that may have been made counts as unknown. */
   failPicture: Effect.fn('Styld.Picture.fail')(function* (pieceId: string) {
@@ -212,5 +235,6 @@ export const picturing = (parts: Parts) => ({
     if (picture.state === 'queued') yield* end(parts, pieceId, 'queued', 'gave-up')
     else if (picture.state === 'generating') yield* end(parts, pieceId, 'generating', 'unknown')
     else if (picture.state === 'checking') yield* endChecking(parts, picture, 'gave-up')
+    yield* settleHold(parts, pieceId)
   }),
 })

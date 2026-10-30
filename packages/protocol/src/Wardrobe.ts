@@ -131,6 +131,17 @@ export type PiecePicture = typeof PiecePicture.Type
 /** Show the drawing or the photo: `PUT /api/pieces/:pieceId/picture`. */
 export const ChoosePicture = Schema.Struct({ use: PictureChoice })
 
+/** The owner's own words about a piece for its next drawing, such as "a black wool beanie". */
+const Hint = Schema.String.check(Schema.isTrimmed(), Schema.isMinLength(1), Schema.isMaxLength(80))
+
+/** Ask for a new drawing of a piece, for a credit (owner, 2026-10-30). A new `operationId` for each request; repeating
+ * one answers the first request again instead of drawing twice. */
+export const RedrawPicture = Schema.Struct({ operationId: OperationId, hint: Schema.optionalKey(Hint) })
+export type RedrawPicture = typeof RedrawPicture.Type
+
+/** Pieces with no clean picture yet that one could be drawn for, or that were just queued for one. */
+export const PictureBackfill = Schema.Struct({ pieces: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)) })
+
 export const Piece = Schema.Struct({
   id: PieceId,
   name: Schema.NullOr(Name),
@@ -209,6 +220,14 @@ export class SubcategoryMismatch extends Schema.TaggedError<SubcategoryMismatch>
   'SubcategoryMismatch',
   {},
   { httpApiStatus: 422 },
+) {}
+
+/** Why a piece cannot be drawn now: it shows its original photo, which never leaves Styld (`photo`); a face may show
+ * in it (`face`); a drawing is already being made (`busy`); or clean pictures are off (`off`). */
+export class PictureRefused extends Schema.TaggedError<PictureRefused>()(
+  'PictureRefused',
+  { reason: Schema.Literals(['photo', 'face', 'busy', 'off']) },
+  { httpApiStatus: 409 },
 ) {}
 
 /** The piece has no clean drawing to show or choose: none was made, or it was dropped. */

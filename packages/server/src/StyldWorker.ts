@@ -278,9 +278,11 @@ const makeApplication =
         boardRoutes(auth).pipe(Layer.provide(boards)),
         captureRoutes(auth).pipe(Layer.provide(captures)),
         oauth.routes,
-        mcpRoutes(db, authOrigin, observabilityBase.release, { wardrobe: wardrobeService, looks: looksService }).pipe(
-          Layer.provide(oauth.server),
-        ),
+        mcpRoutes(db, authOrigin, observabilityBase.release, {
+          wardrobe: wardrobeService,
+          looks: looksService,
+          captures: capturesService,
+        }).pipe(Layer.provide(oauth.server)),
         HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),
         browserTelemetryRoutes(authOrigin, allowTelemetry),
       ).pipe(Layer.provide(AlchemyHttp.Platform))

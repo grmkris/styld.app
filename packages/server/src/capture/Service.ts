@@ -7,6 +7,7 @@ import { CaptureConfig } from './Policy.ts'
 import { processing } from './Processing.ts'
 import { picturing } from './Pictures.ts'
 import { GarmentSegmenter, GarmentVision, ImageGenerator, PictureWork } from './Providers.ts'
+import { redrawing } from './Redraw.ts'
 import { detectionPictures, reviewing } from './Review.ts'
 import { Usage } from './Usage.ts'
 
@@ -37,6 +38,7 @@ const make = (bindings: CaptureBindings) =>
       ...detectionPictures(parts),
       ...processing(parts),
       ...picturing(parts),
+      ...redrawing(parts),
     }
     return {
       createCapture: bound(operations.createCapture),
@@ -51,6 +53,9 @@ const make = (bindings: CaptureBindings) =>
       failCapture: bound(operations.failCapture),
       processPicture: bound(operations.processPicture),
       failPicture: bound(operations.failPicture),
+      redrawPicture: bound(operations.redrawPicture),
+      undrawnPictures: bound(operations.undrawnPictures),
+      drawPictures: bound(operations.drawPictures),
     }
   })
 
