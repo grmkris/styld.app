@@ -1,6 +1,67 @@
 # Delivery status
 
-Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `a158d38`). Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `0ba572d`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+
+## Long videos and a simpler add page — 2026-10-30
+
+Plan: `/home/kristjan/.claude/plans/ticklish-popping-rivest.md` (owner-approved: videos up to 15 minutes, about 10
+credits per started minute). Commits `5178732` and `0ba572d`.
+
+- **Why.** A 3-minute and a 13-minute phone video were refused by the one-minute limit. Sending originals that long
+  would cost about $4.70 of Meta frames for 13 minutes, and would run past SAM's 16-object cap and the 95 MB upload
+  limit.
+- **Cut on the device** (`apps/web/src/capture/VideoParts.ts`, Mediabunny 1.61.6, MPL-2.0, loaded only when a video
+  is chosen):
+  - A video of up to 15 minutes is read in the browser and cut into 30-second parts. A tail under 12.5 s joins the
+    last part.
+  - Each part is an upright H.264 clip at 720 px and a steady 4 frames a second, without sound. A 1280 px still is
+    kept each second, with its tile sharpness.
+  - One part is held in memory at a time. The original never leaves the device.
+  - Where WebCodecs cannot decode the video, a clip of a minute or less still goes whole through the old sampler.
+    A longer one is refused as unreadable.
+- **Add page** (`apps/web/src/page/AddPieces/`, now Foldkit's message/model/update/view split):
+  - Each part goes as an ordinary video capture. One video is read at a time, and photos keep going meanwhile.
+  - The page shows "Reading the video, part N of M". Trying again resumes at the failed part and resends a request
+    whose answer was lost.
+  - When the day's allowance runs out partway, the page says "Today's free allowance covered N of M parts. Send the
+    rest tomorrow."
+  - The screen stays on while a video is read: a Subscription holds a wake lock and gives it back once the video stops.
+  - The "use your camera app" picker is gone. Two tiles remain: photos or a video, and hold pieces up.
+- **Pricing.** 5 credits per started half-minute of each part, measured on the server; it was a flat 10 per video.
+  A 15-minute video is 150 credits, more than a day's 100.
+- **Evidence.**
+  - Unit: part planning, frame times and sizes.
+  - Story: part by part, including a lost answer and the resume; the daily limit partway, with a late answer; one
+    video at a time; the whole fallback; a video that is too long; when the wake lock is asked for.
+  - Scene: the part progress and partial-allowance copy through the real view.
+  - Native Chromium: a 140 s, 12 fps video with sound, recorded turned a quarter, goes through the picker with 7
+    credits left. Part 1 is accepted and part 2 is refused for credits. Both stored clips have 120 frames, 30 000 ms,
+    no sound track and portrait size. The page ends with "covered 1 of 5 parts". One wake lock was requested and one
+    released.
+  - Preview, release `0ba572d`, real providers, myinbox session:
+    - A 3-minute rail loop (640×352, 24 fps) went up as 6 parts in 42 s.
+    - All 6 were tracked by SAM within 138 s, each with 10 cut-outs.
+    - The allowance went from 100 to 65: the last part measured 30.25 s, so it cost 10.
+    - Meta: 6 track calls of 120–121 frames, $0.144 together (the original would have been about 4,300 frames,
+      about $0.86).
+    - No page errors. The run's 60 duplicate cut-outs were discarded afterwards.
+  - Full gate on `0ba572d`: 242 type/Effect files with zero findings, 216 unit tests, 18 native tests.
+  - Bundle: initial 255,655 gzip bytes of 262,144; all assets 512,125 of 524,288. Mediabunny's own chunk is 83 KB
+    gzip.
+  - Deploy: 3 Worker updates, 2 binding changes, nothing created or deleted. `/api/health` reports `0ba572d`, and
+    deployed acceptance passed (2 tests, 35 assertions).
+- **Open.**
+  - For the owner on an iPhone:
+    - the 13-minute video, with the time per part;
+    - whether the picker hands over the HEVC original or a transcode;
+    - whether portrait and front-camera clips come out upright;
+    - HDR colours;
+    - locking the phone mid-part, then trying again;
+    - heat, and whether Safari keeps the tab alive across 26 parts.
+  - A phone cuts more slowly than headless Chromium on this box. Not measured yet.
+  - A garment seen in two parts shows twice in the tray. Merging them is not done.
+  - The bundle budgets have about 6.5 KB (first load) and 12 KB (all assets) left. The next page needs splitting
+    or a budget decision.
 
 ## Capture and assistant run — 2026-10-29
 
