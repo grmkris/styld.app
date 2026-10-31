@@ -20,14 +20,5 @@ export const boardCard = style({
   textDecorationLine: 'none',
   ':active': { transform: 'scale(0.98)' },
 })
-/** A board without a collage shows its newest pins two by two. */
-export const cover = style({
-  display: 'grid',
-  gridTemplateColumns: '1fr 1fr',
-  gap: '4px',
-  aspectRatio: '4 / 5',
-  pointerEvents: 'none',
-})
-export const coverTile = style({ display: 'grid', minBlockSize: '0' })
 export const boardName = style({ paddingInline: '4px', fontWeight: 600 })
 export const meta = style({ paddingInline: '4px', fontSize: '13px', color: 'ink2' })

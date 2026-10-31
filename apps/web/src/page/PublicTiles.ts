@@ -6,7 +6,8 @@ import { avatar } from '../Avatar.ts'
 import { boardRouter, lookRouter, personRouter, publicPieceRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import * as boardStyles from './Board/PageView.styles.ts'
-import { fromPublic, publicPicture, publicPieceImage, stillTable } from './Board/Table.ts'
+import { fromPublic, publicPicture, publicPieceImage } from './Board/Table.ts'
+import { boardFace, type CoverPicture } from './BoardFace.ts'
 import * as styles from './PublicTiles.styles.ts'
 import { pieceLabel } from './WardrobeWords.ts'
 import { generatedMark } from './Board/MakeView.ts'
@@ -85,34 +86,28 @@ export const tileGrid = <Message>(
     tiles.map(({ id, tile }) => h.keyed('li')(id, styled(h, boardStyles.pin()), [tile])),
   )
 
-/** A pin's picture inside a board's card, which is itself the link: no link of its own, and nothing to read aloud
- * beyond the board's name. */
-const coverImage = <Message>(pin: PublicPin, h: HtmlBuilder<Message>): Html => {
-  const source = Match.value(pin).pipe(
+/** Where a pin's picture comes from inside a board's card, which is itself the link: a look shows its first piece. */
+const coverSource = (pin: PublicPin): CoverPicture => ({
+  id: pin.id,
+  source: Match.value(pin).pipe(
     Match.tagsExhaustive({
       PublicPiecePin: ({ piece }) => publicPieceImage(piece.id),
       PublicPicturePin: ({ imageId }) => publicPicture(imageId, 'thumb'),
       PublicLookPin: ({ look }) => (look.pieces[0] === undefined ? '' : publicPieceImage(look.pieces[0].id)),
     }),
-  )
-  return source === ''
-    ? h.empty
-    : h.span(styled(h, boardStyles.pinFrame()), [
-        h.img([h.Src(source), h.Alt(''), h.Loading('lazy'), ...styled(h, boardStyles.cutout())]),
-      ])
-}
+  ),
+})
 
-/** A public board in a profile: its collage, or its newest pins, its name and how many pins. */
+/** A public board in a profile: its face, its name and how many pins. */
 export const boardCard = <Message>(board: PublicBoardSummary, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.a(
     [h.Href(boardRouter({ boardId: board.id })), ...styled(h, styles.boardCard())],
     [
-      board.items.length > 0
-        ? stillTable(board.items, board.paper, [], h, fromPublic)
-        : h.span(
-            styled(h, styles.cover()),
-            board.cover.map((pin) => h.keyed('span')(pin.id, styled(h, styles.coverTile()), [coverImage(pin, h)])),
-          ),
+      boardFace(
+        { items: board.items, paper: board.paper, cover: board.cover.map(coverSource), source: fromPublic },
+        locale,
+        h,
+      ),
       h.span(styled(h, styles.boardName()), [board.name]),
       h.span(styled(h, styles.meta()), [format(locale, 'saveToBoard.pins', { count: board.pinCount })]),
     ],

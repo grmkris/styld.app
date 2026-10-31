@@ -1,13 +1,14 @@
 import { catalogVersion } from '@styld/i18n'
 import { Board, BoardSummary } from '@styld/protocol'
 import { Schema } from 'effect'
-import { click, Command, expect, given, role, scene, text } from 'foldkit/scene'
+import { click, Command, expect, given, role, scene, selector, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { init, Message as AppMessage, Session, update } from '../src/App.ts'
 import { BoardsData, CreateBoard, Message as BoardsMessage } from '../src/page/Boards.ts'
 import { Navigate } from '../src/Navigation.ts'
 import { view } from '../src/View.ts'
+import { pieceFixture } from './WardrobeFixtures.ts'
 
 const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
 const boardId = (name: string) => `bd_${name.padEnd(22, 'x')}`
@@ -23,6 +24,18 @@ const summary = (name: string, changes: object) =>
     updatedAt: '2026-10-31T08:00:00.000Z',
     ...changes,
   })
+const knit = pieceFixture('knit', { name: 'Cable knit' })
+const pictureId = `bm_${'sea'.padEnd(22, 'x')}`
+const pins = [
+  { _tag: 'PiecePin', id: `pn_${'knit'.padEnd(22, 'x')}`, piece: knit, addedAt: '2026-10-31T08:00:00.000Z' },
+  {
+    _tag: 'PicturePin',
+    id: `pn_${'sea'.padEnd(22, 'x')}`,
+    imageId: pictureId,
+    generated: false,
+    addedAt: '2026-10-31T07:00:00.000Z',
+  },
+]
 const created = Schema.decodeUnknownSync(Board)({
   id: boardId('new'),
   name: 'My board',
@@ -59,6 +72,17 @@ describe('the boards list', () => {
       { update, view },
       given(boardsPage([summary('Sea', { pinCount: 3 })])),
       expect(role('link', { name: /^Sea\s*3 pins$/ })).toHaveAttr('href', `/boards/${boardId('Sea')}`),
+    )
+  })
+
+  test('shows a board without a collage as its newest pins, and one with no pins as its paper saying so', () => {
+    scene(
+      { update, view },
+      given(boardsPage([summary('Sea', { cover: pins, pinCount: 2 }), summary('Empty', {})])),
+      expect(selector(`img[src="/cdn/pieces/${knit.id}/thumb"]`)).toExist(),
+      expect(selector(`img[src="/cdn/boards/images/${pictureId}/thumb"]`)).toExist(),
+      expect(text('Nothing pinned yet')).toExist(),
+      expect(role('link', { name: /^Empty\s*0 pins$/ })).toExist(),
     )
   })
 

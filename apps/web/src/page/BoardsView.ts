@@ -1,7 +1,7 @@
 import { Button } from '@foldkit/ui'
 import { format, type Locale } from '@styld/i18n'
-import type { BoardSummary } from '@styld/protocol'
-import { Array, Option } from 'effect'
+import type { BoardSummary, Pin } from '@styld/protocol'
+import { Array, Match, Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
@@ -12,12 +12,25 @@ import { boardRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
-import { stillTable } from './Board/Table.ts'
+import { boardImage, pieceImage } from './Board/Table.ts'
+import { boardFace, type CoverPicture } from './BoardFace.ts'
 import { Creating, Message, type Model } from './Boards.ts'
 import * as styles from './BoardsView.styles.ts'
 import { pageHead, pageTitle } from './PageHead.ts'
 import { roundAction } from './PageHead.styles.ts'
 import { savedView } from './SavedView.ts'
+
+/** Where a pin's picture comes from on its board's tile: a look shows its first piece. */
+const coverSource = (pin: Pin): CoverPicture => ({
+  id: pin.id,
+  source: Match.value(pin).pipe(
+    Match.tagsExhaustive({
+      PiecePin: ({ piece }) => pieceImage(piece.id),
+      PicturePin: ({ imageId }) => boardImage(imageId, 'thumb'),
+      LookPin: ({ look }) => (look.pieces[0] === undefined ? '' : pieceImage(look.pieces[0].id)),
+    }),
+  ),
+})
 
 const tileView = (board: BoardSummary, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.keyed('li')(
@@ -27,7 +40,7 @@ const tileView = (board: BoardSummary, locale: Locale, h: HtmlBuilder<Message>):
       h.a(
         [h.Href(boardRouter({ boardId: board.id })), ...styled(h, styles.tile())],
         [
-          stillTable(board.items, board.paper, [], h),
+          boardFace({ items: board.items, paper: board.paper, cover: board.cover.map(coverSource) }, locale, h),
           h.span(styled(h, styles.tileName()), [board.name]),
           h.span(styled(h, styles.tileMeta()), [format(locale, 'studio.pinCount', { count: board.pinCount })]),
         ],
