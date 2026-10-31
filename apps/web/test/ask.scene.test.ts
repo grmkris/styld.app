@@ -85,12 +85,24 @@ describe('Ask', () => {
     )
   })
 
-  test('the stylist hands over to the account’s section on connecting an assistant', () => {
+  test('Styld answers in the app, and ChatGPT or Claude once connected from the account', () => {
     scene(
       { update, view },
       given(askWith([tee])),
-      expect(role('link', { name: 'Connect ChatGPT or Claude' })).toHaveAttr('href', '/account#assistants'),
+      expect(role('link', { name: 'Ask Styld' })).toHaveAttr('href', '/ask/stylist'),
+      expect(role('link', { name: 'Or connect ChatGPT or Claude' })).toHaveAttr('href', '/account#assistants'),
       expect(role('button', { name: 'Add' })).toHaveAttr('aria-haspopup', 'dialog'),
+    )
+  })
+
+  test('what is typed can be asked of Styld instead of searched', () => {
+    scene(
+      { update, view },
+      given(askWith([tee], 'what goes with white')),
+      expect(role('link', { name: 'Ask Styld: “what goes with white”' })).toHaveAttr(
+        'href',
+        '/ask/stylist?q=what+goes+with+white',
+      ),
     )
   })
 })

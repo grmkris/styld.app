@@ -292,6 +292,35 @@ const verifyAskAndWardrobe = async (page: Page, origin: string) => {
   await page.getByRole('link', { name: 'Pieces', exact: true }).waitFor({ state: 'visible' })
 }
 
+/** Styld from Ask: what was typed goes to Styld, whose reply is written on the queue by the real turn with the
+ * stand-in model, the piece it shows one tap away; coming back opens the chat again, and New chat starts over. */
+const verifyStylist = async (page: Page, origin: string) => {
+  const question = 'what goes with the knit'
+  await page.goto(`${origin}/ask`, { waitUntil: 'networkidle' })
+  await page.getByRole('searchbox', { name: 'Search your wardrobe' }).fill(question)
+  await page.getByRole('link', { name: `Ask Styld: “${question}”` }).click()
+  await page.waitForURL(`${origin}/ask/stylist?q=what+goes+with+the+knit`)
+  expect(await page.getByRole('textbox', { name: 'Message to Styld' }).inputValue()).toBe(question)
+  await page.getByRole('button', { name: 'Send', exact: true }).click()
+  await page.getByRole('list', { name: question }).waitFor({ state: 'visible' })
+  await page.getByText('Have a good day.').waitFor({ state: 'visible', timeout: 30000 })
+  const shown = page.getByRole('list', { name: 'Pieces Styld suggests' }).getByRole('link')
+  expect(await shown.count()).toBe(1)
+  expect(await shown.getAttribute('href')).toMatch(/^\/wardrobe\/pc_/)
+  // The suggested piece's picture arrives under the page's CSP, from the wardrobe's own images.
+  await page.waitForFunction(() => {
+    const image = document.querySelector('ul[aria-label="Pieces Styld suggests"] img')
+    return image instanceof HTMLImageElement && image.complete && image.naturalWidth > 0
+  })
+  await expectNoSidewaysScroll(page)
+  await shoot(page, 'phone-stylist')
+  await page.goto(`${origin}/ask/stylist`, { waitUntil: 'networkidle' })
+  await page.getByRole('list', { name: question }).waitFor({ state: 'visible' })
+  await page.getByRole('button', { name: 'New chat' }).click()
+  await page.getByRole('button', { name: 'What should I wear today?' }).waitFor({ state: 'visible' })
+  await page.getByRole('button', { name: question }).waitFor({ state: 'visible' })
+}
+
 /** On a phone, the diagnostics prompt's answers are what a tap at them reaches, not the navigation floating there. */
 const expectConsentReachable = async (browser: Browser, origin: string) => {
   const phone = await signedInContext(browser, origin, { width: 390, height: 844 }, false)
@@ -313,10 +342,20 @@ const expectConsentReachable = async (browser: Browser, origin: string) => {
 }
 
 /** The signed-in pages that must load whole without anything moving. */
-const steadyPaths = ['/', '/explore', '/wardrobe', '/looks', '/wardrobe/wishlist', '/boards', '/ask', '/account']
+const steadyPaths = [
+  '/',
+  '/explore',
+  '/wardrobe',
+  '/looks',
+  '/wardrobe/wishlist',
+  '/boards',
+  '/ask',
+  '/ask/stylist',
+  '/account',
+]
 
 /** Gallery 2 for the person's own wardrobe: today's table (Spin, Wear this), a board laid out by hand (moved,
- * pinched, a label, a picture, taken off and back, saved and reopened, saved as a look), Ask and the
+ * pinched, a label, a picture, taken off and back, saved and reopened, saved as a look), Ask, Styld and the
  * Wardrobe's tabs. No page error and no CSP violation on the way: the table places things through the CSSOM. */
 export const verifyGalleryJourney = async (browser: Browser, origin: string, fixtures: string): Promise<void> => {
   expect((await fetch(`${fixtures}/test/identity/seed-gallery-browser`, { method: 'POST' })).status).toBe(204)
@@ -337,6 +376,7 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
       await verifyHome(page, origin)
       await verifyBoard(phone, page, origin)
       await verifyAskAndWardrobe(page, origin)
+      await verifyStylist(page, origin)
       await expectSameTitleTops(page, origin)
       await expectSteadyFullLoads(page, origin, steadyPaths)
       await expectInstantTabs(page, origin)

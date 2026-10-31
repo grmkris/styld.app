@@ -34,6 +34,8 @@ export const AppRoute = defineRouteUnion({
   /** Search your wardrobe, ask the stylist through an assistant, or add clothes (Gallery 2's middle button). The
    * search stays in the address, so coming back to Ask brings it back. */
   Ask: { q: Schema.Option(Schema.String) },
+  /** Styld, the stylist in the app: a chat about the person's own wardrobe. A question typed in Ask comes along. */
+  Stylist: { q: Schema.Option(Schema.String) },
   Boards: {},
   /** A board: its collage above the grid of its pins. */
   Board: { boardId: Schema.String },
@@ -65,6 +67,12 @@ export const askRouter = pipe(
   literal('ask'),
   query(Schema.Struct({ q: Schema.OptionFromOptional(Schema.String) })),
   mapTo(AppRoute.Ask),
+)
+export const stylistRouter = pipe(
+  literal('ask'),
+  slash(literal('stylist')),
+  query(Schema.Struct({ q: Schema.OptionFromOptional(Schema.String) })),
+  mapTo(AppRoute.Stylist),
 )
 export const boardsRouter = pipe(literal('boards'), mapTo(AppRoute.Boards))
 export const boardRouter = pipe(literal('boards'), slash(string('boardId')), mapTo(AppRoute.Board))
@@ -103,6 +111,7 @@ const parser = oneOf(
   wardrobeRouter,
   lookRouter,
   looksRouter,
+  stylistRouter,
   askRouter,
   boardCollageRouter,
   boardRouter,
@@ -138,6 +147,7 @@ export const needsSession = (route: AppRoute) =>
   AppRoute.guards.Looks(route) ||
   AppRoute.guards.Wishlist(route) ||
   AppRoute.guards.Ask(route) ||
+  AppRoute.guards.Stylist(route) ||
   AppRoute.guards.Boards(route) ||
   AppRoute.guards.BoardCollage(route)
 
@@ -152,6 +162,7 @@ export const tabOf = AppRoute.match<Option.Option<Tab>>({
   Looks: () => Option.some('Looks'),
   Wishlist: () => Option.some('Wishlist'),
   Ask: () => Option.some('Ask'),
+  Stylist: () => Option.none(),
   Boards: () => Option.some('Boards'),
   Account: () => Option.some('Account'),
   Login: () => Option.none(),

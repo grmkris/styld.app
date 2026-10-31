@@ -3081,9 +3081,9 @@
     "noResults": "Nothing in your wardrobe matches “{query}”.",
     "failed": "Your wardrobe didn’t load.",
     "retry": "Try again",
-    "stylistTitle": "Ask the stylist",
-    "stylistText": "Styld’s stylist answers in ChatGPT and Claude, with your wardrobe connected: what goes with what, and what to wear tonight.",
-    "stylistLink": "Connect ChatGPT or Claude",
+    "stylistTitle": "Ask Styld",
+    "stylistText": "Styld is your stylist and knows your wardrobe: what goes with what, and what to wear tonight.",
+    "stylistLink": "Ask Styld",
     "searchWords": {
       "top": "top, tops",
       "bottom": "bottom, bottoms, pants",
@@ -3097,7 +3097,9 @@
     "emptyHint": "Add clothes and find them here by name, colour or kind.",
     "sheetTitle": "Add",
     "addLink": "Add from a link",
-    "addLinkHint": "A shop’s product page"
+    "addLinkHint": "A shop’s product page",
+    "stylistAssistants": "Or connect ChatGPT or Claude",
+    "askStyld": "Ask Styld: “{query}”"
   },
   "today": {
     "title": "Today",
@@ -3120,5 +3122,33 @@
     "waiting": "{count, plural, one {# piece is waiting for you} other {# pieces are waiting for you}}",
     "review": "Review them",
     "keepGoing": "Keep going"
+  },
+  "stylist": {
+    "title": "Ask Styld",
+    "intro": "Styld is your stylist and knows your wardrobe. Ask what to wear, what goes together, or what is missing.",
+    "startersLabel": "Things to ask",
+    "starter": {
+      "today": "What should I wear today?",
+      "together": "What goes well together in my wardrobe?",
+      "missing": "What is missing from my wardrobe?"
+    },
+    "earlier": "Earlier chats",
+    "newChat": "New chat",
+    "fieldLabel": "Message to Styld",
+    "placeholder": "Ask about your clothes",
+    "send": "Send",
+    "price": "Each message uses 1 credit of today’s free allowance.",
+    "writing": "Styld is writing…",
+    "failed": "No answer came this time, and your credit is back. Ask again.",
+    "loadFailed": "Your chats could not load.",
+    "shownPieces": "Pieces Styld suggests",
+    "openPiece": "Open the piece",
+    "openLook": "Open the look {name}",
+    "problem": {
+      "busy": "Styld is still answering your last message.",
+      "dailyLimit": "Today’s free allowance is spent. Ask again tomorrow.",
+      "unavailable": "Styld cannot answer just now. Try again later.",
+      "network": "Not sent. Try again."
+    }
   }
 }

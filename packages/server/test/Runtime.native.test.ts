@@ -215,7 +215,7 @@ test(
 )
 
 test(
-  "lays out today's table (Spin, Wear this), a board by hand (move, pinch, label, picture, undo, save as a look), Ask and the Wardrobe's tabs",
+  "lays out today's table (Spin, Wear this), a board by hand (move, pinch, label, picture, undo, save as a look), Ask, Styld and the Wardrobe's tabs",
   inBrowser(verifyGalleryJourney),
   { timeout: 120000 },
 )

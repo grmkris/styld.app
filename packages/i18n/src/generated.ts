@@ -372,6 +372,7 @@ export interface MessageArgumentsByKey<T = string> {
   'ask.addClothesHint': Readonly<Record<string, never>>
   'ask.addLink': Readonly<Record<string, never>>
   'ask.addLinkHint': Readonly<Record<string, never>>
+  'ask.askStyld': { readonly query: string | number }
   'ask.clear': Readonly<Record<string, never>>
   'ask.emptyHint': Readonly<Record<string, never>>
   'ask.emptyTitle': Readonly<Record<string, never>>
@@ -391,6 +392,7 @@ export interface MessageArgumentsByKey<T = string> {
   'ask.searchWords.shoes': Readonly<Record<string, never>>
   'ask.searchWords.top': Readonly<Record<string, never>>
   'ask.sheetTitle': Readonly<Record<string, never>>
+  'ask.stylistAssistants': Readonly<Record<string, never>>
   'ask.stylistLink': Readonly<Record<string, never>>
   'ask.stylistText': Readonly<Record<string, never>>
   'ask.stylistTitle': Readonly<Record<string, never>>
@@ -2104,6 +2106,28 @@ export interface MessageArgumentsByKey<T = string> {
   'studio.visibility': Readonly<Record<string, never>>
   'studio.visitShop': Readonly<Record<string, never>>
   'studio.wardrobeAddFailed': Readonly<Record<string, never>>
+  'stylist.earlier': Readonly<Record<string, never>>
+  'stylist.failed': Readonly<Record<string, never>>
+  'stylist.fieldLabel': Readonly<Record<string, never>>
+  'stylist.intro': Readonly<Record<string, never>>
+  'stylist.loadFailed': Readonly<Record<string, never>>
+  'stylist.newChat': Readonly<Record<string, never>>
+  'stylist.openLook': { readonly name: string | number }
+  'stylist.openPiece': Readonly<Record<string, never>>
+  'stylist.placeholder': Readonly<Record<string, never>>
+  'stylist.price': Readonly<Record<string, never>>
+  'stylist.problem.busy': Readonly<Record<string, never>>
+  'stylist.problem.dailyLimit': Readonly<Record<string, never>>
+  'stylist.problem.network': Readonly<Record<string, never>>
+  'stylist.problem.unavailable': Readonly<Record<string, never>>
+  'stylist.send': Readonly<Record<string, never>>
+  'stylist.shownPieces': Readonly<Record<string, never>>
+  'stylist.starter.missing': Readonly<Record<string, never>>
+  'stylist.starter.today': Readonly<Record<string, never>>
+  'stylist.starter.together': Readonly<Record<string, never>>
+  'stylist.startersLabel': Readonly<Record<string, never>>
+  'stylist.title': Readonly<Record<string, never>>
+  'stylist.writing': Readonly<Record<string, never>>
   'subscription.annual': Readonly<Record<string, never>>
   'subscription.annualSavings': { readonly percent: string | number }
   'subscription.badgeCurrent': Readonly<Record<string, never>>
@@ -2680,4 +2704,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '40b97c99e4d44d6be9b5f17fdf20810d552e65fa966762f46357a138dc40991d'
+export const catalogVersion = '69bb070fd7c0720f796b3d743760cb029ff9bc5b5eef960358725711a0f1dbea'

@@ -15,6 +15,7 @@ import * as ProfileEditor from './page/ProfileEditor.ts'
 import * as Looks from './page/Looks.ts'
 import * as Piece from './page/Piece.ts'
 import * as Review from './page/Review.ts'
+import * as Stylist from './page/Stylist.ts'
 import * as Today from './page/Today.ts'
 import * as Visit from './page/Visit.ts'
 import * as Wishlist from './page/Wishlist.ts'
@@ -46,6 +47,7 @@ export const Message = defineMessageUnion({
   GotPieceMessage: { message: Piece.Message },
   GotAddPiecesMessage: { message: AddPiecesMessage.Message },
   GotReviewMessage: { message: Review.Message },
+  GotStylistMessage: { message: Stylist.Message },
   GotLooksMessage: { message: Looks.Message },
   GotLookMessage: { message: Look.Message },
   GotProfileMessage: { message: ProfileEditor.Message },

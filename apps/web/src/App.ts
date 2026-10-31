@@ -32,6 +32,7 @@ import * as Piece from './page/Piece.ts'
 import * as Visit from './page/Visit.ts'
 import * as Wishlist from './page/Wishlist.ts'
 import * as Review from './page/Review.ts'
+import * as Stylist from './page/Stylist.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
 import {
   AppRoute,
@@ -91,6 +92,7 @@ export const Model = Schema.Struct({
   piece: Piece.Model,
   addPieces: AddPiecesModel.Model,
   review: Review.Model,
+  stylist: Stylist.Model,
   looks: Looks.Model,
   look: Look.Model,
   profile: ProfileEditor.Model,
@@ -187,6 +189,9 @@ const pageCommands = (
       Command.mapMessages(Piece.load(pages.piece), (message) => Message.GotPieceMessage({ message })),
     ),
     Match.tag('Review', () => Command.mapMessages(Review.load(), (message) => Message.GotReviewMessage({ message }))),
+    Match.tag('Stylist', () =>
+      Command.mapMessages(Stylist.load(), (message) => Message.GotStylistMessage({ message })),
+    ),
     Match.tag('Look', () =>
       Command.mapMessages(Look.load(pages.look), (message) => Message.GotLookMessage({ message })),
     ),
@@ -216,6 +221,7 @@ export const init = (context: Flags, url?: Url): UpdateReturn => {
       piece,
       addPieces: AddPiecesModel.init(),
       review: Review.init(),
+      stylist: Stylist.init(AppRoute.guards.Stylist(route) ? route.q : Option.none()),
       looks: Looks.init(),
       look,
       profile: ProfileEditor.init(),
@@ -436,6 +442,13 @@ export const subscriptions = Subscription.aggregate(
   }),
 )
 
+const foldStylist = Update.foldChild({
+  update: Stylist.update,
+  read: (model: Model) => Option.some(model.stylist),
+  write: (model: Model, stylist: Stylist.Model) => modifyFields(model, { stylist: () => stylist }),
+  toParentMessage: (message: Stylist.Message) => Message.GotStylistMessage({ message }),
+})
+
 const foldReview = Update.foldChild({
   update: Review.update,
   read: (model: Model) => Option.some(model.review),
@@ -493,6 +506,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotPieceMessage: (got) => foldPiece(model, got.message),
     GotAddPiecesMessage: (got) => foldAddPieces(model, got.message),
     GotReviewMessage: (got) => foldReview(model, got.message),
+    GotStylistMessage: (got) => foldStylist(model, got.message),
     GotLooksMessage: (got) => foldLooks(model, got.message),
     GotLookMessage: (got) => foldLook(model, got.message),
     GotProfileMessage: (got) => foldProfile(model, got.message),

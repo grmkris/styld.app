@@ -8,7 +8,14 @@ import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { addIcon, boardsTabIcon, cameraIcon, closeIcon, linkIcon, searchIcon, stylistIcon } from '../Icon.ts'
-import { accountRouter, addPiecesRouter, assistantsSection, boardsRouter, pieceRouter } from '../route.ts'
+import {
+  accountRouter,
+  addPiecesRouter,
+  assistantsSection,
+  boardsRouter,
+  pieceRouter,
+  stylistRouter,
+} from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
@@ -236,22 +243,37 @@ const wardrobeView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlB
       const ready = list.filter(isReady)
       if (Array.isReadonlyArrayEmpty(ready)) return emptyView(locale, h)
       return String.isNonEmpty(model.query.trim())
-        ? h.div(styled(h, styles.section()), [resultsView(ready, model, locale, h), publicResults(model, locale, h)])
+        ? h.div(styled(h, styles.section()), [
+            resultsView(ready, model, locale, h),
+            publicResults(model, locale, h),
+            askStyld(model.query.trim(), locale, h),
+          ])
         : suggestionsView(ready, locale, h)
     },
   })
 
-/** The stylist lives in ChatGPT and Claude, with the wardrobe connected; the website hands over to the account's
- * section on connecting one. */
+/** Styld, the stylist in the app, with the wardrobe it knows; ChatGPT and Claude answer too once connected, from the
+ * account's section on connecting one. */
 const stylistView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.section(styled(h, styles.stylist()), [
     h.h2([], [format(locale, 'ask.stylistTitle', {})]),
     h.p(styled(h, styles.note()), [format(locale, 'ask.stylistText', {})]),
     h.a(
-      [h.Href(`${accountRouter({})}#${assistantsSection}`), ...styled(h, secondaryAction())],
+      [h.Href(stylistRouter({ q: Option.none() })), ...styled(h, primaryAction())],
       [stylistIcon(h), format(locale, 'ask.stylistLink', {})],
     ),
+    h.a(
+      [h.Href(`${accountRouter({})}#${assistantsSection}`), ...styled(h, styles.note())],
+      [format(locale, 'ask.stylistAssistants', {})],
+    ),
   ])
+
+/** What was typed, asked of Styld instead of searched. */
+const askStyld = (query: string, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.a(
+    [h.Href(stylistRouter({ q: Option.some(query) })), ...styled(h, secondaryAction())],
+    [stylistIcon(h), format(locale, 'ask.askStyld', { query })],
+  )
 
 const option = (
   href: string,
