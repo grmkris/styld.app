@@ -1,4 +1,6 @@
+import { DetectionId } from '@styld/protocol'
 import { describe, expect, test } from 'vitest'
+import { carriedOverUnchanged } from '../src/capture/Review.ts'
 import { suggestedChanges } from '../src/capture/Suggest.ts'
 import type { Suggestion } from '../src/capture/Providers.ts'
 
@@ -33,5 +35,20 @@ describe('asking about a piece carried over from the old categories', () => {
   test('never overwrites an attribute the piece already has', () => {
     const known = { ...carried, season: 'warm', occasions: ['smart'], pattern: 'striped' }
     expect(suggestedChanges(known, suggestion({}))).toEqual({ type: 'knitwear' })
+  })
+})
+
+describe('keeping a garment found before garment types', () => {
+  const found = { suggestedType: 'tops', suggestedSeason: null, suggestedOccasions: [], suggestedPattern: null }
+  const keep = { detectionId: DetectionId.make(`dt_${'a'.repeat(22)}`), type: 'tops' } as const
+
+  test('kept as the migration left it, the new piece waits for the sweep to ask about it', () => {
+    expect(carriedOverUnchanged(found, keep)).toBe(true)
+  })
+
+  test('a type or an attribute the person chose, or one Clef already suggested, is final', () => {
+    expect(carriedOverUnchanged(found, { ...keep, type: 'shirts' })).toBe(false)
+    expect(carriedOverUnchanged(found, { ...keep, season: 'warm' })).toBe(false)
+    expect(carriedOverUnchanged({ ...found, suggestedSeason: 'cold' }, keep)).toBe(false)
   })
 })

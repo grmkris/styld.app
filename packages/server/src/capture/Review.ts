@@ -11,6 +11,22 @@ const decodeReviewed = Schema.decodeUnknownEffect(Schema.fromJsonString(Reviewed
 /** The piece a kept detection becomes: the cut-out unless the person chose the original photo. Its back is the
  * camera's back shot, or else the garment's sighting in another photo picked with it (the pieces laid out again,
  * turned over). */
+/** Whether a kept garment was found before garment types (owner, 2026-10-31) and kept as the migration left it: its
+ * type unchanged and no season, occasion or pattern ever suggested or chosen. The sweep then asks Clef about the new
+ * piece once, as it does for every carried-over piece.
+ * @internal Exported for its tests. */
+export const carriedOverUnchanged = (
+  detection: Pick<DetectionRow, 'suggestedType' | 'suggestedSeason' | 'suggestedOccasions' | 'suggestedPattern'>,
+  keep: Keep,
+) =>
+  keep.type === detection.suggestedType &&
+  detection.suggestedSeason === null &&
+  detection.suggestedOccasions.length === 0 &&
+  detection.suggestedPattern === null &&
+  keep.season === undefined &&
+  keep.occasions === undefined &&
+  keep.pattern === undefined
+
 const pieceOf = (
   accountId: string,
   pieceId: string,
@@ -34,7 +50,7 @@ const pieceOf = (
     pattern: keep.pattern ?? detection.suggestedPattern,
     brand: null,
     shopUrl: null,
-    suggestedAt: at,
+    suggestedAt: carriedOverUnchanged(detection, keep) ? null : at,
     status: 'ready' as const,
     source: 'website' as const,
     uploadId: null,
