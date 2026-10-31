@@ -5,7 +5,7 @@ import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import type { Html as Styles } from 'zyzz/runtime'
 import { actionButton } from '../ActionButton.ts'
-import { primaryAction, secondaryAction } from '../Actions.styles.ts'
+import { linkAction, primaryAction, quietLinkAction, secondaryAction } from '../Actions.styles.ts'
 import { textField } from '../Fields.styles.ts'
 import { loader, saveIcon } from '../Icon.ts'
 import {
@@ -120,26 +120,32 @@ const saveAndReport = (model: Model, report: string, locale: Locale, h: HtmlBuil
   button(report, Message.ClickedReport(), h),
 ]
 
-/** An action's shape while where the visitor stands is read: Follow, Report and Block arrive together, and their
- * shapes hold the head so the tabs below stay put. */
+/** Follow's shape while where the visitor stands is read, holding the head so the tabs below stay put. */
 const actionSkeleton = (h: HtmlBuilder<Message>): Html =>
   h.span([h.AriaHidden(true), ...styled(h, cx(block(), styles.actionSkeleton()))])
 
-/** Report and block a person, once it is known how the visitor stands with them (never on one's own profile); Follow
- * is `followView`, which the profile puts first. */
+/** A quiet action under a profile's head, there when needed and never beside Follow (Gallery's person screen). */
+const quiet = (label: string, onClick: Message, h: HtmlBuilder<Message>): Html =>
+  actionButton({ label, style: cx(linkAction(), quietLinkAction()), onClick }, h)
+
+const quietSkeleton = (h: HtmlBuilder<Message>): Html =>
+  h.span([h.AriaHidden(true), ...styled(h, cx(block(), styles.quietSkeleton()))])
+
+/** Report and block a person, once it is known how the visitor stands with them (never on one's own profile), as
+ * quiet links; Follow is `followView`, which the profile puts first beside Share. */
 const personActions = (model: Model, handle: string, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>
   Standing.match(model.standing, {
     Unknown: () => [],
-    Reading: () => [actionSkeleton(h), actionSkeleton(h)],
+    Reading: () => [quietSkeleton(h), quietSkeleton(h)],
     Known: ({ relation }) => [
-      button(format(locale, 'safety.report.profile', {}), Message.ClickedReport(), h),
+      quiet(format(locale, 'safety.report.profile', {}), Message.ClickedReport(), h),
       relation.blocked
-        ? button(
+        ? quiet(
             format(locale, 'safety.block.unblock', { username: handle }),
             Message.ClickedConfirmBlock({ blocked: false }),
             h,
           )
-        : button(format(locale, 'safety.block.block', { username: handle }), Message.ClickedBlock(), h),
+        : quiet(format(locale, 'safety.block.block', { username: handle }), Message.ClickedBlock(), h),
     ],
   })
 
@@ -247,7 +253,7 @@ const signedOutActions = (model: Model, locale: Locale, h: HtmlBuilder<Message>)
 export const view = Submodel.defineView<Model, Message, Inputs>((model, { locale, signedIn }, h) =>
   h.div(styled(h, styles.people()), [
     h.div(
-      styled(h, styles.actions()),
+      styled(h, Subject.guards.Person(model.subject) ? styles.quietActions() : styles.actions()),
       signedIn ? subjectActions(model, locale, h) : signedOutActions(model, locale, h),
     ),
     Work.guards.Sending(model.work) ? h.p([h.Role('status')], [loader(h)]) : h.empty,

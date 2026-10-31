@@ -85,6 +85,5 @@ export const pieceRowText = style({ display: 'grid', minInlineSize: '0' })
 export const pieceRowName = style({ fontSize: '15px', fontWeight: 600 })
 /** Deleting the look: a quiet text action at the end, after the pieces. */
 export const deletion = style({ display: 'grid', justifyItems: 'start', gap: '8px', paddingBlockStart: '8px' })
-export const quietAction = style({ color: 'ink2', textDecorationColor: 'rule' })
 /** A wish whose piece is no longer public: the line under its name. */
 export const goneNote = style({ paddingInline: '4px', fontSize: '13px', color: 'ink2' })

@@ -82,3 +82,6 @@ export const linkAction = style({
   cursor: 'pointer',
   '&[data-disabled]': { opacity: 0.5, cursor: 'not-allowed' },
 })
+/** A text-link action that stays out of the way, such as Delete at the end of a look or Report under a profile:
+ * ink-2 over a rule-coloured underline. Combine with linkAction. */
+export const quietLinkAction = style({ color: 'ink2', textDecorationColor: 'rule' })

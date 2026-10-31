@@ -3,7 +3,7 @@ import type { Look, PublicLookPage } from '@styld/protocol'
 import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
-import { linkAction, secondaryAction } from '../Actions.styles.ts'
+import { linkAction, quietLinkAction, secondaryAction } from '../Actions.styles.ts'
 import { confirmActions } from '../ConfirmActions.ts'
 import { formError } from '../Fields.styles.ts'
 import { backIcon } from '../Icon.ts'
@@ -40,7 +40,7 @@ const deletion = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Readon
       actionButton(
         {
           label: format(locale, 'looks.delete', {}),
-          style: cx(linkAction(), styles.quietAction()),
+          style: cx(linkAction(), quietLinkAction()),
           onClick: Message.ClickedDelete(),
         },
         h,
