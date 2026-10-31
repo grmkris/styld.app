@@ -149,6 +149,22 @@ studio, design, outfits, gallery, tryon, social, billing, operations). The worki
   - the attribute backfill's readback: the sweep retyped Denim shorts, the Oxford shirt and the Cable knit and filled
     seven pieces; three (trousers, a top, Derby shoes) ran OK but stayed empty, not yet explained. The sweep reads only
     PNG pictures, so an old piece shown as its original JPEG is never asked about.
+- **M7 My Gallery** (`beac3a3`…`f38d934`, preview `f38d934`, read back: health, `tools/preview.native.test.ts` 3/3;
+  full gate 554 unit, native 27/27, initial bundle 359,019 gzip bytes of 368,640): a Gallery tab beside Pieces and
+  Looks; adding a photo for a credit, followed while its garments are found; a photo's page asks about each match
+  (Is it this one?), picks another piece of that kind or none, sends a missing garment to the review tray (a capture
+  of its own, source `photos`, free, compared with the wardrobe there; keeping it confirms the new piece in the photo),
+  marks favourites, wears the photo again as a look named in the person's language, and deletes it; a piece's page
+  lists "In your photos"; Home's Pick up offers the newest favourite photo. Evidence: native PhotosAcceptance (credit
+  once, tray stays empty, matching, favourites, owner-only images, offer → tray → kept → linked, Wear it again once,
+  deletion), Story and Scene tests. Live readback on a fixture photo of a rail (no worn photo yet): ready in 21 s,
+  eight garments typed and coloured, the navy trousers suggested as the account's own, the photo owner-only (401
+  signed out); phone walk of the Gallery and the photo page with no errors; the test photo deleted after. Not done:
+  Add to board (held back from visitors) and Cut out the outfit; a readback on a real worn photo; favourites as clues
+  for the engine and Styld.
+- **Round 13 on M2–M3** (`3a7c611`…`f38d934`): the filter sheet's shared body (scrolls, title reachable sideways)
+  and a full-width Show; Spin drawn only once today's outfits are in, with a hover and Gallery's 140ms press; a 360px
+  wardrobe and a sideways filter sheet checked in the gallery journey. f0 fixed the 360px overflow itself (`6e41a9e`).
 - **Owner gate 1 is next, and needs a wardrobe:** the blind rating page (`~/code/meta-hackathon/out/styld-outfit-calibration/`,
   outside the repo) asks both ways for three outfits in a dozen situations. The preview test account holds only 10
   fixture garments (seven tops, two trousers, one pair of shoes), too few to judge the ways by; it needs a good share
