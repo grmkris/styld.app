@@ -146,7 +146,7 @@ const paperView = (model: Model, paper: Paper, locale: Locale, h: HtmlBuilder<Me
       h.AriaLabel(format(locale, 'board.paper', {})),
       h.DataAttribute('paper', paper),
       ...(model.isDropping ? [h.DataAttribute('dropping', '')] : []),
-      ...styled(h, cx(styles.paper(), styles.editorPaper())),
+      ...styled(h, styles.paper()),
       h.OnMount(MeasurePaper()),
       h.OnPointerDown((_type, _button, _sx, _sy, _time, clientX, clientY, pointerId) =>
         Option.some(Message.PressedPaper({ pointer: { pointerId, x: clientX, y: clientY } })),
@@ -328,8 +328,9 @@ const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: 
       lookView(model, locale, h),
       paperView(model, paper, locale, h),
       toastView(model, locale, h),
-      paperChoiceView(model, paper, locale, h),
       trayView(model, locale, h, selectedView(model, locale, h)),
+      // After the tray: on a phone the table runs straight into the tray, and the paper is a scroll below.
+      paperChoiceView(model, paper, locale, h),
       h.p([h.Id('board-keys'), ...styled(h, styles.fine())], [format(locale, 'board.keys', {})]),
     ]),
   ])

@@ -36,7 +36,8 @@ export const stage = style({
   gap: '12px',
   '& > *': { minInlineSize: '0' },
   '@media (min-width: 900px)': {
-    gridTemplateColumns: 'minmax(0, 560px) minmax(0, 1fr)',
+    // The table's column is as wide as the table: as wide as the screen's height allows, at most 560px.
+    gridTemplateColumns: 'minmax(0, min(560px, calc((100svh - 240px) * 0.8))) minmax(0, 1fr)',
     alignItems: 'start',
     columnGap: '40px',
     '& > *': { gridColumn: '1' },
@@ -78,12 +79,6 @@ export const toolLabel = style({
   clipPath: 'inset(50%)',
   whiteSpace: 'nowrap',
 })
-/** The editor's table on a wide screen: as wide as the column allows while the whole table and its tools fit the
- * screen's height. */
-export const editorPaper = style({
-  '@media (min-width: 900px)': { inlineSize: 'min(100%, calc((100svh - 240px) * 0.8))' },
-})
-
 /** The table: a 4:5 sheet whose width is 1000 units, so one unit is 0.1cqw. Items are placed by custom
  * properties the browser sets (`--x`, `--y`, `--k`, `--r`, `--flip`); the edge CSP allows no inline styles,
  * so a table only renders after its data loads in the browser. */

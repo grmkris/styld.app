@@ -26,6 +26,8 @@ export const tile = style({
   transitionDuration: '140ms',
   transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
   ':active': { transform: 'scale(0.98)' },
+  // At a tile's size the table's 28px corner cuts into what lies near it; the list's paper takes the panel corner.
+  '& [data-paper]': { borderRadius: 'panel' },
 })
 /** The loading tiles: the board's paper, its name and the line under it. */
 export const paperSkeleton = style({ inlineSize: '100%', aspectRatio: '4 / 5', borderRadius: 'table' })
