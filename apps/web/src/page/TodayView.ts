@@ -253,18 +253,25 @@ const boardCard = (board: BoardSummary, locale: Locale, h: HtmlBuilder<Message>)
     h,
   )
 
+/** The first found pieces waiting in the tray, side by side on paper in the board card's 16:10 window. */
+const trayPictures = (pictures: ReadonlyArray<string>, h: HtmlBuilder<Message>): Html =>
+  h.div(
+    [h.AriaHidden(true), ...styled(h, styles.trayThumbs())],
+    pictures.map((source) => h.img([h.Src(source), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.trayThumb())])),
+  )
+
 /** Where they left off, drawn once the table and its own answers are in, so it arrives in one piece below them. */
 const pickUpView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuilder<Message>): Html => {
   if ([pieces, model.lastBoard, model.tray].some(isPending)) return h.empty
-  const waiting = Option.getOrElse(AsyncData.getData(model.tray), () => 0)
+  const tray = Option.getOrElse(AsyncData.getData(model.tray), () => ({ waiting: 0, pictures: [] }))
   const cards = [
-    ...(waiting > 0
+    ...(tray.waiting > 0
       ? [
           pickUpCard(
             'pick-up-tray',
-            format(locale, 'today.waiting', { count: waiting }),
+            format(locale, 'today.waiting', { count: tray.waiting }),
             { href: reviewRouter({}), label: format(locale, 'today.review', {}) },
-            h.empty,
+            trayPictures(tray.pictures, h),
             h,
           ),
         ]

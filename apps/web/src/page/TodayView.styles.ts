@@ -154,6 +154,26 @@ export const cardAction = style({
  * of the table above the window), with corners concentric with the card's: 16px less its 12px padding. Inside the
  * window the table's corners are square, so the window can reach its top and its foot without showing them round.
  * The table is found by its `data-paper`, which outranks the paper's own radius whatever order the styles load in. */
+/** The tray card's pictures: up to three found pieces on paper, in the board card's 16:10 window. */
+export const trayThumbs = style({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+  gap: '6px',
+  aspectRatio: '16 / 10',
+  marginBlockEnd: '4px',
+  padding: '8px',
+  borderRadius: 'photo',
+  backgroundColor: 'paper',
+  boxShadow: 'edge',
+  isolation: 'isolate',
+})
+export const trayThumb = style({
+  inlineSize: '100%',
+  blockSize: '100%',
+  minBlockSize: '0',
+  objectFit: 'contain',
+  mixBlendMode: 'darken',
+})
 export const boardCrop = style({
   position: 'relative',
   display: 'grid',

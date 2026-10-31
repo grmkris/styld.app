@@ -27,8 +27,10 @@ export type LastBoardData = typeof LastBoardData.schema.Type
 /** What people the person follows made public lately. */
 export const FeedData = AsyncData.Schema(Feed, Schema.Literal('Unavailable'))
 export type FeedData = typeof FeedData.schema.Type
-/** How many pieces wait in the review tray. */
-export const TrayData = AsyncData.Schema(Schema.Int, Schema.Literal('Unavailable'))
+/** The review tray as Home shows it: how many found pieces wait, and the first three's pictures. */
+export const Tray = Schema.Struct({ waiting: Schema.Int, pictures: Schema.Array(Schema.String) })
+export type Tray = typeof Tray.Type
+export const TrayData = AsyncData.Schema(Tray, Schema.Literal('Unavailable'))
 export type TrayData = typeof TrayData.schema.Type
 
 /** Home for a signed-in person: today's outfit on the table, then where they left off. The pieces themselves
@@ -63,7 +65,7 @@ export const Message = defineMessageUnion({
   FailedReadWorn: {},
   SucceededListBoards: { maybeBoard: Schema.Option(BoardSummary) },
   FailedListBoards: {},
-  SucceededReadTray: { waiting: Schema.Int },
+  SucceededReadTray: { tray: Tray },
   FailedReadTray: {},
   SucceededReadFeed: { feed: Feed },
   FailedReadFeed: {},
@@ -132,8 +134,12 @@ export const ReadTray = Command.define('ReadTray', {
   messages: [Message.SucceededReadTray, Message.FailedReadTray],
   execute: Effect.gen(function* () {
     const { captures } = yield* (yield* (yield* StyldClient).api).capture.tray()
-    const waiting = captures.reduce((sum, capture) => sum + capture.detections.length, 0)
-    return Message.SucceededReadTray({ waiting })
+    const detections = captures.flatMap((capture) => capture.detections)
+    // A found piece's cut-out when it has one, else its photo, as the tray first shows it.
+    const pictures = detections
+      .slice(0, 3)
+      .map((detection) => `/cdn/detections/${detection.id}/${detection.hasCutout ? 'cutout' : 'original'}`)
+    return Message.SucceededReadTray({ tray: { waiting: detections.length, pictures } })
   }).pipe(Effect.orElseSucceed(() => Message.FailedReadTray())),
 })
 
@@ -167,7 +173,7 @@ export const enter = (model: Model): Update.Return<Model, Message, StyldClient> 
       write: (current: Model, lastBoard: LastBoardData) => modifyFields(current, { lastBoard: () => lastBoard }),
       load: ListBoards(),
     }),
-    Update.refresh<Model, Message, number, 'Unavailable', StyldClient>({
+    Update.refresh<Model, Message, Tray, 'Unavailable', StyldClient>({
       read: (current: Model) => Option.some(current.tray),
       revalidate: AsyncData.revalidateOrLoad,
       write: (current: Model, tray: TrayData) => modifyFields(current, { tray: () => tray }),
@@ -219,9 +225,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     }),
     SucceededReadFeed: ({ feed }) => ({ model: modifyFields(model, { feed: () => FeedData.Success({ data: feed }) }) }),
     FailedReadFeed: () => ({ model: modifyFields(model, { feed: (feed) => AsyncData.settle(feed, unavailable) }) }),
-    SucceededReadTray: ({ waiting }) => ({
-      model: modifyFields(model, { tray: () => TrayData.Success({ data: waiting }) }),
-    }),
+    SucceededReadTray: ({ tray }) => ({ model: modifyFields(model, { tray: () => TrayData.Success({ data: tray }) }) }),
     FailedReadTray: () => ({ model: modifyFields(model, { tray: (tray) => AsyncData.settle(tray, unavailable) }) }),
     ClickedSpin: () => ({
       model: modifyFields(model, {

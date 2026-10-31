@@ -1,6 +1,6 @@
 import { BoardSummary } from '@styld/protocol'
 import { Option, Schema } from 'effect'
-import { expect, given, inside, role, scene } from 'foldkit/scene'
+import { expect, given, inside, role, scene, selector } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
@@ -35,12 +35,12 @@ const layers = Schema.decodeUnknownSync(BoardSummary)({
 })
 
 /** Home with the wardrobe read, the tray holding `waiting` pieces and the last board, if any. */
-const home = (waiting: number, maybeBoard: Option.Option<BoardSummary>) =>
+const home = (waiting: number, maybeBoard: Option.Option<BoardSummary>, pictures: ReadonlyArray<string> = []) =>
   modifyFields(signedInAt('/'), {
     wardrobe: (wardrobe) => modifyFields(wardrobe, { pieces: () => PiecesData.Success({ data: [knit] }) }),
     today: (today) =>
       modifyFields(today, {
-        tray: () => TrayData.Success({ data: waiting }),
+        tray: () => TrayData.Success({ data: { waiting, pictures } }),
         lastBoard: () => LastBoardData.Success({ data: maybeBoard }),
       }),
   })
@@ -60,6 +60,11 @@ describe('Home', () => {
         expect(role('link', { name: 'Keep pinning' })).toHaveAccessibleDescription('Autumn layers'),
       ),
     )
+  })
+
+  test('the tray card shows the first pieces waiting, on paper', () => {
+    const cutout = `/cdn/detections/dt_${'tee'.padEnd(22, 'x')}/cutout`
+    scene({ update, view }, given(home(2, Option.none(), [cutout])), expect(selector(`img[src="${cutout}"]`)).toExist())
   })
 
   test('with nothing waiting and no board on the go, there is nothing to pick up', () => {
