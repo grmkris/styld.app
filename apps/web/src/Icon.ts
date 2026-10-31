@@ -25,7 +25,6 @@ import {
   HouseLight,
   ImageRegular,
   LinkRegular,
-  SparkleRegular,
   PencilSimpleRegular,
   PlusRegular,
   TShirtLight,
@@ -78,7 +77,6 @@ export const deleteIcon = control(TrashRegular)
 export const cameraIcon = control(CameraRegular)
 export const videoIcon = control(VideoCameraRegular)
 export const linkIcon = control(LinkRegular)
-export const makeIcon = control(SparkleRegular)
 export const retryIcon = control(ArrowsClockwiseRegular)
 export const undoIcon = control(ArrowCounterClockwiseRegular)
 export const redoIcon = control(ArrowClockwiseRegular)

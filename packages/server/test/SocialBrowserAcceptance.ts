@@ -32,7 +32,7 @@ export const verifyPublicJourney = async (browser: Browser, origin: string, fixt
     await page.getByRole('heading', { name: 'Rain' }).waitFor()
     expect(new URL(page.url()).pathname).toBe(`/boards/${rain}`)
     await page.getByRole('link', { name: /Luka Horvat/ }).waitFor()
-    expect(await page.getByRole('button', { name: 'Board settings' }).count()).toBe(0)
+    expect(await page.getByRole('button', { name: 'Edit', exact: true }).count()).toBe(0)
     await page.goto(`${origin}/boards/${hidden}`)
     await page.getByText('This board isn’t here any more.').waitFor()
     expect(await page.getByRole('heading', { name: 'Gifts' }).count()).toBe(0)

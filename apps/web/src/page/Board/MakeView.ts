@@ -1,15 +1,15 @@
 import { format, type Locale, type MessageKey } from '@styld/i18n'
 import type { Generation, GenerationKind } from '@styld/protocol'
 import { Submodel } from 'foldkit'
+import { cx } from 'zyzz'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../../ActionButton.ts'
-import { primaryAction, secondaryAction } from '../../Actions.styles.ts'
+import { primaryAction, secondaryAction, smallAction } from '../../Actions.styles.ts'
 import { textField } from '../../Fields.styles.ts'
-import { loader, makeIcon } from '../../Icon.ts'
+import { loader } from '../../Icon.ts'
 import { styled } from '../../Styled.ts'
 import { bottomSheet } from '../Sheet.ts'
 import { Job, type MakeProblem, Message, type Model } from './Make.ts'
-import { round } from './PageView.styles.ts'
 import * as styles from './MakeView.styles.ts'
 
 const problemKey: { readonly [Problem in MakeProblem]: MessageKey } = {
@@ -27,16 +27,16 @@ const kindKey: { readonly [Kind in GenerationKind]: { readonly title: MessageKey
 type Inputs = { readonly locale: Locale }
 
 /** The button on the board's bar that opens Make with Styld. */
+// Its words say what it does; no sparkle at rest, since sparkles mark only AI at work (DESIGN.md › Copy and chrome).
 export const buttonView = Submodel.defineView<Model, Message, Inputs>((model, { locale }, h) =>
   h.button(
     [
       h.Type('button'),
-      h.AriaLabel(format(locale, 'board.make.open', {})),
       h.AriaExpanded(model.sheet.isOpen),
-      ...styled(h, round()),
+      ...styled(h, cx(secondaryAction(), smallAction())),
       h.OnClick(Message.ClickedMake()),
     ],
-    [makeIcon(h)],
+    [format(locale, 'board.make.open', {})],
   ),
 )
 
@@ -127,7 +127,7 @@ const sheetBody = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Reado
           : h.empty,
         h.button(
           [h.Type('submit'), ...(asking ? [h.AriaDisabled(true)] : []), ...styled(h, primaryAction())],
-          [asking ? loader(h) : makeIcon(h), format(locale, 'board.make.submit', {})],
+          [asking ? loader(h) : h.empty, format(locale, 'board.make.submit', {})],
         ),
       ],
     ),

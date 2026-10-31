@@ -4,10 +4,11 @@ import { type Look, LookPin, Mood, type Paper, type Piece, type Pin, PiecePin, t
 import { Array, Match, Option, Schema } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
+import { cx } from 'zyzz'
 import { actionButton } from '../../ActionButton.ts'
-import { primaryAction, secondaryAction } from '../../Actions.styles.ts'
+import { primaryAction, secondaryAction, smallAction } from '../../Actions.styles.ts'
 import { textField } from '../../Fields.styles.ts'
-import { addIcon, backIcon, checkIcon, closeIcon, editIcon, loader } from '../../Icon.ts'
+import { addIcon, backIcon, checkIcon, closeIcon, loader } from '../../Icon.ts'
 import { boardCollageRouter, boardsRouter, lookRouter, pieceRouter } from '../../route.ts'
 import { styled } from '../../Styled.ts'
 import * as PeopleView from '../PeopleView.ts'
@@ -389,14 +390,15 @@ const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: 
       ),
       h.div(styled(h, styles.barActions()), [
         makeSlot('board-make-button', MakeView.buttonView, model, locale, h),
+        // Rename, public, moods and delete: a word a pencil could not say.
         h.button(
           [
             h.Type('button'),
-            h.AriaLabel(format(locale, 'studio.boardSettings', {})),
-            ...styled(h, styles.round()),
+            h.AriaHasPopup('dialog'),
+            ...styled(h, cx(secondaryAction(), smallAction())),
             h.OnClick(Message.ClickedSettings()),
           ],
-          [editIcon(h)],
+          [format(locale, 'common.edit', {})],
         ),
       ]),
     ]),

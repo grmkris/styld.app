@@ -52,3 +52,13 @@ export const secondaryAction = style({
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2' } },
   '&[data-disabled]': { opacity: 0.5, cursor: 'not-allowed' },
 })
+
+/** The Small size (DESIGN.md › Controls): 40px tall, 16px sides, 14px, with the touch target kept at 44px. Combine
+ * with primaryAction or secondaryAction. */
+export const smallAction = style({
+  position: 'relative',
+  minBlockSize: '40px',
+  paddingInline: '16px',
+  fontSize: '14px',
+  '::after': { content: '""', position: 'absolute', insetInline: '0', insetBlock: '-2px' },
+})

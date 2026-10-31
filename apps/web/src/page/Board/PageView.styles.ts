@@ -8,20 +8,6 @@ export const barActions = style({ display: 'flex', alignItems: 'center', gap: '4
 export const back = style({ display: 'inline-flex', alignItems: 'center', gap: '4px', minBlockSize: '44px' })
 export const head = style({ display: 'grid', gap: '4px' })
 export const meta = style({ fontSize: '14px', color: 'ink2' })
-export const round = style({
-  display: 'grid',
-  placeItems: 'center',
-  flex: 'none',
-  inlineSize: '44px',
-  blockSize: '44px',
-  borderWidth: '0',
-  borderRadius: 'pill',
-  backgroundColor: 'transparent !custom',
-  color: 'ink',
-  cursor: 'pointer',
-  '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2' } },
-  ':active': { transform: 'scale(0.96)' },
-})
 
 /** The collage as a card: the table on stock, opening the editor. */
 export const collage = style({

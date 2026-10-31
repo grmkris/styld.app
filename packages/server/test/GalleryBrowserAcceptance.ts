@@ -259,7 +259,7 @@ const verifyBoardPage = async (page: Page, origin: string) => {
   await page.getByText('3 pins').waitFor({ state: 'visible' })
   await shoot(page, 'phone-board-page')
 
-  await page.getByRole('button', { name: 'Board settings' }).click()
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
   const name = page.getByLabel('Board name')
   await name.fill('Weekend away')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
