@@ -165,7 +165,7 @@
     "intro": "Eno članstvo, eno stanje kreditov. Dokupite jih, kadar potrebujete več."
   },
   "common": {
-    "loading": "Nalaganje...",
+    "loading": "Nalaganje …",
     "save": "Shrani",
     "cancel": "Prekliči",
     "delete": "Izbriši",
@@ -1512,14 +1512,13 @@
     "errorTitle": "Nekaj je šlo narobe"
   },
   "landing": {
-    "feedTitle": "Začni tukaj",
-    "feedDescription": "Javni navdih Styld in slovenskih trgovin.",
+    "feedDescription": "Javne zbirke Stylda in ljudi, ki ga uporabljajo.",
     "feedHint": "Shrani kos ali videz, ko ga najdeš",
-    "feedEmpty": "Vir se pripravlja. Medtem si oglej trgovine.",
+    "feedEmpty": "Javnih zbirk še ni. Ko bodo, jih najdeš v Razišči.",
     "loadingMore": "Nalaganje navdiha",
     "retry": "Poskusi znova",
     "title": "Garderoba po tvojem okusu.",
-    "description": "Navdih za garderobo in kosi iz neodvisnih slovenskih trgovin.",
+    "description": "Fotografiraj svoja oblačila in Styld izreže vsak kos, sestavi, kaj obleči danes, in hrani zbirke tega, kar ti je všeč.",
     "start": "Začni brezplačno",
     "browse": "Razišči",
     "heroPieces": "Kosi iz slovenskih trgovin",

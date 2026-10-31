@@ -165,7 +165,7 @@
     "intro": "One membership, one balance. Top up whenever you need more."
   },
   "common": {
-    "loading": "Loading...",
+    "loading": "Loading…",
     "save": "Save",
     "cancel": "Cancel",
     "delete": "Delete",
@@ -1512,14 +1512,13 @@
     "errorTitle": "Something went wrong"
   },
   "landing": {
-    "feedTitle": "A place to begin",
-    "feedDescription": "Public inspiration from Styld and Slovenian shops.",
+    "feedDescription": "Public boards from Styld and the people using it.",
     "feedHint": "Save a piece or look when you find it",
-    "feedEmpty": "The feed is getting ready. Browse the shops while it fills.",
+    "feedEmpty": "No public boards yet. When there are, you'll find them in Explore.",
     "loadingMore": "Loading more inspiration",
     "retry": "Try again",
     "title": "A wardrobe shaped by you.",
-    "description": "Find wardrobe inspiration and pieces from independent Slovenian shops.",
+    "description": "Photograph your clothes and Styld cuts out every piece, lays out what to wear today and keeps boards of what you love.",
     "start": "Start free",
     "browse": "Browse",
     "heroPieces": "Pieces from Slovenian shops",

@@ -224,7 +224,7 @@ describe('a public profile', () => {
     scene(
       { update, view },
       given(visiting('/', Shown.Explore({ explore }))),
-      expect(role('heading', { name: 'A place to begin' })).toExist(),
+      expect(role('heading', { name: 'Edits from Styld' })).toExist(),
       expect(role('link', { name: /Coats/ })).toHaveAttr('href', `/boards/bd_${'coats'.padEnd(22, 'x')}`),
       expect(role('link', { name: 'Explore' })).toHaveAttr('href', '/explore'),
     )
