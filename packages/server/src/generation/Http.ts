@@ -16,7 +16,8 @@ const pacedBy =
       return yield* effect
     })
 
-/** The website's generation endpoints: asking for pictures at the account's pace, and reading how they go. */
+/** The website's generation endpoints: asking for stickers and mood boards at the account's pace, and reading how
+ * they go. */
 export const generationHandlers = (
   admit: Admit,
   allowGenerate: (accountId: string) => Effect.Effect<boolean, never, RuntimeContext>,
@@ -26,8 +27,8 @@ export const generationHandlers = (
       const generations = yield* Generations
       const paced = pacedBy(allowGenerate)
       return handlers
-        .handle('generatePicture', ({ params, payload }) =>
-          admit(asSessionAccount(paced(generations.admit('picture', params.boardId, payload)))),
+        .handle('makeSticker', ({ params, payload }) =>
+          admit(asSessionAccount(paced(generations.admit('sticker', params.boardId, payload)))),
         )
         .handle('makeMoodBoard', ({ params, payload }) =>
           admit(asSessionAccount(paced(generations.admit('moodBoard', params.boardId, payload)))),

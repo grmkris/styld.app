@@ -5,7 +5,7 @@ import { click, Command, expect, given, keydown, Mount, role, scene, submit, tex
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
-import { AskForPictures, Message as MakeMessage, PollGeneration } from '../src/page/Board/Make.ts'
+import { AskToMake, Message as MakeMessage, PollGeneration } from '../src/page/Board/Make.ts'
 import { Message as BoardMessage } from '../src/page/Board/Message.ts'
 import { fromBoard, init as boardInit } from '../src/page/Board/Model.ts'
 import { ReloadBoard } from '../src/page/Board/PageCommands.ts'
@@ -70,28 +70,30 @@ describe('Make with Styld on a board', () => {
       given(page),
       ...openSheet,
       expect(role('button', { name: 'Make' })).toHaveAccessibleDescription(
-        'Up to 4 credits, one per picture, from today’s free allowance. Credits come back for pictures that don’t come out.',
+        '1 credit from today’s free allowance. It comes back if your wardrobe holds too little for it yet.',
       ),
-      click(role('radio', { name: 'One picture' })),
+      click(role('radio', { name: 'A sticker' })),
       resolveFocus,
       expect(role('button', { name: 'Make' })).toHaveAccessibleDescription(
-        '1 credit from today’s free allowance. It comes back if the picture doesn’t come out.',
+        '1 credit from today’s free allowance. It comes back if the sticker doesn’t come out.',
       ),
     )
   })
 
-  test('offers a mood board or one picture as one radio group, chosen by arrow keys', () => {
+  test('offers a mood board or a sticker as one radio group, chosen by arrow keys', () => {
     scene(
       { update, view },
       given(page),
       ...openSheet,
       expect(role('radiogroup', { name: 'What to make' })).toExist(),
       expect(role('radio', { name: 'A mood board', checked: true })).toHaveAttr('tabIndex', '0'),
-      expect(role('radio', { name: 'One picture', checked: false })).toHaveAttr('tabIndex', '-1'),
-      expect(role('radio', { name: 'One picture' })).toHaveAccessibleDescription('A single picture from your words.'),
+      expect(role('radio', { name: 'A sticker', checked: false })).toHaveAttr('tabIndex', '-1'),
+      expect(role('radio', { name: 'A sticker' })).toHaveAccessibleDescription(
+        'A small decorative drawing from your words, cut out for the collage.',
+      ),
       keydown(role('radio', { name: 'A mood board' }), 'ArrowRight'),
       resolveFocus,
-      expect(role('radio', { name: 'One picture', checked: true })).toHaveAttr('tabIndex', '0'),
+      expect(role('radio', { name: 'A sticker', checked: true })).toHaveAttr('tabIndex', '0'),
       expect(role('radio', { name: 'A mood board', checked: false })).toHaveAttr('tabIndex', '-1'),
     )
   })
@@ -110,7 +112,7 @@ describe('Make with Styld on a board', () => {
     )
   })
 
-  test('marks a generated picture, and makes a mood board from the person’s words', () => {
+  test('marks a generated sticker, and makes a mood board of the person’s pieces from their words', () => {
     scene(
       { update, view },
       given(page),
@@ -122,17 +124,14 @@ describe('Make with Styld on a board', () => {
       expect(role('radio', { name: 'A mood board', checked: true })).toExist(),
       type(role('textbox', { name: 'What should it feel like?' }), 'a slow weekend by the sea'),
       submit(role('form')),
-      Command.resolve(AskForPictures, MakeMessage.SucceededAsk({ generation: generation('planning', []) })),
+      Command.resolve(AskToMake, MakeMessage.SucceededAsk({ generation: generation('planning', []) })),
       ...sceneSheetMoved(2),
       Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
       Mount.expectEnded(Dialog.AcquireResources),
-      expect(role('status')).toHaveText('Planning your mood board…'),
-      Command.resolve(
-        PollGeneration,
-        MakeMessage.SucceededPoll({ generation: generation('done', ['drawn', 'drawn']) }),
-      ),
+      expect(role('status')).toHaveText('Picking your pieces…'),
+      Command.resolve(PollGeneration, MakeMessage.SucceededPoll({ generation: generation('done', []) })),
       Command.resolve(ReloadBoard, BoardMessage.SucceededReloadBoard({ board })),
-      expect(text('Added 2 pictures')).toExist(),
+      expect(text('Your mood board is laid out.')).toExist(),
     )
   })
 })

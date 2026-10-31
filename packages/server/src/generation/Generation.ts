@@ -1,17 +1,14 @@
 import {
   type BoardId,
-  DailyLimitReached,
   type Generate,
   type GenerationKind,
-  fewestMoodPictures,
   GenerationNotFound,
-  mostMoodPictures,
   OperationConflict,
   PromptRefused,
 } from '@styld/protocol'
 import { Effect, Option, Predicate, Result } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import { paintPrompt } from './PaintPrompt.ts'
+import { stickerKey, stickerPrompt } from './PaintPrompt.ts'
 import { holdOf, nowDate, type Parts, refund, send, unavailable, view } from './Parts.ts'
 import { giveUp } from './Work.ts'
 import type { JobRow } from './Store.ts'
@@ -21,20 +18,15 @@ const stalledMillis = 3 * 60 * 1000
 
 const stored = <A, E>(effect: Effect.Effect<A, E>) => Effect.mapError(effect, unavailable)
 
-/** Hold one credit for each picture wanted, as far as today's allowance goes. */
-const holdUpTo = (parts: Parts, accountId: string, jobId: string, wanted: number) =>
+/** Hold the ask's one credit: a sticker's, or a mood board's. */
+const holdOne = (parts: Parts, accountId: string, jobId: string) =>
   Effect.gen(function* () {
-    let held = 0
-    for (; held < wanted; held += 1) {
-      const reserved = yield* Effect.result(parts.usage.reserve(accountId, holdOf(jobId, held), 1))
-      if (Result.isSuccess(reserved)) continue
-      if (Predicate.isTagged(reserved.failure, 'DailyLimitReached'))
-        return { held, limit: Option.some(reserved.failure) }
-      // The Wallet may have taken this one too before its answer was lost.
-      yield* refund(parts, accountId, jobId, 0, held + 1)
-      return yield* unavailable()
-    }
-    return { held, limit: Option.none<DailyLimitReached>() }
+    const reserved = yield* Effect.result(parts.usage.reserve(accountId, holdOf(jobId, 0), 1))
+    if (Result.isSuccess(reserved)) return
+    if (Predicate.isTagged(reserved.failure, 'DailyLimitReached')) return yield* reserved.failure
+    // The Wallet may have taken it before its answer was lost.
+    yield* refund(parts, accountId, jobId, 0, 1)
+    return yield* unavailable()
   })
 
 /** The receipt of an ask already made: the same job for the same words, a conflict for others. */
@@ -59,7 +51,7 @@ const read = (parts: Parts, job: JobRow) =>
 
 /** Asking for pictures, and reading how they are going. */
 export const generations = (parts: Parts) => ({
-  /** One picture from the words, or a mood board of two to four. The credits are held before anything runs. */
+  /** A sticker from the words, or a mood board of the person's pieces: one credit each, held before anything runs. */
   admit: Effect.fn('Styld.Generation.admit')(function* (kind: GenerationKind, boardId: BoardId, input: Generate) {
     const { accountId } = yield* CurrentAccount
     const inputDigest = yield* parts.digest(JSON.stringify([kind, boardId, input.prompt]))
@@ -74,12 +66,9 @@ export const generations = (parts: Parts) => ({
     const id = yield* parts.newId()
     // The job's queue deliveries and its reads record the same job id, so the ask, its work and its polls join.
     yield* Effect.annotateCurrentSpan('styld.job_id', id)
-    // Credits first, so an account with none left asks no model anything.
-    const { held, limit } = yield* holdUpTo(parts, accountId, id, kind === 'picture' ? 1 : mostMoodPictures)
-    if (held < (kind === 'picture' ? 1 : fewestMoodPictures)) {
-      yield* refund(parts, accountId, id, 0, held)
-      return yield* Option.getOrElse(limit, () => DailyLimitReached.make({ resetsAt: '' }))
-    }
+    // The credit first, so an account with none left asks no model anything.
+    yield* holdOne(parts, accountId, id)
+    const held = 1
     yield* checked(parts, input.prompt).pipe(Effect.tapError(() => refund(parts, accountId, id, 0, held)))
     const at = yield* nowDate
     const job: JobRow = {
@@ -88,7 +77,7 @@ export const generations = (parts: Parts) => ({
       boardId,
       kind,
       prompt: input.prompt,
-      status: kind === 'picture' ? 'drawing' : 'planning',
+      status: kind === 'sticker' ? 'drawing' : 'planning',
       reason: null,
       held,
       collageVersion: board.version,
@@ -98,13 +87,12 @@ export const generations = (parts: Parts) => ({
       updatedAt: at,
     }
     const pictures =
-      kind === 'picture'
+      kind === 'sticker'
         ? [
             {
               jobId: id,
               index: 0,
-              prompt: paintPrompt(input.prompt, false),
-              references: [],
+              prompt: stickerPrompt(input.prompt, stickerKey(input.prompt)),
               status: 'waiting' as const,
               imageId: null,
               startedAt: null,

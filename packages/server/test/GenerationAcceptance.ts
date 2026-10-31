@@ -3,8 +3,8 @@ import { Predicate, Schema } from 'effect'
 import { addedPiece, idOf } from './GalleryAcceptance.ts'
 import { type Call, client, signIn } from './WardrobeAcceptance.ts'
 
-/** Test-only acceptance: pictures Styld makes for a board, through the public edge, with the stand-in painter and
- * planner (`[[refuse]]`, `[[lost]]` and `[[unclear]]` in the words) and the stand-in judge (`[[fail]]`). */
+/** Test-only acceptance: stickers and mood boards Styld makes for a board, through the public edge, with the stand-in
+ * painter and planner (`[[refuse]]`, `[[lost]]` and `[[unclear]]` in the words) and the stand-in judge (`[[fail]]`). */
 
 const send = (call: Call, path: string, method: string, body: unknown) =>
   call(path, { method, body: JSON.stringify(body) })
@@ -42,15 +42,15 @@ const Board = Schema.Struct({
 const boardOf = async (owner: Call, boardId: string) =>
   Schema.decodeUnknownSync(Board)(await (await owner(`/api/boards/${boardId}`)).json())
 
-/** One picture from words, pinned and marked Generated; the same operation answers the same job. A refusal, a lost
- * answer and words that fail the check make no picture. */
+/** One sticker from words, pinned and marked Generated; the same operation answers the same job. A refusal, a lost
+ * answer and words that fail the check make no sticker. */
 const verifyPictures = async (owner: Call, other: Call, boardId: string) => {
   const ask = { operationId: 'native-generate-0001', prompt: 'a rainy street at dusk' }
-  const asked = await generationOf(await send(owner, `/api/boards/${boardId}/generated`, 'POST', ask))
+  const asked = await generationOf(await send(owner, `/api/boards/${boardId}/stickers`, 'POST', ask))
   expect(asked).toMatchObject({ status: 'drawing', pictures: [{ index: 0, status: 'waiting' }] })
-  expect((await generationOf(await send(owner, `/api/boards/${boardId}/generated`, 'POST', ask))).id).toBe(asked.id)
+  expect((await generationOf(await send(owner, `/api/boards/${boardId}/stickers`, 'POST', ask))).id).toBe(asked.id)
   expect(
-    (await send(owner, `/api/boards/${boardId}/generated`, 'POST', { ...ask, prompt: 'something else' })).status,
+    (await send(owner, `/api/boards/${boardId}/stickers`, 'POST', { ...ask, prompt: 'something else' })).status,
   ).toBe(409)
   const done = await finished(owner, asked.id)
   expect(done).toMatchObject({ status: 'done', pictures: [{ status: 'drawn' }] })
@@ -59,7 +59,7 @@ const verifyPictures = async (owner: Call, other: Call, boardId: string) => {
   expect((await other(`/api/generations/${asked.id}`)).status).toBe(404)
 
   const refused = await generationOf(
-    await send(owner, `/api/boards/${boardId}/generated`, 'POST', {
+    await send(owner, `/api/boards/${boardId}/stickers`, 'POST', {
       operationId: 'native-generate-0002',
       prompt: 'a scene [[refuse]]',
     }),
@@ -70,13 +70,13 @@ const verifyPictures = async (owner: Call, other: Call, boardId: string) => {
     pictures: [{ status: 'refused', imageId: null }],
   })
   const lost = await generationOf(
-    await send(owner, `/api/boards/${boardId}/generated`, 'POST', {
+    await send(owner, `/api/boards/${boardId}/stickers`, 'POST', {
       operationId: 'native-generate-0003',
       prompt: 'a scene [[lost]]',
     }),
   )
   expect(await finished(owner, lost.id)).toMatchObject({ status: 'refused', pictures: [{ status: 'unknown' }] })
-  const failing = await send(owner, `/api/boards/${boardId}/generated`, 'POST', {
+  const failing = await send(owner, `/api/boards/${boardId}/stickers`, 'POST', {
     operationId: 'native-generate-0004',
     prompt: 'words that [[fail]]',
   })
@@ -90,8 +90,8 @@ const running = async (call: Call, boardId: string) =>
     await (await call(`/api/boards/${boardId}/generations/running`)).json(),
   ).generation
 
-/** Words that plan nothing give every credit back; a mood board draws two pictures, pins the person's pieces and lays
- * the collage out with them. While it is made, its board says so to its owner and to no one else. */
+/** Words the wardrobe holds too little for give the credit back; a mood board pins the person's own pieces and lays
+ * the collage out with them, drawing nothing. While it is made, its board says so to its owner and to no one else. */
 const verifyMoodBoard = async (owner: Call, stranger: Call, boardId: string, pieceIds: ReadonlyArray<string>) => {
   const unclear = await generationOf(
     await send(owner, `/api/boards/${boardId}/mood`, 'POST', {
@@ -113,16 +113,17 @@ const verifyMoodBoard = async (owner: Call, stranger: Call, boardId: string, pie
   expect((await running(owner, boardId))?.id).toBe(asked.id)
   expect(await running(stranger, boardId)).toBeNull()
   const done = await finished(owner, asked.id)
-  expect(done).toMatchObject({ status: 'done', pictures: [{ status: 'drawn' }, { status: 'drawn' }] })
+  expect(done).toMatchObject({ status: 'done', pictures: [] })
   expect(await running(owner, boardId)).toBeNull()
   const board = await boardOf(owner, boardId)
-  expect(generated(board)).toBe(generated(before) + 2)
+  expect(generated(board)).toBe(generated(before))
   expect(board.pins.filter((pin) => Predicate.isTagged(pin, 'PiecePin')).length).toBe(pieceIds.length)
   expect(board.version).toBe(before.version + 1)
-  expect(board.items.filter((item) => Predicate.isTagged(item, 'ImageItem')).length).toBe(2)
+  expect(board.items.filter((item) => Predicate.isTagged(item, 'PieceItem')).length).toBe(pieceIds.length)
+  expect(board.items.filter((item) => Predicate.isTagged(item, 'ImageItem')).length).toBe(0)
 }
 
-/** Generated pictures and mood boards for a board. */
+/** Stickers and mood boards for a board. */
 export const verifyGeneration = async (origin: string, fixtures: string): Promise<void> => {
   expect((await fetch(`${fixtures}/test/identity/seed-generation`, { method: 'POST' })).status).toBe(204)
   const owner = client(origin, await signIn(origin, 'native-generation'))

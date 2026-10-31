@@ -1,11 +1,11 @@
-import { fewestMoodPictures, Mood, maximumMoods } from '@styld/protocol'
+import { Mood, maximumMoods } from '@styld/protocol'
 import { Context, Effect, Option, Schema } from 'effect'
 import { type CaptureMetrics, counted } from '../capture/Metrics.ts'
 import { ProviderFailed } from '../capture/Providers.ts'
 
-// Make a mood board: one sentence becomes two to four picture prompts, the person's pieces that suit it, and up to three
-// moods. A Workers AI chat model plans it with a JSON schema; the person's pieces go to it as short references, never
-// their ids, photos or notes.
+// Make a mood board (owner, 2026-10-31): one sentence picks the person's own pieces that suit it, and up to three
+// moods. No picture is drawn: a mood board is made of real clothes. A Workers AI chat model plans it with a JSON
+// schema; the person's pieces go to it as short references, never their ids, photos or notes.
 
 /** One of the person's ready pieces, as the plan sees it. */
 export interface Wearable {
@@ -15,14 +15,7 @@ export interface Wearable {
   readonly colours: ReadonlyArray<string>
 }
 
-/** A picture to draw, and the pieces (by reference) it shows. */
-export interface PlannedPicture {
-  readonly prompt: string
-  readonly pieces: ReadonlyArray<string>
-}
-
 export interface Plan {
-  readonly pictures: ReadonlyArray<PlannedPicture>
   readonly picks: ReadonlyArray<string>
   readonly moods: ReadonlyArray<Mood>
 }
@@ -30,15 +23,13 @@ export interface Plan {
 export interface PlanRequest {
   readonly sentence: string
   readonly wardrobe: ReadonlyArray<Wearable>
-  /** How many pictures' credits are held. */
-  readonly most: number
 }
 
-/** The most pieces a mood board picks, and a picture shows. */
-const mostPicks = 6
-const mostPiecesInPicture = 2
+/** The most pieces a mood board picks, and the fewest that make one. */
+export const mostPicks = 12
+export const fewestPicks = 2
 
-/** Plans mood boards; none when the sentence asks for nothing Styld makes. */
+/** Plans mood boards; none when the sentence asks for nothing Styld makes, or the wardrobe holds too little for it. */
 export class MoodPlanner extends Context.Service<
   MoodPlanner,
   { readonly plan: (request: PlanRequest) => Effect.Effect<Option.Option<Plan>, ProviderFailed> }
@@ -46,7 +37,6 @@ export class MoodPlanner extends Context.Service<
 
 const Answer = Schema.Struct({
   refuse: Schema.Boolean,
-  pictures: Schema.Array(Schema.Struct({ prompt: Schema.String, pieces: Schema.Array(Schema.String) })),
   picks: Schema.Array(Schema.String),
   moods: Schema.Array(Schema.String),
 })
@@ -56,27 +46,16 @@ export const answerSchema = {
   type: 'object',
   properties: {
     refuse: { type: 'boolean' },
-    pictures: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: { prompt: { type: 'string' }, pieces: { type: 'array', items: { type: 'string' } } },
-        required: ['prompt', 'pieces'],
-      },
-    },
     picks: { type: 'array', items: { type: 'string' } },
     moods: { type: 'array', items: { type: 'string', enum: Mood.literals } },
   },
-  required: ['refuse', 'pictures', 'picks', 'moods'],
+  required: ['refuse', 'picks', 'moods'],
 } as const
 
 const instructions = [
-  'You plan a fashion mood board for a person, from one sentence they wrote and the clothes they own.',
-  'Write 2 to 4 picture prompts that evoke the mood: places, light, textures, objects and details, as editorial',
-  'fashion photography. A prompt may show up to two of the person’s pieces, named by their ref in `pieces`.',
-  'Never depict a real, named or recognisable person, a celebrity or a brand logo; people appear only as anonymous',
-  'figures without visible faces. No text in pictures. Write the prompts in English whatever the sentence’s language.',
-  'Pick up to 6 of the person’s pieces that suit the mood, by ref, and up to 3 moods from the list.',
+  'You make a fashion mood board for a person from one sentence they wrote, using only the clothes they own.',
+  `Pick ${fewestPicks} to ${mostPicks} of the person’s pieces that together carry the mood, by ref, and up to 3 moods`,
+  'from the list. Never pick a ref that is not in the list of pieces.',
   'Set refuse to true, with nothing else, if the sentence asks for anything sexual, violent, hateful, a real',
   'person’s likeness, or anything that is not about style and mood.',
 ].join(' ')
@@ -98,22 +77,12 @@ export const planMessages = (request: PlanRequest) => [
 
 const isMood = Schema.is(Mood)
 
-/** The model's answer, kept to what a plan may hold: known references, at most `most` pictures and none under two. */
+/** The model's answer, kept to what a plan may hold: the person's own pieces, once each, and moods from the list. */
 export const planOf = (answer: typeof Answer.Type, request: PlanRequest): Option.Option<Plan> => {
   const refs = new Set(request.wardrobe.map(({ ref }) => ref))
-  const pictures = answer.pictures
-    .map(({ prompt, pieces }) => ({
-      prompt: prompt.trim().slice(0, 600),
-      pieces: [...new Set(pieces.filter((ref) => refs.has(ref)))].slice(0, mostPiecesInPicture),
-    }))
-    .filter(({ prompt }) => prompt.length > 0)
-    .slice(0, request.most)
-  if (answer.refuse || pictures.length < Math.min(fewestMoodPictures, request.most)) return Option.none()
-  return Option.some({
-    pictures,
-    picks: [...new Set(answer.picks.filter((ref) => refs.has(ref)))].slice(0, mostPicks),
-    moods: [...new Set(answer.moods.filter(isMood))].slice(0, maximumMoods),
-  })
+  const picks = [...new Set(answer.picks.filter((ref) => refs.has(ref)))].slice(0, mostPicks)
+  if (answer.refuse || picks.length < fewestPicks) return Option.none()
+  return Option.some({ picks, moods: [...new Set(answer.moods.filter(isMood))].slice(0, maximumMoods) })
 }
 
 /** The Workers AI binding narrowed to the planning model. */
@@ -153,24 +122,12 @@ export const livePlanner = (runPlanner: RunPlanner, metrics: CaptureMetrics['Ser
     ),
 })
 
-/** Native acceptance's planner: two pictures, the first showing the first piece, and the first three pieces picked;
- * `[[unclear]]` plans nothing. */
+/** Native acceptance's planner: the first three pieces picked; `[[unclear]]` plans nothing. */
 export const standInPlanner: MoodPlanner['Service'] = {
   plan: (request) =>
     Effect.succeed(
       request.sentence.includes('[[unclear]]')
         ? Option.none()
-        : planOf(
-            {
-              refuse: false,
-              pictures: [
-                { prompt: `${request.sentence}, a place`, pieces: request.wardrobe.slice(0, 1).map(({ ref }) => ref) },
-                { prompt: `${request.sentence}, a detail`, pieces: [] },
-              ],
-              picks: request.wardrobe.slice(0, 3).map(({ ref }) => ref),
-              moods: [],
-            },
-            request,
-          ),
+        : planOf({ refuse: false, picks: request.wardrobe.slice(0, 3).map(({ ref }) => ref), moods: [] }, request),
     ),
 }

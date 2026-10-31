@@ -161,24 +161,25 @@ export interface MessageArgumentsByKey<T = string> {
   'board.lookSaved': Readonly<Record<string, never>>
   'board.lookSaving': Readonly<Record<string, never>>
   'board.looksFailed': Readonly<Record<string, never>>
-  'board.make.added': { readonly count: number }
   'board.make.dismiss': Readonly<Record<string, never>>
-  'board.make.drawing': { readonly drawn: string | number; readonly total: string | number }
+  'board.make.drawing': Readonly<Record<string, never>>
   'board.make.kindLabel': Readonly<Record<string, never>>
   'board.make.moodBoard': Readonly<Record<string, never>>
-  'board.make.moodBoardCost': { readonly most: number }
+  'board.make.moodBoardCost': Readonly<Record<string, never>>
+  'board.make.moodBoardDone': Readonly<Record<string, never>>
   'board.make.moodBoardHint': Readonly<Record<string, never>>
   'board.make.note': Readonly<Record<string, never>>
   'board.make.nothing': Readonly<Record<string, never>>
   'board.make.open': Readonly<Record<string, never>>
-  'board.make.picture': Readonly<Record<string, never>>
-  'board.make.pictureCost': Readonly<Record<string, never>>
-  'board.make.pictureHint': Readonly<Record<string, never>>
   'board.make.planning': Readonly<Record<string, never>>
   'board.make.problem.dailyLimit': Readonly<Record<string, never>>
   'board.make.problem.failed': Readonly<Record<string, never>>
   'board.make.problem.refused': Readonly<Record<string, never>>
   'board.make.problem.slowDown': Readonly<Record<string, never>>
+  'board.make.sticker': Readonly<Record<string, never>>
+  'board.make.stickerAdded': Readonly<Record<string, never>>
+  'board.make.stickerCost': Readonly<Record<string, never>>
+  'board.make.stickerHint': Readonly<Record<string, never>>
   'board.make.submit': Readonly<Record<string, never>>
   'board.make.title': Readonly<Record<string, never>>
   'board.make.unclear': Readonly<Record<string, never>>
@@ -1937,4 +1938,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '74be67c09e02f4d89837395abce40168e9c25531060650bfa259e094c0a65ee2'
+export const catalogVersion = '0f701e65cba0ff8cfb2adf719e804aedc5f141968dd0e46534a73dbf0bc23707'

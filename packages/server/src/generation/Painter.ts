@@ -1,15 +1,14 @@
+import { encodePng, type KeyColour } from '@styld/imaging'
 import { Context, Effect } from 'effect'
-import * as Base64 from 'effect/encoding/Base64'
 import { type Picture, ProviderFailed, ProviderOutcomeUnknown } from '../capture/Providers.ts'
 
-/** What a generated picture is drawn from: the person's words, framed for a board, and the pictures of the pieces it
- * shows. Cut-outs and clean pictures only: never a photo, and never a face. */
+/** What a sticker is drawn from: the person's words, framed as a sticker, on a flat key colour to cut it out by. */
 export interface PaintRequest {
   readonly prompt: string
-  readonly references: ReadonlyArray<Picture>
+  readonly key: KeyColour
 }
 
-/** The image model that makes pictures for boards (Meta Muse Image), named as each picture records it. A refusal it did
+/** The image model that draws stickers for boards (Meta Muse Image), named as each picture records it. A refusal it did
  * not bill fails with `ProviderFailed`; an answer lost after it took the work is unknown, so it is never drawn twice. */
 export class PicturePainter extends Context.Service<
   PicturePainter,
@@ -25,22 +24,30 @@ export class PicturePainter extends Context.Service<
   }
 }
 
-/** A 1×1 PNG: what the stand-in paints. */
-const standInPicture = Base64.decode(
-  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==',
-)
+const side = 64
+const keyRgb = { green: [0, 255, 0], magenta: [255, 0, 255] } as const
 
-/** Native acceptance's painter: a small picture for any words, refused for `[[refuse]]`, lost on the way for
+/** What the stand-in paints: a dark square in the middle of a flat key colour, which keys out as a real drawing does. */
+const standInPicture = (key: KeyColour): Picture => {
+  const data = new Uint8Array(side * side * 4)
+  for (let at = 0; at < side * side; at++) {
+    const row = Math.floor(at / side)
+    const column = at % side
+    const inside = row >= 16 && row < 48 && column >= 16 && column < 48
+    const [red, green, blue] = inside ? [40, 30, 90] : keyRgb[key]
+    data.set([red, green, blue, 255], at * 4)
+  }
+  return { bytes: encodePng({ width: side, height: side, data }), contentType: 'image/png' }
+}
+
+/** Native acceptance's painter: a keyable picture for any words, refused for `[[refuse]]`, lost on the way for
  * `[[lost]]`. */
-export const standInPainter = {
+export const standInPainter: PicturePainter['Service'] = {
   model: 'stand-in',
   paint: (request: PaintRequest) => {
     if (request.prompt.includes('[[refuse]]'))
       return Effect.fail(new ProviderFailed({ provider: 'stand-in', retryable: false }))
     if (request.prompt.includes('[[lost]]')) return Effect.fail(new ProviderOutcomeUnknown({ provider: 'stand-in' }))
-    return Effect.fromResult(standInPicture).pipe(
-      Effect.map((bytes): Picture => ({ bytes, contentType: 'image/png' })),
-      Effect.mapError(() => new ProviderFailed({ provider: 'stand-in', retryable: false })),
-    )
+    return Effect.succeed(standInPicture(request.key))
   },
 }

@@ -8,9 +8,9 @@ import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../../StyldClient.ts'
 
-// Make with Styld, on a board's page: one picture from a sentence, or a mood board of a few with the person's pieces.
-// The ask goes in the background; the page follows it, and the board reloads when it is done. A board opened again
-// while its ask is being made follows it from where it is.
+// Make with Styld, on a board's page (owner, 2026-10-31): a mood board of the person's own pieces from one sentence,
+// or a small sticker drawn from their words. The ask goes in the background; the page follows it, and the board
+// reloads when it is done. A board opened again while its ask is being made follows it from where it is.
 
 // MODEL
 
@@ -28,7 +28,7 @@ export const Job = defineTaggedUnion({
 export type Job = typeof Job.Type
 
 /** The kinds the sheet offers, in its order. */
-export const kinds: ReadonlyArray<GenerationKind> = ['moodBoard', 'picture']
+export const kinds: ReadonlyArray<GenerationKind> = ['moodBoard', 'sticker']
 
 /** The two kinds as one radio group: arrows move between them, and the chosen one is the group's one tab stop. */
 export const KindRadioGroup = RadioGroup.create<GenerationKind>()
@@ -76,7 +76,7 @@ export const Message = defineMessageUnion({
 })
 export type Message = typeof Message.Type
 
-/** The ask reached an end: the board has its new pictures, or none came. */
+/** The ask reached an end: the board has its new pieces or sticker, or nothing came. */
 export const OutMessage = defineMessageUnion({ FinishedMaking: {} })
 export type OutMessage = typeof OutMessage.Type
 
@@ -89,9 +89,9 @@ const problemOf = (error: unknown): MakeProblem => {
   return 'failed'
 }
 
-/** Ask Styld for pictures, under an operation id drawn once for this ask.
+/** Ask Styld for a mood board or a sticker, under an operation id drawn once for this ask.
  * @internal Exported for its tests. */
-export const AskForPictures = Command.define('AskForPictures', {
+export const AskToMake = Command.define('AskToMake', {
   args: {
     boardId: Schema.String,
     kind: GenerationKind,
@@ -109,8 +109,8 @@ export const AskForPictures = Command.define('AskForPictures', {
         const boardId = yield* Schema.decodeUnknownEffect(BoardId)(args.boardId)
         const api = yield* (yield* StyldClient).api
         const request = { params: { boardId }, payload: { operationId, prompt: args.prompt } }
-        const generation = yield* args.kind === 'picture'
-          ? api.generation.generatePicture(request)
+        const generation = yield* args.kind === 'sticker'
+          ? api.generation.makeSticker(request)
           : api.generation.makeMoodBoard(request)
         return Message.SucceededAsk({ generation })
       })
@@ -214,7 +214,7 @@ const submitted = (model: Model): UpdateReturn =>
     ? {
         model: modifyFields(model, { job: () => Job.Asking() }),
         commands: [
-          AskForPictures({
+          AskToMake({
             boardId: model.boardId,
             kind: model.kind,
             prompt: model.words.trim(),

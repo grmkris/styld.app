@@ -1,8 +1,8 @@
-import { chromaKey, flatten, keyColourFor, shrink } from '@styld/imaging'
+import { chromaKey, flatten, framed, keyColourFor, shrink } from '@styld/imaging'
 import { DateTime, Effect, Option, Schedule } from 'effect'
 import { gateFor, planFor } from './CleanPicture.ts'
 import { type Parts, pictureKey, readPixels, storedAs, unavailable, writeObject } from './Parts.ts'
-import { crop, decodePng, encodePng, opaqueBounds, opaqueShare, type Rgba } from './Pixels.ts'
+import { decodePng, encodePng, opaqueShare, type Rgba } from './Pixels.ts'
 import { CaptureMetrics } from './Metrics.ts'
 import { CaptureConfig } from './Policy.ts'
 import { GarmentVision, ImageGenerator, type Picture } from './Providers.ts'
@@ -40,19 +40,6 @@ const asPng = (picture: Rgba): Picture => ({ bytes: encodePng(picture), contentT
 
 /** A picture as a provider sees it: at most `longest` pixels, on light grey instead of transparency. */
 export const sent = (picture: Rgba, longest: number) => asPng(flatten(shrink(picture, longest)))
-
-/** The keyed drawing cropped to the garment, with a little room around it. */
-const framed = (keyed: Rgba) => {
-  const bounds = opaqueBounds(keyed)
-  if (bounds === undefined) return keyed
-  const room = Math.round(margin * Math.max(bounds.right - bounds.left, bounds.bottom - bounds.top))
-  return crop(keyed, {
-    left: bounds.left - room,
-    top: bounds.top - room,
-    right: bounds.right + room,
-    bottom: bounds.bottom + room,
-  })
-}
 
 const ends = ['ready', 'proposed', 'rejected', 'retake', 'kept-real', 'failed'] as const
 
@@ -149,7 +136,7 @@ const draw = (parts: Parts, claimed: PictureRow, front: Rgba, back: Option.Optio
       yield* end(parts, claimed, 'generating', 'key')
       return ended
     }
-    const clean = framed(keyed.value)
+    const clean = framed(keyed.value, margin)
     const cleanKey = pictureKey(claimed.accountId, pieceId, claimed.version)
     const written = yield* writeObject(parts, cleanKey, encodePng(clean), 'image/png').pipe(
       Effect.retry({ times: 2, schedule: Schedule.exponential('200 millis') }),

@@ -136,3 +136,16 @@ export const opaqueBounds = (picture: Rgba, threshold = 16): Box | undefined => 
       }
   return right > left && bottom > top ? { left, top, right, bottom } : undefined
 }
+
+/** A keyed picture cropped to what it shows, with `margin` (a share of its longer side) of room around it. */
+export const framed = (picture: Rgba, margin: number): Rgba => {
+  const bounds = opaqueBounds(picture)
+  if (bounds === undefined) return picture
+  const room = Math.round(margin * Math.max(bounds.right - bounds.left, bounds.bottom - bounds.top))
+  return crop(picture, {
+    left: bounds.left - room,
+    top: bounds.top - room,
+    right: bounds.right + room,
+    bottom: bounds.bottom + room,
+  })
+}

@@ -1,5 +1,5 @@
 import { format, type Locale, type MessageKey } from '@styld/i18n'
-import { type Generation, type GenerationKind, mostMoodPictures } from '@styld/protocol'
+import type { Generation, GenerationKind } from '@styld/protocol'
 import { Option } from 'effect'
 import { Submodel } from 'foldkit'
 import { cx } from 'zyzz'
@@ -22,15 +22,13 @@ const problemKey: { readonly [Problem in MakeProblem]: MessageKey } = {
 
 const kindKey: { readonly [Kind in GenerationKind]: { readonly title: MessageKey; readonly hint: MessageKey } } = {
   moodBoard: { title: 'board.make.moodBoard', hint: 'board.make.moodBoardHint' },
-  picture: { title: 'board.make.picture', hint: 'board.make.pictureHint' },
+  sticker: { title: 'board.make.sticker', hint: 'board.make.stickerHint' },
 }
 
-/** What the chosen kind costs, as the server charges it: a credit held for each picture wanted (a mood board holds
- * up to its most), spent once the picture is on the board and given back for one that does not come out. */
+/** What the chosen kind costs, as the server charges it: one credit, held first, spent once the board has it and
+ * given back otherwise. */
 const costOf = (kind: GenerationKind, locale: Locale): string =>
-  kind === 'picture'
-    ? format(locale, 'board.make.pictureCost', {})
-    : format(locale, 'board.make.moodBoardCost', { most: mostMoodPictures })
+  format(locale, kind === 'sticker' ? 'board.make.stickerCost' : 'board.make.moodBoardCost', {})
 
 type Inputs = { readonly locale: Locale }
 
@@ -48,11 +46,16 @@ export const buttonView = Submodel.defineView<Model, Message, Inputs>((model, { 
   ),
 )
 
-/** The mark under a picture Styld made. */
+/** The mark under a sticker Styld drew. */
 export const generatedMark = <Message>(locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.span(styled(h, styles.generated()), [format(locale, 'board.generated', {})])
 
-const drawnCount = (generation: Generation) => generation.pictures.filter(({ status }) => status === 'drawn').length
+/** What a finished ask says: the board it laid out, the sticker it added, or why nothing came. */
+const finishedKey = (generation: Generation): MessageKey => {
+  if (generation.status === 'done')
+    return generation.kind === 'moodBoard' ? 'board.make.moodBoardDone' : 'board.make.stickerAdded'
+  return generation.reason === 'unclear' ? 'board.make.unclear' : 'board.make.nothing'
+}
 
 /** How the ask is going, under the board's name: the work going on, what it added, or why it stopped. */
 export const statusView = Submodel.defineView<Model, Message, Inputs>((model, { locale }, h) =>
@@ -62,21 +65,13 @@ export const statusView = Submodel.defineView<Model, Message, Inputs>((model, { 
     Running: ({ generation }) =>
       h.p(
         [h.Role('status'), ...styled(h, styles.status())],
-        [
-          loader(h),
-          format(locale, generation.status === 'planning' ? 'board.make.planning' : 'board.make.drawing', {
-            drawn: drawnCount(generation),
-            total: generation.pictures.length,
-          }),
-        ],
+        [loader(h), format(locale, generation.kind === 'moodBoard' ? 'board.make.planning' : 'board.make.drawing', {})],
       ),
     Finished: ({ generation }) =>
       h.p(
         [h.Role('status'), ...styled(h, styles.status())],
         [
-          drawnCount(generation) > 0
-            ? format(locale, 'board.make.added', { count: drawnCount(generation) })
-            : format(locale, generation.reason === 'unclear' ? 'board.make.unclear' : 'board.make.nothing', {}),
+          format(locale, finishedKey(generation), {}),
           actionButton(
             {
               label: format(locale, 'board.make.dismiss', {}),
@@ -91,8 +86,8 @@ export const statusView = Submodel.defineView<Model, Message, Inputs>((model, { 
   }),
 )
 
-/** A mood board or one picture: a radio group whose options are the two cards, each named by its title and described
- * by its hint. */
+/** A mood board or a sticker: a radio group whose options are the two cards, each named by its title and described by
+ * its hint. */
 const kindsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.submodel({
     slotId: model.kindChoice.id,

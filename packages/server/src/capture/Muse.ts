@@ -110,16 +110,10 @@ export const makeMuseGenerator = (settings: MuseSettings) => ({
   }),
 })
 
-/** Meta Muse Image as the painter of generated pictures for boards: from the words alone, or edited from the pieces'
- * pictures when it shows them. 4:5, like a pin. */
+/** Meta Muse Image as the painter of a board's stickers: from the words alone, square, on a flat key colour. */
 export const makeMusePainter = (settings: MuseSettings) => ({
   model,
   paint: Effect.fn('Styld.Generation.paint')(function* (request: PaintRequest) {
-    return yield* edit(
-      settings,
-      body(request.prompt, request.references, '1024x1280'),
-      'paint',
-      request.references.length === 0 ? 'generations' : 'edits',
-    )
+    return yield* edit(settings, body(request.prompt, [], '1024x1024'), 'paint', 'generations')
   }),
 })

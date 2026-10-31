@@ -141,7 +141,7 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
           ),
         ),
       ),
-      // An owner and a second account for generated pictures and mood boards.
+      // An owner and a second account for stickers and mood boards.
       HttpRouter.add(
         'POST',
         '/test/identity/seed-generation',

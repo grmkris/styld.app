@@ -27,7 +27,7 @@ export const toolNames = [
   'picture_pin',
   'collage_arrange',
   'collage_set',
-  'picture_generate',
+  'sticker_make',
   'moodboard_make',
   'generation_get',
   'profile_get',

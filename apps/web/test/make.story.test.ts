@@ -5,15 +5,15 @@ import { Command, expectOutMessage, given, message, model, story } from 'foldkit
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 import { storySheetMoved } from './SheetFixtures.ts'
-import { AskForPictures, init, Job, kinds, Message, PollGeneration, update } from '../src/page/Board/Make.ts'
+import { AskToMake, init, Job, kinds, Message, PollGeneration, update } from '../src/page/Board/Make.ts'
 
 const boardId = `bd_${'sea'.padEnd(22, 'x')}`
 const generationId = `gj_${'sea'.padEnd(22, 'x')}`
-const generation = (status: string, pictures: ReadonlyArray<string>) =>
+const generation = (status: string, pictures: ReadonlyArray<string>, kind = 'moodBoard') =>
   Schema.decodeUnknownSync(Generation)({
     id: generationId,
     boardId,
-    kind: 'moodBoard',
+    kind,
     status,
     reason: null,
     pictures: pictures.map((picture, index) => ({
@@ -24,16 +24,16 @@ const generation = (status: string, pictures: ReadonlyArray<string>) =>
     createdAt: '2026-10-31T09:00:00.000Z',
   })
 
-const choseOnePicture = [
+const choseSticker = [
   message(
     Message.GotKindChoiceMessage({
-      message: RadioGroup.Message.SelectedOption({ index: kinds.indexOf('picture'), value: 'picture' }),
+      message: RadioGroup.Message.SelectedOption({ index: kinds.indexOf('sticker'), value: 'sticker' }),
     }),
   ),
   Command.resolve(RadioGroup.FocusOption, RadioGroup.Message.CompletedFocusOption()),
 ] as const
 
-describe('making pictures for a board', () => {
+describe('making a mood board or a sticker for a board', () => {
   test('sends the words as a mood board, follows the job while it runs, and says once it is done', () => {
     story(
       update,
@@ -44,9 +44,9 @@ describe('making pictures for a board', () => {
       message(Message.ChangedWords({ words: '  a slow weekend by the sea ' })),
       message(Message.SubmittedMake()),
       Command.expectExact(
-        AskForPictures({ boardId, kind: 'moodBoard', prompt: 'a slow weekend by the sea', operationId: Option.none() }),
+        AskToMake({ boardId, kind: 'moodBoard', prompt: 'a slow weekend by the sea', operationId: Option.none() }),
       ),
-      Command.resolve(AskForPictures, Message.SucceededAsk({ generation: generation('planning', []) })),
+      Command.resolve(AskToMake, Message.SucceededAsk({ generation: generation('planning', []) })),
       model(({ job, words, sheet }) => {
         expect(Job.guards.Running(job)).toBe(true)
         expect(words).toBe('')
@@ -56,36 +56,33 @@ describe('making pictures for a board', () => {
       Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
       Command.resolve(
         PollGeneration({ generationId }),
-        Message.SucceededPoll({ generation: generation('drawing', ['drawn', 'waiting']) }),
+        Message.SucceededPoll({ generation: generation('arranging', []) }),
       ),
-      Command.resolve(
-        PollGeneration({ generationId }),
-        Message.SucceededPoll({ generation: generation('done', ['drawn', 'drawn']) }),
-      ),
+      Command.resolve(PollGeneration({ generationId }), Message.SucceededPoll({ generation: generation('done', []) })),
       model(({ job }) => expect(Job.guards.Finished(job)).toBe(true)),
       expectOutMessage({ _tag: 'FinishedMaking' }),
     )
   })
 
-  test('one picture, tried again under the same operation after a failure that may not have arrived', () => {
+  test('a sticker, tried again under the same operation after a failure that may not have arrived', () => {
     story(
       update,
       given(init(boardId)),
-      ...choseOnePicture,
-      message(Message.ChangedWords({ words: 'a red coat in the snow' })),
+      ...choseSticker,
+      message(Message.ChangedWords({ words: 'a lemon on a blue plate' })),
       message(Message.SubmittedMake()),
-      Command.resolve(AskForPictures, Message.FailedAsk({ problem: 'failed', operationId: Option.some('op-make-1') })),
+      Command.resolve(AskToMake, Message.FailedAsk({ problem: 'failed', operationId: Option.some('op-make-1') })),
       model(({ job }) => expect(job).toEqual(Job.Failed({ problem: 'failed' }))),
       message(Message.SubmittedMake()),
       Command.expectExact(
-        AskForPictures({
+        AskToMake({
           boardId,
-          kind: 'picture',
-          prompt: 'a red coat in the snow',
+          kind: 'sticker',
+          prompt: 'a lemon on a blue plate',
           operationId: Option.some('op-make-1'),
         }),
       ),
-      Command.resolve(AskForPictures, Message.FailedAsk({ problem: 'dailyLimit', operationId: Option.none() })),
+      Command.resolve(AskToMake, Message.FailedAsk({ problem: 'dailyLimit', operationId: Option.none() })),
       model(({ job, operationId }) => {
         expect(job).toEqual(Job.Failed({ problem: 'dailyLimit' }))
         expect(operationId).toEqual(Option.none())
@@ -96,12 +93,12 @@ describe('making pictures for a board', () => {
   test('another kind starts a new operation, and polls that keep failing stop with a problem', () => {
     const asking = modifyFields(init(boardId), {
       operationId: () => Option.some('op-make-1'),
-      job: () => Job.Running({ generation: generation('drawing', ['waiting']) }),
+      job: () => Job.Running({ generation: generation('planning', []) }),
     })
     story(
       update,
       given(asking),
-      ...choseOnePicture,
+      ...choseSticker,
       model(({ operationId }) => expect(operationId).toEqual(Option.none())),
       message(Message.FailedPoll({ generationId })),
       ...Array.from({ length: 4 }, () =>
@@ -115,11 +112,11 @@ describe('making pictures for a board', () => {
     story(
       update,
       given(init(boardId)),
-      message(Message.SucceededFindRunning({ generation: generation('drawing', ['drawn', 'waiting', 'waiting']) })),
+      message(Message.SucceededFindRunning({ generation: generation('drawing', ['waiting'], 'sticker') })),
       model(({ job }) => expect(Job.guards.Running(job)).toBe(true)),
       Command.resolve(
         PollGeneration({ generationId }),
-        Message.SucceededPoll({ generation: generation('done', ['drawn', 'drawn', 'drawn']) }),
+        Message.SucceededPoll({ generation: generation('done', ['drawn'], 'sticker') }),
       ),
       model(({ job }) => expect(Job.guards.Finished(job)).toBe(true)),
       expectOutMessage({ _tag: 'FinishedMaking' }),

@@ -1,47 +1,34 @@
-import { BoardId, BoardImageId, ImageType, Mood, OperationId, PieceId } from '@styld/protocol'
+import { BoardId, ImageType, Mood, OperationId, PieceId } from '@styld/protocol'
 import { Effect, Option, Predicate, Result, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import type { Picture } from '../capture/Providers.ts'
 import { receivedUpload } from '../mcp/ImageImport.ts'
-import { shownImage } from '../wardrobe/Shown.ts'
-import { paintPrompt } from './PaintPrompt.ts'
+import { stickerKey } from './PaintPrompt.ts'
 import { holdOf, nowDate, type Parts, pictureOperation, refund, unavailable } from './Parts.ts'
 import type { Wearable } from './Planner.ts'
+import { stickerOf } from './Sticker.ts'
 import type { JobRow, PictureRow } from './Store.ts'
 
-// Taking a job further, one delivery of the generation queue at a time: plan a mood board, draw each picture once, then
-// lay the board out. Every step reads where the job stands, so a redelivery picks up where the last one stopped.
+// Taking a job further, one delivery of the generation queue at a time: draw a sticker once, or plan a mood board from
+// the person's pieces and lay the board out. Every step reads where the job stands, so a redelivery picks up where the
+// last one stopped.
 
 /** A claimed drawing older than the painter's 90 s patience, plus storing it, belongs to a delivery that died. */
 const patienceMillis = 3 * 60 * 1000
 
 /** The most of the person's pieces a plan reads. */
-const wardrobeShown = 40
+const planReads = 40
 
 const stored = <A, E>(effect: Effect.Effect<A, E>) => Effect.mapError(effect, unavailable)
 const isMood = Schema.is(Mood)
-const isPictureType = (type: string): type is Picture['contentType'] =>
-  type === 'image/png' || type === 'image/jpeg' || type === 'image/webp'
 
-/** The type a stored picture was written as: clean pictures are PNG, cut-outs WebP or PNG by their name. */
-const contentTypeOf = (key: string) =>
-  key.endsWith('.webp') ? 'image/webp' : key.endsWith('.jpg') || key.endsWith('.jpeg') ? 'image/jpeg' : 'image/png'
-
-/** The person's ready pieces and how each may be shown to the painter: its clean picture or cut-out, never its photo
- * and never one with a face. */
+/** The person's ready pieces as the plan reads them: a short reference each, never an id, photo or note. */
 const wardrobeOf = (parts: Parts, accountId: string) =>
-  Effect.gen(function* () {
-    const pieces = (yield* stored(parts.wardrobeStore.listPieces(accountId))).filter(({ status }) => status === 'ready')
-    const pictures = new Map(
-      (yield* stored(parts.wardrobeStore.picturesOf(accountId))).map((picture) => [picture.pieceId, picture]),
-    )
-    return pieces.slice(0, wardrobeShown).map((piece, at) => {
-      const picture = pictures.get(piece.id)
-      const shown = shownImage(piece, picture)
-      // A picture not yet judged for a face is not sent: only a known score under the limit is.
-      const face = picture?.face ?? null
-      const sendable = face !== null && face < parts.face && shown.key !== piece.originalKey
-      return {
+  Effect.map(stored(parts.wardrobeStore.listPieces(accountId)), (pieces) =>
+    pieces
+      .filter(({ status }) => status === 'ready')
+      .slice(0, planReads)
+      .map((piece, at) => ({
         wearable: {
           ref: `p${at + 1}`,
           name: piece.name ?? piece.subcategory ?? piece.category,
@@ -49,76 +36,32 @@ const wardrobeOf = (parts: Parts, accountId: string) =>
           colours: piece.colours,
         } satisfies Wearable,
         id: piece.id,
-        reference: sendable ? Option.some(shown) : Option.none(),
-      }
-    })
-  })
+      })),
+  )
 
-/** Plan a mood board: its pictures, the pieces it picks and its moods. Credits held beyond the plan go back. */
+/** Plan a mood board: the person's pieces it picks and its moods. Nothing it can make gives the credit back. */
 const plan = (parts: Parts, job: JobRow) =>
   Effect.gen(function* () {
     const wardrobe = yield* wardrobeOf(parts, job.accountId)
     const planned = yield* parts.planner
-      .plan({ sentence: job.prompt, wardrobe: wardrobe.map(({ wearable }) => wearable), most: job.held })
+      .plan({ sentence: job.prompt, wardrobe: wardrobe.map(({ wearable }) => wearable) })
       .pipe(Effect.mapError(unavailable))
     const at = yield* nowDate
-    const prompts = Option.map(planned, ({ pictures }) => pictures.map(({ prompt }) => prompt))
-    const safe = Option.isSome(prompts)
-      ? (yield* parts.judge.judge({ texts: prompts.value, pictures: [] }).pipe(Effect.mapError(unavailable))).state !==
-        'failed'
-      : false
-    if (Option.isNone(planned) || !safe) {
+    if (Option.isNone(planned)) {
       yield* refund(parts, job.accountId, job.id, 0, job.held)
       return yield* stored(
         parts.store.advanceJob(job.id, ['planning'], { status: 'refused', reason: 'unclear', updatedAt: at }),
       )
     }
     const idOf = new Map(wardrobe.map(({ wearable, id }) => [wearable.ref, id]))
-    const pictures: ReadonlyArray<PictureRow> = planned.value.pictures.map(({ prompt, pieces }, index) => ({
-      jobId: job.id,
-      index,
-      prompt: paintPrompt(prompt, pieces.length > 0),
-      references: pieces.flatMap((ref) => Option.toArray(Option.fromNullishOr(idOf.get(ref)))),
-      status: 'waiting',
-      imageId: null,
-      startedAt: null,
-    }))
-    yield* refund(parts, job.accountId, job.id, pictures.length, job.held)
     yield* stored(
-      parts.store.planned(job.id, pictures, {
-        status: 'drawing',
-        held: pictures.length,
+      parts.store.advanceJob(job.id, ['planning'], {
+        status: 'arranging',
         picks: planned.value.picks.flatMap((ref) => Option.toArray(Option.fromNullishOr(idOf.get(ref)))),
         moods: planned.value.moods,
         updatedAt: at,
       }),
     )
-  })
-
-/** The pictures a picture is drawn from, read from the bucket; a piece gone or not sendable is left out. */
-const referencesOf = (parts: Parts, job: JobRow, picture: PictureRow) =>
-  Effect.gen(function* () {
-    if (picture.references.length === 0) return []
-    const sendable = new Map(
-      (yield* wardrobeOf(parts, job.accountId)).map(({ id, reference }) => [id, reference] as const),
-    )
-    const keys = picture.references.flatMap((id) => Option.toArray(sendable.get(id) ?? Option.none()))
-    return yield* Effect.forEach(keys, ({ key }) =>
-      Effect.tryPromise({ try: () => parts.bucket.get(key), catch: unavailable }).pipe(
-        Effect.flatMap((object) =>
-          object === null
-            ? Effect.succeed(Option.none<Picture>())
-            : Effect.map(
-                Effect.tryPromise({ try: () => object.arrayBuffer(), catch: unavailable }),
-                (buffer): Option.Option<Picture> =>
-                  Option.map(Option.liftPredicate(contentTypeOf(key), isPictureType), (type) => ({
-                    bytes: new Uint8Array(buffer),
-                    contentType: type,
-                  })),
-              ),
-        ),
-      ),
-    ).pipe(Effect.map((found) => found.flatMap(Option.toArray)))
   })
 
 /** A picture that will not be drawn: refused, or lost on the way. Its credit goes back either way; a lost answer may
@@ -129,7 +72,7 @@ const ended = (parts: Parts, job: JobRow, index: number, status: 'refused' | 'un
     yield* parts.usage.settle(job.accountId, holdOf(job.id, index), 'refunded').pipe(Effect.ignore({ log: true }))
   })
 
-/** Put the painted picture on the board as a received upload, marked Generated. */
+/** Put the sticker on the board as a received upload, marked Generated. */
 const placeOnBoard = (parts: Parts, job: JobRow, index: number, painted: Picture) =>
   Effect.gen(function* () {
     const contentType = yield* Schema.decodeUnknownEffect(ImageType)(painted.contentType).pipe(
@@ -149,14 +92,12 @@ const placeOnBoard = (parts: Parts, job: JobRow, index: number, painted: Picture
     return imageId
   })
 
-/** Draw one claimed picture and put it on the board, then settle its credit: consumed once it is there, given back
- * otherwise. A claim whose painter was never reached is put back for the next delivery. */
+/** Draw one claimed sticker, key its background out and put it on the board, then settle its credit: consumed once it
+ * is there, given back otherwise. A drawing that does not key out cleanly counts as refused. */
 const drawOne = (parts: Parts, job: JobRow, picture: PictureRow) =>
   Effect.gen(function* () {
-    const references = yield* referencesOf(parts, job, picture).pipe(
-      Effect.tapError(() => stored(parts.store.releasePicture(job.id, picture.index))),
-    )
-    const painted = yield* Effect.result(parts.painter.paint({ prompt: picture.prompt, references }))
+    const key = stickerKey(job.prompt)
+    const painted = yield* Effect.result(parts.painter.paint({ prompt: picture.prompt, key }))
     if (Result.isFailure(painted))
       return yield* ended(
         parts,
@@ -164,8 +105,10 @@ const drawOne = (parts: Parts, job: JobRow, picture: PictureRow) =>
         picture.index,
         Predicate.isTagged(painted.failure, 'ProviderOutcomeUnknown') ? 'unknown' : 'refused',
       )
+    const sticker = stickerOf(painted.success, key)
+    if (Option.isNone(sticker)) return yield* ended(parts, job, picture.index, 'refused')
     // The painted bytes live only in this delivery: a picture that cannot be stored now is lost.
-    const placed = yield* Effect.result(placeOnBoard(parts, job, picture.index, painted.success))
+    const placed = yield* Effect.result(placeOnBoard(parts, job, picture.index, sticker.value))
     if (Result.isFailure(placed)) return yield* ended(parts, job, picture.index, 'unknown')
     yield* stored(
       parts.store.finishPicture(job.id, picture.index, { status: 'drawn', imageId: placed.success }, yield* nowDate),
@@ -193,7 +136,7 @@ const drawStep = (parts: Parts, job: JobRow, picture: PictureRow) =>
     return 'done' as const
   })
 
-/** Draw each picture still waiting, once, then move the job on: refused when none was drawn. A delivery that finds
+/** Draw the sticker still waiting, once, then end the job: refused when it was not drawn. A delivery that finds
  * another still drawing leaves the job to it. */
 const draw = (parts: Parts, job: JobRow) =>
   Effect.gen(function* () {
@@ -201,8 +144,7 @@ const draw = (parts: Parts, job: JobRow) =>
       if ((yield* drawStep(parts, job, picture)) === 'busy') return
     const pictures = yield* stored(parts.store.picturesOf(job.id))
     if (pictures.some(({ status }) => status === 'waiting' || status === 'drawing')) return
-    const drawn = pictures.some(({ status }) => status === 'drawn')
-    const next = !drawn ? 'refused' : job.kind === 'moodBoard' ? 'arranging' : 'done'
+    const next = pictures.some(({ status }) => status === 'drawn') ? 'done' : 'refused'
     yield* stored(
       parts.store.advanceJob(job.id, ['drawing'], {
         status: next,
@@ -213,7 +155,7 @@ const draw = (parts: Parts, job: JobRow) =>
   })
 
 /** A mood board's last step: pin the pieces it picked, give the board its moods if it has none, and lay the collage
- * out with the new pictures, unless the person changed the collage since asking. */
+ * out with them, unless the person changed the collage since asking. Its credit is spent once the board is done. */
 const arrange = (parts: Parts, job: JobRow) =>
   Effect.gen(function* () {
     const boardId = BoardId.make(job.boardId)
@@ -226,19 +168,16 @@ const arrange = (parts: Parts, job: JobRow) =>
         .pipe(Effect.mapError(unavailable))
     if (board.moods.length === 0 && moods.length > 0)
       yield* parts.boards.updateBoard(boardId, { moods }).pipe(Effect.mapError(unavailable))
-    if (board.version === job.collageVersion) {
-      const drawn = (yield* stored(parts.store.picturesOf(job.id))).flatMap(({ imageId }) =>
-        imageId === null ? [] : [{ _tag: 'TablePicture' as const, imageId: BoardImageId.make(imageId) }],
-      )
+    if (board.version === job.collageVersion)
       yield* parts.boards
         .arrangeBoard(boardId, {
           operationId: OperationId.make(`gen-${job.id}-layout`),
           layout: 'tidy',
-          add: [...drawn, ...picks.map((pieceId) => ({ _tag: 'TablePiece' as const, pieceId }))],
+          add: picks.map((pieceId) => ({ _tag: 'TablePiece' as const, pieceId })),
         })
         .pipe(Effect.mapError(unavailable))
-    }
-    yield* stored(parts.store.advanceJob(job.id, ['arranging'], { status: 'done', updatedAt: yield* nowDate }))
+    if (yield* stored(parts.store.advanceJob(job.id, ['arranging'], { status: 'done', updatedAt: yield* nowDate })))
+      yield* parts.usage.settle(job.accountId, holdOf(job.id, 0), 'consumed').pipe(Effect.ignore({ log: true }))
   })
 
 /** Take the job as far as it goes now, acting for its account. */
@@ -256,7 +195,7 @@ export const work = Effect.fn('Styld.Generation.work')(function* (parts: Parts, 
   if (Option.isSome(drawn) && drawn.value.status === 'arranging') yield* act(arrange(parts, drawn.value))
 })
 
-/** Give a job up: it fails, its waiting pictures are refused, and every credit not spent goes back. A picture a dead
+/** Give a job up: it fails, its waiting sticker is refused, and every credit not spent goes back. A sticker a dead
  * delivery claimed is lost; one still being drawn is left to finish, and settles itself. */
 export const giveUp = Effect.fn('Styld.Generation.giveUp')(function* (parts: Parts, jobId: string) {
   const job = yield* stored(parts.store.jobForWork(jobId))
@@ -266,7 +205,7 @@ export const giveUp = Effect.fn('Styld.Generation.giveUp')(function* (parts: Par
   const [failed, refused] = yield* stored(parts.store.giveUp(jobId, at))
   if (failed.length === 0) return
   const held = failed[0]?.held ?? 0
-  // A job given up before its plan has no pictures yet: all its credits go back.
+  // A mood board has no pictures: its credit goes back whole.
   const back =
     before.length === 0 ? Array.from({ length: held }, (_, index) => index) : refused.map(({ index }) => index)
   yield* Effect.forEach(back, (index) => refund(parts, job.value.accountId, jobId, index, index + 1), {

@@ -61,7 +61,8 @@ const makeStack = (generation: string) =>
           STYLD_PROVIDERS: 'off',
           // The stand-in judge decides checks: `[[fail]]` and `[[unsure]]` in public text.
           CHECKS: 'stand-in',
-          // The stand-in painter and planner make pictures: `[[refuse]]`, `[[lost]]` and `[[unclear]]` in the words.
+          // The stand-in painter and planner make stickers and mood boards: `[[refuse]]`, `[[lost]]` and `[[unclear]]` in
+          // the words.
           GENERATED_PICTURES: 'stand-in',
           ...pictureEnvironment(worker.url),
           ...stylistEnvironment(worker.url),
@@ -181,7 +182,9 @@ test(
 )
 
 test('keeps profiles and checks whatever goes public first', overHttp(verifySocial), { timeout: 60000 })
-test('makes pictures and mood boards for a board, once each', overHttp(verifyGeneration), { timeout: 90000 })
+test('makes stickers and mood boards of the person’s pieces for a board, once each', overHttp(verifyGeneration), {
+  timeout: 90000,
+})
 test('shows a published profile and its public board to a signed-out visitor', inBrowser(verifyPublicJourney), {
   timeout: 60000,
 })
