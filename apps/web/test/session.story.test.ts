@@ -4,6 +4,7 @@ import { Option, Schema } from 'effect'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import { Message, ReadSession, Session, init, update } from '../src/App.ts'
+import { ReadYou } from '../src/You.ts'
 import { Navigate } from '../src/Navigation.ts'
 import { Message as AddPiecesMessage } from '../src/page/AddPieces/Message.ts'
 import { Message as ReviewMessage } from '../src/page/Review.ts'
@@ -69,7 +70,15 @@ describe('the session decides where a visitor belongs', () => {
       given(page('/')),
       message(Message.ReceivedSession({ claims })),
       // The table is laid from the wardrobe's pieces, which every page shares.
-      Command.expectExact(Today.DetermineDay, Today.ListBoards, Today.ReadTray, Today.ReadFeed, Wardrobe.ListPieces),
+      Command.expectExact(
+        Today.DetermineDay,
+        Today.ListBoards,
+        Today.ReadTray,
+        Today.ReadFeed,
+        Wardrobe.ListPieces,
+        ReadYou,
+      ),
+      Command.resolve(ReadYou, Message.FailedReadYou()),
       Command.resolve(Wardrobe.ListPieces, Wardrobe.Message.FailedListPieces()),
       Command.resolve(Today.ListBoards, Today.Message.FailedListBoards()),
       Command.resolve(Today.ReadTray, Today.Message.FailedReadTray()),
@@ -94,6 +103,19 @@ describe('the session decides where a visitor belongs', () => {
       Command.expectExact(ReadSession),
       Command.resolve(ReadSession, Message.ReceivedSession({ claims })),
       model(({ session }) => expect(Session.guards.SignedIn(session)).toBe(true)),
+      Command.resolve(ReadYou, Message.FailedReadYou()),
+    )
+  })
+
+  test('once signed in, the masthead shows the profile as others see it, and the sign-in name if it has none', () => {
+    story(
+      update,
+      given(page('/account')),
+      message(Message.ReceivedSession({ claims })),
+      Command.resolve(ReadYou, Message.SucceededReadYou({ name: 'Kris (preview)', tone: 'sage' })),
+      model(({ you }) => expect(you).toEqual(Option.some({ name: 'Kris (preview)', tone: 'sage' }))),
+      message(Message.SucceededReadYou({ name: '  ', tone: 'sage' })),
+      model(({ you }) => expect(you).toEqual(Option.none())),
     )
   })
 })

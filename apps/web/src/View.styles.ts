@@ -250,6 +250,8 @@ export const navAvatarDisc = style({
   fontSize: '13px',
   fontWeight: 700,
 })
+/** Your profile's avatar at the masthead's size: Avatar.ts's initials on its tone, in the 32px circle. */
+export const navYou = style({ inlineSize: '32px', blockSize: '32px', fontSize: '12px', letterSpacing: '0' })
 /** The avatar while the session is read: the same circle, blank until the initial is known. */
 export const navAvatarPending = style({ backgroundColor: 'paper2' })
 /** A board card's shape while the landing's boards load. */

@@ -4,7 +4,7 @@ import * as styles from './Avatar.styles.ts'
 import { styled } from './Styled.ts'
 
 /** Up to two initials from a name, letters only: "Nika Kovač" is NK, and "Kris (preview)" is KP. */
-const initials = (name: string) =>
+export const initials = (name: string) =>
   name
     .split(/\s+/)
     .flatMap((word) => word.match(/\p{L}/u) ?? [])

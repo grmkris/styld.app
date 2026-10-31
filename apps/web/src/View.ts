@@ -59,6 +59,7 @@ import {
   navAvatar,
   navAvatarDisc,
   navAvatarPending,
+  navYou,
   navItem,
   navLabel,
   signInLink,
@@ -68,6 +69,8 @@ import {
   withActionBand,
   withTabBar,
 } from './View.styles.ts'
+import { initials } from './Avatar.ts'
+import { avatar as avatarStyle } from './Avatar.styles.ts'
 import { landingView } from './Landing.ts'
 import { pieceLabel } from './page/WardrobeWords.ts'
 
@@ -174,7 +177,8 @@ const sessionLink = (model: Model, h: HtmlBuilder<Message>): Html => {
   })
 }
 
-/** You, in the masthead while the navigation shows: your initial, blank while the session is read. */
+/** You, in the masthead while the navigation shows: your profile's initials on its tone, as Account and your public
+ * page show you; the sign-in name's initial until the profile is read; blank while the session is. */
 const youLink = (model: Model, initial: string, h: HtmlBuilder<Message>): Html =>
   h.a(
     [
@@ -183,7 +187,14 @@ const youLink = (model: Model, initial: string, h: HtmlBuilder<Message>): Html =
       ...(sectionOf(model.route) === 'you' ? [h.AriaCurrent('page')] : []),
       ...styled(h, navAvatar()),
     ],
-    [h.span(styled(h, initial === '' ? cx(navAvatarDisc(), navAvatarPending()) : navAvatarDisc()), [initial])],
+    [
+      Option.match(model.you, {
+        onSome: ({ name, tone }) =>
+          h.span([h.DataAttribute('tone', tone), ...styled(h, cx(avatarStyle(), navYou()))], [initials(name)]),
+        onNone: () =>
+          h.span(styled(h, initial === '' ? cx(navAvatarDisc(), navAvatarPending()) : navAvatarDisc()), [initial]),
+      }),
+    ],
   )
 
 const titleKey = AppRoute.match<MessageKey>({

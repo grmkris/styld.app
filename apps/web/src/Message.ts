@@ -1,3 +1,4 @@
+import { Tone } from '@styld/protocol'
 import { Schema } from 'effect'
 import { AccountClaims } from '@styld/auth/config'
 import { defineMessageUnion } from 'foldkit/message'
@@ -28,6 +29,9 @@ export const Message = defineMessageUnion({
   SucceededSaveLocale: { locale: Locale },
   FailedSaveLocale: {},
   ReceivedSession: { claims: Schema.NullOr(AccountClaims) },
+  /** Who the masthead shows: the profile's name and tone, read once the session is known. */
+  SucceededReadYou: { name: Schema.String, tone: Tone },
+  FailedReadYou: {},
   FailedReadSession: {},
   RequestedSession: {},
   SucceededSignOut: {},

@@ -150,7 +150,11 @@ export const load = () => [LoadProfile()]
 
 // UPDATE
 
-type UpdateReturn = Update.Return<Model, Message, StyldClient>
+/** A profile saved from the editor, for the masthead that shows the person. */
+export const OutMessage = defineMessageUnion({ SavedProfile: { profile: Profile } })
+export type OutMessage = typeof OutMessage.Type
+
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient>
 
 /** A field of the draft as typed. */
 const typed =
@@ -191,7 +195,10 @@ export const update = (model: Model, message: Message): UpdateReturn =>
           },
     SucceededSaveProfile: ({ profile }) => {
       const next = loaded(model, profile)
-      return { model: modifyFields(next.model, { saving: () => Saving.Saved() }) }
+      return {
+        model: modifyFields(next.model, { saving: () => Saving.Saved() }),
+        outMessage: OutMessage.SavedProfile({ profile }),
+      }
     },
     FailedSaveProfile: ({ problem }) => ({ model: modifyFields(model, { saving: () => Saving.Failed({ problem }) }) }),
     ClickedPublish: ({ published }) =>

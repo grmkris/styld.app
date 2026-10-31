@@ -1,4 +1,5 @@
 import { catalogVersion } from '@styld/i18n'
+import { Option } from 'effect'
 import { click, Command, expect, given, role, scene } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
@@ -23,6 +24,13 @@ const accountWith = (account: Account.Model) =>
   )
 
 describe('the account page', () => {
+  test('shows you in the bar as your profile does: its initials, once it is read', () => {
+    const named = modifyFields(accountWith(Account.init()), {
+      you: () => Option.some({ name: 'Kris (preview)', tone: 'sage' as const }),
+    })
+    scene({ update, view }, given(named), expect(role('link', { name: 'Account' })).toHaveText('KP'))
+  })
+
   test('says when the profile did not load, and reads it again on Try again', () => {
     scene(
       { update, view },

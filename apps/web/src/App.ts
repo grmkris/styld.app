@@ -12,6 +12,7 @@ import { Message } from './Message.ts'
 import { arrive, followLink, Navigate } from './Navigation.ts'
 import { foldAskLeave, foldWardrobeRevisit, openHome, openPage, type Step } from './PageEntries.ts'
 import * as Crypto from 'effect/Crypto'
+import { ReadYou, You, youOf } from './You.ts'
 import * as AddPiecesMessage from './page/AddPieces/Message.ts'
 import * as AddPiecesModel from './page/AddPieces/Model.ts'
 import * as AddPiecesSubscription from './page/AddPieces/Subscription.ts'
@@ -87,6 +88,7 @@ export const Model = Schema.Struct({
   route: AppRoute,
   localeSave: LocaleSave,
   session: Session,
+  you: Schema.Option(You),
   login: Login.Model,
   wardrobe: Wardrobe.Model,
   piece: Piece.Model,
@@ -219,6 +221,7 @@ export const init = (context: Flags, url?: Url): UpdateReturn => {
       route,
       localeSave: LocaleSave.Saved(),
       session: Session.Checking(),
+      you: Option.none(),
       login: Login.init(),
       wardrobe: Wardrobe.init(),
       piece,
@@ -342,11 +345,17 @@ const foldLooks = Update.foldChild({
   toParentMessage: (message: Looks.Message) => Message.GotLooksMessage({ message }),
 })
 
+/** A profile saved in the editor is who the masthead shows from then on. */
 const foldProfile = Update.foldChild({
   update: ProfileEditor.update,
   read: (model: Model) => Option.some(model.profile),
   write: (model: Model, profile: ProfileEditor.Model) => modifyFields(model, { profile: () => profile }),
   toParentMessage: (message: ProfileEditor.Message) => Message.GotProfileMessage({ message }),
+  foldOutMessage: ProfileEditor.OutMessage.match<Update.Step<Model, Message, Services>>({
+    SavedProfile:
+      ({ profile }) =>
+      (model) => ({ model: modifyFields(model, { you: () => youOf(profile.name, profile.tone) }) }),
+  }),
 })
 
 const foldLook = Update.foldChild({
@@ -486,17 +495,26 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       }),
     }),
     FailedSaveLocale: () => ({ model: modifyFields(model, { localeSave: () => LocaleSave.Failed() }) }),
-    ReceivedSession: ({ claims }) =>
-      claims === null
-        ? { model: modifyFields(model, { session: () => Session.SignedOut() }), commands: afterSignOut(model.route) }
-        : afterSignIn(model.route)(modifyFields(model, { session: () => Session.SignedIn({ claims }) })),
+    ReceivedSession: ({ claims }) => {
+      if (claims === null)
+        return {
+          model: modifyFields(model, { session: () => Session.SignedOut(), you: () => Option.none() }),
+          commands: afterSignOut(model.route),
+        }
+      const signedIn = afterSignIn(model.route)(modifyFields(model, { session: () => Session.SignedIn({ claims }) }))
+      // Sign-in hands over to another page, which reads its own; any other page shows you in the masthead.
+      const leaves = AppRoute.guards.Login(model.route) || AppRoute.guards.LoginForConnection(model.route)
+      return leaves ? signedIn : { ...signedIn, commands: [...(signedIn.commands ?? []), ReadYou()] }
+    },
+    SucceededReadYou: ({ name, tone }) => ({ model: modifyFields(model, { you: () => youOf(name, tone) }) }),
+    FailedReadYou: () => ({ model }),
     FailedReadSession: () => ({ model: modifyFields(model, { session: () => Session.Unavailable() }) }),
     RequestedSession: () => ({
       model: modifyFields(model, { session: () => Session.Checking() }),
       commands: [ReadSession()],
     }),
     SucceededSignOut: () => ({
-      model: modifyFields(model, { session: () => Session.SignedOut() }),
+      model: modifyFields(model, { session: () => Session.SignedOut(), you: () => Option.none() }),
       commands: afterSignOut(model.route),
     }),
     FailedSignOut: () => ({ model: modifyFields(model, { session: () => Session.Unavailable() }) }),
