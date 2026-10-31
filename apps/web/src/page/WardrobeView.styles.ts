@@ -73,6 +73,8 @@ export const cutImage = style({
   aspectRatio: '1 / 1',
   objectFit: 'contain',
   borderRadius: 'photo',
+  // A photo's pale backdrop gives way to the paper, as the looks' collage does.
+  mixBlendMode: 'darken',
 })
 export const caption = style({
   maxInlineSize: '100%',

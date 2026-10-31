@@ -5,7 +5,7 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { secondaryAction } from '../Actions.styles.ts'
-import { lookRouter } from '../route.ts'
+import { boardsRouter, lookRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
@@ -59,10 +59,9 @@ export const couldNotLoad = <Message>(title: string, locale: Locale, h: HtmlBuil
 
 const skeletonCards = ['a', 'b'] as const
 
-/** The shape of what is coming: the hint, and two cards with a square for the pieces, a name and a line. */
+/** The shape of what is coming: two cards with a square for the pieces, a name and a line. */
 const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
   h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
-  h.span([h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, cx(line(), styles.ledeSkeleton()))]),
   h.ul(
     [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.grid())],
     skeletonCards.map((slot) =>
@@ -85,13 +84,17 @@ const looksPage = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html 
       onData: (looks) =>
         looks.length === 0
           ? [
+              // Empty, the one action that fills it (DESIGN › Copy): a board's table is where a look is made.
               h.section(styled(h, messageSection()), [
                 h.h2(styled(h, messageTitle()), [format(locale, 'looks.emptyTitle', {})]),
                 h.p([], [format(locale, 'looks.emptyHint', {})]),
+                h.a(
+                  [h.Href(boardsRouter({})), ...styled(h, secondaryAction())],
+                  [format(locale, 'looks.toBoards', {})],
+                ),
               ]),
             ]
           : [
-              h.p(styled(h, styles.lede()), [format(locale, 'looks.hint', {})]),
               h.ul(
                 styled(h, styles.grid()),
                 looks.map((look) => card(look, locale, h)),

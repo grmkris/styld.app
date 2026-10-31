@@ -2980,16 +2980,16 @@
   },
   "looks": {
     "title": "Videzi",
-    "hint": "Kombinacije, ki ti jih je asistent sestavil iz tvojih kosov.",
     "pieceCount": "{count, plural, one {# kos} two {# kosa} few {# kosi} other {# kosov}}",
     "emptyTitle": "Še ni videzov",
-    "emptyHint": "Prosi asistenta v ChatGPT ali Claudu, naj ti sestavi videz iz tvoje garderobe.",
+    "emptyHint": "Kose razporedi na mizo zbirke in jo shrani kot videz ali pa ga prosi Stylda.",
     "loadFailed": "Tvojih videzov ni bilo mogoče naložiti",
     "backToLooks": "Nazaj na videze",
     "notFound": "Tega videza ni več",
     "delete": "Izbriši videz",
     "deleteConfirm": "Izbrišem ta videz? Kosi ostanejo v tvoji garderobi.",
-    "deleteFailed": "Videza ni bilo mogoče izbrisati. Poskusi znova."
+    "deleteFailed": "Videza ni bilo mogoče izbrisati. Poskusi znova.",
+    "toBoards": "Odpri zbirke"
   },
   "board": {
     "loading": "Odpiram zbirko …",
