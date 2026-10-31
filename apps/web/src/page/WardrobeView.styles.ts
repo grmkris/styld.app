@@ -15,30 +15,8 @@ export const categoryRow = style({
   scrollbarWidth: 'none',
   whiteSpace: 'nowrap',
 })
-export const categoryFilter = style({
-  position: 'relative',
-  flex: 'none',
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: '6px',
-  minBlockSize: '36px',
-  paddingInline: '14px',
-  borderWidth: '0',
-  borderRadius: 'pill',
-  backgroundColor: 'paper2',
-  color: 'ink2',
-  fontSize: '14px',
-  fontWeight: 500,
-  cursor: 'pointer',
-  transitionProperty: 'transform, background-color',
-  transitionDuration: '140ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
-  ':active': { transform: 'scale(0.96)' },
-  // A 36px chip with a 44px target.
-  '::after': { content: '""', position: 'absolute', insetInline: '0', insetBlock: '-4px' },
-  '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2Hover' } },
-  '&[aria-pressed="true"]': { backgroundColor: 'ink', color: 'onInk' },
-})
+/** Ask's chip, chosen as Explore's is (`cx(chip(), chosen(), categoryFilter())`), with its count beside its name. */
+export const categoryFilter = style({ display: 'inline-flex', alignItems: 'center', gap: '6px' })
 /** A chip's count, quieter than its name; on the chosen chip it takes the on-ink colour. */
 export const count = style({
   fontSize: '13px',
