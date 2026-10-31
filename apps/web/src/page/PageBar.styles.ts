@@ -13,6 +13,11 @@ export const round = style({
   backgroundColor: 'transparent !custom',
   color: 'ink',
   cursor: 'pointer',
+  // It presses as Gallery's `.round` does.
+  transitionProperty: 'transform, background-color',
+  transitionDuration: '140ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  ':active': { transform: 'scale(0.96)' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2' } },
 })
 /** A round that starts a page bar: its icon, not its 44px target, lines up with the gutter and the title below. */

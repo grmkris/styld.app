@@ -1,9 +1,11 @@
+import { cx } from 'zyzz'
 import { Dialog } from '@foldkit/ui'
 import { format, type Locale } from '@styld/i18n'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { closeIcon } from '../Icon.ts'
 import { styled } from '../Styled.ts'
 import { grab, quiet, scrim, sheet, sheetHead, sheetTitle } from './AskView.styles.ts'
+import { round } from './PageBar.styles.ts'
 
 /** A sheet is drawn while it is open and while it eases out after closing (its Dialog is animated): it leaves with a
  * short drop and fade rather than vanishing. */
@@ -41,7 +43,7 @@ export const bottomSheet = <Message>(
                     [
                       ...info.closeButton,
                       h.AriaLabel(format(config.locale, 'common.close', {})),
-                      ...styled(h, quiet()),
+                      ...styled(h, cx(round(), quiet())),
                     ],
                     [closeIcon(h)],
                   ),

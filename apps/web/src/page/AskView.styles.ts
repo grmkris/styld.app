@@ -48,24 +48,9 @@ export const searchInput = style({
   '&::placeholder': { color: 'ink3', textOverflow: 'ellipsis' },
   '&::-webkit-search-cancel-button': { appearance: 'none', display: 'none' },
 })
-/** A quiet 44px round inside the pill or the sheet: clear, add, close. */
-export const quiet = style({
-  display: 'grid',
-  placeItems: 'center',
-  flex: 'none',
-  inlineSize: '44px',
-  blockSize: '44px',
-  borderWidth: '0',
-  borderRadius: 'pill',
-  backgroundColor: 'transparent !custom',
-  color: 'ink',
-  cursor: 'pointer',
-  transitionProperty: 'transform, background-color',
-  transitionDuration: '140ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
-  ':active': { transform: 'scale(0.96)' },
-  '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2' } },
-})
+/** A quiet 44px round inside the pill or the sheet (clear, add, close): the bar's round (PageBar.styles.ts) that
+ * keeps its size in a row. Combine with round. */
+export const quiet = style({ flex: 'none' })
 export const clear = style({ color: 'ink2' })
 /** Suggestions in one row of fixed height, so nothing below moves as they arrive; it scrolls sideways. */
 /** A row of chips that scrolls, cut at the screen's edge rather than the gutter, so it reads as more to come. */

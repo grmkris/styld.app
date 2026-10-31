@@ -17,6 +17,7 @@ import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { Message, type Model, resultsId, SearchLanguages, searchFieldId } from './Ask.ts'
 import { matching } from './AskSearch.ts'
 import * as styles from './AskView.styles.ts'
+import { round } from './PageBar.styles.ts'
 import { pageHead, pageTitle } from './PageHead.ts'
 import type { PiecesData } from './Wardrobe.ts'
 import { categoryName, colourName, pieceLabel } from './WardrobeWords.ts'
@@ -57,7 +58,7 @@ const searchForm = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html
             [
               h.Type('button'),
               h.AriaLabel(format(locale, 'ask.clear', {})),
-              ...styled(h, cx(styles.quiet(), styles.clear())),
+              ...styled(h, cx(round(), styles.quiet(), styles.clear())),
               h.OnClick(Message.ClickedClear()),
             ],
             [closeIcon(h)],
@@ -69,7 +70,7 @@ const searchForm = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html
           h.AriaLabel(format(locale, 'ask.add', {})),
           h.Attribute('aria-haspopup', 'dialog'),
           h.AriaExpanded(model.addSheet.isOpen),
-          ...styled(h, styles.quiet()),
+          ...styled(h, cx(round(), styles.quiet())),
           h.OnClick(Message.ClickedAdd()),
         ],
         [addIcon(h)],
@@ -337,7 +338,7 @@ const addSheetView = (model: Model, locale: Locale, h: HtmlBuilder<Message>, sta
                     [
                       ...info.closeButton,
                       h.AriaLabel(format(locale, 'common.close', {})),
-                      ...styled(h, styles.quiet()),
+                      ...styled(h, cx(round(), styles.quiet())),
                     ],
                     [closeIcon(h)],
                   ),

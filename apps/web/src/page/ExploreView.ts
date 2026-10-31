@@ -22,6 +22,7 @@ import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import * as styles from './ExploreView.styles.ts'
 import { creditedBoardCard } from './PublicTiles.ts'
 import { chip, chipSkeleton, clear, quiet, search as searchPill, searchInput } from './AskView.styles.ts'
+import { round } from './PageBar.styles.ts'
 import { Work } from './People.ts'
 import {
   ExploreSearch,
@@ -279,7 +280,7 @@ export const exploreSearchForm = (query: string, locale: Locale, h: HtmlBuilder<
             [
               h.Type('button'),
               h.AriaLabel(format(locale, 'explore.clearSearch', {})),
-              ...styled(h, cx(quiet(), clear())),
+              ...styled(h, cx(round(), quiet(), clear())),
               h.OnClick(Message.ClickedClearSearch()),
             ],
             [closeIcon(h)],
