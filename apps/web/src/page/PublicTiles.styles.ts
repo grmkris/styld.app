@@ -18,7 +18,12 @@ export const boardCard = style({
   backgroundColor: 'stock',
   color: 'ink',
   textDecorationLine: 'none',
+  // It presses and lifts under the pointer, as a board's tile does on Boards.
+  transitionProperty: 'transform, translate',
+  transitionDuration: '140ms, 180ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
   ':active': { transform: 'scale(0.98)' },
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { translate: '0 -2px' } },
   // The face's paper inside the card keeps concentric corners: the card's 16px less its 8px padding.
   '& [data-paper]': { borderRadius: 'inset' },
 })
