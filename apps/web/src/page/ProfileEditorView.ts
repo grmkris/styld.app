@@ -3,7 +3,7 @@ import { type Profile, Tone } from '@styld/protocol'
 import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
-import { primaryAction, secondaryAction, smallAction } from '../Actions.styles.ts'
+import { linkAction, primaryAction, secondaryAction, smallAction } from '../Actions.styles.ts'
 import { avatar } from '../Avatar.ts'
 import { avatar as avatarStyle } from '../Avatar.styles.ts'
 import { checkNotice } from './CheckNotice.ts'
@@ -210,7 +210,10 @@ const publicView = (profile: Profile, model: Model, locale: Locale, h: HtmlBuild
     }),
     h.div(styled(h, styles.actions()), [
       profile.published && profile.handle !== null
-        ? h.a([h.Href(personRouter({ handle: profile.handle }))], [format(locale, 'profile.card.viewPage', {})])
+        ? h.a(
+            [h.Href(personRouter({ handle: profile.handle })), ...styled(h, linkAction())],
+            [format(locale, 'profile.card.viewPage', {})],
+          )
         : h.empty,
       actionButton(
         {

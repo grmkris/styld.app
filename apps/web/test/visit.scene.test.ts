@@ -339,7 +339,7 @@ describe('a public profile', () => {
         expect(role('link', { name: /^Nika Kovač/ })).toHaveAttr('href', '/@nika.kovac'),
         expect(text('Maribor')).toExist(),
         expect(text('Red, black and one good coat.')).toExist(),
-        expect(role('link', { name: 'Sign in to follow' })).toHaveAttr('href', '/login?next=%2Fexplore'),
+        expect(role('link', { name: 'Sign in to follow' })).toHaveAttr('href', '/login?next=%2F%40nika.kovac%23follow'),
         expect(role('link', { name: 'Sign in to follow' })).toHaveText('Follow'),
         expect(role('button', { name: 'Follow' })).not.toExist(),
       ),

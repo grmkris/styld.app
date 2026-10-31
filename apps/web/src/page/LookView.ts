@@ -157,7 +157,7 @@ const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Htm
 /** One look: its name and where it stands, the look laid out, saving and sharing it, its pieces, and deleting it. */
 export const view = Submodel.defineView<Model, Message, PeopleView.Inputs>((model, { locale, signedIn }, h) =>
   h.main(
-    [h.Id('main'), ...styled(h, styles.looksPage())],
+    [h.Id('main'), ...styled(h, cx(styles.looksPage(), styles.lookPage()))],
     [
       Shown.guards.Visiting(model.shown) ? h.empty : h.div([], [backToLooks(locale, h)]),
       ...Shown.match(model.shown, {

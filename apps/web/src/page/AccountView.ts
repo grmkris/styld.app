@@ -194,11 +194,11 @@ const profileSection = (model: Model, locale: Locale, h: HtmlBuilder<Message>): 
       model.profile.profile.published &&
       model.profile.profile.handle !== null
         ? h.a(
-            [h.Href(personRouter({ handle: model.profile.profile.handle }))],
+            [h.Href(personRouter({ handle: model.profile.profile.handle })), ...styled(h, linkAction())],
             [format(locale, 'profile.card.viewPage', {})],
           )
         : h.empty,
-      h.a([h.Href(profileRouter({}))], [format(locale, 'profile.editor.mode.edit', {})]),
+      h.a([h.Href(profileRouter({})), ...styled(h, linkAction())], [format(locale, 'profile.editor.mode.edit', {})]),
     ]),
   ])
 

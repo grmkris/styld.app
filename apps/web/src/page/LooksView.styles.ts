@@ -3,6 +3,8 @@ import { style } from '../zyzz.config.ts'
 // Styles for the looks in LooksView.ts and LookView.ts (Gallery: looks.html, a board's collage).
 export const looksPage = style({ display: 'grid', gap: '12px', paddingBlock: '0 40px' })
 export const lede = style({ color: 'ink2' })
+/** A look's own page starts 8px down, as a piece's, the tray and Add clothes do, so its back sits where theirs do. */
+export const lookPage = style({ paddingBlockStart: '8px' })
 /** Looks as cards: two on a phone, more on a wide screen. */
 export const grid = style({
   display: 'grid',

@@ -32,6 +32,9 @@ export const wideAction = style({
     display: 'inline-flex',
     alignItems: 'center',
     inlineSize: 'auto',
+    // DESIGN's primary height once it names itself.
+    blockSize: '48px',
+    minBlockSize: '48px',
     gap: '8px',
     paddingInline: '20px',
   },
