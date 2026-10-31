@@ -57,6 +57,7 @@ export const Outfits = Schema.Struct({
   refilling: Schema.Boolean,
 })
 export type Outfits = typeof Outfits.Type
+/** @internal Exported for its tests. */
 export const OutfitsData = AsyncData.Schema(Outfits, Schema.Literal('Unavailable'))
 export type OutfitsData = typeof OutfitsData.schema.Type
 
@@ -250,7 +251,8 @@ export const enter = (model: Model): Update.Return<Model, Message, StyldClient> 
   ])
 
 /** The weather a day's outfit is for, by its month where Styld's people live: cold from November to March, warm from
- * June to August, and either in between. */
+ * June to August, and either in between.
+ * @internal Exported for its tests. */
 export const briefFor = (day: Day): OutfitBrief => {
   const month = Number(day.slice(5, 7))
   if (month >= 11 || month <= 3) return { season: 'cold' }
