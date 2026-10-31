@@ -1074,6 +1074,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.kindOne.scarves': 'Scarf',
   'wardrobe.kindOne.hats': 'Hat',
   'wardrobe.kindOne.jewelry': 'Jewellery',
+  'wardrobe.emptyHint':
+    'Add photos or a video of your clothes. Styld cuts out every piece, and you keep the ones that are yours.',
   'chat.placeholder': 'Type your message...',
   'chat.openConversation': 'Open the conversation',
   'chat.viewBoard': 'View board',

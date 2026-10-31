@@ -1144,7 +1144,8 @@
       "scarves": "Šal",
       "hats": "Klobuk",
       "jewelry": "Nakit"
-    }
+    },
+    "emptyHint": "Dodaj fotografije ali video svojih oblačil. Styld izreže vsak kos, ti pa obdržiš tiste, ki so tvoji."
   },
   "chat": {
     "placeholder": "Vnesite sporočilo...",

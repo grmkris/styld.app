@@ -2,34 +2,55 @@ import { style } from '../zyzz.config.ts'
 
 // Styles for the wardrobe in WardrobeView.ts (Gallery: wardrobe.html, wardrobe-desktop.html).
 export const wardrobePage = style({ display: 'grid', gap: '12px', paddingBlock: '0 40px' })
-/** Category filters as text with counts; the current one is ink and bold (Gallery `.cats`). */
+/** Category filters as chips with counts (DESIGN.md › Chips, Gallery 2 `.chips.scroll`): a row that scrolls,
+ * cut at the screen's edge rather than the gutter. */
 export const categoryRow = style({
   display: 'flex',
-  gap: '20px',
+  gap: '8px',
+  marginInline: '-20px',
+  paddingInline: '20px',
+  paddingBlock: '4px',
+  scrollPaddingInline: '20px',
   overflowX: 'auto',
   scrollbarWidth: 'none',
   whiteSpace: 'nowrap',
 })
 export const categoryFilter = style({
+  position: 'relative',
+  flex: 'none',
   display: 'inline-flex',
   alignItems: 'center',
-  gap: '4px',
-  minBlockSize: '44px',
-  padding: '0',
+  gap: '6px',
+  minBlockSize: '36px',
+  paddingInline: '14px',
   borderWidth: '0',
-  backgroundColor: 'transparent !custom',
+  borderRadius: 'pill',
+  backgroundColor: 'paper2',
   color: 'ink2',
-  fontSize: '15px',
+  fontSize: '14px',
   fontWeight: 500,
   cursor: 'pointer',
-  '&[aria-pressed="true"]': { color: 'ink', fontWeight: 700 },
+  transitionProperty: 'transform, background-color',
+  transitionDuration: '140ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  ':active': { transform: 'scale(0.96)' },
+  // A 36px chip with a 44px target.
+  '::after': { content: '""', position: 'absolute', insetInline: '0', insetBlock: '-4px' },
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2Hover' } },
+  '&[aria-pressed="true"]': { backgroundColor: 'ink', color: 'onInk' },
 })
-export const count = style({ fontSize: '13px', fontWeight: 500, color: 'ink3' })
+/** A chip's count, quieter than its name; on the chosen chip it takes the on-ink colour. */
+export const count = style({
+  fontSize: '13px',
+  fontVariantNumeric: 'tabular-nums',
+  color: 'ink3',
+  '[aria-pressed="true"] > &': { color: 'onInk' },
+})
 /** The signature grid of pieces on paper: two columns on a phone, up to six on a wide screen. */
 export const grid = style({
   display: 'grid',
   gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-  gap: '12px 16px',
+  gap: '16px',
   padding: '0',
   listStyleType: 'none',
   '@media (min-width: 600px)': { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' },
@@ -84,10 +105,13 @@ export const message = style({
 })
 export const messageTitle = style({ fontSize: '17px', fontWeight: 600, color: 'ink' })
 /** The line offering clean pictures for pieces without one. */
+/** Pieces still without a clean picture: one quiet line, its last words the way to make them. */
 export const backfill = style({
   display: 'flex',
   flexWrap: 'wrap',
   alignItems: 'center',
-  gap: '8px 16px',
+  gap: '0 8px',
+  margin: '0',
+  fontSize: '14px',
   color: 'ink2',
 })

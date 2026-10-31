@@ -6,7 +6,7 @@ import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
-import { primaryAction, secondaryAction } from '../Actions.styles.ts'
+import { linkAction, primaryAction } from '../Actions.styles.ts'
 import { loader } from '../Icon.ts'
 import { addPiecesRouter, pieceRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
@@ -31,20 +31,20 @@ const backfillLine = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Ht
     )
   if (model.undrawn === 0) return h.empty
   return h.div(styled(h, styles.backfill()), [
-    h.p([], [format(locale, 'wardrobe.picture.backfill', { count: model.undrawn })]),
-    model.backfill === 'failed'
-      ? h.p([h.Role('alert')], [format(locale, 'wardrobe.picture.backfillFailed', {})])
-      : h.empty,
+    h.span([], [format(locale, 'wardrobe.picture.backfill', { count: model.undrawn })]),
     actionButton(
       {
         label: format(locale, 'wardrobe.picture.backfillAction', {}),
-        style: secondaryAction(),
+        style: linkAction(),
         onClick: Message.ClickedDrawPictures(),
         isDisabled: model.backfill === 'sending',
         leading: model.backfill === 'sending' ? loader(h) : h.empty,
       },
       h,
     ),
+    model.backfill === 'failed'
+      ? h.p([h.Role('alert')], [format(locale, 'wardrobe.picture.backfillFailed', {})])
+      : h.empty,
   ])
 }
 
@@ -104,7 +104,7 @@ const loadedView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, 
   if (pieces.length === 0)
     return h.section(styled(h, styles.message()), [
       h.h2(styled(h, styles.messageTitle()), [format(locale, 'wardrobe.closetEmptyTitle', {})]),
-      h.p([], [format(locale, 'wardrobe.createMenuAddPieceHint', {})]),
+      h.p([], [format(locale, 'wardrobe.emptyHint', {})]),
       h.a([h.Href(addPiecesRouter({})), ...styled(h, primaryAction())], [format(locale, 'wardrobe.scanPhotosCta', {})]),
     ])
   const shown = Option.match(model.category, {

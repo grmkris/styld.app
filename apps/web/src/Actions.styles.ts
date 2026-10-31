@@ -62,3 +62,23 @@ export const smallAction = style({
   fontSize: '14px',
   '::after': { content: '""', position: 'absolute', insetInline: '0', insetBlock: '-2px' },
 })
+
+/** A button that reads as a text link (DESIGN.md › Text links): semibold ink over a 1.5px signal underline, for an
+ * action that belongs inside a line of text. The touch target stays 44px tall. */
+export const linkAction = style({
+  display: 'inline-flex',
+  alignItems: 'center',
+  minBlockSize: '44px',
+  padding: '0',
+  borderWidth: '0',
+  backgroundColor: 'transparent !custom',
+  color: 'ink',
+  fontSize: 'inherit',
+  fontWeight: 600,
+  textDecorationLine: 'underline',
+  textDecorationColor: 'signal',
+  textDecorationThickness: '1.5px',
+  textUnderlineOffset: '4px',
+  cursor: 'pointer',
+  '&[data-disabled]': { opacity: 0.5, cursor: 'not-allowed' },
+})

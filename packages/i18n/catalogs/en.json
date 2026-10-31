@@ -1144,7 +1144,8 @@
       "scarves": "Scarf",
       "hats": "Hat",
       "jewelry": "Jewellery"
-    }
+    },
+    "emptyHint": "Add photos or a video of your clothes. Styld cuts out every piece, and you keep the ones that are yours."
   },
   "chat": {
     "placeholder": "Type your message...",
