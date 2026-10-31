@@ -755,7 +755,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
     '{count, plural, one {# kos iz skeniranja za pregled} two {# kosa iz skeniranja za pregled} few {# kosi iz skeniranja za pregled} other {# kosov iz skeniranja za pregled}}',
   'today.review': 'Dodaj jih',
   'today.keepGoing': 'Dodaj še',
-  'stylist.title': 'Vprašaj Styld',
+  'stylist.title': 'Vprašaj Stylda',
   'stylist.intro': 'Vprašaj, kaj obleči, kaj se ujema ali kaj manjka. Styld vidi celo tvojo garderobo.',
   'stylist.startersLabel': 'Kaj lahko vprašaš',
   'stylist.starter.today': 'Kaj naj oblečem danes?',
