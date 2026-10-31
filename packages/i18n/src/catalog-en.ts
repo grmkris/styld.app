@@ -2722,12 +2722,14 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'board.make.title': 'Make with Styld',
   'board.make.moodBoard': 'A mood board',
   'board.make.moodBoardHint': 'Two to four pictures, and your pieces that suit them, laid out on the collage.',
+  'board.make.moodBoardCost':
+    'Up to {most, plural, one {# credit} other {# credits}}, one per picture, from today’s free allowance. Credits come back for pictures that don’t come out.',
   'board.make.picture': 'One picture',
   'board.make.pictureHint': 'A single picture from your words.',
+  'board.make.pictureCost': '1 credit from today’s free allowance. It comes back if the picture doesn’t come out.',
   'board.make.wordsLabel': 'What should it feel like?',
   'board.make.wordsPlaceholder': 'A rainy Sunday in the city',
-  'board.make.note':
-    'Each picture costs one credit from today’s free allowance. Pictures are marked Generated and never show a real person.',
+  'board.make.note': 'Pictures are marked Generated and never show a real person.',
   'board.make.submit': 'Make',
   'board.make.planning': 'Planning your mood board…',
   'board.make.drawing': 'Making pictures, {drawn} of {total} done…',

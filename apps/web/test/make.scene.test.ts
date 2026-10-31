@@ -63,7 +63,28 @@ const page = modifyFields(
   { session: () => Session.SignedIn({ claims }), board: () => fromBoard(boardInit(boardId), board) },
 )
 
+const openSheet = [
+  click(role('button', { name: 'Make with Styld' })),
+  Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
+  Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+] as const
+
 describe('Make with Styld on a board', () => {
+  test('says by the Make button what the chosen kind costs', () => {
+    scene(
+      { update, view },
+      given(page),
+      ...openSheet,
+      expect(role('button', { name: 'Make' })).toHaveAccessibleDescription(
+        'Up to 4 credits, one per picture, from today’s free allowance. Credits come back for pictures that don’t come out.',
+      ),
+      click(role('button', { name: /^One picture/ })),
+      expect(role('button', { name: 'Make' })).toHaveAccessibleDescription(
+        '1 credit from today’s free allowance. It comes back if the picture doesn’t come out.',
+      ),
+    )
+  })
+
   test('marks a generated picture, and makes a mood board from the person’s words', () => {
     scene(
       { update, view },

@@ -527,11 +527,13 @@ export interface MessageArgumentsByKey<T = string> {
   'board.make.dismiss': Readonly<Record<string, never>>
   'board.make.drawing': { readonly drawn: string | number; readonly total: string | number }
   'board.make.moodBoard': Readonly<Record<string, never>>
+  'board.make.moodBoardCost': { readonly most: number }
   'board.make.moodBoardHint': Readonly<Record<string, never>>
   'board.make.note': Readonly<Record<string, never>>
   'board.make.nothing': Readonly<Record<string, never>>
   'board.make.open': Readonly<Record<string, never>>
   'board.make.picture': Readonly<Record<string, never>>
+  'board.make.pictureCost': Readonly<Record<string, never>>
   'board.make.pictureHint': Readonly<Record<string, never>>
   'board.make.planning': Readonly<Record<string, never>>
   'board.make.problem.dailyLimit': Readonly<Record<string, never>>
@@ -2745,4 +2747,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '4cc8262fccbeadfda8a03db7a92428ac88a198c273a04c7061fc2d2729b2bf9b'
+export const catalogVersion = 'f9c994423007a3042eb5cacd902948a2153ed870e3cfb899e90111c6c9705e56'

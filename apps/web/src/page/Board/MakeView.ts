@@ -1,5 +1,5 @@
 import { format, type Locale, type MessageKey } from '@styld/i18n'
-import type { Generation, GenerationKind } from '@styld/protocol'
+import { type Generation, type GenerationKind, mostMoodPictures } from '@styld/protocol'
 import { Submodel } from 'foldkit'
 import { cx } from 'zyzz'
 import type { Html, HtmlBuilder } from 'foldkit/html'
@@ -23,6 +23,13 @@ const kindKey: { readonly [Kind in GenerationKind]: { readonly title: MessageKey
   moodBoard: { title: 'board.make.moodBoard', hint: 'board.make.moodBoardHint' },
   picture: { title: 'board.make.picture', hint: 'board.make.pictureHint' },
 }
+
+/** What the chosen kind costs, as the server charges it: a credit held for each picture wanted (a mood board holds
+ * up to its most), spent once the picture is on the board and given back for one that does not come out. */
+const costOf = (kind: GenerationKind, locale: Locale): string =>
+  kind === 'picture'
+    ? format(locale, 'board.make.pictureCost', {})
+    : format(locale, 'board.make.moodBoardCost', { most: mostMoodPictures })
 
 type Inputs = { readonly locale: Locale }
 
@@ -97,6 +104,8 @@ const kindChoice = (model: Model, kind: GenerationKind, locale: Locale, h: HtmlB
     ],
   )
 
+const costId = 'board-make-cost'
+
 const sheetBody = (model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => {
   const asking = Job.guards.Asking(model.job)
   return [
@@ -121,12 +130,18 @@ const sheetBody = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Reado
           h.OnInput((words) => Message.ChangedWords({ words })),
           ...styled(h, textField()),
         ]),
+        h.p([h.Id(costId), ...styled(h, styles.note())], [costOf(model.kind, locale)]),
         h.p(styled(h, styles.note()), [format(locale, 'board.make.note', {})]),
         Job.guards.Failed(model.job)
           ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, problemKey[model.job.problem], {})])
           : h.empty,
         h.button(
-          [h.Type('submit'), ...(asking ? [h.AriaDisabled(true)] : []), ...styled(h, primaryAction())],
+          [
+            h.Type('submit'),
+            ...(asking ? [h.AriaDisabled(true)] : []),
+            h.AriaDescribedBy(costId),
+            ...styled(h, primaryAction()),
+          ],
           [asking ? loader(h) : h.empty, format(locale, 'board.make.submit', {})],
         ),
       ],

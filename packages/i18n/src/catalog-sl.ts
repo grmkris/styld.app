@@ -2774,12 +2774,14 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'board.make.title': 'Ustvari s Styldom',
   'board.make.moodBoard': 'Tabla razpoloženja',
   'board.make.moodBoardHint': 'Dve do štiri slike in tvoji kosi, ki se jim podajo, razporejeni na kolaž.',
+  'board.make.moodBoardCost':
+    'Največ {most, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}}, en na sliko, od današnjih brezplačnih. Za slike, ki ne nastanejo, dobiš kredite nazaj.',
   'board.make.picture': 'Ena slika',
   'board.make.pictureHint': 'Ena slika po tvojih besedah.',
+  'board.make.pictureCost': '1 kredit od današnjih brezplačnih. Če slika ne nastane, ga dobiš nazaj.',
   'board.make.wordsLabel': 'Kakšen naj bo občutek?',
   'board.make.wordsPlaceholder': 'Deževna nedelja v mestu',
-  'board.make.note':
-    'Vsaka slika porabi en kredit od današnjih brezplačnih kreditov. Slike so označene kot ustvarjene in nikoli ne prikazujejo resnične osebe.',
+  'board.make.note': 'Slike so označene kot ustvarjene in nikoli ne prikazujejo resnične osebe.',
   'board.make.submit': 'Ustvari',
   'board.make.planning': 'Načrtujem tvojo tablo razpoloženja …',
   'board.make.drawing': 'Ustvarjam slike, {drawn} od {total} končanih …',
