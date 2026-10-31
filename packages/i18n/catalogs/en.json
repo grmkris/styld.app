@@ -830,6 +830,7 @@
     "empty": "Add clothes and today’s outfit appears here.",
     "addClothes": "Add clothes",
     "failed": "Your wardrobe didn’t load.",
+    "outfitFailed": "Today’s outfits didn’t come through.",
     "retry": "Try again",
     "wear": "Wear this",
     "wearing": "Saving…",

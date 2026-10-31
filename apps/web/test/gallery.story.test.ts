@@ -1,12 +1,22 @@
-import { Board, BoardItemId, BoardSummary, Day, type Piece, PieceItem } from '@styld/protocol'
-import { Array, Option, Schema } from 'effect'
+import {
+  Board,
+  BoardItemId,
+  BoardSummary,
+  Day,
+  OutfitProposals,
+  OutfitSession,
+  outfitKeyOf,
+  type Piece,
+  PieceItem,
+} from '@styld/protocol'
+import { Option, Schema } from 'effect'
+import { AsyncData } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import * as Ask from '../src/page/Ask.ts'
 import { matching } from '../src/page/AskSearch.ts'
 import * as Boards from '../src/page/Boards.ts'
-import { missingFrom, outfitFor } from '../src/page/Outfit.ts'
 import * as Today from '../src/page/Today.ts'
 import { cropFrom, headline } from '../src/page/TodayView.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
@@ -17,17 +27,6 @@ const greenTrousers = pieceFixture('green-trousers', { type: 'trousers', colours
 const blackShoes = pieceFixture('black-shoes', { type: 'trainers', colours: ['black'], name: 'Derby shoes' })
 const wardrobe = [redTop, navyKnit, greenTrousers, blackShoes]
 const thursday = Schema.decodeUnknownSync(Day)('2026-10-29')
-const drawn = { type: 'tops', picture: { state: 'ready', shows: 'clean', version: 1 } }
-const drawnOxford = pieceFixture('drawn-oxford', drawn)
-const drawnPolo = pieceFixture('drawn-polo', drawn)
-const photoTops = ['photo-tee', 'photo-henley', 'photo-knit'].map((seed) => pieceFixture(seed, { type: 'tops' }))
-/** Every piece thirty Spins of one day lay out. */
-const piecesOverSpins = (pieces: ReadonlyArray<Piece>) =>
-  new Set(
-    Array.range(0, 30)
-      .flatMap((spin) => outfitFor(pieces, `2026-10-29:${String(spin)}`))
-      .map(({ piece }) => piece.id),
-  )
 /** The knit laid 400 units across, centred `y` units down a table. */
 const knitAt = (y: number) =>
   PieceItem.make({
@@ -42,32 +41,90 @@ const knitAt = (y: number) =>
   })
 const ids = (query: string, locale: 'en' | 'sl') => matching(wardrobe, query, [locale]).map((piece) => piece.id)
 
+const session = OutfitSession.make(`os_${'a'.repeat(22)}`)
+const proposal = (pieces: ReadonlyArray<Piece>) => ({
+  key: outfitKeyOf(pieces.map(({ id }) => id)),
+  pieceIds: pieces.map(({ id }) => id),
+  score: 0.8,
+})
+const outfits = [
+  [navyKnit, greenTrousers, blackShoes],
+  [redTop, greenTrousers, blackShoes],
+  [navyKnit, blackShoes],
+].map(proposal)
+const batchOf = (proposals: ReadonlyArray<ReturnType<typeof proposal>>, exhausted = false) =>
+  Schema.decodeUnknownSync(OutfitProposals)({ session, mode: 'fast', proposals, missing: [], exhausted })
+const withDay = modifyFields(Today.init(), { maybeDay: () => Option.some(thursday) })
+/** Home with the day known and a first batch of outfits on the table. */
+const spun = (exhausted = false) =>
+  modifyFields(withDay, {
+    outfits: () =>
+      Today.OutfitsData.Success({
+        data: { session, proposals: outfits, at: 0, missing: [], exhausted, refilling: false },
+      }),
+  })
+
 describe("today's table", () => {
-  test('an outfit takes one piece a slot, and never two loud colours together', () => {
-    for (const spin of Array.range(0, 20)) {
-      const outfit = outfitFor(wardrobe, `2026-10-29:${String(spin)}`).map(({ piece }) => piece.id)
-      expect(outfit).toContain(greenTrousers.id)
-      expect(outfit).toContain(blackShoes.id)
-      // The trousers are green, so the red shirt never joins them.
-      expect(outfit).toContain(navyKnit.id)
-      expect(outfit).not.toContain(redTop.id)
-    }
+  test('a known day asks the engine for today’s outfits, for the weather of its month, and reads what was worn', () => {
+    story(
+      Today.update,
+      given(Today.init()),
+      message(Today.Message.CompletedDetermineDay({ day: thursday })),
+      Command.expectExact(
+        Today.MakeOutfits({ brief: {}, session: Option.none(), seen: [] }),
+        Today.ReadWorn({ day: thursday }),
+      ),
+      Command.resolve(Today.MakeOutfits, Today.Message.SucceededMakeOutfits({ batch: batchOf(outfits) })),
+      Command.resolve(Today.ReadWorn, Today.Message.SucceededReadWorn({ pieceIds: [] })),
+      model((current) => expect(Today.tableOutfit(current, wardrobe)).toEqual([navyKnit, greenTrousers, blackShoes])),
+    )
+    expect(Today.briefFor(Schema.decodeUnknownSync(Day)('2026-11-02'))).toEqual({ season: 'cold' })
+    expect(Today.briefFor(Schema.decodeUnknownSync(Day)('2026-07-14'))).toEqual({ season: 'warm' })
   })
 
-  test('Spin lays out clean drawings before photos once a slot has two of them, and photos with fewer', () => {
-    expect(piecesOverSpins([...photoTops, drawnOxford, drawnPolo])).toEqual(new Set([drawnOxford.id, drawnPolo.id]))
-    // One drawing alone would never let the top change, so every top still takes its turn.
-    expect(piecesOverSpins([...photoTops, drawnOxford]).size).toBe(4)
+  test('Spin walks the batch and asks for more, naming what was shown, while two are left', () => {
+    story(
+      Today.update,
+      given(spun()),
+      message(Today.Message.ClickedSpin()),
+      Command.expectExact(
+        Today.MakeOutfits({ brief: {}, session: Option.some(session), seen: outfits.map(({ key }) => key) }),
+      ),
+      model((current) => expect(Today.tableOutfit(current, wardrobe)).toEqual([redTop, greenTrousers, blackShoes])),
+      Command.resolve(
+        Today.MakeOutfits,
+        Today.Message.SucceededMakeOutfits({ batch: batchOf([proposal([redTop, blackShoes])], true) }),
+      ),
+      message(Today.Message.ClickedSpin()),
+      message(Today.Message.ClickedSpin()),
+      Command.expectNone(),
+      model((current) => expect(Today.tableOutfit(current, wardrobe)).toEqual([redTop, blackShoes])),
+    )
   })
 
-  test('the same day and Spin always lay out the same outfit', () => {
-    expect(outfitFor(wardrobe, '2026-10-29:3')).toEqual(outfitFor(wardrobe, '2026-10-29:3'))
+  test('a run with nothing more to propose goes round again from its first outfit', () => {
+    story(
+      Today.update,
+      given(spun(true)),
+      message(Today.Message.ClickedSpin()),
+      message(Today.Message.ClickedSpin()),
+      message(Today.Message.ClickedSpin()),
+      Command.expectNone(),
+      model((current) => expect(Today.tableOutfit(current, wardrobe)).toEqual([navyKnit, greenTrousers, blackShoes])),
+    )
   })
 
-  test('a wardrobe short of a whole outfit says what it lacks; a dress stands in for a top and a bottom', () => {
-    expect(missingFrom([redTop])).toEqual(['bottom', 'shoes'])
-    expect(missingFrom(wardrobe)).toEqual([])
-    expect(missingFrom([pieceFixture('dress', { type: 'dresses' })])).toEqual(['shoes'])
+  test('outfits that never came offer to try again', () => {
+    story(
+      Today.update,
+      given(modifyFields(withDay, { outfits: () => AsyncData.Loading() })),
+      message(Today.Message.FailedMakeOutfits()),
+      model((current) => expect(AsyncData.isFailure(current.outfits)).toBe(true)),
+      message(Today.Message.ClickedRetryOutfits()),
+      Command.expectExact(Today.MakeOutfits({ brief: {}, session: Option.none(), seen: [] })),
+      Command.resolve(Today.MakeOutfits, Today.Message.SucceededMakeOutfits({ batch: batchOf(outfits) })),
+      model((current) => expect(AsyncData.isSuccess(current.outfits)).toBe(true)),
+    )
   })
 
   test('the headline is the day in the visitor’s language', () => {
@@ -86,14 +143,20 @@ describe("today's table", () => {
     expect(cropFrom([knitAt(1050)])).toBe(0.5)
   })
 
-  test('Wear this records the outfit on the table for today, once', () => {
-    const ready = modifyFields(Today.init(), { maybeDay: () => Option.some(thursday) })
-    const worn = Today.tableOutfit(ready, wardrobe).map(({ piece }) => piece.id)
+  test('Wear this records the outfit on the table for today, once, with the proposal it came from', () => {
+    const ready = spun()
+    const worn = Today.tableOutfit(ready, wardrobe).map(({ id }) => id)
     story(
       Today.update,
       given(ready),
       message(Today.Message.ClickedWear({ pieceIds: worn })),
-      Command.expectExact(Today.Wear),
+      Command.expectExact(
+        Today.Wear({
+          day: thursday,
+          pieceIds: worn,
+          proposal: Option.some({ session, mode: 'fast', position: 0, edited: false }),
+        }),
+      ),
       Command.resolve(Today.Wear, Today.Message.SucceededWear({ pieceIds: worn })),
       model((current) => expect(Today.Worn.guards.Worn(current.worn)).toBe(true)),
       message(Today.Message.ClickedWear({ pieceIds: worn })),

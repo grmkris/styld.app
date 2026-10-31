@@ -830,6 +830,7 @@
     "empty": "Dodaj oblačila in tu se pokaže današnja oprava.",
     "addClothes": "Dodaj oblačila",
     "failed": "Tvoja garderoba se ni naložila.",
+    "outfitFailed": "Današnje oprave se niso naložile.",
     "retry": "Poskusi znova",
     "wear": "Oblečem to",
     "wearing": "Shranjujem …",

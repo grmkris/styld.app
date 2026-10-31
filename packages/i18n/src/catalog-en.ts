@@ -724,6 +724,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'today.empty': 'Add clothes and today’s outfit appears here.',
   'today.addClothes': 'Add clothes',
   'today.failed': 'Your wardrobe didn’t load.',
+  'today.outfitFailed': 'Today’s outfits didn’t come through.',
   'today.retry': 'Try again',
   'today.wear': 'Wear this',
   'today.wearing': 'Saving…',

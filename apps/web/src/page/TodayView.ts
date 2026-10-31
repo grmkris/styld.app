@@ -1,5 +1,5 @@
 import { format, type Locale } from '@styld/i18n'
-import type { BoardItem, BoardSummary, Piece } from '@styld/protocol'
+import { type BoardItem, type BoardSummary, flatLay, type Piece, type Slot } from '@styld/protocol'
 import { Array, Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
@@ -13,8 +13,7 @@ import { intlLocale } from '../Locale.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { stillTable } from './Board/Table.ts'
-import { asItems, type Missing, missingFrom } from './Outfit.ts'
-import { Message, type Model, TableMotion, tableOutfit, Worn } from './Today.ts'
+import { Message, type Model, showsWornOutfit, TableMotion, tableOutfit, Worn } from './Today.ts'
 import type { PiecesData } from './Wardrobe.ts'
 import { barEnd, round } from './PageBar.styles.ts'
 import { pageHead } from './PageHead.ts'
@@ -46,9 +45,20 @@ const longDate = (day: string, locale: Locale) =>
     timeZone: 'UTC',
   }).format(dateOf(day))
 
-/** The table: the outfit's pieces in their slots. Spin brings in new ones, which drop onto the paper. */
+const loadingView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.div([h.Role('status'), ...styled(h, styles.placeholder())], [loader(h), format(locale, 'today.loading', {})])
+
+const retryView = (problem: string, retry: Message, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.div(styled(h, styles.placeholder()), [
+    h.div(styled(h, styles.placeholderBody()), [
+      h.p([h.Role('alert')], [problem]),
+      actionButton({ label: format(locale, 'today.retry', {}), style: secondaryAction(), onClick: retry }, h),
+    ]),
+  ])
+
+/** The table: the outfit's pieces laid flat. Spin brings in new ones, which drop onto the paper; until the first
+ * outfits come, it waits, unless it shows what was worn today. */
 const tableView = (model: Model, pieces: ReadonlyArray<Piece>, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const outfit = tableOutfit(model, pieces)
   if (Array.isReadonlyArrayEmpty(pieces.filter((piece) => piece.status === 'ready')))
     return h.div(styled(h, styles.placeholder()), [
       h.div(styled(h, styles.placeholderBody()), [
@@ -56,45 +66,53 @@ const tableView = (model: Model, pieces: ReadonlyArray<Piece>, locale: Locale, h
         h.a([h.Href(addPiecesRouter({})), ...styled(h, primaryAction())], [format(locale, 'today.addClothes', {})]),
       ]),
     ])
-  const names = outfit.map(({ piece }) => pieceLabel(piece, locale)).join(', ')
+  if (!showsWornOutfit(model) && isPending(model.outfits)) return loadingView(locale, h)
+  if (!showsWornOutfit(model) && AsyncData.isFailure(model.outfits))
+    return retryView(format(locale, 'today.outfitFailed', {}), Message.ClickedRetryOutfits(), locale, h)
+  const outfit = tableOutfit(model, pieces)
+  const names = outfit.map((piece) => pieceLabel(piece, locale)).join(', ')
   return h.div(TableMotion.guards.Spun(model.motion) ? styled(h, styles.table()) : [], [
-    stillTable(asItems(outfit), 'paper', [h.Role('img'), h.AriaLabel(format(locale, 'today.outfit', { names }))], h),
+    stillTable(flatLay(outfit), 'paper', [h.Role('img'), h.AriaLabel(format(locale, 'today.outfit', { names }))], h),
   ])
 }
 
 const wearButton = (model: Model, pieces: ReadonlyArray<Piece>, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const isWorn = Worn.guards.Worn(model.worn) && model.spin === 0
+  const isWorn = showsWornOutfit(model)
   const saving = Worn.guards.Saving(model.worn)
   return actionButton(
     {
       label: format(locale, isWorn ? 'today.worn' : saving ? 'today.wearing' : 'today.wear', {}),
       leading: isWorn ? checkIcon(h) : saving ? loader(h) : h.empty,
       style: isWorn ? cx(primaryAction(), styles.worn()) : cx(primaryAction(), styles.wear()),
-      onClick: Message.ClickedWear({ pieceIds: tableOutfit(model, pieces).map(({ piece }) => piece.id) }),
+      onClick: Message.ClickedWear({ pieceIds: tableOutfit(model, pieces).map((piece) => piece.id) }),
       isDisabled: saving,
     },
     h,
   )
 }
 
-const missingLabel = {
+const missingLabel: Partial<Record<Slot, 'today.addTop' | 'today.addBottom' | 'today.addShoes'>> = {
   top: 'today.addTop',
   bottom: 'today.addBottom',
   shoes: 'today.addShoes',
-} as const satisfies Record<Missing, string>
+}
+
+/** The places a whole outfit lacks, as the engine said: tops, bottoms and shoes. */
+const missingOf = (model: Model) =>
+  Option.match(AsyncData.getData(model.outfits), {
+    onNone: () => [],
+    onSome: ({ missing }) => missing.flatMap((slot) => Option.toArray(Option.fromNullishOr(missingLabel[slot]))),
+  })
 
 /** A wardrobe short of a whole outfit says what to add, each a way into adding pieces. */
-const missingView = (pieces: ReadonlyArray<Piece>, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  Array.match(missingFrom(pieces), {
+const missingView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  Array.match(missingOf(model), {
     onEmpty: () => h.empty,
     onNonEmpty: (missing) =>
       h.div(
         styled(h, styles.missing()),
-        missing.map((slot) =>
-          h.a(
-            [h.Href(addPiecesRouter({})), ...styled(h, styles.missingLink())],
-            [addIcon(h), format(locale, missingLabel[slot], {})],
-          ),
+        missing.map((key) =>
+          h.a([h.Href(addPiecesRouter({})), ...styled(h, styles.missingLink())], [addIcon(h), format(locale, key, {})]),
         ),
       ),
   })
@@ -103,7 +121,7 @@ const noteView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
   const failed = Worn.guards.Failed(model.worn)
   const text = failed
     ? format(locale, 'today.wearFailed', {})
-    : Worn.guards.Worn(model.worn) && model.spin === 0
+    : showsWornOutfit(model)
       ? format(locale, 'today.wornNote', {})
       : ''
   return h.p(
@@ -144,18 +162,8 @@ const headlineView = (maybeDay: Option.Option<string>, locale: Locale, h: HtmlBu
 
 const tableArea = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuilder<Message>): Html =>
   AsyncData.matchData(pieces, {
-    onEmpty: () =>
-      h.div([h.Role('status'), ...styled(h, styles.placeholder())], [loader(h), format(locale, 'today.loading', {})]),
-    onFailure: () =>
-      h.div(styled(h, styles.placeholder()), [
-        h.div(styled(h, styles.placeholderBody()), [
-          h.p([h.Role('alert')], [format(locale, 'today.failed', {})]),
-          actionButton(
-            { label: format(locale, 'today.retry', {}), style: secondaryAction(), onClick: Message.ClickedRetry() },
-            h,
-          ),
-        ]),
-      ]),
+    onEmpty: () => loadingView(locale, h),
+    onFailure: () => retryView(format(locale, 'today.failed', {}), Message.ClickedRetry(), locale, h),
     onData: (list) => tableView(model, list, locale, h),
   })
 
@@ -200,7 +208,7 @@ const todayView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuil
       tableArea(model, pieces, locale, h),
       actionsView(model, pieces, loaded, locale, h),
       noteView(model, locale, h),
-      loaded.some((piece) => piece.status === 'ready') ? missingView(loaded, locale, h) : h.empty,
+      loaded.some((piece) => piece.status === 'ready') ? missingView(model, locale, h) : h.empty,
     ],
   )
 }

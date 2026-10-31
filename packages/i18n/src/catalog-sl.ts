@@ -739,6 +739,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'today.empty': 'Dodaj oblačila in tu se pokaže današnja oprava.',
   'today.addClothes': 'Dodaj oblačila',
   'today.failed': 'Tvoja garderoba se ni naložila.',
+  'today.outfitFailed': 'Današnje oprave se niso naložile.',
   'today.retry': 'Poskusi znova',
   'today.wear': 'Oblečem to',
   'today.wearing': 'Shranjujem …',
