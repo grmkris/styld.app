@@ -230,7 +230,13 @@ export const option = style({
   textAlign: 'start',
   textDecorationLine: 'none',
   cursor: 'pointer',
+  transitionProperty: 'transform, background-color',
+  transitionDuration: '140ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  ':active': { transform: 'scale(0.96)' },
+  // A way in that is already under way stays still.
   '&[aria-disabled="true"]': { cursor: 'progress' },
+  '&[aria-disabled="true"]:active': { transform: 'none' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2' } },
 })
 export const optionProblem = style({ paddingInline: '12px', fontSize: '14px', color: 'error' })
