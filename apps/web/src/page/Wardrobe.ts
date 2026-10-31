@@ -1,5 +1,6 @@
-import { GarmentGroup, Piece, PieceType } from '@styld/protocol'
-import { Duration, Effect, Option, Result, Schema, Stream } from 'effect'
+import { Dialog } from '@foldkit/ui'
+import { Colour, GarmentGroup, groupOf, Occasion, Piece, PieceType, Season } from '@styld/protocol'
+import { Array, Duration, Effect, Option, Order, Result, Schema, Stream } from 'effect'
 import { AsyncData, Command, Subscription, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { modifyFields } from 'foldkit/struct'
@@ -11,11 +12,55 @@ import { StyldClient } from '../StyldClient.ts'
 export const PiecesData = AsyncData.Schema(Schema.Array(Piece), Schema.Literal('Unavailable'))
 export type PiecesData = typeof PiecesData.schema.Type
 
+/** What else narrows the grid, from the filter sheet: any of these colours, a season, an occasion, a brand. */
+export const Filters = Schema.Struct({
+  colours: Schema.Array(Colour),
+  season: Schema.Option(Season),
+  occasion: Schema.Option(Occasion),
+  brand: Schema.Option(Schema.String),
+})
+export type Filters = typeof Filters.Type
+
+const noFilters: Filters = { colours: [], season: Option.none(), occasion: Option.none(), brand: Option.none() }
+
+/** How many filters are set, for the button that opens them. */
+export const filterCount = (filters: Filters) =>
+  filters.colours.length +
+  Number(Option.isSome(filters.season)) +
+  Number(Option.isSome(filters.occasion)) +
+  Number(Option.isSome(filters.brand))
+
+/** The pieces the browsing and the filters leave: in the group and type chosen, of any chosen colour, worn in the
+ * chosen season (an all-year piece is worn in any), for the chosen occasion and of the chosen brand. */
+export const shownPieces = (pieces: ReadonlyArray<Piece>, model: Model): ReadonlyArray<Piece> =>
+  Array.filter(
+    pieces,
+    (piece) =>
+      Option.match(model.group, { onNone: () => true, onSome: (group) => groupOf(piece.type) === group }) &&
+      Option.match(model.type, { onNone: () => true, onSome: (type) => piece.type === type }) &&
+      (model.filters.colours.length === 0 || piece.colours.some((colour) => model.filters.colours.includes(colour))) &&
+      Option.match(model.filters.season, {
+        onNone: () => true,
+        onSome: (season) => piece.season === season || piece.season === 'allYear',
+      }) &&
+      Option.match(model.filters.occasion, {
+        onNone: () => true,
+        onSome: (occasion) => piece.occasions.includes(occasion),
+      }) &&
+      Option.match(model.filters.brand, { onNone: () => true, onSome: (brand) => piece.brand === brand }),
+  )
+
+/** The brands the person has written on their pieces, in order. */
+export const brandsOf = (pieces: ReadonlyArray<Piece>): ReadonlyArray<string> =>
+  Array.sort(Array.dedupe(pieces.flatMap((piece) => (piece.brand === null ? [] : [piece.brand]))), Order.String)
+
 export const Model = Schema.Struct({
   pieces: PiecesData.schema,
   /** The group the grid shows, then one of its types; none shows every piece. */
   group: Schema.Option(GarmentGroup),
   type: Schema.Option(PieceType),
+  filters: Filters,
+  filterSheet: Dialog.Model,
   /** Kept cut-outs with no clean picture yet, and how asking for theirs went. */
   undrawn: Schema.Number,
   backfill: Schema.Literals(['idle', 'sending', 'sent', 'failed']),
@@ -26,6 +71,8 @@ export const init = (): Model => ({
   pieces: AsyncData.Idle(),
   group: Option.none(),
   type: Option.none(),
+  filters: noFilters,
+  filterSheet: Dialog.init({ id: 'wardrobe-filters', isAnimated: true }),
   undrawn: 0,
   backfill: 'idle',
 })
@@ -37,6 +84,14 @@ export const Message = defineMessageUnion({
   FailedListPieces: {},
   ClickedGroup: { group: Schema.Option(GarmentGroup) },
   ClickedType: { type: Schema.Option(PieceType) },
+  ClickedFilters: {},
+  GotFilterSheetMessage: { message: Dialog.Message },
+  ToggledFilterColour: { colour: Colour },
+  ChoseFilterSeason: { season: Season },
+  ChoseFilterOccasion: { occasion: Occasion },
+  ChoseFilterBrand: { brand: Schema.String },
+  ClickedClearFilters: {},
+  ClickedShowPieces: {},
   ClickedRetry: {},
   TickedRefresh: {},
   CompletedCountUndrawn: { pieces: Schema.Number },
@@ -93,6 +148,27 @@ const piecesCache = (revalidate: (pieces: PiecesData) => Option.Option<PiecesDat
     load: ListPieces(),
   })
 
+const sheetFold = {
+  read: (model: Model) => Option.some(model.filterSheet),
+  write: (model: Model, filterSheet: Dialog.Model) => modifyFields(model, { filterSheet: () => filterSheet }),
+  toParentMessage: (message: Dialog.Message) => Message.GotFilterSheetMessage({ message }),
+  foldOutMessage: Dialog.OutMessage.match<Update.Step<Model, Message>>({
+    Opened: () => (model) => ({ model }),
+    Closed: () => (model) => ({ model }),
+  }),
+}
+const foldFilterSheet = Update.foldChild({ update: Dialog.update, ...sheetFold })
+const openFilterSheet = Update.foldChildStep({ update: Dialog.open, ...sheetFold })
+const closeFilterSheet = Update.foldChildStep({ update: Dialog.close, ...sheetFold })
+
+/** Choosing the chosen one again clears it. */
+const chosenAgain = <A>(value: A, chosen: Option.Option<A>): Option.Option<A> =>
+  Option.contains(chosen, value) ? Option.none() : Option.some(value)
+
+const filtered = (model: Model, change: (filters: Filters) => Filters): UpdateReturn => ({
+  model: modifyFields(model, { filters: change }),
+})
+
 /** Opening a page that shows the pieces: those already here stay on screen while they are asked for again, a
  * first visit asks, and a request on its way is not repeated. */
 export const revisit = piecesCache(AsyncData.revalidateOrLoad)
@@ -117,6 +193,23 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     // Another group starts from all of its types.
     ClickedGroup: ({ group }) => ({ model: modifyFields(model, { group: () => group, type: () => Option.none() }) }),
     ClickedType: ({ type }) => ({ model: modifyFields(model, { type: () => type }) }),
+    ClickedFilters: () => openFilterSheet(model),
+    GotFilterSheetMessage: ({ message: sheetMessage }) => foldFilterSheet(model, sheetMessage),
+    ToggledFilterColour: ({ colour }) =>
+      filtered(model, (filters) => ({
+        ...filters,
+        colours: filters.colours.includes(colour)
+          ? filters.colours.filter((each) => each !== colour)
+          : [...filters.colours, colour],
+      })),
+    ChoseFilterSeason: ({ season }) =>
+      filtered(model, (filters) => ({ ...filters, season: chosenAgain(season, filters.season) })),
+    ChoseFilterOccasion: ({ occasion }) =>
+      filtered(model, (filters) => ({ ...filters, occasion: chosenAgain(occasion, filters.occasion) })),
+    ChoseFilterBrand: ({ brand }) =>
+      filtered(model, (filters) => ({ ...filters, brand: chosenAgain(brand, filters.brand) })),
+    ClickedClearFilters: () => filtered(model, () => noFilters),
+    ClickedShowPieces: () => closeFilterSheet(model),
     ClickedRetry: () => revisit(model),
     TickedRefresh: () => refresh(model),
     CompletedCountUndrawn: ({ pieces }) => ({ model: modifyFields(model, { undrawn: () => pieces }) }),

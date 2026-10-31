@@ -4,6 +4,8 @@ import { modifyFields } from 'foldkit/struct'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import {
+  brandsOf,
+  shownPieces,
   DrawPictures,
   ListPieces,
   Message,
@@ -119,5 +121,36 @@ describe('clean pictures for the pieces that have none', () => {
   test('the pieces are asked for again while a drawing is on its way, and not once it is done', () => {
     expect(refreshing(showing(drawn('drawing'), ready))).toBe(true)
     expect(refreshing(showing(drawn('ready'), ready))).toBe(false)
+  })
+})
+
+describe('filtering the wardrobe', () => {
+  const coat = pieceFixture('coat', { type: 'coats', colours: ['beige'], season: 'cold', brand: 'COS' })
+  const tee = pieceFixture('tee', { type: 'tops', colours: ['white'], season: 'warm', occasions: ['casual'] })
+  const jeans = pieceFixture('jeans', { type: 'jeans', colours: ['blue'], season: 'allYear', brand: 'Levi’s' })
+  const pieces = [coat, tee, jeans]
+  const shown = (current: Parameters<typeof update>[0]) => shownPieces(pieces, current).map(({ id }) => id)
+
+  test('any chosen colour, the season (all-year pieces too), the occasion and the brand narrow the grid', () => {
+    story(
+      update,
+      given(init()),
+      message(Message.ChoseFilterSeason({ season: 'cold' })),
+      model((current) => expect(shown(current)).toEqual([coat.id, jeans.id])),
+      message(Message.ToggledFilterColour({ colour: 'blue' })),
+      message(Message.ToggledFilterColour({ colour: 'beige' })),
+      model((current) => expect(shown(current)).toEqual([coat.id, jeans.id])),
+      message(Message.ChoseFilterBrand({ brand: 'COS' })),
+      model((current) => expect(shown(current)).toEqual([coat.id])),
+      message(Message.ChoseFilterBrand({ brand: 'COS' })),
+      message(Message.ChoseFilterOccasion({ occasion: 'casual' })),
+      model((current) => expect(shown(current)).toEqual([])),
+      message(Message.ClickedClearFilters()),
+      model((current) => expect(shown(current)).toEqual([coat.id, tee.id, jeans.id])),
+    )
+  })
+
+  test('offers the brands written on the pieces, once each, in order', () => {
+    expect(brandsOf([...pieces, pieceFixture('bag', { brand: 'COS' })])).toEqual(['COS', 'Levi’s'])
   })
 })

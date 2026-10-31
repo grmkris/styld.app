@@ -280,7 +280,15 @@
     },
     "brandLabel": "Znamka (neobvezno)",
     "shopUrlLabel": "Povezava do trgovine (neobvezno)",
-    "shopUrlInvalid": "Prilepi naslov trgovine, ki se začne s https."
+    "shopUrlInvalid": "Prilepi naslov trgovine, ki se začne s https.",
+    "filters": "Filtri",
+    "filtersTitle": "Filtriraj garderobo",
+    "filterSeason": "Kdaj ga nosiš",
+    "filterOccasion": "Za kaj je",
+    "filterBrand": "Znamka",
+    "clearFilters": "Počisti",
+    "showPieces": "{count, plural, one {Pokaži # kos} two {Pokaži # kosa} few {Pokaži # kose} other {Pokaži # kosov}}",
+    "noneFiltered": "Ni kosov s temi filtri."
   },
   "landing": {
     "feedDescription": "Javne zbirke Stylda in ljudi, ki ga uporabljajo.",

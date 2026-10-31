@@ -1,12 +1,14 @@
 import { catalogVersion } from '@styld/i18n'
 import type { Piece } from '@styld/protocol'
-import { Command, click, expect, given, role, scene, selector, text } from 'foldkit/scene'
+import { Dialog } from '@foldkit/ui'
+import { Command, Mount, click, expect, given, role, scene, selector, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { Session, init, update } from '../src/App.ts'
 import { AsyncData } from 'foldkit'
 import { ListPieces, Message as WardrobeMessage, PiecesData } from '../src/page/Wardrobe.ts'
 import { view } from '../src/View.ts'
+import { sceneSheetOpened } from './SheetFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
@@ -59,6 +61,25 @@ describe('the wardrobe page', () => {
       click(role('button', { name: 'Jeans 1' })),
       expect(role('link', { name: 'White tee' })).not.toExist(),
       expect(role('link', { name: 'Jeans' })).toExist(),
+    )
+  })
+
+  test('Filters opens a sheet of colours, seasons, occasions and the brands written down, and says what is left', () => {
+    const coat = pieceFixture('coat', { name: 'Camel coat', type: 'coats', season: 'cold', brand: 'COS' })
+    scene(
+      { update, view },
+      given(loaded(tee, coat)),
+      expect(role('button', { name: 'Filters' })).toHaveAttr('aria-pressed', 'false'),
+      click(role('button', { name: 'Filters' })),
+      Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
+      Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+      ...sceneSheetOpened,
+      expect(role('heading', { name: 'Filter your wardrobe' })).toExist(),
+      click(role('button', { name: 'Cold weather' })),
+      expect(role('button', { name: 'Show 1 piece' })).toExist(),
+      expect(role('button', { name: 'COS' })).toExist(),
+      expect(role('link', { name: 'White tee' })).not.toExist(),
+      expect(role('button', { name: 'Filters 1' })).toHaveAttr('aria-pressed', 'true'),
     )
   })
 

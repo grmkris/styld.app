@@ -100,3 +100,10 @@ export const backfill = style({
   fontSize: '14px',
   color: 'ink2',
 })
+/** The filter sheet's end: Clear beside the ink action that shows what is left (DESIGN.md › Controls). */
+export const sheetActions = style({
+  display: 'flex',
+  justifyContent: 'flex-end',
+  gap: '12px',
+  marginBlockStart: '24px',
+})

@@ -86,7 +86,7 @@ export const detailsPayload = (details: Details) => ({
   ...Option.match(details.pattern, { onNone: () => ({}), onSome: (pattern) => ({ pattern }) }),
 })
 
-type Labelled = Readonly<{ id: string; legend: MessageKey; problem: Option.Option<MessageKey> }>
+export type Labelled = Readonly<{ id: string; legend: MessageKey; problem: Option.Option<MessageKey> }>
 
 const group = <Message>(
   { id, legend, problem }: Labelled,
@@ -148,12 +148,12 @@ const typePicker = <Message>(
     h,
   )
 
-/** Chips for one optional value or several, named from the catalogs. */
-const chipPicker = <Message, A extends string>(
+/** Chips for one optional value or several, each with its label. */
+export const chipPicker = <Message, A extends string>(
   config: Labelled &
     Readonly<{
       values: ReadonlyArray<A>
-      name: (value: A) => MessageKey
+      label: (value: A) => string
       isChosen: (value: A) => boolean
       onChoose: (value: A) => Message
     }>,
@@ -163,15 +163,13 @@ const chipPicker = <Message, A extends string>(
   group(
     config,
     styles.chipSet(),
-    config.values.map((value) =>
-      chip(format(locale, config.name(value), {}), config.isChosen(value), config.onChoose(value), h),
-    ),
+    config.values.map((value) => chip(config.label(value), config.isChosen(value), config.onChoose(value), h)),
     locale,
     h,
   )
 
 /** Up to six colours, as swatches named for assistive technology. */
-const colourPicker = <Message>(
+export const colourPicker = <Message>(
   config: Labelled & Readonly<{ chosen: ReadonlyArray<Colour>; onToggle: (colour: Colour) => Message }>,
   locale: Locale,
   h: HtmlBuilder<Message>,
@@ -274,7 +272,7 @@ export const piecePickers = <Message>(
       legend: 'wardrobe.seasonLabel',
       problem: Option.none(),
       values: Season.literals,
-      name: seasonName,
+      label: (season) => format(locale, seasonName(season), {}),
       isChosen: (season) => Option.contains(config.details.season, season),
       onChoose: (season) => config.messages.ChoseSeason({ season }),
     },
@@ -287,7 +285,7 @@ export const piecePickers = <Message>(
       legend: 'wardrobe.occasionsLabel',
       problem: Option.none(),
       values: Occasion.literals,
-      name: occasionName,
+      label: (occasion) => format(locale, occasionName(occasion), {}),
       isChosen: (occasion) => config.details.occasions.includes(occasion),
       onChoose: (occasion) => config.messages.ToggledOccasion({ occasion }),
     },
@@ -300,7 +298,7 @@ export const piecePickers = <Message>(
       legend: 'wardrobe.patternLabel',
       problem: Option.none(),
       values: Pattern.literals,
-      name: patternName,
+      label: (pattern) => format(locale, patternName(pattern), {}),
       isChosen: (pattern) => Option.contains(config.details.pattern, pattern),
       onChoose: (pattern) => config.messages.ChosePattern({ pattern }),
     },

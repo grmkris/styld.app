@@ -280,7 +280,15 @@
     },
     "brandLabel": "Brand (optional)",
     "shopUrlLabel": "Shop link (optional)",
-    "shopUrlInvalid": "Paste the shop’s address, starting with https."
+    "shopUrlInvalid": "Paste the shop’s address, starting with https.",
+    "filters": "Filters",
+    "filtersTitle": "Filter your wardrobe",
+    "filterSeason": "When it’s worn",
+    "filterOccasion": "What it’s for",
+    "filterBrand": "Brand",
+    "clearFilters": "Clear",
+    "showPieces": "{count, plural, one {Show # piece} other {Show # pieces}}",
+    "noneFiltered": "No pieces match these filters."
   },
   "landing": {
     "feedDescription": "Public boards from Styld and the people using it.",

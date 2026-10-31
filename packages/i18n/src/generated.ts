@@ -551,6 +551,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.allItems': Readonly<Record<string, never>>
   'wardrobe.backToWardrobe': Readonly<Record<string, never>>
   'wardrobe.brandLabel': Readonly<Record<string, never>>
+  'wardrobe.clearFilters': Readonly<Record<string, never>>
   'wardrobe.closetEmptyTitle': Readonly<Record<string, never>>
   'wardrobe.colorsLabel': Readonly<Record<string, never>>
   'wardrobe.colourFact': { readonly count: number }
@@ -560,7 +561,12 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.deleting': Readonly<Record<string, never>>
   'wardrobe.emptyHint': Readonly<Record<string, never>>
   'wardrobe.failedDelete': Readonly<Record<string, never>>
+  'wardrobe.filterBrand': Readonly<Record<string, never>>
   'wardrobe.filterCategories': Readonly<Record<string, never>>
+  'wardrobe.filterOccasion': Readonly<Record<string, never>>
+  'wardrobe.filterSeason': Readonly<Record<string, never>>
+  'wardrobe.filters': Readonly<Record<string, never>>
+  'wardrobe.filtersTitle': Readonly<Record<string, never>>
   'wardrobe.groups.accessories': Readonly<Record<string, never>>
   'wardrobe.groups.clothing': Readonly<Record<string, never>>
   'wardrobe.groups.shoes': Readonly<Record<string, never>>
@@ -569,6 +575,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.nameLabel': Readonly<Record<string, never>>
   'wardrobe.nameOptionalLabel': Readonly<Record<string, never>>
   'wardrobe.needsType': Readonly<Record<string, never>>
+  'wardrobe.noneFiltered': Readonly<Record<string, never>>
   'wardrobe.notesLabel': Readonly<Record<string, never>>
   'wardrobe.notesPlaceholder': Readonly<Record<string, never>>
   'wardrobe.occasion.casual': Readonly<Record<string, never>>
@@ -617,6 +624,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.shelves.retry': Readonly<Record<string, never>>
   'wardrobe.shopUrlInvalid': Readonly<Record<string, never>>
   'wardrobe.shopUrlLabel': Readonly<Record<string, never>>
+  'wardrobe.showPieces': { readonly count: number }
   'wardrobe.statusProcessing': Readonly<Record<string, never>>
   'wardrobe.tabPieces': Readonly<Record<string, never>>
   'wardrobe.title': Readonly<Record<string, never>>
@@ -726,4 +734,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '9987ee36f6b6f373e0688b01c32a9774f23d9c91e4cc0cd1f2eb9c11966fc20e'
+export const catalogVersion = '15c4ece8fe80c25556b25d7a2fe8d3caf5f4c296ed9458a182e3833e2208689a'

@@ -1,5 +1,5 @@
 import { Button } from '@foldkit/ui'
-import { GarmentGroup, groupOf, type Piece, type PieceType, typesIn } from '@styld/protocol'
+import { GarmentGroup, groupOf, Occasion, type Piece, type PieceType, Season, typesIn } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import { Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
@@ -12,8 +12,10 @@ import { addPiecesRouter, pieceRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
-import { Message, type Model } from './Wardrobe.ts'
-import { groupName, pieceLabel, typeName } from './WardrobeWords.ts'
+import { brandsOf, filterCount, Message, type Model, shownPieces } from './Wardrobe.ts'
+import { groupName, occasionName, pieceLabel, seasonName, typeName } from './WardrobeWords.ts'
+import { chipPicker, colourPicker } from './PieceFields.ts'
+import { bottomSheet, sheetShown } from './Sheet.ts'
 import * as styles from './WardrobeView.styles.ts'
 import { wardrobeMain } from './WardrobeTabs.ts'
 import { chip, chipSkeleton } from './AskView.styles.ts'
@@ -70,7 +72,32 @@ const filter = (label: string, total: number, pressed: boolean, onClick: Message
 const filterRow = (label: string, chips: ReadonlyArray<Html>, h: HtmlBuilder<Message>): Html =>
   h.div([h.Role('group'), h.AriaLabel(label), ...styled(h, styles.filterRow())], [...chips])
 
-/** The groups the person has pieces in, with All first. */
+/** Opens the filter sheet; once filters are set it reads as chosen and says how many. */
+const filtersButton = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  const count = filterCount(model.filters)
+  return Button.view(
+    {
+      onClick: Message.ClickedFilters(),
+      toView: (attributes) =>
+        h.button(
+          [
+            ...attributes.button,
+            h.AriaHasPopup('dialog'),
+            h.AriaExpanded(model.filterSheet.isOpen),
+            h.AriaPressed(String(count > 0)),
+            ...styled(h, cx(chip(), chosen(), styles.filterChip())),
+          ],
+          [
+            format(locale, 'wardrobe.filters', {}),
+            ...(count === 0 ? [] : [' ', h.span(styled(h, styles.count()), [String(count)])]),
+          ],
+        ),
+    },
+    h,
+  )
+}
+
+/** The groups the person has pieces in, with All first, and Filters last, with how many are set. */
 const groupRow = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   filterRow(
     format(locale, 'wardrobe.filterCategories', {}),
@@ -96,6 +123,7 @@ const groupRow = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, h:
               ),
             ]
       }),
+      filtersButton(model, locale, h),
     ],
     h,
   )
@@ -161,6 +189,107 @@ const pieceTile = (piece: Piece, locale: Locale, h: HtmlBuilder<Message>): Html 
   )
 }
 
+/** The filter sheet's pickers: colours, when and what for, and the brands the person wrote down. */
+const filterPickers = (
+  pieces: ReadonlyArray<Piece>,
+  model: Model,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): ReadonlyArray<Html> => {
+  const brands = brandsOf(pieces)
+  return [
+    colourPicker(
+      {
+        id: 'filter-colours',
+        legend: 'wardrobe.colorsLabel',
+        problem: Option.none(),
+        chosen: model.filters.colours,
+        onToggle: (colour) => Message.ToggledFilterColour({ colour }),
+      },
+      locale,
+      h,
+    ),
+    chipPicker(
+      {
+        id: 'filter-season',
+        legend: 'wardrobe.filterSeason',
+        problem: Option.none(),
+        values: Season.literals,
+        label: (season) => format(locale, seasonName(season), {}),
+        isChosen: (season) => Option.contains(model.filters.season, season),
+        onChoose: (season) => Message.ChoseFilterSeason({ season }),
+      },
+      locale,
+      h,
+    ),
+    chipPicker(
+      {
+        id: 'filter-occasion',
+        legend: 'wardrobe.filterOccasion',
+        problem: Option.none(),
+        values: Occasion.literals,
+        label: (occasion) => format(locale, occasionName(occasion), {}),
+        isChosen: (occasion) => Option.contains(model.filters.occasion, occasion),
+        onChoose: (occasion) => Message.ChoseFilterOccasion({ occasion }),
+      },
+      locale,
+      h,
+    ),
+    brands.length === 0
+      ? h.empty
+      : chipPicker(
+          {
+            id: 'filter-brand',
+            legend: 'wardrobe.filterBrand',
+            problem: Option.none(),
+            values: brands,
+            label: (brand) => brand,
+            isChosen: (brand) => Option.contains(model.filters.brand, brand),
+            onChoose: (brand) => Message.ChoseFilterBrand({ brand }),
+          },
+          locale,
+          h,
+        ),
+  ]
+}
+
+/** The filter sheet: colours, when and what for, and the brands the person wrote down; Show closes it on what is
+ * left. */
+const filterSheet = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  const left = shownPieces(pieces, model).length
+  return bottomSheet(
+    {
+      dialog: model.filterSheet,
+      title: format(locale, 'wardrobe.filtersTitle', {}),
+      locale,
+      toParentMessage: (message) => Message.GotFilterSheetMessage({ message }),
+      body: () => [
+        ...filterPickers(pieces, model, locale, h),
+        h.div(styled(h, styles.sheetActions()), [
+          actionButton(
+            {
+              label: format(locale, 'wardrobe.clearFilters', {}),
+              style: secondaryAction(),
+              onClick: Message.ClickedClearFilters(),
+              isDisabled: filterCount(model.filters) === 0,
+            },
+            h,
+          ),
+          actionButton(
+            {
+              label: format(locale, 'wardrobe.showPieces', { count: left }),
+              style: primaryAction(),
+              onClick: Message.ClickedShowPieces(),
+            },
+            h,
+          ),
+        ]),
+      ],
+    },
+    h,
+  )
+}
+
 const loadedView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   if (pieces.length === 0)
     return h.section(styled(h, styles.message()), [
@@ -176,18 +305,18 @@ const loadedView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, 
     onNone: () => pieces,
     onSome: (group) => pieces.filter((piece) => groupOf(piece.type) === group),
   })
-  const shown = Option.match(model.type, {
-    onNone: () => inGroup,
-    onSome: (type) => inGroup.filter((piece) => piece.type === type),
-  })
+  const shown = shownPieces(pieces, model)
   return h.div(styled(h, styles.wardrobePage()), [
     backfillLine(model, locale, h),
     groupRow(pieces, model, locale, h),
     typeRow(inGroup, model, locale, h),
-    h.ul(
-      styled(h, styles.grid()),
-      shown.map((piece) => pieceTile(piece, locale, h)),
-    ),
+    shown.length === 0
+      ? h.p(styled(h, styles.message()), [format(locale, 'wardrobe.noneFiltered', {})])
+      : h.ul(
+          styled(h, styles.grid()),
+          shown.map((piece) => pieceTile(piece, locale, h)),
+        ),
+    sheetShown(model.filterSheet) ? filterSheet(pieces, model, locale, h) : h.empty,
   ])
 }
 
