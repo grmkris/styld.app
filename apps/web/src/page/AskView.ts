@@ -11,6 +11,7 @@ import { addIcon, boardsTabIcon, cameraIcon, closeIcon, linkIcon, loader, search
 import { accountRouter, addPiecesRouter, assistantsSection, pieceRouter, stylistRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { Creating } from './Boards.ts'
+import { sheetShown } from './Sheet.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { Message, type Model, resultsId, SearchLanguages, searchFieldId } from './Ask.ts'
@@ -379,7 +380,7 @@ export const view = Submodel.defineView<
       wardrobeView(model, pieces, locale, h),
       // While searching, Styld is the one row under the results; the card would ask the same thing twice.
       String.isNonEmpty(model.query.trim()) ? h.empty : stylistView(locale, h),
-      model.addSheet.isOpen ? addSheetView(model, locale, h, boardStart) : h.empty,
+      sheetShown(model.addSheet) ? addSheetView(model, locale, h, boardStart) : h.empty,
     ],
   ),
 )

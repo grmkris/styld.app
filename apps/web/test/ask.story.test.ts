@@ -2,6 +2,7 @@ import { Option, Schema } from 'effect'
 import { Dialog } from '@foldkit/ui'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
+import { storySheetMoved } from './SheetFixtures.ts'
 import * as Ask from '../src/page/Ask.ts'
 import { normalise, SearchResults } from '@styld/protocol'
 import { matching } from '../src/page/AskSearch.ts'
@@ -131,6 +132,7 @@ describe('searching your wardrobe', () => {
       message(Ask.Message.ClickedAdd()),
       model(({ addSheet }) => expect(addSheet.isOpen).toBe(true)),
       Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+      ...storySheetMoved(1),
     )
     const open = Ask.update(Ask.init(), Ask.Message.ClickedAdd()).model
     expect(Ask.leave(open).model.addSheet.isOpen).toBe(false)

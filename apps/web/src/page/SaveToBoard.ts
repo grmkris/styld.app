@@ -38,7 +38,7 @@ export type Model = typeof Model.Type
 
 export const init = (target: Target): Model => ({
   target,
-  sheet: Dialog.init({ id: `save-to-board-${target.kind}` }),
+  sheet: Dialog.init({ id: `save-to-board-${target.kind}`, isAnimated: true }),
   boards: AsyncData.Idle(),
   name: '',
   saving: Saving.Idle(),

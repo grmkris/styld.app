@@ -13,7 +13,7 @@ import { boardCollageRouter, boardsRouter, lookRouter, pieceRouter } from '../..
 import { styled } from '../../Styled.ts'
 import * as PeopleView from '../PeopleView.ts'
 import { publicToggle } from '../PublicToggle.ts'
-import { bottomSheet } from '../Sheet.ts'
+import { bottomSheet, sheetShown } from '../Sheet.ts'
 import { checkNotice } from '../CheckNotice.ts'
 import { Message } from './Message.ts'
 import { unpinButton } from './Unpin.ts'
@@ -463,7 +463,7 @@ const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: 
     model.items.length === 0 ? h.empty : collageView(model, paper, locale, h),
     pinsView(model, locale, h),
     model.items.length === 0 ? collageStartView(model, locale, h) : h.empty,
-    model.settings.isOpen
+    sheetShown(model.settings)
       ? bottomSheet(
           {
             dialog: model.settings,
@@ -475,7 +475,7 @@ const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: 
           h,
         )
       : h.empty,
-    model.picker.isOpen
+    sheetShown(model.picker)
       ? bottomSheet(
           {
             dialog: model.picker,

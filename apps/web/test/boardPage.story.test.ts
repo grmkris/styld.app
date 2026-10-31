@@ -5,6 +5,7 @@ import { AsyncData } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
+import { storySheetMoved } from './SheetFixtures.ts'
 import { Message } from '../src/page/Board/Message.ts'
 import {
   BoardState,
@@ -83,6 +84,7 @@ describe('a board page', () => {
         expect(nameDraft).toBe('Autumn')
       }),
       Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+      ...storySheetMoved(1),
       message(Message.UpdatedNameDraft({ value: '  Late autumn ' })),
       message(Message.SubmittedRename()),
       Command.expectExact(RenameBoard),
@@ -91,6 +93,7 @@ describe('a board page', () => {
         expect(state).toEqual(BoardState.Ready({ name: 'Late autumn', paper: 'paper' }))
         expect(settings.isOpen).toBe(false)
       }),
+      ...storySheetMoved(2),
       Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
     )
   })
@@ -166,6 +169,7 @@ describe('a board page', () => {
       given(open),
       message(Message.ClickedAddPins()),
       Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+      ...storySheetMoved(1),
       Command.expectExact(LoadLooks),
       Command.resolve(LoadLooks, Message.SucceededLoadLooks({ looks: [look] })),
       model(({ looks }) => expect(AsyncData.getData(looks)).toEqual(Option.some([look]))),
@@ -185,6 +189,7 @@ describe('a board page', () => {
         expect(version).toBe(2)
         expect(items).toEqual([knitOnTable])
       }),
+      ...storySheetMoved(2),
       Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
     )
   })

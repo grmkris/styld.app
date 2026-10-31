@@ -11,6 +11,7 @@ import { fromBoard, init as boardInit } from '../src/page/Board/Model.ts'
 import { ReloadBoard } from '../src/page/Board/PageCommands.ts'
 import { view } from '../src/View.ts'
 import { signedInAt } from './AppFixtures.ts'
+import { sceneSheetMoved, sceneSheetOpened } from './SheetFixtures.ts'
 
 const boardId = `bd_${'sea'.padEnd(22, 'x')}`
 const imageId = `bm_${'sea'.padEnd(22, 'x')}`
@@ -59,6 +60,7 @@ const openSheet = [
   click(role('button', { name: 'Make with Styld' })),
   Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
   Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+  ...sceneSheetOpened,
 ] as const
 
 describe('Make with Styld on a board', () => {
@@ -116,10 +118,12 @@ describe('Make with Styld on a board', () => {
       click(role('button', { name: 'Make with Styld' })),
       Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
       Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+      ...sceneSheetOpened,
       expect(role('radio', { name: 'A mood board', checked: true })).toExist(),
       type(role('textbox', { name: 'What should it feel like?' }), 'a slow weekend by the sea'),
       submit(role('form')),
       Command.resolve(AskForPictures, MakeMessage.SucceededAsk({ generation: generation('planning', []) })),
+      ...sceneSheetMoved(2),
       Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
       Mount.expectEnded(Dialog.AcquireResources),
       expect(role('status')).toHaveText('Planning your mood board…'),

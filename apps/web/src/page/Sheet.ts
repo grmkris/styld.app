@@ -5,8 +5,12 @@ import { closeIcon } from '../Icon.ts'
 import { styled } from '../Styled.ts'
 import { grab, quiet, scrim, sheet, sheetHead, sheetTitle } from './AskView.styles.ts'
 
+/** A sheet is drawn while it is open and while it eases out after closing (its Dialog is animated): it leaves with a
+ * short drop and fade rather than vanishing. */
+export const sheetShown = (dialog: Dialog.Model) => dialog.isOpen || dialog.animation.transitionState !== 'Idle'
+
 /** A sheet from the bottom edge (DESIGN.md › Surfaces), after Ask's: a title, a close button and its body. Drawn
- * only while open; the dialog's own layout is set in the browser. */
+ * only while shown (`sheetShown`); the dialog's own layout is set in the browser. */
 export const bottomSheet = <Message>(
   config: {
     readonly dialog: Dialog.Model

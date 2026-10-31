@@ -4,6 +4,7 @@ import { Option, Schema } from 'effect'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
+import { storySheetMoved } from './SheetFixtures.ts'
 import { AskForPictures, init, Job, kinds, Message, PollGeneration, update } from '../src/page/Board/Make.ts'
 
 const boardId = `bd_${'sea'.padEnd(22, 'x')}`
@@ -39,6 +40,7 @@ describe('making pictures for a board', () => {
       given(init(boardId)),
       message(Message.ClickedMake()),
       Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+      ...storySheetMoved(1),
       message(Message.ChangedWords({ words: '  a slow weekend by the sea ' })),
       message(Message.SubmittedMake()),
       Command.expectExact(
@@ -50,6 +52,7 @@ describe('making pictures for a board', () => {
         expect(words).toBe('')
         expect(sheet.isOpen).toBe(false)
       }),
+      ...storySheetMoved(2),
       Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
       Command.resolve(
         PollGeneration({ generationId }),

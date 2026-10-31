@@ -4,6 +4,7 @@ import { Option, Schema } from 'effect'
 import { AsyncData } from 'foldkit'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
+import { storySheetMoved } from './SheetFixtures.ts'
 import { init, ListBoardsToSaveTo, Message, SaveTo, Saving, update } from '../src/page/SaveToBoard.ts'
 
 const autumn = Schema.decodeUnknownSync(BoardSummary)({
@@ -29,6 +30,7 @@ describe('save to board', () => {
         expect(AsyncData.isLoading(boards)).toBe(true)
       }),
       Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+      ...storySheetMoved(1),
       Command.resolve(ListBoardsToSaveTo, Message.SucceededListBoards({ boards: [autumn] })),
       message(Message.ClickedBoard({ boardId: autumn.id, boardName: autumn.name })),
       model(({ saving }) => expect(Saving.guards.Sending(saving)).toBe(true)),

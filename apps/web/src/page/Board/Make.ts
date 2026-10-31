@@ -49,7 +49,7 @@ export type Model = typeof Model.Type
 
 export const init = (boardId: string): Model => ({
   boardId,
-  sheet: Dialog.init({ id: 'board-make' }),
+  sheet: Dialog.init({ id: 'board-make', isAnimated: true }),
   kind: 'moodBoard',
   kindChoice: RadioGroup.init({ id: 'board-make-kind' }),
   words: '',

@@ -34,7 +34,7 @@ export const resultsId = 'ask-results'
 export const init = (): Model => ({
   query: '',
   languages: SearchLanguages.PageOnly(),
-  addSheet: Dialog.init({ id: 'ask-add-sheet' }),
+  addSheet: Dialog.init({ id: 'ask-add-sheet', isAnimated: true }),
   found: Option.none(),
 })
 

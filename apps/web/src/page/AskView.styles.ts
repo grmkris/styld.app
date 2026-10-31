@@ -151,6 +151,12 @@ export const scrim = style({
   animationName: fade,
   animationDuration: '200ms',
   animationTimingFunction: 'ease-out',
+  // Leaving, the scrim fades with the sheet (an animated Dialog marks the leave).
+  transitionProperty: 'opacity',
+  transitionDuration: '160ms',
+  transitionTimingFunction: 'ease-out',
+  '&[data-leave]': { opacity: 0 },
+  '@media (prefers-reduced-motion: reduce)': { transitionDuration: '0ms' },
 })
 export const sheet = style({
   position: 'fixed',
@@ -169,6 +175,12 @@ export const sheet = style({
   animationName: rise,
   animationDuration: '420ms',
   animationTimingFunction: 'var(--styld-spring)',
+  // It rises on a spring and leaves softer than it came: a 16px drop and a fade (make-interfaces-feel-better › exits).
+  transitionProperty: 'translate, opacity',
+  transitionDuration: '160ms',
+  transitionTimingFunction: 'ease-out',
+  '&[data-leave]': { translate: '0 16px', opacity: 0 },
+  '@media (prefers-reduced-motion: reduce)': { transitionDuration: '0ms' },
 })
 export const grab = style({
   justifySelf: 'center',

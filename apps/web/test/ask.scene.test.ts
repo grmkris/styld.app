@@ -9,6 +9,7 @@ import * as Ask from '../src/page/Ask.ts'
 import { CreateBoard, Message as BoardsMessage } from '../src/page/Boards.ts'
 import { PiecesData } from '../src/page/Wardrobe.ts'
 import { view } from '../src/View.ts'
+import { sceneSheetMoved } from './SheetFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
@@ -53,6 +54,7 @@ describe('Ask', () => {
       { update, view },
       given(open),
       Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
+      ...sceneSheetMoved(1),
       expect(role('link', { name: /^Add clothes/ })).toHaveAttr('href', '/wardrobe/add'),
       expect(role('link', { name: /^Add from a link/ })).toHaveAttr('href', '/wardrobe/add#link'),
       // Start a board makes one under the default name, as Boards' + does; the sheet stays and says if it was refused.

@@ -9,7 +9,7 @@ import { primaryAction, secondaryAction, smallAction } from '../../Actions.style
 import { textArea, textField } from '../../Fields.styles.ts'
 import { loader } from '../../Icon.ts'
 import { styled } from '../../Styled.ts'
-import { bottomSheet } from '../Sheet.ts'
+import { bottomSheet, sheetShown } from '../Sheet.ts'
 import { canMake, Job, KindRadioGroup, kinds, type MakeProblem, Message, type Model } from './Make.ts'
 import * as styles from './MakeView.styles.ts'
 
@@ -175,7 +175,7 @@ const sheetBody = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Reado
 
 /** Make with Styld: a mood board or one picture, from the person's words. */
 export const sheetView = Submodel.defineView<Model, Message, Inputs>((model, { locale }, h) =>
-  model.sheet.isOpen
+  sheetShown(model.sheet)
     ? bottomSheet(
         {
           dialog: model.sheet,

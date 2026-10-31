@@ -9,7 +9,7 @@ import { textField } from '../Fields.styles.ts'
 import { addIcon, loader } from '../Icon.ts'
 import { boardRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
-import { bottomSheet } from './Sheet.ts'
+import { bottomSheet, sheetShown } from './Sheet.ts'
 import { Message, type Model, Saving } from './SaveToBoard.ts'
 import * as styles from './SaveToBoardView.styles.ts'
 
@@ -143,7 +143,7 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
         { label: format(locale, 'saveToBoard.action', {}), style: secondaryAction(), onClick: Message.ClickedSave() },
         h,
       ),
-      model.sheet.isOpen ? sheetView(model, locale, h) : h.empty,
+      sheetShown(model.sheet) ? sheetView(model, locale, h) : h.empty,
     ],
   ),
 )
