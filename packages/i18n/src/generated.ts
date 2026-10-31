@@ -352,6 +352,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'profile.card.private': { readonly username: string | number }
   'profile.card.public': { readonly username: string | number }
   'profile.card.setUp': Readonly<Record<string, never>>
+  'profile.card.shows': Readonly<Record<string, never>>
   'profile.card.title': Readonly<Record<string, never>>
   'profile.card.viewPage': Readonly<Record<string, never>>
   'profile.editor.bioCount': { readonly count: string | number; readonly most: string | number }
@@ -695,4 +696,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'b90f2ba3d900c619f2c991484085a4c6cc32ac931fd1e3ccb398399eb686b44c'
+export const catalogVersion = 'b6a70d272c5bc4d0bbc5103a817196bee4ce31ffe7c174e99711fc5c650c288b'

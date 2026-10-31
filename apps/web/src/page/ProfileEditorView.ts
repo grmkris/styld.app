@@ -182,6 +182,8 @@ const publicView = (profile: Profile, model: Model, locale: Locale, h: HtmlBuild
             username: profile.handle,
           }),
     ]),
+    // What making it public shows, now that the wardrobe is never on it (owner, 2026-10-31).
+    h.p(styled(h, styles.note()), [format(locale, 'profile.card.shows', {})]),
     profile.published ? checkNotice(profile.check, locale, h) : h.empty,
     Publishing.match(model.publishing, {
       Idle: () => h.empty,

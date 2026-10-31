@@ -279,6 +279,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'profile.card.private': '@{username}, vidiš ga samo ti',
   'profile.card.public': '@{username}, javen',
   'profile.card.viewPage': 'Poglej svojo stran',
+  'profile.card.shows':
+    'Na tvoji strani so tvoje ime, kraj in opis ter zbirke in videzi, ki jih objaviš. Tvoja garderoba ostane zasebna.',
   'profile.card.loadFailed': 'Profil se ni naložil.',
   'profile.editor.title': 'Javni profil',
   'profile.editor.needUsername': 'Za objavo izberi uporabniško ime',

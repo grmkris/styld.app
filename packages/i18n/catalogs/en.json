@@ -306,6 +306,7 @@
       "private": "@{username}, only you can see it",
       "public": "@{username}, public",
       "viewPage": "View your page",
+      "shows": "Your page shows your name, city and bio, and the boards and looks you make public. Your wardrobe stays private.",
       "loadFailed": "Your profile didn't load."
     },
     "editor": {

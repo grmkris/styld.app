@@ -306,6 +306,7 @@
       "private": "@{username}, vidiš ga samo ti",
       "public": "@{username}, javen",
       "viewPage": "Poglej svojo stran",
+      "shows": "Na tvoji strani so tvoje ime, kraj in opis ter zbirke in videzi, ki jih objaviš. Tvoja garderoba ostane zasebna.",
       "loadFailed": "Profil se ni naložil."
     },
     "editor": {

@@ -275,6 +275,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'profile.card.private': '@{username}, only you can see it',
   'profile.card.public': '@{username}, public',
   'profile.card.viewPage': 'View your page',
+  'profile.card.shows':
+    'Your page shows your name, city and bio, and the boards and looks you make public. Your wardrobe stays private.',
   'profile.card.loadFailed': "Your profile didn't load.",
   'profile.editor.title': 'Public profile',
   'profile.editor.needUsername': 'Choose a username to publish',
