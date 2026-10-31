@@ -34,7 +34,7 @@ try {
 import { format } from '../../packages/i18n/src/index.ts'
 export const wrong: string = 42
 export const floats = () => { Effect.succeed(1) }
-export const missingArgument = format('en', 'catalog.pieces', {})
+export const missingArgument = format('en', 'looks.pieceCount', {})
 `,
   )
   const effect = await run([

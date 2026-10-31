@@ -271,8 +271,8 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
           )
         if (url.pathname === '/intl')
           return yield* HttpServerResponse.json({
-            en: format('en', 'catalog.pieces', { count: 2 }),
-            sl: format('sl', 'catalog.pieces', { count: 102 }),
+            en: format('en', 'looks.pieceCount', { count: 2 }),
+            sl: format('sl', 'looks.pieceCount', { count: 102 }),
             plural: new Intl.PluralRules('sl').select(2),
             date: new Intl.DateTimeFormat('en', { timeZone: 'UTC', year: 'numeric' }).format(0),
             currency: new Intl.NumberFormat('sl', { style: 'currency', currency: 'EUR' }).format(12.5),
