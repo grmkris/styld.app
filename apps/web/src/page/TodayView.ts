@@ -16,7 +16,7 @@ import { stillTable } from './Board/Table.ts'
 import { asItems, type Missing, missingFrom } from './Outfit.ts'
 import { Message, type Model, TableMotion, tableOutfit, Worn } from './Today.ts'
 import type { PiecesData } from './Wardrobe.ts'
-import { round } from './PageBar.styles.ts'
+import { barEnd, round } from './PageBar.styles.ts'
 import { pageHead } from './PageHead.ts'
 import { title as headTitle } from './PageHead.styles.ts'
 import * as styles from './TodayView.styles.ts'
@@ -133,7 +133,8 @@ const headlineView = (maybeDay: Option.Option<string>, locale: Locale, h: HtmlBu
           h.Href(exploreRouter({})),
           h.AriaLabel(format(locale, 'explore.title', {})),
           h.Title(format(locale, 'explore.title', {})),
-          ...styled(h, round()),
+          // Its icon lines up with the gutter, where the avatar above and the table below end.
+          ...styled(h, cx(round(), barEnd())),
         ],
         [exploreTabIcon(h)],
       ),
