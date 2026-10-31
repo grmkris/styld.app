@@ -45,7 +45,7 @@ Decisions and recorded deviations for the iteration in `docs/ROADMAP.md` (Boards
 - **Public media** has its own routes. Visibility is checked on every request before any cache, the stored original is never served, and a failed transform answers 503 rather than raw bytes. Image bytes are not gated by blocks: ids are 128-bit random, and every surface that reveals an id applies blocks.
 - **Public pages** read through an API group with no session middleware that reads an optional visitor. The edge injects title and Open Graph tags into the server-rendered HTML for public URLs, because SSR runs no Commands and has no data; link-preview images are drawn with the Cloudflare Images binding.
 - **Rate limits** use Workers RateLimit bindings, whose periods are 10 or 60 seconds, so v1's hourly limits become per-minute limits.
-- **MCP** renders one tool list for members and one for admins (an email allowlist from config). Admin tools need an admin actor in their type, so a member's call cannot reach them.
+- **MCP** renders one tool list for members and one for admins (an email allowlist from config). Admin tools are only in the admin list, chosen per request by the account's verified sign-in email, so a member's call for one answers `unknown_tool`; the curation operations themselves take no admin actor (a deviation from the plan, recorded at M8). A report re-runs the check on the content itself; the reporter's reason is kept for admins (`report_list`) rather than given to the model, which judges content, not accusations (deviation from ROADMAP, M8).
 - **The preview stays out of search engines** through `X-Robots-Tag: noindex`, never a `robots.txt` disallow, which would also stop link-preview crawlers.
 
 ## Delivery boundary

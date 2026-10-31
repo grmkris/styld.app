@@ -227,7 +227,8 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
     eight tones) and whether the wardrobe shows. A profile is published only with a handle; a handle someone else took,
     even between the check and the write, is refused.
   - Account links to it. Tools `profile_get`, `profile_update` and `profile_publish`.
-  - Evidence: Story tests, MCP unit tests, native API acceptance (handles taken, reserved and invalid; publishing).
+  - Evidence: Story tests, MCP unit tests of the tool list (not the handlers), native API acceptance (handles taken,
+    reserved and invalid; publishing).
     Full gate green before landing, native 22/22, bundle 315,309 first load.
 - **M3b, checks of what goes public (`f92575f`, on main, not yet deployed):**
   - `safety/Judge.ts`:
@@ -251,7 +252,8 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
       the board, the look and the profile. The copy reuses v1's `share.*`, plus new `share.check.*` keys.
   - Tools `board_publish` and `look_share` return the check state.
   - Evidence:
-    - Story tests for the switch and sharing; MCP unit tests.
+    - Story tests for the switch and sharing; MCP unit tests of the tool list (not `board_publish` or `look_share`
+      themselves).
     - Native API acceptance: a board refused before the profile is published; checks passing at once; an edit failing
       through the queue; the verdict staying after the board goes private; an unsure bio; sharing a look and taking
       it back.
@@ -338,7 +340,8 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   - **The feed** is a query over follows: boards that went public, pins on public boards, shared looks and pieces in
     shown wardrobes. Each is gated as discovery is, on a passed check, then merged by time and interleaved at most two
     of one person in a row.
-  - Evidence: MCP unit tests, and native API acceptance of a save, own-save refused, follow, the feed, a block both
+  - Evidence: MCP unit tests of the tool list (the social tools' handlers are not called), and native API acceptance
+    of a save, own-save refused, follow, the feed, a block both
     ways (follow ended, save hidden, signed-out still shown), unblock, and three reports hiding a board.
 - **M4, people on the website:**
   - On `/@handle`, a signed-in visitor gets Follow (pressed while following), Report profile and Block. A block asks
@@ -369,7 +372,8 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   - Discovery shows only what passed its check: never unsure, never hidden, never a profile three people reported,
     and never across a block.
   - Tools `explore_get` and `search_public`.
-  - Evidence: MCP unit tests, and native API acceptance of search by accented name and by board name, Explore's
+  - Evidence: MCP unit tests of the tool list (not the handlers), and native API acceptance of search by accented
+    name and by board name, Explore's
     newest, and an unsure board leaving search while its link still works.
 - **M5b, curation for admins:**
   - Tools `curation_feature` (a board or person in Explore), `curation_house` (the house account, which may take the
@@ -454,8 +458,37 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   - Curation (`dbed69d`): `report_list` says reporters' words are data; changes act only when the admin asks; the
     admin list matches the verified email identifier.
   - Still open (low): link previews are read without the visitor's session, so a blocked person sees a profile's
-    name and cover in the page head (as anyone signed out does); a person with an unpublished profile cannot be
-    blocked, nor unblocked once they unpublish; redirect bodies are left to the runtime rather than cancelled.
+    name and cover in the page head (as anyone signed out does); redirect bodies are left to the runtime rather
+    than cancelled. (Blocking an unpublished profile is fixed in round two.)
+- **M8, the architecture and tooling review (round two)** and **the browser product review (round three)**: two
+  more read-only reviewers, one of the code against CLAUDE.md and ARCHITECTURE, one walking the preview in
+  Chromium at 390×844 and 1440×900, en and sl, signed in and out (no page error, CSP violation or sideways
+  scroll anywhere). Fixed:
+  - A public piece renamed, or pinned on a public board after changing while private, is checked again (native:
+    renamed to failing words, it is hidden, and shows again once renamed back).
+  - `Checks` is the only writer of check rows (the admin's hide goes through it); a report's re-judge lands only on
+    the content it judged.
+  - A new profile starts without a name, since an email sign-up name is the address's start; a profile published
+    without one goes by its handle. **Owner review:** this changes M3a's "the name the account signed up with".
+  - Someone who never published can be blocked, and unblocked (native).
+  - One's own public piece links to the wardrobe instead of offering Save, Save to wishlist and Report (scene).
+  - The diagnostics prompt is above the floating navigation on a phone, and a board's table no longer draws over
+    it (native: the prompt's buttons are what a tap reaches).
+  - A public board's card counts and shows only the pins visitors see; its cover is plain images inside its one
+    link; a mood with no boards says so; initials take letters only.
+  - Slovenian: sign-in, the diagnostics prompt, the assistants section and a piece's turn say ti; People is
+    Ljudje; board names take „…“; the login note ends with a full stop in both languages.
+  - The Make sheet starts a new operation when its kind changes and stops following after five failed polls.
+  - `picture_pin` answers a retry from its receipt before fetching (unit).
+  - Docs: evidence claims for MCP tools narrowed to what the tests call; deviations recorded in ARCHITECTURE
+    (admin tools without an admin actor type; a report's reason kept for admins, not given to the model).
+  - Still open from these rounds: one discovery predicate shared by Explore, search and the feed (the feed reads
+    link-level rules, so an unsure profile's boards can reach feeds, and Explore filters after its limit); credit
+    readback in native acceptance; MCP handler tests for the social, discovery and generation tools; nested
+    `Styld.Mcp.*` spans for website imports; `link_import` reusing `pictureFromLink`; `markHouse` refreshing search
+    text and the profile's check; page titles naming the board, piece or person; focus trapping in sheets; the
+    collage editor's tray thumbnails; sign-in links that return to the page; signed-out pages that call session
+    endpoints before they redirect; the rest of the formal Slovenian strings from v1, for the owner's review.
 - **M7, generated pictures and mood boards:**
   - The migration `generation` adds `generation_jobs` and `generation_pictures`. `board_images` gains `origin`
     (upload or generated), `job_id` and `model`.
@@ -463,10 +496,10 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
     a mood board: a Workers AI planner (`@cf/meta/llama-3.3-70b-instruct-fp8-fast`, JSON schema) turns one
     sentence into two to four prompts, the person's pieces that suit them and up to three moods. Meta Muse Image
     (Standard, tools off) paints each picture. The pieces are pinned, and the collage is laid out tidy unless the
-    person changed it since asking. `GET /api/generations/:id` follows it; a job stalled for two minutes is sent
+    person changed it since asking. `GET /api/generations/:id` follows it; a job stalled for three minutes is sent
     to the `StyldV2Generation` queue again.
   - Credits: one per picture, held in the Wallet from the start (`gen/<job>/<i>/0`), consumed once the picture is
-    on the board, given back when the painter refused, and kept when its answer was lost. A mood board holds up to
+    on the board, and given back when the painter refused or its answer was lost (the security round, below). A mood board holds up to
     four and gives back what its plan does not use; the queue's last try gives back everything unspent.
   - Safety: the words, and the plan's prompts, go to the same judge as anything public first; words that fail are
     never sent to a model. The prompts ask for no real or recognisable person. Pieces reach the painter only as
