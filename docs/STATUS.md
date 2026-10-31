@@ -425,7 +425,18 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   boards before there are any), with a way to Explore. The section keeps its room while they load. Evidence: a
   scene test.
 - **Next:**
-  - M6: the preview readback of the wishlist and Add from a link on real shop pages, then M7.
+  - M7: generated pictures and Make a mood board.
+- **Preview (M6):** deployed from `419f3d2`; `/api/health` reports release
+  `419f3d2fd705367a3d956fa4e4dc17acf6afee40`. The plan created `LINK_IMPORT_RATE_LIMIT` and updated the three
+  Workers. `tools/preview.native.test.ts` passed 3/3.
+  - Signed in as `@kris.preview`, `/api/links/picture` read a real product page (Allbirds, a Shopify shop) into an
+    upload with the product's name. Zara answered `blocked`, which asks for a photo. Everlane and Gymshark were
+    `notReached`, and a Patagonia page had no picture.
+  - The first deploy (`25d6986`) showed Shopify's `og:image` over plain http and that shops turn away fetches with
+    no User-Agent. `419f3d2` prefers `og:image:secure_url`, asks for http pictures over https, and names Styld.
+  - The capture from a link was not made on the preview, so no provider was paid; native acceptance covers it.
+  - Many large shops refuse requests from Cloudflare's network, whatever the User-Agent. Add from a link works
+    where a shop lets it, and asks for a photo where it doesn't.
 - **M6d, Add from a link on the website:**
   - The Add pieces page has a fourth way in, From a shop's page, and Ask's + sheet has Add from a link
     (`/wardrobe/add#link`).
