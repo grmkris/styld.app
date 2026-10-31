@@ -2,6 +2,56 @@
 
 Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `281ba6c`, with clean pictures, turns on a hanger, and the boards' pins, profiles and checks). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
 
+## Scan anything — 2026-10-31
+
+Replaces clean pictures' milestone C, as the owner widened it on 31 October. It folds in the capture brainstorm of
+30 October. The plan's decisions:
+
+- one scan for any scene, with two prescribed ways: laid out on a bed or table, or held up;
+- every piece drawn;
+- duplicates checked against the whole wardrobe;
+- no flat-lay spike.
+
+- **Every piece drawn** (`9573813`): a cut-out Clef judges ready is drawn too. A face keeps the photo and a fragment
+  asks for a retake. The backfill queues again pieces kept as clean by the earlier rule.
+- **Scenes** (`a843255`): the route asks how the clothes are shown (held, flat, hanging, worn, other), from even
+  odds. Pieces laid out are all preselected, even with a hand at the edge or from the camera. On the person-routing
+  spike's 44 labelled photos, all 10 laid out came back flat at 0.91 or more; of the rest, only two drawers did
+  (`meta-hackathon/out/styld-scan-anything/scene.ts`, about $0.002).
+- **More than clothing** (`08a6025`): a photo of several pieces or a laid-out scene also asks SAM for shoes, bag and
+  hat, one call each and in parallel. A mask more than half covered by a kept one is dropped. A failed extra prompt
+  leaves its pieces out, not the photo.
+- **Migration** `20261030235953_capture_imports_and_matches` (`4d30e73`): `captures.import_id`, and on detections
+  `whole`, `group_of`, `duplicate_of` (set null with its piece), `matching` and `match_claimed_at`.
+- **One card per garment** (`5af0301`, `652cf00`):
+  - A later video part, or another photo picked at the same time, names the import's first capture (`importOf`).
+  - A queue step compares an import's whole detections oldest first, one at a time, each claimed first. It uses
+    Clef's same-garment question against up to 10 sightings of the category, and joins at 0.8. The fuller sighting
+    shows.
+  - The tray shows one card with its number of sightings. Keeping or discarding the card does the same to its other
+    sightings, and a photo's other sighting becomes the piece's back. "Not the same piece? Show them apart" splits it
+    (`POST /api/captures/detections/:id/split`).
+- **Already in your wardrobe** (`5c2323f`): a sighting that joins nothing is compared with up to 6 of the
+  wardrobe's cut-out pieces of its category, same colour first. At 0.8 it comes unticked as "Already in your
+  wardrobe?", beside the piece.
+- **Guidance and the camera** (`8959b72`):
+  - The add page names the two ways before the ways in: lay them out, not touching, in daylight, on a contrasting
+    surface; or hold each one up.
+  - The camera gains "Lay pieces out": back camera, the flat check, taken when nobody's hands are on the garment.
+  - Part of a garment says "Needs a better look".
+- **Evidence:**
+  - Unit: plan rule, scene answers (one real recording), SAM prompts and overlap on the recorded rail stream, queue
+    dispatch, Story and Scene for the add page, camera and tray.
+  - Native (`18d8d45`): two seeded imports compared by the real queue job, four parts at once, with the Clef stand-in.
+    It proves the merge, the wardrobe match, a fragment, a split, and keeping a card keeping its other sighting.
+  - Full gate green: unit 400, native 24/24.
+- **Open:**
+  - The preview readback with real providers (a bed photo, a two-part video, a re-scanned piece).
+  - The owner's phone test: a hand-held scan of about 10 pieces and one photo of the bed.
+  - Clef's same-garment calls are not yet measured on real wardrobes, nor the extra SAM prompts on real beds.
+  - Camera shots join no import.
+  - A link capture (the boards session's M6) will go through the same tray and match step.
+
 ## The turn on a hanger, milestone B — 2026-10-30
 
 A piece's clean picture turns on a wooden hanger, made on request for 5 credits. The owner chose to use the existing
