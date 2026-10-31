@@ -6,6 +6,49 @@ export const site = style({
   marginInline: 'auto',
   paddingInline: 'max(20px, env(safe-area-inset-left), env(safe-area-inset-right))',
 })
+/** With the rail on a wide screen the top bar goes: the wordmark sits above the rail and you under it. */
+export const mastheadBesideRail = style({ '@media (min-width: 900px)': { display: 'none' } })
+export const withRail = style({ '@media (min-width: 900px)': { paddingBlockStart: '32px' } })
+/** The wordmark above the rail (Gallery `.rail-logo`), on a wide screen only. */
+export const railLogo = style({
+  display: 'none',
+  '@media (min-width: 900px)': {
+    position: 'fixed',
+    insetBlockStart: '28px',
+    insetInlineStart: '24px',
+    zIndex: 6,
+    display: 'grid',
+    placeItems: 'center',
+    inlineSize: '64px',
+    minBlockSize: '44px',
+  },
+})
+/** You, in a small glass rail of your own under the nav rail (Gallery `.rail-low`), on a wide screen only. */
+export const railLow = style({
+  display: 'none',
+  '@media (min-width: 900px)': {
+    position: 'fixed',
+    insetBlockEnd: '24px',
+    insetInlineStart: '24px',
+    zIndex: 6,
+    display: 'grid',
+    placeItems: 'center',
+    inlineSize: '64px',
+    blockSize: '64px',
+    borderRadius: 'pill',
+    backgroundColor: 'glass',
+    backdropFilter: 'blur(24px) saturate(160%)',
+    WebkitBackdropFilter: 'blur(24px) saturate(160%)',
+    boxShadow: 'glass',
+    // The avatar sits in the middle here, not pulled to a bar's end.
+    '& > a': { marginInlineEnd: '0' },
+  },
+  '@media (min-width: 900px) and (prefers-reduced-transparency: reduce)': {
+    backgroundColor: 'stock',
+    backdropFilter: 'none',
+    WebkitBackdropFilter: 'none',
+  },
+})
 export const masthead = style({
   display: 'flex',
   flexWrap: 'wrap',
@@ -165,7 +208,7 @@ export const appNav = style({
   backgroundColor: 'glass',
   backdropFilter: 'blur(24px) saturate(160%)',
   WebkitBackdropFilter: 'blur(24px) saturate(160%)',
-  boxShadow: 'inset 0 0 0 1px oklch(1 0 0 / 0.6), 0 2px 6px oklch(0 0 0 / 0.1), 0 20px 48px oklch(0 0 0 / 0.1) !custom',
+  boxShadow: 'glass',
   translate: '-50% 0',
   // Stays put while a tab change cross-fades the page under it (GlobalStyles.ts).
   viewTransitionName: 'styld-nav',
@@ -207,7 +250,7 @@ export const navAsk = style({
   blockSize: '60px',
   backgroundColor: 'ink',
   color: 'onInk',
-  boxShadow: '0 4px 14px oklch(0 0 0 / 0.16) !custom',
+  boxShadow: 'lift2',
   '&[aria-current="page"]': {
     backgroundColor: 'ink',
     color: 'onInk',

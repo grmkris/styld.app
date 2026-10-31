@@ -125,7 +125,7 @@ export const unpin = style({
   backgroundColor: 'stock',
   color: 'ink',
   cursor: 'pointer',
-  boxShadow: '0 1px 4px oklch(0 0 0 / 0.12) !custom',
+  boxShadow: 'overPhoto',
 })
 export const empty = style({ display: 'grid', gap: '4px', color: 'ink2' })
 export const emptyTitle = style({ fontWeight: 600, color: 'ink' })

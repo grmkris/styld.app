@@ -83,6 +83,12 @@ export const { style, vars } = defineConfig({
       dropTarget: 'inset 0 0 0 2px #2f4f7c',
       // A paper halo that keeps the resize handle's dot clear of what it sits on.
       handleHalo: '0 0 0 3px #f1eee7',
+      // Gallery's lift-2: something raised above the page, as the ink Ask circle.
+      lift2: '0 2px 6px oklch(0 0 0 / 0.1), 0 20px 48px oklch(0 0 0 / 0.1)',
+      // The floating glass nav and rail: a light inner edge over lift-2.
+      glass: 'inset 0 0 0 1px oklch(1 0 0 / 0.6), 0 2px 6px oklch(0 0 0 / 0.1), 0 20px 48px oklch(0 0 0 / 0.1)',
+      // A small round over a picture, such as a pin's ×.
+      overPhoto: '0 1px 4px oklch(0 0 0 / 0.12)',
       // A switch that is off: a 1.5px ink-3 ring, so its edge keeps 3:1 on the paper (WCAG 1.4.11).
       switchEdge: 'inset 0 0 0 1.5px #6b635b',
     },

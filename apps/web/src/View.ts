@@ -4,6 +4,7 @@ import { Option, String } from 'effect'
 import { AsyncData } from 'foldkit'
 import type { Document, Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
+import type { Html as Styles } from 'zyzz/runtime'
 import { LocaleSave, Message, type Model, Session } from './App.ts'
 import { actionButton } from './ActionButton.ts'
 import { primaryAction, secondaryAction } from './Actions.styles.ts'
@@ -49,6 +50,10 @@ import {
   footerLinks,
   intro,
   masthead,
+  mastheadBesideRail,
+  railLogo,
+  railLow,
+  withRail,
   picker,
   pickerError,
   pickerSelect,
@@ -300,10 +305,19 @@ const navigationInitial = (model: Model) =>
 /** Tab pages keep the footer below the fold while they fill in, so nothing on screen moves. */
 const siteStyle = (hasNavigation: boolean, isTab: boolean, hasActionBand: boolean) => {
   // The band's padding wins over the tab bar's; the rail's inline padding stays.
-  if (hasActionBand) return hasNavigation ? cx(site(), withTabBar(), withActionBand()) : cx(site(), withActionBand())
-  if (hasNavigation) return isTab ? cx(site(), withTabBar(), tabPage()) : cx(site(), withTabBar())
+  if (hasActionBand)
+    return hasNavigation ? cx(site(), withTabBar(), withRail(), withActionBand()) : cx(site(), withActionBand())
+  if (hasNavigation)
+    return isTab ? cx(site(), withTabBar(), withRail(), tabPage()) : cx(site(), withTabBar(), withRail())
   return isTab ? cx(site(), tabPage()) : site()
 }
+
+/** The wordmark, home: in the top bar, and above the rail on a wide screen. */
+const wordmark = (style: Styles.Attributes, h: HtmlBuilder<Message>): Html =>
+  h.a(
+    [h.Href(homeRouter({})), ...styled(h, style), h.AriaLabel('Styld')],
+    [h.img([h.Src('/brand/wordmark.svg'), h.Alt('Styld'), h.Width('53'), h.Height('20'), ...styled(h, brandMark())])],
+  )
 
 /** Someone signed in, or on their way in with a session cookie: Home is their table rather than the landing page,
  * and public pages offer them Follow, Save and Report rather than a way to sign in. */
@@ -487,19 +501,9 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
     lang: locale,
     dir: direction(locale) === 'rtl' ? 'Rtl' : 'Ltr',
     body: h.div(styled(h, shell), [
-      h.header(styled(h, masthead()), [
-        h.a(
-          [h.Href(homeRouter({})), ...styled(h, brand()), h.AriaLabel('Styld')],
-          [
-            h.img([
-              h.Src('/brand/wordmark.svg'),
-              h.Alt('Styld'),
-              h.Width('53'),
-              h.Height('20'),
-              ...styled(h, brandMark()),
-            ]),
-          ],
-        ),
+      // With the rail on a wide screen the top bar gives way to the wordmark above the rail and you under it.
+      h.header(styled(h, initial === undefined ? masthead() : cx(masthead(), mastheadBesideRail())), [
+        wordmark(brand(), h),
         initial === undefined ? sessionLink(model, h) : youLink(model, initial, h),
       ]),
       AppRoute.match(model.route, {
@@ -526,6 +530,8 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
         NotFound: () => notFoundView(locale, h),
       }),
       initial === undefined ? h.empty : appNavigation(model, initial, h),
+      initial === undefined ? h.empty : wordmark(railLogo(), h),
+      initial === undefined ? h.empty : h.div(styled(h, railLow()), [youLink(model, initial, h)]),
       // The language, named, then Diagnostics and Contact together at the other end.
       h.footer(styled(h, footer()), [
         languagePicker(model, h),
