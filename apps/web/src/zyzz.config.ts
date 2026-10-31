@@ -18,8 +18,8 @@ export const { style, vars } = defineConfig({
       inkHover: 'color-mix(in oklab, #1c1410 86%, #f1eee7)',
       // Secondary text and meta.
       ink2: '#5d554e',
-      // Tertiary text: counts, dividers' words, placeholders.
-      ink3: '#8b827a',
+      // Tertiary text: counts, dividers' words, placeholders. At least 4.5:1 on paper, paper-2 and stock.
+      ink3: '#6b635b',
       rule: '#ddd6cc',
       // The one slate accent: link underlines and state such as work in progress (DESIGN.md › Signal).
       signal: '#2f4f7c',

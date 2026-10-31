@@ -31,12 +31,14 @@ skill covers usage). Add a token there before a screen needs a new value.
 | ink: text and the primary fill                              | `#1c1410`             | `ink`              |
 | hovered ink fill                                            | ink 86% towards paper | `inkHover`         |
 | ink-2: secondary text and meta                              | `#5d554e`             | `ink2`             |
-| ink-3: counts, placeholders, the word in a divider          | `#8b827a`             | `ink3`             |
+| ink-3: counts, placeholders, the word in a divider          | `#6b635b`             | `ink3`             |
 | rule: hairlines and field edges                             | `#ddd6cc`             | `rule`             |
 | signal: the one slate accent                                | `#2f4f7c`             | `signal`           |
 | on-ink: text and icons on an ink fill                       | `#f7f4ee`             | `onInk`            |
 | focus ring                                                  | `#2f5bd3`             | `focus`            |
 | error text, invalid field edge                              | v2's own              | `error`, `invalid` |
+
+Text in ink-3 keeps 4.5:1 on paper, paper-2 and stock (`#8b827a` until 2026-10-31 was 3.25:1).
 
 Radii: `photo` 4px, `field` 12px, `panel` 16px, `sheet` 24px, `table` 28px (the paper of a table), `pill` for actions,
 chips, the search field and the floating nav. Spacing: a 20px page gutter (plus the safe-area insets), 16px between grid
