@@ -275,7 +275,7 @@ const verifyBoardPage = async (page: Page, origin: string) => {
 
   // The piece taken off goes back on from its own page.
   await page.goto(`${origin}/wardrobe`, { waitUntil: 'networkidle' })
-  await page.getByRole('link', { name: 'Derby shoes' }).first().click()
+  await page.getByRole('link', { name: 'Derby shoes', exact: true }).first().click()
   await page.getByRole('button', { name: 'Save to board' }).click()
   await page.getByRole('button', { name: /^Weekend away/ }).click()
   await page.getByText('Saved to Weekend away').waitFor({ state: 'visible' })

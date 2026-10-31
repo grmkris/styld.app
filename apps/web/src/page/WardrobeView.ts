@@ -93,7 +93,8 @@ const pieceTile = (piece: Piece, locale: Locale, h: HtmlBuilder<Message>): Html 
       h.a(
         [h.Href(pieceRouter({ pieceId: piece.id })), ...styled(h, styles.cut())],
         [
-          h.img([h.Src(thumbnailPath(piece)), h.Alt(label), h.Loading('lazy'), ...styled(h, styles.cutImage())]),
+          // The caption names the piece; the picture would only say it twice.
+          h.img([h.Src(thumbnailPath(piece)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.cutImage())]),
           h.span(styled(h, styles.caption()), [label]),
           pieceState(piece, locale, h),
         ],

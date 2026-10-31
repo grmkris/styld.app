@@ -1,6 +1,6 @@
 import { catalogVersion } from '@styld/i18n'
 import type { Piece } from '@styld/protocol'
-import { Command, click, expect, given, role, scene, text } from 'foldkit/scene'
+import { Command, click, expect, given, role, scene, selector, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { Session, init, update } from '../src/App.ts'
@@ -44,7 +44,9 @@ describe('the wardrobe page', () => {
       { update, view },
       given(loaded(tee, jeans)),
       expect(role('link', { name: 'White tee' })).toHaveAttr('href', `/wardrobe/${tee.id}`),
-      expect(role('img', { name: 'Jeans' })).toHaveAttr('src', `/cdn/pieces/${jeans.id}/thumb`),
+      // The caption names a piece once; its picture is decoration inside the link.
+      expect(role('link', { name: 'Jeans' })).toHaveAttr('href', `/wardrobe/${jeans.id}`),
+      expect(selector(`img[src="/cdn/pieces/${jeans.id}/thumb"]`)).toHaveAttr('alt', ''),
       expect(role('button', { name: 'All 2' })).toHaveAttr('aria-pressed', 'true'),
       expect(role('button', { name: 'Bottoms 1' })).toExist(),
       expect(role('button', { name: 'Shoes 1' })).not.toExist(),
