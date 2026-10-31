@@ -77,6 +77,12 @@ const suggested = { ...by, city: 'Maribor', bio: 'Red, black and one good coat.'
 const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
 const signedIn = (model: Model): Model => ({ ...model, session: Session.SignedIn({ claims }) })
 
+/** Explore with one rainy board among Styld's edits and the newest, and one person to follow. */
+const rainyExplore = () => {
+  const found = { board: nika.boards[0], by, moods: ['rain'] }
+  return Schema.decodeUnknownSync(Explore)({ edits: [found], featured: [], people: [suggested], newest: [found] })
+}
+
 describe('a public profile', () => {
   test('shows the person and their public boards, looks and pieces, signed out', () => {
     scene(
@@ -205,13 +211,7 @@ describe('a public profile', () => {
   })
 
   test('Explore shows Edits from Styld, people to follow and the newest boards, and filters by mood', () => {
-    const found = { board: nika.boards[0], by, moods: ['rain'] }
-    const explore = Schema.decodeUnknownSync(Explore)({
-      edits: [found],
-      featured: [],
-      people: [suggested],
-      newest: [found],
-    })
+    const explore = rainyExplore()
     scene(
       { update, view },
       given(visiting('/explore', Shown.Explore({ explore }))),
@@ -230,13 +230,7 @@ describe('a public profile', () => {
   })
 
   test('Explore reads search, Edits from Styld, the newest boards with their moods under the head, then people', () => {
-    const found = { board: nika.boards[0], by, moods: ['rain'] }
-    const explore = Schema.decodeUnknownSync(Explore)({
-      edits: [found],
-      featured: [],
-      people: [suggested],
-      newest: [found],
-    })
+    const explore = rainyExplore()
     const headings = all.role('heading', { level: 2 })
     scene(
       { update, view },
