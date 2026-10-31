@@ -93,3 +93,46 @@ index plays every film in place: `https://netcup.tail5acf67.ts.net/styld-film-co
 
 The phone story and the person story are cut from their wide film for phones (`make-site.ts … crop:<centre>`): a
 9:16 window frames the phone and the person well, and it saved six takes. Seams: joins 0.26–0.6 and wraps 0.96–0.97 against median steps of 0.39–0.56.
+
+## Round three: whole landing pages (2026-10-31)
+
+The owner asked for complete landing pages instead of a film on a thin page, with seven new concepts drawn from the
+31 October feature planning: one coat in six outfits, before you buy, shop your wardrobe, where to, mirror, the days
+it suited you, and a flip book. Each page is the full-screen hero, then:
+- the concept's own section;
+- how it works;
+- where you use it (the website, ChatGPT, Claude);
+- free to start, with a short FAQ;
+- the call to action again.
+
+The plan was to generate every film in one unattended run, capped at 45 Wan takes and 70 Qwen stills (`quota.ts`
+in the workspace stops every call at the cap, or after the first quota refusal). The first call was refused: the
+Alibaba Token Plan's monthly quota, shared with goblin, Purrable, vrials and Hermes, was used up again and resets on
+6 November at 16:00 UTC. Six concepts wait for it; the index lists them.
+
+Built without generation (template `site/_page/`, builder `make-page.ts`, check `page-check.ts`):
+- **Flip book** (`styld-page-flipbook`): no video. An open paper book whose right-hand page is cut into three stacks
+  (tops, bottoms, shoes) from the stand-in cut-outs. Pages turn every 2.6 s while it is on screen. A tap, a swipe or
+  the arrow keys turn one page. The headline counts pieces and outfits with each language's plural rules (`9 kosov,
+  24 videzov.`).
+- **The four round-two stories as whole pages** (`styld-page-paperwardrobe|wardrobepage|phone|atboard`). Their
+  Slovenian now uses the app's word "videz" instead of "oprava".
+- **Below the fold:**
+  - The clips are ping-pongs, a stretch of a film forward and then backward without repeating the turning frames,
+    so each loops seamlessly by construction.
+  - They are cropped to two thirds around the film's subject, 768×432, 118–273 KB each.
+  - A clip plays only while on screen.
+  - One fixed pause control stops all motion on the page.
+
+Evidence (Chromium, 1440×900 and 390×844, en, sl and reduced motion, on all five pages):
+- no page errors and no failed requests;
+- no copy overflowing and no sideways scroll;
+- only clips on screen play;
+- with reduced motion no video is requested and nothing turns by itself;
+- the flip book's taps and arrow keys turn the right stack, and its labels and counter follow.
+
+Open:
+- The six waiting films.
+- The women's and unisex capsules for them.
+- The page weight: hero films are 3.5–4.7 MB wide.
+- Safari on a real iPhone.
