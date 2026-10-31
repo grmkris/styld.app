@@ -28,7 +28,34 @@ studio, design, outfits, gallery, tryon, social, billing, operations). The worki
   preview and read back.
 - **Owner gates:** (1) the owner rates about 60 outfits from their own preview wardrobe, Fast against Thinking,
   before the templates build on the engine; (2) the try-on test's go/no-go, provider and price.
-- **Nothing is built yet.** The rows above are pending until each milestone records its evidence here.
+- **M1 clean-ups** (on main by `a595af1`; on the preview since `befb3d6`): the wishlist, `wardrobeShown`, the
+  profile's Pieces tab and the feed's "added a piece" are deleted (migrations `drop_wishes`, `drop_wardrobe_shown`);
+  four tabs with Explore in Home's head; mood boards pin the person's own pieces; stickers are keyed transparent;
+  unused v1 catalog keys are pruned.
+- **M2 garment types, attributes, browsing, the piece's back** (`f81a884`…`c7321b2`, preview `befb3d6`): 29
+  shop-style types in three groups; season, occasions and pattern suggested by Clef at capture and, for every piece
+  carried over, by the ten-minute sweep (50 a batch; retyped within its group at 0.6 or more); brand and shop link;
+  group and type chips, a 3/4/6-column grid and a filter sheet (colour, season, occasion, brand); a piece's back
+  (`PUT`/`DELETE /api/pieces/:id/back`, owner-only). Evidence: unit, Story and Scene tests; native
+  WardrobeAcceptance (back owner-only, attributes); preview: all 10 test-account pieces mapped to types. Not done:
+  the sweep's preview readback, the piece page's Create board / In your photos / In your looks, link import reading
+  the brand.
+- **M3 outfit engine** (`84df8a6`…`befb3d6`, preview `befb3d6`): `POST /api/outfits`, MCP `outfit_make` and Styld's
+  tool; Fast (rules propose, Clef ranks on cached judging pictures) and Thinking (DeepSeek V4.1 Flash proposes through
+  the one text model seam in `packages/server/src/ai/`, the rules check, Clef ranks); Fast 30 and Thinking 6 a
+  minute, Thinking 50 a day (`thinking_days`); `outfit.make/keep.<mode>` in Analytics Engine and a Fast-against-
+  Thinking section in `tools/ai-usage-report.ts`; Home's Spin asks Fast and Wear this reports the proposal. Evidence:
+  rules unit tests (whole outfits, fixed pieces, one statement piece, seasons, sets for sport, seen never repeated,
+  drawings preferred), native OutfitAcceptance (whole ranked batches, seen, anchor, foreign pieces refused, Thinking
+  stand-in, unusable answer → 503, Thinking's pace → 429, the daily cap on D1); full gate green (539 unit, native
+  26/26, initial bundle 351,216 gzip bytes). Preview: Fast 4.5 s cold and 3.9 s warm for three outfits, Thinking
+  14.5 s; browser walk (phone en and sl, desktop en): Home's table in 4–6 s, Spin changes it, no page errors or 5xx.
+- **Owner gate 1 is next, and needs a wardrobe:** the blind rating page (`~/code/meta-hackathon/out/styld-outfit-calibration/`,
+  outside the repo) asks both ways for three outfits in a dozen situations. The preview test account holds only 10
+  fixture garments (seven tops, two trousers, one pair of shoes), too few to judge the ways by; it needs a good share
+  of the owner's own clothes first.
+- **Open from M2–M3:** Home waits 4–6 s for its first table while Clef ranks twelve candidates (fewer candidates, or
+  ranking after showing, are options); Thinking takes about 15 s.
 
 ## Hung requests, the telemetry check and the owner's mood board — 2026-10-31
 
