@@ -1,0 +1,128 @@
+import { format, type Locale } from '@styld/i18n'
+import type { Photo } from '@styld/protocol'
+import { AsyncData, Submodel } from 'foldkit'
+import type { Html, HtmlBuilder } from 'foldkit/html'
+import { cx } from 'zyzz'
+import { secondaryAction } from '../Actions.styles.ts'
+import { loader } from '../Icon.ts'
+import { intlLocale } from '../Locale.ts'
+import { photoRouter } from '../route.ts'
+import { block } from '../Skeleton.styles.ts'
+import { styled } from '../Styled.ts'
+import { visuallyHidden } from '../VisuallyHidden.styles.ts'
+import { couldNotLoad } from './LooksView.ts'
+import { Adding, Message, type Model } from './Photos.ts'
+import * as styles from './PhotosView.styles.ts'
+import { wardrobeMain } from './WardrobeTabs.ts'
+import { message as messageSection, messageTitle } from './WardrobeView.styles.ts'
+
+interface Inputs {
+  readonly locale: Locale
+  readonly timeZone: string
+}
+
+/** The day a photo was added, in the person's own time zone: "31 Oct". */
+export const photoDate = (createdAt: string, { locale, timeZone }: Inputs) =>
+  new Intl.DateTimeFormat(intlLocale(locale), { day: 'numeric', month: 'short', timeZone }).format(new Date(createdAt))
+
+const tile = (photo: Photo, inputs: Inputs, h: HtmlBuilder<Message>): Html =>
+  h.keyed('li')(
+    photo.id,
+    [],
+    [
+      h.a(
+        [
+          h.Href(photoRouter({ photoId: photo.id })),
+          h.AriaLabel(format(inputs.locale, 'photos.open', { date: photoDate(photo.createdAt, inputs) })),
+          ...styled(h, styles.tile()),
+        ],
+        [
+          h.img([
+            h.Src(`/cdn/photos/${photo.id}/thumb`),
+            h.Alt(''),
+            h.Loading('lazy'),
+            ...styled(h, styles.tileImage()),
+          ]),
+          photo.status === 'finding'
+            ? h.span(styled(h, styles.badge()), [loader(h), format(inputs.locale, 'photos.finding', {})])
+            : photo.favourite
+              ? h.span(styled(h, styles.badge()), [format(inputs.locale, 'photos.favourite', {})])
+              : h.empty,
+        ],
+      ),
+    ],
+  )
+
+/** Adding a photo: one at a time, for a credit, with how it went. */
+const addView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  const sending = Adding.guards.Sending(model.adding)
+  return h.div(styled(h, styles.add()), [
+    sending
+      ? h.p([h.Role('status'), ...styled(h, styles.note())], [loader(h), format(locale, 'photos.sending', {})])
+      : h.label(
+          [h.For('add-photo'), ...styled(h, secondaryAction())],
+          [
+            format(locale, 'photos.add', {}),
+            h.input([
+              h.Id('add-photo'),
+              h.Type('file'),
+              h.Accept('image/*'),
+              h.AriaDescribedBy('add-photo-cost'),
+              h.OnFileChange((files) => Message.ChosePhoto({ files })),
+              ...styled(h, visuallyHidden()),
+            ]),
+          ],
+        ),
+    h.p([h.Id('add-photo-cost'), ...styled(h, styles.note())], [format(locale, 'photos.addCost', {})]),
+    Adding.guards.Failed(model.adding)
+      ? h.p(
+          [h.Role('alert'), ...styled(h, styles.note())],
+          [format(locale, model.adding.spent ? 'photos.spent' : 'photos.addFailed', {})],
+        )
+      : h.empty,
+  ])
+}
+
+const skeletonTiles = ['a', 'b'] as const
+
+const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
+  h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
+  h.ul(
+    [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.grid())],
+    skeletonTiles.map((slot) => h.keyed('li')(slot, [], [h.span(styled(h, cx(block(), styles.tile())))])),
+  ),
+]
+
+const photosPage = (model: Model, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
+  const { locale } = inputs
+  return wardrobeMain(
+    'gallery',
+    styles.photosPage(),
+    AsyncData.matchData(model.photos, {
+      onEmpty: () => loadingView(locale, h),
+      onFailure: () => [couldNotLoad(format(locale, 'photos.loadFailed', {}), locale, h, Message.ClickedRetry())],
+      onData: (photos) =>
+        photos.length === 0
+          ? [
+              // Empty, the one action that fills it (DESIGN › Copy).
+              h.section(styled(h, messageSection()), [
+                h.h2(styled(h, messageTitle()), [format(locale, 'photos.emptyTitle', {})]),
+                h.p([], [format(locale, 'photos.emptyHint', {})]),
+                addView(model, locale, h),
+              ]),
+            ]
+          : [
+              addView(model, locale, h),
+              h.ul(
+                styled(h, styles.grid()),
+                photos.map((photo) => tile(photo, inputs, h)),
+              ),
+            ],
+    }),
+    locale,
+    h,
+  )
+}
+
+/** My Gallery: the person's own outfit photos, private. */
+export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, h) => photosPage(model, inputs, h))

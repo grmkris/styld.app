@@ -19,6 +19,7 @@ import * as BoardsView from './page/BoardsView.ts'
 import * as ReviewView from './page/ReviewView.ts'
 import { stylistPage } from './StylistPage.ts'
 import * as LooksView from './page/LooksView.ts'
+import { photoPage, photosPage } from './GalleryView.ts'
 import * as LookView from './page/LookView.ts'
 import * as VisitView from './page/VisitView.ts'
 import * as ProfileEditorView from './page/ProfileEditorView.ts'
@@ -212,6 +213,8 @@ const titleKey = AppRoute.match<MessageKey>({
   Review: () => 'scan.toReview',
   Looks: () => 'looks.title',
   Look: () => 'looks.title',
+  Photos: () => 'wardrobe.tabGallery',
+  Photo: () => 'wardrobe.tabGallery',
   Profile: () => 'profile.editor.title',
   Ask: () => 'ask.title',
   Stylist: () => 'stylist.title',
@@ -235,6 +238,8 @@ const sectionOf = AppRoute.match<Section | undefined>({
   Piece: () => 'wardrobe',
   Looks: () => 'wardrobe',
   Look: () => 'wardrobe',
+  Photos: () => 'wardrobe',
+  Photo: () => 'wardrobe',
   Profile: () => 'you',
   Ask: () => 'ask',
   Stylist: () => 'ask',
@@ -492,6 +497,8 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
         Review: () => reviewPage(model, h),
         Looks: () => looksPage(model, h),
         Look: () => lookPage(model, h),
+        Photos: () => photosPage(model, h),
+        Photo: () => photoPage(model, h),
         Profile: () => profilePage(model, h),
         Ask: () => askPage(model, h),
         Stylist: () => stylistPage(model, h),

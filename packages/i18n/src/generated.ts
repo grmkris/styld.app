@@ -342,6 +342,37 @@ export interface MessageArgumentsByKey<_T = string> {
   'people.savedFromOthers': Readonly<Record<string, never>>
   'people.signInToFollow': Readonly<Record<string, never>>
   'people.signInToSave': Readonly<Record<string, never>>
+  'photo.addToWardrobe': Readonly<Record<string, never>>
+  'photo.change': Readonly<Record<string, never>>
+  'photo.delete': Readonly<Record<string, never>>
+  'photo.deleteQuestion': Readonly<Record<string, never>>
+  'photo.findFailed': Readonly<Record<string, never>>
+  'photo.garmentsTitle': Readonly<Record<string, never>>
+  'photo.isItThis': Readonly<Record<string, never>>
+  'photo.lookName': { readonly date: string | number }
+  'photo.noneOfThese': Readonly<Record<string, never>>
+  'photo.notFound': Readonly<Record<string, never>>
+  'photo.notInWardrobe': Readonly<Record<string, never>>
+  'photo.notThis': Readonly<Record<string, never>>
+  'photo.offered': Readonly<Record<string, never>>
+  'photo.openLook': Readonly<Record<string, never>>
+  'photo.pick': Readonly<Record<string, never>>
+  'photo.toReview': Readonly<Record<string, never>>
+  'photo.wearAgain': Readonly<Record<string, never>>
+  'photo.workFailed': Readonly<Record<string, never>>
+  'photo.yes': Readonly<Record<string, never>>
+  'photos.add': Readonly<Record<string, never>>
+  'photos.addCost': Readonly<Record<string, never>>
+  'photos.addFailed': Readonly<Record<string, never>>
+  'photos.back': Readonly<Record<string, never>>
+  'photos.emptyHint': Readonly<Record<string, never>>
+  'photos.emptyTitle': Readonly<Record<string, never>>
+  'photos.favourite': Readonly<Record<string, never>>
+  'photos.finding': Readonly<Record<string, never>>
+  'photos.loadFailed': Readonly<Record<string, never>>
+  'photos.open': { readonly date: string | number }
+  'photos.sending': Readonly<Record<string, never>>
+  'photos.spent': Readonly<Record<string, never>>
   'profile.card.loadFailed': Readonly<Record<string, never>>
   'profile.card.private': { readonly username: string | number }
   'profile.card.public': { readonly username: string | number }
@@ -640,6 +671,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.showPieces': { readonly count: number }
   'wardrobe.sides': Readonly<Record<string, never>>
   'wardrobe.statusProcessing': Readonly<Record<string, never>>
+  'wardrobe.tabGallery': Readonly<Record<string, never>>
   'wardrobe.tabPieces': Readonly<Record<string, never>>
   'wardrobe.title': Readonly<Record<string, never>>
   'wardrobe.turn.building': Readonly<Record<string, never>>
@@ -748,4 +780,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '3b11ee5c67b0beb242e3e538508fce66dde7b4f6a7fc15dbbd6a567c55be4919'
+export const catalogVersion = '5782c8f6577259d746c57ed3315082667655f48d42013f38bf402467eb9ea1e1'

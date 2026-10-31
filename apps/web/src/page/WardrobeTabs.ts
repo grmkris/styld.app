@@ -1,19 +1,20 @@
 import { format, type Locale } from '@styld/i18n'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import type { Html as Styles } from 'zyzz/runtime'
-import { looksRouter, wardrobeRouter } from '../route.ts'
+import { looksRouter, photosRouter, wardrobeRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { addPiecesAction, pageTitle } from './PageHead.ts'
 import * as styles from './WardrobeTabs.styles.ts'
 
-type WardrobeTab = 'pieces' | 'looks'
+type WardrobeTab = 'pieces' | 'looks' | 'gallery'
 
 const tabs = [
   { tab: 'pieces', href: wardrobeRouter({}), label: 'wardrobe.tabPieces' },
   { tab: 'looks', href: looksRouter({}), label: 'looks.title' },
+  { tab: 'gallery', href: photosRouter({}), label: 'wardrobe.tabGallery' },
 ] as const
 
-/** Wardrobe's tabs: your pieces and the looks made from them (Gallery 2). */
+/** Wardrobe's tabs: your pieces, the looks made from them, and your outfit photos (Gallery 2; owner, 2026-10-31). */
 const wardrobeTabs = <Message>(current: WardrobeTab, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.nav(
     [h.AriaLabel(format(locale, 'wardrobe.title', {})), ...styled(h, styles.tabs())],

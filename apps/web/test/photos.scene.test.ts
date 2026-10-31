@@ -1,0 +1,83 @@
+import { Photo as PhotoContract, PhotoGarmentId } from '@styld/protocol'
+import { Option, Schema } from 'effect'
+import { click, expect, given, inside, role, scene, text } from 'foldkit/scene'
+import { modifyFields } from 'foldkit/struct'
+import { describe, test } from 'vitest'
+import { update } from '../src/App.ts'
+import * as Photo from '../src/page/Photo.ts'
+import { PiecesData } from '../src/page/Wardrobe.ts'
+import { view } from '../src/View.ts'
+import { signedInAt } from './AppFixtures.ts'
+import { pieceFixture } from './WardrobeFixtures.ts'
+
+const tee = pieceFixture('tee', { type: 'tops', name: 'White tee' })
+const shirt = pieceFixture('shirt', { type: 'shirts', name: 'Oxford shirt' })
+const jeans = pieceFixture('jeans', { type: 'jeans', name: 'Blue jeans' })
+const garment = (id: string, fields: object) => ({
+  id: PhotoGarmentId.make(`pg_${id.padEnd(22, 'x')}`),
+  colours: [],
+  ...fields,
+})
+const photo = Schema.decodeUnknownSync(PhotoContract)({
+  id: `ph_${'beach'.padEnd(22, 'x')}`,
+  status: 'ready',
+  favourite: false,
+  garments: [
+    garment('top', { type: 'tops', match: 'suggested', pieceId: tee.id }),
+    garment('bottom', { type: 'jeans', match: 'confirmed', pieceId: jeans.id }),
+    garment('shoes', { type: 'trainers', match: 'unmatched', pieceId: null }),
+  ],
+  lookId: null,
+  hasCutout: false,
+  createdAt: '2026-10-31T10:00:00.000Z',
+})
+
+/** The photo's page with the wardrobe read. */
+const onPhoto = () =>
+  modifyFields(signedInAt(`/wardrobe/gallery/${photo.id}`), {
+    wardrobe: (wardrobe) => modifyFields(wardrobe, { pieces: () => PiecesData.Success({ data: [tee, shirt, jeans] }) }),
+    photo: () => ({ ...Photo.init(photo.id), shown: Photo.Shown.Loaded({ photo }), choosing: Option.none() }),
+  })
+
+describe('an outfit photo’s page', () => {
+  test('asks about Styld’s guess, names a confirmed piece, and offers what the wardrobe lacks', () => {
+    scene(
+      { update, view },
+      given(onPhoto()),
+      inside(
+        role('region', { name: 'What you’re wearing' }),
+        expect(text('Is it this one?')).toExist(),
+        expect(role('button', { name: 'Yes, that’s it' })).toExist(),
+        expect(text('Blue jeans')).toExist(),
+        expect(role('button', { name: 'Add to wardrobe' })).toExist(),
+      ),
+      // A confirmed piece makes the photo something to wear again.
+      expect(role('button', { name: 'Wear it again' })).toExist(),
+      expect(role('button', { name: 'Favourite' })).toHaveAttr('aria-pressed', 'false'),
+    )
+  })
+
+  test('Not this one opens the wardrobe’s pieces of that kind, and none of them', () => {
+    scene(
+      { update, view },
+      given(onPhoto()),
+      click(role('button', { name: 'Not this one' })),
+      inside(
+        role('group', { name: 'Choose from your wardrobe' }),
+        expect(role('button', { name: 'White tee' })).toExist(),
+        expect(role('button', { name: 'Oxford shirt' })).toExist(),
+        expect(role('button', { name: 'Blue jeans' })).not.toExist(),
+      ),
+      expect(role('button', { name: 'None of my pieces' })).toExist(),
+    )
+  })
+
+  test('the wardrobe’s tabs lead to the gallery', () => {
+    scene(
+      { update, view },
+      given(signedInAt('/wardrobe/gallery')),
+      expect(role('link', { name: 'Gallery' })).toHaveAttr('aria-current', 'page'),
+      expect(role('link', { name: 'Gallery' })).toHaveAttr('href', '/wardrobe/gallery'),
+    )
+  })
+})

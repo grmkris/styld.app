@@ -7,11 +7,14 @@ import { Navigate } from './Navigation.ts'
 import * as Account from './page/Account.ts'
 import * as Ask from './page/Ask.ts'
 import * as Boards from './page/Boards.ts'
+import * as Look from './page/Look.ts'
 import * as Looks from './page/Looks.ts'
+import * as Photo from './page/Photo.ts'
+import * as Photos from './page/Photos.ts'
 import * as Today from './page/Today.ts'
 import * as Visit from './page/Visit.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
-import { type AppRoute, boardRouter } from './route.ts'
+import { type AppRoute, boardRouter, looksRouter, photosRouter } from './route.ts'
 
 // What opening each tab page asks for, on a first load and on every tab change (App.ts `init` and `changedUrl`):
 // each page's own entry, folded into the app.
@@ -36,6 +39,51 @@ const foldLooksRevisit = Update.foldChildStep({
   read: (model: Model) => Option.some(model.looks),
   write: (model: Model, looks: Looks.Model) => modifyFields(model, { looks: () => looks }),
   toParentMessage: (message: Looks.Message) => Message.GotLooksMessage({ message }),
+})
+
+const foldPhotosRevisit = Update.foldChildStep({
+  update: Photos.revisit,
+  read: (model: Model) => Option.some(model.photos),
+  write: (model: Model, photos: Photos.Model) => modifyFields(model, { photos: () => photos }),
+  toParentMessage: (message: Photos.Message) => Message.GotPhotosMessage({ message }),
+})
+
+/** My Gallery inside the app. */
+export const foldPhotos = Update.foldChild({
+  update: Photos.update,
+  read: (model: Model) => Option.some(model.photos),
+  write: (model: Model, photos: Photos.Model) => modifyFields(model, { photos: () => photos }),
+  toParentMessage: (message: Photos.Message) => Message.GotPhotosMessage({ message }),
+})
+
+/** The looks inside the app. */
+export const foldLooks = Update.foldChild({
+  update: Looks.update,
+  read: (model: Model) => Option.some(model.looks),
+  write: (model: Model, looks: Looks.Model) => modifyFields(model, { looks: () => looks }),
+  toParentMessage: (message: Looks.Message) => Message.GotLooksMessage({ message }),
+})
+
+/** A look's page: deleting it goes back to the looks. */
+export const foldLook = Update.foldChild({
+  update: Look.update,
+  read: (model: Model) => Option.some(model.look),
+  write: (model: Model, look: Look.Model) => modifyFields(model, { look: () => look }),
+  toParentMessage: (message: Look.Message) => Message.GotLookMessage({ message }),
+  foldOutMessage: Look.OutMessage.match<Update.Step<Model, Message, Services>>({
+    DeletedLook: () => (stepModel) => ({ model: stepModel, commands: [Navigate({ href: looksRouter({}) })] }),
+  }),
+})
+
+/** One photo of My Gallery: deleting it goes back to the Gallery. */
+export const foldPhoto = Update.foldChild({
+  update: Photo.update,
+  read: (model: Model) => Option.some(model.photo),
+  write: (model: Model, photo: Photo.Model) => modifyFields(model, { photo: () => photo }),
+  toParentMessage: (message: Photo.Message) => Message.GotPhotoMessage({ message }),
+  foldOutMessage: Photo.OutMessage.match<Update.Step<Model, Message, Services>>({
+    DeletedPhoto: () => (stepModel) => ({ model: stepModel, commands: [Navigate({ href: photosRouter({}) })] }),
+  }),
 })
 
 const foldBoardsRevisit = Update.foldChildStep({
@@ -90,6 +138,7 @@ export const openPage = (route: AppRoute, hasSessionCookie: boolean): ReadonlyAr
     Match.tag('Wardrobe', () => [foldWardrobeEnter]),
     Match.tag('Ask', ({ q }) => [foldWardrobeRevisit, foldAskEnter(q)]),
     Match.tag('Looks', () => [foldLooksRevisit]),
+    Match.tag('Photos', () => [foldPhotosRevisit]),
     Match.tag('Boards', () => [foldBoardsRevisit]),
     Match.tag('Explore', () => [foldExploreEnter]),
     // The account needs a session; signed out the page sends the visitor to sign in.

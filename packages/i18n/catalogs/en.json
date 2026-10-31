@@ -110,6 +110,7 @@
     },
     "deletePieceConfirmBody": "This removes it from your wardrobe. This can't be undone.",
     "tabPieces": "Pieces",
+    "tabGallery": "Gallery",
     "picture": {
       "cleaned": "AI-cleaned picture",
       "drawing": "Drawing a clean picture…",
@@ -874,5 +875,40 @@
       "network": "Not sent. Try again."
     },
     "chatToday": "Today, {time}"
+  },
+  "photos": {
+    "back": "Back to the gallery",
+    "add": "Add a photo",
+    "addCost": "1 credit from today’s free allowance, for finding the clothes in it.",
+    "sending": "Sending…",
+    "spent": "Today’s free credits are spent. Try again tomorrow.",
+    "addFailed": "That photo didn’t go through. Try again.",
+    "emptyTitle": "Remember the outfits you love",
+    "emptyHint": "Add photos of yourself in outfits that worked. Styld finds the clothes and links them to your pieces. Only you see them.",
+    "loadFailed": "Your photos didn’t load.",
+    "finding": "Finding the clothes…",
+    "favourite": "Favourite",
+    "open": "Outfit photo from {date}"
+  },
+  "photo": {
+    "garmentsTitle": "What you’re wearing",
+    "isItThis": "Is it this one?",
+    "yes": "Yes, that’s it",
+    "notThis": "Not this one",
+    "change": "Change",
+    "pick": "Choose from your wardrobe",
+    "noneOfThese": "None of my pieces",
+    "notInWardrobe": "Not in your wardrobe yet",
+    "addToWardrobe": "Add to wardrobe",
+    "offered": "Waiting in your review tray",
+    "toReview": "Open the review tray",
+    "wearAgain": "Wear it again",
+    "lookName": "Outfit from {date}",
+    "openLook": "Open the look",
+    "delete": "Delete photo",
+    "deleteQuestion": "Delete this photo? Its pieces stay in your wardrobe.",
+    "workFailed": "That didn’t go through. Try again.",
+    "findFailed": "Styld couldn’t find the clothes in this photo. Your credit came back.",
+    "notFound": "This photo isn’t here any more."
   }
 }

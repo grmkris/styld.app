@@ -29,6 +29,9 @@ export const AppRoute = defineRouteUnion({
   Review: {},
   Piece: { pieceId: Schema.String },
   Looks: {},
+  /** My Gallery: the person's own outfit photos, a tab of the wardrobe. */
+  Photos: {},
+  Photo: { photoId: Schema.String },
   /** What the person wants one like: a tab of the wardrobe. */
   Look: { lookId: Schema.String },
   /** Search your wardrobe, ask the stylist through an assistant, or add clothes (Gallery 2's middle button). The
@@ -65,6 +68,13 @@ export const addPiecesRouter = pipe(literal('wardrobe'), slash(literal('add')), 
 export const reviewRouter = pipe(literal('wardrobe'), slash(literal('review')), mapTo(AppRoute.Review))
 export const pieceRouter = pipe(literal('wardrobe'), slash(string('pieceId')), mapTo(AppRoute.Piece))
 export const looksRouter = pipe(literal('looks'), mapTo(AppRoute.Looks))
+export const photosRouter = pipe(literal('wardrobe'), slash(literal('gallery')), mapTo(AppRoute.Photos))
+export const photoRouter = pipe(
+  literal('wardrobe'),
+  slash(literal('gallery')),
+  slash(string('photoId')),
+  mapTo(AppRoute.Photo),
+)
 export const lookRouter = pipe(literal('looks'), slash(string('lookId')), mapTo(AppRoute.Look))
 export const askRouter = pipe(
   literal('ask'),
@@ -101,7 +111,8 @@ export const personRouter = pipe(atHandle, mapTo(AppRoute.Person))
 export const publicPieceRouter = pipe(literal('pieces'), slash(string('pieceId')), mapTo(AppRoute.PublicPiece))
 export const exploreRouter = pipe(literal('explore'), mapTo(AppRoute.Explore))
 
-// `/wardrobe/add` and `/wardrobe/review` are declared before `/wardrobe/:pieceId`, which would otherwise take them.
+// `/wardrobe/add`, `/wardrobe/review` and `/wardrobe/gallery` are declared before `/wardrobe/:pieceId`, which would
+// otherwise take them.
 const parser = oneOf(
   loginForConnectionRouter,
   loginRouter,
@@ -109,6 +120,8 @@ const parser = oneOf(
   profileRouter,
   addPiecesRouter,
   reviewRouter,
+  photoRouter,
+  photosRouter,
   pieceRouter,
   wardrobeRouter,
   lookRouter,
@@ -176,6 +189,8 @@ export const needsSession = (route: AppRoute) =>
   AppRoute.guards.Review(route) ||
   AppRoute.guards.Piece(route) ||
   AppRoute.guards.Looks(route) ||
+  AppRoute.guards.Photos(route) ||
+  AppRoute.guards.Photo(route) ||
   AppRoute.guards.Ask(route) ||
   AppRoute.guards.Stylist(route) ||
   AppRoute.guards.Boards(route) ||
@@ -183,13 +198,15 @@ export const needsSession = (route: AppRoute) =>
 
 /** The pages the navigation moves between. They keep their place: each opens at once from what the app already
  * has, while every other page loads whole. */
-export const Tab = Schema.Literals(['Home', 'Explore', 'Wardrobe', 'Looks', 'Ask', 'Boards', 'Account'])
+export const Tab = Schema.Literals(['Home', 'Explore', 'Wardrobe', 'Looks', 'Photos', 'Ask', 'Boards', 'Account'])
 export type Tab = typeof Tab.Type
 
 export const tabOf = AppRoute.match<Option.Option<Tab>>({
   Home: () => Option.some('Home'),
   Wardrobe: () => Option.some('Wardrobe'),
   Looks: () => Option.some('Looks'),
+  Photos: () => Option.some('Photos'),
+  Photo: () => Option.none(),
   Ask: () => Option.some('Ask'),
   Stylist: () => Option.none(),
   Boards: () => Option.some('Boards'),

@@ -13,6 +13,10 @@ import { arrive, followLink, Navigate, returnAfterSignIn } from './Navigation.ts
 import {
   boardsFold,
   foldAskLeave,
+  foldLook,
+  foldLooks,
+  foldPhoto,
+  foldPhotos,
   foldStartBoard,
   foldVisitRetry,
   foldWardrobeRevisit,
@@ -38,6 +42,8 @@ import * as Login from './page/Login.ts'
 import * as Look from './page/Look.ts'
 import * as ProfileEditor from './page/ProfileEditor.ts'
 import * as Looks from './page/Looks.ts'
+import * as Photo from './page/Photo.ts'
+import * as Photos from './page/Photos.ts'
 import * as Piece from './page/Piece.ts'
 import * as Visit from './page/Visit.ts'
 import * as Review from './page/Review.ts'
@@ -48,7 +54,6 @@ import {
   connectionAuthorizePath,
   homeRouter,
   isSameTab,
-  looksRouter,
   needsSession,
   reviewRouter,
   routeFromPathname,
@@ -104,6 +109,8 @@ export const Model = Schema.Struct({
   stylist: Stylist.Model,
   looks: Looks.Model,
   look: Look.Model,
+  photos: Photos.Model,
+  photo: Photo.Model,
   profile: ProfileEditor.Model,
   today: Today.Model,
   ask: Ask.Model,
@@ -182,6 +189,7 @@ const pageCommands = (
   pages: {
     readonly piece: Piece.Model
     readonly look: Look.Model
+    readonly photo: Photo.Model
     readonly board: BoardModel.Model
     readonly visit: Visit.Model
   },
@@ -205,6 +213,11 @@ const pageCommands = (
     Match.tag('Look', () =>
       Command.mapMessages(Look.load(pages.look), (message) => Message.GotLookMessage({ message })),
     ),
+    // A photo's garments are matched to the person's pieces, so the page reads the wardrobe too.
+    Match.tag('Photo', () => [
+      ...Command.mapMessages(Photo.load(pages.photo), (message) => Message.GotPhotoMessage({ message })),
+      ...Command.mapMessages(Wardrobe.load(), (message) => Message.GotWardrobeMessage({ message })),
+    ]),
     Match.tag('Profile', () =>
       Command.mapMessages(ProfileEditor.load(), (message) => Message.GotProfileMessage({ message })),
     ),
@@ -216,6 +229,7 @@ export const init = (context: Flags, url?: Url): UpdateReturn => {
   const route = url === undefined ? routeFromPathname(context.pathname) : routeFromUrl(url)
   const piece = Piece.init(AppRoute.guards.Piece(route) ? route.pieceId : '')
   const look = Look.init(AppRoute.guards.Look(route) ? route.lookId : '')
+  const photo = Photo.init(AppRoute.guards.Photo(route) ? route.photoId : '')
   const board = BoardModel.init(
     AppRoute.guards.Board(route) || AppRoute.guards.BoardCollage(route) ? route.boardId : '',
     context.hasSessionCookie === true,
@@ -237,6 +251,8 @@ export const init = (context: Flags, url?: Url): UpdateReturn => {
       stylist: Stylist.init(AppRoute.guards.Stylist(route) ? route.q : Option.none()),
       looks: Looks.init(),
       look,
+      photos: Photos.init(),
+      photo,
       profile: ProfileEditor.init(),
       today: Today.init(),
       ask: Ask.init(),
@@ -253,7 +269,7 @@ export const init = (context: Flags, url?: Url): UpdateReturn => {
     commands: [
       ReadSession(),
       ReadTimeZone(),
-      ...pageCommands(route, { piece, look, board, visit }),
+      ...pageCommands(route, { piece, look, photo, board, visit }),
       ...(opened.commands ?? []),
     ],
   }
@@ -353,13 +369,6 @@ const foldPiece = Update.foldChild({
   }),
 })
 
-const foldLooks = Update.foldChild({
-  update: Looks.update,
-  read: (model: Model) => Option.some(model.looks),
-  write: (model: Model, looks: Looks.Model) => modifyFields(model, { looks: () => looks }),
-  toParentMessage: (message: Looks.Message) => Message.GotLooksMessage({ message }),
-})
-
 /** A profile saved in the editor is who the masthead shows from then on. */
 const foldProfile = Update.foldChild({
   update: ProfileEditor.update,
@@ -370,16 +379,6 @@ const foldProfile = Update.foldChild({
     SavedProfile:
       ({ profile }) =>
       (model) => ({ model: modifyFields(model, { you: () => youOf(profile.name, profile.tone) }) }),
-  }),
-})
-
-const foldLook = Update.foldChild({
-  update: Look.update,
-  read: (model: Model) => Option.some(model.look),
-  write: (model: Model, look: Look.Model) => modifyFields(model, { look: () => look }),
-  toParentMessage: (message: Look.Message) => Message.GotLookMessage({ message }),
-  foldOutMessage: Look.OutMessage.match<Update.Step<Model, Message, Services>>({
-    DeletedLook: () => (stepModel) => ({ model: stepModel, commands: [Navigate({ href: looksRouter({}) })] }),
   }),
 })
 
@@ -541,6 +540,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotReviewMessage: (got) => foldReview(model, got.message),
     GotStylistMessage: (got) => foldStylist(model, got.message),
     GotLooksMessage: (got) => foldLooks(model, got.message),
+    GotPhotosMessage: (got) => foldPhotos(model, got.message),
+    GotPhotoMessage: (got) => foldPhoto(model, got.message),
     GotLookMessage: (got) => foldLook(model, got.message),
     GotProfileMessage: (got) => foldProfile(model, got.message),
     GotTodayMessage: (got) => foldToday(model, got.message),

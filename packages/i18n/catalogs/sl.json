@@ -110,6 +110,7 @@
     },
     "deletePieceConfirmBody": "S tem ga odstraniš iz garderobe. Tega ni mogoče razveljaviti.",
     "tabPieces": "Kosi",
+    "tabGallery": "Galerija",
     "picture": {
       "cleaned": "Slika, očiščena z umetno inteligenco",
       "drawing": "Rišem čisto sliko …",
@@ -874,5 +875,40 @@
       "network": "Ni poslano. Poskusi znova."
     },
     "chatToday": "Danes ob {time}"
+  },
+  "photos": {
+    "back": "Nazaj v galerijo",
+    "add": "Dodaj fotografijo",
+    "addCost": "1 kredit iz današnjih brezplačnih, za iskanje oblačil na njej.",
+    "sending": "Pošiljam …",
+    "spent": "Današnji brezplačni krediti so porabljeni. Poskusi znova jutri.",
+    "addFailed": "Fotografija ni šla skozi. Poskusi znova.",
+    "emptyTitle": "Zapomni si oprave, ki so ti všeč",
+    "emptyHint": "Dodaj fotografije sebe v opravah, ki so se obnesle. Styld najde oblačila in jih poveže s tvojimi kosi. Vidiš jih samo ti.",
+    "loadFailed": "Tvoje fotografije se niso naložile.",
+    "finding": "Iščem oblačila …",
+    "favourite": "Priljubljena",
+    "open": "Fotografija oprave z dne {date}"
+  },
+  "photo": {
+    "garmentsTitle": "Kaj nosiš",
+    "isItThis": "Je to ta?",
+    "yes": "Da, to je ta",
+    "notThis": "Ni ta",
+    "change": "Zamenjaj",
+    "pick": "Izberi iz garderobe",
+    "noneOfThese": "Noben moj kos",
+    "notInWardrobe": "Še ni v tvoji garderobi",
+    "addToWardrobe": "Dodaj v garderobo",
+    "offered": "Čaka v pregledu",
+    "toReview": "Odpri pregled",
+    "wearAgain": "Obleci znova",
+    "lookName": "Oprava z dne {date}",
+    "openLook": "Odpri videz",
+    "delete": "Izbriši fotografijo",
+    "deleteQuestion": "Izbrišem to fotografijo? Kosi ostanejo v tvoji garderobi.",
+    "workFailed": "To ni šlo skozi. Poskusi znova.",
+    "findFailed": "Na tej fotografiji ni bilo mogoče najti oblačil. Kredit je vrnjen.",
+    "notFound": "Te fotografije ni več."
   }
 }
