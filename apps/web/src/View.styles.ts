@@ -110,12 +110,12 @@ export const footerButton = style({
   textUnderlineOffset: '4px',
   cursor: 'pointer',
 })
-/** The diagnostics prompt as a Gallery sheet: card stock rising from the bottom edge, above a page's
- * own sticky action until the visitor answers. */
+/** The diagnostics prompt as a Gallery sheet: card stock rising from the bottom edge, above a page's own sticky
+ * action and the navigation until the visitor answers, so its buttons are always the ones tapped. */
 export const consentBanner = style({
   position: 'sticky',
   insetBlockEnd: '0',
-  zIndex: 5,
+  zIndex: 7,
   display: 'grid',
   gap: '16px',
   marginInline: 'calc(-1 * max(20px, env(safe-area-inset-left), env(safe-area-inset-right)))',

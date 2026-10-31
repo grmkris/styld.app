@@ -73,10 +73,15 @@ const addPiece = async (origin: string, call: Call, file: string, piece: Record<
 }
 
 /** A browser signed in as the journey's account: the sign-in sets its session cookie in the context. */
-const signedInContext = async (browser: Browser, origin: string, viewport: { width: number; height: number }) => {
+const signedInContext = async (
+  browser: Browser,
+  origin: string,
+  viewport: { width: number; height: number },
+  answered = true,
+) => {
   const context = await browser.newContext({ locale: 'en-US', viewport, hasTouch: true })
   // A visitor who already answered the diagnostics prompt, which otherwise rises over the page's actions.
-  await context.addCookies([{ name: 'styld_diagnostics', value: 'denied', url: origin }])
+  if (answered) await context.addCookies([{ name: 'styld_diagnostics', value: 'denied', url: origin }])
   const signedIn = await context.request.post(`${origin}/api/auth/signIn`, {
     headers: { origin, 'x-effect-auth-csrf': '1' },
     data: { payload: { email: 'native-gallery-browser@example.invalid', password: 'native-identity-password-52' } },
@@ -287,6 +292,26 @@ const verifyAskAndWardrobe = async (page: Page, origin: string) => {
   await page.getByRole('link', { name: 'Pieces', exact: true }).waitFor({ state: 'visible' })
 }
 
+/** On a phone, the diagnostics prompt's answers are what a tap at them reaches, not the navigation floating there. */
+const expectConsentReachable = async (browser: Browser, origin: string) => {
+  const phone = await signedInContext(browser, origin, { width: 390, height: 844 }, false)
+  try {
+    const page = await phone.newPage()
+    await page.goto(`${origin}/boards`, { waitUntil: 'networkidle' })
+    for (const name of ['Allow', 'No thanks']) {
+      const answer = page.getByRole('button', { name, exact: true })
+      const box = await answer.boundingBox()
+      const reached = await page.evaluate(
+        ({ x, y }) => document.elementFromPoint(x, y)?.closest('button')?.textContent ?? null,
+        { x: (box?.x ?? 0) + (box?.width ?? 0) / 2, y: (box?.y ?? 0) + (box?.height ?? 0) / 2 },
+      )
+      expect(reached).toBe(name)
+    }
+  } finally {
+    await phone.close()
+  }
+}
+
 /** The signed-in pages that must load whole without anything moving. */
 const steadyPaths = ['/', '/explore', '/wardrobe', '/looks', '/wardrobe/wishlist', '/boards', '/ask', '/account']
 
@@ -301,6 +326,7 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
   await addPiece(origin, call, 'shirt-sky.webp', { category: 'top', colours: ['blue'], name: 'Oxford shirt' })
   await addPiece(origin, call, 'shorts-denim.webp', { category: 'bottom', colours: ['blue'], name: 'Denim shorts' })
   await addPiece(origin, call, 'derby-black.webp', { category: 'shoes', colours: ['black'], name: 'Derby shoes' })
+  await expectConsentReachable(browser, origin)
 
   const phone = await signedInContext(browser, origin, { width: 390, height: 844 })
   try {

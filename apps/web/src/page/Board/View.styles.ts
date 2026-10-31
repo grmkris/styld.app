@@ -53,6 +53,8 @@ export const tool = style({
  * so a table only renders after its data loads in the browser. */
 export const paper = style({
   position: 'relative',
+  // The table's own stacking: a piece's place in the pile never lifts it over the page's sheets.
+  isolation: 'isolate',
   aspectRatio: '4 / 5',
   containerType: 'inline-size',
   overflow: 'hidden',
