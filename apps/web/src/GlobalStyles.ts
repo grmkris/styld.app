@@ -60,6 +60,8 @@ global({
     fontSynthesis: 'none',
     WebkitFontSmoothing: 'antialiased',
     MozOsxFontSmoothing: 'grayscale',
+    // Native checkboxes and radios take the ink, never the browser's blue (DESIGN.md › Signal: one accent).
+    accentColor: vars.color.ink,
   },
   '*': { boxSizing: 'border-box' },
   html: {

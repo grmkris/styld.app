@@ -96,12 +96,13 @@ export const pinName = style({ paddingInline: '4px', fontSize: '13px', fontWeigh
 /** Taking a pin off: a small round over the pin's corner. */
 export const unpin = style({
   position: 'absolute',
-  insetBlockStart: '4px',
-  insetInlineEnd: '4px',
+  insetBlockStart: '0',
+  insetInlineEnd: '0',
   display: 'grid',
   placeItems: 'center',
-  inlineSize: '36px',
-  blockSize: '36px',
+  // A 44px round (DESIGN.md › Controls › Round).
+  inlineSize: '44px',
+  blockSize: '44px',
   borderWidth: '0',
   borderRadius: 'pill',
   backgroundColor: 'stock',

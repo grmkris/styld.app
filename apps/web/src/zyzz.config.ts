@@ -11,6 +11,8 @@ export const { style, vars } = defineConfig({
       paper: '#f1eee7',
       // Quiet surfaces: hovered controls, inactive chips, the search pill.
       paper2: '#e7e2d9',
+      // A hovered paper-2 control: paper-2 mixed towards ink; repeats both literals, so change them together.
+      paper2Hover: 'color-mix(in oklab, #e7e2d9 80%, #1c1410)',
       // Card stock: fields, sheets and cards that sit above the paper.
       stock: '#fbf9f5',
       ink: '#1c1410',

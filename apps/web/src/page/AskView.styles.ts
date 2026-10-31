@@ -74,6 +74,7 @@ export const chips = style({
   scrollbarWidth: 'none',
 })
 export const chip = style({
+  position: 'relative',
   flex: 'none',
   minBlockSize: '36px',
   paddingInline: '14px',
@@ -85,7 +86,13 @@ export const chip = style({
   fontWeight: 500,
   whiteSpace: 'nowrap',
   cursor: 'pointer',
+  transitionProperty: 'transform, background-color',
+  transitionDuration: '140ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
   ':active': { transform: 'scale(0.96)' },
+  // A 36px pill with a 44px target (DESIGN.md › Controls).
+  '::after': { content: '""', position: 'absolute', insetInline: '0', insetBlock: '-4px' },
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2Hover' } },
 })
 export const chipSkeleton = style({ flex: 'none', inlineSize: '72px', blockSize: '36px', borderRadius: 'pill' })
 /** What belongs here when the wardrobe is empty, and the one way to fill it. */

@@ -27,6 +27,7 @@ skill covers usage). Add a token there before a screen needs a new value.
 | ----------------------------------------------------------- | --------------------- | ------------------ |
 | paper: the page; styld.app's own, so cutouts sit seamlessly | `#f1eee7`             | `paper`            |
 | paper-2: hovered controls, inactive chips, the search pill  | `#e7e2d9`             | `paper2`           |
+| hovered paper-2 control                                     | paper-2 80% to ink    | `paper2Hover`      |
 | stock: fields, sheets and cards above the paper             | `#fbf9f5`             | `stock`            |
 | ink: text and the primary fill                              | `#1c1410`             | `ink`              |
 | hovered ink fill                                            | ink 86% towards paper | `inkHover`         |

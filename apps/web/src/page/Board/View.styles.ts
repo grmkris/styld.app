@@ -26,6 +26,7 @@ export const stage = style({
 
 export const tools = style({ display: 'flex', flexWrap: 'wrap', gap: '8px' })
 export const tool = style({
+  position: 'relative',
   display: 'inline-flex',
   alignItems: 'center',
   gap: '6px',
@@ -42,10 +43,10 @@ export const tool = style({
   transitionDuration: '140ms',
   transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
   ':active': { transform: 'scale(0.96)' },
-  '&[aria-disabled="true"]': { opacity: 0.45, cursor: 'not-allowed' },
-  '@media (hover: hover) and (pointer: fine)': {
-    ':hover': { backgroundColor: 'color-mix(in oklab, #e7e2d9 80%, #1c1410) !custom' },
-  },
+  '&[aria-disabled="true"]': { opacity: 0.5, cursor: 'not-allowed' },
+  // A 40px pill with a 44px target.
+  '::after': { content: '""', position: 'absolute', insetInline: '0', insetBlock: '-2px' },
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2Hover' } },
 })
 
 /** The table: a 4:5 sheet whose width is 1000 units, so one unit is 0.1cqw. Items are placed by custom
@@ -217,7 +218,7 @@ export const field = style({
   backgroundColor: 'stock',
   resize: 'vertical',
 })
-export const choices = style({ display: 'flex', flexWrap: 'wrap', gap: '6px' })
+export const choices = style({ display: 'flex', flexWrap: 'wrap', gap: '8px' })
 export const choice = style({
   minBlockSize: '36px',
   paddingInline: '14px',
@@ -231,6 +232,7 @@ export const choice = style({
   '&[aria-pressed="true"]': { backgroundColor: 'ink', color: 'onInk' },
 })
 export const swatch = style({
+  position: 'relative',
   inlineSize: '36px',
   blockSize: '36px',
   minBlockSize: '36px',
@@ -245,7 +247,9 @@ export const swatch = style({
   '&[data-paper="sage"]': { backgroundColor: 'tintSage' },
   '&[data-paper="slate"]': { backgroundColor: 'tintSlate' },
   '&[data-paper="clay"]': { backgroundColor: 'tintClay' },
-  '&[aria-pressed="true"]': { boxShadow: '0 0 0 2px #f1eee7, 0 0 0 4px #1c1410 !custom' },
+  // A 36px circle with a 44px target, 8px apart so the targets never overlap.
+  '::after': { content: '""', position: 'absolute', inset: '-4px' },
+  '&[aria-pressed="true"]': { outlineWidth: '2px', outlineStyle: 'solid', outlineColor: 'ink', outlineOffset: '2px' },
 })
 
 export const toast = style({
