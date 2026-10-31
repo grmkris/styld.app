@@ -133,6 +133,21 @@ studio, design, outfits, gallery, tryon, social, billing, operations). The worki
   stand-in, unusable answer → 503, Thinking's pace → 429, the daily cap on D1); full gate green (539 unit, native
   26/26, initial bundle 351,216 gzip bytes). Preview: Fast 4.5 s cold and 3.9 s warm for three outfits, Thinking
   14.5 s; browser walk (phone en and sl, desktop en): Home's table in 4–6 s, Spin changes it, no page errors or 5xx.
+- **After M3** (preview `a33e15b`, read back: health, `tools/preview.native.test.ts` 3/3, browser walk phone en and
+  sl, desktop; full gate 544 unit, native 27/27, initial bundle 352,247 gzip bytes):
+  - a knit or a hoodie may go over a lighter top (`d91b297`), after the first calibration run found Thinking's
+    layered outfits thrown away; live, Spin lays a cable knit over the Oxford shirt;
+  - the screen pass's round 12 on M2–M3 (`1817659`…`3a4acaa`): Home's Wear this and Spin only beside an outfit;
+    today's outfit held all day (Fast seeds a day's draws by account and day; all three walks opened on the same
+    outfit); Filters pinned first as a sliders control; the back's cost under its button; the piece's kind said once
+    and the facts' terms on one line; tray garments from before garment types left for the sweep;
+  - M7a, My Gallery's server side (`a33e15b`): `outfit_photos`, `photo_garments`, `/api/photos` (add for a credit,
+    list, get, favourite, match, delete) and `/api/pieces/:id/photos`, garments found on the piece queue as capture
+    finds them and matched at a bar of 0.6, owner-only `/cdn/photos` (native PhotosAcceptance). No screens yet; M4–M6
+    wait for gate 1, so M7 comes first.
+  - the attribute backfill's readback: the sweep retyped Denim shorts, the Oxford shirt and the Cable knit and filled
+    seven pieces; three (trousers, a top, Derby shoes) ran OK but stayed empty, not yet explained. The sweep reads only
+    PNG pictures, so an old piece shown as its original JPEG is never asked about.
 - **Owner gate 1 is next, and needs a wardrobe:** the blind rating page (`~/code/meta-hackathon/out/styld-outfit-calibration/`,
   outside the repo) asks both ways for three outfits in a dozen situations. The preview test account holds only 10
   fixture garments (seven tops, two trousers, one pair of shoes), too few to judge the ways by; it needs a good share
