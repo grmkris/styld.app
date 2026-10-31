@@ -6,6 +6,17 @@ import { style } from '../../zyzz.config.ts'
 const itemOut = keyframes({ to: { opacity: 0, transform: 'scale(0.86)' } }, { id: 'styld-board-item-out' })
 
 export const page = style({ display: 'grid', gap: '16px', paddingBlock: '8px 32px' })
+/** A board's shape while it loads: an h1 (30px at 1.08) and a 14px line over `line`, then two-up pin squares. */
+export const loadingShape = style({ display: 'grid', gap: '4px' })
+export const titleLine = style({ fontSize: '30px', blockSize: '0.54em', marginBlock: '0.27em', inlineSize: '55%' })
+export const metaLine = style({ fontSize: '14px', inlineSize: '30%' })
+export const loadingPins = style({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 150px), 1fr))',
+  gap: '12px',
+  marginBlockStart: '20px',
+})
+export const pinSkeleton = style({ aspectRatio: '1 / 1', borderRadius: 'panel' })
 export const header = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px 16px' })
 /** The way back and Save as a look, at the two ends of the editor's first row. */
 export const headerBar = style({

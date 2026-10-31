@@ -3,19 +3,40 @@ import type { Paper, PublicBoard } from '@styld/protocol'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../../ActionButton.ts'
 import { secondaryAction } from '../../Actions.styles.ts'
-import { backIcon, loader } from '../../Icon.ts'
+import { backIcon } from '../../Icon.ts'
 import { boardsRouter } from '../../route.ts'
+import { block, line } from '../../Skeleton.styles.ts'
 import { styled } from '../../Styled.ts'
+import { visuallyHidden } from '../../VisuallyHidden.styles.ts'
+import { cx } from 'zyzz'
 import { Message } from './Message.ts'
 import { BoardState } from './Model.ts'
 import * as styles from './View.styles.ts'
 
+const backToBoards = (locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.a([h.Href(boardsRouter({})), ...styled(h, styles.back())], [backIcon(h), format(locale, 'studio.backToBoards', {})])
+
+/** While the board loads: the way back, then its name, its line and its pins in shape (DESIGN › States). */
+const loading = (locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.div(styled(h, styles.page()), [
+    backToBoards(locale, h),
+    h.div(
+      [h.AriaHidden(true), ...styled(h, styles.loadingShape())],
+      [
+        h.span(styled(h, cx(line(), styles.titleLine()))),
+        h.span(styled(h, cx(line(), styles.metaLine()))),
+        h.span(
+          styled(h, styles.loadingPins()),
+          [0, 1, 2, 3].map(() => h.span(styled(h, cx(block(), styles.pinSkeleton())))),
+        ),
+      ],
+    ),
+    h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'board.loading', {})]),
+  ])
+
 const notReady = (text: string, retry: boolean, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.page()), [
-    h.a(
-      [h.Href(boardsRouter({})), ...styled(h, styles.back())],
-      [backIcon(h), format(locale, 'studio.backToBoards', {})],
-    ),
+    backToBoards(locale, h),
     h.p([h.Role(retry ? 'alert' : 'status')], [text]),
     retry
       ? actionButton(
@@ -39,8 +60,7 @@ export const boardStateView = (
     [h.Id('main')],
     [
       BoardState.match(board, {
-        Loading: () =>
-          h.div(styled(h, styles.page()), [h.p([h.Role('status')], [loader(h), format(locale, 'board.loading', {})])]),
+        Loading: () => loading(locale, h),
         Failed: () => notReady(format(locale, 'board.failed', {}), true, locale, h),
         Missing: () => notReady(format(locale, 'board.missing', {}), false, locale, h),
         Ready: ({ name, paper }) => ready(name, paper),

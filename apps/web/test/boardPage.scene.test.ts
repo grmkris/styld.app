@@ -40,6 +40,16 @@ const page = modifyFields(
 )
 
 describe("a board's page", () => {
+  test('keeps the way back and says what it is doing while the board loads', () => {
+    scene(
+      { update, view },
+      given(modifyFields(page, { board: () => boardInit(boardId) })),
+      expect(role('status')).toHaveText('Opening your board…'),
+      expect(role('link', { name: 'All boards' })).toHaveAttr('href', '/boards'),
+      expect(role('heading', { level: 1 })).not.toExist(),
+    )
+  })
+
   test('says where it stands under its name, and offers a collage after the pins while there is none', () => {
     scene(
       { update, view },
