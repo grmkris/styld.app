@@ -15,3 +15,5 @@ export const round = style({
   cursor: 'pointer',
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2' } },
 })
+/** A round that starts a page bar: its icon, not its 44px target, lines up with the gutter and the title below. */
+export const barStart = style({ marginInlineStart: '-12px' })

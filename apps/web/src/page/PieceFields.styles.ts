@@ -49,6 +49,10 @@ export const swatch = style({
   cursor: 'pointer',
   '&[aria-pressed="true"]': { borderColor: 'ink' },
 })
+/** The colours as a fact: one row a colour, its dot then its name. */
+export const colourList = style({ display: 'grid', gap: '6px', margin: '0', padding: '0', listStyleType: 'none' })
+export const colourItem = style({ display: 'flex', alignItems: 'center', gap: '8px' })
+export const factDot = style({ inlineSize: '16px', blockSize: '16px' })
 /** A colour dot; its `data-colour` picks the swatch, and a chosen dot's check takes the ink that reads on it. */
 export const swatchDot = style({
   display: 'inline-grid',

@@ -4,16 +4,20 @@ import { Option } from 'effect'
 import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
-import { primaryAction, secondaryAction } from '../Actions.styles.ts'
+import { linkAction, primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { fieldLabel, formError, textField } from '../Fields.styles.ts'
-import { deleteIcon, editIcon, loader } from '../Icon.ts'
+import { editIcon, loader } from '../Icon.ts'
 import { wardrobeRouter } from '../route.ts'
 import { confirmActions } from '../ConfirmActions.ts'
 import { styled } from '../Styled.ts'
 import { Deletion, type Draft, Load, Message, type Model, type Redraw, ShowTurn } from './Piece.ts'
-import { piecePickers, swatches } from './PieceFields.ts'
+import { colourList, piecePickers } from './PieceFields.ts'
 import { categoryName, pieceLabel, subcategoryName } from './WardrobeWords.ts'
 import { backToWardrobe } from './PageBar.ts'
+import { round } from './PageBar.styles.ts'
+import { block, line } from '../Skeleton.styles.ts'
+import { visuallyHidden } from '../VisuallyHidden.styles.ts'
+import { cx } from 'zyzz'
 import * as styles from './PieceView.styles.ts'
 import * as SaveToBoardView from './SaveToBoardView.ts'
 
@@ -267,7 +271,6 @@ const pieceDetails = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
     piece.status === 'failed'
       ? h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, 'wardrobe.itemProcessFailed', {})])
       : h.empty,
-    piece.colours.length > 0 ? swatches(piece.colours, locale, h) : h.empty,
     picturePanel(piece, model, locale, h),
     turnLine(piece, model, locale, h),
     piece.status === 'ready'
@@ -279,37 +282,62 @@ const pieceDetails = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
           toParentMessage: (message) => Message.GotSaveToBoardMessage({ message }),
         })
       : h.empty,
+    factsView(piece, locale, h),
+    // Save to board is the page's one action; Delete is quiet, at the end, and asks first.
     Deletion.guards.Idle(model.deletion)
-      ? h.div(styled(h, styles.actions()), [
-          actionButton(
-            {
-              label: format(locale, 'common.edit', {}),
-              style: secondaryAction(),
-              onClick: Message.ClickedEdit(),
-              leading: editIcon(h),
-            },
-            h,
-          ),
-          actionButton(
-            {
-              label: format(locale, 'wardrobe.deleteLabel', {}),
-              style: secondaryAction(),
-              onClick: Message.ClickedDelete(),
-              leading: deleteIcon(h),
-            },
-            h,
-          ),
-        ])
+      ? actionButton(
+          {
+            label: format(locale, 'wardrobe.deleteLabel', {}),
+            style: cx(linkAction(), styles.quietDelete()),
+            onClick: Message.ClickedDelete(),
+          },
+          h,
+        )
       : confirmDelete(model, locale, h),
-    piece.notes === null
-      ? h.empty
-      : h.dl(styled(h, styles.facts()), [
-          h.div(styled(h, styles.fact()), [
-            h.dt(styled(h, styles.factTerm()), [format(locale, 'wardrobe.notesLabel', {})]),
-            h.dd(styled(h, styles.factValue()), [piece.notes]),
-          ]),
-        ]),
   ])
+
+/** What the piece is, row by row (Gallery `item.html` › facts): its colours, named, and the person's notes. */
+const factsView = (piece: Piece, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  piece.colours.length === 0 && piece.notes === null
+    ? h.empty
+    : h.dl(styled(h, styles.facts()), [
+        piece.colours.length === 0
+          ? h.empty
+          : h.div(styled(h, styles.fact()), [
+              h.dt(styled(h, styles.factTerm()), [format(locale, 'wardrobe.colorsLabel', {})]),
+              h.dd(styled(h, styles.factValue()), [colourList(piece.colours, locale, h)]),
+            ]),
+        piece.notes === null
+          ? h.empty
+          : h.div(styled(h, styles.fact()), [
+              h.dt(styled(h, styles.factTerm()), [format(locale, 'wardrobe.notesLabel', {})]),
+              h.dd(styled(h, styles.factValue()), [piece.notes]),
+            ]),
+      ])
+
+/** Edit, at the bar's end while the piece is shown and not being edited or deleted (Gallery `item.html` › head). */
+const editRound = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  Load.guards.Loaded(model.load) && Option.isNone(model.draft) && Deletion.guards.Idle(model.deletion)
+    ? h.button(
+        [
+          h.Type('button'),
+          h.AriaLabel(format(locale, 'common.edit', {})),
+          ...styled(h, round()),
+          h.OnClick(Message.ClickedEdit()),
+        ],
+        [editIcon(h)],
+      )
+    : h.empty
+
+/** The piece's square and its name in shape while it loads, and what is loading for assistive technology. */
+const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
+  h.span([h.AriaHidden(true), ...styled(h, cx(block(), styles.photoSkeleton()))]),
+  h.div(
+    [h.AriaHidden(true), ...styled(h, styles.details())],
+    [h.span(styled(h, cx(line(), styles.nameSkeleton()))), h.span(styled(h, cx(line(), styles.metaSkeleton())))],
+  ),
+  h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
+]
 
 /** The piece's picture: its turn, played on tap, once the clean picture it shows has one ready; else the image. */
 const shownPicture = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
@@ -420,11 +448,9 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
   h.main(
     [h.Id('main'), ...styled(h, styles.piecePage())],
     [
-      h.div(styled(h, styles.pageBar()), [backToWardrobe(locale, h)]),
+      h.div(styled(h, styles.pageBar()), [backToWardrobe(locale, h), editRound(model, locale, h)]),
       ...Load.match(model.load, {
-        Loading: () => [
-          h.p([h.Role('status'), ...styled(h, styles.status())], [loader(h), format(locale, 'common.loading', {})]),
-        ],
+        Loading: () => loadingView(locale, h),
         Loaded: ({ piece }) => loadedView(piece, model, locale, h),
         Missing: () => [notice(locale, h, 'wardrobe.itemNotFound')],
         Failed: () => [notice(locale, h, 'wardrobe.shelves.loadFailed')],

@@ -11,7 +11,24 @@ export const piecePage = style({
     columnGap: '48px',
   },
 })
-export const pageBar = style({ display: 'flex', alignItems: 'center', gap: '8px', gridColumn: '1 / -1' })
+export const pageBar = style({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '8px',
+  gridColumn: '1 / -1',
+})
+/** Delete as a quiet text action after the facts; it asks before it deletes. */
+export const quietDelete = style({ justifySelf: 'start', color: 'ink2', textDecorationColor: 'rule' })
+/** While the piece loads: its picture, its name (26px at 1.08 over `line`) and its line, as `photo` and `pieceName`. */
+export const photoSkeleton = style({
+  inlineSize: '100%',
+  aspectRatio: '1 / 1',
+  borderRadius: 'photo',
+  '@media (min-width: 900px)': { aspectRatio: 'auto', blockSize: 'min(640px, 70vh)' },
+})
+export const nameSkeleton = style({ fontSize: '26px', blockSize: '0.54em', marginBlock: '0.27em', inlineSize: '60%' })
+export const metaSkeleton = style({ fontSize: '16px', inlineSize: '30%' })
 export const photo = style({
   display: 'block',
   inlineSize: '100%',

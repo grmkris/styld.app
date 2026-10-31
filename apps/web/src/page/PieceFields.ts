@@ -13,6 +13,7 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import type { Html as Styles } from 'zyzz/runtime'
 import { checkIcon } from '../Icon.ts'
 import { styled } from '../Styled.ts'
+import { cx } from 'zyzz'
 import { categoryName, colourName, subcategoryName } from './WardrobeWords.ts'
 import * as styles from './PieceFields.styles.ts'
 
@@ -158,16 +159,18 @@ export const toggleColour =
         ? chosen
         : [...chosen, colour]
 
-/** A piece's swatches as read-only dots, each named. */
-export const swatches = <Message>(chosen: ReadonlyArray<Colour>, locale: Locale, h: HtmlBuilder<Message>): Html =>
+/** A piece's colours as a fact: each dot beside its name, since a dot alone cannot tell blue from navy. */
+export const colourList = <Message>(chosen: ReadonlyArray<Colour>, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.ul(
-    [h.AriaLabel(format(locale, 'wardrobe.colorsLabel', {})), ...styled(h, styles.swatchSet())],
+    styled(h, styles.colourList()),
     chosen.map((colour) =>
-      h.li([
-        h.Role('img'),
-        h.AriaLabel(format(locale, colourName(colour), {})),
-        h.DataAttribute('colour', colour),
-        ...styled(h, styles.swatchDot()),
+      h.li(styled(h, styles.colourItem()), [
+        h.span([
+          h.AriaHidden(true),
+          h.DataAttribute('colour', colour),
+          ...styled(h, cx(styles.swatchDot(), styles.factDot())),
+        ]),
+        format(locale, colourName(colour), {}),
       ]),
     ),
   )
