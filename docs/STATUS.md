@@ -1,6 +1,6 @@
 # Delivery status
 
-Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `789a7f2`, with clean pictures, turns on a hanger, scan anything, and the boards' pins, profiles, checks, link import and wishes). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `34b6449`, with clean pictures, turns on a hanger, scan anything, the boards' pins, profiles, checks, link import and wishes, and Styld, the stylist in the app). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
 
 ## Styld, the stylist in the app — 2026-10-31
 
@@ -11,11 +11,20 @@ to confirm:
 - **Effect AI on a Durable Object**, rather than Pi Durable or TanStack AI:
   - the turn runs on `effect/ai`'s Chat and Toolkit over `@effect/ai-openai-compat` 4.0.7;
   - one `Stylist` Durable Object per account keeps its chats in SQLite.
-- **The model is GLM-5.3-flash on Workers AI** (`STYLIST=workers-ai`).
+- **The model is DeepSeek V4.1 Flash on Workers AI** (`STYLIST=workers-ai`, `34b6449`).
   - Haiku 5.5 through the Vercel AI Gateway was the plan, but the shared team budget is spent ($5.25 of $5.00).
     `STYLIST=gateway` with `STYLIST_MODEL` and `STYLIST_GATEWAY_API_KEY` switches to it.
-  - Workers AI streams GLM without a finish reason, so `workersAiFetch` asks without streaming and hands the client
-    one streamed step.
+  - GLM-5.3-flash came first. On the preview its replies took 28–36 s, with single calls of 18–31 s, and its
+    Slovenian had stray tokens ("pulover zieves") and wrong words ("mornarske hlače" for navy).
+  - Five Workers AI models were probed through Styld's own turn and tools, with a made-up wardrobe
+    (`packages/server/.artifacts/stylist-probe`, untracked):
+    - Gemma 4 typed its tool calls as text, and Mistral Small 3.1 looped in Slovenian;
+    - gpt-oss-120b's answers did not decode;
+    - DeepSeek V4.1 Flash wrote the best Slovenian, called tools reliably and was as fast as GLM on a good run
+      (3–7 s), at $0.30/$1.20 a million tokens: about a tenth of a cent a reply.
+  - `STYLIST_MODEL` names any other model.
+  - Workers AI's streamed answers end without a finish reason, so `workersAiFetch` asks without streaming and hands
+    the client one streamed step.
 - **1 credit a message**, from the same daily allowance and wallet as captures. It comes back when no reply comes.
 - **First batch:** questions about the person's own wardrobe and looks.
   - Styld searches and reads pieces and looks, shows pieces, and saves a look when asked. It does this through the
@@ -34,6 +43,12 @@ to confirm:
     still writing after 5 minutes, reads as failed, and its credit comes back.
   - Deleting the account empties its Stylist object. Each model call is counted in Analytics Engine as `chat`,
     without what was written.
+- **The turn after the first readback** (`a4c4aa5`, `2252d22`, `17804fb`, `a4b7cf3`):
+  - A call that wrote its words and called only `pieces_show` ends the reply. GLM had restated its answer when asked
+    once more.
+  - Words written beside a lookup ("I'll take a look at your wardrobe") are left out when anything else is said.
+  - The prompt asks for the informal ti, Slovenian words and colour names, and no narration.
+  - A failed model call is counted in Analytics Engine with its outcome.
 - **Web** (`84a8cb8`):
   - Ask's stylist card leads with "Ask Styld"; connecting ChatGPT or Claude stays under it. A search also offers
     "Ask Styld: “…”".
@@ -44,20 +59,33 @@ to confirm:
   - The composer stays in reach above the phone's navigation, with the price. A refused message says why. A message
     lost on the network goes again as the same one; once edited, it goes as a new one.
 - **Evidence:**
-  - Unit: 10 server tests on three recorded GLM steps (the tool loop, the Workers AI adapter, the prompt, the
-    policy); Story and Scene tests for the page and Ask's links.
+  - Unit: 14 server tests on recorded GLM and DeepSeek replies (the tool loop and when it ends, thinking aloud, a
+    failed call, the Workers AI adapter, the prompt, the policy); Story and Scene tests for the page and Ask's links.
   - Native: `verifyStylist` runs through the real queue, Durable Object, wallet and tools with a stand-in model. It
     covers the idempotent send, the reply and its piece, one credit taken, a refused model refunded, and another
     account seeing nothing.
   - Native browser: the Gallery walk asks Styld from Ask, gets the reply with its piece's picture under the CSP, and
     reopens the chat. `/ask/stylist` is among the pages that must load steady; the walk found two shifts, both fixed
     before the commit.
-  - Full gate green on `84a8cb8`: unit 449, native 25/25, budgets (initial browser 347,505 of 368,640 gzip bytes).
-- **Preview:** pending.
+  - Full gate green on `34b6449`: unit 453, native 25/25, budgets (initial browser 347,506 of 368,640 gzip bytes).
+- **Preview** (the preview test account, its drawn fixture garments only; script
+  `meta-hackathon/out/styld-stylist/readback.ts`):
+  - Each release reported itself on health, and `tools/preview.native.test.ts` passed 3/3.
+  - Each run sent the same three messages: an English outfit question, "save that as a look", and a Slovenian
+    question.
+  - Every reply showed only the account's own pieces. Each message took 1 credit, and a repeated send was the same
+    message, charged once. The look was saved and then deleted. Both chats were listed.
+  - Release `3889e3e`, GLM-5.3-flash: replies in 30, 36 and 28 s. The English answer repeated itself, and the
+    Slovenian slipped.
+  - Release `34b6449`, DeepSeek V4.1 Flash: replies in 13, 15 and 13 s, from about four calls of 2–3.5 s each (Analytics
+    Engine) and about a second on the queue. No repetition, and natural Slovenian.
 - **Open:**
-  - The owner's choices: the model, with the Vercel budget or Styld's own gateway key; the price; and which of v1's
-    other AI features come next (wardrobe analysis, outfit check, shop suggestions).
-  - The page reads the chat every 0.8 s while Styld writes, rather than streaming.
+  - The owner's choices:
+    - the model (DeepSeek now; Haiku needs the Vercel budget or Styld's own gateway key);
+    - the price;
+    - which of v1's other AI features come next (wardrobe analysis, outfit check, shop suggestions).
+  - Words arrive a call at a time, since Workers AI is asked without streaming. The page reads the chat every 0.8 s
+    while Styld writes.
   - Chats cannot be renamed or deleted; deleting the account removes them.
 
 ## Scan anything — 2026-10-31

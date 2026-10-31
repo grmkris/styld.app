@@ -51,7 +51,7 @@ The owner asked to bring v1's AI features into v2, starting with the chat, with 
   when asked. ChatGPT and Claude stay a way in for those who use them.
 - **Price:** a message costs 1 credit from the daily allowance; it comes back when no reply comes.
 - **Not yet:** pictures in or out of the chat, shop suggestions, try-on, a wardrobe report, renaming or deleting chats.
-  The model (GLM-5.3-flash on Workers AI for now) and the price are the owner's to confirm.
+  The model (DeepSeek V4.1 Flash on Workers AI for now) and the price are the owner's to confirm.
 
 ## Clean pictures, the turn and video scans (owner, 2026-10-30)
 
