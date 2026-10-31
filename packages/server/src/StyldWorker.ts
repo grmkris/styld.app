@@ -360,7 +360,7 @@ const applicationServices = (
       env,
       chatsOf,
       queue: yield* runtime.stylist.queue.raw,
-      // SAFETY: Styld's model is a Workers AI Chat Completions model its policy names; the input is the Chat Completions body the OpenAI-compatible client built
+      // SAFETY: Styld's model is a Workers AI chat model its policy names, outside the pinned workers-types model list -- the input is the Chat Completions body the OpenAI-compatible client built and workersAiFetch decoded
       runChat: (model, input) => runtime.ai.run(model as never, input as never),
       db: bindings.database,
       tools: toolServices(services),

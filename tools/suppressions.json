@@ -36,6 +36,10 @@
     "comment": "SAFETY: Clef-flash is a Workers AI model newer than the pinned workers-types model list -- the request is the System One API shape Clef.ts builds and documents"
   },
   {
+    "file": "packages/server/src/StyldWorker.ts",
+    "comment": "SAFETY: Styld's model is a Workers AI chat model its policy names, outside the pinned workers-types model list -- the input is the Chat Completions body the OpenAI-compatible client built and workersAiFetch decoded"
+  },
+  {
     "file": "packages/server/src/capture/CloudflareImages.ts",
     "comment": "SAFETY: a Response body is the Worker runtime's own ReadableStream -- the server package types globals with the DOM lib and the Images binding with workers-types"
   },
