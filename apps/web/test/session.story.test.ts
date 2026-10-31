@@ -108,6 +108,7 @@ describe('the session decides where a visitor belongs', () => {
       Command.expectExact(
         Today.DetermineDay,
         Today.ListBoards,
+        Today.ReadFavourite,
         Today.ReadTray,
         Today.ReadFeed,
         Wardrobe.ListPieces,
@@ -116,6 +117,7 @@ describe('the session decides where a visitor belongs', () => {
       Command.resolve(ReadYou, Message.FailedReadYou()),
       Command.resolve(Wardrobe.ListPieces, Wardrobe.Message.FailedListPieces()),
       Command.resolve(Today.ListBoards, Today.Message.FailedListBoards()),
+      Command.resolve(Today.ReadFavourite, Today.Message.FailedReadFavourite()),
       Command.resolve(Today.ReadTray, Today.Message.FailedReadTray()),
       Command.resolve(Today.ReadFeed, Today.Message.FailedReadFeed()),
       Command.resolve(Today.DetermineDay, Today.Message.CompletedDetermineDay({ day: thursday })),
@@ -183,11 +185,18 @@ describe('the time zone', () => {
 describe('the wardrobe pages', () => {
   test('each page asks for what it shows as it opens', () => {
     expect(opening('/wardrobe')).toEqual(['ReadSession', 'ReadTimeZone', 'ListPieces', 'CountUndrawn'])
-    expect(opening('/wardrobe/pc_abc')).toEqual(['ReadSession', 'ReadTimeZone', 'GetPiece'])
+    expect(opening('/wardrobe/pc_abc')).toEqual(['ReadSession', 'ReadTimeZone', 'GetPiece', 'ListPiecePhotos'])
     expect(opening('/wardrobe/add')).toEqual(['ReadSession', 'ReadTimeZone'])
     expect(opening('/wardrobe/review')).toEqual(['ReadSession', 'ReadTimeZone', 'LoadTray'])
     expect(opening('/looks')).toEqual(['ReadSession', 'ReadTimeZone', 'ListLooks'])
     expect(opening(`/looks/lk_${'a'.repeat(22)}`)).toEqual(['ReadSession', 'ReadTimeZone', 'GetLook'])
+    expect(opening('/wardrobe/gallery')).toEqual(['ReadSession', 'ReadTimeZone', 'ListPhotos'])
+    expect(opening(`/wardrobe/gallery/ph_${'a'.repeat(22)}`)).toEqual([
+      'ReadSession',
+      'ReadTimeZone',
+      'GetPhoto',
+      'ListPieces',
+    ])
   })
 
   test('the review tray opens once the files are sent, and the wardrobe once pieces are kept', () => {

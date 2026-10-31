@@ -101,3 +101,12 @@ export const confirm = style({
   borderRadius: 'panel',
   backgroundColor: 'stock',
 })
+/** A piece's photos: a row of small portraits under its facts. */
+export const inPhotosTitle = style({ fontSize: '15px', fontWeight: 600, marginBlockStart: '8px' })
+export const inPhotos = style({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(4, minmax(0, 1fr))',
+  gap: '8px',
+  padding: '0',
+  listStyleType: 'none',
+})

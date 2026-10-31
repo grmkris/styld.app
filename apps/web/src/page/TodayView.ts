@@ -7,7 +7,7 @@ import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction, smallAction } from '../Actions.styles.ts'
 import { addIcon, checkIcon, exploreTabIcon, loader, spinIcon } from '../Icon.ts'
-import { addPiecesRouter, boardRouter, exploreRouter, reviewRouter } from '../route.ts'
+import { addPiecesRouter, boardRouter, exploreRouter, photoRouter, reviewRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { intlLocale } from '../Locale.ts'
 import { styled } from '../Styled.ts'
@@ -293,9 +293,26 @@ const trayPictures = (pictures: ReadonlyArray<string>, h: HtmlBuilder<Message>):
 
 /** Where they left off, drawn once the table and its own answers are in, so it arrives in one piece below them. */
 const pickUpView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  if ([pieces, model.lastBoard, model.tray].some(isPending)) return h.empty
+  if ([pieces, model.lastBoard, model.favourite, model.tray].some(isPending)) return h.empty
   const tray = Option.getOrElse(AsyncData.getData(model.tray), () => ({ waiting: 0, pictures: [] }))
   const cards = [
+    ...Option.match(Option.flatten(AsyncData.getData(model.favourite)), {
+      onNone: () => [],
+      onSome: (photo) => [
+        pickUpCard(
+          'pick-up-photo',
+          format(locale, 'today.lovedOutfit', {}),
+          { href: photoRouter({ photoId: photo.id }), label: format(locale, 'photo.wearAgain', {}) },
+          h.img([
+            h.Src(`/cdn/photos/${photo.id}/thumb`),
+            h.Alt(''),
+            h.Loading('lazy'),
+            ...styled(h, styles.photoCrop()),
+          ]),
+          h,
+        ),
+      ],
+    }),
     ...(tray.waiting > 0
       ? [
           pickUpCard(

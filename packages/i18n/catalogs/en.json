@@ -843,6 +843,7 @@
     "addBottom": "Add trousers or a skirt",
     "addShoes": "Add shoes",
     "pickUp": "Pick up where you left off",
+    "lovedOutfit": "An outfit you loved",
     "waiting": "{count, plural, one {# piece from your scan to check} other {# pieces from your scan to check}}",
     "review": "Finish adding",
     "keepGoing": "Keep pinning"
@@ -888,7 +889,8 @@
     "loadFailed": "Your photos didn’t load.",
     "finding": "Finding the clothes…",
     "favourite": "Favourite",
-    "open": "Outfit photo from {date}"
+    "open": "Outfit photo from {date}",
+    "inYourPhotos": "In your photos"
   },
   "photo": {
     "garmentsTitle": "What you’re wearing",

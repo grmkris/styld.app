@@ -21,6 +21,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
 import * as PieceBack from './PieceBack.ts'
+import * as PiecePhotos from './PiecePhotos.ts'
 import { changeDetails, Details, detailsOf } from './PieceFields.ts'
 import * as SaveToBoard from './SaveToBoard.ts'
 import * as Crypto from 'effect/Crypto'
@@ -80,6 +81,8 @@ export const Model = Schema.Struct({
   turnWork: Schema.Literals(['idle', 'asking', 'building']),
   turnProblem: Schema.Option(TurnProblem),
   back: PieceBack.Model,
+  /** The outfit photos it is confirmed in. */
+  photos: PiecePhotos.Model,
   /** Whether the turn's player has drawn its first frame; until then the still shows under it. */
   turnShown: Schema.Boolean,
   saveToBoard: SaveToBoard.Model,
@@ -97,6 +100,7 @@ export const init = (pieceId: string): Model => ({
   turnShown: false,
   turnProblem: Option.none(),
   back: PieceBack.init(pieceId),
+  photos: PiecePhotos.init(),
   saveToBoard: SaveToBoard.init({ kind: 'piece', id: pieceId }),
 })
 
@@ -126,6 +130,7 @@ export const Message = defineMessageUnion({
   SubmittedEdit: {},
   SucceededUpdatePiece: { piece: Piece },
   GotBackMessage: { message: PieceBack.Message },
+  GotPhotosMessage: { message: PiecePhotos.Message },
   FailedUpdatePiece: {},
   ClickedShowPicture: { use: PictureChoice },
   SucceededChoosePicture: { piece: Piece },
@@ -321,7 +326,10 @@ export const ShowTurn = Mount.define('ShowTurn', {
 })
 
 /** The Commands that open the page. */
-export const load = (model: Model) => [GetPiece({ pieceId: model.pieceId })]
+export const load = (model: Model): ReadonlyArray<Command.Command<Message, never, StyldClient>> => [
+  GetPiece({ pieceId: model.pieceId }),
+  ...Command.mapMessages(PiecePhotos.load(model.pieceId), (message) => Message.GotPhotosMessage({ message })),
+]
 
 // UPDATE
 
@@ -557,6 +565,9 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       model: modifyFields(model, { load: () => Load.Loaded({ piece }), draft: () => Option.none() }),
     }),
     GotBackMessage: ({ message: backMessage }) => foldBack(model, backMessage),
+    GotPhotosMessage: ({ message: photosMessage }) => ({
+      model: modifyFields(model, { photos: (photos) => PiecePhotos.update(photos, photosMessage).model }),
+    }),
     FailedUpdatePiece: () => ({
       model: modifyFields(model, {
         draft: Option.map((draft) => modifyFields(draft, { saving: () => false, failed: () => true })),

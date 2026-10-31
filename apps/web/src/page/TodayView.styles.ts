@@ -195,3 +195,10 @@ export const boardCrop = style({
     pointerEvents: 'none',
   },
 })
+/** A favourite outfit photo in its card's 16:10 window, centred on the outfit. */
+export const photoCrop = style({
+  inlineSize: '100%',
+  aspectRatio: '16 / 10',
+  objectFit: 'cover',
+  objectPosition: '50% 35%',
+})

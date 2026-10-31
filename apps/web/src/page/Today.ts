@@ -8,6 +8,7 @@ import {
   OutfitProposal,
   OutfitProposals,
   OutfitSession,
+  Photo,
   type Piece,
   PieceId,
   ProposalRef,
@@ -37,6 +38,9 @@ export const TableMotion = defineTaggedUnion({ Still: {}, Spun: {} })
 /** The last board with something on its table, if any. */
 export const LastBoardData = AsyncData.Schema(Schema.Option(BoardSummary), Schema.Literal('Unavailable'))
 export type LastBoardData = typeof LastBoardData.schema.Type
+/** The newest favourite photo of My Gallery, for "Wear it again". */
+export const FavouriteData = AsyncData.Schema(Schema.Option(Photo), Schema.Literal('Unavailable'))
+export type FavouriteData = typeof FavouriteData.schema.Type
 /** What people the person follows made public lately. */
 export const FeedData = AsyncData.Schema(Feed, Schema.Literal('Unavailable'))
 export type FeedData = typeof FeedData.schema.Type
@@ -72,6 +76,7 @@ export const Model = Schema.Struct({
   motion: TableMotion,
   worn: Worn,
   lastBoard: LastBoardData.schema,
+  favourite: FavouriteData.schema,
   tray: TrayData.schema,
   feed: FeedData.schema,
 })
@@ -84,6 +89,7 @@ export const init = (): Model => ({
   motion: TableMotion.Still(),
   worn: Worn.NotYet(),
   lastBoard: AsyncData.Idle(),
+  favourite: AsyncData.Idle(),
   tray: AsyncData.Idle(),
   feed: AsyncData.Idle(),
 })
@@ -96,6 +102,8 @@ export const Message = defineMessageUnion({
   FailedReadWorn: {},
   SucceededListBoards: { maybeBoard: Schema.Option(BoardSummary) },
   FailedListBoards: {},
+  SucceededReadFavourite: { maybePhoto: Schema.Option(Photo) },
+  FailedReadFavourite: {},
   SucceededReadTray: { tray: Tray },
   FailedReadTray: {},
   SucceededReadFeed: { feed: Feed },
@@ -161,6 +169,16 @@ export const ReadFeed = Command.define('ReadFeed', {
     const api = yield* (yield* StyldClient).api
     return Message.SucceededReadFeed({ feed: yield* api.social.feed({ query: {} }) })
   }).pipe(Effect.orElseSucceed(() => Message.FailedReadFeed())),
+})
+
+/** @internal Exported for its tests. */
+export const ReadFavourite = Command.define('ReadFavourite', {
+  messages: [Message.SucceededReadFavourite, Message.FailedReadFavourite],
+  execute: Effect.gen(function* () {
+    const { photos } = yield* (yield* (yield* StyldClient).api).photos.listPhotos()
+    const maybePhoto = Array.findFirst(photos, (photo) => photo.favourite && photo.status === 'ready')
+    return Message.SucceededReadFavourite({ maybePhoto })
+  }).pipe(Effect.orElseSucceed(() => Message.FailedReadFavourite())),
 })
 
 /** @internal Exported for its tests. */
@@ -236,6 +254,12 @@ export const enter = (model: Model): Update.Return<Model, Message, StyldClient> 
       revalidate: AsyncData.revalidateOrLoad,
       write: (current: Model, lastBoard: LastBoardData) => modifyFields(current, { lastBoard: () => lastBoard }),
       load: ListBoards(),
+    }),
+    Update.refresh<Model, Message, Option.Option<Photo>, 'Unavailable', StyldClient>({
+      read: (current: Model) => Option.some(current.favourite),
+      revalidate: AsyncData.revalidateOrLoad,
+      write: (current: Model, favourite: FavouriteData) => modifyFields(current, { favourite: () => favourite }),
+      load: ReadFavourite(),
     }),
     Update.refresh<Model, Message, Tray, 'Unavailable', StyldClient>({
       read: (current: Model) => Option.some(current.tray),
@@ -382,6 +406,12 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     }),
     SucceededReadFeed: ({ feed }) => ({ model: modifyFields(model, { feed: () => FeedData.Success({ data: feed }) }) }),
     FailedReadFeed: () => ({ model: modifyFields(model, { feed: (feed) => AsyncData.settle(feed, unavailable) }) }),
+    SucceededReadFavourite: ({ maybePhoto }) => ({
+      model: modifyFields(model, { favourite: () => FavouriteData.Success({ data: maybePhoto }) }),
+    }),
+    FailedReadFavourite: () => ({
+      model: modifyFields(model, { favourite: (favourite) => AsyncData.settle(favourite, unavailable) }),
+    }),
     SucceededReadTray: ({ tray }) => ({ model: modifyFields(model, { tray: () => TrayData.Success({ data: tray }) }) }),
     FailedReadTray: () => ({ model: modifyFields(model, { tray: (tray) => AsyncData.settle(tray, unavailable) }) }),
     SucceededMakeOutfits: ({ batch }) => ({

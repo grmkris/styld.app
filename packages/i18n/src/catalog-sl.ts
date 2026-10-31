@@ -752,6 +752,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'today.addBottom': 'Dodaj hlače ali krilo',
   'today.addShoes': 'Dodaj čevlje',
   'today.pickUp': 'Kar te čaka',
+  'today.lovedOutfit': 'Oprava, ki ti je bila všeč',
   'today.waiting':
     '{count, plural, one {# kos iz skeniranja za pregled} two {# kosa iz skeniranja za pregled} few {# kosi iz skeniranja za pregled} other {# kosov iz skeniranja za pregled}}',
   'today.review': 'Dodaj jih',
@@ -792,6 +793,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'photos.finding': 'Iščem oblačila …',
   'photos.favourite': 'Priljubljena',
   'photos.open': 'Fotografija oprave z dne {date}',
+  'photos.inYourPhotos': 'Na tvojih fotografijah',
   'photo.garmentsTitle': 'Kaj nosiš',
   'photo.isItThis': 'Je to ta?',
   'photo.yes': 'Da, to je ta',
