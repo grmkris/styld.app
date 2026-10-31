@@ -160,15 +160,17 @@ const sessionLink = (model: Model, h: HtmlBuilder<Message>): Html => {
     Checking: () => h.empty,
     Unavailable: () => h.empty,
     // Signed out the bar keeps Explore and Sign in (DESIGN › Navigation); neither shows on its own page.
-    SignedOut: () =>
-      AppRoute.guards.Login(model.route) || AppRoute.guards.LoginForConnection(model.route)
-        ? h.empty
-        : h.div(styled(h, signedOutLinks()), [
-            AppRoute.guards.Explore(model.route)
-              ? h.empty
-              : h.a([h.Href(exploreRouter({})), ...styled(h, signInLink())], [format(locale, 'explore.title', {})]),
-            h.a([h.Href(loginRouter({})), ...styled(h, signInLink())], [format(locale, 'landing.signIn', {})]),
-          ]),
+    SignedOut: () => {
+      const onLogin = AppRoute.guards.Login(model.route) || AppRoute.guards.LoginForConnection(model.route)
+      return h.div(styled(h, signedOutLinks()), [
+        AppRoute.guards.Explore(model.route)
+          ? h.empty
+          : h.a([h.Href(exploreRouter({})), ...styled(h, signInLink())], [format(locale, 'explore.title', {})]),
+        onLogin
+          ? h.empty
+          : h.a([h.Href(loginRouter({})), ...styled(h, signInLink())], [format(locale, 'landing.signIn', {})]),
+      ])
+    },
   })
 }
 

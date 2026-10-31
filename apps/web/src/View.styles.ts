@@ -50,8 +50,8 @@ export const accountLink = style({
   inlineSize: '44px',
   blockSize: '44px',
   borderRadius: 'pill',
-  backgroundColor: 'ink',
-  color: 'onInk',
+  backgroundColor: 'toneStone',
+  color: 'ink',
   fontSize: '14px',
   fontWeight: 700,
   textDecorationLine: 'none',
@@ -236,14 +236,16 @@ export const navAvatar = style({
   borderRadius: 'pill',
   textDecorationLine: 'none',
 })
+/** Initials on a tone, as DESIGN.md draws every avatar; never the ink fill that marks an action such as the + beside
+ * it. */
 export const navAvatarDisc = style({
   display: 'grid',
   placeItems: 'center',
   inlineSize: '32px',
   blockSize: '32px',
   borderRadius: 'pill',
-  backgroundColor: 'ink',
-  color: 'onInk',
+  backgroundColor: 'toneStone',
+  color: 'ink',
   fontSize: '13px',
   fontWeight: 700,
 })
