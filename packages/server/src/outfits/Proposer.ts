@@ -49,10 +49,10 @@ const instructions = (count: number) =>
   [
     'You are a stylist putting together outfits from the clothes one person owns.',
     `Propose ${String(count)} different outfits, each as a list of piece refs from the list, and nothing else.`,
-    'Each outfit is a top and a bottom, or a one-piece (a dress or a jumpsuit); for sport or lounging it may be a',
-    'set instead. Add shoes when there are any, and a layer or accessories when they help. Keep to at most one loud',
-    'colour or bold pattern. Every outfit wears all the fixed pieces. Never propose an outfit already shown, and',
-    'never use a ref that is not in the list.',
+    'Each outfit is a top and a bottom (a knit or a hoodie may go over a shirt or a tee), or a one-piece (a dress or',
+    'a jumpsuit); for sport or lounging it may be a set instead. Add shoes when there are any, and a layer or',
+    'accessories when they help. Keep to at most one loud colour or bold pattern. Every outfit wears all the fixed',
+    'pieces. Never propose an outfit already shown, and never use a ref that is not in the list.',
   ].join(' ')
 
 const line = (ref: string, piece: Wearable) =>

@@ -64,8 +64,11 @@ describe('the outfit rules', () => {
       expect(separates || onePiece).toBe(true)
       expect(slots.filter((slot) => slot === 'shoes')).toHaveLength(1)
       expect(slots).not.toContain('set')
-      for (const slot of ['top', 'bottom', 'onePiece', 'layer', 'shoes'] as const)
+      for (const slot of ['bottom', 'onePiece', 'layer', 'shoes'] as const)
         expect(slots.filter((one) => one === slot).length).toBeLessThanOrEqual(1)
+      // Two tops only as the knit over something lighter.
+      const tops = outfit.filter(({ type }) => slotOf(type) === 'top')
+      expect(tops.length <= 1 || (tops.length === 2 && tops.includes(knit))).toBe(true)
       const statements = outfit.filter(
         ({ colours, pattern }) => colours.some((colour) => colour !== 'navy') || pattern === 'printed',
       )
@@ -124,12 +127,24 @@ describe('the outfit rules', () => {
     expect(drawings).toContain(run.outfits[0]?.[0])
   })
 
+  test('a knit or a hoodie goes over a lighter top, worn after it, and on cold days now and then', () => {
+    const request = brief(wardrobe)
+    expect(validated(request, [knit.id, tee.id, jeans.id, trainers.id])).toEqual(
+      Option.some([tee, knit, jeans, trainers]),
+    )
+    expect(validated(request, [tee.id, shirt.id, jeans.id, trainers.id])).toEqual(Option.none())
+    const hoodie = piece('hoodies')
+    expect(validated(brief([...wardrobe, hoodie]), [knit.id, hoodie.id, jeans.id, trainers.id])).toEqual(Option.none())
+    const cold = drawnOver(brief(wardrobe, { brief: { season: 'cold' } }))
+    expect(cold.some((outfit) => outfit.includes(knit) && outfit.includes(tee))).toBe(true)
+  })
+
   test('a proposal with a foreign piece, two tops, no shoes or a fixed piece left out is refused', () => {
     const request = brief(wardrobe, { fixed: [jeans] })
     const stranger = PieceId.make(`pc_${'z'.repeat(22)}`)
     expect(validated(request, [tee.id, jeans.id, trainers.id])).toEqual(Option.some([tee, jeans, trainers]))
     expect(validated(request, [tee.id, jeans.id, stranger])).toEqual(Option.none())
-    expect(validated(request, [tee.id, knit.id, jeans.id, trainers.id])).toEqual(Option.none())
+    expect(validated(request, [tee.id, shirt.id, jeans.id, trainers.id])).toEqual(Option.none())
     expect(validated(request, [tee.id, jeans.id])).toEqual(Option.none())
     expect(validated(request, [tee.id, skirt.id, trainers.id])).toEqual(Option.none())
   })

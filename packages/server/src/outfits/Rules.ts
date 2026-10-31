@@ -13,7 +13,7 @@ import {
 import { Array, Option, Order } from 'effect'
 
 // The outfit rules (owner, 2026-10-31): the one validator of every proposal, whichever way made it, and Fast's
-// generator. One piece in each place, a whole outfit when the wardrobe has one (a top and a bottom, a one-piece, or
+// generator. One piece in each place (a knit or a hoodie may go over a shirt or a tee), a whole outfit when the wardrobe has one (a top and a bottom, a one-piece, or
 // for sport and lounging a set), shoes when there are any, every fixed piece kept, at most one statement piece
 // besides them, and nothing for the other season or another occasion while something suitable is there. Pure.
 
@@ -48,7 +48,7 @@ const wearingOrder: ReadonlyArray<Slot> = ['set', 'onePiece', 'top', 'bottom', '
 const mostIn: Readonly<Record<Slot, number>> = {
   set: 2,
   onePiece: 1,
-  top: 1,
+  top: 2,
   bottom: 1,
   layer: 1,
   shoes: 1,
@@ -67,11 +67,22 @@ const shapeSlots: Readonly<Record<Shape, ReadonlyArray<Slot>>> = {
 /** Colours that carry an outfit on their own; blue is quiet, as denim and an Oxford shirt go with everything. */
 const loud: ReadonlySet<Colour> = new Set(['red', 'pink', 'yellow', 'orange', 'purple', 'green'])
 
+/** Tops worn over another: a knit or a hoodie over a shirt, a tee or a bodysuit. */
+const midLayers: ReadonlySet<PieceType> = new Set(['knitwear', 'hoodies'])
+const isMidLayer = (piece: Wearable) => midLayers.has(piece.type)
+
+/** Two tops only as a knit or a hoodie over something lighter. */
+const layersWell = (pieces: ReadonlyArray<Wearable>) => {
+  const tops = pieces.filter((piece) => slotOf(piece.type) === 'top')
+  return tops.length < 2 || tops.filter(isMidLayer).length === 1
+}
+
 /** A piece that carries an outfit: a loud colour or a bold pattern. */
 const isStatement = (piece: Wearable) =>
   piece.colours.some((colour) => loud.has(colour)) || piece.pattern === 'printed' || piece.pattern === 'checked'
 
-const slotRank = (piece: Wearable) => wearingOrder.indexOf(slotOf(piece.type))
+/** Where a piece is worn: by its place, a knit or a hoodie just after what it goes over. */
+const slotRank = (piece: Wearable) => wearingOrder.indexOf(slotOf(piece.type)) + (isMidLayer(piece) ? 0.5 : 0)
 
 /** The pieces in the order they are worn. */
 export const inWearingOrder = (pieces: ReadonlyArray<Wearable>): ReadonlyArray<Wearable> =>
@@ -168,6 +179,7 @@ export const validated = (request: Brief, pieceIds: ReadonlyArray<string>): Opti
   const fixedStatements = request.fixed.filter(isStatement).length
   const fits =
     wearingOrder.every((slot) => count(slot) <= mostIn[slot]) &&
+    layersWell(pieces) &&
     standsOn(count, shapesFor(request, pools), pools) &&
     (count('shoes') === 1 || !has(pools, 'shoes')) &&
     free.every((piece) => pools.get(slotOf(piece.type))?.includes(piece) === true) &&
@@ -199,6 +211,9 @@ const ordered = (pieces: ReadonlyArray<Wearable>, seed: string, drawingsFirst: b
 /** How often an optional place is worn, out of 6, by the weather asked for. */
 const layerChance: Readonly<Record<Season | 'any', number>> = { cold: 6, allYear: 2, any: 2, warm: 1 }
 
+/** How often a knit or a hoodie goes over a lighter top, out of 6, by the weather asked for. */
+const overChance: Readonly<Record<Season | 'any', number>> = { cold: 3, allYear: 1, any: 1, warm: 0 }
+
 /** One draw: a shape, then a piece for each place it needs, the fixed pieces where they sit, and the optional places
  * by chance; clean drawings first when asked. */
 const draw = (
@@ -217,10 +232,19 @@ const draw = (
     ['accessory', chance('accessory', 3)],
   ]
   const wanted = [...shapeSlots[shape].map((slot) => [slot, true] as const), ...optional]
+  const season = request.brief.season ?? 'any'
+  // Now and then, a knit or a hoodie over a lighter top.
+  const over = (tops: ReadonlyArray<Wearable>) => {
+    const [first] = tops
+    if (first === undefined || isMidLayer(first) || !chance('top', overChance[season])) return tops
+    const knits = (pools.get('top') ?? []).filter(isMidLayer)
+    return [...tops, ...Array.take(ordered(knits, `${seed}:over`, drawingsFirst), 1)]
+  }
   return wanted.flatMap(([slot, wear]) => {
     const fixed = fixedIn(slot)
     if (fixed.length > 0 || !wear) return fixed
-    return Array.take(ordered(pools.get(slot) ?? [], `${seed}:${slot}`, drawingsFirst), 1)
+    const drawn = Array.take(ordered(pools.get(slot) ?? [], `${seed}:${slot}`, drawingsFirst), 1)
+    return slot === 'top' ? over(drawn) : drawn
   })
 }
 
