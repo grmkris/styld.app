@@ -259,7 +259,15 @@ export const choice = style({
   fontSize: '14px',
   fontWeight: 500,
   cursor: 'pointer',
+  transitionProperty: 'transform, background-color, color',
+  transitionDuration: '140ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  ':active': { transform: 'scale(0.96)' },
   '&[aria-pressed="true"]': { backgroundColor: 'ink', color: 'onInk' },
+  '@media (hover: hover) and (pointer: fine)': {
+    '&:not([aria-pressed="true"]):hover': { backgroundColor: 'paper2Hover' },
+    '&[aria-pressed="true"]:hover': { backgroundColor: 'inkHover' },
+  },
 })
 export const swatch = style({
   position: 'relative',
@@ -279,7 +287,20 @@ export const swatch = style({
   '&[data-paper="clay"]': { backgroundColor: 'tintClay' },
   // A 36px circle with a 44px target, 8px apart so the targets never overlap.
   '::after': { content: '""', position: 'absolute', inset: '-4px' },
+  transitionProperty: 'transform',
+  transitionDuration: '140ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  ':active': { transform: 'scale(0.96)' },
   '&[aria-pressed="true"]': { outlineWidth: '2px', outlineStyle: 'solid', outlineColor: 'ink', outlineOffset: '2px' },
+  // Hovered, the ring a chosen paper wears, in the rule's colour.
+  '@media (hover: hover) and (pointer: fine)': {
+    '&:not([aria-pressed="true"]):hover': {
+      outlineWidth: '2px',
+      outlineStyle: 'solid',
+      outlineColor: 'rule',
+      outlineOffset: '2px',
+    },
+  },
 })
 
 export const toast = style({
@@ -303,6 +324,7 @@ export const toastAction = style({
   color: 'onInk',
   fontWeight: 700,
   cursor: 'pointer',
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'inkHover' } },
 })
 export const fine = style({ fontSize: '13px', color: 'ink3' })
 
@@ -369,11 +391,12 @@ export const trayPiece = style({
   // Paper-2, not stock: a piece's photo blends into it (trayImage), as it does into the table.
   backgroundColor: 'paper2',
   cursor: 'pointer',
-  transitionProperty: 'transform, box-shadow',
+  transitionProperty: 'transform, box-shadow, background-color',
   transitionDuration: '140ms',
   transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
   ':active': { transform: 'scale(0.96)' },
   '&[aria-pressed="true"]': { boxShadow: 'chosen' },
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2Hover' } },
 })
 export const trayImage = style({
   inlineSize: '100%',

@@ -116,6 +116,15 @@ export const chatLink = style({
   color: 'ink',
   textAlign: 'start',
   cursor: 'pointer',
+  // Hovered, its title takes a text link's underline (DESIGN.md › Text links).
+  '@media (hover: hover) and (pointer: fine)': {
+    '&:hover > :first-child': {
+      textDecorationLine: 'underline',
+      textDecorationColor: 'signal',
+      textDecorationThickness: '1.5px',
+      textUnderlineOffset: '4px',
+    },
+  },
 })
 export const chatTitle = style({ fontSize: '15px' })
 export const chatDate = style({ fontSize: '13px', color: 'ink2', fontVariantNumeric: 'tabular-nums' })
@@ -167,12 +176,13 @@ export const send = style({
   backgroundColor: 'ink',
   color: 'onInk',
   cursor: 'pointer',
-  transitionProperty: 'transform, opacity',
+  transitionProperty: 'transform, opacity, background-color',
   transitionDuration: '140ms',
   transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
   ':active': { transform: 'scale(0.96)' },
   // Foldkit UI's Button marks a disabled one data-disabled and aria-disabled, never the native attribute.
   '&[data-disabled]': { opacity: 0.5, cursor: 'not-allowed' },
+  '@media (hover: hover) and (pointer: fine)': { '&:not([data-disabled]):hover': { backgroundColor: 'inkHover' } },
 })
 export const price = style({ fontSize: '13px', color: 'ink3' })
 export const problem = style({ fontSize: '14px', color: 'error' })

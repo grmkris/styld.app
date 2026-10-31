@@ -22,8 +22,12 @@ export const kind = style({
   color: 'ink',
   textAlign: 'start',
   cursor: 'pointer',
-  ':active': { transform: 'scale(0.98)' },
+  transitionProperty: 'transform, border-color',
+  transitionDuration: '140ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  ':active': { transform: 'scale(0.96)' },
   '&[aria-checked="true"]': { borderColor: 'ink' },
+  '@media (hover: hover) and (pointer: fine)': { '&:not([aria-checked="true"]):hover': { borderColor: 'ink3' } },
 })
 export const kindTitle = style({ fontSize: '15px', fontWeight: 600 })
 export const kindHint = style({ fontSize: '13px', color: 'ink2' })

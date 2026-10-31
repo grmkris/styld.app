@@ -144,6 +144,11 @@ export const unpin = style({
   color: 'ink',
   cursor: 'pointer',
   boxShadow: 'overPhoto',
+  transitionProperty: 'transform, background-color',
+  transitionDuration: '140ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  ':active': { transform: 'scale(0.96)' },
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2' } },
 })
 export const empty = style({ display: 'grid', gap: '4px', color: 'ink2' })
 export const emptyTitle = style({ fontWeight: 600, color: 'ink' })
@@ -180,7 +185,12 @@ export const pick = style({
   borderRadius: 'panel',
   backgroundColor: 'paper',
   cursor: 'pointer',
+  transitionProperty: 'transform, background-color',
+  transitionDuration: '140ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  ':active': { transform: 'scale(0.96)' },
   '&[aria-pressed="true"]': { borderColor: 'ink' },
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2' } },
 })
 export const picked = style({
   position: 'absolute',
