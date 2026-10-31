@@ -86,8 +86,10 @@ index plays every film in place: `https://netcup.tail5acf67.ts.net/styld-film-co
 - **Paper wardrobe** (`styld-film-paperwardrobe`): the diorama and the paper page together, 12 fps stop-motion.
 - **On your phone** (`styld-film-phone`): the clothes land on a phone whose generated screen follows the app's table;
   the day on it (`SAT 31`) is live text placed over the screen, written as `TodayView.ts` writes it.
-- **Wardrobe to page** and **At your board** (a person seen from behind, arranging the outfit by hand): keyframes only.
-  Their films were refused because the Alibaba Token Plan's monthly quota ran out (reset 6 November, 16:00 UTC).
+- **Wardrobe to page** (`styld-film-wardrobepage`): the same story in a real room.
+- **At your board** (`styld-film-atboard`): a person seen from behind lays out the outfit by hand; the words sit low.
+  Its films were first refused when the Alibaba Token Plan's monthly quota ran out; the owner added quota and they
+  were made the same day.
 
-Both films of this round are cut from their wide film for phones (`make-site.ts … crop:<centre>`), because the tall
-takes could not be made. Seams: joins 0.26–0.6 and wraps 0.96–0.97 against median steps of 0.39–0.56.
+The phone story and the person story are cut from their wide film for phones (`make-site.ts … crop:<centre>`): a
+9:16 window frames the phone and the person well, and it saved six takes. Seams: joins 0.26–0.6 and wraps 0.96–0.97 against median steps of 0.39–0.56.
