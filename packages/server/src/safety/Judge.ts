@@ -106,8 +106,9 @@ const patience = '20 seconds'
 
 const live = (runClef: RunClef, runGuard: RunGuard) =>
   ContentJudge.of({
-    judge: (content) =>
-      Effect.gen(function* () {
+    // Llama Guard has taken 7–16 s while a mood board's ask waited on it: the judging gets its own span and verdict.
+    judge: Effect.fn('Styld.Safety.judge')(
+      function* (content: Content) {
         const texts = content.texts.filter((text) => text.trim().length > 0)
         const textAnswer =
           texts.length === 0
@@ -143,8 +144,12 @@ const live = (runClef: RunClef, runGuard: RunGuard) =>
             ),
           { concurrency: 3 },
         )
-        return Array.reduce([textAnswer, instructionsIn(texts), ...pictureAnswers], passed, worse)
-      }).pipe(Effect.timeoutOrElse({ duration: patience, orElse: () => Effect.fail(failed) })),
+        const verdict = Array.reduce([textAnswer, instructionsIn(texts), ...pictureAnswers], passed, worse)
+        yield* Effect.annotateCurrentSpan('styld.safety.verdict', verdict.state)
+        return verdict
+      },
+      Effect.timeoutOrElse({ duration: patience, orElse: () => Effect.fail(failed) }),
+    ),
   })
 
 /** Native runs and a preview without providers: words with `[[fail]]` fail and `[[unsure]]` are unsure, pictures
