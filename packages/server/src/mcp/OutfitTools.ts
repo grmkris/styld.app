@@ -52,7 +52,7 @@ export const outfitTools = (outfits: Outfits['Service']) => [
   tool({
     name: 'outfit_make',
     title: 'Make outfits',
-    description: `Up to ${String(mostProposals)} outfits made only of pieces in this wardrobe, best first, each with the piece ids to wear in order and a score from a model that looked at the pieces together. \`mode\` fast proposes by Styld's rules; thinking asks a language model and may be used a limited number of times a day. Give an \`anchorPieceId\` to build around one piece, \`lockedPieceIds\` to keep in every outfit, and a \`brief\` (season, occasion, a few words). For more, call again with the \`session\` you got and every \`key\` already shown in \`seen\`. \`missing\` names the places the wardrobe has nothing for. Nothing is saved: save an outfit the person wants with look_create.`,
+    description: `Up to ${String(mostProposals)} outfits of pieces in this wardrobe, best first: piece ids in wearing order and a score from a model that looked at them together. \`mode\` fast uses Styld's rules; thinking asks a language model, a limited number of times a day. Optional: \`anchorPieceId\` to build around, \`lockedPieceIds\` to keep, a \`brief\` (season, occasion, words). For more, pass the \`session\` you got and the keys already shown in \`seen\`. \`missing\` names what the wardrobe lacks. Nothing is saved: use look_create.`,
     parameters: MakeOutfit,
     annotations: { readOnlyHint: true, openWorldHint: false },
     handler: (input) => outfits.make(input).pipe(Effect.mapError(asToolError)),

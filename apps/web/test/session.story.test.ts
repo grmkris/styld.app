@@ -119,7 +119,8 @@ describe('the session decides where a visitor belongs', () => {
       Command.resolve(Today.ReadTray, Today.Message.FailedReadTray()),
       Command.resolve(Today.ReadFeed, Today.Message.FailedReadFeed()),
       Command.resolve(Today.DetermineDay, Today.Message.CompletedDetermineDay({ day: thursday })),
-      // Knowing the day, Home asks what was worn on it.
+      // Knowing the day, Home asks the outfit engine for today's outfits and what was worn on it.
+      Command.resolve(Today.MakeOutfits, Today.Message.FailedMakeOutfits()),
       Command.resolve(Today.ReadWorn, Today.Message.FailedReadWorn()),
       model(({ route, today }) => {
         expect(route).toEqual(AppRoute.Home())
