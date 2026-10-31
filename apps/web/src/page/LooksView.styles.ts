@@ -19,10 +19,12 @@ export const card = style({
   gap: '6px',
   color: 'ink',
   textDecorationLine: 'none',
-  transitionProperty: 'transform',
-  transitionDuration: '180ms',
+  // It presses, at a large tile's 0.98, and lifts under the pointer; the lift's translate composes with the press.
+  transitionProperty: 'transform, translate',
+  transitionDuration: '140ms, 180ms',
   transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
-  '@media (hover: hover) and (pointer: fine)': { ':hover': { transform: 'translateY(-2px)' } },
+  '&[href]:active': { transform: 'scale(0.98)' },
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { translate: '0 -2px' } },
 })
 /** A look's pieces laid out together on paper, as pieces you own are (DESIGN › Surfaces): up to four, two by two; with
  * three, the first takes the left column. */

@@ -42,10 +42,13 @@ export const cut = style({
   backgroundColor: 'paper',
   color: 'ink2',
   textDecorationLine: 'none',
-  transitionProperty: 'transform',
-  transitionDuration: '180ms',
+  // It presses (Gallery `.cut:active`) and lifts under the pointer; the lift's translate composes with the press. A
+  // loading tile has no link, and stays still.
+  transitionProperty: 'transform, translate',
+  transitionDuration: '140ms, 180ms',
   transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
-  '@media (hover: hover) and (pointer: fine)': { ':hover': { transform: 'translateY(-2px)' } },
+  '&[href]:active': { transform: 'scale(0.96)' },
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { translate: '0 -2px' } },
 })
 export const cutImage = style({
   display: 'block',
