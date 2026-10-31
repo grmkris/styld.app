@@ -166,9 +166,7 @@ const profileSection = (model: Model, locale: Locale, h: HtmlBuilder<Message>): 
     h.h2(styled(h, sectionTitle()), [format(locale, 'profile.card.title', {})]),
     ...ProfileState.match(model.profile, {
       Loading: () => [h.span([h.AriaHidden(true), ...styled(h, cx(line(), statusSkeleton()))])],
-      Failed: () => [
-        h.p([h.Role('alert'), ...styled(h, sectionText())], [format(locale, 'profile.card.loadFailed', {})]),
-      ],
+      Failed: () => [h.p([h.Role('alert'), ...styled(h, problem())], [format(locale, 'profile.card.loadFailed', {})])],
       Loaded: ({ profile }) =>
         profile.handle === null
           ? [h.p(styled(h, sectionText()), [format(locale, 'profile.card.setUp', {})])]
