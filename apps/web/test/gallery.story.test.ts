@@ -86,18 +86,25 @@ describe('boards', () => {
     updatedAt: created.updatedAt,
   })
 
-  test('a new board without a name takes the default one, and opens once it exists', () => {
+  test('a new board takes the default name, and opens once it exists', () => {
     story(
       Boards.update,
       given(Boards.init()),
-      message(Boards.Message.SubmittedNewBoard({ defaultName: 'My board' })),
-      Command.expectExact(Boards.CreateBoard),
+      message(Boards.Message.ClickedNewBoard({ defaultName: 'My board' })),
+      Command.expectExact(Boards.CreateBoard({ name: 'My board' })),
       Command.resolve(Boards.CreateBoard, Boards.Message.SucceededCreateBoard({ board: created })),
       expectOutMessage(Boards.OutMessage.CreatedBoard({ boardId: created.id })),
-      model(({ creating, name }) => {
-        expect(Boards.Creating.guards.Idle(creating)).toBe(true)
-        expect(name).toBe('')
-      }),
+      model(({ creating }) => expect(Boards.Creating.guards.Idle(creating)).toBe(true)),
+    )
+  })
+
+  test('a board already being made is not asked for again', () => {
+    story(
+      Boards.update,
+      given(modifyFields(Boards.init(), { creating: () => Boards.Creating.Sending() })),
+      message(Boards.Message.ClickedNewBoard({ defaultName: 'My board' })),
+      Command.expectNone(),
+      model(({ creating }) => expect(Boards.Creating.guards.Sending(creating)).toBe(true)),
     )
   })
 

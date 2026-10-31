@@ -1,3 +1,4 @@
+import { Button } from '@foldkit/ui'
 import { format, type Locale } from '@styld/i18n'
 import type { BoardSummary } from '@styld/protocol'
 import { Array, Option } from 'effect'
@@ -6,7 +7,6 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
-import { textField } from '../Fields.styles.ts'
 import { addIcon, loader } from '../Icon.ts'
 import { boardRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
@@ -16,6 +16,7 @@ import { stillTable } from './Board/Table.ts'
 import { Creating, Message, type Model } from './Boards.ts'
 import * as styles from './BoardsView.styles.ts'
 import { pageHead, pageTitle } from './PageHead.ts'
+import { roundAction } from './PageHead.styles.ts'
 import { savedView } from './SavedView.ts'
 
 const tileView = (board: BoardSummary, locale: Locale, h: HtmlBuilder<Message>): Html =>
@@ -38,45 +39,24 @@ const tileView = (board: BoardSummary, locale: Locale, h: HtmlBuilder<Message>):
     ],
   )
 
-const createForm = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+/** The round + at the top of the page: a board under the default name, opened at once to be filled and renamed. */
+const newBoardAction = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const sending = Creating.guards.Sending(model.creating)
-  return h.form(
-    [
-      ...styled(h, styles.create()),
-      h.OnSubmit(Message.SubmittedNewBoard({ defaultName: format(locale, 'boards.defaultName', {}) })),
-      h.AriaBusy(sending),
-      h.Attribute('novalidate', ''),
-    ],
-    [
-      h.label(
-        [h.For('board-name'), ...styled(h, styles.nameField())],
-        [
-          format(locale, 'boards.name', {}),
-          h.input([
-            h.Id('board-name'),
-            ...styled(h, textField()),
-            h.Placeholder(format(locale, 'boards.defaultName', {})),
-            h.Value(model.name),
-            h.Attribute('maxlength', '60'),
-            h.Readonly(sending),
-            h.OnInput((value) => Message.UpdatedName({ value })),
-          ]),
-        ],
-      ),
-      actionButton(
-        {
-          label: format(locale, sending ? 'boards.creating' : 'boards.new', {}),
-          style: primaryAction(),
-          type: 'submit',
-          isDisabled: sending,
-          leading: sending ? loader(h) : addIcon(h),
-        },
-        h,
-      ),
-      Creating.guards.Failed(model.creating)
-        ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'boards.createFailed', {})])
-        : h.empty,
-    ],
+  return Button.view(
+    {
+      onClick: Message.ClickedNewBoard({ defaultName: format(locale, 'boards.defaultName', {}) }),
+      isDisabled: sending,
+      toView: (attributes) =>
+        h.button(
+          [
+            ...attributes.button,
+            h.AriaLabel(format(locale, sending ? 'boards.creating' : 'boards.new', {})),
+            ...styled(h, cx(primaryAction(), roundAction())),
+          ],
+          [sending ? loader(h) : addIcon(h)],
+        ),
+    },
+    h,
   )
 }
 
@@ -128,10 +108,12 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
     [h.Id('main'), ...styled(h, styles.page())],
     [
       h.div(styled(h, styles.head()), [
-        pageHead(pageTitle(format(locale, 'boards.title', {}), h), Option.none(), h),
+        pageHead(pageTitle(format(locale, 'boards.title', {}), h), Option.some(newBoardAction(model, locale, h)), h),
         h.p(styled(h, styles.intro()), [format(locale, 'boards.intro', {})]),
+        Creating.guards.Failed(model.creating)
+          ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'boards.createFailed', {})])
+          : h.empty,
       ]),
-      createForm(model, locale, h),
       listView(model, locale, h),
       savedView(model.saved, locale, h),
     ],

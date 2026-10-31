@@ -1,6 +1,8 @@
 import { format, type Locale } from '@styld/i18n'
 import { Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
+import { cx } from 'zyzz'
+import { primaryAction } from '../Actions.styles.ts'
 import { addIcon } from '../Icon.ts'
 import { addPiecesRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
@@ -24,7 +26,7 @@ export const addPiecesAction = <Message>(locale: Locale, h: HtmlBuilder<Message>
     [
       h.Href(addPiecesRouter({})),
       h.AriaLabel(format(locale, 'capture.addTitle', {})),
-      ...styled(h, styles.roundAction()),
+      ...styled(h, cx(primaryAction(), styles.roundAction())),
     ],
     [addIcon(h)],
   )

@@ -596,7 +596,6 @@ export interface MessageArgumentsByKey<T = string> {
   'board.wardrobe': Readonly<Record<string, never>>
   'board.wardrobeEmpty': Readonly<Record<string, never>>
   'board.wardrobeFailed': Readonly<Record<string, never>>
-  'boards.create': Readonly<Record<string, never>>
   'boards.createFailed': Readonly<Record<string, never>>
   'boards.creating': Readonly<Record<string, never>>
   'boards.defaultName': Readonly<Record<string, never>>
@@ -604,7 +603,6 @@ export interface MessageArgumentsByKey<T = string> {
   'boards.failed': Readonly<Record<string, never>>
   'boards.intro': Readonly<Record<string, never>>
   'boards.loading': Readonly<Record<string, never>>
-  'boards.name': Readonly<Record<string, never>>
   'boards.new': Readonly<Record<string, never>>
   'boards.open': { readonly name: string | number }
   'boards.retry': Readonly<Record<string, never>>
@@ -2748,4 +2746,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '153ef02c6d7c677e3a1bc82377c3c154c149f5a36e82bab605b92be0c6b54753'
+export const catalogVersion = 'c298cd2f0a4fb4a9b69153cbbb846efc414f6c9021ad49d1d42fcece68609d64'

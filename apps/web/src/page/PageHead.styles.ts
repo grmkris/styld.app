@@ -15,19 +15,14 @@ export const head = style({
 /** The title fills the row, so its box starts at the row's top whatever its size; its words sit in the middle. */
 export const title = style({ display: 'flex', alignItems: 'center', minBlockSize: '44px', minInlineSize: '0' })
 export const slot = style({ flex: 'none', inlineSize: '44px', blockSize: '44px' })
-/** The dark round action (Gallery `.round.dark`), such as adding a piece. */
+/** The dark round action (Gallery `.round.dark`), such as adding a piece or a board: the primary action's ink pill,
+ * with its hover, press and disabled states, drawn as a 44px circle. Combine with primaryAction. */
 export const roundAction = style({
   display: 'inline-grid',
   placeItems: 'center',
   inlineSize: '44px',
   blockSize: '44px',
+  minBlockSize: '44px',
   flex: 'none',
-  borderRadius: 'pill',
-  backgroundColor: 'ink',
-  color: 'onInk',
-  transitionProperty: 'transform, background-color',
-  transitionDuration: '140ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
-  ':active': { transform: 'scale(0.96)' },
-  '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'inkHover' } },
+  paddingInline: '0',
 })

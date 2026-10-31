@@ -145,18 +145,21 @@ const verifyHome = async (page: Page, origin: string) => {
   await page.getByRole('button', { name: 'Worn today' }).waitFor({ state: 'visible' })
 }
 
-/** A new board opens on its page: an empty collage above nothing pinned yet, with the navigation; its collage
- * opens the editor. */
+/** The round + on Boards opens a new board on its page under the default name: an empty collage above nothing
+ * pinned yet, with the navigation; its settings rename it, and its collage opens the editor. */
 const openNewBoard = async (page: Page, origin: string) => {
   await page.goto(`${origin}/boards`, { waitUntil: 'networkidle' })
   await page.getByRole('heading', { name: 'Boards', level: 1 }).waitFor({ state: 'visible' })
-  await page.getByLabel('Name').fill('Weekend')
   await page.getByRole('button', { name: 'New board' }).click()
   await page.waitForURL(/\/boards\/bd_[^/]+$/)
-  await page.getByRole('heading', { name: 'Weekend', level: 1 }).waitFor({ state: 'visible' })
+  await page.getByRole('heading', { name: 'My board', level: 1 }).waitFor({ state: 'visible' })
   await page.getByText('Nothing pinned yet').waitFor({ state: 'visible' })
   expect(await page.getByRole('navigation', { name: 'Navigation' }).isVisible()).toBe(true)
   await expectNoSidewaysScroll(page)
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
+  await page.getByLabel('Board name').fill('Weekend')
+  await page.getByRole('button', { name: 'Save', exact: true }).click()
+  await page.getByRole('heading', { name: 'Weekend', level: 1 }).waitFor({ state: 'visible' })
   await page.getByRole('link', { name: 'Make a collage' }).click()
   await page.waitForURL(/\/boards\/bd_[^/]+\/collage$/)
   await page.getByRole('heading', { name: 'Weekend' }).waitFor({ state: 'visible' })

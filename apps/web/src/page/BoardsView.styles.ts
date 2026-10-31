@@ -4,8 +4,6 @@ import { style } from '../zyzz.config.ts'
 export const page = style({ display: 'grid', gap: '24px', paddingBlock: '0 40px' })
 export const head = style({ display: 'grid', gap: '6px' })
 export const intro = style({ color: 'ink2' })
-export const create = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'end', gap: '8px' })
-export const nameField = style({ display: 'grid', gap: '6px', flex: '1 1 14rem', fontSize: '14px', fontWeight: 600 })
 export const grid = style({
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 220px), 1fr))',

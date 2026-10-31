@@ -21,8 +21,6 @@ export const Creating = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {} })
 
 export const Model = Schema.Struct({
   boards: BoardsData.schema,
-  /** The new board's name as typed; empty means the default name. */
-  name: Schema.String,
   creating: Creating,
   saved: SavedData.schema,
 })
@@ -30,7 +28,6 @@ export type Model = typeof Model.Type
 
 export const init = (): Model => ({
   boards: AsyncData.Idle(),
-  name: '',
   creating: Creating.Idle(),
   saved: AsyncData.Idle(),
 })
@@ -41,8 +38,7 @@ export const Message = defineMessageUnion({
   SucceededListBoards: { boards: Schema.Array(BoardSummary) },
   FailedListBoards: {},
   ClickedRetry: {},
-  UpdatedName: { value: Schema.String },
-  SubmittedNewBoard: { defaultName: Schema.String },
+  ClickedNewBoard: { defaultName: Schema.String },
   SucceededCreateBoard: { board: Board },
   FailedCreateBoard: {},
   SucceededListSaved: { saved: Schema.Array(SavedThing) },
@@ -50,7 +46,7 @@ export const Message = defineMessageUnion({
 })
 export type Message = typeof Message.Type
 
-/** A new board opens straight away. */
+/** A new board opens straight away, under the default name; its page renames it. */
 export const OutMessage = defineMessageUnion({ CreatedBoard: { boardId: Schema.String } })
 export type OutMessage = typeof OutMessage.Type
 
@@ -132,7 +128,6 @@ const summaryOf = (board: Board): BoardSummary => ({
 const created = (model: Model, board: Board): UpdateReturn => ({
   model: modifyFields(model, {
     creating: () => Creating.Idle(),
-    name: () => '',
     boards: (boards) => AsyncData.map(boards, (list) => [summaryOf(board), ...list]),
   }),
   outMessage: OutMessage.CreatedBoard({ boardId: board.id }),
@@ -153,13 +148,12 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     FailedListSaved: () => ({
       model: modifyFields(model, { saved: (saved) => AsyncData.settle(saved, Result.fail('Unavailable' as const)) }),
     }),
-    UpdatedName: ({ value }) => ({ model: modifyFields(model, { name: () => value }) }),
-    SubmittedNewBoard: ({ defaultName }) =>
+    ClickedNewBoard: ({ defaultName }) =>
       Creating.guards.Sending(model.creating)
         ? { model }
         : {
             model: modifyFields(model, { creating: () => Creating.Sending() }),
-            commands: [CreateBoard({ name: model.name.trim().length > 0 ? model.name.trim() : defaultName })],
+            commands: [CreateBoard({ name: defaultName })],
           },
     SucceededCreateBoard: ({ board }) => created(model, board),
     FailedCreateBoard: () => ({ model: modifyFields(model, { creating: () => Creating.Failed() }) }),
