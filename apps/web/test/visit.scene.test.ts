@@ -1,5 +1,5 @@
 import { Explore, PublicBoard, PublicLookPage, PublicPiecePage, SearchResults } from '@styld/protocol'
-import { Schema } from 'effect'
+import { Option, Schema } from 'effect'
 import {
   all,
   click,
@@ -97,6 +97,18 @@ describe('a public profile', () => {
       expect(role('link', { name: /By Nika Kovač/ })).toHaveAttr('href', '/@nika.kovac'),
       expect(role('link', { name: 'Sign in to save' })).toHaveAttr('href', `/login?next=%2Fpieces%2F${knit.id}`),
       expect(role('button', { name: 'Report piece' })).toBeAbsent(),
+      // From a shared link Back goes to whose it is; opened from a board, Back returns to the board.
+      expect(role('link', { name: 'Back' })).toHaveAttr('href', '/@nika.kovac'),
+    )
+    const board = `/boards/bd_${'coats'.padEnd(22, 'x')}`
+    scene(
+      { update, view },
+      given(
+        modifyFields(visiting(`/pieces/${knit.id}`, Shown.Piece({ page })), {
+          visit: (visit) => modifyFields(visit, { cameFrom: () => Option.some(board) }),
+        }),
+      ),
+      expect(role('link', { name: 'Back' })).toHaveAttr('href', board),
     )
   })
 

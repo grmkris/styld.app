@@ -8,7 +8,9 @@ import {
   FocusExploreResults,
   FocusExploreSearch,
   FollowSuggested,
+  cameFromOf,
   init,
+  load,
   Message,
   SearchExplore,
   suggestionOf,
@@ -47,6 +49,29 @@ const explore = init(Target.Explore({ mood: Option.none() }), false)
 const nika = Schema.decodeUnknownSync(SearchResults)({
   people: [{ handle: 'nika.kovac', name: 'Nika Kovač', tone: 'clay' }],
   boards: [],
+})
+
+describe('a piece’s page', () => {
+  test('returns to the board or look it was opened from, read from a same-origin referrer', () => {
+    const origin = 'https://styld.test'
+    const board = `/boards/bd_${'coats'.padEnd(22, 'x')}`
+    const look = `/looks/lk_${'rain'.padEnd(22, 'x')}`
+    expect(cameFromOf(`${origin}${board}`, origin)).toEqual(Option.some(board))
+    expect(cameFromOf(`${origin}${look}`, origin)).toEqual(Option.some(look))
+    for (const referrer of [
+      '',
+      `${origin}/@nika.kovac`,
+      `https://elsewhere.test${board}`,
+      'not a url',
+      `${origin}/boards`,
+    ])
+      expect({ referrer, from: cameFromOf(referrer, origin) }).toEqual({ referrer, from: Option.none() })
+    const piece = init(Target.Piece({ pieceId: 'pc_knit' }), false)
+    expect(load(piece).map(({ name }) => name)).toEqual(['LoadPublicPiece', 'ReadCameFrom'])
+    expect(update(piece, Message.SucceededReadCameFrom({ path: Option.some(board) })).model.cameFrom).toEqual(
+      Option.some(board),
+    )
+  })
 })
 
 describe('a profile', () => {

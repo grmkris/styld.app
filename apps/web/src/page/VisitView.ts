@@ -188,7 +188,12 @@ const pieceView = (
   const { locale, origin } = inputs
   return h.div(styled(h, styles.page()), [
     h.div(styled(h, cx(styles.bar(), styles.pieceBar())), [
-      backRound(personRouter({ handle: by.handle }), locale, h),
+      // Back to the board or look it was opened from; from a shared link, to whose it is.
+      backRound(
+        Option.getOrElse(model.cameFrom, () => personRouter({ handle: by.handle })),
+        locale,
+        h,
+      ),
       h.div(styled(h, styles.barActions()), [
         shareStatus(model.sharing, locale, h),
         shareRound(`${origin}${publicPieceRouter({ pieceId: piece.id })}`, pieceLabel(piece, locale), locale, h),

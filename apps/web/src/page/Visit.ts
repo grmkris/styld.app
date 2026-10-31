@@ -71,6 +71,9 @@ export const Model = Schema.Struct({
   /** Explore's Follow buttons, by handle, for those tapped since Explore last loaded. */
   suggestions: Schema.Record(Schema.String, Suggestion),
   sharing: Sharing,
+  /** On a piece's page, the board or look it was opened from, where Back returns: a piece is public only through
+   * one (owner, 2026-10-31), and its owner's profile does not list pieces. */
+  cameFrom: Schema.Option(Schema.String),
 })
 export type Model = typeof Model.Type
 
@@ -102,6 +105,7 @@ export const init = (target: Target, signedIn: boolean, atFollow = false): Model
   search: ExploreSearch.Off(),
   suggestions: {},
   sharing: Sharing.Idle(),
+  cameFrom: Option.none(),
   people: People.init(
     Target.match(target, {
       Person: ({ handle }) => People.Subject.Person({ handle }),
@@ -118,6 +122,7 @@ export const init = (target: Target, signedIn: boolean, atFollow = false): Model
 export const Message = defineMessageUnion({
   SucceededLoadPerson: { profile: PublicProfile },
   SucceededLoadPublicPiece: { page: PublicPiecePage },
+  SucceededReadCameFrom: { path: Schema.Option(Schema.String) },
   SucceededLoadExplore: { explore: Explore },
   ChoseMood: { mood: Schema.Option(Mood) },
   FailedLoadVisit: { missing: Schema.Boolean },
@@ -260,6 +265,25 @@ export const ShareLink = Command.define('ShareLink', {
   },
 })
 
+/** A public board's or a look's page on this site, the only ways to a public piece. */
+const boardOrLook = /^\/(?:boards\/bd_|looks\/lk_)[\w-]{22}$/
+
+/** The board or look page a piece was opened from, from where the page was loaded: a same-origin referrer naming
+ * one, nothing for a shared link or any other page.
+ * @internal Exported for its tests. */
+export const cameFromOf = (referrer: string, origin: string): Option.Option<string> =>
+  Option.flatMap(Option.liftThrowable(() => new URL(referrer))(), (url) =>
+    url.origin === origin && boardOrLook.test(url.pathname) ? Option.some(url.pathname) : Option.none(),
+  )
+
+/** Where a piece's page was opened from, read in the browser once it runs. */
+const ReadCameFrom = Command.define('ReadCameFrom', {
+  messages: [Message.SucceededReadCameFrom],
+  execute: Effect.sync(() =>
+    Message.SucceededReadCameFrom({ path: cameFromOf(document.referrer, window.location.origin) }),
+  ),
+})
+
 const loadTarget = (target: Target): Command.Command<Message, never, StyldClient> =>
   Target.match(target, {
     Person: ({ handle }) => LoadPerson({ handle }),
@@ -270,6 +294,7 @@ const loadTarget = (target: Target): Command.Command<Message, never, StyldClient
 /** The Commands that open the page; where the visitor stands with the person is read once the profile is in. */
 export const load = (model: Model): ReadonlyArray<Command.Command<Message, never, StyldClient>> => [
   loadTarget(model.target),
+  ...(Target.guards.Piece(model.target) ? [ReadCameFrom()] : []),
 ]
 
 /** Signed in, on someone else's profile: where the visitor stands with them is read. Signed out there is nothing to
@@ -350,6 +375,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         profile,
       ),
     SucceededLoadPublicPiece: ({ page }) => ({ model: modifyFields(model, { shown: () => Shown.Piece({ page }) }) }),
+    SucceededReadCameFrom: ({ path }) => ({ model: modifyFields(model, { cameFrom: () => path }) }),
     // Fresh people come without anyone already followed, so what was tapped before starts over.
     SucceededLoadExplore: ({ explore }) => ({
       model: modifyFields(model, { shown: () => Shown.Explore({ explore }), suggestions: () => ({}) }),
