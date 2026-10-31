@@ -1951,6 +1951,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'profile.editor.publish': 'Objavi',
   'profile.editor.unpublish': 'Naredi zasebnega',
   'profile.editor.bioCount': '{count}/{most}',
+  'profile.editor.saving': 'Shranjujem …',
+  'profile.editor.publishing': 'Spreminjam, kdo ga vidi …',
   'profile.links.aria': '{kind}, {label}',
   'profile.links.instagram': 'Instagram',
   'profile.links.tiktok': 'TikTok',

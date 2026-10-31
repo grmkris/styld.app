@@ -1923,6 +1923,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'profile.editor.publish': 'Make it public',
   'profile.editor.unpublish': 'Make it private',
   'profile.editor.bioCount': '{count}/{most}',
+  'profile.editor.saving': 'Saving…',
+  'profile.editor.publishing': 'Changing who sees it…',
   'profile.links.aria': '{kind}, {label}',
   'profile.links.instagram': 'Instagram',
   'profile.links.tiktok': 'TikTok',

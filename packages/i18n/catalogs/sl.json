@@ -2080,7 +2080,9 @@
       "wardrobeShown": "Pokaži mojo omaro na profilu",
       "publish": "Objavi",
       "unpublish": "Naredi zasebnega",
-      "bioCount": "{count}/{most}"
+      "bioCount": "{count}/{most}",
+      "saving": "Shranjujem …",
+      "publishing": "Spreminjam, kdo ga vidi …"
     },
     "links": {
       "aria": "{kind}, {label}",

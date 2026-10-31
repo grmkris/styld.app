@@ -2080,7 +2080,9 @@
       "wardrobeShown": "Show my wardrobe on my profile",
       "publish": "Make it public",
       "unpublish": "Make it private",
-      "bioCount": "{count}/{most}"
+      "bioCount": "{count}/{most}",
+      "saving": "Saving…",
+      "publishing": "Changing who sees it…"
     },
     "links": {
       "aria": "{kind}, {label}",

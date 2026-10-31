@@ -1589,10 +1589,12 @@ export interface MessageArgumentsByKey<T = string> {
   'profile.editor.previewHint': Readonly<Record<string, never>>
   'profile.editor.publicNote': Readonly<Record<string, never>>
   'profile.editor.publish': Readonly<Record<string, never>>
+  'profile.editor.publishing': Readonly<Record<string, never>>
   'profile.editor.removeCover': Readonly<Record<string, never>>
   'profile.editor.removeLink': { readonly label: string | number }
   'profile.editor.saveFailed': Readonly<Record<string, never>>
   'profile.editor.saved': Readonly<Record<string, never>>
+  'profile.editor.saving': Readonly<Record<string, never>>
   'profile.editor.title': Readonly<Record<string, never>>
   'profile.editor.toneLabel': Readonly<Record<string, never>>
   'profile.editor.unpublish': Readonly<Record<string, never>>
@@ -2756,4 +2758,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '186680b1069fcbf38b0e60763299242628aea5028c13feaf9895dcd9502829b9'
+export const catalogVersion = 'c267fc2622c28f2195e9957b84b72b22fdc0737c74dfa4e2ca6b608657a19f06'

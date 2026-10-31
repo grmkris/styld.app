@@ -20,7 +20,8 @@ import * as styles from './ProfileEditorView.styles.ts'
 const savingView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   Saving.match(model.saving, {
     Idle: () => h.empty,
-    Saving: () => h.span([h.Role('status'), ...styled(h, styles.note())], [loader(h)]),
+    Saving: () =>
+      h.span([h.Role('status'), ...styled(h, styles.note())], [loader(h), format(locale, 'profile.editor.saving', {})]),
     Saved: () => h.span([h.Role('status'), ...styled(h, styles.note())], [format(locale, 'profile.editor.saved', {})]),
     Failed: ({ problem }) =>
       h.p(
@@ -196,7 +197,11 @@ const publicView = (profile: Profile, model: Model, locale: Locale, h: HtmlBuild
     profile.published ? checkNotice(profile.check, locale, h) : h.empty,
     Publishing.match(model.publishing, {
       Idle: () => h.empty,
-      Sending: () => h.p([h.Role('status')], [loader(h)]),
+      Sending: () =>
+        h.p(
+          [h.Role('status'), ...styled(h, styles.note())],
+          [loader(h), format(locale, 'profile.editor.publishing', {})],
+        ),
       Failed: ({ needsHandle }) =>
         h.p(
           [h.Role('alert'), ...styled(h, styles.problem())],
