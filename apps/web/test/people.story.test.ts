@@ -140,7 +140,9 @@ describe('what a visitor does with someone', () => {
       given(known),
       message(Message.ClickedReport()),
       message(Message.SubmittedReport()),
-      model(({ reporting }) => expect(reporting).toEqual(Reporting.Open({ reason: Option.none(), note: '' }))),
+      model(({ reporting }) =>
+        expect(reporting).toEqual(Reporting.Open({ reason: Option.none(), note: '', problem: Option.none() })),
+      ),
       message(Message.ChoseReportReason({ reason: 'spam' })),
       message(Message.UpdatedReportNote({ value: 'Selling followers' })),
       message(Message.SubmittedReport()),
@@ -148,11 +150,15 @@ describe('what a visitor does with someone', () => {
         SendReport({ subject, reason: 'spam', note: 'Selling followers' }),
         Message.FailedReport({ tooMany: true }),
       ),
-      model(({ reporting }) => expect(reporting).toEqual(Reporting.Failed({ tooMany: true }))),
-      message(Message.ClickedReport()),
+      // The form stays with what was written, and says why it was not sent.
+      model(({ reporting }) =>
+        expect(reporting).toEqual(
+          Reporting.Open({ reason: Option.some('spam'), note: 'Selling followers', problem: Option.some('tooMany') }),
+        ),
+      ),
       message(Message.ChoseReportReason({ reason: 'hate' })),
       message(Message.SubmittedReport()),
-      Command.resolve(SendReport({ subject, reason: 'hate', note: '' }), Message.SucceededReport()),
+      Command.resolve(SendReport({ subject, reason: 'hate', note: 'Selling followers' }), Message.SucceededReport()),
       model(({ reporting }) => expect(Reporting.guards.Sent(reporting)).toBe(true)),
     )
   })

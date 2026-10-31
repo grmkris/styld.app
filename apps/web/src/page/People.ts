@@ -31,12 +31,16 @@ export const Work = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {} })
 export type Work = typeof Work.Type
 
 /** The report form: closed, open with a reason and words, sending, sent, or refused. */
+/** Why a report was not sent: it failed, or the hour's reports are used up. */
+const ReportProblem = Schema.Literals(['failed', 'tooMany'])
+
+/** The report form: closed, open with a reason and words (and why the last send failed, the words kept), sending,
+ * or sent. */
 export const Reporting = defineTaggedUnion({
   Closed: {},
-  Open: { reason: Schema.Option(ReportReason), note: Schema.String },
-  Sending: {},
+  Open: { reason: Schema.Option(ReportReason), note: Schema.String, problem: Schema.Option(ReportProblem) },
+  Sending: { reason: ReportReason, note: Schema.String },
   Sent: {},
-  Failed: { tooMany: Schema.Boolean },
 })
 export type Reporting = typeof Reporting.Type
 
@@ -285,15 +289,15 @@ export const FocusMoreTitle = Command.define('FocusMoreTitle', {
 const inSheet = (model: Model): UpdateReturn =>
   model.more.isOpen ? { model, commands: [FocusMoreTitle({ id: Dialog.titleId(model.more) })] } : { model }
 
-const submitted = (model: Model): UpdateReturn =>
-  Reporting.guards.Open(model.reporting) && Option.isSome(model.reporting.reason)
-    ? {
-        model: modifyFields(model, { reporting: () => Reporting.Sending() }),
-        commands: [
-          SendReport({ subject: model.subject, reason: model.reporting.reason.value, note: model.reporting.note }),
-        ],
-      }
-    : { model }
+const submitted = (model: Model): UpdateReturn => {
+  const { reporting } = model
+  if (!Reporting.guards.Open(reporting) || Option.isNone(reporting.reason)) return { model }
+  const sent = { reason: reporting.reason.value, note: reporting.note }
+  return {
+    model: modifyFields(model, { reporting: () => Reporting.Sending(sent) }),
+    commands: [SendReport({ subject: model.subject, ...sent })],
+  }
+}
 
 /** @internal Exported for its tests. */
 export const update = (model: Model, message: Message): UpdateReturn =>
@@ -334,27 +338,45 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SucceededSetSaved: ({ saved }) => ({ model: modifyFields(model, { saved: () => saved, work: () => Work.Idle() }) }),
     FailedPeopleWork: () => ({ model: modifyFields(model, { work: () => Work.Failed() }) }),
     ClickedReport: () =>
-      inSheet(modifyFields(model, { reporting: () => Reporting.Open({ reason: Option.none(), note: '' }) })),
+      inSheet(
+        modifyFields(model, {
+          reporting: () => Reporting.Open({ reason: Option.none(), note: '', problem: Option.none() }),
+        }),
+      ),
     ClickedMore: () => openMore(model),
     GotMoreMessage: (got) => foldMore(model, got.message),
     ChoseReportReason: ({ reason }) => ({
       model: modifyFields(model, {
         reporting: (reporting) =>
           Reporting.guards.Open(reporting)
-            ? Reporting.Open({ reason: Option.some(reason), note: reporting.note })
+            ? Reporting.Open({ reason: Option.some(reason), note: reporting.note, problem: reporting.problem })
             : reporting,
       }),
     }),
     UpdatedReportNote: ({ value }) => ({
       model: modifyFields(model, {
         reporting: (reporting) =>
-          Reporting.guards.Open(reporting) ? Reporting.Open({ reason: reporting.reason, note: value }) : reporting,
+          Reporting.guards.Open(reporting)
+            ? Reporting.Open({ reason: reporting.reason, note: value, problem: reporting.problem })
+            : reporting,
       }),
     }),
     ClickedCancelReport: () => inSheet(modifyFields(model, { reporting: () => Reporting.Closed() })),
     SubmittedReport: () => submitted(model),
     SucceededReport: () => ({ model: modifyFields(model, { reporting: () => Reporting.Sent() }) }),
-    FailedReport: ({ tooMany }) => ({ model: modifyFields(model, { reporting: () => Reporting.Failed({ tooMany }) }) }),
+    // The form comes back with its reason and words, and says why it was not sent.
+    FailedReport: ({ tooMany }) => ({
+      model: modifyFields(model, {
+        reporting: (reporting) =>
+          Reporting.guards.Sending(reporting)
+            ? Reporting.Open({
+                reason: Option.some(reporting.reason),
+                note: reporting.note,
+                problem: Option.some(tooMany ? 'tooMany' : 'failed'),
+              })
+            : reporting,
+      }),
+    }),
   })
 
 /** Following, saving and reporting inside a page whose model keeps them as `people`. */

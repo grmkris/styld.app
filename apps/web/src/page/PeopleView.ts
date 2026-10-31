@@ -31,7 +31,7 @@ const toggle = (label: string, pressed: boolean, busy: boolean, onClick: Message
       h.AriaBusy(busy),
       // Waiting, it holds still and drops the press (DESIGN.md › Controls); held, it shows its check (Explore's Follow).
       h.AriaDisabled(busy),
-      ...(busy ? [] : [h.OnClick(onClick)]),
+      ...(busy ? [h.DataAttribute('disabled', '')] : [h.OnClick(onClick)]),
       ...styled(h, pressed ? secondaryAction() : primaryAction()),
     ],
     [busy ? loader(h) : pressed ? checkIcon(h) : h.empty, label],
@@ -46,15 +46,19 @@ const reportForm = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html
     Closed: () => h.empty,
     Sending: () => h.p([h.Role('status')], [loader(h), format(locale, 'safety.reportDialog.sending', {})]),
     Sent: () => h.p([h.Role('status')], [format(locale, 'safety.reportDialog.sent', {})]),
-    Failed: ({ tooMany }) =>
-      h.p(
-        [h.Role('alert'), ...styled(h, styles.problem())],
-        [format(locale, tooMany ? 'safety.reportDialog.tooMany' : 'safety.reportDialog.failed', {})],
-      ),
-    Open: ({ reason, note }) =>
+    // A report that was not sent says why above the form, which keeps what was written.
+    Open: ({ reason, note, problem }) =>
       h.form(
         [h.OnSubmit(Message.SubmittedReport()), ...styled(h, styles.report())],
         [
+          Option.match(problem, {
+            onNone: () => h.empty,
+            onSome: (why) =>
+              h.p(
+                [h.Role('alert'), ...styled(h, styles.problem())],
+                [format(locale, why === 'tooMany' ? 'safety.reportDialog.tooMany' : 'safety.reportDialog.failed', {})],
+              ),
+          }),
           h.p(styled(h, styles.note()), [format(locale, 'safety.reportDialog.description', {})]),
           h.fieldset(styled(h, styles.reasons()), [
             h.legend([], [format(locale, 'safety.reportDialog.reasonLegend', {})]),
@@ -265,6 +269,12 @@ const moreChoices = (
 ): ReadonlyArray<Html> => {
   const busy = Work.guards.Sending(model.work)
   return [
+    Work.guards.Failed(model.work)
+      ? h.p(
+          [h.Role('alert'), ...styled(h, cx(styles.problem(), styles.moreProblem()))],
+          [format(locale, 'people.actionFailed', {})],
+        )
+      : h.empty,
     h.button(
       [h.Type('button'), ...info.initialFocus, h.OnClick(Message.ClickedReport()), ...styled(h, styles.moreOption())],
       [format(locale, 'safety.report.profile', {})],
@@ -309,16 +319,13 @@ export const moreView = Submodel.defineView<Model, Message, Inputs>((model, { lo
           {
             dialog: model.more,
             title: moreTitle(model, handle, locale),
-            body: (info) => [
-              h.div(
-                styled(h, styles.moreBody()),
-                !Reporting.guards.Closed(model.reporting)
-                  ? [reportForm(model, locale, h)]
-                  : model.confirmingBlock
-                    ? blockConfirm(model, locale, h)
-                    : moreChoices(model, handle, blocked, locale, info, h),
-              ),
-            ],
+            // The choices are rows edge to edge, as Ask's ways in are; a question or the form keeps to the title's line.
+            body: (info) =>
+              !Reporting.guards.Closed(model.reporting)
+                ? [h.div(styled(h, styles.moreBody()), [reportForm(model, locale, h)])]
+                : model.confirmingBlock
+                  ? [h.div(styled(h, styles.moreBody()), blockConfirm(model, locale, h))]
+                  : moreChoices(model, handle, blocked, locale, info, h),
             toParentMessage: (message) => Message.GotMoreMessage({ message }),
             locale,
           },

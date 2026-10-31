@@ -69,7 +69,9 @@ export const moreOption = style({
   '&[aria-busy="true"]:active': { transform: 'none' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2' } },
 })
-/** The More sheet's content: its choices, or a question or the report form, scrolling within the sheet if long. */
+/** A failed unblock in the More sheet, on the title's line above the rows. */
+export const moreProblem = style({ paddingInline: '12px' })
+/** A question or the report form in the More sheet, on the title's line, scrolling within the sheet if long. */
 export const moreBody = style({
   display: 'grid',
   gap: '12px',
