@@ -265,8 +265,8 @@ export const ShareLink = Command.define('ShareLink', {
   },
 })
 
-/** A public board's or a look's page on this site, the only ways to a public piece. */
-const boardOrLook = /^\/(?:boards\/bd_|looks\/lk_)[\w-]{22}$/
+/** The pages of this site a public piece is opened from: a public board or a look, Home's feed and Boards' Saved. */
+const boardOrLook = /^\/(?:(?:boards\/bd_|looks\/lk_)[\w-]{22}|boards)?$/
 
 /** The board or look page a piece was opened from, from where the page was loaded: a same-origin referrer naming
  * one, nothing for a shared link or any other page.

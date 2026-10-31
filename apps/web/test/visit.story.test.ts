@@ -58,12 +58,15 @@ describe('a piece’s page', () => {
     const look = `/looks/lk_${'rain'.padEnd(22, 'x')}`
     expect(cameFromOf(`${origin}${board}`, origin)).toEqual(Option.some(board))
     expect(cameFromOf(`${origin}${look}`, origin)).toEqual(Option.some(look))
+    // Home's feed and Boards' Saved open pieces too.
+    expect(cameFromOf(`${origin}/`, origin)).toEqual(Option.some('/'))
+    expect(cameFromOf(`${origin}/boards`, origin)).toEqual(Option.some('/boards'))
     for (const referrer of [
       '',
       `${origin}/@nika.kovac`,
       `https://elsewhere.test${board}`,
       'not a url',
-      `${origin}/boards`,
+      `${origin}/wardrobe`,
     ])
       expect({ referrer, from: cameFromOf(referrer, origin) }).toEqual({ referrer, from: Option.none() })
     const piece = init(Target.Piece({ pieceId: 'pc_knit' }), false)
