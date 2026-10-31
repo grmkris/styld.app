@@ -1,4 +1,4 @@
-import { accounts, pieces, profiles } from '@styld/db'
+import { pieces, profiles } from '@styld/db'
 import { and, eq } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { ProfileNotPublished, WardrobeUnavailable } from '@styld/protocol'
@@ -18,11 +18,6 @@ export const makeProfileStore = (database: Parameters<typeof drizzle>[0]) => {
       attempt(() => db.select().from(profiles).where(eq(profiles.accountId, accountId)).limit(1)).pipe(
         Effect.map(first),
       ),
-    /** The name the account signed up with, for a profile not written yet. */
-    displayName: (accountId: string) =>
-      attempt(() =>
-        db.select({ name: accounts.displayName }).from(accounts).where(eq(accounts.id, accountId)).limit(1),
-      ).pipe(Effect.map((rows) => Option.map(first(rows), ({ name }) => name))),
     /** Whose a handle is, if anyone's. */
     handleOwner: (handle: string) =>
       attempt(() =>

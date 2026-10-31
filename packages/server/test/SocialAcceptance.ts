@@ -13,13 +13,13 @@ const refusal = async (response: Response, status: number, tag: string) => {
   expect(await response.json()).toMatchObject({ _tag: tag })
 }
 
-/** A profile: unpublished on the name the account signed up with until it is saved, a handle that must be free and
- * not reserved, and published only with one. */
+/** A profile: unpublished and without a name until it is saved (a signup name can be an email's start), a handle
+ * that must be free and not reserved, and published only with one. */
 const verifyProfiles = async (origin: string, owner: Call, other: Call) => {
   expect((await fetch(`${origin}/api/profile`)).status).toBe(401)
   expect(await (await owner('/api/profile')).json()).toMatchObject({
     handle: null,
-    name: 'Native Identity',
+    name: '',
     published: false,
     wardrobeShown: true,
   })

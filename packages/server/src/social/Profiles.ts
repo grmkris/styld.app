@@ -43,17 +43,17 @@ const shown = (row: ProfileRow, check: Option.Option<CheckStatus>): Profile =>
     check: Option.getOrNull(check),
   })
 
-/** The account's profile as stored, or the one it would have: its signup name, unpublished, wardrobe shown. */
+/** The account's profile as stored, or the one it would have: no name yet, unpublished, wardrobe shown. A signup name
+ * can be the start of an email address, so it never becomes a public name by default. */
 const current = (store: ProfileStore, accountId: string) =>
   Effect.gen(function* () {
     const row = yield* stored(store.findProfile(accountId))
     if (Option.isSome(row)) return row.value
-    const name = Option.getOrElse(yield* stored(store.displayName(accountId)), () => 'Styld')
     const at = yield* nowDate
     const fresh: ProfileRow = {
       accountId,
       handle: null,
-      name,
+      name: '',
       city: null,
       bio: null,
       tone: toneFor(accountId),
@@ -62,7 +62,7 @@ const current = (store: ProfileStore, accountId: string) =>
       wardrobeShown: true,
       house: false,
       featuredAt: null,
-      searchText: searchText(name),
+      searchText: searchText(''),
       createdAt: at,
       updatedAt: at,
     }
@@ -124,10 +124,17 @@ const make = (database: Parameters<typeof makeProfileStore>[0], checks: Checks['
       if (input.published && before.handle === null) return yield* ProfileNeedsHandle.make({})
       const at = yield* nowDate
       const publishedAt = input.published && !before.published ? at : before.publishedAt
+      // A profile published without a name goes by its handle.
+      const name = before.name.trim().length === 0 && before.handle !== null ? before.handle : before.name
       // Publishing keeps the handle, so it cannot be taken meanwhile; a failed write is only unavailable.
-      const row = yield* saved(store, { ...before, published: input.published, publishedAt, updatedAt: at }).pipe(
-        Effect.catchTag('HandleTaken', () => Effect.fail(unavailable())),
-      )
+      const row = yield* saved(store, {
+        ...before,
+        name,
+        searchText: searchText(name, before.handle),
+        published: input.published,
+        publishedAt,
+        updatedAt: at,
+      }).pipe(Effect.catchTag('HandleTaken', () => Effect.fail(unavailable())))
       return yield* checked(row, !before.published)
     }),
   }
