@@ -151,8 +151,9 @@ export const cardAction = style({
   textWrap: 'balance',
 })
 /** A board on its card: its table cropped to 16:10 around what lies on it (`--crop`, set by the browser, is the share
- * of the table above the window), with corners concentric with the card's: 16px less its 12px padding. The window
- * stays 28px inside the table's top and bottom, so the table's own round corners never show in it. */
+ * of the table above the window), with corners concentric with the card's: 16px less its 12px padding. Inside the
+ * window the table's corners are square, so the window can reach its top and its foot without showing them round.
+ * The table is found by its `data-paper`, which outranks the paper's own radius whatever order the styles load in. */
 export const boardCrop = style({
   position: 'relative',
   display: 'grid',
@@ -160,7 +161,7 @@ export const boardCrop = style({
   marginBlockEnd: '4px',
   overflow: 'hidden',
   borderRadius: 'photo',
-  '& > *': { translate: '0 calc(-1 * clamp(28px, var(--crop) * 100%, 50% - 28px))' },
+  '& > [data-paper]': { translate: '0 calc(var(--crop) * -100%)', borderRadius: '0 !custom' },
   '::after': {
     content: '""',
     position: 'absolute',
