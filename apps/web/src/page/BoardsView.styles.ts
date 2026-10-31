@@ -30,7 +30,7 @@ export const tile = style({
   '& [data-paper]': { borderRadius: 'panel' },
 })
 /** The loading tiles: the board's paper, its name and the line under it. */
-export const paperSkeleton = style({ inlineSize: '100%', aspectRatio: '4 / 5', borderRadius: 'table' })
+export const paperSkeleton = style({ inlineSize: '100%', aspectRatio: '4 / 5', borderRadius: 'panel' })
 export const nameSkeleton = style({ marginBlockStart: '4px', fontSize: '15px' })
 export const metaSkeleton = style({ inlineSize: '30%', fontSize: '13px' })
 export const tileName = style({ marginBlockStart: '4px', fontSize: '15px', fontWeight: 600, overflowWrap: 'anywhere' })

@@ -2133,7 +2133,7 @@
     "unpinPictureAsk": "Take the picture off? It is deleted.",
     "unpinConfirm": "Take off",
     "unpinKeep": "Keep",
-    "heldBack": "Only you see this one for now"
+    "heldBack": "Only you see this one: others see a piece once it has its own picture and Styld's check lets it"
   },
   "boards": {
     "title": "Boards",
@@ -2163,7 +2163,7 @@
     "failed": "Your wardrobe didn’t load.",
     "retry": "Try again",
     "stylistTitle": "Styld, your stylist",
-    "stylistText": "Styld is your stylist and knows your wardrobe: what goes with what, and what to wear tonight.",
+    "stylistText": "Knows your wardrobe: what goes with what, and what to wear tonight.",
     "stylistLink": "Start a chat",
     "searchWords": {
       "top": "top, tops",

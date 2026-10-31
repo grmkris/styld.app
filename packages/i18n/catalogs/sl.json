@@ -2133,7 +2133,7 @@
     "unpinPictureAsk": "Odstraniš sliko? Izbrisala se bo.",
     "unpinConfirm": "Odstrani",
     "unpinKeep": "Obdrži",
-    "heldBack": "Zaenkrat ga vidiš samo ti"
+    "heldBack": "Vidiš ga samo ti: drugi vidijo kos, ko ima svojo sliko in ga Styldov pregled spusti"
   },
   "boards": {
     "title": "Zbirke",
@@ -2163,7 +2163,7 @@
     "failed": "Tvoja garderoba se ni naložila.",
     "retry": "Poskusi znova",
     "stylistTitle": "Styld, tvoj stilist",
-    "stylistText": "Styld je tvoj stilist in pozna tvojo garderobo: kaj se poda k čemu in kaj obleči nocoj.",
+    "stylistText": "Pozna tvojo garderobo: kaj se poda k čemu in kaj obleči nocoj.",
     "stylistLink": "Začni pogovor",
     "searchWords": {
       "top": "majica, majice, zgornji del",
