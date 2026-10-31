@@ -85,6 +85,23 @@ export const tileGrid = <Message>(
     tiles.map(({ id, tile }) => h.keyed('li')(id, styled(h, boardStyles.pin()), [tile])),
   )
 
+/** A pin's picture inside a board's card, which is itself the link: no link of its own, and nothing to read aloud
+ * beyond the board's name. */
+const coverImage = <Message>(pin: PublicPin, h: HtmlBuilder<Message>): Html => {
+  const source = Match.value(pin).pipe(
+    Match.tagsExhaustive({
+      PublicPiecePin: ({ piece }) => publicPieceImage(piece.id),
+      PublicPicturePin: ({ imageId }) => publicPicture(imageId, 'thumb'),
+      PublicLookPin: ({ look }) => (look.pieces[0] === undefined ? '' : publicPieceImage(look.pieces[0].id)),
+    }),
+  )
+  return source === ''
+    ? h.empty
+    : h.span(styled(h, boardStyles.pinFrame()), [
+        h.img([h.Src(source), h.Alt(''), h.Loading('lazy'), ...styled(h, boardStyles.cutout())]),
+      ])
+}
+
 /** A public board in a profile: its collage, or its newest pins, its name and how many pins. */
 export const boardCard = <Message>(board: PublicBoardSummary, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.a(
@@ -94,7 +111,7 @@ export const boardCard = <Message>(board: PublicBoardSummary, locale: Locale, h:
         ? stillTable(board.items, board.paper, [], h, fromPublic)
         : h.span(
             styled(h, styles.cover()),
-            board.cover.map((pin) => h.keyed('span')(pin.id, styled(h, styles.coverTile()), [pinTile(pin, locale, h)])),
+            board.cover.map((pin) => h.keyed('span')(pin.id, styled(h, styles.coverTile()), [coverImage(pin, h)])),
           ),
       h.span(styled(h, styles.boardName()), [board.name]),
       h.span(styled(h, styles.meta()), [format(locale, 'saveToBoard.pins', { count: board.pinCount })]),

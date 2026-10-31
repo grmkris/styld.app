@@ -2143,6 +2143,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'explore.moods.evening': 'Evening',
   'explore.moods.sport': 'Sport',
   'explore.moodsLabel': 'Moods for Explore',
+  'explore.noneInMood': 'No public boards in this mood yet.',
   'feed.label': 'Your feed',
   'feed.forYou': 'For you',
   'feed.following': 'Following',

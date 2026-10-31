@@ -2341,7 +2341,8 @@
       "evening": "Večer",
       "sport": "Šport"
     },
-    "moodsLabel": "Razpoloženja za Razišči"
+    "moodsLabel": "Razpoloženja za Razišči",
+    "noneInMood": "V tem razpoloženju še ni javnih zbirk."
   },
   "feed": {
     "label": "Tvoje novosti",

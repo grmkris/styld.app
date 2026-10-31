@@ -218,11 +218,15 @@ const summaries = (r: Reader, accountId: string, rows: ReadonlyArray<BoardRow>) 
     const kept = rows.filter(({ id }) => shownToOthers(statuses.get(id)))
     const ids = kept.map(({ id }) => id)
     const items = yield* stored(r.boards.itemsOf(ids))
-    const covers = yield* stored(r.boards.coversOf(ids, 12))
-    const counts = yield* stored(r.boards.pinCounts(ids))
-    const seen = yield* seenOn(r, accountId, covers, items)
-    return yield* Effect.forEach(kept, (row) =>
-      decoded(PublicBoardSummary, {
+    // Every pin, so a board's count and cover are what others see of it, not what it holds.
+    const pins = yield* stored(r.boards.pinsOf(ids))
+    const seen = yield* seenOn(r, accountId, pins, items)
+    return yield* Effect.forEach(kept, (row) => {
+      const shown = publicPins(
+        seen,
+        pins.filter(({ pin }) => pin.boardId === row.id),
+      )
+      return decoded(PublicBoardSummary, {
         id: row.id,
         name: row.name,
         paper: row.paper,
@@ -230,14 +234,11 @@ const summaries = (r: Reader, accountId: string, rows: ReadonlyArray<BoardRow>) 
           seen,
           items.filter(({ boardId }) => boardId === row.id),
         ),
-        cover: publicPins(
-          seen,
-          covers.filter(({ pin }) => pin.boardId === row.id),
-        ).slice(0, 4),
-        pinCount: counts.get(row.id) ?? 0,
+        cover: shown.slice(0, 4),
+        pinCount: shown.length,
         publishedAt: (row.publishedAt ?? row.updatedAt).toISOString(),
-      }),
-    )
+      })
+    })
   })
 
 /** A piece others may see on its own page: its owner shows the wardrobe, or it is on one of their public

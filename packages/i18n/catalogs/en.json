@@ -2341,7 +2341,8 @@
       "evening": "Evening",
       "sport": "Sport"
     },
-    "moodsLabel": "Moods for Explore"
+    "moodsLabel": "Moods for Explore",
+    "noneInMood": "No public boards in this mood yet."
   },
   "feed": {
     "label": "Your feed",

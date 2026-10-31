@@ -3,13 +3,13 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import * as styles from './Avatar.styles.ts'
 import { styled } from './Styled.ts'
 
-/** Up to two initials from a name: "Nika Kovač" is NK. */
+/** Up to two initials from a name, letters only: "Nika Kovač" is NK, and "Kris (preview)" is KP. */
 const initials = (name: string) =>
   name
     .split(/\s+/)
-    .filter((word) => word.length > 0)
+    .flatMap((word) => word.match(/\p{L}/u) ?? [])
     .slice(0, 2)
-    .map((word) => word.charAt(0).toUpperCase())
+    .map((letter) => letter.toUpperCase())
     .join('')
 
 /** A person's initials on their tone. The name beside it carries the meaning, so the avatar is hidden from

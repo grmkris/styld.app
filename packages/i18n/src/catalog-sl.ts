@@ -2180,6 +2180,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'explore.moods.evening': 'Večer',
   'explore.moods.sport': 'Šport',
   'explore.moodsLabel': 'Razpoloženja za Razišči',
+  'explore.noneInMood': 'V tem razpoloženju še ni javnih zbirk.',
   'feed.label': 'Tvoje novosti',
   'feed.forYou': 'Za tebe',
   'feed.following': 'Sledim',

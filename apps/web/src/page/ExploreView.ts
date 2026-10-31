@@ -107,5 +107,9 @@ export const exploreSections = (
     moodChips(mood, locale, h),
     boardsRow('explore-newest', format(locale, 'explore.newest', {}), explore.newest, locale, h),
     isEmpty ? h.p(styled(h, styles.empty()), [format(locale, 'explore.empty', {})]) : h.empty,
+    // A mood with no boards yet says so, rather than leaving the page blank under its chips.
+    !isEmpty && Option.isSome(mood) && explore.newest.length === 0
+      ? h.p([h.Role('status'), ...styled(h, styles.empty())], [format(locale, 'explore.noneInMood', {})])
+      : h.empty,
   ]
 }

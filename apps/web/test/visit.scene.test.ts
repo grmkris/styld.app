@@ -203,6 +203,20 @@ describe('a public profile', () => {
     )
   })
 
+  test('a board’s card is one link, and a mood with no boards yet says so', () => {
+    const found = { board: nika.boards[0], by, moods: [] }
+    const explore = Schema.decodeUnknownSync(Explore)({ edits: [found], featured: [], people: [], newest: [] })
+    scene(
+      { update, view },
+      given(visiting('/explore', Shown.Explore({ explore }))),
+      expect(role('link', { name: /Coats/ })).toHaveAttr('href', `/boards/bd_${'coats'.padEnd(22, 'x')}`),
+      expect(role('link', { name: 'Navy knit' })).toBeAbsent(),
+      click(role('button', { name: 'Rain' })),
+      Command.resolve(LoadExplore, VisitMessage.SucceededLoadExplore({ explore })),
+      expect(text('No public boards in this mood yet.')).toExist(),
+    )
+  })
+
   test('the landing shows Edits from Styld to someone signed out', () => {
     const found = { board: nika.boards[0], by, moods: [] }
     const explore = Schema.decodeUnknownSync(Explore)({ edits: [found], featured: [], people: [], newest: [] })

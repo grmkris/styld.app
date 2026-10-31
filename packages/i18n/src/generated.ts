@@ -1060,6 +1060,7 @@ export interface MessageArgumentsByKey<T = string> {
   'explore.moods.weekend': Readonly<Record<string, never>>
   'explore.moodsLabel': Readonly<Record<string, never>>
   'explore.newest': Readonly<Record<string, never>>
+  'explore.noneInMood': Readonly<Record<string, never>>
   'explore.people': Readonly<Record<string, never>>
   'explore.title': Readonly<Record<string, never>>
   'feed.allShops': Readonly<Record<string, never>>
@@ -2679,4 +2680,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '4ed559970b72bf6a92e53913e9aa9ca5f17078ce75634474981a8ca1ee8026f8'
+export const catalogVersion = '723bbf2a3dd7d2c4bcbced8fc22e23616b15cd9e4b94680a49129440ef7b2258'
