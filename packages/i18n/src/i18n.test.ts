@@ -10,10 +10,15 @@ describe('Styld locales', () => {
   })
 
   test('Slovenian addresses the person as ti, and never picks a gender for them (DESIGN.md › Copy and chrome)', () => {
-    // The forms of vi and the gendered past (videl_a) that the catalog once mixed in.
+    // The forms of vi: its pronouns and verbs, and every imperative ending in -ite or -jte (Vnesite, Počakajte); the
+    // words of the catalog that only look like one; and the gendered past (videl_a).
     const formal =
-      /(?<!\p{L})(vaš\p{L}*|vam|vami|niste|ste|imate|morate|potrebujete|želite|poskusite|preverite|vnesite|izberite|zahtevajte|prijavite|ustvarite|nadgradite|dokupite|\p{L}+_a)(?!\p{L})/iu
-    expect(Object.entries(slovenian).filter(([, words]) => formal.test(words))).toEqual([])
+      /(?<!\p{L})(vaš\p{L}*|vam|vami|niste|ste|imate|morate|potrebujete|želite|\p{L}+(?:ite|jte)|\p{L}+_a)(?!\p{L})/giu
+    const notImperatives = new Set(['izrazite', 'kredite', 'outfite', 'skrite'])
+    const formalIn = (words: string) =>
+      [...words.matchAll(formal)].map(([word]) => word).filter((word) => !notImperatives.has(word.toLowerCase()))
+    expect(formalIn('Ta koda je potekla. Počakajte minuto in poskusite znova.')).toEqual(['Počakajte', 'poskusite'])
+    expect(Object.entries(slovenian).filter(([, words]) => formalIn(words).length > 0)).toEqual([])
   })
 
   test('keeps locale state explicit and supports pseudolocales', () => {
