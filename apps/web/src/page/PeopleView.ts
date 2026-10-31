@@ -322,7 +322,18 @@ export const moreView = Submodel.defineView<Model, Message, Inputs>((model, { lo
             // The choices are rows edge to edge, as Ask's ways in are; a question or the form keeps to the title's line.
             body: (info) =>
               !Reporting.guards.Closed(model.reporting)
-                ? [h.div(styled(h, cx(styles.moreBody(), styles.moreFlush())), [reportForm(model, locale, h)])]
+                ? [
+                    // The open form's own padding puts it on the title's line; Sending and Sent take the body's.
+                    h.div(
+                      styled(
+                        h,
+                        Reporting.guards.Open(model.reporting)
+                          ? cx(styles.moreBody(), styles.moreFlush())
+                          : styles.moreBody(),
+                      ),
+                      [reportForm(model, locale, h)],
+                    ),
+                  ]
                 : model.confirmingBlock
                   ? [h.div(styled(h, styles.moreBody()), blockConfirm(model, locale, h))]
                   : moreChoices(model, handle, blocked, locale, info, h),

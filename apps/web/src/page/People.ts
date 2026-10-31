@@ -256,11 +256,13 @@ const moreSheet = {
   toParentMessage: (message: Dialog.Message) => Message.GotMoreMessage({ message }),
   foldOutMessage: Dialog.OutMessage.match<Update.Step<Model, Message>>({
     Opened: () => (model) => ({ model }),
-    // Closed, the sheet forgets a report or a block question left in it; one being sent goes on.
+    // Closed, the sheet forgets a report or a block question left in it, and a block that failed in it, so its error
+    // does not land under Follow; a report being sent goes on.
     Closed: () => (model) => ({
       model: modifyFields(model, {
         confirmingBlock: () => false,
         reporting: (reporting) => (Reporting.guards.Sending(reporting) ? reporting : Reporting.Closed()),
+        work: (work) => (Work.guards.Failed(work) ? Work.Idle() : work),
       }),
     }),
   }),
