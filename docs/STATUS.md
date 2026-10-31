@@ -425,7 +425,29 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   boards before there are any), with a way to Explore. The section keeps its room while they load. Evidence: a
   scene test.
 - **Next:**
-  - M7: the preview readback of a live mood board (Muse and the Workers AI planner), then M8's review rounds.
+  - M7: the preview readback of a live mood board (Muse and the Workers AI planner), then M8's other review
+    rounds (architecture and tooling, the browser product).
+- **M8, the security, privacy and durability review (round one):** a read-only reviewer of the public, social, link,
+  curation and generation surfaces found 13 defects; these are fixed:
+  - Generation (`82cd008`): a delivery that finds a picture still being drawn steps aside instead of failing toward
+    a give-up. Claims and outcomes touch the job, so reading it does not send it again while it runs. Every move of
+    a job or picture happens only from the step it is at, so a job given up stays given up. A lost answer, or a
+    picture that could not be stored, gives its credit back (no hold is left open; the Wallet keeps at most 256).
+    A claim whose painter was never reached is put back. A job that could not be queued is given up at once.
+    Credits are held before the words are checked. A piece whose picture has no face score yet is never sent.
+  - Assistants keep the website's per-account limits on link imports, photo addresses and generation (`Pacing`).
+  - Fetching (`f35e428`): no IP addresses, single-label names or private networks' names; a product page is read
+    to its 1 MB cap and no further, within 10 s, and its JSON-LD is found in one pass; outbound addresses stay out
+    of spans and no trace header goes to others' sites.
+  - Social (`6235056`): the Following feed and its block filter stay under D1's 100 parameters; a repeated report
+    is not stored and does not re-run the judge.
+  - Checks (`2332bc3`): every picture a board shows is judged, three at a time, not only the first three. The
+    stand-in judge passes every picture, so this has no native evidence beyond the existing checks.
+  - Curation (`dbed69d`): `report_list` says reporters' words are data; changes act only when the admin asks; the
+    admin list matches the verified email identifier.
+  - Still open (low): link previews are read without the visitor's session, so a blocked person sees a profile's
+    name and cover in the page head (as anyone signed out does); a person with an unpublished profile cannot be
+    blocked, nor unblocked once they unpublish; redirect bodies are left to the runtime rather than cancelled.
 - **M7, generated pictures and mood boards:**
   - The migration `generation` adds `generation_jobs` and `generation_pictures`. `board_images` gains `origin`
     (upload or generated), `job_id` and `model`.
