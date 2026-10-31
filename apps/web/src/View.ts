@@ -286,7 +286,8 @@ const navigationInitial = (model: Model) =>
 
 /** Tab pages keep the footer below the fold while they fill in, so nothing on screen moves. */
 const siteStyle = (hasNavigation: boolean, isTab: boolean, hasActionBand: boolean) => {
-  if (hasActionBand) return cx(site(), withActionBand())
+  // The band's padding wins over the tab bar's; the rail's inline padding stays.
+  if (hasActionBand) return hasNavigation ? cx(site(), withTabBar(), withActionBand()) : cx(site(), withActionBand())
   if (hasNavigation) return isTab ? cx(site(), withTabBar(), tabPage()) : cx(site(), withTabBar())
   return isTab ? cx(site(), tabPage()) : site()
 }
