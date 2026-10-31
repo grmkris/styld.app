@@ -197,7 +197,10 @@ describe('a public profile', () => {
       expect(role('heading', { name: 'Edits from Styld' })).toExist(),
       expect(role('heading', { name: 'People to follow' })).toExist(),
       expect(role('link', { name: /^Nika Kovač/ })).toHaveAttr('href', '/@nika.kovac'),
-      expect(role('button', { name: 'All' })).toHaveAttr('aria-pressed', 'true'),
+      inside(
+        role('group', { name: 'Moods for Explore' }),
+        expect(role('button', { name: 'All' })).toHaveAttr('aria-pressed', 'true'),
+      ),
       click(role('button', { name: 'Rain' })),
       Command.resolve(LoadExplore, VisitMessage.SucceededLoadExplore({ explore })),
       expect(role('button', { name: 'Rain' })).toHaveAttr('aria-pressed', 'true'),

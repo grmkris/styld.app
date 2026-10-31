@@ -28,8 +28,9 @@ export const person = style({
   textDecorationLine: 'none',
 })
 export const personName = style({ fontSize: '14px', fontWeight: 600, textAlign: 'center' })
-export const handle = style({ fontSize: '12px', color: 'ink2' })
-export const chips = style({ display: 'flex', flexWrap: 'wrap', gap: '6px' })
+export const handle = style({ fontSize: '13px', color: 'ink2' })
+// 8px apart, so the chips' 44px targets (4px above and below each 36px pill) don't overlap across wrapped rows.
+export const chips = style({ display: 'flex', flexWrap: 'wrap', gap: '8px' })
 /** A mood chip is Ask's chip (DESIGN.md › Chips), filled ink when chosen. */
 export const chosen = style({ '&[aria-pressed="true"]': { backgroundColor: 'ink', color: 'onInk' } })
 export const empty = style({ color: 'ink2' })

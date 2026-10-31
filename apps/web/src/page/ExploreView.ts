@@ -57,7 +57,7 @@ export const personTile = <Message>(person: Author, h: HtmlBuilder<Message>) =>
 /** The mood chips: all, or one of the six. */
 const moodChips = (current: Option.Option<Mood>, locale: Locale, h: HtmlBuilder<Message>) =>
   h.div(
-    [h.Role('group'), h.AriaLabel(format(locale, 'explore.title', {})), ...styled(h, styles.chips())],
+    [h.Role('group'), h.AriaLabel(format(locale, 'explore.moodsLabel', {})), ...styled(h, styles.chips())],
     [
       h.button(
         [
