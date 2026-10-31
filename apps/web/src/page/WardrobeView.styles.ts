@@ -27,7 +27,9 @@ export const count = style({
   '[data-set] > &': { color: 'onInk' },
 })
 /** Filters pinned at the start of the groups' row, which scrolls beside it. */
-export const browseRow = style({ display: 'flex', alignItems: 'center', gap: '8px' })
+// No wider than the page's column: without a floor the row's chips set the column's width, and the page ran past the
+// phone's edge (398px on a 390px screen).
+export const browseRow = style({ display: 'flex', alignItems: 'center', gap: '8px', minInlineSize: '0' })
 /** The groups' row beside Filters: cut at the screen's right edge only. */
 export const groupScroll = style({ flexGrow: 1, minInlineSize: '0', marginInlineStart: '0', paddingInlineStart: '0' })
 /** Filters once any is set: filled in, as a chosen chip is. */
