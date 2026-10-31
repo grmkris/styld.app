@@ -74,7 +74,9 @@ const foundTile = (detection: Detection, model: Model, locale: Locale, h: HtmlBu
         h.figcaption(styled(h, styles.caption()), [
           h.span(styled(h, styles.captionText()), [
             h.span(styled(h, styles.captionName()), [name]),
-            h.span(styled(h, styles.captionKind()), [kind(decision, locale)]),
+            h.span(styled(h, styles.captionKind()), [
+              detection.alreadyHave === undefined ? kind(decision, locale) : format(locale, 'capture.alreadyHave', {}),
+            ]),
           ]),
           Button.view(
             {
@@ -162,6 +164,20 @@ const sightings = (detection: Detection, locale: Locale, h: HtmlBuilder<Message>
       ])
     : h.empty
 
+/** The wardrobe's piece the garment was taken for, beside the way to keep both. */
+const alreadyHave = (detection: Detection, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  detection.alreadyHave === undefined
+    ? h.empty
+    : h.div(styled(h, styles.alreadyHave()), [
+        h.img([
+          h.Src(`/cdn/pieces/${detection.alreadyHave}/thumb`),
+          h.Alt(format(locale, 'capture.alreadyHaveImage', {})),
+          h.Loading('lazy'),
+          ...styled(h, styles.alreadyHaveImage()),
+        ]),
+        h.p([], [format(locale, 'capture.alreadyHaveHint', {})]),
+      ])
+
 /** The open piece: its picture, the original photo instead, what it is and its name. */
 const editor = (detection: Detection, decision: Decision, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.section(
@@ -173,6 +189,7 @@ const editor = (detection: Detection, decision: Decision, locale: Locale, h: Htm
         h.Alt(label(decision, locale)),
         ...styled(h, styles.editorImage()),
       ]),
+      alreadyHave(detection, locale, h),
       sightings(detection, locale, h),
       detection.hasCutout
         ? h.label(styled(h, styles.original()), [

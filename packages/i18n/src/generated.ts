@@ -673,6 +673,9 @@ export interface MessageArgumentsByKey<T = string> {
   'capture.addMore': Readonly<Record<string, never>>
   'capture.addTitle': Readonly<Record<string, never>>
   'capture.allowance': { readonly remaining: string | number; readonly daily: string | number }
+  'capture.alreadyHave': Readonly<Record<string, never>>
+  'capture.alreadyHaveHint': Readonly<Record<string, never>>
+  'capture.alreadyHaveImage': Readonly<Record<string, never>>
   'capture.camera.back': Readonly<Record<string, never>>
   'capture.camera.checking': Readonly<Record<string, never>>
   'capture.camera.count': { readonly count: number }
@@ -2624,4 +2627,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'c737ac76f9e1fc2a5c08822b163c9fa24edc7e89fc057066ce7ed164465d9fbd'
+export const catalogVersion = 'e113eda27856f6b86cf99589bd492b02c0201414e06bf4256fd3dabf0bc2e068'

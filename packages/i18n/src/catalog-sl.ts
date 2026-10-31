@@ -2561,6 +2561,9 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
     '{count, plural, one {Poglej, kaj je v # datoteki} two {Poglej, kaj je v # datotekah} few {Poglej, kaj je v # datotekah} other {Poglej, kaj je v # datotekah}}',
   'capture.sightings': 'V dodanem se pojavi {count}-krat in bo shranjen kot en kos.',
   'capture.split': 'Ni isti kos? Prikaži jih ločeno',
+  'capture.alreadyHave': 'Že v tvoji garderobi?',
+  'capture.alreadyHaveHint': 'Videti je kot ta kos, ki ga že imaš. Označi ga, da obdržiš oba.',
+  'capture.alreadyHaveImage': 'Kos, ki ga že imaš',
   'capture.foundTitle':
     '{count, plural, =0 {Zaenkrat ni najdenega} one {Najden # kos} two {Najdena # kosa} few {Najdeni # kosi} other {Najdenih # kosov}}',
   'capture.reviewHint': 'Izrezani so in pripravljeni. Odznači vse, kar ni tvoje.',

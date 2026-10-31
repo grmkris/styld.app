@@ -85,6 +85,8 @@ export const Detection = Schema.Struct({
   /** How many times the import showed this garment: its other sightings, in other parts or photos, are kept or
    * discarded with it. */
   sightings: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
+  /** The piece of the wardrobe the decision model took this garment for: offered unticked, to keep both or skip. */
+  alreadyHave: Schema.optionalKey(PieceId),
 })
 export type Detection = typeof Detection.Type
 

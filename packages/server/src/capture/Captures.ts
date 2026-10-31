@@ -219,10 +219,12 @@ export const creating = (parts: Parts) => ({
 
 const detectionView = (row: DetectionRow, sightings: number) => ({
   id: row.id,
-  preselected: row.preselected,
+  // A garment the wardrobe already has is offered unticked: skipping it is the likelier choice.
+  preselected: row.preselected && row.duplicateOf === null,
   hasCutout: row.cutoutKey !== null,
   hasBack: row.backCutoutKey !== null,
   sightings,
+  ...(row.duplicateOf === null ? {} : { alreadyHave: row.duplicateOf }),
   suggestion: {
     category: row.suggestedCategory,
     subcategory: row.suggestedSubcategory,

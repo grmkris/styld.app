@@ -141,6 +141,23 @@ export const original = style({
   fontWeight: 500,
   cursor: 'pointer',
 })
+/** The piece the wardrobe already has, small, with the hint to keep both. */
+export const alreadyHave = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '12px',
+  marginBlockStart: '8px',
+  fontSize: '14px',
+  color: 'ink2',
+})
+export const alreadyHaveImage = style({
+  inlineSize: '64px',
+  blockSize: '64px',
+  flexShrink: 0,
+  objectFit: 'contain',
+  borderRadius: 'photo',
+  backgroundColor: 'paper2',
+})
 /** How often the piece was seen, and the way to split it, under its picture. */
 export const sightings = style({
   display: 'flex',
