@@ -175,6 +175,8 @@ const sending = <R>(parts: StylistParts<R>, ids: Ids) =>
     const { accountId } = yield* CurrentAccount
     if (parts.policy.mode === 'off') return yield* unavailable()
     const turnId = yield* ids.turnIdOf(accountId, input.operationId)
+    // The turn's queue delivery records the same job id, so the ask and its reply are found together.
+    yield* Effect.annotateCurrentSpan('styld.job_id', turnId)
     yield* parts.usage
       .reserve(accountId, holdOf(turnId), parts.policy.credits)
       .pipe(Effect.catchTag('CaptureUnavailable', unavailable))

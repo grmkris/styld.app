@@ -66,6 +66,7 @@ import { wardrobeRoutes } from './wardrobe/Http.ts'
 import { processingAttempts, settleMessage } from './wardrobe/Queue.ts'
 import { makeWardrobe, Wardrobe, type WardrobeBindings } from './wardrobe/Wardrobe.ts'
 import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
+import { asDelivery } from './QueueDelivery.ts'
 import { StylistChats } from './stylist/Http.ts'
 import { settleStylistTurn, stylistAttempts } from './stylist/Queue.ts'
 import { Stylist } from './stylist/StylistObject.ts'
@@ -493,7 +494,9 @@ export default StyldWorker.make(
       (messages) =>
         Effect.gen(function* () {
           const services = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
-          yield* Stream.runForEach(messages, (message) => settleMessage(services, message))
+          yield* Stream.runForEach(messages, (message) =>
+            settleMessage(services, message).pipe(asDelivery(services.observabilityBase, 'pieces', message)),
+          )
         }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
     )
     yield* Cloudflare.Queues.consumeQueueMessages(
@@ -501,8 +504,10 @@ export default StyldWorker.make(
       { batchSize: 10, maxRetries: checkAttempts, retryDelay: '30 seconds' },
       (messages) =>
         Effect.gen(function* () {
-          const { checks } = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
-          yield* Stream.runForEach(messages, (message) => settleCheck(checks, message))
+          const { checks, observabilityBase } = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
+          yield* Stream.runForEach(messages, (message) =>
+            settleCheck(checks, message).pipe(asDelivery(observabilityBase, 'checks', message)),
+          )
         }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
     )
     yield* Cloudflare.Queues.consumeQueueMessages(
@@ -510,8 +515,10 @@ export default StyldWorker.make(
       { batchSize: 4, maxRetries: generationAttempts, retryDelay: '20 seconds' },
       (messages) =>
         Effect.gen(function* () {
-          const { generations } = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
-          yield* Stream.runForEach(messages, (message) => settleGeneration(generations, message))
+          const { generations, observabilityBase } = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
+          yield* Stream.runForEach(messages, (message) =>
+            settleGeneration(generations, message).pipe(asDelivery(observabilityBase, 'generation', message)),
+          )
         }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
     )
     yield* Cloudflare.Queues.consumeQueueMessages(
@@ -519,16 +526,21 @@ export default StyldWorker.make(
       { batchSize: 1, maxRetries: stylistAttempts, retryDelay: '5 seconds' },
       (messages) =>
         Effect.gen(function* () {
-          const { stylist } = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
-          yield* Stream.runForEach(messages, (message) => settleStylistTurn(stylist, message))
+          const { stylist, observabilityBase } = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
+          yield* Stream.runForEach(messages, (message) =>
+            settleStylistTurn(stylist, message).pipe(asDelivery(observabilityBase, 'stylist', message)),
+          )
         }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
     )
     // Every ten minutes: generation jobs and checks whose messages were lost go to their queues again.
     yield* Cloudflare.Workers.cron('*/10 * * * *', () =>
       Effect.gen(function* () {
-        const { generations, checks } = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
-        yield* generations.sweep()
-        yield* checks.sweep()
+        const { generations, checks, observabilityBase } = yield* application(
+          yield* Cloudflare.Workers.WorkerEnvironment,
+        )
+        yield* Effect.all([generations.sweep(), checks.sweep()], { discard: true }).pipe(
+          withObservability('styld.cron', { ...observabilityBase, kind: 'cron.sweep' }),
+        )
       }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
     )
     return { fetch }

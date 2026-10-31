@@ -72,6 +72,8 @@ export const generations = (parts: Parts) => ({
       .getBoard(boardId)
       .pipe(Effect.catchTag('WardrobeUnavailable', () => Effect.fail(unavailable())))
     const id = yield* parts.newId()
+    // The job's queue deliveries and its reads record the same job id, so the ask, its work and its polls join.
+    yield* Effect.annotateCurrentSpan('styld.job_id', id)
     // Credits first, so an account with none left asks no model anything.
     const { held, limit } = yield* holdUpTo(parts, accountId, id, kind === 'picture' ? 1 : mostMoodPictures)
     if (held < (kind === 'picture' ? 1 : fewestMoodPictures)) {
@@ -144,6 +146,7 @@ export const generations = (parts: Parts) => ({
 /** A job of the account's; one stalled on its way is sent again. */
 const get = Effect.fn('Styld.Generation.get')(function* (parts: Parts, jobId: string) {
   const { accountId } = yield* CurrentAccount
+  yield* Effect.annotateCurrentSpan('styld.job_id', jobId)
   const job = yield* stored(parts.store.findJob(accountId, jobId))
   if (Option.isNone(job)) return yield* GenerationNotFound.make({})
   const finished = ['done', 'refused', 'failed'].includes(job.value.status)
