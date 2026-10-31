@@ -741,6 +741,7 @@ export interface MessageArgumentsByKey<T = string> {
   'capture.layOutTitle': Readonly<Record<string, never>>
   'capture.linkAdd': Readonly<Record<string, never>>
   'capture.linkHint': Readonly<Record<string, never>>
+  'capture.linkPlaceholder': Readonly<Record<string, never>>
   'capture.linkProblem.blocked': Readonly<Record<string, never>>
   'capture.linkProblem.noPicture': Readonly<Record<string, never>>
   'capture.linkProblem.notAPage': Readonly<Record<string, never>>
@@ -2754,4 +2755,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '45656004b8548acd6eefcf6192eb943f32fd7009022dd4904a7e98901f4414b1'
+export const catalogVersion = '28a272c45371587fa3593ae2591a50beda2f46ae5ee5ccd717d9bd650dc09090'

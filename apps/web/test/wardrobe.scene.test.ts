@@ -65,7 +65,7 @@ describe('the wardrobe page', () => {
       given(loaded()),
       expect(role('heading', { name: 'No pieces in your wardrobe yet' })).toExist(),
       expect(role('link', { name: 'Add your first pieces' })).toHaveAttr('href', '/wardrobe/add'),
-      expect(role('link', { name: 'Add pieces' })).toHaveAttr('href', '/wardrobe/add'),
+      expect(role('link', { name: 'Add clothes' })).toHaveAttr('href', '/wardrobe/add'),
     )
   })
 

@@ -2893,8 +2893,8 @@
     "openInStyld": "Open in Styld"
   },
   "capture": {
-    "addTitle": "Add pieces",
-    "addHint": "Photos, or a video of up to 15 minutes: film from about a metre away and move slowly, so each piece is whole in the frame. Every piece is cut out for you to keep or drop.",
+    "addTitle": "Add clothes",
+    "addHint": "Photos, or a video up to 15 minutes filmed slowly from about a metre away. Every piece is cut out for you to keep or drop.",
     "chooseTitle": "Photos or a video",
     "chooseHint": "From your library",
     "notSupported": "{name} isn't a photo or video Styld can use",
@@ -2982,7 +2982,8 @@
       "notAPage": "That address isn’t a web page.",
       "noPicture": "No product picture on that page. Send a photo or a screenshot instead.",
       "slowDown": "Too many links at once. Try again in a minute."
-    }
+    },
+    "linkPlaceholder": "https://…"
   },
   "looks": {
     "title": "Looks",

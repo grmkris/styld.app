@@ -33,8 +33,11 @@ export const source = style({
   minBlockSize: '148px',
   padding: '16px',
   borderWidth: '1.5px',
-  borderStyle: 'dashed',
+  // A dashed edge says "drop files here": only the photo picker, a label, takes dropped files; the camera's ways
+  // are buttons with a solid edge.
+  borderStyle: 'solid',
   borderColor: 'rule',
+  '&:is(label)': { borderStyle: 'dashed' },
   borderRadius: 'panel',
   backgroundColor: 'stock',
   color: 'ink2',

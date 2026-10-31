@@ -56,7 +56,7 @@ export const verifyCaptureJourney = async (browser: Browser, origin: string, fix
     const page = await context.newPage()
     const problems = recordProblems(page)
     await page.goto(`${origin}/wardrobe/add`, { waitUntil: 'networkidle' })
-    await page.getByRole('heading', { name: 'Add pieces' }).waitFor({ state: 'visible' })
+    await page.getByRole('heading', { name: 'Add clothes' }).waitFor({ state: 'visible' })
     await page
       .locator('input[type="file"][multiple]')
       .setInputFiles([fixture('red-tee.png'), fixture('blue-dress.png'), fixture('green-shirt.png')])

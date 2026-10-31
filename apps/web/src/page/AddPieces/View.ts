@@ -137,6 +137,7 @@ const linkSource = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html
           h.InputMode('url'),
           h.Autocomplete('off'),
           h.AriaDescribedBy('link-hint'),
+          h.Placeholder(format(locale, 'capture.linkPlaceholder', {})),
           h.Value(model.link),
           h.OnInput((url) => Message.ChangedLink({ url })),
           ...styled(h, textField()),
