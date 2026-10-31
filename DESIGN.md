@@ -44,7 +44,8 @@ Text in ink-3 keeps 4.5:1 on paper, paper-2 and stock (`#8b827a` until 2026-10-3
 Radii: `photo` 4px, `field` 12px, `panel` 16px, `sheet` 24px, `table` 28px (the paper of a table), `pill` for actions,
 chips, the search field and the floating nav. Shadows are tokens too: `lift1` (Gallery's lift-1, a card above the paper),
 `sheet` (a sheet rising from the bottom), and rings drawn inside an edge, `edge` (1px rule), `chosen` (1.5px ink) and
-`dropTarget` (2px signal), with `handleHalo` (paper) around the resize handle's dot. Spacing: a 20px page gutter (plus the safe-area insets), 16px between grid
+`dropTarget` (2px signal), with `handleHalo` (paper) around the resize handle's dot and `switchEdge` (1.5px ink-3) on
+a switch that is off. Spacing: a 20px page gutter (plus the safe-area insets), 16px between grid
 items, 8px between actions in a row.
 
 A board's paper takes one of six colours (`Paper` in `packages/protocol/src/Board.ts`): paper, stock, and the quiet tints

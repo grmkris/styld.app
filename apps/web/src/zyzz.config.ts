@@ -83,6 +83,8 @@ export const { style, vars } = defineConfig({
       dropTarget: 'inset 0 0 0 2px #2f4f7c',
       // A paper halo that keeps the resize handle's dot clear of what it sits on.
       handleHalo: '0 0 0 3px #f1eee7',
+      // A switch that is off: a 1.5px ink-3 ring, so its edge keeps 3:1 on the paper (WCAG 1.4.11).
+      switchEdge: 'inset 0 0 0 1.5px #6b635b',
     },
   },
 })
