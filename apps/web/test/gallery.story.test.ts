@@ -1,4 +1,4 @@
-import { Board, BoardSummary, Day, type Piece } from '@styld/protocol'
+import { Board, BoardItemId, BoardSummary, Day, type Piece, PieceItem } from '@styld/protocol'
 import { Array, Option, Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
@@ -8,7 +8,7 @@ import { matching } from '../src/page/AskSearch.ts'
 import * as Boards from '../src/page/Boards.ts'
 import { missingFrom, outfitFor } from '../src/page/Outfit.ts'
 import * as Today from '../src/page/Today.ts'
-import { headline } from '../src/page/TodayView.ts'
+import { cropFrom, headline } from '../src/page/TodayView.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const redTop = pieceFixture('red-top', { category: 'top', colours: ['red'], name: 'Red shirt' })
@@ -28,6 +28,18 @@ const piecesOverSpins = (pieces: ReadonlyArray<Piece>) =>
       .flatMap((spin) => outfitFor(pieces, `2026-10-29:${String(spin)}`))
       .map(({ piece }) => piece.id),
   )
+/** The knit laid 400 units across, centred `y` units down a table. */
+const knitAt = (y: number) =>
+  PieceItem.make({
+    id: Schema.decodeUnknownSync(BoardItemId)(`bi_${String(y).padEnd(22, 'x')}`),
+    pieceId: navyKnit.id,
+    x: 500,
+    y,
+    size: 400,
+    turn: 0,
+    z: 1,
+    flipped: false,
+  })
 const ids = (query: string, locale: 'en' | 'sl') => matching(wardrobe, query, [locale]).map((piece) => piece.id)
 
 describe("today's table", () => {
@@ -61,6 +73,15 @@ describe("today's table", () => {
   test('the headline is the day in the visitor’s language', () => {
     expect(headline('2026-10-30', 'en')).toBe('FRI 30')
     expect(headline('2026-10-30', 'sl')).toBe('PET 30')
+  })
+
+  test("a board's card on Home shows the 16:10 window of its table where its pieces lie", () => {
+    // A 400-unit piece near the top of the 1250-unit table: the window starts at the top.
+    expect(cropFrom([knitAt(300)])).toBe(0)
+    // Pieces from the top to near the foot: the window sits in the middle.
+    expect(cropFrom([knitAt(300), knitAt(950)])).toBe(0.25)
+    // One piece at the foot: the window ends at the foot.
+    expect(cropFrom([knitAt(1050)])).toBe(0.5)
   })
 
   test('Wear this records the outfit on the table for today, once', () => {

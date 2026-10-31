@@ -3175,9 +3175,9 @@
     "addBottom": "Add trousers or a skirt",
     "addShoes": "Add shoes",
     "pickUp": "Pick up where you left off",
-    "waiting": "{count, plural, one {# piece is waiting for you} other {# pieces are waiting for you}}",
-    "review": "Review them",
-    "keepGoing": "Keep going"
+    "waiting": "{count, plural, one {# piece from your scan to check} other {# pieces from your scan to check}}",
+    "review": "Finish adding",
+    "keepGoing": "Keep pinning"
   },
   "stylist": {
     "title": "Ask Styld",

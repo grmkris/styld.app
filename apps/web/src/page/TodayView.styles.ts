@@ -118,23 +118,54 @@ export const pickUp = style({
   gap: '12px',
   '@media (min-width: 900px)': { paddingBlockStart: '96px' },
 })
+/** Two ways to pick up side by side, as tall as each other, each with its action at its foot. */
 export const cards = style({
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 200px), 1fr))',
-  alignItems: 'start',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  alignItems: 'stretch',
   gap: '12px',
 })
+/** The prototype's `.rc`: a stock card with what it is, then its action. */
 export const card = style({
-  display: 'grid',
-  alignContent: 'start',
+  display: 'flex',
+  flexDirection: 'column',
   gap: '8px',
+  minInlineSize: '0',
   padding: '12px',
   borderRadius: 'panel',
   backgroundColor: 'stock',
   color: 'ink',
-  textDecorationLine: 'none',
   boxShadow: 'lift1',
 })
-export const cardTitle = style({ fontWeight: 600 })
-export const cardAction = style({ fontSize: '14px', fontWeight: 600, color: 'ink2' })
+export const cardTitle = style({ margin: '0', fontWeight: 600, overflowWrap: 'anywhere' })
+/** The card's action: a soft full-width pill at its foot. A long label wraps rather than leaving the pill. */
+export const cardAction = style({
+  inlineSize: '100%',
+  marginBlockStart: 'auto',
+  paddingInline: '12px',
+  paddingBlock: '8px',
+  whiteSpace: 'normal',
+  textAlign: 'center',
+  textWrap: 'balance',
+})
+/** A board on its card: its table cropped to 16:10 around what lies on it (`--crop`, set by the browser, is the share
+ * of the table above the window), with corners concentric with the card's: 16px less its 12px padding. The window
+ * stays 28px inside the table's top and bottom, so the table's own round corners never show in it. */
+export const boardCrop = style({
+  position: 'relative',
+  display: 'grid',
+  aspectRatio: '16 / 10',
+  marginBlockEnd: '4px',
+  overflow: 'hidden',
+  borderRadius: 'photo',
+  '& > *': { translate: '0 calc(-1 * clamp(28px, var(--crop) * 100%, 50% - 28px))' },
+  '::after': {
+    content: '""',
+    position: 'absolute',
+    inset: '0',
+    borderRadius: 'photo',
+    boxShadow: 'edge',
+    pointerEvents: 'none',
+  },
+})
 export const explore = style({ display: 'inline-flex', alignItems: 'center', minBlockSize: '44px', fontWeight: 600 })

@@ -2870,9 +2870,9 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'today.addShoes': 'Dodaj čevlje',
   'today.pickUp': 'Kar te čaka',
   'today.waiting':
-    '{count, plural, one {# kos te čaka} two {# kosa te čakata} few {# kosi te čakajo} other {# kosov te čaka}}',
-  'today.review': 'Preglej jih',
-  'today.keepGoing': 'Nadaljuj',
+    '{count, plural, one {# kos iz skeniranja za pregled} two {# kosa iz skeniranja za pregled} few {# kosi iz skeniranja za pregled} other {# kosov iz skeniranja za pregled}}',
+  'today.review': 'Dodaj jih',
+  'today.keepGoing': 'Dodaj še',
   'stylist.title': 'Vprašaj Styld',
   'stylist.intro': 'Vprašaj, kaj obleči, kaj se ujema ali kaj manjka. Styld vidi celo tvojo garderobo.',
   'stylist.startersLabel': 'Kaj lahko vprašaš',

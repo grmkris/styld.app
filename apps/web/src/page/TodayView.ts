@@ -1,11 +1,11 @@
 import { format, type Locale } from '@styld/i18n'
-import type { BoardSummary, Piece } from '@styld/protocol'
+import type { BoardItem, BoardSummary, Piece } from '@styld/protocol'
 import { Array, Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
-import { primaryAction, secondaryAction } from '../Actions.styles.ts'
+import { primaryAction, secondaryAction, smallAction } from '../Actions.styles.ts'
 import { addIcon, checkIcon, loader, spinIcon } from '../Icon.ts'
 import { addPiecesRouter, boardRouter, exploreRouter, reviewRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
@@ -195,14 +195,50 @@ const todayView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuil
   )
 }
 
+/** How far down a board's 4:5 table its 16:10 window on Home starts, as a share of the table's height (0 to a half),
+ * so the window centres on what lies there. A table is 1250 units tall and the window 625.
+ * @internal Exported for its tests. */
+export const cropFrom = (items: ReadonlyArray<BoardItem>): number =>
+  Array.match(items, {
+    onEmpty: () => 0.25,
+    onNonEmpty: (some) => {
+      const top = Math.min(...some.map((item) => item.y - item.size / 2))
+      const bottom = Math.max(...some.map((item) => item.y + item.size / 2))
+      return Math.min(Math.max((top + bottom) / 2 - 312.5, 0), 625) / 1250
+    },
+  })
+
+/** One way to pick up: what it is, then its action at the card's foot, which the title describes. */
+const pickUpCard = (
+  id: string,
+  title: string,
+  action: { readonly href: string; readonly label: string },
+  picture: Html,
+  h: HtmlBuilder<Message>,
+): Html =>
+  h.article(styled(h, styles.card()), [
+    picture,
+    h.p([h.Id(id), ...styled(h, styles.cardTitle())], [title]),
+    h.a(
+      [
+        h.Href(action.href),
+        h.AriaDescribedBy(id),
+        ...styled(h, cx(secondaryAction(), smallAction(), styles.cardAction())),
+      ],
+      [action.label],
+    ),
+  ])
+
 const boardCard = (board: BoardSummary, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.a(
-    [h.Href(boardRouter({ boardId: board.id })), ...styled(h, styles.card())],
-    [
-      stillTable(board.items, board.paper, [], h),
-      h.span(styled(h, styles.cardTitle()), [board.name]),
-      h.span(styled(h, styles.cardAction()), [format(locale, 'today.keepGoing', {})]),
-    ],
+  pickUpCard(
+    'pick-up-board',
+    board.name,
+    { href: boardRouter({ boardId: board.id }), label: format(locale, 'today.keepGoing', {}) },
+    h.div(
+      [h.Style({ '--crop': String(cropFrom(board.items)) }), ...styled(h, styles.boardCrop())],
+      [stillTable(board.items, board.paper, [], h)],
+    ),
+    h,
   )
 
 /** Where they left off, drawn once the table and its own answers are in, so it arrives in one piece below them. */
@@ -212,12 +248,12 @@ const pickUpView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBui
   const cards = [
     ...(waiting > 0
       ? [
-          h.a(
-            [h.Href(reviewRouter({})), ...styled(h, styles.card())],
-            [
-              h.span(styled(h, styles.cardTitle()), [format(locale, 'today.waiting', { count: waiting })]),
-              h.span(styled(h, styles.cardAction()), [format(locale, 'today.review', {})]),
-            ],
+          pickUpCard(
+            'pick-up-tray',
+            format(locale, 'today.waiting', { count: waiting }),
+            { href: reviewRouter({}), label: format(locale, 'today.review', {}) },
+            h.empty,
+            h,
           ),
         ]
       : []),

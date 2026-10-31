@@ -3175,9 +3175,9 @@
     "addBottom": "Dodaj hlače ali krilo",
     "addShoes": "Dodaj čevlje",
     "pickUp": "Kar te čaka",
-    "waiting": "{count, plural, one {# kos te čaka} two {# kosa te čakata} few {# kosi te čakajo} other {# kosov te čaka}}",
-    "review": "Preglej jih",
-    "keepGoing": "Nadaljuj"
+    "waiting": "{count, plural, one {# kos iz skeniranja za pregled} two {# kosa iz skeniranja za pregled} few {# kosi iz skeniranja za pregled} other {# kosov iz skeniranja za pregled}}",
+    "review": "Dodaj jih",
+    "keepGoing": "Dodaj še"
   },
   "stylist": {
     "title": "Vprašaj Styld",
