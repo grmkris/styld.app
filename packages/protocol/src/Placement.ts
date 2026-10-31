@@ -3,7 +3,7 @@
 import { Array, Match, Number, Order, Schema } from 'effect'
 import {
   type BoardItem,
-  type BoardItemId,
+  BoardItemId,
   boardHeight,
   boardWidth,
   ImageItem,
@@ -14,6 +14,7 @@ import {
   type TableThing,
   TextItem,
 } from './Board.ts'
+import { type PieceType, type Slot, slotOf } from './Garment.ts'
 import type { PieceId } from './Wardrobe.ts'
 
 const normalizeTurn = (degrees: number): number => ((((degrees + 180) % 360) + 360) % 360) - 180
@@ -148,3 +149,35 @@ export const arranged = (items: ReadonlyArray<BoardItem>, layout: TableLayout): 
     Match.when('outfit', () => outfitted(items)),
     Match.exhaustive,
   )
+
+/** Where each place of an outfit lies on a flat-lay: tops and layers above, bottoms and shoes below, a one-piece or a
+ * set across the middle, an accessory to the side. */
+const flatLaySpots: Readonly<Record<Slot, { x: number; y: number; size: number; turn: number }>> = {
+  top: { x: 290, y: 320, size: 480, turn: -3 },
+  layer: { x: 720, y: 300, size: 460, turn: 4 },
+  bottom: { x: 320, y: 860, size: 460, turn: 2 },
+  onePiece: { x: 330, y: 590, size: 640, turn: -2 },
+  set: { x: 330, y: 590, size: 640, turn: -2 },
+  shoes: { x: 735, y: 945, size: 380, turn: -6 },
+  accessory: { x: 715, y: 640, size: 280, turn: 5 },
+}
+
+/** An outfit laid flat on the table, in the order given: each piece in its place, a second piece in the same place a
+ * little lower and to the right. Each item is keyed by its piece, so a new outfit brings new pieces in. */
+export const flatLay = (
+  pieces: ReadonlyArray<{ readonly id: PieceId; readonly type: PieceType }>,
+): ReadonlyArray<BoardItem> =>
+  pieces.map((piece, index) => {
+    const slot = slotOf(piece.type)
+    const spot = flatLaySpots[slot]
+    const earlier = pieces.slice(0, index).filter((other) => slotOf(other.type) === slot).length
+    return PieceItem.make({
+      id: Schema.decodeUnknownSync(BoardItemId)(`bi_${piece.id.slice(3)}`),
+      pieceId: piece.id,
+      ...spot,
+      x: Math.min(spot.x + earlier * 60, boardWidth),
+      y: Math.min(spot.y + earlier * 60, boardHeight),
+      z: index + 1,
+      flipped: false,
+    })
+  })

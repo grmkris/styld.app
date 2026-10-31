@@ -1,0 +1,98 @@
+import { Effect, Option, Schema } from 'effect'
+import { type CaptureMetrics, counted } from '../capture/Metrics.ts'
+import { ProviderFailed } from '../capture/Providers.ts'
+import { callPatience, type RunChat } from './WorkersAiFetch.ts'
+
+// One text model seam (owner, 2026-10-31): a Workers AI chat model asked for an answer of a given JSON shape, as
+// mood boards, Thinking's outfits and trip plans ask it. One call, within the patience Styld keeps for its own calls,
+// counted with its tokens' cost. What it is sent and answers is never logged.
+
+export interface TextMessage {
+  readonly role: 'system' | 'user'
+  readonly content: string
+}
+
+export interface StructuredRequest<A> {
+  readonly model: string
+  readonly kind: 'plan' | 'propose'
+  readonly messages: ReadonlyArray<TextMessage>
+  /** The answer's JSON schema, sent as the response format. */
+  readonly schema: object
+  readonly answer: Schema.Decoder<A>
+}
+
+/** List prices in micro-dollars a token, in and out, of the models Styld asks (Workers AI pricing, 31 October). */
+const prices: Readonly<Record<string, { readonly input: number; readonly output: number }>> = {
+  '@cf/meta/llama-3.3-70b-instruct-fp8-fast': { input: 0.29, output: 2.25 },
+  '@cf/deepseek-ai/deepseek-v4.1-flash-1017': { input: 0.3, output: 1.2 },
+}
+
+const Usage = Schema.Struct({
+  prompt_tokens: Schema.optionalKey(Schema.Number),
+  completion_tokens: Schema.optionalKey(Schema.Number),
+})
+
+/** Workers AI answers older models' calls with `response`, newer ones' as a Chat Completion. */
+const Output = Schema.Struct({
+  response: Schema.optionalKey(Schema.Unknown),
+  choices: Schema.optionalKey(
+    Schema.Array(
+      Schema.Struct({ message: Schema.Struct({ content: Schema.optionalKey(Schema.NullOr(Schema.String)) }) }),
+    ),
+  ),
+  usage: Schema.optionalKey(Usage),
+})
+type Output = typeof Output.Type
+
+const failed = () => new ProviderFailed({ provider: 'workers-ai', retryable: true })
+
+/** The JSON text of an answer, without the code fence some models put around it. */
+const unfenced = (text: string) =>
+  text
+    .trim()
+    .replace(/^```(?:json)?\s*/u, '')
+    .replace(/\s*```$/u, '')
+
+/** The answer's JSON: an object as given, or parsed from its text. */
+const answerJson = (output: Output): Option.Option<unknown> => {
+  const content = output.choices?.[0]?.message.content ?? output.response
+  if (typeof content !== 'string') return Option.fromNullishOr(content)
+  return Option.liftThrowable((text: string): unknown => JSON.parse(text))(unfenced(content))
+}
+
+const costOf = (model: string, output: Output) => {
+  const input = output.usage?.prompt_tokens ?? 0
+  const outputTokens = output.usage?.completion_tokens ?? 0
+  const price = prices[model] ?? { input: 0, output: 0 }
+  return { units: input + outputTokens, costMicroUsd: Math.round(input * price.input + outputTokens * price.output) }
+}
+
+/** Ask a Workers AI chat model for an answer of the request's shape: the answer and what it cost, or a failure when
+ * it did not answer in time or answered something else. */
+export const structured = <A>(run: RunChat, metrics: CaptureMetrics['Service'], request: StructuredRequest<A>) =>
+  counted(
+    metrics,
+    Effect.tryPromise({
+      try: () =>
+        run(request.model, {
+          messages: request.messages.map((message) => ({ ...message })),
+          response_format: { type: 'json_schema', json_schema: request.schema },
+        }),
+      catch: failed,
+    }).pipe(
+      Effect.timeoutOrElse({ duration: callPatience, orElse: () => Effect.fail(failed()) }),
+      Effect.flatMap((raw) => Schema.decodeUnknownEffect(Output)(raw).pipe(Effect.mapError(failed))),
+      Effect.flatMap((output) =>
+        Option.match(answerJson(output), {
+          onNone: () => Effect.fail(failed()),
+          onSome: (json) =>
+            Schema.decodeUnknownEffect(request.answer)(json).pipe(
+              Effect.mapError(failed),
+              Effect.map((answer) => ({ answer, ...costOf(request.model, output) })),
+            ),
+        }),
+      ),
+    ),
+    { provider: 'workers-ai', model: request.model, kind: request.kind },
+    ({ units, costMicroUsd }) => ({ units, costMicroUsd }),
+  )

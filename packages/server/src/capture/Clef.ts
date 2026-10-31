@@ -33,14 +33,20 @@ const Answer = Schema.Struct({
   usage: Schema.optionalKey(Schema.Struct({ input_tokens: Schema.optionalKey(Schema.Number) })),
 })
 type Answer = typeof Answer.Type
+export type ClefAnswer = Answer
 
 const failed = (retryable: boolean) => new ProviderFailed({ provider: 'clef', retryable })
 
-const imageOf = (picture: Picture) => ({ content_type: picture.contentType, base64: Base64.encode(picture.bytes) })
+/** A picture as Clef reads it. */
+export const imageOf = (picture: Picture) => ({
+  content_type: picture.contentType,
+  base64: Base64.encode(picture.bytes),
+})
 
 const choiceOf = (answer: Answer, id: string) =>
   Option.flatMap(Option.fromNullishOr(answer.answers[id]), Schema.decodeUnknownOption(Choice))
-const noulOf = (answer: Answer, id: string) =>
+/** A yes-or-no answer's likelihood of yes, 0 when it is missing. */
+export const noulOf = (answer: ClefAnswer, id: string) =>
   Option.match(Option.flatMap(Option.fromNullishOr(answer.answers[id]), Schema.decodeUnknownOption(Noul)), {
     onNone: () => 0,
     onSome: ({ noul }) => noul,
@@ -82,10 +88,17 @@ const typeCriteria: { readonly [Type in PieceType]: string } & { readonly none: 
 
 const colourCriteria = Object.fromEntries(Colour.literals.map((colour) => [colour, `Mostly ${colour}`]))
 
-const ask = (
+/** What one answer cost: its input tokens, at Clef-flash's list price. */
+export const clefCost = (answer: Answer) => {
+  const tokens = answer.usage?.input_tokens ?? 0
+  return { units: tokens, costMicroUsd: Math.round(tokens * prices.clefFlashPerToken) }
+}
+
+/** Ask Clef, counted as one provider call of `kind` with its tokens' cost. */
+export const askClef = (
   run: RunClef,
   metrics: CaptureMetrics['Service'],
-  kind: 'route' | 'suggest' | 'check' | 'judge' | 'compare' | 'match',
+  kind: 'route' | 'suggest' | 'check' | 'judge' | 'compare' | 'match' | 'outfit',
   request: ClefRequest,
 ) =>
   counted(
@@ -95,10 +108,7 @@ const ask = (
       Effect.flatMap((raw) => Schema.decodeUnknownEffect(Answer)(raw).pipe(Effect.mapError(() => failed(false)))),
     ),
     { provider: 'clef', model: 'clef-flash', kind },
-    (answer) => {
-      const tokens = answer.usage?.input_tokens ?? 0
-      return { units: tokens, costMicroUsd: Math.round(tokens * prices.clefFlashPerToken) }
-    },
+    clefCost,
   )
 
 /** What the decision model is asked about each cut-out piece: what a shop would call it, and when and for what it is
@@ -288,7 +298,7 @@ const routeOf = (answer: Answer): Route => {
  * front. */
 const pictureChecks = (run: RunClef, metrics: CaptureMetrics['Service']) => ({
   judge: Effect.fn('Styld.Picture.judge')(function* (cutout: Picture) {
-    const answer = yield* ask(run, metrics, 'judge', {
+    const answer = yield* askClef(run, metrics, 'judge', {
       model: 'clef-flash',
       state: 'One piece of clothing cut out of a photo, to show in a wardrobe app.',
       images: [imageOf(cutout)],
@@ -297,7 +307,7 @@ const pictureChecks = (run: RunClef, metrics: CaptureMetrics['Service']) => ({
     return judgementOf(answer)
   }),
   compare: Effect.fn('Styld.Picture.compare')(function* (drawn: Picture, real: Picture) {
-    const answer = yield* ask(run, metrics, 'compare', {
+    const answer = yield* askClef(run, metrics, 'compare', {
       model: 'clef-flash',
       state: 'The first image is a generated product picture; the second is a real photo of a garment.',
       images: [imageOf(drawn), imageOf(real)],
@@ -308,7 +318,7 @@ const pictureChecks = (run: RunClef, metrics: CaptureMetrics['Service']) => ({
   // The camera's `samePrevious` question: on two real videos' cut-outs, true pairs scored 0.68–0.89 and different
   // garments at most 0.76 (person-routing spike, 30 October).
   sameGarment: Effect.fn('Styld.Capture.sameGarment')(function* (picture: Picture, other: Picture) {
-    const answer = yield* ask(run, metrics, 'match', {
+    const answer = yield* askClef(run, metrics, 'match', {
       model: 'clef-flash',
       state: 'Two pictures of clothes, each cut out of a photo or shown alone.',
       images: [imageOf(picture), imageOf(other)],
@@ -317,7 +327,7 @@ const pictureChecks = (run: RunClef, metrics: CaptureMetrics['Service']) => ({
     return noulOf(answer, 'same')
   }),
   compareTurn: Effect.fn('Styld.Turn.compare')(function* (frame: Picture, front: Picture) {
-    const answer = yield* ask(run, metrics, 'compare', {
+    const answer = yield* askClef(run, metrics, 'compare', {
       model: 'clef-flash',
       state:
         'The first image is a frame of a garment turning on a hanger, partly turned; the second is the same product photographed from the front.',
@@ -335,7 +345,7 @@ const pictureChecks = (run: RunClef, metrics: CaptureMetrics['Service']) => ({
 
 export const makeGarmentVision = (run: RunClef, metrics: CaptureMetrics['Service']) => ({
   route: Effect.fn('Styld.Capture.route')(function* (picture: Picture) {
-    const answer = yield* ask(run, metrics, 'route', {
+    const answer = yield* askClef(run, metrics, 'route', {
       model: 'clef-flash',
       state,
       images: [imageOf(picture)],
@@ -344,7 +354,7 @@ export const makeGarmentVision = (run: RunClef, metrics: CaptureMetrics['Service
     return routeOf(answer)
   }),
   suggest: Effect.fn('Styld.Capture.suggest')(function* (picture: Picture) {
-    const answer = yield* ask(run, metrics, 'suggest', {
+    const answer = yield* askClef(run, metrics, 'suggest', {
       model: 'clef-flash',
       state: 'One piece cut out of a photo of clothes.',
       images: [imageOf(picture)],
@@ -362,7 +372,7 @@ export const makeGarmentVision = (run: RunClef, metrics: CaptureMetrics['Service
       layout === 'flat'
         ? 'A phone camera looking down at clothes laid flat.'
         : 'A camera frame of someone showing clothes to their phone.'
-    const answer = yield* ask(run, metrics, 'check', {
+    const answer = yield* askClef(run, metrics, 'check', {
       model: 'clef-flash',
       state: Option.isSome(previous)
         ? `${scene} The first image is the camera frame now; the second is the last garment photographed.`

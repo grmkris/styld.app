@@ -1,6 +1,7 @@
 import { appSchema as coreSchema } from './schema.ts'
 import { generationJobs, generationPictures } from './generation.ts'
 import { blocks, follows, reports, saves } from './social.ts'
+import { thinkingDays } from './outfits.ts'
 export {
   accounts,
   boardImages,
@@ -24,6 +25,7 @@ export {
 } from './schema.ts'
 export { generationJobs, generationPictures } from './generation.ts'
 export { blocks, follows, reports, saves } from './social.ts'
+export { thinkingDays } from './outfits.ts'
 
 /** Every table the application reads and writes. */
 export const appSchema = {
@@ -34,4 +36,5 @@ export const appSchema = {
   reports,
   generationJobs,
   generationPictures,
+  thinkingDays,
 }

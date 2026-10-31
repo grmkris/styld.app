@@ -22,6 +22,8 @@ export interface ProviderCall {
     | 'turn'
     | 'plan'
     | 'paint'
+    | 'outfit'
+    | 'propose'
   readonly outcome: 'ok' | 'failed' | 'unknown'
   readonly milliseconds: number
   /** What the provider bills by: tokens, images or frames. */
@@ -43,17 +45,48 @@ export interface PictureOutcome {
   readonly asked: boolean
 }
 
-/** Where provider calls, review decisions and clean pictures' ends are counted (Workers Analytics Engine). */
+/** The outfit engine's experiment (owner, 2026-10-31): each batch made, and each proposal kept (worn today or kept on a
+ * board), by the way that made it. A run of makes without a keep is an abandoned one. Never an account or a piece. */
+export type OutfitEvent =
+  | {
+      readonly phase: 'make'
+      readonly mode: 'fast' | 'thinking'
+      readonly session: string
+      /** `ok` with proposals, `empty` when the rules had none left, `failed` when none could be made. */
+      readonly outcome: 'ok' | 'empty' | 'failed'
+      /** Whether Clef ranked the batch. */
+      readonly judged: boolean
+      readonly milliseconds: number
+      readonly proposals: number
+      readonly costMicroUsd: number
+    }
+  | {
+      readonly phase: 'keep'
+      readonly mode: 'fast' | 'thinking'
+      readonly session: string
+      readonly outcome: 'worn' | 'kept'
+      /** Where in the run the kept proposal was shown, from 0, and whether the person changed it first. */
+      readonly position: number
+      readonly edited: boolean
+    }
+
+/** Where provider calls, review decisions, clean pictures' ends and outfits are counted (Workers Analytics Engine). */
 export class CaptureMetrics extends Context.Service<
   CaptureMetrics,
   {
     readonly call: (call: ProviderCall) => Effect.Effect<void>
     readonly review: (decision: ReviewDecision) => Effect.Effect<void>
     readonly picture: (outcome: PictureOutcome) => Effect.Effect<void>
+    readonly outfit: (event: OutfitEvent) => Effect.Effect<void>
   }
 >()('@styld/server/CaptureMetrics') {
   /** For tests and for runs without a dataset. */
-  static readonly discarding = { call: () => Effect.void, review: () => Effect.void, picture: () => Effect.void }
+  static readonly discarding = {
+    call: () => Effect.void,
+    review: () => Effect.void,
+    picture: () => Effect.void,
+    outfit: () => Effect.void,
+  }
   static readonly discard = Layer.succeed(this, this.discarding)
 }
 
@@ -108,7 +141,9 @@ export interface AnalyticsDataset {
  * `tools/ai-usage-report.ts`. Calls: index `call.<provider>.<kind>`, blobs (environment, release,
  * provider, model, kind, outcome), doubles (milliseconds, units, cost in micro-dollars). Reviews: index
  * `review.<decision>`, blobs (environment, release, route, provider, decision). Pictures: index `picture.<state>`,
- * blobs (environment, release, state, provider, `redraw` or `first`). Analytics Engine samples
+ * blobs (environment, release, state, provider, `redraw` or `first`). Outfits: index `outfit.<phase>.<mode>`, blobs
+ * (environment, release, phase, mode, outcome, session, `judged`/`unjudged` or `edited`/`as-proposed`), doubles (a
+ * make's milliseconds, proposals and cost in micro-dollars; a keep's position). Analytics Engine samples
  * per index, so a rare call (a route, a video track) keeps its own index rather than sharing one with
  * the bursts of thumbnails and suggestions a capture makes. A dataset that refuses a point never fails
  * the work it describes. */
@@ -144,6 +179,22 @@ export const analyticsEngine = (
           outcome.asked ? 'redraw' : 'first',
         ],
         doubles: [1],
+      }),
+    ).pipe(Effect.ignore),
+  outfit: (event) =>
+    Effect.try(() =>
+      dataset.writeDataPoint({
+        indexes: [`outfit.${event.phase}.${event.mode}`],
+        blobs: [
+          origin.environment,
+          origin.release,
+          event.phase,
+          event.mode,
+          event.outcome,
+          event.session,
+          event.phase === 'make' ? (event.judged ? 'judged' : 'unjudged') : event.edited ? 'edited' : 'as-proposed',
+        ],
+        doubles: event.phase === 'make' ? [event.milliseconds, event.proposals, event.costMicroUsd] : [event.position],
       }),
     ).pipe(Effect.ignore),
 })

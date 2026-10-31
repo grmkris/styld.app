@@ -21,6 +21,7 @@ import { stylistRoutes } from './StylistFixture.ts'
 import { recoveryRoutes } from './RecoveryFixture.ts'
 import { socialRoutes } from './SocialFixture.ts'
 import { makeAuthHttp, withCodeRequestPolicy } from '../src/AuthHttp.ts'
+import { makeOutfitStore } from '../src/outfits/Store.ts'
 import { onFirstUse } from '../src/IsolateCache.ts'
 import { DomainLive } from '../src/DomainLive.ts'
 import { StyldDatabase, StyldMedia, StyldPieceQueue } from '../src/Resources.ts'
@@ -150,6 +151,31 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
             whenFree(seedIdentity(database, id)),
           ),
         ),
+      ),
+      // An owner and a second account for the outfit engine.
+      HttpRouter.add(
+        'POST',
+        '/test/identity/seed-outfits',
+        doneWhenFree(
+          Effect.forEach(['native-outfits', 'native-outfits-other'], (id) => whenFree(seedIdentity(database, id))),
+        ),
+      ),
+      // Thinking's daily cap on real D1, at two a day: two counted, the third refused, the next day counted again.
+      HttpRouter.add(
+        'POST',
+        '/test/identity/thinking-cap',
+        Effect.gen(function* () {
+          const days = makeOutfitStore(yield* database.raw)
+          const count = (day: string) => whenFree(days.countThinking('native-outfits-other', day, 2))
+          const counted = [
+            yield* count('2026-10-30'),
+            yield* count('2026-10-30'),
+            yield* count('2026-10-30'),
+            yield* count('2026-10-31'),
+          ]
+          yield* whenFree(days.sweepBefore('2026-10-31'))
+          return yield* HttpServerResponse.json({ counted, afterSweep: yield* count('2026-10-30') })
+        }).pipe(Effect.orDie),
       ),
       // The person whose profile and public board a signed-out browser visits.
       HttpRouter.add(

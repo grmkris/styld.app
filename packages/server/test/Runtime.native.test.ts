@@ -18,6 +18,7 @@ import { stylistEnvironment, verifyStylist } from './StylistAcceptance.ts'
 import { verifyGallery } from './GalleryAcceptance.ts'
 import { verifySocial } from './SocialAcceptance.ts'
 import { verifyGeneration } from './GenerationAcceptance.ts'
+import { verifyOutfits } from './OutfitAcceptance.ts'
 import { verifyFirstSignedInTogether } from './SessionSetupAcceptance.ts'
 import { verifyPublicJourney } from './SocialBrowserAcceptance.ts'
 import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
@@ -64,6 +65,8 @@ const makeStack = (generation: string) =>
           // The stand-in painter and planner make stickers and mood boards: `[[refuse]]`, `[[lost]]` and `[[unclear]]` in
           // the words.
           GENERATED_PICTURES: 'stand-in',
+          // Clef's stand-in ranks outfits and the rules stand in for Thinking's model: `[[unclear]]` in the words.
+          OUTFITS: 'stand-in',
           ...pictureEnvironment(worker.url),
           ...stylistEnvironment(worker.url),
           DAILY_ALLOWANCE: String(nativeDailyAllowance),
@@ -185,6 +188,11 @@ test('keeps profiles and checks whatever goes public first', overHttp(verifySoci
 test('makes stickers and mood boards of the person’s pieces for a board, once each', overHttp(verifyGeneration), {
   timeout: 90000,
 })
+test(
+  'makes ranked outfits of the person’s own pieces, Fast and Thinking, never repeating one and keeping their pace and cap',
+  overHttp(verifyOutfits),
+  { timeout: 90000 },
+)
 test('shows a published profile and its public board to a signed-out visitor', inBrowser(verifyPublicJourney), {
   timeout: 60000,
 })

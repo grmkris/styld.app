@@ -2,7 +2,7 @@ import { Effect, Layer, Option, Schema } from 'effect'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
-import { workersAiFetch } from '../src/stylist/WorkersAiFetch.ts'
+import { workersAiFetch } from '../src/ai/WorkersAiFetch.ts'
 
 // Test-only: a stand-in for the stylist's model behind an OpenAI-compatible gateway. It answers by where the reply
 // is, not from recordings (those are unit-tested in Stylist.test.ts): first it searches the wardrobe, then it

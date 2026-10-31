@@ -8,7 +8,9 @@ import {
   type WornRange,
 } from '@styld/protocol'
 import { Context, Effect } from 'effect'
+import type { CaptureMetrics } from '../capture/Metrics.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
+import { outfitKept } from '../outfits/Outfits.ts'
 import type { StoreUnavailable } from '../wardrobe/Store.ts'
 import { makeWornStore } from './Store.ts'
 
@@ -42,7 +44,7 @@ const byDay = (rows: ReadonlyArray<{ readonly day: string; readonly pieceId: str
   return [...days].map(([day, pieceIds]): WornDay => ({ day: Day.make(day), pieceIds }))
 }
 
-const make = (database: Parameters<typeof makeWornStore>[0]) => {
+const make = (database: Parameters<typeof makeWornStore>[0], metrics: CaptureMetrics['Service']) => {
   const store = makeWornStore(database)
   return {
     /** The days worn in a range, both ends included. A range that runs backwards or spans more than
@@ -52,13 +54,15 @@ const make = (database: Parameters<typeof makeWornStore>[0]) => {
       if (!readable(range)) return []
       return byDay(yield* stored(store.wornBetween(accountId, range.from, range.to)))
     }),
-    /** "Wear this": the day's outfit from the account's own pieces, replacing what was recorded before. */
+    /** "Wear this": the day's outfit from the account's own pieces, replacing what was recorded before; counted for the
+     * outfit engine when it proposed the outfit. */
     wearPieces: Effect.fn('Styld.Worn.wear')(function* (day: Day, input: WearPieces) {
       const { accountId } = yield* CurrentAccount
       const pieceIds = [...new Set(input.pieceIds)]
       const owned = yield* stored(store.ownPieces(accountId, pieceIds))
       if (pieceIds.some((id) => !owned.has(id))) return yield* PieceNotFound.make({})
       yield* stored(store.wear(accountId, day, pieceIds))
+      if (input.proposal !== undefined) yield* outfitKept(metrics, input.proposal, 'worn')
       const worn: WornDay = { day, pieceIds }
       return worn
     }),
@@ -74,4 +78,5 @@ const make = (database: Parameters<typeof makeWornStore>[0]) => {
 export class Worn extends Context.Service<Worn, ReturnType<typeof make>>()('@styld/server/Worn') {}
 
 /** Worn days over the Worker's database. Build it once per isolate. */
-export const makeWorn = (database: Parameters<typeof makeWornStore>[0]) => Worn.of(make(database))
+export const makeWorn = (database: Parameters<typeof makeWornStore>[0], metrics: CaptureMetrics['Service']) =>
+  Worn.of(make(database, metrics))

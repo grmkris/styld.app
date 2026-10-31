@@ -39,6 +39,8 @@ export default defineConfig({
       'packages/server/src/AccountLifecycle.ts': ['/[\\s\\S]*/'],
       'packages/server/src/IsolateCache.ts': ['/[\\s\\S]*/'],
       'packages/server/src/StyldWorker.ts': ['/[\\s\\S]*/'],
+      // The Worker's own start-up failure, read only in its logs.
+      'packages/server/src/AuthConfiguration.ts': ['/binding is required$/'],
       // MCP and OAuth protocol text is written for assistants and OAuth clients, in English (MCP has no
       // locale negotiation); the people who connect see only the website's own copy.
       'packages/server/src/mcp/**/*.ts': ['/[\\s\\S]*/'],
@@ -63,7 +65,10 @@ export default defineConfig({
       'packages/server/src/stylist/Prompt.ts': ['/[\\s\\S]*/'],
       'packages/server/src/stylist/Tools.ts': ['/[\\s\\S]*/'],
       'packages/server/src/stylist/StylistObject.ts': ['/[\\s\\S]*/'],
-      'packages/server/src/stylist/WorkersAiFetch.ts': ['/[\\s\\S]*/'],
+      'packages/server/src/ai/WorkersAiFetch.ts': ['/[\\s\\S]*/'],
+      // The questions the outfit engine puts to Clef, and Thinking's instructions to its text model.
+      'packages/server/src/outfits/Judge.ts': ['/[\\s\\S]*/'],
+      'packages/server/src/outfits/Proposer.ts': ['/[\\s\\S]*/'],
       // The questions the content check puts to Clef and Llama Guard.
       'packages/server/src/safety/Judge.ts': ['/[\\s\\S]*/'],
       'apps/web/src/**/*.styles.ts': ['/[\\s\\S]*/'],

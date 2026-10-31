@@ -26,6 +26,8 @@ import type { Social } from './social/Social.ts'
 import { socialHandlers } from './social/SocialHttp.ts'
 import type { Worn } from './worn/Worn.ts'
 import { StylistChats, stylistHandlers } from './stylist/Http.ts'
+import { outfitHandlers } from './outfits/Http.ts'
+import type { Outfits } from './outfits/Outfits.ts'
 
 const accountHandlers = (admit: Admit) =>
   HttpApiBuilder.group(StyldApi, 'account', (handlers) =>
@@ -66,6 +68,7 @@ export const apiRoutes = (
     readonly social: Layer.Layer<Social>
     readonly generations: Layer.Layer<Generations>
     readonly stylist: Layer.Layer<StylistChats>
+    readonly outfits: Layer.Layer<Outfits>
   },
   limits: {
     readonly allowCheck: (accountId: string) => Effect.Effect<boolean, never, RuntimeContext>
@@ -91,6 +94,7 @@ export const apiRoutes = (
     Layer.provide(linkHandlers(admitWith(auth), limits.allowLink).pipe(Layer.provide(services.wardrobe))),
     Layer.provide(generationHandlers(admitWith(auth), limits.allowGenerate).pipe(Layer.provide(services.generations))),
     Layer.provide(stylistHandlers(admitWith(auth)).pipe(Layer.provide(services.stylist))),
+    Layer.provide(outfitHandlers(admitWith(auth)).pipe(Layer.provide(services.outfits))),
     Layer.provide(auth.router.securityLayer(SessionHttp)),
     auth.router.middleware,
     Layer.provide(auth.dependencies),

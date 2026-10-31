@@ -37,7 +37,7 @@
   },
   {
     "file": "packages/server/src/StyldWorker.ts",
-    "comment": "SAFETY: Styld's model is a Workers AI chat model its policy names, outside the pinned workers-types model list -- the input is the Chat Completions body the OpenAI-compatible client built and workersAiFetch decoded"
+    "comment": "SAFETY: the text models Styld asks are Workers AI chat models outside the pinned workers-types model list -- the input is the Chat Completions body the caller built"
   },
   {
     "file": "packages/server/src/capture/CloudflareImages.ts",

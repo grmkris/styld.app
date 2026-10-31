@@ -9,8 +9,9 @@ import { stylistPolicy } from '../src/stylist/Policy.ts'
 import { historyText, outlineOf, systemPrompt } from '../src/stylist/Prompt.ts'
 import { lookingUpToolNames, modelSchema, showingToolNames, turnTools } from '../src/stylist/Tools.ts'
 import { TestClock } from 'effect/testing'
-import { callPatience, runTurn } from '../src/stylist/Turn.ts'
-import { type RunChat, workersAiFetch } from '../src/stylist/WorkersAiFetch.ts'
+import { callPatience } from '../src/ai/WorkersAiFetch.ts'
+import { runTurn } from '../src/stylist/Turn.ts'
+import { type RunChat, workersAiFetch } from '../src/ai/WorkersAiFetch.ts'
 
 const fixture = (name: string): unknown =>
   JSON.parse(readFileSync(new URL(`fixtures/stylist/${name}`, import.meta.url), 'utf8'))

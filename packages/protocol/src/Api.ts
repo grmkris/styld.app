@@ -57,6 +57,7 @@ import {
   UpdateBoard,
 } from './Board.ts'
 import { CreateLook, Look, LookId, LookNotFound, Looks } from './Look.ts'
+import { OutfitApi } from './Outfit.ts'
 import { Day, WearPieces, WornDay, WornDays, WornRange } from './Worn.ts'
 import {
   AddPiece,
@@ -441,4 +442,5 @@ export class StyldApi extends HttpApi.make('styld')
   .add(SocialApi)
   .add(LinkApi)
   .add(GenerationApi)
-  .add(StylistApi) {}
+  .add(StylistApi)
+  .add(OutfitApi) {}

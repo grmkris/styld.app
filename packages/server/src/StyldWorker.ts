@@ -1,20 +1,14 @@
 import { provideAllCatalogs } from '@styld/i18n/all'
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import * as AlchemyHttp from 'alchemy/Http'
-import { type EmailEntryOptions, ProofDispatchSink } from '@styld/auth'
+import { ProofDispatchSink } from '@styld/auth'
 import { RuntimeContext } from 'alchemy/RuntimeContext'
 import { layerCryptoWeb } from '@yielded/auth/WebCrypto'
 import { Effect, Layer, Logger, Option, Stream } from 'effect'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import * as UrlParams from 'effect/http/UrlParams'
-import {
-  type AuthHttpOptions,
-  decodeAuthSecret,
-  decodeAuthSessionKeyring,
-  decodeProofKeyring,
-  decodeRequestBindingKeyring,
-} from './AuthConfiguration.ts'
+import { authConfiguration, authOptions } from './AuthConfiguration.ts'
 import { browserTelemetryRoutes } from './BrowserTelemetry.ts'
 import { AccountLifecycle, makeAccountLifecycle } from './AccountLifecycle.ts'
 import { Looks, makeLooks } from './looks/Looks.ts'
@@ -58,7 +52,8 @@ import { type CheckBindings, makeChecks } from './safety/Checks.ts'
 import { contentJudge, type RunGuard } from './safety/Judge.ts'
 import { pieceChangedLayer } from './safety/PieceChanged.ts'
 import { checkAttempts, settleCheck } from './safety/Queue.ts'
-import { type MoodPlanner, plannerModel, type RunPlanner } from './generation/Planner.ts'
+import type { RunChat } from './ai/WorkersAiFetch.ts'
+import type { MoodPlanner } from './generation/Planner.ts'
 import type { PicturePainter } from './generation/Painter.ts'
 import { generationAttempts, settleGeneration } from './generation/Queue.ts'
 import { type GenerationBindings, Generations, makeGenerations } from './generation/Service.ts'
@@ -73,6 +68,8 @@ import { settleStylistTurn, stylistAttempts } from './stylist/Queue.ts'
 import { Stylist } from './stylist/StylistObject.ts'
 import { chatStoreOf, makeStylistLive } from './stylist/Live.ts'
 import { askStandIn, captureProviders } from './capture/Live.ts'
+import { outfitsLive } from './outfits/Live.ts'
+import { Outfits, type OutfitParts } from './outfits/Outfits.ts'
 
 // The server formats in every language: page renders and code emails.
 provideAllCatalogs()
@@ -96,9 +93,13 @@ const Runtime = Layer.mergeAll(
 
 /** A per-IP limit of `limit` requests a minute. A limiter error refuses: a limit is never worth an
  * outage or an open door. */
+/** A Workers RateLimit binding that allows `limit` a minute for each key. */
+const perMinuteLimit = (name: string, namespaceId: number, limit: number) =>
+  Cloudflare.Workers.RateLimit(name, { namespaceId, simple: { limit, period: 60 } })
+
 const perClientLimit = (name: string, namespaceId: number, limit: number) =>
   Effect.gen(function* () {
-    const limiter = yield* Cloudflare.Workers.RateLimit(name, { namespaceId, simple: { limit, period: 60 } })
+    const limiter = yield* perMinuteLimit(name, namespaceId, limit)
     return (client: string) =>
       limiter.limit({ key: client }).pipe(
         Effect.map(({ success }) => success),
@@ -173,7 +174,7 @@ const storageServices = <R>(
       captures: Layer.succeed(Captures, capturesService),
       looks: Layer.succeed(Looks, looksService),
       boards: Layer.succeed(Boards, boardsService),
-      worn: Layer.succeed(Worn, makeWorn(bindings.database)),
+      worn: Layer.succeed(Worn, makeWorn(bindings.database, yield* CaptureMetricsService)),
       profilesService,
       profiles: Layer.succeed(Profiles, profilesService),
     }
@@ -182,7 +183,10 @@ const storageServices = <R>(
   )
 
 /** The services the assistants' tools project. */
-const toolServices = (services: Effect.Success<ReturnType<typeof storageServices>>): ToolServices => ({
+const toolServices = (
+  services: Effect.Success<ReturnType<typeof storageServices>>,
+  outfits: ToolServices['outfits'],
+): ToolServices => ({
   wardrobe: services.wardrobeService,
   looks: services.looksService,
   captures: services.capturesService,
@@ -191,6 +195,7 @@ const toolServices = (services: Effect.Success<ReturnType<typeof storageServices
   social: services.socialService,
   discovery: services.discoveryService,
   generations: services.generationsService,
+  outfits,
 })
 
 /** A Workers RateLimit binding's runtime object as a check: false when over the limit or failing. */
@@ -200,36 +205,15 @@ const sharedLimit = (limiter: { limit(options: { key: string }): Promise<{ succe
     Effect.orElseSucceed(() => false),
   )
 
-/** Auth's options from the secrets, sending code mail from styld.app. */
-const authOptions = (
-  configuration: Effect.Success<ReturnType<typeof authConfiguration>>,
-  sender: EmailEntryOptions['sender'],
-): AuthHttpOptions => ({
-  origin: configuration.origin,
-  secret: configuration.secret,
-  secureCookies: true,
-  sessionKeys: configuration.sessionKeys,
-  email: {
-    sender,
-    from: emailSender,
-    proofKeys: configuration.proofKeys,
-    requestBindingKeys: configuration.requestBindingKeys,
-    returnTargets: ['/'],
-  },
-})
-
-/** The auth origin and keyrings bound as secrets. Missing or malformed ones stop the Worker. */
-const authConfiguration = (env: Cloudflare.Workers.WorkerEnvironment['Service']) =>
+/** Each account's pace, on the website and for assistants: fetching from the web, generating pictures, outfits and
+ * Thinking. */
+const paceOf = (bindings: Effect.Success<typeof declareBindings>) =>
   Effect.gen(function* () {
-    const origin: unknown = env.AUTH_ORIGIN
-    if (typeof origin !== 'string' || origin.length === 0)
-      return yield* Effect.die(new Error('AUTH_ORIGIN binding is required'))
     return {
-      origin,
-      sessionKeys: yield* decodeAuthSessionKeyring(env.AUTH_SESSION_KEYS).pipe(Effect.orDie),
-      secret: yield* decodeAuthSecret(env.AUTH_SECRET).pipe(Effect.orDie),
-      proofKeys: yield* decodeProofKeyring(env.AUTH_PROOF_KEYS).pipe(Effect.orDie),
-      requestBindingKeys: yield* decodeRequestBindingKeyring(env.AUTH_REQUEST_BINDING_KEYS).pipe(Effect.orDie),
+      link: sharedLimit(yield* bindings.linkLimit.raw),
+      generate: sharedLimit(yield* bindings.generateLimit.raw),
+      outfit: sharedLimit(yield* bindings.outfitLimit.raw),
+      thinking: sharedLimit(yield* bindings.thinkingLimit.raw),
     }
   })
 
@@ -269,20 +253,14 @@ const declareBindings = Effect.gen(function* () {
   // Public pages and their pictures are open to anyone; each network may read 300 a minute.
   const allowRead = yield* perClientLimit('PUBLIC_READ_RATE_LIMIT', 2610285, 300)
   // Reading a shop's product page fetches someone else's site; each account may read ten a minute.
-  const linkLimit = yield* Cloudflare.Workers.RateLimit('LINK_IMPORT_RATE_LIMIT', {
-    namespaceId: 2610286,
-    simple: { limit: 10, period: 60 },
-  })
+  const linkLimit = yield* perMinuteLimit('LINK_IMPORT_RATE_LIMIT', 2610286, 10)
   // Generated pictures cost credits and a model's time; each account may ask six times a minute.
-  const generateLimit = yield* Cloudflare.Workers.RateLimit('GENERATE_RATE_LIMIT', {
-    namespaceId: 2610287,
-    simple: { limit: 6, period: 60 },
-  })
+  const generateLimit = yield* perMinuteLimit('GENERATE_RATE_LIMIT', 2610287, 6)
+  // Outfits are free but call Clef; each account may ask thirty times a minute, Thinking six of them.
+  const outfitLimit = yield* perMinuteLimit('OUTFIT_RATE_LIMIT', 2610288, 30)
+  const thinkingLimit = yield* perMinuteLimit('THINKING_RATE_LIMIT', 2610289, 6)
   // Sign-in codes are real mail from styld.app; each network may ask for five a minute.
-  const codeRequests = yield* Cloudflare.Workers.RateLimit('EMAIL_CODE_RATE_LIMIT', {
-    namespaceId: 2610283,
-    simple: { limit: 5, period: 60 },
-  })
+  const codeRequests = yield* perMinuteLimit('EMAIL_CODE_RATE_LIMIT', 2610283, 5)
   return {
     database,
     email,
@@ -302,6 +280,8 @@ const declareBindings = Effect.gen(function* () {
     allowCheck,
     linkLimit,
     generateLimit,
+    outfitLimit,
+    thinkingLimit,
     allowRead,
     codeRequests,
   }
@@ -325,7 +305,8 @@ const workersModels = (
   // Only native acceptance names the stand-in judge.
   return {
     runClef,
-    runPlanner: ((input) => aiRaw.run(plannerModel, input)) satisfies RunPlanner,
+    // SAFETY: the text models Styld asks are Workers AI chat models outside the pinned workers-types model list -- the input is the Chat Completions body the caller built
+    runText: ((model, input) => aiRaw.run(model as never, input as never)) satisfies RunChat,
     judge: contentJudge(env.CHECKS === 'stand-in' ? Option.none() : Option.some({ runClef, runGuard })),
   }
 }
@@ -339,13 +320,14 @@ const applicationServices = (
     readonly dataset: AnalyticsDataset
     readonly origin: { readonly environment: string; readonly release: string }
     readonly stylist: Effect.Success<typeof declareBindings>['stylist']
+    readonly pace: OutfitParts['pace']
   },
 ) =>
   Effect.gen(function* () {
-    const { runClef, runPlanner, judge } = workersModels(env, runtime.ai)
+    const { runClef, runText, judge } = workersModels(env, runtime.ai)
     const providers = captureProviders(env, {
       runClef,
-      runPlanner,
+      runText,
       images: bindings.images,
       bucket: bindings.bucket,
       dataset: runtime.dataset,
@@ -357,42 +339,36 @@ const applicationServices = (
       judge,
       providers,
     )
+    const outfitsService = yield* outfitsLive(env, {
+      database: bindings.database,
+      bindings,
+      runClef,
+      runText,
+      metrics: services.metrics,
+      pace: runtime.pace,
+    })
     // Styld answers with the assistants' own tools, for the account.
     const stylistService = yield* makeStylistLive({
       env,
       chatsOf,
       queue: yield* runtime.stylist.queue.raw,
-      // SAFETY: Styld's model is a Workers AI chat model its policy names, outside the pinned workers-types model list -- the input is the Chat Completions body the OpenAI-compatible client built and workersAiFetch decoded
-      runChat: (model, input) => runtime.ai.run(model as never, input as never),
+      runChat: runText,
       db: bindings.database,
-      tools: toolServices(services),
+      tools: toolServices(services, outfitsService),
       storage: services,
     })
-    return { ...services, stylistService, stylist: Layer.succeed(StylistChats, stylistService) }
+    return {
+      ...services,
+      stylistService,
+      stylist: Layer.succeed(StylistChats, stylistService),
+      outfitsService,
+      outfits: Layer.succeed(Outfits, outfitsService),
+    }
   })
 
 /** The application over the Worker's bindings, built from the request runtime's environment. */
 const makeApplication =
-  ({
-    database,
-    email,
-    media,
-    images,
-    pieceQueue,
-    checksQueue,
-    generationQueue,
-    stylist,
-    ai,
-    calls,
-    allowTelemetry,
-    allowRegistration,
-    allowCheck,
-    linkLimit,
-    generateLimit,
-    allowRead,
-    codeRequests,
-  }: Effect.Success<typeof declareBindings>) =>
-  (env: Cloudflare.Workers.WorkerEnvironment['Service']) =>
+  (bindings: Effect.Success<typeof declareBindings>) => (env: Cloudflare.Workers.WorkerEnvironment['Service']) =>
     Effect.gen(function* () {
       const observabilityBase = yield* makeObservabilityBase({
         environment: env.STYLD_ENV,
@@ -402,30 +378,44 @@ const makeApplication =
       const configuration = yield* authConfiguration(env)
       // Auth checks the limit inside its own operations, which do not carry this request's
       // runtime context, so it gets the binding's runtime object.
-      const allowCodeRequest = sharedLimit(yield* codeRequests.raw)
-      // Fetching from the web and generating pictures keep one pace per account, on the website and for assistants.
-      const pacing = { link: sharedLimit(yield* linkLimit.raw), generate: sharedLimit(yield* generateLimit.raw) }
+      const allowCodeRequest = sharedLimit(yield* bindings.codeRequests.raw)
+      const pacing = yield* paceOf(bindings)
       const authOrigin = configuration.origin
-      const auth = makeAuthHttp(database, authOptions(configuration, yield* email.raw))
-      const db = yield* database.raw
+      const auth = makeAuthHttp(bindings.database, authOptions(configuration, yield* bindings.email.raw, emailSender))
+      const db = yield* bindings.database.raw
       const services = yield* applicationServices(
         env,
         {
           database: db,
-          bucket: yield* media.raw,
-          images: yield* images.raw,
-          queue: yield* pieceQueue.raw,
-          checksQueue: yield* checksQueue.raw,
-          generationQueue: yield* generationQueue.raw,
+          bucket: yield* bindings.media.raw,
+          images: yield* bindings.images.raw,
+          queue: yield* bindings.pieceQueue.raw,
+          checksQueue: yield* bindings.checksQueue.raw,
+          generationQueue: yield* bindings.generationQueue.raw,
         },
-        { ai: yield* ai.raw, dataset: yield* calls.raw, origin: observabilityBase, stylist },
+        {
+          ai: yield* bindings.ai.raw,
+          dataset: yield* bindings.calls.raw,
+          origin: observabilityBase,
+          stylist: bindings.stylist,
+          pace: pacing,
+        },
       )
       const { wardrobeService, lifecycleService, capturesService, wardrobe, captures, boards } = services
-      const oauth = makeMcpOAuth(db, auth, { origin: authOrigin, keys: configuration.sessionKeys, allowRegistration })
+      const oauth = makeMcpOAuth(db, auth, {
+        origin: authOrigin,
+        keys: configuration.sessionKeys,
+        allowRegistration: bindings.allowRegistration,
+      })
       const routes = Layer.mergeAll(
         auth.layer,
-        apiRoutes(auth, services, { allowCheck, allowLink: pacing.link, allowGenerate: pacing.generate, allowRead }),
-        publicImageRoutes(allowRead).pipe(Layer.provide(services.publicPages)),
+        apiRoutes(auth, services, {
+          allowCheck: bindings.allowCheck,
+          allowLink: pacing.link,
+          allowGenerate: pacing.generate,
+          allowRead: bindings.allowRead,
+        }),
+        publicImageRoutes(bindings.allowRead).pipe(Layer.provide(services.publicPages)),
         wardrobeRoutes(auth).pipe(Layer.provide(wardrobe)),
         boardRoutes(auth).pipe(Layer.provide(boards)),
         captureRoutes(auth).pipe(Layer.provide(captures)),
@@ -434,11 +424,11 @@ const makeApplication =
           db,
           authOrigin,
           observabilityBase.release,
-          { ...toolServices(services), curation: services.curationService, pacing },
+          { ...toolServices(services, services.outfitsService), curation: services.curationService, pacing },
           adminEmails(env.STYLD_ADMIN_EMAILS),
         ).pipe(Layer.provide(oauth.server)),
         HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),
-        browserTelemetryRoutes(authOrigin, allowTelemetry),
+        browserTelemetryRoutes(authOrigin, bindings.allowTelemetry),
       ).pipe(Layer.provide(AlchemyHttp.Platform))
       const handle = yield* HttpRouter.toHttpEffect(routes).pipe(Effect.orDie)
       return {
@@ -450,6 +440,7 @@ const makeApplication =
         checks: services.checksService,
         generations: services.generationsService,
         stylist: services.stylistService,
+        outfits: services.outfitsService,
         allowCodeRequest,
       }
     })
@@ -533,14 +524,15 @@ export default StyldWorker.make(
           )
         }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
     )
-    // Every ten minutes: generation jobs and checks whose messages were lost go to their queues again, and pieces
-    // carried over from the old categories go to be asked about, a batch at a time.
+    // Every ten minutes: generation jobs and checks whose messages were lost go to their queues again, pieces carried
+    // over from the old categories go to be asked about, a batch at a time, and old Thinking counts are forgotten.
     yield* Cloudflare.Workers.cron('*/10 * * * *', () =>
       Effect.gen(function* () {
-        const { generations, checks, captures, observabilityBase } = yield* application(
+        const { generations, checks, captures, outfits, observabilityBase } = yield* application(
           yield* Cloudflare.Workers.WorkerEnvironment,
         )
-        yield* Effect.all([generations.sweep(), checks.sweep(), captures.sweepSuggestions()], { discard: true }).pipe(
+        const sweeps = [generations.sweep(), checks.sweep(), captures.sweepSuggestions(), outfits.sweep()]
+        yield* Effect.all(sweeps, { discard: true }).pipe(
           withObservability('styld.cron', { ...observabilityBase, kind: 'cron.sweep' }),
         )
       }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),

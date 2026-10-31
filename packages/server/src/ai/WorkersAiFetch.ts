@@ -1,4 +1,9 @@
-import { Option, Schema } from 'effect'
+import { Duration, Option, Schema } from 'effect'
+
+/** How long one model call may take before it fails. On the preview (31 October) DeepSeek V4.1 Flash answered 53 of
+ * Styld's calls at a median of 3.1 s, the slowest in 30 s; one Workers AI call that never answered held its reply 235
+ * s, the chat showing Styld writing all that time. */
+export const callPatience = Duration.seconds(45)
 
 /** Workers AI's Chat Completions models over the Worker's `AI` binding, as a `fetch` the OpenAI-compatible client can
  * use: the request the client posts to `/chat/completions` goes to `run`, and its answer comes back as the client

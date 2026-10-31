@@ -8,7 +8,8 @@
  * preview account) from the environment and never prints them. Costs are list-price estimates; the
  * providers' invoices are the truth. Analytics Engine samples per index, so every sum is weighted by
  * `_sample_interval`; indexes are `call.<provider>.<kind>`, `review.<decision>` (plain `call` and
- * `review` before 2026-10-29 16:00) and `picture.<state>`, where each clean picture ended (from 2026-10-30).
+ * `review` before 2026-10-29 16:00), `picture.<state>`, where each clean picture ended (from 2026-10-30), and
+ * `outfit.<make|keep>.<mode>`, the outfit engine's Fast and Thinking experiment (from 2026-10-31).
  */
 import { Schema } from 'effect'
 
@@ -70,3 +71,64 @@ console.log('Review decisions')
 console.table(reviews)
 console.log('Clean pictures: shown (ready), offered (proposed), dropped (rejected), retake, kept-real, failed')
 console.table(pictures)
+
+const outfitMakes = await query(`
+  SELECT blob4 AS mode, blob5 AS outcome, blob7 AS judged,
+         SUM(_sample_interval) AS makes,
+         quantileExactWeighted(0.5)(double1, _sample_interval) AS p50_ms,
+         quantileExactWeighted(0.95)(double1, _sample_interval) AS p95_ms,
+         SUM(_sample_interval * double2) / SUM(_sample_interval) AS avg_proposals,
+         SUM(_sample_interval * double3) / 1000000 AS est_usd
+  FROM StyldV2AiCalls
+  WHERE index1 LIKE 'outfit.make.%' AND ${within}
+  GROUP BY mode, outcome, judged
+  ORDER BY mode, makes DESC
+  FORMAT JSON`)
+
+const outfitKeeps = await query(`
+  SELECT blob4 AS mode, blob5 AS outcome,
+         SUM(_sample_interval) AS kept,
+         SUM(_sample_interval * double1) / SUM(_sample_interval) AS avg_position,
+         SUM(if(blob7 = 'edited', _sample_interval, 0)) AS edited
+  FROM StyldV2AiCalls
+  WHERE index1 LIKE 'outfit.keep.%' AND ${within}
+  GROUP BY mode, outcome
+  FORMAT JSON`)
+
+const sessionsBy = async (phase: 'make' | 'keep') =>
+  new Map(
+    (
+      await query(`
+        SELECT blob4 AS mode, COUNT(DISTINCT blob6) AS sessions
+        FROM StyldV2AiCalls
+        WHERE index1 LIKE 'outfit.${phase}.%' AND ${within}
+        GROUP BY mode
+        FORMAT JSON`)
+    ).map((row) => [String(row['mode']), Number(row['sessions'] ?? 0)]),
+  )
+const madeSessions = await sessionsBy('make')
+const keptSessions = await sessionsBy('keep')
+const keepRates = ['fast', 'thinking'].map((mode) => {
+  const made = madeSessions.get(mode) ?? 0
+  const kept = keptSessions.get(mode) ?? 0
+  const cost = outfitMakes
+    .filter((row) => row['mode'] === mode)
+    .reduce((sum, row) => sum + Number(row['est_usd'] ?? 0), 0)
+  const keeps = outfitKeeps
+    .filter((row) => row['mode'] === mode)
+    .reduce((sum, row) => sum + Number(row['kept'] ?? 0), 0)
+  return {
+    mode,
+    sessions: made,
+    keptSessions: kept,
+    keepRate: made === 0 ? null : kept / made,
+    usdPerKept: keeps === 0 ? null : cost / keeps,
+  }
+})
+
+console.log('Outfits made: latency, proposals and cost by way, outcome and whether Clef ranked them')
+console.table(outfitMakes)
+console.log('Outfits kept: worn today or kept on a board; avg_position is how far into a run the kept one was shown')
+console.table(outfitKeeps)
+console.log('Fast against Thinking: runs, runs with a keep, keep rate and estimated cost per kept outfit')
+console.table(keepRates)

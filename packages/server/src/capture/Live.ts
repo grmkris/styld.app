@@ -1,6 +1,6 @@
 import type * as Cloudflare from '@alchemy.run/cloudflare'
 import { Layer, Redacted } from 'effect'
-import type { RunPlanner } from '../generation/Planner.ts'
+import type { RunChat } from '../ai/WorkersAiFetch.ts'
 import { generationProviders } from '../generation/Providers.ts'
 import type { WardrobeBindings } from '../wardrobe/Parts.ts'
 import { type ClefRequest, makeGarmentVision, type RunClef } from './Clef.ts'
@@ -20,7 +20,8 @@ export const captureProviders = (
   env: Cloudflare.Workers.WorkerEnvironment['Service'],
   runtime: {
     readonly runClef: RunClef
-    readonly runPlanner: RunPlanner
+    /** A Workers AI chat model, by name. */
+    readonly runText: RunChat
     readonly images: WardrobeBindings['images']
     readonly bucket: WardrobeBindings['bucket']
     readonly dataset: AnalyticsDataset
@@ -48,7 +49,7 @@ export const captureProviders = (
       makeGarmentSegmenter({ ...meta, readVideo: async (key) => (await runtime.bucket.get(key))?.body ?? null }),
     ),
     Layer.succeed(ImageGenerator, policy.pictures.generator === 'muse' ? makeMuseGenerator(meta) : ImageGenerator.off),
-    generationProviders(env.GENERATED_PICTURES, meta, runtime.runPlanner),
+    generationProviders(env.GENERATED_PICTURES, meta, runtime.runText),
     Layer.succeed(
       VideoGenerator,
       policy.turns.generator === 'veo'

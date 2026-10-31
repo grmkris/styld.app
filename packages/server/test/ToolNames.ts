@@ -15,6 +15,7 @@ export const toolNames = [
   'look_get',
   'look_share',
   'look_delete',
+  'outfit_make',
   'picture_redraw',
   'board_list',
   'board_get',

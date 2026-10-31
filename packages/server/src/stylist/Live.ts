@@ -15,7 +15,7 @@ import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { type StylistPolicy, stylistPolicy } from './Policy.ts'
 import { type ChatStore, makeStylist } from './Service.ts'
 import type { Stylist } from './StylistObject.ts'
-import { type RunChat, workersAiFetch } from './WorkersAiFetch.ts'
+import { type RunChat, workersAiFetch } from '../ai/WorkersAiFetch.ts'
 
 /** A call through a Durable Object stub. Its methods carry `RuntimeContext` in their type only: the stub is the
  * binding's own and needs nothing from the request at run time, so the requirement is discharged. */

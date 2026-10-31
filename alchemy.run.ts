@@ -63,6 +63,8 @@ export default Alchemy.Stack(
         CLEAN_PICTURES: 'muse',
         // Generated pictures and mood boards for boards (M7): Meta Muse Image paints, a Workers AI model plans.
         GENERATED_PICTURES: 'muse',
+        // Outfits from the person's own pieces (owner, 2026-10-31): Clef ranks; Thinking asks a Workers AI model.
+        OUTFITS: 'live',
         // What people make public is checked by Clef-flash (pictures) and Llama Guard 3 (words) before others see it.
         CHECKS: 'live',
         // Accounts whose assistants get the curation tools (feature, house, hide, reports, checks): their sign-in

@@ -1,6 +1,8 @@
 import { Mood, maximumMoods } from '@styld/protocol'
 import { Context, Effect, Option, Schema } from 'effect'
-import { type CaptureMetrics, counted } from '../capture/Metrics.ts'
+import { structured } from '../ai/TextModel.ts'
+import type { RunChat } from '../ai/WorkersAiFetch.ts'
+import type { CaptureMetrics } from '../capture/Metrics.ts'
 import { ProviderFailed } from '../capture/Providers.ts'
 
 // Make a mood board (owner, 2026-10-31): one sentence picks the person's own pieces that suit it, and up to three
@@ -83,41 +85,18 @@ export const planOf = (answer: typeof Answer.Type, request: PlanRequest): Option
   return Option.some({ picks, moods: [...new Set(answer.moods.filter(isMood))].slice(0, maximumMoods) })
 }
 
-/** The Workers AI binding narrowed to the planning model. */
-export type RunPlanner = (input: {
-  readonly messages: ReturnType<typeof planMessages>
-  readonly response_format: { readonly type: 'json_schema'; readonly json_schema: typeof answerSchema }
-}) => Promise<unknown>
-
 export const plannerModel = '@cf/meta/llama-3.3-70b-instruct-fp8-fast'
 
-const Response = Schema.Struct({ response: Schema.Unknown })
-
-/** The live planner. The model may answer JSON as an object or as text; either decodes the same. */
-export const livePlanner = (runPlanner: RunPlanner, metrics: CaptureMetrics['Service']): MoodPlanner['Service'] => ({
+/** The live planner, through the one text model seam. */
+export const livePlanner = (run: RunChat, metrics: CaptureMetrics['Service']): MoodPlanner['Service'] => ({
   plan: (request) =>
-    counted(
-      metrics,
-      Effect.tryPromise({
-        try: () =>
-          runPlanner({
-            messages: planMessages(request),
-            response_format: { type: 'json_schema', json_schema: answerSchema },
-          }),
-        catch: () => new ProviderFailed({ provider: 'workers-ai', retryable: true }),
-      }).pipe(
-        Effect.flatMap((raw) => Schema.decodeUnknownEffect(Response)(raw)),
-        Effect.flatMap(({ response }) =>
-          typeof response === 'string'
-            ? Schema.decodeUnknownEffect(Schema.fromJsonString(Answer))(response)
-            : Schema.decodeUnknownEffect(Answer)(response),
-        ),
-        Effect.mapError(() => new ProviderFailed({ provider: 'workers-ai', retryable: true })),
-        Effect.map((answer) => planOf(answer, request)),
-      ),
-      { provider: 'workers-ai', model: plannerModel, kind: 'plan' },
-      () => ({ units: 1, costMicroUsd: 0 }),
-    ),
+    structured(run, metrics, {
+      model: plannerModel,
+      kind: 'plan',
+      messages: planMessages(request),
+      schema: answerSchema,
+      answer: Answer,
+    }).pipe(Effect.map(({ answer }) => planOf(answer, request))),
 })
 
 /** Native acceptance's planner: the first three pieces picked; `[[unclear]]` plans nothing. */

@@ -4,10 +4,12 @@ import { Tool, Toolkit } from 'effect/ai'
 import type { JsonSchema } from 'effect/JsonSchema'
 import type { Tool as AssistantTool } from '../mcp/Tools.ts'
 
-/** The assistants' tools Styld uses: it reads the wardrobe and the saved looks, and saves a look when asked. */
+/** The assistants' tools Styld uses: it reads the wardrobe and the saved looks, makes outfits, and saves a look when
+ * asked. */
 export const stylistToolNames: ReadonlyArray<string> = [
   'piece_search',
   'piece_get',
+  'outfit_make',
   'look_list',
   'look_get',
   'look_create',
@@ -15,7 +17,13 @@ export const stylistToolNames: ReadonlyArray<string> = [
 
 /** Tools that look something up: words a call writes beside them are the model thinking aloud ("I'll take a look"),
  * left out of the reply when it says anything else. */
-export const lookingUpToolNames: ReadonlySet<string> = new Set(['piece_search', 'piece_get', 'look_list', 'look_get'])
+export const lookingUpToolNames: ReadonlySet<string> = new Set([
+  'piece_search',
+  'piece_get',
+  'outfit_make',
+  'look_list',
+  'look_get',
+])
 
 /** Tools that only show something under the reply: their answer tells the model nothing new, so a call that has
  * written its words and calls only these ends the reply, rather than asking the model again to restate it. */

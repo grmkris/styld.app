@@ -6,8 +6,10 @@ import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import type * as HttpClient from 'effect/http/HttpClient'
 import { viewTools } from './ViewTools.ts'
 import { lookTools } from './LookTools.ts'
+import { outfitTools } from './OutfitTools.ts'
 import { wardrobeTools } from './WardrobeTools.ts'
 import type { Looks } from '../looks/Looks.ts'
+import type { Outfits } from '../outfits/Outfits.ts'
 import type { Boards } from '../boards/Boards.ts'
 import { boardMcpTools } from './BoardTools.ts'
 import { profileTools } from './ProfileTools.ts'
@@ -50,13 +52,14 @@ export interface ToolServices {
   readonly social: Social['Service']
   readonly discovery: Discovery['Service']
   readonly generations: Pick<Generations['Service'], 'admit' | 'get'>
+  readonly outfits: Outfits['Service']
 }
 
 /** Styld's MCP tools: thin projections of the same reads and writes the website uses. */
 export const styldTools = (
   db: D1,
   origin: string,
-  { wardrobe, looks, captures, boards, profiles, social, discovery, generations }: ToolServices,
+  { wardrobe, looks, captures, boards, profiles, social, discovery, generations, outfits }: ToolServices,
   http: HttpClient.HttpClient,
 ) => [
   tool({
@@ -85,6 +88,7 @@ export const styldTools = (
   ...wardrobeTools(wardrobe, origin, http),
   ...viewTools(wardrobe, boards, origin),
   ...lookTools(looks, origin),
+  ...outfitTools(outfits),
   ...pictureTools(captures, origin),
   ...boardMcpTools(boards, wardrobe, origin, http),
   ...generationTools(generations, origin),

@@ -1,0 +1,250 @@
+import {
+  type Colour,
+  type Occasion,
+  type OutfitBrief,
+  type Pattern,
+  type PieceId,
+  type PieceType,
+  outfitKeyOf,
+  type Season,
+  type Slot,
+  slotOf,
+} from '@styld/protocol'
+import { Array, Option, Order } from 'effect'
+
+// The outfit rules (owner, 2026-10-31): the one validator of every proposal, whichever way made it, and Fast's
+// generator. One piece in each place, a whole outfit when the wardrobe has one (a top and a bottom, a one-piece, or
+// for sport and lounging a set), shoes when there are any, every fixed piece kept, at most one statement piece
+// besides them, and nothing for the other season or another occasion while something suitable is there. Pure.
+
+/** One of the person's ready pieces, as the rules read it. */
+export interface Wearable {
+  readonly id: PieceId
+  readonly type: PieceType
+  readonly colours: ReadonlyArray<Colour>
+  readonly season: Season | null
+  readonly occasions: ReadonlyArray<Occasion>
+  readonly pattern: Pattern | null
+  readonly name: string | null
+  /** Whether it shows a clean drawing rather than its photo. */
+  readonly drawn: boolean
+}
+
+/** What every proposal for one request is made from and kept to. */
+export interface Brief {
+  /** The person's ready pieces, the fixed ones among them. */
+  readonly wardrobe: ReadonlyArray<Wearable>
+  /** The anchor first, then the locked pieces: every proposal wears them. */
+  readonly fixed: ReadonlyArray<Wearable>
+  readonly brief: OutfitBrief
+  /** Keys of the combinations already shown. */
+  readonly seen: ReadonlySet<string>
+}
+
+/** The order an outfit is worn and listed in. */
+const wearingOrder: ReadonlyArray<Slot> = ['set', 'onePiece', 'top', 'bottom', 'layer', 'shoes', 'accessory']
+
+/** The most pieces one place holds in an outfit. */
+const mostIn: Readonly<Record<Slot, number>> = {
+  set: 2,
+  onePiece: 1,
+  top: 1,
+  bottom: 1,
+  layer: 1,
+  shoes: 1,
+  accessory: 2,
+}
+
+/** What an outfit is built on: separates, a one-piece, or a set for sport or lounging. */
+type Shape = 'separates' | 'onePiece' | 'set'
+
+const shapeSlots: Readonly<Record<Shape, ReadonlyArray<Slot>>> = {
+  separates: ['top', 'bottom'],
+  onePiece: ['onePiece'],
+  set: ['set'],
+}
+
+/** Colours that carry an outfit on their own; blue is quiet, as denim and an Oxford shirt go with everything. */
+const loud: ReadonlySet<Colour> = new Set(['red', 'pink', 'yellow', 'orange', 'purple', 'green'])
+
+/** A piece that carries an outfit: a loud colour or a bold pattern. */
+const isStatement = (piece: Wearable) =>
+  piece.colours.some((colour) => loud.has(colour)) || piece.pattern === 'printed' || piece.pattern === 'checked'
+
+const slotRank = (piece: Wearable) => wearingOrder.indexOf(slotOf(piece.type))
+
+/** The pieces in the order they are worn. */
+export const inWearingOrder = (pieces: ReadonlyArray<Wearable>): ReadonlyArray<Wearable> =>
+  Array.sort(pieces, Order.mapInput(Order.Number, slotRank))
+
+const isActivity = (brief: OutfitBrief) => brief.occasion === 'sport' || brief.occasion === 'lounge'
+
+const opposite: Readonly<Record<Season, Season | null>> = { warm: 'cold', cold: 'warm', allYear: null }
+
+/** Whether a piece suits the brief: not made for the other season, and worn for its occasion when it says. */
+const suits = (piece: Wearable, brief: OutfitBrief) => {
+  const against = brief.season === undefined ? null : opposite[brief.season]
+  const seasonFits = against === null || piece.season !== against
+  const occasionFits =
+    brief.occasion === undefined || piece.occasions.length === 0 || piece.occasions.includes(brief.occasion)
+  return seasonFits && occasionFits
+}
+
+/** Places an outfit can do without: they are left empty rather than filled with something unsuitable. */
+const optionalSlots: ReadonlySet<Slot> = new Set(['layer', 'accessory'])
+
+/** Each place's choices: the pieces there that suit the brief; where an outfit needs the place and none suits, every
+ * piece there. */
+const poolsOf = (request: Brief): ReadonlyMap<Slot, ReadonlyArray<Wearable>> =>
+  new Map(
+    wearingOrder.map((slot) => {
+      const there = request.wardrobe.filter((piece) => slotOf(piece.type) === slot)
+      const suiting = there.filter((piece) => suits(piece, request.brief))
+      return [slot, suiting.length > 0 || optionalSlots.has(slot) ? suiting : there] as const
+    }),
+  )
+
+const has = (pools: ReadonlyMap<Slot, ReadonlyArray<Wearable>>, slot: Slot) => (pools.get(slot)?.length ?? 0) > 0
+
+/** The shapes an outfit may take: the one a fixed piece sets, else every one the wardrobe can make. A set only for
+ * sport or lounging, unless the anchor is one. */
+const shapesFor = (request: Brief, pools: ReadonlyMap<Slot, ReadonlyArray<Wearable>>): ReadonlyArray<Shape> => {
+  const fixedSlots = new Set(request.fixed.map((piece) => slotOf(piece.type)))
+  if (fixedSlots.has('set')) return ['set']
+  if (fixedSlots.has('onePiece')) return ['onePiece']
+  if (fixedSlots.has('top') || fixedSlots.has('bottom')) return ['separates']
+  return Array.filter(['separates', 'onePiece', 'set'] as const, (shape) =>
+    shape === 'set'
+      ? isActivity(request.brief) && has(pools, 'set')
+      : shapeSlots[shape].every((slot) => has(pools, slot)),
+  )
+}
+
+/** The places a whole outfit needs that the wardrobe has nothing for: shown, never invented. */
+export const missingOf = (request: Brief): ReadonlyArray<Slot> => {
+  const pools = poolsOf(request)
+  const shapes = shapesFor(request, pools)
+  const base: ReadonlyArray<Slot> =
+    shapes.length > 0 ? [] : Array.filter(['top', 'bottom'] as const, (slot) => !has(pools, slot))
+  return has(pools, 'shoes') ? base : [...base, 'shoes']
+}
+
+const counts = (pieces: ReadonlyArray<Wearable>) => {
+  const bySlot = new Map<Slot, number>()
+  for (const piece of pieces) bySlot.set(slotOf(piece.type), (bySlot.get(slotOf(piece.type)) ?? 0) + 1)
+  return (slot: Slot) => bySlot.get(slot) ?? 0
+}
+
+/** Whether the pieces stand on one of the allowed shapes, or, when the wardrobe can make none, wear every base piece
+ * there is. */
+const standsOn = (
+  count: (slot: Slot) => number,
+  shapes: ReadonlyArray<Shape>,
+  pools: ReadonlyMap<Slot, ReadonlyArray<Wearable>>,
+) => {
+  const base = ['set', 'onePiece', 'top', 'bottom'] as const
+  if (shapes.length === 0)
+    return (
+      count('set') === 0 &&
+      count('onePiece') === 0 &&
+      Array.every(['top', 'bottom'] as const, (slot) => (has(pools, slot) ? count(slot) === 1 : count(slot) === 0))
+    )
+  return shapes.some((shape) =>
+    base.every((slot) => (shapeSlots[shape].includes(slot) ? count(slot) >= 1 : count(slot) === 0)),
+  )
+}
+
+/** A proposal kept to the rules: the request's own pieces in wearing order, or none when it breaks one. */
+export const validated = (request: Brief, pieceIds: ReadonlyArray<string>): Option.Option<ReadonlyArray<Wearable>> => {
+  const byId = new Map<string, Wearable>(request.wardrobe.map((piece) => [piece.id, piece]))
+  const unique = [...new Set(pieceIds)]
+  const pieces = unique.flatMap((id) => Option.toArray(Option.fromNullishOr(byId.get(id))))
+  if (pieces.length !== pieceIds.length) return Option.none()
+  const fixedIds = new Set<string>(request.fixed.map(({ id }) => id))
+  if (request.fixed.some(({ id }) => !unique.includes(id))) return Option.none()
+  const pools = poolsOf(request)
+  const count = counts(pieces)
+  const free = pieces.filter(({ id }) => !fixedIds.has(id))
+  const fixedStatements = request.fixed.filter(isStatement).length
+  const fits =
+    wearingOrder.every((slot) => count(slot) <= mostIn[slot]) &&
+    standsOn(count, shapesFor(request, pools), pools) &&
+    (count('shoes') === 1 || !has(pools, 'shoes')) &&
+    free.every((piece) => pools.get(slotOf(piece.type))?.includes(piece) === true) &&
+    fixedStatements + free.filter(isStatement).length <= Math.max(1, fixedStatements)
+  return fits ? Option.some(inWearingOrder(pieces)) : Option.none()
+}
+
+/** A repeatable hash: the same text, the same number. */
+const hash = (text: string) =>
+  Array.makeBy(text.length, (index) => text.charCodeAt(index)).reduce(
+    (value, code) => Math.imul(value ^ code, 16_777_619) >>> 0,
+    2_166_136_261,
+  )
+
+const shuffled = (pieces: ReadonlyArray<Wearable>, seed: string) =>
+  Array.sort(
+    pieces,
+    Order.mapInput(Order.Number, (piece: Wearable) => hash(`${seed}:${piece.id}`)),
+  )
+
+/** A place's choices in the seed's order; when asked, its clean drawings first once it has two, so the table shows
+ * drawings more often than photos without leaving any photo out for good. */
+const ordered = (pieces: ReadonlyArray<Wearable>, seed: string, drawingsFirst: boolean) => {
+  const order = shuffled(pieces, seed)
+  const drawings = order.filter(({ drawn }) => drawn)
+  return drawingsFirst && drawings.length >= 2 ? [...drawings, ...order.filter(({ drawn }) => !drawn)] : order
+}
+
+/** How often an optional place is worn, out of 6, by the weather asked for. */
+const layerChance: Readonly<Record<Season | 'any', number>> = { cold: 6, allYear: 2, any: 2, warm: 1 }
+
+/** One draw: a shape, then a piece for each place it needs, the fixed pieces where they sit, and the optional places
+ * by chance; clean drawings first when asked. */
+const draw = (
+  request: Brief,
+  pools: ReadonlyMap<Slot, ReadonlyArray<Wearable>>,
+  shapes: ReadonlyArray<Shape>,
+  seed: string,
+  drawingsFirst: boolean,
+) => {
+  const shape = shapes[hash(`${seed}:shape`) % shapes.length] ?? 'separates'
+  const fixedIn = (slot: Slot) => request.fixed.filter((piece) => slotOf(piece.type) === slot)
+  const chance = (slot: Slot, outOf6: number) => hash(`${seed}:${slot}:wear`) % 6 < outOf6
+  const optional: ReadonlyArray<readonly [Slot, boolean]> = [
+    ['layer', chance('layer', layerChance[request.brief.season ?? 'any'])],
+    ['shoes', true],
+    ['accessory', chance('accessory', 3)],
+  ]
+  const wanted = [...shapeSlots[shape].map((slot) => [slot, true] as const), ...optional]
+  return wanted.flatMap(([slot, wear]) => {
+    const fixed = fixedIn(slot)
+    if (fixed.length > 0 || !wear) return fixed
+    return Array.take(ordered(pools.get(slot) ?? [], `${seed}:${slot}`, drawingsFirst), 1)
+  })
+}
+
+/** Fast's candidates: up to `count` new combinations that keep to the rules, drawn in the seed's repeatable order, and
+ * whether the draws ran out before finding that many. */
+export const proposed = (request: Brief, seed: string, count: number) => {
+  const pools = poolsOf(request)
+  const shapes = shapesFor(request, pools)
+  const found = new Map<string, ReadonlyArray<Wearable>>()
+  const attempts = count * 30
+  for (let attempt = 0; attempt < attempts && found.size < count; attempt += 1) {
+    // Every other draw prefers clean drawings.
+    const drawn = draw(
+      request,
+      pools,
+      shapes.length > 0 ? shapes : ['separates'],
+      `${seed}:${String(attempt)}`,
+      attempt % 2 === 0,
+    )
+    const ids = drawn.map(({ id }) => id)
+    const key = outfitKeyOf(ids)
+    if (ids.length === 0 || request.seen.has(key) || found.has(key)) continue
+    const outfit = validated(request, ids)
+    if (Option.isSome(outfit)) found.set(key, outfit.value)
+  }
+  return { outfits: [...found.values()], exhausted: found.size < count }
+}

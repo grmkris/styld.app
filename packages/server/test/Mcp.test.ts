@@ -200,10 +200,12 @@ const discovery = Discovery.of({
 })
 /** Generations: not part of these tests. */
 const generations = { admit: notUsed, get: notUsed }
+/** Outfits: not part of these tests. */
+const outfits = { make: notUsed, sweep: notUsed }
 const tools = styldTools(
   database,
   'https://styld.test',
-  { wardrobe, looks, captures, boards, profiles, social, discovery, generations },
+  { wardrobe, looks, captures, boards, profiles, social, discovery, generations, outfits },
   offline,
 )
 /** Every ask goes at once in these tests. */

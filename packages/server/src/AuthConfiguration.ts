@@ -71,3 +71,37 @@ export const decodeAuthSecret = (value: unknown) =>
     Effect.map(Redacted.make),
     Effect.mapError(() => AuthHttpConfigurationError.make({ reason: 'secret' })),
   )
+
+/** The auth origin and keyrings bound as secrets. Missing or malformed ones stop the Worker. */
+export const authConfiguration = (env: Readonly<Record<string, unknown>>) =>
+  Effect.gen(function* () {
+    const origin = env['AUTH_ORIGIN']
+    if (typeof origin !== 'string' || origin.length === 0)
+      return yield* Effect.die(new Error('AUTH_ORIGIN binding is required'))
+    return {
+      origin,
+      sessionKeys: yield* decodeAuthSessionKeyring(env['AUTH_SESSION_KEYS']).pipe(Effect.orDie),
+      secret: yield* decodeAuthSecret(env['AUTH_SECRET']).pipe(Effect.orDie),
+      proofKeys: yield* decodeProofKeyring(env['AUTH_PROOF_KEYS']).pipe(Effect.orDie),
+      requestBindingKeys: yield* decodeRequestBindingKeyring(env['AUTH_REQUEST_BINDING_KEYS']).pipe(Effect.orDie),
+    }
+  })
+
+/** Auth's options from the secrets, sending code mail as `from`. */
+export const authOptions = (
+  configuration: Effect.Success<ReturnType<typeof authConfiguration>>,
+  sender: EmailEntryOptions['sender'],
+  from: EmailEntryOptions['from'],
+): AuthHttpOptions => ({
+  origin: configuration.origin,
+  secret: configuration.secret,
+  secureCookies: true,
+  sessionKeys: configuration.sessionKeys,
+  email: {
+    sender,
+    from,
+    proofKeys: configuration.proofKeys,
+    requestBindingKeys: configuration.requestBindingKeys,
+    returnTargets: ['/'],
+  },
+})
