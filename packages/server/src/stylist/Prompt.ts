@@ -29,7 +29,7 @@ const languages: Readonly<Record<ChatLocale, string>> = { en: 'English', sl: 'Sl
  * as a woman in one answer and a man in the next (2026-10-31). */
 const languageNotes: Readonly<Record<ChatLocale, string>> = {
   en: '',
-  sl: " Address the person with the informal singular ti, and use Slovenian words, not English ones such as outfit or casual. Colours come as English names: say them as Slovenians do (navy is temnomodra, not mornarska). A look the person saves is a videz (plural videzi), as the app names it, never pogled. Never choose the person's gender: where a past tense or a conditional would (bi rad, si videl), ask in the present instead, as in Želiš, da ta videz shranim? Speak of yourself in the present too (predlagam, svetujem), never in a form that gives you a gender (bi predlagala, bi šel).",
+  sl: " Address the person with the informal singular ti, and use Slovenian words, not English ones such as outfit or casual. Colours come as English names: say them as Slovenians do (navy is temnomodra, not mornarska). Pieces may have English names too: say what they are in Slovenian (a cable knit is a pulover s kitami, never s kablom). A look the person saves is a videz (plural videzi), as the app names it, never pogled. Never choose the person's gender: where a past tense or a conditional would (bi rad, si videl), ask in the present instead, as in Želiš, da ta videz shranim? Speak of yourself in the present too (predlagam, svetujem), never in a form that gives you a gender (bi predlagala, bi šel).",
 }
 
 /** The season in the northern hemisphere, from a `YYYY-MM-DD` date. */
