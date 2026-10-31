@@ -40,8 +40,10 @@ describe('public edge routing', () => {
     headers.append('set-cookie', 'session=one; HttpOnly; Secure')
     headers.append('set-cookie', 'csrf=two; Secure')
     const response = new Response('redirect', { status: 302, headers })
+    let forwardedCorrelation: string | null = null
     const api = {
       fetch: async (received: Request) => {
+        forwardedCorrelation = received.headers.get('x-styld-correlation-id')
         expect(received.url).toBe(request.url)
         expect(received.method).toBe(request.method)
         expect(await received.text()).toBe('{}')
@@ -64,6 +66,9 @@ describe('public edge routing', () => {
     expect(result.headers.getSetCookie()).toEqual(['session=one; HttpOnly; Secure', 'csrf=two; Secure'])
     expect(await result.text()).toBe('redirect')
     expect(result.headers.get('content-security-policy')).toBe(apiPolicy)
+    // The answer names the id its logs carry, never one the caller chose.
+    expect(result.headers.get('x-styld-correlation-id')).toBe(forwardedCorrelation)
+    expect(result.headers.get('x-styld-correlation-id')).not.toBe('caller-controlled-secret')
   })
 
   test('secures website documents against framing and foreign scripts', async () => {

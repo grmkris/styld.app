@@ -63,7 +63,8 @@ export default {
     for (const name of request.headers.keys()) {
       if (name.startsWith('x-styld-')) headers.delete(name)
     }
-    headers.set('x-styld-correlation-id', crypto.randomUUID())
+    const correlationId = crypto.randomUUID()
+    headers.set('x-styld-correlation-id', correlationId)
     const forwarded = new Request(request, { headers })
     const url = new URL(request.url)
     const shared = sharedBoard.exec(url.pathname)?.[1]
@@ -81,7 +82,10 @@ export default {
       api ? apiPolicy : documentPolicy,
       api,
     )
-    if (env.ROBOTS === 'noindex' && secured.status !== 101) secured.headers.set('x-robots-tag', 'noindex')
+    if (secured.status === 101) return secured
+    if (env.ROBOTS === 'noindex') secured.headers.set('x-robots-tag', 'noindex')
+    // The id the logs of this request carry, so a person reporting a problem can quote it.
+    secured.headers.set('x-styld-correlation-id', correlationId)
     return secured
   },
 }
