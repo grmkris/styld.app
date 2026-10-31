@@ -1,7 +1,13 @@
 import { style } from '../zyzz.config.ts'
 
 // Styles for the review tray in ReviewView.ts (Gallery: add.html's found grid and footer action).
-export const reviewPage = style({ display: 'grid', gap: '8px', paddingBlock: '8px 120px' })
+// The bottom padding clears the footer's band: its button and the nav pill under it.
+export const reviewPage = style({
+  display: 'grid',
+  gap: '8px',
+  paddingBlock: '8px 176px',
+  '@media (min-width: 900px)': { paddingBlockEnd: '120px' },
+})
 export const pageBar = style({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' })
 export const addMore = style({
   display: 'inline-flex',
@@ -168,23 +174,24 @@ export const sightings = style({
   fontSize: '14px',
   color: 'ink2',
 })
-/** The primary action stays in reach at the bottom of the screen (Gallery `.footer-cta`), above the
- * phone's tab bar (64px and its border, `View.styles.ts` › appNav). */
+/** The primary action stays in reach at the bottom of the screen (Gallery `.footer-cta`). On a phone its band runs
+ * from the screen's edge, padded by the floating nav pill (16px from the edge, 64px tall, `View.styles.ts` › appNav),
+ * so the button sits just above the pill and nothing shows between them. */
 export const footer = style({
   position: 'fixed',
   insetInline: '0',
-  insetBlockEnd: 'calc(65px + env(safe-area-inset-bottom))',
+  insetBlockEnd: '0',
   zIndex: 4,
   display: 'grid',
   gap: '6px',
-  paddingBlock: '12px',
+  paddingBlockStart: '12px',
+  paddingBlockEnd: 'calc(96px + env(safe-area-inset-bottom))',
   paddingInline: 'max(16px, env(safe-area-inset-left))',
-  '@media (min-width: 900px)': {
-    insetBlockEnd: '0',
-    paddingBlockEnd: 'max(16px, env(safe-area-inset-bottom))',
-  },
+  '@media (min-width: 900px)': { paddingBlockEnd: 'max(16px, env(safe-area-inset-bottom))' },
   backgroundColor: 'paper',
-  boxShadow: '0 -1px 0 #ddd6cc !custom',
+  borderBlockStartWidth: '1px',
+  borderBlockStartStyle: 'solid',
+  borderBlockStartColor: 'rule',
 })
 export const footerInner = style({
   display: 'grid',
