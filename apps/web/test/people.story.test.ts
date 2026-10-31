@@ -4,6 +4,7 @@ import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import {
   AddToWishlist,
+  FollowArrival,
   init,
   Message,
   readRelation,
@@ -26,25 +27,51 @@ const pieceId = `pc_${'knit'.padEnd(22, 'x')}`
 
 describe('what a visitor does with someone', () => {
   test('back from signing in to follow, follows once the standing is read, and not one already followed', () => {
-    const arriving = init(Subject.Person({ handle: 'nika.kovac' }), true)
+    const arriving = readRelation(init(Subject.Person({ handle: 'nika.kovac' }), true))
+    expect(arriving.commands?.map(({ name }) => name)).toEqual(['LoadRelation', 'TakeFollowArrival'])
     story(
       update,
-      given(arriving),
+      given(arriving.model),
       message(Message.SucceededLoadRelation({ relation: relation() })),
+      Command.expectNone(),
+      message(Message.CheckedFollowArrival({ fromSignIn: true })),
       Command.resolve(
         SetFollowing({ handle: 'nika.kovac', following: true }),
         Message.SucceededSetRelation({ relation: relation({ following: true }) }),
       ),
-      model(({ standing, followOnArrival }) => {
+      model(({ standing, followArrival }) => {
         expect(standing).toEqual(Standing.Known({ relation: relation({ following: true }) }))
-        expect(followOnArrival).toBe(false)
+        expect(followArrival).toEqual(FollowArrival.None())
       }),
+    )
+    // Confirmed before the standing is in, the follow waits for it.
+    story(
+      update,
+      given(arriving.model),
+      message(Message.CheckedFollowArrival({ fromSignIn: true })),
+      Command.expectNone(),
+      message(Message.SucceededLoadRelation({ relation: relation() })),
+      Command.expectExact(SetFollowing({ handle: 'nika.kovac', following: true })),
+      Command.resolve(SetFollowing, Message.SucceededSetRelation({ relation: relation({ following: true }) })),
     )
     story(
       update,
-      given(arriving),
+      given(arriving.model),
+      message(Message.CheckedFollowArrival({ fromSignIn: true })),
       message(Message.SucceededLoadRelation({ relation: relation({ following: true }) })),
       Command.expectNone(),
+    )
+  })
+
+  test('a link that only ends in #follow, a reload or Back to it, follows nobody', () => {
+    const arriving = readRelation(init(Subject.Person({ handle: 'nika.kovac' }), true))
+    story(
+      update,
+      given(arriving.model),
+      message(Message.CheckedFollowArrival({ fromSignIn: false })),
+      message(Message.SucceededLoadRelation({ relation: relation() })),
+      Command.expectNone(),
+      model(({ followArrival }) => expect(followArrival).toEqual(FollowArrival.None())),
     )
   })
 

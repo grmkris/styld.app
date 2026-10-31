@@ -9,7 +9,7 @@ import { modifyFields } from 'foldkit/struct'
 import { catalogVersion, loadCatalog } from '@styld/i18n'
 import { Locale, localeEndpoint, parseLocale } from './Locale.ts'
 import { Message } from './Message.ts'
-import { arrive, followLink, Navigate } from './Navigation.ts'
+import { arrive, followLink, Navigate, returnAfterSignIn } from './Navigation.ts'
 import {
   boardsFold,
   foldAskLeave,
@@ -46,13 +46,11 @@ import * as Stylist from './page/Stylist.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
 import {
   AppRoute,
-  accountRouter,
   connectionAuthorizePath,
   homeRouter,
   isSameTab,
   looksRouter,
   needsSession,
-  returnPath,
   reviewRouter,
   routeFromPathname,
   routeFromUrl,
@@ -223,8 +221,8 @@ export const init = (context: Flags, url?: Url): UpdateReturn => {
     AppRoute.guards.Board(route) || AppRoute.guards.BoardCollage(route) ? route.boardId : '',
     context.hasSessionCookie === true,
   )
-  const followOnArrival = url !== undefined && Option.contains(url.hash, 'follow')
-  const visit = Visit.init(Visit.targetFor(route), context.hasSessionCookie === true, followOnArrival)
+  const atFollow = url !== undefined && Option.contains(url.hash, 'follow')
+  const visit = Visit.init(Visit.targetFor(route), context.hasSessionCookie === true, atFollow)
   const opened = Update.combine<Model, Message, Services>(
     {
       context,
@@ -283,7 +281,7 @@ const afterSignIn =
       Match.withReturnType<UpdateReturn>(),
       Match.tag('Login', ({ next }) => ({
         model,
-        commands: [Navigate({ href: Option.getOrElse(returnPath(next), () => accountRouter({})) })],
+        commands: [returnAfterSignIn(next)],
       })),
       Match.tag('LoginForConnection', () => ({ model, commands: [Navigate({ href: connectionAuthorizePath })] })),
       Match.tag('Home', () =>

@@ -226,7 +226,7 @@ export const followView = Submodel.defineView<Model, Message, Inputs>((model, { 
                 h,
               ),
       })
-    : // Back from sign-in at #follow, the profile follows them (People › followOnArrival).
+    : // Back from sign-in at #follow, the profile follows them (People › FollowArrival).
       signInAction(
         model,
         format(locale, 'people.signInToFollow', {}),

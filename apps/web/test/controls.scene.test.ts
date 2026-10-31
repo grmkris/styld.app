@@ -3,7 +3,7 @@ import { Command, click, expect, given, label, role, scene, selector, submit, te
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { LocaleSave, Message, Session, SignOut, update } from '../src/App.ts'
-import { Navigate } from '../src/Navigation.ts'
+import { Navigate, ReturnAfterSignIn } from '../src/Navigation.ts'
 import {
   type Code,
   Message as LoginMessage,
@@ -156,15 +156,15 @@ describe('email code sign-in', () => {
 
   test('signing in from Follow on a profile comes back to the profile', () => {
     const fromProfile = modifyFields(awaitingCode('/login'), {
-      route: () => AppRoute.Login({ next: Option.some('/@nika.kovac') }),
+      route: () => AppRoute.Login({ next: Option.some('/@nika.kovac#follow') }),
     })
     scene(
       { update, view },
       given(fromProfile),
       submit(selector('#email-code')),
       Command.resolve(VerifyCode, LoginMessage.SucceededVerifyCode({ claims })),
-      Command.expectExact(Navigate({ href: '/@nika.kovac' })),
-      Command.resolve(Navigate({ href: '/@nika.kovac' }), Message.CompletedNavigate()),
+      Command.expectExact(ReturnAfterSignIn({ href: '/@nika.kovac#follow' })),
+      Command.resolve(ReturnAfterSignIn({ href: '/@nika.kovac#follow' }), Message.CompletedNavigate()),
       expect(role('link', { name: 'Account' })).toHaveAttr('href', '/account'),
     )
   })

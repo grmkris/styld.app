@@ -4,6 +4,7 @@ import { Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
+import { tookReturn } from '../SignInReturn.ts'
 import { StyldClient } from '../StyldClient.ts'
 
 // What a visitor does with someone's profile or piece: follow or block the person, save the piece, and report either.
@@ -38,6 +39,12 @@ export const Reporting = defineTaggedUnion({
 })
 export type Reporting = typeof Reporting.Type
 
+/** A Follow pressed signed out comes back with sign-in at `#follow`. Whether sign-in brought this tab here is checked
+ * first; a follow so confirmed waits for the standing to be read, and is then spent.
+ * @internal Exported for its tests. */
+export const FollowArrival = defineTaggedUnion({ None: {}, Checking: {}, Confirmed: {} })
+export type FollowArrival = typeof FollowArrival.Type
+
 export const Model = Schema.Struct({
   subject: Subject,
   standing: Standing,
@@ -47,12 +54,12 @@ export const Model = Schema.Struct({
   work: Work,
   confirmingBlock: Schema.Boolean,
   reporting: Reporting,
-  /** Follow was pressed signed out and sign-in brought the visitor back (`#follow`): follow once the standing is read. */
-  followOnArrival: Schema.Boolean,
+  followArrival: FollowArrival,
 })
 export type Model = typeof Model.Type
 
-export const init = (subject: Subject, followOnArrival = false): Model => ({
+/** A page for a subject; `atFollow` when it opened at `#follow`. */
+export const init = (subject: Subject, atFollow = false): Model => ({
   subject,
   standing: Standing.Unknown(),
   saved: false,
@@ -60,7 +67,7 @@ export const init = (subject: Subject, followOnArrival = false): Model => ({
   work: Work.Idle(),
   confirmingBlock: false,
   reporting: Reporting.Closed(),
-  followOnArrival,
+  followArrival: atFollow ? FollowArrival.Checking() : FollowArrival.None(),
 })
 
 // MESSAGE
@@ -68,6 +75,7 @@ export const init = (subject: Subject, followOnArrival = false): Model => ({
 export const Message = defineMessageUnion({
   SucceededLoadRelation: { relation: Relation },
   FailedLoadRelation: {},
+  CheckedFollowArrival: { fromSignIn: Schema.Boolean },
   ClickedFollow: { following: Schema.Boolean },
   ClickedBlock: {},
   ClickedConfirmBlock: { blocked: Schema.Boolean },
@@ -101,6 +109,12 @@ const LoadRelation = Command.define('LoadRelation', {
       const relation = yield* api.social.relation({ params: { handle: yield* handleOf(handle) } })
       return Message.SucceededLoadRelation({ relation })
     }).pipe(Effect.orElseSucceed(() => Message.FailedLoadRelation())),
+})
+
+/** Whether sign-in brought this tab to the profile at `#follow` (`SignInReturn.ts`). */
+const TakeFollowArrival = Command.define('TakeFollowArrival', {
+  messages: [Message.CheckedFollowArrival],
+  execute: Effect.map(tookReturn, (fromSignIn) => Message.CheckedFollowArrival({ fromSignIn })),
 })
 
 /** @internal Exported for its tests. */
@@ -208,12 +222,16 @@ export const SendReport = Command.define('SendReport', {
     ),
 })
 
-/** Reads where the visitor stands with the person; the actions keep their room while it is out. */
+/** Reads where the visitor stands with the person, and whether sign-in brought them here to follow; the actions keep
+ * their room while it is out. */
 export const readRelation = (model: Model): Update.Return<Model, Message, StyldClient> =>
   Subject.guards.Person(model.subject) && model.subject.handle.length > 0
     ? {
         model: modifyFields(model, { standing: () => Standing.Reading() }),
-        commands: [LoadRelation({ handle: model.subject.handle })],
+        commands: [
+          LoadRelation({ handle: model.subject.handle }),
+          ...(FollowArrival.guards.Checking(model.followArrival) ? [TakeFollowArrival()] : []),
+        ],
       }
     : { model }
 
@@ -228,6 +246,16 @@ const sending = (model: Model, command: Command.Command<Message, never, StyldCli
     ? { model }
     : { model: modifyFields(model, { work: () => Work.Sending(), confirmingBlock: () => false }), commands: [command] }
 
+/** The Follow pressed before signing in, applied once sign-in is confirmed and the standing read; one already followed
+ * or blocked is left as it is. */
+const followOnArrival = (model: Model, relation: typeof Relation.Type): UpdateReturn => {
+  if (!FollowArrival.guards.Confirmed(model.followArrival)) return { model }
+  const spent = modifyFields(model, { followArrival: () => FollowArrival.None() })
+  return relation.following || relation.blocked
+    ? { model: spent }
+    : sending(spent, SetFollowing({ handle: handleOfSubject(spent), following: true }))
+}
+
 const submitted = (model: Model): UpdateReturn =>
   Reporting.guards.Open(model.reporting) && Option.isSome(model.reporting.reason)
     ? {
@@ -241,14 +269,17 @@ const submitted = (model: Model): UpdateReturn =>
 /** @internal Exported for its tests. */
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
-    SucceededLoadRelation: ({ relation }) => {
-      const known = modifyFields(model, { standing: () => Standing.Known({ relation }), followOnArrival: () => false })
-      // The Follow pressed before signing in, applied now; one already followed or blocked is left as it is.
-      return model.followOnArrival && !relation.following && !relation.blocked
-        ? sending(known, SetFollowing({ handle: handleOfSubject(known), following: true }))
-        : { model: known }
-    },
+    SucceededLoadRelation: ({ relation }) =>
+      followOnArrival(modifyFields(model, { standing: () => Standing.Known({ relation }) }), relation),
     FailedLoadRelation: () => ({ model: modifyFields(model, { standing: () => Standing.Unknown() }) }),
+    CheckedFollowArrival: ({ fromSignIn }) => {
+      const checked = modifyFields(model, {
+        followArrival: () => (fromSignIn ? FollowArrival.Confirmed() : FollowArrival.None()),
+      })
+      return Standing.guards.Known(model.standing)
+        ? followOnArrival(checked, model.standing.relation)
+        : { model: checked }
+    },
     ClickedFollow: ({ following }) => sending(model, SetFollowing({ handle: handleOfSubject(model), following })),
     ClickedBlock: () => ({ model: modifyFields(model, { confirmingBlock: () => true }) }),
     ClickedKeepUnblocked: () => ({ model: modifyFields(model, { confirmingBlock: () => false }) }),

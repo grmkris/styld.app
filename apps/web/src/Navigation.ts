@@ -3,7 +3,8 @@ import { Command, Dom, Render } from 'foldkit'
 import { load, pushUrl, UrlRequest } from 'foldkit/navigation'
 import { type Url, toString as urlToString } from 'foldkit/url'
 import { Message } from './Message.ts'
-import { type AppRoute, isSameTab, routeFromUrl, tabOf } from './route.ts'
+import { accountRouter, type AppRoute, isSameTab, returnPath, routeFromUrl, tabOf } from './route.ts'
+import { noteReturn } from './SignInReturn.ts'
 
 // How the website moves between pages, after Foldkit's own website (repos/foldkit/packages/website/src/main.ts):
 // tab pages switch inside the page, keeping the navigation and what the app already has; every other page loads
@@ -17,6 +18,21 @@ export const Navigate = Command.define('Navigate', {
   messages: [Message.CompletedNavigate],
   execute: ({ href }) => load(href).pipe(Effect.as(Message.CompletedNavigate())),
 })
+
+/** Back from sign-in to the page it was asked from, noted first so that page knows sign-in brought this tab there.
+ * @internal Exported for its tests. */
+export const ReturnAfterSignIn = Command.define('ReturnAfterSignIn', {
+  args: { href: Schema.String },
+  messages: [Message.CompletedNavigate],
+  execute: ({ href }) => noteReturn(href).pipe(Effect.andThen(load(href)), Effect.as(Message.CompletedNavigate())),
+})
+
+/** Where sign-in hands over to: the page it was asked from (a Follow or a Save on a public page), else the account. */
+export const returnAfterSignIn = (next: Option.Option<string>) =>
+  Option.match(returnPath(next), {
+    onNone: () => Navigate({ href: accountRouter({}) }),
+    onSome: (href) => ReturnAfterSignIn({ href }),
+  })
 
 /** Another tab page in the same document: the address changes and `ChangedUrl` opens it.
  * @internal Exported for its tests. */

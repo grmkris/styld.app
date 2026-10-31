@@ -92,8 +92,8 @@ export const targetFor = (route: AppRoute): Target =>
     Match.orElse(() => Target.Person({ handle: '' })),
   )
 
-/** A page for a visitor; `followOnArrival` when sign-in brought them back to a profile to follow (`#follow`). */
-export const init = (target: Target, signedIn: boolean, followOnArrival = false): Model => ({
+/** A page for a visitor; `atFollow` when it opened at `#follow`, where sign-in returns a Follow pressed signed out. */
+export const init = (target: Target, signedIn: boolean, atFollow = false): Model => ({
   target,
   shown: Shown.Loading(),
   tab: 'boards',
@@ -109,7 +109,7 @@ export const init = (target: Target, signedIn: boolean, followOnArrival = false)
       // Explore has nobody in particular: an empty handle reads no relation.
       Explore: () => People.Subject.Person({ handle: '' }),
     }),
-    followOnArrival,
+    atFollow,
   ),
 })
 

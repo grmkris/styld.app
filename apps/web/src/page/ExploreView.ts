@@ -104,7 +104,7 @@ const followControl = (
       )
     : h.a(
         [
-          // Back from sign-in on their profile at #follow, which follows them (People › followOnArrival).
+          // Back from sign-in on their profile at #follow, which follows them (People › FollowArrival).
           h.Href(signInReturningTo(`${personRouter({ handle: person.handle })}#follow`)),
           h.AriaLabel(format(locale, 'people.signInToFollow', {})),
           h.AriaDescribedBy(nameId),
