@@ -20,13 +20,9 @@ export const pageHead = <Message>(title: Html, maybeAction: Option.Option<Html>,
 export const pageTitle = <Message>(text: string, h: HtmlBuilder<Message>): Html =>
   h.h1(styled(h, styles.title()), [text])
 
-/** The round + that adds pieces, at the top of the wardrobe's tabs. */
+/** The round + that adds clothes, at the top of the wardrobe's tabs; on a wide screen an ink pill that says so. */
 export const addPiecesAction = <Message>(locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.a(
-    [
-      h.Href(addPiecesRouter({})),
-      h.AriaLabel(format(locale, 'capture.addTitle', {})),
-      ...styled(h, cx(primaryAction(), styles.roundAction())),
-    ],
-    [addIcon(h)],
+    [h.Href(addPiecesRouter({})), ...styled(h, cx(primaryAction(), styles.roundAction(), styles.wideAction()))],
+    [addIcon(h), h.span(styled(h, styles.wideLabel()), [format(locale, 'capture.addTitle', {})])],
   )

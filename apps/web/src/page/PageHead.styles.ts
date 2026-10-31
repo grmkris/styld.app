@@ -26,3 +26,18 @@ export const roundAction = style({
   flex: 'none',
   paddingInline: '0',
 })
+/** A round action that names itself on a wide screen (Gallery `wardrobe-desktop.html` › `button.btn`). */
+export const wideAction = style({
+  '@media (min-width: 900px)': { inlineSize: 'auto', gap: '8px', paddingInline: '20px' },
+})
+/** The round's words: read, not shown, on a phone; shown beside the icon on a wide screen. */
+export const wideLabel = style({
+  '@media (max-width: 899px)': {
+    position: 'absolute',
+    inlineSize: '1px',
+    blockSize: '1px',
+    overflow: 'hidden',
+    clipPath: 'inset(50%)',
+    whiteSpace: 'nowrap',
+  },
+})

@@ -1,10 +1,9 @@
 import { format, type Locale } from '@styld/i18n'
-import { Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import type { Html as Styles } from 'zyzz/runtime'
 import { looksRouter, wardrobeRouter, wishlistRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
-import { addPiecesAction, pageHead, pageTitle } from './PageHead.ts'
+import { addPiecesAction, pageTitle } from './PageHead.ts'
 import * as styles from './WardrobeTabs.styles.ts'
 
 type WardrobeTab = 'pieces' | 'looks' | 'wishlist'
@@ -27,7 +26,8 @@ const wardrobeTabs = <Message>(current: WardrobeTab, locale: Locale, h: HtmlBuil
     ),
   )
 
-/** A Wardrobe tab's page: its title with Add pieces, the tabs, then what the tab shows. */
+/** A Wardrobe tab's page: its title and Add clothes, the tabs under them on a phone and between them on a wide
+ * screen (Gallery `wardrobe-desktop.html` › `.pg-h.d.row`), then what the tab shows. */
 export const wardrobeMain = <Message>(
   current: WardrobeTab,
   page: Styles.Attributes,
@@ -38,8 +38,11 @@ export const wardrobeMain = <Message>(
   h.main(
     [h.Id('main'), ...styled(h, page)],
     [
-      pageHead(pageTitle(format(locale, 'wardrobe.title', {}), h), Option.some(addPiecesAction(locale, h)), h),
-      wardrobeTabs(current, locale, h),
+      h.div(styled(h, styles.head()), [
+        pageTitle(format(locale, 'wardrobe.title', {}), h),
+        wardrobeTabs(current, locale, h),
+        addPiecesAction(locale, h),
+      ]),
       ...content,
     ],
   )
