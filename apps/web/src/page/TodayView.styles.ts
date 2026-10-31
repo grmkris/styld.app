@@ -9,12 +9,14 @@ const dropIn = keyframes(
   { id: 'styld-today-drop-in' },
 )
 
+/** On a desktop the table is as wide as lets it, Wear this and Spin fit the first screen under the bar and the
+ * headline (about 280px), up to 560px; a short window still gets a 320px table. */
 export const page = style({
   display: 'grid',
   gap: '28px',
   paddingBlock: '0 40px',
   '@media (min-width: 900px)': {
-    gridTemplateColumns: 'minmax(0, 560px) minmax(0, 1fr)',
+    gridTemplateColumns: 'minmax(0, clamp(320px, (100svh - 280px) * 0.8, 560px)) minmax(0, 1fr)',
     alignItems: 'start',
     columnGap: '48px',
   },
@@ -22,7 +24,7 @@ export const page = style({
 export const today = style({
   display: 'grid',
   gap: '12px',
-  '@media (min-width: 900px)': { maxInlineSize: '560px' },
+  '@media (min-width: 900px)': { maxInlineSize: 'clamp(320px, (100svh - 280px) * 0.8, 560px)' },
 })
 /** The table's headline: the day in the logo's condensed voice, its one use on a page. */
 export const headline = style({
