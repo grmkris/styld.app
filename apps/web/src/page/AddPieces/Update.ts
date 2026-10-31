@@ -205,21 +205,19 @@ const heldCameraOut = HeldCamera.OutMessage.match<Update.StepWithOutMessage<Mode
   ClosedCamera: () => settled,
 })
 
-const foldHeldCamera = Update.foldChild({
-  update: HeldCamera.update,
+/** Where the camera lives in the page's model, and how its messages and out-messages come back. */
+const heldCameraSlot = {
   read: (model: Model) => Option.some(model.held),
   write: (model: Model, held: HeldCamera.Model) => modifyFields(model, { held: () => held }),
   toParentMessage: (message: HeldCamera.Message) => Message.GotHeldCameraMessage({ message }),
   foldOutMessage: heldCameraOut,
-})
+}
 
-const foldHeldCameraOpen = Update.foldChildStep({
-  update: HeldCamera.open,
-  read: (model: Model) => Option.some(model.held),
-  write: (model: Model, held: HeldCamera.Model) => modifyFields(model, { held: () => held }),
-  toParentMessage: (message: HeldCamera.Message) => Message.GotHeldCameraMessage({ message }),
-  foldOutMessage: heldCameraOut,
-})
+const foldHeldCamera = Update.foldChild({ update: HeldCamera.update, ...heldCameraSlot })
+
+/** Open the camera to hold pieces up, or above pieces laid out. */
+const foldHeldCameraOpen = Update.foldChildStep({ update: HeldCamera.open, ...heldCameraSlot })
+const foldHeldCameraLayOut = Update.foldChildStep({ update: HeldCamera.layOut, ...heldCameraSlot })
 
 const withItem = (model: Model, index: number, change: (item: Item) => Item) =>
   modifyFields(model, { items: (items) => items.map((item, at) => (at === index ? change(item) : item)) })
@@ -275,6 +273,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotDropMessage: ({ message: dropMessage }) => foldDrop(model, dropMessage),
     GotHeldCameraMessage: ({ message: heldMessage }) => foldHeldCamera(model, heldMessage),
     ClickedHoldUp: () => foldHeldCameraOpen(model),
+    ClickedLayOut: () => foldHeldCameraLayOut(model),
     SucceededSend: ({ index, captureId }) =>
       settled(
         withItem(model, index, (item) => ({ ...item, captureId: Option.some(captureId), sending: Sending.Sent() })),

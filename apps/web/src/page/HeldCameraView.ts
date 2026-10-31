@@ -19,10 +19,18 @@ const hintKey: { readonly [Key in Hint]: MessageKey } = {
   tapToTake: 'capture.camera.tapToTake',
 }
 
+/** What the camera above pieces laid out says instead. */
+const flatHintKey: { readonly [Key in Hint]?: MessageKey } = {
+  holdOne: 'capture.camera.layOne',
+  showBack: 'capture.camera.turnOver',
+  notSeen: 'capture.camera.notLaid',
+}
+
 const statusText = (model: Model, locale: Locale) =>
   Camera.match(model.camera, {
     Starting: () => format(locale, 'capture.camera.starting', {}),
-    Watching: ({ hint }) => format(locale, hintKey[hint], {}),
+    Watching: ({ hint }) =>
+      format(locale, (model.layout === 'flat' ? flatHintKey[hint] : undefined) ?? hintKey[hint], {}),
     Closed: () => '',
     Failed: () => '',
   })

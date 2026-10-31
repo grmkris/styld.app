@@ -1,4 +1,4 @@
-import { Side } from '@styld/protocol'
+import { CameraLayout, Side } from '@styld/protocol'
 import { Effect, Option, Schema, Stream } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
 import { Command, File, Mount, type Update } from 'foldkit'
@@ -31,11 +31,13 @@ export const Camera = defineTaggedUnion({
 })
 export type Camera = typeof Camera.Type
 
-/** The held-up camera: the phone faces the person, who holds up one garment at a time, front and then
- * back; when the picture settles the garment check confirms it and the photo is taken. A tap takes one
- * by hand, and the back may be skipped. */
+/** The camera that takes each garment, front and then back: held up, with the phone facing the person who holds up
+ * one garment at a time; or laid out, with the phone above a garment laid flat, taken once the hands are out of
+ * view. When the picture settles the garment check confirms it and the photo is taken. A tap takes one by hand, and
+ * the back may be skipped. */
 export const Model = Schema.Struct({
   camera: Camera,
+  layout: CameraLayout,
   facing: Facing,
   step: Step,
   /** The garment check on its way, by number. Only its own answer counts: a tap, a flip or closing the
@@ -55,6 +57,7 @@ export type Model = typeof Model.Type
 
 export const init = (): Model => ({
   camera: Camera.Closed(),
+  layout: 'held',
   facing: 'user',
   step: 'front',
   pendingCheck: Option.none(),
@@ -187,14 +190,20 @@ const base64Of = (file: File.File) =>
 /** Ask whether one garment is shown in the settled picture, which side, and whether a person holds it.
  * @internal Exported for its tests. */
 export const CheckHeld = Command.define('CheckHeld', {
-  args: { token: Schema.Number, check: File.File, still: File.File, previous: Schema.Option(File.File) },
+  args: {
+    token: Schema.Number,
+    check: File.File,
+    still: File.File,
+    previous: Schema.Option(File.File),
+    layout: CameraLayout,
+  },
   messages: [Message.SucceededCheckHeld, Message.FailedCheckHeld],
-  execute: ({ token, check, still, previous }) =>
+  execute: ({ token, check, still, previous, layout }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       const frame = yield* base64Of(check)
       const earlier = Option.isSome(previous) ? { previous: yield* base64Of(previous.value) } : {}
-      const answer = yield* api.capture.check({ payload: { frame, layout: 'held', ...earlier } })
+      const answer = yield* api.capture.check({ payload: { frame, layout, ...earlier } })
       return Message.SucceededCheckHeld({ token, check, still, ...answer })
     }).pipe(Effect.orElseSucceed(() => Message.FailedCheckHeld({ token }))),
 })
@@ -250,13 +259,31 @@ const settled = (model: Model, check: File.File, still: File.File): UpdateReturn
       checksSent: (sent) => sent + 1,
       camera: () => watching('checking'),
     }),
-    commands: [CheckHeld({ token, check, still, previous: model.lastCheck })],
+    commands: [CheckHeld({ token, check, still, previous: model.lastCheck, layout: model.layout })],
   }
 }
 
+/** Open the camera laid out as `layout`: looking down at pieces laid out, it starts with the camera on the back. */
+const openAs = (model: Model, layout: CameraLayout): UpdateReturn =>
+  isOpen(model)
+    ? { model }
+    : {
+        model: modifyFields(model, {
+          camera: () => Camera.Starting(),
+          layout: () => layout,
+          facing: (facing) => (layout === 'flat' ? 'environment' : facing),
+        }),
+      }
+
 /** Open the camera; the page calls this when the person chooses to hold pieces up. */
-export const open = (model: Model): UpdateReturn =>
-  isOpen(model) ? { model } : { model: modifyFields(model, { camera: () => Camera.Starting() }) }
+export const open = (model: Model): UpdateReturn => openAs(model, 'held')
+
+/** Open the camera above pieces laid out; the page calls this when the person chooses to lay them out. */
+export const layOut = (model: Model): UpdateReturn => openAs(model, 'flat')
+
+/** Whether the check's answer is a garment to take: one held up by a person, or one laid out with nobody's hands on
+ * it (a garment being laid down or turned over is not taken yet). */
+const shows = (model: Model, held: boolean, holding: boolean) => held && (model.layout === 'flat' ? !holding : holding)
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
@@ -304,10 +331,10 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     TappedPicture: ({ check, still }) =>
       Camera.guards.Watching(model.camera) ? took(model, still, check, model.step) : { model },
     // A garment shown but not held, such as clothes on the bed while the person fetches the next piece, is
-    // not taken.
+    // not taken when held up.
     SucceededCheckHeld: ({ token, check, still, held, side, samePrevious, holding }) => {
       if (!awaited(model, token)) return { model }
-      return held && holding
+      return shows(model, held, holding)
         ? took(model, still, check, shotOf(model.step, side, samePrevious))
         : { model: modifyFields(model, { pendingCheck: () => Option.none(), camera: () => watching('notSeen') }) }
     },

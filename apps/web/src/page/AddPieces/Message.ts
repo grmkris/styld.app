@@ -26,6 +26,7 @@ export const Message = defineMessageUnion({
   GotDropMessage: { message: FileDrop.Message },
   GotHeldCameraMessage: { message: HeldCamera.Message },
   ClickedHoldUp: {},
+  ClickedLayOut: {},
   SucceededSend: { index: Schema.Number, captureId: CaptureId },
   SucceededInspectVideo: { index: Schema.Number, plan: VideoPlan },
   SucceededSendVideoPart: { index: Schema.Number, part: Schema.Number, captureId: CaptureId },

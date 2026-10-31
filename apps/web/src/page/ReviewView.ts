@@ -39,6 +39,13 @@ const kind = (decision: Decision | undefined, locale: Locale) =>
     onSome: (subcategory) => format(locale, subcategoryName(subcategory), {}),
   })
 
+/** What the tile says under a piece's name: that the wardrobe may have it, that it needs a better look, or its
+ * kind. */
+const note = (detection: Detection, decision: Decision | undefined, locale: Locale) => {
+  if (detection.alreadyHave !== undefined) return format(locale, 'capture.alreadyHave', {})
+  return detection.partial === true ? format(locale, 'capture.betterLook', {}) : kind(decision, locale)
+}
+
 const foundTile = (detection: Detection, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const decision = model.decisions[detection.id]
   const kept = decision?.keep === true
@@ -74,9 +81,7 @@ const foundTile = (detection: Detection, model: Model, locale: Locale, h: HtmlBu
         h.figcaption(styled(h, styles.caption()), [
           h.span(styled(h, styles.captionText()), [
             h.span(styled(h, styles.captionName()), [name]),
-            h.span(styled(h, styles.captionKind()), [
-              detection.alreadyHave === undefined ? kind(decision, locale) : format(locale, 'capture.alreadyHave', {}),
-            ]),
+            h.span(styled(h, styles.captionKind()), [note(detection, decision, locale)]),
           ]),
           Button.view(
             {
@@ -190,6 +195,9 @@ const editor = (detection: Detection, decision: Decision, locale: Locale, h: Htm
         ...styled(h, styles.editorImage()),
       ]),
       alreadyHave(detection, locale, h),
+      detection.partial === true
+        ? h.p(styled(h, styles.sightings()), [format(locale, 'capture.betterLookHint', {})])
+        : h.empty,
       sightings(detection, locale, h),
       detection.hasCutout
         ? h.label(styled(h, styles.original()), [

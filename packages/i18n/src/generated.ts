@@ -676,6 +676,8 @@ export interface MessageArgumentsByKey<T = string> {
   'capture.alreadyHave': Readonly<Record<string, never>>
   'capture.alreadyHaveHint': Readonly<Record<string, never>>
   'capture.alreadyHaveImage': Readonly<Record<string, never>>
+  'capture.betterLook': Readonly<Record<string, never>>
+  'capture.betterLookHint': Readonly<Record<string, never>>
   'capture.camera.back': Readonly<Record<string, never>>
   'capture.camera.checking': Readonly<Record<string, never>>
   'capture.camera.count': { readonly count: number }
@@ -683,6 +685,8 @@ export interface MessageArgumentsByKey<T = string> {
   'capture.camera.flip': Readonly<Record<string, never>>
   'capture.camera.front': Readonly<Record<string, never>>
   'capture.camera.holdOne': Readonly<Record<string, never>>
+  'capture.camera.layOne': Readonly<Record<string, never>>
+  'capture.camera.notLaid': Readonly<Record<string, never>>
   'capture.camera.notSeen': Readonly<Record<string, never>>
   'capture.camera.showBack': Readonly<Record<string, never>>
   'capture.camera.shutter': Readonly<Record<string, never>>
@@ -691,6 +695,7 @@ export interface MessageArgumentsByKey<T = string> {
   'capture.camera.taken': Readonly<Record<string, never>>
   'capture.camera.tapToTake': Readonly<Record<string, never>>
   'capture.camera.title': Readonly<Record<string, never>>
+  'capture.camera.turnOver': Readonly<Record<string, never>>
   'capture.camera.unavailable': Readonly<Record<string, never>>
   'capture.chooseHint': Readonly<Record<string, never>>
   'capture.chooseTitle': Readonly<Record<string, never>>
@@ -703,6 +708,8 @@ export interface MessageArgumentsByKey<T = string> {
   'capture.holdUpHint': Readonly<Record<string, never>>
   'capture.holdUpTitle': Readonly<Record<string, never>>
   'capture.keepLabel': { readonly name: string | number }
+  'capture.layOutHint': Readonly<Record<string, never>>
+  'capture.layOutTitle': Readonly<Record<string, never>>
   'capture.notSupported': { readonly name: string | number }
   'capture.preparingVideo': Readonly<Record<string, never>>
   'capture.problem.dailyLimit': Readonly<Record<string, never>>
@@ -717,6 +724,11 @@ export interface MessageArgumentsByKey<T = string> {
   'capture.remove': Readonly<Record<string, never>>
   'capture.retryFile': { readonly name: string | number }
   'capture.reviewHint': Readonly<Record<string, never>>
+  'capture.scan.holdHint': Readonly<Record<string, never>>
+  'capture.scan.holdTitle': Readonly<Record<string, never>>
+  'capture.scan.layHint': Readonly<Record<string, never>>
+  'capture.scan.layTitle': Readonly<Record<string, never>>
+  'capture.scan.title': Readonly<Record<string, never>>
   'capture.seeFound': { readonly count: number }
   'capture.sent': Readonly<Record<string, never>>
   'capture.sightings': { readonly count: string | number }
@@ -2627,4 +2639,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'e113eda27856f6b86cf99589bd492b02c0201414e06bf4256fd3dabf0bc2e068'
+export const catalogVersion = 'f3ed18413b50b8fb540e447540d2507f8e91b00b53559d74d9bf2de12607b10d'

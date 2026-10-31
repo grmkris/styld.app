@@ -4,12 +4,24 @@ import { style } from '../../zyzz.config.ts'
 export const addPage = style({ display: 'grid', gap: '8px', maxInlineSize: '36rem', paddingBlock: '8px 48px' })
 export const pageBar = style({ display: 'flex', alignItems: 'center', gap: '8px' })
 export const lede = style({ color: 'ink2' })
-/** The two ways in, side by side on a phone: the library and the camera. */
+/** The two ways that work best, as a short list above the ways in. */
+export const guidance = style({ display: 'grid', gap: '6px', marginBlockStart: '12px' })
+export const guidanceTitle = style({ color: 'ink', fontSize: '15px', fontWeight: 600 })
+export const guidanceList = style({
+  display: 'grid',
+  gap: '6px',
+  margin: '0',
+  paddingInlineStart: '1.2em',
+  color: 'ink2',
+  fontSize: '14px',
+})
+/** The ways in: the library across the top, the camera's two ways side by side below it on a phone. */
 export const sources = style({
   display: 'grid',
   gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
   gap: '12px',
   marginBlockStart: '16px',
+  '& > :first-child': { gridColumn: '1 / -1' },
 })
 /** A source: a stock panel that is a label for its hidden file input, and takes dropped files. */
 export const source = style({

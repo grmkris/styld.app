@@ -57,22 +57,53 @@ const library = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
     toParentMessage: (message) => Message.GotDropMessage({ message }),
   })
 
-/** The camera on this page: hold each garment up and it takes the photo. */
-const holdUp = (locale: Locale, h: HtmlBuilder<Message>): Html =>
+/** The camera on this page: hold each garment up, or lay each one out under it, and it takes the photo. */
+const cameraSource = (
+  way: { readonly onClick: Message; readonly title: MessageKey; readonly hint: MessageKey },
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html =>
   Button.view(
     {
-      onClick: Message.ClickedHoldUp(),
+      onClick: way.onClick,
       toView: (attributes) =>
         h.button(
           [...attributes.button, ...styled(h, styles.source())],
           [
             h.span(styled(h, styles.sourceIcons()), [cameraIcon(h)]),
-            h.span(styled(h, styles.sourceTitle()), [format(locale, 'capture.holdUpTitle', {})]),
-            h.span(styled(h, styles.sourceHint()), [format(locale, 'capture.holdUpHint', {})]),
+            h.span(styled(h, styles.sourceTitle()), [format(locale, way.title, {})]),
+            h.span(styled(h, styles.sourceHint()), [format(locale, way.hint, {})]),
           ],
         ),
     },
     h,
+  )
+
+/** The two ways that work best, before the ways in: pieces laid out, or each one held up. */
+const guidance = (locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.section(
+    [h.AriaLabelledBy('scan-ways'), ...styled(h, styles.guidance())],
+    [
+      h.h2([h.Id('scan-ways'), ...styled(h, styles.guidanceTitle())], [format(locale, 'capture.scan.title', {})]),
+      h.ul(styled(h, styles.guidanceList()), [
+        h.li(
+          [],
+          [
+            h.strong([], [format(locale, 'capture.scan.layTitle', {})]),
+            ' ',
+            format(locale, 'capture.scan.layHint', {}),
+          ],
+        ),
+        h.li(
+          [],
+          [
+            h.strong([], [format(locale, 'capture.scan.holdTitle', {})]),
+            ' ',
+            format(locale, 'capture.scan.holdHint', {}),
+          ],
+        ),
+      ]),
+    ],
   )
 
 const heldCamera = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
@@ -88,7 +119,22 @@ const heldCamera = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html
 const sources = (model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>
   HeldCamera.isOpen(model.held)
     ? [heldCamera(model, locale, h)]
-    : [h.div(styled(h, styles.sources()), [library(model, locale, h), holdUp(locale, h)])]
+    : [
+        guidance(locale, h),
+        h.div(styled(h, styles.sources()), [
+          library(model, locale, h),
+          cameraSource(
+            { onClick: Message.ClickedLayOut(), title: 'capture.layOutTitle', hint: 'capture.layOutHint' },
+            locale,
+            h,
+          ),
+          cameraSource(
+            { onClick: Message.ClickedHoldUp(), title: 'capture.holdUpTitle', hint: 'capture.holdUpHint' },
+            locale,
+            h,
+          ),
+        ]),
+      ]
 
 /** What a file on its way is doing: a photo uploading, a video being read, or the part of it on its way. */
 const sendingText = (item: Item, locale: Locale) => {

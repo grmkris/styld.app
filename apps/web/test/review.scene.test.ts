@@ -56,20 +56,20 @@ const reviewPage = (captures: ReadonlyArray<TrayCapture>, editing = Option.none<
       }),
   })
 
-/** A shirt the wardrobe already has, found again in a photo. */
+/** A shirt found in a photo, offered unticked. */
+const shirt = {
+  id: DetectionId.make(`dt_${'1'.padStart(22, '0')}`),
+  preselected: false,
+  hasCutout: true,
+  hasBack: false,
+  sightings: 1,
+  suggestion: { category: 'top' as const, subcategory: null, colours: ['navy' as const] },
+}
+
+/** The shirt, which the wardrobe already has. */
 const foundAgain = {
   ...emptyCapture(3, 'picker'),
-  detections: [
-    {
-      id: DetectionId.make(`dt_${'1'.padStart(22, '0')}`),
-      preselected: false,
-      hasCutout: true,
-      hasBack: false,
-      sightings: 1,
-      alreadyHave: PieceId.make(`pc_${'s'.repeat(22)}`),
-      suggestion: { category: 'top' as const, subcategory: null, colours: ['navy' as const] },
-    },
-  ],
+  detections: [{ ...shirt, alreadyHave: PieceId.make(`pc_${'s'.repeat(22)}`) }],
 }
 
 describe('the review tray', () => {
@@ -83,6 +83,20 @@ describe('the review tray', () => {
         ),
       ).toExist(),
       expect(text('No clothes found here.')).toExist(),
+    )
+  })
+
+  test('part of a garment says it needs a better look, and how to give it one', () => {
+    const part = { ...emptyCapture(3, 'picker'), detections: [{ ...shirt, partial: true }] }
+    scene(
+      { update: (model) => ({ model }), view },
+      given(reviewPage([part], Option.none())),
+      expect(text('Needs a better look')).toExist(),
+    )
+    scene(
+      { update: (model) => ({ model }), view },
+      given(reviewPage([part], Option.some(`dt_${'1'.padStart(22, '0')}`))),
+      expect(text('Only part of it shows. Hold it up or lay it out flat, and add it again.')).toExist(),
     )
   })
 

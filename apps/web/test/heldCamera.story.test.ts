@@ -1,14 +1,14 @@
 import { Option } from 'effect'
 import { Command, expectNoOutMessage, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
-import { Buzz, Camera, CheckHeld, init, Message, type Model, open, update } from '../src/page/HeldCamera.ts'
+import { Buzz, Camera, CheckHeld, init, layOut, Message, type Model, open, update } from '../src/page/HeldCamera.ts'
 
 const shot = (name: string) => new globalThis.File(['jpeg'], name, { type: 'image/jpeg' })
 const check = shot('check-1.jpg')
 const still = shot('camera-1.jpg')
 
 const watching = () => update(open(init()).model, Message.StartedCamera()).model
-const firstCheck = CheckHeld({ token: 0, check, still, previous: Option.none() })
+const firstCheck = CheckHeld({ token: 0, check, still, previous: Option.none(), layout: 'held' })
 
 /** The garment check's answer to check `token`; a garment shown is held up by hand unless `holding` says not. */
 const answered = (
@@ -27,7 +27,7 @@ const frontTaken = (): Model => {
 
 /** The next settled picture, its check against the front, and the check's answer. */
 const turned = (token: number, side: 'front' | 'back' | 'unclear', samePrevious: boolean) => {
-  const sent = CheckHeld({ token, check, still, previous: Option.some(check) })
+  const sent = CheckHeld({ token, check, still, previous: Option.some(check), layout: 'held' })
   return [
     message(Message.SettledScene({ check, still })),
     Command.resolve(sent, answered(token, true, side, samePrevious)),
@@ -86,7 +86,7 @@ describe('the held-up camera', () => {
   })
 
   test('held still after a no, the camera looks again; held still after a photo, it takes nothing more', () => {
-    const second = CheckHeld({ token: 1, check, still, previous: Option.none() })
+    const second = CheckHeld({ token: 1, check, still, previous: Option.none(), layout: 'held' })
     story(
       update,
       given(watching()),
@@ -107,7 +107,7 @@ describe('the held-up camera', () => {
   })
 
   test('nothing held up asks for one piece; without the check a tap still takes the photo', () => {
-    const second = CheckHeld({ token: 1, check, still, previous: Option.none() })
+    const second = CheckHeld({ token: 1, check, still, previous: Option.none(), layout: 'held' })
     story(
       update,
       given(watching()),
@@ -151,7 +151,7 @@ describe('the held-up camera', () => {
       given(frontTaken()),
       message(Message.SettledScene({ check, still })),
       Command.resolve(
-        CheckHeld({ token: 1, check, still, previous: Option.some(check) }),
+        CheckHeld({ token: 1, check, still, previous: Option.some(check), layout: 'held' }),
         answered(1, true, 'front', false, false),
       ),
       expectNoOutMessage(),
@@ -184,6 +184,25 @@ describe('the held-up camera', () => {
       Command.resolve(Buzz, Message.CompletedBuzz()),
       message(Message.TappedPicture({ check, still })),
       expectOutMessage({ _tag: 'TookPhoto', photo: still, side: 'back' }),
+      Command.resolve(Buzz, Message.CompletedBuzz()),
+    )
+  })
+
+  test('above pieces laid out, it starts on the back camera and takes a garment once no hands are on it', () => {
+    const laidOut = update(layOut(init()).model, Message.StartedCamera()).model
+    const flatCheck = (token: number) => CheckHeld({ token, check, still, previous: Option.none(), layout: 'flat' })
+    expect(laidOut.facing).toBe('environment')
+    story(
+      update,
+      given(laidOut),
+      message(Message.SettledScene({ check, still })),
+      // Hands still on it, laying it down: not taken yet.
+      Command.resolve(flatCheck(0), answered(0, true, 'front', false, true)),
+      expectNoOutMessage(),
+      model(({ camera }) => expect(camera).toEqual(Camera.Watching({ hint: 'notSeen' }))),
+      message(Message.SettledScene({ check, still })),
+      Command.resolve(flatCheck(1), answered(1, true, 'front', false, false)),
+      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: 'front' }),
       Command.resolve(Buzz, Message.CompletedBuzz()),
     )
   })
