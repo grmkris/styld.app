@@ -75,6 +75,8 @@ describe('Styld, the stylist in the app', () => {
       Command.resolve(LoadChats, Message.SucceededLoadChats({ chats: [summary(chatId)] })),
       Command.resolve(LoadChat, Message.SucceededLoadChat({ chat: chat({ state: 'writing', text: 'Wear your' }) })),
       Command.resolve(ScrollToLatest, Message.CompletedScrollToLatest()),
+      // The starter tapped is gone with the new chat: focus follows to the thread.
+      Command.resolve(FocusThread, Message.CompletedFocusThread()),
       model((current) => {
         expect(Option.map(current.open, ({ replying }) => replying?.text)).toEqual(Option.some('Wear your'))
         expect(canSend({ ...current, draft: 'And tomorrow?' })).toBe(false)

@@ -14,11 +14,12 @@ import { StyldClient } from '../StyldClient.ts'
 export const SendProblem = Schema.Literals(['busy', 'dailyLimit', 'unavailable', 'network'])
 export type SendProblem = typeof SendProblem.Type
 
-/** A message on its way, or why the last one did not go; a failure that may not have reached Styld keeps its operation
- * id, so sending again repeats the same message. */
+/** A message on its way (`fromStarter` when a starter question sent it: that button goes as the chat opens, so focus
+ * follows to the thread), or why the last one did not go; a failure that may not have reached Styld keeps its
+ * operation id, so sending again repeats the same message. */
 export const Sending = defineTaggedUnion({
   Idle: {},
-  Sending: {},
+  Sending: { fromStarter: Schema.Boolean },
   Failed: { problem: SendProblem, operationId: Schema.Option(Schema.String) },
 })
 export type Sending = typeof Sending.Type
@@ -227,10 +228,10 @@ const showChat = (model: Model, chat: Chat): UpdateReturn => {
 }
 
 /** Send what is written: a message lost on the network goes again as the same one. */
-const submit = (model: Model, locale: ChatLocale): UpdateReturn => {
+const submit = (model: Model, locale: ChatLocale, fromStarter = false): UpdateReturn => {
   if (!canSend(model)) return { model }
   return {
-    model: modifyFields(model, { sending: () => Sending.Sending() }),
+    model: modifyFields(model, { sending: () => Sending.Sending({ fromStarter }) }),
     commands: [
       SendMessage({
         operationId: Sending.guards.Failed(model.sending) ? model.sending.operationId : Option.none(),
@@ -250,6 +251,14 @@ const openChat = (model: Model, chatId: string, pressed = false): UpdateReturn =
   }),
   commands: [LoadChat({ chatId })],
 })
+
+/** The message is in: the chat is read with it, and the list for its title. A message typed keeps focus in the
+ * field; one a starter sent moves it to the thread once it opens. */
+const sent = (model: Model, chatId: string): UpdateReturn => {
+  const fromStarter = Sending.guards.Sending(model.sending) && model.sending.fromStarter
+  const opened = openChat(modifyFields(model, { draft: () => '', sending: () => Sending.Idle() }), chatId, fromStarter)
+  return { model: opened.model, commands: [...(opened.commands ?? []), LoadChats()] }
+}
 
 const isReading = (model: Model, chatId: string) =>
   Opening.guards.Reading(model.opening) && model.opening.chatId === chatId
@@ -311,12 +320,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedStarter: ({ text, locale }) =>
       Sending.guards.Sending(model.sending)
         ? { model }
-        : submit(modifyFields(model, { draft: () => text, sending: () => Sending.Idle() }), locale),
-    // The message is in: the chat is read with it, and the list for its title.
-    SucceededSend: ({ chatId }) => {
-      const opened = openChat(modifyFields(model, { draft: () => '', sending: () => Sending.Idle() }), chatId)
-      return { model: opened.model, commands: [...(opened.commands ?? []), LoadChats()] }
-    },
+        : submit(modifyFields(model, { draft: () => text, sending: () => Sending.Idle() }), locale, true),
+    SucceededSend: ({ chatId }) => sent(model, chatId),
     FailedSend: ({ problem, operationId }) => ({
       model: modifyFields(model, { sending: () => Sending.Failed({ problem, operationId }) }),
     }),
