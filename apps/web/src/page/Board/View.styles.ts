@@ -371,7 +371,8 @@ export const trayPiece = style({
   padding: '6px',
   borderWidth: '0',
   borderRadius: 'panel',
-  backgroundColor: 'stock',
+  // Paper-2, not stock: a piece's photo blends into it (trayImage), as it does into the table.
+  backgroundColor: 'paper2',
   cursor: 'pointer',
   transitionProperty: 'transform, box-shadow',
   transitionDuration: '140ms',
@@ -386,4 +387,7 @@ export const trayImage = style({
   minBlockSize: '0',
   objectFit: 'contain',
   pointerEvents: 'none',
+  // A piece's picture that is still its photo lets the pale backdrop give way to the tile; a picture pinned on the
+  // board (`/cdn/boards/…`) keeps its true colour.
+  '&[src^="/cdn/pieces/"]': { mixBlendMode: 'darken' },
 })

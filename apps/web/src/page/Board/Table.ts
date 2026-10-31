@@ -5,6 +5,7 @@ import type { Attribute, Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { styled } from '../../Styled.ts'
 import { baseSize } from './Geometry.ts'
+import { pieceFrame } from './Table.styles.ts'
 import * as styles from './View.styles.ts'
 
 // The table as a picture: pieces, text and pictures laid on paper. The board editor adds hands to it; Boards
@@ -57,9 +58,14 @@ export const itemContent = <Message>(
   ])
 }
 
-/** An item's frame: square for a piece or a picture, the text's own shape for a label. */
-export const itemStyle = (item: BoardItem) =>
-  Schema.is(TextItem)(item) ? cx(styles.item(), styles.words()) : cx(styles.item(), styles.square())
+/** An item's frame: square for a piece or a picture, the text's own shape for a label. A piece's frame blends
+ * with the paper; a picture keeps its true colour. */
+export const itemStyle = (item: BoardItem) => {
+  if (Schema.is(TextItem)(item)) return cx(styles.item(), styles.words())
+  return Schema.is(PieceItem)(item)
+    ? cx(styles.item(), styles.square(), pieceFrame())
+    : cx(styles.item(), styles.square())
+}
 
 /** A still table: its paper and items, with no hands on it. `attributes` must not carry a class: an element
  * takes one class attribute, and the paper's is set here. */

@@ -66,13 +66,16 @@ export const pieces = style({
   overflowX: 'auto',
   scrollbarWidth: 'none',
 })
-/** A piece Styld shows: its cutout straight on the paper, as pieces you own are, with its name under it. */
+/** A piece Styld shows: its cutout straight on the paper, as pieces you own are, with its name under it. A picture
+ * that is still the person's photo lets its pale backdrop give way to the paper. The blend sits on the link, not the
+ * image: the press's scale makes the link a stacking context, which would keep the image's blend from the paper. */
 export const pieceLink = style({
   display: 'grid',
   gap: '4px',
   inlineSize: '96px',
   color: 'ink',
   textDecorationLine: 'none',
+  mixBlendMode: 'darken',
   transitionProperty: 'transform',
   transitionDuration: '140ms',
   transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
