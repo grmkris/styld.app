@@ -159,9 +159,13 @@ studio, design, outfits, gallery, tryon, social, billing, operations). The worki
   once, tray stays empty, matching, favourites, owner-only images, offer → tray → kept → linked, Wear it again once,
   deletion), Story and Scene tests. Live readback on a fixture photo of a rail (no worn photo yet): ready in 21 s,
   eight garments typed and coloured, the navy trousers suggested as the account's own, the photo owner-only (401
-  signed out); phone walk of the Gallery and the photo page with no errors; the test photo deleted after. Not done:
-  Add to board (held back from visitors) and Cut out the outfit; a readback on a real worn photo; favourites as clues
-  for the engine and Styld.
+  signed out); phone walk of the Gallery and the photo page with no errors; the test photo deleted after.
+  Then (`23d5d48`…`a52ce55`, preview `a52ce55`; gate 555 unit, native 27/27, initial bundle 359,498): Add to board
+  copies the photo (its cut-out once there is one) into a board picture of origin `photo`, held back from visitors
+  (no public pin, table item, picture or content check; native: a published board's visitor sees neither), with the
+  photo's look pinned beside it; Cut out the outfit asks SAM for the person, free. Live: on the rail fixture Cut out
+  answered NoPersonFound in 1.8 s and Add to board pinned one picture, idempotently; both deleted after. Not done: a
+  readback on a real worn photo (finding and cutting out a person); favourites as clues for the engine and Styld.
 - **Round 13 on M2–M3** (`3a7c611`…`f38d934`): the filter sheet's shared body (scrolls, title reachable sideways)
   and a full-width Show; Spin drawn only once today's outfits are in, with a hover and Gallery's 140ms press; a 360px
   wardrobe and a sideways filter sheet checked in the gallery journey. f0 fixed the 360px overflow itself (`6e41a9e`).
