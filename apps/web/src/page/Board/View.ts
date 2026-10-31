@@ -25,7 +25,7 @@ import { type KeyStep, Message } from './Message.ts'
 import { Gesture, LookSave, type Model, Saving, Toast, Upload } from './Model.ts'
 import { boardStateView } from './Unready.ts'
 import * as styles from './View.styles.ts'
-import { saveLookView, selectionView, toolbarView } from './ViewTools.ts'
+import { paperChoiceView, saveLookView, selectedView, toolbarView } from './ViewTools.ts'
 
 const primaryButton = 0
 
@@ -146,7 +146,7 @@ const paperView = (model: Model, paper: Paper, locale: Locale, h: HtmlBuilder<Me
       h.AriaLabel(format(locale, 'board.paper', {})),
       h.DataAttribute('paper', paper),
       ...(model.isDropping ? [h.DataAttribute('dropping', '')] : []),
-      ...styled(h, styles.paper()),
+      ...styled(h, cx(styles.paper(), styles.editorPaper())),
       h.OnMount(MeasurePaper()),
       h.OnPointerDown((_type, _button, _sx, _sy, _time, clientX, clientY, pointerId) =>
         Option.some(Message.PressedPaper({ pointer: { pointerId, x: clientX, y: clientY } })),
@@ -276,7 +276,7 @@ const trayLoading = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   )
 
 /** The tray: what is pinned on the board first, then the rest of the wardrobe. */
-const trayView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+const trayView = (model: Model, locale: Locale, h: HtmlBuilder<Message>, top: Html): Html => {
   const onTable = new Set(Array.flatMap(model.items, (item) => (Schema.is(PieceItem)(item) ? [item.pieceId] : [])))
   const picturesOnTable = new Set(
     Array.flatMap(model.items, (item) => (Schema.is(ImageItem)(item) ? [item.imageId] : [])),
@@ -304,7 +304,7 @@ const trayView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
   })
   return h.section(
     [h.AriaLabelledBy('board-tray'), h.DataAttribute('tray', ''), ...styled(h, styles.tray())],
-    [h.h2([h.Id('board-tray')], [format(locale, 'board.wardrobe', {})]), body],
+    [top, h.h2([h.Id('board-tray')], [format(locale, 'board.wardrobe', {})]), body],
   )
 }
 
@@ -328,8 +328,8 @@ const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: 
       lookView(model, locale, h),
       paperView(model, paper, locale, h),
       toastView(model, locale, h),
-      selectionView(model, paper, locale, h),
-      trayView(model, locale, h),
+      paperChoiceView(model, paper, locale, h),
+      trayView(model, locale, h, selectedView(model, locale, h)),
       h.p([h.Id('board-keys'), ...styled(h, styles.fine())], [format(locale, 'board.keys', {})]),
     ]),
   ])

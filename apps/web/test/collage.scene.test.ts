@@ -1,7 +1,7 @@
 import { catalogVersion } from '@styld/i18n'
 import { Board, BoardItemId, PieceItem } from '@styld/protocol'
-import { Schema } from 'effect'
-import { expect, given, Mount, role, scene, text } from 'foldkit/scene'
+import { Option, Schema } from 'effect'
+import { expect, given, inside, Mount, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { init, Session, update } from '../src/App.ts'
@@ -57,6 +57,23 @@ const editing = (items: ReadonlyArray<PieceItem>) =>
 const measured = Mount.resolve(MeasurePaper, BoardMessage.MeasuredPaper({ width: 500 }))
 
 describe('the collage editor', () => {
+  test('puts the selected piece’s actions in the tray, in view, and the paper under the table otherwise', () => {
+    scene(
+      { update, view },
+      given(editing([knit])),
+      measured,
+      expect(role('group', { name: 'Paper' })).toExist(),
+      expect(role('toolbar', { name: 'Selected' })).not.toExist(),
+    )
+    scene(
+      { update, view },
+      given(modifyFields(editing([knit]), { board: (board) => ({ ...board, maybeSelectedId: Option.some(knit.id) }) })),
+      measured,
+      inside(role('region', { name: 'Your pieces' }), expect(role('toolbar', { name: 'Selected' })).toExist()),
+      expect(role('group', { name: 'Paper' })).not.toExist(),
+    )
+  })
+
   test('names every tool, and holds Save as a look until a piece is on the table', () => {
     scene(
       { update, view },

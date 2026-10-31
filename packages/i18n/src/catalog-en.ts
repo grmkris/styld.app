@@ -2658,7 +2658,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'board.missing': 'This board isn’t here any more.',
   'board.retry': 'Try again',
   'board.paper': 'The table',
-  'board.empty': 'Tap a piece below to lay it on the table, or add words and pictures.',
+  'board.empty': 'Tap one of your pieces to lay it on the table, or add words and pictures.',
   'board.tools': 'Board tools',
   'board.undo': 'Undo',
   'board.redo': 'Redo',

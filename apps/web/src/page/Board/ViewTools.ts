@@ -37,7 +37,7 @@ const tool = (label: string, icon: Html, message: Message, isDisabled: boolean, 
       isDisabled,
       toView: (attributes) =>
         h.button(
-          [...attributes.button, ...styled(h, styles.tool())],
+          [...attributes.button, h.Title(label), ...styled(h, styles.tool())],
           [icon, h.span(styled(h, styles.toolLabel()), [label])],
         ),
     },
@@ -55,7 +55,7 @@ const pictureTool = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Htm
       multiple: true,
       toView: (attributes) =>
         h.label(
-          [...attributes.root, ...styled(h, styles.tool())],
+          [...attributes.root, h.Title(format(locale, 'board.addPicture', {})), ...styled(h, styles.tool())],
           [
             photoIcon(h),
             h.span(styled(h, styles.toolLabel()), [format(locale, 'board.addPicture', {})]),
@@ -201,16 +201,20 @@ const paperChoice = (current: Paper, locale: Locale, h: HtmlBuilder<Message>): H
     ),
   ])
 
-/** The selected item's actions, and a text label's words and style; with nothing selected, the paper. */
-export const selectionView = (model: Model, paper: Paper, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  Option.match(
-    Option.flatMap(model.maybeSelectedId, (id) => findItem(model.items, id)),
-    {
-      onNone: () => h.div(styled(h, styles.selection()), [paperChoice(paper, locale, h)]),
-      onSome: (item) =>
-        h.div(styled(h, styles.selection()), [
-          itemActions(item, locale, h),
-          Schema.is(TextItem)(item) ? textEditor(item, locale, h) : h.empty,
-        ]),
-    },
-  )
+const selected = (model: Model) => Option.flatMap(model.maybeSelectedId, (id) => findItem(model.items, id))
+
+/** The selected item's actions, and a text label's words and style. They ride at the top of the tray, which holds
+ * the bottom of a phone's screen and the column beside a desktop's table, so they are in view while the item is. */
+export const selectedView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  Option.match(selected(model), {
+    onNone: () => h.empty,
+    onSome: (item) =>
+      h.div(styled(h, styles.selection()), [
+        itemActions(item, locale, h),
+        Schema.is(TextItem)(item) ? textEditor(item, locale, h) : h.empty,
+      ]),
+  })
+
+/** With nothing selected, the paper's colours, under the table. */
+export const paperChoiceView = (model: Model, paper: Paper, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  Option.isSome(selected(model)) ? h.empty : h.div(styled(h, styles.selection()), [paperChoice(paper, locale, h)])

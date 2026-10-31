@@ -2706,7 +2706,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'board.missing': 'Te zbirke ni več.',
   'board.retry': 'Poskusi znova',
   'board.paper': 'Miza',
-  'board.empty': 'Tapni kos spodaj, da ga položiš na mizo, ali dodaj besede in slike.',
+  'board.empty': 'Tapni enega od svojih kosov, da ga položiš na mizo, ali dodaj besede in slike.',
   'board.tools': 'Orodja zbirke',
   'board.undo': 'Razveljavi',
   'board.redo': 'Uveljavi znova',

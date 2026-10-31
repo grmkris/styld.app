@@ -49,9 +49,6 @@ export const tool = style({
   position: 'relative',
   display: 'inline-flex',
   alignItems: 'center',
-  gap: '6px',
-  minBlockSize: '40px',
-  paddingInline: '14px',
   borderWidth: '0',
   borderRadius: 'pill',
   backgroundColor: 'paper2',
@@ -64,28 +61,27 @@ export const tool = style({
   transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
   ':active': { transform: 'scale(0.96)' },
   '&[aria-disabled="true"]': { opacity: 0.5, cursor: 'not-allowed' },
-  // A 40px pill with a 44px target.
-  '::after': { content: '""', position: 'absolute', insetInline: '0', insetBlock: '-2px' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2Hover' } },
-  // On a phone a 44px round with its icon alone, so the six tools keep to one row.
-  '@media (max-width: 899px)': {
-    justifyContent: 'center',
-    inlineSize: '44px',
-    minBlockSize: '44px',
-    paddingInline: '0',
-    '::after': { insetBlock: '0' },
-  },
+  // A 44px round with its icon alone, so the six tools keep to one row over a phone's table and the desktop's
+  // 560px column; each is named for assistive technology and, on hover, by its title.
+  justifyContent: 'center',
+  inlineSize: '44px',
+  minBlockSize: '44px',
+  paddingInline: '0',
 })
-/** A tool's name: shown beside its icon on a desktop, read but not shown on a phone. */
+/** A tool's name: read, not shown. */
 export const toolLabel = style({
-  '@media (max-width: 899px)': {
-    position: 'absolute',
-    inlineSize: '1px',
-    blockSize: '1px',
-    overflow: 'hidden',
-    clipPath: 'inset(50%)',
-    whiteSpace: 'nowrap',
-  },
+  position: 'absolute',
+  inlineSize: '1px',
+  blockSize: '1px',
+  overflow: 'hidden',
+  clipPath: 'inset(50%)',
+  whiteSpace: 'nowrap',
+})
+/** The editor's table on a wide screen: as wide as the column allows while the whole table and its tools fit the
+ * screen's height. */
+export const editorPaper = style({
+  '@media (min-width: 900px)': { inlineSize: 'min(100%, calc((100svh - 240px) * 0.8))' },
 })
 
 /** The table: a 4:5 sheet whose width is 1000 units, so one unit is 0.1cqw. Items are placed by custom
