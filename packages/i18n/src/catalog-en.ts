@@ -233,7 +233,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'auth.alreadyHaveAccount': 'Already have an account? Sign in with email',
   'auth.backToDashboard': 'Back to dashboard',
   'auth.signInWithEmail': 'Sign in with email',
-  'auth.autoCreateNote': "We'll create an account if you don't have one yet",
+  'auth.autoCreateNote': "We'll create an account if you don't have one yet.",
   'auth.sendCodeFailed': 'Failed to send code',
   'auth.resendCodeFailed': 'Failed to resend code',
   'auth.connectAssistant': 'Sign in to connect Styld to your assistant.',

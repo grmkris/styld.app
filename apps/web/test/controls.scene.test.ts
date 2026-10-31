@@ -75,7 +75,9 @@ describe('email code sign-in', () => {
       { update, view },
       given(page('/login')),
       expect(
-        text("Enter your email and we'll send you a six-digit code. We'll create an account if you don't have one yet"),
+        text(
+          "Enter your email and we'll send you a six-digit code. We'll create an account if you don't have one yet.",
+        ),
       ).toExist(),
       type(label('Email'), '  ana@example.com '),
       submit(role('form')),

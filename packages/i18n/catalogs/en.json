@@ -252,7 +252,7 @@
     "alreadyHaveAccount": "Already have an account? Sign in with email",
     "backToDashboard": "Back to dashboard",
     "signInWithEmail": "Sign in with email",
-    "autoCreateNote": "We'll create an account if you don't have one yet",
+    "autoCreateNote": "We'll create an account if you don't have one yet.",
     "sendCodeFailed": "Failed to send code",
     "resendCodeFailed": "Failed to resend code",
     "connectAssistant": "Sign in to connect Styld to your assistant.",
