@@ -153,12 +153,7 @@ export const enterExplore = (model: Model): UpdateReturn => {
       }
 }
 
-const foldPeople = Update.foldChild({
-  update: People.update,
-  read: (model: Model) => Option.some(model.people),
-  write: (model: Model, people: People.Model) => modifyFields(model, { people: () => people }),
-  toParentMessage: (message: People.Message) => Message.GotPeopleMessage({ message }),
-})
+const foldPeople = People.foldInto<Model, Message>((message) => Message.GotPeopleMessage({ message }))
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {

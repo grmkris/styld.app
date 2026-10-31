@@ -3022,7 +3022,32 @@
     "pickSelected": "{count, plural, =0 {Add} one {Add # thing} other {Add # things}}",
     "looksFailed": "Your looks didn’t load.",
     "placePicture": "Lay this picture on the collage",
-    "unpinPicture": "Take the picture off the board"
+    "unpinPicture": "Take the picture off the board",
+    "make": {
+      "open": "Make with Styld",
+      "title": "Make with Styld",
+      "moodBoard": "A mood board",
+      "moodBoardHint": "Two to four pictures, and your pieces that suit them, laid out on the collage.",
+      "picture": "One picture",
+      "pictureHint": "A single picture from your words.",
+      "wordsLabel": "What should it feel like?",
+      "wordsPlaceholder": "A rainy Sunday in the city",
+      "note": "Each picture costs one credit from today’s free allowance. Pictures are marked Generated and never show a real person.",
+      "submit": "Make",
+      "planning": "Planning your mood board…",
+      "drawing": "Making pictures, {drawn} of {total} done…",
+      "added": "{count, plural, one {Added # picture} other {Added # pictures}}",
+      "unclear": "Styld couldn’t make a mood board from those words. Try saying a little more.",
+      "nothing": "No picture came out this time, and your credits are back.",
+      "dismiss": "OK",
+      "problem": {
+        "dailyLimit": "Today’s free credits are spent. Try again tomorrow.",
+        "refused": "Styld doesn’t make pictures of that.",
+        "slowDown": "Too many at once. Try again in a minute.",
+        "failed": "That didn’t go through. Try again."
+      }
+    },
+    "generated": "Generated"
   },
   "boards": {
     "title": "Boards",

@@ -513,6 +513,7 @@ export interface MessageArgumentsByKey<T = string> {
   'board.failed': Readonly<Record<string, never>>
   'board.flip': Readonly<Record<string, never>>
   'board.forward': Readonly<Record<string, never>>
+  'board.generated': Readonly<Record<string, never>>
   'board.keys': Readonly<Record<string, never>>
   'board.loading': Readonly<Record<string, never>>
   'board.lookFailed': Readonly<Record<string, never>>
@@ -520,6 +521,26 @@ export interface MessageArgumentsByKey<T = string> {
   'board.lookSaved': Readonly<Record<string, never>>
   'board.lookSaving': Readonly<Record<string, never>>
   'board.looksFailed': Readonly<Record<string, never>>
+  'board.make.added': { readonly count: number }
+  'board.make.dismiss': Readonly<Record<string, never>>
+  'board.make.drawing': { readonly drawn: string | number; readonly total: string | number }
+  'board.make.moodBoard': Readonly<Record<string, never>>
+  'board.make.moodBoardHint': Readonly<Record<string, never>>
+  'board.make.note': Readonly<Record<string, never>>
+  'board.make.nothing': Readonly<Record<string, never>>
+  'board.make.open': Readonly<Record<string, never>>
+  'board.make.picture': Readonly<Record<string, never>>
+  'board.make.pictureHint': Readonly<Record<string, never>>
+  'board.make.planning': Readonly<Record<string, never>>
+  'board.make.problem.dailyLimit': Readonly<Record<string, never>>
+  'board.make.problem.failed': Readonly<Record<string, never>>
+  'board.make.problem.refused': Readonly<Record<string, never>>
+  'board.make.problem.slowDown': Readonly<Record<string, never>>
+  'board.make.submit': Readonly<Record<string, never>>
+  'board.make.title': Readonly<Record<string, never>>
+  'board.make.unclear': Readonly<Record<string, never>>
+  'board.make.wordsLabel': Readonly<Record<string, never>>
+  'board.make.wordsPlaceholder': Readonly<Record<string, never>>
   'board.missing': Readonly<Record<string, never>>
   'board.newText': Readonly<Record<string, never>>
   'board.openLook': Readonly<Record<string, never>>
@@ -2657,4 +2678,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '497dac751a00979e48621629c80fb9a6ac14302713a96440045857e8e3fffcd0'
+export const catalogVersion = '6357b54f9b22a702241be84e4331a47d5d919334a696182c34149ad29e3276ff'

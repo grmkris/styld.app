@@ -1,6 +1,6 @@
 import { BoardId, Handle, LookId, PieceId, Relation, ReportReason, reportNoteLength } from '@styld/protocol'
 import { Effect, Option, Predicate, Schema } from 'effect'
-import { Command, type Update } from 'foldkit'
+import { Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
@@ -231,6 +231,7 @@ const submitted = (model: Model): UpdateReturn =>
       }
     : { model }
 
+/** @internal Exported for its tests. */
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     SucceededLoadRelation: ({ relation }) => ({
@@ -275,4 +276,15 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SubmittedReport: () => submitted(model),
     SucceededReport: () => ({ model: modifyFields(model, { reporting: () => Reporting.Sent() }) }),
     FailedReport: ({ tooMany }) => ({ model: modifyFields(model, { reporting: () => Reporting.Failed({ tooMany }) }) }),
+  })
+
+/** Following, saving and reporting inside a page whose model keeps them as `people`. */
+export const foldInto = <Parent extends { readonly people: Model }, ParentMessage>(
+  toParentMessage: (message: Message) => ParentMessage,
+) =>
+  Update.foldChild({
+    update,
+    read: (parent: Parent) => Option.some(parent.people),
+    write: (parent: Parent, people: Model): Parent => ({ ...parent, people }),
+    toParentMessage,
   })

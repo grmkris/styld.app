@@ -1,0 +1,92 @@
+import { Dialog } from '@foldkit/ui'
+import { Generation } from '@styld/protocol'
+import { Option, Schema } from 'effect'
+import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
+import { describe, expect, test } from 'vitest'
+import { AskForPictures, init, Job, Message, PollGeneration, update } from '../src/page/Board/Make.ts'
+
+const boardId = `bd_${'sea'.padEnd(22, 'x')}`
+const generationId = `gj_${'sea'.padEnd(22, 'x')}`
+const generation = (status: string, pictures: ReadonlyArray<string>) =>
+  Schema.decodeUnknownSync(Generation)({
+    id: generationId,
+    boardId,
+    kind: 'moodBoard',
+    status,
+    reason: null,
+    pictures: pictures.map((picture, index) => ({
+      index,
+      status: picture,
+      imageId: picture === 'drawn' ? `bm_${String(index).padEnd(22, 'x')}` : null,
+    })),
+    createdAt: '2026-10-31T09:00:00.000Z',
+  })
+
+describe('making pictures for a board', () => {
+  test('sends the words as a mood board, follows the job while it runs, and says once it is done', () => {
+    story(
+      update,
+      given(init(boardId)),
+      message(Message.ClickedMake()),
+      Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+      message(Message.ChangedWords({ words: '  a slow weekend by the sea ' })),
+      message(Message.SubmittedMake()),
+      Command.expectExact(
+        AskForPictures({ boardId, kind: 'moodBoard', prompt: 'a slow weekend by the sea', operationId: Option.none() }),
+      ),
+      Command.resolve(AskForPictures, Message.SucceededAsk({ generation: generation('planning', []) })),
+      model(({ job, words, sheet }) => {
+        expect(Job.guards.Running(job)).toBe(true)
+        expect(words).toBe('')
+        expect(sheet.isOpen).toBe(false)
+      }),
+      Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
+      Command.resolve(
+        PollGeneration({ generationId }),
+        Message.SucceededPoll({ generation: generation('drawing', ['drawn', 'waiting']) }),
+      ),
+      Command.resolve(
+        PollGeneration({ generationId }),
+        Message.SucceededPoll({ generation: generation('done', ['drawn', 'drawn']) }),
+      ),
+      model(({ job }) => expect(Job.guards.Finished(job)).toBe(true)),
+      expectOutMessage({ _tag: 'FinishedMaking' }),
+    )
+  })
+
+  test('one picture, tried again under the same operation after a failure that may not have arrived', () => {
+    story(
+      update,
+      given(init(boardId)),
+      message(Message.ChoseKind({ kind: 'picture' })),
+      message(Message.ChangedWords({ words: 'a red coat in the snow' })),
+      message(Message.SubmittedMake()),
+      Command.resolve(AskForPictures, Message.FailedAsk({ problem: 'failed', operationId: Option.some('op-make-1') })),
+      model(({ job }) => expect(job).toEqual(Job.Failed({ problem: 'failed' }))),
+      message(Message.SubmittedMake()),
+      Command.expectExact(
+        AskForPictures({
+          boardId,
+          kind: 'picture',
+          prompt: 'a red coat in the snow',
+          operationId: Option.some('op-make-1'),
+        }),
+      ),
+      Command.resolve(AskForPictures, Message.FailedAsk({ problem: 'dailyLimit', operationId: Option.none() })),
+      model(({ job, operationId }) => {
+        expect(job).toEqual(Job.Failed({ problem: 'dailyLimit' }))
+        expect(operationId).toEqual(Option.none())
+      }),
+    )
+  })
+
+  test('two letters ask for nothing', () => {
+    story(
+      update,
+      given(init(boardId)),
+      message(Message.ChangedWords({ words: 'ab' })),
+      message(Message.SubmittedMake()),
+      model(({ job }) => expect(Job.guards.Idle(job)).toBe(true)),
+    )
+  })
+})

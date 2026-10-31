@@ -3022,7 +3022,32 @@
     "pickSelected": "{count, plural, =0 {Dodaj} one {Dodaj # stvar} two {Dodaj # stvari} few {Dodaj # stvari} other {Dodaj # stvari}}",
     "looksFailed": "Tvoji videzi se niso naložili.",
     "placePicture": "Položi to sliko na kolaž",
-    "unpinPicture": "Odstrani sliko iz zbirke"
+    "unpinPicture": "Odstrani sliko iz zbirke",
+    "make": {
+      "open": "Ustvari s Styldom",
+      "title": "Ustvari s Styldom",
+      "moodBoard": "Tabla razpoloženja",
+      "moodBoardHint": "Dve do štiri slike in tvoji kosi, ki se jim podajo, razporejeni na kolaž.",
+      "picture": "Ena slika",
+      "pictureHint": "Ena slika po tvojih besedah.",
+      "wordsLabel": "Kakšen naj bo občutek?",
+      "wordsPlaceholder": "Deževna nedelja v mestu",
+      "note": "Vsaka slika porabi en kredit iz današnjega brezplačnega dodatka. Slike so označene kot ustvarjene in nikoli ne prikazujejo resnične osebe.",
+      "submit": "Ustvari",
+      "planning": "Načrtujem tvojo tablo razpoloženja …",
+      "drawing": "Ustvarjam slike, {drawn} od {total} končanih …",
+      "added": "{count, plural, one {Dodana # slika} two {Dodani # sliki} few {Dodane # slike} other {Dodanih # slik}}",
+      "unclear": "Iz teh besed Styld ni mogel narediti table razpoloženja. Povej malo več.",
+      "nothing": "Tokrat ni nastala nobena slika, krediti so vrnjeni.",
+      "dismiss": "V redu",
+      "problem": {
+        "dailyLimit": "Današnji brezplačni krediti so porabljeni. Poskusi znova jutri.",
+        "refused": "Styld takšnih slik ne ustvarja.",
+        "slowDown": "Preveč naenkrat. Poskusi znova čez minuto.",
+        "failed": "Ni uspelo. Poskusi znova."
+      }
+    },
+    "generated": "Ustvarjeno"
   },
   "boards": {
     "title": "Zbirke",

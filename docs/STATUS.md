@@ -425,7 +425,37 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   boards before there are any), with a way to Explore. The section keeps its room while they load. Evidence: a
   scene test.
 - **Next:**
-  - M7: generated pictures and Make a mood board.
+  - M7: the preview readback of a live mood board (Muse and the Workers AI planner), then M8's review rounds.
+- **M7, generated pictures and mood boards:**
+  - The migration `generation` adds `generation_jobs` and `generation_pictures`. `board_images` gains `origin`
+    (upload or generated), `job_id` and `model`.
+  - `POST /api/boards/:id/generated` makes one picture from the person's words. `POST /api/boards/:id/mood` makes
+    a mood board: a Workers AI planner (`@cf/meta/llama-3.3-70b-instruct-fp8-fast`, JSON schema) turns one
+    sentence into two to four prompts, the person's pieces that suit them and up to three moods. Meta Muse Image
+    (Standard, tools off) paints each picture. The pieces are pinned, and the collage is laid out tidy unless the
+    person changed it since asking. `GET /api/generations/:id` follows it; a job stalled for two minutes is sent
+    to the `StyldV2Generation` queue again.
+  - Credits: one per picture, held in the Wallet from the start (`gen/<job>/<i>/0`), consumed once the picture is
+    on the board, given back when the painter refused, and kept when its answer was lost. A mood board holds up to
+    four and gives back what its plan does not use; the queue's last try gives back everything unspent.
+  - Safety: the words, and the plan's prompts, go to the same judge as anything public first; words that fail are
+    never sent to a model. The prompts ask for no real or recognisable person. Pieces reach the painter only as
+    their clean picture or cut-out, never their photo and never one with a face. The person's words are never
+    logged.
+  - `GENERATE_RATE_LIMIT`: six asks a minute per account. `GENERATED_PICTURES=muse` on the preview, `stand-in`
+    natively.
+  - Web: Make with Styld on a board's page (a mood board or one picture), with its progress under the board's
+    name; the board reloads when it is done. Generated pictures are marked Generated, on the owner's board and on
+    public ones.
+  - Assistants: `picture_generate`, `moodboard_make` and `generation_get`.
+  - Evidence:
+    - unit: the planner keeps only the person's pieces, at most the credits held and never fewer than two
+      pictures, and a refusal plans nothing;
+    - stories and a scene: the sheet, the ask, following the job, a retry under the same operation, the Generated
+      mark;
+    - native, with the stand-in painter and planner: a picture drawn and pinned Generated, its replay and its
+      conflict, a refusal, a lost answer, words that fail the check, a plan of nothing, and a mood board drawn,
+      pinned and laid out.
 - **Preview (M6):** deployed from `419f3d2`; `/api/health` reports release
   `419f3d2fd705367a3d956fa4e4dc17acf6afee40`. The plan created `LINK_IMPORT_RATE_LIMIT` and updated the three
   Workers. `tools/preview.native.test.ts` passed 3/3.

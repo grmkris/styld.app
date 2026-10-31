@@ -1,5 +1,5 @@
 import { Look as LookContract, LookId, PublicLookPage } from '@styld/protocol'
-import { Effect, Option, Schema } from 'effect'
+import { Effect, Schema } from 'effect'
 import type * as Crypto from 'effect/Crypto'
 import { Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
@@ -139,12 +139,7 @@ export const load = (model: Model) => [GetLook({ lookId: model.lookId })]
 
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
 
-const foldPeople = Update.foldChild({
-  update: People.update,
-  read: (model: Model) => Option.some(model.people),
-  write: (model: Model, people: People.Model) => modifyFields(model, { people: () => people }),
-  toParentMessage: (message: People.Message) => Message.GotPeopleMessage({ message }),
-})
+const foldPeople = People.foldInto<Model, Message>((message) => Message.GotPeopleMessage({ message }))
 
 const foldSaveToBoard = SaveToBoard.foldInto<Model, Message>((message) => Message.GotSaveToBoardMessage({ message }))
 

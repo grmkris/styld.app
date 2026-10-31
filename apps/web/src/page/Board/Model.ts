@@ -18,6 +18,7 @@ import { Option, Schema } from 'effect'
 import { AsyncData } from 'foldkit'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
+import * as Make from './Make.ts'
 import { Pointer } from './Geometry.ts'
 
 // MODEL
@@ -167,6 +168,8 @@ export const Model = Schema.Struct({
   /** Files are being dragged over the page: the table shows it takes them. */
   isDropping: Schema.Boolean,
   drop: FileDrop.Model,
+  /** Make with Styld: a mood board or one picture from the person's words, and how it is going. */
+  make: Make.Model,
 })
 export type Model = typeof Model.Type
 
@@ -205,6 +208,7 @@ export const init = (boardId: string): Model => ({
   isPasting: false,
   isDropping: false,
   drop: FileDrop.init({ id: 'board-pictures' }),
+  make: Make.init(boardId),
 })
 
 /** Who sees the board as the server last confirmed it: its name, visibility and check. */

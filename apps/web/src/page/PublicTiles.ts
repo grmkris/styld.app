@@ -9,6 +9,8 @@ import * as boardStyles from './Board/PageView.styles.ts'
 import { fromPublic, publicPicture, publicPieceImage, stillTable } from './Board/Table.ts'
 import * as styles from './PublicTiles.styles.ts'
 import { pieceLabel } from './WardrobeWords.ts'
+import { generatedMark } from './Board/MakeView.ts'
+import { markedPicture } from './Board/MakeView.styles.ts'
 
 // What others see, tile by tile: a byline, pieces, looks, boards and a public board's pins. Every picture comes from
 // `/cdn/public`, which shows it only while its page is public.
@@ -57,14 +59,17 @@ export const pinTile = <Message>(pin: PublicPin, locale: Locale, h: HtmlBuilder<
   Match.value(pin).pipe(
     Match.tagsExhaustive({
       PublicPiecePin: ({ piece }) => pieceTile(piece, locale, h),
-      PublicPicturePin: ({ imageId }) =>
-        h.span(styled(h, boardStyles.pinFrame()), [
-          h.img([
-            h.Src(publicPicture(imageId, 'thumb')),
-            h.Alt(format(locale, 'board.picture', {})),
-            h.Loading('lazy'),
-            ...styled(h, boardStyles.photo()),
+      PublicPicturePin: ({ imageId, generated }) =>
+        h.span(styled(h, markedPicture()), [
+          h.span(styled(h, boardStyles.pinFrame()), [
+            h.img([
+              h.Src(publicPicture(imageId, 'thumb')),
+              h.Alt(format(locale, 'board.picture', {})),
+              h.Loading('lazy'),
+              ...styled(h, boardStyles.photo()),
+            ]),
           ]),
+          generated ? generatedMark(locale, h) : h.empty,
         ]),
       PublicLookPin: ({ look }) => lookTile(look, h),
     }),

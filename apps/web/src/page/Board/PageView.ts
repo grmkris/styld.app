@@ -18,6 +18,8 @@ import { boardStateView } from './Unready.ts'
 import { visitingView } from './Visiting.ts'
 import { type Model, PinWork, Publishing, Removal, Rename } from './Model.ts'
 import { chip } from '../ExploreView.styles.ts'
+import * as MakeView from './MakeView.ts'
+import { generatedMark } from './MakeView.ts'
 import * as styles from './PageView.styles.ts'
 import { boardImage, pieceImage, stillTable } from './Table.ts'
 
@@ -60,7 +62,7 @@ const pinView = (pin: Pin, locale: Locale, h: HtmlBuilder<Message>): Html =>
           ),
           unpinButton(id, format(locale, 'board.unpin', { name: pieceName(piece, locale) }), h),
         ],
-        PicturePin: ({ id, imageId }) => [
+        PicturePin: ({ id, imageId, generated }) => [
           h.span(styled(h, styles.pinFrame()), [
             h.img([
               h.Src(boardImage(imageId, 'thumb')),
@@ -69,6 +71,7 @@ const pinView = (pin: Pin, locale: Locale, h: HtmlBuilder<Message>): Html =>
               ...styled(h, styles.photo()),
             ]),
           ]),
+          generated ? generatedMark(locale, h) : h.empty,
           unpinButton(id, format(locale, 'board.unpinPicture', {}), h),
         ],
         LookPin: ({ id, look }) => [
@@ -361,6 +364,22 @@ const settingsBody = (
   ]
 }
 
+/** One part of Make with Styld on the page: its button, its status or its sheet. */
+const makeSlot = (
+  slotId: string,
+  view: typeof MakeView.buttonView,
+  model: Model,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html =>
+  h.submodel({
+    slotId,
+    model: model.make,
+    view,
+    viewInputs: { locale },
+    toParentMessage: (message) => Message.GotMakeMessage({ message }),
+  })
+
 const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.page()), [
     h.div(styled(h, styles.bar()), [
@@ -368,19 +387,23 @@ const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: 
         [h.Href(boardsRouter({})), ...styled(h, styles.back())],
         [backIcon(h), format(locale, 'studio.backToBoards', {})],
       ),
-      h.button(
-        [
-          h.Type('button'),
-          h.AriaLabel(format(locale, 'studio.boardSettings', {})),
-          ...styled(h, styles.round()),
-          h.OnClick(Message.ClickedSettings()),
-        ],
-        [editIcon(h)],
-      ),
+      h.div(styled(h, styles.barActions()), [
+        makeSlot('board-make-button', MakeView.buttonView, model, locale, h),
+        h.button(
+          [
+            h.Type('button'),
+            h.AriaLabel(format(locale, 'studio.boardSettings', {})),
+            ...styled(h, styles.round()),
+            h.OnClick(Message.ClickedSettings()),
+          ],
+          [editIcon(h)],
+        ),
+      ]),
     ]),
     h.div(styled(h, styles.head()), [
       h.h1([], [name]),
       h.p(styled(h, styles.meta()), [format(locale, 'studio.pinCount', { count: model.pins.length })]),
+      makeSlot('board-make-status', MakeView.statusView, model, locale, h),
     ]),
     collageView(model, name, paper, locale, h),
     pinsView(model, locale, h),
@@ -408,6 +431,7 @@ const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: 
           h,
         )
       : h.empty,
+    makeSlot('board-make-sheet', MakeView.sheetView, model, locale, h),
   ])
 
 /** A board's page: its collage as a card that opens the editor, then its pins, newest first. */

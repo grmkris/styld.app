@@ -37,6 +37,8 @@ import { Message } from './Message.ts'
 import { BoardState, fromBoard, LookSave, type Model, Saving, Upload } from './Model.ts'
 import { pageSteps } from './Page.ts'
 import * as People from '../People.ts'
+import * as Make from './Make.ts'
+import { ReloadBoard } from './PageCommands.ts'
 
 /** The Commands that open the board: the board, the wardrobe for the tray, and a first batch of ids. */
 export const load = (model: Model): ReadonlyArray<Command.Command<Message, never, Services>> => [
@@ -52,11 +54,17 @@ const foldWardrobe = Update.foldChild({
   toParentMessage: (message: WardrobePage.Message) => Message.GotWardrobeMessage({ message }),
 })
 
-const foldPeople = Update.foldChild({
-  update: People.update,
-  read: (model: Model) => Option.some(model.people),
-  write: (model: Model, people: People.Model) => modifyFields(model, { people: () => people }),
-  toParentMessage: (message: People.Message) => Message.GotPeopleMessage({ message }),
+const foldPeople = People.foldInto<Model, Message>((message) => Message.GotPeopleMessage({ message }))
+
+/** Make with Styld: once an ask ends, the board reloads to show what it added. */
+const foldMake = Update.foldChild({
+  update: Make.update,
+  read: (model: Model) => Option.some(model.make),
+  write: (model: Model, make: Make.Model) => modifyFields(model, { make: () => make }),
+  toParentMessage: (message: Make.Message) => Message.GotMakeMessage({ message }),
+  foldOutMessage: Make.OutMessage.match<Update.Step<Model, Message, Services>>({
+    FinishedMaking: () => (model) => ({ model, commands: [ReloadBoard({ boardId: model.boardId })] }),
+  }),
 })
 
 const foldDrop = Update.foldChild({
@@ -86,6 +94,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     }),
     GotWardrobeMessage: (got) => foldWardrobe(model, got.message),
     GotPeopleMessage: (got) => foldPeople(model, got.message),
+    GotMakeMessage: (got) => foldMake(model, got.message),
     CompletedMakeIds: ({ ids }) => ({ model: modifyFields(model, { ids: (pool) => [...pool, ...ids] }) }),
     MeasuredPaper: ({ width }) => ({ model: modifyFields(model, { pxPerUnit: () => unitsPerPixel(width) }) }),
     PressedItem: ({ id, pointer, isTouch }) => pressedItem(model, id, pointer, isTouch),

@@ -3,6 +3,8 @@ import { style } from '../../zyzz.config.ts'
 // A board's page (Gallery 2: docs/design/gallery-2/site/v2/board.html): its collage above the grid of its pins.
 export const page = style({ display: 'grid', gap: '16px', paddingBlock: '8px 40px' })
 export const bar = style({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' })
+/** The page's own actions, at the end of the bar. */
+export const barActions = style({ display: 'flex', alignItems: 'center', gap: '4px' })
 export const back = style({ display: 'inline-flex', alignItems: 'center', gap: '4px', minBlockSize: '44px' })
 export const head = style({ display: 'grid', gap: '4px' })
 export const meta = style({ fontSize: '14px', color: 'ink2' })

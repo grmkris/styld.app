@@ -11,6 +11,7 @@ import {
   PublicBoard,
   TextStyle,
 } from '@styld/protocol'
+import * as Make from './Make.ts'
 import * as People from '../People.ts'
 import * as WardrobePage from '../Wardrobe.ts'
 import { Schema } from 'effect'
@@ -102,6 +103,7 @@ export const Message = defineMessageUnion({
   FailedRename: {},
   ToggledPublic: { isPublic: Schema.Boolean },
   GotPeopleMessage: { message: People.Message },
+  GotMakeMessage: { message: Make.Message },
   ToggledMood: { mood: Mood },
   SucceededSetMoods: { board: Board },
   FailedSetMoods: {},
