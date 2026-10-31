@@ -66,8 +66,9 @@ const refusal = (error: { readonly code: string; readonly message: string; reado
 })
 
 /** One reply's tools: the assistants' own, run in `context` (the account and its pace), and `pieces_show`, which shows the person's own
- * pieces under the reply. What the reply shows and saves is collected in `parts`; a tool that writes gets the
- * operation id `<turnId>-<call>`. */
+ * pieces under the reply. What the reply shows and saves is collected in `parts`. A tool that writes gets the
+ * operation id `<turnId>-<tool>-<n>`, its nth write in the reply: the queue may write a reply again, and its model may
+ * look things up in another order, so the id counts only that tool's writes and a retried turn saves its look once. */
 export const turnTools = <R>(
   tools: ReadonlyArray<AssistantTool<R>>,
   turn: { readonly turnId: string; readonly pieceIds: ReadonlySet<string> },
@@ -75,17 +76,26 @@ export const turnTools = <R>(
 ) =>
   Effect.gen(function* () {
     const parts = yield* Ref.make<ReadonlyArray<ReplyPart>>([])
-    const calls = yield* Ref.make(0)
+    const writes = yield* Ref.make<Readonly<Record<string, number>>>({})
     const add = (part: ReplyPart) => Ref.update(parts, (all) => [...all, part])
+    /** The operation id of a tool's next write in this reply: `<turnId>-<tool>-<n>`. */
+    const nextOperation = (tool: string) =>
+      Ref.modify(writes, (counts) => {
+        const nth = counts[tool] ?? 0
+        return [`${turn.turnId}-${tool}-${nth}`, { ...counts, [tool]: nth + 1 }] as const
+      })
+    /** A writing tool's call, given its operation id; any other call as the model made it. */
+    const withOperation = (tool: string, operation: boolean, params: unknown) =>
+      operation && Predicate.isObject(params)
+        ? Effect.map(nextOperation(tool), (operationId): unknown => ({ ...params, operationId }))
+        : Effect.succeed(params)
     const bridged = tools
       .filter(({ name }) => stylistToolNames.includes(name))
       .map((assistant) => {
         const { schema, operation } = modelSchema(assistant.inputSchema)
         const handler = (params: unknown) =>
           Effect.gen(function* () {
-            const call = yield* Ref.getAndUpdate(calls, (count) => count + 1)
-            const args =
-              operation && Predicate.isObject(params) ? { ...params, operationId: `${turn.turnId}-${call}` } : params
+            const args = yield* withOperation(assistant.name, operation, params)
             const result = yield* assistant.run(args).pipe(Effect.provide(context))
             const look = assistant.name === 'look_create' ? decodeSavedLook(result) : Option.none()
             if (Option.isSome(look)) yield* add({ _tag: 'Look', lookId: look.value.id, name: look.value.name })

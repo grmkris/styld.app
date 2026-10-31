@@ -250,8 +250,35 @@ describe('a reply’s tools', () => {
     expect(operation).toBe(true)
     expect(schema).toEqual({ type: 'object', properties: { name: { type: 'string' } }, required: ['name'] })
     const { result, parts } = await called([lookCreate], 'look_create', { name: 'Friday', pieceIds: ['pc_x'] })
-    expect(result).toMatchObject({ operation: 'tn_abc-0' })
+    expect(result).toMatchObject({ operation: 'tn_abc-look_create-0' })
     expect(parts).toEqual([{ _tag: 'Look', lookId: `lk_${'a'.repeat(22)}`, name: 'Friday' }])
+  })
+
+  test('a reply written again saves its look under the same operation, whatever it looked up first', async () => {
+    // The queue's second attempt at a reply: this time the model looks a piece up before it saves.
+    const operations = await Effect.runPromise(
+      Effect.gen(function* () {
+        const ids: Array<unknown> = []
+        for (const lookedUpFirst of [false, true]) {
+          const tools = yield* turnTools(
+            [lookCreate, refusing],
+            { turnId: 'tn_abc', pieceIds: new Set() },
+            Context.empty(),
+          )
+          const kit = yield* tools.toolkit.pipe(Effect.provide(tools.handlers))
+          if (lookedUpFirst) yield* kit.handle('piece_get', { pieceId: 'pc_x' }).pipe(Effect.flatMap(Stream.runCollect))
+          const saved = yield* kit
+            .handle('look_create', { name: 'Friday', pieceIds: ['pc_x'] })
+            .pipe(Effect.flatMap(Stream.runCollect))
+          ids.push(Predicate.isObject(saved.at(-1)?.result) ? saved.at(-1)?.result : undefined)
+        }
+        return ids
+      }),
+    )
+    expect(operations).toEqual([
+      expect.objectContaining({ operation: 'tn_abc-look_create-0' }),
+      expect.objectContaining({ operation: 'tn_abc-look_create-0' }),
+    ])
   })
 
   test('a refusal goes back to the model to act on, and tools outside the stylist’s are left out', async () => {
