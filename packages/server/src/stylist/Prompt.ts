@@ -25,10 +25,10 @@ export const outlineOf = (
 const languages: Readonly<Record<ChatLocale, string>> = { en: 'English', sl: 'Slovenian' }
 
 /** How to write each language, where the model needs telling: GLM's Slovenian slipped into English words and the
- * plural on the preview (2026-10-31). */
+ * plural on the preview, and DeepSeek offered to save a look as a pogled with a masculine bi rad (2026-10-31). */
 const languageNotes: Readonly<Record<ChatLocale, string>> = {
   en: '',
-  sl: ' Address the person with the informal singular ti, and use Slovenian words, not English ones such as outfit or casual. Colours come as English names: say them as Slovenians do (navy is temnomodra, not mornarska).',
+  sl: " Address the person with the informal singular ti, and use Slovenian words, not English ones such as outfit or casual. Colours come as English names: say them as Slovenians do (navy is temnomodra, not mornarska). A look the person saves is a videz (plural videzi), as the app names it, never pogled. Never choose the person's gender: where a past tense or a conditional would (bi rad, si videl), ask in the present instead, as in Želiš, da ta videz shranim?",
 }
 
 /** The season in the northern hemisphere, from a `YYYY-MM-DD` date. */
