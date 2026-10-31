@@ -1,8 +1,10 @@
 import { ImageType, maximumImageBytes } from '@styld/protocol'
-import { Effect, Option, Schema, Stream } from 'effect'
+import { Effect, Layer, Option, Schema, Stream } from 'effect'
+import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import * as HttpClient from 'effect/http/HttpClient'
 import * as HttpClientRequest from 'effect/http/HttpClientRequest'
 import type * as HttpClientResponse from 'effect/http/HttpClientResponse'
+import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 
 /** Why a photo address could not be imported, in words an assistant can act on. */
 export class ImportRefused extends Schema.TaggedError<ImportRefused>()('ImportRefused', {
@@ -91,8 +93,29 @@ export const fetchPublic = Effect.fn('Styld.Mcp.fetchPublic')(function* (address
   return yield* refuse('tooManyRedirects')
 })
 
+/** The client public fetches go through: it never follows a redirect itself, so each hop is checked here. */
+export const publicClient = HttpClient.HttpClient.pipe(
+  Effect.provide(
+    FetchHttpClient.layer.pipe(Layer.provide(Layer.succeed(FetchHttpClient.RequestInit, { redirect: 'manual' }))),
+  ),
+)
+
 /** Fetch a photo an assistant points at. */
 export const importImage = Effect.fn('Styld.Mcp.importImage')(function* (address: string) {
   const { response } = yield* fetchPublic(address, 'image/*')
   return yield* photoFrom(response)
 })
+
+/** What an import needs of the wardrobe: making an upload and receiving its bytes. */
+export type Uploads = Pick<Wardrobe['Service'], 'createUpload' | 'receiveUpload'>
+
+/** Fetch a photo into a fresh received upload of the person's, through the same checks as one they send. */
+export const importedUpload = (wardrobe: Uploads, address: string) =>
+  Effect.gen(function* () {
+    const { contentType, bytes } = yield* importImage(address)
+    const upload = yield* wardrobe.createUpload({ contentType, bytes: bytes.byteLength })
+    // The upload's path carries its one-time token; the origin it is read against does not matter.
+    const token = new URL(upload.path, 'https://styld.invalid').searchParams.get('token') ?? ''
+    yield* wardrobe.receiveUpload({ uploadId: upload.uploadId, token, contentType, body: bytes })
+    return upload.uploadId
+  })

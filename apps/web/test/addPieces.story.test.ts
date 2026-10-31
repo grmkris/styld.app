@@ -3,7 +3,7 @@ import { CaptureId, type CaptureSource, CreateVideoCapture } from '@styld/protoc
 import { Option, Schema } from 'effect'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
-import { InspectVideo, SendPhoto, SendVideo, SendVideoPart } from '../src/page/AddPieces/Commands.ts'
+import { InspectVideo, SendLink, SendPhoto, SendVideo, SendVideoPart } from '../src/page/AddPieces/Commands.ts'
 import { Message, type VideoPlan } from '../src/page/AddPieces/Message.ts'
 import { init, type Model, Sending } from '../src/page/AddPieces/Model.ts'
 import { subscriptions } from '../src/page/AddPieces/Subscription.ts'
@@ -323,6 +323,48 @@ describe('choosing files to add', () => {
       model(({ items }) =>
         expect(items.map(({ captureId }) => captureId)).toEqual([0, 1].map((at) => Option.some(captureOf(at)))),
       ),
+    )
+  })
+})
+
+describe('a shop’s product page', () => {
+  const url = 'https://shop.test/p/knit'
+  const upload = `up_${'k'.repeat(22)}`
+  const sent = (operationId: Option.Option<string>, uploadId: Option.Option<string>) =>
+    SendLink({ index: 0, url, operationId, uploadId })
+
+  test('an empty address sends nothing', () => {
+    story(
+      update,
+      given(init()),
+      message(Message.ChangedLink({ url: '   ' })),
+      message(Message.SubmittedLink()),
+      model(({ links }) => expect(links).toEqual([])),
+    )
+  })
+
+  test('tried again, it asks for the same capture from the picture already read, then hands over to the tray', () => {
+    story(
+      update,
+      given(init()),
+      message(Message.ChangedLink({ url: ` ${url} ` })),
+      message(Message.SubmittedLink()),
+      Command.resolve(
+        sent(Option.none(), Option.none()),
+        Message.FailedSendLink({
+          index: 0,
+          problem: 'network',
+          operationId: Option.some('op-link-1'),
+          uploadId: Option.some(upload),
+        }),
+      ),
+      message(Message.ClickedRetryLink({ index: 0 })),
+      Command.resolve(
+        sent(Option.some('op-link-1'), Option.some(upload)),
+        Message.SucceededSendLink({ index: 0, captureId: captureOf(1), name: Option.some('Navy cable knit') }),
+      ),
+      model(({ links }) => expect(links[0]?.name).toEqual(Option.some('Navy cable knit'))),
+      expectOutMessage({ _tag: 'FinishedSending' }),
     )
   })
 })

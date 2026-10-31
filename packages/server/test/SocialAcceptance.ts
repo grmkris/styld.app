@@ -291,6 +291,24 @@ const verifyWishes = async (owner: Call, other: Call, pieceId: string) => {
   expect(await (await other('/api/wishes')).json()).toEqual({ wishes: [] })
 }
 
+/** Add from a link on the website: only public https pages are read, at an account's pace and for the signed in;
+ * the picture then goes to the tray as a capture from a link. */
+const verifyLinks = async (origin: string, other: Call) => {
+  const http = { url: 'http://shop.test/products/navy-knit' }
+  expect((await fetch(`${origin}/api/links/picture`, { method: 'POST', body: JSON.stringify(http) })).status).toBe(401)
+  await refusal(await send(other, '/api/links/picture', 'POST', http), 422, 'LinkRefused')
+  const uploadId = await receivedPhoto(origin, other)
+  const created = await send(other, '/api/captures', 'POST', {
+    operationId: 'native-link-0001',
+    uploadId,
+    source: 'link',
+  })
+  const { captureId } = Schema.decodeUnknownSync(Schema.Struct({ captureId: Schema.String }))(await created.json())
+  expect(await (await other('/api/captures/tray')).json()).toMatchObject({
+    captures: [{ id: captureId, source: 'link' }],
+  })
+}
+
 /** Profiles and what other people may see of each account. */
 export const verifySocial = async (origin: string, fixtures: string): Promise<void> => {
   expect((await fetch(`${fixtures}/test/identity/seed-social`, { method: 'POST' })).status).toBe(204)
@@ -304,4 +322,5 @@ export const verifySocial = async (origin: string, fixtures: string): Promise<vo
   await verifyPeople(origin, owner, other, reporters)
   await verifyDiscovery(origin, owner)
   await verifyWishes(owner, other, pieceId)
+  await verifyLinks(origin, other)
 }

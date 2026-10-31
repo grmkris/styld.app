@@ -4,7 +4,7 @@ import { Schema } from 'effect'
 import { File } from 'foldkit'
 import { defineTaggedUnion } from 'foldkit/schema'
 import * as HeldCamera from '../HeldCamera.ts'
-import { SendProblem, VideoPlan } from './Message.ts'
+import { LinkProblem, SendProblem, VideoPlan } from './Message.ts'
 
 // MODEL
 
@@ -49,6 +49,23 @@ export const Item = Schema.Struct({
 })
 export type Item = typeof Item.Type
 
+export const LinkSending = defineTaggedUnion({ Sending: {}, Sent: {}, Failed: { problem: LinkProblem } })
+export type LinkSending = typeof LinkSending.Type
+
+/** A shop's product page on its way to the review tray: Styld reads its picture into an upload, which then goes like
+ * a picked photo. The operation id and the upload are kept once known, so trying again neither reads the page twice
+ * nor makes two captures. */
+export const LinkItem = Schema.Struct({
+  key: Schema.String,
+  url: Schema.String,
+  /** The name the page gives the product, once read. */
+  name: Schema.Option(Schema.String),
+  operationId: Schema.Option(Schema.String),
+  uploadId: Schema.Option(Schema.String),
+  sending: LinkSending,
+})
+export type LinkItem = typeof LinkItem.Type
+
 /** A video being read and sent, part by part: a phone that sleeps meanwhile stops the work. */
 export const isReadingVideo = (item: Item) => item.kind === 'video' && Sending.guards.Sending(item.sending)
 
@@ -60,6 +77,9 @@ export const Model = Schema.Struct({
   /** Every file chosen on this page, in order; a file keeps its place, so its index names it. */
   items: Schema.Array(Item),
   rejected: Schema.Array(Schema.Struct({ name: Schema.String, problem: FileProblem })),
+  /** The product page address being typed. */
+  link: Schema.String,
+  links: Schema.Array(LinkItem),
 })
 export type Model = typeof Model.Type
 
@@ -68,4 +88,6 @@ export const init = (): Model => ({
   held: HeldCamera.init(),
   items: [],
   rejected: [],
+  link: '',
+  links: [],
 })

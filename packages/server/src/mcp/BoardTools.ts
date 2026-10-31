@@ -331,7 +331,7 @@ const pinTools = (
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       handler: ({ boardId, operationId, imageUrl }) =>
         Effect.gen(function* () {
-          const uploadId = yield* uploadFrom(wardrobe, http, origin, imageUrl)
+          const uploadId = yield* uploadFrom(wardrobe, http, imageUrl)
           yield* boards.addBoardImage(boardId, { operationId, uploadId }).pipe(Effect.mapError(asToolError))
           return show(yield* boards.getBoard(boardId).pipe(Effect.mapError(asToolError)))
         }),

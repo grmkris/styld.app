@@ -3,13 +3,12 @@ import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import * as FetchHttpClient from 'effect/http/FetchHttpClient'
-import * as HttpClient from 'effect/http/HttpClient'
 import { type D1, McpOAuth } from '../OAuth.ts'
 import { challenge, McpScope } from './Policy.ts'
 import { readResource, resources } from './Resources.ts'
 import { type Curation, isAdmin } from '../social/Curation.ts'
 import { curationTools } from './CurationTools.ts'
+import { publicClient } from './ImageImport.ts'
 import { instructions, styldTools, type ToolServices } from './StyldTools.ts'
 import { callTool, renderTools } from './Tools.ts'
 
@@ -38,12 +37,7 @@ export const mcpRoutes = (
   Layer.unwrap(
     Effect.gen(function* () {
       const server = yield* McpOAuth.Service
-      // Photos an assistant points at are fetched without following redirects; ImageImport does.
-      const http = yield* HttpClient.HttpClient.pipe(
-        Effect.provide(
-          FetchHttpClient.layer.pipe(Layer.provide(Layer.succeed(FetchHttpClient.RequestInit, { redirect: 'manual' }))),
-        ),
-      )
+      const http = yield* publicClient
       const tools = styldTools(db, origin, services, http)
       return routesFor(server, {
         db,

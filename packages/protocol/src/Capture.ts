@@ -8,8 +8,8 @@ export const DetectionId = Schema.String.check(Schema.isPattern(/^dt_[A-Za-z0-9_
 )
 export type DetectionId = typeof DetectionId.Type
 
-/** Where a capture came from: the phone's picker, Styld's camera, or a video. */
-export const CaptureSource = Schema.Literals(['picker', 'camera', 'video'])
+/** Where a capture came from: the phone's picker, Styld's camera, a video, or a shop's product page. */
+export const CaptureSource = Schema.Literals(['picker', 'camera', 'video', 'link'])
 export type CaptureSource = typeof CaptureSource.Type
 
 /**

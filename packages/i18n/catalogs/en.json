@@ -2922,7 +2922,19 @@
     "queueSummary": "{sent} of {total} sent{failed, plural, =0 {} one {, # didn't go} other {, # didn't go}}",
     "actionFailed": "That didn't work. Try again.",
     "stale": "Can't refresh right now; this may be out of date.",
-    "readingPart": "Reading the video, part {part} of {parts}"
+    "readingPart": "Reading the video, part {part} of {parts}",
+    "linkTitle": "From a shop’s page",
+    "linkHint": "Paste the address of a product page, and Styld takes its picture.",
+    "linkAdd": "Add",
+    "readingLink": "Reading the page…",
+    "linkProblem": {
+      "notHttps": "Only https pages can be read.",
+      "notReached": "Styld couldn’t reach that page.",
+      "blocked": "This shop doesn’t let Styld read its pages. Send a photo or a screenshot instead.",
+      "notAPage": "That address isn’t a web page.",
+      "noPicture": "No product picture on that page. Send a photo or a screenshot instead.",
+      "slowDown": "Too many links at once. Try again in a minute."
+    }
   },
   "looks": {
     "title": "Looks",
@@ -3055,7 +3067,9 @@
     "inWardrobe": "In your wardrobe",
     "emptyTitle": "Nothing to search yet",
     "emptyHint": "Add clothes and find them here by name, colour or kind.",
-    "sheetTitle": "Add"
+    "sheetTitle": "Add",
+    "addLink": "Add from a link",
+    "addLinkHint": "A shop’s product page"
   },
   "today": {
     "title": "Today",

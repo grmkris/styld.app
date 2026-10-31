@@ -24,6 +24,7 @@ import {
   CompassLight,
   HouseLight,
   ImageRegular,
+  LinkRegular,
   PencilSimpleRegular,
   PlusRegular,
   TShirtLight,
@@ -75,6 +76,7 @@ export const addIcon = control(PlusRegular)
 export const deleteIcon = control(TrashRegular)
 export const cameraIcon = control(CameraRegular)
 export const videoIcon = control(VideoCameraRegular)
+export const linkIcon = control(LinkRegular)
 export const retryIcon = control(ArrowsClockwiseRegular)
 export const undoIcon = control(ArrowCounterClockwiseRegular)
 export const redoIcon = control(ArrowClockwiseRegular)

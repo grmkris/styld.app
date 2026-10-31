@@ -1,15 +1,11 @@
-import { Effect, Option, Schema, Stream } from 'effect'
+import { LinkRefused } from '@styld/protocol'
+import { Effect, Option, Stream } from 'effect'
 import type * as HttpClientResponse from 'effect/http/HttpClientResponse'
 import { fetchPublic } from '../mcp/ImageImport.ts'
 
 // A product page as Styld reads it: its picture and its name, from the page's JSON-LD `Product`, else its Open
 // Graph or Twitter tags. Only public https pages, fetched with the same guard as a photo; a shop that refuses
 // answers that it did, so the person can send a photo instead.
-
-/** Why a link gave nothing to add. */
-export class LinkRefused extends Schema.TaggedError<LinkRefused>()('LinkRefused', {
-  reason: Schema.Literals(['notHttps', 'notReached', 'blocked', 'notAPage', 'noPicture']),
-}) {}
 
 /** What a product page says about itself. */
 export interface ProductPage {

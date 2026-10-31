@@ -122,7 +122,7 @@ export const captures = sqliteTable(
       .notNull()
       .references(() => accounts.id, { onDelete: 'cascade' }),
     kind: text('kind', { enum: ['photo', 'video'] }).notNull(),
-    source: text('source', { enum: ['picker', 'camera', 'video', 'assistant'] }).notNull(),
+    source: text('source', { enum: ['picker', 'camera', 'video', 'link', 'assistant'] }).notNull(),
     status: text('status', { enum: ['processing', 'review', 'done', 'failed', 'unknown'] }).notNull(),
     uploadId: text('upload_id').notNull().unique(),
     originalKey: text('original_key').notNull(),

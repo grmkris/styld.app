@@ -9,6 +9,21 @@ import * as HeldCamera from '../HeldCamera.ts'
 export const SendProblem = Schema.Literals(['dailyLimit', 'videoTooLong', 'videoUnreadable', 'refused', 'network'])
 export type SendProblem = typeof SendProblem.Type
 
+/** Why a product page went nowhere: the page's own refusals (from `LinkRefused`), too many links at once, or what
+ * stops any send. */
+export const LinkProblem = Schema.Literals([
+  'notHttps',
+  'notReached',
+  'blocked',
+  'notAPage',
+  'noPicture',
+  'slowDown',
+  'dailyLimit',
+  'refused',
+  'network',
+])
+export type LinkProblem = typeof LinkProblem.Type
+
 /** One 30-second part of a video, in milliseconds from its start. */
 export const VideoPart = Schema.Struct({ index: Schema.Number, startMs: Schema.Number, endMs: Schema.Number })
 
@@ -38,6 +53,16 @@ export const Message = defineMessageUnion({
     prepared: Schema.Option(CreateVideoCapture),
   },
   ClickedRetry: { index: Schema.Number },
+  ChangedLink: { url: Schema.String },
+  SubmittedLink: {},
+  SucceededSendLink: { index: Schema.Number, captureId: CaptureId, name: Schema.Option(Schema.String) },
+  FailedSendLink: {
+    index: Schema.Number,
+    problem: LinkProblem,
+    operationId: Schema.Option(Schema.String),
+    uploadId: Schema.Option(Schema.String),
+  },
+  ClickedRetryLink: { index: Schema.Number },
   ClickedReview: {},
 })
 export type Message = typeof Message.Type

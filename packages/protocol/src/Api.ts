@@ -13,6 +13,7 @@ import {
   PublishProfile,
   UpdateProfile,
 } from './Profile.ts'
+import { LinkApi } from './Link.ts'
 import { AddWish, Wish, WishId, Wishes } from './Wish.ts'
 import {
   CreateReport,
@@ -436,4 +437,5 @@ export class StyldApi extends HttpApi.make('styld')
   .add(WornApi)
   .add(ProfileApi)
   .add(PublicApi)
-  .add(SocialApi) {}
+  .add(SocialApi)
+  .add(LinkApi) {}

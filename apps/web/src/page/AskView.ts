@@ -7,7 +7,7 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
-import { addIcon, boardsTabIcon, cameraIcon, closeIcon, searchIcon, stylistIcon } from '../Icon.ts'
+import { addIcon, boardsTabIcon, cameraIcon, closeIcon, linkIcon, searchIcon, stylistIcon } from '../Icon.ts'
 import { accountRouter, addPiecesRouter, assistantsSection, boardsRouter, pieceRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
@@ -304,6 +304,14 @@ const addSheetView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Ht
                   format(locale, 'ask.addClothes', {}),
                   format(locale, 'ask.addClothesHint', {}),
                   info.initialFocus,
+                  h,
+                ),
+                option(
+                  `${addPiecesRouter({})}#link`,
+                  linkIcon(h),
+                  format(locale, 'ask.addLink', {}),
+                  format(locale, 'ask.addLinkHint', {}),
+                  [],
                   h,
                 ),
                 option(

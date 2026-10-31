@@ -3,6 +3,7 @@ import {
   CaptureSource,
   CreateVideoCapture,
   ImageType,
+  LinkRefused,
   OperationId,
   Side,
   UploadId,
@@ -13,7 +14,7 @@ import * as Crypto from 'effect/Crypto'
 import { Command, File } from 'foldkit'
 import { FileNotSent, StyldClient } from '../../StyldClient.ts'
 import type { SampledStill } from '../../capture/Frames.ts'
-import { Message, type SendProblem, VideoPart } from './Message.ts'
+import { type LinkProblem, Message, type SendProblem, VideoPart } from './Message.ts'
 
 /** The operation id an earlier try drew, or a new one. */
 const operationIdOf = (known: Option.Option<string>) =>
@@ -110,6 +111,73 @@ export const SendPhoto = Command.define('SendPhoto', {
           operationId: Option.none(),
           uploadId: Option.none(),
           prepared: Option.none(),
+        }),
+      ),
+    ),
+})
+
+/** What a product page that went nowhere means for the person: the page's own refusal, or what stops any send. */
+const linkProblemOf = (error: unknown): LinkProblem => {
+  if (Predicate.isTagged(error, 'LinkRefused') && Predicate.hasProperty(error, 'reason')) {
+    const reason = Schema.decodeUnknownOption(LinkRefused.fields.reason)(error.reason)
+    if (Option.isSome(reason)) return reason.value
+  }
+  if (Predicate.isTagged(error, 'LinkSlowDown')) return 'slowDown'
+  const problem = problemOf(error)
+  return problem === 'dailyLimit' || problem === 'refused' ? problem : 'network'
+}
+
+const SendLinkArgs = Schema.Struct({
+  index: Schema.Number,
+  url: Schema.String,
+  operationId: Schema.Option(Schema.String),
+  uploadId: Schema.Option(Schema.String),
+})
+
+/** Have Styld read a product page's picture into an upload, unless an earlier try did, then make it a capture from a
+ * link. A failure worth retrying keeps the operation id and the upload, like a photo's. */
+export const SendLink = Command.define('SendLink', {
+  args: SendLinkArgs.fields,
+  messages: [Message.SucceededSendLink, Message.FailedSendLink],
+  execute: (args) =>
+    Effect.gen(function* () {
+      const operationId = yield* operationIdOf(args.operationId)
+      const api = yield* (yield* StyldClient).api
+      const failed = (uploadId: Option.Option<string>, error: unknown) => {
+        const problem = linkProblemOf(error)
+        const keep = problem === 'network' || problem === 'slowDown'
+        return Message.FailedSendLink({
+          index: args.index,
+          problem,
+          operationId: keep ? Option.some(operationId) : Option.none(),
+          uploadId: keep ? uploadId : Option.none(),
+        })
+      }
+      const picture = yield* Effect.result(
+        Option.match(args.uploadId, {
+          onSome: (id) =>
+            Effect.map(Schema.decodeUnknownEffect(UploadId)(id), (uploadId) => ({ uploadId, name: null })),
+          onNone: () => api.links.readLink({ payload: { url: args.url } }),
+        }),
+      )
+      if (Result.isFailure(picture)) return failed(Option.none(), picture.failure)
+      const { uploadId, name } = picture.success
+      const created = yield* Effect.result(
+        api.capture.createCapture({ payload: { operationId, uploadId, source: 'link' } }),
+      )
+      if (Result.isFailure(created)) return failed(Option.some(uploadId), created.failure)
+      return Message.SucceededSendLink({
+        index: args.index,
+        captureId: created.success.captureId,
+        name: Option.fromNullishOr(name),
+      })
+    }).pipe(
+      Effect.orElseSucceed(() =>
+        Message.FailedSendLink({
+          index: args.index,
+          problem: 'network',
+          operationId: Option.none(),
+          uploadId: Option.none(),
         }),
       ),
     ),

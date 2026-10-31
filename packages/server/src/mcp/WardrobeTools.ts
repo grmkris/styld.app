@@ -4,6 +4,7 @@ import {
   Colour,
   CreateUpload,
   ImageType,
+  type LinkRefused,
   OperationId,
   type OperationConflict,
   type Piece,
@@ -20,9 +21,9 @@ import {
 import { Effect, Match, Option, Schema } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
-import { importImage, type ImportRefused } from './ImageImport.ts'
+import { importedUpload, type ImportRefused } from './ImageImport.ts'
 import { tool, ToolError } from './Tools.ts'
-import { type LinkRefused, readProductPage } from '../links/LinkImport.ts'
+import { readProductPage } from '../links/LinkImport.ts'
 
 type WardrobeFailure =
   | PieceNotFound
@@ -256,7 +257,7 @@ const writeTools = (
           })
         const earlier = yield* wardrobe.pieceAddedBy(input.operationId).pipe(Effect.mapError(asToolError))
         if (Option.isSome(earlier)) return show(earlier.value)
-        const target = uploadId ?? (yield* uploadFrom(wardrobe, http, origin, imageUrl ?? ''))
+        const target = uploadId ?? (yield* uploadFrom(wardrobe, http, imageUrl ?? ''))
         return show(yield* wardrobe.addPiece({ ...fields, uploadId: target }).pipe(Effect.mapError(asToolError)))
       }),
   }),
@@ -282,12 +283,7 @@ const writeTools = (
 ]
 
 /** Adding a piece from a shop's product page. */
-const linkTools = (
-  wardrobe: Wardrobe['Service'],
-  show: ReturnType<typeof shown>,
-  origin: string,
-  http: HttpClient.HttpClient,
-) => [
+const linkTools = (wardrobe: Wardrobe['Service'], show: ReturnType<typeof shown>, http: HttpClient.HttpClient) => [
   tool({
     name: 'link_import',
     title: 'Add a piece from a link',
@@ -303,7 +299,7 @@ const linkTools = (
           Effect.provideService(HttpClient.HttpClient, http),
           Effect.mapError(({ reason }) => linkRefusals[reason]),
         )
-        const uploadId = yield* uploadFrom(wardrobe, http, origin, page.image)
+        const uploadId = yield* uploadFrom(wardrobe, http, page.image)
         const named = chosen ?? Option.getOrUndefined(page.title)
         return show(
           yield* wardrobe
@@ -317,25 +313,12 @@ const linkTools = (
 /** The wardrobe's tools: thin projections of the same `Wardrobe` operations the website uses. */
 export const wardrobeTools = (wardrobe: Wardrobe['Service'], origin: string, http: HttpClient.HttpClient) => {
   const show = shown(origin)
-  return [
-    ...readTools(wardrobe, show),
-    ...writeTools(wardrobe, show, origin, http),
-    ...linkTools(wardrobe, show, origin, http),
-  ]
+  return [...readTools(wardrobe, show), ...writeTools(wardrobe, show, origin, http), ...linkTools(wardrobe, show, http)]
 }
 
 /** Download the photo an assistant points at into a fresh upload. */
-export const uploadFrom = (
-  wardrobe: Wardrobe['Service'],
-  http: HttpClient.HttpClient,
-  origin: string,
-  imageUrl: string,
-) =>
-  Effect.gen(function* () {
-    const { contentType, bytes } = yield* importImage(imageUrl)
-    // The photo goes through the same upload checks as one an assistant PUTs itself.
-    const upload = yield* wardrobe.createUpload({ contentType, bytes: bytes.byteLength })
-    const token = new URL(upload.path, origin).searchParams.get('token') ?? ''
-    yield* wardrobe.receiveUpload({ uploadId: upload.uploadId, token, contentType, body: bytes })
-    return upload.uploadId
-  }).pipe(Effect.provideService(HttpClient.HttpClient, http), Effect.mapError(asToolError))
+export const uploadFrom = (wardrobe: Wardrobe['Service'], http: HttpClient.HttpClient, imageUrl: string) =>
+  importedUpload(wardrobe, imageUrl).pipe(
+    Effect.provideService(HttpClient.HttpClient, http),
+    Effect.mapError(asToolError),
+  )

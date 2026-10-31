@@ -56,6 +56,10 @@ export const source = style({
 export const sourceIcons = style({ display: 'flex', gap: '6px', color: 'ink', fontSize: '24px' })
 export const sourceTitle = style({ color: 'ink', fontSize: '15px', fontWeight: 600, textWrap: 'balance' })
 export const sourceHint = style({ fontSize: '13px' })
+/** Add from a link: what it does, then the address and its Add button on one line. Its anchor clears the bar. */
+export const linkForm = style({ display: 'grid', gap: '6px', marginBlockStart: '20px', scrollMarginBlockStart: '72px' })
+export const linkHint = style({ fontSize: '13px', color: 'ink2' })
+export const linkRow = style({ display: 'flex', gap: '8px', alignItems: 'center' })
 export const problems = style({
   display: 'grid',
   gap: '4px',

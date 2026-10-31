@@ -425,7 +425,23 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   boards before there are any), with a way to Explore. The section keeps its room while they load. Evidence: a
   scene test.
 - **Next:**
-  - M6: the web's Add from a link (a capture in the tray, through the capture session's admit step) is next.
+  - M6: a wish's "Got it" (opening the camera) is next, then the preview readback of the wishlist and Add from a
+    link on real shop pages.
+- **M6d, Add from a link on the website:**
+  - The Add pieces page has a fourth way in, From a shop's page, and Ask's + sheet has Add from a link
+    (`/wardrobe/add#link`).
+  - `POST /api/links/picture` reads the page with `link_import`'s guard and takes its picture into a received
+    upload of the person's (`LINK_IMPORT_RATE_LIMIT`, ten a minute per account). The page then sends it like a
+    picked photo, with the capture source `link`, so receipts, credits and "Already in your wardrobe?" are the
+    capture path's.
+  - A link row is named by the page's name once read, else its address. Trying again keeps the operation and the
+    picture already read. A shop that keeps Styld out, or a page without a picture, asks for a photo or a
+    screenshot instead.
+  - Evidence:
+    - unit: the picture read into an upload with the page's name, and a picture Styld cannot take counting as none;
+    - stories: an empty address, and the retry keeping its operation and upload;
+    - scenes: the row, a blocked shop, a retry handing over to the tray, and the + sheet's options;
+    - native: signed out answers 401, http is refused, and a capture from a link goes to the tray as one.
 - **Signed out on public pages:** a visitor without a session sees Sign in to save (or Sign in to follow, on a
   profile) where Save, Save to wishlist, Follow and Report would be, instead of actions that fail. Signed in, a
   profile shows no Sign in while the visitor's standing is read, and none on one's own. Evidence: the visitor

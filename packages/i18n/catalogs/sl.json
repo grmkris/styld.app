@@ -2922,7 +2922,19 @@
     "queueSummary": "Poslano {sent} od {total}{failed, plural, =0 {} one {, # ni šla} two {, # nista šli} few {, # niso šle} other {, # jih ni šlo}}",
     "actionFailed": "Ni uspelo. Poskusi znova.",
     "stale": "Trenutno ni mogoče osvežiti; prikaz morda ni najnovejši.",
-    "readingPart": "Berem video, del {part} od {parts}"
+    "readingPart": "Berem video, del {part} od {parts}",
+    "linkTitle": "S strani trgovine",
+    "linkHint": "Prilepi naslov strani izdelka in Styld vzame njeno sliko.",
+    "linkAdd": "Dodaj",
+    "readingLink": "Berem stran …",
+    "linkProblem": {
+      "notHttps": "Brati je mogoče le strani https.",
+      "notReached": "Styld te strani ni mogel doseči.",
+      "blocked": "Ta trgovina Styldu ne dovoli brati svojih strani. Raje pošlji fotografijo ali posnetek zaslona.",
+      "notAPage": "Ta naslov ni spletna stran.",
+      "noPicture": "Na tej strani ni slike izdelka. Raje pošlji fotografijo ali posnetek zaslona.",
+      "slowDown": "Preveč povezav naenkrat. Poskusi znova čez minuto."
+    }
   },
   "looks": {
     "title": "Videzi",
@@ -3055,7 +3067,9 @@
     "inWardrobe": "V tvoji garderobi",
     "emptyTitle": "Še ni česa iskati",
     "emptyHint": "Dodaj oblačila in tu jih najdeš po imenu, barvi ali vrsti.",
-    "sheetTitle": "Dodaj"
+    "sheetTitle": "Dodaj",
+    "addLink": "Dodaj s povezavo",
+    "addLinkHint": "Stran izdelka v trgovini"
   },
   "today": {
     "title": "Danes",

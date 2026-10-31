@@ -1,7 +1,11 @@
+import { UploadId } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
 import { describe, expect, test } from 'vitest'
 import { productFrom, readProductPage } from '../src/links/LinkImport.ts'
+import { CurrentAccount } from '../src/CurrentAccount.ts'
+import { pictureFromLink } from '../src/links/LinkPicture.ts'
+import type { Uploads } from '../src/mcp/ImageImport.ts'
 import { serving } from './HttpFixture.ts'
 
 const page = new URL('https://shop.test/products/navy-knit')
@@ -69,5 +73,52 @@ describe('fetching a product page', () => {
         'https://shop.test/p/4': () => new Response('{}', { headers: { 'content-type': 'application/json' } }),
       }),
     ).toBe('notAPage')
+  })
+})
+
+describe('a product page for the review tray', () => {
+  const uploadId = UploadId.make(`up_${'knit'.padEnd(22, 'x')}`)
+  const received: Array<{ readonly token: string; readonly contentType: string; readonly bytes: number }> = []
+  const uploads: Uploads = {
+    createUpload: () =>
+      Effect.succeed({ uploadId, path: `/api/uploads/${uploadId}?token=once`, expiresAt: '2026-10-31T09:00:00.000Z' }),
+    receiveUpload: (input: { readonly token: string; readonly contentType: string; readonly body: Uint8Array }) =>
+      Effect.as(
+        Effect.sync(() =>
+          received.push({ token: input.token, contentType: input.contentType, bytes: input.body.byteLength }),
+        ),
+        undefined,
+      ),
+  }
+  const read = (routes: Record<string, () => Response>) =>
+    Effect.runPromise(
+      pictureFromLink(uploads, 'https://shop.test/p/knit').pipe(
+        Effect.provideService(HttpClient.HttpClient, serving(routes)),
+        Effect.provideService(CurrentAccount, { accountId: 'acc_1', via: 'session' }),
+        Effect.catchTag('LinkRefused', ({ reason }) => Effect.succeed(reason)),
+      ),
+    )
+  const knitPage = html(
+    '<meta property="og:image" content="/i/knit.webp"><meta property="og:title" content="Navy knit">',
+  )
+
+  test('takes the page’s picture into a received upload, with the page’s name', async () => {
+    expect(
+      await read({
+        'https://shop.test/p/knit': knitPage,
+        'https://shop.test/i/knit.webp': () =>
+          new Response(new Uint8Array([1, 2, 3]), { headers: { 'content-type': 'image/webp' } }),
+      }),
+    ).toEqual({ uploadId, name: 'Navy knit' })
+    expect(received).toEqual([{ token: 'once', contentType: 'image/webp', bytes: 3 }])
+  })
+
+  test('a picture Styld cannot take counts as none, so the person is asked for a photo', async () => {
+    expect(
+      await read({
+        'https://shop.test/p/knit': knitPage,
+        'https://shop.test/i/knit.webp': () => new Response('<svg/>', { headers: { 'content-type': 'image/svg+xml' } }),
+      }),
+    ).toBe('noPicture')
   })
 })

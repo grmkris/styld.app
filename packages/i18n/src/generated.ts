@@ -370,6 +370,8 @@ export interface MessageArgumentsByKey<T = string> {
   'ask.add': Readonly<Record<string, never>>
   'ask.addClothes': Readonly<Record<string, never>>
   'ask.addClothesHint': Readonly<Record<string, never>>
+  'ask.addLink': Readonly<Record<string, never>>
+  'ask.addLinkHint': Readonly<Record<string, never>>
   'ask.clear': Readonly<Record<string, never>>
   'ask.emptyHint': Readonly<Record<string, never>>
   'ask.emptyTitle': Readonly<Record<string, never>>
@@ -710,6 +712,15 @@ export interface MessageArgumentsByKey<T = string> {
   'capture.keepLabel': { readonly name: string | number }
   'capture.layOutHint': Readonly<Record<string, never>>
   'capture.layOutTitle': Readonly<Record<string, never>>
+  'capture.linkAdd': Readonly<Record<string, never>>
+  'capture.linkHint': Readonly<Record<string, never>>
+  'capture.linkProblem.blocked': Readonly<Record<string, never>>
+  'capture.linkProblem.noPicture': Readonly<Record<string, never>>
+  'capture.linkProblem.notAPage': Readonly<Record<string, never>>
+  'capture.linkProblem.notHttps': Readonly<Record<string, never>>
+  'capture.linkProblem.notReached': Readonly<Record<string, never>>
+  'capture.linkProblem.slowDown': Readonly<Record<string, never>>
+  'capture.linkTitle': Readonly<Record<string, never>>
   'capture.notSupported': { readonly name: string | number }
   'capture.preparingVideo': Readonly<Record<string, never>>
   'capture.problem.dailyLimit': Readonly<Record<string, never>>
@@ -720,6 +731,7 @@ export interface MessageArgumentsByKey<T = string> {
   'capture.problem.videoUnreadable': Readonly<Record<string, never>>
   'capture.queueLabel': Readonly<Record<string, never>>
   'capture.queueSummary': { readonly sent: string | number; readonly total: string | number; readonly failed: number }
+  'capture.readingLink': Readonly<Record<string, never>>
   'capture.readingPart': { readonly part: string | number; readonly parts: string | number }
   'capture.remove': Readonly<Record<string, never>>
   'capture.retryFile': { readonly name: string | number }
@@ -2644,4 +2656,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '6e36e632130a0a59f7de493c8f1fc39aa5c30eecfbe7fdbc76cb5745ee6fd677'
+export const catalogVersion = 'ed1f95c1ddc4916932beb06c4ce145d59bcb3cb12deb81d7b3499f90ab985426'

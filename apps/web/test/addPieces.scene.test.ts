@@ -1,11 +1,13 @@
 import { catalogVersion } from '@styld/i18n'
 import { CaptureId } from '@styld/protocol'
 import { Option } from 'effect'
-import { Command, changeFiles, expect, given, scene, selector, text } from 'foldkit/scene'
+import { Command, changeFiles, click, expect, given, role, scene, selector, submit, text, type } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { Session, init, update } from '../src/App.ts'
-import { InspectVideo, SendVideoPart } from '../src/page/AddPieces/Commands.ts'
+import { Message as AppMessage } from '../src/Message.ts'
+import { Navigate } from '../src/Navigation.ts'
+import { InspectVideo, SendLink, SendVideoPart } from '../src/page/AddPieces/Commands.ts'
 import { Message, type VideoPlan } from '../src/page/AddPieces/Message.ts'
 import { view } from '../src/View.ts'
 
@@ -59,6 +61,59 @@ describe('reading a video on the add page', () => {
         }),
       ),
       expect(text("Today's free allowance covered 1 of 2 parts. Send the rest tomorrow.")).toExist(),
+    )
+  })
+})
+
+describe('adding from a shop’s page', () => {
+  const address = 'https://shop.test/products/navy-knit?colour=navy'
+  const field = role('textbox', { name: 'From a shop’s page' })
+  const added = [type(field, address), submit(selector('#link'))] as const
+
+  test('reads the page and names the row by its address, then says when the shop keeps Styld out', () => {
+    scene(
+      { update, view },
+      given(addPage),
+      ...added,
+      expect(field).toHaveValue(''),
+      expect(text('shop.test/products/navy-knit')).toExist(),
+      expect(text('Reading the page…')).toExist(),
+      Command.resolve(
+        SendLink,
+        Message.FailedSendLink({ index: 0, problem: 'blocked', operationId: Option.none(), uploadId: Option.none() }),
+      ),
+      expect(text('This shop doesn’t let Styld read its pages. Send a photo or a screenshot instead.')).toExist(),
+      expect(role('button', { name: 'Try shop.test/products/navy-knit again' })).toBeAbsent(),
+    )
+  })
+
+  test('a page out of reach can be tried again, and the row takes the name the page gives', () => {
+    scene(
+      { update, view },
+      given(addPage),
+      ...added,
+      Command.resolve(
+        SendLink,
+        Message.FailedSendLink({
+          index: 0,
+          problem: 'network',
+          operationId: Option.some('op-link-1'),
+          uploadId: Option.none(),
+        }),
+      ),
+      click(role('button', { name: 'Try shop.test/products/navy-knit again' })),
+      expect(text('Reading the page…')).toExist(),
+      Command.resolve(
+        SendLink,
+        Message.SucceededSendLink({
+          index: 0,
+          captureId: CaptureId.make(`cp_${'k'.repeat(22)}`),
+          name: Option.some('Navy cable knit'),
+        }),
+      ),
+      // Everything chosen went: the review tray takes over.
+      Command.expectExact(Navigate({ href: '/wardrobe/review' })),
+      Command.resolve(Navigate({ href: '/wardrobe/review' }), AppMessage.CompletedNavigate()),
     )
   })
 })

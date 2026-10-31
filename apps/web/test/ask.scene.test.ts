@@ -1,9 +1,11 @@
 import { catalogVersion } from '@styld/i18n'
 import type { Piece } from '@styld/protocol'
-import { expect, given, role, scene, text } from 'foldkit/scene'
+import { Dialog } from '@foldkit/ui'
+import { expect, given, Mount, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { Session, init, update } from '../src/App.ts'
+import * as Ask from '../src/page/Ask.ts'
 import { PiecesData } from '../src/page/Wardrobe.ts'
 import { view } from '../src/View.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
@@ -39,6 +41,20 @@ describe('Ask', () => {
       expect(role('heading', { name: 'Nothing to search yet' })).toExist(),
       expect(role('link', { name: 'Add clothes' })).toHaveAttr('href', '/wardrobe/add'),
       expect(role('group', { name: 'Suggestions' })).not.toExist(),
+    )
+  })
+
+  test('the + sheet offers adding clothes, adding from a shop’s page, or starting a board', () => {
+    const open = modifyFields(askWith([tee]), {
+      ask: (current) => Ask.update(current, Ask.Message.ClickedAdd()).model,
+    })
+    scene(
+      { update, view },
+      given(open),
+      Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
+      expect(role('link', { name: /^Add clothes/ })).toHaveAttr('href', '/wardrobe/add'),
+      expect(role('link', { name: /^Add from a link/ })).toHaveAttr('href', '/wardrobe/add#link'),
+      expect(role('link', { name: /^Start a board/ })).toHaveAttr('href', '/boards'),
     )
   })
 

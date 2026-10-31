@@ -5,10 +5,18 @@ import type * as Crypto from 'effect/Crypto'
 import { File, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import type { StyldClient } from '../../StyldClient.ts'
-import { InspectVideo, SendPhoto, SendVideo, SendVideoPart } from './Commands.ts'
+import { InspectVideo, SendLink, SendPhoto, SendVideo, SendVideoPart } from './Commands.ts'
 import * as HeldCamera from '../HeldCamera.ts'
 import { Message, OutMessage, type VideoPlan } from './Message.ts'
-import { type FileProblem, type Item, isReadingVideo, type Model, Sending } from './Model.ts'
+import {
+  type FileProblem,
+  type Item,
+  isReadingVideo,
+  type LinkItem,
+  LinkSending,
+  type Model,
+  Sending,
+} from './Model.ts'
 
 // UPDATE
 
@@ -107,14 +115,60 @@ const pump = (model: Model) => {
   }
 }
 
-/** Every file has gone up: the review tray takes over. One that failed, or an open camera, keeps the
- * person here. */
+/** Every file and product page has gone up: the review tray takes over. One that failed, or an open camera, keeps
+ * the person here. */
 const settled = (model: Model): UpdateReturn => {
   const next = pump(model)
-  const done = next.model.items.every(({ sending }) => Sending.guards.Sent(sending))
-  return done && next.model.items.length > 0 && !HeldCamera.isOpen(next.model.held)
+  const done =
+    next.model.items.every(({ sending }) => Sending.guards.Sent(sending)) &&
+    next.model.links.every(({ sending }) => LinkSending.guards.Sent(sending))
+  return done && next.model.items.length + next.model.links.length > 0 && !HeldCamera.isOpen(next.model.held)
     ? { ...next, outMessage: OutMessage.FinishedSending() }
     : next
+}
+
+/** Whether anything chosen here is still waiting or on its way. */
+const anyPending = (model: Model) =>
+  model.items.some(({ sending }) => Sending.guards.Waiting(sending) || Sending.guards.Sending(sending)) ||
+  model.links.some(({ sending }) => LinkSending.guards.Sending(sending))
+
+const sendLink = (link: LinkItem, index: number) =>
+  SendLink({ index, url: link.url, operationId: link.operationId, uploadId: link.uploadId })
+
+/** A product page joins the list and goes at once: it costs this device nothing to send. */
+const addedLink = (model: Model): UpdateReturn => {
+  const url = model.link.trim()
+  if (url.length === 0) return { model }
+  const link: LinkItem = {
+    key: `link:${model.links.length}:${url}`,
+    url,
+    name: Option.none(),
+    operationId: Option.none(),
+    uploadId: Option.none(),
+    sending: LinkSending.Sending(),
+  }
+  return {
+    model: modifyFields(model, { link: () => '', links: (links) => [...links, link] }),
+    commands: [sendLink(link, model.links.length)],
+  }
+}
+
+const withLink = (model: Model, index: number, change: (link: LinkItem) => LinkItem) =>
+  modifyFields(model, { links: (links) => links.map((link, at) => (at === index ? change(link) : link)) })
+
+type FailedSendLink = typeof Message.FailedSendLink.Type
+
+const failedLink = (model: Model, { index, problem, operationId, uploadId }: FailedSendLink) =>
+  withLink(model, index, (link) => ({ ...link, operationId, uploadId, sending: LinkSending.Failed({ problem }) }))
+
+/** Trying a product page again resumes where it stopped: the same upload and operation, if it got that far. */
+const retriedLink = (model: Model, index: number): UpdateReturn => {
+  const link = model.links[index]
+  if (link === undefined || !LinkSending.guards.Failed(link.sending)) return { model }
+  return {
+    model: withLink(model, index, (current) => ({ ...current, sending: LinkSending.Sending() })),
+    commands: [sendLink(link, index)],
+  }
 }
 
 const newItem = (
@@ -292,9 +346,19 @@ export const update = (model: Model, message: Message): UpdateReturn =>
           Sending.guards.Failed(item.sending) ? { ...item, sending: Sending.Waiting() } : item,
         ),
       ),
+    ChangedLink: ({ url }) => ({ model: modifyFields(model, { link: () => url }) }),
+    SubmittedLink: () => addedLink(model),
+    SucceededSendLink: ({ index, name }) =>
+      settled(
+        withLink(model, index, (link) => ({
+          ...link,
+          name: Option.orElse(name, () => link.name),
+          uploadId: Option.none(),
+          sending: LinkSending.Sent(),
+        })),
+      ),
+    FailedSendLink: (failure) => settled(failedLink(model, failure)),
+    ClickedRetryLink: ({ index }) => retriedLink(model, index),
     // The page offers this only once nothing is waiting or on its way, so no upload is cut short.
-    ClickedReview: () =>
-      model.items.some(({ sending }) => Sending.guards.Waiting(sending) || Sending.guards.Sending(sending))
-        ? { model }
-        : { model, outMessage: OutMessage.FinishedSending() },
+    ClickedReview: () => (anyPending(model) ? { model } : { model, outMessage: OutMessage.FinishedSending() }),
   })
