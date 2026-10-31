@@ -185,10 +185,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SubmittedSearch: () => ({ model, commands: [WriteQuery({ query: model.query }), FocusResults()] }),
     CompletedFocus: () => ({ model }),
     ClickedAdd: () => openAddSheet(model),
-    ClickedNewBoard: ({ defaultName }) => {
-      const closed = closeAddSheet(model)
-      return { ...closed, outMessage: OutMessage.RequestedNewBoard({ defaultName }) }
-    },
+    // The sheet stays open while the board is made, saying so; once made the board opens in its place.
+    ClickedNewBoard: ({ defaultName }) => ({ model, outMessage: OutMessage.RequestedNewBoard({ defaultName }) }),
     GotAddSheetMessage: (got) => foldAddSheet(model, got.message),
     ClickedRetry: () => ({ model, outMessage: OutMessage.RequestedPieces() }),
     SucceededLoadSearchLanguages: () => ({ model: modifyFields(model, { languages: () => SearchLanguages.Both() }) }),

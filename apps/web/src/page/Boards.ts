@@ -18,6 +18,7 @@ export const SavedData = AsyncData.Schema(Schema.Array(SavedThing), Schema.Liter
 export type SavedData = typeof SavedData.schema.Type
 
 export const Creating = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {} })
+export type Creating = typeof Creating.Type
 
 export const Model = Schema.Struct({
   boards: BoardsData.schema,

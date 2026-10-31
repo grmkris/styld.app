@@ -14,7 +14,8 @@ export const page = style({
   gap: '20px',
   paddingBlock: '0 40px',
   // A search reads in one measure on a wide screen (Gallery `.dask`), the + near the words.
-  '@media (min-width: 900px)': { maxInlineSize: '760px' },
+  // Centred, as Styld's chat one tap away is, so the column does not jump between them.
+  '@media (min-width: 900px)': { maxInlineSize: '760px', marginInline: 'auto', inlineSize: '100%' },
 })
 /** The search pill: the field, then its quiet clear and + inside, like the prototype's. */
 export const search = style({
@@ -184,19 +185,28 @@ export const sheetHead = style({
   paddingInlineStart: '12px',
 })
 export const sheetTitle = style({ fontSize: '17px', fontWeight: 600 })
+/** One way in on the + sheet: a link or a button that look the same, its icon, its name and a hint under it. */
 export const option = style({
   display: 'grid',
   gridTemplateColumns: 'auto 1fr',
   alignItems: 'center',
   columnGap: '12px',
+  inlineSize: '100%',
   minBlockSize: '64px',
   padding: '8px 12px',
+  borderWidth: '0',
   borderRadius: 'panel',
+  backgroundColor: 'transparent !custom',
   color: 'ink',
+  fontSize: 'inherit',
   fontWeight: 600,
+  textAlign: 'start',
   textDecorationLine: 'none',
+  cursor: 'pointer',
+  '&[aria-disabled="true"]': { cursor: 'progress' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2' } },
 })
+export const optionProblem = style({ paddingInline: '12px', fontSize: '14px', color: 'error' })
 export const optionIcon = style({
   display: 'grid',
   placeItems: 'center',

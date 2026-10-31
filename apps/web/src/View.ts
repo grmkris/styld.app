@@ -437,7 +437,7 @@ const askPage = (model: Model, h: HtmlBuilder<Message>): Html =>
     slotId: 'ask',
     model: model.ask,
     view: AskView.view,
-    viewInputs: { locale: model.context.locale, pieces: model.wardrobe.pieces },
+    viewInputs: { locale: model.context.locale, pieces: model.wardrobe.pieces, boardStart: model.boards.creating },
     toParentMessage: (message) => Message.GotAskMessage({ message }),
   })
 

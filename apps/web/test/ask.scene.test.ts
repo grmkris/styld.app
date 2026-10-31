@@ -55,11 +55,10 @@ describe('Ask', () => {
       Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
       expect(role('link', { name: /^Add clothes/ })).toHaveAttr('href', '/wardrobe/add'),
       expect(role('link', { name: /^Add from a link/ })).toHaveAttr('href', '/wardrobe/add#link'),
-      // Start a board makes one under the default name, as Boards' + does, and the sheet closes.
+      // Start a board makes one under the default name, as Boards' + does; the sheet stays and says if it was refused.
       click(role('button', { name: /^Start a board/ })),
-      Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
-      Mount.expectEnded(Dialog.AcquireResources),
       Command.resolve(CreateBoard({ name: 'My board' }), BoardsMessage.FailedCreateBoard()),
+      expect(role('alert')).toHaveText('The board wasn’t created. Try again.'),
     )
   })
 
