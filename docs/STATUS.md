@@ -44,7 +44,8 @@ before/after page is on the tailnet at `https://netcup.tail5acf67.ts.net/styld-b
   save-as-a-look turn: both first calls failed at 45 s (`Styld.Stylist model failed`, `TimeoutError`), the third
   attempt answered, and the reply took 118 s; on `f55b0ca` a turn's first call and, on the retry, its second call
   each failed at 45 s, and the third attempt saved the look once (`look_create`'s operation id is the turn's and
-  the call's, so a retry cannot save it twice). So far it has struck about 4 of 12 save-as-a-look turns in these
+  the call's). On `a33e15b` a retried turn saved its look twice: the id counted every tool call, and the retry looked a
+  piece up first; since `0914383` it counts only that tool's writes. So far it has struck about 5 of 13 save-as-a-look turns in these
   walks, never another kind of turn. Open: try a cap on the answer's length, and the owner's
   choice of model. The queue's own warning "ack() after retry()" on such a message is Alchemy's batch ack after
   Styld's explicit retry; the retry stands.
@@ -1888,7 +1889,7 @@ Owner decisions after the foundation handoff: zyzz for styling, Maple for Effect
 - **Telemetry.** Maple's Foldkit layer turns Commands and navigations into Effect spans and posts OTLP/JSON to the same origin; the API Worker relay allowlists and bounds them into structured Workers Logs. Server spans record `styld.browser.trace_id` from a valid `traceparent`. Replay, session rows, visitor IDs, storage and Command arguments are off. Native browser acceptance proves the flush and that no telemetry body contains the typed email or passwords.
 - **x18n.** `bun run translations:check` (`x18n check --strict`) fails on missing keys, invalid syntax, missing or stale translations and hard-coded strings in application code; only style modules and three files of SQL or developer-only defect messages are exempt. placeholder-mismatch is off (x18n 0.1.2 plural false positives); unused keys are info while 2,251 of 2,296 keys await unported screens.
 - **Gates.** Knip production mode now covers every web module; the bundle budget measures assets a page loads (initial 228,512 gzip bytes of 256 KiB; all 287,491 of 512 KiB).
-- **Not changed, deliberately.** The password sign-in form still shows one error for wrong credentials, rate limits and outages; the email OTP flow replaces it. SSR still renders in UTC until a page shows dates. `AUTH_SESSION_KEYS` appears unused with stateful sessions (typecheck passes without it) but stays until the OTP and MCP OAuth work confirms no signed tokens need it. The repository has no git remote, so the CI workflow has never run.
+- **Not changed, deliberately.** The password sign-in form still shows one error for wrong credentials, rate limits and outages; the email OTP flow replaces it. SSR still renders in UTC until a page shows dates (since `c70e917`, 31 October, the browser reads its own zone after the first paint, for Styld's chats and the review tray). `AUTH_SESSION_KEYS` appears unused with stateful sessions (typecheck passes without it) but stays until the OTP and MCP OAuth work confirms no signed tokens need it. The repository has no git remote, so the CI workflow has never run.
 
 ## Foundation boundary review — 2026-10-28
 
