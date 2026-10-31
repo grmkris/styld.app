@@ -354,7 +354,17 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   boards before there are any), with a way to Explore. The section keeps its room while they load. Evidence: a
   scene test.
 - **Next:**
-  - M6 (the wishlist and Add from a link).
+  - M6 (the wishlist and Add from a link): `link_import` is built (below); the web's Add from a link and the
+    wishlist are next.
+- **M6a, adding a piece from a link (assistants):**
+  - `link_import` reads a shop's product page: its JSON-LD `Product` (name, first picture), else Open Graph or
+    Twitter tags. Relative addresses are made absolute and entities read.
+  - The picture goes through the same guarded import as `piece_add` and is added straight to the wardrobe (the
+    roadmap's "assistant adds skip the tray").
+  - Only public https pages are read, with redirects followed by hand (at most three), a timeout and a 1 MB cap. A
+    shop that answers 401, 403, 429 or 503 is `blocked`, and the assistant asks for a photo instead.
+  - Evidence: unit tests on fixture HTML (JSON-LD graph, Open Graph in either attribute order, broken JSON-LD, no
+    picture) and on a fake HttpClient (redirect, blocked, not https, not a page).
 - **Shared with the capture session:** migrations are generated one at a time; public delivery reuses its rule for a
   piece's shown picture; generated pictures reuse its Muse provider.
 - **Still to settle in spikes:** Clef and Llama Guard thresholds on fixtures in English and Slovenian, drawing text

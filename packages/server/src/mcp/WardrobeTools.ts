@@ -22,6 +22,7 @@ import * as HttpClient from 'effect/http/HttpClient'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { importImage, type ImportRefused } from './ImageImport.ts'
 import { tool, ToolError } from './Tools.ts'
+import { type LinkRefused, readProductPage } from '../links/LinkImport.ts'
 
 type WardrobeFailure =
   | PieceNotFound
@@ -137,6 +138,45 @@ const matches = (
 const { category, subcategory, colours, name } = AddPiece.fields
 const PieceFields = { category, subcategory, colours, name }
 
+const LinkImport = Schema.Struct({
+  operationId: OperationId,
+  url: Schema.String.check(Schema.isMaxLength(2048)),
+  ...PieceFields,
+})
+
+const linkRefusals: Readonly<Record<LinkRefused['reason'], ToolError>> = {
+  notHttps: new ToolError({
+    code: 'not_https',
+    message: 'Only public https pages can be read.',
+    recovery: 'Give the product page’s https address.',
+    retryable: false,
+  }),
+  notReached: new ToolError({
+    code: 'not_reached',
+    message: 'Styld could not reach that page.',
+    recovery: 'Check the address, or ask the person for a photo or screenshot and use piece_add.',
+    retryable: true,
+  }),
+  blocked: new ToolError({
+    code: 'blocked',
+    message: 'The shop does not let Styld read that page.',
+    recovery: 'Ask the person for a photo or screenshot of the piece and use piece_add or upload_create.',
+    retryable: false,
+  }),
+  notAPage: new ToolError({
+    code: 'not_a_page',
+    message: 'That address is not a web page.',
+    recovery: 'For a picture, use piece_add with imageUrl.',
+    retryable: false,
+  }),
+  noPicture: new ToolError({
+    code: 'no_picture',
+    message: 'That page names no picture of a product.',
+    recovery: 'Ask the person for a photo or screenshot and use piece_add or upload_create.',
+    retryable: false,
+  }),
+}
+
 const PieceAdd = Schema.Struct({
   operationId: OperationId,
   imageUrl: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(2048))),
@@ -241,10 +281,47 @@ const writeTools = (
   }),
 ]
 
+/** Adding a piece from a shop's product page. */
+const linkTools = (
+  wardrobe: Wardrobe['Service'],
+  show: ReturnType<typeof shown>,
+  origin: string,
+  http: HttpClient.HttpClient,
+) => [
+  tool({
+    name: 'link_import',
+    title: 'Add a piece from a link',
+    description:
+      'Add a piece from a shop’s product page: Styld reads the page’s picture and name and adds it straight to the wardrobe. Give the category; the name defaults to the page’s. Choose a new `operationId` for each piece. A shop that blocks reading answers `blocked`: then ask for a photo instead.',
+    parameters: LinkImport,
+    annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
+    handler: ({ url, name: chosen, ...fields }) =>
+      Effect.gen(function* () {
+        const earlier = yield* wardrobe.pieceAddedBy(fields.operationId).pipe(Effect.mapError(asToolError))
+        if (Option.isSome(earlier)) return show(earlier.value)
+        const page = yield* readProductPage(url).pipe(
+          Effect.provideService(HttpClient.HttpClient, http),
+          Effect.mapError(({ reason }) => linkRefusals[reason]),
+        )
+        const uploadId = yield* uploadFrom(wardrobe, http, origin, page.image)
+        const named = chosen ?? Option.getOrUndefined(page.title)
+        return show(
+          yield* wardrobe
+            .addPiece({ ...fields, uploadId, ...(named === undefined ? {} : { name: named }) })
+            .pipe(Effect.mapError(asToolError)),
+        )
+      }),
+  }),
+]
+
 /** The wardrobe's tools: thin projections of the same `Wardrobe` operations the website uses. */
 export const wardrobeTools = (wardrobe: Wardrobe['Service'], origin: string, http: HttpClient.HttpClient) => {
   const show = shown(origin)
-  return [...readTools(wardrobe, show), ...writeTools(wardrobe, show, origin, http)]
+  return [
+    ...readTools(wardrobe, show),
+    ...writeTools(wardrobe, show, origin, http),
+    ...linkTools(wardrobe, show, origin, http),
+  ]
 }
 
 /** Download the photo an assistant points at into a fresh upload. */

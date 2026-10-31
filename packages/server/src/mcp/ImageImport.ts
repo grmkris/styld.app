@@ -52,8 +52,6 @@ const readCapped = (stream: Stream.Stream<Uint8Array, unknown>) =>
 const imageTypeOf = (headers: Readonly<Record<string, string | undefined>>) =>
   Option.liftPredicate((headers['content-type'] ?? '').split(';')[0]?.trim().toLowerCase() ?? '', isImageType)
 
-/** Fetch a photo an assistant points at. Redirects are followed by hand, at most three, and each
- * hop must pass the same address rules. The HttpClient must not follow redirects itself. */
 /** The photo from a final (non-redirect) response, or why it is not one. */
 const photoFrom = (response: HttpClientResponse.HttpClientResponse) =>
   Effect.gen(function* () {
@@ -70,10 +68,12 @@ const photoFrom = (response: HttpClientResponse.HttpClientResponse) =>
     }
   })
 
-export const importImage = Effect.fn('Styld.Mcp.importImage')(function* (address: string) {
+/** The final response for a public https address, with the address it came from. Redirects are followed by hand,
+ * at most three, and each hop must pass the same address rules; the HttpClient must not follow them itself. */
+export const fetchPublic = Effect.fn('Styld.Mcp.fetchPublic')(function* (address: string, accept: string) {
   const client = yield* HttpClient.HttpClient
   const fetchHop = (url: URL) =>
-    client.execute(HttpClientRequest.get(url, { headers: { accept: 'image/*' } })).pipe(
+    client.execute(HttpClientRequest.get(url, { headers: { accept } })).pipe(
       Effect.timeout(fetchTimeout),
       Effect.mapError(() => refuse('notReached')),
     )
@@ -83,10 +83,16 @@ export const importImage = Effect.fn('Styld.Mcp.importImage')(function* (address
   })
   for (let hop = 0; hop <= maximumRedirects; hop += 1) {
     const response = yield* fetchHop(url)
-    if (response.status < 300 || response.status >= 400) return yield* photoFrom(response)
+    if (response.status < 300 || response.status >= 400) return { response, url }
     const next = allowedUrl(response.headers['location'] ?? '', url)
     if (Option.isNone(next)) return yield* refuse('notHttps')
     url = next.value
   }
   return yield* refuse('tooManyRedirects')
+})
+
+/** Fetch a photo an assistant points at. */
+export const importImage = Effect.fn('Styld.Mcp.importImage')(function* (address: string) {
+  const { response } = yield* fetchPublic(address, 'image/*')
+  return yield* photoFrom(response)
 })

@@ -1,7 +1,6 @@
 import { CaptureUnavailable, WardrobeUnavailable } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
-import * as HttpClientResponse from 'effect/http/HttpClientResponse'
 import { describe, expect, test } from 'vitest'
 import type { AccountLifecycle } from '../src/AccountLifecycle.ts'
 import { importImage } from '../src/mcp/ImageImport.ts'
@@ -10,6 +9,7 @@ import { processingAttempts, settleMessage } from '../src/wardrobe/Queue.ts'
 import { pictureView, shownImage, turnView } from '../src/wardrobe/Shown.ts'
 import type { PictureRow, TurnRow } from '../src/wardrobe/Store.ts'
 import { Wardrobe } from '../src/wardrobe/Wardrobe.ts'
+import { serving } from './HttpFixture.ts'
 
 const png = Uint8Array.from(
   atob('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg=='),
@@ -135,14 +135,6 @@ describe('the processing queue', () => {
     expect(seen).toEqual(['draw pc_1', 'draw pc_1', 'give up pc_1'])
   })
 })
-
-/** An HTTP client that answers from a table of URLs. */
-const serving = (routes: Record<string, () => Response>) =>
-  HttpClient.make((request) =>
-    Effect.sync(() =>
-      HttpClientResponse.fromWeb(request, (routes[request.url] ?? (() => new Response(null, { status: 404 })))()),
-    ),
-  )
 
 const run = (address: string, routes: Record<string, () => Response>) =>
   Effect.runPromise(

@@ -7,6 +7,7 @@ export const toolNames = [
   'piece_add',
   'piece_update',
   'piece_delete',
+  'link_import',
   'wardrobe_show',
   'board_show',
   'look_create',
