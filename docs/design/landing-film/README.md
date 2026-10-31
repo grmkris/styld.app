@@ -52,3 +52,27 @@ call). `media/` here holds its output and is never committed.
   higher CRF should be measured on a phone.
 - **Rules:** `DESIGN.md` needs a deliberate exception before a full-screen film ships ("one reveal at most on a public
   page", "every motion answers something the person did").
+
+## Overnight concepts (2026-10-31)
+
+At the owner's request, five more films, each on its own page made from the same template (the pages and their films
+live in the private workspace, `site/<concept>/`; the index is `https://netcup.tail5acf67.ts.net/styld-film-concepts/`):
+
+| Concept | Page | What happens |
+| --- | --- | --- |
+| Scan | `styld-film-scan` | A photocopier-like bar of light sweeps the rail; behind it the garments are flat paper cut-outs, then fabric again. |
+| Wardrobe | `styld-film-wardrobe` | An oak wardrobe opens on a paper-lined interior with every piece cut out in a grid, then closes. |
+| Pile to grid | `styld-film-pile` | From above, a laundry heap sorts itself into a grid of flat cut-outs; the way back is the same film reversed. |
+| Paper diorama | `styld-film-diorama` | A stop-motion paper room (12 fps): tiny real clothes hop off the rail and pin themselves flat to the wall. |
+| Endless dive | `styld-film-dive` | This page's film hangs in a picture frame on its own wall; a canvas nests it inside itself and zooms on the film's clock. |
+
+What the night taught:
+
+- **Stills:** the AI Gateway stops at a $5 team budget, so stills moved to Qwen Image 3.0 Pro on the Token Plan
+  (`qwen.ts`). It keeps the rest of a picture in place when editing, so keyframe pairs stay aligned. Muse Image
+  redrew the scene at another scale.
+- **Prompts:** Wan follows a concrete picture ("a light bar, like a photocopier's") better than an idea ("a light
+  sweeps"), and it duplicates and shrinks garments in a big rearrangement unless told "always exactly six, at full
+  size". Where it still does, the way back can be the way there played backwards: its ends are exact.
+- **The dive** is seamless by construction: at the end of the loop the zoom has reached the nested film, which is the
+  first frame again. Measured on the canvas, its seam is 2.8 against an ordinary step of 4.5.
