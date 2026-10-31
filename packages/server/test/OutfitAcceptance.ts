@@ -72,6 +72,9 @@ const verifyFast = async (origin: string, owner: Call, other: Call) => {
   expect(first).toMatchObject({ mode: 'fast', missing: [], exhausted: true })
   expect(first.proposals).toHaveLength(4)
   expectWhole(first, wardrobe)
+  // A day's first outfits are the same each time they are asked for, so Home's table holds all day.
+  const keysFor = async (day: string) => (await proposalsOf(await make(owner, { day }))).proposals.map(({ key }) => key)
+  expect(await keysFor('2026-10-31')).toEqual(await keysFor('2026-10-31'))
   // Shown combinations never come back: with all four seen, the rules have none left.
   const more = await proposalsOf(
     await make(owner, { session: first.session, seen: first.proposals.map(({ key }) => key) }),

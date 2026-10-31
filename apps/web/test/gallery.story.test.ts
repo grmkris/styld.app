@@ -71,7 +71,7 @@ describe("today's table", () => {
       given(Today.init()),
       message(Today.Message.CompletedDetermineDay({ day: thursday })),
       Command.expectExact(
-        Today.MakeOutfits({ brief: {}, session: Option.none(), seen: [] }),
+        Today.MakeOutfits({ day: thursday, brief: {}, session: Option.none(), seen: [] }),
         Today.ReadWorn({ day: thursday }),
       ),
       Command.resolve(Today.MakeOutfits, Today.Message.SucceededMakeOutfits({ batch: batchOf(outfits) })),
@@ -88,7 +88,12 @@ describe("today's table", () => {
       given(spun()),
       message(Today.Message.ClickedSpin()),
       Command.expectExact(
-        Today.MakeOutfits({ brief: {}, session: Option.some(session), seen: outfits.map(({ key }) => key) }),
+        Today.MakeOutfits({
+          day: thursday,
+          brief: {},
+          session: Option.some(session),
+          seen: outfits.map(({ key }) => key),
+        }),
       ),
       model((current) => expect(Today.tableOutfit(current, wardrobe)).toEqual([redTop, greenTrousers, blackShoes])),
       Command.resolve(
@@ -121,7 +126,7 @@ describe("today's table", () => {
       message(Today.Message.FailedMakeOutfits()),
       model((current) => expect(AsyncData.isFailure(current.outfits)).toBe(true)),
       message(Today.Message.ClickedRetryOutfits()),
-      Command.expectExact(Today.MakeOutfits({ brief: {}, session: Option.none(), seen: [] })),
+      Command.expectExact(Today.MakeOutfits({ day: thursday, brief: {}, session: Option.none(), seen: [] })),
       Command.resolve(Today.MakeOutfits, Today.Message.SucceededMakeOutfits({ batch: batchOf(outfits) })),
       model((current) => expect(AsyncData.isSuccess(current.outfits)).toBe(true)),
     )

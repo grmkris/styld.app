@@ -2,6 +2,7 @@ import { SessionHttp } from '@styld/auth/config'
 import { Schema } from 'effect'
 import { HttpApiEndpoint, HttpApiGroup } from 'effect/http-api'
 import { RequestRefused } from './Account.ts'
+import { Day } from './Day.ts'
 import { Occasion, Season, Slot } from './Garment.ts'
 import { PieceId, PieceNotFound } from './Wardrobe.ts'
 
@@ -49,6 +50,8 @@ export const MakeOutfit = Schema.Struct({
   mode: OutfitMode,
   brief: OutfitBrief,
   session: Schema.optionalKey(OutfitSession),
+  /** The person's day: Fast's first outfits for it are the same each time they are asked for. */
+  day: Schema.optionalKey(Day),
   anchorPieceId: Schema.optionalKey(PieceId),
   /** Pieces every proposal keeps, besides the anchor. */
   lockedPieceIds: Schema.Array(PieceId).check(Schema.isMaxLength(mostLocked)),

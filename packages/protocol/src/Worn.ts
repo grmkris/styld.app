@@ -1,12 +1,7 @@
 import { Schema } from 'effect'
+import { Day } from './Day.ts'
 import { ProposalRef } from './Outfit.ts'
 import { PieceId } from './Wardrobe.ts'
-
-/** A calendar day in the person's own time zone, as the website reads it: `2026-10-30`. */
-export const Day = Schema.String.check(Schema.isPattern(/^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/)).pipe(
-  Schema.brand('Day'),
-)
-export type Day = typeof Day.Type
 
 /** The most pieces one day's outfit records. */
 export const maximumWornPieces = 12
@@ -27,3 +22,5 @@ export type WearPieces = typeof WearPieces.Type
 
 /** A span of days to read, both ends included, at most 62 days apart. */
 export const WornRange = Schema.Struct({ from: Day, to: Day })
+
+export { Day } from './Day.ts'

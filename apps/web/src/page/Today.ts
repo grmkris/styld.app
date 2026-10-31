@@ -184,13 +184,14 @@ const refillAt = 2
 /** Today's outfits, made by the engine's Fast way, as a new run or more of one.
  * @internal Exported for its tests. */
 export const MakeOutfits = Command.define('MakeOutfits', {
-  args: { brief: OutfitBrief, session: Schema.Option(OutfitSession), seen: Schema.Array(OutfitKey) },
+  args: { day: Day, brief: OutfitBrief, session: Schema.Option(OutfitSession), seen: Schema.Array(OutfitKey) },
   messages: [Message.SucceededMakeOutfits, Message.FailedMakeOutfits],
-  execute: ({ brief, session, seen }) =>
+  execute: ({ day, brief, session, seen }) =>
     Effect.gen(function* () {
       const batch = yield* (yield* (yield* StyldClient).api).outfits.makeOutfit({
         payload: {
           mode: 'fast',
+          day,
           brief,
           ...Option.match(session, { onNone: () => ({}), onSome: (value) => ({ session: value }) }),
           lockedPieceIds: [],
@@ -300,7 +301,7 @@ const startRun = (model: Model): UpdateReturn =>
     onNone: () => ({ model }),
     onSome: (day) => ({
       model: modifyFields(model, { outfits: () => AsyncData.Loading() }),
-      commands: [MakeOutfits({ brief: briefFor(day), session: Option.none(), seen: [] })],
+      commands: [MakeOutfits({ day, brief: briefFor(day), session: Option.none(), seen: [] })],
     }),
   })
 
@@ -322,6 +323,7 @@ const spin = (model: Model): UpdateReturn => {
     commands: refill
       ? [
           MakeOutfits({
+            day: model.maybeDay.value,
             brief: briefFor(model.maybeDay.value),
             session: Option.some(session),
             seen: proposals.map(({ key }) => key),

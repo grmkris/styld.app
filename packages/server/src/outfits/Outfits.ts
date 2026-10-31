@@ -92,10 +92,12 @@ const ranked = (
   )
 
 /** Fast's candidates, or Thinking's, and whether the rules have nothing new beyond them. */
-const candidatesFor = (parts: OutfitParts, input: MakeOutfit, request: Brief, session: string) =>
+const candidatesFor = (parts: OutfitParts, input: MakeOutfit, request: Brief, session: string, accountId: string) =>
   Effect.gen(function* () {
     if (input.mode === 'fast') {
-      const drawn = proposed(request, `${session}:${String(input.seen.length)}`, mostCandidates)
+      // A day's draws repeat for the account, so today's outfit holds all day; a run without a day draws its own.
+      const base = input.day === undefined ? session : `${accountId}:${input.day}`
+      const drawn = proposed(request, `${base}:${String(input.seen.length)}`, mostCandidates)
       return {
         outfits: drawn.outfits,
         costMicroUsd: 0,
@@ -167,7 +169,7 @@ const make = (parts: OutfitParts, crypto: Effect.Success<typeof Crypto.Crypto>) 
             costMicroUsd: event.cost,
           }),
         )
-      const candidates = yield* candidatesFor(parts, input, request, session).pipe(
+      const candidates = yield* candidatesFor(parts, input, request, session, accountId).pipe(
         Effect.tapError(() => measure({ outcome: 'failed', judged: false, proposals: 0, cost: 0 })),
       )
       const scores = yield* judged(parts, accountId, owned, request)(candidates.outfits)
