@@ -143,9 +143,13 @@ const storageServices = <R>(
     const lifecycleService = yield* makeAccountLifecycle(bindings, bindings.forgetChats)
     const capturesService = yield* makeCaptures(bindings).pipe(Effect.provide(pieceChanged))
     const looksService = yield* makeLooks(bindings.database, checksService)
-    const photosParts = yield* makePhotoParts(bindings).pipe(Effect.provide(pieceChanged))
-    const photosService = yield* makePhotos(photosParts, looksService)
     const boardsService = yield* makeBoards(bindings, checksService)
+    const photosParts = yield* makePhotoParts(bindings).pipe(Effect.provide(pieceChanged))
+    const photosService = yield* makePhotos(photosParts, {
+      looks: looksService,
+      boards: boardsService,
+      uploads: wardrobeService,
+    })
     const profilesService = makeProfiles(bindings.database, checksService)
     const publicPagesService = yield* makePublicPages(bindings, checksService)
     const socialService = yield* makeSocial(bindings.database, publicPagesService, checksService)

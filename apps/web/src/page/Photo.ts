@@ -7,6 +7,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
 import { findingPause } from './Photos.ts'
+import * as SaveToBoard from './SaveToBoard.ts'
 
 // One outfit photo of My Gallery (owner, 2026-10-31): the garments Styld found, each confirmed as one of the person's
 // pieces, corrected, said to be none of them, or offered to the review tray; a favourite or not; worn again as a
@@ -36,6 +37,7 @@ export const Model = Schema.Struct({
   deletion: Deletion,
   /** The garment whose wardrobe picker is open. */
   choosing: Schema.Option(PhotoGarmentId),
+  saveToBoard: SaveToBoard.Model,
 })
 export type Model = typeof Model.Type
 
@@ -45,6 +47,7 @@ export const init = (photoId: string): Model => ({
   work: Work.Idle(),
   deletion: Deletion.Idle(),
   choosing: Option.none(),
+  saveToBoard: SaveToBoard.init({ kind: 'photo', id: photoId }),
 })
 
 // MESSAGE
@@ -70,6 +73,7 @@ export const Message = defineMessageUnion({
   ClickedConfirmDelete: {},
   SucceededDeletePhoto: {},
   FailedDeletePhoto: {},
+  GotSaveToBoardMessage: { message: SaveToBoard.Message },
 })
 export type Message = typeof Message.Type
 
@@ -193,6 +197,8 @@ const loaded = (model: Model, photo: PhotoContract): UpdateReturn => ({
   commands: photo.status === 'finding' ? [WaitWhileFinding()] : [],
 })
 
+const foldSaveToBoard = SaveToBoard.foldInto<Model, Message>((message) => Message.GotSaveToBoardMessage({ message }))
+
 const confirmDelete = (model: Model): UpdateReturn =>
   Deletion.guards.Deleting(model.deletion)
     ? { model }
@@ -235,4 +241,5 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedConfirmDelete: () => confirmDelete(model),
     SucceededDeletePhoto: () => ({ model, outMessage: OutMessage.DeletedPhoto() }),
     FailedDeletePhoto: () => ({ model: modifyFields(model, { deletion: () => Deletion.Failed() }) }),
+    GotSaveToBoardMessage: (got) => foldSaveToBoard(model, got.message),
   })

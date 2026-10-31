@@ -1,5 +1,5 @@
 import { Dialog } from '@foldkit/ui'
-import { BoardId, BoardName, BoardSummary, LookId, OperationId, PieceId } from '@styld/protocol'
+import { BoardId, BoardName, BoardSummary, LookId, OperationId, PhotoId, PieceId } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import { AsyncData, Command, Update } from 'foldkit'
@@ -14,7 +14,9 @@ import { boardSummaries } from './Boards.ts'
 // MODEL
 
 /** What is being saved. */
-export const Target = Schema.Struct({ kind: Schema.Literals(['piece', 'look']), id: Schema.String })
+/** What is saved: a piece or a look as a pin, or an outfit photo of My Gallery, put on the board with its look and
+ * shown to its owner only. */
+export const Target = Schema.Struct({ kind: Schema.Literals(['piece', 'look', 'photo']), id: Schema.String })
 export type Target = typeof Target.Type
 
 const BoardsData = AsyncData.Schema(Schema.Array(BoardSummary), Schema.Literal('Unavailable'))
@@ -96,10 +98,13 @@ export const SaveTo = Command.define('SaveTo', {
               name: yield* Schema.decodeUnknownEffect(BoardName)(boardName),
             },
           })).id
-      yield* api.board.addPins({
-        params: { boardId: id },
-        payload: { operationId: yield* newOperationId, ...(yield* pinsOf(target)) },
-      })
+      const operationId = yield* newOperationId
+      if (target.kind === 'photo')
+        yield* api.photos.addToBoard({
+          params: { photoId: yield* Schema.decodeUnknownEffect(PhotoId)(target.id) },
+          payload: { operationId, boardId: id },
+        })
+      else yield* api.board.addPins({ params: { boardId: id }, payload: { operationId, ...(yield* pinsOf(target)) } })
       return Message.SucceededSave({ boardId: id, boardName })
     }).pipe(Effect.orElseSucceed(() => Message.FailedSave())),
 })

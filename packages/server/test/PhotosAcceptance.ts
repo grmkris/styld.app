@@ -143,6 +143,44 @@ const verifyOffering = async (origin: string, owner: Call) => {
     await (await owner(`/api/photos/${photo.id}`)).json(),
   )
   expect(remembered.lookId).toBe(look.id)
+  await verifyOnBoard(origin, owner, photo.id)
+}
+
+const BoardPins = Schema.Struct({
+  pins: Schema.Array(Schema.Struct({ _tag: Schema.String, imageId: Schema.optionalKey(Schema.String) })),
+  items: Schema.Array(Schema.Struct({ _tag: Schema.String })),
+})
+
+/** The public board once a visitor can read it. */
+const publicBoard = async (origin: string, boardId: string) => {
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    const response = await fetch(`${origin}/api/public/boards/${boardId}`)
+    if (response.ok) return Schema.decodeUnknownSync(BoardPins)(await response.json())
+    await Bun.sleep(250)
+  }
+  throw new Error('The board never became public')
+}
+
+/** Add to board: the photo and the look worn from it go on the person's own board, once; a visitor to the public
+ * board sees neither the photo's pin nor its picture. */
+const verifyOnBoard = async (origin: string, owner: Call, photoId: string) => {
+  await send(owner, '/api/profile', 'PATCH', { handle: 'native.photos', name: 'Native Photos', tone: 'clay' })
+  expect((await send(owner, '/api/profile/published', 'PUT', { published: true })).status).toBe(200)
+  const board = await send(owner, '/api/boards', 'POST', { operationId: 'native-photo-board-1', name: 'Saturday' })
+  const { id: boardId } = Schema.decodeUnknownSync(Schema.Struct({ id: Schema.String }))(await board.json())
+  const toBoard = { operationId: 'native-photo-to-board-1', boardId }
+  expect((await send(owner, `/api/photos/${photoId}/board`, 'POST', toBoard)).status).toBe(204)
+  expect((await send(owner, `/api/photos/${photoId}/board`, 'POST', toBoard)).status).toBe(204)
+  const own = Schema.decodeUnknownSync(BoardPins)(await (await owner(`/api/boards/${boardId}`)).json())
+  const pictures = own.pins.filter(({ _tag }) => _tag === 'PicturePin')
+  expect(pictures).toHaveLength(1)
+  expect(own.pins.some(({ _tag }) => _tag === 'LookPin')).toBe(true)
+  const visibility = await send(owner, `/api/boards/${boardId}/visibility`, 'PUT', { visibility: 'public' })
+  expect(visibility.status).toBe(200)
+  const seen = await publicBoard(origin, boardId)
+  expect(seen.pins.map(({ _tag }) => _tag)).not.toContain('PublicPicturePin')
+  expect(seen.items.map(({ _tag }) => _tag)).not.toContain('ImageItem')
+  expect((await fetch(`${origin}/cdn/public/pictures/${pictures[0]?.imageId ?? ''}/thumb`)).status).toBe(404)
 }
 
 /** My Gallery for the website. */

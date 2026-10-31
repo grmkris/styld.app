@@ -2,6 +2,7 @@ import { SessionHttp } from '@styld/auth/config'
 import { Schema } from 'effect'
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
 import { RequestRefused } from './Account.ts'
+import { BoardId, BoardNotFound } from './Board.ts'
 import { CaptureUnavailable, DailyLimitReached } from './Capture.ts'
 import { PieceType } from './Garment.ts'
 import { CreateLook, Look, LookId } from './Look.ts'
@@ -67,6 +68,11 @@ export type MatchGarment = typeof MatchGarment.Type
 export const WearAgain = Schema.Struct({ operationId: OperationId, name: CreateLook.fields.name })
 export type WearAgain = typeof WearAgain.Type
 
+/** Put an outfit photo (its cut-out once it has one) on one of the person's boards, with the look worn from it:
+ * `POST /api/photos/:photoId/board`. The board shows the photo to its owner only. */
+export const AddPhotoToBoard = Schema.Struct({ operationId: OperationId, boardId: BoardId })
+export type AddPhotoToBoard = typeof AddPhotoToBoard.Type
+
 export class PhotoNotFound extends Schema.TaggedError<PhotoNotFound>()('PhotoNotFound', {}, { httpApiStatus: 404 }) {}
 
 /** A photo with no piece confirmed in it yet has nothing to wear again. */
@@ -130,6 +136,14 @@ export class PhotoApi extends HttpApiGroup.make('photos')
       payload: WearAgain,
       success: Look,
       error: [PhotoNotFound, NothingConfirmed, OperationConflict, CaptureUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post('addToBoard', '/photos/:photoId/board', {
+      params: photoPath,
+      payload: AddPhotoToBoard,
+      success: HttpApiSchema.NoContent,
+      error: [PhotoNotFound, BoardNotFound, CaptureUnavailable, RequestRefused],
     }),
   )
   .add(

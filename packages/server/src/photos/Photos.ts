@@ -1,5 +1,9 @@
 import {
   type AddPhoto,
+  type AddPhotoToBoard,
+  ImageType,
+  LookId,
+  OperationId,
   type MatchGarment,
   maximumLookPieces,
   NothingConfirmed,
@@ -18,7 +22,9 @@ import type { CaptureConfig } from '../capture/Policy.ts'
 import type { GarmentSegmenter, GarmentVision, PictureWork } from '../capture/Providers.ts'
 import { Usage } from '../capture/Usage.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
+import type { Boards } from '../boards/Boards.ts'
 import type { Looks } from '../looks/Looks.ts'
+import { receivedUpload, type Uploads } from '../mcp/ImageImport.ts'
 import { deliverImage } from '../wardrobe/Delivery.ts'
 import type { ShownImage } from '../wardrobe/Http.ts'
 import type { ImageSize } from '../wardrobe/Media.ts'
@@ -327,20 +333,65 @@ const changing = (parts: PhotoParts, looks: Looks['Service']) => ({
   }),
 })
 
-const operations = (parts: PhotoParts, looks: Looks['Service']) => ({ ...reading(parts), ...changing(parts, looks) })
+/** What a photo's page leans on beyond its own store: looks to wear it again, boards and uploads to pin it. */
+export interface PhotoServices {
+  readonly looks: Looks['Service']
+  readonly boards: Pick<Boards['Service'], 'addPhotoImage' | 'addPins'>
+  readonly uploads: Uploads
+}
+
+/** The operation id a photo's look is pinned under, from the one that put the photo on the board. */
+const lookOperation = (operationId: string) => OperationId.make(`${operationId.slice(0, 59)}-look`)
+
+/** A board's refusal as the photo's: a board that is not the person's stays so, anything else is unavailable. */
+const onBoard = <A, E>(effect: Effect.Effect<A, E, CurrentAccount>) =>
+  effect.pipe(Effect.mapError((error) => (Predicate.isTagged(error, 'BoardNotFound') ? error : unavailable())))
+
+/** Putting a photo on a board: its own picture (the cut-out once there is one), held back from visitors, and the
+ * look worn from it. A retried request whose picture is on the board already answers as done. */
+const boarding = (parts: PhotoParts, services: PhotoServices) => ({
+  addToBoard: Effect.fn('Styld.Photos.addToBoard')(function* (photoId: string, input: AddPhotoToBoard) {
+    const { accountId } = yield* CurrentAccount
+    const photo = yield* ownPhoto(parts, accountId, photoId)
+    if (Option.isSome(yield* storedAs(parts.capture.wardrobeStore.findReceipt(accountId, input.operationId)))) return
+    const key = photo.cutoutKey ?? photo.originalKey
+    const bytes = yield* readObject(parts.capture, key)
+    if (Option.isNone(bytes)) return yield* unavailable()
+    const contentType = yield* Schema.decodeUnknownEffect(ImageType)(
+      photo.cutoutKey === null ? photo.contentType : 'image/png',
+    ).pipe(Effect.mapError(unavailable))
+    const uploadId = yield* receivedUpload(services.uploads, { contentType, bytes: bytes.value }).pipe(
+      Effect.mapError(unavailable),
+    )
+    yield* onBoard(services.boards.addPhotoImage(input.boardId, { operationId: input.operationId, uploadId }))
+    if (photo.lookId !== null)
+      yield* onBoard(
+        services.boards.addPins(input.boardId, {
+          operationId: lookOperation(input.operationId),
+          lookIds: [LookId.make(photo.lookId)],
+        }),
+      )
+  }),
+})
+
+const operations = (parts: PhotoParts, services: PhotoServices) => ({
+  ...reading(parts),
+  ...changing(parts, services.looks),
+  ...boarding(parts, services),
+})
 
 /** The capture providers, metering and policy a photo's work uses. */
 type Requirements = CaptureConfig | GarmentSegmenter | GarmentVision | PictureWork | Usage
 
 /** Every operation with the providers it was built with: callers provide only `CurrentAccount`. */
-const make = (parts: PhotoParts, looks: Looks['Service']) =>
+const make = (parts: PhotoParts, services: PhotoServices) =>
   Effect.gen(function* () {
-    const services = yield* Effect.context<Requirements>()
+    const providers = yield* Effect.context<Requirements>()
     const bound =
       <Args extends ReadonlyArray<unknown>, A, E, R>(operation: (...args: Args) => Effect.Effect<A, E, R>) =>
       (...args: Args) =>
-        Effect.provide(operation(...args), services)
-    const all = operations(parts, looks)
+        Effect.provide(operation(...args), providers)
+    const all = operations(parts, services)
     return {
       findGarments: bound(all.findGarments),
       failFinding: bound(all.failFinding),
@@ -352,6 +403,7 @@ const make = (parts: PhotoParts, looks: Looks['Service']) =>
       matchGarment: bound(all.matchGarment),
       offerGarment: bound(all.offerGarment),
       wearAgain: bound(all.wearAgain),
+      addToBoard: bound(all.addToBoard),
       piecePhotos: bound(all.piecePhotos),
       photoImage: bound(all.photoImage),
       garmentImage: bound(all.garmentImage),

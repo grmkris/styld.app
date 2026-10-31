@@ -31,6 +31,9 @@ export const photoHandlers = (admit: Admit) =>
         .handle('wearAgain', ({ params, payload }) =>
           admit(asSessionAccount(photos.wearAgain(params.photoId, payload))),
         )
+        .handle('addToBoard', ({ params, payload }) =>
+          admit(asSessionAccount(photos.addToBoard(params.photoId, payload))),
+        )
         .handle('piecePhotos', ({ params }) =>
           asSessionAccount(photos.piecePhotos(params.pieceId)).pipe(Effect.map((list) => ({ photos: list }))),
         )

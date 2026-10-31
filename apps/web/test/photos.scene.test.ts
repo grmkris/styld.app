@@ -54,6 +54,8 @@ describe('an outfit photo’s page', () => {
       // A confirmed piece makes the photo something to wear again.
       expect(role('button', { name: 'Wear it again' })).toExist(),
       expect(role('button', { name: 'Favourite' })).toHaveAttr('aria-pressed', 'false'),
+      // It goes on a board as the owner's own picture, with the look worn from it.
+      expect(role('button', { name: 'Save to board' })).toExist(),
     )
   })
 

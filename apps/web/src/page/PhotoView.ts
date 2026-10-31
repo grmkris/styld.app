@@ -11,6 +11,7 @@ import { loader } from '../Icon.ts'
 import { lookRouter, reviewRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { backToGallery } from './PageBar.ts'
+import * as SaveToBoardView from './SaveToBoardView.ts'
 import { Deletion, Message, type Model, Shown, Work } from './Photo.ts'
 import { photoDate } from './PhotosView.ts'
 import * as styles from './PhotosView.styles.ts'
@@ -220,6 +221,15 @@ const loadedView = (model: Model, photo: Photo, inputs: Inputs, h: HtmlBuilder<M
     ]),
     h.h1(styled(h, styles.title()), [date]),
     actionsView(model, photo, inputs, h),
+    photo.status === 'ready'
+      ? h.submodel({
+          slotId: 'photo-save-to-board',
+          model: model.saveToBoard,
+          view: SaveToBoardView.view,
+          viewInputs: { locale },
+          toParentMessage: (message) => Message.GotSaveToBoardMessage({ message }),
+        })
+      : h.empty,
     deletionView(model, locale, h),
     Work.guards.Failed(model.work)
       ? h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, 'photo.workFailed', {})])
