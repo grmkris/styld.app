@@ -129,3 +129,5 @@ export const chips = style({ display: 'flex', flexWrap: 'wrap', gap: '8px' })
 /** A mood chip is Ask's chip (DESIGN.md › Chips), filled ink when chosen. */
 export const chosen = style({ '&[aria-pressed="true"]': { backgroundColor: 'ink', color: 'onInk' } })
 export const empty = style({ color: 'ink2' })
+/** A board card's shape while Explore loads. */
+export const boardSkeleton = style({ aspectRatio: '4 / 5', borderRadius: 'panel' })

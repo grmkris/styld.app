@@ -16,11 +16,12 @@ import { secondaryAction } from '../Actions.styles.ts'
 import { avatar } from '../Avatar.ts'
 import { checkIcon, closeIcon, loader, searchIcon } from '../Icon.ts'
 import { loginRouter, personRouter } from '../route.ts'
+import { block, headingLine, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import * as styles from './ExploreView.styles.ts'
 import { creditedBoardCard } from './PublicTiles.ts'
-import { chip, clear, quiet, search as searchPill, searchInput } from './AskView.styles.ts'
+import { chip, chipSkeleton, clear, quiet, search as searchPill, searchInput } from './AskView.styles.ts'
 import { Work } from './People.ts'
 import {
   ExploreSearch,
@@ -213,6 +214,35 @@ export const exploreSections = (
           ),
         ],
       ),
+]
+
+const skeletonBoards = ['a', 'b'] as const
+const skeletonChips = ['a', 'b', 'c', 'd'] as const
+
+/** Explore's shape while its sections load: Edits from Styld's head over two 4:5 boards, then Newest boards' head over
+ * its chips. What is loading is said once, for assistive technology. */
+export const exploreLoading = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
+  h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
+  h.div(
+    [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.section())],
+    [
+      h.span(styled(h, cx(line(), headingLine()))),
+      h.ul(
+        styled(h, styles.boards()),
+        skeletonBoards.map((slot) => h.keyed('li')(slot, [], [h.span(styled(h, cx(block(), styles.boardSkeleton())))])),
+      ),
+    ],
+  ),
+  h.div(
+    [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.section())],
+    [
+      h.span(styled(h, cx(line(), headingLine()))),
+      h.div(
+        styled(h, styles.chips()),
+        skeletonChips.map((slot) => h.keyed('span')(slot, styled(h, cx(block(), chipSkeleton())))),
+      ),
+    ],
+  ),
 ]
 
 /** The search pill (DESIGN.md › Search): people and public boards, for anyone, signed in or out. Enter searches; the

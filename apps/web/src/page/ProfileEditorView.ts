@@ -8,7 +8,10 @@ import { avatar } from '../Avatar.ts'
 import { checkNotice } from './CheckNotice.ts'
 import { textField } from '../Fields.styles.ts'
 import { loader } from '../Icon.ts'
+import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
+import { visuallyHidden } from '../VisuallyHidden.styles.ts'
+import { cx } from 'zyzz'
 import { Load, Message, type Model, Publishing, Saving } from './ProfileEditor.ts'
 import * as styles from './ProfileEditorView.styles.ts'
 
@@ -194,12 +197,33 @@ const publicView = (profile: Profile, model: Model, locale: Locale, h: HtmlBuild
   )
 }
 
+const skeletonFields = ['handle', 'name', 'city', 'bio'] as const
+
+/** The editor's shape while the profile loads: the avatar and title, then a label over a field for each of the four,
+ * and what is loading for assistive technology. */
+const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
+  h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
+  h.div(
+    [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.who())],
+    [h.span(styled(h, cx(block(), styles.avatarSkeleton()))), h.span(styled(h, cx(line(), styles.titleSkeleton())))],
+  ),
+  h.div(
+    [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.form())],
+    skeletonFields.map((slot) =>
+      h.keyed('span')(slot, styled(h, styles.field()), [
+        h.span(styled(h, cx(line(), styles.labelSkeleton()))),
+        h.span(styled(h, cx(block(), styles.fieldSkeleton()))),
+      ]),
+    ),
+  ),
+]
+
 /** The profile editor: who you are to others, then whether they can see it. */
 export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
   h.main(
     [h.Id('main'), ...styled(h, styles.page())],
     Load.match(model.load, {
-      Loading: () => [h.p([h.Role('status')], [loader(h)])],
+      Loading: () => loadingView(locale, h),
       Failed: () => [
         h.p([h.Role('alert')], [format(locale, 'profile.editor.saveFailed', {})]),
         actionButton(

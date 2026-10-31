@@ -354,6 +354,27 @@ describe('a public profile', () => {
     )
   })
 
+  test('while Explore, a profile or a piece loads, its shape holds the page and a status says it is loading', () => {
+    scene(
+      { update, view },
+      given(visiting('/explore', Shown.Loading())),
+      expect(role('heading', { name: 'Explore', level: 1 })).toExist(),
+      expect(role('search')).toExist(),
+      expect(role('status')).toHaveText('Loading…'),
+      expect(role('heading', { level: 2 })).not.toExist(),
+    )
+    scene(
+      { update, view },
+      given(visiting('/@nika.kovac', Shown.Loading())),
+      expect(role('status')).toHaveText('Loading…'),
+    )
+    scene(
+      { update, view },
+      given(visiting(`/pieces/${knit.id}`, Shown.Loading())),
+      expect(role('status')).toHaveText('Loading…'),
+    )
+  })
+
   test('the landing shows Edits from Styld to someone signed out', () => {
     const found = { board: nika.boards[0], by, moods: [] }
     const explore = Schema.decodeUnknownSync(Explore)({ edits: [found], featured: [], people: [], newest: [] })

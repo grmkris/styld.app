@@ -7,12 +7,14 @@ import { actionButton } from '../ActionButton.ts'
 import { secondaryAction } from '../Actions.styles.ts'
 import { pieceRouter } from '../route.ts'
 import { avatar } from '../Avatar.ts'
-import { loader } from '../Icon.ts'
+import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
+import { visuallyHidden } from '../VisuallyHidden.styles.ts'
+import { cx } from 'zyzz'
 import { publicPieceImage } from './Board/Table.ts'
 import * as PeopleView from './PeopleView.ts'
 import { boardCard, byline, lookTile, pieceTile, tileGrid } from './PublicTiles.ts'
-import { exploreSearchForm, exploreSections, searchView } from './ExploreView.ts'
+import { exploreLoading, exploreSearchForm, exploreSections, searchView } from './ExploreView.ts'
 import { page as explorePage } from './ExploreView.styles.ts'
 import { ExploreSearch, Message, type Model, type PersonTab, Shown, Target } from './Visit.ts'
 import * as styles from './VisitView.styles.ts'
@@ -141,7 +143,7 @@ const exploreContent = (
 ): ReadonlyArray<Html> => {
   if (!ExploreSearch.guards.Off(model.search)) return [searchView(model.search, locale, h)]
   if (Shown.guards.Explore(model.shown)) return exploreSections(model.shown.explore, mood, model, signedIn, locale, h)
-  return Shown.guards.Failed(model.shown) ? [failedView(locale, h)] : [h.p([h.Role('status')], [loader(h)])]
+  return Shown.guards.Failed(model.shown) ? [failedView(locale, h)] : exploreLoading(locale, h)
 }
 
 /** Explore: one title above whatever it shows, so a tab arriving on it keeps the title focused as it loads, then the
@@ -156,6 +158,28 @@ const exploreMain = (
     h.h1([], [format(inputs.locale, 'explore.title', {})]),
     exploreSearchForm(model.query, inputs.locale, h),
     ...exploreContent(model, mood, inputs, h),
+  ])
+
+/** A profile's or a piece's shape while it loads, and what is loading for assistive technology. */
+const loadingView = (target: Target, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.div(styled(h, styles.page()), [
+    h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
+    Target.guards.Piece(target)
+      ? h.div(
+          [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.page())],
+          [
+            h.span(styled(h, cx(block(), styles.pieceSkeleton()))),
+            h.span(styled(h, cx(line(), styles.nameSkeleton()))),
+          ],
+        )
+      : h.div(
+          [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.person())],
+          [
+            h.span(styled(h, cx(block(), styles.avatarSkeleton()))),
+            h.span(styled(h, cx(line(), styles.nameSkeleton()))),
+            h.span(styled(h, cx(line(), styles.handleSkeleton()))),
+          ],
+        ),
   ])
 
 const failedView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
@@ -175,7 +199,7 @@ export const view = Submodel.defineView<Model, Message, PeopleView.Inputs>((mode
       Target.guards.Explore(model.target)
         ? exploreMain(model, model.target.mood, inputs, h)
         : Shown.match(model.shown, {
-            Loading: () => h.p([h.Role('status')], [loader(h)]),
+            Loading: () => loadingView(model.target, locale, h),
             Missing: () => h.h1([], [format(locale, 'common.notFoundTitle', {})]),
             Failed: () => failedView(locale, h),
             Person: ({ profile }) => personView(model, profile, inputs, h),

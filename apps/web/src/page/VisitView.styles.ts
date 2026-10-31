@@ -36,6 +36,16 @@ export const boards = style({
   listStyle: 'none',
 })
 export const empty = style({ color: 'ink2' })
+/** Shapes while a profile or a piece loads: the large avatar, the name (28px at line height 1.1) and the handle. */
+export const avatarSkeleton = style({ inlineSize: '72px', blockSize: '72px', borderRadius: 'pill' })
+export const nameSkeleton = style({ fontSize: '28px', blockSize: '0.6em', marginBlock: '0.25em', inlineSize: '8em' })
+export const handleSkeleton = style({ fontSize: '14px', inlineSize: '10em' })
+export const pieceSkeleton = style({
+  inlineSize: '100%',
+  maxInlineSize: '420px',
+  aspectRatio: '1 / 1',
+  borderRadius: 'panel',
+})
 export const pieceImage = style({
   inlineSize: '100%',
   maxInlineSize: '420px',

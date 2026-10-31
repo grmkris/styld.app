@@ -31,6 +31,11 @@ export const check = style({ display: 'flex', alignItems: 'center', gap: '8px', 
 export const actions = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px 12px' })
 export const note = style({ fontSize: '14px', color: 'ink2' })
 export const problem = style({ fontSize: '14px', color: 'error' })
+/** Shapes while the profile loads: the large avatar, the title (30px at line height 1.08), a label, a field. */
+export const avatarSkeleton = style({ flex: 'none', inlineSize: '72px', blockSize: '72px', borderRadius: 'pill' })
+export const titleSkeleton = style({ fontSize: '30px', blockSize: '0.6em', marginBlock: '0.24em', inlineSize: '6em' })
+export const labelSkeleton = style({ fontSize: '14px', inlineSize: '6em' })
+export const fieldSkeleton = style({ inlineSize: '100%', blockSize: '52px', borderRadius: 'field' })
 export const publicCard = style({
   display: 'grid',
   gap: '8px',
