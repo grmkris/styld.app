@@ -18,6 +18,9 @@ export const StyldPieceQueue = Cloudflare.Queues.Queue('StyldV2PieceProcessing')
 /** The model's checks of what people make public, retried while a model does not answer. */
 export const StyldChecksQueue = Cloudflare.Queues.Queue('StyldV2Checks')
 
+/** Generated pictures and mood boards on their way (`generation/Work.ts`), each step resumed where it stopped. */
+export const StyldGenerationQueue = Cloudflare.Queues.Queue('StyldV2Generation')
+
 /** Every capture provider call and review decision, for cost and keep rates (`tools/ai-usage-report.ts`). */
 export const StyldAiCalls = Cloudflare.AnalyticsEngine.Dataset('StyldV2AiCalls')
 

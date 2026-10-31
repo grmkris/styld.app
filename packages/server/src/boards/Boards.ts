@@ -265,10 +265,21 @@ const addImageFailure = (
     return yield* unavailable()
   })
 
+/** A received upload of a picture Styld generated, and what made it. */
+interface GeneratedImage extends AddBoardImage {
+  readonly jobId: string
+  readonly model: string
+}
+
 const pictures = (parts: Parts) => ({
-  /** A received photo upload becomes a picture on the board. The same operation id answers the same picture;
-   * using it for another upload or board is a conflict. */
-  addBoardImage: Effect.fn('Styld.Boards.addImage')(function* (boardId: BoardId, input: AddBoardImage) {
+  /** A received photo upload becomes a picture on the board; a picture Styld generated says which job made it and
+   * the model that drew it. The same operation id answers the same picture; using it for another upload or board
+   * is a conflict. */
+  addBoardImage: Effect.fn('Styld.Boards.addImage')(function* (
+    boardId: BoardId,
+    input: AddBoardImage,
+    made: Option.Option<{ readonly jobId: string; readonly model: string }> = Option.none(),
+  ) {
     const { accountId } = yield* CurrentAccount
     const inputDigest = yield* parts.digest(JSON.stringify([boardId, input.uploadId]))
     const receipt = yield* stored(parts.store.findReceipt(accountId, input.operationId))
@@ -283,7 +294,16 @@ const pictures = (parts: Parts) => ({
     const pinId = yield* parts.newId('pn')
     const at = yield* nowDate
     const added = yield* receiptRow(accountId, input.operationId, 'addBoardImage', inputDigest, id)
-    const image = { id, accountId, boardId, contentType: upload.contentType, createdAt: at }
+    const image = {
+      id,
+      accountId,
+      boardId,
+      contentType: upload.contentType,
+      origin: Option.isSome(made) ? ('generated' as const) : ('upload' as const),
+      jobId: Option.isSome(made) ? made.value.jobId : null,
+      model: Option.isSome(made) ? made.value.model : null,
+      createdAt: at,
+    }
     const committed = yield* parts.store.addImage(image, pinId, upload.id, added).pipe(
       Effect.as(Option.none<BoardImage>()),
       Effect.catchTag('StoreUnavailable', () =>
@@ -334,6 +354,14 @@ const make = (bindings: BoardBindings, checks: Checks['Service']) =>
       addPins: rechecked(parts, edits.addPins),
       removePins: rechecked(parts, edits.removePins),
       addBoardImage: rechecked(parts, edits.addBoardImage),
+      /** A picture Styld generated for the board, marked with its job and model. */
+      addGeneratedImage: rechecked(parts, (boardId: BoardId, input: GeneratedImage) =>
+        edits.addBoardImage(
+          boardId,
+          { operationId: input.operationId, uploadId: input.uploadId },
+          Option.some({ jobId: input.jobId, model: input.model }),
+        ),
+      ),
     }
   })
 

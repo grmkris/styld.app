@@ -9,6 +9,8 @@ import { boardHandlers } from './boards/Http.ts'
 import type { Boards } from './boards/Boards.ts'
 import { captureHandlers } from './capture/Http.ts'
 import type { Captures } from './capture/Service.ts'
+import { generationHandlers } from './generation/Http.ts'
+import type { Generations } from './generation/Service.ts'
 import { linkHandlers } from './links/Http.ts'
 import { lookHandlers } from './looks/Http.ts'
 import type { Looks } from './looks/Looks.ts'
@@ -61,10 +63,12 @@ export const apiRoutes = (
     readonly publicPages: Layer.Layer<PublicPages>
     readonly discovery: Layer.Layer<Discovery>
     readonly social: Layer.Layer<Social>
+    readonly generations: Layer.Layer<Generations>
   },
   limits: {
     readonly allowCheck: (accountId: string) => Effect.Effect<boolean, never, RuntimeContext>
     readonly allowLink: (accountId: string) => Effect.Effect<boolean, never, RuntimeContext>
+    readonly allowGenerate: (accountId: string) => Effect.Effect<boolean, never, RuntimeContext>
     readonly allowRead: AllowRead
   },
 ) =>
@@ -83,6 +87,7 @@ export const apiRoutes = (
     ),
     Layer.provide(socialHandlers(admitWith(auth)).pipe(Layer.provide(services.social))),
     Layer.provide(linkHandlers(admitWith(auth), limits.allowLink).pipe(Layer.provide(services.wardrobe))),
+    Layer.provide(generationHandlers(admitWith(auth), limits.allowGenerate).pipe(Layer.provide(services.generations))),
     Layer.provide(auth.router.securityLayer(SessionHttp)),
     auth.router.middleware,
     Layer.provide(auth.dependencies),

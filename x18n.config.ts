@@ -42,6 +42,9 @@ export default defineConfig({
       // The prompt an image model draws a clean picture from, and Muse's protocol text.
       'packages/server/src/capture/CleanPrompt.ts': ['/[\\s\\S]*/'],
       'packages/server/src/capture/Muse.ts': ['/[\\s\\S]*/'],
+      // The prompts a generated picture is painted from and the mood board planner's instructions.
+      'packages/server/src/generation/PaintPrompt.ts': ['/[\\s\\S]*/'],
+      'packages/server/src/generation/Planner.ts': ['/[\\s\\S]*/'],
       // SQL fragments discovery orders and filters by.
       'packages/server/src/social/Discovery.ts': ['/json_each/', '/ is null$/'],
       // The questions the content check puts to Clef and Llama Guard.

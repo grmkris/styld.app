@@ -69,10 +69,12 @@ export type BoardItem = typeof BoardItem.Type
 /** One of the person's pieces pinned on the board. */
 export const PiecePin = Schema.TaggedStruct('PiecePin', { id: PinId, piece: Piece, addedAt: Schema.String })
 export type PiecePin = typeof PiecePin.Type
-/** A picture on the board: pasted, dropped or chosen. */
+/** A picture on the board: pasted, dropped or chosen, or made by Styld. */
 export const PicturePin = Schema.TaggedStruct('PicturePin', {
   id: PinId,
   imageId: BoardImageId,
+  /** Styld made it: shown marked Generated. */
+  generated: Schema.Boolean,
   addedAt: Schema.String,
 })
 export type PicturePin = typeof PicturePin.Type

@@ -40,6 +40,7 @@ export const PublicPiecePin = Schema.TaggedStruct('PublicPiecePin', {
 export const PublicPicturePin = Schema.TaggedStruct('PublicPicturePin', {
   id: PinId,
   imageId: BoardImageId,
+  generated: Schema.Boolean,
   addedAt: Schema.String,
 })
 export const PublicLookPin = Schema.TaggedStruct('PublicLookPin', {

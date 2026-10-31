@@ -16,6 +16,7 @@ import { nativeDailyAllowance, verifyCaptures } from './CaptureAcceptance.ts'
 import { verifyScan } from './ScanAcceptance.ts'
 import { verifyGallery } from './GalleryAcceptance.ts'
 import { verifySocial } from './SocialAcceptance.ts'
+import { verifyGeneration } from './GenerationAcceptance.ts'
 import { verifyPublicJourney } from './SocialBrowserAcceptance.ts'
 import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
 import { verifyMcp } from './McpAcceptance.ts'
@@ -58,6 +59,8 @@ const makeStack = (generation: string) =>
           STYLD_PROVIDERS: 'off',
           // The stand-in judge decides checks: `[[fail]]` and `[[unsure]]` in public text.
           CHECKS: 'stand-in',
+          // The stand-in painter and planner make pictures: `[[refuse]]`, `[[lost]]` and `[[unclear]]` in the words.
+          GENERATED_PICTURES: 'stand-in',
           ...pictureEnvironment(worker.url),
           DAILY_ALLOWANCE: String(nativeDailyAllowance),
           AUTH_SECRET: Redacted.make('native-test-auth-secret-012345678901234567890123'),
@@ -175,6 +178,7 @@ test(
 )
 
 test('keeps profiles and checks whatever goes public first', overHttp(verifySocial), { timeout: 60000 })
+test('makes pictures and mood boards for a board, once each', overHttp(verifyGeneration), { timeout: 90000 })
 test('shows a published profile and its public board to a signed-out visitor', inBrowser(verifyPublicJourney), {
   timeout: 60000,
 })
@@ -337,7 +341,8 @@ test(
         // Every table, in SQLite's name order.
         tables: (
           'accounts auth_attempt_buckets blocks board_images board_items board_pins boards capture_frames ' +
-          'captures content_checks detections follows look_pieces looks oauth_assertions oauth_clients ' +
+          'captures content_checks detections follows generation_jobs generation_pictures look_pieces looks ' +
+          'oauth_assertions oauth_clients ' +
           'oauth_grants operation_receipts piece_pictures piece_turns pieces profiles reports saves ' +
           'styld_auth_credentials styld_auth_email_credentials styld_auth_identifiers styld_auth_passwords ' +
           'styld_auth_pending styld_auth_proofs styld_auth_sessions uploads wishes worn_pieces'

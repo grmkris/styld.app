@@ -104,7 +104,7 @@ export const shownPin = (row: PinWithPiece, looks: ReadonlyMap<string, Look>) =>
       row.pin.kind === 'piece' && row.piece !== null
         ? [{ _tag: 'PiecePin', ...base, piece: yield* toPiece(row.piece) }]
         : row.pin.kind === 'picture' && row.pin.imageId !== null
-          ? [{ _tag: 'PicturePin', ...base, imageId: row.pin.imageId }]
+          ? [{ _tag: 'PicturePin', ...base, imageId: row.pin.imageId, generated: row.origin === 'generated' }]
           : row.pin.kind === 'look' && look !== undefined
             ? [{ _tag: 'LookPin', ...base, look }]
             : []

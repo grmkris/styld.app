@@ -134,12 +134,13 @@ const itemRows = (db: Database) => ({
   },
 })
 
-/** The pin's own columns, with the piece a piece pin holds. */
+/** The pin's own columns, with the piece a piece pin holds and where a picture pin's picture came from. */
 const pinWithPiece = (db: Database, where: SQL) =>
   db
-    .select({ pin: boardPins, piece: pieces })
+    .select({ pin: boardPins, piece: pieces, origin: boardImages.origin })
     .from(boardPins)
     .leftJoin(pieces, eq(pieces.id, boardPins.pieceId))
+    .leftJoin(boardImages, eq(boardImages.id, boardPins.imageId))
     .where(where)
     .orderBy(desc(boardPins.createdAt), desc(boardPins.id))
 

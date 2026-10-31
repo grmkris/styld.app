@@ -149,6 +149,7 @@ const boards = Boards.of({
   addPins: notUsed,
   removePins: notUsed,
   addBoardImage: notUsed,
+  addGeneratedImage: notUsed,
   setBoardVisibility: notUsed,
   boardImage: notUsed,
 })
@@ -188,10 +189,12 @@ const discovery = Discovery.of({
   explore: () => Effect.succeed({ edits: [], featured: [], people: [], newest: [] }),
   search: () => Effect.succeed({ people: [], boards: [] }),
 })
+/** Generations: not part of these tests. */
+const generations = { admit: notUsed, get: notUsed }
 const tools = styldTools(
   database,
   'https://styld.test',
-  { wardrobe, looks, captures, boards, profiles, social, discovery },
+  { wardrobe, looks, captures, boards, profiles, social, discovery, generations },
   offline,
 )
 /** The JSON of a result's first text block. */

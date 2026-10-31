@@ -61,6 +61,8 @@ export default Alchemy.Stack(
         META_API_KEY: yield* Config.Redacted('META_MUSE_API_KEY'),
         // Clean pictures of kept cut-outs (docs/ROADMAP.md › Clean pictures): Clef judges, Meta Muse Image draws.
         CLEAN_PICTURES: 'muse',
+        // Generated pictures and mood boards for boards (M7): Meta Muse Image paints, a Workers AI model plans.
+        GENERATED_PICTURES: 'muse',
         // What people make public is checked by Clef-flash (pictures) and Llama Guard 3 (words) before others see it.
         CHECKS: 'live',
         // Accounts whose assistants get the curation tools (feature, house, hide, reports, checks): their sign-in

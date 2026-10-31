@@ -3,6 +3,7 @@ import * as Base64 from 'effect/encoding/Base64'
 import { cleanPrompt } from './CleanPrompt.ts'
 import { profilePrompt } from './TurnPrompt.ts'
 import { type CaptureMetrics, counted, prices } from './Metrics.ts'
+import type { PaintRequest } from '../generation/Painter.ts'
 import { type DrawRequest, type Picture, ProviderFailed, ProviderOutcomeUnknown } from './Providers.ts'
 
 /** What the Muse adapter needs: Meta's API and the key Styld already uses for SAM, and `fetch`. */
@@ -23,12 +24,12 @@ const Edited = Schema.Struct({ data: Schema.Array(Schema.Struct({ b64_json: Sche
 const dataUrl = (picture: Picture) => `data:${picture.contentType};base64,${Base64.encode(picture.bytes)}`
 
 /** An edit request: the pictures in order, Muse's own search tools off so nothing beyond them reaches it, a portrait
- * picture returned as base64 PNG. */
+ * picture returned as base64 PNG. With no pictures it is a request to draw from the words alone. */
 const body = (prompt: string, pictures: ReadonlyArray<Picture>, size: string) =>
   JSON.stringify({
     model,
     prompt,
-    images: pictures.map((picture) => ({ image_url: dataUrl(picture) })),
+    ...(pictures.length === 0 ? {} : { images: pictures.map((picture) => ({ image_url: dataUrl(picture) })) }),
     n: 1,
     size,
     output_format: 'png',
@@ -64,10 +65,15 @@ const outcomeOf = (error: ProviderFailed | ProviderOutcomeUnknown) =>
 
 /** One Muse edit, retried in place while Muse is busy, counted as `kind`. A request that was sent but got no answer may
  * have been drawn and billed, so it is unknown and never resent. */
-const edit = (settings: MuseSettings, request: string, kind: 'draw' | 'profile') => {
+const edit = (
+  settings: MuseSettings,
+  request: string,
+  kind: 'draw' | 'profile' | 'paint',
+  endpoint: 'edits' | 'generations' = 'edits',
+) => {
   const send = Effect.tryPromise({
     try: (signal) =>
-      settings.fetch(`${settings.apiBase}/v1/images/edits`, {
+      settings.fetch(`${settings.apiBase}/v1/images/${endpoint}`, {
         method: 'POST',
         headers: { authorization: `Bearer ${Redacted.value(settings.apiKey)}`, 'content-type': 'application/json' },
         body: request,
@@ -101,5 +107,19 @@ export const makeMuseGenerator = (settings: MuseSettings) => ({
   /** A strict side view of a turn's front anchor, on the same 9:16 canvas. */
   profile: Effect.fn('Styld.Turn.profile')(function* (front: Picture, key: 'green' | 'magenta') {
     return yield* edit(settings, body(profilePrompt(key), [front], '1152x2048'), 'profile')
+  }),
+})
+
+/** Meta Muse Image as the painter of generated pictures for boards: from the words alone, or edited from the pieces'
+ * pictures when it shows them. 4:5, like a pin. */
+export const makeMusePainter = (settings: MuseSettings) => ({
+  model,
+  paint: Effect.fn('Styld.Generation.paint')(function* (request: PaintRequest) {
+    return yield* edit(
+      settings,
+      body(request.prompt, request.references, '1024x1280'),
+      'paint',
+      request.references.length === 0 ? 'generations' : 'edits',
+    )
   }),
 })

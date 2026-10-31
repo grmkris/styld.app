@@ -113,8 +113,14 @@ export type Uploads = Pick<Wardrobe['Service'], 'createUpload' | 'receiveUpload'
 
 /** Fetch a photo into a fresh received upload of the person's, through the same checks as one they send. */
 export const importedUpload = (wardrobe: Uploads, address: string) =>
+  Effect.flatMap(importImage(address), (image) => receivedUpload(wardrobe, image))
+
+/** Picture bytes Styld holds as a fresh received upload of the person's, through the same checks as one they send. */
+export const receivedUpload = (
+  wardrobe: Uploads,
+  { contentType, bytes }: { readonly contentType: ImageType; readonly bytes: Uint8Array },
+) =>
   Effect.gen(function* () {
-    const { contentType, bytes } = yield* importImage(address)
     const upload = yield* wardrobe.createUpload({ contentType, bytes: bytes.byteLength })
     // The upload's path carries its one-time token; the origin it is read against does not matter.
     const token = new URL(upload.path, 'https://styld.invalid').searchParams.get('token') ?? ''

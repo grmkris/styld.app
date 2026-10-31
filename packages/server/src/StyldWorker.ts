@@ -51,6 +51,7 @@ import {
   emailSender,
   StyldAiCalls,
   StyldChecksQueue,
+  StyldGenerationQueue,
   StyldDatabase,
   StyldEmail,
   StyldMedia,
@@ -60,6 +61,11 @@ import { type CheckBindings, makeChecks } from './safety/Checks.ts'
 import { contentJudge, type RunGuard } from './safety/Judge.ts'
 import { pieceChangedLayer } from './safety/PieceChanged.ts'
 import { checkAttempts, settleCheck } from './safety/Queue.ts'
+import { generationProviders } from './generation/Providers.ts'
+import { type MoodPlanner, plannerModel, type RunPlanner } from './generation/Planner.ts'
+import type { PicturePainter } from './generation/Painter.ts'
+import { generationAttempts, settleGeneration } from './generation/Queue.ts'
+import { type GenerationBindings, Generations, makeGenerations } from './generation/Service.ts'
 import { wardrobeRoutes } from './wardrobe/Http.ts'
 import { processingAttempts, settleMessage } from './wardrobe/Queue.ts'
 import { makeWardrobe, Wardrobe, type WardrobeBindings } from './wardrobe/Wardrobe.ts'
@@ -99,9 +105,14 @@ const perClientLimit = (name: string, namespaceId: number, limit: number) =>
 /** One wardrobe, one account lifecycle, one capture service, the looks, boards and worn days per isolate, shared
  * by the routes and the processing queue. Assistant-added pieces get the same cut-out providers as the tray. */
 const storageServices = <R>(
-  bindings: WardrobeBindings & { readonly checksQueue: CheckBindings['queue'] },
+  bindings: WardrobeBindings & {
+    readonly checksQueue: CheckBindings['queue']
+    readonly generationQueue: GenerationBindings['queue']
+  },
   judge: ReturnType<typeof contentJudge>,
   providers: Layer.Layer<
+    | PicturePainter
+    | MoodPlanner
     | GarmentVision
     | PictureWork
     | GarmentSegmenter
@@ -127,7 +138,15 @@ const storageServices = <R>(
     const publicPagesService = yield* makePublicPages(bindings, checksService)
     const socialService = yield* makeSocial(bindings.database, publicPagesService, checksService)
     const discoveryService = makeDiscovery(bindings.database, publicPagesService)
+    const generationsService = yield* makeGenerations({
+      ...bindings,
+      queue: bindings.generationQueue,
+      boards: boardsService,
+      wardrobe: wardrobeService,
+    }).pipe(Effect.provide(judge))
     return {
+      generationsService,
+      generations: Layer.succeed(Generations, generationsService),
       curationService: makeCuration(bindings.database, checksService),
       discoveryService,
       discovery: Layer.succeed(Discovery, discoveryService),
@@ -162,6 +181,7 @@ const toolServices = (services: Effect.Success<ReturnType<typeof storageServices
   profiles: services.profilesService,
   social: services.socialService,
   discovery: services.discoveryService,
+  generations: services.generationsService,
 })
 
 /** The capture providers and policy from the Worker's environment. */
@@ -169,6 +189,7 @@ const captureProviders = (
   env: Cloudflare.Workers.WorkerEnvironment['Service'],
   runtime: {
     readonly runClef: RunClef
+    readonly runPlanner: RunPlanner
     readonly images: WardrobeBindings['images']
     readonly bucket: WardrobeBindings['bucket']
     readonly dataset: AnalyticsDataset
@@ -196,6 +217,7 @@ const captureProviders = (
       makeGarmentSegmenter({ ...meta, readVideo: async (key) => (await runtime.bucket.get(key))?.body ?? null }),
     ),
     Layer.succeed(ImageGenerator, policy.pictures.generator === 'muse' ? makeMuseGenerator(meta) : ImageGenerator.off),
+    generationProviders(env.GENERATED_PICTURES, meta, runtime.runPlanner),
     Layer.succeed(
       VideoGenerator,
       policy.turns.generator === 'veo'
@@ -278,6 +300,8 @@ const declareBindings = Effect.gen(function* () {
   const pieceQueue = yield* Cloudflare.Queues.WriteQueue(pieceQueueResource)
   const checksQueueResource = yield* StyldChecksQueue
   const checksQueue = yield* Cloudflare.Queues.WriteQueue(checksQueueResource)
+  const generationQueueResource = yield* StyldGenerationQueue
+  const generationQueue = yield* Cloudflare.Queues.WriteQueue(generationQueueResource)
   // Clef-flash (Workers AI) routes photos and suggests details; provider calls are counted in Analytics Engine.
   const ai = yield* Cloudflare.Workers.AI('AI')
   const calls = yield* Cloudflare.AnalyticsEngine.WriteDataset(yield* StyldAiCalls)
@@ -292,6 +316,8 @@ const declareBindings = Effect.gen(function* () {
   const allowRead = yield* perClientLimit('PUBLIC_READ_RATE_LIMIT', 2610285, 300)
   // Reading a shop's product page fetches someone else's site; each account may read ten a minute.
   const allowLink = yield* perClientLimit('LINK_IMPORT_RATE_LIMIT', 2610286, 10)
+  // Generated pictures cost credits and a model's time; each account may ask six times a minute.
+  const allowGenerate = yield* perClientLimit('GENERATE_RATE_LIMIT', 2610287, 6)
   // Sign-in codes are real mail from styld.app; each network may ask for five a minute.
   const codeRequests = yield* Cloudflare.Workers.RateLimit('EMAIL_CODE_RATE_LIMIT', {
     namespaceId: 2610283,
@@ -306,12 +332,15 @@ const declareBindings = Effect.gen(function* () {
     pieceQueue,
     checksQueueResource,
     checksQueue,
+    generationQueueResource,
+    generationQueue,
     ai,
     calls,
     allowTelemetry,
     allowRegistration,
     allowCheck,
     allowLink,
+    allowGenerate,
     allowRead,
     codeRequests,
   }
@@ -335,8 +364,31 @@ const workersModels = (
   // Only native acceptance names the stand-in judge.
   return {
     runClef,
+    runPlanner: ((input) => aiRaw.run(plannerModel, input)) satisfies RunPlanner,
     judge: contentJudge(env.CHECKS === 'stand-in' ? Option.none() : Option.some({ runClef, runGuard })),
   }
+}
+
+/** Every storage service over the Worker's bindings, with the providers its environment names. */
+const applicationServices = (
+  env: Cloudflare.Workers.WorkerEnvironment['Service'],
+  bindings: Parameters<typeof storageServices>[0],
+  runtime: {
+    readonly ai: Parameters<typeof workersModels>[1]
+    readonly dataset: AnalyticsDataset
+    readonly origin: { readonly environment: string; readonly release: string }
+  },
+) => {
+  const { runClef, runPlanner, judge } = workersModels(env, runtime.ai)
+  const providers = captureProviders(env, {
+    runClef,
+    runPlanner,
+    images: bindings.images,
+    bucket: bindings.bucket,
+    dataset: runtime.dataset,
+    origin: runtime.origin,
+  })
+  return storageServices(bindings, judge, providers)
 }
 
 /** The application over the Worker's bindings, built from the request runtime's environment. */
@@ -348,12 +400,14 @@ const makeApplication =
     images,
     pieceQueue,
     checksQueue,
+    generationQueue,
     ai,
     calls,
     allowTelemetry,
     allowRegistration,
     allowCheck,
     allowLink,
+    allowGenerate,
     allowRead,
     codeRequests,
   }: Effect.Success<typeof declareBindings>) =>
@@ -372,31 +426,27 @@ const makeApplication =
       const auth = makeAuthHttp(database, authOptions(configuration, yield* email.raw))
       const db = yield* database.raw
       const bucket = yield* media.raw
-      const imagesRaw = yield* images.raw
-      const { runClef, judge } = workersModels(env, yield* ai.raw)
-      const providers = captureProviders(env, {
-        runClef,
-        images: imagesRaw,
-        bucket,
-        dataset: yield* calls.raw,
-        origin: { environment: observabilityBase.environment, release: observabilityBase.release },
-      })
-      const services = yield* storageServices(
+      const services = yield* applicationServices(
+        env,
         {
           database: db,
           bucket,
-          images: imagesRaw,
+          images: yield* images.raw,
           queue: yield* pieceQueue.raw,
           checksQueue: yield* checksQueue.raw,
+          generationQueue: yield* generationQueue.raw,
         },
-        judge,
-        providers,
+        {
+          ai: yield* ai.raw,
+          dataset: yield* calls.raw,
+          origin: { environment: observabilityBase.environment, release: observabilityBase.release },
+        },
       )
       const { wardrobeService, lifecycleService, capturesService, wardrobe, captures, boards } = services
       const oauth = makeMcpOAuth(db, auth, { origin: authOrigin, keys: configuration.sessionKeys, allowRegistration })
       const routes = Layer.mergeAll(
         auth.layer,
-        apiRoutes(auth, services, { allowCheck, allowLink, allowRead }),
+        apiRoutes(auth, services, { allowCheck, allowLink, allowGenerate, allowRead }),
         publicImageRoutes(allowRead).pipe(Layer.provide(services.publicPages)),
         wardrobeRoutes(auth).pipe(Layer.provide(wardrobe)),
         boardRoutes(auth).pipe(Layer.provide(boards)),
@@ -420,6 +470,7 @@ const makeApplication =
         lifecycle: lifecycleService,
         captures: capturesService,
         checks: services.checksService,
+        generations: services.generationsService,
         allowCodeRequest,
       }
     })
@@ -475,6 +526,15 @@ export default StyldWorker.make(
         Effect.gen(function* () {
           const { checks } = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
           yield* Stream.runForEach(messages, (message) => settleCheck(checks, message))
+        }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
+    )
+    yield* Cloudflare.Queues.consumeQueueMessages(
+      bindings.generationQueueResource,
+      { batchSize: 4, maxRetries: generationAttempts, retryDelay: '20 seconds' },
+      (messages) =>
+        Effect.gen(function* () {
+          const { generations } = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
+          yield* Stream.runForEach(messages, (message) => settleGeneration(generations, message))
         }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
     )
     return { fetch }

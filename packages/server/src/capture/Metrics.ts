@@ -2,7 +2,7 @@ import { Clock, Context, Effect, Layer } from 'effect'
 
 /** One provider call, as Analytics Engine records it. Never an account, a prompt or a picture. */
 export interface ProviderCall {
-  readonly provider: 'clef' | 'cloudflare-images' | 'meta-sam' | 'meta-muse' | 'vercel-gateway'
+  readonly provider: 'clef' | 'cloudflare-images' | 'meta-sam' | 'meta-muse' | 'vercel-gateway' | 'workers-ai'
   readonly model: string
   readonly kind:
     | 'route'
@@ -19,6 +19,8 @@ export interface ProviderCall {
     | 'match'
     | 'profile'
     | 'turn'
+    | 'plan'
+    | 'paint'
   readonly outcome: 'ok' | 'failed' | 'unknown'
   readonly milliseconds: number
   /** What the provider bills by: tokens, images or frames. */

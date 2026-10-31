@@ -89,13 +89,13 @@ interface Seen {
 type PinRow = Effect.Success<ReturnType<ReturnType<typeof makeBoardStore>['pinsOf']>>[number]
 
 const publicPins = (seen: Seen, pins: ReadonlyArray<PinRow>): ReadonlyArray<object> =>
-  pins.flatMap(({ pin }): ReadonlyArray<object> => {
+  pins.flatMap(({ pin, origin }): ReadonlyArray<object> => {
     const base = { id: pin.id, addedAt: pin.createdAt.toISOString() }
     const piece = pin.pieceId === null ? undefined : seen.pieces.get(pin.pieceId)
     const look = pin.lookId === null ? undefined : seen.looks.get(pin.lookId)
     if (pin.kind === 'piece' && piece !== undefined) return [{ _tag: 'PublicPiecePin', ...base, piece }]
     if (pin.kind === 'picture' && pin.imageId !== null)
-      return [{ _tag: 'PublicPicturePin', ...base, imageId: pin.imageId }]
+      return [{ _tag: 'PublicPicturePin', ...base, imageId: pin.imageId, generated: origin === 'generated' }]
     if (pin.kind === 'look' && look !== undefined) return [{ _tag: 'PublicLookPin', ...base, look }]
     return []
   })

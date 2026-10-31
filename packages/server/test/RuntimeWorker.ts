@@ -139,6 +139,16 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
           ),
         ),
       ),
+      // An owner and a second account for generated pictures and mood boards.
+      HttpRouter.add(
+        'POST',
+        '/test/identity/seed-generation',
+        doneWhenFree(
+          Effect.forEach(['native-generation', 'native-generation-other'], (id) =>
+            whenFree(seedIdentity(database, id)),
+          ),
+        ),
+      ),
       // The person whose profile and public board a signed-out browser visits.
       HttpRouter.add(
         'POST',
