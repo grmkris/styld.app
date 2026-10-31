@@ -1905,6 +1905,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'board.unpinPictureAsk': 'Take the picture off? It is deleted.',
   'board.unpinConfirm': 'Take off',
   'board.unpinKeep': 'Keep',
+  'board.heldBack': 'Only you see this one for now',
   'boards.title': 'Boards',
   'boards.intro': 'Tables you lay your own pieces, words and pictures on.',
   'boards.new': 'New board',

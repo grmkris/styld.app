@@ -311,7 +311,7 @@ export const pageSteps = (
     const changed = pinsChanged(model, board)
     return { ...changed, commands: [...(changed.commands ?? []), ...readShown(changed.model)] }
   },
-  SucceededReadShown: ({ count }) => ({ model: modifyFields(model, { shownToOthers: () => Option.some(count) }) }),
-  FailedReadShown: () => ({ model }),
+  SucceededReadShown: ({ pinIds }) => ({ model: modifyFields(model, { shownToOthers: () => Option.some(pinIds) }) }),
+  FailedReadShown: () => ({ model: modifyFields(model, { shownToOthers: () => Option.none() }) }),
   FailedPins: () => ({ model: modifyFields(model, { pinWork: () => PinWork.Failed() }) }),
 })

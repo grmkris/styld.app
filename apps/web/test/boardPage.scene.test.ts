@@ -44,10 +44,15 @@ describe("a board's page", () => {
     const shown = modifyFields(signedInAt(`/boards/${boardId}`), {
       board: () =>
         modifyFields(fromBoard(boardInit(boardId), { ...board, visibility: 'public' }), {
-          shownToOthers: () => Option.some(0),
+          shownToOthers: () => Option.some([]),
         }),
     })
-    scene({ update, view }, given(shown), expect(text('1 pin, 0 of them public on your profile')).toExist())
+    scene(
+      { update, view },
+      given(shown),
+      expect(text('1 pin, 0 of them public on your profile')).toExist(),
+      expect(text('Only you see this one for now')).toExist(),
+    )
   })
 
   test('says where it stands under its name, and offers a collage after the pins while there is none', () => {

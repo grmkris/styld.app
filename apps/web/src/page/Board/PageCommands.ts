@@ -112,8 +112,9 @@ export const PinThings = Command.define('PinThings', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedPins())),
 })
 
-/** @internal Exported for its tests. How many of the board's pins others see: the public page, read as a visitor
- * reads it, is the one rule for that. A board others cannot see yet (its check is out, or it hid) shows them none. */
+/** @internal Exported for its tests. Which of the board's pins others see: the public page, read as a visitor reads
+ * it, is the one rule for that. A board others cannot see at all (its check is out, or it hid) leaves it unknown; its
+ * check's own line says why. */
 export const ReadShown = Command.define('ReadShown', {
   args: { boardId: Schema.String },
   messages: [Message.SucceededReadShown, Message.FailedReadShown],
@@ -121,11 +122,8 @@ export const ReadShown = Command.define('ReadShown', {
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       const board = yield* api.public.board({ params: { boardId: yield* boardIdOf(boardId) } })
-      return Message.SucceededReadShown({ count: board.pins.length })
-    }).pipe(
-      Effect.catchTag('PublicNotFound', () => Effect.succeed(Message.SucceededReadShown({ count: 0 }))),
-      Effect.orElseSucceed(() => Message.FailedReadShown()),
-    ),
+      return Message.SucceededReadShown({ pinIds: board.pins.map(({ id }) => id) })
+    }).pipe(Effect.orElseSucceed(() => Message.FailedReadShown())),
 })
 
 /** Reads what others see once the board is public; private, there is nothing to read. */

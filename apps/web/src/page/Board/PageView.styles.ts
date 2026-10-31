@@ -112,6 +112,8 @@ export const mosaic = style({
   '& img': { inlineSize: '100%', blockSize: '100%', minBlockSize: '0', objectFit: 'contain', mixBlendMode: 'darken' },
 })
 export const pinName = style({ paddingInline: '4px', fontSize: '13px', fontWeight: 600 })
+/** Under a pin the board shows others without: a quiet line saying only its owner sees it. */
+export const heldBack = style({ paddingInline: '4px', fontSize: '13px', color: 'ink2', textWrap: 'pretty' })
 /** The unpin question over the tile: what happens, then Take off and Keep, full width. */
 export const unpinAsk = style({
   position: 'absolute',

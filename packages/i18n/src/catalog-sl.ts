@@ -1942,6 +1942,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'board.unpinPictureAsk': 'Odstraniš sliko? Izbrisala se bo.',
   'board.unpinConfirm': 'Odstrani',
   'board.unpinKeep': 'Obdrži',
+  'board.heldBack': 'Zaenkrat ga vidiš samo ti',
   'boards.title': 'Zbirke',
   'boards.intro': 'Mize, na katere položiš svoje kose, besede in slike.',
   'boards.new': 'Nova zbirka',

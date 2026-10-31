@@ -122,8 +122,8 @@ describe('a board page', () => {
         expect(version).toBe(2)
       }),
       // Public, it reads how many pins others see: a piece shows them only with a picture of its own.
-      Command.resolve(ReadShown({ boardId: board.id }), Message.SucceededReadShown({ count: 0 })),
-      model(({ shownToOthers }) => expect(shownToOthers).toEqual(Option.some(0))),
+      Command.resolve(ReadShown({ boardId: board.id }), Message.SucceededReadShown({ pinIds: [] })),
+      model(({ shownToOthers }) => expect(shownToOthers).toEqual(Option.some([]))),
     )
   })
 

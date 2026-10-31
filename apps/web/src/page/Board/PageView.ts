@@ -38,78 +38,94 @@ const lookMosaic = (look: Look, h: HtmlBuilder<Message>): Html =>
     ),
   )
 
-const pinView = (pin: Pin, asking: boolean, locale: Locale, h: HtmlBuilder<Message>): Html =>
+/** A pinned thing on the board; one the board shows others without (no picture of its own yet, or Styld's check held
+ * it back) says so under it. */
+const pinView = (pin: Pin, asking: boolean, heldBack: boolean, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.keyed('li')(
     pin.id,
     [...styled(h, styles.pin())],
-    Match.value(pin).pipe(
-      Match.tagsExhaustive({
-        PiecePin: ({ id, piece }) => [
-          h.a(
-            [h.Href(pieceRouter({ pieceId: piece.id })), ...styled(h, styles.pinLink())],
-            [
-              h.span(styled(h, styles.pinFrame()), [
-                h.img([
-                  h.Src(pieceImage(piece.id)),
-                  h.Alt(pieceName(piece, locale)),
-                  h.Loading('lazy'),
-                  ...styled(h, styles.cutout()),
-                ]),
-              ]),
-            ],
-          ),
-          unpinButton(
-            {
-              pinId: id,
-              label: format(locale, 'board.unpin', { name: pieceName(piece, locale) }),
-              question: 'board.unpinAsk',
-            },
-            asking,
-            locale,
-            h,
-          ),
-        ],
-        PicturePin: ({ id, imageId, generated }) => [
-          h.span(styled(h, styles.pinFrame()), [
-            h.img([
-              h.Src(boardImage(imageId, 'thumb')),
-              h.Alt(format(locale, 'board.picture', {})),
-              h.Loading('lazy'),
-              ...styled(h, styles.photo()),
-            ]),
-          ]),
-          generated ? generatedMark(locale, h) : h.empty,
-          unpinButton(
-            { pinId: id, label: format(locale, 'board.unpinPicture', {}), question: 'board.unpinPictureAsk' },
-            asking,
-            locale,
-            h,
-          ),
-        ],
-        LookPin: ({ id, look }) => [
-          h.a(
-            [h.Href(lookRouter({ lookId: look.id })), ...styled(h, styles.pinLink())],
-            [
-              h.span(styled(h, styles.pinFrame()), [lookMosaic(look, h)]),
-              h.span(styled(h, styles.pinName()), [look.name]),
-            ],
-          ),
-          unpinButton(
-            { pinId: id, label: format(locale, 'board.unpin', { name: look.name }), question: 'board.unpinAsk' },
-            asking,
-            locale,
-            h,
-          ),
-        ],
-      }),
-    ),
+    [
+      ...pinContent(pin, asking, locale, h),
+      heldBack ? h.p(styled(h, styles.heldBack()), [format(locale, 'board.heldBack', {})]) : h.empty,
+    ],
   )
+
+const pinContent = (pin: Pin, asking: boolean, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>
+  Match.value(pin).pipe(
+    Match.tagsExhaustive({
+      PiecePin: ({ id, piece }) => [
+        h.a(
+          [h.Href(pieceRouter({ pieceId: piece.id })), ...styled(h, styles.pinLink())],
+          [
+            h.span(styled(h, styles.pinFrame()), [
+              h.img([
+                h.Src(pieceImage(piece.id)),
+                h.Alt(pieceName(piece, locale)),
+                h.Loading('lazy'),
+                ...styled(h, styles.cutout()),
+              ]),
+            ]),
+          ],
+        ),
+        unpinButton(
+          {
+            pinId: id,
+            label: format(locale, 'board.unpin', { name: pieceName(piece, locale) }),
+            question: 'board.unpinAsk',
+          },
+          asking,
+          locale,
+          h,
+        ),
+      ],
+      PicturePin: ({ id, imageId, generated }) => [
+        h.span(styled(h, styles.pinFrame()), [
+          h.img([
+            h.Src(boardImage(imageId, 'thumb')),
+            h.Alt(format(locale, 'board.picture', {})),
+            h.Loading('lazy'),
+            ...styled(h, styles.photo()),
+          ]),
+        ]),
+        generated ? generatedMark(locale, h) : h.empty,
+        unpinButton(
+          { pinId: id, label: format(locale, 'board.unpinPicture', {}), question: 'board.unpinPictureAsk' },
+          asking,
+          locale,
+          h,
+        ),
+      ],
+      LookPin: ({ id, look }) => [
+        h.a(
+          [h.Href(lookRouter({ lookId: look.id })), ...styled(h, styles.pinLink())],
+          [
+            h.span(styled(h, styles.pinFrame()), [lookMosaic(look, h)]),
+            h.span(styled(h, styles.pinName()), [look.name]),
+          ],
+        ),
+        unpinButton(
+          { pinId: id, label: format(locale, 'board.unpin', { name: look.name }), question: 'board.unpinAsk' },
+          asking,
+          locale,
+          h,
+        ),
+      ],
+    }),
+  )
+
+/** Public, and read through the public page without this pin. */
+const heldBack = (model: Model, pinId: string) =>
+  model.visibility === 'public' &&
+  Option.match(model.shownToOthers, { onNone: () => false, onSome: (shown) => !shown.includes(pinId) })
 
 /** Its pins and who sees it; public, how many of them others see when that is fewer (a piece shows others only with a
  * picture of its own, once Styld's check lets it). */
 const statusLine = (model: Model, locale: Locale) => {
   const count = model.pins.length
-  const shown = Option.filter(model.shownToOthers, (seen) => model.visibility === 'public' && seen < count)
+  const shown = Option.filter(
+    Option.map(model.shownToOthers, (seen) => seen.length),
+    (seen) => model.visibility === 'public' && seen < count,
+  )
   return Option.match(shown, {
     onNone: () => format(locale, 'studio.boardStatus', { count, visibility: model.visibility }),
     onSome: (seen) => format(locale, 'studio.boardStatusPartly', { count, shown: seen }),
@@ -166,7 +182,9 @@ const pinsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
         onNonEmpty: (pins) =>
           h.ul(
             styled(h, styles.grid()),
-            Array.map(pins, (pin) => pinView(pin, Option.contains(model.unpinning, pin.id), locale, h)),
+            Array.map(pins, (pin) =>
+              pinView(pin, Option.contains(model.unpinning, pin.id), heldBack(model, pin.id), locale, h),
+            ),
           ),
       }),
     ],

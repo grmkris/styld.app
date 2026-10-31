@@ -130,9 +130,9 @@ export const Model = Schema.Struct({
   /** What is pinned on the board, newest first. */
   pins: Schema.Array(Pin),
   pinWork: PinWork,
-  /** How many pins visitors see, read through the public page while the board is public: a piece shows others only
-   * with a picture of its own and once Styld's check lets it, so it can be fewer than are pinned. */
-  shownToOthers: Schema.Option(Schema.Int),
+  /** The pins visitors see, read through the public page while the board is public: a piece shows others only with a
+   * picture of its own and once Styld's check lets it, so it can be fewer than are pinned. */
+  shownToOthers: Schema.Option(Schema.Array(Schema.String)),
   /** The pin whose × was pressed: it asks once more, since it comes off the table too (and a picture is deleted). */
   unpinning: Schema.Option(Schema.String),
   /** The settings sheet: the name being typed, a rename and a deletion. */
