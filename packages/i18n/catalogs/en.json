@@ -1947,7 +1947,8 @@
     "removeWish": "Remove",
     "wishGone": "No longer shown",
     "wishlistFailed": "Your wishlist could not be loaded",
-    "signInToSave": "Sign in to save"
+    "signInToSave": "Sign in to save",
+    "gotIt": "Got it"
   },
   "profile": {
     "public": {

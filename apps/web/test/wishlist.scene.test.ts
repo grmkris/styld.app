@@ -68,6 +68,17 @@ describe('the wishlist', () => {
     )
   })
 
+  test('Got it takes the wish off and opens the ways to add the piece', () => {
+    scene(
+      { update, view },
+      given(wishlist(WishesData.Success({ data: [kept] }))),
+      expect(role('link', { name: 'Got it' })).toHaveAttr('href', '/wardrobe/add'),
+      click(role('link', { name: 'Got it' })),
+      Command.resolve(RemoveWish({ wishId: kept.id }), WishlistMessage.CompletedRemoveWish()),
+      expect(role('link', { name: 'Navy knit' })).toBeAbsent(),
+    )
+  })
+
   test('a wishlist that cannot load offers to try again', () => {
     scene(
       { update, view },

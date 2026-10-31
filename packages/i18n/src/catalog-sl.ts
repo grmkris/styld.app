@@ -1826,6 +1826,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'people.wishGone': 'Ni več prikazan',
   'people.wishlistFailed': 'Tvojega seznama želja ni bilo mogoče naložiti',
   'people.signInToSave': 'Prijavi se, da shraniš',
+  'people.gotIt': 'Imam ga',
   'profile.public.metaTitle': '{name} (@{username}) na Styld',
   'profile.public.metaDescription': 'Zbirke in videzi uporabnika @{username} na Styld.',
   'profile.public.headerCta': 'Pridruži se Styld',

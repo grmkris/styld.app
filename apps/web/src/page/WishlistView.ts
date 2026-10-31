@@ -4,6 +4,7 @@ import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
 import { secondaryAction } from '../Actions.styles.ts'
+import { addPiecesRouter } from '../route.ts'
 import { loader } from '../Icon.ts'
 import { styled } from '../Styled.ts'
 import * as boardStyles from './Board/PageView.styles.ts'
@@ -27,6 +28,14 @@ const wishTile = (wish: Wish, locale: Locale, h: HtmlBuilder<Message>): Html =>
         ])
       : pieceTile(wish.piece, locale, h),
     wish.by === null ? h.empty : byline(wish.by, locale, h),
+    h.a(
+      [
+        h.Href(addPiecesRouter({})),
+        h.OnClick(Message.ClickedGotIt({ wishId: wish.id })),
+        ...styled(h, secondaryAction()),
+      ],
+      [format(locale, 'people.gotIt', {})],
+    ),
     actionButton(
       {
         label: format(locale, 'people.removeWish', {}),

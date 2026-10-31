@@ -425,8 +425,7 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   boards before there are any), with a way to Explore. The section keeps its room while they load. Evidence: a
   scene test.
 - **Next:**
-  - M6: a wish's "Got it" (opening the camera) is next, then the preview readback of the wishlist and Add from a
-    link on real shop pages.
+  - M6: the preview readback of the wishlist and Add from a link on real shop pages, then M7.
 - **M6d, Add from a link on the website:**
   - The Add pieces page has a fourth way in, From a shop's page, and Ask's + sheet has Add from a link
     (`/wardrobe/add#link`).
@@ -450,6 +449,7 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   - Wishlist is the Wardrobe's third tab (`/wardrobe/wishlist`), beside Pieces and Looks. Each wish shows the piece
     and whose it is while it stays public, else its name and "No longer shown". Remove takes it off at once.
   - A public piece's page has Save to wishlist; once saved, it links to the wishlist.
+  - Got it on a wish takes it off the list and opens the ways to add the piece (`/wardrobe/add`).
   - Evidence: scene tests (the tab, a gone piece, Remove, a failed load and its retry, saving from a piece page), a
     People story, and the native instant-tabs, title and steady-load walks including the tab.
 - **M6b, the wishlist (server and assistants):**

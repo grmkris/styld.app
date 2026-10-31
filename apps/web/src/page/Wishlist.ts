@@ -24,6 +24,7 @@ export const Message = defineMessageUnion({
   FailedListWishes: {},
   ClickedRetry: {},
   ClickedRemove: { wishId: WishId },
+  ClickedGotIt: { wishId: WishId },
   CompletedRemoveWish: {},
 })
 export type Message = typeof Message.Type
@@ -63,6 +64,14 @@ export const revisit = Update.refresh<Model, Message, ReadonlyArray<Wish>, 'Unav
   load: ListWishes(),
 })
 
+/** A wish off the list at once; the server is told behind. */
+const removed = (model: Model, wishId: WishId): UpdateReturn => ({
+  model: modifyFields(model, {
+    wishes: (wishes) => AsyncData.map(wishes, (list) => list.filter(({ id }) => id !== wishId)),
+  }),
+  commands: [RemoveWish({ wishId })],
+})
+
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     SucceededListWishes: ({ wishes }) => ({
@@ -72,11 +81,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       model: modifyFields(model, { wishes: (wishes) => AsyncData.settle(wishes, Result.fail('Unavailable' as const)) }),
     }),
     ClickedRetry: () => revisit(model),
-    ClickedRemove: ({ wishId }) => ({
-      model: modifyFields(model, {
-        wishes: (wishes) => AsyncData.map(wishes, (list) => list.filter(({ id }) => id !== wishId)),
-      }),
-      commands: [RemoveWish({ wishId })],
-    }),
+    ClickedRemove: ({ wishId }) => removed(model, wishId),
+    // Got one like it: the wish is done, and its link opens the camera to add the piece.
+    ClickedGotIt: ({ wishId }) => removed(model, wishId),
     CompletedRemoveWish: () => ({ model }),
   })
