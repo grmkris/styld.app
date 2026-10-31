@@ -84,4 +84,3 @@ export const reports = sqliteTable(
     index('reports_reporter_created').on(table.reporterId, table.createdAt),
   ],
 )
-

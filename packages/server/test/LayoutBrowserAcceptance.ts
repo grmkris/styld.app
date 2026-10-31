@@ -93,8 +93,7 @@ export const expectInstantTabs = async (page: Page, origin: string) => {
   await page.evaluate(() => {
     document.documentElement.dataset['kept'] = 'yes'
   })
-  for (const path of ['/explore', '/wardrobe', '/looks', '/ask', '/boards', '/account', '/'])
-    await tap(page, path)
+  for (const path of ['/explore', '/wardrobe', '/looks', '/ask', '/boards', '/account', '/']) await tap(page, path)
   // A page seen before is drawn from what the app has: no skeleton, even for a moment.
   await page.locator('a[href="/wardrobe"]').first().click()
   await page.waitForURL((url) => url.pathname === '/wardrobe')

@@ -356,16 +356,7 @@ const expectConsentReachable = async (browser: Browser, origin: string) => {
 }
 
 /** The signed-in pages that must load whole without anything moving. */
-const steadyPaths = [
-  '/',
-  '/explore',
-  '/wardrobe',
-  '/looks',
-  '/boards',
-  '/ask',
-  '/ask/stylist',
-  '/account',
-]
+const steadyPaths = ['/', '/explore', '/wardrobe', '/looks', '/boards', '/ask', '/ask/stylist', '/account']
 
 /** Gallery 2 for the person's own wardrobe: today's table (Spin, Wear this), a board laid out by hand (moved,
  * pinched, a label, a picture, taken off and back, saved and reopened, saved as a look), Ask, Styld and the

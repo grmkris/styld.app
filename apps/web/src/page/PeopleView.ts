@@ -8,13 +8,7 @@ import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { textField } from '../Fields.styles.ts'
 import { loader, moreIcon, saveIcon } from '../Icon.ts'
-import {
-  boardRouter,
-  lookRouter,
-  personRouter,
-  publicPieceRouter,
-  signInReturningTo,
-} from '../route.ts'
+import { boardRouter, lookRouter, personRouter, publicPieceRouter, signInReturningTo } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { Message, type Model, Reporting, Standing, Subject, Work } from './People.ts'
@@ -154,9 +148,7 @@ const subjectActions = (model: Model, locale: Locale, h: HtmlBuilder<Message>): 
   Subject.match(model.subject, {
     // On a profile, Follow is `followView` and Report and Block are behind More (`moreView`).
     Person: () => [],
-    Piece: () => [
-      ...saveAndReport(model, format(locale, 'safety.report.piece', {}), locale, h),
-    ],
+    Piece: () => [...saveAndReport(model, format(locale, 'safety.report.piece', {}), locale, h)],
     Board: () => saveAndReport(model, format(locale, 'safety.report.board', {}), locale, h),
     Look: () => saveAndReport(model, format(locale, 'safety.report.look', {}), locale, h),
   })
