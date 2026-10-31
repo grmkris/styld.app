@@ -18,6 +18,7 @@ import * as PeopleView from './PeopleView.ts'
 import { boardCard, byline, lookTile, pieceTile, tileGrid } from './PublicTiles.ts'
 import { exploreLoading, exploreSearchForm, exploreSections, searchView } from './ExploreView.ts'
 import { head as exploreHead, page as explorePage } from './ExploreView.styles.ts'
+import { pageTitle } from './PageHead.ts'
 import { ExploreSearch, Message, type Model, type PersonTab, Sharing, Shown, Target } from './Visit.ts'
 import * as styles from './VisitView.styles.ts'
 import { kindName, pieceLabel } from './WardrobeWords.ts'
@@ -244,7 +245,8 @@ const exploreMain = (
 ): Html =>
   h.div(styled(h, explorePage()), [
     h.div(styled(h, exploreHead()), [
-      h.h1([], [format(inputs.locale, 'explore.title', {})]),
+      // The shared title box, so Explore's title starts where every tab's does.
+      pageTitle(format(inputs.locale, 'explore.title', {}), h),
       exploreSearchForm(model.query, inputs.locale, h),
     ]),
     ...exploreContent(model, mood, inputs, h),
