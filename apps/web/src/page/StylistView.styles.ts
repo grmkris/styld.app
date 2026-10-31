@@ -12,8 +12,9 @@ export const page = style({
   gap: '16px',
   maxInlineSize: '40rem',
   minBlockSize: 'calc(100svh - max(64px, 60px + env(safe-area-inset-top)))',
-  // On a wide screen the chat is a centred column, not one hugging the rail.
-  '@media (min-width: 900px)': { marginInline: 'auto', inlineSize: '100%' },
+  // On a wide screen the chat is a centred column, not one hugging the rail, under the rail's 32px rather than a
+  // top bar.
+  '@media (min-width: 900px)': { marginInline: 'auto', inlineSize: '100%', minBlockSize: 'calc(100svh - 32px)' },
   '@media (max-width: 899px)': { paddingBlockEnd: 'calc(96px + env(safe-area-inset-bottom))' },
   paddingBlockStart: '8px',
 })
@@ -102,11 +103,13 @@ export const pieceName = style({
   lineHeight: 1.35,
   color: 'ink2',
 })
-/** Where the newest message is scrolled to: far enough above the end to clear the composer and, on a phone, the
- * floating nav under it. */
+/** Where the newest message is scrolled to: 16px above the composer resting in its place. A scroll into view adds
+ * the page's own scroll padding, which on a phone already holds the floating nav's 88px and the safe area
+ * (GlobalStyles.ts), so the margin adds the rest: the composer's 96px inset and 88px less that 88px, and the 16px
+ * gap. A wide screen has no such padding: the composer's 16px inset, its 88px and the gap. */
 export const latest = style({
-  scrollMarginBlockEnd: 'calc(220px + env(safe-area-inset-bottom))',
-  '@media (min-width: 900px)': { scrollMarginBlockEnd: '140px' },
+  scrollMarginBlockEnd: '112px',
+  '@media (min-width: 900px)': { scrollMarginBlockEnd: '120px' },
 })
 export const status = style({ display: 'flex', alignItems: 'center', gap: '8px', color: 'ink2', fontSize: '14px' })
 export const failed = style({ color: 'ink2', fontSize: '14px' })

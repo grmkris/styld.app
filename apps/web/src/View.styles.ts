@@ -177,10 +177,11 @@ export const consentActions = style({ display: 'flex', flexWrap: 'wrap', gap: '8
 
 /** Room for the navigation: under the page on the phone, beside it on the desktop. */
 /** A tab page's main region reaches at least to the bottom of the screen, so the footer waits below the fold while
- * the page fills in. The top bar is 64px, or 60px under the status bar. Its rows keep their own heights rather than
- * stretching into the space. */
+ * the page fills in. The top bar is 64px, or 60px under the status bar; beside the rail there is no top bar, only
+ * the rail's 32px (`withRail`). Its rows keep their own heights rather than stretching into the space. */
 export const tabPage = style({
   '& > main': { minBlockSize: 'calc(100svh - max(64px, 60px + env(safe-area-inset-top)))', alignContent: 'start' },
+  '@media (min-width: 900px)': { '& > main': { minBlockSize: 'calc(100svh - 32px)' } },
 })
 /** The review tray's action band floats at the bottom, above the tab bar: the page ends past it, so the band never
  * covers the footer (ReviewView.styles.ts › footer). */
