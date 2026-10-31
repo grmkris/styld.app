@@ -41,10 +41,17 @@ export const details = style({ display: 'grid', gap: '8px', alignContent: 'start
 export const pieceName = style({ fontSize: '26px', lineHeight: 1.08, fontWeight: 600, letterSpacing: '-0.02em' })
 export const meta = style({ color: 'ink2' })
 export const actions = style({ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBlock: '12px' })
-export const facts = style({ display: 'grid', marginBlockStart: '8px' })
+/** The facts share one term column, as wide as the longest term, so none wraps or runs into its value. */
+export const facts = style({
+  display: 'grid',
+  gridTemplateColumns: 'max-content minmax(0, 1fr)',
+  columnGap: '16px',
+  marginBlockStart: '8px',
+})
 export const fact = style({
   display: 'grid',
-  gridTemplateColumns: '96px minmax(0, 1fr)',
+  gridColumn: '1 / -1',
+  gridTemplateColumns: 'subgrid',
   paddingBlock: '12px',
   borderBlockEndWidth: '1px',
   borderBlockEndStyle: 'solid',
@@ -76,6 +83,9 @@ export const notesField = style({
   resize: 'vertical',
 })
 export const status = style({ display: 'flex', alignItems: 'center', gap: '8px', color: 'signal' })
+/** The back's panel: its button and Remove in a row, its cost 8px under them, apart from Save to board below. */
+export const backPanel = style({ display: 'grid', gap: '8px', marginBlock: '8px 16px' })
+export const backActions = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' })
 /** The clean picture's panel: what it is, where it stands and what the owner can do with it. */
 export const picturePanel = style({ display: 'grid', gap: '8px', marginBlockStart: '8px' })
 export const cleanedLabel = style({ fontSize: '13px', fontWeight: 500, color: 'ink3' })

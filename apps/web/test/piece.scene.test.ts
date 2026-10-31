@@ -48,12 +48,12 @@ describe('the piece page', () => {
       expect(text('Colour')).toExist(),
       expect(text('Navy')).toExist(),
       expect(text('Hem taken up')).toExist(),
-      // Save to board is the one action; Edit waits at the bar's end.
+      // Edit waits at the bar's end.
       expect(role('button', { name: 'Edit' })).toExist(),
     )
   })
 
-  test('says what it is, when and what for it is worn, its brand and its shop, and turns to its back', () => {
+  test('says what it is once, when and what for it is worn, its brand and its shop, and turns to its back', () => {
     const coat = {
       ...jeans,
       type: 'coats',
@@ -67,7 +67,9 @@ describe('the piece page', () => {
     scene(
       { update, view },
       given(piecePage(Load.Loaded({ piece: coat }))),
-      expect(text('Coats')).toExist(),
+      // The head says what it is; the facts do not repeat it as a shop's aisle.
+      expect(role('heading', { name: 'Coat' })).toExist(),
+      expect(text('Coats')).not.toExist(),
       expect(text('Cold weather')).toExist(),
       expect(text('Casual, Smart')).toExist(),
       expect(text('Checked')).toExist(),

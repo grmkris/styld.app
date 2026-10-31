@@ -39,10 +39,10 @@ export const sides = Submodel.defineView<Model, Message, Inputs>((model, { piece
 export const actions = Submodel.defineView<Model, Message, Inputs>((model, { piece, locale }, h) => {
   if (piece.status !== 'ready') return h.empty
   const sending = model.work === 'sending'
-  return h.div(styled(h, styles.picturePanel()), [
+  return h.div(styled(h, styles.backPanel()), [
     sending
       ? h.p([h.Role('status'), ...styled(h, styles.status())], [loader(h), format(locale, 'wardrobe.backSending', {})])
-      : h.div(styled(h, styles.actions()), [
+      : h.div(styled(h, styles.backActions()), [
           h.label(
             [h.For('piece-back'), ...styled(h, cx(secondaryAction(), styles.fileAction()))],
             [

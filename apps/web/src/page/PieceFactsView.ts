@@ -5,7 +5,7 @@ import { linkAction } from '../Actions.styles.ts'
 import { styled } from '../Styled.ts'
 import { colourList } from './PieceFields.ts'
 import * as styles from './PieceView.styles.ts'
-import { occasionName, patternName, seasonName, typeName } from './WardrobeWords.ts'
+import { occasionName, patternName, seasonName } from './WardrobeWords.ts'
 
 const fact = <Message>(term: string, value: Html | string, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.fact()), [
@@ -13,11 +13,10 @@ const fact = <Message>(term: string, value: Html | string, h: HtmlBuilder<Messag
     h.dd(styled(h, styles.factValue()), [value]),
   ])
 
-/** What the piece is, row by row (Gallery `item.html` › facts): what it is, its colours, named, when and what for
- * it is worn, its pattern and brand, the shop it came from, and the person's notes. */
+/** What the piece is, row by row (Gallery `item.html` › facts): its colours, named, when and what for it is worn, its
+ * pattern and brand, the shop it came from, and the person's notes. Its kind is not repeated: the head says it. */
 export const factsView = <Message>(piece: Piece, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.dl(styled(h, styles.facts()), [
-    fact(format(locale, 'wardrobe.typeLabel', {}), format(locale, typeName(piece.type), {}), h),
     piece.colours.length === 0
       ? h.empty
       : fact(
