@@ -1,0 +1,335 @@
+/* Styld landing: the film. Gallery 2 tokens (apps/web/src/zyzz.config.ts), copied as literals because this page
+   stands alone. The hero is the generated loop, full-bleed; every word over it is live text. */
+
+@font-face {
+  font-family: 'Anton';
+  src: url('fonts/anton-latin.23aab0b2.woff2') format('woff2');
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Hanken Grotesk';
+  src: url('fonts/hanken-grotesk-latin-wght-normal.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329,
+    U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+@font-face {
+  font-family: 'Hanken Grotesk';
+  src: url('fonts/hanken-grotesk-latin-ext-wght-normal.woff2') format('woff2-variations');
+  font-weight: 100 900;
+  font-display: swap;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+0304, U+0308, U+0329,
+    U+1D00-1DBF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF;
+}
+
+:root {
+  --paper: #f1eee7;
+  --paper2: #e7e2d9;
+  --stock: #fbf9f5;
+  --ink: #1c1410;
+  --ink2: #5d554e;
+  --rule: #ddd6cc;
+  --signal: #2f4f7c;
+  --on-ink: #f7f4ee;
+  --focus: #2f5bd3;
+  --glass: oklch(0.985 0.005 80 / 0.74);
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --gutter: max(20px, 5vw);
+  color-scheme: light;
+}
+
+* {
+  box-sizing: border-box;
+}
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font: 400 16px/1.5 'Hanken Grotesk', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+}
+a {
+  color: inherit;
+}
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* The hero fills the first screen; the film lies under everything in it. */
+.hero {
+  position: relative;
+  min-height: 100svh;
+  overflow: hidden;
+  isolation: isolate;
+}
+.film {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  margin: 0;
+}
+.poster,
+.video {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* The wall on the left is what a wide screen can lose; the rail and board on the right stay. */
+  object-position: 70% 50%;
+}
+.video {
+  opacity: 0;
+  transition: opacity 600ms var(--ease);
+}
+.film.playing .video {
+  opacity: 1;
+}
+
+.bar {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: max(16px, env(safe-area-inset-top)) var(--gutter) 16px;
+}
+.logo {
+  font: 400 28px/1 'Anton', sans-serif;
+  text-decoration: none;
+}
+.bar nav {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  font-weight: 600;
+  font-size: 15px;
+}
+.bar nav a {
+  text-decoration-color: var(--signal);
+  text-decoration-thickness: 1.5px;
+  text-underline-offset: 4px;
+}
+.langs {
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 999px;
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.langs a {
+  display: grid;
+  place-items: center;
+  min-width: 40px;
+  height: 32px;
+  border-radius: 999px;
+  font-size: 13px;
+  text-decoration: none;
+  color: var(--ink2);
+}
+.langs a[aria-current='true'] {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+
+/* Desktop and landscape: the words sit on the empty wall to the left of the rail. */
+.copy {
+  position: relative;
+  width: min(40vw, 560px);
+  margin-top: max(9vh, 48px);
+  padding: 0 var(--gutter);
+}
+h1 {
+  margin: 0;
+  font-size: clamp(46px, 5.6vw, 84px);
+  line-height: 1;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  text-wrap: balance;
+}
+.lede {
+  margin: 20px 0 0;
+  max-width: 40ch;
+  font-size: 17px;
+  color: var(--ink2);
+  text-wrap: pretty;
+}
+.beat {
+  min-height: 1.5em;
+  margin: 28px 0 0;
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--ink);
+  transition: opacity 280ms var(--ease);
+}
+.beat.leaving {
+  opacity: 0;
+}
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 16px;
+}
+.primary,
+.secondary {
+  display: inline-flex;
+  align-items: center;
+  height: 48px;
+  padding: 0 20px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-size: 15px;
+  text-decoration: none;
+  transition:
+    background-color 140ms var(--ease),
+    scale 140ms var(--ease);
+}
+.primary {
+  background: var(--ink);
+  color: var(--on-ink);
+}
+.secondary {
+  box-shadow: inset 0 0 0 1.5px var(--ink);
+  background: var(--glass);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+.primary:active,
+.secondary:active {
+  scale: 0.96;
+}
+@media (hover: hover) {
+  .primary:hover {
+    background: color-mix(in srgb, var(--ink) 86%, var(--paper));
+  }
+  .secondary:hover {
+    background: var(--paper2);
+  }
+}
+
+/* The one control on the film: motion that plays on its own for more than five seconds needs a pause (WCAG 2.2.2). */
+.pause {
+  position: absolute;
+  right: var(--gutter);
+  bottom: max(20px, env(safe-area-inset-bottom));
+  display: grid;
+  place-items: center;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: var(--glass);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  color: var(--ink);
+  cursor: pointer;
+  transition: scale 140ms var(--ease);
+}
+.pause:active {
+  scale: 0.96;
+}
+.pause svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Phones and tall windows: the portrait film. Words on the empty wall at the top, actions at the bottom over a
+   paper veil, so they read whatever the film shows beneath them. */
+@media (max-aspect-ratio: 4/5) {
+  .poster,
+  .video {
+    object-position: 50% 50%;
+  }
+  .hero {
+    display: flex;
+    flex-direction: column;
+  }
+  .copy {
+    display: contents;
+  }
+  h1,
+  .lede {
+    padding: 0 var(--gutter);
+  }
+  h1 {
+    margin-top: 2vh;
+    font-size: clamp(40px, 11vw, 64px);
+  }
+  .lede {
+    margin-top: 12px;
+    font-size: 16px;
+  }
+  .beat,
+  .actions {
+    position: relative;
+    margin: 0;
+    padding: 0 var(--gutter);
+  }
+  /* A short fade into solid paper: the caption reads whatever the film shows beneath it. */
+  .beat {
+    margin-top: auto;
+    padding-top: 44px;
+    padding-right: calc(var(--gutter) + 56px);
+    background: linear-gradient(to bottom, transparent, var(--paper) 40px);
+  }
+  .actions {
+    padding-top: 12px;
+    padding-bottom: max(24px, env(safe-area-inset-bottom));
+    background: var(--paper);
+  }
+  .actions a {
+    flex: 1 1 auto;
+    justify-content: center;
+  }
+  .pause {
+    bottom: calc(max(24px, env(safe-area-inset-bottom)) + 64px);
+  }
+}
+
+/* The quiet page below the film: still type, no motion. */
+.features {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 56px var(--gutter) 64px;
+}
+.features h2 {
+  margin: 0 0 24px;
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+.features dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 230px), 1fr));
+  gap: 28px 32px;
+  margin: 0;
+}
+.features dt {
+  font-size: 17px;
+  font-weight: 600;
+}
+.features dd {
+  margin: 6px 0 0;
+  color: var(--ink2);
+  max-width: 40ch;
+  text-wrap: pretty;
+}
+.foot {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 24px;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 24px var(--gutter) 48px;
+  border-top: 1px solid var(--rule);
+  font-size: 14px;
+  color: var(--ink2);
+}

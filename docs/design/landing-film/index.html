@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#f1eee7" />
+    <title>Styld landing: the film</title>
+    <link rel="preload" href="fonts/hanken-grotesk-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <link rel="stylesheet" href="film.css" />
+    <script type="module" src="film.js"></script>
+  </head>
+  <body>
+    <section class="hero" aria-labelledby="title">
+      <figure class="film" role="img">
+        <picture>
+          <source media="(max-aspect-ratio: 4/5)" srcset="media/poster-tall.webp" />
+          <img class="poster" src="media/poster-wide.webp" alt="" />
+        </picture>
+        <video class="video" muted loop playsinline preload="none" aria-hidden="true"></video>
+      </figure>
+
+      <header class="bar">
+        <a class="logo" href="#">STYLD</a>
+        <nav>
+          <a href="#" data-t="explore"></a>
+          <a href="#" data-t="signIn"></a>
+          <span class="langs">
+            <a href="?lang=en" data-lang="en">EN</a>
+            <a href="?lang=sl" data-lang="sl">SL</a>
+          </span>
+        </nav>
+      </header>
+
+      <div class="copy">
+        <h1 id="title" data-t="title"></h1>
+        <p class="lede" data-t="lede"></p>
+        <p class="beat" aria-hidden="true"></p>
+        <div class="actions">
+          <a class="primary" href="#" data-t="start"></a>
+          <a class="secondary" href="#" data-t="explore"></a>
+        </div>
+      </div>
+
+      <button class="pause" type="button" hidden></button>
+    </section>
+
+    <main>
+      <section class="features">
+        <h2 data-t="featuresTitle"></h2>
+        <dl></dl>
+      </section>
+    </main>
+
+    <footer class="foot">
+      <a href="#" data-t="privacy"></a>
+      <a href="#" data-t="terms"></a>
+      <a href="#" data-t="contact"></a>
+    </footer>
+  </body>
+</html>
