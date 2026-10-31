@@ -39,7 +39,6 @@ export const count = style({ fontSize: '13px', fontWeight: 400, color: 'ink2', f
 export const save = style({ display: 'grid', gap: '8px', '& > button': { inlineSize: '100%' } })
 /** Where the profile stands, under the title. */
 export const standing = style({ display: 'grid', gap: '8px', marginBlockStart: '-12px' })
-export const check = style({ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '15px' })
 export const actions = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px 12px' })
 export const note = style({ fontSize: '14px', color: 'ink2' })
 export const problem = style({ fontSize: '14px', color: 'error' })

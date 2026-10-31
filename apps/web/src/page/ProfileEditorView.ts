@@ -154,18 +154,6 @@ const formView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
       ),
       bioView(model, locale, h),
       toneView(model, locale, h),
-      h.label(
-        [h.For('profile-wardrobe'), ...styled(h, styles.check())],
-        [
-          h.input([
-            h.Id('profile-wardrobe'),
-            h.Type('checkbox'),
-            h.Checked(model.draft.wardrobeShown),
-            h.OnChange(() => Message.ToggledWardrobeShown({ shown: !model.draft.wardrobeShown })),
-          ]),
-          format(locale, 'profile.editor.wardrobeShown', {}),
-        ],
-      ),
       // Save is the form's one action, full width at its end (DESIGN › Controls › Primary).
       h.div(styled(h, styles.save()), [
         actionButton(

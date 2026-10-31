@@ -39,11 +39,10 @@ const shown = (row: ProfileRow, check: Option.Option<CheckStatus>): Profile =>
     bio: row.bio,
     tone: row.tone,
     published: row.published,
-    wardrobeShown: row.wardrobeShown,
     check: Option.getOrNull(check),
   })
 
-/** The account's profile as stored, or the one it would have: no name yet, unpublished, wardrobe shown. A signup name
+/** The account's profile as stored, or the one it would have: no name yet, unpublished. A signup name
  * can be the start of an email address, so it never becomes a public name by default. */
 const current = (store: ProfileStore, accountId: string) =>
   Effect.gen(function* () {
@@ -59,7 +58,6 @@ const current = (store: ProfileStore, accountId: string) =>
       tone: toneFor(accountId),
       published: false,
       publishedAt: null,
-      wardrobeShown: true,
       house: false,
       featuredAt: null,
       searchText: searchText(''),
@@ -91,17 +89,12 @@ const saved = (store: ProfileStore, row: ProfileRow) =>
 
 const make = (database: Parameters<typeof makeProfileStore>[0], checks: Checks['Service']) => {
   const store = makeProfileStore(database)
-  /** A published profile is checked as it is now, and a shown wardrobe's pieces through the queue. */
-  const checked = (row: ProfileRow, wardrobeNewlyShown: boolean) =>
+  /** A published profile is checked as it is now. Its pieces are checked with the boards and looks that show them. */
+  const checked = (row: ProfileRow) =>
     Effect.gen(function* () {
       const target = { kind: 'profile' as const, id: row.accountId }
       if (!row.published) return shown(row, yield* checks.status(target))
-      const check = yield* checks.checkNow(target)
-      if (row.wardrobeShown && wardrobeNewlyShown) {
-        const pieceIds = yield* stored(store.readyPieceIds(row.accountId))
-        yield* checks.checkLater(pieceIds.map((id) => ({ kind: 'piece' as const, id })))
-      }
-      return shown(row, check)
+      return shown(row, yield* checks.checkNow(target))
     })
   return {
     getProfile: Effect.fn('Styld.Profiles.get')(function* () {
@@ -115,7 +108,7 @@ const make = (database: Parameters<typeof makeProfileStore>[0], checks: Checks['
       if (input.handle !== undefined && input.handle !== before.handle) yield* claimable(store, accountId, input.handle)
       const next = { ...before, ...input, updatedAt: yield* nowDate }
       const row = yield* saved(store, { ...next, searchText: searchText(next.name, next.handle) })
-      return yield* checked(row, !before.wardrobeShown)
+      return yield* checked(row)
     }),
     /** Publish the profile, which needs a handle, or take it down. */
     publishProfile: Effect.fn('Styld.Profiles.publish')(function* (input: PublishProfile) {
@@ -135,7 +128,7 @@ const make = (database: Parameters<typeof makeProfileStore>[0], checks: Checks['
         publishedAt,
         updatedAt: at,
       }).pipe(Effect.catchTag('HandleTaken', () => Effect.fail(unavailable())))
-      return yield* checked(row, !before.published)
+      return yield* checked(row)
     }),
   }
 }

@@ -17,10 +17,9 @@ import { chunked, StoreUnavailable } from '../wardrobe/Store.ts'
 const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: () => StoreUnavailable.make({}) })
 const first = <A>(rows: ReadonlyArray<A>) => Option.fromNullishOr(rows[0])
 
-/** The most boards, looks and pieces a profile shows. */
+/** The most boards and looks a profile shows. */
 const boardLimit = 60
 const lookLimit = 60
-const pieceLimit = 120
 
 export type Database = ReturnType<typeof drizzle>
 
@@ -78,15 +77,13 @@ export const reachedThrough = (db: Database, accountId: string, pieceId: string,
 /** What public pages read in D1. Visibility is decided by `Public.ts`; this only finds rows. */
 export const makePublicStore = (database: Parameters<typeof drizzle>[0]) => {
   const db: Database = drizzle(database)
-  const piecesWith = (where: SQL | undefined, limit?: number) => {
-    const query = db
+  const piecesWith = (where: SQL | undefined) =>
+    db
       .select({ piece: pieces, picture: piecePictures })
       .from(pieces)
       .leftJoin(piecePictures, eq(piecePictures.pieceId, pieces.id))
       .where(where)
       .orderBy(desc(pieces.createdAt))
-    return limit === undefined ? query : query.limit(limit)
-  }
   return {
     /** A published profile by its handle. */
     publishedProfile: (handle: string) =>
@@ -131,9 +128,6 @@ export const makePublicStore = (database: Parameters<typeof drizzle>[0]) => {
         Effect.forEach(chunked(pieceIds), (chunk) => attempt(() => piecesWith(inArray(pieces.id, chunk)))),
         Array.flatten,
       ),
-    /** The account's ready pieces, newest first, for a shown wardrobe. */
-    readyPieces: (accountId: string) =>
-      attempt(() => piecesWith(and(eq(pieces.accountId, accountId), eq(pieces.status, 'ready')), pieceLimit)),
     image: (imageId: string) =>
       attempt(() => db.select().from(boardImages).where(eq(boardImages.id, imageId)).limit(1)).pipe(Effect.map(first)),
     /** Whether the piece is on its owner's public boards or shared looks that others may see. */

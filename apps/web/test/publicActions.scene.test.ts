@@ -14,7 +14,7 @@ import { pageAt } from './WardrobeFixtures.ts'
 const ana = { handle: 'ana.novak', name: 'Ana Novak', tone: 'sage' }
 const scarf = { id: `pc_${'scarf'.padEnd(22, 'x')}`, name: 'Grey scarf', category: 'accessory', subcategory: null }
 const profileOf = (yours: boolean) =>
-  Schema.decodeUnknownSync(PublicProfile)({ ...ana, city: null, bio: null, boards: [], looks: [], pieces: null, yours })
+  Schema.decodeUnknownSync(PublicProfile)({ ...ana, city: null, bio: null, boards: [], looks: [], yours })
 const scarfPage = (yours: boolean) =>
   Schema.decodeUnknownSync(PublicPiecePage)({ piece: { ...scarf, colours: [] }, by: ana, yours })
 const showing = (model: Model, shown: Shown): Model =>

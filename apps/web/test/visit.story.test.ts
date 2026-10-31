@@ -25,7 +25,6 @@ const profile = (yours: boolean) =>
     tone: 'clay',
     boards: [],
     looks: [],
-    pieces: null,
     yours,
   })
 

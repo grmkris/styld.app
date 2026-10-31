@@ -75,7 +75,7 @@ export const PublicBoardSummary = Schema.Struct({
 })
 export type PublicBoardSummary = typeof PublicBoardSummary.Type
 
-/** A published profile: its public boards, its shared looks and, when its owner shows it, the wardrobe. */
+/** A published profile: its public boards and its shared looks. It never shows the whole wardrobe. */
 export const PublicProfile = Schema.Struct({
   handle: Handle,
   name: Schema.String,
@@ -84,8 +84,6 @@ export const PublicProfile = Schema.Struct({
   tone: Tone,
   boards: Schema.Array(PublicBoardSummary),
   looks: Schema.Array(PublicLook),
-  /** Null when the owner keeps the wardrobe off the profile. */
-  pieces: Schema.NullOr(Schema.Array(PublicPiece)),
   /** The person reading it is its owner, who has no one to follow here. */
   yours: Schema.Boolean,
 })

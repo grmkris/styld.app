@@ -402,7 +402,6 @@ export const profiles = sqliteTable(
     tone: text('tone', { enum: ['sand', 'sage', 'slate', 'clay', 'stone', 'plum', 'olive', 'ink'] }).notNull(),
     published: integer('published', { mode: 'boolean' }).notNull(),
     publishedAt: integer('published_at', { mode: 'timestamp_ms' }),
-    wardrobeShown: integer('wardrobe_shown', { mode: 'boolean' }).notNull(),
     house: integer('house', { mode: 'boolean' }).notNull().default(false),
     featuredAt: integer('featured_at', { mode: 'timestamp_ms' }),
     /** The name and handle, folded the way search folds what people type. */

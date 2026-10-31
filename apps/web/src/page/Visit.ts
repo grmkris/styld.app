@@ -23,7 +23,7 @@ export const Target = defineTaggedUnion({
 export type Target = typeof Target.Type
 
 /** The profile's tabs; Pieces shows only when its owner shows the wardrobe. */
-export const PersonTab = Schema.Literals(['boards', 'looks', 'pieces'])
+export const PersonTab = Schema.Literals(['boards', 'looks'])
 export type PersonTab = typeof PersonTab.Type
 
 export const Shown = defineTaggedUnion({
@@ -287,16 +287,10 @@ const withRelation = (model: Model, profile: PublicProfile): UpdateReturn => {
 
 type UpdateReturn = Update.Return<Model, Message, StyldClient>
 
-/** The tab a profile opens on: the first with something public in it, so a visitor never lands on an empty Boards
- * while the person's looks or pieces wait behind the next tab. */
-const openingTab = (profile: PublicProfile): PersonTab => {
-  const filled: ReadonlyArray<readonly [PersonTab, number]> = [
-    ['boards', profile.boards.length],
-    ['looks', profile.looks.length],
-    ['pieces', profile.pieces?.length ?? 0],
-  ]
-  return filled.find(([, count]) => count > 0)?.[0] ?? 'boards'
-}
+/** The tab a profile opens on: Looks when only looks are public, so a visitor never lands on an empty Boards while
+ * the person's looks wait behind the next tab. */
+const openingTab = (profile: PublicProfile): PersonTab =>
+  profile.boards.length === 0 && profile.looks.length > 0 ? 'looks' : 'boards'
 
 /** Opening Explore as a tab: what it showed stays while it is asked for again; a first visit asks. */
 export const enterExplore = (model: Model): UpdateReturn => {

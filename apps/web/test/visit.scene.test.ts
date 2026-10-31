@@ -70,7 +70,6 @@ const nika = Schema.decodeUnknownSync(PublicProfile)({
     },
   ],
   looks: [],
-  pieces: [knit],
   yours: false,
 })
 
@@ -117,7 +116,7 @@ const rainyExplore = () => {
 }
 
 describe('a public profile', () => {
-  test('shows the person and their public boards, looks and pieces, signed out', () => {
+  test('shows the person and their public boards and looks, signed out', () => {
     scene(
       { update, view },
       given(visiting('/@nika.kovac', Shown.Person({ profile: nika }))),
@@ -131,17 +130,11 @@ describe('a public profile', () => {
       click(role('button', { name: 'Looks' })),
       expect(role('button', { name: 'Looks' })).toHaveAttr('aria-pressed', 'true'),
       expect(text('No public looks yet.')).toExist(),
-      click(role('button', { name: 'Pieces' })),
-      expect(role('link', { name: 'Navy knit' })).toHaveAttr('href', `/pieces/${knit.id}`),
+      expect(role('button', { name: 'Pieces' })).toBeAbsent(),
     )
   })
 
-  test('keeps the wardrobe off when its owner hides it, and a missing profile says so', () => {
-    scene(
-      { update, view },
-      given(visiting('/@nika.kovac', Shown.Person({ profile: { ...nika, pieces: null } }))),
-      expect(role('button', { name: 'Pieces' })).toBeAbsent(),
-    )
+  test('a missing profile says so', () => {
     scene(
       { update, view },
       given(visiting('/@nobody', Shown.Missing())),

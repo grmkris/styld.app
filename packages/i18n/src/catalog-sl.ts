@@ -1140,7 +1140,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'profile.public.headerHome': 'Odpri Styld',
   'profile.public.emptyBoards': 'Še ni javnih zbirk.',
   'profile.public.emptyLooks': 'Še ni javnih videzov.',
-  'profile.public.emptyPieces': 'Še ni javnih kosov.',
   'profile.public.boards': 'Zbirke',
   'profile.public.looks': 'Videzi',
   'profile.public.pieces': 'Kosi',

@@ -21,7 +21,6 @@ const verifyProfiles = async (origin: string, owner: Call, other: Call) => {
     handle: null,
     name: '',
     published: false,
-    wardrobeShown: true,
   })
   await refusal(await send(owner, '/api/profile/published', 'PUT', { published: true }), 422, 'ProfileNeedsHandle')
   await refusal(await send(owner, '/api/profile', 'PATCH', { handle: 'styld' }), 422, 'HandleReserved')
@@ -112,21 +111,6 @@ const publicPins = async (origin: string, boardId: string, until: (tags: Readonl
   throw new Error('The public board never showed its pins')
 }
 
-const Shown = Schema.Struct({ pieces: Schema.NullOr(Schema.Array(Schema.Struct({ id: Schema.String }))) })
-
-/** The pieces anyone sees on the published profile, once a queued check has answered. */
-const shownPieces = async (origin: string, until: (ids: ReadonlyArray<string>) => boolean) => {
-  for (let attempt = 0; attempt < 80; attempt += 1) {
-    const response = await fetch(`${origin}/api/public/profiles/nika.kovac`)
-    const ids = response.ok
-      ? (Schema.decodeUnknownSync(Shown)(await response.json()).pieces ?? []).map(({ id }) => id)
-      : []
-    if (until(ids)) return ids
-    await Bun.sleep(250)
-  }
-  throw new Error('The profile never showed its pieces')
-}
-
 /** A page as a link preview reads it: its HTML, with what its head says. */
 const previewOf = async (origin: string, path: string) => {
   const page = await fetch(`${origin}${path}`, { headers: { 'user-agent': 'facebookexternalhit/1.1' } })
@@ -136,7 +120,8 @@ const previewOf = async (origin: string, path: string) => {
 }
 
 /** A public board, read signed out: pictures shown, a piece only once it has a cut-out (its photo never goes
- * public), nothing private on it, and everything gone the moment it goes private or the wardrobe is hidden. */
+ * public), nothing private on it, and everything gone the moment it goes private. Publishing the profile never shows
+ * the wardrobe: a piece is public only while it is on a public board or a shared look (owner, 2026-10-31). */
 const verifyPublicPages = async (origin: string, fixtures: string, owner: Call) => {
   const anyone = (path: string, init?: RequestInit) => fetch(`${origin}${path}`, init)
   expect((await anyone('/api/public/profiles/nika.kovac')).status).toBe(404)
@@ -171,16 +156,17 @@ const verifyPublicPages = async (origin: string, fixtures: string, owner: Call) 
   expect(thumb.headers.get('content-type')).toBe('image/webp')
   const etag = thumb.headers.get('etag') ?? ''
   expect((await anyone(`/cdn/public/pieces/${pieceId}/thumb`, { headers: { 'if-none-match': etag } })).status).toBe(304)
-  expect(await (await anyone('/api/public/profiles/nika.kovac')).json()).toMatchObject({
-    handle: 'nika.kovac',
-    boards: [{ id: boardId, pinCount: 2 }],
-    pieces: [{ id: pieceId }],
-  })
-  // A piece added once the profile is published is checked as it becomes ready, then shows in the wardrobe.
+  const profile = await (await anyone('/api/public/profiles/nika.kovac')).json()
+  expect(profile).toMatchObject({ handle: 'nika.kovac', boards: [{ id: boardId, pinCount: 2 }] })
+  expect(profile).not.toHaveProperty('pieces')
+  // A piece added once the profile is published stays private until it is pinned on a public board.
   const later = await addedPiece(origin, owner, 'native-social-8')
   expect(await waitUntilReady(owner, later)).toBe('ready')
   expect((await fetch(`${fixtures}/test/social/cutout/${later}`, { method: 'POST' })).status).toBe(204)
-  expect(await shownPieces(origin, (ids) => ids.includes(later))).toEqual([later, pieceId])
+  expect((await anyone(`/api/public/pieces/${later}`)).status).toBe(404)
+  await send(owner, `/api/boards/${boardId}/pins`, 'POST', { operationId: 'native-social-later', pieceIds: [later] })
+  await send(owner, `/api/pieces/${later}`, 'PATCH', { name: 'Coat' })
+  expect(await statusOnceSettled(() => anyone(`/api/public/pieces/${later}`), 200)).toBe(200)
   // Renamed to words that fail, it is checked again and hidden; renamed back, it shows again.
   await send(owner, `/api/pieces/${later}`, 'PATCH', { name: 'Coat [[fail]]' })
   expect(await statusOnceSettled(() => anyone(`/api/public/pieces/${later}`), 404)).toBe(404)
@@ -202,10 +188,8 @@ const verifyPublicPages = async (origin: string, fixtures: string, owner: Call) 
   expect((await anyone(`/api/public/boards/${boardId}`)).status).toBe(404)
   expect(await previewOf(origin, `/boards/${boardId}`)).not.toContain('og:title')
   expect((await anyone(`/cdn/public/pictures/${imageId}/thumb`)).status).toBe(404)
-  expect((await anyone(`/cdn/public/pieces/${pieceId}/thumb`)).status).toBe(200)
-  await send(owner, '/api/profile', 'PATCH', { wardrobeShown: false })
   expect((await anyone(`/cdn/public/pieces/${pieceId}/thumb`)).status).toBe(404)
-  expect(await (await anyone('/api/public/profiles/nika.kovac')).json()).toMatchObject({ boards: [], pieces: null })
+  expect(await (await anyone('/api/public/profiles/nika.kovac')).json()).toMatchObject({ boards: [] })
   await send(owner, '/api/profile/published', 'PUT', { published: false })
   expect((await anyone('/api/public/profiles/nika.kovac')).status).toBe(404)
 }

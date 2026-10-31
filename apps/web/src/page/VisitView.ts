@@ -15,7 +15,7 @@ import { cx } from 'zyzz'
 import { publicPieceImage } from './Board/Table.ts'
 import { barEnd, barStart, round } from './PageBar.styles.ts'
 import * as PeopleView from './PeopleView.ts'
-import { boardCard, byline, lookTile, pieceTile, tileGrid } from './PublicTiles.ts'
+import { boardCard, byline, lookTile, tileGrid } from './PublicTiles.ts'
 import { exploreLoading, exploreSearchForm, exploreSections, searchView } from './ExploreView.ts'
 import { head as exploreHead, page as explorePage } from './ExploreView.styles.ts'
 import { pageTitle } from './PageHead.ts'
@@ -24,20 +24,14 @@ import * as styles from './VisitView.styles.ts'
 import { kindName, pieceLabel } from './WardrobeWords.ts'
 
 const tabLabel = (tab: PersonTab, locale: Locale) =>
-  format(
-    locale,
-    tab === 'boards' ? 'profile.public.boards' : tab === 'looks' ? 'profile.public.looks' : 'profile.public.pieces',
-    {},
-  )
+  format(locale, tab === 'boards' ? 'profile.public.boards' : 'profile.public.looks', {})
 
-const tabsOf = (profile: PublicProfile): ReadonlyArray<PersonTab> =>
-  profile.pieces === null ? ['boards', 'looks'] : ['boards', 'looks', 'pieces']
+const personTabs: ReadonlyArray<PersonTab> = ['boards', 'looks']
 
-/** What a tab says when it holds nothing public, by name: no public boards, looks or pieces yet. */
+/** What a tab says when it holds nothing public, by name: no public boards or looks yet. */
 const emptyLines = {
   boards: 'profile.public.emptyBoards',
   looks: 'profile.public.emptyLooks',
-  pieces: 'profile.public.emptyPieces',
 } as const satisfies Record<PersonTab, MessageKey>
 
 const emptyOr = (tiles: Html, isEmpty: boolean, tab: PersonTab, locale: Locale, h: HtmlBuilder<Message>): Html =>
@@ -55,25 +49,13 @@ const tabContent = (profile: PublicProfile, tab: PersonTab, locale: Locale, h: H
       locale,
       h,
     )
-  if (tab === 'looks')
-    return emptyOr(
-      tileGrid(
-        profile.looks.map((look) => ({ id: look.id, tile: lookTile(look, h) })),
-        h,
-      ),
-      profile.looks.length === 0,
-      'looks',
-      locale,
-      h,
-    )
-  const pieces = profile.pieces ?? []
   return emptyOr(
     tileGrid(
-      pieces.map((piece) => ({ id: piece.id, tile: pieceTile(piece, locale, h) })),
+      profile.looks.map((look) => ({ id: look.id, tile: lookTile(look, h) })),
       h,
     ),
-    pieces.length === 0,
-    'pieces',
+    profile.looks.length === 0,
+    'looks',
     locale,
     h,
   )
@@ -167,12 +149,11 @@ const personHead = (model: Model, profile: PublicProfile, inputs: Inputs, h: Htm
   ])
 }
 
-/** A published profile: Back, its head, then its Boards, Looks and Pieces. Back goes to Explore, where people are
- * found; from one's own profile, to Account, where it is reached. */
+/** A published profile: Back, its head, then its Boards and Looks. Back goes to Explore, where people are found;
+ * from one's own profile, to Account, where it is reached. */
 const personView = (model: Model, profile: PublicProfile, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
   const { locale } = inputs
-  const tabs = tabsOf(profile)
-  const tab = tabs.includes(model.tab) ? model.tab : 'boards'
+  const tab = model.tab
   return h.div(styled(h, styles.page()), [
     h.div(styled(h, styles.bar()), [
       backRound(profile.yours ? accountRouter({}) : exploreRouter({}), locale, h),
@@ -181,7 +162,7 @@ const personView = (model: Model, profile: PublicProfile, inputs: Inputs, h: Htm
     personHead(model, profile, inputs, h),
     h.div(
       [h.Role('group'), h.AriaLabel(profile.name), ...styled(h, styles.tabs())],
-      tabs.map((each) =>
+      personTabs.map((each) =>
         h.button(
           [
             h.Type('button'),

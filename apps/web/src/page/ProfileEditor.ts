@@ -22,7 +22,6 @@ export const Draft = Schema.Struct({
   city: Schema.String,
   bio: Schema.String,
   tone: Tone,
-  wardrobeShown: Schema.Boolean,
 })
 export type Draft = typeof Draft.Type
 
@@ -39,7 +38,7 @@ export type Publishing = typeof Publishing.Type
 export const Model = Schema.Struct({ load: Load, draft: Draft, saving: Saving, publishing: Publishing })
 export type Model = typeof Model.Type
 
-const emptyDraft: Draft = { handle: '', name: '', city: '', bio: '', tone: 'sand', wardrobeShown: true }
+const emptyDraft: Draft = { handle: '', name: '', city: '', bio: '', tone: 'sand' }
 
 export const init = (): Model => ({
   load: Load.Loading(),
@@ -54,7 +53,6 @@ const draftOf = (profile: Profile): Draft => ({
   city: profile.city ?? '',
   bio: profile.bio ?? '',
   tone: profile.tone,
-  wardrobeShown: profile.wardrobeShown,
 })
 
 // MESSAGE
@@ -68,7 +66,6 @@ export const Message = defineMessageUnion({
   ClickedRetry: {},
   UpdatedField: { field: Field, value: Schema.String },
   ChoseTone: { tone: Tone },
-  ToggledWardrobeShown: { shown: Schema.Boolean },
   SubmittedProfile: {},
   SucceededSaveProfile: { profile: Profile },
   FailedSaveProfile: { problem: SaveProblem },
@@ -107,7 +104,6 @@ export const SaveProfile = Command.define('SaveProfile', {
           city: blankAsNull(draft.city),
           bio: blankAsNull(draft.bio),
           tone: draft.tone,
-          wardrobeShown: draft.wardrobeShown,
         },
       })
       return Message.SucceededSaveProfile({ profile })
@@ -182,9 +178,6 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     }),
     ChoseTone: ({ tone }) => ({
       model: modifyFields(model, { draft: (draft) => modifyFields(draft, { tone: () => tone }) }),
-    }),
-    ToggledWardrobeShown: ({ shown }) => ({
-      model: modifyFields(model, { draft: (draft) => modifyFields(draft, { wardrobeShown: () => shown }) }),
     }),
     SubmittedProfile: () =>
       Saving.guards.Saving(model.saving)

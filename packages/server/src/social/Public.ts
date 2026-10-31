@@ -241,8 +241,8 @@ const summaries = (r: Reader, accountId: string, rows: ReadonlyArray<BoardRow>) 
     })
   })
 
-/** A piece others may see on its own page: its owner shows the wardrobe, or it is on one of their public
- * boards or shared looks that others may see. */
+/** A piece others may see on its own page: it is on one of its owner's public boards or shared looks that others may
+ * see. Publishing a profile never shows the whole wardrobe (owner, 2026-10-31). */
 const shownPiece = (r: Reader, pieceId: string) =>
   Effect.gen(function* () {
     const row = yield* Effect.flatMap(stored(r.store.pieces([pieceId])), (rows) => orNotFound(Array.head(rows)))
@@ -250,8 +250,7 @@ const shownPiece = (r: Reader, pieceId: string) =>
     const piece = yield* orNotFound(
       Option.fromNullishOr((yield* shownPieces(r, owner.row.accountId, [row])).get(pieceId)),
     )
-    const reached = owner.row.wardrobeShown || (yield* stored(r.store.onShownBoardOrLook(owner.row.accountId, pieceId)))
-    if (!reached) return yield* notFound()
+    if (!(yield* stored(r.store.onShownBoardOrLook(owner.row.accountId, pieceId)))) return yield* notFound()
     return { row, piece, owner }
   })
 
@@ -300,16 +299,12 @@ const pages = (base: Reader) => ({
     const { author } = yield* Effect.flatMap(shownProfile(r, row), orNotFound)
     const boards = yield* summaries(r, row.accountId, yield* stored(r.store.publicBoards(row.accountId)))
     const looks = yield* shownLooks(r, row.accountId, yield* stored(r.store.sharedLooks(row.accountId)))
-    const pieces = row.wardrobeShown
-      ? [...(yield* shownPieces(r, row.accountId, yield* stored(r.store.readyPieces(row.accountId)))).values()]
-      : null
     return {
       ...author,
       city: row.city,
       bio: row.bio,
       boards,
       looks,
-      pieces,
       yours: Option.contains(viewer, row.accountId),
     }
   }),

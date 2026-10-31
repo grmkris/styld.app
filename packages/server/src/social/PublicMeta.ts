@@ -31,10 +31,7 @@ export const pageMeta = (pages: PublicPages['Service'], path: string, locale: Lo
       return {
         title: format(locale, 'profile.public.metaTitle', { name: profile.name, username: profile.handle }),
         description: format(locale, 'profile.public.metaDescription', { username: profile.handle }),
-        image: firstOf([
-          ...profile.boards.flatMap(({ cover }) => cover.flatMap(pinImage)),
-          ...(profile.pieces ?? []).map(pieceImage),
-        ]),
+        image: firstOf(profile.boards.flatMap(({ cover }) => cover.flatMap(pinImage))),
       } satisfies PageMeta
     }
     const [, kind, id = ''] = pagePath.exec(path) ?? []

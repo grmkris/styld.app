@@ -17,7 +17,6 @@ const ana = Schema.decodeUnknownSync(Profile)({
   bio: 'Linen in summer.',
   tone: 'sage',
   published: true,
-  wardrobeShown: false,
   check: { state: 'passed', hidden: false, reason: null },
 })
 const ready = modifyFields(opened, {

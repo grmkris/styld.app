@@ -1125,7 +1125,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'profile.public.headerHome': 'Open Styld',
   'profile.public.emptyBoards': 'No public boards yet.',
   'profile.public.emptyLooks': 'No public looks yet.',
-  'profile.public.emptyPieces': 'No public pieces yet.',
   'profile.public.boards': 'Boards',
   'profile.public.looks': 'Looks',
   'profile.public.pieces': 'Pieces',

@@ -172,7 +172,6 @@ const profiles = Profiles.of({
       bio: null,
       tone: 'sage',
       published: true,
-      wardrobeShown: true,
       check: { state: 'passed', reason: null, hidden: false },
     }),
   updateProfile: notUsed,

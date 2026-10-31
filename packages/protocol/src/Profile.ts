@@ -68,8 +68,6 @@ export const Profile = Schema.Struct({
   bio: Schema.NullOr(Schema.String),
   tone: Tone,
   published: Schema.Boolean,
-  /** Whether the profile's Pieces tab shows the wardrobe. */
-  wardrobeShown: Schema.Boolean,
   /** The model's check, once published; others see the profile only while the check lets them. */
   check: Schema.NullOr(CheckStatus),
 })
@@ -82,7 +80,6 @@ export const UpdateProfile = Schema.Struct({
   city: Schema.optionalKey(Schema.NullOr(City)),
   bio: Schema.optionalKey(Schema.NullOr(Bio)),
   tone: Schema.optionalKey(Tone),
-  wardrobeShown: Schema.optionalKey(Schema.Boolean),
 })
 export type UpdateProfile = typeof UpdateProfile.Type
 

@@ -97,7 +97,6 @@ export const FeedItem = Schema.Union([
     at: Schema.String,
   }),
   Schema.TaggedStruct('SharedLook', { look: PublicLook, by: Author, at: Schema.String }),
-  Schema.TaggedStruct('AddedPiece', { piece: PublicPiece, by: Author, at: Schema.String }),
 ])
 export type FeedItem = typeof FeedItem.Type
 

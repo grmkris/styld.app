@@ -100,8 +100,8 @@ const lookShows = (db: Database, lookId: string) =>
       })),
   )
 
-/** Whether others can reach a ready piece through its owner's published profile: the shown wardrobe, a public
- * board it is pinned on, or a shared look. Someone else's board never makes it public. */
+/** Whether others can reach a ready piece through its owner's published profile: a public board it is pinned on, or
+ * a shared look. Someone else's board never makes it public, and neither does publishing the profile. */
 const pieceReachable = (db: Database, piece: typeof pieces.$inferSelect) =>
   Effect.gen(function* () {
     if (piece.status !== 'ready') return false
@@ -109,7 +109,6 @@ const pieceReachable = (db: Database, piece: typeof pieces.$inferSelect) =>
       db.select().from(profiles).where(eq(profiles.accountId, piece.accountId)).limit(1),
     ))[0]
     if (owner === undefined || !owner.published) return false
-    if (owner.wardrobeShown) return true
     return yield* reachedThrough(db, piece.accountId, piece.id, false).pipe(Effect.mapError(unavailable))
   })
 
