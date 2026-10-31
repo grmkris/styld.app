@@ -5,9 +5,9 @@ import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import type { Html as Styles } from 'zyzz/runtime'
 import { actionButton } from '../ActionButton.ts'
-import { linkAction, primaryAction, quietLinkAction, secondaryAction } from '../Actions.styles.ts'
+import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { textField } from '../Fields.styles.ts'
-import { loader, saveIcon } from '../Icon.ts'
+import { loader, moreIcon, saveIcon } from '../Icon.ts'
 import {
   boardRouter,
   lookRouter,
@@ -20,21 +20,25 @@ import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { Message, type Model, Reporting, Standing, Subject, Work } from './People.ts'
 import * as styles from './PeopleView.styles.ts'
+import { barEnd, round } from './PageBar.styles.ts'
+import { bottomSheet, sheetShown } from './Sheet.ts'
 import { cx } from 'zyzz'
 
 const button = (label: string, onClick: Message, h: HtmlBuilder<Message>): Html =>
   actionButton({ label, style: secondaryAction(), onClick }, h)
 
-/** A switch-like action, following or saved: pressed while it holds. */
-const toggle = (label: string, pressed: boolean, onClick: Message, h: HtmlBuilder<Message>): Html =>
+/** A switch-like action, following or saved: pressed while it holds, its loader in it while the change is sent, so
+ * nothing below it moves (as Explore's Follow). */
+const toggle = (label: string, pressed: boolean, busy: boolean, onClick: Message, h: HtmlBuilder<Message>): Html =>
   h.button(
     [
       h.Type('button'),
       h.AriaPressed(String(pressed)),
-      h.OnClick(onClick),
+      h.AriaBusy(busy),
+      ...(busy ? [] : [h.OnClick(onClick)]),
       ...styled(h, pressed ? secondaryAction() : primaryAction()),
     ],
-    [label],
+    [busy ? loader(h) : h.empty, label],
   )
 
 const reasonLabel = (reason: ReportReason, locale: Locale) =>
@@ -124,31 +128,6 @@ const saveAndReport = (model: Model, report: string, locale: Locale, h: HtmlBuil
 const actionSkeleton = (h: HtmlBuilder<Message>): Html =>
   h.span([h.AriaHidden(true), ...styled(h, cx(block(), styles.actionSkeleton()))])
 
-/** A quiet action under a profile's head, there when needed and never beside Follow (Gallery's person screen). */
-const quiet = (label: string, onClick: Message, h: HtmlBuilder<Message>): Html =>
-  actionButton({ label, style: cx(linkAction(), quietLinkAction()), onClick }, h)
-
-const quietSkeleton = (h: HtmlBuilder<Message>): Html =>
-  h.span([h.AriaHidden(true), ...styled(h, cx(block(), styles.quietSkeleton()))])
-
-/** Report and block a person, once it is known how the visitor stands with them (never on one's own profile), as
- * quiet links; Follow is `followView`, which the profile puts first beside Share. */
-const personActions = (model: Model, handle: string, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>
-  Standing.match(model.standing, {
-    Unknown: () => [],
-    Reading: () => [quietSkeleton(h), quietSkeleton(h)],
-    Known: ({ relation }) => [
-      quiet(format(locale, 'safety.report.profile', {}), Message.ClickedReport(), h),
-      relation.blocked
-        ? quiet(
-            format(locale, 'safety.block.unblock', { username: handle }),
-            Message.ClickedConfirmBlock({ blocked: false }),
-            h,
-          )
-        : quiet(format(locale, 'safety.block.block', { username: handle }), Message.ClickedBlock(), h),
-    ],
-  })
-
 const blockConfirm = (handle: string, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(
     [
@@ -174,7 +153,8 @@ const blockConfirm = (handle: string, locale: Locale, h: HtmlBuilder<Message>): 
 
 const subjectActions = (model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>
   Subject.match(model.subject, {
-    Person: ({ handle }) => personActions(model, handle, locale, h),
+    // On a profile, Follow is `followView` and Report and Block are behind More (`moreView`).
+    Person: () => [],
     Piece: () => [
       model.wished
         ? h.a(
@@ -228,6 +208,7 @@ export const followView = Submodel.defineView<Model, Message, Inputs>((model, { 
             : toggle(
                 format(locale, relation.following ? 'follow.following' : 'follow.follow', {}),
                 relation.following,
+                Work.guards.Sending(model.work),
                 Message.ClickedFollow({ following: !relation.following }),
                 h,
               ),
@@ -253,10 +234,13 @@ const signedOutActions = (model: Model, locale: Locale, h: HtmlBuilder<Message>)
 export const view = Submodel.defineView<Model, Message, Inputs>((model, { locale, signedIn }, h) =>
   h.div(styled(h, styles.people()), [
     h.div(
-      styled(h, Subject.guards.Person(model.subject) ? styles.quietActions() : styles.actions()),
+      styled(h, styles.actions()),
       signedIn ? subjectActions(model, locale, h) : signedOutActions(model, locale, h),
     ),
-    Work.guards.Sending(model.work) ? h.p([h.Role('status')], [loader(h)]) : h.empty,
+    // A profile's work shows in Follow itself.
+    Work.guards.Sending(model.work) && !Subject.guards.Person(model.subject)
+      ? h.p([h.Role('status')], [loader(h)])
+      : h.empty,
     Work.guards.Failed(model.work)
       ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'people.actionFailed', {})])
       : h.empty,
@@ -266,3 +250,53 @@ export const view = Submodel.defineView<Model, Message, Inputs>((model, { locale
     reportForm(model, locale, h),
   ]),
 )
+
+/** Report and Block on someone's profile, behind More at the end of its bar (Gallery's person screen): a round that
+ * opens a sheet of the two, once it is known how the visitor stands with the person. */
+export const moreView = Submodel.defineView<Model, Message, Inputs>((model, { locale, signedIn }, h) => {
+  if (!signedIn || !Subject.guards.Person(model.subject) || !Standing.guards.Known(model.standing)) return h.empty
+  const { handle } = model.subject
+  const { blocked } = model.standing.relation
+  return h.div(styled(h, styles.more()), [
+    h.button(
+      [
+        h.Type('button'),
+        h.AriaLabel(format(locale, 'safety.more', {})),
+        h.AriaHasPopup('dialog'),
+        h.OnClick(Message.ClickedMore()),
+        ...styled(h, cx(round(), barEnd())),
+      ],
+      [moreIcon(h)],
+    ),
+    sheetShown(model.more)
+      ? bottomSheet(
+          {
+            dialog: model.more,
+            title: `@${handle}`,
+            body: (info) => [
+              h.button(
+                [
+                  h.Type('button'),
+                  ...info.initialFocus,
+                  h.OnClick(Message.ClickedReport()),
+                  ...styled(h, styles.moreOption()),
+                ],
+                [format(locale, 'safety.report.profile', {})],
+              ),
+              h.button(
+                [
+                  h.Type('button'),
+                  h.OnClick(blocked ? Message.ClickedConfirmBlock({ blocked: false }) : Message.ClickedBlock()),
+                  ...styled(h, styles.moreOption()),
+                ],
+                [format(locale, blocked ? 'safety.block.unblock' : 'safety.block.block', { username: handle })],
+              ),
+            ],
+            toParentMessage: (message) => Message.GotMoreMessage({ message }),
+            locale,
+          },
+          h,
+        )
+      : h.empty,
+  ])
+})

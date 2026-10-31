@@ -174,7 +174,10 @@ const personView = (model: Model, profile: PublicProfile, inputs: Inputs, h: Htm
   const tabs = tabsOf(profile)
   const tab = tabs.includes(model.tab) ? model.tab : 'boards'
   return h.div(styled(h, styles.page()), [
-    h.div(styled(h, styles.bar()), [backRound(profile.yours ? accountRouter({}) : exploreRouter({}), locale, h)]),
+    h.div(styled(h, styles.bar()), [
+      backRound(profile.yours ? accountRouter({}) : exploreRouter({}), locale, h),
+      profile.yours ? h.empty : peopleSlot('visit-more', PeopleView.moreView, model, inputs, h),
+    ]),
     personHead(model, profile, inputs, h),
     h.div(
       [h.Role('group'), h.AriaLabel(profile.name), ...styled(h, styles.tabs())],

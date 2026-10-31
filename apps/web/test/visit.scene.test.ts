@@ -8,6 +8,7 @@ import {
   Relation,
   SearchResults,
 } from '@styld/protocol'
+import { Dialog } from '@foldkit/ui'
 import { Schema } from 'effect'
 import {
   all,
@@ -16,6 +17,7 @@ import {
   expect,
   given,
   inside,
+  Mount,
   nth,
   role,
   scene,
@@ -40,6 +42,7 @@ import {
   Shown,
 } from '../src/page/Visit.ts'
 import { view } from '../src/View.ts'
+import { sceneSheetMoved, sceneSheetOpened } from './SheetFixtures.ts'
 
 const knit = { id: `pc_${'knit'.padEnd(22, 'x')}`, name: 'Navy knit', category: 'top', subcategory: null, colours: [] }
 const nika = Schema.decodeUnknownSync(PublicProfile)({
@@ -242,9 +245,18 @@ describe('a public profile', () => {
       { update, view },
       given(known),
       expect(role('button', { name: 'Follow' })).toHaveAttr('aria-pressed', 'false'),
-      expect(role('button', { name: 'Report profile' })).toExist(),
+      // Report and Block wait behind More at the end of the bar, not beside Follow.
+      expect(role('button', { name: 'Report profile' })).toBeAbsent(),
+      click(role('button', { name: 'More options' })),
+      Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
+      Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+      ...sceneSheetOpened,
+      expect(role('heading', { name: '@nika.kovac' })).toExist(),
       expect(role('button', { name: 'Block @nika.kovac' })).toExist(),
       click(role('button', { name: 'Report profile' })),
+      ...sceneSheetMoved(2),
+      Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
+      Mount.expectEnded(Dialog.AcquireResources),
       expect(text("What's wrong with it?")).toExist(),
       expect(role('radio', { name: 'Spam or a scam' })).toExist(),
       expect(role('button', { name: 'Send report' })).toHaveAttr('aria-disabled', 'true'),

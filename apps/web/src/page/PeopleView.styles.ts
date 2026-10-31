@@ -2,17 +2,6 @@ import { style } from '../zyzz.config.ts'
 
 export const people = style({ display: 'grid', gap: '8px' })
 export const actions = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' })
-/** Report and Block under a profile's head: quiet links in one row, centred with the head on a phone and at its end
- * beside the rail, so Follow and Share stay its only buttons. */
-export const quietActions = style({
-  display: 'flex',
-  flexWrap: 'wrap',
-  justifyContent: 'center',
-  columnGap: '20px',
-  '@media (min-width: 900px)': { justifyContent: 'flex-end' },
-})
-/** A quiet link's shape while where the visitor stands is read, in its 44px row. */
-export const quietSkeleton = style({ inlineSize: '96px', blockSize: '16px', marginBlock: '14px', borderRadius: 'pill' })
 /** One action's shape while where the visitor stands is read: an action's height (Actions.styles.ts). */
 export const actionSkeleton = style({ inlineSize: '96px', blockSize: '48px', borderRadius: 'pill' })
 /** Save on someone else's piece, look or board: a 44px round ringed like a secondary action, filled ink once saved. */
@@ -54,3 +43,24 @@ export const reason = style({ display: 'flex', alignItems: 'center', gap: '8px',
 export const field = style({ display: 'grid', gap: '6px', fontSize: '14px', fontWeight: 600 })
 export const note = style({ margin: '0', fontSize: '14px', color: 'ink2' })
 export const problem = style({ margin: '0', fontSize: '14px', color: 'error' })
+/** More at the end of a profile's bar. */
+export const more = style({ display: 'contents' })
+/** One choice in the More sheet: a full-width row as Ask's + sheet draws its ways in. */
+export const moreOption = style({
+  display: 'flex',
+  alignItems: 'center',
+  inlineSize: '100%',
+  minBlockSize: '52px',
+  paddingInline: '12px',
+  borderWidth: '0',
+  borderRadius: 'panel',
+  backgroundColor: 'transparent !custom',
+  color: 'ink',
+  fontSize: 'inherit',
+  fontWeight: 600,
+  textAlign: 'start',
+  cursor: 'pointer',
+  transitionProperty: 'background-color',
+  transitionDuration: '140ms',
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2' } },
+})

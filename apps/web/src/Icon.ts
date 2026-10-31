@@ -11,6 +11,7 @@ import {
   ChatCircleRegular,
   ClipboardTextRegular,
   CopyRegular,
+  DotsThreeRegular,
   ExportRegular,
   MagnifyingGlassLight,
   MagnifyingGlassRegular,
@@ -87,6 +88,7 @@ export const textIcon = control(TextTRegular)
 export const pasteIcon = control(ClipboardTextRegular)
 export const flipIcon = control(ArrowsLeftRightRegular)
 export const copyIcon = control(CopyRegular)
+export const moreIcon = control(DotsThreeRegular)
 export const forwardIcon = control(ArrowUpRegular)
 export const backwardIcon = control(ArrowDownRegular)
 export const spinIcon = control(ShuffleRegular)

@@ -1,3 +1,4 @@
+import { Dialog } from '@foldkit/ui'
 import { BoardId, Handle, LookId, PieceId, Relation, ReportReason, reportNoteLength } from '@styld/protocol'
 import { Effect, Option, Predicate, Schema } from 'effect'
 import { Command, Update } from 'foldkit'
@@ -55,6 +56,8 @@ export const Model = Schema.Struct({
   confirmingBlock: Schema.Boolean,
   reporting: Reporting,
   followArrival: FollowArrival,
+  /** On someone's profile, Report and Block behind More (Gallery's person screen), in a sheet from the bottom. */
+  more: Dialog.Model,
 })
 export type Model = typeof Model.Type
 
@@ -68,6 +71,7 @@ export const init = (subject: Subject, atFollow = false): Model => ({
   confirmingBlock: false,
   reporting: Reporting.Closed(),
   followArrival: atFollow ? FollowArrival.Checking() : FollowArrival.None(),
+  more: Dialog.init({ id: 'people-more', isAnimated: true }),
 })
 
 // MESSAGE
@@ -87,6 +91,8 @@ export const Message = defineMessageUnion({
   SucceededWish: {},
   FailedPeopleWork: {},
   ClickedReport: {},
+  ClickedMore: {},
+  GotMoreMessage: { message: Dialog.Message },
   ChoseReportReason: { reason: ReportReason },
   UpdatedReportNote: { value: Schema.String },
   ClickedCancelReport: {},
@@ -256,6 +262,22 @@ const followOnArrival = (model: Model, relation: typeof Relation.Type): UpdateRe
     : sending(spent, SetFollowing({ handle: handleOfSubject(spent), following: true }))
 }
 
+const moreSheet = {
+  read: (model: Model) => Option.some(model.more),
+  write: (model: Model, more: Dialog.Model) => modifyFields(model, { more: () => more }),
+  toParentMessage: (message: Dialog.Message) => Message.GotMoreMessage({ message }),
+  foldOutMessage: Dialog.OutMessage.match<Update.Step<Model, Message>>({
+    Opened: () => (model) => ({ model }),
+    Closed: () => (model) => ({ model }),
+  }),
+}
+const foldMore = Update.foldChild({ update: Dialog.update, ...moreSheet })
+const openMore = Update.foldChildStep({ update: Dialog.open, ...moreSheet })
+const closeMore = Update.foldChildStep({ update: Dialog.close, ...moreSheet })
+
+/** What was chosen in the More sheet closes it first; Report on a piece, a look or a board has no sheet to close. */
+const leaveMore = (model: Model): UpdateReturn => (model.more.isOpen ? closeMore(model) : { model })
+
 const submitted = (model: Model): UpdateReturn =>
   Reporting.guards.Open(model.reporting) && Option.isSome(model.reporting.reason)
     ? {
@@ -281,9 +303,17 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         : { model: checked }
     },
     ClickedFollow: ({ following }) => sending(model, SetFollowing({ handle: handleOfSubject(model), following })),
-    ClickedBlock: () => ({ model: modifyFields(model, { confirmingBlock: () => true }) }),
+    ClickedBlock: () =>
+      Update.combine<Model, Message, StyldClient>(model, [
+        leaveMore,
+        (step) => ({ model: modifyFields(step, { confirmingBlock: () => true }) }),
+      ]),
     ClickedKeepUnblocked: () => ({ model: modifyFields(model, { confirmingBlock: () => false }) }),
-    ClickedConfirmBlock: ({ blocked }) => sending(model, SetBlocked({ handle: handleOfSubject(model), blocked })),
+    ClickedConfirmBlock: ({ blocked }) =>
+      Update.combine<Model, Message, StyldClient>(model, [
+        leaveMore,
+        (step) => sending(step, SetBlocked({ handle: handleOfSubject(step), blocked })),
+      ]),
     SucceededSetRelation: ({ relation }) => ({
       model: modifyFields(model, { standing: () => Standing.Known({ relation }), work: () => Work.Idle() }),
     }),
@@ -297,9 +327,15 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         : { model },
     SucceededWish: () => ({ model: modifyFields(model, { wished: () => true, work: () => Work.Idle() }) }),
     FailedPeopleWork: () => ({ model: modifyFields(model, { work: () => Work.Failed() }) }),
-    ClickedReport: () => ({
-      model: modifyFields(model, { reporting: () => Reporting.Open({ reason: Option.none(), note: '' }) }),
-    }),
+    ClickedReport: () =>
+      Update.combine<Model, Message, StyldClient>(model, [
+        leaveMore,
+        (step) => ({
+          model: modifyFields(step, { reporting: () => Reporting.Open({ reason: Option.none(), note: '' }) }),
+        }),
+      ]),
+    ClickedMore: () => openMore(model),
+    GotMoreMessage: (got) => foldMore(model, got.message),
     ChoseReportReason: ({ reason }) => ({
       model: modifyFields(model, {
         reporting: (reporting) =>
