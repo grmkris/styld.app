@@ -13,6 +13,10 @@ export const stylistToolNames: ReadonlyArray<string> = [
   'look_create',
 ]
 
+/** Tools that look something up: words a call writes beside them are the model thinking aloud ("I'll take a look"),
+ * left out of the reply when it says anything else. */
+export const lookingUpToolNames: ReadonlySet<string> = new Set(['piece_search', 'piece_get', 'look_list', 'look_get'])
+
 /** Tools that only show something under the reply: their answer tells the model nothing new, so a call that has
  * written its words and calls only these ends the reply, rather than asking the model again to restate it. */
 export const showingToolNames: ReadonlySet<string> = new Set(['pieces_show'])

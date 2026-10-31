@@ -7,7 +7,7 @@ import { describe, expect, test } from 'vitest'
 import { type Tool as AssistantTool, tool, ToolError } from '../src/mcp/Tools.ts'
 import { stylistPolicy } from '../src/stylist/Policy.ts'
 import { historyText, outlineOf, systemPrompt } from '../src/stylist/Prompt.ts'
-import { modelSchema, showingToolNames, turnTools } from '../src/stylist/Tools.ts'
+import { lookingUpToolNames, modelSchema, showingToolNames, turnTools } from '../src/stylist/Tools.ts'
 import { runTurn } from '../src/stylist/Turn.ts'
 import { type RunChat, workersAiFetch } from '../src/stylist/WorkersAiFetch.ts'
 
@@ -59,13 +59,13 @@ const modelOver = (run: RunChat, extra: Readonly<Record<string, unknown>> = {}) 
 const Loose = Schema.Record(Schema.String, Schema.Unknown)
 const loose = Schema.decodeUnknownSync(Loose)
 
-/** A recorded answer with its words left out: a model that shows the pieces before it writes. */
-const wordless = (answer: unknown): unknown => {
+/** A recorded answer with other words, or none. */
+const saying = (answer: unknown, content: string): unknown => {
   const whole = loose(answer)
   const choices = Schema.decodeUnknownSync(Schema.Array(Loose))(whole['choices'])
   return {
     ...whole,
-    choices: choices.map((choice) => ({ ...choice, message: { ...loose(choice['message']), content: '' } })),
+    choices: choices.map((choice) => ({ ...choice, message: { ...loose(choice['message']), content } })),
   }
 }
 
@@ -88,6 +88,7 @@ const replyWith = (answers: ReadonlyArray<unknown>, maxSteps = 6) => {
         toolkit: yield* tools.toolkit.pipe(Effect.provide(tools.handlers)),
         maxSteps,
         showing: showingToolNames,
+        lookingUp: lookingUpToolNames,
         progress: (sofar) => Effect.sync(() => progress.push(sofar)),
         counted: (usage) => Effect.sync(() => (usage.answered ? counted : failed).push(usage.inputTokens)),
       })
@@ -120,12 +121,22 @@ describe('a reply', () => {
   })
 
   test('pieces shown before any words: it goes on for the words', async () => {
-    const shownFirst = wordless(fixture('glm-step-1.json'))
+    const shownFirst = saying(fixture('glm-step-1.json'), '')
     const { replied, asked } = replyWith([fixture('glm-step-0.json'), shownFirst, fixture('glm-step-2.json')])
     const { reply, parts } = await replied
     expect(asked).toHaveLength(3)
     expect(reply).toMatch(/^It's an easy, clean combination/)
     expect(parts).toHaveLength(1)
+  })
+
+  test('words written beside a search are thinking aloud, left out once it says something else', async () => {
+    const aloud = saying(fixture('glm-step-0.json'), 'I’ll take a look at what’s in your wardrobe.')
+    const { replied } = replyWith([aloud, fixture('glm-step-1.json')])
+    const { reply } = await replied
+    expect(reply).toMatch(/^For a casual autumn day/)
+    // With nothing else said, they are the reply rather than none.
+    const { replied: only } = replyWith([aloud], 1)
+    expect((await only).reply).toBe('I’ll take a look at what’s in your wardrobe.')
   })
 
   test('a model that does not answer fails the reply, and its call is counted as failed', async () => {

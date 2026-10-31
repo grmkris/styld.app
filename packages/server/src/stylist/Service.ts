@@ -19,7 +19,7 @@ import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import type { StylistPolicy } from './Policy.ts'
 import { historyText, outlineOf, systemPrompt } from './Prompt.ts'
 import type { StoredMessage, StylistMethods } from './StylistObject.ts'
-import { showingToolNames, turnTools } from './Tools.ts'
+import { lookingUpToolNames, showingToolNames, turnTools } from './Tools.ts'
 import { runTurn } from './Turn.ts'
 
 /** How long a reply may be written before it shows as failed and another message may begin: longer than the queue's
@@ -139,6 +139,7 @@ const reply = <R>(
       toolkit: yield* tools.toolkit.pipe(Effect.provide(tools.handlers)),
       maxSteps: parts.policy.maxSteps,
       showing: showingToolNames,
+      lookingUp: lookingUpToolNames,
       progress: (sofar) =>
         Effect.gen(function* () {
           const shown = JSON.stringify(yield* tools.parts)
