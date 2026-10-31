@@ -9,7 +9,7 @@ import { StyldClient } from '../StyldClient.ts'
 
 // MODEL
 
-export const PhotosData = AsyncData.Schema(Schema.Array(Photo), Schema.Literal('Unavailable'))
+const PhotosData = AsyncData.Schema(Schema.Array(Photo), Schema.Literal('Unavailable'))
 
 export const Model = Schema.Struct({ photos: PhotosData.schema })
 export type Model = typeof Model.Type
@@ -26,8 +26,7 @@ export type Message = typeof Message.Type
 
 // COMMAND
 
-/** @internal Exported for its tests. */
-export const ListPiecePhotos = Command.define('ListPiecePhotos', {
+const ListPiecePhotos = Command.define('ListPiecePhotos', {
   args: { pieceId: Schema.String },
   messages: [Message.SucceededListPhotos, Message.FailedListPhotos],
   execute: ({ pieceId }) =>
