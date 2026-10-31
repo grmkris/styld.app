@@ -20,8 +20,9 @@ export const Subject = defineTaggedUnion({
 })
 export type Subject = typeof Subject.Type
 
-/** Where the visitor stands with the person, once read; unknown signed out. */
-export const Standing = defineTaggedUnion({ Unknown: {}, Known: { relation: Relation } })
+/** Where the visitor stands with the person: unknown when nobody asked (signed out, one's own profile) or the read
+ * failed, being read, or read. */
+export const Standing = defineTaggedUnion({ Unknown: {}, Reading: {}, Known: { relation: Relation } })
 export type Standing = typeof Standing.Type
 
 export const Work = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {} })
@@ -204,11 +205,14 @@ export const SendReport = Command.define('SendReport', {
     ),
 })
 
-/** The Commands that open the page: where the visitor stands with the person. */
-export const load = (model: Model): ReadonlyArray<Command.Command<Message, never, StyldClient>> =>
+/** Reads where the visitor stands with the person; the actions keep their room while it is out. */
+export const readRelation = (model: Model): Update.Return<Model, Message, StyldClient> =>
   Subject.guards.Person(model.subject) && model.subject.handle.length > 0
-    ? [LoadRelation({ handle: model.subject.handle })]
-    : []
+    ? {
+        model: modifyFields(model, { standing: () => Standing.Reading() }),
+        commands: [LoadRelation({ handle: model.subject.handle })],
+      }
+    : { model }
 
 // UPDATE
 
@@ -237,7 +241,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SucceededLoadRelation: ({ relation }) => ({
       model: modifyFields(model, { standing: () => Standing.Known({ relation }) }),
     }),
-    FailedLoadRelation: () => ({ model }),
+    FailedLoadRelation: () => ({ model: modifyFields(model, { standing: () => Standing.Unknown() }) }),
     ClickedFollow: ({ following }) => sending(model, SetFollowing({ handle: handleOfSubject(model), following })),
     ClickedBlock: () => ({ model: modifyFields(model, { confirmingBlock: () => true }) }),
     ClickedKeepUnblocked: () => ({ model: modifyFields(model, { confirmingBlock: () => false }) }),

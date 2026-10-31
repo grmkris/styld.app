@@ -6,6 +6,7 @@ import {
   AddToWishlist,
   init,
   Message,
+  readRelation,
   Reporting,
   SendReport,
   SetBlocked,
@@ -24,6 +25,19 @@ const known = update(person, Message.SucceededLoadRelation({ relation: relation(
 const pieceId = `pc_${'knit'.padEnd(22, 'x')}`
 
 describe('what a visitor does with someone', () => {
+  test('holds the room for Follow while it reads where the visitor stands, and gives it up if the read fails', () => {
+    const reading = readRelation(person)
+    expect(reading.model.standing).toEqual(Standing.Reading())
+    expect(reading.commands).toHaveLength(1)
+    story(
+      update,
+      given(reading.model),
+      message(Message.FailedLoadRelation()),
+      model(({ standing }) => expect(standing).toEqual(Standing.Unknown())),
+    )
+    expect(readRelation(init(Subject.Piece({ pieceId }))).commands ?? []).toHaveLength(0)
+  })
+
   test('follows them, and a block asks once more and ends the follow', () => {
     story(
       update,

@@ -2,6 +2,8 @@ import { style } from '../zyzz.config.ts'
 
 export const people = style({ display: 'grid', gap: '8px' })
 export const actions = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' })
+/** One action's shape while where the visitor stands is read: an action's height (Actions.styles.ts). */
+export const actionSkeleton = style({ inlineSize: '96px', blockSize: '48px', borderRadius: 'pill' })
 export const signIn = style({ display: 'inline-flex', alignItems: 'center', minBlockSize: '44px', fontWeight: 600 })
 export const report = style({
   display: 'grid',

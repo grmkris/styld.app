@@ -145,12 +145,16 @@ export const load = (model: Model): ReadonlyArray<Command.Command<Message, never
   loadTarget(model.target),
 ]
 
-/** Signed in, on someone else's profile: where the visitor stands with them. Signed out there is nothing to read,
- * and on one's own profile nobody to follow. */
-const relationFor = (model: Model, profile: PublicProfile) =>
-  model.signedIn && !profile.yours
-    ? Command.mapMessages(People.load(model.people), (message) => Message.GotPeopleMessage({ message }))
-    : []
+/** Signed in, on someone else's profile: where the visitor stands with them is read. Signed out there is nothing to
+ * read, and on one's own profile nobody to follow. */
+const withRelation = (model: Model, profile: PublicProfile): UpdateReturn => {
+  if (!model.signedIn || profile.yours) return { model }
+  const read = People.readRelation(model.people)
+  return {
+    model: modifyFields(model, { people: () => read.model }),
+    commands: Command.mapMessages(read.commands ?? [], (message) => Message.GotPeopleMessage({ message })),
+  }
+}
 
 // UPDATE
 
@@ -171,10 +175,8 @@ const foldPeople = People.foldInto<Model, Message>((message) => Message.GotPeopl
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
-    SucceededLoadPerson: ({ profile }) => ({
-      model: modifyFields(model, { shown: () => Shown.Person({ profile }) }),
-      commands: relationFor(model, profile),
-    }),
+    SucceededLoadPerson: ({ profile }) =>
+      withRelation(modifyFields(model, { shown: () => Shown.Person({ profile }) }), profile),
     SucceededLoadPublicPiece: ({ page }) => ({ model: modifyFields(model, { shown: () => Shown.Piece({ page }) }) }),
     SucceededLoadExplore: ({ explore }) => ({
       model: modifyFields(model, { shown: () => Shown.Explore({ explore }) }),

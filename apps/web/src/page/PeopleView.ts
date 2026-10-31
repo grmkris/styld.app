@@ -8,9 +8,11 @@ import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { textField } from '../Fields.styles.ts'
 import { loader } from '../Icon.ts'
 import { loginRouter, wishlistRouter } from '../route.ts'
+import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { Message, type Model, Reporting, Standing, Subject, Work } from './People.ts'
 import * as styles from './PeopleView.styles.ts'
+import { cx } from 'zyzz'
 
 const button = (label: string, onClick: Message, h: HtmlBuilder<Message>): Html =>
   actionButton({ label, style: secondaryAction(), onClick }, h)
@@ -109,6 +111,9 @@ const saveAndReport = (model: Model, report: string, locale: Locale, h: HtmlBuil
 const personActions = (model: Model, handle: string, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>
   Standing.match(model.standing, {
     Unknown: () => [],
+    // Follow, Report and Block arrive together; their shapes hold the row so the tabs below stay put.
+    Reading: () =>
+      [0, 1, 2].map(() => h.span([h.AriaHidden(true), ...styled(h, cx(block(), styles.actionSkeleton()))])),
     Known: ({ relation }) => [
       relation.blocked
         ? h.empty
