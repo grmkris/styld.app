@@ -112,8 +112,8 @@ export const PinThings = Command.define('PinThings', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedPins())),
 })
 
-/** How many of the board's pins others see: the public page, read as a visitor reads it, is the one rule for that.
- * A board others cannot see yet (its check is out, or it hid) shows them none. */
+/** @internal Exported for its tests. How many of the board's pins others see: the public page, read as a visitor
+ * reads it, is the one rule for that. A board others cannot see yet (its check is out, or it hid) shows them none. */
 export const ReadShown = Command.define('ReadShown', {
   args: { boardId: Schema.String },
   messages: [Message.SucceededReadShown, Message.FailedReadShown],
