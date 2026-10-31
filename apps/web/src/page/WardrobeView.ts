@@ -6,7 +6,7 @@ import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
-import { linkAction, primaryAction } from '../Actions.styles.ts'
+import { linkAction, primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { loader } from '../Icon.ts'
 import { addPiecesRouter, pieceRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
@@ -107,7 +107,11 @@ const loadedView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, 
     return h.section(styled(h, styles.message()), [
       h.h2(styled(h, styles.messageTitle()), [format(locale, 'wardrobe.closetEmptyTitle', {})]),
       h.p([], [format(locale, 'wardrobe.emptyHint', {})]),
-      h.a([h.Href(addPiecesRouter({})), ...styled(h, primaryAction())], [format(locale, 'wardrobe.scanPhotosCta', {})]),
+      // The head's + is the page's one ink action; this one says the same quietly, as Looks' and Wishlist's do.
+      h.a(
+        [h.Href(addPiecesRouter({})), ...styled(h, secondaryAction())],
+        [format(locale, 'wardrobe.scanPhotosCta', {})],
+      ),
     ])
   const shown = Option.match(model.category, {
     onNone: () => pieces,
