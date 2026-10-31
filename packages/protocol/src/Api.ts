@@ -69,6 +69,7 @@ import {
   PieceId,
   PieceNotFound,
   Pieces,
+  SetBack,
   UpdatePiece,
   Upload,
   UploadRefused,
@@ -132,6 +133,21 @@ export class WardrobeApi extends HttpApiGroup.make('wardrobe')
     HttpApiEndpoint.delete('deletePiece', '/pieces/:pieceId', {
       params: { pieceId: PieceId },
       success: HttpApiSchema.NoContent,
+      error: [PieceNotFound, WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.put('setBack', '/pieces/:pieceId/back', {
+      params: { pieceId: PieceId },
+      payload: SetBack,
+      success: Piece,
+      error: [PieceNotFound, UploadRefused, OperationConflict, WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.delete('removeBack', '/pieces/:pieceId/back', {
+      params: { pieceId: PieceId },
+      success: Piece,
       error: [PieceNotFound, WardrobeUnavailable, RequestRefused],
     }),
   )

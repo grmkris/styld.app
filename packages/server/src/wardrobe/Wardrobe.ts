@@ -9,38 +9,36 @@ import {
   Piece,
   PieceNotFound,
   type PieceId,
-  type PiecePicture,
-  type PieceTurn,
   type UpdatePiece,
   Upload,
   UploadId,
   UploadRefused,
-  WardrobeUnavailable,
 } from '@styld/protocol'
-import { Context, DateTime, Effect, Option, Predicate, Schema } from 'effect'
+import { Context, DateTime, Effect, Option, Predicate } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { type ByteStream, pump } from '../Streams.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import { deliverImage, type ImageBindings } from './Delivery.ts'
+import { deliverImage } from './Delivery.ts'
 import { type ImageSize, isVideoContainer, piecePrefix, sniffImageType, uploadKey } from './Media.ts'
-import { GarmentCutout, type WorkMessage } from './Processing.ts'
-import { pictureView, shownImage, shows, turnView } from './Shown.ts'
+import { backing } from './Back.ts'
+import { GarmentCutout } from './Processing.ts'
 import {
-  makeStore,
-  type PictureRow,
-  type PieceRow,
-  type Store,
-  type StoreUnavailable,
-  type UploadRow,
-} from './Store.ts'
+  nowDate,
+  ownerPiece,
+  ownPiece,
+  type Parts,
+  pictureRow,
+  refused,
+  stored,
+  toPiece,
+  unavailable,
+  usableUpload,
+  type WardrobeBindings,
+} from './Parts.ts'
+import { pictureView, shownImage, shows, turnView } from './Shown.ts'
+import { makeStore, type PictureRow, type PieceRow, type UploadRow } from './Store.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
-
-/** The Cloudflare bindings the wardrobe stores into, as Alchemy's runtime objects. */
-export interface WardrobeBindings extends ImageBindings {
-  readonly database: Parameters<typeof makeStore>[0]
-  readonly queue: { send(message: WorkMessage): Promise<unknown> }
-}
 
 /** A video's request body, as the Worker runtime streams it. */
 export type VideoBody =
@@ -48,34 +46,6 @@ export type VideoBody =
 
 /** An upload path stays valid this long after it is handed out. */
 const uploadLifetime = { minutes: 15 }
-
-const unavailable = () => WardrobeUnavailable.make({})
-const refused = (reason: UploadRefused['reason']) => UploadRefused.make({ reason })
-const stored = <A, R>(effect: Effect.Effect<A, StoreUnavailable, R>) => Effect.mapError(effect, unavailable)
-const nowDate = Effect.map(DateTime.now, DateTime.toDateUtc)
-
-/** A stored piece as the protocol shows it, with its clean picture and its turn when they were asked for. */
-export const toPiece = (row: PieceRow, picture?: PiecePicture, turn?: PieceTurn) =>
-  Schema.decodeUnknownEffect(Piece)({
-    id: row.id,
-    name: row.name,
-    notes: row.notes,
-    type: row.type,
-    colours: row.colours,
-    season: row.season,
-    occasions: row.occasions,
-    pattern: row.pattern,
-    brand: row.brand,
-    shopUrl: row.shopUrl,
-    hasBack: row.backImageKey !== null,
-    status: row.status,
-    source: row.source,
-    createdAt: row.createdAt.toISOString(),
-    updatedAt: row.updatedAt.toISOString(),
-    ...(picture === undefined ? {} : { picture }),
-    ...(turn === undefined ? {} : { turn }),
-    // Only the service writes rows, through the same schemas; a row that does not decode is a bug.
-  }).pipe(Effect.orDie)
 
 /** Why an upload cannot take these bytes, if it cannot. The bytes' own signature decides their
  * type, not the request's header. */
@@ -106,61 +76,6 @@ const videoRefusal = (
   if (input.bytes !== upload.bytes) return Option.some('tooLarge')
   return Option.none()
 }
-
-/** Why an upload cannot make something, if it cannot. */
-const useRefusal = (upload: Option.Option<UploadRow>): Option.Option<UploadRefused['reason']> =>
-  Option.match(upload, {
-    onNone: () => Option.some('notFound'),
-    onSome: ({ status }) =>
-      status === 'pending'
-        ? Option.some('notReceived')
-        : status === 'used'
-          ? Option.some('alreadyUsed')
-          : Option.none(),
-  })
-
-/** A received upload of the account that has not made anything yet: what a piece or a board's picture is
- * made from. Another account's upload reads as not found. */
-export const usableUpload = Effect.fnUntraced(function* (store: Store, accountId: string, uploadId: string) {
-  const upload = Option.filter(yield* stored(store.findUpload(uploadId)), (row) => row.accountId === accountId)
-  const refusal = useRefusal(upload)
-  if (Option.isSome(refusal) || Option.isNone(upload))
-    return yield* refused(Option.getOrElse(refusal, () => 'notFound'))
-  return upload.value
-})
-
-interface Parts {
-  readonly bindings: WardrobeBindings
-  readonly store: Store
-  readonly cutout: GarmentCutout['Service']
-  readonly pieceChanged: PieceChanged['Service']
-  readonly randomToken: (bytes: number) => Effect.Effect<string, WardrobeUnavailable>
-  readonly digest: (text: string) => Effect.Effect<string, WardrobeUnavailable>
-}
-
-const ownPiece = (parts: Parts) =>
-  Effect.fnUntraced(function* (pieceId: string) {
-    const { accountId } = yield* CurrentAccount
-    const row = yield* stored(parts.store.findPiece(accountId, pieceId))
-    return yield* Option.match(row, { onNone: () => Effect.fail(PieceNotFound.make({})), onSome: Effect.succeed })
-  })
-
-/** The piece's clean picture row, if a drawing was ever asked for. */
-const pictureRow = (parts: Parts, accountId: string, pieceId: string) =>
-  Effect.map(stored(parts.store.pictureOf(accountId, pieceId)), Option.getOrUndefined)
-
-/** A piece as its owner sees it, with its clean picture and its turn. */
-const ownerPiece = (parts: Parts, accountId: string, row: PieceRow) =>
-  Effect.gen(function* () {
-    const picture = yield* pictureRow(parts, accountId, row.id)
-    const turn = Option.getOrUndefined(yield* stored(parts.store.turnOf(accountId, row.id)))
-    const at = yield* nowDate
-    return yield* toPiece(
-      row,
-      picture === undefined ? undefined : pictureView(picture, at),
-      turn === undefined ? undefined : turnView(turn, at),
-    )
-  })
 
 const enqueue = (parts: Parts, pieceId: string) =>
   Effect.tryPromise({ try: () => parts.bindings.queue.send({ pieceId }), catch: unavailable })
@@ -451,10 +366,19 @@ const editing = (parts: Parts) => ({
   }),
 })
 
-/** The stored image behind one of a piece's pictures: the one it shows, its photo, or its clean drawing. */
-const pictureImage = (piece: PieceRow, picture: PictureRow | undefined, which: 'shown' | 'photo' | 'clean') => {
+/** The stored image behind one of a piece's pictures: the one it shows, its photo, its clean drawing or its back. */
+const pictureImage = (
+  piece: PieceRow,
+  picture: PictureRow | undefined,
+  which: 'shown' | 'photo' | 'clean' | 'back',
+) => {
   if (which === 'shown') return Option.some(shownImage(piece, picture))
   if (which === 'photo') return Option.some(shownImage(piece, undefined))
+  if (which === 'back')
+    return Option.map(Option.fromNullishOr(piece.backImageKey), (key) => ({
+      key,
+      contentType: key.endsWith('.png') ? 'image/png' : piece.contentType,
+    }))
   const drawn = picture?.cleanKey ?? null
   return drawn !== null && (picture?.state === 'ready' || picture?.state === 'proposed')
     ? Option.some({ key: drawn, contentType: 'image/png' })
@@ -467,7 +391,7 @@ const images = (parts: Parts) => ({
   pieceImage: Effect.fn('Styld.Wardrobe.pieceImage')(function* (
     pieceId: PieceId,
     size: ImageSize,
-    which: 'shown' | 'photo' | 'clean' = 'shown',
+    which: 'shown' | 'photo' | 'clean' | 'back' = 'shown',
   ) {
     const { accountId } = yield* CurrentAccount
     const piece = yield* ownPiece(parts)(pieceId)
@@ -478,7 +402,9 @@ const images = (parts: Parts) => ({
     if (Option.isNone(image)) return yield* PieceNotFound.make({})
     // A new drawing, or a change of which picture shows, is a new version of the shown image.
     const drawing =
-      which === 'photo' ? 'photo' : `${which === 'clean' ? 'clean' : shows(picture)}${picture?.version ?? 0}`
+      which === 'photo' || which === 'back'
+        ? which
+        : `${which === 'clean' ? 'clean' : shows(picture)}${picture?.version ?? 0}`
     return { ...image.value, version: `${piece.id}.${piece.updatedAt.getTime()}.${drawing}.${size}` }
   }),
 })
@@ -493,6 +419,7 @@ const processing = (parts: Parts) => ({
       pieceId,
       originalKey: row.value.originalKey,
       contentType: row.value.contentType,
+      of: { side: 'front' },
     })
     yield* stored(parts.store.finishProcessing(pieceId, { status: 'ready', imageKey, updatedAt: yield* nowDate }))
     yield* parts.pieceChanged.changed(pieceId)
@@ -501,7 +428,9 @@ const processing = (parts: Parts) => ({
   failPiece: Effect.fn('Styld.Wardrobe.failPiece')(function* (pieceId: string) {
     const row = yield* stored(parts.store.findPieceForProcessing(pieceId))
     if (Option.isNone(row) || row.value.status !== 'processing') return
-    yield* parts.cutout.release({ accountId: row.value.accountId, pieceId }).pipe(Effect.mapError(unavailable))
+    yield* parts.cutout
+      .release({ accountId: row.value.accountId, pieceId, of: { side: 'front' } })
+      .pipe(Effect.mapError(unavailable))
     yield* stored(
       parts.store.finishProcessing(pieceId, { status: 'failed', imageKey: null, updatedAt: yield* nowDate }),
     )
@@ -528,6 +457,7 @@ const make = (bindings: WardrobeBindings) =>
       ...videoUploads(parts),
       ...adding(parts),
       ...editing(parts),
+      ...backing(parts),
       ...images(parts),
       ...processing(parts),
     }

@@ -99,3 +99,11 @@ export const turnButton = style({
 })
 /** The still and the turn's player in one place, the player on top: until the player draws, the still shows. */
 export const turnStack = style({ display: 'grid', '& > *': { gridArea: '1 / 1' } })
+/** Front and Back under the picture: two chips, the shown side chosen. */
+export const sides = style({ display: 'flex', justifyContent: 'center', gap: '8px' })
+/** A file picker drawn as a button: the label is the target, its input hidden but focusable. */
+export const fileAction = style({
+  position: 'relative',
+  cursor: 'pointer',
+  ':focus-within': { outlineWidth: '2px', outlineStyle: 'solid', outlineColor: 'ink', outlineOffset: '2px' },
+})

@@ -53,6 +53,34 @@ describe('the piece page', () => {
     )
   })
 
+  test('says what it is, when and what for it is worn, its brand and its shop, and turns to its back', () => {
+    const coat = {
+      ...jeans,
+      type: 'coats',
+      season: 'cold',
+      occasions: ['casual', 'smart'],
+      pattern: 'checked',
+      brand: 'COS',
+      shopUrl: 'https://shop.example/coat',
+      hasBack: true,
+    } as const
+    scene(
+      { update, view },
+      given(piecePage(Load.Loaded({ piece: coat }))),
+      expect(text('Coats')).toExist(),
+      expect(text('Cold weather')).toExist(),
+      expect(text('Casual, Smart')).toExist(),
+      expect(text('Checked')).toExist(),
+      expect(text('COS')).toExist(),
+      expect(role('link', { name: 'Open the shop’s page' })).toHaveAttr('href', 'https://shop.example/coat'),
+      expect(role('button', { name: 'Front' })).toHaveAttr('aria-pressed', 'true'),
+      click(role('button', { name: 'Back' })),
+      expect(role('img', { name: 'Coat, back' })).toExist(),
+      expect(text('Replace the back')).toExist(),
+      expect(role('button', { name: 'Remove the back' })).toExist(),
+    )
+  })
+
   test('a named piece says what one of its kind is under its name', () => {
     scene(
       { update, view },

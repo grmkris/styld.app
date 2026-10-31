@@ -72,6 +72,8 @@ const wardrobe = Wardrobe.of({
   addPiece: notUsed,
   updatePiece: notUsed,
   deletePiece: notUsed,
+  setBack: notUsed,
+  removeBack: notUsed,
   // The first piece has a thumbnail; the others cannot be read, and the view goes without them.
   pieceImage: (pieceId) =>
     Effect.gen(function* () {

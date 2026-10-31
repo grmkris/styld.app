@@ -37,6 +37,10 @@ export type WorkMessage = typeof WorkMessage.Type
 /** The cut-out step could not produce an image this time; the queue retries it. */
 export class CutoutFailed extends Schema.TaggedError<CutoutFailed>()('CutoutFailed', {}) {}
 
+/** Which side of a piece a photo shows: its front, cut out once when the piece is added, or a back the person adds
+ * later, cut out from its own upload. */
+export type CutSide = { readonly side: 'front' } | { readonly side: 'back'; readonly uploadId: string }
+
 /** The step that turns a piece's photo into the image the wardrobe shows. The garment cut-out model
  * plugs in here; until then `keepOriginal` shows the photo as it arrived. */
 export class GarmentCutout extends Context.Service<
@@ -47,11 +51,13 @@ export class GarmentCutout extends Context.Service<
       readonly pieceId: string
       readonly originalKey: string
       readonly contentType: string
+      readonly of: CutSide
     }) => Effect.Effect<{ readonly imageKey: string }, CutoutFailed>
-    /** The queue gave up on the piece: anything `cut` held for it is let go. */
+    /** The work gave up on the side: anything `cut` held for it is let go. */
     readonly release: (input: {
       readonly accountId: string
       readonly pieceId: string
+      readonly of: CutSide
     }) => Effect.Effect<void, CutoutFailed>
   }
 >()('@styld/server/GarmentCutout') {

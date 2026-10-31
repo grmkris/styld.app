@@ -27,7 +27,7 @@ import { deliverImage } from '../wardrobe/Delivery.ts'
 import type { ShownImage } from '../wardrobe/Http.ts'
 import type { ImageSize } from '../wardrobe/Media.ts'
 import { makeStore } from '../wardrobe/Store.ts'
-import { usableUpload } from '../wardrobe/Wardrobe.ts'
+import { usableUpload } from '../wardrobe/Parts.ts'
 import { type BoardRow, makeBoardStore, type PinRemoval } from './Store.ts'
 import { tables } from './Tables.ts'
 import {

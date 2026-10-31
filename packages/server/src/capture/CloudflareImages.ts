@@ -1,5 +1,5 @@
 import { Effect } from 'effect'
-import type { WardrobeBindings } from '../wardrobe/Wardrobe.ts'
+import type { WardrobeBindings } from '../wardrobe/Parts.ts'
 import { type CaptureMetrics, counted, prices } from './Metrics.ts'
 import { ProviderFailed, type WorkingCopies } from './Providers.ts'
 import { collect } from '../Streams.ts'

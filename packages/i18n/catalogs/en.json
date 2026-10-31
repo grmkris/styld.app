@@ -288,7 +288,20 @@
     "filterBrand": "Brand",
     "clearFilters": "Clear",
     "showPieces": "{count, plural, one {Show # piece} other {Show # pieces}}",
-    "noneFiltered": "No pieces match these filters."
+    "noneFiltered": "No pieces match these filters.",
+    "front": "Front",
+    "back": "Back",
+    "sides": "Side shown",
+    "backAlt": "{name}, back",
+    "addBack": "Add the back",
+    "replaceBack": "Replace the back",
+    "removeBack": "Remove the back",
+    "backSending": "Cutting out the back…",
+    "backFailed": "The back didn’t go through. Try again.",
+    "backCost": "1 credit from today’s free allowance.",
+    "patternFact": "Pattern",
+    "shopLink": "Open the shop’s page",
+    "shopFact": "Shop"
   },
   "landing": {
     "feedDescription": "Public boards from Styld and the people using it.",

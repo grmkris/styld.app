@@ -1,8 +1,9 @@
-import { BoardId, BoardItem, BoardItemId, boardWidth, ImageType, OperationId, Paper, PieceId } from '@styld/protocol'
+import { BoardId, BoardItem, BoardItemId, boardWidth, OperationId, Paper, PieceId } from '@styld/protocol'
 import { Array, Duration, Effect, Option, Predicate, Queue, Schema, Stream } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { Command, File, Mount } from 'foldkit'
+import { uploadPicture } from '../../PictureUpload.ts'
 import { StyldClient } from '../../StyldClient.ts'
 import { Message } from './Message.ts'
 
@@ -14,8 +15,6 @@ const saveWait = Duration.millis(700)
 const exitDuration = Duration.millis(240)
 /** How long "Removed. Undo" stays. */
 const toastDuration = Duration.seconds(5)
-/** A picture is shrunk to at most this many pixels on its longer side before it goes up. */
-const longestSide = 2048
 
 const boardIdOf = (id: string) => Schema.decodeUnknownEffect(BoardId)(id)
 
@@ -120,44 +119,26 @@ export const WaitForToast = Command.define('WaitForToast', {
   execute: ({ generation }) => Effect.sleep(toastDuration).pipe(Effect.as(Message.ElapsedToast({ generation }))),
 })
 
-const pictureTypes: ReadonlyArray<string> = ImageType.literals
-
-/** Shrink a picture to at most 2048px and re-encode it as WebP. Drawing it afresh drops the photo's
- * metadata, its location included. */
-const prepared = (file: File.File) =>
-  Effect.tryPromise({
-    try: async () => {
-      const bitmap = await createImageBitmap(file)
-      const scale = Math.min(1, longestSide / Math.max(bitmap.width, bitmap.height))
-      const canvas = new OffscreenCanvas(Math.round(bitmap.width * scale), Math.round(bitmap.height * scale))
-      canvas.getContext('2d')?.drawImage(bitmap, 0, 0, canvas.width, canvas.height)
-      bitmap.close()
-      return canvas.convertToBlob({ type: 'image/webp', quality: 0.86 })
-    },
-    catch: () => 'Unreadable' as const,
-  })
-
 /** Send one picture and put it on the board: upload its bytes, then claim the upload for the board. */
 export const AddImage = Command.define('AddImage', {
   args: { boardId: Schema.String, file: File.File },
   messages: [Message.SucceededAddImage, Message.FailedAddImage],
   execute: ({ boardId, file }) =>
     Effect.gen(function* () {
-      if (!pictureTypes.includes(File.mimeType(file))) return Message.FailedAddImage({ refused: true })
-      const { api: loadApi, sendFile } = yield* StyldClient
-      const api = yield* loadApi
-      const picture = yield* prepared(file)
-      const created = yield* api.wardrobe.createUpload({ payload: { contentType: 'image/webp', bytes: picture.size } })
-      yield* sendFile(created.path, picture)
+      const uploadId = yield* uploadPicture(file)
+      const api = yield* (yield* StyldClient).api
       const operationId = yield* Schema.decodeUnknownEffect(OperationId)(yield* (yield* Crypto.Crypto).randomUUIDv4())
       const { imageId } = yield* api.board.addBoardImage({
         params: { boardId: yield* boardIdOf(boardId) },
-        payload: { operationId, uploadId: created.uploadId },
+        payload: { operationId, uploadId },
       })
       return Message.SucceededAddImage({ imageId })
     }).pipe(
       Effect.catchIf(
-        (error) => Predicate.isTagged(error, 'UploadRefused') || Predicate.isTagged(error, 'FileNotSent'),
+        (error) =>
+          Predicate.isTagged(error, 'NotAPicture') ||
+          Predicate.isTagged(error, 'UploadRefused') ||
+          Predicate.isTagged(error, 'FileNotSent'),
         () => Effect.succeed(Message.FailedAddImage({ refused: true })),
       ),
       Effect.orElseSucceed(() => Message.FailedAddImage({ refused: false })),

@@ -1,7 +1,7 @@
 import { Effect, Layer, Option } from 'effect'
 import { accountPrefix } from '../wardrobe/Media.ts'
-import { CutoutFailed, GarmentCutout } from '../wardrobe/Processing.ts'
-import type { WardrobeBindings } from '../wardrobe/Wardrobe.ts'
+import { type CutSide, CutoutFailed, GarmentCutout } from '../wardrobe/Processing.ts'
+import type { WardrobeBindings } from '../wardrobe/Parts.ts'
 import { CaptureMetrics } from './Metrics.ts'
 import { CaptureConfig } from './Policy.ts'
 import { cutterFor, foregroundPiece, samPieces } from './PhotoPipeline.ts'
@@ -25,18 +25,24 @@ const largestGarment = (original: Uint8Array) =>
     return Option.fromNullishOr(largest?.png)
   })
 
-const holdOf = (pieceId: string) => `piece/${pieceId}`
+/** A side's credit in the Wallet: the front's once per piece, a back's once per upload. */
+const holdOf = (pieceId: string, of: CutSide) =>
+  of.side === 'front' ? `piece/${pieceId}` : `piece/${pieceId}/back/${of.uploadId}`
 
-/** Consume or refund a piece's credit. The Wallet answers a repeated settle as already done. */
-const settle = (accountId: string, pieceId: string, outcome: 'consumed' | 'refunded') =>
+/** Where a side's cut-out is stored. */
+const keyOf = (accountId: string, pieceId: string, of: CutSide) =>
+  `${accountPrefix(accountId)}pieces/${pieceId}/${of.side === 'front' ? 'cutout' : `back-${of.uploadId}`}.png`
+
+/** Consume or refund a side's credit. The Wallet answers a repeated settle as already done. */
+const settle = (accountId: string, hold: string, outcome: 'consumed' | 'refunded') =>
   Effect.gen(function* () {
-    yield* (yield* Usage).settle(accountId, holdOf(pieceId), outcome)
+    yield* (yield* Usage).settle(accountId, hold, outcome)
   }).pipe(Effect.mapError(() => CutoutFailed.make({})))
 
-/** The garment cut-out behind `piece_add`: the same providers as the tray, without a review step,
- * because the person asked their assistant for this piece. It costs a photo's credit, held across the
- * queue's attempts and given back only when the queue gives up (`release`). Past the daily limit, or
- * when nothing can be cut out, the piece keeps its original photo. */
+/** The garment cut-out behind `piece_add` and a back added on the piece's page: the same providers as the tray,
+ * without a review step, because the person asked for this piece. It costs a photo's credit, held across the
+ * attempts and given back only when the work gives up (`release`). Past the daily limit, or when nothing can be cut
+ * out, the side keeps its original photo. */
 export const pieceCutout = (bucket: WardrobeBindings['bucket']) =>
   Layer.effect(
     GarmentCutout,
@@ -46,12 +52,14 @@ export const pieceCutout = (bucket: WardrobeBindings['bucket']) =>
         readonly accountId: string
         readonly pieceId: string
         readonly originalKey: string
+        readonly of: CutSide
       }) {
         const policy = yield* CaptureConfig
         const kept = { imageKey: input.originalKey }
         if (policy.providers === 'off') return kept
+        const hold = holdOf(input.pieceId, input.of)
         // A retried attempt repeats the same reservation, which the Wallet answers as already held.
-        const held = yield* (yield* Usage).reserve(input.accountId, holdOf(input.pieceId), policy.credits.photo).pipe(
+        const held = yield* (yield* Usage).reserve(input.accountId, hold, policy.credits.photo).pipe(
           Effect.as(true),
           Effect.catchTag('DailyLimitReached', () => Effect.succeed(false)),
           Effect.mapError(() => CutoutFailed.make({})),
@@ -65,7 +73,7 @@ export const pieceCutout = (bucket: WardrobeBindings['bucket']) =>
           catch: () => CutoutFailed.make({}),
         })
         if (original === undefined) {
-          yield* settle(input.accountId, input.pieceId, 'refunded')
+          yield* settle(input.accountId, hold, 'refunded')
           return kept
         }
         const outcome = yield* largestGarment(original).pipe(
@@ -83,23 +91,24 @@ export const pieceCutout = (bucket: WardrobeBindings['bucket']) =>
         )
         const png = outcome.png
         if (Option.isSome(png)) {
-          const key = `${accountPrefix(input.accountId)}pieces/${input.pieceId}/cutout.png`
+          const key = keyOf(input.accountId, input.pieceId, input.of)
           yield* Effect.tryPromise({
             try: () => bucket.put(key, png.value, { httpMetadata: { contentType: 'image/png' } }),
             catch: () => CutoutFailed.make({}),
           })
-          yield* settle(input.accountId, input.pieceId, outcome.settle)
+          yield* settle(input.accountId, hold, outcome.settle)
           return { imageKey: key }
         }
-        yield* settle(input.accountId, input.pieceId, outcome.settle)
+        yield* settle(input.accountId, hold, outcome.settle)
         return kept
       })
-      /** The queue gave up on the piece: its held credit comes back. */
+      /** The work gave up on the side: its held credit comes back. */
       const release = Effect.fn('Styld.Capture.pieceCutoutRelease')(function* (input: {
         readonly accountId: string
         readonly pieceId: string
+        readonly of: CutSide
       }) {
-        yield* settle(input.accountId, input.pieceId, 'refunded')
+        yield* settle(input.accountId, holdOf(input.pieceId, input.of), 'refunded')
       })
       return {
         cut: (input) => cut(input).pipe(Effect.provide(services)),

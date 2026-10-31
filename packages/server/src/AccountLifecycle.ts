@@ -8,7 +8,7 @@ import { Context, Effect } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { accountPrefix } from './wardrobe/Media.ts'
-import type { WardrobeBindings } from './wardrobe/Wardrobe.ts'
+import type { WardrobeBindings } from './wardrobe/Parts.ts'
 
 const unavailable = () => AccountUnavailable.make({})
 

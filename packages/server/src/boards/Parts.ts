@@ -16,7 +16,7 @@ import type { Checks } from '../safety/Checks.ts'
 import type { ProfileStore } from '../social/ProfileStore.ts'
 import { type ImageBindings } from '../wardrobe/Delivery.ts'
 import { type Store, type StoreUnavailable } from '../wardrobe/Store.ts'
-import { toPiece, type WardrobeBindings } from '../wardrobe/Wardrobe.ts'
+import { toPiece, type WardrobeBindings } from '../wardrobe/Parts.ts'
 import { type BoardItemRow, type BoardPinRow, type BoardRow, type BoardStore } from './Store.ts'
 
 // What the board operations share: the bindings, how a board is shown, receipts, ownership and new pins.

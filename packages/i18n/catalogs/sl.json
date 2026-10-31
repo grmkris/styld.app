@@ -288,7 +288,20 @@
     "filterBrand": "Znamka",
     "clearFilters": "Počisti",
     "showPieces": "{count, plural, one {Pokaži # kos} two {Pokaži # kosa} few {Pokaži # kose} other {Pokaži # kosov}}",
-    "noneFiltered": "Ni kosov s temi filtri."
+    "noneFiltered": "Ni kosov s temi filtri.",
+    "front": "Spredaj",
+    "back": "Zadaj",
+    "sides": "Prikazana stran",
+    "backAlt": "{name}, hrbtna stran",
+    "addBack": "Dodaj hrbtno stran",
+    "replaceBack": "Zamenjaj hrbtno stran",
+    "removeBack": "Odstrani hrbtno stran",
+    "backSending": "Izrezujem hrbtno stran …",
+    "backFailed": "Hrbtna stran ni uspela. Poskusi znova.",
+    "backCost": "1 kredit od današnjih brezplačnih.",
+    "patternFact": "Vzorec",
+    "shopLink": "Odpri stran v trgovini",
+    "shopFact": "Trgovina"
   },
   "landing": {
     "feedDescription": "Javne zbirke Stylda in ljudi, ki ga uporabljajo.",

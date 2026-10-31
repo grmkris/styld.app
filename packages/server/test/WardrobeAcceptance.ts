@@ -86,6 +86,20 @@ const checkedUpload = async (origin: string, owner: Call) => {
   return photo
 }
 
+/** A back added on the piece's page: shown to its owner only, repeated as is, and forgotten again. */
+const verifyBack = async (origin: string, owner: Call, other: Call, pieceId: string) => {
+  const back = { operationId: 'native-back-0001', uploadId: await receivedPhoto(origin, owner) }
+  expect((await json(other, `/api/pieces/${pieceId}/back`, 'PUT', back)).status).toBe(404)
+  const set = await json(owner, `/api/pieces/${pieceId}/back`, 'PUT', back)
+  expect(await set.json()).toMatchObject({ id: pieceId, hasBack: true })
+  expect(await (await json(owner, `/api/pieces/${pieceId}/back`, 'PUT', back)).json()).toMatchObject({ hasBack: true })
+  expect((await owner(`/cdn/pieces/${pieceId}/back/thumb`)).status).toBe(200)
+  expect((await other(`/cdn/pieces/${pieceId}/back/thumb`)).status).toBe(404)
+  const removed = await owner(`/api/pieces/${pieceId}/back`, { method: 'DELETE' })
+  expect(await removed.json()).toMatchObject({ hasBack: false })
+  expect((await owner(`/cdn/pieces/${pieceId}/back/thumb`)).status).toBe(404)
+}
+
 /** A photo goes up, becomes a piece, is processed by the queue and shown through the Images
  * binding, only to its owner; edits, replays and deletion behave as the protocol says. */
 export const verifyWardrobe = async (origin: string, fixtures: string): Promise<void> => {
@@ -128,6 +142,7 @@ export const verifyWardrobe = async (origin: string, fixtures: string): Promise<
   expect((await json(owner, '/api/pieces', 'POST', { ...add, operationId: 'native-add-0002' })).status).toBe(422)
 
   expect(await waitUntilReady(owner, piece.id)).toBe('ready')
+  await verifyBack(origin, owner, other, piece.id)
   const thumb = await owner(`/cdn/pieces/${piece.id}/thumb`)
   expect(thumb.status).toBe(200)
   expect(thumb.headers.get('content-type')).toMatch(/^image\//)

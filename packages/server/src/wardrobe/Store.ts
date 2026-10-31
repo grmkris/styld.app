@@ -26,6 +26,7 @@ export type PieceChanges = Partial<
     | 'brand'
     | 'shopUrl'
     | 'suggestedAt'
+    | 'backImageKey'
     | 'updatedAt'
   >
 >
@@ -149,6 +150,46 @@ const pictureQueries = (db: ReturnType<typeof drizzle>) => ({
     ).pipe(Effect.map(first)),
 })
 
+/** A piece's back, written with its upload spent and the operation's receipt. */
+const backQueries = (db: ReturnType<typeof drizzle>) => ({
+  /** A back for the piece, its upload spent and the operation's receipt, as one atomic batch. */
+  setBack: (
+    accountId: string,
+    pieceId: string,
+    back: { readonly key: string; readonly uploadId: string; readonly at: Date },
+    receipt: ReceiptRow,
+  ) =>
+    Effect.tryPromise({
+      try: () =>
+        db.batch([
+          db
+            .update(pieces)
+            .set({ backImageKey: back.key, updatedAt: back.at })
+            .where(and(eq(pieces.id, pieceId), eq(pieces.accountId, accountId)))
+            .returning(),
+          spendUpload(db, back.uploadId),
+          db.insert(operationReceipts).values(receipt),
+        ]),
+      catch: () => StoreUnavailable.make({}),
+    }).pipe(Effect.map(([updated]) => first(updated))),
+})
+
+/** Reads for the queue, which acts for no one in particular: pieces to process and pieces to ask about. */
+const queueQueries = (db: ReturnType<typeof drizzle>) => ({
+  /** Ready pieces carried over from the old categories that the decision model has not been asked about yet. */
+  piecesToSuggest: (limit: number) =>
+    attempt(() =>
+      db
+        .select({ id: pieces.id })
+        .from(pieces)
+        .where(and(isNull(pieces.suggestedAt), eq(pieces.status, 'ready')))
+        .limit(limit),
+    ).pipe(Effect.map((rows) => rows.map(({ id }) => id))),
+  /** For the processing queue, which acts for no one in particular. */
+  findPieceForProcessing: (pieceId: string) =>
+    attempt(() => db.select().from(pieces).where(eq(pieces.id, pieceId)).limit(1)).pipe(Effect.map(first)),
+})
+
 /** The wardrobe's rows in D1. Every read and write of a person's rows names their account, so
  * one account can never reach another's pieces. */
 export const makeStore = (database: Parameters<typeof drizzle>[0]) => {
@@ -157,6 +198,8 @@ export const makeStore = (database: Parameters<typeof drizzle>[0]) => {
     ...uploadQueries(db),
     ...sharedPhotoQueries(db),
     ...pictureQueries(db),
+    ...queueQueries(db),
+    ...backQueries(db),
     listPieces: (accountId: string) =>
       attempt(() => db.select().from(pieces).where(eq(pieces.accountId, accountId)).orderBy(desc(pieces.createdAt))),
     findPiece: (accountId: string, pieceId: string) =>
@@ -167,18 +210,6 @@ export const makeStore = (database: Parameters<typeof drizzle>[0]) => {
           .where(and(eq(pieces.id, pieceId), eq(pieces.accountId, accountId)))
           .limit(1),
       ).pipe(Effect.map(first)),
-    /** Ready pieces carried over from the old categories that the decision model has not been asked about yet. */
-    piecesToSuggest: (limit: number) =>
-      attempt(() =>
-        db
-          .select({ id: pieces.id })
-          .from(pieces)
-          .where(and(isNull(pieces.suggestedAt), eq(pieces.status, 'ready')))
-          .limit(limit),
-      ).pipe(Effect.map((rows) => rows.map(({ id }) => id))),
-    /** For the processing queue, which acts for no one in particular. */
-    findPieceForProcessing: (pieceId: string) =>
-      attempt(() => db.select().from(pieces).where(eq(pieces.id, pieceId)).limit(1)).pipe(Effect.map(first)),
     findReceipt: (accountId: string, operationId: string) =>
       attempt(() => receiptQuery(db, accountId, operationId)).pipe(Effect.map(first)),
     /** The piece, its upload spent and the operation's receipt, as one atomic batch. The unique

@@ -21,7 +21,16 @@ export default defineConfig({
     autoDetect: true,
     // Language names are written in their own language and the brand is never translated. Log events
     // (`Styld.<Area>.<operation> …`) are read by operators in Workers Logs, never shown to people.
-    ignore: ['Styld', 'English', 'Slovenščina', 'English (expanded)', 'English (RTL)', '/^Styld\\.[A-Za-z]+/'],
+    // `noopener noreferrer` is a link's rel attribute, not words anyone reads.
+    ignore: [
+      'Styld',
+      'English',
+      'Slovenščina',
+      'English (expanded)',
+      'English (RTL)',
+      '/^Styld\\.[A-Za-z]+/',
+      'noopener noreferrer',
+    ],
     // Files without user-facing copy: SQL, developer-only defect messages and CSS values.
     // Everything else, including future server-rendered copy such as emails, is checked.
     ignoreByFile: {

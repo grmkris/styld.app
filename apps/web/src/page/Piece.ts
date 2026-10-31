@@ -20,6 +20,7 @@ import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
+import * as PieceBack from './PieceBack.ts'
 import { changeDetails, Details, detailsOf } from './PieceFields.ts'
 import * as SaveToBoard from './SaveToBoard.ts'
 import * as Crypto from 'effect/Crypto'
@@ -78,6 +79,7 @@ export const Model = Schema.Struct({
   /** The turn this page is asking for, or building the frames of. */
   turnWork: Schema.Literals(['idle', 'asking', 'building']),
   turnProblem: Schema.Option(TurnProblem),
+  back: PieceBack.Model,
   /** Whether the turn's player has drawn its first frame; until then the still shows under it. */
   turnShown: Schema.Boolean,
   saveToBoard: SaveToBoard.Model,
@@ -94,6 +96,7 @@ export const init = (pieceId: string): Model => ({
   turnWork: 'idle',
   turnShown: false,
   turnProblem: Option.none(),
+  back: PieceBack.init(pieceId),
   saveToBoard: SaveToBoard.init({ kind: 'piece', id: pieceId }),
 })
 
@@ -122,6 +125,7 @@ export const Message = defineMessageUnion({
   UpdatedShopUrl: { value: Schema.String },
   SubmittedEdit: {},
   SucceededUpdatePiece: { piece: Piece },
+  GotBackMessage: { message: PieceBack.Message },
   FailedUpdatePiece: {},
   ClickedShowPicture: { use: PictureChoice },
   SucceededChoosePicture: { piece: Piece },
@@ -324,6 +328,20 @@ export const load = (model: Model) => [GetPiece({ pieceId: model.pieceId })]
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
 
 const foldSaveToBoard = SaveToBoard.foldInto<Model, Message>((message) => Message.GotSaveToBoardMessage({ message }))
+
+const foldBack = Update.foldChild({
+  update: PieceBack.update,
+  read: (model: Model) => Option.some(model.back),
+  write: (model: Model, back: PieceBack.Model) => modifyFields(model, { back: () => back }),
+  toParentMessage: (message: PieceBack.Message) => Message.GotBackMessage({ message }),
+  foldOutMessage: PieceBack.OutMessage.match<
+    Update.StepWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
+  >({
+    ChangedPiece:
+      ({ piece }) =>
+      (stepModel) => ({ model: modifyFields(stepModel, { load: () => Load.Loaded({ piece }) }) }),
+  }),
+})
 
 const draftOf = (piece: Piece): Draft => ({
   name: piece.name ?? '',
@@ -538,6 +556,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SucceededUpdatePiece: ({ piece }) => ({
       model: modifyFields(model, { load: () => Load.Loaded({ piece }), draft: () => Option.none() }),
     }),
+    GotBackMessage: ({ message: backMessage }) => foldBack(model, backMessage),
     FailedUpdatePiece: () => ({
       model: modifyFields(model, {
         draft: Option.map((draft) => modifyFields(draft, { saving: () => false, failed: () => true })),

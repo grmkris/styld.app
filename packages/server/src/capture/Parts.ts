@@ -6,7 +6,7 @@ import * as Base64Url from 'effect/encoding/Base64Url'
 import { accountPrefix, piecePrefix } from '../wardrobe/Media.ts'
 import type { WorkMessage } from '../wardrobe/Processing.ts'
 import { makeStore } from '../wardrobe/Store.ts'
-import type { WardrobeBindings } from '../wardrobe/Wardrobe.ts'
+import type { WardrobeBindings } from '../wardrobe/Parts.ts'
 import { makeCaptureStore } from './Store.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
 

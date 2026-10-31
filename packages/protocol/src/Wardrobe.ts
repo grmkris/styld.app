@@ -203,6 +203,11 @@ export const UpdatePiece = Schema.Struct({
 })
 export type UpdatePiece = typeof UpdatePiece.Type
 
+/** A photo of the piece's back: `PUT /api/pieces/:pieceId/back`, cut out like the front, for a photo's credit. A new
+ * `operationId` each time; repeating one answers the first request again. */
+export const SetBack = Schema.Struct({ operationId: OperationId, uploadId: UploadId })
+export type SetBack = typeof SetBack.Type
+
 export class PieceNotFound extends Schema.TaggedError<PieceNotFound>()('PieceNotFound', {}, { httpApiStatus: 404 }) {}
 
 /** A photo or video Styld will not take, and why. `tooLong` is a video over a minute. */

@@ -11,7 +11,7 @@ import { wardrobeRouter } from '../route.ts'
 import { confirmActions } from '../ConfirmActions.ts'
 import { styled } from '../Styled.ts'
 import { Deletion, type Draft, Load, Message, type Model, type Redraw, ShowTurn } from './Piece.ts'
-import { colourList, piecePickers } from './PieceFields.ts'
+import { piecePickers } from './PieceFields.ts'
 import { kindName, pieceLabel } from './WardrobeWords.ts'
 import { backToWardrobe } from './PageBar.ts'
 import { barEnd, round } from './PageBar.styles.ts'
@@ -19,11 +19,16 @@ import { block, line } from '../Skeleton.styles.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { cx } from 'zyzz'
 import * as styles from './PieceView.styles.ts'
+import { factsView } from './PieceFactsView.ts'
+import * as PieceBackView from './PieceBackView.ts'
 import * as SaveToBoardView from './SaveToBoardView.ts'
 
 /** The picture the piece shows; a new drawing, or a change of picture, is a new address. */
 const fullPath = (piece: Piece) =>
   `/cdn/pieces/${piece.id}/full${piece.picture === undefined ? '' : `?v=${piece.picture.shows}${piece.picture.version}`}`
+
+/** The piece's back; a new back is a new piece version, so a new address. */
+const backPath = (piece: Piece) => `/cdn/pieces/${piece.id}/back/full?v=${Date.parse(piece.updatedAt)}`
 
 const confirmDelete = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const deleting = Deletion.guards.Deleting(model.deletion)
@@ -296,6 +301,7 @@ const pieceDetails = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
       : h.empty,
     picturePanel(piece, model, locale, h),
     turnLine(piece, model, locale, h),
+    backSlot('piece-back', PieceBackView.actions, piece, model, locale, h),
     piece.status === 'ready'
       ? h.submodel({
           slotId: 'piece-save-to-board',
@@ -318,27 +324,6 @@ const pieceDetails = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
         )
       : confirmDelete(model, locale, h),
   ])
-
-/** What the piece is, row by row (Gallery `item.html` › facts): its colours, named, and the person's notes. */
-const factsView = (piece: Piece, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  piece.colours.length === 0 && piece.notes === null
-    ? h.empty
-    : h.dl(styled(h, styles.facts()), [
-        piece.colours.length === 0
-          ? h.empty
-          : h.div(styled(h, styles.fact()), [
-              h.dt(styled(h, styles.factTerm()), [
-                format(locale, 'wardrobe.colourFact', { count: piece.colours.length }),
-              ]),
-              h.dd(styled(h, styles.factValue()), [colourList(piece.colours, locale, h)]),
-            ]),
-        piece.notes === null
-          ? h.empty
-          : h.div(styled(h, styles.fact()), [
-              h.dt(styled(h, styles.factTerm()), [format(locale, 'wardrobe.notesLabel', {})]),
-              h.dd(styled(h, styles.factValue()), [piece.notes]),
-            ]),
-      ])
 
 /** Edit, at the bar's end while the piece is shown and not being edited or deleted (Gallery `item.html` › head). */
 const editRound = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
@@ -364,8 +349,15 @@ const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Htm
   h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
 ]
 
-/** The piece's picture: its turn, played on tap, once the clean picture it shows has one ready; else the image. */
+/** The piece's picture: its back when that side is chosen, its turn, played on tap, once the clean picture it shows
+ * has one ready; else the image. */
 const shownPicture = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  if (piece.hasBack && model.back.side === 'back')
+    return h.img([
+      h.Src(backPath(piece)),
+      h.Alt(format(locale, 'wardrobe.backAlt', { name: pieceLabel(piece, locale) })),
+      ...styled(h, styles.photo()),
+    ])
   const turn = piece.turn
   const still = (underPlayer: boolean) =>
     h.img([
@@ -434,8 +426,26 @@ const turnLine = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Mes
   ])
 }
 
+/** The piece's back: Front and Back under the picture, and adding, replacing or removing it. */
+const backSlot = (
+  slotId: string,
+  view: typeof PieceBackView.sides,
+  piece: Piece,
+  model: Model,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html =>
+  h.submodel({
+    slotId,
+    model: model.back,
+    view,
+    viewInputs: { piece, locale },
+    toParentMessage: (message) => Message.GotBackMessage({ message }),
+  })
+
 const loadedView = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
   shownPicture(piece, model, locale, h),
+  backSlot('piece-sides', PieceBackView.sides, piece, model, locale, h),
   Option.match(model.draft, {
     onNone: () => pieceDetails(piece, model, locale, h),
     onSome: (draft) =>

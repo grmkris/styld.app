@@ -59,6 +59,8 @@ const services = (
         addPiece: notUsed,
         updatePiece: notUsed,
         deletePiece: notUsed,
+        setBack: notUsed,
+        removeBack: notUsed,
         pieceImage: notUsed,
         choosePicture: notUsed,
         processPiece: () => processPiece,

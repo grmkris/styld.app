@@ -15,7 +15,7 @@ import * as Base64Url from 'effect/encoding/Base64Url'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import type { Checks } from '../safety/Checks.ts'
 import { makeProfileStore, type ProfileStore, requirePublished } from '../social/ProfileStore.ts'
-import { toPiece } from '../wardrobe/Wardrobe.ts'
+import { toPiece } from '../wardrobe/Parts.ts'
 import type { StoreUnavailable } from '../wardrobe/Store.ts'
 import { type LookRow, type LookStore, makeLookStore } from './Store.ts'
 

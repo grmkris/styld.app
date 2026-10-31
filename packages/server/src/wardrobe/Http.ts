@@ -51,6 +51,8 @@ export const wardrobeHandlers = (admit: Admit) =>
           admit(asSessionAccount(wardrobe.updatePiece(params.pieceId, payload))),
         )
         .handle('deletePiece', ({ params }) => admit(asSessionAccount(wardrobe.deletePiece(params.pieceId))))
+        .handle('setBack', ({ params, payload }) => admit(asSessionAccount(wardrobe.setBack(params.pieceId, payload))))
+        .handle('removeBack', ({ params }) => admit(asSessionAccount(wardrobe.removeBack(params.pieceId))))
         .handle('choosePicture', ({ params, payload }) =>
           admit(asSessionAccount(wardrobe.choosePicture(params.pieceId, payload.use))),
         )
@@ -72,8 +74,12 @@ const UploadTarget = Schema.Struct({ uploadId: UploadId, token: Schema.String })
 /** The sizes an image route serves (`imageSizes`). */
 export const ShownSize = Schema.Literals(['thumb', 'full'])
 const ImageTarget = Schema.Struct({ pieceId: PieceId, size: ShownSize })
-/** One picture of a piece in particular: its photo, or its clean drawing (ready or proposed). */
-const PictureTarget = Schema.Struct({ pieceId: PieceId, which: Schema.Literals(['photo', 'clean']), size: ShownSize })
+/** One picture of a piece in particular: its photo, its clean drawing (ready or proposed), or its back. */
+const PictureTarget = Schema.Struct({
+  pieceId: PieceId,
+  which: Schema.Literals(['photo', 'clean', 'back']),
+  size: ShownSize,
+})
 
 /** `PUT /api/uploads/:uploadId?token=`: a photo's bytes. The token in the query string, which Workers
  * logs redact, is the only credential, so an assistant can upload without the website's cookie. */
@@ -167,7 +173,7 @@ export const ownerImage = <A, I extends Readonly<Record<string, string | undefin
   })
 
 /** `GET /cdn/pieces/:pieceId/:size`: the picture a piece shows, and `GET /cdn/pieces/:pieceId/:which/:size`: its
- * photo or its clean drawing, for its owner only. */
+ * photo, its clean drawing or its back, for its owner only. */
 const pieceImage = (auth: ReturnType<typeof makeAuthHttp>) =>
   Effect.gen(function* () {
     const wardrobe = yield* Wardrobe
