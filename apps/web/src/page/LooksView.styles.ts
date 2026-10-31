@@ -51,3 +51,5 @@ export const collageSkeleton = style({ inlineSize: '100%', aspectRatio: '1 / 1',
 export const nameSkeleton = style({ fontSize: '15px' })
 export const metaSkeleton = style({ inlineSize: '40%', fontSize: '13px' })
 export const cardMeta = style({ fontSize: '13px', color: 'ink2' })
+/** A wish whose piece is no longer public: the line under its name. */
+export const goneNote = style({ paddingInline: '4px', fontSize: '13px', color: 'ink2' })

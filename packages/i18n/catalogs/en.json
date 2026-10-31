@@ -810,7 +810,6 @@
     "moveTo": "Move to…",
     "moveToWardrobe": "I own this",
     "wishlistEmptyTitle": "Nothing on the list yet",
-    "wishlistEmptyHint": "Pieces you're considering land here. Add them from a board, or mark something in your wardrobe as wanted.",
     "moveToWishlist": "Move to wishlist",
     "movedItems": "Moved {count} items",
     "failedToMove": "Failed to move",
@@ -1979,13 +1978,14 @@
     "actionFailed": "That didn't go through. Try again.",
     "fromFollowing": "From people you follow",
     "savedFromOthers": "Saved from others",
-    "wishlistEmptyHint": "Pieces you want one like land here: open someone's public piece and save it to your wishlist.",
+    "wishlistEmptyHint": "Save pieces you like from other people's boards and profiles.",
     "removeWish": "Remove",
     "wishGone": "No longer shown",
     "wishlistFailed": "Your wishlist could not be loaded",
     "signInToSave": "Sign in to save",
-    "gotIt": "Got it",
-    "openYours": "Yours: open it in your wardrobe"
+    "gotIt": "I got one: add it",
+    "openYours": "Yours: open it in your wardrobe",
+    "wishlistExplore": "Find pieces in Explore"
   },
   "profile": {
     "public": {

@@ -53,7 +53,8 @@ describe('the wishlist', () => {
       expect(role('link', { name: 'Wishlist' })).toHaveAttr('aria-current', 'page'),
       expect(role('link', { name: 'Navy knit' })).toHaveAttr('href', `/pieces/${knit.id}`),
       expect(role('link', { name: /By Nika Kovač/ })).toHaveAttr('href', '/@nika.kovac'),
-      expect(text('Camel coat · No longer shown')).toExist(),
+      expect(text('Camel coat')).toExist(),
+      expect(text('No longer shown')).toExist(),
     )
   })
 
@@ -65,15 +66,16 @@ describe('the wishlist', () => {
       Command.resolve(RemoveWish({ wishId: kept.id }), WishlistMessage.CompletedRemoveWish()),
       expect(role('link', { name: 'Navy knit' })).toBeAbsent(),
       expect(role('heading', { name: 'Nothing on the list yet' })).toExist(),
+      expect(role('link', { name: 'Find pieces in Explore' })).toHaveAttr('href', '/explore'),
     )
   })
 
-  test('Got it takes the wish off and opens the ways to add the piece', () => {
+  test('I got one takes the wish off and opens the ways to add the piece', () => {
     scene(
       { update, view },
       given(wishlist(WishesData.Success({ data: [kept] }))),
-      expect(role('link', { name: 'Got it' })).toHaveAttr('href', '/wardrobe/add'),
-      click(role('link', { name: 'Got it' })),
+      expect(role('link', { name: 'I got one: add it' })).toHaveAttr('href', '/wardrobe/add'),
+      click(role('link', { name: 'I got one: add it' })),
       Command.resolve(RemoveWish({ wishId: kept.id }), WishlistMessage.CompletedRemoveWish()),
       expect(role('link', { name: 'Navy knit' })).toBeAbsent(),
     )

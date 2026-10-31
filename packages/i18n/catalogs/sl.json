@@ -810,7 +810,6 @@
     "moveTo": "Premakni v…",
     "moveToWardrobe": "To imam",
     "wishlistEmptyTitle": "Seznam je še prazen",
-    "wishlistEmptyHint": "Kosi, ki jih premišljuješ, pristanejo tukaj. Dodaj jih iz zbirke ali označi kos v garderobi kot želenega.",
     "moveToWishlist": "Premakni na seznam želja",
     "movedItems": "Premaknjenih kosov: {count}",
     "failedToMove": "Premik ni uspel",
@@ -1979,13 +1978,14 @@
     "actionFailed": "Ni uspelo. Poskusi znova.",
     "fromFollowing": "Od ljudi, ki jim slediš",
     "savedFromOthers": "Shranjeno od drugih",
-    "wishlistEmptyHint": "Kosi, kakršne si želiš, pristanejo tukaj: odpri javni kos nekoga in ga shrani na seznam želja.",
+    "wishlistEmptyHint": "Shrani kose, ki so ti všeč, z zbirk in profilov drugih ljudi.",
     "removeWish": "Odstrani",
     "wishGone": "Ni več prikazan",
     "wishlistFailed": "Tvojega seznama želja ni bilo mogoče naložiti",
     "signInToSave": "Prijavi se, da shraniš",
-    "gotIt": "Imam ga",
-    "openYours": "Tvoj kos: odpri ga v garderobi"
+    "gotIt": "Imam ga: dodaj ga",
+    "openYours": "Tvoj kos: odpri ga v garderobi",
+    "wishlistExplore": "Poišči kose v Razišči"
   },
   "profile": {
     "public": {
