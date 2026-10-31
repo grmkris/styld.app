@@ -15,7 +15,7 @@ import { actionButton } from '../ActionButton.ts'
 import { secondaryAction } from '../Actions.styles.ts'
 import { avatar } from '../Avatar.ts'
 import { checkIcon, closeIcon, loader, searchIcon } from '../Icon.ts'
-import { loginRouter, personRouter } from '../route.ts'
+import { exploreRouter, personRouter, signInReturningTo } from '../route.ts'
 import { block, headingLine, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
@@ -71,7 +71,8 @@ export const personTile = <Message>(person: Author, h: HtmlBuilder<Message>) =>
   )
 
 /** Follow on a person's card: soft and full width, pressed while following, its own failure under it. Signed out, it
- * leads to sign-in. The person's name describes it, so a list of them reads whose each is. */
+ * leads to sign-in, which returns to Explore. The person's name describes it, so a list of them reads whose each
+ * is. */
 const followControl = (
   person: SuggestedPerson,
   suggestion: Suggestion,
@@ -103,7 +104,7 @@ const followControl = (
       )
     : h.a(
         [
-          h.Href(loginRouter({})),
+          h.Href(signInReturningTo(exploreRouter({}))),
           h.AriaLabel(format(locale, 'people.signInToFollow', {})),
           h.AriaDescribedBy(nameId),
           ...styled(h, styles.follow()),

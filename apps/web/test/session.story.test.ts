@@ -2,6 +2,7 @@ import { catalogVersion } from '@styld/i18n'
 import { Day } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import { Command, given, message, model, story } from 'foldkit/story'
+import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 import { Message, ReadSession, Session, init, update } from '../src/App.ts'
 import { ReadYou } from '../src/You.ts'
@@ -18,6 +19,10 @@ const page = pageAt
 const thursday = Schema.decodeUnknownSync(Day)('2026-10-29')
 
 const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
+
+/** Sign-in opened from a page, asked to return to `next` once signed in. */
+const atLogin = (next: string) =>
+  modifyFields(page('/login'), { route: () => AppRoute.Login({ next: Option.some(next) }) })
 
 describe('the session decides where a visitor belongs', () => {
   test('a visitor without a session is sent from their account or wardrobe to sign in', () => {
@@ -41,6 +46,35 @@ describe('the session decides where a visitor belongs', () => {
       Command.expectExact(Navigate({ href: '/account' })),
       Command.resolve(Navigate({ href: '/account' }), Message.CompletedNavigate()),
     )
+  })
+
+  test('a signed-in visitor who signed in from a page goes back to it, and only to a page of this site', () => {
+    const elsewhere = [
+      '//evil.example/@nika',
+      '/\\evil.example',
+      '/\tevil.example',
+      'https://evil.example/',
+      'javascript:alert(1)',
+      '@nika.kovac',
+      '',
+      '/login',
+      '/login/connect',
+      '/no/such/page',
+    ]
+    const cases = [
+      ['/@nika.kovac', '/@nika.kovac'],
+      ['/boards/bd_1?from=explore#pins', '/boards/bd_1?from=explore#pins'],
+      ...elsewhere.map((next) => [next, '/account']),
+    ] as const
+    for (const [next, href] of cases)
+      story(
+        update,
+        given(atLogin(next)),
+        message(Message.ReceivedSession({ claims })),
+        model(({ session }) => expect(Session.guards.SignedIn(session)).toBe(true)),
+        Command.expectExact(Navigate({ href })),
+        Command.resolve(Navigate({ href }), Message.CompletedNavigate()),
+      )
   })
 
   test('a signed-in visitor sent to sign in by an assistant resumes its authorization', () => {

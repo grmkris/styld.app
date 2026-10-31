@@ -15,6 +15,7 @@ import {
   WaitToResend,
 } from '../src/page/Login.ts'
 import { CopyServerUrl, DeleteAccount, Message as AccountMessage } from '../src/page/Account.ts'
+import { AppRoute } from '../src/route.ts'
 import { view } from '../src/View.ts'
 import { pageAt } from './WardrobeFixtures.ts'
 
@@ -150,6 +151,21 @@ describe('email code sign-in', () => {
       click(role('button', { name: 'Use a different email' })),
       expect(role('heading', { name: 'Sign in to Styld' })).toExist(),
       expect(label('Email')).toHaveValue('ana@example.com'),
+    )
+  })
+
+  test('signing in from Follow on a profile comes back to the profile', () => {
+    const fromProfile = modifyFields(awaitingCode('/login'), {
+      route: () => AppRoute.Login({ next: Option.some('/@nika.kovac') }),
+    })
+    scene(
+      { update, view },
+      given(fromProfile),
+      submit(selector('#email-code')),
+      Command.resolve(VerifyCode, LoginMessage.SucceededVerifyCode({ claims })),
+      Command.expectExact(Navigate({ href: '/@nika.kovac' })),
+      Command.resolve(Navigate({ href: '/@nika.kovac' }), Message.CompletedNavigate()),
+      expect(role('link', { name: 'Account' })).toHaveAttr('href', '/account'),
     )
   })
 

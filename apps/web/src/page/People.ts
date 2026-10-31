@@ -7,7 +7,7 @@ import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
 
 // What a visitor does with someone's profile or piece: follow or block the person, save the piece, and report either.
-// Signed out, none of it is offered but the way to sign in.
+// Signed out, Follow and Save look the same but lead to sign-in, which returns to the page; nothing else is offered.
 
 // MODEL
 

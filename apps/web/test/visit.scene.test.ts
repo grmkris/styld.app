@@ -121,7 +121,9 @@ describe('a public profile', () => {
       expect(role('heading', { name: 'Nika Kovač' })).toExist(),
       expect(text('@nika.kovac, Maribor')).toExist(),
       expect(text('Red, black and one good coat.')).toExist(),
-      expect(role('link', { name: 'Sign in to follow' })).toHaveAttr('href', '/login'),
+      // Follow looks as it does signed in, and sign-in brings the visitor back here.
+      expect(role('link', { name: 'Sign in to follow' })).toHaveAttr('href', '/login?next=%2F%40nika.kovac'),
+      expect(role('link', { name: 'Sign in to follow' })).toHaveText('Follow'),
       expect(role('link', { name: /Coats/ })).toHaveAttr('href', `/boards/bd_${'coats'.padEnd(22, 'x')}`),
       click(role('button', { name: 'Looks' })),
       expect(role('button', { name: 'Looks' })).toHaveAttr('aria-pressed', 'true'),
@@ -157,7 +159,7 @@ describe('a public profile', () => {
       expect(text('Top')).toExist(),
       expect(role('img', { name: 'Navy knit' })).toHaveAttr('src', `/cdn/public/pieces/${knit.id}/full`),
       expect(role('link', { name: /By Nika Kovač/ })).toHaveAttr('href', '/@nika.kovac'),
-      expect(role('link', { name: 'Sign in to save' })).toHaveAttr('href', '/login'),
+      expect(role('link', { name: 'Sign in to save' })).toHaveAttr('href', `/login?next=%2Fpieces%2F${knit.id}`),
       expect(role('button', { name: 'Save to wishlist' })).toBeAbsent(),
       expect(role('button', { name: 'Report piece' })).toBeAbsent(),
     )
@@ -327,7 +329,7 @@ describe('a public profile', () => {
     )
   })
 
-  test('People to follow are cards with a city, a line of bio and Follow, which signed out leads to sign-in', () => {
+  test('People to follow are cards with a city, a line of bio and Follow, which signed out signs in and returns', () => {
     const explore = Schema.decodeUnknownSync(Explore)({ edits: [], featured: [], people: [suggested], newest: [] })
     scene(
       { update, view },
@@ -337,7 +339,7 @@ describe('a public profile', () => {
         expect(role('link', { name: /^Nika Kovač/ })).toHaveAttr('href', '/@nika.kovac'),
         expect(text('Maribor')).toExist(),
         expect(text('Red, black and one good coat.')).toExist(),
-        expect(role('link', { name: 'Sign in to follow' })).toHaveAttr('href', '/login'),
+        expect(role('link', { name: 'Sign in to follow' })).toHaveAttr('href', '/login?next=%2Fexplore'),
         expect(role('link', { name: 'Sign in to follow' })).toHaveText('Follow'),
         expect(role('button', { name: 'Follow' })).not.toExist(),
       ),

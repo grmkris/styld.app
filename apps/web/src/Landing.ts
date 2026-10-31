@@ -13,7 +13,7 @@ import { block, headingLine, line } from './Skeleton.styles.ts'
 import { visuallyHidden } from './VisuallyHidden.styles.ts'
 import { cx } from 'zyzz'
 import * as Visit from './page/Visit.ts'
-import { exploreRouter, loginRouter } from './route.ts'
+import { exploreRouter, signInHref } from './route.ts'
 import { styled } from './Styled.ts'
 import {
   boardSkeleton,
@@ -117,7 +117,7 @@ export const landingView = (model: Model, h: HtmlBuilder<Message>): Html => {
             h.div(styled(h, heroActions()), [
               // The bar already offers Sign in; this is the way in for someone new (one code signs in and signs up), so
               // it carries the ink. Browsing the boards below is the second way.
-              h.a([h.Href(loginRouter({})), ...styled(h, primaryAction())], [format(locale, 'landing.start', {})]),
+              h.a([h.Href(signInHref), ...styled(h, primaryAction())], [format(locale, 'landing.start', {})]),
               h.a([h.Href(browseAnchor), ...styled(h, secondaryAction())], [format(locale, 'landing.browse', {})]),
             ]),
           ]),

@@ -42,12 +42,13 @@ import {
   connectionAuthorizePath,
   homeRouter,
   isSameTab,
-  loginRouter,
   looksRouter,
   needsSession,
+  returnPath,
   reviewRouter,
   routeFromPathname,
   routeFromUrl,
+  signInHref,
   tabOf,
   wardrobeRouter,
 } from './route.ts'
@@ -264,13 +265,17 @@ const changedUrl = (model: Model, url: Url): UpdateReturn => {
   ])
 }
 
-/** Where a signed-in visitor belongs: sign-in hands over to the account or the assistant's authorization. */
+/** Where a signed-in visitor belongs: sign-in hands over to the page it was asked from (a Follow or a Save on a public
+ * page), else to the account, or to the assistant's authorization. */
 const afterSignIn =
   (route: AppRoute): Step =>
   (model) =>
     Match.value(route).pipe(
       Match.withReturnType<UpdateReturn>(),
-      Match.tag('Login', () => ({ model, commands: [Navigate({ href: accountRouter({}) })] })),
+      Match.tag('Login', ({ next }) => ({
+        model,
+        commands: [Navigate({ href: Option.getOrElse(returnPath(next), () => accountRouter({})) })],
+      })),
       Match.tag('LoginForConnection', () => ({ model, commands: [Navigate({ href: connectionAuthorizePath })] })),
       Match.tag('Home', () =>
         model.context.hasSessionCookie === true ? { model } : Update.combine<Model, Message, Services>(model, openHome),
@@ -279,7 +284,7 @@ const afterSignIn =
     )
 
 /** Pages that need a session send a signed-out visitor to sign in. */
-const afterSignOut = (route: AppRoute) => (needsSession(route) ? [Navigate({ href: loginRouter({}) })] : [])
+const afterSignOut = (route: AppRoute) => (needsSession(route) ? [Navigate({ href: signInHref })] : [])
 
 const foldLoginOutMessage = Login.OutMessage.match<Update.Step<Model, Message, Services>>({
   SignedIn:

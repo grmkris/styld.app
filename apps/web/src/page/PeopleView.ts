@@ -3,11 +3,19 @@ import { ReportReason } from '@styld/protocol'
 import { Option } from 'effect'
 import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
+import type { Html as Styles } from 'zyzz/runtime'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { textField } from '../Fields.styles.ts'
 import { loader, saveIcon } from '../Icon.ts'
-import { loginRouter, wishlistRouter } from '../route.ts'
+import {
+  boardRouter,
+  lookRouter,
+  personRouter,
+  publicPieceRouter,
+  signInReturningTo,
+  wishlistRouter,
+} from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { Message, type Model, Reporting, Standing, Subject, Work } from './People.ts'
@@ -174,12 +182,24 @@ const subjectActions = (model: Model, locale: Locale, h: HtmlBuilder<Message>): 
     Look: () => saveAndReport(model, format(locale, 'safety.report.look', {}), locale, h),
   })
 
-/** Following, saving and reporting need an account: someone signed out is asked to sign in instead. */
-const signIn = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.a(
-    [h.Href(loginRouter({})), ...styled(h, styles.signIn())],
-    [format(locale, Subject.guards.Person(model.subject) ? 'people.signInToFollow' : 'people.signInToSave', {})],
-  )
+/** The page the visitor is on, where sign-in brings them back. */
+const pageOf = (subject: Subject) =>
+  Subject.match(subject, {
+    Person: ({ handle }) => personRouter({ handle }),
+    Piece: ({ pieceId }) => publicPieceRouter({ pieceId }),
+    Board: ({ boardId }) => boardRouter({ boardId }),
+    Look: ({ lookId }) => lookRouter({ lookId }),
+  })
+
+/** Following and saving need an account. Signed out, Follow and Save look as they do signed in and lead to sign-in,
+ * which returns to this page; their names say so. */
+const signInAction = (
+  model: Model,
+  name: string,
+  style: Styles.Attributes,
+  content: Html | string,
+  h: HtmlBuilder<Message>,
+) => h.a([h.Href(signInReturningTo(pageOf(model.subject))), h.AriaLabel(name), ...styled(h, style)], [content])
 
 /** What a visitor page passes in: its locale, and whether someone is signed in. */
 export type Inputs = { readonly locale: Locale; readonly signedIn: boolean }
@@ -201,12 +221,20 @@ export const followView = Submodel.defineView<Model, Message, Inputs>((model, { 
                 h,
               ),
       })
-    : signIn(model, locale, h),
+    : signInAction(
+        model,
+        format(locale, 'people.signInToFollow', {}),
+        primaryAction(),
+        format(locale, 'follow.follow', {}),
+        h,
+      ),
 )
 
-/** Signed out, a profile's way to sign in is its Follow (`followView`); anything else offers it here. */
+/** Signed out, a profile's Follow is `followView`; a piece, look or board offers its round Save. */
 const signedOutActions = (model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>
-  Subject.guards.Person(model.subject) ? [] : [signIn(model, locale, h)]
+  Subject.guards.Person(model.subject)
+    ? []
+    : [signInAction(model, format(locale, 'people.signInToSave', {}), styles.save(), saveIcon(h), h)]
 
 /** What the visitor can do here: save, block or report, and how it went. */
 export const view = Submodel.defineView<Model, Message, Inputs>((model, { locale, signedIn }, h) =>

@@ -35,7 +35,7 @@ import {
   boardsRouter,
   exploreRouter,
   homeRouter,
-  loginRouter,
+  signInHref,
   tabOf,
   wardrobeRouter,
 } from './route.ts'
@@ -176,7 +176,7 @@ const sessionLink = (model: Model, h: HtmlBuilder<Message>): Html => {
           : h.a([h.Href(exploreRouter({})), ...styled(h, signInLink())], [format(locale, 'explore.title', {})]),
         onLogin
           ? h.empty
-          : h.a([h.Href(loginRouter({})), ...styled(h, signInLink())], [format(locale, 'landing.signIn', {})]),
+          : h.a([h.Href(signInHref), ...styled(h, signInLink())], [format(locale, 'landing.signIn', {})]),
       ])
     },
   })

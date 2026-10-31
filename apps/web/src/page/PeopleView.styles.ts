@@ -29,7 +29,6 @@ export const save = style({
     '&[aria-pressed="true"]:hover': { backgroundColor: 'inkHover' },
   },
 })
-export const signIn = style({ display: 'inline-flex', alignItems: 'center', minBlockSize: '44px', fontWeight: 600 })
 /** The report form and the block question: a panel that reads from the start even in a centred profile head. */
 export const report = style({
   display: 'grid',

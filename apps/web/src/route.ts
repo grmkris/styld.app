@@ -16,7 +16,8 @@ import {
 /** Every page of the website. A route both parses its URL and builds its link. */
 export const AppRoute = defineRouteUnion({
   Home: {},
-  Login: {},
+  /** Sign-in; `next` is the page of this site to return to once signed in (`returnPath` checks it). */
+  Login: { next: Schema.Option(Schema.String) },
   /** Sign-in for an assistant's connection: success returns to the OAuth authorization. */
   LoginForConnection: {},
   Account: {},
@@ -52,7 +53,11 @@ export const AppRoute = defineRouteUnion({
 export type AppRoute = typeof AppRoute.Type
 
 export const homeRouter = pipe(root, mapTo(AppRoute.Home))
-export const loginRouter = pipe(literal('login'), mapTo(AppRoute.Login))
+const loginRouter = pipe(
+  literal('login'),
+  query(Schema.Struct({ next: Schema.OptionFromOptional(Schema.String) })),
+  mapTo(AppRoute.Login),
+)
 const loginForConnectionRouter = pipe(literal('login'), slash(literal('connect')), mapTo(AppRoute.LoginForConnection))
 export const accountRouter = pipe(literal('account'), mapTo(AppRoute.Account))
 export const profileRouter = pipe(literal('profile'), mapTo(AppRoute.Profile))
@@ -135,6 +140,35 @@ export const routeFromPathname = (pathname: string): AppRoute =>
     search: Option.none(),
     hash: Option.none(),
   })
+
+/** Sign-in, with nowhere in particular to return to. */
+export const signInHref = loginRouter({ next: Option.none() })
+
+/** Sign-in that returns to a page of this site, such as the profile where a visitor pressed Follow. */
+export const signInReturningTo = (path: string) => loginRouter({ next: Option.some(path) })
+
+const returnBase = 'https://styld.invalid'
+const parseReturn = Option.liftThrowable((path: string) => new URL(path, returnBase))
+
+/** Where sign-in may return to: a path on this site that names one of its pages other than sign-in itself. A path
+ * that starts with `//` or `/\`, holds a backslash or whitespace (which browsers drop or read as `/`), carries a
+ * scheme or leaves the origin is refused, so a link cannot send someone elsewhere once they have signed in. */
+export const returnPath = (next: Option.Option<string>): Option.Option<string> =>
+  pipe(
+    next,
+    Option.filter((path) => /^\/(?![/\\])/.test(path) && !/[\\\s]/.test(path)),
+    Option.flatMap(parseReturn),
+    Option.filter((url) => url.origin === returnBase),
+    Option.filter((url) => {
+      const route = routeFromPathname(url.pathname)
+      return !(
+        AppRoute.guards.NotFound(route) ||
+        AppRoute.guards.Login(route) ||
+        AppRoute.guards.LoginForConnection(route)
+      )
+    }),
+    Option.map((url) => `${url.pathname}${url.search}${url.hash}`),
+  )
 
 /** Pages that only make sense signed in. */
 export const needsSession = (route: AppRoute) =>
