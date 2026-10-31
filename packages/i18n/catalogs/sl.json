@@ -1200,7 +1200,8 @@
       "shopMetaTitleNoCity": "{name} na Styldu",
       "shopMetaDescription": "Neodvisna trgovina {name} ({city}) in njeni najnovejši kosi na Styld.",
       "shopMetaDescriptionNoCity": "Neodvisna slovenska trgovina {name} in njeni najnovejši kosi na Styld.",
-      "coverAlt": "Naslovna fotografija: {name}"
+      "coverAlt": "Naslovna fotografija: {name}",
+      "editProfile": "Uredi profil"
     },
     "card": {
       "title": "Javni profil",

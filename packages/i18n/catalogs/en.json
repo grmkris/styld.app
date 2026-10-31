@@ -1200,7 +1200,8 @@
       "shopMetaTitleNoCity": "{name} on Styld",
       "shopMetaDescription": "{name} is an independent shop in {city}. Browse its newest pieces on Styld.",
       "shopMetaDescriptionNoCity": "{name} is an independent Slovenian shop. Browse its newest pieces on Styld.",
-      "coverAlt": "{name}'s cover photo"
+      "coverAlt": "{name}'s cover photo",
+      "editProfile": "Edit profile"
     },
     "card": {
       "title": "Public profile",

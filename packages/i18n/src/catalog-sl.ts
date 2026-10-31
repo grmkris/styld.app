@@ -1152,6 +1152,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'profile.public.shopMetaDescription': 'Neodvisna trgovina {name} ({city}) in njeni najnovejši kosi na Styld.',
   'profile.public.shopMetaDescriptionNoCity': 'Neodvisna slovenska trgovina {name} in njeni najnovejši kosi na Styld.',
   'profile.public.coverAlt': 'Naslovna fotografija: {name}',
+  'profile.public.editProfile': 'Uredi profil',
   'profile.card.title': 'Javni profil',
   'profile.card.setUp': 'Izberi uporabniško ime in dobi svojo stran',
   'profile.card.private': '@{username}, vidiš ga samo ti',

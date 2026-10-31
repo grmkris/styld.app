@@ -1138,6 +1138,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'profile.public.shopMetaDescriptionNoCity':
     '{name} is an independent Slovenian shop. Browse its newest pieces on Styld.',
   'profile.public.coverAlt': "{name}'s cover photo",
+  'profile.public.editProfile': 'Edit profile',
   'profile.card.title': 'Public profile',
   'profile.card.setUp': 'Choose a username to get your own page',
   'profile.card.private': '@{username}, only you can see it',

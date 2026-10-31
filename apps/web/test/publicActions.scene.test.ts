@@ -6,9 +6,10 @@ import { describe, test } from 'vitest'
 import { type Model, update } from '../src/App.ts'
 import { Message as VisitMessage, ShareLink, Shown } from '../src/page/Visit.ts'
 import { view } from '../src/View.ts'
+import { signedInAt } from './AppFixtures.ts'
 import { pageAt } from './WardrobeFixtures.ts'
 
-// What a visitor does on a public profile or piece besides reading it: go back, and share it.
+// What a visitor does on a public profile or piece besides reading it: go back, share it, and edit one's own.
 
 const ana = { handle: 'ana.novak', name: 'Ana Novak', tone: 'sage' }
 const scarf = { id: `pc_${'scarf'.padEnd(22, 'x')}`, name: 'Grey scarf', category: 'accessory', subcategory: null }
@@ -46,6 +47,18 @@ describe('a public page’s head bar and Share', () => {
       click(role('button', { name: 'Share' })),
       Command.resolve(share, VisitMessage.FailedShareLink()),
       expect(role('alert')).toHaveText("Couldn't copy the link"),
+    )
+  })
+
+  test('one’s own profile offers Edit profile and Share, with nobody to follow or report, and Back to Account', () => {
+    scene(
+      { update, view },
+      given(showing(signedInAt('/@ana.novak'), Shown.Person({ profile: profileOf(true) }))),
+      expect(role('link', { name: 'Edit profile' })).toHaveAttr('href', '/profile'),
+      expect(role('button', { name: 'Share' })).toExist(),
+      expect(role('link', { name: 'Back' })).toHaveAttr('href', '/account'),
+      expect(role('button', { name: 'Follow' })).toBeAbsent(),
+      expect(role('button', { name: 'Report profile' })).toBeAbsent(),
     )
   })
 })

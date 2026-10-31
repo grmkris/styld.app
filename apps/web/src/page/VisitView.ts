@@ -6,7 +6,7 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
 import { secondaryAction } from '../Actions.styles.ts'
 import { backIcon, shareIcon } from '../Icon.ts'
-import { accountRouter, exploreRouter, personRouter, pieceRouter, publicPieceRouter } from '../route.ts'
+import { accountRouter, exploreRouter, personRouter, pieceRouter, profileRouter, publicPieceRouter } from '../route.ts'
 import { avatar } from '../Avatar.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
@@ -116,7 +116,8 @@ const shareStatus = (sharing: Sharing, locale: Locale, h: HtmlBuilder<Message>):
   })
 
 /** A published profile's head (prototype `.person`): the avatar, the name, handle and city, the bio, then Follow and
- * Share, with saving, blocking and reporting under them. */
+ * Share, with blocking and reporting under them. One's own profile has nobody to follow or report: Edit profile
+ * takes Follow's place. */
 const personHead = (model: Model, profile: PublicProfile, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
   const { locale, origin } = inputs
   return h.header(styled(h, styles.person()), [
@@ -130,7 +131,12 @@ const personHead = (model: Model, profile: PublicProfile, inputs: Inputs, h: Htm
     ]),
     h.div(styled(h, styles.side()), [
       h.div(styled(h, styles.personActions()), [
-        peopleSlot('visit-follow', PeopleView.followView, model, inputs, h),
+        profile.yours
+          ? h.a(
+              [h.Href(profileRouter({})), ...styled(h, secondaryAction())],
+              [format(locale, 'profile.public.editProfile', {})],
+            )
+          : peopleSlot('visit-follow', PeopleView.followView, model, inputs, h),
         actionButton(
           {
             label: format(locale, 'share.button', {}),
@@ -145,7 +151,7 @@ const personHead = (model: Model, profile: PublicProfile, inputs: Inputs, h: Htm
         ),
       ]),
       shareStatus(model.sharing, locale, h),
-      peopleSlot('visit-people', PeopleView.view, model, inputs, h),
+      profile.yours ? h.empty : peopleSlot('visit-people', PeopleView.view, model, inputs, h),
     ]),
   ])
 }
