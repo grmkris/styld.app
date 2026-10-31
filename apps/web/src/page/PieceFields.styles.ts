@@ -6,6 +6,7 @@ export const picker = style({
   gap: '8px',
   minInlineSize: '0',
   marginBlockStart: '20px',
+  marginInline: '0',
   padding: '0',
   borderWidth: '0',
 })

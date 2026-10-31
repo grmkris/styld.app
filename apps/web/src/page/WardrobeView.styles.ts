@@ -110,9 +110,10 @@ export const backfill = style({
   color: 'ink2',
 })
 /** The filter sheet's end: Clear beside the ink action that shows what is left (DESIGN.md › Controls). */
+/** Clear at the start and Show filling the rest of the row: the sheet's primary at its end, 8px apart. */
 export const sheetActions = style({
-  display: 'flex',
-  justifyContent: 'flex-end',
-  gap: '12px',
+  display: 'grid',
+  gridTemplateColumns: 'auto minmax(0, 1fr)',
+  gap: '8px',
   marginBlockStart: '24px',
 })

@@ -158,6 +158,16 @@ export const scrim = style({
   '&[data-leave]': { opacity: 0 },
   '@media (prefers-reduced-motion: reduce)': { transitionDuration: '0ms' },
 })
+/** A sheet's body under its head: in line with the title at the 20px gutter, scrolling once it is taller than most of
+ * the screen, so a phone held sideways still reaches the title and the close button. */
+export const sheetBody = style({
+  display: 'grid',
+  gap: '4px',
+  maxBlockSize: '70dvh',
+  overflowY: 'auto',
+  paddingInline: '12px',
+  paddingBlockEnd: '4px',
+})
 export const sheet = style({
   position: 'fixed',
   insetInline: '0',

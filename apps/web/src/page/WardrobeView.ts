@@ -18,7 +18,7 @@ import { chipPicker, colourPicker } from './PieceFields.ts'
 import { bottomSheet, sheetShown } from './Sheet.ts'
 import * as styles from './WardrobeView.styles.ts'
 import { wardrobeMain } from './WardrobeTabs.ts'
-import { chip, chipSkeleton } from './AskView.styles.ts'
+import { chip, chipSkeleton, sheetBody } from './AskView.styles.ts'
 import { chosen } from './ExploreView.styles.ts'
 
 /** The small image of a piece; the API Worker serves it to its owner only. A new drawing is a new address. */
@@ -270,25 +270,27 @@ const filterSheet = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale,
       locale,
       toParentMessage: (message) => Message.GotFilterSheetMessage({ message }),
       body: () => [
-        ...filterPickers(pieces, model, locale, h),
-        h.div(styled(h, styles.sheetActions()), [
-          actionButton(
-            {
-              label: format(locale, 'wardrobe.clearFilters', {}),
-              style: secondaryAction(),
-              onClick: Message.ClickedClearFilters(),
-              isDisabled: filterCount(model.filters) === 0,
-            },
-            h,
-          ),
-          actionButton(
-            {
-              label: format(locale, 'wardrobe.showPieces', { count: left }),
-              style: primaryAction(),
-              onClick: Message.ClickedShowPieces(),
-            },
-            h,
-          ),
+        h.div(styled(h, sheetBody()), [
+          ...filterPickers(pieces, model, locale, h),
+          h.div(styled(h, styles.sheetActions()), [
+            actionButton(
+              {
+                label: format(locale, 'wardrobe.clearFilters', {}),
+                style: secondaryAction(),
+                onClick: Message.ClickedClearFilters(),
+                isDisabled: filterCount(model.filters) === 0,
+              },
+              h,
+            ),
+            actionButton(
+              {
+                label: format(locale, 'wardrobe.showPieces', { count: left }),
+                style: primaryAction(),
+                onClick: Message.ClickedShowPieces(),
+              },
+              h,
+            ),
+          ]),
         ]),
       ],
     },
