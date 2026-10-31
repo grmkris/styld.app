@@ -1,6 +1,89 @@
 # Delivery status
 
-Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `ef12334`, with clean pictures, turns on a hanger, scan anything, the boards' pins, profiles, checks, link import and wishes, generated pictures and mood boards, and Styld, the stylist in the app). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `f55b0ca`, with clean pictures, turns on a hanger, scan anything, the boards' pins, profiles, checks, link import and wishes, generated pictures and mood boards, and Styld, the stylist in the app). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+
+## Screen fix pass, observability and mood board resume — 2026-10-31
+
+The owner asked for every screen of the preview to be reviewed critically (frontend-design, make-interfaces-feel-better,
+DESIGN.md), fixed and reviewed again until each screen scores 10, with before and after for each; for Styld's chat to
+work end to end; and for observability to be verified from the browser to the back end. Working files (captures,
+review reports, scores, the page builder, the browser walks) are in `meta-hackathon/out/styld-design/`; the
+before/after page is on the tailnet at `https://netcup.tail5acf67.ts.net/styld-before-after/`.
+
+- **Reviews:** three independent reviewers per round score 38 screens (27 phone, 11 desktop) from captures of the
+  deployed release and its code (`git show <sha>:path`): start at 10, −3 HIGH, −1.5 MEDIUM, −0.5 LOW. Means: round 1
+  (`ef12334`) 5.8, round 2 (`b1ecf90`) 6.9, round 3 (`9d3dc0f`) 8.3, round 4 (`f642277`) 9.6 with 22 screens at 10,
+  round 5 (`ba20ac5`) 9.86 (28), round 6 (`cc2e013`) 9.88 (33), round 7 (`53b580a`) 9.91 (33), round 8 (`efad72e`)
+  9.90 (34), round 9 (`d959947`, 39 screens with someone else's profile signed in) 9.82 (33), round 10 (`7a2ca4f`)
+  9.87 (35), round 11 (`5060247`, with the other session's M1) 9.78 (31 of 38), round 12 (`ff26df9`, with M2
+  and M3) 9.74 (29). The findings round 12 left on screens the owner's milestones are reshaping (Home's outfit
+  engine, the wardrobe's filters, the piece page) went to that session; the rest were fixed after it. A longer Styld
+  chat in the round 8 captures and the new profile capture each surfaced findings the earlier captures could not
+  show. Owner topics stay unscored and listed per screen ("Needs an owner decision").
+- **Mood board progress** survives leaving and opening the board again (`0634ceb`, `84dec1a`): the board asks for
+  its running generation on load and resumes following it. Browser-verified on the preview.
+- **Observability, end to end:** browser spans join server traces through `traceparent` (on `f55b0ca` all 24 API
+  calls of a walk carried it and a correlation id and five exports answered 204; on `d959947` one browser trace
+  joined 16 browser spans and 6 server `styld.http` logs in Workers Logs); navigations are named by route template, never by
+  ids (`8e5d22d`, `57776c4`); queue work runs in a `styld.queue` span with its kind, job id and attempt, cron in
+  `styld.cron` (`829ca75`); every response echoes `x-styld-correlation-id` (`2bd4b10`); the content judge has its own
+  span (`ef12334`). A Styld reply that fails now logs the failure's kind (`TimeoutError`, `AiError`), which
+  `StylistUnavailable` used to hide (`f4260a3`).
+- **Styld's chat end to end** on `f55b0ca` (Chromium at 390×844, the preview test account, Europe/Ljubljana; script
+  `meta-hackathon/out/styld-design/stylist-e2e.ts`): "What should I wear today?" answered in 11 s with four of the
+  account's pieces shown, the page coming to rest with the footer at the screen's foot; earlier chats listed in the
+  local time ("Today, 22:51"); in Slovenian a starter answered in 19 s with four pieces, a look called a videz,
+  garments named in Slovenian and no gender chosen for Styld or the person. New chat opens at the top with its title
+  focused, and an earlier chat pressed takes focus on its thread. "Save that as a look" saved the look once, but on
+  its third attempt, after the walk's 120 s wait (the hung call below); on `ff26df9` it took 7 s. The test looks
+  were deleted afterwards. Words are live model output: one reply on `7a2ca4f` said nimam where it meant nimaš.
+- **A hung model call** (found while walking the chat on `f5d01de`): one Workers AI call never answered and held its
+  reply 235 s, the chat showing Styld writing and New chat disabled, before the queue's attempt failed. The AI call
+  metrics (`StyldV2AiCalls`) put DeepSeek's 53 answered calls at a median of 3.1 s and a slowest of 30 s, so each
+  call now fails at 45 s and the queue asks again in 5 s (`f4260a3`). On `5060247` it happened again, twice in one
+  save-as-a-look turn: both first calls failed at 45 s (`Styld.Stylist model failed`, `TimeoutError`), the third
+  attempt answered, and the reply took 118 s; on `f55b0ca` a turn's first call and, on the retry, its second call
+  each failed at 45 s, and the third attempt saved the look once (`look_create`'s operation id is the turn's and
+  the call's, so a retry cannot save it twice). So far it has struck about 4 of 12 save-as-a-look turns in these
+  walks, never another kind of turn. Open: try a cap on the answer's length, and the owner's
+  choice of model. The queue's own warning "ack() after retry()" on such a message is Alchemy's batch ack after
+  Styld's explicit retry; the retry stands.
+- **Follow from sign-in** (`faeae38`): Follow pressed signed out notes, for that tab, the profile sign-in returns to;
+  only that arrival follows, once, and `#follow` leaves the address. Walked on `f55b0ca` (`follow-e2e.ts`): a bare
+  `#follow` link and a sign-in link opened in another signed-in tab followed nobody; the real press followed with one
+  write; an unfollow held through reload and Back.
+- **What changed on screen** (each commit says why):
+  - Systemic: ink-3 contrast ≥4.5:1; 44px targets; cutouts fitted in their squares; shadows and rings are tokens
+    (no palette literal outside `zyzz.config.ts`); skeleton loading on every data page; one identity in the bar (the
+    profile's initials on its tone, `You.ts`); a desktop rail with the wordmark above and you under it; "Add clothes"
+    as the one name for adding; British spelling for colour; sheets that ease out; a hover on every pointer control;
+    tab titles level at both widths (the desktop check now covers Wardrobe, Looks, Wishlist, Boards and Explore);
+    field values at body weight; Slovenian says _ti_ and never picks the person's gender (DESIGN.md › Copy and
+    chrome, guarded by a catalog test); a piece's tile is drawn the same in the wardrobe, Ask and Styld's answers;
+    on a phone the footer is in reach under Styld's chat, and a reply rests with the composer in its place.
+  - Someone's profile: it opens on its first tab with something public, says what an empty tab lacks, keeps Report
+    and Block behind More at the end of its bar and asks either through in that sheet under its own title, says
+    once someone is blocked, and shows Follow's wait in Follow.
+  - A public piece's Back returns to the board, look, Home or Saved it was opened from (its referrer), and from a
+    shared link to whose it is; checked on the preview from the public board.
+  - Board and editor: pins first while there is no collage, a status line saying who sees the board and how many pins
+    others see, each held-back pin saying why, unpinning asks first on the tile (an undo cannot restore a pin's place
+    or a deleted picture), the phone editor keeps its tools in one row with Save in the header and the selected
+    item's actions in the sticky tray.
+  - Boards: a round + starts a board at once (named New board beside the rail); covers are the board's paper with its
+    pins laid on it.
+  - Explore: search, Follow on person cards, chips under Newest boards. Looks and the look page: on paper, Public as
+    Foldkit UI's Switch. Wishlist, piece, account, profile editor, landing, footer, Ask and Styld's new chat: the
+    findings of rounds 1–7.
+- **Gates:** `bun run check` green on `f55b0ca` (unit 541, native 26/26 with the phone's footer and the desktop title
+  checks, initial browser bundle 351,762 gzip bytes of the 368,640 budget). Deployed and read back: `/api/health`
+  reports `f55b0ca`, which also carries the other session's M1–M3. The round 12 findings in M2/M3's screens (Home's
+  Wear this and Spin while the engine works, the wardrobe's Filters, the piece's back and facts, coarse tray types)
+  are that session's to fix.
+- **Open, for the owner** (from the reviewers' "Needs an owner decision"): where Styld lives; which five tabs; what
+  Home is for; how clothes get in; which AI features next; credits and settings on Account; Mine/Saved and Share on
+  boards; the landing's lead and film; Sign in with Google; unpin undo versus the ask-first used now; Styld's model
+  (DeepSeek once named pieces in words without showing them, 31 October).
 
 ## Plan: shopping your own wardrobe — 2026-10-31
 
