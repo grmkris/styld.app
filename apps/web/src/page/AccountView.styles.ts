@@ -6,23 +6,11 @@ export const accountPage = style({
   paddingBlock: '0 40px',
 })
 export const identity = style({ display: 'flex', alignItems: 'center', gap: '16px', marginBlock: '24px' })
-export const avatar = style({
-  display: 'grid',
-  placeItems: 'center',
-  flex: 'none',
-  inlineSize: '60px',
-  blockSize: '60px',
-  borderRadius: 'pill',
-  backgroundColor: 'ink',
-  color: 'onInk',
-  fontSize: '22px',
-  fontWeight: 700,
-})
 export const identityText = style({ display: 'grid', gap: '2px', minInlineSize: '0', overflowWrap: 'anywhere' })
 export const identityName = style({ fontSize: '17px', fontWeight: 600 })
 export const identityEmail = style({ fontSize: '14px', color: 'ink2' })
-/** The identity box while the session is read: the avatar's circle, the name's line and the email's. */
-export const avatarSkeleton = style({ flex: 'none', inlineSize: '60px', blockSize: '60px', borderRadius: 'pill' })
+/** The identity box while the session or the profile is read: the large avatar's circle, the name's line, the email's. */
+export const avatarSkeleton = style({ flex: 'none', inlineSize: '72px', blockSize: '72px', borderRadius: 'pill' })
 export const nameSkeleton = style({ inlineSize: '9em', fontSize: '17px' })
 export const emailSkeleton = style({ inlineSize: '14em', fontSize: '14px' })
 /** A section other pages link to: it lands a little below the top of the screen. */
@@ -36,6 +24,8 @@ export const section = style({
   borderBlockStartStyle: 'solid',
   borderBlockStartColor: 'rule',
 })
+/** Deleting the account: a text action in the error colour, underlined in it. */
+export const deleteAccount = style({ justifySelf: 'start', color: 'error', textDecorationColor: 'error' })
 export const sectionTitle = style({ fontSize: '17px', fontWeight: 600, margin: '0' })
 /** The profile's status line while it is read. */
 export const statusSkeleton = style({ inlineSize: '14em', fontSize: '15px' })
@@ -55,7 +45,9 @@ export const serverUrl = style({
   padding: '12px 14px',
   borderRadius: 'field',
   backgroundColor: 'stock',
+  fontFamily: 'body',
   fontSize: '14px',
+  fontVariantNumeric: 'tabular-nums',
   overflowWrap: 'anywhere',
   userSelect: 'all',
 })

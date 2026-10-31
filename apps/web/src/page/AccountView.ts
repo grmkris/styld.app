@@ -15,8 +15,8 @@ import { avatar as personAvatar } from '../Avatar.ts'
 import { checkNotice } from './CheckNotice.ts'
 import {
   accountPage,
-  avatar,
   avatarSkeleton,
+  deleteAccount,
   emailSkeleton,
   hostName,
   identity,
@@ -104,10 +104,11 @@ const deletion = (model: Model, { locale }: Inputs, h: HtmlBuilder<Message>): Ht
   return h.section(styled(h, section()), [
     ...Deletion.match(model.deletion, {
       Idle: () => [
+        // Destructive and rare: a quiet text action in the error colour, not a pill as heavy as Sign out.
         actionButton(
           {
             label: format(locale, 'account.deleteAccount', {}),
-            style: secondaryAction(),
+            style: cx(linkAction(), deleteAccount()),
             onClick: Message.ClickedDeleteAccount(),
           },
           h,
@@ -132,14 +133,22 @@ const deletion = (model: Model, { locale }: Inputs, h: HtmlBuilder<Message>): Ht
   ])
 }
 
-/** Who they are: the name and tone their profile shows others once it is read, the sign-in name until then. */
+/** Who they are: the name and tone their profile shows others, in shape while it is read, so the sign-in name never
+ * shows first and then changes; the sign-in name on stone if the profile has none or cannot be read. */
 const identityView = (model: Model, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
+  if (ProfileState.guards.Loading(model.profile))
+    return h.div(styled(h, identity()), [
+      h.span([h.AriaHidden(true), ...styled(h, cx(block(), avatarSkeleton()))]),
+      h.div(styled(h, identityText()), [
+        h.span([h.AriaHidden(true), ...styled(h, cx(line(), nameSkeleton()))]),
+        h.span(styled(h, identityEmail()), [inputs.claims.email]),
+      ]),
+    ])
   const profile = ProfileState.guards.Loaded(model.profile) ? Option.some(model.profile.profile) : Option.none()
   const named = Option.filter(profile, ({ name }) => name.trim() !== '')
   return h.div(styled(h, identity()), [
     Option.match(named, {
-      onNone: () =>
-        h.span([h.AriaHidden(true), ...styled(h, avatar())], [inputs.claims.displayName.slice(0, 1).toUpperCase()]),
+      onNone: () => personAvatar(inputs.claims.displayName, 'stone', 'large', h),
       onSome: ({ name, tone }) => personAvatar(name, tone, 'large', h),
     }),
     h.div(styled(h, identityText()), [
