@@ -12,9 +12,9 @@ import { styled } from '../Styled.ts'
 import { publicPieceImage } from './Board/Table.ts'
 import * as PeopleView from './PeopleView.ts'
 import { boardCard, byline, lookTile, pieceTile, tileGrid } from './PublicTiles.ts'
-import { exploreSections } from './ExploreView.ts'
+import { exploreSearchForm, exploreSections, searchView } from './ExploreView.ts'
 import { page as explorePage } from './ExploreView.styles.ts'
-import { Message, type Model, type PersonTab, Shown, Target } from './Visit.ts'
+import { ExploreSearch, Message, type Model, type PersonTab, Shown, Target } from './Visit.ts'
 import * as styles from './VisitView.styles.ts'
 import { pieceLabel } from './WardrobeWords.ts'
 
@@ -132,15 +132,25 @@ const pieceView = (
   ])
 
 /** Someone's profile or piece, as anyone sees it. */
-/** Explore: one title above whatever it shows, so a tab arriving on it keeps the title focused as it loads. */
+/** What Explore shows under its search: its sections once they are in, or what a search found in their place. */
+const exploreContent = (
+  model: Model,
+  mood: Option.Option<Mood>,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): ReadonlyArray<Html> => {
+  if (!ExploreSearch.guards.Off(model.search)) return [searchView(model.search, locale, h)]
+  if (Shown.guards.Explore(model.shown)) return exploreSections(model.shown.explore, mood, locale, h)
+  return Shown.guards.Failed(model.shown) ? [failedView(locale, h)] : [h.p([h.Role('status')], [loader(h)])]
+}
+
+/** Explore: one title above whatever it shows, so a tab arriving on it keeps the title focused as it loads, then the
+ * search, which works while the sections load too. */
 const exploreMain = (model: Model, mood: Option.Option<Mood>, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, explorePage()), [
     h.h1([], [format(locale, 'explore.title', {})]),
-    ...(Shown.guards.Explore(model.shown)
-      ? exploreSections(model.shown.explore, mood, locale, h)
-      : Shown.guards.Failed(model.shown)
-        ? [failedView(locale, h)]
-        : [h.p([h.Role('status')], [loader(h)])]),
+    exploreSearchForm(model.query, locale, h),
+    ...exploreContent(model, mood, locale, h),
   ])
 
 const failedView = (locale: Locale, h: HtmlBuilder<Message>): Html =>

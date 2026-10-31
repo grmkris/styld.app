@@ -1055,6 +1055,7 @@ export interface MessageArgumentsByKey<T = string> {
   'errors.unexpectedError': Readonly<Record<string, never>>
   'errors.waitForUploads': Readonly<Record<string, never>>
   'explore.allMoods': Readonly<Record<string, never>>
+  'explore.clearSearch': Readonly<Record<string, never>>
   'explore.edits': Readonly<Record<string, never>>
   'explore.empty': Readonly<Record<string, never>>
   'explore.featured': Readonly<Record<string, never>>
@@ -1066,8 +1067,13 @@ export interface MessageArgumentsByKey<T = string> {
   'explore.moods.weekend': Readonly<Record<string, never>>
   'explore.moodsLabel': Readonly<Record<string, never>>
   'explore.newest': Readonly<Record<string, never>>
+  'explore.noResults': { readonly query: string | number }
   'explore.noneInMood': Readonly<Record<string, never>>
   'explore.people': Readonly<Record<string, never>>
+  'explore.resultsFor': { readonly query: string | number }
+  'explore.searchFailed': Readonly<Record<string, never>>
+  'explore.searchLabel': Readonly<Record<string, never>>
+  'explore.searching': Readonly<Record<string, never>>
   'explore.title': Readonly<Record<string, never>>
   'feed.allShops': Readonly<Record<string, never>>
   'feed.browseShops': Readonly<Record<string, never>>
@@ -2748,4 +2754,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'abed71f08d171b06bd3fbe8709d491652fef4526ee22a0c950f1169671da9d10'
+export const catalogVersion = '257e2effcfa664aab878c184867726ac019a658068c4a07ced2ea9fa3d146b5e'

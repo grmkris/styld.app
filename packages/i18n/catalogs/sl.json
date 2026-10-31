@@ -2381,7 +2381,13 @@
       "sport": "Šport"
     },
     "moodsLabel": "Razpoloženja za Razišči",
-    "noneInMood": "V tem razpoloženju še ni javnih zbirk."
+    "noneInMood": "V tem razpoloženju še ni javnih zbirk.",
+    "searchLabel": "Išči ljudi in zbirke",
+    "clearSearch": "Počisti iskanje",
+    "searching": "Iskanje …",
+    "resultsFor": "Najdeno za »{query}«",
+    "noResults": "Za »{query}« ni ne ljudi ne zbirk.",
+    "searchFailed": "Iskanje ni uspelo."
   },
   "feed": {
     "label": "Tvoje novosti",

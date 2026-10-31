@@ -1,14 +1,29 @@
 import { catalogVersion } from '@styld/i18n'
-import { Explore, PublicBoard, PublicLookPage, PublicPiecePage, PublicProfile, Relation } from '@styld/protocol'
+import {
+  Explore,
+  PublicBoard,
+  PublicLookPage,
+  PublicPiecePage,
+  PublicProfile,
+  Relation,
+  SearchResults,
+} from '@styld/protocol'
 import { Schema } from 'effect'
-import { click, Command, expect, given, inside, role, scene, text } from 'foldkit/scene'
+import { all, click, Command, expect, given, inside, nth, role, scene, submit, text, type } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { init, Message, type Model, Session, update } from '../src/App.ts'
 import { BoardState } from '../src/page/Board/Model.ts'
 import { Shown as LookShown } from '../src/page/Look.ts'
 import { Message as PeopleMessage } from '../src/page/People.ts'
-import { LoadExplore, Message as VisitMessage, Shown } from '../src/page/Visit.ts'
+import {
+  FocusExploreResults,
+  FocusExploreSearch,
+  LoadExplore,
+  Message as VisitMessage,
+  SearchExplore,
+  Shown,
+} from '../src/page/Visit.ts'
 import { view } from '../src/View.ts'
 
 const knit = { id: `pc_${'knit'.padEnd(22, 'x')}`, name: 'Navy knit', category: 'top', subcategory: null, colours: [] }
@@ -204,6 +219,66 @@ describe('a public profile', () => {
       click(role('button', { name: 'Rain' })),
       Command.resolve(LoadExplore, VisitMessage.SucceededLoadExplore({ explore })),
       expect(role('button', { name: 'Rain' })).toHaveAttr('aria-pressed', 'true'),
+    )
+  })
+
+  test('Explore reads search, Edits from Styld, the newest boards with their moods under the head, then people', () => {
+    const found = { board: nika.boards[0], by, moods: ['rain'] }
+    const explore = Schema.decodeUnknownSync(Explore)({ edits: [found], featured: [], people: [by], newest: [found] })
+    const headings = all.role('heading', { level: 2 })
+    scene(
+      { update, view },
+      given(visiting('/explore', Shown.Explore({ explore }))),
+      inside(
+        role('main'),
+        expect(role('search')).toExist(),
+        expect(role('searchbox', { name: 'Search people and boards' })).toExist(),
+        expect(nth(headings, 0)).toHaveText('Edits from Styld'),
+        expect(nth(headings, 1)).toHaveText('Newest boards'),
+        expect(nth(headings, 2)).toHaveText('People to follow'),
+      ),
+      inside(role('region', { name: 'Newest boards' }), expect(role('group', { name: 'Moods for Explore' })).toExist()),
+    )
+  })
+
+  test('Explore’s search finds people and boards signed out, and clearing brings the sections back', () => {
+    const found = { board: nika.boards[0], by, moods: [] }
+    const explore = Schema.decodeUnknownSync(Explore)({ edits: [found], featured: [], people: [], newest: [found] })
+    const results = Schema.decodeUnknownSync(SearchResults)({ people: [by], boards: [found] })
+    const nothing = Schema.decodeUnknownSync(SearchResults)({ people: [], boards: [] })
+    scene(
+      { update, view },
+      given(visiting('/explore', Shown.Explore({ explore }))),
+      type(role('searchbox', { name: 'Search people and boards' }), 'nika'),
+      submit(role('search')),
+      expect(role('status')).toHaveText('Searching…'),
+      Command.resolve(
+        SearchExplore({ query: 'nika' }),
+        VisitMessage.SucceededSearchExplore({ query: 'nika', results }),
+      ),
+      Command.resolve(FocusExploreResults, VisitMessage.CompletedFocusExploreResults()),
+      inside(
+        role('region', { name: 'Found for “nika”' }),
+        expect(role('heading', { name: 'People' })).toExist(),
+        expect(role('link', { name: /^Nika Kovač/ })).toHaveAttr('href', '/@nika.kovac'),
+        expect(role('heading', { name: 'Boards' })).toExist(),
+        expect(role('link', { name: /Coats/ })).toHaveAttr('href', `/boards/bd_${'coats'.padEnd(22, 'x')}`),
+      ),
+      expect(role('heading', { name: 'Edits from Styld' })).not.toExist(),
+      click(role('button', { name: 'Clear the search' })),
+      Command.resolve(FocusExploreSearch, VisitMessage.CompletedFocusExploreSearch()),
+      expect(role('heading', { name: 'Edits from Styld' })).toExist(),
+      type(role('searchbox', { name: 'Search people and boards' }), 'zzz'),
+      submit(role('search')),
+      Command.resolve(SearchExplore({ query: 'zzz' }), VisitMessage.FailedSearchExplore({ query: 'zzz' })),
+      expect(role('alert')).toHaveText('The search didn’t go through.'),
+      click(role('button', { name: 'Try again' })),
+      Command.resolve(
+        SearchExplore({ query: 'zzz' }),
+        VisitMessage.SucceededSearchExplore({ query: 'zzz', results: nothing }),
+      ),
+      Command.resolve(FocusExploreResults, VisitMessage.CompletedFocusExploreResults()),
+      expect(role('status')).toHaveText('No people or boards match “zzz”.'),
     )
   })
 

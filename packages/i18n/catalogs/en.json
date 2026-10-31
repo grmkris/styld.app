@@ -2381,7 +2381,13 @@
       "sport": "Sport"
     },
     "moodsLabel": "Moods for Explore",
-    "noneInMood": "No public boards in this mood yet."
+    "noneInMood": "No public boards in this mood yet.",
+    "searchLabel": "Search people and boards",
+    "clearSearch": "Clear the search",
+    "searching": "Searching…",
+    "resultsFor": "Found for “{query}”",
+    "noResults": "No people or boards match “{query}”.",
+    "searchFailed": "The search didn’t go through."
   },
   "feed": {
     "label": "Your feed",

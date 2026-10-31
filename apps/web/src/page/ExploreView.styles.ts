@@ -1,7 +1,22 @@
 import { style } from '../zyzz.config.ts'
 
 // Explore (Gallery 2: docs/design/gallery-2/site/v2/explore.html).
-export const page = style({ display: 'grid', gap: '20px', paddingBlock: '8px 40px' })
+// One column no wider than the page, so the search pill's clear never pushes the page sideways (as on Ask).
+export const page = style({
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr)',
+  gap: '20px',
+  paddingBlock: '8px 40px',
+})
+/** What a search found, in Explore's column. Focus lands on it after Enter without a ring, as on the page's title. */
+export const results = style({
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr)',
+  gap: '20px',
+  ':focus': { outlineWidth: '0' },
+})
+export const searching = style({ display: 'flex', alignItems: 'center', gap: '8px', color: 'ink2' })
+export const failed = style({ display: 'grid', justifyItems: 'start', gap: '12px' })
 export const section = style({ display: 'grid', gap: '10px' })
 export const boards = style({
   display: 'grid',
