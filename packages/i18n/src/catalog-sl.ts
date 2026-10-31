@@ -1090,6 +1090,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.kindOne.jewelry': 'Nakit',
   'wardrobe.emptyHint':
     'Dodaj fotografije ali video svojih oblačil. Styld izreže vsak kos, ti pa obdržiš tiste, ki so tvoji.',
+  'wardrobe.colourFact': '{count, plural, one {Barva} two {Barvi} few {Barve} other {Barve}}',
   'chat.placeholder': 'Vnesite sporočilo...',
   'chat.openConversation': 'Odpri pogovor',
   'chat.viewBoard': 'Ogled zbirke',

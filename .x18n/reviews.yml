@@ -1,0 +1,7 @@
+# yaml-language-server: $schema=https://x18n.dev/schema/reviews.json
+x18n: 1
+sources:
+  wardrobe.addPieceColorsLabel:
+    sl: 6b42de829fd1b
+  wardrobe.colorsLabel:
+    sl: 14fa0a8fb57d83

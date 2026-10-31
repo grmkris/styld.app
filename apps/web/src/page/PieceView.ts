@@ -304,7 +304,9 @@ const factsView = (piece: Piece, locale: Locale, h: HtmlBuilder<Message>): Html 
         piece.colours.length === 0
           ? h.empty
           : h.div(styled(h, styles.fact()), [
-              h.dt(styled(h, styles.factTerm()), [format(locale, 'wardrobe.colorsLabel', {})]),
+              h.dt(styled(h, styles.factTerm()), [
+                format(locale, 'wardrobe.colourFact', { count: piece.colours.length }),
+              ]),
               h.dd(styled(h, styles.factValue()), [colourList(piece.colours, locale, h)]),
             ]),
         piece.notes === null

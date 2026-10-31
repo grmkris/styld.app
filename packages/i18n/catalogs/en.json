@@ -860,7 +860,7 @@
     "addSecondaryColor": "Add secondary color",
     "categoryLabel": "Category",
     "clear": "Clear",
-    "colorsLabel": "Colors",
+    "colorsLabel": "Colours",
     "detailsLabel": "Details",
     "more": "More",
     "noSecondaryColor": "No distinct secondary color",
@@ -942,7 +942,7 @@
     "addPieceChangePhoto": "Change photo",
     "addPieceUnsupportedPhoto": "That file isn't a photo we can use",
     "addPieceCategoryPlaceholder": "Pick a category",
-    "addPieceColorsLabel": "Colors (optional)",
+    "addPieceColorsLabel": "Colours (optional)",
     "addPieceSubmit": "Add to wardrobe",
     "addPieceAdded": "Added to your wardrobe",
     "addPieceView": "View",
@@ -1144,7 +1144,8 @@
       "hats": "Hat",
       "jewelry": "Jewellery"
     },
-    "emptyHint": "Add photos or a video of your clothes. Styld cuts out every piece, and you keep the ones that are yours."
+    "emptyHint": "Add photos or a video of your clothes. Styld cuts out every piece, and you keep the ones that are yours.",
+    "colourFact": "{count, plural, one {Colour} other {Colours}}"
   },
   "chat": {
     "placeholder": "Type your message...",

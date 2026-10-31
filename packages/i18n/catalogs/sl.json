@@ -1144,7 +1144,8 @@
       "hats": "Klobuk",
       "jewelry": "Nakit"
     },
-    "emptyHint": "Dodaj fotografije ali video svojih oblačil. Styld izreže vsak kos, ti pa obdržiš tiste, ki so tvoji."
+    "emptyHint": "Dodaj fotografije ali video svojih oblačil. Styld izreže vsak kos, ti pa obdržiš tiste, ki so tvoji.",
+    "colourFact": "{count, plural, one {Barva} two {Barvi} few {Barve} other {Barve}}"
   },
   "chat": {
     "placeholder": "Vnesite sporočilo...",

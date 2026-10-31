@@ -46,7 +46,7 @@ describe('the piece page', () => {
       expect(role('heading', { name: 'Jeans' })).toExist(),
       expect(role('img', { name: 'Jeans' })).toHaveAttr('src', `/cdn/pieces/${jeans.id}/full`),
       expect(text('Bottoms, Jeans')).toExist(),
-      expect(text('Colors')).toExist(),
+      expect(text('Colour')).toExist(),
       expect(text('Navy')).toExist(),
       expect(text('Hem taken up')).toExist(),
       // Save to board is the one action; Edit waits at the bar's end.
