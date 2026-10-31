@@ -1,10 +1,11 @@
-import { BoardSummary } from '@styld/protocol'
-import { Option, Schema } from 'effect'
+import { BoardSummary, OutfitSession, outfitKeyOf } from '@styld/protocol'
+import { Option, Result, Schema } from 'effect'
 import { expect, given, inside, role, scene, selector } from 'foldkit/scene'
+import { AsyncData } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
-import { LastBoardData, TrayData } from '../src/page/Today.ts'
+import { LastBoardData, OutfitsData, TrayData } from '../src/page/Today.ts'
 import { PiecesData } from '../src/page/Wardrobe.ts'
 import { view } from '../src/View.ts'
 import { signedInAt } from './AppFixtures.ts'
@@ -45,6 +46,12 @@ const home = (waiting: number, maybeBoard: Option.Option<BoardSummary>, pictures
       }),
   })
 
+/** Home with today's outfits as given. */
+const withOutfits = (outfits: OutfitsData) =>
+  modifyFields(home(0, Option.none()), {
+    today: (today) => modifyFields(today, { outfits: () => outfits }),
+  })
+
 describe('Home', () => {
   test('the bar holds Home, Ask, Wardrobe and Boards, and Explore is the round in Home’s head', () => {
     scene(
@@ -75,6 +82,36 @@ describe('Home', () => {
         expect(role('link', { name: 'Keep pinning' })).toHaveAttr('href', `/boards/${layers.id}`),
         expect(role('link', { name: 'Keep pinning' })).toHaveAccessibleDescription('Autumn layers'),
       ),
+    )
+  })
+
+  test('Wear this and Spin stand only beside an outfit: waiting shapes while one comes, none when it failed', () => {
+    const outfit = {
+      session: OutfitSession.make(`os_${'a'.repeat(22)}`),
+      proposals: [{ key: outfitKeyOf([knit.id]), pieceIds: [knit.id], score: 0.8 }],
+      at: 0,
+      missing: [],
+      exhausted: false,
+      refilling: false,
+    }
+    scene(
+      { update, view },
+      given(withOutfits(AsyncData.Loading())),
+      expect(role('button', { name: 'Wear this' })).not.toExist(),
+      expect(selector('[data-skeleton]')).toExist(),
+    )
+    scene(
+      { update, view },
+      given(withOutfits(AsyncData.settle(AsyncData.Loading(), Result.fail('Unavailable' as const)))),
+      expect(role('button', { name: 'Wear this' })).not.toExist(),
+      expect(role('button', { name: 'Try again' })).toExist(),
+      expect(selector('[data-skeleton]')).not.toExist(),
+    )
+    scene(
+      { update, view },
+      given(withOutfits(OutfitsData.Success({ data: outfit }))),
+      expect(role('button', { name: 'Wear this' })).toExist(),
+      expect(role('button', { name: 'Spin for another outfit' })).toExist(),
     )
   })
 

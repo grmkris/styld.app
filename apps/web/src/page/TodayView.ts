@@ -170,7 +170,8 @@ const tableArea = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuil
 /** Nothing is asked for yet, or the first answer is on its way. */
 const isPending = (data: AsyncData.AsyncData<unknown, unknown>) => AsyncData.isIdle(data) || AsyncData.isLoading(data)
 
-/** Wear this and Spin. Their shape waits for the pieces; a wardrobe with none has neither. */
+/** Wear this and Spin, beside an outfit on the table only. While one is coming their shapes wait; when none can come
+ * (nothing ready, or the outfits failed), the table's own action is the screen's one. */
 const actionsView = (
   model: Model,
   pieces: PiecesData,
@@ -178,7 +179,7 @@ const actionsView = (
   locale: Locale,
   h: HtmlBuilder<Message>,
 ): Html => {
-  if (Array.isReadonlyArrayNonEmpty(loaded))
+  if (Array.isReadonlyArrayNonEmpty(tableOutfit(model, loaded)))
     return h.div(styled(h, styles.actions()), [
       wearButton(model, loaded, locale, h),
       h.button(
@@ -192,7 +193,8 @@ const actionsView = (
         [spinIcon(h)],
       ),
     ])
-  if (!isPending(pieces)) return h.empty
+  const coming = isPending(pieces) || (loaded.some((piece) => piece.status === 'ready') && isPending(model.outfits))
+  if (!coming) return h.empty
   return h.div(
     [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.actions())],
     [h.span(styled(h, cx(block(), styles.wearSkeleton()))), h.span(styled(h, cx(block(), styles.spinSkeleton())))],
