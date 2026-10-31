@@ -140,11 +140,11 @@ const routesFor = (
         headers: { ...noStore, 'www-authenticate': challenge(server.resourceMetadata, 'insufficient_scope') },
       })
     // A disabled account loses its assistants at once, whatever tokens they hold.
-    // The same read says whether the account is on the admin list, by the email it signs in with.
+    // The same read says whether the account is on the admin list, by the verified email it signs in with.
     const enabled = yield* Effect.tryPromise(() =>
       db
         .prepare(
-          'SELECT (SELECT i.value FROM styld_auth_identifiers i WHERE i.subject_id = a.id AND i.active = 1 LIMIT 1) AS email FROM accounts a WHERE a.id = ? AND a.enabled = 1',
+          "SELECT (SELECT i.value FROM styld_auth_identifiers i WHERE i.subject_id = a.id AND i.active = 1 AND i.namespace = 'email' AND i.verified_at IS NOT NULL LIMIT 1) AS email FROM accounts a WHERE a.id = ? AND a.enabled = 1",
         )
         .bind(access.subjectId)
         .first<unknown>(),
