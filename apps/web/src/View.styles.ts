@@ -26,7 +26,7 @@ export const picker = style({
   fontSize: '14px',
   color: 'ink2',
 })
-// The picker's label stays for assistive technology; the select itself says which language is on.
+// Its label reads Language beside it, in ink-2, so the footer does not read as "Styld: English".
 export const pickerSelect = style({
   minBlockSize: '44px',
   maxInlineSize: '11rem',
@@ -98,9 +98,10 @@ export const footer = style({
   color: 'ink2',
 })
 export const footerLink = style({ display: 'inline-flex', alignItems: 'center', minBlockSize: '44px' })
+/** Diagnostics and Contact, kept together at the footer's far end, so neither wraps onto a line alone. */
+export const footerLinks = style({ display: 'flex', alignItems: 'center', gap: '24px', marginInlineStart: 'auto' })
 // A footer control that reads like the contact link beside it.
 export const footerButton = style({
-  marginInlineStart: 'auto',
   padding: '0',
   borderWidth: '0',
   backgroundColor: 'transparent !custom',

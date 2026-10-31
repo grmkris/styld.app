@@ -46,6 +46,7 @@ import {
   footer,
   footerButton,
   footerLink,
+  footerLinks,
   intro,
   masthead,
   picker,
@@ -67,7 +68,6 @@ import {
   withActionBand,
   withTabBar,
 } from './View.styles.ts'
-import { visuallyHidden } from './VisuallyHidden.styles.ts'
 import { landingView } from './Landing.ts'
 import { pieceLabel } from './page/WardrobeWords.ts'
 
@@ -91,7 +91,7 @@ const languagePicker = (model: Model, h: HtmlBuilder<Message>): Html => {
       onChange: (value) => Message.SelectedLocale({ value }),
       toView: (attributes) =>
         h.div(styled(h, picker()), [
-          h.label([...attributes.label, ...styled(h, visuallyHidden())], [format(locale, 'auth.language', {})]),
+          h.label(attributes.label, [format(locale, 'auth.language', {})]),
           h.select(
             [...attributes.select, ...styled(h, pickerSelect()), h.AriaBusy(pending)],
             languages
@@ -515,18 +515,20 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
         NotFound: () => notFoundView(locale, h),
       }),
       initial === undefined ? h.empty : appNavigation(model, initial, h),
+      // The language, named, then Diagnostics and Contact together at the other end.
       h.footer(styled(h, footer()), [
-        h.span([], ['Styld']),
         languagePicker(model, h),
-        actionButton(
-          {
-            label: format(locale, 'telemetryConsent.settings', {}),
-            style: footerButton(),
-            onClick: Message.OpenedTelemetrySettings(),
-          },
-          h,
-        ),
-        h.a([h.Href('mailto:hello@styld.app'), ...styled(h, footerLink())], [format(locale, 'landing.contact', {})]),
+        h.div(styled(h, footerLinks()), [
+          actionButton(
+            {
+              label: format(locale, 'telemetryConsent.settings', {}),
+              style: footerButton(),
+              onClick: Message.OpenedTelemetrySettings(),
+            },
+            h,
+          ),
+          h.a([h.Href('mailto:hello@styld.app'), ...styled(h, footerLink())], [format(locale, 'landing.contact', {})]),
+        ]),
       ]),
       model.telemetry.prompting ? consentPrompt(locale, h) : h.empty,
     ]),
