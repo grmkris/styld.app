@@ -601,6 +601,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'board.make.stickerCost': '1 credit from today’s free allowance. It comes back if the sticker doesn’t come out.',
   'board.make.wordsLabel': 'What should it feel like?',
   'board.make.wordsPlaceholder': 'A rainy Sunday in the city',
+  'board.make.stickerWordsLabel': 'What should Styld draw?',
+  'board.make.stickerWordsPlaceholder': 'A red umbrella',
   'board.make.note': 'A mood board uses only your own pieces. Stickers are marked Generated and never show a person.',
   'board.make.submit': 'Make',
   'board.make.planning': 'Picking your pieces…',

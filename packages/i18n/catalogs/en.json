@@ -691,6 +691,8 @@
       "stickerCost": "1 credit from today’s free allowance. It comes back if the sticker doesn’t come out.",
       "wordsLabel": "What should it feel like?",
       "wordsPlaceholder": "A rainy Sunday in the city",
+      "stickerWordsLabel": "What should Styld draw?",
+      "stickerWordsPlaceholder": "A red umbrella",
       "note": "A mood board uses only your own pieces. Stickers are marked Generated and never show a person.",
       "submit": "Make",
       "planning": "Picking your pieces…",

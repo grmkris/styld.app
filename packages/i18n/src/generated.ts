@@ -114,6 +114,8 @@ export interface MessageArgumentsByKey<_T = string> {
   'board.make.stickerAdded': Readonly<Record<string, never>>
   'board.make.stickerCost': Readonly<Record<string, never>>
   'board.make.stickerHint': Readonly<Record<string, never>>
+  'board.make.stickerWordsLabel': Readonly<Record<string, never>>
+  'board.make.stickerWordsPlaceholder': Readonly<Record<string, never>>
   'board.make.submit': Readonly<Record<string, never>>
   'board.make.title': Readonly<Record<string, never>>
   'board.make.unclear': Readonly<Record<string, never>>
@@ -693,4 +695,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '81994b2140918eeb5455cd5ff0e457579c41bf156f350ab08cec8c1aa8133364'
+export const catalogVersion = 'b90f2ba3d900c619f2c991484085a4c6cc32ac931fd1e3ccb398399eb686b44c'

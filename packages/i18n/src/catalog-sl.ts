@@ -614,6 +614,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'board.make.stickerCost': '1 kredit od današnjih brezplačnih. Če nalepka ne nastane, ga dobiš nazaj.',
   'board.make.wordsLabel': 'Kakšen naj bo občutek?',
   'board.make.wordsPlaceholder': 'Deževna nedelja v mestu',
+  'board.make.stickerWordsLabel': 'Kaj naj Styld nariše?',
+  'board.make.stickerWordsPlaceholder': 'Rdeč dežnik',
   'board.make.note':
     'Tabla razpoloženja uporabi samo tvoje kose. Nalepke so označene kot ustvarjene in nikoli ne prikazujejo osebe.',
   'board.make.submit': 'Ustvari',

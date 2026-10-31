@@ -133,14 +133,20 @@ const sheetBody = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Reado
       [
         h.label(
           [h.For('board-make-words'), ...styled(h, styles.label())],
-          [format(locale, 'board.make.wordsLabel', {})],
+          [format(locale, model.kind === 'sticker' ? 'board.make.stickerWordsLabel' : 'board.make.wordsLabel', {})],
         ),
         h.textarea([
           h.Id('board-make-words'),
           h.Name('words'),
           h.Attribute('rows', '3'),
           h.Attribute('maxlength', '280'),
-          h.Placeholder(format(locale, 'board.make.wordsPlaceholder', {})),
+          h.Placeholder(
+            format(
+              locale,
+              model.kind === 'sticker' ? 'board.make.stickerWordsPlaceholder' : 'board.make.wordsPlaceholder',
+              {},
+            ),
+          ),
           h.Value(model.words),
           h.OnInput((words) => Message.ChangedWords({ words })),
           ...styled(h, cx(textField(), textArea())),
