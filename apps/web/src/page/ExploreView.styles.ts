@@ -73,13 +73,8 @@ export const cardTop = style({
   textDecorationLine: 'none',
 })
 export const cardWho = style({ display: 'grid', minInlineSize: '0' })
-export const cardName = style({
-  overflow: 'hidden',
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-  fontSize: '15px',
-  fontWeight: 600,
-})
+/** The whole name, wrapping where it must: a card two across has no room to cut it short and still say who. */
+export const cardName = style({ overflowWrap: 'anywhere', fontSize: '15px', fontWeight: 600 })
 export const cardCity = style({
   overflow: 'hidden',
   textOverflow: 'ellipsis',
