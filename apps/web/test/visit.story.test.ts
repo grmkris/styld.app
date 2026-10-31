@@ -1,14 +1,17 @@
-import { PublicProfile, SearchResults } from '@styld/protocol'
+import { Explore, PublicProfile, SearchResults } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
+import { Work } from '../src/page/People.ts'
 import {
   ExploreSearch,
   FocusExploreResults,
   FocusExploreSearch,
+  FollowSuggested,
   init,
   Message,
   SearchExplore,
+  suggestionOf,
   Target,
   update,
 } from '../src/page/Visit.ts'
@@ -103,6 +106,45 @@ describe('searching Explore', () => {
         expect(search).toEqual(ExploreSearch.Off())
       }),
       Command.resolve(FocusExploreSearch, Message.CompletedFocusExploreSearch()),
+    )
+  })
+})
+
+describe('following from Explore', () => {
+  const nikaHandle = 'nika.kovac'
+  const empty = Schema.decodeUnknownSync(Explore)({ edits: [], featured: [], people: [], newest: [] })
+
+  test('follows someone suggested, waits for one change at a time, and keeps their standing when a change fails', () => {
+    story(
+      update,
+      given(init(Target.Explore({ mood: Option.none() }), true)),
+      message(Message.ClickedFollowSuggested({ handle: nikaHandle, following: true })),
+      model((current) => {
+        expect(suggestionOf(current, nikaHandle)).toEqual({ following: false, work: Work.Sending() })
+        const tappedAgain = update(current, Message.ClickedFollowSuggested({ handle: nikaHandle, following: true }))
+        expect(tappedAgain.commands).toBeUndefined()
+      }),
+      Command.resolve(
+        FollowSuggested({ handle: nikaHandle, following: true }),
+        Message.SucceededFollowSuggested({ handle: nikaHandle, following: true }),
+      ),
+      model((current) => expect(suggestionOf(current, nikaHandle)).toEqual({ following: true, work: Work.Idle() })),
+      message(Message.ClickedFollowSuggested({ handle: nikaHandle, following: false })),
+      Command.resolve(
+        FollowSuggested({ handle: nikaHandle, following: false }),
+        Message.FailedFollowSuggested({ handle: nikaHandle }),
+      ),
+      model((current) => expect(suggestionOf(current, nikaHandle)).toEqual({ following: true, work: Work.Failed() })),
+    )
+  })
+
+  test('a fresh Explore starts its Follow buttons over: those already followed are no longer suggested', () => {
+    story(
+      update,
+      given(init(Target.Explore({ mood: Option.none() }), true)),
+      message(Message.SucceededFollowSuggested({ handle: nikaHandle, following: true })),
+      message(Message.SucceededLoadExplore({ explore: empty })),
+      model((current) => expect(current.suggestions).toEqual({})),
     )
   })
 })

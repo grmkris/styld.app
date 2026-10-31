@@ -136,21 +136,26 @@ const pieceView = (
 const exploreContent = (
   model: Model,
   mood: Option.Option<Mood>,
-  locale: Locale,
+  { locale, signedIn }: PeopleView.Inputs,
   h: HtmlBuilder<Message>,
 ): ReadonlyArray<Html> => {
   if (!ExploreSearch.guards.Off(model.search)) return [searchView(model.search, locale, h)]
-  if (Shown.guards.Explore(model.shown)) return exploreSections(model.shown.explore, mood, locale, h)
+  if (Shown.guards.Explore(model.shown)) return exploreSections(model.shown.explore, mood, model, signedIn, locale, h)
   return Shown.guards.Failed(model.shown) ? [failedView(locale, h)] : [h.p([h.Role('status')], [loader(h)])]
 }
 
 /** Explore: one title above whatever it shows, so a tab arriving on it keeps the title focused as it loads, then the
  * search, which works while the sections load too. */
-const exploreMain = (model: Model, mood: Option.Option<Mood>, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const exploreMain = (
+  model: Model,
+  mood: Option.Option<Mood>,
+  inputs: PeopleView.Inputs,
+  h: HtmlBuilder<Message>,
+): Html =>
   h.div(styled(h, explorePage()), [
-    h.h1([], [format(locale, 'explore.title', {})]),
-    exploreSearchForm(model.query, locale, h),
-    ...exploreContent(model, mood, locale, h),
+    h.h1([], [format(inputs.locale, 'explore.title', {})]),
+    exploreSearchForm(model.query, inputs.locale, h),
+    ...exploreContent(model, mood, inputs, h),
   ])
 
 const failedView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
@@ -168,7 +173,7 @@ export const view = Submodel.defineView<Model, Message, PeopleView.Inputs>((mode
     [h.Id('main')],
     [
       Target.guards.Explore(model.target)
-        ? exploreMain(model, model.target.mood, locale, h)
+        ? exploreMain(model, model.target.mood, inputs, h)
         : Shown.match(model.shown, {
             Loading: () => h.p([h.Role('status')], [loader(h)]),
             Missing: () => h.h1([], [format(locale, 'common.notFoundTitle', {})]),

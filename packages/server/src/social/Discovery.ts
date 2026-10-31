@@ -1,4 +1,4 @@
-import { boards, profiles, reports } from '@styld/db'
+import { boards, follows, profiles, reports } from '@styld/db'
 import {
   type Author,
   type Explore,
@@ -7,10 +7,11 @@ import {
   reportsToHide,
   type SearchResults,
   stem,
+  type SuggestedPerson,
   WardrobeUnavailable,
   wordsIn,
 } from '@styld/protocol'
-import { and, count, desc, eq, inArray, isNotNull, like, or, type SQL, sql } from 'drizzle-orm'
+import { and, count, desc, eq, inArray, isNotNull, like, notExists, or, type SQL, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Context, Effect, Option, Schema } from 'effect'
 import type { PublicPages } from './Public.ts'
@@ -86,13 +87,26 @@ const makeQueries = (database: Parameters<typeof drizzle>[0]) => {
         or(and(...words.map((word) => wordLike(boards.searchText, word))), ...moods.map(withMood)),
         desc(boards.publishedAt),
       ),
-    /** People to follow: featured first, then the most recently published. */
-    people: () =>
+    /** People to follow: featured first, then the most recently published, leaving out whoever the reader already
+     * follows. */
+    people: (viewer: Option.Option<string>) =>
       attempt(() =>
         db
           .select({ accountId: profiles.accountId })
           .from(profiles)
-          .where(eq(profiles.published, true))
+          .where(
+            and(
+              eq(profiles.published, true),
+              Option.isSome(viewer)
+                ? notExists(
+                    db
+                      .select({ followeeId: follows.followeeId })
+                      .from(follows)
+                      .where(and(eq(follows.followerId, viewer.value), eq(follows.followeeId, profiles.accountId))),
+                  )
+                : undefined,
+            ),
+          )
           .orderBy(sql`${profiles.featuredAt} is null`, desc(profiles.featuredAt), desc(profiles.publishedAt))
           .limit(peopleLimit * 2),
       ),
@@ -142,16 +156,22 @@ const make = (database: Parameters<typeof drizzle>[0], pages: PublicPages['Servi
       const people = yield* Effect.forEach(candidates, (accountId) => pages.findable(accountId, viewer))
       return people.flatMap(Option.toArray).slice(0, peopleLimit)
     })
+  /** Someone to follow as Explore shows them: their byline, city and bio. */
+  const suggested = ({ author, row }: Effect.Success<ReturnType<typeof findable>>[number]): SuggestedPerson => ({
+    ...author,
+    city: row.city,
+    bio: row.bio,
+  })
   return {
     /** Explore: Edits from Styld, featured boards, people to follow and the newest boards, in a mood if chosen. */
     explore: Effect.fn('Styld.Discovery.explore')(function* (mood: Option.Option<Mood>, viewer: Option.Option<string>) {
       const explore: Explore = {
         edits: yield* found(yield* queries.houseBoards(), viewer),
         featured: yield* found(yield* queries.featuredBoards(), viewer),
-        people: yield* findable(
-          (yield* queries.people()).map(({ accountId }) => accountId),
+        people: (yield* findable(
+          (yield* queries.people(viewer)).map(({ accountId }) => accountId),
           viewer,
-        ),
+        )).map(suggested),
         newest: yield* found(yield* queries.newestBoards(mood), viewer),
       }
       return explore
@@ -163,10 +183,10 @@ const make = (database: Parameters<typeof drizzle>[0], pages: PublicPages['Servi
       const moods = words.flatMap((word) => Option.toArray(Option.fromNullishOr(moodWords[word])))
       const matching = yield* queries.peopleMatching(words)
       const exact = matching.filter(({ handle }) => handle === words.join('.')).map(({ accountId }) => accountId)
-      const people: ReadonlyArray<Author> = yield* findable(
+      const people: ReadonlyArray<Author> = (yield* findable(
         [...exact, ...matching.map(({ accountId }) => accountId).filter((id) => !exact.includes(id))],
         viewer,
-      )
+      )).map(({ author }) => author)
       return {
         people,
         boards: yield* found(yield* queries.boardsMatching(words, moods), viewer),

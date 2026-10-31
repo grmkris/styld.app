@@ -12,11 +12,20 @@ export type FoundBoard = typeof FoundBoard.Type
 export const ExploreQuery = Schema.Struct({ mood: Schema.optionalKey(Mood) })
 export type ExploreQuery = typeof ExploreQuery.Type
 
-/** Explore: Edits from Styld first, then boards and people Styld featured, then the newest public boards. */
+/** Someone Explore suggests following: their byline, and the city and bio their profile shows. */
+export const SuggestedPerson = Schema.Struct({
+  ...Author.fields,
+  city: Schema.NullOr(Schema.String),
+  bio: Schema.NullOr(Schema.String),
+})
+export type SuggestedPerson = typeof SuggestedPerson.Type
+
+/** Explore: Edits from Styld first, then boards Styld featured, the newest public boards, and people to follow:
+ * featured people first, never the reader nor anyone they already follow. */
 export const Explore = Schema.Struct({
   edits: Schema.Array(FoundBoard),
   featured: Schema.Array(FoundBoard),
-  people: Schema.Array(Author),
+  people: Schema.Array(SuggestedPerson),
   newest: Schema.Array(FoundBoard),
 })
 export type Explore = typeof Explore.Type

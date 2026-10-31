@@ -1,5 +1,5 @@
 import { Explore, Handle, Mood, PieceId, PublicPiecePage, PublicProfile, SearchResults } from '@styld/protocol'
-import { Effect, Match, Option, Predicate, Schema } from 'effect'
+import { Effect, Match, Option, Predicate, Record, Schema } from 'effect'
 import { Command, Dom, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
@@ -45,6 +45,14 @@ export const ExploreSearch = defineTaggedUnion({
 })
 export type ExploreSearch = typeof ExploreSearch.Type
 
+/** Someone Explore suggests, followed from here: whether they are followed now, and the change being sent or the one
+ * that failed. */
+export const Suggestion = Schema.Struct({ following: Schema.Boolean, work: People.Work })
+export type Suggestion = typeof Suggestion.Type
+
+/** Explore's Follow for someone nobody has tapped yet: they are not followed, or Explore would not suggest them. */
+const untouched: Suggestion = { following: false, work: People.Work.Idle() }
+
 export const Model = Schema.Struct({
   target: Target,
   shown: Shown,
@@ -55,8 +63,13 @@ export const Model = Schema.Struct({
   /** What is typed in Explore's search, as typed. */
   query: Schema.String,
   search: ExploreSearch,
+  /** Explore's Follow buttons, by handle, for those tapped since Explore last loaded. */
+  suggestions: Schema.Record(Schema.String, Suggestion),
 })
 export type Model = typeof Model.Type
+
+/** Where the visitor stands with someone Explore suggests. */
+export const suggestionOf = (model: Model, handle: string): Suggestion => model.suggestions[handle] ?? untouched
 
 export const searchFieldId = 'explore-search'
 export const searchResultsId = 'explore-results'
@@ -80,6 +93,7 @@ export const init = (target: Target, signedIn: boolean): Model => ({
   signedIn,
   query: '',
   search: ExploreSearch.Off(),
+  suggestions: {},
   people: People.init(
     Target.match(target, {
       Person: ({ handle }) => People.Subject.Person({ handle }),
@@ -109,6 +123,9 @@ export const Message = defineMessageUnion({
   FailedSearchExplore: { query: Schema.String },
   CompletedFocusExploreSearch: {},
   CompletedFocusExploreResults: {},
+  ClickedFollowSuggested: { handle: Schema.String, following: Schema.Boolean },
+  SucceededFollowSuggested: { handle: Schema.String, following: Schema.Boolean },
+  FailedFollowSuggested: { handle: Schema.String },
 })
 export type Message = typeof Message.Type
 
@@ -190,6 +207,22 @@ export const FocusExploreResults = Command.define('FocusExploreResults', {
   ),
 })
 
+/** Follows or stops following someone Explore suggests, answering for them by handle.
+ * @internal Exported for its tests. */
+export const FollowSuggested = Command.define('FollowSuggested', {
+  args: { handle: Schema.String, following: Schema.Boolean },
+  messages: [Message.SucceededFollowSuggested, Message.FailedFollowSuggested],
+  execute: ({ handle, following }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const relation = yield* api.social.setFollowing({
+        params: { handle: yield* Schema.decodeUnknownEffect(Handle)(handle) },
+        payload: { following },
+      })
+      return Message.SucceededFollowSuggested({ handle, following: relation.following })
+    }).pipe(Effect.orElseSucceed(() => Message.FailedFollowSuggested({ handle }))),
+})
+
 const loadTarget = (target: Target): Command.Command<Message, never, StyldClient> =>
   Target.match(target, {
     Person: ({ handle }) => LoadPerson({ handle }),
@@ -249,6 +282,20 @@ const searched = (model: Model): UpdateReturn => {
       }
 }
 
+const withSuggestion = (model: Model, handle: string, suggestion: Suggestion): Model =>
+  modifyFields(model, { suggestions: (suggestions) => Record.set(suggestions, handle, suggestion) })
+
+/** Follow and Following on Explore's people; a tap while one is being sent waits for its answer. */
+const followed = (model: Model, handle: string, following: boolean): UpdateReturn => {
+  const suggestion = suggestionOf(model, handle)
+  return People.Work.guards.Sending(suggestion.work)
+    ? { model }
+    : {
+        model: withSuggestion(model, handle, { following: suggestion.following, work: People.Work.Sending() }),
+        commands: [FollowSuggested({ handle, following })],
+      }
+}
+
 /** Whether an answer is for the search still waiting; one for words searched before is dropped. */
 const awaits = (model: Model, query: string) =>
   ExploreSearch.guards.Searching(model.search) && model.search.query === query
@@ -258,8 +305,9 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SucceededLoadPerson: ({ profile }) =>
       withRelation(modifyFields(model, { shown: () => Shown.Person({ profile }) }), profile),
     SucceededLoadPublicPiece: ({ page }) => ({ model: modifyFields(model, { shown: () => Shown.Piece({ page }) }) }),
+    // Fresh people come without anyone already followed, so what was tapped before starts over.
     SucceededLoadExplore: ({ explore }) => ({
-      model: modifyFields(model, { shown: () => Shown.Explore({ explore }) }),
+      model: modifyFields(model, { shown: () => Shown.Explore({ explore }), suggestions: () => ({}) }),
     }),
     ChoseMood: ({ mood }) => ({
       model: modifyFields(model, { target: () => Target.Explore({ mood }) }),
@@ -295,4 +343,14 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         : { model },
     CompletedFocusExploreSearch: () => ({ model }),
     CompletedFocusExploreResults: () => ({ model }),
+    ClickedFollowSuggested: ({ handle, following }) => followed(model, handle, following),
+    SucceededFollowSuggested: ({ handle, following }) => ({
+      model: withSuggestion(model, handle, { following, work: People.Work.Idle() }),
+    }),
+    FailedFollowSuggested: ({ handle }) => ({
+      model: withSuggestion(model, handle, {
+        following: suggestionOf(model, handle).following,
+        work: People.Work.Failed(),
+      }),
+    }),
   })

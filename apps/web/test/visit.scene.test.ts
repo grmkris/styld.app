@@ -19,6 +19,7 @@ import { Message as PeopleMessage } from '../src/page/People.ts'
 import {
   FocusExploreResults,
   FocusExploreSearch,
+  FollowSuggested,
   LoadExplore,
   Message as VisitMessage,
   SearchExplore,
@@ -72,6 +73,7 @@ const opened = (pathname: string) =>
 const visiting = (pathname: string, shown: Shown) =>
   modifyFields(opened(pathname), { visit: (visit) => modifyFields(visit, { shown: () => shown }) })
 const by = { handle: 'nika.kovac', name: 'Nika Kovač', tone: 'clay' }
+const suggested = { ...by, city: 'Maribor', bio: 'Red, black and one good coat.' }
 const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
 const signedIn = (model: Model): Model => ({ ...model, session: Session.SignedIn({ claims }) })
 
@@ -204,7 +206,12 @@ describe('a public profile', () => {
 
   test('Explore shows Edits from Styld, people to follow and the newest boards, and filters by mood', () => {
     const found = { board: nika.boards[0], by, moods: ['rain'] }
-    const explore = Schema.decodeUnknownSync(Explore)({ edits: [found], featured: [], people: [by], newest: [found] })
+    const explore = Schema.decodeUnknownSync(Explore)({
+      edits: [found],
+      featured: [],
+      people: [suggested],
+      newest: [found],
+    })
     scene(
       { update, view },
       given(visiting('/explore', Shown.Explore({ explore }))),
@@ -224,7 +231,12 @@ describe('a public profile', () => {
 
   test('Explore reads search, Edits from Styld, the newest boards with their moods under the head, then people', () => {
     const found = { board: nika.boards[0], by, moods: ['rain'] }
-    const explore = Schema.decodeUnknownSync(Explore)({ edits: [found], featured: [], people: [by], newest: [found] })
+    const explore = Schema.decodeUnknownSync(Explore)({
+      edits: [found],
+      featured: [],
+      people: [suggested],
+      newest: [found],
+    })
     const headings = all.role('heading', { level: 2 })
     scene(
       { update, view },
@@ -279,6 +291,50 @@ describe('a public profile', () => {
       ),
       Command.resolve(FocusExploreResults, VisitMessage.CompletedFocusExploreResults()),
       expect(role('status')).toHaveText('No people or boards match “zzz”.'),
+    )
+  })
+
+  test('People to follow are cards with a city, a line of bio and Follow, which signed out leads to sign-in', () => {
+    const explore = Schema.decodeUnknownSync(Explore)({ edits: [], featured: [], people: [suggested], newest: [] })
+    scene(
+      { update, view },
+      given(visiting('/explore', Shown.Explore({ explore }))),
+      inside(
+        role('region', { name: 'People to follow' }),
+        expect(role('link', { name: /^Nika Kovač/ })).toHaveAttr('href', '/@nika.kovac'),
+        expect(text('Maribor')).toExist(),
+        expect(text('Red, black and one good coat.')).toExist(),
+        expect(role('link', { name: 'Sign in to follow' })).toHaveAttr('href', '/login'),
+        expect(role('link', { name: 'Sign in to follow' })).toHaveText('Follow'),
+        expect(role('button', { name: 'Follow' })).not.toExist(),
+      ),
+    )
+  })
+
+  test('signed in, Follow on a card follows, shows Following pressed, and says when a change failed', () => {
+    const explore = Schema.decodeUnknownSync(Explore)({ edits: [], featured: [], people: [suggested], newest: [] })
+    scene(
+      { update, view },
+      given(signedIn(visiting('/explore', Shown.Explore({ explore })))),
+      inside(
+        role('region', { name: 'People to follow' }),
+        expect(role('button', { name: 'Follow' })).toHaveAttr('aria-pressed', 'false'),
+        expect(role('button', { name: 'Follow' })).toHaveAttr('aria-describedby', 'explore-person-nika.kovac'),
+        click(role('button', { name: 'Follow' })),
+        expect(role('button', { name: 'Follow' })).toHaveAttr('aria-disabled', 'true'),
+        Command.resolve(
+          FollowSuggested({ handle: 'nika.kovac', following: true }),
+          VisitMessage.SucceededFollowSuggested({ handle: 'nika.kovac', following: true }),
+        ),
+        expect(role('button', { name: 'Following' })).toHaveAttr('aria-pressed', 'true'),
+        click(role('button', { name: 'Following' })),
+        Command.resolve(
+          FollowSuggested({ handle: 'nika.kovac', following: false }),
+          VisitMessage.FailedFollowSuggested({ handle: 'nika.kovac' }),
+        ),
+        expect(role('alert')).toHaveText("Couldn't update who you follow. Try again."),
+        expect(role('button', { name: 'Following' })).toHaveAttr('aria-pressed', 'true'),
+      ),
     )
   })
 

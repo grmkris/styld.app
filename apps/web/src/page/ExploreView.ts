@@ -1,19 +1,36 @@
+import { Button } from '@foldkit/ui'
 import { format, type Locale } from '@styld/i18n'
-import { type Author, type Explore, type FoundBoard, Mood, type SearchResults } from '@styld/protocol'
+import {
+  type Author,
+  type Explore,
+  type FoundBoard,
+  Mood,
+  type SearchResults,
+  type SuggestedPerson,
+} from '@styld/protocol'
 import { Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { secondaryAction } from '../Actions.styles.ts'
 import { avatar } from '../Avatar.ts'
-import { closeIcon, loader, searchIcon } from '../Icon.ts'
-import { personRouter } from '../route.ts'
+import { checkIcon, closeIcon, loader, searchIcon } from '../Icon.ts'
+import { loginRouter, personRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import * as styles from './ExploreView.styles.ts'
 import { creditedBoardCard } from './PublicTiles.ts'
 import { chip, clear, quiet, search as searchPill, searchInput } from './AskView.styles.ts'
-import { ExploreSearch, Message, searchFieldId, searchResultsId } from './Visit.ts'
+import { Work } from './People.ts'
+import {
+  ExploreSearch,
+  Message,
+  type Model,
+  searchFieldId,
+  searchResultsId,
+  type Suggestion,
+  suggestionOf,
+} from './Visit.ts'
 
 const boardList = (boards: ReadonlyArray<FoundBoard>, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.ul(
@@ -51,6 +68,76 @@ export const personTile = <Message>(person: Author, h: HtmlBuilder<Message>) =>
       ),
     ],
   )
+
+/** Follow on a person's card: soft and full width, pressed while following, its own failure under it. Signed out, it
+ * leads to sign-in. The person's name describes it, so a list of them reads whose each is. */
+const followControl = (
+  person: SuggestedPerson,
+  suggestion: Suggestion,
+  signedIn: boolean,
+  nameId: string,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html =>
+  signedIn
+    ? Button.view(
+        {
+          onClick: Message.ClickedFollowSuggested({ handle: person.handle, following: !suggestion.following }),
+          isDisabled: Work.guards.Sending(suggestion.work),
+          toView: (attributes) =>
+            h.button(
+              [
+                ...attributes.button,
+                h.AriaPressed(String(suggestion.following)),
+                h.AriaDescribedBy(nameId),
+                ...styled(h, styles.follow()),
+              ],
+              [
+                Work.guards.Sending(suggestion.work) ? loader(h) : suggestion.following ? checkIcon(h) : h.empty,
+                format(locale, suggestion.following ? 'follow.following' : 'follow.follow', {}),
+              ],
+            ),
+        },
+        h,
+      )
+    : h.a(
+        [
+          h.Href(loginRouter({})),
+          h.AriaLabel(format(locale, 'people.signInToFollow', {})),
+          h.AriaDescribedBy(nameId),
+          ...styled(h, styles.follow()),
+        ],
+        [format(locale, 'follow.follow', {})],
+      )
+
+/** Someone to follow (the prototype's person card): their initials, name and city linking to their profile, a line of
+ * their bio, and Follow. */
+const personCard = (
+  person: SuggestedPerson,
+  suggestion: Suggestion,
+  signedIn: boolean,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+) => {
+  const nameId = `explore-person-${person.handle}`
+  return h.keyed('li')(person.handle, styled(h, styles.card()), [
+    h.a(
+      [h.Href(personRouter({ handle: person.handle })), ...styled(h, styles.cardTop())],
+      [
+        avatar(person.name, person.tone, 'medium', h),
+        h.span(styled(h, styles.cardWho()), [
+          h.span([h.Id(nameId), ...styled(h, styles.cardName())], [person.name]),
+          person.city === null ? h.empty : h.span(styled(h, styles.cardCity()), [person.city]),
+        ]),
+      ],
+    ),
+    person.bio === null ? h.empty : h.p(styled(h, styles.cardBio()), [person.bio]),
+    followControl(person, suggestion, signedIn, nameId, locale, h),
+    Work.guards.Failed(suggestion.work)
+      ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'follow.failed', {})])
+      : h.empty,
+  ])
+}
 
 /** The mood chips: all, or one of the six. */
 const moodChips = (current: Option.Option<Mood>, locale: Locale, h: HtmlBuilder<Message>) =>
@@ -106,6 +193,8 @@ const newestSection = (
 export const exploreSections = (
   explore: Explore,
   mood: Option.Option<Mood>,
+  model: Model,
+  signedIn: boolean,
   locale: Locale,
   h: HtmlBuilder<Message>,
 ): ReadonlyArray<Html> => [
@@ -119,8 +208,8 @@ export const exploreSections = (
         [
           h.h2([h.Id('explore-people')], [format(locale, 'explore.people', {})]),
           h.ul(
-            styled(h, styles.people()),
-            explore.people.map((person) => personTile(person, h)),
+            styled(h, styles.cards()),
+            explore.people.map((person) => personCard(person, suggestionOf(model, person.handle), signedIn, locale, h)),
           ),
         ],
       ),

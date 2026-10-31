@@ -300,6 +300,28 @@ const verifyDiscovery = async (origin: string, owner: Call) => {
   expect((await fetch(`${origin}/api/public/boards/${boardId}`)).status).toBe(200)
 }
 
+const Suggested = Schema.Struct({
+  people: Schema.Array(
+    Schema.Struct({ handle: Schema.String, city: Schema.NullOr(Schema.String), bio: Schema.NullOr(Schema.String) }),
+  ),
+})
+
+/** Explore's people to follow, as this read sees them. */
+const suggested = async (read: Promise<Response>) =>
+  Schema.decodeUnknownSync(Suggested)(await (await read).json()).people
+
+/** People to follow on Explore carry a city and a bio, and leave out whoever the reader already follows. */
+const verifyPeopleToFollow = async (origin: string, other: Call) => {
+  const nika = { handle: 'nika.kovac', city: null, bio: 'Red, black and one good coat.' }
+  expect(await suggested(fetch(`${origin}/api/public/explore`))).toContainEqual(nika)
+  expect(await suggested(other('/api/public/explore'))).toContainEqual(nika)
+  await send(other, '/api/people/nika.kovac/following', 'PUT', { following: true })
+  expect((await suggested(other('/api/public/explore'))).map(({ handle }) => handle)).not.toContain('nika.kovac')
+  expect(await suggested(fetch(`${origin}/api/public/explore`))).toContainEqual(nika)
+  await send(other, '/api/people/nika.kovac/following', 'PUT', { following: false })
+  expect(await suggested(other('/api/public/explore'))).toContainEqual(nika)
+}
+
 const Wishes = Schema.Struct({ wishes: Schema.Array(Schema.Struct({ id: Schema.String })) })
 
 /** A wish for someone's public piece is private and kept once; it outlives the piece, by what it was called. */
@@ -349,6 +371,7 @@ export const verifySocial = async (origin: string, fixtures: string): Promise<vo
   const reporters = [third, client(origin, await signIn(origin, 'native-social-fourth'))]
   await verifyPeople(origin, owner, other, reporters)
   await verifyDiscovery(origin, owner)
+  await verifyPeopleToFollow(origin, other)
   await verifyWishes(owner, other, pieceId)
   await verifyLinks(origin, other)
 }

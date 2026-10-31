@@ -338,12 +338,13 @@ const pages = (base: Reader) => ({
   }),
   /** Boards for Explore and search, gated as discovery is. */
   discover: (rows: ReadonlyArray<BoardRow>, viewer: Option.Option<string>) => discovered(readBy(base, viewer), rows),
-  /** Whether others may find this person: a published profile whose check passed, with no block in between. */
+  /** A person others may find, with their profile's row: a published profile whose check passed, with no block in
+   * between. */
   findable: (accountId: string, viewer: Option.Option<string>) =>
     Effect.gen(function* () {
       const r = readBy(base, viewer)
       if (!passedForDiscovery((yield* r.checks.statuses('profile', [accountId])).get(accountId))) return Option.none()
-      return Option.map(yield* ownerOf(r, accountId), ({ author }) => author)
+      return yield* ownerOf(r, accountId)
     }),
   piece: Effect.fn('Styld.Public.piece')(function* (pieceId: string, viewer: Option.Option<string> = Option.none()) {
     const { piece, owner } = yield* shownPiece(readBy(base, viewer), pieceId)
