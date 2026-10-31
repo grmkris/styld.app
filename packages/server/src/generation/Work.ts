@@ -4,9 +4,8 @@ import { CurrentAccount } from '../CurrentAccount.ts'
 import type { Picture } from '../capture/Providers.ts'
 import { receivedUpload } from '../mcp/ImageImport.ts'
 import { shownImage } from '../wardrobe/Shown.ts'
-import { refund } from './Generation.ts'
 import { paintPrompt } from './PaintPrompt.ts'
-import { holdOf, nowDate, type Parts, pictureOperation, unavailable } from './Parts.ts'
+import { holdOf, nowDate, type Parts, pictureOperation, refund, unavailable } from './Parts.ts'
 import type { Wearable } from './Planner.ts'
 import type { JobRow, PictureRow } from './Store.ts'
 
@@ -39,7 +38,9 @@ const wardrobeOf = (parts: Parts, accountId: string) =>
     return pieces.slice(0, wardrobeShown).map((piece, at) => {
       const picture = pictures.get(piece.id)
       const shown = shownImage(piece, picture)
-      const sendable = (picture?.face ?? 0) < parts.face && shown.key !== piece.originalKey
+      // A picture not yet judged for a face is not sent: only a known score under the limit is.
+      const face = picture?.face ?? null
+      const sendable = face !== null && face < parts.face && shown.key !== piece.originalKey
       return {
         wearable: {
           ref: `p${at + 1}`,
@@ -68,7 +69,9 @@ const plan = (parts: Parts, job: JobRow) =>
       : false
     if (Option.isNone(planned) || !safe) {
       yield* refund(parts, job.accountId, job.id, 0, job.held)
-      return yield* stored(parts.store.updateJob(job.id, { status: 'refused', reason: 'unclear', updatedAt: at }))
+      return yield* stored(
+        parts.store.advanceJob(job.id, ['planning'], { status: 'refused', reason: 'unclear', updatedAt: at }),
+      )
     }
     const idOf = new Map(wardrobe.map(({ wearable, id }) => [wearable.ref, id]))
     const pictures: ReadonlyArray<PictureRow> = planned.value.pictures.map(({ prompt, pieces }, index) => ({
@@ -118,66 +121,90 @@ const referencesOf = (parts: Parts, job: JobRow, picture: PictureRow) =>
     ).pipe(Effect.map((found) => found.flatMap(Option.toArray)))
   })
 
-/** Draw one claimed picture and put it on the board, then settle its credit: consumed once it is there, given back
- * when the painter refused, kept when the answer was lost (the painter may have drawn and billed it). */
-const drawOne = (parts: Parts, job: JobRow, picture: PictureRow) =>
+/** A picture that will not be drawn: refused, or lost on the way. Its credit goes back either way; a lost answer may
+ * have been drawn and billed, but the person did not get it. */
+const ended = (parts: Parts, job: JobRow, index: number, status: 'refused' | 'unknown') =>
   Effect.gen(function* () {
-    const hold = holdOf(job.id, picture.index)
-    const painted = yield* Effect.result(
-      Effect.flatMap(referencesOf(parts, job, picture), (references) =>
-        parts.painter.paint({ prompt: picture.prompt, references }),
-      ),
-    )
-    if (Result.isFailure(painted)) {
-      if (Predicate.isTagged(painted.failure, 'CaptureUnavailable')) return yield* painted.failure
-      const lost = Predicate.isTagged(painted.failure, 'ProviderOutcomeUnknown')
-      yield* stored(
-        parts.store.finishPicture(job.id, picture.index, { status: lost ? 'unknown' : 'refused', imageId: null }),
-      )
-      if (!lost) yield* parts.usage.settle(job.accountId, hold, 'refunded').pipe(Effect.ignore({ log: true }))
-      return
-    }
-    const contentType = yield* Schema.decodeUnknownEffect(ImageType)(painted.success.contentType).pipe(
+    yield* stored(parts.store.finishPicture(job.id, index, { status, imageId: null }, yield* nowDate))
+    yield* parts.usage.settle(job.accountId, holdOf(job.id, index), 'refunded').pipe(Effect.ignore({ log: true }))
+  })
+
+/** Put the painted picture on the board as a received upload, marked Generated. */
+const placeOnBoard = (parts: Parts, job: JobRow, index: number, painted: Picture) =>
+  Effect.gen(function* () {
+    const contentType = yield* Schema.decodeUnknownEffect(ImageType)(painted.contentType).pipe(
       Effect.mapError(unavailable),
     )
-    const uploadId = yield* receivedUpload(parts.wardrobe, { contentType, bytes: painted.success.bytes }).pipe(
+    const uploadId = yield* receivedUpload(parts.wardrobe, { contentType, bytes: painted.bytes }).pipe(
       Effect.mapError(unavailable),
     )
     const { imageId } = yield* parts.boards
       .addGeneratedImage(BoardId.make(job.boardId), {
-        operationId: OperationId.make(pictureOperation(job.id, picture.index)),
+        operationId: OperationId.make(pictureOperation(job.id, index)),
         uploadId,
         jobId: job.id,
         model: parts.painter.model,
       })
       .pipe(Effect.mapError(unavailable))
-    yield* stored(parts.store.finishPicture(job.id, picture.index, { status: 'drawn', imageId }))
-    yield* parts.usage.settle(job.accountId, hold, 'consumed').pipe(Effect.ignore({ log: true }))
+    return imageId
   })
 
-/** One picture's turn: drawn when it waits and this delivery claims it. One claimed by a delivery that died is lost,
- * and its credit kept; one claimed by a delivery still drawing makes this one try again later. */
+/** Draw one claimed picture and put it on the board, then settle its credit: consumed once it is there, given back
+ * otherwise. A claim whose painter was never reached is put back for the next delivery. */
+const drawOne = (parts: Parts, job: JobRow, picture: PictureRow) =>
+  Effect.gen(function* () {
+    const references = yield* referencesOf(parts, job, picture).pipe(
+      Effect.tapError(() => stored(parts.store.releasePicture(job.id, picture.index))),
+    )
+    const painted = yield* Effect.result(parts.painter.paint({ prompt: picture.prompt, references }))
+    if (Result.isFailure(painted))
+      return yield* ended(
+        parts,
+        job,
+        picture.index,
+        Predicate.isTagged(painted.failure, 'ProviderOutcomeUnknown') ? 'unknown' : 'refused',
+      )
+    // The painted bytes live only in this delivery: a picture that cannot be stored now is lost.
+    const placed = yield* Effect.result(placeOnBoard(parts, job, picture.index, painted.success))
+    if (Result.isFailure(placed)) return yield* ended(parts, job, picture.index, 'unknown')
+    yield* stored(
+      parts.store.finishPicture(job.id, picture.index, { status: 'drawn', imageId: placed.success }, yield* nowDate),
+    )
+    yield* parts.usage
+      .settle(job.accountId, holdOf(job.id, picture.index), 'consumed')
+      .pipe(Effect.ignore({ log: true }))
+  })
+
+/** Whether a claim has outlived any delivery that could still finish it. */
+const isStale = (picture: PictureRow, at: Date) => at.getTime() - (picture.startedAt?.getTime() ?? 0) > patienceMillis
+
+/** One picture's turn: drawn when it waits and this delivery claims it. One claimed by a delivery that died is lost;
+ * one claimed by a delivery still drawing is left to it, and this delivery steps aside. */
 const drawStep = (parts: Parts, job: JobRow, picture: PictureRow) =>
   Effect.gen(function* () {
     const at = yield* nowDate
     if (picture.status === 'drawing') {
-      if (at.getTime() - (picture.startedAt?.getTime() ?? 0) <= patienceMillis) return yield* unavailable()
-      return yield* stored(parts.store.finishPicture(job.id, picture.index, { status: 'unknown', imageId: null }))
+      if (!isStale(picture, at)) return 'busy' as const
+      yield* ended(parts, job, picture.index, 'unknown')
+      return 'done' as const
     }
-    if (picture.status !== 'waiting' || !(yield* stored(parts.store.claimPicture(job.id, picture.index, at)))) return
-    yield* drawOne(parts, job, { ...picture, status: 'drawing', startedAt: at })
+    if (picture.status === 'waiting' && (yield* stored(parts.store.claimPicture(job.id, picture.index, at))))
+      yield* drawOne(parts, job, { ...picture, status: 'drawing', startedAt: at })
+    return 'done' as const
   })
 
-/** Draw each picture still waiting, once, then move the job on: refused when none was drawn. */
+/** Draw each picture still waiting, once, then move the job on: refused when none was drawn. A delivery that finds
+ * another still drawing leaves the job to it. */
 const draw = (parts: Parts, job: JobRow) =>
   Effect.gen(function* () {
-    yield* Effect.forEach(yield* stored(parts.store.picturesOf(job.id)), (picture) => drawStep(parts, job, picture), {
-      discard: true,
-    })
-    const drawn = (yield* stored(parts.store.picturesOf(job.id))).some(({ status }) => status === 'drawn')
+    for (const picture of yield* stored(parts.store.picturesOf(job.id)))
+      if ((yield* drawStep(parts, job, picture)) === 'busy') return
+    const pictures = yield* stored(parts.store.picturesOf(job.id))
+    if (pictures.some(({ status }) => status === 'waiting' || status === 'drawing')) return
+    const drawn = pictures.some(({ status }) => status === 'drawn')
     const next = !drawn ? 'refused' : job.kind === 'moodBoard' ? 'arranging' : 'done'
     yield* stored(
-      parts.store.updateJob(job.id, {
+      parts.store.advanceJob(job.id, ['drawing'], {
         status: next,
         reason: next === 'refused' ? 'refused' : null,
         updatedAt: yield* nowDate,
@@ -211,15 +238,12 @@ const arrange = (parts: Parts, job: JobRow) =>
         })
         .pipe(Effect.mapError(unavailable))
     }
-    yield* stored(parts.store.updateJob(job.id, { status: 'done', updatedAt: yield* nowDate }))
+    yield* stored(parts.store.advanceJob(job.id, ['arranging'], { status: 'done', updatedAt: yield* nowDate }))
   })
 
 /** Take the job as far as it goes now, acting for its account. */
 export const work = Effect.fn('Styld.Generation.work')(function* (parts: Parts, jobId: string) {
-  const step = Effect.gen(function* () {
-    const current = yield* stored(parts.store.jobForWork(jobId))
-    return current
-  })
+  const step = stored(parts.store.jobForWork(jobId))
   const start = yield* step
   if (Option.isNone(start)) return
   const account = { accountId: start.value.accountId, via: 'assistant' as const }
@@ -232,16 +256,25 @@ export const work = Effect.fn('Styld.Generation.work')(function* (parts: Parts, 
   if (Option.isSome(drawn) && drawn.value.status === 'arranging') yield* act(arrange(parts, drawn.value))
 })
 
-/** The queue gave up on the job: it failed, and every credit not spent on a picture or lost on the way goes back. */
+/** Give a job up: it fails, its waiting pictures are refused, and every credit not spent goes back. A picture a dead
+ * delivery claimed is lost; one still being drawn is left to finish, and settles itself. */
 export const giveUp = Effect.fn('Styld.Generation.giveUp')(function* (parts: Parts, jobId: string) {
   const job = yield* stored(parts.store.jobForWork(jobId))
-  if (Option.isNone(job) || ['done', 'refused', 'failed'].includes(job.value.status)) return
-  const pictures = yield* stored(parts.store.picturesOf(jobId))
-  const settled = new Set(pictures.filter(({ status }) => status !== 'waiting').map(({ index }) => index))
+  if (Option.isNone(job)) return
+  const at = yield* nowDate
+  const before = yield* stored(parts.store.picturesOf(jobId))
+  const [failed, refused] = yield* stored(parts.store.giveUp(jobId, at))
+  if (failed.length === 0) return
+  const held = failed[0]?.held ?? 0
+  // A job given up before its plan has no pictures yet: all its credits go back.
+  const back =
+    before.length === 0 ? Array.from({ length: held }, (_, index) => index) : refused.map(({ index }) => index)
+  yield* Effect.forEach(back, (index) => refund(parts, job.value.accountId, jobId, index, index + 1), {
+    discard: true,
+  })
   yield* Effect.forEach(
-    Array.from({ length: job.value.held }, (_, index) => index).filter((index) => !settled.has(index)),
-    (index) => refund(parts, job.value.accountId, jobId, index, index + 1),
+    before.filter((picture) => picture.status === 'drawing' && isStale(picture, at)),
+    (picture) => ended(parts, job.value, picture.index, 'unknown'),
     { discard: true },
   )
-  yield* stored(parts.store.updateJob(jobId, { status: 'failed', reason: 'unavailable', updatedAt: yield* nowDate }))
 })

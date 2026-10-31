@@ -315,9 +315,15 @@ const declareBindings = Effect.gen(function* () {
   // Public pages and their pictures are open to anyone; each network may read 300 a minute.
   const allowRead = yield* perClientLimit('PUBLIC_READ_RATE_LIMIT', 2610285, 300)
   // Reading a shop's product page fetches someone else's site; each account may read ten a minute.
-  const allowLink = yield* perClientLimit('LINK_IMPORT_RATE_LIMIT', 2610286, 10)
+  const linkLimit = yield* Cloudflare.Workers.RateLimit('LINK_IMPORT_RATE_LIMIT', {
+    namespaceId: 2610286,
+    simple: { limit: 10, period: 60 },
+  })
   // Generated pictures cost credits and a model's time; each account may ask six times a minute.
-  const allowGenerate = yield* perClientLimit('GENERATE_RATE_LIMIT', 2610287, 6)
+  const generateLimit = yield* Cloudflare.Workers.RateLimit('GENERATE_RATE_LIMIT', {
+    namespaceId: 2610287,
+    simple: { limit: 6, period: 60 },
+  })
   // Sign-in codes are real mail from styld.app; each network may ask for five a minute.
   const codeRequests = yield* Cloudflare.Workers.RateLimit('EMAIL_CODE_RATE_LIMIT', {
     namespaceId: 2610283,
@@ -339,8 +345,8 @@ const declareBindings = Effect.gen(function* () {
     allowTelemetry,
     allowRegistration,
     allowCheck,
-    allowLink,
-    allowGenerate,
+    linkLimit,
+    generateLimit,
     allowRead,
     codeRequests,
   }
@@ -406,8 +412,8 @@ const makeApplication =
     allowTelemetry,
     allowRegistration,
     allowCheck,
-    allowLink,
-    allowGenerate,
+    linkLimit,
+    generateLimit,
     allowRead,
     codeRequests,
   }: Effect.Success<typeof declareBindings>) =>
@@ -422,6 +428,8 @@ const makeApplication =
       // Auth checks the limit inside its own operations, which do not carry this request's
       // runtime context, so it gets the binding's runtime object.
       const allowCodeRequest = sharedLimit(yield* codeRequests.raw)
+      // Fetching from the web and generating pictures keep one pace per account, on the website and for assistants.
+      const pacing = { link: sharedLimit(yield* linkLimit.raw), generate: sharedLimit(yield* generateLimit.raw) }
       const authOrigin = configuration.origin
       const auth = makeAuthHttp(database, authOptions(configuration, yield* email.raw))
       const db = yield* database.raw
@@ -446,7 +454,7 @@ const makeApplication =
       const oauth = makeMcpOAuth(db, auth, { origin: authOrigin, keys: configuration.sessionKeys, allowRegistration })
       const routes = Layer.mergeAll(
         auth.layer,
-        apiRoutes(auth, services, { allowCheck, allowLink, allowGenerate, allowRead }),
+        apiRoutes(auth, services, { allowCheck, allowLink: pacing.link, allowGenerate: pacing.generate, allowRead }),
         publicImageRoutes(allowRead).pipe(Layer.provide(services.publicPages)),
         wardrobeRoutes(auth).pipe(Layer.provide(wardrobe)),
         boardRoutes(auth).pipe(Layer.provide(boards)),
@@ -456,7 +464,7 @@ const makeApplication =
           db,
           authOrigin,
           observabilityBase.release,
-          { ...toolServices(services), curation: services.curationService },
+          { ...toolServices(services), curation: services.curationService, pacing },
           adminEmails(env.STYLD_ADMIN_EMAILS),
         ).pipe(Layer.provide(oauth.server)),
         HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),

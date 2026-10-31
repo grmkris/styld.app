@@ -22,6 +22,7 @@ import { Effect, Match, Option, Schema } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { importedUpload, type ImportRefused } from './ImageImport.ts'
+import { paced } from './Pacing.ts'
 import { tool, ToolError } from './Tools.ts'
 import { readProductPage } from '../links/LinkImport.ts'
 
@@ -295,11 +296,13 @@ const linkTools = (wardrobe: Wardrobe['Service'], show: ReturnType<typeof shown>
       Effect.gen(function* () {
         const earlier = yield* wardrobe.pieceAddedBy(fields.operationId).pipe(Effect.mapError(asToolError))
         if (Option.isSome(earlier)) return show(earlier.value)
-        const page = yield* readProductPage(url).pipe(
-          Effect.provideService(HttpClient.HttpClient, http),
-          Effect.mapError(({ reason }) => linkRefusals[reason]),
+        const page = yield* paced('link')(
+          readProductPage(url).pipe(
+            Effect.provideService(HttpClient.HttpClient, http),
+            Effect.mapError(({ reason }) => linkRefusals[reason]),
+          ),
         )
-        const uploadId = yield* uploadFrom(wardrobe, http, page.image)
+        const uploadId = yield* fetchedUpload(wardrobe, http, page.image)
         const named = chosen ?? Option.getOrUndefined(page.title)
         return show(
           yield* wardrobe
@@ -318,6 +321,10 @@ export const wardrobeTools = (wardrobe: Wardrobe['Service'], origin: string, htt
 
 /** Download the photo an assistant points at into a fresh upload. */
 export const uploadFrom = (wardrobe: Wardrobe['Service'], http: HttpClient.HttpClient, imageUrl: string) =>
+  paced('link')(fetchedUpload(wardrobe, http, imageUrl))
+
+/** The photo at an address as a fresh upload, without counting against the account's pace. */
+const fetchedUpload = (wardrobe: Wardrobe['Service'], http: HttpClient.HttpClient, imageUrl: string) =>
   importedUpload(wardrobe, imageUrl).pipe(
     Effect.provideService(HttpClient.HttpClient, http),
     Effect.mapError(asToolError),

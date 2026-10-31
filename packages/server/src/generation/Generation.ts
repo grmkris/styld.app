@@ -12,11 +12,12 @@ import {
 import { Effect, Option, Predicate, Result } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { paintPrompt } from './PaintPrompt.ts'
-import { holdOf, nowDate, type Parts, send, unavailable, view } from './Parts.ts'
+import { holdOf, nowDate, type Parts, refund, send, unavailable, view } from './Parts.ts'
+import { giveUp } from './Work.ts'
 import type { JobRow } from './Store.ts'
 
 /** A job not finished and not touched for this long lost its message: reading it sends it again. */
-const stalledMillis = 2 * 60 * 1000
+const stalledMillis = 3 * 60 * 1000
 
 const stored = <A, E>(effect: Effect.Effect<A, E>) => Effect.mapError(effect, unavailable)
 
@@ -29,22 +30,12 @@ const holdUpTo = (parts: Parts, accountId: string, jobId: string, wanted: number
       if (Result.isSuccess(reserved)) continue
       if (Predicate.isTagged(reserved.failure, 'DailyLimitReached'))
         return { held, limit: Option.some(reserved.failure) }
-      yield* refund(parts, accountId, jobId, 0, held)
+      // The Wallet may have taken this one too before its answer was lost.
+      yield* refund(parts, accountId, jobId, 0, held + 1)
       return yield* unavailable()
     }
     return { held, limit: Option.none<DailyLimitReached>() }
   })
-
-/** Give back the credits held for pictures `from` up to `to`; one already settled stays as it was. */
-export const refund = (parts: Parts, accountId: string, jobId: string, from: number, to: number) =>
-  Effect.forEach(
-    Array.from({ length: Math.max(0, to - from) }, (_, offset) => from + offset),
-    (index) =>
-      parts.usage
-        .settle(accountId, holdOf(jobId, index), 'refunded')
-        .pipe(Effect.ignore({ log: true, message: 'Styld.Generation could not give a credit back' })),
-    { discard: true },
-  )
 
 /** The receipt of an ask already made: the same job for the same words, a conflict for others. */
 const replayed = (parts: Parts, accountId: string, operationId: string, inputDigest: string) =>
@@ -80,13 +71,14 @@ export const generations = (parts: Parts) => ({
     const board = yield* parts.boards
       .getBoard(boardId)
       .pipe(Effect.catchTag('WardrobeUnavailable', () => Effect.fail(unavailable())))
-    yield* checked(parts, input.prompt)
     const id = yield* parts.newId()
+    // Credits first, so an account with none left asks no model anything.
     const { held, limit } = yield* holdUpTo(parts, accountId, id, kind === 'picture' ? 1 : mostMoodPictures)
     if (held < (kind === 'picture' ? 1 : fewestMoodPictures)) {
       yield* refund(parts, accountId, id, 0, held)
       return yield* Option.getOrElse(limit, () => DailyLimitReached.make({ resetsAt: '' }))
     }
+    yield* checked(parts, input.prompt).pipe(Effect.tapError(() => refund(parts, accountId, id, 0, held)))
     const at = yield* nowDate
     const job: JobRow = {
       id,
@@ -128,7 +120,12 @@ export const generations = (parts: Parts) => ({
     yield* stored(parts.store.insertJob(job, pictures, receipt)).pipe(
       Effect.tapError(() => refund(parts, accountId, id, 0, held)),
     )
-    yield* send(parts, id).pipe(Effect.ignore({ log: true, message: 'Styld.Generation could not queue a job' }))
+    // A job that could not be queued would wait for someone to read it: it is given up at once, its credits back.
+    const queued = yield* Effect.result(send(parts, id))
+    if (Result.isFailure(queued)) {
+      yield* giveUp(parts, id).pipe(Effect.ignore({ log: true, message: 'Styld.Generation could not queue a job' }))
+      return yield* get(parts, id).pipe(Effect.catchTag('GenerationNotFound', () => Effect.fail(unavailable())))
+    }
     return yield* view(job, pictures)
   }),
   get: (jobId: string) => get(parts, jobId),

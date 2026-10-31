@@ -27,6 +27,7 @@ import { Discovery } from '../src/social/Discovery.ts'
 import { Social } from '../src/social/Social.ts'
 import { curationTools } from '../src/mcp/CurationTools.ts'
 import { adminEmails, Curation, isAdmin } from '../src/social/Curation.ts'
+import { Pacing } from '../src/mcp/Pacing.ts'
 
 const accountRow = { displayName: 'Ana Novak', email: 'ana@example.com' }
 const database: D1 = {
@@ -197,6 +198,8 @@ const tools = styldTools(
   { wardrobe, looks, captures, boards, profiles, social, discovery, generations },
   offline,
 )
+/** Every ask goes at once in these tests. */
+const unpaced = Pacing.of({ link: () => Effect.succeed(true), generate: () => Effect.succeed(true) })
 /** The JSON of a result's first text block. */
 const jsonOf = (result: {
   readonly content: ReadonlyArray<{ readonly type: string; readonly text?: string }>
@@ -205,6 +208,7 @@ const call = (name: string, args: unknown) =>
   Effect.runPromise(
     callTool(tools, name, args).pipe(
       Effect.provideService(CurrentAccount, CurrentAccount.of({ accountId: 'acc_1', via: 'assistant' })),
+      Effect.provideService(Pacing, unpaced),
     ),
   )
 

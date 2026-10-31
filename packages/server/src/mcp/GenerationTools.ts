@@ -11,6 +11,7 @@ import {
 } from '@styld/protocol'
 import { Effect, Match, Schema } from 'effect'
 import type { Generations } from '../generation/Service.ts'
+import { paced } from './Pacing.ts'
 import { tool, ToolError } from './Tools.ts'
 
 type GenerationFailure =
@@ -70,7 +71,9 @@ export const generationTools = (generations: Pick<Generations['Service'], 'admit
       parameters: Ask,
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       handler: ({ boardId, ...input }) =>
-        generations.admit('picture', boardId, input).pipe(Effect.map(show), Effect.mapError(asToolError)),
+        paced('generate')(
+          generations.admit('picture', boardId, input).pipe(Effect.map(show), Effect.mapError(asToolError)),
+        ),
     }),
     tool({
       name: 'moodboard_make',
@@ -80,7 +83,9 @@ export const generationTools = (generations: Pick<Generations['Service'], 'admit
       parameters: Ask,
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       handler: ({ boardId, ...input }) =>
-        generations.admit('moodBoard', boardId, input).pipe(Effect.map(show), Effect.mapError(asToolError)),
+        paced('generate')(
+          generations.admit('moodBoard', boardId, input).pipe(Effect.map(show), Effect.mapError(asToolError)),
+        ),
     }),
     tool({
       name: 'generation_get',

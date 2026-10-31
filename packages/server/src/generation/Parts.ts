@@ -54,3 +54,14 @@ export const view = (job: JobRow, pictures: ReadonlyArray<PictureRow>) =>
     pictures: pictures.map(({ index, status, imageId }) => ({ index, status, imageId })),
     createdAt: job.createdAt.toISOString(),
   }).pipe(Effect.mapError(unavailable))
+
+/** Give back the credits held for pictures `from` up to `to`; one already settled stays as it was. */
+export const refund = (parts: Parts, accountId: string, jobId: string, from: number, to: number) =>
+  Effect.forEach(
+    Array.from({ length: Math.max(0, to - from) }, (_, offset) => from + offset),
+    (index) =>
+      parts.usage
+        .settle(accountId, holdOf(jobId, index), 'refunded')
+        .pipe(Effect.ignore({ log: true, message: 'Styld.Generation could not give a credit back' })),
+    { discard: true },
+  )

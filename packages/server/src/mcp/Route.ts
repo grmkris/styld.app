@@ -9,6 +9,7 @@ import { readResource, resources } from './Resources.ts'
 import { type Curation, isAdmin } from '../social/Curation.ts'
 import { curationTools } from './CurationTools.ts'
 import { publicClient } from './ImageImport.ts'
+import { Pacing } from './Pacing.ts'
 import { instructions, styldTools, type ToolServices } from './StyldTools.ts'
 import { callTool, renderTools } from './Tools.ts'
 
@@ -31,7 +32,7 @@ export const mcpRoutes = (
   db: D1,
   origin: string,
   release: string,
-  services: ToolServices & { readonly curation: Curation['Service'] },
+  services: ToolServices & { readonly curation: Curation['Service']; readonly pacing: Pacing['Service'] },
   admins: ReadonlySet<string>,
 ) =>
   Layer.unwrap(
@@ -46,6 +47,7 @@ export const mcpRoutes = (
         tools,
         adminTools: [...tools, ...curationTools(services.curation)],
         admins,
+        pacing: services.pacing,
       })
     }),
   )
@@ -56,11 +58,12 @@ const answerFor = Effect.fnUntraced(function* (
     readonly release: string
     readonly tools: ReadonlyArray<ReturnType<typeof styldTools>[number]>
     readonly toolList: ReadonlyArray<object>
+    readonly pacing: Pacing['Service']
   },
   account: CurrentAccount['Service'],
   body: unknown,
 ) {
-  const { release, tools, toolList } = served
+  const { release, tools, toolList, pacing } = served
   const request = yield* HttpServerRequest.HttpServerRequest
   const services = yield* Effect.context()
   const sdk = yield* Effect.promise(() => import('./Sdk.ts'))
@@ -76,7 +79,10 @@ const answerFor = Effect.fnUntraced(function* (
         read: readResource,
         call: (name, args) =>
           Effect.runPromiseWith(services)(
-            callTool(tools, name, args).pipe(Effect.provideService(CurrentAccount, account)),
+            callTool(tools, name, args).pipe(
+              Effect.provideService(CurrentAccount, account),
+              Effect.provideService(Pacing, pacing),
+            ),
           ),
       },
       body,
@@ -93,6 +99,7 @@ const routesFor = (
     tools,
     adminTools,
     admins,
+    pacing,
   }: {
     readonly db: D1
     readonly origin: string
@@ -100,10 +107,11 @@ const routesFor = (
     readonly tools: ReturnType<typeof styldTools>
     readonly adminTools: ReadonlyArray<ReturnType<typeof styldTools>[number]>
     readonly admins: ReadonlySet<string>
+    readonly pacing: Pacing['Service']
   },
 ) => {
-  const member = { release, tools, toolList: renderTools(tools) }
-  const admin = { release, tools: adminTools, toolList: renderTools(adminTools) }
+  const member = { release, tools, toolList: renderTools(tools), pacing }
+  const admin = { release, tools: adminTools, toolList: renderTools(adminTools), pacing }
   const servedFor = (row: unknown) => (isAdmin(admins, row) ? admin : member)
   const post = Effect.gen(function* () {
     const request = yield* HttpServerRequest.HttpServerRequest
