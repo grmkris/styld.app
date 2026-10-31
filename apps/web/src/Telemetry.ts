@@ -33,8 +33,11 @@ const templateOf = AppRoute.match<string>({
  * @internal Exported for its tests. */
 export const routeName = (pathname: string): string => templateOf(routeFromPathname(pathname))
 
-/** Every URL the SDK sends, in spans or its always-on session events, keeps only origin and route. */
-const routeUrl = (url: string): string => {
+/** Every URL the SDK sends, in spans or its always-on session events, keeps only origin and route. The SDK also
+ * passes a navigation's route name through here, a path such as `/boards/:board`, which names itself again.
+ * @internal Exported for its tests. */
+export const routeUrl = (url: string): string => {
+  if (url.startsWith('/')) return routeName(new URL(url, 'https://styld.invalid').pathname)
   // URL.canParse (Safari 17) rather than URL.parse (Safari 18), for the Safari 17.5 baseline.
   if (!URL.canParse(url)) return 'other'
   const parsed = new URL(url)

@@ -1,5 +1,5 @@
 import { expect, test } from 'vitest'
-import { routeName } from '../src/Telemetry.ts'
+import { routeName, routeUrl } from '../src/Telemetry.ts'
 
 test('names a page load or navigation by its route, never by the id or handle in it', () => {
   expect(routeName('/')).toBe('/')
@@ -10,4 +10,16 @@ test('names a page load or navigation by its route, never by the id or handle in
   expect(routeName('/@nika.kovac')).toBe('/@:handle')
   expect(routeName('/ask/stylist')).toBe('/ask/stylist')
   expect(routeName('/no/such/page')).toBe('other')
+})
+
+test('keeps the route name through the URL sanitizer, as the SDK passes it', () => {
+  // The SDK names a navigation scrubUrl(routeName(pathname)), and scrubUrl runs this sanitizer.
+  expect(routeUrl(routeName('/wardrobe'))).toBe('/wardrobe')
+  expect(routeUrl(routeName('/boards/bd_xAA4SsaoKuzQ1yDiVVI-Qg'))).toBe('/boards/:board')
+  expect(routeUrl(routeName('/@nika.kovac'))).toBe('/@:handle')
+  expect(routeUrl(routeName('/no/such/page'))).toBe('other')
+  expect(routeUrl('https://styld.app/boards/bd_xAA4SsaoKuzQ1yDiVVI-Qg?from=feed#top')).toBe(
+    'https://styld.app/boards/:board',
+  )
+  expect(routeUrl('not a url')).toBe('other')
 })
