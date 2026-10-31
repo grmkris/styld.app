@@ -2989,7 +2989,10 @@
     "delete": "Delete look",
     "deleteConfirm": "Delete this look? Its pieces stay in your wardrobe.",
     "deleteFailed": "Couldn't delete the look. Try again.",
-    "toBoards": "Go to Boards"
+    "toBoards": "Go to Boards",
+    "statusPublic": "Public, anyone with the link can see it",
+    "statusPrivate": "Only you can see it",
+    "piecesTitle": "The pieces"
   },
   "board": {
     "loading": "Opening your board…",

@@ -51,5 +51,35 @@ export const collageSkeleton = style({ inlineSize: '100%', aspectRatio: '1 / 1',
 export const nameSkeleton = style({ fontSize: '15px' })
 export const metaSkeleton = style({ inlineSize: '40%', fontSize: '13px' })
 export const cardMeta = style({ fontSize: '13px', color: 'ink2' })
+/** A look's own page: where it stands under the title, the look laid out large, then its pieces as rows. */
+export const status = style({ fontSize: '14px', color: 'ink2' })
+export const lookCollage = style({ maxInlineSize: '420px' })
+export const pieces = style({ display: 'grid', gap: '8px', paddingBlockStart: '8px' })
+export const piecesTitle = style({ fontSize: '17px' })
+export const pieceRows = style({ display: 'grid', gap: '4px', margin: '0', padding: '0', listStyleType: 'none' })
+export const pieceRow = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '12px',
+  minBlockSize: '56px',
+  color: 'ink',
+  textDecorationLine: 'none',
+})
+export const pieceRowImage = style({
+  flex: 'none',
+  inlineSize: '48px',
+  blockSize: '48px',
+  padding: '4px',
+  objectFit: 'contain',
+  borderRadius: 'field',
+  backgroundColor: 'paper',
+  boxShadow: 'edge',
+  mixBlendMode: 'darken',
+})
+export const pieceRowText = style({ display: 'grid', minInlineSize: '0' })
+export const pieceRowName = style({ fontSize: '15px', fontWeight: 600 })
+/** Deleting the look: a quiet text action at the end, after the pieces. */
+export const deletion = style({ display: 'grid', justifyItems: 'start', gap: '8px', paddingBlockStart: '8px' })
+export const quietAction = style({ color: 'ink2', textDecorationColor: 'rule' })
 /** A wish whose piece is no longer public: the line under its name. */
 export const goneNote = style({ paddingInline: '4px', fontSize: '13px', color: 'ink2' })

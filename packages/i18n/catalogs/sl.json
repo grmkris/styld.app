@@ -2989,7 +2989,10 @@
     "delete": "Izbriši videz",
     "deleteConfirm": "Izbrišem ta videz? Kosi ostanejo v tvoji garderobi.",
     "deleteFailed": "Videza ni bilo mogoče izbrisati. Poskusi znova.",
-    "toBoards": "Odpri zbirke"
+    "toBoards": "Odpri zbirke",
+    "statusPublic": "Javen, vidi ga vsak s povezavo",
+    "statusPrivate": "Vidiš ga samo ti",
+    "piecesTitle": "Kosi"
   },
   "board": {
     "loading": "Odpiram zbirko …",

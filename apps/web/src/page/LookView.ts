@@ -1,23 +1,25 @@
 import { format, type Locale } from '@styld/i18n'
-import type { PublicLookPage } from '@styld/protocol'
+import type { Look, PublicLookPage } from '@styld/protocol'
 import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
-import { secondaryAction } from '../Actions.styles.ts'
+import { linkAction, secondaryAction } from '../Actions.styles.ts'
 import { confirmActions } from '../ConfirmActions.ts'
 import { formError } from '../Fields.styles.ts'
 import { backIcon, loader } from '../Icon.ts'
 import { looksRouter, pieceRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { Deletion, Message, type Model, Sharing, Shown } from './Look.ts'
+import { checkNotice } from './CheckNotice.ts'
 import { publicToggle } from './PublicToggle.ts'
 import * as PeopleView from './PeopleView.ts'
 import { byline, pieceTile, tileGrid } from './PublicTiles.ts'
 import * as SaveToBoardView from './SaveToBoardView.ts'
 import { round } from './PageBar.styles.ts'
 import { pieceLabel } from './WardrobeWords.ts'
-import { caption, cut, cutImage, grid } from './WardrobeView.styles.ts'
-import { couldNotLoad } from './LooksView.ts'
+import { collage, couldNotLoad } from './LooksView.ts'
+import { categoryName } from './WardrobeWords.ts'
+import { cx } from 'zyzz'
 import * as styles from './LooksView.styles.ts'
 
 const backToLooks = (locale: Locale, h: HtmlBuilder<Message>): Html =>
@@ -26,11 +28,16 @@ const backToLooks = (locale: Locale, h: HtmlBuilder<Message>): Html =>
     [backIcon(h)],
   )
 
+/** Delete is quiet, at the end, and asks first. */
 const deletion = (model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>
   Deletion.match(model.deletion, {
     Idle: () => [
       actionButton(
-        { label: format(locale, 'looks.delete', {}), style: secondaryAction(), onClick: Message.ClickedDelete() },
+        {
+          label: format(locale, 'looks.delete', {}),
+          style: cx(linkAction(), styles.quietAction()),
+          onClick: Message.ClickedDelete(),
+        },
         h,
       ),
     ],
@@ -90,7 +97,42 @@ const visitingView = (
   ),
 ]
 
-/** One look: its name and occasion, its pieces, and deleting it. */
+/** The look's pieces as rows (Gallery `outfit.html` › piece rows): each cutout small on paper, its name and kind. */
+const pieceRows = (look: Look, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.section(
+    [h.AriaLabelledBy('look-pieces'), ...styled(h, styles.pieces())],
+    [
+      h.h2([h.Id('look-pieces'), ...styled(h, styles.piecesTitle())], [format(locale, 'looks.piecesTitle', {})]),
+      h.ul(
+        styled(h, styles.pieceRows()),
+        look.pieces.map((piece) =>
+          h.keyed('li')(
+            piece.id,
+            [],
+            [
+              h.a(
+                [h.Href(pieceRouter({ pieceId: piece.id })), ...styled(h, styles.pieceRow())],
+                [
+                  h.img([
+                    h.Src(`/cdn/pieces/${piece.id}/thumb`),
+                    h.Alt(''),
+                    h.Loading('lazy'),
+                    ...styled(h, styles.pieceRowImage()),
+                  ]),
+                  h.span(styled(h, styles.pieceRowText()), [
+                    h.span(styled(h, styles.pieceRowName()), [pieceLabel(piece, locale)]),
+                    h.span(styled(h, styles.cardMeta()), [format(locale, categoryName(piece.category), {})]),
+                  ]),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    ],
+  )
+
+/** One look: its name and where it stands, the look laid out, saving and sharing it, its pieces, and deleting it. */
 export const view = Submodel.defineView<Model, Message, PeopleView.Inputs>((model, { locale, signedIn }, h) =>
   h.main(
     [h.Id('main'), ...styled(h, styles.looksPage())],
@@ -106,30 +148,13 @@ export const view = Submodel.defineView<Model, Message, PeopleView.Inputs>((mode
         ],
         Loaded: ({ look }) => [
           h.h1([], [look.name]),
+          // Where it stands, in one quiet line under the title (DESIGN › Your public things), then the check.
+          h.p(styled(h, styles.status()), [
+            format(locale, look.shared ? 'looks.statusPublic' : 'looks.statusPrivate', {}),
+          ]),
+          look.shared ? checkNotice(look.check, locale, h) : h.empty,
           look.occasion === null ? h.empty : h.p(styled(h, styles.lede()), [look.occasion]),
-          h.ul(
-            styled(h, grid()),
-            look.pieces.map((piece) =>
-              h.keyed('li')(
-                piece.id,
-                [],
-                [
-                  h.a(
-                    [h.Href(pieceRouter({ pieceId: piece.id })), ...styled(h, cut())],
-                    [
-                      h.img([
-                        h.Src(`/cdn/pieces/${piece.id}/thumb`),
-                        h.Alt(pieceLabel(piece, locale)),
-                        h.Loading('lazy'),
-                        ...styled(h, cutImage()),
-                      ]),
-                      h.span(styled(h, caption()), [pieceLabel(piece, locale)]),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ),
+          h.div(styled(h, styles.lookCollage()), [collage(look, h)]),
           h.submodel({
             slotId: 'look-save-to-board',
             model: model.saveToBoard,
@@ -147,12 +172,14 @@ export const view = Submodel.defineView<Model, Message, PeopleView.Inputs>((mode
                 Sending: () => 'sending' as const,
                 Failed: ({ needsProfile }) => (needsProfile ? ('needsProfile' as const) : ('failed' as const)),
               }),
+              describe: false,
               onToggle: (shared) => Message.ToggledShared({ shared }),
             },
             locale,
             h,
           ),
-          h.div([], deletion(model, locale, h)),
+          pieceRows(look, locale, h),
+          h.div(styled(h, styles.deletion()), deletion(model, locale, h)),
         ],
       }),
     ],

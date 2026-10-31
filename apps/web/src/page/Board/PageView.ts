@@ -355,6 +355,7 @@ const sharingView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Htm
         Sending: () => 'sending' as const,
         Failed: ({ needsProfile }) => (needsProfile ? ('needsProfile' as const) : ('failed' as const)),
       }),
+      describe: true,
       onToggle: (isPublic) => Message.ToggledPublic({ isPublic }),
     },
     locale,

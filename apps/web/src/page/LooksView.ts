@@ -15,7 +15,7 @@ import { message as messageSection, messageTitle } from './WardrobeView.styles.t
 import * as styles from './LooksView.styles.ts'
 
 /** Up to four of a look's pieces, laid out together. */
-const collage = <Message>(look: Look, h: HtmlBuilder<Message>): Html =>
+export const collage = <Message>(look: Look, h: HtmlBuilder<Message>): Html =>
   h.div(
     styled(h, styles.collage()),
     look.pieces.slice(0, 4).map((piece) =>
