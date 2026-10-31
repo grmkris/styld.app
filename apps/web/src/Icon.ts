@@ -6,6 +6,7 @@ import {
   ArrowDownRegular,
   ArrowsLeftRightRegular,
   ArrowUpRegular,
+  BroomRegular,
   ChatCircleRegular,
   ClipboardTextRegular,
   CopyRegular,
@@ -13,7 +14,6 @@ import {
   MagnifyingGlassRegular,
   ShuffleRegular,
   SquaresFourLight,
-  SquaresFourRegular,
   TextTRegular,
   XRegular,
   ArrowsClockwiseRegular,
@@ -80,7 +80,7 @@ export const linkIcon = control(LinkRegular)
 export const retryIcon = control(ArrowsClockwiseRegular)
 export const undoIcon = control(ArrowCounterClockwiseRegular)
 export const redoIcon = control(ArrowClockwiseRegular)
-export const tidyIcon = control(SquaresFourRegular)
+export const tidyIcon = control(BroomRegular)
 export const textIcon = control(TextTRegular)
 export const pasteIcon = control(ClipboardTextRegular)
 export const flipIcon = control(ArrowsLeftRightRegular)
