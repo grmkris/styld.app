@@ -50,6 +50,22 @@ const nika = Schema.decodeUnknownSync(SearchResults)({
   boards: [],
 })
 
+describe('a profile', () => {
+  test('opens on the first tab with something public in it, and on Boards when nothing is', () => {
+    const knit = {
+      id: `pc_${'knit'.padEnd(22, 'x')}`,
+      name: 'Navy knit',
+      category: 'top',
+      subcategory: null,
+      colours: [],
+    }
+    const onlyPieces = Schema.decodeUnknownSync(PublicProfile)({ ...profile(false), pieces: [knit] })
+    const visiting = init(Target.Person({ handle: 'nika.kovac' }), false)
+    expect(update(visiting, Message.SucceededLoadPerson({ profile: onlyPieces })).model.tab).toBe('pieces')
+    expect(update(visiting, Message.SucceededLoadPerson({ profile: profile(false) })).model.tab).toBe('boards')
+  })
+})
+
 describe('searching Explore', () => {
   test('Enter searches the trimmed words, signed out too, and focus moves to what was found', () => {
     story(

@@ -1,4 +1,4 @@
-import { format, type Locale } from '@styld/i18n'
+import { format, type Locale, type MessageKey } from '@styld/i18n'
 import type { Mood, PublicPiecePage, PublicProfile } from '@styld/protocol'
 import { Option } from 'effect'
 import { Submodel } from 'foldkit'
@@ -33,8 +33,15 @@ const tabLabel = (tab: PersonTab, locale: Locale) =>
 const tabsOf = (profile: PublicProfile): ReadonlyArray<PersonTab> =>
   profile.pieces === null ? ['boards', 'looks'] : ['boards', 'looks', 'pieces']
 
-const emptyOr = (tiles: Html, isEmpty: boolean, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  isEmpty ? h.p(styled(h, styles.empty()), [format(locale, 'profile.public.empty', {})]) : tiles
+/** What a tab says when it holds nothing public, by name: no public boards, looks or pieces yet. */
+const emptyLines = {
+  boards: 'profile.public.emptyBoards',
+  looks: 'profile.public.emptyLooks',
+  pieces: 'profile.public.emptyPieces',
+} as const satisfies Record<PersonTab, MessageKey>
+
+const emptyOr = (tiles: Html, isEmpty: boolean, tab: PersonTab, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  isEmpty ? h.p(styled(h, styles.empty()), [format(locale, emptyLines[tab], {})]) : tiles
 
 const tabContent = (profile: PublicProfile, tab: PersonTab, locale: Locale, h: HtmlBuilder<Message>): Html => {
   if (tab === 'boards')
@@ -44,6 +51,7 @@ const tabContent = (profile: PublicProfile, tab: PersonTab, locale: Locale, h: H
         profile.boards.map((board) => h.keyed('li')(board.id, [], [boardCard(board, locale, h)])),
       ),
       profile.boards.length === 0,
+      'boards',
       locale,
       h,
     )
@@ -54,6 +62,7 @@ const tabContent = (profile: PublicProfile, tab: PersonTab, locale: Locale, h: H
         h,
       ),
       profile.looks.length === 0,
+      'looks',
       locale,
       h,
     )
@@ -64,6 +73,7 @@ const tabContent = (profile: PublicProfile, tab: PersonTab, locale: Locale, h: H
       h,
     ),
     pieces.length === 0,
+    'pieces',
     locale,
     h,
   )

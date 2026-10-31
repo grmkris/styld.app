@@ -866,7 +866,9 @@ export interface MessageArgumentsByKey<T = string> {
   'profile.public.ctaLabel': Readonly<Record<string, never>>
   'profile.public.ctaLine': Readonly<Record<string, never>>
   'profile.public.editProfile': Readonly<Record<string, never>>
-  'profile.public.empty': Readonly<Record<string, never>>
+  'profile.public.emptyBoards': Readonly<Record<string, never>>
+  'profile.public.emptyLooks': Readonly<Record<string, never>>
+  'profile.public.emptyPieces': Readonly<Record<string, never>>
   'profile.public.headerCta': Readonly<Record<string, never>>
   'profile.public.headerHome': Readonly<Record<string, never>>
   'profile.public.looks': Readonly<Record<string, never>>
@@ -1936,4 +1938,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '3688230e2e270234641af3404e179c4fd75ec33a04d8f3fbcd4efbe4828f547f'
+export const catalogVersion = 'ec442a977bfa428ae9ff7e4465722e453238b6208daa355c88ca7edbc8f8386b'

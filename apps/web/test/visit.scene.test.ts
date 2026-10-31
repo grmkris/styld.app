@@ -127,7 +127,7 @@ describe('a public profile', () => {
       expect(role('link', { name: /Coats/ })).toHaveAttr('href', `/boards/bd_${'coats'.padEnd(22, 'x')}`),
       click(role('button', { name: 'Looks' })),
       expect(role('button', { name: 'Looks' })).toHaveAttr('aria-pressed', 'true'),
-      expect(text('Nothing here yet.')).toExist(),
+      expect(text('No public looks yet.')).toExist(),
       click(role('button', { name: 'Pieces' })),
       expect(role('link', { name: 'Navy knit' })).toHaveAttr('href', `/pieces/${knit.id}`),
     )

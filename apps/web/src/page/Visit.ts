@@ -287,6 +287,17 @@ const withRelation = (model: Model, profile: PublicProfile): UpdateReturn => {
 
 type UpdateReturn = Update.Return<Model, Message, StyldClient>
 
+/** The tab a profile opens on: the first with something public in it, so a visitor never lands on an empty Boards
+ * while the person's looks or pieces wait behind the next tab. */
+const openingTab = (profile: PublicProfile): PersonTab => {
+  const filled: ReadonlyArray<readonly [PersonTab, number]> = [
+    ['boards', profile.boards.length],
+    ['looks', profile.looks.length],
+    ['pieces', profile.pieces?.length ?? 0],
+  ]
+  return filled.find(([, count]) => count > 0)?.[0] ?? 'boards'
+}
+
 /** Opening Explore as a tab: what it showed stays while it is asked for again; a first visit asks. */
 export const enterExplore = (model: Model): UpdateReturn => {
   const mood = Target.guards.Explore(model.target) ? model.target.mood : Option.none()
@@ -340,7 +351,10 @@ const awaits = (model: Model, query: string) =>
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     SucceededLoadPerson: ({ profile }) =>
-      withRelation(modifyFields(model, { shown: () => Shown.Person({ profile }) }), profile),
+      withRelation(
+        modifyFields(model, { shown: () => Shown.Person({ profile }), tab: () => openingTab(profile) }),
+        profile,
+      ),
     SucceededLoadPublicPiece: ({ page }) => ({ model: modifyFields(model, { shown: () => Shown.Piece({ page }) }) }),
     // Fresh people come without anyone already followed, so what was tapped before starts over.
     SucceededLoadExplore: ({ explore }) => ({
