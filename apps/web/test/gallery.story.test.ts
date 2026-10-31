@@ -1,4 +1,4 @@
-import { Board, BoardSummary, Day } from '@styld/protocol'
+import { Board, BoardSummary, Day, type Piece } from '@styld/protocol'
 import { Array, Option, Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
@@ -17,6 +17,17 @@ const greenTrousers = pieceFixture('green-trousers', { category: 'bottom', colou
 const blackShoes = pieceFixture('black-shoes', { category: 'shoes', colours: ['black'], name: 'Derby shoes' })
 const wardrobe = [redTop, navyKnit, greenTrousers, blackShoes]
 const thursday = Schema.decodeUnknownSync(Day)('2026-10-29')
+const drawn = { category: 'top', picture: { state: 'ready', shows: 'clean', version: 1 } }
+const drawnOxford = pieceFixture('drawn-oxford', drawn)
+const drawnPolo = pieceFixture('drawn-polo', drawn)
+const photoTops = ['photo-tee', 'photo-henley', 'photo-knit'].map((seed) => pieceFixture(seed, { category: 'top' }))
+/** Every piece thirty Spins of one day lay out. */
+const piecesOverSpins = (pieces: ReadonlyArray<Piece>) =>
+  new Set(
+    Array.range(0, 30)
+      .flatMap((spin) => outfitFor(pieces, `2026-10-29:${String(spin)}`))
+      .map(({ piece }) => piece.id),
+  )
 const ids = (query: string, locale: 'en' | 'sl') => matching(wardrobe, query, [locale]).map((piece) => piece.id)
 
 describe("today's table", () => {
@@ -29,6 +40,12 @@ describe("today's table", () => {
       expect(outfit).toContain(navyKnit.id)
       expect(outfit).not.toContain(redTop.id)
     }
+  })
+
+  test('Spin lays out clean drawings before photos once a slot has two of them, and photos with fewer', () => {
+    expect(piecesOverSpins([...photoTops, drawnOxford, drawnPolo])).toEqual(new Set([drawnOxford.id, drawnPolo.id]))
+    // One drawing alone would never let the top change, so every top still takes its turn.
+    expect(piecesOverSpins([...photoTops, drawnOxford]).size).toBe(4)
   })
 
   test('the same day and Spin always lay out the same outfit', () => {

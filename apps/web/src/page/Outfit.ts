@@ -25,6 +25,15 @@ const shuffled = (pieces: ReadonlyArray<Piece>, seed: string): ReadonlyArray<Pie
 const ofCategory = (pieces: ReadonlyArray<Piece>, category: Category) =>
   Array.filter(pieces, (piece) => piece.category === category && piece.status === 'ready')
 
+const showsDrawing = (piece: Piece) => piece.picture?.shows === 'clean'
+
+/** A slot's candidates with the clean drawings first, each kind in the seed's order, so Spin keeps photos off the
+ * table. Only once there are two drawings to choose between: with one, the slot would never change. */
+const drawingsFirst = (candidates: ReadonlyArray<Piece>): ReadonlyArray<Piece> => {
+  const drawings = Array.filter(candidates, showsDrawing)
+  return drawings.length < 2 ? candidates : [...drawings, ...Array.filter(candidates, (piece) => !showsDrawing(piece))]
+}
+
 /** The first piece that keeps the outfit to one loud colour, else the quietest one. */
 const pick = (candidates: ReadonlyArray<Piece>, chosen: ReadonlyArray<Piece>): ReadonlyArray<Piece> => {
   const loudSoFar = chosen.reduce((sum, piece) => sum + loudness(piece), 0)
@@ -57,7 +66,7 @@ export const placedByCategory = (pieces: ReadonlyArray<Piece>): ReadonlyArray<Pl
 
 /** The outfit for a seed (the day and how many times Spin was pressed). */
 export const outfitFor = (pieces: ReadonlyArray<Piece>, seed: string): ReadonlyArray<Placed> => {
-  const order = (category: Category) => shuffled(ofCategory(pieces, category), `${seed}:${category}`)
+  const order = (category: Category) => drawingsFirst(shuffled(ofCategory(pieces, category), `${seed}:${category}`))
   const dresses = order('dress')
   const tops = order('top')
   const bottoms = order('bottom')
