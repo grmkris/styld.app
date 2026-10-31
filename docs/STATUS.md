@@ -426,8 +426,10 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   scene test.
 - **Next:**
   - M6: the web's Add from a link (a capture in the tray, through the capture session's admit step) is next.
-  - Signed-out visitors see Save, Save to wishlist and Report on public pages, and a tap fails with "That didn't
-    go through"; they should be asked to sign in instead, as Follow does.
+- **Signed out on public pages:** a visitor without a session sees Sign in to save (or Sign in to follow, on a
+  profile) where Save, Save to wishlist, Follow and Report would be, instead of actions that fail. Signed in, a
+  profile shows no Sign in while the visitor's standing is read, and none on one's own. Evidence: the visitor
+  scenes, signed in and out.
 - **M6c, the wishlist on the website:**
   - Wishlist is the Wardrobe's third tab (`/wardrobe/wishlist`), beside Pieces and Looks. Each wish shows the piece
     and whose it is while it stays public, else its name and "No longer shown". Remove takes it off at once.

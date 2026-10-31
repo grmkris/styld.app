@@ -1946,7 +1946,8 @@
     "wishlistEmptyHint": "Pieces you want one like land here: open someone's public piece and save it to your wishlist.",
     "removeWish": "Remove",
     "wishGone": "No longer shown",
-    "wishlistFailed": "Your wishlist could not be loaded"
+    "wishlistFailed": "Your wishlist could not be loaded",
+    "signInToSave": "Sign in to save"
   },
   "profile": {
     "public": {

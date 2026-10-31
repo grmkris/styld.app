@@ -105,12 +105,10 @@ const saveAndReport = (model: Model, report: string, locale: Locale, h: HtmlBuil
   button(report, Message.ClickedReport(), h),
 ]
 
-/** Follow and block a person, or ask to sign in first. */
+/** Follow and block a person, once it is known how the visitor stands with them (never on one's own profile). */
 const personActions = (model: Model, handle: string, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>
   Standing.match(model.standing, {
-    Unknown: () => [
-      h.a([h.Href(loginRouter({})), ...styled(h, styles.signIn())], [format(locale, 'people.signInToFollow', {})]),
-    ],
+    Unknown: () => [],
     Known: ({ relation }) => [
       relation.blocked
         ? h.empty
@@ -154,26 +152,36 @@ const blockConfirm = (handle: string, locale: Locale, h: HtmlBuilder<Message>): 
     ],
   )
 
+const subjectActions = (model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>
+  Subject.match(model.subject, {
+    Person: ({ handle }) => personActions(model, handle, locale, h),
+    Piece: () => [
+      model.wished
+        ? h.a(
+            [h.Href(wishlistRouter({})), ...styled(h, secondaryAction())],
+            [format(locale, 'catalog.savedToWishlist', {})],
+          )
+        : button(format(locale, 'catalog.saveToWishlist', {}), Message.ClickedWish(), h),
+      ...saveAndReport(model, format(locale, 'safety.report.piece', {}), locale, h),
+    ],
+    Board: () => saveAndReport(model, format(locale, 'safety.report.board', {}), locale, h),
+    Look: () => saveAndReport(model, format(locale, 'safety.report.look', {}), locale, h),
+  })
+
+/** Following, saving and reporting need an account: someone signed out is asked to sign in instead. */
+const signIn = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.a(
+    [h.Href(loginRouter({})), ...styled(h, styles.signIn())],
+    [format(locale, Subject.guards.Person(model.subject) ? 'people.signInToFollow' : 'people.signInToSave', {})],
+  )
+
+/** What a visitor page passes in: its locale, and whether someone is signed in. */
+export type Inputs = { readonly locale: Locale; readonly signedIn: boolean }
+
 /** What the visitor can do here: follow, save, block or report. */
-export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
+export const view = Submodel.defineView<Model, Message, Inputs>((model, { locale, signedIn }, h) =>
   h.div(styled(h, styles.people()), [
-    h.div(
-      styled(h, styles.actions()),
-      Subject.match(model.subject, {
-        Person: ({ handle }) => personActions(model, handle, locale, h),
-        Piece: () => [
-          model.wished
-            ? h.a(
-                [h.Href(wishlistRouter({})), ...styled(h, secondaryAction())],
-                [format(locale, 'catalog.savedToWishlist', {})],
-              )
-            : button(format(locale, 'catalog.saveToWishlist', {}), Message.ClickedWish(), h),
-          ...saveAndReport(model, format(locale, 'safety.report.piece', {}), locale, h),
-        ],
-        Board: () => saveAndReport(model, format(locale, 'safety.report.board', {}), locale, h),
-        Look: () => saveAndReport(model, format(locale, 'safety.report.look', {}), locale, h),
-      }),
-    ),
+    h.div(styled(h, styles.actions()), signedIn ? subjectActions(model, locale, h) : [signIn(model, locale, h)]),
     Work.guards.Sending(model.work) ? h.p([h.Role('status')], [loader(h)]) : h.empty,
     Work.guards.Failed(model.work)
       ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'people.actionFailed', {})])

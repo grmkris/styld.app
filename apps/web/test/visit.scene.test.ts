@@ -4,7 +4,7 @@ import { Schema } from 'effect'
 import { click, Command, expect, given, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
-import { init, Message, Session, update } from '../src/App.ts'
+import { init, Message, type Model, Session, update } from '../src/App.ts'
 import { BoardState } from '../src/page/Board/Model.ts'
 import { Shown as LookShown } from '../src/page/Look.ts'
 import { Message as PeopleMessage } from '../src/page/People.ts'
@@ -56,6 +56,8 @@ const opened = (pathname: string) =>
 const visiting = (pathname: string, shown: Shown) =>
   modifyFields(opened(pathname), { visit: (visit) => modifyFields(visit, { shown: () => shown }) })
 const by = { handle: 'nika.kovac', name: 'Nika Kovač', tone: 'clay' }
+const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
+const signedIn = (model: Model): Model => ({ ...model, session: Session.SignedIn({ claims }) })
 
 describe('a public profile', () => {
   test('shows the person and their public boards, looks and pieces, signed out', () => {
@@ -99,6 +101,9 @@ describe('a public profile', () => {
       expect(role('heading', { name: 'Navy knit' })).toExist(),
       expect(role('img', { name: 'Navy knit' })).toHaveAttr('src', `/cdn/public/pieces/${knit.id}/full`),
       expect(role('link', { name: /By Nika Kovač/ })).toHaveAttr('href', '/@nika.kovac'),
+      expect(role('link', { name: 'Sign in to save' })).toHaveAttr('href', '/login'),
+      expect(role('button', { name: 'Save to wishlist' })).toBeAbsent(),
+      expect(role('button', { name: 'Report piece' })).toBeAbsent(),
     )
   })
 
@@ -111,7 +116,7 @@ describe('a public profile', () => {
     scene(
       { update, view },
       given(
-        modifyFields(opened(`/boards/${board.id}`), {
+        modifyFields(signedIn(opened(`/boards/${board.id}`)), {
           board: (page) => modifyFields(page, { board: () => BoardState.Visiting({ board }) }),
         }),
       ),
@@ -135,7 +140,7 @@ describe('a public profile', () => {
     scene(
       { update, view },
       given(
-        modifyFields(opened(`/looks/${page.look.id}`), {
+        modifyFields(signedIn(opened(`/looks/${page.look.id}`)), {
           look: (look) => modifyFields(look, { shown: () => LookShown.Visiting({ page }) }),
         }),
       ),
@@ -149,7 +154,7 @@ describe('a public profile', () => {
 
   test('offers a signed-in visitor Follow, Report and Block, and a piece Save', () => {
     const relation = Schema.decodeUnknownSync(Relation)({ handle: 'nika.kovac', following: false, blocked: false })
-    const shown = visiting('/@nika.kovac', Shown.Person({ profile: nika }))
+    const shown = signedIn(visiting('/@nika.kovac', Shown.Person({ profile: nika })))
     const known = update(
       shown,
       Message.GotVisitMessage({

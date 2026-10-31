@@ -1946,7 +1946,8 @@
     "wishlistEmptyHint": "Kosi, kakršne si želiš, pristanejo tukaj: odpri javni kos nekoga in ga shrani na seznam želja.",
     "removeWish": "Odstrani",
     "wishGone": "Ni več prikazan",
-    "wishlistFailed": "Tvojega seznama želja ni bilo mogoče naložiti"
+    "wishlistFailed": "Tvojega seznama želja ni bilo mogoče naložiti",
+    "signInToSave": "Prijavi se, da shraniš"
   },
   "profile": {
     "public": {

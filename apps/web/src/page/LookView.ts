@@ -71,7 +71,7 @@ const deletion = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Readon
 const visitingView = (
   model: Model,
   page: PublicLookPage,
-  locale: Locale,
+  { locale, signedIn }: PeopleView.Inputs,
   h: HtmlBuilder<Message>,
 ): ReadonlyArray<Html> => [
   h.h1([], [page.look.name]),
@@ -81,7 +81,7 @@ const visitingView = (
     slotId: 'look-people',
     model: model.people,
     view: PeopleView.view,
-    viewInputs: { locale },
+    viewInputs: { locale, signedIn },
     toParentMessage: (message) => Message.GotPeopleMessage({ message }),
   }),
   tileGrid(
@@ -91,7 +91,7 @@ const visitingView = (
 ]
 
 /** One look: its name and occasion, its pieces, and deleting it. */
-export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
+export const view = Submodel.defineView<Model, Message, PeopleView.Inputs>((model, { locale, signedIn }, h) =>
   h.main(
     [h.Id('main'), ...styled(h, styles.looksPage())],
     [
@@ -99,7 +99,7 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
       ...Shown.match(model.shown, {
         Loading: () => [h.p([h.Role('status')], [loader(h)])],
         NotFound: () => [h.h1([], [format(locale, 'looks.notFound', {})])],
-        Visiting: ({ page }) => visitingView(model, page, locale, h),
+        Visiting: ({ page }) => visitingView(model, page, { locale, signedIn }, h),
         Failed: () => [
           h.h1([], [format(locale, 'looks.title', {})]),
           couldNotLoad(format(locale, 'looks.loadFailed', {}), locale, h, Message.ClickedRetry()),

@@ -276,9 +276,9 @@ const siteStyle = (hasNavigation: boolean, isTab: boolean) => {
   return isTab ? cx(site(), tabPage()) : site()
 }
 
-/** Home is today's table for someone signed in, or on their way in with a session cookie; the landing page
- * otherwise. */
-const showsToday = (model: Model) =>
+/** Someone signed in, or on their way in with a session cookie: Home is their table rather than the landing page,
+ * and public pages offer them Follow, Save and Report rather than a way to sign in. */
+const hasSession = (model: Model) =>
   Session.match(model.session, {
     SignedIn: () => true,
     SigningOut: () => true,
@@ -290,7 +290,7 @@ const showsToday = (model: Model) =>
 const pageTitle = (model: Model) =>
   format(
     model.context.locale,
-    AppRoute.guards.Home(model.route) && showsToday(model) ? 'today.title' : titleKey(model.route),
+    AppRoute.guards.Home(model.route) && hasSession(model) ? 'today.title' : titleKey(model.route),
     {},
   )
 
@@ -353,7 +353,7 @@ const visitPage = (model: Model, h: HtmlBuilder<Message>): Html =>
     slotId: 'visit',
     model: model.visit,
     view: VisitView.view,
-    viewInputs: { locale: model.context.locale },
+    viewInputs: { locale: model.context.locale, signedIn: hasSession(model) },
     toParentMessage: (message) => Message.GotVisitMessage({ message }),
   })
 
@@ -371,7 +371,7 @@ const lookPage = (model: Model, h: HtmlBuilder<Message>): Html =>
     slotId: 'look',
     model: model.look,
     view: LookView.view,
-    viewInputs: { locale: model.context.locale },
+    viewInputs: { locale: model.context.locale, signedIn: hasSession(model) },
     toParentMessage: (message) => Message.GotLookMessage({ message }),
   })
 
@@ -387,7 +387,7 @@ const todayPage = (model: Model, h: HtmlBuilder<Message>): Html =>
   })
 
 const homePage = (model: Model, h: HtmlBuilder<Message>): Html =>
-  showsToday(model) ? todayPage(model, h) : landingView(model, h)
+  hasSession(model) ? todayPage(model, h) : landingView(model, h)
 
 const askPage = (model: Model, h: HtmlBuilder<Message>): Html =>
   h.submodel({
@@ -412,7 +412,7 @@ const boardPage = (model: Model, h: HtmlBuilder<Message>): Html =>
     slotId: 'board',
     model: model.board,
     view: BoardPageView.view,
-    viewInputs: { locale: model.context.locale },
+    viewInputs: { locale: model.context.locale, signedIn: hasSession(model) },
     toParentMessage: (message) => Message.GotBoardMessage({ message }),
   })
 

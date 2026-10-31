@@ -411,12 +411,12 @@ const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: 
   ])
 
 /** A board's page: its collage as a card that opens the editor, then its pins, newest first. */
-export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) => {
+export const view = Submodel.defineView<Model, Message, PeopleView.Inputs>((model, { locale, signedIn }, h) => {
   const actions = h.submodel({
     slotId: 'board-people',
     model: model.people,
     view: PeopleView.view,
-    viewInputs: { locale },
+    viewInputs: { locale, signedIn },
     toParentMessage: (message) => Message.GotPeopleMessage({ message }),
   })
   const visiting = (board: PublicBoard) => visitingView(board, actions, locale, h)
