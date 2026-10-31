@@ -22,10 +22,12 @@ export const tile = style({
   minInlineSize: '0',
   color: 'ink',
   textDecorationLine: 'none',
-  transitionProperty: 'transform',
-  transitionDuration: '140ms',
+  // It presses, and lifts under the pointer as a piece's tile does.
+  transitionProperty: 'transform, translate',
+  transitionDuration: '140ms, 180ms',
   transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
   ':active': { transform: 'scale(0.98)' },
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { translate: '0 -2px' } },
   // At a tile's size the table's 28px corner cuts into what lies near it; the list's paper takes the panel corner.
   '& [data-paper]': { borderRadius: 'panel' },
 })

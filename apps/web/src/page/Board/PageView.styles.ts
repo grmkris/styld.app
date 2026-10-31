@@ -27,7 +27,11 @@ export const collage = style({
   color: 'ink',
   textDecorationLine: 'none',
   boxShadow: 'lift1',
+  transitionProperty: 'transform, translate',
+  transitionDuration: '140ms, 180ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
   ':active': { transform: 'scale(0.98)' },
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { translate: '0 -2px' } },
 })
 export const collageLabel = style({ paddingInline: '4px', fontSize: '14px', fontWeight: 600 })
 /** With nothing on the table yet: a line and Make a collage, on stock after the pins. */
@@ -68,7 +72,11 @@ export const pinLink = style({
   gap: '4px',
   color: 'ink',
   textDecorationLine: 'none',
+  transitionProperty: 'transform, translate',
+  transitionDuration: '140ms, 180ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
   ':active': { transform: 'scale(0.98)' },
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { translate: '0 -2px' } },
 })
 export const pinFrame = style({
   display: 'grid',
