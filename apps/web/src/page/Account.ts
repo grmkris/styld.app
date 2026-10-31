@@ -37,6 +37,7 @@ export const Message = defineMessageUnion({
   FailedCopyServerUrl: {},
   SucceededReadProfile: { profile: Profile },
   FailedReadProfile: {},
+  ClickedRetryProfile: {},
 })
 export type Message = typeof Message.Type
 
@@ -106,4 +107,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       ProfileState.guards.Loaded(model.profile)
         ? { model }
         : { model: modifyFields(model, { profile: () => ProfileState.Failed() }) },
+    ClickedRetryProfile: () => ({
+      model: modifyFields(model, { profile: () => ProfileState.Loading() }),
+      commands: [ReadProfile()],
+    }),
   })

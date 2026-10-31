@@ -1530,6 +1530,7 @@ export interface MessageArgumentsByKey<T = string> {
   'privacyConnected.revoke': Readonly<Record<string, never>>
   'privacyConnected.scopes': Readonly<Record<string, never>>
   'privacyConnected.title': Readonly<Record<string, never>>
+  'profile.card.loadFailed': Readonly<Record<string, never>>
   'profile.card.private': { readonly username: string | number }
   'profile.card.public': { readonly username: string | number }
   'profile.card.setUp': Readonly<Record<string, never>>
@@ -2740,4 +2741,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '747882e98872185a92d8e2b6dc1f180eed77a8c31e797e2e615c9a3796f72d45'
+export const catalogVersion = '535bbafc502c32bc89ae75deffbba127957f2a6272477fc69bfa2afee0c62dbb'

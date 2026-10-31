@@ -2015,7 +2015,8 @@
       "setUp": "Choose a username to get your own page",
       "private": "@{username}, only you can see it",
       "public": "@{username}, public",
-      "viewPage": "View your page"
+      "viewPage": "View your page",
+      "loadFailed": "Your profile didn't load."
     },
     "editor": {
       "title": "Public profile",

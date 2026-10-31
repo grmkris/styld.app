@@ -1889,6 +1889,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'profile.card.private': '@{username}, vidiš ga samo ti',
   'profile.card.public': '@{username}, javen',
   'profile.card.viewPage': 'Poglej svojo stran',
+  'profile.card.loadFailed': 'Profil se ni naložil.',
   'profile.editor.title': 'Javni profil',
   'profile.editor.statusPublic': 'Javen',
   'profile.editor.statusPrivate': 'Zaseben',

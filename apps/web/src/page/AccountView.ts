@@ -5,7 +5,7 @@ import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
-import { primaryAction, secondaryAction } from '../Actions.styles.ts'
+import { linkAction, primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { Message as AppMessage, type Model as AppModel, Session } from '../App.ts'
 import { loader } from '../Icon.ts'
 import { confirmActions } from '../ConfirmActions.ts'
@@ -157,7 +157,9 @@ const profileSection = (model: Model, locale: Locale, h: HtmlBuilder<Message>): 
     h.h2(styled(h, sectionTitle()), [format(locale, 'profile.card.title', {})]),
     ...ProfileState.match(model.profile, {
       Loading: () => [h.span([h.AriaHidden(true), ...styled(h, cx(line(), statusSkeleton()))])],
-      Failed: () => [],
+      Failed: () => [
+        h.p([h.Role('alert'), ...styled(h, sectionText())], [format(locale, 'profile.card.loadFailed', {})]),
+      ],
       Loaded: ({ profile }) =>
         profile.handle === null
           ? [h.p(styled(h, sectionText()), [format(locale, 'profile.card.setUp', {})])]
@@ -171,6 +173,16 @@ const profileSection = (model: Model, locale: Locale, h: HtmlBuilder<Message>): 
             ],
     }),
     h.div(styled(h, rowActions()), [
+      ProfileState.guards.Failed(model.profile)
+        ? actionButton(
+            {
+              label: format(locale, 'common.tryAgain', {}),
+              style: linkAction(),
+              onClick: Message.ClickedRetryProfile(),
+            },
+            h,
+          )
+        : h.empty,
       ProfileState.guards.Loaded(model.profile) &&
       model.profile.profile.published &&
       model.profile.profile.handle !== null

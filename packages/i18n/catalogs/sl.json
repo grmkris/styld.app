@@ -2015,7 +2015,8 @@
       "setUp": "Izberi uporabniško ime in dobi svojo stran",
       "private": "@{username}, vidiš ga samo ti",
       "public": "@{username}, javen",
-      "viewPage": "Poglej svojo stran"
+      "viewPage": "Poglej svojo stran",
+      "loadFailed": "Profil se ni naložil."
     },
     "editor": {
       "title": "Javni profil",
