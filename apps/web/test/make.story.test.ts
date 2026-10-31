@@ -2,6 +2,7 @@ import { Dialog } from '@foldkit/ui'
 import { Generation } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
+import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 import { AskForPictures, init, Job, Message, PollGeneration, update } from '../src/page/Board/Make.ts'
 
@@ -77,6 +78,24 @@ describe('making pictures for a board', () => {
         expect(job).toEqual(Job.Failed({ problem: 'dailyLimit' }))
         expect(operationId).toEqual(Option.none())
       }),
+    )
+  })
+
+  test('another kind starts a new operation, and polls that keep failing stop with a problem', () => {
+    const asking = modifyFields(init(boardId), {
+      operationId: () => Option.some('op-make-1'),
+      job: () => Job.Running({ generation: generation('drawing', ['waiting']) }),
+    })
+    story(
+      update,
+      given(asking),
+      message(Message.ChoseKind({ kind: 'picture' })),
+      model(({ operationId }) => expect(operationId).toEqual(Option.none())),
+      message(Message.FailedPoll({ generationId })),
+      ...Array.from({ length: 4 }, () =>
+        Command.resolve(PollGeneration({ generationId }), Message.FailedPoll({ generationId })),
+      ),
+      model(({ job }) => expect(job).toEqual(Job.Failed({ problem: 'failed' }))),
     )
   })
 

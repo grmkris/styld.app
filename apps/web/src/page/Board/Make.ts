@@ -34,6 +34,8 @@ export const Model = Schema.Struct({
   /** Drawn once per ask and kept for its retries, so a lost answer never makes a second job. */
   operationId: Schema.Option(Schema.String),
   job: Job,
+  /** Polls in a row that did not get through; after a few the page stops following and says so. */
+  missedPolls: Schema.Number,
 })
 export type Model = typeof Model.Type
 
@@ -44,6 +46,7 @@ export const init = (boardId: string): Model => ({
   words: '',
   operationId: Option.none(),
   job: Job.Idle(),
+  missedPolls: 0,
 })
 
 // MESSAGE
@@ -112,6 +115,9 @@ export const AskForPictures = Command.define('AskForPictures', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedAsk({ problem: 'failed', operationId: Option.none() }))),
 })
 
+/** Polls in a row that may fail before the page stops following a job. */
+const mostMissedPolls = 5
+
 /** How long the page waits before asking how the pictures are going. */
 const pollDelay = Duration.millis(1500)
 
@@ -177,7 +183,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedMake: () =>
       openSheet(Job.guards.Running(model.job) ? model : modifyFields(model, { job: () => Job.Idle() })),
     GotSheetMessage: ({ message: sheetMessage }) => foldSheet(model, sheetMessage),
-    ChoseKind: ({ kind }) => ({ model: modifyFields(model, { kind: () => kind }) }),
+    // Another kind is another ask: it starts under a new operation.
+    ChoseKind: ({ kind }) => ({ model: modifyFields(model, { kind: () => kind, operationId: () => Option.none() }) }),
     ChangedWords: ({ words }) => ({
       model: modifyFields(model, { words: () => words, operationId: () => Option.none() }),
     }),
@@ -190,8 +197,14 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     FailedAsk: ({ problem, operationId }) => ({
       model: modifyFields(model, { job: () => Job.Failed({ problem }), operationId: () => operationId }),
     }),
-    SucceededPoll: ({ generation }) => polled(model, generation),
-    // A poll that did not get through asks again; the job goes on on the server either way.
-    FailedPoll: ({ generationId }) => ({ model, commands: [PollGeneration({ generationId })] }),
+    SucceededPoll: ({ generation }) => polled(modifyFields(model, { missedPolls: () => 0 }), generation),
+    // A poll that did not get through asks again, a few times; the job goes on on the server either way.
+    FailedPoll: ({ generationId }) =>
+      model.missedPolls + 1 >= mostMissedPolls
+        ? { model: modifyFields(model, { job: () => Job.Failed({ problem: 'failed' }), missedPolls: () => 0 }) }
+        : {
+            model: modifyFields(model, { missedPolls: (missed) => missed + 1 }),
+            commands: [PollGeneration({ generationId })],
+          },
     ClickedDismiss: () => ({ model: modifyFields(model, { job: () => Job.Idle() }) }),
   })
