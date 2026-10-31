@@ -10,13 +10,19 @@ export const handleRow = style({ display: 'flex', alignItems: 'center', gap: '6p
 /** The avatar colour: a legend like a field's label over a row of tone swatches. */
 export const tones = style({ display: 'grid', gap: '6px', margin: '0', padding: '0', borderWidth: '0' })
 export const legend = style({ padding: '0', fontSize: '14px', fontWeight: 600 })
-export const toneRow = style({ display: 'flex', flexWrap: 'wrap', gap: '4px' })
+/** All eight swatches on one row: a phone's column is narrower than eight 44px targets with gaps. */
+export const toneRow = style({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(8, minmax(0, 1fr))',
+  maxInlineSize: '384px',
+})
 /** A 44px target around a 36px swatch; the chosen one wears an ink ring, and keyboard focus the focus ring. */
 export const tone = style({
   position: 'relative',
   display: 'grid',
   placeItems: 'center',
-  inlineSize: '44px',
+  inlineSize: '100%',
+  maxInlineSize: '44px',
   blockSize: '44px',
   cursor: 'pointer',
   '&:has(:checked) > span': { outlineWidth: '2px', outlineStyle: 'solid', outlineColor: 'ink', outlineOffset: '3px' },
