@@ -432,7 +432,7 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
     await page.getByRole('link', { name: /^Weekend away/ }).click()
     // Four pins: the piece taken off was saved back from its own page.
     await page.getByText('4 kartice').waitFor({ state: 'visible' })
-    await page.getByRole('link', { name: 'Odpri kolaž Weekend away' }).click()
+    await page.getByRole('link', { name: 'Uredi kolaž' }).click()
     await page.getByRole('button', { name: 'Besedilo: Weekend in Piran' }).waitFor({ state: 'visible' })
     await page.getByRole('button', { name: 'Shrani kot videz' }).waitFor({ state: 'visible' })
     await shoot(page, 'desktop-board-sl')

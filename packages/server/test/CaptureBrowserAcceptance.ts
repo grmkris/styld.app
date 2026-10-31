@@ -70,8 +70,9 @@ export const verifyCaptureJourney = async (browser: Browser, origin: string, fix
     const add = page.getByRole('button', { name: 'Add 2 to my wardrobe' })
     await add.click()
     await page.waitForURL(`${origin}/wardrobe`, { timeout: 30000 })
-    await page.getByRole('link', { name: 'Top', exact: true }).waitFor({ state: 'visible' })
-    await page.getByRole('link', { name: 'Dress', exact: true }).waitFor({ state: 'visible' })
+    // A tile is named by its picture and its caption, both what one of its kind is.
+    await page.getByRole('link', { name: /^Top\b/ }).waitFor({ state: 'visible' })
+    await page.getByRole('link', { name: /^Dress\b/ }).waitFor({ state: 'visible' })
     expect(await page.locator('a[href^="/wardrobe/pc_"]').count()).toBe(2)
     // The dropped piece left the tray with the rest.
     await page.goto(`${origin}/wardrobe/review`, { waitUntil: 'networkidle' })
