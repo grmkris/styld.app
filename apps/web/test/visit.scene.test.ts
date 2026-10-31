@@ -474,8 +474,13 @@ describe('a public profile', () => {
     )
     scene(
       { update, view },
+      // Without a collage anywhere, a board's pins on its paper.
       given(visiting('/', Shown.Explore({ explore: exploreOf([coats], []) }))),
-      inside(hero, expect(selector('[data-skeleton]')).not.toExist(), expect(selector('[data-paper]')).not.toExist()),
+      inside(
+        hero,
+        expect(selector('[data-skeleton]')).not.toExist(),
+        expect(selector('[data-paper]')).toHaveAttr('data-paper', 'paper'),
+      ),
     )
   })
 

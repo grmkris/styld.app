@@ -98,15 +98,19 @@ const coverSource = (pin: PublicPin): CoverPicture => ({
   ),
 })
 
+/** A public board's face: its collage, else its newest pins on its paper. */
+export const publicFace = <Message>(board: PublicBoardSummary, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  boardFace(
+    { items: board.items, paper: board.paper, cover: board.cover.map(coverSource), source: fromPublic },
+    locale,
+    h,
+  )
+
 const card = <Message>(board: PublicBoardSummary, credit: Html, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.a(
     [h.Href(boardRouter({ boardId: board.id })), ...styled(h, styles.boardCard())],
     [
-      boardFace(
-        { items: board.items, paper: board.paper, cover: board.cover.map(coverSource), source: fromPublic },
-        locale,
-        h,
-      ),
+      publicFace(board, locale, h),
       h.span(styled(h, styles.boardName()), [board.name]),
       h.span(styled(h, styles.meta()), [format(locale, 'saveToBoard.pins', { count: board.pinCount })]),
       credit,

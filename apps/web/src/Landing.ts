@@ -6,9 +6,9 @@ import { primaryAction, secondaryAction } from './Actions.styles.ts'
 import type { Model } from './App.ts'
 import { Message } from './Message.ts'
 import * as styles from './Landing.styles.ts'
-import { fromPublic, stillTable } from './page/Board/Table.ts'
+
 import { boards as exploreBoards } from './page/ExploreView.styles.ts'
-import { creditedBoardCard } from './page/PublicTiles.ts'
+import { creditedBoardCard, publicFace } from './page/PublicTiles.ts'
 import { block, headingLine, line } from './Skeleton.styles.ts'
 import { visuallyHidden } from './VisuallyHidden.styles.ts'
 import { cx } from 'zyzz'
@@ -67,7 +67,7 @@ const inspirationBoards = (model: Model, locale: Locale, h: HtmlBuilder<Message>
           styled(h, exploreBoards()),
           boards.map(({ board, by }) => h.keyed('li')(board.id, [], [creditedBoardCard(board, by, locale, h)])),
         ),
-        h.a([h.Href(exploreRouter({}))], [format(locale, 'explore.title', {})]),
+        h.a([h.Href(exploreRouter({})), ...styled(h, styles.seeAll())], [format(locale, 'landing.seeAll', {})]),
       ])
 }
 
@@ -81,25 +81,25 @@ const inspirationTitle = (model: Model, locale: Locale, h: HtmlBuilder<Message>)
   return h.h2([], [format(locale, title, {})])
 }
 
-/** Beside the words on a desktop, the first public board with something on its table, as it lies. It draws once the
- * boards arrive (a table's placement is set in the browser), in outline until then, and not at all without one. Its
- * clothes are a picture of what Styld is for; the boards below are the way into them. */
-const heroBoard = (shown: Visit.Shown, h: HtmlBuilder<Message>): Html => {
+/** Beside the words on a desktop, the first public board with something to show: its collage as it lies, else its
+ * pins on its paper. It draws once the boards arrive (a table's placement is set in the browser), in outline until
+ * then, and not at all without one. Its clothes are a picture of what Styld is for; the boards below are the way in. */
+const heroBoard = (shown: Visit.Shown, locale: Locale, h: HtmlBuilder<Message>): Html => {
   if (Visit.Shown.guards.Loading(shown))
     return h.div(styled(h, styles.heroBoard()), [
       h.span([h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, cx(block(), styles.heroSkeleton()))]),
     ])
   const boards = Visit.Shown.guards.Explore(shown) ? [...shown.explore.edits, ...shown.explore.newest] : []
-  return Option.match(
+  // A collage is the better picture; without one anywhere, a board's pins on its paper.
+  const pick = Option.orElse(
     Array.findFirst(boards, ({ board }) => Array.isReadonlyArrayNonEmpty(board.items)),
-    {
-      onNone: () => h.empty,
-      onSome: ({ board }) =>
-        h.div(styled(h, styles.heroBoard()), [
-          stillTable(board.items, board.paper, [h.AriaHidden(true)], h, fromPublic),
-        ]),
-    },
+    () => Array.findFirst(boards, ({ board }) => Array.isReadonlyArrayNonEmpty(board.cover)),
   )
+  return Option.match(pick, {
+    onNone: () => h.empty,
+    onSome: ({ board }) =>
+      h.div([h.AriaHidden(true), ...styled(h, styles.heroBoard())], [publicFace(board, locale, h)]),
+  })
 }
 
 /** The landing: what Styld is, a way in, and the inspiration below. */
@@ -121,7 +121,7 @@ export const landingView = (model: Model, h: HtmlBuilder<Message>): Html => {
               h.a([h.Href(browseAnchor), ...styled(h, secondaryAction())], [format(locale, 'landing.browse', {})]),
             ]),
           ]),
-          heroBoard(model.visit.shown, h),
+          heroBoard(model.visit.shown, locale, h),
         ],
       ),
       h.section(

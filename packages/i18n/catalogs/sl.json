@@ -952,7 +952,8 @@
     "contact": "Kontakt",
     "privacy": "Zasebnost",
     "terms": "Pogoji",
-    "feedFailed": "Zbirke se niso naložile."
+    "feedFailed": "Zbirke se niso naložile.",
+    "seeAll": "Poglej vse zbirke v Razišči"
   },
   "studio": {
     "inspiration": {

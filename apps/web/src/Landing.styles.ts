@@ -1,5 +1,13 @@
 import { style } from './zyzz.config.ts'
 
+/** The way on from the landing's boards to all of them: a text link with a 44px target that says where it goes. */
+export const seeAll = style({
+  display: 'inline-flex',
+  alignItems: 'center',
+  minBlockSize: '44px',
+  justifySelf: 'start',
+})
+
 // The landing's hero in Landing.ts, around the statement View.styles.ts draws: on a desktop the words take the left
 // and a public board's table the right, so clothes show on the first screen.
 

@@ -952,7 +952,8 @@
     "contact": "Contact",
     "privacy": "Privacy",
     "terms": "Terms",
-    "feedFailed": "The boards didn't load."
+    "feedFailed": "The boards didn't load.",
+    "seeAll": "See all boards in Explore"
   },
   "studio": {
     "inspiration": {

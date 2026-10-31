@@ -899,6 +899,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'landing.privacy': 'Zasebnost',
   'landing.terms': 'Pogoji',
   'landing.feedFailed': 'Zbirke se niso naložile.',
+  'landing.seeAll': 'Poglej vse zbirke v Razišči',
   'studio.inspiration.title': 'Navdih',
   'studio.inspiration.description':
     'Razišči svojo omaro z do 20 videzi. Pravi kosi, brez ustvarjenih fotografij. Pripni priljubljene videze in jih shrani kot outfite; odstranitev kartice ne izbriše outfita.',

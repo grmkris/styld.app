@@ -889,6 +889,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'landing.privacy': 'Privacy',
   'landing.terms': 'Terms',
   'landing.feedFailed': "The boards didn't load.",
+  'landing.seeAll': 'See all boards in Explore',
   'studio.inspiration.title': 'Inspiration',
   'studio.inspiration.description':
     'Explore your closet in up to 20 looks. Real garments, no generated photos. Pin favorites to save them as outfits; removing a card leaves the outfit saved.',

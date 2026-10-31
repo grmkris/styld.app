@@ -541,6 +541,7 @@ export interface MessageArgumentsByKey<T = string> {
   'landing.loadingMore': Readonly<Record<string, never>>
   'landing.privacy': Readonly<Record<string, never>>
   'landing.retry': Readonly<Record<string, never>>
+  'landing.seeAll': Readonly<Record<string, never>>
   'landing.shops': Readonly<Record<string, never>>
   'landing.signIn': Readonly<Record<string, never>>
   'landing.start': Readonly<Record<string, never>>
@@ -1931,4 +1932,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'ec140504ff88df045bde6e347a8e01fb3437d66d0dc809f18d3e21c4e4cbc2ed'
+export const catalogVersion = '6e6e197cc84d27965402d628cbd72ad5cedcb9d2c578bb0c10b368fa8bcf5567'
