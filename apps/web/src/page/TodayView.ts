@@ -201,24 +201,35 @@ const clamp = (top: number) => Math.min(Math.max(top, 0), 625)
 /** How far down a board's 4:5 table its 16:10 window on Home starts, as a share of the table's height (0 to a half),
  * so the window centres on what lies there. A table is 1250 units tall and the window 625.
  * @internal Exported for its tests. */
-export const cropFrom = (items: ReadonlyArray<BoardItem>): number =>
+export const cropFrom = (items: ReadonlyArray<BoardItem>): number => windowTop(items) / 1250
+
+/** Whether an item lies whole inside the 625-unit window starting at `top`. */
+const inWindow = (top: number) => (item: BoardItem) =>
+  item.y - item.size / 2 >= top && item.y + item.size / 2 <= top + 625
+
+/** The window's top in table units: the one that holds the most items whole, so no piece shows as a sliver; of those,
+ * the nearest the middle of what lies there. */
+const windowTop = (items: ReadonlyArray<BoardItem>): number =>
   Array.match(items, {
-    onEmpty: () => 0.25,
+    onEmpty: () => 312.5,
     onNonEmpty: (some) => {
       const upper = Math.min(...some.map((item) => item.y - item.size / 2))
       const lower = Math.max(...some.map((item) => item.y + item.size / 2))
       const centred = clamp((upper + lower) / 2 - 312.5)
-      // The window that holds the most items whole, so no piece shows as a sliver; of those, the nearest the middle.
-      const whole = (top: number) =>
-        some.filter((item) => item.y - item.size / 2 >= top && item.y + item.size / 2 <= top + 625).length
+      const whole = (top: number) => some.filter(inWindow(top)).length
       const candidates = [centred, 0, 625, ...some.map((item) => clamp(item.y - item.size / 2))]
-      const best = candidates.reduce((chosen, top) => {
+      return candidates.reduce((chosen, top) => {
         const gain = whole(top) - whole(chosen)
         return gain > 0 || (gain === 0 && Math.abs(top - centred) < Math.abs(chosen - centred)) ? top : chosen
       })
-      return best / 1250
     },
   })
+
+/** What the window draws: the items it holds whole, so none is cut at its edges; all of them if none fits whole. */
+const inView = (items: ReadonlyArray<BoardItem>) => {
+  const whole = items.filter(inWindow(windowTop(items)))
+  return whole.length === 0 ? items : whole
+}
 
 /** One way to pick up: what it is, then its action at the card's foot, which the title describes. */
 const pickUpCard = (
@@ -248,7 +259,7 @@ const boardCard = (board: BoardSummary, locale: Locale, h: HtmlBuilder<Message>)
     { href: boardRouter({ boardId: board.id }), label: format(locale, 'today.keepGoing', {}) },
     h.div(
       [h.Style({ '--crop': String(cropFrom(board.items)) }), ...styled(h, styles.boardCrop())],
-      [stillTable(board.items, board.paper, [], h)],
+      [stillTable(inView(board.items), board.paper, [], h)],
     ),
     h,
   )

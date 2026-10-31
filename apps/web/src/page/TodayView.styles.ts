@@ -158,6 +158,10 @@ export const cardAction = style({
 export const trayThumbs = style({
   display: 'grid',
   gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+  // The ratio wins over the pictures' own heights, so the card lines up with the board's window beside it.
+  gridTemplateRows: 'minmax(0, 1fr)',
+  minBlockSize: '0',
+  overflow: 'hidden',
   gap: '6px',
   aspectRatio: '16 / 10',
   marginBlockEnd: '4px',
