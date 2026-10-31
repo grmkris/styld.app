@@ -1943,6 +1943,7 @@ export interface MessageArgumentsByKey<T = string> {
   'studio.boardNotFound': Readonly<Record<string, never>>
   'studio.boardSaved': Readonly<Record<string, never>>
   'studio.boardSettings': Readonly<Record<string, never>>
+  'studio.boardStatus': { readonly count: number; readonly visibility: string | number }
   'studio.boardsLoadFailed': Readonly<Record<string, never>>
   'studio.cancel': Readonly<Record<string, never>>
   'studio.captionCount': { readonly count: string | number; readonly max: string | number }
@@ -1991,7 +1992,7 @@ export interface MessageArgumentsByKey<T = string> {
   'studio.editCaption': Readonly<Record<string, never>>
   'studio.editCollage': Readonly<Record<string, never>>
   'studio.emptyBoard': Readonly<Record<string, never>>
-  'studio.emptyCollageHint': Readonly<Record<string, never>>
+  'studio.emptyCollageHint': { readonly count: number }
   'studio.emptyGridHint': Readonly<Record<string, never>>
   'studio.emptyGridTitle': Readonly<Record<string, never>>
   'studio.emptyHint': Readonly<Record<string, never>>
@@ -2038,7 +2039,6 @@ export interface MessageArgumentsByKey<T = string> {
   'studio.notNow': Readonly<Record<string, never>>
   'studio.notePlaceholder': Readonly<Record<string, never>>
   'studio.noteSaveFailed': Readonly<Record<string, never>>
-  'studio.openCollage': { readonly name: string | number }
   'studio.openDetail': Readonly<Record<string, never>>
   'studio.openLink': Readonly<Record<string, never>>
   'studio.openTheCollage': Readonly<Record<string, never>>
@@ -2745,4 +2745,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '339ab0b70fc0c472b4a9a79edc289d7a0d3cea36552034d359122a849f7463f5'
+export const catalogVersion = 'dba98f908d19567ecd22f3a2f472728bd523589dfd672a319cb3e69c2a4b0959'

@@ -1,7 +1,7 @@
 import { catalogVersion } from '@styld/i18n'
 import { Board } from '@styld/protocol'
 import { Schema } from 'effect'
-import { click, Command, expect, given, role, scene } from 'foldkit/scene'
+import { click, Command, expect, given, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { init, Session, update } from '../src/App.ts'
@@ -40,6 +40,17 @@ const page = modifyFields(
 )
 
 describe("a board's page", () => {
+  test('says where it stands under its name, and offers a collage after the pins while there is none', () => {
+    scene(
+      { update, view },
+      given(page),
+      expect(text('1 pin, only you can see it')).toExist(),
+      expect(text('Lay this pin out on a table.')).toExist(),
+      expect(role('link', { name: 'Make a collage' })).toHaveAttr('href', `/boards/${boardId}/collage`),
+      expect(role('link', { name: 'Edit collage' })).not.toExist(),
+    )
+  })
+
   test('asks before a pin comes off, since it leaves the collage too', () => {
     scene(
       { update, view },

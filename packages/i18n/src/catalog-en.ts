@@ -1738,7 +1738,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'studio.savedFromSomeone': 'Saved from another board',
   'studio.pinActions': 'Pin actions',
   'studio.editCollage': 'Edit collage',
-  'studio.openCollage': 'Open the collage {name}',
   'studio.visitShop': 'Visit shop',
   'studio.openLink': 'Open link',
   'studio.featurePin': 'Feature at the top',
@@ -1806,7 +1805,10 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'studio.savingCaption': 'Saving…',
   'studio.captionFailed': "Couldn't save the caption",
   'studio.startCollage': 'Start this collage',
-  'studio.emptyCollageHint': 'Nothing on it yet. Lay pieces, looks and notes out on its canvas.',
+  'studio.emptyCollageHint':
+    '{count, plural, =0 {Lay pieces, looks and notes out on a table.} one {Lay this pin out on a table.} other {Lay these # pins out on a table.}}',
+  'studio.boardStatus':
+    '{count, plural, one {# pin} other {# pins}}, {visibility, select, public {public on your profile} other {only you can see it}}',
   'modelPhotos.title': 'My models',
   'modelPhotos.description':
     "The photos of you that try-ons and AI look renders are built on. The default is used when you don't pick one.",

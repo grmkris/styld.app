@@ -1890,7 +1890,6 @@
     "savedFromSomeone": "Saved from another board",
     "pinActions": "Pin actions",
     "editCollage": "Edit collage",
-    "openCollage": "Open the collage {name}",
     "visitShop": "Visit shop",
     "openLink": "Open link",
     "featurePin": "Feature at the top",
@@ -1954,7 +1953,8 @@
     "savingCaption": "Saving…",
     "captionFailed": "Couldn't save the caption",
     "startCollage": "Start this collage",
-    "emptyCollageHint": "Nothing on it yet. Lay pieces, looks and notes out on its canvas."
+    "emptyCollageHint": "{count, plural, =0 {Lay pieces, looks and notes out on a table.} one {Lay this pin out on a table.} other {Lay these # pins out on a table.}}",
+    "boardStatus": "{count, plural, one {# pin} other {# pins}}, {visibility, select, public {public on your profile} other {only you can see it}}"
   },
   "modelPhotos": {
     "title": "My models",

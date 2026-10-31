@@ -14,6 +14,7 @@ import { styled } from '../../Styled.ts'
 import * as PeopleView from '../PeopleView.ts'
 import { publicToggle } from '../PublicToggle.ts'
 import { bottomSheet } from '../Sheet.ts'
+import { checkNotice } from '../CheckNotice.ts'
 import { Message } from './Message.ts'
 import { keepPinId, unpinId } from './PageCommands.ts'
 import { boardStateView } from './Unready.ts'
@@ -148,22 +149,27 @@ const pinView = (pin: Pin, asking: boolean, locale: Locale, h: HtmlBuilder<Messa
     ),
   )
 
-const collageView = (model: Model, name: string, paper: Paper, locale: Locale, h: HtmlBuilder<Message>): Html =>
+/** The collage as a card that opens the editor, named by its visible words. */
+const collageView = (model: Model, paper: Paper, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.a(
+    [h.Href(boardCollageRouter({ boardId: model.boardId })), ...styled(h, styles.collage())],
     [
-      h.Href(boardCollageRouter({ boardId: model.boardId })),
-      h.AriaLabel(format(locale, 'studio.openCollage', { name })),
-      ...styled(h, styles.collage()),
-    ],
-    [
-      model.items.length === 0
-        ? h.span(styled(h, styles.collageEmpty()), [format(locale, 'studio.emptyCollageHint', {})])
-        : stillTable(model.items, paper, [], h),
-      h.span(styled(h, styles.collageLabel()), [
-        format(locale, model.items.length === 0 ? 'studio.makeCollage' : 'studio.editCollage', {}),
-      ]),
+      stillTable(model.items, paper, [], h),
+      h.span(styled(h, styles.collageLabel()), [format(locale, 'studio.editCollage', {})]),
     ],
   )
+
+/** Nothing laid out yet: one line after the pins and the way into the editor, instead of a blank table above them. */
+const collageStartView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.div(styled(h, styles.collageStart()), [
+    h.p(styled(h, styles.collageStartText()), [
+      format(locale, 'studio.emptyCollageHint', { count: model.pins.length }),
+    ]),
+    h.a(
+      [h.Href(boardCollageRouter({ boardId: model.boardId })), ...styled(h, cx(secondaryAction(), smallAction()))],
+      [format(locale, 'studio.makeCollage', {})],
+    ),
+  ])
 
 const pinsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.section(
@@ -463,11 +469,16 @@ const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: 
     ]),
     h.div(styled(h, styles.head()), [
       h.h1([], [name]),
-      h.p(styled(h, styles.meta()), [format(locale, 'studio.pinCount', { count: model.pins.length })]),
+      // Where it stands, in one quiet line (DESIGN › Your public things), then the check's word on it.
+      h.p(styled(h, styles.meta()), [
+        format(locale, 'studio.boardStatus', { count: model.pins.length, visibility: model.visibility }),
+      ]),
+      model.visibility === 'public' ? checkNotice(Option.getOrNull(model.check), locale, h) : h.empty,
       makeSlot('board-make-status', MakeView.statusView, model, locale, h),
     ]),
-    collageView(model, name, paper, locale, h),
+    model.items.length === 0 ? h.empty : collageView(model, paper, locale, h),
     pinsView(model, locale, h),
+    model.items.length === 0 ? collageStartView(model, locale, h) : h.empty,
     model.settings.isOpen
       ? bottomSheet(
           {

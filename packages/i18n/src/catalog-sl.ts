@@ -1763,7 +1763,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'studio.savedFromSomeone': 'Shranjeno iz druge zbirke',
   'studio.pinActions': 'Možnosti kartice',
   'studio.editCollage': 'Uredi kolaž',
-  'studio.openCollage': 'Odpri kolaž {name}',
   'studio.visitShop': 'Obišči trgovino',
   'studio.openLink': 'Odpri povezavo',
   'studio.featurePin': 'Postavi na vrh',
@@ -1834,7 +1833,10 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'studio.savingCaption': 'Shranjevanje…',
   'studio.captionFailed': 'Opisa ni bilo mogoče shraniti',
   'studio.startCollage': 'Začni ta kolaž',
-  'studio.emptyCollageHint': 'Na njem še ni ničesar. Na njegovo platno razporedi kose, videze in zapiske.',
+  'studio.emptyCollageHint':
+    '{count, plural, =0 {Na mizo razporedi kose, videze in zapiske.} one {To kartico razporedi na mizo.} two {Ti dve kartici razporedi na mizo.} few {Te # kartice razporedi na mizo.} other {Teh # kartic razporedi na mizo.}}',
+  'studio.boardStatus':
+    '{count, plural, one {# kartica} two {# kartici} few {# kartice} other {# kartic}}, {visibility, select, public {javna na tvojem profilu} other {vidiš jo samo ti}}',
   'modelPhotos.title': 'Moji modeli',
   'modelPhotos.description':
     'Fotografije tebe, na katerih temeljijo pomerjanja in AI upodobitve videzov. Privzeta se uporabi, kadar je ne izbereš.',

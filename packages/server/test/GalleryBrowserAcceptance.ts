@@ -157,7 +157,7 @@ const openNewBoard = async (page: Page, origin: string) => {
   await page.getByText('Nothing pinned yet').waitFor({ state: 'visible' })
   expect(await page.getByRole('navigation', { name: 'Navigation' }).isVisible()).toBe(true)
   await expectNoSidewaysScroll(page)
-  await page.getByRole('link', { name: 'Open the collage Weekend' }).click()
+  await page.getByRole('link', { name: 'Make a collage' }).click()
   await page.waitForURL(/\/boards\/bd_[^/]+\/collage$/)
   await page.getByRole('heading', { name: 'Weekend' }).waitFor({ state: 'visible' })
 }
@@ -414,7 +414,7 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
     await page.getByRole('link', { name: 'Open Weekend away' }).click()
     await page.getByRole('heading', { name: 'Weekend away', level: 1 }).waitFor({ state: 'visible' })
     await shoot(page, 'desktop-board-page')
-    await page.getByRole('link', { name: 'Open the collage Weekend away' }).click()
+    await page.getByRole('link', { name: 'Edit collage' }).click()
     await page.getByRole('button', { name: 'Text: Weekend in Piran' }).waitFor({ state: 'visible' })
     await shoot(page, 'desktop-board')
     // The same pages in Slovenian: the day in Slovenian, the board's words from the catalog.

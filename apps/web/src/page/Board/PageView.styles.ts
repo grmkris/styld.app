@@ -4,7 +4,7 @@ import { style } from '../../zyzz.config.ts'
 export const page = style({ display: 'grid', gap: '16px', paddingBlock: '8px 40px' })
 export const bar = style({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' })
 /** The page's own actions, at the end of the bar. */
-export const barActions = style({ display: 'flex', alignItems: 'center', gap: '4px' })
+export const barActions = style({ display: 'flex', alignItems: 'center', gap: '8px' })
 export const back = style({ display: 'inline-flex', alignItems: 'center', gap: '4px', minBlockSize: '44px' })
 export const head = style({ display: 'grid', gap: '4px' })
 export const meta = style({ fontSize: '14px', color: 'ink2' })
@@ -23,17 +23,20 @@ export const collage = style({
   ':active': { transform: 'scale(0.98)' },
 })
 export const collageLabel = style({ paddingInline: '4px', fontSize: '14px', fontWeight: 600 })
-export const collageEmpty = style({
-  display: 'grid',
-  placeContent: 'center',
-  gap: '8px',
-  aspectRatio: '4 / 5',
-  padding: '24px',
-  borderRadius: 'table',
-  backgroundColor: 'paper',
-  color: 'ink2',
-  textAlign: 'center',
+/** With nothing on the table yet: a line and Make a collage, on stock after the pins. */
+export const collageStart = style({
+  display: 'flex',
+  flexWrap: 'wrap',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '12px',
+  maxInlineSize: '560px',
+  paddingBlock: '12px',
+  paddingInline: '16px 12px',
+  borderRadius: 'panel',
+  backgroundColor: 'stock',
 })
+export const collageStartText = style({ flex: '1 1 14rem', fontSize: '14px', color: 'ink2', textWrap: 'pretty' })
 
 export const pinsHead = style({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' })
 export const pinsTitle = style({ fontSize: '17px', fontWeight: 600 })
