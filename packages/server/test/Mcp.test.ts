@@ -40,20 +40,17 @@ const database: D1 = {
     }),
   }),
 }
+/** A piece no one has described yet: no season, occasions, pattern, brand, shop link or back. */
+const undescribed = { season: null, occasions: [], pattern: null, brand: null, shopUrl: null, hasBack: false } as const
 const piece = (id: string, fields: Partial<Piece>): Piece => ({
+  ...undescribed,
   id: PieceId.make(`pc_${id.padEnd(22, '0')}`),
+  type: 'tops',
   name: null,
   notes: null,
-  type: 'tops',
   colours: [],
-  season: null,
-  occasions: [],
-  pattern: null,
-  brand: null,
-  shopUrl: null,
-  hasBack: false,
-  status: 'ready',
   source: 'website',
+  status: 'ready',
   createdAt: '2026-10-29T00:00:00.000Z',
   updatedAt: '2026-10-29T00:00:00.000Z',
   ...fields,
