@@ -407,6 +407,15 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
     `/api/public/search?q=kris` finds the profile, and `/explore` serves.
   - Edits from Styld and Featured are empty until an admin, listed in `STYLD_ADMIN_EMAILS`, marks the house account
     and features boards.
+- **Preview (five tabs, the landing, `link_import`, wishes):** the capture session deployed main at `789a7f2`, with
+  `/api/health` reporting release `789a7f2894195278a8fe45ea6968c6e99eb61aac`.
+  - The plan was four updates, including the wishes migration; nothing was replaced. `tools/preview.native.test.ts`
+    passed 3/3.
+  - Chromium at 390×844, signed out: the landing's A place to begin shows the newest public board and a way to
+    Explore, and `/explore` lists people.
+  - Signed in as `@kris.preview`: the navigation reads Home, Explore, Ask, Wardrobe, Boards; the Explore tab arrives
+    with its title focused; `/api/wishes` answers 200. No page error or console error.
+  - The Wishlist tab (`acbd463`) is not deployed yet.
 - **Five tabs:**
   - The navigation is the design's Home, Explore, Ask, Wardrobe and Boards. You (the account) is the initial in the
     masthead.
