@@ -116,6 +116,21 @@ const verdict = (choice: 'improve' | 'repair' | 'fragment') => ({
 const clef = Effect.gen(function* () {
   const request = yield* HttpServerRequest
   const body = yield* Effect.flatMap(request.json, Schema.decodeUnknownEffect(ClefRequest))
+  // An outfit, one picture a piece: the more of them red PNGs, the better it goes, and it always suits. The local
+  // Images binding may hand over its own format, which reads as not red.
+  if ('goes' in body.questions) {
+    const isRed = (base64: string) =>
+      Result.getOrElse(
+        Result.try(() => colourOf(base64) === 'red'),
+        () => false,
+      )
+    const reds = body.images.filter(({ base64 }) => isRed(base64)).length
+    return yield* HttpServerResponse.json({
+      model: 'clef-flash',
+      answers: { goes: noul(0.3 + (0.6 * reds) / body.images.length), suits: noul(1) },
+      usage: { input_tokens: 100 * body.images.length },
+    })
+  }
   const real = colourOf(body.images.at(-1)?.base64 ?? '')
   if ('picture' in body.questions) {
     const judged = { red: verdict('improve'), green: verdict('repair'), blue: verdict('fragment') }[real]
@@ -138,21 +153,6 @@ const clef = Effect.gen(function* () {
     return yield* HttpServerResponse.json({
       model: 'clef-flash',
       answers: { same: noul(same), faithful: noul(faithful) },
-    })
-  }
-  // An outfit, one picture a piece: the more of them red PNGs, the better it goes, and it always suits. The local
-  // Images binding may hand over its own format, which reads as not red.
-  if ('goes' in body.questions) {
-    const isRed = (base64: string) =>
-      Result.getOrElse(
-        Result.try(() => colourOf(base64) === 'red'),
-        () => false,
-      )
-    const reds = body.images.filter(({ base64 }) => isRed(base64)).length
-    return yield* HttpServerResponse.json({
-      model: 'clef-flash',
-      answers: { goes: noul(0.3 + (0.6 * reds) / body.images.length), suits: noul(1) },
-      usage: { input_tokens: 100 * body.images.length },
     })
   }
   return HttpServerResponse.empty({ status: 503 })

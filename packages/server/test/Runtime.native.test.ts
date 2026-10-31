@@ -363,7 +363,7 @@ test(
           'oauth_assertions oauth_clients ' +
           'oauth_grants operation_receipts piece_pictures piece_turns pieces profiles reports saves ' +
           'styld_auth_credentials styld_auth_email_credentials styld_auth_identifiers styld_auth_passwords ' +
-          'styld_auth_pending styld_auth_proofs styld_auth_sessions uploads worn_pieces'
+          'styld_auth_pending styld_auth_proofs styld_auth_sessions thinking_days uploads worn_pieces'
         ).split(' '),
       },
       media: { sentinel: false },
