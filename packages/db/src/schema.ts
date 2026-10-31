@@ -335,8 +335,9 @@ export const boardImages = sqliteTable(
     ...boardOwned(),
     objectKey: text('object_key').notNull(),
     contentType: text('content_type').notNull(),
-    /** A photo the person or an assistant put there, or a picture Styld generated (marked Generated). */
-    origin: text('origin', { enum: ['upload', 'generated'] })
+    /** A photo the person or an assistant put there, a picture Styld generated (marked Generated), or one of the
+     * person's outfit photos from My Gallery, which visitors never see. */
+    origin: text('origin', { enum: ['upload', 'generated', 'photo'] })
       .notNull()
       .default('upload'),
     /** For a generated picture: the job that made it and the model that drew it. */

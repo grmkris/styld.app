@@ -156,6 +156,7 @@ const boards = Boards.of({
   removePins: notUsed,
   addBoardImage: notUsed,
   addGeneratedImage: notUsed,
+  addPhotoImage: notUsed,
   // A picture an earlier try of `picture-replay-1` already put on the board.
   boardImageAddedBy: (operationId) =>
     Effect.succeed(

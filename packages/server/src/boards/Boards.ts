@@ -49,6 +49,13 @@ import {
   unavailable,
 } from './Parts.ts'
 
+/** Where a board picture came from: an upload, a picture Styld generated (its job and model), or an outfit photo of
+ * My Gallery. */
+type ImageOrigin =
+  | { readonly kind: 'upload' }
+  | { readonly kind: 'generated'; readonly jobId: string; readonly model: string }
+  | { readonly kind: 'photo' }
+
 /** R2 deletes at most this many keys per call. */
 const deleteBatch = 1000
 
@@ -285,7 +292,7 @@ const pictures = (parts: Parts) => ({
   addBoardImage: Effect.fn('Styld.Boards.addImage')(function* (
     boardId: BoardId,
     input: AddBoardImage,
-    made: Option.Option<{ readonly jobId: string; readonly model: string }> = Option.none(),
+    origin: ImageOrigin = { kind: 'upload' },
   ) {
     const { accountId } = yield* CurrentAccount
     const inputDigest = yield* parts.digest(JSON.stringify([boardId, input.uploadId]))
@@ -306,9 +313,9 @@ const pictures = (parts: Parts) => ({
       accountId,
       boardId,
       contentType: upload.contentType,
-      origin: Option.isSome(made) ? ('generated' as const) : ('upload' as const),
-      jobId: Option.isSome(made) ? made.value.jobId : null,
-      model: Option.isSome(made) ? made.value.model : null,
+      origin: origin.kind,
+      jobId: origin.kind === 'generated' ? origin.jobId : null,
+      model: origin.kind === 'generated' ? origin.model : null,
       createdAt: at,
     }
     const committed = yield* parts.store.addImage(image, pinId, upload.id, added).pipe(
@@ -366,8 +373,12 @@ const make = (bindings: BoardBindings, checks: Checks['Service']) =>
         edits.addBoardImage(
           boardId,
           { operationId: input.operationId, uploadId: input.uploadId },
-          Option.some({ jobId: input.jobId, model: input.model }),
+          { kind: 'generated', jobId: input.jobId, model: input.model },
         ),
+      ),
+      /** One of the person's outfit photos (My Gallery), held back from visitors. */
+      addPhotoImage: rechecked(parts, (boardId: BoardId, input: AddBoardImage) =>
+        edits.addBoardImage(boardId, input, { kind: 'photo' }),
       ),
     }
   })

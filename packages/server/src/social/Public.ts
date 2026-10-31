@@ -93,16 +93,23 @@ const publicPins = (seen: Seen, pins: ReadonlyArray<PinRow>): ReadonlyArray<obje
     const piece = pin.pieceId === null ? undefined : seen.pieces.get(pin.pieceId)
     const look = pin.lookId === null ? undefined : seen.looks.get(pin.lookId)
     if (pin.kind === 'piece' && piece !== undefined) return [{ _tag: 'PublicPiecePin', ...base, piece }]
-    if (pin.kind === 'picture' && pin.imageId !== null)
+    // An outfit photo of My Gallery is held back from visitors.
+    if (pin.kind === 'picture' && pin.imageId !== null && origin !== 'photo')
       return [{ _tag: 'PublicPicturePin', ...base, imageId: pin.imageId, generated: origin === 'generated' }]
     if (pin.kind === 'look' && look !== undefined) return [{ _tag: 'PublicLookPin', ...base, look }]
     return []
   })
 
-/** The table without the pieces others may not see; its pictures and labels are the board's, checked with it. */
-const publicItems = (seen: Seen, items: ReadonlyArray<BoardItemRow>) =>
+/** The board's outfit photos (My Gallery), which visitors never see on its pins or its table. */
+const heldBack = (pins: ReadonlyArray<PinRow>): ReadonlySet<string> =>
+  new Set(pins.flatMap(({ pin, origin }) => (origin === 'photo' && pin.imageId !== null ? [pin.imageId] : [])))
+
+/** The table without the pieces others may not see, nor the outfit photos; its other pictures and labels are the
+ * board's, checked with it. */
+const publicItems = (seen: Seen, items: ReadonlyArray<BoardItemRow>, held: ReadonlySet<string>) =>
   items
     .filter((item) => item.kind !== 'piece' || (item.pieceId !== null && seen.pieces.has(item.pieceId)))
+    .filter((item) => item.kind !== 'image' || item.imageId === null || !held.has(item.imageId))
     .map(shownItem)
 
 /** The stores and checks public pages read through. */
@@ -232,6 +239,7 @@ const summaries = (r: Reader, accountId: string, rows: ReadonlyArray<BoardRow>) 
         items: publicItems(
           seen,
           items.filter(({ boardId }) => boardId === row.id),
+          heldBack(pins.filter(({ pin }) => pin.boardId === row.id)),
         ),
         cover: shown.slice(0, 4),
         pinCount: shown.length,
@@ -317,7 +325,7 @@ const pages = (base: Reader) => ({
       id: row.id,
       name: row.name,
       paper: row.paper,
-      items: publicItems(seen, items),
+      items: publicItems(seen, items, heldBack(pins)),
       pins: publicPins(seen, pins),
       by: owner.author,
       publishedAt: (row.publishedAt ?? row.updatedAt).toISOString(),
@@ -371,7 +379,8 @@ const images = (
     /** A picture on a public board others may see. A picture never changes, so its id and size are its version. */
     pictureImage: Effect.fn('Styld.Public.pictureImage')(function* (imageId: BoardImageId, size: ImageSize) {
       const image = yield* stored(r.store.image(imageId))
-      if (Option.isNone(image)) return Option.none<ShownImage>()
+      // An outfit photo of My Gallery is never shown to anyone but its owner.
+      if (Option.isNone(image) || image.value.origin === 'photo') return Option.none<ShownImage>()
       const board = yield* shownBoard(r, image.value.boardId).pipe(Effect.option)
       if (Option.isNone(board)) return Option.none<ShownImage>()
       const { objectKey, contentType } = image.value

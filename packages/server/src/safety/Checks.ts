@@ -1,6 +1,6 @@
 import { boardImages, boardItems, boards, contentChecks, looks, pieces, piecePictures, profiles } from '@styld/db'
 import { CheckReason, CheckState, type CheckStatus, WardrobeUnavailable } from '@styld/protocol'
-import { and, eq, inArray, isNotNull, lt } from 'drizzle-orm'
+import { and, eq, inArray, isNotNull, lt, ne } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Array, Context, DateTime, Duration, Effect, Option, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
@@ -78,7 +78,8 @@ const boardShows = (db: Database, boardId: string) =>
       db
         .select({ key: boardImages.objectKey, contentType: boardImages.contentType })
         .from(boardImages)
-        .where(eq(boardImages.boardId, boardId)),
+        // An outfit photo is never shown to others, so it is never judged for them.
+        .where(and(eq(boardImages.boardId, boardId), ne(boardImages.origin, 'photo'))),
     )
     return Option.some<Shown>({
       accountId: row.value.accountId,
