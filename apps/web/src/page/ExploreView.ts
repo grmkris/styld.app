@@ -2,12 +2,14 @@ import { format, type Locale } from '@styld/i18n'
 import { type Author, type Explore, type FoundBoard, Mood } from '@styld/protocol'
 import { Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
+import { cx } from 'zyzz'
 import { avatar } from '../Avatar.ts'
 import { personRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import * as styles from './ExploreView.styles.ts'
 import * as feedStyles from './FeedView.styles.ts'
 import { boardCard, byline } from './PublicTiles.ts'
+import { chip } from './AskView.styles.ts'
 import { Message } from './Visit.ts'
 
 const boardsRow = (
@@ -62,7 +64,7 @@ const moodChips = (current: Option.Option<Mood>, locale: Locale, h: HtmlBuilder<
           h.Type('button'),
           h.AriaPressed(String(Option.isNone(current))),
           h.OnClick(Message.ChoseMood({ mood: Option.none() })),
-          ...styled(h, styles.chip()),
+          ...styled(h, cx(chip(), styles.chosen())),
         ],
         [format(locale, 'explore.allMoods', {})],
       ),
@@ -72,7 +74,7 @@ const moodChips = (current: Option.Option<Mood>, locale: Locale, h: HtmlBuilder<
             h.Type('button'),
             h.AriaPressed(String(Option.getOrNull(current) === mood)),
             h.OnClick(Message.ChoseMood({ mood: Option.some(mood) })),
-            ...styled(h, styles.chip()),
+            ...styled(h, cx(chip(), styles.chosen())),
           ],
           [format(locale, `explore.moods.${mood}`, {})],
         ),

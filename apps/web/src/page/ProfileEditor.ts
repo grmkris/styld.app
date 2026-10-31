@@ -5,6 +5,7 @@ import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
+import { readProfile } from './ProfileRead.ts'
 
 // The person's public profile, edited: a handle, a name, a city, a bio, an avatar tone and whether the wardrobe shows,
 // then published or taken down.
@@ -81,10 +82,10 @@ export type Message = typeof Message.Type
 
 const LoadProfile = Command.define('LoadProfile', {
   messages: [Message.SucceededLoadProfile, Message.FailedLoadProfile],
-  execute: Effect.gen(function* () {
-    const api = yield* (yield* StyldClient).api
-    return Message.SucceededLoadProfile({ profile: yield* api.profile.getProfile() })
-  }).pipe(Effect.orElseSucceed(() => Message.FailedLoadProfile())),
+  execute: readProfile(
+    (profile) => Message.SucceededLoadProfile({ profile }),
+    () => Message.FailedLoadProfile(),
+  ),
 })
 
 const blankAsNull = (value: string) => (value.trim().length === 0 ? null : value.trim())

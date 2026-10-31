@@ -18,7 +18,8 @@ import { Message } from './Message.ts'
 import { boardStateView } from './Unready.ts'
 import { visitingView } from './Visiting.ts'
 import { type Model, PinWork, Publishing, Removal, Rename } from './Model.ts'
-import { chip } from '../ExploreView.styles.ts'
+import { chip } from '../AskView.styles.ts'
+import { chosen } from '../ExploreView.styles.ts'
 import * as MakeView from './MakeView.ts'
 import { generatedMark } from './MakeView.ts'
 import * as styles from './PageView.styles.ts'
@@ -308,7 +309,7 @@ const moodsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html 
             h.Type('button'),
             h.AriaPressed(String(model.moods.includes(mood))),
             h.OnClick(Message.ToggledMood({ mood })),
-            ...styled(h, chip()),
+            ...styled(h, cx(chip(), chosen())),
           ],
           [format(locale, `explore.moods.${mood}`, {})],
         ),

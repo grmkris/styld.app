@@ -5,6 +5,7 @@ import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
+import { readProfile } from './ProfileRead.ts'
 
 // MODEL
 
@@ -34,8 +35,8 @@ export const Message = defineMessageUnion({
   ClickedCopyServerUrl: { url: Schema.String },
   SucceededCopyServerUrl: {},
   FailedCopyServerUrl: {},
-  SucceededLoadProfile: { profile: Profile },
-  FailedLoadProfile: {},
+  SucceededReadProfile: { profile: Profile },
+  FailedReadProfile: {},
 })
 export type Message = typeof Message.Type
 
@@ -66,18 +67,18 @@ export const CopyServerUrl = Command.define('CopyServerUrl', {
 })
 
 /** @internal Exported for its tests. */
-export const LoadProfile = Command.define('LoadProfile', {
-  messages: [Message.SucceededLoadProfile, Message.FailedLoadProfile],
-  execute: Effect.gen(function* () {
-    const api = yield* (yield* StyldClient).api
-    return Message.SucceededLoadProfile({ profile: yield* api.profile.getProfile() })
-  }).pipe(Effect.orElseSucceed(() => Message.FailedLoadProfile())),
+export const ReadProfile = Command.define('ReadProfile', {
+  messages: [Message.SucceededReadProfile, Message.FailedReadProfile],
+  execute: readProfile(
+    (profile) => Message.SucceededReadProfile({ profile }),
+    () => Message.FailedReadProfile(),
+  ),
 })
 
 /** Opening the page: the profile as it is now; one already shown stays while it is read again. */
 export const enter = (model: Model): Update.Return<Model, Message, StyldClient> => ({
   model,
-  commands: [LoadProfile()],
+  commands: [ReadProfile()],
 })
 
 // UPDATE
@@ -98,10 +99,10 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedCopyServerUrl: ({ url }) => ({ model, commands: [CopyServerUrl({ url })] }),
     SucceededCopyServerUrl: () => ({ model: modifyFields(model, { copy: () => Copy.Copied() }) }),
     FailedCopyServerUrl: () => ({ model: modifyFields(model, { copy: () => Copy.Failed() }) }),
-    SucceededLoadProfile: ({ profile }) => ({
+    SucceededReadProfile: ({ profile }) => ({
       model: modifyFields(model, { profile: () => ProfileState.Loaded({ profile }) }),
     }),
-    FailedLoadProfile: () =>
+    FailedReadProfile: () =>
       ProfileState.guards.Loaded(model.profile)
         ? { model }
         : { model: modifyFields(model, { profile: () => ProfileState.Failed() }) },
