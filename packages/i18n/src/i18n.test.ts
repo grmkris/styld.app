@@ -1,11 +1,19 @@
 import { describe, expect, expectTypeOf, test } from 'vitest'
 
+import { catalog as slovenian } from './catalog-sl.ts'
 import { direction, format, formatRich, normalizeLocale, text, type MessageValues } from './index.ts'
 
 describe('Styld locales', () => {
   test('formats the reviewed English and Slovenian catalog', () => {
     expect(text('catalog.pieces', { count: 2 })).toBe('2 pieces')
     expect(format('sl', 'catalog.pieces', { count: 2 })).toBe('2 kosa')
+  })
+
+  test('Slovenian addresses the person as ti, and never picks a gender for them (DESIGN.md › Copy and chrome)', () => {
+    // The forms of vi and the gendered past (videl_a) that the catalog once mixed in.
+    const formal =
+      /(?<!\p{L})(vaš\p{L}*|vam|vami|niste|ste|imate|morate|potrebujete|želite|poskusite|preverite|vnesite|izberite|zahtevajte|prijavite|ustvarite|nadgradite|dokupite|\p{L}+_a)(?!\p{L})/iu
+    expect(Object.entries(slovenian).filter(([, words]) => formal.test(words))).toEqual([])
   })
 
   test('keeps locale state explicit and supports pseudolocales', () => {
