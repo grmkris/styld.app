@@ -725,9 +725,9 @@ export interface MessageArgumentsByKey<T = string> {
   'capture.chooseHint': Readonly<Record<string, never>>
   'capture.chooseTitle': Readonly<Record<string, never>>
   'capture.done': Readonly<Record<string, never>>
-  'capture.empty': Readonly<Record<string, never>>
+  'capture.empty': { readonly source: string | number }
   'capture.emptyVideo': Readonly<Record<string, never>>
-  'capture.failed': Readonly<Record<string, never>>
+  'capture.failed': { readonly source: string | number }
   'capture.finding': Readonly<Record<string, never>>
   'capture.foundTitle': { readonly count: number }
   'capture.holdUpHint': Readonly<Record<string, never>>
@@ -770,7 +770,7 @@ export interface MessageArgumentsByKey<T = string> {
   'capture.split': Readonly<Record<string, never>>
   'capture.stale': Readonly<Record<string, never>>
   'capture.tooLarge': { readonly name: string | number }
-  'capture.unknown': Readonly<Record<string, never>>
+  'capture.unknown': { readonly source: string | number }
   'capture.useOriginal': Readonly<Record<string, never>>
   'capture.waiting': Readonly<Record<string, never>>
   'catalog.allCities': Readonly<Record<string, never>>
@@ -2740,4 +2740,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'cd267709ccb2d5c57e3770ec08387981c07dcfaec8eb65d89e069aeb9bbeb65a'
+export const catalogVersion = '84a3a7694262c31944f76c13cb531bd9c19fe6625728decc8ca25bd10ef9f3ba'

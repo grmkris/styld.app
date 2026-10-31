@@ -2554,7 +2554,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.waiting': 'Waiting',
   'capture.preparingVideo': 'Reading the video…',
   'capture.sent': 'Sent',
-  'capture.problem.dailyLimit': "Today's free pieces are used up. Try again tomorrow.",
+  'capture.problem.dailyLimit': "Today's free credits are used up. Try again tomorrow.",
   'capture.problem.videoTooLong': 'Videos can be up to 15 minutes long',
   'capture.problem.videoUnreadable': "This video can't be read here",
   'capture.problem.refused': "This file can't be used",
@@ -2570,11 +2570,14 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.betterLookHint': 'Only part of it shows. Hold it up or lay it out flat, and add it again.',
   'capture.foundTitle': '{count, plural, =0 {Nothing found yet} one {# piece found} other {# pieces found}}',
   'capture.reviewHint': "They're cut out and ready. Untick anything that isn't yours.",
-  'capture.allowance': '{remaining} of {daily} free today',
+  'capture.allowance': '{remaining} of {daily} free credits left today',
   'capture.finding': 'Finding pieces…',
-  'capture.failed': "This one couldn't be processed. Its credit is back.",
-  'capture.unknown': "This one stopped halfway. Trying again won't cost anything.",
-  'capture.empty': 'No clothes found here.',
+  'capture.failed':
+    "{source, select, video {A part of a video couldn't be processed.} link {The picture from a shop's page couldn't be processed.} other {A photo couldn't be processed.}} Its credit is back.",
+  'capture.unknown':
+    "{source, select, video {A part of a video} link {The picture from a shop's page} other {A photo}} stopped halfway. Trying again won't cost anything.",
+  'capture.empty':
+    "{source, select, link {No clothes found in the picture from a shop's page.} other {No clothes found in a photo.}}",
   'capture.emptyVideo':
     'No whole garment in this part of the video. Film from about a metre away and move slowly, so each piece fits in the frame.',
   'capture.remove': 'Remove',

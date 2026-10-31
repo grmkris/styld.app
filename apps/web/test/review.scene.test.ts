@@ -82,7 +82,7 @@ describe('the review tray', () => {
           'No whole garment in this part of the video. Film from about a metre away and move slowly, so each piece fits in the frame.',
         ),
       ).toExist(),
-      expect(text('No clothes found here.')).toExist(),
+      expect(text('No clothes found in a photo.')).toExist(),
     )
   })
 

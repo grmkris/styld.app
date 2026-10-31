@@ -2597,7 +2597,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.waiting': 'Čaka',
   'capture.preparingVideo': 'Berem video …',
   'capture.sent': 'Poslano',
-  'capture.problem.dailyLimit': 'Današnji brezplačni kosi so porabljeni. Poskusi znova jutri.',
+  'capture.problem.dailyLimit': 'Današnji brezplačni krediti so porabljeni. Poskusi znova jutri.',
   'capture.problem.videoTooLong': 'Video je lahko dolg največ 15 minut',
   'capture.problem.videoUnreadable': 'Tega videa tukaj ni mogoče prebrati',
   'capture.problem.refused': 'Te datoteke ni mogoče uporabiti',
@@ -2616,11 +2616,13 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.foundTitle':
     '{count, plural, =0 {Zaenkrat ni najdenega} one {Najden # kos} two {Najdena # kosa} few {Najdeni # kosi} other {Najdenih # kosov}}',
   'capture.reviewHint': 'Izrezani so in pripravljeni. Odznači vse, kar ni tvoje.',
-  'capture.allowance': 'Danes še {remaining} od {daily} brezplačnih',
+  'capture.allowance': 'Danes še {remaining} od {daily} brezplačnih kreditov',
   'capture.finding': 'Iščem kose …',
-  'capture.failed': 'Tega ni bilo mogoče obdelati. Kredit je vrnjen.',
-  'capture.unknown': 'Ta se je ustavil na pol poti. Nov poskus ne stane nič.',
-  'capture.empty': 'Tukaj ni najdenih oblačil.',
+  'capture.failed':
+    '{source, select, video {Dela videa ni bilo mogoče obdelati.} link {Slike s strani trgovine ni bilo mogoče obdelati.} other {Fotografije ni bilo mogoče obdelati.}} Kredit je vrnjen.',
+  'capture.unknown':
+    '{source, select, video {Obdelava dela videa} link {Obdelava slike s strani trgovine} other {Obdelava fotografije}} se je ustavila na pol poti. Nov poskus ne stane nič.',
+  'capture.empty': '{source, select, link {Na sliki s strani trgovine ni oblačil.} other {Na fotografiji ni oblačil.}}',
   'capture.emptyVideo':
     'V tem delu videa ni celega oblačila. Snemaj z razdalje približno enega metra in počasi, da je vsak kos ves v kadru.',
   'capture.remove': 'Odstrani',

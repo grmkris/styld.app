@@ -63,7 +63,7 @@ export const verifyCaptureJourney = async (browser: Browser, origin: string, fix
     await page.waitForURL(`${origin}/wardrobe/review`, { timeout: 30000 })
     await page.getByRole('heading', { name: '3 pieces found' }).waitFor({ state: 'visible', timeout: 30000 })
     expect(await page.getByRole('button', { name: 'Keep Pick a category' }).count()).toBe(3)
-    await page.getByText('4 of 7 free today').waitFor({ state: 'visible' })
+    await page.getByText('4 of 7 free credits left today').waitFor({ state: 'visible' })
 
     await keepAs(page, 'Tops', 'Top')
     await keepAs(page, 'Dresses', 'Dress')

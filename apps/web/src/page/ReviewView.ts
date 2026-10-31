@@ -10,7 +10,9 @@ import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { fieldLabel, formError, textField } from '../Fields.styles.ts'
 import { backIcon, checkIcon, editIcon, loader } from '../Icon.ts'
 import { addPiecesRouter } from '../route.ts'
+import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
+import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { piecePickers } from './PieceFields.ts'
 import { type Decision, keptOf, Message, type Model, Saving, Tray } from './Review.ts'
 import { kindName } from './WardrobeWords.ts'
@@ -119,11 +121,18 @@ const pendingTile = (capture: TrayCapture, locale: Locale, h: HtmlBuilder<Messag
 const notice = (capture: TrayCapture, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const busy = model.acting.includes(capture.id)
   const canRetry = capture.status === 'failed' || capture.status === 'unknown'
-  // A video part with nothing whole in it was most likely filmed too close: say how to film it.
-  const empty = capture.source === 'video' ? 'capture.emptyVideo' : 'capture.empty'
-  const text = capture.status === 'unknown' ? 'capture.unknown' : capture.status === 'failed' ? 'capture.failed' : empty
+  // Each says which capture it is; a video part with nothing whole in it was most likely filmed too close.
+  const { source } = capture
+  const text =
+    capture.status === 'unknown'
+      ? format(locale, 'capture.unknown', { source })
+      : capture.status === 'failed'
+        ? format(locale, 'capture.failed', { source })
+        : source === 'video'
+          ? format(locale, 'capture.emptyVideo', {})
+          : format(locale, 'capture.empty', { source })
   return h.keyed('div')(capture.id, styled(h, styles.notice()), [
-    h.p([], [format(locale, text, {})]),
+    h.p([], [text]),
     model.actionFailed.includes(capture.id)
       ? h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, 'capture.actionFailed', {})])
       : h.empty,
@@ -278,12 +287,13 @@ const trayView = (captures: ReadonlyArray<TrayCapture>, model: Model, locale: Lo
         h.a([h.Href(addPiecesRouter({})), ...styled(h, primaryAction())], [format(locale, 'capture.addTitle', {})]),
       ]),
     ]
+  // What went wrong comes first, where it is seen, not under every piece found.
   return [
+    ...needing.map((capture) => notice(capture, model, locale, h)),
     h.ul(styled(h, styles.grid()), [
       ...waiting.map((capture) => pendingTile(capture, locale, h)),
       ...found.map((detection) => foundTile(detection, model, locale, h)),
     ]),
-    ...needing.map((capture) => notice(capture, model, locale, h)),
     found.length > 0 ? footer(model, locale, h, false) : h.empty,
   ]
 }
@@ -338,7 +348,15 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
         onNone: () => [
           ...header(model, locale, h),
           ...Tray.match(model.tray, {
-            Loading: () => [h.p([h.Role('status'), ...styled(h, styles.lede())], [loader(h)])],
+            Loading: () => [
+              h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
+              h.ul(
+                [h.AriaHidden(true), ...styled(h, styles.grid())],
+                ['a', 'b', 'c', 'd'].map((slot) =>
+                  h.keyed('li')(slot, [], [h.span(styled(h, cx(block(), styles.foundSkeleton())))]),
+                ),
+              ),
+            ],
             Failed: () => [
               h.section(
                 [h.Role('alert'), ...styled(h, messageSection())],

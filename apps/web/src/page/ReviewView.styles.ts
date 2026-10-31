@@ -38,13 +38,25 @@ export const foundImage = style({
   display: 'block',
   inlineSize: '100%',
   aspectRatio: '1 / 1',
+  // Room inside the ring, so a piece never touches it.
+  padding: '8px',
   objectFit: 'contain',
   borderRadius: 'panel',
-  boxShadow: 'inset 0 0 0 1px #ddd6cc !custom',
+  outlineWidth: '1px',
+  outlineStyle: 'solid',
+  outlineColor: 'rule',
+  outlineOffset: '-1px',
   transitionProperty: 'opacity',
   transitionDuration: '160ms',
   // An unticked piece fades back, so what will be added stands out.
   '&[data-dropped]': { opacity: 0.45 },
+})
+/** A found piece's tile while the tray is read. */
+export const foundSkeleton = style({
+  display: 'block',
+  inlineSize: '100%',
+  aspectRatio: '1 / 1',
+  borderRadius: 'panel',
 })
 /** The tick: a 44px target with a 28px dot, ink when kept and hollow when not (Gallery `.found .tick`). */
 export const tick = style({
