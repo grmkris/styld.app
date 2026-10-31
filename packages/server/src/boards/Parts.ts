@@ -219,17 +219,14 @@ export const newPins = (
     })),
   )
 
-/** The account's pieces pinned on a public board that have never been checked go to the queue: the board puts
- * them in front of others. */
+/** The account's pieces pinned on a public board go to the queue: the board puts them in front of others, and a
+ * piece changed while it was private must not show under its old check. The queue skips what was checked as it is. */
 export const pinnedPiecesChecked = (parts: Parts, accountId: string, boardId: string) =>
   Effect.gen(function* () {
     const pieceIds = (yield* stored(parts.store.pinsOf([boardId]))).flatMap(({ piece }) =>
       piece !== null && piece.accountId === accountId ? [piece.id] : [],
     )
-    const known = yield* parts.checks.statuses('piece', pieceIds)
-    yield* parts.checks.checkLater(
-      pieceIds.filter((id) => !known.has(id)).map((id) => ({ kind: 'piece' as const, id })),
-    )
+    yield* parts.checks.checkLater(pieceIds.map((id) => ({ kind: 'piece' as const, id })))
   })
 
 /** An edit of a board, after which a public board's check is pending again and its new pieces are checked. */

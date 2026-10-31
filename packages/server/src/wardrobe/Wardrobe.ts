@@ -442,10 +442,10 @@ const editing = (parts: Parts) => ({
         updatedAt: yield* nowDate,
       }),
     )
-    return yield* Option.match(updated, {
-      onNone: () => Effect.fail(PieceNotFound.make({})),
-      onSome: (row) => ownerPiece(parts, accountId, row),
-    })
+    if (Option.isNone(updated)) return yield* PieceNotFound.make({})
+    // Its name is what others read of it: a public piece renamed is checked again before they see the new name.
+    if (input.name !== undefined && input.name !== current.name) yield* parts.pieceChanged.changed(pieceId)
+    return yield* ownerPiece(parts, accountId, updated.value)
   }),
   deletePiece: Effect.fn('Styld.Wardrobe.deletePiece')(function* (pieceId: PieceId) {
     const { accountId } = yield* CurrentAccount

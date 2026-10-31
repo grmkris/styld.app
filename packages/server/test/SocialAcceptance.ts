@@ -44,6 +44,16 @@ const verifyProfiles = async (origin: string, owner: Call, other: Call) => {
 const Checked = Schema.Struct({ check: Schema.NullOr(Schema.Struct({ state: Schema.String })) })
 
 /** Read until the check is in this state: the queue answers checks of edits a moment later. */
+/** The status a read answers once the queue has caught up, or the last one it answered. */
+const statusOnceSettled = async (read: () => Promise<Response>, wanted: number) => {
+  let status = 0
+  for (let attempt = 0; attempt < 80 && status !== wanted; attempt += 1) {
+    status = (await read()).status
+    if (status !== wanted) await Bun.sleep(250)
+  }
+  return status
+}
+
 const settled = async (read: () => Promise<Response>, state: string) => {
   for (let attempt = 0; attempt < 80; attempt += 1) {
     const { check } = Schema.decodeUnknownSync(Checked)(await (await read()).json())
@@ -153,6 +163,9 @@ const verifyPublicPages = async (origin: string, fixtures: string, owner: Call) 
   expect(shown.headers.get('cache-control')).toBe('public, no-cache')
   expect((await anyone(`/cdn/public/pieces/${pieceId}/thumb`)).status).toBe(404)
   expect((await fetch(`${fixtures}/test/social/cutout/${pieceId}`, { method: 'POST' })).status).toBe(204)
+  // The fixture changes the picture behind the check's back; a change the piece makes itself puts it back in front of
+  // the check, as review does, so it shows once its new picture passed.
+  await send(owner, `/api/pieces/${pieceId}`, 'PATCH', { name: 'Grey square' })
   expect(await publicPins(origin, boardId, (tags) => tags.length > 1)).toEqual(['PublicPicturePin', 'PublicPiecePin'])
   const thumb = await anyone(`/cdn/public/pieces/${pieceId}/thumb`)
   expect(thumb.headers.get('content-type')).toBe('image/webp')
@@ -168,6 +181,11 @@ const verifyPublicPages = async (origin: string, fixtures: string, owner: Call) 
   expect(await waitUntilReady(owner, later)).toBe('ready')
   expect((await fetch(`${fixtures}/test/social/cutout/${later}`, { method: 'POST' })).status).toBe(204)
   expect(await shownPieces(origin, (ids) => ids.includes(later))).toEqual([later, pieceId])
+  // Renamed to words that fail, it is checked again and hidden; renamed back, it shows again.
+  await send(owner, `/api/pieces/${later}`, 'PATCH', { name: 'Coat [[fail]]' })
+  expect(await statusOnceSettled(() => anyone(`/api/public/pieces/${later}`), 404)).toBe(404)
+  await send(owner, `/api/pieces/${later}`, 'PATCH', { name: 'Coat' })
+  expect(await statusOnceSettled(() => anyone(`/api/public/pieces/${later}`), 200)).toBe(200)
   const board = await previewOf(origin, `/boards/${boardId}`)
   expect(board).toContain('<meta property="og:title" content="Coats on Styld">')
   expect(board).toContain(`<meta property="og:image" content="${origin}/cdn/public/`)
