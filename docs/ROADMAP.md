@@ -26,9 +26,11 @@ Kept, in order:
 3. Boards, public profiles and social, built next on the preview (owner, 2026-10-30; see "Boards, profiles and
    social" below). Going live on styld.app stays its own step.
 4. Virtual try-on and billing (iteration 3).
-5. Later, each with its own planning round:
-   - recording video inside the app, and outfit check (both extend the capture pipeline);
-   - the web stylist chat.
+5. Styld, the stylist in the app: a chat about the person's own wardrobe and looks, moved up from Later (owner,
+   2026-10-31; see "Styld, the stylist in the app" below). v1's other AI features (wardrobe analysis, outfit check,
+   shop suggestions) each get their own planning round.
+6. Later, each with its own planning round: recording video inside the app, and outfit check (both extend the capture
+   pipeline).
 
 Parked (not built unless real demand appears):
 
@@ -39,6 +41,17 @@ Parked (not built unless real demand appears):
 - Jev outfit ideas, which were on in production but unused.
 
 Not porting: guest accounts and the free wardrobe cap (owner, 2026-10-28).
+
+## Styld, the stylist in the app (owner, 2026-10-31)
+
+The owner asked to bring v1's AI features into v2, starting with the chat, with few features and a simple UI.
+
+- **Styld** answers at `/ask/stylist`, reached from Ask. It knows the person's pieces and looks through the same tools
+  the assistants in ChatGPT and Claude use: it searches and reads them, shows pieces in its reply, and saves a look
+  when asked. ChatGPT and Claude stay a way in for those who use them.
+- **Price:** a message costs 1 credit from the daily allowance; it comes back when no reply comes.
+- **Not yet:** pictures in or out of the chat, shop suggestions, try-on, a wardrobe report, renaming or deleting chats.
+  The model (GLM-5.3-flash on Workers AI for now) and the price are the owner's to confirm.
 
 ## Clean pictures, the turn and video scans (owner, 2026-10-30)
 
@@ -301,4 +314,3 @@ and frames of its Grok-generated ten-garment rail video.
 - **Recording video in the app** (import from the library comes in iteration 1).
 - **Outfit check** works from a photo of you wearing the clothes: it gives feedback and offers the pieces for the
   wardrobe through the same review tray.
-- **The web stylist chat.**

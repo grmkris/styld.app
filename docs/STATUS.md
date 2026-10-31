@@ -2,6 +2,64 @@
 
 Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `789a7f2`, with clean pictures, turns on a hanger, scan anything, and the boards' pins, profiles, checks, link import and wishes). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
 
+## Styld, the stylist in the app — 2026-10-31
+
+The owner asked on 31 October for v1's AI features in v2, starting with the chat, built end to end overnight with few
+features and a simple UI. It replaces the roadmap's "the web stylist chat comes later". Decisions taken for the owner,
+to confirm:
+
+- **Effect AI on a Durable Object**, rather than Pi Durable or TanStack AI:
+  - the turn runs on `effect/ai`'s Chat and Toolkit over `@effect/ai-openai-compat` 4.0.7;
+  - one `Stylist` Durable Object per account keeps its chats in SQLite.
+- **The model is GLM-5.3-flash on Workers AI** (`STYLIST=workers-ai`).
+  - Haiku 5.5 through the Vercel AI Gateway was the plan, but the shared team budget is spent ($5.25 of $5.00).
+    `STYLIST=gateway` with `STYLIST_MODEL` and `STYLIST_GATEWAY_API_KEY` switches to it.
+  - Workers AI streams GLM without a finish reason, so `workersAiFetch` asks without streaming and hands the client
+    one streamed step.
+- **1 credit a message**, from the same daily allowance and wallet as captures. It comes back when no reply comes.
+- **First batch:** questions about the person's own wardrobe and looks.
+  - Styld searches and reads pieces and looks, shows pieces, and saves a look when asked. It does this through the
+    assistants' own MCP tools.
+  - No pictures in or out, shop suggestions, try-on or wardrobe report.
+
+- **Server** (`883d557`, `d5055d6`):
+  - `POST /api/stylist/messages`, `GET /api/stylist/chats` and `GET /api/stylist/chats/:chatId`, behind the session.
+    Repeating a message's operation id returns the same chat and charges once.
+  - The message is held in the account's Stylist object and its turn goes on the `StyldV2Stylist` queue (3
+    attempts, 5 s apart). A turn takes at most 6 model steps.
+  - The tools are `piece_search`, `piece_get`, `look_list`, `look_get` and `look_create`, the MCP tools through their
+    bridge, with an operation id per call so a retried turn writes once. `pieces_show` shows only the account's own
+    pieces.
+  - The chat shows the reply as it is written, stored about every 250 ms. A turn that fails three times, or is
+    still writing after 5 minutes, reads as failed, and its credit comes back.
+  - Deleting the account empties its Stylist object. Each model call is counted in Analytics Engine as `chat`,
+    without what was written.
+- **Web** (`84a8cb8`):
+  - Ask's stylist card leads with "Ask Styld"; connecting ChatGPT or Claude stays under it. A search also offers
+    "Ask Styld: “…”".
+  - `/ask/stylist` opens the latest chat; a new chat offers three starters and the earlier chats. Until it knows
+    which, the page is drawn in the shape of a chat.
+  - Replies read as plain text, with the pieces Styld shows as pictures linking to them and a link to a look it
+    saved.
+  - The composer stays in reach above the phone's navigation, with the price. A refused message says why. A message
+    lost on the network goes again as the same one; once edited, it goes as a new one.
+- **Evidence:**
+  - Unit: 10 server tests on three recorded GLM steps (the tool loop, the Workers AI adapter, the prompt, the
+    policy); Story and Scene tests for the page and Ask's links.
+  - Native: `verifyStylist` runs through the real queue, Durable Object, wallet and tools with a stand-in model. It
+    covers the idempotent send, the reply and its piece, one credit taken, a refused model refunded, and another
+    account seeing nothing.
+  - Native browser: the Gallery walk asks Styld from Ask, gets the reply with its piece's picture under the CSP, and
+    reopens the chat. `/ask/stylist` is among the pages that must load steady; the walk found two shifts, both fixed
+    before the commit.
+  - Full gate green on `84a8cb8`: unit 449, native 25/25, budgets (initial browser 347,505 of 368,640 gzip bytes).
+- **Preview:** pending.
+- **Open:**
+  - The owner's choices: the model, with the Vercel budget or Styld's own gateway key; the price; and which of v1's
+    other AI features come next (wardrobe analysis, outfit check, shop suggestions).
+  - The page reads the chat every 0.8 s while Styld writes, rather than streaming.
+  - Chats cannot be renamed or deleted; deleting the account removes them.
+
 ## Scan anything — 2026-10-31
 
 Replaces clean pictures' milestone C, as the owner widened it on 31 October. It folds in the capture brainstorm of
