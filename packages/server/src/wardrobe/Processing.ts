@@ -19,6 +19,9 @@ export const MakeTurn = Schema.Struct({ turnOf: Schema.String })
 /** Queue message: compare a capture's new sightings with the rest of its import and with the wardrobe. */
 export const MatchCapture = Schema.Struct({ matchOf: Schema.String })
 
+/** Queue message: ask the decision model once about a piece carried over from the old categories. */
+export const SuggestPiece = Schema.Struct({ suggestFor: Schema.String })
+
 /** Every message the Worker's queue carries. */
 export const WorkMessage = Schema.Union([
   ProcessPiece,
@@ -27,6 +30,7 @@ export const WorkMessage = Schema.Union([
   CleanPicture,
   MakeTurn,
   MatchCapture,
+  SuggestPiece,
 ])
 export type WorkMessage = typeof WorkMessage.Type
 

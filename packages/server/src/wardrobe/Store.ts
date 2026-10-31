@@ -1,5 +1,5 @@
 import { accounts, detections, operationReceipts, piecePictures, pieceTurns, pieces, uploads } from '@styld/db'
-import { and, desc, eq, inArray, ne, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Array, Effect, Option, Schema } from 'effect'
 import { receiptQuery } from '../Receipts.ts'
@@ -167,6 +167,15 @@ export const makeStore = (database: Parameters<typeof drizzle>[0]) => {
           .where(and(eq(pieces.id, pieceId), eq(pieces.accountId, accountId)))
           .limit(1),
       ).pipe(Effect.map(first)),
+    /** Ready pieces carried over from the old categories that the decision model has not been asked about yet. */
+    piecesToSuggest: (limit: number) =>
+      attempt(() =>
+        db
+          .select({ id: pieces.id })
+          .from(pieces)
+          .where(and(isNull(pieces.suggestedAt), eq(pieces.status, 'ready')))
+          .limit(limit),
+      ).pipe(Effect.map((rows) => rows.map(({ id }) => id))),
     /** For the processing queue, which acts for no one in particular. */
     findPieceForProcessing: (pieceId: string) =>
       attempt(() => db.select().from(pieces).where(eq(pieces.id, pieceId)).limit(1)).pipe(Effect.map(first)),

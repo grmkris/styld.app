@@ -28,6 +28,8 @@ export const settleMessage = (
       | 'failTurn'
       | 'processMatch'
       | 'failMatch'
+      | 'suggestPiece'
+      | 'failSuggestion'
     >
   },
   message: Cloudflare.Queues.Message,
@@ -56,6 +58,8 @@ export const settleMessage = (
         return work(services.captures.processCapture(body.captureId), services.captures.failCapture(body.captureId))
       if ('matchOf' in body)
         return work(services.captures.processMatch(body.matchOf), services.captures.failMatch(body.matchOf))
+      if ('suggestFor' in body)
+        return work(services.captures.suggestPiece(body.suggestFor), services.captures.failSuggestion(body.suggestFor))
       if ('turnOf' in body)
         return work(services.captures.processTurn(body.turnOf), services.captures.failTurn(body.turnOf))
       if ('cleanPictureOf' in body)

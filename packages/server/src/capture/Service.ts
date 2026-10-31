@@ -9,6 +9,7 @@ import { processing } from './Processing.ts'
 import { picturing } from './Pictures.ts'
 import { GarmentSegmenter, GarmentVision, ImageGenerator, PictureWork, VideoGenerator } from './Providers.ts'
 import { redrawing } from './Redraw.ts'
+import { suggesting } from './Suggest.ts'
 import { askingTurns, turning } from './Turns.ts'
 import { detectionPictures, reviewing } from './Review.ts'
 import { Usage } from './Usage.ts'
@@ -45,6 +46,7 @@ const make = (bindings: CaptureBindings) =>
       ...redrawing(parts),
       ...turning(parts),
       ...askingTurns(parts),
+      ...suggesting(parts),
     }
     return {
       createCapture: bound(operations.createCapture),
@@ -70,6 +72,9 @@ const make = (bindings: CaptureBindings) =>
       makeTurn: bound(operations.makeTurn),
       acceptSheet: bound(operations.acceptSheet),
       turnFile: bound(operations.turnFile),
+      suggestPiece: bound(operations.suggestPiece),
+      failSuggestion: bound(operations.failSuggestion),
+      sweepSuggestions: bound(operations.sweepSuggestions),
     }
   })
 

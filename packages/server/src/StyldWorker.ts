@@ -532,13 +532,14 @@ export default StyldWorker.make(
           )
         }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
     )
-    // Every ten minutes: generation jobs and checks whose messages were lost go to their queues again.
+    // Every ten minutes: generation jobs and checks whose messages were lost go to their queues again, and pieces
+    // carried over from the old categories go to be asked about, a batch at a time.
     yield* Cloudflare.Workers.cron('*/10 * * * *', () =>
       Effect.gen(function* () {
-        const { generations, checks, observabilityBase } = yield* application(
+        const { generations, checks, captures, observabilityBase } = yield* application(
           yield* Cloudflare.Workers.WorkerEnvironment,
         )
-        yield* Effect.all([generations.sweep(), checks.sweep()], { discard: true }).pipe(
+        yield* Effect.all([generations.sweep(), checks.sweep(), captures.sweepSuggestions()], { discard: true }).pipe(
           withObservability('styld.cron', { ...observabilityBase, kind: 'cron.sweep' }),
         )
       }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
