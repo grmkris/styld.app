@@ -3,10 +3,12 @@ import { type Profile, Tone } from '@styld/protocol'
 import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
-import { primaryAction, secondaryAction } from '../Actions.styles.ts'
+import { primaryAction, secondaryAction, smallAction } from '../Actions.styles.ts'
 import { avatar } from '../Avatar.ts'
+import { avatar as avatarStyle } from '../Avatar.styles.ts'
 import { checkNotice } from './CheckNotice.ts'
-import { textField } from '../Fields.styles.ts'
+import { textArea, textField } from '../Fields.styles.ts'
+import { personRouter } from '../route.ts'
 import { loader } from '../Icon.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
@@ -62,23 +64,52 @@ const textInput = (
     ],
   )
 
+/** The bio in a box that shows all of it while it is written, with how much of the 160 is used. */
+const bioView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.label(
+    [h.For('profile-bio'), ...styled(h, styles.field())],
+    [
+      format(locale, 'profile.editor.bioLabel', {}),
+      h.textarea([
+        h.Id('profile-bio'),
+        h.Rows(3),
+        h.Value(model.draft.bio),
+        h.Attribute('maxlength', '160'),
+        h.AriaDescribedBy('profile-bio-count'),
+        h.Placeholder(format(locale, 'profile.editor.bioPlaceholder', {})),
+        ...styled(h, cx(textField(), textArea())),
+        h.OnInput((value) => Message.UpdatedField({ field: 'bio', value })),
+      ]),
+      h.span(
+        [h.Id('profile-bio-count'), ...styled(h, styles.count())],
+        [format(locale, 'profile.editor.bioCount', { count: model.draft.bio.length, most: 160 })],
+      ),
+    ],
+  )
+
+/** The avatar's colour: a named group of native radios, so arrow keys move between them, each drawn as its tone. The
+ * large avatar above shows the initials on the chosen one. */
 const toneView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.fieldset(
-    [h.Role('radiogroup'), h.AriaLabel(format(locale, 'profile.editor.toneLabel', {})), ...styled(h, styles.tones())],
-    Tone.literals.map((tone) =>
-      h.button(
-        [
-          h.Type('button'),
-          h.Role('radio'),
-          h.AriaChecked(model.draft.tone === tone),
-          h.AriaLabel(format(locale, `profile.tones.${tone}`, {})),
-          ...styled(h, styles.tone()),
-          h.OnClick(Message.ChoseTone({ tone })),
-        ],
-        [avatar(model.draft.name, tone, 'medium', h)],
+  h.fieldset(styled(h, styles.tones()), [
+    h.legend(styled(h, styles.legend()), [format(locale, 'profile.editor.toneLabel', {})]),
+    h.div(
+      styled(h, styles.toneRow()),
+      Tone.literals.map((tone) =>
+        h.keyed('label')(tone, styled(h, styles.tone()), [
+          h.input([
+            h.Type('radio'),
+            h.Name('profile-tone'),
+            h.Value(tone),
+            h.Checked(model.draft.tone === tone),
+            h.AriaLabel(format(locale, `profile.tones.${tone}`, {})),
+            ...styled(h, visuallyHidden()),
+            h.OnChange(() => Message.ChoseTone({ tone })),
+          ]),
+          h.span([h.DataAttribute('tone', tone), ...styled(h, cx(avatarStyle(), styles.swatch()))]),
+        ]),
       ),
     ),
-  )
+  ])
 
 const formView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.form(
@@ -120,14 +151,7 @@ const formView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
         { maxLength: 60 },
         h,
       ),
-      textInput(
-        'profile-bio',
-        format(locale, 'profile.editor.bioLabel', {}),
-        model.draft.bio,
-        (value) => Message.UpdatedField({ field: 'bio', value }),
-        { maxLength: 160, placeholder: format(locale, 'profile.editor.bioPlaceholder', {}) },
-        h,
-      ),
+      bioView(model, locale, h),
       toneView(model, locale, h),
       h.label(
         [h.For('profile-wardrobe'), ...styled(h, styles.check())],
@@ -141,7 +165,8 @@ const formView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
           format(locale, 'profile.editor.wardrobeShown', {}),
         ],
       ),
-      h.div(styled(h, styles.actions()), [
+      // Save is the form's one action, full width at its end (DESIGN › Controls › Primary).
+      h.div(styled(h, styles.save()), [
         actionButton(
           {
             label: format(locale, 'studio.save', {}),
@@ -156,45 +181,43 @@ const formView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
     ],
   )
 
+/** Where the profile stands, in one quiet line under the title (DESIGN › Your public things), Styld's check once it
+ * is public, the way to the page, and making it public or private. */
 const publicView = (profile: Profile, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const sending = Publishing.guards.Sending(model.publishing)
-  return h.section(
-    [h.AriaLabelledBy('profile-public'), ...styled(h, styles.publicCard())],
-    [
-      h.h2(
-        [h.Id('profile-public')],
-        [format(locale, profile.published ? 'profile.editor.statusPublic' : 'profile.editor.statusPrivate', {})],
-      ),
+  return h.div(styled(h, styles.standing()), [
+    h.p(styled(h, styles.note()), [
       profile.handle === null
-        ? h.p(styled(h, styles.note()), [format(locale, 'profile.editor.needUsername', {})])
-        : h.p(styled(h, styles.note()), [
-            profile.published
-              ? `@${profile.handle}`
-              : format(locale, 'profile.card.private', { username: profile.handle }),
-          ]),
-      profile.published ? checkNotice(profile.check, locale, h) : h.empty,
-      Publishing.match(model.publishing, {
-        Idle: () => h.empty,
-        Sending: () => h.p([h.Role('status')], [loader(h)]),
-        Failed: ({ needsHandle }) =>
-          h.p(
-            [h.Role('alert'), ...styled(h, styles.problem())],
-            [format(locale, needsHandle ? 'profile.editor.needUsername' : 'profile.editor.saveFailed', {})],
-          ),
-      }),
-      h.div(styled(h, styles.actions()), [
-        actionButton(
-          {
-            label: format(locale, profile.published ? 'profile.editor.unpublish' : 'profile.editor.publish', {}),
-            style: profile.published ? secondaryAction() : primaryAction(),
-            isDisabled: sending || profile.handle === null,
-            onClick: Message.ClickedPublish({ published: !profile.published }),
-          },
-          h,
+        ? format(locale, 'profile.card.setUp', {})
+        : format(locale, profile.published ? 'profile.card.public' : 'profile.card.private', {
+            username: profile.handle,
+          }),
+    ]),
+    profile.published ? checkNotice(profile.check, locale, h) : h.empty,
+    Publishing.match(model.publishing, {
+      Idle: () => h.empty,
+      Sending: () => h.p([h.Role('status')], [loader(h)]),
+      Failed: ({ needsHandle }) =>
+        h.p(
+          [h.Role('alert'), ...styled(h, styles.problem())],
+          [format(locale, needsHandle ? 'profile.editor.needUsername' : 'profile.editor.saveFailed', {})],
         ),
-      ]),
-    ],
-  )
+    }),
+    h.div(styled(h, styles.actions()), [
+      profile.published && profile.handle !== null
+        ? h.a([h.Href(personRouter({ handle: profile.handle }))], [format(locale, 'profile.card.viewPage', {})])
+        : h.empty,
+      actionButton(
+        {
+          label: format(locale, profile.published ? 'profile.editor.unpublish' : 'profile.editor.publish', {}),
+          style: cx(secondaryAction(), smallAction()),
+          isDisabled: sending || profile.handle === null,
+          onClick: Message.ClickedPublish({ published: !profile.published }),
+        },
+        h,
+      ),
+    ]),
+  ])
 }
 
 const skeletonFields = ['handle', 'name', 'city', 'bio'] as const
@@ -225,7 +248,7 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
     Load.match(model.load, {
       Loading: () => loadingView(locale, h),
       Failed: () => [
-        h.p([h.Role('alert')], [format(locale, 'profile.editor.saveFailed', {})]),
+        h.p([h.Role('alert')], [format(locale, 'profile.card.loadFailed', {})]),
         actionButton(
           { label: format(locale, 'studio.retry', {}), style: secondaryAction(), onClick: Message.ClickedRetry() },
           h,
@@ -236,8 +259,8 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
           avatar(model.draft.name, model.draft.tone, 'large', h),
           h.h1([], [format(locale, 'profile.editor.title', {})]),
         ]),
-        formView(model, locale, h),
         publicView(profile, model, locale, h),
+        formView(model, locale, h),
       ],
     }),
   ),

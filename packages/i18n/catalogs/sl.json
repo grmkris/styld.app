@@ -2020,8 +2020,6 @@
     },
     "editor": {
       "title": "Javni profil",
-      "statusPublic": "Javen",
-      "statusPrivate": "Zaseben",
       "needUsername": "Za objavo izberi uporabniško ime",
       "previewHint": "Tako bo videti tvoj profil. Ko boš pripravljen, vklopi Javen.",
       "copyLink": "Kopiraj povezavo",
@@ -2079,7 +2077,8 @@
       "toneLabel": "Barva avatarja",
       "wardrobeShown": "Pokaži mojo omaro na profilu",
       "publish": "Objavi",
-      "unpublish": "Naredi zasebnega"
+      "unpublish": "Naredi zasebnega",
+      "bioCount": "{count}/{most}"
     },
     "links": {
       "aria": "{kind}, {label}",

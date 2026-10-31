@@ -1552,6 +1552,7 @@ export interface MessageArgumentsByKey<T = string> {
   'profile.card.viewPage': Readonly<Record<string, never>>
   'profile.editor.addCover': Readonly<Record<string, never>>
   'profile.editor.addLink': Readonly<Record<string, never>>
+  'profile.editor.bioCount': { readonly count: string | number; readonly most: string | number }
   'profile.editor.bioLabel': Readonly<Record<string, never>>
   'profile.editor.bioPlaceholder': Readonly<Record<string, never>>
   'profile.editor.change': Readonly<Record<string, never>>
@@ -1591,8 +1592,6 @@ export interface MessageArgumentsByKey<T = string> {
   'profile.editor.removeLink': { readonly label: string | number }
   'profile.editor.saveFailed': Readonly<Record<string, never>>
   'profile.editor.saved': Readonly<Record<string, never>>
-  'profile.editor.statusPrivate': Readonly<Record<string, never>>
-  'profile.editor.statusPublic': Readonly<Record<string, never>>
   'profile.editor.title': Readonly<Record<string, never>>
   'profile.editor.toneLabel': Readonly<Record<string, never>>
   'profile.editor.unpublish': Readonly<Record<string, never>>
@@ -2754,4 +2753,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '257e2effcfa664aab878c184867726ac019a658068c4a07ced2ea9fa3d146b5e'
+export const catalogVersion = 'bccce5c7342b1875e1a3354ee65f0c5e785a4a24150a85ac37fbb554a15f288a'

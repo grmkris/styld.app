@@ -2020,8 +2020,6 @@
     },
     "editor": {
       "title": "Public profile",
-      "statusPublic": "Public",
-      "statusPrivate": "Private",
       "needUsername": "Choose a username to publish",
       "previewHint": "This is how your profile will look. Turn on Public when you're ready.",
       "copyLink": "Copy link",
@@ -2079,7 +2077,8 @@
       "toneLabel": "Avatar colour",
       "wardrobeShown": "Show my wardrobe on my profile",
       "publish": "Make it public",
-      "unpublish": "Make it private"
+      "unpublish": "Make it private",
+      "bioCount": "{count}/{most}"
     },
     "links": {
       "aria": "{kind}, {label}",
