@@ -1,14 +1,4 @@
-import { catalogVersion } from '@styld/i18n'
-import {
-  Explore,
-  PublicBoard,
-  PublicLookPage,
-  PublicPiecePage,
-  PublicProfile,
-  Relation,
-  SearchResults,
-} from '@styld/protocol'
-import { Dialog } from '@foldkit/ui'
+import { Explore, PublicBoard, PublicLookPage, PublicPiecePage, SearchResults } from '@styld/protocol'
 import { Schema } from 'effect'
 import {
   all,
@@ -17,7 +7,6 @@ import {
   expect,
   given,
   inside,
-  Mount,
   nth,
   role,
   scene,
@@ -28,7 +17,7 @@ import {
 } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
-import { init, Message, type Model, Session, update } from '../src/App.ts'
+import { update } from '../src/App.ts'
 import { BoardState } from '../src/page/Board/Model.ts'
 import { Shown as LookShown } from '../src/page/Look.ts'
 import { Message as PeopleMessage, SetSaved, Subject } from '../src/page/People.ts'
@@ -42,56 +31,7 @@ import {
   Shown,
 } from '../src/page/Visit.ts'
 import { view } from '../src/View.ts'
-import { sceneSheetMoved, sceneSheetOpened } from './SheetFixtures.ts'
-
-const knit = { id: `pc_${'knit'.padEnd(22, 'x')}`, name: 'Navy knit', category: 'top', subcategory: null, colours: [] }
-const nika = Schema.decodeUnknownSync(PublicProfile)({
-  handle: 'nika.kovac',
-  name: 'Nika Kovač',
-  city: 'Maribor',
-  bio: 'Red, black and one good coat.',
-  tone: 'clay',
-  boards: [
-    {
-      id: `bd_${'coats'.padEnd(22, 'x')}`,
-      name: 'Coats',
-      paper: 'paper',
-      items: [],
-      cover: [
-        {
-          _tag: 'PublicPiecePin',
-          id: `pn_${'knit'.padEnd(22, 'x')}`,
-          piece: knit,
-          addedAt: '2026-10-30T08:00:00.000Z',
-        },
-      ],
-      pinCount: 1,
-      publishedAt: '2026-10-30T08:00:00.000Z',
-    },
-  ],
-  looks: [],
-  yours: false,
-})
-
-const opened = (pathname: string) =>
-  modifyFields(
-    init({
-      locale: 'en',
-      catalogVersion,
-      timeZone: 'UTC',
-      referenceTime: 0,
-      pathname,
-      origin: 'https://styld.test',
-      telemetryConsent: 'denied',
-    }).model,
-    { session: () => Session.SignedOut() },
-  )
-const visiting = (pathname: string, shown: Shown) =>
-  modifyFields(opened(pathname), { visit: (visit) => modifyFields(visit, { shown: () => shown }) })
-const by = { handle: 'nika.kovac', name: 'Nika Kovač', tone: 'clay' }
-const suggested = { ...by, city: 'Maribor', bio: 'Red, black and one good coat.' }
-const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
-const signedIn = (model: Model): Model => ({ ...model, session: Session.SignedIn({ claims }) })
+import { by, knit, nika, opened, signedIn, suggested, visiting } from './VisitFixtures.ts'
 
 /** The knit as it lies on a board's table. */
 const knitItem = {
@@ -220,37 +160,6 @@ describe('a public profile', () => {
       expect(role('link', { name: 'Navy knit' })).toHaveAttr('href', `/pieces/${knit.id}`),
       expect(role('button', { name: 'Delete' })).toBeAbsent(),
       expect(role('button', { name: 'Report look' })).toExist(),
-    )
-  })
-
-  test('offers a signed-in visitor Follow, Report and Block, and a piece Save', () => {
-    const relation = Schema.decodeUnknownSync(Relation)({ handle: 'nika.kovac', following: false, blocked: false })
-    const shown = signedIn(visiting('/@nika.kovac', Shown.Person({ profile: nika })))
-    const known = update(
-      shown,
-      Message.GotVisitMessage({
-        message: VisitMessage.GotPeopleMessage({ message: PeopleMessage.SucceededLoadRelation({ relation }) }),
-      }),
-    ).model
-    scene(
-      { update, view },
-      given(known),
-      expect(role('button', { name: 'Follow' })).toHaveAttr('aria-pressed', 'false'),
-      // Report and Block wait behind More at the end of the bar, not beside Follow.
-      expect(role('button', { name: 'Report profile' })).toBeAbsent(),
-      click(role('button', { name: 'More options' })),
-      Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
-      Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
-      ...sceneSheetOpened,
-      expect(role('heading', { name: '@nika.kovac' })).toExist(),
-      expect(role('button', { name: 'Block @nika.kovac' })).toExist(),
-      click(role('button', { name: 'Report profile' })),
-      ...sceneSheetMoved(2),
-      Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
-      Mount.expectEnded(Dialog.AcquireResources),
-      expect(text("What's wrong with it?")).toExist(),
-      expect(role('radio', { name: 'Spam or a scam' })).toExist(),
-      expect(role('button', { name: 'Send report' })).toHaveAttr('aria-disabled', 'true'),
     )
   })
 

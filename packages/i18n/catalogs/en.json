@@ -474,7 +474,8 @@
       "confirmTitle": "Block @{username}?",
       "confirmBody": "They won't be told. You won't see each other's boards or profile, and follows between you are removed.",
       "confirm": "Block",
-      "cancel": "Cancel"
+      "cancel": "Cancel",
+      "blocked": "@{username} is blocked. You can unblock them under More options."
     }
   },
   "connect": {

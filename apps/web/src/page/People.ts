@@ -1,7 +1,7 @@
 import { Dialog } from '@foldkit/ui'
 import { BoardId, Handle, LookId, PieceId, Relation, ReportReason, reportNoteLength } from '@styld/protocol'
 import { Effect, Option, Predicate, Schema } from 'effect'
-import { Command, Update } from 'foldkit'
+import { Command, Dom, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
@@ -88,6 +88,7 @@ export const Message = defineMessageUnion({
   ClickedReport: {},
   ClickedMore: {},
   GotMoreMessage: { message: Dialog.Message },
+  CompletedFocusMoreTitle: {},
   ChoseReportReason: { reason: ReportReason },
   UpdatedReportNote: { value: Schema.String },
   ClickedCancelReport: {},
@@ -251,15 +252,38 @@ const moreSheet = {
   toParentMessage: (message: Dialog.Message) => Message.GotMoreMessage({ message }),
   foldOutMessage: Dialog.OutMessage.match<Update.Step<Model, Message>>({
     Opened: () => (model) => ({ model }),
-    Closed: () => (model) => ({ model }),
+    // Closed, the sheet forgets a report or a block question left in it; one being sent goes on.
+    Closed: () => (model) => ({
+      model: modifyFields(model, {
+        confirmingBlock: () => false,
+        reporting: (reporting) => (Reporting.guards.Sending(reporting) ? reporting : Reporting.Closed()),
+      }),
+    }),
   }),
 }
 const foldMore = Update.foldChild({ update: Dialog.update, ...moreSheet })
 const openMore = Update.foldChildStep({ update: Dialog.open, ...moreSheet })
 const closeMore = Update.foldChildStep({ update: Dialog.close, ...moreSheet })
 
-/** What was chosen in the More sheet closes it first; Report on a piece, a look or a board has no sheet to close. */
+/** The More sheet once the block or unblock it asked for is done; elsewhere there is no sheet to close. */
 const leaveMore = (model: Model): UpdateReturn => (model.more.isOpen ? closeMore(model) : { model })
+
+/** The More sheet's title, once its content changes to a question or the report form, so focus and a screen reader
+ * follow it there.
+ * @internal Exported for its tests. */
+export const FocusMoreTitle = Command.define('FocusMoreTitle', {
+  args: { id: Schema.String },
+  messages: [Message.CompletedFocusMoreTitle],
+  execute: ({ id }) =>
+    Dom.focus(`#${id}`, { preventScroll: true, makeFocusable: true }).pipe(
+      Effect.ignore,
+      Effect.as(Message.CompletedFocusMoreTitle()),
+    ),
+})
+
+/** A step inside the open More sheet: its content changes in place, and its title takes focus. */
+const inSheet = (model: Model): UpdateReturn =>
+  model.more.isOpen ? { model, commands: [FocusMoreTitle({ id: Dialog.titleId(model.more) })] } : { model }
 
 const submitted = (model: Model): UpdateReturn =>
   Reporting.guards.Open(model.reporting) && Option.isSome(model.reporting.reason)
@@ -286,31 +310,31 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         : { model: checked }
     },
     ClickedFollow: ({ following }) => sending(model, SetFollowing({ handle: handleOfSubject(model), following })),
-    ClickedBlock: () =>
-      Update.combine<Model, Message, StyldClient>(model, [
-        leaveMore,
-        (step) => ({ model: modifyFields(step, { confirmingBlock: () => true }) }),
-      ]),
-    ClickedKeepUnblocked: () => ({ model: modifyFields(model, { confirmingBlock: () => false }) }),
+    ClickedBlock: () => inSheet(modifyFields(model, { confirmingBlock: () => true })),
+    ClickedKeepUnblocked: () => inSheet(modifyFields(model, { confirmingBlock: () => false })),
+    // The sheet stays, its button waiting, until the block is done.
     ClickedConfirmBlock: ({ blocked }) =>
-      Update.combine<Model, Message, StyldClient>(model, [
-        leaveMore,
-        (step) => sending(step, SetBlocked({ handle: handleOfSubject(step), blocked })),
-      ]),
-    SucceededSetRelation: ({ relation }) => ({
-      model: modifyFields(model, { standing: () => Standing.Known({ relation }), work: () => Work.Idle() }),
-    }),
+      Work.guards.Sending(model.work)
+        ? { model }
+        : {
+            model: modifyFields(model, { work: () => Work.Sending() }),
+            commands: [SetBlocked({ handle: handleOfSubject(model), blocked })],
+          },
+    SucceededSetRelation: ({ relation }) =>
+      leaveMore(
+        modifyFields(model, {
+          standing: () => Standing.Known({ relation }),
+          work: () => Work.Idle(),
+          confirmingBlock: () => false,
+        }),
+      ),
+    CompletedFocusMoreTitle: () => ({ model }),
     ClickedSave: ({ saved }) =>
       Subject.guards.Person(model.subject) ? { model } : sending(model, SetSaved({ subject: model.subject, saved })),
     SucceededSetSaved: ({ saved }) => ({ model: modifyFields(model, { saved: () => saved, work: () => Work.Idle() }) }),
     FailedPeopleWork: () => ({ model: modifyFields(model, { work: () => Work.Failed() }) }),
     ClickedReport: () =>
-      Update.combine<Model, Message, StyldClient>(model, [
-        leaveMore,
-        (step) => ({
-          model: modifyFields(step, { reporting: () => Reporting.Open({ reason: Option.none(), note: '' }) }),
-        }),
-      ]),
+      inSheet(modifyFields(model, { reporting: () => Reporting.Open({ reason: Option.none(), note: '' }) })),
     ClickedMore: () => openMore(model),
     GotMoreMessage: (got) => foldMore(model, got.message),
     ChoseReportReason: ({ reason }) => ({
@@ -327,7 +351,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
           Reporting.guards.Open(reporting) ? Reporting.Open({ reason: reporting.reason, note: value }) : reporting,
       }),
     }),
-    ClickedCancelReport: () => ({ model: modifyFields(model, { reporting: () => Reporting.Closed() }) }),
+    ClickedCancelReport: () => inSheet(modifyFields(model, { reporting: () => Reporting.Closed() })),
     SubmittedReport: () => submitted(model),
     SucceededReport: () => ({ model: modifyFields(model, { reporting: () => Reporting.Sent() }) }),
     FailedReport: ({ tooMany }) => ({ model: modifyFields(model, { reporting: () => Reporting.Failed({ tooMany }) }) }),

@@ -391,6 +391,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'profile.tones.slate': Readonly<Record<string, never>>
   'profile.tones.stone': Readonly<Record<string, never>>
   'safety.block.block': { readonly username: string | number }
+  'safety.block.blocked': { readonly username: string | number }
   'safety.block.cancel': Readonly<Record<string, never>>
   'safety.block.confirm': Readonly<Record<string, never>>
   'safety.block.confirmBody': Readonly<Record<string, never>>
@@ -692,4 +693,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'ef9183f866e961bd392898873c9444b04846c94881438c83844900fa279b62ba'
+export const catalogVersion = '81994b2140918eeb5455cd5ff0e457579c41bf156f350ab08cec8c1aa8133364'

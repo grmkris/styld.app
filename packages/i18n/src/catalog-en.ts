@@ -404,6 +404,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
     "They won't be told. You won't see each other's boards or profile, and follows between you are removed.",
   'safety.block.confirm': 'Block',
   'safety.block.cancel': 'Cancel',
+  'safety.block.blocked': '@{username} is blocked. You can unblock them under More options.',
   'connect.copy': 'Copy',
   'connect.copied': 'Copied',
   'connect.copyFailed': 'Copy failed. Select the text and copy it manually.',

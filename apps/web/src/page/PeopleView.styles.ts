@@ -60,7 +60,21 @@ export const moreOption = style({
   fontWeight: 600,
   textAlign: 'start',
   cursor: 'pointer',
-  transitionProperty: 'background-color',
+  gap: '8px',
+  transitionProperty: 'transform, background-color',
   transitionDuration: '140ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  ':active': { transform: 'scale(0.96)' },
+  '&[aria-busy="true"]': { cursor: 'progress' },
+  '&[aria-busy="true"]:active': { transform: 'none' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2' } },
+})
+/** The More sheet's content: its choices, or a question or the report form, scrolling within the sheet if long. */
+export const moreBody = style({
+  display: 'grid',
+  gap: '12px',
+  maxBlockSize: '72dvh',
+  overflowY: 'auto',
+  paddingInline: '12px',
+  paddingBlockEnd: '4px',
 })

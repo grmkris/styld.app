@@ -408,6 +408,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
     'O tem ne prejme obvestila. Zbirk in profila drug drugega ne vidita več, sledenja med vama pa se odstranijo.',
   'safety.block.confirm': 'Blokiraj',
   'safety.block.cancel': 'Prekliči',
+  'safety.block.blocked': '@{username} je na seznamu blokiranih. Blokado odstraniš pod Več možnosti.',
   'connect.copy': 'Kopiraj',
   'connect.copied': 'Kopirano',
   'connect.copyFailed': 'Kopiranje ni uspelo. Označi besedilo in ga kopiraj ročno.',

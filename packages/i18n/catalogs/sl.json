@@ -474,7 +474,8 @@
       "confirmTitle": "Blokiraš @{username}?",
       "confirmBody": "O tem ne prejme obvestila. Zbirk in profila drug drugega ne vidita več, sledenja med vama pa se odstranijo.",
       "confirm": "Blokiraj",
-      "cancel": "Prekliči"
+      "cancel": "Prekliči",
+      "blocked": "@{username} je na seznamu blokiranih. Blokado odstraniš pod Več možnosti."
     }
   },
   "connect": {
