@@ -5,7 +5,7 @@ import { AsyncData } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
-import { FavouriteData, LastBoardData, OutfitsData, TrayData } from '../src/page/Today.ts'
+import { FavouriteData, LastBoardData, OutfitsData, TrayData, Worn } from '../src/page/Today.ts'
 import { PiecesData } from '../src/page/Wardrobe.ts'
 import { view } from '../src/View.ts'
 import { signedInAt } from './AppFixtures.ts'
@@ -45,6 +45,12 @@ const home = (waiting: number, maybeBoard: Option.Option<BoardSummary>, pictures
         lastBoard: () => LastBoardData.Success({ data: maybeBoard }),
         favourite: () => FavouriteData.Success({ data: Option.none() }),
       }),
+  })
+
+/** Home on a day already worn, with today's outfits as given. */
+const wornWith = (outfits: OutfitsData) =>
+  modifyFields(withOutfits(outfits), {
+    today: (today) => modifyFields(today, { worn: () => Worn.Worn({ pieceIds: [knit.id] }) }),
   })
 
 /** Home with today's outfits as given. */
@@ -113,6 +119,21 @@ describe('Home', () => {
       given(withOutfits(OutfitsData.Success({ data: outfit }))),
       expect(role('button', { name: 'Wear this' })).toExist(),
       expect(role('button', { name: 'Spin for another outfit' })).toExist(),
+    )
+  })
+
+  test('on a worn day, Spin waits for today’s outfits, and stays away when they failed', () => {
+    scene(
+      { update, view },
+      given(wornWith(AsyncData.Loading())),
+      expect(role('button', { name: 'Worn today' })).toExist(),
+      expect(role('button', { name: 'Spin for another outfit' })).not.toExist(),
+    )
+    scene(
+      { update, view },
+      given(wornWith(AsyncData.settle(AsyncData.Loading(), Result.fail('Unavailable' as const)))),
+      expect(role('button', { name: 'Worn today' })).toExist(),
+      expect(role('button', { name: 'Spin for another outfit' })).not.toExist(),
     )
   })
 

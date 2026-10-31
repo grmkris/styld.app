@@ -85,10 +85,12 @@ export const spin = style({
   backgroundColor: 'paper2',
   color: 'ink',
   cursor: 'pointer',
-  transitionProperty: 'transform, rotate',
-  transitionDuration: '420ms',
-  transitionTimingFunction: 'var(--styld-spring)',
+  // Press and colour at Gallery's 140ms; the springs stay on the pieces Spin brings in (DESIGN › Motion).
+  transitionProperty: 'transform, background-color',
+  transitionDuration: '140ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
   ':active': { transform: 'scale(0.96)' },
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2Hover' } },
 })
 export const note = style({
   minBlockSize: '1.5em',
@@ -110,10 +112,11 @@ export const missingLink = style({
   fontSize: '14px',
   fontWeight: 600,
   textDecorationLine: 'none',
-  transitionProperty: 'transform',
-  transitionDuration: '160ms',
-  transitionTimingFunction: 'ease-out',
+  transitionProperty: 'transform, background-color',
+  transitionDuration: '140ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
   ':active': { transform: 'scale(0.96)' },
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2Hover' } },
 })
 export const pickUp = style({
   display: 'grid',

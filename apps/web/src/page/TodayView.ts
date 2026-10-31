@@ -170,6 +170,23 @@ const tableArea = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuil
 /** Nothing is asked for yet, or the first answer is on its way. */
 const isPending = (data: AsyncData.AsyncData<unknown, unknown>) => AsyncData.isIdle(data) || AsyncData.isLoading(data)
 
+/** Spin, once today's outfits are in: its shape while they come (a worn day shows its outfit before), and nothing
+ * when they failed. */
+const spinView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  if (isPending(model.outfits)) return h.span([h.AriaHidden(true), ...styled(h, cx(block(), styles.spinSkeleton()))])
+  if (!AsyncData.isSuccess(model.outfits)) return h.empty
+  return h.button(
+    [
+      h.Type('button'),
+      h.AriaLabel(format(locale, 'today.spin', {})),
+      h.Title(format(locale, 'today.spin', {})),
+      ...styled(h, styles.spin()),
+      h.OnClick(Message.ClickedSpin()),
+    ],
+    [spinIcon(h)],
+  )
+}
+
 /** Wear this and Spin, beside an outfit on the table only. While one is coming their shapes wait; when none can come
  * (nothing ready, or the outfits failed), the table's own action is the screen's one. */
 const actionsView = (
@@ -180,19 +197,7 @@ const actionsView = (
   h: HtmlBuilder<Message>,
 ): Html => {
   if (Array.isReadonlyArrayNonEmpty(tableOutfit(model, loaded)))
-    return h.div(styled(h, styles.actions()), [
-      wearButton(model, loaded, locale, h),
-      h.button(
-        [
-          h.Type('button'),
-          h.AriaLabel(format(locale, 'today.spin', {})),
-          h.Title(format(locale, 'today.spin', {})),
-          ...styled(h, styles.spin()),
-          h.OnClick(Message.ClickedSpin()),
-        ],
-        [spinIcon(h)],
-      ),
-    ])
+    return h.div(styled(h, styles.actions()), [wearButton(model, loaded, locale, h), spinView(model, locale, h)])
   const coming = isPending(pieces) || (loaded.some((piece) => piece.status === 'ready') && isPending(model.outfits))
   if (!coming) return h.empty
   return h.div(
