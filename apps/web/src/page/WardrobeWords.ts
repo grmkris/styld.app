@@ -10,7 +10,17 @@ export const colourName = (colour: Colour) => `wardrobe.addPieceColor_${colour}`
 /** The words people use for a category, beyond its name ("čevlji" for shoes), which Ask's search also matches. */
 export const searchWordsName = (category: Category) => `ask.searchWords.${category}` as const satisfies MessageKey
 
-/** A piece's name, or what it is when it has none: the same caption on every page. */
+/** Shelves that name a kind of piece; `sport` and `other` sit in several categories, so the category names those. */
+type KindShelf = Exclude<Subcategory, 'sport' | 'other'>
+const isKindShelf = (subcategory: Subcategory | null): subcategory is KindShelf =>
+  subcategory !== null && subcategory !== 'sport' && subcategory !== 'other'
+
+/** What one piece is, in the singular ("Skirt", "Top"), from its shelf or else its category. */
+export const kindName = (piece: Pick<Piece, 'category' | 'subcategory'>) =>
+  isKindShelf(piece.subcategory)
+    ? (`wardrobe.kindOne.${piece.subcategory}` as const satisfies MessageKey)
+    : (`wardrobe.kindOne.${piece.category}` as const satisfies MessageKey)
+
+/** A piece's name, or what it is when it has none: the same caption on every page, never a category's plural. */
 export const pieceLabel = (piece: Pick<Piece, 'name' | 'category' | 'subcategory'>, locale: Locale) =>
-  piece.name ??
-  format(locale, piece.subcategory === null ? categoryName(piece.category) : subcategoryName(piece.subcategory), {})
+  piece.name ?? format(locale, kindName(piece), {})

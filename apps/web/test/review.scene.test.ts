@@ -105,7 +105,7 @@ describe('the review tray', () => {
       { update: (model) => ({ model }), view },
       given(reviewPage([foundAgain])),
       expect(text('Already in your wardrobe?')).toExist(),
-      expect(role('button', { name: 'Keep Tops' })).toHaveAttr('aria-pressed', 'false'),
+      expect(role('button', { name: 'Keep Top' })).toHaveAttr('aria-pressed', 'false'),
     )
     scene(
       { update: (model) => ({ model }), view },

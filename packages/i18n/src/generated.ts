@@ -2430,6 +2430,40 @@ export interface MessageArgumentsByKey<T = string> {
   'wardrobe.itemNotFound': Readonly<Record<string, never>>
   'wardrobe.itemProcessFailed': Readonly<Record<string, never>>
   'wardrobe.itemReady': Readonly<Record<string, never>>
+  'wardrobe.kindOne.accessory': Readonly<Record<string, never>>
+  'wardrobe.kindOne.bags': Readonly<Record<string, never>>
+  'wardrobe.kindOne.belts': Readonly<Record<string, never>>
+  'wardrobe.kindOne.blazers': Readonly<Record<string, never>>
+  'wardrobe.kindOne.boots': Readonly<Record<string, never>>
+  'wardrobe.kindOne.bottom': Readonly<Record<string, never>>
+  'wardrobe.kindOne.coats': Readonly<Record<string, never>>
+  'wardrobe.kindOne.dress': Readonly<Record<string, never>>
+  'wardrobe.kindOne.flats': Readonly<Record<string, never>>
+  'wardrobe.kindOne.glasses': Readonly<Record<string, never>>
+  'wardrobe.kindOne.hats': Readonly<Record<string, never>>
+  'wardrobe.kindOne.heels': Readonly<Record<string, never>>
+  'wardrobe.kindOne.jackets': Readonly<Record<string, never>>
+  'wardrobe.kindOne.jeans': Readonly<Record<string, never>>
+  'wardrobe.kindOne.jewelry': Readonly<Record<string, never>>
+  'wardrobe.kindOne.jumpsuit': Readonly<Record<string, never>>
+  'wardrobe.kindOne.leggings': Readonly<Record<string, never>>
+  'wardrobe.kindOne.long_sleeve': Readonly<Record<string, never>>
+  'wardrobe.kindOne.loungewear': Readonly<Record<string, never>>
+  'wardrobe.kindOne.maxi': Readonly<Record<string, never>>
+  'wardrobe.kindOne.midi': Readonly<Record<string, never>>
+  'wardrobe.kindOne.mini': Readonly<Record<string, never>>
+  'wardrobe.kindOne.outerwear': Readonly<Record<string, never>>
+  'wardrobe.kindOne.sandals': Readonly<Record<string, never>>
+  'wardrobe.kindOne.scarves': Readonly<Record<string, never>>
+  'wardrobe.kindOne.shoes': Readonly<Record<string, never>>
+  'wardrobe.kindOne.short_sleeve': Readonly<Record<string, never>>
+  'wardrobe.kindOne.shorts': Readonly<Record<string, never>>
+  'wardrobe.kindOne.skirts': Readonly<Record<string, never>>
+  'wardrobe.kindOne.sleeveless': Readonly<Record<string, never>>
+  'wardrobe.kindOne.sneakers': Readonly<Record<string, never>>
+  'wardrobe.kindOne.top': Readonly<Record<string, never>>
+  'wardrobe.kindOne.trousers': Readonly<Record<string, never>>
+  'wardrobe.kindOne.vests': Readonly<Record<string, never>>
   'wardrobe.loadMore': Readonly<Record<string, never>>
   'wardrobe.lookLabel': Readonly<Record<string, never>>
   'wardrobe.lookLoadError': Readonly<Record<string, never>>
@@ -2705,4 +2739,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '82ab4446e1aba0e45081a42b2d184bf8f38088755c55429b68f4cc465e3f3033'
+export const catalogVersion = 'cd147a0d5bfa7205daf2e8513a8192bdae29d89d17240f5f7bc446099ae5ad8e'

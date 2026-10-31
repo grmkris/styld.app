@@ -13,7 +13,7 @@ import { addPiecesRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { piecePickers } from './PieceFields.ts'
 import { type Decision, keptOf, Message, type Model, Saving, Tray } from './Review.ts'
-import { categoryName, subcategoryName } from './WardrobeWords.ts'
+import { kindName } from './WardrobeWords.ts'
 import { backToWardrobe } from './PageBar.ts'
 import { round } from './PageBar.styles.ts'
 import { message as messageSection, messageTitle } from './WardrobeView.styles.ts'
@@ -23,27 +23,23 @@ import * as styles from './ReviewView.styles.ts'
 const picturePath = (detection: Detection, decision: Decision | undefined) =>
   `/cdn/detections/${detection.id}/${decision?.useOriginal === true || !detection.hasCutout ? 'original' : 'cutout'}`
 
-/** What a found piece is called: the person's name for it, else its kind, else a prompt to say. */
+/** What a found piece is called: the person's name for it, else what one of its kind is called ("Skirt"), else a
+ * prompt to say. */
 const label = (decision: Decision | undefined, locale: Locale) => {
   const name = decision?.name.trim() ?? ''
   if (name.length > 0) return name
   return Option.match(decision?.category ?? Option.none(), {
     onNone: () => format(locale, 'wardrobe.addPieceCategoryPlaceholder', {}),
-    onSome: (category) => format(locale, categoryName(category), {}),
+    onSome: (category) =>
+      format(locale, kindName({ category, subcategory: Option.getOrNull(decision?.subcategory ?? Option.none()) }), {}),
   })
 }
 
-const kind = (decision: Decision | undefined, locale: Locale) =>
-  Option.match(decision?.subcategory ?? Option.none(), {
-    onNone: () => '',
-    onSome: (subcategory) => format(locale, subcategoryName(subcategory), {}),
-  })
-
-/** What the tile says under a piece's name: that the wardrobe may have it, that it needs a better look, or its
- * kind. */
-const note = (detection: Detection, decision: Decision | undefined, locale: Locale) => {
-  if (detection.alreadyHave !== undefined) return format(locale, 'capture.alreadyHave', {})
-  return detection.partial === true ? format(locale, 'capture.betterLook', {}) : kind(decision, locale)
+/** What the tile says under a piece's name, when there is more to say: the wardrobe may have it, or it needs a
+ * better look. */
+const note = (detection: Detection) => {
+  if (detection.alreadyHave !== undefined) return Option.some('capture.alreadyHave' as const)
+  return detection.partial === true ? Option.some('capture.betterLook' as const) : Option.none()
 }
 
 const foundTile = (detection: Detection, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
@@ -81,7 +77,10 @@ const foundTile = (detection: Detection, model: Model, locale: Locale, h: HtmlBu
         h.figcaption(styled(h, styles.caption()), [
           h.span(styled(h, styles.captionText()), [
             h.span(styled(h, styles.captionName()), [name]),
-            h.span(styled(h, styles.captionKind()), [note(detection, decision, locale)]),
+            Option.match(note(detection), {
+              onNone: () => h.empty,
+              onSome: (key) => h.span(styled(h, styles.captionKind()), [format(locale, key, {})]),
+            }),
           ]),
           Button.view(
             {

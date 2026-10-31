@@ -30,12 +30,13 @@ const countedWakeLock = `
   })
 `
 
-/** Say what an unnamed found piece is: ticking it opens it, a category keeps it, Done closes it. */
-const keepAs = async (page: Page, category: string) => {
+/** Say what an unnamed found piece is: ticking it opens it, a category keeps it, Done closes it; it is then called
+ * what one of its kind is ("Top" for Tops). */
+const keepAs = async (page: Page, category: string, kind: string) => {
   await page.getByRole('button', { name: 'Keep Pick a category' }).first().click()
   await page.getByRole('button', { name: category, exact: true }).click()
   await page.getByRole('button', { name: 'Done', exact: true }).click()
-  await page.getByRole('button', { name: `Keep ${category}` }).waitFor({ state: 'visible' })
+  await page.getByRole('button', { name: `Keep ${kind}`, exact: true }).waitFor({ state: 'visible' })
 }
 
 /** Three photos go up through the picker, wait in the review tray, two are kept with a category and
@@ -64,13 +65,13 @@ export const verifyCaptureJourney = async (browser: Browser, origin: string, fix
     expect(await page.getByRole('button', { name: 'Keep Pick a category' }).count()).toBe(3)
     await page.getByText('4 of 7 free today').waitFor({ state: 'visible' })
 
-    await keepAs(page, 'Tops')
-    await keepAs(page, 'Dresses')
+    await keepAs(page, 'Tops', 'Top')
+    await keepAs(page, 'Dresses', 'Dress')
     const add = page.getByRole('button', { name: 'Add 2 to my wardrobe' })
     await add.click()
     await page.waitForURL(`${origin}/wardrobe`, { timeout: 30000 })
-    await page.getByRole('link', { name: 'Tops' }).waitFor({ state: 'visible' })
-    await page.getByRole('link', { name: 'Dresses' }).waitFor({ state: 'visible' })
+    await page.getByRole('link', { name: 'Top', exact: true }).waitFor({ state: 'visible' })
+    await page.getByRole('link', { name: 'Dress', exact: true }).waitFor({ state: 'visible' })
     expect(await page.locator('a[href^="/wardrobe/pc_"]').count()).toBe(2)
     // The dropped piece left the tray with the rest.
     await page.goto(`${origin}/wardrobe/review`, { waitUntil: 'networkidle' })
