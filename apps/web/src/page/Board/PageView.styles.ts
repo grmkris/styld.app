@@ -70,6 +70,9 @@ export const pinLink = style({
 })
 export const pinFrame = style({
   display: 'grid',
+  // One track the size of the frame, so a tall piece is fitted to the frame instead of cropped by it.
+  gridTemplateColumns: 'minmax(0, 1fr)',
+  gridTemplateRows: 'minmax(0, 1fr)',
   placeItems: 'center',
   aspectRatio: '1 / 1',
   overflow: 'hidden',
@@ -79,8 +82,22 @@ export const pinFrame = style({
   borderColor: 'rule',
   backgroundColor: 'paper',
 })
-export const cutout = style({ inlineSize: '100%', blockSize: '100%', padding: '8px', objectFit: 'contain' })
-export const photo = style({ inlineSize: '100%', blockSize: '100%', objectFit: 'cover', borderRadius: 'photo' })
+export const cutout = style({
+  inlineSize: '100%',
+  blockSize: '100%',
+  minInlineSize: '0',
+  minBlockSize: '0',
+  padding: '8px',
+  objectFit: 'contain',
+})
+export const photo = style({
+  inlineSize: '100%',
+  blockSize: '100%',
+  minInlineSize: '0',
+  minBlockSize: '0',
+  objectFit: 'cover',
+  borderRadius: 'photo',
+})
 export const mosaic = style({
   display: 'grid',
   gridTemplateColumns: '1fr 1fr',

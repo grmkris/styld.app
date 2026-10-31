@@ -137,7 +137,10 @@ export const item = style({
 export const square = style({ aspectRatio: '1 / 1' })
 /** A label's frame fits its words, up to most of the table's width. */
 export const words = style({ inlineSize: 'max-content', maxInlineSize: '90cqw' })
+/** A piece fills its square frame and fits inside it, however tall: out of the flow, so it cannot size the frame. */
 export const cutout = style({
+  position: 'absolute',
+  inset: '0',
   display: 'block',
   inlineSize: '100%',
   blockSize: '100%',
@@ -303,8 +306,12 @@ export const trayList = style({
 })
 export const trayPiece = style({
   display: 'grid',
+  // One track the size of the tile, so a tall piece is fitted to the tile instead of growing it.
+  gridTemplateColumns: 'minmax(0, 1fr)',
+  gridTemplateRows: 'minmax(0, 1fr)',
   placeItems: 'center',
   inlineSize: '100%',
+  minBlockSize: '0',
   aspectRatio: '1 / 1',
   padding: '6px',
   borderWidth: '0',
@@ -317,4 +324,11 @@ export const trayPiece = style({
   ':active': { transform: 'scale(0.96)' },
   '&[aria-pressed="true"]': { boxShadow: 'inset 0 0 0 1.5px #1c1410 !custom' },
 })
-export const trayImage = style({ inlineSize: '100%', blockSize: '100%', objectFit: 'contain', pointerEvents: 'none' })
+export const trayImage = style({
+  inlineSize: '100%',
+  blockSize: '100%',
+  minInlineSize: '0',
+  minBlockSize: '0',
+  objectFit: 'contain',
+  pointerEvents: 'none',
+})
