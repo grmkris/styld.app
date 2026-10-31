@@ -13,6 +13,7 @@ import {
   ScrollToLatest,
   SendMessage,
   Sending,
+  StartAtTop,
   update,
 } from '../src/page/Stylist.ts'
 
@@ -143,6 +144,11 @@ describe('Styld, the stylist in the app', () => {
       Command.resolve(LoadChats, Message.SucceededLoadChats({ chats: [summary(chatId)] })),
       Command.expectNone(),
     )
+  })
+
+  test('a new chat starts at the top of the page, its title focused', () => {
+    const moved = update(init(Option.none()), Message.ClickedChat({ chatId })).model
+    expect(update(moved, Message.ClickedNewChat()).commands?.map(({ name }) => name)).toEqual([StartAtTop.name])
   })
 
   test('a chat read after the person moved on, to a new chat, does not open', () => {

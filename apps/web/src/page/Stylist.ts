@@ -1,7 +1,7 @@
 import { Chat, ChatId, ChatLocale, ChatSummary, OperationId } from '@styld/protocol'
 import { Duration, Effect, Option, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
-import { AsyncData, Command, Dom, type Update } from 'foldkit'
+import { AsyncData, Command, Dom, Render, type Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
@@ -69,6 +69,7 @@ export const Message = defineMessageUnion({
   ClickedChat: { chatId: Schema.String },
   ClickedRetryLoad: {},
   CompletedScrollToLatest: {},
+  CompletedStartAtTop: {},
 })
 export type Message = typeof Message.Type
 
@@ -187,6 +188,19 @@ export const ScrollToLatest = Command.define('ScrollToLatest', {
   ),
 })
 
+/** A new chat starts at the top of the page with its title focused, as a page opened from the navigation does
+ * (Navigation.ts): New chat removes itself, and the chat it leaves may have been scrolled far down.
+ * @internal Exported for its tests. */
+export const StartAtTop = Command.define('StartAtTop', {
+  messages: [Message.CompletedStartAtTop],
+  execute: Effect.gen(function* () {
+    yield* Render.afterCommit
+    window.scrollTo({ top: 0, behavior: 'instant' })
+    yield* Dom.focus('#main h1', { preventScroll: true, makeFocusable: true }).pipe(Effect.ignore)
+    return Message.CompletedStartAtTop()
+  }),
+})
+
 /** A chat read: shown when it is still the one open, and read again while its reply is written. */
 const showChat = (model: Model, chat: Chat): UpdateReturn => {
   const current = Option.exists(model.open, ({ id }) => id === chat.id)
@@ -294,7 +308,9 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         draft: () => '',
         sending: () => Sending.Idle(),
       }),
+      commands: [StartAtTop()],
     }),
+    CompletedStartAtTop: () => ({ model }),
     ClickedChat: ({ chatId }) => openChat(model, chatId),
     ClickedRetryLoad: () =>
       Opening.guards.Failed(model.opening) ? openChat(model, model.opening.chatId) : { model, commands: [LoadChats()] },
