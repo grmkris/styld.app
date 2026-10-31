@@ -1,6 +1,6 @@
 import {
   type AddWish,
-  type Author,
+  Author,
   type CreateReport,
   Handle,
   NotWithYourself,
@@ -231,7 +231,7 @@ const relations = (p: Parts) => ({
    * told. */
   setBlocked: Effect.fn('Styld.Social.setBlocked')(function* (handle: string, input: SetBlocked) {
     const { accountId } = yield* CurrentAccount
-    const other = yield* Effect.flatMap(stored(p.store.accountOf(handle)), orNotFound)
+    const other = yield* Effect.flatMap(stored(p.store.accountOfAnyHandle(handle)), orNotFound)
     if (other === accountId) return yield* NotWithYourself.make({})
     if (input.blocked) yield* stored(p.store.block(accountId, other, yield* nowDate))
     else yield* stored(p.store.unblock(accountId, other))
@@ -242,9 +242,21 @@ const relations = (p: Parts) => ({
     const people: ReadonlyArray<Author> = yield* authors(p, yield* stored(p.store.followees(accountId)))
     return { people }
   }),
+  /** Who the account blocked, by their handle and name even once they stopped publishing, so they can be unblocked. */
   blocked: Effect.fn('Styld.Social.blocked')(function* () {
     const { accountId } = yield* CurrentAccount
-    const people: ReadonlyArray<Author> = yield* authors(p, yield* stored(p.store.blockedBy(accountId)))
+    const rows = yield* p.owners.profiles(yield* stored(p.store.blockedBy(accountId)))
+    const people: ReadonlyArray<Author> = rows.flatMap((row) =>
+      Option.isSome(row)
+        ? Option.toArray(
+            Schema.decodeUnknownOption(Author)({
+              handle: row.value.handle,
+              name: row.value.name,
+              tone: row.value.tone,
+            }),
+          )
+        : [],
+    )
     return { people }
   }),
   /** What people the account follows made public lately, from `cursor` back. */

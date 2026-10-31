@@ -41,6 +41,11 @@ const savesAndFollows = (db: Database) => ({
         .where(and(eq(profiles.handle, handle), eq(profiles.published, true)))
         .limit(1),
     ).pipe(Effect.map((rows) => Option.map(Option.fromNullishOr(rows[0]), ({ accountId }) => accountId))),
+  /** The account behind a handle, published or not: someone can be blocked, and unblocked, whatever they show. */
+  accountOfAnyHandle: (handle: string) =>
+    attempt(() =>
+      db.select({ accountId: profiles.accountId }).from(profiles).where(eq(profiles.handle, handle)).limit(1),
+    ).pipe(Effect.map((rows) => Option.map(Option.fromNullishOr(rows[0]), ({ accountId }) => accountId))),
   isFollowing: (followerId: string, followeeId: string) =>
     attempt(() =>
       db

@@ -226,6 +226,16 @@ const verifyPeople = async (origin: string, owner: Call, other: Call, reporters:
   expect(await (await other('/api/saved')).json()).toEqual({ saved: [] })
   await send(owner, '/api/people/luka.other/blocked', 'PUT', { blocked: false })
   expect(await (await other('/api/saved')).json()).toMatchObject({ saved: [{ _tag: 'SavedBoard' }] })
+  // Someone who never published can be blocked by their handle, stays listed while blocked, and can be unblocked.
+  const [quiet] = reporters
+  if (quiet === undefined) throw new Error('a third account is needed')
+  await send(quiet, '/api/profile', 'PATCH', { handle: 'quiet.one', name: 'Quiet' })
+  await send(owner, '/api/people/quiet.one/blocked', 'PUT', { blocked: true })
+  expect(await (await owner('/api/blocked')).json()).toMatchObject({ people: [{ handle: 'quiet.one' }] })
+  expect(await (await send(owner, '/api/people/quiet.one/blocked', 'PUT', { blocked: false })).json()).toMatchObject({
+    blocked: false,
+  })
+  expect(await (await owner('/api/blocked')).json()).toEqual({ people: [] })
   // Three people's reports hide the board from everyone; one's own cannot be reported.
   const reported = { target: { _tag: 'ReportedBoard', boardId }, reason: 'spam' }
   await refusal(await send(owner, '/api/reports', 'POST', reported), 422, 'NotWithYourself')
