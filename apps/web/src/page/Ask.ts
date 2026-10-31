@@ -49,6 +49,7 @@ export const Message = defineMessageUnion({
   SubmittedSearch: {},
   CompletedFocus: {},
   ClickedAdd: {},
+  ClickedNewBoard: { defaultName: Schema.String },
   GotAddSheetMessage: { message: Dialog.Message },
   ClickedRetry: {},
   SucceededLoadSearchLanguages: {},
@@ -59,7 +60,11 @@ export const Message = defineMessageUnion({
 export type Message = typeof Message.Type
 
 /** The pieces didn't load: the app asks for them again. */
-export const OutMessage = defineMessageUnion({ RequestedPieces: {} })
+export const OutMessage = defineMessageUnion({
+  RequestedPieces: {},
+  /** Start a board from the + sheet: Boards makes it under the default name and opens it. */
+  RequestedNewBoard: { defaultName: Schema.String },
+})
 export type OutMessage = typeof OutMessage.Type
 
 // COMMAND
@@ -180,6 +185,10 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SubmittedSearch: () => ({ model, commands: [WriteQuery({ query: model.query }), FocusResults()] }),
     CompletedFocus: () => ({ model }),
     ClickedAdd: () => openAddSheet(model),
+    ClickedNewBoard: ({ defaultName }) => {
+      const closed = closeAddSheet(model)
+      return { ...closed, outMessage: OutMessage.RequestedNewBoard({ defaultName }) }
+    },
     GotAddSheetMessage: (got) => foldAddSheet(model, got.message),
     ClickedRetry: () => ({ model, outMessage: OutMessage.RequestedPieces() }),
     SucceededLoadSearchLanguages: () => ({ model: modifyFields(model, { languages: () => SearchLanguages.Both() }) }),

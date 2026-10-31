@@ -133,6 +133,17 @@ const created = (model: Model, board: Board): UpdateReturn => ({
   outMessage: OutMessage.CreatedBoard({ boardId: board.id }),
 })
 
+/** Make a board under the default name; once made it opens (`CreatedBoard`). Ask's + sheet starts one this way too. */
+export const startBoard =
+  (defaultName: string) =>
+  (model: Model): UpdateReturn =>
+    Creating.guards.Sending(model.creating)
+      ? { model }
+      : {
+          model: modifyFields(model, { creating: () => Creating.Sending() }),
+          commands: [CreateBoard({ name: defaultName })],
+        }
+
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     SucceededListBoards: ({ boards }) => ({
@@ -148,13 +159,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     FailedListSaved: () => ({
       model: modifyFields(model, { saved: (saved) => AsyncData.settle(saved, Result.fail('Unavailable' as const)) }),
     }),
-    ClickedNewBoard: ({ defaultName }) =>
-      Creating.guards.Sending(model.creating)
-        ? { model }
-        : {
-            model: modifyFields(model, { creating: () => Creating.Sending() }),
-            commands: [CreateBoard({ name: defaultName })],
-          },
+    ClickedNewBoard: ({ defaultName }) => startBoard(defaultName)(model),
     SucceededCreateBoard: ({ board }) => created(model, board),
     FailedCreateBoard: () => ({ model: modifyFields(model, { creating: () => Creating.Failed() }) }),
   })

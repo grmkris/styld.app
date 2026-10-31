@@ -1,11 +1,12 @@
 import { catalogVersion } from '@styld/i18n'
 import type { Piece } from '@styld/protocol'
 import { Dialog } from '@foldkit/ui'
-import { expect, given, Mount, role, scene, text } from 'foldkit/scene'
+import { click, Command, expect, given, Mount, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { Session, init, update } from '../src/App.ts'
 import * as Ask from '../src/page/Ask.ts'
+import { CreateBoard, Message as BoardsMessage } from '../src/page/Boards.ts'
 import { PiecesData } from '../src/page/Wardrobe.ts'
 import { view } from '../src/View.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
@@ -54,7 +55,11 @@ describe('Ask', () => {
       Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
       expect(role('link', { name: /^Add clothes/ })).toHaveAttr('href', '/wardrobe/add'),
       expect(role('link', { name: /^Add from a link/ })).toHaveAttr('href', '/wardrobe/add#link'),
-      expect(role('link', { name: /^Start a board/ })).toHaveAttr('href', '/boards'),
+      // Start a board makes one under the default name, as Boards' + does, and the sheet closes.
+      click(role('button', { name: /^Start a board/ })),
+      Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
+      Mount.expectEnded(Dialog.AcquireResources),
+      Command.resolve(CreateBoard({ name: 'My board' }), BoardsMessage.FailedCreateBoard()),
     )
   })
 
@@ -89,9 +94,10 @@ describe('Ask', () => {
     scene(
       { update, view },
       given(askWith([tee])),
-      expect(role('link', { name: 'Ask Styld' })).toHaveAttr('href', '/ask/stylist'),
+      expect(role('heading', { name: 'Styld, your stylist' })).toExist(),
+      expect(role('link', { name: 'Start a chat' })).toHaveAttr('href', '/ask/stylist'),
       expect(role('link', { name: 'Or connect ChatGPT or Claude' })).toHaveAttr('href', '/account#assistants'),
-      expect(role('button', { name: 'Add' })).toHaveAttr('aria-haspopup', 'dialog'),
+      expect(role('button', { name: 'Add clothes or a board' })).toHaveAttr('aria-haspopup', 'dialog'),
     )
   })
 
@@ -99,10 +105,12 @@ describe('Ask', () => {
     scene(
       { update, view },
       given(askWith([tee], 'what goes with white')),
-      expect(role('link', { name: 'Ask Styld: “what goes with white”' })).toHaveAttr(
+      expect(role('link', { name: 'Ask Styld about “what goes with white”' })).toHaveAttr(
         'href',
         '/ask/stylist?q=what+goes+with+white',
       ),
+      // While searching, Styld is the one row under the results, not the card as well.
+      expect(role('link', { name: 'Start a chat' })).not.toExist(),
     )
   })
 })

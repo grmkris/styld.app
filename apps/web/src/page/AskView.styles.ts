@@ -13,6 +13,8 @@ export const page = style({
   gridTemplateColumns: 'minmax(0, 1fr)',
   gap: '20px',
   paddingBlock: '0 40px',
+  // A search reads in one measure on a wide screen (Gallery `.dask`), the + near the words.
+  '@media (min-width: 900px)': { maxInlineSize: '760px' },
 })
 /** The search pill: the field, then its quiet clear and + inside, like the prototype's. */
 export const search = style({
@@ -65,11 +67,15 @@ export const quiet = style({
 })
 export const clear = style({ color: 'ink2' })
 /** Suggestions in one row of fixed height, so nothing below moves as they arrive; it scrolls sideways. */
+/** A row of chips that scrolls, cut at the screen's edge rather than the gutter, so it reads as more to come. */
 export const chips = style({
   display: 'flex',
   alignItems: 'center',
   gap: '8px',
   blockSize: '44px',
+  marginInline: 'calc(-1 * max(20px, env(safe-area-inset-left)))',
+  paddingInline: 'max(20px, env(safe-area-inset-left))',
+  scrollPaddingInline: 'max(20px, env(safe-area-inset-left))',
   overflowX: 'auto',
   scrollbarWidth: 'none',
 })

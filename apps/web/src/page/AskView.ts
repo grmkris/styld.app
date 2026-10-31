@@ -8,14 +8,7 @@ import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { addIcon, boardsTabIcon, cameraIcon, closeIcon, linkIcon, searchIcon, stylistIcon } from '../Icon.ts'
-import {
-  accountRouter,
-  addPiecesRouter,
-  assistantsSection,
-  boardsRouter,
-  pieceRouter,
-  stylistRouter,
-} from '../route.ts'
+import { accountRouter, addPiecesRouter, assistantsSection, pieceRouter, stylistRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
@@ -262,10 +255,7 @@ const stylistView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
       [h.Href(stylistRouter({ q: Option.none() })), ...styled(h, primaryAction())],
       [stylistIcon(h), format(locale, 'ask.stylistLink', {})],
     ),
-    h.a(
-      [h.Href(`${accountRouter({})}#${assistantsSection}`), ...styled(h, styles.note())],
-      [format(locale, 'ask.stylistAssistants', {})],
-    ),
+    h.a([h.Href(`${accountRouter({})}#${assistantsSection}`)], [format(locale, 'ask.stylistAssistants', {})]),
   ])
 
 /** What was typed, asked of Styld instead of searched. */
@@ -336,13 +326,18 @@ const addSheetView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Ht
                   [],
                   h,
                 ),
-                option(
-                  boardsRouter({}),
-                  boardsTabIcon(h),
-                  format(locale, 'ask.newBoard', {}),
-                  format(locale, 'ask.newBoardHint', {}),
-                  [],
-                  h,
+                // Starts a board under the default name and opens it, as Boards' + does.
+                h.button(
+                  [
+                    h.Type('button'),
+                    ...styled(h, styles.option()),
+                    h.OnClick(Message.ClickedNewBoard({ defaultName: format(locale, 'boards.defaultName', {}) })),
+                  ],
+                  [
+                    h.span(styled(h, styles.optionIcon()), [boardsTabIcon(h)]),
+                    h.span([], [format(locale, 'ask.newBoard', {})]),
+                    h.span(styled(h, styles.optionHint()), [format(locale, 'ask.newBoardHint', {})]),
+                  ],
                 ),
               ],
             ),
@@ -360,7 +355,8 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
         pageHead(pageTitle(format(locale, 'ask.title', {}), h), Option.none(), h),
         searchForm(model, locale, h),
         wardrobeView(model, pieces, locale, h),
-        stylistView(locale, h),
+        // While searching, Styld is the one row under the results; the card would ask the same thing twice.
+        String.isNonEmpty(model.query.trim()) ? h.empty : stylistView(locale, h),
         model.addSheet.isOpen ? addSheetView(model, locale, h) : h.empty,
       ],
     ),

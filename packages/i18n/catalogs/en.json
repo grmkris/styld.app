@@ -3122,7 +3122,7 @@
     "searchLabel": "Search your wardrobe",
     "placeholder": "Search your wardrobe",
     "clear": "Clear the search",
-    "add": "Add",
+    "add": "Add clothes or a board",
     "addClothes": "Add clothes",
     "addClothesHint": "Photos, a video, or hold pieces up to the camera",
     "newBoard": "Start a board",
@@ -3132,9 +3132,9 @@
     "noResults": "Nothing in your wardrobe matches “{query}”.",
     "failed": "Your wardrobe didn’t load.",
     "retry": "Try again",
-    "stylistTitle": "Ask Styld",
+    "stylistTitle": "Styld, your stylist",
     "stylistText": "Styld is your stylist and knows your wardrobe: what goes with what, and what to wear tonight.",
-    "stylistLink": "Ask Styld",
+    "stylistLink": "Start a chat",
     "searchWords": {
       "top": "top, tops",
       "bottom": "bottom, bottoms, pants",
@@ -3146,11 +3146,11 @@
     "inWardrobe": "In your wardrobe",
     "emptyTitle": "Nothing to search yet",
     "emptyHint": "Add clothes and find them here by name, colour or kind.",
-    "sheetTitle": "Add",
+    "sheetTitle": "Add to Styld",
     "addLink": "Add from a link",
     "addLinkHint": "A shop’s product page",
     "stylistAssistants": "Or connect ChatGPT or Claude",
-    "askStyld": "Ask Styld: “{query}”"
+    "askStyld": "Ask Styld about “{query}”"
   },
   "today": {
     "title": "Today",

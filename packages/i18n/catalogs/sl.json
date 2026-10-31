@@ -3122,7 +3122,7 @@
     "searchLabel": "Išči po garderobi",
     "placeholder": "Išči po garderobi",
     "clear": "Počisti iskanje",
-    "add": "Dodaj",
+    "add": "Dodaj oblačila ali zbirko",
     "addClothes": "Dodaj oblačila",
     "addClothesHint": "Fotografije, video ali kose pokaži kameri",
     "newBoard": "Začni zbirko",
@@ -3132,9 +3132,9 @@
     "noResults": "Nič v tvoji garderobi se ne ujema z »{query}«.",
     "failed": "Tvoja garderoba se ni naložila.",
     "retry": "Poskusi znova",
-    "stylistTitle": "Vprašaj Styld",
+    "stylistTitle": "Styld, tvoj stilist",
     "stylistText": "Styld je tvoj stilist in pozna tvojo garderobo: kaj se poda k čemu in kaj obleči nocoj.",
-    "stylistLink": "Vprašaj Styld",
+    "stylistLink": "Začni pogovor",
     "searchWords": {
       "top": "majica, majice, zgornji del",
       "bottom": "hlače, spodnji del",
@@ -3146,11 +3146,11 @@
     "inWardrobe": "V tvoji garderobi",
     "emptyTitle": "Še ni česa iskati",
     "emptyHint": "Dodaj oblačila in tu jih najdeš po imenu, barvi ali vrsti.",
-    "sheetTitle": "Dodaj",
+    "sheetTitle": "Dodaj v Styld",
     "addLink": "Dodaj s povezavo",
     "addLinkHint": "Stran izdelka v trgovini",
     "stylistAssistants": "Ali poveži ChatGPT ali Claude",
-    "askStyld": "Vprašaj Styld: »{query}«"
+    "askStyld": "Vprašaj Stylda o »{query}«"
   },
   "today": {
     "title": "Danes",

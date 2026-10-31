@@ -402,11 +402,13 @@ const foldAsk = Update.foldChild({
   read: (model: Model) => Option.some(model.ask),
   write: (model: Model, ask: Ask.Model) => modifyFields(model, { ask: () => ask }),
   toParentMessage: (message: Ask.Message) => Message.GotAskMessage({ message }),
-  foldOutMessage: Ask.OutMessage.match<Step>({ RequestedPieces: () => foldWardrobeRevisit }),
+  foldOutMessage: Ask.OutMessage.match<Step>({
+    RequestedPieces: () => foldWardrobeRevisit,
+    RequestedNewBoard: ({ defaultName }) => foldStartBoard(defaultName),
+  }),
 })
 
-const foldBoards = Update.foldChild({
-  update: Boards.update,
+const boardsFold = {
   read: (model: Model) => Option.some(model.boards),
   write: (model: Model, boards: Boards.Model) => modifyFields(model, { boards: () => boards }),
   toParentMessage: (message: Boards.Message) => Message.GotBoardsMessage({ message }),
@@ -415,7 +417,11 @@ const foldBoards = Update.foldChild({
       ({ boardId }) =>
       (stepModel) => ({ model: stepModel, commands: [Navigate({ href: boardRouter({ boardId }) })] }),
   }),
-})
+}
+const foldStartBoard = (defaultName: string) =>
+  Update.foldChildStep({ update: Boards.startBoard(defaultName), ...boardsFold })
+
+const foldBoards = Update.foldChild({ update: Boards.update, ...boardsFold })
 
 const foldBoard = Update.foldChild({
   update: Board.update,

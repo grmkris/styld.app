@@ -287,7 +287,7 @@ const verifyAskAndWardrobe = async (page: Page, origin: string) => {
   await page.goto(`${origin}/ask`, { waitUntil: 'networkidle' })
   await page.getByRole('searchbox', { name: 'Search your wardrobe' }).fill('knit')
   await page.getByRole('link', { name: 'Cable knit' }).waitFor({ state: 'visible' })
-  await page.getByRole('button', { name: 'Add', exact: true }).click()
+  await page.getByRole('button', { name: 'Add clothes or a board', exact: true }).click()
   await page.getByRole('link', { name: /Add clothes/ }).waitFor({ state: 'visible' })
   await expectNoSidewaysScroll(page)
   await shoot(page, 'phone-ask')
@@ -303,7 +303,7 @@ const verifyStylist = async (page: Page, origin: string) => {
   const question = 'what goes with the knit'
   await page.goto(`${origin}/ask`, { waitUntil: 'networkidle' })
   await page.getByRole('searchbox', { name: 'Search your wardrobe' }).fill(question)
-  await page.getByRole('link', { name: `Ask Styld: “${question}”` }).click()
+  await page.getByRole('link', { name: `Ask Styld about “${question}”` }).click()
   await page.waitForURL(`${origin}/ask/stylist?q=what+goes+with+the+knit`)
   expect(await page.getByRole('textbox', { name: 'Message to Styld' }).inputValue()).toBe(question)
   await page.getByRole('button', { name: 'Send', exact: true }).click()
