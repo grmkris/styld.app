@@ -170,14 +170,23 @@ const opening = (pathname: string) =>
     }).commands ?? []
   ).map(({ name }) => name)
 
+describe('the time zone', () => {
+  test('times read in the browser’s own zone once the page runs; the server’s first paint is in UTC', () => {
+    const opened = page('/ask/stylist')
+    expect(opened.context.timeZone).toBe('UTC')
+    const read = update(opened, Message.SucceededReadTimeZone({ timeZone: 'Europe/Ljubljana' }))
+    expect(read.model.context.timeZone).toBe('Europe/Ljubljana')
+  })
+})
+
 describe('the wardrobe pages', () => {
   test('each page asks for what it shows as it opens', () => {
-    expect(opening('/wardrobe')).toEqual(['ReadSession', 'ListPieces', 'CountUndrawn'])
-    expect(opening('/wardrobe/pc_abc')).toEqual(['ReadSession', 'GetPiece'])
-    expect(opening('/wardrobe/add')).toEqual(['ReadSession'])
-    expect(opening('/wardrobe/review')).toEqual(['ReadSession', 'LoadTray'])
-    expect(opening('/looks')).toEqual(['ReadSession', 'ListLooks'])
-    expect(opening(`/looks/lk_${'a'.repeat(22)}`)).toEqual(['ReadSession', 'GetLook'])
+    expect(opening('/wardrobe')).toEqual(['ReadSession', 'ReadTimeZone', 'ListPieces', 'CountUndrawn'])
+    expect(opening('/wardrobe/pc_abc')).toEqual(['ReadSession', 'ReadTimeZone', 'GetPiece'])
+    expect(opening('/wardrobe/add')).toEqual(['ReadSession', 'ReadTimeZone'])
+    expect(opening('/wardrobe/review')).toEqual(['ReadSession', 'ReadTimeZone', 'LoadTray'])
+    expect(opening('/looks')).toEqual(['ReadSession', 'ReadTimeZone', 'ListLooks'])
+    expect(opening(`/looks/lk_${'a'.repeat(22)}`)).toEqual(['ReadSession', 'ReadTimeZone', 'GetLook'])
   })
 
   test('the review tray opens once the files are sent, and the wardrobe once pieces are kept', () => {

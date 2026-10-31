@@ -60,6 +60,7 @@ import {
 import { type Url, toString as urlToString } from 'foldkit/url'
 import type { StyldClient } from './StyldClient.ts'
 import { TelemetryConsent, TelemetryConsentControl } from './TelemetryConsent.ts'
+import { ReadTimeZone } from './TimeZone.ts'
 
 // MODEL
 
@@ -249,7 +250,12 @@ export const init = (context: Flags, url?: Url): UpdateReturn => {
   )
   return {
     model: opened.model,
-    commands: [ReadSession(), ...pageCommands(route, { piece, look, board, visit }), ...(opened.commands ?? [])],
+    commands: [
+      ReadSession(),
+      ReadTimeZone(),
+      ...pageCommands(route, { piece, look, board, visit }),
+      ...(opened.commands ?? []),
+    ],
   }
 }
 
@@ -494,6 +500,9 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         commands: [SaveLocale({ locale })],
       }
     },
+    SucceededReadTimeZone: ({ timeZone }) => ({
+      model: modifyFields(model, { context: (context) => modifyFields(context, { timeZone: () => timeZone }) }),
+    }),
     SucceededSaveLocale: ({ locale }) => ({
       model: modifyFields(model, {
         context: (context) => modifyFields(context, { locale: () => locale }),

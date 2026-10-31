@@ -28,6 +28,7 @@ export const Message = defineMessageUnion({
   SucceededSaveLocale: { locale: Locale },
   FailedSaveLocale: {},
   ReceivedSession: { claims: Schema.NullOr(AccountClaims) },
+  SucceededReadTimeZone: { timeZone: Schema.String },
   /** Who the masthead shows: the profile's name and tone, read once the session is known. */
   SucceededReadYou: { name: Schema.String, tone: Tone },
   FailedReadYou: {},
