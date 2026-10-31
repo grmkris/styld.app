@@ -59,6 +59,8 @@ D1 on the preview.
     three Generated marks.
   - Styld answered a rain question in 19 s with four of the account's pieces.
   - The only console error was the own-profile 422.
+  - Again on `ef12334`: every page answered 200, and Styld answered in 51 s. One DeepSeek call on Workers AI came
+    back after exactly 30 s; every other call since the morning took 1.7–6.6 s.
 - **Open, for the owner:**
   - Keep a running mood board's progress when its board is opened again, or say it is ready elsewhere.
   - Say how long a mood board takes (about a minute and a half).
