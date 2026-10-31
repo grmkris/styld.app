@@ -46,10 +46,19 @@ export const titleOf = (text: string) => {
 
 /** What one model call costs, in micro-dollars, from list prices (estimates; the providers' invoices are the truth):
  * Claude Haiku 5.5 on the gateway, and GLM-5.3-flash on Workers AI at about 8.5 neurons for 330 tokens. */
-const priceOf = (model: string, inputTokens: number, outputTokens: number) =>
-  model === 'anthropic/claude-haiku-5.5'
-    ? Math.round(inputTokens * 0.1 + outputTokens * 0.5)
-    : Math.round((inputTokens + outputTokens) * 0.28)
+/** List prices in micro-dollars a token, in and out (Workers AI's model pages and the gateway, 31 October). */
+const listPrices: Readonly<Record<string, readonly [number, number]>> = {
+  '@cf/deepseek-ai/deepseek-v4.1-flash-1017': [0.3, 1.2],
+  '@cf/zai-org/glm-5.3-flash': [0.15, 0.5],
+  'anthropic/claude-haiku-5.5': [0.1, 0.5],
+}
+
+/** An estimate only, the providers' invoices being the truth; a model without a listed price is priced as the
+ * default. */
+const priceOf = (model: string, inputTokens: number, outputTokens: number) => {
+  const [input, output] = listPrices[model] ?? [0.3, 1.2]
+  return Math.round(inputTokens * input + outputTokens * output)
+}
 
 /** One account's chats: its Durable Object's methods, callable from the Worker. */
 export type ChatStore = {

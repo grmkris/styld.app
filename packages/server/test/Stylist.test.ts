@@ -120,6 +120,21 @@ describe('a reply', () => {
     expect(progress.at(-1)).toBe(reply)
   })
 
+  test('the same reply on DeepSeek V4.1 Flash: three searches at once, the pieces, then the words (recorded)', async () => {
+    const { replied, asked } = replyWith([0, 1, 2].map((step) => fixture(`deepseek-step-${step}.json`)))
+    const { reply, parts } = await replied
+    expect(asked).toHaveLength(3)
+    // Its first call said it would take a look while it searched: thinking aloud, left out.
+    expect(reply).toMatch(/^Easy casual outfit for today: the white tee with your navy trousers and white sneakers\./)
+    expect(reply).not.toContain('take a look')
+    const [shown] = parts
+    expect(Predicate.isTagged(shown, 'Pieces') && shown.pieceIds).toEqual([
+      'pc_whitetee00000000000000',
+      'pc_navytrousers0000000000',
+      'pc_whitesneakers000000000',
+    ])
+  })
+
   test('pieces shown before any words: it goes on for the words', async () => {
     const shownFirst = saying(fixture('glm-step-1.json'), '')
     const { replied, asked } = replyWith([fixture('glm-step-0.json'), shownFirst, fixture('glm-step-2.json')])
@@ -302,8 +317,11 @@ describe('what Styld is told', () => {
     expect(stylistPolicy({}).mode).toBe('off')
     expect(stylistPolicy({ STYLIST: 'workers-ai' })).toMatchObject({
       mode: 'workers-ai',
-      model: '@cf/zai-org/glm-5.3-flash',
+      model: '@cf/deepseek-ai/deepseek-v4.1-flash-1017',
     })
+    expect(stylistPolicy({ STYLIST: 'workers-ai', STYLIST_MODEL: '@cf/zai-org/glm-5.3-flash' }).model).toBe(
+      '@cf/zai-org/glm-5.3-flash',
+    )
     expect(stylistPolicy({ STYLIST: 'gateway' })).toMatchObject({
       mode: 'gateway',
       model: 'anthropic/claude-haiku-5.5',

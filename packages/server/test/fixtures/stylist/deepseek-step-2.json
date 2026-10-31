@@ -1,0 +1,26 @@
+{
+  "id": "chatcmpl-ed98dccc-742d-4691-8ae8-5f53f557befc",
+  "object": "chat.completion",
+  "created": 1793424132,
+  "model": "@cf/deepseek-ai/deepseek-v4.1-flash-1017",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "Easy casual outfit for today: the white tee with your navy trousers and white sneakers. Clean and simple, and the navy keeps it from looking too plain. If it's chilly this evening, swap the tee for your grey knit. Want me to save this as a look?"
+      },
+      "finish_reason": "stop",
+      "logprobs": null
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 1078,
+    "completion_tokens": 58,
+    "total_tokens": 1136,
+    "prompt_tokens_details": {
+      "cached_tokens": 960
+    },
+    "neurons": 10.069087028503418
+  }
+}
