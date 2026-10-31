@@ -9,7 +9,21 @@ import {
   SearchResults,
 } from '@styld/protocol'
 import { Schema } from 'effect'
-import { all, click, Command, expect, given, inside, nth, role, scene, submit, text, type } from 'foldkit/scene'
+import {
+  all,
+  click,
+  Command,
+  expect,
+  given,
+  inside,
+  nth,
+  role,
+  scene,
+  selector,
+  submit,
+  text,
+  type,
+} from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { init, Message, type Model, Session, update } from '../src/App.ts'
@@ -76,6 +90,22 @@ const by = { handle: 'nika.kovac', name: 'Nika Kovač', tone: 'clay' }
 const suggested = { ...by, city: 'Maribor', bio: 'Red, black and one good coat.' }
 const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
 const signedIn = (model: Model): Model => ({ ...model, session: Session.SignedIn({ claims }) })
+
+/** The knit as it lies on a board's table. */
+const knitItem = {
+  _tag: 'PieceItem',
+  id: `bi_${'knit'.padEnd(22, 'x')}`,
+  pieceId: knit.id,
+  x: 500,
+  y: 600,
+  size: 400,
+  turn: 0,
+  z: 1,
+  flipped: false,
+}
+/** Explore with these boards among Styld's edits and the newest. */
+const exploreOf = (edits: ReadonlyArray<object>, newest: ReadonlyArray<object>) =>
+  Schema.decodeUnknownSync(Explore)({ edits, featured: [], people: [], newest })
 
 /** Explore with one rainy board among Styld's edits and the newest, and one person to follow. */
 const rainyExplore = () => {
@@ -399,6 +429,42 @@ describe('a public profile', () => {
       given(visiting('/', Shown.Explore({ explore }))),
       expect(role('heading', { name: 'Newest boards' })).toExist(),
       expect(role('heading', { name: 'Edits from Styld' })).not.toExist(),
+    )
+  })
+
+  test('the landing lays the first public board with something on its table beside its words, in outline until then', () => {
+    const coats = { board: nika.boards[0], by, moods: [] }
+    const layered = {
+      board: {
+        ...nika.boards[0],
+        id: `bd_${'layers'.padEnd(22, 'x')}`,
+        name: 'Layers',
+        paper: 'sage',
+        items: [knitItem],
+      },
+      by,
+      moods: [],
+    }
+    const hero = role('region', { name: 'A wardrobe shaped by you.' })
+    scene(
+      { update, view },
+      given(visiting('/', Shown.Loading())),
+      inside(hero, expect(selector('[data-skeleton]')).toExist(), expect(selector('[data-paper]')).not.toExist()),
+    )
+    scene(
+      { update, view },
+      given(visiting('/', Shown.Explore({ explore: exploreOf([coats], [layered]) }))),
+      inside(
+        hero,
+        expect(selector('[data-skeleton]')).not.toExist(),
+        expect(selector('[data-paper]')).toHaveAttr('data-paper', 'sage'),
+        expect(selector('[data-paper] img')).toHaveAttr('src', `/cdn/public/pieces/${knit.id}/thumb`),
+      ),
+    )
+    scene(
+      { update, view },
+      given(visiting('/', Shown.Explore({ explore: exploreOf([coats], []) }))),
+      inside(hero, expect(selector('[data-skeleton]')).not.toExist(), expect(selector('[data-paper]')).not.toExist()),
     )
   })
 

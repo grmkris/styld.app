@@ -1,9 +1,12 @@
 import { format, type Locale } from '@styld/i18n'
+import { Array, Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from './ActionButton.ts'
 import { primaryAction, secondaryAction } from './Actions.styles.ts'
 import type { Model } from './App.ts'
 import { Message } from './Message.ts'
+import * as styles from './Landing.styles.ts'
+import { fromPublic, stillTable } from './page/Board/Table.ts'
 import { boards as exploreBoards } from './page/ExploreView.styles.ts'
 import { creditedBoardCard } from './page/PublicTiles.ts'
 import { block, headingLine, line } from './Skeleton.styles.ts'
@@ -78,22 +81,49 @@ const inspirationTitle = (model: Model, locale: Locale, h: HtmlBuilder<Message>)
   return h.h2([], [format(locale, title, {})])
 }
 
+/** Beside the words on a desktop, the first public board with something on its table, as it lies. It draws once the
+ * boards arrive (a table's placement is set in the browser), in outline until then, and not at all without one. Its
+ * clothes are a picture of what Styld is for; the boards below are the way into them. */
+const heroBoard = (shown: Visit.Shown, h: HtmlBuilder<Message>): Html => {
+  if (Visit.Shown.guards.Loading(shown))
+    return h.div(styled(h, styles.heroBoard()), [
+      h.span([h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, cx(block(), styles.heroSkeleton()))]),
+    ])
+  const boards = Visit.Shown.guards.Explore(shown) ? [...shown.explore.edits, ...shown.explore.newest] : []
+  return Option.match(
+    Array.findFirst(boards, ({ board }) => Array.isReadonlyArrayNonEmpty(board.items)),
+    {
+      onNone: () => h.empty,
+      onSome: ({ board }) =>
+        h.div(styled(h, styles.heroBoard()), [
+          stillTable(board.items, board.paper, [h.AriaHidden(true)], h, fromPublic),
+        ]),
+    },
+  )
+}
+
 /** The landing: what Styld is, a way in, and the inspiration below. */
 export const landingView = (model: Model, h: HtmlBuilder<Message>): Html => {
   const { locale } = model.context
   return h.main(
     [h.Id('main')],
     [
-      h.section(styled(h, intro()), [
-        h.h1(styled(h, heroTitle()), [format(locale, 'landing.title', {})]),
-        h.p(styled(h, lead()), [format(locale, 'landing.description', {})]),
-        h.div(styled(h, heroActions()), [
-          // The bar already offers Sign in; this is the way in for someone new (one code signs in and signs up), so it
-          // carries the ink. Browsing the boards below is the second way.
-          h.a([h.Href(loginRouter({})), ...styled(h, primaryAction())], [format(locale, 'landing.start', {})]),
-          h.a([h.Href(browseAnchor), ...styled(h, secondaryAction())], [format(locale, 'landing.browse', {})]),
-        ]),
-      ]),
+      h.section(
+        [h.AriaLabelledBy('landing-title'), ...styled(h, styles.hero())],
+        [
+          h.div(styled(h, intro()), [
+            h.h1([h.Id('landing-title'), ...styled(h, heroTitle())], [format(locale, 'landing.title', {})]),
+            h.p(styled(h, lead()), [format(locale, 'landing.description', {})]),
+            h.div(styled(h, heroActions()), [
+              // The bar already offers Sign in; this is the way in for someone new (one code signs in and signs up), so
+              // it carries the ink. Browsing the boards below is the second way.
+              h.a([h.Href(loginRouter({})), ...styled(h, primaryAction())], [format(locale, 'landing.start', {})]),
+              h.a([h.Href(browseAnchor), ...styled(h, secondaryAction())], [format(locale, 'landing.browse', {})]),
+            ]),
+          ]),
+          heroBoard(model.visit.shown, h),
+        ],
+      ),
       h.section(
         [h.Id('inspiration'), ...styled(h, inspiration())],
         [
