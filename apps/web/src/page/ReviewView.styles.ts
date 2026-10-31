@@ -1,13 +1,8 @@
 import { style } from '../zyzz.config.ts'
 
 // Styles for the review tray in ReviewView.ts (Gallery: add.html's found grid and footer action).
-// The bottom padding clears the footer's band: its button and the nav pill under it.
-export const reviewPage = style({
-  display: 'grid',
-  gap: '8px',
-  paddingBlock: '8px 176px',
-  '@media (min-width: 900px)': { paddingBlockEnd: '120px' },
-})
+// The site frame ends past the action band (View.styles.ts › withActionBand), so the page needs no room of its own.
+export const reviewPage = style({ display: 'grid', gap: '8px', paddingBlock: '8px 40px' })
 export const pageBar = style({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' })
 export const addMore = style({
   display: 'inline-flex',

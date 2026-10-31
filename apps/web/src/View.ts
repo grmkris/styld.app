@@ -64,6 +64,7 @@ import {
   signedOutLinks,
   site,
   tabPage,
+  withActionBand,
   withTabBar,
 } from './View.styles.ts'
 import { visuallyHidden } from './VisuallyHidden.styles.ts'
@@ -284,7 +285,8 @@ const navigationInitial = (model: Model) =>
   })
 
 /** Tab pages keep the footer below the fold while they fill in, so nothing on screen moves. */
-const siteStyle = (hasNavigation: boolean, isTab: boolean) => {
+const siteStyle = (hasNavigation: boolean, isTab: boolean, hasActionBand: boolean) => {
+  if (hasActionBand) return cx(site(), withActionBand())
   if (hasNavigation) return isTab ? cx(site(), withTabBar(), tabPage()) : cx(site(), withTabBar())
   return isTab ? cx(site(), tabPage()) : site()
 }
@@ -465,11 +467,12 @@ const reviewPage = (model: Model, h: HtmlBuilder<Message>): Html =>
 export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
   const { locale } = model.context
   const initial = navigationInitial(model)
+  const shell = siteStyle(initial !== undefined, Option.isSome(tabOf(model.route)), AppRoute.guards.Review(model.route))
   return {
     title: `${pageTitle(model)} | Styld`,
     lang: locale,
     dir: direction(locale) === 'rtl' ? 'Rtl' : 'Ltr',
-    body: h.div(styled(h, siteStyle(initial !== undefined, Option.isSome(tabOf(model.route)))), [
+    body: h.div(styled(h, shell), [
       h.header(styled(h, masthead()), [
         h.a(
           [h.Href(homeRouter({})), ...styled(h, brand()), h.AriaLabel('Styld')],

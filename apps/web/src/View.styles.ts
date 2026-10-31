@@ -138,6 +138,12 @@ export const consentActions = style({ display: 'flex', flexWrap: 'wrap', gap: '8
 export const tabPage = style({
   '& > main': { minBlockSize: 'calc(100svh - max(64px, 60px + env(safe-area-inset-top)))', alignContent: 'start' },
 })
+/** The review tray's action band floats at the bottom, above the tab bar: the page ends past it, so the band never
+ * covers the footer (ReviewView.styles.ts › footer). */
+export const withActionBand = style({
+  paddingBlockEnd: 'calc(180px + env(safe-area-inset-bottom))',
+  '@media (min-width: 900px)': { paddingBlockEnd: '96px' },
+})
 export const withTabBar = style({
   paddingBlockEnd: 'calc(104px + env(safe-area-inset-bottom))',
   '@media (min-width: 900px)': { paddingBlockEnd: '0', paddingInlineStart: '112px' },
