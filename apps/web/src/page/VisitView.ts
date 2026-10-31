@@ -86,7 +86,7 @@ const personView = (model: Model, profile: PublicProfile, inputs: PeopleView.Inp
       avatar(profile.name, profile.tone, 'large', h),
       h.h1(styled(h, styles.name()), [profile.name]),
       h.p(styled(h, styles.handle()), [
-        profile.city === null ? `@${profile.handle}` : `@${profile.handle} · ${profile.city}`,
+        profile.city === null ? `@${profile.handle}` : `@${profile.handle}, ${profile.city}`,
       ]),
       profile.bio === null ? h.empty : h.p(styled(h, styles.bio()), [profile.bio]),
       peopleActions(model, inputs, h),

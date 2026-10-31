@@ -26,7 +26,7 @@ export const verifyPublicJourney = async (browser: Browser, origin: string, fixt
     const problems = recordProblems(page)
     await page.goto(`${origin}/@luka.horvat`)
     await page.getByRole('heading', { name: 'Luka Horvat' }).waitFor()
-    await page.getByText('@luka.horvat · Ljubljana').waitFor()
+    await page.getByText('@luka.horvat, Ljubljana').waitFor()
     expect(await page.getByRole('link', { name: /Gifts/ }).count()).toBe(0)
     await page.getByRole('link', { name: /Rain/ }).click()
     await page.getByRole('heading', { name: 'Rain' }).waitFor()

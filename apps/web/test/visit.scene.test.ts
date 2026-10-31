@@ -83,7 +83,7 @@ describe('a public profile', () => {
       { update, view },
       given(visiting('/@nika.kovac', Shown.Person({ profile: nika }))),
       expect(role('heading', { name: 'Nika Kovač' })).toExist(),
-      expect(text('@nika.kovac · Maribor')).toExist(),
+      expect(text('@nika.kovac, Maribor')).toExist(),
       expect(text('Red, black and one good coat.')).toExist(),
       expect(role('link', { name: 'Sign in to follow' })).toHaveAttr('href', '/login'),
       expect(role('link', { name: /Coats/ })).toHaveAttr('href', `/boards/bd_${'coats'.padEnd(22, 'x')}`),
