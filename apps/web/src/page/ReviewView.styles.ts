@@ -129,7 +129,7 @@ export const notice = style({
   padding: '16px',
   borderRadius: 'panel',
   backgroundColor: 'stock',
-  boxShadow: 'inset 0 0 0 1px #ddd6cc !custom',
+  boxShadow: 'edge',
   fontSize: '14px',
 })
 export const noticeActions = style({ display: 'flex', flexWrap: 'wrap', gap: '8px' })
@@ -142,7 +142,7 @@ export const editorImage = style({
   aspectRatio: '1 / 1',
   objectFit: 'contain',
   borderRadius: 'panel',
-  boxShadow: 'inset 0 0 0 1px #ddd6cc !custom',
+  boxShadow: 'edge',
 })
 export const original = style({
   display: 'flex',

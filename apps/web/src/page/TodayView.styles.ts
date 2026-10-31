@@ -55,7 +55,7 @@ export const placeholder = style({
   padding: '24px',
   borderRadius: 'table',
   backgroundColor: 'paper',
-  boxShadow: 'inset 0 0 0 1px #ddd6cc !custom',
+  boxShadow: 'edge',
   textAlign: 'center',
   color: 'ink2',
 })
@@ -133,7 +133,7 @@ export const card = style({
   backgroundColor: 'stock',
   color: 'ink',
   textDecorationLine: 'none',
-  boxShadow: '0 1px 2px oklch(0 0 0 / 0.05), 0 8px 24px oklch(0 0 0 / 0.05) !custom',
+  boxShadow: 'lift1',
 })
 export const cardTitle = style({ fontWeight: 600 })
 export const cardAction = style({ fontSize: '14px', fontWeight: 600, color: 'ink2' })

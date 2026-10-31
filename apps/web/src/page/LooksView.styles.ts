@@ -31,7 +31,7 @@ export const collage = style({
   padding: '8px',
   borderRadius: 'panel',
   backgroundColor: 'stock',
-  boxShadow: 'inset 0 0 0 1px #ddd6cc !custom',
+  boxShadow: 'edge',
 })
 export const collageImage = style({
   display: 'block',

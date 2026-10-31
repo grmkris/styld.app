@@ -70,5 +70,19 @@ export const { style, vars } = defineConfig({
       voice: "'Anton', 'Hanken Grotesk Variable', sans-serif",
     },
     radius: { photo: '4px', field: '12px', panel: '16px', sheet: '24px', table: '28px', pill: '999px' },
+    shadow: {
+      // Gallery's lift-1: a card or a sheet's panel resting just above the paper.
+      lift1: '0 1px 2px oklch(0 0 0 / 0.05), 0 8px 24px oklch(0 0 0 / 0.05)',
+      // A sheet or the Ask panel rising from the bottom edge.
+      sheet: '0 -8px 32px oklch(0 0 0 / 0.14)',
+      // A hairline inside an edge, in rule: a table's paper, a frame around a picture, the search pill.
+      edge: 'inset 0 0 0 1px #ddd6cc',
+      // The chosen tile, or the focused search pill: a 1.5px ink ring inside the edge.
+      chosen: 'inset 0 0 0 1.5px #1c1410',
+      // A table taking dropped pictures: a 2px signal ring inside its edge.
+      dropTarget: 'inset 0 0 0 2px #2f4f7c',
+      // A paper halo that keeps the resize handle's dot clear of what it sits on.
+      handleHalo: '0 0 0 3px #f1eee7',
+    },
   },
 })

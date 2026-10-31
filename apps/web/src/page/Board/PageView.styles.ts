@@ -19,7 +19,7 @@ export const collage = style({
   backgroundColor: 'stock',
   color: 'ink',
   textDecorationLine: 'none',
-  boxShadow: '0 1px 2px oklch(0 0 0 / 0.05), 0 8px 24px oklch(0 0 0 / 0.05) !custom',
+  boxShadow: 'lift1',
   ':active': { transform: 'scale(0.98)' },
 })
 export const collageLabel = style({ paddingInline: '4px', fontSize: '14px', fontWeight: 600 })
@@ -107,7 +107,7 @@ export const unpinAsk = style({
   padding: '10px',
   borderRadius: 'panel',
   backgroundColor: 'stock',
-  boxShadow: '0 1px 2px oklch(0 0 0 / 0.05), 0 8px 24px oklch(0 0 0 / 0.08) !custom',
+  boxShadow: 'lift1',
   '& > button': { inlineSize: '100%' },
 })
 export const unpinQuestion = style({ fontSize: '13px', lineHeight: 1.4, color: 'ink', textWrap: 'pretty' })

@@ -25,9 +25,9 @@ export const search = style({
   paddingInline: '16px 4px',
   borderRadius: 'pill',
   backgroundColor: 'stock',
-  boxShadow: 'inset 0 0 0 1px #ddd6cc !custom',
+  boxShadow: 'edge',
   color: 'ink2',
-  ':focus-within': { boxShadow: 'inset 0 0 0 1.5px #1c1410 !custom' },
+  ':focus-within': { boxShadow: 'chosen' },
 })
 export const searchInput = style({
   flexGrow: 1,
@@ -158,7 +158,7 @@ export const sheet = style({
   borderStartStartRadius: 'sheet',
   borderStartEndRadius: 'sheet',
   backgroundColor: 'stock',
-  boxShadow: '0 -8px 32px oklch(0 0 0 / 0.14) !custom',
+  boxShadow: 'sheet',
   animationName: rise,
   animationDuration: '420ms',
   animationTimingFunction: 'var(--styld-spring)',

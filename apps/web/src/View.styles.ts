@@ -127,7 +127,7 @@ export const consentBanner = style({
   borderStartStartRadius: 'sheet',
   borderStartEndRadius: 'sheet',
   backgroundColor: 'stock',
-  boxShadow: '0 -8px 32px oklch(0 0 0 / 0.14) !custom',
+  boxShadow: 'sheet',
 })
 export const consentActions = style({ display: 'flex', flexWrap: 'wrap', gap: '8px' })
 

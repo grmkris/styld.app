@@ -100,7 +100,7 @@ export const paper = style({
   overflow: 'hidden',
   borderRadius: 'table',
   backgroundColor: 'paper',
-  boxShadow: 'inset 0 0 0 1px #ddd6cc !custom',
+  boxShadow: 'edge',
   touchAction: 'pan-y',
   userSelect: 'none',
   WebkitUserSelect: 'none',
@@ -109,7 +109,7 @@ export const paper = style({
   '&[data-paper="sage"]': { backgroundColor: 'tintSage' },
   '&[data-paper="slate"]': { backgroundColor: 'tintSlate' },
   '&[data-paper="clay"]': { backgroundColor: 'tintClay' },
-  '&[data-dropping]': { boxShadow: 'inset 0 0 0 2px #2f4f7c !custom' },
+  '&[data-dropping]': { boxShadow: 'dropTarget' },
 })
 /** A table with no hands on it: a board's preview or Home's outfit. */
 export const still = style({ touchAction: 'auto', pointerEvents: 'none' })
@@ -232,7 +232,7 @@ export const handle = style({
     inset: '9px',
     borderRadius: 'pill',
     backgroundColor: 'ink',
-    boxShadow: '0 0 0 3px #f1eee7 !custom',
+    boxShadow: 'handleHalo',
   },
 })
 
@@ -242,7 +242,7 @@ export const selection = style({
   padding: '12px',
   borderRadius: 'panel',
   backgroundColor: 'stock',
-  boxShadow: '0 1px 2px oklch(0 0 0 / 0.05), 0 8px 24px oklch(0 0 0 / 0.05) !custom',
+  boxShadow: 'lift1',
 })
 export const editor = style({ display: 'grid', gap: '8px' })
 export const selectionRow = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' })
@@ -381,7 +381,7 @@ export const trayPiece = style({
   transitionDuration: '140ms',
   transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
   ':active': { transform: 'scale(0.96)' },
-  '&[aria-pressed="true"]': { boxShadow: 'inset 0 0 0 1.5px #1c1410 !custom' },
+  '&[aria-pressed="true"]': { boxShadow: 'chosen' },
 })
 export const trayImage = style({
   inlineSize: '100%',
