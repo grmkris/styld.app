@@ -2,7 +2,7 @@
 
 import type { FormatXMLElementFn } from 'intl-messageformat'
 export type RichTextValue<T = string> = FormatXMLElementFn<T>
-export interface MessageArgumentsByKey<T = string> {
+export interface MessageArgumentsByKey<_T = string> {
   'account.assistants.description': Readonly<Record<string, never>>
   'account.assistants.title': Readonly<Record<string, never>>
   'account.deleteAccount': Readonly<Record<string, never>>
