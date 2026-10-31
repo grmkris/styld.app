@@ -361,6 +361,25 @@ const steadyPaths = ['/', '/explore', '/wardrobe', '/looks', '/boards', '/ask', 
 /** Gallery 2 for the person's own wardrobe: today's table (Spin, Wear this), a board laid out by hand (moved,
  * pinched, a label, a picture, taken off and back, saved and reopened, saved as a look), Ask, Styld and the
  * Wardrobe's tabs. No page error and no CSP violation on the way: the table places things through the CSSOM. */
+/** The wardrobe on the narrowest phone keeps to the screen, and its filter sheet, on a phone held sideways, still
+ * shows its title and close button. */
+const verifyNarrowWardrobe = async (browser: Browser, origin: string) => {
+  const narrow = await signedInContext(browser, origin, { width: 360, height: 740 })
+  try {
+    const page = await narrow.newPage()
+    await page.goto(`${origin}/wardrobe`, { waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'Filters' }).waitFor({ state: 'visible' })
+    await expectNoSidewaysScroll(page)
+    await page.setViewportSize({ width: 667, height: 375 })
+    await page.getByRole('button', { name: 'Filters' }).click()
+    const title = page.getByRole('heading', { name: 'Filter your wardrobe' })
+    await title.waitFor({ state: 'visible' })
+    expect((await title.boundingBox())?.y ?? -1).toBeGreaterThanOrEqual(0)
+  } finally {
+    await narrow.close()
+  }
+}
+
 export const verifyGalleryJourney = async (browser: Browser, origin: string, fixtures: string): Promise<void> => {
   expect((await fetch(`${fixtures}/test/identity/seed-gallery-browser`, { method: 'POST' })).status).toBe(204)
   const cookie = await signIn(origin, 'native-gallery-browser')
@@ -441,4 +460,5 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
   } finally {
     await desk.close()
   }
+  await verifyNarrowWardrobe(browser, origin)
 }
