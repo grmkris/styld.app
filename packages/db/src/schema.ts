@@ -304,19 +304,31 @@ export const boards = sqliteTable(
   ],
 )
 
+/** A row of an account's board: its own id, and the account and board it goes with. */
+export const boardOwned = () => ({
+  id: text('id').primaryKey(),
+  accountId: text('account_id')
+    .notNull()
+    .references(() => accounts.id, { onDelete: 'cascade' }),
+  boardId: text('board_id')
+    .notNull()
+    .references(() => boards.id, { onDelete: 'cascade' }),
+})
+
 /** A picture put on a board. Its bytes stay where the photo upload left them, under the account's prefix. */
 export const boardImages = sqliteTable(
   'board_images',
   {
-    id: text('id').primaryKey(),
-    accountId: text('account_id')
-      .notNull()
-      .references(() => accounts.id, { onDelete: 'cascade' }),
-    boardId: text('board_id')
-      .notNull()
-      .references(() => boards.id, { onDelete: 'cascade' }),
+    ...boardOwned(),
     objectKey: text('object_key').notNull(),
     contentType: text('content_type').notNull(),
+    /** A photo the person or an assistant put there, or a picture Styld generated (marked Generated). */
+    origin: text('origin', { enum: ['upload', 'generated'] })
+      .notNull()
+      .default('upload'),
+    /** For a generated picture: the job that made it and the model that drew it. */
+    jobId: text('job_id'),
+    model: text('model'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
   },
   (table) => [index('board_images_board').on(table.boardId)],
