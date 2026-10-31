@@ -13,7 +13,9 @@ export const textField = style({
   borderRadius: 'field',
   backgroundColor: 'stock',
   color: 'ink',
+  // A value is body text even inside a label, which is set at 600 (DESIGN.md › Type).
   fontSize: '16px',
+  fontWeight: 400,
   '&[aria-invalid="true"]': { borderColor: 'invalid' },
 })
 /** A text field for a few lines: the field's look with room above and below the words, and no resize grabber.
