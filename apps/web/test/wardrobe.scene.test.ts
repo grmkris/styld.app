@@ -69,7 +69,8 @@ describe('the wardrobe page', () => {
     scene(
       { update, view },
       given(loaded(tee, coat)),
-      expect(role('button', { name: 'Filters' })).toHaveAttr('aria-pressed', 'false'),
+      expect(role('button', { name: 'Filters' })).not.toHaveAttr('data-set'),
+      expect(role('button', { name: 'Filters' })).toHaveAttr('aria-expanded', 'false'),
       click(role('button', { name: 'Filters' })),
       Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
       Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
@@ -79,7 +80,8 @@ describe('the wardrobe page', () => {
       expect(role('button', { name: 'Show 1 piece' })).toExist(),
       expect(role('button', { name: 'COS' })).toExist(),
       expect(role('link', { name: 'White tee' })).not.toExist(),
-      expect(role('button', { name: 'Filters 1' })).toHaveAttr('aria-pressed', 'true'),
+      expect(role('button', { name: 'Filters 1' })).toHaveAttr('data-set', ''),
+      expect(role('button', { name: 'Filters 1' })).not.toHaveAttr('aria-pressed'),
     )
   })
 

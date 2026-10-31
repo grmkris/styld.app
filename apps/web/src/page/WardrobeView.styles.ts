@@ -18,13 +18,20 @@ export const filterRow = style({
 })
 /** Ask's chip, chosen as Explore's is (`cx(chip(), chosen(), filterChip())`), with its count beside its name. */
 export const filterChip = style({ display: 'inline-flex', alignItems: 'center', gap: '6px' })
-/** A chip's count, quieter than its name; on the chosen chip it takes the on-ink colour. */
+/** A chip's count, quieter than its name; on the chosen chip and on Filters once set it takes the on-ink colour. */
 export const count = style({
   fontSize: '13px',
   fontVariantNumeric: 'tabular-nums',
   color: 'ink3',
   '[aria-pressed="true"] > &': { color: 'onInk' },
+  '[data-set] > &': { color: 'onInk' },
 })
+/** Filters pinned at the start of the groups' row, which scrolls beside it. */
+export const browseRow = style({ display: 'flex', alignItems: 'center', gap: '8px' })
+/** The groups' row beside Filters: cut at the screen's right edge only. */
+export const groupScroll = style({ flexGrow: 1, minInlineSize: '0', marginInlineStart: '0', paddingInlineStart: '0' })
+/** Filters once any is set: filled in, as a chosen chip is. */
+export const filtersSet = style({ '&[data-set]': { backgroundColor: 'ink', color: 'onInk' } })
 /** The signature grid of pieces on paper, dense as a shop's: three columns on a phone, up to six on a wide screen. */
 export const grid = style({
   display: 'grid',

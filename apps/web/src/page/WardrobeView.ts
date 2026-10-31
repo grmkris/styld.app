@@ -7,7 +7,7 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { linkAction, primaryAction, secondaryAction } from '../Actions.styles.ts'
-import { loader } from '../Icon.ts'
+import { filtersIcon, loader } from '../Icon.ts'
 import { addPiecesRouter, pieceRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
@@ -69,10 +69,15 @@ const filter = (label: string, total: number, pressed: boolean, onClick: Message
     h,
   )
 
-const filterRow = (label: string, chips: ReadonlyArray<Html>, h: HtmlBuilder<Message>): Html =>
-  h.div([h.Role('group'), h.AriaLabel(label), ...styled(h, styles.filterRow())], [...chips])
+const filterRow = (
+  label: string,
+  chips: ReadonlyArray<Html>,
+  h: HtmlBuilder<Message>,
+  look: Parameters<typeof styled>[1] = styles.filterRow(),
+): Html => h.div([h.Role('group'), h.AriaLabel(label), ...styled(h, look)], [...chips])
 
-/** Opens the filter sheet; once filters are set it reads as chosen and says how many. */
+/** Opens the filter sheet, a control rather than a category: it opens a dialog and toggles nothing. Once filters are
+ * set it is filled in and says how many. */
 const filtersButton = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const count = filterCount(model.filters)
   return Button.view(
@@ -84,10 +89,11 @@ const filtersButton = (model: Model, locale: Locale, h: HtmlBuilder<Message>): H
             ...attributes.button,
             h.AriaHasPopup('dialog'),
             h.AriaExpanded(model.filterSheet.isOpen),
-            h.AriaPressed(String(count > 0)),
-            ...styled(h, cx(chip(), chosen(), styles.filterChip())),
+            ...(count > 0 ? [h.DataAttribute('set', '')] : []),
+            ...styled(h, cx(chip(), styles.filterChip(), styles.filtersSet())),
           ],
           [
+            filtersIcon(h),
             format(locale, 'wardrobe.filters', {}),
             ...(count === 0 ? [] : [' ', h.span(styled(h, styles.count()), [String(count)])]),
           ],
@@ -97,7 +103,7 @@ const filtersButton = (model: Model, locale: Locale, h: HtmlBuilder<Message>): H
   )
 }
 
-/** The groups the person has pieces in, with All first, and Filters last, with how many are set. */
+/** The groups the person has pieces in, with All first; they scroll beside Filters and are cut at the screen's edge. */
 const groupRow = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   filterRow(
     format(locale, 'wardrobe.filterCategories', {}),
@@ -123,9 +129,9 @@ const groupRow = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, h:
               ),
             ]
       }),
-      filtersButton(model, locale, h),
     ],
     h,
+    cx(styles.filterRow(), styles.groupScroll()),
   )
 
 /** The chosen group's types the person has, with All of the group first. */
@@ -308,7 +314,7 @@ const loadedView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, 
   const shown = shownPieces(pieces, model)
   return h.div(styled(h, styles.wardrobePage()), [
     backfillLine(model, locale, h),
-    groupRow(pieces, model, locale, h),
+    h.div(styled(h, styles.browseRow()), [filtersButton(model, locale, h), groupRow(pieces, model, locale, h)]),
     typeRow(inGroup, model, locale, h),
     shown.length === 0
       ? h.p(styled(h, styles.message()), [format(locale, 'wardrobe.noneFiltered', {})])

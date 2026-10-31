@@ -16,6 +16,7 @@ import {
   MagnifyingGlassLight,
   MagnifyingGlassRegular,
   ShuffleRegular,
+  SlidersHorizontalRegular,
   SquaresFourLight,
   TextTRegular,
   XRegular,
@@ -92,6 +93,8 @@ export const moreIcon = control(DotsThreeRegular)
 export const forwardIcon = control(ArrowUpRegular)
 export const backwardIcon = control(ArrowDownRegular)
 export const spinIcon = control(ShuffleRegular)
+/** The wardrobe's filters: a control, not a category. */
+export const filtersIcon = control(SlidersHorizontalRegular)
 export const searchIcon = control(MagnifyingGlassRegular)
 export const stylistIcon = control(ChatCircleRegular)
 export const closeIcon = control(XRegular)
