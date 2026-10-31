@@ -45,12 +45,21 @@ describe('the piece page', () => {
       given(piecePage(Load.Loaded({ piece: jeans }))),
       expect(role('heading', { name: 'Jeans' })).toExist(),
       expect(role('img', { name: 'Jeans' })).toHaveAttr('src', `/cdn/pieces/${jeans.id}/full`),
-      expect(text('Bottoms, Jeans')).toExist(),
+      // Unnamed, its title already says what it is: no line repeating it.
       expect(text('Colour')).toExist(),
       expect(text('Navy')).toExist(),
       expect(text('Hem taken up')).toExist(),
       // Save to board is the one action; Edit waits at the bar's end.
       expect(role('button', { name: 'Edit' })).toExist(),
+    )
+  })
+
+  test('a named piece says what one of its kind is under its name', () => {
+    scene(
+      { update, view },
+      given(piecePage(Load.Loaded({ piece: { ...jeans, name: 'Weekend denim' } }))),
+      expect(role('heading', { name: 'Weekend denim' })).toExist(),
+      expect(text('Jeans')).toExist(),
     )
   })
 
@@ -78,7 +87,7 @@ describe('the piece page', () => {
       expect(role('button', { name: 'Boots' })).toHaveAttr('aria-pressed', 'false'),
       expect(role('button', { name: 'Jeans' })).not.toExist(),
       click(role('button', { name: 'Cancel' })),
-      expect(text('Bottoms, Jeans')).toExist(),
+      expect(role('heading', { name: 'Jeans' })).toExist(),
     )
   })
 

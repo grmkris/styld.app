@@ -12,7 +12,7 @@ import { confirmActions } from '../ConfirmActions.ts'
 import { styled } from '../Styled.ts'
 import { Deletion, type Draft, Load, Message, type Model, type Redraw, ShowTurn } from './Piece.ts'
 import { colourList, piecePickers } from './PieceFields.ts'
-import { categoryName, pieceLabel, subcategoryName } from './WardrobeWords.ts'
+import { kindName, pieceLabel } from './WardrobeWords.ts'
 import { backToWardrobe } from './PageBar.ts'
 import { barEnd, round } from './PageBar.styles.ts'
 import { block, line } from '../Skeleton.styles.ts'
@@ -24,11 +24,6 @@ import * as SaveToBoardView from './SaveToBoardView.ts'
 /** The picture the piece shows; a new drawing, or a change of picture, is a new address. */
 const fullPath = (piece: Piece) =>
   `/cdn/pieces/${piece.id}/full${piece.picture === undefined ? '' : `?v=${piece.picture.shows}${piece.picture.version}`}`
-
-const whatItIs = (piece: Piece, locale: Locale) =>
-  [categoryName(piece.category), ...(piece.subcategory === null ? [] : [subcategoryName(piece.subcategory)])]
-    .map((key) => format(locale, key, {}))
-    .join(', ')
 
 const confirmDelete = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const deleting = Deletion.guards.Deleting(model.deletion)
@@ -261,7 +256,8 @@ const picturePanel = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
 const pieceDetails = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.details()), [
     h.h1(styled(h, styles.pieceName()), [pieceLabel(piece, locale)]),
-    h.p(styled(h, styles.meta()), [whatItIs(piece, locale)]),
+    // What one of its kind is, as its public page says; an unnamed piece's title already says it.
+    piece.name === null ? h.empty : h.p(styled(h, styles.meta()), [format(locale, kindName(piece), {})]),
     piece.status === 'processing'
       ? h.p(
           [h.Role('status'), ...styled(h, styles.status())],
