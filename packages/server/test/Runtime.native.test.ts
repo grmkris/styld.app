@@ -18,6 +18,7 @@ import { stylistEnvironment, verifyStylist } from './StylistAcceptance.ts'
 import { verifyGallery } from './GalleryAcceptance.ts'
 import { verifySocial } from './SocialAcceptance.ts'
 import { verifyGeneration } from './GenerationAcceptance.ts'
+import { verifyFirstSignedInTogether } from './SessionSetupAcceptance.ts'
 import { verifyPublicJourney } from './SocialBrowserAcceptance.ts'
 import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
 import { verifyMcp } from './McpAcceptance.ts'
@@ -524,10 +525,8 @@ test(
       ),
       Effect.retry({ times: 100, schedule: Schedule.spaced('100 millis') }),
     )
-    expect(yield* (yield* callAuth('getSession', {}, cookie)).json).toMatchObject({
-      _tag: 'Success',
-      value: { subjectId: 'native-recovery' },
-    })
+    // The health check built the restarted isolate's application without reading a session.
+    yield* Effect.promise(() => verifyFirstSignedInTogether(styldUrl, cookie))
     expect((yield* HttpClient.post(`${url}/test/recovery/replay`)).status).toBe(204)
     expect(yield* read()).toMatchObject({ wallet: { subscription: 2 } })
     expect((yield* HttpClient.post(`${url}/test/recovery/settle`)).status).toBe(204)

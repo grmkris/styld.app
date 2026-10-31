@@ -1,10 +1,10 @@
 import * as D1Client from '@effect/sql-d1/D1Client'
-import { Auth, Email, Operations, Password, Proofs } from '@yielded/auth'
+import { Auth, Email, Operations, Password, Proofs, Schema as AuthSchema } from '@yielded/auth'
 import { hooksLayer } from '@yielded/auth/Persistence'
 import * as WorkerdServices from '@yielded/auth/WorkerdServices'
 import { databaseLayer } from '@yielded/auth-persistence-drizzle/D1'
 import * as Drizzle from 'drizzle-orm/effect-d1'
-import { Effect, Layer, Redacted, Schema } from 'effect'
+import { DateTime, Effect, Layer, Redacted, Schema } from 'effect'
 import { eq } from 'drizzle-orm'
 import { accounts } from '@styld/db'
 
@@ -33,6 +33,9 @@ export interface EmailEntryOptions {
   /** Exact paths a completed entry may return to (Email.EmailReturnTargets.exactRoutes). */
   readonly returnTargets: ReadonlyArray<string>
 }
+
+/** No account has this id: account ids are 32 random bytes, 43 characters (EmailPersistence.ts). */
+const setupProbe = AuthSchema.SubjectId.make('styld-session-setup')
 
 /** The enabled account behind a verified credential, or none. Shared by both sign-in methods. */
 const accountClaims = Effect.gen(function* () {
@@ -89,6 +92,19 @@ export const makeAuthRuntime = <R>(raw: D1Source<R>, secret: Redacted.Redacted, 
     Layer.provide(sql),
   )
 
+  // Yielded sets session storage up on first use, reading D1's catalog, behind a cache the whole isolate
+  // shares (P/internal/persistence.ts:555-581). A request that finds that setup in flight waits on another
+  // request's D1 reads, which workerd cancels as hung; a setup whose request went away hangs every later
+  // session check in the isolate. Listing a subject that never exists sets it up while the application is
+  // built, so the isolate keeps an application only once its sessions are ready, and a failed setup fails
+  // that build instead of staying cached.
+  const sessionsReady = Layer.effectDiscard(
+    Effect.gen(function* () {
+      const sessions = yield* auth.sessions.SessionRepository
+      yield* sessions.list({ subjectId: setupProbe, limit: 1, now: yield* DateTime.now })
+    }),
+  ).pipe(Layer.provide(persistence))
+
   // EmailSignInTargets, ProofPersistence and the email RegistrationAuthority (EmailPersistence.ts).
   const emailPersistence = emailPersistenceLayer.pipe(
     Layer.provide(hooksLayer),
@@ -121,6 +137,8 @@ export const makeAuthRuntime = <R>(raw: D1Source<R>, secret: Redacted.Redacted, 
       // future managed role (password reset) also provides one.
       Layer.provide(emailPersistence),
       Layer.provide(persistence),
+      // Built from the same `persistence` value, so the build shares one instance and its setup.
+      Layer.merge(sessionsReady),
       Layer.provide(emailEntry),
       Layer.provide(WorkerdServices.layer),
       Layer.provide(Auth.AuthConfig.layer({ secret })),
