@@ -28,14 +28,16 @@ const attributesOf = (tag: string) =>
     ),
   )
 
-/** The content of the first `<meta>` naming one of these properties. */
-const metaContent = (html: string, names: ReadonlyArray<string>) =>
-  Option.fromNullishOr(
-    [...html.matchAll(/<meta\b[^>]*>/giu)]
-      .map(([tag]) => attributesOf(tag))
-      .find((attributes) => names.includes(attributes.get('property') ?? attributes.get('name') ?? ''))
-      ?.get('content'),
-  ).pipe(Option.filter((content) => content.trim().length > 0))
+/** The content of the page's `<meta>` for the first of these properties it has. */
+const metaContent = (html: string, names: ReadonlyArray<string>) => {
+  const metas = [...html.matchAll(/<meta\b[^>]*>/giu)].map(([tag]) => attributesOf(tag))
+  return Option.fromNullishOr(
+    names
+      .map((name) => metas.find((attributes) => (attributes.get('property') ?? attributes.get('name')) === name))
+      .map((attributes) => attributes?.get('content'))
+      .find((content) => content !== undefined && content.trim().length > 0),
+  )
+}
 
 const isRecord = (value: unknown): value is Readonly<Record<string, unknown>> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -79,8 +81,10 @@ const productOf = (html: string) =>
 export const productFrom = (html: string, page: URL): Option.Option<ProductPage> => {
   const product = productOf(html)
   const image = Option.flatMap(product, (node) => imageOf(node['image'])).pipe(
-    Option.orElse(() => metaContent(html, ['og:image', 'og:image:secure_url', 'twitter:image'])),
-    Option.flatMap((address) => Option.fromNullishOr(URL.parse(address.trim(), page)?.href)),
+    Option.orElse(() => metaContent(html, ['og:image:secure_url', 'og:image', 'twitter:image'])),
+    Option.flatMap((address) => Option.fromNullishOr(URL.parse(address.trim(), page))),
+    // Shops still name pictures over plain http that their CDN serves over https too; only https is fetched.
+    Option.map((url) => (url.protocol === 'http:' ? `https:${url.href.slice('http:'.length)}` : url.href)),
   )
   const title = Option.flatMap(product, (node) =>
     typeof node['name'] === 'string' ? Option.some(node['name']) : Option.none(),

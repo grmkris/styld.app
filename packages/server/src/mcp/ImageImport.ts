@@ -12,6 +12,8 @@ export class ImportRefused extends Schema.TaggedError<ImportRefused>()('ImportRe
 }) {}
 
 const maximumRedirects = 3
+/** Styld names itself, as link previews do; a site that keeps robots out still can. */
+const userAgent = 'Mozilla/5.0 (compatible; Styld/1.0; +https://styld.app)'
 /** A photo server slower than this is treated as unreachable, so an assistant's call never hangs. */
 const fetchTimeout = '10 seconds'
 
@@ -75,7 +77,7 @@ const photoFrom = (response: HttpClientResponse.HttpClientResponse) =>
 export const fetchPublic = Effect.fn('Styld.Mcp.fetchPublic')(function* (address: string, accept: string) {
   const client = yield* HttpClient.HttpClient
   const fetchHop = (url: URL) =>
-    client.execute(HttpClientRequest.get(url, { headers: { accept } })).pipe(
+    client.execute(HttpClientRequest.get(url, { headers: { accept, 'user-agent': userAgent } })).pipe(
       Effect.timeout(fetchTimeout),
       Effect.mapError(() => refuse('notReached')),
     )

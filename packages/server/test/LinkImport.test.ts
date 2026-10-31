@@ -31,6 +31,20 @@ describe('reading a product page', () => {
     )
   })
 
+  test('prefers the secure picture a shop names, and asks for a plain http one over https', () => {
+    const shop = `<meta property='og:image' content='http://shop.test/cdn/knit.png?v=1'>
+      <meta property='og:image:secure_url' content='https://shop.test/cdn/knit-secure.png?v=1'>`
+    expect(Option.map(productFrom(shop, page), ({ image }) => image)).toEqual(
+      Option.some('https://shop.test/cdn/knit-secure.png?v=1'),
+    )
+    expect(
+      Option.map(
+        productFrom(`<meta property='og:image' content='http://shop.test/cdn/knit.png'>`, page),
+        ({ image }) => image,
+      ),
+    ).toEqual(Option.some('https://shop.test/cdn/knit.png'))
+  })
+
   test('a page without a picture gives nothing to add, and broken JSON-LD is passed over', () => {
     expect(productFrom('<script type="application/ld+json">{oops</script><title>Shop</title>', page)).toEqual(
       Option.none(),
