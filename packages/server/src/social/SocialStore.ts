@@ -1,4 +1,4 @@
-import { blocks, follows, profiles, reports, saves } from '@styld/db'
+import { blocks, follows, profiles, reports, saves, wishes } from '@styld/db'
 import { and, count, desc, eq, gte, inArray, or } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option } from 'effect'
@@ -166,10 +166,37 @@ const reportRows = (db: Database) => ({
     }),
 })
 
+export type WishRow = typeof wishes.$inferSelect
+
+const wishRows = (db: Database) => ({
+  /** The account's wishes, newest first. */
+  wishes: (accountId: string) =>
+    attempt(() =>
+      db.select().from(wishes).where(eq(wishes.accountId, accountId)).orderBy(desc(wishes.createdAt)).limit(listLimit),
+    ),
+  /** Wish for the piece once; wishing again keeps the first wish, which answers. */
+  wish: (row: WishRow) =>
+    Effect.gen(function* () {
+      yield* attempt(() => db.insert(wishes).values(row).onConflictDoNothing())
+      const kept = yield* attempt(() =>
+        db
+          .select()
+          .from(wishes)
+          .where(and(eq(wishes.accountId, row.accountId), eq(wishes.sourcePieceId, row.sourcePieceId ?? '')))
+          .limit(1),
+      )
+      return kept[0] ?? row
+    }),
+  unwish: (accountId: string, wishId: string) =>
+    attempt(() => db.delete(wishes).where(and(eq(wishes.accountId, accountId), eq(wishes.id, wishId)))).pipe(
+      Effect.asVoid,
+    ),
+})
+
 /** Saves, follows, blocks and reports in D1. Every read and write names the account it is for. */
 export const makeSocialStore = (database: Parameters<typeof drizzle>[0]) => {
   const db = drizzle(database)
-  return { ...savesAndFollows(db), ...blockRows(db), ...reportRows(db) }
+  return { ...savesAndFollows(db), ...blockRows(db), ...reportRows(db), ...wishRows(db) }
 }
 
 export type SocialStore = ReturnType<typeof makeSocialStore>

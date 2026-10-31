@@ -13,6 +13,7 @@ import {
   PublishProfile,
   UpdateProfile,
 } from './Profile.ts'
+import { AddWish, Wish, WishId, Wishes } from './Wish.ts'
 import {
   CreateReport,
   Feed,
@@ -407,6 +408,21 @@ class SocialApi extends HttpApiGroup.make('social')
     }),
   )
   .add(HttpApiEndpoint.get('feed', '/feed', { query: FeedQuery, success: Feed, error: WardrobeUnavailable }))
+  .add(HttpApiEndpoint.get('listWishes', '/wishes', { success: Wishes, error: WardrobeUnavailable }))
+  .add(
+    HttpApiEndpoint.post('addWish', '/wishes', {
+      payload: AddWish,
+      success: Wish,
+      error: [PublicNotFound, NotWithYourself, WardrobeUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.delete('removeWish', '/wishes/:wishId', {
+      params: { wishId: WishId },
+      success: HttpApiSchema.NoContent,
+      error: [WardrobeUnavailable, RequestRefused],
+    }),
+  )
   .middleware(SessionHttp.RequireSession)
   .prefix('/api') {}
 

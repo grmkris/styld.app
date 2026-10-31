@@ -84,3 +84,23 @@ export const reports = sqliteTable(
     index('reports_reporter_created').on(table.reporterId, table.createdAt),
   ],
 )
+
+/** What a person wants one like: someone's public piece, kept private. The wish keeps what the piece was called and
+ * what it is when the piece itself goes, and shows a placeholder for its picture then. */
+export const wishes = sqliteTable(
+  'wishes',
+  {
+    id: text('id').primaryKey(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    sourcePieceId: text('source_piece_id').references(() => pieces.id, { onDelete: 'set null' }),
+    name: text('name'),
+    category: text('category').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('wishes_account_piece').on(table.accountId, table.sourcePieceId),
+    index('wishes_account_created').on(table.accountId, table.createdAt),
+  ],
+)

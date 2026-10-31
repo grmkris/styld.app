@@ -356,6 +356,14 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
 - **Next:**
   - M6 (the wishlist and Add from a link): `link_import` is built (below); the web's Add from a link and the
     wishlist are next.
+- **M6b, the wishlist (server and assistants):**
+  - The migration `wishes` adds a private `wishes` table. Its source piece is set to null when the piece goes, and
+    the wish keeps its name and category.
+  - `/api/wishes` (list, add by public piece, remove) and the tools `wish_list`, `wish_add` and `wish_remove`.
+  - A wish shows the piece while it is still public to the person, and nothing of it after. One's own pieces cannot
+    be wished for, and wishing again keeps the first wish.
+  - Evidence: native API acceptance of a wish, own refused, the repeat kept, the piece deleted with the wish left
+    by its category, and removal. The schema test lists the table.
 - **M6a, adding a piece from a link (assistants):**
   - `link_import` reads a shop's product page: its JSON-LD `Product` (name, first picture), else Open Graph or
     Twitter tags. Relative addresses are made absolute and entities read.

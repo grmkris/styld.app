@@ -1,10 +1,12 @@
 import {
+  type AddWish,
   type Author,
   type CreateReport,
   Handle,
   NotWithYourself,
   PublicNotFound,
   type Relation,
+  type PublicPiece,
   type ReportTarget,
   reportsPerHour,
   reportsToHide,
@@ -15,6 +17,7 @@ import {
   type SetSaved,
   TooManyReports,
   WardrobeUnavailable,
+  Wish,
 } from '@styld/protocol'
 import { Context, DateTime, Duration, Effect, Match, Option, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
@@ -25,7 +28,7 @@ import type { StoreUnavailable } from '../wardrobe/Store.ts'
 import { feedFor } from './Feed.ts'
 import { authorOf, type PublicPages, summaryOf } from './Public.ts'
 import { makePublicStore } from './PublicStore.ts'
-import { makeSocialStore, type SaveRow, type SocialStore } from './SocialStore.ts'
+import { makeSocialStore, type SaveRow, type SocialStore, type WishRow } from './SocialStore.ts'
 
 // What people do with each other: saving what others made public, following, blocking and reporting. Everything
 // acts for `CurrentAccount`, sees others through the public pages' rules, and refuses one's own things.
@@ -81,7 +84,7 @@ interface Parts {
   readonly owners: ReturnType<typeof ownerOf>
   readonly pages: PublicPages['Service']
   readonly checks: Checks['Service']
-  readonly newId: (prefix: 'sv' | 'rp') => Effect.Effect<string, WardrobeUnavailable>
+  readonly newId: (prefix: 'sv' | 'rp' | 'ws') => Effect.Effect<string, WardrobeUnavailable>
 }
 
 /** Whose a saved thing is. */
@@ -280,6 +283,54 @@ const reporting = (p: Parts) => ({
   }),
 })
 
+/** A wish as the protocol shows it: the piece while it is still public to the person, else what it was. */
+const wishOf = (p: Parts, row: WishRow, viewer: string) =>
+  Effect.gen(function* () {
+    const shown =
+      row.sourcePieceId === null
+        ? Option.none<{ readonly piece: PublicPiece; readonly by: Author }>()
+        : yield* p.pages.piece(row.sourcePieceId, Option.some(viewer)).pipe(Effect.option)
+    return yield* Schema.decodeUnknownEffect(Wish)({
+      id: row.id,
+      name: row.name,
+      category: row.category,
+      piece: Option.match(shown, { onNone: () => null, onSome: ({ piece }) => piece }),
+      by: Option.match(shown, { onNone: () => null, onSome: ({ by }) => by }),
+      createdAt: row.createdAt.toISOString(),
+    }).pipe(Effect.orDie)
+  })
+
+const wishing = (p: Parts) => ({
+  /** What the person wants one like, newest first. */
+  listWishes: Effect.fn('Styld.Social.wishes')(function* () {
+    const { accountId } = yield* CurrentAccount
+    const rows = yield* stored(p.store.wishes(accountId))
+    return { wishes: yield* Effect.forEach(rows, (row) => wishOf(p, row, accountId), { concurrency: 8 }) }
+  }),
+  /** Want one like someone else's public piece; wishing for it again answers the first wish. */
+  addWish: Effect.fn('Styld.Social.addWish')(function* (input: AddWish) {
+    const { accountId } = yield* CurrentAccount
+    const owner = yield* Effect.flatMap(p.owners.piece(input.pieceId), orNotFound)
+    if (owner === accountId) return yield* NotWithYourself.make({})
+    const { piece } = yield* p.pages.piece(input.pieceId, Option.some(accountId))
+    const row = yield* stored(
+      p.store.wish({
+        id: yield* p.newId('ws'),
+        accountId,
+        sourcePieceId: piece.id,
+        name: piece.name,
+        category: piece.category,
+        createdAt: yield* nowDate,
+      }),
+    )
+    return yield* wishOf(p, row, accountId)
+  }),
+  removeWish: Effect.fn('Styld.Social.removeWish')(function* (wishId: string) {
+    const { accountId } = yield* CurrentAccount
+    yield* stored(p.store.unwish(accountId, wishId))
+  }),
+})
+
 const make = (database: Database, pages: PublicPages['Service'], checks: Checks['Service']) =>
   Effect.gen(function* () {
     const crypto = yield* Crypto.Crypto
@@ -294,7 +345,7 @@ const make = (database: Database, pages: PublicPages['Service'], checks: Checks[
           Effect.mapError(unavailable),
         ),
     }
-    return { ...saving(p), ...relations(p), ...reporting(p) }
+    return { ...saving(p), ...relations(p), ...reporting(p), ...wishing(p) }
   })
 
 /** Saves, follows, blocks and reports. */

@@ -24,5 +24,8 @@ export const socialHandlers = (admit: Admit) =>
         .handle('blocked', () => asSessionAccount(social.blocked()))
         .handle('report', ({ payload }) => admit(asSessionAccount(social.report(payload))))
         .handle('feed', ({ query }) => asSessionAccount(social.feed(query.cursor)))
+        .handle('listWishes', () => asSessionAccount(social.listWishes()))
+        .handle('addWish', ({ payload }) => admit(asSessionAccount(social.addWish(payload))))
+        .handle('removeWish', ({ params }) => admit(asSessionAccount(social.removeWish(params.wishId))))
     }),
   )
