@@ -3,6 +3,7 @@ import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import type { Model, Services } from './App.ts'
 import { Message } from './Message.ts'
+import * as Account from './page/Account.ts'
 import * as Ask from './page/Ask.ts'
 import * as Boards from './page/Boards.ts'
 import * as Looks from './page/Looks.ts'
@@ -73,6 +74,13 @@ const foldExploreEnter = Update.foldChildStep({
   toParentMessage: (message: Visit.Message) => Message.GotVisitMessage({ message }),
 })
 
+const foldAccountEnter = Update.foldChildStep({
+  update: Account.enter,
+  read: (model: Model) => Option.some(model.account),
+  write: (model: Model, account: Account.Model) => modifyFields(model, { account: () => account }),
+  toParentMessage: (message: Account.Message) => Message.GotAccountMessage({ message }),
+})
+
 const foldWishlistRevisit = Update.foldChildStep({
   update: Wishlist.revisit,
   read: (model: Model) => Option.some(model.wishlist),
@@ -92,5 +100,7 @@ export const openPage = (route: AppRoute, hasSessionCookie: boolean): ReadonlyAr
     Match.tag('Boards', () => [foldBoardsRevisit]),
     Match.tag('Explore', () => [foldExploreEnter]),
     Match.tag('Wishlist', () => [foldWishlistRevisit]),
+    // The account needs a session; signed out the page sends the visitor to sign in.
+    Match.tag('Account', () => (hasSessionCookie ? [foldAccountEnter] : [])),
     Match.orElse(() => []),
   )

@@ -1851,6 +1851,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'profile.card.title': 'Javni profil',
   'profile.card.setUp': 'Izberi uporabniško ime in dobi svojo stran',
   'profile.card.private': '@{username}, vidiš ga samo ti',
+  'profile.card.public': '@{username}, javen',
+  'profile.card.viewPage': 'Poglej svojo stran',
   'profile.editor.title': 'Javni profil',
   'profile.editor.statusPublic': 'Javen',
   'profile.editor.statusPrivate': 'Zaseben',

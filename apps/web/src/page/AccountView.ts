@@ -10,7 +10,9 @@ import { Message as AppMessage, type Model as AppModel, Session } from '../App.t
 import { loader } from '../Icon.ts'
 import { confirmActions } from '../ConfirmActions.ts'
 import { styled } from '../Styled.ts'
-import { Copy, Deletion, Message, type Model } from './Account.ts'
+import { Copy, Deletion, Message, type Model, ProfileState } from './Account.ts'
+import { avatar as personAvatar } from '../Avatar.ts'
+import { checkNotice } from './CheckNotice.ts'
 import {
   accountPage,
   avatar,
@@ -30,11 +32,12 @@ import {
   sectionText,
   sectionTitle,
   serverUrl,
+  statusSkeleton,
   steps,
   unavailable,
 } from './AccountView.styles.ts'
 import { pageHead, pageTitle } from './PageHead.ts'
-import { assistantsSection, profileRouter } from '../route.ts'
+import { assistantsSection, personRouter, profileRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 
@@ -129,6 +132,57 @@ const deletion = (model: Model, { locale }: Inputs, h: HtmlBuilder<Message>): Ht
   ])
 }
 
+/** Who they are: the name and tone their profile shows others once it is read, the sign-in name until then. */
+const identityView = (model: Model, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
+  const profile = ProfileState.guards.Loaded(model.profile) ? Option.some(model.profile.profile) : Option.none()
+  const named = Option.filter(profile, ({ name }) => name.trim() !== '')
+  return h.div(styled(h, identity()), [
+    Option.match(named, {
+      onNone: () =>
+        h.span([h.AriaHidden(true), ...styled(h, avatar())], [inputs.claims.displayName.slice(0, 1).toUpperCase()]),
+      onSome: ({ name, tone }) => personAvatar(name, tone, 'large', h),
+    }),
+    h.div(styled(h, identityText()), [
+      h.span(styled(h, identityName()), [
+        Option.match(named, { onNone: () => inputs.claims.displayName, onSome: ({ name }) => name }),
+      ]),
+      h.span(styled(h, identityEmail()), [inputs.claims.email]),
+    ]),
+  ])
+}
+
+/** Where the public profile stands, in one quiet line, then the check's word on it and the ways to it. */
+const profileSection = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.section(styled(h, section()), [
+    h.h2(styled(h, sectionTitle()), [format(locale, 'profile.card.title', {})]),
+    ...ProfileState.match(model.profile, {
+      Loading: () => [h.span([h.AriaHidden(true), ...styled(h, cx(line(), statusSkeleton()))])],
+      Failed: () => [],
+      Loaded: ({ profile }) =>
+        profile.handle === null
+          ? [h.p(styled(h, sectionText()), [format(locale, 'profile.card.setUp', {})])]
+          : [
+              h.p(styled(h, sectionText()), [
+                format(locale, profile.published ? 'profile.card.public' : 'profile.card.private', {
+                  username: profile.handle,
+                }),
+              ]),
+              ...(profile.published ? [checkNotice(profile.check, locale, h)] : []),
+            ],
+    }),
+    h.div(styled(h, rowActions()), [
+      ProfileState.guards.Loaded(model.profile) &&
+      model.profile.profile.published &&
+      model.profile.profile.handle !== null
+        ? h.a(
+            [h.Href(personRouter({ handle: model.profile.profile.handle }))],
+            [format(locale, 'profile.card.viewPage', {})],
+          )
+        : h.empty,
+      h.a([h.Href(profileRouter({}))], [format(locale, 'profile.editor.mode.edit', {})]),
+    ]),
+  ])
+
 /** The signed-in person's account (Gallery `account.html`): who they are, connecting an assistant,
  * signing out and deleting the account. */
 const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, h) =>
@@ -136,18 +190,8 @@ const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, h) =>
     [],
     [
       pageHead(pageTitle(format(inputs.locale, 'account.title', {}), h), Option.none(), h),
-      h.div(styled(h, identity()), [
-        h.span([h.AriaHidden(true), ...styled(h, avatar())], [inputs.claims.displayName.slice(0, 1).toUpperCase()]),
-        h.div(styled(h, identityText()), [
-          h.span(styled(h, identityName()), [inputs.claims.displayName]),
-          h.span(styled(h, identityEmail()), [inputs.claims.email]),
-        ]),
-      ]),
-      h.section(styled(h, section()), [
-        h.h2([], [format(inputs.locale, 'profile.card.title', {})]),
-        h.p([], [format(inputs.locale, 'profile.card.setUp', {})]),
-        h.a([h.Href(profileRouter({}))], [format(inputs.locale, 'profile.editor.mode.edit', {})]),
-      ]),
+      identityView(model, inputs, h),
+      profileSection(model, inputs.locale, h),
       assistants(model, inputs, h),
       h.section(styled(h, section()), [
         actionButton(

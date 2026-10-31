@@ -1976,7 +1976,9 @@
     "card": {
       "title": "Public profile",
       "setUp": "Choose a username to get your own page",
-      "private": "@{username}, only you can see it"
+      "private": "@{username}, only you can see it",
+      "public": "@{username}, public",
+      "viewPage": "View your page"
     },
     "editor": {
       "title": "Public profile",

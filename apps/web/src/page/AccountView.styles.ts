@@ -37,6 +37,8 @@ export const section = style({
   borderBlockStartColor: 'rule',
 })
 export const sectionTitle = style({ fontSize: '17px', fontWeight: 600, margin: '0' })
+/** The profile's status line while it is read. */
+export const statusSkeleton = style({ inlineSize: '14em', fontSize: '15px' })
 export const sectionText = style({ fontSize: '15px', color: 'ink2', margin: '0', lineHeight: 1.5 })
 export const steps = style({
   display: 'grid',

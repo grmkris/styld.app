@@ -15,6 +15,7 @@ import {
   ScrollToAnchor,
   ScrollToTop,
 } from '../src/Navigation.ts'
+import { LoadProfile, Message as AccountMessage } from '../src/page/Account.ts'
 import { LoadSearchLanguages, Message as AskMessage } from '../src/page/Ask.ts'
 import { ListLooks, Message as LooksMessage } from '../src/page/Looks.ts'
 import { CountUndrawn, ListPieces, Message as WardrobeMessage, PiecesData } from '../src/page/Wardrobe.ts'
@@ -119,7 +120,9 @@ describe('opening a tab page inside the page', () => {
       update,
       given(signedIn('/ask')),
       message(Message.ChangedUrl({ url: urlOf('/account#assistants') })),
-      Command.expectExact(ScrollToAnchor),
+      // The account reads its profile, to say where it stands.
+      Command.expectExact(LoadProfile, ScrollToAnchor),
+      Command.resolve(LoadProfile, AccountMessage.FailedLoadProfile()),
       Command.resolve(ScrollToAnchor, Message.CompletedScrollToAnchor()),
       model(({ route }) => expect(route).toEqual(AppRoute.Account())),
     )

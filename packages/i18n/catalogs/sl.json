@@ -1976,7 +1976,9 @@
     "card": {
       "title": "Javni profil",
       "setUp": "Izberi uporabniško ime in dobi svojo stran",
-      "private": "@{username}, vidiš ga samo ti"
+      "private": "@{username}, vidiš ga samo ti",
+      "public": "@{username}, javen",
+      "viewPage": "Poglej svojo stran"
     },
     "editor": {
       "title": "Javni profil",

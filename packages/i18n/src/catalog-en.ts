@@ -1824,6 +1824,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'profile.card.title': 'Public profile',
   'profile.card.setUp': 'Choose a username to get your own page',
   'profile.card.private': '@{username}, only you can see it',
+  'profile.card.public': '@{username}, public',
+  'profile.card.viewPage': 'View your page',
   'profile.editor.title': 'Public profile',
   'profile.editor.statusPublic': 'Public',
   'profile.editor.statusPrivate': 'Private',

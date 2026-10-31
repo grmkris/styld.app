@@ -1,3 +1,4 @@
+import { Profile } from '@styld/protocol'
 import { Effect, Schema } from 'effect'
 import { Command, type Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
@@ -13,10 +14,13 @@ export const Deletion = defineTaggedUnion({ Idle: {}, Confirming: {}, Deleting: 
 /** Copying the assistants' server address. */
 export const Copy = defineTaggedUnion({ Idle: {}, Copied: {}, Failed: {} })
 
-export const Model = Schema.Struct({ deletion: Deletion, copy: Copy })
+/** The public profile, read when the page opens, so the page says where it stands. */
+export const ProfileState = defineTaggedUnion({ Loading: {}, Loaded: { profile: Profile }, Failed: {} })
+
+export const Model = Schema.Struct({ deletion: Deletion, copy: Copy, profile: ProfileState })
 export type Model = typeof Model.Type
 
-export const init = (): Model => ({ deletion: Deletion.Idle(), copy: Copy.Idle() })
+export const init = (): Model => ({ deletion: Deletion.Idle(), copy: Copy.Idle(), profile: ProfileState.Loading() })
 
 // MESSAGE
 
@@ -30,6 +34,8 @@ export const Message = defineMessageUnion({
   ClickedCopyServerUrl: { url: Schema.String },
   SucceededCopyServerUrl: {},
   FailedCopyServerUrl: {},
+  SucceededLoadProfile: { profile: Profile },
+  FailedLoadProfile: {},
 })
 export type Message = typeof Message.Type
 
@@ -59,6 +65,21 @@ export const CopyServerUrl = Command.define('CopyServerUrl', {
     ),
 })
 
+/** @internal Exported for its tests. */
+export const LoadProfile = Command.define('LoadProfile', {
+  messages: [Message.SucceededLoadProfile, Message.FailedLoadProfile],
+  execute: Effect.gen(function* () {
+    const api = yield* (yield* StyldClient).api
+    return Message.SucceededLoadProfile({ profile: yield* api.profile.getProfile() })
+  }).pipe(Effect.orElseSucceed(() => Message.FailedLoadProfile())),
+})
+
+/** Opening the page: the profile as it is now; one already shown stays while it is read again. */
+export const enter = (model: Model): Update.Return<Model, Message, StyldClient> => ({
+  model,
+  commands: [LoadProfile()],
+})
+
 // UPDATE
 
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient>
@@ -77,4 +98,11 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedCopyServerUrl: ({ url }) => ({ model, commands: [CopyServerUrl({ url })] }),
     SucceededCopyServerUrl: () => ({ model: modifyFields(model, { copy: () => Copy.Copied() }) }),
     FailedCopyServerUrl: () => ({ model: modifyFields(model, { copy: () => Copy.Failed() }) }),
+    SucceededLoadProfile: ({ profile }) => ({
+      model: modifyFields(model, { profile: () => ProfileState.Loaded({ profile }) }),
+    }),
+    FailedLoadProfile: () =>
+      ProfileState.guards.Loaded(model.profile)
+        ? { model }
+        : { model: modifyFields(model, { profile: () => ProfileState.Failed() }) },
   })
