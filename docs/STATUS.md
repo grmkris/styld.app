@@ -425,8 +425,16 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   boards before there are any), with a way to Explore. The section keeps its room while they load. Evidence: a
   scene test.
 - **Next:**
-  - M7: the preview readback of a live mood board (Muse and the Workers AI planner), then M8's other review
-    rounds (architecture and tooling, the browser product).
+  - M8's other review rounds: architecture and tooling, and the browser product.
+- **Preview (M7):** deployed from `676f3d0`; `/api/health` reports release
+  `676f3d01234d153263fc181ef403a68d1c1e5027`. The plan created the `StyldV2Generation` queue, its consumer and
+  `GENERATE_RATE_LIMIT`, applied the `generation` migration and updated the Workers. `tools/preview.native.test.ts`
+  passed 3/3.
+  - A live mood board as `@kris.preview`, "A rainy Sunday morning in the city, warm knitwear and coffee": the
+    Workers AI planner made three prompts and Meta Muse Image drew all three in 82 s. Four of the account's pieces
+    were pinned, the board took the moods rain and weekend, and the collage was laid out with seven things. The
+    board page shows three Generated marks, in Chromium at 390×844 with no page or console error. The pictures
+    show figures turned away, with no face.
 - **M8, the security, privacy and durability review (round one):** a read-only reviewer of the public, social, link,
   curation and generation surfaces found 13 defects; these are fixed:
   - Generation (`82cd008`): a delivery that finds a picture still being drawn steps aside instead of failing toward
