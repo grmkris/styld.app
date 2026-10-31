@@ -124,18 +124,28 @@ export const results = style({
   padding: '0',
   listStyle: 'none',
 })
+/** A piece found, as the wardrobe draws it (Gallery `.cut`): the cutout, its name centred under it in ink-2. */
 export const result = style({
   display: 'grid',
+  justifyItems: 'center',
   gap: '6px',
-  color: 'ink',
-  fontSize: '14px',
+  color: 'ink2',
+  fontSize: '13px',
   fontWeight: 500,
   textDecorationLine: 'none',
-  // A piece found lifts under the pointer, as it does in the wardrobe.
-  transitionProperty: 'translate',
-  transitionDuration: '180ms',
+  // It presses, and lifts under the pointer as it does in the wardrobe; the lift's translate composes with the press.
+  transitionProperty: 'transform, translate',
+  transitionDuration: '140ms, 180ms',
   transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  ':active': { transform: 'scale(0.96)' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { translate: '0 -2px' } },
+})
+/** A found piece's name on one line, cut with an ellipsis rather than wrapping under a narrow cutout. */
+export const resultName = style({
+  maxInlineSize: '100%',
+  overflow: 'hidden',
+  textOverflow: 'ellipsis',
+  whiteSpace: 'nowrap',
 })
 export const resultImage = style({ inlineSize: '100%', aspectRatio: '1 / 1', objectFit: 'contain' })
 export const nothingFound = style({ display: 'grid', justifyItems: 'start', gap: '12px', color: 'ink2' })

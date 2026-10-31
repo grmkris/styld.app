@@ -140,7 +140,7 @@ const resultTile = (piece: Piece, locale: Locale, h: HtmlBuilder<Message>): Html
             h.Loading('lazy'),
             ...styled(h, styles.resultImage()),
           ]),
-          h.span([], [pieceLabel(piece, locale)]),
+          h.span(styled(h, styles.resultName()), [pieceLabel(piece, locale)]),
         ],
       ),
     ],

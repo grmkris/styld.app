@@ -82,6 +82,7 @@ export const pieces = style({
 export const pieceLink = style({
   display: 'grid',
   gap: '4px',
+  justifyItems: 'center',
   inlineSize: '96px',
   color: 'ink',
   textDecorationLine: 'none',
@@ -102,6 +103,7 @@ export const pieceName = style({
   fontSize: '13px',
   lineHeight: 1.35,
   color: 'ink2',
+  textAlign: 'center',
 })
 /** Where the newest message is scrolled to: 16px above the composer resting in its place. A scroll into view adds
  * the page's own scroll padding, which on a phone already holds the floating nav's 88px and the safe area
