@@ -325,6 +325,7 @@ describe('what Styld is told', () => {
     // The app's word for a look, and no gender chosen for the person (DESIGN.md › Copy and chrome).
     expect(prompt).toContain('a videz (plural videzi), as the app names it, never pogled')
     expect(prompt).toContain("Never choose the person's gender")
+    expect(prompt).toContain('Speak of yourself in the present too (predlagam, svetujem)')
     expect(systemPrompt({ locale: 'en', today: '2026-07-01', outline: outlineOf(pieces) })).not.toContain(' ti,')
     expect(prompt).not.toMatch(/pc_/)
     expect(systemPrompt({ locale: 'en', today: '2026-07-01', outline: outlineOf([]) })).toContain(
