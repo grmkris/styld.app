@@ -18,9 +18,8 @@ import * as SaveToBoardView from './SaveToBoardView.ts'
 import { barStart, round } from './PageBar.styles.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
-import { pieceLabel } from './WardrobeWords.ts'
 import { collage, couldNotLoad } from './LooksView.ts'
-import { categoryName } from './WardrobeWords.ts'
+import { kindName, pieceLabel } from './WardrobeWords.ts'
 import { cx } from 'zyzz'
 import * as styles from './LooksView.styles.ts'
 
@@ -127,7 +126,10 @@ const pieceRows = (look: Look, locale: Locale, h: HtmlBuilder<Message>): Html =>
                   ]),
                   h.span(styled(h, styles.pieceRowText()), [
                     h.span(styled(h, styles.pieceRowName()), [pieceLabel(piece, locale)]),
-                    h.span(styled(h, styles.cardMeta()), [format(locale, categoryName(piece.category), {})]),
+                    // What one of its kind is, under its name; an unnamed piece is already called that.
+                    piece.name === null
+                      ? h.empty
+                      : h.span(styled(h, styles.cardMeta()), [format(locale, kindName(piece), {})]),
                   ]),
                 ],
               ),
