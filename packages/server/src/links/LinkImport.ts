@@ -69,11 +69,29 @@ const parsed = (text: string): unknown => {
   }
 }
 
+/** The bodies of the page's JSON-LD scripts, found in one pass: a page of unclosed tags costs no more than its
+ * length. */
+const jsonLdBlocks = (html: string): ReadonlyArray<string> => {
+  const lower = html.toLowerCase()
+  const blocks: Array<string> = []
+  let from = 0
+  for (;;) {
+    const open = lower.indexOf('<script', from)
+    if (open < 0) return blocks
+    const tagEnd = lower.indexOf('>', open)
+    if (tagEnd < 0) return blocks
+    const close = lower.indexOf('</script', tagEnd)
+    if (close < 0) return blocks
+    if (lower.slice(open, tagEnd).includes('application/ld+json')) blocks.push(html.slice(tagEnd + 1, close))
+    from = close + 1
+  }
+}
+
 /** The page's JSON-LD `Product`, if it has one. */
 const productOf = (html: string) =>
   Option.fromNullishOr(
-    [...html.matchAll(/<script\b[^>]*type\s*=\s*["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/giu)]
-      .flatMap((match) => nodesOf(parsed(match[1] ?? '')))
+    jsonLdBlocks(html)
+      .flatMap((block) => nodesOf(parsed(block)))
       .find(isProduct),
   )
 
@@ -98,15 +116,27 @@ export const productFrom = (html: string, page: URL): Option.Option<ProductPage>
 
 const decoder = new TextDecoder()
 
-/** The page's HTML, at most `pageBytes` of it. */
-const htmlOf = (response: HttpClientResponse.HttpClientResponse) =>
-  response.stream.pipe(
+/** A page slower than this to arrive is treated as unreachable. */
+const pageTimeout = '10 seconds'
+
+/** The page's HTML, at most `pageBytes` of it: the rest is never read, and a page that trickles is given up. */
+const htmlOf = (response: HttpClientResponse.HttpClientResponse) => {
+  let read = 0
+  return response.stream.pipe(
+    Stream.takeWhile((chunk) => {
+      const within = read < pageBytes
+      read += chunk.byteLength
+      return within
+    }),
     Stream.mapError(() => LinkRefused.make({ reason: 'notReached' })),
     Stream.runFoldEffect(
       () => '',
-      (text, chunk) => Effect.succeed(text.length > pageBytes ? text : text + decoder.decode(chunk, { stream: true })),
+      (text, chunk) => Effect.succeed(text + decoder.decode(chunk, { stream: true })),
     ),
+    Effect.timeout(pageTimeout),
+    Effect.catchTag('TimeoutError', () => Effect.fail(LinkRefused.make({ reason: 'notReached' }))),
   )
+}
 
 /** Read a product page at a public https address: its picture and name, or why there is nothing to add. */
 export const readProductPage = Effect.fn('Styld.Links.readProductPage')(function* (address: string) {

@@ -19,12 +19,24 @@ const fetchTimeout = '10 seconds'
 
 const refuse = (reason: ImportRefused['reason']) => ImportRefused.make({ reason })
 
-/** Only public https on the default port: no other schemes, ports or credentials in the address. */
-const allowedUrl = (text: string, base?: URL): Option.Option<URL> => {
+/** Names that only resolve inside a network, never on the public web. */
+const privateSuffixes = ['.localhost', '.local', '.internal', '.lan', '.home.arpa', '.ts.net']
+
+/** A public host name: not an IP address, not one label alone, not a private network's name. */
+const isPublicHost = (hostname: string) =>
+  hostname.includes('.') &&
+  !hostname.includes(':') &&
+  !hostname.startsWith('[') &&
+  !/^[\d.]+$/u.test(hostname) &&
+  hostname !== 'localhost' &&
+  !privateSuffixes.some((suffix) => hostname.endsWith(suffix))
+
+/** Only public https on the default port: no other schemes, ports, credentials or private hosts in the address. */
+export const allowedUrl = (text: string, base?: URL): Option.Option<URL> => {
   const url = URL.parse(text, base)
   if (url === null) return Option.none()
   const plain = url.protocol === 'https:' && url.port === '' && url.username === '' && url.password === ''
-  return plain ? Option.some(url) : Option.none()
+  return plain && isPublicHost(url.hostname.toLowerCase()) ? Option.some(url) : Option.none()
 }
 
 const isImageType = Schema.is(ImageType)
@@ -78,6 +90,9 @@ export const fetchPublic = Effect.fn('Styld.Mcp.fetchPublic')(function* (address
   const client = yield* HttpClient.HttpClient
   const fetchHop = (url: URL) =>
     client.execute(HttpClientRequest.get(url, { headers: { accept, 'user-agent': userAgent } })).pipe(
+      // Others' addresses carry signatures and tokens: they stay out of spans, and no trace goes to their sites.
+      Effect.provideService(HttpClient.TracerDisabledWhen, () => true),
+      Effect.provideService(HttpClient.TracerPropagationEnabled, false),
       Effect.timeout(fetchTimeout),
       Effect.mapError(() => refuse('notReached')),
     )

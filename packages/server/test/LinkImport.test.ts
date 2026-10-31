@@ -3,6 +3,7 @@ import { Effect, Option } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
 import { describe, expect, test } from 'vitest'
 import { productFrom, readProductPage } from '../src/links/LinkImport.ts'
+import { allowedUrl } from '../src/mcp/ImageImport.ts'
 import { CurrentAccount } from '../src/CurrentAccount.ts'
 import { pictureFromLink } from '../src/links/LinkPicture.ts'
 import type { Uploads } from '../src/mcp/ImageImport.ts'
@@ -63,6 +64,30 @@ const run = (address: string, routes: Record<string, () => Response>) =>
 
 const html = (body: string) => () => new Response(body, { headers: { 'content-type': 'text/html; charset=utf-8' } })
 
+describe('which addresses Styld fetches', () => {
+  test('only public https hosts: no IP addresses, single names or private networks', () => {
+    for (const address of [
+      'https://127.0.0.1/p',
+      'https://10.0.0.8/p',
+      'https://[::1]/p',
+      'https://localhost/p',
+      'https://router/p',
+      'https://box.tail5acf67.ts.net/p',
+      'https://printer.local/p',
+      'https://shop.test:8443/p',
+      'http://shop.test/p',
+    ])
+      expect(Option.isNone(allowedUrl(address))).toBe(true)
+    expect(Option.map(allowedUrl('https://Shop.Test/p'), ({ hostname }) => hostname)).toEqual(Option.some('shop.test'))
+  })
+
+  test('a page of unclosed script tags is read in one pass', () => {
+    const started = performance.now()
+    expect(productFrom('<script type="application/ld+json">'.repeat(30_000), page)).toEqual(Option.none())
+    expect(performance.now() - started).toBeLessThan(1000)
+  })
+})
+
 describe('fetching a product page', () => {
   test('follows a redirect to the page and reads its picture', async () => {
     expect(
@@ -71,6 +96,15 @@ describe('fetching a product page', () => {
         'https://shop.test/products/1': html('<meta property="og:image" content="/i/1.jpg">'),
       }),
     ).toBe('https://shop.test/i/1.jpg')
+  })
+
+  test('reads no more of a page than its cap, and still finds its picture at the top', async () => {
+    const top = '<meta property="og:image" content="/i/top.jpg">'
+    expect(
+      await run('https://shop.test/p/long', {
+        'https://shop.test/p/long': html(top + 'x'.repeat(3_000_000)),
+      }),
+    ).toBe('https://shop.test/i/top.jpg')
   })
 
   test('says a shop that keeps robots out blocked it, so the person can send a photo instead', async () => {
