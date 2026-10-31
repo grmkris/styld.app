@@ -15,7 +15,7 @@ import { publicPieceImage } from './Board/Table.ts'
 import * as PeopleView from './PeopleView.ts'
 import { boardCard, byline, lookTile, pieceTile, tileGrid } from './PublicTiles.ts'
 import { exploreLoading, exploreSearchForm, exploreSections, searchView } from './ExploreView.ts'
-import { page as explorePage } from './ExploreView.styles.ts'
+import { head as exploreHead, page as explorePage } from './ExploreView.styles.ts'
 import { ExploreSearch, Message, type Model, type PersonTab, Shown, Target } from './Visit.ts'
 import * as styles from './VisitView.styles.ts'
 import { pieceLabel } from './WardrobeWords.ts'
@@ -155,8 +155,10 @@ const exploreMain = (
   h: HtmlBuilder<Message>,
 ): Html =>
   h.div(styled(h, explorePage()), [
-    h.h1([], [format(inputs.locale, 'explore.title', {})]),
-    exploreSearchForm(model.query, inputs.locale, h),
+    h.div(styled(h, exploreHead()), [
+      h.h1([], [format(inputs.locale, 'explore.title', {})]),
+      exploreSearchForm(model.query, inputs.locale, h),
+    ]),
     ...exploreContent(model, mood, inputs, h),
   ])
 

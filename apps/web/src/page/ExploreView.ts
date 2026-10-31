@@ -254,7 +254,7 @@ export const exploreLoading = (locale: Locale, h: HtmlBuilder<Message>): Readonl
  * clear inside it brings Explore's sections back. */
 export const exploreSearchForm = (query: string, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.form(
-    [h.Role('search'), h.OnSubmit(Message.SubmittedSearch()), ...styled(h, searchPill())],
+    [h.Role('search'), h.OnSubmit(Message.SubmittedSearch()), ...styled(h, cx(searchPill(), styles.headSearch()))],
     [
       h.label([h.For(searchFieldId), ...styled(h, visuallyHidden())], [format(locale, 'explore.searchLabel', {})]),
       searchIcon(h),

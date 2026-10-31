@@ -8,6 +8,14 @@ export const page = style({
   gap: '20px',
   paddingBlock: '8px 40px',
 })
+/** The title over the search on a phone; from 900px one row, the search 440px wide (prototype `.pg-h.row`). */
+export const head = style({
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr)',
+  gap: '20px',
+  '@media (min-width: 900px)': { display: 'flex', alignItems: 'center', gap: '24px' },
+})
+export const headSearch = style({ '@media (min-width: 900px)': { flex: 'none', inlineSize: '440px' } })
 /** What a search found, in Explore's column. Focus lands on it after Enter without a ring, as on the page's title. */
 export const results = style({
   display: 'grid',
