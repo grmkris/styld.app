@@ -338,7 +338,7 @@ const pages = (base: Reader) => ({
     }),
   piece: Effect.fn('Styld.Public.piece')(function* (pieceId: string, viewer: Option.Option<string> = Option.none()) {
     const { piece, owner } = yield* shownPiece(readBy(base, viewer), pieceId)
-    return { piece, by: owner.author }
+    return { piece, by: owner.author, yours: Option.contains(viewer, owner.row.accountId) }
   }),
 })
 

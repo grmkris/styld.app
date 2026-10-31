@@ -94,7 +94,8 @@ export const PublicLookPage = Schema.Struct({ look: PublicLook, by: Author })
 export type PublicLookPage = typeof PublicLookPage.Type
 
 /** A public piece on its own page. */
-export const PublicPiecePage = Schema.Struct({ piece: PublicPiece, by: Author })
+/** A piece's public page; `yours` when the person reading it owns it, who then has nothing to save or report. */
+export const PublicPiecePage = Schema.Struct({ piece: PublicPiece, by: Author, yours: Schema.Boolean })
 export type PublicPiecePage = typeof PublicPiecePage.Type
 
 /** What a link preview shows of a public page, in the reader's language; `image` is a `/cdn/public` path. */

@@ -91,7 +91,7 @@ describe('the wishlist', () => {
   })
 
   test('saves someone’s public piece from its page, then links to the wishlist', () => {
-    const page = Schema.decodeUnknownSync(PublicPiecePage)({ piece: knit, by })
+    const page = Schema.decodeUnknownSync(PublicPiecePage)({ piece: knit, by, yours: false })
     scene(
       { update, view },
       given(

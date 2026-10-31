@@ -1799,6 +1799,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'people.wishlistFailed': 'Your wishlist could not be loaded',
   'people.signInToSave': 'Sign in to save',
   'people.gotIt': 'Got it',
+  'people.openYours': 'Yours: open it in your wardrobe',
   'profile.public.metaTitle': '{name} (@{username}) on Styld',
   'profile.public.metaDescription': 'Boards and looks by @{username} on Styld.',
   'profile.public.headerCta': 'Join Styld',

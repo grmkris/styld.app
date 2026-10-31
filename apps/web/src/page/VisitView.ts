@@ -5,6 +5,7 @@ import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
 import { secondaryAction } from '../Actions.styles.ts'
+import { pieceRouter } from '../route.ts'
 import { avatar } from '../Avatar.ts'
 import { loader } from '../Icon.ts'
 import { styled } from '../Styled.ts'
@@ -109,7 +110,7 @@ const personView = (model: Model, profile: PublicProfile, inputs: PeopleView.Inp
 /** A piece on its own page: its cut-out, what it is and whose. */
 const pieceView = (
   model: Model,
-  { piece, by }: PublicPiecePage,
+  { piece, by, yours }: PublicPiecePage,
   { locale, signedIn }: PeopleView.Inputs,
   h: HtmlBuilder<Message>,
 ): Html =>
@@ -121,7 +122,13 @@ const pieceView = (
     ]),
     h.h1(styled(h, styles.name()), [pieceLabel(piece, locale)]),
     byline(by, locale, h),
-    peopleActions(model, { locale, signedIn }, h),
+    // One's own piece has nothing to save or report: it opens in the wardrobe instead.
+    yours
+      ? h.a(
+          [h.Href(pieceRouter({ pieceId: piece.id })), ...styled(h, secondaryAction())],
+          [format(locale, 'people.openYours', {})],
+        )
+      : peopleActions(model, { locale, signedIn }, h),
   ])
 
 /** Someone's profile or piece, as anyone sees it. */
