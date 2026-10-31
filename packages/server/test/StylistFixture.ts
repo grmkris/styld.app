@@ -15,7 +15,7 @@ const Message = Schema.Struct({
 })
 const Request = Schema.Struct({ messages: Schema.Array(Message) })
 const Found = Schema.fromJsonString(
-  Schema.Struct({ pieces: Schema.Array(Schema.Struct({ id: Schema.String, category: Schema.String })) }),
+  Schema.Struct({ pieces: Schema.Array(Schema.Struct({ id: Schema.String, type: Schema.String })) }),
 )
 
 const call = (name: string, args: object) => ({
@@ -50,7 +50,7 @@ const answer = (messages: (typeof Request.Type)['messages']) => {
   )
   return first === undefined
     ? completion('Your wardrobe is empty: add a few pieces first.')
-    : completion(`Wear your ${first.category} today.`, [call('pieces_show', { pieceIds: [first.id] })])
+    : completion(`Wear your ${first.type} today.`, [call('pieces_show', { pieceIds: [first.id] })])
 }
 
 const chatCompletions = Effect.gen(function* () {

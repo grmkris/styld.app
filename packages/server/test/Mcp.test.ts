@@ -44,9 +44,14 @@ const piece = (id: string, fields: Partial<Piece>): Piece => ({
   id: PieceId.make(`pc_${id.padEnd(22, '0')}`),
   name: null,
   notes: null,
-  category: 'top',
-  subcategory: null,
+  type: 'tops',
   colours: [],
+  season: null,
+  occasions: [],
+  pattern: null,
+  brand: null,
+  shopUrl: null,
+  hasBack: false,
   status: 'ready',
   source: 'website',
   createdAt: '2026-10-29T00:00:00.000Z',
@@ -54,9 +59,9 @@ const piece = (id: string, fields: Partial<Piece>): Piece => ({
   ...fields,
 })
 const pieces = [
-  piece('a', { name: 'Navy cable knit', colours: ['navy'] }),
+  piece('a', { name: 'Navy cable knit', type: 'knitwear', colours: ['navy'] }),
   piece('b', { name: 'White tee', colours: ['white'] }),
-  piece('c', { name: 'Jeans', category: 'bottom', subcategory: 'jeans', colours: ['blue', 'navy'] }),
+  piece('c', { name: 'Jeans', type: 'jeans', colours: ['blue', 'navy'] }),
 ]
 /** Answers reads from three pieces; anything else is not part of these tests. */
 const notUsed = () => Effect.die('not used by these tests')
@@ -259,12 +264,12 @@ describe('MCP tools', () => {
       _tag: 'WardrobeView',
       url: 'https://styld.test/wardrobe',
       pieces: [
-        { name: 'Navy cable knit', category: 'top', url: `https://styld.test/wardrobe/${pieces[0]?.id}` },
+        { name: 'Navy cable knit', group: 'clothing', url: `https://styld.test/wardrobe/${pieces[0]?.id}` },
         { name: 'White tee' },
-        { name: 'Jeans', category: 'bottom' },
+        { name: 'Jeans', group: 'clothing' },
       ],
       labels: {
-        en: { wardrobeTitle: 'Wardrobe', openInStyld: 'Open in Styld' },
+        en: { wardrobeTitle: 'Wardrobe', openInStyld: 'Open in Styld', groups: { shoes: 'Shoes' } },
         sl: { openInStyld: 'Odpri v Styldu' },
       },
     })
@@ -395,7 +400,7 @@ describe('MCP tools', () => {
 })
 
 describe('MCP wardrobe tools', () => {
-  test('searches by words, category and colour, newest first, a page at a time', async () => {
+  test('searches by words, garment type, group and colour, newest first, a page at a time', async () => {
     const navy = await call('piece_search', { colour: 'navy', limit: 1 })
     expect(navy.structuredContent).toMatchObject({
       pieces: [{ name: 'Navy cable knit', url: `https://styld.test/wardrobe/${pieces[0]?.id}` }],
@@ -407,7 +412,7 @@ describe('MCP wardrobe tools', () => {
     expect(await call('piece_search', { query: 'TEE' })).toMatchObject({
       structuredContent: { pieces: [{ name: 'White tee' }] },
     })
-    expect(await call('piece_search', { category: 'bottom', query: 'tee' })).toMatchObject({
+    expect(await call('piece_search', { type: 'trousers', query: 'tee' })).toMatchObject({
       structuredContent: { pieces: [] },
     })
   })
@@ -422,10 +427,10 @@ describe('MCP wardrobe tools', () => {
       operationId: 'op-both-0001',
       imageUrl: 'https://photos.example/knit.jpg',
       uploadId: `up_${'a'.repeat(22)}`,
-      category: 'top',
+      type: 'tops',
     })
     expect(jsonOf(both)).toMatchObject({ code: 'invalid_arguments' })
-    expect(jsonOf(await call('piece_add', { operationId: 'op-none-0001', category: 'top' }))).toMatchObject({
+    expect(jsonOf(await call('piece_add', { operationId: 'op-none-0001', type: 'tops' }))).toMatchObject({
       code: 'invalid_arguments',
     })
   })
@@ -436,12 +441,10 @@ describe('MCP wardrobe tools', () => {
       'https://photos.example:8443/knit.jpg',
       'https://me:pw@photos.example/k.jpg',
     ])
-      expect(jsonOf(await call('piece_add', { operationId: 'op-url-00001', imageUrl, category: 'top' }))).toMatchObject(
-        {
-          code: 'photo_refused',
-          retryable: false,
-        },
-      )
+      expect(jsonOf(await call('piece_add', { operationId: 'op-url-00001', imageUrl, type: 'tops' }))).toMatchObject({
+        code: 'photo_refused',
+        retryable: false,
+      })
   })
 })
 

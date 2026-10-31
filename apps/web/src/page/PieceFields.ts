@@ -1,28 +1,90 @@
 import { Button } from '@foldkit/ui'
 import {
-  type Category,
   type Colour,
   Colour as ColourSchema,
-  Category as CategorySchema,
-  subcategories,
-  type Subcategory,
+  GarmentGroup,
+  Occasion,
+  Pattern,
+  PieceType,
+  Season,
+  typesIn,
 } from '@styld/protocol'
 import { format, type Locale, type MessageKey } from '@styld/i18n'
-import { Array, Option } from 'effect'
+import { Array, Option, Schema } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import type { Html as Styles } from 'zyzz/runtime'
 import { checkIcon } from '../Icon.ts'
 import { styled } from '../Styled.ts'
 import { cx } from 'zyzz'
-import { categoryName, colourName, subcategoryName } from './WardrobeWords.ts'
+import { colourName, groupName, occasionName, patternName, seasonName, typeName } from './WardrobeWords.ts'
 import * as styles from './PieceFields.styles.ts'
 
-/** Every category and colour, in the order the pickers show them. */
-export const categories: ReadonlyArray<Category> = CategorySchema.literals
 const colours: ReadonlyArray<Colour> = ColourSchema.literals
 
 /** At most six colours per piece; the picker refuses a seventh. */
 const maximumColours = 6
+
+/** What a piece form holds of a piece: the type it must have, its colours and the attributes it may have. */
+export const Details = Schema.Struct({
+  type: Schema.Option(PieceType),
+  colours: Schema.Array(ColourSchema),
+  season: Schema.Option(Season),
+  occasions: Schema.Array(Occasion),
+  pattern: Schema.Option(Pattern),
+})
+export type Details = typeof Details.Type
+
+/** A piece's details as the forms start from them: what it is, or what the decision model suggested. */
+export const detailsOf = (piece: {
+  readonly type: PieceType | null
+  readonly colours: ReadonlyArray<Colour>
+  readonly season: Season | null
+  readonly occasions: ReadonlyArray<Occasion>
+  readonly pattern: Pattern | null
+}): Details => ({
+  type: Option.fromNullishOr(piece.type),
+  colours: piece.colours,
+  season: Option.fromNullishOr(piece.season),
+  occasions: piece.occasions,
+  pattern: Option.fromNullishOr(piece.pattern),
+})
+
+/** Choosing a value adds it, choosing it again removes it, and one past `most` is refused. */
+const toggled =
+  <A>(value: A, most: number) =>
+  (chosen: ReadonlyArray<A>): ReadonlyArray<A> =>
+    chosen.includes(value)
+      ? Array.filter(chosen, (each) => each !== value)
+      : chosen.length >= most
+        ? chosen
+        : [...chosen, value]
+
+/** Choosing the chosen one again clears it. */
+const chosenAgain = <A>(value: A, chosen: Option.Option<A>): Option.Option<A> =>
+  Option.contains(chosen, value) ? Option.none() : Option.some(value)
+
+/** How each picker changes a piece's details. */
+export const changeDetails = {
+  type: (type: PieceType) => (details: Details) => ({ ...details, type: Option.some(type) }),
+  colour: (colour: Colour) => (details: Details) => ({
+    ...details,
+    colours: toggled(colour, maximumColours)(details.colours),
+  }),
+  season: (season: Season) => (details: Details) => ({ ...details, season: chosenAgain(season, details.season) }),
+  occasion: (occasion: Occasion) => (details: Details) => ({
+    ...details,
+    occasions: toggled(occasion, Occasion.literals.length)(details.occasions),
+  }),
+  pattern: (pattern: Pattern) => (details: Details) => ({ ...details, pattern: chosenAgain(pattern, details.pattern) }),
+}
+
+/** The details as the API takes them: a type, and attributes only where there are any. */
+export const detailsPayload = (details: Details) => ({
+  ...(details.colours.length === 0 ? {} : { colours: details.colours }),
+  ...Option.match(details.season, { onNone: () => ({}), onSome: (season) => ({ season }) }),
+  ...(details.occasions.length === 0 ? {} : { occasions: details.occasions }),
+  ...Option.match(details.pattern, { onNone: () => ({}), onSome: (pattern) => ({ pattern }) }),
+})
 
 type Labelled = Readonly<{ id: string; legend: MessageKey; problem: Option.Option<MessageKey> }>
 
@@ -62,34 +124,38 @@ const chip = <Message>(label: string, pressed: boolean, onClick: Message, h: Htm
     h,
   )
 
-/** One required category, as chips. */
-const categoryPicker = <Message>(
-  config: Labelled & Readonly<{ chosen: Option.Option<Category>; onChoose: (category: Category) => Message }>,
+/** One required type, as chips under their group's name, the way a shop lists them. */
+const typePicker = <Message>(
+  config: Labelled & Readonly<{ chosen: Option.Option<PieceType>; onChoose: (type: PieceType) => Message }>,
   locale: Locale,
   h: HtmlBuilder<Message>,
 ): Html =>
   group(
     config,
-    styles.chipSet(),
-    categories.map((category) =>
-      chip(
-        format(locale, categoryName(category), {}),
-        Option.contains(config.chosen, category),
-        config.onChoose(category),
-        h,
-      ),
+    styles.typeGroups(),
+    GarmentGroup.literals.map((garmentGroup) =>
+      h.div(styled(h, styles.typeGroup()), [
+        h.span(styled(h, styles.typeGroupName()), [format(locale, groupName(garmentGroup), {})]),
+        h.div(
+          styled(h, styles.chipSet()),
+          typesIn(garmentGroup).map((type) =>
+            chip(format(locale, typeName(type), {}), Option.contains(config.chosen, type), config.onChoose(type), h),
+          ),
+        ),
+      ]),
     ),
     locale,
     h,
   )
 
-/** The shelves of the chosen category; choosing the chosen one again clears it. */
-const subcategoryPicker = <Message>(
+/** Chips for one optional value or several, named from the catalogs. */
+const chipPicker = <Message, A extends string>(
   config: Labelled &
     Readonly<{
-      category: Category
-      chosen: Option.Option<Subcategory>
-      onChoose: (subcategory: Option.Option<Subcategory>) => Message
+      values: ReadonlyArray<A>
+      name: (value: A) => MessageKey
+      isChosen: (value: A) => boolean
+      onChoose: (value: A) => Message
     }>,
   locale: Locale,
   h: HtmlBuilder<Message>,
@@ -97,15 +163,9 @@ const subcategoryPicker = <Message>(
   group(
     config,
     styles.chipSet(),
-    subcategories[config.category].map((subcategory) => {
-      const chosen = Option.contains(config.chosen, subcategory)
-      return chip(
-        format(locale, subcategoryName(subcategory), {}),
-        chosen,
-        config.onChoose(chosen ? Option.none() : Option.some(subcategory)),
-        h,
-      )
-    }),
+    config.values.map((value) =>
+      chip(format(locale, config.name(value), {}), config.isChosen(value), config.onChoose(value), h),
+    ),
     locale,
     h,
   )
@@ -149,16 +209,6 @@ const colourPicker = <Message>(
     h,
   )
 
-/** Choosing a colour adds it, choosing it again removes it, and a seventh is refused. */
-export const toggleColour =
-  (colour: Colour) =>
-  (chosen: ReadonlyArray<Colour>): ReadonlyArray<Colour> =>
-    chosen.includes(colour)
-      ? Array.filter(chosen, (each) => each !== colour)
-      : chosen.length >= maximumColours
-        ? chosen
-        : [...chosen, colour]
-
 /** A piece's colours as a fact: each dot beside its name, since a dot alone cannot tell blue from navy. */
 export const colourList = <Message>(chosen: ReadonlyArray<Colour>, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.ul(
@@ -177,58 +227,82 @@ export const colourList = <Message>(chosen: ReadonlyArray<Colour>, locale: Local
 
 /** The Messages a piece form sends from its pickers; a page passes its own Message union. */
 type PickerMessages<Message> = Readonly<{
-  ChoseCategory: (fields: { readonly category: Category }) => Message
-  ChoseSubcategory: (fields: { readonly subcategory: Option.Option<Subcategory> }) => Message
+  ChoseType: (fields: { readonly type: PieceType }) => Message
   ToggledColour: (fields: { readonly colour: Colour }) => Message
+  ChoseSeason: (fields: { readonly season: Season }) => Message
+  ToggledOccasion: (fields: { readonly occasion: Occasion }) => Message
+  ChosePattern: (fields: { readonly pattern: Pattern }) => Message
 }>
 
-/** The three pickers in the order both piece forms show them; the shelves wait for a category. */
+/** The pickers in the order both piece forms show them: what it is, its colours, then when, what for and its
+ * pattern. */
 export const piecePickers = <Message>(
   config: Readonly<{
-    category: Option.Option<Category>
-    categoryMissing: boolean
-    subcategory: Option.Option<Subcategory>
-    colours: ReadonlyArray<Colour>
+    details: Details
+    typeMissing: boolean
     coloursLegend: MessageKey
     messages: PickerMessages<Message>
   }>,
   locale: Locale,
   h: HtmlBuilder<Message>,
 ): ReadonlyArray<Html> => [
-  categoryPicker(
+  typePicker(
     {
-      id: 'piece-category',
-      legend: 'wardrobe.categoryLabel',
-      problem: config.categoryMissing ? Option.some('wardrobe.addPieceNeedsCategory') : Option.none(),
-      chosen: config.category,
-      onChoose: (category) => config.messages.ChoseCategory({ category }),
+      id: 'piece-type',
+      legend: 'wardrobe.typeLabel',
+      problem: config.typeMissing ? Option.some('wardrobe.needsType') : Option.none(),
+      chosen: config.details.type,
+      onChoose: (type) => config.messages.ChoseType({ type }),
     },
     locale,
     h,
   ),
-  Option.match(config.category, {
-    onNone: () => h.empty,
-    onSome: (category) =>
-      subcategoryPicker(
-        {
-          id: 'piece-subcategory',
-          legend: 'wardrobe.shelves.shelfLabel',
-          problem: Option.none(),
-          category,
-          chosen: config.subcategory,
-          onChoose: (subcategory) => config.messages.ChoseSubcategory({ subcategory }),
-        },
-        locale,
-        h,
-      ),
-  }),
   colourPicker(
     {
       id: 'piece-colours',
       legend: config.coloursLegend,
       problem: Option.none(),
-      chosen: config.colours,
+      chosen: config.details.colours,
       onToggle: (colour) => config.messages.ToggledColour({ colour }),
+    },
+    locale,
+    h,
+  ),
+  chipPicker(
+    {
+      id: 'piece-season',
+      legend: 'wardrobe.seasonLabel',
+      problem: Option.none(),
+      values: Season.literals,
+      name: seasonName,
+      isChosen: (season) => Option.contains(config.details.season, season),
+      onChoose: (season) => config.messages.ChoseSeason({ season }),
+    },
+    locale,
+    h,
+  ),
+  chipPicker(
+    {
+      id: 'piece-occasions',
+      legend: 'wardrobe.occasionsLabel',
+      problem: Option.none(),
+      values: Occasion.literals,
+      name: occasionName,
+      isChosen: (occasion) => config.details.occasions.includes(occasion),
+      onChoose: (occasion) => config.messages.ToggledOccasion({ occasion }),
+    },
+    locale,
+    h,
+  ),
+  chipPicker(
+    {
+      id: 'piece-pattern',
+      legend: 'wardrobe.patternLabel',
+      problem: Option.none(),
+      values: Pattern.literals,
+      name: patternName,
+      isChosen: (pattern) => Option.contains(config.details.pattern, pattern),
+      onChoose: (pattern) => config.messages.ChosePattern({ pattern }),
     },
     locale,
     h,

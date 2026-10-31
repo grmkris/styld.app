@@ -11,14 +11,11 @@ import {
   type PieceId,
   type PiecePicture,
   type PieceTurn,
-  type Subcategory,
-  SubcategoryMismatch,
   type UpdatePiece,
   Upload,
   UploadId,
   UploadRefused,
   WardrobeUnavailable,
-  subcategoryFits,
 } from '@styld/protocol'
 import { Context, DateTime, Effect, Option, Predicate, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
@@ -63,9 +60,14 @@ export const toPiece = (row: PieceRow, picture?: PiecePicture, turn?: PieceTurn)
     id: row.id,
     name: row.name,
     notes: row.notes,
-    category: row.category,
-    subcategory: row.subcategory,
+    type: row.type,
     colours: row.colours,
+    season: row.season,
+    occasions: row.occasions,
+    pattern: row.pattern,
+    brand: row.brand,
+    shopUrl: row.shopUrl,
+    hasBack: row.backImageKey !== null,
     status: row.status,
     source: row.source,
     createdAt: row.createdAt.toISOString(),
@@ -126,14 +128,6 @@ export const usableUpload = Effect.fnUntraced(function* (store: Store, accountId
     return yield* refused(Option.getOrElse(refusal, () => 'notFound'))
   return upload.value
 })
-
-/** The subcategory after a change: the one it names, else the current one if the (new) category
- * still has it. */
-const nextSubcategory = (current: Piece, input: UpdatePiece): Subcategory | null => {
-  if (input.subcategory !== undefined) return input.subcategory
-  const category = input.category ?? current.category
-  return current.subcategory !== null && subcategoryFits(category, current.subcategory) ? current.subcategory : null
-}
 
 interface Parts {
   readonly bindings: WardrobeBindings
@@ -330,8 +324,7 @@ const addFailure = (
   })
 
 /** What an add means apart from its operation id: a repeat of the same meaning replays it. */
-const addMeaning = (input: AddPiece) =>
-  JSON.stringify([input.uploadId, input.category, input.subcategory ?? null, input.colours ?? [], input.name ?? null])
+const addMeaning = ({ operationId: _, ...meaning }: AddPiece) => JSON.stringify(meaning)
 
 const newPiece = (
   input: AddPiece,
@@ -342,11 +335,17 @@ const newPiece = (
   accountId: upload.accountId,
   name: input.name ?? null,
   notes: null,
-  category: input.category,
-  subcategory: input.subcategory ?? null,
+  type: input.type,
+  colours: input.colours ?? [],
+  season: input.season ?? null,
+  occasions: input.occasions ?? [],
+  pattern: input.pattern ?? null,
+  brand: input.brand ?? null,
+  shopUrl: input.shopUrl ?? null,
+  // Whoever adds a piece names its type; only pieces carried over from the old categories wait for a suggestion.
+  suggestedAt: context.now,
   detectionId: null,
   backImageKey: null,
-  colours: input.colours ?? [],
   status: 'processing',
   source: context.via === 'assistant' ? 'assistant' : 'website',
   uploadId: upload.id,
@@ -375,8 +374,6 @@ const adding = (parts: Parts) => ({
       return receipt.value.inputDigest === inputDigest
         ? yield* replay(parts, accountId, receipt.value.result)
         : yield* OperationConflict.make({})
-    if (input.subcategory !== undefined && !subcategoryFits(input.category, input.subcategory))
-      return yield* SubcategoryMismatch.make({})
     const upload = yield* usableUpload(parts.store, accountId, input.uploadId)
     const now = yield* nowDate
     const row = newPiece(input, upload, { id: `pc_${yield* parts.randomToken(16)}`, via, now })
@@ -429,19 +426,7 @@ const editing = (parts: Parts) => ({
   updatePiece: Effect.fn('Styld.Wardrobe.updatePiece')(function* (pieceId: PieceId, input: UpdatePiece) {
     const { accountId } = yield* CurrentAccount
     const current = yield* toPiece(yield* ownPiece(parts)(pieceId))
-    const category = input.category ?? current.category
-    const subcategory = nextSubcategory(current, input)
-    if (subcategory !== null && !subcategoryFits(category, subcategory)) return yield* SubcategoryMismatch.make({})
-    const updated = yield* stored(
-      parts.store.updatePiece(accountId, pieceId, {
-        category,
-        subcategory,
-        ...(input.name === undefined ? {} : { name: input.name }),
-        ...(input.notes === undefined ? {} : { notes: input.notes }),
-        ...(input.colours === undefined ? {} : { colours: input.colours }),
-        updatedAt: yield* nowDate,
-      }),
-    )
+    const updated = yield* stored(parts.store.updatePiece(accountId, pieceId, { ...input, updatedAt: yield* nowDate }))
     if (Option.isNone(updated)) return yield* PieceNotFound.make({})
     // Its name is what others read of it: a public piece renamed is checked again before they see the new name.
     if (input.name !== undefined && input.name !== current.name) yield* parts.pieceChanged.changed(pieceId)

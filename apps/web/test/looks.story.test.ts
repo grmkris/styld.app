@@ -20,7 +20,7 @@ const weekend: LookContract = {
   id: LookId.make(lookId),
   name: 'Weekend',
   occasion: 'Brunch',
-  pieces: [pieceFixture('tee', { name: 'White tee' }), pieceFixture('jeans', { category: 'bottom' })],
+  pieces: [pieceFixture('tee', { name: 'White tee' }), pieceFixture('jeans', { type: 'trousers' })],
   shared: false,
   check: null,
   createdAt: '2026-10-29T12:00:00.000Z',

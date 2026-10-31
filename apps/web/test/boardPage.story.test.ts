@@ -34,7 +34,7 @@ import { update } from '../src/page/Board/Update.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const knit = pieceFixture('knit')
-const shoes = pieceFixture('shoes', { category: 'shoes' })
+const shoes = pieceFixture('shoes', { type: 'trainers' })
 const pinId = (seed: string) => Schema.decodeUnknownSync(PinId)(`pn_${seed.padEnd(22, 'x')}`)
 const knitPin = { _tag: 'PiecePin', id: pinId('knit'), piece: knit, addedAt: '2026-10-30T08:00:00.000Z' }
 const shoesPin = { _tag: 'PiecePin', id: pinId('shoes'), piece: shoes, addedAt: '2026-10-30T09:00:00.000Z' }

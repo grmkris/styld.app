@@ -1,7 +1,10 @@
 import {
   AddPiece,
-  Category,
   Colour,
+  GarmentGroup,
+  groupOf,
+  Occasion,
+  Pattern,
   CreateUpload,
   ImageType,
   type LinkRefused,
@@ -10,13 +13,13 @@ import {
   type Piece,
   PieceId,
   type PieceNotFound,
-  type SubcategoryMismatch,
+  PieceType,
+  Season,
   UpdatePiece,
   UploadId,
   type UploadRefused,
   type WardrobeUnavailable,
   maximumImageBytes,
-  subcategories,
 } from '@styld/protocol'
 import { Effect, Match, Option, Schema } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
@@ -26,13 +29,7 @@ import { paced } from './Pacing.ts'
 import { tool, ToolError } from './Tools.ts'
 import { readProductPage } from '../links/LinkImport.ts'
 
-type WardrobeFailure =
-  | PieceNotFound
-  | SubcategoryMismatch
-  | OperationConflict
-  | UploadRefused
-  | WardrobeUnavailable
-  | ImportRefused
+type WardrobeFailure = PieceNotFound | OperationConflict | UploadRefused | WardrobeUnavailable | ImportRefused
 
 const uploadRecovery: Readonly<Record<string, { message: string; recovery: string }>> = {
   notFound: {
@@ -91,13 +88,6 @@ const asToolError = (error: WardrobeFailure): ToolError =>
           recovery: 'Call piece_search to find the piece.',
           retryable: false,
         }),
-      SubcategoryMismatch: () =>
-        new ToolError({
-          code: 'invalid_subcategory',
-          message: 'That subcategory belongs to another category.',
-          recovery: `Use a subcategory of the category: ${JSON.stringify(subcategories)}.`,
-          retryable: false,
-        }),
       OperationConflict: () =>
         new ToolError({
           code: 'operation_conflict',
@@ -120,25 +110,38 @@ const asToolError = (error: WardrobeFailure): ToolError =>
 /** A piece as assistants see it: its fields and its page on the website, never an image address. */
 const shown = (origin: string) => (piece: Piece) => ({ ...piece, url: `${origin}/wardrobe/${piece.id}` })
 
-const matches = (
-  piece: Piece,
-  input: { readonly query?: string; readonly category?: Category; readonly colour?: Colour },
-) => {
+/** What piece_search filters by: words, and any of the piece's type, group and attributes. */
+const SearchFilter = Schema.Struct({
+  query: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(80))),
+  type: Schema.optionalKey(PieceType),
+  group: Schema.optionalKey(GarmentGroup),
+  colour: Schema.optionalKey(Colour),
+  season: Schema.optionalKey(Season),
+  occasion: Schema.optionalKey(Occasion),
+  pattern: Schema.optionalKey(Pattern),
+  brand: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(60))),
+})
+
+const matches = (piece: Piece, input: typeof SearchFilter.Type) => {
   const query = input.query?.trim().toLowerCase() ?? ''
-  const text = [piece.name, piece.notes, piece.category, piece.subcategory]
+  const text = [piece.name, piece.notes, piece.type, piece.brand]
     .filter((part) => part !== null)
     .join(' ')
     .toLowerCase()
   return (
-    (input.category === undefined || piece.category === input.category) &&
+    (input.type === undefined || piece.type === input.type) &&
+    (input.group === undefined || groupOf(piece.type) === input.group) &&
     (input.colour === undefined || piece.colours.includes(input.colour)) &&
+    (input.season === undefined || piece.season === input.season || piece.season === 'allYear') &&
+    (input.occasion === undefined || piece.occasions.includes(input.occasion)) &&
+    (input.pattern === undefined || piece.pattern === input.pattern) &&
+    (input.brand === undefined || piece.brand?.toLowerCase() === input.brand.trim().toLowerCase()) &&
     (query.length === 0 || text.includes(query))
   )
 }
 
 /** The piece's fields as the protocol defines them, so the website and assistants accept the same. */
-const { category, subcategory, colours, name } = AddPiece.fields
-const PieceFields = { category, subcategory, colours, name }
+const { operationId: _operationId, uploadId: _uploadId, ...PieceFields } = AddPiece.fields
 
 const LinkImport = Schema.Struct({
   operationId: OperationId,
@@ -191,11 +194,9 @@ const readTools = (wardrobe: Wardrobe['Service'], show: ReturnType<typeof shown>
     name: 'piece_search',
     title: 'Search the wardrobe',
     description:
-      'Pieces in the wardrobe, newest first, filtered by words in their name or notes, a category or a colour. Returns up to `limit` pieces and a `nextCursor` for the next page (null on the last page).',
+      'Pieces in the wardrobe, newest first, filtered by words in their name, notes or brand, and by garment type, group, colour, season, occasion, pattern or brand. Returns up to `limit` pieces and a `nextCursor` for the next page (null on the last page).',
     parameters: Schema.Struct({
-      query: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(80))),
-      category: Schema.optionalKey(Category),
-      colour: Schema.optionalKey(Colour),
+      ...SearchFilter.fields,
       limit: Schema.optionalKey(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 }))),
       cursor: Schema.optionalKey(Schema.String.check(Schema.isPattern(/^[0-9]{1,6}$/))),
     }),
@@ -266,7 +267,7 @@ const writeTools = (
     name: 'piece_update',
     title: 'Change a piece',
     description:
-      'Change the name, notes, category, subcategory or colours of a piece. Fields left out stay as they are; null clears a name, notes or subcategory.',
+      'Change the name, notes, garment type, colours, season, occasions, pattern, brand or shop link of a piece. Fields left out stay as they are; null clears a name, notes, season, pattern, brand or shop link.',
     parameters: Schema.Struct({ pieceId: PieceId, ...UpdatePiece.fields }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
     handler: ({ pieceId, ...changes }) =>
@@ -289,7 +290,7 @@ const linkTools = (wardrobe: Wardrobe['Service'], show: ReturnType<typeof shown>
     name: 'link_import',
     title: 'Add a piece from a link',
     description:
-      'Add a piece from a shop’s product page: Styld reads the page’s picture and name and adds it straight to the wardrobe. Give the category; the name defaults to the page’s. Choose a new `operationId` for each piece. A shop that blocks reading answers `blocked`: then ask for a photo instead.',
+      'Add a piece from a shop’s product page: Styld reads the page’s picture and name and adds it straight to the wardrobe. Give the garment type; the name defaults to the page’s. Choose a new `operationId` for each piece. A shop that blocks reading answers `blocked`: then ask for a photo instead.',
     parameters: LinkImport,
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     handler: ({ url, name: chosen, ...fields }) =>

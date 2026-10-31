@@ -4,22 +4,22 @@ import { Match } from 'effect'
 /** What the wardrobe holds, in a line or two, so a first answer needs no search. */
 export interface WardrobeOutline {
   readonly pieces: number
-  readonly byCategory: Readonly<Record<string, number>>
+  readonly byType: Readonly<Record<string, number>>
   readonly colours: ReadonlyArray<string>
 }
 
-/** The pieces' categories and their commonest colours. */
+/** The pieces' garment types and their commonest colours. */
 export const outlineOf = (
-  pieces: ReadonlyArray<{ readonly category: string; readonly colours: ReadonlyArray<string> }>,
+  pieces: ReadonlyArray<{ readonly type: string; readonly colours: ReadonlyArray<string> }>,
 ): WardrobeOutline => {
-  const byCategory: Record<string, number> = {}
+  const byType: Record<string, number> = {}
   const colours = new Map<string, number>()
   for (const piece of pieces) {
-    byCategory[piece.category] = (byCategory[piece.category] ?? 0) + 1
+    byType[piece.type] = (byType[piece.type] ?? 0) + 1
     for (const colour of piece.colours) colours.set(colour, (colours.get(colour) ?? 0) + 1)
   }
   const common = [...colours.entries()].toSorted((a, b) => b[1] - a[1]).slice(0, 6)
-  return { pieces: pieces.length, byCategory, colours: common.map(([colour]) => colour) }
+  return { pieces: pieces.length, byType, colours: common.map(([colour]) => colour) }
 }
 
 const languages: Readonly<Record<ChatLocale, string>> = { en: 'English', sl: 'Slovenian' }
@@ -42,8 +42,8 @@ const seasonOf = (today: string) => {
 
 const describe = (outline: WardrobeOutline) => {
   if (outline.pieces === 0) return 'The wardrobe is empty: nothing has been added yet.'
-  const kinds = Object.entries(outline.byCategory)
-    .map(([category, count]) => `${count} ${category}`)
+  const kinds = Object.entries(outline.byType)
+    .map(([type, count]) => `${count} ${type}`)
     .join(', ')
   const colours = outline.colours.length === 0 ? '' : ` Commonest colours: ${outline.colours.join(', ')}.`
   return `The wardrobe holds ${outline.pieces} pieces: ${kinds}.${colours}`

@@ -55,7 +55,7 @@ export const pageMeta = (pages: PublicPages['Service'], path: string, locale: Lo
       const { piece } = yield* pages.piece(id)
       return {
         title: format(locale, 'share.board.metaTitle', {
-          title: piece.name ?? format(locale, `wardrobe.mainCategories.${piece.category}`, {}),
+          title: piece.name ?? format(locale, `wardrobe.typeOne.${piece.type}`, {}),
         }),
         description: format(locale, 'share.piece.metaDescription', {}),
         image: pieceImage(piece),

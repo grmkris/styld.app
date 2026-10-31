@@ -130,7 +130,7 @@ const shownPin = (origin: string) => (pin: Pin) =>
         piece: {
           id: piece.id,
           name: piece.name,
-          category: piece.category,
+          type: piece.type,
           colours: piece.colours,
           url: `${origin}/wardrobe/${piece.id}`,
         },

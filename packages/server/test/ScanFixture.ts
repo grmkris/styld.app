@@ -58,7 +58,7 @@ const seed = (
     const rows = [
       database
         .prepare(
-          "INSERT INTO pieces (id, account_id, category, colours, status, source, original_key, image_key, content_type, bytes, created_at, updated_at) VALUES (?, ?, 'top', '[\"green\"]', 'ready', 'website', ?, ?, 'image/png', 1, ?, ?)",
+          "INSERT INTO pieces (id, account_id, type, colours, status, source, original_key, image_key, content_type, bytes, created_at, updated_at) VALUES (?, ?, 'tops', '[\"green\"]', 'ready', 'website', ?, ?, 'image/png', 1, ?, ?)",
         )
         .bind(scanned.greenPiece, scanAccount, `${prefix}/uploads/green`, greenKey, now, now),
       ...captureNames.map((name, at) =>
@@ -83,7 +83,7 @@ const seed = (
       rows.push(
         database
           .prepare(
-            "INSERT INTO detections (id, capture_id, account_id, status, cutout_key, source_key, preselected, suggested_category, suggested_colours, whole, matching, created_at) VALUES (?, ?, ?, 'review', ?, ?, ?, 'top', ?, ?, ?, ?)",
+            "INSERT INTO detections (id, capture_id, account_id, status, cutout_key, source_key, preselected, suggested_type, suggested_colours, whole, matching, created_at) VALUES (?, ?, ?, 'review', ?, ?, ?, 'tops', ?, ?, ?, ?)",
           )
           .bind(
             scanned[sighting.detection],

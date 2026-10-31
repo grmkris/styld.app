@@ -1,13 +1,16 @@
 import {
-  Category,
   Colour,
+  Occasion,
   OperationId,
+  Pattern,
   PictureChoice,
   Piece,
   PieceId,
   PiecePicture,
   PieceTurn,
-  Subcategory,
+  PieceType,
+  Season,
+  ShopUrl,
   TurnLayout,
   UpdatePiece,
 } from '@styld/protocol'
@@ -17,7 +20,7 @@ import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
-import { toggleColour } from './PieceFields.ts'
+import { changeDetails, Details, detailsOf } from './PieceFields.ts'
 import * as SaveToBoard from './SaveToBoard.ts'
 import * as Crypto from 'effect/Crypto'
 
@@ -36,11 +39,13 @@ export const Deletion = defineTaggedUnion({ Idle: {}, Confirming: {}, Deleting: 
 export const Draft = Schema.Struct({
   name: Schema.String,
   notes: Schema.String,
-  category: Category,
-  subcategory: Schema.Option(Subcategory),
-  colours: Schema.Array(Colour),
+  details: Details,
+  brand: Schema.String,
+  shopUrl: Schema.String,
   saving: Schema.Boolean,
   failed: Schema.Boolean,
+  /** The shop link is not an https address: nothing is sent until it is. */
+  shopUrlInvalid: Schema.Boolean,
 })
 export type Draft = typeof Draft.Type
 
@@ -108,9 +113,13 @@ export const Message = defineMessageUnion({
   ClickedCancelEdit: {},
   UpdatedName: { value: Schema.String },
   UpdatedNotes: { value: Schema.String },
-  ChoseCategory: { category: Category },
-  ChoseSubcategory: { subcategory: Schema.Option(Subcategory) },
+  ChoseType: { type: PieceType },
   ToggledColour: { colour: Colour },
+  ChoseSeason: { season: Season },
+  ToggledOccasion: { occasion: Occasion },
+  ChosePattern: { pattern: Pattern },
+  UpdatedBrand: { value: Schema.String },
+  UpdatedShopUrl: { value: Schema.String },
   SubmittedEdit: {},
   SucceededUpdatePiece: { piece: Piece },
   FailedUpdatePiece: {},
@@ -319,25 +328,34 @@ const foldSaveToBoard = SaveToBoard.foldInto<Model, Message>((message) => Messag
 const draftOf = (piece: Piece): Draft => ({
   name: piece.name ?? '',
   notes: piece.notes ?? '',
-  category: piece.category,
-  subcategory: Option.fromNullishOr(piece.subcategory),
-  colours: piece.colours,
+  details: detailsOf(piece),
+  brand: piece.brand ?? '',
+  shopUrl: piece.shopUrl ?? '',
   saving: false,
   failed: false,
+  shopUrlInvalid: false,
 })
 
-/** The saved form, as the API takes it: an empty name or note is no name or note. */
-const changesOf = (draft: Draft): typeof UpdatePiece.Type => {
-  const name = draft.name.trim()
-  const notes = draft.notes.trim()
-  return {
-    name: name.length === 0 ? null : name,
-    notes: notes.length === 0 ? null : notes,
-    category: draft.category,
-    subcategory: Option.getOrNull(draft.subcategory),
-    colours: draft.colours,
-  }
+/** Words left empty, spaces aside, are no value. */
+const given = (value: string) => {
+  const trimmed = value.trim()
+  return trimmed.length === 0 ? null : trimmed
 }
+
+/** The saved form, as the API takes it: an empty field is no value, and an attribute left unchosen is cleared. */
+const changesOf = (draft: Draft): typeof UpdatePiece.Type => ({
+  name: given(draft.name),
+  notes: given(draft.notes),
+  ...Option.match(draft.details.type, { onNone: () => ({}), onSome: (type) => ({ type }) }),
+  colours: draft.details.colours,
+  season: Option.getOrNull(draft.details.season),
+  occasions: draft.details.occasions,
+  pattern: Option.getOrNull(draft.details.pattern),
+  brand: given(draft.brand),
+  shopUrl: given(draft.shopUrl),
+})
+
+const isShopUrl = Schema.is(ShopUrl)
 
 const editDraft = (model: Model, change: (draft: Draft) => Draft): UpdateReturn => ({
   model: modifyFields(model, {
@@ -345,16 +363,25 @@ const editDraft = (model: Model, change: (draft: Draft) => Draft): UpdateReturn 
   }),
 })
 
+const editDetails = (model: Model, change: (details: Details) => Details): UpdateReturn =>
+  editDraft(model, (draft) => modifyFields(draft, { details: change }))
+
 const submittedEdit = (model: Model): UpdateReturn =>
   Option.match(model.draft, {
     onNone: () => ({ model }),
     onSome: (draft) =>
       draft.saving
         ? { model }
-        : {
-            model: modifyFields(model, { draft: () => Option.some(modifyFields(draft, { saving: () => true })) }),
-            commands: [SavePiece({ pieceId: model.pieceId, changes: changesOf(draft) })],
-          },
+        : !(draft.shopUrl.trim() === '' || isShopUrl(draft.shopUrl.trim()))
+          ? {
+              model: modifyFields(model, {
+                draft: () => Option.some(modifyFields(draft, { shopUrlInvalid: () => true })),
+              }),
+            }
+          : {
+              model: modifyFields(model, { draft: () => Option.some(modifyFields(draft, { saving: () => true })) }),
+              commands: [SavePiece({ pieceId: model.pieceId, changes: changesOf(draft) })],
+            },
   })
 
 /** A piece still processing, or with a drawing or a turn on its way, is asked for again until it settles; a turn
@@ -499,16 +526,14 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedCancelEdit: () => ({ model: modifyFields(model, { draft: () => Option.none() }) }),
     UpdatedName: ({ value }) => editDraft(model, (draft) => modifyFields(draft, { name: () => value })),
     UpdatedNotes: ({ value }) => editDraft(model, (draft) => modifyFields(draft, { notes: () => value })),
-    // A shelf belongs to its category, so a new category clears it.
-    ChoseCategory: ({ category }) =>
-      editDraft(model, (draft) =>
-        draft.category === category
-          ? draft
-          : modifyFields(draft, { category: () => category, subcategory: () => Option.none() }),
-      ),
-    ChoseSubcategory: ({ subcategory }) =>
-      editDraft(model, (draft) => modifyFields(draft, { subcategory: () => subcategory })),
-    ToggledColour: ({ colour }) => editDraft(model, (draft) => modifyFields(draft, { colours: toggleColour(colour) })),
+    ChoseType: ({ type }) => editDetails(model, changeDetails.type(type)),
+    ToggledColour: ({ colour }) => editDetails(model, changeDetails.colour(colour)),
+    ChoseSeason: ({ season }) => editDetails(model, changeDetails.season(season)),
+    ToggledOccasion: ({ occasion }) => editDetails(model, changeDetails.occasion(occasion)),
+    ChosePattern: ({ pattern }) => editDetails(model, changeDetails.pattern(pattern)),
+    UpdatedBrand: ({ value }) => editDraft(model, (draft) => modifyFields(draft, { brand: () => value })),
+    UpdatedShopUrl: ({ value }) =>
+      editDraft(model, (draft) => modifyFields(draft, { shopUrl: () => value, shopUrlInvalid: () => false })),
     SubmittedEdit: () => submittedEdit(model),
     SucceededUpdatePiece: ({ piece }) => ({
       model: modifyFields(model, { load: () => Load.Loaded({ piece }), draft: () => Option.none() }),

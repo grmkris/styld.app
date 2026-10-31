@@ -15,7 +15,7 @@
             "type": "function",
             "function": {
               "name": "piece_search",
-              "arguments": "{\"category\": \"top\"}"
+              "arguments": "{\"type\": \"tops\"}"
             }
           },
           {
@@ -23,7 +23,7 @@
             "type": "function",
             "function": {
               "name": "piece_search",
-              "arguments": "{\"category\": \"bottom\"}"
+              "arguments": "{\"type\": \"trousers\"}"
             }
           },
           {
@@ -31,7 +31,7 @@
             "type": "function",
             "function": {
               "name": "piece_search",
-              "arguments": "{\"category\": \"shoes\"}"
+              "arguments": "{\"type\": \"trainers\"}"
             }
           }
         ]

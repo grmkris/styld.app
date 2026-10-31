@@ -31,10 +31,9 @@ const picturePath = (detection: Detection, decision: Decision | undefined) =>
 const label = (decision: Decision | undefined, locale: Locale) => {
   const name = decision?.name.trim() ?? ''
   if (name.length > 0) return name
-  return Option.match(decision?.category ?? Option.none(), {
-    onNone: () => format(locale, 'wardrobe.addPieceCategoryPlaceholder', {}),
-    onSome: (category) =>
-      format(locale, kindName({ category, subcategory: Option.getOrNull(decision?.subcategory ?? Option.none()) }), {}),
+  return Option.match(decision?.details.type ?? Option.none(), {
+    onNone: () => format(locale, 'wardrobe.typePlaceholder', {}),
+    onSome: (type) => format(locale, kindName({ type }), {}),
   })
 }
 
@@ -231,10 +230,8 @@ const editor = (detection: Detection, decision: Decision, locale: Locale, h: Htm
         : h.empty,
       ...piecePickers(
         {
-          category: decision.category,
-          categoryMissing: false,
-          subcategory: decision.subcategory,
-          colours: decision.colours,
+          details: decision.details,
+          typeMissing: false,
           coloursLegend: 'wardrobe.addPieceColorsLabel',
           messages: Message,
         },

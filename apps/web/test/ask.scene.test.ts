@@ -32,8 +32,8 @@ const askWith = (pieces: ReadonlyArray<Piece>, query = '') =>
     },
   )
 
-const tee = pieceFixture('tee', { name: 'White tee', category: 'top', colours: ['white'] })
-const boots = pieceFixture('boots', { category: 'shoes', status: 'processing' })
+const tee = pieceFixture('tee', { name: 'White tee', type: 'tops', colours: ['white'] })
+const boots = pieceFixture('boots', { type: 'trainers', status: 'processing' })
 
 describe('Ask', () => {
   test('an empty wardrobe says what belongs here and the one way to fill it, with no empty suggestions', () => {
@@ -68,9 +68,9 @@ describe('Ask', () => {
     scene(
       { update, view },
       given(askWith([tee, boots])),
-      expect(role('button', { name: 'Tops' })).toExist(),
+      expect(role('button', { name: 'Tops & T-shirts' })).toExist(),
       expect(role('button', { name: 'White' })).toExist(),
-      expect(role('button', { name: 'Shoes' })).not.toExist(),
+      expect(role('button', { name: 'Trainers' })).not.toExist(),
     )
   })
 
@@ -87,7 +87,7 @@ describe('Ask', () => {
       given(askWith([tee], 'zzz')),
       expect(text('Nothing in your wardrobe matches “zzz”.')).toExist(),
       expect(text('0 pieces')).not.toExist(),
-      expect(role('button', { name: 'Tops' })).toExist(),
+      expect(role('button', { name: 'Tops & T-shirts' })).toExist(),
     )
   })
 

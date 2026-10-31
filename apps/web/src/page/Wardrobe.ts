@@ -1,4 +1,4 @@
-import { Category, Piece } from '@styld/protocol'
+import { GarmentGroup, Piece, PieceType } from '@styld/protocol'
 import { Duration, Effect, Option, Result, Schema, Stream } from 'effect'
 import { AsyncData, Command, Subscription, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
@@ -13,22 +13,30 @@ export type PiecesData = typeof PiecesData.schema.Type
 
 export const Model = Schema.Struct({
   pieces: PiecesData.schema,
-  /** The category chip that filters the grid; none shows every piece. */
-  category: Schema.Option(Category),
+  /** The group the grid shows, then one of its types; none shows every piece. */
+  group: Schema.Option(GarmentGroup),
+  type: Schema.Option(PieceType),
   /** Kept cut-outs with no clean picture yet, and how asking for theirs went. */
   undrawn: Schema.Number,
   backfill: Schema.Literals(['idle', 'sending', 'sent', 'failed']),
 })
 export type Model = typeof Model.Type
 
-export const init = (): Model => ({ pieces: AsyncData.Idle(), category: Option.none(), undrawn: 0, backfill: 'idle' })
+export const init = (): Model => ({
+  pieces: AsyncData.Idle(),
+  group: Option.none(),
+  type: Option.none(),
+  undrawn: 0,
+  backfill: 'idle',
+})
 
 // MESSAGE
 
 export const Message = defineMessageUnion({
   SucceededListPieces: { pieces: Schema.Array(Piece) },
   FailedListPieces: {},
-  ClickedCategory: { category: Schema.Option(Category) },
+  ClickedGroup: { group: Schema.Option(GarmentGroup) },
+  ClickedType: { type: Schema.Option(PieceType) },
   ClickedRetry: {},
   TickedRefresh: {},
   CompletedCountUndrawn: { pieces: Schema.Number },
@@ -106,7 +114,9 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     FailedListPieces: () => ({
       model: modifyFields(model, { pieces: (pieces) => AsyncData.settle(pieces, Result.fail('Unavailable' as const)) }),
     }),
-    ClickedCategory: ({ category }) => ({ model: modifyFields(model, { category: () => category }) }),
+    // Another group starts from all of its types.
+    ClickedGroup: ({ group }) => ({ model: modifyFields(model, { group: () => group, type: () => Option.none() }) }),
+    ClickedType: ({ type }) => ({ model: modifyFields(model, { type: () => type }) }),
     ClickedRetry: () => revisit(model),
     TickedRefresh: () => refresh(model),
     CompletedCountUndrawn: ({ pieces }) => ({ model: modifyFields(model, { undrawn: () => pieces }) }),

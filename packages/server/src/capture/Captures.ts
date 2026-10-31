@@ -228,9 +228,11 @@ const detectionView = (row: DetectionRow, sightings: number) => ({
   // Under even odds of one whole garment (PhotoPipeline's `verdictOf`), it was offered unticked as part of one.
   ...(row.whole !== null && row.whole < 0.5 ? { partial: true } : {}),
   suggestion: {
-    category: row.suggestedCategory,
-    subcategory: row.suggestedSubcategory,
+    type: row.suggestedType,
     colours: row.suggestedColours,
+    season: row.suggestedSeason,
+    occasions: row.suggestedOccasions,
+    pattern: row.suggestedPattern,
   },
 })
 

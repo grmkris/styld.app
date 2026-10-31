@@ -12,7 +12,7 @@ import { pageAt } from './WardrobeFixtures.ts'
 // What a visitor does on a public profile or piece besides reading it: go back, share it, and edit one's own.
 
 const ana = { handle: 'ana.novak', name: 'Ana Novak', tone: 'sage' }
-const scarf = { id: `pc_${'scarf'.padEnd(22, 'x')}`, name: 'Grey scarf', category: 'accessory', subcategory: null }
+const scarf = { id: `pc_${'scarf'.padEnd(22, 'x')}`, name: 'Grey scarf', type: 'bags' }
 const profileOf = (yours: boolean) =>
   Schema.decodeUnknownSync(PublicProfile)({ ...ana, city: null, bio: null, boards: [], looks: [], yours })
 const scarfPage = (yours: boolean) =>

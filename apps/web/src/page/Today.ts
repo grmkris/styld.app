@@ -5,7 +5,7 @@ import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
-import { outfitFor, type Placed, placedByCategory } from './Outfit.ts'
+import { outfitFor, type Placed, placedBySlot } from './Outfit.ts'
 
 // MODEL
 
@@ -191,7 +191,7 @@ export const enter = (model: Model): Update.Return<Model, Message, StyldClient> 
 export const tableOutfit = (model: Model, pieces: ReadonlyArray<Piece>): ReadonlyArray<Placed> => {
   if (Worn.guards.Worn(model.worn) && model.spin === 0) {
     const worn = new Set<string>(model.worn.pieceIds)
-    return placedByCategory(pieces.filter((piece) => worn.has(piece.id)))
+    return placedBySlot(pieces.filter((piece) => worn.has(piece.id)))
   }
   const day = Option.getOrElse(model.maybeDay, () => '')
   return outfitFor(pieces, `${day}:${String(model.spin)}`)

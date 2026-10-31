@@ -1,57 +1,5 @@
 import { Schema } from 'effect'
-
-/** The six wardrobe categories, keyed as in v1 so a piece's category reads the same everywhere. */
-export const Category = Schema.Literals(['top', 'bottom', 'dress', 'outerwear', 'shoes', 'accessory'])
-export type Category = typeof Category.Type
-
-/** Every shelf a piece can sit on. `sport` is a shelf in each wearable category; `other` fits any. */
-export const Subcategory = Schema.Literals([
-  'short_sleeve',
-  'long_sleeve',
-  'sleeveless',
-  'jeans',
-  'trousers',
-  'leggings',
-  'shorts',
-  'skirts',
-  'loungewear',
-  'mini',
-  'midi',
-  'maxi',
-  'jumpsuit',
-  'coats',
-  'jackets',
-  'blazers',
-  'vests',
-  'sneakers',
-  'boots',
-  'heels',
-  'sandals',
-  'flats',
-  'glasses',
-  'belts',
-  'bags',
-  'scarves',
-  'hats',
-  'jewelry',
-  'sport',
-  'other',
-])
-export type Subcategory = typeof Subcategory.Type
-
-/** The shelves inside each category, in the order the wardrobe shows them (v1
- * `wardrobe-subcategories.ts`). */
-export const subcategories: { readonly [Key in Category]: ReadonlyArray<Subcategory> } = {
-  top: ['short_sleeve', 'long_sleeve', 'sleeveless', 'sport', 'other'],
-  bottom: ['jeans', 'trousers', 'leggings', 'shorts', 'skirts', 'loungewear', 'sport', 'other'],
-  dress: ['mini', 'midi', 'maxi', 'jumpsuit', 'sport', 'other'],
-  outerwear: ['coats', 'jackets', 'blazers', 'vests', 'sport', 'other'],
-  shoes: ['sneakers', 'boots', 'heels', 'sandals', 'flats', 'sport', 'other'],
-  accessory: ['glasses', 'belts', 'bags', 'scarves', 'hats', 'jewelry', 'other'],
-}
-
-export const subcategoryFits = (category: Category, subcategory: Subcategory) =>
-  subcategories[category].includes(subcategory)
+import { Brand, Occasions, Pattern, PieceType, Season, ShopUrl } from './Garment.ts'
 
 /** The thirteen plain colours a person can pick (v1's `CATALOG_COLORS`). */
 export const Colour = Schema.Literals([
@@ -184,9 +132,15 @@ export const Piece = Schema.Struct({
   id: PieceId,
   name: Schema.NullOr(Name),
   notes: Schema.NullOr(Notes),
-  category: Category,
-  subcategory: Schema.NullOr(Subcategory),
+  type: PieceType,
   colours: Colours,
+  season: Schema.NullOr(Season),
+  occasions: Occasions,
+  pattern: Schema.NullOr(Pattern),
+  brand: Schema.NullOr(Brand),
+  shopUrl: Schema.NullOr(ShopUrl),
+  /** Whether a picture of its back is kept: the held camera's back shot, or one the person added. */
+  hasBack: Schema.Boolean,
   status: PieceStatus,
   source: PieceSource,
   /** ISO 8601 instants. */
@@ -216,22 +170,36 @@ export const CreateVideoUpload = Schema.Struct({
  * length, before `expiresAt`. The path carries a one-time token, so treat it as a secret. */
 export const Upload = Schema.Struct({ uploadId: UploadId, path: Schema.String, expiresAt: Schema.String })
 
+/** A piece's details as a person or an assistant gives them. */
+const pieceDetails = {
+  colours: Schema.optionalKey(Colours),
+  name: Schema.optionalKey(Name),
+  season: Schema.optionalKey(Season),
+  occasions: Schema.optionalKey(Occasions),
+  pattern: Schema.optionalKey(Pattern),
+  brand: Schema.optionalKey(Brand),
+  shopUrl: Schema.optionalKey(ShopUrl),
+}
+
 export const AddPiece = Schema.Struct({
   operationId: OperationId,
   uploadId: UploadId,
-  category: Category,
-  subcategory: Schema.optionalKey(Subcategory),
-  colours: Schema.optionalKey(Colours),
-  name: Schema.optionalKey(Name),
+  type: PieceType,
+  ...pieceDetails,
 })
 export type AddPiece = typeof AddPiece.Type
 
+/** Change a piece; fields left out stay, and null clears a field that may be empty. */
 export const UpdatePiece = Schema.Struct({
   name: Schema.optionalKey(Schema.NullOr(Name)),
   notes: Schema.optionalKey(Schema.NullOr(Notes)),
-  category: Schema.optionalKey(Category),
-  subcategory: Schema.optionalKey(Schema.NullOr(Subcategory)),
+  type: Schema.optionalKey(PieceType),
   colours: Schema.optionalKey(Colours),
+  season: Schema.optionalKey(Schema.NullOr(Season)),
+  occasions: Schema.optionalKey(Occasions),
+  pattern: Schema.optionalKey(Schema.NullOr(Pattern)),
+  brand: Schema.optionalKey(Schema.NullOr(Brand)),
+  shopUrl: Schema.optionalKey(Schema.NullOr(ShopUrl)),
 })
 export type UpdatePiece = typeof UpdatePiece.Type
 
@@ -252,13 +220,6 @@ export class UploadRefused extends Schema.TaggedError<UploadRefused>()(
       'tooLong',
     ]),
   },
-  { httpApiStatus: 422 },
-) {}
-
-/** The subcategory belongs to another category. */
-export class SubcategoryMismatch extends Schema.TaggedError<SubcategoryMismatch>()(
-  'SubcategoryMismatch',
-  {},
   { httpApiStatus: 422 },
 ) {}
 

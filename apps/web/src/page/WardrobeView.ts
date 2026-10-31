@@ -1,5 +1,5 @@
 import { Button } from '@foldkit/ui'
-import type { Category, Piece } from '@styld/protocol'
+import { GarmentGroup, groupOf, type Piece, type PieceType, typesIn } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import { Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
@@ -12,9 +12,8 @@ import { addPiecesRouter, pieceRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
-import { categories } from './PieceFields.ts'
 import { Message, type Model } from './Wardrobe.ts'
-import { categoryName, pieceLabel } from './WardrobeWords.ts'
+import { groupName, pieceLabel, typeName } from './WardrobeWords.ts'
 import * as styles from './WardrobeView.styles.ts'
 import { wardrobeMain } from './WardrobeTabs.ts'
 import { chip, chipSkeleton } from './AskView.styles.ts'
@@ -50,31 +49,90 @@ const backfillLine = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Ht
   ])
 }
 
-const sameFilter = (shown: Option.Option<Category>, filter: Option.Option<Category>) =>
-  Option.isNone(filter) ? Option.isNone(shown) : Option.contains(shown, filter.value)
-
-const filter = (
-  label: string,
-  total: number,
-  category: Option.Option<Category>,
-  model: Model,
-  h: HtmlBuilder<Message>,
-): Html =>
+/** One chip of a filter row: its name, how many pieces it holds, and whether it is the one shown. */
+const filter = (label: string, total: number, pressed: boolean, onClick: Message, h: HtmlBuilder<Message>): Html =>
   Button.view(
     {
-      onClick: Message.ClickedCategory({ category }),
+      onClick,
       toView: (attributes) =>
         h.button(
           [
             ...attributes.button,
-            h.AriaPressed(String(sameFilter(model.category, category))),
-            ...styled(h, cx(chip(), chosen(), styles.categoryFilter())),
+            h.AriaPressed(String(pressed)),
+            ...styled(h, cx(chip(), chosen(), styles.filterChip())),
           ],
           [label, ' ', h.span(styled(h, styles.count()), [String(total)])],
         ),
     },
     h,
   )
+
+const filterRow = (label: string, chips: ReadonlyArray<Html>, h: HtmlBuilder<Message>): Html =>
+  h.div([h.Role('group'), h.AriaLabel(label), ...styled(h, styles.filterRow())], [...chips])
+
+/** The groups the person has pieces in, with All first. */
+const groupRow = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  filterRow(
+    format(locale, 'wardrobe.filterCategories', {}),
+    [
+      filter(
+        format(locale, 'wardrobe.allItems', {}),
+        pieces.length,
+        Option.isNone(model.group),
+        Message.ClickedGroup({ group: Option.none() }),
+        h,
+      ),
+      ...GarmentGroup.literals.flatMap((group) => {
+        const total = pieces.filter((piece) => groupOf(piece.type) === group).length
+        return total === 0
+          ? []
+          : [
+              filter(
+                format(locale, groupName(group), {}),
+                total,
+                Option.contains(model.group, group),
+                Message.ClickedGroup({ group: Option.some(group) }),
+                h,
+              ),
+            ]
+      }),
+    ],
+    h,
+  )
+
+/** The chosen group's types the person has, with All of the group first. */
+const typeRow = (inGroup: ReadonlyArray<Piece>, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  Option.match(model.group, {
+    onNone: () => h.empty,
+    onSome: (group) =>
+      filterRow(
+        format(locale, groupName(group), {}),
+        [
+          filter(
+            format(locale, 'wardrobe.allItems', {}),
+            inGroup.length,
+            Option.isNone(model.type),
+            Message.ClickedType({ type: Option.none() }),
+            h,
+          ),
+          ...typesIn(group).flatMap((type: PieceType) => {
+            const total = inGroup.filter((piece) => piece.type === type).length
+            return total === 0
+              ? []
+              : [
+                  filter(
+                    format(locale, typeName(type), {}),
+                    total,
+                    Option.contains(model.type, type),
+                    Message.ClickedType({ type: Option.some(type) }),
+                    h,
+                  ),
+                ]
+          }),
+        ],
+        h,
+      ),
+  })
 
 const pieceState = (piece: Piece, locale: Locale, h: HtmlBuilder<Message>): Html => {
   if (piece.status === 'processing')
@@ -114,28 +172,18 @@ const loadedView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, 
         [format(locale, 'wardrobe.scanPhotosCta', {})],
       ),
     ])
-  const shown = Option.match(model.category, {
+  const inGroup = Option.match(model.group, {
     onNone: () => pieces,
-    onSome: (category) => pieces.filter((piece) => piece.category === category),
+    onSome: (group) => pieces.filter((piece) => groupOf(piece.type) === group),
   })
-  const counted = categories
-    .map((category) => ({ category, total: pieces.filter((piece) => piece.category === category).length }))
-    .filter(({ total }) => total > 0)
+  const shown = Option.match(model.type, {
+    onNone: () => inGroup,
+    onSome: (type) => inGroup.filter((piece) => piece.type === type),
+  })
   return h.div(styled(h, styles.wardrobePage()), [
     backfillLine(model, locale, h),
-    h.div(
-      [
-        h.Role('group'),
-        h.AriaLabel(format(locale, 'wardrobe.filterCategories', {})),
-        ...styled(h, styles.categoryRow()),
-      ],
-      [
-        filter(format(locale, 'wardrobe.allItems', {}), pieces.length, Option.none(), model, h),
-        ...counted.map(({ category, total }) =>
-          filter(format(locale, categoryName(category), {}), total, Option.some(category), model, h),
-        ),
-      ],
-    ),
+    groupRow(pieces, model, locale, h),
+    typeRow(inGroup, model, locale, h),
     h.ul(
       styled(h, styles.grid()),
       shown.map((piece) => pieceTile(piece, locale, h)),
@@ -145,12 +193,12 @@ const loadedView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, 
 
 const skeletonTiles = ['a', 'b', 'c', 'd', 'e', 'f'] as const
 
-/** The shape of what is coming: the category row and six captioned squares, where the pieces will be. */
+/** The shape of what is coming: the group row and six captioned squares, where the pieces will be. */
 const loadingView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.wardrobePage()), [
     h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'wardrobe.shelves.loadingPieces', {})]),
     h.div(
-      [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.categoryRowSkeleton())],
+      [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.filterRowSkeleton())],
       [
         h.span(styled(h, cx(block(), chipSkeleton()))),
         h.span(styled(h, cx(block(), chipSkeleton()))),
@@ -177,7 +225,7 @@ const failedView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
     ),
   ])
 
-/** The person's pieces on paper, filtered by category (Gallery `wardrobe.html`). */
+/** The person's pieces on paper, browsed by group and type as a shop is (Gallery `wardrobe.html`). */
 export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
   wardrobeMain(
     'pieces',

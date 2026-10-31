@@ -20,8 +20,7 @@ import {
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const piece = pieceFixture('jeans', {
-  category: 'bottom',
-  subcategory: 'jeans',
+  type: 'jeans',
   colours: ['navy'],
   notes: 'Hem taken up',
 })
@@ -76,15 +75,39 @@ describe('a piece you own', () => {
     )
   })
 
-  test('editing sends the changed piece, and a new category clears the shelf of the old one', () => {
+  test('a shop link that is not an https address is refused before anything is sent', () => {
+    story(
+      update,
+      given(opened()),
+      message(Message.ClickedEdit()),
+      message(Message.UpdatedShopUrl({ value: 'shop.example/coat' })),
+      message(Message.SubmittedEdit()),
+      Command.expectNone(),
+      model(({ draft }) =>
+        expect(Option.map(draft, ({ shopUrlInvalid }) => shopUrlInvalid)).toEqual(Option.some(true)),
+      ),
+      message(Message.UpdatedShopUrl({ value: 'https://shop.example/coat' })),
+      model(({ draft }) =>
+        expect(Option.map(draft, ({ shopUrlInvalid }) => shopUrlInvalid)).toEqual(Option.some(false)),
+      ),
+    )
+  })
+
+  test('editing sends the changed piece: its type, colours, attributes, brand and shop link', () => {
     story(
       update,
       given(opened()),
       message(Message.ClickedEdit()),
       message(Message.UpdatedName({ value: '  Dark jeans ' })),
-      message(Message.ChoseCategory({ category: 'outerwear' })),
-      model(({ draft }) => expect(Option.flatMap(draft, ({ subcategory }) => subcategory)).toEqual(Option.none())),
+      message(Message.ChoseType({ type: 'jackets' })),
       message(Message.ToggledColour({ colour: 'black' })),
+      message(Message.ChoseSeason({ season: 'cold' })),
+      message(Message.ToggledOccasion({ occasion: 'casual' })),
+      message(Message.ToggledOccasion({ occasion: 'smart' })),
+      message(Message.ToggledOccasion({ occasion: 'casual' })),
+      message(Message.ChosePattern({ pattern: 'plain' })),
+      message(Message.ChosePattern({ pattern: 'plain' })),
+      message(Message.UpdatedBrand({ value: ' Levi’s ' })),
       message(Message.UpdatedNotes({ value: '' })),
       message(Message.SubmittedEdit()),
       Command.expectExact(
@@ -93,9 +116,13 @@ describe('a piece you own', () => {
           changes: {
             name: 'Dark jeans',
             notes: null,
-            category: 'outerwear',
-            subcategory: null,
+            type: 'jackets',
             colours: ['navy', 'black'],
+            season: 'cold',
+            occasions: ['smart'],
+            pattern: null,
+            brand: 'Levi’s',
+            shopUrl: null,
           },
         }),
       ),

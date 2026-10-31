@@ -10,8 +10,7 @@ import type { Shown } from '../src/page/Visit.ts'
 export const knit = {
   id: `pc_${'knit'.padEnd(22, 'x')}`,
   name: 'Navy knit',
-  category: 'top',
-  subcategory: null,
+  type: 'tops',
   colours: [],
 }
 export const nika = Schema.decodeUnknownSync(PublicProfile)({

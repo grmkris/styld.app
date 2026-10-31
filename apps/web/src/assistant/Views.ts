@@ -144,7 +144,7 @@ const pieceTile = (piece: ViewPiece, image: Option.Option<string>, labels: ViewL
     [
       h.button(
         [h.Type('button'), h.OnClick(Message.ClickedOpen({ url: piece.url })), ...styled(h, tile())],
-        tileContent(image, piece.name ?? labels.categories[piece.category], h),
+        tileContent(image, piece.name ?? labels.groups[piece.group], h),
       ),
     ],
   )

@@ -1,11 +1,13 @@
 import {
   CaptureId,
-  Category,
   Colour,
   DetectionId,
   type Keep,
+  Occasion,
   OperationId,
-  Subcategory,
+  Pattern,
+  PieceType,
+  Season,
   Tray as TrayContract,
 } from '@styld/protocol'
 import { Duration, Effect, Option, Record, Schema } from 'effect'
@@ -15,7 +17,7 @@ import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
-import { toggleColour } from './PieceFields.ts'
+import { changeDetails, Details, detailsOf, detailsPayload } from './PieceFields.ts'
 
 // MODEL
 
@@ -29,9 +31,7 @@ export type Tray = typeof Tray.Type
 /** What the person decided about one found piece; it starts from the suggestion. */
 export const Decision = Schema.Struct({
   keep: Schema.Boolean,
-  category: Schema.Option(Category),
-  subcategory: Schema.Option(Subcategory),
-  colours: Schema.Array(Colour),
+  details: Details,
   name: Schema.String,
   useOriginal: Schema.Boolean,
 })
@@ -82,9 +82,11 @@ export const Message = defineMessageUnion({
   ToggledKeep: { detectionId: Schema.String },
   ClickedEdit: { detectionId: Schema.String },
   ClickedDoneEditing: {},
-  ChoseCategory: { category: Category },
-  ChoseSubcategory: { subcategory: Schema.Option(Subcategory) },
+  ChoseType: { type: PieceType },
   ToggledColour: { colour: Colour },
+  ChoseSeason: { season: Season },
+  ToggledOccasion: { occasion: Occasion },
+  ChosePattern: { pattern: Pattern },
   UpdatedName: { value: Schema.String },
   ToggledUseOriginal: {},
   ClickedAdd: {},
@@ -147,9 +149,8 @@ const ReviewArgs = Schema.Struct({
   keep: Schema.Array(
     Schema.Struct({
       detectionId: Schema.String,
-      category: Category,
-      subcategory: Schema.Option(Subcategory),
-      colours: Schema.Array(Colour),
+      type: PieceType,
+      details: Details,
       name: Schema.Option(Schema.String),
       useOriginal: Schema.Boolean,
     }),
@@ -167,9 +168,8 @@ export const SendReview = Command.define('SendReview', {
       const keep = yield* Effect.forEach(args.keep, (kept) =>
         Effect.map(Schema.decodeUnknownEffect(DetectionId)(kept.detectionId), (detectionId): Keep => ({
           detectionId,
-          category: kept.category,
-          ...Option.match(kept.subcategory, { onNone: () => ({}), onSome: (subcategory) => ({ subcategory }) }),
-          ...(kept.colours.length === 0 ? {} : { colours: kept.colours }),
+          type: kept.type,
+          ...detailsPayload(kept.details),
           ...Option.match(kept.name, { onNone: () => ({}), onSome: (name) => ({ name }) }),
           ...(kept.useOriginal ? { useOriginal: true } : {}),
         })),
@@ -250,10 +250,8 @@ const detectionsOf = (model: Model) =>
 
 /** A new found piece starts as its suggestion says, ticked when the server offers it ticked. */
 const suggested = (detection: TrayContract['captures'][number]['detections'][number]): Decision => ({
-  keep: detection.preselected && detection.suggestion.category !== null,
-  category: Option.fromNullishOr(detection.suggestion.category),
-  subcategory: Option.fromNullishOr(detection.suggestion.subcategory),
-  colours: detection.suggestion.colours,
+  keep: detection.preselected && detection.suggestion.type !== null,
+  details: detailsOf(detection.suggestion),
   name: '',
   useOriginal: false,
 })
@@ -278,12 +276,12 @@ const polling = (model: Model): UpdateReturn => {
     : { model }
 }
 
-/** The pieces that will be added: ticked, with a category. */
+/** The pieces that will be added: ticked, with a type. */
 export const keptOf = (model: Model) =>
   detectionsOf(model).flatMap(({ id }) => {
     const decision = model.decisions[id]
-    return decision?.keep === true && Option.isSome(decision.category)
-      ? [{ id, decision, category: decision.category.value }]
+    return decision?.keep === true && Option.isSome(decision.details.type)
+      ? [{ id, decision, type: decision.details.type.value }]
       : []
   })
 
@@ -298,11 +296,14 @@ const decide = (model: Model, change: (decision: Decision) => Decision): UpdateR
     },
   })
 
-/** Ticking a piece without a category opens it, so the person can say what it is. */
+const changed = (model: Model, change: (details: Details) => Details): UpdateReturn =>
+  decide(model, (decision) => ({ ...decision, details: change(decision.details) }))
+
+/** Ticking a piece without a type opens it, so the person can say what it is. */
 const toggled = (model: Model, detectionId: string): UpdateReturn => {
   const decision = model.decisions[detectionId]
   if (decision === undefined) return { model }
-  if (!decision.keep && Option.isNone(decision.category))
+  if (!decision.keep && Option.isNone(decision.details.type))
     return { model: modifyFields(model, { editing: () => Option.some(detectionId) }) }
   return {
     model: modifyFields(model, {
@@ -323,11 +324,10 @@ const send = (model: Model, operationId: string): UpdateReturn => {
     commands: [
       SendReview({
         operationId,
-        keep: kept.map(({ id, decision, category }) => ({
+        keep: kept.map(({ id, decision, type }) => ({
           detectionId: id,
-          category,
-          subcategory: decision.subcategory,
-          colours: decision.colours,
+          type,
+          details: decision.details,
           name: givenName(decision.name),
           useOriginal: decision.useOriginal,
         })),
@@ -362,18 +362,13 @@ const editHandlers = (model: Model) => ({
     model: modifyFields(model, { editing: () => Option.some(detectionId) }),
   }),
   ClickedDoneEditing: (): UpdateReturn => ({ model: modifyFields(model, { editing: () => Option.none() }) }),
-  ChoseCategory: ({ category }: { readonly category: Category }) =>
-    decide(model, (decision) => ({
-      ...decision,
-      category: Option.some(category),
-      keep: true,
-      // A shelf belongs to its category.
-      subcategory: Option.contains(decision.category, category) ? decision.subcategory : Option.none(),
-    })),
-  ChoseSubcategory: ({ subcategory }: { readonly subcategory: Option.Option<Subcategory> }) =>
-    decide(model, (decision) => ({ ...decision, subcategory })),
-  ToggledColour: ({ colour }: { readonly colour: Colour }) =>
-    decide(model, (decision) => ({ ...decision, colours: toggleColour(colour)(decision.colours) })),
+  // Saying what it is keeps it.
+  ChoseType: ({ type }: { readonly type: PieceType }) =>
+    decide(model, (decision) => ({ ...decision, details: changeDetails.type(type)(decision.details), keep: true })),
+  ToggledColour: ({ colour }: { readonly colour: Colour }) => changed(model, changeDetails.colour(colour)),
+  ChoseSeason: ({ season }: { readonly season: Season }) => changed(model, changeDetails.season(season)),
+  ToggledOccasion: ({ occasion }: { readonly occasion: Occasion }) => changed(model, changeDetails.occasion(occasion)),
+  ChosePattern: ({ pattern }: { readonly pattern: Pattern }) => changed(model, changeDetails.pattern(pattern)),
   UpdatedName: ({ value }: { readonly value: string }) => decide(model, (decision) => ({ ...decision, name: value })),
   ToggledUseOriginal: () => decide(model, (decision) => ({ ...decision, useOriginal: !decision.useOriginal })),
 })

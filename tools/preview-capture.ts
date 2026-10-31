@@ -105,7 +105,7 @@ try {
     headers,
     data: {
       operationId: `preview-${crypto.randomUUID()}`,
-      keep: [{ detectionId: first.id, category: first.suggestion.category ?? 'top' }],
+      keep: [{ detectionId: first.id, type: first.suggestion.type ?? 'tops' }],
       discard: single.capture.detections.slice(1).map(({ id }) => id),
     },
   })
@@ -131,7 +131,7 @@ try {
           seconds: rail.seconds,
           detections: rail.capture.detections.length,
           withCutout: rail.capture.detections.filter(({ hasCutout }) => hasCutout).length,
-          categories: rail.capture.detections.map(({ suggestion }) => suggestion.category),
+          types: rail.capture.detections.map(({ suggestion }) => suggestion.type),
         },
         remaining: rail.remaining,
       },

@@ -9,23 +9,21 @@ import { matching } from '../src/page/AskSearch.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const knit = pieceFixture('knit', {
-  category: 'top',
-  subcategory: 'long_sleeve',
+  type: 'tops',
   colours: ['navy'],
   name: 'Cable knit',
 })
-const shirt = pieceFixture('shirt', { category: 'top', colours: ['blue'], name: 'Oxford shirt' })
+const shirt = pieceFixture('shirt', { type: 'tops', colours: ['blue'], name: 'Oxford shirt' })
 const shorts = pieceFixture('shorts', {
-  category: 'bottom',
-  subcategory: 'shorts',
+  type: 'shorts',
   colours: ['blue'],
   name: 'Denim shorts',
 })
-const trousers = pieceFixture('trousers', { category: 'bottom', colours: ['green'], name: null })
-const derbies = pieceFixture('derbies', { category: 'shoes', colours: ['black'], name: 'Derby shoes' })
-const jacket = pieceFixture('jacket', { category: 'outerwear', subcategory: 'jackets', colours: ['black'], name: null })
-const dress = pieceFixture('dress', { category: 'dress', colours: ['white'], name: null })
-const drying = pieceFixture('drying', { category: 'shoes', status: 'processing', name: 'New boots' })
+const trousers = pieceFixture('trousers', { type: 'trousers', colours: ['green'], name: null })
+const derbies = pieceFixture('derbies', { type: 'trainers', colours: ['black'], name: 'Derby shoes' })
+const jacket = pieceFixture('jacket', { type: 'jackets', colours: ['black'], name: null })
+const dress = pieceFixture('dress', { type: 'dresses', colours: ['white'], name: null })
+const drying = pieceFixture('drying', { type: 'trainers', status: 'processing', name: 'New boots' })
 const wardrobe = [knit, shirt, shorts, trousers, derbies, jacket, dress, drying]
 const found = (query: string, locales: ReadonlyArray<'en' | 'sl'>) =>
   matching(wardrobe, query, locales).map((piece) => piece.id)
@@ -41,7 +39,7 @@ describe('searching your wardrobe', () => {
     expect(normalise('Đon')).toBe('don')
   })
 
-  test('in English: by name, category or colour, a word started or with an ending', () => {
+  test('in English: by name, kind or colour, a word started or with an ending', () => {
     expect(found('knit', ['en'])).toEqual([knit.id])
     expect(found('green', ['en'])).toEqual([trousers.id])
     expect(found('Derby, shoes', ['en'])).toEqual([derbies.id])

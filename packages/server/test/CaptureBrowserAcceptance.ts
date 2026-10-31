@@ -30,16 +30,16 @@ const countedWakeLock = `
   })
 `
 
-/** Say what an unnamed found piece is: ticking it opens it, a category keeps it, Done closes it; it is then called
- * what one of its kind is ("Top" for Tops). */
-const keepAs = async (page: Page, category: string, kind: string) => {
-  await page.getByRole('button', { name: 'Keep Pick a category' }).first().click()
-  await page.getByRole('button', { name: category, exact: true }).click()
+/** Say what an unnamed found piece is: ticking it opens it, a garment type keeps it, Done closes it; it is then
+ * called what one of its kind is ("Top" for Tops & T-shirts). */
+const keepAs = async (page: Page, type: string, kind: string) => {
+  await page.getByRole('button', { name: 'Keep Choose what it is' }).first().click()
+  await page.getByRole('button', { name: type, exact: true }).click()
   await page.getByRole('button', { name: 'Done', exact: true }).click()
   await page.getByRole('button', { name: `Keep ${kind}`, exact: true }).waitFor({ state: 'visible' })
 }
 
-/** Three photos go up through the picker, wait in the review tray, two are kept with a category and
+/** Three photos go up through the picker, wait in the review tray, two are kept with a garment type and
  * the third is dropped; the wardrobe then shows the two. Providers are off natively, so each photo is
  * one found piece without a suggestion. */
 export const verifyCaptureJourney = async (browser: Browser, origin: string, fixtures: string): Promise<void> => {
@@ -62,10 +62,10 @@ export const verifyCaptureJourney = async (browser: Browser, origin: string, fix
       .setInputFiles([fixture('red-tee.png'), fixture('blue-dress.png'), fixture('green-shirt.png')])
     await page.waitForURL(`${origin}/wardrobe/review`, { timeout: 30000 })
     await page.getByRole('heading', { name: '3 pieces found' }).waitFor({ state: 'visible', timeout: 30000 })
-    expect(await page.getByRole('button', { name: 'Keep Pick a category' }).count()).toBe(3)
+    expect(await page.getByRole('button', { name: 'Keep Choose what it is' }).count()).toBe(3)
     await page.getByText('4 of 7 free credits left today').waitFor({ state: 'visible' })
 
-    await keepAs(page, 'Tops', 'Top')
+    await keepAs(page, 'Tops & T-shirts', 'Top')
     await keepAs(page, 'Dresses', 'Dress')
     const add = page.getByRole('button', { name: 'Add 2 to my wardrobe' })
     await add.click()

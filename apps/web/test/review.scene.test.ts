@@ -4,6 +4,7 @@ import { Option } from 'effect'
 import { expect, given, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
+import { detailsOf } from '../src/page/PieceFields.ts'
 import { Session, init } from '../src/App.ts'
 import { Tray } from '../src/page/Review.ts'
 import { view } from '../src/View.ts'
@@ -58,9 +59,7 @@ const reviewPage = (
                 detection.id,
                 {
                   keep: detection.preselected,
-                  category: Option.fromNullishOr(detection.suggestion.category),
-                  subcategory: Option.none(),
-                  colours: detection.suggestion.colours,
+                  details: detailsOf(detection.suggestion),
                   name: '',
                   useOriginal: false,
                 },
@@ -77,7 +76,13 @@ const shirt = {
   hasCutout: true,
   hasBack: false,
   sightings: 1,
-  suggestion: { category: 'top' as const, subcategory: null, colours: ['navy' as const] },
+  suggestion: {
+    type: 'shirts' as const,
+    colours: ['navy' as const],
+    season: null,
+    occasions: [],
+    pattern: null,
+  },
 }
 
 /** The shirt, which the wardrobe already has. */
@@ -138,7 +143,7 @@ describe('the review tray', () => {
       { update: (model) => ({ model }), view },
       given(reviewPage([foundAgain])),
       expect(text('Already in your wardrobe?')).toExist(),
-      expect(role('button', { name: 'Keep Top' })).toHaveAttr('aria-pressed', 'false'),
+      expect(role('button', { name: 'Keep Shirt' })).toHaveAttr('aria-pressed', 'false'),
     )
     scene(
       { update: (model) => ({ model }), view },

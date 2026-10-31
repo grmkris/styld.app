@@ -1,6 +1,6 @@
 import { Button, Dialog } from '@foldkit/ui'
 import { format, type Locale } from '@styld/i18n'
-import { Category, type Colour, type Piece } from '@styld/protocol'
+import { type Colour, type Piece, type PieceType } from '@styld/protocol'
 import { Array, Option, Order, String } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
@@ -20,7 +20,7 @@ import * as styles from './AskView.styles.ts'
 import { round } from './PageBar.styles.ts'
 import { pageHead, pageTitle } from './PageHead.ts'
 import type { PiecesData } from './Wardrobe.ts'
-import { categoryName, colourName, pieceLabel } from './WardrobeWords.ts'
+import { colourName, pieceLabel, typeName } from './WardrobeWords.ts'
 import { personTile } from './ExploreView.ts'
 import * as exploreStyles from './ExploreView.styles.ts'
 import { boardCard, byline } from './PublicTiles.ts'
@@ -86,12 +86,18 @@ const commonColours = (pieces: ReadonlyArray<Piece>): ReadonlyArray<Colour> => {
   return Array.take(Array.sort([...counts.entries()], byCount), 3).map(([colour]) => colour)
 }
 
-/** What the wardrobe holds, to search with a tap: the kinds of pieces, then the commonest colours. */
+/** The garment types the person has most of, at most four. */
+const commonTypes = (pieces: ReadonlyArray<Piece>): ReadonlyArray<PieceType> => {
+  const counts = new Map<PieceType, number>()
+  for (const { type } of pieces) counts.set(type, (counts.get(type) ?? 0) + 1)
+  const byCount = Order.mapInput(Order.Number, ([, count]: readonly [PieceType, number]) => -count)
+  return Array.take(Array.sort([...counts.entries()], byCount), 4).map(([type]) => type)
+}
+
+/** What the wardrobe holds, to search with a tap: the kinds it has most of, then the commonest colours. */
 const suggestionsView = (ready: ReadonlyArray<Piece>, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const words = [
-    ...Array.filter(Category.literals, (category) => ready.some((piece) => piece.category === category)).map(
-      (category) => format(locale, categoryName(category), {}),
-    ),
+    ...commonTypes(ready).map((type) => format(locale, typeName(type), {})),
     ...commonColours(ready).map((colour) => format(locale, colourName(colour), {})),
   ]
   return h.div(

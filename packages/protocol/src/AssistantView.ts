@@ -1,6 +1,7 @@
 import { Schema } from 'effect'
 import { BoardItem, Paper } from './Board.ts'
-import { Category, PieceId } from './Wardrobe.ts'
+import { GarmentGroup } from './Garment.ts'
+import { PieceId } from './Wardrobe.ts'
 
 /** The words an assistant view shows, written by the server from the catalogs. MCP carries no
  * language, so a result holds both and the view picks the host's. */
@@ -8,14 +9,7 @@ export const ViewLabels = Schema.Struct({
   wardrobeTitle: Schema.String,
   empty: Schema.String,
   openInStyld: Schema.String,
-  categories: Schema.Struct({
-    top: Schema.String,
-    bottom: Schema.String,
-    dress: Schema.String,
-    outerwear: Schema.String,
-    shoes: Schema.String,
-    accessory: Schema.String,
-  }),
+  groups: Schema.Struct({ clothing: Schema.String, shoes: Schema.String, accessories: Schema.String }),
 })
 export type ViewLabels = typeof ViewLabels.Type
 
@@ -23,7 +17,7 @@ export type ViewLabels = typeof ViewLabels.Type
 export const ViewPiece = Schema.Struct({
   id: PieceId,
   name: Schema.NullOr(Schema.String),
-  category: Category,
+  group: GarmentGroup,
   url: Schema.String,
 })
 export type ViewPiece = typeof ViewPiece.Type

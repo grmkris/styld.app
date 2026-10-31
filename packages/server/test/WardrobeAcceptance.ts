@@ -65,15 +65,8 @@ export const waitUntilReady = async (call: Call, pieceId: string) => {
   return 'processing'
 }
 
-/** A photo goes up, becomes a piece, is processed by the queue and shown through the Images
- * binding, only to its owner; edits, replays and deletion behave as the protocol says. */
-export const verifyWardrobe = async (origin: string, fixtures: string): Promise<void> => {
-  expect((await fetch(`${fixtures}/test/identity/seed-wardrobe`, { method: 'POST' })).status).toBe(204)
-  const owner = client(origin, await signIn(origin, 'native-wardrobe'))
-  const other = client(origin, await signIn(origin, 'native-wardrobe-other'))
-  expect((await fetch(`${origin}/api/pieces`)).status).toBe(401)
-  expect(await (await owner('/api/pieces')).json()).toEqual({ pieces: [] })
-
+/** The bytes must be what the upload declared, and an upload takes one photo: a photo received for a piece. */
+const checkedUpload = async (origin: string, owner: Call) => {
   // The bytes must be what the upload declared, and an upload takes one photo.
   const fake = await upload(owner, png)
   expect((await put(origin, fake.path.replace(/token=[^&]+/, 'token=wrong'), png)).status).toBe(404)
@@ -90,24 +83,47 @@ export const verifyWardrobe = async (origin: string, fixtures: string): Promise<
   expect((await put(origin, photo.path, png, 'image/jpeg')).status).toBe(415)
   expect((await put(origin, photo.path, png)).status).toBe(204)
   expect((await put(origin, photo.path, png)).status).toBe(409)
+  return photo
+}
+
+/** A photo goes up, becomes a piece, is processed by the queue and shown through the Images
+ * binding, only to its owner; edits, replays and deletion behave as the protocol says. */
+export const verifyWardrobe = async (origin: string, fixtures: string): Promise<void> => {
+  expect((await fetch(`${fixtures}/test/identity/seed-wardrobe`, { method: 'POST' })).status).toBe(204)
+  const owner = client(origin, await signIn(origin, 'native-wardrobe'))
+  const other = client(origin, await signIn(origin, 'native-wardrobe-other'))
+  expect((await fetch(`${origin}/api/pieces`)).status).toBe(401)
+  expect(await (await owner('/api/pieces')).json()).toEqual({ pieces: [] })
+
+  const photo = await checkedUpload(origin, owner)
 
   const add = {
     operationId: 'native-add-0001',
     uploadId: photo.uploadId,
-    category: 'top',
+    type: 'knitwear',
     colours: ['navy'],
     name: 'Cable knit',
+    season: 'cold',
+    occasions: ['casual', 'smart'],
   }
-  expect((await json(owner, '/api/pieces', 'POST', { ...add, subcategory: 'jeans' })).status).toBe(422)
-  const added = await json(owner, '/api/pieces', 'POST', { ...add, subcategory: 'long_sleeve' })
+  expect((await json(owner, '/api/pieces', 'POST', { ...add, type: 'jumper' })).status).toBe(400)
+  expect((await json(owner, '/api/pieces', 'POST', { ...add, shopUrl: 'http://shop.example/knit' })).status).toBe(400)
+  const added = await json(owner, '/api/pieces', 'POST', add)
   expect(added.status).toBe(200)
   const addedBody: unknown = await added.json()
-  expect(addedBody).toMatchObject({ status: 'processing', source: 'website', subcategory: 'long_sleeve' })
+  expect(addedBody).toMatchObject({
+    status: 'processing',
+    source: 'website',
+    type: 'knitwear',
+    season: 'cold',
+    occasions: ['casual', 'smart'],
+    pattern: null,
+    brand: null,
+    hasBack: false,
+  })
   const piece = Schema.decodeUnknownSync(Schema.Struct({ id: Schema.String }))(addedBody)
   // Repeating the operation repeats its answer; reusing its id for another change is refused.
-  expect(await (await json(owner, '/api/pieces', 'POST', { ...add, subcategory: 'long_sleeve' })).json()).toMatchObject(
-    { id: piece.id },
-  )
+  expect(await (await json(owner, '/api/pieces', 'POST', add)).json()).toMatchObject({ id: piece.id })
   expect((await json(owner, '/api/pieces', 'POST', { ...add, name: 'Other' })).status).toBe(409)
   expect((await json(owner, '/api/pieces', 'POST', { ...add, operationId: 'native-add-0002' })).status).toBe(422)
 
@@ -130,9 +146,22 @@ export const verifyWardrobe = async (origin: string, fixtures: string): Promise<
       .status,
   ).toBe(422)
 
-  // A new category drops a subcategory it does not have.
-  const edited = await json(owner, `/api/pieces/${piece.id}`, 'PATCH', { name: 'Navy jumper', category: 'outerwear' })
-  expect(await edited.json()).toMatchObject({ name: 'Navy jumper', category: 'outerwear', subcategory: null })
+  // A change names only what it changes; null clears an attribute.
+  const edited = await json(owner, `/api/pieces/${piece.id}`, 'PATCH', {
+    name: 'Navy jumper',
+    type: 'jackets',
+    season: null,
+    brand: 'COS',
+    shopUrl: 'https://shop.example/knit',
+  })
+  expect(await edited.json()).toMatchObject({
+    name: 'Navy jumper',
+    type: 'jackets',
+    season: null,
+    occasions: ['casual', 'smart'],
+    brand: 'COS',
+    shopUrl: 'https://shop.example/knit',
+  })
 
   const me = Schema.decodeUnknownSync(Schema.Struct({ accountId: Schema.String }))(
     await (await owner('/api/me')).json(),
@@ -154,7 +183,7 @@ export const verifyAccountDeletion = async (origin: string, fixtures: string): P
   const added = await json(call, '/api/pieces', 'POST', {
     operationId: 'native-farewell-1',
     uploadId: photo.uploadId,
-    category: 'dress',
+    type: 'dresses',
   })
   expect(added.status).toBe(200)
   const key = `accounts/native-farewell/uploads/${photo.uploadId}`

@@ -74,14 +74,20 @@ describe('the wardrobe keeps its pieces current', () => {
     )
   })
 
-  test('a category chip filters the grid and All shows everything again', () => {
+  test('a group, then one of its types, filters the grid; another group starts from all its types', () => {
     story(
       update,
       given(init()),
-      message(Message.ClickedCategory({ category: Option.some('shoes') })),
-      model(({ category }) => expect(category).toEqual(Option.some('shoes'))),
-      message(Message.ClickedCategory({ category: Option.none() })),
-      model(({ category }) => expect(category).toEqual(Option.none())),
+      message(Message.ClickedGroup({ group: Option.some('shoes') })),
+      message(Message.ClickedType({ type: Option.some('boots') })),
+      model(({ group, type }) => {
+        expect(group).toEqual(Option.some('shoes'))
+        expect(type).toEqual(Option.some('boots'))
+      }),
+      message(Message.ClickedGroup({ group: Option.some('clothing') })),
+      model(({ type }) => expect(type).toEqual(Option.none())),
+      message(Message.ClickedGroup({ group: Option.none() })),
+      model(({ group }) => expect(group).toEqual(Option.none())),
     )
   })
 })

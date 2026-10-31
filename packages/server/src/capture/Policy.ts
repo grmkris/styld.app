@@ -37,7 +37,7 @@ export interface CapturePolicy {
   }
   /** How a garment seen more than once becomes one card (2026-10-31): Clef's answer to "the same garment?" at or
    * above `same` joins a sighting to another of the import, or takes it for a piece already in the wardrobe. A
-   * sighting is compared with at most `sightings` others of its category and `pieces` of the wardrobe's. On the
+   * sighting is compared with at most `sightings` others of its kind and `pieces` of the wardrobe's. On the
    * person-routing spike's two real videos, 0.8 halved the cards with no false merge (30 October). */
   readonly matching: {
     readonly same: number

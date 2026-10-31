@@ -14,7 +14,20 @@ export type PictureRow = typeof piecePictures.$inferSelect
 export type TurnRow = typeof pieceTurns.$inferSelect
 
 export type PieceChanges = Partial<
-  Pick<PieceRow, 'name' | 'notes' | 'category' | 'subcategory' | 'colours' | 'updatedAt'>
+  Pick<
+    PieceRow,
+    | 'name'
+    | 'notes'
+    | 'type'
+    | 'colours'
+    | 'season'
+    | 'occasions'
+    | 'pattern'
+    | 'brand'
+    | 'shopUrl'
+    | 'suggestedAt'
+    | 'updatedAt'
+  >
 >
 
 const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: () => StoreUnavailable.make({}) })

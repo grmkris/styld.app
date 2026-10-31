@@ -29,12 +29,6 @@ export interface MessageArgumentsByKey<_T = string> {
   'ask.placeholder': Readonly<Record<string, never>>
   'ask.retry': Readonly<Record<string, never>>
   'ask.searchLabel': Readonly<Record<string, never>>
-  'ask.searchWords.accessory': Readonly<Record<string, never>>
-  'ask.searchWords.bottom': Readonly<Record<string, never>>
-  'ask.searchWords.dress': Readonly<Record<string, never>>
-  'ask.searchWords.outerwear': Readonly<Record<string, never>>
-  'ask.searchWords.shoes': Readonly<Record<string, never>>
-  'ask.searchWords.top': Readonly<Record<string, never>>
   'ask.sheetTitle': Readonly<Record<string, never>>
   'ask.stylistAssistants': Readonly<Record<string, never>>
   'ask.stylistLink': Readonly<Record<string, never>>
@@ -539,7 +533,6 @@ export interface MessageArgumentsByKey<_T = string> {
   'today.wearing': Readonly<Record<string, never>>
   'today.worn': Readonly<Record<string, never>>
   'today.wornNote': Readonly<Record<string, never>>
-  'wardrobe.addPieceCategoryPlaceholder': Readonly<Record<string, never>>
   'wardrobe.addPieceColor_beige': Readonly<Record<string, never>>
   'wardrobe.addPieceColor_black': Readonly<Record<string, never>>
   'wardrobe.addPieceColor_blue': Readonly<Record<string, never>>
@@ -554,11 +547,10 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.addPieceColor_white': Readonly<Record<string, never>>
   'wardrobe.addPieceColor_yellow': Readonly<Record<string, never>>
   'wardrobe.addPieceColorsLabel': Readonly<Record<string, never>>
-  'wardrobe.addPieceNeedsCategory': Readonly<Record<string, never>>
   'wardrobe.addingPieces': Readonly<Record<string, never>>
   'wardrobe.allItems': Readonly<Record<string, never>>
   'wardrobe.backToWardrobe': Readonly<Record<string, never>>
-  'wardrobe.categoryLabel': Readonly<Record<string, never>>
+  'wardrobe.brandLabel': Readonly<Record<string, never>>
   'wardrobe.closetEmptyTitle': Readonly<Record<string, never>>
   'wardrobe.colorsLabel': Readonly<Record<string, never>>
   'wardrobe.colourFact': { readonly count: number }
@@ -569,52 +561,27 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.emptyHint': Readonly<Record<string, never>>
   'wardrobe.failedDelete': Readonly<Record<string, never>>
   'wardrobe.filterCategories': Readonly<Record<string, never>>
+  'wardrobe.groups.accessories': Readonly<Record<string, never>>
+  'wardrobe.groups.clothing': Readonly<Record<string, never>>
+  'wardrobe.groups.shoes': Readonly<Record<string, never>>
   'wardrobe.itemNotFound': Readonly<Record<string, never>>
   'wardrobe.itemProcessFailed': Readonly<Record<string, never>>
-  'wardrobe.kindOne.accessory': Readonly<Record<string, never>>
-  'wardrobe.kindOne.bags': Readonly<Record<string, never>>
-  'wardrobe.kindOne.belts': Readonly<Record<string, never>>
-  'wardrobe.kindOne.blazers': Readonly<Record<string, never>>
-  'wardrobe.kindOne.boots': Readonly<Record<string, never>>
-  'wardrobe.kindOne.bottom': Readonly<Record<string, never>>
-  'wardrobe.kindOne.coats': Readonly<Record<string, never>>
-  'wardrobe.kindOne.dress': Readonly<Record<string, never>>
-  'wardrobe.kindOne.flats': Readonly<Record<string, never>>
-  'wardrobe.kindOne.glasses': Readonly<Record<string, never>>
-  'wardrobe.kindOne.hats': Readonly<Record<string, never>>
-  'wardrobe.kindOne.heels': Readonly<Record<string, never>>
-  'wardrobe.kindOne.jackets': Readonly<Record<string, never>>
-  'wardrobe.kindOne.jeans': Readonly<Record<string, never>>
-  'wardrobe.kindOne.jewelry': Readonly<Record<string, never>>
-  'wardrobe.kindOne.jumpsuit': Readonly<Record<string, never>>
-  'wardrobe.kindOne.leggings': Readonly<Record<string, never>>
-  'wardrobe.kindOne.long_sleeve': Readonly<Record<string, never>>
-  'wardrobe.kindOne.loungewear': Readonly<Record<string, never>>
-  'wardrobe.kindOne.maxi': Readonly<Record<string, never>>
-  'wardrobe.kindOne.midi': Readonly<Record<string, never>>
-  'wardrobe.kindOne.mini': Readonly<Record<string, never>>
-  'wardrobe.kindOne.outerwear': Readonly<Record<string, never>>
-  'wardrobe.kindOne.sandals': Readonly<Record<string, never>>
-  'wardrobe.kindOne.scarves': Readonly<Record<string, never>>
-  'wardrobe.kindOne.shoes': Readonly<Record<string, never>>
-  'wardrobe.kindOne.short_sleeve': Readonly<Record<string, never>>
-  'wardrobe.kindOne.shorts': Readonly<Record<string, never>>
-  'wardrobe.kindOne.skirts': Readonly<Record<string, never>>
-  'wardrobe.kindOne.sleeveless': Readonly<Record<string, never>>
-  'wardrobe.kindOne.sneakers': Readonly<Record<string, never>>
-  'wardrobe.kindOne.top': Readonly<Record<string, never>>
-  'wardrobe.kindOne.trousers': Readonly<Record<string, never>>
-  'wardrobe.kindOne.vests': Readonly<Record<string, never>>
-  'wardrobe.mainCategories.accessory': Readonly<Record<string, never>>
-  'wardrobe.mainCategories.bottom': Readonly<Record<string, never>>
-  'wardrobe.mainCategories.dress': Readonly<Record<string, never>>
-  'wardrobe.mainCategories.outerwear': Readonly<Record<string, never>>
-  'wardrobe.mainCategories.shoes': Readonly<Record<string, never>>
-  'wardrobe.mainCategories.top': Readonly<Record<string, never>>
   'wardrobe.nameLabel': Readonly<Record<string, never>>
   'wardrobe.nameOptionalLabel': Readonly<Record<string, never>>
+  'wardrobe.needsType': Readonly<Record<string, never>>
   'wardrobe.notesLabel': Readonly<Record<string, never>>
   'wardrobe.notesPlaceholder': Readonly<Record<string, never>>
+  'wardrobe.occasion.casual': Readonly<Record<string, never>>
+  'wardrobe.occasion.formal': Readonly<Record<string, never>>
+  'wardrobe.occasion.lounge': Readonly<Record<string, never>>
+  'wardrobe.occasion.smart': Readonly<Record<string, never>>
+  'wardrobe.occasion.sport': Readonly<Record<string, never>>
+  'wardrobe.occasionsLabel': Readonly<Record<string, never>>
+  'wardrobe.pattern.checked': Readonly<Record<string, never>>
+  'wardrobe.pattern.plain': Readonly<Record<string, never>>
+  'wardrobe.pattern.printed': Readonly<Record<string, never>>
+  'wardrobe.pattern.striped': Readonly<Record<string, never>>
+  'wardrobe.patternLabel': Readonly<Record<string, never>>
   'wardrobe.picture.backfill': { readonly count: number }
   'wardrobe.picture.backfillAction': Readonly<Record<string, never>>
   'wardrobe.picture.backfillFailed': Readonly<Record<string, never>>
@@ -641,41 +608,15 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.saveAction': Readonly<Record<string, never>>
   'wardrobe.saveFailed': Readonly<Record<string, never>>
   'wardrobe.scanPhotosCta': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.__unfiled': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.bags': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.belts': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.blazers': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.boots': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.coats': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.flats': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.glasses': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.hats': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.heels': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.jackets': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.jeans': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.jewelry': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.jumpsuit': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.leggings': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.long_sleeve': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.loungewear': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.maxi': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.midi': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.mini': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.other': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.sandals': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.scarves': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.short_sleeve': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.shorts': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.skirts': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.sleeveless': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.sneakers': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.sport': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.trousers': Readonly<Record<string, never>>
-  'wardrobe.shelves.labels.vests': Readonly<Record<string, never>>
+  'wardrobe.season.allYear': Readonly<Record<string, never>>
+  'wardrobe.season.cold': Readonly<Record<string, never>>
+  'wardrobe.season.warm': Readonly<Record<string, never>>
+  'wardrobe.seasonLabel': Readonly<Record<string, never>>
   'wardrobe.shelves.loadFailed': Readonly<Record<string, never>>
   'wardrobe.shelves.loadingPieces': Readonly<Record<string, never>>
   'wardrobe.shelves.retry': Readonly<Record<string, never>>
-  'wardrobe.shelves.shelfLabel': Readonly<Record<string, never>>
+  'wardrobe.shopUrlInvalid': Readonly<Record<string, never>>
+  'wardrobe.shopUrlLabel': Readonly<Record<string, never>>
   'wardrobe.statusProcessing': Readonly<Record<string, never>>
   'wardrobe.tabPieces': Readonly<Record<string, never>>
   'wardrobe.title': Readonly<Record<string, never>>
@@ -692,8 +633,97 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.turn.problem.off': Readonly<Record<string, never>>
   'wardrobe.turn.problem.picture': Readonly<Record<string, never>>
   'wardrobe.turn.ready': Readonly<Record<string, never>>
+  'wardrobe.typeLabel': Readonly<Record<string, never>>
+  'wardrobe.typeOne.bags': Readonly<Record<string, never>>
+  'wardrobe.typeOne.belts': Readonly<Record<string, never>>
+  'wardrobe.typeOne.blazers': Readonly<Record<string, never>>
+  'wardrobe.typeOne.bodysuits': Readonly<Record<string, never>>
+  'wardrobe.typeOne.boots': Readonly<Record<string, never>>
+  'wardrobe.typeOne.coats': Readonly<Record<string, never>>
+  'wardrobe.typeOne.dresses': Readonly<Record<string, never>>
+  'wardrobe.typeOne.eyewear': Readonly<Record<string, never>>
+  'wardrobe.typeOne.flats': Readonly<Record<string, never>>
+  'wardrobe.typeOne.gilets': Readonly<Record<string, never>>
+  'wardrobe.typeOne.hats': Readonly<Record<string, never>>
+  'wardrobe.typeOne.heels': Readonly<Record<string, never>>
+  'wardrobe.typeOne.hoodies': Readonly<Record<string, never>>
+  'wardrobe.typeOne.jackets': Readonly<Record<string, never>>
+  'wardrobe.typeOne.jeans': Readonly<Record<string, never>>
+  'wardrobe.typeOne.jewellery': Readonly<Record<string, never>>
+  'wardrobe.typeOne.jumpsuits': Readonly<Record<string, never>>
+  'wardrobe.typeOne.knitwear': Readonly<Record<string, never>>
+  'wardrobe.typeOne.loungewear': Readonly<Record<string, never>>
+  'wardrobe.typeOne.sandals': Readonly<Record<string, never>>
+  'wardrobe.typeOne.scarves': Readonly<Record<string, never>>
+  'wardrobe.typeOne.shirts': Readonly<Record<string, never>>
+  'wardrobe.typeOne.shorts': Readonly<Record<string, never>>
+  'wardrobe.typeOne.skirts': Readonly<Record<string, never>>
+  'wardrobe.typeOne.sportswear': Readonly<Record<string, never>>
+  'wardrobe.typeOne.swimwear': Readonly<Record<string, never>>
+  'wardrobe.typeOne.tops': Readonly<Record<string, never>>
+  'wardrobe.typeOne.trainers': Readonly<Record<string, never>>
+  'wardrobe.typeOne.trousers': Readonly<Record<string, never>>
+  'wardrobe.typePlaceholder': Readonly<Record<string, never>>
+  'wardrobe.typeWords.bags': Readonly<Record<string, never>>
+  'wardrobe.typeWords.belts': Readonly<Record<string, never>>
+  'wardrobe.typeWords.blazers': Readonly<Record<string, never>>
+  'wardrobe.typeWords.bodysuits': Readonly<Record<string, never>>
+  'wardrobe.typeWords.boots': Readonly<Record<string, never>>
+  'wardrobe.typeWords.coats': Readonly<Record<string, never>>
+  'wardrobe.typeWords.dresses': Readonly<Record<string, never>>
+  'wardrobe.typeWords.eyewear': Readonly<Record<string, never>>
+  'wardrobe.typeWords.flats': Readonly<Record<string, never>>
+  'wardrobe.typeWords.gilets': Readonly<Record<string, never>>
+  'wardrobe.typeWords.hats': Readonly<Record<string, never>>
+  'wardrobe.typeWords.heels': Readonly<Record<string, never>>
+  'wardrobe.typeWords.hoodies': Readonly<Record<string, never>>
+  'wardrobe.typeWords.jackets': Readonly<Record<string, never>>
+  'wardrobe.typeWords.jeans': Readonly<Record<string, never>>
+  'wardrobe.typeWords.jewellery': Readonly<Record<string, never>>
+  'wardrobe.typeWords.jumpsuits': Readonly<Record<string, never>>
+  'wardrobe.typeWords.knitwear': Readonly<Record<string, never>>
+  'wardrobe.typeWords.loungewear': Readonly<Record<string, never>>
+  'wardrobe.typeWords.sandals': Readonly<Record<string, never>>
+  'wardrobe.typeWords.scarves': Readonly<Record<string, never>>
+  'wardrobe.typeWords.shirts': Readonly<Record<string, never>>
+  'wardrobe.typeWords.shorts': Readonly<Record<string, never>>
+  'wardrobe.typeWords.skirts': Readonly<Record<string, never>>
+  'wardrobe.typeWords.sportswear': Readonly<Record<string, never>>
+  'wardrobe.typeWords.swimwear': Readonly<Record<string, never>>
+  'wardrobe.typeWords.tops': Readonly<Record<string, never>>
+  'wardrobe.typeWords.trainers': Readonly<Record<string, never>>
+  'wardrobe.typeWords.trousers': Readonly<Record<string, never>>
+  'wardrobe.types.bags': Readonly<Record<string, never>>
+  'wardrobe.types.belts': Readonly<Record<string, never>>
+  'wardrobe.types.blazers': Readonly<Record<string, never>>
+  'wardrobe.types.bodysuits': Readonly<Record<string, never>>
+  'wardrobe.types.boots': Readonly<Record<string, never>>
+  'wardrobe.types.coats': Readonly<Record<string, never>>
+  'wardrobe.types.dresses': Readonly<Record<string, never>>
+  'wardrobe.types.eyewear': Readonly<Record<string, never>>
+  'wardrobe.types.flats': Readonly<Record<string, never>>
+  'wardrobe.types.gilets': Readonly<Record<string, never>>
+  'wardrobe.types.hats': Readonly<Record<string, never>>
+  'wardrobe.types.heels': Readonly<Record<string, never>>
+  'wardrobe.types.hoodies': Readonly<Record<string, never>>
+  'wardrobe.types.jackets': Readonly<Record<string, never>>
+  'wardrobe.types.jeans': Readonly<Record<string, never>>
+  'wardrobe.types.jewellery': Readonly<Record<string, never>>
+  'wardrobe.types.jumpsuits': Readonly<Record<string, never>>
+  'wardrobe.types.knitwear': Readonly<Record<string, never>>
+  'wardrobe.types.loungewear': Readonly<Record<string, never>>
+  'wardrobe.types.sandals': Readonly<Record<string, never>>
+  'wardrobe.types.scarves': Readonly<Record<string, never>>
+  'wardrobe.types.shirts': Readonly<Record<string, never>>
+  'wardrobe.types.shorts': Readonly<Record<string, never>>
+  'wardrobe.types.skirts': Readonly<Record<string, never>>
+  'wardrobe.types.sportswear': Readonly<Record<string, never>>
+  'wardrobe.types.swimwear': Readonly<Record<string, never>>
+  'wardrobe.types.tops': Readonly<Record<string, never>>
+  'wardrobe.types.trainers': Readonly<Record<string, never>>
+  'wardrobe.types.trousers': Readonly<Record<string, never>>
   'wardrobe.uploadingImage': Readonly<Record<string, never>>
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'b6a70d272c5bc4d0bbc5103a817196bee4ce31ffe7c174e99711fc5c650c288b'
+export const catalogVersion = '9987ee36f6b6f373e0688b01c32a9774f23d9c91e4cc0cd1f2eb9c11966fc20e'

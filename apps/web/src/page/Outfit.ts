@@ -1,4 +1,4 @@
-import { type BoardItem, BoardItemId, type Category, type Colour, type Piece, PieceItem } from '@styld/protocol'
+import { type BoardItem, BoardItemId, type Colour, type Piece, PieceItem, type Slot, slotOf } from '@styld/protocol'
 import { Array, Option, Order, Schema } from 'effect'
 
 // Today's outfit: plain rules over the person's own pieces, no AI. One piece per slot, each day and each Spin
@@ -22,8 +22,8 @@ const shuffled = (pieces: ReadonlyArray<Piece>, seed: string): ReadonlyArray<Pie
     Order.mapInput(Order.Number, (piece: Piece) => hash(`${seed}:${piece.id}`)),
   )
 
-const ofCategory = (pieces: ReadonlyArray<Piece>, category: Category) =>
-  Array.filter(pieces, (piece) => piece.category === category && piece.status === 'ready')
+const inSlot = (pieces: ReadonlyArray<Piece>, slot: Slot) =>
+  Array.filter(pieces, (piece) => slotOf(piece.type) === slot && piece.status === 'ready')
 
 const showsDrawing = (piece: Piece) => piece.picture?.shows === 'clean'
 
@@ -43,14 +43,14 @@ const pick = (candidates: ReadonlyArray<Piece>, chosen: ReadonlyArray<Piece>): R
   )
 }
 
-/** Where each slot lies on the table: the prototype's four-slot layout, with room for a dress and an
- * accessory. */
-type Slot = 'top' | 'outerwear' | 'bottom' | 'dress' | 'shoes' | 'accessory'
+/** Where each slot lies on the table: the prototype's four-slot layout, with room for a one-piece and an accessory.
+ * A set (sportswear, swimwear, loungewear) lies where a one-piece would. */
 const slots: Readonly<Record<Slot, { x: number; y: number; size: number; turn: number }>> = {
   top: { x: 290, y: 320, size: 480, turn: -3 },
-  outerwear: { x: 720, y: 300, size: 460, turn: 4 },
+  layer: { x: 720, y: 300, size: 460, turn: 4 },
   bottom: { x: 320, y: 860, size: 460, turn: 2 },
-  dress: { x: 330, y: 590, size: 640, turn: -2 },
+  onePiece: { x: 330, y: 590, size: 640, turn: -2 },
+  set: { x: 330, y: 590, size: 640, turn: -2 },
   shoes: { x: 735, y: 945, size: 380, turn: -6 },
   accessory: { x: 715, y: 640, size: 280, turn: 5 },
 }
@@ -60,25 +60,25 @@ export interface Placed {
   readonly piece: Piece
 }
 
-/** A worn outfit back on the table: each piece in its category's slot. */
-export const placedByCategory = (pieces: ReadonlyArray<Piece>): ReadonlyArray<Placed> =>
-  pieces.map((piece) => ({ slot: piece.category, piece }))
+/** A worn outfit back on the table: each piece in its type's slot. */
+export const placedBySlot = (pieces: ReadonlyArray<Piece>): ReadonlyArray<Placed> =>
+  pieces.map((piece) => ({ slot: slotOf(piece.type), piece }))
 
 /** The outfit for a seed (the day and how many times Spin was pressed). */
 export const outfitFor = (pieces: ReadonlyArray<Piece>, seed: string): ReadonlyArray<Placed> => {
-  const order = (category: Category) => drawingsFirst(shuffled(ofCategory(pieces, category), `${seed}:${category}`))
-  const dresses = order('dress')
+  const order = (slot: Slot) => drawingsFirst(shuffled(inSlot(pieces, slot), `${seed}:${slot}`))
+  const dresses = order('onePiece')
   const tops = order('top')
   const bottoms = order('bottom')
   const wearsDress = dresses.length > 0 && (hash(seed) % 3 === 0 || tops.length === 0 || bottoms.length === 0)
   const base: ReadonlyArray<Placed> = wearsDress
-    ? Array.map(Array.take(dresses, 1), (piece) => ({ slot: 'dress' as const, piece }))
+    ? Array.map(Array.take(dresses, 1), (piece) => ({ slot: 'onePiece' as const, piece }))
     : [
         ...Array.map(Array.take(bottoms, 1), (piece) => ({ slot: 'bottom' as const, piece })),
         ...Array.map(pick(tops, Array.take(bottoms, 1)), (piece) => ({ slot: 'top' as const, piece })),
       ]
   const chosen = () => base.map(({ piece }) => piece)
-  const outerwear = Array.map(pick(order('outerwear'), chosen()), (piece) => ({ slot: 'outerwear' as const, piece }))
+  const outerwear = Array.map(pick(order('layer'), chosen()), (piece) => ({ slot: 'layer' as const, piece }))
   const shoes = Array.map(pick(order('shoes'), [...chosen(), ...outerwear.map(({ piece }) => piece)]), (piece) => ({
     slot: 'shoes' as const,
     piece,
@@ -93,10 +93,10 @@ export const outfitFor = (pieces: ReadonlyArray<Piece>, seed: string): ReadonlyA
 /** A slot a whole outfit still needs. */
 export type Missing = 'top' | 'bottom' | 'shoes'
 
-/** What the wardrobe lacks for a whole outfit: a top and a bottom (a dress stands in for both), and shoes. */
+/** What the wardrobe lacks for a whole outfit: a top and a bottom (a one-piece stands in for both), and shoes. */
 export const missingFrom = (pieces: ReadonlyArray<Piece>): ReadonlyArray<Missing> => {
-  const has = (category: Category) => ofCategory(pieces, category).length > 0
-  const hasDress = has('dress')
+  const has = (slot: Slot) => inSlot(pieces, slot).length > 0
+  const hasDress = has('onePiece')
   return Array.filter(['top', 'bottom', 'shoes'] as const, (slot) => !has(slot) && (slot === 'shoes' || !hasDress))
 }
 

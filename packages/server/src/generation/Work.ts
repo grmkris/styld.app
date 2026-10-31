@@ -31,8 +31,8 @@ const wardrobeOf = (parts: Parts, accountId: string) =>
       .map((piece, at) => ({
         wearable: {
           ref: `p${at + 1}`,
-          name: piece.name ?? piece.subcategory ?? piece.category,
-          category: piece.category,
+          name: piece.name ?? piece.type,
+          type: piece.type,
           colours: piece.colours,
         } satisfies Wearable,
         id: piece.id,

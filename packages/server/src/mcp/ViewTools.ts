@@ -11,7 +11,7 @@ import {
   WardrobeView,
 } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
-import { type Piece, type ViewImages } from '@styld/protocol'
+import { groupOf, type Piece, type ViewImages } from '@styld/protocol'
 import { Array, Effect, Match, Option, Predicate, Record, Schema } from 'effect'
 import type { Boards } from '../boards/Boards.ts'
 import type { CurrentAccount } from '../CurrentAccount.ts'
@@ -26,13 +26,10 @@ const labelsIn = (locale: Locale): ViewLabels => ({
   wardrobeTitle: format(locale, 'wardrobe.title', {}),
   empty: format(locale, 'wardrobe.closetEmptyTitle', {}),
   openInStyld: format(locale, 'assistantView.openInStyld', {}),
-  categories: {
-    top: format(locale, 'wardrobe.mainCategories.top', {}),
-    bottom: format(locale, 'wardrobe.mainCategories.bottom', {}),
-    dress: format(locale, 'wardrobe.mainCategories.dress', {}),
-    outerwear: format(locale, 'wardrobe.mainCategories.outerwear', {}),
-    shoes: format(locale, 'wardrobe.mainCategories.shoes', {}),
-    accessory: format(locale, 'wardrobe.mainCategories.accessory', {}),
+  groups: {
+    clothing: format(locale, 'wardrobe.groups.clothing', {}),
+    shoes: format(locale, 'wardrobe.groups.shoes', {}),
+    accessories: format(locale, 'wardrobe.groups.accessories', {}),
   },
 })
 
@@ -153,7 +150,7 @@ export const viewTools = (wardrobe: Wardrobe['Service'], boards: Boards['Service
     name: 'wardrobe_show',
     title: 'Show your wardrobe',
     description:
-      'Shows the pieces in your Styld wardrobe as pictures the person can browse. Use piece_search to find pieces by words, category or colour.',
+      'Shows the pieces in your Styld wardrobe as pictures the person can browse. Use piece_search to find pieces by words, garment type or colour.',
     parameters: Schema.Struct({}),
     annotations: { readOnlyHint: true, openWorldHint: false },
     meta: showsView,
@@ -164,7 +161,7 @@ export const viewTools = (wardrobe: Wardrobe['Service'], boards: Boards['Service
           pieces: pieces.map((piece) => ({
             id: piece.id,
             name: piece.name,
-            category: piece.category,
+            group: groupOf(piece.type),
             url: `${origin}/wardrobe/${piece.id}`,
           })),
           url: `${origin}/wardrobe`,

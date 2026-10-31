@@ -1,4 +1,4 @@
-import { Category, Colour, Subcategory, subcategoryFits } from '@styld/protocol'
+import { Colour, groupOf, Occasion, Pattern, PieceType, Season } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
 import { type CaptureMetrics, counted, prices } from './Metrics.ts'
@@ -46,13 +46,37 @@ const noulOf = (answer: Answer, id: string) =>
     onSome: ({ noul }) => noul,
   })
 
-const categoryCriteria = {
-  top: 'A top: t-shirt, shirt, blouse, sweater, cardigan, hoodie or tank top',
-  bottom: 'A bottom: trousers, jeans, shorts, skirt or leggings',
-  dress: 'A dress, or a one-piece such as a jumpsuit',
-  outerwear: 'Outerwear: coat, jacket, blazer or vest',
-  shoes: 'Shoes of any kind',
-  accessory: 'An accessory: bag, belt, hat, scarf, glasses or jewellery',
+/** Each garment type as a shop names it, so the model sorts a piece the way a person browsing would look for it. */
+const typeCriteria: { readonly [Type in PieceType]: string } & { readonly none: string } = {
+  tops: 'A t-shirt, tank top, camisole or casual top',
+  shirts: 'A shirt or blouse, with a collar or buttons, or a dressy woven top',
+  bodysuits: 'A bodysuit',
+  knitwear: 'A knitted jumper, sweater or cardigan',
+  hoodies: 'A hoodie or sweatshirt',
+  blazers: 'A tailored blazer or suit jacket',
+  jackets: 'A jacket: denim, leather, bomber, puffer or rain jacket',
+  coats: 'A coat or trench coat, longer than the hips',
+  gilets: 'A gilet, waistcoat or padded vest, without sleeves',
+  dresses: 'A dress of any length',
+  jumpsuits: 'A jumpsuit, playsuit or dungarees',
+  jeans: 'Jeans: denim trousers',
+  trousers: 'Trousers, chinos, joggers or leggings',
+  shorts: 'Shorts',
+  skirts: 'A skirt',
+  sportswear: 'Sportswear for exercise: sports top, sports bra, sports leggings or tracksuit',
+  swimwear: 'Swimwear: swimsuit, bikini or swim shorts',
+  loungewear: 'Loungewear or nightwear: pyjamas, nightdress or robe',
+  trainers: 'Trainers or sneakers',
+  boots: 'Boots or ankle boots',
+  heels: 'Shoes with heels',
+  flats: 'Flat shoes: ballet flats, loafers, brogues or espadrilles',
+  sandals: 'Sandals, sliders or flip-flops',
+  bags: 'A bag, backpack or purse',
+  belts: 'A belt',
+  scarves: 'A scarf or shawl',
+  hats: 'A hat, cap or beanie',
+  jewellery: 'Jewellery or a watch',
+  eyewear: 'Sunglasses or glasses',
   none: 'Not a garment, shoe or accessory',
 }
 
@@ -77,13 +101,35 @@ const ask = (
     },
   )
 
-/** What the decision model is asked about each cut-out piece. */
+/** What the decision model is asked about each cut-out piece: what a shop would call it, and when and for what it is
+ * worn (owner, 2026-10-31). */
 const suggestQuestions = {
-  category: { type: 'choice', instructions: 'What is this piece?', criteria: categoryCriteria },
-  subcategory: {
+  type: { type: 'choice', instructions: 'What would a clothing shop call this piece?', criteria: typeCriteria },
+  season: {
     type: 'choice',
-    instructions: 'Which kind of piece is it most precisely?',
-    criteria: Object.fromEntries(Subcategory.literals.map((name) => [name, name.replaceAll('_', ' ')])),
+    instructions: 'In which weather is it worn?',
+    criteria: { warm: 'Warm weather', cold: 'Cold weather', allYear: 'Any time of year' },
+  },
+  occasion: {
+    type: 'choice',
+    instructions: 'What is it most often worn for?',
+    criteria: {
+      casual: 'Everyday, casual wear',
+      smart: 'Smart wear: the office or a nice dinner',
+      formal: 'Formal events',
+      sport: 'Sport and exercise',
+      lounge: 'Lounging at home or sleeping',
+    },
+  },
+  pattern: {
+    type: 'choice',
+    instructions: 'What is its pattern?',
+    criteria: {
+      plain: 'Plain, one colour or colour-blocked',
+      striped: 'Striped',
+      checked: 'Checked, plaid or tartan',
+      printed: 'Printed: floral, animal, graphic, dots or logo',
+    },
   },
   colour: { type: 'choice', instructions: 'What is its main colour?', criteria: colourCriteria },
   secondColour: {
@@ -338,32 +384,46 @@ export const makeGarmentVision = (run: RunClef, metrics: CaptureMetrics['Service
   ...pictureChecks(run, metrics),
 })
 
-const decodeCategory = Schema.decodeUnknownOption(Category)
-const decodeSubcategory = Schema.decodeUnknownOption(Subcategory)
+const decodeType = Schema.decodeUnknownOption(PieceType)
 const decodeColour = Schema.decodeUnknownOption(Colour)
+const decodeSeason = Schema.decodeUnknownOption(Season)
+const decodeOccasion = Schema.decodeUnknownOption(Occasion)
+const decodePattern = Schema.decodeUnknownOption(Pattern)
 
-/** The answers as a suggestion a person confirms: a subcategory only where it fits the category, and a
- * second colour only when the model is fairly sure of it. */
-const suggestionOf = (answer: Answer): Suggestion => {
-  const category = Option.flatMap(choiceOf(answer, 'category'), ({ choice }) => decodeCategory(choice))
-  const confidence = Option.match(choiceOf(answer, 'category'), {
+/** An occasion counts once the model gives it this much, besides its first choice. */
+const alsoWorn = 0.35
+
+/** The answers as a suggestion a person confirms: the type with how sure the model is of its group, a second colour
+ * only when the model is fairly sure of it, and every occasion it gives a fair share. */
+export const suggestionOf = (answer: Answer): Suggestion => {
+  const typed = choiceOf(answer, 'type')
+  const type = Option.flatMap(typed, ({ choice }) => decodeType(choice))
+  const confidence = Option.match(Option.all([typed, type]), {
     onNone: () => 0,
-    onSome: ({ choice, probabilities }) => probabilities[choice] ?? 0,
+    onSome: ([{ probabilities }, chosen]) =>
+      Object.entries(probabilities)
+        .filter(([name]) => Option.exists(decodeType(name), (other) => groupOf(other) === groupOf(chosen)))
+        .reduce((sum, [, probability]) => sum + probability, 0),
   })
-  const subcategory = Option.flatMap(choiceOf(answer, 'subcategory'), ({ choice }) => decodeSubcategory(choice)).pipe(
-    Option.filter((name) =>
-      Option.match(category, { onNone: () => false, onSome: (main) => subcategoryFits(main, name) }),
-    ),
-  )
   const main = Option.flatMap(choiceOf(answer, 'colour'), ({ choice }) => decodeColour(choice))
   const second = Option.flatMap(choiceOf(answer, 'secondColour'), ({ choice, probabilities }) =>
     (probabilities[choice] ?? 0) >= 0.35 ? decodeColour(choice) : Option.none(),
   ).pipe(Option.filter((colour) => Option.getOrUndefined(main) !== colour))
+  const occasions = Option.match(choiceOf(answer, 'occasion'), {
+    onNone: () => [],
+    onSome: ({ choice, probabilities }) =>
+      Object.entries(probabilities)
+        .filter(([name, probability]) => name === choice || probability >= alsoWorn)
+        .toSorted(([, left], [, right]) => right - left)
+        .flatMap(([name]) => Option.toArray(decodeOccasion(name))),
+  })
   return {
-    category: Option.getOrUndefined(category),
+    type: Option.getOrUndefined(type),
     confidence,
-    subcategory: Option.getOrUndefined(subcategory),
     colours: [...Option.toArray(main), ...Option.toArray(second)],
+    season: Option.getOrUndefined(Option.flatMap(choiceOf(answer, 'season'), ({ choice }) => decodeSeason(choice))),
+    occasions,
+    pattern: Option.getOrUndefined(Option.flatMap(choiceOf(answer, 'pattern'), ({ choice }) => decodePattern(choice))),
     // An answer without the question offers the piece as before, preselected.
     whole: Option.match(choiceOf(answer, 'whole'), {
       onNone: () => 0.5,

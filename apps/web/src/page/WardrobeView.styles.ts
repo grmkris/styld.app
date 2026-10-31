@@ -2,9 +2,10 @@ import { style } from '../zyzz.config.ts'
 
 // Styles for the wardrobe in WardrobeView.ts (Gallery: wardrobe.html, wardrobe-desktop.html).
 export const wardrobePage = style({ display: 'grid', gap: '12px', paddingBlock: '0 40px' })
-/** Category filters as chips with counts (DESIGN.md › Chips, Gallery 2 `.chips.scroll`): a row that scrolls,
- * cut at the screen's edge rather than the gutter. */
-export const categoryRow = style({
+/** Browsing as a shop does (owner, 2026-10-31): a row of groups, then a row of the chosen group's types, each chip
+ * with its count (DESIGN.md › Chips, Gallery 2 `.chips.scroll`): a row that scrolls, cut at the screen's edge rather
+ * than the gutter. */
+export const filterRow = style({
   display: 'flex',
   gap: '8px',
   marginInline: '-20px',
@@ -15,8 +16,8 @@ export const categoryRow = style({
   scrollbarWidth: 'none',
   whiteSpace: 'nowrap',
 })
-/** Ask's chip, chosen as Explore's is (`cx(chip(), chosen(), categoryFilter())`), with its count beside its name. */
-export const categoryFilter = style({ display: 'inline-flex', alignItems: 'center', gap: '6px' })
+/** Ask's chip, chosen as Explore's is (`cx(chip(), chosen(), filterChip())`), with its count beside its name. */
+export const filterChip = style({ display: 'inline-flex', alignItems: 'center', gap: '6px' })
 /** A chip's count, quieter than its name; on the chosen chip it takes the on-ink colour. */
 export const count = style({
   fontSize: '13px',
@@ -24,14 +25,14 @@ export const count = style({
   color: 'ink3',
   '[aria-pressed="true"] > &': { color: 'onInk' },
 })
-/** The signature grid of pieces on paper: two columns on a phone, up to six on a wide screen. */
+/** The signature grid of pieces on paper, dense as a shop's: three columns on a phone, up to six on a wide screen. */
 export const grid = style({
   display: 'grid',
-  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-  gap: '16px',
+  gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+  gap: '12px',
   padding: '0',
   listStyleType: 'none',
-  '@media (min-width: 600px)': { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' },
+  '@media (min-width: 600px)': { gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '16px' },
   '@media (min-width: 1000px)': { gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: '16px 28px' },
 })
 export const cut = style({
@@ -76,9 +77,8 @@ export const pieceState = style({
   color: 'signal',
 })
 export const pieceFailed = style({ fontSize: '12px', color: 'error' })
-/** The loading row and grid: the category row's height, and squares with captions where the pieces will be. */
 /** The filter chips' row while the pieces load: pills where the chips will be (AskView.styles.ts › chipSkeleton). */
-export const categoryRowSkeleton = style({ display: 'flex', alignItems: 'center', gap: '8px', minBlockSize: '44px' })
+export const filterRowSkeleton = style({ display: 'flex', alignItems: 'center', gap: '8px', minBlockSize: '44px' })
 export const tileSkeleton = style({ inlineSize: '100%', aspectRatio: '1 / 1' })
 export const captionSkeleton = style({ fontSize: '13px' })
 export const message = style({

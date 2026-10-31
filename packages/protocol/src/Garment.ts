@@ -1,0 +1,111 @@
+import { Schema } from 'effect'
+
+// What a piece is (owner, 2026-10-31): Styld's own garment types, predefined and grouped the way shops sort them, so
+// the wardrobe browses like a shop. A piece stores its type alone; its group and its place in an outfit follow from
+// the type, so they can never disagree with it.
+
+/** The three groups, in the order the wardrobe shows them. */
+export const GarmentGroup = Schema.Literals(['clothing', 'shoes', 'accessories'])
+export type GarmentGroup = typeof GarmentGroup.Type
+
+/** Every garment type, keyed in English, in the order the wardrobe shows them. */
+export const PieceType = Schema.Literals([
+  'tops',
+  'shirts',
+  'bodysuits',
+  'knitwear',
+  'hoodies',
+  'blazers',
+  'jackets',
+  'coats',
+  'gilets',
+  'dresses',
+  'jumpsuits',
+  'jeans',
+  'trousers',
+  'shorts',
+  'skirts',
+  'sportswear',
+  'swimwear',
+  'loungewear',
+  'trainers',
+  'boots',
+  'heels',
+  'flats',
+  'sandals',
+  'bags',
+  'belts',
+  'scarves',
+  'hats',
+  'jewellery',
+  'eyewear',
+])
+export type PieceType = typeof PieceType.Type
+
+/** Where a piece sits in an outfit. `set` holds what is worn on its own for one activity (sportswear, swimwear,
+ * loungewear); outfits use it only when that activity is asked for. Never shown to people. */
+export const Slot = Schema.Literals(['top', 'bottom', 'onePiece', 'layer', 'shoes', 'accessory', 'set'])
+export type Slot = typeof Slot.Type
+
+const kinds: { readonly [Type in PieceType]: { readonly group: GarmentGroup; readonly slot: Slot } } = {
+  tops: { group: 'clothing', slot: 'top' },
+  shirts: { group: 'clothing', slot: 'top' },
+  bodysuits: { group: 'clothing', slot: 'top' },
+  knitwear: { group: 'clothing', slot: 'top' },
+  hoodies: { group: 'clothing', slot: 'top' },
+  blazers: { group: 'clothing', slot: 'layer' },
+  jackets: { group: 'clothing', slot: 'layer' },
+  coats: { group: 'clothing', slot: 'layer' },
+  gilets: { group: 'clothing', slot: 'layer' },
+  dresses: { group: 'clothing', slot: 'onePiece' },
+  jumpsuits: { group: 'clothing', slot: 'onePiece' },
+  jeans: { group: 'clothing', slot: 'bottom' },
+  trousers: { group: 'clothing', slot: 'bottom' },
+  shorts: { group: 'clothing', slot: 'bottom' },
+  skirts: { group: 'clothing', slot: 'bottom' },
+  sportswear: { group: 'clothing', slot: 'set' },
+  swimwear: { group: 'clothing', slot: 'set' },
+  loungewear: { group: 'clothing', slot: 'set' },
+  trainers: { group: 'shoes', slot: 'shoes' },
+  boots: { group: 'shoes', slot: 'shoes' },
+  heels: { group: 'shoes', slot: 'shoes' },
+  flats: { group: 'shoes', slot: 'shoes' },
+  sandals: { group: 'shoes', slot: 'shoes' },
+  bags: { group: 'accessories', slot: 'accessory' },
+  belts: { group: 'accessories', slot: 'accessory' },
+  scarves: { group: 'accessories', slot: 'accessory' },
+  hats: { group: 'accessories', slot: 'accessory' },
+  jewellery: { group: 'accessories', slot: 'accessory' },
+  eyewear: { group: 'accessories', slot: 'accessory' },
+}
+
+export const groupOf = (type: PieceType): GarmentGroup => kinds[type].group
+export const slotOf = (type: PieceType): Slot => kinds[type].slot
+
+/** The types of a group, in the wardrobe's order. */
+export const typesIn = (group: GarmentGroup): ReadonlyArray<PieceType> =>
+  PieceType.literals.filter((type) => groupOf(type) === group)
+
+/** The types that sit in the same place in an outfit: what "Already in your wardrobe?" compares a garment with, so one
+ * misjudged type never hides a duplicate. */
+export const typesInSlot = (slot: Slot): ReadonlyArray<PieceType> =>
+  PieceType.literals.filter((type) => slotOf(type) === slot)
+
+/** When a piece is worn. */
+export const Season = Schema.Literals(['warm', 'cold', 'allYear'])
+export type Season = typeof Season.Type
+
+/** What a piece is worn for; a piece can suit several. */
+export const Occasion = Schema.Literals(['casual', 'smart', 'formal', 'sport', 'lounge'])
+export type Occasion = typeof Occasion.Type
+
+export const Occasions = Schema.Array(Occasion).check(Schema.isUnique(), Schema.isMaxLength(5))
+
+export const Pattern = Schema.Literals(['plain', 'striped', 'checked', 'printed'])
+export type Pattern = typeof Pattern.Type
+
+/** A brand as the person writes it. */
+export const Brand = Schema.String.check(Schema.isTrimmed(), Schema.isMinLength(1), Schema.isMaxLength(60))
+
+/** Where the piece is sold: an https address. */
+export const ShopUrl = Schema.String.check(Schema.isMaxLength(2048), Schema.isPattern(/^https:\/\/\S+$/))

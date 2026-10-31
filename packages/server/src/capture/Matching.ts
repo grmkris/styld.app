@@ -1,4 +1,5 @@
-import { DateTime, Effect, Option } from 'effect'
+import { PieceType, slotOf, typesInSlot } from '@styld/protocol'
+import { DateTime, Effect, Option, Schema } from 'effect'
 import type { MatchOutcome, MatchScope } from './MatchStore.ts'
 import { enqueueMatch, type Parts, readPixels, storedAs } from './Parts.ts'
 import { judgedAt, sent } from './Pictures.ts'
@@ -52,24 +53,31 @@ const sameAs = <A>(
     return best !== undefined && best.same >= bar ? Option.some(best.candidate) : Option.none<A>()
   })
 
-/** The garments of `category` a capture's import already shows on their cards. A photo's own pieces are different
+/** The garments of `types` a capture's import already shows on their cards. A photo's own pieces are different
  * garments; a video's may be one garment SAM followed as two. */
-const shownIn = (parts: Parts, capture: CaptureRow, category: string, limit: number) => {
+const shownIn = (parts: Parts, capture: CaptureRow, types: ReadonlyArray<PieceType>, limit: number) => {
   const photo = capture.kind === 'photo'
   if (photo && capture.importId === null) return Effect.succeed([])
-  return storedAs(parts.store.shownSightings(scopeOf(capture), category, photo ? capture.id : undefined, limit))
+  return storedAs(parts.store.shownSightings(scopeOf(capture), types, photo ? capture.id : undefined, limit))
 }
 
+const isPieceType = Schema.is(PieceType)
+
+/** The types a garment is compared within: every type that sits where it does in an outfit, so one misjudged type
+ * never hides a duplicate (owner, 2026-10-31). */
+const comparedTypes = (suggested: string | null) =>
+  Option.map(Option.liftPredicate(suggested, isPieceType), (type) => typesInSlot(slotOf(type)))
+
 /** Compare one sighting: with the garments its import already shows, joining the one it is (shown in that one's
- * place when it shows more of the garment), or else with the wardrobe's pieces of its category. */
+ * place when it shows more of the garment), or else with the wardrobe's pieces of its kind. */
 const matchOne = (parts: Parts, capture: CaptureRow, detection: DetectionRow) =>
   Effect.gen(function* () {
     const policy = (yield* CaptureConfig).matching
     const alone: MatchOutcome = { joins: Option.none(), duplicateOf: null }
-    const category = detection.suggestedCategory
+    const types = comparedTypes(detection.suggestedType)
     const own = yield* comparable(parts, detection.cutoutKey)
-    if (category === null || Option.isNone(own)) return alone
-    const shown = yield* shownIn(parts, capture, category, policy.sightings)
+    if (Option.isNone(types) || Option.isNone(own)) return alone
+    const shown = yield* shownIn(parts, capture, types.value, policy.sightings)
     const joined = yield* sameAs(parts, own.value, shown, (row) => row.cutoutKey)
     if (Option.isSome(joined)) {
       const head = joined.value
@@ -77,7 +85,7 @@ const matchOne = (parts: Parts, capture: CaptureRow, detection: DetectionRow) =>
       return { joins: Option.some({ head: head.id, replaces }), duplicateOf: replaces ? head.duplicateOf : null }
     }
     const candidates = yield* storedAs(
-      parts.store.wardrobeCandidates(capture.accountId, category, detection.suggestedColours[0], policy.pieces),
+      parts.store.wardrobeCandidates(capture.accountId, types.value, detection.suggestedColours[0], policy.pieces),
     )
     const piece = yield* sameAs(parts, own.value, candidates, (candidate) => candidate.imageKey)
     return { ...alone, duplicateOf: Option.match(piece, { onNone: () => null, onSome: ({ id }) => id }) }

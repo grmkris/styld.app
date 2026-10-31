@@ -99,10 +99,10 @@ const claimRows = (db: Database) => ({
 
 /** What a sighting is compared with: the garments its import shows, and the wardrobe's pieces. */
 const candidateRows = (db: Database) => ({
-  /** The sightings that show a garment of `category` in the scope's tray, newest first: compared already, shown on
+  /** The sightings that show a garment of one of `types` in the scope's tray, newest first: compared already, shown on
    * their own card, and waiting for the person. `except` leaves out a capture's own (a photo's pieces are
    * different garments). */
-  shownSightings: (scope: MatchScope, category: string, except: string | undefined, limit: number) =>
+  shownSightings: (scope: MatchScope, types: ReadonlyArray<string>, except: string | undefined, limit: number) =>
     attempt(() =>
       db
         .select()
@@ -115,16 +115,16 @@ const candidateRows = (db: Database) => ({
             eq(detections.status, 'review'),
             isNull(detections.groupOf),
             isNotNull(detections.cutoutKey),
-            eq(detections.suggestedCategory, category),
+            inArray(detections.suggestedType, [...types]),
             except === undefined ? undefined : ne(detections.captureId, except),
           ),
         )
         .orderBy(desc(detections.createdAt))
         .limit(limit),
     ),
-  /** The account's pieces of `category` shown as cut-outs that a new garment may already be, those sharing its main
+  /** The account's pieces of one of `types` shown as cut-outs that a new garment may already be, those sharing its main
    * colour first. */
-  wardrobeCandidates: (accountId: string, category: string, colour: string | undefined, limit: number) =>
+  wardrobeCandidates: (accountId: string, types: ReadonlyArray<string>, colour: string | undefined, limit: number) =>
     attempt(() =>
       db
         .select({ id: pieces.id, imageKey: pieces.imageKey })
@@ -133,7 +133,7 @@ const candidateRows = (db: Database) => ({
           and(
             eq(pieces.accountId, accountId),
             eq(pieces.status, 'ready'),
-            eq(pieces.category, category),
+            inArray(pieces.type, [...types]),
             isNotNull(pieces.imageKey),
             ne(pieces.imageKey, pieces.originalKey),
           ),

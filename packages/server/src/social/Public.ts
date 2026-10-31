@@ -59,8 +59,7 @@ const publicPiece = (piece: PieceRow) =>
   decoded(PublicPiece, {
     id: piece.id,
     name: piece.name,
-    category: piece.category,
-    subcategory: piece.subcategory,
+    type: piece.type,
     colours: piece.colours,
   })
 

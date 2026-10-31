@@ -11,7 +11,7 @@ import { ProviderFailed } from '../capture/Providers.ts'
 export interface Wearable {
   readonly ref: string
   readonly name: string
-  readonly category: string
+  readonly type: string
   readonly colours: ReadonlyArray<string>
 }
 
@@ -68,9 +68,7 @@ export const planMessages = (request: PlanRequest) => [
     content: [
       `Sentence: ${request.sentence}`,
       'Pieces:',
-      ...request.wardrobe.map(
-        ({ ref, name, category, colours }) => `${ref}: ${name} (${category}; ${colours.join(', ')})`,
-      ),
+      ...request.wardrobe.map(({ ref, name, type, colours }) => `${ref}: ${name} (${type}; ${colours.join(', ')})`),
     ].join('\n'),
   },
 ]

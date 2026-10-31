@@ -69,7 +69,6 @@ import {
   PieceId,
   PieceNotFound,
   Pieces,
-  SubcategoryMismatch,
   UpdatePiece,
   Upload,
   UploadRefused,
@@ -118,7 +117,7 @@ export class WardrobeApi extends HttpApiGroup.make('wardrobe')
     HttpApiEndpoint.post('addPiece', '/pieces', {
       payload: AddPiece,
       success: Piece,
-      error: [UploadRefused, SubcategoryMismatch, OperationConflict, WardrobeUnavailable, RequestRefused],
+      error: [UploadRefused, OperationConflict, WardrobeUnavailable, RequestRefused],
     }),
   )
   .add(
@@ -126,7 +125,7 @@ export class WardrobeApi extends HttpApiGroup.make('wardrobe')
       params: { pieceId: PieceId },
       payload: UpdatePiece,
       success: Piece,
-      error: [PieceNotFound, SubcategoryMismatch, WardrobeUnavailable, RequestRefused],
+      error: [PieceNotFound, WardrobeUnavailable, RequestRefused],
     }),
   )
   .add(

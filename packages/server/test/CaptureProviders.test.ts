@@ -262,28 +262,34 @@ describe('Clef-flash', () => {
     expect(Exit.isSuccess(unsure) && 'scene' in unsure.value).toBe(false)
   })
 
-  test('suggests only a subcategory that fits and a second colour it is fairly sure of', async () => {
+  test('suggests a type with how sure the model is of its group, its attributes, and a second colour it is fairly sure of', async () => {
     const suggestion = await run(
       answering({
         answers: {
-          category: chose('bottom', 0.8),
-          subcategory: chose('long_sleeve', 0.7),
+          type: { choice: 'jeans', probabilities: { jeans: 0.5, trousers: 0.3, trainers: 0.1, none: 0.1 } },
           colour: chose('navy', 0.6),
           secondColour: chose('white', 0.4),
+          season: chose('allYear', 0.7),
+          occasion: { choice: 'casual', probabilities: { casual: 0.55, smart: 0.36, formal: 0.05, sport: 0.04 } },
+          pattern: chose('plain', 0.9),
           whole: chose('part', 0.7),
         },
       }).suggest(picture),
     )
     expect(suggestion).toEqual(
       Exit.succeed({
-        category: 'bottom',
+        type: 'jeans',
         confidence: 0.8,
-        subcategory: undefined,
         colours: ['navy', 'white'],
+        season: 'allYear',
+        occasions: ['casual', 'smart'],
+        pattern: 'plain',
         // `chose` gives only the chosen answer a probability, so "whole" has none.
         whole: 0,
       }),
     )
+    const unsure = await run(answering({ answers: { type: chose('none', 0.9) } }).suggest(picture))
+    expect(Exit.isSuccess(unsure) && unsure.value.type).toBe(undefined)
   })
 
   test('confirms a held garment and its side, and fails retryably when Workers AI does', async () => {

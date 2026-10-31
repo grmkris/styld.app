@@ -7,18 +7,11 @@ const labels = {
   wardrobeTitle: 'Wardrobe',
   empty: 'Your wardrobe is empty',
   openInStyld: 'Open in Styld',
-  categories: {
-    top: 'Tops',
-    bottom: 'Bottoms',
-    dress: 'Dresses',
-    outerwear: 'Outerwear',
-    shoes: 'Shoes',
-    accessory: 'Accessories',
-  },
+  groups: { clothing: 'Clothing', shoes: 'Shoes', accessories: 'Accessories' },
 }
 const wardrobe = WardrobeView.make({
   pieces: [
-    { id: PieceId.make(`pc_${'a'.repeat(22)}`), name: 'Navy knit', category: 'top', url: 'https://styld.test/w/1' },
+    { id: PieceId.make(`pc_${'a'.repeat(22)}`), name: 'Navy knit', group: 'clothing', url: 'https://styld.test/w/1' },
   ],
   url: 'https://styld.test/wardrobe',
   labels: { en: labels, sl: { ...labels, openInStyld: 'Odpri v Styldu' } },

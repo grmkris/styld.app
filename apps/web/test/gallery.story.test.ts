@@ -11,16 +11,16 @@ import * as Today from '../src/page/Today.ts'
 import { cropFrom, headline } from '../src/page/TodayView.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
-const redTop = pieceFixture('red-top', { category: 'top', colours: ['red'], name: 'Red shirt' })
-const navyKnit = pieceFixture('navy-knit', { category: 'top', colours: ['navy'], name: 'Cable knit' })
-const greenTrousers = pieceFixture('green-trousers', { category: 'bottom', colours: ['green'], name: 'Green trousers' })
-const blackShoes = pieceFixture('black-shoes', { category: 'shoes', colours: ['black'], name: 'Derby shoes' })
+const redTop = pieceFixture('red-top', { type: 'tops', colours: ['red'], name: 'Red shirt' })
+const navyKnit = pieceFixture('navy-knit', { type: 'tops', colours: ['navy'], name: 'Cable knit' })
+const greenTrousers = pieceFixture('green-trousers', { type: 'trousers', colours: ['green'], name: 'Green trousers' })
+const blackShoes = pieceFixture('black-shoes', { type: 'trainers', colours: ['black'], name: 'Derby shoes' })
 const wardrobe = [redTop, navyKnit, greenTrousers, blackShoes]
 const thursday = Schema.decodeUnknownSync(Day)('2026-10-29')
-const drawn = { category: 'top', picture: { state: 'ready', shows: 'clean', version: 1 } }
+const drawn = { type: 'tops', picture: { state: 'ready', shows: 'clean', version: 1 } }
 const drawnOxford = pieceFixture('drawn-oxford', drawn)
 const drawnPolo = pieceFixture('drawn-polo', drawn)
-const photoTops = ['photo-tee', 'photo-henley', 'photo-knit'].map((seed) => pieceFixture(seed, { category: 'top' }))
+const photoTops = ['photo-tee', 'photo-henley', 'photo-knit'].map((seed) => pieceFixture(seed, { type: 'tops' }))
 /** Every piece thirty Spins of one day lay out. */
 const piecesOverSpins = (pieces: ReadonlyArray<Piece>) =>
   new Set(
@@ -67,7 +67,7 @@ describe("today's table", () => {
   test('a wardrobe short of a whole outfit says what it lacks; a dress stands in for a top and a bottom', () => {
     expect(missingFrom([redTop])).toEqual(['bottom', 'shoes'])
     expect(missingFrom(wardrobe)).toEqual([])
-    expect(missingFrom([pieceFixture('dress', { category: 'dress' })])).toEqual(['shoes'])
+    expect(missingFrom([pieceFixture('dress', { type: 'dresses' })])).toEqual(['shoes'])
   })
 
   test('the headline is the day in the visitor’s language', () => {
@@ -161,7 +161,7 @@ describe('boards', () => {
 })
 
 describe('Ask', () => {
-  test('search finds pieces by every word of the query: name, category or colour, in the visitor’s language', () => {
+  test('search finds pieces by every word of the query: name, kind or colour, in the visitor’s language', () => {
     expect(ids('knit', 'en')).toEqual([navyKnit.id])
     expect(ids('green', 'en')).toEqual([greenTrousers.id])
     expect(ids('derby shoes', 'en')).toEqual([blackShoes.id])

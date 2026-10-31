@@ -208,8 +208,7 @@ const addPieceThroughTools = async (origin: string, client: Client) => {
   const add = {
     operationId: 'mcp-native-add-1',
     uploadId: upload.uploadId,
-    category: 'shoes',
-    subcategory: 'sneakers',
+    type: 'trainers',
     name: 'White trainers',
   }
   const added = await structured(client, 'piece_add', add)

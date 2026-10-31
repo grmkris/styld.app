@@ -1,5 +1,6 @@
 import { Schema } from 'effect'
-import { Category, Colours, OperationId, PieceId, Subcategory, UploadId } from './Wardrobe.ts'
+import { Occasions, Pattern, PieceType, Season } from './Garment.ts'
+import { Colours, OperationId, PieceId, UploadId } from './Wardrobe.ts'
 
 export const CaptureId = Schema.String.check(Schema.isPattern(/^cp_[A-Za-z0-9_-]{22}$/)).pipe(Schema.brand('CaptureId'))
 export type CaptureId = typeof CaptureId.Type
@@ -67,9 +68,11 @@ export const CaptureCreated = Schema.Struct({ captureId: CaptureId })
 
 /** What the decision model suggested for a piece; the person confirms or changes it. */
 export const Suggestion = Schema.Struct({
-  category: Schema.NullOr(Category),
-  subcategory: Schema.NullOr(Subcategory),
+  type: Schema.NullOr(PieceType),
   colours: Colours,
+  season: Schema.NullOr(Season),
+  occasions: Occasions,
+  pattern: Schema.NullOr(Pattern),
 })
 
 /** One piece found in a capture, waiting for the person. */
@@ -113,9 +116,11 @@ const Name = Schema.String.check(Schema.isTrimmed(), Schema.isMinLength(1), Sche
 /** One piece the person keeps, with the details they confirmed. */
 export const Keep = Schema.Struct({
   detectionId: DetectionId,
-  category: Category,
-  subcategory: Schema.optionalKey(Subcategory),
+  type: PieceType,
   colours: Schema.optionalKey(Colours),
+  season: Schema.optionalKey(Season),
+  occasions: Schema.optionalKey(Occasions),
+  pattern: Schema.optionalKey(Pattern),
   name: Schema.optionalKey(Name),
   /** Keep the original photo instead of the cut-out. */
   useOriginal: Schema.optionalKey(Schema.Boolean),

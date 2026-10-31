@@ -31,27 +31,32 @@ const wardrobe = (pieces: PiecesData) =>
 const loaded = (...pieces: ReadonlyArray<Piece>) => wardrobe(PiecesData.Success({ data: pieces }))
 
 const tee = pieceFixture('tee', { name: 'White tee' })
-const jeans = pieceFixture('jeans', { category: 'bottom', subcategory: 'jeans' })
-const boots = pieceFixture('boots', { category: 'shoes', status: 'processing' })
+const jeans = pieceFixture('jeans', { type: 'jeans' })
+const boots = pieceFixture('boots', { type: 'boots', status: 'processing' })
 
 describe('the wardrobe page', () => {
   test('draws the shape of the grid while the pieces load', () => {
     scene({ update, view }, given(wardrobe(AsyncData.Loading())), expect(role('status')).toHaveText('Loading pieces…'))
   })
 
-  test('shows each piece by name, or by what it is, with a chip for every category it holds', () => {
+  test('shows each piece by name, or by what it is, browsed by group and then by type as a shop is', () => {
     scene(
       { update, view },
-      given(loaded(tee, jeans)),
+      given(loaded(tee, jeans, boots)),
       expect(role('link', { name: 'White tee' })).toHaveAttr('href', `/wardrobe/${tee.id}`),
       // The caption names a piece once; its picture is decoration inside the link.
       expect(role('link', { name: 'Jeans' })).toHaveAttr('href', `/wardrobe/${jeans.id}`),
       expect(selector(`img[src="/cdn/pieces/${jeans.id}/thumb"]`)).toHaveAttr('alt', ''),
-      expect(role('button', { name: 'All 2' })).toHaveAttr('aria-pressed', 'true'),
-      expect(role('button', { name: 'Bottoms 1' })).toExist(),
-      expect(role('button', { name: 'Shoes 1' })).not.toExist(),
-      click(role('button', { name: 'Bottoms 1' })),
-      expect(role('button', { name: 'Bottoms 1' })).toHaveAttr('aria-pressed', 'true'),
+      expect(role('button', { name: 'All 3' })).toHaveAttr('aria-pressed', 'true'),
+      expect(role('button', { name: 'Clothing 2' })).toExist(),
+      expect(role('button', { name: 'Shoes 1' })).toExist(),
+      expect(role('button', { name: 'Accessories 0' })).not.toExist(),
+      expect(role('group', { name: 'Clothing' })).not.toExist(),
+      click(role('button', { name: 'Clothing 2' })),
+      expect(role('button', { name: 'Clothing 2' })).toHaveAttr('aria-pressed', 'true'),
+      expect(role('link', { name: 'Boots' })).not.toExist(),
+      expect(role('group', { name: 'Clothing' })).toExist(),
+      click(role('button', { name: 'Jeans 1' })),
       expect(role('link', { name: 'White tee' })).not.toExist(),
       expect(role('link', { name: 'Jeans' })).toExist(),
     )

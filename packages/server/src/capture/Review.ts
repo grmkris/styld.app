@@ -1,12 +1,4 @@
-import {
-  CaptureNotFound,
-  type Keep,
-  OperationConflict,
-  PieceId,
-  type Review,
-  Reviewed,
-  subcategoryFits,
-} from '@styld/protocol'
+import { CaptureNotFound, type Keep, OperationConflict, PieceId, type Review, Reviewed } from '@styld/protocol'
 import { DateTime, Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { CaptureMetrics, type ReviewDecision } from './Metrics.ts'
@@ -28,16 +20,21 @@ const pieceOf = (
   at: Date,
 ) => {
   const original = keep.useOriginal === true || detection.cutoutKey === null
-  const subcategory =
-    keep.subcategory !== undefined && subcategoryFits(keep.category, keep.subcategory) ? keep.subcategory : null
   return {
     id: pieceId,
     accountId,
     name: keep.name ?? null,
     notes: null,
-    category: keep.category,
-    subcategory,
+    type: keep.type,
     colours: keep.colours ?? [],
+    // The person confirmed what the decision model suggested, or changed it; an attribute they left out stays as
+    // suggested.
+    season: keep.season ?? detection.suggestedSeason,
+    occasions: keep.occasions ?? detection.suggestedOccasions,
+    pattern: keep.pattern ?? detection.suggestedPattern,
+    brand: null,
+    shopUrl: null,
+    suggestedAt: at,
     status: 'ready' as const,
     source: 'website' as const,
     uploadId: null,

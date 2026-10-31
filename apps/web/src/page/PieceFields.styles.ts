@@ -1,6 +1,6 @@
 import { style } from '../zyzz.config.ts'
 
-// The category, shelf and colour pickers shared by adding and editing a piece (Gallery chips and swatches).
+// The type, colour and attribute pickers shared by adding and editing a piece (Gallery chips and swatches).
 export const picker = style({
   display: 'grid',
   gap: '8px',
@@ -12,6 +12,10 @@ export const picker = style({
 export const pickerLegend = style({ padding: '0', marginBlockEnd: '8px', fontSize: '14px', fontWeight: 600 })
 export const pickerProblem = style({ fontSize: '14px', color: 'error' })
 export const chipSet = style({ display: 'flex', flexWrap: 'wrap', gap: '8px' })
+/** The type picker's groups, one under another, each named above its chips. */
+export const typeGroups = style({ display: 'grid', gap: '16px' })
+export const typeGroup = style({ display: 'grid', gap: '8px' })
+export const typeGroupName = style({ fontSize: '13px', color: 'ink2' })
 /** A 36px pill on paper-2; the chosen one is filled ink (DESIGN.md › Controls › Chips). */
 export const chip = style({
   display: 'inline-flex',

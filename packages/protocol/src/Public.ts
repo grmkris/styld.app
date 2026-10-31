@@ -2,7 +2,8 @@ import { Schema } from 'effect'
 import { BoardId, BoardImageId, BoardItem, Paper, PinId } from './Board.ts'
 import { LookId } from './Look.ts'
 import { Handle, Tone } from './Profile.ts'
-import { Category, Colours, PieceId, Subcategory } from './Wardrobe.ts'
+import { PieceType } from './Garment.ts'
+import { Colours, PieceId } from './Wardrobe.ts'
 
 // What other people see: published profiles, public boards, shared looks and the pieces they show, each only while
 // Styld's check lets others see it. Nothing here carries notes, sources, original photos or check results.
@@ -15,8 +16,7 @@ export type Author = typeof Author.Type
 export const PublicPiece = Schema.Struct({
   id: PieceId,
   name: Schema.NullOr(Schema.String),
-  category: Category,
-  subcategory: Schema.NullOr(Subcategory),
+  type: PieceType,
   colours: Colours,
 })
 export type PublicPiece = typeof PublicPiece.Type

@@ -55,6 +55,39 @@ const confirmDelete = (model: Model, locale: Locale, h: HtmlBuilder<Message>): H
   )
 }
 
+/** Where a piece is from: its brand and the shop's link, both optional; a link that is not https says so. */
+const shopFields = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
+  h.label([h.For('piece-brand'), ...styled(h, fieldLabel())], [format(locale, 'wardrobe.brandLabel', {})]),
+  h.input([
+    h.Id('piece-brand'),
+    h.Name('brand'),
+    h.Type('text'),
+    h.Maxlength(60),
+    h.Autocomplete('off'),
+    h.Value(draft.brand),
+    h.OnInput((value) => Message.UpdatedBrand({ value })),
+    ...styled(h, textField()),
+  ]),
+  h.label([h.For('piece-shop'), ...styled(h, fieldLabel())], [format(locale, 'wardrobe.shopUrlLabel', {})]),
+  h.input([
+    h.Id('piece-shop'),
+    h.Name('shop'),
+    h.Type('url'),
+    h.InputMode('url'),
+    h.Maxlength(2048),
+    h.Value(draft.shopUrl),
+    h.OnInput((value) => Message.UpdatedShopUrl({ value })),
+    ...(draft.shopUrlInvalid ? [h.AriaInvalid(true), h.AriaDescribedBy('piece-shop-problem')] : []),
+    ...styled(h, textField()),
+  ]),
+  draft.shopUrlInvalid
+    ? h.p(
+        [h.Id('piece-shop-problem'), h.Role('alert'), ...styled(h, formError())],
+        [format(locale, 'wardrobe.shopUrlInvalid', {})],
+      )
+    : h.empty,
+]
+
 const editForm = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.form(
     [h.OnSubmit(Message.SubmittedEdit()), h.AriaBusy(draft.saving), ...styled(h, styles.editForm())],
@@ -70,17 +103,11 @@ const editForm = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Html =
         ...styled(h, textField()),
       ]),
       ...piecePickers(
-        {
-          category: Option.some(draft.category),
-          categoryMissing: false,
-          subcategory: draft.subcategory,
-          colours: draft.colours,
-          coloursLegend: 'wardrobe.colorsLabel',
-          messages: Message,
-        },
+        { details: draft.details, typeMissing: false, coloursLegend: 'wardrobe.colorsLabel', messages: Message },
         locale,
         h,
       ),
+      ...shopFields(draft, locale, h),
       h.label([h.For('piece-notes'), ...styled(h, fieldLabel())], [format(locale, 'wardrobe.notesLabel', {})]),
       h.textarea([
         h.Id('piece-notes'),

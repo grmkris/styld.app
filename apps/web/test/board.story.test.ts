@@ -22,7 +22,7 @@ const knit = PieceItem.make({
 })
 const shorts = PieceItem.make({
   id: itemId('shorts'),
-  pieceId: pieceFixture('shorts', { category: 'bottom' }).id,
+  pieceId: pieceFixture('shorts', { type: 'trousers' }).id,
   x: 320,
   y: 860,
   size: 400,

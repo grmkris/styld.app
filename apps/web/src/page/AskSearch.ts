@@ -1,22 +1,23 @@
 import { format, type Locale } from '@styld/i18n'
-import { type Piece, wordMatches, wordsIn } from '@styld/protocol'
+import { groupOf, type Piece, wordMatches, wordsIn } from '@styld/protocol'
 import { Array } from 'effect'
-import { categoryName, colourName, searchWordsName, subcategoryName } from './WardrobeWords.ts'
+import { colourName, groupName, typeName, typeWordsName } from './WardrobeWords.ts'
 
 // Ask's search over the person's own pieces, folding text as `@styld/protocol`'s Search does. Every word of the
 // query must match a word the piece answers to, in either language.
 
-/** Everything a piece answers to: its name and notes, and in each language its category with the words people
- * use for it, its shelf and its colours. */
+/** Everything a piece answers to: its name, notes and brand, and in each language its type with the words people use
+ * for it, its group and its colours. */
 const wordsOf = (piece: Piece, locales: ReadonlyArray<Locale>) =>
   wordsIn(
     [
       piece.name ?? '',
       piece.notes ?? '',
+      piece.brand ?? '',
       ...locales.flatMap((locale) => [
-        format(locale, categoryName(piece.category), {}),
-        format(locale, searchWordsName(piece.category), {}),
-        piece.subcategory === null ? '' : format(locale, subcategoryName(piece.subcategory), {}),
+        format(locale, typeName(piece.type), {}),
+        format(locale, typeWordsName(piece.type), {}),
+        format(locale, groupName(groupOf(piece.type)), {}),
         ...piece.colours.map((colour) => format(locale, colourName(colour), {})),
       ]),
     ].join(' '),

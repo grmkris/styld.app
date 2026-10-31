@@ -95,7 +95,7 @@ const verifyPhoto = async (origin: string, owner: Call, other: Call) => {
   // Another account sees nothing of it and cannot decide it.
   expect((await other(`/cdn/detections/${detectionId}/cutout`)).status).toBe(404)
   expect((await tray(other)).captures).toEqual([])
-  const keep = { detectionId, category: 'top', colours: ['red'], name: 'Red tee' }
+  const keep = { detectionId, type: 'tops', colours: ['red'], name: 'Red tee' }
   expect(
     (await post(other, '/api/captures/review', { operationId: 'native-review-0001', keep: [keep], discard: [] }))
       .status,
@@ -114,7 +114,7 @@ const verifyPhoto = async (origin: string, owner: Call, other: Call) => {
   expect((await post(owner, '/api/captures/review', { ...review, operationId: 'native-review-0003' })).status).toBe(404)
   expect(await (await owner(`/api/pieces/${pieceIds[0]}`)).json()).toMatchObject({
     status: 'ready',
-    category: 'top',
+    type: 'tops',
     name: 'Red tee',
   })
   expect((await owner(`/cdn/pieces/${pieceIds[0]}/thumb`)).status).toBe(200)

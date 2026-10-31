@@ -72,9 +72,18 @@ export const pieces = sqliteTable(
       .references(() => accounts.id, { onDelete: 'cascade' }),
     name: text('name'),
     notes: text('notes'),
-    category: text('category').notNull(),
-    subcategory: text('subcategory'),
+    /** Its garment type (`@styld/protocol` › Garment); its group and outfit place follow from it. */
+    type: text('type').notNull(),
     colours: text('colours', { mode: 'json' }).notNull().$type<ReadonlyArray<string>>(),
+    season: text('season'),
+    occasions: text('occasions', { mode: 'json' }).notNull().$type<ReadonlyArray<string>>(),
+    pattern: text('pattern'),
+    brand: text('brand'),
+    shopUrl: text('shop_url'),
+    /** When its type and attributes were last suggested or confirmed. None only for a piece carried over from the old
+     * categories, which the schedule's sweep asks the decision model about once; a person's choice is never
+     * overwritten. */
+    suggestedAt: integer('suggested_at', { mode: 'timestamp_ms' }),
     status: text('status', { enum: ['processing', 'ready', 'failed'] }).notNull(),
     source: text('source', { enum: ['website', 'assistant'] }).notNull(),
     /** The photo an added piece came from. Pieces from a reviewed capture point at their detection
@@ -197,9 +206,11 @@ export const detections = sqliteTable(
     track: text('track'),
     confidence: real('confidence'),
     preselected: integer('preselected', { mode: 'boolean' }).notNull(),
-    suggestedCategory: text('suggested_category'),
-    suggestedSubcategory: text('suggested_subcategory'),
+    suggestedType: text('suggested_type'),
     suggestedColours: text('suggested_colours', { mode: 'json' }).notNull().$type<ReadonlyArray<string>>(),
+    suggestedSeason: text('suggested_season'),
+    suggestedOccasions: text('suggested_occasions', { mode: 'json' }).notNull().$type<ReadonlyArray<string>>(),
+    suggestedPattern: text('suggested_pattern'),
     pieceId: text('piece_id'),
     /** How likely the decision model thinks the cut-out shows one whole garment (0–1); under 0.5 the tray lists it
      * as needing a better look. None for detections found before it was kept. */

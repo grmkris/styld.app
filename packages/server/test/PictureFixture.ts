@@ -40,7 +40,7 @@ export const cutout = (colour: readonly [number, number, number]) => {
 }
 
 const pieceRow = (id: string, imageKey: string, originalKey: string, contentType: string, now: number) =>
-  [id, picturesAccount, 'top', '[]', 'ready', 'website', originalKey, imageKey, contentType, 1, now, now] as const
+  [id, picturesAccount, 'tops', '[]', 'ready', 'website', originalKey, imageKey, contentType, 1, now, now] as const
 
 /** The account and its pieces, each cut-out stored where a reviewed piece's would be. */
 const seed = (database: QueryDatabaseClient, media: ReadWriteBucketClient) =>
@@ -48,7 +48,7 @@ const seed = (database: QueryDatabaseClient, media: ReadWriteBucketClient) =>
     yield* seedIdentity(database, picturesAccount)
     const now = yield* Clock.currentTimeMillis
     const insert = database.prepare(
-      'INSERT INTO pieces (id, account_id, category, colours, status, source, original_key, image_key, content_type, bytes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      'INSERT INTO pieces (id, account_id, type, colours, status, source, original_key, image_key, content_type, bytes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
     )
     const rows = []
     for (const name of ['red', 'green', 'blue'] as const) {

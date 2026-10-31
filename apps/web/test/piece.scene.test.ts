@@ -18,8 +18,7 @@ import { pieceFixture } from './WardrobeFixtures.ts'
 
 const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
 const jeans = pieceFixture('jeans', {
-  category: 'bottom',
-  subcategory: 'jeans',
+  type: 'jeans',
   colours: ['navy'],
   notes: 'Hem taken up',
 })
@@ -77,15 +76,19 @@ describe('the piece page', () => {
     )
   })
 
-  test('editing offers the shelves of the chosen category', () => {
+  test('editing offers every garment type under its group, as a shop lists them, and the attributes', () => {
     scene(
       { update, view },
       given(piecePage(Load.Loaded({ piece: jeans }))),
       click(role('button', { name: 'Edit' })),
       expect(role('button', { name: 'Jeans' })).toHaveAttr('aria-pressed', 'true'),
-      click(role('button', { name: 'Shoes' })),
-      expect(role('button', { name: 'Boots' })).toHaveAttr('aria-pressed', 'false'),
-      expect(role('button', { name: 'Jeans' })).not.toExist(),
+      expect(text('Shoes')).toExist(),
+      click(role('button', { name: 'Boots' })),
+      expect(role('button', { name: 'Boots' })).toHaveAttr('aria-pressed', 'true'),
+      expect(role('button', { name: 'Jeans' })).toHaveAttr('aria-pressed', 'false'),
+      expect(role('group', { name: 'When it’s worn (optional)' })).toExist(),
+      expect(role('button', { name: 'Cold weather' })).toHaveAttr('aria-pressed', 'false'),
+      expect(role('textbox', { name: 'Brand (optional)' })).toExist(),
       click(role('button', { name: 'Cancel' })),
       expect(role('heading', { name: 'Jeans' })).toExist(),
     )

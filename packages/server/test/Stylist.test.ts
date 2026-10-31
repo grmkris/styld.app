@@ -17,21 +17,21 @@ const fixture = (name: string): unknown =>
 
 // The recording's wardrobe (fixtures/stylist/README.md).
 const pieces = [
-  { id: 'pc_navytrousers0000000000', name: 'Navy trousers', category: 'bottom', colours: ['navy'] },
-  { id: 'pc_whitetee00000000000000', name: 'White tee', category: 'top', colours: ['white'] },
-  { id: 'pc_greyknit00000000000000', name: 'Grey knit', category: 'top', colours: ['grey'] },
-  { id: 'pc_whitesneakers000000000', name: 'White sneakers', category: 'shoes', colours: ['white'] },
+  { id: 'pc_navytrousers0000000000', name: 'Navy trousers', type: 'trousers', colours: ['navy'] },
+  { id: 'pc_whitetee00000000000000', name: 'White tee', type: 'tops', colours: ['white'] },
+  { id: 'pc_greyknit00000000000000', name: 'Grey knit', type: 'tops', colours: ['grey'] },
+  { id: 'pc_whitesneakers000000000', name: 'White sneakers', type: 'trainers', colours: ['white'] },
 ]
 
 const pieceSearch = tool({
   name: 'piece_search',
   title: 'Search the wardrobe',
-  description: 'Pieces in the wardrobe, newest first, filtered by words, a category or a colour.',
-  parameters: Schema.Struct({ query: Schema.optionalKey(Schema.String), category: Schema.optionalKey(Schema.String) }),
+  description: 'Pieces in the wardrobe, newest first, filtered by words, a garment type or a colour.',
+  parameters: Schema.Struct({ query: Schema.optionalKey(Schema.String), type: Schema.optionalKey(Schema.String) }),
   annotations: { readOnlyHint: true, openWorldHint: false },
   handler: (input) =>
     Effect.succeed({
-      pieces: pieces.filter((piece) => input.category === undefined || piece.category === input.category),
+      pieces: pieces.filter((piece) => input.type === undefined || piece.type === input.type),
       nextCursor: null,
     }),
 })
@@ -319,7 +319,7 @@ describe('what Styld is told', () => {
   test('the date and season, the wardrobe in a line, and the person’s language; never an id', () => {
     const prompt = systemPrompt({ locale: 'sl', today: '2026-01-12', outline: outlineOf(pieces) })
     expect(prompt).toContain('Today is 2026-01-12 (winter).')
-    expect(prompt).toContain('The wardrobe holds 4 pieces: 1 bottom, 2 top, 1 shoes.')
+    expect(prompt).toContain('The wardrobe holds 4 pieces: 1 trousers, 2 tops, 1 trainers.')
     expect(prompt).toContain('Write in Slovenian')
     expect(prompt).toContain('informal singular ti')
     // The app's word for a look, and no gender chosen for the person (DESIGN.md › Copy and chrome).

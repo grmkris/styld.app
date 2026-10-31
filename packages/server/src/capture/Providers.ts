@@ -1,4 +1,4 @@
-import type { Category, Colour, Subcategory } from '@styld/protocol'
+import type { Colour, Occasion, Pattern, PieceType, Season } from '@styld/protocol'
 import { Context, Effect, type Option, Schema } from 'effect'
 import type { Found } from './SamStream.ts'
 
@@ -36,10 +36,13 @@ export interface Route {
 
 /** What the decision model suggests for one cut-out piece. */
 export interface Suggestion {
-  readonly category: Category | undefined
+  readonly type: PieceType | undefined
+  /** How sure the model is of the kind of thing it is: the share of its answer on the type's group. */
   readonly confidence: number
-  readonly subcategory: Subcategory | undefined
   readonly colours: ReadonlyArray<Colour>
+  readonly season: Season | undefined
+  readonly occasions: ReadonlyArray<Occasion>
+  readonly pattern: Pattern | undefined
   /** How likely the piece is one whole garment, shown completely, rather than part of one, several, or not
    * clothing (0–1). */
   readonly whole: number

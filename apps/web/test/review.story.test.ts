@@ -18,13 +18,19 @@ import {
 } from '../src/page/Review.ts'
 
 const id = (prefix: 'cp' | 'dt', n: number) => `${prefix}_${String(n).padStart(22, '0')}`
-const detection = (n: number, category: 'top' | 'bottom' | null, preselected = true, sightings = 1) => ({
+const detection = (n: number, type: 'tops' | 'jeans' | null, preselected = true, sightings = 1) => ({
   id: DetectionId.make(id('dt', n)),
   preselected,
   hasCutout: true,
   hasBack: false,
   sightings,
-  suggestion: { category, subcategory: null, colours: category === null ? [] : (['navy'] as const) },
+  suggestion: {
+    type,
+    colours: type === null ? [] : (['navy'] as const),
+    season: null,
+    occasions: [],
+    pattern: null,
+  },
 })
 
 const tray = (
@@ -41,7 +47,7 @@ const tray = (
 })
 
 const found = tray([
-  { status: 'review', detections: [detection(1, 'top'), detection(2, 'bottom'), detection(3, null)] },
+  { status: 'review', detections: [detection(1, 'tops'), detection(2, 'jeans'), detection(3, null)] },
 ])
 
 describe('the review tray', () => {
@@ -57,7 +63,7 @@ describe('the review tray', () => {
     )
   })
 
-  test('offers suggested pieces ticked, and a piece without a category opens to say what it is', () => {
+  test('offers suggested pieces ticked, and a piece without a type opens to say what it is', () => {
     story(
       update,
       given(init()),
@@ -65,7 +71,7 @@ describe('the review tray', () => {
       model((current) => expect(keptOf(current).map(({ id: kept }) => kept)).toEqual([id('dt', 1), id('dt', 2)])),
       message(Message.ToggledKeep({ detectionId: id('dt', 3) })),
       model(({ editing }) => expect(editing).toEqual(Option.some(id('dt', 3)))),
-      message(Message.ChoseCategory({ category: 'shoes' })),
+      message(Message.ChoseType({ type: 'flats' })),
       message(Message.UpdatedName({ value: ' Loafers ' })),
       message(Message.ClickedDoneEditing()),
       model((current) => {
@@ -81,9 +87,14 @@ describe('the review tray', () => {
       keep: [
         {
           detectionId: id('dt', 1),
-          category: 'top',
-          subcategory: Option.none(),
-          colours: ['navy'],
+          type: 'tops',
+          details: {
+            type: Option.some('tops'),
+            colours: ['navy'],
+            season: Option.none(),
+            occasions: [],
+            pattern: Option.none(),
+          },
           name: Option.none(),
           useOriginal: false,
         },
@@ -157,8 +168,8 @@ describe('the review tray', () => {
   })
 
   test('a piece seen in several files splits back into its sightings, which the tray reads again', () => {
-    const seenTwice = tray([{ status: 'review', detections: [detection(1, 'top', true, 2)] }])
-    const apart = tray([{ status: 'review', detections: [detection(1, 'top'), detection(2, 'top')] }])
+    const seenTwice = tray([{ status: 'review', detections: [detection(1, 'tops', true, 2)] }])
+    const apart = tray([{ status: 'review', detections: [detection(1, 'tops'), detection(2, 'tops')] }])
     const detectionId = id('dt', 1)
     story(
       update,
