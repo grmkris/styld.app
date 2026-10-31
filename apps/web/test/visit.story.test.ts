@@ -50,17 +50,17 @@ const nika = Schema.decodeUnknownSync(SearchResults)({
 })
 
 describe('a profile', () => {
-  test('opens on the first tab with something public in it, and on Boards when nothing is', () => {
-    const knit = {
-      id: `pc_${'knit'.padEnd(22, 'x')}`,
-      name: 'Navy knit',
-      category: 'top',
-      subcategory: null,
-      colours: [],
+  test('opens on Looks when only looks are public, and on Boards otherwise', () => {
+    const look = {
+      id: `lk_${'monday'.padEnd(22, 'x')}`,
+      name: 'Monday',
+      occasion: null,
+      pieces: [],
+      sharedAt: '2026-10-30T08:00:00.000Z',
     }
-    const onlyPieces = Schema.decodeUnknownSync(PublicProfile)({ ...profile(false), pieces: [knit] })
+    const onlyLooks = Schema.decodeUnknownSync(PublicProfile)({ ...profile(false), looks: [look] })
     const visiting = init(Target.Person({ handle: 'nika.kovac' }), false)
-    expect(update(visiting, Message.SucceededLoadPerson({ profile: onlyPieces })).model.tab).toBe('pieces')
+    expect(update(visiting, Message.SucceededLoadPerson({ profile: onlyLooks })).model.tab).toBe('looks')
     expect(update(visiting, Message.SucceededLoadPerson({ profile: profile(false) })).model.tab).toBe('boards')
   })
 })
