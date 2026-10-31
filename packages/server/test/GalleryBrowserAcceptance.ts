@@ -303,7 +303,7 @@ const verifyStylist = async (page: Page, origin: string) => {
   expect(await page.getByRole('textbox', { name: 'Message to Styld' }).inputValue()).toBe(question)
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await page.getByRole('list', { name: question }).waitFor({ state: 'visible' })
-  await page.getByText('Have a good day.').waitFor({ state: 'visible', timeout: 30000 })
+  await page.getByText(/^Wear your \w+ today\.$/).waitFor({ state: 'visible', timeout: 30000 })
   const shown = page.getByRole('list', { name: 'Pieces Styld suggests' }).getByRole('link')
   expect(await shown.count()).toBe(1)
   expect(await shown.getAttribute('href')).toMatch(/^\/wardrobe\/pc_/)

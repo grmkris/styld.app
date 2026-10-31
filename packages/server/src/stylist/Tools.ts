@@ -13,6 +13,10 @@ export const stylistToolNames: ReadonlyArray<string> = [
   'look_create',
 ]
 
+/** Tools that only show something under the reply: their answer tells the model nothing new, so a call that has
+ * written its words and calls only these ends the reply, rather than asking the model again to restate it. */
+export const showingToolNames: ReadonlySet<string> = new Set(['pieces_show'])
+
 /** A tool's input schema as the model sees it: without `operationId`, which the turn chooses for each call so a
  * retried reply saves once. */
 export const modelSchema = (schema: object): { readonly schema: JsonSchema; readonly operation: boolean } => {

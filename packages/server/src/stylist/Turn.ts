@@ -12,13 +12,15 @@ export interface StepUsage {
 const progressEvery = 250
 
 /** Run one reply: the model answers the chat so far, calling the toolkit's tools as it needs, for at most
- * `maxSteps` calls; each call's answer is fed back before the next. `progress` hears the reply so far, at most four
- * times a second, and `counted` each call's usage; the words of every call are kept, a blank line apart. */
+ * `maxSteps` calls; each call's answer is fed back before the next. A call that wrote words and called only
+ * `showing` tools ends the reply. `progress` hears the reply so far, at most four times a second, and `counted` each
+ * call's usage; the words of every call are kept, a blank line apart. */
 export const runTurn = <Tools extends Record<string, Tool.Any>>(input: {
   readonly system: string
   readonly history: ReadonlyArray<{ readonly role: 'person' | 'styld'; readonly text: string }>
   readonly toolkit: Toolkit.WithHandler<Tools>
   readonly maxSteps: number
+  readonly showing: ReadonlySet<string>
   readonly progress: (text: string) => Effect.Effect<void>
   readonly counted: (usage: StepUsage) => Effect.Effect<void>
 }) =>
@@ -43,14 +45,15 @@ export const runTurn = <Tools extends Record<string, Tool.Any>>(input: {
     for (let step = 0; step < input.maxSteps; step++) {
       const started = yield* Clock.currentTimeMillis
       const before = (yield* Ref.get(written)).join('\n\n')
-      const state = { text: '', calls: 0, inputTokens: 0, outputTokens: 0 }
+      const calls: Array<string> = []
+      const state = { text: '', inputTokens: 0, outputTokens: 0 }
       yield* chat.streamText({ prompt: [], toolkit: input.toolkit }).pipe(
         Stream.runForEach((part) => {
           if (part.type === 'text-delta') {
             state.text += part.delta
             return report([before, state.text].filter((text) => text.length > 0).join('\n\n'), false)
           }
-          if (part.type === 'tool-call') state.calls += 1
+          if (part.type === 'tool-call') calls.push(part.name)
           if (part.type === 'finish') {
             state.inputTokens += part.usage.inputTokens.total ?? 0
             state.outputTokens += part.usage.outputTokens.total ?? 0
@@ -62,7 +65,8 @@ export const runTurn = <Tools extends Record<string, Tool.Any>>(input: {
       yield* input.counted({ milliseconds, inputTokens: state.inputTokens, outputTokens: state.outputTokens })
       const text = state.text.trim()
       if (text.length > 0) yield* Ref.update(written, (all) => [...all, text])
-      if (state.calls === 0) break
+      const showedOnly = text.length > 0 && calls.every((name) => input.showing.has(name))
+      if (calls.length === 0 || showedOnly) break
     }
     const reply = (yield* Ref.get(written)).join('\n\n')
     yield* report(reply, true)

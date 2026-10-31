@@ -6,13 +6,12 @@ import { workersAiFetch } from '../src/stylist/WorkersAiFetch.ts'
 
 // Test-only: a stand-in for the stylist's model behind an OpenAI-compatible gateway. It answers by where the reply
 // is, not from recordings (those are unit-tested in Stylist.test.ts): first it searches the wardrobe, then it
-// suggests the first piece it found and shows it, then it signs off. A message with `[[fail]]` is refused, as a model
+// suggests the first piece it found and shows it, which ends the reply. A message with `[[fail]]` is refused, as a model
 // that is down would be. Its answers go out as the gateway streams them, through the same adapter Workers AI uses.
 
 const Message = Schema.Struct({
   role: Schema.String,
   content: Schema.optionalKey(Schema.NullOr(Schema.String)),
-  tool_calls: Schema.optionalKey(Schema.Array(Schema.Struct({ function: Schema.Struct({ name: Schema.String }) }))),
 })
 const Request = Schema.Struct({ messages: Schema.Array(Message) })
 const Found = Schema.fromJsonString(
@@ -37,13 +36,11 @@ const completion = (content: string, toolCalls: ReadonlyArray<object> = []) => (
   usage: { prompt_tokens: 100, completion_tokens: 20, total_tokens: 120 },
 })
 
-/** The next answer, by the messages so far: since the person's last message, no tool yet, a search, or a show. */
+/** The next answer, by the messages so far: since the person's last message, no tool yet or a search. */
 const answer = (messages: (typeof Request.Type)['messages']) => {
   const lastPerson = messages.findLastIndex(({ role }) => role === 'user')
   const since = messages.slice(lastPerson + 1)
   const searched = since.find(({ role, content }) => role === 'tool' && (content ?? '').includes('"pieces"'))
-  const shown = since.some(({ tool_calls }) => tool_calls?.some(({ function: { name } }) => name === 'pieces_show'))
-  if (shown) return completion('Have a good day.')
   if (searched === undefined) return completion('', [call('piece_search', {})])
   const [first] = Schema.decodeUnknownOption(Found)(searched.content ?? '').pipe(
     Option.match({

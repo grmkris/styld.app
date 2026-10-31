@@ -54,7 +54,8 @@ export const verifyStylist = async (origin: string) => {
   expect(answered.title).toBe('What should I wear today?')
   expect(answered.messages.map(({ role }) => role)).toEqual(['person', 'styld'])
   const [, reply] = answered.messages
-  expect(reply?.text).toMatch(/^Wear your \w+ today\.\n\nHave a good day\.$/)
+  // The call that wrote the words and showed the piece ended the reply.
+  expect(reply?.text).toMatch(/^Wear your \w+ today\.$/)
   const shown = reply?.parts.flatMap(({ pieceIds }) => pieceIds ?? []) ?? []
   expect(shown).toHaveLength(1)
   expect(ownPieces.has(shown[0] ?? '')).toBe(true)

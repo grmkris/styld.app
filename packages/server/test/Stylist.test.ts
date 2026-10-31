@@ -7,7 +7,7 @@ import { describe, expect, test } from 'vitest'
 import { type Tool as AssistantTool, tool, ToolError } from '../src/mcp/Tools.ts'
 import { stylistPolicy } from '../src/stylist/Policy.ts'
 import { historyText, outlineOf, systemPrompt } from '../src/stylist/Prompt.ts'
-import { modelSchema, turnTools } from '../src/stylist/Tools.ts'
+import { modelSchema, showingToolNames, turnTools } from '../src/stylist/Tools.ts'
 import { runTurn } from '../src/stylist/Turn.ts'
 import { type RunChat, workersAiFetch } from '../src/stylist/WorkersAiFetch.ts'
 
@@ -55,66 +55,83 @@ const modelOver = (run: RunChat, extra: Readonly<Record<string, unknown>> = {}) 
     ),
   )
 
+const Loose = Schema.Record(Schema.String, Schema.Unknown)
+const loose = Schema.decodeUnknownSync(Loose)
+
+/** A recorded answer with its words left out: a model that shows the pieces before it writes. */
+const wordless = (answer: unknown): unknown => {
+  const whole = loose(answer)
+  const choices = Schema.decodeUnknownSync(Schema.Array(Loose))(whole['choices'])
+  return {
+    ...whole,
+    choices: choices.map((choice) => ({ ...choice, message: { ...loose(choice['message']), content: '' } })),
+  }
+}
+
+/** One reply over the recorded wardrobe, the model answering with `answers` in turn. */
+const replyWith = (answers: ReadonlyArray<unknown>, maxSteps = 6) => {
+  const { run, asked } = replaying(answers)
+  const progress: Array<string> = []
+  const counted: Array<number> = []
+  const replied = Effect.runPromise(
+    Effect.gen(function* () {
+      const tools = yield* turnTools(
+        [pieceSearch],
+        { turnId: 'tn_test', pieceIds: new Set(pieces.map(({ id }) => id)) },
+        Context.empty(),
+      )
+      const text = yield* runTurn({
+        system: systemPrompt({ locale: 'en', today: '2026-10-31', outline: outlineOf(pieces) }),
+        history: [{ role: 'person', text: 'What should I wear today? Something casual.' }],
+        toolkit: yield* tools.toolkit.pipe(Effect.provide(tools.handlers)),
+        maxSteps,
+        showing: showingToolNames,
+        progress: (sofar) => Effect.sync(() => progress.push(sofar)),
+        counted: (usage) => Effect.sync(() => counted.push(usage.inputTokens)),
+      })
+      return { reply: text, parts: yield* tools.parts }
+    }).pipe(Effect.provide(modelOver(run, { reasoning_effort: 'low' }))),
+  )
+  return { replied, asked, progress, counted }
+}
+
 describe('a reply', () => {
-  test('looks the wardrobe up, shows the pieces it suggests, and keeps every call’s words (recorded GLM-5.3-flash)', async () => {
-    const { run, asked } = replaying([0, 1, 2].map((step) => fixture(`glm-step-${step}.json`)))
-    const progress: Array<string> = []
-    const counted: Array<number> = []
-    const { reply, parts } = await Effect.runPromise(
-      Effect.gen(function* () {
-        const tools = yield* turnTools(
-          [pieceSearch],
-          { turnId: 'tn_test', pieceIds: new Set(pieces.map(({ id }) => id)) },
-          Context.empty(),
-        )
-        const text = yield* runTurn({
-          system: systemPrompt({ locale: 'en', today: '2026-10-31', outline: outlineOf(pieces) }),
-          history: [{ role: 'person', text: 'What should I wear today? Something casual.' }],
-          toolkit: yield* tools.toolkit.pipe(Effect.provide(tools.handlers)),
-          maxSteps: 6,
-          progress: (sofar) => Effect.sync(() => progress.push(sofar)),
-          counted: (usage) => Effect.sync(() => counted.push(usage.inputTokens)),
-        })
-        return { reply: text, parts: yield* tools.parts }
-      }).pipe(Effect.provide(modelOver(run, { reasoning_effort: 'low' }))),
-    )
+  test('looks the wardrobe up, then ends with its words and the pieces it shows (recorded GLM-5.3-flash)', async () => {
+    const recorded = [0, 1, 2].map((step) => fixture(`glm-step-${step}.json`))
+    const { replied, asked, progress, counted } = replyWith(recorded)
+    const { reply, parts } = await replied
     expect(reply).toMatch(/^For a casual autumn day, I'd go with your grey knit over a white tee/)
-    expect(reply).toMatch(/\n\nIt's an easy, clean combination/)
+    // Its last recorded call only restated the answer: a call with words that only shows pieces ends the reply.
+    expect(reply).not.toContain("It's an easy")
     // It showed all four pieces of the outfit, once.
     expect(parts).toHaveLength(1)
     const [shown] = parts
     expect(Predicate.isTagged(shown, 'Pieces') && [...shown.pieceIds].toSorted()).toEqual(
       pieces.map(({ id }) => id).toSorted(),
     )
-    // Three model calls, each counted; the tool's answer went back before the second.
-    expect(counted).toEqual([539, 676, 787])
-    expect(asked).toHaveLength(3)
+    // Two model calls, each counted; the search's answer went back before the second.
+    expect(counted).toEqual([539, 676])
+    expect(asked).toHaveLength(2)
     expect(asked.every((input) => input['reasoning_effort'] === 'low')).toBe(true)
     expect(JSON.stringify(asked[1]?.['messages'])).toContain('pc_navytrousers0000000000')
     expect(progress.at(-1)).toBe(reply)
   })
 
+  test('pieces shown before any words: it goes on for the words', async () => {
+    const shownFirst = wordless(fixture('glm-step-1.json'))
+    const { replied, asked } = replyWith([fixture('glm-step-0.json'), shownFirst, fixture('glm-step-2.json')])
+    const { reply, parts } = await replied
+    expect(asked).toHaveLength(3)
+    expect(reply).toMatch(/^It's an easy, clean combination/)
+    expect(parts).toHaveLength(1)
+  })
+
   test('stops after its last allowed call, keeping what it wrote', async () => {
-    const { run, asked } = replaying([fixture('glm-step-0.json'), fixture('glm-step-1.json')])
-    const reply = await Effect.runPromise(
-      Effect.gen(function* () {
-        const tools = yield* turnTools(
-          [pieceSearch],
-          { turnId: 'tn_test', pieceIds: new Set(pieces.map(({ id }) => id)) },
-          Context.empty(),
-        )
-        return yield* runTurn({
-          system: 'You are Styld.',
-          history: [{ role: 'person', text: 'What should I wear?' }],
-          toolkit: yield* tools.toolkit.pipe(Effect.provide(tools.handlers)),
-          maxSteps: 2,
-          progress: () => Effect.void,
-          counted: () => Effect.void,
-        })
-      }).pipe(Effect.provide(modelOver(run))),
-    )
-    expect(asked).toHaveLength(2)
-    expect(reply).toMatch(/^For a casual autumn day/)
+    const { replied, asked } = replyWith([fixture('glm-step-0.json')], 1)
+    const { reply, parts } = await replied
+    expect(asked).toHaveLength(1)
+    expect(reply).toBe('')
+    expect(parts).toEqual([])
   })
 })
 
