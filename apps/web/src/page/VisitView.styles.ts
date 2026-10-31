@@ -52,8 +52,11 @@ export const pieceBar = style({ maxInlineSize: '420px' })
 export const barActions = style({ display: 'flex', alignItems: 'center', gap: '8px' })
 /** The head bar's room while the page loads: its 44px rounds. */
 export const barSkeleton = style({ display: 'block', blockSize: '44px' })
-/** A piece's name on its own page. */
+/** A piece's name on its own page, with its kind just under it. */
+export const pieceHead = style({ display: 'grid', gap: '4px' })
 export const name = style({ margin: '0', fontSize: '28px', lineHeight: 1.1 })
+/** A quiet line about the piece: its kind, or that it is yours. */
+export const meta = style({ margin: '0', color: 'ink2' })
 export const handle = style({ margin: '0', fontSize: '14px', color: 'ink2' })
 export const bio = style({ margin: '0', marginBlockStart: '4px', maxInlineSize: '34ch' })
 export const tabs = style({

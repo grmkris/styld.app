@@ -1176,7 +1176,8 @@
     "wishlistFailed": "Tvojega seznama želja ni bilo mogoče naložiti",
     "signInToSave": "Prijavi se, da shraniš",
     "gotIt": "Imam ga: dodaj ga",
-    "openYours": "Tvoj kos: odpri ga v garderobi",
+    "openYours": "Odpri v garderobi",
+    "pieceYours": "To je tvoj kos",
     "wishlistExplore": "Poišči kose v Razišči"
   },
   "profile": {

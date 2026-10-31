@@ -773,6 +773,7 @@ export interface MessageArgumentsByKey<T = string> {
   'people.fromFollowing': Readonly<Record<string, never>>
   'people.gotIt': Readonly<Record<string, never>>
   'people.openYours': Readonly<Record<string, never>>
+  'people.pieceYours': Readonly<Record<string, never>>
   'people.removeWish': Readonly<Record<string, never>>
   'people.saved': Readonly<Record<string, never>>
   'people.savedFromOthers': Readonly<Record<string, never>>
@@ -1930,4 +1931,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'f59f497116d7ceffe60e741f4052f0b11de059540dabf15a4ecabae8500d465f'
+export const catalogVersion = 'ec140504ff88df045bde6e347a8e01fb3437d66d0dc809f18d3e21c4e4cbc2ed'

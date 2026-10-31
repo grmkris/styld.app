@@ -20,7 +20,7 @@ import { exploreLoading, exploreSearchForm, exploreSections, searchView } from '
 import { head as exploreHead, page as explorePage } from './ExploreView.styles.ts'
 import { ExploreSearch, Message, type Model, type PersonTab, Sharing, Shown, Target } from './Visit.ts'
 import * as styles from './VisitView.styles.ts'
-import { pieceLabel } from './WardrobeWords.ts'
+import { kindName, pieceLabel } from './WardrobeWords.ts'
 
 const tabLabel = (tab: PersonTab, locale: Locale) =>
   format(
@@ -204,15 +204,21 @@ const pieceView = (
       h.Alt(pieceLabel(piece, locale)),
       ...styled(h, styles.pieceImage()),
     ]),
-    h.h1(styled(h, styles.name()), [pieceLabel(piece, locale)]),
-    byline(by, locale, h),
-    // One's own piece has nothing to save or report: it opens in the wardrobe instead.
-    yours
-      ? h.a(
-          [h.Href(pieceRouter({ pieceId: piece.id })), ...styled(h, secondaryAction())],
-          [format(locale, 'people.openYours', {})],
-        )
-      : peopleSlot('visit-people', PeopleView.view, model, inputs, h),
+    // The kind under a name; a piece without one is already named by its kind.
+    h.div(styled(h, styles.pieceHead()), [
+      h.h1(styled(h, styles.name()), [pieceLabel(piece, locale)]),
+      piece.name === null ? h.empty : h.p(styled(h, styles.meta()), [format(locale, kindName(piece), {})]),
+    ]),
+    // One's own piece needs no byline and has nothing to save or report: it opens in the wardrobe instead.
+    ...(yours
+      ? [
+          h.p(styled(h, styles.meta()), [format(locale, 'people.pieceYours', {})]),
+          h.a(
+            [h.Href(pieceRouter({ pieceId: piece.id })), ...styled(h, secondaryAction())],
+            [format(locale, 'people.openYours', {})],
+          ),
+        ]
+      : [byline(by, locale, h), peopleSlot('visit-people', PeopleView.view, model, inputs, h)]),
   ])
 }
 

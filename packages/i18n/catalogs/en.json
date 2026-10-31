@@ -1176,7 +1176,8 @@
     "wishlistFailed": "Your wishlist could not be loaded",
     "signInToSave": "Sign in to save",
     "gotIt": "I got one: add it",
-    "openYours": "Yours: open it in your wardrobe",
+    "openYours": "Open in your wardrobe",
+    "pieceYours": "This piece is yours",
     "wishlistExplore": "Find pieces in Explore"
   },
   "profile": {

@@ -154,6 +154,7 @@ describe('a public profile', () => {
       { update, view },
       given(visiting(`/pieces/${knit.id}`, Shown.Piece({ page }))),
       expect(role('heading', { name: 'Navy knit' })).toExist(),
+      expect(text('Top')).toExist(),
       expect(role('img', { name: 'Navy knit' })).toHaveAttr('src', `/cdn/public/pieces/${knit.id}/full`),
       expect(role('link', { name: /By Nika Kovač/ })).toHaveAttr('href', '/@nika.kovac'),
       expect(role('link', { name: 'Sign in to save' })).toHaveAttr('href', '/login'),
@@ -162,12 +163,14 @@ describe('a public profile', () => {
     )
   })
 
-  test('one’s own public piece opens in the wardrobe, with nothing to save or report', () => {
+  test('one’s own public piece says so and opens in the wardrobe, with no byline and nothing to save or report', () => {
     const page = Schema.decodeUnknownSync(PublicPiecePage)({ yours: true, piece: knit, by })
     scene(
       { update, view },
       given(signedIn(visiting(`/pieces/${knit.id}`, Shown.Piece({ page })))),
-      expect(role('link', { name: 'Yours: open it in your wardrobe' })).toHaveAttr('href', `/wardrobe/${knit.id}`),
+      expect(text('This piece is yours')).toExist(),
+      expect(role('link', { name: 'Open in your wardrobe' })).toHaveAttr('href', `/wardrobe/${knit.id}`),
+      expect(role('link', { name: /By Nika Kovač/ })).toBeAbsent(),
       expect(role('button', { name: 'Save to wishlist' })).toBeAbsent(),
       expect(role('button', { name: 'Report piece' })).toBeAbsent(),
     )
