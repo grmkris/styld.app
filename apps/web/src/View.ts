@@ -465,7 +465,7 @@ const stylistPage = (model: Model, h: HtmlBuilder<Message>): Html =>
     slotId: 'stylist',
     model: model.stylist,
     view: StylistView.view,
-    viewInputs: { locale: model.context.locale, names: pieceNames(model) },
+    viewInputs: { locale: model.context.locale, names: pieceNames(model), timeZone: model.context.timeZone },
     toParentMessage: (message) => Message.GotStylistMessage({ message }),
   })
 

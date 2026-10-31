@@ -10,6 +10,8 @@ export const page = style({
   gap: '16px',
   maxInlineSize: '40rem',
   minBlockSize: 'calc(100svh - max(64px, 60px + env(safe-area-inset-top)))',
+  // On a wide screen the chat is a centred column, not one hugging the rail.
+  '@media (min-width: 900px)': { marginInline: 'auto', inlineSize: '100%' },
   paddingBlockStart: '8px',
 })
 /** As tall as New chat, so the title stays put when the button comes. */
@@ -21,6 +23,15 @@ export const pageBar = style({
   minBlockSize: '48px',
 })
 export const lede = style({ color: 'ink2' })
+/** The ways to start, as whole sentences: each its own pill, wrapping if it must, one under the other. */
+export const starters = style({ display: 'grid', justifyItems: 'start', gap: '8px' })
+export const starter = style({
+  whiteSpace: 'normal',
+  textAlign: 'start',
+  textWrap: 'pretty',
+  paddingBlock: '8px',
+  fontWeight: 500,
+})
 export const thread = style({ display: 'grid', gap: '14px', margin: '0', padding: '0', listStyleType: 'none' })
 /** The person's message, set apart on the right. */
 export const person = style({
@@ -93,6 +104,7 @@ export const chatLink = style({
   inlineSize: '100%',
   minBlockSize: '52px',
   paddingBlock: '8px',
+  paddingInline: '0',
   borderWidth: '0',
   borderBlockEndWidth: '1px',
   borderBlockEndStyle: 'solid',
@@ -102,6 +114,8 @@ export const chatLink = style({
   textAlign: 'start',
   cursor: 'pointer',
 })
+export const chatTitle = style({ fontSize: '15px' })
+export const chatDate = style({ fontSize: '13px', color: 'ink2', fontVariantNumeric: 'tabular-nums' })
 export const sectionTitle = style({ fontSize: '17px', fontWeight: 600 })
 /** The composer: in reach at the bottom of the screen, clear of the phone's floating navigation, and at the end of a
  * long chat above the site's footer rather than over it. */

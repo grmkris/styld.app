@@ -2868,7 +2868,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'today.review': 'Preglej jih',
   'today.keepGoing': 'Nadaljuj',
   'stylist.title': 'Vprašaj Styld',
-  'stylist.intro': 'Styld je tvoj stilist in pozna tvojo garderobo. Vprašaj, kaj obleči, kaj se ujema ali kaj manjka.',
+  'stylist.intro': 'Vprašaj, kaj obleči, kaj se ujema ali kaj manjka. Styld vidi celo tvojo garderobo.',
   'stylist.startersLabel': 'Kaj lahko vprašaš',
   'stylist.starter.today': 'Kaj naj oblečem danes?',
   'stylist.starter.together': 'Kaj se v moji garderobi dobro ujema?',

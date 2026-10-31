@@ -1,5 +1,5 @@
 import { catalogVersion } from '@styld/i18n'
-import { Chat, LookId } from '@styld/protocol'
+import { Chat, ChatSummary, LookId } from '@styld/protocol'
 import { AsyncData } from 'foldkit'
 import { Option, Schema } from 'effect'
 import { expect, given, role, scene, text } from 'foldkit/scene'
@@ -56,6 +56,21 @@ const opened = (stylist: Partial<Stylist.Model>) => ({
 })
 
 describe('Styld, the stylist in the app', () => {
+  test('a new chat lists the earlier chats with the day each last moved', () => {
+    const earlier = Schema.decodeUnknownSync(ChatSummary)({
+      id: chatId,
+      title: 'What should I wear today?',
+      updatedAt: '2026-10-29T18:00:00.000Z',
+    })
+    scene(
+      { update, view },
+      given(stylistWith(opened({ chats: AsyncData.Success({ data: [earlier] }) }))),
+      expect(role('heading', { name: 'Earlier chats' })).toExist(),
+      expect(role('button', { name: /^What should I wear today\?/ })).toExist(),
+      expect(text('29 Oct')).toExist(),
+    )
+  })
+
   test('arriving, the page is drawn in the shape of a chat until it knows whether one opens', () => {
     scene(
       { update, view },

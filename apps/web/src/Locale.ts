@@ -3,6 +3,8 @@ import { Schema } from 'effect'
 export const Locale = Schema.Literals(['en', 'sl', 'en-XA', 'ar-XB'])
 export type Locale = typeof Locale.Type
 export const localeEndpoint = '/locale'
+/** The locale dates and numbers are written in: Slovenian, else British English (29 Oct), as the pseudo-locales too. */
+export const intlLocale = (locale: Locale) => (locale === 'sl' ? 'sl' : 'en-GB')
 
 const layoutTestEnvironments: ReadonlySet<string> = new Set(['local', 'preview'])
 

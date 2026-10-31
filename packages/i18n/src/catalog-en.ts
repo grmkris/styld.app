@@ -2814,8 +2814,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'today.review': 'Review them',
   'today.keepGoing': 'Keep going',
   'stylist.title': 'Ask Styld',
-  'stylist.intro':
-    'Styld is your stylist and knows your wardrobe. Ask what to wear, what goes together, or what is missing.',
+  'stylist.intro': 'Ask what to wear, what goes together, or what is missing. Styld sees your whole wardrobe.',
   'stylist.startersLabel': 'Things to ask',
   'stylist.starter.today': 'What should I wear today?',
   'stylist.starter.together': 'What goes well together in my wardrobe?',

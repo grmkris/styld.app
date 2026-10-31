@@ -3176,7 +3176,7 @@
   },
   "stylist": {
     "title": "Vprašaj Styld",
-    "intro": "Styld je tvoj stilist in pozna tvojo garderobo. Vprašaj, kaj obleči, kaj se ujema ali kaj manjka.",
+    "intro": "Vprašaj, kaj obleči, kaj se ujema ali kaj manjka. Styld vidi celo tvojo garderobo.",
     "startersLabel": "Kaj lahko vprašaš",
     "starter": {
       "today": "Kaj naj oblečem danes?",

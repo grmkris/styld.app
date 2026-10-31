@@ -12,7 +12,8 @@ import { askRouter, lookRouter, pieceRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { round } from './PageBar.styles.ts'
-import { chip, chips } from './AskView.styles.ts'
+import { chip } from './AskView.styles.ts'
+import { intlLocale } from '../Locale.ts'
 import { canSend, isWriting, latestId, Message, type Model, Opening, type SendProblem, Sending } from './Stylist.ts'
 import { Button } from '@foldkit/ui'
 import * as styles from './StylistView.styles.ts'
@@ -40,7 +41,11 @@ const starters: ReadonlyArray<MessageKey> = [
 const plain = (text: string) => text.replaceAll('**', '')
 
 /** What the page knows besides the chat: the language, and the names of the person's pieces. */
-type Inputs = { readonly locale: Locale; readonly names: ReadonlyMap<string, string> }
+type Inputs = { readonly locale: Locale; readonly names: ReadonlyMap<string, string>; readonly timeZone: string }
+
+/** When a chat last moved, as a short date in the person's time zone ("31 Oct"). */
+const chatDate = (updatedAt: string, { locale, timeZone }: Inputs) =>
+  new Intl.DateTimeFormat(intlLocale(locale), { day: 'numeric', month: 'short', timeZone }).format(new Date(updatedAt))
 
 /** A piece Styld shows: its cutout on the paper and its name, the link's words. Before the wardrobe is read the
  * link says only that it opens a piece. */
@@ -147,18 +152,19 @@ const isReadingChat = (model: Model) =>
   Opening.guards.Reading(model.opening) ||
   (model.draft.length === 0 && (AsyncData.isIdle(model.chats) || AsyncData.isLoading(model.chats)))
 
-/** A new chat: what Styld is, what to ask, and the earlier chats to open again. */
-const startView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.div(styled(h, styles.thread()), [
+/** A new chat: what to ask, as whole sentences that wrap, and the earlier chats to open again, each with its date. */
+const startView = (model: Model, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
+  const { locale } = inputs
+  return h.div(styled(h, styles.thread()), [
     h.p(styled(h, styles.lede()), [format(locale, 'stylist.intro', {})]),
     h.div(
-      [h.Role('group'), h.AriaLabel(format(locale, 'stylist.startersLabel', {})), ...styled(h, chips())],
+      [h.Role('group'), h.AriaLabel(format(locale, 'stylist.startersLabel', {})), ...styled(h, styles.starters())],
       starters.map((key) => {
         const text = format(locale, key, {})
         return h.button(
           [
             h.Type('button'),
-            ...styled(h, chip()),
+            ...styled(h, cx(chip(), styles.starter())),
             h.OnClick(Message.ClickedStarter({ text, locale: chatLocale(locale) })),
           ],
           [text],
@@ -180,7 +186,7 @@ const startView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html 
                 ),
                 h.ul(
                   styled(h, styles.chats()),
-                  chats.map(({ id, title }) =>
+                  chats.map(({ id, title, updatedAt }) =>
                     h.keyed('li')(
                       id,
                       [],
@@ -191,7 +197,10 @@ const startView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html 
                             ...styled(h, styles.chatLink()),
                             h.OnClick(Message.ClickedChat({ chatId: id })),
                           ],
-                          [title],
+                          [
+                            h.span(styled(h, styles.chatTitle()), [title]),
+                            h.span(styled(h, styles.chatDate()), [chatDate(updatedAt, inputs)]),
+                          ],
                         ),
                       ],
                     ),
@@ -201,6 +210,7 @@ const startView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html 
             ),
     }),
   ])
+}
 
 /** The message being written and its send button, in reach above the phone's tab bar, with the price or why the last
  * one did not go. */
@@ -289,7 +299,7 @@ export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, 
           )
         : h.empty,
       Option.match(model.open, {
-        onNone: () => (isReadingChat(model) ? readingView(h) : startView(model, locale, h)),
+        onNone: () => (isReadingChat(model) ? readingView(h) : startView(model, inputs, h)),
         onSome: (chat) => threadView(chat, inputs, h),
       }),
       composerView(model, locale, h),

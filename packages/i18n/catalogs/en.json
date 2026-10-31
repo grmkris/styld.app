@@ -3176,7 +3176,7 @@
   },
   "stylist": {
     "title": "Ask Styld",
-    "intro": "Styld is your stylist and knows your wardrobe. Ask what to wear, what goes together, or what is missing.",
+    "intro": "Ask what to wear, what goes together, or what is missing. Styld sees your whole wardrobe.",
     "startersLabel": "Things to ask",
     "starter": {
       "today": "What should I wear today?",

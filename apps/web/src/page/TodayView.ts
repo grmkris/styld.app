@@ -9,6 +9,7 @@ import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { addIcon, checkIcon, loader, spinIcon } from '../Icon.ts'
 import { addPiecesRouter, boardRouter, exploreRouter, reviewRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
+import { intlLocale } from '../Locale.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { stillTable } from './Board/Table.ts'
@@ -20,8 +21,6 @@ import { title as headTitle } from './PageHead.styles.ts'
 import * as styles from './TodayView.styles.ts'
 import { pieceLabel } from './WardrobeWords.ts'
 import { feedView } from './FeedView.ts'
-
-const intlLocale = (locale: Locale) => (locale === 'sl' ? 'sl' : 'en')
 
 const dateOf = (day: string) => {
   const [year = 2026, month = 1, date = 1] = day.split('-').map(Number)
