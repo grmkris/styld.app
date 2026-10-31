@@ -137,7 +137,12 @@ export const send = style({
   backgroundColor: 'ink',
   color: 'onInk',
   cursor: 'pointer',
-  ':disabled': { opacity: 0.4, cursor: 'default' },
+  transitionProperty: 'transform, opacity',
+  transitionDuration: '140ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  ':active': { transform: 'scale(0.96)' },
+  // Foldkit UI's Button marks a disabled one data-disabled and aria-disabled, never the native attribute.
+  '&[data-disabled]': { opacity: 0.5, cursor: 'not-allowed' },
 })
 export const price = style({ fontSize: '13px', color: 'ink3' })
 export const problem = style({ fontSize: '14px', color: 'error' })
