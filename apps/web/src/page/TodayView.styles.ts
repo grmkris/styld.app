@@ -195,4 +195,3 @@ export const boardCrop = style({
     pointerEvents: 'none',
   },
 })
-export const explore = style({ display: 'inline-flex', alignItems: 'center', minBlockSize: '44px', fontWeight: 600 })
