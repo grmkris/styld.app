@@ -85,6 +85,7 @@ const Runtime = Layer.mergeAll(
   Cloudflare.Images.ImagesBinding,
   Cloudflare.Queues.WriteQueueBinding,
   Cloudflare.Queues.EventSourceLive,
+  Cloudflare.Workers.CronEventSourceLive,
   Cloudflare.Workers.AIBinding,
   Cloudflare.AnalyticsEngine.WriteDatasetBinding,
   // Traces record request URLs; upload paths carry a one-time token in `token`.
@@ -521,6 +522,14 @@ export default StyldWorker.make(
           const { stylist } = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
           yield* Stream.runForEach(messages, (message) => settleStylistTurn(stylist, message))
         }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
+    )
+    // Every ten minutes: generation jobs and checks whose messages were lost go to their queues again.
+    yield* Cloudflare.Workers.cron('*/10 * * * *', () =>
+      Effect.gen(function* () {
+        const { generations, checks } = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
+        yield* generations.sweep()
+        yield* checks.sweep()
+      }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
     )
     return { fetch }
   }).pipe(Effect.provide(Runtime)),

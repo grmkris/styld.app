@@ -1,8 +1,8 @@
 import { boardImages, boardItems, boards, contentChecks, looks, pieces, piecePictures, profiles } from '@styld/db'
 import { CheckReason, CheckState, type CheckStatus, WardrobeUnavailable } from '@styld/protocol'
-import { and, eq, inArray, isNotNull } from 'drizzle-orm'
+import { and, eq, inArray, isNotNull, lt } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
-import { Array, Context, DateTime, Effect, Option, Schema } from 'effect'
+import { Array, Context, DateTime, Duration, Effect, Option, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import type { Picture } from '../capture/Providers.ts'
@@ -140,6 +140,10 @@ const shownBy = (db: Database, target: CheckTarget) => {
   return pieceShows(db, target.id)
 }
 
+/** A check pending this long lost its message. */
+const pendingPatience = Duration.minutes(5)
+const sweepBatch = 100
+
 /** The judge reads a few pictures at a time. */
 const picturesPerJudgement = 3
 
@@ -176,6 +180,15 @@ const targetIs = (target: CheckTarget) =>
 
 /** The check rows: one per target, written only here. */
 const checkRows = (db: Database) => ({
+  /** Checks still pending since before `before`: their queue messages ran out, or never left. */
+  stalePending: (before: Date, limit: number) =>
+    attempt(() =>
+      db
+        .select({ kind: contentChecks.targetKind, id: contentChecks.targetId })
+        .from(contentChecks)
+        .where(and(eq(contentChecks.state, 'pending'), lt(contentChecks.requestedAt, before)))
+        .limit(limit),
+    ),
   /** Where the target's check stands, if it has been public. */
   kept: (target: CheckTarget) =>
     Effect.map(
@@ -307,6 +320,14 @@ const make = (bindings: CheckBindings) =>
       statuses: rows.statuses,
       /** An admin hides the target from everyone but its owner, or restores it to what its check says. */
       curate: rows.curate,
+      /** The schedule's sweep: checks pending for five minutes go to the queue again, so nothing stays hidden only
+       * because a message was lost. */
+      sweep: Effect.fn('Styld.Checks.sweep')(function* () {
+        const before = DateTime.toDateUtc(DateTime.subtractDuration(yield* DateTime.now, pendingPatience))
+        const stale = yield* rows.stalePending(before, sweepBatch)
+        yield* enqueue(stale.flatMap((row) => Option.toArray(Schema.decodeUnknownOption(CheckTarget)(row))))
+        return stale.length
+      }),
       /** Check these later, through the queue: a wardrobe can hold hundreds of pieces. The queue skips what is
        * private by then, and what was checked as it is. */
       checkLater: enqueue,

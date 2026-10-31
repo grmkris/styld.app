@@ -480,6 +480,8 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
     Ljudje; board names take „…“; the login note ends with a full stop in both languages.
   - The Make sheet starts a new operation when its kind changes and stops following after five failed polls.
   - `picture_pin` answers a retry from its receipt before fetching (unit).
+  - A cron trigger every ten minutes sends stalled generation jobs and checks left pending back to their queues; the
+    local stack fires it during native runs (`scheduled(): ok`), though no test drives a stalled job through it.
   - Docs: evidence claims for MCP tools narrowed to what the tests call; deviations recorded in ARCHITECTURE
     (admin tools without an admin actor type; a report's reason kept for admins, not given to the model).
   - Still open from these rounds: one discovery predicate shared by Explore, search and the feed (the feed reads

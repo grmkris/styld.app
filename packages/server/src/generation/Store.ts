@@ -1,5 +1,5 @@
 import { generationJobs, generationPictures, operationReceipts } from '@styld/db'
-import { and, asc, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, lt, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option } from 'effect'
 import { receiptQuery } from '../Receipts.ts'
@@ -33,6 +33,20 @@ const jobQueries = (db: ReturnType<typeof drizzle>) => ({
         .where(and(eq(generationJobs.id, jobId), eq(generationJobs.accountId, accountId)))
         .limit(1),
     ).pipe(Effect.map(first)),
+  /** Jobs not ended and not touched since `before`: their messages were lost or their deliveries died. */
+  stalledJobs: (before: Date, limit: number) =>
+    attempt(() =>
+      db
+        .select({ id: generationJobs.id })
+        .from(generationJobs)
+        .where(
+          and(
+            inArray(generationJobs.status, ['planning', 'drawing', 'arranging']),
+            lt(generationJobs.updatedAt, before),
+          ),
+        )
+        .limit(limit),
+    ).pipe(Effect.map((rows) => rows.map(({ id }) => id))),
   /** For the generation queue, which acts for the job's account. */
   jobForWork: (jobId: string) =>
     attempt(() => db.select().from(generationJobs).where(eq(generationJobs.id, jobId)).limit(1)).pipe(

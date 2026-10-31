@@ -1,5 +1,5 @@
 import { CaptureUnavailable } from '@styld/protocol'
-import { Context, Effect } from 'effect'
+import { Context, DateTime, Duration, Effect } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import type { Boards } from '../boards/Boards.ts'
@@ -11,7 +11,7 @@ import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { generations } from './Generation.ts'
 import { MoodPlanner } from './Planner.ts'
 import { PicturePainter } from './Painter.ts'
-import type { Parts } from './Parts.ts'
+import { type Parts, send } from './Parts.ts'
 import { makeGenerationStore } from './Store.ts'
 import { giveUp, work } from './Work.ts'
 
@@ -31,9 +31,20 @@ const make = (parts: Parts) => ({
   work: (jobId: string) => work(parts, jobId),
   /** The queue's last try failed: the job fails and its unspent credits go back. */
   giveUp: (jobId: string) => giveUp(parts, jobId),
+  /** The schedule's sweep: jobs stalled past a drawing's patience go to the queue again, which settles them. */
+  sweep: Effect.fn('Styld.Generation.sweep')(function* () {
+    const before = DateTime.toDateUtc(DateTime.subtractDuration(yield* DateTime.now, sweepPatience))
+    const stalled = yield* parts.store.stalledJobs(before, sweepBatch).pipe(Effect.mapError(unavailable))
+    yield* Effect.forEach(stalled, (jobId) => send(parts, jobId), { discard: true })
+    return stalled.length
+  }),
 })
 
 const unavailable = () => CaptureUnavailable.make({})
+
+/** A job untouched this long lost its delivery: a drawing takes 90 s at most. */
+const sweepPatience = Duration.minutes(5)
+const sweepBatch = 50
 
 /** Generated pictures and mood boards for boards (M7). */
 export class Generations extends Context.Service<Generations, ReturnType<typeof make>>()('@styld/server/Generations') {}
