@@ -3107,8 +3107,7 @@
     "empty": "Še nimaš zbirk. Ustvari eno in nanjo položi oblačila za dan, potovanje ali sezono.",
     "loading": "Nalagam tvoje zbirke …",
     "failed": "Tvoje zbirke se niso naložile.",
-    "retry": "Poskusi znova",
-    "open": "Odpri: {name}"
+    "retry": "Poskusi znova"
   },
   "ask": {
     "title": "Vprašaj",

@@ -253,7 +253,8 @@ const verifyBoard = async (context: BrowserContext, page: Page, origin: string) 
  * board; the board is renamed from its settings. */
 const verifyBoardPage = async (page: Page, origin: string) => {
   await page.goto(`${origin}/boards`, { waitUntil: 'networkidle' })
-  await page.getByRole('link', { name: 'Open Weekend' }).click()
+  // A board's tile reads as its name and pin count.
+  await page.getByRole('link', { name: /^Weekend/ }).click()
   await page.getByRole('heading', { name: 'Weekend', level: 1 }).waitFor({ state: 'visible' })
   await page.getByText('4 pins').waitFor({ state: 'visible' })
   for (const name of ['Cable knit', 'Denim shorts', 'Derby shoes', 'A picture'])
@@ -414,7 +415,7 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
     await page.getByRole('img', { name: /^Today’s outfit:/ }).waitFor({ state: 'visible' })
     await shoot(page, 'desktop-home')
     await page.goto(`${origin}/boards`, { waitUntil: 'networkidle' })
-    await page.getByRole('link', { name: 'Open Weekend away' }).click()
+    await page.getByRole('link', { name: /^Weekend away/ }).click()
     await page.getByRole('heading', { name: 'Weekend away', level: 1 }).waitFor({ state: 'visible' })
     await shoot(page, 'desktop-board-page')
     await page.getByRole('link', { name: 'Edit collage' }).click()
@@ -428,7 +429,7 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
     await shoot(page, 'desktop-home-sl')
     await page.goto(`${origin}/boards`, { waitUntil: 'networkidle' })
     await page.getByRole('heading', { name: 'Zbirke', level: 1 }).waitFor({ state: 'visible' })
-    await page.getByRole('link', { name: 'Odpri: Weekend away' }).click()
+    await page.getByRole('link', { name: /^Weekend away/ }).click()
     // Four pins: the piece taken off was saved back from its own page.
     await page.getByText('4 kartice').waitFor({ state: 'visible' })
     await page.getByRole('link', { name: 'Odpri kolaž Weekend away' }).click()

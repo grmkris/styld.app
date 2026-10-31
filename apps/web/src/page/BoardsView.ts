@@ -25,11 +25,7 @@ const tileView = (board: BoardSummary, locale: Locale, h: HtmlBuilder<Message>):
     [],
     [
       h.a(
-        [
-          h.Href(boardRouter({ boardId: board.id })),
-          h.AriaLabel(format(locale, 'boards.open', { name: board.name })),
-          ...styled(h, styles.tile()),
-        ],
+        [h.Href(boardRouter({ boardId: board.id })), ...styled(h, styles.tile())],
         [
           stillTable(board.items, board.paper, [], h),
           h.span(styled(h, styles.tileName()), [board.name]),

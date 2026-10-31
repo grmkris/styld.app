@@ -2807,7 +2807,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'boards.loading': 'Nalagam tvoje zbirke …',
   'boards.failed': 'Tvoje zbirke se niso naložile.',
   'boards.retry': 'Poskusi znova',
-  'boards.open': 'Odpri: {name}',
   'ask.title': 'Vprašaj',
   'ask.searchLabel': 'Išči po garderobi',
   'ask.placeholder': 'Išči po garderobi',

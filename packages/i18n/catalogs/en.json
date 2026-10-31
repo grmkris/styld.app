@@ -3107,8 +3107,7 @@
     "empty": "No boards yet. Make one and lay out an outfit, a trip or a season.",
     "loading": "Loading your boards…",
     "failed": "Your boards didn’t load.",
-    "retry": "Try again",
-    "open": "Open {name}"
+    "retry": "Try again"
   },
   "ask": {
     "title": "Ask",

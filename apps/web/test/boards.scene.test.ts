@@ -54,6 +54,14 @@ const boardsPage = (boards: ReadonlyArray<BoardSummary>) =>
   )
 
 describe('the boards list', () => {
+  test('reads each board as its name and how many pins it holds, and opens its page', () => {
+    scene(
+      { update, view },
+      given(boardsPage([summary('Sea', { pinCount: 3 })])),
+      expect(role('link', { name: /^Sea\s*3 pins$/ })).toHaveAttr('href', `/boards/${boardId('Sea')}`),
+    )
+  })
+
   test('starts a new board from the round + at the top, under the default name, and opens it', () => {
     scene(
       { update, view },
