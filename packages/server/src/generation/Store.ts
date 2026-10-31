@@ -1,5 +1,5 @@
 import { generationJobs, generationPictures, operationReceipts } from '@styld/db'
-import { and, asc, eq, inArray, lt, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, lt, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option } from 'effect'
 import { receiptQuery } from '../Receipts.ts'
@@ -31,6 +31,22 @@ const jobQueries = (db: ReturnType<typeof drizzle>) => ({
         .select()
         .from(generationJobs)
         .where(and(eq(generationJobs.id, jobId), eq(generationJobs.accountId, accountId)))
+        .limit(1),
+    ).pipe(Effect.map(first)),
+  /** The account's newest job for the board that has not ended. */
+  runningJob: (accountId: string, boardId: string) =>
+    attempt(() =>
+      db
+        .select()
+        .from(generationJobs)
+        .where(
+          and(
+            eq(generationJobs.accountId, accountId),
+            eq(generationJobs.boardId, boardId),
+            inArray(generationJobs.status, ['planning', 'drawing', 'arranging']),
+          ),
+        )
+        .orderBy(desc(generationJobs.createdAt))
         .limit(1),
     ).pipe(Effect.map(first)),
   /** Jobs not ended and not touched since `before`: their messages were lost or their deliveries died. */

@@ -84,9 +84,15 @@ const verifyPictures = async (owner: Call, other: Call, boardId: string) => {
   expect(await failing.json()).toMatchObject({ _tag: 'PromptRefused' })
 }
 
+/** The board's ask still being made, as a board opened again reads it. */
+const running = async (call: Call, boardId: string) =>
+  Schema.decodeUnknownSync(Schema.Struct({ generation: Schema.NullOr(Generation) }))(
+    await (await call(`/api/boards/${boardId}/generations/running`)).json(),
+  ).generation
+
 /** Words that plan nothing give every credit back; a mood board draws two pictures, pins the person's pieces and lays
- * the collage out with them. */
-const verifyMoodBoard = async (owner: Call, boardId: string, pieceIds: ReadonlyArray<string>) => {
+ * the collage out with them. While it is made, its board says so to its owner and to no one else. */
+const verifyMoodBoard = async (owner: Call, stranger: Call, boardId: string, pieceIds: ReadonlyArray<string>) => {
   const unclear = await generationOf(
     await send(owner, `/api/boards/${boardId}/mood`, 'POST', {
       operationId: 'native-mood-0002',
@@ -103,8 +109,12 @@ const verifyMoodBoard = async (owner: Call, boardId: string, pieceIds: ReadonlyA
     }),
   )
   expect(asked.status).toBe('planning')
+  // The queue waits for a batch before it plans, so the ask is still being made here.
+  expect((await running(owner, boardId))?.id).toBe(asked.id)
+  expect(await running(stranger, boardId)).toBeNull()
   const done = await finished(owner, asked.id)
   expect(done).toMatchObject({ status: 'done', pictures: [{ status: 'drawn' }, { status: 'drawn' }] })
+  expect(await running(owner, boardId)).toBeNull()
   const board = await boardOf(owner, boardId)
   expect(generated(board)).toBe(generated(before) + 2)
   expect(board.pins.filter((pin) => Predicate.isTagged(pin, 'PiecePin')).length).toBe(pieceIds.length)
@@ -130,5 +140,5 @@ export const verifyGeneration = async (origin: string, fixtures: string): Promis
   const boardOfOther = await idOf(
     await send(other, '/api/boards', 'POST', { operationId: 'native-generation-board', name: 'Sea' }),
   )
-  await verifyMoodBoard(other, boardOfOther, pieceIds)
+  await verifyMoodBoard(other, owner, boardOfOther, pieceIds)
 }

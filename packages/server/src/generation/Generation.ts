@@ -129,6 +129,16 @@ export const generations = (parts: Parts) => ({
     return yield* view(job, pictures)
   }),
   get: (jobId: string) => get(parts, jobId),
+  /** The board's ask still being made, read as `get` reads it, so one stalled on its way is sent again. */
+  running: Effect.fn('Styld.Generation.running')(function* (boardId: BoardId) {
+    const { accountId } = yield* CurrentAccount
+    const job = yield* stored(parts.store.runningJob(accountId, boardId))
+    if (Option.isNone(job)) return { generation: null }
+    return yield* get(parts, job.value.id).pipe(
+      Effect.map((generation) => ({ generation })),
+      Effect.catchTag('GenerationNotFound', () => Effect.succeed({ generation: null })),
+    )
+  }),
 })
 
 /** A job of the account's; one stalled on its way is sent again. */

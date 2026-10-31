@@ -59,6 +59,10 @@ export const Generation = Schema.Struct({
 })
 export type Generation = typeof Generation.Type
 
+/** The board's ask still being made, if there is one: a board opened again picks up following it. */
+export const RunningGeneration = Schema.Struct({ generation: Schema.NullOr(Generation) })
+export type RunningGeneration = typeof RunningGeneration.Type
+
 /** The words asked for something Styld does not make. */
 export class PromptRefused extends Schema.TaggedError<PromptRefused>()(
   'PromptRefused',
@@ -111,6 +115,13 @@ export class GenerationApi extends HttpApiGroup.make('generation')
       params: { generationId: GenerationId },
       success: Generation,
       error: [GenerationNotFound, CaptureUnavailable],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.get('runningGeneration', '/boards/:boardId/generations/running', {
+      params: { boardId: BoardId },
+      success: RunningGeneration,
+      error: CaptureUnavailable,
     }),
   )
   .middleware(SessionHttp.RequireSession)

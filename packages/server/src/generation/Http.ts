@@ -33,5 +33,6 @@ export const generationHandlers = (
           admit(asSessionAccount(paced(generations.admit('moodBoard', params.boardId, payload)))),
         )
         .handle('generation', ({ params }) => asSessionAccount(generations.get(params.generationId)))
+        .handle('runningGeneration', ({ params }) => asSessionAccount(generations.running(params.boardId)))
     }),
   )
