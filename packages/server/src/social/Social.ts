@@ -267,7 +267,7 @@ const reporting = (p: Parts) => ({
     if (owner === accountId) return yield* NotWithYourself.make({})
     const since = DateTime.toDateUtc(DateTime.subtractDuration(yield* DateTime.now, Duration.hours(1)))
     if ((yield* stored(p.store.reportsSince(accountId, since))) >= reportsPerHour) return yield* TooManyReports.make({})
-    const reporters = yield* stored(
+    const { filed, reporters } = yield* stored(
       p.store.report({
         id: yield* p.newId('rp'),
         reporterId: accountId,
@@ -279,6 +279,8 @@ const reporting = (p: Parts) => ({
         createdAt: yield* nowDate,
       }),
     )
+    // The same person reporting the same thing again changes nothing, and asks the model nothing.
+    if (!filed) return
     yield* p.checks.reported(check, reporters >= reportsToHide && check.kind !== 'profile')
   }),
 })

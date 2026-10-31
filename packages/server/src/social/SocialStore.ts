@@ -1,7 +1,7 @@
 import { blocks, follows, profiles, reports, saves, wishes } from '@styld/db'
 import { and, count, desc, eq, gte, inArray, or } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
-import { Effect, Option } from 'effect'
+import { Array, Effect, Option } from 'effect'
 import { StoreUnavailable } from '../wardrobe/Store.ts'
 
 export type SaveRow = typeof saves.$inferSelect
@@ -121,26 +121,27 @@ const blockRows = (db: Database) => ({
         .orderBy(desc(blocks.createdAt))
         .limit(listLimit),
     ).pipe(Effect.map((rows) => rows.map(({ accountId }) => accountId))),
-  /** Of these accounts, those either side of a block with the account. */
+  /** Of these accounts, those either side of a block with the account. Each group binds its ids twice, so groups
+   * stay under D1's 100 parameters. */
   blockedAmong: (accountId: string, others: ReadonlyArray<string>) =>
-    others.length === 0
-      ? Effect.succeed(new Set<string>())
-      : attempt(() =>
-          db
-            .select({ blockerId: blocks.blockerId, blockedId: blocks.blockedId })
-            .from(blocks)
-            .where(
-              or(
-                and(eq(blocks.blockerId, accountId), inArray(blocks.blockedId, [...others])),
-                and(eq(blocks.blockedId, accountId), inArray(blocks.blockerId, [...others])),
-              ),
+    Effect.forEach(Array.chunksOf(others, 45), (group) =>
+      attempt(() =>
+        db
+          .select({ blockerId: blocks.blockerId, blockedId: blocks.blockedId })
+          .from(blocks)
+          .where(
+            or(
+              and(eq(blocks.blockerId, accountId), inArray(blocks.blockedId, [...group])),
+              and(eq(blocks.blockedId, accountId), inArray(blocks.blockerId, [...group])),
             ),
-        ).pipe(
-          Effect.map(
-            (rows) =>
-              new Set(rows.map(({ blockerId, blockedId }) => (blockerId === accountId ? blockedId : blockerId))),
           ),
-        ),
+      ),
+    ).pipe(
+      Effect.map(
+        (groups) =>
+          new Set(groups.flat().map(({ blockerId, blockedId }) => (blockerId === accountId ? blockedId : blockerId))),
+      ),
+    ),
 })
 
 const reportRows = (db: Database) => ({
@@ -152,17 +153,20 @@ const reportRows = (db: Database) => ({
         .from(reports)
         .where(and(eq(reports.reporterId, reporterId), gte(reports.createdAt, since))),
     ).pipe(Effect.map((rows) => rows[0]?.total ?? 0)),
-  /** File the report once per reporter and target; answers how many people reported the target. */
+  /** File the report once per reporter and target; answers whether this one was new, and how many people reported
+   * the target. */
   report: (row: ReportRow) =>
     Effect.gen(function* () {
-      yield* attempt(() => db.insert(reports).values(row).onConflictDoNothing())
+      const filed = yield* attempt(() =>
+        db.insert(reports).values(row).onConflictDoNothing().returning({ id: reports.id }),
+      )
       const reporters = yield* attempt(() =>
         db
           .select({ total: count() })
           .from(reports)
           .where(and(eq(reports.targetKind, row.targetKind), eq(reports.targetId, row.targetId))),
       )
-      return reporters[0]?.total ?? 0
+      return { filed: filed.length > 0, reporters: reporters[0]?.total ?? 0 }
     }),
 })
 

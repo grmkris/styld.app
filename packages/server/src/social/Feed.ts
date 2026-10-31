@@ -2,7 +2,7 @@ import { boardPins, boards, looks, pieces, profiles } from '@styld/db'
 import { type Author, type FeedItem, WardrobeUnavailable } from '@styld/protocol'
 import { and, desc, eq, inArray, isNotNull, lt } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
-import { DateTime, Effect, Option } from 'effect'
+import { Array, DateTime, Effect, Option } from 'effect'
 import type { Checks } from '../safety/Checks.ts'
 import { type PublicPages, summaryOf } from './Public.ts'
 import type { SocialStore } from './SocialStore.ts'
@@ -40,7 +40,21 @@ export const interleaved = <A>(items: ReadonlyArray<A>, personOf: (item: A) => s
   return placed
 }
 
+/** D1 binds at most 100 parameters to a statement: the people followed go in groups well under it. */
+const peoplePerQuery = 80
+
+/** The newest things from the people followed, before `before`, across every group of them. */
 const candidates = (database: Parameters<typeof drizzle>[0], people: ReadonlyArray<string>, before: Date) =>
+  Effect.map(
+    Effect.forEach(Array.chunksOf(people, peoplePerQuery), (group) => candidatesOf(database, group, before)),
+    (groups) =>
+      groups
+        .flat()
+        .toSorted((left, right) => right.at.getTime() - left.at.getTime())
+        .slice(0, pageSize),
+  )
+
+const candidatesOf = (database: Parameters<typeof drizzle>[0], people: ReadonlyArray<string>, before: Date) =>
   Effect.gen(function* () {
     const db = drizzle(database)
     const ids = [...people]
