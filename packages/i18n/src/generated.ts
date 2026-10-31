@@ -45,328 +45,6 @@ export interface MessageArgumentsByKey<T = string> {
   'account.title': Readonly<Record<string, never>>
   'account.updateStyleProfile': Readonly<Record<string, never>>
   'account.updatingStyleProfile': Readonly<Record<string, never>>
-  'activity.active': Readonly<Record<string, never>>
-  'activity.activeCount': { readonly count: number }
-  'activity.empty': Readonly<Record<string, never>>
-  'activity.errorTitle': Readonly<Record<string, never>>
-  'activity.group.steps': { readonly count: number }
-  'activity.interrupted': Readonly<Record<string, never>>
-  'activity.kind.analysis': Readonly<Record<string, never>>
-  'activity.kind.garment_detection': Readonly<Record<string, never>>
-  'activity.kind.inspiration': Readonly<Record<string, never>>
-  'activity.kind.outfit_check': Readonly<Record<string, never>>
-  'activity.kind.product_shot': Readonly<Record<string, never>>
-  'activity.kind.scan': Readonly<Record<string, never>>
-  'activity.kind.try_on': Readonly<Record<string, never>>
-  'activity.openConversation': Readonly<Record<string, never>>
-  'activity.recent': Readonly<Record<string, never>>
-  'activity.retry': Readonly<Record<string, never>>
-  'activity.retryError': Readonly<Record<string, never>>
-  'activity.retrying': Readonly<Record<string, never>>
-  'activity.status.active': Readonly<Record<string, never>>
-  'activity.status.completed': Readonly<Record<string, never>>
-  'activity.status.failed': Readonly<Record<string, never>>
-  'activity.subtitle': Readonly<Record<string, never>>
-  'activity.suggestions.generate': Readonly<Record<string, never>>
-  'activity.suggestions.noModelPhoto': Readonly<Record<string, never>>
-  'activity.suggestions.productShots': { readonly count: string | number }
-  'activity.suggestions.queued': { readonly count: string | number }
-  'activity.suggestions.running': Readonly<Record<string, never>>
-  'activity.suggestions.title': Readonly<Record<string, never>>
-  'activity.suggestions.tryOns': { readonly count: string | number }
-  'activity.suggestions.tryOnsQueued': { readonly count: string | number }
-  'activity.title': Readonly<Record<string, never>>
-  'admin.actions': Readonly<Record<string, never>>
-  'admin.actionsLog.action': Readonly<Record<string, never>>
-  'admin.actionsLog.admin': Readonly<Record<string, never>>
-  'admin.actionsLog.description': Readonly<Record<string, never>>
-  'admin.actionsLog.details': Readonly<Record<string, never>>
-  'admin.actionsLog.loadFailed': Readonly<Record<string, never>>
-  'admin.actionsLog.next': Readonly<Record<string, never>>
-  'admin.actionsLog.noActions': Readonly<Record<string, never>>
-  'admin.actionsLog.previous': Readonly<Record<string, never>>
-  'admin.actionsLog.showing': { readonly count: string | number; readonly total: string | number }
-  'admin.actionsLog.target': Readonly<Record<string, never>>
-  'admin.actionsLog.time': Readonly<Record<string, never>>
-  'admin.actionsLog.title': Readonly<Record<string, never>>
-  'admin.active': Readonly<Record<string, never>>
-  'admin.adminMode': Readonly<Record<string, never>>
-  'admin.aiCost': Readonly<Record<string, never>>
-  'admin.allFeatures': Readonly<Record<string, never>>
-  'admin.allStatuses': Readonly<Record<string, never>>
-  'admin.anonymous': Readonly<Record<string, never>>
-  'admin.ban': Readonly<Record<string, never>>
-  'admin.banDialog.cancel': Readonly<Record<string, never>>
-  'admin.banDialog.description': Readonly<Record<string, never>>
-  'admin.banDialog.error': Readonly<Record<string, never>>
-  'admin.banDialog.expiryLabel': Readonly<Record<string, never>>
-  'admin.banDialog.expiry_1d': Readonly<Record<string, never>>
-  'admin.banDialog.expiry_30d': Readonly<Record<string, never>>
-  'admin.banDialog.expiry_7d': Readonly<Record<string, never>>
-  'admin.banDialog.expiry_permanent': Readonly<Record<string, never>>
-  'admin.banDialog.reasonLabel': Readonly<Record<string, never>>
-  'admin.banDialog.reasonPlaceholder': Readonly<Record<string, never>>
-  'admin.banDialog.submit': Readonly<Record<string, never>>
-  'admin.banDialog.success': Readonly<Record<string, never>>
-  'admin.banDialog.title': Readonly<Record<string, never>>
-  'admin.banned': Readonly<Record<string, never>>
-  'admin.changeHistory': Readonly<Record<string, never>>
-  'admin.completedStatus': Readonly<Record<string, never>>
-  'admin.configuredInCode': Readonly<Record<string, never>>
-  'admin.createNewStyle': Readonly<Record<string, never>>
-  'admin.created': Readonly<Record<string, never>>
-  'admin.createdPrompt': Readonly<Record<string, never>>
-  'admin.curation.boards': Readonly<Record<string, never>>
-  'admin.curation.choice.featured': Readonly<Record<string, never>>
-  'admin.curation.choice.house': Readonly<Record<string, never>>
-  'admin.curation.choice.none': Readonly<Record<string, never>>
-  'admin.curation.curationFor': { readonly name: string | number }
-  'admin.curation.description': Readonly<Record<string, never>>
-  'admin.curation.feature': Readonly<Record<string, never>>
-  'admin.curation.loadFailed': Readonly<Record<string, never>>
-  'admin.curation.noBoards': Readonly<Record<string, never>>
-  'admin.curation.noProfiles': Readonly<Record<string, never>>
-  'admin.curation.notLive': Readonly<Record<string, never>>
-  'admin.curation.notPublic': Readonly<Record<string, never>>
-  'admin.curation.profiles': Readonly<Record<string, never>>
-  'admin.curation.retry': Readonly<Record<string, never>>
-  'admin.curation.saveFailed': Readonly<Record<string, never>>
-  'admin.curation.searchLabel': Readonly<Record<string, never>>
-  'admin.curation.searchPlaceholder': Readonly<Record<string, never>>
-  'admin.curation.title': Readonly<Record<string, never>>
-  'admin.curation.unfeature': Readonly<Record<string, never>>
-  'admin.diff': Readonly<Record<string, never>>
-  'admin.diffVsActive': { readonly version: string | number }
-  'admin.editGuidance': Readonly<Record<string, never>>
-  'admin.email': Readonly<Record<string, never>>
-  'admin.feature': Readonly<Record<string, never>>
-  'admin.features.bodyType': Readonly<Record<string, never>>
-  'admin.features.chat': Readonly<Record<string, never>>
-  'admin.features.clothingAnalysis': Readonly<Record<string, never>>
-  'admin.features.inspiration': Readonly<Record<string, never>>
-  'admin.features.itemExtraction': Readonly<Record<string, never>>
-  'admin.features.outfitCheckAnalysis': Readonly<Record<string, never>>
-  'admin.features.outfitCheckFixes': Readonly<Record<string, never>>
-  'admin.features.titleGeneration': Readonly<Record<string, never>>
-  'admin.features.tryOn': Readonly<Record<string, never>>
-  'admin.feedback.allGaps': Readonly<Record<string, never>>
-  'admin.feedback.allStatuses': Readonly<Record<string, never>>
-  'admin.feedback.client': Readonly<Record<string, never>>
-  'admin.feedback.description': Readonly<Record<string, never>>
-  'admin.feedback.gap.bug': Readonly<Record<string, never>>
-  'admin.feedback.gap.incomplete_results': Readonly<Record<string, never>>
-  'admin.feedback.gap.missing_parameter': Readonly<Record<string, never>>
-  'admin.feedback.gap.missing_tool': Readonly<Record<string, never>>
-  'admin.feedback.gap.other': Readonly<Record<string, never>>
-  'admin.feedback.gap.unclear_error': Readonly<Record<string, never>>
-  'admin.feedback.gap.wrong_format': Readonly<Record<string, never>>
-  'admin.feedback.handled': Readonly<Record<string, never>>
-  'admin.feedback.lastSeen': Readonly<Record<string, never>>
-  'admin.feedback.loadFailed': Readonly<Record<string, never>>
-  'admin.feedback.markHandled': Readonly<Record<string, never>>
-  'admin.feedback.needed': Readonly<Record<string, never>>
-  'admin.feedback.next': Readonly<Record<string, never>>
-  'admin.feedback.noReports': Readonly<Record<string, never>>
-  'admin.feedback.occurrences': { readonly count: number }
-  'admin.feedback.open': Readonly<Record<string, never>>
-  'admin.feedback.previous': Readonly<Record<string, never>>
-  'admin.feedback.reopen': Readonly<Record<string, never>>
-  'admin.feedback.report': Readonly<Record<string, never>>
-  'admin.feedback.resolution.blocked': Readonly<Record<string, never>>
-  'admin.feedback.resolution.partial': Readonly<Record<string, never>>
-  'admin.feedback.resolution.worked_around': Readonly<Record<string, never>>
-  'admin.feedback.showing': { readonly count: string | number; readonly total: string | number }
-  'admin.feedback.suggestion': Readonly<Record<string, never>>
-  'admin.feedback.title': Readonly<Record<string, never>>
-  'admin.feedback.tried': Readonly<Record<string, never>>
-  'admin.feedback.user': Readonly<Record<string, never>>
-  'admin.goToDashboard': Readonly<Record<string, never>>
-  'admin.guidance': Readonly<Record<string, never>>
-  'admin.guidanceType': Readonly<Record<string, never>>
-  'admin.hide': Readonly<Record<string, never>>
-  'admin.hideAnonymous': Readonly<Record<string, never>>
-  'admin.hideDiff': Readonly<Record<string, never>>
-  'admin.hideHistory': Readonly<Record<string, never>>
-  'admin.history': Readonly<Record<string, never>>
-  'admin.impersonate': Readonly<Record<string, never>>
-  'admin.impersonating': { readonly email: string | number }
-  'admin.inactive': Readonly<Record<string, never>>
-  'admin.items': Readonly<Record<string, never>>
-  'admin.jobs.actionFailed': Readonly<Record<string, never>>
-  'admin.jobs.active': Readonly<Record<string, never>>
-  'admin.jobs.attempts': Readonly<Record<string, never>>
-  'admin.jobs.cancel': Readonly<Record<string, never>>
-  'admin.jobs.completed': Readonly<Record<string, never>>
-  'admin.jobs.delayed': Readonly<Record<string, never>>
-  'admin.jobs.description': Readonly<Record<string, never>>
-  'admin.jobs.failed': Readonly<Record<string, never>>
-  'admin.jobs.failedJobsTitle': Readonly<Record<string, never>>
-  'admin.jobs.failedReason': Readonly<Record<string, never>>
-  'admin.jobs.hideStacktrace': Readonly<Record<string, never>>
-  'admin.jobs.jobId': Readonly<Record<string, never>>
-  'admin.jobs.loadFailed': Readonly<Record<string, never>>
-  'admin.jobs.noFailedJobs': Readonly<Record<string, never>>
-  'admin.jobs.paused': Readonly<Record<string, never>>
-  'admin.jobs.payload': Readonly<Record<string, never>>
-  'admin.jobs.queue': Readonly<Record<string, never>>
-  'admin.jobs.remove': Readonly<Record<string, never>>
-  'admin.jobs.removeSuccess': Readonly<Record<string, never>>
-  'admin.jobs.retry': Readonly<Record<string, never>>
-  'admin.jobs.retryAll': Readonly<Record<string, never>>
-  'admin.jobs.retryAllDescription': { readonly count: string | number; readonly queue: string | number }
-  'admin.jobs.retryAllSuccess': Readonly<Record<string, never>>
-  'admin.jobs.retryAllTitle': Readonly<Record<string, never>>
-  'admin.jobs.retrySuccess': Readonly<Record<string, never>>
-  'admin.jobs.selectQueueHint': Readonly<Record<string, never>>
-  'admin.jobs.showStacktrace': Readonly<Record<string, never>>
-  'admin.jobs.title': Readonly<Record<string, never>>
-  'admin.jobs.waiting': Readonly<Record<string, never>>
-  'admin.lastActive': Readonly<Record<string, never>>
-  'admin.live': Readonly<Record<string, never>>
-  'admin.liveHint': Readonly<Record<string, never>>
-  'admin.loadingHistory': Readonly<Record<string, never>>
-  'admin.modelLabel': Readonly<Record<string, never>>
-  'admin.moderation.actionFailed': Readonly<Record<string, never>>
-  'admin.moderation.description': Readonly<Record<string, never>>
-  'admin.moderation.dismiss': Readonly<Record<string, never>>
-  'admin.moderation.done.dismiss': Readonly<Record<string, never>>
-  'admin.moderation.done.remove': Readonly<Record<string, never>>
-  'admin.moderation.done.restore': Readonly<Record<string, never>>
-  'admin.moderation.empty': Readonly<Record<string, never>>
-  'admin.moderation.kind.board': Readonly<Record<string, never>>
-  'admin.moderation.kind.collage': Readonly<Record<string, never>>
-  'admin.moderation.kind.look': Readonly<Record<string, never>>
-  'admin.moderation.kind.media': Readonly<Record<string, never>>
-  'admin.moderation.kind.pin': Readonly<Record<string, never>>
-  'admin.moderation.kind.profile': Readonly<Record<string, never>>
-  'admin.moderation.loadFailed': Readonly<Record<string, never>>
-  'admin.moderation.noPicture': Readonly<Record<string, never>>
-  'admin.moderation.noteLabel': Readonly<Record<string, never>>
-  'admin.moderation.notePlaceholder': Readonly<Record<string, never>>
-  'admin.moderation.open': Readonly<Record<string, never>>
-  'admin.moderation.reason.harassment': Readonly<Record<string, never>>
-  'admin.moderation.reason.hate': Readonly<Record<string, never>>
-  'admin.moderation.reason.ip': Readonly<Record<string, never>>
-  'admin.moderation.reason.nudity': Readonly<Record<string, never>>
-  'admin.moderation.reason.other': Readonly<Record<string, never>>
-  'admin.moderation.reason.self_harm': Readonly<Record<string, never>>
-  'admin.moderation.reason.spam': Readonly<Record<string, never>>
-  'admin.moderation.reason.violence': Readonly<Record<string, never>>
-  'admin.moderation.reasonCount': { readonly reason: string | number; readonly count: string | number }
-  'admin.moderation.remove': Readonly<Record<string, never>>
-  'admin.moderation.reportCount': { readonly reports: number; readonly reporters: number }
-  'admin.moderation.restore': Readonly<Record<string, never>>
-  'admin.moderation.retry': Readonly<Record<string, never>>
-  'admin.moderation.source.admin': Readonly<Record<string, never>>
-  'admin.moderation.source.ai': Readonly<Record<string, never>>
-  'admin.moderation.source.report': Readonly<Record<string, never>>
-  'admin.moderation.status.approved': Readonly<Record<string, never>>
-  'admin.moderation.status.flagged': Readonly<Record<string, never>>
-  'admin.moderation.status.pending': Readonly<Record<string, never>>
-  'admin.moderation.status.removed': Readonly<Record<string, never>>
-  'admin.moderation.title': Readonly<Record<string, never>>
-  'admin.moderation.unknownOwner': Readonly<Record<string, never>>
-  'admin.name': Readonly<Record<string, never>>
-  'admin.newStyle': Readonly<Record<string, never>>
-  'admin.noHistory': Readonly<Record<string, never>>
-  'admin.noName': Readonly<Record<string, never>>
-  'admin.noProfile': Readonly<Record<string, never>>
-  'admin.noPrompts': Readonly<Record<string, never>>
-  'admin.onboarding': Readonly<Record<string, never>>
-  'admin.overview': Readonly<Record<string, never>>
-  'admin.overviewDescription': Readonly<Record<string, never>>
-  'admin.pendingStatus': Readonly<Record<string, never>>
-  'admin.preferencesSaved': Readonly<Record<string, never>>
-  'admin.premium': Readonly<Record<string, never>>
-  'admin.premiumComp': Readonly<Record<string, never>>
-  'admin.premiumOnly': Readonly<Record<string, never>>
-  'admin.promptName': Readonly<Record<string, never>>
-  'admin.prompts': Readonly<Record<string, never>>
-  'admin.promptsDescription': Readonly<Record<string, never>>
-  'admin.referrals.actions': Readonly<Record<string, never>>
-  'admin.referrals.cancelAction': Readonly<Record<string, never>>
-  'admin.referrals.cancelConfirmDescription': Readonly<Record<string, never>>
-  'admin.referrals.cancelConfirmTitle': Readonly<Record<string, never>>
-  'admin.referrals.cancelError': Readonly<Record<string, never>>
-  'admin.referrals.cancelReferral': Readonly<Record<string, never>>
-  'admin.referrals.cancelSuccess': Readonly<Record<string, never>>
-  'admin.referrals.codesIssued': Readonly<Record<string, never>>
-  'admin.referrals.creditsGranted': Readonly<Record<string, never>>
-  'admin.referrals.date': Readonly<Record<string, never>>
-  'admin.referrals.description': Readonly<Record<string, never>>
-  'admin.referrals.loadFailed': Readonly<Record<string, never>>
-  'admin.referrals.noReferrals': Readonly<Record<string, never>>
-  'admin.referrals.noReferrers': Readonly<Record<string, never>>
-  'admin.referrals.pending': Readonly<Record<string, never>>
-  'admin.referrals.recentReferrals': Readonly<Record<string, never>>
-  'admin.referrals.referee': Readonly<Record<string, never>>
-  'admin.referrals.referrer': Readonly<Record<string, never>>
-  'admin.referrals.reward': Readonly<Record<string, never>>
-  'admin.referrals.rewardConfirmDescription': Readonly<Record<string, never>>
-  'admin.referrals.rewardConfirmTitle': Readonly<Record<string, never>>
-  'admin.referrals.rewardError': Readonly<Record<string, never>>
-  'admin.referrals.rewardSuccess': Readonly<Record<string, never>>
-  'admin.referrals.rewarded': Readonly<Record<string, never>>
-  'admin.referrals.status': Readonly<Record<string, never>>
-  'admin.referrals.statusPending': Readonly<Record<string, never>>
-  'admin.referrals.statusRewarded': Readonly<Record<string, never>>
-  'admin.referrals.title': Readonly<Record<string, never>>
-  'admin.referrals.topReferrers': Readonly<Record<string, never>>
-  'admin.referrals.total': Readonly<Record<string, never>>
-  'admin.referrals.totalReferrals': Readonly<Record<string, never>>
-  'admin.role': Readonly<Record<string, never>>
-  'admin.rollbackDescription': { readonly version: string | number; readonly feature: string | number }
-  'admin.rollbackTitle': Readonly<Record<string, never>>
-  'admin.saveNewVersion': Readonly<Record<string, never>>
-  'admin.searchNoResults': Readonly<Record<string, never>>
-  'admin.searchPrompts': Readonly<Record<string, never>>
-  'admin.searchUsers': Readonly<Record<string, never>>
-  'admin.setActive': Readonly<Record<string, never>>
-  'admin.showingUsers': { readonly count: string | number; readonly total: string | number }
-  'admin.skippedStatus': Readonly<Record<string, never>>
-  'admin.sortHighestCost': Readonly<Record<string, never>>
-  'admin.sortLastActive': Readonly<Record<string, never>>
-  'admin.sortMostItems': Readonly<Record<string, never>>
-  'admin.sortMostStorage': Readonly<Record<string, never>>
-  'admin.sortNewest': Readonly<Record<string, never>>
-  'admin.status': Readonly<Record<string, never>>
-  'admin.steps': { readonly count: string | number }
-  'admin.stopImpersonating': Readonly<Record<string, never>>
-  'admin.storage': Readonly<Record<string, never>>
-  'admin.systemPrompt': Readonly<Record<string, never>>
-  'admin.title': Readonly<Record<string, never>>
-  'admin.unban': Readonly<Record<string, never>>
-  'admin.updated': { readonly date: string | number }
-  'admin.usedInLabel': Readonly<Record<string, never>>
-  'admin.user': Readonly<Record<string, never>>
-  'admin.userDetail.noProfileHint': Readonly<Record<string, never>>
-  'admin.userDetail.noProfileTitle': Readonly<Record<string, never>>
-  'admin.users': Readonly<Record<string, never>>
-  'admin.usersDescription': Readonly<Record<string, never>>
-  'admin.versionsCount': { readonly count: number }
-  'admin.view': Readonly<Record<string, never>>
-  'admin.wardrobeUploaded': Readonly<Record<string, never>>
-  'admin.webhooks.allStatuses': Readonly<Record<string, never>>
-  'admin.webhooks.description': Readonly<Record<string, never>>
-  'admin.webhooks.error': Readonly<Record<string, never>>
-  'admin.webhooks.eventType': Readonly<Record<string, never>>
-  'admin.webhooks.eventTypePlaceholder': Readonly<Record<string, never>>
-  'admin.webhooks.failed': Readonly<Record<string, never>>
-  'admin.webhooks.hidePayload': Readonly<Record<string, never>>
-  'admin.webhooks.loadFailed': Readonly<Record<string, never>>
-  'admin.webhooks.next': Readonly<Record<string, never>>
-  'admin.webhooks.noEvents': Readonly<Record<string, never>>
-  'admin.webhooks.payload': Readonly<Record<string, never>>
-  'admin.webhooks.previous': Readonly<Record<string, never>>
-  'admin.webhooks.processed': Readonly<Record<string, never>>
-  'admin.webhooks.received': Readonly<Record<string, never>>
-  'admin.webhooks.showPayload': Readonly<Record<string, never>>
-  'admin.webhooks.showing': { readonly count: string | number; readonly total: string | number }
-  'admin.webhooks.status': Readonly<Record<string, never>>
-  'admin.webhooks.statusFilter': Readonly<Record<string, never>>
-  'admin.webhooks.time': Readonly<Record<string, never>>
-  'admin.webhooks.title': Readonly<Record<string, never>>
-  'admin.webhooks.type': Readonly<Record<string, never>>
   'ask.add': Readonly<Record<string, never>>
   'ask.addClothes': Readonly<Record<string, never>>
   'ask.addClothesHint': Readonly<Record<string, never>>
@@ -398,35 +76,6 @@ export interface MessageArgumentsByKey<T = string> {
   'ask.stylistTitle': Readonly<Record<string, never>>
   'ask.suggestions': Readonly<Record<string, never>>
   'ask.title': Readonly<Record<string, never>>
-  'assistant.composerPlaceholder': Readonly<Record<string, never>>
-  'assistant.empty': Readonly<Record<string, never>>
-  'assistant.loading': Readonly<Record<string, never>>
-  'assistant.showMore': Readonly<Record<string, never>>
-  'assistant.subtitle': Readonly<Record<string, never>>
-  'assistant.title': Readonly<Record<string, never>>
-  'assistantPanel.askPlaceholder': Readonly<Record<string, never>>
-  'assistantPanel.back': Readonly<Record<string, never>>
-  'assistantPanel.boardConversations': Readonly<Record<string, never>>
-  'assistantPanel.boardEmpty': Readonly<Record<string, never>>
-  'assistantPanel.close': Readonly<Record<string, never>>
-  'assistantPanel.collapse': Readonly<Record<string, never>>
-  'assistantPanel.emptyHint': Readonly<Record<string, never>>
-  'assistantPanel.expand': Readonly<Record<string, never>>
-  'assistantPanel.history': Readonly<Record<string, never>>
-  'assistantPanel.newChat': Readonly<Record<string, never>>
-  'assistantPanel.openFull': Readonly<Record<string, never>>
-  'assistantPanel.quick.boardToOutfit': Readonly<Record<string, never>>
-  'assistantPanel.quick.completeBoard': Readonly<Record<string, never>>
-  'assistantPanel.quick.critiqueBoard': Readonly<Record<string, never>>
-  'assistantPanel.quick.fillWeek': Readonly<Record<string, never>>
-  'assistantPanel.quick.planTrip': Readonly<Record<string, never>>
-  'assistantPanel.quick.planWeek': Readonly<Record<string, never>>
-  'assistantPanel.quick.planWeekPrompt': Readonly<Record<string, never>>
-  'assistantPanel.quick.wearTomorrow': Readonly<Record<string, never>>
-  'assistantPanel.showLess': Readonly<Record<string, never>>
-  'assistantPanel.title': Readonly<Record<string, never>>
-  'assistantPanel.untitled': Readonly<Record<string, never>>
-  'assistantPanel.viewAll': Readonly<Record<string, never>>
   'assistantView.openInStyld': Readonly<Record<string, never>>
   'auth.alreadyHaveAccount': Readonly<Record<string, never>>
   'auth.autoCreateNote': Readonly<Record<string, never>>
@@ -485,20 +134,6 @@ export interface MessageArgumentsByKey<T = string> {
   'authEmail.instructions': Readonly<Record<string, never>>
   'authEmail.subjectRegistration': { readonly code: string | number }
   'authEmail.subjectSignIn': { readonly code: string | number }
-  'automations.autoDetectGarments': Readonly<Record<string, never>>
-  'automations.autoDetectGarmentsDesc': Readonly<Record<string, never>>
-  'automations.autoProductShots': Readonly<Record<string, never>>
-  'automations.autoProductShotsDesc': Readonly<Record<string, never>>
-  'automations.capPlaceholder': Readonly<Record<string, never>>
-  'automations.monthlyCap': Readonly<Record<string, never>>
-  'automations.monthlyCapDesc': Readonly<Record<string, never>>
-  'automations.save': Readonly<Record<string, never>>
-  'automations.saveError': Readonly<Record<string, never>>
-  'automations.saved': Readonly<Record<string, never>>
-  'automations.spentNoLimit': { readonly spent: string | number }
-  'automations.spentThisPeriod': { readonly spent: string | number; readonly cap: string | number }
-  'automations.subtitle': Readonly<Record<string, never>>
-  'automations.title': Readonly<Record<string, never>>
   'board.addPicture': Readonly<Record<string, never>>
   'board.addPiece': { readonly name: string | number }
   'board.addText': Readonly<Record<string, never>>
@@ -609,92 +244,6 @@ export interface MessageArgumentsByKey<T = string> {
   'boards.new': Readonly<Record<string, never>>
   'boards.retry': Readonly<Record<string, never>>
   'boards.title': Readonly<Record<string, never>>
-  'calendar.addOutfit': Readonly<Record<string, never>>
-  'calendar.aiGenerateFailed': Readonly<Record<string, never>>
-  'calendar.aiGenerateLabel': Readonly<Record<string, never>>
-  'calendar.aiPromptPlaceholder': Readonly<Record<string, never>>
-  'calendar.allOutfits': Readonly<Record<string, never>>
-  'calendar.back': Readonly<Record<string, never>>
-  'calendar.backToTripDays': Readonly<Record<string, never>>
-  'calendar.boardContents': { readonly pieces: string | number; readonly looks: string | number }
-  'calendar.browseMonths': Readonly<Record<string, never>>
-  'calendar.changeDates': Readonly<Record<string, never>>
-  'calendar.changeLabel': Readonly<Record<string, never>>
-  'calendar.clearDay': Readonly<Record<string, never>>
-  'calendar.confirmSchedule': Readonly<Record<string, never>>
-  'calendar.createOutfitCta': Readonly<Record<string, never>>
-  'calendar.dayHasPlanned': { readonly count: number }
-  'calendar.dayOccupiedNote': { readonly name: string | number }
-  'calendar.failedRemove': Readonly<Record<string, never>>
-  'calendar.failedSchedule': Readonly<Record<string, never>>
-  'calendar.failedUpdate': Readonly<Record<string, never>>
-  'calendar.fromTrip': { readonly name: string | number }
-  'calendar.generate': Readonly<Record<string, never>>
-  'calendar.hideAlternates': Readonly<Record<string, never>>
-  'calendar.markPlanned': Readonly<Record<string, never>>
-  'calendar.markWorn': Readonly<Record<string, never>>
-  'calendar.month': Readonly<Record<string, never>>
-  'calendar.moreOutfits': { readonly count: string | number }
-  'calendar.multiDay': Readonly<Record<string, never>>
-  'calendar.newTripBoard': Readonly<Record<string, never>>
-  'calendar.nextMonth': Readonly<Record<string, never>>
-  'calendar.noBoardsHint': Readonly<Record<string, never>>
-  'calendar.noOutfitsHint': Readonly<Record<string, never>>
-  'calendar.nothingPlanned': Readonly<Record<string, never>>
-  'calendar.openBoard': Readonly<Record<string, never>>
-  'calendar.outfitGeneratedScheduled': { readonly name: string | number }
-  'calendar.outfitScheduled': Readonly<Record<string, never>>
-  'calendar.pcs': Readonly<Record<string, never>>
-  'calendar.pickDay': Readonly<Record<string, never>>
-  'calendar.pickEndDay': Readonly<Record<string, never>>
-  'calendar.pickOutfit': Readonly<Record<string, never>>
-  'calendar.pickStartDay': Readonly<Record<string, never>>
-  'calendar.plan': Readonly<Record<string, never>>
-  'calendar.planMenuAi': Readonly<Record<string, never>>
-  'calendar.planMenuAiHint': Readonly<Record<string, never>>
-  'calendar.planMenuTitle': Readonly<Record<string, never>>
-  'calendar.planMenuTripHint': Readonly<Record<string, never>>
-  'calendar.planMenuWeekHint': Readonly<Record<string, never>>
-  'calendar.planToday': Readonly<Record<string, never>>
-  'calendar.planTrip': Readonly<Record<string, never>>
-  'calendar.planTripTitle': Readonly<Record<string, never>>
-  'calendar.planWeekAction': Readonly<Record<string, never>>
-  'calendar.planWeekTitle': Readonly<Record<string, never>>
-  'calendar.previousMonth': Readonly<Record<string, never>>
-  'calendar.quickAdd': Readonly<Record<string, never>>
-  'calendar.quickPick': Readonly<Record<string, never>>
-  'calendar.remove': Readonly<Record<string, never>>
-  'calendar.removedFromCalendar': Readonly<Record<string, never>>
-  'calendar.repeatLastWeek': Readonly<Record<string, never>>
-  'calendar.rescheduleTripTitle': { readonly name: string | number }
-  'calendar.resetRange': Readonly<Record<string, never>>
-  'calendar.scheduleOutfit': Readonly<Record<string, never>>
-  'calendar.scheduleOutfitNamed': { readonly name: string | number }
-  'calendar.scheduleSummary': { readonly start: string | number; readonly end: string | number; readonly count: number }
-  'calendar.scheduledRange': { readonly count: number }
-  'calendar.showAlternates': { readonly count: number }
-  'calendar.singleDay': Readonly<Record<string, never>>
-  'calendar.stylistThinking': Readonly<Record<string, never>>
-  'calendar.title': Readonly<Record<string, never>>
-  'calendar.today': Readonly<Record<string, never>>
-  'calendar.tomorrow': Readonly<Record<string, never>>
-  'calendar.tripDayLabel': { readonly index: string | number; readonly total: string | number }
-  'calendar.tripLength': { readonly total: string | number }
-  'calendar.tripMoved': Readonly<Record<string, never>>
-  'calendar.tripNamePlaceholder': Readonly<Record<string, never>>
-  'calendar.tripPlannerTitle': { readonly name: string | number }
-  'calendar.tripScheduled': { readonly name: string | number }
-  'calendar.viewCalendar': Readonly<Record<string, never>>
-  'calendar.viewDay': { readonly date: string | number }
-  'calendar.week': Readonly<Record<string, never>>
-  'calendar.weekPlanFailed': Readonly<Record<string, never>>
-  'calendar.weekPlanned': Readonly<Record<string, never>>
-  'calendar.weekPlannedPartial': { readonly scheduled: number; readonly failed: number }
-  'calendar.wornLabel': Readonly<Record<string, never>>
-  'calendarPanel.addToDay': Readonly<Record<string, never>>
-  'calendarPanel.dragHint': Readonly<Record<string, never>>
-  'calendarPanel.paletteTitle': Readonly<Record<string, never>>
-  'calendarPanel.selectDayHint': Readonly<Record<string, never>>
   'capture.actionFailed': Readonly<Record<string, never>>
   'capture.addCount': { readonly count: number }
   'capture.addFailed': Readonly<Record<string, never>>
@@ -874,64 +423,6 @@ export interface MessageArgumentsByKey<T = string> {
   'catalog.viewPiece': Readonly<Record<string, never>>
   'catalog.visitShop': Readonly<Record<string, never>>
   'catalog.wasPrice': { readonly price: string | number }
-  'chat.aiStyleAssistant': Readonly<Record<string, never>>
-  'chat.analyzeOutfit.complete': Readonly<Record<string, never>>
-  'chat.analyzeOutfit.done': Readonly<Record<string, never>>
-  'chat.analyzeOutfit.failed': Readonly<Record<string, never>>
-  'chat.analyzeOutfit.running': Readonly<Record<string, never>>
-  'chat.analyzeOutfit.runningShort': Readonly<Record<string, never>>
-  'chat.analyzeOutfit.score': { readonly score: string | number }
-  'chat.analyzeOutfit.started': Readonly<Record<string, never>>
-  'chat.analyzeOutfit.starting': Readonly<Record<string, never>>
-  'chat.analyzeOutfit.view': Readonly<Record<string, never>>
-  'chat.askAboutWardrobe': Readonly<Record<string, never>>
-  'chat.askAnything': Readonly<Record<string, never>>
-  'chat.attachImage': Readonly<Record<string, never>>
-  'chat.continueInHost': Readonly<Record<string, never>>
-  'chat.conversationDeleted': Readonly<Record<string, never>>
-  'chat.conversationRenamed': Readonly<Record<string, never>>
-  'chat.conversationTitle': Readonly<Record<string, never>>
-  'chat.deleteConfirmDescription': Readonly<Record<string, never>>
-  'chat.deleteConfirmTitle': Readonly<Record<string, never>>
-  'chat.deleteConversation': Readonly<Record<string, never>>
-  'chat.deleting': Readonly<Record<string, never>>
-  'chat.errorGeneric': Readonly<Record<string, never>>
-  'chat.errorNewChat': Readonly<Record<string, never>>
-  'chat.errorRetry': Readonly<Record<string, never>>
-  'chat.failedDelete': Readonly<Record<string, never>>
-  'chat.failedLoadConversation': Readonly<Record<string, never>>
-  'chat.failedLoadConversations': Readonly<Record<string, never>>
-  'chat.failedRename': Readonly<Record<string, never>>
-  'chat.lastWeek': Readonly<Record<string, never>>
-  'chat.newChat': Readonly<Record<string, never>>
-  'chat.noConversationsFound': Readonly<Record<string, never>>
-  'chat.noConversationsHint': Readonly<Record<string, never>>
-  'chat.noConversationsYet': Readonly<Record<string, never>>
-  'chat.older': Readonly<Record<string, never>>
-  'chat.openConversation': Readonly<Record<string, never>>
-  'chat.paywall.cta': Readonly<Record<string, never>>
-  'chat.paywall.inputCta': Readonly<Record<string, never>>
-  'chat.placeholder': Readonly<Record<string, never>>
-  'chat.quickSuggestions.analyzeWardrobe': Readonly<Record<string, never>>
-  'chat.quickSuggestions.outfitIdea': Readonly<Record<string, never>>
-  'chat.quickSuggestions.packTrip': Readonly<Record<string, never>>
-  'chat.quickSuggestions.styleMyItem': Readonly<Record<string, never>>
-  'chat.quickSuggestions.tryOn': Readonly<Record<string, never>>
-  'chat.quickSuggestions.wearToday': Readonly<Record<string, never>>
-  'chat.removeAttachment': Readonly<Record<string, never>>
-  'chat.removeCard': { readonly title: string | number }
-  'chat.renameConversation': Readonly<Record<string, never>>
-  'chat.renameDescription': Readonly<Record<string, never>>
-  'chat.renameTitle': Readonly<Record<string, never>>
-  'chat.saving': Readonly<Record<string, never>>
-  'chat.searchConversations': Readonly<Record<string, never>>
-  'chat.send': Readonly<Record<string, never>>
-  'chat.suggestionsForYou': Readonly<Record<string, never>>
-  'chat.talkWithStylist': Readonly<Record<string, never>>
-  'chat.today': Readonly<Record<string, never>>
-  'chat.untitledConversation': Readonly<Record<string, never>>
-  'chat.viewBoard': Readonly<Record<string, never>>
-  'chat.yesterday': Readonly<Record<string, never>>
   'common.back': Readonly<Record<string, never>>
   'common.cancel': Readonly<Record<string, never>>
   'common.clear': Readonly<Record<string, never>>
@@ -988,73 +479,6 @@ export interface MessageArgumentsByKey<T = string> {
   'connect.start': Readonly<Record<string, never>>
   'connect.title': Readonly<Record<string, never>>
   'connect.tryTitle': Readonly<Record<string, never>>
-  'consent.allow': Readonly<Record<string, never>>
-  'consent.deny': Readonly<Record<string, never>>
-  'consent.failed': Readonly<Record<string, never>>
-  'consent.missingCode': Readonly<Record<string, never>>
-  'consent.redirectsTo': { readonly host: string | number }
-  'consent.redirectsToLocal': Readonly<Record<string, never>>
-  'consent.scopeCalendar': Readonly<Record<string, never>>
-  'consent.scopeEdit': Readonly<Record<string, never>>
-  'consent.scopeOffline': Readonly<Record<string, never>>
-  'consent.scopeOther': { readonly scope: string | number }
-  'consent.scopeRead': Readonly<Record<string, never>>
-  'consent.scopeSee': Readonly<Record<string, never>>
-  'consent.scopeWrite': Readonly<Record<string, never>>
-  'consent.scopesHeading': Readonly<Record<string, never>>
-  'consent.subtitle': { readonly client: string | number }
-  'consent.title': Readonly<Record<string, never>>
-  'consent.unknownClient': Readonly<Record<string, never>>
-  'dashboard.enableLocation': Readonly<Record<string, never>>
-  'dashboard.greeting': Readonly<Record<string, never>>
-  'dashboard.greetingWithName': { readonly name: string | number }
-  'dashboard.wheel.addPiece': Readonly<Record<string, never>>
-  'dashboard.wheel.boardFailed': Readonly<Record<string, never>>
-  'dashboard.wheel.boardName': { readonly date: string | number }
-  'dashboard.wheel.browseShop': Readonly<Record<string, never>>
-  'dashboard.wheel.buildOwn': Readonly<Record<string, never>>
-  'dashboard.wheel.emptyBody': Readonly<Record<string, never>>
-  'dashboard.wheel.feedHeading': Readonly<Record<string, never>>
-  'dashboard.wheel.hint': Readonly<Record<string, never>>
-  'dashboard.wheel.loadFailed': Readonly<Record<string, never>>
-  'dashboard.wheel.pickedFor.autumn': Readonly<Record<string, never>>
-  'dashboard.wheel.pickedFor.spring': Readonly<Record<string, never>>
-  'dashboard.wheel.pickedFor.summer': Readonly<Record<string, never>>
-  'dashboard.wheel.pickedFor.winter': Readonly<Record<string, never>>
-  'dashboard.wheel.retry': Readonly<Record<string, never>>
-  'dashboard.wheel.spin': Readonly<Record<string, never>>
-  'dashboard.wheel.spinning': Readonly<Record<string, never>>
-  'dashboard.wheel.startBody': Readonly<Record<string, never>>
-  'dashboard.wheel.startTitle': Readonly<Record<string, never>>
-  'dashboard.wheel.styleIt': Readonly<Record<string, never>>
-  'dashboard.wheel.title': Readonly<Record<string, never>>
-  'dashboard.wheel.wearThis': Readonly<Record<string, never>>
-  'dashboard.wheel.yourPiece': Readonly<Record<string, never>>
-  'errors.badRequest': Readonly<Record<string, never>>
-  'errors.conflict': Readonly<Record<string, never>>
-  'errors.failedDeleteItem': { readonly error: string | number }
-  'errors.failedLoadItems': Readonly<Record<string, never>>
-  'errors.failedResendCode': Readonly<Record<string, never>>
-  'errors.failedSendCode': Readonly<Record<string, never>>
-  'errors.failedSendMessage': { readonly error: string | number }
-  'errors.failedUpload': { readonly error: string | number }
-  'errors.failedVerifyCode': Readonly<Record<string, never>>
-  'errors.fileTooLarge': { readonly size: string | number }
-  'errors.forbidden': Readonly<Record<string, never>>
-  'errors.invalidCode': Readonly<Record<string, never>>
-  'errors.itemDeleted': Readonly<Record<string, never>>
-  'errors.loadingItems': Readonly<Record<string, never>>
-  'errors.loadingPrompts': Readonly<Record<string, never>>
-  'errors.loadingUsers': Readonly<Record<string, never>>
-  'errors.notFound': Readonly<Record<string, never>>
-  'errors.payloadTooLarge': Readonly<Record<string, never>>
-  'errors.precondition': Readonly<Record<string, never>>
-  'errors.selectImageFile': Readonly<Record<string, never>>
-  'errors.signInFailed': Readonly<Record<string, never>>
-  'errors.signUpFailed': Readonly<Record<string, never>>
-  'errors.unauthorized': Readonly<Record<string, never>>
-  'errors.unexpectedError': Readonly<Record<string, never>>
-  'errors.waitForUploads': Readonly<Record<string, never>>
   'explore.allMoods': Readonly<Record<string, never>>
   'explore.clearSearch': Readonly<Record<string, never>>
   'explore.edits': Readonly<Record<string, never>>
@@ -1136,55 +560,6 @@ export interface MessageArgumentsByKey<T = string> {
   'looks.statusPublic': Readonly<Record<string, never>>
   'looks.title': Readonly<Record<string, never>>
   'looks.toBoards': Readonly<Record<string, never>>
-  'membership.features.outfitCheck.body': Readonly<Record<string, never>>
-  'membership.features.outfitCheck.cost': { readonly count: number }
-  'membership.features.outfitCheck.name': Readonly<Record<string, never>>
-  'membership.features.productShots.body': Readonly<Record<string, never>>
-  'membership.features.productShots.cost': { readonly count: number }
-  'membership.features.productShots.name': Readonly<Record<string, never>>
-  'membership.features.renderedLooks.body': Readonly<Record<string, never>>
-  'membership.features.renderedLooks.cost': { readonly count: number }
-  'membership.features.renderedLooks.name': Readonly<Record<string, never>>
-  'membership.features.scan.body': Readonly<Record<string, never>>
-  'membership.features.scan.cost': { readonly count: number }
-  'membership.features.scan.name': Readonly<Record<string, never>>
-  'membership.features.stylist.body': Readonly<Record<string, never>>
-  'membership.features.stylist.cost': { readonly count: number }
-  'membership.features.stylist.name': Readonly<Record<string, never>>
-  'membership.features.tryOn.body': Readonly<Record<string, never>>
-  'membership.features.tryOn.cost': { readonly count: number }
-  'membership.features.tryOn.name': Readonly<Record<string, never>>
-  'membership.freeBody': { readonly items: string | number }
-  'membership.freeTitle': Readonly<Record<string, never>>
-  'membership.headerCta': Readonly<Record<string, never>>
-  'membership.headerCtaSignedIn': Readonly<Record<string, never>>
-  'membership.heading': Readonly<Record<string, never>>
-  'membership.includedNote': Readonly<Record<string, never>>
-  'membership.includedTitle': Readonly<Record<string, never>>
-  'membership.intro': Readonly<Record<string, never>>
-  'membership.kicker': Readonly<Record<string, never>>
-  'membership.manage': Readonly<Record<string, never>>
-  'membership.metaDescription': Readonly<Record<string, never>>
-  'membership.priceMonthly': { readonly price: string | number; readonly credits: string | number }
-  'membership.priceTitle': Readonly<Record<string, never>>
-  'membership.priceWardrobe': Readonly<Record<string, never>>
-  'membership.priceYearly': { readonly price: string | number; readonly percent: string | number }
-  'membership.title': Readonly<Record<string, never>>
-  'modelPhotos.addPhoto': Readonly<Record<string, never>>
-  'modelPhotos.default': Readonly<Record<string, never>>
-  'modelPhotos.defaultSet': Readonly<Record<string, never>>
-  'modelPhotos.delete': Readonly<Record<string, never>>
-  'modelPhotos.deleteFailed': Readonly<Record<string, never>>
-  'modelPhotos.deleted': Readonly<Record<string, never>>
-  'modelPhotos.description': Readonly<Record<string, never>>
-  'modelPhotos.emptyHint': Readonly<Record<string, never>>
-  'modelPhotos.loadError': Readonly<Record<string, never>>
-  'modelPhotos.makeDefault': Readonly<Record<string, never>>
-  'modelPhotos.manage': Readonly<Record<string, never>>
-  'modelPhotos.photoAlt': Readonly<Record<string, never>>
-  'modelPhotos.reloadHint': Readonly<Record<string, never>>
-  'modelPhotos.setDefaultFailed': Readonly<Record<string, never>>
-  'modelPhotos.title': Readonly<Record<string, never>>
   'nav.account': Readonly<Record<string, never>>
   'nav.activity': Readonly<Record<string, never>>
   'nav.admin': Readonly<Record<string, never>>
@@ -1210,51 +585,6 @@ export interface MessageArgumentsByKey<T = string> {
   'nav.subscription': Readonly<Record<string, never>>
   'nav.useInHost': Readonly<Record<string, never>>
   'nav.wardrobe': Readonly<Record<string, never>>
-  'onboarding.allSet': Readonly<Record<string, never>>
-  'onboarding.answerBoth': Readonly<Record<string, never>>
-  'onboarding.answerMens': Readonly<Record<string, never>>
-  'onboarding.answerWomens': Readonly<Record<string, never>>
-  'onboarding.back': Readonly<Record<string, never>>
-  'onboarding.continue': Readonly<Record<string, never>>
-  'onboarding.continueTaste': Readonly<Record<string, never>>
-  'onboarding.defaultName': Readonly<Record<string, never>>
-  'onboarding.errorTitle': Readonly<Record<string, never>>
-  'onboarding.finishError': Readonly<Record<string, never>>
-  'onboarding.finishMissing': Readonly<Record<string, never>>
-  'onboarding.finishTitle': Readonly<Record<string, never>>
-  'onboarding.initialGreeting': { readonly name: string | number }
-  'onboarding.initialQuestion': Readonly<Record<string, never>>
-  'onboarding.letsSetup': Readonly<Record<string, never>>
-  'onboarding.loadError': Readonly<Record<string, never>>
-  'onboarding.optionBoth': Readonly<Record<string, never>>
-  'onboarding.optionMens': Readonly<Record<string, never>>
-  'onboarding.optionWomens': Readonly<Record<string, never>>
-  'onboarding.redirecting': Readonly<Record<string, never>>
-  'onboarding.retry': Readonly<Record<string, never>>
-  'onboarding.reveal.addAll': Readonly<Record<string, never>>
-  'onboarding.reveal.addFailed': { readonly message: string | number }
-  'onboarding.reveal.added': Readonly<Record<string, never>>
-  'onboarding.reveal.addedToast': { readonly count: string | number }
-  'onboarding.reveal.differentPhotos': Readonly<Record<string, never>>
-  'onboarding.reveal.foundCount': { readonly pieces: string | number; readonly photos: string | number }
-  'onboarding.reveal.looking': Readonly<Record<string, never>>
-  'onboarding.reveal.noGarments': Readonly<Record<string, never>>
-  'onboarding.reveal.photoCount': { readonly count: number }
-  'onboarding.reveal.photoProgress': { readonly current: string | number; readonly total: string | number }
-  'onboarding.reveal.pieceCount': { readonly count: number }
-  'onboarding.reveal.piecesSoFar': { readonly count: number }
-  'onboarding.reveal.scanFailed': Readonly<Record<string, never>>
-  'onboarding.reveal.styleRead': Readonly<Record<string, never>>
-  'onboarding.reveal.tryAgain': Readonly<Record<string, never>>
-  'onboarding.reveal.whatWereSeeing': Readonly<Record<string, never>>
-  'onboarding.reveal.whatYouOwn': Readonly<Record<string, never>>
-  'onboarding.reveal.yourPalette': Readonly<Record<string, never>>
-  'onboarding.saving': Readonly<Record<string, never>>
-  'onboarding.skip': Readonly<Record<string, never>>
-  'onboarding.tasteCount': { readonly count: string | number; readonly minimum: string | number }
-  'onboarding.tasteEmpty': Readonly<Record<string, never>>
-  'onboarding.typeAnswer': Readonly<Record<string, never>>
-  'onboarding.welcome': Readonly<Record<string, never>>
   'onboardingFlows.default-v4.capture.ctaLabel': Readonly<Record<string, never>>
   'onboardingFlows.default-v4.capture.header': Readonly<Record<string, never>>
   'onboardingFlows.default-v4.capture.label': Readonly<Record<string, never>>
@@ -1363,41 +693,6 @@ export interface MessageArgumentsByKey<T = string> {
   'onboardingFlows.wardrobe.subscribe.header': Readonly<Record<string, never>>
   'onboardingFlows.wardrobe.subscribe.label': Readonly<Record<string, never>>
   'onboardingFlows.wardrobe.subscribe.question': Readonly<Record<string, never>>
-  'onboardingRuntime.addPhotos': Readonly<Record<string, never>>
-  'onboardingRuntime.analysisFailed': Readonly<Record<string, never>>
-  'onboardingRuntime.checkAgain': Readonly<Record<string, never>>
-  'onboardingRuntime.chooseImages': Readonly<Record<string, never>>
-  'onboardingRuntime.choosePhotos': Readonly<Record<string, never>>
-  'onboardingRuntime.confirmingBody': Readonly<Record<string, never>>
-  'onboardingRuntime.confirmingPayment': Readonly<Record<string, never>>
-  'onboardingRuntime.continuePhotos': Readonly<Record<string, never>>
-  'onboardingRuntime.download': Readonly<Record<string, never>>
-  'onboardingRuntime.freshPhoto': Readonly<Record<string, never>>
-  'onboardingRuntime.invalidFiles': { readonly size: string | number }
-  'onboardingRuntime.needPhotos': Readonly<Record<string, never>>
-  'onboardingRuntime.needPhotosBody': Readonly<Record<string, never>>
-  'onboardingRuntime.paymentDeclined': Readonly<Record<string, never>>
-  'onboardingRuntime.paymentDeclinedBody': Readonly<Record<string, never>>
-  'onboardingRuntime.paymentUnconfirmed': Readonly<Record<string, never>>
-  'onboardingRuntime.paymentUnconfirmedBody': Readonly<Record<string, never>>
-  'onboardingRuntime.photoLimit': { readonly count: string | number }
-  'onboardingRuntime.photoRoom': { readonly count: string | number }
-  'onboardingRuntime.preview': Readonly<Record<string, never>>
-  'onboardingRuntime.removePhoto': Readonly<Record<string, never>>
-  'onboardingRuntime.resendFailed': Readonly<Record<string, never>>
-  'onboardingRuntime.retry': Readonly<Record<string, never>>
-  'onboardingRuntime.retryPayment': Readonly<Record<string, never>>
-  'onboardingRuntime.retryUpload': Readonly<Record<string, never>>
-  'onboardingRuntime.savedOutfit': Readonly<Record<string, never>>
-  'onboardingRuntime.savedPhotos': { readonly count: string | number }
-  'onboardingRuntime.sendFailed': Readonly<Record<string, never>>
-  'onboardingRuntime.sessionFailed': Readonly<Record<string, never>>
-  'onboardingRuntime.skippedFiles': { readonly count: string | number; readonly size: string | number }
-  'onboardingRuntime.startOver': Readonly<Record<string, never>>
-  'onboardingRuntime.takePhoto': Readonly<Record<string, never>>
-  'onboardingRuntime.tryOnFailed': Readonly<Record<string, never>>
-  'onboardingRuntime.tryOnResult': Readonly<Record<string, never>>
-  'onboardingRuntime.uploading': Readonly<Record<string, never>>
   'onboardingWaiting.outfit-check.eyebrow': Readonly<Record<string, never>>
   'onboardingWaiting.outfit-check.steps.0': Readonly<Record<string, never>>
   'onboardingWaiting.outfit-check.steps.1': Readonly<Record<string, never>>
@@ -1474,58 +769,6 @@ export interface MessageArgumentsByKey<T = string> {
   'outfitCheck.uploadHint': Readonly<Record<string, never>>
   'outfitCheck.uploadOutfit': { readonly italic: RichTextValue<T> }
   'outfitCheck.uploading': Readonly<Record<string, never>>
-  'outfitIdeas.boardHint': Readonly<Record<string, never>>
-  'outfitIdeas.credits': { readonly count: number }
-  'outfitIdeas.creditsUsed': { readonly count: number }
-  'outfitIdeas.fewer': Readonly<Record<string, never>>
-  'outfitIdeas.fewerFound': Readonly<Record<string, never>>
-  'outfitIdeas.find': { readonly count: number }
-  'outfitIdeas.finding': Readonly<Record<string, never>>
-  'outfitIdeas.free': Readonly<Record<string, never>>
-  'outfitIdeas.freeNote': Readonly<Record<string, never>>
-  'outfitIdeas.fromWardrobe': Readonly<Record<string, never>>
-  'outfitIdeas.fromWardrobeHint': Readonly<Record<string, never>>
-  'outfitIdeas.howMany': Readonly<Record<string, never>>
-  'outfitIdeas.ideaCount': { readonly count: number }
-  'outfitIdeas.includeHint': Readonly<Record<string, never>>
-  'outfitIdeas.includePieces': Readonly<Record<string, never>>
-  'outfitIdeas.included': Readonly<Record<string, never>>
-  'outfitIdeas.includedGroup': Readonly<Record<string, never>>
-  'outfitIdeas.includedOf': { readonly count: string | number }
-  'outfitIdeas.includedPiece': Readonly<Record<string, never>>
-  'outfitIdeas.leaveOut': Readonly<Record<string, never>>
-  'outfitIdeas.look': { readonly number: string | number }
-  'outfitIdeas.more': Readonly<Record<string, never>>
-  'outfitIdeas.moreIdeas': { readonly count: number }
-  'outfitIdeas.noCreditUsed': Readonly<Record<string, never>>
-  'outfitIdeas.noneFound': Readonly<Record<string, never>>
-  'outfitIdeas.notSaved': Readonly<Record<string, never>>
-  'outfitIdeas.openSaved': Readonly<Record<string, never>>
-  'outfitIdeas.optional': Readonly<Record<string, never>>
-  'outfitIdeas.preferencesLegend': Readonly<Record<string, never>>
-  'outfitIdeas.priceNote': Readonly<Record<string, never>>
-  'outfitIdeas.promptLabel': Readonly<Record<string, never>>
-  'outfitIdeas.promptPlaceholder': Readonly<Record<string, never>>
-  'outfitIdeas.recoverRequest': Readonly<Record<string, never>>
-  'outfitIdeas.recoverSave': Readonly<Record<string, never>>
-  'outfitIdeas.removePiece': { readonly name: string | number }
-  'outfitIdeas.resultsLabel': Readonly<Record<string, never>>
-  'outfitIdeas.saveOutfit': Readonly<Record<string, never>>
-  'outfitIdeas.saveToBoard': { readonly board: string | number }
-  'outfitIdeas.savedAdded': Readonly<Record<string, never>>
-  'outfitIdeas.savedPrivate': Readonly<Record<string, never>>
-  'outfitIdeas.savedRemoved': Readonly<Record<string, never>>
-  'outfitIdeas.showMore': Readonly<Record<string, never>>
-  'outfitIdeas.unavailable': Readonly<Record<string, never>>
-  'outfitIdeas.viewOnBoard': Readonly<Record<string, never>>
-  'outfitIdeas.wardrobeHint': Readonly<Record<string, never>>
-  'passwordLogin.busy': Readonly<Record<string, never>>
-  'passwordLogin.description': Readonly<Record<string, never>>
-  'passwordLogin.email': Readonly<Record<string, never>>
-  'passwordLogin.failed': Readonly<Record<string, never>>
-  'passwordLogin.password': Readonly<Record<string, never>>
-  'passwordLogin.submit': Readonly<Record<string, never>>
-  'passwordLogin.title': Readonly<Record<string, never>>
   'people.actionFailed': Readonly<Record<string, never>>
   'people.fromFollowing': Readonly<Record<string, never>>
   'people.gotIt': Readonly<Record<string, never>>
@@ -1539,12 +782,6 @@ export interface MessageArgumentsByKey<T = string> {
   'people.wishlistEmptyHint': Readonly<Record<string, never>>
   'people.wishlistExplore': Readonly<Record<string, never>>
   'people.wishlistFailed': Readonly<Record<string, never>>
-  'pricing.heading': Readonly<Record<string, never>>
-  'pricing.intro': Readonly<Record<string, never>>
-  'privacyConnected.data': Readonly<Record<string, never>>
-  'privacyConnected.revoke': Readonly<Record<string, never>>
-  'privacyConnected.scopes': Readonly<Record<string, never>>
-  'privacyConnected.title': Readonly<Record<string, never>>
   'profile.card.loadFailed': Readonly<Record<string, never>>
   'profile.card.private': { readonly username: string | number }
   'profile.card.public': { readonly username: string | number }
@@ -1688,27 +925,6 @@ export interface MessageArgumentsByKey<T = string> {
   'profile.tones.sand': Readonly<Record<string, never>>
   'profile.tones.slate': Readonly<Record<string, never>>
   'profile.tones.stone': Readonly<Record<string, never>>
-  'referral.copyLink': Readonly<Record<string, never>>
-  'referral.creditsEarned': Readonly<Record<string, never>>
-  'referral.description': Readonly<Record<string, never>>
-  'referral.emailPlaceholder': Readonly<Record<string, never>>
-  'referral.inviteByEmail': Readonly<Record<string, never>>
-  'referral.inviteError': Readonly<Record<string, never>>
-  'referral.inviteSent': Readonly<Record<string, never>>
-  'referral.linkCopied': Readonly<Record<string, never>>
-  'referral.noCode': Readonly<Record<string, never>>
-  'referral.pending': Readonly<Record<string, never>>
-  'referral.pendingBadge': Readonly<Record<string, never>>
-  'referral.referralList': Readonly<Record<string, never>>
-  'referral.rewarded': Readonly<Record<string, never>>
-  'referral.send': Readonly<Record<string, never>>
-  'referral.shareLink': Readonly<Record<string, never>>
-  'referral.shareText': Readonly<Record<string, never>>
-  'referral.shareTitle': Readonly<Record<string, never>>
-  'referral.stats': Readonly<Record<string, never>>
-  'referral.title': Readonly<Record<string, never>>
-  'referral.totalReferred': Readonly<Record<string, never>>
-  'referral.yourCode': Readonly<Record<string, never>>
   'safety.block.block': { readonly username: string | number }
   'safety.block.blockFailed': Readonly<Record<string, never>>
   'safety.block.blocked': { readonly username: string | number }
@@ -1908,17 +1124,6 @@ export interface MessageArgumentsByKey<T = string> {
   'share.tryOnText': Readonly<Record<string, never>>
   'share.tryOnTitle': Readonly<Record<string, never>>
   'share.visibility.public': Readonly<Record<string, never>>
-  'shops.ctaBody': Readonly<Record<string, never>>
-  'shops.ctaLabel': Readonly<Record<string, never>>
-  'shops.ctaTitle': Readonly<Record<string, never>>
-  'shops.emptyBody': Readonly<Record<string, never>>
-  'shops.emptyTitle': Readonly<Record<string, never>>
-  'shops.headerCta': Readonly<Record<string, never>>
-  'shops.headerCtaSignedIn': Readonly<Record<string, never>>
-  'shops.heading': Readonly<Record<string, never>>
-  'shops.intro': Readonly<Record<string, never>>
-  'shops.metaDescription': Readonly<Record<string, never>>
-  'shops.title': Readonly<Record<string, never>>
   'studio.add': Readonly<Record<string, never>>
   'studio.addCaption': Readonly<Record<string, never>>
   'studio.addFailed': Readonly<Record<string, never>>
@@ -2293,40 +1498,6 @@ export interface MessageArgumentsByKey<T = string> {
   'today.wearing': Readonly<Record<string, never>>
   'today.worn': Readonly<Record<string, never>>
   'today.wornNote': Readonly<Record<string, never>>
-  'tourControls.back': Readonly<Record<string, never>>
-  'tourControls.done': Readonly<Record<string, never>>
-  'tourControls.next': Readonly<Record<string, never>>
-  'tours.add.description': Readonly<Record<string, never>>
-  'tours.add.title': Readonly<Record<string, never>>
-  'tours.board.description': Readonly<Record<string, never>>
-  'tours.board.title': Readonly<Record<string, never>>
-  'tours.boards.description': Readonly<Record<string, never>>
-  'tours.boards.title': Readonly<Record<string, never>>
-  'tours.build.description': Readonly<Record<string, never>>
-  'tours.build.title': Readonly<Record<string, never>>
-  'tours.check.description': Readonly<Record<string, never>>
-  'tours.check.title': Readonly<Record<string, never>>
-  'tours.done.description': Readonly<Record<string, never>>
-  'tours.done.title': Readonly<Record<string, never>>
-  'tours.home.description': Readonly<Record<string, never>>
-  'tours.home.title': Readonly<Record<string, never>>
-  'tours.newLook.description': Readonly<Record<string, never>>
-  'tours.newLook.title': Readonly<Record<string, never>>
-  'tours.outfitCheck.description': Readonly<Record<string, never>>
-  'tours.outfitCheck.title': Readonly<Record<string, never>>
-  'tours.scan.description': Readonly<Record<string, never>>
-  'tours.scan.title': Readonly<Record<string, never>>
-  'tours.shop.description': Readonly<Record<string, never>>
-  'tours.shop.title': Readonly<Record<string, never>>
-  'tours.stylist.description': Readonly<Record<string, never>>
-  'tours.stylist.title': Readonly<Record<string, never>>
-  'tours.tryOn.description': Readonly<Record<string, never>>
-  'tours.tryOn.title': Readonly<Record<string, never>>
-  'tours.wardrobe.description': Readonly<Record<string, never>>
-  'tours.wardrobe.title': Readonly<Record<string, never>>
-  'tours.welcome.description': Readonly<Record<string, never>>
-  'tours.welcome.title': Readonly<Record<string, never>>
-  'tryOn.uploadModelPhoto': Readonly<Record<string, never>>
   'wardrobe.addDetail': Readonly<Record<string, never>>
   'wardrobe.addModelPhoto': Readonly<Record<string, never>>
   'wardrobe.addPhoto': Readonly<Record<string, never>>
@@ -2758,4 +1929,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '4b715162b2642a62f5166c8c5264ad4f0000a377dc93c1382d0f191fb8002a35'
+export const catalogVersion = 'a2e454023e022e142563b49f9f29196d7c290a3541f60c50266f3a13f5952272'
