@@ -16,8 +16,7 @@ import { categories } from './PieceFields.ts'
 import { Message, type Model } from './Wardrobe.ts'
 import { categoryName, pieceLabel } from './WardrobeWords.ts'
 import * as styles from './WardrobeView.styles.ts'
-import { wardrobeTabs } from './WardrobeTabs.ts'
-import { addPiecesAction, pageHead, pageTitle } from './PageHead.ts'
+import { wardrobeMain } from './WardrobeTabs.ts'
 
 /** The small image of a piece; the API Worker serves it to its owner only. A new drawing is a new address. */
 const thumbnailPath = (piece: Piece) =>
@@ -173,16 +172,17 @@ const failedView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
 
 /** The person's pieces on paper, filtered by category (Gallery `wardrobe.html`). */
 export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
-  h.main(
-    [h.Id('main'), ...styled(h, styles.wardrobePage())],
+  wardrobeMain(
+    'pieces',
+    styles.wardrobePage(),
     [
-      pageHead(pageTitle(format(locale, 'wardrobe.title', {}), h), Option.some(addPiecesAction(locale, h)), h),
-      wardrobeTabs('pieces', locale, h),
       AsyncData.matchData(model.pieces, {
         onEmpty: () => loadingView(locale, h),
         onFailure: () => failedView(locale, h),
         onData: (pieces) => loadedView(pieces, model, locale, h),
       }),
     ],
+    locale,
+    h,
   ),
 )

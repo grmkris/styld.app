@@ -7,7 +7,7 @@ import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { textField } from '../Fields.styles.ts'
 import { loader } from '../Icon.ts'
-import { loginRouter } from '../route.ts'
+import { loginRouter, wishlistRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { Message, type Model, Reporting, Standing, Subject, Work } from './People.ts'
 import * as styles from './PeopleView.styles.ts'
@@ -161,7 +161,15 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
       styled(h, styles.actions()),
       Subject.match(model.subject, {
         Person: ({ handle }) => personActions(model, handle, locale, h),
-        Piece: () => saveAndReport(model, format(locale, 'safety.report.piece', {}), locale, h),
+        Piece: () => [
+          model.wished
+            ? h.a(
+                [h.Href(wishlistRouter({})), ...styled(h, secondaryAction())],
+                [format(locale, 'catalog.savedToWishlist', {})],
+              )
+            : button(format(locale, 'catalog.saveToWishlist', {}), Message.ClickedWish(), h),
+          ...saveAndReport(model, format(locale, 'safety.report.piece', {}), locale, h),
+        ],
         Board: () => saveAndReport(model, format(locale, 'safety.report.board', {}), locale, h),
         Look: () => saveAndReport(model, format(locale, 'safety.report.look', {}), locale, h),
       }),

@@ -1942,7 +1942,11 @@
     "signInToFollow": "Prijavi se, da slediš",
     "actionFailed": "Ni uspelo. Poskusi znova.",
     "fromFollowing": "Od ljudi, ki jim slediš",
-    "savedFromOthers": "Shranjeno od drugih"
+    "savedFromOthers": "Shranjeno od drugih",
+    "wishlistEmptyHint": "Kosi, kakršne si želiš, pristanejo tukaj: odpri javni kos nekoga in ga shrani na seznam želja.",
+    "removeWish": "Odstrani",
+    "wishGone": "Ni več prikazan",
+    "wishlistFailed": "Tvojega seznama želja ni bilo mogoče naložiti"
   },
   "profile": {
     "public": {

@@ -1942,7 +1942,11 @@
     "signInToFollow": "Sign in to follow",
     "actionFailed": "That didn't go through. Try again.",
     "fromFollowing": "From people you follow",
-    "savedFromOthers": "Saved from others"
+    "savedFromOthers": "Saved from others",
+    "wishlistEmptyHint": "Pieces you want one like land here: open someone's public piece and save it to your wishlist.",
+    "removeWish": "Remove",
+    "wishGone": "No longer shown",
+    "wishlistFailed": "Your wishlist could not be loaded"
   },
   "profile": {
     "public": {

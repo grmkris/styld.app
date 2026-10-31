@@ -287,6 +287,9 @@ const verifyAskAndWardrobe = async (page: Page, origin: string) => {
   await page.getByRole('link', { name: 'Pieces', exact: true }).waitFor({ state: 'visible' })
 }
 
+/** The signed-in pages that must load whole without anything moving. */
+const steadyPaths = ['/', '/explore', '/wardrobe', '/looks', '/wardrobe/wishlist', '/boards', '/ask', '/account']
+
 /** Gallery 2 for the person's own wardrobe: today's table (Spin, Wear this), a board laid out by hand (moved,
  * pinched, a label, a picture, taken off and back, saved and reopened, saved as a look), Ask and the
  * Wardrobe's tabs. No page error and no CSP violation on the way: the table places things through the CSSOM. */
@@ -309,7 +312,7 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
       await verifyBoard(phone, page, origin)
       await verifyAskAndWardrobe(page, origin)
       await expectSameTitleTops(page, origin)
-      await expectSteadyFullLoads(page, origin, ['/', '/explore', '/wardrobe', '/looks', '/boards', '/ask', '/account'])
+      await expectSteadyFullLoads(page, origin, steadyPaths)
       await expectInstantTabs(page, origin)
       await expectSlovenianSearch(phone, page, origin)
     } catch (error) {

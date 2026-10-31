@@ -1820,6 +1820,11 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'people.actionFailed': 'Ni uspelo. Poskusi znova.',
   'people.fromFollowing': 'Od ljudi, ki jim slediš',
   'people.savedFromOthers': 'Shranjeno od drugih',
+  'people.wishlistEmptyHint':
+    'Kosi, kakršne si želiš, pristanejo tukaj: odpri javni kos nekoga in ga shrani na seznam želja.',
+  'people.removeWish': 'Odstrani',
+  'people.wishGone': 'Ni več prikazan',
+  'people.wishlistFailed': 'Tvojega seznama želja ni bilo mogoče naložiti',
   'profile.public.metaTitle': '{name} (@{username}) na Styld',
   'profile.public.metaDescription': 'Zbirke in videzi uporabnika @{username} na Styld.',
   'profile.public.headerCta': 'Pridruži se Styld',

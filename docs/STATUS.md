@@ -404,8 +404,15 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
   boards before there are any), with a way to Explore. The section keeps its room while they load. Evidence: a
   scene test.
 - **Next:**
-  - M6 (the wishlist and Add from a link): `link_import` is built (below); the web's Add from a link and the
-    wishlist are next.
+  - M6: the web's Add from a link (a capture in the tray, through the capture session's admit step) is next.
+  - Signed-out visitors see Save, Save to wishlist and Report on public pages, and a tap fails with "That didn't
+    go through"; they should be asked to sign in instead, as Follow does.
+- **M6c, the wishlist on the website:**
+  - Wishlist is the Wardrobe's third tab (`/wardrobe/wishlist`), beside Pieces and Looks. Each wish shows the piece
+    and whose it is while it stays public, else its name and "No longer shown". Remove takes it off at once.
+  - A public piece's page has Save to wishlist; once saved, it links to the wishlist.
+  - Evidence: scene tests (the tab, a gone piece, Remove, a failed load and its retry, saving from a piece page), a
+    People story, and the native instant-tabs, title and steady-load walks including the tab.
 - **M6b, the wishlist (server and assistants):**
   - The migration `wishes` adds a private `wishes` table. Its source piece is set to null when the piece goes, and
     the wish keeps its name and category.

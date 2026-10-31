@@ -41,6 +41,8 @@ export const Model = Schema.Struct({
   subject: Subject,
   standing: Standing,
   saved: Schema.Boolean,
+  /** The piece is on the person's wishlist. */
+  wished: Schema.Boolean,
   work: Work,
   confirmingBlock: Schema.Boolean,
   reporting: Reporting,
@@ -51,6 +53,7 @@ export const init = (subject: Subject): Model => ({
   subject,
   standing: Standing.Unknown(),
   saved: false,
+  wished: false,
   work: Work.Idle(),
   confirmingBlock: false,
   reporting: Reporting.Closed(),
@@ -68,6 +71,8 @@ export const Message = defineMessageUnion({
   SucceededSetRelation: { relation: Relation },
   ClickedSave: { saved: Schema.Boolean },
   SucceededSetSaved: { saved: Schema.Boolean },
+  ClickedWish: {},
+  SucceededWish: {},
   FailedPeopleWork: {},
   ClickedReport: {},
   ChoseReportReason: { reason: ReportReason },
@@ -168,6 +173,18 @@ export const SetSaved = Command.define('SetSaved', {
 })
 
 /** @internal Exported for its tests. */
+export const AddToWishlist = Command.define('AddToWishlist', {
+  args: { pieceId: Schema.String },
+  messages: [Message.SucceededWish, Message.FailedPeopleWork],
+  execute: ({ pieceId }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      yield* api.social.addWish({ payload: { pieceId: yield* Schema.decodeUnknownEffect(PieceId)(pieceId) } })
+      return Message.SucceededWish()
+    }).pipe(Effect.orElseSucceed(() => Message.FailedPeopleWork())),
+})
+
+/** @internal Exported for its tests. */
 export const SendReport = Command.define('SendReport', {
   args: { subject: Subject, reason: ReportReason, note: Schema.String },
   messages: [Message.SucceededReport, Message.FailedReport],
@@ -230,6 +247,12 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedSave: ({ saved }) =>
       Subject.guards.Person(model.subject) ? { model } : sending(model, SetSaved({ subject: model.subject, saved })),
     SucceededSetSaved: ({ saved }) => ({ model: modifyFields(model, { saved: () => saved, work: () => Work.Idle() }) }),
+    // Wishing again answers the first wish; a wish is taken off the list from the wishlist itself.
+    ClickedWish: () =>
+      Subject.guards.Piece(model.subject)
+        ? sending(model, AddToWishlist({ pieceId: model.subject.pieceId }))
+        : { model },
+    SucceededWish: () => ({ model: modifyFields(model, { wished: () => true, work: () => Work.Idle() }) }),
     FailedPeopleWork: () => ({ model: modifyFields(model, { work: () => Work.Failed() }) }),
     ClickedReport: () => ({
       model: modifyFields(model, { reporting: () => Reporting.Open({ reason: Option.none(), note: '' }) }),

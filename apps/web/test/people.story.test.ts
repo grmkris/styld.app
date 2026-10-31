@@ -3,6 +3,7 @@ import { Option, Schema } from 'effect'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import {
+  AddToWishlist,
   init,
   Message,
   Reporting,
@@ -65,6 +66,25 @@ describe('what a visitor does with someone', () => {
       model(({ saved, work }) => {
         expect(saved).toBe(true)
         expect(Work.guards.Failed(work)).toBe(true)
+      }),
+    )
+  })
+
+  test('saves a piece to the wishlist, and says when it did not go through', () => {
+    story(
+      update,
+      given(init(Subject.Piece({ pieceId }))),
+      message(Message.ClickedWish()),
+      Command.resolve(AddToWishlist({ pieceId }), Message.FailedPeopleWork()),
+      model(({ wished, work }) => {
+        expect(wished).toBe(false)
+        expect(Work.guards.Failed(work)).toBe(true)
+      }),
+      message(Message.ClickedWish()),
+      Command.resolve(AddToWishlist({ pieceId }), Message.SucceededWish()),
+      model(({ wished, work }) => {
+        expect(wished).toBe(true)
+        expect(Work.guards.Idle(work)).toBe(true)
       }),
     )
   })

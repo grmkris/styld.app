@@ -2,7 +2,7 @@ import { expect } from 'bun:test'
 import type { BrowserContext, Page } from 'playwright'
 
 /** The signed-in pages the navigation moves between. */
-const tabPaths = ['/', '/wardrobe', '/looks', '/boards', '/ask', '/account'] as const
+const tabPaths = ['/', '/wardrobe', '/looks', '/wardrobe/wishlist', '/boards', '/ask', '/account'] as const
 
 /** Where the page's title starts, once it is drawn. */
 const titleTop = async (page: Page) => {
@@ -93,7 +93,8 @@ export const expectInstantTabs = async (page: Page, origin: string) => {
   await page.evaluate(() => {
     document.documentElement.dataset['kept'] = 'yes'
   })
-  for (const path of ['/explore', '/wardrobe', '/looks', '/ask', '/boards', '/account', '/']) await tap(page, path)
+  for (const path of ['/explore', '/wardrobe', '/looks', '/wardrobe/wishlist', '/ask', '/boards', '/account', '/'])
+    await tap(page, path)
   // A page seen before is drawn from what the app has: no skeleton, even for a moment.
   await page.locator('a[href="/wardrobe"]').first().click()
   await page.waitForURL((url) => url.pathname === '/wardrobe')

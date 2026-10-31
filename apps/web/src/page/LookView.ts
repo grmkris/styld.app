@@ -1,4 +1,5 @@
 import { format, type Locale } from '@styld/i18n'
+import type { PublicLookPage } from '@styld/protocol'
 import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
@@ -66,6 +67,29 @@ const deletion = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Readon
       ),
   })
 
+/** Someone else's shared look: its name, occasion and whose it is, what a visitor can do, and its pieces. */
+const visitingView = (
+  model: Model,
+  page: PublicLookPage,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): ReadonlyArray<Html> => [
+  h.h1([], [page.look.name]),
+  page.look.occasion === null ? h.empty : h.p(styled(h, styles.lede()), [page.look.occasion]),
+  byline(page.by, locale, h),
+  h.submodel({
+    slotId: 'look-people',
+    model: model.people,
+    view: PeopleView.view,
+    viewInputs: { locale },
+    toParentMessage: (message) => Message.GotPeopleMessage({ message }),
+  }),
+  tileGrid(
+    page.look.pieces.map((piece) => ({ id: piece.id, tile: pieceTile(piece, locale, h) })),
+    h,
+  ),
+]
+
 /** One look: its name and occasion, its pieces, and deleting it. */
 export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
   h.main(
@@ -75,23 +99,11 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
       ...Shown.match(model.shown, {
         Loading: () => [h.p([h.Role('status')], [loader(h)])],
         NotFound: () => [h.h1([], [format(locale, 'looks.notFound', {})])],
-        Visiting: ({ page }) => [
-          h.h1([], [page.look.name]),
-          page.look.occasion === null ? h.empty : h.p(styled(h, styles.lede()), [page.look.occasion]),
-          byline(page.by, locale, h),
-          h.submodel({
-            slotId: 'look-people',
-            model: model.people,
-            view: PeopleView.view,
-            viewInputs: { locale },
-            toParentMessage: (message) => Message.GotPeopleMessage({ message }),
-          }),
-          tileGrid(
-            page.look.pieces.map((piece) => ({ id: piece.id, tile: pieceTile(piece, locale, h) })),
-            h,
-          ),
+        Visiting: ({ page }) => visitingView(model, page, locale, h),
+        Failed: () => [
+          h.h1([], [format(locale, 'looks.title', {})]),
+          couldNotLoad(format(locale, 'looks.loadFailed', {}), locale, h, Message.ClickedRetry()),
         ],
-        Failed: () => [h.h1([], [format(locale, 'looks.title', {})]), couldNotLoad(locale, h, Message.ClickedRetry())],
         Loaded: ({ look }) => [
           h.h1([], [look.name]),
           look.occasion === null ? h.empty : h.p(styled(h, styles.lede()), [look.occasion]),

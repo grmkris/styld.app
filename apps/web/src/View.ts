@@ -19,6 +19,7 @@ import * as ReviewView from './page/ReviewView.ts'
 import * as LooksView from './page/LooksView.ts'
 import * as LookView from './page/LookView.ts'
 import * as VisitView from './page/VisitView.ts'
+import * as WishlistView from './page/WishlistView.ts'
 import * as ProfileEditorView from './page/ProfileEditorView.ts'
 import { accountView } from './page/AccountView.ts'
 import * as LoginView from './page/LoginView.ts'
@@ -40,16 +41,10 @@ import {
   brandMark,
   consentActions,
   consentBanner,
-  emptyState,
   footer,
   footerButton,
   footerLink,
-  heroActions,
-  heroTitle,
-  inspiration,
-  inspirationGrid,
   intro,
-  lead,
   masthead,
   picker,
   pickerError,
@@ -62,18 +57,14 @@ import {
   navAvatarPending,
   navItem,
   navLabel,
-  sectionNote,
   signInLink,
   site,
   tabPage,
   withTabBar,
 } from './View.styles.ts'
 import { visuallyHidden } from './VisuallyHidden.styles.ts'
-import { boards as exploreBoards } from './page/ExploreView.styles.ts'
-import { boardCard, byline } from './page/PublicTiles.ts'
-import * as Visit from './page/Visit.ts'
+import { landingView } from './Landing.ts'
 
-const browseAnchor = '#inspiration'
 const languages: ReadonlyArray<Readonly<{ locale: Locale; label: string }>> = [
   { locale: 'en', label: 'English' },
   { locale: 'sl', label: 'Slovenščina' },
@@ -110,50 +101,6 @@ const languagePicker = (model: Model, h: HtmlBuilder<Message>): Html => {
         ]),
     },
     h,
-  )
-}
-
-/** The landing's inspiration: Edits from Styld, or the newest public boards before there are any. */
-const inspirationBoards = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const shown = model.visit.shown
-  const boards = Visit.Shown.guards.Explore(shown)
-    ? (shown.explore.edits.length > 0 ? shown.explore.edits : shown.explore.newest).slice(0, 6)
-    : []
-  return boards.length === 0
-    ? h.div(styled(h, inspirationGrid()), [h.p(styled(h, emptyState()), [format(locale, 'landing.feedEmpty', {})])])
-    : h.div(styled(h, inspirationGrid()), [
-        h.ul(
-          styled(h, exploreBoards()),
-          boards.map(({ board, by }) =>
-            h.keyed('li')(board.id, [], [boardCard(board, locale, h), byline(by, locale, h)]),
-          ),
-        ),
-        h.a([h.Href(exploreRouter({}))], [format(locale, 'explore.title', {})]),
-      ])
-}
-
-const homeView = (model: Model, h: HtmlBuilder<Message>): Html => {
-  const { locale } = model.context
-  return h.main(
-    [h.Id('main')],
-    [
-      h.section(styled(h, intro()), [
-        h.h1(styled(h, heroTitle()), [format(locale, 'landing.title', {})]),
-        h.p(styled(h, lead()), [format(locale, 'landing.description', {})]),
-        h.div(styled(h, heroActions()), [
-          h.a([h.Href(browseAnchor), ...styled(h, primaryAction())], [format(locale, 'landing.browse', {})]),
-          h.a([h.Href(loginRouter({})), ...styled(h, secondaryAction())], [format(locale, 'auth.signInWithEmail', {})]),
-        ]),
-      ]),
-      h.section(
-        [h.Id('inspiration'), ...styled(h, inspiration())],
-        [
-          h.h2([], [format(locale, 'landing.feedTitle', {})]),
-          h.p(styled(h, sectionNote()), [format(locale, 'landing.feedDescription', {})]),
-          inspirationBoards(model, locale, h),
-        ],
-      ),
-    ],
   )
 }
 
@@ -234,6 +181,7 @@ const titleKey = AppRoute.match<MessageKey>({
   AddPieces: () => 'capture.addTitle',
   Review: () => 'scan.toReview',
   Looks: () => 'looks.title',
+  Wishlist: () => 'wardrobe.wishlist',
   Look: () => 'looks.title',
   Profile: () => 'profile.editor.title',
   Ask: () => 'ask.title',
@@ -256,6 +204,7 @@ const sectionOf = AppRoute.match<Section | undefined>({
   Review: () => 'wardrobe',
   Piece: () => 'wardrobe',
   Looks: () => 'wardrobe',
+  Wishlist: () => 'wardrobe',
   Look: () => 'wardrobe',
   Profile: () => 'you',
   Ask: () => 'ask',
@@ -408,6 +357,15 @@ const visitPage = (model: Model, h: HtmlBuilder<Message>): Html =>
     toParentMessage: (message) => Message.GotVisitMessage({ message }),
   })
 
+const wishlistPage = (model: Model, h: HtmlBuilder<Message>): Html =>
+  h.submodel({
+    slotId: 'wishlist',
+    model: model.wishlist,
+    view: WishlistView.view,
+    viewInputs: { locale: model.context.locale },
+    toParentMessage: (message) => Message.GotWishlistMessage({ message }),
+  })
+
 const lookPage = (model: Model, h: HtmlBuilder<Message>): Html =>
   h.submodel({
     slotId: 'look',
@@ -429,7 +387,7 @@ const todayPage = (model: Model, h: HtmlBuilder<Message>): Html =>
   })
 
 const homePage = (model: Model, h: HtmlBuilder<Message>): Html =>
-  showsToday(model) ? todayPage(model, h) : homeView(model, h)
+  showsToday(model) ? todayPage(model, h) : landingView(model, h)
 
 const askPage = (model: Model, h: HtmlBuilder<Message>): Html =>
   h.submodel({
@@ -508,6 +466,7 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
         AddPieces: () => addPiecesPage(model, h),
         Review: () => reviewPage(model, h),
         Looks: () => looksPage(model, h),
+        Wishlist: () => wishlistPage(model, h),
         Look: () => lookPage(model, h),
         Profile: () => profilePage(model, h),
         Ask: () => askPage(model, h),
