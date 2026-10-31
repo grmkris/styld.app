@@ -69,6 +69,8 @@ export const moreOption = style({
   '&[aria-busy="true"]:active': { transform: 'none' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2' } },
 })
+/** The report form in the More sheet: its own 12px padding puts its words on the title's line. */
+export const moreFlush = style({ paddingInline: '0' })
 /** A failed unblock in the More sheet, on the title's line above the rows. */
 export const moreProblem = style({ paddingInline: '12px' })
 /** A question or the report form in the More sheet, on the title's line, scrolling within the sheet if long. */

@@ -343,7 +343,9 @@ export const update = (model: Model, message: Message): UpdateReturn =>
           reporting: () => Reporting.Open({ reason: Option.none(), note: '', problem: Option.none() }),
         }),
       ),
-    ClickedMore: () => openMore(model),
+    // A Follow that failed before is not the sheet's failure: opening it starts clean.
+    ClickedMore: () =>
+      openMore(modifyFields(model, { work: () => (Work.guards.Failed(model.work) ? Work.Idle() : model.work) })),
     GotMoreMessage: (got) => foldMore(model, got.message),
     ChoseReportReason: ({ reason }) => ({
       model: modifyFields(model, {
