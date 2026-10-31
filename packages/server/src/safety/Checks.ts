@@ -232,19 +232,18 @@ const checkRows = (db: Database) => ({
       ),
       (rows) => new Map(Array.flatten(rows).map((row) => [row.targetId, statusOf(row)])),
     ),
-  /** A new verdict on the target as it is now, replacing the one it had without a pending state in between. */
-  rejudged: (target: CheckTarget, digest: string, verdict: Verdict) =>
-    Effect.flatMap(nowDate, (at) =>
-      attempt(() =>
-        db
-          .update(contentChecks)
-          .set({ digest, state: verdict.state, reason: verdict.reason, model: verdict.model, checkedAt: at })
-          .where(targetIs(target)),
-      ),
-    ),
   /** Hide the target from others whatever the model says, until an admin restores it. */
   hide: (target: CheckTarget, by: 'reports' | 'admin') =>
     attempt(() => db.update(contentChecks).set({ hidden: by }).where(targetIs(target))).pipe(Effect.asVoid),
+  /** An admin's hide, or restore to what the check says; answers whether the target has a check to change. */
+  curate: (target: CheckTarget, hidden: boolean) =>
+    attempt(() =>
+      db
+        .update(contentChecks)
+        .set({ hidden: hidden ? 'admin' : null })
+        .where(targetIs(target))
+        .returning({ id: contentChecks.targetId }),
+    ).pipe(Effect.map((changed) => changed.length > 0)),
 })
 
 const make = (bindings: CheckBindings) =>
@@ -306,6 +305,8 @@ const make = (bindings: CheckBindings) =>
       }),
       status: rows.kept,
       statuses: rows.statuses,
+      /** An admin hides the target from everyone but its owner, or restores it to what its check says. */
+      curate: rows.curate,
       /** Check these later, through the queue: a wardrobe can hold hundreds of pieces. The queue skips what is
        * private by then, and what was checked as it is. */
       checkLater: enqueue,
@@ -326,7 +327,9 @@ const make = (bindings: CheckBindings) =>
         if (Option.isNone(shown) || !shown.value.public) return
         const digest = yield* digestOf(shown.value)
         const verdict = yield* verdictOn(shown.value)
-        if (Option.isSome(verdict)) yield* rows.rejudged(target, digest, verdict.value)
+        // A new verdict replaces the one it had, without a pending state in between; content changed meanwhile keeps
+        // its pending check of the new content.
+        if (Option.isSome(verdict)) yield* rows.answered(target, digest, verdict.value)
       }),
     }
   })

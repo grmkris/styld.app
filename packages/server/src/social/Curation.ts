@@ -1,6 +1,6 @@
 import { boards, contentChecks, profiles, reports } from '@styld/db'
 import { type CheckState, WardrobeUnavailable } from '@styld/protocol'
-import { and, count, desc, eq, inArray, max } from 'drizzle-orm'
+import { count, desc, eq, inArray, max } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Context, DateTime, Effect, Option } from 'effect'
 import type { CheckTarget, Checks } from '../safety/Checks.ts'
@@ -130,15 +130,9 @@ const make = (database: Parameters<typeof drizzle>[0], checks: Checks['Service']
         )
         return true
       }),
-    /** Hide something from others whatever its check said, or restore it to what the check says. */
-    hide: (target: CheckTarget, hidden: boolean) =>
-      attempt(() =>
-        db
-          .update(contentChecks)
-          .set({ hidden: hidden ? 'admin' : null })
-          .where(and(eq(contentChecks.targetKind, target.kind), eq(contentChecks.targetId, target.id)))
-          .returning({ id: contentChecks.targetId }),
-      ).pipe(Effect.map((rows) => rows.length > 0)),
+    /** Hide something from others whatever its check said, or restore it to what the check says; the check's rows
+     * are written only by `Checks`. */
+    hide: (target: CheckTarget, hidden: boolean) => checks.curate(target, hidden).pipe(Effect.mapError(unavailable)),
     /** Put something in front of the model again. */
     rerun: (target: CheckTarget) => checks.reported(target, false),
   }
