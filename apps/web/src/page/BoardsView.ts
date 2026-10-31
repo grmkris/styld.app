@@ -17,7 +17,7 @@ import { boardFace, type CoverPicture } from './BoardFace.ts'
 import { Creating, Message, type Model } from './Boards.ts'
 import * as styles from './BoardsView.styles.ts'
 import { pageHead, pageTitle } from './PageHead.ts'
-import { roundAction } from './PageHead.styles.ts'
+import { roundAction, wideAction, wideLabel } from './PageHead.styles.ts'
 import { savedView } from './SavedView.ts'
 
 /** Where a pin's picture comes from on its board's tile: a look shows its first piece. */
@@ -48,7 +48,8 @@ const tileView = (board: BoardSummary, locale: Locale, h: HtmlBuilder<Message>):
     ],
   )
 
-/** The round + at the top of the page: a board under the default name, opened at once to be filled and renamed. */
+/** The round + at the top of the page: a board under the default name, opened at once to be filled and renamed. On a
+ * wide screen it says so, as Wardrobe's Add clothes does. */
 const newBoardAction = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const sending = Creating.guards.Sending(model.creating)
   return Button.view(
@@ -57,12 +58,11 @@ const newBoardAction = (model: Model, locale: Locale, h: HtmlBuilder<Message>): 
       isDisabled: sending,
       toView: (attributes) =>
         h.button(
+          [...attributes.button, ...styled(h, cx(primaryAction(), roundAction(), wideAction()))],
           [
-            ...attributes.button,
-            h.AriaLabel(format(locale, sending ? 'boards.creating' : 'boards.new', {})),
-            ...styled(h, cx(primaryAction(), roundAction())),
+            sending ? loader(h) : addIcon(h),
+            h.span(styled(h, wideLabel()), [format(locale, sending ? 'boards.creating' : 'boards.new', {})]),
           ],
-          [sending ? loader(h) : addIcon(h)],
         ),
     },
     h,
