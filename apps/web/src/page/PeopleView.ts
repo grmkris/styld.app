@@ -107,22 +107,18 @@ const saveAndReport = (model: Model, report: string, locale: Locale, h: HtmlBuil
   button(report, Message.ClickedReport(), h),
 ]
 
-/** Follow and block a person, once it is known how the visitor stands with them (never on one's own profile). */
+/** An action's shape while where the visitor stands is read: Follow, Report and Block arrive together, and their
+ * shapes hold the head so the tabs below stay put. */
+const actionSkeleton = (h: HtmlBuilder<Message>): Html =>
+  h.span([h.AriaHidden(true), ...styled(h, cx(block(), styles.actionSkeleton()))])
+
+/** Report and block a person, once it is known how the visitor stands with them (never on one's own profile); Follow
+ * is `followView`, which the profile puts first. */
 const personActions = (model: Model, handle: string, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>
   Standing.match(model.standing, {
     Unknown: () => [],
-    // Follow, Report and Block arrive together; their shapes hold the row so the tabs below stay put.
-    Reading: () =>
-      [0, 1, 2].map(() => h.span([h.AriaHidden(true), ...styled(h, cx(block(), styles.actionSkeleton()))])),
+    Reading: () => [actionSkeleton(h), actionSkeleton(h)],
     Known: ({ relation }) => [
-      relation.blocked
-        ? h.empty
-        : toggle(
-            format(locale, relation.following ? 'follow.following' : 'follow.follow', {}),
-            relation.following,
-            Message.ClickedFollow({ following: !relation.following }),
-            h,
-          ),
       button(format(locale, 'safety.report.profile', {}), Message.ClickedReport(), h),
       relation.blocked
         ? button(
@@ -183,10 +179,37 @@ const signIn = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
 /** What a visitor page passes in: its locale, and whether someone is signed in. */
 export type Inputs = { readonly locale: Locale; readonly signedIn: boolean }
 
-/** What the visitor can do here: follow, save, block or report. */
+/** Follow on a profile, once it is known how the visitor stands with the person; signed out, the way to sign in to
+ * follow. A blocked person is not followed. */
+export const followView = Submodel.defineView<Model, Message, Inputs>((model, { locale, signedIn }, h) =>
+  signedIn
+    ? Standing.match(model.standing, {
+        Unknown: () => h.empty,
+        Reading: () => actionSkeleton(h),
+        Known: ({ relation }) =>
+          relation.blocked
+            ? h.empty
+            : toggle(
+                format(locale, relation.following ? 'follow.following' : 'follow.follow', {}),
+                relation.following,
+                Message.ClickedFollow({ following: !relation.following }),
+                h,
+              ),
+      })
+    : signIn(model, locale, h),
+)
+
+/** Signed out, a profile's way to sign in is its Follow (`followView`); anything else offers it here. */
+const signedOutActions = (model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>
+  Subject.guards.Person(model.subject) ? [] : [signIn(model, locale, h)]
+
+/** What the visitor can do here: save, block or report, and how it went. */
 export const view = Submodel.defineView<Model, Message, Inputs>((model, { locale, signedIn }, h) =>
   h.div(styled(h, styles.people()), [
-    h.div(styled(h, styles.actions()), signedIn ? subjectActions(model, locale, h) : [signIn(model, locale, h)]),
+    h.div(
+      styled(h, styles.actions()),
+      signedIn ? subjectActions(model, locale, h) : signedOutActions(model, locale, h),
+    ),
     Work.guards.Sending(model.work) ? h.p([h.Role('status')], [loader(h)]) : h.empty,
     Work.guards.Failed(model.work)
       ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'people.actionFailed', {})])

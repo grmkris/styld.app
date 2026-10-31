@@ -66,8 +66,7 @@ const tabContent = (profile: PublicProfile, tab: PersonTab, locale: Locale, h: H
   )
 }
 
-/** A published profile: the avatar, name, handle and city, the bio, then its Boards, Looks and Pieces. */
-/** Follow, block, save and report, for whoever is visiting. */
+/** Save, block and report, for whoever is visiting. */
 const peopleActions = (model: Model, inputs: PeopleView.Inputs, h: HtmlBuilder<Message>): Html =>
   h.submodel({
     slotId: 'visit-people',
@@ -77,20 +76,41 @@ const peopleActions = (model: Model, inputs: PeopleView.Inputs, h: HtmlBuilder<M
     toParentMessage: (message) => Message.GotPeopleMessage({ message }),
   })
 
+/** Follow, first in a profile's actions. */
+const followAction = (model: Model, inputs: PeopleView.Inputs, h: HtmlBuilder<Message>): Html =>
+  h.submodel({
+    slotId: 'visit-follow',
+    model: model.people,
+    view: PeopleView.followView,
+    viewInputs: inputs,
+    toParentMessage: (message) => Message.GotPeopleMessage({ message }),
+  })
+
+/** A published profile's head (prototype `.person`): the avatar, the name, handle and city, the bio, then what the
+ * visitor can do. */
+const personHead = (model: Model, profile: PublicProfile, inputs: PeopleView.Inputs, h: HtmlBuilder<Message>): Html =>
+  h.header(styled(h, styles.person()), [
+    avatar(profile.name, profile.tone, 'large', h),
+    h.div(styled(h, styles.who()), [
+      h.h1([], [profile.name]),
+      h.p(styled(h, styles.handle()), [
+        profile.city === null ? `@${profile.handle}` : `@${profile.handle}, ${profile.city}`,
+      ]),
+      profile.bio === null ? h.empty : h.p(styled(h, styles.bio()), [profile.bio]),
+    ]),
+    h.div(styled(h, styles.side()), [
+      h.div(styled(h, styles.personActions()), [followAction(model, inputs, h)]),
+      peopleActions(model, inputs, h),
+    ]),
+  ])
+
+/** A published profile: its head, then its Boards, Looks and Pieces. */
 const personView = (model: Model, profile: PublicProfile, inputs: PeopleView.Inputs, h: HtmlBuilder<Message>): Html => {
   const { locale } = inputs
   const tabs = tabsOf(profile)
   const tab = tabs.includes(model.tab) ? model.tab : 'boards'
   return h.div(styled(h, styles.page()), [
-    h.header(styled(h, styles.person()), [
-      avatar(profile.name, profile.tone, 'large', h),
-      h.h1(styled(h, styles.name()), [profile.name]),
-      h.p(styled(h, styles.handle()), [
-        profile.city === null ? `@${profile.handle}` : `@${profile.handle}, ${profile.city}`,
-      ]),
-      profile.bio === null ? h.empty : h.p(styled(h, styles.bio()), [profile.bio]),
-      peopleActions(model, inputs, h),
-    ]),
+    personHead(model, profile, inputs, h),
     h.div(
       [h.Role('group'), h.AriaLabel(profile.name), ...styled(h, styles.tabs())],
       tabs.map((each) =>
@@ -178,8 +198,10 @@ const loadingView = (target: Target, locale: Locale, h: HtmlBuilder<Message>): H
           [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.person())],
           [
             h.span(styled(h, cx(block(), styles.avatarSkeleton()))),
-            h.span(styled(h, cx(line(), styles.nameSkeleton()))),
-            h.span(styled(h, cx(line(), styles.handleSkeleton()))),
+            h.div(styled(h, styles.who()), [
+              h.span(styled(h, cx(line(), styles.titleSkeleton()))),
+              h.span(styled(h, cx(line(), styles.handleSkeleton()))),
+            ]),
           ],
         ),
   ])
