@@ -1954,6 +1954,7 @@ export interface MessageArgumentsByKey<T = string> {
   'studio.boardSaved': Readonly<Record<string, never>>
   'studio.boardSettings': Readonly<Record<string, never>>
   'studio.boardStatus': { readonly count: number; readonly visibility: string | number }
+  'studio.boardStatusPartly': { readonly count: number; readonly shown: number }
   'studio.boardsLoadFailed': Readonly<Record<string, never>>
   'studio.cancel': Readonly<Record<string, never>>
   'studio.captionCount': { readonly count: string | number; readonly max: string | number }
@@ -2755,4 +2756,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'ade3c20a50616662249442bce2dcd7be20736a510965a43494210a652de191f1'
+export const catalogVersion = '186680b1069fcbf38b0e60763299242628aea5028c13feaf9895dcd9502829b9'

@@ -22,6 +22,7 @@ import {
   LeaveBoard,
   LoadLooks,
   PinThings,
+  ReadShown,
   ReloadBoard,
   RenameBoard,
   SetBoardMoods,
@@ -120,6 +121,9 @@ describe('a board page', () => {
         expect(Publishing.guards.Idle(publishing)).toBe(true)
         expect(version).toBe(2)
       }),
+      // Public, it reads how many pins others see: a piece shows them only with a picture of its own.
+      Command.resolve(ReadShown({ boardId: board.id }), Message.SucceededReadShown({ count: 0 })),
+      model(({ shownToOthers }) => expect(shownToOthers).toEqual(Option.some(0))),
     )
   })
 

@@ -1836,6 +1836,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
     '{count, plural, =0 {Na mizo razporedi kose, videze in zapiske.} one {To kartico razporedi na mizo.} two {Ti dve kartici razporedi na mizo.} few {Te # kartice razporedi na mizo.} other {Teh # kartic razporedi na mizo.}}',
   'studio.boardStatus':
     '{count, plural, one {# kartica} two {# kartici} few {# kartice} other {# kartic}}, {visibility, select, public {javna na tvojem profilu} other {vidiš jo samo ti}}',
+  'studio.boardStatusPartly':
+    '{count, plural, one {# kartica} two {# kartici} few {# kartice} other {# kartic}}, od tega {shown, plural, one {# javna} two {# javni} few {# javne} other {# javnih}} na tvojem profilu',
   'modelPhotos.title': 'Moji modeli',
   'modelPhotos.description':
     'Fotografije tebe, na katerih temeljijo pomerjanja in AI upodobitve videzov. Privzeta se uporabi, kadar je ne izbereš.',

@@ -1808,6 +1808,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
     '{count, plural, =0 {Lay pieces, looks and notes out on a table.} one {Lay this pin out on a table.} other {Lay these # pins out on a table.}}',
   'studio.boardStatus':
     '{count, plural, one {# pin} other {# pins}}, {visibility, select, public {public on your profile} other {only you can see it}}',
+  'studio.boardStatusPartly': '{count, plural, one {# pin} other {# pins}}, {shown} of them public on your profile',
   'modelPhotos.title': 'My models',
   'modelPhotos.description':
     "The photos of you that try-ons and AI look renders are built on. The default is used when you don't pick one.",

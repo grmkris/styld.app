@@ -1,5 +1,5 @@
 import { Board } from '@styld/protocol'
-import { Schema } from 'effect'
+import { Option, Schema } from 'effect'
 import { click, Command, expect, given, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
@@ -38,6 +38,16 @@ describe("a board's page", () => {
       expect(role('link', { name: 'All boards' })).toHaveAttr('href', '/boards'),
       expect(role('heading', { level: 1 })).not.toExist(),
     )
+  })
+
+  test('says when visitors see fewer pins than are pinned', () => {
+    const shown = modifyFields(signedInAt(`/boards/${boardId}`), {
+      board: () =>
+        modifyFields(fromBoard(boardInit(boardId), { ...board, visibility: 'public' }), {
+          shownToOthers: () => Option.some(0),
+        }),
+    })
+    scene({ update, view }, given(shown), expect(text('1 pin, 0 of them public on your profile')).toExist())
   })
 
   test('says where it stands under its name, and offers a collage after the pins while there is none', () => {

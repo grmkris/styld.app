@@ -117,6 +117,8 @@ export const Message = defineMessageUnion({
   CompletedLeaveBoard: {},
 
   ClickedUnpin: { pinId: PinId },
+  SucceededReadShown: { count: Schema.Int },
+  FailedReadShown: {},
   ClickedConfirmUnpin: { pinId: PinId },
   ClickedKeepPin: { pinId: PinId },
   CompletedFocusPin: {},

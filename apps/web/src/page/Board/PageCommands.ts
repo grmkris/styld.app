@@ -112,6 +112,26 @@ export const PinThings = Command.define('PinThings', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedPins())),
 })
 
+/** How many of the board's pins others see: the public page, read as a visitor reads it, is the one rule for that.
+ * A board others cannot see yet (its check is out, or it hid) shows them none. */
+export const ReadShown = Command.define('ReadShown', {
+  args: { boardId: Schema.String },
+  messages: [Message.SucceededReadShown, Message.FailedReadShown],
+  execute: ({ boardId }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const board = yield* api.public.board({ params: { boardId: yield* boardIdOf(boardId) } })
+      return Message.SucceededReadShown({ count: board.pins.length })
+    }).pipe(
+      Effect.catchTag('PublicNotFound', () => Effect.succeed(Message.SucceededReadShown({ count: 0 }))),
+      Effect.orElseSucceed(() => Message.FailedReadShown()),
+    ),
+})
+
+/** Reads what others see once the board is public; private, there is nothing to read. */
+export const readShown = (model: { readonly boardId: string; readonly visibility: string }) =>
+  model.visibility === 'public' ? [ReadShown({ boardId: model.boardId })] : []
+
 /** The unpin question's Keep takes focus as it opens, and the × takes it back when the pin stays. */
 export const FocusPin = Command.define('FocusPin', {
   args: { selector: Schema.String },

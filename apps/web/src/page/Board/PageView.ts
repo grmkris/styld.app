@@ -105,6 +105,17 @@ const pinView = (pin: Pin, asking: boolean, locale: Locale, h: HtmlBuilder<Messa
     ),
   )
 
+/** Its pins and who sees it; public, how many of them others see when that is fewer (a piece shows others only with a
+ * picture of its own, once Styld's check lets it). */
+const statusLine = (model: Model, locale: Locale) => {
+  const count = model.pins.length
+  const shown = Option.filter(model.shownToOthers, (seen) => model.visibility === 'public' && seen < count)
+  return Option.match(shown, {
+    onNone: () => format(locale, 'studio.boardStatus', { count, visibility: model.visibility }),
+    onSome: (seen) => format(locale, 'studio.boardStatusPartly', { count, shown: seen }),
+  })
+}
+
 /** The collage as a card that opens the editor, named by its visible words. */
 const collageView = (model: Model, paper: Paper, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.a(
@@ -427,9 +438,7 @@ const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: 
     h.div(styled(h, styles.head()), [
       h.h1([], [name]),
       // Where it stands, in one quiet line (DESIGN › Your public things), then the check's word on it.
-      h.p(styled(h, styles.meta()), [
-        format(locale, 'studio.boardStatus', { count: model.pins.length, visibility: model.visibility }),
-      ]),
+      h.p(styled(h, styles.meta()), [statusLine(model, locale)]),
       model.visibility === 'public' ? checkNotice(Option.getOrNull(model.check), locale, h) : h.empty,
       makeSlot('board-make-status', MakeView.statusView, model, locale, h),
     ]),

@@ -38,7 +38,7 @@ import { BoardState, fromBoard, LookSave, type Model, Saving, Upload } from './M
 import { pageSteps } from './Page.ts'
 import * as People from '../People.ts'
 import * as Make from './Make.ts'
-import { ReloadBoard } from './PageCommands.ts'
+import { readShown, ReloadBoard } from './PageCommands.ts'
 
 /** The Commands that open the board: the board, the wardrobe for the tray, and a first batch of ids. Signed out it
  * can only be someone's public board, read as visitors read it, with no wardrobe and nothing to edit. */
@@ -91,10 +91,16 @@ const loadFailed = (model: Model, missing: boolean): UpdateReturn => ({
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
-    SucceededLoadBoard: ({ board }) => ({
-      model: fromBoard(model, board),
-      commands: Command.mapMessages(Make.resume(model.make), (made) => Message.GotMakeMessage({ message: made })),
-    }),
+    SucceededLoadBoard: ({ board }) => {
+      const next = fromBoard(model, board)
+      return {
+        model: next,
+        commands: [
+          ...Command.mapMessages(Make.resume(model.make), (made) => Message.GotMakeMessage({ message: made })),
+          ...readShown(next),
+        ],
+      }
+    },
     FailedLoadBoard: ({ missing }) => loadFailed(model, missing),
     SucceededVisitBoard: ({ board }) => ({
       model: modifyFields(model, { board: () => BoardState.Visiting({ board }) }),
