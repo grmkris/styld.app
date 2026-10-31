@@ -195,12 +195,12 @@ const todayView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuil
   )
 }
 
-/** How far down a board's 4:5 table its 16:10 window on Home starts, as a share of the table's height (0 to a half),
- * so the window centres on what lies there. A table is 1250 units tall and the window 625.
- * @internal Exported for its tests. */
 /** A window's top on the 1250-unit table: from its top to half way, where the 625-unit window ends at the foot. */
 const clamp = (top: number) => Math.min(Math.max(top, 0), 625)
 
+/** How far down a board's 4:5 table its 16:10 window on Home starts, as a share of the table's height (0 to a half),
+ * so the window centres on what lies there. A table is 1250 units tall and the window 625.
+ * @internal Exported for its tests. */
 export const cropFrom = (items: ReadonlyArray<BoardItem>): number =>
   Array.match(items, {
     onEmpty: () => 0.25,
