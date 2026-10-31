@@ -473,5 +473,12 @@ export const view = Submodel.defineView<Model, Message, PeopleView.Inputs>((mode
     toParentMessage: (message) => Message.GotPeopleMessage({ message }),
   })
   const visiting = (board: PublicBoard) => visitingView(board, actions, locale, h)
-  return boardStateView(model.board, (name, paper) => readyView(model, name, paper, locale, h), locale, h, visiting)
+  return boardStateView(
+    model.board,
+    (name, paper) => readyView(model, name, paper, locale, h),
+    locale,
+    h,
+    visiting,
+    signedIn,
+  )
 })

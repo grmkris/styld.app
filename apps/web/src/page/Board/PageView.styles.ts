@@ -2,7 +2,14 @@ import { style } from '../../zyzz.config.ts'
 
 // A board's page (Gallery 2: docs/design/gallery-2/site/v2/board.html): its collage above the grid of its pins.
 export const page = style({ display: 'grid', gap: '16px', paddingBlock: '8px 40px' })
-export const bar = style({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' })
+/** The way back and the board's actions, kept to the collage's width on a wide screen, near what they act on. */
+export const bar = style({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '8px',
+  '@media (min-width: 900px)': { maxInlineSize: '560px' },
+})
 /** The page's own actions, at the end of the bar. */
 export const barActions = style({ display: 'flex', alignItems: 'center', gap: '8px' })
 export const back = style({ display: 'inline-flex', alignItems: 'center', gap: '4px', minBlockSize: '44px' })
@@ -38,7 +45,13 @@ export const collageStart = style({
 })
 export const collageStartText = style({ flex: '1 1 14rem', fontSize: '14px', color: 'ink2', textWrap: 'pretty' })
 
-export const pinsHead = style({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' })
+export const pinsHead = style({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '8px',
+  '@media (min-width: 900px)': { maxInlineSize: '560px' },
+})
 export const pinsTitle = style({ fontSize: '17px', fontWeight: 600 })
 export const grid = style({
   display: 'grid',

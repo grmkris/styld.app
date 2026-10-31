@@ -1,7 +1,13 @@
 import { style } from '../../zyzz.config.ts'
 
 // Styles for adding pieces in View.ts (Gallery: add.html's scan step, before the found grid).
-export const addPage = style({ display: 'grid', gap: '8px', maxInlineSize: '36rem', paddingBlock: '8px 48px' })
+export const addPage = style({
+  display: 'grid',
+  gap: '8px',
+  maxInlineSize: '36rem',
+  paddingBlock: '8px 48px',
+  '@media (min-width: 900px)': { maxInlineSize: '56rem' },
+})
 export const pageBar = style({ display: 'flex', alignItems: 'center', gap: '8px' })
 export const lede = style({ color: 'ink2' })
 /** The two ways that work best, as a short list above the ways in. */
@@ -22,6 +28,11 @@ export const sources = style({
   gap: '12px',
   marginBlockStart: '16px',
   '& > :first-child': { gridColumn: '1 / -1' },
+  // On a wide screen the three ways in sit on one line.
+  '@media (min-width: 900px)': {
+    gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+    '& > :first-child': { gridColumn: 'auto' },
+  },
 })
 /** A source: a stock panel that is a label for its hidden file input, and takes dropped files. */
 export const source = style({

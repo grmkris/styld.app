@@ -16,10 +16,11 @@ import * as styles from './View.styles.ts'
 const backToBoards = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.a([h.Href(boardsRouter({})), ...styled(h, styles.back())], [backIcon(h), format(locale, 'studio.backToBoards', {})])
 
-/** While the board loads: the way back, then its name, its line and its pins in shape (DESIGN › States). */
-const loading = (locale: Locale, h: HtmlBuilder<Message>): Html =>
+/** While the board loads: the way back (for someone with boards of their own), then its name, its line and its pins
+ * in shape (DESIGN › States). */
+const loading = (withBack: boolean, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.page()), [
-    backToBoards(locale, h),
+    withBack ? backToBoards(locale, h) : h.empty,
     h.div(
       [h.AriaHidden(true), ...styled(h, styles.loadingShape())],
       [
@@ -55,12 +56,14 @@ export const boardStateView = (
   locale: Locale,
   h: HtmlBuilder<Message>,
   visiting: (board: PublicBoard) => Html = () => notReady(format(locale, 'board.missing', {}), false, locale, h),
+  signedIn = true,
 ): Html =>
   h.main(
     [h.Id('main')],
     [
       BoardState.match(board, {
-        Loading: () => loading(locale, h),
+        // Signed out there are no boards to go back to: the shape is the public board's.
+        Loading: () => loading(signedIn, locale, h),
         Failed: () => notReady(format(locale, 'board.failed', {}), true, locale, h),
         Missing: () => notReady(format(locale, 'board.missing', {}), false, locale, h),
         Ready: ({ name, paper }) => ready(name, paper),

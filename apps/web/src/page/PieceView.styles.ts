@@ -25,7 +25,7 @@ export const photoSkeleton = style({
   inlineSize: '100%',
   aspectRatio: '1 / 1',
   borderRadius: 'photo',
-  '@media (min-width: 900px)': { aspectRatio: 'auto', blockSize: 'min(640px, 70vh)' },
+  '@media (min-width: 900px)': { aspectRatio: 'auto', blockSize: 'min(520px, 60vh)' },
 })
 export const nameSkeleton = style({ fontSize: '26px', blockSize: '0.54em', marginBlock: '0.27em', inlineSize: '60%' })
 export const metaSkeleton = style({ fontSize: '16px', inlineSize: '30%' })
@@ -35,7 +35,7 @@ export const photo = style({
   aspectRatio: '1 / 1',
   objectFit: 'contain',
   borderRadius: 'photo',
-  '@media (min-width: 900px)': { aspectRatio: 'auto', blockSize: 'min(640px, 70vh)' },
+  '@media (min-width: 900px)': { aspectRatio: 'auto', blockSize: 'min(520px, 60vh)' },
 })
 export const details = style({ display: 'grid', gap: '8px', alignContent: 'start', maxInlineSize: '30rem' })
 export const pieceName = style({ fontSize: '26px', lineHeight: 1.08, fontWeight: 600, letterSpacing: '-0.02em' })

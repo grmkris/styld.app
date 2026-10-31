@@ -27,7 +27,14 @@ export const kind = style({
 })
 export const kindTitle = style({ fontSize: '15px', fontWeight: 600 })
 export const kindHint = style({ fontSize: '13px', color: 'ink2' })
-export const form = style({ display: 'grid', gap: '8px', paddingInline: '12px', paddingBlockEnd: '4px' })
+// The field's label sits closer to its field than to the kinds above it.
+export const form = style({
+  display: 'grid',
+  gap: '8px',
+  paddingInline: '12px',
+  paddingBlockStart: '12px',
+  paddingBlockEnd: '4px',
+})
 export const label = style({ fontSize: '14px', fontWeight: 600 })
 export const note = style({ fontSize: '13px', color: 'ink2' })
 export const problem = style({ fontSize: '14px', color: 'error' })
