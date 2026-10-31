@@ -149,9 +149,9 @@
     "sendingCode": "Pošiljanje kode...",
     "verifyCode": "Preveri kodo",
     "verifying": "Preverjanje...",
-    "enterVerificationCode": "Vnesite potrditveno kodo",
+    "enterVerificationCode": "Vnesi potrditveno kodo",
     "codeSentTo": "Poslali smo kodo na",
-    "checkYourEmail": "Preverite svojo e-pošto",
+    "checkYourEmail": "Preveri svojo e-pošto",
     "codeSentToEmail": "Poslali smo 6-mestno kodo na",
     "useDifferentEmail": "Uporabi drug e-naslov",
     "didntReceiveCode": "Niste prejeli kode?",
@@ -159,7 +159,7 @@
     "backToSignIn": "Nazaj na prijavo",
     "verificationCodeSent": "Potrditvena koda poslana na vaš e-naslov",
     "signedInSuccessfully": "Uspešna prijava",
-    "newCodeSent": "Nova koda poslana na vaš e-naslov",
+    "newCodeSent": "Nova koda je poslana na tvoj e-naslov",
     "savePreferencesTitle": "Shranite vaše slogovne nastavitve",
     "savePreferencesDescription": "Ustvarite račun za ohranitev prilagojene izkušnje",
     "startOnboarding": "Začni",
@@ -169,7 +169,7 @@
     "autoCreateNote": "Če računa še nimaš, ga bomo ustvarili.",
     "sendCodeFailed": "Kode ni bilo mogoče poslati",
     "resendCodeFailed": "Kode ni bilo mogoče znova poslati",
-    "connectAssistant": "Prijavite se, da Styld povežete s svojim asistentom.",
+    "connectAssistant": "Prijavi se, da Styld povežeš s svojim asistentom.",
     "problem": {
       "invalidEmail": "Vnesite e-poštni naslov, na primer ana@example.com.",
       "wrongCode": "Ta koda ni pravilna. Preverite e-pošto in poskusite znova.",
@@ -178,7 +178,7 @@
       "tooManyRequests": "Zahtevali ste več kod zapored. Počakajte minuto in poskusite znova.",
       "unavailable": "Styld trenutno ne more poslati ali preveriti kod. Poskusite znova čez trenutek."
     },
-    "resendSoon": "Novo kodo lahko zahtevate 30 sekund po zadnji."
+    "resendSoon": "Novo kodo lahko zahtevaš 30 sekund po zadnji."
   },
   "nav": {
     "home": "Domov",
@@ -250,10 +250,10 @@
       "description": "Pomočnik lahko išče po tvoji garderobi, dodaja kose s fotografij ter jih spreminja ali briše. Povezavo enkrat odobriš v Styldu."
     },
     "deleteAccount": "Izbriši račun",
-    "deleteAccountConfirmTitle": "Želite izbrisati račun?",
-    "deleteAccountConfirmBody": "S tem trajno izbrišete svoj račun, garderobo in njene fotografije, povezani pomočniki pa izgubijo dostop. Tega ni mogoče razveljaviti.",
+    "deleteAccountConfirmTitle": "Želiš izbrisati račun?",
+    "deleteAccountConfirmBody": "S tem trajno izbrišeš svoj račun, garderobo in njene fotografije, povezani pomočniki pa izgubijo dostop. Tega ni mogoče razveljaviti.",
     "deleteAccountConfirm": "Izbriši moj račun",
-    "deleteAccountFailed": "Styld vašega računa trenutno ni mogel izbrisati. Poskusite znova čez trenutek."
+    "deleteAccountFailed": "Styld tvojega računa trenutno ni mogel izbrisati. Poskusi znova čez trenutek."
   },
   "telemetryConsent": {
     "message": "Ali lahko Styld v tem brskalniku beleži anonimne podatke o napakah in hitrosti, da hitreje odpravimo težave? Nikoli ne vključujejo tega, kar vpišeš, tvojih fotografij ali podatkov o računu.",
@@ -624,18 +624,18 @@
       "shoes": "Obutev",
       "accessory": "Dodatki"
     },
-    "deletePieceConfirmBody": "S tem ga odstranite iz garderobe. Tega ni mogoče razveljaviti.",
+    "deletePieceConfirmBody": "S tem ga odstraniš iz garderobe. Tega ni mogoče razveljaviti.",
     "tabPieces": "Kosi",
     "picture": {
       "cleaned": "Slika, očiščena z umetno inteligenco",
       "drawing": "Rišem čisto sliko …",
-      "proposed": "Čista slika je pripravljena. Jo želite uporabiti namesto svoje fotografije?",
+      "proposed": "Čista slika je pripravljena. Jo želiš uporabiti namesto svoje fotografije?",
       "use": "Uporabi to sliko",
       "showPhoto": "Pokaži mojo fotografijo",
       "showClean": "Pokaži čisto sliko",
-      "retake": "Tega kosa se je videlo premalo, da bi ga narisali. Fotografirajte ga znova ali povejte, kaj je, in ga narišite znova.",
-      "failed": "Čista slika ni nastala, zato ostane vaša fotografija.",
-      "chooseFailed": "Slike ni bilo mogoče zamenjati. Poskusite znova.",
+      "retake": "Tega kosa se je videlo premalo, da bi ga narisali. Fotografiraj ga znova ali povej, kaj je, in ga nariši znova.",
+      "failed": "Čista slika ni nastala, zato ostane tvoja fotografija.",
+      "chooseFailed": "Slike ni bilo mogoče zamenjati. Poskusi znova.",
       "redraw": "Nariši znova",
       "hintLabel": "Kaj je to? (neobvezno)",
       "hintPlaceholder": "črna volnena kapa",
@@ -643,15 +643,15 @@
       "problem": {
         "busy": "Čista slika tega kosa se že riše.",
         "face": "Na tem izrezu je morda videti obraz, zato ga ne pošljemo v risanje.",
-        "photo": "Ta kos kaže vašo izvirno fotografijo, ki je nikoli ne pošljemo v risanje.",
+        "photo": "Ta kos kaže tvojo izvirno fotografijo, ki je nikoli ne pošljemo v risanje.",
         "off": "Čiste slike so izklopljene.",
-        "dailyLimit": "Današnji krediti so porabljeni. Poskusite znova jutri.",
-        "network": "Risanja ni bilo mogoče naročiti. Poskusite znova."
+        "dailyLimit": "Današnji krediti so porabljeni. Poskusi znova jutri.",
+        "network": "Risanja ni bilo mogoče naročiti. Poskusi znova."
       },
       "backfill": "{count, plural, one {# kos še nima čiste slike.} two {# kosa še nimata čiste slike.} few {# kosi še nimajo čiste slike.} other {# kosov še nima čiste slike.}}",
       "backfillAction": "Naredi čiste slike",
       "backfillSent": "Rišem čiste slike. Vsaka se pokaže, ko je pripravljena.",
-      "backfillFailed": "Čistih slik ni bilo mogoče naročiti. Poskusite znova."
+      "backfillFailed": "Čistih slik ni bilo mogoče naročiti. Poskusi znova."
     },
     "turn": {
       "make": "Zavrti ga",
@@ -659,15 +659,15 @@
       "making": "Pripravljam vrtenje. Traja približno dve minuti.",
       "building": "Dokončujem vrtenje …",
       "ready": "Tapni sliko, da se zavrti.",
-      "failed": "Vrtenje ni nastalo, zato so vam krediti vrnjeni.",
+      "failed": "Vrtenje ni nastalo, zato so ti krediti vrnjeni.",
       "play": "Zavrti",
       "problem": {
         "busy": "Vrtenje tega kosa se že pripravlja.",
         "picture": "Ta kos najprej potrebuje čisto sliko.",
         "off": "Vrtenje je izklopljeno.",
-        "dailyLimit": "Današnji krediti so porabljeni. Poskusite znova jutri.",
-        "network": "Vrtenja ni bilo mogoče naročiti. Poskusite znova.",
-        "build": "Vrtenja ni bilo mogoče pripraviti na tej napravi. Odprite kos znova, da poskusite še enkrat."
+        "dailyLimit": "Današnji krediti so porabljeni. Poskusi znova jutri.",
+        "network": "Vrtenja ni bilo mogoče naročiti. Poskusi znova.",
+        "build": "Vrtenja ni bilo mogoče pripraviti na tej napravi. Odpri kos znova in poskusi še enkrat."
       }
     },
     "kindOne": {
@@ -882,8 +882,8 @@
         "500 kreditov vsak mesec",
         "100 pomerjanj, izdelčnih fotografij ali videzov",
         "Pogovor s stilistom, preverjanje videza in skeniranje omare",
-        "Kadar koli dokupite paket kreditov",
-        "Prekličete lahko kadar koli"
+        "Kadar koli dokupiš paket kreditov",
+        "Prekličeš lahko kadar koli"
       ]
     },
     "dialog": {
@@ -1908,13 +1908,13 @@
     }
   },
   "authEmail": {
-    "subjectSignIn": "Vaša koda za prijavo v Styld je {code}",
-    "subjectRegistration": "Vaša koda za ustvarjanje računa Styld je {code}",
+    "subjectSignIn": "Tvoja koda za prijavo v Styld je {code}",
+    "subjectRegistration": "Tvoja koda za ustvarjanje računa Styld je {code}",
     "headingSignIn": "Prijava v Styld",
-    "headingRegistration": "Ustvarite svoj račun Styld",
-    "instructions": "Za nadaljevanje vnesite to kodo v Styld:",
+    "headingRegistration": "Ustvari svoj račun Styld",
+    "instructions": "Za nadaljevanje vnesi to kodo v Styld:",
     "expiry": "{minutes, plural, one {Koda poteče čez # minuto.} two {Koda poteče čez # minuti.} few {Koda poteče čez # minute.} other {Koda poteče čez # minut.}}",
-    "ignore": "Če te kode niste zahtevali, to e-poštno sporočilo prezrite. Kode nikoli ne delite z nikomer."
+    "ignore": "Če te kode ne pričakuješ, to e-poštno sporočilo prezri. Kode nikoli ne deli z nikomer."
   },
   "assistantView": {
     "openInStyld": "Odpri v Styldu"

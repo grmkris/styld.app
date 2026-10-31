@@ -204,3 +204,5 @@ Follow the prototype's `board`, `boards`, `person`, `explore`, `pin`, `wishlist`
   action that fills it), error (what broke and what to do) and full.
 - Words in both `packages/i18n/catalogs/en.json` and `sl.json`, same keys; `bun run translations:check` fails on a
   hard-coded view string.
+- Slovenian addresses the person as _ti_, in the app and in Styld's mail ("Poskusi znova", "tvoja fotografija"), never
+  as _vi_; where the past tense would choose a gender, say it in the present.
