@@ -9,7 +9,7 @@ const longestSide = 2048
 const pictureTypes: ReadonlyArray<string> = ImageType.literals
 
 /** A file that is not a picture Styld takes. */
-export class NotAPicture extends Data.TaggedError('NotAPicture') {}
+class NotAPicture extends Data.TaggedError('NotAPicture') {}
 
 /** Shrink a picture to at most 2048px and re-encode it as WebP. Drawing it afresh drops the photo's
  * metadata, its location included. */

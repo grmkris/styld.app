@@ -12,8 +12,8 @@ import { StyldClient } from '../StyldClient.ts'
 
 // MODEL
 
-export const Side = Schema.Literals(['front', 'back'])
-export type Side = typeof Side.Type
+const Side = Schema.Literals(['front', 'back'])
+type Side = typeof Side.Type
 
 export const Model = Schema.Struct({
   pieceId: Schema.String,
