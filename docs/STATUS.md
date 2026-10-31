@@ -2,6 +2,34 @@
 
 Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `ef12334`, with clean pictures, turns on a hanger, scan anything, the boards' pins, profiles, checks, link import and wishes, generated pictures and mood boards, and Styld, the stylist in the app). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
 
+## Plan: shopping your own wardrobe — 2026-10-31
+
+The owner held a product brainstorm on 31 October (private notes; only decisions are recorded) and settled its
+conflicts with what is live in four rounds of questions. The new direction, scope, credit table and the try-on
+privacy exception are in `docs/ROADMAP.md` › Shopping your own wardrobe; the design decisions in
+`docs/ARCHITECTURE.md` › Shopping your own wardrobe; the re-scoped and new rows in `docs/DELIVERY.md` (wardrobe,
+studio, design, outfits, gallery, tryon, social, billing, operations). The working plan, with file-level steps, is
+`~/.claude/plans/i-activated-grilling-mode-frolicking-lovelace.md`.
+
+- **Live behaviour that changes:**
+  - the Wishlist tab, wishes and the `wish_*` assistant tools are deleted;
+  - the profile's Pieces tab, the "show my wardrobe" switch and the feed's "added a piece" are deleted, so a piece
+    is public only while it is on a public board or a shared look;
+  - the tab bar becomes Home, Ask, Wardrobe, Boards, with Explore linked from Home, Ask and the landing;
+  - "Make a mood board" picks the person's own pieces instead of generating pictures, and a generated picture becomes
+    a transparent sticker (`picture_generate` becomes `sticker_make`);
+  - categories and sleeve-length shelves become garment types with season, occasions, pattern, brand and shop link,
+    migrated and re-suggested by Clef for every piece;
+  - Home's Spin moves to the server's outfit engine;
+  - about 850 unused v1 catalog keys are deleted.
+- **Order:** M1 clean-ups → M2 garment types, browsing and the piece page → M3 the outfit engine (Fast and Thinking)
+  → owner readout → M4 template boards, One item many outfits, export → M5 Before you buy → M6 Travel → M7 My Gallery
+  → M8 try-on quality test → owner go/no-go → M9 try-on → M10 review rounds. Each milestone is deployed to the
+  preview and read back.
+- **Owner gates:** (1) the owner rates about 60 outfits from their own preview wardrobe, Fast against Thinking,
+  before the templates build on the engine; (2) the try-on test's go/no-go, provider and price.
+- **Nothing is built yet.** The rows above are pending until each milestone records its evidence here.
+
 ## Hung requests, the telemetry check and the owner's mood board — 2026-10-31
 
 The owner asked whether the preview's logs and traces are set up properly after the night's features, and why a mood

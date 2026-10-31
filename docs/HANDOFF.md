@@ -76,6 +76,10 @@ credit per message.
 
 ## The 31 October brainstorm, against what exists
 
+**Settled later on 31 October:** the owner decided the conflicts and open decisions below. The outcome is in
+`docs/ROADMAP.md` › Shopping your own wardrobe and `docs/STATUS.md` › Plan: shopping your own wardrobe; read those
+first. This section is kept as the record of what was weighed.
+
 The brainstorm's core is "shopping your own wardrobe": help people enjoy and reuse what they own.
 
 **What it asks for:**

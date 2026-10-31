@@ -41,12 +41,48 @@ Decisions and recorded deviations for the iteration in `docs/ROADMAP.md` (Boards
 - **Visibility has one predicate per level.** `link` (a profile and its links) and `discovery` (Explore, feeds, search) are each one SQL predicate that every public read, page, list, feed, search result, MCP answer and pin uses, with blocks applied in both directions. The owner always reads their own content.
 - **Checks have one writer per change.** `safety/Checks.ts` alone writes `content_checks`. Right after the operation that changes public content, it sets the check to pending with the content's digest; a check result is written only where the digest still matches, so an answer about older content is dropped. Deviation from the plan's same-batch write (2026-10-30): the digest covers what a board, profile, look or piece shows across several tables, so it is computed after the write; if D1 fails between the two, the request fails and the earlier verdict stands until the next edit. Model answers decide (Clef for pictures, a Workers AI text model for words); there is no human queue, and admins act through admin-only MCP tools.
 - **The feed is a query over follows,** not a written activity table, which would be a second writer of visibility that unpublishing, failed checks and blocks would have to rewrite.
-- **Generated pictures and mood boards** keep their lifecycle in D1 rows driven by a queue, with Wallet holds reserved before each provider call and settled or refunded once, as captures do. The Domain owns only the usage reservations; this is a deviation from "Domain owns generation lifecycles", recorded here.
+- **Generated pictures** (stickers since 2026-10-31) and mood boards keep their lifecycle in D1 rows driven by a queue, with Wallet holds reserved before each provider call and settled or refunded once, as captures do. The Domain owns only the usage reservations; this is a deviation from "Domain owns generation lifecycles", recorded here.
 - **Public media** has its own routes. Visibility is checked on every request before any cache, the stored original is never served, and a failed transform answers 503 rather than raw bytes. Image bytes are not gated by blocks: ids are 128-bit random, and every surface that reveals an id applies blocks.
 - **Public pages** read through an API group with no session middleware that reads an optional visitor. The edge injects title and Open Graph tags into the server-rendered HTML for public URLs, because SSR runs no Commands and has no data; link-preview images are drawn with the Cloudflare Images binding.
 - **Rate limits** use Workers RateLimit bindings, whose periods are 10 or 60 seconds, so v1's hourly limits become per-minute limits.
 - **MCP** renders one tool list for members and one for admins (an email allowlist from config). Admin tools are only in the admin list, chosen per request by the account's verified sign-in email, so a member's call for one answers `unknown_tool`; the curation operations themselves take no admin actor (a deviation from the plan, recorded at M8). A report re-runs the check on the content itself; the reporter's reason is kept for admins (`report_list`) rather than given to the model, which judges content, not accusations (deviation from ROADMAP, M8).
 - **The preview stays out of search engines** through `X-Robots-Tag: noindex`, never a `robots.txt` disallow, which would also stop link-preview crawlers.
+
+## Shopping your own wardrobe (planned 2026-10-31)
+
+Decisions for the delivery in `docs/ROADMAP.md` (Shopping your own wardrobe).
+
+- **A garment type is one column.** `pieces.type` holds one of Styld's predefined types; its group and its place in
+  an outfit (top, bottom, one-piece, layer, shoes, accessory, and an internal `set` for sportswear, swimwear and
+  loungewear) are total functions of the type in `packages/protocol/src/Garment.ts`, never stored, so they cannot
+  disagree. "Already in your wardrobe?" compares pieces within a place, not by exact type, so one misjudged type
+  does not hide a duplicate.
+- **One board, a template and an anchor.** `boards.template` and `boards.anchor_piece_id` (set null when the piece
+  goes); a purchase candidate points at its board and a trip is its board's child row, so every fact has one writer:
+  boards write the template and anchor, candidates their candidate, trips their trip.
+- **The outfit engine is stateless.** Making an outfit takes the mode, the board's purpose, the anchor, the locked
+  pieces and the combinations already seen, and answers a ranked batch; Shuffle walks the batch in the browser and
+  asks again when it runs out. Keep is the only write: it creates the look and pins it on the board in one D1 batch.
+  Rules are the one validator of every proposal, whichever mode made it; a failed Thinking call is an error that
+  offers Fast, never a silent fallback that would spoil the experiment's data. Outfits are measured in Analytics
+  Engine (`outfit.make.<mode>`, `outfit.keep.<mode>`); an abandoned session is a make without a keep.
+- **One text model seam.** The Workers AI chat model wiring lives in `packages/server/src/ai/` and serves Styld,
+  Thinking, mood boards and trip plans, with the per-call deadline Styld set.
+- **A look may hold one candidate.** `looks.candidate_id` keeps `Look.pieces` a list of owned pieces for every reader;
+  a look with a candidate cannot be shared. "I bought it" moves the candidate into the look's pieces in one batch.
+- **Candidates are not pieces.** They have their own table, keys and owner-only image route; a candidate from
+  someone's public piece references it and is read through the public visibility check on every request, so it
+  disappears when its owner stops sharing it.
+- **Outfit photos are not captures.** My Gallery (`photos` in code, since "Gallery" names the design) has its own
+  tables. Garment finding and matching are shared with capture as functions; the review tray reads only captures, so
+  a photo never appears there unless the person offers a garment to the wardrobe. One in-use check guards stored
+  objects shared by pieces, photos and candidates.
+- **Board jobs share one lifecycle.** Stickers, mood boards and trip plans are `generation_jobs` kinds with the same
+  hold, sweep and resume as generated pictures had.
+- **Export is drawn, not captured.** The browser redraws a board from its data onto a canvas with same-origin images,
+  loaded on demand, so neither the CSP nor the first-load budget changes.
+- **Try-on's privacy exception** is the only path that sends a person's own photo to a provider; it never sends
+  anyone else's, and garment inputs still pass the face rule.
 
 ## Delivery boundary
 

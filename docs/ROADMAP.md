@@ -3,7 +3,9 @@
 Decided with the owner on 2026-10-29, after the v1 feature inventory (`docs/migration/v1-features.md`), v1's
 production usage (`docs/migration/v1-usage-2026-10-29.md`) and the Meta/segmentation research in
 `~/code/meta-hackathon/grok-meta-hackathon-spike/docs/research/` (`styld-v2-wardrobe-video-motion-handoff-2026-10-29.md`,
-commit `1461a78`).
+commit `1461a78`). Revised with the owner on 2026-10-31 after a product brainstorm about how people use their own
+clothes (see "Shopping your own wardrobe" below). The brainstorm's notes are private; only its decisions are recorded
+here.
 
 ## Scope
 
@@ -23,24 +25,138 @@ Kept, in order:
 
 1. Adding pieces from photos, a held-up camera and video, with real cut-outs (iteration 1).
 2. The wardrobe inside ChatGPT and Claude, then go-live on styld.app (iteration 2).
-3. Boards, public profiles and social, built next on the preview (owner, 2026-10-30; see "Boards, profiles and
-   social" below). Going live on styld.app stays its own step.
-4. Virtual try-on and billing (iteration 3).
-5. Styld, the stylist in the app: a chat about the person's own wardrobe and looks, moved up from Later (owner,
-   2026-10-31; see "Styld, the stylist in the app" below). v1's other AI features (wardrobe analysis, outfit check,
-   shop suggestions) each get their own planning round.
-6. Later, each with its own planning round: recording video inside the app, and outfit check (both extend the capture
-   pipeline).
+3. Boards, public profiles and social, built on the preview (owner, 2026-10-30; see "Boards, profiles and social"
+   below), trimmed on 2026-10-31. Going live on styld.app stays its own step.
+4. Styld, the stylist in the app: a chat about the person's own wardrobe and looks, moved up from Later (owner,
+   2026-10-31; see "Styld, the stylist in the app" below).
+5. **Shopping your own wardrobe** (owner, 2026-10-31): wardrobe browsing like a shop, board templates that build
+   outfits around real pieces, My Gallery and a first try-on. This is the next delivery; see the section below.
+6. Billing: plans, credits, checkout and webhooks get their own planning round before go-live. Until then every paid
+   action spends the daily allowance.
+7. Later, each with its own planning round: recording video inside the app, outfit check's feedback on a worn photo
+   (My Gallery already reads the pieces in one), wardrobe analysis and shop suggestions.
 
 Parked (not built unless real demand appears):
 
 - the Slovenian shop catalog and its shop directory;
 - fit badges ("Goes with 4 of yours", "You own 2 like these");
 - referrals, the daily wheel, the calendar and v1's onboarding funnels;
-- favourites and archive;
+- favourites and archive for pieces (favourite outfit photos are kept, in My Gallery);
 - Jev outfit ideas, which were on in production but unused.
 
 Not porting: guest accounts and the free wardrobe cap (owner, 2026-10-28).
+
+Deleted on 2026-10-31 (owner): the wishlist (a "Before you buy" board replaces it), showing the whole wardrobe on a
+public profile, and mood boards of generated pictures (a mood board is now made from the person's own pieces).
+
+## Shopping your own wardrobe (owner, 2026-10-31)
+
+Styld should make people enjoy and use the clothes they already own: find a piece as easily as in a shop, remember
+the outfits they felt good in, and build new combinations around real pieces. The AI does specific jobs a person
+asked for, and everything it proposes stays editable. It never invents a garment for a practical outfit; when the
+wardrobe cannot make one, it says what is missing. The private styling workflow comes first; public features wait
+until it is proven useful.
+
+**Navigation.** Four tabs: Home, Ask, Wardrobe, Boards. Wardrobe holds Pieces, Looks, Gallery and Try-ons. Explore
+leaves the tab bar and stays reachable from a link on Home, from Ask's search and from the landing. Home keeps today's
+outfit (Spin and Wear this), adds "Wear it again" (a favourite outfit photo), and keeps "Pick up where you left off"
+and "From people you follow".
+
+**The wardrobe like a shop.**
+
+- Garment types are Styld's own, predefined, in three groups, as shops sort them. Sleeve length is not a category.
+  There are no custom categories.
+  - Clothing: Tops & T-shirts, Shirts & blouses, Bodysuits, Knitwear, Hoodies & sweatshirts, Blazers, Jackets,
+    Coats, Gilets, Dresses, Jumpsuits, Jeans, Trousers, Shorts, Skirts, Sportswear, Swimwear, Loungewear & nightwear.
+  - Shoes: Trainers, Boots, Heels, Flats, Sandals.
+  - Accessories: Bags, Belts, Scarves, Hats, Jewellery, Sunglasses & glasses.
+- Where a piece sits in an outfit (top, bottom, one-piece, layer, shoes, accessory) follows from its type and is never
+  shown.
+- Clef suggests a season (warm, cold or all year), occasions (casual, smart, formal, sport, lounge) and a pattern
+  (plain, striped, checked, printed) when a piece is added, and once for every existing piece. The person can change
+  them. Brand and shop link are optional.
+- Browsing: group tabs, then type chips, then a dense grid (three across on a phone); a filter sheet for colour,
+  season, occasion and brand.
+- A piece's page shows the front and the back, lets the person add or replace the back, and offers "Create board"
+  (the "One item, many outfits" template with this piece), "In your photos" and "In your looks". Shops' "Style with"
+  is deliberately not on the page.
+
+**Boards and templates.** One board concept. A new board starts blank or from a template, and every template keeps
+the pins and the free collage:
+
+- **One item, many outfits:** one piece is the anchor; Styld builds outfits around it from the person's wardrobe.
+- **Before you buy:** the first step asks for a screenshot, a photo or a shop link of something the person is
+  considering. Styld cuts it out (1 credit; when several garments show, the person taps one) and builds outfits
+  around it, to answer "can I make three or four outfits with this?". It stays a candidate and never becomes a piece
+  until the person says "I bought it". "Style with mine" on someone's public piece starts such a board with it,
+  credited; buying it then asks for the person's own photo, so another person's picture never enters their wardrobe.
+- **Travel:** destination, dates and activities (city, beach, hiking, work, evenings out). Styld fetches the forecast,
+  or the usual weather for those dates, and the person can correct it. Styld then plans a small set of pieces and one
+  outfit per day, up to seven, showing how often each piece is reused (1 credit).
+- On a template board the anchor sits on top; the current proposal lies below it as a flat-lay with Shuffle, Keep,
+  a lock on each piece and "From wardrobe"; kept outfits follow as cards with "Add another". A kept outfit is a look,
+  pinned on the board and listed under Wardrobe › Looks; a look on a "Before you buy" board includes the candidate.
+- Any board exports as a picture made on the device: the anchor and its kept outfits, or a blank board's collage.
+- "Make a mood board" turns one sentence into a board of the person's own pieces, pinned and laid out (1 credit).
+  Generated pictures stay only as small decorative stickers, marked Generated (1 credit each).
+
+**The outfit engine is an experiment.** The owner decides between two ways of making an outfit from data, so the
+board offers both and records each:
+
+- **Fast:** rules build candidate outfits (the anchor and locks always in, one piece per place, at most one loud
+  colour, season and occasion fitting), and Clef ranks them by looking at the pieces' pictures with the board's
+  purpose.
+- **Thinking:** a text model proposes candidates from the pieces' types and attributes and the board's purpose; the
+  rules check them and Clef ranks them.
+- Shuffle shows the next best candidate, keeping the anchor, the locks and the outfits already kept. Each new template
+  board starts on Fast or Thinking in turn, and the switch is always visible; Home's Spin uses Fast.
+- Every outfit made records its mode, time, cost and whether it was kept, and `tools/ai-usage-report.ts` reports the
+  keep rate per mode. The first readout is the owner's rating of about 60 outfits from their own wardrobe, before
+  the templates are built on the engine.
+
+**My Gallery.** The person's own outfit photos, the ones they felt good in. It is optional, private, and holds no
+generated pictures and no one else's photos.
+
+- Styld finds the garments in a photo (1 credit) and matches them to the person's pieces. The person confirms or
+  corrects each match; a garment with no match can be added to the wardrobe through the review tray, never as a
+  silent duplicate.
+- A confirmed photo shows on each of its pieces' pages. "Wear it again" saves its pieces as a look; "Add to board"
+  pins the photo with that look; "Cut out the outfit" turns the person in the photo into a picture for the collage.
+- Favourite photos and their pieces are clues for the outfit engine and for Styld.
+- Outfit photos are never public in this delivery. On a public board they are held back from visitors.
+
+**Try-on.** A quality test comes first: Meta Muse image edits against Pruna's try-on model on Workers AI, on the
+owner's own photos (another person's only with their explicit consent), for at most $5. The owner then decides
+whether try-on ships, with which provider and at what price.
+
+- If it ships: a default full-body photo of the person, chosen from My Gallery or taken new, remembered and
+  deletable. Try on from a look, a kept outfit or a "Before you buy" board. Results go to Wardrobe › Try-ons, are
+  marked Generated, are held back from visitors and reach a board only when the person adds them.
+- **Privacy exception (owner, 2026-10-31):** try-on may send the person's own photo to the try-on provider. It never
+  sends anyone else's photo; a screenshot of someone else contributes only the garment's cut-out. Every other rule
+  stays: a picture where a face may show (Clef ≥ 0.3) is never sent to Muse for a clean picture or a redraw, no
+  generated picture uses a real person's likeness, and original photos never leave Styld except for this try-on.
+
+**Credits** (daily allowance 100):
+
+| Action                                                                          | Credits                                     |
+| ------------------------------------------------------------------------------- | ------------------------------------------- |
+| A photo, also a back photo, an outfit photo's analysis or a candidate's cut-out | 1                                           |
+| A video, per started half-minute                                                | 5                                           |
+| Redrawing a clean picture                                                       | 1                                           |
+| A turn on a hanger                                                              | 5                                           |
+| A message to Styld                                                              | 1                                           |
+| A mood board, a sticker, a trip plan                                            | 1 each                                      |
+| Make an outfit, Shuffle, Keep, Spin, Style with mine, Cut out the outfit        | free; Thinking at most 50 a day per account |
+| Try-on                                                                          | set by the owner after the quality test     |
+
+**Order:** clean-ups (the deletions above, the four tabs, mood boards from pieces), garment types and browsing, the
+outfit engine and its first readout, the templates with export, "Before you buy", travel, My Gallery, the try-on
+quality test and, on the owner's go, try-on. Each step is deployed to the preview and read back.
+
+**Provider notes:** Open-Meteo's free API is for non-commercial use; going live needs its paid plan or another
+provider. Pruna's try-on model is a third-party model on Workers AI whose data terms are not published; the quality
+test records what is known before anything ships.
 
 ## Styld, the stylist in the app (owner, 2026-10-31)
 
@@ -81,8 +197,8 @@ wardrobe only:
 - Ask: search your wardrobe, the hand-off to the assistants, and the + sheet into capture;
 - boards.
 
-Explore, other people and the wishlist come with "Boards, profiles and social" below. Fit badges stay parked, and Try
-with mine comes with try-on.
+Explore and other people came with "Boards, profiles and social" below. Fit badges stay parked. Since 2026-10-31 the
+navigation is Home, Ask, Wardrobe, Boards again (see "Shopping your own wardrobe").
 
 **Boards** are the table, built in Foldkit itself with no canvas library: pieces, text labels and your own pictures,
 moved, pinched, turned, layered and undone, saved whole with a version, and savable as a look.
@@ -97,7 +213,9 @@ moved, pinched, turned, layered and undone, saved whole with a version, and sava
 Planned with the owner on 2026-10-30, once Gallery 2 was on the preview. It brings the public profile forward and
 un-parks the feed, follow and share links, with the safety work public content needs. All of it is built and accepted
 on the workers.dev preview; going live on styld.app stays its own step. The design is the Gallery 2 prototype
-(`docs/design/gallery-2/`: `board`, `boards`, `person`, `explore`, `pin`, `wishlist` and `ask-desktop`).
+(`docs/design/gallery-2/`: `board`, `boards`, `person`, `explore`, `pin`, `wishlist` and `ask-desktop`). The owner
+trimmed it on 2026-10-31: the wishlist, the profile's Pieces tab and generated mood boards are deleted, and Explore
+leaves the tab bar.
 
 **Boards**
 
@@ -112,7 +230,8 @@ on the workers.dev preview; going live on styld.app stays its own step. The desi
 - Everything is private by default. Public means on your profile, in Explore and feeds, and shareable by link, with a
   link preview.
 - A public profile at `/@handle`: a name, the handle, an optional city, a short bio and an initials avatar, with
-  Boards, Looks and Pieces tabs. The wardrobe tab can be hidden; looks are shared one at a time.
+  Boards and Looks tabs; looks are shared one at a time. Publishing never shows the whole wardrobe (owner,
+  2026-10-31): a piece is public only while it is on a public board or a shared look.
 - Original photos and pieces still in the review tray are never public. Someone else's piece on your board shows only
   while its owner keeps it public.
 
@@ -143,22 +262,23 @@ on the workers.dev preview; going live on styld.app stays its own step. The desi
 - Moods come from a fixed list. The publish check suggests up to three, and the owner can change them.
 - Ask searches the wardrobe on the device as today, plus people and public boards on the server, with a "people I
   follow" filter. Questions go to the assistants. There are no embeddings.
-- The navigation becomes Home, Explore, Ask, Wardrobe, Boards.
+- Explore is reached from a link on Home, from Ask's search and from the landing (owner, 2026-10-31; it was a tab
+  until then).
 
-**Wishlist and links**
+**Links**
 
-- "Want one like it" keeps someone's piece as a private wish, and a link can become a wish too. "Got it" opens
-  capture.
-- Add from a link: a product page becomes a piece through the review tray (directly when an assistant adds it), or a
-  wish. When a shop refuses the page, Styld asks for a photo or a screenshot.
+- Add from a link, for clothes the person owns: a product page becomes a piece through the review tray (directly when
+  an assistant adds it). When a shop refuses the page, Styld asks for a photo or a screenshot.
+- The wishlist was deleted on 2026-10-31 (owner): something the person is only considering goes on a "Before you buy"
+  board and never becomes a piece by itself.
 
 **Generated pictures**
 
-- Anyone can generate a picture for a board, for 1 credit from the daily allowance. Prompts can be creative and can
-  use people and the board's pieces as references, but never a real person's likeness. Generated pictures are marked,
-  checked like any picture and can be shared.
-- "Make a mood board": from one sentence, Styld generates two to four pictures, picks matching pieces from the
-  wardrobe and lays out the collage.
+- Generated pictures are small decorative stickers with a transparent background, 1 credit each (owner, 2026-10-31).
+  Prompts can be creative and can use the board's pieces as references, but never a real person's likeness. Stickers
+  are marked Generated, checked like any picture and can be shared.
+- "Make a mood board": from one sentence, Styld picks the person's own pieces, pins them and lays out the collage
+  (1 credit). Until 2026-10-31 it generated two to four pictures instead.
 
 **In ChatGPT and Claude**
 
@@ -198,8 +318,9 @@ Iterations 1 and 2 are built together in the run of 2026-10-29, with video impor
 2. **Cut out:**
    - One garment goes to Cloudflare Images background removal (`segment: "foreground"` through the Images binding).
    - Several garments, or an unsure answer, go to Meta SAM 3.1, which returns one mask per garment.
-3. **Suggest:** Clef-flash suggests each piece's category and subcategory. A confident answer is pre-filled; an unsure
-   one is left for the person.
+3. **Suggest:** Clef-flash suggests each piece's garment type, season, occasions and pattern (since 2026-10-31; a
+   category and a sleeve-length shelf until then). A confident answer is pre-filled; an unsure one is left for the
+   person.
 4. **Colours:** Clef-flash also suggests a main colour and an optional second one from the 13 swatches.
 
 Every photo and video still is first re-encoded through Images (EXIF and location removed, orientation applied), and
@@ -216,9 +337,8 @@ only that copy reaches a provider.
   photo instead. Only a person turns a detection into a piece.
 - **Assistant adds skip the tray:** pieces added by ChatGPT or Claude become pieces at once, because the person asked
   for them in the chat.
-- **Categories** are Styld's own six, since shops follow no shared standard:
-  - jumpsuits go under "Dresses & one-pieces";
-  - swimwear, underwear and sleepwear wait until someone asks.
+- **Garment types** are Styld's own, in the three groups shops use (owner, 2026-10-31; see "Shopping your own
+  wardrobe"). They replaced six categories with sleeve-length shelves. Underwear waits until someone asks.
 
 **Cost and experiments**
 
@@ -303,14 +423,15 @@ and frames of its Grok-generated ten-garment rail video.
     ready, matched by email. Boards, chats and try-ons are not imported.
   - **Where:** only into v2 production, never into the public preview.
 
-## Iteration 3: try-on and billing
+## Iteration 3: billing
 
-- **Try-on:** far fewer buttons than v1. The provider is chosen through the iteration 1 switch and its cost tracking.
-- **Billing** arrives with it, because try-on (about $0.03–0.05 an image) is the first feature whose cost matters. Its
-  model (membership, credits or both), price and payment provider get their own planning round.
+- **Try-on** moved into "Shopping your own wardrobe" (owner, 2026-10-31): a quality test first, far fewer buttons than
+  v1, the provider chosen through the iteration 1 switch and its cost tracking.
+- **Billing:** its model (membership, credits or both), price and payment provider get their own planning round
+  before go-live. Until then every paid action spends the daily allowance.
 
 ## Later
 
 - **Recording video in the app** (import from the library comes in iteration 1).
-- **Outfit check** works from a photo of you wearing the clothes: it gives feedback and offers the pieces for the
-  wardrobe through the same review tray.
+- **Outfit check** works from a photo of you wearing the clothes and gives feedback. My Gallery already finds the
+  pieces in such a photo and offers missing ones for the wardrobe through the review tray; the feedback comes later.
