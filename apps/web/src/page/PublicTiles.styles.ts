@@ -19,6 +19,8 @@ export const boardCard = style({
   color: 'ink',
   textDecorationLine: 'none',
   ':active': { transform: 'scale(0.98)' },
+  // The face's paper inside the card keeps concentric corners: the card's 16px less its 8px padding.
+  '& [data-paper]': { borderRadius: 'inset' },
 })
 export const boardName = style({ paddingInline: '4px', fontWeight: 600 })
 export const meta = style({ paddingInline: '4px', fontSize: '13px', color: 'ink2' })

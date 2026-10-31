@@ -69,7 +69,8 @@ export const { style, vars } = defineConfig({
       // The logo's condensed voice: the table's headline and headline labels on a board, nowhere else.
       voice: "'Anton', 'Hanken Grotesk Variable', sans-serif",
     },
-    radius: { photo: '4px', field: '12px', panel: '16px', sheet: '24px', table: '28px', pill: '999px' },
+    // inset: a table inside a card with 8px padding, so its corner is the card's 16px less the padding.
+    radius: { photo: '4px', inset: '8px', field: '12px', panel: '16px', sheet: '24px', table: '28px', pill: '999px' },
     shadow: {
       // Gallery's lift-1: a card or a sheet's panel resting just above the paper.
       lift1: '0 1px 2px oklch(0 0 0 / 0.05), 0 8px 24px oklch(0 0 0 / 0.05)',

@@ -41,7 +41,7 @@ skill covers usage). Add a token there before a screen needs a new value.
 
 Text in ink-3 keeps 4.5:1 on paper, paper-2 and stock (`#8b827a` until 2026-10-31 was 3.25:1).
 
-Radii: `photo` 4px, `field` 12px, `panel` 16px, `sheet` 24px, `table` 28px (the paper of a table), `pill` for actions,
+Radii: `photo` 4px, `inset` 8px (a table inside a card), `field` 12px, `panel` 16px, `sheet` 24px, `table` 28px (the paper of a table), `pill` for actions,
 chips, the search field and the floating nav. Shadows are tokens too: `lift1` and `lift2` (Gallery's lift-1, a card above the paper, and lift-2, raised), `glass`
 (the floating nav and rail), `overPhoto` (a small round over a picture),
 `sheet` (a sheet rising from the bottom), and rings drawn inside an edge, `edge` (1px rule), `chosen` (1.5px ink) and
