@@ -87,7 +87,10 @@ const loadFailed = (model: Model, missing: boolean): UpdateReturn => ({
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
-    SucceededLoadBoard: ({ board }) => ({ model: fromBoard(model, board) }),
+    SucceededLoadBoard: ({ board }) => ({
+      model: fromBoard(model, board),
+      commands: Command.mapMessages(Make.resume(model.make), (made) => Message.GotMakeMessage({ message: made })),
+    }),
     FailedLoadBoard: ({ missing }) => loadFailed(model, missing),
     SucceededVisitBoard: ({ board }) => ({
       model: modifyFields(model, { board: () => BoardState.Visiting({ board }) }),

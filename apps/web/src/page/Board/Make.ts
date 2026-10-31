@@ -9,7 +9,8 @@ import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../../StyldClient.ts'
 
 // Make with Styld, on a board's page: one picture from a sentence, or a mood board of a few with the person's pieces.
-// The ask goes in the background; the page follows it, and the board reloads when it is done.
+// The ask goes in the background; the page follows it, and the board reloads when it is done. A board opened again
+// while its ask is being made follows it from where it is.
 
 // MODEL
 
@@ -61,6 +62,8 @@ export const Message = defineMessageUnion({
   FailedAsk: { problem: MakeProblem, operationId: Schema.Option(Schema.String) },
   SucceededPoll: { generation: Generation },
   FailedPoll: { generationId: Schema.String },
+  SucceededFindRunning: { generation: Schema.NullOr(Generation) },
+  FailedFindRunning: {},
   ClickedDismiss: {},
 })
 export type Message = typeof Message.Type
@@ -135,6 +138,24 @@ export const PollGeneration = Command.define('PollGeneration', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedPoll({ generationId }))),
 })
 
+/** Ask whether the board has an ask still being made, so a board opened again follows it. */
+const FindRunningGeneration = Command.define('FindRunningGeneration', {
+  args: { boardId: Schema.String },
+  messages: [Message.SucceededFindRunning, Message.FailedFindRunning],
+  execute: ({ boardId }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const id = yield* Schema.decodeUnknownEffect(BoardId)(boardId)
+      const { generation } = yield* api.generation.runningGeneration({ params: { boardId: id } })
+      return Message.SucceededFindRunning({ generation })
+    }).pipe(Effect.orElseSucceed(() => Message.FailedFindRunning())),
+})
+
+/** Once the person's own board has loaded: pick up an ask made before they left it. */
+export const resume = (model: Model): ReadonlyArray<Command.Command<Message, never, StyldClient>> => [
+  FindRunningGeneration({ boardId: model.boardId }),
+]
+
 // UPDATE
 
 type Services = StyldClient | Crypto.Crypto
@@ -206,5 +227,9 @@ export const update = (model: Model, message: Message): UpdateReturn =>
             model: modifyFields(model, { missedPolls: (missed) => missed + 1 }),
             commands: [PollGeneration({ generationId })],
           },
+    // Followed only while nothing else is: an ask made on this visit answers for itself.
+    SucceededFindRunning: ({ generation }) =>
+      generation !== null && Job.guards.Idle(model.job) ? polled(model, generation) : { model },
+    FailedFindRunning: () => ({ model }),
     ClickedDismiss: () => ({ model: modifyFields(model, { job: () => Job.Idle() }) }),
   })

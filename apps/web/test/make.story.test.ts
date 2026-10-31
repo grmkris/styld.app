@@ -99,6 +99,34 @@ describe('making pictures for a board', () => {
     )
   })
 
+  test('a board opened again follows the ask still being made, and only when nothing else is followed', () => {
+    story(
+      update,
+      given(init(boardId)),
+      message(Message.SucceededFindRunning({ generation: generation('drawing', ['drawn', 'waiting', 'waiting']) })),
+      model(({ job }) => expect(Job.guards.Running(job)).toBe(true)),
+      Command.resolve(
+        PollGeneration({ generationId }),
+        Message.SucceededPoll({ generation: generation('done', ['drawn', 'drawn', 'drawn']) }),
+      ),
+      model(({ job }) => expect(Job.guards.Finished(job)).toBe(true)),
+      expectOutMessage({ _tag: 'FinishedMaking' }),
+    )
+    story(
+      update,
+      given(init(boardId)),
+      message(Message.SucceededFindRunning({ generation: null })),
+      model(({ job }) => expect(Job.guards.Idle(job)).toBe(true)),
+    )
+    const asking = modifyFields(init(boardId), { job: () => Job.Asking() })
+    story(
+      update,
+      given(asking),
+      message(Message.SucceededFindRunning({ generation: generation('planning', []) })),
+      model(({ job }) => expect(Job.guards.Asking(job)).toBe(true)),
+    )
+  })
+
   test('two letters ask for nothing', () => {
     story(
       update,
