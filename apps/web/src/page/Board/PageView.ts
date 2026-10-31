@@ -1,5 +1,5 @@
 import { Dialog } from '@foldkit/ui'
-import { format, type Locale } from '@styld/i18n'
+import { format, type Locale, type MessageKey } from '@styld/i18n'
 import { type Look, LookPin, Mood, type Paper, type Piece, type Pin, PiecePin, type PublicBoard } from '@styld/protocol'
 import { Array, Match, Option, Schema } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
@@ -46,8 +46,19 @@ const pinView = (pin: Pin, asking: boolean, heldBack: boolean, locale: Locale, h
     [...styled(h, styles.pin())],
     [
       ...pinContent(pin, asking, locale, h),
-      heldBack ? h.p(styled(h, styles.heldBack()), [format(locale, 'board.heldBack', {})]) : h.empty,
+      heldBack ? h.p(styled(h, styles.heldBack()), [format(locale, heldBackReason(pin), {})]) : h.empty,
     ],
+  )
+
+/** Why others do not see a pin: a piece needs its own picture and Styld's check; a look, to be shared; anything else
+ * waits on the check. */
+const heldBackReason = (pin: Pin): MessageKey =>
+  Match.value(pin).pipe(
+    Match.tagsExhaustive({
+      PiecePin: () => 'board.heldBack' as const,
+      LookPin: ({ look }) => (look.shared ? ('board.heldBackCheck' as const) : ('board.heldBackLook' as const)),
+      PicturePin: () => 'board.heldBackCheck' as const,
+    }),
   )
 
 const pinContent = (pin: Pin, asking: boolean, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>

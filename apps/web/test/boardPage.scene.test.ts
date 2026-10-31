@@ -51,7 +51,7 @@ describe("a board's page", () => {
       { update, view },
       given(shown),
       expect(text('1 pin, 0 of them public on your profile')).toExist(),
-      expect(text(/^Only you see this one/)).toExist(),
+      expect(text('Only you see this one until it has its own picture and passes Styld’s check')).toExist(),
     )
   })
 

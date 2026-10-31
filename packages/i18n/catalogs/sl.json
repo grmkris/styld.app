@@ -2133,7 +2133,9 @@
     "unpinPictureAsk": "Odstraniš sliko? Izbrisala se bo.",
     "unpinConfirm": "Odstrani",
     "unpinKeep": "Obdrži",
-    "heldBack": "Vidiš ga samo ti: drugi vidijo kos, ko ima svojo sliko in ga Styldov pregled spusti"
+    "heldBack": "Vidiš ga samo ti, dokler nima svoje slike in ne prestane Styldovega pregleda",
+    "heldBackLook": "Vidiš ga samo ti: videz ni javen",
+    "heldBackCheck": "Vidiš ga samo ti, dokler ne prestane Styldovega pregleda"
   },
   "boards": {
     "title": "Zbirke",

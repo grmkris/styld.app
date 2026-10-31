@@ -2133,7 +2133,9 @@
     "unpinPictureAsk": "Take the picture off? It is deleted.",
     "unpinConfirm": "Take off",
     "unpinKeep": "Keep",
-    "heldBack": "Only you see this one: others see a piece once it has its own picture and Styld's check lets it"
+    "heldBack": "Only you see this one until it has its own picture and passes Styld’s check",
+    "heldBackLook": "Only you see this one: the look is not public",
+    "heldBackCheck": "Only you see this one until it passes Styld’s check"
   },
   "boards": {
     "title": "Boards",
