@@ -526,6 +526,7 @@ export interface MessageArgumentsByKey<T = string> {
   'board.make.added': { readonly count: number }
   'board.make.dismiss': Readonly<Record<string, never>>
   'board.make.drawing': { readonly drawn: string | number; readonly total: string | number }
+  'board.make.kindLabel': Readonly<Record<string, never>>
   'board.make.moodBoard': Readonly<Record<string, never>>
   'board.make.moodBoardCost': { readonly most: number }
   'board.make.moodBoardHint': Readonly<Record<string, never>>
@@ -2747,4 +2748,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'f9c994423007a3042eb5cacd902948a2153ed870e3cfb899e90111c6c9705e56'
+export const catalogVersion = 'abed71f08d171b06bd3fbe8709d491652fef4526ee22a0c950f1169671da9d10'

@@ -1,6 +1,7 @@
 import { style } from '../../zyzz.config.ts'
 
-// Make with Styld on a board's page: the two kinds as a pair of choices, the person's words, and how the ask is going.
+// Make with Styld on a board's page: the two kinds as a radio group of two cards, the person's words, and how the ask
+// is going.
 export const kinds = style({
   display: 'grid',
   gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
@@ -22,7 +23,7 @@ export const kind = style({
   textAlign: 'start',
   cursor: 'pointer',
   ':active': { transform: 'scale(0.98)' },
-  '&[aria-pressed="true"]': { borderColor: 'ink' },
+  '&[aria-checked="true"]': { borderColor: 'ink' },
 })
 export const kindTitle = style({ fontSize: '15px', fontWeight: 600 })
 export const kindHint = style({ fontSize: '13px', color: 'ink2' })

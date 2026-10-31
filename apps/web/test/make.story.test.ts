@@ -1,10 +1,10 @@
-import { Dialog } from '@foldkit/ui'
+import { Dialog, RadioGroup } from '@foldkit/ui'
 import { Generation } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
-import { AskForPictures, init, Job, Message, PollGeneration, update } from '../src/page/Board/Make.ts'
+import { AskForPictures, init, Job, kinds, Message, PollGeneration, update } from '../src/page/Board/Make.ts'
 
 const boardId = `bd_${'sea'.padEnd(22, 'x')}`
 const generationId = `gj_${'sea'.padEnd(22, 'x')}`
@@ -22,6 +22,15 @@ const generation = (status: string, pictures: ReadonlyArray<string>) =>
     })),
     createdAt: '2026-10-31T09:00:00.000Z',
   })
+
+const choseOnePicture = [
+  message(
+    Message.GotKindChoiceMessage({
+      message: RadioGroup.Message.SelectedOption({ index: kinds.indexOf('picture'), value: 'picture' }),
+    }),
+  ),
+  Command.resolve(RadioGroup.FocusOption, RadioGroup.Message.CompletedFocusOption()),
+] as const
 
 describe('making pictures for a board', () => {
   test('sends the words as a mood board, follows the job while it runs, and says once it is done', () => {
@@ -59,7 +68,7 @@ describe('making pictures for a board', () => {
     story(
       update,
       given(init(boardId)),
-      message(Message.ChoseKind({ kind: 'picture' })),
+      ...choseOnePicture,
       message(Message.ChangedWords({ words: 'a red coat in the snow' })),
       message(Message.SubmittedMake()),
       Command.resolve(AskForPictures, Message.FailedAsk({ problem: 'failed', operationId: Option.some('op-make-1') })),
@@ -89,7 +98,7 @@ describe('making pictures for a board', () => {
     story(
       update,
       given(asking),
-      message(Message.ChoseKind({ kind: 'picture' })),
+      ...choseOnePicture,
       model(({ operationId }) => expect(operationId).toEqual(Option.none())),
       message(Message.FailedPoll({ generationId })),
       ...Array.from({ length: 4 }, () =>

@@ -1,5 +1,6 @@
 import { format, type Locale, type MessageKey } from '@styld/i18n'
 import { type Generation, type GenerationKind, mostMoodPictures } from '@styld/protocol'
+import { Option } from 'effect'
 import { Submodel } from 'foldkit'
 import { cx } from 'zyzz'
 import type { Html, HtmlBuilder } from 'foldkit/html'
@@ -9,7 +10,7 @@ import { textArea, textField } from '../../Fields.styles.ts'
 import { loader } from '../../Icon.ts'
 import { styled } from '../../Styled.ts'
 import { bottomSheet } from '../Sheet.ts'
-import { canMake, Job, type MakeProblem, Message, type Model } from './Make.ts'
+import { canMake, Job, KindRadioGroup, kinds, type MakeProblem, Message, type Model } from './Make.ts'
 import * as styles from './MakeView.styles.ts'
 
 const problemKey: { readonly [Problem in MakeProblem]: MessageKey } = {
@@ -90,29 +91,48 @@ export const statusView = Submodel.defineView<Model, Message, Inputs>((model, { 
   }),
 )
 
-const kindChoice = (model: Model, kind: GenerationKind, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.button(
-    [
-      h.Type('button'),
-      h.AriaPressed(String(model.kind === kind)),
-      h.OnClick(Message.ChoseKind({ kind })),
-      ...styled(h, styles.kind()),
-    ],
-    [
-      h.span(styled(h, styles.kindTitle()), [format(locale, kindKey[kind].title, {})]),
-      h.span(styled(h, styles.kindHint()), [format(locale, kindKey[kind].hint, {})]),
-    ],
-  )
+/** A mood board or one picture: a radio group whose options are the two cards, each named by its title and described
+ * by its hint. */
+const kindsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.submodel({
+    slotId: model.kindChoice.id,
+    model: model.kindChoice,
+    view: KindRadioGroup.view,
+    viewInputs: {
+      options: kinds,
+      selectedValue: Option.some(model.kind),
+      ariaLabel: format(locale, 'board.make.kindLabel', {}),
+      orientation: 'Horizontal',
+      hasOptionDescription: () => true,
+      toView: ({ group, options }) =>
+        h.div(
+          [...group, ...styled(h, styles.kinds())],
+          options.map((option) =>
+            h.button(
+              [...option.option, ...styled(h, styles.kind())],
+              [
+                h.span(
+                  [...option.label, ...styled(h, styles.kindTitle())],
+                  [format(locale, kindKey[option.value].title, {})],
+                ),
+                h.span(
+                  [...option.description, ...styled(h, styles.kindHint())],
+                  [format(locale, kindKey[option.value].hint, {})],
+                ),
+              ],
+            ),
+          ),
+        ),
+    },
+    toParentMessage: (message) => Message.GotKindChoiceMessage({ message }),
+  })
 
 const costId = 'board-make-cost'
 
 const sheetBody = (model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => {
   const asking = Job.guards.Asking(model.job)
   return [
-    h.div(
-      [h.Role('group'), h.AriaLabel(format(locale, 'board.make.title', {})), ...styled(h, styles.kinds())],
-      [kindChoice(model, 'moodBoard', locale, h), kindChoice(model, 'picture', locale, h)],
-    ),
+    kindsView(model, locale, h),
     h.form(
       [h.OnSubmit(Message.SubmittedMake()), h.AriaBusy(asking), ...styled(h, styles.form())],
       [

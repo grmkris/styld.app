@@ -3070,6 +3070,7 @@
     "make": {
       "open": "Make with Styld",
       "title": "Make with Styld",
+      "kindLabel": "What to make",
       "moodBoard": "A mood board",
       "moodBoardHint": "Two to four pictures, and your pieces that suit them, laid out on the collage.",
       "moodBoardCost": "Up to {most, plural, one {# credit} other {# credits}}, one per picture, from today’s free allowance. Credits come back for pictures that don’t come out.",

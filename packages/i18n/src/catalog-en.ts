@@ -2720,6 +2720,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'board.unpinPicture': 'Take the picture off the board',
   'board.make.open': 'Make with Styld',
   'board.make.title': 'Make with Styld',
+  'board.make.kindLabel': 'What to make',
   'board.make.moodBoard': 'A mood board',
   'board.make.moodBoardHint': 'Two to four pictures, and your pieces that suit them, laid out on the collage.',
   'board.make.moodBoardCost':

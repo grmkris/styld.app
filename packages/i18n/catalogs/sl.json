@@ -3070,6 +3070,7 @@
     "make": {
       "open": "Ustvari s Styldom",
       "title": "Ustvari s Styldom",
+      "kindLabel": "Kaj ustvariti",
       "moodBoard": "Tabla razpoloženja",
       "moodBoardHint": "Dve do štiri slike in tvoji kosi, ki se jim podajo, razporejeni na kolaž.",
       "moodBoardCost": "Največ {most, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}}, en na sliko, od današnjih brezplačnih. Za slike, ki ne nastanejo, dobiš kredite nazaj.",

@@ -2772,6 +2772,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'board.unpinPicture': 'Odstrani sliko iz zbirke',
   'board.make.open': 'Ustvari s Styldom',
   'board.make.title': 'Ustvari s Styldom',
+  'board.make.kindLabel': 'Kaj ustvariti',
   'board.make.moodBoard': 'Tabla razpoloženja',
   'board.make.moodBoardHint': 'Dve do štiri slike in tvoji kosi, ki se jim podajo, razporejeni na kolaž.',
   'board.make.moodBoardCost':

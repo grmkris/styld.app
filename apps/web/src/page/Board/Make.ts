@@ -1,4 +1,4 @@
-import { Dialog } from '@foldkit/ui'
+import { Dialog, RadioGroup } from '@foldkit/ui'
 import { BoardId, Generation, GenerationKind, OperationId } from '@styld/protocol'
 import { Duration, Effect, Option, Predicate, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
@@ -27,10 +27,17 @@ export const Job = defineTaggedUnion({
 })
 export type Job = typeof Job.Type
 
+/** The kinds the sheet offers, in its order. */
+export const kinds: ReadonlyArray<GenerationKind> = ['moodBoard', 'picture']
+
+/** The two kinds as one radio group: arrows move between them, and the chosen one is the group's one tab stop. */
+export const KindRadioGroup = RadioGroup.create<GenerationKind>()
+
 export const Model = Schema.Struct({
   boardId: Schema.String,
   sheet: Dialog.Model,
   kind: GenerationKind,
+  kindChoice: RadioGroup.Model,
   words: Schema.String,
   /** Drawn once per ask and kept for its retries, so a lost answer never makes a second job. */
   operationId: Schema.Option(Schema.String),
@@ -44,6 +51,7 @@ export const init = (boardId: string): Model => ({
   boardId,
   sheet: Dialog.init({ id: 'board-make' }),
   kind: 'moodBoard',
+  kindChoice: RadioGroup.init({ id: 'board-make-kind' }),
   words: '',
   operationId: Option.none(),
   job: Job.Idle(),
@@ -55,7 +63,7 @@ export const init = (boardId: string): Model => ({
 export const Message = defineMessageUnion({
   ClickedMake: {},
   GotSheetMessage: { message: Dialog.Message },
-  ChoseKind: { kind: GenerationKind },
+  GotKindChoiceMessage: { message: RadioGroup.Message },
   ChangedWords: { words: Schema.String },
   SubmittedMake: {},
   SucceededAsk: { generation: Generation },
@@ -173,6 +181,22 @@ const sheetFold = {
   }),
 }
 const foldSheet = Update.foldChild({ update: Dialog.update, ...sheetFold })
+
+const foldKindChoice = Update.foldChild({
+  update: KindRadioGroup.update,
+  read: (model: Model) => Option.some(model.kindChoice),
+  write: (model: Model, kindChoice: RadioGroup.Model) => modifyFields(model, { kindChoice: () => kindChoice }),
+  toParentMessage: (message: RadioGroup.Message) => Message.GotKindChoiceMessage({ message }),
+  foldOutMessage: RadioGroup.OutMessage.match<
+    Update.StepWithOutMessage<Model, Message, OutMessage, Services>,
+    RadioGroup.OutMessage<GenerationKind>
+  >({
+    // Another kind is another ask: it starts under a new operation.
+    Selected:
+      ({ value }) =>
+      (stepModel) => ({ model: modifyFields(stepModel, { kind: () => value, operationId: () => Option.none() }) }),
+  }),
+})
 const openSheet = Update.foldChildStep({ update: Dialog.open, ...sheetFold })
 const closeSheet = Update.foldChildStep({ update: Dialog.close, ...sheetFold })
 
@@ -218,8 +242,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedMake: () =>
       openSheet(Job.guards.Running(model.job) ? model : modifyFields(model, { job: () => Job.Idle() })),
     GotSheetMessage: ({ message: sheetMessage }) => foldSheet(model, sheetMessage),
-    // Another kind is another ask: it starts under a new operation.
-    ChoseKind: ({ kind }) => ({ model: modifyFields(model, { kind: () => kind, operationId: () => Option.none() }) }),
+    GotKindChoiceMessage: ({ message: kindMessage }) => foldKindChoice(model, kindMessage),
     ChangedWords: ({ words }) => ({
       model: modifyFields(model, { words: () => words, operationId: () => Option.none() }),
     }),

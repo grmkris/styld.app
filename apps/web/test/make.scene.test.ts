@@ -1,8 +1,8 @@
-import { Dialog } from '@foldkit/ui'
+import { Dialog, RadioGroup } from '@foldkit/ui'
 import { catalogVersion } from '@styld/i18n'
 import { Board, Generation } from '@styld/protocol'
 import { Schema } from 'effect'
-import { click, Command, expect, given, Mount, role, scene, submit, text, type } from 'foldkit/scene'
+import { click, Command, expect, given, keydown, Mount, role, scene, submit, text, type } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { init, Session, update } from '../src/App.ts'
@@ -63,6 +63,8 @@ const page = modifyFields(
   { session: () => Session.SignedIn({ claims }), board: () => fromBoard(boardInit(boardId), board) },
 )
 
+const resolveFocus = Command.resolve(RadioGroup.FocusOption, RadioGroup.Message.CompletedFocusOption())
+
 const openSheet = [
   click(role('button', { name: 'Make with Styld' })),
   Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
@@ -78,10 +80,27 @@ describe('Make with Styld on a board', () => {
       expect(role('button', { name: 'Make' })).toHaveAccessibleDescription(
         'Up to 4 credits, one per picture, from today’s free allowance. Credits come back for pictures that don’t come out.',
       ),
-      click(role('button', { name: /^One picture/ })),
+      click(role('radio', { name: 'One picture' })),
+      resolveFocus,
       expect(role('button', { name: 'Make' })).toHaveAccessibleDescription(
         '1 credit from today’s free allowance. It comes back if the picture doesn’t come out.',
       ),
+    )
+  })
+
+  test('offers a mood board or one picture as one radio group, chosen by arrow keys', () => {
+    scene(
+      { update, view },
+      given(page),
+      ...openSheet,
+      expect(role('radiogroup', { name: 'What to make' })).toExist(),
+      expect(role('radio', { name: 'A mood board', checked: true })).toHaveAttr('tabIndex', '0'),
+      expect(role('radio', { name: 'One picture', checked: false })).toHaveAttr('tabIndex', '-1'),
+      expect(role('radio', { name: 'One picture' })).toHaveAccessibleDescription('A single picture from your words.'),
+      keydown(role('radio', { name: 'A mood board' }), 'ArrowRight'),
+      resolveFocus,
+      expect(role('radio', { name: 'One picture', checked: true })).toHaveAttr('tabIndex', '0'),
+      expect(role('radio', { name: 'A mood board', checked: false })).toHaveAttr('tabIndex', '-1'),
     )
   })
 
@@ -107,7 +126,7 @@ describe('Make with Styld on a board', () => {
       click(role('button', { name: 'Make with Styld' })),
       Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
       Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
-      expect(role('button', { name: /^A mood board/ })).toHaveAttr('aria-pressed', 'true'),
+      expect(role('radio', { name: 'A mood board', checked: true })).toExist(),
       type(role('textbox', { name: 'What should it feel like?' }), 'a slow weekend by the sea'),
       submit(role('form')),
       Command.resolve(AskForPictures, MakeMessage.SucceededAsk({ generation: generation('planning', []) })),
