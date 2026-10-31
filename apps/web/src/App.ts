@@ -189,9 +189,11 @@ const pageCommands = (
       Command.mapMessages(Piece.load(pages.piece), (message) => Message.GotPieceMessage({ message })),
     ),
     Match.tag('Review', () => Command.mapMessages(Review.load(), (message) => Message.GotReviewMessage({ message }))),
-    Match.tag('Stylist', () =>
-      Command.mapMessages(Stylist.load(), (message) => Message.GotStylistMessage({ message })),
-    ),
+    // Styld's answers show the person's pieces by name, so the chat reads the wardrobe too.
+    Match.tag('Stylist', () => [
+      ...Command.mapMessages(Stylist.load(), (message) => Message.GotStylistMessage({ message })),
+      ...Command.mapMessages(Wardrobe.load(), (message) => Message.GotWardrobeMessage({ message })),
+    ]),
     Match.tag('Look', () =>
       Command.mapMessages(Look.load(pages.look), (message) => Message.GotLookMessage({ message })),
     ),

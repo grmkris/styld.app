@@ -13,7 +13,8 @@ import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { round } from './PageBar.styles.ts'
 import { chip, chips } from './AskView.styles.ts'
-import { canSend, isWriting, Message, type Model, Opening, type SendProblem, Sending } from './Stylist.ts'
+import { canSend, isWriting, latestId, Message, type Model, Opening, type SendProblem, Sending } from './Stylist.ts'
+import { Button } from '@foldkit/ui'
 import * as styles from './StylistView.styles.ts'
 
 const composerId = 'stylist-message'
@@ -38,51 +39,65 @@ const starters: ReadonlyArray<MessageKey> = [
 /** A reply as plain text: a model that still writes **bold** loses the marks. */
 const plain = (text: string) => text.replaceAll('**', '')
 
-const partView = (part: ReplyPart, locale: Locale, h: HtmlBuilder<Message>): Html =>
+/** What the page knows besides the chat: the language, and the names of the person's pieces. */
+type Inputs = { readonly locale: Locale; readonly names: ReadonlyMap<string, string> }
+
+/** A piece Styld shows: its cutout on the paper and its name, the link's words. Before the wardrobe is read the
+ * link says only that it opens a piece. */
+const shownPiece = (pieceId: string, { locale, names }: Inputs, h: HtmlBuilder<Message>): Html => {
+  const name = names.get(pieceId)
+  return h.keyed('li')(
+    pieceId,
+    [],
+    [
+      h.a(
+        [
+          h.Href(pieceRouter({ pieceId })),
+          ...(name === undefined ? [h.AriaLabel(format(locale, 'stylist.openPiece', {}))] : []),
+          ...styled(h, styles.pieceLink()),
+        ],
+        [
+          h.img([
+            h.Src(`/cdn/pieces/${pieceId}/thumb`),
+            h.Alt(''),
+            h.Loading('lazy'),
+            ...styled(h, styles.pieceImage()),
+          ]),
+          name === undefined ? h.empty : h.span(styled(h, styles.pieceName()), [name]),
+        ],
+      ),
+    ],
+  )
+}
+
+const partView = (part: ReplyPart, inputs: Inputs, h: HtmlBuilder<Message>): Html =>
   Match.valueTags(part, {
     Pieces: ({ pieceIds }) =>
       h.ul(
-        [h.AriaLabel(format(locale, 'stylist.shownPieces', {})), ...styled(h, styles.pieces())],
-        pieceIds.map((pieceId) =>
-          h.keyed('li')(
-            pieceId,
-            [],
-            [
-              h.a(
-                [h.Href(pieceRouter({ pieceId })), h.AriaLabel(format(locale, 'stylist.openPiece', {}))],
-                [
-                  h.img([
-                    h.Src(`/cdn/pieces/${pieceId}/thumb`),
-                    h.Alt(''),
-                    h.Loading('lazy'),
-                    ...styled(h, styles.pieceImage()),
-                  ]),
-                ],
-              ),
-            ],
-          ),
-        ),
+        [h.AriaLabel(format(inputs.locale, 'stylist.shownPieces', {})), ...styled(h, styles.pieces())],
+        pieceIds.map((pieceId) => shownPiece(pieceId, inputs, h)),
       ),
     Look: ({ lookId, name }) =>
       h.a(
         [h.Href(lookRouter({ lookId })), ...styled(h, secondaryAction())],
-        [format(locale, 'stylist.openLook', { name })],
+        [format(inputs.locale, 'stylist.openLook', { name })],
       ),
   })
 
-const replyView = (text: string, parts: ReadonlyArray<ReplyPart>, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const replyView = (text: string, parts: ReadonlyArray<ReplyPart>, inputs: Inputs, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.reply()), [
     text.length === 0 ? h.empty : h.p(styled(h, styles.replyText()), [plain(text)]),
-    ...parts.map((part) => partView(part, locale, h)),
+    ...parts.map((part) => partView(part, inputs, h)),
   ])
 
-const messageView = (message: ChatMessage, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const messageView = (message: ChatMessage, inputs: Inputs, h: HtmlBuilder<Message>): Html =>
   h.keyed('li')(message.id, message.role === 'person' ? styled(h, styles.person()) : [], [
-    message.role === 'person' ? message.text : replyView(message.text, message.parts, locale, h),
+    message.role === 'person' ? message.text : replyView(message.text, message.parts, inputs, h),
   ])
 
 /** The reply being written, with what it says so far, or the note that it did not come. */
-const replyingView = (chat: Chat, locale: Locale, h: HtmlBuilder<Message>): Html => {
+const replyingView = (chat: Chat, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
+  const { locale } = inputs
   if (chat.replying === undefined) return h.empty
   const { state, text, parts } = chat.replying
   return h.li(
@@ -93,7 +108,7 @@ const replyingView = (chat: Chat, locale: Locale, h: HtmlBuilder<Message>): Html
         : h.div(
             [],
             [
-              replyView(text, parts, locale, h),
+              replyView(text, parts, inputs, h),
               h.p(
                 [h.Role('status'), ...styled(h, styles.status())],
                 [loader(h), format(locale, 'stylist.writing', {})],
@@ -104,10 +119,16 @@ const replyingView = (chat: Chat, locale: Locale, h: HtmlBuilder<Message>): Html
   )
 }
 
-const threadView = (chat: Chat, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.ol(
-    [h.AriaLabel(chat.title), h.AriaLive('polite'), ...styled(h, styles.thread())],
-    [...chat.messages.map((message) => messageView(message, locale, h)), replyingView(chat, locale, h)],
+const threadView = (chat: Chat, inputs: Inputs, h: HtmlBuilder<Message>): Html =>
+  h.div(
+    [],
+    [
+      h.ol(
+        [h.AriaLabel(chat.title), h.AriaLive('polite'), ...styled(h, styles.thread())],
+        [...chat.messages.map((message) => messageView(message, inputs, h)), replyingView(chat, inputs, h)],
+      ),
+      h.div([h.Id(latestId), ...styled(h, styles.latest())]),
+    ],
   )
 
 /** A chat being read, in the shape of one: a message, then the start of a reply. */
@@ -199,14 +220,19 @@ const composerView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Ht
           h.OnInput((value) => Message.UpdatedDraft({ value })),
           ...styled(h, cx(textField(), styles.field())),
         ]),
-        h.button(
-          [
-            h.Type('submit'),
-            h.AriaLabel(format(locale, 'stylist.send', {})),
-            h.Disabled(!canSend(model)),
-            ...styled(h, styles.send()),
-          ],
-          [Sending.guards.Sending(model.sending) ? loader(h) : forwardIcon(h)],
+        // aria-disabled rather than disabled, so the button keeps focus while its message goes (DESIGN › Controls);
+        // the form's submit is refused while nothing can be sent.
+        Button.view(
+          {
+            type: 'submit',
+            isDisabled: !canSend(model),
+            toView: (attributes) =>
+              h.button(
+                [...attributes.button, h.AriaLabel(format(locale, 'stylist.send', {})), ...styled(h, styles.send())],
+                [Sending.guards.Sending(model.sending) ? loader(h) : forwardIcon(h)],
+              ),
+          },
+          h,
         ),
       ],
     ),
@@ -219,8 +245,9 @@ const composerView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Ht
 }
 
 /** Styld, the stylist in the app: a chat about the person's own wardrobe. */
-export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
-  h.main(
+export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, h) => {
+  const { locale } = inputs
+  return h.main(
     [h.Id('main'), ...styled(h, styles.page())],
     [
       h.div(styled(h, styles.pageBar()), [
@@ -263,9 +290,9 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
         : h.empty,
       Option.match(model.open, {
         onNone: () => (isReadingChat(model) ? readingView(h) : startView(model, locale, h)),
-        onSome: (chat) => threadView(chat, locale, h),
+        onSome: (chat) => threadView(chat, inputs, h),
       }),
       composerView(model, locale, h),
     ],
-  ),
-)
+  )
+})

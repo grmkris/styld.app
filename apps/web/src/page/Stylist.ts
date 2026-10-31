@@ -1,7 +1,7 @@
 import { Chat, ChatId, ChatLocale, ChatSummary, OperationId } from '@styld/protocol'
 import { Duration, Effect, Option, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
-import { AsyncData, Command, type Update } from 'foldkit'
+import { AsyncData, Command, Dom, type Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
@@ -68,6 +68,7 @@ export const Message = defineMessageUnion({
   ClickedNewChat: {},
   ClickedChat: { chatId: Schema.String },
   ClickedRetryLoad: {},
+  CompletedScrollToLatest: {},
 })
 export type Message = typeof Message.Type
 
@@ -172,6 +173,20 @@ export const isWriting = (model: Model) => Option.exists(model.open, (chat) => c
 export const canSend = (model: Model) =>
   model.draft.trim().length > 0 && !isWriting(model) && !Sending.guards.Sending(model.sending)
 
+/** The element after the thread that the newest message is scrolled to, clear of the composer. */
+export const latestId = 'stylist-latest'
+
+/** Bring the newest message into view above the composer: when a chat opens and when a reply lands, never while
+ * one is being written, so it does not pull the page from under someone reading back.
+ * @internal Exported for its tests. */
+export const ScrollToLatest = Command.define('ScrollToLatest', {
+  messages: [Message.CompletedScrollToLatest],
+  execute: Dom.scrollIntoViewAfterPaint(`#${latestId}`, { block: 'end' }).pipe(
+    Effect.ignore,
+    Effect.as(Message.CompletedScrollToLatest()),
+  ),
+})
+
 /** A chat read: shown when it is still the one open, and read again while its reply is written. */
 const showChat = (model: Model, chat: Chat): UpdateReturn => {
   const current = Option.exists(model.open, ({ id }) => id === chat.id)
@@ -229,15 +244,26 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       model: modifyFields(model, { chats: () => ChatsData.Failure({ error: 'Unavailable' }) }),
     }),
     // Only the chat still asked for opens: one left for another, or a new chat, is dropped.
-    SucceededLoadChat: ({ chat }) =>
-      isReading(model, chat.id)
-        ? showChat(modifyFields(model, { open: () => Option.some(chat), opening: () => Opening.None() }), chat)
-        : { model },
+    SucceededLoadChat: ({ chat }) => {
+      if (!isReading(model, chat.id)) return { model }
+      const shown = showChat(
+        modifyFields(model, { open: () => Option.some(chat), opening: () => Opening.None() }),
+        chat,
+      )
+      return { ...shown, commands: [...(shown.commands ?? []), ScrollToLatest()] }
+    },
     FailedLoadChat: ({ chatId }) =>
       isReading(model, chatId)
         ? { model: modifyFields(model, { opening: () => Opening.Failed({ chatId }) }) }
         : { model },
-    SucceededRefreshChat: ({ chat }) => showChat(model, chat),
+    SucceededRefreshChat: ({ chat }) => {
+      const before = Option.match(model.open, { onNone: () => 0, onSome: ({ messages }) => messages.length })
+      const shown = showChat(model, chat)
+      return chat.messages.length > before
+        ? { ...shown, commands: [...(shown.commands ?? []), ScrollToLatest()] }
+        : shown
+    },
+    CompletedScrollToLatest: () => ({ model }),
     // A failed read keeps the chat shown and asks again.
     FailedRefreshChat: ({ chatId }) =>
       Option.exists(model.open, ({ id }) => id === chatId) ? { model, commands: [RefreshChat({ chatId })] } : { model },

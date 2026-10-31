@@ -10,6 +10,7 @@ import {
   Message,
   Opening,
   RefreshChat,
+  ScrollToLatest,
   SendMessage,
   Sending,
   update,
@@ -71,12 +72,14 @@ describe('Styld, the stylist in the app', () => {
       }),
       Command.resolve(LoadChats, Message.SucceededLoadChats({ chats: [summary(chatId)] })),
       Command.resolve(LoadChat, Message.SucceededLoadChat({ chat: chat({ state: 'writing', text: 'Wear your' }) })),
+      Command.resolve(ScrollToLatest, Message.CompletedScrollToLatest()),
       model((current) => {
         expect(Option.map(current.open, ({ replying }) => replying?.text)).toEqual(Option.some('Wear your'))
         expect(canSend({ ...current, draft: 'And tomorrow?' })).toBe(false)
       }),
       Command.resolve(RefreshChat, Message.FailedRefreshChat({ chatId })),
       Command.resolve(RefreshChat, Message.SucceededRefreshChat({ chat: chat(undefined, true) })),
+      Command.resolve(ScrollToLatest, Message.CompletedScrollToLatest()),
       Command.expectNone(),
       model((current) => {
         expect(Option.map(current.open, ({ messages }) => messages.length)).toEqual(Option.some(2))
@@ -92,6 +95,7 @@ describe('Styld, the stylist in the app', () => {
       message(Message.SucceededLoadChats({ chats: [summary(chatId), summary(olderId)] })),
       Command.expectExact(LoadChat({ chatId })),
       Command.resolve(LoadChat, Message.SucceededLoadChat({ chat: chat(undefined, true) })),
+      Command.resolve(ScrollToLatest, Message.CompletedScrollToLatest()),
       model(({ open }) => expect(Option.map(open, ({ id }) => id)).toEqual(Option.some(chatId))),
     )
     story(
@@ -135,6 +139,7 @@ describe('Styld, the stylist in the app', () => {
       Command.expectExact(tomorrow(Option.none(), 'And on Sunday?')),
       Command.resolve(SendMessage, Message.SucceededSend({ chatId: chat().id })),
       Command.resolve(LoadChat, Message.SucceededLoadChat({ chat: chat({ state: 'failed', text: '' }) })),
+      Command.resolve(ScrollToLatest, Message.CompletedScrollToLatest()),
       Command.resolve(LoadChats, Message.SucceededLoadChats({ chats: [summary(chatId)] })),
       Command.expectNone(),
     )
@@ -159,6 +164,7 @@ describe('Styld, the stylist in the app', () => {
       Command.expectExact(LoadChat({ chatId: chatId })),
       model(({ opening }) => expect(opening).toEqual(Opening.Reading({ chatId }))),
       Command.resolve(LoadChat, Message.SucceededLoadChat({ chat: chat(undefined, true) })),
+      Command.resolve(ScrollToLatest, Message.CompletedScrollToLatest()),
     )
   })
 })

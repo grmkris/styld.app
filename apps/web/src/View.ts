@@ -1,6 +1,7 @@
 import { Select } from '@foldkit/ui'
 import { direction, format, type Locale, type MessageKey } from '@styld/i18n'
 import { Option, String } from 'effect'
+import { AsyncData } from 'foldkit'
 import type { Document, Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { LocaleSave, Message, type Model, Session } from './App.ts'
@@ -67,6 +68,7 @@ import {
 } from './View.styles.ts'
 import { visuallyHidden } from './VisuallyHidden.styles.ts'
 import { landingView } from './Landing.ts'
+import { pieceLabel } from './page/WardrobeWords.ts'
 
 const languages: ReadonlyArray<Readonly<{ locale: Locale; label: string }>> = [
   { locale: 'en', label: 'English' },
@@ -436,12 +438,18 @@ const collagePage = (model: Model, h: HtmlBuilder<Message>): Html =>
     toParentMessage: (message) => Message.GotBoardMessage({ message }),
   })
 
+/** The person's pieces by id, named as the wardrobe names them, for the pieces Styld shows. */
+const pieceNames = (model: Model): ReadonlyMap<string, string> =>
+  AsyncData.isSuccess(model.wardrobe.pieces)
+    ? new Map(model.wardrobe.pieces.data.map((piece) => [piece.id, pieceLabel(piece, model.context.locale)]))
+    : new Map()
+
 const stylistPage = (model: Model, h: HtmlBuilder<Message>): Html =>
   h.submodel({
     slotId: 'stylist',
     model: model.stylist,
     view: StylistView.view,
-    viewInputs: { locale: model.context.locale },
+    viewInputs: { locale: model.context.locale, names: pieceNames(model) },
     toParentMessage: (message) => Message.GotStylistMessage({ message }),
   })
 

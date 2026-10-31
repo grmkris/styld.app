@@ -48,20 +48,40 @@ export const replyText = style({ margin: '0', whiteSpace: 'pre-wrap', overflowWr
 /** The pieces a reply shows, in a row that scrolls sideways. */
 export const pieces = style({
   display: 'flex',
-  gap: '8px',
+  gap: '12px',
   margin: '0',
   padding: '0',
   listStyleType: 'none',
   overflowX: 'auto',
   scrollbarWidth: 'none',
 })
-export const pieceImage = style({
-  display: 'block',
-  inlineSize: '88px',
-  blockSize: '88px',
-  objectFit: 'contain',
-  borderRadius: 'photo',
-  backgroundColor: 'paper2',
+/** A piece Styld shows: its cutout straight on the paper, as pieces you own are, with its name under it. */
+export const pieceLink = style({
+  display: 'grid',
+  gap: '4px',
+  inlineSize: '96px',
+  color: 'ink',
+  textDecorationLine: 'none',
+  transitionProperty: 'transform',
+  transitionDuration: '140ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  ':active': { transform: 'scale(0.96)' },
+})
+export const pieceImage = style({ display: 'block', inlineSize: '96px', blockSize: '96px', objectFit: 'contain' })
+export const pieceName = style({
+  display: '-webkit-box',
+  WebkitLineClamp: 2,
+  WebkitBoxOrient: 'vertical',
+  overflow: 'hidden',
+  fontSize: '13px',
+  lineHeight: 1.35,
+  color: 'ink2',
+})
+/** Where the newest message is scrolled to: far enough above the end to clear the composer and, on a phone, the
+ * floating nav under it. */
+export const latest = style({
+  scrollMarginBlockEnd: 'calc(220px + env(safe-area-inset-bottom))',
+  '@media (min-width: 900px)': { scrollMarginBlockEnd: '140px' },
 })
 export const status = style({ display: 'flex', alignItems: 'center', gap: '8px', color: 'ink2', fontSize: '14px' })
 export const failed = style({ color: 'ink2', fontSize: '14px' })
