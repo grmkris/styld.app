@@ -1,8 +1,9 @@
 import { Clock, Effect, Ref, Stream } from 'effect'
 import { Chat, type Tool, type Toolkit } from 'effect/ai'
 
-/** One model call of a reply: how long it took and the tokens it was billed. */
+/** One model call of a reply: whether it answered, how long it took and the tokens it was billed. */
 export interface StepUsage {
+  readonly answered: boolean
   readonly milliseconds: number
   readonly inputTokens: number
   readonly outputTokens: number
@@ -60,9 +61,20 @@ export const runTurn = <Tools extends Record<string, Tool.Any>>(input: {
           }
           return Effect.void
         }),
+        // A call that fails is counted too, before the reply fails with it.
+        Effect.tapError(() =>
+          Effect.flatMap(Clock.currentTimeMillis, (now) =>
+            input.counted({ answered: false, milliseconds: now - started, inputTokens: 0, outputTokens: 0 }),
+          ),
+        ),
       )
       const milliseconds = (yield* Clock.currentTimeMillis) - started
-      yield* input.counted({ milliseconds, inputTokens: state.inputTokens, outputTokens: state.outputTokens })
+      yield* input.counted({
+        answered: true,
+        milliseconds,
+        inputTokens: state.inputTokens,
+        outputTokens: state.outputTokens,
+      })
       const text = state.text.trim()
       if (text.length > 0) yield* Ref.update(written, (all) => [...all, text])
       const showedOnly = text.length > 0 && calls.every((name) => input.showing.has(name))

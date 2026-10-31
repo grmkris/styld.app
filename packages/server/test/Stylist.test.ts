@@ -40,7 +40,8 @@ const replaying = (answers: ReadonlyArray<unknown>) => {
   const asked: Array<Readonly<Record<string, unknown>>> = []
   const run: RunChat = (_model, input) => {
     asked.push(input)
-    return Promise.resolve(answers[asked.length - 1])
+    const answer = answers[asked.length - 1]
+    return answer instanceof Error ? Promise.reject(answer) : Promise.resolve(answer)
   }
   return { run, asked }
 }
@@ -73,6 +74,7 @@ const replyWith = (answers: ReadonlyArray<unknown>, maxSteps = 6) => {
   const { run, asked } = replaying(answers)
   const progress: Array<string> = []
   const counted: Array<number> = []
+  const failed: Array<number> = []
   const replied = Effect.runPromise(
     Effect.gen(function* () {
       const tools = yield* turnTools(
@@ -87,12 +89,12 @@ const replyWith = (answers: ReadonlyArray<unknown>, maxSteps = 6) => {
         maxSteps,
         showing: showingToolNames,
         progress: (sofar) => Effect.sync(() => progress.push(sofar)),
-        counted: (usage) => Effect.sync(() => counted.push(usage.inputTokens)),
+        counted: (usage) => Effect.sync(() => (usage.answered ? counted : failed).push(usage.inputTokens)),
       })
       return { reply: text, parts: yield* tools.parts }
     }).pipe(Effect.provide(modelOver(run, { reasoning_effort: 'low' }))),
   )
-  return { replied, asked, progress, counted }
+  return { replied, asked, progress, counted, failed }
 }
 
 describe('a reply', () => {
@@ -124,6 +126,13 @@ describe('a reply', () => {
     expect(asked).toHaveLength(3)
     expect(reply).toMatch(/^It's an easy, clean combination/)
     expect(parts).toHaveLength(1)
+  })
+
+  test('a model that does not answer fails the reply, and its call is counted as failed', async () => {
+    const { replied, counted, failed } = replyWith([fixture('glm-step-0.json'), new Error('Workers AI is down')])
+    await expect(replied).rejects.toBeDefined()
+    expect(counted).toEqual([539])
+    expect(failed).toEqual([0])
   })
 
   test('stops after its last allowed call, keeping what it wrote', async () => {

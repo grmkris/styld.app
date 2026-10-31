@@ -149,7 +149,7 @@ const reply = <R>(
           provider: parts.policy.mode === 'gateway' ? 'vercel-gateway' : 'workers-ai',
           model: parts.policy.model,
           kind: 'chat',
-          outcome: 'ok',
+          outcome: usage.answered ? 'ok' : 'failed',
           milliseconds: usage.milliseconds,
           units: usage.inputTokens + usage.outputTokens,
           costMicroUsd: priceOf(parts.policy.model, usage.inputTokens, usage.outputTokens),
