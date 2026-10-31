@@ -1,0 +1,26 @@
+{
+  "id": "id-1793415652119",
+  "object": "chat.completion",
+  "created": 1793415652,
+  "model": "@cf/zai-org/glm-5.3-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "It's an easy, clean combination — cosy but put together. Want me to save this as a look?"
+      },
+      "finish_reason": "stop",
+      "logprobs": null
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 787,
+    "completion_tokens": 24,
+    "total_tokens": 811,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "neurons": 11.822726249694824
+  }
+}

@@ -2,6 +2,7 @@ import { SessionHttp } from '@styld/auth/config'
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
 import { AccountUnavailable, Me, RequestRefused } from './Account.ts'
 import { CaptureApi } from './CaptureApi.ts'
+import { StylistApi } from './StylistApi.ts'
 import { ProfileNotPublished, SetVisibility, ShareLook } from './Check.ts'
 import { Explore, ExploreQuery, SearchQuery, SearchResults } from './Explore.ts'
 import {
@@ -440,4 +441,5 @@ export class StyldApi extends HttpApi.make('styld')
   .add(PublicApi)
   .add(SocialApi)
   .add(LinkApi)
-  .add(GenerationApi) {}
+  .add(GenerationApi)
+  .add(StylistApi) {}

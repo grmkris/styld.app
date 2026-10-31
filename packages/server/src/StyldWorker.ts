@@ -4,7 +4,7 @@ import * as AlchemyHttp from 'alchemy/Http'
 import { type EmailEntryOptions, ProofDispatchSink } from '@styld/auth'
 import { RuntimeContext } from 'alchemy/RuntimeContext'
 import { layerCryptoWeb } from '@yielded/auth/WebCrypto'
-import { Effect, Layer, Logger, Option, Redacted, Stream } from 'effect'
+import { Effect, Layer, Logger, Option, Stream } from 'effect'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import * as UrlParams from 'effect/http/UrlParams'
@@ -29,16 +29,12 @@ import { boardRoutes } from './boards/Http.ts'
 import { makeWorn, Worn } from './worn/Worn.ts'
 import { apiRoutes } from './Api.ts'
 import { makeAuthHttp, withCodeRequestPolicy } from './AuthHttp.ts'
-import { type ClefRequest, makeGarmentVision, type RunClef } from './capture/Clef.ts'
-import { makePictureWork } from './capture/CloudflareImages.ts'
+import type { RunClef } from './capture/Clef.ts'
 import { captureRoutes } from './capture/Http.ts'
-import { makeGarmentSegmenter } from './capture/Meta.ts'
-import { type AnalyticsDataset, analyticsEngine, CaptureMetrics as CaptureMetricsService } from './capture/Metrics.ts'
+import { type AnalyticsDataset, CaptureMetrics as CaptureMetricsService } from './capture/Metrics.ts'
 import { pieceCutout } from './capture/PieceCutout.ts'
-import { CaptureConfig, capturePolicy } from './capture/Policy.ts'
-import { makeMuseGenerator } from './capture/Muse.ts'
+import type { CaptureConfig } from './capture/Policy.ts'
 import { GarmentSegmenter, GarmentVision, ImageGenerator, PictureWork, VideoGenerator } from './capture/Providers.ts'
-import { makeVeoGenerator } from './capture/Veo.ts'
 import { Captures, makeCaptures } from './capture/Service.ts'
 import { Usage } from './capture/Usage.ts'
 import { DomainLive } from './DomainLive.ts'
@@ -56,12 +52,12 @@ import {
   StyldEmail,
   StyldMedia,
   StyldPieceQueue,
+  StyldStylistQueue,
 } from './Resources.ts'
 import { type CheckBindings, makeChecks } from './safety/Checks.ts'
 import { contentJudge, type RunGuard } from './safety/Judge.ts'
 import { pieceChangedLayer } from './safety/PieceChanged.ts'
 import { checkAttempts, settleCheck } from './safety/Queue.ts'
-import { generationProviders } from './generation/Providers.ts'
 import { type MoodPlanner, plannerModel, type RunPlanner } from './generation/Planner.ts'
 import type { PicturePainter } from './generation/Painter.ts'
 import { generationAttempts, settleGeneration } from './generation/Queue.ts'
@@ -70,6 +66,11 @@ import { wardrobeRoutes } from './wardrobe/Http.ts'
 import { processingAttempts, settleMessage } from './wardrobe/Queue.ts'
 import { makeWardrobe, Wardrobe, type WardrobeBindings } from './wardrobe/Wardrobe.ts'
 import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
+import { StylistChats } from './stylist/Http.ts'
+import { settleStylistTurn, stylistAttempts } from './stylist/Queue.ts'
+import { Stylist } from './stylist/StylistObject.ts'
+import { chatStoreOf, makeStylistLive } from './stylist/Live.ts'
+import { askStandIn, captureProviders } from './capture/Live.ts'
 
 // The server formats in every language: page renders and code emails.
 provideAllCatalogs()
@@ -108,6 +109,8 @@ const storageServices = <R>(
   bindings: WardrobeBindings & {
     readonly checksQueue: CheckBindings['queue']
     readonly generationQueue: GenerationBindings['queue']
+    /** Forget an account's chats with Styld, when it is deleted. */
+    readonly forgetChats: (accountId: string) => Effect.Effect<void, unknown>
   },
   judge: ReturnType<typeof contentJudge>,
   providers: Layer.Layer<
@@ -130,7 +133,7 @@ const storageServices = <R>(
     // A piece whose shown picture changes is checked again while others can see it.
     const pieceChanged = pieceChangedLayer(checksService)
     const wardrobeService = yield* makeWardrobe(bindings).pipe(Effect.provide(pieceChanged))
-    const lifecycleService = yield* makeAccountLifecycle(bindings)
+    const lifecycleService = yield* makeAccountLifecycle(bindings, bindings.forgetChats)
     const capturesService = yield* makeCaptures(bindings).pipe(Effect.provide(pieceChanged))
     const looksService = yield* makeLooks(bindings.database, checksService)
     const boardsService = yield* makeBoards(bindings, checksService)
@@ -145,6 +148,9 @@ const storageServices = <R>(
       wardrobe: wardrobeService,
     }).pipe(Effect.provide(judge))
     return {
+      // The credits and the provider-call counter the capture providers were built with, for Styld's replies too.
+      usage: yield* Usage,
+      metrics: yield* CaptureMetricsService,
       generationsService,
       generations: Layer.succeed(Generations, generationsService),
       curationService: makeCuration(bindings.database, checksService),
@@ -183,68 +189,6 @@ const toolServices = (services: Effect.Success<ReturnType<typeof storageServices
   discovery: services.discoveryService,
   generations: services.generationsService,
 })
-
-/** The capture providers and policy from the Worker's environment. */
-const captureProviders = (
-  env: Cloudflare.Workers.WorkerEnvironment['Service'],
-  runtime: {
-    readonly runClef: RunClef
-    readonly runPlanner: RunPlanner
-    readonly images: WardrobeBindings['images']
-    readonly bucket: WardrobeBindings['bucket']
-    readonly dataset: AnalyticsDataset
-    readonly origin: { readonly environment: string; readonly release: string }
-  },
-) => {
-  const policy = capturePolicy(env)
-  const metrics = analyticsEngine(runtime.dataset, runtime.origin)
-  const apiKey: unknown = env.META_API_KEY
-  const apiBase: unknown = env.META_API_BASE
-  const videoKey: unknown = env.VIDEO_GATEWAY_API_KEY
-  const videoBase: unknown = env.VIDEO_GATEWAY_BASE
-  const meta = {
-    apiBase: typeof apiBase === 'string' && apiBase.length > 0 ? apiBase : 'https://api.meta.ai',
-    apiKey: Redacted.make(typeof apiKey === 'string' ? apiKey : ''),
-    fetch: (input: string, init: RequestInit) => globalThis.fetch(input, init),
-    metrics,
-  }
-  return Layer.mergeAll(
-    Layer.succeed(CaptureConfig, policy),
-    Layer.succeed(GarmentVision, makeGarmentVision(runtime.runClef, metrics)),
-    Layer.succeed(PictureWork, makePictureWork(runtime.images, metrics)),
-    Layer.succeed(
-      GarmentSegmenter,
-      makeGarmentSegmenter({ ...meta, readVideo: async (key) => (await runtime.bucket.get(key))?.body ?? null }),
-    ),
-    Layer.succeed(ImageGenerator, policy.pictures.generator === 'muse' ? makeMuseGenerator(meta) : ImageGenerator.off),
-    generationProviders(env.GENERATED_PICTURES, meta, runtime.runPlanner),
-    Layer.succeed(
-      VideoGenerator,
-      policy.turns.generator === 'veo'
-        ? makeVeoGenerator({
-            apiBase:
-              typeof videoBase === 'string' && videoBase.length > 0 ? videoBase : 'https://ai-gateway.vercel.sh/v4/ai',
-            apiKey: Redacted.make(typeof videoKey === 'string' ? videoKey : ''),
-            fetch: meta.fetch,
-            metrics,
-          })
-        : VideoGenerator.off,
-    ),
-    Usage.layer(policy.dailyAllowance),
-    Layer.succeed(CaptureMetricsService, metrics),
-  )
-}
-
-/** Clef asked over HTTP, as a stand-in answers it on the native stack. */
-const askStandIn = async (url: string, request: ClefRequest): Promise<unknown> => {
-  const response = await globalThis.fetch(url, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify(request),
-  })
-  if (!response.ok) throw new Error(`Clef stand-in answered ${response.status}`)
-  return response.json()
-}
 
 /** A Workers RateLimit binding's runtime object as a check: false when over the limit or failing. */
 const sharedLimit = (limiter: { limit(options: { key: string }): Promise<{ success: boolean }> }) => (key: string) =>
@@ -302,6 +246,13 @@ const declareBindings = Effect.gen(function* () {
   const checksQueue = yield* Cloudflare.Queues.WriteQueue(checksQueueResource)
   const generationQueueResource = yield* StyldGenerationQueue
   const generationQueue = yield* Cloudflare.Queues.WriteQueue(generationQueueResource)
+  // Styld's chats, one Durable Object per account, and the queue that writes its replies.
+  const stylistQueueResource = yield* StyldStylistQueue
+  const stylist = {
+    objects: yield* Stylist,
+    queueResource: stylistQueueResource,
+    queue: yield* Cloudflare.Queues.WriteQueue(stylistQueueResource),
+  }
   // Clef-flash (Workers AI) routes photos and suggests details; provider calls are counted in Analytics Engine.
   const ai = yield* Cloudflare.Workers.AI('AI')
   const calls = yield* Cloudflare.AnalyticsEngine.WriteDataset(yield* StyldAiCalls)
@@ -340,6 +291,7 @@ const declareBindings = Effect.gen(function* () {
     checksQueue,
     generationQueueResource,
     generationQueue,
+    stylist,
     ai,
     calls,
     allowTelemetry,
@@ -378,24 +330,43 @@ const workersModels = (
 /** Every storage service over the Worker's bindings, with the providers its environment names. */
 const applicationServices = (
   env: Cloudflare.Workers.WorkerEnvironment['Service'],
-  bindings: Parameters<typeof storageServices>[0],
+  bindings: Omit<Parameters<typeof storageServices>[0], 'forgetChats'>,
   runtime: {
     readonly ai: Parameters<typeof workersModels>[1]
     readonly dataset: AnalyticsDataset
     readonly origin: { readonly environment: string; readonly release: string }
+    readonly stylist: Effect.Success<typeof declareBindings>['stylist']
   },
-) => {
-  const { runClef, runPlanner, judge } = workersModels(env, runtime.ai)
-  const providers = captureProviders(env, {
-    runClef,
-    runPlanner,
-    images: bindings.images,
-    bucket: bindings.bucket,
-    dataset: runtime.dataset,
-    origin: runtime.origin,
+) =>
+  Effect.gen(function* () {
+    const { runClef, runPlanner, judge } = workersModels(env, runtime.ai)
+    const providers = captureProviders(env, {
+      runClef,
+      runPlanner,
+      images: bindings.images,
+      bucket: bindings.bucket,
+      dataset: runtime.dataset,
+      origin: runtime.origin,
+    })
+    const chatsOf = chatStoreOf(runtime.stylist.objects)
+    const services = yield* storageServices(
+      { ...bindings, forgetChats: (accountId) => chatsOf(accountId).erase() },
+      judge,
+      providers,
+    )
+    // Styld answers with the assistants' own tools, for the account.
+    const stylistService = yield* makeStylistLive({
+      env,
+      chatsOf,
+      queue: yield* runtime.stylist.queue.raw,
+      // SAFETY: Styld's model is a Workers AI Chat Completions model its policy names; the input is the Chat Completions body the OpenAI-compatible client built
+      runChat: (model, input) => runtime.ai.run(model as never, input as never),
+      db: bindings.database,
+      tools: toolServices(services),
+      storage: services,
+    })
+    return { ...services, stylistService, stylist: Layer.succeed(StylistChats, stylistService) }
   })
-  return storageServices(bindings, judge, providers)
-}
 
 /** The application over the Worker's bindings, built from the request runtime's environment. */
 const makeApplication =
@@ -407,6 +378,7 @@ const makeApplication =
     pieceQueue,
     checksQueue,
     generationQueue,
+    stylist,
     ai,
     calls,
     allowTelemetry,
@@ -433,22 +405,17 @@ const makeApplication =
       const authOrigin = configuration.origin
       const auth = makeAuthHttp(database, authOptions(configuration, yield* email.raw))
       const db = yield* database.raw
-      const bucket = yield* media.raw
       const services = yield* applicationServices(
         env,
         {
           database: db,
-          bucket,
+          bucket: yield* media.raw,
           images: yield* images.raw,
           queue: yield* pieceQueue.raw,
           checksQueue: yield* checksQueue.raw,
           generationQueue: yield* generationQueue.raw,
         },
-        {
-          ai: yield* ai.raw,
-          dataset: yield* calls.raw,
-          origin: { environment: observabilityBase.environment, release: observabilityBase.release },
-        },
+        { ai: yield* ai.raw, dataset: yield* calls.raw, origin: observabilityBase, stylist },
       )
       const { wardrobeService, lifecycleService, capturesService, wardrobe, captures, boards } = services
       const oauth = makeMcpOAuth(db, auth, { origin: authOrigin, keys: configuration.sessionKeys, allowRegistration })
@@ -479,6 +446,7 @@ const makeApplication =
         captures: capturesService,
         checks: services.checksService,
         generations: services.generationsService,
+        stylist: services.stylistService,
         allowCodeRequest,
       }
     })
@@ -543,6 +511,15 @@ export default StyldWorker.make(
         Effect.gen(function* () {
           const { generations } = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
           yield* Stream.runForEach(messages, (message) => settleGeneration(generations, message))
+        }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
+    )
+    yield* Cloudflare.Queues.consumeQueueMessages(
+      bindings.stylist.queueResource,
+      { batchSize: 1, maxRetries: stylistAttempts, retryDelay: '5 seconds' },
+      (messages) =>
+        Effect.gen(function* () {
+          const { stylist } = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
+          yield* Stream.runForEach(messages, (message) => settleStylistTurn(stylist, message))
         }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
     )
     return { fetch }

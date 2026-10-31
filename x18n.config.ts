@@ -47,6 +47,14 @@ export default defineConfig({
       'packages/server/src/generation/Planner.ts': ['/[\\s\\S]*/'],
       // SQL fragments discovery orders and filters by.
       'packages/server/src/social/Discovery.ts': ['/json_each/', '/ is null$/'],
+      // The capture providers as the Worker builds them (moved out of StyldWorker.ts), with their stand-in's errors.
+      'packages/server/src/capture/Live.ts': ['/[\\s\\S]*/'],
+      // Styld's instructions and tool descriptions are written for its model, its chats are stored with SQL, and its
+      // model speaks the Chat Completions protocol; no person reads any of it. The person reads only the model's reply.
+      'packages/server/src/stylist/Prompt.ts': ['/[\\s\\S]*/'],
+      'packages/server/src/stylist/Tools.ts': ['/[\\s\\S]*/'],
+      'packages/server/src/stylist/StylistObject.ts': ['/[\\s\\S]*/'],
+      'packages/server/src/stylist/WorkersAiFetch.ts': ['/[\\s\\S]*/'],
       // The questions the content check puts to Clef and Llama Guard.
       'packages/server/src/safety/Judge.ts': ['/[\\s\\S]*/'],
       'apps/web/src/**/*.styles.ts': ['/[\\s\\S]*/'],

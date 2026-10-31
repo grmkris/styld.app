@@ -14,6 +14,7 @@ import { verifyCameraJourney, verifyCaptureJourney, verifyLongVideoJourney } fro
 import { verifyGalleryJourney } from './GalleryBrowserAcceptance.ts'
 import { nativeDailyAllowance, verifyCaptures } from './CaptureAcceptance.ts'
 import { verifyScan } from './ScanAcceptance.ts'
+import { stylistEnvironment, verifyStylist } from './StylistAcceptance.ts'
 import { verifyGallery } from './GalleryAcceptance.ts'
 import { verifySocial } from './SocialAcceptance.ts'
 import { verifyGeneration } from './GenerationAcceptance.ts'
@@ -62,6 +63,7 @@ const makeStack = (generation: string) =>
           // The stand-in painter and planner make pictures: `[[refuse]]`, `[[lost]]` and `[[unclear]]` in the words.
           GENERATED_PICTURES: 'stand-in',
           ...pictureEnvironment(worker.url),
+          ...stylistEnvironment(worker.url),
           DAILY_ALLOWANCE: String(nativeDailyAllowance),
           AUTH_SECRET: Redacted.make('native-test-auth-secret-012345678901234567890123'),
           AUTH_SESSION_KEYS: Redacted.make(
@@ -184,10 +186,14 @@ test('shows a published profile and its public board to a signed-out visitor', i
 })
 
 test(
-  'turns photos and videos into captures that wait for review, meters them daily, keeps them private, and shows a ' +
-    'garment seen across an import once',
-  overHttp((origin, testUrl) => verifyCaptures(origin, testUrl).then(() => verifyScan(origin, testUrl))),
-  { timeout: 120000 },
+  'turns photos and videos into captures that wait for review, meters them daily, keeps them private, shows a ' +
+    'garment seen across an import once, and lets Styld answer about the wardrobe',
+  overHttp((origin, testUrl) =>
+    verifyCaptures(origin, testUrl)
+      .then(() => verifyScan(origin, testUrl))
+      .then(() => verifyStylist(origin)),
+  ),
+  { timeout: 180000 },
 )
 
 test(

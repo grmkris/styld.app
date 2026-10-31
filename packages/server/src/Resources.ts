@@ -21,6 +21,9 @@ export const StyldChecksQueue = Cloudflare.Queues.Queue('StyldV2Checks')
 /** Generated pictures and mood boards on their way (`generation/Work.ts`), each step resumed where it stopped. */
 export const StyldGenerationQueue = Cloudflare.Queues.Queue('StyldV2Generation')
 
+/** Styld's replies on their way (`stylist/Queue.ts`), one at a time so each starts at once. */
+export const StyldStylistQueue = Cloudflare.Queues.Queue('StyldV2Stylist')
+
 /** Every capture provider call and review decision, for cost and keep rates (`tools/ai-usage-report.ts`). */
 export const StyldAiCalls = Cloudflare.AnalyticsEngine.Dataset('StyldV2AiCalls')
 

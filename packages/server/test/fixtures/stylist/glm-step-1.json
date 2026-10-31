@@ -1,0 +1,37 @@
+{
+  "id": "id-1793415650139",
+  "object": "chat.completion",
+  "created": 1793415650,
+  "model": "@cf/zai-org/glm-5.3-flash",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": "For a casual autumn day, I'd go with your grey knit over a white tee, paired with the navy trousers and white sneakers. It's relaxed, comfortable, and the layers keep you warm if it turns chilly outside.",
+        "reasoning_content": "Suggest grey knit + navy trousers + white sneakers (autumn).",
+        "tool_calls": [
+          {
+            "id": "call_ebe6a80cebb54f44b7dc26c4",
+            "type": "function",
+            "function": {
+              "name": "pieces_show",
+              "arguments": "{\"pieceIds\": [\"pc_greyknit00000000000000\", \"pc_whitetee00000000000000\", \"pc_navytrousers0000000000\", \"pc_whitesneakers000000000\"]}"
+            }
+          }
+        ]
+      },
+      "finish_reason": "tool_calls",
+      "logprobs": null
+    }
+  ],
+  "usage": {
+    "prompt_tokens": 676,
+    "completion_tokens": 116,
+    "total_tokens": 792,
+    "prompt_tokens_details": {
+      "cached_tokens": 0
+    },
+    "neurons": 14.490909576416016
+  }
+}

@@ -1,0 +1,273 @@
+import { readFileSync } from 'node:fs'
+import { OpenAiClient, OpenAiLanguageModel } from '@effect/ai-openai-compat'
+import { LookId } from '@styld/protocol'
+import { Context, Effect, Layer, Predicate, Schema, Stream } from 'effect'
+import { FetchHttpClient } from 'effect/http'
+import { describe, expect, test } from 'vitest'
+import { type Tool as AssistantTool, tool, ToolError } from '../src/mcp/Tools.ts'
+import { stylistPolicy } from '../src/stylist/Policy.ts'
+import { historyText, outlineOf, systemPrompt } from '../src/stylist/Prompt.ts'
+import { modelSchema, turnTools } from '../src/stylist/Tools.ts'
+import { runTurn } from '../src/stylist/Turn.ts'
+import { type RunChat, workersAiFetch } from '../src/stylist/WorkersAiFetch.ts'
+
+const fixture = (name: string): unknown =>
+  JSON.parse(readFileSync(new URL(`fixtures/stylist/${name}`, import.meta.url), 'utf8'))
+
+// The recording's wardrobe (fixtures/stylist/README.md).
+const pieces = [
+  { id: 'pc_navytrousers0000000000', name: 'Navy trousers', category: 'bottom', colours: ['navy'] },
+  { id: 'pc_whitetee00000000000000', name: 'White tee', category: 'top', colours: ['white'] },
+  { id: 'pc_greyknit00000000000000', name: 'Grey knit', category: 'top', colours: ['grey'] },
+  { id: 'pc_whitesneakers000000000', name: 'White sneakers', category: 'shoes', colours: ['white'] },
+]
+
+const pieceSearch = tool({
+  name: 'piece_search',
+  title: 'Search the wardrobe',
+  description: 'Pieces in the wardrobe, newest first, filtered by words, a category or a colour.',
+  parameters: Schema.Struct({ query: Schema.optionalKey(Schema.String), category: Schema.optionalKey(Schema.String) }),
+  annotations: { readOnlyHint: true, openWorldHint: false },
+  handler: (input) =>
+    Effect.succeed({
+      pieces: pieces.filter((piece) => input.category === undefined || piece.category === input.category),
+      nextCursor: null,
+    }),
+})
+
+/** Workers AI answering with the recorded answers in turn, keeping what it was asked. */
+const replaying = (answers: ReadonlyArray<unknown>) => {
+  const asked: Array<Readonly<Record<string, unknown>>> = []
+  const run: RunChat = (_model, input) => {
+    asked.push(input)
+    return Promise.resolve(answers[asked.length - 1])
+  }
+  return { run, asked }
+}
+
+const modelOver = (run: RunChat, extra: Readonly<Record<string, unknown>> = {}) =>
+  OpenAiLanguageModel.model('@cf/zai-org/glm-5.3-flash').pipe(
+    Layer.provide(
+      OpenAiClient.layer({ apiUrl: 'https://workers-ai.invalid/v1' }).pipe(
+        Layer.provide(FetchHttpClient.layer),
+        Layer.provide(Layer.succeed(FetchHttpClient.Fetch, workersAiFetch(run, extra))),
+      ),
+    ),
+  )
+
+describe('a reply', () => {
+  test('looks the wardrobe up, shows the pieces it suggests, and keeps every call’s words (recorded GLM-5.3-flash)', async () => {
+    const { run, asked } = replaying([0, 1, 2].map((step) => fixture(`glm-step-${step}.json`)))
+    const progress: Array<string> = []
+    const counted: Array<number> = []
+    const { reply, parts } = await Effect.runPromise(
+      Effect.gen(function* () {
+        const tools = yield* turnTools(
+          [pieceSearch],
+          { turnId: 'tn_test', pieceIds: new Set(pieces.map(({ id }) => id)) },
+          Context.empty(),
+        )
+        const text = yield* runTurn({
+          system: systemPrompt({ locale: 'en', today: '2026-10-31', outline: outlineOf(pieces) }),
+          history: [{ role: 'person', text: 'What should I wear today? Something casual.' }],
+          toolkit: yield* tools.toolkit.pipe(Effect.provide(tools.handlers)),
+          maxSteps: 6,
+          progress: (sofar) => Effect.sync(() => progress.push(sofar)),
+          counted: (usage) => Effect.sync(() => counted.push(usage.inputTokens)),
+        })
+        return { reply: text, parts: yield* tools.parts }
+      }).pipe(Effect.provide(modelOver(run, { reasoning_effort: 'low' }))),
+    )
+    expect(reply).toMatch(/^For a casual autumn day, I'd go with your grey knit over a white tee/)
+    expect(reply).toMatch(/\n\nIt's an easy, clean combination/)
+    // It showed all four pieces of the outfit, once.
+    expect(parts).toHaveLength(1)
+    const [shown] = parts
+    expect(Predicate.isTagged(shown, 'Pieces') && [...shown.pieceIds].toSorted()).toEqual(
+      pieces.map(({ id }) => id).toSorted(),
+    )
+    // Three model calls, each counted; the tool's answer went back before the second.
+    expect(counted).toEqual([539, 676, 787])
+    expect(asked).toHaveLength(3)
+    expect(asked.every((input) => input['reasoning_effort'] === 'low')).toBe(true)
+    expect(JSON.stringify(asked[1]?.['messages'])).toContain('pc_navytrousers0000000000')
+    expect(progress.at(-1)).toBe(reply)
+  })
+
+  test('stops after its last allowed call, keeping what it wrote', async () => {
+    const { run, asked } = replaying([fixture('glm-step-0.json'), fixture('glm-step-1.json')])
+    const reply = await Effect.runPromise(
+      Effect.gen(function* () {
+        const tools = yield* turnTools(
+          [pieceSearch],
+          { turnId: 'tn_test', pieceIds: new Set(pieces.map(({ id }) => id)) },
+          Context.empty(),
+        )
+        return yield* runTurn({
+          system: 'You are Styld.',
+          history: [{ role: 'person', text: 'What should I wear?' }],
+          toolkit: yield* tools.toolkit.pipe(Effect.provide(tools.handlers)),
+          maxSteps: 2,
+          progress: () => Effect.void,
+          counted: () => Effect.void,
+        })
+      }).pipe(Effect.provide(modelOver(run))),
+    )
+    expect(asked).toHaveLength(2)
+    expect(reply).toMatch(/^For a casual autumn day/)
+  })
+})
+
+/** Run one of a turn's tools as the model would call it, returning what the model reads back. */
+const called = (
+  assistants: ReadonlyArray<AssistantTool<never>>,
+  name: string,
+  params: unknown,
+  pieceIds: ReadonlySet<string> = new Set(),
+) =>
+  Effect.runPromise(
+    Effect.gen(function* () {
+      const tools = yield* turnTools(assistants, { turnId: 'tn_abc', pieceIds }, Context.empty())
+      const kit = yield* tools.toolkit.pipe(Effect.provide(tools.handlers))
+      const results = yield* kit.handle(name, params).pipe(Effect.flatMap(Stream.runCollect))
+      return { result: results.at(-1)?.result, parts: yield* tools.parts }
+    }),
+  )
+
+describe('a reply’s tools', () => {
+  const lookCreate = tool({
+    name: 'look_create',
+    title: 'Put a look together',
+    description: 'Save an outfit.',
+    parameters: Schema.Struct({
+      operationId: Schema.String,
+      name: Schema.String,
+      pieceIds: Schema.Array(Schema.String),
+    }),
+    annotations: { readOnlyHint: false, openWorldHint: false },
+    handler: (input) => Effect.succeed({ id: `lk_${'a'.repeat(22)}`, name: input.name, operation: input.operationId }),
+  })
+  const refusing = tool({
+    name: 'piece_get',
+    title: 'A piece',
+    description: 'One piece.',
+    parameters: Schema.Struct({ pieceId: Schema.String }),
+    annotations: { readOnlyHint: true, openWorldHint: false },
+    handler: () =>
+      Effect.fail(
+        new ToolError({ code: 'not_found', message: 'No such piece.', recovery: 'Search first.', retryable: false }),
+      ),
+  })
+
+  test('the model never sees operationId; each writing call gets one of its own, and a saved look is shown', async () => {
+    const { schema, operation } = modelSchema({
+      type: 'object',
+      properties: { operationId: { type: 'string' }, name: { type: 'string' } },
+      required: ['operationId', 'name'],
+    })
+    expect(operation).toBe(true)
+    expect(schema).toEqual({ type: 'object', properties: { name: { type: 'string' } }, required: ['name'] })
+    const { result, parts } = await called([lookCreate], 'look_create', { name: 'Friday', pieceIds: ['pc_x'] })
+    expect(result).toMatchObject({ operation: 'tn_abc-0' })
+    expect(parts).toEqual([{ _tag: 'Look', lookId: `lk_${'a'.repeat(22)}`, name: 'Friday' }])
+  })
+
+  test('a refusal goes back to the model to act on, and tools outside the stylist’s are left out', async () => {
+    const { result } = await called([refusing], 'piece_get', { pieceId: 'pc_x' })
+    expect(result).toEqual({ error: { code: 'not_found', message: 'No such piece.', recovery: 'Search first.' } })
+    const tools = await Effect.runPromise(
+      turnTools([{ ...refusing, name: 'piece_delete' }], { turnId: 'tn_abc', pieceIds: new Set() }, Context.empty()),
+    )
+    expect(Object.keys(tools.toolkit.tools).toSorted()).toEqual(['pieces_show'])
+  })
+
+  test('only the person’s own pieces are shown, and a bad call is answered with what to fix', async () => {
+    const own = pieces[0]?.id ?? ''
+    const shown = await called([], 'pieces_show', { pieceIds: [own, 'pc_someoneelse00000000000', own] }, new Set([own]))
+    expect(shown.result).toEqual({ shown: 1 })
+    expect(shown.parts).toEqual([{ _tag: 'Pieces', pieceIds: [own] }])
+    const bad = await called([], 'pieces_show', { pieceIds: [] })
+    expect(bad.result).toMatchObject({ error: { code: 'invalid_arguments' } })
+    expect(bad.parts).toEqual([])
+  })
+})
+
+const posted = (body: unknown) => ({ method: 'POST', body: JSON.stringify(body) })
+
+/** A streamed chunk, as far as the client reads it here. */
+const Chunk = Schema.fromJsonString(
+  Schema.Struct({
+    choices: Schema.Array(
+      Schema.Struct({
+        delta: Schema.Struct({
+          tool_calls: Schema.optionalKey(Schema.Array(Schema.Record(Schema.String, Schema.Unknown))),
+        }),
+        finish_reason: Schema.NullOr(Schema.String),
+      }),
+    ),
+    usage: Schema.optionalKey(Schema.Struct({ prompt_tokens: Schema.Number })),
+  }),
+)
+
+describe('Workers AI behind the OpenAI-compatible client', () => {
+  test('a streamed request gets the whole answer as one chunk, then its finish and usage', async () => {
+    const fetch = workersAiFetch(() => Promise.resolve(fixture('glm-step-0.json')))
+    const response = await fetch('https://workers-ai.invalid/v1/chat/completions', posted({ model: 'm', stream: true }))
+    expect(response.headers.get('content-type')).toBe('text/event-stream')
+    const events = (await response.text()).split('\n\n').filter((event) => event.length > 0)
+    expect(events.at(-1)).toBe('data: [DONE]')
+    const [first, last] = events
+      .slice(0, -1)
+      .map((event) => Schema.decodeUnknownSync(Chunk)(event.slice('data: '.length)))
+    expect(first?.choices[0]?.delta.tool_calls?.[0]).toMatchObject({ index: 0, function: { name: 'piece_search' } })
+    expect(last?.choices[0]?.finish_reason).toBe('tool_calls')
+    expect(last?.usage?.prompt_tokens).toBe(539)
+  })
+
+  test('a request it cannot read, a model that does not answer, and an answer that is no completion', async () => {
+    const fails = workersAiFetch(() => Promise.reject(new Error('down')))
+    expect((await fails('x', { method: 'POST', body: 'not json' })).status).toBe(400)
+    expect((await fails('x', posted({ stream: true }))).status).toBe(400)
+    expect((await fails('x', posted({ model: 'm' }))).status).toBe(503)
+    const odd = workersAiFetch(() => Promise.resolve({ response: 'old shape' }))
+    expect((await odd('x', posted({ model: 'm' }))).status).toBe(502)
+  })
+})
+
+describe('what Styld is told', () => {
+  test('the date and season, the wardrobe in a line, and the person’s language; never an id', () => {
+    const prompt = systemPrompt({ locale: 'sl', today: '2026-01-12', outline: outlineOf(pieces) })
+    expect(prompt).toContain('Today is 2026-01-12 (winter).')
+    expect(prompt).toContain('The wardrobe holds 4 pieces: 1 bottom, 2 top, 1 shoes.')
+    expect(prompt).toContain('Write in Slovenian')
+    expect(prompt).not.toMatch(/pc_/)
+    expect(systemPrompt({ locale: 'en', today: '2026-07-01', outline: outlineOf([]) })).toContain(
+      'The wardrobe is empty',
+    )
+  })
+
+  test('an earlier reply is read back with what it showed and saved', () => {
+    expect(
+      historyText({
+        role: 'styld',
+        text: 'Try these.',
+        parts: [
+          { _tag: 'Pieces', pieceIds: [] },
+          { _tag: 'Look', lookId: LookId.make(`lk_${'b'.repeat(22)}`), name: 'Friday' },
+        ],
+      }),
+    ).toBe(`Try these.\n[shown: ]\n[saved the look lk_${'b'.repeat(22)}]`)
+  })
+
+  test('is off unless the Worker names a provider, and answers on Workers AI by default', () => {
+    expect(stylistPolicy({}).mode).toBe('off')
+    expect(stylistPolicy({ STYLIST: 'workers-ai' })).toMatchObject({
+      mode: 'workers-ai',
+      model: '@cf/zai-org/glm-5.3-flash',
+    })
+    expect(stylistPolicy({ STYLIST: 'gateway' })).toMatchObject({
+      mode: 'gateway',
+      model: 'anthropic/claude-haiku-5.5',
+    })
+  })
+})

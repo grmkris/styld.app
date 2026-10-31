@@ -17,7 +17,10 @@ const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catc
 /** R2 deletes at most this many keys per call. */
 const deleteBatch = 1000
 
-const make = (bindings: Pick<WardrobeBindings, 'database' | 'bucket' | 'queue'>) =>
+const make = (
+  bindings: Pick<WardrobeBindings, 'database' | 'bucket' | 'queue'>,
+  forgetChats: (accountId: string) => Effect.Effect<void, unknown>,
+) =>
   Effect.gen(function* () {
     const crypto = yield* Crypto.Crypto
     const db = drizzle(bindings.database)
@@ -54,7 +57,7 @@ const make = (bindings: Pick<WardrobeBindings, 'database' | 'bucket' | 'queue'>)
       )
     })
 
-    /** Remove what a closed account owns: photos, codes sent to its addresses, its auth rows and
+    /** Remove what a closed account owns: photos, its chats with Styld, codes sent to its addresses, its auth rows and
      * the account (its pieces, uploads, receipts, captures, looks, boards and worn days cascade; board
      * pictures keep their upload's key under the prefix). Safe to run again; the photos are swept
      * again last, for any upload that landed meanwhile. */
@@ -65,6 +68,8 @@ const make = (bindings: Pick<WardrobeBindings, 'database' | 'bucket' | 'queue'>)
         ),
       )
       yield* sweepPhotos(accountId)
+      // The chats with Styld live in the account's own Durable Object.
+      yield* forgetChats(accountId).pipe(Effect.mapError(unavailable))
       yield* attempt(() =>
         db.batch([
           ofSubject(authTables.pending, accountId),
@@ -103,5 +108,7 @@ export class AccountLifecycle extends Context.Service<AccountLifecycle, Effect.S
   '@styld/server/AccountLifecycle',
 ) {}
 
-export const makeAccountLifecycle = (bindings: Pick<WardrobeBindings, 'database' | 'bucket' | 'queue'>) =>
-  Effect.map(make(bindings), (service) => AccountLifecycle.of(service))
+export const makeAccountLifecycle = (
+  bindings: Pick<WardrobeBindings, 'database' | 'bucket' | 'queue'>,
+  forgetChats: (accountId: string) => Effect.Effect<void, unknown>,
+) => Effect.map(make(bindings, forgetChats), (service) => AccountLifecycle.of(service))

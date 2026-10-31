@@ -131,6 +131,7 @@
       "dependencies": {
         "@alchemy.run/cloudflare": "catalog:",
         "@alchemy.run/domain": "catalog:",
+        "@effect/ai-openai-compat": "catalog:",
         "@meta-sam/parser": "catalog:",
         "@modelcontextprotocol/server": "catalog:",
         "@styld/auth": "workspace:*",
@@ -173,6 +174,7 @@
     "@alchemy.run/cloudflare": "2.0.0-beta.84",
     "@alchemy.run/domain": "2.0.0-beta.84",
     "@alchemy.run/frontend-frameworks": "2.0.0-beta.84",
+    "@effect/ai-openai-compat": "4.0.7",
     "@effect/platform-browser": "4.0.7",
     "@effect/platform-bun": "4.0.7",
     "@effect/platform-node": "4.0.7",
@@ -260,6 +262,8 @@
     "@distilled.cloud/core": ["@distilled.cloud/core@1.0.0-rc.17", "", { "peerDependencies": { "effect": "^4.0.5" } }, "sha512-BHcVEtqIbyyqU3S3o8DjUtqoAJ4FLnsb4BX3nTK2+mcDARS2Puc+Qak6sn+b+W5CRKOOWyrhltbc+kaYDUwxeQ=="],
 
     "@distilled.cloud/iceberg": ["@distilled.cloud/iceberg@1.0.0-rc.17", "", { "dependencies": { "@distilled.cloud/core": "1.0.0-rc.17" }, "peerDependencies": { "effect": "^4.0.5" } }, "sha512-hO9Kqc91dq7SLBCagxlr2RDSTbp7/urqjfxNitSNaaOyKIsUr85llsADT/rS6H85ezOsGf2vSP5y1Qk0kQWLCg=="],
+
+    "@effect/ai-openai-compat": ["@effect/ai-openai-compat@4.0.7", "", { "peerDependencies": { "effect": "^4.0.7" } }, "sha512-DQlN7AensHb4DaQg3sNKSr1B4YMdSWiMaSxb/lb/EyuKvZxDYoJfOqJ81lPPrnRW46BJ2vYQoFy1nWOi8U9Ing=="],
 
     "@effect/platform-browser": ["@effect/platform-browser@4.0.7", "", { "peerDependencies": { "effect": "^4.0.7" } }, "sha512-FHzX6Q8pUwAB8fL8Jw75NXsXcOAe/iT7KVhb5ricaCcCNqVeIrhWUTM677HqVkRONzQPH09RB9r5NbNUa2YtFg=="],
 

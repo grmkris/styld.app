@@ -17,6 +17,7 @@ export interface ProviderCall {
     | 'judge'
     | 'compare'
     | 'match'
+    | 'chat'
     | 'profile'
     | 'turn'
     | 'plan'
