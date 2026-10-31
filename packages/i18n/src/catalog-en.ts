@@ -2583,7 +2583,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.allowance': '{remaining} of {daily} free credits left today',
   'capture.finding': 'Finding pieces…',
   'capture.failed':
-    "{source, select, video {A part of a video couldn't be processed.} link {The picture from a shop's page couldn't be processed.} other {A photo couldn't be processed.}} Its credit is back.",
+    "{source, select, video {A part of a video added at {time} couldn't be processed.} link {The picture from a shop's page added at {time} couldn't be processed.} other {A photo added at {time} couldn't be processed.}} Its credit is back.",
   'capture.unknown':
     "{source, select, video {A part of a video} link {The picture from a shop's page} other {A photo}} stopped halfway. Trying again won't cost anything.",
   'capture.empty':

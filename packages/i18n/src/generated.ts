@@ -731,7 +731,7 @@ export interface MessageArgumentsByKey<T = string> {
   'capture.done': Readonly<Record<string, never>>
   'capture.empty': { readonly source: string | number }
   'capture.emptyVideo': Readonly<Record<string, never>>
-  'capture.failed': { readonly source: string | number }
+  'capture.failed': { readonly source: string | number; readonly time: string | number }
   'capture.finding': Readonly<Record<string, never>>
   'capture.foundTitle': { readonly count: number }
   'capture.holdUpHint': Readonly<Record<string, never>>
@@ -2758,4 +2758,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '17eb73ae0c40f8734cf1f0b7a2a4bb2365c6c6b75bea61d8c89395b5216519fa'
+export const catalogVersion = '4b715162b2642a62f5166c8c5264ad4f0000a377dc93c1382d0f191fb8002a35'

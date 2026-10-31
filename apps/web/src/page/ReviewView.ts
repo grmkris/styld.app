@@ -9,6 +9,7 @@ import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { fieldLabel, formError, textField } from '../Fields.styles.ts'
 import { backIcon, checkIcon, editIcon, loader } from '../Icon.ts'
+import { intlLocale } from '../Locale.ts'
 import { addPiecesRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
@@ -117,17 +118,28 @@ const pendingTile = (capture: TrayCapture, locale: Locale, h: HtmlBuilder<Messag
     ],
   )
 
+/** What the page knows besides the tray: the language, and the person's time zone for the times it shows. */
+type Inputs = { readonly locale: Locale; readonly timeZone: string }
+
+/** When a capture was added, as the time of day in the person's time zone ("14:05"). */
+const addedAt = (capture: TrayCapture, { locale, timeZone }: Inputs) =>
+  new Intl.DateTimeFormat(intlLocale(locale), { hour: 'numeric', minute: '2-digit', timeZone }).format(
+    new Date(capture.createdAt),
+  )
+
 /** A capture that waits for the person: it failed, stopped halfway, or found nothing. */
-const notice = (capture: TrayCapture, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+const notice = (capture: TrayCapture, model: Model, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
+  const { locale } = inputs
   const busy = model.acting.includes(capture.id)
   const canRetry = capture.status === 'failed' || capture.status === 'unknown'
-  // Each says which capture it is; a video part with nothing whole in it was most likely filmed too close.
+  // Each says which capture it is (a failed one by when it was added); a video part with nothing whole in it was most
+  // likely filmed too close.
   const { source } = capture
   const text =
     capture.status === 'unknown'
       ? format(locale, 'capture.unknown', { source })
       : capture.status === 'failed'
-        ? format(locale, 'capture.failed', { source })
+        ? format(locale, 'capture.failed', { source, time: addedAt(capture, inputs) })
         : source === 'video'
           ? format(locale, 'capture.emptyVideo', {})
           : format(locale, 'capture.empty', { source })
@@ -273,7 +285,8 @@ const footer = (model: Model, locale: Locale, h: HtmlBuilder<Message>, editing: 
   ])
 }
 
-const trayView = (captures: ReadonlyArray<TrayCapture>, model: Model, locale: Locale, h: HtmlBuilder<Message>) => {
+const trayView = (captures: ReadonlyArray<TrayCapture>, model: Model, inputs: Inputs, h: HtmlBuilder<Message>) => {
+  const { locale } = inputs
   const found = captures.flatMap(({ detections }) => detections)
   const waiting = captures.filter(({ status }) => status === 'processing')
   const needing = captures.filter(
@@ -289,7 +302,7 @@ const trayView = (captures: ReadonlyArray<TrayCapture>, model: Model, locale: Lo
     ]
   // What went wrong comes first, where it is seen, not under every piece found.
   return [
-    ...needing.map((capture) => notice(capture, model, locale, h)),
+    ...needing.map((capture) => notice(capture, model, inputs, h)),
     h.ul(styled(h, styles.grid()), [
       ...waiting.map((capture) => pendingTile(capture, locale, h)),
       ...found.map((detection) => foundTile(detection, model, locale, h)),
@@ -322,7 +335,8 @@ const header = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Readonly
 }
 
 /** The review tray: what was found in the person's photos and videos, ticked to keep. */
-export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) => {
+export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, h) => {
+  const { locale } = inputs
   const open = openPiece(model)
   return h.main(
     [h.Id('main'), ...styled(h, styles.reviewPage())],
@@ -377,7 +391,7 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
                 ],
               ),
             ],
-            Loaded: ({ tray }) => trayView(tray.captures, model, locale, h),
+            Loaded: ({ tray }) => trayView(tray.captures, model, inputs, h),
           }),
         ],
       }),

@@ -2630,7 +2630,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.allowance': 'Danes še {remaining} od {daily} brezplačnih kreditov',
   'capture.finding': 'Iščem kose …',
   'capture.failed':
-    '{source, select, video {Dela videa ni bilo mogoče obdelati.} link {Slike s strani trgovine ni bilo mogoče obdelati.} other {Fotografije ni bilo mogoče obdelati.}} Kredit je vrnjen.',
+    '{source, select, video {Dela videa, dodanega ob {time}, ni bilo mogoče obdelati.} link {Slike s strani trgovine, dodane ob {time}, ni bilo mogoče obdelati.} other {Fotografije, dodane ob {time}, ni bilo mogoče obdelati.}} Kredit je vrnjen.',
   'capture.unknown':
     '{source, select, video {Obdelava dela videa} link {Obdelava slike s strani trgovine} other {Obdelava fotografije}} se je ustavila na pol poti. Nov poskus ne stane nič.',
   'capture.empty': '{source, select, link {Na sliki s strani trgovine ni oblačil.} other {Na fotografiji ni oblačil.}}',

@@ -2926,7 +2926,7 @@
     "reviewHint": "They're cut out and ready. Untick anything that isn't yours.",
     "allowance": "{remaining} of {daily} free credits left today",
     "finding": "Finding pieces…",
-    "failed": "{source, select, video {A part of a video couldn't be processed.} link {The picture from a shop's page couldn't be processed.} other {A photo couldn't be processed.}} Its credit is back.",
+    "failed": "{source, select, video {A part of a video added at {time} couldn't be processed.} link {The picture from a shop's page added at {time} couldn't be processed.} other {A photo added at {time} couldn't be processed.}} Its credit is back.",
     "unknown": "{source, select, video {A part of a video} link {The picture from a shop's page} other {A photo}} stopped halfway. Trying again won't cost anything.",
     "empty": "{source, select, link {No clothes found in the picture from a shop's page.} other {No clothes found in a photo.}}",
     "emptyVideo": "No whole garment in this part of the video. Film from about a metre away and move slowly, so each piece fits in the frame.",

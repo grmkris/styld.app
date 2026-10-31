@@ -2926,7 +2926,7 @@
     "reviewHint": "Izrezani so in pripravljeni. Odznači vse, kar ni tvoje.",
     "allowance": "Danes še {remaining} od {daily} brezplačnih kreditov",
     "finding": "Iščem kose …",
-    "failed": "{source, select, video {Dela videa ni bilo mogoče obdelati.} link {Slike s strani trgovine ni bilo mogoče obdelati.} other {Fotografije ni bilo mogoče obdelati.}} Kredit je vrnjen.",
+    "failed": "{source, select, video {Dela videa, dodanega ob {time}, ni bilo mogoče obdelati.} link {Slike s strani trgovine, dodane ob {time}, ni bilo mogoče obdelati.} other {Fotografije, dodane ob {time}, ni bilo mogoče obdelati.}} Kredit je vrnjen.",
     "unknown": "{source, select, video {Obdelava dela videa} link {Obdelava slike s strani trgovine} other {Obdelava fotografije}} se je ustavila na pol poti. Nov poskus ne stane nič.",
     "empty": "{source, select, link {Na sliki s strani trgovine ni oblačil.} other {Na fotografiji ni oblačil.}}",
     "emptyVideo": "V tem delu videa ni celega oblačila. Snemaj z razdalje približno enega metra in počasi, da je vsak kos ves v kadru.",

@@ -488,7 +488,7 @@ const reviewPage = (model: Model, h: HtmlBuilder<Message>): Html =>
     slotId: 'review',
     model: model.review,
     view: ReviewView.view,
-    viewInputs: { locale: model.context.locale },
+    viewInputs: { locale: model.context.locale, timeZone: model.context.timeZone },
     toParentMessage: (message) => Message.GotReviewMessage({ message }),
   })
 

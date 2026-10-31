@@ -18,11 +18,21 @@ const emptyCapture = (n: number, source: 'picker' | 'video') => ({
   createdAt: '2026-10-30T12:00:00.000Z',
 })
 
-const appModel = () =>
+/** The language and time zone the page is opened in. */
+type Context = { readonly locale: 'en' | 'sl'; readonly timeZone: string }
+
+/** A capture that could not be processed, added at 12:00 UTC. */
+const failedCapture = (n: number, source: 'picker' | 'video') => ({
+  ...emptyCapture(n, source),
+  status: 'failed' as const,
+})
+const ljubljana = 'Europe/Ljubljana'
+
+const appModel = ({ locale, timeZone }: Context) =>
   init({
-    locale: 'en',
+    locale,
     catalogVersion,
-    timeZone: 'UTC',
+    timeZone,
     referenceTime: 0,
     pathname: '/wardrobe/review',
     origin: 'https://styld.test',
@@ -30,8 +40,12 @@ const appModel = () =>
   }).model
 
 /** The tray page signed in, showing `captures`, with `editing` open. */
-const reviewPage = (captures: ReadonlyArray<TrayCapture>, editing = Option.none<string>()) =>
-  modifyFields(appModel(), {
+const reviewPage = (
+  captures: ReadonlyArray<TrayCapture>,
+  editing = Option.none<string>(),
+  context: Context = { locale: 'en', timeZone: 'UTC' },
+) =>
+  modifyFields(appModel(context), {
     session: () => Session.SignedIn({ claims }),
     review: (review) =>
       modifyFields(review, {
@@ -83,6 +97,25 @@ describe('the review tray', () => {
         ),
       ).toExist(),
       expect(text('No clothes found in a photo.')).toExist(),
+    )
+  })
+
+  test('a failed capture says when it was added, in the page’s language and time zone, and that its credit is back', () => {
+    scene(
+      { update: (model) => ({ model }), view },
+      given(
+        reviewPage([failedCapture(1, 'picker'), failedCapture(2, 'video')], Option.none(), {
+          locale: 'en',
+          timeZone: ljubljana,
+        }),
+      ),
+      expect(text("A photo added at 13:00 couldn't be processed. Its credit is back.")).toExist(),
+      expect(text("A part of a video added at 13:00 couldn't be processed. Its credit is back.")).toExist(),
+    )
+    scene(
+      { update: (model) => ({ model }), view },
+      given(reviewPage([failedCapture(1, 'picker')], Option.none(), { locale: 'sl', timeZone: ljubljana })),
+      expect(text('Fotografije, dodane ob 13:00, ni bilo mogoče obdelati. Kredit je vrnjen.')).toExist(),
     )
   })
 
