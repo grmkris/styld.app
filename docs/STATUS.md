@@ -1,6 +1,6 @@
 # Delivery status
 
-Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `281ba6c`, with clean pictures, turns on a hanger, and the boards' pins, profiles and checks). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `789a7f2`, with clean pictures, turns on a hanger, scan anything, and the boards' pins, profiles, checks, link import and wishes). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
 
 ## Scan anything — 2026-10-31
 
@@ -45,8 +45,20 @@ Replaces clean pictures' milestone C, as the owner widened it on 31 October. It 
   - Native (`18d8d45`): two seeded imports compared by the real queue job, four parts at once, with the Clef stand-in.
     It proves the merge, the wardrobe match, a fragment, a split, and keeping a card keeping its other sighting.
   - Full gate green: unit 400, native 24/24.
+- **Preview, release `789a7f2`** (deployed 31 October with the boards session's link import, wishes, five-tab nav and
+  landing). Health reports it and `tools/preview.native.test.ts` passes 3/3. Real providers on the preview test
+  account, with synthetic pictures only (`meta-hackathon/out/styld-scan-anything/readback.ts`, run twice, both
+  read back the same):
+  - A "bed" of the three drawn fixture garments laid apart came back as 3 whole cards, all ticked, in 15 s.
+  - The red tee sent twice as photos picked together came back as one card for both captures, seen twice. It was
+    unticked as "Already in your wardrobe?" against the account's red tee.
+  - The red top on the bed was not taken for that piece. Clef compared it with up to 6 of the account's tops and
+    none reached 0.8.
+  - Analytics Engine over both runs: 8 SAM calls (clothing, shoes, bag and hat for each bed), 21 Clef match calls,
+    6 routes, 7 suggestions.
+  - All cards were discarded afterwards.
 - **Open:**
-  - The preview readback with real providers (a bed photo, a two-part video, a re-scanned piece).
+  - A two-part video on the preview (the native suite proves parts with seeded sightings).
   - The owner's phone test: a hand-held scan of about 10 pieces and one photo of the bed.
   - Clef's same-garment calls are not yet measured on real wardrobes, nor the extra SAM prompts on real beds.
   - Camera shots join no import.
