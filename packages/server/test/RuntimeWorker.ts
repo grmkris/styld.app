@@ -16,12 +16,13 @@ import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { exerciseAttemptLimiter } from './AttemptLimiterFixture.ts'
 import { seedIdentity, disableIdentity } from './IdentityFixture.ts'
 import { pictureRoutes } from './PictureFixture.ts'
+import { scanRoutes } from './ScanFixture.ts'
 import { recoveryRoutes } from './RecoveryFixture.ts'
 import { socialRoutes } from './SocialFixture.ts'
 import { makeAuthHttp, withCodeRequestPolicy } from '../src/AuthHttp.ts'
 import { onFirstUse } from '../src/IsolateCache.ts'
 import { DomainLive } from '../src/DomainLive.ts'
-import { StyldDatabase, StyldMedia } from '../src/Resources.ts'
+import { StyldDatabase, StyldMedia, StyldPieceQueue } from '../src/Resources.ts'
 
 /** Local D1 answers SQLITE_BUSY for a while when another test (or another session's workerd) writes. Each fixture
  * write is one atomic batch, so it is retried on its own until the database is free. */
@@ -57,6 +58,8 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
   Effect.gen(function* () {
     const database = yield* Cloudflare.D1.QueryDatabase(StyldDatabase)
     const media = yield* Cloudflare.R2.ReadWriteBucket(StyldMedia)
+    // The API Worker's work queue, to hand the match job the scan fixture's sightings.
+    const pieceQueue = yield* Cloudflare.Queues.WriteQueue(yield* StyldPieceQueue)
     const auth = makeAuthHttp(database, {
       origin: 'http://localhost',
       secret: Redacted.make('native-test-auth-secret-012345678901234567890123'),
@@ -84,6 +87,7 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
       auth.layer,
       yield* recoveryRoutes(database, media),
       pictureRoutes(database, media),
+      scanRoutes(database, media, yield* pieceQueue.raw),
       socialRoutes(database, media),
       HttpRouter.add(
         'POST',
@@ -245,6 +249,7 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
           url.pathname.startsWith('/test/identity/') ||
           url.pathname.startsWith('/test/recovery/') ||
           url.pathname.startsWith('/test/pictures/') ||
+          url.pathname.startsWith('/test/scan/') ||
           url.pathname.startsWith('/test/social/')
         )
           // The fixture sends no codes; its auth still needs the per-request code policy.
@@ -276,6 +281,7 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
         Cloudflare.Telemetry(),
         Cloudflare.D1.QueryDatabaseBinding,
         Cloudflare.R2.ReadWriteBucketBinding,
+        Cloudflare.Queues.WriteQueueBinding,
       ),
     ),
   ),

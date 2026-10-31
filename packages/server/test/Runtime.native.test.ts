@@ -13,6 +13,7 @@ import { verifyTurn } from './TurnAcceptance.ts'
 import { verifyCameraJourney, verifyCaptureJourney, verifyLongVideoJourney } from './CaptureBrowserAcceptance.ts'
 import { verifyGalleryJourney } from './GalleryBrowserAcceptance.ts'
 import { nativeDailyAllowance, verifyCaptures } from './CaptureAcceptance.ts'
+import { verifyScan } from './ScanAcceptance.ts'
 import { verifyGallery } from './GalleryAcceptance.ts'
 import { verifySocial } from './SocialAcceptance.ts'
 import { verifyPublicJourney } from './SocialBrowserAcceptance.ts'
@@ -179,9 +180,10 @@ test('shows a published profile and its public board to a signed-out visitor', i
 })
 
 test(
-  'turns photos and videos into captures that wait for review, meters them daily, and keeps them private',
-  overHttp(verifyCaptures),
-  { timeout: 90000 },
+  'turns photos and videos into captures that wait for review, meters them daily, keeps them private, and shows a ' +
+    'garment seen across an import once',
+  overHttp((origin, testUrl) => verifyCaptures(origin, testUrl).then(() => verifyScan(origin, testUrl))),
+  { timeout: 120000 },
 )
 
 test(

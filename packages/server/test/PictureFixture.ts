@@ -24,10 +24,10 @@ export const seededPieces = {
   photo: `pc_${'nativepicturesphoto'.padEnd(22, '0')}`,
 } as const
 
-const colours = { red: [196, 32, 40], green: [40, 150, 60], blue: [40, 60, 190] } as const
+export const colours = { red: [196, 32, 40], green: [40, 150, 60], blue: [40, 60, 190] } as const
 
 /** A garment-shaped cut-out in one colour: an oval on transparency, 300 by 400. */
-const cutout = (colour: readonly [number, number, number]) => {
+export const cutout = (colour: readonly [number, number, number]) => {
   const width = 300
   const height = 400
   const data = new Uint8Array(width * height * 4)
@@ -127,6 +127,11 @@ const clef = Effect.gen(function* () {
       model: 'clef-flash',
       answers: { same: noul(0.9), colour: noul(0.9), print: noul(0.06), printed: noul(0.04) },
     })
+  // Two sightings, or a sighting and a piece: the same garment when they show the same colour.
+  if ('same' in body.questions && !('faithful' in body.questions)) {
+    const same = colourOf(body.images[0]?.base64 ?? '') === real ? 0.9 : 0.1
+    return yield* HttpServerResponse.json({ model: 'clef-flash', answers: { same: noul(same) } })
+  }
   if ('same' in body.questions) {
     const [same, faithful] = real === 'red' ? [0.93, 0.91] : [0.7, 0.75]
     return yield* HttpServerResponse.json({
