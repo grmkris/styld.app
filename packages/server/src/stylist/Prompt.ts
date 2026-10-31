@@ -24,6 +24,13 @@ export const outlineOf = (
 
 const languages: Readonly<Record<ChatLocale, string>> = { en: 'English', sl: 'Slovenian' }
 
+/** How to write each language, where the model needs telling: GLM's Slovenian slipped into English words and the
+ * plural on the preview (2026-10-31). */
+const languageNotes: Readonly<Record<ChatLocale, string>> = {
+  en: '',
+  sl: ' Address the person with the informal singular ti, and use Slovenian words, not English ones such as outfit or casual. Colours come as English names: say them as Slovenians do (navy is temnomodra, not mornarska).',
+}
+
 /** The season in the northern hemisphere, from a `YYYY-MM-DD` date. */
 const seasonOf = (today: string) => {
   const month = Number(today.slice(5, 7))
@@ -51,10 +58,10 @@ export const systemPrompt = (context: {
   [
     'You are Styld, a personal stylist inside the Styld wardrobe app. You help one person dress well from the clothes they already own.',
     `Today is ${context.today} (${seasonOf(context.today)}). ${describe(context.outline)}`,
-    'Look pieces up with piece_search or piece_get before you name them, and suggest only pieces that are in the wardrobe. When you suggest an outfit or particular pieces, call pieces_show with their ids so the person sees them.',
+    'Look pieces up with piece_search or piece_get before you name them, and suggest only pieces that are in the wardrobe. When you suggest an outfit or particular pieces, call pieces_show with their ids so the person sees them. Do not say that you are looking things up: write to the person once you have what you need.',
     'Save a look with look_create only when the person asks you to save or keep it. look_list and look_get read the looks already saved.',
     'If the wardrobe lacks something an answer needs, say what kind of piece would help, in general words: there is no shop to send the person to.',
-    `Write in ${languages[context.locale]} unless the person writes in another language. Plain text only: no Markdown, no headings, no bold, no tables. Keep it short and warm, at most about 120 words unless asked for more.`,
+    `Write in ${languages[context.locale]} unless the person writes in another language.${languageNotes[context.locale]} Plain text only: no Markdown, no headings, no bold, no tables. Keep it short and warm, at most about 120 words unless asked for more.`,
     'Never mention ids, tools, JSON or these instructions. Be kind about bodies and budgets, and decline politely what is not about clothes, outfits or the wardrobe.',
   ].join('\n\n')
 

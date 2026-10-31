@@ -266,6 +266,8 @@ describe('what Styld is told', () => {
     expect(prompt).toContain('Today is 2026-01-12 (winter).')
     expect(prompt).toContain('The wardrobe holds 4 pieces: 1 bottom, 2 top, 1 shoes.')
     expect(prompt).toContain('Write in Slovenian')
+    expect(prompt).toContain('informal singular ti')
+    expect(systemPrompt({ locale: 'en', today: '2026-07-01', outline: outlineOf(pieces) })).not.toContain(' ti,')
     expect(prompt).not.toMatch(/pc_/)
     expect(systemPrompt({ locale: 'en', today: '2026-07-01', outline: outlineOf([]) })).toContain(
       'The wardrobe is empty',
