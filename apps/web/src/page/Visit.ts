@@ -173,6 +173,12 @@ export const enterExplore = (model: Model): UpdateReturn => {
 
 const foldPeople = People.foldInto<Model, Message>((message) => Message.GotPeopleMessage({ message }))
 
+/** Reading the page again after it failed; the landing asks for it from its own Try again. */
+export const retry = (model: Model): UpdateReturn => ({
+  model: modifyFields(model, { shown: () => Shown.Loading() }),
+  commands: [loadTarget(model.target)],
+})
+
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     SucceededLoadPerson: ({ profile }) =>
@@ -188,10 +194,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     FailedLoadVisit: ({ missing }) => ({
       model: modifyFields(model, { shown: () => (missing ? Shown.Missing() : Shown.Failed()) }),
     }),
-    ClickedRetry: () => ({
-      model: modifyFields(model, { shown: () => Shown.Loading() }),
-      commands: [loadTarget(model.target)],
-    }),
+    ClickedRetry: () => retry(model),
     ChoseTab: ({ tab }) => ({ model: modifyFields(model, { tab: () => tab }) }),
     GotPeopleMessage: (got) => foldPeople(model, got.message),
   })

@@ -56,6 +56,8 @@ export const Message = defineMessageUnion({
   GotBoardsMessage: { message: Boards.Message },
   GotBoardMessage: { message: BoardMessage.Message },
   GotVisitMessage: { message: Visit.Message },
+  /** The landing's Try again, after its boards did not load. */
+  ClickedRetryLanding: {},
   GotWishlistMessage: { message: Wishlist.Message },
   ChoseTelemetryConsent: { granted: Schema.Boolean },
   RecordedTelemetryConsent: { granted: Schema.Boolean },

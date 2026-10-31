@@ -1,8 +1,9 @@
 import { format, type Locale } from '@styld/i18n'
 import type { Html, HtmlBuilder } from 'foldkit/html'
+import { actionButton } from './ActionButton.ts'
 import { primaryAction, secondaryAction } from './Actions.styles.ts'
 import type { Model } from './App.ts'
-import type { Message } from './Message.ts'
+import { Message } from './Message.ts'
 import { boards as exploreBoards } from './page/ExploreView.styles.ts'
 import { boardCard, byline } from './page/PublicTiles.ts'
 import { block, headingLine, line } from './Skeleton.styles.ts'
@@ -41,6 +42,18 @@ const loadingBoards = (locale: Locale, h: HtmlBuilder<Message>): Html =>
 const inspirationBoards = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const shown = model.visit.shown
   if (Visit.Shown.guards.Loading(shown)) return loadingBoards(locale, h)
+  if (Visit.Shown.guards.Failed(shown))
+    return h.div(styled(h, inspirationGrid()), [
+      h.p([h.Role('alert'), ...styled(h, emptyState())], [format(locale, 'landing.feedFailed', {})]),
+      actionButton(
+        {
+          label: format(locale, 'landing.retry', {}),
+          style: secondaryAction(),
+          onClick: Message.ClickedRetryLanding(),
+        },
+        h,
+      ),
+    ])
   const boards = Visit.Shown.guards.Explore(shown)
     ? (shown.explore.edits.length > 0 ? shown.explore.edits : shown.explore.newest).slice(0, 6)
     : []
@@ -77,9 +90,10 @@ export const landingView = (model: Model, h: HtmlBuilder<Message>): Html => {
         h.h1(styled(h, heroTitle()), [format(locale, 'landing.title', {})]),
         h.p(styled(h, lead()), [format(locale, 'landing.description', {})]),
         h.div(styled(h, heroActions()), [
-          h.a([h.Href(browseAnchor), ...styled(h, primaryAction())], [format(locale, 'landing.browse', {})]),
-          // The bar already offers Sign in; this is the way in for someone new (one code signs in and signs up).
-          h.a([h.Href(loginRouter({})), ...styled(h, secondaryAction())], [format(locale, 'landing.start', {})]),
+          // The bar already offers Sign in; this is the way in for someone new (one code signs in and signs up), so it
+          // carries the ink. Browsing the boards below is the second way.
+          h.a([h.Href(loginRouter({})), ...styled(h, primaryAction())], [format(locale, 'landing.start', {})]),
+          h.a([h.Href(browseAnchor), ...styled(h, secondaryAction())], [format(locale, 'landing.browse', {})]),
         ]),
       ]),
       h.section(

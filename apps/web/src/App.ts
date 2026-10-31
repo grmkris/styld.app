@@ -366,6 +366,13 @@ const foldVisit = Update.foldChild({
   toParentMessage: (message: Visit.Message) => Message.GotVisitMessage({ message }),
 })
 
+const foldVisitRetry = Update.foldChildStep({
+  update: Visit.retry,
+  read: (model: Model) => Option.some(model.visit),
+  write: (model: Model, visit: Visit.Model) => modifyFields(model, { visit: () => visit }),
+  toParentMessage: (message: Visit.Message) => Message.GotVisitMessage({ message }),
+})
+
 const foldWishlist = Update.foldChild({
   update: Wishlist.update,
   read: (model: Model) => Option.some(model.wishlist),
@@ -518,6 +525,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotBoardsMessage: (got) => foldBoards(model, got.message),
     GotBoardMessage: (got) => foldBoard(model, got.message),
     GotVisitMessage: (got) => foldVisit(model, got.message),
+    ClickedRetryLanding: () => foldVisitRetry(model),
     GotWishlistMessage: (got) => foldWishlist(model, got.message),
     ChoseTelemetryConsent: ({ granted }) => ({
       model: modifyFields(model, { telemetry: (telemetry) => modifyFields(telemetry, { prompting: () => false }) }),

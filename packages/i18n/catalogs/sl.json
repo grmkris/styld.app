@@ -1557,12 +1557,12 @@
     "description": "Fotografiraj svoja oblačila in Styld izreže vsak kos, sestavi, kaj obleči danes, in hrani zbirke tega, kar ti je všeč.",
     "start": "Začni brezplačno",
     "browse": "Prebrskaj zbirke",
-    "heroPieces": "Kosi iz slovenskih trgovin",
     "signIn": "Prijava",
     "shops": "Trgovine",
     "contact": "Kontakt",
     "privacy": "Zasebnost",
-    "terms": "Pogoji"
+    "terms": "Pogoji",
+    "feedFailed": "Zbirke se niso naložile."
   },
   "calendar": {
     "title": "Koledar",

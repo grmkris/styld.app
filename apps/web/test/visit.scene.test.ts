@@ -248,6 +248,20 @@ describe('a public profile', () => {
     )
   })
 
+  test('the landing says when its boards did not load, and reads them again on Try again', () => {
+    const found = { board: nika.boards[0], by, moods: [] }
+    const explore = Schema.decodeUnknownSync(Explore)({ edits: [found], featured: [], people: [], newest: [] })
+    scene(
+      { update, view },
+      given(visiting('/', Shown.Failed())),
+      expect(role('alert')).toHaveText("The boards didn't load."),
+      expect(role('link', { name: 'Start free' })).toHaveAttr('href', '/login'),
+      click(role('button', { name: 'Try again' })),
+      Command.resolve(LoadExplore, VisitMessage.SucceededLoadExplore({ explore })),
+      expect(role('heading', { name: 'Edits from Styld' })).toExist(),
+    )
+  })
+
   test('signed out, the sign-in page keeps Explore in the bar and drops Sign in', () => {
     scene(
       { update, view },

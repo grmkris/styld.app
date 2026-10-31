@@ -1557,12 +1557,12 @@
     "description": "Photograph your clothes and Styld cuts out every piece, lays out what to wear today and keeps boards of what you love.",
     "start": "Start free",
     "browse": "Browse boards",
-    "heroPieces": "Pieces from Slovenian shops",
     "signIn": "Sign in",
     "shops": "Shops",
     "contact": "Contact",
     "privacy": "Privacy",
-    "terms": "Terms"
+    "terms": "Terms",
+    "feedFailed": "The boards didn't load."
   },
   "calendar": {
     "title": "Calendar",
