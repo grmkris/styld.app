@@ -125,6 +125,7 @@ const baseCapture = (
   height: null,
   settlement: 'held',
   errorCode: null,
+  importId: null,
   createdAt: at,
   updatedAt: at,
 })

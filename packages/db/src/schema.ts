@@ -145,6 +145,9 @@ export const captures = sqliteTable(
     hold: text('hold'),
     /** How many times the person asked to try again; a capture is retried a few times at most. */
     attempt: integer('attempt').notNull().default(0),
+    /** One id for every part of a video, and for photos picked together: a garment seen in several of them is one
+     * card in the tray (2026-10-31). None for a capture on its own. */
+    importId: text('import_id'),
     /** When the video was handed to Meta to track. A delivery that finds it set but no result does not
      * track again, which could pay twice; the capture waits as `unknown` instead. */
     trackingStartedAt: integer('tracking_started_at', { mode: 'timestamp_ms' }),
@@ -152,7 +155,10 @@ export const captures = sqliteTable(
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
   },
-  (table) => [index('captures_account_created').on(table.accountId, table.createdAt)],
+  (table) => [
+    index('captures_account_created').on(table.accountId, table.createdAt),
+    index('captures_account_import').on(table.accountId, table.importId),
+  ],
 )
 
 /** The stills the browser sampled from a video, uploaded beside it. */
@@ -195,9 +201,26 @@ export const detections = sqliteTable(
     suggestedSubcategory: text('suggested_subcategory'),
     suggestedColours: text('suggested_colours', { mode: 'json' }).notNull().$type<ReadonlyArray<string>>(),
     pieceId: text('piece_id'),
+    /** How likely the decision model thinks the cut-out shows one whole garment (0–1); under 0.5 the tray lists it
+     * as needing a better look. None for detections found before it was kept. */
+    whole: real('whole'),
+    /** The sighting a garment is shown by when this one is another sighting of it, in another part or photo of the
+     * same import: the tray shows one card for them. */
+    groupOf: text('group_of'),
+    /** The account's piece the decision model took this garment for: "Already in your wardrobe?". */
+    duplicateOf: text('duplicate_of').references(() => pieces.id, { onDelete: 'set null' }),
+    /** Where the garment is in being compared with the import's other sightings and the wardrobe. The import's
+     * detections are compared one at a time, oldest first, each claimed before it is, so two parts finishing
+     * together still compare with each other. None for one that is never compared (found before, or no cut-out). */
+    matching: text('matching', { enum: ['waiting', 'claimed', 'done'] }),
+    matchClaimedAt: integer('match_claimed_at', { mode: 'timestamp_ms' }),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
   },
-  (table) => [index('detections_capture').on(table.captureId), index('detections_account').on(table.accountId)],
+  (table) => [
+    index('detections_capture').on(table.captureId),
+    index('detections_account').on(table.accountId),
+    index('detections_group').on(table.groupOf),
+  ],
 )
 
 /** The answer to each operation id, so a repeated request returns it instead of acting twice. */

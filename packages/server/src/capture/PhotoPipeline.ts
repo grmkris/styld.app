@@ -173,6 +173,11 @@ export const detectionsOf = (
           suggestedSubcategory: suggestion.subcategory ?? null,
           suggestedColours: suggestion.colours,
           pieceId: null,
+          whole: suggestion.whole,
+          groupOf: null,
+          duplicateOf: null,
+          matching: null,
+          matchClaimedAt: null,
           createdAt: capture.createdAt,
         } satisfies DetectionRow
         return [detection]
@@ -197,6 +202,11 @@ export const originalOnly = (parts: Parts, capture: CaptureRow, sourceKey: strin
     suggestedSubcategory: null,
     suggestedColours: [],
     pieceId: null,
+    whole: null,
+    groupOf: null,
+    duplicateOf: null,
+    matching: null,
+    matchClaimedAt: null,
     createdAt: capture.createdAt,
   }))
 
