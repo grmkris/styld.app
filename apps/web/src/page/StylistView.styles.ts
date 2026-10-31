@@ -3,7 +3,9 @@ import { style } from '../zyzz.config.ts'
 // Styles for Styld's chat in StylistView.ts: a column of messages above a composer that stays in reach.
 
 /** The page reaches at least to the bottom of the screen, as a tab page's does (View.styles.ts › tabPage), so the
- * site's footer waits below the fold while the chat arrives; the composer rests at its end. */
+ * site's footer waits below the fold while the chat arrives; the composer rests at its end. On a phone the page ends
+ * as far below the composer as the paper under it reaches, so at the end of a long chat that paper covers the page's
+ * own padding and the footer follows whole, its language picker in reach. */
 export const page = style({
   display: 'flex',
   flexDirection: 'column',
@@ -12,6 +14,7 @@ export const page = style({
   minBlockSize: 'calc(100svh - max(64px, 60px + env(safe-area-inset-top)))',
   // On a wide screen the chat is a centred column, not one hugging the rail.
   '@media (min-width: 900px)': { marginInline: 'auto', inlineSize: '100%' },
+  '@media (max-width: 899px)': { paddingBlockEnd: 'calc(96px + env(safe-area-inset-bottom))' },
   paddingBlockStart: '8px',
 })
 /** As tall as New chat, so the title stays put when the button comes. */
@@ -56,7 +59,8 @@ export const shortSkeleton = style({ inlineSize: '35%' })
 /** Styld's reply: plain text, its paragraphs as written. */
 export const reply = style({ display: 'grid', gap: '10px', color: 'ink', lineHeight: 1.5 })
 export const replyText = style({ margin: '0', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' })
-/** The pieces a reply shows, in a row that scrolls sideways. */
+/** The pieces a reply shows, in a row that scrolls sideways; on a phone it runs to the screen's edge rather than the
+ * gutter, as Ask's chips do, so it reads as more to come. */
 export const pieces = style({
   display: 'flex',
   gap: '12px',
@@ -65,6 +69,11 @@ export const pieces = style({
   listStyleType: 'none',
   overflowX: 'auto',
   scrollbarWidth: 'none',
+  '@media (max-width: 899px)': {
+    marginInline: 'calc(-1 * max(20px, env(safe-area-inset-left)))',
+    paddingInline: 'max(20px, env(safe-area-inset-left))',
+    scrollPaddingInline: 'max(20px, env(safe-area-inset-left))',
+  },
 })
 /** A piece Styld shows: its cutout straight on the paper, as pieces you own are, with its name under it. A picture
  * that is still the person's photo lets its pale backdrop give way to the paper. The blend sits on the link, not the
@@ -76,10 +85,12 @@ export const pieceLink = style({
   color: 'ink',
   textDecorationLine: 'none',
   mixBlendMode: 'darken',
-  transitionProperty: 'transform',
+  transitionProperty: 'transform, translate',
   transitionDuration: '140ms',
   transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
   ':active': { transform: 'scale(0.96)' },
+  // It lifts under the pointer as a wardrobe tile does; translate composes with the press's scale.
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { translate: '0 -2px' } },
 })
 export const pieceImage = style({ display: 'block', inlineSize: '96px', blockSize: '96px', objectFit: 'contain' })
 export const pieceName = style({
@@ -130,7 +141,7 @@ export const chatTitle = style({ fontSize: '15px' })
 export const chatDate = style({ fontSize: '13px', color: 'ink2', fontVariantNumeric: 'tabular-nums' })
 export const sectionTitle = style({ fontSize: '17px', fontWeight: 600 })
 /** The composer: in reach at the bottom of the screen, clear of the phone's floating navigation, and at the end of a
- * long chat above the site's footer rather than over it. */
+ * long chat above the site's footer rather than over it (the page's padding below it, `page`). */
 export const composer = style({
   position: 'sticky',
   insetBlockEnd: 'calc(96px + env(safe-area-inset-bottom))',

@@ -319,6 +319,15 @@ const verifyStylist = async (page: Page, origin: string) => {
   })
   await expectNoSidewaysScroll(page)
   await shoot(page, 'phone-stylist')
+  // At the chat's end the footer follows the paper under the composer whole: its language picker is what a tap
+  // at it reaches, not the composer.
+  await page.evaluate(() => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: 'instant' }))
+  const language = await page.locator('footer select').first().boundingBox()
+  const reached = await page.evaluate(
+    ({ x, y }) => document.elementFromPoint(x, y)?.closest('footer select') !== null,
+    { x: (language?.x ?? 0) + (language?.width ?? 0) / 2, y: (language?.y ?? 0) + (language?.height ?? 0) / 2 },
+  )
+  expect(reached).toBe(true)
   await page.goto(`${origin}/ask/stylist`, { waitUntil: 'networkidle' })
   await page.getByRole('list', { name: question }).waitFor({ state: 'visible' })
   await page.getByRole('button', { name: 'New chat' }).click()
