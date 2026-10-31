@@ -3,9 +3,10 @@ import {
   captures,
   detections,
   operationReceipts,
+  photoGarments,
   piecePictures,
-  pieceTurns,
   pieces,
+  pieceTurns,
   uploads,
 } from '@styld/db'
 import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or } from 'drizzle-orm'
@@ -300,6 +301,8 @@ const reviewRows = (db: Database) => ({
     readonly pieces: ReadonlyArray<PieceRow>
     readonly kept: ReadonlyArray<{ readonly detectionId: string; readonly pieceId: string }>
     readonly discarded: ReadonlyArray<string>
+    /** Garments offered from outfit photos, confirmed as the pieces kept from them. */
+    readonly linked: ReadonlyArray<{ readonly captureId: string; readonly pieceId: string }>
     readonly finished: ReadonlyArray<string>
     /** Clean pictures to draw for the kept pieces, queued with them. */
     readonly pictures: ReadonlyArray<NewPicture>
@@ -322,6 +325,12 @@ const reviewRows = (db: Database) => ({
             .update(detections)
             .set({ status: 'discarded' })
             .where(and(inArray(detections.id, chunk), eq(detections.status, 'review'))),
+        ),
+        ...input.linked.map(({ captureId, pieceId }) =>
+          db
+            .update(photoGarments)
+            .set({ pieceId, state: 'confirmed' })
+            .where(and(eq(photoGarments.captureId, captureId), eq(photoGarments.state, 'offered'))),
         ),
         ...chunked(input.finished).map((chunk) =>
           db.update(captures).set({ status: 'done', updatedAt: input.now }).where(inArray(captures.id, chunk)),

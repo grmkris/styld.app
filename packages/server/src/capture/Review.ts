@@ -99,6 +99,8 @@ const sourcesOf = (parts: Parts, accountId: string, found: ReadonlyArray<Detecti
       return {
         typeOf: (detection: DetectionRow) => originals.get(detection.sourceKey) ?? 'image/jpeg',
         isPhoto: (detection: DetectionRow) => byId.get(detection.captureId)?.kind === 'photo',
+        /** Whether the garment was offered from an outfit photo (My Gallery). */
+        fromPhotos: (detection: DetectionRow) => byId.get(detection.captureId)?.source === 'photos',
         originOf: (detection: DetectionRow) => {
           const capture = byId.get(detection.captureId)
           return { route: capture?.route ?? capture?.kind ?? 'unknown', provider: capture?.provider ?? 'unknown' }
@@ -158,7 +160,7 @@ export const reviewing = (parts: Parts) => ({
     // A garment's other sightings in its import are kept or discarded with it.
     const others = yield* storedAs(parts.store.sightingsOf(accountId, ids))
     const at = DateTime.toDateUtc(yield* DateTime.now)
-    const { typeOf, isPhoto, originOf } = yield* sourcesOf(parts, accountId, [...found, ...others])
+    const { typeOf, isPhoto, originOf, fromPhotos } = yield* sourcesOf(parts, accountId, [...found, ...others])
     const backOf = (detection: DetectionRow) =>
       others.find(
         (other) =>
@@ -187,6 +189,10 @@ export const reviewing = (parts: Parts) => ({
         pieces,
         kept: [...kept.map(({ keep, pieceId }) => ({ detectionId: keep.detectionId, pieceId })), ...keptSightings],
         discarded: [...input.discard, ...discardedSightings.map(({ id }) => id)],
+        // A garment offered from an outfit photo is that photo's garment: the new piece is confirmed in it.
+        linked: kept.flatMap(({ pieceId, detection }) =>
+          detection !== undefined && fromPhotos(detection) ? [{ captureId: detection.captureId, pieceId }] : [],
+        ),
         finished: yield* finishedCaptures(parts, [...found, ...others], [...ids, ...others.map(({ id }) => id)]),
         pictures,
         receipt: {

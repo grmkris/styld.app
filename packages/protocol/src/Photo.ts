@@ -4,7 +4,7 @@ import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
 import { RequestRefused } from './Account.ts'
 import { CaptureUnavailable, DailyLimitReached } from './Capture.ts'
 import { PieceType } from './Garment.ts'
-import { LookId } from './Look.ts'
+import { CreateLook, Look, LookId } from './Look.ts'
 import { Colour, OperationConflict, OperationId, PieceId, PieceNotFound, UploadId, UploadRefused } from './Wardrobe.ts'
 
 // My Gallery (owner, 2026-10-31): the person's own outfit photos, optional and private. Styld finds the garments in a
@@ -62,7 +62,19 @@ export const UpdatePhoto = Schema.Struct({ favourite: Schema.Boolean })
 export const MatchGarment = Schema.Struct({ pieceId: Schema.NullOr(PieceId) })
 export type MatchGarment = typeof MatchGarment.Type
 
+/** "Wear it again": the photo's confirmed pieces saved as a look, under the name the person's language gives it:
+ * `POST /api/photos/:photoId/look`. */
+export const WearAgain = Schema.Struct({ operationId: OperationId, name: CreateLook.fields.name })
+export type WearAgain = typeof WearAgain.Type
+
 export class PhotoNotFound extends Schema.TaggedError<PhotoNotFound>()('PhotoNotFound', {}, { httpApiStatus: 404 }) {}
+
+/** A photo with no piece confirmed in it yet has nothing to wear again. */
+export class NothingConfirmed extends Schema.TaggedError<NothingConfirmed>()(
+  'NothingConfirmed',
+  {},
+  { httpApiStatus: 409 },
+) {}
 
 const photoPath = { photoId: PhotoId }
 
@@ -103,6 +115,21 @@ export class PhotoApi extends HttpApiGroup.make('photos')
       payload: MatchGarment,
       success: Photo,
       error: [PhotoNotFound, PieceNotFound, CaptureUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post('offerGarment', '/photos/:photoId/garments/:garmentId/offer', {
+      params: { ...photoPath, garmentId: PhotoGarmentId },
+      success: Photo,
+      error: [PhotoNotFound, CaptureUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post('wearAgain', '/photos/:photoId/look', {
+      params: photoPath,
+      payload: WearAgain,
+      success: Look,
+      error: [PhotoNotFound, NothingConfirmed, OperationConflict, CaptureUnavailable, RequestRefused],
     }),
   )
   .add(

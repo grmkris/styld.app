@@ -1,7 +1,8 @@
-import { operationReceipts, outfitPhotos, photoGarments } from '@styld/db'
+import { captures, detections, operationReceipts, outfitPhotos, photoGarments } from '@styld/db'
 import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option } from 'effect'
+import type { CaptureRow, DetectionRow } from '../capture/Store.ts'
 import { type ReceiptRow, spendUpload, StoreUnavailable } from '../wardrobe/Store.ts'
 
 export type PhotoRow = typeof outfitPhotos.$inferSelect
@@ -85,6 +86,18 @@ const writes = (db: Db) => ({
           .where(and(eq(outfitPhotos.id, photoId), eq(outfitPhotos.status, 'finding'))),
       ]),
     ).pipe(Effect.asVoid),
+  /** A garment offered to the review tray: its capture and detection, and the garment marked offered, in one batch. */
+  offerGarment: (garmentId: string, capture: CaptureRow, detection: DetectionRow) =>
+    attempt(() =>
+      db.batch([
+        db.insert(captures).values(capture),
+        db.insert(detections).values(detection),
+        db
+          .update(photoGarments)
+          .set({ state: 'offered', captureId: capture.id, pieceId: null })
+          .where(and(eq(photoGarments.id, garmentId), eq(photoGarments.accountId, capture.accountId))),
+      ]),
+    ).pipe(Effect.asVoid),
   /** The photo's finding given up: whether this call ended it. */
   failFinding: (photoId: string, at: Date) =>
     attempt(() =>
@@ -98,6 +111,11 @@ const writes = (db: Db) => ({
     attempt(() =>
       db.update(outfitPhotos).set({ favourite, updatedAt: at }).where(ofAccount(accountId, photoId)).returning(),
     ).pipe(Effect.map(first)),
+  /** The look "Wear it again" saved from the photo. */
+  setLook: (accountId: string, photoId: string, lookId: string, at: Date) =>
+    attempt(() => db.update(outfitPhotos).set({ lookId, updatedAt: at }).where(ofAccount(accountId, photoId))).pipe(
+      Effect.asVoid,
+    ),
   /** A garment confirmed as a piece, or found in none: only the account's own, on its own photo. */
   matchGarment: (accountId: string, photoId: string, garmentId: string, pieceId: string | null) =>
     attempt(() =>

@@ -1,18 +1,24 @@
 import {
   type AddPhoto,
   type MatchGarment,
+  maximumLookPieces,
+  NothingConfirmed,
+  PieceId,
+  type WearAgain,
   OperationConflict,
   Photo,
   PhotoNotFound,
   PieceNotFound,
   UploadRefused,
 } from '@styld/protocol'
-import { Context, DateTime, Effect, Option, Schema } from 'effect'
-import { storedAs, unavailable } from '../capture/Parts.ts'
+import { Context, DateTime, Effect, Option, Predicate, Schema } from 'effect'
+import { captureKey, enqueueMatch, readObject, storedAs, unavailable, writeObject } from '../capture/Parts.ts'
+import type { CaptureRow, DetectionRow } from '../capture/Store.ts'
 import type { CaptureConfig } from '../capture/Policy.ts'
 import type { GarmentSegmenter, GarmentVision, PictureWork } from '../capture/Providers.ts'
 import { Usage } from '../capture/Usage.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
+import type { Looks } from '../looks/Looks.ts'
 import { deliverImage } from '../wardrobe/Delivery.ts'
 import type { ShownImage } from '../wardrobe/Http.ts'
 import type { ImageSize } from '../wardrobe/Media.ts'
@@ -145,7 +151,81 @@ const deleteObjects = (parts: PhotoParts, row: PhotoRow) =>
     yield* Effect.tryPromise({ try: () => bucket.delete(keys), catch: unavailable })
   })
 
-const operations = (parts: PhotoParts) => ({
+/** A garment offered to the review tray, as a capture of its own (source `photos`, no credit). Its picture is copied
+ * under the capture, so the photo and the tray never share an object; a cut-out is compared with the wardrobe there,
+ * so the tray asks "Already in your wardrobe?" rather than adding a silent duplicate. */
+const offered = (parts: PhotoParts, photo: PhotoRow, garment: GarmentRow) =>
+  Effect.gen(function* () {
+    const captureId = yield* parts.capture.randomId('cp')
+    const detectionId = yield* parts.capture.randomId('dt')
+    const bytes = yield* readObject(parts.capture, garment.cutoutKey)
+    if (Option.isNone(bytes)) return yield* unavailable()
+    // With the providers off the garment is the whole photo, as it was uploaded.
+    const cutOut = garment.cutoutKey !== photo.originalKey
+    const contentType = cutOut ? 'image/png' : photo.contentType
+    const key = captureKey(photo.accountId, captureId, cutOut ? `${detectionId}.png` : detectionId)
+    yield* writeObject(parts.capture, key, bytes.value, contentType)
+    const at = yield* now
+    const capture = {
+      id: captureId,
+      accountId: photo.accountId,
+      kind: 'photo',
+      source: 'photos',
+      status: 'review',
+      uploadId: garment.id,
+      originalKey: key,
+      contentType,
+      bytes: bytes.value.byteLength,
+      side: null,
+      pairsWith: null,
+      route: null,
+      routeConfidence: null,
+      provider: null,
+      providerFileId: null,
+      frameCount: null,
+      durationMs: null,
+      width: null,
+      height: null,
+      credits: 0,
+      settlement: 'consumed',
+      hold: null,
+      attempt: 0,
+      importId: null,
+      trackingStartedAt: null,
+      errorCode: null,
+      createdAt: at,
+      updatedAt: at,
+    } satisfies CaptureRow
+    const detection = {
+      id: detectionId,
+      captureId,
+      accountId: photo.accountId,
+      status: 'review',
+      cutoutKey: cutOut ? key : null,
+      sourceKey: key,
+      backCutoutKey: null,
+      track: null,
+      confidence: null,
+      preselected: true,
+      suggestedType: garment.type,
+      suggestedColours: garment.colours,
+      suggestedSeason: null,
+      suggestedOccasions: [],
+      suggestedPattern: null,
+      pieceId: null,
+      whole: null,
+      groupOf: null,
+      duplicateOf: null,
+      matching: cutOut && garment.type !== null ? 'waiting' : null,
+      matchClaimedAt: null,
+      createdAt: at,
+    } satisfies DetectionRow
+    yield* storedAs(parts.photos.offerGarment(garment.id, capture, detection))
+    if (detection.matching === 'waiting') yield* enqueueMatch(parts.capture, captureId)
+  })
+
+/** Reading and adding photos, and the queue's work. */
+const reading = (parts: PhotoParts) => ({
   ...finding(parts),
   listPhotos: Effect.fn('Styld.Photos.list')(function* () {
     const { accountId } = yield* CurrentAccount
@@ -162,6 +242,10 @@ const operations = (parts: PhotoParts) => ({
     const [photo] = yield* photosOf(parts, [yield* ownPhoto(parts, accountId, photoId)])
     return photo ?? (yield* PhotoNotFound.make({}))
   }),
+})
+
+/** Changing a photo: favourite, delete, match, offer and wear again. */
+const changing = (parts: PhotoParts, looks: Looks['Service']) => ({
   updatePhoto: Effect.fn('Styld.Photos.update')(function* (photoId: string, input: { readonly favourite: boolean }) {
     const { accountId } = yield* CurrentAccount
     const updated = yield* storedAs(parts.photos.setFavourite(accountId, photoId, input.favourite, yield* now))
@@ -184,6 +268,38 @@ const operations = (parts: PhotoParts) => ({
       return yield* PhotoNotFound.make({})
     const [photo] = yield* photosOf(parts, [yield* ownPhoto(parts, accountId, photoId)])
     return photo ?? (yield* PhotoNotFound.make({}))
+  }),
+  /** Offer a garment to the review tray, once: offering it again answers the photo as it is. */
+  offerGarment: Effect.fn('Styld.Photos.offer')(function* (photoId: string, garmentId: string) {
+    const { accountId } = yield* CurrentAccount
+    const photo = yield* ownPhoto(parts, accountId, photoId)
+    const garment = (yield* storedAs(parts.photos.garmentsOf([photoId]))).find(({ id }) => id === garmentId)
+    if (garment === undefined) return yield* PhotoNotFound.make({})
+    if (garment.state !== 'offered') yield* offered(parts, photo, garment)
+    const [shown] = yield* photosOf(parts, [photo])
+    return shown ?? (yield* PhotoNotFound.make({}))
+  }),
+  /** "Wear it again": the photo's confirmed pieces as a look, remembered on the photo. Repeating the operation answers
+   * the same look. */
+  wearAgain: Effect.fn('Styld.Photos.wearAgain')(function* (photoId: string, input: WearAgain) {
+    const { accountId } = yield* CurrentAccount
+    yield* ownPhoto(parts, accountId, photoId)
+    const garments = yield* storedAs(parts.photos.garmentsOf([photoId]))
+    const pieceIds = [
+      ...new Set(
+        garments.flatMap(({ state, pieceId }) => (state === 'confirmed' && pieceId !== null ? [pieceId] : [])),
+      ),
+    ].slice(0, maximumLookPieces)
+    if (pieceIds.length === 0) return yield* NothingConfirmed.make({})
+    const look = yield* looks
+      .createLook({
+        operationId: input.operationId,
+        name: input.name,
+        pieceIds: pieceIds.map((id) => PieceId.make(id)),
+      })
+      .pipe(Effect.mapError((error) => (Predicate.isTagged(error, 'OperationConflict') ? error : unavailable())))
+    yield* storedAs(parts.photos.setLook(accountId, photoId, look.id, yield* now))
+    return look
   }),
   piecePhotos: Effect.fn('Styld.Photos.ofPiece')(function* (pieceId: string) {
     const { accountId } = yield* CurrentAccount
@@ -211,18 +327,20 @@ const operations = (parts: PhotoParts) => ({
   }),
 })
 
+const operations = (parts: PhotoParts, looks: Looks['Service']) => ({ ...reading(parts), ...changing(parts, looks) })
+
 /** The capture providers, metering and policy a photo's work uses. */
 type Requirements = CaptureConfig | GarmentSegmenter | GarmentVision | PictureWork | Usage
 
 /** Every operation with the providers it was built with: callers provide only `CurrentAccount`. */
-const make = (parts: PhotoParts) =>
+const make = (parts: PhotoParts, looks: Looks['Service']) =>
   Effect.gen(function* () {
     const services = yield* Effect.context<Requirements>()
     const bound =
       <Args extends ReadonlyArray<unknown>, A, E, R>(operation: (...args: Args) => Effect.Effect<A, E, R>) =>
       (...args: Args) =>
         Effect.provide(operation(...args), services)
-    const all = operations(parts)
+    const all = operations(parts, looks)
     return {
       findGarments: bound(all.findGarments),
       failFinding: bound(all.failFinding),
@@ -232,6 +350,8 @@ const make = (parts: PhotoParts) =>
       updatePhoto: bound(all.updatePhoto),
       deletePhoto: bound(all.deletePhoto),
       matchGarment: bound(all.matchGarment),
+      offerGarment: bound(all.offerGarment),
+      wearAgain: bound(all.wearAgain),
       piecePhotos: bound(all.piecePhotos),
       photoImage: bound(all.photoImage),
       garmentImage: bound(all.garmentImage),

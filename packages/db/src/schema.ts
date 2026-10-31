@@ -131,8 +131,10 @@ export const captures = sqliteTable(
       .notNull()
       .references(() => accounts.id, { onDelete: 'cascade' }),
     kind: text('kind', { enum: ['photo', 'video'] }).notNull(),
-    source: text('source', { enum: ['picker', 'camera', 'video', 'link', 'assistant'] }).notNull(),
+    source: text('source', { enum: ['picker', 'camera', 'video', 'link', 'assistant', 'photos'] }).notNull(),
     status: text('status', { enum: ['processing', 'review', 'done', 'failed', 'unknown'] }).notNull(),
+    /** The upload it came from; for a garment offered from an outfit photo (My Gallery, source `photos`), which has
+     * no upload of its own, that garment's id. */
     uploadId: text('upload_id').notNull().unique(),
     originalKey: text('original_key').notNull(),
     contentType: text('content_type').notNull(),

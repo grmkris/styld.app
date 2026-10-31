@@ -266,7 +266,9 @@ export const reading = (parts: Parts) => ({
     return yield* Schema.decodeUnknownEffect(Tray)({
       captures: trayCards(open).map(({ capture, detections }) => ({
         id: capture.id,
-        source: capture.source === 'assistant' ? 'picker' : capture.source,
+        // The tray tells only how a person added something: an assistant's photo and a garment offered from an outfit
+        // photo show as picked.
+        source: capture.source === 'assistant' || capture.source === 'photos' ? 'picker' : capture.source,
         status: capture.status,
         createdAt: capture.createdAt.toISOString(),
         detections,

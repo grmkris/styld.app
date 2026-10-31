@@ -95,6 +95,56 @@ const verifyMatching = async (origin: string, owner: Call, other: Call, photo: P
   expect(after.photos).toHaveLength(0)
 }
 
+const TrayCaptures = Schema.Struct({
+  captures: Schema.Array(
+    Schema.Struct({ id: Schema.String, detections: Schema.Array(Schema.Struct({ id: Schema.String })) }),
+  ),
+})
+
+/** A garment the wardrobe lacks goes to the review tray once, free; keeping it there confirms the new piece in the
+ * photo. */
+const verifyOffering = async (origin: string, owner: Call) => {
+  const add = { operationId: 'native-photo-add-2', uploadId: await receivedPhoto(origin, owner) }
+  const photo = await found(owner, (await photoOf(await send(owner, '/api/photos', 'POST', add))).id)
+  const [garment] = photo.garments
+  if (garment === undefined) throw new Error('no garment')
+  const before = await remaining(owner)
+  const path = `/api/photos/${photo.id}/garments/${garment.id}/offer`
+  expect((await photoOf(await send(owner, path, 'POST'))).garments[0]?.match).toBe('offered')
+  expect((await photoOf(await send(owner, path, 'POST'))).garments[0]?.match).toBe('offered')
+  expect(await remaining(owner)).toBe(before)
+  const wear = { operationId: 'native-photo-look-1', name: 'Outfit from Saturday' }
+  expect((await send(owner, `/api/photos/${photo.id}/look`, 'POST', wear)).status).toBe(409)
+  const tray = Schema.decodeUnknownSync(TrayCaptures)(await (await owner('/api/captures/tray')).json())
+  expect(tray.captures).toHaveLength(1)
+  const detectionId = tray.captures[0]?.detections[0]?.id ?? ''
+  const reviewed = await send(owner, '/api/captures/review', 'POST', {
+    operationId: 'native-photo-review-1',
+    keep: [{ detectionId, type: 'shirts' }],
+    discard: [],
+  })
+  expect(reviewed.status).toBe(200)
+  const { pieceIds } = Schema.decodeUnknownSync(Schema.Struct({ pieceIds: Schema.Array(Schema.String) }))(
+    await reviewed.json(),
+  )
+  const linked = await photoOf(await owner(`/api/photos/${photo.id}`))
+  expect(linked.garments[0]).toMatchObject({ match: 'confirmed', pieceId: pieceIds[0] })
+  // Wear it again: the photo's pieces as a look, once, remembered on the photo.
+  const Saved = Schema.Struct({ id: Schema.String, pieces: Schema.Array(Schema.Struct({ id: Schema.String })) })
+  const look = Schema.decodeUnknownSync(Saved)(
+    await (await send(owner, `/api/photos/${photo.id}/look`, 'POST', wear)).json(),
+  )
+  expect(look.pieces.map(({ id }) => id)).toEqual([...pieceIds])
+  const again = Schema.decodeUnknownSync(Saved)(
+    await (await send(owner, `/api/photos/${photo.id}/look`, 'POST', wear)).json(),
+  )
+  expect(again.id).toBe(look.id)
+  const remembered = Schema.decodeUnknownSync(Schema.Struct({ lookId: Schema.NullOr(Schema.String) }))(
+    await (await owner(`/api/photos/${photo.id}`)).json(),
+  )
+  expect(remembered.lookId).toBe(look.id)
+}
+
 /** My Gallery for the website. */
 export const verifyPhotos = async (origin: string, fixtures: string): Promise<void> => {
   expect((await fetch(`${fixtures}/test/identity/seed-photos`, { method: 'POST' })).status).toBe(204)
@@ -105,4 +155,5 @@ export const verifyPhotos = async (origin: string, fixtures: string): Promise<vo
   const listed = Schema.decodeUnknownSync(Photos)(await (await owner('/api/photos')).json())
   expect(listed.photos.map(({ id }) => id)).toEqual([photo.id])
   await verifyMatching(origin, owner, other, photo)
+  await verifyOffering(origin, owner)
 }

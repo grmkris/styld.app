@@ -25,6 +25,12 @@ export const photoHandlers = (admit: Admit) =>
         .handle('matchGarment', ({ params, payload }) =>
           admit(asSessionAccount(photos.matchGarment(params.photoId, params.garmentId, payload))),
         )
+        .handle('offerGarment', ({ params }) =>
+          admit(asSessionAccount(photos.offerGarment(params.photoId, params.garmentId))),
+        )
+        .handle('wearAgain', ({ params, payload }) =>
+          admit(asSessionAccount(photos.wearAgain(params.photoId, payload))),
+        )
         .handle('piecePhotos', ({ params }) =>
           asSessionAccount(photos.piecePhotos(params.pieceId)).pipe(Effect.map((list) => ({ photos: list }))),
         )
