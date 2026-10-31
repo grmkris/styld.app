@@ -25,10 +25,11 @@ export type Sending = typeof Sending.Type
 
 const ChatsData = AsyncData.Schema(Schema.Array(ChatSummary), Schema.Literal('Unavailable'))
 
-/** The chat being read to open, or the one that did not open, to try again. */
+/** The chat being read to open (`pressed` when the person chose it, so focus follows it there), or the one that did
+ * not open, to try again. */
 export const Opening = defineTaggedUnion({
   None: {},
-  Reading: { chatId: Schema.String },
+  Reading: { chatId: Schema.String, pressed: Schema.Boolean },
   Failed: { chatId: Schema.String },
 })
 export type Opening = typeof Opening.Type
@@ -70,6 +71,7 @@ export const Message = defineMessageUnion({
   ClickedRetryLoad: {},
   CompletedScrollToLatest: {},
   CompletedStartAtTop: {},
+  CompletedFocusThread: {},
 })
 export type Message = typeof Message.Type
 
@@ -176,6 +178,8 @@ export const canSend = (model: Model) =>
 
 /** The element after the thread that the newest message is scrolled to, clear of the composer. */
 export const latestId = 'stylist-latest'
+/** The open chat's thread. */
+export const threadId = 'stylist-thread'
 
 /** Bring the newest message into view above the composer: when a chat opens and when a reply lands, never while
  * one is being written, so it does not pull the page from under someone reading back.
@@ -199,6 +203,17 @@ export const StartAtTop = Command.define('StartAtTop', {
     yield* Dom.focus('#main h1', { preventScroll: true, makeFocusable: true }).pipe(Effect.ignore)
     return Message.CompletedStartAtTop()
   }),
+})
+
+/** The thread a press opened takes focus, so keyboard and screen reader follow it from the earlier chat pressed,
+ * which is gone; the newest message is still what is scrolled to.
+ * @internal Exported for its tests. */
+export const FocusThread = Command.define('FocusThread', {
+  messages: [Message.CompletedFocusThread],
+  execute: Dom.focus(`#${threadId}`, { preventScroll: true, makeFocusable: true }).pipe(
+    Effect.ignore,
+    Effect.as(Message.CompletedFocusThread()),
+  ),
 })
 
 /** A chat read: shown when it is still the one open, and read again while its reply is written. */
@@ -228,10 +243,10 @@ const submit = (model: Model, locale: ChatLocale): UpdateReturn => {
 }
 
 /** Opening a chat: the one asked for, read whole; the one open stays while it is read again. */
-const openChat = (model: Model, chatId: string): UpdateReturn => ({
+const openChat = (model: Model, chatId: string, pressed = false): UpdateReturn => ({
   model: modifyFields(model, {
     open: Option.filter(({ id }) => id === chatId),
-    opening: () => Opening.Reading({ chatId }),
+    opening: () => Opening.Reading({ chatId, pressed }),
   }),
   commands: [LoadChat({ chatId })],
 })
@@ -260,11 +275,15 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     // Only the chat still asked for opens: one left for another, or a new chat, is dropped.
     SucceededLoadChat: ({ chat }) => {
       if (!isReading(model, chat.id)) return { model }
+      const pressed = Opening.guards.Reading(model.opening) && model.opening.pressed
       const shown = showChat(
         modifyFields(model, { open: () => Option.some(chat), opening: () => Opening.None() }),
         chat,
       )
-      return { ...shown, commands: [...(shown.commands ?? []), ScrollToLatest()] }
+      return {
+        ...shown,
+        commands: [...(shown.commands ?? []), ScrollToLatest(), ...(pressed ? [FocusThread()] : [])],
+      }
     },
     FailedLoadChat: ({ chatId }) =>
       isReading(model, chatId)
@@ -311,7 +330,10 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       commands: [StartAtTop()],
     }),
     CompletedStartAtTop: () => ({ model }),
-    ClickedChat: ({ chatId }) => openChat(model, chatId),
+    CompletedFocusThread: () => ({ model }),
+    ClickedChat: ({ chatId }) => openChat(model, chatId, true),
     ClickedRetryLoad: () =>
-      Opening.guards.Failed(model.opening) ? openChat(model, model.opening.chatId) : { model, commands: [LoadChats()] },
+      Opening.guards.Failed(model.opening)
+        ? openChat(model, model.opening.chatId, true)
+        : { model, commands: [LoadChats()] },
   })

@@ -4,6 +4,7 @@ import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import {
   canSend,
+  FocusThread,
   init,
   LoadChat,
   LoadChats,
@@ -168,9 +169,11 @@ describe('Styld, the stylist in the app', () => {
       model(({ opening }) => expect(opening).toEqual(Opening.Failed({ chatId }))),
       message(Message.ClickedRetryLoad()),
       Command.expectExact(LoadChat({ chatId: chatId })),
-      model(({ opening }) => expect(opening).toEqual(Opening.Reading({ chatId }))),
+      model(({ opening }) => expect(opening).toEqual(Opening.Reading({ chatId, pressed: true }))),
       Command.resolve(LoadChat, Message.SucceededLoadChat({ chat: chat(undefined, true) })),
       Command.resolve(ScrollToLatest, Message.CompletedScrollToLatest()),
+      // A chat the person chose takes focus once it is in, as the earlier chat pressed is gone.
+      Command.resolve(FocusThread, Message.CompletedFocusThread()),
     )
   })
 })

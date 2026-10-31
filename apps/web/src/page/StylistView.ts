@@ -11,10 +11,20 @@ import { backIcon, forwardIcon, loader } from '../Icon.ts'
 import { askRouter, lookRouter, pieceRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
-import { round } from './PageBar.styles.ts'
+import { barStart, round } from './PageBar.styles.ts'
 import { chip } from './AskView.styles.ts'
 import { intlLocale } from '../Locale.ts'
-import { canSend, isWriting, latestId, Message, type Model, Opening, type SendProblem, Sending } from './Stylist.ts'
+import {
+  canSend,
+  isWriting,
+  latestId,
+  Message,
+  threadId,
+  type Model,
+  Opening,
+  type SendProblem,
+  Sending,
+} from './Stylist.ts'
 import { Button } from '@foldkit/ui'
 import * as styles from './StylistView.styles.ts'
 
@@ -145,7 +155,7 @@ const threadView = (chat: Chat, inputs: Inputs, h: HtmlBuilder<Message>): Html =
     [],
     [
       h.ol(
-        [h.AriaLabel(chat.title), h.AriaLive('polite'), ...styled(h, styles.thread())],
+        [h.Id(threadId), h.AriaLabel(chat.title), h.AriaLive('polite'), ...styled(h, styles.thread())],
         [...chat.messages.map((message) => messageView(message, inputs, h)), replyingView(chat, inputs, h)],
       ),
       h.div([h.Id(latestId), ...styled(h, styles.latest())]),
@@ -281,7 +291,7 @@ export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, 
           [
             h.Href(askRouter({ q: Option.none() })),
             h.AriaLabel(format(locale, 'common.back', {})),
-            ...styled(h, round()),
+            ...styled(h, cx(round(), barStart())),
           ],
           [backIcon(h)],
         ),
