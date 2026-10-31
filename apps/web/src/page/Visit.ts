@@ -36,7 +36,14 @@ export const Shown = defineTaggedUnion({
 })
 export type Shown = typeof Shown.Type
 
-export const Model = Schema.Struct({ target: Target, shown: Shown, tab: PersonTab, people: People.Model })
+export const Model = Schema.Struct({
+  target: Target,
+  shown: Shown,
+  tab: PersonTab,
+  people: People.Model,
+  /** A session came with the page: only then is there a relation to read. */
+  signedIn: Schema.Boolean,
+})
 export type Model = typeof Model.Type
 
 /** Which public page a route opens; any other route keeps an empty one. */
@@ -49,10 +56,11 @@ export const targetFor = (route: AppRoute): Target =>
     Match.orElse(() => Target.Person({ handle: '' })),
   )
 
-export const init = (target: Target): Model => ({
+export const init = (target: Target, signedIn: boolean): Model => ({
   target,
   shown: Shown.Loading(),
   tab: 'boards',
+  signedIn,
   people: People.init(
     Target.match(target, {
       Person: ({ handle }) => People.Subject.Person({ handle }),
@@ -132,11 +140,17 @@ const loadTarget = (target: Target): Command.Command<Message, never, StyldClient
     Explore: ({ mood }) => LoadExplore({ mood }),
   })
 
-/** The Commands that open the page. */
+/** The Commands that open the page; where the visitor stands with the person is read once the profile is in. */
 export const load = (model: Model): ReadonlyArray<Command.Command<Message, never, StyldClient>> => [
   loadTarget(model.target),
-  ...Command.mapMessages(People.load(model.people), (message) => Message.GotPeopleMessage({ message })),
 ]
+
+/** Signed in, on someone else's profile: where the visitor stands with them. Signed out there is nothing to read,
+ * and on one's own profile nobody to follow. */
+const relationFor = (model: Model, profile: PublicProfile) =>
+  model.signedIn && !profile.yours
+    ? Command.mapMessages(People.load(model.people), (message) => Message.GotPeopleMessage({ message }))
+    : []
 
 // UPDATE
 
@@ -157,7 +171,10 @@ const foldPeople = People.foldInto<Model, Message>((message) => Message.GotPeopl
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
-    SucceededLoadPerson: ({ profile }) => ({ model: modifyFields(model, { shown: () => Shown.Person({ profile }) }) }),
+    SucceededLoadPerson: ({ profile }) => ({
+      model: modifyFields(model, { shown: () => Shown.Person({ profile }) }),
+      commands: relationFor(model, profile),
+    }),
     SucceededLoadPublicPiece: ({ page }) => ({ model: modifyFields(model, { shown: () => Shown.Piece({ page }) }) }),
     SucceededLoadExplore: ({ explore }) => ({
       model: modifyFields(model, { shown: () => Shown.Explore({ explore }) }),

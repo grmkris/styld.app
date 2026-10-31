@@ -22,7 +22,7 @@ import {
   undoRemove,
 } from './Actions.ts'
 import * as WardrobePage from '../Wardrobe.ts'
-import { LoadBoard, MakeIds, ReadClipboard, unitsPerPixel } from './Commands.ts'
+import { LoadBoard, MakeIds, ReadClipboard, unitsPerPixel, VisitBoard } from './Commands.ts'
 import { committed, redone, replaced, saved, saveNow, type Services, type UpdateReturn, undone } from './Edits.ts'
 import {
   keyed,
@@ -40,12 +40,16 @@ import * as People from '../People.ts'
 import * as Make from './Make.ts'
 import { ReloadBoard } from './PageCommands.ts'
 
-/** The Commands that open the board: the board, the wardrobe for the tray, and a first batch of ids. */
-export const load = (model: Model): ReadonlyArray<Command.Command<Message, never, Services>> => [
-  LoadBoard({ boardId: model.boardId }),
-  ...Command.mapMessages(WardrobePage.load(), (message) => Message.GotWardrobeMessage({ message })),
-  MakeIds(),
-]
+/** The Commands that open the board: the board, the wardrobe for the tray, and a first batch of ids. Signed out it
+ * can only be someone's public board, read as visitors read it, with no wardrobe and nothing to edit. */
+export const load = (model: Model): ReadonlyArray<Command.Command<Message, never, Services>> =>
+  model.signedIn
+    ? [
+        LoadBoard({ boardId: model.boardId }),
+        ...Command.mapMessages(WardrobePage.load(), (message) => Message.GotWardrobeMessage({ message })),
+        MakeIds(),
+      ]
+    : [VisitBoard({ boardId: model.boardId })]
 
 const foldWardrobe = Update.foldChild({
   update: WardrobePage.update,

@@ -86,6 +86,8 @@ export const PublicProfile = Schema.Struct({
   looks: Schema.Array(PublicLook),
   /** Null when the owner keeps the wardrobe off the profile. */
   pieces: Schema.NullOr(Schema.Array(PublicPiece)),
+  /** The person reading it is its owner, who has no one to follow here. */
+  yours: Schema.Boolean,
 })
 export type PublicProfile = typeof PublicProfile.Type
 

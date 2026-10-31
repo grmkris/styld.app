@@ -303,7 +303,15 @@ const pages = (base: Reader) => ({
     const pieces = row.wardrobeShown
       ? [...(yield* shownPieces(r, row.accountId, yield* stored(r.store.readyPieces(row.accountId)))).values()]
       : null
-    return { ...author, city: row.city, bio: row.bio, boards, looks, pieces }
+    return {
+      ...author,
+      city: row.city,
+      bio: row.bio,
+      boards,
+      looks,
+      pieces,
+      yours: Option.contains(viewer, row.accountId),
+    }
   }),
   board: Effect.fn('Styld.Public.board')(function* (boardId: string, viewer: Option.Option<string> = Option.none()) {
     const r = readBy(base, viewer)

@@ -208,8 +208,9 @@ export const init = (context: Flags, url?: Url): UpdateReturn => {
   const look = Look.init(AppRoute.guards.Look(route) ? route.lookId : '')
   const board = BoardModel.init(
     AppRoute.guards.Board(route) || AppRoute.guards.BoardCollage(route) ? route.boardId : '',
+    context.hasSessionCookie === true,
   )
-  const visit = Visit.init(Visit.targetFor(route))
+  const visit = Visit.init(Visit.targetFor(route), context.hasSessionCookie === true)
   const opened = Update.combine<Model, Message, Services>(
     {
       context,

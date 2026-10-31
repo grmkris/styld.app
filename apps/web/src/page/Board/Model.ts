@@ -170,11 +170,14 @@ export const Model = Schema.Struct({
   drop: FileDrop.Model,
   /** Make with Styld: a mood board or one picture from the person's words, and how it is going. */
   make: Make.Model,
+  /** A session came with the page; signed out the board can only be someone's public one. */
+  signedIn: Schema.Boolean,
 })
 export type Model = typeof Model.Type
 
-export const init = (boardId: string): Model => ({
+export const init = (boardId: string, signedIn = true): Model => ({
   boardId,
+  signedIn,
   board: BoardState.Loading(),
   version: 0,
   items: [],

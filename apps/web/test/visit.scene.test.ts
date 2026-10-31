@@ -38,6 +38,7 @@ const nika = Schema.decodeUnknownSync(PublicProfile)({
   ],
   looks: [],
   pieces: [knit],
+  yours: false,
 })
 
 const opened = (pathname: string) =>

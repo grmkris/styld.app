@@ -46,6 +46,13 @@ export const LoadBoard = Command.define('LoadBoard', {
     ),
 })
 
+/** Signed out, a board can only be someone else's public one: read it as visitors do. */
+export const VisitBoard = Command.define('VisitBoard', {
+  args: { boardId: Schema.String },
+  messages: [Message.SucceededVisitBoard, Message.FailedLoadBoard],
+  execute: ({ boardId }) => visitBoard(boardId),
+})
+
 /** Fresh item ids: 16 random bytes each, like every Styld id. */
 export const MakeIds = Command.define('MakeIds', {
   messages: [Message.CompletedMakeIds],
