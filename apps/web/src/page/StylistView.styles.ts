@@ -88,7 +88,7 @@ export const pieceLink = style({
   textDecorationLine: 'none',
   mixBlendMode: 'darken',
   transitionProperty: 'transform, translate',
-  transitionDuration: '140ms',
+  transitionDuration: '140ms, 180ms',
   transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
   ':active': { transform: 'scale(0.96)' },
   // It lifts under the pointer as a wardrobe tile does; translate composes with the press's scale.
