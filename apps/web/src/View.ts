@@ -9,7 +9,7 @@ import { actionButton } from './ActionButton.ts'
 import { primaryAction, secondaryAction } from './Actions.styles.ts'
 import { availableLocales } from './Locale.ts'
 import { styled } from './Styled.ts'
-import { askTabIcon, boardsTabIcon, exploreTabIcon, homeTabIcon, wardrobeTabIcon } from './Icon.ts'
+import { askTabIcon, boardsTabIcon, homeTabIcon, wardrobeTabIcon } from './Icon.ts'
 import * as AddPiecesView from './page/AddPieces/View.ts'
 import * as AskView from './page/AskView.ts'
 import * as TodayView from './page/TodayView.ts'
@@ -225,7 +225,7 @@ const titleKey = AppRoute.match<MessageKey>({
   NotFound: () => 'common.notFoundTitle',
 })
 
-type Section = 'home' | 'explore' | 'wardrobe' | 'ask' | 'boards' | 'you'
+type Section = 'home' | 'wardrobe' | 'ask' | 'boards' | 'you'
 
 const sectionOf = AppRoute.match<Section | undefined>({
   Home: () => 'home',
@@ -246,12 +246,14 @@ const sectionOf = AppRoute.match<Section | undefined>({
   LoginForConnection: () => undefined,
   Person: () => undefined,
   PublicPiece: () => undefined,
-  Explore: () => 'explore',
+  // Explore is reached from Home's head (owner, 2026-10-31), so Home stays marked there.
+  Explore: () => 'home',
   NotFound: () => undefined,
 })
 
-/** Gallery 2's navigation: Home, Explore, Ask in the middle, Wardrobe and Boards; you are in the masthead. A
- * floating glass pill on the phone, a rail on the desktop's left edge; it keeps its place while a page cross-fades. */
+/** The navigation (owner, 2026-10-31): Home, Ask, Wardrobe and Boards; you are in the masthead, and Explore is a link
+ * in Home's head. A floating glass pill on the phone, a rail on the desktop's left edge; it keeps its place while a
+ * page cross-fades. */
 const appNavigation = (model: Model, initial: string, h: HtmlBuilder<Message>): Html => {
   const { locale } = model.context
   const current = sectionOf(model.route)
@@ -273,7 +275,6 @@ const appNavigation = (model: Model, initial: string, h: HtmlBuilder<Message>): 
     ],
     [
       item('home', homeRouter({}), format(locale, 'nav.home', {}), homeTabIcon(h)),
-      item('explore', exploreRouter({}), format(locale, 'explore.title', {}), exploreTabIcon(h)),
       // Ask keeps its search: coming back from another tab brings it back.
       item(
         'ask',

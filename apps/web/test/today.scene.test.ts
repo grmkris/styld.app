@@ -46,6 +46,22 @@ const home = (waiting: number, maybeBoard: Option.Option<BoardSummary>, pictures
   })
 
 describe('Home', () => {
+  test('the bar holds Home, Ask, Wardrobe and Boards, and Explore is the round in Home’s head', () => {
+    scene(
+      { update, view },
+      given(home(0, Option.none())),
+      inside(
+        role('navigation', { name: 'Navigation' }),
+        expect(role('link', { name: 'Home' })).toHaveAttr('aria-current', 'page'),
+        expect(role('link', { name: 'Ask' })).toExist(),
+        expect(role('link', { name: 'Wardrobe' })).toExist(),
+        expect(role('link', { name: 'Boards' })).toExist(),
+        expect(role('link', { name: 'Explore' })).not.toExist(),
+      ),
+      inside(role('main'), expect(role('link', { name: 'Explore' })).toHaveAttr('href', '/explore')),
+    )
+  })
+
   test('picking up says where the waiting pieces came from, and each card ends in its way back in', () => {
     scene(
       { update, view },

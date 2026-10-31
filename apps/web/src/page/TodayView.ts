@@ -6,8 +6,8 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction, smallAction } from '../Actions.styles.ts'
-import { addIcon, checkIcon, loader, spinIcon } from '../Icon.ts'
-import { addPiecesRouter, boardRouter, reviewRouter } from '../route.ts'
+import { addIcon, checkIcon, exploreTabIcon, loader, spinIcon } from '../Icon.ts'
+import { addPiecesRouter, boardRouter, exploreRouter, reviewRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { intlLocale } from '../Locale.ts'
 import { styled } from '../Styled.ts'
@@ -16,6 +16,7 @@ import { stillTable } from './Board/Table.ts'
 import { asItems, type Missing, missingFrom } from './Outfit.ts'
 import { Message, type Model, TableMotion, tableOutfit, Worn } from './Today.ts'
 import type { PiecesData } from './Wardrobe.ts'
+import { round } from './PageBar.styles.ts'
 import { pageHead } from './PageHead.ts'
 import { title as headTitle } from './PageHead.styles.ts'
 import * as styles from './TodayView.styles.ts'
@@ -125,8 +126,18 @@ const headlineView = (maybeDay: Option.Option<string>, locale: Locale, h: HtmlBu
         onSome: (day) => [headline(day, locale)],
       }),
     ),
-    // Explore is a tab of its own; the head keeps the slot's size empty, so the headline sits as on every tab.
-    Option.none(),
+    // Explore left the tab bar (owner, 2026-10-31): its way in is the head's round, where other tabs keep their action.
+    Option.some(
+      h.a(
+        [
+          h.Href(exploreRouter({})),
+          h.AriaLabel(format(locale, 'explore.title', {})),
+          h.Title(format(locale, 'explore.title', {})),
+          ...styled(h, round()),
+        ],
+        [exploreTabIcon(h)],
+      ),
+    ),
     h,
   )
 

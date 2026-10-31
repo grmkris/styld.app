@@ -117,9 +117,9 @@ Controls render through `@foldkit/ui`'s headless views (text buttons through `ac
   paper. The wardrobe grid of cutouts on paper is Styld's signature.
 - Sheets rise from the bottom edge with 24px top corners, stock fill and a soft shadow (the diagnostics prompt is one).
 - Translucency (frost, scrim, veil) only over photos and behind sheets; never blur behind text.
-- **Navigation (signed in): Home, Explore, Ask, Wardrobe, Boards** (owner, 2026-10-30). Ask sits in the middle as a
-  filled ink circle, the one thing to do from anywhere. You is reached through the avatar.
-- **Mobile:** a floating glass pill at the bottom carries the five items. The top bar keeps the logo and the avatar.
+- **Navigation (signed in): Home, Ask, Wardrobe, Boards** (owner, 2026-10-31). Ask is a filled ink circle, the one
+  thing to do from anywhere. You is reached through the avatar; Explore through the compass round in Home's head.
+- **Mobile:** a floating glass pill at the bottom carries the four items. The top bar keeps the logo and the avatar.
   The board editor is the exception: it has the whole screen and its own way back to Boards, because the pill would
   sit over its tray of pieces.
 - **Desktop:** the same items in a floating glass rail on the left, with the avatar under it.
