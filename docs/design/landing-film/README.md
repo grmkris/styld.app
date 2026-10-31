@@ -131,8 +131,42 @@ Evidence (Chromium, 1440×900 and 390×844, en, sl and reduced motion, on all fi
 - with reduced motion no video is requested and nothing turns by itself;
 - the flip book's taps and arrow keys turn the right stack, and its labels and counter follow.
 
+### The six new films (same evening)
+
+After the owner topped the Token Plan up, the six waiting films were made. The top-up ran out again after 16 Wan
+takes and 27 Qwen stills; the owner allowed Google's video model for the rest. The Veo 3.1 previews on the Gemini
+API were shut down on 22 October 2026. Their replacement, Gemini Omni Flash (`gemini-omni-1.1-flash`, Interactions
+API), pins a first and last frame by image order and made the last eight takes (8 s, 720p at 24 fps, scaled to
+1080p at 30 fps to stitch with Wan's). They cost about $6.40, roughly $0.80 a take.
+
+- **Two capsules**, women's and unisex, drawn label-free on a chroma-green sheet and keyed into transparent pieces
+  (`key.ts`). They replace the stand-in cut-outs with their labels.
+- **Keyframes** (`round3.ts`, `frames.ts`) are Qwen edits chained from one hero frame per concept. The shop's close
+  views are crops of its wide frames, so the pull-back and push-in join exactly.
+- **Phones**: a 9:16 window of the wide film. Top-down boards wider than that window are shown whole, with the oak
+  table mirrored above and below (`pad:`). "Where to" has its own tall frames.
+
+| Page | Film | Seams: joins / wrap / median step |
+| --- | --- | --- |
+| `styld-page-coat` | A camel coat fixed on a board through six outfits; a live, plural-aware counter (`3 videzi`). Shown at 2× | 0.18–0.64 / 0.93 / 0.39 |
+| `styld-page-beforebuy` | Sneakers leave a phone screen for a board; two outfits form around them | 0.27–0.33 / 0.95 / 0.35 |
+| `styld-page-shop` | A boutique rail re-dresses, the camera pulls back to a bedroom wardrobe, and back. Below: the capsule as a shop with category tabs, every price "Already yours" | 0.24–0.74 / 1.7 / 1.28 |
+| `styld-page-travel` | A paper suitcase on a map unpacks for the sun, switches for rain and packs again; the destination is typed live | 0.35–0.48 / 0.83 / 0.25 (tall 0.49–0.78 / 1.22) |
+| `styld-page-mirror` | Seen from behind, a woman in a robe; her reflection, below the shoulders, wears three outfits | 0.57–0.72 / 1.08 / 0.41 |
+| `styld-page-days` | The four scrapbook photos with the cream knit gather beside it; the way back is the take reversed | 0.13 / 0.67 / 0.18 |
+
+The seams are all below each film's 95th-percentile step (2.7–5.4). Each wrap is still 1.3–2.7 times the median
+step, more than the 1.5 the plan aimed for.
+
+Checks: every kept take was reviewed on a ten-frame contact sheet, for piece count, faces and text. The Chromium
+check passed on all six pages: desktop and phone, en, sl and reduced motion. It found no page errors and no failed
+requests, no copy overflowing, and only on-screen clips playing; with reduced motion, no video is requested. Two
+fixes came out of it:
+- the Slovenian headline on the days page was shortened, because it pushed the actions off the screen;
+- the mirror page's words moved left, so the reflection stays clear.
+
 Open:
-- The six waiting films.
-- The women's and unisex capsules for them.
-- The page weight: hero films are 3.5–4.7 MB wide.
+- Wide hero films are 2–4.7 MB and tall ones 1.1–2.4 MB, over the proposed 1.5 MB loop budget.
 - Safari on a real iPhone.
+- `DESIGN.md` needs an exception before any of this ships.
+- The owner's pick among the eleven pages.
