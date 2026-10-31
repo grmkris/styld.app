@@ -27,7 +27,10 @@ import {
   RenameBoard,
   SetBoardMoods,
   SetBoardVisibility,
+  FocusPin,
+  keepPinId,
   UnpinThings,
+  unpinId,
 } from './PageCommands.ts'
 
 // The board page's own steps: its settings sheet, its pins and the picker that adds them, and catching up when
@@ -131,9 +134,20 @@ const deletionConfirmed = (model: Model): UpdateReturn => ({
 
 const deleted = (model: Model): UpdateReturn => ({ model, commands: [LeaveBoard()] })
 
+/** The × asks first: the pin leaves the board and its table, and a picture is deleted, with no way to put it back. */
+const unpinAsked = (model: Model, pinId: string): UpdateReturn => ({
+  model: modifyFields(model, { unpinning: () => Option.some(pinId) }),
+  commands: [FocusPin({ selector: `#${keepPinId(pinId)}` })],
+})
+
 const unpinned = (model: Model, pinId: string): UpdateReturn => ({
-  model: modifyFields(model, { pinWork: () => PinWork.Sending() }),
+  model: modifyFields(model, { pinWork: () => PinWork.Sending(), unpinning: () => Option.none() }),
   commands: [UnpinThings({ boardId: model.boardId, pinIds: [pinId] })],
+})
+
+const pinKept = (model: Model, pinId: string): UpdateReturn => ({
+  model: modifyFields(model, { unpinning: () => Option.none() }),
+  commands: [FocusPin({ selector: `#${unpinId(pinId)}` })],
 })
 
 /** The picker opens with nothing ticked, and asks for the person's looks the first time. */
@@ -236,6 +250,9 @@ type PageTag =
   | 'FailedDeleteBoard'
   | 'CompletedLeaveBoard'
   | 'ClickedUnpin'
+  | 'ClickedConfirmUnpin'
+  | 'ClickedKeepPin'
+  | 'CompletedFocusPin'
   | 'ClickedAddPins'
   | 'GotPickerMessage'
   | 'ToggledPick'
@@ -274,7 +291,10 @@ export const pageSteps = (
   SucceededDeleteBoard: () => deleted(model),
   FailedDeleteBoard: () => ({ model: modifyFields(model, { removal: () => Removal.Failed() }) }),
   CompletedLeaveBoard: () => ({ model }),
-  ClickedUnpin: ({ pinId }) => unpinned(model, pinId),
+  ClickedUnpin: ({ pinId }) => unpinAsked(model, pinId),
+  ClickedConfirmUnpin: ({ pinId }) => unpinned(model, pinId),
+  ClickedKeepPin: ({ pinId }) => pinKept(model, pinId),
+  CompletedFocusPin: () => ({ model }),
   ClickedAddPins: () => pickerOpened(model),
   GotPickerMessage: (got) => foldPicker(model, got.message),
   ToggledPick: ({ pick }) => pickToggled(model, pick),

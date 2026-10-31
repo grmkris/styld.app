@@ -3088,7 +3088,11 @@
         "failed": "That didn’t go through. Try again."
       }
     },
-    "generated": "Generated"
+    "generated": "Generated",
+    "unpinAsk": "Take it off the board? It comes off the collage too.",
+    "unpinPictureAsk": "Take the picture off? It is deleted.",
+    "unpinConfirm": "Take off",
+    "unpinKeep": "Keep"
   },
   "boards": {
     "title": "Boards",

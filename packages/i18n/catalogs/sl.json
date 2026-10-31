@@ -3088,7 +3088,11 @@
         "failed": "Ni uspelo. Poskusi znova."
       }
     },
-    "generated": "Ustvarjeno"
+    "generated": "Ustvarjeno",
+    "unpinAsk": "Odstraniš iz zbirke? Umakne se tudi s kolaža.",
+    "unpinPictureAsk": "Odstraniš sliko? Izbrisala se bo.",
+    "unpinConfirm": "Odstrani",
+    "unpinKeep": "Obdrži"
   },
   "boards": {
     "title": "Zbirke",

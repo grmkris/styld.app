@@ -1,5 +1,5 @@
 import { Dialog } from '@foldkit/ui'
-import { format, type Locale } from '@styld/i18n'
+import { format, type Locale, type MessageKey } from '@styld/i18n'
 import { type Look, LookPin, Mood, type Paper, type Piece, type Pin, PiecePin, type PublicBoard } from '@styld/protocol'
 import { Array, Match, Option, Schema } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
@@ -15,6 +15,7 @@ import * as PeopleView from '../PeopleView.ts'
 import { publicToggle } from '../PublicToggle.ts'
 import { bottomSheet } from '../Sheet.ts'
 import { Message } from './Message.ts'
+import { keepPinId, unpinId } from './PageCommands.ts'
 import { boardStateView } from './Unready.ts'
 import { visitingView } from './Visiting.ts'
 import { type Model, PinWork, Publishing, Removal, Rename } from './Model.ts'
@@ -36,13 +37,51 @@ const lookMosaic = (look: Look, h: HtmlBuilder<Message>): Html =>
     ),
   )
 
-const unpinButton = (pinId: Pin['id'], label: string, h: HtmlBuilder<Message>): Html =>
-  h.button(
-    [h.Type('button'), h.AriaLabel(label), ...styled(h, styles.unpin()), h.OnClick(Message.ClickedUnpin({ pinId }))],
-    [closeIcon(h)],
-  )
+/** The pin's ×, or, once pressed, the question over the tile: Take off, or Keep. */
+type Unpin = { readonly pinId: Pin['id']; readonly label: string; readonly question: MessageKey }
 
-const pinView = (pin: Pin, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const unpinButton = (
+  { pinId, label, question }: Unpin,
+  asking: boolean,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html =>
+  asking
+    ? h.div(
+        [h.Role('group'), h.AriaLabel(label), ...styled(h, styles.unpinAsk())],
+        [
+          h.p(styled(h, styles.unpinQuestion()), [format(locale, question, {})]),
+          actionButton(
+            {
+              label: format(locale, 'board.unpinConfirm', {}),
+              style: cx(primaryAction(), smallAction()),
+              onClick: Message.ClickedConfirmUnpin({ pinId }),
+            },
+            h,
+          ),
+          h.button(
+            [
+              h.Type('button'),
+              h.Id(keepPinId(pinId)),
+              ...styled(h, cx(secondaryAction(), smallAction())),
+              h.OnClick(Message.ClickedKeepPin({ pinId })),
+            ],
+            [format(locale, 'board.unpinKeep', {})],
+          ),
+        ],
+      )
+    : h.button(
+        [
+          h.Type('button'),
+          h.Id(unpinId(pinId)),
+          h.AriaLabel(label),
+          ...styled(h, styles.unpin()),
+          h.OnClick(Message.ClickedUnpin({ pinId })),
+        ],
+        [closeIcon(h)],
+      )
+
+const pinView = (pin: Pin, asking: boolean, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.keyed('li')(
     pin.id,
     [...styled(h, styles.pin())],
@@ -62,7 +101,16 @@ const pinView = (pin: Pin, locale: Locale, h: HtmlBuilder<Message>): Html =>
               ]),
             ],
           ),
-          unpinButton(id, format(locale, 'board.unpin', { name: pieceName(piece, locale) }), h),
+          unpinButton(
+            {
+              pinId: id,
+              label: format(locale, 'board.unpin', { name: pieceName(piece, locale) }),
+              question: 'board.unpinAsk',
+            },
+            asking,
+            locale,
+            h,
+          ),
         ],
         PicturePin: ({ id, imageId, generated }) => [
           h.span(styled(h, styles.pinFrame()), [
@@ -74,7 +122,12 @@ const pinView = (pin: Pin, locale: Locale, h: HtmlBuilder<Message>): Html =>
             ]),
           ]),
           generated ? generatedMark(locale, h) : h.empty,
-          unpinButton(id, format(locale, 'board.unpinPicture', {}), h),
+          unpinButton(
+            { pinId: id, label: format(locale, 'board.unpinPicture', {}), question: 'board.unpinPictureAsk' },
+            asking,
+            locale,
+            h,
+          ),
         ],
         LookPin: ({ id, look }) => [
           h.a(
@@ -84,7 +137,12 @@ const pinView = (pin: Pin, locale: Locale, h: HtmlBuilder<Message>): Html =>
               h.span(styled(h, styles.pinName()), [look.name]),
             ],
           ),
-          unpinButton(id, format(locale, 'board.unpin', { name: look.name }), h),
+          unpinButton(
+            { pinId: id, label: format(locale, 'board.unpin', { name: look.name }), question: 'board.unpinAsk' },
+            asking,
+            locale,
+            h,
+          ),
         ],
       }),
     ),
@@ -135,7 +193,7 @@ const pinsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
         onNonEmpty: (pins) =>
           h.ul(
             styled(h, styles.grid()),
-            Array.map(pins, (pin) => pinView(pin, locale, h)),
+            Array.map(pins, (pin) => pinView(pin, Option.contains(model.unpinning, pin.id), locale, h)),
           ),
       }),
     ],

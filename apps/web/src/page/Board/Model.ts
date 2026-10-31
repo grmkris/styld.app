@@ -130,6 +130,8 @@ export const Model = Schema.Struct({
   /** What is pinned on the board, newest first. */
   pins: Schema.Array(Pin),
   pinWork: PinWork,
+  /** The pin whose × was pressed: it asks once more, since it comes off the table too (and a picture is deleted). */
+  unpinning: Schema.Option(Schema.String),
   /** The settings sheet: the name being typed, a rename and a deletion. */
   settings: Dialog.Model,
   nameDraft: Schema.String,
@@ -183,6 +185,7 @@ export const init = (boardId: string, signedIn = true): Model => ({
   items: [],
   pins: [],
   pinWork: PinWork.Idle(),
+  unpinning: Option.none(),
   settings: Dialog.init({ id: 'board-settings' }),
   nameDraft: '',
   rename: Rename.Idle(),

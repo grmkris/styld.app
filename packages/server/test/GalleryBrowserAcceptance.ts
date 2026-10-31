@@ -256,6 +256,7 @@ const verifyBoardPage = async (page: Page, origin: string) => {
   for (const name of ['Cable knit', 'Denim shorts', 'Derby shoes', 'A picture'])
     await page.getByRole('img', { name, exact: true }).first().waitFor({ state: 'visible' })
   await page.getByRole('button', { name: 'Take Derby shoes off the board' }).click()
+  await page.getByRole('button', { name: 'Take off', exact: true }).click()
   await page.getByText('3 pins').waitFor({ state: 'visible' })
   await shoot(page, 'phone-board-page')
 

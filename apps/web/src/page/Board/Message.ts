@@ -117,6 +117,9 @@ export const Message = defineMessageUnion({
   CompletedLeaveBoard: {},
 
   ClickedUnpin: { pinId: PinId },
+  ClickedConfirmUnpin: { pinId: PinId },
+  ClickedKeepPin: { pinId: PinId },
+  CompletedFocusPin: {},
   ClickedAddPins: {},
   GotPickerMessage: { message: Dialog.Message },
   ToggledPick: { pick: Schema.String },

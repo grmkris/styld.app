@@ -18,6 +18,7 @@ import {
 } from '../src/page/Board/Model.ts'
 import {
   DeleteBoard,
+  FocusPin,
   LeaveBoard,
   LoadLooks,
   PinThings,
@@ -184,11 +185,31 @@ describe('a board page', () => {
     )
   })
 
+  test('the × asks first, and Keep leaves the pin where it is', () => {
+    story(
+      update,
+      given(open),
+      message(Message.ClickedUnpin({ pinId: knitPin.id })),
+      Command.expectExact(FocusPin),
+      model(({ unpinning }) => expect(unpinning).toEqual(Option.some(knitPin.id))),
+      Command.resolve(FocusPin, Message.CompletedFocusPin()),
+      message(Message.ClickedKeepPin({ pinId: knitPin.id })),
+      Command.expectExact(FocusPin),
+      Command.resolve(FocusPin, Message.CompletedFocusPin()),
+      model(({ unpinning, pins }) => {
+        expect(unpinning).toEqual(Option.none())
+        expect(pins).toHaveLength(1)
+      }),
+    )
+  })
+
   test('taking a pin off also takes it off the table, as the server answers', () => {
     story(
       update,
       given(open),
       message(Message.ClickedUnpin({ pinId: knitPin.id })),
+      Command.resolve(FocusPin, Message.CompletedFocusPin()),
+      message(Message.ClickedConfirmUnpin({ pinId: knitPin.id })),
       Command.expectExact(UnpinThings),
       Command.resolve(UnpinThings, Message.SucceededPins({ board: withPins([], { version: 3, items: [] }) })),
       model(({ pins, items, version }) => {
@@ -204,6 +225,8 @@ describe('a board page', () => {
       update,
       given(open),
       message(Message.ClickedUnpin({ pinId: knitPin.id })),
+      Command.resolve(FocusPin, Message.CompletedFocusPin()),
+      message(Message.ClickedConfirmUnpin({ pinId: knitPin.id })),
       Command.resolve(UnpinThings, Message.FailedPins()),
       model(({ pins, pinWork }) => {
         expect(pins).toHaveLength(1)

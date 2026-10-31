@@ -1,7 +1,7 @@
 import { BoardId, BoardName, LookId, Mood, OperationId, PieceId, PinId } from '@styld/protocol'
 import { Effect, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
-import { Command } from 'foldkit'
+import { Command, Dom } from 'foldkit'
 import { load as loadPage } from 'foldkit/navigation'
 import { boardsRouter } from '../../route.ts'
 import { StyldClient } from '../../StyldClient.ts'
@@ -111,6 +111,17 @@ export const PinThings = Command.define('PinThings', {
       return Message.SucceededPins({ board })
     }).pipe(Effect.orElseSucceed(() => Message.FailedPins())),
 })
+
+/** The unpin question's Keep takes focus as it opens, and the × takes it back when the pin stays. */
+export const FocusPin = Command.define('FocusPin', {
+  args: { selector: Schema.String },
+  messages: [Message.CompletedFocusPin],
+  execute: ({ selector }) => Dom.focus(selector).pipe(Effect.ignore, Effect.as(Message.CompletedFocusPin())),
+})
+
+/** The ids the pin's × and its Keep carry, so focus can move between them. */
+export const unpinId = (pinId: string) => `unpin-${pinId}`
+export const keepPinId = (pinId: string) => `keep-${pinId}`
 
 export const UnpinThings = Command.define('UnpinThings', {
   args: { boardId: Schema.String, pinIds: Schema.Array(Schema.String) },

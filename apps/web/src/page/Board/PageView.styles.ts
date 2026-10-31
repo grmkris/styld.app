@@ -94,6 +94,20 @@ export const mosaic = style({
 })
 export const pinName = style({ paddingInline: '4px', fontSize: '13px', fontWeight: 600 })
 /** Taking a pin off: a small round over the pin's corner. */
+/** The unpin question over the tile: what happens, then Take off and Keep, full width. */
+export const unpinAsk = style({
+  position: 'absolute',
+  inset: '0',
+  display: 'grid',
+  alignContent: 'end',
+  gap: '8px',
+  padding: '10px',
+  borderRadius: 'panel',
+  backgroundColor: 'stock',
+  boxShadow: '0 1px 2px oklch(0 0 0 / 0.05), 0 8px 24px oklch(0 0 0 / 0.08) !custom',
+  '& > button': { inlineSize: '100%' },
+})
+export const unpinQuestion = style({ fontSize: '13px', lineHeight: 1.4, color: 'ink', textWrap: 'pretty' })
 export const unpin = style({
   position: 'absolute',
   insetBlockStart: '0',

@@ -588,7 +588,11 @@ export interface MessageArgumentsByKey<T = string> {
   'board.undo': Readonly<Record<string, never>>
   'board.undoRemove': Readonly<Record<string, never>>
   'board.unpin': { readonly name: string | number }
+  'board.unpinAsk': Readonly<Record<string, never>>
+  'board.unpinConfirm': Readonly<Record<string, never>>
+  'board.unpinKeep': Readonly<Record<string, never>>
   'board.unpinPicture': Readonly<Record<string, never>>
+  'board.unpinPictureAsk': Readonly<Record<string, never>>
   'board.wardrobe': Readonly<Record<string, never>>
   'board.wardrobeEmpty': Readonly<Record<string, never>>
   'board.wardrobeFailed': Readonly<Record<string, never>>
@@ -2741,4 +2745,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '535bbafc502c32bc89ae75deffbba127957f2a6272477fc69bfa2afee0c62dbb'
+export const catalogVersion = '339ab0b70fc0c472b4a9a79edc289d7a0d3cea36552034d359122a849f7463f5'
