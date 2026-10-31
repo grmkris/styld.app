@@ -158,6 +158,17 @@ const actionsView = (model: Model, photo: Photo, inputs: Inputs, h: HtmlBuilder<
           [h.Href(lookRouter({ lookId: photo.lookId })), ...styled(h, secondaryAction())],
           [format(locale, 'photo.openLook', {})],
         ),
+    photo.hasCutout
+      ? h.empty
+      : actionButton(
+          {
+            label: format(locale, 'photo.cutOut', {}),
+            style: secondaryAction(),
+            onClick: Message.ClickedCutOut(),
+            isDisabled: Work.guards.Sending(model.work),
+          },
+          h,
+        ),
     h.button(
       [
         h.Type('button'),
@@ -231,9 +242,13 @@ const loadedView = (model: Model, photo: Photo, inputs: Inputs, h: HtmlBuilder<M
         })
       : h.empty,
     deletionView(model, locale, h),
-    Work.guards.Failed(model.work)
-      ? h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, 'photo.workFailed', {})])
+    Work.guards.Failed(model.work) || Work.guards.NoPerson(model.work)
+      ? h.p(
+          [h.Role('alert'), ...styled(h, formError())],
+          [format(locale, Work.guards.NoPerson(model.work) ? 'photo.noPerson' : 'photo.workFailed', {})],
+        )
       : h.empty,
+    photo.hasCutout ? h.p(styled(h, styles.note()), [format(locale, 'photo.cutOutDone', {})]) : h.empty,
     photo.status === 'finding'
       ? h.p([h.Role('status'), ...styled(h, styles.note())], [loader(h), format(locale, 'photos.finding', {})])
       : photo.status === 'failed'

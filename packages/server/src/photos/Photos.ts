@@ -28,6 +28,7 @@ import { receivedUpload, type Uploads } from '../mcp/ImageImport.ts'
 import { deliverImage } from '../wardrobe/Delivery.ts'
 import type { ShownImage } from '../wardrobe/Http.ts'
 import type { ImageSize } from '../wardrobe/Media.ts'
+import { cutOutPerson } from './Cutout.ts'
 import { finding, type PhotoParts, photoHold, photoPrefix } from './Finding.ts'
 import type { GarmentRow, PhotoRow } from './Store.ts'
 
@@ -347,9 +348,17 @@ const lookOperation = (operationId: string) => OperationId.make(`${operationId.s
 const onBoard = <A, E>(effect: Effect.Effect<A, E, CurrentAccount>) =>
   effect.pipe(Effect.mapError((error) => (Predicate.isTagged(error, 'BoardNotFound') ? error : unavailable())))
 
-/** Putting a photo on a board: its own picture (the cut-out once there is one), held back from visitors, and the
- * look worn from it. A retried request whose picture is on the board already answers as done. */
+/** A photo for collages: the person cut out of it, and putting it on a board as its own picture (the cut-out once
+ * there is one), held back from visitors, with the look worn from it. A retried request whose picture is on the board
+ * already answers as done. */
 const boarding = (parts: PhotoParts, services: PhotoServices) => ({
+  /** Cut the person out of the photo for collages, once; free. */
+  cutOut: Effect.fn('Styld.Photos.cutOut')(function* (photoId: string) {
+    const { accountId } = yield* CurrentAccount
+    yield* cutOutPerson(parts, yield* ownPhoto(parts, accountId, photoId))
+    const [shown] = yield* photosOf(parts, [yield* ownPhoto(parts, accountId, photoId)])
+    return shown ?? (yield* PhotoNotFound.make({}))
+  }),
   addToBoard: Effect.fn('Styld.Photos.addToBoard')(function* (photoId: string, input: AddPhotoToBoard) {
     const { accountId } = yield* CurrentAccount
     const photo = yield* ownPhoto(parts, accountId, photoId)
@@ -404,6 +413,7 @@ const make = (parts: PhotoParts, services: PhotoServices) =>
       offerGarment: bound(all.offerGarment),
       wearAgain: bound(all.wearAgain),
       addToBoard: bound(all.addToBoard),
+      cutOut: bound(all.cutOut),
       piecePhotos: bound(all.piecePhotos),
       photoImage: bound(all.photoImage),
       garmentImage: bound(all.garmentImage),

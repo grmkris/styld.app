@@ -23,8 +23,8 @@ export const Shown = defineTaggedUnion({
 })
 export type Shown = typeof Shown.Type
 
-/** A change on its way, or one that did not go through. */
-export const Work = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {} })
+/** A change on its way, one that did not go through, or a cut-out that found no one. */
+export const Work = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {}, NoPerson: {} })
 export type Work = typeof Work.Type
 
 export const Deletion = defineTaggedUnion({ Idle: {}, Confirming: {}, Deleting: {}, Failed: {} })
@@ -65,6 +65,8 @@ export const Message = defineMessageUnion({
   ClickedOffer: { garmentId: PhotoGarmentId },
   /** "Wear it again", with the look's name in the person's language. */
   ClickedWearAgain: { name: Schema.String },
+  ClickedCutOut: {},
+  FailedCutOut: { noPerson: Schema.Boolean },
   SucceededChange: { photo: PhotoContract },
   SucceededWearAgain: { look: Look },
   FailedChange: {},
@@ -168,6 +170,22 @@ export const WearAgain = Command.define('WearAgain', {
 })
 
 /** @internal Exported for its tests. */
+export const CutOut = Command.define('CutOut', {
+  args: { photoId: Schema.String },
+  messages: [Message.SucceededChange, Message.FailedCutOut],
+  execute: ({ photoId }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      const photo = yield* api.photos.cutOut({ params: { photoId: yield* photoIdOf(photoId) } })
+      return Message.SucceededChange({ photo })
+    }).pipe(
+      Effect.catch((error) =>
+        Effect.succeed(Message.FailedCutOut({ noPerson: Predicate.isTagged(error, 'NoPersonFound') })),
+      ),
+    ),
+})
+
+/** @internal Exported for its tests. */
 export const DeletePhoto = Command.define('DeletePhoto', {
   args: { photoId: Schema.String },
   messages: [Message.SucceededDeletePhoto, Message.FailedDeletePhoto],
@@ -233,6 +251,10 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedCancelChoose: () => ({ model: modifyFields(model, { choosing: () => Option.none() }) }),
     ClickedOffer: ({ garmentId }) => sending(model, OfferGarment({ photoId: model.photoId, garmentId })),
     ClickedWearAgain: ({ name }) => sending(model, WearAgain({ photoId: model.photoId, name })),
+    ClickedCutOut: () => sending(model, CutOut({ photoId: model.photoId })),
+    FailedCutOut: ({ noPerson }) => ({
+      model: modifyFields(model, { work: () => (noPerson ? Work.NoPerson() : Work.Failed()) }),
+    }),
     SucceededChange: ({ photo }) => loaded(model, photo),
     SucceededWearAgain: ({ look }) => wornAgain(model, look),
     FailedChange: () => ({ model: modifyFields(model, { work: () => Work.Failed() }) }),

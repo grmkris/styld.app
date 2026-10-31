@@ -73,6 +73,9 @@ export type WearAgain = typeof WearAgain.Type
 export const AddPhotoToBoard = Schema.Struct({ operationId: OperationId, boardId: BoardId })
 export type AddPhotoToBoard = typeof AddPhotoToBoard.Type
 
+/** Styld found no person to cut out of the photo. */
+export class NoPersonFound extends Schema.TaggedError<NoPersonFound>()('NoPersonFound', {}, { httpApiStatus: 422 }) {}
+
 export class PhotoNotFound extends Schema.TaggedError<PhotoNotFound>()('PhotoNotFound', {}, { httpApiStatus: 404 }) {}
 
 /** A photo with no piece confirmed in it yet has nothing to wear again. */
@@ -136,6 +139,13 @@ export class PhotoApi extends HttpApiGroup.make('photos')
       payload: WearAgain,
       success: Look,
       error: [PhotoNotFound, NothingConfirmed, OperationConflict, CaptureUnavailable, RequestRefused],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.post('cutOut', '/photos/:photoId/cutout', {
+      params: photoPath,
+      success: Photo,
+      error: [PhotoNotFound, NoPersonFound, CaptureUnavailable, RequestRefused],
     }),
   )
   .add(

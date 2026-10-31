@@ -92,6 +92,17 @@ describe('an outfit photo', () => {
     )
   })
 
+  test('Cut out the outfit asks once, and says so when Styld found no one in the photo', () => {
+    story(
+      Photo.update,
+      given({ ...opened, shown: Photo.Shown.Loaded({ photo: ready }) }),
+      message(Photo.Message.ClickedCutOut()),
+      Command.expectExact(Photo.CutOut({ photoId: ready.id })),
+      Command.resolve(Photo.CutOut, Photo.Message.FailedCutOut({ noPerson: true })),
+      model(({ work }) => expect(work).toEqual(Photo.Work.NoPerson())),
+    )
+  })
+
   test('deleting asks first, then goes back to the gallery', () => {
     story(
       Photo.update,

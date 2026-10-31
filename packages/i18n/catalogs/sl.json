@@ -911,6 +911,9 @@
     "deleteQuestion": "Izbrišem to fotografijo? Kosi ostanejo v tvoji garderobi.",
     "workFailed": "To ni šlo skozi. Poskusi znova.",
     "findFailed": "Na tej fotografiji ni bilo mogoče najti oblačil. Kredit je vrnjen.",
-    "notFound": "Te fotografije ni več."
+    "notFound": "Te fotografije ni več.",
+    "cutOut": "Izreži opravo",
+    "cutOutDone": "Oprava je izrezana: na tablo gre sama.",
+    "noPerson": "Na tej fotografiji ni bilo mogoče najti osebe."
   }
 }

@@ -111,6 +111,11 @@ const writes = (db: Db) => ({
     attempt(() =>
       db.update(outfitPhotos).set({ favourite, updatedAt: at }).where(ofAccount(accountId, photoId)).returning(),
     ).pipe(Effect.map(first)),
+  /** The person cut out of the photo, for collages. */
+  setCutout: (accountId: string, photoId: string, cutoutKey: string, at: Date) =>
+    attempt(() => db.update(outfitPhotos).set({ cutoutKey, updatedAt: at }).where(ofAccount(accountId, photoId))).pipe(
+      Effect.asVoid,
+    ),
   /** The look "Wear it again" saved from the photo. */
   setLook: (accountId: string, photoId: string, lookId: string, at: Date) =>
     attempt(() => db.update(outfitPhotos).set({ lookId, updatedAt: at }).where(ofAccount(accountId, photoId))).pipe(

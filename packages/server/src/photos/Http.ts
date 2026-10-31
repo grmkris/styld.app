@@ -31,6 +31,7 @@ export const photoHandlers = (admit: Admit) =>
         .handle('wearAgain', ({ params, payload }) =>
           admit(asSessionAccount(photos.wearAgain(params.photoId, payload))),
         )
+        .handle('cutOut', ({ params }) => admit(asSessionAccount(photos.cutOut(params.photoId))))
         .handle('addToBoard', ({ params, payload }) =>
           admit(asSessionAccount(photos.addToBoard(params.photoId, payload))),
         )

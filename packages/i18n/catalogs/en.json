@@ -911,6 +911,9 @@
     "deleteQuestion": "Delete this photo? Its pieces stay in your wardrobe.",
     "workFailed": "That didn’t go through. Try again.",
     "findFailed": "Styld couldn’t find the clothes in this photo. Your credit came back.",
-    "notFound": "This photo isn’t here any more."
+    "notFound": "This photo isn’t here any more.",
+    "cutOut": "Cut out the outfit",
+    "cutOutDone": "The outfit is cut out: a board gets it on its own.",
+    "noPerson": "Styld found no one to cut out of this photo."
   }
 }

@@ -143,6 +143,8 @@ const verifyOffering = async (origin: string, owner: Call) => {
     await (await owner(`/api/photos/${photo.id}`)).json(),
   )
   expect(remembered.lookId).toBe(look.id)
+  // Natively nothing can be cut out: the providers are off, and the answer says try later rather than calling out.
+  expect((await send(owner, `/api/photos/${photo.id}/cutout`, 'POST')).status).toBe(503)
   await verifyOnBoard(origin, owner, photo.id)
 }
 

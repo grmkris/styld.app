@@ -813,4 +813,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'photo.workFailed': 'To ni šlo skozi. Poskusi znova.',
   'photo.findFailed': 'Na tej fotografiji ni bilo mogoče najti oblačil. Kredit je vrnjen.',
   'photo.notFound': 'Te fotografije ni več.',
+  'photo.cutOut': 'Izreži opravo',
+  'photo.cutOutDone': 'Oprava je izrezana: na tablo gre sama.',
+  'photo.noPerson': 'Na tej fotografiji ni bilo mogoče najti osebe.',
 }
