@@ -2,6 +2,7 @@ import type * as Cloudflare from '@alchemy.run/cloudflare'
 import { Cause, Effect, Schema } from 'effect'
 import type { AccountLifecycle } from '../AccountLifecycle.ts'
 import type { Captures } from '../capture/Service.ts'
+import type { Photos } from '../photos/Photos.ts'
 import { WorkMessage } from './Processing.ts'
 import type { Wardrobe } from './Wardrobe.ts'
 
@@ -31,6 +32,7 @@ export const settleMessage = (
       | 'suggestPiece'
       | 'failSuggestion'
     >
+    readonly photos: Pick<Photos['Service'], 'findGarments' | 'failFinding'>
   },
   message: Cloudflare.Queues.Message,
 ) => {
@@ -58,6 +60,8 @@ export const settleMessage = (
         return work(services.captures.processCapture(body.captureId), services.captures.failCapture(body.captureId))
       if ('matchOf' in body)
         return work(services.captures.processMatch(body.matchOf), services.captures.failMatch(body.matchOf))
+      if ('findIn' in body)
+        return work(services.photos.findGarments(body.findIn), services.photos.failFinding(body.findIn))
       if ('suggestFor' in body)
         return work(services.captures.suggestPiece(body.suggestFor), services.captures.failSuggestion(body.suggestFor))
       if ('turnOf' in body)

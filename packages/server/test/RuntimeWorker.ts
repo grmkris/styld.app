@@ -152,6 +152,14 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
           ),
         ),
       ),
+      // An owner and a second account for My Gallery.
+      HttpRouter.add(
+        'POST',
+        '/test/identity/seed-photos',
+        doneWhenFree(
+          Effect.forEach(['native-photos', 'native-photos-other'], (id) => whenFree(seedIdentity(database, id))),
+        ),
+      ),
       // An owner and a second account for the outfit engine.
       HttpRouter.add(
         'POST',

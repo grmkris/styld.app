@@ -22,6 +22,9 @@ export const MatchCapture = Schema.Struct({ matchOf: Schema.String })
 /** Queue message: ask the decision model once about a piece carried over from the old categories. */
 export const SuggestPiece = Schema.Struct({ suggestFor: Schema.String })
 
+/** Queue message: find the garments in an outfit photo (My Gallery). */
+export const FindInPhoto = Schema.Struct({ findIn: Schema.String })
+
 /** Every message the Worker's queue carries. */
 export const WorkMessage = Schema.Union([
   ProcessPiece,
@@ -31,6 +34,7 @@ export const WorkMessage = Schema.Union([
   MakeTurn,
   MatchCapture,
   SuggestPiece,
+  FindInPhoto,
 ])
 export type WorkMessage = typeof WorkMessage.Type
 

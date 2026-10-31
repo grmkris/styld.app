@@ -69,6 +69,9 @@ import { Stylist } from './stylist/StylistObject.ts'
 import { chatStoreOf, makeStylistLive } from './stylist/Live.ts'
 import { askStandIn, captureProviders } from './capture/Live.ts'
 import { outfitsLive } from './outfits/Live.ts'
+import { photoRoutes } from './photos/Http.ts'
+import { makePhotoParts } from './photos/Finding.ts'
+import { makePhotos, Photos } from './photos/Photos.ts'
 import { Outfits, type OutfitParts } from './outfits/Outfits.ts'
 
 // The server formats in every language: page renders and code emails.
@@ -139,6 +142,7 @@ const storageServices = <R>(
     const wardrobeService = yield* makeWardrobe(bindings).pipe(Effect.provide(pieceChanged))
     const lifecycleService = yield* makeAccountLifecycle(bindings, bindings.forgetChats)
     const capturesService = yield* makeCaptures(bindings).pipe(Effect.provide(pieceChanged))
+    const photosService = yield* makePhotos(yield* makePhotoParts(bindings).pipe(Effect.provide(pieceChanged)))
     const looksService = yield* makeLooks(bindings.database, checksService)
     const boardsService = yield* makeBoards(bindings, checksService)
     const profilesService = makeProfiles(bindings.database, checksService)
@@ -172,6 +176,8 @@ const storageServices = <R>(
       wardrobe: Layer.succeed(Wardrobe, wardrobeService),
       lifecycle: Layer.succeed(AccountLifecycle, lifecycleService),
       captures: Layer.succeed(Captures, capturesService),
+      photosService,
+      photos: Layer.succeed(Photos, photosService),
       looks: Layer.succeed(Looks, looksService),
       boards: Layer.succeed(Boards, boardsService),
       worn: Layer.succeed(Worn, makeWorn(bindings.database, yield* CaptureMetricsService)),
@@ -419,6 +425,7 @@ const makeApplication =
         wardrobeRoutes(auth).pipe(Layer.provide(wardrobe)),
         boardRoutes(auth).pipe(Layer.provide(boards)),
         captureRoutes(auth).pipe(Layer.provide(captures)),
+        photoRoutes(auth).pipe(Layer.provide(services.photos)),
         oauth.routes,
         mcpRoutes(
           db,
@@ -437,6 +444,7 @@ const makeApplication =
         wardrobe: wardrobeService,
         lifecycle: lifecycleService,
         captures: capturesService,
+        photos: services.photosService,
         checks: services.checksService,
         generations: services.generationsService,
         stylist: services.stylistService,

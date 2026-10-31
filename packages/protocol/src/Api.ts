@@ -58,6 +58,7 @@ import {
 } from './Board.ts'
 import { CreateLook, Look, LookId, LookNotFound, Looks } from './Look.ts'
 import { OutfitApi } from './Outfit.ts'
+import { PhotoApi } from './Photo.ts'
 import { Day, WearPieces, WornDay, WornDays, WornRange } from './Worn.ts'
 import {
   AddPiece,
@@ -443,4 +444,5 @@ export class StyldApi extends HttpApi.make('styld')
   .add(LinkApi)
   .add(GenerationApi)
   .add(StylistApi)
-  .add(OutfitApi) {}
+  .add(OutfitApi)
+  .add(PhotoApi) {}

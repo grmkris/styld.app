@@ -79,6 +79,7 @@ const services = (
         suggestPiece: notUsed,
         failSuggestion: notUsed,
       },
+      photos: { findGarments: notUsed, failFinding: notUsed },
     },
   }
 }

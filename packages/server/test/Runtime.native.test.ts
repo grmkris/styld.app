@@ -19,6 +19,7 @@ import { verifyGallery } from './GalleryAcceptance.ts'
 import { verifySocial } from './SocialAcceptance.ts'
 import { verifyGeneration } from './GenerationAcceptance.ts'
 import { verifyOutfits } from './OutfitAcceptance.ts'
+import { verifyPhotos } from './PhotosAcceptance.ts'
 import { verifyFirstSignedInTogether } from './SessionSetupAcceptance.ts'
 import { verifyPublicJourney } from './SocialBrowserAcceptance.ts'
 import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
@@ -188,6 +189,11 @@ test('keeps profiles and checks whatever goes public first', overHttp(verifySoci
 test('makes stickers and mood boards of the person’s pieces for a board, once each', overHttp(verifyGeneration), {
   timeout: 90000,
 })
+test(
+  'keeps the person’s outfit photos private: finding garments for a credit, matching, favourites and deletion',
+  overHttp(verifyPhotos),
+  { timeout: 60000 },
+)
 test(
   'makes ranked outfits of the person’s own pieces, Fast and Thinking, never repeating one and keeping their pace and cap',
   overHttp(verifyOutfits),
@@ -361,7 +367,7 @@ test(
           'accounts auth_attempt_buckets blocks board_images board_items board_pins boards capture_frames ' +
           'captures content_checks detections follows generation_jobs generation_pictures look_pieces looks ' +
           'oauth_assertions oauth_clients ' +
-          'oauth_grants operation_receipts piece_pictures piece_turns pieces profiles reports saves ' +
+          'oauth_grants operation_receipts outfit_photos photo_garments piece_pictures piece_turns pieces profiles reports saves ' +
           'styld_auth_credentials styld_auth_email_credentials styld_auth_identifiers styld_auth_passwords ' +
           'styld_auth_pending styld_auth_proofs styld_auth_sessions thinking_days uploads worn_pieces'
         ).split(' '),

@@ -19,7 +19,7 @@ const scopeOf = (capture: CaptureRow): MatchScope => ({
 })
 
 /** A stored cut-out as the decision model compares it; none when it is gone or is not a cut-out. */
-const comparable = (parts: Parts, key: string | null) =>
+export const comparable = (parts: Parts, key: string | null) =>
   key === null
     ? Effect.succeed(Option.none<Picture>())
     : Effect.map(
@@ -27,16 +27,16 @@ const comparable = (parts: Parts, key: string | null) =>
         Option.map((picture) => sent(picture, judgedAt)),
       )
 
-/** The one of `candidates` most likely the garment in `picture`, if the decision model is sure enough of it. */
-const sameAs = <A>(
+/** The one of `candidates` most likely the garment in `picture`, if the decision model is at least `bar` sure of it. */
+export const sameAs = <A>(
   parts: Parts,
   picture: Picture,
   candidates: ReadonlyArray<A>,
   keyOf: (candidate: A) => string | null,
+  bar: number,
 ) =>
   Effect.gen(function* () {
     const vision = yield* GarmentVision
-    const bar = (yield* CaptureConfig).matching.same
     const scored = yield* Effect.forEach(
       candidates,
       (candidate) =>
@@ -65,7 +65,7 @@ const isPieceType = Schema.is(PieceType)
 
 /** The types a garment is compared within: every type that sits where it does in an outfit, so one misjudged type
  * never hides a duplicate (owner, 2026-10-31). */
-const comparedTypes = (suggested: string | null) =>
+export const comparedTypes = (suggested: string | null) =>
   Option.map(Option.liftPredicate(suggested, isPieceType), (type) => typesInSlot(slotOf(type)))
 
 /** Compare one sighting: with the garments its import already shows, joining the one it is (shown in that one's
@@ -78,7 +78,7 @@ const matchOne = (parts: Parts, capture: CaptureRow, detection: DetectionRow) =>
     const own = yield* comparable(parts, detection.cutoutKey)
     if (Option.isNone(types) || Option.isNone(own)) return alone
     const shown = yield* shownIn(parts, capture, types.value, policy.sightings)
-    const joined = yield* sameAs(parts, own.value, shown, (row) => row.cutoutKey)
+    const joined = yield* sameAs(parts, own.value, shown, (row) => row.cutoutKey, policy.same)
     if (Option.isSome(joined)) {
       const head = joined.value
       const replaces = (detection.whole ?? 0) > (head.whole ?? 0)
@@ -87,7 +87,7 @@ const matchOne = (parts: Parts, capture: CaptureRow, detection: DetectionRow) =>
     const candidates = yield* storedAs(
       parts.store.wardrobeCandidates(capture.accountId, types.value, detection.suggestedColours[0], policy.pieces),
     )
-    const piece = yield* sameAs(parts, own.value, candidates, (candidate) => candidate.imageKey)
+    const piece = yield* sameAs(parts, own.value, candidates, (candidate) => candidate.imageKey, policy.same)
     return { ...alone, duplicateOf: Option.match(piece, { onNone: () => null, onSome: ({ id }) => id }) }
   })
 
