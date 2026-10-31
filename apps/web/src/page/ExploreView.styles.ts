@@ -15,7 +15,10 @@ export const head = style({
   gap: '20px',
   '@media (min-width: 900px)': { display: 'flex', alignItems: 'center', gap: '24px' },
 })
-export const headSearch = style({ '@media (min-width: 900px)': { flex: 'none', inlineSize: '440px' } })
+/** The 52px search overhangs the 44px head row by 4px each way, so the title stays level with the other tabs'. */
+export const headSearch = style({
+  '@media (min-width: 900px)': { flex: 'none', inlineSize: '440px', marginBlock: '-4px' },
+})
 /** What a search found, in Explore's column. Focus lands on it after Enter without a ring, as on the page's title. */
 export const results = style({
   display: 'grid',
