@@ -49,6 +49,9 @@ export const cardName = style({ fontSize: '15px', fontWeight: 600 })
 /** The loading cards: the pieces' square, the name and the line under it. */
 export const collageSkeleton = style({ inlineSize: '100%', aspectRatio: '1 / 1', borderRadius: 'panel' })
 export const nameSkeleton = style({ fontSize: '15px' })
+/** A look's own page while it loads: the h1 (30px at 1.08 over `line`) and a piece row's 56px. */
+export const titleSkeleton = style({ fontSize: '30px', blockSize: '0.54em', marginBlock: '0.27em', inlineSize: '50%' })
+export const rowSkeleton = style({ blockSize: '56px', borderRadius: 'field' })
 export const metaSkeleton = style({ inlineSize: '40%', fontSize: '13px' })
 export const cardMeta = style({ fontSize: '13px', color: 'ink2' })
 /** A look's own page: where it stands under the title, the look laid out large, then its pieces as rows. */

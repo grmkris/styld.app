@@ -17,7 +17,7 @@ import { Message, type Model } from './Wardrobe.ts'
 import { categoryName, pieceLabel } from './WardrobeWords.ts'
 import * as styles from './WardrobeView.styles.ts'
 import { wardrobeMain } from './WardrobeTabs.ts'
-import { chip } from './AskView.styles.ts'
+import { chip, chipSkeleton } from './AskView.styles.ts'
 import { chosen } from './ExploreView.styles.ts'
 
 /** The small image of a piece; the API Worker serves it to its owner only. A new drawing is a new address. */
@@ -147,9 +147,9 @@ const loadingView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
     h.div(
       [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.categoryRowSkeleton())],
       [
-        h.span(styled(h, cx(line(), styles.filterSkeleton()))),
-        h.span(styled(h, cx(line(), styles.filterSkeleton()))),
-        h.span(styled(h, cx(line(), styles.filterSkeleton()))),
+        h.span(styled(h, cx(block(), chipSkeleton()))),
+        h.span(styled(h, cx(block(), chipSkeleton()))),
+        h.span(styled(h, cx(block(), chipSkeleton()))),
       ],
     ),
     h.ul(

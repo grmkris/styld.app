@@ -21,7 +21,7 @@ export const allowance = style({ fontSize: '13px', color: 'ink3', fontVariantNum
 export const grid = style({
   display: 'grid',
   gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-  gap: '12px 16px',
+  gap: '16px',
   marginBlockStart: '16px',
   padding: '0',
   listStyleType: 'none',

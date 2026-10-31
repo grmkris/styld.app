@@ -17,7 +17,7 @@ import { piecePickers } from './PieceFields.ts'
 import { type Decision, keptOf, Message, type Model, Saving, Tray } from './Review.ts'
 import { kindName } from './WardrobeWords.ts'
 import { backToWardrobe } from './PageBar.ts'
-import { round } from './PageBar.styles.ts'
+import { barStart, round } from './PageBar.styles.ts'
 import { message as messageSection, messageTitle } from './WardrobeView.styles.ts'
 import * as styles from './ReviewView.styles.ts'
 
@@ -334,7 +334,11 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
                 onClick: Message.ClickedDoneEditing(),
                 toView: (attributes) =>
                   h.button(
-                    [...attributes.button, h.AriaLabel(format(locale, 'common.back', {})), ...styled(h, round())],
+                    [
+                      ...attributes.button,
+                      h.AriaLabel(format(locale, 'common.back', {})),
+                      ...styled(h, cx(round(), barStart())),
+                    ],
                     [backIcon(h)],
                   ),
               },

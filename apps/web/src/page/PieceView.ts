@@ -14,7 +14,7 @@ import { Deletion, type Draft, Load, Message, type Model, type Redraw, ShowTurn 
 import { colourList, piecePickers } from './PieceFields.ts'
 import { categoryName, pieceLabel, subcategoryName } from './WardrobeWords.ts'
 import { backToWardrobe } from './PageBar.ts'
-import { round } from './PageBar.styles.ts'
+import { barEnd, round } from './PageBar.styles.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { cx } from 'zyzz'
@@ -322,7 +322,7 @@ const editRound = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html 
         [
           h.Type('button'),
           h.AriaLabel(format(locale, 'common.edit', {})),
-          ...styled(h, round()),
+          ...styled(h, cx(round(), barEnd())),
           h.OnClick(Message.ClickedEdit()),
         ],
         [editIcon(h)],

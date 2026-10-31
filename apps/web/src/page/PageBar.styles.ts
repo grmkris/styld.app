@@ -17,3 +17,5 @@ export const round = style({
 })
 /** A round that starts a page bar: its icon, not its 44px target, lines up with the gutter and the title below. */
 export const barStart = style({ marginInlineStart: '-12px' })
+/** A round that ends a page bar: its icon lines up with the gutter at the other edge. */
+export const barEnd = style({ marginInlineEnd: '-12px' })

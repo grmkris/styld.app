@@ -6,7 +6,7 @@ import { actionButton } from '../ActionButton.ts'
 import { linkAction, secondaryAction } from '../Actions.styles.ts'
 import { confirmActions } from '../ConfirmActions.ts'
 import { formError } from '../Fields.styles.ts'
-import { backIcon, loader } from '../Icon.ts'
+import { backIcon } from '../Icon.ts'
 import { looksRouter, pieceRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { Deletion, Message, type Model, Sharing, Shown } from './Look.ts'
@@ -15,7 +15,9 @@ import { publicToggle } from './PublicToggle.ts'
 import * as PeopleView from './PeopleView.ts'
 import { byline, pieceTile, tileGrid } from './PublicTiles.ts'
 import * as SaveToBoardView from './SaveToBoardView.ts'
-import { round } from './PageBar.styles.ts'
+import { barStart, round } from './PageBar.styles.ts'
+import { block, line } from '../Skeleton.styles.ts'
+import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { pieceLabel } from './WardrobeWords.ts'
 import { collage, couldNotLoad } from './LooksView.ts'
 import { categoryName } from './WardrobeWords.ts'
@@ -24,7 +26,11 @@ import * as styles from './LooksView.styles.ts'
 
 const backToLooks = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.a(
-    [h.Href(looksRouter({})), h.AriaLabel(format(locale, 'looks.backToLooks', {})), ...styled(h, round())],
+    [
+      h.Href(looksRouter({})),
+      h.AriaLabel(format(locale, 'looks.backToLooks', {})),
+      ...styled(h, cx(round(), barStart())),
+    ],
     [backIcon(h)],
   )
 
@@ -132,6 +138,20 @@ const pieceRows = (look: Look, locale: Locale, h: HtmlBuilder<Message>): Html =>
     ],
   )
 
+/** The look in shape while it loads: its name, its square of pieces and two rows, and what is loading. */
+const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
+  h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
+  h.span([h.AriaHidden(true), ...styled(h, cx(line(), styles.titleSkeleton()))]),
+  h.div(
+    [h.AriaHidden(true), ...styled(h, styles.lookCollage())],
+    [h.span(styled(h, cx(block(), styles.collageSkeleton())))],
+  ),
+  h.div(
+    [h.AriaHidden(true), ...styled(h, styles.pieceRows())],
+    [0, 1].map(() => h.span(styled(h, cx(block(), styles.rowSkeleton())))),
+  ),
+]
+
 /** One look: its name and where it stands, the look laid out, saving and sharing it, its pieces, and deleting it. */
 export const view = Submodel.defineView<Model, Message, PeopleView.Inputs>((model, { locale, signedIn }, h) =>
   h.main(
@@ -139,7 +159,7 @@ export const view = Submodel.defineView<Model, Message, PeopleView.Inputs>((mode
     [
       Shown.guards.Visiting(model.shown) ? h.empty : h.div([], [backToLooks(locale, h)]),
       ...Shown.match(model.shown, {
-        Loading: () => [h.p([h.Role('status')], [loader(h)])],
+        Loading: () => loadingView(locale, h),
         NotFound: () => [h.h1([], [format(locale, 'looks.notFound', {})])],
         Visiting: ({ page }) => visitingView(model, page, { locale, signedIn }, h),
         Failed: () => [
