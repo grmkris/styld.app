@@ -13,16 +13,19 @@ import { Array, Option, Schema } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../../ActionButton.ts'
-import { backIcon, loader } from '../../Icon.ts'
+import { backIcon } from '../../Icon.ts'
 import { boardRouter, lookRouter } from '../../route.ts'
+import { block } from '../../Skeleton.styles.ts'
 import { styled } from '../../Styled.ts'
+import { visuallyHidden } from '../../VisuallyHidden.styles.ts'
+import { cx } from 'zyzz'
 import { MeasurePaper } from './Commands.ts'
 import { boardImage, itemContent, itemStyle, pieceImage, placement } from './Table.ts'
 import { type KeyStep, Message } from './Message.ts'
 import { Gesture, LookSave, type Model, Saving, Toast, Upload } from './Model.ts'
 import { boardStateView } from './Unready.ts'
 import * as styles from './View.styles.ts'
-import { selectionView, toolbarView } from './ViewTools.ts'
+import { saveLookView, selectionView, toolbarView } from './ViewTools.ts'
 
 const primaryButton = 0
 
@@ -257,6 +260,21 @@ const trayPicture = (imageId: PicturePin['imageId'], locale: Locale, h: HtmlBuil
     ],
   )
 
+/** The tray's tiles in shape while the wardrobe loads, and what is loading for assistive technology. */
+const trayLoading = (locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.div(
+    [],
+    [
+      h.ul(
+        [h.AriaHidden(true), ...styled(h, styles.trayList())],
+        [0, 1, 2, 3, 4].map((index) =>
+          h.keyed('li')(String(index), [], [h.span(styled(h, cx(block(), styles.traySkeleton())))]),
+        ),
+      ),
+      h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
+    ],
+  )
+
 /** The tray: what is pinned on the board first, then the rest of the wardrobe. */
 const trayView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const onTable = new Set(Array.flatMap(model.items, (item) => (Schema.is(PieceItem)(item) ? [item.pieceId] : [])))
@@ -271,7 +289,7 @@ const trayView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
     Schema.is(PicturePin)(pin) && !picturesOnTable.has(pin.imageId) ? [pin.imageId] : [],
   )
   const body = AsyncData.matchData(model.wardrobe.pieces, {
-    onEmpty: () => h.p([h.Role('status'), ...styled(h, styles.fine())], [loader(h)]),
+    onEmpty: () => trayLoading(locale, h),
     onFailure: () => h.p([h.Role('alert'), ...styled(h, styles.fine())], [format(locale, 'board.wardrobeFailed', {})]),
     onData: (pieces) => {
       const rest = Array.filter(pieces, (piece) => piece.status === 'ready' && !pinnedIds.has(piece.id))
@@ -293,22 +311,25 @@ const trayView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
 const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.page()), [
     h.header(styled(h, styles.header()), [
-      h.a(
-        [h.Href(boardRouter({ boardId: model.boardId })), ...styled(h, styles.back())],
-        [backIcon(h), format(locale, 'studio.backToBoard', {})],
-      ),
+      h.div(styled(h, styles.headerBar()), [
+        h.a(
+          [h.Href(boardRouter({ boardId: model.boardId })), ...styled(h, styles.back())],
+          [backIcon(h), format(locale, 'studio.backToBoard', {})],
+        ),
+        saveLookView(model, locale, h),
+      ]),
       h.h1(styled(h, styles.title()), [name]),
       statusView(model, locale, h),
     ]),
-    // On a phone the tray sits right under the table, so a piece tapped in lands in view; on a desktop it
-    // takes the column beside the table.
+    // The table, then what can be done to the selected item, then the tray: on a phone the tray holds the bottom of
+    // the screen, so a piece is one tap from the table; on a desktop it takes the column beside the table.
     h.div(styled(h, styles.stage()), [
       toolbarView(model, locale, h),
+      lookView(model, locale, h),
       paperView(model, paper, locale, h),
-      trayView(model, locale, h),
       toastView(model, locale, h),
       selectionView(model, paper, locale, h),
-      lookView(model, locale, h),
+      trayView(model, locale, h),
       h.p([h.Id('board-keys'), ...styled(h, styles.fine())], [format(locale, 'board.keys', {})]),
     ]),
   ])

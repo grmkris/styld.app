@@ -7,6 +7,15 @@ const itemOut = keyframes({ to: { opacity: 0, transform: 'scale(0.86)' } }, { id
 
 export const page = style({ display: 'grid', gap: '16px', paddingBlock: '8px 32px' })
 export const header = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px 16px' })
+/** The way back and Save as a look, at the two ends of the editor's first row. */
+export const headerBar = style({
+  display: 'flex',
+  flexBasis: '100%',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: '12px',
+})
+export const saveLook = style({ display: 'contents' })
 export const back = style({ display: 'inline-flex', alignItems: 'center', gap: '4px', minBlockSize: '44px' })
 export const title = style({ flex: '1 1 12rem', minInlineSize: '0' })
 export const status = style({ fontSize: '13px', color: 'ink3', '&[data-tone="error"]': { color: 'error' } })
@@ -47,6 +56,25 @@ export const tool = style({
   // A 40px pill with a 44px target.
   '::after': { content: '""', position: 'absolute', insetInline: '0', insetBlock: '-2px' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2Hover' } },
+  // On a phone a 44px round with its icon alone, so the six tools keep to one row.
+  '@media (max-width: 899px)': {
+    justifyContent: 'center',
+    inlineSize: '44px',
+    minBlockSize: '44px',
+    paddingInline: '0',
+    '::after': { insetBlock: '0' },
+  },
+})
+/** A tool's name: shown beside its icon on a desktop, read but not shown on a phone. */
+export const toolLabel = style({
+  '@media (max-width: 899px)': {
+    position: 'absolute',
+    inlineSize: '1px',
+    blockSize: '1px',
+    overflow: 'hidden',
+    clipPath: 'inset(50%)',
+    whiteSpace: 'nowrap',
+  },
 })
 
 /** The table: a 4:5 sheet whose width is 1000 units, so one unit is 0.1cqw. Items are placed by custom
@@ -280,6 +308,19 @@ export const tray = style({
   display: 'grid',
   gap: '8px',
   '& h2': { fontSize: '15px', fontWeight: 600 },
+  // On a phone the tray stays at the bottom of the screen while the table is in view, so a piece is one tap away.
+  '@media (max-width: 899px)': {
+    position: 'sticky',
+    insetBlockEnd: '0',
+    zIndex: 1,
+    marginInline: 'calc(-1 * max(20px, env(safe-area-inset-left)))',
+    paddingInline: 'max(20px, env(safe-area-inset-left))',
+    paddingBlock: '10px calc(10px + env(safe-area-inset-bottom))',
+    borderBlockStartWidth: '1px',
+    borderBlockStartStyle: 'solid',
+    borderBlockStartColor: 'rule',
+    backgroundColor: 'paper',
+  },
   '@media (min-width: 900px)': {
     position: 'sticky',
     insetBlockStart: '24px',
@@ -297,6 +338,8 @@ export const trayList = style({
   paddingBlockEnd: '4px',
   overflowX: 'auto',
   scrollSnapType: 'x proximity',
+  // Snapping lines the first piece up on the gutter, not the screen's edge.
+  scrollPaddingInline: 'max(20px, env(safe-area-inset-left))',
   listStyle: 'none',
   '& > li': { flex: '0 0 76px', scrollSnapAlign: 'start' },
   '@media (min-width: 900px)': {
@@ -308,6 +351,7 @@ export const trayList = style({
     '& > li': { flex: 'none' },
   },
 })
+export const traySkeleton = style({ aspectRatio: '1 / 1', borderRadius: 'panel' })
 export const trayPiece = style({
   display: 'grid',
   // One track the size of the tile, so a tall piece is fitted to the tile instead of growing it.

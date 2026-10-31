@@ -1,10 +1,10 @@
-import { FileDrop } from '@foldkit/ui'
+import { Button, FileDrop } from '@foldkit/ui'
 import { format, type Locale, type MessageKey } from '@styld/i18n'
-import { type BoardItem, ImageType, Paper, TextItem, TextStyle } from '@styld/protocol'
+import { type BoardItem, ImageType, Paper, PieceItem, TextItem, TextStyle } from '@styld/protocol'
 import { Array, Option, Schema } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../../ActionButton.ts'
-import { primaryAction } from '../../Actions.styles.ts'
+import { primaryAction, smallAction } from '../../Actions.styles.ts'
 import {
   addIcon,
   copyIcon,
@@ -20,6 +20,8 @@ import {
   undoIcon,
 } from '../../Icon.ts'
 import { styled } from '../../Styled.ts'
+import { visuallyHidden } from '../../VisuallyHidden.styles.ts'
+import { cx } from 'zyzz'
 import { findItem } from './Edits.ts'
 import { Message } from './Message.ts'
 import { LookSave, type Model, Upload } from './Model.ts'
@@ -27,8 +29,20 @@ import * as styles from './View.styles.ts'
 
 const pictureTypes: ReadonlyArray<string> = ImageType.literals
 
+/** An icon and its name; on a phone the name is read, not shown, so the tools keep to one row above the table. */
 const tool = (label: string, icon: Html, message: Message, isDisabled: boolean, h: HtmlBuilder<Message>): Html =>
-  actionButton({ label, leading: icon, style: styles.tool(), onClick: message, isDisabled }, h)
+  Button.view(
+    {
+      onClick: message,
+      isDisabled,
+      toView: (attributes) =>
+        h.button(
+          [...attributes.button, ...styled(h, styles.tool())],
+          [icon, h.span(styled(h, styles.toolLabel()), [label])],
+        ),
+    },
+    h,
+  )
 
 /** Add a picture: choose one, or drop it here (pictures dropped anywhere on the page work too). */
 const pictureTool = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
@@ -42,7 +56,11 @@ const pictureTool = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Htm
       toView: (attributes) =>
         h.label(
           [...attributes.root, ...styled(h, styles.tool())],
-          [photoIcon(h), format(locale, 'board.addPicture', {}), h.input(attributes.input)],
+          [
+            photoIcon(h),
+            h.span(styled(h, styles.toolLabel()), [format(locale, 'board.addPicture', {})]),
+            h.input(attributes.input),
+          ],
         ),
     },
     toParentMessage: (message) => Message.GotDropMessage({ message }),
@@ -88,18 +106,29 @@ export const toolbarView = (model: Model, locale: Locale, h: HtmlBuilder<Message
         model.isPasting || Upload.guards.Sending(model.upload),
         h,
       ),
-      actionButton(
-        {
-          label: format(locale, 'board.saveLook', {}),
-          leading: addIcon(h),
-          style: primaryAction(),
-          onClick: Message.ClickedSaveLook(),
-          isDisabled: LookSave.guards.Saving(model.look),
-        },
-        h,
-      ),
     ],
   )
+
+/** Save as a look, from the pieces on the table: it waits for the first one, and says so to a screen reader. */
+export const saveLookView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  const hasPieces = Array.some(model.items, Schema.is(PieceItem))
+  return h.div(styled(h, styles.saveLook()), [
+    actionButton(
+      {
+        label: format(locale, 'board.saveLook', {}),
+        leading: addIcon(h),
+        style: cx(primaryAction(), smallAction()),
+        onClick: Message.ClickedSaveLook(),
+        isDisabled: !hasPieces || LookSave.guards.Saving(model.look),
+        ...(hasPieces ? {} : { describedBy: 'board-look-hint' }),
+      },
+      h,
+    ),
+    hasPieces
+      ? h.empty
+      : h.span([h.Id('board-look-hint'), ...styled(h, visuallyHidden())], [format(locale, 'board.lookNoPieces', {})]),
+  ])
+}
 
 const textStyles: ReadonlyArray<readonly [TextStyle, MessageKey]> = [
   ['label', 'board.styleLabel'],
