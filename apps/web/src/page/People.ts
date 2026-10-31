@@ -47,10 +47,12 @@ export const Model = Schema.Struct({
   work: Work,
   confirmingBlock: Schema.Boolean,
   reporting: Reporting,
+  /** Follow was pressed signed out and sign-in brought the visitor back (`#follow`): follow once the standing is read. */
+  followOnArrival: Schema.Boolean,
 })
 export type Model = typeof Model.Type
 
-export const init = (subject: Subject): Model => ({
+export const init = (subject: Subject, followOnArrival = false): Model => ({
   subject,
   standing: Standing.Unknown(),
   saved: false,
@@ -58,6 +60,7 @@ export const init = (subject: Subject): Model => ({
   work: Work.Idle(),
   confirmingBlock: false,
   reporting: Reporting.Closed(),
+  followOnArrival,
 })
 
 // MESSAGE
@@ -238,9 +241,13 @@ const submitted = (model: Model): UpdateReturn =>
 /** @internal Exported for its tests. */
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
-    SucceededLoadRelation: ({ relation }) => ({
-      model: modifyFields(model, { standing: () => Standing.Known({ relation }) }),
-    }),
+    SucceededLoadRelation: ({ relation }) => {
+      const known = modifyFields(model, { standing: () => Standing.Known({ relation }), followOnArrival: () => false })
+      // The Follow pressed before signing in, applied now; one already followed or blocked is left as it is.
+      return model.followOnArrival && !relation.following && !relation.blocked
+        ? sending(known, SetFollowing({ handle: handleOfSubject(known), following: true }))
+        : { model: known }
+    },
     FailedLoadRelation: () => ({ model: modifyFields(model, { standing: () => Standing.Unknown() }) }),
     ClickedFollow: ({ following }) => sending(model, SetFollowing({ handle: handleOfSubject(model), following })),
     ClickedBlock: () => ({ model: modifyFields(model, { confirmingBlock: () => true }) }),

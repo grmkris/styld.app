@@ -223,7 +223,8 @@ export const init = (context: Flags, url?: Url): UpdateReturn => {
     AppRoute.guards.Board(route) || AppRoute.guards.BoardCollage(route) ? route.boardId : '',
     context.hasSessionCookie === true,
   )
-  const visit = Visit.init(Visit.targetFor(route), context.hasSessionCookie === true)
+  const followOnArrival = url !== undefined && Option.contains(url.hash, 'follow')
+  const visit = Visit.init(Visit.targetFor(route), context.hasSessionCookie === true, followOnArrival)
   const opened = Update.combine<Model, Message, Services>(
     {
       context,

@@ -25,6 +25,29 @@ const known = update(person, Message.SucceededLoadRelation({ relation: relation(
 const pieceId = `pc_${'knit'.padEnd(22, 'x')}`
 
 describe('what a visitor does with someone', () => {
+  test('back from signing in to follow, follows once the standing is read, and not one already followed', () => {
+    const arriving = init(Subject.Person({ handle: 'nika.kovac' }), true)
+    story(
+      update,
+      given(arriving),
+      message(Message.SucceededLoadRelation({ relation: relation() })),
+      Command.resolve(
+        SetFollowing({ handle: 'nika.kovac', following: true }),
+        Message.SucceededSetRelation({ relation: relation({ following: true }) }),
+      ),
+      model(({ standing, followOnArrival }) => {
+        expect(standing).toEqual(Standing.Known({ relation: relation({ following: true }) }))
+        expect(followOnArrival).toBe(false)
+      }),
+    )
+    story(
+      update,
+      given(arriving),
+      message(Message.SucceededLoadRelation({ relation: relation({ following: true }) })),
+      Command.expectNone(),
+    )
+  })
+
   test('holds the room for Follow while it reads where the visitor stands, and gives it up if the read fails', () => {
     const reading = readRelation(person)
     expect(reading.model.standing).toEqual(Standing.Reading())

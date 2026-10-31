@@ -199,7 +199,12 @@ const signInAction = (
   style: Styles.Attributes,
   content: Html | string,
   h: HtmlBuilder<Message>,
-) => h.a([h.Href(signInReturningTo(pageOf(model.subject))), h.AriaLabel(name), ...styled(h, style)], [content])
+  arrival = '',
+) =>
+  h.a(
+    [h.Href(signInReturningTo(`${pageOf(model.subject)}${arrival}`)), h.AriaLabel(name), ...styled(h, style)],
+    [content],
+  )
 
 /** What a visitor page passes in: its locale, and whether someone is signed in. */
 export type Inputs = { readonly locale: Locale; readonly signedIn: boolean }
@@ -221,12 +226,14 @@ export const followView = Submodel.defineView<Model, Message, Inputs>((model, { 
                 h,
               ),
       })
-    : signInAction(
+    : // Back from sign-in at #follow, the profile follows them (People › followOnArrival).
+      signInAction(
         model,
         format(locale, 'people.signInToFollow', {}),
         primaryAction(),
         format(locale, 'follow.follow', {}),
         h,
+        '#follow',
       ),
 )
 

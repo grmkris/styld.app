@@ -122,7 +122,7 @@ describe('a public profile', () => {
       expect(text('@nika.kovac, Maribor')).toExist(),
       expect(text('Red, black and one good coat.')).toExist(),
       // Follow looks as it does signed in, and sign-in brings the visitor back here.
-      expect(role('link', { name: 'Sign in to follow' })).toHaveAttr('href', '/login?next=%2F%40nika.kovac'),
+      expect(role('link', { name: 'Sign in to follow' })).toHaveAttr('href', '/login?next=%2F%40nika.kovac%23follow'),
       expect(role('link', { name: 'Sign in to follow' })).toHaveText('Follow'),
       expect(role('link', { name: /Coats/ })).toHaveAttr('href', `/boards/bd_${'coats'.padEnd(22, 'x')}`),
       click(role('button', { name: 'Looks' })),
