@@ -763,7 +763,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'stylist.starter.missing': 'Kaj manjka v moji garderobi?',
   'stylist.earlier': 'Prejšnji pogovori',
   'stylist.newChat': 'Nov pogovor',
-  'stylist.fieldLabel': 'Sporočilo za Styld',
+  'stylist.fieldLabel': 'Sporočilo Styldu',
   'stylist.placeholder': 'Vprašaj o svojih oblačilih',
   'stylist.send': 'Pošlji',
   'stylist.price': 'Vsako sporočilo porabi 1 kredit današnje brezplačne kvote.',
