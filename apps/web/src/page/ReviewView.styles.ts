@@ -193,7 +193,7 @@ export const footer = style({
   gap: '6px',
   paddingBlockStart: '12px',
   paddingBlockEnd: 'calc(96px + env(safe-area-inset-bottom))',
-  paddingInline: 'max(16px, env(safe-area-inset-left))',
+  paddingInline: 'max(20px, env(safe-area-inset-left), env(safe-area-inset-right))',
   '@media (min-width: 900px)': { paddingBlockEnd: 'max(16px, env(safe-area-inset-bottom))' },
   backgroundColor: 'paper',
   borderBlockStartWidth: '1px',
