@@ -272,6 +272,13 @@ interface GeneratedImage extends AddBoardImage {
 }
 
 const pictures = (parts: Parts) => ({
+  /** The picture an operation already put on a board, so a retry from an address need not fetch it again. */
+  boardImageAddedBy: Effect.fn('Styld.Boards.imageAddedBy')(function* (operationId: string) {
+    const { accountId } = yield* CurrentAccount
+    const receipt = yield* stored(parts.store.findReceipt(accountId, operationId))
+    if (Option.isNone(receipt) || receipt.value.command !== 'addBoardImage') return Option.none<BoardImage>()
+    return Option.some(yield* replayImage(parts, accountId, receipt.value.result))
+  }),
   /** A received photo upload becomes a picture on the board; a picture Styld generated says which job made it and
    * the model that drew it. The same operation id answers the same picture; using it for another upload or board
    * is a conflict. */

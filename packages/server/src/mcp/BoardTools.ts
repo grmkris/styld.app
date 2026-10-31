@@ -36,7 +36,7 @@ import {
   Visibility,
   type WardrobeUnavailable,
 } from '@styld/protocol'
-import { Effect, Match, Schema } from 'effect'
+import { Effect, Match, Option, Schema } from 'effect'
 import type * as HttpClient from 'effect/http/HttpClient'
 import type { Boards } from '../boards/Boards.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
@@ -331,8 +331,12 @@ const pinTools = (
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       handler: ({ boardId, operationId, imageUrl }) =>
         Effect.gen(function* () {
-          const uploadId = yield* uploadFrom(wardrobe, http, imageUrl)
-          yield* boards.addBoardImage(boardId, { operationId, uploadId }).pipe(Effect.mapError(asToolError))
+          // A retry answers from its receipt before fetching the address again.
+          const earlier = yield* boards.boardImageAddedBy(operationId).pipe(Effect.mapError(asToolError))
+          if (Option.isNone(earlier)) {
+            const uploadId = yield* uploadFrom(wardrobe, http, imageUrl)
+            yield* boards.addBoardImage(boardId, { operationId, uploadId }).pipe(Effect.mapError(asToolError))
+          }
           return show(yield* boards.getBoard(boardId).pipe(Effect.mapError(asToolError)))
         }),
     }),

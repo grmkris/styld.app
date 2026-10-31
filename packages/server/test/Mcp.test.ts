@@ -1,6 +1,7 @@
 import {
   type ArrangeBoard,
   Board,
+  BoardImageId,
   BoardVersionConflict,
   Handle,
   type Piece,
@@ -151,6 +152,13 @@ const boards = Boards.of({
   removePins: notUsed,
   addBoardImage: notUsed,
   addGeneratedImage: notUsed,
+  // A picture an earlier try of `picture-replay-1` already put on the board.
+  boardImageAddedBy: (operationId) =>
+    Effect.succeed(
+      operationId === 'picture-replay-1'
+        ? Option.some({ imageId: BoardImageId.make(`bm_${'replay'.padEnd(22, 'x')}`) })
+        : Option.none(),
+    ),
   setBoardVisibility: notUsed,
   boardImage: notUsed,
 })
@@ -211,6 +219,18 @@ const call = (name: string, args: unknown) =>
       Effect.provideService(Pacing, unpaced),
     ),
   )
+
+describe('putting a picture on a board', () => {
+  test('a retry answers from its receipt, without fetching the address again', async () => {
+    const result = await call('picture_pin', {
+      boardId: board.id,
+      operationId: 'picture-replay-1',
+      imageUrl: 'https://pictures.test/rain.jpg',
+    })
+    expect(result.isError).toBeFalsy()
+    expect(jsonOf(result)).toMatchObject({ id: board.id })
+  })
+})
 
 describe('MCP tools', () => {
   test('lists closed, budgeted tools with noun_verb names', () => {
