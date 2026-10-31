@@ -55,7 +55,8 @@ export const nameSkeleton = style({ fontSize: '15px' })
 export const titleSkeleton = style({ fontSize: '30px', blockSize: '0.54em', marginBlock: '0.27em', inlineSize: '50%' })
 export const rowSkeleton = style({ blockSize: '56px', borderRadius: 'field' })
 export const metaSkeleton = style({ inlineSize: '40%', fontSize: '13px' })
-export const cardMeta = style({ fontSize: '13px', color: 'ink2' })
+/** A count or a kind under a name: body weight, not the link's semibold it sits in, as Boards' pin count is. */
+export const cardMeta = style({ fontSize: '13px', fontWeight: 400, color: 'ink2', fontVariantNumeric: 'tabular-nums' })
 /** A look's own page: where it stands under the title, the look laid out large, then its pieces as rows. */
 export const status = style({ fontSize: '14px', color: 'ink2' })
 export const lookCollage = style({ maxInlineSize: '420px' })
