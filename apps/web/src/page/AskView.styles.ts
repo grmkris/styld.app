@@ -131,6 +131,11 @@ export const result = style({
   fontSize: '14px',
   fontWeight: 500,
   textDecorationLine: 'none',
+  // A piece found lifts under the pointer, as it does in the wardrobe.
+  transitionProperty: 'translate',
+  transitionDuration: '180ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { translate: '0 -2px' } },
 })
 export const resultImage = style({ inlineSize: '100%', aspectRatio: '1 / 1', objectFit: 'contain' })
 export const nothingFound = style({ display: 'grid', justifyItems: 'start', gap: '12px', color: 'ink2' })

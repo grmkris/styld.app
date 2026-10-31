@@ -81,6 +81,15 @@ export const tick = style({
   },
   '&[aria-pressed="true"]': { color: 'onInk' },
   '&[aria-pressed="true"]::before': { backgroundColor: 'ink' },
+  // The dot answers the pointer and the press, its 44px target unchanged.
+  transitionProperty: 'transform',
+  transitionDuration: '140ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  ':active': { transform: 'scale(0.96)' },
+  '@media (hover: hover) and (pointer: fine)': {
+    '&:not([aria-pressed="true"]):hover::before': { backgroundColor: 'paper2' },
+    '&[aria-pressed="true"]:hover::before': { backgroundColor: 'inkHover' },
+  },
 })
 export const caption = style({
   display: 'flex',

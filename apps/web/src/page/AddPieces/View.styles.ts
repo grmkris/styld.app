@@ -54,11 +54,13 @@ export const source = style({
   color: 'ink2',
   textAlign: 'center',
   cursor: 'pointer',
-  transitionProperty: 'transform, background-color',
+  transitionProperty: 'transform, background-color, border-color',
   transitionDuration: '140ms',
   transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
-  ':active': { transform: 'scale(0.98)' },
+  ':active': { transform: 'scale(0.96)' },
   '&[data-drag-over]': { borderColor: 'ink', backgroundColor: 'paper2' },
+  // Hovered, its edge darkens, as Make's kinds do.
+  '@media (hover: hover) and (pointer: fine)': { ':hover': { borderColor: 'ink3' } },
   // The file input inside is hidden, so the label shows its keyboard focus.
   '&:has(input:focus-visible)': {
     outlineWidth: '2px',
