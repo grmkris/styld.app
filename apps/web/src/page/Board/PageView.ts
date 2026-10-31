@@ -1,5 +1,5 @@
 import { Dialog } from '@foldkit/ui'
-import { format, type Locale, type MessageKey } from '@styld/i18n'
+import { format, type Locale } from '@styld/i18n'
 import { type Look, LookPin, Mood, type Paper, type Piece, type Pin, PiecePin, type PublicBoard } from '@styld/protocol'
 import { Array, Match, Option, Schema } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
@@ -8,7 +8,7 @@ import { cx } from 'zyzz'
 import { actionButton } from '../../ActionButton.ts'
 import { primaryAction, secondaryAction, smallAction } from '../../Actions.styles.ts'
 import { textField } from '../../Fields.styles.ts'
-import { addIcon, backIcon, checkIcon, closeIcon, loader } from '../../Icon.ts'
+import { addIcon, backIcon, checkIcon, loader } from '../../Icon.ts'
 import { boardCollageRouter, boardsRouter, lookRouter, pieceRouter } from '../../route.ts'
 import { styled } from '../../Styled.ts'
 import * as PeopleView from '../PeopleView.ts'
@@ -16,7 +16,7 @@ import { publicToggle } from '../PublicToggle.ts'
 import { bottomSheet } from '../Sheet.ts'
 import { checkNotice } from '../CheckNotice.ts'
 import { Message } from './Message.ts'
-import { keepPinId, unpinId } from './PageCommands.ts'
+import { unpinButton } from './Unpin.ts'
 import { boardStateView } from './Unready.ts'
 import { visitingView } from './Visiting.ts'
 import { type Model, PinWork, Publishing, Removal, Rename } from './Model.ts'
@@ -37,50 +37,6 @@ const lookMosaic = (look: Look, h: HtmlBuilder<Message>): Html =>
       h.img([h.Src(pieceImage(piece.id)), h.Alt(''), h.Loading('lazy')]),
     ),
   )
-
-/** The pin's ×, or, once pressed, the question over the tile: Take off, or Keep. */
-type Unpin = { readonly pinId: Pin['id']; readonly label: string; readonly question: MessageKey }
-
-const unpinButton = (
-  { pinId, label, question }: Unpin,
-  asking: boolean,
-  locale: Locale,
-  h: HtmlBuilder<Message>,
-): Html =>
-  asking
-    ? h.div(
-        [h.Role('group'), h.AriaLabel(label), ...styled(h, styles.unpinAsk())],
-        [
-          h.p(styled(h, styles.unpinQuestion()), [format(locale, question, {})]),
-          actionButton(
-            {
-              label: format(locale, 'board.unpinConfirm', {}),
-              style: cx(primaryAction(), smallAction()),
-              onClick: Message.ClickedConfirmUnpin({ pinId }),
-            },
-            h,
-          ),
-          h.button(
-            [
-              h.Type('button'),
-              h.Id(keepPinId(pinId)),
-              ...styled(h, cx(secondaryAction(), smallAction())),
-              h.OnClick(Message.ClickedKeepPin({ pinId })),
-            ],
-            [format(locale, 'board.unpinKeep', {})],
-          ),
-        ],
-      )
-    : h.button(
-        [
-          h.Type('button'),
-          h.Id(unpinId(pinId)),
-          h.AriaLabel(label),
-          ...styled(h, styles.unpin()),
-          h.OnClick(Message.ClickedUnpin({ pinId })),
-        ],
-        [closeIcon(h)],
-      )
 
 const pinView = (pin: Pin, asking: boolean, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.keyed('li')(
