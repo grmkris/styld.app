@@ -38,6 +38,8 @@ export const cut = style({
   display: 'grid',
   justifyItems: 'center',
   gap: '4px',
+  // The hover lift makes the tile its own group; on the paper's colour a photo's ground still blends into it.
+  backgroundColor: 'paper',
   color: 'ink2',
   textDecorationLine: 'none',
   transitionProperty: 'transform',

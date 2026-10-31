@@ -83,6 +83,8 @@ export const pinFrame = style({
   borderStyle: 'solid',
   borderColor: 'rule',
   backgroundColor: 'paper',
+  // Its own group on its paper, so a photo's pale ground blends into the paper even while the link's press scales it.
+  isolation: 'isolate',
 })
 export const cutout = style({
   inlineSize: '100%',
@@ -91,6 +93,7 @@ export const cutout = style({
   minBlockSize: '0',
   padding: '8px',
   objectFit: 'contain',
+  mixBlendMode: 'darken',
 })
 export const photo = style({
   inlineSize: '100%',
@@ -106,7 +109,7 @@ export const mosaic = style({
   inlineSize: '100%',
   blockSize: '100%',
   padding: '6px',
-  '& img': { inlineSize: '100%', blockSize: '100%', minBlockSize: '0', objectFit: 'contain' },
+  '& img': { inlineSize: '100%', blockSize: '100%', minBlockSize: '0', objectFit: 'contain', mixBlendMode: 'darken' },
 })
 export const pinName = style({ paddingInline: '4px', fontSize: '13px', fontWeight: 600 })
 /** The unpin question over the tile: what happens, then Take off and Keep, full width. */
