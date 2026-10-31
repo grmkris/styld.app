@@ -126,3 +126,5 @@ export const chosen = style({ '&[aria-pressed="true"]': { backgroundColor: 'ink'
 export const empty = style({ color: 'ink2' })
 /** A board card's shape while Explore loads. */
 export const boardSkeleton = style({ aspectRatio: '4 / 5', borderRadius: 'panel' })
+/** A person's card while Explore loads: its padding round the avatar's row, a line of bio and Follow, 12px apart. */
+export const cardSkeleton = style({ blockSize: '152px', borderRadius: 'panel' })

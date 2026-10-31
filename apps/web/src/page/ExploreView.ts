@@ -216,23 +216,14 @@ export const exploreSections = (
       ),
 ]
 
-const skeletonBoards = ['a', 'b'] as const
+const skeletonPair = ['a', 'b'] as const
 const skeletonChips = ['a', 'b', 'c', 'd'] as const
 
-/** Explore's shape while its sections load: Edits from Styld's head over two 4:5 boards, then Newest boards' head over
- * its chips. What is loading is said once, for assistive technology. */
+/** Explore's shape while its sections load, in the order a page without edits arrives: Newest boards' head over its
+ * chips and two 4:5 boards, then People to follow's head over two cards. What is loading is said once, for assistive
+ * technology. */
 export const exploreLoading = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
   h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
-  h.div(
-    [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.section())],
-    [
-      h.span(styled(h, cx(line(), headingLine()))),
-      h.ul(
-        styled(h, styles.boards()),
-        skeletonBoards.map((slot) => h.keyed('li')(slot, [], [h.span(styled(h, cx(block(), styles.boardSkeleton())))])),
-      ),
-    ],
-  ),
   h.div(
     [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.section())],
     [
@@ -240,6 +231,20 @@ export const exploreLoading = (locale: Locale, h: HtmlBuilder<Message>): Readonl
       h.div(
         styled(h, styles.chips()),
         skeletonChips.map((slot) => h.keyed('span')(slot, styled(h, cx(block(), chipSkeleton())))),
+      ),
+      h.ul(
+        styled(h, styles.boards()),
+        skeletonPair.map((slot) => h.keyed('li')(slot, [], [h.span(styled(h, cx(block(), styles.boardSkeleton())))])),
+      ),
+    ],
+  ),
+  h.div(
+    [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.section())],
+    [
+      h.span(styled(h, cx(line(), headingLine()))),
+      h.ul(
+        styled(h, styles.cards()),
+        skeletonPair.map((slot) => h.keyed('li')(slot, styled(h, cx(block(), styles.cardSkeleton())))),
       ),
     ],
   ),
