@@ -10,6 +10,7 @@ import {
   ChatCircleRegular,
   ClipboardTextRegular,
   CopyRegular,
+  ExportRegular,
   MagnifyingGlassLight,
   MagnifyingGlassRegular,
   ShuffleRegular,
@@ -91,6 +92,7 @@ export const spinIcon = control(ShuffleRegular)
 export const searchIcon = control(MagnifyingGlassRegular)
 export const stylistIcon = control(ChatCircleRegular)
 export const closeIcon = control(XRegular)
+export const shareIcon = control(ExportRegular)
 
 /** 24px tab icons in the Light weight. */
 export const homeTabIcon = tab(HouseLight)

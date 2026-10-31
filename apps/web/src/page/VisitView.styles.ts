@@ -42,6 +42,16 @@ export const personActions = style({
   gap: '8px',
   '@media (min-width: 900px)': { justifyContent: 'flex-end' },
 })
+/** What Share did: the link copied, or why it wasn't. */
+export const shared = style({ margin: '0', fontSize: '14px', color: 'ink2' })
+export const problem = style({ margin: '0', fontSize: '14px', color: 'error' })
+/** A profile's or a piece's head bar (prototype `.head.bar`): Back at the start, what the page shares at the end. */
+export const bar = style({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' })
+/** A piece's bar keeps to its picture's width, so Share sits over the piece it shares. */
+export const pieceBar = style({ maxInlineSize: '420px' })
+export const barActions = style({ display: 'flex', alignItems: 'center', gap: '8px' })
+/** The head bar's room while the page loads: its 44px rounds. */
+export const barSkeleton = style({ display: 'block', blockSize: '44px' })
 /** A piece's name on its own page. */
 export const name = style({ margin: '0', fontSize: '28px', lineHeight: 1.1 })
 export const handle = style({ margin: '0', fontSize: '14px', color: 'ink2' })

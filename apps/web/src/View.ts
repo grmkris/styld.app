@@ -396,7 +396,7 @@ const visitPage = (model: Model, h: HtmlBuilder<Message>): Html =>
     slotId: 'visit',
     model: model.visit,
     view: VisitView.view,
-    viewInputs: { locale: model.context.locale, signedIn: hasSession(model) },
+    viewInputs: { locale: model.context.locale, signedIn: hasSession(model), origin: model.context.origin },
     toParentMessage: (message) => Message.GotVisitMessage({ message }),
   })
 
