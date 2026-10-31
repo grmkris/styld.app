@@ -570,6 +570,12 @@ design is the Gallery 2 prototype (`docs/design/gallery-2/`).
     local stack fires it during native runs (`scheduled(): ok`), though no test drives a stalled job through it.
   - Docs: evidence claims for MCP tools narrowed to what the tests call; deviations recorded in ARCHITECTURE
     (admin tools without an admin actor type; a report's reason kept for admins, not given to the model).
+  - Preview: the capture session deployed main at `34b6449` (health reports it; `tools/preview.native.test.ts` 3/3),
+    which carries these fixes and created the ten-minute sweep's cron trigger. Read back in Chromium: on a phone,
+    signed in and not yet answered, a tap at the diagnostics prompt's Allow and No thanks reaches them; one's own
+    public piece links to the wardrobe with no Save to wishlist or Report; the profile and Explore have no link
+    inside a link; initials read KP; the public board's card says 2 pins and a visitor sees 2; Explore's Sport
+    mood says it has no boards yet. No page error.
   - Still open from these rounds: one discovery predicate shared by Explore, search and the feed (the feed reads
     link-level rules, so an unsure profile's boards can reach feeds, and Explore filters after its limit); credit
     readback in native acceptance; MCP handler tests for the social, discovery and generation tools; nested
