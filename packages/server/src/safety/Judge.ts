@@ -27,7 +27,7 @@ const passed: Verdict = { state: 'passed', reason: null, model: 'none' }
 const rank = { passed: 0, unsure: 1, failed: 2 } as const
 
 /** The worse of two verdicts: a failure wins over an unsure answer, which wins over a pass. */
-const worse = (left: Verdict, right: Verdict): Verdict => (rank[right.state] > rank[left.state] ? right : left)
+export const worse = (left: Verdict, right: Verdict): Verdict => (rank[right.state] > rank[left.state] ? right : left)
 
 /** Words that speak to an AI assistant, which public text has no reason to: they keep it out of discovery. */
 const addressesAssistant =

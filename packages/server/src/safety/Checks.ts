@@ -11,7 +11,7 @@ import { deliverImage, type ImageBindings } from '../wardrobe/Delivery.ts'
 import { reachedThrough } from '../social/PublicStore.ts'
 import { shownImage } from '../wardrobe/Shown.ts'
 import { chunked } from '../wardrobe/Store.ts'
-import { type Content, ContentJudge, type Verdict } from './Judge.ts'
+import { type Content, ContentJudge, type Verdict, worse } from './Judge.ts'
 
 /** What a check is of: a profile (by account), a board, a look or a piece. */
 export const CheckTarget = Schema.Struct({
@@ -140,9 +140,12 @@ const shownBy = (db: Database, target: CheckTarget) => {
   return pieceShows(db, target.id)
 }
 
-/** The pictures' bytes as the judge reads them: small WebP copies, at most three. */
+/** The judge reads a few pictures at a time. */
+const picturesPerJudgement = 3
+
+/** The pictures' bytes as the judge reads them: small WebP copies, every one of them. */
 const picturesOf = (bindings: ImageBindings, shown: Shown) =>
-  Effect.forEach(shown.pictures.slice(0, 3), (stored) =>
+  Effect.forEach(shown.pictures, (stored) =>
     deliverImage(bindings, stored, 'thumb', { fallback: 'none' }).pipe(
       Effect.flatMap(
         Option.match({
@@ -263,11 +266,21 @@ const make = (bindings: CheckBindings) =>
           attempt(() => bindings.queue.sendBatch(chunk.map((target) => ({ body: CheckMessage.make({ target }) })))),
         { discard: true },
       )
+    /** The model's verdict on everything the target shows: the words with its first pictures, then the rest a few
+     * at a time, the worst answer standing. None while the model does not answer for any of them. */
+    const verdictOn = (shown: Shown) =>
+      Effect.gen(function* () {
+        const pictures = yield* picturesOf(bindings, shown)
+        const groups = pictures.length === 0 ? [[]] : Array.chunksOf(pictures, picturesPerJudgement)
+        const verdicts = yield* Effect.forEach(groups, (group, index) =>
+          judge.judge({ texts: index === 0 ? shown.texts : [], pictures: group } satisfies Content),
+        )
+        return verdicts.reduce(worse)
+      }).pipe(Effect.option)
     /** The model's verdict on what the target shows, recorded; none while the model does not answer. */
     const judged = (target: CheckTarget, shown: Shown, digest: string) =>
       Effect.gen(function* () {
-        const content: Content = { texts: shown.texts, pictures: yield* picturesOf(bindings, shown) }
-        const verdict = yield* judge.judge(content).pipe(Effect.option)
+        const verdict = yield* verdictOn(shown)
         if (Option.isSome(verdict)) yield* rows.answered(target, digest, verdict.value)
         return Option.isSome(verdict)
       })
@@ -312,8 +325,7 @@ const make = (bindings: CheckBindings) =>
         const shown = yield* shownBy(db, target)
         if (Option.isNone(shown) || !shown.value.public) return
         const digest = yield* digestOf(shown.value)
-        const content: Content = { texts: shown.value.texts, pictures: yield* picturesOf(bindings, shown.value) }
-        const verdict = yield* judge.judge(content).pipe(Effect.option)
+        const verdict = yield* verdictOn(shown.value)
         if (Option.isSome(verdict)) yield* rows.rejudged(target, digest, verdict.value)
       }),
     }
