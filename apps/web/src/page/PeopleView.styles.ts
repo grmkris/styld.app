@@ -4,6 +4,31 @@ export const people = style({ display: 'grid', gap: '8px' })
 export const actions = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' })
 /** One action's shape while where the visitor stands is read: an action's height (Actions.styles.ts). */
 export const actionSkeleton = style({ inlineSize: '96px', blockSize: '48px', borderRadius: 'pill' })
+/** Save on someone else's piece, look or board: a 44px round ringed like a secondary action, filled ink once saved. */
+export const save = style({
+  display: 'inline-grid',
+  flex: 'none',
+  placeItems: 'center',
+  inlineSize: '44px',
+  blockSize: '44px',
+  padding: '0',
+  borderWidth: '1.5px',
+  borderStyle: 'solid',
+  borderColor: 'ink',
+  borderRadius: 'pill',
+  backgroundColor: 'transparent !custom',
+  color: 'ink',
+  cursor: 'pointer',
+  transitionProperty: 'transform, background-color, color',
+  transitionDuration: '140ms',
+  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  ':active': { transform: 'scale(0.96)' },
+  '&[aria-pressed="true"]': { backgroundColor: 'ink', color: 'onInk' },
+  '@media (hover: hover) and (pointer: fine)': {
+    '&:not([aria-pressed="true"]):hover': { backgroundColor: 'paper2' },
+    '&[aria-pressed="true"]:hover': { backgroundColor: 'inkHover' },
+  },
+})
 export const signIn = style({ display: 'inline-flex', alignItems: 'center', minBlockSize: '44px', fontWeight: 600 })
 /** The report form and the block question: a panel that reads from the start even in a centred profile head. */
 export const report = style({

@@ -6,6 +6,7 @@ import {
   ArrowDownRegular,
   ArrowsLeftRightRegular,
   ArrowUpRegular,
+  BookmarkSimpleRegular,
   BroomRegular,
   ChatCircleRegular,
   ClipboardTextRegular,
@@ -93,6 +94,7 @@ export const searchIcon = control(MagnifyingGlassRegular)
 export const stylistIcon = control(ChatCircleRegular)
 export const closeIcon = control(XRegular)
 export const shareIcon = control(ExportRegular)
+export const saveIcon = control(BookmarkSimpleRegular)
 
 /** 24px tab icons in the Light weight. */
 export const homeTabIcon = tab(HouseLight)

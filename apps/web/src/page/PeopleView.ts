@@ -6,7 +6,7 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { textField } from '../Fields.styles.ts'
-import { loader } from '../Icon.ts'
+import { loader, saveIcon } from '../Icon.ts'
 import { loginRouter, wishlistRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
@@ -96,13 +96,18 @@ const reportForm = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html
       ),
   })
 
-/** Save something someone else made public, and report it. */
+/** Save something someone else made public, and report it. Save is a round (DESIGN.md › Boards, people and Explore),
+ * pressed while saved. */
 const saveAndReport = (model: Model, report: string, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
-  toggle(
-    format(locale, model.saved ? 'people.saved' : 'feed.save', {}),
-    model.saved,
-    Message.ClickedSave({ saved: !model.saved }),
-    h,
+  h.button(
+    [
+      h.Type('button'),
+      h.AriaLabel(format(locale, 'feed.save', {})),
+      h.AriaPressed(String(model.saved)),
+      h.OnClick(Message.ClickedSave({ saved: !model.saved })),
+      ...styled(h, styles.save()),
+    ],
+    [saveIcon(h)],
   ),
   button(report, Message.ClickedReport(), h),
 ]

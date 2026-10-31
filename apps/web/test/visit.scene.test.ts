@@ -29,7 +29,7 @@ import { describe, test } from 'vitest'
 import { init, Message, type Model, Session, update } from '../src/App.ts'
 import { BoardState } from '../src/page/Board/Model.ts'
 import { Shown as LookShown } from '../src/page/Look.ts'
-import { Message as PeopleMessage } from '../src/page/People.ts'
+import { Message as PeopleMessage, SetSaved, Subject } from '../src/page/People.ts'
 import {
   FocusExploreResults,
   FocusExploreSearch,
@@ -176,7 +176,7 @@ describe('a public profile', () => {
     )
   })
 
-  test('shows someone else’s public board and shared look to a visitor, read only', () => {
+  test('shows someone else’s public board and shared look to a visitor, read only, with a round Save', () => {
     const board = Schema.decodeUnknownSync(PublicBoard)({
       ...nika.boards[0],
       pins: nika.boards[0]?.cover ?? [],
@@ -194,6 +194,12 @@ describe('a public profile', () => {
       expect(role('link', { name: 'Navy knit' })).toHaveAttr('href', `/pieces/${knit.id}`),
       expect(role('button', { name: 'Board settings' })).toBeAbsent(),
       expect(role('button', { name: 'Save' })).toHaveAttr('aria-pressed', 'false'),
+      click(role('button', { name: 'Save' })),
+      Command.resolve(
+        SetSaved({ subject: Subject.Board({ boardId: board.id }), saved: true }),
+        PeopleMessage.SucceededSetSaved({ saved: true }),
+      ),
+      expect(role('button', { name: 'Save' })).toHaveAttr('aria-pressed', 'true'),
       expect(role('button', { name: 'Report board' })).toExist(),
     )
     const page = Schema.decodeUnknownSync(PublicLookPage)({
