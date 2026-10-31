@@ -176,15 +176,29 @@ const foldSheet = Update.foldChild({ update: Dialog.update, ...sheetFold })
 const openSheet = Update.foldChildStep({ update: Dialog.open, ...sheetFold })
 const closeSheet = Update.foldChildStep({ update: Dialog.close, ...sheetFold })
 
+/** The fewest characters, spaces aside at either end, that Styld makes pictures from. */
+const fewestCharacters = 3
+
+/** Whether Make can send: words enough, and no ask already on its way or being made. The button reads disabled
+ * otherwise. */
+export const canMake = (model: Model): boolean =>
+  model.words.trim().length >= fewestCharacters && !Job.guards.Asking(model.job) && !Job.guards.Running(model.job)
+
 /** Send the words: one ask at a time, with the words the person typed. */
-const submitted = (model: Model): UpdateReturn => {
-  const prompt = model.words.trim()
-  if (prompt.length < 3 || Job.guards.Asking(model.job) || Job.guards.Running(model.job)) return { model }
-  return {
-    model: modifyFields(model, { job: () => Job.Asking() }),
-    commands: [AskForPictures({ boardId: model.boardId, kind: model.kind, prompt, operationId: model.operationId })],
-  }
-}
+const submitted = (model: Model): UpdateReturn =>
+  canMake(model)
+    ? {
+        model: modifyFields(model, { job: () => Job.Asking() }),
+        commands: [
+          AskForPictures({
+            boardId: model.boardId,
+            kind: model.kind,
+            prompt: model.words.trim(),
+            operationId: model.operationId,
+          }),
+        ],
+      }
+    : { model }
 
 /** The job moved on: follow it while it runs; once it ends, the board reloads. */
 const polled = (model: Model, generation: Generation): UpdateReturn =>

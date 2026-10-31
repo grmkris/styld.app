@@ -85,6 +85,20 @@ describe('Make with Styld on a board', () => {
     )
   })
 
+  test('reads the Make button as disabled until there are words enough to make from', () => {
+    const words = role('textbox', { name: 'What should it feel like?' })
+    scene(
+      { update, view },
+      given(page),
+      ...openSheet,
+      expect(role('button', { name: 'Make' })).toBeDisabled(),
+      type(words, '  ab '),
+      expect(role('button', { name: 'Make' })).toBeDisabled(),
+      type(words, 'sea'),
+      expect(role('button', { name: 'Make' })).toBeEnabled(),
+    )
+  })
+
   test('marks a generated picture, and makes a mood board from the person’s words', () => {
     scene(
       { update, view },

@@ -9,7 +9,7 @@ import { textField } from '../../Fields.styles.ts'
 import { loader } from '../../Icon.ts'
 import { styled } from '../../Styled.ts'
 import { bottomSheet } from '../Sheet.ts'
-import { Job, type MakeProblem, Message, type Model } from './Make.ts'
+import { canMake, Job, type MakeProblem, Message, type Model } from './Make.ts'
 import * as styles from './MakeView.styles.ts'
 
 const problemKey: { readonly [Problem in MakeProblem]: MessageKey } = {
@@ -135,14 +135,18 @@ const sheetBody = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Reado
         Job.guards.Failed(model.job)
           ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, problemKey[model.job.problem], {})])
           : h.empty,
-        h.button(
-          [
-            h.Type('submit'),
-            ...(asking ? [h.AriaDisabled(true)] : []),
-            h.AriaDescribedBy(costId),
-            ...styled(h, primaryAction()),
-          ],
-          [asking ? loader(h) : h.empty, format(locale, 'board.make.submit', {})],
+        // aria-disabled rather than disabled, so the button keeps focus while its ask goes (DESIGN › Controls); the
+        // form's submit is refused while there is nothing to send.
+        actionButton(
+          {
+            label: format(locale, 'board.make.submit', {}),
+            style: primaryAction(),
+            type: 'submit',
+            isDisabled: !canMake(model),
+            leading: asking ? loader(h) : h.empty,
+            describedBy: costId,
+          },
+          h,
         ),
       ],
     ),
