@@ -61,7 +61,7 @@ const colourCriteria = Object.fromEntries(Colour.literals.map((colour) => [colou
 const ask = (
   run: RunClef,
   metrics: CaptureMetrics['Service'],
-  kind: 'route' | 'suggest' | 'check' | 'judge' | 'compare',
+  kind: 'route' | 'suggest' | 'check' | 'judge' | 'compare' | 'match',
   request: ClefRequest,
 ) =>
   counted(
@@ -258,6 +258,17 @@ const pictureChecks = (run: RunClef, metrics: CaptureMetrics['Service']) => ({
       questions: compareQuestions,
     })
     return { same: noulOf(answer, 'same'), faithful: noulOf(answer, 'faithful') } satisfies Comparison
+  }),
+  // The camera's `samePrevious` question: on two real videos' cut-outs, true pairs scored 0.68–0.89 and different
+  // garments at most 0.76 (person-routing spike, 30 October).
+  sameGarment: Effect.fn('Styld.Capture.sameGarment')(function* (picture: Picture, other: Picture) {
+    const answer = yield* ask(run, metrics, 'match', {
+      model: 'clef-flash',
+      state: 'Two pictures of clothes, each cut out of a photo or shown alone.',
+      images: [imageOf(picture), imageOf(other)],
+      questions: { same: { type: 'noul', instructions: 'Is it the same garment as in the second image?' } },
+    })
+    return noulOf(answer, 'same')
   }),
   compareTurn: Effect.fn('Styld.Turn.compare')(function* (frame: Picture, front: Picture) {
     const answer = yield* ask(run, metrics, 'compare', {

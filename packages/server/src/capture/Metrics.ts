@@ -16,6 +16,7 @@ export interface ProviderCall {
     | 'draw'
     | 'judge'
     | 'compare'
+    | 'match'
     | 'profile'
     | 'turn'
   readonly outcome: 'ok' | 'failed' | 'unknown'

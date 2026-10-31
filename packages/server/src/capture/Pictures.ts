@@ -14,7 +14,7 @@ const now = Effect.map(DateTime.now, DateTime.toDateUtc)
 
 // What each provider sees: the decision model a 512 px copy, Muse a 1024 px one; the drawing is keyed at 1280 px,
 // enough for the piece page at twice the pixel density, and about a million pixels of CPU.
-const judgedAt = 512
+export const judgedAt = 512
 const drawnFrom = 1024
 const keyedAt = 1280
 // The room left around a keyed garment, as a share of its longer side.
@@ -39,7 +39,7 @@ export const cutoutAt = (parts: Parts, key: string | null) =>
 const asPng = (picture: Rgba): Picture => ({ bytes: encodePng(picture), contentType: 'image/png' })
 
 /** A picture as a provider sees it: at most `longest` pixels, on light grey instead of transparency. */
-const sent = (picture: Rgba, longest: number) => asPng(flatten(shrink(picture, longest)))
+export const sent = (picture: Rgba, longest: number) => asPng(flatten(shrink(picture, longest)))
 
 /** The keyed drawing cropped to the garment, with a little room around it. */
 const framed = (keyed: Rgba) => {

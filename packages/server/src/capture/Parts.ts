@@ -100,6 +100,15 @@ export const enqueuePicture = (parts: Parts, pieceId: string) =>
     Effect.asVoid,
   )
 
+/** Tell the queue a capture's sightings wait to be compared, now or after `delaySeconds` (another delivery has the
+ * import's next one). */
+export const enqueueMatch = (parts: Parts, captureId: string, delaySeconds?: number) =>
+  Effect.tryPromise({
+    try: () =>
+      parts.bindings.queue.send({ matchOf: captureId }, delaySeconds === undefined ? undefined : { delaySeconds }),
+    catch: unavailable,
+  }).pipe(Effect.asVoid)
+
 /** Tell the queue a capture is ready to process. */
 export const enqueueCapture = (parts: Parts, captureId: string) =>
   Effect.tryPromise({ try: () => parts.bindings.queue.send({ captureId }), catch: unavailable }).pipe(Effect.asVoid)

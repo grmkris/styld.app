@@ -12,6 +12,7 @@ import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or } from 'drizzle-o
 import { drizzle } from 'drizzle-orm/d1'
 import { Array, Effect, Option } from 'effect'
 import { StoreUnavailable } from '../wardrobe/Store.ts'
+import { matchRows } from './MatchStore.ts'
 
 export type CaptureRow = typeof captures.$inferSelect
 export type FrameRow = typeof captureFrames.$inferSelect
@@ -451,6 +452,7 @@ export const makeCaptureStore = (database: Parameters<typeof drizzle>[0]) => {
     ...transitionRows(db),
     ...pictureRows(db),
     ...turnRows(db),
+    ...matchRows(db),
   }
 }
 

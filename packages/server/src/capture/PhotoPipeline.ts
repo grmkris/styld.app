@@ -176,7 +176,8 @@ export const detectionsOf = (
           whole: suggestion.whole,
           groupOf: null,
           duplicateOf: null,
-          matching: null,
+          // A whole garment is compared with the import's other sightings and the wardrobe; a part of one is not.
+          matching: verdict === 'preselect' && suggestion.category !== undefined ? 'waiting' : null,
           matchClaimedAt: null,
           createdAt: capture.createdAt,
         } satisfies DetectionRow

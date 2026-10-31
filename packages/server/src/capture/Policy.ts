@@ -35,6 +35,15 @@ export interface CapturePolicy {
     readonly reject: number
     readonly face: number
   }
+  /** How a garment seen more than once becomes one card (2026-10-31): Clef's answer to "the same garment?" at or
+   * above `same` joins a sighting to another of the import, or takes it for a piece already in the wardrobe. A
+   * sighting is compared with at most `sightings` others of its category and `pieces` of the wardrobe's. On the
+   * person-routing spike's two real videos, 0.8 halved the cards with no false merge (30 October). */
+  readonly matching: {
+    readonly same: number
+    readonly sightings: number
+    readonly pieces: number
+  }
   /** Who turns clean pictures on their hangers: `veo` (Veo 3.1 Lite through the Vercel AI Gateway) or `off`; and the
    * floors every checked frame must reach, beside the clean picture, for a turn to be kept: colour and logo or print
    * (the 30 October comparison's gate, which every good take passed and the drifting models failed). */
@@ -73,6 +82,7 @@ export const capturePolicy = (env: Readonly<Record<string, unknown>>): CapturePo
     reject: number(env['CLEAN_PICTURE_REJECT'], 0.5),
     face: 0.3,
   },
+  matching: { same: number(env['MATCH_SAME'], 0.8), sightings: 10, pieces: 6 },
   turns: {
     generator: choice(env['TURNS'], ['veo', 'off'], 'off'),
     colour: 0.8,

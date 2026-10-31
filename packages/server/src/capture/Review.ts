@@ -16,12 +16,14 @@ import type { DetectionRow } from './Store.ts'
 
 const decodeReviewed = Schema.decodeUnknownEffect(Schema.fromJsonString(Reviewed))
 
-/** The piece a kept detection becomes: the cut-out unless the person chose the original photo. */
+/** The piece a kept detection becomes: the cut-out unless the person chose the original photo. Its back is the
+ * camera's back shot, or else the garment's sighting in another photo picked with it (the pieces laid out again,
+ * turned over). */
 const pieceOf = (
   accountId: string,
   pieceId: string,
   detection: DetectionRow,
-  sourceType: string,
+  source: { readonly type: string; readonly back: string | null },
   keep: Keep,
   at: Date,
 ) => {
@@ -40,10 +42,10 @@ const pieceOf = (
     source: 'website' as const,
     uploadId: null,
     detectionId: detection.id,
-    backImageKey: original ? null : detection.backCutoutKey,
+    backImageKey: original ? null : (detection.backCutoutKey ?? source.back),
     originalKey: detection.sourceKey,
     imageKey: original ? detection.sourceKey : detection.cutoutKey,
-    contentType: sourceType,
+    contentType: source.type,
     bytes: 0,
     createdAt: at,
     updatedAt: at,
@@ -83,6 +85,7 @@ const sourcesOf = (parts: Parts, accountId: string, found: ReadonlyArray<Detecti
       const byId = new Map(rows.map((row) => [row.id, row]))
       return {
         typeOf: (detection: DetectionRow) => originals.get(detection.sourceKey) ?? 'image/jpeg',
+        isPhoto: (detection: DetectionRow) => byId.get(detection.captureId)?.kind === 'photo',
         originOf: (detection: DetectionRow) => {
           const capture = byId.get(detection.captureId)
           return { route: capture?.route ?? capture?.kind ?? 'unknown', provider: capture?.provider ?? 'unknown' }
@@ -139,22 +142,39 @@ export const reviewing = (parts: Parts) => ({
     const found = yield* storedAs(parts.store.detections(accountId, ids))
     const open = new Map(found.filter(({ status }) => status === 'review').map((row) => [row.id, row]))
     if (ids.some((id) => !open.has(id))) return yield* CaptureNotFound.make({})
+    // A garment's other sightings in its import are kept or discarded with it.
+    const others = yield* storedAs(parts.store.sightingsOf(accountId, ids))
     const at = DateTime.toDateUtc(yield* DateTime.now)
-    const { typeOf, originOf } = yield* sourcesOf(parts, accountId, found)
+    const { typeOf, isPhoto, originOf } = yield* sourcesOf(parts, accountId, [...found, ...others])
+    const backOf = (detection: DetectionRow) =>
+      others.find(
+        (other) =>
+          other.groupOf === detection.id &&
+          other.captureId !== detection.captureId &&
+          isPhoto(other) &&
+          isPhoto(detection),
+      )?.cutoutKey ?? null
     const kept = yield* Effect.forEach(input.keep, (keep) =>
       Effect.map(parts.randomId('pc'), (pieceId) => ({ keep, pieceId, detection: open.get(keep.detectionId) })),
     )
     const pieces = kept.flatMap(({ keep, pieceId, detection }) =>
-      detection === undefined ? [] : [pieceOf(accountId, pieceId, detection, typeOf(detection), keep, at)],
+      detection === undefined
+        ? []
+        : [pieceOf(accountId, pieceId, detection, { type: typeOf(detection), back: backOf(detection) }, keep, at)],
     )
+    const keptSightings = kept.flatMap(({ keep, pieceId }) =>
+      others.filter(({ groupOf }) => groupOf === keep.detectionId).map(({ id }) => ({ detectionId: id, pieceId })),
+    )
+    const discarding = new Set<string>(input.discard)
+    const discardedSightings = others.filter(({ groupOf }) => groupOf !== null && discarding.has(groupOf))
     const pieceIds = pieces.map(({ id }) => id)
     const pictures = yield* picturesFor(pieces, at)
     yield* storedAs(
       parts.store.review({
         pieces,
-        kept: kept.map(({ keep, pieceId }) => ({ detectionId: keep.detectionId, pieceId })),
-        discarded: input.discard,
-        finished: yield* finishedCaptures(parts, found, ids),
+        kept: [...kept.map(({ keep, pieceId }) => ({ detectionId: keep.detectionId, pieceId })), ...keptSightings],
+        discarded: [...input.discard, ...discardedSightings.map(({ id }) => id)],
+        finished: yield* finishedCaptures(parts, [...found, ...others], [...ids, ...others.map(({ id }) => id)]),
         pictures,
         receipt: {
           accountId,

@@ -17,11 +17,12 @@ import {
 } from '../src/page/Review.ts'
 
 const id = (prefix: 'cp' | 'dt', n: number) => `${prefix}_${String(n).padStart(22, '0')}`
-const detection = (n: number, category: 'top' | 'bottom' | null, preselected = true) => ({
+const detection = (n: number, category: 'top' | 'bottom' | null, preselected = true, sightings = 1) => ({
   id: DetectionId.make(id('dt', n)),
   preselected,
   hasCutout: true,
   hasBack: false,
+  sightings,
   suggestion: { category, subcategory: null, colours: category === null ? [] : (['navy'] as const) },
 })
 

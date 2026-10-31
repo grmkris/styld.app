@@ -1,6 +1,7 @@
 import { Context, Effect } from 'effect'
 import { creating, reading } from './Captures.ts'
 import { retrying } from './Retrying.ts'
+import { matching } from './Matching.ts'
 import { CaptureMetrics } from './Metrics.ts'
 import { type CaptureBindings, makeParts } from './Parts.ts'
 import { CaptureConfig } from './Policy.ts'
@@ -39,6 +40,7 @@ const make = (bindings: CaptureBindings) =>
       ...reviewing(parts),
       ...detectionPictures(parts),
       ...processing(parts),
+      ...matching(parts),
       ...picturing(parts),
       ...redrawing(parts),
       ...turning(parts),
@@ -48,6 +50,7 @@ const make = (bindings: CaptureBindings) =>
       createCapture: bound(operations.createCapture),
       createVideoCapture: bound(operations.createVideoCapture),
       tray: bound(operations.tray),
+      split: bound(operations.split),
       check: bound(operations.check),
       retry: bound(operations.retry),
       remove: bound(operations.remove),
@@ -55,6 +58,8 @@ const make = (bindings: CaptureBindings) =>
       detectionPicture: bound(operations.detectionPicture),
       processCapture: bound(operations.processCapture),
       failCapture: bound(operations.failCapture),
+      processMatch: bound(operations.processMatch),
+      failMatch: bound(operations.failMatch),
       processPicture: bound(operations.processPicture),
       failPicture: bound(operations.failPicture),
       redrawPicture: bound(operations.redrawPicture),

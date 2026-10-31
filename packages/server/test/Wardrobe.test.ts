@@ -72,6 +72,8 @@ const services = (
         failPicture: notUsed,
         processTurn: notUsed,
         failTurn: notUsed,
+        processMatch: notUsed,
+        failMatch: notUsed,
       },
     },
   }
@@ -121,6 +123,8 @@ describe('the processing queue', () => {
         failPicture: (pieceId: string) => Effect.sync(() => seen.push(`give up ${pieceId}`)),
         processTurn: notUsed,
         failTurn: notUsed,
+        processMatch: notUsed,
+        failMatch: notUsed,
       },
     }
     const first = message({ cleanPictureOf: 'pc_1' }, 1)
@@ -295,6 +299,8 @@ describe("a piece's turn", () => {
         processTurn: (pieceId: string) =>
           Effect.sync(() => seen.push(`turn ${pieceId}`)).pipe(Effect.andThen(CaptureUnavailable.make({}))),
         failTurn: (pieceId: string) => Effect.sync(() => seen.push(`give up ${pieceId}`)),
+        processMatch: notUsed,
+        failMatch: notUsed,
       },
     }
     const last = message({ turnOf: 'pc_1' }, processingAttempts)

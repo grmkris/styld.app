@@ -1,5 +1,5 @@
 import { DateTime, Effect, Option } from 'effect'
-import { holdOf, type Parts, storedAs } from './Parts.ts'
+import { enqueueMatch, holdOf, type Parts, storedAs } from './Parts.ts'
 import type { Route } from './Providers.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
 import { processPhoto } from './PhotoPipeline.ts'
@@ -118,6 +118,7 @@ const record = (parts: Parts, capture: CaptureRow, result: Result) =>
       }),
     )
     yield* settlePending(parts, { ...capture, status: 'review' })
+    if (result.found.some(({ matching }) => matching === 'waiting')) yield* enqueueMatch(parts, capture.id)
     // A back shot of the garment before it becomes that piece's back and stops waiting on its own.
     if (capture.side === 'back' && capture.pairsWith !== null)
       yield* pairBack(parts, capture.accountId, capture.pairsWith)

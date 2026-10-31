@@ -33,6 +33,8 @@ export const CreateCapture = Schema.Struct({
   source: CaptureSource,
   side: Schema.optionalKey(Side),
   pairsWith: Schema.optionalKey(CaptureId),
+  /** The first capture of the photos picked with this one: a garment seen in several of them is one card. */
+  importOf: Schema.optionalKey(CaptureId),
 })
 export type CreateCapture = typeof CreateCapture.Type
 
@@ -56,6 +58,8 @@ export const CreateVideoCapture = Schema.Struct({
   width: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 8192 })),
   height: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 8192 })),
   stills: Schema.Array(VideoStill).check(Schema.isMinLength(1), Schema.isMaxLength(120)),
+  /** The capture of the video's first part, for each later part: a garment seen in several parts is one card. */
+  importOf: Schema.optionalKey(CaptureId),
 })
 export type CreateVideoCapture = typeof CreateVideoCapture.Type
 
@@ -78,6 +82,9 @@ export const Detection = Schema.Struct({
   suggestion: Suggestion,
   /** The back of the same garment, from a camera shot that followed. */
   hasBack: Schema.Boolean,
+  /** How many times the import showed this garment: its other sightings, in other parts or photos, are kept or
+   * discarded with it. */
+  sightings: Schema.Int.check(Schema.isGreaterThanOrEqualTo(1)),
 })
 export type Detection = typeof Detection.Type
 

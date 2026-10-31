@@ -20,7 +20,14 @@ export const settleMessage = (
     readonly lifecycle: AccountLifecycle['Service']
     readonly captures: Pick<
       Captures['Service'],
-      'processCapture' | 'failCapture' | 'processPicture' | 'failPicture' | 'processTurn' | 'failTurn'
+      | 'processCapture'
+      | 'failCapture'
+      | 'processPicture'
+      | 'failPicture'
+      | 'processTurn'
+      | 'failTurn'
+      | 'processMatch'
+      | 'failMatch'
     >
   },
   message: Cloudflare.Queues.Message,
@@ -47,6 +54,8 @@ export const settleMessage = (
         return work(services.wardrobe.processPiece(body.pieceId), services.wardrobe.failPiece(body.pieceId))
       if ('captureId' in body)
         return work(services.captures.processCapture(body.captureId), services.captures.failCapture(body.captureId))
+      if ('matchOf' in body)
+        return work(services.captures.processMatch(body.matchOf), services.captures.failMatch(body.matchOf))
       if ('turnOf' in body)
         return work(services.captures.processTurn(body.turnOf), services.captures.failTurn(body.turnOf))
       if ('cleanPictureOf' in body)

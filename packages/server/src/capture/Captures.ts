@@ -1,5 +1,6 @@
 import {
   CaptureId,
+  CaptureNotFound,
   type CreateCapture,
   type CreateVideoCapture,
   type HeldCheckAnswer,
@@ -130,12 +131,31 @@ const baseCapture = (
   updatedAt: at,
 })
 
+/** The import a capture joins: that of the account's capture it names, which starts one when it has none. A capture
+ * that is gone or another account's names none. */
+const importOf = (parts: Parts, accountId: string, first: string | undefined) =>
+  Effect.gen(function* () {
+    if (first === undefined) return null
+    const found = yield* storedAs(parts.store.findCapture(accountId, first))
+    if (Option.isNone(found)) return null
+    if (found.value.importId !== null) return found.value.importId
+    yield* storedAs(parts.store.updateCapture(found.value.id, { importId: found.value.id }))
+    return found.value.id
+  })
+
 /** Creating captures: photos from the picker or the camera, and videos with their stills. */
 export const creating = (parts: Parts) => ({
   createCapture: Effect.fn('Styld.Capture.create')(function* (input: CreateCapture) {
     const { accountId } = yield* CurrentAccount
     const inputDigest = yield* parts.digest(
-      JSON.stringify(['photo', input.uploadId, input.source, input.side ?? null, input.pairsWith ?? null]),
+      JSON.stringify([
+        'photo',
+        input.uploadId,
+        input.source,
+        input.side ?? null,
+        input.pairsWith ?? null,
+        input.importOf ?? null,
+      ]),
     )
     const earlier = yield* replayed(parts, accountId, input.operationId, inputDigest)
     if (Option.isSome(earlier)) return earlier.value
@@ -148,6 +168,7 @@ export const creating = (parts: Parts) => ({
       source: input.source,
       side: input.side ?? null,
       pairsWith: input.pairsWith ?? null,
+      importId: yield* importOf(parts, accountId, input.importOf),
       credits: policy.credits.photo,
     }
     return yield* admit(parts, capture, [], inputDigest, input.operationId)
@@ -155,7 +176,12 @@ export const creating = (parts: Parts) => ({
   createVideoCapture: Effect.fn('Styld.Capture.createVideo')(function* (input: CreateVideoCapture) {
     const { accountId } = yield* CurrentAccount
     const inputDigest = yield* parts.digest(
-      JSON.stringify(['video', input.videoUploadId, input.stills.map(({ uploadId }) => uploadId)]),
+      JSON.stringify([
+        'video',
+        input.videoUploadId,
+        input.stills.map(({ uploadId }) => uploadId),
+        input.importOf ?? null,
+      ]),
     )
     const earlier = yield* replayed(parts, accountId, input.operationId, inputDigest)
     if (Option.isSome(earlier)) return earlier.value
@@ -175,6 +201,7 @@ export const creating = (parts: Parts) => ({
       frameCount: measured.frameCount,
       width: input.width,
       height: input.height,
+      importId: yield* importOf(parts, accountId, input.importOf),
       // Priced by its measured length: a 30-second part of a long video is 5 credits.
       credits: Math.max(1, Math.ceil(measured.durationMs / 30_000)) * policy.credits.videoHalfMinute,
     }
@@ -190,17 +217,37 @@ export const creating = (parts: Parts) => ({
   }),
 })
 
-const detectionView = (row: DetectionRow) => ({
+const detectionView = (row: DetectionRow, sightings: number) => ({
   id: row.id,
   preselected: row.preselected,
   hasCutout: row.cutoutKey !== null,
   hasBack: row.backCutoutKey !== null,
+  sightings,
   suggestion: {
     category: row.suggestedCategory,
     subcategory: row.suggestedSubcategory,
     colours: row.suggestedColours,
   },
 })
+
+/** The tray's cards: one for each garment, shown by the sighting that shows it best, with how often the import saw
+ * it. A sighting whose garment's card is gone (decided, or retried away) shows on its own. A capture whose every
+ * sighting shows on another capture's card leaves the tray's list, unless it is still being processed. */
+const trayCards = (open: {
+  readonly captures: ReadonlyArray<CaptureRow>
+  readonly detections: ReadonlyArray<DetectionRow>
+}) => {
+  const shown = new Set(open.detections.filter(({ groupOf }) => groupOf === null).map(({ id }) => id))
+  const hidden = (row: DetectionRow) => row.groupOf !== null && shown.has(row.groupOf)
+  const sightings = (row: DetectionRow) => 1 + open.detections.filter(({ groupOf }) => groupOf === row.id).length
+  return open.captures.flatMap((capture) => {
+    const own = open.detections.filter(({ captureId }) => captureId === capture.id)
+    const cards = own.filter((row) => !hidden(row))
+    return own.length > 0 && cards.length === 0 && capture.status !== 'processing'
+      ? []
+      : [{ capture, detections: cards.map((row) => detectionView(row, sightings(row))) }]
+  })
+}
 
 /** The tray: what waits for the person, and today's allowance. */
 export const reading = (parts: Parts) => ({
@@ -211,15 +258,20 @@ export const reading = (parts: Parts) => ({
     const remaining = yield* (yield* Usage).remaining(accountId)
     // Only the service writes these rows, through the same schemas; a row that does not decode is a bug.
     return yield* Schema.decodeUnknownEffect(Tray)({
-      captures: open.captures.map((capture) => ({
+      captures: trayCards(open).map(({ capture, detections }) => ({
         id: capture.id,
         source: capture.source === 'assistant' ? 'picker' : capture.source,
         status: capture.status,
         createdAt: capture.createdAt.toISOString(),
-        detections: open.detections.filter(({ captureId }) => captureId === capture.id).map(detectionView),
+        detections,
       })),
       allowance: { remaining, daily: policy.dailyAllowance },
     }).pipe(Effect.orDie)
+  }),
+  /** Show each other sighting of a garment on its own card again: the import took different garments for one. */
+  split: Effect.fn('Styld.Capture.split')(function* (detectionId: string) {
+    const { accountId } = yield* CurrentAccount
+    if (!(yield* storedAs(parts.store.split(accountId, detectionId)))) return yield* CaptureNotFound.make({})
   }),
   check: Effect.fn('Styld.Capture.check')(function* (
     frame: Uint8Array,

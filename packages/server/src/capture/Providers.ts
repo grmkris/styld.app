@@ -83,6 +83,8 @@ export class GarmentVision extends Context.Service<
     ) => Effect.Effect<HeldCheck, ProviderFailed>
     readonly judge: (cutout: Picture) => Effect.Effect<Judgement, ProviderFailed>
     readonly compare: (drawn: Picture, real: Picture) => Effect.Effect<Comparison, ProviderFailed>
+    /** How likely two real pictures show the same garment (0–1): two sightings, or a sighting and a piece. */
+    readonly sameGarment: (picture: Picture, other: Picture) => Effect.Effect<number, ProviderFailed>
     /** A frame of a turn beside the clean picture it ends on. */
     readonly compareTurn: (frame: Picture, front: Picture) => Effect.Effect<TurnComparison, ProviderFailed>
   }

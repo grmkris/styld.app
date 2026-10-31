@@ -33,6 +33,7 @@ export const captureHandlers = (
         .handle('createVideoCapture', ({ payload }) => admit(asSessionAccount(captures.createVideoCapture(payload))))
         .handle('tray', () => asSessionAccount(captures.tray()))
         .handle('review', ({ payload }) => admit(asSessionAccount(captures.review(payload))))
+        .handle('split', ({ params }) => admit(asSessionAccount(captures.split(params.detectionId))))
         .handle('retry', ({ params }) => admit(asSessionAccount(captures.retry(params.captureId))))
         .handle('remove', ({ params }) => admit(asSessionAccount(captures.remove(params.captureId))))
         .handle('redrawPicture', ({ params, payload }) =>
