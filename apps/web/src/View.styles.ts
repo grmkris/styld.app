@@ -10,6 +10,8 @@ export const masthead = style({
   display: 'flex',
   flexWrap: 'wrap',
   alignItems: 'center',
+  // The wordmark at the start, the way to you (or to sign in) at the end, as the prototype's `.head`.
+  justifyContent: 'space-between',
   gap: '8px 16px',
   minBlockSize: '64px',
   paddingBlock: 'calc(12px + env(safe-area-inset-top)) 4px',
@@ -38,7 +40,8 @@ export const pickerSelect = style({
   cursor: 'pointer',
 })
 export const pickerError = style({ flexBasis: '100%' })
-/** The top bar's sign-in text link. */
+/** The top bar's text links when signed out: Explore and Sign in. */
+export const signedOutLinks = style({ display: 'flex', alignItems: 'center', gap: '20px' })
 export const signInLink = style({ display: 'inline-flex', alignItems: 'center', minBlockSize: '44px' })
 /** The top bar's account link: the person's initial in an ink circle (Gallery `.av`). */
 export const accountLink = style({
@@ -217,7 +220,17 @@ export const navLabel = style({
   clipPath: 'inset(50%)',
   whiteSpace: 'nowrap',
 })
+/** The way to you: a 44px target around the 32px disc, with no text-link underline under the initial. */
 export const navAvatar = style({
+  display: 'grid',
+  placeItems: 'center',
+  inlineSize: '44px',
+  blockSize: '44px',
+  marginInlineEnd: '-6px',
+  borderRadius: 'pill',
+  textDecorationLine: 'none',
+})
+export const navAvatarDisc = style({
   display: 'grid',
   placeItems: 'center',
   inlineSize: '32px',

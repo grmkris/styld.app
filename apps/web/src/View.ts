@@ -55,10 +55,12 @@ import {
   navBesideTable,
   navAsk,
   navAvatar,
+  navAvatarDisc,
   navAvatarPending,
   navItem,
   navLabel,
   signInLink,
+  signedOutLinks,
   site,
   tabPage,
   withTabBar,
@@ -154,10 +156,16 @@ const sessionLink = (model: Model, h: HtmlBuilder<Message>): Html => {
     SigningOut: () => h.empty,
     Checking: () => h.empty,
     Unavailable: () => h.empty,
+    // Signed out the bar keeps Explore and Sign in (DESIGN › Navigation); neither shows on its own page.
     SignedOut: () =>
       AppRoute.guards.Login(model.route) || AppRoute.guards.LoginForConnection(model.route)
         ? h.empty
-        : h.a([h.Href(loginRouter({})), ...styled(h, signInLink())], [format(locale, 'landing.signIn', {})]),
+        : h.div(styled(h, signedOutLinks()), [
+            AppRoute.guards.Explore(model.route)
+              ? h.empty
+              : h.a([h.Href(exploreRouter({})), ...styled(h, signInLink())], [format(locale, 'explore.title', {})]),
+            h.a([h.Href(loginRouter({})), ...styled(h, signInLink())], [format(locale, 'landing.signIn', {})]),
+          ]),
   })
 }
 
@@ -168,9 +176,9 @@ const youLink = (model: Model, initial: string, h: HtmlBuilder<Message>): Html =
       h.Href(accountRouter({})),
       h.AriaLabel(format(model.context.locale, 'nav.account', {})),
       ...(sectionOf(model.route) === 'you' ? [h.AriaCurrent('page')] : []),
-      ...styled(h, initial === '' ? cx(navAvatar(), navAvatarPending()) : navAvatar()),
+      ...styled(h, navAvatar()),
     ],
-    [initial],
+    [h.span(styled(h, initial === '' ? cx(navAvatarDisc(), navAvatarPending()) : navAvatarDisc()), [initial])],
   )
 
 const titleKey = AppRoute.match<MessageKey>({
