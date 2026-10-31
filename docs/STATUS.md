@@ -1,6 +1,68 @@
 # Delivery status
 
-Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `34b6449`, with clean pictures, turns on a hanger, scan anything, the boards' pins, profiles, checks, link import and wishes, and Styld, the stylist in the app). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `ef12334`, with clean pictures, turns on a hanger, scan anything, the boards' pins, profiles, checks, link import and wishes, generated pictures and mood boards, and Styld, the stylist in the app). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+
+## Hung requests, the telemetry check and the owner's mood board — 2026-10-31
+
+The owner asked whether the preview's logs and traces are set up properly after the night's features, and why a mood
+board asked for on the night of the 30th seemed to do nothing. Evidence comes from Workers Logs (three days kept) and
+D1 on the preview.
+
+- **Telemetry:** all three Workers keep logs and traces, sample every request and redact query strings. The API logs
+  structured `styld.*` fields and the browser relay took 3,387 trace exports. Gaps found:
+  - The content judge had no span. A mood board's ask waited 7.4 s and 15.9 s on Llama Guard with nothing in the
+    trace for it. Fixed in `ef12334`: `Styld.Safety.judge` records the verdict's state, never what was judged.
+  - Generation and stylist work on the queues carries no job or chat id; a job is found by its time and account.
+  - The readback's wrong-Origin probe, about once an hour, logs "Can't read from request stream after response has
+    been sent" at the edge: the API refuses before reading the 2-byte body. These are refusals, not failures.
+  - Opening one's own public profile asks for the relation with oneself and logs a 422 `NotWithYourself`. The page
+    renders.
+- **Hung requests** (`cb10b19`): all 39 of the preview's 5xx in three days were workerd cancelling a request as hung,
+  each at the session check, before any D1 read. Pages lost their pieces, thumbnails, tray, feed or a Styld message.
+  - Cause: Yielded's managed persistence sets session storage up on first use, reading D1's catalog, behind an
+    `Effect.cached` the isolate shares (P/internal/persistence.ts:555-581). `onFirstUse` kept the application as soon
+    as it was built, before that setup ran. A signed-in request arriving during the first one's setup waited on
+    another request's D1 reads, and workerd cancels that.
+  - At 03:16:31, `/api/boards` ran the setup and ten requests from the same page, 4–25 ms later, were cancelled with
+    no D1 read. At 10:45–10:47 single requests died in 1–5 ms with nothing in flight: an isolate whose setup had been
+    left pending, so every session check in it hung.
+  - Fix: the auth runtime lists a subject that never exists while the application is built, from the same
+    persistence instance. The setup is done before the isolate keeps the application, and a failed setup fails that
+    build instead of staying cached.
+  - Proof on the preview, a session-less request and then 24 signed-in requests together right after a deploy:
+    before the fix 2 of 24 were cancelled as hung, at the session check; after it 0 of 48 over two deploys. In the
+    traces, 60 of 180 catalog reads ran inside a session check before; after, 0 of 228, all while the application was
+    built.
+  - Native acceptance now sends a page's first signed-in requests together after a restart. Local D1 answers too
+    fast to open the window, so it passed before the fix as well; the preview measurement is the evidence.
+  - Full gate green on `cb10b19`: unit 453, native 25/25, budgets (initial browser 347,509 gzip bytes).
+- **The owner's mood board:** it was made.
+  - At 03:22:56 the phone asked; the ask took 8 s, 7.4 s of it Llama Guard.
+  - The page followed the job for 13 s; the owner left the board at 03:23:19.
+  - The job went on: three Muse pictures, six of the owner's pieces pinned, the moods rain and sport, the collage
+    laid out, done at 03:24:38 (1 min 42 s).
+  - The board page follows a job only while it is open. Leaving it loses the progress, and nothing elsewhere says
+    the board is ready.
+- **Other backend errors in three days:** piece processing's "too many SQL variables" and a message both retried and
+  acknowledged (29 October, fixed since), two turns refused by the video provider with 413 while turns were built,
+  and a missing `turn-side.png` read that the turn handled. Every queue invocation ended ok.
+- **Preview:** `cb10b19`, then `ef12334`; `tools/preview.native.test.ts` passed 3/3 on each.
+  - On `ef12334` the API Worker runs version `15dfa5e2` and the website `71213698`, both reporting the release.
+    Neither has workers.dev or version previews.
+  - A public board renamed and back was checked again, and its `Styld.Safety.judge` span reads 248 ms, passed.
+  - No request has been cancelled as hung since `cb10b19` went out.
+- **Browser walk** on `cb10b19` (Chromium at 390×844 with touch, the preview test account; script
+  `meta-hackathon/out/styld-hang/walk.ts`):
+  - Home, Wardrobe, a piece, Review, Wishlist, Add pieces, Looks, Boards, Ask, Explore, Profile, Account and one's
+    own public profile all answered 200 with their headings, with no page error and no 5xx.
+  - A mood board on a new board: planning 15 s, pictures done at 31, 55 and 78 s, "Added 3 pictures" at 84 s, and
+    three Generated marks.
+  - Styld answered a rain question in 19 s with four of the account's pieces.
+  - The only console error was the own-profile 422.
+- **Open, for the owner:**
+  - Keep a running mood board's progress when its board is opened again, or say it is ready elsewhere.
+  - Say how long a mood board takes (about a minute and a half).
+  - Name the queue work's job in its spans.
 
 ## Styld, the stylist in the app — 2026-10-31
 
