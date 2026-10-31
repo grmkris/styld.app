@@ -1426,7 +1426,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'landing.description':
     'Photograph your clothes and Styld cuts out every piece, lays out what to wear today and keeps boards of what you love.',
   'landing.start': 'Start free',
-  'landing.browse': 'Browse',
+  'landing.browse': 'Browse boards',
   'landing.heroPieces': 'Pieces from Slovenian shops',
   'landing.signIn': 'Sign in',
   'landing.shops': 'Shops',

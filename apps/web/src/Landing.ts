@@ -5,7 +5,7 @@ import type { Model } from './App.ts'
 import type { Message } from './Message.ts'
 import { boards as exploreBoards } from './page/ExploreView.styles.ts'
 import { boardCard, byline } from './page/PublicTiles.ts'
-import { block } from './Skeleton.styles.ts'
+import { block, headingLine, line } from './Skeleton.styles.ts'
 import { visuallyHidden } from './VisuallyHidden.styles.ts'
 import { cx } from 'zyzz'
 import * as Visit from './page/Visit.ts'
@@ -57,10 +57,14 @@ const inspirationBoards = (model: Model, locale: Locale, h: HtmlBuilder<Message>
       ])
 }
 
-/** The section is named for what it shows: Styld's edits, or the newest boards before there are any. */
-const inspirationTitle = (model: Model) => {
+/** The section is named for what it shows: Styld's edits, or the newest boards before there are any. Until the boards
+ * arrive it is unknown which, so a heading's shape holds its place. */
+const inspirationTitle = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const shown = model.visit.shown
-  return Visit.Shown.guards.Explore(shown) && shown.explore.edits.length === 0 ? 'explore.newest' : 'explore.edits'
+  if (Visit.Shown.guards.Loading(shown)) return h.span([h.AriaHidden(true), ...styled(h, cx(line(), headingLine()))])
+  const title =
+    Visit.Shown.guards.Explore(shown) && shown.explore.edits.length === 0 ? 'explore.newest' : 'explore.edits'
+  return h.h2([], [format(locale, title, {})])
 }
 
 /** The landing: what Styld is, a way in, and the inspiration below. */
@@ -81,7 +85,7 @@ export const landingView = (model: Model, h: HtmlBuilder<Message>): Html => {
       h.section(
         [h.Id('inspiration'), ...styled(h, inspiration())],
         [
-          h.h2([], [format(locale, inspirationTitle(model), {})]),
+          inspirationTitle(model, locale, h),
           h.p(styled(h, sectionNote()), [format(locale, 'landing.feedDescription', {})]),
           inspirationBoards(model, locale, h),
         ],

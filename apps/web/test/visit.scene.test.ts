@@ -1,7 +1,7 @@
 import { catalogVersion } from '@styld/i18n'
 import { Explore, PublicBoard, PublicLookPage, PublicPiecePage, PublicProfile, Relation } from '@styld/protocol'
 import { Schema } from 'effect'
-import { click, Command, expect, given, role, scene, text } from 'foldkit/scene'
+import { click, Command, expect, given, inside, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { init, Message, type Model, Session, update } from '../src/App.ts'
@@ -227,6 +227,36 @@ describe('a public profile', () => {
       expect(role('heading', { name: 'Edits from Styld' })).toExist(),
       expect(role('link', { name: /Coats/ })).toHaveAttr('href', `/boards/bd_${'coats'.padEnd(22, 'x')}`),
       expect(role('link', { name: 'Explore' })).toHaveAttr('href', '/explore'),
+    )
+  })
+
+  test('the landing names its boards once they arrive, the newest while Styld has no edits', () => {
+    const found = { board: nika.boards[0], by, moods: [] }
+    const explore = Schema.decodeUnknownSync(Explore)({ edits: [], featured: [], people: [], newest: [found] })
+    scene(
+      { update, view },
+      given(visiting('/', Shown.Loading())),
+      expect(role('heading', { name: 'Edits from Styld' })).not.toExist(),
+      expect(role('heading', { name: 'Newest boards' })).not.toExist(),
+      expect(role('status')).toHaveText('Loading…'),
+    )
+    scene(
+      { update, view },
+      given(visiting('/', Shown.Explore({ explore }))),
+      expect(role('heading', { name: 'Newest boards' })).toExist(),
+      expect(role('heading', { name: 'Edits from Styld' })).not.toExist(),
+    )
+  })
+
+  test('signed out, the sign-in page keeps Explore in the bar and drops Sign in', () => {
+    scene(
+      { update, view },
+      given(opened('/login')),
+      inside(
+        role('banner'),
+        expect(role('link', { name: 'Explore' })).toHaveAttr('href', '/explore'),
+        expect(role('link', { name: 'Sign in' })).not.toExist(),
+      ),
     )
   })
 })

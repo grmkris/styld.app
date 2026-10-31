@@ -1446,7 +1446,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'landing.description':
     'Fotografiraj svoja oblačila in Styld izreže vsak kos, sestavi, kaj obleči danes, in hrani zbirke tega, kar ti je všeč.',
   'landing.start': 'Začni brezplačno',
-  'landing.browse': 'Razišči',
+  'landing.browse': 'Prebrskaj zbirke',
   'landing.heroPieces': 'Kosi iz slovenskih trgovin',
   'landing.signIn': 'Prijava',
   'landing.shops': 'Trgovine',
