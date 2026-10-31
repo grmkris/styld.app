@@ -214,6 +214,8 @@ describe('a public profile', () => {
       { update, view },
       given(visiting('/explore', Shown.Explore({ explore }))),
       expect(role('link', { name: /Coats/ })).toHaveAttr('href', `/boards/bd_${'coats'.padEnd(22, 'x')}`),
+      // Whose it is reads inside the card, which stays the one link.
+      expect(role('link', { name: /By Nika Kovač$/ })).toHaveAttr('href', `/boards/bd_${'coats'.padEnd(22, 'x')}`),
       expect(role('link', { name: 'Navy knit' })).toBeAbsent(),
       click(role('button', { name: 'Rain' })),
       Command.resolve(LoadExplore, VisitMessage.SucceededLoadExplore({ explore })),
@@ -228,7 +230,10 @@ describe('a public profile', () => {
       { update, view },
       given(visiting('/', Shown.Explore({ explore }))),
       expect(role('heading', { name: 'Edits from Styld' })).toExist(),
-      expect(role('link', { name: /Coats/ })).toHaveAttr('href', `/boards/bd_${'coats'.padEnd(22, 'x')}`),
+      expect(role('link', { name: /Coats.*By Nika Kovač$/ })).toHaveAttr(
+        'href',
+        `/boards/bd_${'coats'.padEnd(22, 'x')}`,
+      ),
       expect(role('link', { name: 'Explore' })).toHaveAttr('href', '/explore'),
     )
   })

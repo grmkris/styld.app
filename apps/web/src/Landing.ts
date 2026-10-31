@@ -5,7 +5,7 @@ import { primaryAction, secondaryAction } from './Actions.styles.ts'
 import type { Model } from './App.ts'
 import { Message } from './Message.ts'
 import { boards as exploreBoards } from './page/ExploreView.styles.ts'
-import { boardCard, byline } from './page/PublicTiles.ts'
+import { creditedBoardCard } from './page/PublicTiles.ts'
 import { block, headingLine, line } from './Skeleton.styles.ts'
 import { visuallyHidden } from './VisuallyHidden.styles.ts'
 import { cx } from 'zyzz'
@@ -62,9 +62,7 @@ const inspirationBoards = (model: Model, locale: Locale, h: HtmlBuilder<Message>
     : h.div(styled(h, inspirationGrid()), [
         h.ul(
           styled(h, exploreBoards()),
-          boards.map(({ board, by }) =>
-            h.keyed('li')(board.id, [], [boardCard(board, locale, h), byline(by, locale, h)]),
-          ),
+          boards.map(({ board, by }) => h.keyed('li')(board.id, [], [creditedBoardCard(board, by, locale, h)])),
         ),
         h.a([h.Href(exploreRouter({}))], [format(locale, 'explore.title', {})]),
       ])

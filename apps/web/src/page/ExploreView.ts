@@ -7,8 +7,7 @@ import { avatar } from '../Avatar.ts'
 import { personRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import * as styles from './ExploreView.styles.ts'
-import * as feedStyles from './FeedView.styles.ts'
-import { boardCard, byline } from './PublicTiles.ts'
+import { creditedBoardCard } from './PublicTiles.ts'
 import { chip } from './AskView.styles.ts'
 import { Message } from './Visit.ts'
 
@@ -27,12 +26,7 @@ const boardsRow = (
           h.h2([h.Id(id)], [title]),
           h.ul(
             styled(h, styles.boards()),
-            boards.map(({ board, by }) =>
-              h.keyed('li')(board.id, styled(h, feedStyles.item()), [
-                boardCard(board, locale, h),
-                byline(by, locale, h),
-              ]),
-            ),
+            boards.map(({ board, by }) => h.keyed('li')(board.id, [], [creditedBoardCard(board, by, locale, h)])),
           ),
         ],
       )

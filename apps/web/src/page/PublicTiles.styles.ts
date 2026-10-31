@@ -22,3 +22,14 @@ export const boardCard = style({
 })
 export const boardName = style({ paddingInline: '4px', fontWeight: 600 })
 export const meta = style({ paddingInline: '4px', fontSize: '13px', color: 'ink2' })
+/** Whose a board is, inside its card under the meta. */
+export const credit = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: '6px',
+  minInlineSize: '0',
+  paddingInline: '4px',
+  paddingBlockEnd: '4px',
+  fontSize: '13px',
+  color: 'ink2',
+})

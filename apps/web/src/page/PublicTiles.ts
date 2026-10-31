@@ -98,8 +98,7 @@ const coverSource = (pin: PublicPin): CoverPicture => ({
   ),
 })
 
-/** A public board in a profile: its face, its name and how many pins. */
-export const boardCard = <Message>(board: PublicBoardSummary, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const card = <Message>(board: PublicBoardSummary, credit: Html, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.a(
     [h.Href(boardRouter({ boardId: board.id })), ...styled(h, styles.boardCard())],
     [
@@ -110,5 +109,28 @@ export const boardCard = <Message>(board: PublicBoardSummary, locale: Locale, h:
       ),
       h.span(styled(h, styles.boardName()), [board.name]),
       h.span(styled(h, styles.meta()), [format(locale, 'saveToBoard.pins', { count: board.pinCount })]),
+      credit,
     ],
+  )
+
+/** A public board in a profile: its face, its name and how many pins. */
+export const boardCard = <Message>(board: PublicBoardSummary, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  card(board, h.empty, locale, h)
+
+/** A public board among other people's, as Explore shows it: the card, with whose it is under its meta. The card is
+ * itself the link, so the credit is text; the board's page links to their profile. */
+export const creditedBoardCard = <Message>(
+  board: PublicBoardSummary,
+  author: Author,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html =>
+  card(
+    board,
+    h.span(styled(h, styles.credit()), [
+      avatar(author.name, author.tone, 'small', h),
+      format(locale, 'share.byline', { name: author.name }),
+    ]),
+    locale,
+    h,
   )
