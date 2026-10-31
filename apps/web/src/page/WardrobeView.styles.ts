@@ -48,7 +48,7 @@ export const cut = style({
   transitionDuration: '140ms, 180ms',
   transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
   '&[href]:active': { transform: 'scale(0.96)' },
-  '@media (hover: hover) and (pointer: fine)': { ':hover': { translate: '0 -2px' } },
+  '@media (hover: hover) and (pointer: fine)': { '&[href]:hover': { translate: '0 -2px' } },
 })
 export const cutImage = style({
   display: 'block',
