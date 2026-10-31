@@ -74,6 +74,7 @@ import {
   withTabBar,
 } from './View.styles.ts'
 import { initials } from './Avatar.ts'
+import { You } from './You.ts'
 import { avatar as avatarStyle } from './Avatar.styles.ts'
 import { landingView } from './Landing.ts'
 
@@ -191,10 +192,12 @@ const youLink = (model: Model, initial: string, h: HtmlBuilder<Message>): Html =
       ...styled(h, navAvatar()),
     ],
     [
-      Option.match(model.you, {
-        onSome: ({ name, tone }) =>
+      You.match(model.you, {
+        Known: ({ name, tone }) =>
           h.span([h.DataAttribute('tone', tone), ...styled(h, cx(avatarStyle(), navYou()))], [initials(name)]),
-        onNone: () =>
+        // Blank while the profile is read, so the sign-in initial does not show first and then change.
+        Reading: () => h.span(styled(h, cx(navAvatarDisc(), navAvatarPending()))),
+        Unknown: () =>
           h.span(styled(h, initial === '' ? cx(navAvatarDisc(), navAvatarPending()) : navAvatarDisc()), [initial]),
       }),
     ],

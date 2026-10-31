@@ -5,7 +5,7 @@ import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 import { Message, ReadSession, Session, init, update } from '../src/App.ts'
-import { ReadYou } from '../src/You.ts'
+import { ReadYou, You } from '../src/You.ts'
 import { Navigate } from '../src/Navigation.ts'
 import { Message as AddPiecesMessage } from '../src/page/AddPieces/Message.ts'
 import { Message as ReviewMessage } from '../src/page/Review.ts'
@@ -146,10 +146,12 @@ describe('the session decides where a visitor belongs', () => {
       update,
       given(page('/account')),
       message(Message.ReceivedSession({ claims })),
+      // Blank while the profile is read, so the sign-in initial never shows first.
+      model(({ you }) => expect(you).toEqual(You.Reading())),
       Command.resolve(ReadYou, Message.SucceededReadYou({ name: 'Kris (preview)', tone: 'sage' })),
-      model(({ you }) => expect(you).toEqual(Option.some({ name: 'Kris (preview)', tone: 'sage' }))),
+      model(({ you }) => expect(you).toEqual(You.Known({ name: 'Kris (preview)', tone: 'sage' }))),
       message(Message.SucceededReadYou({ name: '  ', tone: 'sage' })),
-      model(({ you }) => expect(you).toEqual(Option.none())),
+      model(({ you }) => expect(you).toEqual(You.Unknown())),
     )
   })
 })

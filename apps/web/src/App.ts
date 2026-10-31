@@ -10,7 +10,16 @@ import { catalogVersion, loadCatalog } from '@styld/i18n'
 import { Locale, localeEndpoint, parseLocale } from './Locale.ts'
 import { Message } from './Message.ts'
 import { arrive, followLink, Navigate } from './Navigation.ts'
-import { foldAskLeave, foldWardrobeRevisit, openHome, openPage, type Step } from './PageEntries.ts'
+import {
+  boardsFold,
+  foldAskLeave,
+  foldStartBoard,
+  foldVisitRetry,
+  foldWardrobeRevisit,
+  openHome,
+  openPage,
+  type Step,
+} from './PageEntries.ts'
 import * as Crypto from 'effect/Crypto'
 import { ReadYou, You, youOf } from './You.ts'
 import * as AddPiecesMessage from './page/AddPieces/Message.ts'
@@ -38,7 +47,6 @@ import * as Wardrobe from './page/Wardrobe.ts'
 import {
   AppRoute,
   accountRouter,
-  boardRouter,
   connectionAuthorizePath,
   homeRouter,
   isSameTab,
@@ -89,7 +97,7 @@ export const Model = Schema.Struct({
   route: AppRoute,
   localeSave: LocaleSave,
   session: Session,
-  you: Schema.Option(You),
+  you: You,
   login: Login.Model,
   wardrobe: Wardrobe.Model,
   piece: Piece.Model,
@@ -222,7 +230,7 @@ export const init = (context: Flags, url?: Url): UpdateReturn => {
       route,
       localeSave: LocaleSave.Saved(),
       session: Session.Checking(),
-      you: Option.none(),
+      you: You.Unknown(),
       login: Login.init(),
       wardrobe: Wardrobe.init(),
       piece,
@@ -380,13 +388,6 @@ const foldVisit = Update.foldChild({
   toParentMessage: (message: Visit.Message) => Message.GotVisitMessage({ message }),
 })
 
-const foldVisitRetry = Update.foldChildStep({
-  update: Visit.retry,
-  read: (model: Model) => Option.some(model.visit),
-  write: (model: Model, visit: Visit.Model) => modifyFields(model, { visit: () => visit }),
-  toParentMessage: (message: Visit.Message) => Message.GotVisitMessage({ message }),
-})
-
 const foldWishlist = Update.foldChild({
   update: Wishlist.update,
   read: (model: Model) => Option.some(model.wishlist),
@@ -412,19 +413,6 @@ const foldAsk = Update.foldChild({
     RequestedNewBoard: ({ defaultName }) => foldStartBoard(defaultName),
   }),
 })
-
-const boardsFold = {
-  read: (model: Model) => Option.some(model.boards),
-  write: (model: Model, boards: Boards.Model) => modifyFields(model, { boards: () => boards }),
-  toParentMessage: (message: Boards.Message) => Message.GotBoardsMessage({ message }),
-  foldOutMessage: Boards.OutMessage.match<Update.Step<Model, Message, Services>>({
-    CreatedBoard:
-      ({ boardId }) =>
-      (stepModel) => ({ model: stepModel, commands: [Navigate({ href: boardRouter({ boardId }) })] }),
-  }),
-}
-const foldStartBoard = (defaultName: string) =>
-  Update.foldChildStep({ update: Boards.startBoard(defaultName), ...boardsFold })
 
 const foldBoards = Update.foldChild({ update: Boards.update, ...boardsFold })
 
@@ -489,6 +477,24 @@ const foldReview = Update.foldChild({
   }),
 })
 
+/** The session as read: signed out, or signed in, when sign-in hands over to another page (which reads its own) and
+ * any other page shows you in the masthead, blank until the profile is read. */
+const receivedSession = (model: Model, claims: AccountClaims | null): UpdateReturn => {
+  if (claims === null)
+    return {
+      model: modifyFields(model, { session: () => Session.SignedOut(), you: () => You.Unknown() }),
+      commands: afterSignOut(model.route),
+    }
+  const signedIn = afterSignIn(model.route)(modifyFields(model, { session: () => Session.SignedIn({ claims }) }))
+  const leaves = AppRoute.guards.Login(model.route) || AppRoute.guards.LoginForConnection(model.route)
+  return leaves
+    ? signedIn
+    : {
+        model: modifyFields(signedIn.model, { you: () => You.Reading() }),
+        commands: [...(signedIn.commands ?? []), ReadYou()],
+      }
+}
+
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     SelectedLocale: ({ value }) => {
@@ -506,26 +512,16 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       }),
     }),
     FailedSaveLocale: () => ({ model: modifyFields(model, { localeSave: () => LocaleSave.Failed() }) }),
-    ReceivedSession: ({ claims }) => {
-      if (claims === null)
-        return {
-          model: modifyFields(model, { session: () => Session.SignedOut(), you: () => Option.none() }),
-          commands: afterSignOut(model.route),
-        }
-      const signedIn = afterSignIn(model.route)(modifyFields(model, { session: () => Session.SignedIn({ claims }) }))
-      // Sign-in hands over to another page, which reads its own; any other page shows you in the masthead.
-      const leaves = AppRoute.guards.Login(model.route) || AppRoute.guards.LoginForConnection(model.route)
-      return leaves ? signedIn : { ...signedIn, commands: [...(signedIn.commands ?? []), ReadYou()] }
-    },
+    ReceivedSession: ({ claims }) => receivedSession(model, claims),
     SucceededReadYou: ({ name, tone }) => ({ model: modifyFields(model, { you: () => youOf(name, tone) }) }),
-    FailedReadYou: () => ({ model }),
+    FailedReadYou: () => ({ model: modifyFields(model, { you: () => You.Unknown() }) }),
     FailedReadSession: () => ({ model: modifyFields(model, { session: () => Session.Unavailable() }) }),
     RequestedSession: () => ({
       model: modifyFields(model, { session: () => Session.Checking() }),
       commands: [ReadSession()],
     }),
     SucceededSignOut: () => ({
-      model: modifyFields(model, { session: () => Session.SignedOut(), you: () => Option.none() }),
+      model: modifyFields(model, { session: () => Session.SignedOut(), you: () => You.Unknown() }),
       commands: afterSignOut(model.route),
     }),
     FailedSignOut: () => ({ model: modifyFields(model, { session: () => Session.Unavailable() }) }),

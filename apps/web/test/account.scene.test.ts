@@ -1,11 +1,11 @@
 import { catalogVersion } from '@styld/i18n'
-import { Option } from 'effect'
 import { click, Command, expect, given, role, scene } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { Session, init, update } from '../src/App.ts'
 import * as Account from '../src/page/Account.ts'
 import { view } from '../src/View.ts'
+import { You } from '../src/You.ts'
 
 const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
 
@@ -26,7 +26,7 @@ const accountWith = (account: Account.Model) =>
 describe('the account page', () => {
   test('shows you in the bar as your profile does: its initials, once it is read', () => {
     const named = modifyFields(accountWith(Account.init()), {
-      you: () => Option.some({ name: 'Kris (preview)', tone: 'sage' as const }),
+      you: () => You.Known({ name: 'Kris (preview)', tone: 'sage' }),
     })
     scene({ update, view }, given(named), expect(role('link', { name: 'Account' })).toHaveText('KP'))
   })

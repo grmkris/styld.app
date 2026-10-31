@@ -3,6 +3,7 @@ import { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import type { Model, Services } from './App.ts'
 import { Message } from './Message.ts'
+import { Navigate } from './Navigation.ts'
 import * as Account from './page/Account.ts'
 import * as Ask from './page/Ask.ts'
 import * as Boards from './page/Boards.ts'
@@ -11,7 +12,7 @@ import * as Today from './page/Today.ts'
 import * as Visit from './page/Visit.ts'
 import * as Wishlist from './page/Wishlist.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
-import type { AppRoute } from './route.ts'
+import { type AppRoute, boardRouter } from './route.ts'
 
 // What opening each tab page asks for, on a first load and on every tab change (App.ts `init` and `changedUrl`):
 // each page's own entry, folded into the app.
@@ -104,3 +105,26 @@ export const openPage = (route: AppRoute, hasSessionCookie: boolean): ReadonlyAr
     Match.tag('Account', () => (hasSessionCookie ? [foldAccountEnter] : [])),
     Match.orElse(() => []),
   )
+
+/** Boards inside the app: a board made from anywhere opens as soon as it is made. */
+export const boardsFold = {
+  read: (model: Model) => Option.some(model.boards),
+  write: (model: Model, boards: Boards.Model) => modifyFields(model, { boards: () => boards }),
+  toParentMessage: (message: Boards.Message) => Message.GotBoardsMessage({ message }),
+  foldOutMessage: Boards.OutMessage.match<Update.Step<Model, Message, Services>>({
+    CreatedBoard:
+      ({ boardId }) =>
+      (stepModel) => ({ model: stepModel, commands: [Navigate({ href: boardRouter({ boardId }) })] }),
+  }),
+}
+/** Start a board from outside Boards (Ask's + sheet), through Boards' own step. */
+export const foldStartBoard = (defaultName: string) =>
+  Update.foldChildStep({ update: Boards.startBoard(defaultName), ...boardsFold })
+
+/** The landing's Try again, through Visit's own step. */
+export const foldVisitRetry = Update.foldChildStep({
+  update: Visit.retry,
+  read: (model: Model) => Option.some(model.visit),
+  write: (model: Model, visit: Visit.Model) => modifyFields(model, { visit: () => visit }),
+  toParentMessage: (message: Visit.Message) => Message.GotVisitMessage({ message }),
+})
