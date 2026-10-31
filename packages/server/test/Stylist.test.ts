@@ -1,14 +1,15 @@
 import { readFileSync } from 'node:fs'
 import { OpenAiClient, OpenAiLanguageModel } from '@effect/ai-openai-compat'
 import { LookId } from '@styld/protocol'
-import { Context, Effect, Layer, Predicate, Schema, Stream } from 'effect'
+import { Cause, Context, Effect, Fiber, Layer, Predicate, Schema, Stream } from 'effect'
 import { FetchHttpClient } from 'effect/http'
 import { describe, expect, test } from 'vitest'
 import { type Tool as AssistantTool, tool, ToolError } from '../src/mcp/Tools.ts'
 import { stylistPolicy } from '../src/stylist/Policy.ts'
 import { historyText, outlineOf, systemPrompt } from '../src/stylist/Prompt.ts'
 import { lookingUpToolNames, modelSchema, showingToolNames, turnTools } from '../src/stylist/Tools.ts'
-import { runTurn } from '../src/stylist/Turn.ts'
+import { TestClock } from 'effect/testing'
+import { callPatience, runTurn } from '../src/stylist/Turn.ts'
 import { type RunChat, workersAiFetch } from '../src/stylist/WorkersAiFetch.ts'
 
 const fixture = (name: string): unknown =>
@@ -56,6 +57,9 @@ const modelOver = (run: RunChat, extra: Readonly<Record<string, unknown>> = {}) 
     ),
   )
 
+/** Workers AI holding a call open for good, as one did for 235 s on the preview. */
+const neverAnswering: RunChat = () => new Promise(() => undefined)
+
 const Loose = Schema.Record(Schema.String, Schema.Unknown)
 const loose = Schema.decodeUnknownSync(Loose)
 
@@ -99,6 +103,31 @@ const replyWith = (answers: ReadonlyArray<unknown>, maxSteps = 6) => {
 }
 
 describe('a reply', () => {
+  test('a model call that never answers fails at its patience, counted as failed, so the queue asks again', async () => {
+    const failed: Array<number> = []
+    const outcome = await Effect.runPromise(
+      Effect.gen(function* () {
+        const tools = yield* turnTools([pieceSearch], { turnId: 'tn_test', pieceIds: new Set() }, Context.empty())
+        const writing = yield* Effect.forkChild(
+          runTurn({
+            system: 'Styld',
+            history: [{ role: 'person', text: 'What should I wear today?' }],
+            toolkit: yield* tools.toolkit.pipe(Effect.provide(tools.handlers)),
+            maxSteps: 6,
+            showing: showingToolNames,
+            lookingUp: lookingUpToolNames,
+            progress: () => Effect.void,
+            counted: (usage) => Effect.sync(() => void (usage.answered ? undefined : failed.push(usage.milliseconds))),
+          }).pipe(Effect.provide(modelOver(neverAnswering))),
+        )
+        yield* TestClock.adjust(callPatience)
+        return yield* Effect.flip(Fiber.join(writing))
+      }).pipe(Effect.provide(TestClock.layer())),
+    )
+    expect(Cause.isTimeoutError(outcome)).toBe(true)
+    expect(failed).toEqual([45_000])
+  })
+
   test('looks the wardrobe up, then ends with its words and the pieces it shows (recorded GLM-5.3-flash)', async () => {
     const recorded = [0, 1, 2].map((step) => fixture(`glm-step-${step}.json`))
     const { replied, asked, progress, counted } = replyWith(recorded)

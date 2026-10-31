@@ -31,6 +31,9 @@ const listed = 30
 
 const unavailable = () => StylistUnavailable.make({})
 
+/** A failure's kind for the logs: its name, such as TimeoutError or AiError, never its message. */
+const failureOf = (error: unknown) => (error instanceof Error ? error.name : typeof error).slice(0, 80)
+
 const decodeParts = Schema.decodeUnknownOption(Schema.fromJsonString(Schema.Array(ReplyPart)))
 /** A reply's parts as stored; none for any that do not read, which only an older shape could leave. */
 const partsOf = (json: string): ReadonlyArray<ReplyPart> => Option.getOrElse(decodeParts(json), () => [])
@@ -245,7 +248,15 @@ const queueing = <R>(parts: StylistParts<R>, ids: Ids) => ({
       return yield* stored(
         parts.usage.settle(accountId, holdOf(turnId), input.state === 'done' ? 'consumed' : 'refunded'),
       )
-    const answered = yield* reply(parts, accountId, turnId, input).pipe(Effect.mapError(unavailable))
+    const answered = yield* reply(parts, accountId, turnId, input).pipe(
+      // What failed, by its kind alone (a call past its patience, the model's error), never its words.
+      Effect.tapError((error) =>
+        Effect.logWarning('Styld.Stylist model failed').pipe(
+          Effect.annotateLogs({ 'styld.stylist.failure': failureOf(error) }),
+        ),
+      ),
+      Effect.mapError(unavailable),
+    )
     // A model that wrote nothing and showed nothing has not answered: the queue asks again.
     if (answered.text.length === 0 && answered.parts.length === 0) return yield* unavailable()
     yield* stored(

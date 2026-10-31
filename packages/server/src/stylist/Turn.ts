@@ -1,4 +1,4 @@
-import { Clock, Effect, Ref, Stream } from 'effect'
+import { Clock, Duration, Effect, Ref, Stream } from 'effect'
 import { Chat, type Tool, type Toolkit } from 'effect/ai'
 
 /** One model call of a reply: whether it answered, how long it took and the tokens it was billed. */
@@ -11,6 +11,11 @@ export interface StepUsage {
 
 /** How often the reply so far is reported while it is written. */
 const progressEvery = 250
+
+/** How long one model call may take before it fails and the queue asks again. On the preview (31 October) DeepSeek
+ * V4.1 Flash answered 53 calls at a median of 3.1 s, the slowest in 30 s; one Workers AI call that never answered held
+ * its reply 235 s, the chat showing Styld writing all that time. */
+export const callPatience = Duration.seconds(45)
 
 /** One model call: its words as they come, to `onWords`, and the tools it called. It is counted whatever its outcome,
  * before the reply fails with a failed call. */
@@ -37,6 +42,7 @@ const callModel = <Tools extends Record<string, Tool.Any>>(
         }
         return Effect.void
       }),
+      Effect.timeout(callPatience),
       Effect.tapError(() =>
         Effect.flatMap(Clock.currentTimeMillis, (now) =>
           counted({ answered: false, milliseconds: now - started, inputTokens: 0, outputTokens: 0 }),
