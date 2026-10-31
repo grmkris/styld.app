@@ -1,18 +1,17 @@
 import { Dialog, RadioGroup } from '@foldkit/ui'
-import { catalogVersion } from '@styld/i18n'
 import { Board, Generation } from '@styld/protocol'
 import { Schema } from 'effect'
 import { click, Command, expect, given, keydown, Mount, role, scene, submit, text, type } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
-import { init, Session, update } from '../src/App.ts'
+import { update } from '../src/App.ts'
 import { AskForPictures, Message as MakeMessage, PollGeneration } from '../src/page/Board/Make.ts'
 import { Message as BoardMessage } from '../src/page/Board/Message.ts'
 import { fromBoard, init as boardInit } from '../src/page/Board/Model.ts'
 import { ReloadBoard } from '../src/page/Board/PageCommands.ts'
 import { view } from '../src/View.ts'
+import { signedInAt } from './AppFixtures.ts'
 
-const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
 const boardId = `bd_${'sea'.padEnd(22, 'x')}`
 const imageId = `bm_${'sea'.padEnd(22, 'x')}`
 const board = Schema.decodeUnknownSync(Board)({
@@ -50,18 +49,9 @@ const generation = (status: string, pictures: ReadonlyArray<string>) =>
     createdAt: '2026-10-31T09:00:00.000Z',
   })
 
-const page = modifyFields(
-  init({
-    locale: 'en',
-    catalogVersion,
-    timeZone: 'UTC',
-    referenceTime: 0,
-    pathname: `/boards/${boardId}`,
-    origin: 'https://styld.test',
-    telemetryConsent: 'denied',
-  }).model,
-  { session: () => Session.SignedIn({ claims }), board: () => fromBoard(boardInit(boardId), board) },
-)
+const page = modifyFields(signedInAt(`/boards/${boardId}`), {
+  board: () => fromBoard(boardInit(boardId), board),
+})
 
 const resolveFocus = Command.resolve(RadioGroup.FocusOption, RadioGroup.Message.CompletedFocusOption())
 

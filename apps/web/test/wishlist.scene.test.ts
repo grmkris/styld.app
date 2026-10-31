@@ -1,17 +1,16 @@
-import { catalogVersion } from '@styld/i18n'
 import { PublicPiecePage, Wish } from '@styld/protocol'
 import { Schema } from 'effect'
 import { AsyncData } from 'foldkit'
 import { click, Command, expect, given, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
-import { init, Session, update } from '../src/App.ts'
+import { update } from '../src/App.ts'
 import { AddToWishlist, Message as PeopleMessage } from '../src/page/People.ts'
 import { Shown } from '../src/page/Visit.ts'
 import { ListWishes, RemoveWish, Message as WishlistMessage, WishesData } from '../src/page/Wishlist.ts'
 import { view } from '../src/View.ts'
+import { signedInAt } from './AppFixtures.ts'
 
-const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
 const knit = { id: `pc_${'knit'.padEnd(22, 'x')}`, name: 'Navy knit', category: 'top', subcategory: null, colours: [] }
 const by = { handle: 'nika.kovac', name: 'Nika Kovač', tone: 'clay' }
 const wish = (id: string, changes: object) =>
@@ -27,21 +26,8 @@ const wish = (id: string, changes: object) =>
 const kept = wish('knit', {})
 const gone = wish('coat', { name: 'Camel coat', category: 'outerwear', piece: null, by: null })
 
-const signedIn = (pathname: string) =>
-  modifyFields(
-    init({
-      locale: 'en',
-      catalogVersion,
-      timeZone: 'UTC',
-      referenceTime: 0,
-      pathname,
-      origin: 'https://styld.test',
-      telemetryConsent: 'denied',
-    }).model,
-    { session: () => Session.SignedIn({ claims }) },
-  )
 const wishlist = (wishes: WishesData) =>
-  modifyFields(signedIn('/wardrobe/wishlist'), {
+  modifyFields(signedInAt('/wardrobe/wishlist'), {
     wishlist: (current) => modifyFields(current, { wishes: () => wishes }),
   })
 
@@ -97,7 +83,7 @@ describe('the wishlist', () => {
     scene(
       { update, view },
       given(
-        modifyFields(signedIn(`/pieces/${knit.id}`), {
+        modifyFields(signedInAt(`/pieces/${knit.id}`), {
           visit: (visit) => modifyFields(visit, { shown: () => Shown.Piece({ page }) }),
         }),
       ),
