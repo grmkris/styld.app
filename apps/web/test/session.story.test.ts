@@ -6,7 +6,7 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 import { Message, ReadSession, Session, init, update } from '../src/App.ts'
 import { ReadYou, You } from '../src/You.ts'
-import { Navigate, ReturnAfterSignIn } from '../src/Navigation.ts'
+import { Navigate } from '../src/Navigation.ts'
 import { Message as AddPiecesMessage } from '../src/page/AddPieces/Message.ts'
 import { Message as ReviewMessage } from '../src/page/Review.ts'
 import * as Today from '../src/page/Today.ts'
@@ -61,20 +61,20 @@ describe('the session decides where a visitor belongs', () => {
       '/login/connect',
       '/no/such/page',
     ]
-    // Back to the page, noted for the tab (SignInReturn); anywhere else, the account.
+    // Back to the page; anywhere else, the account. Only a Follow pressed in this tab follows there (SignInReturn).
     const cases = [
-      ['/@nika.kovac', ReturnAfterSignIn({ href: '/@nika.kovac' })],
-      ['/boards/bd_1?from=explore#pins', ReturnAfterSignIn({ href: '/boards/bd_1?from=explore#pins' })],
-      ...elsewhere.map((next) => [next, Navigate({ href: '/account' })] as const),
+      ['/@nika.kovac#follow', '/@nika.kovac#follow'],
+      ['/boards/bd_1?from=explore#pins', '/boards/bd_1?from=explore#pins'],
+      ...elsewhere.map((next) => [next, '/account']),
     ] as const
-    for (const [next, command] of cases)
+    for (const [next, href] of cases)
       story(
         update,
         given(atLogin(next)),
         message(Message.ReceivedSession({ claims })),
         model(({ session }) => expect(Session.guards.SignedIn(session)).toBe(true)),
-        Command.expectExact(command),
-        Command.resolve(command, Message.CompletedNavigate()),
+        Command.expectExact(Navigate({ href })),
+        Command.resolve(Navigate({ href }), Message.CompletedNavigate()),
       )
   })
 

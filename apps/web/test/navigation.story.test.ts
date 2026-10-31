@@ -14,6 +14,7 @@ import {
   NavigateInternal,
   ScrollToAnchor,
   ScrollToTop,
+  SignInToFollow,
 } from '../src/Navigation.ts'
 import { ReadProfile, Message as AccountMessage } from '../src/page/Account.ts'
 import { LoadSearchLanguages, Message as AskMessage } from '../src/page/Ask.ts'
@@ -51,6 +52,20 @@ describe('following a link', () => {
     expect(names(followLink(AppRoute.Home(), true, UrlRequest.External({ href: 'mailto:hello@styld.app' })))).toEqual([
       'Navigate',
     ])
+  })
+
+  test('Follow pressed signed out notes the profile sign-in returns to; any other sign-in link only loads', () => {
+    const person = AppRoute.Person({ handle: 'nika.kovac' })
+    const [press] = followLink(person, false, internal('/login?next=%2F%40nika.kovac%23follow'))
+    expect({ name: press?.name, args: press !== undefined && 'args' in press ? press.args : undefined }).toEqual({
+      name: SignInToFollow.name,
+      args: { href: 'https://styld.test/login?next=%2F%40nika.kovac%23follow', returnTo: '/@nika.kovac#follow' },
+    })
+    for (const path of ['/login?next=%2F%40nika.kovac', '/login?next=%2F%2Fevil.example%23follow', '/login'])
+      expect({ path, commands: names(followLink(person, false, internal(path))) }).toEqual({
+        path,
+        commands: ['Navigate'],
+      })
   })
 
   test('someone signed out loads whole; the current tab scrolls back up; a section of it is scrolled to', () => {

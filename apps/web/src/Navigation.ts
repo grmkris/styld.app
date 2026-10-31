@@ -3,7 +3,7 @@ import { Command, Dom, Render } from 'foldkit'
 import { load, pushUrl, UrlRequest } from 'foldkit/navigation'
 import { type Url, toString as urlToString } from 'foldkit/url'
 import { Message } from './Message.ts'
-import { accountRouter, type AppRoute, isSameTab, returnPath, routeFromUrl, tabOf } from './route.ts'
+import { accountRouter, AppRoute, isSameTab, returnPath, routeFromUrl, tabOf } from './route.ts'
 import { noteReturn } from './SignInReturn.ts'
 
 // How the website moves between pages, after Foldkit's own website (repos/foldkit/packages/website/src/main.ts):
@@ -19,20 +19,18 @@ export const Navigate = Command.define('Navigate', {
   execute: ({ href }) => load(href).pipe(Effect.as(Message.CompletedNavigate())),
 })
 
-/** Back from sign-in to the page it was asked from, noted first so that page knows sign-in brought this tab there.
+/** Follow pressed signed out: sign-in, with the profile it returns to noted for this tab, so only that arrival follows.
  * @internal Exported for its tests. */
-export const ReturnAfterSignIn = Command.define('ReturnAfterSignIn', {
-  args: { href: Schema.String },
+export const SignInToFollow = Command.define('SignInToFollow', {
+  args: { href: Schema.String, returnTo: Schema.String },
   messages: [Message.CompletedNavigate],
-  execute: ({ href }) => noteReturn(href).pipe(Effect.andThen(load(href)), Effect.as(Message.CompletedNavigate())),
+  execute: ({ href, returnTo }) =>
+    noteReturn(returnTo).pipe(Effect.andThen(load(href)), Effect.as(Message.CompletedNavigate())),
 })
 
 /** Where sign-in hands over to: the page it was asked from (a Follow or a Save on a public page), else the account. */
 export const returnAfterSignIn = (next: Option.Option<string>) =>
-  Option.match(returnPath(next), {
-    onNone: () => Navigate({ href: accountRouter({}) }),
-    onSome: (href) => ReturnAfterSignIn({ href }),
-  })
+  Navigate({ href: Option.getOrElse(returnPath(next), () => accountRouter({})) })
 
 /** Another tab page in the same document: the address changes and `ChangedUrl` opens it.
  * @internal Exported for its tests. */
@@ -84,13 +82,21 @@ export const routing = {
 
 // UPDATE
 
+/** A return that finishes a Follow (`#follow`, People › FollowArrival). */
+const followsOnReturn = (path: string) => path.endsWith('#follow')
+
 /** A followed link. Between tab pages, for someone signed in, the page stays and only the address changes; the
- * current tab scrolls back to its top; a section of the same page is scrolled to; everything else loads whole. */
+ * current tab scrolls back to its top; a section of the same page is scrolled to; everything else loads whole, and
+ * a Follow pressed signed out notes where sign-in returns first. */
 export const followLink = (route: AppRoute, isSignedIn: boolean, request: UrlRequest) =>
   UrlRequest.match(request, {
     Internal: ({ url }) => {
       const target = routeFromUrl(url)
       const href = urlToString(url)
+      const toFollow = AppRoute.guards.Login(target)
+        ? Option.filter(returnPath(target.next), followsOnReturn)
+        : Option.none()
+      if (Option.isSome(toFollow)) return [SignInToFollow({ href, returnTo: toFollow.value })]
       const bothTabs = Option.isSome(tabOf(route)) && Option.isSome(tabOf(target))
       if (bothTabs && isSameTab(route, target))
         return Option.isSome(url.hash) ? [NavigateInternal({ href })] : [ScrollToTop()]

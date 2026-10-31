@@ -1,16 +1,18 @@
 import { Effect } from 'effect'
 
-// Where sign-in returned this tab to. A Follow pressed signed out comes back at `#follow`, and only the arrival sign-in
-// made follows: a link that merely ends in `#follow`, a reload or a Back to the page does not.
+// A Follow pressed signed out goes through sign-in and comes back at `#follow`. The press notes the return for this tab,
+// and only an arrival this tab asked for follows: a link that merely ends in `#follow`, a sign-in link sent by someone
+// else, a reload or a Back to the page does not.
 
 const key = 'styld.signInReturn'
 
-/** Notes for this tab the page sign-in returns to; without storage the page opens all the same, unfollowed. */
+/** Notes for this tab, as Follow is pressed signed out, the page sign-in is to return to; without storage the page
+ * opens all the same, unfollowed. */
 export const noteReturn = (href: string) =>
   Effect.try(() => window.sessionStorage.setItem(key, href)).pipe(Effect.ignore)
 
-/** Whether sign-in returned this tab to the address it is at now. The note is spent, and a `#follow` leaves the address,
- * so a reload or Back does not follow again; the address is replaced quietly, as the page itself has not changed. */
+/** Whether this tab pressed Follow signed out for the address it is at now. The note is spent, and `#follow` leaves the
+ * address, so a reload or Back does not follow again; the address is replaced quietly, as the page has not changed. */
 export const tookReturn = Effect.try(() => {
   const noted = window.sessionStorage.getItem(key)
   window.sessionStorage.removeItem(key)

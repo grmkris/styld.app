@@ -22,7 +22,7 @@ const tab = () => {
   return { location, go }
 }
 
-describe('where sign-in returned this tab', () => {
+describe('a Follow pressed signed out, returned to by sign-in', () => {
   let browser: ReturnType<typeof tab>
   beforeEach(() => {
     browser = tab()
@@ -31,7 +31,7 @@ describe('where sign-in returned this tab', () => {
     vi.unstubAllGlobals()
   })
 
-  test('the arrival sign-in made is taken once, and #follow leaves the address', () => {
+  test('the arrival this tab asked for is taken once, and #follow leaves the address', () => {
     browser.go('/login?next=%2F%40nika.kovac%23follow')
     Effect.runSync(noteReturn('/@nika.kovac#follow'))
     browser.go('/@nika.kovac#follow')
@@ -42,7 +42,7 @@ describe('where sign-in returned this tab', () => {
     expect(Effect.runSync(tookReturn)).toBe(false)
   })
 
-  test('a link that only ends in #follow, or a note for another page, is not an arrival from sign-in', () => {
+  test('a link that only ends in #follow, or a note for another page, follows nobody', () => {
     browser.go('/@nika.kovac#follow')
     expect(Effect.runSync(tookReturn)).toBe(false)
     expect(browser.location.href).toBe('https://styld.test/@nika.kovac')
