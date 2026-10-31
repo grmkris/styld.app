@@ -141,6 +141,16 @@ export const original = style({
   fontWeight: 500,
   cursor: 'pointer',
 })
+/** How often the piece was seen, and the way to split it, under its picture. */
+export const sightings = style({
+  display: 'flex',
+  flexDirection: 'column',
+  alignItems: 'flex-start',
+  gap: '8px',
+  marginBlockStart: '8px',
+  fontSize: '14px',
+  color: 'ink2',
+})
 /** The primary action stays in reach at the bottom of the screen (Gallery `.footer-cta`), above the
  * phone's tab bar (64px and its border, `View.styles.ts` › appNav). */
 export const footer = style({

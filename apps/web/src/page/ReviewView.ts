@@ -146,6 +146,22 @@ const notice = (capture: TrayCapture, model: Model, locale: Locale, h: HtmlBuild
   ])
 }
 
+/** How often what the person added showed the piece, and a way to undo it when they were different pieces. */
+const sightings = (detection: Detection, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  detection.sightings > 1
+    ? h.div(styled(h, styles.sightings()), [
+        h.p([], [format(locale, 'capture.sightings', { count: detection.sightings })]),
+        actionButton(
+          {
+            label: format(locale, 'capture.split', {}),
+            style: secondaryAction(),
+            onClick: Message.ClickedSplit({ detectionId: detection.id }),
+          },
+          h,
+        ),
+      ])
+    : h.empty
+
 /** The open piece: its picture, the original photo instead, what it is and its name. */
 const editor = (detection: Detection, decision: Decision, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.section(
@@ -157,6 +173,7 @@ const editor = (detection: Detection, decision: Decision, locale: Locale, h: Htm
         h.Alt(label(decision, locale)),
         ...styled(h, styles.editorImage()),
       ]),
+      sightings(detection, locale, h),
       detection.hasCutout
         ? h.label(styled(h, styles.original()), [
             h.input([

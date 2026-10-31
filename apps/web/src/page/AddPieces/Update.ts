@@ -1,5 +1,5 @@
 import { FileDrop } from '@foldkit/ui'
-import { type CaptureSource, ImageType, maximumImageBytes, type Side, VideoType } from '@styld/protocol'
+import { type CaptureId, type CaptureSource, ImageType, maximumImageBytes, type Side, VideoType } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import type * as Crypto from 'effect/Crypto'
 import { File, Update } from 'foldkit'
@@ -43,20 +43,23 @@ const videoCommand = (item: Item, index: number, plan: Option.Option<VideoPlan>)
         contentType: Schema.decodeUnknownSync(VideoType)(File.mimeType(item.file)),
         prepared: item.prepared,
       })
-    : SendVideoPart({ index, video: item.file, part, prepared: item.prepared })
+    : SendVideoPart({ index, video: item.file, part, prepared: item.prepared, importOf: item.captureId })
 }
 
-/** The capture a back shot's front became; none if the front went nowhere. */
-const frontCapture = (model: Model, item: Item) =>
-  Option.flatMap(item.front, (at) => Option.flatMap(Option.fromNullishOr(model.items[at]), (front) => front.captureId))
+/** The capture the file at `at` became; none if it went nowhere. */
+const captureAt = (model: Model, at: Option.Option<number>) =>
+  Option.flatMap(at, (index) => Option.flatMap(Option.fromNullishOr(model.items[index]), (item) => item.captureId))
 
-/** A back shot whose front is still on its way waits for it, so it can pair. One whose front failed goes
- * on its own. */
-const awaitsFront = (model: Model, item: Item) =>
-  Option.exists(item.front, (at) => {
-    const front = model.items[at]
-    return front !== undefined && (Sending.guards.Waiting(front.sending) || Sending.guards.Sending(front.sending))
+/** Whether the file at `at` is still on its way. */
+const onItsWay = (model: Model, at: Option.Option<number>) =>
+  Option.exists(at, (index) => {
+    const other = model.items[index]
+    return other !== undefined && (Sending.guards.Waiting(other.sending) || Sending.guards.Sending(other.sending))
   })
+
+/** A back shot whose front is still on its way waits for it, so it can pair; a photo picked with others waits for
+ * the first of them, to join its import. One whose front or first failed goes on its own. */
+const awaitsOther = (model: Model, item: Item) => onItsWay(model, item.front) || onItsWay(model, item.joins)
 
 const commandFor = (model: Model, item: Item, index: number) =>
   item.kind === 'video'
@@ -67,7 +70,8 @@ const commandFor = (model: Model, item: Item, index: number) =>
         contentType: Schema.decodeUnknownSync(ImageType)(File.mimeType(item.file)),
         source: item.source,
         side: item.side,
-        pairsWith: frontCapture(model, item),
+        pairsWith: captureAt(model, item.front),
+        importOf: captureAt(model, item.joins),
         operationId: item.operationId,
         uploadId: item.uploadId,
       })
@@ -84,7 +88,7 @@ const startable = (model: Model) => {
       state.starting.length >= free ||
       !Sending.guards.Waiting(item.sending) ||
       (item.kind === 'video' && state.videoBusy) ||
-      awaitsFront(model, item)
+      awaitsOther(model, item)
         ? state
         : { starting: [...state.starting, { item, index }], videoBusy: state.videoBusy || item.kind === 'video' },
     { starting: [], videoBusy: model.items.some(isReadingVideo) },
@@ -120,6 +124,7 @@ const newItem = (
   source: CaptureSource,
   side: Option.Option<Side> = Option.none(),
   front: Option.Option<number> = Option.none(),
+  joins: Option.Option<number> = Option.none(),
 ): Item => ({
   key,
   file,
@@ -127,6 +132,7 @@ const newItem = (
   source,
   side,
   front,
+  joins,
   captureId: Option.none(),
   operationId: Option.none(),
   uploadId: Option.none(),
@@ -136,19 +142,24 @@ const newItem = (
   sending: Sending.Waiting(),
 })
 
+/** Files chosen together join the list; photos among them are one import, joined to the first of them. */
 const chose = (model: Model, files: ReadonlyArray<File.File>): UpdateReturn => {
   const sorted = files.map((file) => ({ file, sort: classify(file) }))
-  const accepted = sorted.flatMap(({ file, sort }, at): ReadonlyArray<Item> =>
-    'kind' in sort
-      ? [
-          newItem(
-            `${model.items.length + at}:${File.name(file)}`,
-            file,
-            sort.kind,
-            sort.kind === 'video' ? 'video' : 'picker',
-          ),
-        ]
-      : [],
+  const kinds = sorted.flatMap(({ file, sort }) => ('kind' in sort ? [{ file, kind: sort.kind }] : []))
+  const photos = kinds.filter(({ kind }) => kind === 'photo').length
+  const firstPhoto = kinds.findIndex(({ kind }) => kind === 'photo')
+  const accepted = kinds.map(({ file, kind }, at) =>
+    newItem(
+      `${model.items.length + at}:${File.name(file)}`,
+      file,
+      kind,
+      kind === 'video' ? 'video' : 'picker',
+      Option.none(),
+      Option.none(),
+      kind === 'photo' && photos > 1 && at !== firstPhoto
+        ? Option.some(model.items.length + firstPhoto)
+        : Option.none(),
+    ),
   )
   const rejected = sorted.flatMap(({ file, sort }) =>
     'problem' in sort ? [{ name: File.name(file), problem: sort.problem }] : [],
@@ -219,12 +230,18 @@ const continueVideo = (model: Model, index: number): UpdateReturn => {
   return item === undefined ? { model } : { model, commands: [commandFor(model, item, index)] }
 }
 
-/** A part went: send the next one, or the video is done. A late answer for another part changes nothing. */
-const sentPart = (model: Model, index: number, part: number): UpdateReturn => {
+/** A part went: send the next one, in the first part's import, or the video is done. A late answer for another
+ * part changes nothing. */
+const sentPart = (model: Model, index: number, part: number, captureId: CaptureId): UpdateReturn => {
   const item = model.items[index]
   if (item === undefined || Option.isNone(item.plan) || item.partsSent !== part) return { model }
   const sent = part + 1
-  const advanced = withItem(model, index, (current) => ({ ...current, partsSent: sent, prepared: Option.none() }))
+  const advanced = withItem(model, index, (current) => ({
+    ...current,
+    partsSent: sent,
+    prepared: Option.none(),
+    captureId: Option.orElse(current.captureId, () => Option.some(captureId)),
+  }))
   return sent < item.plan.value.parts.length
     ? continueVideo(advanced, index)
     : settled(withItem(advanced, index, (current) => ({ ...current, sending: Sending.Sent() })))
@@ -267,7 +284,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         withItem(model, index, (item) => ({ ...item, plan: Option.some(plan) })),
         index,
       ),
-    SucceededSendVideoPart: ({ index, part }) => sentPart(model, index, part),
+    SucceededSendVideoPart: ({ index, part, captureId }) => sentPart(model, index, part, captureId),
     FailedSend: (failure) => failedSend(model, failure),
     // Trying again resumes where it stopped: the same photo upload, the next part of a video.
     ClickedRetry: ({ index }) =>

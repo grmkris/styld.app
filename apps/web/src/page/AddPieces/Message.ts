@@ -28,7 +28,7 @@ export const Message = defineMessageUnion({
   ClickedHoldUp: {},
   SucceededSend: { index: Schema.Number, captureId: CaptureId },
   SucceededInspectVideo: { index: Schema.Number, plan: VideoPlan },
-  SucceededSendVideoPart: { index: Schema.Number, part: Schema.Number },
+  SucceededSendVideoPart: { index: Schema.Number, part: Schema.Number, captureId: CaptureId },
   FailedSend: {
     index: Schema.Number,
     problem: SendProblem,

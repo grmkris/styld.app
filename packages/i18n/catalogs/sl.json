@@ -2859,6 +2859,8 @@
       "videoPartial": "Današnji brezplačni krediti so pokrili {sent} od {parts} delov. Preostanek pošlji jutri."
     },
     "seeFound": "{count, plural, one {Poglej, kaj je v # datoteki} two {Poglej, kaj je v # datotekah} few {Poglej, kaj je v # datotekah} other {Poglej, kaj je v # datotekah}}",
+    "sightings": "V dodanem se pojavi {count}-krat in bo shranjen kot en kos.",
+    "split": "Ni isti kos? Prikaži jih ločeno",
     "foundTitle": "{count, plural, =0 {Zaenkrat ni najdenega} one {Najden # kos} two {Najdena # kosa} few {Najdeni # kosi} other {Najdenih # kosov}}",
     "reviewHint": "Izrezani so in pripravljeni. Odznači vse, kar ni tvoje.",
     "allowance": "Danes še {remaining} od {daily} brezplačnih",

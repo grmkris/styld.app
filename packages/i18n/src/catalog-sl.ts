@@ -2559,6 +2559,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
     'Današnji brezplačni krediti so pokrili {sent} od {parts} delov. Preostanek pošlji jutri.',
   'capture.seeFound':
     '{count, plural, one {Poglej, kaj je v # datoteki} two {Poglej, kaj je v # datotekah} few {Poglej, kaj je v # datotekah} other {Poglej, kaj je v # datotekah}}',
+  'capture.sightings': 'V dodanem se pojavi {count}-krat in bo shranjen kot en kos.',
+  'capture.split': 'Ni isti kos? Prikaži jih ločeno',
   'capture.foundTitle':
     '{count, plural, =0 {Zaenkrat ni najdenega} one {Najden # kos} two {Najdena # kosa} few {Najdeni # kosi} other {Najdenih # kosov}}',
   'capture.reviewHint': 'Izrezani so in pripravljeni. Odznači vse, kar ni tvoje.',

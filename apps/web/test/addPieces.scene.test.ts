@@ -1,4 +1,5 @@
 import { catalogVersion } from '@styld/i18n'
+import { CaptureId } from '@styld/protocol'
 import { Option } from 'effect'
 import { Command, changeFiles, expect, given, scene, selector, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
@@ -42,7 +43,10 @@ describe('reading a video on the add page', () => {
       changeFiles(selector('input[type="file"]'), [rail]),
       Command.resolve(InspectVideo, Message.SucceededInspectVideo({ index: 0, plan: twoParts })),
       expect(text('Reading the video, part 1 of 2')).toExist(),
-      Command.resolve(SendVideoPart, Message.SucceededSendVideoPart({ index: 0, part: 0 })),
+      Command.resolve(
+        SendVideoPart,
+        Message.SucceededSendVideoPart({ index: 0, part: 0, captureId: CaptureId.make(`cp_${'r'.repeat(22)}`) }),
+      ),
       expect(text('Reading the video, part 2 of 2')).toExist(),
       Command.resolve(
         SendVideoPart,

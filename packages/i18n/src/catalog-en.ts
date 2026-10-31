@@ -2514,6 +2514,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.problem.network': "Didn't send",
   'capture.problem.videoPartial': "Today's free allowance covered {sent} of {parts} parts. Send the rest tomorrow.",
   'capture.seeFound': "{count, plural, one {See what's in # file} other {See what's in # files}}",
+  'capture.sightings': 'Seen {count} times in what you added, kept as one piece.',
+  'capture.split': 'Not the same piece? Show them apart',
   'capture.foundTitle': '{count, plural, =0 {Nothing found yet} one {# piece found} other {# pieces found}}',
   'capture.reviewHint': "They're cut out and ready. Untick anything that isn't yours.",
   'capture.allowance': '{remaining} of {daily} free today',

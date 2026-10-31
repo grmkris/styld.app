@@ -716,6 +716,8 @@ export interface MessageArgumentsByKey<T = string> {
   'capture.reviewHint': Readonly<Record<string, never>>
   'capture.seeFound': { readonly count: number }
   'capture.sent': Readonly<Record<string, never>>
+  'capture.sightings': { readonly count: string | number }
+  'capture.split': Readonly<Record<string, never>>
   'capture.stale': Readonly<Record<string, never>>
   'capture.tooLarge': { readonly name: string | number }
   'capture.unknown': Readonly<Record<string, never>>
@@ -2622,4 +2624,4 @@ export interface MessageArgumentsByKey<T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '110c00855e90d14009be27fd068a4b95aa7864dc25ac39480cfcdcf11695397d'
+export const catalogVersion = 'c737ac76f9e1fc2a5c08822b163c9fa24edc7e89fc057066ce7ed164465d9fbd'

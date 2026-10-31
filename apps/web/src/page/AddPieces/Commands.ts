@@ -45,6 +45,8 @@ const SendPhotoArgs = Schema.Struct({
   side: Schema.Option(Side),
   /** The front capture a back shot pairs with. */
   pairsWith: Schema.Option(CaptureId),
+  /** The first capture of the photos picked with this one. */
+  importOf: Schema.Option(CaptureId),
   operationId: Schema.Option(Schema.String),
   uploadId: Schema.Option(Schema.String),
 })
@@ -93,6 +95,7 @@ export const SendPhoto = Command.define('SendPhoto', {
               source: args.source,
               ...Option.match(args.side, { onNone: () => ({}), onSome: (side) => ({ side }) }),
               ...Option.match(args.pairsWith, { onNone: () => ({}), onSome: (pairsWith) => ({ pairsWith }) }),
+              ...Option.match(args.importOf, { onNone: () => ({}), onSome: (importOf) => ({ importOf }) }),
             },
           })
         }),
@@ -122,15 +125,19 @@ const sendStill = (still: SampledStill) =>
     return { uploadId: created.uploadId, atMs: still.atMs, sharpness: still.sharpness }
   })
 
-/** Upload a clip and its stills: the video capture request, ready to send under a new operation id. */
-const uploadVideoCapture = (video: {
-  readonly clip: Blob
-  readonly contentType: VideoType
-  readonly durationMs: number
-  readonly width: number
-  readonly height: number
-  readonly stills: ReadonlyArray<SampledStill>
-}) =>
+/** Upload a clip and its stills: the video capture request, ready to send under a new operation id. A later part
+ * names the first part's capture as its import. */
+const uploadVideoCapture = (
+  video: {
+    readonly clip: Blob
+    readonly contentType: VideoType
+    readonly durationMs: number
+    readonly width: number
+    readonly height: number
+    readonly stills: ReadonlyArray<SampledStill>
+  },
+  importOf: Option.Option<CaptureId> = Option.none(),
+) =>
   Effect.gen(function* () {
     const { api: loadApi, sendFile } = yield* StyldClient
     const api = yield* loadApi
@@ -147,6 +154,7 @@ const uploadVideoCapture = (video: {
       width: video.width,
       height: video.height,
       stills,
+      ...Option.match(importOf, { onNone: () => ({}), onSome: (first) => ({ importOf: first }) }),
     })
   })
 
@@ -223,17 +231,24 @@ export const InspectVideo = Command.define('InspectVideo', {
 
 /** Cut one part of a video on this device, upload its analysis clip and stills, and make it a capture. */
 export const SendVideoPart = Command.define('SendVideoPart', {
-  args: { index: Schema.Number, video: File.File, part: VideoPart, prepared: Schema.Option(CreateVideoCapture) },
+  args: {
+    index: Schema.Number,
+    video: File.File,
+    part: VideoPart,
+    prepared: Schema.Option(CreateVideoCapture),
+    /** The first part's capture, for every later part. */
+    importOf: Schema.Option(CaptureId),
+  },
   messages: [Message.SucceededSendVideoPart, Message.FailedSend],
-  execute: ({ index, video, part, prepared }) =>
+  execute: ({ index, video, part, prepared, importOf }) =>
     sendVideoCapture(
       index,
       prepared,
       Effect.gen(function* () {
         const { cutPart } = yield* Effect.tryPromise(() => import('../../capture/VideoParts.ts'))
         const cut = yield* cutPart(video, part)
-        return yield* uploadVideoCapture({ ...cut, contentType: 'video/mp4' })
+        return yield* uploadVideoCapture({ ...cut, contentType: 'video/mp4' }, importOf)
       }),
-      () => Message.SucceededSendVideoPart({ index, part: part.index }),
+      (captureId) => Message.SucceededSendVideoPart({ index, part: part.index, captureId }),
     ),
 })

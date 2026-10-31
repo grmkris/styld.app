@@ -33,8 +33,21 @@ const request = Schema.decodeUnknownSync(CreateVideoCapture)({
   stills: [{ uploadId: `up_${'s'.repeat(22)}`, atMs: 0, sharpness: Array.from({ length: 64 }, () => 0.5) }],
 })
 
+/** The capture the rail's first part became: every later part names it as its import. */
+const railCapture = CaptureId.make(`cp_${'r'.repeat(22)}`)
+
 const partOf = (part: typeof first, prepared = Option.none<typeof request>()) =>
-  SendVideoPart({ index: 0, video: rail, part, prepared })
+  SendVideoPart({
+    index: 0,
+    video: rail,
+    part,
+    prepared,
+    importOf: part.index === 0 ? Option.none() : Option.some(railCapture),
+  })
+
+/** The rail's part `part` became a capture. */
+const sentPart = (part: number) =>
+  Message.SucceededSendVideoPart({ index: 0, part, captureId: part === 0 ? railCapture : captureOf(10 + part) })
 
 const failedOn = (problem: 'network' | 'dailyLimit', prepared = Option.none<typeof request>()) =>
   Message.FailedSend({ index: 0, problem, operationId: Option.none(), uploadId: Option.none(), prepared })
@@ -45,7 +58,7 @@ const readThenSendFirstPart = [
     InspectVideo({ index: 0, video: rail }),
     Message.SucceededInspectVideo({ index: 0, plan: cutInParts }),
   ),
-  Command.resolve(partOf(first), Message.SucceededSendVideoPart({ index: 0, part: 0 })),
+  Command.resolve(partOf(first), sentPart(0)),
 ]
 
 const chosen = (one: File, ...rest: ReadonlyArray<File>) =>
@@ -67,6 +80,7 @@ const photoArgs = (index: number, photo: File, contentType: 'image/jpeg' | 'imag
   source: picker,
   side: Option.none(),
   pairsWith: Option.none<CaptureId>(),
+  importOf: Option.none<CaptureId>(),
   operationId: Option.none(),
   uploadId: Option.none(),
 })
@@ -96,20 +110,35 @@ describe('choosing files to add', () => {
     )
   })
 
-  test('two files go up at once and the next starts as one finishes; the tray opens when all are sent', () => {
+  test('photos picked together go up as one import, after the first; the tray opens when all are sent', () => {
+    const joined = (index: number, photo: File, contentType: 'image/png' | 'image/webp') =>
+      SendPhoto({ ...photoArgs(index, photo, contentType), importOf: Option.some(captureOf(0)) })
     story(
       update,
       given(init()),
       message(chosen(tee, jeans, coat)),
-      Command.expectExact(SendPhoto(photoArgs(0, tee, 'image/jpeg')), SendPhoto(photoArgs(1, jeans, 'image/png'))),
+      // Two could go at once, but the others wait for the first's capture, to name it as their import.
+      Command.expectExact(SendPhoto(photoArgs(0, tee, 'image/jpeg'))),
       model(({ items }) =>
-        expect(items.map(({ sending }) => Sending.guards.Sending(sending))).toEqual([true, true, false]),
+        expect(items.map(({ sending }) => Sending.guards.Sending(sending))).toEqual([true, false, false]),
       ),
       Command.resolve(SendPhoto(photoArgs(0, tee, 'image/jpeg')), succeeded(0)),
-      Command.expectHas(SendPhoto(photoArgs(2, coat, 'image/webp'))),
-      Command.resolve(SendPhoto(photoArgs(1, jeans, 'image/png')), succeeded(1)),
-      Command.resolve(SendPhoto(photoArgs(2, coat, 'image/webp')), succeeded(2)),
+      Command.expectExact(joined(1, jeans, 'image/png'), joined(2, coat, 'image/webp')),
+      Command.resolve(joined(1, jeans, 'image/png'), succeeded(1)),
+      Command.resolve(joined(2, coat, 'image/webp'), succeeded(2)),
       expectOutMessage({ _tag: 'FinishedSending' }),
+    )
+  })
+
+  test('a photo picked on its own, or beside videos only, joins no import', () => {
+    story(
+      update,
+      given(init()),
+      message(chosen(rail, tee)),
+      Command.expectHas(SendPhoto(photoArgs(1, tee, 'image/jpeg'))),
+      model(({ items }) => expect(items.map(({ joins }) => joins)).toEqual([Option.none(), Option.none()])),
+      Command.resolve(SendPhoto(photoArgs(1, tee, 'image/jpeg')), succeeded(1)),
+      Command.resolve(InspectVideo({ index: 0, video: rail }), failedOn('dailyLimit')),
     )
   })
 
@@ -128,8 +157,8 @@ describe('choosing files to add', () => {
       }),
       message(Message.ClickedRetry({ index: 0 })),
       Command.expectExact(partOf(second, Option.some(request))),
-      Command.resolve(partOf(second, Option.some(request)), Message.SucceededSendVideoPart({ index: 0, part: 1 })),
-      Command.resolve(partOf(third), Message.SucceededSendVideoPart({ index: 0, part: 2 })),
+      Command.resolve(partOf(second, Option.some(request)), sentPart(1)),
+      Command.resolve(partOf(third), sentPart(2)),
       expectOutMessage({ _tag: 'FinishedSending' }),
       model(({ items }) => expect(items[0]?.sending).toEqual(Sending.Sent())),
     )
@@ -165,7 +194,7 @@ describe('choosing files to add', () => {
       message(chosen(rail)),
       ...readThenSendFirstPart,
       Command.resolve(partOf(second), failedOn('dailyLimit')),
-      message(Message.SucceededSendVideoPart({ index: 0, part: 0 })),
+      message(sentPart(0)),
       Command.expectNone(),
       model(({ items }) => {
         expect(items[0]?.partsSent).toBe(1)

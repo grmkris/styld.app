@@ -32,7 +32,10 @@ export const Item = Schema.Struct({
   side: Schema.Option(Side),
   /** A back shot's front, by its place in the list: the back goes once the front has, to pair with it. */
   front: Schema.Option(Schema.Number),
-  /** The capture the file became, once sent. */
+  /** The first of the photos picked with this one, by its place in the list: this one goes once that one has, in
+   * the same import, so a garment seen in several of them is one card. */
+  joins: Schema.Option(Schema.Number),
+  /** The capture the file became, once sent; for a video cut into parts, its first part's. */
   captureId: Schema.Option(CaptureId),
   operationId: Schema.Option(Schema.String),
   uploadId: Schema.Option(Schema.String),

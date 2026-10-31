@@ -10,6 +10,7 @@ import {
   RefreshTray,
   RemoveCapture,
   RetryCapture,
+  SplitSightings,
   Saving,
   SendReview,
   init,
@@ -152,6 +153,26 @@ describe('the review tray', () => {
         expect(acting).toEqual([])
         expect(actionFailed).toEqual([])
       }),
+    )
+  })
+
+  test('a piece seen in several files splits back into its sightings, which the tray reads again', () => {
+    const seenTwice = tray([{ status: 'review', detections: [detection(1, 'top', true, 2)] }])
+    const apart = tray([{ status: 'review', detections: [detection(1, 'top'), detection(2, 'top')] }])
+    const detectionId = id('dt', 1)
+    story(
+      update,
+      given(init()),
+      message(Message.SucceededLoadTray({ tray: seenTwice })),
+      message(Message.ClickedEdit({ detectionId })),
+      message(Message.ClickedSplit({ detectionId })),
+      model(({ editing, acting }) => {
+        expect(editing).toEqual(Option.none())
+        expect(acting).toEqual([detectionId])
+      }),
+      Command.resolve(SplitSightings({ detectionId }), Message.SucceededCaptureAction({ captureId: detectionId })),
+      Command.resolve(LoadTray, Message.SucceededLoadTray({ tray: apart })),
+      model((current) => expect(keptOf(current).map(({ id: kept }) => kept)).toEqual([detectionId, id('dt', 2)])),
     )
   })
 })

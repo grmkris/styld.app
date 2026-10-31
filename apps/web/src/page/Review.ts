@@ -93,6 +93,7 @@ export const Message = defineMessageUnion({
   FailedReview: { retry: Schema.Literals(['same', 'fresh']) },
   ClickedRetryCapture: { captureId: Schema.String },
   ClickedRemoveCapture: { captureId: Schema.String },
+  ClickedSplit: { detectionId: Schema.String },
   SucceededRefreshTray: { tray: TrayContract },
   FailedRefreshTray: {},
   SucceededCaptureAction: { captureId: Schema.String },
@@ -219,6 +220,21 @@ export const RemoveCapture = Command.define('RemoveCapture', {
   args: { captureId: Schema.String },
   messages: [Message.SucceededCaptureAction, Message.FailedCaptureAction],
   execute: ({ captureId }) => onCapture(captureId, (api, params) => api.capture.remove({ params })),
+})
+
+/** Show each sighting of a piece on its own card again, keyed in the page's actions by the piece's id.
+ * @internal Exported for its tests. */
+export const SplitSightings = Command.define('SplitSightings', {
+  args: { detectionId: Schema.String },
+  messages: [Message.SucceededCaptureAction, Message.FailedCaptureAction],
+  execute: ({ detectionId }) =>
+    Effect.gen(function* () {
+      const api = yield* (yield* StyldClient).api
+      yield* api.capture.split({ params: { detectionId: yield* Schema.decodeUnknownEffect(DetectionId)(detectionId) } })
+    }).pipe(
+      Effect.as(Message.SucceededCaptureAction({ captureId: detectionId })),
+      Effect.orElseSucceed(() => Message.FailedCaptureAction({ captureId: detectionId })),
+    ),
 })
 
 /** The Commands that open the page. */
@@ -389,11 +405,11 @@ const savingHandlers = (model: Model) => ({
         },
 })
 
-/** Try a capture again or remove it, once at a time per capture. */
+/** Try a capture again, remove it, or split a piece's sightings, once at a time for each. */
 const act = (
   model: Model,
   captureId: string,
-  command: ReturnType<typeof RetryCapture> | ReturnType<typeof RemoveCapture>,
+  command: ReturnType<typeof RetryCapture> | ReturnType<typeof RemoveCapture> | ReturnType<typeof SplitSightings>,
 ): UpdateReturn =>
   model.acting.includes(captureId)
     ? { model }
@@ -423,6 +439,9 @@ const trayHandlers = (model: Model) => ({
     act(model, captureId, RetryCapture({ captureId })),
   ClickedRemoveCapture: ({ captureId }: { readonly captureId: string }): UpdateReturn =>
     act(model, captureId, RemoveCapture({ captureId })),
+  // The split sightings come back as cards of their own; the piece open shows its first again.
+  ClickedSplit: ({ detectionId }: { readonly detectionId: string }): UpdateReturn =>
+    act(modifyFields(model, { editing: () => Option.none() }), detectionId, SplitSightings({ detectionId })),
   SucceededCaptureAction: ({ captureId }: { readonly captureId: string }): UpdateReturn => ({
     model: modifyFields(model, { acting: (acting) => acting.filter((id) => id !== captureId) }),
     commands: [LoadTray()],
