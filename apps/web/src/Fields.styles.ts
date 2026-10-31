@@ -16,4 +16,7 @@ export const textField = style({
   fontSize: '16px',
   '&[aria-invalid="true"]': { borderColor: 'invalid' },
 })
+/** A text field for a few lines: the field's look with room above and below the words, and no resize grabber.
+ * Combine with textField. */
+export const textArea = style({ paddingBlock: '13px', lineHeight: 1.5, resize: 'none' })
 export const formError = style({ marginBlockStart: '8px', fontSize: '14px', color: 'error' })

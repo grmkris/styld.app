@@ -5,7 +5,7 @@ import { cx } from 'zyzz'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../../ActionButton.ts'
 import { primaryAction, secondaryAction, smallAction } from '../../Actions.styles.ts'
-import { textField } from '../../Fields.styles.ts'
+import { textArea, textField } from '../../Fields.styles.ts'
 import { loader } from '../../Icon.ts'
 import { styled } from '../../Styled.ts'
 import { bottomSheet } from '../Sheet.ts'
@@ -128,7 +128,7 @@ const sheetBody = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Reado
           h.Placeholder(format(locale, 'board.make.wordsPlaceholder', {})),
           h.Value(model.words),
           h.OnInput((words) => Message.ChangedWords({ words })),
-          ...styled(h, textField()),
+          ...styled(h, cx(textField(), textArea())),
         ]),
         h.p([h.Id(costId), ...styled(h, styles.note())], [costOf(model.kind, locale)]),
         h.p(styled(h, styles.note()), [format(locale, 'board.make.note', {})]),

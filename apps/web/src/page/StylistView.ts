@@ -5,7 +5,7 @@ import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
-import { textField } from '../Fields.styles.ts'
+import { textArea, textField } from '../Fields.styles.ts'
 import { secondaryAction } from '../Actions.styles.ts'
 import { backIcon, forwardIcon, loader } from '../Icon.ts'
 import { askRouter, lookRouter, pieceRouter } from '../route.ts'
@@ -218,7 +218,7 @@ const composerView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Ht
           h.Maxlength(2000),
           h.Value(model.draft),
           h.OnInput((value) => Message.UpdatedDraft({ value })),
-          ...styled(h, cx(textField(), styles.field())),
+          ...styled(h, cx(textField(), textArea(), styles.field())),
         ]),
         // aria-disabled rather than disabled, so the button keeps focus while its message goes (DESIGN › Controls);
         // the form's submit is refused while nothing can be sent.

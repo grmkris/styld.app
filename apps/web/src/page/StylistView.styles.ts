@@ -118,13 +118,14 @@ export const composer = style({
 })
 /** The field and its send button in one row. */
 export const composerRow = style({ display: 'flex', alignItems: 'end', gap: '8px' })
-/** The field takes the site's text field look (Fields.styles.ts), growing with what is written up to a point. */
+/** The field takes the site's text area look (Fields.styles.ts), growing with what is written up to a point; one line
+ * stands as tall as the send button beside it. */
 export const field = style({
   flexGrow: 1,
   minInlineSize: '0',
   minBlockSize: '44px',
   maxBlockSize: '160px',
-  resize: 'none',
+  paddingBlock: '9px',
 })
 export const send = style({
   display: 'grid',
