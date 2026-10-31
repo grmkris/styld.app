@@ -78,8 +78,10 @@ describe("today's table", () => {
   test("a board's card on Home shows the 16:10 window of its table where its pieces lie", () => {
     // A 400-unit piece near the top of the 1250-unit table: the window starts at the top.
     expect(cropFrom([knitAt(300)])).toBe(0)
-    // Pieces from the top to near the foot: the window sits in the middle.
-    expect(cropFrom([knitAt(300), knitAt(950)])).toBe(0.25)
+    // Pieces too far apart for one window: one of them whole, the nearer the middle, rather than two slivers.
+    expect(cropFrom([knitAt(300), knitAt(950)])).toBe(0.08)
+    // Two that fit together (300 to 900): both whole, the window centred on them.
+    expect(cropFrom([knitAt(500), knitAt(700)])).toBe(0.23)
     // One piece at the foot: the window ends at the foot.
     expect(cropFrom([knitAt(1050)])).toBe(0.5)
   })

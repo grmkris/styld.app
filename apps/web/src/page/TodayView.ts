@@ -198,13 +198,25 @@ const todayView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuil
 /** How far down a board's 4:5 table its 16:10 window on Home starts, as a share of the table's height (0 to a half),
  * so the window centres on what lies there. A table is 1250 units tall and the window 625.
  * @internal Exported for its tests. */
+/** A window's top on the 1250-unit table: from its top to half way, where the 625-unit window ends at the foot. */
+const clamp = (top: number) => Math.min(Math.max(top, 0), 625)
+
 export const cropFrom = (items: ReadonlyArray<BoardItem>): number =>
   Array.match(items, {
     onEmpty: () => 0.25,
     onNonEmpty: (some) => {
-      const top = Math.min(...some.map((item) => item.y - item.size / 2))
-      const bottom = Math.max(...some.map((item) => item.y + item.size / 2))
-      return Math.min(Math.max((top + bottom) / 2 - 312.5, 0), 625) / 1250
+      const upper = Math.min(...some.map((item) => item.y - item.size / 2))
+      const lower = Math.max(...some.map((item) => item.y + item.size / 2))
+      const centred = clamp((upper + lower) / 2 - 312.5)
+      // The window that holds the most items whole, so no piece shows as a sliver; of those, the nearest the middle.
+      const whole = (top: number) =>
+        some.filter((item) => item.y - item.size / 2 >= top && item.y + item.size / 2 <= top + 625).length
+      const candidates = [centred, 0, 625, ...some.map((item) => clamp(item.y - item.size / 2))]
+      const best = candidates.reduce((chosen, top) => {
+        const gain = whole(top) - whole(chosen)
+        return gain > 0 || (gain === 0 && Math.abs(top - centred) < Math.abs(chosen - centred)) ? top : chosen
+      })
+      return best / 1250
     },
   })
 
