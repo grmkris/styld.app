@@ -41,11 +41,27 @@ const starters: ReadonlyArray<MessageKey> = [
 const plain = (text: string) => text.replaceAll('**', '')
 
 /** What the page knows besides the chat: the language, and the names of the person's pieces. */
-type Inputs = { readonly locale: Locale; readonly names: ReadonlyMap<string, string>; readonly timeZone: string }
+type Inputs = {
+  readonly locale: Locale
+  readonly names: ReadonlyMap<string, string>
+  readonly timeZone: string
+  /** The render's stable now, so a chat from today says when today. */
+  readonly referenceTime: number
+}
 
-/** When a chat last moved, as a short date in the person's time zone ("31 Oct"). */
-const chatDate = (updatedAt: string, { locale, timeZone }: Inputs) =>
-  new Intl.DateTimeFormat(intlLocale(locale), { day: 'numeric', month: 'short', timeZone }).format(new Date(updatedAt))
+const dayOf = (at: Date, timeZone: string) =>
+  new Intl.DateTimeFormat('en-CA', { year: 'numeric', month: '2-digit', day: '2-digit', timeZone }).format(at)
+
+/** When a chat last moved, in the person's time zone: the time for today's ("Today, 14:05"), else the day ("31 Oct"),
+ * so two chats that began alike can be told apart. */
+const chatDate = (updatedAt: string, { locale, timeZone, referenceTime }: Inputs) => {
+  const at = new Date(updatedAt)
+  return dayOf(at, timeZone) === dayOf(new Date(referenceTime), timeZone)
+    ? format(locale, 'stylist.chatToday', {
+        time: new Intl.DateTimeFormat(intlLocale(locale), { hour: 'numeric', minute: '2-digit', timeZone }).format(at),
+      })
+    : new Intl.DateTimeFormat(intlLocale(locale), { day: 'numeric', month: 'short', timeZone }).format(at)
+}
 
 /** A piece Styld shows: its cutout on the paper and its name, the link's words. Before the wardrobe is read the
  * link says only that it opens a piece. */

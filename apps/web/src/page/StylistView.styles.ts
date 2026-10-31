@@ -132,6 +132,18 @@ export const composer = style({
   paddingBlock: '10px',
   backgroundColor: 'paper',
   '@media (min-width: 900px)': { insetBlockEnd: 'max(16px, env(safe-area-inset-bottom))' },
+  // On a phone the composer stands above the floating tab bar; paper under it to the screen's foot, so what scrolls
+  // beneath never shows between them and reads as part of the price line.
+  '@media (max-width: 899px)': {
+    '::before': {
+      content: '""',
+      position: 'absolute',
+      insetBlockStart: '100%',
+      insetInline: 'calc(-1 * max(20px, env(safe-area-inset-left)))',
+      blockSize: 'calc(96px + env(safe-area-inset-bottom))',
+      backgroundColor: 'paper',
+    },
+  },
 })
 /** The field and its send button in one row. */
 export const composerRow = style({ display: 'flex', alignItems: 'end', gap: '8px' })

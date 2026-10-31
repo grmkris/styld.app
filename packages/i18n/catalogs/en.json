@@ -2229,6 +2229,7 @@
       "dailyLimit": "Today’s free allowance is spent. Ask again tomorrow.",
       "unavailable": "Styld cannot answer just now. Try again later.",
       "network": "Not sent. Try again."
-    }
+    },
+    "chatToday": "Today, {time}"
   }
 }

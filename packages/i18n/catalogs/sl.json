@@ -2229,6 +2229,7 @@
       "dailyLimit": "Današnja brezplačna kvota je porabljena. Vprašaj znova jutri.",
       "unavailable": "Styld trenutno ne more odgovoriti. Poskusi pozneje.",
       "network": "Ni poslano. Poskusi znova."
-    }
+    },
+    "chatToday": "Danes ob {time}"
   }
 }

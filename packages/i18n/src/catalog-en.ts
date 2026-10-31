@@ -1988,4 +1988,5 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'stylist.problem.dailyLimit': 'Today’s free allowance is spent. Ask again tomorrow.',
   'stylist.problem.unavailable': 'Styld cannot answer just now. Try again later.',
   'stylist.problem.network': 'Not sent. Try again.',
+  'stylist.chatToday': 'Today, {time}',
 }

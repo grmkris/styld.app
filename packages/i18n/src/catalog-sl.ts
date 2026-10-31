@@ -2026,4 +2026,5 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'stylist.problem.dailyLimit': 'Današnja brezplačna kvota je porabljena. Vprašaj znova jutri.',
   'stylist.problem.unavailable': 'Styld trenutno ne more odgovoriti. Poskusi pozneje.',
   'stylist.problem.network': 'Ni poslano. Poskusi znova.',
+  'stylist.chatToday': 'Danes ob {time}',
 }

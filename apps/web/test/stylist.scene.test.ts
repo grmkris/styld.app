@@ -69,6 +69,11 @@ describe('Styld, the stylist in the app', () => {
       expect(role('button', { name: /^What should I wear today\?/ })).toExist(),
       expect(text('29 Oct')).toExist(),
     )
+    // A chat from today says when today, so two that began alike can be told apart.
+    const today = modifyFields(stylistWith(opened({ chats: AsyncData.Success({ data: [earlier] }) })), {
+      context: (context) => ({ ...context, referenceTime: Date.parse('2026-10-29T20:00:00.000Z') }),
+    })
+    scene({ update, view }, given(today), expect(text('Today, 18:00')).toExist())
   })
 
   test('arriving, the page is drawn in the shape of a chat until it knows whether one opens', () => {
