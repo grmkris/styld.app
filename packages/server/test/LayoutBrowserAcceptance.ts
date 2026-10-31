@@ -12,9 +12,9 @@ const titleTop = async (page: Page) => {
 }
 
 /** Every tab page's title starts at the same height, so moving between them moves nothing at the top. */
-export const expectSameTitleTops = async (page: Page, origin: string) => {
+export const expectSameTitleTops = async (page: Page, origin: string, paths: ReadonlyArray<string> = tabPaths) => {
   const tops: Array<{ readonly path: string; readonly top: number }> = []
-  for (const path of tabPaths) {
+  for (const path of paths) {
     await page.goto(`${origin}${path}`, { waitUntil: 'networkidle' })
     tops.push({ path, top: await titleTop(page) })
   }

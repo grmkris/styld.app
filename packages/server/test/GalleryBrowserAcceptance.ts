@@ -421,6 +421,8 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
     await page.getByRole('link', { name: 'Edit collage' }).click()
     await page.getByRole('button', { name: 'Text: Weekend in Piran' }).waitFor({ state: 'visible' })
     await shoot(page, 'desktop-board')
+    // Beside the rail the heads that carry a named action (Add clothes) keep the title level with Boards'.
+    await expectSameTitleTops(page, origin, ['/wardrobe', '/looks', '/wardrobe/wishlist', '/boards'])
     // The same pages in Slovenian: the day in Slovenian, the board's words from the catalog.
     await desk.addCookies([{ name: 'styld_locale', value: 'sl', url: origin }])
     await page.goto(`${origin}/`, { waitUntil: 'networkidle' })

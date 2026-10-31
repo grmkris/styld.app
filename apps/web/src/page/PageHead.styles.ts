@@ -32,9 +32,11 @@ export const wideAction = style({
     display: 'inline-flex',
     alignItems: 'center',
     inlineSize: 'auto',
-    // DESIGN's primary height once it names itself.
+    // DESIGN's primary height once it names itself; it overhangs the head's 44px row by 2px each way rather than
+    // growing it, so the title stays level with the other tabs'.
     blockSize: '48px',
     minBlockSize: '48px',
+    marginBlock: '-2px',
     gap: '8px',
     paddingInline: '20px',
   },
