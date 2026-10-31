@@ -40,7 +40,6 @@ import * as ProfileEditor from './page/ProfileEditor.ts'
 import * as Looks from './page/Looks.ts'
 import * as Piece from './page/Piece.ts'
 import * as Visit from './page/Visit.ts'
-import * as Wishlist from './page/Wishlist.ts'
 import * as Review from './page/Review.ts'
 import * as Stylist from './page/Stylist.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
@@ -110,7 +109,6 @@ export const Model = Schema.Struct({
   boards: Boards.Model,
   board: BoardModel.Model,
   visit: Visit.Model,
-  wishlist: Wishlist.Model,
   account: Account.Model,
   telemetry: Schema.Struct({ consent: TelemetryConsent, prompting: Schema.Boolean }),
 })
@@ -244,7 +242,6 @@ export const init = (context: Flags, url?: Url): UpdateReturn => {
       boards: Boards.init(),
       board,
       visit,
-      wishlist: Wishlist.init(),
       account: Account.init(),
       telemetry: { consent: context.telemetryConsent, prompting: context.telemetryConsent === 'undecided' },
     },
@@ -385,13 +382,6 @@ const foldVisit = Update.foldChild({
   read: (model: Model) => Option.some(model.visit),
   write: (model: Model, visit: Visit.Model) => modifyFields(model, { visit: () => visit }),
   toParentMessage: (message: Visit.Message) => Message.GotVisitMessage({ message }),
-})
-
-const foldWishlist = Update.foldChild({
-  update: Wishlist.update,
-  read: (model: Model) => Option.some(model.wishlist),
-  write: (model: Model, wishlist: Wishlist.Model) => modifyFields(model, { wishlist: () => wishlist }),
-  toParentMessage: (message: Wishlist.Message) => Message.GotWishlistMessage({ message }),
 })
 
 const foldToday = Update.foldChild({
@@ -550,7 +540,6 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotBoardMessage: (got) => foldBoard(model, got.message),
     GotVisitMessage: (got) => foldVisit(model, got.message),
     ClickedRetryLanding: () => foldVisitRetry(model),
-    GotWishlistMessage: (got) => foldWishlist(model, got.message),
     ChoseTelemetryConsent: ({ granted }) => ({
       model: modifyFields(model, { telemetry: (telemetry) => modifyFields(telemetry, { prompting: () => false }) }),
       commands: [RecordTelemetryConsent({ granted })],

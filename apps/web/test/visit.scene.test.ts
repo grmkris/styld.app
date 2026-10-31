@@ -163,7 +163,6 @@ describe('a public profile', () => {
       expect(role('img', { name: 'Navy knit' })).toHaveAttr('src', `/cdn/public/pieces/${knit.id}/full`),
       expect(role('link', { name: /By Nika Kovač/ })).toHaveAttr('href', '/@nika.kovac'),
       expect(role('link', { name: 'Sign in to save' })).toHaveAttr('href', `/login?next=%2Fpieces%2F${knit.id}`),
-      expect(role('button', { name: 'Save to wishlist' })).toBeAbsent(),
       expect(role('button', { name: 'Report piece' })).toBeAbsent(),
     )
   })
@@ -176,7 +175,6 @@ describe('a public profile', () => {
       expect(text('This piece is yours')).toExist(),
       expect(role('link', { name: 'Open in your wardrobe' })).toHaveAttr('href', `/wardrobe/${knit.id}`),
       expect(role('link', { name: /By Nika Kovač/ })).toBeAbsent(),
-      expect(role('button', { name: 'Save to wishlist' })).toBeAbsent(),
       expect(role('button', { name: 'Report piece' })).toBeAbsent(),
     )
   })

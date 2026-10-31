@@ -19,7 +19,6 @@ import * as Review from './page/Review.ts'
 import * as Stylist from './page/Stylist.ts'
 import * as Today from './page/Today.ts'
 import * as Visit from './page/Visit.ts'
-import * as Wishlist from './page/Wishlist.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
 
 /** Everything that can happen in the website: its own Messages and each page's, wrapped. Its own module so the
@@ -62,7 +61,6 @@ export const Message = defineMessageUnion({
   GotVisitMessage: { message: Visit.Message },
   /** The landing's Try again, after its boards did not load. */
   ClickedRetryLanding: {},
-  GotWishlistMessage: { message: Wishlist.Message },
   ChoseTelemetryConsent: { granted: Schema.Boolean },
   RecordedTelemetryConsent: { granted: Schema.Boolean },
   OpenedTelemetrySettings: {},

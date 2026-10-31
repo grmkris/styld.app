@@ -208,7 +208,6 @@ const verifyPublicPages = async (origin: string, fixtures: string, owner: Call) 
   expect(await (await anyone('/api/public/profiles/nika.kovac')).json()).toMatchObject({ boards: [], pieces: null })
   await send(owner, '/api/profile/published', 'PUT', { published: false })
   expect((await anyone('/api/public/profiles/nika.kovac')).status).toBe(404)
-  return pieceId
 }
 
 const Feed = Schema.Struct({ items: Schema.Array(Schema.Struct({ _tag: Schema.String })) })
@@ -322,25 +321,6 @@ const verifyPeopleToFollow = async (origin: string, other: Call) => {
   expect(await suggested(other('/api/public/explore'))).toContainEqual(nika)
 }
 
-const Wishes = Schema.Struct({ wishes: Schema.Array(Schema.Struct({ id: Schema.String })) })
-
-/** A wish for someone's public piece is private and kept once; it outlives the piece, by what it was called. */
-const verifyWishes = async (owner: Call, other: Call, pieceId: string) => {
-  await send(owner, '/api/profile', 'PATCH', { wardrobeShown: true })
-  await refusal(await send(owner, '/api/wishes', 'POST', { pieceId }), 422, 'NotWithYourself')
-  const wished = await send(other, '/api/wishes', 'POST', { pieceId })
-  expect(await wished.json()).toMatchObject({ piece: { id: pieceId }, by: { handle: 'nika.kovac' } })
-  expect((await send(other, '/api/wishes', 'POST', { pieceId })).status).toBe(200)
-  const listed = Schema.decodeUnknownSync(Wishes)(await (await other('/api/wishes')).json()).wishes
-  expect(listed).toHaveLength(1)
-  expect((await owner(`/api/pieces/${pieceId}`, { method: 'DELETE' })).status).toBe(204)
-  expect(await (await other('/api/wishes')).json()).toMatchObject({
-    wishes: [{ piece: null, by: null, category: 'top' }],
-  })
-  expect((await other(`/api/wishes/${listed[0]?.id ?? ''}`, { method: 'DELETE' })).status).toBe(204)
-  expect(await (await other('/api/wishes')).json()).toEqual({ wishes: [] })
-}
-
 /** Add from a link on the website: only public https pages are read, at an account's pace and for the signed in;
  * the picture then goes to the tray as a capture from a link. */
 const verifyLinks = async (origin: string, other: Call) => {
@@ -366,12 +346,11 @@ export const verifySocial = async (origin: string, fixtures: string): Promise<vo
   const other = client(origin, await signIn(origin, 'native-social-other'))
   await verifyProfiles(origin, owner, other)
   await verifyChecks(origin, owner)
-  const pieceId = await verifyPublicPages(origin, fixtures, owner)
+  await verifyPublicPages(origin, fixtures, owner)
   const third = client(origin, await signIn(origin, 'native-social-third'))
   const reporters = [third, client(origin, await signIn(origin, 'native-social-fourth'))]
   await verifyPeople(origin, owner, other, reporters)
   await verifyDiscovery(origin, owner)
   await verifyPeopleToFollow(origin, other)
-  await verifyWishes(owner, other, pieceId)
   await verifyLinks(origin, other)
 }

@@ -14,7 +14,6 @@ import {
   personRouter,
   publicPieceRouter,
   signInReturningTo,
-  wishlistRouter,
 } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
@@ -156,12 +155,6 @@ const subjectActions = (model: Model, locale: Locale, h: HtmlBuilder<Message>): 
     // On a profile, Follow is `followView` and Report and Block are behind More (`moreView`).
     Person: () => [],
     Piece: () => [
-      model.wished
-        ? h.a(
-            [h.Href(wishlistRouter({})), ...styled(h, secondaryAction())],
-            [format(locale, 'catalog.savedToWishlist', {})],
-          )
-        : button(format(locale, 'catalog.saveToWishlist', {}), Message.ClickedWish(), h),
       ...saveAndReport(model, format(locale, 'safety.report.piece', {}), locale, h),
     ],
     Board: () => saveAndReport(model, format(locale, 'safety.report.board', {}), locale, h),

@@ -30,7 +30,6 @@ export const AppRoute = defineRouteUnion({
   Piece: { pieceId: Schema.String },
   Looks: {},
   /** What the person wants one like: a tab of the wardrobe. */
-  Wishlist: {},
   Look: { lookId: Schema.String },
   /** Search your wardrobe, ask the stylist through an assistant, or add clothes (Gallery 2's middle button). The
    * search stays in the address, so coming back to Ask brings it back. */
@@ -64,7 +63,6 @@ export const profileRouter = pipe(literal('profile'), mapTo(AppRoute.Profile))
 export const wardrobeRouter = pipe(literal('wardrobe'), mapTo(AppRoute.Wardrobe))
 export const addPiecesRouter = pipe(literal('wardrobe'), slash(literal('add')), mapTo(AppRoute.AddPieces))
 export const reviewRouter = pipe(literal('wardrobe'), slash(literal('review')), mapTo(AppRoute.Review))
-export const wishlistRouter = pipe(literal('wardrobe'), slash(literal('wishlist')), mapTo(AppRoute.Wishlist))
 export const pieceRouter = pipe(literal('wardrobe'), slash(string('pieceId')), mapTo(AppRoute.Piece))
 export const looksRouter = pipe(literal('looks'), mapTo(AppRoute.Looks))
 export const lookRouter = pipe(literal('looks'), slash(string('lookId')), mapTo(AppRoute.Look))
@@ -111,7 +109,6 @@ const parser = oneOf(
   profileRouter,
   addPiecesRouter,
   reviewRouter,
-  wishlistRouter,
   pieceRouter,
   wardrobeRouter,
   lookRouter,
@@ -179,7 +176,6 @@ export const needsSession = (route: AppRoute) =>
   AppRoute.guards.Review(route) ||
   AppRoute.guards.Piece(route) ||
   AppRoute.guards.Looks(route) ||
-  AppRoute.guards.Wishlist(route) ||
   AppRoute.guards.Ask(route) ||
   AppRoute.guards.Stylist(route) ||
   AppRoute.guards.Boards(route) ||
@@ -187,14 +183,13 @@ export const needsSession = (route: AppRoute) =>
 
 /** The pages the navigation moves between. They keep their place: each opens at once from what the app already
  * has, while every other page loads whole. */
-export const Tab = Schema.Literals(['Home', 'Explore', 'Wardrobe', 'Looks', 'Wishlist', 'Ask', 'Boards', 'Account'])
+export const Tab = Schema.Literals(['Home', 'Explore', 'Wardrobe', 'Looks', 'Ask', 'Boards', 'Account'])
 export type Tab = typeof Tab.Type
 
 export const tabOf = AppRoute.match<Option.Option<Tab>>({
   Home: () => Option.some('Home'),
   Wardrobe: () => Option.some('Wardrobe'),
   Looks: () => Option.some('Looks'),
-  Wishlist: () => Option.some('Wishlist'),
   Ask: () => Option.some('Ask'),
   Stylist: () => Option.none(),
   Boards: () => Option.some('Boards'),

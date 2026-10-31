@@ -361,7 +361,6 @@ const steadyPaths = [
   '/explore',
   '/wardrobe',
   '/looks',
-  '/wardrobe/wishlist',
   '/boards',
   '/ask',
   '/ask/stylist',
@@ -431,7 +430,7 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
     await page.getByRole('button', { name: 'Text: Weekend in Piran' }).waitFor({ state: 'visible' })
     await shoot(page, 'desktop-board')
     // Beside the rail the heads that carry a named action (Add clothes) or a search keep the title level with Boards'.
-    await expectSameTitleTops(page, origin, ['/wardrobe', '/looks', '/wardrobe/wishlist', '/boards', '/explore'])
+    await expectSameTitleTops(page, origin, ['/wardrobe', '/looks', '/boards', '/explore'])
     // The same pages in Slovenian: the day in Slovenian, the board's words from the catalog.
     await desk.addCookies([{ name: 'styld_locale', value: 'sl', url: origin }])
     await page.goto(`${origin}/`, { waitUntil: 'networkidle' })

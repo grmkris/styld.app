@@ -16,7 +16,6 @@ const templateOf = AppRoute.match<string>({
   Review: () => '/wardrobe/review',
   Piece: () => '/wardrobe/:piece',
   Looks: () => '/looks',
-  Wishlist: () => '/wardrobe/wishlist',
   Look: () => '/looks/:look',
   Ask: () => '/ask',
   Stylist: () => '/ask/stylist',

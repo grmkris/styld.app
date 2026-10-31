@@ -21,7 +21,6 @@ import { stylistPage } from './StylistPage.ts'
 import * as LooksView from './page/LooksView.ts'
 import * as LookView from './page/LookView.ts'
 import * as VisitView from './page/VisitView.ts'
-import * as WishlistView from './page/WishlistView.ts'
 import * as ProfileEditorView from './page/ProfileEditorView.ts'
 import { accountView } from './page/AccountView.ts'
 import * as LoginView from './page/LoginView.ts'
@@ -212,7 +211,6 @@ const titleKey = AppRoute.match<MessageKey>({
   AddPieces: () => 'capture.addTitle',
   Review: () => 'scan.toReview',
   Looks: () => 'looks.title',
-  Wishlist: () => 'wardrobe.wishlist',
   Look: () => 'looks.title',
   Profile: () => 'profile.editor.title',
   Ask: () => 'ask.title',
@@ -236,7 +234,6 @@ const sectionOf = AppRoute.match<Section | undefined>({
   Review: () => 'wardrobe',
   Piece: () => 'wardrobe',
   Looks: () => 'wardrobe',
-  Wishlist: () => 'wardrobe',
   Look: () => 'wardrobe',
   Profile: () => 'you',
   Ask: () => 'ask',
@@ -401,15 +398,6 @@ const visitPage = (model: Model, h: HtmlBuilder<Message>): Html =>
     toParentMessage: (message) => Message.GotVisitMessage({ message }),
   })
 
-const wishlistPage = (model: Model, h: HtmlBuilder<Message>): Html =>
-  h.submodel({
-    slotId: 'wishlist',
-    model: model.wishlist,
-    view: WishlistView.view,
-    viewInputs: { locale: model.context.locale },
-    toParentMessage: (message) => Message.GotWishlistMessage({ message }),
-  })
-
 const lookPage = (model: Model, h: HtmlBuilder<Message>): Html =>
   h.submodel({
     slotId: 'look',
@@ -502,7 +490,6 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
         AddPieces: () => addPiecesPage(model, h),
         Review: () => reviewPage(model, h),
         Looks: () => looksPage(model, h),
-        Wishlist: () => wishlistPage(model, h),
         Look: () => lookPage(model, h),
         Profile: () => profilePage(model, h),
         Ask: () => askPage(model, h),

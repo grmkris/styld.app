@@ -189,9 +189,6 @@ const social = Social.of({
   blocked: notUsed,
   feed: notUsed,
   report: notUsed,
-  listWishes: () => Effect.succeed({ wishes: [] }),
-  addWish: notUsed,
-  removeWish: notUsed,
 })
 /** Discovery: nothing public yet. */
 const discovery = Discovery.of({

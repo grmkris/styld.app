@@ -10,7 +10,6 @@ import * as Boards from './page/Boards.ts'
 import * as Looks from './page/Looks.ts'
 import * as Today from './page/Today.ts'
 import * as Visit from './page/Visit.ts'
-import * as Wishlist from './page/Wishlist.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
 import { type AppRoute, boardRouter } from './route.ts'
 
@@ -82,13 +81,6 @@ const foldAccountEnter = Update.foldChildStep({
   toParentMessage: (message: Account.Message) => Message.GotAccountMessage({ message }),
 })
 
-const foldWishlistRevisit = Update.foldChildStep({
-  update: Wishlist.revisit,
-  read: (model: Model) => Option.some(model.wishlist),
-  write: (model: Model, wishlist: Wishlist.Model) => modifyFields(model, { wishlist: () => wishlist }),
-  toParentMessage: (message: Wishlist.Message) => Message.GotWishlistMessage({ message }),
-})
-
 export const openHome: ReadonlyArray<Step> = [foldTodayEnter, foldWardrobeRevisit]
 /** What opening a tab page asks for. Home needs a session: a cookie with the request, or `afterSignIn`. */
 export const openPage = (route: AppRoute, hasSessionCookie: boolean): ReadonlyArray<Step> =>
@@ -100,7 +92,6 @@ export const openPage = (route: AppRoute, hasSessionCookie: boolean): ReadonlyAr
     Match.tag('Looks', () => [foldLooksRevisit]),
     Match.tag('Boards', () => [foldBoardsRevisit]),
     Match.tag('Explore', () => [foldExploreEnter]),
-    Match.tag('Wishlist', () => [foldWishlistRevisit]),
     // The account needs a session; signed out the page sends the visitor to sign in.
     Match.tag('Account', () => (hasSessionCookie ? [foldAccountEnter] : [])),
     Match.orElse(() => []),

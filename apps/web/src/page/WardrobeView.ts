@@ -107,7 +107,7 @@ const loadedView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, 
     return h.section(styled(h, styles.message()), [
       h.h2(styled(h, styles.messageTitle()), [format(locale, 'wardrobe.closetEmptyTitle', {})]),
       h.p([], [format(locale, 'wardrobe.emptyHint', {})]),
-      // The head's + is the page's one ink action; this one says the same quietly, as Looks' and Wishlist's do.
+      // The head's + is the page's one ink action; this one says the same quietly, as Looks' does.
       h.a(
         [h.Href(addPiecesRouter({})), ...styled(h, secondaryAction())],
         [format(locale, 'wardrobe.scanPhotosCta', {})],
