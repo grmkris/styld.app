@@ -54,7 +54,7 @@ import {
   connectionAuthorizePath,
   homeRouter,
   isSameTab,
-  needsSession,
+  routeMeta,
   reviewRouter,
   routeFromPathname,
   routeFromUrl,
@@ -310,7 +310,8 @@ const afterSignIn =
     )
 
 /** Pages that need a session send a signed-out visitor to sign in. */
-const afterSignOut = (route: AppRoute) => (needsSession(route) ? [Navigate({ href: signInHref })] : [])
+const afterSignOut = (route: AppRoute) =>
+  routeMeta(route).session === 'required' ? [Navigate({ href: signInHref })] : []
 
 const foldLoginOutMessage = Login.OutMessage.match<Update.Step<Model, Message, Services>>({
   SignedIn:

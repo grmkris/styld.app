@@ -1,5 +1,5 @@
 import { Select } from '@foldkit/ui'
-import { direction, format, type Locale, type MessageKey } from '@styld/i18n'
+import { direction, format, type Locale } from '@styld/i18n'
 import { Option, String } from 'effect'
 import type { Document, Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
@@ -35,6 +35,8 @@ import {
   exploreRouter,
   homeRouter,
   signInHref,
+  routeMeta,
+  type Section,
   tabOf,
   wardrobeRouter,
 } from './route.ts'
@@ -188,7 +190,7 @@ const youLink = (model: Model, initial: string, h: HtmlBuilder<Message>): Html =
     [
       h.Href(accountRouter({})),
       h.AriaLabel(format(model.context.locale, 'nav.account', {})),
-      ...(sectionOf(model.route) === 'you' ? [h.AriaCurrent('page')] : []),
+      ...(Option.contains(routeMeta(model.route).section, 'you') ? [h.AriaCurrent('page')] : []),
       ...styled(h, navAvatar()),
     ],
     [
@@ -203,72 +205,19 @@ const youLink = (model: Model, initial: string, h: HtmlBuilder<Message>): Html =
     ],
   )
 
-const titleKey = AppRoute.match<MessageKey>({
-  Home: () => 'landing.title',
-  Login: () => 'auth.signInTitle',
-  LoginForConnection: () => 'auth.signInTitle',
-  Account: () => 'account.title',
-  Wardrobe: () => 'wardrobe.title',
-  AddPieces: () => 'capture.addTitle',
-  Review: () => 'scan.toReview',
-  Looks: () => 'looks.title',
-  Look: () => 'looks.title',
-  Photos: () => 'wardrobe.tabGallery',
-  Photo: () => 'wardrobe.tabGallery',
-  Profile: () => 'profile.editor.title',
-  Ask: () => 'ask.title',
-  Stylist: () => 'stylist.title',
-  Boards: () => 'boards.title',
-  Board: () => 'boards.title',
-  BoardCollage: () => 'boards.title',
-  Piece: () => 'wardrobe.title',
-  Person: () => 'profile.public.people',
-  PublicPiece: () => 'profile.public.pieces',
-  Explore: () => 'explore.title',
-  NotFound: () => 'common.notFoundTitle',
-})
-
-type Section = 'home' | 'wardrobe' | 'ask' | 'boards' | 'you'
-
-const sectionOf = AppRoute.match<Section | undefined>({
-  Home: () => 'home',
-  Wardrobe: () => 'wardrobe',
-  AddPieces: () => 'wardrobe',
-  Review: () => 'wardrobe',
-  Piece: () => 'wardrobe',
-  Looks: () => 'wardrobe',
-  Look: () => 'wardrobe',
-  Photos: () => 'wardrobe',
-  Photo: () => 'wardrobe',
-  Profile: () => 'you',
-  Ask: () => 'ask',
-  Stylist: () => 'ask',
-  Boards: () => 'boards',
-  Board: () => 'boards',
-  BoardCollage: () => 'boards',
-  Account: () => 'you',
-  Login: () => undefined,
-  LoginForConnection: () => undefined,
-  Person: () => undefined,
-  PublicPiece: () => undefined,
-  // Explore is reached from Home's head (owner, 2026-10-31), so Home stays marked there.
-  Explore: () => 'home',
-  NotFound: () => undefined,
-})
-
 /** The navigation (owner, 2026-10-31): Home, Ask, Wardrobe and Boards; you are in the masthead, and Explore is a link
  * in Home's head. A floating glass pill on the phone, a rail on the desktop's left edge; it keeps its place while a
  * page cross-fades. */
 const appNavigation = (model: Model, initial: string, h: HtmlBuilder<Message>): Html => {
   const { locale } = model.context
-  const current = sectionOf(model.route)
+  const current = routeMeta(model.route).section
   const item = (section: Section, href: string, label: string, content: Html, ask = false) =>
     h.a(
       [
         h.Href(href),
         h.AriaLabel(label),
         h.Title(label),
-        ...(current === section ? [h.AriaCurrent('page')] : []),
+        ...(Option.contains(current, section) ? [h.AriaCurrent('page')] : []),
         ...styled(h, ask ? cx(navItem(), navAsk()) : navItem()),
       ],
       [content, h.span(styled(h, navLabel()), [label])],
@@ -337,7 +286,7 @@ const hasSession = (model: Model) =>
 const pageTitle = (model: Model) =>
   format(
     model.context.locale,
-    AppRoute.guards.Home(model.route) && hasSession(model) ? 'today.title' : titleKey(model.route),
+    AppRoute.guards.Home(model.route) && hasSession(model) ? 'today.title' : routeMeta(model.route).title,
     {},
   )
 

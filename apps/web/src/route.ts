@@ -1,3 +1,4 @@
+import type { MessageKey } from '@styld/i18n'
 import { Effect, Equivalence, Option, Schema, pipe } from 'effect'
 import {
   defineRouteUnion,
@@ -180,51 +181,68 @@ export const returnPath = (next: Option.Option<string>): Option.Option<string> =
     Option.map((url) => `${url.pathname}${url.search}${url.hash}`),
   )
 
-/** Pages that only make sense signed in. */
-export const needsSession = (route: AppRoute) =>
-  AppRoute.guards.Account(route) ||
-  AppRoute.guards.Profile(route) ||
-  AppRoute.guards.Wardrobe(route) ||
-  AppRoute.guards.AddPieces(route) ||
-  AppRoute.guards.Review(route) ||
-  AppRoute.guards.Piece(route) ||
-  AppRoute.guards.Looks(route) ||
-  AppRoute.guards.Photos(route) ||
-  AppRoute.guards.Photo(route) ||
-  AppRoute.guards.Ask(route) ||
-  AppRoute.guards.Stylist(route) ||
-  AppRoute.guards.Boards(route) ||
-  AppRoute.guards.BoardCollage(route)
-
 /** The pages the navigation moves between. They keep their place: each opens at once from what the app already
  * has, while every other page loads whole. */
 export const Tab = Schema.Literals(['Home', 'Explore', 'Wardrobe', 'Looks', 'Photos', 'Ask', 'Boards', 'Account'])
 export type Tab = typeof Tab.Type
 
-export const tabOf = AppRoute.match<Option.Option<Tab>>({
-  Home: () => Option.some('Home'),
-  Wardrobe: () => Option.some('Wardrobe'),
-  Looks: () => Option.some('Looks'),
-  Photos: () => Option.some('Photos'),
-  Photo: () => Option.none(),
-  Ask: () => Option.some('Ask'),
-  Stylist: () => Option.none(),
-  Boards: () => Option.some('Boards'),
-  Account: () => Option.some('Account'),
-  Login: () => Option.none(),
-  LoginForConnection: () => Option.none(),
-  Profile: () => Option.none(),
-  AddPieces: () => Option.none(),
-  Review: () => Option.none(),
-  Piece: () => Option.none(),
-  Look: () => Option.none(),
-  Board: () => Option.none(),
-  BoardCollage: () => Option.none(),
-  Person: () => Option.none(),
-  PublicPiece: () => Option.none(),
-  Explore: () => Option.some('Explore'),
-  NotFound: () => Option.none(),
+/** The navigation's sections; a page marks the one it belongs to. */
+export type Section = 'home' | 'wardrobe' | 'ask' | 'boards' | 'you'
+
+/** What the app knows about a page besides its address: its route as a template (no ids or handles, so telemetry
+ * names a slow page without naming whose it was), whether it needs a session, the tab it is, its title and the
+ * navigation section it marks. Adding a page is adding its row to `routeMeta`. */
+export type RouteMeta = Readonly<{
+  template: string
+  session: 'required' | 'optional'
+  tab: Option.Option<Tab>
+  title: MessageKey
+  section: Option.Option<Section>
+}>
+
+const meta = (
+  template: string,
+  title: MessageKey,
+  options: Readonly<{ session?: 'required'; tab?: Tab; section?: Section }> = {},
+): RouteMeta => ({
+  template,
+  title,
+  session: options.session ?? 'optional',
+  tab: Option.fromNullishOr(options.tab),
+  section: Option.fromNullishOr(options.section),
 })
+
+const required = 'required'
+
+export const routeMeta = AppRoute.match<RouteMeta>({
+  Home: () => meta('/', 'landing.title', { tab: 'Home', section: 'home' }),
+  Login: () => meta('/login', 'auth.signInTitle'),
+  LoginForConnection: () => meta('/login/connect', 'auth.signInTitle'),
+  Account: () => meta('/account', 'account.title', { session: required, tab: 'Account', section: 'you' }),
+  Profile: () => meta('/profile', 'profile.editor.title', { session: required, section: 'you' }),
+  Wardrobe: () => meta('/wardrobe', 'wardrobe.title', { session: required, tab: 'Wardrobe', section: 'wardrobe' }),
+  AddPieces: () => meta('/wardrobe/add', 'capture.addTitle', { session: required, section: 'wardrobe' }),
+  Review: () => meta('/wardrobe/review', 'scan.toReview', { session: required, section: 'wardrobe' }),
+  Piece: () => meta('/wardrobe/:piece', 'wardrobe.title', { session: required, section: 'wardrobe' }),
+  Looks: () => meta('/looks', 'looks.title', { session: required, tab: 'Looks', section: 'wardrobe' }),
+  Look: () => meta('/looks/:look', 'looks.title', { section: 'wardrobe' }),
+  Photos: () =>
+    meta('/wardrobe/gallery', 'wardrobe.tabGallery', { session: required, tab: 'Photos', section: 'wardrobe' }),
+  Photo: () => meta('/wardrobe/gallery/:photo', 'wardrobe.tabGallery', { session: required, section: 'wardrobe' }),
+  Ask: () => meta('/ask', 'ask.title', { session: required, tab: 'Ask', section: 'ask' }),
+  Stylist: () => meta('/ask/stylist', 'stylist.title', { session: required, section: 'ask' }),
+  Boards: () => meta('/boards', 'boards.title', { session: required, tab: 'Boards', section: 'boards' }),
+  Board: () => meta('/boards/:board', 'boards.title', { section: 'boards' }),
+  BoardCollage: () => meta('/boards/:board/collage', 'boards.title', { session: required, section: 'boards' }),
+  Person: () => meta('/@:handle', 'profile.public.people'),
+  PublicPiece: () => meta('/pieces/:piece', 'profile.public.pieces'),
+  // Explore is reached from Home's head (owner, 2026-10-31), so Home stays marked there.
+  Explore: () => meta('/explore', 'explore.title', { tab: 'Explore', section: 'home' }),
+  NotFound: () => meta('other', 'common.notFoundTitle'),
+})
+
+/** The tab page a route shows, if it is one. */
+export const tabOf = (route: AppRoute): Option.Option<Tab> => routeMeta(route).tab
 
 /** Whether two routes show the same tab page. */
 export const isSameTab = (left: AppRoute, right: AppRoute) =>

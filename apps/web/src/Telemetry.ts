@@ -1,38 +1,12 @@
 import { setConsent } from '@maple-dev/effect-sdk/client'
 import { MapleFoldkit } from '@maple-dev/effect-sdk/foldkit'
 import { Effect, Layer } from 'effect'
-import { AppRoute, routeFromPathname } from './route.ts'
+import { routeFromPathname, routeMeta } from './route.ts'
 import { consentCookie, consentFromCookies, TelemetryConsentControl } from './TelemetryConsent.ts'
-
-/** Each page's route as a template: no ids or handles, so a slow page is named without naming whose it was. */
-const templateOf = AppRoute.match<string>({
-  Home: () => '/',
-  Login: () => '/login',
-  LoginForConnection: () => '/login/connect',
-  Account: () => '/account',
-  Profile: () => '/profile',
-  Wardrobe: () => '/wardrobe',
-  AddPieces: () => '/wardrobe/add',
-  Review: () => '/wardrobe/review',
-  Piece: () => '/wardrobe/:piece',
-  Looks: () => '/looks',
-  Photos: () => '/wardrobe/gallery',
-  Photo: () => '/wardrobe/gallery/:photo',
-  Look: () => '/looks/:look',
-  Ask: () => '/ask',
-  Stylist: () => '/ask/stylist',
-  Boards: () => '/boards',
-  Board: () => '/boards/:board',
-  BoardCollage: () => '/boards/:board/collage',
-  Person: () => '/@:handle',
-  PublicPiece: () => '/pieces/:piece',
-  Explore: () => '/explore',
-  NotFound: () => 'other',
-})
 
 /** Navigation spans carry the page's route template; the relay drops the raw `url.path` the SDK also records.
  * @internal Exported for its tests. */
-export const routeName = (pathname: string): string => templateOf(routeFromPathname(pathname))
+export const routeName = (pathname: string): string => routeMeta(routeFromPathname(pathname)).template
 
 /** Every URL the SDK sends, in spans or its always-on session events, keeps only origin and route. The SDK also
  * passes a navigation's route name through here, a path such as `/boards/:board`, which names itself again.
