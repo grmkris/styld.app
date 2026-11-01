@@ -2,6 +2,37 @@
 
 Status: active. Sign-in, the wardrobe (shop-style garment types, browsing, a piece's back), capture with real cut-outs (photos, video import, a held-up camera, scan anything), the review tray, the daily allowance, looks, clean pictures and turns, the boards' pins, profiles, checks and link import, mood boards from the person's own pieces and stickers, the outfit engine (Fast and Thinking), My Gallery and Styld, the stylist in the app are deployed to the isolated workers.dev preview (release `889af38`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping; the plan in progress is "Plan: shopping your own wardrobe" below, waiting at owner gate 1.
 
+## Cleanup C4d: MCP, auth, links, edge, pacing — 2026-11-01
+
+Milestone C4d of the cleanup plan (server, contract and the web's API client; the preview is not redeployed until
+the milestone's review).
+
+- **Session handled once:** protocol `SessionAccount` (`protocol/src/Session.ts`) is an `HttpApiMiddleware` every
+  session group declares before Yielded's `RequireSession`: it provides `CurrentAccount` (now a protocol service) and
+  admits every non-GET request through Yielded's Origin/CSRF check (`RequestRefused`, declared once on the middleware,
+  no longer on endpoints). Its client half sends the CSRF header, whose name lives once in `@styld/auth/config`. The
+  47 `admit(asSessionAccount(…))` wrappers, `Admit`/`admitWith` and the second session-cookie check are gone: owner-only
+  routes, public pages and the OAuth login share `sessionCookieAccount` (an unreadable session answers 503).
+  `test/SessionAccount.test.ts` drives the middleware through `HttpApiTest`.
+- **Pacing once:** `kernel/Pacing.ts` holds one table of paces (telemetry, registration, code requests, public reads
+  by network; capture checks, links, generation, outfits, Thinking by account) over Workers RateLimit bindings whose
+  namespace ids are the deployment's (`Resources.ts`); a failing limiter refuses; `networkOf` is the one reading of
+  `cf-connecting-ip`. Operations pace themselves (a new generation ask, the camera's check, which now answers
+  `SlowDown` instead of a silent "not checked", and the new `links/Links.ts` service), so the website, the assistants
+  and Styld meet one pace. `mcp/Pacing.ts`, `pacedBy`, the double link/generate enforcement and both `unpaced` fakes
+  are gone (`test/fakes/Pacing.ts` allows everything in unit tests).
+- **Account and auth:** `AccountLifecycle.readAccount` is the one account read (enabled accounts only), used by MCP
+  `account_get` and the MCP route's grant/admin check. `GET /api/me` and `Me` are deleted (only tests called them;
+  `DELETE /api/me` stays). `test/RuntimeWorker.ts` builds auth with `authOptions`; the env reader
+  `authConfiguration`, `makeAuthHandler`, `authClientLayer` and unused `@styld/auth` re-exports are gone. The edge no
+  longer routes `/rpc` and `/out` to the API.
+- **MCP:** `Links.photoFrom` keeps a receipt like `readLink`, so `piece_add` from an address, `link_import` and
+  `picture_pin` repeat from receipts; `pieceAddedBy`/`boardImageAddedBy` are deleted. `piece_delete`, `look_delete`,
+  `board_delete` take an `operationId`. The tools are built once in the Worker and shared by `/mcp` and Styld's chat.
+- **Remaining:** the namespace ids are one set for every stage until C5 makes them the stage's; the v1 share-link
+  redirect (`/share/board/:id` in `EdgeWorker.ts`) is compatibility code kept for the owner to decide at cutover;
+  wardrobe/looks/boards deletes still ignore the `operationId` they take (a repeat answers `NotFound`).
+
 ## Cleanup C4a: capture, photos, wardrobe — 2026-11-01
 
 Milestone C4a of the cleanup plan (server; the preview is not redeployed until the milestone's review).
