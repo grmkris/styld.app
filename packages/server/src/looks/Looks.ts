@@ -4,6 +4,7 @@ import {
   Look,
   type LookId,
   NotFound,
+  OperationConflict,
   type ShareLook,
   Unavailable,
 } from '@styld/protocol'
@@ -100,7 +101,11 @@ const make = (database: Parameters<typeof makeLookStore>[0], checks: Checks['Ser
           input: [input.name, input.occasion ?? null, input.pieceIds],
         })
         const prior = yield* priorResult(operation, yield* stored(store.findReceipt(accountId, input.operationId)))
-        if (Option.isSome(prior)) return yield* one(accountId, prior.value)
+        // A repeat of an operation whose look was deleted since: the id is spent, a new look needs a new one.
+        if (Option.isSome(prior))
+          return yield* one(accountId, prior.value).pipe(
+            Effect.catchTag('NotFound', () => Effect.fail(OperationConflict.make({}))),
+          )
         const pieceIds = [...new Set(input.pieceIds)]
         const owned = yield* stored(store.ownPieces(accountId, pieceIds))
         if (pieceIds.some((id) => !owned.has(id))) return yield* NotFound.make({})
