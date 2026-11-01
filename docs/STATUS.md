@@ -2,6 +2,47 @@
 
 Status: active. Sign-in, the wardrobe (shop-style garment types, browsing, a piece's back), capture with real cut-outs (photos, video import, a held-up camera, scan anything), the review tray, the daily allowance, looks, clean pictures and turns, the boards' pins, profiles, checks and link import, mood boards from the person's own pieces and stickers, the outfit engine (Fast and Thinking), My Gallery and Styld, the stylist in the app are deployed to the isolated workers.dev preview (release `889af38`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping; the plan in progress is "Plan: shopping your own wardrobe" below, waiting at owner gate 1.
 
+## Cleanup C3: money, work, providers — 2026-11-01
+
+Milestone C3 of the cleanup plan (server only; the preview is not redeployed until the milestone's review).
+
+- **Credits** (`server/src/usage/Holds.ts`): `holdId(kind, entity, attempt)` names every hold (captures by attempt,
+  a piece's front by queue delivery, a back by upload, photos, generation jobs, redraws by count, turns by attempt,
+  Styld turns); `metered(charge, work)` settles synchronous work by its exit. One policy: succeeded consumes, failed
+  or a lost provider answer refunds (owner, 1 November). Settlement is re-sent from each row's status and the first
+  one stands, so the D1 hold mirrors (`captures.hold/settlement`, `piece_pictures.hold`, `piece_turns.hold`,
+  `generation_jobs.held`) are no longer read; they are written as constants until the C5 baseline drops them. The
+  Wallet keeps only the daily pool: grants, subscription and purchased pools, the fingerprint, `Session` middleware,
+  `CurrentActor` and `requireOwner` are deleted. The allowance is protocol `dailyCredits` (100); `DAILY_ALLOWANCE`
+  is gone. Turn and redraw repeats answer from operation receipts.
+- **Jobs** (`server/src/jobs/Jobs.ts`): every queue body is a tagged union (the piece queue's 8 kinds), consumed one
+  way: done acks, failures retry until the last attempt, which gives the job up; one spare delivery
+  (`maxRetries` = attempts, Cloudflare counts retries) only gives up again if giving up failed; an unknown body is
+  dropped; one `Styld.Job` log line per delivery. A patch to Alchemy's queue EventSource acks or retries only
+  messages the handler left unsettled (`docs/dependency-patches.md`), ending "ack() after retry()".
+- **Sweeps** (`server/src/jobs/Sweeps.ts`, `Cron.ts`): each sweep isolated (one failure skips none); stuck rows
+  found oldest first, 50 a sweep, over new `(state, updated_at)` indexes, and given up by their owner after 30
+  minutes: pieces processing, captures processing, pictures queued/generating/checking, turns (videos no browser cut:
+  2 hours), outfit photos finding; generation jobs re-sent; unused uploads, receipts over 30 days and expired OAuth
+  assertions forgotten; pending checks of gone or private targets abandoned. Unit tests run each on SQLite with every
+  migration (`test/LocalD1.ts`).
+- **Providers** (`server/src/providers/`): one `ProviderError` with reason Refused | Busy | OutcomeUnknown | Broken;
+  `providerCall` deadlines from one table, retries only Busy, counts every call; a paid call (SAM, Muse, Veo) past its
+  deadline is OutcomeUnknown. One cost table (`Costs.ts`). Fixed: SAM stills retried after a timeout, My Gallery
+  retrying a lost SAM answer, Thinking's empty answer retryable.
+- **Config and fakes**: `server/src/Config.ts` decodes only deployment facts (stage, release, origin, auth secrets,
+  admins, Meta's and the gateway's keys). Every switch and override is deleted, the stepped-edges and gateway-stylist
+  paths with them; thresholds and model ids are constants. `styldProgram(providersFor)`: the Worker passes
+  `liveProviders` (`Providers.ts`); the native suite runs `test/NativeWorker.ts` on `test/fakes/*` (fixture-backed
+  live clients for Clef, Meta, Muse and Veo; fake painter, planner, Thinking, judge and chat model) and spends
+  accounts down through a NativeWorker-only route instead of a lower allowance.
+- **Remaining for C3 (plan):** captures keep whole photos natively (`CaptureConfig.providers: 'off'` is set only by
+  the native composition) until C4a's garment pipeline has fakes; `ai/LanguageModel.ts` (structured output, the
+  stylist and Llama Guard on one Effect `LanguageModel` layer, deleting `ai/TextModel.ts`) is not done; Meta, Muse
+  and Veo share the error and deadline tables but not one HTTP client; the content judge's Clef calls are not counted
+  through `askClef`; rows-first holds hold only where the row pre-exists (creation flows reserve first and refund a
+  failed write at once); the dead `'off'` refusal reasons stay in the contract for C6.
+
 ## Cleanup C2: one way to declare the contract — 2026-11-01
 
 Milestone C2 of the cleanup plan (contract only; the preview is not redeployed until the milestone's review).
