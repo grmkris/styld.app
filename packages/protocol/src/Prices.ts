@@ -1,6 +1,9 @@
 // What each paid action costs, in credits from the account's daily allowance. The server holds this many before the
 // work runs and gives them back when nothing comes of it; the website and the assistants quote the same numbers.
 
+/** The credits every account has each UTC day; unused ones do not carry over. Changing it is a commit. */
+export const dailyCredits = 100
+
 export const prices = {
   /** A photo's garments found and cut out, and a piece's back (owner, 30 October). */
   photo: 1,

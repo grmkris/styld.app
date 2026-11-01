@@ -11,7 +11,7 @@ import {
 import { type Context, DateTime, Effect, type Layer, Option, Schema } from 'effect'
 import type { LanguageModel } from 'effect/ai'
 import type { CaptureMetrics } from '../capture/Metrics.ts'
-import type { Usage } from '../capture/Usage.ts'
+import { type Holds, holdId } from '../usage/Holds.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import type { Tool as AssistantTool } from '../mcp/Tools.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
@@ -79,12 +79,12 @@ export interface StylistParts<R> {
   readonly tools: ReadonlyArray<AssistantTool<R>>
   readonly toolContext: (accountId: string) => Context.Context<R>
   readonly wardrobe: Wardrobe['Service']
-  readonly usage: Usage['Service']
+  readonly holds: Holds['Service']
   readonly metrics: CaptureMetrics['Service']
 }
 
 const now = Effect.map(DateTime.now, DateTime.toEpochMillis)
-const holdOf = (turnId: string) => `stylist/${turnId}`
+const holdOf = (turnId: string) => holdId('stylist', turnId, 0)
 const stored = <A, E, RX>(effect: Effect.Effect<A, E, RX>) => Effect.mapError(effect, unavailable)
 
 const messageOf = (message: StoredMessage): ChatMessage => ({
@@ -112,7 +112,7 @@ const giveUp = <R>(parts: StylistParts<R>, accountId: string, turnId: string) =>
         .chatsOf(accountId)
         .finish({ turnId, outcome: 'failed', text: '', parts: '[]', messageId: '', now: yield* now }),
     )
-    yield* stored(parts.usage.settle(accountId, holdOf(turnId), 'refunded'))
+    yield* parts.holds.settle(accountId, holdOf(turnId), 'failed')
   })
 
 /** Write one reply: the model answers the chat so far with the account's tools, reporting what it has written. */
@@ -170,7 +170,8 @@ const sending = <R>(parts: StylistParts<R>, ids: Ids) =>
     const turnId = yield* ids.turnIdOf(accountId, input.operationId)
     // The turn's queue delivery records the same job id, so the ask and its reply are found together.
     yield* Effect.annotateCurrentSpan('styld.job_id', turnId)
-    yield* parts.usage.reserve(accountId, holdOf(turnId), prices.stylistMessage)
+    yield* parts.holds.reserve({ accountId, hold: holdOf(turnId), credits: prices.stylistMessage })
+    const refund = parts.holds.settle(accountId, holdOf(turnId), 'failed')
     const begun = yield* stored(
       parts.chatsOf(accountId).begin({
         turnId,
@@ -183,9 +184,9 @@ const sending = <R>(parts: StylistParts<R>, ids: Ids) =>
         now: yield* now,
         patience,
       }),
-    )
+    ).pipe(Effect.tapError(() => Effect.ignore(refund)))
     if (begun.outcome === 'busy' || begun.outcome === 'missing') {
-      yield* stored(parts.usage.settle(accountId, holdOf(turnId), 'refunded'))
+      yield* refund
       return yield* begun.outcome === 'busy' ? StylistBusy.make({}) : NotFound.make({})
     }
     const queued = yield* Effect.tryPromise(() => parts.queue.send({ stylistTurnOf: turnId, accountId })).pipe(
@@ -233,9 +234,7 @@ const queueing = <R>(parts: StylistParts<R>, ids: Ids) => ({
     const input = yield* stored(parts.chatsOf(accountId).turn(turnId))
     if (!input.found) return
     if (input.state !== 'writing')
-      return yield* stored(
-        parts.usage.settle(accountId, holdOf(turnId), input.state === 'done' ? 'consumed' : 'refunded'),
-      )
+      return yield* parts.holds.settle(accountId, holdOf(turnId), input.state === 'done' ? 'succeeded' : 'failed')
     const answered = yield* reply(parts, accountId, turnId, input).pipe(
       // What failed, by its kind alone (a call past its patience, the model's error), never its words.
       Effect.tapError((error) =>
@@ -257,7 +256,7 @@ const queueing = <R>(parts: StylistParts<R>, ids: Ids) => ({
         now: yield* now,
       }),
     )
-    yield* stored(parts.usage.settle(accountId, holdOf(turnId), 'consumed'))
+    yield* parts.holds.settle(accountId, holdOf(turnId), 'succeeded')
   }),
   /** The queue's last attempt failed: the reply shows as failed and its credit comes back. */
   failTurn: Effect.fn('Styld.Stylist.failTurn')(function* (accountId: string, turnId: string) {

@@ -19,7 +19,7 @@ import { captureKey, enqueueMatch, readObject, storedAs, unavailable, writeObjec
 import type { CaptureRow, DetectionRow } from '../capture/Store.ts'
 import type { CaptureConfig } from '../capture/Policy.ts'
 import type { GarmentSegmenter, GarmentVision, PictureWork } from '../capture/Providers.ts'
-import { Usage } from '../capture/Usage.ts'
+import { Holds } from '../usage/Holds.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import type { Boards } from '../boards/Boards.ts'
 import type { Looks } from '../looks/Looks.ts'
@@ -121,8 +121,8 @@ const added = (parts: PhotoParts, operation: Identified, input: AddPhoto) =>
     const upload = yield* usableUpload(parts, accountId, input.uploadId)
     const id = yield* newId('ph')
     const at = yield* nowDate
-    const usage = yield* Usage
-    yield* usage.reserve(accountId, photoHold(id), prices.galleryPhoto)
+    const holds = yield* Holds
+    yield* holds.reserve({ accountId, hold: photoHold(id), credits: prices.galleryPhoto })
     const row: PhotoRow = {
       id,
       accountId,
@@ -137,7 +137,7 @@ const added = (parts: PhotoParts, operation: Identified, input: AddPhoto) =>
       updatedAt: at,
     }
     yield* storedAs(parts.photos.addPhoto(row, yield* receiptRow(operation, id))).pipe(
-      Effect.tapError(() => usage.settle(accountId, photoHold(id), 'refunded').pipe(Effect.ignore({ log: true }))),
+      Effect.tapError(() => holds.settle(accountId, photoHold(id), 'failed').pipe(Effect.ignore({ log: true }))),
     )
     yield* enqueue(parts, id)
     return row
@@ -389,7 +389,7 @@ const operations = (parts: PhotoParts, services: PhotoServices) => ({
 })
 
 /** The capture providers, metering and policy a photo's work uses. */
-type Requirements = CaptureConfig | GarmentSegmenter | GarmentVision | PictureWork | Usage
+type Requirements = CaptureConfig | GarmentSegmenter | GarmentVision | PictureWork | Holds
 
 /** Every operation with the providers it was built with: callers provide only `CurrentAccount`. */
 const make = (parts: PhotoParts, services: PhotoServices) =>

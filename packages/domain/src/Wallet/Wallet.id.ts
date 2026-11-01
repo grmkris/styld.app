@@ -1,3 +1,3 @@
 import { UserId } from '../Identity.ts'
-// One serialized writer per user's credit balance, including both funding pools.
+// One serialized writer per account's credits.
 export const WalletId = UserId

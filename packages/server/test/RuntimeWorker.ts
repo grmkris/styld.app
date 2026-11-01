@@ -1,12 +1,10 @@
 import { provideAllCatalogs } from '@styld/i18n/all'
 import * as Cloudflare from '@alchemy.run/cloudflare'
-import { CurrentActor } from '@styld/domain/CurrentActor.context'
 import { UserId, OperationId } from '@styld/domain/Identity'
-import { GrantMonthlyCredits } from '@styld/domain/Wallet/GrantMonthlyCredits.command'
 import { ReserveCredits } from '@styld/domain/Wallet/ReserveCredits.command'
 import { SettleCredits } from '@styld/domain/Wallet/SettleCredits.command'
 import { Wallet } from '@styld/domain/Wallet/Wallet.aggregate'
-import { monthlyGrantCommandId, reserveCommandId, settleCommandId } from '@styld/domain/Wallet/WalletCommandIds'
+import { reserveCommandId, settleCommandId } from '@styld/domain/Wallet/WalletCommandIds'
 import { format } from '@styld/i18n'
 import { Effect, Layer, Result, Schedule, Schema } from 'effect'
 import { Redacted } from 'effect'
@@ -166,16 +164,13 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
     const wallets = yield* Wallet
     const exercise = Effect.fn('Styld.acceptance.wallet')(function* () {
       const owner = UserId.make('native-test-owner')
-      const grant = new GrantMonthlyCredits({ period: '2026-10', monthly: 10 })
-      yield* wallets.send(owner, grant, { commandId: monthlyGrantCommandId(grant) })
       const compete = (id: string) => {
+        // Two holds of 8 out of a day's 10: only one fits, if the Wallet serializes them.
         const command = new ReserveCredits({
           operationId: OperationId.make(id),
-          fingerprint: 'a'.repeat(64),
           amount: 8,
-          // No free allowance here: this fixture proves the subscription pool serializes reservations.
           day: '2026-10-29',
-          dailyAllowance: 0,
+          dailyAllowance: 10,
         })
         return wallets.send(owner, command, { commandId: reserveCommandId(command) }).pipe(Effect.result)
       }
@@ -218,7 +213,6 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
           })
         if (url.pathname === '/wallet')
           return yield* exercise().pipe(
-            Effect.provideService(CurrentActor, { userId: UserId.make('native-test-owner'), service: true }),
             Effect.orDie,
             Effect.flatMap((payload) => HttpServerResponse.json(payload).pipe(Effect.orDie)),
           )

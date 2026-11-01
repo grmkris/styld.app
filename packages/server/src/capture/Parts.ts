@@ -1,3 +1,4 @@
+import { type Ending, holdId } from '../usage/Holds.ts'
 import { decodePng, type Rgba } from '@styld/imaging'
 import { Unavailable } from '@styld/protocol'
 import { Effect, Option } from 'effect'
@@ -5,7 +6,7 @@ import { accountPrefix, piecePrefix } from '../wardrobe/Media.ts'
 import type { WorkMessage } from '../wardrobe/Processing.ts'
 import { makeStore } from '../wardrobe/Store.ts'
 import type { WardrobeBindings } from '../wardrobe/Parts.ts'
-import { makeCaptureStore } from './Store.ts'
+import { type CaptureRow, makeCaptureStore } from './Store.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
 
 /** The Cloudflare bindings captures read and write. */
@@ -103,7 +104,22 @@ export const enqueueCapture = (parts: Parts, captureId: string) =>
 
 export const storedAs = <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.mapError(effect, unavailable)
 
-/** The Wallet operation holding a capture's credits. Captures made before holds were recorded on the row
- * hold under `capture/<id>`. */
-export const holdOf = (capture: { readonly id: string; readonly hold: string | null }) =>
-  capture.hold ?? `capture/${capture.id}`
+/** How a capture's status ended its hold, once it ended: in the tray or done it succeeded. A capture still
+ * processing has not ended. */
+export const endingOf = (status: CaptureRow['status']): Option.Option<Ending> => {
+  switch (status) {
+    case 'review':
+    case 'done':
+      return Option.some('succeeded')
+    case 'failed':
+      return Option.some('failed')
+    case 'unknown':
+      return Option.some('unknown')
+    case 'processing':
+      return Option.none()
+  }
+}
+
+/** The hold paying for a capture's latest attempt: each retry the person asks for holds its credits again. */
+export const captureHold = (capture: { readonly id: string; readonly attempt: number }) =>
+  holdId('capture', capture.id, capture.attempt)

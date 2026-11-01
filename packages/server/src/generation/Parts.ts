@@ -1,7 +1,7 @@
 import { Unavailable, Generation } from '@styld/protocol'
-import { Effect, Schema } from 'effect'
+import { Effect, Option, Schema } from 'effect'
 import type { Boards } from '../boards/Boards.ts'
-import type { Usage } from '../capture/Usage.ts'
+import { type Ending, type Holds, holdId } from '../usage/Holds.ts'
 import type { ContentJudge } from '../safety/Judge.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import type { makeStore } from '../wardrobe/Store.ts'
@@ -21,7 +21,7 @@ export interface Parts {
   readonly queue: { send(message: GenerationMessage): Promise<unknown> }
   readonly boards: Boards['Service']
   readonly wardrobe: Wardrobe['Service']
-  readonly usage: Usage['Service']
+  readonly holds: Holds['Service']
   readonly judge: ContentJudge['Service']
   readonly planner: MoodPlanner['Service']
   readonly painter: PicturePainter['Service']
@@ -30,8 +30,8 @@ export interface Parts {
 }
 
 export const unavailable = () => Unavailable.make({})
-/** A picture's credit in the Wallet: one per picture, its first and only attempt. */
-export const holdOf = (jobId: string, index: number) => `gen/${jobId}/${index}/0`
+/** A job's credit in the Wallet: one per ask, its first and only attempt. */
+export const jobHold = (jobId: string) => holdId('generation', jobId, 0)
 
 /** The operation a picture's place on the board is written under, so a redelivery answers the same picture. */
 export const pictureOperation = (jobId: string, index: number) => `gen-${jobId}-${index}`
@@ -51,13 +51,17 @@ export const view = (job: JobRow, pictures: ReadonlyArray<PictureRow>) =>
     createdAt: job.createdAt.toISOString(),
   }).pipe(Effect.mapError(unavailable))
 
-/** Give back the credits held for pictures `from` up to `to`; one already settled stays as it was. */
-export const refund = (parts: Parts, accountId: string, jobId: string, from: number, to: number) =>
-  Effect.forEach(
-    Array.from({ length: Math.max(0, to - from) }, (_, offset) => from + offset),
-    (index) =>
-      parts.usage
-        .settle(accountId, holdOf(jobId, index), 'refunded')
-        .pipe(Effect.ignore({ log: true, message: 'Styld.Generation could not give a credit back' })),
-    { discard: true },
-  )
+/** How a job that ended settles its credit: spent once its sticker or board is there, given back otherwise. */
+export const endingOf = (status: JobRow['status']): Option.Option<Ending> =>
+  status === 'done'
+    ? Option.some('succeeded')
+    : status === 'refused' || status === 'failed'
+      ? Option.some('failed')
+      : Option.none()
+
+/** Settle a job's credit by how it ended; the first settlement stands, so a later delivery may settle it again. */
+export const settleJob = (parts: Parts, job: Pick<JobRow, 'id' | 'accountId' | 'status'>) =>
+  Option.match(endingOf(job.status), {
+    onNone: () => Effect.void,
+    onSome: (ending) => parts.holds.settle(job.accountId, jobHold(job.id), ending),
+  })

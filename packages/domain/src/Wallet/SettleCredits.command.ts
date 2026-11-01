@@ -1,8 +1,6 @@
 import * as Domain from '@alchemy.run/domain'
 import { Schema } from 'effect'
-import { NotAuthorized } from '../CurrentActor.context.ts'
 import { OperationId } from '../Identity.ts'
-import { Session } from '../Session.middleware.ts'
 import { Credits } from './Credits.ts'
 import { WalletId } from './Wallet.id.ts'
 
@@ -14,18 +12,13 @@ export class ReservationNotFound extends Domain.Rejection('ReservationNotFound')
 export class CreditsSettled extends Domain.Event('CreditsSettled', {
   operationId: OperationId,
   outcome: Settlement,
-  fromDaily: Credits,
+  amount: Credits,
   dailyAfter: Credits,
-  fromSubscription: Credits,
-  fromPurchased: Credits,
-  subscriptionAfter: Credits,
-  purchasedAfter: Credits,
 }) {}
-// Sent after a definitive request outcome. Unknown provider outcomes retain their hold.
+// Sent once the work ended: consumed when it succeeded, refunded when it failed or its outcome is unknown.
 export class SettleCredits extends Domain.Command('SettleCredits', {
   target: WalletId,
-  middleware: [Session],
   input: { operationId: OperationId, outcome: Settlement },
   events: [CreditsSettled],
-  rejects: [NotAuthorized, ReservationNotFound],
+  rejects: [ReservationNotFound],
 }) {}

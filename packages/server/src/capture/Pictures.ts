@@ -7,7 +7,7 @@ import { CaptureMetrics } from './Metrics.ts'
 import { CaptureConfig } from './Policy.ts'
 import { GarmentVision, ImageGenerator, type Picture } from './Providers.ts'
 import type { PictureRow, PictureState } from './Store.ts'
-import { Usage } from './Usage.ts'
+import { Holds, holdId } from '../usage/Holds.ts'
 import { isStale } from '../wardrobe/Shown.ts'
 import { nowDate } from '../kernel/Db.ts'
 
@@ -49,7 +49,7 @@ const hasEnded = (state: PictureState): state is (typeof ends)[number] => ends.s
  * both act on one state, and each picture's end is counted once. */
 const move = (
   parts: Parts,
-  picture: Pick<PictureRow, 'pieceId' | 'provider' | 'hold'>,
+  picture: Pick<PictureRow, 'pieceId' | 'provider' | 'paid'>,
   from: ReadonlyArray<PictureState>,
   changes: Partial<PictureRow>,
 ) =>
@@ -66,7 +66,7 @@ const move = (
       yield* (yield* CaptureMetrics).picture({
         state,
         provider: changes.provider ?? picture.provider ?? 'none',
-        asked: picture.hold !== null,
+        asked: picture.paid,
       })
     return moved
   })
@@ -170,7 +170,7 @@ const start = (parts: Parts, picture: PictureRow) =>
     if (Option.isNone(front)) return yield* move(parts, picture, ['queued'], { state: 'kept-real' })
     const judgement = yield* (yield* GarmentVision).judge(sent(front.value, judgedAt))
     const judged = { judge: judgement.verdict, judgeConfidence: judgement.confidence, face: judgement.face }
-    const asked = picture.hold !== null && judgement.face < policy.face
+    const asked = picture.paid && judgement.face < policy.face
     const { plan } = asked ? { plan: 'draw' as const } : planFor(judgement, policy)
     if (plan !== 'draw') return yield* move(parts, picture, ['queued'], { ...judged, state: plan })
     const generator = yield* ImageGenerator
@@ -202,18 +202,22 @@ const checkStored = (parts: Parts, picture: PictureRow) =>
     yield* check(parts, picture, drawn.value, real.value)
   })
 
-/** A redraw's credit, once its drawing ended: consumed for a drawing the owner can see, refunded otherwise. The Wallet
- * answers a repeated settle as done, so the hold is cleared only after it settled, and whoever comes next settles a
- * hold a delivery left. */
+/** The hold paying for a piece's latest redraw. */
+export const redrawHold = (picture: Pick<PictureRow, 'pieceId' | 'redraws'>) =>
+  holdId('picture', picture.pieceId, picture.redraws)
+
+/** A redraw's credit, once its drawing ended: consumed for a drawing the owner can see, refunded otherwise. The first
+ * settlement stands, so whoever comes next settles a hold a delivery left, and settling again is safe. */
 export const settleHold = (parts: Parts, pieceId: string) =>
   Effect.gen(function* () {
     const found = yield* storedAs(parts.store.findPicture(pieceId))
-    if (Option.isNone(found)) return
-    const { accountId, hold, state } = found.value
-    if (hold === null || !hasEnded(state)) return
-    const outcome = state === 'ready' || state === 'proposed' ? 'consumed' : 'refunded'
-    yield* (yield* Usage).settle(accountId, hold, outcome)
-    yield* storedAs(parts.store.movePicture(pieceId, [state], { hold: null }))
+    if (Option.isNone(found) || !found.value.paid || !hasEnded(found.value.state)) return
+    const { accountId, state } = found.value
+    yield* (yield* Holds).settle(
+      accountId,
+      redrawHold(found.value),
+      state === 'ready' || state === 'proposed' ? 'succeeded' : 'failed',
+    )
   })
 
 /** The queue side of clean pictures. */

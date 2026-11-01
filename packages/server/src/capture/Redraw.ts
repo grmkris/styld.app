@@ -3,10 +3,11 @@ import { Effect, Option } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { isStale, pictureView } from '../wardrobe/Shown.ts'
 import { enqueuePicture, type Parts, storedAs } from './Parts.ts'
-import { settleHold } from './Pictures.ts'
+import { redrawHold, settleHold } from './Pictures.ts'
 import { CaptureConfig } from './Policy.ts'
 import type { PictureRow } from './Store.ts'
-import { Usage } from './Usage.ts'
+import { Holds } from '../usage/Holds.ts'
+import { once } from '../kernel/Receipts.ts'
 import { nowDate } from '../kernel/Db.ts'
 
 /** Whether a piece shows a cut-out, the only picture that may be sent to be drawn; a photo never leaves Styld. */
@@ -45,26 +46,48 @@ const drawablePiece = (parts: Parts, accountId: string, pieceId: string) =>
  * the race gets its credit back. */
 const queueRedraw = (
   parts: Parts,
-  ids: { readonly accountId: string; readonly pieceId: string; readonly hold: string },
+  ids: { readonly accountId: string; readonly pieceId: string },
   current: Option.Option<PictureRow>,
   hint: string | undefined,
 ) =>
   Effect.gen(function* () {
-    const { accountId, pieceId, hold } = ids
-    const usage = yield* Usage
-    yield* usage.reserve(accountId, hold, prices.redraw)
+    const { accountId, pieceId } = ids
+    const redraws = Option.match(current, { onNone: () => 1, onSome: (picture) => picture.redraws + 1 })
+    const hold = redrawHold({ pieceId, redraws })
+    const holds = yield* Holds
+    yield* holds.reserve({ accountId, hold, credits: prices.redraw })
     const at = yield* nowDate
-    const queued = { state: 'queued' as const, hint: hint ?? null, hold, shown: null, errorCode: null, updatedAt: at }
-    const moved = Option.isSome(current)
-      ? yield* storedAs(parts.store.movePicture(pieceId, [current.value.state], queued))
-      : yield* storedAs(parts.store.addPicture({ ...queued, pieceId, accountId, version: 0, createdAt: at }))
+    const queued = {
+      state: 'queued' as const,
+      hint: hint ?? null,
+      redraws,
+      paid: true,
+      shown: null,
+      errorCode: null,
+      updatedAt: at,
+    }
+    const moved = yield* storedAs(
+      Option.isSome(current)
+        ? parts.store.movePicture(pieceId, [current.value.state], queued)
+        : parts.store.addPicture({ ...queued, pieceId, accountId, version: 0, createdAt: at }),
+    ).pipe(Effect.tapError(() => holds.settle(accountId, hold, 'failed').pipe(Effect.ignore)))
     if (!moved) {
-      yield* usage.settle(accountId, hold, 'refunded')
+      yield* holds.settle(accountId, hold, 'failed')
       return yield* PictureRefused.make({ reason: 'busy' })
     }
     // A drawing being redrawn stops showing; the photo shows meanwhile.
     yield* parts.pieceChanged.changed(pieceId)
     yield* enqueuePicture(parts, pieceId)
+  })
+
+/** The picture a repeated redraw asked for, as it stands now; one still queued goes to the queue again. */
+const replayedRedraw = (parts: Parts, pieceId: string) =>
+  Effect.gen(function* () {
+    const at = yield* nowDate
+    const current = yield* storedAs(parts.store.findPicture(pieceId))
+    if (Option.isNone(current)) return yield* NotFound.make({})
+    if (current.value.state === 'queued') yield* enqueuePicture(parts, pieceId)
+    return pictureView(current.value, at)
   })
 
 /** The owner's own requests for clean pictures. */
@@ -75,20 +98,21 @@ export const redrawing = (parts: Parts) => ({
   redrawPicture: Effect.fn('Styld.Picture.redraw')(function* (pieceId: string, input: RedrawPicture) {
     const { accountId } = yield* CurrentAccount
     yield* drawablePiece(parts, accountId, pieceId)
-    const at = yield* nowDate
-    const hold = `picture/${input.operationId}`
-    const current = yield* settledPicture(parts, pieceId, at)
-    if (Option.isSome(current) && current.value.hold === hold) {
+    const ask = Effect.gen(function* () {
+      const current = yield* settledPicture(parts, pieceId, yield* nowDate)
+      const face = (yield* CaptureConfig).pictures.face
+      const refused = Option.flatMap(current, (picture) => refusal(picture, face))
+      if (Option.isSome(refused)) return yield* PictureRefused.make({ reason: refused.value })
+      yield* queueRedraw(parts, { accountId, pieceId }, current, input.hint)
+      const version = Option.match(current, { onNone: () => 0, onSome: (picture) => picture.version })
+      return [{ state: 'drawing' as const, shows: 'photo' as const, version }, pieceId] as const
+    })
+    return yield* once(
+      parts.wardrobeStore,
+      { accountId, operationId: input.operationId, command: 'redrawPicture', input: [pieceId, input.hint ?? null] },
       // The same request again: its message may have been lost, and the job draws once however often it is sent.
-      if (current.value.state === 'queued') yield* enqueuePicture(parts, pieceId)
-      return pictureView(current.value, at)
-    }
-    const face = (yield* CaptureConfig).pictures.face
-    const refused = Option.flatMap(current, (picture) => refusal(picture, face))
-    if (Option.isSome(refused)) return yield* PictureRefused.make({ reason: refused.value })
-    yield* queueRedraw(parts, { accountId, pieceId, hold }, current, input.hint)
-    const version = Option.match(current, { onNone: () => 0, onSome: (picture) => picture.version })
-    return { state: 'drawing' as const, shows: 'photo' as const, version }
+      { replay: () => replayedRedraw(parts, pieceId), run: ask },
+    )
   }),
   /** How many of the account's kept cut-outs have no clean picture yet. */
   undrawnPictures: Effect.fn('Styld.Picture.undrawn')(function* () {

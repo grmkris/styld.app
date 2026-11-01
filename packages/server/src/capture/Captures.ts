@@ -7,16 +7,17 @@ import {
   type HeldCheckAnswer,
   Tray,
   UploadRefused,
+  dailyCredits,
   prices,
   type OperationId,
 } from '@styld/protocol'
 import { Array, Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { CaptureConfig } from './Policy.ts'
-import { type Parts, enqueueCapture, holdOf, storedAs, unavailable } from './Parts.ts'
+import { type Parts, captureHold, enqueueCapture, storedAs, unavailable } from './Parts.ts'
 import { GarmentVision } from './Providers.ts'
 import type { CaptureRow, DetectionRow, FrameRow } from './Store.ts'
-import { Usage } from './Usage.ts'
+import { Holds } from '../usage/Holds.ts'
 import { findMoov, videoDurationMs, videoFrameCount } from './VideoContainer.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
@@ -75,12 +76,13 @@ const measureVideo = (parts: Parts, video: { readonly objectKey: string; readonl
 /** Hold the credits, then write the capture; give them back if the write fails. */
 const admit = (parts: Parts, capture: CaptureRow, frames: ReadonlyArray<FrameRow>, operation: Identified) =>
   Effect.gen(function* () {
-    const usage = yield* Usage
-    yield* usage.reserve(capture.accountId, holdOf(capture), capture.credits)
+    const holds = yield* Holds
+    const hold = captureHold(capture)
+    yield* holds.reserve({ accountId: capture.accountId, hold, credits: capture.credits })
     yield* parts.store.createCapture(capture, frames, yield* receiptRow(operation, capture.id)).pipe(
       Effect.tapError(() =>
-        usage
-          .settle(capture.accountId, holdOf(capture), 'refunded')
+        holds
+          .settle(capture.accountId, hold, 'failed')
           .pipe(Effect.ignore({ log: true, message: 'Styld.Capture.admit could not refund a failed capture' })),
       ),
       Effect.mapError(unavailable),
@@ -95,7 +97,8 @@ const baseCapture = (
   upload: { readonly id: string; readonly objectKey: string; readonly contentType: string; readonly bytes: number },
   at: Date,
 ): Omit<CaptureRow, 'kind' | 'source' | 'credits'> => ({
-  hold: `capture/${id}`,
+  // The hold and settlement columns go in the baseline (C5); the Wallet is the only record of a hold.
+  hold: null,
   attempt: 0,
   trackingStartedAt: null,
   id,
@@ -243,8 +246,7 @@ export const reading = (parts: Parts) => ({
   tray: Effect.fn('Styld.Capture.tray')(function* () {
     const { accountId } = yield* CurrentAccount
     const open = yield* storedAs(parts.store.tray(accountId))
-    const policy = yield* CaptureConfig
-    const remaining = yield* (yield* Usage).remaining(accountId)
+    const remaining = yield* (yield* Holds).remaining(accountId)
     // Only the service writes these rows, through the same schemas; a row that does not decode is a bug.
     return yield* Schema.decodeUnknownEffect(Tray)({
       captures: trayCards(open).map(({ capture, detections }) => ({
@@ -256,7 +258,7 @@ export const reading = (parts: Parts) => ({
         createdAt: capture.createdAt.toISOString(),
         detections,
       })),
-      allowance: { remaining, daily: policy.dailyAllowance },
+      allowance: { remaining, daily: dailyCredits },
     }).pipe(Effect.orDie)
   }),
   /** Show each other sighting of a garment on its own card again: the import took different garments for one. */

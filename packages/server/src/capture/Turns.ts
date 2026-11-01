@@ -38,7 +38,8 @@ import {
   VideoGenerator,
 } from './Providers.ts'
 import type { PictureRow, TurnRow, TurnState } from './Store.ts'
-import { Usage } from './Usage.ts'
+import { Holds, holdId } from '../usage/Holds.ts'
+import { once } from '../kernel/Receipts.ts'
 import { nowDate } from '../kernel/Db.ts'
 
 // Veo 3.1 Lite answers a 4 s turn in one to two minutes (30 October). The job asks every 15 s (`turns.pollSeconds`)
@@ -89,16 +90,20 @@ const move = (parts: Parts, pieceId: string, from: ReadonlyArray<TurnState>, cha
 const end = (parts: Parts, pieceId: string, from: TurnState, errorCode: string) =>
   move(parts, pieceId, [from], { state: 'failed', errorCode })
 
-/** A turn's credits, once it ended: consumed for a turn the owner can play, refunded otherwise. The Wallet answers a
- * repeated settle as done, so the hold is cleared only after it settled. */
+/** The hold paying for a piece's latest turn. */
+const turnHold = (turn: Pick<TurnRow, 'pieceId' | 'attempt'>) => holdId('turn', turn.pieceId, turn.attempt)
+
+/** A turn's credits, once it ended: consumed for a turn the owner can play, refunded otherwise. The first settlement
+ * stands, so settling an ended turn again is safe. */
 export const settleTurn = (parts: Parts, pieceId: string) =>
   Effect.gen(function* () {
     const found = yield* storedAs(parts.store.findTurn(pieceId))
-    if (Option.isNone(found)) return
-    const { accountId, hold, state } = found.value
-    if (hold === null || !hasEnded(state)) return
-    yield* (yield* Usage).settle(accountId, hold, state === 'ready' ? 'consumed' : 'refunded')
-    yield* storedAs(parts.store.moveTurn(pieceId, [state], { hold: null }))
+    if (Option.isNone(found) || !hasEnded(found.value.state)) return
+    yield* (yield* Holds).settle(
+      found.value.accountId,
+      turnHold(found.value),
+      found.value.state === 'ready' ? 'succeeded' : 'failed',
+    )
   })
 
 /** The clean picture a turn starts from: a drawing that is shown or offered. */
@@ -319,21 +324,23 @@ const turnablePiece = (parts: Parts, accountId: string, pieceId: string) =>
       return yield* TurnRefused.make({ reason: 'picture' })
   })
 
-/** Hold the turn's credits and queue it, moving it on from the state it was read in; the turn as queued. A request
- * that lost the race gets its credits back. */
+/** Hold the turn's credits and queue it as the piece's next turn, moving it on from the state it was read in; the turn
+ * as queued. A request that lost the race, or could not be stored, gets its credits back. */
 const queueTurn = (
   parts: Parts,
-  ids: { readonly accountId: string; readonly pieceId: string; readonly hold: string },
+  ids: { readonly accountId: string; readonly pieceId: string },
   current: Option.Option<TurnRow>,
   at: Date,
 ) =>
   Effect.gen(function* () {
-    const { accountId, pieceId, hold } = ids
-    const usage = yield* Usage
-    yield* usage.reserve(accountId, hold, prices.turn)
+    const { accountId, pieceId } = ids
+    const attempt = Option.match(current, { onNone: () => 0, onSome: (turn) => turn.attempt + 1 })
+    const hold = turnHold({ pieceId, attempt })
+    const holds = yield* Holds
+    yield* holds.reserve({ accountId, hold, credits: prices.turn })
     const requested = {
       state: 'requested' as const,
-      hold,
+      attempt,
       provider: null,
       model: null,
       operation: null,
@@ -346,15 +353,26 @@ const queueTurn = (
       errorCode: null,
       updatedAt: at,
     }
-    const moved = Option.isSome(current)
-      ? yield* storedAs(parts.store.moveTurn(pieceId, [current.value.state], requested))
-      : yield* storedAs(parts.store.addTurn({ ...requested, pieceId, accountId, createdAt: at }))
+    const moved = yield* storedAs(
+      Option.isSome(current)
+        ? parts.store.moveTurn(pieceId, [current.value.state], requested)
+        : parts.store.addTurn({ ...requested, pieceId, accountId, createdAt: at }),
+    ).pipe(Effect.tapError(() => holds.settle(accountId, hold, 'failed').pipe(Effect.ignore)))
     if (!moved) {
-      yield* usage.settle(accountId, hold, 'refunded')
+      yield* holds.settle(accountId, hold, 'failed')
       return yield* TurnRefused.make({ reason: 'busy' })
     }
     yield* enqueueTurn(parts, pieceId)
-    return { ...requested, pieceId, accountId, createdAt: at }
+    return { ...requested, hold: null, pieceId, accountId, createdAt: at }
+  })
+
+/** The turn a repeated request asked for, as it stands now; one still requested goes to the queue again. */
+const replayedTurn = (parts: Parts, accountId: string, pieceId: string) =>
+  Effect.gen(function* () {
+    const turn = yield* storedAs(parts.wardrobeStore.turnOf(accountId, pieceId))
+    if (Option.isNone(turn)) return yield* NotFound.make({})
+    if (turn.value.state === 'requested') yield* enqueueTurn(parts, pieceId)
+    return turnView(turn.value, yield* nowDate)
   })
 
 const files = {
@@ -383,17 +401,19 @@ export const askingTurns = (parts: Parts) => ({
    * play, refunded otherwise. A new turn replaces the last; repeating an operation id answers the first request. */
   makeTurn: Effect.fn('Styld.Turn.ask')(function* (pieceId: string, operationId: string) {
     const { accountId } = yield* CurrentAccount
-    yield* turnablePiece(parts, accountId, pieceId)
-    yield* settleTurn(parts, pieceId)
-    const current = yield* storedAs(parts.store.findTurn(pieceId))
-    const hold = `turn/${operationId}`
-    const at = yield* nowDate
-    if (Option.isSome(current) && current.value.hold === hold) {
+    const ask = Effect.gen(function* () {
+      yield* turnablePiece(parts, accountId, pieceId)
+      yield* settleTurn(parts, pieceId)
+      const current = yield* storedAs(parts.store.findTurn(pieceId))
+      if (Option.isSome(current) && !hasEnded(current.value.state)) return yield* TurnRefused.make({ reason: 'busy' })
+      const at = yield* nowDate
+      return [turnView(yield* queueTurn(parts, { accountId, pieceId }, current, at), at), pieceId] as const
+    })
+    return yield* once(
+      parts.wardrobeStore,
+      { accountId, operationId, command: 'makeTurn', input: pieceId },
       // The same request again: its message may have been lost; the job starts a turn once however often it is sent.
-      if (current.value.state === 'requested') yield* enqueueTurn(parts, pieceId)
-      return turnView(current.value, at)
-    }
-    if (Option.isSome(current) && !hasEnded(current.value.state)) return yield* TurnRefused.make({ reason: 'busy' })
-    return turnView(yield* queueTurn(parts, { accountId, pieceId, hold }, current, at), at)
+      { replay: () => replayedTurn(parts, accountId, pieceId), run: ask },
+    )
   }),
 })

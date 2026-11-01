@@ -12,7 +12,7 @@ import { redrawing } from './Redraw.ts'
 import { suggesting } from './Suggest.ts'
 import { askingTurns, turning } from './Turns.ts'
 import { detectionPictures, reviewing } from './Review.ts'
-import { Usage } from './Usage.ts'
+import { Holds } from '../usage/Holds.ts'
 
 type Requirements =
   | GarmentVision
@@ -20,7 +20,7 @@ type Requirements =
   | GarmentSegmenter
   | ImageGenerator
   | VideoGenerator
-  | Usage
+  | Holds
   | CaptureConfig
   | CaptureMetrics
 

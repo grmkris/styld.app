@@ -1,8 +1,8 @@
 import { type BoardId, type Generate, type GenerationKind, NotFound, prices, PromptRefused } from '@styld/protocol'
-import { Effect, Option, Predicate, Result } from 'effect'
+import { Effect, Option, Result } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { stickerKey, stickerPrompt } from './PaintPrompt.ts'
-import { holdOf, type Parts, refund, send, unavailable, view } from './Parts.ts'
+import { jobHold, type Parts, send, unavailable, view } from './Parts.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { giveUp } from './Work.ts'
 import type { JobRow } from './Store.ts'
@@ -14,16 +14,18 @@ const stalledMillis = 3 * 60 * 1000
 
 const stored = <A, E>(effect: Effect.Effect<A, E>) => Effect.mapError(effect, unavailable)
 
+/** Give an ask's credit back: the job was never stored, or never queued. */
+const refund = (parts: Parts, accountId: string, jobId: string) =>
+  parts.holds
+    .settle(accountId, jobHold(jobId), 'failed')
+    .pipe(Effect.ignore({ log: true, message: 'Styld.Generation could not give a credit back' }))
+
 /** Hold the ask's price: a sticker's, or a mood board's. */
 const holdOne = (parts: Parts, accountId: string, jobId: string, kind: GenerationKind) =>
-  Effect.gen(function* () {
-    const reserved = yield* Effect.result(parts.usage.reserve(accountId, holdOf(jobId, 0), prices[kind]))
-    if (Result.isSuccess(reserved)) return
-    if (Predicate.isTagged(reserved.failure, 'LimitReached')) return yield* reserved.failure
+  parts.holds.reserve({ accountId, hold: jobHold(jobId), credits: prices[kind] }).pipe(
     // The Wallet may have taken it before its answer was lost.
-    yield* refund(parts, accountId, jobId, 0, 1)
-    return yield* unavailable()
-  })
+    Effect.tapErrorTag('Unavailable', () => refund(parts, accountId, jobId)),
+  )
 
 /** The words are checked like anything public: words that fail are never sent to a model. */
 const checked = (parts: Parts, prompt: string) =>
@@ -55,8 +57,7 @@ export const generations = (parts: Parts) => ({
     yield* Effect.annotateCurrentSpan('styld.job_id', id)
     // The credit first, so an account with none left asks no model anything.
     yield* holdOne(parts, accountId, id, kind)
-    const held = 1
-    yield* checked(parts, input.prompt).pipe(Effect.tapError(() => refund(parts, accountId, id, 0, held)))
+    yield* checked(parts, input.prompt).pipe(Effect.tapError(() => refund(parts, accountId, id)))
     const at = yield* nowDate
     const job: JobRow = {
       id,
@@ -66,7 +67,8 @@ export const generations = (parts: Parts) => ({
       prompt: input.prompt,
       status: kind === 'sticker' ? 'drawing' : 'planning',
       reason: null,
-      held,
+      // Written for the column alone until the baseline drops it; the Wallet is the only record of a hold.
+      held: 1,
       collageVersion: board.version,
       picks: [],
       moods: [],
@@ -87,7 +89,7 @@ export const generations = (parts: Parts) => ({
           ]
         : []
     yield* stored(parts.store.insertJob(job, pictures, yield* receiptRow(operation, id))).pipe(
-      Effect.tapError(() => refund(parts, accountId, id, 0, held)),
+      Effect.tapError(() => refund(parts, accountId, id)),
     )
     // A job that could not be queued would wait for someone to read it: it is given up at once, its credits back.
     const queued = yield* Effect.result(send(parts, id))

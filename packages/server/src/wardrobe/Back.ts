@@ -24,10 +24,7 @@ export const backing = (parts: Parts) => ({
     const type = yield* typeOf(piece)
     const { imageKey } = yield* parts.cutout
       .cut({ accountId, pieceId, originalKey: upload.objectKey, contentType: upload.contentType, type, of })
-      .pipe(
-        Effect.tapError(() => parts.cutout.release({ accountId, pieceId, of }).pipe(Effect.ignore)),
-        Effect.mapError(unavailable),
-      )
+      .pipe(Effect.mapError(unavailable))
     const at = yield* nowDate
     const updated = yield* stored(
       parts.store.setBack(

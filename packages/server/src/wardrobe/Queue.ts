@@ -55,7 +55,10 @@ export const settleMessage = (
   return Schema.decodeUnknownEffect(WorkMessage)(message.body).pipe(
     Effect.flatMap((body) => {
       if ('pieceId' in body)
-        return work(services.wardrobe.processPiece(body.pieceId), services.wardrobe.failPiece(body.pieceId))
+        return work(
+          services.wardrobe.processPiece(body.pieceId, message.attempts),
+          services.wardrobe.failPiece(body.pieceId),
+        )
       if ('captureId' in body)
         return work(services.captures.processCapture(body.captureId), services.captures.failCapture(body.captureId))
       if ('matchOf' in body)

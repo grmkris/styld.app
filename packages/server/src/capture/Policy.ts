@@ -16,7 +16,6 @@ export interface CapturePolicy {
   readonly heldConfidence: number
   /** How sure it must be that a shot shows the same garment as the last one (its back). */
   readonly samePieceConfidence: number
-  readonly dailyAllowance: number
   /** Clean pictures drawn from kept cut-outs (owner, 30 October): who draws them (`off` keeps every real photo), and
    * the decision model's bars. A drawing at least `show` like the cut-out is shown; below `reject` it is dropped;
    * between, the person chooses. A cut-out at least `face` likely to show a face is never sent on. */
@@ -65,7 +64,6 @@ export const capturePolicy = (env: Readonly<Record<string, unknown>>): CapturePo
   edges: choice(env['CUTOUT_EDGES'], ['refined', 'stepped'], 'refined'),
   heldConfidence: number(env['CAMERA_HELD_CONFIDENCE'], 0.6),
   samePieceConfidence: number(env['CAMERA_SAME_PIECE_CONFIDENCE'], 0.6),
-  dailyAllowance: number(env['DAILY_ALLOWANCE'], 100),
   pictures: {
     generator: choice(env['CLEAN_PICTURES'], ['muse', 'off'], 'off'),
     show: number(env['CLEAN_PICTURE_SHOW'], 0.8),

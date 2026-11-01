@@ -429,7 +429,7 @@ const images = (parts: Parts) => ({
 
 const processing = (parts: Parts) => ({
   /** Run the cut-out step for a piece the queue delivered. Finished pieces are left alone. */
-  processPiece: Effect.fn('Styld.Wardrobe.processPiece')(function* (pieceId: string) {
+  processPiece: Effect.fn('Styld.Wardrobe.processPiece')(function* (pieceId: string, attempt: number) {
     const row = yield* stored(parts.store.findPieceForProcessing(pieceId))
     if (Option.isNone(row) || row.value.status !== 'processing') return
     const type = yield* typeOf(row.value)
@@ -439,7 +439,7 @@ const processing = (parts: Parts) => ({
       originalKey: row.value.originalKey,
       contentType: row.value.contentType,
       type,
-      of: { side: 'front' },
+      of: { side: 'front', attempt },
     })
     yield* stored(parts.store.finishProcessing(pieceId, { status: 'ready', imageKey, updatedAt: yield* nowDate }))
     yield* parts.pieceChanged.changed(pieceId)
@@ -448,9 +448,6 @@ const processing = (parts: Parts) => ({
   failPiece: Effect.fn('Styld.Wardrobe.failPiece')(function* (pieceId: string) {
     const row = yield* stored(parts.store.findPieceForProcessing(pieceId))
     if (Option.isNone(row) || row.value.status !== 'processing') return
-    yield* parts.cutout
-      .release({ accountId: row.value.accountId, pieceId, of: { side: 'front' } })
-      .pipe(Effect.mapError(unavailable))
     yield* stored(
       parts.store.finishProcessing(pieceId, { status: 'failed', imageKey: null, updatedAt: yield* nowDate }),
     )

@@ -30,7 +30,7 @@ import { pieceCutout } from './capture/PieceCutout.ts'
 import type { CaptureConfig } from './capture/Policy.ts'
 import { GarmentSegmenter, GarmentVision, ImageGenerator, PictureWork, VideoGenerator } from './capture/Providers.ts'
 import { Captures, makeCaptures } from './capture/Service.ts'
-import { Usage } from './capture/Usage.ts'
+import { Holds } from './usage/Holds.ts'
 import { DomainLive } from './DomainLive.ts'
 import { health } from './Health.ts'
 import { onFirstUse } from './IsolateCache.ts'
@@ -128,7 +128,7 @@ const storageServices = <R>(
     | GarmentSegmenter
     | ImageGenerator
     | VideoGenerator
-    | Usage
+    | Holds
     | CaptureConfig
     | CaptureMetricsService,
     never,
@@ -162,7 +162,7 @@ const storageServices = <R>(
     }).pipe(Effect.provide(judge))
     return {
       // The credits and the provider-call counter the capture providers were built with, for Styld's replies too.
-      usage: yield* Usage,
+      holds: yield* Holds,
       metrics: yield* CaptureMetricsService,
       generationsService,
       generations: Layer.succeed(Generations, generationsService),

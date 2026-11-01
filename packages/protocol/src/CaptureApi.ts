@@ -88,7 +88,7 @@ export class CaptureApi extends HttpApiGroup.make('capture')
       params: { pieceId: PieceId },
       payload: RedrawPicture,
       success: PiecePicture,
-      error: [NotFound, PictureRefused, LimitReached, Unavailable, RequestRefused],
+      error: [NotFound, PictureRefused, LimitReached, OperationConflict, Unavailable, RequestRefused],
     }),
   )
   .add(HttpApiEndpoint.get('undrawnPictures', '/pictures', { success: PictureBackfill, error: Unavailable }))
@@ -104,7 +104,7 @@ export class CaptureApi extends HttpApiGroup.make('capture')
       params: { pieceId: PieceId },
       payload: Operation,
       success: PieceTurn,
-      error: [NotFound, TurnRefused, LimitReached, Unavailable, RequestRefused],
+      error: [NotFound, TurnRefused, LimitReached, OperationConflict, Unavailable, RequestRefused],
     }),
   )
   .add(

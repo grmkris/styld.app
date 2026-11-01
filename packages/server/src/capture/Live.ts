@@ -10,7 +10,7 @@ import { type AnalyticsDataset, analyticsEngine, CaptureMetrics } from './Metric
 import { makeMuseGenerator } from './Muse.ts'
 import { CaptureConfig, capturePolicy } from './Policy.ts'
 import { GarmentSegmenter, GarmentVision, ImageGenerator, PictureWork, VideoGenerator } from './Providers.ts'
-import { Usage } from './Usage.ts'
+import { Holds } from '../usage/Holds.ts'
 import { makeVeoGenerator } from './Veo.ts'
 
 // The capture providers as the API Worker builds them from its environment and bindings.
@@ -62,7 +62,7 @@ export const captureProviders = (
           })
         : VideoGenerator.off,
     ),
-    Usage.layer(policy.dailyAllowance),
+    Holds.layer,
     Layer.succeed(CaptureMetrics, metrics),
   )
 }

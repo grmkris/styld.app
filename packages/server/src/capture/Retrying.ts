@@ -2,9 +2,9 @@ import { once } from '../kernel/Receipts.ts'
 import { type CaptureId, NotFound, type OperationId } from '@styld/protocol'
 import { DateTime, Effect, Option } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import { captureKey, enqueueCapture, holdOf, type Parts, storedAs } from './Parts.ts'
+import { captureHold, captureKey, endingOf, enqueueCapture, type Parts, storedAs } from './Parts.ts'
 import type { CaptureRow, FrameRow } from './Store.ts'
-import { Usage } from './Usage.ts'
+import { type Ending, Holds } from '../usage/Holds.ts'
 import { deleteKeys, keysUnder } from '../kernel/Media.ts'
 
 /** A capture processing longer than this has lost its queue message: the person may retry or remove it. */
@@ -21,13 +21,8 @@ const canRetry = (capture: CaptureRow, nowMillis: number) =>
   capture.attempt < maximumRetries &&
   (capture.status === 'failed' || capture.status === 'unknown' || isStale(capture, nowMillis))
 
-/** Hold a refunded capture's credits again, under a new operation, so a retry is paid like the first try. */
-const holdAgain = (capture: CaptureRow) =>
-  Effect.gen(function* () {
-    const hold = `capture/${capture.id}/${capture.attempt + 1}`
-    yield* (yield* Usage).reserve(capture.accountId, hold, capture.credits)
-    return hold
-  })
+/** How a capture the person retries or removes ended: a stuck one failed. */
+const ended = (capture: CaptureRow): Ending => Option.getOrElse(endingOf(capture.status), () => 'failed' as const)
 
 /** The capture's own folder and its sources, except anything a piece still shows. R2 lists a page at a
  * time; deleting is tried once, and a failure is logged rather than failing the removal. */
@@ -41,29 +36,31 @@ const removeObjects = (parts: Parts, capture: CaptureRow, frames: ReadonlyArray<
     yield* deleteKeys(parts.bindings.bucket, keys)
   }).pipe(Effect.ignore({ log: true, message: 'Styld.Capture.remove could not delete stored objects' }))
 
-/** Move a failed or stuck capture back to processing, holding its credits again if they went back. */
+/** Move a failed or stuck capture back to processing as its next attempt, paid like the first: the last attempt's
+ * hold is refunded (a stuck one's too), and the next one holds the credits again. */
 const retried = (parts: Parts, accountId: string, captureId: CaptureId) =>
   Effect.gen(function* () {
     const found = yield* storedAs(parts.store.findCapture(accountId, captureId))
     const now = yield* DateTime.now
     if (Option.isNone(found) || !canRetry(found.value, DateTime.toEpochMillis(now))) return yield* NotFound.make({})
     const capture = found.value
-    // A refunded capture pays again; an unknown or stuck one still holds its credits.
-    const hold = capture.settlement === 'refunded' ? Option.some(yield* holdAgain(capture)) : Option.none<string>()
+    const holds = yield* Holds
+    yield* holds.settle(accountId, captureHold(capture), ended(capture))
+    const next = { ...capture, attempt: capture.attempt + 1 }
+    yield* holds.reserve({ accountId, hold: captureHold(next), credits: capture.credits })
     const moved = yield* storedAs(
       parts.store.retryCapture(accountId, capture.id, capture, {
         status: 'processing',
         errorCode: null,
-        attempt: capture.attempt + 1,
+        attempt: next.attempt,
         // The person asked again, so a video may be tracked again.
         trackingStartedAt: null,
         updatedAt: DateTime.toDateUtc(now),
-        ...Option.match(hold, { onNone: () => ({}), onSome: (held) => ({ hold: held, settlement: 'held' as const }) }),
       }),
-    )
+    ).pipe(Effect.tapError(() => holds.settle(accountId, captureHold(next), 'failed').pipe(Effect.ignore)))
     if (!moved) {
       // Another request moved it first: the new hold goes back.
-      if (Option.isSome(hold)) yield* (yield* Usage).settle(accountId, hold.value, 'refunded')
+      yield* holds.settle(accountId, captureHold(next), 'failed')
       return yield* NotFound.make({})
     }
     yield* enqueueCapture(parts, capture.id)
@@ -91,9 +88,8 @@ export const retrying = (parts: Parts) => ({
     const removable = capture.status !== 'done' && (capture.status !== 'processing' || isStale(capture, nowMillis))
     // A capture whose pieces were kept stays: those pieces show its pictures.
     if (!removable || (yield* storedAs(parts.store.hasKept(capture.id)))) return yield* NotFound.make({})
-    // A failed capture gets its credits back; an unknown or stuck one may have been billed, so it is consumed.
-    if (capture.settlement === 'held')
-      yield* (yield* Usage).settle(accountId, holdOf(capture), capture.status === 'failed' ? 'refunded' : 'consumed')
+    // Whatever did not reach the tray gets its credits back; the first settlement stands for one that did.
+    yield* (yield* Holds).settle(accountId, captureHold(capture), ended(capture))
     // A back shot folded into this one goes first, with its photo: nothing else shows it.
     for (const back of yield* storedAs(parts.store.foldedBacks(accountId, capture.id))) {
       yield* storedAs(parts.store.deleteCapture(accountId, back.id))

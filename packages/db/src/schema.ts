@@ -513,6 +513,10 @@ export const piecePictures = sqliteTable(
     hint: text('hint'),
     /** A redraw's credit reservation, settled when the drawing ends. */
     hold: text('hold'),
+    /** How many redraws the owner paid for; the latest is held as `picture/<piece>/<redraws>` (usage/Holds.ts). */
+    redraws: integer('redraws').notNull().default(0),
+    /** Whether the drawing being made or last made is a paid redraw: drawn whatever the verdict, and settled. */
+    paid: integer('paid', { mode: 'boolean' }).notNull().default(false),
     /** When a delivery claimed the drawing; a claim older than the queue's patience is an unknown outcome. */
     claimedAt: integer('claimed_at', { mode: 'timestamp_ms' }),
     errorCode: text('error_code'),
@@ -533,6 +537,8 @@ export const pieceTurns = sqliteTable(
       enum: ['requested', 'anchoring', 'generating', 'video-ready', 'ready', 'rejected', 'failed'],
     }).notNull(),
     hold: text('hold'),
+    /** Counts the turns asked for this piece; each holds its credits as `turn/<piece>/<attempt>` (usage/Holds.ts). */
+    attempt: integer('attempt').notNull().default(0),
     provider: text('provider'),
     model: text('model'),
     operation: text('operation', { mode: 'json' }),

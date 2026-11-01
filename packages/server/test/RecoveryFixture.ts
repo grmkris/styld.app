@@ -1,13 +1,11 @@
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import type { QueryDatabaseClient } from '@alchemy.run/cloudflare/D1/QueryDatabase'
 import type { ReadWriteBucketClient } from '@alchemy.run/cloudflare/R2/ReadWriteBucket'
-import { CurrentActor } from '@styld/domain/CurrentActor.context'
 import { UserId, OperationId } from '@styld/domain/Identity'
-import { GrantMonthlyCredits } from '@styld/domain/Wallet/GrantMonthlyCredits.command'
 import { ReserveCredits } from '@styld/domain/Wallet/ReserveCredits.command'
 import { SettleCredits } from '@styld/domain/Wallet/SettleCredits.command'
 import { Wallet } from '@styld/domain/Wallet/Wallet.aggregate'
-import { monthlyGrantCommandId, reserveCommandId, settleCommandId } from '@styld/domain/Wallet/WalletCommandIds'
+import { reserveCommandId, settleCommandId } from '@styld/domain/Wallet/WalletCommandIds'
 import { Effect, Layer } from 'effect'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
@@ -19,22 +17,13 @@ const owner = UserId.make('native-recovery')
 const operation = OperationId.make('recovery-operation')
 const key = 'acceptance/recovery.txt'
 
-const trusted = <A, E, R>(effect: Effect.Effect<A, E, R | CurrentActor>) =>
-  effect.pipe(Effect.provideService(CurrentActor, { userId: owner, service: true }), Effect.orDie)
+const trusted = <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.orDie(effect)
 
 export const recoveryRoutes = (database: QueryDatabaseClient, media: ReadWriteBucketClient) =>
   Effect.gen(function* () {
     const wallets = yield* Wallet
     const reserve = Effect.gen(function* () {
-      const grant = new GrantMonthlyCredits({ period: '2026-10', monthly: 10 })
-      yield* wallets.send(owner, grant, { commandId: monthlyGrantCommandId(grant) })
-      const command = new ReserveCredits({
-        operationId: operation,
-        fingerprint: 'b'.repeat(64),
-        amount: 8,
-        day: '2026-10-29',
-        dailyAllowance: 0,
-      })
+      const command = new ReserveCredits({ operationId: operation, amount: 8, day: '2026-10-29', dailyAllowance: 10 })
       yield* wallets.send(owner, command, { commandId: reserveCommandId(command) })
     })
     const seed = Effect.gen(function* () {

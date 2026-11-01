@@ -400,7 +400,7 @@ const pictureRows = (db: Database) => ({
     query(() =>
       db
         .update(piecePictures)
-        .set({ state: 'queued', updatedAt: at })
+        .set({ state: 'queued', paid: false, updatedAt: at })
         .where(
           and(
             eq(piecePictures.accountId, accountId),

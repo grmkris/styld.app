@@ -5,7 +5,7 @@ import { RuntimeContext } from 'alchemy/RuntimeContext'
 import { Context, Effect, Layer, Redacted } from 'effect'
 import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import type { CaptureMetrics } from '../capture/Metrics.ts'
-import type { Usage } from '../capture/Usage.ts'
+import type { Holds } from '../usage/Holds.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { publicClient } from '../mcp/ImageImport.ts'
 import { Pacing } from '../mcp/Pacing.ts'
@@ -69,7 +69,7 @@ export const makeStylistLive = (input: {
   /** The wardrobe, and the credits and call counter the capture providers were built with. */
   readonly storage: {
     readonly wardrobeService: Wardrobe['Service']
-    readonly usage: Usage['Service']
+    readonly holds: Holds['Service']
     readonly metrics: CaptureMetrics['Service']
   }
 }) =>
@@ -86,7 +86,7 @@ export const makeStylistLive = (input: {
       toolContext: (accountId) =>
         Context.make(CurrentAccount, { accountId, via: 'assistant' }).pipe(Context.add(Pacing, unpaced)),
       wardrobe: input.storage.wardrobeService,
-      usage: input.storage.usage,
+      holds: input.storage.holds,
       metrics: input.storage.metrics,
     })
   }).pipe(Effect.provide(layerCryptoWeb))

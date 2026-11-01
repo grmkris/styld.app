@@ -14,7 +14,7 @@ import { pictureEnvironment, verifyCleanPictures } from './CleanPictureAcceptanc
 import { verifyTurn } from './TurnAcceptance.ts'
 import { verifyCameraJourney, verifyCaptureJourney, verifyLongVideoJourney } from './CaptureBrowserAcceptance.ts'
 import { verifyGalleryJourney } from './GalleryBrowserAcceptance.ts'
-import { nativeDailyAllowance, verifyCaptures } from './CaptureAcceptance.ts'
+import { verifyCaptures } from './CaptureAcceptance.ts'
 import { verifyScan } from './ScanAcceptance.ts'
 import { stylistEnvironment, verifyStylist } from './StylistAcceptance.ts'
 import { verifyGallery } from './GalleryAcceptance.ts'
@@ -72,7 +72,6 @@ const makeStack = (generation: string) =>
           OUTFITS: 'stand-in',
           ...pictureEnvironment(worker.url),
           ...stylistEnvironment(worker.url),
-          DAILY_ALLOWANCE: String(nativeDailyAllowance),
           AUTH_SECRET: Redacted.make('native-test-auth-secret-012345678901234567890123'),
           AUTH_SESSION_KEYS: Redacted.make(
             JSON.stringify({
@@ -346,9 +345,9 @@ test(
     expect(response.status).toBe(200)
     expect(yield* response.json).toMatchObject({
       successful: 1,
-      reserved: { subscription: 2 },
-      settled: { subscription: 10, purchased: 0, reservations: {} },
-      other: { subscription: 0, purchased: 0, reservations: {} },
+      reserved: { daily: { remaining: 2 } },
+      settled: { daily: { remaining: 10 }, reservations: {} },
+      other: { daily: { day: null, remaining: 0 }, reservations: {} },
     })
   }).pipe(Effect.provide(FetchHttpClient.layer)),
   { timeout: 60000 },
@@ -515,7 +514,7 @@ test(
       .map(([name, value]) => `${name}=${value.value}`)
       .join('; ')
     const read = () => HttpClient.get(`${url}/test/recovery/read`).pipe(Effect.flatMap((response) => response.json))
-    expect(yield* read()).toMatchObject({ generation: 'before', reads: 1, wallet: { subscription: 2 } })
+    expect(yield* read()).toMatchObject({ generation: 'before', reads: 1, wallet: { daily: { remaining: 2 } } })
     expect(yield* read()).toMatchObject({ generation: 'before', reads: 2 })
     const next = yield* deploy(makeStack('after'))
     expect(next.url).toBe(url)
@@ -529,7 +528,7 @@ test(
     expect(recovered).toMatchObject({
       generation: 'after',
       reads: 1,
-      wallet: { subscription: 2, reservations: { 'recovery-operation': { fromSubscription: 8 } } },
+      wallet: { daily: { remaining: 2 }, reservations: { 'recovery-operation': { amount: 8 } } },
       media: 'survives-native-restart',
     })
     yield* HttpClient.get(`${next.apiUrl}/api/health`).pipe(
@@ -543,9 +542,9 @@ test(
     // The health check built the restarted isolate's application without reading a session.
     yield* Effect.promise(() => verifyFirstSignedInTogether(styldUrl, cookie))
     expect((yield* HttpClient.post(`${url}/test/recovery/replay`)).status).toBe(204)
-    expect(yield* read()).toMatchObject({ wallet: { subscription: 2 } })
+    expect(yield* read()).toMatchObject({ wallet: { daily: { remaining: 2 } } })
     expect((yield* HttpClient.post(`${url}/test/recovery/settle`)).status).toBe(204)
-    expect(yield* read()).toMatchObject({ wallet: { subscription: 10, reservations: {} } })
+    expect(yield* read()).toMatchObject({ wallet: { daily: { remaining: 10 }, reservations: {} } })
   }).pipe(Effect.provide(FetchHttpClient.layer)),
   { timeout: 120000 },
 )

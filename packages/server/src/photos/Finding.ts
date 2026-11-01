@@ -4,7 +4,7 @@ import { type CaptureBindings, makeParts, readObject, storedAs, unavailable, wri
 import { type CutPiece, morePrompts, samPieces, verdictOf } from '../capture/PhotoPipeline.ts'
 import { CaptureConfig } from '../capture/Policy.ts'
 import { GarmentVision, PictureWork } from '../capture/Providers.ts'
-import { Usage } from '../capture/Usage.ts'
+import { type Ending, Holds, holdId } from '../usage/Holds.ts'
 import type { ImageBindings } from '../wardrobe/Delivery.ts'
 import { accountPrefix } from '../wardrobe/Media.ts'
 import { type GarmentRow, makePhotoStore, type PhotoRow } from './Store.ts'
@@ -31,7 +31,12 @@ export type PhotoParts = Effect.Success<ReturnType<typeof makePhotoParts>>
 export const photoPrefix = (accountId: string, photoId: string) => `${accountPrefix(accountId)}photos/${photoId}/`
 
 /** The Wallet operation holding a photo's credit. */
-export const photoHold = (photoId: string) => `photo/${photoId}`
+export const photoHold = (photoId: string) => holdId('photo', photoId, 0)
+
+/** Settle a photo's credit by how finding its garments ended. */
+const settlePhoto = Effect.fnUntraced(function* (accountId: string, photoId: string, ending: Ending) {
+  yield* (yield* Holds).settle(accountId, photoHold(photoId), ending)
+})
 
 /** The most garments one photo keeps, the largest first. */
 const mostGarments = 8
@@ -112,21 +117,23 @@ export const finding = (parts: PhotoParts) => ({
   /** Find a photo's garments once; its credit is spent when they are stored. */
   findGarments: Effect.fn('Styld.Photos.find')(function* (photoId: string) {
     const photo = yield* storedAs(parts.photos.photoForWork(photoId))
-    if (Option.isNone(photo) || photo.value.status !== 'finding') return
-    const providers = (yield* CaptureConfig).providers
-    const garments = providers === 'off' ? yield* wholePhoto(parts, photo.value) : yield* garmentsIn(parts, photo.value)
-    yield* storedAs(parts.photos.finishFinding(photoId, garments, yield* nowDate))
-    yield* (yield* Usage)
-      .settle(photo.value.accountId, photoHold(photoId), 'consumed')
-      .pipe(Effect.ignore({ log: true }))
+    if (Option.isNone(photo)) return
+    if (photo.value.status === 'finding') {
+      const providers = (yield* CaptureConfig).providers
+      const garments =
+        providers === 'off' ? yield* wholePhoto(parts, photo.value) : yield* garmentsIn(parts, photo.value)
+      yield* storedAs(parts.photos.finishFinding(photoId, garments, yield* nowDate))
+    }
+    // Settled after the status moved, and again by any later delivery: the first settlement stands.
+    yield* settlePhoto(photo.value.accountId, photoId, photo.value.status === 'failed' ? 'failed' : 'succeeded')
   }),
   /** The last attempt failed: the photo shows as failed, and its credit comes back once. */
   failFinding: Effect.fn('Styld.Photos.failFinding')(function* (photoId: string) {
     const photo = yield* storedAs(parts.photos.photoForWork(photoId))
     if (Option.isNone(photo)) return
-    if (yield* storedAs(parts.photos.failFinding(photoId, yield* nowDate)))
-      yield* (yield* Usage)
-        .settle(photo.value.accountId, photoHold(photoId), 'refunded')
-        .pipe(Effect.ignore({ log: true }))
+    yield* storedAs(parts.photos.failFinding(photoId, yield* nowDate))
+    const ended = yield* storedAs(parts.photos.photoForWork(photoId))
+    if (Option.isSome(ended))
+      yield* settlePhoto(photo.value.accountId, photoId, ended.value.status === 'ready' ? 'succeeded' : 'failed')
   }),
 })

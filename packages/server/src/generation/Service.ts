@@ -2,7 +2,7 @@ import { Unavailable } from '@styld/protocol'
 import { Context, DateTime, Duration, Effect } from 'effect'
 import type { Boards } from '../boards/Boards.ts'
 import { CaptureConfig } from '../capture/Policy.ts'
-import { Usage } from '../capture/Usage.ts'
+import { Holds } from '../usage/Holds.ts'
 import { ContentJudge } from '../safety/Judge.ts'
 import { makeStore } from '../wardrobe/Store.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
@@ -57,7 +57,7 @@ export const makeGenerations = (bindings: GenerationBindings) =>
         queue: bindings.queue,
         boards: bindings.boards,
         wardrobe: bindings.wardrobe,
-        usage: yield* Usage,
+        holds: yield* Holds,
         judge: yield* ContentJudge,
         planner: yield* MoodPlanner,
         painter: yield* PicturePainter,

@@ -155,7 +155,7 @@ const pictureQueries = (db: ReturnType<typeof drizzle>) => ({
           .where(
             and(eq(generationJobs.id, jobId), inArray(generationJobs.status, ['planning', 'drawing', 'arranging'])),
           )
-          .returning({ held: generationJobs.held }),
+          .returning({ id: generationJobs.id }),
         db
           .update(generationPictures)
           .set({ status: 'refused' })
