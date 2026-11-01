@@ -2,9 +2,9 @@ import { isBusy } from '../providers/Errors.ts'
 import { Effect, Option } from 'effect'
 import { comparedTypes, sameAs } from '../capture/Matching.ts'
 import { type CaptureBindings, makeParts, readObject, storedAs, unavailable, writeObject } from '../capture/Parts.ts'
-import { type CutPiece, morePrompts, samPieces, verdictOf } from '../capture/PhotoPipeline.ts'
-import { CaptureConfig } from '../capture/Policy.ts'
-import { GarmentVision, PictureWork } from '../capture/Providers.ts'
+import { type Garment, Garments, judgedAt } from '../capture/Garments.ts'
+import { capturePolicy } from '../capture/Policy.ts'
+import { modelPicture } from '@styld/imaging'
 import { type Ending, Holds, holdId } from '../usage/Holds.ts'
 import type { ImageBindings } from '../wardrobe/Delivery.ts'
 import { accountPrefix } from '../wardrobe/Media.ts'
@@ -39,37 +39,24 @@ const settlePhoto = Effect.fnUntraced(function* (accountId: string, photoId: str
   yield* (yield* Holds).settle(accountId, photoHold(photoId), ending)
 })
 
-/** The most garments one photo keeps, the largest first. */
-const mostGarments = 8
-
-/** How sure Clef must be that a worn garment is one of the person's pieces before Styld suggests it. Lower than
- * capture's bar (0.8): a worn garment is folded and partly hidden, and the person confirms every match. */
-const wornMatchBar = 0.6
-
-/** One cut-out garment: what Clef takes it for, stored, and matched with the wardrobe's pieces in its place. A scrap
- * is none. */
-const garmentOf = (parts: PhotoParts, photo: PhotoRow, piece: CutPiece, position: number) =>
+/** One garment found in the photo: stored, and matched with the wardrobe's pieces in its place, at the one bar for
+ * "the same garment?" (`Policy.ts`). */
+const garmentOf = (parts: PhotoParts, photo: PhotoRow, garment: Garment, position: number) =>
   Effect.gen(function* () {
-    const policy = yield* CaptureConfig
-    const small = { bytes: yield* (yield* PictureWork).thumbnail(piece.png, 512), contentType: 'image/webp' } as const
-    const suggestion = yield* (yield* GarmentVision).suggest(small)
-    if (verdictOf(suggestion.whole) === 'drop') return Option.none<GarmentRow>()
+    const { suggestion } = garment
     const id = yield* newId('pg')
     const cutoutKey = `${photoPrefix(photo.accountId, photo.id)}${id}.png`
-    yield* writeObject(parts.capture, cutoutKey, piece.png, 'image/png')
+    yield* writeObject(parts.capture, cutoutKey, garment.png, 'image/png')
     const types = comparedTypes(suggestion.type ?? null)
+    const { matching } = capturePolicy
     const candidates = Option.isNone(types)
       ? []
       : yield* storedAs(
-          parts.capture.store.wardrobeCandidates(
-            photo.accountId,
-            types.value,
-            suggestion.colours[0],
-            policy.matching.pieces,
-          ),
+          parts.capture.store.wardrobeCandidates(photo.accountId, types.value, suggestion.colours[0], matching.pieces),
         )
-    const match = yield* sameAs(parts.capture, small, candidates, ({ imageKey }) => imageKey, wornMatchBar)
-    return Option.some<GarmentRow>({
+    const picture = modelPicture(garment.picture, judgedAt)
+    const match = yield* sameAs(parts.capture, picture, candidates, ({ imageKey }) => imageKey, matching.same)
+    return {
       id,
       photoId: photo.id,
       accountId: photo.accountId,
@@ -80,38 +67,19 @@ const garmentOf = (parts: PhotoParts, photo: PhotoRow, piece: CutPiece, position
       pieceId: Option.match(match, { onNone: () => null, onSome: ({ id: pieceId }) => pieceId }),
       state: Option.isSome(match) ? 'suggested' : 'unmatched',
       captureId: null,
-    })
+    } satisfies GarmentRow
   })
 
-/** The garments SAM finds in the photo, and the shoes, bags and hats it is asked for besides. */
+/** The garments the pipeline finds in the photo, stored and matched. */
 const garmentsIn = (parts: PhotoParts, photo: PhotoRow) =>
   Effect.gen(function* () {
     const original = yield* readObject(parts.capture, photo.originalKey)
     if (Option.isNone(original)) return yield* unavailable()
-    const copies = yield* (yield* PictureWork).workingCopies(original.value)
-    const pieces = (yield* samPieces(copies, morePrompts)).slice(0, mostGarments)
-    const found = yield* Effect.forEach(pieces, (piece, position) => garmentOf(parts, photo, piece, position), {
+    const { garments } = yield* (yield* Garments).find(original.value, { for: 'gallery' })
+    return yield* Effect.forEach(garments, (garment, position) => garmentOf(parts, photo, garment, position), {
       concurrency: 4,
     })
-    return found.flatMap(Option.toArray)
   })
-
-/** With the providers off (native acceptance), the whole photo stands for one garment, matched by the person. */
-const wholePhoto = (parts: PhotoParts, photo: PhotoRow) =>
-  Effect.map(newId('pg'), (id): ReadonlyArray<GarmentRow> => [
-    {
-      id,
-      photoId: photo.id,
-      accountId: photo.accountId,
-      position: 0,
-      cutoutKey: photo.originalKey,
-      type: null,
-      colours: [],
-      pieceId: null,
-      state: 'unmatched',
-      captureId: null,
-    },
-  ])
 
 /** The queue side of My Gallery. */
 export const finding = (parts: PhotoParts) => ({
@@ -120,18 +88,14 @@ export const finding = (parts: PhotoParts) => ({
     const photo = yield* storedAs(parts.photos.photoForWork(photoId))
     if (Option.isNone(photo)) return
     if (photo.value.status === 'finding') {
-      const providers = (yield* CaptureConfig).providers
       // Only a busy provider is tried again: one that may have taken the paid work (SAM bills each call) is never
       // sent it twice, and a refusal would repeat. Both end the photo as failed, its credit back.
-      const garments =
-        providers === 'off'
-          ? Option.some(yield* wholePhoto(parts, photo.value))
-          : yield* garmentsIn(parts, photo.value).pipe(
-              Effect.map(Option.some),
-              Effect.catchTag('ProviderError', (error) =>
-                isBusy(error) ? Effect.fail(error) : Effect.succeed(Option.none<ReadonlyArray<GarmentRow>>()),
-              ),
-            )
+      const garments = yield* garmentsIn(parts, photo.value).pipe(
+        Effect.map(Option.some),
+        Effect.catchTag('ProviderError', (error) =>
+          isBusy(error) ? Effect.fail(error) : Effect.succeed(Option.none<ReadonlyArray<GarmentRow>>()),
+        ),
+      )
       if (Option.isNone(garments)) {
         yield* storedAs(parts.photos.failFinding(photoId, yield* nowDate))
         return yield* settlePhoto(photo.value.accountId, photoId, 'failed')

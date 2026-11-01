@@ -4,7 +4,7 @@ import { retrying } from './Retrying.ts'
 import { matching } from './Matching.ts'
 import { CaptureMetrics } from './Metrics.ts'
 import { type CaptureBindings, makeParts } from './Parts.ts'
-import { CaptureConfig } from './Policy.ts'
+import { Garments } from './Garments.ts'
 import { processing } from './Processing.ts'
 import { picturing } from './Pictures.ts'
 import { GarmentSegmenter, GarmentVision, ImageGenerator, PictureWork, VideoGenerator } from './Providers.ts'
@@ -21,7 +21,7 @@ type Requirements =
   | ImageGenerator
   | VideoGenerator
   | Holds
-  | CaptureConfig
+  | Garments
   | CaptureMetrics
 
 /** Every capture operation, with the providers, metering and policy it was built with. Callers provide

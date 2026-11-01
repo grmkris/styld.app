@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs'
-import { Effect, Redacted } from 'effect'
+import { Effect, Layer, Redacted } from 'effect'
 import { describe, expect, test } from 'vitest'
+import { Garments } from '../src/capture/Garments.ts'
+import { distinctMasks } from '../src/capture/GarmentRules.ts'
 import { makeGarmentSegmenter } from '../src/capture/Meta.ts'
 import { CaptureMetrics } from '../src/capture/Metrics.ts'
-import { distinctMasks, samPieces } from '../src/capture/PhotoPipeline.ts'
 import { encodePng, overlapShare } from '../src/capture/Pixels.ts'
-import { CaptureConfig, capturePolicy } from '../src/capture/Policy.ts'
-import { GarmentSegmenter } from '../src/capture/Providers.ts'
+import { GarmentSegmenter, GarmentVision, PictureWork } from '../src/capture/Providers.ts'
 import type { Found } from '../src/capture/SamStream.ts'
 
 /** A solid mask over a box. */
@@ -38,6 +38,8 @@ describe('masks found for several prompts', () => {
   })
 })
 
+const unused = () => Effect.die('not asked')
+
 describe('SAM on a photo of several pieces', () => {
   const fixture = readFileSync(new URL('fixtures/capture/sam-still-rail.sse', import.meta.url)).toString('utf8')
   // The rail frame's size; the pieces are cut from a blank picture, since only the masks are under test.
@@ -45,7 +47,31 @@ describe('SAM on a photo of several pieces', () => {
   const height = 704
   const blank = encodePng({ width, height, data: new Uint8Array(width * height * 4) })
   const copies = { width, height, png: blank, jpeg: new Uint8Array([1]), small: new Uint8Array([1]) }
-  const config = capturePolicy
+  /** Images making the copies; Clef sure of several garments and nobody in the picture, each piece a whole top. */
+  const work = PictureWork.of({
+    workingCopies: () => Effect.succeed(copies),
+    foreground: unused,
+    thumbnail: unused,
+    jpeg: unused,
+  })
+  const vision = GarmentVision.of({
+    route: () => Effect.succeed({ garments: 'several', confidence: 0.9, person: 0.02 }),
+    suggest: () =>
+      Effect.succeed({
+        type: 'tops',
+        confidence: 0.9,
+        colours: ['red'],
+        season: undefined,
+        occasions: [],
+        pattern: undefined,
+        whole: 0.9,
+      }),
+    checkHeld: unused,
+    judge: unused,
+    compare: unused,
+    sameGarment: unused,
+    compareTurn: unused,
+  })
 
   /** SAM answering clothing with the recorded rail, and each other prompt as `other` says. */
   const piecesWith = (other: () => Response) => {
@@ -62,11 +88,15 @@ describe('SAM on a photo of several pieces', () => {
       readVideo: () => Promise.resolve(null),
       metrics: CaptureMetrics.discarding,
     })
-    const pieces = samPieces(copies, ['shoes', 'bag', 'hat']).pipe(
-      Effect.provideService(GarmentSegmenter, segmenter),
-      Effect.provideService(CaptureConfig, config),
+    const providers = Layer.mergeAll(
+      Layer.succeed(GarmentSegmenter, segmenter),
+      Layer.succeed(PictureWork, work),
+      Layer.succeed(GarmentVision, vision),
     )
-    return Effect.runPromise(pieces).then((found) => ({ found, asked }))
+    const found = Effect.flatMap(Garments, (garments) => garments.find(blank, { for: 'tray', camera: false })).pipe(
+      Effect.provide(Garments.layer.pipe(Layer.provide(providers))),
+    )
+    return Effect.runPromise(found).then(({ garments }) => ({ found: garments, asked }))
   }
 
   test('asks once for each prompt, and keeps no piece twice when the others find the same garments', async () => {

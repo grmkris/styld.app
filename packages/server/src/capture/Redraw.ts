@@ -4,7 +4,7 @@ import { CurrentAccount } from '../CurrentAccount.ts'
 import { isStale, pictureView } from '../wardrobe/Shown.ts'
 import { enqueuePicture, type Parts, storedAs } from './Parts.ts'
 import { redrawHold, settleHold } from './Pictures.ts'
-import { CaptureConfig } from './Policy.ts'
+import { capturePolicy } from './Policy.ts'
 import type { PictureRow } from './Store.ts'
 import { Holds } from '../usage/Holds.ts'
 import { once } from '../kernel/Receipts.ts'
@@ -99,7 +99,7 @@ export const redrawing = (parts: Parts) => ({
     yield* drawablePiece(parts, accountId, pieceId)
     const ask = Effect.gen(function* () {
       const current = yield* settledPicture(parts, pieceId, yield* nowDate)
-      const face = (yield* CaptureConfig).pictures.face
+      const face = capturePolicy.pictures.face
       const refused = Option.flatMap(current, (picture) => refusal(picture, face))
       if (Option.isSome(refused)) return yield* PictureRefused.make({ reason: refused.value })
       yield* queueRedraw(parts, { accountId, pieceId }, current, input.hint)
@@ -116,13 +116,13 @@ export const redrawing = (parts: Parts) => ({
   /** How many of the account's kept cut-outs have no clean picture yet. */
   undrawnPictures: Effect.fn('Styld.Picture.undrawn')(function* () {
     const { accountId } = yield* CurrentAccount
-    const policy = (yield* CaptureConfig).pictures
+    const policy = capturePolicy.pictures
     return { pieces: (yield* storedAs(parts.store.undrawnPieces(accountId, policy.face))).length }
   }),
   /** Queue a free clean picture for each of them, as a keep would have, and send again any still waiting. */
   drawPictures: Effect.fn('Styld.Picture.backfill')(function* () {
     const { accountId } = yield* CurrentAccount
-    const policy = (yield* CaptureConfig).pictures
+    const policy = capturePolicy.pictures
     const undrawn = yield* storedAs(parts.store.undrawnPieces(accountId, policy.face))
     const at = yield* nowDate
     yield* storedAs(

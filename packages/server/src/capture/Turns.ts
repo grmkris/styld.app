@@ -18,7 +18,7 @@ import { Effect, Match, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { turnView } from '../wardrobe/Shown.ts'
 import { turnKept } from './CleanPicture.ts'
-import { judgedAt } from './Pictures.ts'
+import { judgedAt } from './Garments.ts'
 import { hanger } from './Hanger.ts'
 import {
   enqueueTurn,
@@ -30,7 +30,7 @@ import {
   unavailable,
   writeObject,
 } from './Parts.ts'
-import { CaptureConfig } from './Policy.ts'
+import { capturePolicy } from './Policy.ts'
 import {
   GarmentVision,
   ImageGenerator,
@@ -219,7 +219,7 @@ const laidOut = (sheet: Rgba, layout: TurnLayout) =>
 const checked = (sheet: Rgba, layout: TurnLayout, clean: Rgba) =>
   Effect.gen(function* () {
     const vision = yield* GarmentVision
-    const policy = (yield* CaptureConfig).turns
+    const policy = capturePolicy.turns
     const front = modelPicture(clean, judgedAt)
     const answers = yield* Effect.forEach(checkedFrames(layout.frames), (index) =>
       vision.compareTurn(modelPicture(cellOf(sheet, layout, index), judgedAt), front),

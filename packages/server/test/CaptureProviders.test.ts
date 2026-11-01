@@ -7,8 +7,7 @@ import { pngSize } from '../src/capture/CloudflareImages.ts'
 import { bestSightings, frameAt, type SampledStill } from '../src/capture/FrameRanking.ts'
 import { makeGarmentSegmenter } from '../src/capture/Meta.ts'
 import { analyticsEngine, CaptureMetrics } from '../src/capture/Metrics.ts'
-import { cutterFor, holding, verdictOf } from '../src/capture/PhotoPipeline.ts'
-import { kindPrompt, pieceCutterFor, pieceOfKind } from '../src/capture/PieceCutout.ts'
+import { cutterFor, holding, kindPrompt, pieceOfKind, verdictOf } from '../src/capture/GarmentRules.ts'
 import { type Box, cutOut, decodePng, encodePng, fitMask, opaqueBounds, type Rgba } from '../src/capture/Pixels.ts'
 import { lineFrame, lineFrameSize, makeOutputLines, stillMasks, videoMasks } from '../src/capture/SamStream.ts'
 import {
@@ -317,14 +316,12 @@ describe('Clef-flash', () => {
 const route = (garments: 'none' | 'one' | 'several', confidence: number) => ({ garments, confidence, person: 0.02 })
 
 describe('photo routing', () => {
-  const policy = { routeConfidence: 0.75 } as const
-
   test('one garment it is sure of goes to background removal; several, or an unsure answer, to SAM', () => {
-    expect(cutterFor(route('one', 0.9), policy)).toBe('cloudflare')
-    expect(cutterFor(route('one', 0.6), policy)).toBe('sam')
-    expect(cutterFor(route('several', 0.9), policy)).toBe('sam')
-    expect(cutterFor(route('none', 0.9), policy)).toBe('none')
-    expect(cutterFor(route('none', 0.5), policy)).toBe('sam')
+    expect(cutterFor('tray', route('one', 0.9))).toBe('cloudflare')
+    expect(cutterFor('tray', route('one', 0.6))).toBe('sam')
+    expect(cutterFor('tray', route('several', 0.9))).toBe('sam')
+    expect(cutterFor('tray', route('none', 0.9))).toBe('none')
+    expect(cutterFor('tray', route('none', 0.5))).toBe('sam')
   })
 
   test('a whole garment is preselected, part of one offered unticked, and a scrap dropped', () => {
@@ -340,18 +337,18 @@ describe('photo routing', () => {
 
   test('a photo with a person goes to SAM even as one garment: background removal would keep the person', () => {
     // The recorded answer for someone holding up one garment: sure of one, and a person.
-    expect(cutterFor({ garments: 'one', confidence: 0.8612, person: 0.9258 }, policy)).toBe('sam')
-    expect(cutterFor({ garments: 'one', confidence: 0.94, person: 0.5 }, policy)).toBe('sam')
+    expect(cutterFor('tray', { garments: 'one', confidence: 0.8612, person: 0.9258 })).toBe('sam')
+    expect(cutterFor('tray', { garments: 'one', confidence: 0.94, person: 0.5 })).toBe('sam')
     // A piece laid flat, nobody in the picture, from the camera or the library alike.
-    expect(cutterFor({ garments: 'one', confidence: 0.94, person: 0.04 }, policy)).toBe('cloudflare')
-    expect(cutterFor({ garments: 'none', confidence: 0.9, person: 0.9 }, policy)).toBe('none')
+    expect(cutterFor('tray', { garments: 'one', confidence: 0.94, person: 0.04 })).toBe('cloudflare')
+    expect(cutterFor('tray', { garments: 'none', confidence: 0.9, person: 0.9 })).toBe('none')
   })
 
   test('a piece’s own photo goes whole to background removal, unless a person is in it', () => {
     // A v1 product shot of a pair of boots (1 November): unsure between one and two, nobody in it.
-    expect(pieceCutterFor({ garments: 'several', confidence: 0.68, person: 0.0055 })).toBe('cloudflare')
-    expect(pieceCutterFor({ garments: 'one', confidence: 0.47, person: 0.0076, scene: 'other' })).toBe('cloudflare')
-    expect(pieceCutterFor({ garments: 'one', confidence: 0.86, person: 0.93 })).toBe('sam')
+    expect(cutterFor('piece', { garments: 'several', confidence: 0.68, person: 0.0055 })).toBe('cloudflare')
+    expect(cutterFor('piece', { garments: 'one', confidence: 0.47, person: 0.0076, scene: 'other' })).toBe('cloudflare')
+    expect(cutterFor('piece', { garments: 'one', confidence: 0.86, person: 0.93 })).toBe('sam')
   })
 
   test('SAM looks for a piece of shoes, a bag or a hat by its kind, and takes its largest', () => {
@@ -373,8 +370,8 @@ describe('photo routing', () => {
   })
 
   test('a camera shot or a person makes one piece the subject, unless the pieces are laid out', () => {
-    const library = { source: 'picker' } as const
-    const camera = { source: 'camera' } as const
+    const library = false
+    const camera = true
     expect(holding(library, route('several', 0.9))).toBe(false)
     expect(holding(camera, route('several', 0.9))).toBe(true)
     expect(holding(library, { ...route('several', 0.9), person: 0.93 })).toBe(true)

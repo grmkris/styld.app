@@ -41,8 +41,8 @@ const keepAs = async (page: Page, type: string, kind: string) => {
 }
 
 /** Three photos go up through the picker, wait in the review tray, two are kept with a garment type and
- * the third is dropped; the wardrobe then shows the two. Providers are off natively, so each photo is
- * one found piece without a suggestion. */
+ * the third is dropped; the wardrobe then shows the two. Natively each photo is one found piece, cut out as
+ * it is, without a suggestion (`test/fakes/Garments.ts`). */
 export const verifyCaptureJourney = async (browser: Browser, origin: string, fixtures: string): Promise<void> => {
   await seedAccounts(fixtures, 'native-capture-browser')
   const context = await signedInContext(browser, origin, 'native-capture-browser')

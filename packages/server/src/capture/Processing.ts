@@ -1,18 +1,10 @@
 import { Effect, Option } from 'effect'
 import { captureHold, endingOf, enqueueMatch, type Parts, storedAs } from './Parts.ts'
-import type { Route } from './Providers.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
-import { processPhoto } from './PhotoPipeline.ts'
+import { type Found as Result, processPhoto } from './Detections.ts'
 import { Holds } from '../usage/Holds.ts'
 import { processVideo } from './VideoPipeline.ts'
 import { nowDate } from '../kernel/Db.ts'
-
-/** What a pipeline found in a capture, and how it was routed. */
-interface Result {
-  readonly found: ReadonlyArray<DetectionRow>
-  readonly route: Route | null
-  readonly provider: string
-}
 
 /** Settle the hold of a capture that ended, by how it ended: one in the tray or done consumes it, one that failed
  * or whose answer was lost refunds it. The first settlement stands, so settling again on every redelivery is safe. */
@@ -46,8 +38,7 @@ const attachBack = (
   detections: ReadonlyArray<Pick<DetectionRow, 'cutoutKey' | 'sourceKey' | 'preselected' | 'confidence'>>,
 ) =>
   Effect.gen(function* () {
-    // The piece the camera saw held up; failing that, the surest. Without a cut-out (providers off) the
-    // back is the photo itself, as the front is.
+    // The piece the camera saw held up; failing that, the surest.
     const back =
       detections.find(({ preselected }) => preselected) ??
       detections.toSorted((one, other) => (other.confidence ?? 0) - (one.confidence ?? 0))[0]

@@ -1,9 +1,9 @@
 import { Layer } from 'effect'
-import { capturePolicy, CaptureConfig } from '../../src/capture/Policy.ts'
 import { MoodPlanner } from '../../src/generation/Planner.ts'
 import { PicturePainter } from '../../src/generation/Painter.ts'
 import { clefJudge } from '../../src/outfits/Judge.ts'
 import { OutfitModels, providersOver, type ProvidersFor } from '../../src/Providers.ts'
+import { fakeGarments } from './Garments.ts'
 import { fakeJudge, fakePainter, fakePlanner, fakeProposer } from './Models.ts'
 import { clefAt, fakeChat, unusedGuard } from './WorkersAi.ts'
 
@@ -14,9 +14,8 @@ const fixturesOf = (env: Readonly<Record<string, unknown>>) => {
   return url
 }
 
-/** The native suite's providers: Meta, Muse, Veo and Clef answered by the fixture Worker through the live clients, a
- * turn polled every second, the planner, painter, Thinking and the content judge as fakes, and captures keeping their
- * photos whole (until the garment pipeline has fakes of its own). */
+/** The native suite's providers: Muse, Veo and Clef answered by the fixture Worker through the live clients, a turn
+ * polled every second, and the garment pipeline, planner, painter, Thinking and the content judge as fakes. */
 export const nativeProviders: ProvidersFor = (bindings) => {
   const fixtures = fixturesOf(bindings.env)
   const calls = { runClef: clefAt(`${fixtures}/test/pictures/clef`), runChat: fakeChat, runGuard: unusedGuard }
@@ -28,7 +27,7 @@ export const nativeProviders: ProvidersFor = (bindings) => {
   })
   return Layer.mergeAll(
     live,
-    Layer.succeed(CaptureConfig, { ...capturePolicy, providers: 'off' }),
+    fakeGarments,
     Layer.succeed(PicturePainter, fakePainter),
     Layer.succeed(MoodPlanner, fakePlanner),
     fakeJudge,

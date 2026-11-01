@@ -4,13 +4,14 @@ import { idOf } from './GalleryAcceptance.ts'
 import { receivedPhoto, waitUntilReady } from './WardrobeAcceptance.ts'
 import { type Call, client, seedAccounts, send, signIn } from './Accounts.ts'
 
-/** Test-only acceptance: My Gallery through the public edge. Natively the providers are off, so a photo's one garment
- * is the whole photo, unmatched until the person matches it. */
+/** Test-only acceptance: My Gallery through the public edge. Natively a photo shows one garment, cut out as the photo
+ * itself, of a kind nobody told, so it stays unmatched until the person matches it (`test/fakes/Garments.ts`). */
 
 const Photo = Schema.Struct({
   id: Schema.String,
   status: Schema.String,
   favourite: Schema.Boolean,
+  hasCutout: Schema.Boolean,
   garments: Schema.Array(
     Schema.Struct({ id: Schema.String, match: Schema.String, pieceId: Schema.NullOr(Schema.String) }),
   ),
@@ -141,8 +142,10 @@ const verifyOffering = async (origin: string, owner: Call) => {
     await (await owner(`/api/photos/${photo.id}`)).json(),
   )
   expect(remembered.lookId).toBe(look.id)
-  // Natively nothing can be cut out: the providers are off, and the answer says try later rather than calling out.
-  expect((await send(owner, `/api/photos/${photo.id}/cutout`, 'POST')).status).toBe(503)
+  // The person cut out for collages, once: cutting again answers the same photo.
+  const cutOut = await photoOf(await send(owner, `/api/photos/${photo.id}/cutout`, 'POST'))
+  expect(cutOut).toMatchObject({ hasCutout: true })
+  expect((await photoOf(await send(owner, `/api/photos/${photo.id}/cutout`, 'POST'))).id).toBe(photo.id)
   await verifyOnBoard(origin, owner, photo.id)
 }
 

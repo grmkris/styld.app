@@ -88,7 +88,8 @@ const verifyPhoto = async (origin: string, owner: Call, other: Call) => {
   )
 
   const { capture } = await processed(owner, first)
-  expect(capture).toMatchObject({ status: 'review', detections: [{ preselected: true, hasCutout: false }] })
+  // The native pipeline cuts the photo out as it is, of a kind it cannot tell: offered unticked.
+  expect(capture).toMatchObject({ status: 'review', detections: [{ preselected: false, hasCutout: true }] })
   const detectionId = capture.detections[0]?.id ?? ''
   const picture = await owner(`/cdn/detections/${detectionId}/cutout`)
   expect(picture.status).toBe(200)
@@ -228,7 +229,7 @@ const verifyPairing = async (origin: string, fixtures: string, call: Call) => {
 
 /** A photo and a video become captures that wait in the tray, only for their owner, and become pieces
  * when reviewed. Each costs today's free credits until they run out; removing a capture deletes its
- * photos. Providers are off natively, so each capture keeps its original photo as one detection. */
+ * photos. Natively each picture is one garment, cut out as the picture itself (`test/fakes/Garments.ts`). */
 export const verifyCaptures = async (origin: string, fixtures: string): Promise<void> => {
   await seedAccounts(fixtures, 'native-capture', 'native-capture-other')
   const owner = client(origin, await signIn(origin, 'native-capture'))

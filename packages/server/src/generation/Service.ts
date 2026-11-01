@@ -1,7 +1,7 @@
 import { Unavailable } from '@styld/protocol'
 import { Context, DateTime, Duration, Effect } from 'effect'
 import type { Boards } from '../boards/Boards.ts'
-import { CaptureConfig } from '../capture/Policy.ts'
+import { capturePolicy } from '../capture/Policy.ts'
 import { Holds } from '../usage/Holds.ts'
 import { ContentJudge } from '../safety/Judge.ts'
 import { makeStore } from '../wardrobe/Store.ts'
@@ -61,7 +61,7 @@ export const makeGenerations = (bindings: GenerationBindings) =>
         judge: yield* ContentJudge,
         planner: yield* MoodPlanner,
         painter: yield* PicturePainter,
-        face: (yield* CaptureConfig).pictures.face,
+        face: capturePolicy.pictures.face,
       }),
     )
   })

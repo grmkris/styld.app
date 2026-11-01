@@ -2,19 +2,19 @@ import { ProviderError } from '../providers/Errors.ts'
 import { chromaKey, framed, keyColourFor, modelPicture, readPng, shrink } from '@styld/imaging'
 import { Effect, Option, Schedule } from 'effect'
 import { gateFor, planFor } from './CleanPicture.ts'
+import { judgedAt } from './Garments.ts'
 import { type Parts, pictureKey, readPixels, storedAs, unavailable, writeObject } from './Parts.ts'
 import { encodePng, opaqueShare, type Rgba } from './Pixels.ts'
 import { CaptureMetrics } from './Metrics.ts'
-import { CaptureConfig } from './Policy.ts'
+import { capturePolicy } from './Policy.ts'
 import { GarmentVision, ImageGenerator, type Picture } from './Providers.ts'
 import type { PictureRow, PictureState } from './Store.ts'
 import { Holds, holdId } from '../usage/Holds.ts'
 import { isStale } from '../wardrobe/Shown.ts'
 import { nowDate } from '../kernel/Db.ts'
 
-// What each provider sees: the decision model a 512 px copy, Muse a 1024 px one; the drawing is keyed at 1280 px,
-// enough for the piece page at twice the pixel density, and about a million pixels of CPU.
-export const judgedAt = 512
+// What each provider sees: the decision model a 512 px copy (`judgedAt`), Muse a 1024 px one; the drawing is keyed at
+// 1280 px, enough for the piece page at twice the pixel density, and about a million pixels of CPU.
 const drawnFrom = 1024
 const keyedAt = 1280
 // The room left around a keyed garment, as a share of its longer side.
@@ -75,7 +75,7 @@ const endChecking = (parts: Parts, picture: PictureRow, errorCode: string) =>
 /** Ask the decision model how like the real cut-out the drawing is, and show it, offer it or drop it. */
 const check = (parts: Parts, picture: PictureRow, drawn: Rgba, real: Rgba) =>
   Effect.gen(function* () {
-    const policy = (yield* CaptureConfig).pictures
+    const policy = capturePolicy.pictures
     const comparison = yield* (yield* GarmentVision).compare(
       modelPicture(drawn, judgedAt),
       modelPicture(real, judgedAt),
@@ -147,7 +147,7 @@ const draw = (parts: Parts, claimed: PictureRow, front: Rgba, back: Option.Optio
  * The claim drops the last drawing: a redraw replaces it. */
 const start = (parts: Parts, picture: PictureRow) =>
   Effect.gen(function* () {
-    const policy = (yield* CaptureConfig).pictures
+    const policy = capturePolicy.pictures
     const { pieceId } = picture
     const piece = yield* storedAs(parts.wardrobeStore.findPiece(picture.accountId, pieceId))
     if (Option.isNone(piece)) return

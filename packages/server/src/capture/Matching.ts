@@ -2,9 +2,9 @@ import { PieceType, slotOf, typesInSlot } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import type { MatchOutcome, MatchScope } from './MatchStore.ts'
 import { enqueueMatch, type Parts, readPixels, storedAs } from './Parts.ts'
-import { judgedAt } from './Pictures.ts'
+import { judgedAt } from './Garments.ts'
 import { modelPicture } from '@styld/imaging'
-import { CaptureConfig } from './Policy.ts'
+import { capturePolicy } from './Policy.ts'
 import { GarmentVision, type Picture } from './Providers.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
@@ -72,7 +72,7 @@ export const comparedTypes = (suggested: string | null) =>
  * place when it shows more of the garment), or else with the wardrobe's pieces of its kind. */
 const matchOne = (parts: Parts, capture: CaptureRow, detection: DetectionRow) =>
   Effect.gen(function* () {
-    const policy = (yield* CaptureConfig).matching
+    const policy = capturePolicy.matching
     const alone: MatchOutcome = { joins: Option.none(), duplicateOf: null }
     const types = comparedTypes(detection.suggestedType)
     const own = yield* comparable(parts, detection.cutoutKey)

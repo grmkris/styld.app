@@ -13,7 +13,8 @@ import {
 } from '@styld/protocol'
 import { Array, Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import { CaptureConfig } from './Policy.ts'
+import { verdictOf } from './GarmentRules.ts'
+import { capturePolicy } from './Policy.ts'
 import { type Parts, captureHold, enqueueCapture, storedAs, unavailable } from './Parts.ts'
 import { GarmentVision } from './Providers.ts'
 import type { CaptureRow, DetectionRow, FrameRow } from './Store.ts'
@@ -211,8 +212,8 @@ const detectionView = (row: DetectionRow, sightings: number) => ({
   hasBack: row.backCutoutKey !== null,
   sightings,
   ...(row.duplicateOf === null ? {} : { alreadyHave: row.duplicateOf }),
-  // Under even odds of one whole garment (PhotoPipeline's `verdictOf`), it was offered unticked as part of one.
-  partial: row.whole !== null && row.whole < 0.5,
+  // Under the bar for one whole garment (`verdictOf`), it was offered unticked as part of one.
+  partial: row.whole !== null && verdictOf(row.whole) !== 'preselect',
   suggestion: {
     type: row.suggestedType,
     colours: row.suggestedColours,
@@ -279,7 +280,7 @@ export const reading = (parts: Parts) => ({
     layout: 'held' | 'flat',
   ) {
     const vision = yield* GarmentVision
-    const policy = yield* CaptureConfig
+    const policy = capturePolicy
     const answer = yield* vision
       .checkHeld(
         { bytes: frame, contentType: 'image/jpeg' },

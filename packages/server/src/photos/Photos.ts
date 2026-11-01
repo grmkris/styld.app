@@ -17,8 +17,8 @@ import {
 import { Context, Effect, Option, Predicate, Schema } from 'effect'
 import { captureKey, enqueueMatch, readObject, storedAs, unavailable, writeObject } from '../capture/Parts.ts'
 import type { CaptureRow, DetectionRow } from '../capture/Store.ts'
-import type { CaptureConfig } from '../capture/Policy.ts'
-import type { GarmentSegmenter, GarmentVision, PictureWork } from '../capture/Providers.ts'
+import type { Garments } from '../capture/Garments.ts'
+import type { GarmentVision } from '../capture/Providers.ts'
 import { Holds } from '../usage/Holds.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import type { Boards } from '../boards/Boards.ts'
@@ -392,7 +392,7 @@ const operations = (parts: PhotoParts, services: PhotoServices) => ({
 })
 
 /** The capture providers, metering and policy a photo's work uses. */
-type Requirements = CaptureConfig | GarmentSegmenter | GarmentVision | PictureWork | Holds
+type Requirements = Garments | GarmentVision | Holds
 
 /** Every operation with the providers it was built with: callers provide only `CurrentAccount`. */
 const make = (parts: PhotoParts, services: PhotoServices) =>

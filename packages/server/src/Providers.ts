@@ -6,7 +6,7 @@ import { makePictureWork } from './capture/CloudflareImages.ts'
 import { makeGarmentSegmenter, metaBase } from './capture/Meta.ts'
 import type { CaptureMetrics } from './capture/Metrics.ts'
 import { makeMuseGenerator, makeMusePainter } from './capture/Muse.ts'
-import { CaptureConfig } from './capture/Policy.ts'
+import { Garments } from './capture/Garments.ts'
 import { GarmentSegmenter, GarmentVision, ImageGenerator, PictureWork, VideoGenerator } from './capture/Providers.ts'
 import { gatewayBase, makeVeoGenerator, veoPollSeconds } from './capture/Veo.ts'
 import type { Deployment } from './Config.ts'
@@ -37,7 +37,7 @@ export class StylistModel extends Context.Service<
 
 /** What the application's provider layer gives it. */
 export type ProviderServices =
-  | CaptureConfig
+  | Garments
   | GarmentVision
   | PictureWork
   | GarmentSegmenter
@@ -93,11 +93,13 @@ export const providersOver = (
     pollSeconds: http.pollSeconds,
   }
   const readVideo = async (key: string) => (await bindings.bucket.get(key))?.body ?? null
-  return Layer.mergeAll(
-    CaptureConfig.layer,
+  const garmentProviders = Layer.mergeAll(
     Layer.succeed(GarmentVision, makeGarmentVision(calls.runClef, metrics)),
     Layer.succeed(PictureWork, makePictureWork(bindings.images, metrics)),
     Layer.succeed(GarmentSegmenter, makeGarmentSegmenter({ ...meta, readVideo })),
+  )
+  return Layer.mergeAll(
+    Garments.layer.pipe(Layer.provideMerge(garmentProviders)),
     Layer.succeed(ImageGenerator, makeMuseGenerator(meta)),
     Layer.succeed(VideoGenerator, makeVeoGenerator(veo)),
     Layer.succeed(PicturePainter, makeMusePainter(meta)),
