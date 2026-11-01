@@ -84,8 +84,6 @@ const placeOnBoard = (parts: Parts, job: JobRow, index: number, painted: Picture
       .addGeneratedImage(BoardId.make(job.boardId), {
         operationId: OperationId.make(pictureOperation(job.id, index)),
         uploadId,
-        jobId: job.id,
-        model: parts.painter.model,
       })
       .pipe(Effect.mapError(unavailable))
     return imageId

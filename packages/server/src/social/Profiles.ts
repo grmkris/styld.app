@@ -12,11 +12,11 @@ import {
   type UpdateProfile,
   Unavailable,
 } from '@styld/protocol'
-import { Context, Effect, Option, Schema } from 'effect'
+import { Context, Effect, Layer, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import type { Checks } from '../safety/Checks.ts'
-import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
-import { makeProfileStore, type ProfileRow, type ProfileStore } from './ProfileStore.ts'
+import { Checks } from '../safety/Checks.ts'
+import { Database, nowDate, type StoreUnavailable } from '../kernel/Db.ts'
+import { handleOwner, profileOf, type ProfileRow, saveProfile } from './ProfileStore.ts'
 
 const unavailable = () => Unavailable.make({})
 const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
@@ -43,9 +43,9 @@ const shown = (row: ProfileRow, check: Option.Option<CheckStatus>): Profile =>
 
 /** The account's profile as stored, or the one it would have: no name yet, unpublished. A signup name
  * can be the start of an email address, so it never becomes a public name by default. */
-const current = (store: ProfileStore, accountId: string) =>
+const current = (db: Database['Service'], accountId: string) =>
   Effect.gen(function* () {
-    const row = yield* stored(store.findProfile(accountId))
+    const row = yield* stored(profileOf(db, accountId))
     if (Option.isSome(row)) return row.value
     const at = yield* nowDate
     const fresh: ProfileRow = {
@@ -67,27 +67,26 @@ const current = (store: ProfileStore, accountId: string) =>
   })
 
 /** A handle the account may take: not reserved, and nobody else's. */
-const claimable = (store: ProfileStore, accountId: string, handle: Handle) =>
+const claimable = (db: Database['Service'], accountId: string, handle: Handle) =>
   Effect.gen(function* () {
     if (reservedHandles.has(handle)) return yield* HandleReserved.make({})
-    const owner = yield* stored(store.handleOwner(handle))
+    const owner = yield* stored(handleOwner(db, handle))
     if (Option.isSome(owner) && owner.value !== accountId) return yield* HandleTaken.make({})
   })
 
 /** Save a profile; a handle taken between the check and the write is still taken. */
-const saved = (store: ProfileStore, row: ProfileRow) =>
-  store
-    .saveProfile(row)
-    .pipe(
-      Effect.catchTag('StoreUnavailable', () =>
-        Effect.flatMap(stored(store.handleOwner(row.handle ?? '')), (owner) =>
-          Effect.fail(Option.isSome(owner) && owner.value !== row.accountId ? HandleTaken.make({}) : unavailable()),
-        ),
+const saved = (db: Database['Service'], row: ProfileRow) =>
+  saveProfile(db, row).pipe(
+    Effect.catchTag('StoreUnavailable', () =>
+      Effect.flatMap(stored(handleOwner(db, row.handle ?? '')), (owner) =>
+        Effect.fail(Option.isSome(owner) && owner.value !== row.accountId ? HandleTaken.make({}) : unavailable()),
       ),
-    )
+    ),
+  )
 
-const make = (database: Parameters<typeof makeProfileStore>[0], checks: Checks['Service']) => {
-  const store = makeProfileStore(database)
+const make = Effect.gen(function* () {
+  const db = yield* Database
+  const checks = yield* Checks
   /** A published profile is checked as it is now. Its pieces are checked with the boards and looks that show them. */
   const checked = (row: ProfileRow) =>
     Effect.gen(function* () {
@@ -98,30 +97,30 @@ const make = (database: Parameters<typeof makeProfileStore>[0], checks: Checks['
   return {
     getProfile: Effect.fn('Styld.Profiles.get')(function* () {
       const { accountId } = yield* CurrentAccount
-      return shown(yield* current(store, accountId), yield* checks.status({ kind: 'profile', id: accountId }))
+      return shown(yield* current(db, accountId), yield* checks.status({ kind: 'profile', id: accountId }))
     }),
     /** Change the profile; a new handle must be free and not reserved. */
     updateProfile: Effect.fn('Styld.Profiles.update')(function* (input: UpdateProfile) {
       const { accountId } = yield* CurrentAccount
-      const before = yield* current(store, accountId)
-      if (input.handle !== undefined && input.handle !== before.handle) yield* claimable(store, accountId, input.handle)
+      const before = yield* current(db, accountId)
+      if (input.handle !== undefined && input.handle !== before.handle) yield* claimable(db, accountId, input.handle)
       // Setting fields is the same change however often it is sent, so the operation id needs no receipt.
       const { operationId: _operationId, ...changes } = input
       const next = { ...before, ...changes, updatedAt: yield* nowDate }
-      const row = yield* saved(store, { ...next, searchText: searchText(next.name, next.handle) })
+      const row = yield* saved(db, { ...next, searchText: searchText(next.name, next.handle) })
       return yield* checked(row)
     }),
     /** Publish the profile, which needs a handle, or take it down. */
     publishProfile: Effect.fn('Styld.Profiles.publish')(function* (input: PublishProfile) {
       const { accountId } = yield* CurrentAccount
-      const before = yield* current(store, accountId)
+      const before = yield* current(db, accountId)
       if (input.published && before.handle === null) return yield* ProfileNeedsHandle.make({})
       const at = yield* nowDate
       const publishedAt = input.published && !before.published ? at : before.publishedAt
       // A profile published without a name goes by its handle.
       const name = before.name.trim().length === 0 && before.handle !== null ? before.handle : before.name
       // Publishing keeps the handle, so it cannot be taken meanwhile; a failed write is only unavailable.
-      const row = yield* saved(store, {
+      const row = yield* saved(db, {
         ...before,
         name,
         searchText: searchText(name, before.handle),
@@ -132,11 +131,14 @@ const make = (database: Parameters<typeof makeProfileStore>[0], checks: Checks['
       return yield* checked(row)
     }),
   }
-}
+})
 
 /** Profiles: the person's public face. Every operation acts for `CurrentAccount`. */
-export class Profiles extends Context.Service<Profiles, ReturnType<typeof make>>()('@styld/server/Profiles') {}
-
-/** Profiles over the Worker's database, checked by the Worker's checks. Build it once per isolate. */
-export const makeProfiles = (database: Parameters<typeof makeProfileStore>[0], checks: Checks['Service']) =>
-  Profiles.of(make(database, checks))
+export class Profiles extends Context.Service<Profiles, Effect.Success<typeof make>>()(
+  '@styld/server/social/Profiles',
+) {
+  static readonly layer = Layer.effect(
+    this,
+    Effect.map(make, (service) => Profiles.of(service)),
+  )
+}

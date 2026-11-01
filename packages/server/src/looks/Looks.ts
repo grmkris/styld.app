@@ -1,5 +1,4 @@
 import {
-  type CheckStatus,
   type CreateLook,
   Look,
   type LookId,
@@ -8,138 +7,144 @@ import {
   type ShareLook,
   Unavailable,
 } from '@styld/protocol'
-import { Context, Effect, Option, Schema } from 'effect'
+import { Context, Effect, Layer, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import type { Checks } from '../safety/Checks.ts'
-import { makeProfileStore, type ProfileStore, requirePublished } from '../social/ProfileStore.ts'
+import { Checks } from '../safety/Checks.ts'
+import { requirePublished } from '../social/ProfileStore.ts'
 import { toPiece } from '../wardrobe/Parts.ts'
-import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
-import { type LookRow, type LookStore, makeLookStore } from './Store.ts'
+import { ownPieceIds } from '../wardrobe/Store.ts'
+import { Database, nowDate, type StoreUnavailable } from '../kernel/Db.ts'
+import { type LookRow, type LookStore, lookStore } from './Store.ts'
 import { newId } from '../kernel/Ids.ts'
 import { identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
 
 const unavailable = () => Unavailable.make({})
 const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
 
-/** Looks as the protocol shows them, each with the pieces still in the wardrobe and its check, if it has been
- * shared. */
-export const shownLooks = (store: LookStore, rows: ReadonlyArray<LookRow>, checks: ReadonlyMap<string, CheckStatus>) =>
-  Effect.gen(function* () {
-    const found = yield* stored(store.piecesOf(rows.map(({ id }) => id)))
-    return yield* Effect.forEach(rows, (row) =>
-      Effect.gen(function* () {
-        const lookPieces = yield* Effect.forEach(
-          found.filter(({ lookId }) => lookId === row.id),
-          ({ piece }) => toPiece(piece),
-        )
-        // Only the service writes rows, through the same schemas; a row that does not decode is a bug.
-        return yield* Schema.decodeUnknownEffect(Look)({
-          id: row.id,
-          name: row.name,
-          occasion: row.occasion,
-          pieces: lookPieces,
-          shared: row.sharedAt !== null,
-          check: checks.get(row.id) ?? null,
-          createdAt: row.createdAt.toISOString(),
-        }).pipe(Effect.orDie)
-      }),
-    )
-  })
-
-/** Share the look on the profile, which needs a published profile, or stop sharing it. A shared look is checked
- * as it is now, and its pieces through the queue. */
-const sharing = (
-  store: LookStore,
-  profileStore: ProfileStore,
-  checks: Checks['Service'],
-  one: (accountId: string, lookId: string) => Effect.Effect<Look, NotFound | Unavailable>,
-) => {
-  return Effect.fn('Styld.Looks.share')(function* (lookId: LookId, input: ShareLook) {
-    const { accountId } = yield* CurrentAccount
-    const row = yield* stored(store.findLook(accountId, lookId))
-    if (Option.isNone(row)) return yield* NotFound.make({})
-    if (!input.shared) {
-      yield* stored(store.setShared(accountId, lookId, null))
-      return yield* one(accountId, lookId)
-    }
-    yield* requirePublished(profileStore, accountId)
-    yield* stored(store.setShared(accountId, lookId, row.value.sharedAt ?? (yield* nowDate)))
-    yield* checks.checkNow({ kind: 'look', id: lookId })
-    const pieceIds = (yield* stored(store.piecesOf([lookId]))).map(({ piece }) => piece.id)
-    yield* checks.checkLater(pieceIds.map((id) => ({ kind: 'piece' as const, id })))
-    return yield* one(accountId, lookId)
-  })
+/** What the look operations work through. */
+interface Deps {
+  readonly db: Database['Service']
+  readonly checks: Checks['Service']
+  readonly store: LookStore
 }
 
-const make = (database: Parameters<typeof makeLookStore>[0], checks: Checks['Service']) =>
-  Effect.sync(() => {
-    const store = makeLookStore(database)
-    const looksShown = (rows: ReadonlyArray<LookRow>) =>
-      Effect.flatMap(
-        checks.statuses(
-          'look',
-          rows.map(({ id }) => id),
-        ),
-        (statuses) => shownLooks(store, rows, statuses),
+/** Looks as their owner sees them, each with the pieces still in the wardrobe and its check, if it has been shared. */
+const shown = Effect.fnUntraced(function* ({ checks, store }: Deps, rows: ReadonlyArray<LookRow>) {
+  const ids = rows.map(({ id }) => id)
+  const statuses = yield* checks.statuses('look', ids)
+  const found = yield* stored(store.piecesOf(ids))
+  return yield* Effect.forEach(rows, (row) =>
+    Effect.gen(function* () {
+      const lookPieces = yield* Effect.forEach(
+        found.filter(({ lookId }) => lookId === row.id),
+        ({ piece }) => toPiece(piece),
       )
-    const one = (accountId: string, lookId: string) =>
-      Effect.gen(function* () {
-        const row = yield* stored(store.findLook(accountId, lookId))
-        if (Option.isNone(row)) return yield* NotFound.make({})
-        const [look] = yield* looksShown([row.value])
-        return look ?? (yield* NotFound.make({}))
-      })
-    return {
-      /** Put a look together from the account's own pieces. The same operation id answers the same
-       * look; using it for another look is a conflict. */
-      createLook: Effect.fn('Styld.Looks.create')(function* (input: CreateLook) {
-        const { accountId } = yield* CurrentAccount
-        const operation = yield* identify({
-          accountId,
-          operationId: input.operationId,
-          command: 'createLook',
-          input: [input.name, input.occasion ?? null, input.pieceIds],
-        })
-        const prior = yield* priorResult(operation, yield* stored(store.findReceipt(accountId, input.operationId)))
-        // A repeat of an operation whose look was deleted since: the id is spent, a new look needs a new one.
-        if (Option.isSome(prior))
-          return yield* one(accountId, prior.value).pipe(
-            Effect.catchTag('NotFound', () => Effect.fail(OperationConflict.make({}))),
-          )
-        const pieceIds = [...new Set(input.pieceIds)]
-        const owned = yield* stored(store.ownPieces(accountId, pieceIds))
-        if (pieceIds.some((id) => !owned.has(id))) return yield* NotFound.make({})
-        const id = yield* newId('lk')
-        const at = yield* nowDate
-        yield* stored(
-          store.createLook(
-            { id, accountId, name: input.name, occasion: input.occasion ?? null, createdAt: at, sharedAt: null },
-            pieceIds,
-            yield* receiptRow(operation, id),
-          ),
-        )
-        return yield* one(accountId, id)
-      }),
-      listLooks: Effect.fn('Styld.Looks.list')(function* () {
-        const { accountId } = yield* CurrentAccount
-        return yield* looksShown(yield* stored(store.listLooks(accountId)))
-      }),
-      getLook: Effect.fn('Styld.Looks.get')(function* (lookId: LookId) {
-        const { accountId } = yield* CurrentAccount
-        return yield* one(accountId, lookId)
-      }),
-      shareLook: sharing(store, makeProfileStore(database), checks, one),
-      deleteLook: Effect.fn('Styld.Looks.delete')(function* (lookId: LookId) {
-        const { accountId } = yield* CurrentAccount
-        if (!(yield* stored(store.deleteLook(accountId, lookId)))) return yield* NotFound.make({})
-      }),
+      // Only the service writes rows, through the same schemas; a row that does not decode is a bug.
+      return yield* Schema.decodeUnknownEffect(Look)({
+        id: row.id,
+        name: row.name,
+        occasion: row.occasion,
+        pieces: lookPieces,
+        shared: row.sharedAt !== null,
+        check: statuses.get(row.id) ?? null,
+        createdAt: row.createdAt.toISOString(),
+      }).pipe(Effect.orDie)
+    }),
+  )
+})
+
+const one = Effect.fnUntraced(function* (deps: Deps, accountId: string, lookId: string) {
+  const row = yield* stored(deps.store.findLook(accountId, lookId))
+  if (Option.isNone(row)) return yield* NotFound.make({})
+  const [look] = yield* shown(deps, [row.value])
+  return look ?? (yield* NotFound.make({}))
+})
+
+const making = (deps: Deps) => ({
+  /** Put a look together from the account's own pieces. The same operation id answers the same look; using it for
+   * another look is a conflict. */
+  createLook: Effect.fn('Styld.Looks.create')(function* (input: CreateLook) {
+    const { accountId } = yield* CurrentAccount
+    const operation = yield* identify({
+      accountId,
+      operationId: input.operationId,
+      command: 'createLook',
+      input: [input.name, input.occasion ?? null, input.pieceIds],
+    })
+    const prior = yield* priorResult(operation, yield* stored(deps.store.findReceipt(accountId, input.operationId)))
+    // A repeat of an operation whose look was deleted since: the id is spent, a new look needs a new one.
+    if (Option.isSome(prior))
+      return yield* one(deps, accountId, prior.value).pipe(
+        Effect.catchTag('NotFound', () => Effect.fail(OperationConflict.make({}))),
+      )
+    const pieceIds = [...new Set(input.pieceIds)]
+    const owned = yield* stored(ownPieceIds(deps.db, accountId, pieceIds))
+    if (pieceIds.some((id) => !owned.has(id))) return yield* NotFound.make({})
+    const id = yield* newId('lk')
+    const at = yield* nowDate
+    yield* stored(
+      deps.store.createLook(
+        { id, accountId, name: input.name, occasion: input.occasion ?? null, createdAt: at, sharedAt: null },
+        pieceIds,
+        yield* receiptRow(operation, id),
+      ),
+    )
+    return yield* one(deps, accountId, id)
+  }),
+  /** Delete the look and its check; its pins on boards go with it. */
+  deleteLook: Effect.fn('Styld.Looks.delete')(function* (lookId: LookId) {
+    const { accountId } = yield* CurrentAccount
+    if (!(yield* stored(deps.store.deleteLook(accountId, lookId)))) return yield* NotFound.make({})
+  }),
+})
+
+const reading = (deps: Deps) => ({
+  listLooks: Effect.fn('Styld.Looks.list')(function* () {
+    const { accountId } = yield* CurrentAccount
+    return yield* shown(deps, yield* stored(deps.store.listLooks(accountId)))
+  }),
+  getLook: Effect.fn('Styld.Looks.get')(function* (lookId: LookId) {
+    const { accountId } = yield* CurrentAccount
+    return yield* one(deps, accountId, lookId)
+  }),
+  /** These looks as their owner sees them, whoever's they are: the looks pinned on a board. */
+  looksById: Effect.fn('Styld.Looks.byId')(function* (lookIds: ReadonlyArray<string>) {
+    if (lookIds.length === 0) return []
+    return yield* shown(deps, yield* stored(deps.store.looksById(lookIds)))
+  }),
+})
+
+const sharing = (deps: Deps) => ({
+  /** Share the look on the profile, which needs a published profile, or stop sharing it. A shared look is checked as
+   * it is now, and its pieces through the queue. */
+  shareLook: Effect.fn('Styld.Looks.share')(function* (lookId: LookId, input: ShareLook) {
+    const { accountId } = yield* CurrentAccount
+    const row = yield* stored(deps.store.findLook(accountId, lookId))
+    if (Option.isNone(row)) return yield* NotFound.make({})
+    if (!input.shared) {
+      yield* stored(deps.store.setShared(accountId, lookId, null))
+      return yield* one(deps, accountId, lookId)
     }
-  })
+    yield* requirePublished(deps.db, accountId)
+    yield* stored(deps.store.setShared(accountId, lookId, row.value.sharedAt ?? (yield* nowDate)))
+    yield* deps.checks.checkNow({ kind: 'look', id: lookId })
+    const pieceIds = (yield* stored(deps.store.piecesOf([lookId]))).map(({ piece }) => piece.id)
+    yield* deps.checks.checkLater(pieceIds.map((id) => ({ kind: 'piece' as const, id })))
+    return yield* one(deps, accountId, lookId)
+  }),
+})
 
-/** Looks, for the website and for assistants. Every operation acts for `CurrentAccount`, which HTTP and MCP
- * provide per request, so no operation takes whose looks they are from its input. */
-export class Looks extends Context.Service<Looks, Effect.Success<ReturnType<typeof make>>>()('@styld/server/Looks') {}
+const make = Effect.gen(function* () {
+  const db = yield* Database
+  const deps: Deps = { db, checks: yield* Checks, store: lookStore(db) }
+  return { ...making(deps), ...reading(deps), ...sharing(deps) }
+})
 
-/** Looks over the Worker's database, checked by the Worker's checks. Build it once per isolate. */
-export const makeLooks = (database: Parameters<typeof makeLookStore>[0], checks: Checks['Service']) =>
-  Effect.map(make(database, checks), (service) => Looks.of(service))
+/** Looks, for the website and for assistants. Every operation acts for `CurrentAccount`, which HTTP and MCP provide per
+ * request, so no operation takes whose looks they are from its input. */
+export class Looks extends Context.Service<Looks, Effect.Success<typeof make>>()('@styld/server/looks/Looks') {
+  static readonly layer = Layer.effect(
+    this,
+    Effect.map(make, (service) => Looks.of(service)),
+  )
+}

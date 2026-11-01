@@ -1,9 +1,8 @@
 import { receiptRows } from '../kernel/Receipts.ts'
-import { blocks, follows, profiles, reports, saves } from '@styld/db'
+import { blocks, follows, reports, saves } from '@styld/db'
 import { and, count, desc, eq, gte, inArray, or } from 'drizzle-orm'
-import { drizzle } from 'drizzle-orm/d1'
-import { Array, Effect, Option } from 'effect'
-import { query } from '../kernel/Db.ts'
+import { Array, Effect } from 'effect'
+import { type Database, query } from '../kernel/Db.ts'
 
 export type SaveRow = typeof saves.$inferSelect
 export type ReportRow = typeof reports.$inferSelect
@@ -15,9 +14,9 @@ const listLimit = 200
 const savedColumn = (kind: SaveRow['kind']) =>
   kind === 'piece' ? saves.pieceId : kind === 'look' ? saves.lookId : saves.boardId
 
-type Database = ReturnType<typeof drizzle>
+type Drizzle = Database['Service']
 
-const savesAndFollows = (db: Database) => ({
+const savesAndFollows = (db: Drizzle) => ({
   /** The account's saves, newest first. */
   saves: (accountId: string) =>
     query(() =>
@@ -31,20 +30,6 @@ const savesAndFollows = (db: Database) => ({
         .delete(saves)
         .where(and(eq(saves.accountId, accountId), eq(saves.kind, kind), eq(savedColumn(kind), targetId))),
     ).pipe(Effect.asVoid),
-  /** The account behind a published handle. */
-  accountOf: (handle: string) =>
-    query(() =>
-      db
-        .select({ accountId: profiles.accountId })
-        .from(profiles)
-        .where(and(eq(profiles.handle, handle), eq(profiles.published, true)))
-        .limit(1),
-    ).pipe(Effect.map((rows) => Option.map(Option.fromNullishOr(rows[0]), ({ accountId }) => accountId))),
-  /** The account behind a handle, published or not: someone can be blocked, and unblocked, whatever they show. */
-  accountOfAnyHandle: (handle: string) =>
-    query(() =>
-      db.select({ accountId: profiles.accountId }).from(profiles).where(eq(profiles.handle, handle)).limit(1),
-    ).pipe(Effect.map((rows) => Option.map(Option.fromNullishOr(rows[0]), ({ accountId }) => accountId))),
   isFollowing: (followerId: string, followeeId: string) =>
     query(() =>
       db
@@ -73,7 +58,7 @@ const savesAndFollows = (db: Database) => ({
     ).pipe(Effect.map((rows) => rows.map(({ accountId }) => accountId))),
 })
 
-const blockRows = (db: Database) => ({
+const blockRows = (db: Drizzle) => ({
   /** Whether either account blocked the other. */
   blockedBetween: (left: string, right: string) =>
     query(() =>
@@ -148,7 +133,7 @@ const blockRows = (db: Database) => ({
     ),
 })
 
-const reportRows = (db: Database) => ({
+const reportRows = (db: Drizzle) => ({
   /** How many reports the account filed since `since`. */
   reportsSince: (reporterId: string, since: Date) =>
     query(() =>
@@ -175,9 +160,11 @@ const reportRows = (db: Database) => ({
 })
 
 /** Saves, follows, blocks and reports in D1. Every read and write names the account it is for. */
-export const makeSocialStore = (database: Parameters<typeof drizzle>[0]) => {
-  const db = drizzle(database)
-  return { ...savesAndFollows(db), ...blockRows(db), ...reportRows(db), ...receiptRows(db) }
-}
+export const socialStore = (db: Drizzle) => ({
+  ...savesAndFollows(db),
+  ...blockRows(db),
+  ...reportRows(db),
+  ...receiptRows(db),
+})
 
-export type SocialStore = ReturnType<typeof makeSocialStore>
+export type SocialStore = ReturnType<typeof socialStore>

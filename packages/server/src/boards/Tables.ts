@@ -18,6 +18,7 @@ import {
 } from '@styld/protocol'
 import { Array, Effect, Match, Option, Predicate, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
+import { ownPieceIds } from '../wardrobe/Store.ts'
 import { itemRow, newPins, one, ownBoard, pieceTarget, priorOf, stored, type Parts, unavailable } from './Parts.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
@@ -31,7 +32,7 @@ const tableRefusal = (parts: Parts, accountId: string, boardId: string, items: R
   Effect.gen(function* () {
     if (new Set(items.map(({ id }) => id)).size !== items.length) return Option.some('duplicateId' as const)
     const pieceIds = [...new Set(items.filter(Schema.is(PieceItem)).map(({ pieceId }) => pieceId))]
-    const owned = yield* stored(parts.store.ownPieces(accountId, pieceIds))
+    const owned = yield* stored(ownPieceIds(parts.db, accountId, pieceIds))
     const others = pieceIds.filter((id) => !owned.has(id))
     const pinned = others.length === 0 ? new Set<string>() : yield* stored(parts.store.piecesPinned(boardId, others))
     if (others.some((id) => !pinned.has(id))) return Option.some('pieceNotFound' as const)

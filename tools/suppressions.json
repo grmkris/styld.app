@@ -52,6 +52,10 @@
     "comment": "SAFETY: FixedLengthStream's readable is the Worker runtime's stream R2 takes -- the global ReadableStream name resolves to the DOM lib's here"
   },
   {
+    "file": "packages/server/test/Checks.test.ts",
+    "comment": "SAFETY: the fake implements the bucket read and the Images transform the judge's picture reads call -- the rest of R2 and Images is never called by a check"
+  },
+  {
     "file": "packages/server/test/LocalD1.ts",
     "comment": "SAFETY: the shim implements the D1 calls drizzle and the stores make -- the rest of D1Database (exec, sessions, dump) is never called by them"
   }

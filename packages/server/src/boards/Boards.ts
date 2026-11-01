@@ -16,17 +16,18 @@ import {
   type UpdateBoard,
   UploadRefused,
 } from '@styld/protocol'
-import { Context, Effect, Option } from 'effect'
+import { Context, Effect, Layer, Option } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import { makeLookStore } from '../looks/Store.ts'
-import type { Checks } from '../safety/Checks.ts'
-import { makeProfileStore, requirePublished } from '../social/ProfileStore.ts'
+import { Looks } from '../looks/Looks.ts'
+import { ownLookIds } from '../looks/Store.ts'
+import { Checks } from '../safety/Checks.ts'
+import { requirePublished } from '../social/ProfileStore.ts'
 import { deliverImage } from '../wardrobe/Delivery.ts'
 import type { ShownImage } from '../wardrobe/Http.ts'
 import type { ImageSize } from '../wardrobe/Media.ts'
-import { makeStore } from '../wardrobe/Store.ts'
+import { makeStore, ownPieceIds } from '../wardrobe/Store.ts'
 import { usableUpload } from '../wardrobe/Parts.ts'
-import { type BoardRow, makeBoardStore, type PinRemoval } from './Store.ts'
+import { type BoardRow, boardStore, type PinRemoval } from './Store.ts'
 import { tables } from './Tables.ts'
 import {
   lookTarget,
@@ -40,21 +41,16 @@ import {
   shown,
   stored,
   summaries,
-  type BoardBindings,
   type Parts,
   unavailable,
 } from './Parts.ts'
-import { nowDate } from '../kernel/Db.ts'
+import { Database, nowDate } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 import { identify, receiptRow, type Identified } from '../kernel/Receipts.ts'
-import { deleteKeys } from '../kernel/Media.ts'
+import { deleteAfterRows, Media } from '../kernel/Media.ts'
 
-/** Where a board picture came from: an upload, a picture Styld generated (its job and model), or an outfit photo of
- * My Gallery. */
-type ImageOrigin =
-  | { readonly kind: 'upload' }
-  | { readonly kind: 'generated'; readonly jobId: string; readonly model: string }
-  | { readonly kind: 'photo' }
+/** Where a board picture came from: an upload, a picture Styld generated, or an outfit photo of My Gallery. */
+type ImageOrigin = 'upload' | 'generated' | 'photo'
 
 const reads = (parts: Parts) => ({
   /** The account's boards, the most recently changed first. */
@@ -133,16 +129,13 @@ const changes = (parts: Parts) => ({
     const [board] = yield* shown(parts, [updated.value])
     return board ?? (yield* NotFound.make({}))
   }),
-  /** Delete the board, its items and its pictures' bytes. */
+  /** Delete the board with its items, pins, pictures and check, then its pictures' bytes. */
   deleteBoard: Effect.fn('Styld.Boards.delete')(function* (boardId: BoardId) {
     const { accountId } = yield* CurrentAccount
-    // Pictures first: if the row's delete fails, a retry finds the board and finishes.
     const board = yield* ownBoard(parts, accountId, boardId)
     const keys = yield* stored(parts.store.imageKeys(board.id))
-    yield* deleteKeys(parts.bindings.bucket, keys).pipe(
-      Effect.catchTag('MediaUnavailable', () => Effect.fail(unavailable())),
-    )
     if (!(yield* stored(parts.store.deleteBoard(accountId, boardId)))) return yield* NotFound.make({})
+    yield* deleteAfterRows(parts.media.bucket, keys, 'board')
   }),
 })
 
@@ -156,9 +149,9 @@ const pinRefusal = (
 ) =>
   Effect.gen(function* () {
     if (pieceIds.length + lookIds.length === 0) return Option.some('nothingToPin' as const)
-    const owned = yield* stored(parts.store.ownPieces(accountId, pieceIds))
+    const owned = yield* stored(ownPieceIds(parts.db, accountId, pieceIds))
     if (pieceIds.some((id) => !owned.has(id))) return Option.some('pieceNotFound' as const)
-    const ownLooks = yield* stored(parts.lookStore.ownLooks(accountId, lookIds))
+    const ownLooks = yield* stored(ownLookIds(parts.db, accountId, lookIds))
     if (lookIds.some((id) => !ownLooks.has(id))) return Option.some('lookNotFound' as const)
     const held = (yield* stored(parts.store.pinCounts([boardId]))).get(boardId) ?? 0
     if (held + pieceIds.length + lookIds.length > maximumBoardPins) return Option.some('boardFull' as const)
@@ -219,12 +212,7 @@ const pinning = (parts: Parts) => ({
       if (Option.isNone(yield* priorOf(parts, operation))) return yield* unavailable()
       return yield* one(parts, accountId, boardId)
     }
-    // The rows are gone; bytes a failed delete leaves behind sit under the account's prefix, which account
-    // deletion clears.
-    if (keys.length > 0)
-      yield* Effect.ignore(
-        Effect.tryPromise({ try: () => parts.bindings.bucket.delete([...keys]), catch: unavailable }),
-      )
+    yield* deleteAfterRows(parts.media.bucket, keys, 'pin')
     return yield* one(parts, accountId, boardId)
   }),
 })
@@ -235,7 +223,7 @@ const publishing = (parts: Parts) => ({
   setBoardVisibility: Effect.fn('Styld.Boards.setVisibility')(function* (boardId: BoardId, input: SetVisibility) {
     const { accountId } = yield* CurrentAccount
     const board = yield* ownBoard(parts, accountId, boardId)
-    if (input.visibility === 'public') yield* requirePublished(parts.profileStore, accountId)
+    if (input.visibility === 'public') yield* requirePublished(parts.db, accountId)
     const goesPublic = input.visibility === 'public' && board.visibility !== 'public'
     yield* stored(
       parts.store.updateBoard(accountId, boardId, {
@@ -271,12 +259,6 @@ const addImageFailure = (parts: Parts, operation: Identified, boardId: string, u
     return yield* unavailable()
   })
 
-/** A received upload of a picture Styld generated, and what made it. */
-interface GeneratedImage extends AddBoardImage {
-  readonly jobId: string
-  readonly model: string
-}
-
 const pictures = (parts: Parts) => ({
   /** The picture an operation already put on a board, so a retry from an address need not fetch it again. */
   boardImageAddedBy: Effect.fn('Styld.Boards.imageAddedBy')(function* (operationId: string) {
@@ -285,13 +267,12 @@ const pictures = (parts: Parts) => ({
     if (Option.isNone(receipt) || receipt.value.command !== 'addBoardImage') return Option.none<BoardImage>()
     return Option.some(yield* replayImage(parts, accountId, receipt.value.result))
   }),
-  /** A received photo upload becomes a picture on the board; a picture Styld generated says which job made it and
-   * the model that drew it. The same operation id answers the same picture; using it for another upload or board
-   * is a conflict. */
+  /** A received photo upload becomes a picture on the board, marked with where it came from. The same operation id
+   * answers the same picture; using it for another upload or board is a conflict. */
   addBoardImage: Effect.fn('Styld.Boards.addImage')(function* (
     boardId: BoardId,
     input: AddBoardImage,
-    origin: ImageOrigin = { kind: 'upload' },
+    origin: ImageOrigin = 'upload',
   ) {
     const { accountId } = yield* CurrentAccount
     const operation = yield* identify({
@@ -314,9 +295,7 @@ const pictures = (parts: Parts) => ({
       accountId,
       boardId,
       contentType: upload.contentType,
-      origin: origin.kind,
-      jobId: origin.kind === 'generated' ? origin.jobId : null,
-      model: origin.kind === 'generated' ? origin.model : null,
+      origin,
       createdAt: at,
     }
     const committed = yield* parts.store.addImage(image, pinId, upload.id, added).pipe(
@@ -334,54 +313,50 @@ const pictures = (parts: Parts) => ({
     const image = yield* stored(parts.store.findImage(accountId, imageId))
     if (Option.isNone(image)) return Option.none<ShownImage>()
     const { objectKey, contentType } = image.value
-    const delivered = yield* deliverImage(parts.bindings, { key: objectKey, contentType }, size)
+    const delivered = yield* deliverImage(parts.media, { key: objectKey, contentType }, size)
     return Option.map(delivered, (shownImage): ShownImage => ({ ...shownImage, version: `${imageId}.${size}` }))
   }),
 })
 
-const make = (bindings: BoardBindings, checks: Checks['Service']) =>
-  Effect.sync(() => {
-    const parts: Parts = {
-      bindings,
-      store: makeBoardStore(bindings.database),
-      wardrobeStore: makeStore(bindings.database),
-      lookStore: makeLookStore(bindings.database),
-      profileStore: makeProfileStore(bindings.database),
-      checks,
-    }
-    const edits = { ...changes(parts), ...tables(parts), ...pinning(parts), ...pictures(parts) }
-    return {
-      ...reads(parts),
-      ...edits,
-      ...publishing(parts),
-      updateBoard: rechecked(parts, edits.updateBoard),
-      saveBoardItems: rechecked(parts, edits.saveBoardItems),
-      arrangeBoard: rechecked(parts, edits.arrangeBoard),
-      setTable: rechecked(parts, edits.setTable),
-      addPins: rechecked(parts, edits.addPins),
-      removePins: rechecked(parts, edits.removePins),
-      addBoardImage: rechecked(parts, edits.addBoardImage),
-      /** A picture Styld generated for the board, marked with its job and model. */
-      addGeneratedImage: rechecked(parts, (boardId: BoardId, input: GeneratedImage) =>
-        edits.addBoardImage(
-          boardId,
-          { operationId: input.operationId, uploadId: input.uploadId },
-          { kind: 'generated', jobId: input.jobId, model: input.model },
-        ),
-      ),
-      /** One of the person's outfit photos (My Gallery), held back from visitors. */
-      addPhotoImage: rechecked(parts, (boardId: BoardId, input: AddBoardImage) =>
-        edits.addBoardImage(boardId, input, { kind: 'photo' }),
-      ),
-    }
-  })
+const make = Effect.gen(function* () {
+  const db = yield* Database
+  const parts: Parts = {
+    db,
+    media: yield* Media,
+    store: boardStore(db),
+    // The wardrobe's store, over the same D1 binding, for the uploads a picture spends.
+    wardrobeStore: makeStore(db.$client),
+    checks: yield* Checks,
+    looks: yield* Looks,
+  }
+  const edits = { ...changes(parts), ...tables(parts), ...pinning(parts), ...pictures(parts) }
+  return {
+    ...reads(parts),
+    ...edits,
+    ...publishing(parts),
+    updateBoard: rechecked(parts, edits.updateBoard),
+    saveBoardItems: rechecked(parts, edits.saveBoardItems),
+    arrangeBoard: rechecked(parts, edits.arrangeBoard),
+    setTable: rechecked(parts, edits.setTable),
+    addPins: rechecked(parts, edits.addPins),
+    removePins: rechecked(parts, edits.removePins),
+    addBoardImage: rechecked(parts, edits.addBoardImage),
+    /** A picture Styld generated for the board, marked Generated. */
+    addGeneratedImage: rechecked(parts, (boardId: BoardId, input: AddBoardImage) =>
+      edits.addBoardImage(boardId, input, 'generated'),
+    ),
+    /** One of the person's outfit photos (My Gallery), held back from visitors. */
+    addPhotoImage: rechecked(parts, (boardId: BoardId, input: AddBoardImage) =>
+      edits.addBoardImage(boardId, input, 'photo'),
+    ),
+  }
+})
 
-/** Boards, for the website. Every operation acts for `CurrentAccount`, which HTTP provides per request, so no
- * operation takes whose boards they are from its input. */
-export class Boards extends Context.Service<Boards, Effect.Success<ReturnType<typeof make>>>()(
-  '@styld/server/Boards',
-) {}
-
-/** Boards over the Worker's bindings, checked by the Worker's checks. Build it once per isolate. */
-export const makeBoards = (bindings: BoardBindings, checks: Checks['Service']) =>
-  Effect.map(make(bindings, checks), (service) => Boards.of(service))
+/** Boards, for the website and for assistants. Every operation acts for `CurrentAccount`, which HTTP and MCP provide
+ * per request, so no operation takes whose boards they are from its input. */
+export class Boards extends Context.Service<Boards, Effect.Success<typeof make>>()('@styld/server/boards/Boards') {
+  static readonly layer = Layer.effect(
+    this,
+    Effect.map(make, (service) => Boards.of(service)),
+  )
+}

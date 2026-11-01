@@ -1,10 +1,10 @@
 import { boardImages, boardItems, boardPins, boards, operationReceipts, pieces } from '@styld/db'
 import { and, asc, count, desc, eq, inArray, lte, or, type SQL, sql } from 'drizzle-orm'
-import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option } from 'effect'
 import { receiptRows } from '../kernel/Receipts.ts'
-import { ownPieceIds, receivedUploadKey, spendUpload } from '../wardrobe/Store.ts'
-import { chunked, first, query } from '../kernel/Db.ts'
+import { forgetCheck } from '../safety/Checks.ts'
+import { receivedUploadKey, spendUpload } from '../wardrobe/Store.ts'
+import { type Database as Db, first, inChunks, query } from '../kernel/Db.ts'
 
 export type BoardRow = typeof boards.$inferSelect
 export type BoardItemRow = typeof boardItems.$inferSelect
@@ -38,7 +38,7 @@ export interface PinRemoval {
   readonly at: Date
 }
 
-type Database = ReturnType<typeof drizzle>
+type Database = Db['Service']
 
 const boardRows = (db: Database) => ({
   ...receiptRows(db),
@@ -73,32 +73,29 @@ const boardRows = (db: Database) => ({
         .where(and(eq(boards.id, boardId), eq(boards.accountId, accountId)))
         .returning(),
     ).pipe(Effect.map(first)),
-  /** Removes the board; its items and pictures go with it. */
+  /** Removes the board and its check; its items, pins and pictures' rows go with it. */
   deleteBoard: (accountId: string, boardId: string) =>
     query(() =>
-      db
-        .delete(boards)
-        .where(and(eq(boards.id, boardId), eq(boards.accountId, accountId)))
-        .returning({ id: boards.id }),
-    ).pipe(Effect.map((rows) => rows.length > 0)),
+      db.batch([
+        db
+          .delete(boards)
+          .where(and(eq(boards.id, boardId), eq(boards.accountId, accountId)))
+          .returning({ id: boards.id }),
+        forgetCheck(db, accountId, { kind: 'board', id: boardId }),
+      ]),
+    ).pipe(Effect.map(([deleted]) => deleted.length > 0)),
 })
 
 const itemRows = (db: Database) => ({
   /** The items of these boards, bottom of the stack first. */
   itemsOf: (boardIds: ReadonlyArray<string>) =>
-    Effect.map(
-      Effect.forEach(chunked(boardIds), (chunk) =>
-        query(() =>
-          db
-            .select()
-            .from(boardItems)
-            .where(inArray(boardItems.boardId, chunk))
-            .orderBy(asc(boardItems.z), asc(boardItems.id)),
-        ),
-      ),
-      (rows) => rows.flat(),
+    inChunks(boardIds, (chunk) =>
+      db
+        .select()
+        .from(boardItems)
+        .where(inArray(boardItems.boardId, chunk))
+        .orderBy(asc(boardItems.z), asc(boardItems.id)),
     ),
-  ownPieces: (accountId: string, pieceIds: ReadonlyArray<string>) => ownPieceIds(db, accountId, pieceIds),
   /** Replace the board's items, pin what they need, record the operation and count the save, as one atomic
    * batch, only while the board is still at the version the editor loaded. Each item's board and the
    * receipt's board are read at that version, so a save that lost the race writes a null, which fails the
@@ -144,55 +141,45 @@ const pinWithPiece = (db: Database, where: SQL) =>
 const pinReads = (db: Database) => ({
   /** The pins of these boards, newest first, each piece pin with its piece. */
   pinsOf: (boardIds: ReadonlyArray<string>) =>
-    Effect.map(
-      Effect.forEach(chunked(boardIds), (chunk) => query(() => pinWithPiece(db, inArray(boardPins.boardId, chunk)))),
-      (rows) => rows.flat(),
-    ),
+    inChunks(boardIds, (chunk) => pinWithPiece(db, inArray(boardPins.boardId, chunk))),
   /** Each board's newest pins, at most `limit` of them: the cover of a board in a list. */
   coversOf: (boardIds: ReadonlyArray<string>, limit: number) =>
-    Effect.map(
-      Effect.forEach(chunked(boardIds), (chunk) => {
-        const ranked = db
-          .select({
-            id: boardPins.id,
-            rank: sql<number>`row_number() over (partition by ${boardPins.boardId} order by ${boardPins.createdAt} desc, ${boardPins.id} desc)`.as(
-              'rank',
-            ),
-          })
-          .from(boardPins)
-          .where(inArray(boardPins.boardId, chunk))
-          .as('ranked')
-        const newest = db.select({ id: ranked.id }).from(ranked).where(lte(ranked.rank, limit))
-        return query(() => pinWithPiece(db, inArray(boardPins.id, newest)))
-      }),
-      (rows) => rows.flat(),
-    ),
+    inChunks(boardIds, (chunk) => {
+      const ranked = db
+        .select({
+          id: boardPins.id,
+          rank: sql<number>`row_number() over (partition by ${boardPins.boardId} order by ${boardPins.createdAt} desc, ${boardPins.id} desc)`.as(
+            'rank',
+          ),
+        })
+        .from(boardPins)
+        .where(inArray(boardPins.boardId, chunk))
+        .as('ranked')
+      const newest = db.select({ id: ranked.id }).from(ranked).where(lte(ranked.rank, limit))
+      return pinWithPiece(db, inArray(boardPins.id, newest))
+    }),
   /** How many pins each of these boards holds. */
   pinCounts: (boardIds: ReadonlyArray<string>) =>
     Effect.map(
-      Effect.forEach(chunked(boardIds), (chunk) =>
-        query(() =>
-          db
-            .select({ boardId: boardPins.boardId, pins: count() })
-            .from(boardPins)
-            .where(inArray(boardPins.boardId, chunk))
-            .groupBy(boardPins.boardId),
-        ),
+      inChunks(boardIds, (chunk) =>
+        db
+          .select({ boardId: boardPins.boardId, pins: count() })
+          .from(boardPins)
+          .where(inArray(boardPins.boardId, chunk))
+          .groupBy(boardPins.boardId),
       ),
-      (rows) => new Map(rows.flat().map(({ boardId, pins }) => [boardId, pins])),
+      (rows) => new Map(rows.map(({ boardId, pins }) => [boardId, pins])),
     ),
   /** Which of these pieces are pinned on the board. */
   piecesPinned: (boardId: string, pieceIds: ReadonlyArray<string>) =>
     Effect.map(
-      Effect.forEach(chunked(pieceIds), (chunk) =>
-        query(() =>
-          db
-            .select({ id: boardPins.pieceId })
-            .from(boardPins)
-            .where(and(eq(boardPins.boardId, boardId), inArray(boardPins.pieceId, chunk))),
-        ),
+      inChunks(pieceIds, (chunk) =>
+        db
+          .select({ id: boardPins.pieceId })
+          .from(boardPins)
+          .where(and(eq(boardPins.boardId, boardId), inArray(boardPins.pieceId, chunk))),
       ),
-      (rows) => new Set(rows.flat().flatMap(({ id }) => (id === null ? [] : [id]))),
+      (rows) => new Set(rows.flatMap(({ id }) => (id === null ? [] : [id]))),
     ),
 })
 
@@ -252,15 +239,13 @@ const imageRows = (db: Database) => ({
   /** Which of these pictures are on the board. */
   imagesOn: (boardId: string, imageIds: ReadonlyArray<string>) =>
     Effect.map(
-      Effect.forEach(chunked(imageIds), (chunk) =>
-        query(() =>
-          db
-            .select({ id: boardImages.id })
-            .from(boardImages)
-            .where(and(eq(boardImages.boardId, boardId), inArray(boardImages.id, chunk))),
-        ),
+      inChunks(imageIds, (chunk) =>
+        db
+          .select({ id: boardImages.id })
+          .from(boardImages)
+          .where(and(eq(boardImages.boardId, boardId), inArray(boardImages.id, chunk))),
       ),
-      (rows) => new Set(rows.flat().map(({ id }) => id)),
+      (rows) => new Set(rows.map(({ id }) => id)),
     ),
   /** The keys of the board's pictures, to delete their bytes with it. */
   imageKeys: (boardId: string) =>
@@ -287,7 +272,12 @@ const imageRows = (db: Database) => ({
     ).pipe(Effect.map(first)),
   /** The picture, its pin, its upload spent and the operation's receipt, as one atomic batch. The picture
    * keeps the upload's key, read in the same statement, so an upload spent meanwhile fails the batch. */
-  addImage: (image: Omit<BoardImageRow, 'objectKey'>, pinId: string, uploadId: string, receipt: ReceiptRow) =>
+  addImage: (
+    image: Omit<BoardImageRow, 'objectKey' | 'jobId' | 'model'>,
+    pinId: string,
+    uploadId: string,
+    receipt: ReceiptRow,
+  ) =>
     query(() =>
       db.batch([
         db.insert(boardImages).values({ ...image, objectKey: receivedUploadKey(db, image.accountId, uploadId) }),
@@ -308,9 +298,15 @@ const imageRows = (db: Database) => ({
 
 /** Boards, their pins, items and pictures in D1. Every read and write of a board names its account; the pins
  * and items of a board are read by the board's id once the board is known. */
-export const makeBoardStore = (database: Parameters<typeof drizzle>[0]) => {
-  const db = drizzle(database)
-  return { ...boardRows(db), ...itemRows(db), ...pinReads(db), ...pinWrites(db), ...imageRows(db) }
-}
+export const boardStore = (db: Database) => ({
+  ...boardRows(db),
+  ...itemRows(db),
+  ...pinReads(db),
+  ...pinWrites(db),
+  ...imageRows(db),
+})
 
-export type BoardStore = ReturnType<typeof makeBoardStore>
+export type BoardStore = ReturnType<typeof boardStore>
+
+/** A pin with the piece it holds and where its picture came from, as the board's reads find it. */
+export type PinRow = Effect.Success<ReturnType<BoardStore['pinsOf']>>[number]

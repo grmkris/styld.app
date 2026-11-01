@@ -10,15 +10,16 @@ import * as HttpRouter from 'effect/http/HttpRouter'
 import * as UrlParams from 'effect/http/UrlParams'
 import { browserTelemetryRoutes } from './BrowserTelemetry.ts'
 import { AccountLifecycle, makeAccountLifecycle } from './AccountLifecycle.ts'
-import { Looks, makeLooks } from './looks/Looks.ts'
-import { Boards, makeBoards } from './boards/Boards.ts'
-import { makeProfiles, Profiles } from './social/Profiles.ts'
-import { makePublicPages, PublicPages } from './social/Public.ts'
+import { Looks } from './looks/Looks.ts'
+import { Boards } from './boards/Boards.ts'
+import { Profiles } from './social/Profiles.ts'
+import { PublicPages } from './social/Public.ts'
 import { publicImageRoutes } from './social/PublicHttp.ts'
-import { makeSocial, Social } from './social/Social.ts'
-import { Discovery, makeDiscovery } from './social/Discovery.ts'
+import { Social } from './social/Social.ts'
+import { Discovery } from './social/Discovery.ts'
 import { boardRoutes } from './boards/Http.ts'
-import { makeWorn, Worn } from './worn/Worn.ts'
+import { Worn } from './worn/Worn.ts'
+import { socialServices } from './social/Modules.ts'
 import { apiRoutes } from './Api.ts'
 import { makeAuthHttp, withCodeRequestPolicy } from './AuthHttp.ts'
 import { captureRoutes } from './capture/Http.ts'
@@ -28,7 +29,6 @@ import { DomainLive } from './DomainLive.ts'
 import { authOptions } from './AuthConfiguration.ts'
 import { pieceCutout } from './capture/PieceCutout.ts'
 import { analyticsEngine, CaptureMetrics as CaptureMetricsService } from './capture/Metrics.ts'
-import { makeCuration } from './social/Curation.ts'
 import { deploymentOf } from './Config.ts'
 import { liveProviders, type ProvidersFor, StylistModel, type WorkersAiCalls } from './Providers.ts'
 import { health } from './Health.ts'
@@ -47,8 +47,8 @@ import {
   StyldPieceQueue,
   StyldStylistQueue,
 } from './Resources.ts'
-import { type CheckBindings, makeChecks } from './safety/Checks.ts'
-import { pieceChangedLayer } from './safety/PieceChanged.ts'
+import type { CheckQueue } from './safety/Checks.ts'
+import { PieceChanged } from './safety/PieceChanged.ts'
 import { checkJobQueue, checkJobs } from './safety/Queue.ts'
 import { generationJobQueue, generationJobs } from './generation/Queue.ts'
 import { type GenerationBindings, Generations, makeGenerations } from './generation/Service.ts'
@@ -111,31 +111,30 @@ const perClientLimit = (name: string, namespaceId: number, limit: number) =>
  * by the routes and the processing queue. Assistant-added pieces get the same cut-out providers as the tray. */
 const storageServices = (
   bindings: WardrobeBindings & {
-    readonly checksQueue: CheckBindings['queue']
+    readonly checksQueue: CheckQueue['Service']
     readonly generationQueue: GenerationBindings['queue']
     /** Forget an account's chats with Styld, when it is deleted. */
     readonly forgetChats: (accountId: string) => Effect.Effect<void, unknown>
   },
 ) =>
   Effect.gen(function* () {
-    const checksService = yield* makeChecks({ ...bindings, queue: bindings.checksQueue })
+    const modules = yield* socialServices({
+      database: bindings.database,
+      media: { bucket: bindings.bucket, images: bindings.images },
+      checksQueue: bindings.checksQueue,
+    })
+    const { checks: checksService, looks: looksService, boards: boardsService } = modules
     // A piece whose shown picture changes is checked again while others can see it.
-    const pieceChanged = pieceChangedLayer(checksService)
+    const pieceChanged = Layer.succeed(PieceChanged, modules.pieceChanged)
     const wardrobeService = yield* makeWardrobe(bindings).pipe(Effect.provide(pieceChanged))
     const lifecycleService = yield* makeAccountLifecycle(bindings, bindings.forgetChats)
     const capturesService = yield* makeCaptures(bindings).pipe(Effect.provide(pieceChanged))
-    const looksService = yield* makeLooks(bindings.database, checksService)
-    const boardsService = yield* makeBoards(bindings, checksService)
     const photosParts = yield* makePhotoParts(bindings).pipe(Effect.provide(pieceChanged))
     const photosService = yield* makePhotos(photosParts, {
       looks: looksService,
       boards: boardsService,
       uploads: wardrobeService,
     })
-    const profilesService = makeProfiles(bindings.database, checksService)
-    const publicPagesService = yield* makePublicPages(bindings, checksService)
-    const socialService = yield* makeSocial(bindings.database, publicPagesService, checksService)
-    const discoveryService = makeDiscovery(bindings.database, publicPagesService)
     const generationsService = yield* makeGenerations({
       ...bindings,
       queue: bindings.generationQueue,
@@ -148,12 +147,12 @@ const storageServices = (
       metrics: yield* CaptureMetricsService,
       generationsService,
       generations: Layer.succeed(Generations, generationsService),
-      curationService: makeCuration(bindings.database, checksService),
-      discoveryService,
-      discovery: Layer.succeed(Discovery, discoveryService),
-      publicPages: Layer.succeed(PublicPages, publicPagesService),
-      socialService,
-      social: Layer.succeed(Social, socialService),
+      curationService: modules.curation,
+      discoveryService: modules.discovery,
+      discovery: Layer.succeed(Discovery, modules.discovery),
+      publicPages: Layer.succeed(PublicPages, modules.publicPages),
+      socialService: modules.social,
+      social: Layer.succeed(Social, modules.social),
       checksService,
       wardrobeService,
       lifecycleService,
@@ -167,9 +166,9 @@ const storageServices = (
       photos: Layer.succeed(Photos, photosService),
       looks: Layer.succeed(Looks, looksService),
       boards: Layer.succeed(Boards, boardsService),
-      worn: Layer.succeed(Worn, makeWorn(bindings.database, yield* CaptureMetricsService)),
-      profilesService,
-      profiles: Layer.succeed(Profiles, profilesService),
+      worn: Layer.succeed(Worn, modules.worn),
+      profilesService: modules.profiles,
+      profiles: Layer.succeed(Profiles, modules.profiles),
     }
   }).pipe(Effect.provide(Layer.mergeAll(layerCryptoWeb, pieceCutout(bindings.bucket))))
 

@@ -1,8 +1,8 @@
 import { boardPins, boards, looks } from '@styld/db'
 import { type Author, type FeedItem, Unavailable } from '@styld/protocol'
 import { and, desc, eq, inArray, isNotNull, lt } from 'drizzle-orm'
-import { drizzle } from 'drizzle-orm/d1'
 import { Array, DateTime, Effect, Option } from 'effect'
+import type { Database } from '../kernel/Db.ts'
 import type { Checks } from '../safety/Checks.ts'
 import { type PublicPages, summaryOf } from './Public.ts'
 import type { SocialStore } from './SocialStore.ts'
@@ -45,9 +45,9 @@ export const interleaved = <A>(items: ReadonlyArray<A>, personOf: (item: A) => s
 const peoplePerQuery = 80
 
 /** The newest things from the people followed, before `before`, across every group of them. */
-const candidates = (database: Parameters<typeof drizzle>[0], people: ReadonlyArray<string>, before: Date) =>
+const candidates = (db: Database['Service'], people: ReadonlyArray<string>, before: Date) =>
   Effect.map(
-    Effect.forEach(Array.chunksOf(people, peoplePerQuery), (group) => candidatesOf(database, group, before)),
+    Effect.forEach(Array.chunksOf(people, peoplePerQuery), (group) => candidatesOf(db, group, before)),
     (groups) =>
       groups
         .flat()
@@ -55,9 +55,8 @@ const candidates = (database: Parameters<typeof drizzle>[0], people: ReadonlyArr
         .slice(0, pageSize),
   )
 
-const candidatesOf = (database: Parameters<typeof drizzle>[0], people: ReadonlyArray<string>, before: Date) =>
+const candidatesOf = (db: Database['Service'], people: ReadonlyArray<string>, before: Date) =>
   Effect.gen(function* () {
-    const db = drizzle(database)
     const ids = [...people]
     const went = yield* attempt(() =>
       db
@@ -99,7 +98,7 @@ const candidatesOf = (database: Parameters<typeof drizzle>[0], people: ReadonlyA
 /** The feed's page for the account, from `cursor` (an instant) back. */
 export const feedFor = (
   services: {
-    readonly database: Parameters<typeof drizzle>[0]
+    readonly db: Database['Service']
     readonly pages: PublicPages['Service']
     readonly social: SocialStore
     readonly checks: Checks['Service']
@@ -114,7 +113,7 @@ export const feedFor = (
     if (people.length === 0) return { items: [], cursor: null }
     const parsed = cursor === undefined ? Option.none() : DateTime.make(cursor)
     const before = Option.match(parsed, { onNone: () => new Date(8.64e15), onSome: DateTime.toDateUtc })
-    const found = yield* candidates(services.database, people, before)
+    const found = yield* candidates(services.db, people, before)
     const passed = yield* passedOnly(services.checks, found)
     const items = yield* Effect.forEach(passed, (candidate) => shown(services.pages, candidate, viewer), {
       concurrency: 8,

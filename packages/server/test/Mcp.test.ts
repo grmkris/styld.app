@@ -86,6 +86,7 @@ const looks = Looks.of({
   getLook: notUsed,
   shareLook: notUsed,
   deleteLook: notUsed,
+  looksById: notUsed,
 })
 /** Redraws: the first piece is drawn again; the second shows its original photo, which is never sent on. */
 const redraws: Array<{ readonly pieceId: string; readonly input: RedrawPicture }> = []

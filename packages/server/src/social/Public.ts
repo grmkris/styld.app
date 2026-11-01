@@ -8,21 +8,21 @@ import {
   PublicPiece,
   Unavailable,
 } from '@styld/protocol'
-import { Array, Context, Effect, Option, Schema } from 'effect'
+import { Array, Context, Effect, Layer, Option, Schema } from 'effect'
 import { shownItem } from '../boards/Parts.ts'
-import { type BoardItemRow, type BoardRow, type BoardStore, makeBoardStore } from '../boards/Store.ts'
-import { type LookRow, type LookStore, makeLookStore } from '../looks/Store.ts'
-import type { Checks } from '../safety/Checks.ts'
-import { deliverImage, type ImageBindings } from '../wardrobe/Delivery.ts'
+import { type BoardItemRow, type BoardRow, type BoardStore, boardStore, type PinRow } from '../boards/Store.ts'
+import { type LookRow, type LookStore, lookStore } from '../looks/Store.ts'
+import { Checks } from '../safety/Checks.ts'
+import { deliverImage } from '../wardrobe/Delivery.ts'
 import type { ShownImage } from '../wardrobe/Http.ts'
 import type { ImageSize } from '../wardrobe/Media.ts'
-import { shownImage } from '../wardrobe/Shown.ts'
-import type { PictureRow, PieceRow } from '../wardrobe/Store.ts'
-import type { StoreUnavailable } from '../kernel/Db.ts'
-import type { ProfileRow } from './ProfileStore.ts'
-import { makePublicStore, type PublicStore } from './PublicStore.ts'
-import { makeSocialStore, type SocialStore } from './SocialStore.ts'
-import { heldBack, visibleAt } from './Visibility.ts'
+import type { PieceRow } from '../wardrobe/Store.ts'
+import { Database, type StoreUnavailable } from '../kernel/Db.ts'
+import { Media } from '../kernel/Media.ts'
+import { profileOf, type ProfileRow } from './ProfileStore.ts'
+import { publicStore, type PublicStore } from './PublicStore.ts'
+import { socialStore, type SocialStore } from './SocialStore.ts'
+import { heldBack, type PieceWithPicture, publicImage, visibleAt } from './Visibility.ts'
 import { digestOf } from '../kernel/Ids.ts'
 
 // What others may see. One rule throughout: a thing is shown while its owner's profile is published and shown, its
@@ -35,17 +35,6 @@ const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapErro
 const notFound = () => NotFound.make({})
 const orNotFound = <A>(found: Option.Option<A>) =>
   Option.match(found, { onNone: () => Effect.fail(notFound()), onSome: Effect.succeed })
-
-interface PieceWithPicture {
-  readonly piece: PieceRow
-  readonly picture: PictureRow | null
-}
-
-/** The picture a piece shows others: its cut-out or its clean drawing, never the photo it came from. */
-const publicImage = ({ piece, picture }: PieceWithPicture) => {
-  const image = shownImage(piece, picture ?? undefined)
-  return image.key === piece.originalKey ? Option.none() : Option.some(image)
-}
 
 const decoded = <S extends Schema.Top>(schema: S, value: unknown) =>
   // Only Styld's own rows reach here, through the same schemas; a row that does not decode is a bug.
@@ -81,10 +70,11 @@ interface Seen {
   readonly looks: ReadonlyMap<string, PublicLook>
 }
 
-type PinRow = Effect.Success<ReturnType<ReturnType<typeof makeBoardStore>['pinsOf']>>[number]
+/** A pin as others see it, to be decoded with its board. */
+type ShownPin = { readonly id: string; readonly [field: string]: unknown }
 
-const publicPins = (seen: Seen, pins: ReadonlyArray<PinRow>): ReadonlyArray<object> =>
-  pins.flatMap(({ pin, origin }): ReadonlyArray<object> => {
+const publicPins = (seen: Seen, pins: ReadonlyArray<PinRow>): ReadonlyArray<ShownPin> =>
+  pins.flatMap(({ pin, origin }): ReadonlyArray<ShownPin> => {
     const base = { id: pin.id, addedAt: pin.createdAt.toISOString() }
     const piece = pin.pieceId === null ? undefined : seen.pieces.get(pin.pieceId)
     const look = pin.lookId === null ? undefined : seen.looks.get(pin.lookId)
@@ -110,6 +100,7 @@ const publicItems = (seen: Seen, items: ReadonlyArray<BoardItemRow>, held: Reado
 
 /** The stores and checks public pages read through. */
 interface Reader {
+  readonly db: Database['Service']
   readonly store: PublicStore
   readonly boards: BoardStore
   readonly looks: LookStore
@@ -132,7 +123,7 @@ const shownProfile = (r: Reader, row: ProfileRow) =>
     return blocked ? Option.none() : Option.some({ row, author: author.value })
   })
 const ownerOf = (r: Reader, accountId: string) =>
-  Effect.flatMap(stored(r.store.profileOf(accountId)), (row) =>
+  Effect.flatMap(stored(profileOf(r.db, accountId)), (row) =>
     Option.isNone(row) ? Effect.succeed(Option.none()) : shownProfile(r, row.value),
   )
 
@@ -349,17 +340,17 @@ const pages = (base: Reader) => ({
   }),
 })
 
-const images = (
-  r: Reader,
-  bindings: ImageBindings,
-  versionOf: (key: string, size: ImageSize) => Effect.Effect<string, Unavailable>,
-) => {
+/** A public picture's version: a digest of its stored key, so a changed picture is a new address. */
+const versionOf = (key: string, size: ImageSize) =>
+  Effect.map(digestOf(key), (digest) => `${digest.slice(0, 22)}.${size}`)
+
+const images = (r: Reader, media: Media['Service']) => {
   const delivered = (
     source: { readonly key: string; readonly contentType: string },
     size: ImageSize,
     version: string,
   ) =>
-    Effect.map(deliverImage(bindings, source, size, { fallback: 'none' }), (image) =>
+    Effect.map(deliverImage(media, source, size, { fallback: 'none' }), (image) =>
       Option.map(image, (shown): ShownImage => ({ ...shown, version })),
     )
   return {
@@ -384,34 +375,27 @@ const images = (
   }
 }
 
-const make = (
-  bindings: ImageBindings & { readonly database: Parameters<typeof makePublicStore>[0] },
-  checks: Checks['Service'],
-) =>
-  Effect.sync(() => {
-    const r: Reader = {
-      store: makePublicStore(bindings.database),
-      boards: makeBoardStore(bindings.database),
-      looks: makeLookStore(bindings.database),
-      social: makeSocialStore(bindings.database),
-      checks,
-      // Pictures are not gated by blocks: their ids are random, and every page that names one applies blocks.
-      viewer: Option.none(),
-    }
-    return { ...pages(r), ...images(r, bindings, versionOf) }
-  })
+const make = Effect.gen(function* () {
+  const db = yield* Database
+  const r: Reader = {
+    db,
+    store: publicStore(db),
+    boards: boardStore(db),
+    looks: lookStore(db),
+    social: socialStore(db),
+    checks: yield* Checks,
+    // Pictures are not gated by blocks: their ids are random, and every page that names one applies blocks.
+    viewer: Option.none(),
+  }
+  return { ...pages(r), ...images(r, yield* Media) }
+})
 
-/** Public pages: what anyone may read, signed in or not. */
-export class PublicPages extends Context.Service<PublicPages, Effect.Success<ReturnType<typeof make>>>()(
-  '@styld/server/PublicPages',
-) {}
-
-/** A public picture's version: a digest of its stored key, so a changed picture is a new address. */
-const versionOf = (key: string, size: ImageSize) =>
-  Effect.map(digestOf(key), (digest) => `${digest.slice(0, 22)}.${size}`)
-
-/** Public pages over the Worker's bindings, by the Worker's checks. Build it once per isolate. */
-export const makePublicPages = (
-  bindings: ImageBindings & { readonly database: Parameters<typeof makePublicStore>[0] },
-  checks: Checks['Service'],
-) => Effect.map(make(bindings, checks), (service) => PublicPages.of(service))
+/** Public pages: what anyone may read, signed in or not, by the one visibility rule. */
+export class PublicPages extends Context.Service<PublicPages, Effect.Success<typeof make>>()(
+  '@styld/server/social/PublicPages',
+) {
+  static readonly layer = Layer.effect(
+    this,
+    Effect.map(make, (service) => PublicPages.of(service)),
+  )
+}

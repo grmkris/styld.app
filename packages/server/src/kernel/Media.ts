@@ -1,5 +1,5 @@
 import type * as Cloudflare from '@alchemy.run/cloudflare'
-import { Array, Effect, Schema } from 'effect'
+import { Array, Context, Effect, Layer, Schema } from 'effect'
 
 // Stored objects go one way: R2 lists a page at a time and deletes at most a thousand keys a call, so every listing
 // pages until it is complete and every delete goes in batches. A row is the truth about an object; the object goes
@@ -7,6 +7,16 @@ import { Array, Effect, Schema } from 'effect'
 
 /** The media bucket, as Alchemy's runtime object. */
 export type Bucket = Effect.Success<Cloudflare.R2.ReadWriteBucketClient['raw']>
+
+/** The Images binding that resizes stored pictures, as Alchemy's runtime object. */
+export type ImagesBinding = Effect.Success<Cloudflare.Images.ImagesClient['raw']>
+
+/** The bucket stored objects are kept in and the Images binding that resizes them, for every module's service. */
+export class Media extends Context.Service<Media, { readonly bucket: Bucket; readonly images: ImagesBinding }>()(
+  '@styld/server/kernel/Media',
+) {
+  static readonly layer = (bindings: Media['Service']) => Layer.succeed(this, bindings)
+}
 
 /** What listing and deleting need of a bucket: the R2 binding has it, and so can a test's. */
 export interface Listing {
@@ -45,6 +55,17 @@ export const deleteKeys = (bucket: Listing, keys: ReadonlyArray<string>) =>
   Effect.forEach(Array.chunksOf(keys, deleteBatch), (chunk) => call(() => bucket.delete([...chunk])), {
     discard: true,
   })
+
+/** Delete the objects of rows already deleted. The rows are the truth, so a failed delete is logged rather than
+ * failed: its bytes stay under the account's prefix, which account deletion clears. */
+export const deleteAfterRows = (bucket: Listing, keys: ReadonlyArray<string>, owner: string) =>
+  deleteKeys(bucket, keys).pipe(
+    Effect.catchTag('MediaUnavailable', () =>
+      Effect.logWarning('Styld.Media.delete failed').pipe(
+        Effect.annotateLogs({ 'styld.media.owner': owner, 'styld.media.keys': keys.length }),
+      ),
+    ),
+  )
 
 /** Delete everything under a prefix. */
 export const deletePrefix = (bucket: Listing, prefix: string) =>

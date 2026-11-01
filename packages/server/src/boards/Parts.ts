@@ -1,24 +1,18 @@
 import { Board, type BoardId, type BoardItem, NotFound, BoardSummary, type Look, Unavailable } from '@styld/protocol'
 import { Effect, Match, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import { shownLooks } from '../looks/Looks.ts'
-import { type LookStore } from '../looks/Store.ts'
+import type { Looks } from '../looks/Looks.ts'
 import type { Checks } from '../safety/Checks.ts'
-import type { ProfileStore } from '../social/ProfileStore.ts'
-import { type ImageBindings } from '../wardrobe/Delivery.ts'
 import { type Store } from '../wardrobe/Store.ts'
-import { type StoreUnavailable } from '../kernel/Db.ts'
-import { toPiece, type WardrobeBindings } from '../wardrobe/Parts.ts'
-import { type BoardItemRow, type BoardPinRow, type BoardRow, type BoardStore } from './Store.ts'
+import type { Database, StoreUnavailable } from '../kernel/Db.ts'
+import type { Media } from '../kernel/Media.ts'
+import { toPiece } from '../wardrobe/Parts.ts'
+import { type BoardItemRow, type BoardPinRow, type BoardRow, type BoardStore, type PinRow } from './Store.ts'
 import { newId } from '../kernel/Ids.ts'
 import { priorResult, type Identified } from '../kernel/Receipts.ts'
 
-// What the board operations share: the bindings, how a board is shown, receipts, ownership and new pins.
-
-/** The bindings boards keep their rows and pictures in. */
-export interface BoardBindings extends ImageBindings {
-  readonly database: WardrobeBindings['database']
-}
+// What the board operations share: the services they work through, how a board is shown, receipts, ownership and new
+// pins.
 
 export const unavailable = () => Unavailable.make({})
 export const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
@@ -60,27 +54,24 @@ export const itemRow = (item: BoardItem): Omit<BoardItemRow, 'boardId'> => {
   )
 }
 
+/** The services the board operations work through, taken once when the `Boards` layer is built. */
 export interface Parts {
-  readonly bindings: BoardBindings
+  readonly db: Database['Service']
+  readonly media: Media['Service']
   readonly store: BoardStore
   readonly wardrobeStore: Store
-  readonly lookStore: LookStore
-  readonly profileStore: ProfileStore
   readonly checks: Checks['Service']
+  readonly looks: Looks['Service']
 }
 
-export type PinWithPiece = Effect.Success<ReturnType<BoardStore['pinsOf']>>[number]
+export type PinWithPiece = PinRow
 
 /** The looks these pins hold, by id. */
 export const pinnedLooks = (parts: Parts, pins: ReadonlyArray<PinWithPiece>) =>
   Effect.gen(function* () {
     const lookIds = [...new Set(pins.flatMap(({ pin }) => (pin.lookId === null ? [] : [pin.lookId])))]
     if (lookIds.length === 0) return new Map<string, Look>()
-    const looks = yield* shownLooks(
-      parts.lookStore,
-      yield* stored(parts.lookStore.looksById(lookIds)),
-      yield* parts.checks.statuses('look', lookIds),
-    )
+    const looks = yield* parts.looks.looksById(lookIds)
     return new Map(looks.map((look) => [look.id, look]))
   })
 
@@ -110,12 +101,13 @@ export const shownPins = (parts: Parts, pins: ReadonlyArray<PinWithPiece>) =>
     return (boardId: string) => shownRows.filter((row) => row.boardId === boardId).flatMap((row) => row.pins)
   })
 
-/** Boards as the protocol shows them, each with its table and pins. */
+/** Boards as their owner sees them, each with its table and pins. */
 export const shown = (parts: Parts, rows: ReadonlyArray<BoardRow>) =>
   Effect.gen(function* () {
     const ids = rows.map(({ id }) => id)
     const items = yield* stored(parts.store.itemsOf(ids))
-    const pinsOf = yield* shownPins(parts, yield* stored(parts.store.pinsOf(ids)))
+    const pins = yield* stored(parts.store.pinsOf(ids))
+    const pinsOf = yield* shownPins(parts, pins)
     const checks = yield* parts.checks.statuses('board', ids)
     return yield* Effect.forEach(rows, (row) =>
       // Only the service writes rows, through the same schemas; a row that does not decode is a bug.

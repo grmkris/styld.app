@@ -1,63 +1,55 @@
 import { boards, contentChecks, profiles, reports } from '@styld/db'
 import { type CheckState, Unavailable } from '@styld/protocol'
 import { count, desc, eq, inArray, max } from 'drizzle-orm'
-import { drizzle } from 'drizzle-orm/d1'
-import { Context, Effect, Option } from 'effect'
-import type { CheckTarget, Checks } from '../safety/Checks.ts'
-import { nowDate } from '../kernel/Db.ts'
+import { Context, Effect, Layer, Option } from 'effect'
+import { type CheckTarget, Checks } from '../safety/Checks.ts'
+import { Database, nowDate, query } from '../kernel/Db.ts'
+import { handleOwner } from './ProfileStore.ts'
 
 // What Styld's admins do through their assistants: feature boards and people for Explore, mark the house account
 // whose public boards are Edits from Styld, hide or restore anything whatever its check said, and read reports and
 // checks. Only accounts on the admin list ever see these tools.
 
 const unavailable = () => Unavailable.make({})
-const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: unavailable })
+const read = <A>(run: () => Promise<A>) => query(run).pipe(Effect.mapError(unavailable))
 
 /** How many reports and checks a list shows. */
 const listLimit = 50
 
+type Drizzle = Database['Service']
+
 /** Reading what was reported and how checks stand. */
-const reading = (db: ReturnType<typeof drizzle>) => ({
+const reading = (db: Drizzle) => ({
   /** Reported things, the most recently reported first, with how many people reported each and why. */
-  reports: () =>
-    attempt(() =>
+  reports: Effect.fn('Styld.Curation.reports')(function* () {
+    const targets = yield* read(() =>
       db
-        .select({
-          kind: reports.targetKind,
-          id: reports.targetId,
-          reporters: count(),
-          last: max(reports.createdAt),
-        })
+        .select({ kind: reports.targetKind, id: reports.targetId, reporters: count(), last: max(reports.createdAt) })
         .from(reports)
         .groupBy(reports.targetKind, reports.targetId)
         .orderBy(desc(max(reports.createdAt)))
         .limit(listLimit),
-    ).pipe(
-      Effect.flatMap((targets) =>
-        Effect.map(
-          attempt(() =>
-            db
-              .select({ id: reports.targetId, reason: reports.reason, note: reports.note })
-              .from(reports)
-              .where(
-                inArray(
-                  reports.targetId,
-                  targets.map(({ id }) => id),
-                ),
-              ),
+    )
+    const reasons = yield* read(() =>
+      db
+        .select({ id: reports.targetId, reason: reports.reason, note: reports.note })
+        .from(reports)
+        .where(
+          inArray(
+            reports.targetId,
+            targets.map(({ id }) => id),
           ),
-          (reasons) =>
-            targets.map((target) => ({
-              ...target,
-              last: target.last === null ? null : new Date(target.last).toISOString(),
-              reasons: reasons.filter(({ id }) => id === target.id).map(({ reason, note }) => ({ reason, note })),
-            })),
         ),
-      ),
-    ),
+    )
+    return targets.map((target) => ({
+      ...target,
+      last: target.last === null ? null : new Date(target.last).toISOString(),
+      reasons: reasons.filter(({ id }) => id === target.id).map(({ reason, note }) => ({ reason, note })),
+    }))
+  }),
   /** Checks in one state, the most recently asked first. */
-  checks: (state: CheckState) =>
-    attempt(() =>
+  checks: Effect.fn('Styld.Curation.checks')(function* (state: CheckState) {
+    return yield* read(() =>
       db
         .select({
           kind: contentChecks.targetKind,
@@ -71,78 +63,91 @@ const reading = (db: ReturnType<typeof drizzle>) => ({
         .where(eq(contentChecks.state, state))
         .orderBy(desc(contentChecks.requestedAt))
         .limit(listLimit),
-    ),
+    )
+  }),
 })
 
-const make = (database: Parameters<typeof drizzle>[0], checks: Checks['Service']) => {
-  const db = drizzle(database)
-  const accountOf = (handle: string) =>
-    Effect.map(
-      attempt(() =>
-        db.select({ accountId: profiles.accountId }).from(profiles).where(eq(profiles.handle, handle)).limit(1),
-      ),
-      (rows) => Option.map(Option.fromNullishOr(rows[0]), ({ accountId }) => accountId),
+/** Featuring boards and people, and the house account. */
+const featuring = (db: Drizzle) => ({
+  /** Feature a public board in Explore, or stop featuring it. */
+  featureBoard: Effect.fn('Styld.Curation.featureBoard')(function* (boardId: string, featured: boolean) {
+    const at = yield* nowDate
+    const rows = yield* read(() =>
+      db
+        .update(boards)
+        .set({ featuredAt: featured ? at : null })
+        .where(eq(boards.id, boardId))
+        .returning({ id: boards.id }),
     )
+    return rows.length > 0
+  }),
+  /** Feature a person among People to follow, or stop. */
+  featureProfile: Effect.fn('Styld.Curation.featureProfile')(function* (handle: string, featured: boolean) {
+    const at = yield* nowDate
+    const rows = yield* read(() =>
+      db
+        .update(profiles)
+        .set({ featuredAt: featured ? at : null })
+        .where(eq(profiles.handle, handle))
+        .returning({ id: profiles.accountId }),
+    )
+    return rows.length > 0
+  }),
+  /** Mark the house account, whose public boards are Edits from Styld. It may take the reserved `styld` handle. */
+  markHouse: Effect.fn('Styld.Curation.markHouse')(function* (
+    handle: string,
+    house: boolean,
+    newHandle: Option.Option<string>,
+  ) {
+    const accountId = yield* handleOwner(db, handle).pipe(Effect.mapError(unavailable))
+    if (Option.isNone(accountId)) return false
+    const taken = Option.isSome(newHandle)
+      ? yield* handleOwner(db, newHandle.value).pipe(Effect.mapError(unavailable))
+      : Option.none()
+    if (Option.isSome(taken) && taken.value !== accountId.value) return false
+    yield* read(() =>
+      db
+        .update(profiles)
+        .set({ house, ...(Option.isSome(newHandle) ? { handle: newHandle.value } : {}) })
+        .where(eq(profiles.accountId, accountId.value)),
+    )
+    return true
+  }),
+})
+
+const make = Effect.gen(function* () {
+  const db = yield* Database
+  const checks = yield* Checks
   return {
     ...reading(db),
+    ...featuring(db),
     /** What a curation tool names: a profile by its handle, anything else by its id. */
-    targetOf: (kind: CheckTarget['kind'], id: string) =>
-      kind === 'profile'
-        ? Effect.map(
-            accountOf(id),
-            Option.map((accountId): CheckTarget => ({ kind, id: accountId })),
-          )
-        : Effect.succeed(Option.some<CheckTarget>({ kind, id })),
-    /** Feature a public board in Explore, or stop featuring it. */
-    featureBoard: (boardId: string, featured: boolean) =>
-      Effect.flatMap(nowDate, (at) =>
-        attempt(() =>
-          db
-            .update(boards)
-            .set({ featuredAt: featured ? at : null })
-            .where(eq(boards.id, boardId))
-            .returning({ id: boards.id }),
-        ),
-      ).pipe(Effect.map((rows) => rows.length > 0)),
-    /** Feature a person among People to follow, or stop. */
-    featureProfile: (handle: string, featured: boolean) =>
-      Effect.flatMap(nowDate, (at) =>
-        attempt(() =>
-          db
-            .update(profiles)
-            .set({ featuredAt: featured ? at : null })
-            .where(eq(profiles.handle, handle))
-            .returning({ id: profiles.accountId }),
-        ),
-      ).pipe(Effect.map((rows) => rows.length > 0)),
-    /** Mark the house account, whose public boards are Edits from Styld. It may take the reserved `styld` handle. */
-    markHouse: (handle: string, house: boolean, newHandle: Option.Option<string>) =>
-      Effect.gen(function* () {
-        const accountId = yield* accountOf(handle)
-        if (Option.isNone(accountId)) return false
-        const taken = Option.isSome(newHandle) ? yield* accountOf(newHandle.value) : Option.none()
-        if (Option.isSome(taken) && taken.value !== accountId.value) return false
-        yield* attempt(() =>
-          db
-            .update(profiles)
-            .set({ house, ...(Option.isSome(newHandle) ? { handle: newHandle.value } : {}) })
-            .where(eq(profiles.accountId, accountId.value)),
-        )
-        return true
-      }),
-    /** Hide something from others whatever its check said, or restore it to what the check says; the check's rows
-     * are written only by `Checks`. */
-    hide: (target: CheckTarget, hidden: boolean) => checks.curate(target, hidden).pipe(Effect.mapError(unavailable)),
+    targetOf: Effect.fn('Styld.Curation.targetOf')(function* (kind: CheckTarget['kind'], id: string) {
+      if (kind !== 'profile') return Option.some<CheckTarget>({ kind, id })
+      const accountId = yield* handleOwner(db, id).pipe(Effect.mapError(unavailable))
+      return Option.map(accountId, (account): CheckTarget => ({ kind, id: account }))
+    }),
+    /** Hide something from others whatever its check said, or restore it to what the check says; the check's rows are
+     * written only by `Checks`. */
+    hide: Effect.fn('Styld.Curation.hide')(function* (target: CheckTarget, hidden: boolean) {
+      return yield* checks.curate(target, hidden)
+    }),
     /** Put something in front of the model again. */
-    rerun: (target: CheckTarget) => checks.reported(target, false),
+    rerun: Effect.fn('Styld.Curation.rerun')(function* (target: CheckTarget) {
+      yield* checks.reported(target, false)
+    }),
   }
-}
+})
 
 /** Curation for Styld's admins. */
-export class Curation extends Context.Service<Curation, ReturnType<typeof make>>()('@styld/server/Curation') {}
-
-export const makeCuration = (database: Parameters<typeof drizzle>[0], checks: Checks['Service']) =>
-  Curation.of(make(database, checks))
+export class Curation extends Context.Service<Curation, Effect.Success<typeof make>>()(
+  '@styld/server/social/Curation',
+) {
+  static readonly layer = Layer.effect(
+    this,
+    Effect.map(make, (service) => Curation.of(service)),
+  )
+}
 
 /** The admin list: lowercased emails, from the Worker's `STYLD_ADMIN_EMAILS` (comma-separated). */
 export const adminEmails = (configured: unknown): ReadonlySet<string> =>

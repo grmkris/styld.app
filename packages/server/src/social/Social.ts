@@ -17,14 +17,15 @@ import {
   LimitReached,
   Unavailable,
 } from '@styld/protocol'
-import { Context, DateTime, Duration, Effect, Match, Option, Schema } from 'effect'
+import { Context, DateTime, Duration, Effect, Layer, Match, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import type { CheckTarget, Checks } from '../safety/Checks.ts'
-import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
+import { type CheckTarget, Checks } from '../safety/Checks.ts'
+import { Database, nowDate, type StoreUnavailable } from '../kernel/Db.ts'
 import { feedFor } from './Feed.ts'
-import { authorOf, type PublicPages, summaryOf } from './Public.ts'
-import { makePublicStore } from './PublicStore.ts'
-import { makeSocialStore, type SaveRow, type SocialStore } from './SocialStore.ts'
+import { handleOwner, profileOf } from './ProfileStore.ts'
+import { authorOf, PublicPages, summaryOf } from './Public.ts'
+import { publicStore } from './PublicStore.ts'
+import { type SaveRow, type SocialStore, socialStore } from './SocialStore.ts'
 import { newId } from '../kernel/Ids.ts'
 
 // What people do with each other: saving what others made public, following, blocking and reporting. Everything
@@ -35,11 +36,11 @@ const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapErro
 const orNotFound = <A>(found: Option.Option<A>) =>
   Option.match(found, { onNone: () => Effect.fail(NotFound.make({})), onSome: Effect.succeed })
 
-type Database = Parameters<typeof makeSocialStore>[0]
+type Drizzle = Database['Service']
 
 /** Whose a saveable or reportable thing is, read without regard to who may see it. */
-const ownerOf = (database: Database) => {
-  const store = makePublicStore(database)
+const ownerOf = (db: Drizzle) => {
+  const store = publicStore(db)
   return {
     piece: (pieceId: string) =>
       Effect.map(stored(store.pieces([pieceId])), (rows) =>
@@ -56,7 +57,7 @@ const ownerOf = (database: Database) => {
         Option.map(({ accountId }) => accountId),
       ),
     profiles: (accountIds: ReadonlyArray<string>) =>
-      Effect.forEach(accountIds, (accountId) => stored(store.profileOf(accountId))),
+      Effect.forEach(accountIds, (accountId) => stored(profileOf(db, accountId))),
   }
 }
 
@@ -75,7 +76,7 @@ const savedId = (row: SaveRow) => row.pieceId ?? row.lookId ?? row.boardId ?? ''
 
 /** What the social operations share. */
 interface Parts {
-  readonly database: Database
+  readonly db: Drizzle
   readonly store: SocialStore
   readonly owners: ReturnType<typeof ownerOf>
   readonly pages: PublicPages['Service']
@@ -127,7 +128,7 @@ const savedThing = (p: Parts, kind: SaveRow['kind'], id: string, viewer: string,
 /** Someone by handle, while they are published and no block stands between them and the account. */
 const someone = (p: Parts, viewer: string, handle: string) =>
   Effect.gen(function* () {
-    const accountId = yield* Effect.flatMap(stored(p.store.accountOf(handle)), orNotFound)
+    const accountId = yield* Effect.flatMap(stored(handleOwner(p.db, handle, 'published')), orNotFound)
     if (accountId === viewer) return yield* NotWithYourself.make({})
     if (yield* stored(p.store.hasBlocked(accountId, viewer))) return yield* NotFound.make({})
     return accountId
@@ -153,7 +154,7 @@ const reported = (p: Parts, viewer: string, target: ReportTarget) =>
       ReportedProfile: ({ handle }) =>
         Effect.gen(function* () {
           yield* p.pages.profile(handle, Option.some(viewer))
-          const accountId = yield* Effect.flatMap(stored(p.store.accountOf(handle)), orNotFound)
+          const accountId = yield* Effect.flatMap(stored(handleOwner(p.db, handle, 'published')), orNotFound)
           return { owner: accountId, check: { kind: 'profile', id: accountId } satisfies CheckTarget }
         }),
       ReportedBoard: ({ boardId }) =>
@@ -226,7 +227,7 @@ const relations = (p: Parts) => ({
    * told. */
   setBlocked: Effect.fn('Styld.Social.setBlocked')(function* (handle: string, input: SetBlocked) {
     const { accountId } = yield* CurrentAccount
-    const other = yield* Effect.flatMap(stored(p.store.accountOfAnyHandle(handle)), orNotFound)
+    const other = yield* Effect.flatMap(stored(handleOwner(p.db, handle)), orNotFound)
     if (other === accountId) return yield* NotWithYourself.make({})
     if (input.blocked) yield* stored(p.store.block(accountId, other, yield* nowDate))
     else yield* stored(p.store.unblock(accountId, other))
@@ -257,11 +258,7 @@ const relations = (p: Parts) => ({
   /** What people the account follows made public lately, from `cursor` back. */
   feed: Effect.fn('Styld.Social.feed')(function* (cursor: string | undefined) {
     const { accountId } = yield* CurrentAccount
-    return yield* feedFor(
-      { database: p.database, pages: p.pages, social: p.store, checks: p.checks },
-      accountId,
-      cursor,
-    )
+    return yield* feedFor({ db: p.db, pages: p.pages, social: p.store, checks: p.checks }, accountId, cursor)
   }),
 })
 
@@ -307,23 +304,22 @@ const filedReport = (p: Parts, accountId: string, input: Omit<CreateReport, 'ope
     yield* p.checks.reported(check, reporters >= reportsToHide && check.kind !== 'profile')
   })
 
-const make = (database: Database, pages: PublicPages['Service'], checks: Checks['Service']) =>
-  Effect.sync(() => {
-    const p: Parts = {
-      database,
-      store: makeSocialStore(database),
-      owners: ownerOf(database),
-      pages,
-      checks,
-    }
-    return { ...saving(p), ...relations(p), ...reporting(p) }
-  })
+const make = Effect.gen(function* () {
+  const db = yield* Database
+  const p: Parts = {
+    db,
+    store: socialStore(db),
+    owners: ownerOf(db),
+    pages: yield* PublicPages,
+    checks: yield* Checks,
+  }
+  return { ...saving(p), ...relations(p), ...reporting(p) }
+})
 
 /** Saves, follows, blocks and reports. */
-export class Social extends Context.Service<Social, Effect.Success<ReturnType<typeof make>>>()(
-  '@styld/server/Social',
-) {}
-
-/** The social service over the Worker's database, public pages and checks. Build it once per isolate. */
-export const makeSocial = (database: Database, pages: PublicPages['Service'], checks: Checks['Service']) =>
-  Effect.map(make(database, pages, checks), (service) => Social.of(service))
+export class Social extends Context.Service<Social, Effect.Success<typeof make>>()('@styld/server/social/Social') {
+  static readonly layer = Layer.effect(
+    this,
+    Effect.map(make, (service) => Social.of(service)),
+  )
+}

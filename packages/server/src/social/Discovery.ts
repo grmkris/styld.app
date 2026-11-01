@@ -12,9 +12,9 @@ import {
   wordsIn,
 } from '@styld/protocol'
 import { and, count, desc, eq, inArray, isNotNull, like, notExists, or, type SQL, sql } from 'drizzle-orm'
-import { drizzle } from 'drizzle-orm/d1'
-import { Context, Effect, Option, Schema } from 'effect'
-import type { PublicPages } from './Public.ts'
+import { Context, Effect, Layer, Option, Schema } from 'effect'
+import { Database } from '../kernel/Db.ts'
+import { PublicPages } from './Public.ts'
 
 // Explore and search over people and public boards. Rows are found here; what may show is the public pages' rule
 // for discovery: passed checks only, and no profile three people reported.
@@ -52,8 +52,7 @@ const moodWords: Readonly<Record<string, Mood>> = {
 /** A board that has this mood among its own. */
 const withMood = (mood: Mood) => sql`exists (select 1 from json_each(${boards.moods}) where value = ${mood})`
 
-const makeQueries = (database: Parameters<typeof drizzle>[0]) => {
-  const db = drizzle(database)
+const makeQueries = (db: Database['Service']) => {
   const publicBoards = (where: SQL | undefined, order: SQL | typeof boards.publishedAt) =>
     attempt(() =>
       db
@@ -136,8 +135,9 @@ const makeQueries = (database: Parameters<typeof drizzle>[0]) => {
   }
 }
 
-const make = (database: Parameters<typeof drizzle>[0], pages: PublicPages['Service']) => {
-  const queries = makeQueries(database)
+const make = Effect.gen(function* () {
+  const queries = makeQueries(yield* Database)
+  const pages = yield* PublicPages
   /** Boards for discovery, without any of a reported profile, each with its moods as the protocol names them. */
   const found = (rows: ReadonlyArray<typeof boards.$inferSelect>, viewer: Option.Option<string>) =>
     Effect.gen(function* () {
@@ -193,11 +193,14 @@ const make = (database: Parameters<typeof drizzle>[0], pages: PublicPages['Servi
       } satisfies SearchResults
     }),
   }
+})
+
+/** Explore and search, by the public pages' rule for discovery. */
+export class Discovery extends Context.Service<Discovery, Effect.Success<typeof make>>()(
+  '@styld/server/social/Discovery',
+) {
+  static readonly layer = Layer.effect(
+    this,
+    Effect.map(make, (service) => Discovery.of(service)),
+  )
 }
-
-/** Explore and search. */
-export class Discovery extends Context.Service<Discovery, ReturnType<typeof make>>()('@styld/server/Discovery') {}
-
-/** Discovery over the Worker's database and public pages. Build it once per isolate. */
-export const makeDiscovery = (database: Parameters<typeof drizzle>[0], pages: PublicPages['Service']) =>
-  Discovery.of(make(database, pages))
