@@ -56,6 +56,10 @@
     "comment": "SAFETY: the fake implements the bucket read and the Images transform the judge's picture reads call -- the rest of R2 and Images is never called by a check"
   },
   {
+    "file": "packages/server/test/OutfitService.test.ts",
+    "comment": "SAFETY: no picture is ever read here -- every piece's read fails over to an unjudged outfit, as a missing picture does"
+  },
+  {
     "file": "packages/server/test/LocalD1.ts",
     "comment": "SAFETY: the shim implements the D1 calls drizzle and the stores make -- the rest of D1Database (exec, sessions, dump) is never called by them"
   }

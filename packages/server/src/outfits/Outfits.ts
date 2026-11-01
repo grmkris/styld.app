@@ -1,47 +1,39 @@
 import {
-  CurrentAccount,
-  LimitReached,
   type MakeOutfit,
-  NotFound,
-  outfitKeyOf,
   type OutfitMode,
   type OutfitProposal,
+  OutfitProposals,
+  outfitKeyOf,
   OutfitSession,
-  type ProposalRef,
-  SlowDown,
+  CurrentAccount,
   ThinkingUnanswered,
+  NotFound,
+  type ProposalRef,
+  LimitReached,
   Unavailable,
 } from '@styld/protocol'
-import { Array, Clock, Context, Effect, Option, Order } from 'effect'
-import type { CaptureMetrics } from '../capture/Metrics.ts'
+import { Array, Clock, Context, DateTime, Effect, Layer, Option, Order, Schema } from 'effect'
+import { CaptureMetrics } from '../capture/Metrics.ts'
 import type { Picture } from '../capture/Providers.ts'
-import type { ImageBindings } from '../wardrobe/Delivery.ts'
-import type { Store } from '../wardrobe/Store.ts'
-import { judgingPicture, type OutfitJudge } from './Judge.ts'
-import type { Thinking } from './Proposer.ts'
-import { type Brief, missingOf, proposed, type Wearable } from './Rules.ts'
-import type { OutfitStore } from './Store.ts'
-import { type Owned, wearablesOf } from './Wearables.ts'
+import { Database } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
+import { Media } from '../kernel/Media.ts'
+import { Pacing } from '../kernel/Pacing.ts'
+import { once, receiptRows } from '../kernel/Receipts.ts'
+import { makeStore } from '../wardrobe/Store.ts'
+import { judgingPicture, OutfitJudge } from './Judge.ts'
+import { Thinking } from './Proposer.ts'
+import { type Brief, missingOf, proposed, type Wearable } from './Rules.ts'
+import { outfitStore } from './Store.ts'
+import { type Owned, wearablesOf } from './Wearables.ts'
 
 // The outfit engine (owner, 2026-10-31), shared by the website, the assistants and Styld: free at the account's pace,
 // Thinking at most `thinkingPerDay` times a day. Fast draws candidates by the rules; Thinking asks the model; Clef
-// ranks either. Every batch is counted with its way, latency and cost, so the owner can compare the two.
+// ranks either. Every batch is counted with its way, latency and cost, so the owner can compare the two. A repeated
+// request (the same operation id) answers the same batch from its receipt, and is counted against nothing again.
 
-export interface OutfitParts {
-  readonly wardrobe: Store
-  readonly days: OutfitStore
-  readonly bindings: ImageBindings
-  readonly judge: OutfitJudge['Service']
-  readonly proposer: Thinking['Service']
-  /** The account's pace: any outfit, and Thinking's tighter one. False when over it. */
-  readonly pace: {
-    readonly outfit: (accountId: string) => Effect.Effect<boolean>
-    readonly thinking: (accountId: string) => Effect.Effect<boolean>
-  }
-  readonly metrics: CaptureMetrics['Service']
-  readonly thinkingPerDay: number
-}
+/** How many times a day each account may ask Thinking (owner, 2026-10-31); Fast still answers after. */
+const thinkingPerDay = 50
 
 /** The most candidates Fast draws for Clef to rank. */
 const mostCandidates = 12
@@ -54,19 +46,30 @@ const unavailable = () => Unavailable.make({})
 /** Thinking's model gave no usable outfit: Fast may still answer. */
 const unanswered = () => ThinkingUnanswered.make({})
 
-/** The UTC day of a time, as the Thinking counter keys it. */
-const dayOf = (millis: number) => new Date(millis).toISOString().slice(0, 10)
+/** The UTC day of an instant, as the Thinking counter keys it. */
+const dayOf = (now: DateTime.Utc) => DateTime.formatIsoDateUtc(now)
+
+interface Deps {
+  readonly media: Media['Service']
+  readonly judge: OutfitJudge['Service']
+  readonly thinking: Thinking['Service']
+  readonly pacing: Pacing['Service']
+  readonly metrics: CaptureMetrics['Service']
+  readonly days: ReturnType<typeof outfitStore>
+  readonly wardrobe: ReturnType<typeof makeStore>
+  readonly receipts: ReturnType<typeof receiptRows>
+}
 
 /** Clef's score for each outfit (none when it could not look) and what the calls cost, judged a few at a time; each
  * piece's picture read once. */
-const judged = (parts: OutfitParts, accountId: string, owned: ReadonlyMap<string, Owned>, request: Brief) =>
+const judged = (deps: Deps, accountId: string, owned: ReadonlyMap<string, Owned>, request: Brief) =>
   Effect.fn('Styld.Outfits.judge')(function* (outfits: ReadonlyArray<ReadonlyArray<Wearable>>) {
     const pieceIds = [...new Set<string>(outfits.flatMap((outfit) => outfit.map(({ id }) => id)))]
     const pictures = new Map<string, Picture>()
     yield* Effect.forEach(
       pieceIds.flatMap((id) => Option.toArray(Option.fromNullishOr(owned.get(id)))),
       (piece) =>
-        Effect.map(judgingPicture(parts.bindings, accountId, piece), (picture) =>
+        Effect.map(judgingPicture(deps.media, accountId, piece), (picture) =>
           Option.map(picture, (found) => pictures.set(piece.wearable.id, found)),
         ),
       { concurrency, discard: true },
@@ -75,7 +78,7 @@ const judged = (parts: OutfitParts, accountId: string, owned: ReadonlyMap<string
       outfits,
       (outfit) => {
         const shown = outfit.flatMap(({ id }) => Option.toArray(Option.fromNullishOr(pictures.get(id))))
-        return shown.length === 0 ? Effect.succeed(Option.none()) : parts.judge.judge(shown, request.brief)
+        return shown.length === 0 ? Effect.succeed(Option.none()) : deps.judge.judge(shown, request.brief)
       },
       { concurrency },
     )
@@ -95,7 +98,7 @@ const ranked = (
   )
 
 /** Fast's candidates, or Thinking's, and whether the rules have nothing new beyond them. */
-const candidatesFor = (parts: OutfitParts, input: MakeOutfit, request: Brief, session: string, accountId: string) =>
+const candidatesFor = (deps: Deps, input: MakeOutfit, request: Brief, session: string, accountId: string) =>
   Effect.gen(function* () {
     if (input.mode === 'fast') {
       // A day's draws repeat for the account, so today's outfit holds all day; a run without a day draws its own.
@@ -109,7 +112,7 @@ const candidatesFor = (parts: OutfitParts, input: MakeOutfit, request: Brief, se
     }
     // Nothing new by the rules is nothing to ask the model for.
     if (proposed(request, 'probe', 1).outfits.length === 0) return { outfits: [], costMicroUsd: 0, exhausted: true }
-    const thought = yield* parts.proposer.propose(request, input.count + 2).pipe(Effect.mapError(unanswered))
+    const thought = yield* deps.thinking.propose(request, input.count + 2).pipe(Effect.mapError(unanswered))
     return { ...thought, exhausted: false }
   })
 
@@ -121,84 +124,110 @@ const fixedOf = (input: MakeOutfit, owned: ReadonlyMap<string, Owned>) => {
 }
 
 /** Within the account's pace, and for Thinking within today's count. */
-const admitted = (parts: OutfitParts, accountId: string, mode: OutfitMode) =>
+const admitted = (deps: Deps, accountId: string, mode: OutfitMode) =>
   Effect.gen(function* () {
-    if (!(yield* parts.pace.outfit(accountId))) return yield* SlowDown.make({})
+    yield* deps.pacing.account('outfit')
     if (mode === 'fast') return
-    if (!(yield* parts.pace.thinking(accountId))) return yield* SlowDown.make({})
-    const today = dayOf(yield* Clock.currentTimeMillis)
-    const counted = yield* parts.days
-      .countThinking(accountId, today, parts.thinkingPerDay)
-      .pipe(Effect.mapError(unavailable))
+    yield* deps.pacing.account('thinking')
+    const today = dayOf(yield* DateTime.now)
+    const counted = yield* deps.days.countThinking(accountId, today, thinkingPerDay).pipe(Effect.mapError(unavailable))
     if (!counted) return yield* LimitReached.make({ limit: 'thinking' })
   })
 
-const make = (parts: OutfitParts) => {
-  const newSession = Effect.map(newId('os'), (id) => OutfitSession.make(id))
+/** A ranked batch of new outfits for the account, as asked, counted with its way, latency and cost. */
+const batchFor = Effect.fnUntraced(function* (deps: Deps, accountId: string, input: MakeOutfit) {
+  yield* admitted(deps, accountId, input.mode)
+  const started = yield* Clock.currentTimeMillis
+  const session = input.session ?? OutfitSession.make(yield* newId('os'))
+  const read = yield* wearablesOf(deps.wardrobe, accountId).pipe(Effect.mapError(unavailable))
+  const owned = new Map<string, Owned>(read.map((piece) => [piece.wearable.id, piece]))
+  const fixed = yield* fixedOf(input, owned)
+  const request: Brief = {
+    wardrobe: [...owned.values()].map(({ wearable }) => wearable),
+    fixed,
+    brief: input.brief,
+    seen: new Set(input.seen),
+  }
+  const measure = (event: { outcome: 'ok' | 'empty' | 'failed'; judged: boolean; proposals: number; cost: number }) =>
+    Effect.flatMap(Clock.currentTimeMillis, (now) =>
+      deps.metrics.outfit({
+        phase: 'make',
+        mode: input.mode,
+        session,
+        outcome: event.outcome,
+        judged: event.judged,
+        milliseconds: now - started,
+        proposals: event.proposals,
+        costMicroUsd: event.cost,
+      }),
+    )
+  const candidates = yield* candidatesFor(deps, input, request, session, accountId).pipe(
+    Effect.tapError(() => measure({ outcome: 'failed', judged: false, proposals: 0, cost: 0 })),
+  )
+  const scores = yield* judged(deps, accountId, owned, request)(candidates.outfits)
+  const proposals = ranked(candidates.outfits, scores).slice(0, input.count)
+  const judgeCost = scores.reduce(
+    (sum, score) => sum + Option.match(score, { onNone: () => 0, onSome: (s) => s.costMicroUsd }),
+    0,
+  )
+  yield* measure({
+    outcome: proposals.length === 0 ? 'empty' : 'ok',
+    judged: scores.some(Option.isSome),
+    proposals: proposals.length,
+    cost: candidates.costMicroUsd + judgeCost,
+  })
+  return { session, mode: input.mode, proposals, missing: missingOf(request), exhausted: candidates.exhausted }
+})
+
+const Answered = Schema.fromJsonString(OutfitProposals)
+
+const make = Effect.gen(function* () {
+  const db = yield* Database
+  const deps: Deps = {
+    media: yield* Media,
+    judge: yield* OutfitJudge,
+    thinking: yield* Thinking,
+    pacing: yield* Pacing,
+    metrics: yield* CaptureMetrics,
+    days: outfitStore(db),
+    wardrobe: makeStore(db.$client),
+    receipts: receiptRows(db),
+  }
   return {
-    /** A ranked batch of new outfits for the account, as asked. */
+    /** A ranked batch of new outfits for the account, as asked; the same operation answers the same batch. */
     make: Effect.fn('Styld.Outfits.make')(function* (input: MakeOutfit) {
       const { accountId } = yield* CurrentAccount
-      yield* admitted(parts, accountId, input.mode)
-      const started = yield* Clock.currentTimeMillis
-      const session = input.session ?? (yield* newSession)
-      const read = yield* wearablesOf(parts.wardrobe, accountId).pipe(Effect.mapError(unavailable))
-      const owned = new Map<string, Owned>(read.map((piece) => [piece.wearable.id, piece]))
-      const fixed = yield* fixedOf(input, owned)
-      const request: Brief = {
-        wardrobe: [...owned.values()].map(({ wearable }) => wearable),
-        fixed,
-        brief: input.brief,
-        seen: new Set(input.seen),
-      }
-      const measure = (event: {
-        outcome: 'ok' | 'empty' | 'failed'
-        judged: boolean
-        proposals: number
-        cost: number
-      }) =>
-        Effect.flatMap(Clock.currentTimeMillis, (now) =>
-          parts.metrics.outfit({
-            phase: 'make',
-            mode: input.mode,
-            session,
-            outcome: event.outcome,
-            judged: event.judged,
-            milliseconds: now - started,
-            proposals: event.proposals,
-            costMicroUsd: event.cost,
-          }),
-        )
-      const candidates = yield* candidatesFor(parts, input, request, session, accountId).pipe(
-        Effect.tapError(() => measure({ outcome: 'failed', judged: false, proposals: 0, cost: 0 })),
+      const { operationId, ...asked } = input
+      return yield* once(
+        deps.receipts,
+        { accountId, operationId, command: 'makeOutfit', input: asked },
+        {
+          replay: (result) => Schema.decodeUnknownEffect(Answered)(result).pipe(Effect.mapError(unavailable)),
+          run: Effect.flatMap(batchFor(deps, accountId, input), (batch) =>
+            Effect.map(
+              Schema.encodeEffect(Answered)(batch).pipe(Effect.mapError(unavailable)),
+              (result) => [batch, result] as const,
+            ),
+          ),
+        },
       )
-      const scores = yield* judged(parts, accountId, owned, request)(candidates.outfits)
-      const proposals = ranked(candidates.outfits, scores).slice(0, input.count)
-      const judgeCost = scores.reduce(
-        (sum, score) => sum + Option.match(score, { onNone: () => 0, onSome: (s) => s.costMicroUsd }),
-        0,
-      )
-      yield* measure({
-        outcome: proposals.length === 0 ? 'empty' : 'ok',
-        judged: scores.some(Option.isSome),
-        proposals: proposals.length,
-        cost: candidates.costMicroUsd + judgeCost,
-      })
-      return { session, mode: input.mode, proposals, missing: missingOf(request), exhausted: candidates.exhausted }
     }),
     /** Forget Thinking's counts before yesterday. */
     sweep: Effect.fn('Styld.Outfits.sweep')(function* () {
-      const yesterday = dayOf((yield* Clock.currentTimeMillis) - 24 * 60 * 60 * 1000)
-      yield* parts.days.sweepBefore(yesterday).pipe(Effect.ignore({ log: true }))
+      const yesterday = dayOf(DateTime.subtract(yield* DateTime.now, { days: 1 }))
+      yield* deps.days.sweepBefore(yesterday).pipe(Effect.ignore({ log: true }))
     }),
   }
+})
+
+/** The outfit engine for `CurrentAccount`, over the application's database and media, Clef, Thinking and the
+ * account's pace. */
+export class Outfits extends Context.Service<Outfits, Effect.Success<typeof make>>()('@styld/server/outfits/Outfits') {
+  static readonly layer = Layer.effect(
+    this,
+    Effect.map(make, (service) => Outfits.of(service)),
+  )
 }
-
-/** The outfit engine for `CurrentAccount`. */
-export class Outfits extends Context.Service<Outfits, ReturnType<typeof make>>()('@styld/server/Outfits') {}
-
-/** The engine over its parts. Build it once per isolate. */
-export const makeOutfits = (parts: OutfitParts) => Effect.sync(() => make(parts))
 
 /** Count a proposal the person kept: worn today, or kept on a board. */
 export const outfitKept = (metrics: CaptureMetrics['Service'], proposal: ProposalRef, outcome: 'worn' | 'kept') =>

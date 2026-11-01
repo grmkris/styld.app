@@ -69,7 +69,6 @@ import { StylistChats } from './stylist/Http.ts'
 import { stylistJobQueue, stylistJobs } from './stylist/Queue.ts'
 import { Stylist } from './stylist/StylistObject.ts'
 import { chatStoreOf, makeStylistLive } from './stylist/Live.ts'
-import { outfitsLive } from './outfits/Live.ts'
 import { photoRoutes } from './photos/Http.ts'
 import { Photos } from './photos/Photos.ts'
 import { Outfits } from './outfits/Outfits.ts'
@@ -114,9 +113,9 @@ const storageServices = (
     const { checks: checksService, looks: looksService, boards: boardsService } = modules
     // A piece whose shown picture changes is checked again while others can see it.
     const pieceChanged = Layer.succeed(PieceChanged, modules.pieceChanged)
-    // The wardrobe, captures, My Gallery and generation, each a service from its own layer, over the same database,
-    // media and queues; assistant-added pieces get the same cut-out pipeline as the tray.
-    const wardrobeModules = Layer.mergeAll(Captures.layer, Photos.layer, Generations.layer).pipe(
+    // The wardrobe, captures, My Gallery, generation and outfits, each a service from its own layer, over the same
+    // database, media and queues; assistant-added pieces get the same cut-out pipeline as the tray.
+    const wardrobeModules = Layer.mergeAll(Captures.layer, Photos.layer, Generations.layer, Outfits.layer).pipe(
       Layer.provideMerge(Wardrobe.layer),
       Layer.provideMerge(pieceCutout(bindings.bucket)),
       Layer.provideMerge(
@@ -136,9 +135,14 @@ const storageServices = (
       captures: capturesService,
       photos: photosService,
       generations: generationsService,
-    } = yield* Effect.all({ wardrobe: Wardrobe, captures: Captures, photos: Photos, generations: Generations }).pipe(
-      Effect.provide(wardrobeModules),
-    )
+      outfits: outfitsService,
+    } = yield* Effect.all({
+      wardrobe: Wardrobe,
+      captures: Captures,
+      photos: Photos,
+      generations: Generations,
+      outfits: Outfits,
+    }).pipe(Effect.provide(wardrobeModules))
     const linksService = yield* Links.pipe(
       Effect.provide(Links.layer.pipe(Layer.provide(Layer.succeed(Wardrobe, wardrobeService)))),
     )
@@ -149,6 +153,8 @@ const storageServices = (
       metrics: yield* CaptureMetricsService,
       generationsService,
       generations: Layer.succeed(Generations, generationsService),
+      outfitsService,
+      outfits: Layer.succeed(Outfits, outfitsService),
       curationService: modules.curation,
       discoveryService: modules.discovery,
       discovery: Layer.succeed(Discovery, modules.discovery),
@@ -254,23 +260,13 @@ const applicationServices = (
   runtime: {
     readonly origin: string
     readonly stylist: Effect.Success<typeof declareBindings>['stylist']
-    readonly pacing: Pacing['Service']
   },
 ) =>
   Effect.gen(function* () {
     const chatsOf = chatStoreOf(runtime.stylist.objects)
     const services = yield* storageServices({ ...bindings, forgetChats: (accountId) => chatsOf(accountId).erase() })
-    const outfitsService = yield* outfitsLive({
-      database: bindings.database,
-      bindings,
-      metrics: services.metrics,
-      pace: {
-        outfit: (accountId) => runtime.pacing.allows('outfit', accountId),
-        thinking: (accountId) => runtime.pacing.allows('thinking', accountId),
-      },
-    })
     // The assistants' tools, built once: MCP serves them, and Styld answers with them for the account.
-    const tools = styldTools(runtime.origin, toolServices(services, outfitsService))
+    const tools = styldTools(runtime.origin, toolServices(services, services.outfitsService))
     const stylistService = yield* makeStylistLive({
       chatsOf,
       queue: yield* runtime.stylist.queue.raw,
@@ -281,8 +277,6 @@ const applicationServices = (
       ...services,
       stylistService,
       stylist: Layer.succeed(StylistChats, stylistService),
-      outfitsService,
-      outfits: Layer.succeed(Outfits, outfitsService),
       tools,
     }
   })
@@ -326,7 +320,7 @@ const makeApplication =
           checksQueue: yield* bindings.checksQueue.raw,
           generationQueue: yield* bindings.generationQueue.raw,
         },
-        { origin: authOrigin, stylist: bindings.stylist, pacing },
+        { origin: authOrigin, stylist: bindings.stylist },
       ).pipe(
         Effect.provide(Layer.mergeAll(providers, Holds.layer, Layer.succeed(CaptureMetricsService, metrics), paces)),
       )

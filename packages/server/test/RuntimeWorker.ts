@@ -19,7 +19,8 @@ import { recoveryRoutes } from './RecoveryFixture.ts'
 import { socialRoutes } from './SocialFixture.ts'
 import { makeAuthHttp, withCodeRequestPolicy } from '../src/AuthHttp.ts'
 import { authOptions } from '../src/AuthConfiguration.ts'
-import { makeOutfitStore } from '../src/outfits/Store.ts'
+import { drizzle } from 'drizzle-orm/d1'
+import { outfitStore } from '../src/outfits/Store.ts'
 import { onFirstUse } from '../src/IsolateCache.ts'
 import { DomainLive } from '../src/DomainLive.ts'
 import { StyldDatabase, StyldMedia, StyldPieceQueue } from '../src/Resources.ts'
@@ -98,7 +99,7 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
         'POST',
         '/test/identity/thinking-cap',
         Effect.gen(function* () {
-          const days = makeOutfitStore(yield* database.raw)
+          const days = outfitStore(drizzle(yield* database.raw))
           const count = (day: string) => whenFree(days.countThinking('native-outfits-other', day, 2))
           const counted = [
             yield* count('2026-10-30'),
