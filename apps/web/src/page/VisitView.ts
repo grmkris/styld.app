@@ -20,7 +20,8 @@ import { exploreLoading, exploreSearchForm, exploreSections, searchView } from '
 import { head as exploreHead, page as explorePage } from './ExploreView.styles.ts'
 import { pageTitle } from './PageHead.ts'
 import { retryView } from './Retry.ts'
-import { exploreOf, ExploreSearch, Message, type Model, type PersonTab, Sharing, Target, VisitShown } from './Visit.ts'
+import { PublicSearch } from './Search.ts'
+import { exploreOf, Message, type Model, type PersonTab, Sharing, Target, VisitShown } from './Visit.ts'
 import * as styles from './VisitView.styles.ts'
 import { kindName, pieceLabel } from './WardrobeWords.ts'
 
@@ -230,7 +231,7 @@ const exploreContent = (
   { locale, signedIn }: PeopleView.Inputs,
   h: HtmlBuilder<Message>,
 ): ReadonlyArray<Html> => {
-  if (!ExploreSearch.guards.Off(model.search)) return [searchView(model.search, locale, h)]
+  if (!PublicSearch.guards.Off(model.search)) return [searchView(model.search, locale, h)]
   return Option.match(exploreOf(model.shown), {
     onSome: (explore) => exploreSections(explore, mood, model, signedIn, locale, h),
     onNone: () => (AsyncData.isFailure(model.shown) ? [failedView(locale, h)] : exploreLoading(locale, h)),

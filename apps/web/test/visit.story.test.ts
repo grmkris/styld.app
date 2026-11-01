@@ -3,8 +3,8 @@ import { Option, Schema } from 'effect'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import { Work } from '../src/page/People.ts'
+import { PublicSearch } from '../src/page/Search.ts'
 import {
-  ExploreSearch,
   FocusExploreResults,
   FocusExploreSearch,
   FollowSuggested,
@@ -105,12 +105,12 @@ describe('searching Explore', () => {
       message(Message.UpdatedSearchQuery({ value: '  nika ' })),
       Command.expectNone(),
       message(Message.SubmittedSearch()),
-      model(({ search }) => expect(search).toEqual(ExploreSearch.Searching({ query: 'nika' }))),
+      model(({ search }) => expect(search).toEqual(PublicSearch.Searching({ query: 'nika' }))),
       Command.resolve(
         SearchExplore({ query: 'nika' }),
         Message.SucceededSearchExplore({ query: 'nika', results: nika }),
       ),
-      model(({ search }) => expect(search).toEqual(ExploreSearch.Found({ query: 'nika', results: nika }))),
+      model(({ search }) => expect(search).toEqual(PublicSearch.Found({ query: 'nika', results: nika }))),
       Command.resolve(FocusExploreResults, Message.CompletedFocusExploreResults()),
     )
   })
@@ -122,35 +122,35 @@ describe('searching Explore', () => {
       message(Message.UpdatedSearchQuery({ value: '   ' })),
       message(Message.SubmittedSearch()),
       Command.expectNone(),
-      model(({ search }) => expect(search).toEqual(ExploreSearch.Off())),
+      model(({ search }) => expect(search).toEqual(PublicSearch.Off())),
     )
   })
 
   test('an answer for words searched before is dropped, and typing on keeps focus in the field', () => {
     story(
       update,
-      given({ ...explore, query: 'nika', search: ExploreSearch.Searching({ query: 'nika' }) }),
+      given({ ...explore, query: 'nika', search: PublicSearch.Searching({ query: 'nika' }) }),
       message(Message.SucceededSearchExplore({ query: 'nik', results: nika })),
-      model(({ search }) => expect(search).toEqual(ExploreSearch.Searching({ query: 'nika' }))),
+      model(({ search }) => expect(search).toEqual(PublicSearch.Searching({ query: 'nika' }))),
       message(Message.UpdatedSearchQuery({ value: 'nika k' })),
       message(Message.SucceededSearchExplore({ query: 'nika', results: nika })),
       Command.expectNone(),
-      model(({ search }) => expect(search).toEqual(ExploreSearch.Found({ query: 'nika', results: nika }))),
+      model(({ search }) => expect(search).toEqual(PublicSearch.Found({ query: 'nika', results: nika }))),
     )
   })
 
   test('a failed search says so and tries again; clearing empties the field and goes back to it', () => {
     story(
       update,
-      given({ ...explore, query: 'nika', search: ExploreSearch.Searching({ query: 'nika' }) }),
+      given({ ...explore, query: 'nika', search: PublicSearch.Searching({ query: 'nika' }) }),
       message(Message.FailedSearchExplore({ query: 'nika' })),
-      model(({ search }) => expect(search).toEqual(ExploreSearch.Failed({ query: 'nika' }))),
+      model(({ search }) => expect(search).toEqual(PublicSearch.Failed({ query: 'nika' }))),
       message(Message.ClickedRetrySearch()),
       Command.resolve(SearchExplore({ query: 'nika' }), Message.FailedSearchExplore({ query: 'nika' })),
       message(Message.ClickedClearSearch()),
       model(({ query, search }) => {
         expect(query).toBe('')
-        expect(search).toEqual(ExploreSearch.Off())
+        expect(search).toEqual(PublicSearch.Off())
       }),
       Command.resolve(FocusExploreSearch, Message.CompletedFocusExploreSearch()),
     )

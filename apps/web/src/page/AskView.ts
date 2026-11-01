@@ -13,6 +13,7 @@ import { accountRouter, addPiecesRouter, assistantsSection, pieceRouter, stylist
 import { block } from '../Skeleton.styles.ts'
 import { Creating } from './Boards.ts'
 import { bottomSheet, sheetShown } from './Sheet.ts'
+import { PublicSearch } from './Search.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { Message, type Model, resultsId, SearchLanguages, searchFieldId } from './Ask.ts'
@@ -185,7 +186,10 @@ const resultsView = (ready: ReadonlyArray<Piece>, model: Model, locale: Locale, 
 /** People and public boards for the same words, once the server has answered for them. */
 const publicResults = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   Option.match(
-    Option.filter(model.found, ({ query }) => query === model.query),
+    Option.some(model.search).pipe(
+      Option.filter(PublicSearch.guards.Found),
+      Option.filter((found) => found.query === model.query),
+    ),
     {
       onNone: () => h.empty,
       onSome: ({ results }) =>

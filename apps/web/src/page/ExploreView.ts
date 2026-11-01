@@ -26,15 +26,8 @@ import { chip, chipSkeleton } from '../Controls.styles.ts'
 import { clear, quiet, search as searchPill, searchInput } from './AskView.styles.ts'
 import { round } from './PageBar.styles.ts'
 import { Work } from './People.ts'
-import {
-  ExploreSearch,
-  Message,
-  type Model,
-  searchFieldId,
-  searchResultsId,
-  type Suggestion,
-  suggestionOf,
-} from './Visit.ts'
+import { PublicSearch } from './Search.ts'
+import { Message, type Model, searchFieldId, searchResultsId, type Suggestion, suggestionOf } from './Visit.ts'
 
 const boardList = (boards: ReadonlyArray<FoundBoard>, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.ul(
@@ -329,8 +322,8 @@ const foundView = (query: string, results: SearchResults, locale: Locale, h: Htm
   )
 
 /** What a search shows in place of Explore's sections while it is on. */
-export const searchView = (search: ExploreSearch, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  ExploreSearch.match(search, {
+export const searchView = (search: PublicSearch, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  PublicSearch.match(search, {
     Off: () => h.empty,
     Searching: () =>
       h.p([h.Role('status'), ...styled(h, styles.searching())], [loader(h), format(locale, 'explore.searching', {})]),

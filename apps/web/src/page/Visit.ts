@@ -9,6 +9,7 @@ import { modifyFields } from 'foldkit/struct'
 import { LoadError } from '../ServerData.ts'
 import { StyldClient } from '../StyldClient.ts'
 import * as People from './People.ts'
+import { awaits, PublicSearch, searchPublic, searchWords } from './Search.ts'
 
 // What anyone may see of a person: their published profile at `/@handle`, and a piece of theirs on its own page.
 // Both are read signed out; anything private, unpublished or held back by Styld's check reads as not there.
@@ -47,15 +48,6 @@ export const exploreOf = (shown: ShownData): Option.Option<Explore> =>
     VisitShown.guards.Explore(data) ? Option.some(data.explore) : Option.none(),
   )
 
-/** Explore's search over people and public boards: none, asked, answered or failed, each for the words searched. */
-export const ExploreSearch = defineTaggedUnion({
-  Off: {},
-  Searching: { query: Schema.String },
-  Found: { query: Schema.String, results: SearchResults },
-  Failed: { query: Schema.String },
-})
-export type ExploreSearch = typeof ExploreSearch.Type
-
 /** Someone Explore suggests, followed from here: whether they are followed now, and the change being sent or the one
  * that failed. */
 export const Suggestion = Schema.Struct({ following: Schema.Boolean, work: People.Work })
@@ -78,7 +70,7 @@ export const Model = Schema.Struct({
   signedIn: Schema.Boolean,
   /** What is typed in Explore's search, as typed. */
   query: Schema.String,
-  search: ExploreSearch,
+  search: PublicSearch,
   /** Explore's Follow buttons, by handle, for those tapped since Explore last loaded. */
   suggestions: Schema.Record(Schema.String, Suggestion),
   sharing: Sharing,
@@ -93,8 +85,6 @@ export const suggestionOf = (model: Model, handle: string): Suggestion => model.
 
 export const searchFieldId = 'explore-search'
 export const searchResultsId = 'explore-results'
-/** The longest search the public search reads. */
-const searchLength = 80
 
 /** A page for a visitor; `atFollow` when it opened at `#follow`, where sign-in returns a Follow pressed signed out. */
 export const init = (target: Target, signedIn: boolean, atFollow = false): Model => ({
@@ -103,7 +93,7 @@ export const init = (target: Target, signedIn: boolean, atFollow = false): Model
   tab: 'boards',
   signedIn,
   query: '',
-  search: ExploreSearch.Off(),
+  search: PublicSearch.Off(),
   suggestions: {},
   sharing: Sharing.Idle(),
   cameFrom: Option.none(),
@@ -202,8 +192,7 @@ export const SearchExplore = Command.define('SearchExplore', {
   messages: [Message.SucceededSearchExplore, Message.FailedSearchExplore],
   execute: ({ query }) =>
     Effect.gen(function* () {
-      const api = yield* (yield* StyldClient).api
-      const results = yield* api.public.search({ query: { q: query } })
+      const results = yield* searchPublic(query)
       return Message.SucceededSearchExplore({ query, results })
     }).pipe(Effect.orElseSucceed(() => Message.FailedSearchExplore({ query }))),
 })
@@ -348,14 +337,14 @@ const failed = (model: Model, error: LoadError): UpdateReturn => ({
 })
 
 /** The words in the field are searched; a blank field brings Explore's sections back. */
-const wordsOf = (model: Model) => model.query.trim().slice(0, searchLength)
+const wordsOf = (model: Model) => searchWords(model.query)
 
 const searched = (model: Model): UpdateReturn => {
   const query = wordsOf(model)
   return query.length === 0
-    ? { model: modifyFields(model, { search: () => ExploreSearch.Off() }) }
+    ? { model: modifyFields(model, { search: () => PublicSearch.Off() }) }
     : {
-        model: modifyFields(model, { search: () => ExploreSearch.Searching({ query }) }),
+        model: modifyFields(model, { search: () => PublicSearch.Searching({ query }) }),
         commands: [SearchExplore({ query })],
       }
 }
@@ -373,10 +362,6 @@ const followed = (model: Model, handle: string, following: boolean): UpdateRetur
         commands: [FollowSuggested({ handle, following })],
       }
 }
-
-/** Whether an answer is for the search still waiting; one for words searched before is dropped. */
-const awaits = (model: Model, query: string) =>
-  ExploreSearch.guards.Searching(model.search) && model.search.query === query
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
@@ -412,24 +397,24 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     UpdatedSearchQuery: ({ value }) => ({
       model: modifyFields(model, {
         query: () => value,
-        search: (search) => (value.trim().length === 0 ? ExploreSearch.Off() : search),
+        search: (search) => (value.trim().length === 0 ? PublicSearch.Off() : search),
       }),
     }),
     SubmittedSearch: () => searched(model),
     ClickedRetrySearch: () => searched(model),
     ClickedClearSearch: () => ({
-      model: modifyFields(model, { query: () => '', search: () => ExploreSearch.Off() }),
+      model: modifyFields(model, { query: () => '', search: () => PublicSearch.Off() }),
       commands: [FocusExploreSearch()],
     }),
     SucceededSearchExplore: ({ query, results }) => {
-      if (!awaits(model, query)) return { model }
-      const found = modifyFields(model, { search: () => ExploreSearch.Found({ query, results }) })
+      if (!awaits(model.search, query)) return { model }
+      const found = modifyFields(model, { search: () => PublicSearch.Found({ query, results }) })
       // Focus moves to the results only while the field still holds the words they are for.
       return wordsOf(model) === query ? { model: found, commands: [FocusExploreResults()] } : { model: found }
     },
     FailedSearchExplore: ({ query }) =>
-      awaits(model, query)
-        ? { model: modifyFields(model, { search: () => ExploreSearch.Failed({ query }) }) }
+      awaits(model.search, query)
+        ? { model: modifyFields(model, { search: () => PublicSearch.Failed({ query }) }) }
         : { model },
     CompletedFocusExploreSearch: () => ({ model }),
     CompletedFocusExploreResults: () => ({ model }),

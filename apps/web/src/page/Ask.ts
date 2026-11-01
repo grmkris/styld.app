@@ -7,7 +7,8 @@ import { replaceUrl } from 'foldkit/navigation'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { sheetFolds } from './Sheet.ts'
-import { SearchResults, textLength } from '@styld/protocol'
+import { awaits, PublicSearch, searchPublic } from './Search.ts'
+import { SearchResults } from '@styld/protocol'
 import { askRouter } from '../route.ts'
 import { StyldClient } from '../StyldClient.ts'
 
@@ -24,8 +25,8 @@ export const Model = Schema.Struct({
   languages: SearchLanguages,
   /** The + sheet: what you can add from here. */
   addSheet: Dialog.Model,
-  /** People and public boards found for a query, kept while it is still the one typed. */
-  found: Schema.Option(Schema.Struct({ query: Schema.String, results: SearchResults })),
+  /** People and public boards searched for the words typed (PublicSearch, shared with Explore). */
+  search: PublicSearch,
 })
 export type Model = typeof Model.Type
 
@@ -36,7 +37,7 @@ export const init = (): Model => ({
   query: '',
   languages: SearchLanguages.PageOnly(),
   addSheet: Dialog.init({ id: 'ask-add-sheet', isAnimated: true }),
-  found: Option.none(),
+  search: PublicSearch.Off(),
 })
 
 // MESSAGE
@@ -56,7 +57,7 @@ export const Message = defineMessageUnion({
   SucceededLoadSearchLanguages: {},
   FailedLoadSearchLanguages: {},
   SucceededSearchPublic: { query: Schema.String, results: SearchResults },
-  FailedSearchPublic: {},
+  FailedSearchPublic: { query: Schema.String },
 })
 export type Message = typeof Message.Type
 
@@ -114,10 +115,9 @@ export const SearchPublic = Command.define('SearchPublic', {
   messages: [Message.SucceededSearchPublic, Message.FailedSearchPublic],
   execute: ({ query }) =>
     Effect.gen(function* () {
-      const api = yield* (yield* StyldClient).api
-      const results = yield* api.public.search({ query: { q: query.trim().slice(0, textLength.search) } })
+      const results = yield* searchPublic(query)
       return Message.SucceededSearchPublic({ query, results })
-    }).pipe(Effect.orElseSucceed(() => Message.FailedSearchPublic())),
+    }).pipe(Effect.orElseSucceed(() => Message.FailedSearchPublic({ query }))),
 })
 
 /** Words long enough to look for people and boards with. */
@@ -157,10 +157,17 @@ export const enter =
 /** Leaving Ask closes the + sheet. */
 export const leave = closeAddSheet
 
-const searched = (model: Model, query: string): UpdateReturn => ({
-  model: modifyFields(model, { query: () => query }),
-  commands: [WriteQuery({ query }), ...(searchable(query) ? [SearchPublic({ query })] : [])],
-})
+/** The words written to the address, and searched for people and boards once they are long enough. */
+const written = (model: Model, query: string): UpdateReturn =>
+  searchable(query)
+    ? {
+        model: modifyFields(model, { search: () => PublicSearch.Searching({ query }) }),
+        commands: [WriteQuery({ query }), SearchPublic({ query })],
+      }
+    : { model: modifyFields(model, { search: () => PublicSearch.Off() }), commands: [WriteQuery({ query })] }
+
+const searched = (model: Model, query: string): UpdateReturn =>
+  written(modifyFields(model, { query: () => query }), query)
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
@@ -169,14 +176,11 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       commands: [WaitBeforeWritingQuery({ query: value })],
     }),
     // Only the newest query is written: an older pause finds the query moved on.
-    ElapsedQueryPause: ({ query }) =>
-      query === model.query
-        ? { model, commands: [WriteQuery({ query }), ...(searchable(query) ? [SearchPublic({ query })] : [])] }
-        : { model },
+    ElapsedQueryPause: ({ query }) => (query === model.query ? written(model, query) : { model }),
     CompletedWriteQuery: () => ({ model }),
     ClickedSuggestion: ({ query }) => searched(model, query),
     ClickedClear: () => ({
-      model: modifyFields(model, { query: () => '' }),
+      model: modifyFields(model, { query: () => '', search: () => PublicSearch.Off() }),
       commands: [WriteQuery({ query: '' }), FocusSearch()],
     }),
     SubmittedSearch: () => ({ model, commands: [WriteQuery({ query: model.query }), FocusResults()] }),
@@ -191,8 +195,11 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     FailedLoadSearchLanguages: () => ({ model }),
     // An answer for a query since changed is dropped.
     SucceededSearchPublic: ({ query, results }) =>
-      query === model.query
-        ? { model: modifyFields(model, { found: () => Option.some({ query, results }) }) }
+      awaits(model.search, query)
+        ? { model: modifyFields(model, { search: () => PublicSearch.Found({ query, results }) }) }
         : { model },
-    FailedSearchPublic: () => ({ model }),
+    FailedSearchPublic: ({ query }) =>
+      awaits(model.search, query)
+        ? { model: modifyFields(model, { search: () => PublicSearch.Failed({ query }) }) }
+        : { model },
   })

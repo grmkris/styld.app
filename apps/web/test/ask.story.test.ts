@@ -4,6 +4,7 @@ import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import { storySheetMoved } from './SheetFixtures.ts'
 import * as Ask from '../src/page/Ask.ts'
+import { PublicSearch } from '../src/page/Search.ts'
 import { normalise, SearchResults } from '@styld/protocol'
 import { matching } from '../src/page/AskSearch.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
@@ -93,7 +94,7 @@ describe('searching your wardrobe', () => {
       Command.resolve(Ask.SearchPublic, Ask.Message.SucceededSearchPublic({ query: 'knit', results: knitResults })),
       model((searched) => {
         expect(searched.query).toBe('knit')
-        expect(searched.found).toEqual(Option.some({ query: 'knit', results: knitResults }))
+        expect(searched.search).toEqual(PublicSearch.Found({ query: 'knit', results: knitResults }))
       }),
     )
   })
@@ -103,7 +104,20 @@ describe('searching your wardrobe', () => {
       Ask.update,
       given({ ...Ask.init(), query: 'knitwear' }),
       message(Ask.Message.SucceededSearchPublic({ query: 'knit', results: knitResults })),
-      model((searched) => expect(searched.found).toEqual(Option.none())),
+      model((searched) => expect(searched.search).toEqual(PublicSearch.Off())),
+    )
+  })
+
+  test('a public search that fails is marked failed for its words, and not for words typed since', () => {
+    story(
+      Ask.update,
+      given({ ...Ask.init(), query: 'knit' }),
+      message(Ask.Message.ElapsedQueryPause({ query: 'knit' })),
+      Command.resolve(Ask.WriteQuery, Ask.Message.CompletedWriteQuery()),
+      Command.resolve(Ask.SearchPublic, Ask.Message.FailedSearchPublic({ query: 'knit' })),
+      model((searched) => expect(searched.search).toEqual(PublicSearch.Failed({ query: 'knit' }))),
+      message(Ask.Message.FailedSearchPublic({ query: 'kn' })),
+      model((searched) => expect(searched.search).toEqual(PublicSearch.Failed({ query: 'knit' }))),
     )
   })
 
