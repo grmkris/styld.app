@@ -1,5 +1,5 @@
 import { generationJobs, generationPictures, operationReceipts } from '@styld/db'
-import { and, asc, desc, eq, inArray, lt, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm'
 import { Effect } from 'effect'
 import { forgetReceipt, receiptRows } from '../kernel/Receipts.ts'
 import { type Database, first, query } from '../kernel/Db.ts'
@@ -12,6 +12,8 @@ type Drizzle = Database['Service']
 
 /** The statuses of a job not yet ended. */
 const running = ['planning', 'drawing', 'arranging'] as const
+/** A job's statuses once it has ended. */
+const ended = ['done', 'refused', 'failed'] as const
 
 /** Jobs: written once with their receipt, read for their owner or the queue, and moved on from a step. */
 const jobQueries = (db: Drizzle) => ({
@@ -69,6 +71,22 @@ const jobQueries = (db: Drizzle) => ({
         .orderBy(asc(generationJobs.updatedAt))
         .limit(limit),
     ).pipe(Effect.map((rows) => rows.map(({ id }) => id))),
+  /** Jobs that ended between two moments, oldest first: their credit is settled again, in case that settle was lost. */
+  endedJobs: (after: Date, before: Date, limit: number) =>
+    query(() =>
+      db
+        .select({ id: generationJobs.id, accountId: generationJobs.accountId, status: generationJobs.status })
+        .from(generationJobs)
+        .where(
+          and(
+            inArray(generationJobs.status, [...ended]),
+            gte(generationJobs.updatedAt, after),
+            lt(generationJobs.updatedAt, before),
+          ),
+        )
+        .orderBy(asc(generationJobs.updatedAt))
+        .limit(limit),
+    ),
   /** For the generation queue, which acts for the job's account. */
   jobForWork: (jobId: string) =>
     query(() => db.select().from(generationJobs).where(eq(generationJobs.id, jobId)).limit(1)).pipe(Effect.map(first)),

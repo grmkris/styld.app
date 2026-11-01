@@ -55,8 +55,8 @@ const endingOf = (status: JobRow['status']): Option.Option<Ending> =>
       : Option.none()
 
 /** Settle a job's credit by how it ended; the first settlement stands, so a later delivery may settle it again. */
-export const settleJob = (deps: Deps, job: Pick<JobRow, 'id' | 'accountId' | 'status'>) =>
+export const settleJob = (holds: Deps['holds'], job: Pick<JobRow, 'id' | 'accountId' | 'status'>) =>
   Option.match(endingOf(job.status), {
     onNone: () => Effect.void,
-    onSome: (ending) => deps.holds.settle(job.accountId, jobHold(job.id), ending),
+    onSome: (ending) => holds.settle(job.accountId, jobHold(job.id), ending),
   })

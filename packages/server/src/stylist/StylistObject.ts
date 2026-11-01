@@ -74,6 +74,7 @@ export type StylistMethods = {
   readonly turn: (turnId: string) => Effect.Effect<TurnInput, unknown, RuntimeContext>
   readonly progress: (turnId: string, text: string, parts: string) => Effect.Effect<void, unknown, RuntimeContext>
   readonly finish: (input: FinishInput) => Effect.Effect<boolean, unknown, RuntimeContext>
+  readonly withdraw: (turnId: string) => Effect.Effect<void, unknown, RuntimeContext>
   readonly chat: (
     chatId: string,
     now: number,
@@ -201,6 +202,29 @@ const finish = (store: Store, input: FinishInput) =>
     return true
   })
 
+/** Take back a reply that has not begun to be written, with the message it answers (begun at the same moment), and
+ * its chat when that message was its only one: its credit could not be held. */
+const withdraw = (store: Store, turnId: string) =>
+  Effect.gen(function* () {
+    const turn = yield* turnOf(store, turnId)
+    if (turn?.state !== 'writing') return
+    yield* store.atomically(
+      Effect.gen(function* () {
+        yield* store.run('DELETE FROM turns WHERE id = ?', turnId)
+        yield* store.run(
+          "DELETE FROM messages WHERE chat_id = ? AND role = 'person' AND at = ?",
+          turn.chat_id,
+          turn.started_at,
+        )
+        yield* store.run(
+          'DELETE FROM chats WHERE id = ? AND NOT EXISTS (SELECT 1 FROM messages WHERE chat_id = ?)',
+          turn.chat_id,
+          turn.chat_id,
+        )
+      }),
+    )
+  })
+
 /** A chat with its messages, and the reply to its last message while it is written or when it failed. A reply written
  * longer than `patience` is shown as failed: the queue gives it up. */
 const chatOf = (store: Store, chatId: string, now: number, patience: number) =>
@@ -239,6 +263,7 @@ const methodsOf = (store: Store): StylistMethods => ({
   /** What the reply says so far. */
   progress: (turnId, text, parts) => Effect.sync(() => void store.partials.set(turnId, { text, parts })),
   finish: (input) => finish(store, input),
+  withdraw: (turnId) => withdraw(store, turnId),
   chat: (chatId, now, patience) => chatOf(store, chatId, now, patience),
   /** The chats, the latest first. */
   chats: (limit) =>

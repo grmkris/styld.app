@@ -146,18 +146,19 @@ const reply = (
     return { text, parts: yield* tools.parts }
   })
 
-/** Sending a message: its credit held, the reply begun and handed to the queue. A repeated request returns the same
- * chat, and sends the reply to the queue again: one lost on the way is made up, and the queue writes it once. */
+/** Sending a message: the reply begun, then its credit held, then handed to the queue. The reply exists before its
+ * hold, so whatever settles a reply (its delivery, giving it up) finds it; a credit that cannot be held takes the reply
+ * back. A repeated request returns the same chat, holds the same credit (holding twice is once) and sends the reply to
+ * the queue again: one lost on the way is made up, and the queue writes it once. */
 const sending = (deps: Deps, ids: Ids) =>
   Effect.fn('Styld.Stylist.send')(function* (input: SendChatMessage) {
     const { accountId } = yield* CurrentAccount
     const turnId = yield* ids.turnIdOf(accountId, input.operationId)
     // The turn's queue delivery records the same job id, so the ask and its reply are found together.
     yield* Effect.annotateCurrentSpan('styld.job_id', turnId)
-    yield* deps.holds.reserve({ accountId, hold: holdOf(turnId), credits: prices.stylistMessage })
-    const refund = deps.holds.settle(accountId, holdOf(turnId), 'failed')
+    const chats = deps.chatsOf(accountId)
     const begun = yield* stored(
-      deps.chatsOf(accountId).begin({
+      chats.begin({
         turnId,
         chatId: input.chatId ?? (yield* ids.randomId('ch')),
         newChat: input.chatId === undefined,
@@ -168,11 +169,12 @@ const sending = (deps: Deps, ids: Ids) =>
         now: yield* now,
         patience,
       }),
-    ).pipe(Effect.tapError(() => Effect.ignore(refund)))
-    if (begun.outcome === 'busy' || begun.outcome === 'missing') {
-      yield* refund
-      return yield* begun.outcome === 'busy' ? StylistBusy.make({}) : NotFound.make({})
-    }
+    )
+    if (begun.outcome === 'busy') return yield* StylistBusy.make({})
+    if (begun.outcome === 'missing') return yield* NotFound.make({})
+    yield* deps.holds
+      .reserve({ accountId, hold: holdOf(turnId), credits: prices.stylistMessage })
+      .pipe(Effect.tapError(() => Effect.ignore(stored(chats.withdraw(turnId)))))
     const queued = yield* Effect.tryPromise(() => deps.queue.send({ _tag: 'WriteReply', turnId, accountId })).pipe(
       Effect.as(true),
       Effect.orElseSucceed(() => false),

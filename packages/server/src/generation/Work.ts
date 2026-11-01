@@ -176,7 +176,7 @@ export const work = Effect.fn('Styld.Generation.work')(function* (deps: Deps, jo
   const drawn = yield* step
   if (Option.isSome(drawn) && drawn.value.status === 'arranging') yield* act(arrange(deps, drawn.value))
   const last = yield* step
-  if (Option.isSome(last)) yield* settleJob(deps, last.value)
+  if (Option.isSome(last)) yield* settleJob(deps.holds, last.value)
 })
 
 /** Give a job up: it fails, its waiting sticker is refused, and its credit goes back. A sticker a dead delivery
@@ -190,5 +190,5 @@ export const giveUp = Effect.fn('Styld.Generation.giveUp')(function* (deps: Deps
   if (Option.exists(before, (sticker) => sticker.status === 'drawing' && isStale(sticker, at)))
     yield* ended(deps, job.value, 'unknown')
   const latest = yield* stored(deps.store.jobForWork(jobId))
-  if (Option.isSome(latest)) yield* settleJob(deps, latest.value)
+  if (Option.isSome(latest)) yield* settleJob(deps.holds, latest.value)
 })

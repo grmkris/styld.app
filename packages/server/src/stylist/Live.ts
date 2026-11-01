@@ -20,6 +20,7 @@ export const chatStoreOf =
       turn: (turnId) => onStub(stub.turn(turnId)),
       progress: (turnId, text, parts) => onStub(stub.progress(turnId, text, parts)),
       finish: (input) => onStub(stub.finish(input)),
+      withdraw: (turnId) => onStub(stub.withdraw(turnId)),
       chat: (chatId, now, patience) => onStub(stub.chat(chatId, now, patience)),
       chats: (limit) => onStub(stub.chats(limit)),
       erase: () => onStub(stub.erase()),
