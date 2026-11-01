@@ -176,6 +176,20 @@ studio, design, outfits, gallery, tryon, social, billing, operations). The worki
   fill season, occasions and pattern. Private to that account; never public. The export and the import log stay in a
   private folder outside the repo. The owner's one v1 model photo, approved for the try-on test only, is 153×204 (v1
   kept no larger original): too small to judge try-on by, so the test still needs 2–3 full-body photos.
+  One of the 74 (a top) has a 1×1 placeholder as its v1 picture; the import copied what v1 held.
+- **A second tester's v1 wardrobe on the preview (owner, 2026-11-01).** Recorded late: 313 pieces of another v1
+  account were carried over to that person's own preview account on 25–27 October, as photos without the cut-out
+  step. On 1 November the owner relayed the person's permission to run v2's processing on them. Clef had already
+  suggested attributes for all 313. The cut-out step then ran on them with the preview's daily allowance raised to 400
+  for the day (`b01870a`; back to 100 on 2 November), so the tester can still scan. Private to that account; never
+  public. The first ten (all pairs of shoes) kept their photo: the route counts a pair as two, so they went to SAM,
+  asked only for "clothing". Fixed in `cfa952b` (a piece's own photo goes whole to background removal unless a person
+  is in it, and SAM is asked for the piece's kind); the ten, and ten of the owner's that kept their photo the same way,
+  were run again at no charge (a repeated reservation is skipped) and read back cut out, pairs whole. All 313 are now
+  cut out (about six minutes on the queue). One carried-over row had a trailing space in its name, which the API never
+  writes: it failed its cut-out and, since the wardrobe list decodes every piece, would have failed that account's
+  whole list. The row was trimmed on the preview (all 494 preview pieces decode) and the cut-out reads only the type
+  (`7717973`).
 - **Owner gate 1 is next, and needs a wardrobe:** the blind rating page (`~/code/meta-hackathon/out/styld-outfit-calibration/`,
   outside the repo) asks both ways for three outfits in a dozen situations. The preview test account holds only 10
   fixture garments (seven tops, two trousers, one pair of shoes), too few to judge the ways by; it needs a good share
