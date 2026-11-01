@@ -13,14 +13,15 @@ import {
 } from '@styld/protocol'
 import { and, count, desc, eq, inArray, isNotNull, like, notExists, or, type SQL, sql } from 'drizzle-orm'
 import { Context, Effect, Layer, Option, Schema } from 'effect'
-import { Database } from '../kernel/Db.ts'
+import { Database, query } from '../kernel/Db.ts'
 import { PublicPages } from './Public.ts'
 
 // Explore and search over people and public boards. Rows are found here; what may show is the public pages' rule
 // for discovery: passed checks only, and no profile three people reported.
 
 const unavailable = () => Unavailable.make({})
-const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: unavailable })
+/** A D1 read; a store that does not answer is unavailable. */
+const read = <A>(run: () => Promise<A>) => query(run).pipe(Effect.mapError(unavailable))
 
 /** How many boards and people each part of Explore and a search shows. */
 const rowLimit = 24
@@ -54,7 +55,7 @@ const withMood = (mood: Mood) => sql`exists (select 1 from json_each(${boards.mo
 
 const makeQueries = (db: Database['Service']) => {
   const publicBoards = (where: SQL | undefined, order: SQL | typeof boards.publishedAt) =>
-    attempt(() =>
+    read(() =>
       db
         .select()
         .from(boards)
@@ -66,7 +67,7 @@ const makeQueries = (db: Database['Service']) => {
     /** Edits from Styld: the house accounts' public boards. */
     houseBoards: () =>
       Effect.flatMap(
-        attempt(() => db.select({ accountId: profiles.accountId }).from(profiles).where(eq(profiles.house, true))),
+        read(() => db.select({ accountId: profiles.accountId }).from(profiles).where(eq(profiles.house, true))),
         (house) =>
           house.length === 0
             ? Effect.succeed([])
@@ -89,7 +90,7 @@ const makeQueries = (db: Database['Service']) => {
     /** People to follow: featured first, then the most recently published, leaving out whoever the reader already
      * follows. */
     people: (viewer: Option.Option<string>) =>
-      attempt(() =>
+      read(() =>
         db
           .select({ accountId: profiles.accountId })
           .from(profiles)
@@ -110,7 +111,7 @@ const makeQueries = (db: Database['Service']) => {
           .limit(peopleLimit * 2),
       ),
     peopleMatching: (words: ReadonlyArray<string>) =>
-      attempt(() =>
+      read(() =>
         db
           .select({ accountId: profiles.accountId, handle: profiles.handle })
           .from(profiles)
@@ -123,7 +124,7 @@ const makeQueries = (db: Database['Service']) => {
       accountIds.length === 0
         ? Effect.succeed(new Set<string>())
         : Effect.map(
-            attempt(() =>
+            read(() =>
               db
                 .select({ accountId: reports.targetId, total: count() })
                 .from(reports)
@@ -177,8 +178,8 @@ const make = Effect.gen(function* () {
       return explore
     }),
     /** People by name and handle, an exact handle first, and boards by name or mood. */
-    search: Effect.fn('Styld.Discovery.search')(function* (query: string, viewer: Option.Option<string>) {
-      const words = wordsIn(query).slice(0, 6)
+    search: Effect.fn('Styld.Discovery.search')(function* (q: string, viewer: Option.Option<string>) {
+      const words = wordsIn(q).slice(0, 6)
       if (words.length === 0) return { people: [], boards: [] } satisfies SearchResults
       const moods = words.flatMap((word) => Option.toArray(Option.fromNullishOr(moodWords[word])))
       const matching = yield* queries.peopleMatching(words)

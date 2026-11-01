@@ -2,7 +2,7 @@ import { boardPins, boards, looks } from '@styld/db'
 import { type Author, type FeedItem, Unavailable } from '@styld/protocol'
 import { and, desc, eq, inArray, isNotNull, lt } from 'drizzle-orm'
 import { Array, DateTime, Effect, Option } from 'effect'
-import type { Database } from '../kernel/Db.ts'
+import { type Database, query } from '../kernel/Db.ts'
 import type { Checks } from '../safety/Checks.ts'
 import { type PublicPages, summaryOf } from './Public.ts'
 import type { SocialStore } from './SocialStore.ts'
@@ -17,7 +17,8 @@ const pageSize = 20
 const maxRun = 2
 
 const unavailable = () => Unavailable.make({})
-const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: unavailable })
+/** A D1 read; a store that does not answer is unavailable. */
+const read = <A>(run: () => Promise<A>) => query(run).pipe(Effect.mapError(unavailable))
 
 interface Candidate {
   readonly kind: 'board' | 'pin' | 'look'
@@ -58,7 +59,7 @@ const candidates = (db: Database['Service'], people: ReadonlyArray<string>, befo
 const candidatesOf = (db: Database['Service'], people: ReadonlyArray<string>, before: Date) =>
   Effect.gen(function* () {
     const ids = [...people]
-    const went = yield* attempt(() =>
+    const went = yield* read(() =>
       db
         .select({ id: boards.id, accountId: boards.accountId, at: boards.publishedAt })
         .from(boards)
@@ -66,7 +67,7 @@ const candidatesOf = (db: Database['Service'], people: ReadonlyArray<string>, be
         .orderBy(desc(boards.publishedAt))
         .limit(pageSize),
     )
-    const pinned = yield* attempt(() =>
+    const pinned = yield* read(() =>
       db
         .select({ id: boardPins.id, boardId: boards.id, accountId: boards.accountId, at: boardPins.createdAt })
         .from(boardPins)
@@ -75,7 +76,7 @@ const candidatesOf = (db: Database['Service'], people: ReadonlyArray<string>, be
         .orderBy(desc(boardPins.createdAt))
         .limit(pageSize),
     )
-    const shared = yield* attempt(() =>
+    const shared = yield* read(() =>
       db
         .select({ id: looks.id, accountId: looks.accountId, at: looks.sharedAt })
         .from(looks)
