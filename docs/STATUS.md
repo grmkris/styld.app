@@ -169,6 +169,13 @@ studio, design, outfits, gallery, tryon, social, billing, operations). The worki
 - **Round 13 on M2–M3** (`3a7c611`…`f38d934`): the filter sheet's shared body (scrolls, title reachable sideways)
   and a full-width Show; Spin drawn only once today's outfits are in, with a hover and Gallery's 140ms press; a 360px
   wardrobe and a sideways filter sheet checked in the gallery journey. f0 fixed the 360px overflow itself (`6e41a9e`).
+- **The owner's v1 wardrobe on the preview (owner, 2026-11-01).** An exception to "no production personal data in the
+  preview", approved by the owner for gate 1: the 74 finished pieces of their own v1 account (styld.app production,
+  read-only export) were added to their preview account through the v2 API (v1 category → nearest type, v1 colour
+  words → the thirteen colours, names kept), then left for Clef's sweep (suggested_at cleared) to refine each type and
+  fill season, occasions and pattern. Private to that account; never public. The export and the import log stay in a
+  private folder outside the repo. The owner's one v1 model photo, approved for the try-on test only, is 153×204 (v1
+  kept no larger original): too small to judge try-on by, so the test still needs 2–3 full-body photos.
 - **Owner gate 1 is next, and needs a wardrobe:** the blind rating page (`~/code/meta-hackathon/out/styld-outfit-calibration/`,
   outside the repo) asks both ways for three outfits in a dozen situations. The preview test account holds only 10
   fixture garments (seven tops, two trousers, one pair of shoes), too few to judge the ways by; it needs a good share
