@@ -48,6 +48,9 @@ export default defineConfig({
       // website never shows them and words its refusals from the catalogs.
       'packages/protocol/src/**/*.ts': ['/[\\s\\S]*/'],
       'packages/server/src/OAuth.ts': ['/[\\s\\S]*/'],
+      'packages/server/src/OAuthAssertions.ts': ['/[\\s\\S]*/'],
+      // A broken invariant of the server's own hold ids, read only in its logs.
+      'packages/server/src/usage/Holds.ts': ['/reserved with another amount$/'],
       // Questions put to the decision model and provider protocol text; no person ever reads them.
       'packages/server/src/capture/Clef.ts': ['/[\\s\\S]*/'],
       'packages/server/src/capture/TurnPrompt.ts': ['/[\\s\\S]*/'],
