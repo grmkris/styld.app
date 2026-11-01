@@ -2,6 +2,7 @@ import type * as Cloudflare from '@alchemy.run/cloudflare'
 import { WardrobeUnavailable } from '@styld/protocol'
 import type { RuntimeContext } from 'alchemy/RuntimeContext'
 import { Effect, Option } from 'effect'
+import type { Bucket } from '../kernel/Media.ts'
 import type { ByteStream } from '../Streams.ts'
 import { type ImageSize, imageSizes } from './Media.ts'
 
@@ -10,7 +11,7 @@ type Runtime<Client extends { readonly raw: Effect.Effect<unknown> | Effect.Effe
 
 /** The bucket photos are stored in and the Images binding that resizes them, as Alchemy's runtime objects. */
 export interface ImageBindings {
-  readonly bucket: Runtime<Cloudflare.R2.ReadWriteBucketClient>
+  readonly bucket: Bucket
   readonly images: Runtime<Cloudflare.Images.ImagesClient>
 }
 

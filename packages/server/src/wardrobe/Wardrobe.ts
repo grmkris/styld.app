@@ -39,6 +39,7 @@ import { makeStore, type PictureRow, type PieceRow, type UploadRow } from './Sto
 import { PieceChanged } from '../safety/PieceChanged.ts'
 import { digestOf, randomToken } from '../kernel/Ids.ts'
 import { identify, priorResult, receiptRow, type Identified } from '../kernel/Receipts.ts'
+import { deleteKeys, deletePrefix } from '../kernel/Media.ts'
 
 /** A video's request body, as the Worker runtime streams it. */
 export type VideoBody =
@@ -297,14 +298,7 @@ const adding = (parts: Parts) => ({
 
 /** A piece's clean drawings, every version, which go with it. */
 const deleteDrawings = (parts: Parts, accountId: string, pieceId: string) =>
-  Effect.gen(function* () {
-    const listed = yield* Effect.tryPromise({
-      try: () => parts.bindings.bucket.list({ prefix: piecePrefix(accountId, pieceId) }),
-      catch: unavailable,
-    })
-    const keys = listed.objects.map(({ key }) => key)
-    if (keys.length > 0) yield* Effect.tryPromise({ try: () => parts.bindings.bucket.delete(keys), catch: unavailable })
-  })
+  deletePrefix(parts.bindings.bucket, piecePrefix(accountId, pieceId))
 
 const editing = (parts: Parts) => ({
   /** Show the clean drawing or the photo. Only a drawing that is ready or proposed can be chosen. */
@@ -338,8 +332,10 @@ const editing = (parts: Parts) => ({
         [originalShared ? null : piece.originalKey, piece.imageKey, piece.backImageKey].filter(Predicate.isNotNull),
       ),
     ].filter((key) => !originalShared || key !== piece.originalKey)
-    yield* Effect.tryPromise({ try: () => parts.bindings.bucket.delete(keys), catch: unavailable })
-    yield* deleteDrawings(parts, accountId, pieceId)
+    yield* deleteKeys(parts.bindings.bucket, keys).pipe(
+      Effect.andThen(deleteDrawings(parts, accountId, pieceId)),
+      Effect.catchTag('MediaUnavailable', () => Effect.fail(unavailable())),
+    )
     const deleted = yield* stored(parts.store.deletePiece(accountId, pieceId))
     if (Option.isNone(deleted)) return yield* PieceNotFound.make({})
   }),

@@ -1,9 +1,10 @@
 import { type CaptureId, CaptureNotFound } from '@styld/protocol'
-import { Array, DateTime, Effect, Option } from 'effect'
+import { DateTime, Effect, Option } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import { captureKey, enqueueCapture, holdOf, type Parts, storedAs, unavailable } from './Parts.ts'
+import { captureKey, enqueueCapture, holdOf, type Parts, storedAs } from './Parts.ts'
 import type { CaptureRow, FrameRow } from './Store.ts'
 import { Usage } from './Usage.ts'
+import { deleteKeys, keysUnder } from '../kernel/Media.ts'
 
 /** A capture processing longer than this has lost its queue message: the person may retry or remove it. */
 const staleMillis = 30 * 60 * 1000
@@ -32,22 +33,11 @@ const holdAgain = (capture: CaptureRow) =>
 const removeObjects = (parts: Parts, capture: CaptureRow, frames: ReadonlyArray<FrameRow>) =>
   Effect.gen(function* () {
     const prefix = captureKey(capture.accountId, capture.id, '')
-    const listed: Array<string> = []
-    let cursor: string | undefined
-    do {
-      const page = yield* Effect.tryPromise({
-        try: () => parts.bindings.bucket.list({ prefix, ...(cursor === undefined ? {} : { cursor }) }),
-        catch: unavailable,
-      })
-      listed.push(...page.objects.map(({ key }) => key))
-      cursor = page.truncated ? page.cursor : undefined
-    } while (cursor !== undefined)
+    const listed = yield* keysUnder(parts.bindings.bucket, prefix)
     const candidates = [...listed, capture.originalKey, ...frames.map(({ objectKey }) => objectKey)]
     const inUse = yield* storedAs(parts.store.keysInUse(capture.accountId, candidates))
     const keys = candidates.filter((key) => !inUse.has(key))
-    yield* Effect.forEach(Array.chunksOf(keys, 1000), (chunk) =>
-      Effect.tryPromise({ try: () => parts.bindings.bucket.delete([...chunk]), catch: unavailable }),
-    )
+    yield* deleteKeys(parts.bindings.bucket, keys)
   }).pipe(Effect.ignore({ log: true, message: 'Styld.Capture.remove could not delete stored objects' }))
 
 /** Try a capture again, or remove one. Each moves the capture only from the state it was read in. */

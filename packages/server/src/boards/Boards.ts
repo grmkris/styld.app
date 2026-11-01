@@ -16,7 +16,7 @@ import {
   type UpdateBoard,
   UploadRefused,
 } from '@styld/protocol'
-import { Array, Context, Effect, Option } from 'effect'
+import { Context, Effect, Option } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { makeLookStore } from '../looks/Store.ts'
 import type { Checks } from '../safety/Checks.ts'
@@ -47,6 +47,7 @@ import {
 import { nowDate } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 import { identify, receiptRow, type Identified } from '../kernel/Receipts.ts'
+import { deleteKeys } from '../kernel/Media.ts'
 
 /** Where a board picture came from: an upload, a picture Styld generated (its job and model), or an outfit photo of
  * My Gallery. */
@@ -54,9 +55,6 @@ type ImageOrigin =
   | { readonly kind: 'upload' }
   | { readonly kind: 'generated'; readonly jobId: string; readonly model: string }
   | { readonly kind: 'photo' }
-
-/** R2 deletes at most this many keys per call. */
-const deleteBatch = 1000
 
 const reads = (parts: Parts) => ({
   /** The account's boards, the most recently changed first. */
@@ -141,10 +139,8 @@ const changes = (parts: Parts) => ({
     // Pictures first: if the row's delete fails, a retry finds the board and finishes.
     const board = yield* ownBoard(parts, accountId, boardId)
     const keys = yield* stored(parts.store.imageKeys(board.id))
-    yield* Effect.forEach(
-      Array.chunksOf(keys, deleteBatch),
-      (chunk) => Effect.tryPromise({ try: () => parts.bindings.bucket.delete([...chunk]), catch: unavailable }),
-      { discard: true },
+    yield* deleteKeys(parts.bindings.bucket, keys).pipe(
+      Effect.catchTag('MediaUnavailable', () => Effect.fail(unavailable())),
     )
     if (!(yield* stored(parts.store.deleteBoard(accountId, boardId)))) return yield* BoardNotFound.make({})
   }),

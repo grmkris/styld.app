@@ -33,6 +33,7 @@ import type { GarmentRow, PhotoRow } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 import { identify, priorResult, receiptRow, type Identified } from '../kernel/Receipts.ts'
+import { deleteKeys, keysUnder } from '../kernel/Media.ts'
 
 // My Gallery for the website (owner, 2026-10-31): adding a photo spends its upload and holds a credit while Styld finds
 // its garments; the person then confirms or corrects each match, marks favourites, and may delete a photo, which takes
@@ -146,12 +147,8 @@ const added = (parts: PhotoParts, operation: Identified, input: AddPhoto) =>
 const deleteObjects = (parts: PhotoParts, row: PhotoRow) =>
   Effect.gen(function* () {
     const bucket = parts.capture.bindings.bucket
-    const listed = yield* Effect.tryPromise({
-      try: () => bucket.list({ prefix: photoPrefix(row.accountId, row.id) }),
-      catch: unavailable,
-    })
-    const keys = [row.originalKey, ...listed.objects.map(({ key }) => key)]
-    yield* Effect.tryPromise({ try: () => bucket.delete(keys), catch: unavailable })
+    const listed = yield* keysUnder(bucket, photoPrefix(row.accountId, row.id))
+    yield* deleteKeys(bucket, [row.originalKey, ...listed])
   })
 
 /** A garment offered to the review tray, as a capture of its own (source `photos`, no credit). Its picture is copied
@@ -266,7 +263,7 @@ const changing = (parts: PhotoParts, looks: Looks['Service']) => ({
   deletePhoto: Effect.fn('Styld.Photos.delete')(function* (photoId: string) {
     const { accountId } = yield* CurrentAccount
     const row = yield* ownPhoto(parts, accountId, photoId)
-    yield* deleteObjects(parts, row)
+    yield* deleteObjects(parts, row).pipe(Effect.catchTag('MediaUnavailable', () => Effect.fail(unavailable())))
     yield* storedAs(parts.photos.deletePhoto(accountId, photoId))
   }),
   matchGarment: Effect.fn('Styld.Photos.match')(function* (photoId: string, garmentId: string, input: MatchGarment) {

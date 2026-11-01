@@ -9,14 +9,13 @@ import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { accountPrefix } from './wardrobe/Media.ts'
 import type { WardrobeBindings } from './wardrobe/Parts.ts'
+import { deletePrefix } from './kernel/Media.ts'
 
 const unavailable = () => AccountUnavailable.make({})
 
 const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: unavailable })
 
 /** R2 deletes at most this many keys per call. */
-const deleteBatch = 1000
-
 const make = (
   bindings: Pick<WardrobeBindings, 'database' | 'bucket' | 'queue'>,
   forgetChats: (accountId: string) => Effect.Effect<void, unknown>,
@@ -28,22 +27,11 @@ const make = (
     const ofSubject = (table: SQLiteTable, accountId: string) =>
       db.run(sql`delete from ${table} where ${sql.identifier('subject_id')} = ${accountId}`)
 
-    /** Delete every photo under the account's prefix, a page at a time. */
-    const sweepPhotos = Effect.fnUntraced(function* (accountId: string) {
-      let cursor: string | undefined
-      do {
-        const page = yield* attempt(() =>
-          bindings.bucket.list({
-            prefix: accountPrefix(accountId),
-            limit: deleteBatch,
-            ...(cursor === undefined ? {} : { cursor }),
-          }),
-        )
-        const keys = page.objects.map(({ key }) => key)
-        if (keys.length > 0) yield* attempt(() => bindings.bucket.delete(keys))
-        cursor = page.truncated ? page.cursor : undefined
-      } while (cursor !== undefined)
-    })
+    /** Delete every object under the account's prefix. */
+    const sweepPhotos = (accountId: string) =>
+      deletePrefix(bindings.bucket, accountPrefix(accountId)).pipe(
+        Effect.catchTag('MediaUnavailable', () => Effect.fail(unavailable())),
+      )
 
     /** Access ends at once: disabled, a new security revision, no sessions, no assistant grants. */
     const closeAccount = Effect.fnUntraced(function* (accountId: string) {
