@@ -14,8 +14,9 @@ import { StyldClient } from '../StyldClient.ts'
 
 // MODEL
 
-/** Which languages the search reads a piece's words in: the page's, or both once the other has loaded. */
-export const SearchLanguages = defineTaggedUnion({ PageOnly: {}, Both: {} })
+/** Which languages the search reads a piece's words in: the page's, both once the other has loaded, or the page's
+ * alone because the other did not load (the page says so and offers to try again). */
+export const SearchLanguages = defineTaggedUnion({ PageOnly: {}, Both: {}, OtherUnavailable: {} })
 
 /** Ask: search your own wardrobe, the stylist's hand-off to the assistants, and the + sheet. The pieces are the
  * wardrobe's, which the app keeps once for every page. */
@@ -56,6 +57,7 @@ export const Message = defineMessageUnion({
   ClickedRetry: {},
   SucceededLoadSearchLanguages: {},
   FailedLoadSearchLanguages: {},
+  ClickedRetrySearchLanguages: {},
   SucceededSearchPublic: { query: Schema.String, results: SearchResults },
   FailedSearchPublic: { query: Schema.String },
 })
@@ -191,8 +193,14 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotAddSheetMessage: (got) => foldAddSheet(model, got.message),
     ClickedRetry: () => ({ model, outMessage: OutMessage.RequestedPieces() }),
     SucceededLoadSearchLanguages: () => ({ model: modifyFields(model, { languages: () => SearchLanguages.Both() }) }),
-    // The page's own language still searches.
-    FailedLoadSearchLanguages: () => ({ model }),
+    // The page's own language still searches, and the results say the other is missing.
+    FailedLoadSearchLanguages: () => ({
+      model: modifyFields(model, { languages: () => SearchLanguages.OtherUnavailable() }),
+    }),
+    ClickedRetrySearchLanguages: () => ({
+      model: modifyFields(model, { languages: () => SearchLanguages.PageOnly() }),
+      commands: [LoadSearchLanguages()],
+    }),
     // An answer for a query since changed is dropped.
     SucceededSearchPublic: ({ query, results }) =>
       awaits(model.search, query)

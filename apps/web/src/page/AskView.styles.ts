@@ -115,6 +115,8 @@ export const resultName = style({
 })
 export const resultImage = style({ inlineSize: '100%', aspectRatio: '1 / 1', objectFit: 'contain' })
 export const nothingFound = style({ display: 'grid', justifyItems: 'start', gap: 'related', color: 'ink2' })
+/** Only the page's own language was searched: a quiet line under the results. */
+export const languageNote = style({ fontSize: 'label', color: 'ink2' })
 export const stylist = style({
   display: 'grid',
   justifyItems: 'start',

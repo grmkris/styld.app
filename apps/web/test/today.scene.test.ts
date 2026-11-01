@@ -1,11 +1,11 @@
-import { BoardSummary, OutfitSession, outfitKeyOf } from '@styld/protocol'
+import { BoardSummary, Day, OutfitSession, outfitKeyOf } from '@styld/protocol'
 import { Option, Result, Schema } from 'effect'
-import { expect, given, inside, role, scene, selector } from 'foldkit/scene'
+import { click, Command, expect, given, inside, role, scene, selector, text } from 'foldkit/scene'
 import { AsyncData } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
-import { FavouriteData, LastBoardData, OutfitsData, TrayData, Worn } from '../src/page/Today.ts'
+import { FavouriteData, LastBoardData, Message, OutfitsData, ReadWorn, TrayData, Worn } from '../src/page/Today.ts'
 import { view } from '../src/View.ts'
 import { lenses } from '../src/Page.ts'
 import { at, withPage, withPieces } from './AppFixtures.ts'
@@ -130,6 +130,25 @@ describe('Home', () => {
       given(wornWith(AsyncData.settle(AsyncData.Loading(), Result.fail('Unavailable' as const)))),
       expect(role('button', { name: 'Worn today' })).toExist(),
       expect(role('button', { name: 'Spin for another outfit' })).not.toExist(),
+    )
+  })
+
+  test('a log of today that did not load says so, and Try again reads it again', () => {
+    const thursday = Schema.decodeUnknownSync(Day)('2026-10-29')
+    const unread = withPage(home(0, Option.none()), lenses.today, (today) =>
+      modifyFields(today, { maybeDay: () => Option.some(thursday), worn: () => Worn.Unread() }),
+    )
+    scene(
+      { update, view },
+      given(unread),
+      expect(text('Today’s log didn’t load.')).toExist(),
+      click(role('button', { name: 'Try again' })),
+      Command.resolve(ReadWorn, Message.FailedReadWorn()),
+      expect(text('Today’s log didn’t load.')).toExist(),
+      click(role('button', { name: 'Try again' })),
+      Command.resolve(ReadWorn, Message.SucceededReadWorn({ pieceIds: [knit.id] })),
+      expect(text('Today’s log didn’t load.')).not.toExist(),
+      expect(role('button', { name: 'Worn today' })).toExist(),
     )
   })
 

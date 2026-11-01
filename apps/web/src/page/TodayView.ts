@@ -6,7 +6,7 @@ import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
-import { primaryAction, secondaryAction, smallAction } from '../Actions.styles.ts'
+import { linkAction, primaryAction, secondaryAction, smallAction } from '../Actions.styles.ts'
 import { addIcon, checkIcon, exploreTabIcon, loader, spinIcon } from '../Icon.ts'
 import { addPiecesRouter, boardRouter, exploreRouter, photoRouter, reviewRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
@@ -119,6 +119,7 @@ const missingView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Htm
   })
 
 const noteView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  if (Worn.guards.Unread(model.worn)) return unreadView(locale, h)
   const failed = Worn.guards.Failed(model.worn)
   const text = failed
     ? format(locale, 'today.wearFailed', {})
@@ -130,6 +131,20 @@ const noteView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
     [text],
   )
 }
+
+/** Today's log did not load: said where the note stands, with Try again; Wear this still logs the outfit. */
+const unreadView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.p(
+    [h.Role('status'), h.DataAttribute('tone', 'error'), ...styled(h, styles.note())],
+    [
+      format(locale, 'today.wornUnread', {}),
+      ' ',
+      actionButton(
+        { label: format(locale, 'today.retry', {}), style: linkAction(), onClick: Message.ClickedRetryWorn() },
+        h,
+      ),
+    ],
+  )
 
 /** The day in the logo's voice. Before the browser knows it, the line keeps its height and says "Today". */
 const headlineView = (maybeDay: Option.Option<string>, locale: Locale, h: HtmlBuilder<Message>): Html =>

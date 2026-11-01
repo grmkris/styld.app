@@ -74,6 +74,23 @@ describe('Ask', () => {
     )
   })
 
+  test('when the other language did not load, the results say only this one was searched, and Try again loads it', () => {
+    const pageOnly = withPage(askWith([tee], 'tee'), lenses.ask, (current) =>
+      modifyFields(current, { languages: () => Ask.SearchLanguages.OtherUnavailable() }),
+    )
+    scene(
+      { update, view },
+      given(pageOnly),
+      expect(text('Only words in this language were searched.')).toExist(),
+      click(role('button', { name: 'Try again' })),
+      Command.resolve(Ask.LoadSearchLanguages, Ask.Message.FailedLoadSearchLanguages()),
+      expect(text('Only words in this language were searched.')).toExist(),
+      click(role('button', { name: 'Try again' })),
+      Command.resolve(Ask.LoadSearchLanguages, Ask.Message.SucceededLoadSearchLanguages()),
+      expect(text('Only words in this language were searched.')).not.toExist(),
+    )
+  })
+
   test('Styld answers in the app, and ChatGPT or Claude once connected from the account', () => {
     scene(
       { update, view },

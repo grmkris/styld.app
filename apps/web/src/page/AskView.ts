@@ -7,7 +7,7 @@ import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
-import { primaryAction, secondaryAction } from '../Actions.styles.ts'
+import { linkAction, primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { addIcon, boardsTabIcon, cameraIcon, closeIcon, linkIcon, loader, searchIcon, stylistIcon } from '../Icon.ts'
 import { accountRouter, addPiecesRouter, assistantsSection, pieceRouter, stylistRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
@@ -179,9 +179,30 @@ const resultsView = (ready: ReadonlyArray<Piece>, model: Model, locale: Locale, 
             Array.map(some, (piece) => resultTile(piece, locale, h)),
           ),
       }),
+      otherLanguageView(model, locale, h),
     ],
   )
 }
+
+/** The other language did not load, so only the page's words were searched: said under the results, with Try again. */
+const otherLanguageView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  SearchLanguages.guards.OtherUnavailable(model.languages)
+    ? h.p(
+        [h.Role('status'), ...styled(h, styles.languageNote())],
+        [
+          format(locale, 'ask.otherLanguageFailed', {}),
+          ' ',
+          actionButton(
+            {
+              label: format(locale, 'common.tryAgain', {}),
+              style: linkAction(),
+              onClick: Message.ClickedRetrySearchLanguages(),
+            },
+            h,
+          ),
+        ],
+      )
+    : h.empty
 
 /** People and public boards for the same words, once the server has answered for them. */
 const publicResults = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>

@@ -26,12 +26,14 @@ import { StyldClient } from '../StyldClient.ts'
 
 // MODEL
 
-/** Whether today's outfit is recorded: not yet, on its way, or worn (with the pieces worn). */
+/** Whether today's outfit is recorded: not yet, on its way, worn (with the pieces worn), not saved, or not known
+ * because reading it failed (the note says so and offers to read it again). */
 export const Worn = defineTaggedUnion({
   NotYet: {},
   Saving: {},
   Worn: { pieceIds: Schema.Array(PieceId) },
   Failed: {},
+  Unread: {},
 })
 export type Worn = typeof Worn.Type
 
@@ -119,6 +121,7 @@ export const Message = defineMessageUnion({
   FailedWear: {},
   ClickedRetry: {},
   ClickedRetryOutfits: {},
+  ClickedRetryWorn: {},
 })
 export type Message = typeof Message.Type
 
@@ -394,7 +397,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SucceededReadWorn: ({ pieceIds }) => ({
       model: modifyFields(model, { worn: () => (pieceIds.length > 0 ? Worn.Worn({ pieceIds }) : Worn.NotYet()) }),
     }),
-    FailedReadWorn: () => ({ model }),
+    FailedReadWorn: () => ({ model: modifyFields(model, { worn: () => Worn.Unread() }) }),
     SucceededListBoards: ({ maybeBoard }) => ({
       model: modifyFields(model, { lastBoard: () => LastBoardData.Success({ data: maybeBoard }) }),
     }),
@@ -432,4 +435,9 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     FailedWear: () => ({ model: modifyFields(model, { worn: () => Worn.Failed() }) }),
     ClickedRetry: () => ({ model, outMessage: OutMessage.RequestedPieces() }),
     ClickedRetryOutfits: () => startRun(model),
+    ClickedRetryWorn: () =>
+      Option.match(model.maybeDay, {
+        onNone: () => ({ model }),
+        onSome: (day) => ({ model: modifyFields(model, { worn: () => Worn.NotYet() }), commands: [ReadWorn({ day })] }),
+      }),
   })

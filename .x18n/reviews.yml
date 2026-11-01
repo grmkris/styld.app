@@ -1,6 +1,10 @@
 # yaml-language-server: $schema=https://x18n.dev/schema/reviews.json
 x18n: 1
 sources:
+  ask.otherLanguageFailed:
+    sl: 133375c41998fb
+  today.wornUnread:
+    sl: ecfc9a548ec3e
   wardrobe.addPieceColorsLabel:
     sl: 6b42de829fd1b
   wardrobe.colorsLabel:

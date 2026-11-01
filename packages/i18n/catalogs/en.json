@@ -816,7 +816,8 @@
     "addLink": "Add from a link",
     "addLinkHint": "A shop’s product page",
     "stylistAssistants": "Or connect ChatGPT or Claude",
-    "askStyld": "Ask Styld about “{query}”"
+    "askStyld": "Ask Styld about “{query}”",
+    "otherLanguageFailed": "Only words in this language were searched."
   },
   "today": {
     "title": "Today",
@@ -840,7 +841,8 @@
     "lovedOutfit": "An outfit you loved",
     "waiting": "{count, plural, one {# piece from your scan to check} other {# pieces from your scan to check}}",
     "review": "Finish adding",
-    "keepGoing": "Keep pinning"
+    "keepGoing": "Keep pinning",
+    "wornUnread": "Today’s log didn’t load."
   },
   "stylist": {
     "title": "Ask Styld",

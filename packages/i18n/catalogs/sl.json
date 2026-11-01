@@ -816,7 +816,8 @@
     "addLink": "Dodaj s povezavo",
     "addLinkHint": "Stran izdelka v trgovini",
     "stylistAssistants": "Ali poveži ChatGPT ali Claude",
-    "askStyld": "Vprašaj Stylda o »{query}«"
+    "askStyld": "Vprašaj Stylda o »{query}«",
+    "otherLanguageFailed": "Iskane so bile le besede v tem jeziku."
   },
   "today": {
     "title": "Danes",
@@ -840,7 +841,8 @@
     "lovedOutfit": "Oprava, ki ti je bila všeč",
     "waiting": "{count, plural, one {# kos iz skeniranja za pregled} two {# kosa iz skeniranja za pregled} few {# kosi iz skeniranja za pregled} other {# kosov iz skeniranja za pregled}}",
     "review": "Dodaj jih",
-    "keepGoing": "Dodaj še"
+    "keepGoing": "Dodaj še",
+    "wornUnread": "Današnji zapis se ni naložil."
   },
   "stylist": {
     "title": "Vprašaj Stylda",
