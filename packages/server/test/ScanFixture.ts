@@ -80,6 +80,15 @@ const seed = (
     for (const [at, sighting] of sightings.entries()) {
       const key = `${prefix}/captures/${scanned[sighting.capture]}/${scanned[sighting.detection]}.png`
       yield* media.put(key, cutout(colours[sighting.colour]))
+      // The still the sighting was cut from: an upload of the video's, as the browser sends its stills.
+      const still = `${prefix}/uploads/still-${scanned[sighting.detection]}`
+      rows.push(
+        database
+          .prepare(
+            "INSERT INTO uploads (id, account_id, token_digest, content_type, bytes, object_key, status, expires_at) VALUES (?, ?, 'seeded', 'image/jpeg', 1, ?, 'used', ?)",
+          )
+          .bind(id('up', `still-${at}`), scanAccount, still, now),
+      )
       rows.push(
         database
           .prepare(
@@ -90,7 +99,7 @@ const seed = (
             scanned[sighting.capture],
             scanAccount,
             key,
-            key,
+            still,
             sighting.whole >= 0.5 ? 1 : 0,
             JSON.stringify([sighting.colour]),
             sighting.whole,
