@@ -1,25 +1,26 @@
-import { style } from '../../zyzz.config.ts'
+import { pressThenHover, style } from '../../zyzz.config.ts'
+export { problem } from '../../Controls.styles.ts'
 
 // A board's page (Gallery 2: docs/design/gallery-2/site/v2/board.html): its collage above the grid of its pins.
-export const page = style({ display: 'grid', gap: '16px', paddingBlock: '8px 40px' })
+export const page = style({ display: 'grid', gap: 'grid', paddingBlock: '8px 40px' })
 /** The way back and the board's actions, kept to the collage's width on a wide screen, near what they act on. */
 export const bar = style({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  gap: '8px',
+  gap: 'actions',
   '@media (min-width: 900px)': { maxInlineSize: '560px' },
 })
 /** The page's own actions, at the end of the bar. */
-export const barActions = style({ display: 'flex', alignItems: 'center', gap: '8px' })
-export const back = style({ display: 'inline-flex', alignItems: 'center', gap: '4px', minBlockSize: '44px' })
-export const head = style({ display: 'grid', gap: '4px' })
-export const meta = style({ fontSize: '14px', color: 'ink2' })
+export const barActions = style({ display: 'flex', alignItems: 'center', gap: 'actions' })
+export const back = style({ display: 'inline-flex', alignItems: 'center', gap: 'tight', minBlockSize: '44px' })
+export const head = style({ display: 'grid', gap: 'tight' })
+export const meta = style({ fontSize: 'label', color: 'ink2' })
 
 /** The collage as a card: the table on stock, opening the editor. */
 export const collage = style({
   display: 'grid',
-  gap: '8px',
+  gap: 'actions',
   maxInlineSize: '560px',
   padding: '8px',
   borderRadius: 'panel',
@@ -29,39 +30,39 @@ export const collage = style({
   boxShadow: 'lift1',
   // The owner's card opens the editor: it presses and lifts. A visitor's collage is only a picture, and stays still.
   transitionProperty: 'transform, translate',
-  transitionDuration: '140ms, 180ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  transitionDuration: pressThenHover,
+  transitionTimingFunction: 'standard',
   '&[href]:active': { transform: 'scale(0.98)' },
   '@media (hover: hover) and (pointer: fine)': { '&[href]:hover': { translate: '0 -2px' } },
 })
-export const collageLabel = style({ paddingInline: '4px', fontSize: '14px', fontWeight: 600 })
+export const collageLabel = style({ paddingInline: '4px', fontSize: 'label', fontWeight: 600 })
 /** With nothing on the table yet: a line and Make a collage, on stock after the pins. */
 export const collageStart = style({
   display: 'flex',
   flexWrap: 'wrap',
   alignItems: 'center',
   justifyContent: 'space-between',
-  gap: '12px',
+  gap: 'related',
   maxInlineSize: '560px',
   paddingBlock: '12px',
   paddingInline: '16px 12px',
   borderRadius: 'panel',
   backgroundColor: 'stock',
 })
-export const collageStartText = style({ flex: '1 1 14rem', fontSize: '14px', color: 'ink2', textWrap: 'pretty' })
+export const collageStartText = style({ flex: '1 1 14rem', fontSize: 'label', color: 'ink2', textWrap: 'pretty' })
 
 export const pinsHead = style({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  gap: '8px',
+  gap: 'actions',
   '@media (min-width: 900px)': { maxInlineSize: '560px' },
 })
-export const pinsTitle = style({ fontSize: '17px', fontWeight: 600 })
+export const pinsTitle = style({ fontSize: 'subheading', fontWeight: 600 })
 export const grid = style({
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 150px), 1fr))',
-  gap: '12px',
+  gap: 'related',
   margin: '0',
   padding: '0',
   listStyle: 'none',
@@ -70,12 +71,12 @@ export const pin = style({ position: 'relative' })
 /** A pin's picture: a cutout on paper, a picture with its own small corners, or a look's pieces in a square. */
 export const pinLink = style({
   display: 'grid',
-  gap: '4px',
+  gap: 'tight',
   color: 'ink',
   textDecorationLine: 'none',
   transitionProperty: 'transform, translate',
-  transitionDuration: '140ms, 180ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  transitionDuration: pressThenHover,
+  transitionTimingFunction: 'standard',
   ':active': { transform: 'scale(0.98)' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { translate: '0 -2px' } },
 })
@@ -120,23 +121,23 @@ export const mosaic = style({
   padding: '6px',
   '& img': { inlineSize: '100%', blockSize: '100%', minBlockSize: '0', objectFit: 'contain', mixBlendMode: 'darken' },
 })
-export const pinName = style({ paddingInline: '4px', fontSize: '13px', fontWeight: 600 })
+export const pinName = style({ paddingInline: '4px', fontSize: 'small', fontWeight: 600 })
 /** Under a pin the board shows others without: a quiet line saying only its owner sees it. */
-export const heldBack = style({ paddingInline: '4px', fontSize: '13px', color: 'ink2', textWrap: 'pretty' })
+export const heldBack = style({ paddingInline: '4px', fontSize: 'small', color: 'ink2', textWrap: 'pretty' })
 /** The unpin question over the tile: what happens, then Take off and Keep, full width. */
 export const unpinAsk = style({
   position: 'absolute',
   inset: '0',
   display: 'grid',
   alignContent: 'end',
-  gap: '8px',
+  gap: 'actions',
   padding: '10px',
   borderRadius: 'panel',
   backgroundColor: 'stock',
   boxShadow: 'lift1',
   '& > button': { inlineSize: '100%' },
 })
-export const unpinQuestion = style({ fontSize: '13px', lineHeight: 1.4, color: 'ink', textWrap: 'pretty' })
+export const unpinQuestion = style({ fontSize: 'small', lineHeight: 1.4, color: 'ink', textWrap: 'pretty' })
 /** Taking a pin off: a small round over the pin's corner. */
 export const unpin = style({
   position: 'absolute',
@@ -154,29 +155,28 @@ export const unpin = style({
   cursor: 'pointer',
   boxShadow: 'overPhoto',
   transitionProperty: 'transform, background-color',
-  transitionDuration: '140ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  transitionDuration: 'press',
+  transitionTimingFunction: 'standard',
   ':active': { transform: 'scale(0.96)' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2' } },
 })
-export const empty = style({ display: 'grid', gap: '4px', color: 'ink2' })
+export const empty = style({ display: 'grid', gap: 'tight', color: 'ink2' })
 export const emptyTitle = style({ fontWeight: 600, color: 'ink' })
-export const problem = style({ fontSize: '14px', color: 'error' })
 
 /** The picker and the settings inside their sheets. */
 export const sheetBody = style({
   display: 'grid',
-  gap: '12px',
+  gap: 'related',
   maxBlockSize: '70dvh',
   overflowY: 'auto',
   paddingInline: '12px',
   paddingBlockEnd: '4px',
 })
-export const sheetSection = style({ fontSize: '15px', fontWeight: 600 })
+export const sheetSection = style({ fontSize: 'control', fontWeight: 600 })
 export const pickGrid = style({
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fill, minmax(88px, 1fr))',
-  gap: '8px',
+  gap: 'actions',
   margin: '0',
   padding: '0',
   listStyle: 'none',
@@ -195,8 +195,8 @@ export const pick = style({
   backgroundColor: 'paper',
   cursor: 'pointer',
   transitionProperty: 'transform, background-color',
-  transitionDuration: '140ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  transitionDuration: 'press',
+  transitionTimingFunction: 'standard',
   ':active': { transform: 'scale(0.96)' },
   '&[aria-pressed="true"]': { borderColor: 'ink' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2' } },
@@ -213,9 +213,15 @@ export const picked = style({
   backgroundColor: 'ink',
   color: 'onInk',
 })
-export const field = style({ display: 'grid', gap: '6px', fontSize: '14px', fontWeight: 600 })
-export const actions = style({ display: 'flex', flexWrap: 'wrap', gap: '8px' })
-export const sharing = style({ display: 'grid', gap: '6px', paddingBlockStart: '12px' })
-export const moodsLabel = style({ margin: '0', fontSize: '15px', fontWeight: 600 })
-export const moods = style({ display: 'flex', flexWrap: 'wrap', gap: '6px' })
-export const danger = style({ display: 'grid', gap: '8px', paddingBlockStart: '12px', color: 'ink2', fontSize: '14px' })
+export const field = style({ display: 'grid', gap: 'snug', fontSize: 'label', fontWeight: 600 })
+export const actions = style({ display: 'flex', flexWrap: 'wrap', gap: 'actions' })
+export const sharing = style({ display: 'grid', gap: 'snug', paddingBlockStart: '12px' })
+export const moodsLabel = style({ margin: '0', fontSize: 'control', fontWeight: 600 })
+export const moods = style({ display: 'flex', flexWrap: 'wrap', gap: 'snug' })
+export const danger = style({
+  display: 'grid',
+  gap: 'actions',
+  paddingBlockStart: '12px',
+  color: 'ink2',
+  fontSize: 'label',
+})

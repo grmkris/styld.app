@@ -4,7 +4,7 @@ import { style } from '../zyzz.config.ts'
  * at 600, so switching changes colour and underline only and the row never shifts. */
 export const tabs = style({
   display: 'flex',
-  gap: '20px',
+  gap: 'gutter',
   // On a phone the tabs take a row of their own under the title and the +.
   order: 3,
   flexBasis: '100%',
@@ -17,19 +17,19 @@ export const head = style({
   flexWrap: 'wrap',
   alignItems: 'center',
   justifyContent: 'space-between',
-  gap: '0 12px',
+  columnGap: 'related',
   minBlockSize: '52px',
   paddingBlockStart: '8px',
   '& > h1': { order: 1 },
   '& > a': { order: 2 },
-  '@media (min-width: 900px)': { gap: '0 32px', '& > a': { order: 3 } },
+  '@media (min-width: 900px)': { columnGap: 'column', '& > a': { order: 3 } },
 })
 export const tab = style({
   display: 'inline-flex',
   alignItems: 'center',
   minBlockSize: '44px',
   color: 'ink2',
-  fontSize: '15px',
+  fontSize: 'control',
   fontWeight: 600,
   textDecorationLine: 'none',
   '&[aria-current="page"]': {

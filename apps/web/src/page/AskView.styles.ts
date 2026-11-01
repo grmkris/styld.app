@@ -1,17 +1,15 @@
-import { keyframes } from 'zyzz/web'
-import { style } from '../zyzz.config.ts'
+export { chip, chipSkeleton, lede as note } from '../Controls.styles.ts'
+import { pressThenHover, style } from '../zyzz.config.ts'
+export { grab, scrim, sheet, sheetBody, sheetHead, sheetTitle } from './Sheet.styles.ts'
 
 // Ask (Gallery 2: docs/design/gallery-2/site/v2/ask.html, `.askbar`): search your wardrobe, the stylist, the + sheet.
-
-const rise = keyframes({ from: { transform: 'translateY(100%)' } }, { id: 'styld-ask-sheet-rise' })
-const fade = keyframes({ from: { opacity: 0 } }, { id: 'styld-ask-scrim-fade' })
 
 // One column no wider than the page: an `auto` column grew to the search field's own width once the clear
 // button showed, and the page ran sideways on a phone.
 export const page = style({
   display: 'grid',
   gridTemplateColumns: 'minmax(0, 1fr)',
-  gap: '20px',
+  gap: 'gutter',
   paddingBlock: '0 40px',
   // A search reads in one measure on a wide screen (Gallery `.dask`), the + near the words.
   // Centred, as Styld's chat one tap away is, so the column does not jump between them.
@@ -21,7 +19,7 @@ export const page = style({
 export const search = style({
   display: 'flex',
   alignItems: 'center',
-  gap: '4px',
+  gap: 'tight',
   minInlineSize: '0',
   minBlockSize: '52px',
   paddingBlock: '4px',
@@ -41,7 +39,7 @@ export const searchInput = style({
   backgroundColor: 'transparent !custom',
   color: 'ink',
   // 16px keeps iPhone Safari from zooming into the field.
-  fontSize: '16px',
+  fontSize: 'body',
   textOverflow: 'ellipsis',
   appearance: 'none',
   ':focus-visible': { outlineWidth: '0' },
@@ -57,7 +55,7 @@ export const clear = style({ color: 'ink2' })
 export const chips = style({
   display: 'flex',
   alignItems: 'center',
-  gap: '8px',
+  gap: 'actions',
   blockSize: '44px',
   marginInline: 'calc(-1 * max(20px, env(safe-area-inset-left)))',
   paddingInline: 'max(20px, env(safe-area-inset-left))',
@@ -65,46 +63,30 @@ export const chips = style({
   overflowX: 'auto',
   scrollbarWidth: 'none',
 })
-export const chip = style({
-  position: 'relative',
-  flex: 'none',
-  minBlockSize: '36px',
-  paddingInline: '14px',
-  borderWidth: '0',
-  borderRadius: 'pill',
-  backgroundColor: 'paper2',
-  color: 'ink2',
-  fontSize: '14px',
-  fontWeight: 500,
-  whiteSpace: 'nowrap',
-  cursor: 'pointer',
-  transitionProperty: 'transform, background-color',
-  transitionDuration: '140ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
-  ':active': { transform: 'scale(0.96)' },
-  // A 36px pill with a 44px target (DESIGN.md › Controls).
-  '::after': { content: '""', position: 'absolute', insetInline: '0', insetBlock: '-4px' },
-  '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2Hover' } },
-})
-export const chipSkeleton = style({ flex: 'none', inlineSize: '72px', blockSize: '36px', borderRadius: 'pill' })
 /** What belongs here when the wardrobe is empty, and the one way to fill it. */
-export const empty = style({ display: 'grid', justifyItems: 'start', gap: '12px', paddingBlock: '8px', color: 'ink2' })
-export const emptyTitle = style({ fontSize: '17px', fontWeight: 600, color: 'ink' })
-export const section = style({ display: 'grid', gap: '10px' })
+export const empty = style({
+  display: 'grid',
+  justifyItems: 'start',
+  gap: 'related',
+  paddingBlock: '8px',
+  color: 'ink2',
+})
+export const emptyTitle = style({ fontSize: 'subheading', fontWeight: 600, color: 'ink' })
+export const section = style({ display: 'grid', gap: 'close' })
 /** The results' head: what is searched, and how many were found. */
 export const resultsHead = style({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  gap: '12px',
+  gap: 'related',
   minBlockSize: '44px',
 })
-export const resultsTitle = style({ fontSize: '17px', fontWeight: 600 })
-export const count = style({ fontSize: '14px', color: 'ink3', fontVariantNumeric: 'tabular-nums' })
+export const resultsTitle = style({ fontSize: 'subheading', fontWeight: 600 })
+export const count = style({ fontSize: 'label', color: 'ink3', fontVariantNumeric: 'tabular-nums' })
 export const results = style({
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 140px), 1fr))',
-  gap: '16px',
+  gap: 'grid',
   margin: '0',
   padding: '0',
   listStyle: 'none',
@@ -113,15 +95,15 @@ export const results = style({
 export const result = style({
   display: 'grid',
   justifyItems: 'center',
-  gap: '6px',
+  gap: 'snug',
   color: 'ink2',
-  fontSize: '13px',
+  fontSize: 'small',
   fontWeight: 500,
   textDecorationLine: 'none',
   // It presses, and lifts under the pointer as it does in the wardrobe; the lift's translate composes with the press.
   transitionProperty: 'transform, translate',
-  transitionDuration: '140ms, 180ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  transitionDuration: pressThenHover,
+  transitionTimingFunction: 'standard',
   ':active': { transform: 'scale(0.96)' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { translate: '0 -2px' } },
 })
@@ -133,86 +115,21 @@ export const resultName = style({
   whiteSpace: 'nowrap',
 })
 export const resultImage = style({ inlineSize: '100%', aspectRatio: '1 / 1', objectFit: 'contain' })
-export const nothingFound = style({ display: 'grid', justifyItems: 'start', gap: '12px', color: 'ink2' })
+export const nothingFound = style({ display: 'grid', justifyItems: 'start', gap: 'related', color: 'ink2' })
 export const stylist = style({
   display: 'grid',
   justifyItems: 'start',
-  gap: '12px',
+  gap: 'related',
   padding: '20px',
   borderRadius: 'panel',
   backgroundColor: 'stock',
 })
-export const note = style({ color: 'ink2' })
-/** The + sheet rises from the bottom edge over a scrim (DESIGN.md › Surfaces). */
-export const scrim = style({
-  position: 'fixed',
-  inset: '0',
-  backgroundColor: 'scrim',
-  animationName: fade,
-  animationDuration: '200ms',
-  animationTimingFunction: 'ease-out',
-  // Leaving, the scrim fades with the sheet (an animated Dialog marks the leave).
-  transitionProperty: 'opacity',
-  transitionDuration: '160ms',
-  transitionTimingFunction: 'ease-out',
-  '&[data-leave]': { opacity: 0 },
-  '@media (prefers-reduced-motion: reduce)': { transitionDuration: '0ms' },
-})
-/** A sheet's body under its head: in line with the title at the 20px gutter, scrolling once it is taller than most of
- * the screen, so a phone held sideways still reaches the title and the close button. */
-export const sheetBody = style({
-  display: 'grid',
-  gap: '4px',
-  maxBlockSize: '70dvh',
-  overflowY: 'auto',
-  paddingInline: '12px',
-  paddingBlockEnd: '4px',
-})
-export const sheet = style({
-  position: 'fixed',
-  insetInline: '0',
-  insetBlockEnd: '0',
-  marginInline: 'auto',
-  maxInlineSize: '32rem',
-  display: 'grid',
-  gap: '4px',
-  paddingInline: '8px',
-  paddingBlock: '8px calc(16px + env(safe-area-inset-bottom))',
-  borderStartStartRadius: 'sheet',
-  borderStartEndRadius: 'sheet',
-  backgroundColor: 'stock',
-  boxShadow: 'sheet',
-  animationName: rise,
-  animationDuration: '420ms',
-  animationTimingFunction: 'var(--styld-spring)',
-  // It rises on a spring and leaves softer than it came: a 16px drop and a fade (make-interfaces-feel-better › exits).
-  transitionProperty: 'translate, opacity',
-  transitionDuration: '160ms',
-  transitionTimingFunction: 'ease-out',
-  '&[data-leave]': { translate: '0 16px', opacity: 0 },
-  '@media (prefers-reduced-motion: reduce)': { transitionDuration: '0ms' },
-})
-export const grab = style({
-  justifySelf: 'center',
-  inlineSize: '40px',
-  blockSize: '4px',
-  marginBlock: '2px 4px',
-  borderRadius: 'pill',
-  backgroundColor: 'rule',
-})
-export const sheetHead = style({
-  display: 'flex',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  paddingInlineStart: '12px',
-})
-export const sheetTitle = style({ fontSize: '17px', fontWeight: 600 })
 /** One way in on the + sheet: a link or a button that look the same, its icon, its name and a hint under it. */
 export const option = style({
   display: 'grid',
   gridTemplateColumns: 'auto 1fr',
   alignItems: 'center',
-  columnGap: '12px',
+  columnGap: 'related',
   inlineSize: '100%',
   minBlockSize: '64px',
   padding: '8px 12px',
@@ -220,21 +137,21 @@ export const option = style({
   borderRadius: 'panel',
   backgroundColor: 'transparent !custom',
   color: 'ink',
-  fontSize: 'inherit',
+  fontSize: 'inherit !custom',
   fontWeight: 600,
   textAlign: 'start',
   textDecorationLine: 'none',
   cursor: 'pointer',
   transitionProperty: 'transform, background-color',
-  transitionDuration: '140ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  transitionDuration: 'press',
+  transitionTimingFunction: 'standard',
   ':active': { transform: 'scale(0.96)' },
   // A way in that is already under way stays still.
   '&[aria-disabled="true"]': { cursor: 'progress' },
   '&[aria-disabled="true"]:active': { transform: 'none' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2' } },
 })
-export const optionProblem = style({ paddingInline: '12px', fontSize: '14px', color: 'error' })
+export const optionProblem = style({ paddingInline: '12px', fontSize: 'label', color: 'error' })
 export const optionIcon = style({
   display: 'grid',
   placeItems: 'center',
@@ -244,4 +161,4 @@ export const optionIcon = style({
   borderRadius: 'pill',
   backgroundColor: 'paper2',
 })
-export const optionHint = style({ fontSize: '13px', fontWeight: 400, color: 'ink2' })
+export const optionHint = style({ fontSize: 'small', fontWeight: 400, color: 'ink2' })

@@ -13,7 +13,7 @@ import { askRouter, lookRouter, pieceRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { barStart, round } from './PageBar.styles.ts'
-import { chip } from './AskView.styles.ts'
+import { chip } from '../Controls.styles.ts'
 import { intlLocale } from '../Locale.ts'
 import {
   canSend,

@@ -17,7 +17,7 @@ export const hero = style({
     display: 'grid',
     gridTemplateColumns: 'minmax(0, 1fr) minmax(0, 1fr)',
     alignItems: 'center',
-    columnGap: '48px',
+    columnGap: 'columns',
   },
 })
 /** The board beside the words: as large as fits the first screen under the bar with room around it, up to 520px.

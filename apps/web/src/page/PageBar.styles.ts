@@ -15,8 +15,8 @@ export const round = style({
   cursor: 'pointer',
   // It presses as Gallery's `.round` does.
   transitionProperty: 'transform, background-color',
-  transitionDuration: '140ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  transitionDuration: 'press',
+  transitionTimingFunction: 'standard',
   ':active': { transform: 'scale(0.96)' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2' } },
 })

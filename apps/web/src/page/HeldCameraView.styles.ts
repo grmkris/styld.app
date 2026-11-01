@@ -1,11 +1,9 @@
 import { keyframes } from 'zyzz/web'
-import { style } from '../zyzz.config.ts'
+import { style, vars } from '../zyzz.config.ts'
 
 // Styles for the held-up camera in HeldCameraView.ts. Gallery has no camera screen; this one is the phone
 // camera's: the picture edge to edge, bars over it that fade from the veil, a round shutter, and the stack
 // of photos taken. Motion follows DESIGN.md › Motion.
-
-const curve = 'cubic-bezier(0.2, 0, 0, 1)'
 
 /** A photo taken: the picture flashes once. */
 const flashOut = keyframes({ from: { opacity: 0.7 }, to: { opacity: 0 } }, { id: 'styld-camera-flash' })
@@ -59,8 +57,8 @@ export const guide = style({
   opacity: 0.5,
   pointerEvents: 'none',
   transitionProperty: 'opacity, transform',
-  transitionDuration: '180ms',
-  transitionTimingFunction: curve,
+  transitionDuration: 'hover',
+  transitionTimingFunction: 'standard',
   '&[data-hint="checking"]': { opacity: 1, transform: 'scale(0.97)' },
   '&[data-hint="notSeen"]': { opacity: 0.85 },
 })
@@ -71,8 +69,8 @@ export const flash = style({
   opacity: 0,
   pointerEvents: 'none',
   animationName: flashOut,
-  animationDuration: '240ms',
-  animationTimingFunction: 'ease-out',
+  animationDuration: vars.transitionDuration.enter,
+  animationTimingFunction: vars.ease.out,
 })
 /** The bars over the picture let taps through to it, except on their own controls. */
 export const bar = style({
@@ -80,7 +78,7 @@ export const bar = style({
   insetInline: '0',
   display: 'grid',
   justifyItems: 'center',
-  gap: '12px',
+  gap: 'related',
   paddingInlineStart: 'max(16px, env(safe-area-inset-left))',
   paddingInlineEnd: 'max(16px, env(safe-area-inset-right))',
   pointerEvents: 'none',
@@ -101,11 +99,11 @@ export const bottom = style({
 export const steps = style({
   gridColumn: '2',
   display: 'flex',
-  gap: '2px',
+  gap: 'hairline',
   padding: '3px',
   borderRadius: 'pill',
   backgroundColor: 'scrim',
-  fontSize: '13px',
+  fontSize: 'small',
   fontWeight: 600,
 })
 export const step = style({
@@ -113,14 +111,14 @@ export const step = style({
   paddingInline: '12px',
   borderRadius: 'pill',
   transitionProperty: 'background-color, color',
-  transitionDuration: '180ms',
-  transitionTimingFunction: curve,
+  transitionDuration: 'hover',
+  transitionTimingFunction: 'standard',
   '&[aria-current="step"]': { backgroundColor: 'onInk', color: 'ink' },
 })
 export const count = style({
   justifySelf: 'end',
   alignSelf: 'center',
-  fontSize: '14px',
+  fontSize: 'label',
   fontWeight: 700,
   fontVariantNumeric: 'tabular-nums',
 })
@@ -129,7 +127,7 @@ export const status = style({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
-  gap: '8px',
+  gap: 'actions',
   minBlockSize: '40px',
   maxInlineSize: '420px',
   paddingBlock: '8px',
@@ -137,7 +135,7 @@ export const status = style({
   borderRadius: 'pill',
   backgroundColor: 'stock',
   color: 'ink',
-  fontSize: '14px',
+  fontSize: 'label',
   fontWeight: 600,
   textAlign: 'center',
   pointerEvents: 'none',
@@ -146,8 +144,8 @@ export const status = style({
 /** A control that gives a little under the finger. */
 export const press = style({
   transitionProperty: 'transform',
-  transitionDuration: '140ms',
-  transitionTimingFunction: curve,
+  transitionDuration: 'press',
+  transitionTimingFunction: 'standard',
   '&:active': { transform: 'scale(0.96)' },
 })
 export const skip = style({
@@ -156,7 +154,7 @@ export const skip = style({
   borderRadius: 'pill',
   backgroundColor: 'scrim',
   color: 'onInk',
-  fontSize: '14px',
+  fontSize: 'label',
   fontWeight: 600,
   cursor: 'pointer',
 })
@@ -173,12 +171,12 @@ export const stack = style({
   justifySelf: 'start',
   display: 'grid',
   justifyItems: 'center',
-  gap: '4px',
+  gap: 'tight',
   padding: '0',
   borderStyle: 'none',
   backgroundColor: 'transparent !custom',
   color: 'onInk',
-  fontSize: '13px',
+  fontSize: 'small',
   fontWeight: 600,
   cursor: 'pointer',
 })
@@ -202,8 +200,8 @@ export const stackPhoto = style({
   objectFit: 'cover',
   borderRadius: 'field',
   animationName: flyIn,
-  animationDuration: '420ms',
-  animationTimingFunction: curve,
+  animationDuration: vars.transitionDuration.travel,
+  animationTimingFunction: vars.ease.standard,
 })
 export const shutter = style({
   position: 'relative',
@@ -220,8 +218,8 @@ export const shutter = style({
 })
 export const shutterDisc = style({
   transitionProperty: 'transform',
-  transitionDuration: '140ms',
-  transitionTimingFunction: curve,
+  transitionDuration: 'press',
+  transitionTimingFunction: 'standard',
   inlineSize: '62px',
   blockSize: '62px',
   borderRadius: 'pill',
@@ -238,8 +236,8 @@ export const ringFill = style({
   strokeDasharray: 100,
   strokeDashoffset: 100,
   transitionProperty: 'stroke-dashoffset',
-  transitionDuration: '180ms',
-  transitionTimingFunction: curve,
+  transitionDuration: 'hover',
+  transitionTimingFunction: 'standard',
   '&[data-settle="1"]': { strokeDashoffset: 75 },
   '&[data-settle="2"]': { strokeDashoffset: 50 },
   '&[data-settle="3"]': { strokeDashoffset: 25 },
@@ -261,10 +259,10 @@ export const round = style({
 })
 export const failed = style({
   display: 'grid',
-  gap: '12px',
+  gap: 'related',
   marginBlockStart: '16px',
   padding: '16px',
   borderRadius: 'panel',
   backgroundColor: 'stock',
-  fontSize: '14px',
+  fontSize: 'label',
 })

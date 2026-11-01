@@ -1,5 +1,5 @@
 import { keyframes } from 'zyzz/web'
-import { style } from './zyzz.config.ts'
+import { style, vars } from './zyzz.config.ts'
 
 const spin = keyframes({ to: { transform: 'rotate(360deg)' } }, { id: 'styld-spin' })
 
@@ -10,8 +10,8 @@ export const loaderIcon = style({
   blockSize: '1.25em',
   flex: 'none',
   animationName: spin,
-  animationDuration: '0.9s',
-  animationTimingFunction: 'linear',
+  animationDuration: vars.transitionDuration.spin,
+  animationTimingFunction: vars.ease.steady,
   animationIterationCount: 'infinite',
 })
 

@@ -1,16 +1,17 @@
 import { style } from '../zyzz.config.ts'
+export { problem } from '../Controls.styles.ts'
 
-export const sharing = style({ display: 'grid', gap: '6px', paddingBlockStart: '12px' })
+export const sharing = style({ display: 'grid', gap: 'snug', paddingBlockStart: '12px' })
 /** The switch's row: its name (and who sees it) at the start, the track at the end, 44px tall. */
 export const toggle = style({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  gap: '16px',
+  gap: 'grid',
   minBlockSize: '44px',
 })
-export const toggleText = style({ display: 'grid', gap: '2px' })
-export const toggleLabel = style({ fontSize: '15px', fontWeight: 600, cursor: 'pointer' })
+export const toggleText = style({ display: 'grid', gap: 'hairline' })
+export const toggleLabel = style({ fontSize: 'control', fontWeight: 600, cursor: 'pointer' })
 /** A pill track: paper-2 off, ink on; the thumb slides across on Gallery's curve. A 44px target over the 32px pill. */
 export const track = style({
   position: 'relative',
@@ -26,8 +27,8 @@ export const track = style({
   boxShadow: 'switchEdge',
   cursor: 'pointer',
   transitionProperty: 'background-color',
-  transitionDuration: '140ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  transitionDuration: 'press',
+  transitionTimingFunction: 'standard',
   '::after': { content: '""', position: 'absolute', insetInline: '-4px', insetBlock: '-6px' },
   '&[data-checked]': { backgroundColor: 'ink', boxShadow: 'none !custom' },
   '&[data-disabled]': { opacity: 0.5, cursor: 'not-allowed' },
@@ -40,9 +41,8 @@ export const thumb = style({
   borderRadius: 'pill',
   backgroundColor: 'ink3',
   transitionProperty: 'transform, background-color',
-  transitionDuration: '180ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
-  '@media (prefers-reduced-motion: reduce)': { transitionDuration: '0ms' },
+  transitionDuration: 'hover',
+  transitionTimingFunction: 'standard',
+  '@media (prefers-reduced-motion: reduce)': { transitionDuration: 'instant' },
 })
-export const meta = style({ fontSize: '14px', color: 'ink2' })
-export const problem = style({ fontSize: '14px', color: 'error' })
+export const meta = style({ fontSize: 'label', color: 'ink2' })

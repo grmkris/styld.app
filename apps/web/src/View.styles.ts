@@ -55,7 +55,8 @@ export const masthead = style({
   alignItems: 'center',
   // The wordmark at the start, the way to you (or to sign in) at the end, as the prototype's `.head`.
   justifyContent: 'space-between',
-  gap: '8px 16px',
+  rowGap: 'actions',
+  columnGap: 'grid',
   minBlockSize: '64px',
   paddingBlock: 'calc(12px + env(safe-area-inset-top)) 4px',
 })
@@ -65,8 +66,8 @@ export const picker = style({
   display: 'flex',
   flexWrap: 'wrap',
   alignItems: 'center',
-  gap: '8px',
-  fontSize: '14px',
+  gap: 'actions',
+  fontSize: 'label',
   color: 'ink2',
 })
 // Its label reads Language beside it, in ink-2, so the footer does not read as "Styld: English".
@@ -78,13 +79,13 @@ export const pickerSelect = style({
   borderRadius: 'pill',
   backgroundColor: 'paper2',
   color: 'ink',
-  fontSize: '14px',
+  fontSize: 'label',
   fontWeight: 500,
   cursor: 'pointer',
 })
 export const pickerError = style({ flexBasis: '100%' })
 /** The top bar's text links when signed out: Explore and Sign in. */
-export const signedOutLinks = style({ display: 'flex', alignItems: 'center', gap: '20px' })
+export const signedOutLinks = style({ display: 'flex', alignItems: 'center', gap: 'gutter' })
 export const signInLink = style({ display: 'inline-flex', alignItems: 'center', minBlockSize: '44px' })
 /** The top bar's account link: the person's initial in an ink circle (Gallery `.av`). */
 export const accountLink = style({
@@ -95,7 +96,7 @@ export const accountLink = style({
   borderRadius: 'pill',
   backgroundColor: 'toneStone',
   color: 'ink',
-  fontSize: '14px',
+  fontSize: 'label',
   fontWeight: 700,
   textDecorationLine: 'none',
 })
@@ -103,23 +104,23 @@ export const intro = style({
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'start',
-  gap: '16px',
+  gap: 'grid',
   paddingBlock: 'clamp(24px, 8vw, 96px) clamp(40px, 8vw, 96px)',
 })
 /** The landing statement: Gallery's display size, the one heavy head on a page. */
 export const heroTitle = style({
   maxInlineSize: '14ch',
-  fontSize: 'clamp(46px, 34px + 3vw, 72px)',
+  fontSize: 'display',
   lineHeight: 1,
   fontWeight: 700,
   letterSpacing: '-0.035em',
 })
-export const lead = style({ maxInlineSize: '32ch', paddingBlockEnd: '8px', fontSize: '17px', color: 'ink2' })
-export const heroActions = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' })
+export const lead = style({ maxInlineSize: '32ch', paddingBlockEnd: '8px', fontSize: 'subheading', color: 'ink2' })
+export const heroActions = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'actions' })
 export const inspiration = style({
   display: 'flex',
   flexDirection: 'column',
-  gap: '8px',
+  gap: 'actions',
   paddingBlock: '40px 80px',
   borderBlockStartWidth: '1px',
   borderBlockStartStyle: 'solid',
@@ -132,24 +133,25 @@ export const footer = style({
   display: 'flex',
   flexWrap: 'wrap',
   alignItems: 'center',
-  gap: '8px 24px',
+  rowGap: 'actions',
+  columnGap: 'section',
   paddingBlock: '24px calc(24px + env(safe-area-inset-bottom))',
   borderBlockStartWidth: '1px',
   borderBlockStartStyle: 'solid',
   borderBlockStartColor: 'rule',
-  fontSize: '14px',
+  fontSize: 'label',
   color: 'ink2',
 })
 export const footerLink = style({ display: 'inline-flex', alignItems: 'center', minBlockSize: '44px' })
 /** Diagnostics and Contact, kept together at the footer's far end, so neither wraps onto a line alone. */
-export const footerLinks = style({ display: 'flex', alignItems: 'center', gap: '24px', marginInlineStart: 'auto' })
+export const footerLinks = style({ display: 'flex', alignItems: 'center', gap: 'section', marginInlineStart: 'auto' })
 // A footer control that reads like the contact link beside it.
 export const footerButton = style({
   padding: '0',
   borderWidth: '0',
   backgroundColor: 'transparent !custom',
   color: 'inherit !custom',
-  fontSize: '14px',
+  fontSize: 'label',
   fontWeight: 600,
   textDecorationLine: 'underline',
   textDecorationColor: 'signal',
@@ -164,7 +166,7 @@ export const consentBanner = style({
   insetBlockEnd: '0',
   zIndex: 7,
   display: 'grid',
-  gap: '16px',
+  gap: 'grid',
   marginInline: 'calc(-1 * max(20px, env(safe-area-inset-left), env(safe-area-inset-right)))',
   paddingBlock: '20px calc(24px + env(safe-area-inset-bottom))',
   paddingInline: 'max(20px, env(safe-area-inset-left), env(safe-area-inset-right))',
@@ -173,7 +175,7 @@ export const consentBanner = style({
   backgroundColor: 'stock',
   boxShadow: 'sheet',
 })
-export const consentActions = style({ display: 'flex', flexWrap: 'wrap', gap: '8px' })
+export const consentActions = style({ display: 'flex', flexWrap: 'wrap', gap: 'actions' })
 
 /** Room for the navigation: under the page on the phone, beside it on the desktop. */
 /** A tab page's main region reaches at least to the bottom of the screen, so the footer waits below the fold while
@@ -203,7 +205,7 @@ export const appNav = style({
   zIndex: 6,
   display: 'flex',
   alignItems: 'center',
-  gap: '4px',
+  gap: 'tight',
   padding: '6px',
   borderRadius: 'pill',
   backgroundColor: 'glass',
@@ -239,8 +241,8 @@ export const navItem = style({
   color: 'ink2',
   textDecorationLine: 'none',
   transitionProperty: 'transform, background-color, color',
-  transitionDuration: '140ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  transitionDuration: 'press',
+  transitionTimingFunction: 'standard',
   ':active': { transform: 'scale(0.96)' },
   '&[aria-current="page"]': { backgroundColor: 'paper2', color: 'ink' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { color: 'ink' } },
@@ -291,14 +293,14 @@ export const navAvatarDisc = style({
   borderRadius: 'pill',
   backgroundColor: 'toneStone',
   color: 'ink',
-  fontSize: '13px',
+  fontSize: 'small',
   fontWeight: 700,
 })
 /** Your profile's avatar at the masthead's size: Avatar.ts's initials on its tone, in the 32px circle. */
-export const navYou = style({ inlineSize: '32px', blockSize: '32px', fontSize: '12px', letterSpacing: '0' })
+export const navYou = style({ inlineSize: '32px', blockSize: '32px', fontSize: 'micro', letterSpacing: '0' })
 /** The avatar while the session is read: the same circle, blank until the initial is known. */
 export const navAvatarPending = style({ backgroundColor: 'paper2' })
 /** A board card's shape while the landing's boards load. */
 export const boardSkeleton = style({ aspectRatio: '4 / 5', borderRadius: 'panel' })
 /** The landing's boards keep their room while they load, so nothing below them moves when they arrive. */
-export const inspirationGrid = style({ display: 'grid', gap: '12px', minBlockSize: '420px', alignContent: 'start' })
+export const inspirationGrid = style({ display: 'grid', gap: 'related', minBlockSize: '420px', alignContent: 'start' })

@@ -46,14 +46,9 @@ fontFace({
 // Document defaults (DESIGN.md › Type). Component styles live beside the views that use them.
 global({
   ':root': {
-    // Springs sampled into linear(): things that travel settle on these (DESIGN.md › Motion).
-    '--styld-spring':
-      'linear(0, 0.0357, 0.1183, 0.2215, 0.3294, 0.433, 0.5273, 0.6104, 0.6819, 0.7423, 0.7925, 0.8339, 0.8677, 0.895, 0.9171, 0.9347, 0.9487, 0.9598, 0.9686, 0.9755, 0.9809, 0.9852, 0.9885, 0.9911, 0.9931, 0.9947, 0.9959, 0.9968, 0.9976, 0.9981, 0.9986, 0.9989, 1)',
-    '--styld-spring-bounce':
-      'linear(0, 0.0491, 0.1629, 0.3039, 0.4479, 0.5806, 0.6949, 0.7883, 0.8613, 0.9159, 0.9549, 0.9815, 0.9985, 1.0085, 1.0134, 1.0151, 1.0147, 1.0132, 1.0111, 1.0089, 1.0068, 1.005, 1.0035, 1.0023, 1.0014, 1.0008, 1.0004, 1.0001, 0.9999, 0.9998, 0.9998, 0.9998, 1)',
     colorScheme: 'light',
     fontFamily: vars.fontFamily.body,
-    fontSize: '16px',
+    fontSize: vars.fontSize.body,
     backgroundColor: vars.color.paper,
     color: vars.color.ink,
     lineHeight: 1.5,
@@ -77,9 +72,9 @@ global({
   body: { margin: '0' },
   'h1, h2, h3, p, dl, dd': { margin: '0' },
   'h1, h2, h3': { textWrap: 'balance', overflowWrap: 'break-word', minInlineSize: '0' },
-  h1: { fontSize: '30px', lineHeight: 1.08, fontWeight: 600, letterSpacing: '-0.02em' },
-  h2: { fontSize: '22px', lineHeight: 1.2, fontWeight: 600, letterSpacing: '-0.01em' },
-  h3: { fontSize: '17px', lineHeight: 1.3, fontWeight: 600 },
+  h1: { fontSize: vars.fontSize.title, lineHeight: 1.08, fontWeight: 600, letterSpacing: '-0.02em' },
+  h2: { fontSize: vars.fontSize.heading, lineHeight: 1.2, fontWeight: 600, letterSpacing: '-0.01em' },
+  h3: { fontSize: vars.fontSize.subheading, lineHeight: 1.3, fontWeight: 600 },
   p: { maxInlineSize: '65ch', textWrap: 'pretty' },
   // A text link: semibold ink over a signal underline. Links styled as buttons drop it.
   a: {
@@ -91,7 +86,12 @@ global({
     textUnderlineOffset: '4px',
     touchAction: 'manipulation',
   },
-  'button, select, input': { font: 'inherit', fontSize: '1rem', color: 'inherit', touchAction: 'manipulation' },
+  'button, select, input': {
+    font: 'inherit',
+    fontSize: vars.fontSize.root,
+    color: 'inherit',
+    touchAction: 'manipulation',
+  },
   // DESIGN.md: every control keeps at least a 44px touch target.
   'button, select': { minBlockSize: '44px' },
   // Foldkit UI hides a file input behind its label with this class name.
@@ -103,7 +103,7 @@ global({
     clipPath: 'inset(50%)',
     whiteSpace: 'nowrap',
   },
-  textarea: { font: 'inherit', fontSize: '1rem', color: 'inherit' },
+  textarea: { font: 'inherit', fontSize: vars.fontSize.root, color: 'inherit' },
   ':focus-visible': {
     outlineWidth: '2px',
     outlineStyle: 'solid',
@@ -113,8 +113,8 @@ global({
   // DESIGN.md › Motion: a tab change cross-fades the page while the navigation stays where it is. The runtime skips
   // the transition under reduced motion.
   '::view-transition-old(root), ::view-transition-new(root)': {
-    animationDuration: '180ms',
-    animationTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+    animationDuration: vars.transitionDuration.hover,
+    animationTimingFunction: vars.ease.standard,
   },
   '::view-transition-old(styld-nav)': { display: 'none' },
   '::view-transition-new(styld-nav)': { animationName: 'none' },

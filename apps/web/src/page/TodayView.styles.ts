@@ -1,5 +1,5 @@
 import { keyframes } from 'zyzz/web'
-import { style } from '../zyzz.config.ts'
+import { style, vars } from '../zyzz.config.ts'
 
 // Home's table (Gallery 2: docs/design/gallery-2/site/v2/home.html).
 
@@ -13,17 +13,17 @@ const dropIn = keyframes(
  * headline (about 280px), up to 560px; a short window still gets a 320px table. */
 export const page = style({
   display: 'grid',
-  gap: '28px',
+  gap: 'wide',
   paddingBlock: '0 40px',
   '@media (min-width: 900px)': {
     gridTemplateColumns: 'minmax(0, clamp(320px, (100svh - 280px) * 0.8, 560px)) minmax(0, 1fr)',
     alignItems: 'start',
-    columnGap: '48px',
+    columnGap: 'columns',
   },
 })
 export const today = style({
   display: 'grid',
-  gap: '12px',
+  gap: 'related',
   '@media (min-width: 900px)': { maxInlineSize: 'clamp(320px, (100svh - 280px) * 0.8, 560px)' },
 })
 /** The table's headline: the day in the logo's condensed voice, its one use on a page. */
@@ -32,7 +32,7 @@ export const headline = style({
   // The line keeps its height before the day is known.
   minBlockSize: '0.95em',
   fontFamily: 'voice',
-  fontSize: 'clamp(52px, 40px + 4vw, 76px)',
+  fontSize: 'headline',
   fontWeight: 400,
   lineHeight: 0.95,
   letterSpacing: '0.005em',
@@ -41,8 +41,8 @@ export const headline = style({
 export const table = style({
   '& > * > *': {
     animationName: dropIn,
-    animationDuration: '700ms',
-    animationTimingFunction: 'var(--styld-spring-bounce)',
+    animationDuration: vars.transitionDuration.spring,
+    animationTimingFunction: vars.ease.springBounce,
     animationFillMode: 'both',
   },
   '& > * > :nth-child(2)': { animationDelay: '40ms' },
@@ -61,8 +61,8 @@ export const placeholder = style({
   textAlign: 'center',
   color: 'ink2',
 })
-export const placeholderBody = style({ display: 'grid', justifyItems: 'center', gap: '12px' })
-export const actions = style({ display: 'flex', alignItems: 'center', gap: '8px' })
+export const placeholderBody = style({ display: 'grid', justifyItems: 'center', gap: 'related' })
+export const actions = style({ display: 'flex', alignItems: 'center', gap: 'actions' })
 export const wear = style({ flexGrow: 1 })
 /** Wear this and Spin in outline while the pieces load: the same row, the same sizes. */
 export const wearSkeleton = style({ flexGrow: 1, blockSize: '48px', borderRadius: 'pill' })
@@ -87,40 +87,40 @@ export const spin = style({
   cursor: 'pointer',
   // Press and colour at Gallery's 140ms; the springs stay on the pieces Spin brings in (DESIGN › Motion).
   transitionProperty: 'transform, background-color',
-  transitionDuration: '140ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  transitionDuration: 'press',
+  transitionTimingFunction: 'standard',
   ':active': { transform: 'scale(0.96)' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2Hover' } },
 })
 export const note = style({
   minBlockSize: '1.5em',
-  fontSize: '14px',
+  fontSize: 'label',
   color: 'ink2',
   '&[data-tone="error"]': { color: 'error' },
 })
 /** What a whole outfit still needs, as small ways into adding pieces. */
-export const missing = style({ display: 'flex', flexWrap: 'wrap', gap: '8px' })
+export const missing = style({ display: 'flex', flexWrap: 'wrap', gap: 'actions' })
 export const missingLink = style({
   display: 'inline-flex',
   alignItems: 'center',
-  gap: '6px',
+  gap: 'snug',
   minBlockSize: '40px',
   paddingInline: '14px',
   borderRadius: 'pill',
   backgroundColor: 'paper2',
   color: 'ink',
-  fontSize: '14px',
+  fontSize: 'label',
   fontWeight: 600,
   textDecorationLine: 'none',
   transitionProperty: 'transform, background-color',
-  transitionDuration: '140ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  transitionDuration: 'press',
+  transitionTimingFunction: 'standard',
   ':active': { transform: 'scale(0.96)' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2Hover' } },
 })
 export const pickUp = style({
   display: 'grid',
-  gap: '12px',
+  gap: 'related',
   '@media (min-width: 900px)': { paddingBlockStart: '96px' },
 })
 /** Two ways to pick up side by side, as tall as each other, each with its action at its foot. */
@@ -128,13 +128,13 @@ export const cards = style({
   display: 'grid',
   gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
   alignItems: 'stretch',
-  gap: '12px',
+  gap: 'related',
 })
 /** The prototype's `.rc`: a stock card with what it is, then its action. */
 export const card = style({
   display: 'flex',
   flexDirection: 'column',
-  gap: '8px',
+  gap: 'actions',
   minInlineSize: '0',
   padding: '12px',
   borderRadius: 'panel',
@@ -165,7 +165,7 @@ export const trayThumbs = style({
   gridTemplateRows: 'minmax(0, 1fr)',
   minBlockSize: '0',
   overflow: 'hidden',
-  gap: '6px',
+  gap: 'snug',
   aspectRatio: '16 / 10',
   marginBlockEnd: '4px',
   padding: '8px',

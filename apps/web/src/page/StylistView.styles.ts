@@ -1,4 +1,5 @@
-import { style } from '../zyzz.config.ts'
+import { pressThenHover, style } from '../zyzz.config.ts'
+export { lede, problem } from '../Controls.styles.ts'
 
 // Styles for Styld's chat in StylistView.ts: a column of messages above a composer that stays in reach.
 
@@ -9,7 +10,7 @@ import { style } from '../zyzz.config.ts'
 export const page = style({
   display: 'flex',
   flexDirection: 'column',
-  gap: '16px',
+  gap: 'grid',
   maxInlineSize: '40rem',
   minBlockSize: 'calc(100svh - max(64px, 60px + env(safe-area-inset-top)))',
   // On a wide screen the chat is a centred column, not one hugging the rail, under the rail's 32px rather than a
@@ -23,12 +24,11 @@ export const pageBar = style({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  gap: '8px',
+  gap: 'actions',
   minBlockSize: '48px',
 })
-export const lede = style({ color: 'ink2' })
 /** The ways to start, as whole sentences: each its own pill, wrapping if it must, one under the other. */
-export const starters = style({ display: 'grid', justifyItems: 'start', gap: '8px' })
+export const starters = style({ display: 'grid', justifyItems: 'start', gap: 'actions' })
 export const starter = style({
   whiteSpace: 'normal',
   textAlign: 'start',
@@ -36,7 +36,7 @@ export const starter = style({
   paddingBlock: '8px',
   fontWeight: 500,
 })
-export const thread = style({ display: 'grid', gap: '14px', margin: '0', padding: '0', listStyleType: 'none' })
+export const thread = style({ display: 'grid', gap: 'cozy', margin: '0', padding: '0', listStyleType: 'none' })
 /** The person's message, set apart on the right. */
 export const person = style({
   justifySelf: 'end',
@@ -58,13 +58,13 @@ export const personSkeleton = style({
 })
 export const shortSkeleton = style({ inlineSize: '35%' })
 /** Styld's reply: plain text, its paragraphs as written. */
-export const reply = style({ display: 'grid', gap: '10px', color: 'ink', lineHeight: 1.5 })
+export const reply = style({ display: 'grid', gap: 'close', color: 'ink', lineHeight: 1.5 })
 export const replyText = style({ margin: '0', whiteSpace: 'pre-wrap', overflowWrap: 'anywhere' })
 /** The pieces a reply shows, in a row that scrolls sideways; on a phone it runs to the screen's edge rather than the
  * gutter, as Ask's chips do, so it reads as more to come. */
 export const pieces = style({
   display: 'flex',
-  gap: '12px',
+  gap: 'related',
   margin: '0',
   padding: '0',
   listStyleType: 'none',
@@ -81,15 +81,15 @@ export const pieces = style({
  * image: the press's scale makes the link a stacking context, which would keep the image's blend from the paper. */
 export const pieceLink = style({
   display: 'grid',
-  gap: '4px',
+  gap: 'tight',
   justifyItems: 'center',
   inlineSize: '96px',
   color: 'ink',
   textDecorationLine: 'none',
   mixBlendMode: 'darken',
   transitionProperty: 'transform, translate',
-  transitionDuration: '140ms, 180ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  transitionDuration: pressThenHover,
+  transitionTimingFunction: 'standard',
   ':active': { transform: 'scale(0.96)' },
   // It lifts under the pointer as a wardrobe tile does; translate composes with the press's scale.
   '@media (hover: hover) and (pointer: fine)': { ':hover': { translate: '0 -2px' } },
@@ -100,7 +100,7 @@ export const pieceName = style({
   WebkitLineClamp: 2,
   WebkitBoxOrient: 'vertical',
   overflow: 'hidden',
-  fontSize: '13px',
+  fontSize: 'small',
   lineHeight: 1.35,
   color: 'ink2',
   textAlign: 'center',
@@ -113,13 +113,13 @@ export const latest = style({
   scrollMarginBlockEnd: '112px',
   '@media (min-width: 900px)': { scrollMarginBlockEnd: '120px' },
 })
-export const status = style({ display: 'flex', alignItems: 'center', gap: '8px', color: 'ink2', fontSize: '14px' })
-export const failed = style({ color: 'ink2', fontSize: '14px' })
+export const status = style({ display: 'flex', alignItems: 'center', gap: 'actions', color: 'ink2', fontSize: 'label' })
+export const failed = style({ color: 'ink2', fontSize: 'label' })
 /** Earlier chats, by their first message. */
 export const chats = style({ display: 'grid', margin: '0', padding: '0', listStyleType: 'none' })
 export const chatLink = style({
   display: 'grid',
-  gap: '2px',
+  gap: 'hairline',
   inlineSize: '100%',
   minBlockSize: '52px',
   paddingBlock: '8px',
@@ -142,9 +142,9 @@ export const chatLink = style({
     },
   },
 })
-export const chatTitle = style({ fontSize: '15px' })
-export const chatDate = style({ fontSize: '13px', color: 'ink2', fontVariantNumeric: 'tabular-nums' })
-export const sectionTitle = style({ fontSize: '17px', fontWeight: 600 })
+export const chatTitle = style({ fontSize: 'control' })
+export const chatDate = style({ fontSize: 'small', color: 'ink2', fontVariantNumeric: 'tabular-nums' })
+export const sectionTitle = style({ fontSize: 'subheading', fontWeight: 600 })
 /** The composer: in reach at the bottom of the screen, clear of the phone's floating navigation, and at the end of a
  * long chat above the site's footer rather than over it (the page's padding below it, `page`). */
 export const composer = style({
@@ -152,7 +152,7 @@ export const composer = style({
   insetBlockEnd: 'calc(96px + env(safe-area-inset-bottom))',
   zIndex: 4,
   display: 'grid',
-  gap: '6px',
+  gap: 'snug',
   marginBlockStart: 'auto',
   paddingBlock: '10px',
   backgroundColor: 'paper',
@@ -171,7 +171,7 @@ export const composer = style({
   },
 })
 /** The field and its send button in one row. */
-export const composerRow = style({ display: 'flex', alignItems: 'end', gap: '8px' })
+export const composerRow = style({ display: 'flex', alignItems: 'end', gap: 'actions' })
 /** The field takes the site's text area look (Fields.styles.ts), growing with what is written up to a point; one line
  * stands as tall as the send button beside it. */
 export const field = style({
@@ -193,12 +193,11 @@ export const send = style({
   color: 'onInk',
   cursor: 'pointer',
   transitionProperty: 'transform, opacity, background-color',
-  transitionDuration: '140ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  transitionDuration: 'press',
+  transitionTimingFunction: 'standard',
   ':active': { transform: 'scale(0.96)' },
   // Foldkit UI's Button marks a disabled one data-disabled and aria-disabled, never the native attribute.
   '&[data-disabled]': { opacity: 0.5, cursor: 'not-allowed' },
   '@media (hover: hover) and (pointer: fine)': { '&:not([data-disabled]):hover': { backgroundColor: 'inkHover' } },
 })
-export const price = style({ fontSize: '13px', color: 'ink3' })
-export const problem = style({ fontSize: '14px', color: 'error' })
+export const price = style({ fontSize: 'small', color: 'ink3' })

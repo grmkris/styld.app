@@ -1,51 +1,57 @@
 import { keyframes } from 'zyzz/web'
-import { style } from '../../zyzz.config.ts'
+import { style, vars } from '../../zyzz.config.ts'
 
 // The board editor (Gallery 2: docs/design/gallery-2, the canvas spike in docs/design/canvas-spike).
 
 const itemOut = keyframes({ to: { opacity: 0, transform: 'scale(0.86)' } }, { id: 'styld-board-item-out' })
 
-export const page = style({ display: 'grid', gap: '16px', paddingBlock: '8px 32px' })
+export const page = style({ display: 'grid', gap: 'grid', paddingBlock: '8px 32px' })
 /** A board's shape while it loads: an h1 (30px at 1.08) and a 14px line over `line`, then two-up pin squares. */
-export const loadingShape = style({ display: 'grid', gap: '4px' })
-export const titleLine = style({ fontSize: '30px', blockSize: '0.54em', marginBlock: '0.27em', inlineSize: '55%' })
-export const metaLine = style({ fontSize: '14px', inlineSize: '30%' })
+export const loadingShape = style({ display: 'grid', gap: 'tight' })
+export const titleLine = style({ fontSize: 'title', blockSize: '0.54em', marginBlock: '0.27em', inlineSize: '55%' })
+export const metaLine = style({ fontSize: 'label', inlineSize: '30%' })
 export const loadingPins = style({
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 150px), 1fr))',
-  gap: '12px',
+  gap: 'related',
   marginBlockStart: '20px',
 })
 export const pinSkeleton = style({ aspectRatio: '1 / 1', borderRadius: 'panel' })
-export const header = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px 16px' })
+export const header = style({
+  display: 'flex',
+  flexWrap: 'wrap',
+  alignItems: 'center',
+  rowGap: 'actions',
+  columnGap: 'grid',
+})
 /** The way back and Save as a look, at the two ends of the editor's first row. */
 export const headerBar = style({
   display: 'flex',
   flexBasis: '100%',
   alignItems: 'center',
   justifyContent: 'space-between',
-  gap: '12px',
+  gap: 'related',
 })
 export const saveLook = style({ display: 'contents' })
-export const back = style({ display: 'inline-flex', alignItems: 'center', gap: '4px', minBlockSize: '44px' })
+export const back = style({ display: 'inline-flex', alignItems: 'center', gap: 'tight', minBlockSize: '44px' })
 export const title = style({ flex: '1 1 12rem', minInlineSize: '0' })
-export const status = style({ fontSize: '13px', color: 'ink3', '&[data-tone="error"]': { color: 'error' } })
+export const status = style({ fontSize: 'small', color: 'ink3', '&[data-tone="error"]': { color: 'error' } })
 
 export const stage = style({
   display: 'grid',
-  gap: '12px',
+  gap: 'related',
   '& > *': { minInlineSize: '0' },
   '@media (min-width: 900px)': {
     // The table's column is as wide as the table: as wide as the screen's height allows, at most 560px.
     gridTemplateColumns: 'minmax(0, min(560px, calc((100svh - 240px) * 0.8))) minmax(0, 1fr)',
     alignItems: 'start',
-    columnGap: '40px',
+    columnGap: 'columnWide',
     '& > *': { gridColumn: '1' },
     '& > [data-tray]': { gridColumn: '2', gridRow: '1 / span 8' },
   },
 })
 
-export const tools = style({ display: 'flex', flexWrap: 'wrap', gap: '8px' })
+export const tools = style({ display: 'flex', flexWrap: 'wrap', gap: 'actions' })
 export const tool = style({
   position: 'relative',
   display: 'inline-flex',
@@ -54,12 +60,12 @@ export const tool = style({
   borderRadius: 'pill',
   backgroundColor: 'paper2',
   color: 'ink',
-  fontSize: '14px',
+  fontSize: 'label',
   fontWeight: 600,
   cursor: 'pointer',
   transitionProperty: 'transform, background-color',
-  transitionDuration: '140ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  transitionDuration: 'press',
+  transitionTimingFunction: 'standard',
   ':active': { transform: 'scale(0.96)' },
   '&[aria-disabled="true"]': { opacity: 0.5, cursor: 'not-allowed' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2Hover' } },
@@ -122,7 +128,7 @@ export const dropHint = style({
   borderRadius: 'pill',
   backgroundColor: 'ink',
   color: 'onInk',
-  fontSize: '14px',
+  fontSize: 'label',
   fontWeight: 600,
   textAlign: 'center',
   pointerEvents: 'none',
@@ -143,8 +149,8 @@ export const item = style({
   cursor: 'grab',
   WebkitTouchCallout: 'none',
   transitionProperty: 'translate, rotate, scale',
-  transitionDuration: '560ms',
-  transitionTimingFunction: 'var(--styld-spring)',
+  transitionDuration: 'settle',
+  transitionTimingFunction: 'spring',
   ':focus-visible': { outlineWidth: 'calc(2px / var(--k)) !custom', outlineOffset: 'calc(4px / var(--k)) !custom' },
   '&[data-held]': { cursor: 'grabbing', transitionProperty: 'none' },
   '&[data-selected]::after': {
@@ -160,8 +166,8 @@ export const item = style({
   '&[data-leaving]': {
     pointerEvents: 'none',
     animationName: itemOut,
-    animationDuration: '240ms',
-    animationTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+    animationDuration: vars.transitionDuration.enter,
+    animationTimingFunction: vars.ease.standard,
     animationFillMode: 'forwards',
   },
 })
@@ -191,7 +197,7 @@ export const label = style({
   inlineSize: 'max-content',
   maxInlineSize: '90cqw',
   paddingInline: '2cqw',
-  fontSize: '7cqw',
+  fontSize: 'boardText',
   fontWeight: 600,
   lineHeight: 1.15,
   color: 'ink',
@@ -200,7 +206,7 @@ export const label = style({
   overflowWrap: 'break-word',
   '&[data-style="headline"]': {
     fontFamily: 'voice',
-    fontSize: '12cqw',
+    fontSize: 'boardHeadline',
     fontWeight: 400,
     lineHeight: 0.95,
     letterSpacing: '0.005em',
@@ -229,14 +235,14 @@ export const handle = style({
 
 export const selection = style({
   display: 'grid',
-  gap: '10px',
+  gap: 'close',
   padding: '12px',
   borderRadius: 'panel',
   backgroundColor: 'stock',
   boxShadow: 'lift1',
 })
-export const editor = style({ display: 'grid', gap: '8px' })
-export const selectionRow = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' })
+export const editor = style({ display: 'grid', gap: 'actions' })
+export const selectionRow = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'actions' })
 export const field = style({
   inlineSize: '100%',
   minBlockSize: '52px',
@@ -248,7 +254,7 @@ export const field = style({
   backgroundColor: 'stock',
   resize: 'vertical',
 })
-export const choices = style({ display: 'flex', flexWrap: 'wrap', gap: '8px' })
+export const choices = style({ display: 'flex', flexWrap: 'wrap', gap: 'actions' })
 export const choice = style({
   minBlockSize: '36px',
   paddingInline: '14px',
@@ -256,12 +262,12 @@ export const choice = style({
   borderRadius: 'pill',
   backgroundColor: 'paper2',
   color: 'ink2',
-  fontSize: '14px',
+  fontSize: 'label',
   fontWeight: 500,
   cursor: 'pointer',
   transitionProperty: 'transform, background-color, color',
-  transitionDuration: '140ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  transitionDuration: 'press',
+  transitionTimingFunction: 'standard',
   ':active': { transform: 'scale(0.96)' },
   '&[aria-pressed="true"]': { backgroundColor: 'ink', color: 'onInk' },
   '@media (hover: hover) and (pointer: fine)': {
@@ -288,8 +294,8 @@ export const swatch = style({
   // A 36px circle with a 44px target, 8px apart so the targets never overlap.
   '::after': { content: '""', position: 'absolute', inset: '-4px' },
   transitionProperty: 'transform',
-  transitionDuration: '140ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  transitionDuration: 'press',
+  transitionTimingFunction: 'standard',
   ':active': { transform: 'scale(0.96)' },
   '&[aria-pressed="true"]': { outlineWidth: '2px', outlineStyle: 'solid', outlineColor: 'ink', outlineOffset: '2px' },
   // Hovered, the ring a chosen paper wears, in the rule's colour.
@@ -307,13 +313,13 @@ export const toast = style({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  gap: '12px',
+  gap: 'related',
   paddingBlock: '8px',
   paddingInline: '16px 8px',
   borderRadius: 'pill',
   backgroundColor: 'ink',
   color: 'onInk',
-  fontSize: '14px',
+  fontSize: 'label',
 })
 export const toastAction = style({
   minBlockSize: '36px',
@@ -326,12 +332,12 @@ export const toastAction = style({
   cursor: 'pointer',
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'inkHover' } },
 })
-export const fine = style({ fontSize: '13px', color: 'ink3' })
+export const fine = style({ fontSize: 'small', color: 'ink3' })
 
 export const tray = style({
   display: 'grid',
-  gap: '8px',
-  '& h2': { fontSize: '15px', fontWeight: 600 },
+  gap: 'actions',
+  '& h2': { fontSize: 'control', fontWeight: 600 },
   // On a phone the tray stays at the bottom of the screen while the table is in view, so a piece is one tap away.
   '@media (max-width: 899px)': {
     position: 'sticky',
@@ -348,14 +354,14 @@ export const tray = style({
   '@media (min-width: 900px)': {
     position: 'sticky',
     insetBlockStart: '24px',
-    gap: '12px',
-    '& h2': { fontSize: '22px' },
+    gap: 'related',
+    '& h2': { fontSize: 'heading' },
   },
 })
 /** One scrolling row of pieces on a phone; a grid beside the table on a desktop. */
 export const trayList = style({
   display: 'flex',
-  gap: '8px',
+  gap: 'actions',
   margin: '0',
   marginInline: 'calc(-1 * max(20px, env(safe-area-inset-left)))',
   paddingInline: 'max(20px, env(safe-area-inset-left))',
@@ -392,8 +398,8 @@ export const trayPiece = style({
   backgroundColor: 'paper2',
   cursor: 'pointer',
   transitionProperty: 'transform, box-shadow, background-color',
-  transitionDuration: '140ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  transitionDuration: 'press',
+  transitionTimingFunction: 'standard',
   ':active': { transform: 'scale(0.96)' },
   '&[aria-pressed="true"]': { boxShadow: 'chosen' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2Hover' } },

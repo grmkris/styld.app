@@ -8,7 +8,7 @@ export const head = style({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  gap: '12px',
+  gap: 'related',
   minBlockSize: '52px',
   paddingBlockStart: '8px',
 })
@@ -37,7 +37,7 @@ export const wideAction = style({
     blockSize: '48px',
     minBlockSize: '48px',
     marginBlock: '-2px',
-    gap: '8px',
+    gap: 'actions',
     paddingInline: '20px',
   },
 })

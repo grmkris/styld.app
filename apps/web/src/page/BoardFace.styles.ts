@@ -8,7 +8,7 @@ export const cover = style({
   display: 'grid',
   gridTemplateColumns: 'minmax(0, 1.4fr) minmax(0, 1fr)',
   gridTemplateRows: 'minmax(0, 1fr) minmax(0, 1fr)',
-  gap: '6%',
+  gap: '6% !custom',
   padding: '10%',
   pointerEvents: 'none',
   '& > :first-child': { gridRow: 'span 2' },
@@ -32,7 +32,7 @@ export const blankWords = style({
   justifySelf: 'center',
   paddingInline: '12px',
   color: 'ink3',
-  fontSize: '13px',
+  fontSize: 'small',
   textAlign: 'center',
   textWrap: 'balance',
 })

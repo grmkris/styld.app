@@ -1,13 +1,13 @@
-import { style } from '../zyzz.config.ts'
+import { pressThenHover, style } from '../zyzz.config.ts'
 
 // Styles for the wardrobe in WardrobeView.ts (Gallery: wardrobe.html, wardrobe-desktop.html).
-export const wardrobePage = style({ display: 'grid', gap: '12px', paddingBlock: '0 40px' })
+export const wardrobePage = style({ display: 'grid', gap: 'related', paddingBlock: '0 40px' })
 /** Browsing as a shop does (owner, 2026-10-31): a row of groups, then a row of the chosen group's types, each chip
  * with its count (DESIGN.md › Chips, Gallery 2 `.chips.scroll`): a row that scrolls, cut at the screen's edge rather
  * than the gutter. */
 export const filterRow = style({
   display: 'flex',
-  gap: '8px',
+  gap: 'actions',
   marginInline: '-20px',
   paddingInline: '20px',
   paddingBlock: '4px',
@@ -17,10 +17,10 @@ export const filterRow = style({
   whiteSpace: 'nowrap',
 })
 /** Ask's chip, chosen as Explore's is (`cx(chip(), chosen(), filterChip())`), with its count beside its name. */
-export const filterChip = style({ display: 'inline-flex', alignItems: 'center', gap: '6px' })
+export const filterChip = style({ display: 'inline-flex', alignItems: 'center', gap: 'snug' })
 /** A chip's count, quieter than its name; on the chosen chip and on Filters once set it takes the on-ink colour. */
 export const count = style({
-  fontSize: '13px',
+  fontSize: 'small',
   fontVariantNumeric: 'tabular-nums',
   color: 'ink3',
   '[aria-pressed="true"] > &': { color: 'onInk' },
@@ -29,7 +29,7 @@ export const count = style({
 /** Filters pinned at the start of the groups' row, which scrolls beside it. */
 // No wider than the page's column: without a floor the row's chips set the column's width, and the page ran past the
 // phone's edge (398px on a 390px screen).
-export const browseRow = style({ display: 'flex', alignItems: 'center', gap: '8px', minInlineSize: '0' })
+export const browseRow = style({ display: 'flex', alignItems: 'center', gap: 'actions', minInlineSize: '0' })
 /** The groups' row beside Filters: cut at the screen's right edge only. */
 export const groupScroll = style({ flexGrow: 1, minInlineSize: '0', marginInlineStart: '0', paddingInlineStart: '0' })
 /** Filters once any is set: filled in, as a chosen chip is. */
@@ -38,16 +38,16 @@ export const filtersSet = style({ '&[data-set]': { backgroundColor: 'ink', color
 export const grid = style({
   display: 'grid',
   gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-  gap: '12px',
+  gap: 'related',
   padding: '0',
   listStyleType: 'none',
-  '@media (min-width: 600px)': { gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: '16px' },
-  '@media (min-width: 1000px)': { gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', gap: '16px 28px' },
+  '@media (min-width: 600px)': { gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 'grid' },
+  '@media (min-width: 1000px)': { gridTemplateColumns: 'repeat(6, minmax(0, 1fr))', rowGap: 'grid', columnGap: 'wide' },
 })
 export const cut = style({
   display: 'grid',
   justifyItems: 'center',
-  gap: '4px',
+  gap: 'tight',
   // The hover lift makes the tile its own group; on the paper's colour a photo's ground still blends into it.
   backgroundColor: 'paper',
   color: 'ink2',
@@ -55,8 +55,8 @@ export const cut = style({
   // It presses (Gallery `.cut:active`) and lifts under the pointer; the lift's translate composes with the press. A
   // loading tile has no link, and stays still.
   transitionProperty: 'transform, translate',
-  transitionDuration: '140ms, 180ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  transitionDuration: pressThenHover,
+  transitionTimingFunction: 'standard',
   '&[href]:active': { transform: 'scale(0.96)' },
   '@media (hover: hover) and (pointer: fine)': { '&[href]:hover': { translate: '0 -2px' } },
 })
@@ -72,7 +72,7 @@ export const cutImage = style({
 export const caption = style({
   maxInlineSize: '100%',
   overflow: 'hidden',
-  fontSize: '13px',
+  fontSize: 'small',
   fontWeight: 500,
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
@@ -81,32 +81,32 @@ export const caption = style({
 export const pieceState = style({
   display: 'inline-flex',
   alignItems: 'center',
-  gap: '6px',
-  fontSize: '12px',
+  gap: 'snug',
+  fontSize: 'micro',
   color: 'signal',
 })
-export const pieceFailed = style({ fontSize: '12px', color: 'error' })
+export const pieceFailed = style({ fontSize: 'micro', color: 'error' })
 /** The filter chips' row while the pieces load: pills where the chips will be (AskView.styles.ts › chipSkeleton). */
-export const filterRowSkeleton = style({ display: 'flex', alignItems: 'center', gap: '8px', minBlockSize: '44px' })
+export const filterRowSkeleton = style({ display: 'flex', alignItems: 'center', gap: 'actions', minBlockSize: '44px' })
 export const tileSkeleton = style({ inlineSize: '100%', aspectRatio: '1 / 1' })
-export const captionSkeleton = style({ fontSize: '13px' })
+export const captionSkeleton = style({ fontSize: 'small' })
 export const message = style({
   display: 'grid',
   justifyItems: 'start',
-  gap: '12px',
+  gap: 'related',
   paddingBlock: '32px',
   color: 'ink2',
 })
-export const messageTitle = style({ fontSize: '17px', fontWeight: 600, color: 'ink' })
+export const messageTitle = style({ fontSize: 'subheading', fontWeight: 600, color: 'ink' })
 /** The line offering clean pictures for pieces without one. */
 /** Pieces still without a clean picture: one quiet line, its last words the way to make them. */
 export const backfill = style({
   display: 'flex',
   flexWrap: 'wrap',
   alignItems: 'center',
-  gap: '0 8px',
+  columnGap: 'actions',
   margin: '0',
-  fontSize: '14px',
+  fontSize: 'label',
   color: 'ink2',
 })
 /** The filter sheet's end: Clear beside the ink action that shows what is left (DESIGN.md › Controls). */
@@ -114,6 +114,6 @@ export const backfill = style({
 export const sheetActions = style({
   display: 'grid',
   gridTemplateColumns: 'auto minmax(0, 1fr)',
-  gap: '8px',
+  gap: 'actions',
   marginBlockStart: '24px',
 })

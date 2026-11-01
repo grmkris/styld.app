@@ -1,4 +1,2 @@
-import { style } from '../zyzz.config.ts'
-
-export const note = style({ fontSize: '14px', color: 'ink2' })
-export const hidden = style({ fontSize: '14px', color: 'error' })
+// A check's notice reads as any other small note; held back, as a problem.
+export { note, problem as hidden } from '../Controls.styles.ts'

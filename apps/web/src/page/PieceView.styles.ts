@@ -1,21 +1,22 @@
 import { style } from '../zyzz.config.ts'
+export { actionRow as backActions } from '../Controls.styles.ts'
 
 // Styles for a piece you own in PieceView.ts (Gallery: item.html, item-desktop.html).
 export const piecePage = style({
   display: 'grid',
-  gap: '16px',
+  gap: 'grid',
   paddingBlock: '8px 40px',
   '@media (min-width: 900px)': {
     gridTemplateColumns: 'minmax(0, 1.2fr) minmax(0, 1fr)',
     alignItems: 'start',
-    columnGap: '48px',
+    columnGap: 'columns',
   },
 })
 export const pageBar = style({
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'space-between',
-  gap: '8px',
+  gap: 'actions',
   gridColumn: '1 / -1',
 })
 /** Delete as a quiet text action after the facts; it asks before it deletes. */
@@ -27,8 +28,13 @@ export const photoSkeleton = style({
   borderRadius: 'photo',
   '@media (min-width: 900px)': { aspectRatio: 'auto', blockSize: 'min(520px, 60vh)' },
 })
-export const nameSkeleton = style({ fontSize: '26px', blockSize: '0.54em', marginBlock: '0.27em', inlineSize: '60%' })
-export const metaSkeleton = style({ fontSize: '16px', inlineSize: '30%' })
+export const nameSkeleton = style({
+  fontSize: 'panelTitle',
+  blockSize: '0.54em',
+  marginBlock: '0.27em',
+  inlineSize: '60%',
+})
+export const metaSkeleton = style({ fontSize: 'body', inlineSize: '30%' })
 export const photo = style({
   display: 'block',
   inlineSize: '100%',
@@ -37,15 +43,15 @@ export const photo = style({
   borderRadius: 'photo',
   '@media (min-width: 900px)': { aspectRatio: 'auto', blockSize: 'min(520px, 60vh)' },
 })
-export const details = style({ display: 'grid', gap: '8px', alignContent: 'start', maxInlineSize: '30rem' })
-export const pieceName = style({ fontSize: '26px', lineHeight: 1.08, fontWeight: 600, letterSpacing: '-0.02em' })
+export const details = style({ display: 'grid', gap: 'actions', alignContent: 'start', maxInlineSize: '30rem' })
+export const pieceName = style({ fontSize: 'panelTitle', lineHeight: 1.08, fontWeight: 600, letterSpacing: '-0.02em' })
 export const meta = style({ color: 'ink2' })
-export const actions = style({ display: 'flex', flexWrap: 'wrap', gap: '8px', marginBlock: '12px' })
+export const actions = style({ display: 'flex', flexWrap: 'wrap', gap: 'actions', marginBlock: '12px' })
 /** The facts share one term column, as wide as the longest term, so none wraps or runs into its value. */
 export const facts = style({
   display: 'grid',
   gridTemplateColumns: 'max-content minmax(0, 1fr)',
-  columnGap: '16px',
+  columnGap: 'grid',
   marginBlockStart: '8px',
 })
 export const fact = style({
@@ -62,13 +68,13 @@ export const factValue = style({ overflowWrap: 'anywhere', whiteSpace: 'pre-line
 /** The delete confirmation: a stock panel in the page, not a dialog. */
 export const confirm = style({
   display: 'grid',
-  gap: '12px',
+  gap: 'related',
   padding: '20px',
   borderRadius: 'panel',
   backgroundColor: 'stock',
 })
-export const confirmTitle = style({ fontSize: '17px', fontWeight: 600 })
-export const editForm = style({ display: 'grid', gap: '4px' })
+export const confirmTitle = style({ fontSize: 'subheading', fontWeight: 600 })
+export const editForm = style({ display: 'grid', gap: 'tight' })
 export const notesField = style({
   inlineSize: '100%',
   minBlockSize: '120px',
@@ -79,18 +85,17 @@ export const notesField = style({
   borderRadius: 'field',
   backgroundColor: 'stock',
   color: 'ink',
-  fontSize: '16px',
+  fontSize: 'body',
   resize: 'vertical',
 })
-export const status = style({ display: 'flex', alignItems: 'center', gap: '8px', color: 'signal' })
+export const status = style({ display: 'flex', alignItems: 'center', gap: 'actions', color: 'signal' })
 /** The back's panel: its button and Remove in a row, its cost 8px under them, apart from Save to board below. */
-export const backPanel = style({ display: 'grid', gap: '8px', marginBlock: '8px 16px' })
-export const backActions = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '8px' })
+export const backPanel = style({ display: 'grid', gap: 'actions', marginBlock: '8px 16px' })
 /** The clean picture's panel: what it is, where it stands and what the owner can do with it. */
-export const picturePanel = style({ display: 'grid', gap: '8px', marginBlockStart: '8px' })
-export const cleanedLabel = style({ fontSize: '13px', fontWeight: 500, color: 'ink3' })
-export const pictureNote = style({ fontSize: '14px', color: 'ink2' })
-export const proposal = style({ display: 'flex', alignItems: 'center', gap: '12px' })
+export const picturePanel = style({ display: 'grid', gap: 'actions', marginBlockStart: '8px' })
+export const cleanedLabel = style({ fontSize: 'small', fontWeight: 500, color: 'ink3' })
+export const pictureNote = style({ fontSize: 'label', color: 'ink2' })
+export const proposal = style({ display: 'flex', alignItems: 'center', gap: 'related' })
 export const proposalImage = style({
   inlineSize: '88px',
   blockSize: '88px',
@@ -110,7 +115,7 @@ export const turnButton = style({
 /** The still and the turn's player in one place, the player on top: until the player draws, the still shows. */
 export const turnStack = style({ display: 'grid', '& > *': { gridArea: '1 / 1' } })
 /** Front and Back under the picture: two chips, the shown side chosen. */
-export const sides = style({ display: 'flex', justifyContent: 'center', gap: '8px' })
+export const sides = style({ display: 'flex', justifyContent: 'center', gap: 'actions' })
 /** A file picker drawn as a button: the label is the target, its input hidden but focusable. */
 export const fileAction = style({
   position: 'relative',

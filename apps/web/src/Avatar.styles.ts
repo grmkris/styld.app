@@ -19,7 +19,7 @@ export const avatar = style({
   '&[data-tone="ink"]': { backgroundColor: 'ink', color: 'onInk' },
   inlineSize: '44px',
   blockSize: '44px',
-  fontSize: '15px',
-  '&[data-size="small"]': { inlineSize: '24px', blockSize: '24px', fontSize: '10px', letterSpacing: '0' },
-  '&[data-size="large"]': { inlineSize: '72px', blockSize: '72px', fontSize: '22px' },
+  fontSize: 'control',
+  '&[data-size="small"]': { inlineSize: '24px', blockSize: '24px', fontSize: 'tiny', letterSpacing: '0' },
+  '&[data-size="large"]': { inlineSize: '72px', blockSize: '72px', fontSize: 'heading' },
 })

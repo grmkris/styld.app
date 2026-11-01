@@ -1,31 +1,31 @@
 import { style } from '../../zyzz.config.ts'
+export { lede } from '../../Controls.styles.ts'
 
 // Styles for adding pieces in View.ts (Gallery: add.html's scan step, before the found grid).
 export const addPage = style({
   display: 'grid',
-  gap: '8px',
+  gap: 'actions',
   maxInlineSize: '36rem',
   paddingBlock: '8px 48px',
   '@media (min-width: 900px)': { maxInlineSize: '56rem' },
 })
-export const pageBar = style({ display: 'flex', alignItems: 'center', gap: '8px' })
-export const lede = style({ color: 'ink2' })
+export const pageBar = style({ display: 'flex', alignItems: 'center', gap: 'actions' })
 /** The two ways that work best, as a short list above the ways in. */
-export const guidance = style({ display: 'grid', gap: '6px', marginBlockStart: '12px' })
-export const guidanceTitle = style({ color: 'ink', fontSize: '15px', fontWeight: 600 })
+export const guidance = style({ display: 'grid', gap: 'snug', marginBlockStart: '12px' })
+export const guidanceTitle = style({ color: 'ink', fontSize: 'control', fontWeight: 600 })
 export const guidanceList = style({
   display: 'grid',
-  gap: '6px',
+  gap: 'snug',
   margin: '0',
   paddingInlineStart: '1.2em',
   color: 'ink2',
-  fontSize: '14px',
+  fontSize: 'label',
 })
 /** The ways in: the library across the top, the camera's two ways side by side below it on a phone. */
 export const sources = style({
   display: 'grid',
   gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-  gap: '12px',
+  gap: 'related',
   marginBlockStart: '16px',
   '& > :first-child': { gridColumn: '1 / -1' },
   // On a wide screen the three ways in sit on one line.
@@ -40,7 +40,7 @@ export const source = style({
   display: 'grid',
   alignContent: 'center',
   justifyItems: 'center',
-  gap: '6px',
+  gap: 'snug',
   minBlockSize: '148px',
   padding: '16px',
   borderWidth: '1.5px',
@@ -55,8 +55,8 @@ export const source = style({
   textAlign: 'center',
   cursor: 'pointer',
   transitionProperty: 'transform, background-color, border-color',
-  transitionDuration: '140ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  transitionDuration: 'press',
+  transitionTimingFunction: 'standard',
   ':active': { transform: 'scale(0.96)' },
   '&[data-drag-over]': { borderColor: 'ink', backgroundColor: 'paper2' },
   // Hovered, its edge darkens, as Make's kinds do.
@@ -69,18 +69,23 @@ export const source = style({
     outlineOffset: '2px',
   },
 })
-export const sourceIcons = style({ display: 'flex', gap: '6px', color: 'ink', fontSize: '24px' })
-export const sourceTitle = style({ color: 'ink', fontSize: '15px', fontWeight: 600, textWrap: 'balance' })
-export const sourceHint = style({ fontSize: '13px' })
+export const sourceIcons = style({ display: 'flex', gap: 'snug', color: 'ink', fontSize: 'iconLarge' })
+export const sourceTitle = style({ color: 'ink', fontSize: 'control', fontWeight: 600, textWrap: 'balance' })
+export const sourceHint = style({ fontSize: 'small' })
 /** Add from a link: what it does, then the address and its Add button on one line. Its anchor clears the bar. */
-export const linkForm = style({ display: 'grid', gap: '6px', marginBlockStart: '20px', scrollMarginBlockStart: '72px' })
-export const linkHint = style({ fontSize: '13px', color: 'ink2' })
-export const linkRow = style({ display: 'flex', gap: '8px', alignItems: 'center' })
+export const linkForm = style({
+  display: 'grid',
+  gap: 'snug',
+  marginBlockStart: '20px',
+  scrollMarginBlockStart: '72px',
+})
+export const linkHint = style({ fontSize: 'small', color: 'ink2' })
+export const linkRow = style({ display: 'flex', gap: 'actions', alignItems: 'center' })
 export const problems = style({
   display: 'grid',
-  gap: '4px',
+  gap: 'tight',
   marginBlockStart: '8px',
-  fontSize: '14px',
+  fontSize: 'label',
   color: 'error',
 })
 /** The files on their way, one row each. */
@@ -96,20 +101,20 @@ export const queue = style({
 export const queueRow = style({
   display: 'flex',
   alignItems: 'center',
-  gap: '12px',
+  gap: 'related',
   minBlockSize: '56px',
   borderBlockEndWidth: '1px',
   borderBlockEndStyle: 'solid',
   borderBlockEndColor: 'rule',
 })
 /** The queue's one-line summary, read out as it changes. */
-export const summary = style({ marginBlockStart: '16px', fontSize: '14px', color: 'ink2' })
-export const queueIcon = style({ display: 'inline-grid', color: 'ink2', fontSize: '20px' })
+export const summary = style({ marginBlockStart: '16px', fontSize: 'label', color: 'ink2' })
+export const queueIcon = style({ display: 'inline-grid', color: 'ink2', fontSize: 'icon' })
 export const queueName = style({
   flexGrow: 1,
   minInlineSize: '0',
   overflow: 'hidden',
-  fontSize: '14px',
+  fontSize: 'label',
   fontWeight: 500,
   textOverflow: 'ellipsis',
   whiteSpace: 'nowrap',
@@ -117,13 +122,13 @@ export const queueName = style({
 export const queueState = style({
   display: 'inline-flex',
   alignItems: 'center',
-  gap: '6px',
-  fontSize: '13px',
+  gap: 'snug',
+  fontSize: 'small',
   color: 'signal',
   whiteSpace: 'nowrap',
 })
-export const queueDone = style({ fontSize: '13px', color: 'ink3' })
-export const queueFailed = style({ fontSize: '13px', color: 'error', textAlign: 'end' })
+export const queueDone = style({ fontSize: 'small', color: 'ink3' })
+export const queueFailed = style({ fontSize: 'small', color: 'error', textAlign: 'end' })
 export const retry = style({
   display: 'inline-grid',
   placeItems: 'center',

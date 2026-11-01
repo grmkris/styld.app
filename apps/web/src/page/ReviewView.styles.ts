@@ -1,34 +1,33 @@
 import { style } from '../zyzz.config.ts'
+export { lede, pageBar } from '../Controls.styles.ts'
 
 // Styles for the review tray in ReviewView.ts (Gallery: add.html's found grid and footer action).
 // The site frame ends past the action band (View.styles.ts › withActionBand), so the page needs no room of its own.
-export const reviewPage = style({ display: 'grid', gap: '8px', paddingBlock: '8px 40px' })
-export const pageBar = style({ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' })
+export const reviewPage = style({ display: 'grid', gap: 'actions', paddingBlock: '8px 40px' })
 export const addMore = style({
   display: 'inline-flex',
   alignItems: 'center',
   minBlockSize: '44px',
   color: 'ink',
-  fontSize: '14px',
+  fontSize: 'label',
   fontWeight: 600,
   textDecorationLine: 'underline',
   textDecorationColor: 'signal',
   textUnderlineOffset: '4px',
 })
-export const lede = style({ color: 'ink2' })
-export const allowance = style({ fontSize: '13px', color: 'ink3', fontVariantNumeric: 'tabular-nums' })
+export const allowance = style({ fontSize: 'small', color: 'ink3', fontVariantNumeric: 'tabular-nums' })
 /** Found pieces: two columns on a phone, more on a wide screen. */
 export const grid = style({
   display: 'grid',
   gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
-  gap: '16px',
+  gap: 'grid',
   marginBlockStart: '16px',
   padding: '0',
   listStyleType: 'none',
   '@media (min-width: 600px)': { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' },
-  '@media (min-width: 1000px)': { gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', gap: '16px 28px' },
+  '@media (min-width: 1000px)': { gridTemplateColumns: 'repeat(5, minmax(0, 1fr))', rowGap: 'grid', columnGap: 'wide' },
 })
-export const found = style({ position: 'relative', display: 'grid', gap: '4px', margin: '0' })
+export const found = style({ position: 'relative', display: 'grid', gap: 'tight', margin: '0' })
 export const foundImage = style({
   display: 'block',
   inlineSize: '100%',
@@ -42,7 +41,7 @@ export const foundImage = style({
   outlineColor: 'rule',
   outlineOffset: '-1px',
   transitionProperty: 'opacity',
-  transitionDuration: '160ms',
+  transitionDuration: 'fade',
   // An unticked piece fades back, so what will be added stands out.
   '&[data-dropped]': { opacity: 0.45 },
 })
@@ -83,8 +82,8 @@ export const tick = style({
   '&[aria-pressed="true"]::before': { backgroundColor: 'ink' },
   // The dot answers the pointer and the press, its 44px target unchanged.
   transitionProperty: 'transform',
-  transitionDuration: '140ms',
-  transitionTimingFunction: 'cubic-bezier(0.2, 0, 0, 1)',
+  transitionDuration: 'press',
+  transitionTimingFunction: 'standard',
   ':active': { transform: 'scale(0.96)' },
   '@media (hover: hover) and (pointer: fine)': {
     '&:not([aria-pressed="true"]):hover::before': { backgroundColor: 'paper2' },
@@ -95,12 +94,12 @@ export const caption = style({
   display: 'flex',
   alignItems: 'start',
   justifyContent: 'space-between',
-  gap: '4px',
+  gap: 'tight',
   minInlineSize: '0',
 })
-export const captionText = style({ display: 'grid', minInlineSize: '0', fontSize: '14px', fontWeight: 600 })
+export const captionText = style({ display: 'grid', minInlineSize: '0', fontSize: 'label', fontWeight: 600 })
 export const captionName = style({ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' })
-export const captionKind = style({ fontSize: '13px', fontWeight: 400, color: 'ink2' })
+export const captionKind = style({ fontSize: 'small', fontWeight: 400, color: 'ink2' })
 export const edit = style({
   display: 'inline-grid',
   placeItems: 'center',
@@ -126,24 +125,24 @@ export const pending = style({
   borderRadius: 'panel',
   backgroundColor: 'paper2',
   color: 'signal',
-  fontSize: '13px',
+  fontSize: 'small',
   textAlign: 'center',
 })
-export const pendingLabel = style({ display: 'inline-flex', alignItems: 'center', gap: '6px' })
+export const pendingLabel = style({ display: 'inline-flex', alignItems: 'center', gap: 'snug' })
 /** A capture that needs the person: it failed, stopped halfway, or found nothing. */
 export const notice = style({
   display: 'grid',
-  gap: '8px',
+  gap: 'actions',
   marginBlockStart: '12px',
   padding: '16px',
   borderRadius: 'panel',
   backgroundColor: 'stock',
   boxShadow: 'edge',
-  fontSize: '14px',
+  fontSize: 'label',
 })
-export const noticeActions = style({ display: 'flex', flexWrap: 'wrap', gap: '8px' })
+export const noticeActions = style({ display: 'flex', flexWrap: 'wrap', gap: 'actions' })
 /** The open piece: its picture large, then what it is. */
-export const editor = style({ display: 'grid', gap: '8px', maxInlineSize: '36rem' })
+export const editor = style({ display: 'grid', gap: 'actions', maxInlineSize: '36rem' })
 export const editorImage = style({
   display: 'block',
   inlineSize: '100%',
@@ -156,10 +155,10 @@ export const editorImage = style({
 export const original = style({
   display: 'flex',
   alignItems: 'center',
-  gap: '10px',
+  gap: 'close',
   minBlockSize: '44px',
   marginBlockStart: '8px',
-  fontSize: '14px',
+  fontSize: 'label',
   fontWeight: 500,
   cursor: 'pointer',
 })
@@ -167,9 +166,9 @@ export const original = style({
 export const alreadyHave = style({
   display: 'flex',
   alignItems: 'center',
-  gap: '12px',
+  gap: 'related',
   marginBlockStart: '8px',
-  fontSize: '14px',
+  fontSize: 'label',
   color: 'ink2',
 })
 export const alreadyHaveImage = style({
@@ -185,9 +184,9 @@ export const sightings = style({
   display: 'flex',
   flexDirection: 'column',
   alignItems: 'flex-start',
-  gap: '8px',
+  gap: 'actions',
   marginBlockStart: '8px',
-  fontSize: '14px',
+  fontSize: 'label',
   color: 'ink2',
 })
 /** The primary action stays in reach at the bottom of the screen (Gallery `.footer-cta`). On a phone its band runs
@@ -199,7 +198,7 @@ export const footer = style({
   insetBlockEnd: '0',
   zIndex: 4,
   display: 'grid',
-  gap: '6px',
+  gap: 'snug',
   paddingBlockStart: '12px',
   paddingBlockEnd: 'calc(96px + env(safe-area-inset-bottom))',
   paddingInline: 'max(20px, env(safe-area-inset-left), env(safe-area-inset-right))',
@@ -211,7 +210,7 @@ export const footer = style({
 })
 export const footerInner = style({
   display: 'grid',
-  gap: '6px',
+  gap: 'snug',
   inlineSize: '100%',
   maxInlineSize: '36rem',
   marginInline: 'auto',

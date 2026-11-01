@@ -4,7 +4,8 @@ import { format, type Locale } from '@styld/i18n'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { closeIcon } from '../Icon.ts'
 import { styled } from '../Styled.ts'
-import { grab, quiet, scrim, sheet, sheetHead, sheetTitle } from './AskView.styles.ts'
+import { quiet } from './AskView.styles.ts'
+import { grab, scrim, sheet, sheetHead, sheetTitle } from './Sheet.styles.ts'
 import { round } from './PageBar.styles.ts'
 
 /** A sheet is drawn while it is open and while it eases out after closing (its Dialog is animated): it leaves with a
