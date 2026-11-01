@@ -1,28 +1,55 @@
+import { type PieceType, slotOf } from '@styld/protocol'
 import { Effect, Layer, Option } from 'effect'
 import { accountPrefix } from '../wardrobe/Media.ts'
 import { type CutSide, CutoutFailed, GarmentCutout } from '../wardrobe/Processing.ts'
 import type { WardrobeBindings } from '../wardrobe/Parts.ts'
 import { CaptureMetrics } from './Metrics.ts'
-import { CaptureConfig } from './Policy.ts'
-import { cutterFor, foregroundPiece, samPieces } from './PhotoPipeline.ts'
-import { GarmentSegmenter, GarmentVision, PictureWork } from './Providers.ts'
+import { CaptureConfig, type CapturePolicy } from './Policy.ts'
+import { type CutPiece, foregroundPiece, type morePrompts, samPieces, showsPerson } from './PhotoPipeline.ts'
+import { GarmentSegmenter, GarmentVision, PictureWork, type Route } from './Providers.ts'
 import { Usage } from './Usage.ts'
 
 type Requirements = GarmentVision | PictureWork | GarmentSegmenter | Usage | CaptureConfig | CaptureMetrics
 
-/** The largest garment in a piece's photo: what an assistant meant when it added one piece. The same
- * steps as the tray's photos: background removal for a confident single garment, SAM otherwise. */
-const largestGarment = (original: Uint8Array) =>
+/** Who cuts out a piece's own photo. The person named the piece, so with nobody in the picture its whole foreground is
+ * the piece, a pair of shoes or gloves included, which the route counts as two (v1 product shots carried over, 1 November:
+ * every pair went to SAM and came back empty). With a person in it, background removal would keep the person.
+ * @internal Exported for its tests. */
+export const pieceCutterFor = (route: Route, policy: Pick<CapturePolicy, 'single'>): 'cloudflare' | 'sam' =>
+  showsPerson(route) || policy.single === 'sam' ? 'sam' : 'cloudflare'
+
+/** What SAM is asked for, besides clothing, to find a piece of this kind: "clothing" misses shoes, bags and hats.
+ * @internal Exported for its tests. */
+export const kindPrompt = (type: PieceType): Option.Option<(typeof morePrompts)[number]> => {
+  if (slotOf(type) === 'shoes') return Option.some('shoes')
+  if (type === 'bags') return Option.some('bag')
+  return type === 'hats' ? Option.some('hat') : Option.none()
+}
+
+/** Of SAM's pieces, largest first, the largest found by the kind's own prompt, whose masks are tracked under its
+ * name; else the largest garment.
+ * @internal Exported for its tests. */
+export const pieceOfKind = <Cut extends Pick<CutPiece, 'track'>>(
+  pieces: ReadonlyArray<Cut>,
+  kind: Option.Option<string>,
+): Option.Option<Cut> =>
+  Option.orElse(
+    Option.flatMap(kind, (prompt) => Option.fromNullishOr(pieces.find(({ track }) => track.startsWith(`${prompt}-`)))),
+    () => Option.fromNullishOr(pieces[0]),
+  )
+
+/** The piece in its own photo, cut out: background removal when nobody is in it, falling back to SAM. */
+const pieceIn = (original: Uint8Array, type: PieceType) =>
   Effect.gen(function* () {
     const policy = yield* CaptureConfig
     const copies = yield* (yield* PictureWork).workingCopies(original)
     const route = yield* (yield* GarmentVision).route({ bytes: copies.small, contentType: 'image/jpeg' })
-    if (cutterFor(route, policy) === 'cloudflare') {
+    if (pieceCutterFor(route, policy) === 'cloudflare') {
       const [foreground] = yield* foregroundPiece(original)
       if (foreground !== undefined) return Option.some(foreground.png)
     }
-    const [largest] = yield* samPieces(copies)
-    return Option.fromNullishOr(largest?.png)
+    const kind = kindPrompt(type)
+    return Option.map(pieceOfKind(yield* samPieces(copies, Option.toArray(kind)), kind), ({ png }) => png)
   })
 
 /** A side's credit in the Wallet: the front's once per piece, a back's once per upload. */
@@ -52,6 +79,7 @@ export const pieceCutout = (bucket: WardrobeBindings['bucket']) =>
         readonly accountId: string
         readonly pieceId: string
         readonly originalKey: string
+        readonly type: PieceType
         readonly of: CutSide
       }) {
         const policy = yield* CaptureConfig
@@ -76,7 +104,7 @@ export const pieceCutout = (bucket: WardrobeBindings['bucket']) =>
           yield* settle(input.accountId, hold, 'refunded')
           return kept
         }
-        const outcome = yield* largestGarment(original).pipe(
+        const outcome = yield* pieceIn(original, input.type).pipe(
           Effect.map((png) => ({ png, settle: 'consumed' as const })),
           // A failure worth retrying goes back to the queue with the credit still held; a refusal keeps the
           // original photo and gives the credit back; a lost answer keeps it too, and may have been billed.

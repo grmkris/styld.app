@@ -1,7 +1,7 @@
 import { OperationConflict, PieceNotFound, type PieceId, type SetBack } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import { nowDate, ownerPiece, ownPiece, type Parts, stored, unavailable, usableUpload } from './Parts.ts'
+import { nowDate, ownerPiece, ownPiece, type Parts, stored, toPiece, unavailable, usableUpload } from './Parts.ts'
 
 /** A back of the piece: the person's photo of it, cut out like the front, for a photo's credit (owner, 2026-10-31).
  * Repeating the operation answers the piece again; a cut-out that could not be made keeps the photo. */
@@ -17,8 +17,9 @@ export const backing = (parts: Parts) => ({
         : yield* OperationConflict.make({})
     const upload = yield* usableUpload(parts.store, accountId, input.uploadId)
     const of = { side: 'back' as const, uploadId: upload.id }
+    const { type } = yield* toPiece(piece)
     const { imageKey } = yield* parts.cutout
-      .cut({ accountId, pieceId, originalKey: upload.objectKey, contentType: upload.contentType, of })
+      .cut({ accountId, pieceId, originalKey: upload.objectKey, contentType: upload.contentType, type, of })
       .pipe(
         Effect.tapError(() => parts.cutout.release({ accountId, pieceId, of }).pipe(Effect.ignore)),
         Effect.mapError(unavailable),

@@ -414,11 +414,13 @@ const processing = (parts: Parts) => ({
   processPiece: Effect.fn('Styld.Wardrobe.processPiece')(function* (pieceId: string) {
     const row = yield* stored(parts.store.findPieceForProcessing(pieceId))
     if (Option.isNone(row) || row.value.status !== 'processing') return
+    const { type } = yield* toPiece(row.value)
     const { imageKey } = yield* parts.cutout.cut({
       accountId: row.value.accountId,
       pieceId,
       originalKey: row.value.originalKey,
       contentType: row.value.contentType,
+      type,
       of: { side: 'front' },
     })
     yield* stored(parts.store.finishProcessing(pieceId, { status: 'ready', imageKey, updatedAt: yield* nowDate }))

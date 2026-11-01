@@ -1,3 +1,4 @@
+import type { PieceType } from '@styld/protocol'
 import { Context, Effect, Layer, Schema } from 'effect'
 
 /** Queue message: prepare the photo of a newly added piece. */
@@ -55,6 +56,8 @@ export class GarmentCutout extends Context.Service<
       readonly pieceId: string
       readonly originalKey: string
       readonly contentType: string
+      /** What the piece is, which tells the cut-out what to look for. */
+      readonly type: PieceType
       readonly of: CutSide
     }) => Effect.Effect<{ readonly imageKey: string }, CutoutFailed>
     /** The work gave up on the side: anything `cut` held for it is let go. */

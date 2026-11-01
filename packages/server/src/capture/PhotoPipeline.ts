@@ -216,7 +216,7 @@ export const originalOnly = (parts: Parts, capture: CaptureRow, sourceKey: strin
   }))
 
 /** Whether a photo shows any part of a person. */
-const showsPerson = (route: Route) => route.person >= 0.5
+export const showsPerson = (route: Route) => route.person >= 0.5
 
 /** Whether a photo is about one piece held up or shown: a camera shot, or a person in the picture, whose worn clothes
  * are offered unticked. Pieces laid out are all the subject, even with a hand at the edge or from the camera.

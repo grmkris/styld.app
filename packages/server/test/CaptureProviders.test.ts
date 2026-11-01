@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs'
+import type { PieceType } from '@styld/protocol'
 import { Effect, Exit, Option, Redacted } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { makeGarmentVision } from '../src/capture/Clef.ts'
@@ -7,6 +8,7 @@ import { bestSightings, frameAt, type SampledStill } from '../src/capture/FrameR
 import { makeGarmentSegmenter } from '../src/capture/Meta.ts'
 import { analyticsEngine, CaptureMetrics } from '../src/capture/Metrics.ts'
 import { cutterFor, holding, verdictOf } from '../src/capture/PhotoPipeline.ts'
+import { kindPrompt, pieceCutterFor, pieceOfKind } from '../src/capture/PieceCutout.ts'
 import { type Box, cutOut, decodePng, encodePng, fitMask, opaqueBounds, type Rgba } from '../src/capture/Pixels.ts'
 import { lineFrame, lineFrameSize, makeOutputLines, stillMasks, videoMasks } from '../src/capture/SamStream.ts'
 import {
@@ -343,6 +345,34 @@ describe('photo routing', () => {
     // A piece laid flat, nobody in the picture, from the camera or the library alike.
     expect(cutterFor({ garments: 'one', confidence: 0.94, person: 0.04 }, policy)).toBe('cloudflare')
     expect(cutterFor({ garments: 'none', confidence: 0.9, person: 0.9 }, policy)).toBe('none')
+  })
+
+  test('a piece’s own photo goes whole to background removal, unless a person is in it', () => {
+    // A v1 product shot of a pair of boots (1 November): unsure between one and two, nobody in it.
+    expect(pieceCutterFor({ garments: 'several', confidence: 0.68, person: 0.0055 }, policy)).toBe('cloudflare')
+    expect(pieceCutterFor({ garments: 'one', confidence: 0.47, person: 0.0076, scene: 'other' }, policy)).toBe(
+      'cloudflare',
+    )
+    expect(pieceCutterFor({ garments: 'one', confidence: 0.86, person: 0.93 }, policy)).toBe('sam')
+    expect(pieceCutterFor(route('one', 0.94), { single: 'sam' })).toBe('sam')
+  })
+
+  test('SAM looks for a piece of shoes, a bag or a hat by its kind, and takes its largest', () => {
+    const kinds: ReadonlyArray<PieceType> = ['boots', 'trainers', 'bags', 'hats', 'jeans', 'scarves']
+    expect(kinds.map(kindPrompt)).toEqual([
+      Option.some('shoes'),
+      Option.some('shoes'),
+      Option.some('bag'),
+      Option.some('hat'),
+      Option.none(),
+      Option.none(),
+    ])
+    // Largest first: a person's coat as clothing, then one boot of a pair found as shoes.
+    const found = [{ track: '0' }, { track: 'shoes-1' }, { track: 'shoes-2' }]
+    expect(pieceOfKind(found, Option.some('shoes'))).toEqual(Option.some({ track: 'shoes-1' }))
+    expect(pieceOfKind(found.slice(0, 1), Option.some('shoes'))).toEqual(Option.some({ track: '0' }))
+    expect(pieceOfKind(found, Option.none())).toEqual(Option.some({ track: '0' }))
+    expect(pieceOfKind([], Option.none())).toEqual(Option.none())
   })
 
   test('a camera shot or a person makes one piece the subject, unless the pieces are laid out', () => {
