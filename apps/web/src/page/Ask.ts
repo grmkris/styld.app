@@ -7,7 +7,7 @@ import { replaceUrl } from 'foldkit/navigation'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { sheetFolds } from './Sheet.ts'
-import { SearchResults } from '@styld/protocol'
+import { SearchResults, textLength } from '@styld/protocol'
 import { askRouter } from '../route.ts'
 import { StyldClient } from '../StyldClient.ts'
 
@@ -115,7 +115,7 @@ export const SearchPublic = Command.define('SearchPublic', {
   execute: ({ query }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
-      const results = yield* api.public.search({ query: { q: query.trim().slice(0, 80) } })
+      const results = yield* api.public.search({ query: { q: query.trim().slice(0, textLength.search) } })
       return Message.SucceededSearchPublic({ query, results })
     }).pipe(Effect.orElseSucceed(() => Message.FailedSearchPublic())),
 })

@@ -11,6 +11,7 @@ import {
   PieceTurn,
   PieceType,
   Season,
+  textLength,
   TurnLayout,
   PieceChanges,
 } from '@styld/protocol'
@@ -242,7 +243,7 @@ export const RedrawPicture = Command.define('RedrawPicture', {
           params: { pieceId: yield* pieceIdOf(pieceId) },
           payload: {
             operationId: yield* Schema.decodeUnknownEffect(OperationId)(id),
-            ...(words.length === 0 ? {} : { hint: words.slice(0, 80) }),
+            ...(words.length === 0 ? {} : { hint: words.slice(0, textLength.hint) }),
           },
         })
         .pipe(
