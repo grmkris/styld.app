@@ -2,9 +2,9 @@ import { expect } from 'bun:test'
 import * as Output from 'alchemy/Output'
 import { Redacted, Schema } from 'effect'
 import { Allowance, decoded } from './CleanPictureAcceptance.ts'
-import { picturesAccount } from './PictureFixture.ts'
-import { scanAccount } from './ScanFixture.ts'
-import { client, signIn } from './Accounts.ts'
+import { addedPiece } from './GalleryAcceptance.ts'
+import { client, seedAccounts, signIn } from './Accounts.ts'
+import { waitUntilReady } from './WardrobeAcceptance.ts'
 
 /** The API Worker's settings for Styld on the native stack: the model is the fixture's stand-in gateway. */
 export const stylistEnvironment = (fixtures: Output.Output<string | undefined>) => ({
@@ -26,10 +26,11 @@ const Pieces = Schema.Struct({ pieces: Schema.Array(Schema.Struct({ id: Schema.S
 
 /** Styld answers a message about the person's own wardrobe: the reply is written on the queue by the real turn, its
  * tools the assistants' own, with the stand-in model; the chat lives in the account's Durable Object. A message costs
- * one credit, once however often it is sent, and comes back when no reply comes. Nobody else reads the chat. Runs
- * after `verifyScan`, on the scan account and its pieces. */
-export const verifyStylist = async (origin: string) => {
-  const owner = client(origin, await signIn(origin, scanAccount))
+ * one credit, once however often it is sent, and comes back when no reply comes. Nobody else reads the chat. */
+export const verifyStylist = async (origin: string, fixtures: string) => {
+  await seedAccounts(fixtures, 'native-stylist', 'native-stylist-other')
+  const owner = client(origin, await signIn(origin, 'native-stylist'))
+  await waitUntilReady(owner, await addedPiece(origin, owner, 'native-stylist-piece'))
   const remaining = async () => (await decoded(Allowance, await owner('/api/captures/tray'))).allowance.remaining
   const ownPieces = new Set((await decoded(Pieces, await owner('/api/pieces'))).pieces.map(({ id }) => id))
   const before = await remaining()
@@ -70,7 +71,7 @@ export const verifyStylist = async (origin: string) => {
   expect(await remaining()).toBe(before - 1)
 
   // Someone else's chat is not there for them.
-  const other = client(origin, await signIn(origin, picturesAccount))
+  const other = client(origin, await signIn(origin, 'native-stylist-other'))
   expect((await other(`/api/stylist/chats/${chatId}`)).status).toBe(404)
   expect((await decoded(Chats, await other('/api/stylist/chats'))).chats).toEqual([])
 }

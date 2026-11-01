@@ -165,20 +165,18 @@ test(
 )
 
 test(
-  "keeps each account's pieces (upload checks, idempotent adds, queue processing, private images, edits, clean pictures, deletion) and deletes accounts",
-  Effect.gen(function* () {
-    const { url, styldUrl } = yield* stack
-    yield* Effect.promise(() => verifyWardrobe(styldUrl, url).then(() => verifyCleanPictures(styldUrl, url)))
-    yield* Effect.promise(() => verifyAccountDeletion(styldUrl, url))
-  }),
+  "keeps each account's pieces (upload checks, idempotent adds, queue processing, private images, edits, deletion) and deletes accounts",
+  overHttp((origin, testUrl) => verifyWardrobe(origin, testUrl).then(() => verifyAccountDeletion(origin, testUrl))),
   { timeout: 120000 },
 )
 
-// After the clean pictures above: the green shirt's taken drawing is what turns.
+// The green shirt's clean picture, once taken, is what turns.
 test(
-  'turns a clean picture on its hanger: made on the queue, cut into frames here, checked, played on tap',
-  inBrowser(verifyTurn),
-  { timeout: 200000 },
+  'draws clean pictures, then turns one on its hanger: made on the queue, cut into frames here, checked, played on tap',
+  inBrowser((browser, origin, testUrl) =>
+    verifyCleanPictures(origin, testUrl).then(() => verifyTurn(browser, origin, testUrl)),
+  ),
+  { timeout: 260000 },
 )
 
 test(
@@ -206,15 +204,15 @@ test('shows a published profile and its public board to a signed-out visitor', i
 })
 
 test(
-  'turns photos and videos into captures that wait for review, meters them daily, keeps them private, shows a ' +
-    'garment seen across an import once, and lets Styld answer about the wardrobe',
-  overHttp((origin, testUrl) =>
-    verifyCaptures(origin, testUrl)
-      .then(() => verifyScan(origin, testUrl))
-      .then(() => verifyStylist(origin)),
-  ),
+  'turns photos and videos into captures that wait for review, meters them daily, keeps them private, and shows a ' +
+    'garment seen across an import once',
+  overHttp((origin, testUrl) => verifyCaptures(origin, testUrl).then(() => verifyScan(origin, testUrl))),
   { timeout: 180000 },
 )
+
+test('lets Styld answer about the person’s own wardrobe, once per message, privately', overHttp(verifyStylist), {
+  timeout: 120000,
+})
 
 test(
   'adds photos through the picker, keeps the ticked ones from the review tray and shows them in the wardrobe',

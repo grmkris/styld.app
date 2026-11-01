@@ -13,8 +13,8 @@ const Piece = Schema.Struct({ turn: Schema.optionalKey(Turn) })
 /** A piece's clean picture turns on its hanger, made by the queue and finished in the owner's browser: the turn is
  * asked for with its 5 credits held, the video model's job is kept and polled until its video is stored, the piece page
  * cuts the video into frames in Chromium, Clef checks them, and the turn plays on tap with its credits consumed once.
- * The video model and Clef are the fixture's stand-ins; the video is a recorded Veo 3.1 Lite take. Runs after
- * `verifyCleanPictures`, on its green shirt, whose offered drawing the owner took. */
+ * The video model and Clef are the fixture's stand-ins; the video is a recorded Veo 3.1 Lite take. It turns the green
+ * shirt whose drawing `verifyCleanPictures` offered and the owner took, so it runs in the same test after it. */
 export const verifyTurn = async (browser: Browser, origin: string, fixtures: string) => {
   const take = readFileSync(new URL('fixtures/capture/veo-turn-black-tee.mp4', import.meta.url))
   expect(
