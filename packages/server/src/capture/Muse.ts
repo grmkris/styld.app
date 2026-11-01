@@ -91,7 +91,6 @@ export const makeMuseGenerator = (settings: MuseSettings) => ({
 
 /** Meta Muse Image as the painter of a board's stickers: from the words alone, square, on a flat key colour. */
 export const makeMusePainter = (settings: MuseSettings) => ({
-  model,
   paint: Effect.fn('Styld.Generation.paint')(function* (request: PaintRequest) {
     return yield* edit(settings, body(request.prompt, [], '1024x1024'), 'paint', 'generations')
   }),

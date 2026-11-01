@@ -50,8 +50,8 @@ import {
 import type { CheckQueue } from './safety/Checks.ts'
 import { PieceChanged } from './safety/PieceChanged.ts'
 import { checkJobQueue, checkJobs } from './safety/Queue.ts'
-import { generationJobQueue, generationJobs } from './generation/Queue.ts'
-import { type GenerationBindings, Generations, makeGenerations } from './generation/Service.ts'
+import { GenerationQueue, generationJobQueue, generationJobs } from './generation/Queue.ts'
+import { Generations } from './generation/Service.ts'
 import { wardrobeRoutes } from './wardrobe/Http.ts'
 import { pieceJobQueue, pieceJobs } from './wardrobe/Queue.ts'
 import type { WardrobeBindings } from './wardrobe/Parts.ts'
@@ -100,7 +100,7 @@ export const Runtime = Layer.mergeAll(
 const storageServices = (
   bindings: WardrobeBindings & {
     readonly checksQueue: CheckQueue['Service']
-    readonly generationQueue: GenerationBindings['queue']
+    readonly generationQueue: GenerationQueue['Service']
     /** Forget an account's chats with Styld, when it is deleted. */
     readonly forgetChats: (accountId: string) => Effect.Effect<void, unknown>
   },
@@ -114,9 +114,9 @@ const storageServices = (
     const { checks: checksService, looks: looksService, boards: boardsService } = modules
     // A piece whose shown picture changes is checked again while others can see it.
     const pieceChanged = Layer.succeed(PieceChanged, modules.pieceChanged)
-    // The wardrobe, captures and My Gallery, each a service from its own layer, over the same database, media and
-    // piece queue; assistant-added pieces get the same cut-out pipeline as the tray.
-    const wardrobeModules = Layer.mergeAll(Captures.layer, Photos.layer).pipe(
+    // The wardrobe, captures, My Gallery and generation, each a service from its own layer, over the same database,
+    // media and queues; assistant-added pieces get the same cut-out pipeline as the tray.
+    const wardrobeModules = Layer.mergeAll(Captures.layer, Photos.layer, Generations.layer).pipe(
       Layer.provideMerge(Wardrobe.layer),
       Layer.provideMerge(pieceCutout(bindings.bucket)),
       Layer.provideMerge(
@@ -124,6 +124,7 @@ const storageServices = (
           Database.layer(bindings.database),
           Media.layer({ bucket: bindings.bucket, images: bindings.images }),
           PieceQueue.layer(bindings.queue),
+          GenerationQueue.layer(bindings.generationQueue),
           pieceChanged,
           Layer.succeed(Looks, looksService),
           Layer.succeed(Boards, boardsService),
@@ -134,19 +135,14 @@ const storageServices = (
       wardrobe: wardrobeService,
       captures: capturesService,
       photos: photosService,
-    } = yield* Effect.all({ wardrobe: Wardrobe, captures: Captures, photos: Photos }).pipe(
+      generations: generationsService,
+    } = yield* Effect.all({ wardrobe: Wardrobe, captures: Captures, photos: Photos, generations: Generations }).pipe(
       Effect.provide(wardrobeModules),
     )
     const linksService = yield* Links.pipe(
       Effect.provide(Links.layer.pipe(Layer.provide(Layer.succeed(Wardrobe, wardrobeService)))),
     )
     const lifecycleService = yield* makeAccountLifecycle(bindings, bindings.forgetChats)
-    const generationsService = yield* makeGenerations({
-      ...bindings,
-      queue: bindings.generationQueue,
-      boards: boardsService,
-      wardrobe: wardrobeService,
-    })
     return {
       // The credits and the provider-call counter the capture providers were built with, for Styld's replies too.
       holds: yield* Holds,

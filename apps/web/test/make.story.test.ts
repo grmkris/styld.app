@@ -16,11 +16,10 @@ const generation = (status: string, pictures: ReadonlyArray<string>, kind = 'moo
     kind,
     status,
     reason: null,
-    pictures: pictures.map((picture, index) => ({
-      index,
-      status: picture,
-      imageId: picture === 'drawn' ? `bm_${String(index).padEnd(22, 'x')}` : null,
-    })),
+    sticker:
+      pictures[0] === undefined
+        ? null
+        : { status: pictures[0], imageId: pictures[0] === 'drawn' ? `bm_${'0'.padEnd(22, 'x')}` : null },
     createdAt: '2026-10-31T09:00:00.000Z',
   })
 

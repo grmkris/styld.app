@@ -36,19 +36,19 @@ export type GenerationReason = typeof GenerationReason.Type
 
 /** A sticker's outcome: still to come, on its board, refused or lost on the way (its credit given back either way). */
 export const GeneratedPicture = Schema.Struct({
-  index: Schema.Int,
   status: Schema.Literals(['waiting', 'drawing', 'drawn', 'refused', 'unknown']),
   imageId: Schema.NullOr(BoardImageId),
 })
 export type GeneratedPicture = typeof GeneratedPicture.Type
 
+/** A sticker or a mood board being made: a sticker job has its one picture, a mood board none. */
 export const Generation = Schema.Struct({
   id: GenerationId,
   boardId: BoardId,
   kind: GenerationKind,
   status: GenerationStatus,
   reason: Schema.NullOr(GenerationReason),
-  pictures: Schema.Array(GeneratedPicture),
+  sticker: Schema.NullOr(GeneratedPicture),
   createdAt: Schema.String,
 })
 export type Generation = typeof Generation.Type

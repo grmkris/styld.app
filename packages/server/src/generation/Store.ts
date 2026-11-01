@@ -1,24 +1,38 @@
 import { generationJobs, generationPictures, operationReceipts } from '@styld/db'
 import { and, asc, desc, eq, inArray, lt, sql } from 'drizzle-orm'
-import { drizzle } from 'drizzle-orm/d1'
 import { Effect } from 'effect'
-import { receiptRows } from '../kernel/Receipts.ts'
-import { first, query } from '../kernel/Db.ts'
+import { forgetReceipt, receiptRows } from '../kernel/Receipts.ts'
+import { type Database, first, query } from '../kernel/Db.ts'
 
 export type JobRow = typeof generationJobs.$inferSelect
-export type PictureRow = typeof generationPictures.$inferSelect
+/** A sticker job's one picture. Its `index` column is always 0 until the baseline drops it. */
+export type StickerRow = typeof generationPictures.$inferSelect
 type ReceiptRow = typeof operationReceipts.$inferInsert
+type Drizzle = Database['Service']
+
+/** The statuses of a job not yet ended. */
+const running = ['planning', 'drawing', 'arranging'] as const
 
 /** Jobs: written once with their receipt, read for their owner or the queue, and moved on from a step. */
-const jobQueries = (db: ReturnType<typeof drizzle>) => ({
+const jobQueries = (db: Drizzle) => ({
   ...receiptRows(db),
-  /** The job, its first pictures and the operation's receipt, as one batch. */
-  insertJob: (job: JobRow, pictures: ReadonlyArray<PictureRow>, receipt: ReceiptRow) =>
+  /** The job, a sticker's picture and the operation's receipt, as one batch. */
+  insertJob: (job: JobRow, sticker: ReadonlyArray<StickerRow>, receipt: ReceiptRow) =>
     query(() =>
       db.batch([
         db.insert(generationJobs).values(job),
-        ...pictures.map((picture) => db.insert(generationPictures).values(picture)),
+        ...sticker.map((picture) => db.insert(generationPictures).values(picture)),
         db.insert(operationReceipts).values(receipt),
+      ]),
+    ).pipe(Effect.asVoid),
+  /** Undo a job that was never taken on (past the daily limit, or words that failed the check): the job, its picture
+   * and its receipt, so the same operation asks again. */
+  undoJob: (job: Pick<JobRow, 'id' | 'accountId'>, operationId: string) =>
+    query(() =>
+      db.batch([
+        db.delete(generationPictures).where(eq(generationPictures.jobId, job.id)),
+        db.delete(generationJobs).where(eq(generationJobs.id, job.id)),
+        forgetReceipt(db, job.accountId, operationId),
       ]),
     ).pipe(Effect.asVoid),
   findJob: (accountId: string, jobId: string) =>
@@ -39,7 +53,7 @@ const jobQueries = (db: ReturnType<typeof drizzle>) => ({
           and(
             eq(generationJobs.accountId, accountId),
             eq(generationJobs.boardId, boardId),
-            inArray(generationJobs.status, ['planning', 'drawing', 'arranging']),
+            inArray(generationJobs.status, [...running]),
           ),
         )
         .orderBy(desc(generationJobs.createdAt))
@@ -51,37 +65,13 @@ const jobQueries = (db: ReturnType<typeof drizzle>) => ({
       db
         .select({ id: generationJobs.id })
         .from(generationJobs)
-        .where(
-          and(
-            inArray(generationJobs.status, ['planning', 'drawing', 'arranging']),
-            lt(generationJobs.updatedAt, before),
-          ),
-        )
+        .where(and(inArray(generationJobs.status, [...running]), lt(generationJobs.updatedAt, before)))
         .orderBy(asc(generationJobs.updatedAt))
         .limit(limit),
     ).pipe(Effect.map((rows) => rows.map(({ id }) => id))),
   /** For the generation queue, which acts for the job's account. */
   jobForWork: (jobId: string) =>
     query(() => db.select().from(generationJobs).where(eq(generationJobs.id, jobId)).limit(1)).pipe(Effect.map(first)),
-  picturesOf: (jobId: string) =>
-    query(() =>
-      db
-        .select()
-        .from(generationPictures)
-        .where(eq(generationPictures.jobId, jobId))
-        .orderBy(asc(generationPictures.index)),
-    ),
-  /** The plan's pictures, once, while the job is still being planned: a redelivered plan finds them there. */
-  planned: (jobId: string, pictures: ReadonlyArray<PictureRow>, job: Partial<JobRow>) =>
-    query(() =>
-      db.batch([
-        db
-          .update(generationJobs)
-          .set(job)
-          .where(and(eq(generationJobs.id, jobId), eq(generationJobs.status, 'planning'))),
-        ...pictures.map((picture) => db.insert(generationPictures).values(picture).onConflictDoNothing()),
-      ]),
-    ).pipe(Effect.asVoid),
   /** Move the job on only from a step it is still at, so a job given up stays given up. */
   advanceJob: (jobId: string, from: ReadonlyArray<JobRow['status']>, job: Partial<JobRow>) =>
     query(() =>
@@ -93,11 +83,16 @@ const jobQueries = (db: ReturnType<typeof drizzle>) => ({
     ).pipe(Effect.map((rows) => rows.length > 0)),
 })
 
-/** A job's pictures, each claimed, finished or put back only from the state it was read in. */
-const pictureQueries = (db: ReturnType<typeof drizzle>) => ({
-  /** Claim a waiting picture of a job still drawing; none when another delivery claimed it first, or the job was
+/** A sticker job's picture, claimed, finished or given up only from the state it was read in. */
+const stickerQueries = (db: Drizzle) => ({
+  /** The job's sticker, if it is a sticker job. */
+  stickerOf: (jobId: string) =>
+    query(() => db.select().from(generationPictures).where(eq(generationPictures.jobId, jobId)).limit(1)).pipe(
+      Effect.map(first),
+    ),
+  /** Claim the waiting sticker of a job still drawing; false when another delivery claimed it first, or the job was
    * given up. The claim marks the job as moving, so reading it does not send it again. */
-  claimPicture: (jobId: string, index: number, at: Date) =>
+  claimSticker: (jobId: string, at: Date) =>
     query(() =>
       db.batch([
         db
@@ -106,69 +101,42 @@ const pictureQueries = (db: ReturnType<typeof drizzle>) => ({
           .where(
             and(
               eq(generationPictures.jobId, jobId),
-              eq(generationPictures.index, index),
               eq(generationPictures.status, 'waiting'),
               sql`exists (select 1 from ${generationJobs} where ${generationJobs.id} = ${jobId} and ${generationJobs.status} = 'drawing')`,
             ),
           )
-          .returning({ index: generationPictures.index }),
+          .returning({ jobId: generationPictures.jobId }),
         db.update(generationJobs).set({ updatedAt: at }).where(eq(generationJobs.id, jobId)),
       ]),
     ).pipe(Effect.map(([claimed]) => claimed.length > 0)),
   /** A drawing's outcome, written only over the claim; the job is marked as moving. */
-  finishPicture: (jobId: string, index: number, outcome: Pick<PictureRow, 'status' | 'imageId'>, at: Date) =>
+  finishSticker: (jobId: string, outcome: Pick<StickerRow, 'status' | 'imageId'>, at: Date) =>
     query(() =>
       db.batch([
         db
           .update(generationPictures)
           .set(outcome)
-          .where(
-            and(
-              eq(generationPictures.jobId, jobId),
-              eq(generationPictures.index, index),
-              eq(generationPictures.status, 'drawing'),
-            ),
-          ),
+          .where(and(eq(generationPictures.jobId, jobId), eq(generationPictures.status, 'drawing'))),
         db.update(generationJobs).set({ updatedAt: at }).where(eq(generationJobs.id, jobId)),
       ]),
     ).pipe(Effect.asVoid),
-  /** Put a claim back: the painter was never reached, so the picture waits for the next delivery. */
-  releasePicture: (jobId: string, index: number) =>
-    query(() =>
-      db
-        .update(generationPictures)
-        .set({ status: 'waiting', startedAt: null })
-        .where(
-          and(
-            eq(generationPictures.jobId, jobId),
-            eq(generationPictures.index, index),
-            eq(generationPictures.status, 'drawing'),
-          ),
-        ),
-    ).pipe(Effect.asVoid),
-  /** Give up a job not yet ended: it fails, and its waiting pictures are refused so no delivery claims them. */
+  /** Give up a job not yet ended: it fails, and a waiting sticker is refused so no delivery claims it. */
   giveUp: (jobId: string, at: Date) =>
     query(() =>
       db.batch([
         db
           .update(generationJobs)
           .set({ status: 'failed', reason: 'unavailable', updatedAt: at })
-          .where(
-            and(eq(generationJobs.id, jobId), inArray(generationJobs.status, ['planning', 'drawing', 'arranging'])),
-          )
-          .returning({ id: generationJobs.id }),
+          .where(and(eq(generationJobs.id, jobId), inArray(generationJobs.status, [...running]))),
         db
           .update(generationPictures)
           .set({ status: 'refused' })
-          .where(and(eq(generationPictures.jobId, jobId), eq(generationPictures.status, 'waiting')))
-          .returning({ index: generationPictures.index }),
+          .where(and(eq(generationPictures.jobId, jobId), eq(generationPictures.status, 'waiting'))),
       ]),
-    ),
+    ).pipe(Effect.asVoid),
 })
 
-/** Generation jobs and their pictures. A job is written once with its receipt; each picture moves only from the state
- * it was read in, so two deliveries never draw the same picture. */
-export const makeGenerationStore = (database: Parameters<typeof drizzle>[0]) => {
-  const db = drizzle(database)
-  return { ...jobQueries(db), ...pictureQueries(db) }
-}
+/** Generation jobs and their stickers over the application's database. A job is written once with its receipt; its
+ * sticker moves only from the state it was read in, so two deliveries never draw it twice. */
+export const generationStore = (db: Drizzle) => ({ ...jobQueries(db), ...stickerQueries(db) })
+export type GenerationStore = ReturnType<typeof generationStore>

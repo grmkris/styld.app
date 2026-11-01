@@ -29,7 +29,6 @@ const keyablePicture = (key: KeyColour): Picture => {
 
 /** The sticker painter: a keyable picture for any words, refused for `[[refuse]]`, lost on the way for `[[lost]]`. */
 export const fakePainter: PicturePainter['Service'] = {
-  model: 'fake',
   paint: (request) => {
     if (request.prompt.includes('[[refuse]]')) return Effect.fail(refused('fake'))
     if (request.prompt.includes('[[lost]]')) return Effect.fail(outcomeUnknown('fake'))

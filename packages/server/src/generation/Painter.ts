@@ -9,12 +9,12 @@ export interface PaintRequest {
   readonly key: KeyColour
 }
 
-/** The image model that draws stickers for boards (Meta Muse Image), named as each picture records it. A refusal it did
- * not bill fails with `ProviderError`; an answer lost after it took the work is unknown, so it is never drawn twice. */
+/** The image model that draws stickers for boards (Meta Muse Image). A refusal it did
+ * not bill fails with `ProviderError`; an answer lost after it took the work is unknown, so it is never drawn twice.
+ */
 export class PicturePainter extends Context.Service<
   PicturePainter,
   {
-    readonly model: string
     readonly paint: (request: PaintRequest) => Effect.Effect<Picture, ProviderError>
   }
->()('@styld/server/PicturePainter') {}
+>()('@styld/server/generation/PicturePainter') {}

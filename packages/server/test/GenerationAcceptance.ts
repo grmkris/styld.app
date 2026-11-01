@@ -10,9 +10,7 @@ const Generation = Schema.Struct({
   id: Schema.String,
   status: Schema.String,
   reason: Schema.NullOr(Schema.String),
-  pictures: Schema.Array(
-    Schema.Struct({ index: Schema.Number, status: Schema.String, imageId: Schema.NullOr(Schema.String) }),
-  ),
+  sticker: Schema.NullOr(Schema.Struct({ status: Schema.String, imageId: Schema.NullOr(Schema.String) })),
 })
 type Generation = typeof Generation.Type
 
@@ -44,13 +42,13 @@ const boardOf = async (owner: Call, boardId: string) =>
 const verifyPictures = async (owner: Call, other: Call, boardId: string) => {
   const ask = { operationId: 'native-generate-0001', prompt: 'a rainy street at dusk' }
   const asked = await generationOf(await send(owner, `/api/boards/${boardId}/stickers`, 'POST', ask))
-  expect(asked).toMatchObject({ status: 'drawing', pictures: [{ index: 0, status: 'waiting' }] })
+  expect(asked).toMatchObject({ status: 'drawing', sticker: { status: 'waiting' } })
   expect((await generationOf(await send(owner, `/api/boards/${boardId}/stickers`, 'POST', ask))).id).toBe(asked.id)
   expect(
     (await send(owner, `/api/boards/${boardId}/stickers`, 'POST', { ...ask, prompt: 'something else' })).status,
   ).toBe(409)
   const done = await finished(owner, asked.id)
-  expect(done).toMatchObject({ status: 'done', pictures: [{ status: 'drawn' }] })
+  expect(done).toMatchObject({ status: 'done', sticker: { status: 'drawn' } })
   const board = await boardOf(owner, boardId)
   expect(board.pins.some((pin) => pin.generated === true && Predicate.isTagged(pin, 'PicturePin'))).toBe(true)
   expect((await other(`/api/generations/${asked.id}`)).status).toBe(404)
@@ -64,7 +62,7 @@ const verifyPictures = async (owner: Call, other: Call, boardId: string) => {
   expect(await finished(owner, refused.id)).toMatchObject({
     status: 'refused',
     reason: 'refused',
-    pictures: [{ status: 'refused', imageId: null }],
+    sticker: { status: 'refused', imageId: null },
   })
   const lost = await generationOf(
     await send(owner, `/api/boards/${boardId}/stickers`, 'POST', {
@@ -72,7 +70,7 @@ const verifyPictures = async (owner: Call, other: Call, boardId: string) => {
       prompt: 'a scene [[lost]]',
     }),
   )
-  expect(await finished(owner, lost.id)).toMatchObject({ status: 'refused', pictures: [{ status: 'unknown' }] })
+  expect(await finished(owner, lost.id)).toMatchObject({ status: 'refused', sticker: { status: 'unknown' } })
   const failing = await send(owner, `/api/boards/${boardId}/stickers`, 'POST', {
     operationId: 'native-generate-0004',
     prompt: 'words that [[fail]]',
@@ -96,7 +94,7 @@ const verifyMoodBoard = async (owner: Call, stranger: Call, boardId: string, pie
       prompt: 'nothing in particular [[unclear]]',
     }),
   )
-  expect(await finished(owner, unclear.id)).toMatchObject({ status: 'refused', reason: 'unclear', pictures: [] })
+  expect(await finished(owner, unclear.id)).toMatchObject({ status: 'refused', reason: 'unclear', sticker: null })
   const before = await boardOf(owner, boardId)
   const generated = (board: typeof before) => board.pins.filter((pin) => pin.generated === true).length
   const asked = await generationOf(
@@ -110,7 +108,7 @@ const verifyMoodBoard = async (owner: Call, stranger: Call, boardId: string, pie
   expect((await running(owner, boardId))?.id).toBe(asked.id)
   expect(await running(stranger, boardId)).toBeNull()
   const done = await finished(owner, asked.id)
-  expect(done).toMatchObject({ status: 'done', pictures: [] })
+  expect(done).toMatchObject({ status: 'done', sticker: null })
   expect(await running(owner, boardId)).toBeNull()
   const board = await boardOf(owner, boardId)
   expect(generated(board)).toBe(generated(before))
@@ -139,4 +137,20 @@ export const verifyGeneration = async (origin: string, fixtures: string): Promis
     await send(other, '/api/boards', 'POST', { operationId: 'native-generation-board', name: 'Sea' }),
   )
   await verifyMoodBoard(other, owner, boardOfOther, pieceIds)
+  await verifyPastTheLimit(other, 'native-generation-other', boardOfOther)
+}
+
+/** Past the daily limit an ask is refused and leaves no job behind: the board has nothing running, and the same
+ * operation asked again is refused again rather than answered as a job. */
+const verifyPastTheLimit = async (owner: Call, accountId: string, boardId: string) => {
+  expect((await send(owner, '/api/native/spend', 'POST', { accountId, leave: 0 })).status).toBe(204)
+  const ask = { operationId: 'native-generate-limit', prompt: 'a paper boat' }
+  const refused = async () => {
+    const answer = await send(owner, `/api/boards/${boardId}/stickers`, 'POST', ask)
+    expect(answer.status).toBe(429)
+    expect(await answer.json()).toMatchObject({ _tag: 'LimitReached', limit: 'dailyCredits' })
+  }
+  await refused()
+  await refused()
+  expect(await running(owner, boardId)).toBeNull()
 }
