@@ -11,7 +11,7 @@ import { addIcon, boardsTabIcon, cameraIcon, closeIcon, linkIcon, loader, search
 import { accountRouter, addPiecesRouter, assistantsSection, pieceRouter, stylistRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { Creating } from './Boards.ts'
-import { sheetShown } from './Sheet.ts'
+import { bottomSheet, sheetShown } from './Sheet.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { Message, type Model, resultsId, SearchLanguages, searchFieldId } from './Ask.ts'
@@ -324,55 +324,34 @@ const startBoardOption = (start: Creating, locale: Locale, h: HtmlBuilder<Messag
   )
 
 const addSheetView = (model: Model, locale: Locale, h: HtmlBuilder<Message>, start: Creating): Html =>
-  h.submodel({
-    slotId: 'ask-add-sheet',
-    model: model.addSheet,
-    view: Dialog.view,
-    viewInputs: {
-      toView: (info: Dialog.RenderInfo) =>
-        h.dialog(
-          [...info.dialog],
-          [
-            h.div([...info.backdrop, ...styled(h, styles.scrim())]),
-            h.div(
-              [...info.panel, ...styled(h, styles.sheet())],
-              [
-                h.span([h.AriaHidden(true), ...styled(h, styles.grab())]),
-                h.div(styled(h, styles.sheetHead()), [
-                  h.h2([...info.title, ...styled(h, styles.sheetTitle())], [format(locale, 'ask.sheetTitle', {})]),
-                  h.button(
-                    [
-                      ...info.closeButton,
-                      h.AriaLabel(format(locale, 'common.close', {})),
-                      ...styled(h, cx(round(), styles.quiet())),
-                    ],
-                    [closeIcon(h)],
-                  ),
-                ]),
-                option(
-                  addPiecesRouter({}),
-                  cameraIcon(h),
-                  format(locale, 'ask.addClothes', {}),
-                  format(locale, 'ask.addClothesHint', {}),
-                  info.initialFocus,
-                  h,
-                ),
-                option(
-                  `${addPiecesRouter({})}#link`,
-                  linkIcon(h),
-                  format(locale, 'ask.addLink', {}),
-                  format(locale, 'ask.addLinkHint', {}),
-                  [],
-                  h,
-                ),
-                startBoardOption(start, locale, h),
-              ],
-            ),
-          ],
+  bottomSheet(
+    {
+      dialog: model.addSheet,
+      title: format(locale, 'ask.sheetTitle', {}),
+      body: (info) => [
+        option(
+          addPiecesRouter({}),
+          cameraIcon(h),
+          format(locale, 'ask.addClothes', {}),
+          format(locale, 'ask.addClothesHint', {}),
+          info.initialFocus,
+          h,
         ),
+        option(
+          `${addPiecesRouter({})}#link`,
+          linkIcon(h),
+          format(locale, 'ask.addLink', {}),
+          format(locale, 'ask.addLinkHint', {}),
+          [],
+          h,
+        ),
+        startBoardOption(start, locale, h),
+      ],
+      toParentMessage: (message) => Message.GotAddSheetMessage({ message }),
+      locale,
     },
-    toParentMessage: (message) => Message.GotAddSheetMessage({ message }),
-  })
+    h,
+  )
 
 export const view = Submodel.defineView<
   Model,

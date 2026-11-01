@@ -6,6 +6,7 @@ import { defineMessageUnion } from 'foldkit/message'
 import { replaceUrl } from 'foldkit/navigation'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
+import { sheetFolds } from './Sheet.ts'
 import { SearchResults } from '@styld/protocol'
 import { askRouter } from '../route.ts'
 import { StyldClient } from '../StyldClient.ts'
@@ -133,18 +134,14 @@ export const FocusResults = Command.define('FocusResults', {
 
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient>
 
-const sheetFold = {
-  read: (model: Model) => Option.some(model.addSheet),
-  write: (model: Model, addSheet: Dialog.Model) => modifyFields(model, { addSheet: () => addSheet }),
-  toParentMessage: (message: Dialog.Message) => Message.GotAddSheetMessage({ message }),
-  foldOutMessage: Dialog.OutMessage.match<Update.Step<Model, Message>>({
-    Opened: () => (model) => ({ model }),
-    Closed: () => (model) => ({ model }),
-  }),
-}
-const foldAddSheet = Update.foldChild({ update: Dialog.update, ...sheetFold })
-const openAddSheet = Update.foldChildStep({ update: Dialog.open, ...sheetFold })
-const closeAddSheet = Update.foldChildStep({ update: Dialog.close, ...sheetFold })
+const addSheet = sheetFolds<Model, Message>({
+  read: (model) => model.addSheet,
+  write: (model, nextAddSheet) => modifyFields(model, { addSheet: () => nextAddSheet }),
+  toParentMessage: (message) => Message.GotAddSheetMessage({ message }),
+})
+const foldAddSheet = addSheet.update
+const openAddSheet = addSheet.open
+const closeAddSheet = addSheet.close
 
 /** Opening Ask: a search in the address is brought back, and the search learns the other language once. */
 export const enter =

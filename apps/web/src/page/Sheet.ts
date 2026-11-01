@@ -1,6 +1,8 @@
 import { cx } from 'zyzz'
 import { Dialog } from '@foldkit/ui'
 import { format, type Locale } from '@styld/i18n'
+import { Option } from 'effect'
+import { Update } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { closeIcon } from '../Icon.ts'
 import { styled } from '../Styled.ts'
@@ -57,3 +59,27 @@ export const bottomSheet = <Message>(
     },
     toParentMessage: config.toParentMessage,
   })
+
+/** A page's bottom sheet folded into it: the sheet's own Messages, and opening and closing it from the page. The page
+ * does nothing when it has opened; `onClosed` is for a page that forgets what was left in the sheet. */
+export const sheetFolds = <Model, Message>(page: {
+  readonly read: (model: Model) => Dialog.Model
+  readonly write: (model: Model, dialog: Dialog.Model) => Model
+  readonly toParentMessage: (message: Dialog.Message) => Message
+  readonly onClosed?: (model: Model) => Model
+}) => {
+  const fold = {
+    read: (model: Model) => Option.some(page.read(model)),
+    write: page.write,
+    toParentMessage: page.toParentMessage,
+    foldOutMessage: Dialog.OutMessage.match<Update.Step<Model, Message>>({
+      Opened: () => (stepModel) => ({ model: stepModel }),
+      Closed: () => (stepModel) => ({ model: page.onClosed === undefined ? stepModel : page.onClosed(stepModel) }),
+    }),
+  }
+  return {
+    update: Update.foldChild({ update: Dialog.update, ...fold }),
+    open: Update.foldChildStep({ update: Dialog.open, ...fold }),
+    close: Update.foldChildStep({ update: Dialog.close, ...fold }),
+  }
+}

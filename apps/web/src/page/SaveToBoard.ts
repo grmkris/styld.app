@@ -7,6 +7,7 @@ import { AsyncData, Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
+import { sheetFolds } from './Sheet.ts'
 import { StyldClient } from '../StyldClient.ts'
 import { boardSummaries } from './Boards.ts'
 
@@ -111,17 +112,13 @@ export const SaveTo = Command.define('SaveTo', {
 type Services = StyldClient | Crypto.Crypto
 type UpdateReturn = Update.Return<Model, Message, Services>
 
-const sheetFold = {
-  read: (model: Model) => Option.some(model.sheet),
-  write: (model: Model, sheet: Dialog.Model) => modifyFields(model, { sheet: () => sheet }),
-  toParentMessage: (message: Dialog.Message) => Message.GotSheetMessage({ message }),
-  foldOutMessage: Dialog.OutMessage.match<Update.Step<Model, Message, Services>>({
-    Opened: () => (model) => ({ model }),
-    Closed: () => (model) => ({ model }),
-  }),
-}
-const foldSheet = Update.foldChild({ update: Dialog.update, ...sheetFold })
-const openSheet = Update.foldChildStep({ update: Dialog.open, ...sheetFold })
+const sheet = sheetFolds<Model, Message>({
+  read: (model) => model.sheet,
+  write: (model, nextSheet) => modifyFields(model, { sheet: () => nextSheet }),
+  toParentMessage: (message) => Message.GotSheetMessage({ message }),
+})
+const foldSheet = sheet.update
+const openSheet = sheet.open
 
 /** The sheet opens fresh, and reads the boards again so a board made meanwhile is there. */
 const opened = (model: Model): UpdateReturn => {

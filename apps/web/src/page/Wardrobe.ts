@@ -6,6 +6,7 @@ import { Array, Effect, Option, Order, Schema } from 'effect'
 import { Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { modifyFields } from 'foldkit/struct'
+import { sheetFolds } from './Sheet.ts'
 import { StyldClient } from '../StyldClient.ts'
 
 // The wardrobe tab: the person's pieces (the app's, read once for every page that shows them) browsed by group and
@@ -130,18 +131,14 @@ export const DrawPictures = Command.define('DrawPictures', {
 
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
 
-const sheetFold = {
-  read: (model: Model) => Option.some(model.filterSheet),
-  write: (model: Model, filterSheet: Dialog.Model) => modifyFields(model, { filterSheet: () => filterSheet }),
-  toParentMessage: (message: Dialog.Message) => Message.GotFilterSheetMessage({ message }),
-  foldOutMessage: Dialog.OutMessage.match<Update.Step<Model, Message>>({
-    Opened: () => (model) => ({ model }),
-    Closed: () => (model) => ({ model }),
-  }),
-}
-const foldFilterSheet = Update.foldChild({ update: Dialog.update, ...sheetFold })
-const openFilterSheet = Update.foldChildStep({ update: Dialog.open, ...sheetFold })
-const closeFilterSheet = Update.foldChildStep({ update: Dialog.close, ...sheetFold })
+const filterSheet = sheetFolds<Model, Message>({
+  read: (model) => model.filterSheet,
+  write: (model, nextFilterSheet) => modifyFields(model, { filterSheet: () => nextFilterSheet }),
+  toParentMessage: (message) => Message.GotFilterSheetMessage({ message }),
+})
+const foldFilterSheet = filterSheet.update
+const openFilterSheet = filterSheet.open
+const closeFilterSheet = filterSheet.close
 
 /** Choosing the chosen one again clears it. */
 const chosenAgain = <A>(value: A, chosen: Option.Option<A>): Option.Option<A> =>

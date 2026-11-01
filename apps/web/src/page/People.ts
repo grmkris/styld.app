@@ -7,6 +7,7 @@ import { Command, Dom, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
+import { sheetFolds } from './Sheet.ts'
 import { tookReturn } from '../SignInReturn.ts'
 import { StyldClient } from '../StyldClient.ts'
 
@@ -254,26 +255,22 @@ const followOnArrival = (model: Model, relation: typeof Relation.Type): UpdateRe
     : sending(spent, SetFollowing({ handle: handleOfSubject(spent), following: true }))
 }
 
-const moreSheet = {
-  read: (model: Model) => Option.some(model.more),
-  write: (model: Model, more: Dialog.Model) => modifyFields(model, { more: () => more }),
-  toParentMessage: (message: Dialog.Message) => Message.GotMoreMessage({ message }),
-  foldOutMessage: Dialog.OutMessage.match<Update.Step<Model, Message>>({
-    Opened: () => (model) => ({ model }),
-    // Closed, the sheet forgets a report or a block question left in it, and a block that failed in it, so its error
-    // does not land under Follow; a report being sent goes on.
-    Closed: () => (model) => ({
-      model: modifyFields(model, {
-        confirmingBlock: () => false,
-        reporting: (reporting) => (Reporting.guards.Sending(reporting) ? reporting : Reporting.Closed()),
-        work: (work) => (Work.guards.Failed(work) ? Work.Idle() : work),
-      }),
+const moreSheet = sheetFolds<Model, Message>({
+  read: (model) => model.more,
+  write: (model, nextMore) => modifyFields(model, { more: () => nextMore }),
+  toParentMessage: (message) => Message.GotMoreMessage({ message }),
+  // Closed, the sheet forgets a report or a block question left in it, and a block that failed in it, so its error
+  // does not land under Follow; a report being sent goes on.
+  onClosed: (model) =>
+    modifyFields(model, {
+      confirmingBlock: () => false,
+      reporting: (reporting) => (Reporting.guards.Sending(reporting) ? reporting : Reporting.Closed()),
+      work: (work) => (Work.guards.Failed(work) ? Work.Idle() : work),
     }),
-  }),
-}
-const foldMore = Update.foldChild({ update: Dialog.update, ...moreSheet })
-const openMore = Update.foldChildStep({ update: Dialog.open, ...moreSheet })
-const closeMore = Update.foldChildStep({ update: Dialog.close, ...moreSheet })
+})
+const foldMore = moreSheet.update
+const openMore = moreSheet.open
+const closeMore = moreSheet.close
 
 /** The More sheet once the block or unblock it asked for is done; elsewhere there is no sheet to close. */
 const leaveMore = (model: Model): UpdateReturn => (model.more.isOpen ? closeMore(model) : { model })

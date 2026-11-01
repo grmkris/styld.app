@@ -1,9 +1,9 @@
-import { Dialog } from '@foldkit/ui'
 import { type Board, type Look, maximumMoods, type Mood } from '@styld/protocol'
 import { Array, Option } from 'effect'
-import { AsyncData, Update } from 'foldkit'
+import { AsyncData } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
-import type { Services, UpdateReturn } from './Edits.ts'
+import { sheetFolds } from '../Sheet.ts'
+import type { UpdateReturn } from './Edits.ts'
 import { Message } from './Message.ts'
 import {
   BoardData,
@@ -41,36 +41,23 @@ import {
 // The board page's own steps: its settings sheet, its pins and the picker that adds them, and catching up when
 // the page comes back into view.
 
-const sheetFold = (
-  read: (model: Model) => Dialog.Model,
-  write: (model: Model, dialog: Dialog.Model) => Model,
-  toParentMessage: (message: Dialog.Message) => Message,
-) => ({
-  read: (model: Model) => Option.some(read(model)),
-  write,
-  toParentMessage,
-  foldOutMessage: Dialog.OutMessage.match<Update.Step<Model, Message, Services>>({
-    Opened: () => (model) => ({ model }),
-    Closed: () => (model) => ({ model }),
-  }),
+const settingsSheet = sheetFolds<Model, Message>({
+  read: (model) => model.settings,
+  write: (model, nextSettings) => modifyFields(model, { settings: () => nextSettings }),
+  toParentMessage: (message) => Message.GotSettingsMessage({ message }),
 })
-const settingsSheet = sheetFold(
-  (model) => model.settings,
-  (model, settings) => modifyFields(model, { settings: () => settings }),
-  (message) => Message.GotSettingsMessage({ message }),
-)
-const pickerSheet = sheetFold(
-  (model) => model.picker,
-  (model, picker) => modifyFields(model, { picker: () => picker }),
-  (message) => Message.GotPickerMessage({ message }),
-)
+const pickerSheet = sheetFolds<Model, Message>({
+  read: (model) => model.picker,
+  write: (model, nextPicker) => modifyFields(model, { picker: () => nextPicker }),
+  toParentMessage: (message) => Message.GotPickerMessage({ message }),
+})
 
-const foldSettings = Update.foldChild({ update: Dialog.update, ...settingsSheet })
-const foldPicker = Update.foldChild({ update: Dialog.update, ...pickerSheet })
-const openSettings = Update.foldChildStep({ update: Dialog.open, ...settingsSheet })
-const closeSettings = Update.foldChildStep({ update: Dialog.close, ...settingsSheet })
-const openPicker = Update.foldChildStep({ update: Dialog.open, ...pickerSheet })
-const closePicker = Update.foldChildStep({ update: Dialog.close, ...pickerSheet })
+const foldSettings = settingsSheet.update
+const foldPicker = pickerSheet.update
+const openSettings = settingsSheet.open
+const closeSettings = settingsSheet.close
+const openPicker = pickerSheet.open
+const closePicker = pickerSheet.close
 
 /** The settings sheet opens on the board's name, with nothing pending. */
 const settingsOpened = (model: Model): UpdateReturn =>
