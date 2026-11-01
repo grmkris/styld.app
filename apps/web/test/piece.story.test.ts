@@ -11,6 +11,7 @@ import {
   Choosing,
   type Model,
   PieceData,
+  RedrawSend,
   TurnWork,
   MakeTurn,
   Message,
@@ -73,7 +74,7 @@ describe('a piece you own', () => {
       Message.SubmittedRedraw(),
     ).model
     const polledAgain = update(redrawing, Message.SucceededGetPiece({ piece: processing })).model
-    expect(Option.map(polledAgain.redraw, ({ sending }) => sending)).toEqual(Option.some(true))
+    expect(Option.map(polledAgain.redraw, ({ send }) => send)).toEqual(Option.some(RedrawSend.Sending()))
   })
 
   test('after five polls that do not get through the page stops following, and Try again starts it over', () => {
@@ -248,8 +249,8 @@ describe('a piece you own', () => {
       message(Message.SubmittedRedraw()),
       Command.resolve(RedrawPicture, Message.FailedRedrawPicture({ problem: 'network', operationId: 'redraw-0001' })),
       model(({ redraw }) =>
-        expect(Option.map(redraw, ({ problem, operationId }) => ({ problem, operationId }))).toEqual(
-          Option.some({ problem: Option.some('network'), operationId: Option.some('redraw-0001') }),
+        expect(Option.map(redraw, ({ send }) => send)).toEqual(
+          Option.some(RedrawSend.Failed({ problem: 'network', maybeOperationId: Option.some('redraw-0001') })),
         ),
       ),
       message(Message.SubmittedRedraw()),
@@ -258,7 +259,17 @@ describe('a piece you own', () => {
         RedrawPicture,
         Message.FailedRedrawPicture({ problem: 'dailyLimit', operationId: 'redraw-0001' }),
       ),
-      model(({ redraw }) => expect(Option.flatMap(redraw, ({ operationId }) => operationId)).toEqual(Option.none())),
+      model(({ redraw }) =>
+        expect(Option.map(redraw, ({ send }) => send)).toEqual(
+          Option.some(RedrawSend.Failed({ problem: 'dailyLimit', maybeOperationId: Option.none() })),
+        ),
+      ),
+      message(Message.SubmittedRedraw()),
+      Command.expectExact(RedrawPicture({ pieceId: piece.id, hint: '', operationId: Option.none() })),
+      Command.resolve(
+        RedrawPicture,
+        Message.SucceededRedrawPicture({ picture: { state: 'drawing', shows: 'photo', version: 2 } }),
+      ),
     )
   })
 
@@ -308,18 +319,18 @@ describe('a piece you own', () => {
       given(showing),
       message(Message.ClickedMakeTurn()),
       Command.resolve(MakeTurn, Message.FailedMakeTurn({ problem: 'dailyLimit' })),
-      model(({ turnProblem, turnWork }) =>
-        expect({ turnProblem, turnWork }).toEqual({
-          turnProblem: Option.some('dailyLimit'),
-          turnWork: TurnWork.Idle(),
-        }),
-      ),
+      model(({ turnWork }) => expect(turnWork).toEqual(TurnWork.Failed({ problem: 'dailyLimit' }))),
+      // Trying again asks once more, and the reason goes while it is asked.
+      message(Message.ClickedMakeTurn()),
+      Command.expectExact(MakeTurn({ pieceId: piece.id })),
+      model(({ turnWork }) => expect(turnWork).toEqual(TurnWork.Asking())),
+      Command.resolve(MakeTurn, Message.FailedMakeTurn({ problem: 'busy' })),
     )
     story(
       update,
       given(showing),
       message(Message.FailedBuildTurnSheet()),
-      model(({ turnProblem }) => expect(turnProblem).toEqual(Option.some('build'))),
+      model(({ turnWork }) => expect(turnWork).toEqual(TurnWork.Failed({ problem: 'build' }))),
     )
   })
 

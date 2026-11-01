@@ -13,6 +13,7 @@ import {
   Message as PieceMessage,
   RedrawPicture,
   ShowTurn,
+  TurnWork,
 } from '../src/page/Piece.ts'
 import { view } from '../src/View.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
@@ -169,7 +170,7 @@ describe('the piece page', () => {
       { update, view },
       given(
         withPage(piecePage(PieceData.Success({ data: building })), lenses.piece, (piece) =>
-          modifyFields(piece, { turnProblem: () => Option.some('build' as const) }),
+          modifyFields(piece, { turnWork: () => TurnWork.Failed({ problem: 'build' }) }),
         ),
       ),
       expect(role('alert')).toHaveText('The turn could not be prepared on this device. Open the piece again to retry.'),

@@ -12,7 +12,7 @@ import { editIcon, loader } from '../Icon.ts'
 import { wardrobeRouter } from '../route.ts'
 import { confirmActions } from '../Confirm.ts'
 import { styled } from '../Styled.ts'
-import { Choosing, Deletion, Message, type Model, type Redraw, ShowTurn, TurnWork } from './Piece.ts'
+import { Choosing, Deletion, Message, type Model, type Redraw, RedrawSend, ShowTurn, TurnWork } from './Piece.ts'
 import { type Draft, DraftSave } from './PieceDraft.ts'
 import { piecePickers } from './PieceFields.ts'
 import { kindName, pieceLabel } from './WardrobeWords.ts'
@@ -159,9 +159,10 @@ const editForm = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Html =
     ],
   )
 
-const redrawForm = (redraw: Redraw, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.form(
-    [h.OnSubmit(Message.SubmittedRedraw()), h.AriaBusy(redraw.sending), ...styled(h, styles.editForm())],
+const redrawForm = (redraw: Redraw, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  const sending = RedrawSend.guards.Sending(redraw.send)
+  return h.form(
+    [h.OnSubmit(Message.SubmittedRedraw()), h.AriaBusy(sending), ...styled(h, styles.editForm())],
     [
       h.label([h.For('picture-hint'), ...styled(h, fieldLabel())], [format(locale, 'wardrobe.picture.hintLabel', {})]),
       h.input([
@@ -175,22 +176,20 @@ const redrawForm = (redraw: Redraw, locale: Locale, h: HtmlBuilder<Message>): Ht
         ...styled(h, textField()),
       ]),
       h.p(styled(h, styles.pictureNote()), [format(locale, 'wardrobe.picture.redrawCost', { credits: prices.redraw })]),
-      Option.match(redraw.problem, {
-        onNone: () => h.empty,
-        onSome: (problem) =>
-          h.p(
+      RedrawSend.guards.Failed(redraw.send)
+        ? h.p(
             [h.Role('alert'), ...styled(h, formError())],
-            [format(locale, `wardrobe.picture.problem.${problem}`, {})],
-          ),
-      }),
+            [format(locale, `wardrobe.picture.problem.${redraw.send.problem}`, {})],
+          )
+        : h.empty,
       h.div(styled(h, styles.actions()), [
         actionButton(
           {
             label: format(locale, 'wardrobe.picture.redraw', {}),
             style: primaryAction(),
             type: 'submit',
-            isDisabled: redraw.sending,
-            leading: redraw.sending ? loader(h) : h.empty,
+            isDisabled: sending,
+            leading: sending ? loader(h) : h.empty,
           },
           h,
         ),
@@ -199,13 +198,14 @@ const redrawForm = (redraw: Redraw, locale: Locale, h: HtmlBuilder<Message>): Ht
             label: format(locale, 'common.cancel', {}),
             style: secondaryAction(),
             onClick: Message.ClickedCancelRedraw(),
-            isDisabled: redraw.sending,
+            isDisabled: sending,
           },
           h,
         ),
       ]),
     ],
   )
+}
 
 /** What the owner can do with the picture it shows: swap it for the other one, take a proposed drawing, redraw. */
 const pictureChoices = (picture: PiecePicture, model: Model, locale: Locale, h: HtmlBuilder<Message>) => {
@@ -409,12 +409,13 @@ const shownPicture = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
 const turnLine = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   if (piece.picture?.shows !== 'clean') return h.empty
   const turn = piece.turn
-  const problem = Option.match(model.turnProblem, {
+  const failed = TurnWork.guards.Failed(model.turnWork) ? Option.some(model.turnWork.problem) : Option.none()
+  const problem = Option.match(failed, {
     onNone: () => h.empty,
     onSome: (reason) =>
       h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, `wardrobe.turn.problem.${reason}`, {})]),
   })
-  const unbuilt = turn?.state === 'building' && Option.contains(model.turnProblem, 'build')
+  const unbuilt = turn?.state === 'building' && Option.contains(failed, 'build')
   if (unbuilt) return problem
   if (turn?.state === 'making' || turn?.state === 'building' || TurnWork.guards.Building(model.turnWork))
     return h.p(

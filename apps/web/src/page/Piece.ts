@@ -45,27 +45,31 @@ export { Deletion }
 export const Choosing = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {} })
 export type Choosing = typeof Choosing.Type
 
-/** The turn this page is asking for, or building the frames of. */
-export const TurnWork = defineTaggedUnion({ Idle: {}, Asking: {}, Building: {} })
+/** Why a turn was not made: the API's refusals, the day's credits, no answer, or a device that could not cut the
+ * turn's video into frames. */
+export const TurnProblem = Schema.Literals(['busy', 'picture', 'dailyLimit', 'network', 'build'])
+export type TurnProblem = typeof TurnProblem.Type
+
+/** The turn this page is asking for or building the frames of, or why the last try did not make one. */
+export const TurnWork = defineTaggedUnion({ Idle: {}, Asking: {}, Building: {}, Failed: { problem: TurnProblem } })
 export type TurnWork = typeof TurnWork.Type
 
 /** Why a redraw was not asked for: the API's refusals, the day's credits, or no answer. */
 export const RedrawProblem = Schema.Literals(['busy', 'face', 'photo', 'dailyLimit', 'network'])
 export type RedrawProblem = typeof RedrawProblem.Type
 
-/** The owner asking for a new drawing: their words about the piece, and the operation a retry repeats. */
-export const Redraw = Schema.Struct({
-  hint: Schema.String,
-  sending: Schema.Boolean,
-  problem: Schema.Option(RedrawProblem),
-  operationId: Schema.Option(Schema.String),
+/** Where the asked-for drawing stands: being written, on its way, or refused or lost. A lost one keeps the operation
+ * it was sent as, so trying again repeats it. */
+export const RedrawSend = defineTaggedUnion({
+  Writing: {},
+  Sending: {},
+  Failed: { problem: RedrawProblem, maybeOperationId: Schema.Option(Schema.String) },
 })
-export type Redraw = typeof Redraw.Type
+export type RedrawSend = typeof RedrawSend.Type
 
-/** Why a turn was not made: the API's refusals, the day's credits, no answer, or a device that could not cut the
- * turn's video into frames. */
-export const TurnProblem = Schema.Literals(['busy', 'picture', 'dailyLimit', 'network', 'build'])
-export type TurnProblem = typeof TurnProblem.Type
+/** The owner asking for a new drawing: their words about the piece, and where sending them stands. */
+export const Redraw = Schema.Struct({ hint: Schema.String, send: RedrawSend })
+export type Redraw = typeof Redraw.Type
 
 export const Model = Schema.Struct({
   pieceId: Schema.String,
@@ -77,7 +81,6 @@ export const Model = Schema.Struct({
   redraw: Schema.Option(Redraw),
   choosing: Choosing,
   turnWork: TurnWork,
-  turnProblem: Schema.Option(TurnProblem),
   back: PieceBack.Model,
   /** The outfit photos it is confirmed in. */
   photos: PiecePhotos.Model,
@@ -97,7 +100,6 @@ export const init = (pieceId: string): Model => ({
   choosing: Choosing.Idle(),
   turnWork: TurnWork.Idle(),
   turnShown: false,
-  turnProblem: Option.none(),
   back: PieceBack.init(pieceId),
   photos: PiecePhotos.init(),
   saveToBoard: SaveToBoard.init({ kind: 'piece', id: pieceId }),
@@ -382,7 +384,7 @@ const submittedEdit = (model: Model): UpdateReturn =>
  * a turn whose video is ready is cut into frames here, once. Following the piece while it settles is the
  * subscription's, not this answer's. */
 const shown = (model: Model, piece: Piece): UpdateReturn => {
-  const build = piece.turn?.state === 'building' && TurnWork.guards.Idle(model.turnWork)
+  const build = piece.turn?.state === 'building' && isTurnSettled(model.turnWork)
   const next = modifyFields(model, { piece: () => PieceData.Success({ data: piece }) })
   return build && piece.turn !== undefined
     ? {
@@ -403,21 +405,24 @@ const shownWith = (model: Model, change: (piece: Piece) => Piece): UpdateReturn 
 const withTurn = (model: Model, turn: PieceTurn): UpdateReturn =>
   shownWith(modifyFields(model, { turnWork: () => TurnWork.Idle() }), (piece) => ({ ...piece, turn }))
 
+/** Nothing of the turn's is on its way from this page: none asked for, or the last try failed. */
+const isTurnSettled = (turnWork: TurnWork) => TurnWork.guards.Idle(turnWork) || TurnWork.guards.Failed(turnWork)
+
 const turnUpdates = (model: Model) => ({
   ClickedMakeTurn: (): UpdateReturn =>
-    TurnWork.guards.Idle(model.turnWork)
+    isTurnSettled(model.turnWork)
       ? {
-          model: modifyFields(model, { turnWork: () => TurnWork.Asking(), turnProblem: () => Option.none() }),
+          model: modifyFields(model, { turnWork: () => TurnWork.Asking() }),
           commands: [MakeTurn({ pieceId: model.pieceId })],
         }
       : { model },
   SucceededMakeTurn: ({ turn }: { readonly turn: PieceTurn }): UpdateReturn => withTurn(model, turn),
   FailedMakeTurn: ({ problem }: { readonly problem: TurnProblem }): UpdateReturn => ({
-    model: modifyFields(model, { turnWork: () => TurnWork.Idle(), turnProblem: () => Option.some(problem) }),
+    model: modifyFields(model, { turnWork: () => TurnWork.Failed({ problem }) }),
   }),
   SucceededBuildTurnSheet: ({ turn }: { readonly turn: PieceTurn }): UpdateReturn => withTurn(model, turn),
   FailedBuildTurnSheet: (): UpdateReturn => ({
-    model: modifyFields(model, { turnWork: () => TurnWork.Idle(), turnProblem: () => Option.some('build' as const) }),
+    model: modifyFields(model, { turnWork: () => TurnWork.Failed({ problem: 'build' }) }),
   }),
   ShowedTurn: (): UpdateReturn => ({ model: modifyFields(model, { turnShown: () => true }) }),
 })
@@ -429,15 +434,16 @@ const editRedraw = (model: Model, change: (redraw: Redraw) => Redraw): UpdateRet
 const submittedRedraw = (model: Model): UpdateReturn =>
   Option.match(model.redraw, {
     onNone: () => ({ model }),
-    onSome: (redraw) =>
-      redraw.sending
-        ? { model }
-        : {
-            model: modifyFields(model, {
-              redraw: () => Option.some(modifyFields(redraw, { sending: () => true, problem: () => Option.none() })),
-            }),
-            commands: [RedrawPicture({ pieceId: model.pieceId, hint: redraw.hint, operationId: redraw.operationId })],
-          },
+    onSome: (redraw) => {
+      if (RedrawSend.guards.Sending(redraw.send)) return { model }
+      const operationId = RedrawSend.guards.Failed(redraw.send) ? redraw.send.maybeOperationId : Option.none()
+      return {
+        model: modifyFields(model, {
+          redraw: () => Option.some(modifyFields(redraw, { send: () => RedrawSend.Sending() })),
+        }),
+        commands: [RedrawPicture({ pieceId: model.pieceId, hint: redraw.hint, operationId })],
+      }
+    },
   })
 
 /** A drawing on its way: the piece shows its photo meanwhile, and the poll follows it until the drawing settles. */
@@ -458,7 +464,7 @@ const pictureUpdates = (model: Model) => ({
   FailedChoosePicture: (): UpdateReturn => ({ model: modifyFields(model, { choosing: () => Choosing.Failed() }) }),
   ClickedRedraw: (): UpdateReturn => ({
     model: modifyFields(model, {
-      redraw: () => Option.some({ hint: '', sending: false, problem: Option.none(), operationId: Option.none() }),
+      redraw: () => Option.some({ hint: '', send: RedrawSend.Writing() }),
     }),
   }),
   ClickedCancelRedraw: (): UpdateReturn => ({ model: modifyFields(model, { redraw: () => Option.none() }) }),
@@ -475,10 +481,12 @@ const pictureUpdates = (model: Model) => ({
   }): UpdateReturn =>
     editRedraw(model, (redraw) =>
       modifyFields(redraw, {
-        sending: () => false,
-        problem: () => Option.some(problem),
         // A refusal answered the operation; only a lost answer is tried again as the same one.
-        operationId: () => (problem === 'network' ? Option.some(operationId) : Option.none()),
+        send: () =>
+          RedrawSend.Failed({
+            problem,
+            maybeOperationId: problem === 'network' ? Option.some(operationId) : Option.none(),
+          }),
       }),
     ),
 })
