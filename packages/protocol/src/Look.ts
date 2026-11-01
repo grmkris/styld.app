@@ -1,8 +1,9 @@
+import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
 import { CheckStatus } from './Check.ts'
-import { OperationId, Piece, PieceId } from './Wardrobe.ts'
+import { Piece, PieceId } from './Wardrobe.ts'
 
-export const LookId = Schema.String.check(Schema.isPattern(/^lk_[A-Za-z0-9_-]{22}$/)).pipe(Schema.brand('LookId'))
+export const LookId = entityId('lk').pipe(Schema.brand('LookId'))
 export type LookId = typeof LookId.Type
 
 const Label = Schema.String.check(Schema.isTrimmed(), Schema.isMinLength(1), Schema.isMaxLength(80))

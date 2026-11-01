@@ -1,11 +1,12 @@
+import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
 import { passing } from './Errors.ts'
 import { LookId } from './Look.ts'
-import { OperationId, PieceId } from './Wardrobe.ts'
+import { PieceId } from './Wardrobe.ts'
 
 // Styld, the stylist in the app (owner, 2026-10-31): a chat about the person's own wardrobe and looks.
 
-export const ChatId = Schema.String.check(Schema.isPattern(/^ch_[A-Za-z0-9_-]{22}$/)).pipe(Schema.brand('ChatId'))
+export const ChatId = entityId('ch').pipe(Schema.brand('ChatId'))
 export type ChatId = typeof ChatId.Type
 
 /** What the person writes to Styld. */

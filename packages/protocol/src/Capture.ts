@@ -1,12 +1,11 @@
+import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
 import { Occasions, Pattern, PieceType, Season } from './Garment.ts'
-import { Colours, OperationId, PieceId, UploadId } from './Wardrobe.ts'
+import { Colours, PieceId, UploadId } from './Wardrobe.ts'
 
-export const CaptureId = Schema.String.check(Schema.isPattern(/^cp_[A-Za-z0-9_-]{22}$/)).pipe(Schema.brand('CaptureId'))
+export const CaptureId = entityId('cp').pipe(Schema.brand('CaptureId'))
 export type CaptureId = typeof CaptureId.Type
-export const DetectionId = Schema.String.check(Schema.isPattern(/^dt_[A-Za-z0-9_-]{22}$/)).pipe(
-  Schema.brand('DetectionId'),
-)
+export const DetectionId = entityId('dt').pipe(Schema.brand('DetectionId'))
 export type DetectionId = typeof DetectionId.Type
 
 /** Where a capture came from: the phone's picker, Styld's camera, a video, or a shop's product page. */

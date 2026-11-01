@@ -1,18 +1,16 @@
+import { entityId, OperationId } from './Ids.ts'
 import { LimitReached, NotFound, OperationConflict, refusal, RequestRefused, SlowDown, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
 import { Schema } from 'effect'
 import { HttpApiEndpoint, HttpApiGroup } from 'effect/http-api'
 import { BoardId, BoardImageId } from './Board.ts'
 import { CheckReason } from './Check.ts'
-import { OperationId } from './Wardrobe.ts'
 
 // What Styld makes for a board (owner, 2026-10-31): a small decorative sticker from the person's words, with a
 // transparent background, or a mood board of the person's own pieces from one sentence. Each costs a credit from the
 // daily allowance. A sticker is marked Generated and checked like any other picture before others see it.
 
-export const GenerationId = Schema.String.check(Schema.isPattern(/^gj_[A-Za-z0-9_-]{22}$/)).pipe(
-  Schema.brand('GenerationId'),
-)
+export const GenerationId = entityId('gj').pipe(Schema.brand('GenerationId'))
 export type GenerationId = typeof GenerationId.Type
 
 /** What the person asks for, in their own words. */

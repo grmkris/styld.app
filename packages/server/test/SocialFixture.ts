@@ -1,6 +1,7 @@
 import type { QueryDatabaseClient } from '@alchemy.run/cloudflare/D1/QueryDatabase'
 import type { ReadWriteBucketClient } from '@alchemy.run/cloudflare/R2/ReadWriteBucket'
 import { encodePng } from '@styld/imaging'
+import { PieceId } from '@styld/protocol'
 import { Effect, Schema } from 'effect'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
@@ -16,7 +17,7 @@ const square = () => {
   return encodePng({ width: size, height: size, data })
 }
 
-const Target = Schema.Struct({ pieceId: Schema.String.check(Schema.isPattern(/^pc_[A-Za-z0-9_-]{22}$/)) })
+const Target = Schema.Struct({ pieceId: PieceId })
 
 /** `POST /test/social/cutout/:pieceId`: the piece's cut-out, stored beside its photo. */
 export const socialRoutes = (database: QueryDatabaseClient, media: ReadWriteBucketClient) =>

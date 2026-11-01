@@ -1,3 +1,4 @@
+import { entityId, OperationId } from './Ids.ts'
 import { LimitReached, NotFound, OperationConflict, refusal, RequestRefused, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
 import { Schema } from 'effect'
@@ -5,16 +6,14 @@ import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
 import { BoardId } from './Board.ts'
 import { PieceType } from './Garment.ts'
 import { CreateLook, Look, LookId } from './Look.ts'
-import { Colour, OperationId, PieceId, UploadId, UploadRefused } from './Wardrobe.ts'
+import { Colour, PieceId, UploadId, UploadRefused } from './Wardrobe.ts'
 
 // My Gallery (owner, 2026-10-31): the person's own outfit photos, optional and private. Styld finds the garments in a
 // photo for a credit and matches each to a piece; the person confirms or corrects it. Never public, never a capture.
 
-export const PhotoId = Schema.String.check(Schema.isPattern(/^ph_[A-Za-z0-9_-]{22}$/)).pipe(Schema.brand('PhotoId'))
+export const PhotoId = entityId('ph').pipe(Schema.brand('PhotoId'))
 export type PhotoId = typeof PhotoId.Type
-export const PhotoGarmentId = Schema.String.check(Schema.isPattern(/^pg_[A-Za-z0-9_-]{22}$/)).pipe(
-  Schema.brand('PhotoGarmentId'),
-)
+export const PhotoGarmentId = entityId('pg').pipe(Schema.brand('PhotoGarmentId'))
 export type PhotoGarmentId = typeof PhotoGarmentId.Type
 
 /** Where finding a photo's garments stands: under way, done, or given up (its credit came back). */

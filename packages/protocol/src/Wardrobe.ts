@@ -1,3 +1,4 @@
+import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
 import { byCase, passing, refusal } from './Errors.ts'
 import { Brand, Occasions, Pattern, PieceType, Season, ShopUrl } from './Garment.ts'
@@ -23,17 +24,10 @@ export type Colour = typeof Colour.Type
 /** A piece's colours: distinct, at most six. */
 export const Colours = Schema.Array(Colour).check(Schema.isUnique(), Schema.isMaxLength(6))
 
-/** Opaque ids: a kind prefix and 22 base64url characters (16 random bytes). */
-export const PieceId = Schema.String.check(Schema.isPattern(/^pc_[A-Za-z0-9_-]{22}$/)).pipe(Schema.brand('PieceId'))
+export const PieceId = entityId('pc').pipe(Schema.brand('PieceId'))
 export type PieceId = typeof PieceId.Type
-export const UploadId = Schema.String.check(Schema.isPattern(/^up_[A-Za-z0-9_-]{22}$/)).pipe(Schema.brand('UploadId'))
+export const UploadId = entityId('up').pipe(Schema.brand('UploadId'))
 export type UploadId = typeof UploadId.Type
-
-/** Chosen by the caller once per intended change; repeating it repeats the answer, never the change. */
-export const OperationId = Schema.String.check(Schema.isPattern(/^[A-Za-z0-9_-]{8,64}$/)).pipe(
-  Schema.brand('OperationId'),
-)
-export type OperationId = typeof OperationId.Type
 
 /** Photos Styld accepts. HEIC is not among them yet: browsers convert it to JPEG on upload. */
 export const ImageType = Schema.Literals(['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif'])

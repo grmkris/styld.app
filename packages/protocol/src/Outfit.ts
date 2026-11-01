@@ -1,3 +1,4 @@
+import { entityId } from './Ids.ts'
 import { LimitReached, NotFound, passing, RequestRefused, SlowDown, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
 import { Schema } from 'effect'
@@ -39,9 +40,7 @@ export type OutfitKey = typeof OutfitKey.Type
 export const outfitKeyOf = (pieceIds: ReadonlyArray<string>): OutfitKey => pieceIds.toSorted().join('.')
 
 /** Names one run of making and shuffling, so what the person kept is counted against the way that made it. */
-export const OutfitSession = Schema.String.check(Schema.isPattern(/^os_[A-Za-z0-9_-]{22}$/)).pipe(
-  Schema.brand('OutfitSession'),
-)
+export const OutfitSession = entityId('os').pipe(Schema.brand('OutfitSession'))
 export type OutfitSession = typeof OutfitSession.Type
 
 /** Ask for outfits: `POST /api/outfits`. Free, at the account's pace; Thinking at most a set number of times a day.

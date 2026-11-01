@@ -1,23 +1,20 @@
+import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
 import { byCase, passing, refusal } from './Errors.ts'
 import { CheckStatus, Visibility } from './Check.ts'
 import { maximumMoods, Mood } from './Mood.ts'
 import { Look, LookId } from './Look.ts'
-import { OperationId, Piece, PieceId, UploadId } from './Wardrobe.ts'
+import { Piece, PieceId, UploadId } from './Wardrobe.ts'
 
 /** Opaque ids: a kind prefix and 22 base64url characters (16 random bytes). The website makes item ids
  * itself, because items appear while the person edits and are saved together. */
-export const BoardId = Schema.String.check(Schema.isPattern(/^bd_[A-Za-z0-9_-]{22}$/)).pipe(Schema.brand('BoardId'))
+export const BoardId = entityId('bd').pipe(Schema.brand('BoardId'))
 export type BoardId = typeof BoardId.Type
-export const BoardItemId = Schema.String.check(Schema.isPattern(/^bi_[A-Za-z0-9_-]{22}$/)).pipe(
-  Schema.brand('BoardItemId'),
-)
+export const BoardItemId = entityId('bi').pipe(Schema.brand('BoardItemId'))
 export type BoardItemId = typeof BoardItemId.Type
-export const BoardImageId = Schema.String.check(Schema.isPattern(/^bm_[A-Za-z0-9_-]{22}$/)).pipe(
-  Schema.brand('BoardImageId'),
-)
+export const BoardImageId = entityId('bm').pipe(Schema.brand('BoardImageId'))
 export type BoardImageId = typeof BoardImageId.Type
-export const PinId = Schema.String.check(Schema.isPattern(/^pn_[A-Za-z0-9_-]{22}$/)).pipe(Schema.brand('PinId'))
+export const PinId = entityId('pn').pipe(Schema.brand('PinId'))
 export type PinId = typeof PinId.Type
 
 /** A board's table is a sheet 1000 units across and 1250 down (4:5); placements are in those units. */
