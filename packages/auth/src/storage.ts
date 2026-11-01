@@ -9,7 +9,7 @@ import * as EmailEntry from './EmailEntry.ts'
 
 /** The server's auth installation. It lives here, not in `config.ts`, so the browser's contract
  * import never pulls in the strategies. */
-export const makeAuth = () =>
+const makeAuth = () =>
   Auth.make(AuthApi, {
     sessions: sessionOptions,
     // `email` binds to the `styld/Auth/email` namespace: request binding, proofs, credentials.
@@ -38,7 +38,7 @@ export const storage = Persistence.managed({
   prefix: 'styld_auth',
 })
 
-export const authSchema = storage.schema
+const authSchema = storage.schema
 // Drizzle Kit discovers table exports; keep the managed auth tables named and
 // stable so the generated D1 migration owns the complete persistence boundary.
 export const { identifiers, credentials, passwords, sessions, pending } = authSchema

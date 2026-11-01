@@ -3,7 +3,6 @@ import { LimitReached, NotFound, OperationConflict, SlowDown, Unavailable } from
 import { SessionHttp } from '@styld/auth/config'
 import { SessionAccount } from './Session.ts'
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
-import { Me } from './Account.ts'
 import { CaptureApi } from './CaptureApi.ts'
 import { StylistApi } from './StylistApi.ts'
 import { ProfileNotPublished, SetVisibility, ShareLook } from './Check.ts'
@@ -68,9 +67,8 @@ import {
   UploadRefused,
 } from './Wardrobe.ts'
 
-/** The signed-in person's account. */
+/** The signed-in person's account: deleting it. */
 class AccountApi extends HttpApiGroup.make('account')
-  .add(HttpApiEndpoint.get('me', '/me', { success: Me }))
   /** Delete the account, its wardrobe and photos, its sessions and assistants' access, for good. */
   .add(
     HttpApiEndpoint.delete('deleteMe', '/me', {

@@ -95,11 +95,9 @@ export const signedInContext = async (
   return context
 }
 
-/** Leave the signed-in account `leave` of today's credits: the native Worker spends the rest, so a journey reaches the
- * daily limit without paying its way there. */
-export const leaveCredits = async (origin: string, context: BrowserContext, leave: number) => {
-  const me: unknown = await (await context.request.get(`${origin}/api/me`)).json()
-  const accountId = typeof me === 'object' && me !== null && 'accountId' in me ? me.accountId : undefined
+/** Leave the signed-in account (its seeded id) `leave` of today's credits: the native Worker spends the rest, so a
+ * journey reaches the daily limit without paying its way there. */
+export const leaveCredits = async (origin: string, context: BrowserContext, accountId: string, leave: number) => {
   const spent = await context.request.post(`${origin}/api/native/spend`, {
     headers: { origin, [csrf.header]: csrf.value },
     data: { accountId, leave },

@@ -3,7 +3,7 @@ import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { CurrentAccount } from '@styld/protocol'
-import { type D1, McpOAuth } from '../OAuth.ts'
+import { McpOAuth } from '../OAuth.ts'
 import { challenge, McpScope } from './Policy.ts'
 import { readResource, resources } from './Resources.ts'
 import { type Curation, isAdmin } from '../social/Curation.ts'
@@ -27,7 +27,6 @@ const parseError = HttpServerResponse.jsonUnsafe(
 
 /** `/mcp`: a stateless Streamable HTTP endpoint for an OAuth-verified, still enabled account. */
 export const mcpRoutes = (
-  db: D1,
   origin: string,
   release: string,
   services: ToolServices & { readonly curation: Curation['Service'] },
@@ -38,7 +37,7 @@ export const mcpRoutes = (
       const server = yield* McpOAuth.Service
       const tools = styldTools(origin, services)
       return routesFor(server, {
-        db,
+        accounts: services.accounts,
         origin,
         release,
         tools,
@@ -86,13 +85,13 @@ const answerFor = Effect.fnUntraced(function* (
 const routesFor = (
   server: McpOAuthServer,
   {
-    db,
+    accounts,
     release,
     tools,
     adminTools,
     admins,
   }: {
-    readonly db: D1
+    readonly accounts: ToolServices['accounts']
     readonly origin: string
     readonly release: string
     readonly tools: ReturnType<typeof styldTools>
@@ -129,27 +128,25 @@ const routesFor = (
         status: 403,
         headers: { ...noStore, 'www-authenticate': challenge(server.resourceMetadata, 'insufficient_scope') },
       })
-    // A disabled account loses its assistants at once, whatever tokens they hold.
-    // The same read says whether the account is on the admin list, by the verified email it signs in with.
-    const enabled = yield* Effect.tryPromise(() =>
-      db
-        .prepare(
-          "SELECT (SELECT i.value FROM styld_auth_identifiers i WHERE i.subject_id = a.id AND i.active = 1 AND i.namespace = 'email' AND i.verified_at IS NOT NULL LIMIT 1) AS email FROM accounts a WHERE a.id = ? AND a.enabled = 1",
-        )
-        .bind(access.subjectId)
-        .first<unknown>(),
-    ).pipe(Effect.option)
+    // A disabled account loses its assistants at once, whatever tokens they hold; the same read says whether the
+    // account is on the admin list, by the verified email it signs in with.
+    const account = CurrentAccount.of({ accountId: access.subjectId, via: 'assistant' })
+    const enabled = yield* accounts.readAccount().pipe(
+      Effect.provideService(CurrentAccount, account),
+      Effect.map(Option.some),
+      Effect.catchTag('NotFound', () => Effect.succeedNone),
+      Effect.option,
+    )
     // D1 did not answer: the token may be fine, so the client should retry rather than re-authorize.
     if (Option.isNone(enabled)) return HttpServerResponse.empty({ status: 503, headers: noStore })
-    if (enabled.value === null)
+    if (Option.isNone(enabled.value))
       return HttpServerResponse.empty({
         status: 401,
         headers: { ...noStore, 'www-authenticate': challenge(server.resourceMetadata, 'invalid_token') },
       })
     const body = yield* request.json.pipe(Effect.option)
     if (Option.isNone(body)) return parseError
-    const account = CurrentAccount.of({ accountId: access.subjectId, via: 'assistant' })
-    return yield* answerFor(servedFor(enabled.value), account, body.value)
+    return yield* answerFor(servedFor(enabled.value.value), account, body.value)
   })
 
   const notAllowed = Effect.succeed(

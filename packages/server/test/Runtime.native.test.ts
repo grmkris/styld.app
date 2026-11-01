@@ -397,9 +397,9 @@ test(
     const { url, styldUrl } = yield* stack
     yield* Effect.promise(() => seedAccounts(url, 'native-identity'))
     const call = authCall(styldUrl)
-    // The typed API reads the same session: refused without one, the account with one.
+    // The typed API reads the same session: refused without one, the account's wardrobe with one.
     const me = (cookie?: string) =>
-      HttpClient.get(`${styldUrl}/api/me`, cookie === undefined ? {} : { headers: new Headers({ cookie }) })
+      HttpClient.get(`${styldUrl}/api/pieces`, cookie === undefined ? {} : { headers: new Headers({ cookie }) })
     expect((yield* me()).status).toBe(401)
     const credentials = signInBody('native-identity').payload
     const denied = yield* call('signIn', { ...credentials, password: 'incorrect-password' })
@@ -419,11 +419,7 @@ test(
     expect(cookie.length).toBeGreaterThan(0)
     const account = yield* me(cookie)
     expect(account.status).toBe(200)
-    expect(yield* account.json).toEqual({
-      accountId: 'native-identity',
-      displayName: 'Native Identity',
-      email: 'native-identity@example.invalid',
-    })
+    expect(yield* account.json).toEqual({ pieces: [] })
     const session = yield* call('getSession', {}, cookie)
     expect(yield* session.json).toMatchObject({
       _tag: 'Success',

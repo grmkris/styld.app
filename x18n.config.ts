@@ -39,8 +39,6 @@ export default defineConfig({
       'packages/server/src/AccountLifecycle.ts': ['/[\\s\\S]*/'],
       'packages/server/src/IsolateCache.ts': ['/[\\s\\S]*/'],
       'packages/server/src/StyldWorker.ts': ['/[\\s\\S]*/'],
-      // The Worker's own start-up failure, read only in its logs.
-      'packages/server/src/AuthConfiguration.ts': ['/binding is required$/'],
       // MCP and OAuth protocol text is written for assistants and OAuth clients, in English (MCP has no
       // locale negotiation); the people who connect see only the website's own copy.
       'packages/server/src/mcp/**/*.ts': ['/[\\s\\S]*/'],

@@ -41,7 +41,7 @@ const awaitCode = async () => {
 }
 
 const signIn = async (context: BrowserContext) => {
-  if ((await context.request.get(`${origin}/api/me`)).status() === 200) return
+  if ((await context.request.get(`${origin}/api/pieces`)).status() === 200) return
   await rm(codeFile, { force: true })
   const page = await context.newPage()
   await page.goto(`${origin}/login`, { waitUntil: 'networkidle' })

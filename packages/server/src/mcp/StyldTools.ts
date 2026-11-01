@@ -1,4 +1,4 @@
-import { CurrentAccount, prices } from '@styld/protocol'
+import { prices } from '@styld/protocol'
 import { Effect, Schema } from 'effect'
 import { creditsText, tool } from './Tools.ts'
 import type { AccountLifecycle } from '../AccountLifecycle.ts'
@@ -70,12 +70,7 @@ export const styldTools = (
     description: 'The Styld account this connection acts for: name, email and a link to the account page.',
     parameters: Schema.Struct({}),
     annotations: { readOnlyHint: true, openWorldHint: false },
-    handler: () =>
-      Effect.gen(function* () {
-        const { accountId } = yield* CurrentAccount
-        const account = yield* accounts.readAccount(accountId)
-        return { accountId, ...account, url: `${origin}/account` }
-      }),
+    handler: () => accounts.readAccount().pipe(Effect.map((account) => ({ ...account, url: `${origin}/account` }))),
   }),
   ...wardrobeTools(wardrobe, links, origin),
   ...viewTools(wardrobe, boards, origin),

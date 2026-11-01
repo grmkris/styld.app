@@ -46,7 +46,7 @@ const keepAs = async (page: Page, type: string, kind: string) => {
 export const verifyCaptureJourney = async (browser: Browser, origin: string, fixtures: string): Promise<void> => {
   await seedAccounts(fixtures, 'native-capture-browser')
   const context = await signedInContext(browser, origin, 'native-capture-browser')
-  await leaveCredits(origin, context, 7)
+  await leaveCredits(origin, context, 'native-capture-browser', 7)
   try {
     const page = await context.newPage()
     const problems = recordProblems(page)
@@ -144,7 +144,7 @@ const Created = Schema.Struct({
 export const verifyLongVideoJourney = async (browser: Browser, origin: string, fixtures: string): Promise<void> => {
   await seedAccounts(fixtures, 'native-video-browser')
   const context = await signedInContext(browser, origin, 'native-video-browser')
-  await leaveCredits(origin, context, 7)
+  await leaveCredits(origin, context, 'native-video-browser', 7)
   await context.addInitScript({ content: countedWakeLock })
   try {
     const page = await context.newPage()

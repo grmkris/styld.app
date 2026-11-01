@@ -36,21 +36,13 @@ import type { Photos } from './photos/Photos.ts'
 const accountHandlers = HttpApiBuilder.group(StyldApi, 'account', (handlers) =>
   Effect.gen(function* () {
     const lifecycle = yield* AccountLifecycle
-    return handlers
-      .handle(
-        'me',
-        Effect.fn('Styld.Api.account.me')(function* () {
-          const { claims } = yield* SessionHttp.CurrentSession
-          return { accountId: claims.accountId, displayName: claims.displayName, email: claims.email }
-        }),
-      )
-      .handle(
-        'deleteMe',
-        Effect.fn('Styld.Api.account.deleteMe')(function* () {
-          const { accountId } = yield* CurrentAccount
-          yield* lifecycle.deleteAccount(accountId)
-        }),
-      )
+    return handlers.handle(
+      'deleteMe',
+      Effect.fn('Styld.Api.account.deleteMe')(function* () {
+        const { accountId } = yield* CurrentAccount
+        yield* lifecycle.deleteAccount(accountId)
+      }),
+    )
   }),
 )
 

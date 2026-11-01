@@ -6,15 +6,16 @@ describe('public edge routing', () => {
   test.each([
     '/api',
     '/api/auth/getSession',
-    '/rpc/test',
     '/mcp',
     '/oauth/mcp/token',
     '/.well-known/oauth-authorization-server',
     '/cdn/id',
-    '/out/id',
   ])('routes the API namespace %s', (path) => expect(isApiPath(path)).toBe(true))
   test.each([
     '/',
+    // The API serves nothing under /rpc or /out.
+    '/rpc/test',
+    '/out/id',
     '/@name',
     '/apiary',
     '/rpc-other',

@@ -352,7 +352,6 @@ const makeApplication =
         photoRoutes(auth).pipe(Layer.provide(services.photos)),
         oauth.routes,
         mcpRoutes(
-          db,
           authOrigin,
           observabilityBase.release,
           { ...toolServices(services, services.outfitsService), curation: services.curationService },

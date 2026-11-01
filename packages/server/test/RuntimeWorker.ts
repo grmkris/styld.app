@@ -18,6 +18,7 @@ import { scanRoutes } from './ScanFixture.ts'
 import { recoveryRoutes } from './RecoveryFixture.ts'
 import { socialRoutes } from './SocialFixture.ts'
 import { makeAuthHttp, withCodeRequestPolicy } from '../src/AuthHttp.ts'
+import { authOptions } from '../src/AuthConfiguration.ts'
 import { makeOutfitStore } from '../src/outfits/Store.ts'
 import { onFirstUse } from '../src/IsolateCache.ts'
 import { DomainLive } from '../src/DomainLive.ts'
@@ -27,6 +28,12 @@ import { StyldDatabase, StyldMedia, StyldPieceQueue } from '../src/Resources.ts'
  * write is one atomic batch, so it is retried on its own until the database is free. */
 const whenFree = <A, E, R>(write: Effect.Effect<A, E, R>) =>
   write.pipe(Effect.retry({ times: 60, schedule: Schedule.spaced('200 millis') }))
+
+/** A one-key keyring of the fixture's own. */
+const testKeys = (material: string) => ({
+  activeKeyId: 'native-test',
+  keys: [{ id: 'native-test', material: Redacted.make(material) }],
+})
 
 /** The accounts a test asks for. */
 const SeedRequest = Schema.Struct({ ids: Schema.Array(Schema.String) })
@@ -45,16 +52,6 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
   {
     main: import.meta.url,
     compatibility: { date: '2026-10-19' },
-    env: {
-      STYLD_ENV: 'local',
-      STYLD_RELEASE: 'native-test',
-      AUTH_ORIGIN: 'http://localhost',
-      AUTH_SECRET: 'native-test-auth-secret-012345678901234567890123',
-      AUTH_SESSION_KEYS: JSON.stringify({
-        activeKeyId: 'native-test',
-        keys: [{ id: 'native-test', material: 'bmF0aXZlLXRlc3Qta2V5LW1hdGVyaWFsLWxvbmc=' }],
-      }),
-    },
   },
   // oxlint-disable-next-line max-lines-per-function -- native acceptance fixture keeps all endpoints in one Worker.
   Effect.gen(function* () {
@@ -62,29 +59,21 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
     const media = yield* Cloudflare.R2.ReadWriteBucket(StyldMedia)
     // The API Worker's work queue, to hand the match job the scan fixture's sightings.
     const pieceQueue = yield* Cloudflare.Queues.WriteQueue(yield* StyldPieceQueue)
-    const auth = makeAuthHttp(database, {
-      origin: 'http://localhost',
-      secret: Redacted.make('native-test-auth-secret-012345678901234567890123'),
-      secureCookies: false,
-      sessionKeys: {
-        activeKeyId: 'native-test',
-        keys: [{ id: 'native-test', material: Redacted.make('bmF0aXZlLXRlc3Qta2V5LW1hdGVyaWFsLWxvbmc=') }],
-      },
-      // The fixture seeds password identities only; a code request here is a test bug.
-      email: {
-        sender: { send: () => Promise.reject(new Error('the runtime fixture sends no email')) },
-        from: 'Styld <noreply@styld.test>',
-        proofKeys: {
-          activeKeyId: 'native-test',
-          keys: [{ id: 'native-test', material: Redacted.make('b'.repeat(43)) }],
+    const auth = makeAuthHttp(
+      database,
+      authOptions(
+        {
+          origin: 'http://localhost',
+          secret: Redacted.make('native-test-auth-secret-012345678901234567890123'),
+          sessionKeys: testKeys('bmF0aXZlLXRlc3Qta2V5LW1hdGVyaWFsLWxvbmc='),
+          proofKeys: testKeys('b'.repeat(43)),
+          requestBindingKeys: testKeys('c'.repeat(43)),
         },
-        requestBindingKeys: {
-          activeKeyId: 'native-test',
-          keys: [{ id: 'native-test', material: Redacted.make('c'.repeat(43)) }],
-        },
-        returnTargets: ['/'],
-      },
-    })
+        // The fixture seeds password identities only; a code request here is a test bug.
+        { send: () => Promise.reject(new Error('the runtime fixture sends no email')) },
+        'Styld <noreply@styld.test>',
+      ),
+    )
     const identityRoutes = Layer.mergeAll(
       auth.layer,
       yield* recoveryRoutes(database, media),

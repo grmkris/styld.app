@@ -24,12 +24,21 @@ const SessionKeyring = Schema.Struct({
   ),
 )
 
-export class AuthHttpConfigurationError extends Schema.TaggedError<AuthHttpConfigurationError>()(
+class AuthHttpConfigurationError extends Schema.TaggedError<AuthHttpConfigurationError>()(
   'AuthHttpConfigurationError',
   { reason: Schema.Literals(['session-keys', 'secret', 'proof-keys', 'request-binding-keys']) },
 ) {}
 
 export type AuthSessionKeyring = Sessions.SessionSigningKeyring
+
+/** Auth's facts about the deployment: its public origin and its secrets (`Config.ts` decodes them). */
+export interface AuthSecrets {
+  readonly origin: string
+  readonly secret: Redacted.Redacted
+  readonly sessionKeys: AuthSessionKeyring
+  readonly proofKeys: EmailEntryOptions['proofKeys']
+  readonly requestBindingKeys: EmailEntryOptions['requestBindingKeys']
+}
 
 export type AuthHttpOptions = {
   readonly origin: string
@@ -72,24 +81,9 @@ export const decodeAuthSecret = (value: unknown) =>
     Effect.mapError(() => AuthHttpConfigurationError.make({ reason: 'secret' })),
   )
 
-/** The auth origin and keyrings bound as secrets. Missing or malformed ones stop the Worker. */
-export const authConfiguration = (env: Readonly<Record<string, unknown>>) =>
-  Effect.gen(function* () {
-    const origin = env['AUTH_ORIGIN']
-    if (typeof origin !== 'string' || origin.length === 0)
-      return yield* Effect.die(new Error('AUTH_ORIGIN binding is required'))
-    return {
-      origin,
-      sessionKeys: yield* decodeAuthSessionKeyring(env['AUTH_SESSION_KEYS']).pipe(Effect.orDie),
-      secret: yield* decodeAuthSecret(env['AUTH_SECRET']).pipe(Effect.orDie),
-      proofKeys: yield* decodeProofKeyring(env['AUTH_PROOF_KEYS']).pipe(Effect.orDie),
-      requestBindingKeys: yield* decodeRequestBindingKeyring(env['AUTH_REQUEST_BINDING_KEYS']).pipe(Effect.orDie),
-    }
-  })
-
 /** Auth's options from the secrets, sending code mail as `from`. */
 export const authOptions = (
-  configuration: Effect.Success<ReturnType<typeof authConfiguration>>,
+  configuration: AuthSecrets,
   sender: EmailEntryOptions['sender'],
   from: EmailEntryOptions['from'],
 ): AuthHttpOptions => ({

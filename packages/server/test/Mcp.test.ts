@@ -30,7 +30,9 @@ import { Links } from '../src/links/Links.ts'
 import { unlimited } from './fakes/Pacing.ts'
 
 /** The account service: Ana, with her verified email. */
-const accounts = { readAccount: () => Effect.succeed({ displayName: 'Ana Novak', email: 'ana@example.com' }) }
+const accounts = {
+  readAccount: () => Effect.succeed({ accountId: 'acc_1', displayName: 'Ana Novak', email: 'ana@example.com' }),
+}
 /** A piece no one has described yet: no season, occasions, pattern, brand, shop link or back. */
 const undescribed = { season: null, occasions: [], pattern: null, brand: null, shopUrl: null, hasBack: false } as const
 const piece = (id: string, fields: Partial<Piece>): Piece => ({

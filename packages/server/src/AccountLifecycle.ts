@@ -1,6 +1,6 @@
-import { authTables } from '@styld/auth'
+import { authTables } from '@styld/auth/storage'
 import { accounts, oauthGrants } from '@styld/db'
-import { NotFound, Unavailable } from '@styld/protocol'
+import { CurrentAccount, NotFound, Unavailable } from '@styld/protocol'
 import { eq, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core'
@@ -9,20 +9,27 @@ import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { accountPrefix } from './wardrobe/Media.ts'
 import type { WardrobeBindings } from './wardrobe/Parts.ts'
-import { deletePrefix } from './kernel/Media.ts'
+import { deletePrefix, type Listing } from './kernel/Media.ts'
 
 const unavailable = () => Unavailable.make({})
 
 const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: unavailable })
 
 /** The account as its owner sees it: its name and its verified email address, if it has one. */
-const AccountRow = Schema.Struct({ displayName: Schema.String, email: Schema.NullOr(Schema.String) })
+const AccountRow = Schema.Struct({
+  accountId: Schema.String,
+  displayName: Schema.String,
+  email: Schema.NullOr(Schema.String),
+})
 
-/** R2 deletes at most this many keys per call. */
-const make = (
-  bindings: Pick<WardrobeBindings, 'database' | 'bucket' | 'queue'>,
-  forgetChats: (accountId: string) => Effect.Effect<void, unknown>,
-) =>
+/** What closing an account touches: the database, the bucket its objects live in and the queue that finishes it. */
+interface LifecycleBindings {
+  readonly database: WardrobeBindings['database']
+  readonly bucket: Listing
+  readonly queue: WardrobeBindings['queue']
+}
+
+const make = (bindings: LifecycleBindings, forgetChats: (accountId: string) => Effect.Effect<void, unknown>) =>
   Effect.gen(function* () {
     const crypto = yield* Crypto.Crypto
     const db = drizzle(bindings.database)
@@ -91,11 +98,14 @@ const make = (
       yield* finishDeletion(accountId).pipe(Effect.ignore)
     })
 
-    /** The account's name and the email address it signs in with: only an active, verified email identifier. */
-    const readAccount = Effect.fn('Styld.Account.read')(function* (accountId: string) {
+    /** The account an operation acts for, while it is enabled: its name and the email address it signs in with (only
+     * an active, verified email identifier). The one account read: assistants' `account_get`, and whether an
+     * assistant's grant still stands and is an admin's. A closed account is `NotFound`. */
+    const readAccount = Effect.fn('Styld.Account.read')(function* () {
+      const { accountId } = yield* CurrentAccount
       const rows = yield* attempt(() =>
         db.all(
-          sql`select a.display_name as displayName, (select i.value from ${authTables.identifiers} i where i.subject_id = a.id and i.active = 1 and i.namespace = 'email' and i.verified_at is not null limit 1) as email from ${accounts} a where a.id = ${accountId}`,
+          sql`select a.id as accountId, a.display_name as displayName, (select i.value from ${authTables.identifiers} i where i.subject_id = a.id and i.active = 1 and i.namespace = 'email' and i.verified_at is not null limit 1) as email from ${accounts} a where a.id = ${accountId} and a.enabled = 1`,
         ),
       )
       const [row] = rows
@@ -112,6 +122,6 @@ export class AccountLifecycle extends Context.Service<AccountLifecycle, Effect.S
 ) {}
 
 export const makeAccountLifecycle = (
-  bindings: Pick<WardrobeBindings, 'database' | 'bucket' | 'queue'>,
+  bindings: LifecycleBindings,
   forgetChats: (accountId: string) => Effect.Effect<void, unknown>,
 ) => Effect.map(make(bindings, forgetChats), (service) => AccountLifecycle.of(service))

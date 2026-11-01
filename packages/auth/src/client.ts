@@ -11,8 +11,6 @@ export const makeAuthClient = (baseUrl: string) =>
     csrf,
   })
 
-export const authClientLayer = (baseUrl: string) => makeAuthClient(baseUrl).layerFetch
-
 export class BrowserAuth extends Context.Service<
   BrowserAuth,
   Effect.Success<ReturnType<typeof makeAuthClient>['make']>

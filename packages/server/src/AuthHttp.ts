@@ -4,7 +4,6 @@ import { Unavailable } from '@styld/protocol'
 import { Http, Proofs, Sessions } from '@yielded/auth'
 import { Effect, Layer, Option, Redacted } from 'effect'
 import type * as Headers from 'effect/http/Headers'
-import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import type { QueryDatabaseClient } from '@alchemy.run/cloudflare/D1/QueryDatabase'
 import type { AuthHttpOptions } from './AuthConfiguration.ts'
@@ -69,8 +68,3 @@ export const withCodeRequestPolicy =
         }),
       ),
     )
-
-export const makeAuthHandler = (database: QueryDatabaseClient, options: AuthHttpOptions) => {
-  const auth = makeAuthHttp(database, options)
-  return Effect.map(HttpRouter.toHttpEffect(auth.layer).pipe(Effect.orDie), (handle) => ({ handle, auth }))
-}

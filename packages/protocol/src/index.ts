@@ -1,4 +1,3 @@
-export { Me } from './Account.ts'
 export * from './Errors.ts'
 export { StyldApi } from './Api.ts'
 export * from './Garment.ts'

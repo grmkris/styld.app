@@ -186,6 +186,9 @@ const paired = async (call: Call, fronts: ReadonlyArray<string>) => {
   throw new Error(`a back shot of ${fronts.join(', ')} was not paired`)
 }
 
+/** Where an upload of a seeded account is stored: a seeded account's id is the one it was seeded as. */
+const uploadKey = (accountId: string, uploadId: string) => `accounts/${accountId}/uploads/${uploadId}`
+
 /** A camera's back shot becomes the back of its front shot's piece, whether the front was in the tray
  * first or the two finished together; removing the front removes its back's photo. */
 const verifyPairing = async (origin: string, fixtures: string, call: Call) => {
@@ -214,15 +217,13 @@ const verifyPairing = async (origin: string, fixtures: string, call: Call) => {
   expect(picture.status).toBe(200)
   expect(new Uint8Array(await picture.arrayBuffer())).toEqual(fixture('green-shirt.png'))
 
-  const me = Schema.decodeUnknownSync(Schema.Struct({ accountId: Schema.String }))(await (await call('/api/me')).json())
-  const key = (uploadId: string) => `accounts/${me.accountId}/uploads/${uploadId}`
   for (const [shotFront, shotBack] of [
     [front, back],
     [second, secondBack],
   ] as const) {
     expect((await call(`/api/captures/${shotFront.captureId}`, { method: 'DELETE' })).status).toBe(204)
-    expect(await exists(fixtures, key(shotFront.uploadId))).toBe(false)
-    expect(await exists(fixtures, key(shotBack.uploadId))).toBe(false)
+    expect(await exists(fixtures, uploadKey('native-capture-other', shotFront.uploadId))).toBe(false)
+    expect(await exists(fixtures, uploadKey('native-capture-other', shotBack.uploadId))).toBe(false)
   }
   expect((await tray(call)).captures).toEqual([])
 }
@@ -235,16 +236,11 @@ export const verifyCaptures = async (origin: string, fixtures: string): Promise<
   const owner = client(origin, await signIn(origin, 'native-capture'))
   const other = client(origin, await signIn(origin, 'native-capture-other'))
   expect((await fetch(`${origin}/api/captures/tray`)).status).toBe(401)
-  const { accountId } = Schema.decodeUnknownSync(Schema.Struct({ accountId: Schema.String }))(
-    await (await owner('/api/me')).json(),
-  )
-  expect((await send(owner, '/api/native/spend', 'POST', { accountId, leave: nativeDailyAllowance })).status).toBe(204)
-  const otherId = Schema.decodeUnknownSync(Schema.Struct({ accountId: Schema.String }))(
-    await (await other('/api/me')).json(),
-  ).accountId
-  expect(
-    (await send(other, '/api/native/spend', 'POST', { accountId: otherId, leave: nativeDailyAllowance })).status,
-  ).toBe(204)
+  for (const [call, accountId] of [
+    [owner, 'native-capture'],
+    [other, 'native-capture-other'],
+  ] as const)
+    expect((await send(call, '/api/native/spend', 'POST', { accountId, leave: nativeDailyAllowance })).status).toBe(204)
   expect(await tray(owner)).toEqual({
     captures: [],
     allowance: { remaining: nativeDailyAllowance, daily: dailyCredits },
@@ -254,20 +250,16 @@ export const verifyCaptures = async (origin: string, fixtures: string): Promise<
   await verifyPairing(origin, fixtures, other)
 
   // Removing captures deletes their photos and the video's stills; a kept piece's photo stays.
-  const me = Schema.decodeUnknownSync(Schema.Struct({ accountId: Schema.String }))(
-    await (await owner('/api/me')).json(),
-  )
-  const key = (uploadId: string) => `accounts/${me.accountId}/uploads/${uploadId}`
   // A video goes once its garments are cut from its stills; the still its garment shows stays with its card.
-  expect(await exists(fixtures, key(video))).toBe(false)
-  expect(await exists(fixtures, key(still))).toBe(true)
+  expect(await exists(fixtures, uploadKey('native-capture', video))).toBe(false)
+  expect(await exists(fixtures, uploadKey('native-capture', still))).toBe(true)
   // A capture whose pieces were kept stays: those pieces show its pictures.
   expect((await owner(`/api/captures/${first}`, { method: 'DELETE' })).status).toBe(404)
   expect((await owner(`/api/captures/${clip}`, { method: 'DELETE' })).status).toBe(204)
   expect((await owner(`/api/captures/${lastCapture}`, { method: 'DELETE' })).status).toBe(204)
-  expect(await exists(fixtures, key(video))).toBe(false)
-  expect(await exists(fixtures, key(still))).toBe(false)
-  expect(await exists(fixtures, key(last))).toBe(false)
-  expect(await exists(fixtures, key(photo))).toBe(true)
+  expect(await exists(fixtures, uploadKey('native-capture', video))).toBe(false)
+  expect(await exists(fixtures, uploadKey('native-capture', still))).toBe(false)
+  expect(await exists(fixtures, uploadKey('native-capture', last))).toBe(false)
+  expect(await exists(fixtures, uploadKey('native-capture', photo))).toBe(true)
   expect((await tray(owner)).captures).toEqual([])
 }

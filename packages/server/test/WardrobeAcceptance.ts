@@ -152,10 +152,7 @@ export const verifyWardrobe = async (origin: string, fixtures: string): Promise<
     shopUrl: 'https://shop.example/knit',
   })
 
-  const me = Schema.decodeUnknownSync(Schema.Struct({ accountId: Schema.String }))(
-    await (await owner('/api/me')).json(),
-  )
-  const key = `accounts/${me.accountId}/uploads/${photo.uploadId}`
+  const key = `accounts/native-wardrobe/uploads/${photo.uploadId}`
   expect(await (await fetch(`${fixtures}/test/identity/media?key=${key}`)).json()).toEqual({ exists: true })
   expect((await owner(`/api/pieces/${piece.id}`, { method: 'DELETE' })).status).toBe(204)
   expect((await owner(`/api/pieces/${piece.id}`)).status).toBe(404)
@@ -203,9 +200,8 @@ export const verifyAccountDeletion = async (origin: string, fixtures: string): P
     body: JSON.stringify({ operationId: 'native-unadmitted-upload', contentType: 'image/png', bytes: png.byteLength }),
   })
   expect(unadmitted.status).toBe(403)
-  expect((await call('/api/me')).status).toBe(200)
+  expect((await call('/api/pieces')).status).toBe(200)
   expect((await call('/api/me', { method: 'DELETE' })).status).toBe(204)
-  expect((await call('/api/me')).status).toBe(401)
   expect((await call('/api/pieces')).status).toBe(401)
   expect(await (await fetch(`${fixtures}/test/identity/media?key=${key}`)).json()).toEqual({ exists: false })
   const again = await fetch(`${origin}/api/auth/signIn`, {
