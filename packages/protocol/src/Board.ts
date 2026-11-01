@@ -1,4 +1,5 @@
 import { Schema } from 'effect'
+import { byCase, passing, refusal } from './Errors.ts'
 import { CheckStatus, Visibility } from './Check.ts'
 import { maximumMoods, Mood } from './Mood.ts'
 import { Look, LookId } from './Look.ts'
@@ -199,26 +200,63 @@ export type AddBoardImage = typeof AddBoardImage.Type
 export const BoardImage = Schema.Struct({ imageId: BoardImageId })
 export type BoardImage = typeof BoardImage.Type
 
-export class BoardNotFound extends Schema.TaggedError<BoardNotFound>()('BoardNotFound', {}, { httpApiStatus: 404 }) {}
-
 /** Someone saved the board since this editor loaded it (another tab or device). */
 export class BoardVersionConflict extends Schema.TaggedError<BoardVersionConflict>()(
   'BoardVersionConflict',
   { version: Schema.Int },
-  { httpApiStatus: 409 },
+  {
+    httpApiStatus: 409,
+    guide: passing(
+      'version_conflict',
+      'The table was saved elsewhere meanwhile; it is at version {version} now.',
+      'Call board_get, then set the table again from its version.',
+    ),
+  },
 ) {}
+
+const ItemRefusal = Schema.Literals(['pieceNotFound', 'imageNotFound', 'duplicateId', 'tableFull'])
 
 /** A thing on the table the board cannot hold: a piece that is neither the person's nor pinned on the board, a
  * picture from another board, two things with one id, or more than a table holds. */
 export class BoardItemRefused extends Schema.TaggedError<BoardItemRefused>()(
   'BoardItemRefused',
-  { reason: Schema.Literals(['pieceNotFound', 'imageNotFound', 'duplicateId', 'tableFull']) },
-  { httpApiStatus: 422 },
+  { reason: ItemRefusal },
+  {
+    httpApiStatus: 422,
+    guide: byCase<typeof ItemRefusal.Type>('reason', {
+      pieceNotFound: refusal(
+        'piece_not_found',
+        'A piece on that table is neither in this wardrobe nor pinned on the board.',
+        'Use piece ids from piece_search, or pin the piece first with pin_add.',
+      ),
+      imageNotFound: refusal(
+        'picture_not_found',
+        'A picture on that table is not on this board.',
+        'Use imageId values from board_get, or add the picture with picture_pin.',
+      ),
+      duplicateId: refusal('duplicate', 'The table holds one thing twice.', 'Give each thing once.'),
+      tableFull: refusal(
+        'table_full',
+        `A table holds at most ${maximumBoardItems} things.`,
+        'Take some off with collage_set first.',
+      ),
+    }),
+  },
 ) {}
+
+const PinRefusal = Schema.Literals(['pieceNotFound', 'lookNotFound', 'nothingToPin', 'boardFull'])
 
 /** What cannot be pinned: a piece or look that is not the person's, nothing at all, or more than a board holds. */
 export class PinRefused extends Schema.TaggedError<PinRefused>()(
   'PinRefused',
-  { reason: Schema.Literals(['pieceNotFound', 'lookNotFound', 'nothingToPin', 'boardFull']) },
-  { httpApiStatus: 422 },
+  { reason: PinRefusal },
+  {
+    httpApiStatus: 422,
+    guide: byCase<typeof PinRefusal.Type>('reason', {
+      pieceNotFound: refusal('piece_not_found', 'One of those pieces is not in this wardrobe.', 'Call piece_search.'),
+      lookNotFound: refusal('look_not_found', 'One of those looks is not this account’s.', 'Call look_list.'),
+      nothingToPin: refusal('nothing_to_pin', 'There was nothing to pin.', 'Give pieceIds or lookIds.'),
+      boardFull: refusal('board_full', 'That would put more on the board than it holds.', 'Unpin something first.'),
+    }),
+  },
 ) {}

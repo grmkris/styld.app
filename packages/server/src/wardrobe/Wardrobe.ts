@@ -6,7 +6,7 @@ import {
   type PictureChoice,
   type OperationId,
   Piece,
-  PieceNotFound,
+  NotFound,
   type PieceId,
   type UpdatePiece,
   Upload,
@@ -315,7 +315,7 @@ const editing = (parts: Parts) => ({
     const { accountId } = yield* CurrentAccount
     const current = yield* toPiece(yield* ownPiece(parts)(pieceId))
     const updated = yield* stored(parts.store.updatePiece(accountId, pieceId, { ...input, updatedAt: yield* nowDate }))
-    if (Option.isNone(updated)) return yield* PieceNotFound.make({})
+    if (Option.isNone(updated)) return yield* NotFound.make({})
     // Its name is what others read of it: a public piece renamed is checked again before they see the new name.
     if (input.name !== undefined && input.name !== current.name) yield* parts.pieceChanged.changed(pieceId)
     return yield* ownerPiece(parts, accountId, updated.value)
@@ -337,7 +337,7 @@ const editing = (parts: Parts) => ({
       Effect.catchTag('MediaUnavailable', () => Effect.fail(unavailable())),
     )
     const deleted = yield* stored(parts.store.deletePiece(accountId, pieceId))
-    if (Option.isNone(deleted)) return yield* PieceNotFound.make({})
+    if (Option.isNone(deleted)) return yield* NotFound.make({})
   }),
 })
 
@@ -372,9 +372,9 @@ const images = (parts: Parts) => ({
     const piece = yield* ownPiece(parts)(pieceId)
     const picture = yield* pictureRow(parts, accountId, pieceId)
     const source = pictureImage(piece, picture, which)
-    if (Option.isNone(source)) return yield* PieceNotFound.make({})
+    if (Option.isNone(source)) return yield* NotFound.make({})
     const image = yield* deliverImage(parts.bindings, source.value, size)
-    if (Option.isNone(image)) return yield* PieceNotFound.make({})
+    if (Option.isNone(image)) return yield* NotFound.make({})
     // A new drawing, or a change of which picture shows, is a new version of the shown image.
     const drawing =
       which === 'photo' || which === 'back'

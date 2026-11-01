@@ -63,7 +63,7 @@ export const AddPhoto = Command.define('AddPhoto', {
       return Message.SucceededAddPhoto({ photo })
     }).pipe(
       Effect.catch((error) =>
-        Effect.succeed(Message.FailedAddPhoto({ spent: Predicate.isTagged(error, 'DailyLimitReached') })),
+        Effect.succeed(Message.FailedAddPhoto({ spent: Predicate.isTagged(error, 'LimitReached') })),
       ),
     ),
 })

@@ -25,7 +25,7 @@ const visitBoard = (boardId: string) =>
     const board = yield* api.public.board({ params: { boardId: yield* boardIdOf(boardId) } })
     return Message.SucceededVisitBoard({ board })
   }).pipe(
-    Effect.catchTag('PublicNotFound', () => Effect.succeed(Message.FailedLoadBoard({ missing: true }))),
+    Effect.catchTag('NotFound', () => Effect.succeed(Message.FailedLoadBoard({ missing: true }))),
     Effect.orElseSucceed(() => Message.FailedLoadBoard({ missing: false })),
   )
 
@@ -39,7 +39,7 @@ export const LoadBoard = Command.define('LoadBoard', {
       return Message.SucceededLoadBoard({ board })
     }).pipe(
       Effect.catchTag('SchemaError', () => Effect.succeed(Message.FailedLoadBoard({ missing: true }))),
-      Effect.catchTag('WardrobeUnavailable', () => Effect.succeed(Message.FailedLoadBoard({ missing: false }))),
+      Effect.catchTag('Unavailable', () => Effect.succeed(Message.FailedLoadBoard({ missing: false }))),
       // Not this account's board, or nobody signed in: it may be public.
       Effect.catch(() => visitBoard(boardId)),
     ),

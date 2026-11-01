@@ -101,7 +101,7 @@ export const GetPhoto = Command.define('GetPhoto', {
       return Message.SucceededGetPhoto({ photo })
     }).pipe(
       Effect.catch((error) =>
-        Effect.succeed(Message.FailedGetPhoto({ notFound: Predicate.isTagged(error, 'PhotoNotFound') })),
+        Effect.succeed(Message.FailedGetPhoto({ notFound: Predicate.isTagged(error, 'NotFound') })),
       ),
     ),
 })

@@ -25,7 +25,7 @@ const operationIdOf = (known: Option.Option<string>) =>
 
 /** What a failed send means for the person, from the error the API or the sampler answered. */
 const problemOf = (error: unknown): SendProblem => {
-  if (Predicate.isTagged(error, 'DailyLimitReached')) return 'dailyLimit'
+  if (Predicate.isTagged(error, 'LimitReached')) return 'dailyLimit'
   if (Predicate.isTagged(error, 'VideoNotSampled'))
     return Predicate.hasProperty(error, 'reason') && error.reason === 'tooLong' ? 'videoTooLong' : 'videoUnreadable'
   if (
@@ -122,7 +122,7 @@ const linkProblemOf = (error: unknown): LinkProblem => {
     const reason = Schema.decodeUnknownOption(LinkRefused.fields.reason)(error.reason)
     if (Option.isSome(reason)) return reason.value
   }
-  if (Predicate.isTagged(error, 'LinkSlowDown')) return 'slowDown'
+  if (Predicate.isTagged(error, 'SlowDown')) return 'slowDown'
   const problem = problemOf(error)
   return problem === 'dailyLimit' || problem === 'refused' ? problem : 'network'
 }

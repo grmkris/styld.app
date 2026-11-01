@@ -1,4 +1,4 @@
-import { type BoardId, type Generate, type GenerationKind, GenerationNotFound, PromptRefused } from '@styld/protocol'
+import { type BoardId, type Generate, type GenerationKind, NotFound, PromptRefused } from '@styld/protocol'
 import { Effect, Option, Predicate, Result } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { stickerKey, stickerPrompt } from './PaintPrompt.ts'
@@ -19,7 +19,7 @@ const holdOne = (parts: Parts, accountId: string, jobId: string) =>
   Effect.gen(function* () {
     const reserved = yield* Effect.result(parts.usage.reserve(accountId, holdOf(jobId, 0), 1))
     if (Result.isSuccess(reserved)) return
-    if (Predicate.isTagged(reserved.failure, 'DailyLimitReached')) return yield* reserved.failure
+    if (Predicate.isTagged(reserved.failure, 'LimitReached')) return yield* reserved.failure
     // The Wallet may have taken it before its answer was lost.
     yield* refund(parts, accountId, jobId, 0, 1)
     return yield* unavailable()
@@ -48,12 +48,8 @@ export const generations = (parts: Parts) => ({
     })
     const earlier = yield* priorResult(operation, yield* stored(parts.store.findReceipt(accountId, input.operationId)))
     if (Option.isSome(earlier))
-      return yield* get(parts, earlier.value).pipe(
-        Effect.catchTag('GenerationNotFound', () => Effect.fail(unavailable())),
-      )
-    const board = yield* parts.boards
-      .getBoard(boardId)
-      .pipe(Effect.catchTag('WardrobeUnavailable', () => Effect.fail(unavailable())))
+      return yield* get(parts, earlier.value).pipe(Effect.catchTag('NotFound', () => Effect.fail(unavailable())))
+    const board = yield* parts.boards.getBoard(boardId)
     const id = yield* newId('gj')
     // The job's queue deliveries and its reads record the same job id, so the ask, its work and its polls join.
     yield* Effect.annotateCurrentSpan('styld.job_id', id)
@@ -97,7 +93,7 @@ export const generations = (parts: Parts) => ({
     const queued = yield* Effect.result(send(parts, id))
     if (Result.isFailure(queued)) {
       yield* giveUp(parts, id).pipe(Effect.ignore({ log: true, message: 'Styld.Generation could not queue a job' }))
-      return yield* get(parts, id).pipe(Effect.catchTag('GenerationNotFound', () => Effect.fail(unavailable())))
+      return yield* get(parts, id).pipe(Effect.catchTag('NotFound', () => Effect.fail(unavailable())))
     }
     return yield* view(job, pictures)
   }),
@@ -109,7 +105,7 @@ export const generations = (parts: Parts) => ({
     if (Option.isNone(job)) return { generation: null }
     return yield* get(parts, job.value.id).pipe(
       Effect.map((generation) => ({ generation })),
-      Effect.catchTag('GenerationNotFound', () => Effect.succeed({ generation: null })),
+      Effect.catchTag('NotFound', () => Effect.succeed({ generation: null })),
     )
   }),
 })
@@ -119,7 +115,7 @@ const get = Effect.fn('Styld.Generation.get')(function* (parts: Parts, jobId: st
   const { accountId } = yield* CurrentAccount
   yield* Effect.annotateCurrentSpan('styld.job_id', jobId)
   const job = yield* stored(parts.store.findJob(accountId, jobId))
-  if (Option.isNone(job)) return yield* GenerationNotFound.make({})
+  if (Option.isNone(job)) return yield* NotFound.make({})
   const finished = ['done', 'refused', 'failed'].includes(job.value.status)
   const at = yield* nowDate
   if (!finished && at.getTime() - job.value.updatedAt.getTime() > stalledMillis)

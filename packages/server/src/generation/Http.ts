@@ -1,4 +1,4 @@
-import { GenerateSlowDown, StyldApi } from '@styld/protocol'
+import { SlowDown, StyldApi } from '@styld/protocol'
 import { Effect } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
 import type { RuntimeContext } from 'alchemy/RuntimeContext'
@@ -12,7 +12,7 @@ const pacedBy =
   <A, E, R>(effect: Effect.Effect<A, E, R>) =>
     Effect.gen(function* () {
       const { accountId } = yield* CurrentAccount
-      if (!(yield* allowGenerate(accountId))) return yield* GenerateSlowDown.make({})
+      if (!(yield* allowGenerate(accountId))) return yield* SlowDown.make({})
       return yield* effect
     })
 

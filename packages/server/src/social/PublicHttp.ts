@@ -1,5 +1,5 @@
 import type { Locale } from '@styld/i18n'
-import { BoardImageId, PieceId, PublicSlowDown, StyldApi } from '@styld/protocol'
+import { BoardImageId, PieceId, SlowDown, StyldApi } from '@styld/protocol'
 import type { RuntimeContext } from 'alchemy/RuntimeContext'
 import { Effect, Layer, Option, Schema } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
@@ -28,7 +28,7 @@ const limited =
   (allowRead: AllowRead) =>
   <A, E, R>(read: Effect.Effect<A, E, R>) =>
     Effect.gen(function* () {
-      if (!(yield* allowRead(yield* clientOf))) return yield* PublicSlowDown.make({})
+      if (!(yield* allowRead(yield* clientOf))) return yield* SlowDown.make({})
       return yield* read
     })
 

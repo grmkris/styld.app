@@ -1,5 +1,5 @@
 import { boardImages, boardItems, boards, contentChecks, looks, pieces, piecePictures, profiles } from '@styld/db'
-import { CheckReason, CheckState, type CheckStatus, WardrobeUnavailable } from '@styld/protocol'
+import { CheckReason, CheckState, type CheckStatus, Unavailable } from '@styld/protocol'
 import { and, eq, inArray, isNotNull, lt, ne } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Array, Context, DateTime, Duration, Effect, Option, Schema } from 'effect'
@@ -33,7 +33,7 @@ export interface CheckBindings extends ImageBindings {
 /** A queue takes at most this many messages a call. */
 const queueBatch = 100
 
-const unavailable = () => WardrobeUnavailable.make({})
+const unavailable = () => Unavailable.make({})
 const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: unavailable })
 type Database = ReturnType<typeof drizzle>
 

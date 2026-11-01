@@ -11,7 +11,7 @@ import {
   type Rgba,
   shrink,
 } from '@styld/imaging'
-import { PieceNotFound, SheetRefused, type TurnLayout, TurnRefused } from '@styld/protocol'
+import { NotFound, SheetRefused, type TurnLayout, TurnRefused } from '@styld/protocol'
 import { Effect, Match, Option, Predicate, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { turnView } from '../wardrobe/Shown.ts'
@@ -289,7 +289,7 @@ const acceptSheet = (parts: Parts, pieceId: string, layout: TurnLayout, bytes: U
   Effect.gen(function* () {
     const { accountId } = yield* CurrentAccount
     const turn = yield* storedAs(parts.wardrobeStore.turnOf(accountId, pieceId))
-    if (Option.isNone(turn)) return yield* PieceNotFound.make({})
+    if (Option.isNone(turn)) return yield* NotFound.make({})
     if (turn.value.state !== 'video-ready') return turnView(turn.value, yield* nowDate)
     const { sheet, clean } = yield* sheetAndFront(parts, pieceId, layout, bytes)
     // A check the decision model cannot answer nowDate leaves the turn waiting for the same sheet again.
@@ -314,7 +314,7 @@ const turnablePiece = (parts: Parts, accountId: string, pieceId: string) =>
   Effect.gen(function* () {
     if ((yield* CaptureConfig).turns.generator === 'off') return yield* TurnRefused.make({ reason: 'off' })
     if (Option.isNone(yield* storedAs(parts.wardrobeStore.findPiece(accountId, pieceId))))
-      return yield* PieceNotFound.make({})
+      return yield* NotFound.make({})
     if (Option.isNone(cleanPicture(yield* storedAs(parts.store.findPicture(pieceId)))))
       return yield* TurnRefused.make({ reason: 'picture' })
   })

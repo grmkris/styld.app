@@ -3,10 +3,9 @@ import {
   type CreateLook,
   Look,
   type LookId,
-  LookNotFound,
-  PieceNotFound,
+  NotFound,
   type ShareLook,
-  WardrobeUnavailable,
+  Unavailable,
 } from '@styld/protocol'
 import { Context, Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
@@ -18,7 +17,7 @@ import { type LookRow, type LookStore, makeLookStore } from './Store.ts'
 import { newId } from '../kernel/Ids.ts'
 import { identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
 
-const unavailable = () => WardrobeUnavailable.make({})
+const unavailable = () => Unavailable.make({})
 const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
 
 /** Looks as the protocol shows them, each with the pieces still in the wardrobe and its check, if it has been
@@ -52,12 +51,12 @@ const sharing = (
   store: LookStore,
   profileStore: ProfileStore,
   checks: Checks['Service'],
-  one: (accountId: string, lookId: string) => Effect.Effect<Look, LookNotFound | WardrobeUnavailable>,
+  one: (accountId: string, lookId: string) => Effect.Effect<Look, NotFound | Unavailable>,
 ) => {
   return Effect.fn('Styld.Looks.share')(function* (lookId: LookId, input: ShareLook) {
     const { accountId } = yield* CurrentAccount
     const row = yield* stored(store.findLook(accountId, lookId))
-    if (Option.isNone(row)) return yield* LookNotFound.make({})
+    if (Option.isNone(row)) return yield* NotFound.make({})
     if (!input.shared) {
       yield* stored(store.setShared(accountId, lookId, null))
       return yield* one(accountId, lookId)
@@ -85,9 +84,9 @@ const make = (database: Parameters<typeof makeLookStore>[0], checks: Checks['Ser
     const one = (accountId: string, lookId: string) =>
       Effect.gen(function* () {
         const row = yield* stored(store.findLook(accountId, lookId))
-        if (Option.isNone(row)) return yield* LookNotFound.make({})
+        if (Option.isNone(row)) return yield* NotFound.make({})
         const [look] = yield* looksShown([row.value])
-        return look ?? (yield* LookNotFound.make({}))
+        return look ?? (yield* NotFound.make({}))
       })
     return {
       /** Put a look together from the account's own pieces. The same operation id answers the same
@@ -104,7 +103,7 @@ const make = (database: Parameters<typeof makeLookStore>[0], checks: Checks['Ser
         if (Option.isSome(prior)) return yield* one(accountId, prior.value)
         const pieceIds = [...new Set(input.pieceIds)]
         const owned = yield* stored(store.ownPieces(accountId, pieceIds))
-        if (pieceIds.some((id) => !owned.has(id))) return yield* PieceNotFound.make({})
+        if (pieceIds.some((id) => !owned.has(id))) return yield* NotFound.make({})
         const id = yield* newId('lk')
         const at = yield* nowDate
         yield* stored(
@@ -127,7 +126,7 @@ const make = (database: Parameters<typeof makeLookStore>[0], checks: Checks['Ser
       shareLook: sharing(store, makeProfileStore(database), checks, one),
       deleteLook: Effect.fn('Styld.Looks.delete')(function* (lookId: LookId) {
         const { accountId } = yield* CurrentAccount
-        if (!(yield* stored(store.deleteLook(accountId, lookId)))) return yield* LookNotFound.make({})
+        if (!(yield* stored(store.deleteLook(accountId, lookId)))) return yield* NotFound.make({})
       }),
     }
   })

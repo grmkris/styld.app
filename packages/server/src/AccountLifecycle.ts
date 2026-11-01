@@ -1,6 +1,6 @@
 import { authTables } from '@styld/auth'
 import { accounts, oauthGrants } from '@styld/db'
-import { AccountUnavailable } from '@styld/protocol'
+import { Unavailable } from '@styld/protocol'
 import { eq, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core'
@@ -11,7 +11,7 @@ import { accountPrefix } from './wardrobe/Media.ts'
 import type { WardrobeBindings } from './wardrobe/Parts.ts'
 import { deletePrefix } from './kernel/Media.ts'
 
-const unavailable = () => AccountUnavailable.make({})
+const unavailable = () => Unavailable.make({})
 
 const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: unavailable })
 

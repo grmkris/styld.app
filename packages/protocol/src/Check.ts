@@ -1,4 +1,5 @@
 import { Schema } from 'effect'
+import { refusal } from './Errors.ts'
 
 /** Where a model's check of something public stands: waiting, passed, unsure (on its own links but out of
  * Explore, feeds and search) or failed (hidden from others). */
@@ -41,5 +42,12 @@ export type ShareLook = typeof ShareLook.Type
 export class ProfileNotPublished extends Schema.TaggedError<ProfileNotPublished>()(
   'ProfileNotPublished',
   {},
-  { httpApiStatus: 422 },
+  {
+    httpApiStatus: 422,
+    guide: refusal(
+      'profile_not_published',
+      'Boards and looks go public only from a published profile.',
+      'Ask the person whether to publish their profile with profile_publish first.',
+    ),
+  },
 ) {}

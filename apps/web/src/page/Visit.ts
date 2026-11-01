@@ -149,8 +149,7 @@ export type Message = typeof Message.Type
 // COMMAND
 
 /** Not there for others: missing, private, unpublished or held back, or an address that is no handle or id. */
-const isMissing = (error: unknown) =>
-  Predicate.isTagged(error, 'PublicNotFound') || Predicate.isTagged(error, 'SchemaError')
+const isMissing = (error: unknown) => Predicate.isTagged(error, 'NotFound') || Predicate.isTagged(error, 'SchemaError')
 
 const LoadPerson = Command.define('LoadPerson', {
   args: { handle: Schema.String },

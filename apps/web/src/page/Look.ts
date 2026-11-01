@@ -80,7 +80,7 @@ const visitLook = (lookId: string) =>
     const page = yield* api.public.look({ params: { lookId: yield* Schema.decodeUnknownEffect(LookId)(lookId) } })
     return Message.SucceededVisitLook({ page })
   }).pipe(
-    Effect.catchTag('PublicNotFound', () => Effect.succeed(Message.FailedGetLook({ notFound: true }))),
+    Effect.catchTag('NotFound', () => Effect.succeed(Message.FailedGetLook({ notFound: true }))),
     Effect.orElseSucceed(() => Message.FailedGetLook({ notFound: false })),
   )
 
@@ -95,7 +95,7 @@ const GetLook = Command.define('GetLook', {
     }).pipe(
       Effect.catchTags({
         SchemaError: () => Effect.succeed(Message.FailedGetLook({ notFound: true })),
-        WardrobeUnavailable: () => Effect.succeed(Message.FailedGetLook({ notFound: false })),
+        Unavailable: () => Effect.succeed(Message.FailedGetLook({ notFound: false })),
       }),
       // Not this account's look, or nobody signed in: it may be shared.
       Effect.catch(() => visitLook(lookId)),

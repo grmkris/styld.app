@@ -1,4 +1,4 @@
-import { CaptureUnavailable, WardrobeUnavailable } from '@styld/protocol'
+import { Unavailable } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
 import { describe, expect, test } from 'vitest'
@@ -42,8 +42,8 @@ const message = (body: unknown, attempts = 1) => {
 
 const notUsed = () => Effect.die('not used by these tests')
 const services = (
-  processPiece: Effect.Effect<void, WardrobeUnavailable>,
-  failPiece: Effect.Effect<void, WardrobeUnavailable> = Effect.void,
+  processPiece: Effect.Effect<void, Unavailable>,
+  failPiece: Effect.Effect<void, Unavailable> = Effect.void,
 ) => {
   const failed: Array<string> = []
   return {
@@ -91,7 +91,7 @@ describe('the processing queue', () => {
     expect(done.settled).toEqual(['ack'])
 
     const again = message({ pieceId: 'pc_1' }, 1)
-    const flaky = services(Effect.fail(WardrobeUnavailable.make({})))
+    const flaky = services(Effect.fail(Unavailable.make({})))
     await Effect.runPromise(settleMessage(flaky.services, again.message))
     expect(again.settled).toEqual(['retry'])
     expect(flaky.failed).toEqual([])
@@ -106,7 +106,7 @@ describe('the processing queue', () => {
     const last = message({ pieceId: 'pc_1' }, processingAttempts)
     await Effect.runPromise(
       settleMessage(
-        services(Effect.fail(WardrobeUnavailable.make({})), Effect.fail(WardrobeUnavailable.make({}))).services,
+        services(Effect.fail(Unavailable.make({})), Effect.fail(Unavailable.make({}))).services,
         last.message,
       ),
     )
@@ -124,7 +124,7 @@ describe('the processing queue', () => {
         processCapture: notUsed,
         failCapture: notUsed,
         processPicture: (pieceId: string) =>
-          Effect.sync(() => seen.push(`draw ${pieceId}`)).pipe(Effect.andThen(CaptureUnavailable.make({}))),
+          Effect.sync(() => seen.push(`draw ${pieceId}`)).pipe(Effect.andThen(Unavailable.make({}))),
         failPicture: (pieceId: string) => Effect.sync(() => seen.push(`give up ${pieceId}`)),
         processTurn: notUsed,
         failTurn: notUsed,
@@ -296,7 +296,7 @@ describe("a piece's turn", () => {
         processPicture: notUsed,
         failPicture: notUsed,
         processTurn: (pieceId: string) =>
-          Effect.sync(() => seen.push(`turn ${pieceId}`)).pipe(Effect.andThen(CaptureUnavailable.make({}))),
+          Effect.sync(() => seen.push(`turn ${pieceId}`)).pipe(Effect.andThen(Unavailable.make({}))),
         failTurn: (pieceId: string) => Effect.sync(() => seen.push(`give up ${pieceId}`)),
         processMatch: notUsed,
         failMatch: notUsed,

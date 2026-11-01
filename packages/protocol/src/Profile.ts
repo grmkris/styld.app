@@ -1,4 +1,5 @@
 import { Schema } from 'effect'
+import { refusal } from './Errors.ts'
 import { CheckStatus } from './Check.ts'
 
 /** A public handle, `@nika.kovac`: 3–30 lowercase letters, digits, `_` and single inner dots, the Instagram
@@ -87,18 +88,35 @@ export const PublishProfile = Schema.Struct({ published: Schema.Boolean })
 export type PublishProfile = typeof PublishProfile.Type
 
 /** Someone else has that handle. */
-export class HandleTaken extends Schema.TaggedError<HandleTaken>()('HandleTaken', {}, { httpApiStatus: 409 }) {}
+export class HandleTaken extends Schema.TaggedError<HandleTaken>()(
+  'HandleTaken',
+  {},
+  {
+    httpApiStatus: 409,
+    guide: refusal('handle_taken', 'Someone else has that handle.', 'Ask the person for another one.'),
+  },
+) {}
 
 /** A handle only an admin gives out. */
 export class HandleReserved extends Schema.TaggedError<HandleReserved>()(
   'HandleReserved',
   {},
-  { httpApiStatus: 422 },
+  {
+    httpApiStatus: 422,
+    guide: refusal('handle_reserved', 'That handle is kept for Styld.', 'Ask the person for another one.'),
+  },
 ) {}
 
 /** Publishing needs a handle first. */
 export class ProfileNeedsHandle extends Schema.TaggedError<ProfileNeedsHandle>()(
   'ProfileNeedsHandle',
   {},
-  { httpApiStatus: 422 },
+  {
+    httpApiStatus: 422,
+    guide: refusal(
+      'needs_handle',
+      'A profile needs a handle before it can be published.',
+      'Set one with profile_update first.',
+    ),
+  },
 ) {}

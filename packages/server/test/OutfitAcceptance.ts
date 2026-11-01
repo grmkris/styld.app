@@ -98,7 +98,7 @@ const verifyThinking = async (owner: Call, wardrobe: Awaited<ReturnType<typeof v
   expectWhole(thought, wardrobe)
   const unclear = await make(owner, { mode: 'thinking', brief: { words: 'something [[unclear]]' } })
   expect(unclear.status).toBe(503)
-  expect(await unclear.json()).toMatchObject({ _tag: 'OutfitUnavailable' })
+  expect(await unclear.json()).toMatchObject({ _tag: 'ThinkingUnanswered' })
   const [chosen] = thought.proposals
   if (chosen === undefined) throw new Error('Thinking proposed nothing')
   const worn = await owner('/api/worn/2026-10-31', {

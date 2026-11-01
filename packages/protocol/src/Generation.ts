@@ -1,11 +1,10 @@
+import { LimitReached, NotFound, OperationConflict, refusal, RequestRefused, SlowDown, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
 import { Schema } from 'effect'
 import { HttpApiEndpoint, HttpApiGroup } from 'effect/http-api'
-import { RequestRefused } from './Account.ts'
-import { BoardId, BoardImageId, BoardNotFound } from './Board.ts'
-import { CaptureUnavailable, DailyLimitReached } from './Capture.ts'
+import { BoardId, BoardImageId } from './Board.ts'
 import { CheckReason } from './Check.ts'
-import { OperationConflict, OperationId } from './Wardrobe.ts'
+import { OperationId } from './Wardrobe.ts'
 
 // What Styld makes for a board (owner, 2026-10-31): a small decorative sticker from the person's words, with a
 // transparent background, or a mood board of the person's own pieces from one sentence. Each costs a credit from the
@@ -62,31 +61,13 @@ export type RunningGeneration = typeof RunningGeneration.Type
 export class PromptRefused extends Schema.TaggedError<PromptRefused>()(
   'PromptRefused',
   { reason: CheckReason },
-  { httpApiStatus: 422 },
+  {
+    httpApiStatus: 422,
+    guide: refusal('prompt_refused', 'Styld does not make that ({reason}).', 'Ask the person for other words.'),
+  },
 ) {}
 
-export class GenerationNotFound extends Schema.TaggedError<GenerationNotFound>()(
-  'GenerationNotFound',
-  {},
-  { httpApiStatus: 404 },
-) {}
-
-/** Too many asked for in a minute. */
-export class GenerateSlowDown extends Schema.TaggedError<GenerateSlowDown>()(
-  'GenerateSlowDown',
-  {},
-  { httpApiStatus: 429 },
-) {}
-
-const generateErrors = [
-  BoardNotFound,
-  PromptRefused,
-  DailyLimitReached,
-  GenerateSlowDown,
-  OperationConflict,
-  CaptureUnavailable,
-  RequestRefused,
-]
+const generateErrors = [NotFound, PromptRefused, LimitReached, SlowDown, OperationConflict, Unavailable, RequestRefused]
 
 export class GenerationApi extends HttpApiGroup.make('generation')
   .add(
@@ -109,14 +90,14 @@ export class GenerationApi extends HttpApiGroup.make('generation')
     HttpApiEndpoint.get('generation', '/generations/:generationId', {
       params: { generationId: GenerationId },
       success: Generation,
-      error: [GenerationNotFound, CaptureUnavailable],
+      error: [NotFound, Unavailable],
     }),
   )
   .add(
     HttpApiEndpoint.get('runningGeneration', '/boards/:boardId/generations/running', {
       params: { boardId: BoardId },
       success: RunningGeneration,
-      error: CaptureUnavailable,
+      error: Unavailable,
     }),
   )
   .middleware(SessionHttp.RequireSession)

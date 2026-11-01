@@ -1,7 +1,7 @@
 import { profiles } from '@styld/db'
 import { eq } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
-import { ProfileNotPublished, WardrobeUnavailable } from '@styld/protocol'
+import { ProfileNotPublished, Unavailable } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import { first, query } from '../kernel/Db.ts'
 
@@ -32,6 +32,6 @@ export type ProfileStore = ReturnType<typeof makeProfileStore>
 
 /** Boards go public and looks are shared only from a published profile. */
 export const requirePublished = (store: ProfileStore, accountId: string) =>
-  Effect.flatMap(store.findProfile(accountId).pipe(Effect.mapError(() => WardrobeUnavailable.make({}))), (profile) =>
+  Effect.flatMap(store.findProfile(accountId).pipe(Effect.mapError(() => Unavailable.make({}))), (profile) =>
     Option.isSome(profile) && profile.value.published ? Effect.void : Effect.fail(ProfileNotPublished.make({})),
   )

@@ -83,7 +83,7 @@ export const DeleteBoard = Command.define('DeleteBoard', {
       yield* api.board.deleteBoard({ params: { boardId: yield* boardIdOf(boardId) } })
       return Message.SucceededDeleteBoard()
     }).pipe(
-      Effect.catchTag('BoardNotFound', () => Effect.succeed(Message.SucceededDeleteBoard())),
+      Effect.catchTag('NotFound', () => Effect.succeed(Message.SucceededDeleteBoard())),
       Effect.orElseSucceed(() => Message.FailedDeleteBoard()),
     ),
 })

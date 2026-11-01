@@ -4,11 +4,12 @@ import {
   type OutfitProposal,
   outfitKeyOf,
   OutfitSession,
-  OutfitSlowDown,
-  OutfitUnavailable,
-  PieceNotFound,
+  SlowDown,
+  ThinkingUnanswered,
+  NotFound,
   type ProposalRef,
-  ThinkingSpent,
+  LimitReached,
+  Unavailable,
 } from '@styld/protocol'
 import { Array, Clock, Context, Effect, Option, Order } from 'effect'
 import type { CaptureMetrics } from '../capture/Metrics.ts'
@@ -48,7 +49,10 @@ const mostCandidates = 12
 /** Clef calls and picture reads at once. */
 const concurrency = 6
 
-const unavailable = () => OutfitUnavailable.make({})
+const unavailable = () => Unavailable.make({})
+
+/** Thinking's model gave no usable outfit: Fast may still answer. */
+const unanswered = () => ThinkingUnanswered.make({})
 
 /** The UTC day of a time, as the Thinking counter keys it. */
 const dayOf = (millis: number) => new Date(millis).toISOString().slice(0, 10)
@@ -105,7 +109,7 @@ const candidatesFor = (parts: OutfitParts, input: MakeOutfit, request: Brief, se
     }
     // Nothing new by the rules is nothing to ask the model for.
     if (proposed(request, 'probe', 1).outfits.length === 0) return { outfits: [], costMicroUsd: 0, exhausted: true }
-    const thought = yield* parts.proposer.propose(request, input.count + 2).pipe(Effect.mapError(unavailable))
+    const thought = yield* parts.proposer.propose(request, input.count + 2).pipe(Effect.mapError(unanswered))
     return { ...thought, exhausted: false }
   })
 
@@ -113,20 +117,20 @@ const candidatesFor = (parts: OutfitParts, input: MakeOutfit, request: Brief, se
 const fixedOf = (input: MakeOutfit, owned: ReadonlyMap<string, Owned>) => {
   const ids = [...new Set([...Option.toArray(Option.fromNullishOr(input.anchorPieceId)), ...input.lockedPieceIds])]
   const fixed = ids.flatMap((id) => Option.toArray(Option.map(Option.fromNullishOr(owned.get(id)), (o) => o.wearable)))
-  return fixed.length === ids.length ? Effect.succeed(fixed) : Effect.fail(PieceNotFound.make({}))
+  return fixed.length === ids.length ? Effect.succeed(fixed) : Effect.fail(NotFound.make({}))
 }
 
 /** Within the account's pace, and for Thinking within today's count. */
 const admitted = (parts: OutfitParts, accountId: string, mode: OutfitMode) =>
   Effect.gen(function* () {
-    if (!(yield* parts.pace.outfit(accountId))) return yield* OutfitSlowDown.make({})
+    if (!(yield* parts.pace.outfit(accountId))) return yield* SlowDown.make({})
     if (mode === 'fast') return
-    if (!(yield* parts.pace.thinking(accountId))) return yield* OutfitSlowDown.make({})
+    if (!(yield* parts.pace.thinking(accountId))) return yield* SlowDown.make({})
     const today = dayOf(yield* Clock.currentTimeMillis)
     const counted = yield* parts.days
       .countThinking(accountId, today, parts.thinkingPerDay)
       .pipe(Effect.mapError(unavailable))
-    if (!counted) return yield* ThinkingSpent.make({})
+    if (!counted) return yield* LimitReached.make({ limit: 'thinking' })
   })
 
 const make = (parts: OutfitParts) => {

@@ -1,4 +1,4 @@
-import { ImageType, maximumImageBytes } from '@styld/protocol'
+import { byCase, ImageType, maximumImageBytes, refusal } from '@styld/protocol'
 import { Effect, Layer, Option, Schema, Stream } from 'effect'
 import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import * as HttpClient from 'effect/http/HttpClient'
@@ -7,9 +7,37 @@ import type * as HttpClientResponse from 'effect/http/HttpClientResponse'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 
 /** Why a photo address could not be imported, in words an assistant can act on. */
-export class ImportRefused extends Schema.TaggedError<ImportRefused>()('ImportRefused', {
-  reason: Schema.Literals(['notHttps', 'tooManyRedirects', 'notReached', 'notAnImage', 'tooLarge']),
-}) {}
+const ImportRefusal = Schema.Literals(['notHttps', 'tooManyRedirects', 'notReached', 'notAnImage', 'tooLarge'])
+
+export class ImportRefused extends Schema.TaggedError<ImportRefused>()(
+  'ImportRefused',
+  { reason: ImportRefusal },
+  {
+    guide: byCase<typeof ImportRefusal.Type>('reason', {
+      notHttps: refusal(
+        'photo_refused',
+        'The photo address must be a plain https URL on the default port.',
+        'Give an https:// address of the image itself.',
+      ),
+      tooManyRedirects: refusal(
+        'photo_refused',
+        'The photo address redirected more than three times.',
+        'Give the final address of the image.',
+      ),
+      notReached: refusal(
+        'photo_refused',
+        'Styld could not download the photo from that address.',
+        'Check the address is public, or upload the photo with upload_create.',
+      ),
+      notAnImage: refusal(
+        'photo_refused',
+        'The file is not a JPEG, PNG, WebP, AVIF or GIF image.',
+        'Use a photo in one of those formats.',
+      ),
+      tooLarge: refusal('photo_refused', 'The photo is larger than 15 MB.', 'Use a smaller photo.'),
+    }),
+  },
+) {}
 
 const maximumRedirects = 3
 /** Styld names itself, as link previews do; a site that keeps robots out still can. */

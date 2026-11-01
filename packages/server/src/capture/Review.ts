@@ -1,4 +1,4 @@
-import { CaptureNotFound, type Keep, PieceId, type Review, Reviewed } from '@styld/protocol'
+import { NotFound, type Keep, PieceId, type Review, Reviewed } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { CaptureMetrics, type ReviewDecision } from './Metrics.ts'
@@ -166,7 +166,7 @@ export const reviewing = (parts: Parts) => ({
     const ids: ReadonlyArray<string> = [...input.keep.map(({ detectionId }) => detectionId), ...input.discard]
     const found = yield* storedAs(parts.store.detections(accountId, ids))
     const open = new Map(found.filter(({ status }) => status === 'review').map((row) => [row.id, row]))
-    if (ids.some((id) => !open.has(id))) return yield* CaptureNotFound.make({})
+    if (ids.some((id) => !open.has(id))) return yield* NotFound.make({})
     // A garment's other sightings in its import are kept or discarded with it.
     const others = yield* storedAs(parts.store.sightingsOf(accountId, ids))
     const at = yield* nowDate

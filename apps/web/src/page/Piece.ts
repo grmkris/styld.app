@@ -172,7 +172,7 @@ export const GetPiece = Command.define('GetPiece', {
       return Message.SucceededGetPiece({ piece })
     }).pipe(
       Effect.catchTags({
-        PieceNotFound: () => Effect.succeed(Message.FailedGetPiece({ missing: true })),
+        NotFound: () => Effect.succeed(Message.FailedGetPiece({ missing: true })),
         SchemaError: () => Effect.succeed(Message.FailedGetPiece({ missing: true })),
       }),
       Effect.orElseSucceed(() => Message.FailedGetPiece({ missing: false })),
@@ -196,7 +196,7 @@ export const DeletePiece = Command.define('DeletePiece', {
       return Message.SucceededDeletePiece()
     }).pipe(
       // A piece already gone is the outcome the person asked for.
-      Effect.catchTag('PieceNotFound', () => Effect.succeed(Message.SucceededDeletePiece())),
+      Effect.catchTag('NotFound', () => Effect.succeed(Message.SucceededDeletePiece())),
       Effect.orElseSucceed(() => Message.FailedDeletePiece()),
     ),
 })
@@ -233,7 +233,7 @@ export const ChoosePicture = Command.define('ChoosePicture', {
 
 /** What a refused redraw means for the owner. */
 const redrawProblemOf = (error: unknown): RedrawProblem => {
-  if (Predicate.isTagged(error, 'DailyLimitReached')) return 'dailyLimit'
+  if (Predicate.isTagged(error, 'LimitReached')) return 'dailyLimit'
   if (Predicate.isTagged(error, 'PictureRefused') && Predicate.hasProperty(error, 'reason'))
     return Schema.decodeUnknownOption(RedrawProblem)(error.reason).pipe(Option.getOrElse(() => 'network' as const))
   return 'network'
@@ -268,7 +268,7 @@ export const RedrawPicture = Command.define('RedrawPicture', {
 
 /** What a refused turn means for the owner. */
 const turnProblemOf = (error: unknown): TurnProblem => {
-  if (Predicate.isTagged(error, 'DailyLimitReached')) return 'dailyLimit'
+  if (Predicate.isTagged(error, 'LimitReached')) return 'dailyLimit'
   if (Predicate.isTagged(error, 'TurnRefused') && Predicate.hasProperty(error, 'reason'))
     return Schema.decodeUnknownOption(TurnProblem)(error.reason).pipe(Option.getOrElse(() => 'network' as const))
   return 'network'

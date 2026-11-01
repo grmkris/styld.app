@@ -1,4 +1,5 @@
 import { Schema } from 'effect'
+import { refusal } from './Errors.ts'
 import { BoardId } from './Board.ts'
 import { LookId } from './Look.ts'
 import { Handle } from './Profile.ts'
@@ -110,12 +111,8 @@ export type Feed = typeof Feed.Type
 export class NotWithYourself extends Schema.TaggedError<NotWithYourself>()(
   'NotWithYourself',
   {},
-  { httpApiStatus: 422 },
-) {}
-
-/** The account already sent this many reports within the hour. */
-export class TooManyReports extends Schema.TaggedError<TooManyReports>()(
-  'TooManyReports',
-  {},
-  { httpApiStatus: 429 },
+  {
+    httpApiStatus: 422,
+    guide: refusal('own', 'That is the person’s own.', 'Saving, following, blocking and reporting are for others.'),
+  },
 ) {}

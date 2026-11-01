@@ -1,5 +1,5 @@
 import { decodePng, type Rgba } from '@styld/imaging'
-import { CaptureUnavailable } from '@styld/protocol'
+import { Unavailable } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import { accountPrefix, piecePrefix } from '../wardrobe/Media.ts'
 import type { WorkMessage } from '../wardrobe/Processing.ts'
@@ -15,7 +15,7 @@ export interface CaptureBindings {
   readonly queue: { send(message: WorkMessage, options?: { readonly delaySeconds?: number }): Promise<unknown> }
 }
 
-export const unavailable = () => CaptureUnavailable.make({})
+export const unavailable = () => Unavailable.make({})
 
 /** What every capture operation shares: stores and bindings. */
 export const makeParts = (bindings: CaptureBindings) =>

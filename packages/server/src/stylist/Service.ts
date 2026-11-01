@@ -1,11 +1,11 @@
 import {
   ChatId,
-  ChatNotFound,
+  NotFound,
   type ChatMessage,
   ReplyPart,
   type SendChatMessage,
   StylistBusy,
-  StylistUnavailable,
+  Unavailable,
 } from '@styld/protocol'
 import { type Context, DateTime, Effect, type Layer, Option, Schema } from 'effect'
 import type { LanguageModel } from 'effect/ai'
@@ -28,7 +28,7 @@ const patience = 5 * 60_000
 /** Chats a list shows. */
 const listed = 30
 
-const unavailable = () => StylistUnavailable.make({})
+const unavailable = () => Unavailable.make({})
 
 /** A failure's kind for the logs: its name, such as TimeoutError or AiError, never its message. */
 const failureOf = (error: unknown) => (error instanceof Error ? error.name : typeof error).slice(0, 80)
@@ -169,9 +169,7 @@ const sending = <R>(parts: StylistParts<R>, ids: Ids) =>
     const turnId = yield* ids.turnIdOf(accountId, input.operationId)
     // The turn's queue delivery records the same job id, so the ask and its reply are found together.
     yield* Effect.annotateCurrentSpan('styld.job_id', turnId)
-    yield* parts.usage
-      .reserve(accountId, holdOf(turnId), parts.policy.credits)
-      .pipe(Effect.catchTag('CaptureUnavailable', unavailable))
+    yield* parts.usage.reserve(accountId, holdOf(turnId), parts.policy.credits)
     const begun = yield* stored(
       parts.chatsOf(accountId).begin({
         turnId,
@@ -187,7 +185,7 @@ const sending = <R>(parts: StylistParts<R>, ids: Ids) =>
     )
     if (begun.outcome === 'busy' || begun.outcome === 'missing') {
       yield* stored(parts.usage.settle(accountId, holdOf(turnId), 'refunded'))
-      return yield* begun.outcome === 'busy' ? StylistBusy.make({}) : ChatNotFound.make({})
+      return yield* begun.outcome === 'busy' ? StylistBusy.make({}) : NotFound.make({})
     }
     const queued = yield* Effect.tryPromise(() => parts.queue.send({ stylistTurnOf: turnId, accountId })).pipe(
       Effect.as(true),
@@ -214,7 +212,7 @@ const reading = <R>(parts: StylistParts<R>) => ({
   chat: Effect.fn('Styld.Stylist.chat')(function* (chatId: ChatId) {
     const { accountId } = yield* CurrentAccount
     const found = yield* stored(parts.chatsOf(accountId).chat(chatId, yield* now, patience))
-    if (found === undefined) return yield* ChatNotFound.make({})
+    if (found === undefined) return yield* NotFound.make({})
     const { replying } = found
     return {
       id: chatId,

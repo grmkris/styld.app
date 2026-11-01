@@ -10,8 +10,7 @@ import {
   PieceId,
   type WearAgain,
   Photo,
-  PhotoNotFound,
-  PieceNotFound,
+  NotFound,
   UploadRefused,
 } from '@styld/protocol'
 import { Context, Effect, Option, Predicate, Schema } from 'effect'
@@ -67,20 +66,20 @@ const photosOf = (parts: PhotoParts, rows: ReadonlyArray<PhotoRow>) =>
     return yield* Effect.forEach(rows, (row) => toPhoto(row, garments))
   })
 
-/** The account's own photo, or `PhotoNotFound`, as if another account's did not exist. */
+/** The account's own photo, or `NotFound`, as if another account's did not exist. */
 const ownPhoto = (parts: PhotoParts, accountId: string, photoId: string) =>
   Effect.flatMap(
     storedAs(parts.photos.findPhoto(accountId, photoId)),
-    Option.match({ onNone: () => Effect.fail(PhotoNotFound.make({})), onSome: Effect.succeed }),
+    Option.match({ onNone: () => Effect.fail(NotFound.make({})), onSome: Effect.succeed }),
   )
 
-/** The account's own ready piece, or `PieceNotFound`. */
+/** The account's own ready piece, or `NotFound`. */
 const ownPiece = (parts: PhotoParts, accountId: string, pieceId: string) =>
   Effect.flatMap(
     storedAs(parts.capture.wardrobeStore.findPiece(accountId, pieceId)),
     Option.match({
-      onNone: () => Effect.fail(PieceNotFound.make({})),
-      onSome: (piece) => (piece.status === 'ready' ? Effect.succeed(piece) : Effect.fail(PieceNotFound.make({}))),
+      onNone: () => Effect.fail(NotFound.make({})),
+      onSome: (piece) => (piece.status === 'ready' ? Effect.succeed(piece) : Effect.fail(NotFound.make({}))),
     }),
   )
 
@@ -246,7 +245,7 @@ const reading = (parts: PhotoParts) => ({
   getPhoto: Effect.fn('Styld.Photos.get')(function* (photoId: string) {
     const { accountId } = yield* CurrentAccount
     const [photo] = yield* photosOf(parts, [yield* ownPhoto(parts, accountId, photoId)])
-    return photo ?? (yield* PhotoNotFound.make({}))
+    return photo ?? (yield* NotFound.make({}))
   }),
 })
 
@@ -255,9 +254,9 @@ const changing = (parts: PhotoParts, looks: Looks['Service']) => ({
   updatePhoto: Effect.fn('Styld.Photos.update')(function* (photoId: string, input: { readonly favourite: boolean }) {
     const { accountId } = yield* CurrentAccount
     const updated = yield* storedAs(parts.photos.setFavourite(accountId, photoId, input.favourite, yield* nowDate))
-    if (Option.isNone(updated)) return yield* PhotoNotFound.make({})
+    if (Option.isNone(updated)) return yield* NotFound.make({})
     const [photo] = yield* photosOf(parts, [updated.value])
-    return photo ?? (yield* PhotoNotFound.make({}))
+    return photo ?? (yield* NotFound.make({}))
   }),
   /** Delete a photo: its objects first, so a retry finds the row and finishes. */
   deletePhoto: Effect.fn('Styld.Photos.delete')(function* (photoId: string) {
@@ -271,19 +270,19 @@ const changing = (parts: PhotoParts, looks: Looks['Service']) => ({
     yield* ownPhoto(parts, accountId, photoId)
     if (input.pieceId !== null) yield* ownPiece(parts, accountId, input.pieceId)
     if (!(yield* storedAs(parts.photos.matchGarment(accountId, photoId, garmentId, input.pieceId))))
-      return yield* PhotoNotFound.make({})
+      return yield* NotFound.make({})
     const [photo] = yield* photosOf(parts, [yield* ownPhoto(parts, accountId, photoId)])
-    return photo ?? (yield* PhotoNotFound.make({}))
+    return photo ?? (yield* NotFound.make({}))
   }),
   /** Offer a garment to the review tray, once: offering it again answers the photo as it is. */
   offerGarment: Effect.fn('Styld.Photos.offer')(function* (photoId: string, garmentId: string) {
     const { accountId } = yield* CurrentAccount
     const photo = yield* ownPhoto(parts, accountId, photoId)
     const garment = (yield* storedAs(parts.photos.garmentsOf([photoId]))).find(({ id }) => id === garmentId)
-    if (garment === undefined) return yield* PhotoNotFound.make({})
+    if (garment === undefined) return yield* NotFound.make({})
     if (garment.state !== 'offered') yield* offered(parts, photo, garment)
     const [shown] = yield* photosOf(parts, [photo])
-    return shown ?? (yield* PhotoNotFound.make({}))
+    return shown ?? (yield* NotFound.make({}))
   }),
   /** "Wear it again": the photo's confirmed pieces as a look, remembered on the photo. Repeating the operation answers
    * the same look. */
@@ -345,7 +344,7 @@ const lookOperation = (operationId: string) => OperationId.make(`${operationId.s
 
 /** A board's refusal as the photo's: a board that is not the person's stays so, anything else is unavailable. */
 const onBoard = <A, E>(effect: Effect.Effect<A, E, CurrentAccount>) =>
-  effect.pipe(Effect.mapError((error) => (Predicate.isTagged(error, 'BoardNotFound') ? error : unavailable())))
+  effect.pipe(Effect.mapError((error) => (Predicate.isTagged(error, 'NotFound') ? error : unavailable())))
 
 /** A photo for collages: the person cut out of it, and putting it on a board as its own picture (the cut-out once
  * there is one), held back from visitors, with the look worn from it. A retried request whose picture is on the board
@@ -356,7 +355,7 @@ const boarding = (parts: PhotoParts, services: PhotoServices) => ({
     const { accountId } = yield* CurrentAccount
     yield* cutOutPerson(parts, yield* ownPhoto(parts, accountId, photoId))
     const [shown] = yield* photosOf(parts, [yield* ownPhoto(parts, accountId, photoId)])
-    return shown ?? (yield* PhotoNotFound.make({}))
+    return shown ?? (yield* NotFound.make({}))
   }),
   addToBoard: Effect.fn('Styld.Photos.addToBoard')(function* (photoId: string, input: AddPhotoToBoard) {
     const { accountId } = yield* CurrentAccount

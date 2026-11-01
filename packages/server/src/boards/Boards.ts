@@ -5,7 +5,7 @@ import {
   type BoardId,
   type BoardImage,
   BoardImageId,
-  BoardNotFound,
+  NotFound,
   type CreateBoard,
   maximumBoardPins,
   OperationConflict,
@@ -75,7 +75,7 @@ const createdBefore = (parts: Parts, operation: Identified) =>
     const created = yield* priorOf(parts, operation)
     if (Option.isNone(created)) return Option.none<Board>()
     const board = yield* one(parts, operation.accountId, created.value).pipe(
-      Effect.catchTag('BoardNotFound', () => Effect.fail(OperationConflict.make({}))),
+      Effect.catchTag('NotFound', () => Effect.fail(OperationConflict.make({}))),
     )
     return Option.some(board)
   })
@@ -129,9 +129,9 @@ const changes = (parts: Parts) => ({
         updatedAt: yield* nowDate,
       }),
     )
-    if (Option.isNone(updated)) return yield* BoardNotFound.make({})
+    if (Option.isNone(updated)) return yield* NotFound.make({})
     const [board] = yield* shown(parts, [updated.value])
-    return board ?? (yield* BoardNotFound.make({}))
+    return board ?? (yield* NotFound.make({}))
   }),
   /** Delete the board, its items and its pictures' bytes. */
   deleteBoard: Effect.fn('Styld.Boards.delete')(function* (boardId: BoardId) {
@@ -142,7 +142,7 @@ const changes = (parts: Parts) => ({
     yield* deleteKeys(parts.bindings.bucket, keys).pipe(
       Effect.catchTag('MediaUnavailable', () => Effect.fail(unavailable())),
     )
-    if (!(yield* stored(parts.store.deleteBoard(accountId, boardId)))) return yield* BoardNotFound.make({})
+    if (!(yield* stored(parts.store.deleteBoard(accountId, boardId)))) return yield* NotFound.make({})
   }),
 })
 
@@ -255,7 +255,7 @@ const publishing = (parts: Parts) => ({
 const replayImage = (parts: Parts, accountId: string, imageId: string) =>
   Effect.gen(function* () {
     const image = yield* stored(parts.store.findImage(accountId, imageId))
-    if (Option.isNone(image)) return yield* BoardNotFound.make({})
+    if (Option.isNone(image)) return yield* NotFound.make({})
     const replayed: BoardImage = { imageId: BoardImageId.make(image.value.id) }
     return replayed
   })

@@ -1,4 +1,4 @@
-import { CaptureUnavailable, Generation } from '@styld/protocol'
+import { Unavailable, Generation } from '@styld/protocol'
 import { Effect, Schema } from 'effect'
 import type { Boards } from '../boards/Boards.ts'
 import type { Usage } from '../capture/Usage.ts'
@@ -29,7 +29,7 @@ export interface Parts {
   readonly face: number
 }
 
-export const unavailable = () => CaptureUnavailable.make({})
+export const unavailable = () => Unavailable.make({})
 /** A picture's credit in the Wallet: one per picture, its first and only attempt. */
 export const holdOf = (jobId: string, index: number) => `gen/${jobId}/${index}/0`
 

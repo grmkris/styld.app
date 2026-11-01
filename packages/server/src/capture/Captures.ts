@@ -1,6 +1,6 @@
 import {
   CaptureId,
-  CaptureNotFound,
+  NotFound,
   type CreateCapture,
   type CreateVideoCapture,
   type HeldCheckAnswer,
@@ -261,7 +261,7 @@ export const reading = (parts: Parts) => ({
   /** Show each other sighting of a garment on its own card again: the import took different garments for one. */
   split: Effect.fn('Styld.Capture.split')(function* (detectionId: string) {
     const { accountId } = yield* CurrentAccount
-    if (!(yield* storedAs(parts.store.split(accountId, detectionId)))) return yield* CaptureNotFound.make({})
+    if (!(yield* storedAs(parts.store.split(accountId, detectionId)))) return yield* NotFound.make({})
   }),
   check: Effect.fn('Styld.Capture.check')(function* (
     frame: Uint8Array,

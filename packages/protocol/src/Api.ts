@@ -1,6 +1,7 @@
+import { LimitReached, NotFound, OperationConflict, RequestRefused, SlowDown, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
-import { AccountUnavailable, Me, RequestRefused } from './Account.ts'
+import { Me } from './Account.ts'
 import { CaptureApi } from './CaptureApi.ts'
 import { StylistApi } from './StylistApi.ts'
 import { ProfileNotPublished, SetVisibility, ShareLook } from './Check.ts'
@@ -28,18 +29,8 @@ import {
   SetBlocked,
   SetFollowing,
   SetSaved,
-  TooManyReports,
 } from './Social.ts'
-import {
-  PageMeta,
-  PageMetaQuery,
-  PublicBoard,
-  PublicLookPage,
-  PublicNotFound,
-  PublicPiecePage,
-  PublicProfile,
-  PublicSlowDown,
-} from './Public.ts'
+import { PageMeta, PageMetaQuery, PublicBoard, PublicLookPage, PublicPiecePage, PublicProfile } from './Public.ts'
 import {
   AddBoardImage,
   AddPins,
@@ -47,7 +38,6 @@ import {
   BoardId,
   BoardImage,
   BoardItemRefused,
-  BoardNotFound,
   BoardVersionConflict,
   Boards,
   CreateBoard,
@@ -56,7 +46,7 @@ import {
   SaveBoardItems,
   UpdateBoard,
 } from './Board.ts'
-import { CreateLook, Look, LookId, LookNotFound, Looks } from './Look.ts'
+import { CreateLook, Look, LookId, Looks } from './Look.ts'
 import { OutfitApi } from './Outfit.ts'
 import { PhotoApi } from './Photo.ts'
 import { Day, WearPieces, WornDay, WornDays, WornRange } from './Worn.ts'
@@ -66,16 +56,13 @@ import {
   CreateUpload,
   CreateVideoUpload,
   NoCleanPicture,
-  OperationConflict,
   Piece,
   PieceId,
-  PieceNotFound,
   Pieces,
   SetBack,
   UpdatePiece,
   Upload,
   UploadRefused,
-  WardrobeUnavailable,
 } from './Wardrobe.ts'
 
 /** The signed-in person's account. */
@@ -85,7 +72,7 @@ export class AccountApi extends HttpApiGroup.make('account')
   .add(
     HttpApiEndpoint.delete('deleteMe', '/me', {
       success: HttpApiSchema.NoContent,
-      error: [AccountUnavailable, RequestRefused],
+      error: [Unavailable, RequestRefused],
     }),
   )
   .middleware(SessionHttp.RequireSession)
@@ -94,33 +81,33 @@ export class AccountApi extends HttpApiGroup.make('account')
 /** The signed-in person's pieces. A photo goes up first (`createUpload`, then a `PUT` of its bytes
  * to the returned path) and becomes a piece with `addPiece`. */
 export class WardrobeApi extends HttpApiGroup.make('wardrobe')
-  .add(HttpApiEndpoint.get('listPieces', '/pieces', { success: Pieces, error: WardrobeUnavailable }))
+  .add(HttpApiEndpoint.get('listPieces', '/pieces', { success: Pieces, error: Unavailable }))
   .add(
     HttpApiEndpoint.get('getPiece', '/pieces/:pieceId', {
       params: { pieceId: PieceId },
       success: Piece,
-      error: [PieceNotFound, WardrobeUnavailable],
+      error: [NotFound, Unavailable],
     }),
   )
   .add(
     HttpApiEndpoint.post('createUpload', '/uploads', {
       payload: CreateUpload,
       success: Upload,
-      error: [WardrobeUnavailable, RequestRefused],
+      error: [Unavailable, RequestRefused],
     }),
   )
   .add(
     HttpApiEndpoint.post('createVideoUpload', '/uploads/video', {
       payload: CreateVideoUpload,
       success: Upload,
-      error: [WardrobeUnavailable, RequestRefused],
+      error: [Unavailable, RequestRefused],
     }),
   )
   .add(
     HttpApiEndpoint.post('addPiece', '/pieces', {
       payload: AddPiece,
       success: Piece,
-      error: [UploadRefused, OperationConflict, WardrobeUnavailable, RequestRefused],
+      error: [UploadRefused, OperationConflict, Unavailable, RequestRefused],
     }),
   )
   .add(
@@ -128,14 +115,14 @@ export class WardrobeApi extends HttpApiGroup.make('wardrobe')
       params: { pieceId: PieceId },
       payload: UpdatePiece,
       success: Piece,
-      error: [PieceNotFound, WardrobeUnavailable, RequestRefused],
+      error: [NotFound, Unavailable, RequestRefused],
     }),
   )
   .add(
     HttpApiEndpoint.delete('deletePiece', '/pieces/:pieceId', {
       params: { pieceId: PieceId },
       success: HttpApiSchema.NoContent,
-      error: [PieceNotFound, WardrobeUnavailable, RequestRefused],
+      error: [NotFound, Unavailable, RequestRefused],
     }),
   )
   .add(
@@ -143,14 +130,14 @@ export class WardrobeApi extends HttpApiGroup.make('wardrobe')
       params: { pieceId: PieceId },
       payload: SetBack,
       success: Piece,
-      error: [PieceNotFound, UploadRefused, OperationConflict, WardrobeUnavailable, RequestRefused],
+      error: [NotFound, UploadRefused, OperationConflict, Unavailable, RequestRefused],
     }),
   )
   .add(
     HttpApiEndpoint.delete('removeBack', '/pieces/:pieceId/back', {
       params: { pieceId: PieceId },
       success: Piece,
-      error: [PieceNotFound, WardrobeUnavailable, RequestRefused],
+      error: [NotFound, Unavailable, RequestRefused],
     }),
   )
   .add(
@@ -158,7 +145,7 @@ export class WardrobeApi extends HttpApiGroup.make('wardrobe')
       params: { pieceId: PieceId },
       payload: ChoosePicture,
       success: Piece,
-      error: [PieceNotFound, NoCleanPicture, WardrobeUnavailable, RequestRefused],
+      error: [NotFound, NoCleanPicture, Unavailable, RequestRefused],
     }),
   )
   .middleware(SessionHttp.RequireSession)
@@ -167,26 +154,26 @@ export class WardrobeApi extends HttpApiGroup.make('wardrobe')
 /** Looks: outfits from the person's own pieces. Assistants make them, and so does the website when a
  * board or today's table is saved as a look. */
 export class LookApi extends HttpApiGroup.make('look')
-  .add(HttpApiEndpoint.get('listLooks', '/looks', { success: Looks, error: WardrobeUnavailable }))
+  .add(HttpApiEndpoint.get('listLooks', '/looks', { success: Looks, error: Unavailable }))
   .add(
     HttpApiEndpoint.post('createLook', '/looks', {
       payload: CreateLook,
       success: Look,
-      error: [PieceNotFound, OperationConflict, WardrobeUnavailable, RequestRefused],
+      error: [NotFound, OperationConflict, Unavailable, RequestRefused],
     }),
   )
   .add(
     HttpApiEndpoint.get('getLook', '/looks/:lookId', {
       params: { lookId: LookId },
       success: Look,
-      error: [LookNotFound, WardrobeUnavailable],
+      error: [NotFound, Unavailable],
     }),
   )
   .add(
     HttpApiEndpoint.delete('deleteLook', '/looks/:lookId', {
       params: { lookId: LookId },
       success: HttpApiSchema.NoContent,
-      error: [LookNotFound, WardrobeUnavailable, RequestRefused],
+      error: [NotFound, Unavailable, RequestRefused],
     }),
   )
   .add(
@@ -194,7 +181,7 @@ export class LookApi extends HttpApiGroup.make('look')
       params: { lookId: LookId },
       payload: ShareLook,
       success: Look,
-      error: [LookNotFound, ProfileNotPublished, WardrobeUnavailable, RequestRefused],
+      error: [NotFound, ProfileNotPublished, Unavailable, RequestRefused],
     }),
   )
   .middleware(SessionHttp.RequireSession)
@@ -204,19 +191,19 @@ export class LookApi extends HttpApiGroup.make('look')
  * goes up as a photo upload first (`wardrobe.createUpload`, then a `PUT`) and joins the board with
  * `addBoardImage`. */
 export class BoardApi extends HttpApiGroup.make('board')
-  .add(HttpApiEndpoint.get('listBoards', '/boards', { success: Boards, error: WardrobeUnavailable }))
+  .add(HttpApiEndpoint.get('listBoards', '/boards', { success: Boards, error: Unavailable }))
   .add(
     HttpApiEndpoint.post('createBoard', '/boards', {
       payload: CreateBoard,
       success: Board,
-      error: [OperationConflict, WardrobeUnavailable, RequestRefused],
+      error: [OperationConflict, Unavailable, RequestRefused],
     }),
   )
   .add(
     HttpApiEndpoint.get('getBoard', '/boards/:boardId', {
       params: { boardId: BoardId },
       success: Board,
-      error: [BoardNotFound, WardrobeUnavailable],
+      error: [NotFound, Unavailable],
     }),
   )
   .add(
@@ -224,14 +211,14 @@ export class BoardApi extends HttpApiGroup.make('board')
       params: { boardId: BoardId },
       payload: UpdateBoard,
       success: Board,
-      error: [BoardNotFound, WardrobeUnavailable, RequestRefused],
+      error: [NotFound, Unavailable, RequestRefused],
     }),
   )
   .add(
     HttpApiEndpoint.delete('deleteBoard', '/boards/:boardId', {
       params: { boardId: BoardId },
       success: HttpApiSchema.NoContent,
-      error: [BoardNotFound, WardrobeUnavailable, RequestRefused],
+      error: [NotFound, Unavailable, RequestRefused],
     }),
   )
   .add(
@@ -239,14 +226,7 @@ export class BoardApi extends HttpApiGroup.make('board')
       params: { boardId: BoardId },
       payload: SaveBoardItems,
       success: Board,
-      error: [
-        BoardNotFound,
-        BoardVersionConflict,
-        BoardItemRefused,
-        OperationConflict,
-        WardrobeUnavailable,
-        RequestRefused,
-      ],
+      error: [NotFound, BoardVersionConflict, BoardItemRefused, OperationConflict, Unavailable, RequestRefused],
     }),
   )
   .add(
@@ -254,7 +234,7 @@ export class BoardApi extends HttpApiGroup.make('board')
       params: { boardId: BoardId },
       payload: AddPins,
       success: Board,
-      error: [BoardNotFound, PinRefused, OperationConflict, WardrobeUnavailable, RequestRefused],
+      error: [NotFound, PinRefused, OperationConflict, Unavailable, RequestRefused],
     }),
   )
   .add(
@@ -262,7 +242,7 @@ export class BoardApi extends HttpApiGroup.make('board')
       params: { boardId: BoardId },
       payload: RemovePins,
       success: Board,
-      error: [BoardNotFound, OperationConflict, WardrobeUnavailable, RequestRefused],
+      error: [NotFound, OperationConflict, Unavailable, RequestRefused],
     }),
   )
   .add(
@@ -270,7 +250,7 @@ export class BoardApi extends HttpApiGroup.make('board')
       params: { boardId: BoardId },
       payload: SetVisibility,
       success: Board,
-      error: [BoardNotFound, ProfileNotPublished, WardrobeUnavailable, RequestRefused],
+      error: [NotFound, ProfileNotPublished, Unavailable, RequestRefused],
     }),
   )
   .add(
@@ -278,7 +258,7 @@ export class BoardApi extends HttpApiGroup.make('board')
       params: { boardId: BoardId },
       payload: AddBoardImage,
       success: BoardImage,
-      error: [BoardNotFound, UploadRefused, OperationConflict, WardrobeUnavailable, RequestRefused],
+      error: [NotFound, UploadRefused, OperationConflict, Unavailable, RequestRefused],
     }),
   )
   .middleware(SessionHttp.RequireSession)
@@ -290,7 +270,7 @@ export class WornApi extends HttpApiGroup.make('worn')
     HttpApiEndpoint.get('listWorn', '/worn', {
       query: WornRange,
       success: WornDays,
-      error: WardrobeUnavailable,
+      error: Unavailable,
     }),
   )
   .add(
@@ -298,14 +278,14 @@ export class WornApi extends HttpApiGroup.make('worn')
       params: { day: Day },
       payload: WearPieces,
       success: WornDay,
-      error: [PieceNotFound, WardrobeUnavailable, RequestRefused],
+      error: [NotFound, Unavailable, RequestRefused],
     }),
   )
   .add(
     HttpApiEndpoint.delete('clearWorn', '/worn/:day', {
       params: { day: Day },
       success: HttpApiSchema.NoContent,
-      error: [WardrobeUnavailable, RequestRefused],
+      error: [Unavailable, RequestRefused],
     }),
   )
   .middleware(SessionHttp.RequireSession)
@@ -313,19 +293,19 @@ export class WornApi extends HttpApiGroup.make('worn')
 
 /** The person's public profile: a handle, a name, a city and a bio, published or not. */
 export class ProfileApi extends HttpApiGroup.make('profile')
-  .add(HttpApiEndpoint.get('getProfile', '/profile', { success: Profile, error: WardrobeUnavailable }))
+  .add(HttpApiEndpoint.get('getProfile', '/profile', { success: Profile, error: Unavailable }))
   .add(
     HttpApiEndpoint.patch('updateProfile', '/profile', {
       payload: UpdateProfile,
       success: Profile,
-      error: [HandleTaken, HandleReserved, WardrobeUnavailable, RequestRefused],
+      error: [HandleTaken, HandleReserved, Unavailable, RequestRefused],
     }),
   )
   .add(
     HttpApiEndpoint.put('publishProfile', '/profile/published', {
       payload: PublishProfile,
       success: Profile,
-      error: [ProfileNeedsHandle, WardrobeUnavailable, RequestRefused],
+      error: [ProfileNeedsHandle, Unavailable, RequestRefused],
     }),
   )
   .middleware(SessionHttp.RequireSession)
@@ -337,68 +317,68 @@ class PublicApi extends HttpApiGroup.make('public')
     HttpApiEndpoint.get('profile', '/public/profiles/:handle', {
       params: { handle: Handle },
       success: PublicProfile,
-      error: [PublicNotFound, PublicSlowDown, WardrobeUnavailable],
+      error: [NotFound, SlowDown, Unavailable],
     }),
   )
   .add(
     HttpApiEndpoint.get('board', '/public/boards/:boardId', {
       params: { boardId: BoardId },
       success: PublicBoard,
-      error: [PublicNotFound, PublicSlowDown, WardrobeUnavailable],
+      error: [NotFound, SlowDown, Unavailable],
     }),
   )
   .add(
     HttpApiEndpoint.get('look', '/public/looks/:lookId', {
       params: { lookId: LookId },
       success: PublicLookPage,
-      error: [PublicNotFound, PublicSlowDown, WardrobeUnavailable],
+      error: [NotFound, SlowDown, Unavailable],
     }),
   )
   .add(
     HttpApiEndpoint.get('piece', '/public/pieces/:pieceId', {
       params: { pieceId: PieceId },
       success: PublicPiecePage,
-      error: [PublicNotFound, PublicSlowDown, WardrobeUnavailable],
+      error: [NotFound, SlowDown, Unavailable],
     }),
   )
   .add(
     HttpApiEndpoint.get('explore', '/public/explore', {
       query: ExploreQuery,
       success: Explore,
-      error: [PublicSlowDown, WardrobeUnavailable],
+      error: [SlowDown, Unavailable],
     }),
   )
   .add(
     HttpApiEndpoint.get('search', '/public/search', {
       query: SearchQuery,
       success: SearchResults,
-      error: [PublicSlowDown, WardrobeUnavailable],
+      error: [SlowDown, Unavailable],
     }),
   )
   .add(
     HttpApiEndpoint.get('meta', '/public/meta', {
       query: PageMetaQuery,
       success: PageMeta,
-      error: [PublicNotFound, PublicSlowDown, WardrobeUnavailable],
+      error: [NotFound, SlowDown, Unavailable],
     }),
   )
   .prefix('/api') {}
 
 /** What the person does with others: saves, follows, blocks, reports and the Following feed. */
 class SocialApi extends HttpApiGroup.make('social')
-  .add(HttpApiEndpoint.get('listSaved', '/saved', { success: Saved, error: WardrobeUnavailable }))
+  .add(HttpApiEndpoint.get('listSaved', '/saved', { success: Saved, error: Unavailable }))
   .add(
     HttpApiEndpoint.put('setSaved', '/saved', {
       payload: SetSaved,
       success: SavedState,
-      error: [PublicNotFound, NotWithYourself, WardrobeUnavailable, RequestRefused],
+      error: [NotFound, NotWithYourself, Unavailable, RequestRefused],
     }),
   )
   .add(
     HttpApiEndpoint.get('relation', '/people/:handle', {
       params: { handle: Handle },
       success: Relation,
-      error: [PublicNotFound, NotWithYourself, WardrobeUnavailable],
+      error: [NotFound, NotWithYourself, Unavailable],
     }),
   )
   .add(
@@ -406,7 +386,7 @@ class SocialApi extends HttpApiGroup.make('social')
       params: { handle: Handle },
       payload: SetFollowing,
       success: Relation,
-      error: [PublicNotFound, NotWithYourself, WardrobeUnavailable, RequestRefused],
+      error: [NotFound, NotWithYourself, Unavailable, RequestRefused],
     }),
   )
   .add(
@@ -414,19 +394,19 @@ class SocialApi extends HttpApiGroup.make('social')
       params: { handle: Handle },
       payload: SetBlocked,
       success: Relation,
-      error: [PublicNotFound, NotWithYourself, WardrobeUnavailable, RequestRefused],
+      error: [NotFound, NotWithYourself, Unavailable, RequestRefused],
     }),
   )
-  .add(HttpApiEndpoint.get('following', '/following', { success: People, error: WardrobeUnavailable }))
-  .add(HttpApiEndpoint.get('blocked', '/blocked', { success: People, error: WardrobeUnavailable }))
+  .add(HttpApiEndpoint.get('following', '/following', { success: People, error: Unavailable }))
+  .add(HttpApiEndpoint.get('blocked', '/blocked', { success: People, error: Unavailable }))
   .add(
     HttpApiEndpoint.post('report', '/reports', {
       payload: CreateReport,
       success: HttpApiSchema.NoContent,
-      error: [PublicNotFound, NotWithYourself, TooManyReports, WardrobeUnavailable, RequestRefused],
+      error: [NotFound, NotWithYourself, LimitReached, Unavailable, RequestRefused],
     }),
   )
-  .add(HttpApiEndpoint.get('feed', '/feed', { query: FeedQuery, success: Feed, error: WardrobeUnavailable }))
+  .add(HttpApiEndpoint.get('feed', '/feed', { query: FeedQuery, success: Feed, error: Unavailable }))
   .middleware(SessionHttp.RequireSession)
   .prefix('/api') {}
 

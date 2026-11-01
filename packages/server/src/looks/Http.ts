@@ -16,7 +16,7 @@ export const lookHandlers = (admit: Admit) =>
             asSessionAccount(
               looks.createLook(payload).pipe(
                 // A repeat of an operation whose look was deleted since: the id is spent, a new look needs a new one.
-                Effect.catchTag('LookNotFound', () => Effect.fail(OperationConflict.make({}))),
+                Effect.catchTag('NotFound', () => Effect.fail(OperationConflict.make({}))),
               ),
             ),
           ),

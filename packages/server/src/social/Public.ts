@@ -4,9 +4,9 @@ import {
   PublicBoard,
   PublicBoardSummary,
   PublicLook,
-  PublicNotFound,
+  NotFound,
   PublicPiece,
-  WardrobeUnavailable,
+  Unavailable,
 } from '@styld/protocol'
 import { Array, Context, Effect, Option, Schema } from 'effect'
 import { shownItem } from '../boards/Parts.ts'
@@ -30,9 +30,9 @@ import { digestOf } from '../kernel/Ids.ts'
 // which comes later, asks for a pass). A piece also needs a picture of its own: a cut-out or a clean drawing, never
 // the photo it came from.
 
-const unavailable = () => WardrobeUnavailable.make({})
+const unavailable = () => Unavailable.make({})
 const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
-const notFound = () => PublicNotFound.make({})
+const notFound = () => NotFound.make({})
 const orNotFound = <A>(found: Option.Option<A>) =>
   Option.match(found, { onNone: () => Effect.fail(notFound()), onSome: Effect.succeed })
 
@@ -352,7 +352,7 @@ const pages = (base: Reader) => ({
 const images = (
   r: Reader,
   bindings: ImageBindings,
-  versionOf: (key: string, size: ImageSize) => Effect.Effect<string, WardrobeUnavailable>,
+  versionOf: (key: string, size: ImageSize) => Effect.Effect<string, Unavailable>,
 ) => {
   const delivered = (
     source: { readonly key: string; readonly contentType: string },

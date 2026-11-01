@@ -1,12 +1,11 @@
+import { LimitReached, NotFound, OperationConflict, refusal, RequestRefused, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
 import { Schema } from 'effect'
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
-import { RequestRefused } from './Account.ts'
-import { BoardId, BoardNotFound } from './Board.ts'
-import { CaptureUnavailable, DailyLimitReached } from './Capture.ts'
+import { BoardId } from './Board.ts'
 import { PieceType } from './Garment.ts'
 import { CreateLook, Look, LookId } from './Look.ts'
-import { Colour, OperationConflict, OperationId, PieceId, PieceNotFound, UploadId, UploadRefused } from './Wardrobe.ts'
+import { Colour, OperationId, PieceId, UploadId, UploadRefused } from './Wardrobe.ts'
 
 // My Gallery (owner, 2026-10-31): the person's own outfit photos, optional and private. Styld finds the garments in a
 // photo for a credit and matches each to a piece; the person confirms or corrects it. Never public, never a capture.
@@ -74,33 +73,41 @@ export const AddPhotoToBoard = Schema.Struct({ operationId: OperationId, boardId
 export type AddPhotoToBoard = typeof AddPhotoToBoard.Type
 
 /** Styld found no person to cut out of the photo. */
-export class NoPersonFound extends Schema.TaggedError<NoPersonFound>()('NoPersonFound', {}, { httpApiStatus: 422 }) {}
-
-export class PhotoNotFound extends Schema.TaggedError<PhotoNotFound>()('PhotoNotFound', {}, { httpApiStatus: 404 }) {}
+export class NoPersonFound extends Schema.TaggedError<NoPersonFound>()(
+  'NoPersonFound',
+  {},
+  {
+    httpApiStatus: 422,
+    guide: refusal('no_person', 'Styld found no person in that photo.', 'Use a photo of someone wearing the outfit.'),
+  },
+) {}
 
 /** A photo with no piece confirmed in it yet has nothing to wear again. */
 export class NothingConfirmed extends Schema.TaggedError<NothingConfirmed>()(
   'NothingConfirmed',
   {},
-  { httpApiStatus: 409 },
+  {
+    httpApiStatus: 409,
+    guide: refusal('nothing_confirmed', 'No piece is confirmed in that photo yet.', 'Confirm its pieces first.'),
+  },
 ) {}
 
 const photoPath = { photoId: PhotoId }
 
 export class PhotoApi extends HttpApiGroup.make('photos')
-  .add(HttpApiEndpoint.get('listPhotos', '/photos', { success: Photos, error: CaptureUnavailable }))
+  .add(HttpApiEndpoint.get('listPhotos', '/photos', { success: Photos, error: Unavailable }))
   .add(
     HttpApiEndpoint.post('addPhoto', '/photos', {
       payload: AddPhoto,
       success: Photo,
-      error: [UploadRefused, OperationConflict, DailyLimitReached, CaptureUnavailable, RequestRefused],
+      error: [UploadRefused, OperationConflict, LimitReached, Unavailable, RequestRefused],
     }),
   )
   .add(
     HttpApiEndpoint.get('getPhoto', '/photos/:photoId', {
       params: photoPath,
       success: Photo,
-      error: [PhotoNotFound, CaptureUnavailable],
+      error: [NotFound, Unavailable],
     }),
   )
   .add(
@@ -108,14 +115,14 @@ export class PhotoApi extends HttpApiGroup.make('photos')
       params: photoPath,
       payload: UpdatePhoto,
       success: Photo,
-      error: [PhotoNotFound, CaptureUnavailable, RequestRefused],
+      error: [NotFound, Unavailable, RequestRefused],
     }),
   )
   .add(
     HttpApiEndpoint.delete('deletePhoto', '/photos/:photoId', {
       params: photoPath,
       success: HttpApiSchema.NoContent,
-      error: [PhotoNotFound, CaptureUnavailable, RequestRefused],
+      error: [NotFound, Unavailable, RequestRefused],
     }),
   )
   .add(
@@ -123,14 +130,14 @@ export class PhotoApi extends HttpApiGroup.make('photos')
       params: { ...photoPath, garmentId: PhotoGarmentId },
       payload: MatchGarment,
       success: Photo,
-      error: [PhotoNotFound, PieceNotFound, CaptureUnavailable, RequestRefused],
+      error: [NotFound, Unavailable, RequestRefused],
     }),
   )
   .add(
     HttpApiEndpoint.post('offerGarment', '/photos/:photoId/garments/:garmentId/offer', {
       params: { ...photoPath, garmentId: PhotoGarmentId },
       success: Photo,
-      error: [PhotoNotFound, CaptureUnavailable, RequestRefused],
+      error: [NotFound, Unavailable, RequestRefused],
     }),
   )
   .add(
@@ -138,14 +145,14 @@ export class PhotoApi extends HttpApiGroup.make('photos')
       params: photoPath,
       payload: WearAgain,
       success: Look,
-      error: [PhotoNotFound, NothingConfirmed, OperationConflict, CaptureUnavailable, RequestRefused],
+      error: [NotFound, NothingConfirmed, OperationConflict, Unavailable, RequestRefused],
     }),
   )
   .add(
     HttpApiEndpoint.post('cutOut', '/photos/:photoId/cutout', {
       params: photoPath,
       success: Photo,
-      error: [PhotoNotFound, NoPersonFound, CaptureUnavailable, RequestRefused],
+      error: [NotFound, NoPersonFound, Unavailable, RequestRefused],
     }),
   )
   .add(
@@ -153,14 +160,14 @@ export class PhotoApi extends HttpApiGroup.make('photos')
       params: photoPath,
       payload: AddPhotoToBoard,
       success: HttpApiSchema.NoContent,
-      error: [PhotoNotFound, BoardNotFound, CaptureUnavailable, RequestRefused],
+      error: [NotFound, Unavailable, RequestRefused],
     }),
   )
   .add(
     HttpApiEndpoint.get('piecePhotos', '/pieces/:pieceId/photos', {
       params: { pieceId: PieceId },
       success: Photos,
-      error: [PieceNotFound, CaptureUnavailable],
+      error: [NotFound, Unavailable],
     }),
   )
   .middleware(SessionHttp.RequireSession)

@@ -1,5 +1,5 @@
 import { boards, contentChecks, profiles, reports } from '@styld/db'
-import { type CheckState, WardrobeUnavailable } from '@styld/protocol'
+import { type CheckState, Unavailable } from '@styld/protocol'
 import { count, desc, eq, inArray, max } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Context, Effect, Option } from 'effect'
@@ -10,7 +10,7 @@ import { nowDate } from '../kernel/Db.ts'
 // whose public boards are Edits from Styld, hide or restore anything whatever its check said, and read reports and
 // checks. Only accounts on the admin list ever see these tools.
 
-const unavailable = () => WardrobeUnavailable.make({})
+const unavailable = () => Unavailable.make({})
 const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: unavailable })
 
 /** How many reports and checks a list shows. */

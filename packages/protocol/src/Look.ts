@@ -33,5 +33,3 @@ export const Look = Schema.Struct({
 export type Look = typeof Look.Type
 
 export const Looks = Schema.Struct({ looks: Schema.Array(Look) })
-
-export class LookNotFound extends Schema.TaggedError<LookNotFound>()('LookNotFound', {}, { httpApiStatus: 404 }) {}

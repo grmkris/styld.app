@@ -10,7 +10,7 @@ import {
   searchText,
   Tone,
   type UpdateProfile,
-  WardrobeUnavailable,
+  Unavailable,
 } from '@styld/protocol'
 import { Context, Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
@@ -18,7 +18,7 @@ import type { Checks } from '../safety/Checks.ts'
 import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
 import { makeProfileStore, type ProfileRow, type ProfileStore } from './ProfileStore.ts'
 
-const unavailable = () => WardrobeUnavailable.make({})
+const unavailable = () => Unavailable.make({})
 const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
 
 /** A tone that stays the same for an account until the person picks another. */

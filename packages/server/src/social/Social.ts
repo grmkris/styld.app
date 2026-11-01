@@ -3,7 +3,7 @@ import {
   type CreateReport,
   Handle,
   NotWithYourself,
-  PublicNotFound,
+  NotFound,
   type Relation,
   type ReportTarget,
   reportsPerHour,
@@ -13,8 +13,8 @@ import {
   type SetBlocked,
   type SetFollowing,
   type SetSaved,
-  TooManyReports,
-  WardrobeUnavailable,
+  LimitReached,
+  Unavailable,
 } from '@styld/protocol'
 import { Context, DateTime, Duration, Effect, Match, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
@@ -29,10 +29,10 @@ import { newId } from '../kernel/Ids.ts'
 // What people do with each other: saving what others made public, following, blocking and reporting. Everything
 // acts for `CurrentAccount`, sees others through the public pages' rules, and refuses one's own things.
 
-const unavailable = () => WardrobeUnavailable.make({})
+const unavailable = () => Unavailable.make({})
 const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
 const orNotFound = <A>(found: Option.Option<A>) =>
-  Option.match(found, { onNone: () => Effect.fail(PublicNotFound.make({})), onSome: Effect.succeed })
+  Option.match(found, { onNone: () => Effect.fail(NotFound.make({})), onSome: Effect.succeed })
 
 type Database = Parameters<typeof makeSocialStore>[0]
 
@@ -118,7 +118,7 @@ const savedThing = (p: Parts, kind: SaveRow['kind'], id: string, viewer: string,
             savedAt,
           }))
   return shown.pipe(
-    Effect.catchTag('PublicNotFound', () => Effect.succeed(undefined)),
+    Effect.catchTag('NotFound', () => Effect.succeed(undefined)),
     Effect.map(Option.fromNullishOr),
   )
 }
@@ -128,7 +128,7 @@ const someone = (p: Parts, viewer: string, handle: string) =>
   Effect.gen(function* () {
     const accountId = yield* Effect.flatMap(stored(p.store.accountOf(handle)), orNotFound)
     if (accountId === viewer) return yield* NotWithYourself.make({})
-    if (yield* stored(p.store.hasBlocked(accountId, viewer))) return yield* PublicNotFound.make({})
+    if (yield* stored(p.store.hasBlocked(accountId, viewer))) return yield* NotFound.make({})
     return accountId
   })
 const relationOf = (p: Parts, viewer: string, handle: string, accountId: string) =>
@@ -200,7 +200,7 @@ const saving = (p: Parts) => ({
     if (owner === accountId) return yield* NotWithYourself.make({})
     const at = yield* nowDate
     if (Option.isNone(yield* savedThing(p, row.kind, row.id, accountId, at.toISOString())))
-      return yield* PublicNotFound.make({})
+      return yield* NotFound.make({})
     yield* stored(p.store.save({ id: yield* newId('sv'), accountId, ...columnsOf(row), createdAt: at }))
     return { saved: true }
   }),
@@ -216,7 +216,7 @@ const relations = (p: Parts) => ({
     const { accountId } = yield* CurrentAccount
     const other = yield* someone(p, accountId, handle)
     if (input.following) {
-      if (yield* stored(p.store.hasBlocked(accountId, other))) return yield* PublicNotFound.make({})
+      if (yield* stored(p.store.hasBlocked(accountId, other))) return yield* NotFound.make({})
       yield* stored(p.store.follow(accountId, other, yield* nowDate))
     } else yield* stored(p.store.unfollow(accountId, other))
     return yield* relationOf(p, accountId, handle, other)
@@ -272,7 +272,8 @@ const reporting = (p: Parts) => ({
     const { owner, check } = yield* reported(p, accountId, input.target)
     if (owner === accountId) return yield* NotWithYourself.make({})
     const since = DateTime.toDateUtc(DateTime.subtractDuration(yield* DateTime.now, Duration.hours(1)))
-    if ((yield* stored(p.store.reportsSince(accountId, since))) >= reportsPerHour) return yield* TooManyReports.make({})
+    if ((yield* stored(p.store.reportsSince(accountId, since))) >= reportsPerHour)
+      return yield* LimitReached.make({ limit: 'reports' })
     const { filed, reporters } = yield* stored(
       p.store.report({
         id: yield* newId('rp'),

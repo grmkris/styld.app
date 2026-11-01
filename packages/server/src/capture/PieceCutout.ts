@@ -89,7 +89,7 @@ export const pieceCutout = (bucket: WardrobeBindings['bucket']) =>
         // A retried attempt repeats the same reservation, which the Wallet answers as already held.
         const held = yield* (yield* Usage).reserve(input.accountId, hold, policy.credits.photo).pipe(
           Effect.as(true),
-          Effect.catchTag('DailyLimitReached', () => Effect.succeed(false)),
+          Effect.catchTag('LimitReached', () => Effect.succeed(false)),
           Effect.mapError(() => CutoutFailed.make({})),
         )
         if (!held) return kept

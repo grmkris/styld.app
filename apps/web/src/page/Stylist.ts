@@ -154,9 +154,9 @@ export const SendMessage = Command.define('SendMessage', {
       return yield* sent.pipe(
         Effect.catchTags({
           StylistBusy: refused('busy'),
-          DailyLimitReached: refused('dailyLimit'),
-          StylistUnavailable: refused('unavailable'),
-          ChatNotFound: refused('unavailable'),
+          LimitReached: refused('dailyLimit'),
+          Unavailable: refused('unavailable'),
+          NotFound: refused('unavailable'),
         }),
         Effect.orElseSucceed(() => Message.FailedSend({ problem: 'network', operationId: Option.some(drawn) })),
       )

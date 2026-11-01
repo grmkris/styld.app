@@ -12,14 +12,14 @@ import {
 } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import { groupOf, type Piece, type ViewImages } from '@styld/protocol'
-import { Array, Effect, Match, Option, Predicate, Record, Schema } from 'effect'
+import { Array, Effect, Match, Option, Record, Schema } from 'effect'
 import type { Boards } from '../boards/Boards.ts'
 import type { CurrentAccount } from '../CurrentAccount.ts'
 import * as Base64 from 'effect/encoding/Base64'
 import { collect } from '../Streams.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { showsView } from './Resources.ts'
-import { tool, ToolError, ViewResult } from './Tools.ts'
+import { tool, ViewResult } from './Tools.ts'
 
 /** The view's words in one language, from the reviewed catalogs. */
 const labelsIn = (locale: Locale): ViewLabels => ({
@@ -32,14 +32,6 @@ const labelsIn = (locale: Locale): ViewLabels => ({
     accessories: format(locale, 'wardrobe.groups.accessories', {}),
   },
 })
-
-const unavailable = () =>
-  new ToolError({
-    code: 'unavailable',
-    message: 'Styld could not read your wardrobe just now.',
-    recovery: 'Try again in a moment.',
-    retryable: true,
-  })
 
 /** The view shows this many pieces with pictures; their thumbnails ride in the result's `_meta`, out of
  * the model's context, because a host's sandbox cannot load Styld's private image routes. */
@@ -156,7 +148,7 @@ export const viewTools = (wardrobe: Wardrobe['Service'], boards: Boards['Service
     meta: showsView,
     handler: () =>
       Effect.gen(function* () {
-        const pieces = yield* wardrobe.listPieces().pipe(Effect.mapError(unavailable))
+        const pieces = yield* wardrobe.listPieces()
         const view = WardrobeView.make({
           pieces: pieces.map((piece) => ({
             id: piece.id,
@@ -180,18 +172,7 @@ export const viewTools = (wardrobe: Wardrobe['Service'], boards: Boards['Service
     meta: showsView,
     handler: ({ boardId }) =>
       Effect.gen(function* () {
-        const board = yield* boards.getBoard(boardId).pipe(
-          Effect.mapError((error) =>
-            Predicate.isTagged(error, 'BoardNotFound')
-              ? new ToolError({
-                  code: 'not_found',
-                  message: 'There is no board with that id for this account.',
-                  recovery: 'Call board_list to find it.',
-                  retryable: false,
-                })
-              : unavailable(),
-          ),
-        )
+        const board = yield* boards.getBoard(boardId)
         const pins = board.pins.map(viewPin(origin))
         const view = BoardView.make({
           name: board.name,

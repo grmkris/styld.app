@@ -1,4 +1,5 @@
 import { Schema } from 'effect'
+import { byCase, passing, refusal } from './Errors.ts'
 import { Brand, Occasions, Pattern, PieceType, Season, ShopUrl } from './Garment.ts'
 
 /** The thirteen plain colours a person can pick (v1's `CATALOG_COLORS`). */
@@ -112,7 +113,14 @@ export const TurnSheet = Schema.Struct({
 })
 
 /** A frame sheet that is not a PNG laid out as it says, or a turn with no clean picture left to check it against. */
-export class SheetRefused extends Schema.TaggedError<SheetRefused>()('SheetRefused', {}, { httpApiStatus: 422 }) {}
+export class SheetRefused extends Schema.TaggedError<SheetRefused>()(
+  'SheetRefused',
+  {},
+  {
+    httpApiStatus: 422,
+    guide: refusal('sheet_refused', 'That frame sheet does not match its layout.', 'Ask for a new turn.'),
+  },
+) {}
 
 /** Show the drawing or the photo: `PUT /api/pieces/:pieceId/picture`. */
 export const ChoosePicture = Schema.Struct({ use: PictureChoice })
@@ -208,59 +216,117 @@ export type UpdatePiece = typeof UpdatePiece.Type
 export const SetBack = Schema.Struct({ operationId: OperationId, uploadId: UploadId })
 export type SetBack = typeof SetBack.Type
 
-export class PieceNotFound extends Schema.TaggedError<PieceNotFound>()('PieceNotFound', {}, { httpApiStatus: 404 }) {}
+const UploadRefusal = Schema.Literals([
+  'notFound',
+  'expired',
+  'notReceived',
+  'alreadyUsed',
+  'tooLarge',
+  'notAnImage',
+  'wrongType',
+  'tooLong',
+])
 
 /** A photo or video Styld will not take, and why. `tooLong` is a video over a minute. */
 export class UploadRefused extends Schema.TaggedError<UploadRefused>()(
   'UploadRefused',
+  { reason: UploadRefusal },
   {
-    reason: Schema.Literals([
-      'notFound',
-      'expired',
-      'notReceived',
-      'alreadyUsed',
-      'tooLarge',
-      'notAnImage',
-      'wrongType',
-      'tooLong',
-    ]),
+    httpApiStatus: 422,
+    guide: byCase<typeof UploadRefusal.Type>('reason', {
+      notFound: refusal(
+        'photo_refused',
+        'That upload does not exist or belongs to someone else.',
+        'Call upload_create for a new upload.',
+      ),
+      expired: refusal(
+        'photo_refused',
+        'That upload expired before the photo arrived.',
+        'Call upload_create again and PUT the photo within 15 minutes.',
+      ),
+      notReceived: refusal(
+        'photo_refused',
+        'The photo for that upload has not arrived yet.',
+        'PUT the photo bytes to the upload URL, then call the tool again.',
+      ),
+      alreadyUsed: refusal(
+        'photo_refused',
+        'That upload was already used.',
+        'Call piece_search to find what it became, or upload a new photo.',
+      ),
+      tooLarge: refusal('photo_refused', 'The photo is larger than 15 MB.', 'Use a smaller photo.'),
+      notAnImage: refusal(
+        'photo_refused',
+        'The file is not a JPEG, PNG, WebP, AVIF or GIF image.',
+        'Use a photo in one of those formats.',
+      ),
+      wrongType: refusal(
+        'photo_refused',
+        'The photo is not the type the upload declared.',
+        'Create the upload with the photo’s real content type.',
+      ),
+      tooLong: refusal('photo_refused', 'The video is longer than a minute.', 'Use a clip of a minute or less.'),
+    }),
   },
-  { httpApiStatus: 422 },
 ) {}
+
+const PictureRefusal = Schema.Literals(['photo', 'face', 'busy', 'off'])
 
 /** Why a piece cannot be drawn now: it shows its original photo, which never leaves Styld (`photo`); a face may show
  * in it (`face`); a drawing is already being made (`busy`); or clean pictures are off (`off`). */
 export class PictureRefused extends Schema.TaggedError<PictureRefused>()(
   'PictureRefused',
-  { reason: Schema.Literals(['photo', 'face', 'busy', 'off']) },
-  { httpApiStatus: 409 },
+  { reason: PictureRefusal },
+  {
+    httpApiStatus: 409,
+    guide: byCase<typeof PictureRefusal.Type>('reason', {
+      photo: refusal(
+        'picture_refused',
+        'That piece shows its original photo, which Styld never sends to an image model.',
+        'Tell the person; a new capture of the piece gives it a cut-out that can be drawn.',
+      ),
+      face: refusal(
+        'picture_refused',
+        'A face may show in that piece’s cut-out, so Styld does not send it to an image model.',
+        'Tell the person; a new capture without a face in view can be drawn.',
+      ),
+      busy: passing(
+        'picture_refused',
+        'A drawing of that piece is already being made.',
+        'Wait about a minute, then read its picture with piece_get.',
+      ),
+      off: refusal(
+        'picture_refused',
+        'Clean pictures are switched off on this Styld.',
+        'Tell the person; the piece keeps its photo.',
+      ),
+    }),
+  },
 ) {}
+
+const TurnRefusal = Schema.Literals(['picture', 'busy', 'off'])
 
 /** Why a piece cannot turn now: it has no clean picture to turn (`picture`), a turn is already being made (`busy`),
  * or turns are off (`off`). */
 export class TurnRefused extends Schema.TaggedError<TurnRefused>()(
   'TurnRefused',
-  { reason: Schema.Literals(['picture', 'busy', 'off']) },
-  { httpApiStatus: 409 },
+  { reason: TurnRefusal },
+  {
+    httpApiStatus: 409,
+    guide: byCase<typeof TurnRefusal.Type>('reason', {
+      picture: refusal('turn_refused', 'That piece has no clean picture to turn.', 'Redraw its picture first.'),
+      busy: passing('turn_refused', 'A turn of that piece is already being made.', 'Wait, then read the piece again.'),
+      off: refusal('turn_refused', 'Turns are switched off on this Styld.', 'Tell the person.'),
+    }),
+  },
 ) {}
 
 /** The piece has no clean drawing to show or choose: none was made, or it was dropped. */
 export class NoCleanPicture extends Schema.TaggedError<NoCleanPicture>()(
   'NoCleanPicture',
   {},
-  { httpApiStatus: 409 },
-) {}
-
-/** The operation id was already used for a different change. */
-export class OperationConflict extends Schema.TaggedError<OperationConflict>()(
-  'OperationConflict',
-  {},
-  { httpApiStatus: 409 },
-) {}
-
-/** Storage did not answer; the request may be retried. */
-export class WardrobeUnavailable extends Schema.TaggedError<WardrobeUnavailable>()(
-  'WardrobeUnavailable',
-  {},
-  { httpApiStatus: 503 },
+  {
+    httpApiStatus: 409,
+    guide: refusal('no_clean_picture', 'That piece has no clean drawing to show.', 'Redraw its picture first.'),
+  },
 ) {}

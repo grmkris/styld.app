@@ -1,4 +1,5 @@
 import type { CallToolResult } from '@modelcontextprotocol/server'
+import type { Guide } from '@styld/protocol'
 import { Effect, Predicate, Schema, SchemaAST, SchemaIssue } from 'effect'
 
 /** A refusal an assistant can act on: what went wrong and what to do next (the owner's myapps shape). */
@@ -8,6 +9,48 @@ export class ToolError extends Schema.TaggedError<ToolError>()('ToolError', {
   recovery: Schema.String,
   retryable: Schema.Boolean,
 }) {}
+
+/** A refusal from an operation: a tagged error whose class declares its `guide` (protocol `Errors.ts`). */
+export interface Refusal {
+  readonly _tag: string
+}
+
+/** An error that declares no guide: a gap the guide test catches, read as a plain failure meanwhile. */
+const unguided: Guide = {
+  code: 'failed',
+  message: 'Styld could not do that.',
+  recovery: 'Tell the person what was asked; it did not happen.',
+  retryable: false,
+}
+
+/** The guide the error's class declares, for its case when the guide has one per case. */
+const guideOf = (error: Refusal): Guide => {
+  const declared: unknown = error.constructor
+  const guide = Schema.isSchema(declared) ? Schema.resolveAnnotations(declared)?.guide : undefined
+  if (guide === undefined) return unguided
+  if (!('cases' in guide)) return guide
+  const value = Predicate.hasProperty(error, guide.field) ? error[guide.field] : undefined
+  return (Predicate.isString(value) ? guide.cases[value] : undefined) ?? unguided
+}
+
+/** `{field}` in a guide's words, as the error's own field. */
+const filled = (text: string, error: Refusal) =>
+  text.replace(/\{(\w+)\}/gu, (whole, field: string) => {
+    const value = Predicate.hasProperty(error, field) ? error[field] : undefined
+    return Predicate.isString(value) || Predicate.isNumber(value) ? String(value) : whole
+  })
+
+/** Every refusal as the tool error its guide declares: one mapping for every tool. */
+export const toolErrorOf = (error: Refusal): ToolError => {
+  if (error instanceof ToolError) return error
+  const guide = guideOf(error)
+  return new ToolError({
+    code: guide.code,
+    message: filled(guide.message, error),
+    recovery: filled(guide.recovery, error),
+    retryable: guide.retryable,
+  })
+}
 
 export type ToolAnnotations = {
   readonly readOnlyHint: boolean
@@ -85,7 +128,7 @@ export const tool = <A, R>(definition: {
   readonly parameters: Schema.Codec<A, unknown>
   readonly annotations: ToolAnnotations
   readonly meta?: Readonly<Record<string, unknown>>
-  readonly handler: (input: A) => Effect.Effect<unknown, ToolError, R>
+  readonly handler: (input: A) => Effect.Effect<unknown, Refusal, R>
 }): Tool<R> => {
   const { parameters, handler, ...rest } = definition
   const decode = (args: unknown): Effect.Effect<A, ToolError> => {
@@ -102,7 +145,11 @@ export const tool = <A, R>(definition: {
       Effect.mapError(() => invalidArguments('arguments: Invalid.')),
     )
   }
-  return { ...rest, inputSchema: inputSchema(parameters), run: (args) => Effect.flatMap(decode(args), handler) }
+  return {
+    ...rest,
+    inputSchema: inputSchema(parameters),
+    run: (args) => Effect.flatMap(decode(args), (input) => Effect.mapError(handler(input), toolErrorOf)),
+  }
 }
 
 /** The `tools/list` entries, in declaration order. */

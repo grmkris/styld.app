@@ -1,4 +1,4 @@
-import { PictureRefused, PieceNotFound, type RedrawPicture } from '@styld/protocol'
+import { PictureRefused, NotFound, type RedrawPicture } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { isStale, pictureView } from '../wardrobe/Shown.ts'
@@ -37,7 +37,7 @@ const drawablePiece = (parts: Parts, accountId: string, pieceId: string) =>
   Effect.gen(function* () {
     if ((yield* CaptureConfig).pictures.generator === 'off') return yield* PictureRefused.make({ reason: 'off' })
     const piece = yield* storedAs(parts.wardrobeStore.findPiece(accountId, pieceId))
-    if (Option.isNone(piece)) return yield* PieceNotFound.make({})
+    if (Option.isNone(piece)) return yield* NotFound.make({})
     if (!isCutout(piece.value)) return yield* PictureRefused.make({ reason: 'photo' })
   })
 

@@ -1,4 +1,4 @@
-import { CaptureUnavailable } from '@styld/protocol'
+import { Unavailable } from '@styld/protocol'
 import { Context, DateTime, Duration, Effect } from 'effect'
 import type { Boards } from '../boards/Boards.ts'
 import { CaptureConfig } from '../capture/Policy.ts'
@@ -38,7 +38,7 @@ const make = (parts: Parts) => ({
   }),
 })
 
-const unavailable = () => CaptureUnavailable.make({})
+const unavailable = () => Unavailable.make({})
 
 /** A job untouched this long lost its delivery: a drawing takes 90 s at most. */
 const sweepPatience = Duration.minutes(5)

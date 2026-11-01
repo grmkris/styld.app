@@ -1,4 +1,4 @@
-import { PhotoGarmentId, PhotoId, StyldApi, WardrobeUnavailable } from '@styld/protocol'
+import { PhotoGarmentId, PhotoId, StyldApi, Unavailable } from '@styld/protocol'
 import { Effect, Layer, Schema } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
 import * as HttpRouter from 'effect/http/HttpRouter'
@@ -44,7 +44,7 @@ export const photoHandlers = (admit: Admit) =>
 const PhotoTarget = Schema.Struct({ photoId: PhotoId, size: ShownSize })
 const GarmentTarget = Schema.Struct({ photoId: PhotoId, garmentId: PhotoGarmentId })
 
-const unavailable = () => WardrobeUnavailable.make({})
+const unavailable = () => Unavailable.make({})
 
 /** `GET /cdn/photos/:photoId/:size`: an outfit photo, and `GET /cdn/photos/:photoId/garments/:garmentId`: a garment
  * found in it, for its owner only. A photo never shows to anyone else. */

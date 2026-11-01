@@ -1,4 +1,4 @@
-import { type CaptureId, CaptureNotFound } from '@styld/protocol'
+import { type CaptureId, NotFound } from '@styld/protocol'
 import { DateTime, Effect, Option } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { captureKey, enqueueCapture, holdOf, type Parts, storedAs } from './Parts.ts'
@@ -46,8 +46,7 @@ export const retrying = (parts: Parts) => ({
     const { accountId } = yield* CurrentAccount
     const found = yield* storedAs(parts.store.findCapture(accountId, captureId))
     const now = yield* DateTime.now
-    if (Option.isNone(found) || !canRetry(found.value, DateTime.toEpochMillis(now)))
-      return yield* CaptureNotFound.make({})
+    if (Option.isNone(found) || !canRetry(found.value, DateTime.toEpochMillis(now))) return yield* NotFound.make({})
     const capture = found.value
     // A refunded capture pays again; an unknown or stuck one still holds its credits.
     const hold = capture.settlement === 'refunded' ? Option.some(yield* holdAgain(capture)) : Option.none<string>()
@@ -65,7 +64,7 @@ export const retrying = (parts: Parts) => ({
     if (!moved) {
       // Another request moved it first: the new hold goes back.
       if (Option.isSome(hold)) yield* (yield* Usage).settle(accountId, hold.value, 'refunded')
-      return yield* CaptureNotFound.make({})
+      return yield* NotFound.make({})
     }
     yield* enqueueCapture(parts, capture.id)
   }),
@@ -73,11 +72,11 @@ export const retrying = (parts: Parts) => ({
     const { accountId } = yield* CurrentAccount
     const found = yield* storedAs(parts.store.findCapture(accountId, captureId))
     const nowMillis = DateTime.toEpochMillis(yield* DateTime.now)
-    if (Option.isNone(found)) return yield* CaptureNotFound.make({})
+    if (Option.isNone(found)) return yield* NotFound.make({})
     const capture = found.value
     const removable = capture.status !== 'done' && (capture.status !== 'processing' || isStale(capture, nowMillis))
     // A capture whose pieces were kept stays: those pieces show its pictures.
-    if (!removable || (yield* storedAs(parts.store.hasKept(capture.id)))) return yield* CaptureNotFound.make({})
+    if (!removable || (yield* storedAs(parts.store.hasKept(capture.id)))) return yield* NotFound.make({})
     // A failed capture gets its credits back; an unknown or stuck one may have been billed, so it is consumed.
     if (capture.settlement === 'held')
       yield* (yield* Usage).settle(accountId, holdOf(capture), capture.status === 'failed' ? 'refunded' : 'consumed')

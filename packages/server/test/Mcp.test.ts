@@ -6,7 +6,7 @@ import {
   Handle,
   type Piece,
   PieceId,
-  PieceNotFound,
+  NotFound,
   PictureRefused,
   type RedrawPicture,
 } from '@styld/protocol'
@@ -77,7 +77,7 @@ const wardrobe = Wardrobe.of({
   // The first piece has a thumbnail; the others cannot be read, and the view goes without them.
   pieceImage: (pieceId) =>
     Effect.gen(function* () {
-      if (pieceId !== pieces[0]?.id) return yield* PieceNotFound.make({})
+      if (pieceId !== pieces[0]?.id) return yield* NotFound.make({})
       return { body: new Blob(['webp']).stream(), contentType: 'image/webp', version: 'v1' }
     }),
   choosePicture: notUsed,

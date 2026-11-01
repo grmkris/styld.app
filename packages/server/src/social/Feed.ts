@@ -1,5 +1,5 @@
 import { boardPins, boards, looks } from '@styld/db'
-import { type Author, type FeedItem, WardrobeUnavailable } from '@styld/protocol'
+import { type Author, type FeedItem, Unavailable } from '@styld/protocol'
 import { and, desc, eq, inArray, isNotNull, lt } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Array, DateTime, Effect, Option } from 'effect'
@@ -16,7 +16,7 @@ import { visibleAt } from './Visibility.ts'
 const pageSize = 20
 const maxRun = 2
 
-const unavailable = () => WardrobeUnavailable.make({})
+const unavailable = () => Unavailable.make({})
 const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: unavailable })
 
 interface Candidate {

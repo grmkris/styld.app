@@ -8,7 +8,7 @@ import {
   type SearchResults,
   stem,
   type SuggestedPerson,
-  WardrobeUnavailable,
+  Unavailable,
   wordsIn,
 } from '@styld/protocol'
 import { and, count, desc, eq, inArray, isNotNull, like, notExists, or, type SQL, sql } from 'drizzle-orm'
@@ -19,7 +19,7 @@ import type { PublicPages } from './Public.ts'
 // Explore and search over people and public boards. Rows are found here; what may show is the public pages' rule
 // for discovery: passed checks only, and no profile three people reported.
 
-const unavailable = () => WardrobeUnavailable.make({})
+const unavailable = () => Unavailable.make({})
 const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: unavailable })
 
 /** How many boards and people each part of Explore and a search shows. */

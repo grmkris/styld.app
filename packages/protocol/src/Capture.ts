@@ -155,23 +155,3 @@ export const HeldCheckAnswer = Schema.Struct({
   holding: Schema.Boolean,
 })
 export type HeldCheckAnswer = typeof HeldCheckAnswer.Type
-
-/** Today's free allowance is spent. */
-export class DailyLimitReached extends Schema.TaggedError<DailyLimitReached>()(
-  'DailyLimitReached',
-  { resetsAt: Schema.String },
-  { httpApiStatus: 429 },
-) {}
-
-export class CaptureNotFound extends Schema.TaggedError<CaptureNotFound>()(
-  'CaptureNotFound',
-  {},
-  { httpApiStatus: 404 },
-) {}
-
-/** Capture work could not run just now; try again. */
-export class CaptureUnavailable extends Schema.TaggedError<CaptureUnavailable>()(
-  'CaptureUnavailable',
-  {},
-  { httpApiStatus: 503 },
-) {}

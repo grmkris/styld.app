@@ -1,12 +1,4 @@
-import {
-  Day,
-  PieceId,
-  PieceNotFound,
-  type WearPieces,
-  WardrobeUnavailable,
-  type WornDay,
-  type WornRange,
-} from '@styld/protocol'
+import { Day, PieceId, NotFound, type WearPieces, Unavailable, type WornDay, type WornRange } from '@styld/protocol'
 import { Context, Effect } from 'effect'
 import type { CaptureMetrics } from '../capture/Metrics.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
@@ -16,7 +8,7 @@ import { makeWornStore } from './Store.ts'
 
 type Range = typeof WornRange.Type
 
-const unavailable = () => WardrobeUnavailable.make({})
+const unavailable = () => Unavailable.make({})
 const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
 
 /** The most days one read spans, after its first. */
@@ -60,7 +52,7 @@ const make = (database: Parameters<typeof makeWornStore>[0], metrics: CaptureMet
       const { accountId } = yield* CurrentAccount
       const pieceIds = [...new Set(input.pieceIds)]
       const owned = yield* stored(store.ownPieces(accountId, pieceIds))
-      if (pieceIds.some((id) => !owned.has(id))) return yield* PieceNotFound.make({})
+      if (pieceIds.some((id) => !owned.has(id))) return yield* NotFound.make({})
       yield* stored(store.wear(accountId, day, pieceIds))
       if (input.proposal !== undefined) yield* outfitKept(metrics, input.proposal, 'worn')
       const worn: WornDay = { day, pieceIds }

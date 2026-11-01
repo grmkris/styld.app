@@ -3,11 +3,8 @@ import {
   BoardId,
   BoardImageId,
   type BoardItem,
-  type BoardItemRefused,
   BoardName,
-  type BoardNotFound,
   type BoardSummary,
-  type BoardVersionConflict,
   boardHeight,
   boardWidth,
   LabelText,
@@ -17,24 +14,19 @@ import {
   maximumItemSize,
   minimumItemSize,
   OperationId,
-  type OperationConflict,
   Paper,
   PieceId,
   type Pin,
   PinId,
-  type PinRefused,
   pinsAtOnce,
-  type ProfileNotPublished,
   TableLabel,
   TableLayout,
   TablePicture,
   TablePiece,
   type TableThing,
   TextStyle,
-  type UploadRefused,
   UpdateBoard,
   Visibility,
-  type WardrobeUnavailable,
 } from '@styld/protocol'
 import { Effect, Match, Option, Schema } from 'effect'
 import type * as HttpClient from 'effect/http/HttpClient'
@@ -42,83 +34,6 @@ import type { Boards } from '../boards/Boards.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { tool, ToolError } from './Tools.ts'
 import { uploadFrom } from './WardrobeTools.ts'
-
-type BoardFailure =
-  | BoardNotFound
-  | BoardVersionConflict
-  | BoardItemRefused
-  | PinRefused
-  | OperationConflict
-  | UploadRefused
-  | ProfileNotPublished
-  | WardrobeUnavailable
-
-const refused = (code: string, message: string, recovery: string) =>
-  new ToolError({ code, message, recovery, retryable: false })
-
-const itemRefusals: Readonly<Record<BoardItemRefused['reason'], ToolError>> = {
-  pieceNotFound: refused(
-    'piece_not_found',
-    'A piece on that table is neither in this wardrobe nor pinned on the board.',
-    'Use piece ids from piece_search, or pin the piece first with pin_add.',
-  ),
-  imageNotFound: refused(
-    'picture_not_found',
-    'A picture on that table is not on this board.',
-    'Use imageId values from board_get, or add the picture with picture_pin.',
-  ),
-  duplicateId: refused('duplicate', 'The table holds one thing twice.', 'Give each thing once.'),
-  tableFull: refused(
-    'table_full',
-    `A table holds at most ${maximumBoardItems} things.`,
-    'Take some off with collage_set first.',
-  ),
-}
-
-const pinRefusals: Readonly<Record<PinRefused['reason'], ToolError>> = {
-  pieceNotFound: refused('piece_not_found', 'One of those pieces is not in this wardrobe.', 'Call piece_search.'),
-  lookNotFound: refused('look_not_found', 'One of those looks is not this account’s.', 'Call look_list.'),
-  nothingToPin: refused('nothing_to_pin', 'There was nothing to pin.', 'Give pieceIds or lookIds.'),
-  boardFull: refused('board_full', 'That would put more on the board than it holds.', 'Unpin something first.'),
-}
-
-/** Every board refusal as a tool error the assistant can act on. */
-const asToolError = (error: BoardFailure): ToolError =>
-  Match.value(error).pipe(
-    Match.tagsExhaustive({
-      BoardNotFound: () =>
-        refused('not_found', 'There is no board with that id for this account.', 'Call board_list to find it.'),
-      BoardVersionConflict: ({ version }) =>
-        new ToolError({
-          code: 'version_conflict',
-          message: `The table was saved elsewhere meanwhile; it is at version ${version} now.`,
-          recovery: 'Call board_get, then set the table again from its version.',
-          retryable: true,
-        }),
-      BoardItemRefused: ({ reason }) => itemRefusals[reason],
-      PinRefused: ({ reason }) => pinRefusals[reason],
-      OperationConflict: () =>
-        refused(
-          'operation_conflict',
-          'That operationId was already used for a different change.',
-          'Use a new operationId for a new change.',
-        ),
-      UploadRefused: () => refused('photo_refused', 'That picture could not be used.', 'Try another picture address.'),
-      ProfileNotPublished: () =>
-        refused(
-          'profile_not_published',
-          'A board goes public only from a published profile.',
-          'Ask the person whether to publish their profile with profile_publish first.',
-        ),
-      WardrobeUnavailable: () =>
-        new ToolError({
-          code: 'unavailable',
-          message: 'Styld could not reach the boards just now.',
-          recovery: 'Try again in a moment.',
-          retryable: true,
-        }),
-    }),
-  )
 
 /** A pin as assistants see it: what it holds and its page, never an image address. */
 const shownPin = (origin: string) => (pin: Pin) =>
@@ -196,11 +111,12 @@ const ThingInput = Schema.Struct({
 })
 type ThingInput = typeof ThingInput.Type
 
-const oneThing = refused(
-  'invalid_arguments',
-  'Each thing needs exactly one of pieceId, imageId or text.',
-  'Give a pieceId, an imageId from board_get, or the text of a label.',
-)
+const oneThing = new ToolError({
+  code: 'invalid_arguments',
+  message: 'Each thing needs exactly one of pieceId, imageId or text.',
+  recovery: 'Give a pieceId, an imageId from board_get, or the text of a label.',
+  retryable: false,
+})
 
 const thingOf = (input: {
   readonly [Field in keyof ThingInput]?: ThingInput[Field] | undefined
@@ -221,11 +137,7 @@ const readTools = (boards: Boards['Service'], origin: string) => [
     description: 'The boards of this account, most recently changed first, with how many things are pinned on each.',
     parameters: Schema.Struct({}),
     annotations: { readOnlyHint: true, openWorldHint: false },
-    handler: () =>
-      boards.listBoards().pipe(
-        Effect.map((found) => ({ boards: found.map(shownSummary(origin)) })),
-        Effect.mapError(asToolError),
-      ),
+    handler: () => boards.listBoards().pipe(Effect.map((found) => ({ boards: found.map(shownSummary(origin)) }))),
   }),
   tool({
     name: 'board_get',
@@ -233,8 +145,7 @@ const readTools = (boards: Boards['Service'], origin: string) => [
     description: `One board: its pins (pieces, looks and pictures, newest first, each with a pinId), its table (what lies on its collage, bottom first) and its version. ${tableUnits}`,
     parameters: Schema.Struct({ boardId: BoardId }),
     annotations: { readOnlyHint: true, openWorldHint: false },
-    handler: ({ boardId }) =>
-      boards.getBoard(boardId).pipe(Effect.map(shownBoard(origin)), Effect.mapError(asToolError)),
+    handler: ({ boardId }) => boards.getBoard(boardId).pipe(Effect.map(shownBoard(origin))),
   }),
 ]
 
@@ -248,7 +159,7 @@ const boardTools = (boards: Boards['Service'], origin: string) => {
         'Start an empty board with a name. Choose a new `operationId` for each board; repeating a call with the same one returns the first board.',
       parameters: Schema.Struct({ operationId: OperationId, name: BoardName }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-      handler: (input) => boards.createBoard(input).pipe(Effect.map(show), Effect.mapError(asToolError)),
+      handler: (input) => boards.createBoard(input).pipe(Effect.map(show)),
     }),
     tool({
       name: 'board_update',
@@ -256,8 +167,7 @@ const boardTools = (boards: Boards['Service'], origin: string) => {
       description: `Rename a board, change its paper (${Paper.literals.join(', ')}) or set its moods for Explore (up to three of ${Mood.literals.join(', ')}). Fields left out stay as they are.`,
       parameters: Schema.Struct({ boardId: BoardId, ...UpdateBoard.fields }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-      handler: ({ boardId, ...changes }) =>
-        boards.updateBoard(boardId, changes).pipe(Effect.map(show), Effect.mapError(asToolError)),
+      handler: ({ boardId, ...changes }) => boards.updateBoard(boardId, changes).pipe(Effect.map(show)),
     }),
     tool({
       name: 'board_publish',
@@ -266,8 +176,7 @@ const boardTools = (boards: Boards['Service'], origin: string) => {
         'Make a board public on the person’s published profile, at its link, or private again. Only when the person asks. Styld checks a public board before others see it: `check.state` is passed (shown everywhere), unsure (on the profile and its link only), failed (hidden from others, with a reason) or pending (being checked).',
       parameters: Schema.Struct({ boardId: BoardId, visibility: Visibility }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-      handler: ({ boardId, visibility }) =>
-        boards.setBoardVisibility(boardId, { visibility }).pipe(Effect.map(show), Effect.mapError(asToolError)),
+      handler: ({ boardId, visibility }) => boards.setBoardVisibility(boardId, { visibility }).pipe(Effect.map(show)),
     }),
     tool({
       name: 'board_delete',
@@ -276,8 +185,7 @@ const boardTools = (boards: Boards['Service'], origin: string) => {
         'Delete a board with its pins, its collage and the pictures put on it. Pieces and looks stay. Ask the person first.',
       parameters: Schema.Struct({ boardId: BoardId }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-      handler: ({ boardId }) =>
-        boards.deleteBoard(boardId).pipe(Effect.as({ deleted: true, boardId }), Effect.mapError(asToolError)),
+      handler: ({ boardId }) => boards.deleteBoard(boardId).pipe(Effect.as({ deleted: true, boardId })),
     }),
   ]
 }
@@ -301,8 +209,7 @@ const pinTools = (
         lookIds: Schema.optionalKey(Schema.Array(LookId).check(Schema.isMaxLength(pinsAtOnce))),
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-      handler: ({ boardId, ...input }) =>
-        boards.addPins(boardId, input).pipe(Effect.map(show), Effect.mapError(asToolError)),
+      handler: ({ boardId, ...input }) => boards.addPins(boardId, input).pipe(Effect.map(show)),
     }),
     tool({
       name: 'pin_remove',
@@ -315,8 +222,7 @@ const pinTools = (
         pinIds: Schema.Array(PinId).check(Schema.isMinLength(1), Schema.isMaxLength(pinsAtOnce)),
       }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-      handler: ({ boardId, ...input }) =>
-        boards.removePins(boardId, input).pipe(Effect.map(show), Effect.mapError(asToolError)),
+      handler: ({ boardId, ...input }) => boards.removePins(boardId, input).pipe(Effect.map(show)),
     }),
     tool({
       name: 'picture_pin',
@@ -332,12 +238,12 @@ const pinTools = (
       handler: ({ boardId, operationId, imageUrl }) =>
         Effect.gen(function* () {
           // A retry answers from its receipt before fetching the address again.
-          const earlier = yield* boards.boardImageAddedBy(operationId).pipe(Effect.mapError(asToolError))
+          const earlier = yield* boards.boardImageAddedBy(operationId)
           if (Option.isNone(earlier)) {
             const uploadId = yield* uploadFrom(wardrobe, http, imageUrl)
-            yield* boards.addBoardImage(boardId, { operationId, uploadId }).pipe(Effect.mapError(asToolError))
+            yield* boards.addBoardImage(boardId, { operationId, uploadId })
           }
-          return show(yield* boards.getBoard(boardId).pipe(Effect.mapError(asToolError)))
+          return show(yield* boards.getBoard(boardId))
         }),
     }),
   ]
@@ -360,11 +266,7 @@ const collageTools = (boards: Boards['Service'], origin: string) => {
       handler: ({ boardId, operationId, layout, add }) =>
         Effect.gen(function* () {
           const things = yield* Effect.forEach(add ?? [], thingOf)
-          return show(
-            yield* boards
-              .arrangeBoard(boardId, { operationId, layout, add: things })
-              .pipe(Effect.mapError(asToolError)),
-          )
+          return show(yield* boards.arrangeBoard(boardId, { operationId, layout, add: things }))
         }),
     }),
     tool({
@@ -392,9 +294,7 @@ const collageTools = (boards: Boards['Service'], origin: string) => {
           const placed = yield* Effect.forEach(items, ({ pieceId, imageId, text, style, ...at }) =>
             Effect.map(thingOf({ pieceId, imageId, text, style }), (thing) => ({ thing, ...at })),
           )
-          return show(
-            yield* boards.setTable(boardId, { operationId, version, items: placed }).pipe(Effect.mapError(asToolError)),
-          )
+          return show(yield* boards.setTable(boardId, { operationId, version, items: placed }))
         }),
     }),
   ]

@@ -1,4 +1,4 @@
-import { PieceNotFound, type PieceId, type SetBack } from '@styld/protocol'
+import { NotFound, type PieceId, type SetBack } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { ownerPiece, ownPiece, type Parts, stored, typeOf, unavailable, usableUpload } from './Parts.ts'
@@ -37,7 +37,7 @@ export const backing = (parts: Parts) => ({
         yield* receiptRow(operation, pieceId),
       ),
     )
-    if (Option.isNone(updated)) return yield* PieceNotFound.make({})
+    if (Option.isNone(updated)) return yield* NotFound.make({})
     return yield* ownerPiece(parts, accountId, updated.value)
   }),
   /** Forget the back. Its picture stays stored until the account goes: a tray card may still show it. */
@@ -47,7 +47,7 @@ export const backing = (parts: Parts) => ({
     const updated = yield* stored(
       parts.store.updatePiece(accountId, pieceId, { backImageKey: null, updatedAt: yield* nowDate }),
     )
-    if (Option.isNone(updated)) return yield* PieceNotFound.make({})
+    if (Option.isNone(updated)) return yield* NotFound.make({})
     return yield* ownerPiece(parts, accountId, updated.value)
   }),
 })

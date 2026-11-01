@@ -1,4 +1,5 @@
 import { Schema } from 'effect'
+import { passing } from './Errors.ts'
 import { LookId } from './Look.ts'
 import { OperationId, PieceId } from './Wardrobe.ts'
 
@@ -64,14 +65,12 @@ export type ChatSummary = typeof ChatSummary.Type
 export const Chats = Schema.Struct({ chats: Schema.Array(ChatSummary) })
 export type Chats = typeof Chats.Type
 
-export class ChatNotFound extends Schema.TaggedError<ChatNotFound>()('ChatNotFound', {}, { httpApiStatus: 404 }) {}
-
 /** Styld is still answering the last message: one reply at a time. */
-export class StylistBusy extends Schema.TaggedError<StylistBusy>()('StylistBusy', {}, { httpApiStatus: 409 }) {}
-
-/** Styld cannot answer just now, or is off. */
-export class StylistUnavailable extends Schema.TaggedError<StylistUnavailable>()(
-  'StylistUnavailable',
+export class StylistBusy extends Schema.TaggedError<StylistBusy>()(
+  'StylistBusy',
   {},
-  { httpApiStatus: 503 },
+  {
+    httpApiStatus: 409,
+    guide: passing('stylist_busy', 'Styld is still answering the last message.', 'Wait for the reply, then ask again.'),
+  },
 ) {}

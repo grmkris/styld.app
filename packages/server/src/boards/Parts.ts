@@ -1,12 +1,4 @@
-import {
-  Board,
-  type BoardId,
-  type BoardItem,
-  BoardNotFound,
-  BoardSummary,
-  type Look,
-  WardrobeUnavailable,
-} from '@styld/protocol'
+import { Board, type BoardId, type BoardItem, NotFound, BoardSummary, type Look, Unavailable } from '@styld/protocol'
 import { Effect, Match, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { shownLooks } from '../looks/Looks.ts'
@@ -28,7 +20,7 @@ export interface BoardBindings extends ImageBindings {
   readonly database: WardrobeBindings['database']
 }
 
-export const unavailable = () => WardrobeUnavailable.make({})
+export const unavailable = () => Unavailable.make({})
 export const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
 /** How many of its newest pins a board in a list shows. */
 export const coverPins = 4
@@ -166,13 +158,13 @@ export const summaries = (parts: Parts, rows: ReadonlyArray<BoardRow>) =>
 
 export const ownBoard = (parts: Parts, accountId: string, boardId: string) =>
   Effect.flatMap(stored(parts.store.findBoard(accountId, boardId)), (row) =>
-    Option.match(row, { onNone: () => Effect.fail(BoardNotFound.make({})), onSome: Effect.succeed }),
+    Option.match(row, { onNone: () => Effect.fail(NotFound.make({})), onSome: Effect.succeed }),
   )
 
 export const one = (parts: Parts, accountId: string, boardId: string) =>
   Effect.gen(function* () {
     const [board] = yield* shown(parts, [yield* ownBoard(parts, accountId, boardId)])
-    return board ?? (yield* BoardNotFound.make({}))
+    return board ?? (yield* NotFound.make({}))
   })
 
 /** What an operation already made on the boards, by the kernel's receipt rule. */

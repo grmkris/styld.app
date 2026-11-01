@@ -1,6 +1,7 @@
+import { Unavailable } from '@styld/protocol'
 import { Effect, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import { tool, ToolError } from './Tools.ts'
+import { tool } from './Tools.ts'
 import type { D1 } from '../OAuth.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import type * as HttpClient from 'effect/http/HttpClient'
@@ -34,13 +35,7 @@ export const instructions = [
 
 const AccountRow = Schema.Struct({ displayName: Schema.String, email: Schema.NullOr(Schema.String) })
 
-const unavailable = () =>
-  new ToolError({
-    code: 'unavailable',
-    message: 'Styld could not read your account just now.',
-    recovery: 'Try again in a moment.',
-    retryable: true,
-  })
+const unavailable = () => Unavailable.make({})
 
 /** The services the tools project. */
 export interface ToolServices {

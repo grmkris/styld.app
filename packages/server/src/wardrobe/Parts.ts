@@ -1,11 +1,11 @@
 import {
   Piece,
-  PieceNotFound,
+  NotFound,
   type PiecePicture,
   type PieceTurn,
   PieceType,
   UploadRefused,
-  WardrobeUnavailable,
+  Unavailable,
 } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
@@ -25,7 +25,7 @@ export interface WardrobeBindings extends ImageBindings {
   readonly queue: { send(message: WorkMessage): Promise<unknown> }
 }
 
-export const unavailable = () => WardrobeUnavailable.make({})
+export const unavailable = () => Unavailable.make({})
 export const refused = (reason: UploadRefused['reason']) => UploadRefused.make({ reason })
 export const stored = <A, R>(effect: Effect.Effect<A, StoreUnavailable, R>) => Effect.mapError(effect, unavailable)
 
@@ -68,7 +68,7 @@ export const ownPiece = (parts: Parts) =>
   Effect.fnUntraced(function* (pieceId: string) {
     const { accountId } = yield* CurrentAccount
     const row = yield* stored(parts.store.findPiece(accountId, pieceId))
-    return yield* Option.match(row, { onNone: () => Effect.fail(PieceNotFound.make({})), onSome: Effect.succeed })
+    return yield* Option.match(row, { onNone: () => Effect.fail(NotFound.make({})), onSome: Effect.succeed })
   })
 
 /** The piece's clean picture row, if a drawing was ever asked for. */

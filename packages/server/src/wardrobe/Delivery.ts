@@ -1,5 +1,5 @@
 import type * as Cloudflare from '@alchemy.run/cloudflare'
-import { WardrobeUnavailable } from '@styld/protocol'
+import { Unavailable } from '@styld/protocol'
 import type { RuntimeContext } from 'alchemy/RuntimeContext'
 import { Effect, Option } from 'effect'
 import type { Bucket } from '../kernel/Media.ts'
@@ -21,7 +21,7 @@ export interface DeliveredImage {
   readonly contentType: string
 }
 
-const unavailable = () => WardrobeUnavailable.make({})
+const unavailable = () => Unavailable.make({})
 
 /** A stored photo resized to WebP by the Images binding, at one of the sizes the website shows. A photo the
  * binding cannot transform is served as it was stored; a photo no longer in the bucket is none. */
@@ -49,7 +49,7 @@ export const deliverImage = Effect.fnUntraced(function* (
     catch: unavailable,
   }).pipe(
     // The transform consumed the first read, so the stored photo is read again.
-    Effect.catchTag('WardrobeUnavailable', (error) =>
+    Effect.catchTag('Unavailable', (error) =>
       options.fallback === 'none'
         ? Effect.fail(error)
         : Effect.map(read, (again) =>

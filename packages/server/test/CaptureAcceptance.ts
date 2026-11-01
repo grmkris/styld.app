@@ -166,7 +166,7 @@ const verifyAllowance = async (origin: string, owner: Call) => {
     source: 'picker',
   })
   expect(refused.status).toBe(429)
-  expect(await refused.json()).toMatchObject({ _tag: 'DailyLimitReached' })
+  expect(await refused.json()).toMatchObject({ _tag: 'LimitReached' })
   expect((await processed(owner, lastCapture)).tray.allowance.remaining).toBe(0)
   return { video, still, clip, last, lastCapture }
 }

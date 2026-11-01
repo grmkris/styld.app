@@ -1,10 +1,10 @@
+import { LimitReached, NotFound, passing, RequestRefused, SlowDown, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
 import { Schema } from 'effect'
 import { HttpApiEndpoint, HttpApiGroup } from 'effect/http-api'
-import { RequestRefused } from './Account.ts'
 import { Day } from './Day.ts'
 import { Occasion, Season, Slot } from './Garment.ts'
-import { PieceId, PieceNotFound } from './Wardrobe.ts'
+import { PieceId } from './Wardrobe.ts'
 
 // The outfit engine (owner, 2026-10-31): outfits made of the person's own pieces, around an anchor when there is one.
 // Two ways of making them are an experiment the owner decides between from data: Fast (rules propose, Clef ranks by
@@ -91,22 +91,14 @@ export const ProposalRef = Schema.Struct({
 })
 export type ProposalRef = typeof ProposalRef.Type
 
-/** Too many outfits asked for in a minute. */
-export class OutfitSlowDown extends Schema.TaggedError<OutfitSlowDown>()(
-  'OutfitSlowDown',
+/** Thinking's model gave no usable outfit just now; Fast may still answer. */
+export class ThinkingUnanswered extends Schema.TaggedError<ThinkingUnanswered>()(
+  'ThinkingUnanswered',
   {},
-  { httpApiStatus: 429 },
-) {}
-
-/** Today's Thinking is spent: Fast still answers. */
-export class ThinkingSpent extends Schema.TaggedError<ThinkingSpent>()('ThinkingSpent', {}, { httpApiStatus: 429 }) {}
-
-/** No outfit could be made just now: the wardrobe could not be read, or Thinking's model did not answer usefully (Fast
- * may). */
-export class OutfitUnavailable extends Schema.TaggedError<OutfitUnavailable>()(
-  'OutfitUnavailable',
-  {},
-  { httpApiStatus: 503 },
+  {
+    httpApiStatus: 503,
+    guide: passing('thinking_unanswered', 'Thinking gave no usable outfit just now.', 'Ask again with mode fast.'),
+  },
 ) {}
 
 export class OutfitApi extends HttpApiGroup.make('outfits')
@@ -114,7 +106,7 @@ export class OutfitApi extends HttpApiGroup.make('outfits')
     HttpApiEndpoint.post('makeOutfit', '/outfits', {
       payload: MakeOutfit,
       success: OutfitProposals,
-      error: [PieceNotFound, OutfitSlowDown, ThinkingSpent, OutfitUnavailable, RequestRefused],
+      error: [NotFound, SlowDown, LimitReached, ThinkingUnanswered, Unavailable, RequestRefused],
     }),
   )
   .middleware(SessionHttp.RequireSession)

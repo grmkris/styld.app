@@ -7,7 +7,7 @@ import {
   StyldApi,
   UploadId,
   UploadRefused,
-  type WardrobeUnavailable,
+  type Unavailable,
 } from '@styld/protocol'
 import type { AuthRequest } from '@yielded/auth/Auth'
 import { Effect, Layer, Option, Redacted, Schema } from 'effect'
@@ -112,7 +112,7 @@ const receiveUpload = Effect.gen(function* () {
       Effect.catchTags({
         UploadRefused: ({ reason }) =>
           HttpServerResponse.json({ _tag: 'UploadRefused', reason }, { status: refusalStatus[reason] }),
-        WardrobeUnavailable: () => Effect.succeed(HttpServerResponse.empty({ status: 503 })),
+        Unavailable: () => Effect.succeed(HttpServerResponse.empty({ status: 503 })),
       }),
       Effect.orDie,
     )
@@ -142,7 +142,7 @@ export type ShownImage = DeliveredImage & { readonly version: string }
 export const ownerImage = <A, I extends Readonly<Record<string, string | undefined>>>(
   auth: ReturnType<typeof makeAuthHttp>,
   target: Schema.ConstraintCodec<A, I, never, unknown>,
-  find: (target: A) => Effect.Effect<Option.Option<ShownImage>, WardrobeUnavailable, CurrentAccount>,
+  find: (target: A) => Effect.Effect<Option.Option<ShownImage>, Unavailable, CurrentAccount>,
 ) =>
   Effect.gen(function* () {
     const account = yield* cookieAccount(auth)
@@ -167,7 +167,7 @@ export const ownerImage = <A, I extends Readonly<Record<string, string | undefin
             },
           }),
         ),
-        Effect.catchTag('WardrobeUnavailable', () => Effect.succeed(HttpServerResponse.empty({ status: 503 }))),
+        Effect.catchTag('Unavailable', () => Effect.succeed(HttpServerResponse.empty({ status: 503 }))),
       )
     })
   })
@@ -180,7 +180,7 @@ const pieceImage = (auth: ReturnType<typeof makeAuthHttp>) =>
     const found = (image: ReturnType<typeof wardrobe.pieceImage>) =>
       image.pipe(
         Effect.map(Option.some),
-        Effect.catchTag('PieceNotFound', () => Effect.succeed(Option.none<ShownImage>())),
+        Effect.catchTag('NotFound', () => Effect.succeed(Option.none<ShownImage>())),
       )
     return {
       shown: yield* ownerImage(auth, ImageTarget, ({ pieceId, size }) => found(wardrobe.pieceImage(pieceId, size))),

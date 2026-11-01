@@ -1,4 +1,4 @@
-import { CaptureUnavailable, DailyLimitReached } from '@styld/protocol'
+import { Unavailable, LimitReached } from '@styld/protocol'
 import { CurrentActor } from '@styld/domain/CurrentActor.context'
 import { OperationId, UserId } from '@styld/domain/Identity'
 import { ReserveCredits } from '@styld/domain/Wallet/ReserveCredits.command'
@@ -14,7 +14,7 @@ import { layerCryptoWeb } from '@yielded/auth/WebCrypto'
 const dayOf = (now: DateTime.Utc) => DateTime.formatIso(now).slice(0, 10)
 const nextDay = (now: DateTime.Utc) => DateTime.formatIso(DateTime.add(DateTime.startOf(now, 'day'), { days: 1 }))
 
-const unavailable = () => CaptureUnavailable.make({})
+const unavailable = () => Unavailable.make({})
 
 /** Act as the service on an account's wallet: only trusted server code holds this authority. */
 const as = (accountId: string) => Effect.provideService(CurrentActor, { userId: UserId.make(accountId), service: true })
@@ -29,13 +29,13 @@ export class Usage extends Context.Service<
       accountId: string,
       operationId: string,
       credits: number,
-    ) => Effect.Effect<void, DailyLimitReached | CaptureUnavailable>
+    ) => Effect.Effect<void, LimitReached | Unavailable>
     readonly settle: (
       accountId: string,
       operationId: string,
       outcome: 'consumed' | 'refunded',
-    ) => Effect.Effect<void, CaptureUnavailable>
-    readonly remaining: (accountId: string) => Effect.Effect<number, CaptureUnavailable>
+    ) => Effect.Effect<void, Unavailable>
+    readonly remaining: (accountId: string) => Effect.Effect<number, Unavailable>
   }
 >()('@styld/server/Usage') {
   static readonly layer = (dailyAllowance: number) =>
@@ -66,9 +66,9 @@ export class Usage extends Context.Service<
             yield* wallets.send(UserId.make(accountId), command, { commandId: reserveCommandId(command) }).pipe(
               as(accountId),
               Effect.catchTag('InsufficientCredits', () =>
-                Effect.fail(DailyLimitReached.make({ resetsAt: nextDay(now) })),
+                Effect.fail(LimitReached.make({ limit: 'dailyCredits', resetsAt: nextDay(now) })),
               ),
-              Effect.mapError((error) => (Predicate.isTagged(error, 'DailyLimitReached') ? error : unavailable())),
+              Effect.mapError((error) => (Predicate.isTagged(error, 'LimitReached') ? error : unavailable())),
             )
           }),
           settle: Effect.fn('Styld.Usage.settle')(function* (

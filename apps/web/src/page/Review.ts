@@ -185,7 +185,7 @@ export const SendReview = Command.define('SendReview', {
     }).pipe(
       // Pieces someone already decided, or a reused operation id, cannot succeed as sent: the tray is read again.
       Effect.catchTags({
-        CaptureNotFound: () => Effect.succeed(Message.FailedReview({ retry: 'fresh' })),
+        NotFound: () => Effect.succeed(Message.FailedReview({ retry: 'fresh' })),
         OperationConflict: () => Effect.succeed(Message.FailedReview({ retry: 'fresh' })),
       }),
       Effect.orElseSucceed(() => Message.FailedReview({ retry: 'same' })),

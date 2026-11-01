@@ -108,17 +108,3 @@ export type PageMeta = typeof PageMeta.Type
 
 /** The page a preview is for: `/@handle`, `/boards/:id`, `/looks/:id` or `/pieces/:id`. */
 export const PageMetaQuery = Schema.Struct({ path: Schema.String.check(Schema.isMaxLength(200)) })
-
-/** Nothing public here: missing, private, unpublished, or held back by Styld's check, alike. */
-export class PublicNotFound extends Schema.TaggedError<PublicNotFound>()(
-  'PublicNotFound',
-  {},
-  { httpApiStatus: 404 },
-) {}
-
-/** Too many public reads from one network in a minute. */
-export class PublicSlowDown extends Schema.TaggedError<PublicSlowDown>()(
-  'PublicSlowDown',
-  {},
-  { httpApiStatus: 429 },
-) {}

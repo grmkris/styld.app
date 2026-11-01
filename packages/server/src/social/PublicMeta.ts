@@ -1,5 +1,5 @@
 import { format, type Locale } from '@styld/i18n'
-import { type PageMeta, PublicNotFound, type PublicPiece, type PublicPin } from '@styld/protocol'
+import { type PageMeta, NotFound, type PublicPiece, type PublicPin } from '@styld/protocol'
 import { Effect, Match } from 'effect'
 import type { PublicPages } from './Public.ts'
 
@@ -61,5 +61,5 @@ export const pageMeta = (pages: PublicPages['Service'], path: string, locale: Lo
         image: pieceImage(piece),
       } satisfies PageMeta
     }
-    return yield* PublicNotFound.make({})
+    return yield* NotFound.make({})
   })

@@ -83,9 +83,9 @@ export type OutMessage = typeof OutMessage.Type
 // COMMAND
 
 const problemOf = (error: unknown): MakeProblem => {
-  if (Predicate.isTagged(error, 'DailyLimitReached')) return 'dailyLimit'
+  if (Predicate.isTagged(error, 'LimitReached')) return 'dailyLimit'
   if (Predicate.isTagged(error, 'PromptRefused')) return 'refused'
-  if (Predicate.isTagged(error, 'GenerateSlowDown')) return 'slowDown'
+  if (Predicate.isTagged(error, 'SlowDown')) return 'slowDown'
   return 'failed'
 }
 

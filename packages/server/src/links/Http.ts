@@ -1,4 +1,4 @@
-import { LinkSlowDown, StyldApi } from '@styld/protocol'
+import { SlowDown, StyldApi } from '@styld/protocol'
 import { Effect } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
 import * as HttpClient from 'effect/http/HttpClient'
@@ -23,7 +23,7 @@ export const linkHandlers = (
           asSessionAccount(
             Effect.gen(function* () {
               const { accountId } = yield* CurrentAccount
-              if (!(yield* allowLink(accountId))) return yield* LinkSlowDown.make({})
+              if (!(yield* allowLink(accountId))) return yield* SlowDown.make({})
               return yield* pictureFromLink(wardrobe, payload.url).pipe(
                 Effect.provideService(HttpClient.HttpClient, http),
               )

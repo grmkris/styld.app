@@ -209,7 +209,7 @@ export const SendReport = Command.define('SendReport', {
       return Message.SucceededReport()
     }).pipe(
       Effect.catchIf(
-        (error) => Predicate.isTagged(error, 'TooManyReports'),
+        (error) => Predicate.isTagged(error, 'LimitReached'),
         () => Effect.succeed(Message.FailedReport({ tooMany: true })),
       ),
       Effect.orElseSucceed(() => Message.FailedReport({ tooMany: false })),
