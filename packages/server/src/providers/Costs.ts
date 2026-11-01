@@ -16,6 +16,7 @@ export const costs = {
 const chatPrices: Readonly<Record<string, { readonly input: number; readonly output: number }>> = {
   '@cf/meta/llama-3.3-70b-instruct-fp8-fast': { input: 0.29, output: 2.25 },
   '@cf/deepseek-ai/deepseek-v4.1-flash-1017': { input: 0.3, output: 1.2 },
+  '@cf/meta/llama-guard-3-8b': { input: 0.48, output: 0.03 },
 }
 
 /** One chat call's cost; a model without a listed price is priced as DeepSeek V4.1 Flash. */

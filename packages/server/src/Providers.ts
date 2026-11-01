@@ -101,7 +101,7 @@ export const providersOver = (
     Layer.succeed(VideoGenerator, makeVeoGenerator(veo)),
     Layer.succeed(PicturePainter, makeMusePainter(meta)),
     Layer.succeed(MoodPlanner, livePlanner(calls.runChat, metrics)),
-    contentJudge(calls),
+    contentJudge({ ...calls, metrics }),
     Layer.succeed(OutfitModels, {
       judge: clefJudge(calls.runClef, metrics),
       proposer: liveProposer(calls.runChat, metrics, thinkingModel),

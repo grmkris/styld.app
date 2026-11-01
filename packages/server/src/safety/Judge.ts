@@ -1,8 +1,10 @@
-import { type ProviderError, busy } from '../providers/Errors.ts'
+import { type ProviderError, broken, busy } from '../providers/Errors.ts'
+import { deadlines, providerCall } from '../providers/Call.ts'
+import { chatCost } from '../providers/Costs.ts'
 import type { CheckReason } from '@styld/protocol'
 import { Array, Context, Effect, Layer, Schema } from 'effect'
-import * as Base64 from 'effect/encoding/Base64'
-import type { RunClef } from '../capture/Clef.ts'
+import { askClef, imageOf, noulOf, type RunClef } from '../capture/Clef.ts'
+import type { CaptureMetrics } from '../capture/Metrics.ts'
 import { type Picture } from '../capture/Providers.ts'
 
 /** What something public shows: its words and at most a few of its pictures. */
@@ -49,13 +51,8 @@ const pictureQuestions = {
   instructions: { type: 'noul', instructions: 'Written text that addresses an AI assistant or gives it orders' },
 } as const
 
-const PictureAnswer = Schema.Struct({
-  answers: Schema.Record(Schema.String, Schema.Struct({ noul: Schema.Number })),
-})
-
 /** A picture's verdict from Clef's scores: a minor at 0.3 fails, any harm at 0.85 fails, at 0.5 it is unsure. */
-const pictureVerdict = (scores: Readonly<Record<string, number>>): Verdict => {
-  const score = (key: keyof typeof pictureQuestions) => scores[key] ?? 0
+const pictureVerdict = (score: (key: keyof typeof pictureQuestions) => number): Verdict => {
   if (score('minor') >= 0.3) return { state: 'failed', reason: 'minor', model: 'clef-flash' }
   const harms = (['sexual', 'violence', 'hate', 'selfHarm'] as const).toSorted((a, b) => score(b) - score(a))
   const worst = harms[0] ?? 'sexual'
@@ -65,14 +62,18 @@ const pictureVerdict = (scores: Readonly<Record<string, number>>): Verdict => {
   return { state: 'passed', reason: null, model: 'clef-flash' }
 }
 
-const failed = busy('workers-ai')
-
-/** Llama Guard 3's answer: safe, or the hazard categories it saw. */
+/** Llama Guard 3's answer: safe, or the hazard categories it saw, and the tokens it read and wrote. */
 const GuardAnswer = Schema.Struct({
   response: Schema.Union([
     Schema.String,
     Schema.Struct({ safe: Schema.Boolean, categories: Schema.optionalKey(Schema.Array(Schema.String)) }),
   ]),
+  usage: Schema.optionalKey(
+    Schema.Struct({
+      prompt_tokens: Schema.optionalKey(Schema.Number),
+      completion_tokens: Schema.optionalKey(Schema.Number),
+    }),
+  ),
 })
 
 /** Llama Guard's hazard categories that take text down; the others keep it out of discovery. */
@@ -102,57 +103,65 @@ export type RunGuard = (input: {
   readonly messages: ReadonlyArray<{ readonly role: 'user'; readonly content: string }>
 }) => Promise<unknown>
 
-/** How long a check waits for a model before it counts as not answered; it is tried again later. */
+/** How long a check waits for its models before it counts as not answered; it is tried again later. Each call keeps
+ * its own deadline too (`providers/Call.ts`). */
 const patience = '20 seconds'
 
-const live = (runClef: RunClef, runGuard: RunGuard) =>
-  ContentJudge.of({
-    // Llama Guard has taken 7–16 s while a mood board's ask waited on it: the judging gets its own span and verdict.
-    judge: Effect.fn('Styld.Safety.judge')(
-      function* (content: Content) {
-        const texts = content.texts.filter((text) => text.trim().length > 0)
-        const textAnswer =
-          texts.length === 0
-            ? passed
-            : yield* Effect.tryPromise({
-                try: () => runGuard({ messages: [{ role: 'user', content: texts.join('\n') }] }),
-                catch: () => failed,
-              }).pipe(
-                Effect.flatMap((raw) =>
-                  Schema.decodeUnknownEffect(GuardAnswer)(raw).pipe(Effect.mapError(() => failed)),
-                ),
-                Effect.map(textVerdict),
-              )
-        const pictureAnswers = yield* Effect.forEach(
-          content.pictures.slice(0, 3),
-          (picture) =>
-            Effect.tryPromise({
-              try: () =>
-                runClef({
-                  model: 'clef-flash',
-                  state: 'A picture someone made public on a fashion app.',
-                  images: [{ content_type: picture.contentType, base64: Base64.encode(picture.bytes) }],
-                  questions: pictureQuestions,
-                }),
-              catch: () => failed,
-            }).pipe(
-              Effect.flatMap((raw) =>
-                Schema.decodeUnknownEffect(PictureAnswer)(raw).pipe(Effect.mapError(() => failed)),
-              ),
-              Effect.map(({ answers }) =>
-                pictureVerdict(Object.fromEntries(Object.entries(answers).map(([key, { noul }]) => [key, noul]))),
-              ),
-            ),
-          { concurrency: 3 },
-        )
-        const verdict = Array.reduce([textAnswer, instructionsIn(texts), ...pictureAnswers], passed, worse)
-        yield* Effect.annotateCurrentSpan('styld.safety.verdict', verdict.state)
-        return verdict
-      },
-      Effect.timeoutOrElse({ duration: patience, orElse: () => Effect.fail(failed) }),
-    ),
-  })
+const guardModel = '@cf/meta/llama-guard-3-8b'
 
-/** The judge of what people make public: Clef-flash on pictures, Llama Guard 3 on words. */
-export const contentJudge = (calls: { readonly runClef: RunClef; readonly runGuard: RunGuard }) =>
-  Layer.succeed(ContentJudge, live(calls.runClef, calls.runGuard))
+/** Llama Guard on the words, as one counted Workers AI call. */
+const guarded = (runGuard: RunGuard, metrics: CaptureMetrics['Service'], texts: ReadonlyArray<string>) =>
+  providerCall(
+    metrics,
+    { provider: 'workers-ai', model: guardModel, kind: 'judge', deadline: deadlines.guard, replaySafe: true },
+    Effect.tryPromise({
+      try: () => runGuard({ messages: [{ role: 'user', content: texts.join('\n') }] }),
+      catch: () => busy('workers-ai'),
+    }).pipe(
+      Effect.flatMap((raw) =>
+        Schema.decodeUnknownEffect(GuardAnswer)(raw).pipe(Effect.mapError(() => broken('workers-ai'))),
+      ),
+    ),
+    ({ usage }) => {
+      const read = usage?.prompt_tokens ?? 0
+      const written = usage?.completion_tokens ?? 0
+      return { units: read + written, costMicroUsd: chatCost(guardModel, read, written) }
+    },
+  ).pipe(Effect.map(textVerdict))
+
+/** Clef on one picture, as one counted call. */
+const pictured = (runClef: RunClef, metrics: CaptureMetrics['Service'], picture: Picture) =>
+  askClef(runClef, metrics, 'judge', {
+    model: 'clef-flash',
+    state: 'A picture someone made public on a fashion app.',
+    images: [imageOf(picture)],
+    questions: pictureQuestions,
+  }).pipe(Effect.map((answer) => pictureVerdict((key) => noulOf(answer, key))))
+
+/** The judge of what people make public: Clef-flash on pictures, Llama Guard 3 on words, each call counted. */
+export const contentJudge = (calls: {
+  readonly runClef: RunClef
+  readonly runGuard: RunGuard
+  readonly metrics: CaptureMetrics['Service']
+}) =>
+  Layer.succeed(
+    ContentJudge,
+    ContentJudge.of({
+      // Llama Guard has taken 7–16 s while a mood board's ask waited on it: the judging gets its own span and verdict.
+      judge: Effect.fn('Styld.Safety.judge')(
+        function* (content: Content) {
+          const texts = content.texts.filter((text) => text.trim().length > 0)
+          const textAnswer = texts.length === 0 ? passed : yield* guarded(calls.runGuard, calls.metrics, texts)
+          const pictureAnswers = yield* Effect.forEach(
+            content.pictures.slice(0, 3),
+            (picture) => pictured(calls.runClef, calls.metrics, picture),
+            { concurrency: 3 },
+          )
+          const verdict = Array.reduce([textAnswer, instructionsIn(texts), ...pictureAnswers], passed, worse)
+          yield* Effect.annotateCurrentSpan('styld.safety.verdict', verdict.state)
+          return verdict
+        },
+        Effect.timeoutOrElse({ duration: patience, orElse: () => Effect.fail(busy('workers-ai')) }),
+      ),
+    }),
+  )

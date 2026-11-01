@@ -10,6 +10,8 @@ import { busy, isBusy, isOutcomeUnknown, outcomeUnknown, type ProviderError } fr
 export const deadlines = {
   /** Clef answers a few questions about one picture in about a second. */
   clef: '30 seconds',
+  /** Llama Guard 3 reads a public thing's words; it has taken 7 to 16 s while a mood board waited on it. */
+  guard: '20 seconds',
   /** Cloudflare Images transforms one picture. */
   images: '30 seconds',
   /** SAM on one still. */
