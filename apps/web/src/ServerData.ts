@@ -1,4 +1,4 @@
-import { Piece } from '@styld/protocol'
+import { BoardSummary, Piece } from '@styld/protocol'
 import { Effect, Number, Option, Result, Schema } from 'effect'
 import { AsyncData, Command, Subscription, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
@@ -6,8 +6,8 @@ import { modifyFields } from 'foldkit/struct'
 import { Misses, pollWhilePending } from './Polling.ts'
 import { StyldClient } from './StyldClient.ts'
 
-// What the server holds that several pages show: the person's pieces, read once for the app and kept on screen while
-// they are asked for again. Pages take them as a view input and ask for them through their OutMessages.
+// What the server holds that several pages show: the person's pieces and boards, each read in one place for the app
+// and kept on screen while asked for again. Pages take them as view inputs and ask for them through their OutMessages.
 
 // MODEL
 
@@ -20,10 +20,15 @@ export type LoadError = typeof LoadError.Type
 export const PiecesData = AsyncData.Schema(Schema.Array(Piece), Schema.Literal('Unavailable'))
 export type PiecesData = typeof PiecesData.schema.Type
 
-export const Model = Schema.Struct({ pieces: PiecesData.schema, misses: Misses })
+/** The person's boards as last read, newest first: the Boards page's list, Save to board's choices and Home's last
+ * board. */
+export const BoardsData = AsyncData.Schema(Schema.Array(BoardSummary), Schema.Literal('Unavailable'))
+export type BoardsData = typeof BoardsData.schema.Type
+
+export const Model = Schema.Struct({ pieces: PiecesData.schema, misses: Misses, boards: BoardsData.schema })
 export type Model = typeof Model.Type
 
-export const init = (): Model => ({ pieces: AsyncData.Idle(), misses: 0 })
+export const init = (): Model => ({ pieces: AsyncData.Idle(), misses: 0, boards: AsyncData.Idle() })
 
 /** The pieces as last read, or none yet. */
 export const piecesOf = (model: Model): ReadonlyArray<Piece> =>
@@ -35,6 +40,8 @@ export const Message = defineMessageUnion({
   SucceededListPieces: { pieces: Schema.Array(Piece) },
   FailedListPieces: {},
   TickedPiecesRefresh: {},
+  SucceededListBoards: { boards: Schema.Array(BoardSummary) },
+  FailedListBoards: {},
 })
 export type Message = typeof Message.Type
 
@@ -47,6 +54,15 @@ export const ListPieces = Command.define('ListPieces', {
     const { pieces } = yield* api.wardrobe.listPieces()
     return Message.SucceededListPieces({ pieces })
   }).pipe(Effect.orElseSucceed(() => Message.FailedListPieces())),
+})
+
+export const ListBoards = Command.define('ListBoards', {
+  messages: [Message.SucceededListBoards, Message.FailedListBoards],
+  execute: Effect.gen(function* () {
+    const api = yield* (yield* StyldClient).api
+    const { boards } = yield* api.board.listBoards()
+    return Message.SucceededListBoards({ boards })
+  }).pipe(Effect.orElseSucceed(() => Message.FailedListBoards())),
 })
 
 // UPDATE
@@ -72,6 +88,15 @@ export const revisitPieces = Update.combine<Model, Message, StyldClient>([
 /** Asking again for pieces already here, after a change that touches them; a request on its way is not repeated. */
 const refreshPieces = piecesCache(AsyncData.revalidate)
 
+/** Showing the boards (the Boards page, Save to board's sheet, Home): those already here stay on screen while they are
+ * asked for again, so a board made meanwhile appears; a first time asks, and a request on its way is not repeated. */
+export const revisitBoards = Update.refresh<Model, Message, ReadonlyArray<BoardSummary>, 'Unavailable', StyldClient>({
+  read: (model: Model) => Option.some(model.boards),
+  revalidate: AsyncData.revalidateOrLoad,
+  write: (model: Model, boards: BoardsData) => modifyFields(model, { boards: () => boards }),
+  load: ListBoards(),
+})
+
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     SucceededListPieces: ({ pieces }) => ({
@@ -85,6 +110,13 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       }),
     }),
     TickedPiecesRefresh: () => refreshPieces(model),
+    SucceededListBoards: ({ boards }) => ({
+      model: modifyFields(model, { boards: () => BoardsData.Success({ data: boards }) }),
+    }),
+    // A failed read keeps the boards already shown.
+    FailedListBoards: () => ({
+      model: modifyFields(model, { boards: (boards) => AsyncData.settle(boards, Result.fail('Unavailable' as const)) }),
+    }),
   })
 
 // SUBSCRIPTION

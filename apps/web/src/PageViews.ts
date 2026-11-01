@@ -70,7 +70,12 @@ const homePage = (model: Model, h: HtmlBuilder<Message>): Html => {
     ? onPage(
         model,
         lenses.today,
-        (today) => h.submodel({ ...slot(lenses.today, today), view: TodayView.view, viewInputs: { locale, pieces } }),
+        (today) =>
+          h.submodel({
+            ...slot(lenses.today, today),
+            view: TodayView.view,
+            viewInputs: { locale, pieces, boards: model.data.boards },
+          }),
         h,
       )
     : onPage(model, lenses.explore, (explore) => landingView(explore, locale, h), h)
@@ -154,7 +159,12 @@ const tabPages = (model: Model, h: HtmlBuilder<Message>) => {
       onPage(
         model,
         lenses.boards,
-        (boards) => h.submodel({ ...slot(lenses.boards, boards), view: BoardsView.view, viewInputs: { locale } }),
+        (boards) =>
+          h.submodel({
+            ...slot(lenses.boards, boards),
+            view: BoardsView.view,
+            viewInputs: { locale, boards: model.data.boards },
+          }),
         h,
       ),
     Explore: () => visitPage(model, lenses.explore, h),
@@ -197,14 +207,24 @@ const wardrobePages = (model: Model, h: HtmlBuilder<Message>) => {
       onPage(
         model,
         lenses.piece,
-        (piece) => h.submodel({ ...slot(lenses.piece, piece), view: PieceView.view, viewInputs: { locale } }),
+        (piece) =>
+          h.submodel({
+            ...slot(lenses.piece, piece),
+            view: PieceView.view,
+            viewInputs: { locale, boards: model.data.boards },
+          }),
         h,
       ),
     Look: () =>
       onPage(
         model,
         lenses.look,
-        (look) => h.submodel({ ...slot(lenses.look, look), view: LookView.view, viewInputs: { locale, signedIn } }),
+        (look) =>
+          h.submodel({
+            ...slot(lenses.look, look),
+            view: LookView.view,
+            viewInputs: { locale, signedIn, boards: model.data.boards },
+          }),
         h,
       ),
     Photo: () =>
@@ -215,7 +235,7 @@ const wardrobePages = (model: Model, h: HtmlBuilder<Message>) => {
           h.submodel({
             ...slot(lenses.photo, photo),
             view: PhotoView.view,
-            viewInputs: { locale, timeZone, pieces },
+            viewInputs: { locale, timeZone, pieces, boards: model.data.boards },
           }),
         h,
       ),

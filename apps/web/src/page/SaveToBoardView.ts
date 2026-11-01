@@ -13,6 +13,7 @@ import { styled } from '../Styled.ts'
 import { bottomSheet, sheetShown } from './Sheet.ts'
 import { Message, type Model, Saving } from './SaveToBoard.ts'
 import * as styles from './SaveToBoardView.styles.ts'
+import type { BoardsData } from '../ServerData.ts'
 
 const boardRow = (board: BoardSummary, isSending: boolean, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.keyed('li')(
@@ -51,9 +52,9 @@ const statusView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html
     Failed: () => h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'saveToBoard.failed', {})]),
   })
 
-const boardsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+const boardsView = (model: Model, boards: BoardsData, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const isSending = Saving.guards.Sending(model.saving)
-  return AsyncData.matchData(model.boards, {
+  return AsyncData.matchData(boards, {
     onEmpty: () => h.p([h.Role('status')], [loader(h)]),
     onFailure: () =>
       h.div(
@@ -70,8 +71,8 @@ const boardsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html
           ),
         ],
       ),
-    onData: (boards) =>
-      Array.match(boards, {
+    onData: (list) =>
+      Array.match(list, {
         onEmpty: () => h.p(styled(h, styles.note()), [format(locale, 'saveToBoard.noBoards', {})]),
         onNonEmpty: (some) =>
           h.ul(
@@ -116,7 +117,7 @@ const newBoardView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Ht
   )
 }
 
-const sheetView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const sheetView = (model: Model, boards: BoardsData, locale: Locale, h: HtmlBuilder<Message>): Html =>
   bottomSheet(
     {
       dialog: model.sheet,
@@ -125,7 +126,7 @@ const sheetView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html 
         h.div(styled(h, styles.body()), [
           statusView(model, locale, h),
           h.h3(styled(h, styles.section()), [format(locale, 'saveToBoard.boardsLabel', {})]),
-          boardsView(model, locale, h),
+          boardsView(model, boards, locale, h),
           newBoardView(model, locale, h),
         ]),
       ],
@@ -135,8 +136,11 @@ const sheetView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html 
     h,
   )
 
+/** What a page showing "Save to board" hands it: the language, and the person's boards as the app last read them. */
+export type ViewInputs = { readonly locale: Locale; readonly boards: BoardsData }
+
 /** The "Save to board" button, and its sheet while open. */
-export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
+export const view = Submodel.defineView<Model, Message, ViewInputs>((model, { locale, boards }, h) =>
   h.div(
     [],
     [
@@ -144,7 +148,7 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
         { label: format(locale, 'saveToBoard.action', {}), style: secondaryAction(), onClick: Message.ClickedSave() },
         h,
       ),
-      sheetShown(model.sheet) ? sheetView(model, locale, h) : h.empty,
+      sheetShown(model.sheet) ? sheetView(model, boards, locale, h) : h.empty,
     ],
   ),
 )

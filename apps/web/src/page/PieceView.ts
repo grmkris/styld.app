@@ -294,7 +294,12 @@ const picturePanel = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
   )
 }
 
-const pieceDetails = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const pieceDetails = (
+  piece: Piece,
+  model: Model,
+  { locale, boards }: SaveToBoardView.ViewInputs,
+  h: HtmlBuilder<Message>,
+): Html =>
   h.div(styled(h, styles.details()), [
     h.h1(styled(h, styles.pieceName()), [pieceLabel(piece, locale)]),
     // What one of its kind is, as its public page says; an unnamed piece's title already says it.
@@ -316,7 +321,7 @@ const pieceDetails = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
           slotId: 'piece-save-to-board',
           model: model.saveToBoard,
           view: SaveToBoardView.view,
-          viewInputs: { locale },
+          viewInputs: { locale, boards },
           toParentMessage: (message) => Message.GotSaveToBoardMessage({ message }),
         })
       : h.empty,
@@ -463,18 +468,26 @@ const backSlot = (
     toParentMessage: (message) => Message.GotBackMessage({ message }),
   })
 
-const loadedView = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
-  shownPicture(piece, model, locale, h),
-  backSlot('piece-sides', PieceBackView.sides, piece, model, locale, h),
-  Option.match(model.draft, {
-    onNone: () => pieceDetails(piece, model, locale, h),
-    onSome: (draft) =>
-      h.div(styled(h, styles.details()), [
-        h.h1(styled(h, styles.pieceName()), [pieceLabel(piece, locale)]),
-        editForm(draft, locale, h),
-      ]),
-  }),
-]
+const loadedView = (
+  piece: Piece,
+  model: Model,
+  inputs: SaveToBoardView.ViewInputs,
+  h: HtmlBuilder<Message>,
+): ReadonlyArray<Html> => {
+  const { locale } = inputs
+  return [
+    shownPicture(piece, model, locale, h),
+    backSlot('piece-sides', PieceBackView.sides, piece, model, locale, h),
+    Option.match(model.draft, {
+      onNone: () => pieceDetails(piece, model, inputs, h),
+      onSome: (draft) =>
+        h.div(styled(h, styles.details()), [
+          h.h1(styled(h, styles.pieceName()), [pieceLabel(piece, locale)]),
+          editForm(draft, locale, h),
+        ]),
+    }),
+  ]
+}
 
 /** A piece that is not the person's, or no longer exists, with the way back. */
 const missingView = (locale: Locale, h: HtmlBuilder<Message>) =>
@@ -487,9 +500,11 @@ const missingView = (locale: Locale, h: HtmlBuilder<Message>) =>
 const failedView = (locale: Locale, h: HtmlBuilder<Message>) =>
   retryView(format(locale, 'wardrobe.shelves.loadFailed', {}), locale, Message.ClickedRetry(), h)
 
-/** One piece you own: its photo, what it is, its colours and notes (Gallery `item.html`). */
-export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
-  h.main(
+/** One piece you own: its photo, what it is, its colours and notes (Gallery `item.html`); Save to board lists the
+ * person's boards as the app last read them. */
+export const view = Submodel.defineView<Model, Message, SaveToBoardView.ViewInputs>((model, inputs, h) => {
+  const { locale } = inputs
+  return h.main(
     [h.Id('main'), ...styled(h, styles.piecePage())],
     [
       h.div(styled(h, styles.pageBar()), [backToWardrobe(locale, h), editRound(model, locale, h)]),
@@ -497,10 +512,10 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
         onEmpty: () => loadingView(locale, h),
         onFailure: (error) => [error === 'NotFound' ? missingView(locale, h) : failedView(locale, h)],
         onData: (piece) => [
-          ...loadedView(piece, model, locale, h),
+          ...loadedView(piece, model, inputs, h),
           hasStopped(model.misses) ? failedView(locale, h) : h.empty,
         ],
       }),
     ],
-  ),
-)
+  )
+})

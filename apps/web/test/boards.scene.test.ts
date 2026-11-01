@@ -1,29 +1,19 @@
 import { Board, BoardSummary } from '@styld/protocol'
 import { Schema } from 'effect'
 import { click, Command, expect, given, role, scene, selector, text } from 'foldkit/scene'
-import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { Message as AppMessage, update } from '../src/App.ts'
-import { lenses } from '../src/Page.ts'
-import { at, withPage } from './AppFixtures.ts'
-import { BoardsData, CreateBoard, Message as BoardsMessage } from '../src/page/Boards.ts'
+import { at, withBoards } from './AppFixtures.ts'
+import { CreateBoard, Message as BoardsMessage } from '../src/page/Boards.ts'
 import { Navigate } from '../src/Navigation.ts'
+import { BoardsData, ListBoards, Message as DataMessage } from '../src/ServerData.ts'
+import { modifyFields } from 'foldkit/struct'
 import { view } from '../src/View.ts'
+import { boardSummaryFixture } from './BoardFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const boardId = (name: string) => `bd_${name.padEnd(22, 'x')}`
-const summary = (name: string, changes: object) =>
-  Schema.decodeUnknownSync(BoardSummary)({
-    id: boardId(name),
-    name,
-    paper: 'paper',
-    items: [],
-    cover: [],
-    pinCount: 0,
-    visibility: 'private',
-    updatedAt: '2026-10-31T08:00:00.000Z',
-    ...changes,
-  })
+const summary = boardSummaryFixture
 const knit = pieceFixture('knit', { name: 'Cable knit' })
 const pictureId = `bm_${'sea'.padEnd(22, 'x')}`
 const pins = [
@@ -50,10 +40,7 @@ const created = Schema.decodeUnknownSync(Board)({
   updatedAt: '2026-10-31T09:00:00.000Z',
 })
 
-const boardsPage = (boards: ReadonlyArray<BoardSummary>) =>
-  withPage(at('/boards', { signedIn: true }), lenses.boards, (current) =>
-    modifyFields(current, { boards: () => BoardsData.Success({ data: boards }) }),
-  )
+const boardsPage = (boards: ReadonlyArray<BoardSummary>) => withBoards(at('/boards', { signedIn: true }), boards)
 
 describe('the boards list', () => {
   test('reads each board as its name and how many pins it holds, and opens its page', () => {
@@ -72,6 +59,21 @@ describe('the boards list', () => {
       expect(selector(`img[src="/cdn/boards/images/${pictureId}/thumb"]`)).toExist(),
       expect(text('Nothing pinned yet')).toExist(),
       expect(role('link', { name: /^Empty\s*0 pins$/ })).toExist(),
+    )
+  })
+
+  test('a list that did not load says so, and Try again reads the app’s boards again', () => {
+    scene(
+      { update, view },
+      given(
+        modifyFields(at('/boards', { signedIn: true }), {
+          data: (data) => modifyFields(data, { boards: () => BoardsData.Failure({ error: 'Unavailable' }) }),
+        }),
+      ),
+      expect(role('alert')).toHaveText('Your boards didn’t load.'),
+      click(role('button', { name: 'Try again' })),
+      Command.resolve(ListBoards, DataMessage.SucceededListBoards({ boards: [summary('Sea', { pinCount: 3 })] })),
+      expect(role('link', { name: /^Sea\s*3 pins$/ })).toExist(),
     )
   })
 

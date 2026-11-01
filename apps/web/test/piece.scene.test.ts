@@ -1,3 +1,4 @@
+import { Dialog } from '@foldkit/ui'
 import { Option } from 'effect'
 import { Command, Mount, click, expect, given, role, scene, submit, text, type } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
@@ -15,8 +16,11 @@ import {
   ShowTurn,
   TurnWork,
 } from '../src/page/Piece.ts'
+import { ListBoards, Message as DataMessage } from '../src/ServerData.ts'
 import { view } from '../src/View.ts'
+import { sceneSheetOpened } from './SheetFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
+import { boardSummaryFixture } from './BoardFixtures.ts'
 
 const jeans = pieceFixture('jeans', {
   type: 'jeans',
@@ -29,7 +33,25 @@ const piecePage = (shown: PieceData) =>
     modifyFields(piece, { piece: () => shown }),
   )
 
+const autumn = boardSummaryFixture('autumn', { name: 'Autumn', pinCount: 3 })
+
 describe('the piece page', () => {
+  test('Save to board lists the boards the app reads for it, and reads them again when they did not load', () => {
+    scene(
+      { update, view },
+      given(piecePage(PieceData.Success({ data: jeans }))),
+      click(role('button', { name: 'Save to board' })),
+      Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
+      Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+      ...sceneSheetOpened,
+      Command.resolve(ListBoards, DataMessage.FailedListBoards()),
+      expect(role('alert')).toHaveText("Your boards didn't load."),
+      click(role('button', { name: 'Try again' })),
+      Command.resolve(ListBoards, DataMessage.SucceededListBoards({ boards: [autumn] })),
+      expect(role('button', { name: /^Autumn\s*3 pins$/ })).toExist(),
+    )
+  })
+
   test('shows the photo, what it is, its colours and notes', () => {
     scene(
       { update, view },

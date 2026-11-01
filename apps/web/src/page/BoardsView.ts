@@ -19,6 +19,7 @@ import * as styles from './BoardsView.styles.ts'
 import { pageHead, pageTitle } from './PageHead.ts'
 import { roundAction, wideAction, wideLabel } from './PageHead.styles.ts'
 import { savedView } from './SavedView.ts'
+import type { BoardsData } from '../ServerData.ts'
 
 /** Where a pin's picture comes from on its board's tile: a look shows its first piece. */
 const coverSource = (pin: Pin): CoverPicture => ({
@@ -90,8 +91,8 @@ const loadingView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
     ],
   )
 
-const listView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  AsyncData.matchData(model.boards, {
+const listView = (boards: BoardsData, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  AsyncData.matchData(boards, {
     onEmpty: () => loadingView(locale, h),
     onFailure: () =>
       h.div(styled(h, styles.head()), [
@@ -101,8 +102,8 @@ const listView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
           h,
         ),
       ]),
-    onData: (boards) =>
-      Array.match(boards, {
+    onData: (list) =>
+      Array.match(list, {
         onEmpty: () => h.p(styled(h, styles.note()), [format(locale, 'boards.empty', {})]),
         onNonEmpty: (some) =>
           h.ul(
@@ -112,19 +113,21 @@ const listView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
       }),
   })
 
-export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
-  h.main(
-    [h.Id('main'), ...styled(h, styles.page())],
-    [
-      h.div(styled(h, styles.head()), [
-        pageHead(pageTitle(format(locale, 'boards.title', {}), h), Option.some(newBoardAction(model, locale, h)), h),
-        h.p(styled(h, styles.intro()), [format(locale, 'boards.intro', {})]),
-        Creating.guards.Failed(model.creating)
-          ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'boards.createFailed', {})])
-          : h.empty,
-      ]),
-      listView(model, locale, h),
-      savedView(model.saved, locale, h),
-    ],
-  ),
+/** The Boards page; its boards are the app's, as last read. */
+export const view = Submodel.defineView<Model, Message, { readonly locale: Locale; readonly boards: BoardsData }>(
+  (model, { locale, boards }, h) =>
+    h.main(
+      [h.Id('main'), ...styled(h, styles.page())],
+      [
+        h.div(styled(h, styles.head()), [
+          pageHead(pageTitle(format(locale, 'boards.title', {}), h), Option.some(newBoardAction(model, locale, h)), h),
+          h.p(styled(h, styles.intro()), [format(locale, 'boards.intro', {})]),
+          Creating.guards.Failed(model.creating)
+            ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'boards.createFailed', {})])
+            : h.empty,
+        ]),
+        listView(boards, locale, h),
+        savedView(model.saved, locale, h),
+      ],
+    ),
 )

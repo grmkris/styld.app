@@ -15,7 +15,7 @@ import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { stillTable } from './Board/Table.ts'
 import { Message, type Model, showsWornOutfit, TableMotion, tableOutfit, Worn } from './Today.ts'
-import type { PiecesData } from '../ServerData.ts'
+import type { BoardsData, PiecesData } from '../ServerData.ts'
 import { barEnd, round } from './PageBar.styles.ts'
 import { pageHead } from './PageHead.ts'
 import { title as headTitle } from './PageHead.styles.ts'
@@ -312,9 +312,16 @@ const trayPictures = (pictures: ReadonlyArray<string>, h: HtmlBuilder<Message>):
     pictures.map((source) => h.img([h.Src(source), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.trayThumb())])),
   )
 
+/** What the app holds that Home shows: the pieces, and the boards it picks the last one from. */
+type Data = { readonly pieces: PiecesData; readonly boards: BoardsData }
+
+/** The newest board with something on its table: an empty one is nothing to pick up. */
+const lastBoard = (boards: BoardsData): Option.Option<BoardSummary> =>
+  Option.flatMap(AsyncData.getData(boards), (list) => Array.findFirst(list, (board) => board.items.length > 0))
+
 /** Where they left off, drawn once the table and its own answers are in, so it arrives in one piece below them. */
-const pickUpView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  if ([pieces, model.lastBoard, model.favourite, model.tray].some(isPending)) return h.empty
+const pickUpView = (model: Model, data: Data, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  if ([data.pieces, data.boards, model.favourite, model.tray].some(isPending)) return h.empty
   const tray = Option.getOrElse(AsyncData.getData(model.tray), () => ({ waiting: 0, pictures: [] }))
   const cards = [
     ...Option.match(Option.flatten(AsyncData.getData(model.favourite)), {
@@ -340,7 +347,7 @@ const pickUpView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBui
           ),
         ]
       : []),
-    ...Option.match(Option.flatten(AsyncData.getData(model.lastBoard)), {
+    ...Option.match(lastBoard(data.boards), {
       onNone: () => [],
       onSome: (board) => [boardCard(board, locale, h)],
     }),
@@ -355,10 +362,14 @@ const pickUpView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBui
   })
 }
 
-export const view = Submodel.defineView<Model, Message, { readonly locale: Locale; readonly pieces: PiecesData }>(
-  (model, { locale, pieces }, h) =>
+export const view = Submodel.defineView<Model, Message, Data & { readonly locale: Locale }>(
+  (model, { locale, pieces, boards }, h) =>
     h.main(
       [h.Id('main'), ...styled(h, styles.page())],
-      [todayView(model, pieces, locale, h), pickUpView(model, pieces, locale, h), feedView(model.feed, locale, h)],
+      [
+        todayView(model, pieces, locale, h),
+        pickUpView(model, { pieces, boards }, locale, h),
+        feedView(model.feed, locale, h),
+      ],
     ),
 )

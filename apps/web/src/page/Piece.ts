@@ -152,7 +152,8 @@ export const Message = defineMessageUnion({
 })
 export type Message = typeof Message.Type
 
-export const OutMessage = defineMessageUnion({ DeletedPiece: {} })
+/** Gone once deleted; Save to board's sheet asks the app for the person's boards. */
+export const OutMessage = defineMessageUnion({ DeletedPiece: {}, RequestedBoards: {} })
 export type OutMessage = typeof OutMessage.Type
 
 // COMMAND
@@ -335,7 +336,10 @@ const pieceCache = (revalidate: (piece: PieceData) => Option.Option<PieceData>) 
     load: GetPiece({ pieceId: model.pieceId }),
   })(model)
 
-const foldSaveToBoard = SaveToBoard.foldInto<Model, Message>((message) => Message.GotSaveToBoardMessage({ message }))
+const foldSaveToBoard = SaveToBoard.foldInto<Model, Message, OutMessage>(
+  (message) => Message.GotSaveToBoardMessage({ message }),
+  () => OutMessage.RequestedBoards(),
+)
 
 const foldBack = Update.foldChild({
   update: PieceBack.update,

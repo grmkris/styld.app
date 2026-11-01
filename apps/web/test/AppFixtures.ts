@@ -1,11 +1,11 @@
 import { catalogVersion } from '@styld/i18n'
-import type { Piece } from '@styld/protocol'
+import type { BoardSummary, Piece } from '@styld/protocol'
 import { Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { fromString } from 'foldkit/url'
 import { type Flags, init, type Model, Session } from '../src/App.ts'
 import type { PageLens } from '../src/Page.ts'
-import { PiecesData } from '../src/ServerData.ts'
+import { BoardsData, PiecesData } from '../src/ServerData.ts'
 
 /** Ana, signed in with a verified address. */
 export const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
@@ -42,3 +42,7 @@ export const withPage = <Child>(model: Model, lens: PageLens<Child, never>, chan
 /** The app with the person's pieces read. */
 export const withPieces = (model: Model, pieces: ReadonlyArray<Piece>): Model =>
   modifyFields(model, { data: (data) => modifyFields(data, { pieces: () => PiecesData.Success({ data: pieces }) }) })
+
+/** The app with the person's boards read. */
+export const withBoards = (model: Model, boards: ReadonlyArray<BoardSummary>): Model =>
+  modifyFields(model, { data: (data) => modifyFields(data, { boards: () => BoardsData.Success({ data: boards }) }) })

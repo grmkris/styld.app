@@ -1,5 +1,5 @@
 import { newOperationId } from '../OperationIds.ts'
-import { Board, BoardName, BoardSummary, SavedThing } from '@styld/protocol'
+import { Board, BoardName, SavedThing } from '@styld/protocol'
 import { Effect, Option, Result, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import { AsyncData, Command, Update } from 'foldkit'
@@ -10,10 +10,6 @@ import { StyldClient } from '../StyldClient.ts'
 
 // MODEL
 
-/** The person's boards as last read, kept on screen while they are asked for again. */
-export const BoardsData = AsyncData.Schema(Schema.Array(BoardSummary), Schema.Literal('Unavailable'))
-export type BoardsData = typeof BoardsData.schema.Type
-
 /** What the person saved from others, newest first. */
 export const SavedData = AsyncData.Schema(Schema.Array(SavedThing), Schema.Literal('Unavailable'))
 export type SavedData = typeof SavedData.schema.Type
@@ -21,15 +17,15 @@ export type SavedData = typeof SavedData.schema.Type
 export const Creating = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {} })
 export type Creating = typeof Creating.Type
 
+/** The Boards page: making a board and what the person saved from others. The boards themselves are the app's
+ * (ServerData), which Save to board and Home read too. */
 export const Model = Schema.Struct({
-  boards: BoardsData.schema,
   creating: Creating,
   saved: SavedData.schema,
 })
 export type Model = typeof Model.Type
 
 export const init = (): Model => ({
-  boards: AsyncData.Idle(),
   creating: Creating.Idle(),
   saved: AsyncData.Idle(),
 })
@@ -37,8 +33,6 @@ export const init = (): Model => ({
 // MESSAGE
 
 export const Message = defineMessageUnion({
-  SucceededListBoards: { boards: Schema.Array(BoardSummary) },
-  FailedListBoards: {},
   ClickedRetry: {},
   ClickedNewBoard: { defaultName: Schema.String },
   SucceededCreateBoard: { board: Board },
@@ -48,25 +42,12 @@ export const Message = defineMessageUnion({
 })
 export type Message = typeof Message.Type
 
-/** A new board opens straight away, under the default name; its page renames it. */
-export const OutMessage = defineMessageUnion({ CreatedBoard: { boardId: Schema.String } })
+/** A new board opens straight away, under the default name; its page renames it. The boards that did not load are
+ * asked for again by the app. */
+export const OutMessage = defineMessageUnion({ CreatedBoard: { boardId: Schema.String }, RequestedBoards: {} })
 export type OutMessage = typeof OutMessage.Type
 
 // COMMAND
-
-/** The person's boards, as their list shows them. */
-export const boardSummaries = Effect.gen(function* () {
-  const api = yield* (yield* StyldClient).api
-  return (yield* api.board.listBoards()).boards
-})
-
-export const ListBoards = Command.define('ListBoards', {
-  messages: [Message.SucceededListBoards, Message.FailedListBoards],
-  execute: boardSummaries.pipe(
-    Effect.map((boards) => Message.SucceededListBoards({ boards })),
-    Effect.orElseSucceed(() => Message.FailedListBoards()),
-  ),
-})
 
 const ListSaved = Command.define('ListSaved', {
   messages: [Message.SucceededListSaved, Message.FailedListSaved],
@@ -95,13 +76,6 @@ export const CreateBoard = Command.define('CreateBoard', {
 type Services = StyldClient | Crypto.Crypto
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Services>
 
-const refreshBoards = Update.refresh<Model, Message, ReadonlyArray<BoardSummary>, 'Unavailable', StyldClient>({
-  read: (model: Model) => Option.some(model.boards),
-  revalidate: AsyncData.revalidateOrLoad,
-  write: (model: Model, boards: BoardsData) => modifyFields(model, { boards: () => boards }),
-  load: ListBoards(),
-})
-
 const refreshSaved = Update.refresh<Model, Message, ReadonlyArray<SavedThing>, 'Unavailable', StyldClient>({
   read: (model: Model) => Option.some(model.saved),
   revalidate: AsyncData.revalidateOrLoad,
@@ -109,27 +83,13 @@ const refreshSaved = Update.refresh<Model, Message, ReadonlyArray<SavedThing>, '
   load: ListSaved(),
 })
 
-/** Opening the page: the boards and saves already here stay while they are asked for again; a first visit asks. */
-export const revisit = (model: Model): Update.Return<Model, Message, StyldClient> =>
-  Update.combine<Model, Message, StyldClient>(model, [refreshBoards, refreshSaved])
+/** Opening the page: the saves already here stay while they are asked for again; a first visit asks. The app reads
+ * the boards. */
+export const revisit = refreshSaved
 
-/** A board as its list shows it: its table, its newest pins and how many. */
-const summaryOf = (board: Board): BoardSummary => ({
-  id: board.id,
-  name: board.name,
-  paper: board.paper,
-  items: board.items,
-  cover: board.pins.slice(0, 4),
-  pinCount: board.pins.length,
-  visibility: board.visibility,
-  updatedAt: board.updatedAt,
-})
-
+/** A board made opens its own page, which loads whole; the list reads it from then on. */
 const created = (model: Model, board: Board): UpdateReturn => ({
-  model: modifyFields(model, {
-    creating: () => Creating.Idle(),
-    boards: (boards) => AsyncData.map(boards, (list) => [summaryOf(board), ...list]),
-  }),
+  model: modifyFields(model, { creating: () => Creating.Idle() }),
   outMessage: OutMessage.CreatedBoard({ boardId: board.id }),
 })
 
@@ -146,13 +106,7 @@ export const startBoard =
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
-    SucceededListBoards: ({ boards }) => ({
-      model: modifyFields(model, { boards: () => BoardsData.Success({ data: boards }) }),
-    }),
-    FailedListBoards: () => ({
-      model: modifyFields(model, { boards: (boards) => AsyncData.settle(boards, Result.fail('Unavailable' as const)) }),
-    }),
-    ClickedRetry: () => refreshBoards(model),
+    ClickedRetry: () => ({ model, outMessage: OutMessage.RequestedBoards() }),
     SucceededListSaved: ({ saved }) => ({
       model: modifyFields(model, { saved: () => SavedData.Success({ data: saved }) }),
     }),

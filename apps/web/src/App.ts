@@ -183,6 +183,7 @@ const data = {
 }
 
 const revisitPieces = Update.foldChildStep({ update: ServerData.revisitPieces, ...data })
+const revisitBoards = Update.foldChildStep({ update: ServerData.revisitBoards, ...data })
 
 /** Each page's Message folded through its lens, with what its OutMessages mean for the app. */
 const navigateTo =
@@ -193,6 +194,7 @@ const foldBoards = {
   ...at(lenses.boards),
   foldOutMessage: Boards.OutMessage.match<Step>({
     CreatedBoard: ({ boardId }) => navigateTo(boardRouter({ boardId })),
+    RequestedBoards: () => revisitBoards,
   }),
 }
 
@@ -213,6 +215,7 @@ const entering = (route: AppRoute, signedIn: boolean): ReadonlyArray<Step> =>
         ? [
             Update.foldChildStep({ update: Today.enter, ...at(lenses.today), foldOutMessage: foldTodayOut }),
             revisitPieces,
+            revisitBoards,
           ]
         : [Update.foldChildStep({ update: Visit.enterExplore, ...at(lenses.explore) })],
     ),
@@ -220,7 +223,7 @@ const entering = (route: AppRoute, signedIn: boolean): ReadonlyArray<Step> =>
     Match.tag('Ask', ({ q }) => [revisitPieces, Update.foldChildStep({ update: Ask.enter(q), ...at(lenses.ask) })]),
     Match.tag('Looks', () => [Update.foldChildStep({ update: Looks.revisit, ...at(lenses.looks) })]),
     Match.tag('Photos', () => [Update.foldChildStep({ update: Photos.revisit, ...at(lenses.photos) })]),
-    Match.tag('Boards', () => [Update.foldChildStep({ update: Boards.revisit, ...at(lenses.boards) })]),
+    Match.tag('Boards', () => [revisitBoards, Update.foldChildStep({ update: Boards.revisit, ...at(lenses.boards) })]),
     Match.tag('Explore', () => [Update.foldChildStep({ update: Visit.enterExplore, ...at(lenses.explore) })]),
     // The account needs a session; signed out the page sends the visitor to sign in.
     Match.tag('Account', () =>
@@ -339,7 +342,10 @@ const foldWardrobe = Update.foldChild({
 const foldPiece = Update.foldChild({
   update: Piece.update,
   ...at(lenses.piece),
-  foldOutMessage: Piece.OutMessage.match<Step>({ DeletedPiece: () => navigateTo(wardrobeRouter({})) }),
+  foldOutMessage: Piece.OutMessage.match<Step>({
+    DeletedPiece: () => navigateTo(wardrobeRouter({})),
+    RequestedBoards: () => revisitBoards,
+  }),
 })
 
 /** A profile saved in the editor is who the masthead shows from then on. */
@@ -379,13 +385,19 @@ const foldReview = Update.foldChild({
 const foldLook = Update.foldChild({
   update: Look.update,
   ...at(lenses.look),
-  foldOutMessage: Look.OutMessage.match<Step>({ DeletedLook: () => navigateTo(looksRouter({})) }),
+  foldOutMessage: Look.OutMessage.match<Step>({
+    DeletedLook: () => navigateTo(looksRouter({})),
+    RequestedBoards: () => revisitBoards,
+  }),
 })
 
 const foldPhoto = Update.foldChild({
   update: Photo.update,
   ...at(lenses.photo),
-  foldOutMessage: Photo.OutMessage.match<Step>({ DeletedPhoto: () => navigateTo(photosRouter({})) }),
+  foldOutMessage: Photo.OutMessage.match<Step>({
+    DeletedPhoto: () => navigateTo(photosRouter({})),
+    RequestedBoards: () => revisitBoards,
+  }),
 })
 
 const foldPages = {

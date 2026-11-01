@@ -5,17 +5,21 @@ import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import { subscriptions as appSubscriptions } from '../src/App.ts'
 import {
+  BoardsData,
   init,
+  ListBoards,
   ListPieces,
   Message,
   type Model,
   PiecesData,
+  revisitBoards,
   revisitPieces,
   subscriptions,
   update,
 } from '../src/ServerData.ts'
 import { at, withPieces } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
+import { boardSummaryFixture } from './BoardFixtures.ts'
 
 const ready = pieceFixture('ready', { name: 'White tee' })
 const processing = pieceFixture('processing', { status: 'processing' })
@@ -90,5 +94,31 @@ describe('only a page that shows the pieces follows them', () => {
   test('pages that do not show them do not', () => {
     for (const path of ['/boards', '/looks', '/account', '/wardrobe/review', `/wardrobe/${processing.id}`, '/explore'])
       expect(polled(path)).toEqual(Option.none())
+  })
+})
+
+const autumn = boardSummaryFixture('autumn', { name: 'Autumn', pinCount: 3 })
+
+describe('the boards Boards, Save to board and Home show are read in one place', () => {
+  test('a first time asks; asking again keeps them on screen, and a failed read keeps what was shown', () => {
+    const first = revisitBoards(init())
+    expect(AsyncData.isLoading(first.model.boards)).toBe(true)
+    expect(first.commands?.map(({ name }) => name)).toEqual([ListBoards.name])
+    const read = update(first.model, Message.SucceededListBoards({ boards: [autumn] })).model
+    expect(read.boards).toEqual(BoardsData.Success({ data: [autumn] }))
+    const again = revisitBoards(read)
+    expect(AsyncData.getData(again.model.boards)).toEqual(Option.some([autumn]))
+    expect(again.commands?.map(({ name }) => name)).toEqual([ListBoards.name])
+    story(
+      update,
+      given(again.model),
+      message(Message.FailedListBoards()),
+      model(({ boards }) => expect(boards).toEqual(BoardsData.Stale({ error: 'Unavailable', data: [autumn] }))),
+    )
+  })
+
+  test('a read on its way is not asked for twice', () => {
+    const asking = revisitBoards(init())
+    expect(revisitBoards(asking.model).commands ?? []).toEqual([])
   })
 })

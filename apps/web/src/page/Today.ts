@@ -2,7 +2,6 @@ import { cdn } from '../Cdn.ts'
 import * as Crypto from 'effect/Crypto'
 import { newOperationId } from '../OperationIds.ts'
 import {
-  BoardSummary,
   Day,
   Feed,
   OutfitBrief,
@@ -40,9 +39,6 @@ export type Worn = typeof Worn.Type
 /** Whether the table was just spun: only then do its pieces drop in. Opening Home shows the table as it lies. */
 export const TableMotion = defineTaggedUnion({ Still: {}, Spun: {} })
 
-/** The last board with something on its table, if any. */
-export const LastBoardData = AsyncData.Schema(Schema.Option(BoardSummary), Schema.Literal('Unavailable'))
-export type LastBoardData = typeof LastBoardData.schema.Type
 /** The newest favourite photo of My Gallery, for "Wear it again". */
 export const FavouriteData = AsyncData.Schema(Schema.Option(Photo), Schema.Literal('Unavailable'))
 export type FavouriteData = typeof FavouriteData.schema.Type
@@ -69,8 +65,8 @@ export type Outfits = typeof Outfits.Type
 export const OutfitsData = AsyncData.Schema(Outfits, Schema.Literal('Unavailable'))
 export type OutfitsData = typeof OutfitsData.schema.Type
 
-/** Home for a signed-in person: today's outfit on the table, then where they left off. The pieces themselves
- * are the wardrobe's, which the app keeps once for every page. */
+/** Home for a signed-in person: today's outfit on the table, then where they left off. The pieces and boards are
+ * the app's, which it keeps once for every page. */
 export const Model = Schema.Struct({
   /** Today in the person's own time zone, read in the browser. */
   maybeDay: Schema.Option(Day),
@@ -79,7 +75,6 @@ export const Model = Schema.Struct({
   showsWorn: Schema.Boolean,
   motion: TableMotion,
   worn: Worn,
-  lastBoard: LastBoardData.schema,
   favourite: FavouriteData.schema,
   tray: TrayData.schema,
   feed: FeedData.schema,
@@ -92,7 +87,6 @@ export const init = (): Model => ({
   showsWorn: true,
   motion: TableMotion.Still(),
   worn: Worn.NotYet(),
-  lastBoard: AsyncData.Idle(),
   favourite: AsyncData.Idle(),
   tray: AsyncData.Idle(),
   feed: AsyncData.Idle(),
@@ -104,8 +98,6 @@ export const Message = defineMessageUnion({
   CompletedDetermineDay: { day: Day },
   SucceededReadWorn: { pieceIds: Schema.Array(PieceId) },
   FailedReadWorn: {},
-  SucceededListBoards: { maybeBoard: Schema.Option(BoardSummary) },
-  FailedListBoards: {},
   SucceededReadFavourite: { maybePhoto: Schema.Option(Photo) },
   FailedReadFavourite: {},
   SucceededReadTray: { tray: Tray },
@@ -153,15 +145,6 @@ export const ReadWorn = Command.define('ReadWorn', {
       const { days } = yield* (yield* (yield* StyldClient).api).worn.listWorn({ query: { from: day, to: day } })
       return Message.SucceededReadWorn({ pieceIds: days[0]?.pieceIds ?? [] })
     }).pipe(Effect.orElseSucceed(() => Message.FailedReadWorn())),
-})
-
-export const ListBoards = Command.define('ListBoards', {
-  messages: [Message.SucceededListBoards, Message.FailedListBoards],
-  execute: Effect.gen(function* () {
-    const { boards } = yield* (yield* (yield* StyldClient).api).board.listBoards()
-    // An empty board is nothing to pick up: the newest one with something on its table.
-    return Message.SucceededListBoards({ maybeBoard: Array.findFirst(boards, (board) => board.items.length > 0) })
-  }).pipe(Effect.orElseSucceed(() => Message.FailedListBoards())),
 })
 
 export const ReadFeed = Command.define('ReadFeed', {
@@ -248,12 +231,6 @@ export const enter = (model: Model): Update.Return<Model, Message, StyldClient> 
     (current) => ({
       model: modifyFields(current, { motion: () => TableMotion.Still() }),
       commands: [DetermineDay()],
-    }),
-    Update.refresh<Model, Message, Option.Option<BoardSummary>, 'Unavailable', StyldClient>({
-      read: (current: Model) => Option.some(current.lastBoard),
-      revalidate: AsyncData.revalidateOrLoad,
-      write: (current: Model, lastBoard: LastBoardData) => modifyFields(current, { lastBoard: () => lastBoard }),
-      load: ListBoards(),
     }),
     Update.refresh<Model, Message, Option.Option<Photo>, 'Unavailable', StyldClient>({
       read: (current: Model) => Option.some(current.favourite),
@@ -398,12 +375,6 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       model: modifyFields(model, { worn: () => (pieceIds.length > 0 ? Worn.Worn({ pieceIds }) : Worn.NotYet()) }),
     }),
     FailedReadWorn: () => ({ model: modifyFields(model, { worn: () => Worn.Unread() }) }),
-    SucceededListBoards: ({ maybeBoard }) => ({
-      model: modifyFields(model, { lastBoard: () => LastBoardData.Success({ data: maybeBoard }) }),
-    }),
-    FailedListBoards: () => ({
-      model: modifyFields(model, { lastBoard: (lastBoard) => AsyncData.settle(lastBoard, unavailable) }),
-    }),
     SucceededReadFeed: ({ feed }) => ({ model: modifyFields(model, { feed: () => FeedData.Success({ data: feed }) }) }),
     FailedReadFeed: () => ({ model: modifyFields(model, { feed: (feed) => AsyncData.settle(feed, unavailable) }) }),
     SucceededReadFavourite: ({ maybePhoto }) => ({

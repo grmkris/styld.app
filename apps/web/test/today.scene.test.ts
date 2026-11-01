@@ -5,10 +5,10 @@ import { AsyncData } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
-import { FavouriteData, LastBoardData, Message, OutfitsData, ReadWorn, TrayData, Worn } from '../src/page/Today.ts'
+import { FavouriteData, Message, OutfitsData, ReadWorn, TrayData, Worn } from '../src/page/Today.ts'
 import { view } from '../src/View.ts'
 import { lenses } from '../src/Page.ts'
-import { at, withPage, withPieces } from './AppFixtures.ts'
+import { at, withBoards, withPage, withPieces } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const knit = pieceFixture('knit', { name: 'Cable knit' })
@@ -37,12 +37,14 @@ const layers = Schema.decodeUnknownSync(BoardSummary)({
 
 /** Home with the wardrobe read, the tray holding `waiting` pieces and the last board, if any. */
 const home = (waiting: number, maybeBoard: Option.Option<BoardSummary>, pictures: ReadonlyArray<string> = []) =>
-  withPage(withPieces(at('/', { signedIn: true }), [knit]), lenses.today, (today) =>
-    modifyFields(today, {
-      tray: () => TrayData.Success({ data: { waiting, pictures } }),
-      lastBoard: () => LastBoardData.Success({ data: maybeBoard }),
-      favourite: () => FavouriteData.Success({ data: Option.none() }),
-    }),
+  withPage(
+    withBoards(withPieces(at('/', { signedIn: true }), [knit]), Option.toArray(maybeBoard)),
+    lenses.today,
+    (today) =>
+      modifyFields(today, {
+        tray: () => TrayData.Success({ data: { waiting, pictures } }),
+        favourite: () => FavouriteData.Success({ data: Option.none() }),
+      }),
   )
 
 /** Home on a day already worn, with today's outfits as given. */
@@ -155,6 +157,15 @@ describe('Home', () => {
   test('the tray card shows the first pieces waiting, on paper', () => {
     const cutout = `/cdn/detections/dt_${'tee'.padEnd(22, 'x')}/cutout`
     scene({ update, view }, given(home(2, Option.none(), [cutout])), expect(selector(`img[src="${cutout}"]`)).toExist())
+  })
+
+  test('the board to keep pinning is the newest with something on its table', () => {
+    const empty = Schema.decodeUnknownSync(BoardSummary)({ ...layers, id: `bd_${'empty'.padEnd(22, 'x')}`, items: [] })
+    scene(
+      { update, view },
+      given(withBoards(home(0, Option.none()), [empty, layers])),
+      expect(role('link', { name: 'Keep pinning' })).toHaveAttr('href', `/boards/${layers.id}`),
+    )
   })
 
   test('with nothing waiting and no board on the go, there is nothing to pick up', () => {

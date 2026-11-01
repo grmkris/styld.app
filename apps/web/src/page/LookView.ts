@@ -17,6 +17,7 @@ import { type PublicWork, publicToggle } from './PublicToggle.ts'
 import * as PeopleView from './PeopleView.ts'
 import { byline, pieceTile, tileGrid } from './PublicTiles.ts'
 import * as SaveToBoardView from './SaveToBoardView.ts'
+import type { BoardsData } from '../ServerData.ts'
 import { barStart, round } from './PageBar.styles.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
@@ -158,28 +159,29 @@ const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Htm
 ]
 
 /** One look: its name and where it stands, the look laid out, saving and sharing it, its pieces, and deleting it. */
-export const view = Submodel.defineView<Model, Message, PeopleView.Inputs>((model, { locale, signedIn }, h) =>
-  h.main(
-    [h.Id('main'), ...styled(h, cx(styles.looksPage(), styles.lookPage()))],
-    [
-      isVisiting(model) ? h.empty : h.div([], [backToLooks(locale, h)]),
-      ...AsyncData.matchData(model.look, {
-        onEmpty: () => loadingView(locale, h),
-        onFailure: (error) =>
-          error === 'NotFound'
-            ? [h.h1([], [format(locale, 'looks.notFound', {})])]
-            : [
-                h.h1([], [format(locale, 'looks.title', {})]),
-                retryView(format(locale, 'looks.loadFailed', {}), locale, Message.ClickedRetry(), h),
-              ],
-        onData: (shown) =>
-          LookShown.match(shown, {
-            Visiting: ({ page }) => visitingView(model, page, { locale, signedIn }, h),
-            Own: ({ look }) => ownView(model, look, locale, h),
-          }),
-      }),
-    ],
-  ),
+export const view = Submodel.defineView<Model, Message, PeopleView.Inputs & { readonly boards: BoardsData }>(
+  (model, { locale, signedIn, boards }, h) =>
+    h.main(
+      [h.Id('main'), ...styled(h, cx(styles.looksPage(), styles.lookPage()))],
+      [
+        isVisiting(model) ? h.empty : h.div([], [backToLooks(locale, h)]),
+        ...AsyncData.matchData(model.look, {
+          onEmpty: () => loadingView(locale, h),
+          onFailure: (error) =>
+            error === 'NotFound'
+              ? [h.h1([], [format(locale, 'looks.notFound', {})])]
+              : [
+                  h.h1([], [format(locale, 'looks.title', {})]),
+                  retryView(format(locale, 'looks.loadFailed', {}), locale, Message.ClickedRetry(), h),
+                ],
+          onData: (shown) =>
+            LookShown.match(shown, {
+              Visiting: ({ page }) => visitingView(model, page, { locale, signedIn }, h),
+              Own: ({ look }) => ownView(model, look, { locale, boards }, h),
+            }),
+        }),
+      ],
+    ),
 )
 
 /** Whether the page shows someone else's look, which has no way back to the person's own looks. */
@@ -187,7 +189,12 @@ const isVisiting = (model: Model) =>
   Option.exists(AsyncData.getData(model.look), (shown) => LookShown.guards.Visiting(shown))
 
 /** The person's own look. */
-const ownView = (model: Model, look: LookContract, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
+const ownView = (
+  model: Model,
+  look: LookContract,
+  { locale, boards }: SaveToBoardView.ViewInputs,
+  h: HtmlBuilder<Message>,
+): ReadonlyArray<Html> => [
   h.h1([], [look.name]),
   // Where it stands, in one quiet line under the title (DESIGN › Your public things), then the check.
   h.p(styled(h, styles.status()), [format(locale, look.shared ? 'looks.statusPublic' : 'looks.statusPrivate', {})]),
@@ -198,7 +205,7 @@ const ownView = (model: Model, look: LookContract, locale: Locale, h: HtmlBuilde
     slotId: 'look-save-to-board',
     model: model.saveToBoard,
     view: SaveToBoardView.view,
-    viewInputs: { locale },
+    viewInputs: { locale, boards },
     toParentMessage: (message) => Message.GotSaveToBoardMessage({ message }),
   }),
   publicToggle(

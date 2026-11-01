@@ -1,7 +1,6 @@
 import {
   Board,
   BoardItemId,
-  BoardSummary,
   Day,
   OutfitProposals,
   OutfitSession,
@@ -184,16 +183,6 @@ describe('boards', () => {
     check: null,
     updatedAt: '2026-10-30T08:00:00.000Z',
   })
-  const listed = Schema.decodeUnknownSync(BoardSummary)({
-    id: created.id,
-    name: created.name,
-    paper: created.paper,
-    items: [],
-    cover: [],
-    pinCount: 0,
-    visibility: 'private',
-    updatedAt: created.updatedAt,
-  })
 
   test('a new board takes the default name, and opens once it exists', () => {
     story(
@@ -217,14 +206,14 @@ describe('boards', () => {
     )
   })
 
-  test('a list that did not load asks again', () => {
+  test('a list that did not load is asked of the app again', () => {
     story(
       Boards.update,
-      given(modifyFields(Boards.init(), { boards: () => Boards.BoardsData.Failure({ error: 'Unavailable' }) })),
+      given(Boards.init()),
       message(Boards.Message.ClickedRetry()),
-      Command.expectExact(Boards.ListBoards),
-      Command.resolve(Boards.ListBoards, Boards.Message.SucceededListBoards({ boards: [listed] })),
-      model(({ boards }) => expect(boards).toEqual(Boards.BoardsData.Success({ data: [listed] }))),
+      Command.expectNone(),
+      expectOutMessage(Boards.OutMessage.RequestedBoards()),
+      model((current) => expect(current).toEqual(Boards.init())),
     )
   })
 })

@@ -80,7 +80,8 @@ export const Message = defineMessageUnion({
 export type Message = typeof Message.Type
 
 /** The photo is gone: the app goes back to the Gallery. */
-export const OutMessage = defineMessageUnion({ DeletedPhoto: {} })
+/** Gone once deleted; Save to board's sheet asks the app for the person's boards. */
+export const OutMessage = defineMessageUnion({ DeletedPhoto: {}, RequestedBoards: {} })
 export type OutMessage = typeof OutMessage.Type
 
 // COMMAND
@@ -217,7 +218,10 @@ const changed = (model: Model, photo: PhotoContract): UpdateReturn => ({
   model: modifyFields(model, { photo: () => PhotoData.Success({ data: photo }), work: () => Work.Idle() }),
 })
 
-const foldSaveToBoard = SaveToBoard.foldInto<Model, Message>((message) => Message.GotSaveToBoardMessage({ message }))
+const foldSaveToBoard = SaveToBoard.foldInto<Model, Message, OutMessage>(
+  (message) => Message.GotSaveToBoardMessage({ message }),
+  () => OutMessage.RequestedBoards(),
+)
 
 const confirmDelete = (model: Model): UpdateReturn =>
   Deletion.guards.Deleting(model.deletion)

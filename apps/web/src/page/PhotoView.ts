@@ -15,6 +15,7 @@ import { backToGallery } from './PageBar.ts'
 import { hasStopped } from '../Polling.ts'
 import { retryView } from './Retry.ts'
 import * as SaveToBoardView from './SaveToBoardView.ts'
+import type { BoardsData } from '../ServerData.ts'
 import { Deletion, Message, type Model, Work } from './Photo.ts'
 import { photoDate } from './PhotosView.ts'
 import * as styles from './PhotosView.styles.ts'
@@ -24,6 +25,7 @@ interface Inputs {
   readonly locale: Locale
   readonly timeZone: string
   readonly pieces: ReadonlyArray<Piece>
+  readonly boards: BoardsData
 }
 
 const pieceThumb = (piece: Piece, h: HtmlBuilder<Message>): Html =>
@@ -235,7 +237,7 @@ const loadedView = (model: Model, photo: Photo, inputs: Inputs, h: HtmlBuilder<M
           slotId: 'photo-save-to-board',
           model: model.saveToBoard,
           view: SaveToBoardView.view,
-          viewInputs: { locale },
+          viewInputs: { locale, boards: inputs.boards },
           toParentMessage: (message) => Message.GotSaveToBoardMessage({ message }),
         })
       : h.empty,

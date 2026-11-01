@@ -4,7 +4,7 @@ import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 import { Message, ReadSession, Session, init, update } from '../src/App.ts'
-import { ListPieces, Message as PiecesMessage } from '../src/ServerData.ts'
+import { ListBoards, ListPieces, Message as DataMessage } from '../src/ServerData.ts'
 import { ReadYou, You } from '../src/You.ts'
 import { Navigate } from '../src/Navigation.ts'
 import { Message as AddPiecesMessage } from '../src/page/AddPieces/Message.ts'
@@ -105,16 +105,16 @@ describe('the session decides where a visitor belongs', () => {
       // The table is laid from the wardrobe's pieces, which every page shares.
       Command.expectExact(
         Today.DetermineDay,
-        Today.ListBoards,
         Today.ReadFavourite,
         Today.ReadTray,
         Today.ReadFeed,
         ListPieces,
+        ListBoards,
         ReadYou,
       ),
       Command.resolve(ReadYou, Message.FailedReadYou()),
-      Command.resolve(ListPieces, PiecesMessage.FailedListPieces()),
-      Command.resolve(Today.ListBoards, Today.Message.FailedListBoards()),
+      Command.resolve(ListPieces, DataMessage.FailedListPieces()),
+      Command.resolve(ListBoards, DataMessage.FailedListBoards()),
       Command.resolve(Today.ReadFavourite, Today.Message.FailedReadFavourite()),
       Command.resolve(Today.ReadTray, Today.Message.FailedReadTray()),
       Command.resolve(Today.ReadFeed, Today.Message.FailedReadFeed()),

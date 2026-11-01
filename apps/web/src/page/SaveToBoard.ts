@@ -1,27 +1,24 @@
 import { newOperationId } from '../OperationIds.ts'
 import { Dialog } from '@foldkit/ui'
-import { BoardId, BoardName, BoardSummary, LookId, PhotoId, PieceId } from '@styld/protocol'
+import { BoardId, BoardName, LookId, PhotoId, PieceId } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
-import { AsyncData, Command, Update } from 'foldkit'
+import { Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { sheetFolds } from './Sheet.ts'
 import { StyldClient } from '../StyldClient.ts'
-import { boardSummaries } from './Boards.ts'
 
-// "Save to board" from a piece or a look of the person's own: a sheet of their boards, and a new one by name.
+// "Save to board" from a piece or a look of the person's own: a sheet of their boards, and a new one by name. The
+// boards are the app's (ServerData), which the sheet asks for again each time it opens.
 
 // MODEL
 
-/** What is being saved. */
 /** What is saved: a piece or a look as a pin, or an outfit photo of My Gallery, put on the board with its look and
  * shown to its owner only. */
 export const Target = Schema.Struct({ kind: Schema.Literals(['piece', 'look', 'photo']), id: Schema.String })
 export type Target = typeof Target.Type
-
-const BoardsData = AsyncData.Schema(Schema.Array(BoardSummary), Schema.Literal('Unavailable'))
 
 export const Saving = defineTaggedUnion({
   Idle: {},
@@ -34,7 +31,6 @@ export type Saving = typeof Saving.Type
 export const Model = Schema.Struct({
   target: Target,
   sheet: Dialog.Model,
-  boards: BoardsData.schema,
   name: Schema.String,
   saving: Saving,
 })
@@ -43,7 +39,6 @@ export type Model = typeof Model.Type
 export const init = (target: Target): Model => ({
   target,
   sheet: Dialog.init({ id: `save-to-board-${target.kind}`, isAnimated: true }),
-  boards: AsyncData.Idle(),
   name: '',
   saving: Saving.Idle(),
 })
@@ -53,8 +48,6 @@ export const init = (target: Target): Model => ({
 export const Message = defineMessageUnion({
   ClickedSave: {},
   GotSheetMessage: { message: Dialog.Message },
-  SucceededListBoards: { boards: Schema.Array(BoardSummary) },
-  FailedListBoards: {},
   ClickedRetry: {},
   ClickedBoard: { boardId: Schema.String, boardName: Schema.String },
   UpdatedName: { value: Schema.String },
@@ -64,20 +57,16 @@ export const Message = defineMessageUnion({
 })
 export type Message = typeof Message.Type
 
+/** The sheet opened, or its boards did not load: the app asks for them (again). */
+export const OutMessage = defineMessageUnion({ RequestedBoards: {} })
+export type OutMessage = typeof OutMessage.Type
+
 // COMMAND
 
 const pinsOf = (target: Target) =>
   target.kind === 'piece'
     ? Effect.map(Schema.decodeUnknownEffect(PieceId)(target.id), (pieceId) => ({ pieceIds: [pieceId] }))
     : Effect.map(Schema.decodeUnknownEffect(LookId)(target.id), (lookId) => ({ lookIds: [lookId] }))
-
-export const ListBoardsToSaveTo = Command.define('ListBoardsToSaveTo', {
-  messages: [Message.SucceededListBoards, Message.FailedListBoards],
-  execute: Effect.match(boardSummaries, {
-    onFailure: () => Message.FailedListBoards(),
-    onSuccess: (boards) => Message.SucceededListBoards({ boards }),
-  }),
-})
 
 /** Pin the target on a board, a new one first when it has only a name.
  */
@@ -109,7 +98,7 @@ export const SaveTo = Command.define('SaveTo', {
 // UPDATE
 
 type Services = StyldClient | Crypto.Crypto
-type UpdateReturn = Update.Return<Model, Message, Services>
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Services>
 
 const sheet = sheetFolds<Model, Message>({
   read: (model) => model.sheet,
@@ -119,46 +108,37 @@ const sheet = sheetFolds<Model, Message>({
 const foldSheet = sheet.update
 const openSheet = sheet.open
 
-/** The sheet opens fresh, and reads the boards again so a board made meanwhile is there. */
-const opened = (model: Model): UpdateReturn => {
-  const next = openSheet(modifyFields(model, { name: () => '', saving: () => Saving.Idle() }))
-  return {
-    ...next,
-    model: modifyFields(next.model, { boards: (boards) => (AsyncData.hasData(boards) ? boards : AsyncData.Loading()) }),
-    commands: [...(next.commands ?? []), ListBoardsToSaveTo()],
-  }
-}
+/** The sheet opens fresh, and asks for the boards again so a board made meanwhile is there. */
+const opened = (model: Model): UpdateReturn =>
+  Update.withOutMessage(
+    openSheet(modifyFields(model, { name: () => '', saving: () => Saving.Idle() })),
+    OutMessage.RequestedBoards(),
+  )
 
 const sent = (model: Model, boardId: Option.Option<string>, boardName: string): UpdateReturn => ({
   model: modifyFields(model, { saving: () => Saving.Sending() }),
   commands: [SaveTo({ target: model.target, boardId, boardName })],
 })
 
-/** "Save to board" inside a page whose model keeps it as `saveToBoard`. */
-export const foldInto = <Parent extends { readonly saveToBoard: Model }, ParentMessage>(
+/** "Save to board" inside a page whose model keeps it as `saveToBoard`; its request for the boards goes on up as the
+ * page's own OutMessage. */
+export const foldInto = <Parent extends { readonly saveToBoard: Model }, ParentMessage, ParentOutMessage>(
   toParentMessage: (message: Message) => ParentMessage,
+  requestedBoards: () => ParentOutMessage,
 ) =>
   Update.foldChild({
     update: (model: Model, message: Message) => update(model, message),
     read: (parent: Parent) => Option.some(parent.saveToBoard),
     write: (parent: Parent, saveToBoard: Model): Parent => ({ ...parent, saveToBoard }),
     toParentMessage,
+    toParentOutMessage: OutMessage.match({ RequestedBoards: requestedBoards }),
   })
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     ClickedSave: () => opened(model),
     GotSheetMessage: (got) => foldSheet(model, got.message),
-    SucceededListBoards: ({ boards }) => ({
-      model: modifyFields(model, { boards: () => BoardsData.Success({ data: boards }) }),
-    }),
-    FailedListBoards: () => ({
-      model: modifyFields(model, { boards: () => BoardsData.Failure({ error: 'Unavailable' }) }),
-    }),
-    ClickedRetry: () => ({
-      model: modifyFields(model, { boards: () => AsyncData.Loading() }),
-      commands: [ListBoardsToSaveTo()],
-    }),
+    ClickedRetry: () => ({ model, outMessage: OutMessage.RequestedBoards() }),
     ClickedBoard: ({ boardId, boardName }) => sent(model, Option.some(boardId), boardName),
     UpdatedName: ({ value }) => ({ model: modifyFields(model, { name: () => value }) }),
     SubmittedNewBoard: () => {

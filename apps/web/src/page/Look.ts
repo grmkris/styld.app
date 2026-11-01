@@ -71,7 +71,8 @@ export const Message = defineMessageUnion({
 })
 export type Message = typeof Message.Type
 
-export const OutMessage = defineMessageUnion({ DeletedLook: {} })
+/** Gone once deleted; Save to board's sheet asks the app for the person's boards. */
+export const OutMessage = defineMessageUnion({ DeletedLook: {}, RequestedBoards: {} })
 export type OutMessage = typeof OutMessage.Type
 
 // COMMAND
@@ -145,7 +146,10 @@ type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Styl
 
 const foldPeople = People.foldInto<Model, Message>((message) => Message.GotPeopleMessage({ message }))
 
-const foldSaveToBoard = SaveToBoard.foldInto<Model, Message>((message) => Message.GotSaveToBoardMessage({ message }))
+const foldSaveToBoard = SaveToBoard.foldInto<Model, Message, OutMessage>(
+  (message) => Message.GotSaveToBoardMessage({ message }),
+  () => OutMessage.RequestedBoards(),
+)
 
 const showing = (model: Model, shown: LookShown): Model =>
   modifyFields(model, { look: () => LookData.Success({ data: shown }) })
