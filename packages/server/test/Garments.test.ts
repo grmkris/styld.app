@@ -4,7 +4,7 @@ import { describe, expect, test } from 'vitest'
 import { Garments } from '../src/capture/Garments.ts'
 import { type Cut, joined, pairsOf, promptsFor } from '../src/capture/GarmentRules.ts'
 import { GarmentSegmenter, GarmentVision, PictureWork, type Suggestion } from '../src/capture/Providers.ts'
-import type { Found } from '../src/capture/SamStream.ts'
+import type { Found } from '../src/providers/SamStream.ts'
 
 /** A cut of `area` opaque pixels, `track` named. */
 const cut = (track: string, area: number, left = 0): Cut => ({

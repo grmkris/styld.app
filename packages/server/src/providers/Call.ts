@@ -1,5 +1,5 @@
 import { type Duration, Effect, Schedule } from 'effect'
-import { type CaptureMetrics, counted, type ProviderCall } from '../capture/Metrics.ts'
+import { type CaptureMetrics, counted, type ProviderCall } from '../kernel/Metrics.ts'
 import { busy, isBusy, isOutcomeUnknown, outcomeUnknown, type ProviderError } from './Errors.ts'
 
 // One provider call, made one way: within its deadline, tried again only while the provider says it is busy (it did

@@ -9,7 +9,7 @@ import {
   type WornRange,
 } from '@styld/protocol'
 import { Context, Effect, Layer } from 'effect'
-import { CaptureMetrics } from '../capture/Metrics.ts'
+import { CaptureMetrics } from '../kernel/Metrics.ts'
 import { outfitKept } from '../outfits/Outfits.ts'
 import { Database, type StoreUnavailable } from '../kernel/Db.ts'
 import { ownPieceIds } from '../wardrobe/Store.ts'

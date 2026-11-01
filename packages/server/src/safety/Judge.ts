@@ -5,8 +5,8 @@ import type { CheckReason } from '@styld/protocol'
 import { Array, Context, Effect, Layer, Option, Schema } from 'effect'
 import { LanguageModel } from 'effect/ai'
 import { providerErrorOf, type TextTask, workersAiModel } from '../ai/LanguageModel.ts'
-import { askClef, imageOf, noulOf, type RunClef } from '../capture/Clef.ts'
-import { CaptureMetrics } from '../capture/Metrics.ts'
+import { askClef, imageOf, noulOf, type RunClef } from '../providers/Clef.ts'
+import { CaptureMetrics } from '../kernel/Metrics.ts'
 import { type Picture } from '../capture/Providers.ts'
 
 /** What something public shows: its words and at most a few of its pictures. */

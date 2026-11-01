@@ -13,7 +13,7 @@ import {
   Unavailable,
 } from '@styld/protocol'
 import { Array, Clock, Context, DateTime, Effect, Layer, Option, Order, Schema } from 'effect'
-import { CaptureMetrics } from '../capture/Metrics.ts'
+import { CaptureMetrics } from '../kernel/Metrics.ts'
 import type { Picture } from '../capture/Providers.ts'
 import { Database } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'

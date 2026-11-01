@@ -1,6 +1,6 @@
 /**
  * What capture providers cost and how often their pieces are kept, from the Worker's Analytics Engine
- * dataset (`packages/server/src/capture/Metrics.ts` writes it):
+ * dataset (`packages/server/src/kernel/Metrics.ts` writes it):
  *
  *   bun tools/ai-usage-report.ts [environment=preview] [days=7]
  *

@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@effect/vitest'
 import { CurrentAccount, type MakeOutfit, OperationId } from '@styld/protocol'
 import { Effect, Layer, Option, Predicate } from 'effect'
-import { CaptureMetrics } from '../src/capture/Metrics.ts'
+import { CaptureMetrics } from '../src/kernel/Metrics.ts'
 import { Database } from '../src/kernel/Db.ts'
 import { Media } from '../src/kernel/Media.ts'
 import { OutfitJudge } from '../src/outfits/Judge.ts'

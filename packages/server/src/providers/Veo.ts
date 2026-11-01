@@ -1,12 +1,12 @@
-import { busy, outcomeUnknown, broken, reasonOfStatus } from '../providers/Errors.ts'
-import { costs } from '../providers/Costs.ts'
-import { deadlines, providerCall } from '../providers/Call.ts'
-import { base64Of, httpProvider, type HttpProvider, type HttpProviderSettings } from '../providers/Http.ts'
+import { busy, outcomeUnknown, broken, reasonOfStatus } from './Errors.ts'
+import { costs } from './Costs.ts'
+import { deadlines, providerCall } from './Call.ts'
+import { base64Of, httpProvider, type HttpProvider, type HttpProviderSettings } from './Http.ts'
 import { Effect, Option, Schema } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
-import type { CaptureMetrics } from './Metrics.ts'
-import { type Picture, type TurnRequest, type TurnStatus } from './Providers.ts'
-import { turnPrompt } from './TurnPrompt.ts'
+import type { CaptureMetrics } from '../kernel/Metrics.ts'
+import { type Picture, type TurnRequest, type TurnStatus } from '../capture/Providers.ts'
+import { turnPrompt } from '../capture/TurnPrompt.ts'
 
 /** What the Veo adapter needs: the Vercel AI Gateway, its key, and `fetch`. */
 export interface VeoSettings extends Omit<HttpProviderSettings, 'provider' | 'headers'> {

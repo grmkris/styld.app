@@ -3,11 +3,11 @@ import { Effect, Layer, Redacted } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { Garments } from '../src/capture/Garments.ts'
 import { distinctMasks } from '../src/capture/GarmentRules.ts'
-import { makeGarmentSegmenter } from '../src/capture/Meta.ts'
-import { CaptureMetrics } from '../src/capture/Metrics.ts'
+import { makeGarmentSegmenter } from '../src/providers/Meta.ts'
+import { CaptureMetrics } from '../src/kernel/Metrics.ts'
 import { encodePng, overlapShare } from '../src/capture/Pixels.ts'
 import { GarmentSegmenter, GarmentVision, PictureWork } from '../src/capture/Providers.ts'
-import type { Found } from '../src/capture/SamStream.ts'
+import type { Found } from '../src/providers/SamStream.ts'
 
 /** A solid mask over a box. */
 const solid = (left: number, top: number, right: number, bottom: number, track = '0'): Found => ({

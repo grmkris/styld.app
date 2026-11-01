@@ -9,8 +9,8 @@
  */
 import { readFile } from 'node:fs/promises'
 import { Effect, Redacted, Schema } from 'effect'
-import { makeGarmentSegmenter } from '../packages/server/src/capture/Meta.ts'
-import { CaptureMetrics } from '../packages/server/src/capture/Metrics.ts'
+import { makeGarmentSegmenter } from '../packages/server/src/providers/Meta.ts'
+import { CaptureMetrics } from '../packages/server/src/kernel/Metrics.ts'
 import { readMoov, videoFrameCount } from '../packages/server/src/capture/VideoContainer.ts'
 
 const [path, every = '1'] = process.argv.slice(2)

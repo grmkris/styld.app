@@ -5,7 +5,7 @@ import { refinedCutOut } from './Matte.ts'
 import { type Mask, overlapShare } from './Pixels.ts'
 import { capturePolicy } from './Policy.ts'
 import type { Route } from './Providers.ts'
-import type { Found } from './SamStream.ts'
+import type { Found } from '../providers/SamStream.ts'
 
 // The garment pipeline's rules, each decided once for every intent: who cuts a picture out, what SAM is asked for,
 // which masks are kept, which pieces are a pair, and what a description makes of a piece. Pure, so each is tested on

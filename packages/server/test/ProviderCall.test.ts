@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@effect/vitest'
 import { Effect, Exit, Fiber } from 'effect'
 import { TestClock } from 'effect/testing'
-import { CaptureMetrics, type ProviderCall } from '../src/capture/Metrics.ts'
+import { CaptureMetrics, type ProviderCall } from '../src/kernel/Metrics.ts'
 import { providerCall } from '../src/providers/Call.ts'
 import { broken, busy, outcomeUnknown, refused } from '../src/providers/Errors.ts'
 

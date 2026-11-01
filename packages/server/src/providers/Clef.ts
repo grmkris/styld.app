@@ -1,10 +1,10 @@
-import { busy, refused, broken } from '../providers/Errors.ts'
-import { costs } from '../providers/Costs.ts'
-import { deadlines, providerCall } from '../providers/Call.ts'
+import { busy, refused, broken } from './Errors.ts'
+import { costs } from './Costs.ts'
+import { deadlines, providerCall } from './Call.ts'
 import { Colour, groupOf, Occasion, Pattern, PieceType, Season } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
-import type { CaptureMetrics } from './Metrics.ts'
+import type { CaptureMetrics } from '../kernel/Metrics.ts'
 import {
   type Comparison,
   type HeldCheck,
@@ -15,7 +15,7 @@ import {
   type Suggestion,
   type TurnComparison,
   type Verdict,
-} from './Providers.ts'
+} from '../capture/Providers.ts'
 
 /** A Clef-flash request (Workers AI `@cf/cloudflare/clef-flash`, the System One API). */
 export interface ClefRequest {

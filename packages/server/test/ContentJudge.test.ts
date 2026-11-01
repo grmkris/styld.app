@@ -1,8 +1,8 @@
 import { describe, expect, it } from '@effect/vitest'
 import { Effect, Layer, Predicate } from 'effect'
 import { WorkersAi } from '../src/ai/LanguageModel.ts'
-import type { RunClef } from '../src/capture/Clef.ts'
-import { CaptureMetrics, type ProviderCall } from '../src/capture/Metrics.ts'
+import type { RunClef } from '../src/providers/Clef.ts'
+import { CaptureMetrics, type ProviderCall } from '../src/kernel/Metrics.ts'
 import { ContentJudge, contentJudge } from '../src/safety/Judge.ts'
 
 // The content judge's model calls go the one provider way: each deadlined and counted with what it cost, Llama Guard

@@ -1,7 +1,7 @@
 import { type Duration, Context, Effect, Layer, Predicate, Schema, Stream } from 'effect'
 import { AiError, LanguageModel, Prompt, type Response, Tool } from 'effect/ai'
 import { toCodecOpenAI } from 'effect/ai/OpenAiStructuredOutput'
-import { CaptureMetrics, type ProviderCall } from '../capture/Metrics.ts'
+import { CaptureMetrics, type ProviderCall } from '../kernel/Metrics.ts'
 import { providerCall } from '../providers/Call.ts'
 import { type TextModel, textCost } from '../providers/Costs.ts'
 import { broken, busy, outcomeUnknown, type ProviderError, refused } from '../providers/Errors.ts'

@@ -1,7 +1,7 @@
 import type { ProviderError } from '../providers/Errors.ts'
 import type { Colour, Occasion, Pattern, PieceType, Season } from '@styld/protocol'
 import { Context, type Effect, type Option } from 'effect'
-import type { Found } from './SamStream.ts'
+import type { Found } from '../providers/SamStream.ts'
 
 /** A picture handed to a provider: Styld's own re-encoded copy, never the person's original file. */
 export interface Picture {

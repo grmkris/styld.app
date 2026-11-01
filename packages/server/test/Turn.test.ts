@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs'
 import { Effect, Predicate, Redacted, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
-import { makeGarmentVision } from '../src/capture/Clef.ts'
+import { makeGarmentVision } from '../src/providers/Clef.ts'
 import { turnKept } from '../src/capture/CleanPicture.ts'
 import { capturePolicy } from '../src/capture/Policy.ts'
-import { CaptureMetrics } from '../src/capture/Metrics.ts'
-import { makeMuseGenerator } from '../src/capture/Muse.ts'
-import { makeVeoGenerator } from '../src/capture/Veo.ts'
+import { CaptureMetrics } from '../src/kernel/Metrics.ts'
+import { makeMuseGenerator } from '../src/providers/Muse.ts'
+import { makeVeoGenerator } from '../src/providers/Veo.ts'
 
 const fixture = (name: string) => readFileSync(new URL(`fixtures/capture/${name}`, import.meta.url))
 const picture = (byte: number) => ({ bytes: new Uint8Array([byte, byte]), contentType: 'image/png' }) as const

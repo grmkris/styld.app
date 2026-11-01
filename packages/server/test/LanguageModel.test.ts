@@ -3,7 +3,7 @@ import { Effect, Fiber, Layer, Predicate, Schema } from 'effect'
 import { LanguageModel, Tool, Toolkit } from 'effect/ai'
 import { TestClock } from 'effect/testing'
 import { providerErrorOf, type TextTask, WorkersAi, workersAiModel } from '../src/ai/LanguageModel.ts'
-import { CaptureMetrics, type ProviderCall } from '../src/capture/Metrics.ts'
+import { CaptureMetrics, type ProviderCall } from '../src/kernel/Metrics.ts'
 import { deadlines } from '../src/providers/Call.ts'
 import { textModels } from '../src/providers/Costs.ts'
 

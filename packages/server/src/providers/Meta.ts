@@ -1,13 +1,13 @@
-import { busy, refused, outcomeUnknown, broken } from '../providers/Errors.ts'
-import { costs } from '../providers/Costs.ts'
-import { deadlines, providerCall } from '../providers/Call.ts'
-import { dataUrl, httpProvider, type HttpProvider, type HttpProviderSettings } from '../providers/Http.ts'
+import { busy, refused, outcomeUnknown, broken } from './Errors.ts'
+import { costs } from './Costs.ts'
+import { deadlines, providerCall } from './Call.ts'
+import { dataUrl, httpProvider, type HttpProvider, type HttpProviderSettings } from './Http.ts'
 import { Clock, Effect, Option, Schema } from 'effect'
-import type { CaptureMetrics } from './Metrics.ts'
-import { type Picture, type StoredVideo } from './Providers.ts'
+import type { CaptureMetrics } from '../kernel/Metrics.ts'
+import { type Picture, type StoredVideo } from '../capture/Providers.ts'
 import { lineFrame, lineFrameSize, makeOutputLines, stillMasks, videoMasks } from './SamStream.ts'
 import { type ByteStream, pump } from '../Streams.ts'
-import { blankRanges } from './VideoContainer.ts'
+import { blankRanges } from '../capture/VideoContainer.ts'
 
 /** What the Meta adapter needs: the API, its key and `fetch`, a way to read stored videos, and the call counter.
  * Workers send a streamed body with a known length only through `FixedLengthStream`, which the client passes on as it

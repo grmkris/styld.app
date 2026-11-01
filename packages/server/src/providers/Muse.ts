@@ -1,14 +1,14 @@
-import { refused, broken } from '../providers/Errors.ts'
-import { costs } from '../providers/Costs.ts'
-import { deadlines, providerCall } from '../providers/Call.ts'
-import { dataUrl, httpProvider, type HttpProvider, type HttpProviderSettings } from '../providers/Http.ts'
+import { refused, broken } from './Errors.ts'
+import { costs } from './Costs.ts'
+import { deadlines, providerCall } from './Call.ts'
+import { dataUrl, httpProvider, type HttpProvider, type HttpProviderSettings } from './Http.ts'
 import { Effect, Option, Schema } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
-import { cleanPrompt } from './CleanPrompt.ts'
-import { profilePrompt } from './TurnPrompt.ts'
-import type { CaptureMetrics } from './Metrics.ts'
+import { cleanPrompt } from '../capture/CleanPrompt.ts'
+import { profilePrompt } from '../capture/TurnPrompt.ts'
+import type { CaptureMetrics } from '../kernel/Metrics.ts'
 import type { PaintRequest } from '../generation/Painter.ts'
-import { type DrawRequest, type Picture } from './Providers.ts'
+import { type DrawRequest, type Picture } from '../capture/Providers.ts'
 
 /** What the Muse adapter needs: Meta's API and the key Styld already uses for SAM, `fetch`, and the call counter. */
 export interface MuseSettings extends Omit<HttpProviderSettings, 'provider'> {

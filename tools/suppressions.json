@@ -40,11 +40,11 @@
     "comment": "SAFETY: the text models Styld asks are Workers AI chat models outside the pinned workers-types model list -- the input is the Chat Completions body ai/LanguageModel.ts builds"
   },
   {
-    "file": "packages/server/src/capture/CloudflareImages.ts",
+    "file": "packages/server/src/providers/CloudflareImages.ts",
     "comment": "SAFETY: a Response body is the Worker runtime's own ReadableStream -- the server package types globals with the DOM lib and the Images binding with workers-types"
   },
   {
-    "file": "packages/server/src/capture/Meta.ts",
+    "file": "packages/server/src/providers/Meta.ts",
     "comment": "SAFETY: FixedLengthStream's readable is a Worker runtime stream -- the fetch type here is the DOM lib's, which names its own ReadableStream"
   },
   {

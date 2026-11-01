@@ -1,7 +1,7 @@
 import { type Ending, Holds, holdId } from '../usage/Holds.ts'
 import { Pacing } from '../kernel/Pacing.ts'
 import { Garments } from './Garments.ts'
-import { CaptureMetrics } from './Metrics.ts'
+import { CaptureMetrics } from '../kernel/Metrics.ts'
 import { GarmentVision, ImageGenerator, PictureWork, VideoGenerator } from './Providers.ts'
 import { readPng } from '@styld/imaging'
 import { Unavailable } from '@styld/protocol'

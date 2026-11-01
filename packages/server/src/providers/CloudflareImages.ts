@@ -1,10 +1,10 @@
-import { busy } from '../providers/Errors.ts'
-import { costs } from '../providers/Costs.ts'
-import { deadlines, providerCall } from '../providers/Call.ts'
+import { busy } from './Errors.ts'
+import { costs } from './Costs.ts'
+import { deadlines, providerCall } from './Call.ts'
 import { Effect } from 'effect'
 import type { WardrobeBindings } from '../wardrobe/Parts.ts'
-import type { CaptureMetrics } from './Metrics.ts'
-import { type WorkingCopies } from './Providers.ts'
+import type { CaptureMetrics } from '../kernel/Metrics.ts'
+import { type WorkingCopies } from '../capture/Providers.ts'
 import { collect } from '../Streams.ts'
 
 type Images = WardrobeBindings['images']
