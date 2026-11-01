@@ -35,9 +35,8 @@ import {
   ownBoard,
   pieceTarget,
   pinnedPiecesChecked,
-  receiptFor,
+  priorOf,
   rechecked,
-  receiptRow,
   shown,
   stored,
   summaries,
@@ -46,7 +45,8 @@ import {
   unavailable,
 } from './Parts.ts'
 import { nowDate } from '../kernel/Db.ts'
-import { digestOf, newId } from '../kernel/Ids.ts'
+import { newId } from '../kernel/Ids.ts'
+import { identify, receiptRow, type Identified } from '../kernel/Receipts.ts'
 
 /** Where a board picture came from: an upload, a picture Styld generated (its job and model), or an outfit photo of
  * My Gallery. */
@@ -72,11 +72,11 @@ const reads = (parts: Parts) => ({
 
 /** The board an operation id already created, if any: the same board for the same name. Another name, or a
  * repeat after that board was deleted, is a conflict. */
-const createdBefore = (parts: Parts, accountId: string, operationId: string, inputDigest: string) =>
+const createdBefore = (parts: Parts, operation: Identified) =>
   Effect.gen(function* () {
-    const created = yield* receiptFor(parts, accountId, operationId, 'createBoard', inputDigest)
+    const created = yield* priorOf(parts, operation)
     if (Option.isNone(created)) return Option.none<Board>()
-    const board = yield* one(parts, accountId, created.value).pipe(
+    const board = yield* one(parts, operation.accountId, created.value).pipe(
       Effect.catchTag('BoardNotFound', () => Effect.fail(OperationConflict.make({}))),
     )
     return Option.some(board)
@@ -86,8 +86,13 @@ const changes = (parts: Parts) => ({
   /** Start an empty board on plain paper, once per operation id. */
   createBoard: Effect.fn('Styld.Boards.create')(function* (input: CreateBoard) {
     const { accountId } = yield* CurrentAccount
-    const inputDigest = yield* digestOf(JSON.stringify([input.name]))
-    const earlier = yield* createdBefore(parts, accountId, input.operationId, inputDigest)
+    const operation = yield* identify({
+      accountId,
+      operationId: input.operationId,
+      command: 'createBoard',
+      input: [input.name],
+    })
+    const earlier = yield* createdBefore(parts, operation)
     if (Option.isSome(earlier)) return earlier.value
     const id = yield* newId('bd')
     const at = yield* nowDate
@@ -105,11 +110,11 @@ const changes = (parts: Parts) => ({
       createdAt: at,
       updatedAt: at,
     }
-    const receipt = yield* receiptRow(accountId, input.operationId, 'createBoard', inputDigest, id)
+    const receipt = yield* receiptRow(operation, id)
     const committed = yield* Effect.option(parts.store.createBoard(board, receipt))
     if (Option.isNone(committed)) {
       // A concurrent repeat of the operation may have committed first; its board answers.
-      const repeat = yield* createdBefore(parts, accountId, input.operationId, inputDigest)
+      const repeat = yield* createdBefore(parts, operation)
       return Option.isSome(repeat) ? repeat.value : yield* unavailable()
     }
     const [created] = yield* shown(parts, [board])
@@ -171,21 +176,21 @@ const pinning = (parts: Parts) => ({
     const { accountId } = yield* CurrentAccount
     const pieceIds = [...new Set(input.pieceIds ?? [])]
     const lookIds = [...new Set(input.lookIds ?? [])]
-    const inputDigest = yield* digestOf(JSON.stringify([boardId, pieceIds, lookIds]))
-    if (Option.isSome(yield* receiptFor(parts, accountId, input.operationId, 'addPins', inputDigest)))
-      return yield* one(parts, accountId, boardId)
+    const operation = yield* identify({
+      accountId,
+      operationId: input.operationId,
+      command: 'addPins',
+      input: [boardId, pieceIds, lookIds],
+    })
+    if (Option.isSome(yield* priorOf(parts, operation))) return yield* one(parts, accountId, boardId)
     yield* ownBoard(parts, accountId, boardId)
     const refusal = yield* pinRefusal(parts, accountId, boardId, pieceIds, lookIds)
     if (Option.isSome(refusal)) return yield* PinRefused.make({ reason: refusal.value })
     const at = yield* nowDate
     const pins = yield* newPins(parts, boardId, [...pieceIds.map(pieceTarget), ...lookIds.map(lookTarget)], at)
-    const receipt = yield* receiptRow(accountId, input.operationId, 'addPins', inputDigest, boardId)
+    const receipt = yield* receiptRow(operation, boardId)
     const committed = yield* Effect.option(parts.store.addPins(accountId, boardId, pins, receipt, at))
-    if (
-      Option.isNone(committed) &&
-      Option.isNone(yield* receiptFor(parts, accountId, input.operationId, 'addPins', inputDigest))
-    )
-      return yield* unavailable()
+    if (Option.isNone(committed) && Option.isNone(yield* priorOf(parts, operation))) return yield* unavailable()
     return yield* one(parts, accountId, boardId)
   }),
   /** Take pins off the board and their pieces and pictures off its table; a picture taken off is deleted.
@@ -193,9 +198,13 @@ const pinning = (parts: Parts) => ({
   removePins: Effect.fn('Styld.Boards.removePins')(function* (boardId: BoardId, input: RemovePins) {
     const { accountId } = yield* CurrentAccount
     const pinIds = [...new Set(input.pinIds)]
-    const inputDigest = yield* digestOf(JSON.stringify([boardId, pinIds]))
-    if (Option.isSome(yield* receiptFor(parts, accountId, input.operationId, 'removePins', inputDigest)))
-      return yield* one(parts, accountId, boardId)
+    const operation = yield* identify({
+      accountId,
+      operationId: input.operationId,
+      command: 'removePins',
+      input: [boardId, pinIds],
+    })
+    if (Option.isSome(yield* priorOf(parts, operation))) return yield* one(parts, accountId, boardId)
     yield* ownBoard(parts, accountId, boardId)
     const pins = yield* stored(parts.store.pinsOn(boardId, pinIds))
     const imageIds = pins.flatMap(({ imageId }) => (imageId === null ? [] : [imageId]))
@@ -206,13 +215,12 @@ const pinning = (parts: Parts) => ({
       pinIds,
       pieceIds: pins.flatMap(({ pieceId }) => (pieceId === null ? [] : [pieceId])),
       imageIds,
-      receipt: yield* receiptRow(accountId, input.operationId, 'removePins', inputDigest, boardId),
+      receipt: yield* receiptRow(operation, boardId),
       at: yield* nowDate,
     }
     const committed = yield* Effect.option(parts.store.removePins(removal))
     if (Option.isNone(committed)) {
-      if (Option.isNone(yield* receiptFor(parts, accountId, input.operationId, 'removePins', inputDigest)))
-        return yield* unavailable()
+      if (Option.isNone(yield* priorOf(parts, operation))) return yield* unavailable()
       return yield* one(parts, accountId, boardId)
     }
     // The rows are gone; bytes a failed delete leaves behind sit under the account's prefix, which account
@@ -258,16 +266,12 @@ const replayImage = (parts: Parts, accountId: string, imageId: string) =>
 
 /** A batch the store refused. If the same operation committed after all, its receipt answers; otherwise the
  * upload was spent meanwhile, the board went, or D1 failed. */
-const addImageFailure = (
-  parts: Parts,
-  input: AddBoardImage & { readonly accountId: string; readonly boardId: string; readonly inputDigest: string },
-) =>
+const addImageFailure = (parts: Parts, operation: Identified, boardId: string, uploadId: string) =>
   Effect.gen(function* () {
-    const receipt = yield* stored(parts.store.findReceipt(input.accountId, input.operationId))
-    if (Option.isSome(receipt) && receipt.value.inputDigest === input.inputDigest)
-      return yield* replayImage(parts, input.accountId, receipt.value.result)
-    yield* ownBoard(parts, input.accountId, input.boardId)
-    yield* usableUpload(parts.wardrobeStore, input.accountId, input.uploadId)
+    const prior = yield* priorOf(parts, operation)
+    if (Option.isSome(prior)) return yield* replayImage(parts, operation.accountId, prior.value)
+    yield* ownBoard(parts, operation.accountId, boardId)
+    yield* usableUpload(parts.wardrobeStore, operation.accountId, uploadId)
     return yield* unavailable()
   })
 
@@ -294,19 +298,21 @@ const pictures = (parts: Parts) => ({
     origin: ImageOrigin = { kind: 'upload' },
   ) {
     const { accountId } = yield* CurrentAccount
-    const inputDigest = yield* digestOf(JSON.stringify([boardId, input.uploadId]))
-    const receipt = yield* stored(parts.store.findReceipt(accountId, input.operationId))
-    if (Option.isSome(receipt))
-      return receipt.value.inputDigest === inputDigest && receipt.value.command === 'addBoardImage'
-        ? yield* replayImage(parts, accountId, receipt.value.result)
-        : yield* OperationConflict.make({})
+    const operation = yield* identify({
+      accountId,
+      operationId: input.operationId,
+      command: 'addBoardImage',
+      input: [boardId, input.uploadId],
+    })
+    const prior = yield* priorOf(parts, operation)
+    if (Option.isSome(prior)) return yield* replayImage(parts, accountId, prior.value)
     yield* ownBoard(parts, accountId, boardId)
     const upload = yield* usableUpload(parts.wardrobeStore, accountId, input.uploadId)
     if (!upload.contentType.startsWith('image/')) return yield* UploadRefused.make({ reason: 'wrongType' })
     const id = yield* newId('bm')
     const pinId = yield* newId('pn')
     const at = yield* nowDate
-    const added = yield* receiptRow(accountId, input.operationId, 'addBoardImage', inputDigest, id)
+    const added = yield* receiptRow(operation, id)
     const image = {
       id,
       accountId,
@@ -320,7 +326,7 @@ const pictures = (parts: Parts) => ({
     const committed = yield* parts.store.addImage(image, pinId, upload.id, added).pipe(
       Effect.as(Option.none<BoardImage>()),
       Effect.catchTag('StoreUnavailable', () =>
-        addImageFailure(parts, { ...input, accountId, boardId, inputDigest }).pipe(Effect.map(Option.some)),
+        addImageFailure(parts, operation, boardId, input.uploadId).pipe(Effect.map(Option.some)),
       ),
     )
     return Option.getOrElse(committed, (): BoardImage => ({ imageId: BoardImageId.make(id) }))

@@ -18,20 +18,10 @@ import {
 } from '@styld/protocol'
 import { Array, Effect, Match, Option, Predicate, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import {
-  itemRow,
-  newPins,
-  one,
-  ownBoard,
-  pieceTarget,
-  receiptFor,
-  receiptRow,
-  stored,
-  type Parts,
-  unavailable,
-} from './Parts.ts'
+import { itemRow, newPins, one, ownBoard, pieceTarget, priorOf, stored, type Parts, unavailable } from './Parts.ts'
 import { nowDate } from '../kernel/Db.ts'
-import { digestOf, newId } from '../kernel/Ids.ts'
+import { newId } from '../kernel/Ids.ts'
+import { identify, receiptRow, type Identified } from '../kernel/Receipts.ts'
 
 // Saving a board's table: the editor's whole table, an assistant's arrangement, an assistant's exact table.
 
@@ -58,13 +48,6 @@ const lostSave = (parts: Parts, accountId: string, boardId: string, version: num
     return yield* board.version === version ? unavailable() : BoardVersionConflict.make({ version: board.version })
   })
 
-/** The operation a table save answers to: its id, its kind and the digest of what it asked for. */
-interface TableOperation {
-  readonly operationId: string
-  readonly command: string
-  readonly inputDigest: string
-}
-
 /** Save a table from a version under an operation, pinning the pieces it places; a board saved since answers its
  * current version, and the same operation that committed meanwhile answers the board as it is. */
 const savedTable = (
@@ -72,10 +55,9 @@ const savedTable = (
   accountId: string,
   boardId: string,
   table: { readonly version: number; readonly items: ReadonlyArray<BoardItem> },
-  operation: TableOperation,
+  operation: Identified,
 ) =>
   Effect.gen(function* () {
-    const { operationId, command, inputDigest } = operation
     const refusal = yield* tableRefusal(parts, accountId, boardId, table.items)
     if (Option.isSome(refusal)) return yield* BoardItemRefused.make({ reason: refusal.value })
     const placed = [...new Set(table.items.filter(Schema.is(PieceItem)).map(({ pieceId }) => pieceId))]
@@ -87,13 +69,12 @@ const savedTable = (
       version: table.version,
       items: table.items.map(itemRow),
       pins: yield* newPins(parts, boardId, placed.filter((id) => !pinned.has(id)).map(pieceTarget), at),
-      receipt: yield* receiptRow(accountId, operationId, command, inputDigest, boardId),
+      receipt: yield* receiptRow(operation, boardId),
       at,
     }
     const counted = yield* parts.store.saveItems(save).pipe(Effect.orElseSucceed(() => Option.none()))
     if (Option.isSome(counted)) return yield* one(parts, accountId, boardId)
-    if (Option.isSome(yield* receiptFor(parts, accountId, operationId, command, inputDigest)))
-      return yield* one(parts, accountId, boardId)
+    if (Option.isSome(yield* priorOf(parts, operation))) return yield* one(parts, accountId, boardId)
     return yield* lostSave(parts, accountId, boardId, table.version)
   })
 
@@ -133,13 +114,13 @@ export const tables = (parts: Parts) => ({
    * board as it is now. */
   saveBoardItems: Effect.fn('Styld.Boards.saveItems')(function* (boardId: BoardId, input: SaveBoardItems) {
     const { accountId } = yield* CurrentAccount
-    const operation = {
+    const operation = yield* identify({
+      accountId,
       operationId: input.operationId,
       command: 'saveBoardItems',
-      inputDigest: yield* digestOf(JSON.stringify([boardId, input.version, input.items])),
-    }
-    if (Option.isSome(yield* receiptFor(parts, accountId, input.operationId, operation.command, operation.inputDigest)))
-      return yield* one(parts, accountId, boardId)
+      input: [boardId, input.version, input.items],
+    })
+    if (Option.isSome(yield* priorOf(parts, operation))) return yield* one(parts, accountId, boardId)
     const board = yield* ownBoard(parts, accountId, boardId)
     if (board.version !== input.version) return yield* BoardVersionConflict.make({ version: board.version })
     return yield* savedTable(parts, accountId, boardId, input, operation)
@@ -148,13 +129,13 @@ export const tables = (parts: Parts) => ({
    * the board as it is now, and once more if an editor saved in between. */
   arrangeBoard: Effect.fn('Styld.Boards.arrange')(function* (boardId: BoardId, input: ArrangeBoard) {
     const { accountId } = yield* CurrentAccount
-    const operation = {
+    const operation = yield* identify({
+      accountId,
       operationId: input.operationId,
       command: 'arrangeBoard',
-      inputDigest: yield* digestOf(JSON.stringify([boardId, input.layout, input.add ?? []])),
-    }
-    if (Option.isSome(yield* receiptFor(parts, accountId, input.operationId, operation.command, operation.inputDigest)))
-      return yield* one(parts, accountId, boardId)
+      input: [boardId, input.layout, input.add ?? []],
+    })
+    if (Option.isSome(yield* priorOf(parts, operation))) return yield* one(parts, accountId, boardId)
     const adding = input.add ?? []
     const ids = yield* itemIds(parts, adding.length)
     const attempt = Effect.gen(function* () {
@@ -183,13 +164,13 @@ export const tables = (parts: Parts) => ({
    * version it read. */
   setTable: Effect.fn('Styld.Boards.setTable')(function* (boardId: BoardId, input: SetTable) {
     const { accountId } = yield* CurrentAccount
-    const operation = {
+    const operation = yield* identify({
+      accountId,
       operationId: input.operationId,
       command: 'setTable',
-      inputDigest: yield* digestOf(JSON.stringify([boardId, input.version, input.items])),
-    }
-    if (Option.isSome(yield* receiptFor(parts, accountId, input.operationId, operation.command, operation.inputDigest)))
-      return yield* one(parts, accountId, boardId)
+      input: [boardId, input.version, input.items],
+    })
+    if (Option.isSome(yield* priorOf(parts, operation))) return yield* one(parts, accountId, boardId)
     const board = yield* ownBoard(parts, accountId, boardId)
     if (board.version !== input.version) return yield* BoardVersionConflict.make({ version: board.version })
     const ids = yield* itemIds(parts, input.items.length)

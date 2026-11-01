@@ -25,6 +25,7 @@
     "effect": "catalog:"
   },
   "devDependencies": {
+    "@effect/vitest": "catalog:",
     "@modelcontextprotocol/client": "catalog:",
     "@modelcontextprotocol/sdk": "catalog:"
   }

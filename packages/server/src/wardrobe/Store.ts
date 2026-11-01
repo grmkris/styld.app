@@ -2,7 +2,7 @@ import { accounts, detections, operationReceipts, piecePictures, pieceTurns, pie
 import { and, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option } from 'effect'
-import { receiptQuery } from '../Receipts.ts'
+import { receiptQuery } from '../kernel/Receipts.ts'
 import { chunked, first, query, StoreUnavailable } from '../kernel/Db.ts'
 
 export type PieceRow = typeof pieces.$inferSelect

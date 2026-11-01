@@ -5,7 +5,6 @@ import {
   BoardNotFound,
   BoardSummary,
   type Look,
-  OperationConflict,
   WardrobeUnavailable,
 } from '@styld/protocol'
 import { Effect, Match, Option, Schema } from 'effect'
@@ -16,10 +15,11 @@ import type { Checks } from '../safety/Checks.ts'
 import type { ProfileStore } from '../social/ProfileStore.ts'
 import { type ImageBindings } from '../wardrobe/Delivery.ts'
 import { type Store } from '../wardrobe/Store.ts'
-import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
+import { type StoreUnavailable } from '../kernel/Db.ts'
 import { toPiece, type WardrobeBindings } from '../wardrobe/Parts.ts'
 import { type BoardItemRow, type BoardPinRow, type BoardRow, type BoardStore } from './Store.ts'
 import { newId } from '../kernel/Ids.ts'
+import { priorResult, type Identified } from '../kernel/Receipts.ts'
 
 // What the board operations share: the bindings, how a board is shown, receipts, ownership and new pins.
 
@@ -175,31 +175,11 @@ export const one = (parts: Parts, accountId: string, boardId: string) =>
     return board ?? (yield* BoardNotFound.make({}))
   })
 
-/** What an operation id already did, if anything: its result for the same command and input; anything else
- * under that id is a conflict. */
-export const receiptFor = (
-  parts: Parts,
-  accountId: string,
-  operationId: string,
-  command: string,
-  inputDigest: string,
-) =>
-  Effect.gen(function* () {
-    const receipt = yield* stored(parts.store.findReceipt(accountId, operationId))
-    if (Option.isNone(receipt)) return Option.none<string>()
-    if (receipt.value.inputDigest !== inputDigest || receipt.value.command !== command)
-      return yield* OperationConflict.make({})
-    return Option.some(receipt.value.result)
-  })
-
-/** A receipt for an operation the account is about to commit. */
-export const receiptRow = (
-  accountId: string,
-  operationId: string,
-  command: string,
-  inputDigest: string,
-  result: string,
-) => Effect.map(nowDate, (createdAt) => ({ accountId, operationId, command, inputDigest, result, createdAt }))
+/** What an operation already made on the boards, by the kernel's receipt rule. */
+export const priorOf = (parts: Parts, operation: Identified) =>
+  Effect.flatMap(stored(parts.store.findReceipt(operation.accountId, operation.operationId)), (receipt) =>
+    priorResult(operation, receipt),
+  )
 
 /** New pins for things a board does not hold yet, the first of them newest. */
 export const newPins = (

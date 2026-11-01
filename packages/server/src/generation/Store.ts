@@ -2,7 +2,7 @@ import { generationJobs, generationPictures, operationReceipts } from '@styld/db
 import { and, asc, desc, eq, inArray, lt, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect } from 'effect'
-import { receiptQuery } from '../Receipts.ts'
+import { receiptQuery } from '../kernel/Receipts.ts'
 import { first, query } from '../kernel/Db.ts'
 
 export type JobRow = typeof generationJobs.$inferSelect

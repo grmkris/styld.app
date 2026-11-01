@@ -2,7 +2,7 @@ import { boardImages, boardItems, boardPins, boards, operationReceipts, pieces }
 import { and, asc, count, desc, eq, inArray, lte, or, type SQL, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option } from 'effect'
-import { receiptQuery } from '../Receipts.ts'
+import { receiptQuery } from '../kernel/Receipts.ts'
 import { ownPieceIds, receivedUploadKey, spendUpload } from '../wardrobe/Store.ts'
 import { chunked, first, query } from '../kernel/Db.ts'
 

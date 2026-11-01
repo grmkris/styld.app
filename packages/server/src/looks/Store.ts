@@ -2,7 +2,7 @@ import { lookPieces, looks, operationReceipts, pieces } from '@styld/db'
 import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option } from 'effect'
-import { receiptQuery } from '../Receipts.ts'
+import { receiptQuery } from '../kernel/Receipts.ts'
 import { ownPieceIds } from '../wardrobe/Store.ts'
 import { chunked, query } from '../kernel/Db.ts'
 
