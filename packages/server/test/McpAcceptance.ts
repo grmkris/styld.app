@@ -165,7 +165,7 @@ const useTools = async (origin: string, access: string) => {
   const legacy = new LegacyClient({ name: 'styld-native-legacy', version: '1.0.0' })
   await legacy.connect(new LegacyTransport(new URL(`${origin}/mcp`), { requestInit }))
   for (const client of [modern, legacy]) {
-    expect((await client.listTools()).tools.map(({ name }) => name)).toEqual(toolNames)
+    expect((await client.listTools()).tools.map(({ name }) => name)).toEqual([...toolNames])
     // Hosts read the view from the resource the tool names, through either protocol era.
     const view = (await client.readResource({ uri: 'ui://styld/views-v2.html' })).contents[0]
     expect(view).toMatchObject({ uri: 'ui://styld/views-v2.html', mimeType: 'text/html;profile=mcp-app' })
@@ -222,7 +222,7 @@ const addPieceThroughTools = async (origin: string, client: Client) => {
   expect(added['url']).toBe(`${origin}/wardrobe/${pieceId}`)
   // The same operation id returns the same piece instead of adding a second one.
   expect(await structured(client, 'piece_add', add)).toMatchObject({ id: pieceId })
-  expect(await structured(client, 'piece_search', { query: 'trainers' })).toMatchObject({
+  expect(await structured(client, 'piece_search', { q: 'trainers' })).toMatchObject({
     pieces: [{ id: pieceId }],
     nextCursor: null,
   })
@@ -279,7 +279,10 @@ const boardThroughTools = async (origin: string, client: Client, pieceId: string
     boardId,
     operationId: 'mcp-native-arrange-1',
     layout: 'outfit',
-    add: [{ pieceId }, { text: 'Brunch', style: 'headline' }],
+    add: [
+      { _tag: 'TablePiece', pieceId },
+      { _tag: 'TableLabel', text: 'Brunch', style: 'headline' },
+    ],
   }
   const arranged = await structured(client, 'collage_arrange', arrange)
   expect(arranged).toMatchObject({
@@ -296,7 +299,7 @@ const boardThroughTools = async (origin: string, client: Client, pieceId: string
     boardId,
     operationId: 'mcp-native-set-2',
     version: 1,
-    items: [{ pieceId, x: 500, y: 600, size: 500 }],
+    items: [{ thing: { _tag: 'TablePiece', pieceId }, x: 500, y: 600, size: 500 }],
   }
   expect(await structured(client, 'collage_set', exact)).toMatchObject({
     version: 2,

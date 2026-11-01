@@ -207,6 +207,7 @@ const toolServices = (
   discovery: services.discoveryService,
   generations: services.generationsService,
   outfits,
+  accounts: services.lifecycleService,
 })
 
 /** A Workers RateLimit binding's runtime object as a check: false when over the limit or failing. */
@@ -364,7 +365,6 @@ const applicationServices = (
       chatsOf,
       queue: yield* runtime.stylist.queue.raw,
       runChat: runText,
-      db: bindings.database,
       tools: toolServices(services, outfitsService),
       storage: services,
     })

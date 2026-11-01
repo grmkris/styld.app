@@ -1,39 +1,31 @@
 import {
+  AddPins,
+  ArrangeBoard,
   type Board,
   BoardId,
-  BoardImageId,
   type BoardItem,
-  BoardName,
   type BoardSummary,
   boardHeight,
   boardWidth,
-  LabelText,
-  LookId,
-  maximumBoardItems,
-  Mood,
+  CreateBoard,
   maximumItemSize,
   minimumItemSize,
+  Mood,
   OperationId,
   Paper,
-  PieceId,
   type Pin,
-  PinId,
   pinsAtOnce,
-  TableLabel,
-  TableLayout,
-  TablePicture,
-  TablePiece,
-  type TableThing,
-  TextStyle,
-  UpdateBoard,
+  RemovePins,
+  SetTable,
   SetVisibility,
+  UpdateBoard,
   Url,
 } from '@styld/protocol'
 import { Effect, Match, Option, Schema } from 'effect'
 import type * as HttpClient from 'effect/http/HttpClient'
 import type { Boards } from '../boards/Boards.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
-import { tool, ToolError } from './Tools.ts'
+import { tool } from './Tools.ts'
 import { uploadFrom } from './WardrobeTools.ts'
 
 /** A pin as assistants see it: what it holds and its page, never an image address. */
@@ -103,32 +95,6 @@ const shownSummary = (origin: string) => (board: BoardSummary) => ({
   url: `${origin}/boards/${board.id}`,
 })
 
-/** One thing for the table, flat: exactly one of a piece, a picture on the board, or a label's words. */
-const ThingInput = Schema.Struct({
-  pieceId: Schema.optionalKey(PieceId),
-  imageId: Schema.optionalKey(BoardImageId),
-  text: Schema.optionalKey(LabelText),
-  style: Schema.optionalKey(TextStyle),
-})
-type ThingInput = typeof ThingInput.Type
-
-const oneThing = new ToolError({
-  code: 'invalid_arguments',
-  message: 'Each thing needs exactly one of pieceId, imageId or text.',
-  recovery: 'Give a pieceId, an imageId from board_get, or the text of a label.',
-  retryable: false,
-})
-
-const thingOf = (input: {
-  readonly [Field in keyof ThingInput]?: ThingInput[Field] | undefined
-}): Effect.Effect<TableThing, ToolError> => {
-  const given = [input.pieceId, input.imageId, input.text].filter((value) => value !== undefined)
-  if (given.length !== 1) return Effect.fail(oneThing)
-  if (input.pieceId !== undefined) return Effect.succeed(TablePiece.make({ pieceId: input.pieceId }))
-  if (input.imageId !== undefined) return Effect.succeed(TablePicture.make({ imageId: input.imageId }))
-  return Effect.succeed(TableLabel.make({ text: input.text ?? '', style: input.style ?? 'label' }))
-}
-
 const tableUnits = `The table is a sheet ${boardWidth} units wide and ${boardHeight} tall; x and y are a thing's centre, size its width (${minimumItemSize}–${maximumItemSize}), turn its rotation in degrees (−180 to 180).`
 
 const readTools = (boards: Boards['Service'], origin: string) => [
@@ -158,7 +124,7 @@ const boardTools = (boards: Boards['Service'], origin: string) => {
       title: 'Start a board',
       description:
         'Start an empty board with a name. Choose a new `operationId` for each board; repeating a call with the same one returns the first board.',
-      parameters: Schema.Struct({ operationId: OperationId, name: BoardName }),
+      parameters: CreateBoard,
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       handler: (input) => boards.createBoard(input).pipe(Effect.map(show)),
     }),
@@ -203,12 +169,7 @@ const pinTools = (
       name: 'pin_add',
       title: 'Pin on a board',
       description: `Pin this account's pieces (from piece_search) and looks (from look_list) on a board, at most ${pinsAtOnce} at once, the first newest. What is pinned already stays. Pinning does not put anything on the collage. Choose a new \`operationId\` for each change.`,
-      parameters: Schema.Struct({
-        boardId: BoardId,
-        operationId: OperationId,
-        pieceIds: Schema.optionalKey(Schema.Array(PieceId).check(Schema.isMaxLength(pinsAtOnce))),
-        lookIds: Schema.optionalKey(Schema.Array(LookId).check(Schema.isMaxLength(pinsAtOnce))),
-      }),
+      parameters: Schema.Struct({ boardId: BoardId, ...AddPins.fields }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
       handler: ({ boardId, ...input }) => boards.addPins(boardId, input).pipe(Effect.map(show)),
     }),
@@ -217,11 +178,7 @@ const pinTools = (
       title: 'Take pins off a board',
       description:
         'Take pins off a board by their pinId (from board_get); they leave its collage too. A picture taken off is deleted. Ask the person before taking pictures off.',
-      parameters: Schema.Struct({
-        boardId: BoardId,
-        operationId: OperationId,
-        pinIds: Schema.Array(PinId).check(Schema.isMinLength(1), Schema.isMaxLength(pinsAtOnce)),
-      }),
+      parameters: Schema.Struct({ boardId: BoardId, ...RemovePins.fields }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
       handler: ({ boardId, ...input }) => boards.removePins(boardId, input).pipe(Effect.map(show)),
     }),
@@ -250,53 +207,28 @@ const pinTools = (
   ]
 }
 
+/** What a thing on the collage is, as the protocol's `TableThing` spells it. */
+const things =
+  'Each thing is one of {"_tag": "TablePiece", "pieceId"} (the account\'s own, or pinned on the board; placing pins it), {"_tag": "TablePicture", "imageId"} (a picture on the board) or {"_tag": "TableLabel", "text", "style": "label" or "headline"}.'
+
 const collageTools = (boards: Boards['Service'], origin: string) => {
   const show = shownBoard(origin)
   return [
     tool({
       name: 'collage_arrange',
       title: 'Arrange a board’s collage',
-      description: `Put things on a board's collage where the next ones land, then lay the collage out: \`keep\` leaves it, \`tidy\` puts everything on an even grid, \`outfit\` in an outfit's places (top, layer, bottom, shoes, an accessory). Each thing is one of a pieceId (the account's own, or pinned on the board; placing pins it), an imageId on the board, or a label's text (style \`label\` or \`headline\`). Choose a new \`operationId\` for each change.`,
-      parameters: Schema.Struct({
-        boardId: BoardId,
-        operationId: OperationId,
-        layout: TableLayout,
-        add: Schema.optionalKey(Schema.Array(ThingInput).check(Schema.isMaxLength(20))),
-      }),
+      description: `Put things on a board's collage where the next ones land, then lay the collage out: \`keep\` leaves it, \`tidy\` puts everything on an even grid, \`outfit\` in an outfit's places (top, layer, bottom, shoes, an accessory). ${things} Choose a new \`operationId\` for each change.`,
+      parameters: Schema.Struct({ boardId: BoardId, ...ArrangeBoard.fields }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-      handler: ({ boardId, operationId, layout, add }) =>
-        Effect.gen(function* () {
-          const things = yield* Effect.forEach(add ?? [], thingOf)
-          return show(yield* boards.arrangeBoard(boardId, { operationId, layout, add: things }))
-        }),
+      handler: ({ boardId, ...input }) => boards.arrangeBoard(boardId, input).pipe(Effect.map(show)),
     }),
     tool({
       name: 'collage_set',
       title: 'Lay out a board’s collage exactly',
-      description: `Replace a board's collage with exactly these things, bottom of the stack first, from the \`version\` board_get showed. ${tableUnits} Each thing is exactly one of a pieceId, an imageId or a label's text. A conflict means the collage changed: read it again.`,
-      parameters: Schema.Struct({
-        boardId: BoardId,
-        operationId: OperationId,
-        version: Schema.Int,
-        items: Schema.Array(
-          Schema.Struct({
-            ...ThingInput.fields,
-            x: Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: boardWidth })),
-            y: Schema.Finite.check(Schema.isBetween({ minimum: 0, maximum: boardHeight })),
-            size: Schema.Finite.check(Schema.isBetween({ minimum: minimumItemSize, maximum: maximumItemSize })),
-            turn: Schema.optionalKey(Schema.Finite.check(Schema.isBetween({ minimum: -180, maximum: 180 }))),
-            flipped: Schema.optionalKey(Schema.Boolean),
-          }),
-        ).check(Schema.isMaxLength(maximumBoardItems)),
-      }),
+      description: `Replace a board's collage with exactly these things, bottom of the stack first, from the \`version\` board_get showed. ${tableUnits} ${things} A conflict means the collage changed: read it again.`,
+      parameters: Schema.Struct({ boardId: BoardId, ...SetTable.fields }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
-      handler: ({ boardId, operationId, version, items }) =>
-        Effect.gen(function* () {
-          const placed = yield* Effect.forEach(items, ({ pieceId, imageId, text, style, ...at }) =>
-            Effect.map(thingOf({ pieceId, imageId, text, style }), (thing) => ({ thing, ...at })),
-          )
-          return show(yield* boards.setTable(boardId, { operationId, version, items: placed }))
-        }),
+      handler: ({ boardId, ...input }) => boards.setTable(boardId, input).pipe(Effect.map(show)),
     }),
   ]
 }

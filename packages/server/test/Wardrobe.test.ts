@@ -68,7 +68,11 @@ const services = (
         processPiece: () => processPiece,
         failPiece: (pieceId) => Effect.sync(() => failed.push(pieceId)).pipe(Effect.andThen(failPiece)),
       }),
-      lifecycle: { deleteAccount: notUsed, finishDeletion: () => Effect.void } satisfies AccountLifecycle['Service'],
+      lifecycle: {
+        deleteAccount: notUsed,
+        finishDeletion: () => Effect.void,
+        readAccount: notUsed,
+      } satisfies AccountLifecycle['Service'],
       captures: {
         processCapture: notUsed,
         failCapture: notUsed,

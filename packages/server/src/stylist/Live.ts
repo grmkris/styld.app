@@ -10,7 +10,6 @@ import { CurrentAccount } from '../CurrentAccount.ts'
 import { publicClient } from '../mcp/ImageImport.ts'
 import { Pacing } from '../mcp/Pacing.ts'
 import { styldTools, type ToolServices } from '../mcp/StyldTools.ts'
-import type { D1 } from '../OAuth.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { type StylistPolicy, stylistPolicy } from './Policy.ts'
 import { type ChatStore, makeStylist } from './Service.ts'
@@ -66,7 +65,6 @@ export const makeStylistLive = (input: {
   readonly chatsOf: (accountId: string) => ChatStore
   readonly queue: { send(message: { readonly stylistTurnOf: string; readonly accountId: string }): Promise<unknown> }
   readonly runChat: RunChat
-  readonly db: D1
   readonly tools: ToolServices
   /** The wardrobe, and the credits and call counter the capture providers were built with. */
   readonly storage: {
@@ -84,7 +82,7 @@ export const makeStylistLive = (input: {
       queue: input.queue,
       policy,
       model: stylistModel(policy, input.runChat, input.env['STYLIST_GATEWAY_API_KEY']),
-      tools: styldTools(input.db, typeof origin === 'string' ? origin : '', input.tools, http),
+      tools: styldTools(typeof origin === 'string' ? origin : '', input.tools, http),
       toolContext: (accountId) =>
         Context.make(CurrentAccount, { accountId, via: 'assistant' }).pipe(Context.add(Pacing, unpaced)),
       wardrobe: input.storage.wardrobeService,

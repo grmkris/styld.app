@@ -20,10 +20,6 @@
     "comment": "SAFETY: tools/list serves the app's own rendered tool entries -- the SDK Tool type is narrower than these JSON Schema descriptors, which must pass through byte for byte"
   },
   {
-    "file": "packages/server/test/Mcp.test.ts",
-    "comment": "SAFETY: the fake database answers only the account_get query -- its row has exactly the displayName and email shape that query selects"
-  },
-  {
     "file": "packages/server/src/wardrobe/Delivery.ts",
     "comment": "SAFETY: an R2 object's body is the stored image's bytes -- workers-types declares the body as ReadableStream<any>"
   },

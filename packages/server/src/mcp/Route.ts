@@ -39,7 +39,7 @@ export const mcpRoutes = (
     Effect.gen(function* () {
       const server = yield* McpOAuth.Service
       const http = yield* publicClient
-      const tools = styldTools(db, origin, services, http)
+      const tools = styldTools(origin, services, http)
       return routesFor(server, {
         db,
         origin,

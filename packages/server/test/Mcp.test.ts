@@ -10,36 +10,27 @@ import {
   PictureRefused,
   type RedrawPicture,
 } from '@styld/protocol'
-import { Effect, Option, Schema } from 'effect'
+import { Effect, Exit, Option, Schema } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
 import { describe, expect, test } from 'vitest'
 import { CurrentAccount } from '../src/CurrentAccount.ts'
 import { readResource, resources, viewsUri } from '../src/mcp/Resources.ts'
 import { instructions, styldTools } from '../src/mcp/StyldTools.ts'
 import { callTool, renderTools } from '../src/mcp/Tools.ts'
-import type { D1 } from '../src/OAuth.ts'
 import { challenge, hostedClientMetadata, redirectUriAllowed } from '../src/mcp/Policy.ts'
 import { Wardrobe } from '../src/wardrobe/Wardrobe.ts'
 import { Looks } from '../src/looks/Looks.ts'
 import { Boards } from '../src/boards/Boards.ts'
 import { Profiles } from '../src/social/Profiles.ts'
-import { toolNames } from './ToolNames.ts'
+import { everyCall, toolNames } from './ToolNames.ts'
 import { Discovery } from '../src/social/Discovery.ts'
 import { Social } from '../src/social/Social.ts'
 import { curationTools } from '../src/mcp/CurationTools.ts'
 import { adminEmails, Curation, isAdmin } from '../src/social/Curation.ts'
 import { Pacing } from '../src/mcp/Pacing.ts'
 
-const accountRow = { displayName: 'Ana Novak', email: 'ana@example.com' }
-const database: D1 = {
-  prepare: () => ({
-    bind: () => ({
-      // SAFETY: the fake database answers only the account_get query -- its row has exactly the displayName and email shape that query selects
-      first: <T>() => Promise.resolve(accountRow as T),
-      run: () => Promise.resolve({ meta: { changes: 0 } }),
-    }),
-  }),
-}
+/** The account service: Ana, with her verified email. */
+const accounts = { readAccount: () => Effect.succeed({ displayName: 'Ana Novak', email: 'ana@example.com' }) }
 /** A piece no one has described yet: no season, occasions, pattern, brand, shop link or back. */
 const undescribed = { season: null, occasions: [], pattern: null, brand: null, shopUrl: null, hasBack: false } as const
 const piece = (id: string, fields: Partial<Piece>): Piece => ({
@@ -206,9 +197,8 @@ const generations = { admit: notUsed, get: notUsed }
 /** Outfits: not part of these tests. */
 const outfits = { make: notUsed, sweep: notUsed }
 const tools = styldTools(
-  database,
   'https://styld.test',
-  { wardrobe, looks, captures, boards, profiles, social, discovery, generations, outfits },
+  { wardrobe, looks, captures, boards, profiles, social, discovery, generations, outfits, accounts },
   offline,
 )
 /** Every ask goes at once in these tests. */
@@ -249,7 +239,7 @@ describe('MCP tools', () => {
         annotations: { title: 'Your Styld account', readOnlyHint: true, openWorldHint: false },
       },
     ])
-    expect(list.map(({ name }) => name)).toEqual(toolNames)
+    expect(list.map(({ name }) => name)).toEqual([...toolNames])
     expect(list.find(({ name }) => name === 'piece_delete')?.annotations).toMatchObject({ destructiveHint: true })
     for (const entry of list) {
       expect(entry.name).toMatch(/^[a-z]+_[a-z]+$/)
@@ -294,13 +284,16 @@ describe('MCP tools', () => {
     expect(readResource('ui://styld/other.html')).toBeUndefined()
   })
 
-  test('lays out a collage from flat things, each one exactly one of a piece, a picture or a label', async () => {
+  test('lays out a collage from the protocol’s things, each a piece, a picture or a label', async () => {
     const knit = pieces[0]?.id ?? ''
     const result = await call('collage_arrange', {
       boardId: board.id,
       operationId: 'arrange-0001',
       layout: 'outfit',
-      add: [{ pieceId: knit }, { text: 'Rain', style: 'headline' }],
+      add: [
+        { _tag: 'TablePiece', pieceId: knit },
+        { _tag: 'TableLabel', text: 'Rain', style: 'headline' },
+      ],
     })
     expect(result.structuredContent).toMatchObject({ id: board.id, url: `https://styld.test/boards/${board.id}` })
     expect(arrangements.at(-1)).toEqual({
@@ -315,7 +308,7 @@ describe('MCP tools', () => {
       boardId: board.id,
       operationId: 'arrange-0002',
       layout: 'keep',
-      add: [{ pieceId: knit, text: 'Rain' }],
+      add: [{ _tag: 'TablePiece', pieceId: knit, text: 'Rain' }],
     })
     expect(jsonOf(twice)).toMatchObject({ code: 'invalid_arguments', retryable: false })
     expect(arrangements).toHaveLength(1)
@@ -344,7 +337,7 @@ describe('MCP tools', () => {
       boardId: board.id,
       operationId: 'set-000001',
       version: 3,
-      items: [{ text: 'Rain', x: 500, y: 600, size: 360 }],
+      items: [{ thing: { _tag: 'TableLabel', text: 'Rain', style: 'label' }, x: 500, y: 600, size: 360 }],
     })
     expect(result.isError).toBe(true)
     expect(jsonOf(result)).toMatchObject({ code: 'version_conflict', retryable: true })
@@ -413,10 +406,10 @@ describe('MCP wardrobe tools', () => {
     expect(await call('piece_search', { colour: 'navy', cursor: '1' })).toMatchObject({
       structuredContent: { pieces: [{ name: 'Jeans' }], nextCursor: null },
     })
-    expect(await call('piece_search', { query: 'TEE' })).toMatchObject({
+    expect(await call('piece_search', { q: 'TEE' })).toMatchObject({
       structuredContent: { pieces: [{ name: 'White tee' }] },
     })
-    expect(await call('piece_search', { type: 'trousers', query: 'tee' })).toMatchObject({
+    expect(await call('piece_search', { type: 'trousers', q: 'tee' })).toMatchObject({
       structuredContent: { pieces: [] },
     })
   })
@@ -497,7 +490,7 @@ describe('curation for admins', () => {
       ['check_list', 'check_rerun', 'curation_feature', 'curation_hide', 'curation_house', 'report_list'].toSorted(),
     )
     for (const name of names) {
-      expect(toolNames).not.toContain(name)
+      expect([...toolNames]).not.toContain(name)
       expect(name).toMatch(/^[a-z]+_[a-z]+$/)
     }
   })
@@ -509,5 +502,21 @@ describe('curation for admins', () => {
     expect(isAdmin(admins, { email: 'someone@styld.app' })).toBe(false)
     expect(isAdmin(admins, { email: null })).toBe(false)
     expect(isAdmin(adminEmails(undefined), { email: 'kris@styld.app' })).toBe(false)
+  })
+})
+
+describe('every MCP tool', () => {
+  test('takes the protocol’s arguments and reaches its operation', async () => {
+    for (const name of toolNames) {
+      const exit = await Effect.runPromiseExit(
+        callTool(tools, name, everyCall[name]).pipe(
+          Effect.provideService(CurrentAccount, CurrentAccount.of({ accountId: 'acc_1', via: 'assistant' })),
+          Effect.provideService(Pacing, unpaced),
+        ),
+      )
+      // A fake these tests leave unused dies when reached: the arguments decoded and the tool ran.
+      const reached = Exit.isSuccess(exit) ? jsonOf(exit.value) : 'reached its service'
+      expect([name, reached]).not.toMatchObject([name, { code: 'invalid_arguments' }])
+    }
   })
 })

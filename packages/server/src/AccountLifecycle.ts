@@ -1,10 +1,10 @@
 import { authTables } from '@styld/auth'
 import { accounts, oauthGrants } from '@styld/db'
-import { Unavailable } from '@styld/protocol'
+import { NotFound, Unavailable } from '@styld/protocol'
 import { eq, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core'
-import { Context, Effect } from 'effect'
+import { Context, Effect, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { accountPrefix } from './wardrobe/Media.ts'
@@ -14,6 +14,9 @@ import { deletePrefix } from './kernel/Media.ts'
 const unavailable = () => Unavailable.make({})
 
 const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: unavailable })
+
+/** The account as its owner sees it: its name and its verified email address, if it has one. */
+const AccountRow = Schema.Struct({ displayName: Schema.String, email: Schema.NullOr(Schema.String) })
 
 /** R2 deletes at most this many keys per call. */
 const make = (
@@ -88,7 +91,19 @@ const make = (
       yield* finishDeletion(accountId).pipe(Effect.ignore)
     })
 
-    return { deleteAccount, finishDeletion }
+    /** The account's name and the email address it signs in with: only an active, verified email identifier. */
+    const readAccount = Effect.fn('Styld.Account.read')(function* (accountId: string) {
+      const rows = yield* attempt(() =>
+        db.all(
+          sql`select a.display_name as displayName, (select i.value from ${authTables.identifiers} i where i.subject_id = a.id and i.active = 1 and i.namespace = 'email' and i.verified_at is not null limit 1) as email from ${accounts} a where a.id = ${accountId}`,
+        ),
+      )
+      const [row] = rows
+      if (row === undefined) return yield* NotFound.make({})
+      return yield* Schema.decodeUnknownEffect(AccountRow)(row).pipe(Effect.mapError(unavailable))
+    })
+
+    return { deleteAccount, finishDeletion, readAccount }
   })
 
 /** Account termination, owned by the application: Yielded's `SubjectLifecycle` leaves it to us. */

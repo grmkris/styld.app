@@ -43,4 +43,55 @@ export const toolNames = [
   'feed_get',
   'explore_get',
   'search_public',
-]
+] as const
+
+/** The unit fakes' first piece and board (Mcp.test.ts). */
+const P = `pc_${'a'.padEnd(22, '0')}`
+const B = `bd_${'autumn'.padEnd(22, 'x')}`
+const opId = (name: string) => `every-${name}`.replace('_', '-')
+/** One call of every listed tool, with arguments as the protocol spells them. */
+export const everyCall: Readonly<Record<(typeof toolNames)[number], Record<string, unknown>>> = {
+  account_get: {},
+  piece_search: { q: 'knit' },
+  piece_get: { pieceId: P },
+  upload_create: { operationId: opId('upload'), contentType: 'image/png', bytes: 10 },
+  piece_add: { operationId: opId('add'), uploadId: `up_${'every'.padEnd(22, 'x')}`, type: 'jeans' },
+  piece_update: { pieceId: P, operationId: opId('update'), name: 'Knit' },
+  piece_delete: { pieceId: P },
+  link_import: { operationId: opId('link'), url: 'https://shop.test/p/1', type: 'jeans' },
+  wardrobe_show: {},
+  board_show: { boardId: B },
+  look_create: { operationId: opId('look'), name: 'Rain', pieceIds: [P] },
+  look_list: {},
+  look_get: { lookId: `lk_${'every'.padEnd(22, 'x')}` },
+  look_share: { lookId: `lk_${'every'.padEnd(22, 'x')}`, operationId: opId('share'), shared: true },
+  look_delete: { lookId: `lk_${'every'.padEnd(22, 'x')}` },
+  outfit_make: { operationId: opId('outfit'), mode: 'fast', brief: {}, lockedPieceIds: [], seen: [], count: 3 },
+  picture_redraw: { pieceId: P, operationId: opId('redraw') },
+  board_list: {},
+  board_get: { boardId: B },
+  board_create: { operationId: opId('board'), name: 'Rain' },
+  board_update: { boardId: B, operationId: opId('rename'), name: 'Rain' },
+  board_publish: { boardId: B, operationId: opId('publish'), visibility: 'public' },
+  board_delete: { boardId: B },
+  pin_add: { boardId: B, operationId: opId('pin'), pieceIds: [P] },
+  pin_remove: { boardId: B, operationId: opId('unpin'), pinIds: [`pn_${'knit'.padEnd(22, 'x')}`] },
+  picture_pin: { boardId: B, operationId: 'picture-replay-1', imageUrl: 'https://pictures.test/rain.jpg' },
+  collage_arrange: { boardId: B, operationId: opId('arrange'), layout: 'tidy', add: [] },
+  collage_set: { boardId: B, operationId: opId('set'), version: 3, items: [] },
+  sticker_make: { boardId: B, operationId: opId('sticker'), prompt: 'a red umbrella' },
+  moodboard_make: { boardId: B, operationId: opId('mood'), prompt: 'a rainy Sunday' },
+  generation_get: { generationId: `gj_${'every'.padEnd(22, 'x')}` },
+  profile_get: {},
+  profile_update: { operationId: opId('profile'), name: 'Ana' },
+  profile_publish: { operationId: opId('published'), published: true },
+  saved_list: {},
+  save_set: { operationId: opId('save'), target: { _tag: 'SavedPiece', pieceId: P }, saved: true },
+  follow_set: { handle: 'ana.novak', operationId: opId('follow'), following: true },
+  following_list: {},
+  block_set: { handle: 'ana.novak', operationId: opId('block'), blocked: true },
+  report_create: { operationId: opId('report'), target: { _tag: 'ReportedPiece', pieceId: P }, reason: 'spam' },
+  feed_get: {},
+  explore_get: {},
+  search_public: { q: 'rain' },
+}

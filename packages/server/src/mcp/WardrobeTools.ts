@@ -17,6 +17,9 @@ import {
   maximumImageBytes,
   textLength,
   Url,
+  normalise,
+  wordMatches,
+  wordsIn,
 } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
@@ -24,14 +27,14 @@ import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { importedUpload } from './ImageImport.ts'
 import { paced } from './Pacing.ts'
 import { tool, ToolError } from './Tools.ts'
-import { readProductPage } from '../links/LinkImport.ts'
+import { readLink } from '../links/LinkPicture.ts'
 
 /** A piece as assistants see it: its fields and its page on the website, never an image address. */
 const shown = (origin: string) => (piece: Piece) => ({ ...piece, url: `${origin}/wardrobe/${piece.id}` })
 
 /** What piece_search filters by: words, and any of the piece's type, group and attributes. */
 const SearchFilter = Schema.Struct({
-  query: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(textLength.search))),
+  q: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(textLength.search))),
   type: Schema.optionalKey(PieceType),
   group: Schema.optionalKey(GarmentGroup),
   colour: Schema.optionalKey(Colour),
@@ -41,12 +44,10 @@ const SearchFilter = Schema.Struct({
   brand: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(textLength.brand))),
 })
 
+/** Words match as they do on the device (protocol `Search.ts`): any case or accent, any ending, a word's start. */
 const matches = (piece: Piece, input: typeof SearchFilter.Type) => {
-  const query = input.query?.trim().toLowerCase() ?? ''
-  const text = [piece.name, piece.notes, piece.type, piece.brand]
-    .filter((part) => part !== null)
-    .join(' ')
-    .toLowerCase()
+  const words = wordsIn([piece.name, piece.notes, piece.type, piece.brand].filter((part) => part !== null).join(' '))
+  const typed = wordsIn(input.q ?? '')
   return (
     (input.type === undefined || piece.type === input.type) &&
     (input.group === undefined || groupOf(piece.type) === input.group) &&
@@ -54,8 +55,8 @@ const matches = (piece: Piece, input: typeof SearchFilter.Type) => {
     (input.season === undefined || piece.season === input.season || piece.season === 'allYear') &&
     (input.occasion === undefined || piece.occasions.includes(input.occasion)) &&
     (input.pattern === undefined || piece.pattern === input.pattern) &&
-    (input.brand === undefined || piece.brand?.toLowerCase() === input.brand.trim().toLowerCase()) &&
-    (query.length === 0 || text.includes(query))
+    (input.brand === undefined || normalise(piece.brand ?? '') === normalise(input.brand)) &&
+    typed.every((word) => words.some((each) => wordMatches(word, each)))
   )
 }
 
@@ -80,7 +81,7 @@ const readTools = (wardrobe: Wardrobe['Service'], show: ReturnType<typeof shown>
     name: 'piece_search',
     title: 'Search the wardrobe',
     description:
-      'Pieces in the wardrobe, newest first, filtered by words in their name, notes or brand, and by garment type, group, colour, season, occasion, pattern or brand. Returns up to `limit` pieces and a `nextCursor` for the next page (null on the last page).',
+      'Pieces in the wardrobe, newest first, filtered by words (`q`) in their name, notes or brand, and by garment type, group, colour, season, occasion, pattern or brand. Returns up to `limit` pieces and a `nextCursor` for the next page (null on the last page).',
     parameters: Schema.Struct({
       ...SearchFilter.fields,
       limit: Schema.optionalKey(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 }))),
@@ -179,10 +180,19 @@ const linkTools = (wardrobe: Wardrobe['Service'], show: ReturnType<typeof shown>
       Effect.gen(function* () {
         const earlier = yield* wardrobe.pieceAddedBy(fields.operationId)
         if (Option.isSome(earlier)) return show(earlier.value)
-        const page = yield* paced('link')(readProductPage(url).pipe(Effect.provideService(HttpClient.HttpClient, http)))
-        const uploadId = yield* fetchedUpload(wardrobe, http, page.image)
-        const named = chosen ?? Option.getOrUndefined(page.title)
-        return show(yield* wardrobe.addPiece({ ...fields, uploadId, ...(named === undefined ? {} : { name: named }) }))
+        // The same links operation the website calls, under its own id derived from the piece's.
+        const read = { operationId: OperationId.make(`${fields.operationId.slice(0, 59)}-link`), url }
+        const picture = yield* paced('link')(
+          readLink(wardrobe, read).pipe(Effect.provideService(HttpClient.HttpClient, http)),
+        )
+        const named = chosen ?? picture.name
+        return show(
+          yield* wardrobe.addPiece({
+            ...fields,
+            uploadId: picture.uploadId,
+            ...(named === null ? {} : { name: named }),
+          }),
+        )
       }),
   }),
 ]
