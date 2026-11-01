@@ -9,7 +9,7 @@ const Card = Schema.Struct({
   preselected: Schema.Boolean,
   sightings: Schema.Number,
   alreadyHave: Schema.optionalKey(Schema.String),
-  partial: Schema.optionalKey(Schema.Boolean),
+  partial: Schema.Boolean,
 })
 const Tray = Schema.Struct({
   captures: Schema.Array(Schema.Struct({ id: Schema.String, detections: Schema.Array(Card) })),

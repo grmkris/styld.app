@@ -91,7 +91,7 @@ export const Detection = Schema.Struct({
   /** The piece of the wardrobe the decision model took this garment for: offered unticked, to keep both or skip. */
   alreadyHave: Schema.optionalKey(PieceId),
   /** Only part of the garment shows: it needs a better look, held up or laid out, before it can be drawn. */
-  partial: Schema.optionalKey(Schema.Boolean),
+  partial: Schema.Boolean,
 })
 export type Detection = typeof Detection.Type
 

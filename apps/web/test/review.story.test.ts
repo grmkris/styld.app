@@ -23,6 +23,7 @@ const detection = (n: number, type: 'tops' | 'jeans' | null, preselected = true,
   preselected,
   hasCutout: true,
   hasBack: false,
+  partial: false,
   sightings,
   suggestion: {
     type,

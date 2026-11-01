@@ -454,7 +454,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'safety.reportDialog.reasons.harassment': 'Nadlegovanje ali ustrahovanje',
   'safety.reportDialog.reasons.hate': 'Sovražni govor ali simboli',
   'safety.reportDialog.reasons.violence': 'Nasilje ali grožnje',
-  'safety.reportDialog.reasons.self_harm': 'Samopoškodovanje ali samomor',
+  'safety.reportDialog.reasons.selfHarm': 'Samopoškodovanje ali samomor',
   'safety.reportDialog.reasons.ip': 'Brez dovoljenja uporablja moje delo',
   'safety.reportDialog.reasons.other': 'Nekaj drugega',
   'safety.reportDialog.noteLabel': 'Je še kaj, kar moramo vedeti? (neobvezno)',

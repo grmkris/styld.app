@@ -22,5 +22,3 @@ export type WearPieces = typeof WearPieces.Type
 
 /** A span of days to read, both ends included, at most 62 days apart. */
 export const WornRange = Schema.Struct({ from: Day, to: Day })
-
-export { Day } from './Day.ts'

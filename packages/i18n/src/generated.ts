@@ -445,7 +445,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'safety.reportDialog.reasons.ip': Readonly<Record<string, never>>
   'safety.reportDialog.reasons.nudity': Readonly<Record<string, never>>
   'safety.reportDialog.reasons.other': Readonly<Record<string, never>>
-  'safety.reportDialog.reasons.self_harm': Readonly<Record<string, never>>
+  'safety.reportDialog.reasons.selfHarm': Readonly<Record<string, never>>
   'safety.reportDialog.reasons.spam': Readonly<Record<string, never>>
   'safety.reportDialog.reasons.violence': Readonly<Record<string, never>>
   'safety.reportDialog.send': Readonly<Record<string, never>>
@@ -785,4 +785,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'ac9655c02c9d0de21097d788dec2fda1cb52ea86bb8af5e7a2dd005cc842a398'
+export const catalogVersion = 'ca5562d1276f4c276a33db3d7633e363106a0853e2d78cc028f441714f8a31c1'

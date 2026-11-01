@@ -42,7 +42,7 @@ const label = (decision: Decision | undefined, locale: Locale) => {
  * better look. */
 const note = (detection: Detection) => {
   if (detection.alreadyHave !== undefined) return Option.some('capture.alreadyHave' as const)
-  return detection.partial === true ? Option.some('capture.betterLook' as const) : Option.none()
+  return detection.partial ? Option.some('capture.betterLook' as const) : Option.none()
 }
 
 const foundTile = (detection: Detection, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
@@ -215,9 +215,7 @@ const editor = (detection: Detection, decision: Decision, locale: Locale, h: Htm
         ...styled(h, styles.editorImage()),
       ]),
       alreadyHave(detection, locale, h),
-      detection.partial === true
-        ? h.p(styled(h, styles.sightings()), [format(locale, 'capture.betterLookHint', {})])
-        : h.empty,
+      detection.partial ? h.p(styled(h, styles.sightings()), [format(locale, 'capture.betterLookHint', {})]) : h.empty,
       sightings(detection, locale, h),
       detection.hasCutout
         ? h.label(styled(h, styles.original()), [

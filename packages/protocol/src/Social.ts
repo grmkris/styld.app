@@ -58,7 +58,7 @@ export const ReportReason = Schema.Literals([
   'harassment',
   'hate',
   'violence',
-  'self_harm',
+  'selfHarm',
   'ip',
   'other',
 ])

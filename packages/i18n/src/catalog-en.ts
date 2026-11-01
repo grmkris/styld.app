@@ -447,7 +447,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'safety.reportDialog.reasons.harassment': 'Harassment or bullying',
   'safety.reportDialog.reasons.hate': 'Hate speech or symbols',
   'safety.reportDialog.reasons.violence': 'Violence or threats',
-  'safety.reportDialog.reasons.self_harm': 'Self-harm or suicide',
+  'safety.reportDialog.reasons.selfHarm': 'Self-harm or suicide',
   'safety.reportDialog.reasons.ip': 'It uses my work without permission',
   'safety.reportDialog.reasons.other': 'Something else',
   'safety.reportDialog.noteLabel': 'Anything we should know? (optional)',

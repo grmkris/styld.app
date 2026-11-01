@@ -50,7 +50,8 @@ import {
 import { CreateLook, Look, LookId, Looks } from './Look.ts'
 import { OutfitApi } from './Outfit.ts'
 import { PhotoApi } from './Photo.ts'
-import { Day, WearPieces, WornDay, WornDays, WornRange } from './Worn.ts'
+import { Day } from './Day.ts'
+import { WearPieces, WornDay, WornDays, WornRange } from './Worn.ts'
 import {
   AddPiece,
   ChoosePicture,

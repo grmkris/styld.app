@@ -522,7 +522,7 @@
         "harassment": "Nadlegovanje ali ustrahovanje",
         "hate": "Sovražni govor ali simboli",
         "violence": "Nasilje ali grožnje",
-        "self_harm": "Samopoškodovanje ali samomor",
+        "selfHarm": "Samopoškodovanje ali samomor",
         "ip": "Brez dovoljenja uporablja moje delo",
         "other": "Nekaj drugega"
       },

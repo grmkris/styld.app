@@ -73,7 +73,7 @@ export const reports = sqliteTable(
     targetKind: text('target_kind', { enum: ['profile', 'board', 'look', 'piece'] }).notNull(),
     targetId: text('target_id').notNull(),
     reason: text('reason', {
-      enum: ['spam', 'nudity', 'harassment', 'hate', 'violence', 'self_harm', 'ip', 'other'],
+      enum: ['spam', 'nudity', 'harassment', 'hate', 'violence', 'selfHarm', 'ip', 'other'],
     }).notNull(),
     note: text('note'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),

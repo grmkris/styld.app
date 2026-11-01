@@ -75,6 +75,7 @@ const shirt = {
   preselected: false,
   hasCutout: true,
   hasBack: false,
+  partial: false,
   sightings: 1,
   suggestion: {
     type: 'shirts' as const,

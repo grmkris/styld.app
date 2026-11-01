@@ -209,7 +209,7 @@ const detectionView = (row: DetectionRow, sightings: number) => ({
   sightings,
   ...(row.duplicateOf === null ? {} : { alreadyHave: row.duplicateOf }),
   // Under even odds of one whole garment (PhotoPipeline's `verdictOf`), it was offered unticked as part of one.
-  ...(row.whole !== null && row.whole < 0.5 ? { partial: true } : {}),
+  partial: row.whole !== null && row.whole < 0.5,
   suggestion: {
     type: row.suggestedType,
     colours: row.suggestedColours,
