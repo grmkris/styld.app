@@ -11,47 +11,40 @@ import {
   PieceTurn,
   PieceType,
   Season,
-  ShopUrl,
   TurnLayout,
   PieceChanges,
 } from '@styld/protocol'
-import { Duration, Effect, Option, Predicate, Schema } from 'effect'
-import { Command, Mount, Update } from 'foldkit'
+import { Effect, Number, Option, Predicate, Result, Schema } from 'effect'
+import { AsyncData, Command, Mount, Subscription, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
 import type { PictureEncoder } from '../Upload.ts'
+import { Misses, pollWhilePending } from '../Polling.ts'
+import { LoadError } from '../ServerData.ts'
 import * as PieceBack from './PieceBack.ts'
 import * as PiecePhotos from './PiecePhotos.ts'
-import { changeDetails, Details, detailsOf } from './PieceFields.ts'
+import { changeDetails, type Details } from './PieceFields.ts'
+import { changesOf, Draft, DraftSave, draftOf, shopUrlSendable } from './PieceDraft.ts'
 import * as SaveToBoard from './SaveToBoard.ts'
 import * as Crypto from 'effect/Crypto'
 
 // MODEL
 
-export const Load = defineTaggedUnion({
-  Loading: {},
-  Loaded: { piece: Piece },
-  Missing: {},
-  Failed: {},
-})
+/** The piece as last read. */
+export const PieceData = AsyncData.Schema(Piece, LoadError)
+export type PieceData = typeof PieceData.schema.Type
 
 export const Deletion = defineTaggedUnion({ Idle: {}, Confirming: {}, Deleting: {}, Failed: {} })
 
-/** The edit form's values; nothing reaches the piece until it is saved. */
-export const Draft = Schema.Struct({
-  name: Schema.String,
-  notes: Schema.String,
-  details: Details,
-  brand: Schema.String,
-  shopUrl: Schema.String,
-  saving: Schema.Boolean,
-  failed: Schema.Boolean,
-  /** The shop link is not an https address: nothing is sent until it is. */
-  shopUrlInvalid: Schema.Boolean,
-})
-export type Draft = typeof Draft.Type
+/** A change of the picture shown: none, on its way, or one that failed. */
+export const Choosing = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {} })
+export type Choosing = typeof Choosing.Type
+
+/** The turn this page is asking for, or building the frames of. */
+export const TurnWork = defineTaggedUnion({ Idle: {}, Asking: {}, Building: {} })
+export type TurnWork = typeof TurnWork.Type
 
 /** Why a redraw was not asked for: the API's refusals, the day's credits, or no answer. */
 export const RedrawProblem = Schema.Literals(['busy', 'face', 'photo', 'off', 'dailyLimit', 'network'])
@@ -73,14 +66,14 @@ export type TurnProblem = typeof TurnProblem.Type
 
 export const Model = Schema.Struct({
   pieceId: Schema.String,
-  load: Load,
+  piece: PieceData.schema,
+  /** Polls in a row that did not get through while the piece settles. */
+  misses: Misses,
   deletion: Deletion,
   draft: Schema.Option(Draft),
   redraw: Schema.Option(Redraw),
-  /** Whether a change of the picture shown is on its way, or failed. */
-  choosing: Schema.Literals(['idle', 'sending', 'failed']),
-  /** The turn this page is asking for, or building the frames of. */
-  turnWork: Schema.Literals(['idle', 'asking', 'building']),
+  choosing: Choosing,
+  turnWork: TurnWork,
   turnProblem: Schema.Option(TurnProblem),
   back: PieceBack.Model,
   /** The outfit photos it is confirmed in. */
@@ -93,12 +86,13 @@ export type Model = typeof Model.Type
 
 export const init = (pieceId: string): Model => ({
   pieceId,
-  load: Load.Loading(),
+  piece: AsyncData.Loading(),
+  misses: 0,
   deletion: Deletion.Idle(),
   draft: Option.none(),
   redraw: Option.none(),
-  choosing: 'idle',
-  turnWork: 'idle',
+  choosing: Choosing.Idle(),
+  turnWork: TurnWork.Idle(),
   turnShown: false,
   turnProblem: Option.none(),
   back: PieceBack.init(pieceId),
@@ -110,8 +104,8 @@ export const init = (pieceId: string): Model => ({
 
 export const Message = defineMessageUnion({
   SucceededGetPiece: { piece: Piece },
-  FailedGetPiece: { missing: Schema.Boolean },
-  ElapsedRefreshPause: {},
+  FailedGetPiece: { error: LoadError },
+  TickedPieceRefresh: {},
   ClickedRetry: {},
   ClickedDelete: {},
   ClickedCancelDelete: {},
@@ -158,8 +152,6 @@ export type OutMessage = typeof OutMessage.Type
 
 // COMMAND
 
-const refreshPause = Duration.seconds(2)
-
 /** A malformed id names no piece, so it is missing without asking. */
 const pieceIdOf = (pieceId: string) => Schema.decodeUnknownEffect(PieceId)(pieceId)
 
@@ -174,17 +166,11 @@ export const GetPiece = Command.define('GetPiece', {
       return Message.SucceededGetPiece({ piece })
     }).pipe(
       Effect.catchTags({
-        NotFound: () => Effect.succeed(Message.FailedGetPiece({ missing: true })),
-        SchemaError: () => Effect.succeed(Message.FailedGetPiece({ missing: true })),
+        NotFound: () => Effect.succeed(Message.FailedGetPiece({ error: 'NotFound' })),
+        SchemaError: () => Effect.succeed(Message.FailedGetPiece({ error: 'NotFound' })),
       }),
-      Effect.orElseSucceed(() => Message.FailedGetPiece({ missing: false })),
+      Effect.orElseSucceed(() => Message.FailedGetPiece({ error: 'Unavailable' })),
     ),
-})
-
-/** @internal Exported for its tests. */
-export const WaitToRefreshPiece = Command.define('WaitToRefreshPiece', {
-  messages: [Message.ElapsedRefreshPause],
-  execute: Effect.sleep(refreshPause).pipe(Effect.as(Message.ElapsedRefreshPause())),
 })
 
 /** @internal Exported for its tests. */
@@ -341,6 +327,15 @@ export const load = (model: Model): ReadonlyArray<Command.Command<Message, never
 type Services = StyldClient | Crypto.Crypto | PictureEncoder
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Services>
 
+/** Asking for the piece again unless a read is on its way. */
+const pieceCache = (revalidate: (piece: PieceData) => Option.Option<PieceData>) => (model: Model) =>
+  Update.refresh<Model, Message, Piece, LoadError, StyldClient>({
+    read: (current: Model) => Option.some(current.piece),
+    revalidate,
+    write: (current: Model, piece: PieceData) => modifyFields(current, { piece: () => piece }),
+    load: GetPiece({ pieceId: model.pieceId }),
+  })(model)
+
 const foldSaveToBoard = SaveToBoard.foldInto<Model, Message>((message) => Message.GotSaveToBoardMessage({ message }))
 
 const foldBack = Update.foldChild({
@@ -351,45 +346,15 @@ const foldBack = Update.foldChild({
   foldOutMessage: PieceBack.OutMessage.match<Update.StepWithOutMessage<Model, Message, OutMessage, Services>>({
     ChangedPiece:
       ({ piece }) =>
-      (stepModel) => ({ model: modifyFields(stepModel, { load: () => Load.Loaded({ piece }) }) }),
+      (stepModel) => ({ model: modifyFields(stepModel, { piece: () => PieceData.Success({ data: piece }) }) }),
   }),
 })
 
-const draftOf = (piece: Piece): Draft => ({
-  name: piece.name ?? '',
-  notes: piece.notes ?? '',
-  details: detailsOf(piece),
-  brand: piece.brand ?? '',
-  shopUrl: piece.shopUrl ?? '',
-  saving: false,
-  failed: false,
-  shopUrlInvalid: false,
-})
-
-/** Words left empty, spaces aside, are no value. */
-const given = (value: string) => {
-  const trimmed = value.trim()
-  return trimmed.length === 0 ? null : trimmed
-}
-
-/** The saved form, as the API takes it: an empty field is no value, and an attribute left unchosen is cleared. */
-const changesOf = (draft: Draft): PieceChanges => ({
-  name: given(draft.name),
-  notes: given(draft.notes),
-  ...Option.match(draft.details.type, { onNone: () => ({}), onSome: (type) => ({ type }) }),
-  colours: draft.details.colours,
-  season: Option.getOrNull(draft.details.season),
-  occasions: draft.details.occasions,
-  pattern: Option.getOrNull(draft.details.pattern),
-  brand: given(draft.brand),
-  shopUrl: given(draft.shopUrl),
-})
-
-const isShopUrl = Schema.is(ShopUrl)
-
 const editDraft = (model: Model, change: (draft: Draft) => Draft): UpdateReturn => ({
   model: modifyFields(model, {
-    draft: Option.map((draft) => modifyFields(change(draft), { failed: () => false })),
+    draft: Option.map((draft) =>
+      modifyFields(change(draft), { save: (save) => (DraftSave.guards.Failed(save) ? DraftSave.Editing() : save) }),
+    ),
   }),
 })
 
@@ -400,61 +365,62 @@ const submittedEdit = (model: Model): UpdateReturn =>
   Option.match(model.draft, {
     onNone: () => ({ model }),
     onSome: (draft) =>
-      draft.saving
+      DraftSave.guards.Saving(draft.save)
         ? { model }
-        : !(draft.shopUrl.trim() === '' || isShopUrl(draft.shopUrl.trim()))
+        : !shopUrlSendable(draft.shopUrl)
           ? {
               model: modifyFields(model, {
                 draft: () => Option.some(modifyFields(draft, { shopUrlInvalid: () => true })),
               }),
             }
           : {
-              model: modifyFields(model, { draft: () => Option.some(modifyFields(draft, { saving: () => true })) }),
+              model: modifyFields(model, {
+                draft: () => Option.some(modifyFields(draft, { save: () => DraftSave.Saving() })),
+              }),
               commands: [SavePiece({ pieceId: model.pieceId, changes: changesOf(draft) })],
             },
   })
 
-/** A piece still processing, or with a drawing or a turn on its way, is asked for again until it settles; a turn
- * whose video is ready is cut into frames here, once. */
-const loaded = (model: Model, piece: Piece): UpdateReturn => {
-  const waiting = piece.status === 'processing' || piece.picture?.state === 'drawing' || piece.turn?.state === 'making'
-  const build = piece.turn?.state === 'building' && model.turnWork === 'idle'
-  return {
-    model: modifyFields(model, {
-      load: () => Load.Loaded({ piece }),
-      turnWork: (work) => (build ? 'building' : work),
-    }),
-    commands: [
-      ...(waiting ? [WaitToRefreshPiece()] : []),
-      ...(build && piece.turn !== undefined
-        ? [BuildTurnSheet({ pieceId: piece.id, version: piece.turn.version })]
-        : []),
-    ],
-  }
+/** The piece as the server last answered it, a read's or a change's. The page's own work stays as it is, except that
+ * a turn whose video is ready is cut into frames here, once. Following the piece while it settles is the
+ * subscription's, not this answer's. */
+const shown = (model: Model, piece: Piece): UpdateReturn => {
+  const build = piece.turn?.state === 'building' && TurnWork.guards.Idle(model.turnWork)
+  const next = modifyFields(model, { piece: () => PieceData.Success({ data: piece }) })
+  return build && piece.turn !== undefined
+    ? {
+        model: modifyFields(next, { turnWork: () => TurnWork.Building() }),
+        commands: [BuildTurnSheet({ pieceId: piece.id, version: piece.turn.version })],
+      }
+    : { model: next }
 }
 
+/** The piece shown, changed as an answer says; nothing while it has not been read. */
+const shownWith = (model: Model, change: (piece: Piece) => Piece): UpdateReturn =>
+  Option.match(AsyncData.getData(model.piece), {
+    onNone: () => ({ model }),
+    onSome: (piece) => shown(model, change(piece)),
+  })
+
 /** The loaded piece with its turn as the API last answered it. */
-const withTurn = (model: Model, turn: PieceTurn): UpdateReturn => {
-  const shown = model.load
-  const settled = modifyFields(model, { turnWork: () => 'idle' as const })
-  return Load.guards.Loaded(shown) ? loaded(settled, { ...shown.piece, turn }) : { model: settled }
-}
+const withTurn = (model: Model, turn: PieceTurn): UpdateReturn =>
+  shownWith(modifyFields(model, { turnWork: () => TurnWork.Idle() }), (piece) => ({ ...piece, turn }))
 
 const turnUpdates = (model: Model) => ({
   ClickedMakeTurn: (): UpdateReturn =>
-    model.turnWork === 'idle'
+    TurnWork.guards.Idle(model.turnWork)
       ? {
-          model: modifyFields(model, { turnWork: () => 'asking' as const, turnProblem: () => Option.none() }),
+          model: modifyFields(model, { turnWork: () => TurnWork.Asking(), turnProblem: () => Option.none() }),
           commands: [MakeTurn({ pieceId: model.pieceId })],
         }
       : { model },
   SucceededMakeTurn: ({ turn }: { readonly turn: PieceTurn }): UpdateReturn => withTurn(model, turn),
   FailedMakeTurn: ({ problem }: { readonly problem: TurnProblem }): UpdateReturn => ({
-    model: modifyFields(model, { turnWork: () => 'idle' as const, turnProblem: () => Option.some(problem) }),
+    model: modifyFields(model, { turnWork: () => TurnWork.Idle(), turnProblem: () => Option.some(problem) }),
   }),
   SucceededBuildTurnSheet: ({ turn }: { readonly turn: PieceTurn }): UpdateReturn => withTurn(model, turn),
   FailedBuildTurnSheet: (): UpdateReturn => ({
-    model: modifyFields(model, { turnWork: () => 'idle' as const, turnProblem: () => Option.some('build' as const) }),
+    model: modifyFields(model, { turnWork: () => TurnWork.Idle(), turnProblem: () => Option.some('build' as const) }),
   }),
   ShowedTurn: (): UpdateReturn => ({ model: modifyFields(model, { turnShown: () => true }) }),
 })
@@ -477,25 +443,22 @@ const submittedRedraw = (model: Model): UpdateReturn =>
           },
   })
 
-/** A drawing on its way: the piece shows its photo meanwhile and is asked for again until the drawing settles. */
-const redrawing = (model: Model, picture: PiecePicture): UpdateReturn => {
-  const shown = model.load
-  if (!Load.guards.Loaded(shown)) return { model: modifyFields(model, { redraw: () => Option.none() }) }
-  return loaded(modifyFields(model, { redraw: () => Option.none() }), { ...shown.piece, picture })
-}
+/** A drawing on its way: the piece shows its photo meanwhile, and the poll follows it until the drawing settles. */
+const redrawing = (model: Model, picture: PiecePicture): UpdateReturn =>
+  shownWith(modifyFields(model, { redraw: () => Option.none() }), (piece) => ({ ...piece, picture }))
 
 const pictureUpdates = (model: Model) => ({
   ClickedShowPicture: ({ use }: { readonly use: PictureChoice }): UpdateReturn =>
-    model.choosing === 'sending'
+    Choosing.guards.Sending(model.choosing)
       ? { model }
       : {
-          model: modifyFields(model, { choosing: () => 'sending' as const }),
+          model: modifyFields(model, { choosing: () => Choosing.Sending() }),
           commands: [ChoosePicture({ pieceId: model.pieceId, use })],
         },
   SucceededChoosePicture: ({ piece }: { readonly piece: Piece }): UpdateReturn => ({
-    model: modifyFields(model, { load: () => Load.Loaded({ piece }), choosing: () => 'idle' as const }),
+    model: modifyFields(model, { piece: () => PieceData.Success({ data: piece }), choosing: () => Choosing.Idle() }),
   }),
-  FailedChoosePicture: (): UpdateReturn => ({ model: modifyFields(model, { choosing: () => 'failed' as const }) }),
+  FailedChoosePicture: (): UpdateReturn => ({ model: modifyFields(model, { choosing: () => Choosing.Failed() }) }),
   ClickedRedraw: (): UpdateReturn => ({
     model: modifyFields(model, {
       redraw: () => Option.some({ hint: '', sending: false, problem: Option.none(), operationId: Option.none() }),
@@ -526,16 +489,16 @@ const pictureUpdates = (model: Model) => ({
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     GotSaveToBoardMessage: (got) => foldSaveToBoard(model, got.message),
-    SucceededGetPiece: ({ piece }) => loaded(model, piece),
-    FailedGetPiece: ({ missing }) =>
-      Load.guards.Loaded(model.load)
-        ? { model }
-        : { model: modifyFields(model, { load: () => (missing ? Load.Missing() : Load.Failed()) }) },
-    ElapsedRefreshPause: () => ({ model, commands: [GetPiece({ pieceId: model.pieceId })] }),
-    ClickedRetry: () => ({
-      model: modifyFields(model, { load: () => Load.Loading() }),
-      commands: [GetPiece({ pieceId: model.pieceId })],
+    SucceededGetPiece: ({ piece }) => shown(modifyFields(model, { misses: () => 0 }), piece),
+    // A failed read keeps the piece shown.
+    FailedGetPiece: ({ error }) => ({
+      model: modifyFields(model, {
+        piece: (piece) => AsyncData.settle(piece, Result.fail(error)),
+        misses: Number.increment,
+      }),
     }),
+    TickedPieceRefresh: () => pieceCache(AsyncData.revalidate)(model),
+    ClickedRetry: () => pieceCache(AsyncData.revalidateOrLoad)(modifyFields(model, { misses: () => 0 })),
     ClickedDelete: () => ({ model: modifyFields(model, { deletion: () => Deletion.Confirming() }) }),
     ClickedCancelDelete: () => ({ model: modifyFields(model, { deletion: () => Deletion.Idle() }) }),
     ClickedConfirmDelete: () =>
@@ -547,12 +510,11 @@ export const update = (model: Model, message: Message): UpdateReturn =>
           },
     SucceededDeletePiece: () => ({ model, outMessage: OutMessage.DeletedPiece() }),
     FailedDeletePiece: () => ({ model: modifyFields(model, { deletion: () => Deletion.Failed() }) }),
-    ClickedEdit: () => {
-      const shown = model.load
-      return Load.guards.Loaded(shown)
-        ? { model: modifyFields(model, { draft: () => Option.some(draftOf(shown.piece)) }) }
-        : { model }
-    },
+    ClickedEdit: () =>
+      Option.match(AsyncData.getData(model.piece), {
+        onNone: () => ({ model }),
+        onSome: (piece) => ({ model: modifyFields(model, { draft: () => Option.some(draftOf(piece)) }) }),
+      }),
     ClickedCancelEdit: () => ({ model: modifyFields(model, { draft: () => Option.none() }) }),
     UpdatedName: ({ value }) => editDraft(model, (draft) => modifyFields(draft, { name: () => value })),
     UpdatedNotes: ({ value }) => editDraft(model, (draft) => modifyFields(draft, { notes: () => value })),
@@ -566,7 +528,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       editDraft(model, (draft) => modifyFields(draft, { shopUrl: () => value, shopUrlInvalid: () => false })),
     SubmittedEdit: () => submittedEdit(model),
     SucceededUpdatePiece: ({ piece }) => ({
-      model: modifyFields(model, { load: () => Load.Loaded({ piece }), draft: () => Option.none() }),
+      model: modifyFields(model, { piece: () => PieceData.Success({ data: piece }), draft: () => Option.none() }),
     }),
     GotBackMessage: ({ message: backMessage }) => foldBack(model, backMessage),
     GotPhotosMessage: ({ message: photosMessage }) => ({
@@ -574,9 +536,28 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     }),
     FailedUpdatePiece: () => ({
       model: modifyFields(model, {
-        draft: Option.map((draft) => modifyFields(draft, { saving: () => false, failed: () => true })),
+        draft: Option.map((draft) => modifyFields(draft, { save: () => DraftSave.Failed() })),
       }),
     }),
     ...pictureUpdates(model),
     ...turnUpdates(model),
   })
+
+// SUBSCRIPTION
+
+/** Whether the piece is still settling: processing, its clean picture being drawn, or its turn being made. */
+const isSettling = (piece: Piece) =>
+  piece.status === 'processing' || piece.picture?.state === 'drawing' || piece.turn?.state === 'making'
+
+/** The piece is asked for again while it settles; the page's own work is left as it is. */
+export const subscriptions = Subscription.make<Model, Message>()(() => ({
+  pieceWhileSettling: pollWhilePending<Model, Message>({
+    pendingIds: (model) =>
+      Option.match(AsyncData.getData(model.piece), {
+        onNone: (): ReadonlyArray<string> => [],
+        onSome: (piece) => (isSettling(piece) ? [piece.id] : []),
+      }),
+    misses: (model) => model.misses,
+    tick: Message.TickedPieceRefresh(),
+  }),
+}))

@@ -7,7 +7,7 @@ import { detailsOf } from '../src/page/PieceFields.ts'
 import { Session, init } from '../src/App.ts'
 import { lenses } from '../src/Page.ts'
 import { claims, flags, urlOf, withPage } from './AppFixtures.ts'
-import { Tray } from '../src/page/Review.ts'
+import { TrayData } from '../src/page/Review.ts'
 import { view } from '../src/View.ts'
 
 const emptyCapture = (n: number, source: 'picker' | 'video') => ({
@@ -41,7 +41,7 @@ const reviewPage = (
 ) =>
   withPage(appModel(context), lenses.review, (review) =>
     modifyFields(review, {
-      tray: () => Tray.Loaded({ tray: { captures, allowance: { remaining: 90, daily: 100 } } }),
+      tray: () => TrayData.Success({ data: { captures, allowance: { remaining: 90, daily: 100 } } }),
       editing: () => editing,
       decisions: () =>
         Object.fromEntries(

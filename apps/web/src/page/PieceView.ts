@@ -2,7 +2,7 @@ import { textLength, prices } from '@styld/protocol'
 import type { Piece, PiecePicture } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import { Option } from 'effect'
-import { Submodel } from 'foldkit'
+import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
 import { linkAction, primaryAction, secondaryAction } from '../Actions.styles.ts'
@@ -11,10 +11,13 @@ import { editIcon, loader } from '../Icon.ts'
 import { wardrobeRouter } from '../route.ts'
 import { confirmActions } from '../ConfirmActions.ts'
 import { styled } from '../Styled.ts'
-import { Deletion, type Draft, Load, Message, type Model, type Redraw, ShowTurn } from './Piece.ts'
+import { Choosing, Deletion, Message, type Model, type Redraw, ShowTurn, TurnWork } from './Piece.ts'
+import { type Draft, DraftSave } from './PieceDraft.ts'
 import { piecePickers } from './PieceFields.ts'
 import { kindName, pieceLabel } from './WardrobeWords.ts'
 import { backToWardrobe } from './PageBar.ts'
+import { hasStopped } from '../Polling.ts'
+import { retryView } from './Retry.ts'
 import { barEnd, round } from './PageBar.styles.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
@@ -97,7 +100,11 @@ const shopFields = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Read
 
 const editForm = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.form(
-    [h.OnSubmit(Message.SubmittedEdit()), h.AriaBusy(draft.saving), ...styled(h, styles.editForm())],
+    [
+      h.OnSubmit(Message.SubmittedEdit()),
+      h.AriaBusy(DraftSave.guards.Saving(draft.save)),
+      ...styled(h, styles.editForm()),
+    ],
     [
       h.label([h.For('piece-name'), ...styled(h, fieldLabel())], [format(locale, 'wardrobe.nameLabel', {})]),
       h.input([
@@ -125,7 +132,7 @@ const editForm = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Html =
         h.OnInput((value) => Message.UpdatedNotes({ value })),
         ...styled(h, styles.notesField()),
       ]),
-      draft.failed
+      DraftSave.guards.Failed(draft.save)
         ? h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, 'wardrobe.saveFailed', {})])
         : h.empty,
       h.div(styled(h, styles.actions()), [
@@ -134,8 +141,8 @@ const editForm = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Html =
             label: format(locale, 'wardrobe.saveAction', {}),
             style: primaryAction(),
             type: 'submit',
-            isDisabled: draft.saving,
-            leading: draft.saving ? loader(h) : h.empty,
+            isDisabled: DraftSave.guards.Saving(draft.save),
+            leading: DraftSave.guards.Saving(draft.save) ? loader(h) : h.empty,
           },
           h,
         ),
@@ -144,7 +151,7 @@ const editForm = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Html =
             label: format(locale, 'common.cancel', {}),
             style: secondaryAction(),
             onClick: Message.ClickedCancelEdit(),
-            isDisabled: draft.saving,
+            isDisabled: DraftSave.guards.Saving(draft.save),
           },
           h,
         ),
@@ -208,7 +215,7 @@ const pictureChoices = (picture: PiecePicture, model: Model, locale: Locale, h: 
         label: format(locale, key, {}),
         style: secondaryAction(),
         onClick: Message.ClickedShowPicture({ use }),
-        isDisabled: model.choosing === 'sending',
+        isDisabled: Choosing.guards.Sending(model.choosing),
       },
       h,
     )
@@ -273,7 +280,7 @@ const picturePanel = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
     [
       pictureStatus(picture, locale, h),
       picture.state === 'proposed' && picture.shows === 'photo' ? proposal(piece, picture, locale, h) : h.empty,
-      model.choosing === 'failed'
+      Choosing.guards.Failed(model.choosing)
         ? h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, 'wardrobe.picture.chooseFailed', {})])
         : h.empty,
       Option.match(model.redraw, {
@@ -336,7 +343,7 @@ const pieceDetails = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
 
 /** Edit, at the bar's end while the piece is shown and not being edited or deleted (Gallery `item.html` › head). */
 const editRound = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  Load.guards.Loaded(model.load) && Option.isNone(model.draft) && Deletion.guards.Idle(model.deletion)
+  AsyncData.hasData(model.piece) && Option.isNone(model.draft) && Deletion.guards.Idle(model.deletion)
     ? h.button(
         [
           h.Type('button'),
@@ -409,7 +416,7 @@ const turnLine = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Mes
   })
   const unbuilt = turn?.state === 'building' && Option.contains(model.turnProblem, 'build')
   if (unbuilt) return problem
-  if (turn?.state === 'making' || turn?.state === 'building' || model.turnWork === 'building')
+  if (turn?.state === 'making' || turn?.state === 'building' || TurnWork.guards.Building(model.turnWork))
     return h.p(
       [h.Role('status'), ...styled(h, styles.status())],
       [loader(h), format(locale, turn?.state === 'making' ? 'wardrobe.turn.making' : 'wardrobe.turn.building', {})],
@@ -425,8 +432,8 @@ const turnLine = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Mes
         label: format(locale, 'wardrobe.turn.make', {}),
         style: secondaryAction(),
         onClick: Message.ClickedMakeTurn(),
-        isDisabled: model.turnWork === 'asking',
-        leading: model.turnWork === 'asking' ? loader(h) : h.empty,
+        isDisabled: TurnWork.guards.Asking(model.turnWork),
+        leading: TurnWork.guards.Asking(model.turnWork) ? loader(h) : h.empty,
         describedBy: 'turn-cost',
       },
       h,
@@ -468,27 +475,16 @@ const loadedView = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<M
   }),
 ]
 
-const notice = (
-  locale: Locale,
-  h: HtmlBuilder<Message>,
-  key: 'wardrobe.itemNotFound' | 'wardrobe.shelves.loadFailed',
-) =>
+/** A piece that is not the person's, or no longer exists, with the way back. */
+const missingView = (locale: Locale, h: HtmlBuilder<Message>) =>
   h.div(styled(h, styles.details()), [
-    h.p([h.Role('alert')], [format(locale, key, {})]),
-    key === 'wardrobe.shelves.loadFailed'
-      ? actionButton(
-          {
-            label: format(locale, 'wardrobe.shelves.retry', {}),
-            style: primaryAction(),
-            onClick: Message.ClickedRetry(),
-          },
-          h,
-        )
-      : h.a(
-          [h.Href(wardrobeRouter({})), ...styled(h, secondaryAction())],
-          [format(locale, 'wardrobe.backToWardrobe', {})],
-        ),
+    h.p([h.Role('alert')], [format(locale, 'wardrobe.itemNotFound', {})]),
+    h.a([h.Href(wardrobeRouter({})), ...styled(h, secondaryAction())], [format(locale, 'wardrobe.backToWardrobe', {})]),
   ])
+
+/** The piece could not be read, or stopped being followed while it settled. */
+const failedView = (locale: Locale, h: HtmlBuilder<Message>) =>
+  retryView(format(locale, 'wardrobe.shelves.loadFailed', {}), locale, Message.ClickedRetry(), h)
 
 /** One piece you own: its photo, what it is, its colours and notes (Gallery `item.html`). */
 export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
@@ -496,11 +492,13 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
     [h.Id('main'), ...styled(h, styles.piecePage())],
     [
       h.div(styled(h, styles.pageBar()), [backToWardrobe(locale, h), editRound(model, locale, h)]),
-      ...Load.match(model.load, {
-        Loading: () => loadingView(locale, h),
-        Loaded: ({ piece }) => loadedView(piece, model, locale, h),
-        Missing: () => [notice(locale, h, 'wardrobe.itemNotFound')],
-        Failed: () => [notice(locale, h, 'wardrobe.shelves.loadFailed')],
+      ...AsyncData.matchData(model.piece, {
+        onEmpty: () => loadingView(locale, h),
+        onFailure: (error) => [error === 'NotFound' ? missingView(locale, h) : failedView(locale, h)],
+        onData: (piece) => [
+          ...loadedView(piece, model, locale, h),
+          hasStopped(model.misses) ? failedView(locale, h) : h.empty,
+        ],
       }),
     ],
   ),

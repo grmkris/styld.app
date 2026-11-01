@@ -11,23 +11,21 @@ import {
   Season,
   Tray as TrayContract,
 } from '@styld/protocol'
-import { Duration, Effect, Option, Record, Schema } from 'effect'
+import { Effect, Number, Option, Record, Result, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
-import { Command, type Update } from 'foldkit'
+import { AsyncData, Command, Subscription, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
+import { Misses, pollWhilePending } from '../Polling.ts'
 import { StyldClient } from '../StyldClient.ts'
 import { changeDetails, Details, detailsOf, detailsPayload } from './PieceFields.ts'
 
 // MODEL
 
-export const Tray = defineTaggedUnion({
-  Loading: {},
-  Loaded: { tray: TrayContract },
-  Failed: {},
-})
-export type Tray = typeof Tray.Type
+/** The review tray as last read; a failed read keeps what was shown. */
+export const TrayData = AsyncData.Schema(TrayContract, Schema.Literal('Unavailable'))
+export type TrayData = typeof TrayData.schema.Type
 
 /** What the person decided about one found piece; it starts from the suggestion. */
 export const Decision = Schema.Struct({
@@ -48,7 +46,7 @@ export const Saving = defineTaggedUnion({
 export type Saving = typeof Saving.Type
 
 export const Model = Schema.Struct({
-  tray: Tray,
+  tray: TrayData.schema,
   decisions: Schema.Record(Schema.String, Decision),
   /** The found piece being edited; the grid waits behind it. */
   editing: Schema.Option(Schema.String),
@@ -56,22 +54,18 @@ export const Model = Schema.Struct({
   /** Captures being tried again or removed, and the ones whose last try or removal failed. */
   acting: Schema.Array(Schema.String),
   actionFailed: Schema.Array(Schema.String),
-  /** A refresh is on its way, so a new read of the tray does not start a second one. */
-  refreshing: Schema.Boolean,
-  /** The last refresh failed: the tray shown may be out of date. */
-  stale: Schema.Boolean,
+  misses: Misses,
 })
 export type Model = typeof Model.Type
 
 export const init = (): Model => ({
-  tray: Tray.Loading(),
+  tray: AsyncData.Loading(),
   decisions: {},
   editing: Option.none(),
   saving: Saving.Idle(),
   acting: [],
   actionFailed: [],
-  refreshing: false,
-  stale: false,
+  misses: 0,
 })
 
 // MESSAGE
@@ -97,8 +91,7 @@ export const Message = defineMessageUnion({
   ClickedRetryCapture: { captureId: Schema.String },
   ClickedRemoveCapture: { captureId: Schema.String },
   ClickedSplit: { detectionId: Schema.String },
-  SucceededRefreshTray: { tray: TrayContract },
-  FailedRefreshTray: {},
+  TickedTrayRefresh: {},
   SucceededCaptureAction: { captureId: Schema.String },
   FailedCaptureAction: { captureId: Schema.String },
 })
@@ -109,31 +102,13 @@ export type OutMessage = typeof OutMessage.Type
 
 // COMMAND
 
-/** Pieces are usually found within seconds, so the tray asks again this often while any are. */
-const refreshPause = Duration.seconds(2)
-
-const readTray = Effect.gen(function* () {
-  const api = yield* (yield* StyldClient).api
-  return Message.SucceededLoadTray({ tray: yield* api.capture.tray() })
-}).pipe(Effect.orElseSucceed(() => Message.FailedLoadTray()))
-
 /** @internal Exported for its tests. */
 export const LoadTray = Command.define('LoadTray', {
   messages: [Message.SucceededLoadTray, Message.FailedLoadTray],
-  execute: readTray,
-})
-
-/** The tray again after a pause, while a capture is still being cut out.
- * @internal Exported for its tests. */
-export const RefreshTray = Command.define('RefreshTray', {
-  messages: [Message.SucceededRefreshTray, Message.FailedRefreshTray],
   execute: Effect.gen(function* () {
     const api = yield* (yield* StyldClient).api
-    return Message.SucceededRefreshTray({ tray: yield* api.capture.tray() })
-  }).pipe(
-    Effect.delay(refreshPause),
-    Effect.orElseSucceed(() => Message.FailedRefreshTray()),
-  ),
+    return Message.SucceededLoadTray({ tray: yield* api.capture.tray() })
+  }).pipe(Effect.orElseSucceed(() => Message.FailedLoadTray())),
 })
 
 /** @internal Exported for its tests. */
@@ -250,7 +225,10 @@ type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Styl
 
 /** Every found piece the tray shows, in the order it shows them. */
 const detectionsOf = (model: Model) =>
-  Tray.guards.Loaded(model.tray) ? model.tray.tray.captures.flatMap(({ detections }) => detections) : []
+  Option.match(AsyncData.getData(model.tray), {
+    onNone: () => [],
+    onSome: (tray) => tray.captures.flatMap(({ detections }) => detections),
+  })
 
 /** A new found piece starts as its suggestion says, ticked when the server offers it ticked. */
 const suggested = (detection: TrayContract['captures'][number]['detections'][number]): Decision => ({
@@ -260,25 +238,38 @@ const suggested = (detection: TrayContract['captures'][number]['detections'][num
   useOriginal: false,
 })
 
+/** A read of the tray: what it shows, with each found piece's decision kept as the person left it and a new one
+ * starting from its suggestion. The page's own work (an edit, adding, a capture's action) is left as it is. */
 const loaded = (model: Model, tray: TrayContract): UpdateReturn => {
   const decisions = Record.fromEntries(
     tray.captures
       .flatMap(({ detections }) => detections)
       .map((detection) => [detection.id, model.decisions[detection.id] ?? suggested(detection)] as const),
   )
-  return polling(
-    modifyFields(model, { tray: () => Tray.Loaded({ tray }), decisions: () => decisions, stale: () => false }),
-  )
+  return {
+    model: modifyFields(model, {
+      tray: () => TrayData.Success({ data: tray }),
+      decisions: () => decisions,
+      misses: () => 0,
+    }),
+  }
 }
 
-/** Ask again after a pause while a capture is still being cut out; one refresh at a time. */
-const polling = (model: Model): UpdateReturn => {
-  const processing =
-    Tray.guards.Loaded(model.tray) && model.tray.tray.captures.some(({ status }) => status === 'processing')
-  return processing && !model.refreshing
-    ? { model: modifyFields(model, { refreshing: () => true }), commands: [RefreshTray()] }
-    : { model }
-}
+const trayCache = (revalidate: (tray: TrayData) => Option.Option<TrayData>) =>
+  Update.refresh<Model, Message, TrayContract, 'Unavailable', StyldClient>({
+    read: (model: Model) => Option.some(model.tray),
+    revalidate,
+    write: (model: Model, tray: TrayData) => modifyFields(model, { tray: () => tray }),
+    load: LoadTray(),
+  })
+
+/** The tray read again after a change made here, even with a poll on its way: that poll may predate the change. */
+const readAgain = (model: Model): UpdateReturn => ({
+  model: modifyFields(model, {
+    tray: (tray) => Option.getOrElse(AsyncData.revalidate(tray), () => tray),
+  }),
+  commands: [LoadTray()],
+})
 
 /** The pieces that will be added: ticked, with a type. */
 export const keptOf = (model: Model) =>
@@ -398,10 +389,7 @@ const savingHandlers = (model: Model) => ({
               }),
           }),
         }
-      : {
-          model: modifyFields(model, { saving: () => Saving.Failed({ operationId: Option.none() }) }),
-          commands: [LoadTray()],
-        },
+      : readAgain(modifyFields(model, { saving: () => Saving.Failed({ operationId: Option.none() }) })),
 })
 
 /** Try a capture again, remove it, or split a piece's sightings, once at a time for each. */
@@ -423,17 +411,15 @@ const act = (
 /** Reading the tray, and trying a capture again or removing it. */
 const trayHandlers = (model: Model) => ({
   SucceededLoadTray: ({ tray }: { readonly tray: TrayContract }) => loaded(model, tray),
-  // A failed refresh keeps the tray already shown and stops asking.
-  FailedLoadTray: (): UpdateReturn =>
-    Tray.guards.Loaded(model.tray) ? { model } : { model: modifyFields(model, { tray: () => Tray.Failed() }) },
-  ClickedRetryLoad: (): UpdateReturn => ({
-    model: modifyFields(model, { tray: () => Tray.Loading() }),
-    commands: [LoadTray()],
+  // A failed read keeps the tray shown, which says it may be out of date; polls go on up to five misses.
+  FailedLoadTray: (): UpdateReturn => ({
+    model: modifyFields(model, {
+      tray: (tray) => AsyncData.settle(tray, Result.fail('Unavailable' as const)),
+      misses: Number.increment,
+    }),
   }),
-  SucceededRefreshTray: ({ tray }: { readonly tray: TrayContract }) =>
-    loaded(modifyFields(model, { refreshing: () => false }), tray),
-  // A failed refresh keeps the tray shown, says it may be out of date, and keeps asking.
-  FailedRefreshTray: (): UpdateReturn => polling(modifyFields(model, { refreshing: () => false, stale: () => true })),
+  ClickedRetryLoad: (): UpdateReturn => trayCache(AsyncData.revalidateOrLoad)(modifyFields(model, { misses: () => 0 })),
+  TickedTrayRefresh: (): UpdateReturn => trayCache(AsyncData.revalidate)(model),
   ClickedRetryCapture: ({ captureId }: { readonly captureId: string }): UpdateReturn =>
     act(model, captureId, RetryCapture({ captureId })),
   ClickedRemoveCapture: ({ captureId }: { readonly captureId: string }): UpdateReturn =>
@@ -441,10 +427,8 @@ const trayHandlers = (model: Model) => ({
   // The split sightings come back as cards of their own; the piece open shows its first again.
   ClickedSplit: ({ detectionId }: { readonly detectionId: string }): UpdateReturn =>
     act(modifyFields(model, { editing: () => Option.none() }), detectionId, SplitSightings({ detectionId })),
-  SucceededCaptureAction: ({ captureId }: { readonly captureId: string }): UpdateReturn => ({
-    model: modifyFields(model, { acting: (acting) => acting.filter((id) => id !== captureId) }),
-    commands: [LoadTray()],
-  }),
+  SucceededCaptureAction: ({ captureId }: { readonly captureId: string }): UpdateReturn =>
+    readAgain(modifyFields(model, { acting: (acting) => acting.filter((id) => id !== captureId) })),
   FailedCaptureAction: ({ captureId }: { readonly captureId: string }): UpdateReturn => ({
     model: modifyFields(model, {
       acting: (acting) => acting.filter((id) => id !== captureId),
@@ -459,3 +443,21 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ...editHandlers(model),
     ...savingHandlers(model),
   })
+
+// SUBSCRIPTION
+
+/** The captures still being cut out, which the tray waits on. */
+const processingIds = (model: Model): ReadonlyArray<string> =>
+  Option.match(AsyncData.getData(model.tray), {
+    onNone: () => [],
+    onSome: (tray) => tray.captures.filter(({ status }) => status === 'processing').map(({ id }) => id),
+  })
+
+/** The tray is asked for again while a capture is still being cut out. */
+export const subscriptions = Subscription.make<Model, Message>()(() => ({
+  trayWhileProcessing: pollWhilePending<Model, Message>({
+    pendingIds: processingIds,
+    misses: (model) => model.misses,
+    tick: Message.TickedTrayRefresh(),
+  }),
+}))

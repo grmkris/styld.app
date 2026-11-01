@@ -427,6 +427,9 @@ export const subscriptions = Subscription.aggregate(
     when: (model) => AppRoute.guards.Photos(model.route),
   }),
   Subscription.lift(Photo.subscriptions)<Model, Message>(at(lenses.photo)),
+  Subscription.lift(Piece.subscriptions)<Model, Message>(at(lenses.piece)),
+  Subscription.lift(Review.subscriptions)<Model, Message>(at(lenses.review)),
+  Subscription.lift(Stylist.subscriptions)<Model, Message>(at(lenses.stylist)),
   // A board's page listens for coming back into view; its collage editor also for hands, keys, pasted pictures and
   // dropped files.
   Subscription.lift(BoardSubscription.pageSubscriptions)<Model, Message>(at(lenses.board)),

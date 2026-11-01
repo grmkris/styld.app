@@ -1,11 +1,12 @@
 import { operationIdOf } from '../OperationIds.ts'
 import { Chat, ChatId, Language, ChatSummary } from '@styld/protocol'
-import { Duration, Effect, Option, Schema } from 'effect'
+import { Duration, Effect, Number, Option, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
-import { AsyncData, Command, Dom, Render, type Update } from 'foldkit'
+import { AsyncData, Command, Dom, Render, Subscription, type Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
+import { hasStopped, Misses, pollWhilePending } from '../Polling.ts'
 import { StyldClient } from '../StyldClient.ts'
 
 // MODEL
@@ -36,6 +37,10 @@ export const Opening = defineTaggedUnion({
 })
 export type Opening = typeof Opening.Type
 
+/** While Styld writes a reply, the open chat is read again: nothing on its way, or a read on its way. */
+const Refresh = defineTaggedUnion({ Idle: {}, Reading: {} })
+type Refresh = typeof Refresh.Type
+
 /** Styld, the stylist in the app: the chat open (none for a new one), the earlier chats, and what is being written. */
 export const Model = Schema.Struct({
   chats: ChatsData.schema,
@@ -43,6 +48,8 @@ export const Model = Schema.Struct({
   opening: Opening,
   draft: Schema.String,
   sending: Sending,
+  refresh: Refresh,
+  misses: Misses,
 })
 export type Model = typeof Model.Type
 
@@ -52,6 +59,8 @@ export const init = (draft: Option.Option<string>): Model => ({
   opening: Opening.None(),
   draft: Option.getOrElse(draft, () => ''),
   sending: Sending.Idle(),
+  refresh: Refresh.Idle(),
+  misses: 0,
 })
 
 // MESSAGE
@@ -63,6 +72,7 @@ export const Message = defineMessageUnion({
   FailedLoadChat: { chatId: Schema.String },
   SucceededRefreshChat: { chat: Chat },
   FailedRefreshChat: { chatId: Schema.String },
+  TickedReplyRefresh: {},
   UpdatedDraft: { value: Schema.String },
   SubmittedMessage: { locale: Language },
   ClickedStarter: { text: Schema.String, locale: Language },
@@ -78,9 +88,6 @@ export const Message = defineMessageUnion({
 export type Message = typeof Message.Type
 
 // COMMAND
-
-/** While Styld writes, the chat is read again this often. */
-const replyPause = Duration.millis(800)
 
 /** @internal Exported for its tests. */
 export const LoadChats = Command.define('LoadChats', {
@@ -108,14 +115,13 @@ export const LoadChat = Command.define('LoadChat', {
     ),
 })
 
-/** The chat again after a pause, while Styld writes its reply.
+/** The chat again, while Styld writes its reply.
  * @internal Exported for its tests. */
 export const RefreshChat = Command.define('RefreshChat', {
   args: { chatId: Schema.String },
   messages: [Message.SucceededRefreshChat, Message.FailedRefreshChat],
   execute: ({ chatId }) =>
     readChat(chatId).pipe(
-      Effect.delay(replyPause),
       Effect.map((chat) => Message.SucceededRefreshChat({ chat })),
       Effect.orElseSucceed(() => Message.FailedRefreshChat({ chatId })),
     ),
@@ -218,15 +224,44 @@ export const FocusThread = Command.define('FocusThread', {
   ),
 })
 
-/** A chat read: shown when it is still the one open, and read again while its reply is written. */
-const showChat = (model: Model, chat: Chat): UpdateReturn => {
-  const current = Option.exists(model.open, ({ id }) => id === chat.id)
-  if (!current) return { model }
-  return {
-    model: modifyFields(model, { open: () => Option.some(chat) }),
-    commands: chat.replying?.state === 'writing' ? [RefreshChat({ chatId: chat.id })] : [],
-  }
-}
+/** A chat read: shown when it is still the one open. While its reply is written the page's poll reads it again. */
+const showChat = (model: Model, chat: Chat): UpdateReturn =>
+  Option.exists(model.open, ({ id }) => id === chat.id)
+    ? { model: modifyFields(model, { open: () => Option.some(chat) }) }
+    : { model }
+
+/** The open chat whose reply Styld is writing, which the page reads again. */
+const writingChatId = (model: Model): Option.Option<string> =>
+  Option.flatMap(model.open, (chat) => (chat.replying?.state === 'writing' ? Option.some(chat.id) : Option.none()))
+
+/** Read the chat being written again, unless a read is already on its way. */
+const refreshReply = (model: Model): UpdateReturn =>
+  Option.match(writingChatId(model), {
+    onNone: () => ({ model }),
+    onSome: (chatId) =>
+      Refresh.guards.Reading(model.refresh)
+        ? { model }
+        : { model: modifyFields(model, { refresh: () => Refresh.Reading() }), commands: [RefreshChat({ chatId })] },
+  })
+
+/** Following the reply being written: each tick reads it once at a time; five failed reads in a row stop it. */
+const refreshUpdates = (model: Model) => ({
+  TickedReplyRefresh: (): UpdateReturn => refreshReply(model),
+  SucceededRefreshChat: ({ chat }: { readonly chat: Chat }): UpdateReturn => {
+    const before = Option.match(model.open, { onNone: () => 0, onSome: ({ messages }) => messages.length })
+    const shown = showChat(modifyFields(model, { refresh: () => Refresh.Idle(), misses: () => 0 }), chat)
+    return chat.messages.length > before && Option.exists(model.open, ({ id }) => id === chat.id)
+      ? { ...shown, commands: [ScrollToLatest()] }
+      : shown
+  },
+  // A failed read keeps the chat shown; the next tick asks again, up to five misses in a row.
+  FailedRefreshChat: ({ chatId }: { readonly chatId: string }): UpdateReturn => ({
+    model: modifyFields(model, {
+      refresh: () => Refresh.Idle(),
+      misses: (misses) => (Option.exists(model.open, ({ id }) => id === chatId) ? Number.increment(misses) : misses),
+    }),
+  }),
+})
 
 /** Send what is written: a message lost on the network goes again as the same one. */
 const submit = (model: Model, locale: Language, fromStarter = false): UpdateReturn => {
@@ -249,6 +284,7 @@ const openChat = (model: Model, chatId: string, pressed = false): UpdateReturn =
   model: modifyFields(model, {
     open: Option.filter(({ id }) => id === chatId),
     opening: () => Opening.Reading({ chatId, pressed }),
+    misses: () => 0,
   }),
   commands: [LoadChat({ chatId })],
 })
@@ -290,26 +326,14 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         modifyFields(model, { open: () => Option.some(chat), opening: () => Opening.None() }),
         chat,
       )
-      return {
-        ...shown,
-        commands: [...(shown.commands ?? []), ScrollToLatest(), ...(pressed ? [FocusThread()] : [])],
-      }
+      return { ...shown, commands: [ScrollToLatest(), ...(pressed ? [FocusThread()] : [])] }
     },
     FailedLoadChat: ({ chatId }) =>
       isReading(model, chatId)
         ? { model: modifyFields(model, { opening: () => Opening.Failed({ chatId }) }) }
         : { model },
-    SucceededRefreshChat: ({ chat }) => {
-      const before = Option.match(model.open, { onNone: () => 0, onSome: ({ messages }) => messages.length })
-      const shown = showChat(model, chat)
-      return chat.messages.length > before
-        ? { ...shown, commands: [...(shown.commands ?? []), ScrollToLatest()] }
-        : shown
-    },
+    ...refreshUpdates(model),
     CompletedScrollToLatest: () => ({ model }),
-    // A failed read keeps the chat shown and asks again.
-    FailedRefreshChat: ({ chatId }) =>
-      Option.exists(model.open, ({ id }) => id === chatId) ? { model, commands: [RefreshChat({ chatId })] } : { model },
     // Changing what is written makes it a new message, not the one a lost send would repeat.
     UpdatedDraft: ({ value }) => ({
       model: modifyFields(model, {
@@ -338,8 +362,25 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     CompletedStartAtTop: () => ({ model }),
     CompletedFocusThread: () => ({ model }),
     ClickedChat: ({ chatId }) => openChat(model, chatId, true),
-    ClickedRetryLoad: () =>
-      Opening.guards.Failed(model.opening)
-        ? openChat(model, model.opening.chatId, true)
-        : { model, commands: [LoadChats()] },
+    // Try again: the chat that did not open, the reply that stopped being followed, or the list of chats.
+    ClickedRetryLoad: () => {
+      if (Opening.guards.Failed(model.opening)) return openChat(model, model.opening.chatId, true)
+      if (hasStopped(model.misses)) return refreshReply(modifyFields(model, { misses: () => 0 }))
+      return { model, commands: [LoadChats()] }
+    },
   })
+
+// SUBSCRIPTION
+
+/** While Styld writes a reply, the open chat is read again this often. */
+const replyPause = Duration.millis(800)
+
+/** The open chat is read again while its reply is written, and not after five failed reads in a row. */
+export const subscriptions = Subscription.make<Model, Message>()(() => ({
+  replyWhileWriting: pollWhilePending<Model, Message>({
+    pendingIds: (model) => Option.toArray(writingChatId(model)),
+    misses: (model) => model.misses,
+    tick: Message.TickedReplyRefresh(),
+    pause: replyPause,
+  }),
+}))

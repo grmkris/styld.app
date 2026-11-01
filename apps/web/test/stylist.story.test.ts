@@ -1,5 +1,5 @@
 import { Chat, ChatSummary } from '@styld/protocol'
-import { Option, Schema } from 'effect'
+import { Array, Option, Schema } from 'effect'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import {
@@ -9,12 +9,14 @@ import {
   LoadChat,
   LoadChats,
   Message,
+  type Model,
   Opening,
   RefreshChat,
   ScrollToLatest,
   SendMessage,
   Sending,
   StartAtTop,
+  subscriptions,
   update,
 } from '../src/page/Stylist.ts'
 
@@ -44,6 +46,16 @@ const chat = (replying?: { state: 'writing' | 'failed'; text: string }, answered
   })
 const summary = (id: string) =>
   Schema.decodeUnknownSync(ChatSummary)({ id, title: 'Earlier', updatedAt: '2026-10-30T18:00:00.000Z' })
+
+/** The chat ids the reply's poll waits on. */
+const pending = (current: Model) => subscriptions.replyWhileWriting.modelToDependencies(current).pendingIds
+
+/** The page with a chat open whose reply Styld is writing. */
+const writingChat = (): Model =>
+  update(
+    update(init(Option.none()), Message.ClickedChat({ chatId })).model,
+    Message.SucceededLoadChat({ chat: chat({ state: 'writing', text: 'Wear your' }) }),
+  ).model
 
 describe('Styld, the stylist in the app', () => {
   test('a starter opens a chat, the reply is followed while it is written, and stops once it is in', () => {
@@ -81,15 +93,45 @@ describe('Styld, the stylist in the app', () => {
         expect(Option.map(current.open, ({ replying }) => replying?.text)).toEqual(Option.some('Wear your'))
         expect(canSend({ ...current, draft: 'And tomorrow?' })).toBe(false)
       }),
+      model((current) => expect(pending(current)).toEqual([chatId])),
+      // A failed read is not tried again by itself: the next tick asks.
+      message(Message.TickedReplyRefresh()),
       Command.resolve(RefreshChat, Message.FailedRefreshChat({ chatId })),
+      Command.expectNone(),
+      message(Message.TickedReplyRefresh()),
       Command.resolve(RefreshChat, Message.SucceededRefreshChat({ chat: chat(undefined, true) })),
       Command.resolve(ScrollToLatest, Message.CompletedScrollToLatest()),
       Command.expectNone(),
       model((current) => {
         expect(Option.map(current.open, ({ messages }) => messages.length)).toEqual(Option.some(2))
         expect(canSend({ ...current, draft: 'And tomorrow?' })).toBe(true)
+        expect(pending(current)).toEqual([])
       }),
     )
+  })
+
+  test('a tick while a read of the reply is on its way asks for nothing more', () => {
+    const writing = writingChat()
+    const asking = update(writing, Message.TickedReplyRefresh())
+    expect(asking.commands?.map(({ name }) => name)).toEqual(['RefreshChat'])
+    expect(update(asking.model, Message.TickedReplyRefresh()).commands ?? []).toEqual([])
+  })
+
+  test('after five failed reads of the reply it stops following, and Try again resumes', () => {
+    const missed = Array.reduce(
+      Array.range(1, 5),
+      writingChat(),
+      (current) =>
+        update(update(current, Message.TickedReplyRefresh()).model, Message.FailedRefreshChat({ chatId })).model,
+    )
+    expect(pending(missed)).toEqual([])
+    const retried = update(missed, Message.ClickedRetryLoad())
+    expect(retried.commands?.map(({ name }) => name)).toEqual(['RefreshChat'])
+    expect(
+      pending(
+        update(retried.model, Message.SucceededRefreshChat({ chat: chat({ state: 'writing', text: 'W' }) })).model,
+      ),
+    ).toEqual([chatId])
   })
 
   test('the latest chat opens on arrival, unless the person came with something to ask', () => {

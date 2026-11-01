@@ -2,8 +2,8 @@ import { textLength } from '@styld/protocol'
 import { Button } from '@foldkit/ui'
 import type { Detection, TrayCapture } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
-import { Option } from 'effect'
-import { Submodel } from 'foldkit'
+import { Array, Option } from 'effect'
+import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
@@ -16,10 +16,12 @@ import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { piecePickers } from './PieceFields.ts'
-import { type Decision, keptOf, Message, type Model, Saving, Tray } from './Review.ts'
+import { type Decision, keptOf, Message, type Model, Saving } from './Review.ts'
 import { kindName } from './WardrobeWords.ts'
 import { backToWardrobe } from './PageBar.ts'
 import { barStart, round } from './PageBar.styles.ts'
+import { hasStopped } from '../Polling.ts'
+import { retryView } from './Retry.ts'
 import { message as messageSection, messageTitle } from './WardrobeView.styles.ts'
 import * as styles from './ReviewView.styles.ts'
 
@@ -309,26 +311,36 @@ const trayView = (captures: ReadonlyArray<TrayCapture>, model: Model, inputs: In
 
 const openPiece = (model: Model) =>
   Option.flatMap(model.editing, (id) => {
-    const detection = Tray.guards.Loaded(model.tray)
-      ? model.tray.tray.captures.flatMap(({ detections }) => detections).find((each) => each.id === id)
-      : undefined
+    const detection = Option.flatMap(AsyncData.getData(model.tray), (tray) =>
+      Array.findFirst(
+        tray.captures.flatMap(({ detections }) => detections),
+        (each) => each.id === id,
+      ),
+    )
     const decision = model.decisions[id]
-    return detection === undefined || decision === undefined ? Option.none() : Option.some({ detection, decision })
+    return Option.isNone(detection) || decision === undefined
+      ? Option.none()
+      : Option.some({ detection: detection.value, decision })
   })
 
-const header = (model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => {
-  if (!Tray.guards.Loaded(model.tray)) return [h.h1([], [format(locale, 'scan.toReview', {})])]
-  const { captures, allowance } = model.tray.tray
-  const count = captures.reduce((sum, { detections }) => sum + detections.length, 0)
-  return [
-    h.h1([], [format(locale, 'capture.foundTitle', { count })]),
-    count > 0 ? h.p(styled(h, styles.lede()), [format(locale, 'capture.reviewHint', {})]) : h.empty,
-    h.p(styled(h, styles.allowance()), [format(locale, 'capture.allowance', allowance)]),
-    model.stale
-      ? h.p([h.Role('status'), ...styled(h, styles.allowance())], [format(locale, 'capture.stale', {})])
-      : h.empty,
-  ]
-}
+const header = (model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>
+  Option.match(AsyncData.getData(model.tray), {
+    onNone: () => [h.h1([], [format(locale, 'scan.toReview', {})])],
+    onSome: ({ captures, allowance }) => {
+      const count = captures.reduce((sum, { detections }) => sum + detections.length, 0)
+      return [
+        h.h1([], [format(locale, 'capture.foundTitle', { count })]),
+        count > 0 ? h.p(styled(h, styles.lede()), [format(locale, 'capture.reviewHint', {})]) : h.empty,
+        h.p(styled(h, styles.allowance()), [format(locale, 'capture.allowance', allowance)]),
+        // The last read failed: the tray shown may be out of date; after five misses the page stops and offers Try again.
+        hasStopped(model.misses)
+          ? retryView(format(locale, 'capture.stale', {}), locale, Message.ClickedRetryLoad(), h)
+          : AsyncData.isStale(model.tray)
+            ? h.p([h.Role('status'), ...styled(h, styles.allowance())], [format(locale, 'capture.stale', {})])
+            : h.empty,
+      ]
+    },
+  })
 
 /** The review tray: what was found in the person's photos and videos, ticked to keep. */
 export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, h) => {
@@ -361,8 +373,8 @@ export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, 
         onSome: ({ detection, decision }) => [editor(detection, decision, locale, h), footer(model, locale, h, true)],
         onNone: () => [
           ...header(model, locale, h),
-          ...Tray.match(model.tray, {
-            Loading: () => [
+          ...AsyncData.matchData(model.tray, {
+            onEmpty: () => [
               h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
               h.ul(
                 [h.AriaHidden(true), ...styled(h, styles.grid())],
@@ -371,23 +383,8 @@ export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, 
                 ),
               ),
             ],
-            Failed: () => [
-              h.section(
-                [h.Role('alert'), ...styled(h, messageSection())],
-                [
-                  h.h2(styled(h, messageTitle()), [format(locale, 'scan.listError', {})]),
-                  actionButton(
-                    {
-                      label: format(locale, 'common.tryAgain', {}),
-                      style: secondaryAction(),
-                      onClick: Message.ClickedRetryLoad(),
-                    },
-                    h,
-                  ),
-                ],
-              ),
-            ],
-            Loaded: ({ tray }) => trayView(tray.captures, model, inputs, h),
+            onFailure: () => [retryView(format(locale, 'scan.listError', {}), locale, Message.ClickedRetryLoad(), h)],
+            onData: (tray) => trayView(tray.captures, model, inputs, h),
           }),
         ],
       }),

@@ -27,6 +27,8 @@ import {
   Sending,
 } from './Stylist.ts'
 import { Button } from '@foldkit/ui'
+import { hasStopped } from '../Polling.ts'
+import { retryView } from './Retry.ts'
 import * as styles from './StylistView.styles.ts'
 
 const composerId = 'stylist-message'
@@ -309,21 +311,11 @@ export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, 
           : h.empty,
       ]),
       h.h1([], [format(locale, 'stylist.title', {})]),
-      Opening.guards.Failed(model.opening) || AsyncData.isFailure(model.chats)
-        ? h.div(
-            [h.Role('alert')],
-            [
-              h.p([], [format(locale, 'stylist.loadFailed', {})]),
-              actionButton(
-                {
-                  label: format(locale, 'common.tryAgain', {}),
-                  style: secondaryAction(),
-                  onClick: Message.ClickedRetryLoad(),
-                },
-                h,
-              ),
-            ],
-          )
+      // A chat or the list that did not load, or a reply no longer followed after reads that did not get through.
+      Opening.guards.Failed(model.opening) ||
+      AsyncData.isFailure(model.chats) ||
+      (hasStopped(model.misses) && isWriting(model))
+        ? retryView(format(locale, 'stylist.loadFailed', {}), locale, Message.ClickedRetryLoad(), h)
         : h.empty,
       Option.match(model.open, {
         onNone: () => (isReadingChat(model) ? readingView(h) : startView(model, inputs, h)),

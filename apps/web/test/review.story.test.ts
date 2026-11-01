@@ -1,5 +1,5 @@
 import { CaptureId, DetectionId, type Tray as TrayContract } from '@styld/protocol'
-import { Option } from 'effect'
+import { Array, Option } from 'effect'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import {
@@ -7,13 +7,15 @@ import {
   keptOf,
   LoadTray,
   Message,
-  RefreshTray,
+  type Model,
   RemoveCapture,
   RetryCapture,
   SplitSightings,
   Saving,
   SendReview,
   init,
+  subscriptions,
+  TrayData,
   update,
 } from '../src/page/Review.ts'
 
@@ -50,17 +52,26 @@ const tray = (
 const found = tray([
   { status: 'review', detections: [detection(1, 'tops'), detection(2, 'jeans'), detection(3, null)] },
 ])
+const processing = tray([{ status: 'processing', detections: [] }])
+
+/** The captures the tray's poll waits on. */
+const pending = (current: Model) => subscriptions.trayWhileProcessing.modelToDependencies(current).pendingIds
 
 describe('the review tray', () => {
-  test('asks again while a capture is still being cut out', () => {
+  test('asks again while a capture is still being cut out, and stops once none is', () => {
     story(
       update,
       given(init()),
-      message(Message.SucceededLoadTray({ tray: tray([{ status: 'processing', detections: [] }]) })),
-      Command.expectExact(RefreshTray),
-      Command.resolve(RefreshTray, Message.SucceededRefreshTray({ tray: found })),
+      message(Message.SucceededLoadTray({ tray: processing })),
       Command.expectNone(),
-      model((current) => expect(keptOf(current)).toHaveLength(2)),
+      model((current) => expect(pending(current)).toEqual([id('cp', 0)])),
+      message(Message.TickedTrayRefresh()),
+      Command.expectExact(LoadTray),
+      Command.resolve(LoadTray, Message.SucceededLoadTray({ tray: found })),
+      model((current) => {
+        expect(keptOf(current)).toHaveLength(2)
+        expect(pending(current)).toEqual([])
+      }),
     )
   })
 
@@ -119,29 +130,47 @@ describe('the review tray', () => {
     )
   })
 
-  test('polls one refresh at a time, and keeps polling after a refresh fails', () => {
-    const processing = tray([{ status: 'processing', detections: [] }])
-    // A read of the tray while a refresh is already out does not start another.
-    story(
-      update,
-      given({ ...init(), refreshing: true }),
-      message(Message.SucceededLoadTray({ tray: processing })),
-      Command.expectNone(),
-      model(({ refreshing }) => expect(refreshing).toBe(true)),
+  test('polls one read at a time: a tick while a read is on its way asks for nothing more', () => {
+    const shown = update(init(), Message.SucceededLoadTray({ tray: processing })).model
+    const asking = update(shown, Message.TickedTrayRefresh())
+    expect(asking.commands?.map(({ name }) => name)).toEqual(['LoadTray'])
+    expect(update(asking.model, Message.TickedTrayRefresh()).commands ?? []).toEqual([])
+  })
+
+  test('a poll leaves the person’s decisions, the piece open and adding as they were', () => {
+    const withWaiting = tray([
+      { status: 'review', detections: [detection(1, 'tops'), detection(2, 'jeans')] },
+      { status: 'processing', detections: [] },
+    ])
+    const shown = update(init(), Message.SucceededLoadTray({ tray: withWaiting })).model
+    const untickedAndOpen = update(
+      update(shown, Message.ToggledKeep({ detectionId: id('dt', 2) })).model,
+      Message.ClickedEdit({ detectionId: id('dt', 1) }),
+    ).model
+    const adding = update(untickedAndOpen, Message.ClickedAdd()).model
+    const polled = update(
+      update(adding, Message.TickedTrayRefresh()).model,
+      Message.SucceededLoadTray({ tray: withWaiting }),
+    ).model
+    expect(polled.saving).toEqual(Saving.Preparing())
+    expect(polled.editing).toEqual(Option.some(id('dt', 1)))
+    expect(keptOf(polled).map(({ id: kept }) => kept)).toEqual([id('dt', 1)])
+  })
+
+  test('a failed poll keeps the tray shown; after five in a row it stops, and Try again starts it over', () => {
+    const shown = update(init(), Message.SucceededLoadTray({ tray: processing })).model
+    const missedOnce = update(update(shown, Message.TickedTrayRefresh()).model, Message.FailedLoadTray()).model
+    expect(missedOnce.tray).toEqual(TrayData.Stale({ error: 'Unavailable', data: processing }))
+    expect(pending(missedOnce)).toEqual([id('cp', 0)])
+    const missed = Array.reduce(
+      Array.range(2, 5),
+      missedOnce,
+      (current) => update(update(current, Message.TickedTrayRefresh()).model, Message.FailedLoadTray()).model,
     )
-    story(
-      update,
-      given(init()),
-      message(Message.SucceededLoadTray({ tray: processing })),
-      Command.resolve(RefreshTray, Message.FailedRefreshTray()),
-      model(({ stale }) => expect(stale).toBe(true)),
-      Command.expectExact(RefreshTray),
-      Command.resolve(RefreshTray, Message.SucceededRefreshTray({ tray: found })),
-      model(({ stale, refreshing }) => {
-        expect(stale).toBe(false)
-        expect(refreshing).toBe(false)
-      }),
-    )
+    expect(pending(missed)).toEqual([])
+    const retried = update(missed, Message.ClickedRetryLoad())
+    expect(retried.commands?.map(({ name }) => name)).toEqual(['LoadTray'])
+    expect(pending(retried.model)).toEqual([id('cp', 0)])
   })
 
   test('a failed try or removal says so on its capture, and the tray is read again after a success', () => {

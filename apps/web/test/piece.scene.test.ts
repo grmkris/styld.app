@@ -9,7 +9,7 @@ import { Navigate } from '../src/Navigation.ts'
 import {
   ChoosePicture,
   DeletePiece,
-  Load,
+  PieceData,
   Message as PieceMessage,
   RedrawPicture,
   ShowTurn,
@@ -23,16 +23,16 @@ const jeans = pieceFixture('jeans', {
   notes: 'Hem taken up',
 })
 
-const piecePage = (load: typeof Load.Type) =>
+const piecePage = (shown: PieceData) =>
   withPage(at(`/wardrobe/${jeans.id}`, { signedIn: true }), lenses.piece, (piece) =>
-    modifyFields(piece, { load: () => load }),
+    modifyFields(piece, { piece: () => shown }),
   )
 
 describe('the piece page', () => {
   test('shows the photo, what it is, its colours and notes', () => {
     scene(
       { update, view },
-      given(piecePage(Load.Loaded({ piece: jeans }))),
+      given(piecePage(PieceData.Success({ data: jeans }))),
       expect(role('heading', { name: 'Jeans' })).toExist(),
       expect(role('img', { name: 'Jeans' })).toHaveAttr('src', `/cdn/pieces/${jeans.id}/full`),
       // Unnamed, its title already says what it is: no line repeating it.
@@ -57,7 +57,7 @@ describe('the piece page', () => {
     } as const
     scene(
       { update, view },
-      given(piecePage(Load.Loaded({ piece: coat }))),
+      given(piecePage(PieceData.Success({ data: coat }))),
       // The head says what it is; the facts do not repeat it as a shop's aisle.
       expect(role('heading', { name: 'Coat' })).toExist(),
       expect(text('Coats')).not.toExist(),
@@ -77,7 +77,7 @@ describe('the piece page', () => {
   test('a named piece says what one of its kind is under its name', () => {
     scene(
       { update, view },
-      given(piecePage(Load.Loaded({ piece: { ...jeans, name: 'Weekend denim' } }))),
+      given(piecePage(PieceData.Success({ data: { ...jeans, name: 'Weekend denim' } }))),
       expect(role('heading', { name: 'Weekend denim' })).toExist(),
       expect(text('Jeans')).toExist(),
     )
@@ -86,7 +86,7 @@ describe('the piece page', () => {
   test('deleting confirms in the page and returns to the wardrobe', () => {
     scene(
       { update, view },
-      given(piecePage(Load.Loaded({ piece: jeans }))),
+      given(piecePage(PieceData.Success({ data: jeans }))),
       click(role('button', { name: 'Delete' })),
       expect(role('heading', { name: 'Delete this item?' })).toExist(),
       click(role('button', { name: 'Delete' })),
@@ -100,7 +100,7 @@ describe('the piece page', () => {
   test('editing offers every garment type under its group, as a shop lists them, and the attributes', () => {
     scene(
       { update, view },
-      given(piecePage(Load.Loaded({ piece: jeans }))),
+      given(piecePage(PieceData.Success({ data: jeans }))),
       click(role('button', { name: 'Edit' })),
       expect(role('button', { name: 'Jeans' })).toHaveAttr('aria-pressed', 'true'),
       expect(text('Shoes')).toExist(),
@@ -120,7 +120,7 @@ describe('the piece page', () => {
     const taken = { ...jeans, picture: { state: 'proposed', shows: 'clean', version: 2 } } as const
     scene(
       { update, view },
-      given(piecePage(Load.Loaded({ piece: proposed }))),
+      given(piecePage(PieceData.Success({ data: proposed }))),
       expect(role('img', { name: 'Jeans' })).toHaveAttr('src', `/cdn/pieces/${proposed.id}/full?v=photo2`),
       expect(role('img', { name: 'AI-cleaned picture' })).toHaveAttr(
         'src',
@@ -141,7 +141,7 @@ describe('the piece page', () => {
     const shown = pieceFixture('jeans', { picture: { state: 'retake', shows: 'photo', version: 0 } })
     scene(
       { update, view },
-      given(piecePage(Load.Loaded({ piece: shown }))),
+      given(piecePage(PieceData.Success({ data: shown }))),
       expect(text(/Too little of this piece showed/)).toExist(),
       click(role('button', { name: 'Redraw' })),
       type(role('textbox', { name: 'What is it? (optional)' }), 'a navy wool scarf'),
@@ -160,7 +160,7 @@ describe('the piece page', () => {
     const clean = { ...jeans, picture: { state: 'ready', shows: 'clean', version: 1 } } as const
     scene(
       { update, view },
-      given(piecePage(Load.Loaded({ piece: clean }))),
+      given(piecePage(PieceData.Success({ data: clean }))),
       expect(role('button', { name: 'Make it turn' })).toExist(),
       expect(text('5 credits, refunded if no turn comes of it.')).toExist(),
     )
@@ -168,7 +168,7 @@ describe('the piece page', () => {
     scene(
       { update, view },
       given(
-        withPage(piecePage(Load.Loaded({ piece: building })), lenses.piece, (piece) =>
+        withPage(piecePage(PieceData.Success({ data: building })), lenses.piece, (piece) =>
           modifyFields(piece, { turnProblem: () => Option.some('build' as const) }),
         ),
       ),
@@ -186,7 +186,7 @@ describe('the piece page', () => {
     } as const
     scene(
       { update, view },
-      given(piecePage(Load.Loaded({ piece: turned }))),
+      given(piecePage(PieceData.Success({ data: turned }))),
       expect(role('button', { name: 'Turn it' })).toExist(),
       expect(text('Tap the picture to turn it.')).toExist(),
       Mount.expectExact(ShowTurn({ pieceId: turned.id, version: 9, layout })),
@@ -197,7 +197,7 @@ describe('the piece page', () => {
   test('a missing piece says so and leads back to the wardrobe', () => {
     scene(
       { update, view },
-      given(piecePage(Load.Missing())),
+      given(piecePage(PieceData.Failure({ error: 'NotFound' }))),
       expect(role('alert')).toHaveText('Item not found'),
       expect(role('link', { name: 'Back to wardrobe' })).toHaveAttr('href', '/wardrobe'),
     )

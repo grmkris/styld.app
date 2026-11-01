@@ -1,4 +1,5 @@
-import { Option } from 'effect'
+import { Array, Option } from 'effect'
+import { AsyncData } from 'foldkit'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import {
@@ -7,16 +8,20 @@ import {
   DeletePiece,
   Deletion,
   GetPiece,
-  Load,
+  Choosing,
+  type Model,
+  PieceData,
+  TurnWork,
   MakeTurn,
   Message,
   OutMessage,
   RedrawPicture,
   SavePiece,
-  WaitToRefreshPiece,
+  subscriptions,
   init,
   update,
 } from '../src/page/Piece.ts'
+import { DraftSave } from '../src/page/PieceDraft.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const piece = pieceFixture('jeans', {
@@ -25,29 +30,74 @@ const piece = pieceFixture('jeans', {
   notes: 'Hem taken up',
 })
 const opened = () => update(init(piece.id), Message.SucceededGetPiece({ piece })).model
+const processing = pieceFixture('jeans', { status: 'processing' })
+const showingProcessing = () => update(init(piece.id), Message.SucceededGetPiece({ piece: processing })).model
+
+/** The piece as the page shows it, if read. */
+const shownPiece = (current: Model) => Option.getOrNull(AsyncData.getData(current.piece))
+
+/** What the page's one poll waits on; none while it does not run. */
+const pending = (current: Model) => subscriptions.pieceWhileSettling.modelToDependencies(current).pendingIds
 
 describe('a piece you own', () => {
-  test('a piece still processing is asked for again until it is ready', () => {
+  test('a piece still processing is followed by the poll until it is ready', () => {
     story(
       update,
       given(init(piece.id)),
-      message(Message.SucceededGetPiece({ piece: pieceFixture('jeans', { status: 'processing' }) })),
-      Command.expectExact(WaitToRefreshPiece),
-      Command.resolve(WaitToRefreshPiece, Message.ElapsedRefreshPause()),
+      message(Message.SucceededGetPiece({ piece: processing })),
+      Command.expectNone(),
+      model((current) => expect(pending(current)).toEqual([piece.id])),
+      message(Message.TickedPieceRefresh()),
       Command.expectExact(GetPiece({ pieceId: piece.id })),
       Command.resolve(GetPiece, Message.SucceededGetPiece({ piece })),
       Command.expectNone(),
-      model(({ load }) => expect(Load.guards.Loaded(load) && load.piece.status).toBe('ready')),
+      model((current) => {
+        expect(shownPiece(current)?.status).toBe('ready')
+        expect(pending(current)).toEqual([])
+      }),
     )
   })
 
-  test('a piece that is not yours or no longer exists is missing', () => {
-    story(
-      update,
-      given(init('pc_nothing')),
-      message(Message.FailedGetPiece({ missing: true })),
-      model(({ load }) => expect(Load.guards.Missing(load)).toBe(true)),
+  test('a tick while a read is on its way asks for nothing, so polls never stack', () => {
+    const asking = update(showingProcessing(), Message.TickedPieceRefresh())
+    expect(asking.commands?.map(({ name }) => name)).toEqual(['GetPiece'])
+    expect(update(asking.model, Message.TickedPieceRefresh()).commands ?? []).toEqual([])
+  })
+
+  test('a poll answering while an edit saves or a redraw is sent leaves that work as it was', () => {
+    const saving = update(update(showingProcessing(), Message.ClickedEdit()).model, Message.SubmittedEdit()).model
+    const polled = update(saving, Message.SucceededGetPiece({ piece: processing })).model
+    expect(Option.map(polled.draft, ({ save }) => save)).toEqual(Option.some(DraftSave.Saving()))
+    const redrawing = update(
+      update(showingProcessing(), Message.ClickedRedraw()).model,
+      Message.SubmittedRedraw(),
+    ).model
+    const polledAgain = update(redrawing, Message.SucceededGetPiece({ piece: processing })).model
+    expect(Option.map(polledAgain.redraw, ({ sending }) => sending)).toEqual(Option.some(true))
+  })
+
+  test('after five polls that do not get through the page stops following, and Try again starts it over', () => {
+    const missed = Array.reduce(
+      Array.range(1, 5),
+      showingProcessing(),
+      (current) =>
+        update(update(current, Message.TickedPieceRefresh()).model, Message.FailedGetPiece({ error: 'Unavailable' }))
+          .model,
     )
+    expect(shownPiece(missed)?.status).toBe('processing')
+    expect(pending(missed)).toEqual([])
+    const retried = update(missed, Message.ClickedRetry())
+    expect(retried.commands?.map(({ name }) => name)).toEqual(['GetPiece'])
+    expect(pending(retried.model)).toEqual([piece.id])
+  })
+
+  test('a piece that is not yours or no longer exists is missing; one that did not load can be tried again', () => {
+    expect(update(init('pc_nothing'), Message.FailedGetPiece({ error: 'NotFound' })).model.piece).toEqual(
+      PieceData.Failure({ error: 'NotFound' }),
+    )
+    const failed = update(init(piece.id), Message.FailedGetPiece({ error: 'Unavailable' })).model
+    expect(failed.piece).toEqual(PieceData.Failure({ error: 'Unavailable' }))
+    expect(update(failed, Message.ClickedRetry()).commands?.map(({ name }) => name)).toEqual(['GetPiece'])
   })
 
   test('deleting asks first, then removes the piece and leaves the page', () => {
@@ -130,9 +180,9 @@ describe('a piece you own', () => {
         SavePiece,
         Message.SucceededUpdatePiece({ piece: pieceFixture('jeans', { name: 'Dark jeans' }) }),
       ),
-      model(({ draft, load }) => {
-        expect(Option.isNone(draft)).toBe(true)
-        expect(Load.guards.Loaded(load) && load.piece.name).toBe('Dark jeans')
+      model((current) => {
+        expect(Option.isNone(current.draft)).toBe(true)
+        expect(shownPiece(current)?.name).toBe('Dark jeans')
       }),
     )
   })
@@ -149,9 +199,9 @@ describe('a piece you own', () => {
       message(Message.ClickedShowPicture({ use: 'clean' })),
       Command.expectExact(ChoosePicture({ pieceId: piece.id, use: 'clean' })),
       Command.resolve(ChoosePicture, Message.SucceededChoosePicture({ piece: chosen })),
-      model(({ load, choosing }) => {
-        expect(choosing).toBe('idle')
-        expect(Load.guards.Loaded(load) && load.piece.picture?.shows).toBe('clean')
+      model((current) => {
+        expect(current.choosing).toEqual(Choosing.Idle())
+        expect(shownPiece(current)?.picture?.shows).toBe('clean')
       }),
     )
   })
@@ -171,12 +221,14 @@ describe('a piece you own', () => {
         RedrawPicture,
         Message.SucceededRedrawPicture({ picture: { state: 'drawing', shows: 'photo', version: 1 } }),
       ),
-      model(({ redraw, load }) => {
-        expect(Option.isNone(redraw)).toBe(true)
-        expect(Load.guards.Loaded(load) && load.piece.picture?.state).toBe('drawing')
+      model((current) => {
+        expect(Option.isNone(current.redraw)).toBe(true)
+        expect(shownPiece(current)?.picture?.state).toBe('drawing')
+        // The answer starts no poll of its own: the page's one poll follows the drawing.
+        expect(pending(current)).toEqual([piece.id])
       }),
-      Command.expectExact(WaitToRefreshPiece),
-      Command.resolve(WaitToRefreshPiece, Message.ElapsedRefreshPause()),
+      Command.expectNone(),
+      message(Message.TickedPieceRefresh()),
       Command.resolve(
         GetPiece,
         Message.SucceededGetPiece({
@@ -230,19 +282,20 @@ describe('a piece you own', () => {
       message(Message.ClickedMakeTurn()),
       Command.expectExact(MakeTurn({ pieceId: piece.id })),
       Command.resolve(MakeTurn, Message.SucceededMakeTurn({ turn: { state: 'making', version: 6 } })),
-      Command.expectExact(WaitToRefreshPiece),
-      Command.resolve(WaitToRefreshPiece, Message.ElapsedRefreshPause()),
+      Command.expectNone(),
+      model((current) => expect(pending(current)).toEqual([piece.id])),
+      message(Message.TickedPieceRefresh()),
       Command.resolve(GetPiece, Message.SucceededGetPiece({ piece: building })),
       Command.expectExact(BuildTurnSheet({ pieceId: piece.id, version: 7 })),
-      model(({ turnWork }) => expect(turnWork).toBe('building')),
+      model(({ turnWork }) => expect(turnWork).toEqual(TurnWork.Building())),
       Command.resolve(
         BuildTurnSheet,
         Message.SucceededBuildTurnSheet({ turn: ready.turn ?? { state: 'failed', version: 0 } }),
       ),
       Command.expectNone(),
-      model(({ load, turnWork }) => {
-        expect(turnWork).toBe('idle')
-        expect(Load.guards.Loaded(load) && load.piece.turn?.state).toBe('ready')
+      model((current) => {
+        expect(current.turnWork).toEqual(TurnWork.Idle())
+        expect(shownPiece(current)?.turn?.state).toBe('ready')
       }),
     )
   })
@@ -256,7 +309,10 @@ describe('a piece you own', () => {
       message(Message.ClickedMakeTurn()),
       Command.resolve(MakeTurn, Message.FailedMakeTurn({ problem: 'dailyLimit' })),
       model(({ turnProblem, turnWork }) =>
-        expect({ turnProblem, turnWork }).toEqual({ turnProblem: Option.some('dailyLimit'), turnWork: 'idle' }),
+        expect({ turnProblem, turnWork }).toEqual({
+          turnProblem: Option.some('dailyLimit'),
+          turnWork: TurnWork.Idle(),
+        }),
       ),
     )
     story(
@@ -274,11 +330,7 @@ describe('a piece you own', () => {
       message(Message.ClickedEdit()),
       message(Message.SubmittedEdit()),
       Command.resolve(SavePiece, Message.FailedUpdatePiece()),
-      model(({ draft }) =>
-        expect(Option.map(draft, ({ failed, saving }) => ({ failed, saving }))).toEqual(
-          Option.some({ failed: true, saving: false }),
-        ),
-      ),
+      model(({ draft }) => expect(Option.map(draft, ({ save }) => save)).toEqual(Option.some(DraftSave.Failed()))),
     )
   })
 })
