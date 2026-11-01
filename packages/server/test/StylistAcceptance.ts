@@ -4,7 +4,7 @@ import { Redacted, Schema } from 'effect'
 import { Allowance, decoded } from './CleanPictureAcceptance.ts'
 import { picturesAccount } from './PictureFixture.ts'
 import { scanAccount } from './ScanFixture.ts'
-import { client, signIn } from './WardrobeAcceptance.ts'
+import { client, signIn } from './Accounts.ts'
 
 /** The API Worker's settings for Styld on the native stack: the model is the fixture's stand-in gateway. */
 export const stylistEnvironment = (fixtures: Output.Output<string | undefined>) => ({

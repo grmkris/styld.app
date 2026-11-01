@@ -1,12 +1,11 @@
 import { expect } from 'bun:test'
 import { Schema } from 'effect'
 import { idOf } from './GalleryAcceptance.ts'
-import { type Call, client, receivedPhoto, signIn, waitUntilReady } from './WardrobeAcceptance.ts'
+import { receivedPhoto, waitUntilReady } from './WardrobeAcceptance.ts'
+import { type Call, client, seedAccounts, send, signIn } from './Accounts.ts'
 
 /** Test-only acceptance: the outfit engine through the public edge, Clef's stand-in ranking (red pieces go best) and
  * the rules standing in for Thinking's model (`[[unclear]]` in the words answers nothing usable). */
-
-const send = (call: Call, path: string, body: unknown) => call(path, { method: 'POST', body: JSON.stringify(body) })
 
 const Proposals = Schema.Struct({
   session: Schema.String,
@@ -20,7 +19,7 @@ const Proposals = Schema.Struct({
 type Proposals = typeof Proposals.Type
 
 const make = (call: Call, ask: object = {}) =>
-  send(call, '/api/outfits', { mode: 'fast', brief: {}, lockedPieceIds: [], seen: [], count: 6, ...ask })
+  send(call, '/api/outfits', 'POST', { mode: 'fast', brief: {}, lockedPieceIds: [], seen: [], count: 6, ...ask })
 
 const proposalsOf = async (response: Response): Promise<Proposals> => {
   expect(response.status).toBe(200)
@@ -30,7 +29,7 @@ const proposalsOf = async (response: Response): Promise<Proposals> => {
 /** A ready piece of a type, added from a received photo. */
 const ready = async (origin: string, call: Call, operationId: string, type: string) => {
   const pieceId = await idOf(
-    await send(call, '/api/pieces', { operationId, uploadId: await receivedPhoto(origin, call), type }),
+    await send(call, '/api/pieces', 'POST', { operationId, uploadId: await receivedPhoto(origin, call), type }),
   )
   expect(await waitUntilReady(call, pieceId)).toBe('ready')
   return pieceId
@@ -119,7 +118,7 @@ const verifyThinking = async (owner: Call, wardrobe: Awaited<ReturnType<typeof v
 
 /** The outfit engine for the website and the assistants. */
 export const verifyOutfits = async (origin: string, fixtures: string): Promise<void> => {
-  expect((await fetch(`${fixtures}/test/identity/seed-outfits`, { method: 'POST' })).status).toBe(204)
+  await seedAccounts(fixtures, 'native-outfits', 'native-outfits-other')
   const owner = client(origin, await signIn(origin, 'native-outfits'))
   const other = client(origin, await signIn(origin, 'native-outfits-other'))
   expect((await fetch(`${origin}/api/outfits`, { method: 'POST', body: '{}' })).status).toBe(401)

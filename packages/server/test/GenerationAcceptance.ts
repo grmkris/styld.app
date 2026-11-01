@@ -1,13 +1,10 @@
 import { expect } from 'bun:test'
 import { Predicate, Schema } from 'effect'
 import { addedPiece, idOf } from './GalleryAcceptance.ts'
-import { type Call, client, signIn } from './WardrobeAcceptance.ts'
+import { type Call, client, seedAccounts, send, signIn } from './Accounts.ts'
 
 /** Test-only acceptance: stickers and mood boards Styld makes for a board, through the public edge, with the stand-in
  * painter and planner (`[[refuse]]`, `[[lost]]` and `[[unclear]]` in the words) and the stand-in judge (`[[fail]]`). */
-
-const send = (call: Call, path: string, method: string, body: unknown) =>
-  call(path, { method, body: JSON.stringify(body) })
 
 const Generation = Schema.Struct({
   id: Schema.String,
@@ -125,7 +122,7 @@ const verifyMoodBoard = async (owner: Call, stranger: Call, boardId: string, pie
 
 /** Stickers and mood boards for a board. */
 export const verifyGeneration = async (origin: string, fixtures: string): Promise<void> => {
-  expect((await fetch(`${fixtures}/test/identity/seed-generation`, { method: 'POST' })).status).toBe(204)
+  await seedAccounts(fixtures, 'native-generation', 'native-generation-other')
   const owner = client(origin, await signIn(origin, 'native-generation'))
   const other = client(origin, await signIn(origin, 'native-generation-other'))
   expect((await fetch(`${origin}/api/generations/gj_${'x'.repeat(22)}`)).status).toBe(401)

@@ -4,6 +4,7 @@ import { Schema } from 'effect'
 import type { Browser, Page } from 'playwright'
 import { readMoov, videoDurationMs, videoFrameCount } from '../src/capture/VideoContainer.ts'
 import { recordProblems } from './BrowserAcceptance.ts'
+import { seedAccounts, signedInContext } from './Accounts.ts'
 
 const fixture = (name: string) => fileURLToPath(new URL(`fixtures/capture/${name}`, import.meta.url))
 
@@ -43,16 +44,9 @@ const keepAs = async (page: Page, type: string, kind: string) => {
  * the third is dropped; the wardrobe then shows the two. Providers are off natively, so each photo is
  * one found piece without a suggestion. */
 export const verifyCaptureJourney = async (browser: Browser, origin: string, fixtures: string): Promise<void> => {
-  expect((await fetch(`${fixtures}/test/identity/seed-capture-browser`, { method: 'POST' })).status).toBe(204)
-  const context = await browser.newContext({ locale: 'en-US', viewport: { width: 390, height: 844 } })
-  // A visitor who already answered the diagnostics prompt, which otherwise rises over the page's actions.
-  await context.addCookies([{ name: 'styld_diagnostics', value: 'denied', url: origin }])
+  await seedAccounts(fixtures, 'native-capture-browser')
+  const context = await signedInContext(browser, origin, 'native-capture-browser')
   try {
-    const signIn = await context.request.post(`${origin}/api/auth/signIn`, {
-      headers: { origin, 'x-effect-auth-csrf': '1' },
-      data: { payload: { email: 'native-capture-browser@example.invalid', password: 'native-identity-password-52' } },
-    })
-    expect(signIn.status()).toBe(200)
     const page = await context.newPage()
     const problems = recordProblems(page)
     await page.goto(`${origin}/wardrobe/add`, { waitUntil: 'networkidle' })
@@ -92,20 +86,10 @@ const PairedTray = Schema.Struct({
  * front and then asks for its back, and closes on Escape. The two photos become one piece with its back in
  * the review tray. */
 export const verifyCameraJourney = async (browser: Browser, origin: string, fixtures: string): Promise<void> => {
-  expect((await fetch(`${fixtures}/test/identity/seed-camera-browser`, { method: 'POST' })).status).toBe(204)
-  const context = await browser.newContext({
-    locale: 'en-US',
-    viewport: { width: 390, height: 844 },
-    permissions: ['camera'],
-  })
-  await context.addCookies([{ name: 'styld_diagnostics', value: 'denied', url: origin }])
+  await seedAccounts(fixtures, 'native-camera-browser')
+  const context = await signedInContext(browser, origin, 'native-camera-browser', { permissions: ['camera'] })
   await context.addInitScript({ content: countedWakeLock })
   try {
-    const signIn = await context.request.post(`${origin}/api/auth/signIn`, {
-      headers: { origin, 'x-effect-auth-csrf': '1' },
-      data: { payload: { email: 'native-camera-browser@example.invalid', password: 'native-identity-password-52' } },
-    })
-    expect(signIn.status()).toBe(200)
     const page = await context.newPage()
     const problems = recordProblems(page)
     await page.goto(`${origin}/wardrobe/add`, { waitUntil: 'networkidle' })
@@ -157,16 +141,10 @@ const Created = Schema.Struct({
  * upright H.264 clip at 4 frames a second without sound. The original never leaves the page. The native
  * allowance pays for the first part and stops the second, which the page reports. */
 export const verifyLongVideoJourney = async (browser: Browser, origin: string, fixtures: string): Promise<void> => {
-  expect((await fetch(`${fixtures}/test/identity/seed-video-browser`, { method: 'POST' })).status).toBe(204)
-  const context = await browser.newContext({ locale: 'en-US', viewport: { width: 390, height: 844 } })
-  await context.addCookies([{ name: 'styld_diagnostics', value: 'denied', url: origin }])
+  await seedAccounts(fixtures, 'native-video-browser')
+  const context = await signedInContext(browser, origin, 'native-video-browser')
   await context.addInitScript({ content: countedWakeLock })
   try {
-    const signIn = await context.request.post(`${origin}/api/auth/signIn`, {
-      headers: { origin, 'x-effect-auth-csrf': '1' },
-      data: { payload: { email: 'native-video-browser@example.invalid', password: 'native-identity-password-52' } },
-    })
-    expect(signIn.status()).toBe(200)
     const page = await context.newPage()
     const problems = recordProblems(page)
     const created: Array<typeof Created.Type> = []

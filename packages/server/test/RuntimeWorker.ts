@@ -8,7 +8,7 @@ import { SettleCredits } from '@styld/domain/Wallet/SettleCredits.command'
 import { Wallet } from '@styld/domain/Wallet/Wallet.aggregate'
 import { monthlyGrantCommandId, reserveCommandId, settleCommandId } from '@styld/domain/Wallet/WalletCommandIds'
 import { format } from '@styld/i18n'
-import { Effect, Layer, Result, Schedule } from 'effect'
+import { Effect, Layer, Result, Schedule, Schema } from 'effect'
 import { Redacted } from 'effect'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpRouter from 'effect/http/HttpRouter'
@@ -30,6 +30,9 @@ import { StyldDatabase, StyldMedia, StyldPieceQueue } from '../src/Resources.ts'
  * write is one atomic batch, so it is retried on its own until the database is free. */
 const whenFree = <A, E, R>(write: Effect.Effect<A, E, R>) =>
   write.pipe(Effect.retry({ times: 60, schedule: Schedule.spaced('200 millis') }))
+
+/** The accounts a test asks for. */
+const SeedRequest = Schema.Struct({ ids: Schema.Array(Schema.String) })
 
 /** A fixture write retried while the database is busy, answered with 204. */
 const doneWhenFree = <A, E, R>(write: Effect.Effect<A, E, R>) =>
@@ -92,81 +95,18 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
       scanRoutes(database, media, yield* pieceQueue.raw),
       stylistRoutes,
       socialRoutes(database, media),
+      // Accounts for a test: `{ ids }`, each with a verified email and the test password (test/Accounts.ts).
       HttpRouter.add(
         'POST',
         '/test/identity/seed',
-        seedIdentity(database).pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 }))),
-      ),
-      HttpRouter.add(
-        'POST',
-        '/test/identity/seed-limited',
-        seedIdentity(database, 'native-limited').pipe(
-          Effect.orDie,
-          Effect.as(HttpServerResponse.empty({ status: 204 })),
-        ),
-      ),
-      // An owner and a second account for the wardrobe's isolation checks.
-      HttpRouter.add(
-        'POST',
-        '/test/identity/seed-wardrobe',
-        doneWhenFree(
-          Effect.forEach(['native-wardrobe', 'native-wardrobe-other', 'native-farewell'], (id) =>
-            whenFree(seedIdentity(database, id)),
-          ),
-        ),
-      ),
-      // An owner and a second account for the capture tray's isolation and allowance checks.
-      HttpRouter.add(
-        'POST',
-        '/test/identity/seed-capture',
-        doneWhenFree(
-          Effect.forEach(['native-capture', 'native-capture-other'], (id) => whenFree(seedIdentity(database, id))),
-        ),
-      ),
-      // An owner and a second account for the boards', worn days' and website looks' isolation checks.
-      HttpRouter.add(
-        'POST',
-        '/test/identity/seed-boards',
-        doneWhenFree(
-          Effect.forEach(['native-boards', 'native-boards-other'], (id) => whenFree(seedIdentity(database, id))),
-        ),
-      ),
-      // Two people for profiles, public boards and what others may see.
-      HttpRouter.add(
-        'POST',
-        '/test/identity/seed-social',
-        doneWhenFree(
-          Effect.forEach(
-            ['native-social', 'native-social-other', 'native-social-third', 'native-social-fourth'],
-            (id) => whenFree(seedIdentity(database, id)),
-          ),
-        ),
-      ),
-      // An owner and a second account for stickers and mood boards.
-      HttpRouter.add(
-        'POST',
-        '/test/identity/seed-generation',
-        doneWhenFree(
-          Effect.forEach(['native-generation', 'native-generation-other'], (id) =>
-            whenFree(seedIdentity(database, id)),
-          ),
-        ),
-      ),
-      // An owner and a second account for My Gallery.
-      HttpRouter.add(
-        'POST',
-        '/test/identity/seed-photos',
-        doneWhenFree(
-          Effect.forEach(['native-photos', 'native-photos-other'], (id) => whenFree(seedIdentity(database, id))),
-        ),
-      ),
-      // An owner and a second account for the outfit engine.
-      HttpRouter.add(
-        'POST',
-        '/test/identity/seed-outfits',
-        doneWhenFree(
-          Effect.forEach(['native-outfits', 'native-outfits-other'], (id) => whenFree(seedIdentity(database, id))),
-        ),
+        Effect.gen(function* () {
+          const { ids } = yield* Effect.flatMap(
+            (yield* HttpServerRequest).json,
+            Schema.decodeUnknownEffect(SeedRequest),
+          )
+          yield* Effect.forEach(ids, (id) => whenFree(seedIdentity(database, id)))
+          return HttpServerResponse.empty({ status: 204 })
+        }).pipe(Effect.orDie),
       ),
       // Thinking's daily cap on real D1, at two a day: two counted, the third refused, the next day counted again.
       HttpRouter.add(
@@ -184,36 +124,6 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
           yield* whenFree(days.sweepBefore('2026-10-31'))
           return yield* HttpServerResponse.json({ counted, afterSweep: yield* count('2026-10-30') })
         }).pipe(Effect.orDie),
-      ),
-      // The person whose profile and public board a signed-out browser visits.
-      HttpRouter.add(
-        'POST',
-        '/test/identity/seed-social-browser',
-        doneWhenFree(seedIdentity(database, 'native-social-browser')),
-      ),
-      // The account the browser's Gallery 2 journey (Home, boards, Ask) signs in as.
-      HttpRouter.add(
-        'POST',
-        '/test/identity/seed-gallery-browser',
-        doneWhenFree(seedIdentity(database, 'native-gallery-browser')),
-      ),
-      // The account the browser's capture journey signs in as.
-      HttpRouter.add(
-        'POST',
-        '/test/identity/seed-capture-browser',
-        doneWhenFree(seedIdentity(database, 'native-capture-browser')),
-      ),
-      // The account the browser's camera journey signs in as.
-      HttpRouter.add(
-        'POST',
-        '/test/identity/seed-camera-browser',
-        doneWhenFree(seedIdentity(database, 'native-camera-browser')),
-      ),
-      // The account the browser's long-video journey signs in as.
-      HttpRouter.add(
-        'POST',
-        '/test/identity/seed-video-browser',
-        doneWhenFree(seedIdentity(database, 'native-video-browser')),
       ),
       // Whether a stored photo still exists, to prove deletion removes it.
       HttpRouter.add(
@@ -242,11 +152,6 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
         'POST',
         '/test/identity/disable',
         disableIdentity(database).pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 }))),
-      ),
-      HttpRouter.add(
-        'POST',
-        '/test/identity/seed-mcp',
-        seedIdentity(database, 'native-mcp').pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 }))),
       ),
       HttpRouter.add('POST', '/test/identity/disable-mcp', doneWhenFree(disableIdentity(database, 'native-mcp'))),
       HttpRouter.add(

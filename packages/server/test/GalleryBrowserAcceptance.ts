@@ -11,7 +11,7 @@ import {
   expectSteadyFullLoads,
   recordLayoutShifts,
 } from './LayoutBrowserAcceptance.ts'
-import { type Call, client, signIn } from './WardrobeAcceptance.ts'
+import { type Call, client, seedAccounts, signedInContext, signIn } from './Accounts.ts'
 
 const fixture = (name: string) => fileURLToPath(new URL(`fixtures/gallery/${name}`, import.meta.url))
 /** Set to a folder to keep the journey's screenshots for a person to look at. */
@@ -72,23 +72,13 @@ const addPiece = async (origin: string, call: Call, file: string, piece: Record<
   throw new Error(`The piece from ${file} never finished processing`)
 }
 
-/** A browser signed in as the journey's account: the sign-in sets its session cookie in the context. */
-const signedInContext = async (
+/** A browser signed in as the journey's account, touch on. */
+const journeyContext = (
   browser: Browser,
   origin: string,
   viewport: { width: number; height: number },
   answered = true,
-) => {
-  const context = await browser.newContext({ locale: 'en-US', viewport, hasTouch: true })
-  // A visitor who already answered the diagnostics prompt, which otherwise rises over the page's actions.
-  if (answered) await context.addCookies([{ name: 'styld_diagnostics', value: 'denied', url: origin }])
-  const signedIn = await context.request.post(`${origin}/api/auth/signIn`, {
-    headers: { origin, 'x-effect-auth-csrf': '1' },
-    data: { payload: { email: 'native-gallery-browser@example.invalid', password: 'native-identity-password-52' } },
-  })
-  expect(signedIn.status()).toBe(200)
-  return context
-}
+) => signedInContext(browser, origin, 'native-gallery-browser', { viewport, answered, hasTouch: true })
 
 /** Where an item lies, as the editor placed it. */
 const placementOf = (item: Locator) =>
@@ -337,7 +327,7 @@ const verifyStylist = async (page: Page, origin: string) => {
 
 /** On a phone, the diagnostics prompt's answers are what a tap at them reaches, not the navigation floating there. */
 const expectConsentReachable = async (browser: Browser, origin: string) => {
-  const phone = await signedInContext(browser, origin, { width: 390, height: 844 }, false)
+  const phone = await journeyContext(browser, origin, { width: 390, height: 844 }, false)
   try {
     const page = await phone.newPage()
     await page.goto(`${origin}/boards`, { waitUntil: 'networkidle' })
@@ -364,7 +354,7 @@ const steadyPaths = ['/', '/explore', '/wardrobe', '/looks', '/boards', '/ask', 
 /** The wardrobe on the narrowest phone keeps to the screen, and its filter sheet, on a phone held sideways, still
  * shows its title and close button. */
 const verifyNarrowWardrobe = async (browser: Browser, origin: string) => {
-  const narrow = await signedInContext(browser, origin, { width: 360, height: 740 })
+  const narrow = await journeyContext(browser, origin, { width: 360, height: 740 })
   try {
     const page = await narrow.newPage()
     await page.goto(`${origin}/wardrobe`, { waitUntil: 'networkidle' })
@@ -381,7 +371,7 @@ const verifyNarrowWardrobe = async (browser: Browser, origin: string) => {
 }
 
 export const verifyGalleryJourney = async (browser: Browser, origin: string, fixtures: string): Promise<void> => {
-  expect((await fetch(`${fixtures}/test/identity/seed-gallery-browser`, { method: 'POST' })).status).toBe(204)
+  await seedAccounts(fixtures, 'native-gallery-browser')
   const cookie = await signIn(origin, 'native-gallery-browser')
   const call = client(origin, cookie)
   await addPiece(origin, call, 'knit-cable-navy.webp', { type: 'tops', colours: ['navy'], name: 'Cable knit' })
@@ -390,7 +380,7 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
   await addPiece(origin, call, 'derby-black.webp', { type: 'trainers', colours: ['black'], name: 'Derby shoes' })
   await expectConsentReachable(browser, origin)
 
-  const phone = await signedInContext(browser, origin, { width: 390, height: 844 })
+  const phone = await journeyContext(browser, origin, { width: 390, height: 844 })
   try {
     await recordLayoutShifts(phone)
     const page = await phone.newPage()
@@ -425,7 +415,7 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
     await phone.close()
   }
 
-  const desk = await signedInContext(browser, origin, { width: 1440, height: 900 })
+  const desk = await journeyContext(browser, origin, { width: 1440, height: 900 })
   try {
     const page = await desk.newPage()
     const problems = recordProblems(page)

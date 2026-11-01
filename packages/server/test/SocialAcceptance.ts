@@ -1,12 +1,10 @@
 import { expect } from 'bun:test'
 import { Schema } from 'effect'
 import { addedPiece, idOf } from './GalleryAcceptance.ts'
-import { type Call, client, receivedPhoto, signIn, waitUntilReady } from './WardrobeAcceptance.ts'
+import { receivedPhoto, waitUntilReady } from './WardrobeAcceptance.ts'
+import { type Call, client, seedAccounts, send, signIn } from './Accounts.ts'
 
 /** Test-only acceptance: profiles and what other people may see, through the public edge. */
-
-const send = (call: Call, path: string, method: string, body: unknown) =>
-  call(path, { method, body: JSON.stringify(body) })
 
 const refusal = async (response: Response, status: number, tag: string) => {
   expect(response.status).toBe(status)
@@ -325,7 +323,7 @@ const verifyLinks = async (origin: string, other: Call) => {
 
 /** Profiles and what other people may see of each account. */
 export const verifySocial = async (origin: string, fixtures: string): Promise<void> => {
-  expect((await fetch(`${fixtures}/test/identity/seed-social`, { method: 'POST' })).status).toBe(204)
+  await seedAccounts(fixtures, 'native-social', 'native-social-other', 'native-social-third', 'native-social-fourth')
   const owner = client(origin, await signIn(origin, 'native-social'))
   const other = client(origin, await signIn(origin, 'native-social-other'))
   await verifyProfiles(origin, owner, other)

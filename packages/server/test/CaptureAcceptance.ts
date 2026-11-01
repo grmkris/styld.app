@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { expect } from 'bun:test'
 import { Schema } from 'effect'
-import { type Call, client, signIn } from './WardrobeAcceptance.ts'
+import { type Call, client, seedAccounts, send, signIn } from './Accounts.ts'
 
 /** The daily allowance the native stack configures: a photo costs 1, a video 5 for each started
  * half-minute. Seven lets a long video's first part through and stops its second. */
@@ -9,14 +9,12 @@ export const nativeDailyAllowance = 7
 
 const fixture = (name: string) => new Uint8Array(readFileSync(new URL(`fixtures/capture/${name}`, import.meta.url)))
 
-const post = (call: Call, path: string, body: unknown) => call(path, { method: 'POST', body: JSON.stringify(body) })
-
 const Created = Schema.Struct({ uploadId: Schema.String, path: Schema.String })
 
 /** Upload bytes through a one-time upload path, as the website does. */
 const uploaded = async (call: Call, origin: string, bytes: Uint8Array, contentType: string) => {
   const video = contentType.startsWith('video/')
-  const created = await post(call, video ? '/api/uploads/video' : '/api/uploads', {
+  const created = await send(call, video ? '/api/uploads/video' : '/api/uploads', 'POST', {
     contentType,
     bytes: bytes.byteLength,
   })
@@ -78,11 +76,15 @@ const verifyPhoto = async (origin: string, owner: Call, other: Call) => {
   // A photo becomes a capture once; the same operation id answers the same capture, or conflicts.
   const photo = await uploaded(owner, origin, fixture('red-tee.png'), 'image/png')
   const create = { operationId: 'native-capture-0001', uploadId: photo, source: 'picker' }
-  const first = await captureId(await post(owner, '/api/captures', create))
-  expect(await captureId(await post(owner, '/api/captures', create))).toBe(first)
-  expect((await post(owner, '/api/captures', { ...create, source: 'camera' })).status).toBe(409)
-  expect((await post(owner, '/api/captures', { ...create, operationId: 'native-capture-0002' })).status).toBe(422)
-  expect((await post(other, '/api/captures', { ...create, operationId: 'native-capture-0003' })).status).toBe(422)
+  const first = await captureId(await send(owner, '/api/captures', 'POST', create))
+  expect(await captureId(await send(owner, '/api/captures', 'POST', create))).toBe(first)
+  expect((await send(owner, '/api/captures', 'POST', { ...create, source: 'camera' })).status).toBe(409)
+  expect((await send(owner, '/api/captures', 'POST', { ...create, operationId: 'native-capture-0002' })).status).toBe(
+    422,
+  )
+  expect((await send(other, '/api/captures', 'POST', { ...create, operationId: 'native-capture-0003' })).status).toBe(
+    422,
+  )
 
   const { capture } = await processed(owner, first)
   expect(capture).toMatchObject({ status: 'review', detections: [{ preselected: true, hasCutout: false }] })
@@ -97,21 +99,28 @@ const verifyPhoto = async (origin: string, owner: Call, other: Call) => {
   expect((await tray(other)).captures).toEqual([])
   const keep = { detectionId, type: 'tops', colours: ['red'], name: 'Red tee' }
   expect(
-    (await post(other, '/api/captures/review', { operationId: 'native-review-0001', keep: [keep], discard: [] }))
-      .status,
+    (
+      await send(other, '/api/captures/review', 'POST', {
+        operationId: 'native-review-0001',
+        keep: [keep],
+        discard: [],
+      })
+    ).status,
   ).toBe(404)
   expect((await other(`/api/captures/${first}`, { method: 'DELETE' })).status).toBe(404)
 
   // Keeping it makes a ready piece, once; the capture leaves the tray.
   const review = { operationId: 'native-review-0002', keep: [keep], discard: [] }
-  const reviewed = await post(owner, '/api/captures/review', review)
+  const reviewed = await send(owner, '/api/captures/review', 'POST', review)
   expect(reviewed.status).toBe(200)
   const { pieceIds } = Schema.decodeUnknownSync(Schema.Struct({ pieceIds: Schema.Array(Schema.String) }))(
     await reviewed.json(),
   )
   expect(pieceIds).toHaveLength(1)
-  expect(await (await post(owner, '/api/captures/review', review)).json()).toEqual({ pieceIds })
-  expect((await post(owner, '/api/captures/review', { ...review, operationId: 'native-review-0003' })).status).toBe(404)
+  expect(await (await send(owner, '/api/captures/review', 'POST', review)).json()).toEqual({ pieceIds })
+  expect(
+    (await send(owner, '/api/captures/review', 'POST', { ...review, operationId: 'native-review-0003' })).status,
+  ).toBe(404)
   expect(await (await owner(`/api/pieces/${pieceIds[0]}`)).json()).toMatchObject({
     status: 'ready',
     type: 'tops',
@@ -128,7 +137,7 @@ const verifyAllowance = async (origin: string, owner: Call) => {
   const video = await uploaded(owner, origin, fixture('tiny-rail.mp4'), 'video/mp4')
   const still = await uploaded(owner, origin, fixture('rail-frame.jpg'), 'image/jpeg')
   const clip = await captureId(
-    await post(owner, '/api/captures/video', {
+    await send(owner, '/api/captures/video', 'POST', {
       operationId: 'native-video-0001',
       videoUploadId: video,
       durationMs: 2000,
@@ -144,10 +153,14 @@ const verifyAllowance = async (origin: string, owner: Call) => {
   // The last free credit goes, then the day's allowance refuses more until tomorrow.
   const last = await uploaded(owner, origin, fixture('blue-dress.png'), 'image/png')
   const lastCapture = await captureId(
-    await post(owner, '/api/captures', { operationId: 'native-capture-0004', uploadId: last, source: 'camera' }),
+    await send(owner, '/api/captures', 'POST', {
+      operationId: 'native-capture-0004',
+      uploadId: last,
+      source: 'camera',
+    }),
   )
   const spare = await uploaded(owner, origin, fixture('green-shirt.png'), 'image/png')
-  const refused = await post(owner, '/api/captures', {
+  const refused = await send(owner, '/api/captures', 'POST', {
     operationId: 'native-capture-0005',
     uploadId: spare,
     source: 'picker',
@@ -176,7 +189,7 @@ const paired = async (call: Call, fronts: ReadonlyArray<string>) => {
 const verifyPairing = async (origin: string, fixtures: string, call: Call) => {
   const shot = async (operationId: string, name: string, side: 'front' | 'back', pairsWith?: string) => {
     const uploadId = await uploaded(call, origin, fixture(name), 'image/png')
-    const created = await post(call, '/api/captures', {
+    const created = await send(call, '/api/captures', 'POST', {
       operationId,
       uploadId,
       source: 'camera',
@@ -216,7 +229,7 @@ const verifyPairing = async (origin: string, fixtures: string, call: Call) => {
  * when reviewed. Each costs today's free credits until they run out; removing a capture deletes its
  * photos. Providers are off natively, so each capture keeps its original photo as one detection. */
 export const verifyCaptures = async (origin: string, fixtures: string): Promise<void> => {
-  expect((await fetch(`${fixtures}/test/identity/seed-capture`, { method: 'POST' })).status).toBe(204)
+  await seedAccounts(fixtures, 'native-capture', 'native-capture-other')
   const owner = client(origin, await signIn(origin, 'native-capture'))
   const other = client(origin, await signIn(origin, 'native-capture-other'))
   expect((await fetch(`${origin}/api/captures/tray`)).status).toBe(401)

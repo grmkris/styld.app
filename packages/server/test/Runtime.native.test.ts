@@ -7,6 +7,8 @@ import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import * as HttpBody from 'effect/http/HttpBody'
 import * as HttpClient from 'effect/http/HttpClient'
 import { type Browser, chromium } from 'playwright'
+import { seedAccounts, signInBody } from './Accounts.ts'
+import { testPassword } from './IdentityFixture.ts'
 import { verifyBrowser } from './BrowserAcceptance.ts'
 import { pictureEnvironment, verifyCleanPictures } from './CleanPictureAcceptance.ts'
 import { verifyTurn } from './TurnAcceptance.ts'
@@ -402,14 +404,13 @@ test(
   'authenticates, rejects password signup, logs out and immediately invalidates disabled accounts',
   Effect.gen(function* () {
     const { url, styldUrl } = yield* stack
-    const seeded = yield* HttpClient.post(`${url}/test/identity/seed`)
-    expect(seeded.status).toBe(204)
+    yield* Effect.promise(() => seedAccounts(url, 'native-identity'))
     const call = authCall(styldUrl)
     // The typed API reads the same session: refused without one, the account with one.
     const me = (cookie?: string) =>
       HttpClient.get(`${styldUrl}/api/me`, cookie === undefined ? {} : { headers: new Headers({ cookie }) })
     expect((yield* me()).status).toBe(401)
-    const credentials = { email: 'native-identity@example.invalid', password: 'native-identity-password-52' }
+    const credentials = signInBody('native-identity').payload
     const denied = yield* call('signIn', { ...credentials, password: 'incorrect-password' })
     expect(yield* denied.json).toMatchObject({ _tag: 'Failure' })
     const signup = yield* call('register', credentials)
@@ -466,14 +467,13 @@ test(
   'retains password attempt budgets across separate application requests',
   Effect.gen(function* () {
     const { url, styldUrl } = yield* stack
-    const seeded = yield* HttpClient.post(`${url}/test/identity/seed-limited`)
-    expect(seeded.status).toBe(204)
+    yield* Effect.promise(() => seedAccounts(url, 'native-limited'))
     const attempt = () =>
       HttpClient.post(`${styldUrl}/api/auth/signIn`, {
         headers: { origin: new URL(styldUrl).origin, 'content-type': 'application/json', 'x-effect-auth-csrf': '1' },
         body: HttpBody.text(
           JSON.stringify({
-            payload: { email: 'native-limited@example.invalid', password: 'native-identity-password-52' },
+            payload: signInBody('native-limited').payload,
           }),
           'application/json',
         ),
@@ -510,7 +510,7 @@ test(
     const callAuth = authCall(styldUrl)
     const login = yield* callAuth('signIn', {
       email: 'native-recovery@example.invalid',
-      password: 'native-identity-password-52',
+      password: testPassword,
     })
     expect(yield* login.json).toMatchObject({ _tag: 'Success', value: { _tag: 'Authenticated' } })
     const cookie = Object.entries(login.cookies.cookies)

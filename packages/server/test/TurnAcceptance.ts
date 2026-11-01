@@ -5,7 +5,7 @@ import type { Browser } from 'playwright'
 import { recordProblems } from './BrowserAcceptance.ts'
 import { Allowance, decoded } from './CleanPictureAcceptance.ts'
 import { picturesAccount, seededPieces } from './PictureFixture.ts'
-import { client, signIn } from './WardrobeAcceptance.ts'
+import { client, signedInContext, signIn } from './Accounts.ts'
 
 const Turn = Schema.Struct({ state: Schema.String, version: Schema.Number, layout: Schema.optionalKey(Schema.Unknown) })
 const Piece = Schema.Struct({ turn: Schema.optionalKey(Turn) })
@@ -41,13 +41,7 @@ export const verifyTurn = async (browser: Browser, origin: string, fixtures: str
   }
   expect(state).toBe('building')
 
-  const context = await browser.newContext({ locale: 'en-US', viewport: { width: 390, height: 844 }, hasTouch: true })
-  await context.addCookies([{ name: 'styld_diagnostics', value: 'denied', url: origin }])
-  const signedIn = await context.request.post(`${origin}/api/auth/signIn`, {
-    headers: { origin, 'x-effect-auth-csrf': '1' },
-    data: { payload: { email: `${picturesAccount}@example.invalid`, password: 'native-identity-password-52' } },
-  })
-  expect(signedIn.status()).toBe(200)
+  const context = await signedInContext(browser, origin, picturesAccount, { hasTouch: true })
   try {
     const page = await context.newPage()
     const problems = recordProblems(page)

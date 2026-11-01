@@ -4,6 +4,7 @@ import { StreamableHTTPClientTransport as LegacyTransport } from '@modelcontextp
 import { expect } from 'bun:test'
 import { Schema } from 'effect'
 import { toolNames } from './ToolNames.ts'
+import { seedAccounts, signInBody } from './Accounts.ts'
 
 /** Test-only acceptance: an MCP client's whole journey through the public edge. */
 
@@ -36,7 +37,7 @@ const signIn = async (origin: string, jar: Jar) => {
   const response = await fetch(`${origin}/api/auth/signIn`, {
     method: 'POST',
     headers: { origin, 'content-type': 'application/json', 'x-effect-auth-csrf': '1' },
-    body: JSON.stringify({ payload: { email: 'native-mcp@example.invalid', password: 'native-identity-password-52' } }),
+    body: JSON.stringify(signInBody('native-mcp')),
   })
   expect(response.status).toBe(200)
   remember(jar, response)
@@ -337,7 +338,7 @@ const rotate = async (
 }
 
 export const verifyMcp = async (origin: string, fixtures: string): Promise<void> => {
-  expect((await fetch(`${fixtures}/test/identity/seed-mcp`, { method: 'POST' })).status).toBe(204)
+  await seedAccounts(fixtures, 'native-mcp')
   const endpoints = await discover(origin)
   const clientId = await register(origin)
   const jar: Jar = new Map()

@@ -2,14 +2,14 @@ import { expect } from 'bun:test'
 import { Schema } from 'effect'
 import type { Browser } from 'playwright'
 import { recordProblems } from './BrowserAcceptance.ts'
-import { client, signIn } from './WardrobeAcceptance.ts'
+import { client, seedAccounts, signIn } from './Accounts.ts'
 
 const Identified = Schema.Struct({ id: Schema.String })
 
 /** A signed-out visitor at a published profile: its public board in its list, then the board itself, read only,
  * with whose it is; a private board's address reads as not there. No CSP violations on the way. */
 export const verifyPublicJourney = async (browser: Browser, origin: string, fixtures: string): Promise<void> => {
-  expect((await fetch(`${fixtures}/test/identity/seed-social-browser`, { method: 'POST' })).status).toBe(204)
+  await seedAccounts(fixtures, 'native-social-browser')
   const owner = client(origin, await signIn(origin, 'native-social-browser'))
   const send = (path: string, method: string, body: unknown) => owner(path, { method, body: JSON.stringify(body) })
   await send('/api/profile', 'PATCH', { handle: 'luka.horvat', name: 'Luka Horvat', city: 'Ljubljana' })

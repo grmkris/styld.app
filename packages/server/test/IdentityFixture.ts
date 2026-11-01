@@ -4,12 +4,15 @@ import { Password } from '@yielded/auth'
 import * as WorkerdServices from '@yielded/auth/WorkerdServices'
 import { Clock, Effect, Redacted } from 'effect'
 
+/** The password every seeded account has. */
+export const testPassword = 'native-identity-password-52'
+
 /** Test-only fixture; this module is never imported by an application entrypoint. */
 export const seedIdentity = (database: QueryDatabaseClient, id = 'native-identity') =>
   Effect.gen(function* () {
     const hashing = yield* Password.PasswordHashing
     const now = yield* Clock.currentTimeMillis
-    const verifier = yield* hashing.hash(Redacted.make('native-identity-password-52'))
+    const verifier = yield* hashing.hash(Redacted.make(testPassword))
     const moduleId = AppAuth.strategies.password.persistence.moduleId
     yield* database.batch([
       database

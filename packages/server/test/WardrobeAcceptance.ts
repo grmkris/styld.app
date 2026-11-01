@@ -1,5 +1,6 @@
 import { expect } from 'bun:test'
 import { Schema } from 'effect'
+import { type Call, client, seedAccounts, send, signIn, signInBody } from './Accounts.ts'
 
 /** A 1x1 PNG: the smallest photo the upload checks accept. */
 const png = Uint8Array.from(
@@ -7,36 +8,8 @@ const png = Uint8Array.from(
   (character) => character.charCodeAt(0),
 )
 
-/** Sign a seeded account in with its password; the session cookie comes back. */
-export const signIn = async (origin: string, id: string) => {
-  const response = await fetch(`${origin}/api/auth/signIn`, {
-    method: 'POST',
-    headers: { origin, 'content-type': 'application/json', 'x-effect-auth-csrf': '1' },
-    body: JSON.stringify({ payload: { email: `${id}@example.invalid`, password: 'native-identity-password-52' } }),
-  })
-  expect(response.status).toBe(200)
-  return response.headers
-    .getSetCookie()
-    .map((cookie) => cookie.split(';')[0])
-    .join('; ')
-}
-
-/** Requests the website would send for the signed-in account. */
-export const client =
-  (origin: string, cookie: string) =>
-  (path: string, init: RequestInit = {}) => {
-    const headers = new Headers({ origin, cookie, 'x-effect-auth-csrf': '1', 'content-type': 'application/json' })
-    for (const [name, value] of new Headers(init.headers)) headers.set(name, value)
-    return fetch(`${origin}${path}`, { ...init, headers })
-  }
-
-export type Call = ReturnType<typeof client>
-
-const json = (call: Call, path: string, method: string, body: unknown) =>
-  call(path, { method, body: JSON.stringify(body) })
-
 const upload = async (call: Call, bytes: Uint8Array<ArrayBuffer>, contentType = 'image/png') => {
-  const created = await json(call, '/api/uploads', 'POST', { contentType, bytes: bytes.byteLength })
+  const created = await send(call, '/api/uploads', 'POST', { contentType, bytes: bytes.byteLength })
   expect(created.status).toBe(200)
   const { uploadId, path } = Schema.decodeUnknownSync(Schema.Struct({ uploadId: Schema.String, path: Schema.String }))(
     await created.json(),
@@ -89,10 +62,10 @@ const checkedUpload = async (origin: string, owner: Call) => {
 /** A back added on the piece's page: shown to its owner only, repeated as is, and forgotten again. */
 const verifyBack = async (origin: string, owner: Call, other: Call, pieceId: string) => {
   const back = { operationId: 'native-back-0001', uploadId: await receivedPhoto(origin, owner) }
-  expect((await json(other, `/api/pieces/${pieceId}/back`, 'PUT', back)).status).toBe(404)
-  const set = await json(owner, `/api/pieces/${pieceId}/back`, 'PUT', back)
+  expect((await send(other, `/api/pieces/${pieceId}/back`, 'PUT', back)).status).toBe(404)
+  const set = await send(owner, `/api/pieces/${pieceId}/back`, 'PUT', back)
   expect(await set.json()).toMatchObject({ id: pieceId, hasBack: true })
-  expect(await (await json(owner, `/api/pieces/${pieceId}/back`, 'PUT', back)).json()).toMatchObject({ hasBack: true })
+  expect(await (await send(owner, `/api/pieces/${pieceId}/back`, 'PUT', back)).json()).toMatchObject({ hasBack: true })
   expect((await owner(`/cdn/pieces/${pieceId}/back/thumb`)).status).toBe(200)
   expect((await other(`/cdn/pieces/${pieceId}/back/thumb`)).status).toBe(404)
   const removed = await owner(`/api/pieces/${pieceId}/back`, { method: 'DELETE' })
@@ -103,7 +76,7 @@ const verifyBack = async (origin: string, owner: Call, other: Call, pieceId: str
 /** A photo goes up, becomes a piece, is processed by the queue and shown through the Images
  * binding, only to its owner; edits, replays and deletion behave as the protocol says. */
 export const verifyWardrobe = async (origin: string, fixtures: string): Promise<void> => {
-  expect((await fetch(`${fixtures}/test/identity/seed-wardrobe`, { method: 'POST' })).status).toBe(204)
+  await seedAccounts(fixtures, 'native-wardrobe', 'native-wardrobe-other', 'native-farewell')
   const owner = client(origin, await signIn(origin, 'native-wardrobe'))
   const other = client(origin, await signIn(origin, 'native-wardrobe-other'))
   expect((await fetch(`${origin}/api/pieces`)).status).toBe(401)
@@ -120,9 +93,9 @@ export const verifyWardrobe = async (origin: string, fixtures: string): Promise<
     season: 'cold',
     occasions: ['casual', 'smart'],
   }
-  expect((await json(owner, '/api/pieces', 'POST', { ...add, type: 'jumper' })).status).toBe(400)
-  expect((await json(owner, '/api/pieces', 'POST', { ...add, shopUrl: 'http://shop.example/knit' })).status).toBe(400)
-  const added = await json(owner, '/api/pieces', 'POST', add)
+  expect((await send(owner, '/api/pieces', 'POST', { ...add, type: 'jumper' })).status).toBe(400)
+  expect((await send(owner, '/api/pieces', 'POST', { ...add, shopUrl: 'http://shop.example/knit' })).status).toBe(400)
+  const added = await send(owner, '/api/pieces', 'POST', add)
   expect(added.status).toBe(200)
   const addedBody: unknown = await added.json()
   expect(addedBody).toMatchObject({
@@ -137,9 +110,9 @@ export const verifyWardrobe = async (origin: string, fixtures: string): Promise<
   })
   const piece = Schema.decodeUnknownSync(Schema.Struct({ id: Schema.String }))(addedBody)
   // Repeating the operation repeats its answer; reusing its id for another change is refused.
-  expect(await (await json(owner, '/api/pieces', 'POST', add)).json()).toMatchObject({ id: piece.id })
-  expect((await json(owner, '/api/pieces', 'POST', { ...add, name: 'Other' })).status).toBe(409)
-  expect((await json(owner, '/api/pieces', 'POST', { ...add, operationId: 'native-add-0002' })).status).toBe(422)
+  expect(await (await send(owner, '/api/pieces', 'POST', add)).json()).toMatchObject({ id: piece.id })
+  expect((await send(owner, '/api/pieces', 'POST', { ...add, name: 'Other' })).status).toBe(409)
+  expect((await send(owner, '/api/pieces', 'POST', { ...add, operationId: 'native-add-0002' })).status).toBe(422)
 
   expect(await waitUntilReady(owner, piece.id)).toBe('ready')
   await verifyBack(origin, owner, other, piece.id)
@@ -154,7 +127,7 @@ export const verifyWardrobe = async (origin: string, fixtures: string): Promise<
   expect((await other(`/api/pieces/${piece.id}`)).status).toBe(404)
   expect((await other(`/cdn/pieces/${piece.id}/full`)).status).toBe(404)
   expect(await (await other('/api/pieces')).json()).toEqual({ pieces: [] })
-  expect((await json(other, `/api/pieces/${piece.id}`, 'PATCH', { name: 'Mine now' })).status).toBe(404)
+  expect((await send(other, `/api/pieces/${piece.id}`, 'PATCH', { name: 'Mine now' })).status).toBe(404)
   expect((await other(`/api/pieces/${piece.id}`, { method: 'DELETE' })).status).toBe(404)
   expect(
     (await other('/api/pieces', { method: 'POST', body: JSON.stringify({ ...add, operationId: 'native-add-0003' }) }))
@@ -162,7 +135,7 @@ export const verifyWardrobe = async (origin: string, fixtures: string): Promise<
   ).toBe(422)
 
   // A change names only what it changes; null clears an attribute.
-  const edited = await json(owner, `/api/pieces/${piece.id}`, 'PATCH', {
+  const edited = await send(owner, `/api/pieces/${piece.id}`, 'PATCH', {
     name: 'Navy jumper',
     type: 'jackets',
     season: null,
@@ -195,7 +168,7 @@ export const verifyAccountDeletion = async (origin: string, fixtures: string): P
   const call = client(origin, cookie)
   const photo = await upload(call, png)
   expect((await put(origin, photo.path, png)).status).toBe(204)
-  const added = await json(call, '/api/pieces', 'POST', {
+  const added = await send(call, '/api/pieces', 'POST', {
     operationId: 'native-farewell-1',
     uploadId: photo.uploadId,
     type: 'dresses',
@@ -228,9 +201,7 @@ export const verifyAccountDeletion = async (origin: string, fixtures: string): P
   const again = await fetch(`${origin}/api/auth/signIn`, {
     method: 'POST',
     headers: { origin, 'content-type': 'application/json', 'x-effect-auth-csrf': '1' },
-    body: JSON.stringify({
-      payload: { email: 'native-farewell@example.invalid', password: 'native-identity-password-52' },
-    }),
+    body: JSON.stringify(signInBody('native-farewell')),
   })
   expect(await again.json()).toMatchObject({ _tag: 'Failure' })
 }

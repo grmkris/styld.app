@@ -4,7 +4,7 @@ import * as Output from 'alchemy/Output'
 import { Redacted, Schema } from 'effect'
 import { exists } from './CaptureAcceptance.ts'
 import { picturesAccount, seededPieces } from './PictureFixture.ts'
-import { type Call, client, signIn } from './WardrobeAcceptance.ts'
+import { type Call, client, signIn } from './Accounts.ts'
 
 /** The API Worker's settings for clean pictures on the native stack: Clef and Muse are the fixture's stand-ins. */
 export const pictureEnvironment = (fixtures: Output.Output<string | undefined>) => ({

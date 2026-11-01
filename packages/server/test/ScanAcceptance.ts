@@ -2,7 +2,7 @@ import { expect } from 'bun:test'
 import { Schema } from 'effect'
 import { decoded } from './CleanPictureAcceptance.ts'
 import { scanAccount, scanned } from './ScanFixture.ts'
-import { client, signIn } from './WardrobeAcceptance.ts'
+import { client, signIn } from './Accounts.ts'
 
 const Card = Schema.Struct({
   id: Schema.String,

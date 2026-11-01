@@ -1,13 +1,11 @@
 import { expect } from 'bun:test'
 import { Schema } from 'effect'
 import { idOf } from './GalleryAcceptance.ts'
-import { type Call, client, receivedPhoto, signIn, waitUntilReady } from './WardrobeAcceptance.ts'
+import { receivedPhoto, waitUntilReady } from './WardrobeAcceptance.ts'
+import { type Call, client, seedAccounts, send, signIn } from './Accounts.ts'
 
 /** Test-only acceptance: My Gallery through the public edge. Natively the providers are off, so a photo's one garment
  * is the whole photo, unmatched until the person matches it. */
-
-const send = (call: Call, path: string, method: string, body?: unknown) =>
-  call(path, { method, ...(body === undefined ? {} : { body: JSON.stringify(body) }) })
 
 const Photo = Schema.Struct({
   id: Schema.String,
@@ -187,7 +185,7 @@ const verifyOnBoard = async (origin: string, owner: Call, photoId: string) => {
 
 /** My Gallery for the website. */
 export const verifyPhotos = async (origin: string, fixtures: string): Promise<void> => {
-  expect((await fetch(`${fixtures}/test/identity/seed-photos`, { method: 'POST' })).status).toBe(204)
+  await seedAccounts(fixtures, 'native-photos', 'native-photos-other')
   const owner = client(origin, await signIn(origin, 'native-photos'))
   const other = client(origin, await signIn(origin, 'native-photos-other'))
   expect((await fetch(`${origin}/api/photos`)).status).toBe(401)

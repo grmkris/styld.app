@@ -1,11 +1,9 @@
 import { expect } from 'bun:test'
 import { Schema } from 'effect'
-import { type Call, client, receivedPhoto, signIn } from './WardrobeAcceptance.ts'
+import { receivedPhoto } from './WardrobeAcceptance.ts'
+import { type Call, client, seedAccounts, send, signIn } from './Accounts.ts'
 
 /** Test-only acceptance: Gallery 2's boards, worn days and looks made on the website, through the public edge. */
-
-const send = (call: Call, path: string, method: string, body: unknown) =>
-  call(path, { method, body: JSON.stringify(body) })
 
 const Identified = Schema.Struct({ id: Schema.String })
 export const idOf = async (response: Response) => {
@@ -345,7 +343,7 @@ const verifyAccountDeletion = async (origin: string, fixtures: string, owner: Ca
 
 /** Gallery 2 on the server: boards, worn days and looks made on the website, each private to its account. */
 export const verifyGallery = async (origin: string, fixtures: string): Promise<void> => {
-  expect((await fetch(`${fixtures}/test/identity/seed-boards`, { method: 'POST' })).status).toBe(204)
+  await seedAccounts(fixtures, 'native-boards', 'native-boards-other')
   const cookie = await signIn(origin, 'native-boards')
   const owner = client(origin, cookie)
   const other = client(origin, await signIn(origin, 'native-boards-other'))
