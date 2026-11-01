@@ -16,7 +16,9 @@ import * as People from '../People.ts'
 import { Schema } from 'effect'
 import { File } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
+import { LoadError } from '../../ServerData.ts'
 import { Pointer } from './Geometry.ts'
+import { UploadProblem } from './Model.ts'
 
 // MESSAGE
 
@@ -36,7 +38,7 @@ export type KeyStep = typeof KeyStep.Type
 
 export const Message = defineMessageUnion({
   SucceededLoadBoard: { board: Board },
-  FailedLoadBoard: { missing: Schema.Boolean },
+  FailedLoadBoard: { error: LoadError },
   SucceededVisitBoard: { board: PublicBoard },
   CompletedMakeIds: { ids: Schema.Array(BoardItemId) },
   MeasuredPaper: { width: Schema.Number },
@@ -70,8 +72,8 @@ export const Message = defineMessageUnion({
   UpdatedText: { id: Schema.String, text: Schema.String },
   SelectedTextStyle: { id: Schema.String, style: TextStyle },
   SelectedPaper: { paper: Paper },
-  SucceededUpdateBoard: { board: Board },
-  FailedUpdateBoard: {},
+  SucceededUpdatePaper: { board: Board },
+  FailedUpdatePaper: { attempted: Paper, previous: Paper },
 
   ElapsedSaveWait: { generation: Schema.Int },
   SucceededSaveItems: { board: Board },
@@ -86,12 +88,11 @@ export const Message = defineMessageUnion({
   ClickedPaste: {},
   CompletedReadClipboard: { files: Schema.Array(File.File) },
   SucceededAddImage: { imageId: BoardImageId },
-  FailedAddImage: { refused: Schema.Boolean },
+  FailedAddImage: { problem: UploadProblem },
 
   /** The page came back into view: another device or an assistant may have changed the board. */
   BecameVisible: {},
-  SucceededReloadBoard: { board: Board },
-  FailedReloadBoard: {},
+  CompletedReloadBoard: { maybeBoard: Schema.Option(Board) },
 
   ClickedSettings: {},
   GotSettingsMessage: { message: Dialog.Message },
@@ -103,8 +104,8 @@ export const Message = defineMessageUnion({
   GotPeopleMessage: { message: People.Message },
   GotMakeMessage: { message: Make.Message },
   ToggledMood: { mood: Mood },
-  SucceededSetMoods: { board: Board },
-  FailedSetMoods: {},
+  SucceededSetBoardMoods: { board: Board },
+  FailedSetBoardMoods: { attempted: Schema.Array(Mood), previous: Schema.Array(Mood) },
   SucceededSetVisibility: { board: Board },
   FailedSetVisibility: { needsProfile: Schema.Boolean },
   ClickedDeleteBoard: {},

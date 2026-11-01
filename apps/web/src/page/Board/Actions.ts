@@ -1,4 +1,5 @@
 import {
+  type Board,
   type BoardImageId,
   type BoardItem,
   BoardItemId,
@@ -19,7 +20,17 @@ import { Array, Option, Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { AddImage, SaveLook, UpdatePaper, WaitForExit, WaitForToast } from './Commands.ts'
 import { committed, findItem, refillIds, takeId, type UpdateReturn, withItem } from './Edits.ts'
-import { BoardState, LookSave, type Model, Toast, Upload } from './Model.ts'
+import {
+  BoardData,
+  BoardShown,
+  LookSave,
+  type Model,
+  ownBoard,
+  Toast,
+  Upload,
+  type UploadProblem,
+  withChecked,
+} from './Model.ts'
 
 /** The most pictures one paste or drop sends at once. */
 const picturesAtOnce = 4
@@ -56,13 +67,23 @@ export const addedText = (model: Model, text: string): UpdateReturn =>
   // A label lands across the middle: words run wider than a piece.
   added(model, (id) => TextItem.make({ id, text, style: 'label', ...landing(model.items, 360), x: 500 }))
 
-export const addedImage = (model: Model, imageId: BoardImageId): UpdateReturn => {
-  const sending = Upload.guards.Sending(model.upload) ? model.upload.count - 1 : 0
-  return added(
-    modifyFields(model, { upload: () => (sending > 0 ? Upload.Sending({ count: sending }) : Upload.Idle()) }),
-    (id) => ImageItem.make({ id, imageId, ...landing(model.items, 420) }),
-  )
+/** One picture settled, as `problem` says: the rest stay on their way, and once none is, a failure among them shows. */
+const pictureSettled = (upload: Upload, problem: Option.Option<UploadProblem>): Upload => {
+  const sending = Upload.guards.Sending(upload) ? upload.count - 1 : 0
+  const worst = Option.orElse(problem, () => (Upload.guards.Sending(upload) ? upload.problem : Option.none()))
+  if (sending > 0) return Upload.Sending({ count: sending, problem: worst })
+  return Option.match(worst, { onNone: () => Upload.Idle(), onSome: (failed) => Upload.Failed({ problem: failed }) })
 }
+
+export const addedImage = (model: Model, imageId: BoardImageId): UpdateReturn =>
+  added(modifyFields(model, { upload: (upload) => pictureSettled(upload, Option.none()) }), (id) =>
+    ImageItem.make({ id, imageId, ...landing(model.items, 420) }),
+  )
+
+/** A picture that did not reach the board leaves the others on their way. */
+export const imageFailed = (model: Model, problem: UploadProblem): UpdateReturn => ({
+  model: modifyFields(model, { upload: (upload) => pictureSettled(upload, Option.some(problem)) }),
+})
 
 /** A picture pinned on the board goes back on the table. */
 export const placedPicture = (model: Model, imageId: BoardImageId): UpdateReturn =>
@@ -133,23 +154,46 @@ export const exited = (model: Model, id: string): UpdateReturn => ({
   model: modifyFields(model, { leaving: (leaving) => Array.filter(leaving, (item) => item.id !== id) }),
 })
 
-export const paperSelected = (model: Model, paper: Paper): UpdateReturn => {
-  const { board } = model
-  if (!BoardState.guards.Ready(board)) return { model }
-  return {
-    model: modifyFields(model, { board: () => BoardState.Ready({ name: board.name, paper }) }),
-    commands: [UpdatePaper({ boardId: model.boardId, paper })],
-  }
-}
+/** The board shown with another paper. */
+const withPaper = (model: Model, name: string, paper: Paper): Model =>
+  modifyFields(model, { board: () => BoardData.Success({ data: BoardShown.Own({ name, paper }) }) })
+
+/** A paper shows at once and is saved behind; the one it replaced comes back if the save fails. */
+export const paperSelected = (model: Model, paper: Paper): UpdateReturn =>
+  Option.match(ownBoard(model.board), {
+    onNone: () => ({ model }),
+    onSome: (own) =>
+      own.paper === paper
+        ? { model }
+        : {
+            model: withPaper(model, own.name, paper),
+            commands: [UpdatePaper({ boardId: model.boardId, paper, previous: own.paper })],
+          },
+  })
+
+/** A paper that did not save gives way to the one before it, unless the person has chosen another since. */
+export const paperFailed = (model: Model, attempted: Paper, previous: Paper): UpdateReturn =>
+  Option.match(ownBoard(model.board), {
+    onNone: () => ({ model }),
+    onSome: (own) => (own.paper === attempted ? { model: withPaper(model, own.name, previous) } : { model }),
+  })
+
+/** A paper saved: who sees the board and its check, as the server has them, unless another paper is on its way. */
+export const paperSaved = (model: Model, board: Board): UpdateReturn =>
+  Option.exists(ownBoard(model.board), (own) => own.paper === board.paper)
+    ? { model: withChecked(model, board) }
+    : { model }
 
 /** Pictures pasted, dropped, chosen or read from the clipboard go up one by one. */
 export const picturesChosen = (model: Model, files: ReadonlyArray<File>): UpdateReturn => {
   const taken = Array.take(files, picturesAtOnce)
   if (Array.isReadonlyArrayEmpty(taken)) return { model: modifyFields(model, { isPasting: () => false }) }
-  const sending = Upload.guards.Sending(model.upload) ? model.upload.count : 0
+  const sending = Upload.guards.Sending(model.upload)
+    ? model.upload
+    : Upload.Sending({ count: 0, problem: Option.none() })
   return {
     model: modifyFields(model, {
-      upload: () => Upload.Sending({ count: sending + taken.length }),
+      upload: () => Upload.Sending({ count: sending.count + taken.length, problem: sending.problem }),
       isPasting: () => false,
     }),
     commands: taken.map((file) => AddImage({ boardId: model.boardId, file })),
@@ -158,11 +202,11 @@ export const picturesChosen = (model: Model, files: ReadonlyArray<File>): Update
 
 export const lookRequested = (model: Model): UpdateReturn => {
   const pieceIds = Array.take(piecesOnTable(model.items), maximumLookPieces)
-  const { board } = model
-  if (!BoardState.guards.Ready(board) || Array.isReadonlyArrayEmpty(pieceIds))
+  const own = ownBoard(model.board)
+  if (Option.isNone(own) || Array.isReadonlyArrayEmpty(pieceIds))
     return { model: modifyFields(model, { look: () => LookSave.NoPieces() }) }
   return {
     model: modifyFields(model, { look: () => LookSave.Saving() }),
-    commands: [SaveLook({ name: board.name, pieceIds })],
+    commands: [SaveLook({ name: own.value.name, pieceIds })],
   }
 }

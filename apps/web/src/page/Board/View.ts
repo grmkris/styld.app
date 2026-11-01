@@ -175,7 +175,8 @@ const statusView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html
   const upload = Upload.match(model.upload, {
     Idle: () => Option.none<string>(),
     Sending: ({ count }) => Option.some(format(locale, 'board.sending', { count })),
-    Failed: ({ refused }) => Option.some(format(locale, refused ? 'board.pictureRefused' : 'board.pictureFailed', {})),
+    Failed: ({ problem }) =>
+      Option.some(format(locale, problem === 'refused' ? 'board.pictureRefused' : 'board.pictureFailed', {})),
   })
   const failed = Saving.guards.Failed(model.saving) || Upload.guards.Failed(model.upload)
   return h.p(

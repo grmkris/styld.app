@@ -26,8 +26,8 @@ const visitBoard = (boardId: string) =>
     const board = yield* api.public.board({ params: { boardId: yield* boardIdOf(boardId) } })
     return Message.SucceededVisitBoard({ board })
   }).pipe(
-    Effect.catchTag('NotFound', () => Effect.succeed(Message.FailedLoadBoard({ missing: true }))),
-    Effect.orElseSucceed(() => Message.FailedLoadBoard({ missing: false })),
+    Effect.catchTag('NotFound', () => Effect.succeed(Message.FailedLoadBoard({ error: 'NotFound' }))),
+    Effect.orElseSucceed(() => Message.FailedLoadBoard({ error: 'Unavailable' })),
   )
 
 export const LoadBoard = Command.define('LoadBoard', {
@@ -39,8 +39,8 @@ export const LoadBoard = Command.define('LoadBoard', {
       const board = yield* api.board.getBoard({ params: { boardId: yield* boardIdOf(boardId) } })
       return Message.SucceededLoadBoard({ board })
     }).pipe(
-      Effect.catchTag('SchemaError', () => Effect.succeed(Message.FailedLoadBoard({ missing: true }))),
-      Effect.catchTag('Unavailable', () => Effect.succeed(Message.FailedLoadBoard({ missing: false }))),
+      Effect.catchTag('SchemaError', () => Effect.succeed(Message.FailedLoadBoard({ error: 'NotFound' }))),
+      Effect.catchTag('Unavailable', () => Effect.succeed(Message.FailedLoadBoard({ error: 'Unavailable' }))),
       // Not this account's board, or nobody signed in: it may be public.
       Effect.catch(() => visitBoard(boardId)),
     ),
@@ -97,18 +97,19 @@ export const SaveItems = Command.define('SaveItems', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedSaveItems())),
 })
 
+/** Save the board's paper; `previous` is the one it replaced, which comes back if this fails. */
 export const UpdatePaper = Command.define('UpdatePaper', {
-  args: { boardId: Schema.String, paper: Paper },
-  messages: [Message.SucceededUpdateBoard, Message.FailedUpdateBoard],
-  execute: ({ boardId, paper }) =>
+  args: { boardId: Schema.String, paper: Paper, previous: Paper },
+  messages: [Message.SucceededUpdatePaper, Message.FailedUpdatePaper],
+  execute: ({ boardId, paper, previous }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       const board = yield* api.board.updateBoard({
         params: { boardId: yield* boardIdOf(boardId) },
         payload: { operationId: yield* newOperationId, paper },
       })
-      return Message.SucceededUpdateBoard({ board })
-    }).pipe(Effect.orElseSucceed(() => Message.FailedUpdateBoard())),
+      return Message.SucceededUpdatePaper({ board })
+    }).pipe(Effect.orElseSucceed(() => Message.FailedUpdatePaper({ attempted: paper, previous }))),
 })
 
 export const WaitForExit = Command.define('WaitForExit', {
@@ -143,9 +144,9 @@ export const AddImage = Command.define('AddImage', {
           Predicate.isTagged(error, 'NotAPicture') ||
           Predicate.isTagged(error, 'UploadRefused') ||
           Predicate.isTagged(error, 'FileNotSent'),
-        () => Effect.succeed(Message.FailedAddImage({ refused: true })),
+        () => Effect.succeed(Message.FailedAddImage({ problem: 'refused' })),
       ),
-      Effect.orElseSucceed(() => Message.FailedAddImage({ refused: false })),
+      Effect.orElseSucceed(() => Message.FailedAddImage({ problem: 'failed' })),
     ),
 })
 

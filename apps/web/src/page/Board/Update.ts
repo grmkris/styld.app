@@ -1,7 +1,7 @@
 import { FileDrop } from '@foldkit/ui'
 import { tidied } from '@styld/protocol'
-import { Option } from 'effect'
-import { Command, Update } from 'foldkit'
+import { Option, Result } from 'effect'
+import { AsyncData, Command, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import {
   addedImage,
@@ -12,6 +12,9 @@ import {
   flipped,
   layered,
   lookRequested,
+  imageFailed,
+  paperFailed,
+  paperSaved,
   paperSelected,
   picturesChosen,
   placedPicture,
@@ -33,7 +36,8 @@ import {
   releasedPointer,
 } from './Gestures.ts'
 import { Message } from './Message.ts'
-import { BoardState, fromBoard, LookSave, type Model, Saving, Upload } from './Model.ts'
+import { BoardData, BoardShown, fromBoard, LookSave, type Model, Saving } from './Model.ts'
+import type { LoadError } from '../../ServerData.ts'
 import { pageSteps } from './Page.ts'
 import * as People from '../People.ts'
 import * as Make from './Make.ts'
@@ -71,8 +75,8 @@ const foldDrop = Update.foldChild({
   }),
 })
 
-const loadFailed = (model: Model, missing: boolean): UpdateReturn => ({
-  model: modifyFields(model, { board: () => (missing ? BoardState.Missing() : BoardState.Failed()) }),
+const loadFailed = (model: Model, error: LoadError): UpdateReturn => ({
+  model: modifyFields(model, { board: (board) => AsyncData.settle(board, Result.fail(error)) }),
 })
 
 export const update = (model: Model, message: Message): UpdateReturn =>
@@ -87,9 +91,9 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         ],
       }
     },
-    FailedLoadBoard: ({ missing }) => loadFailed(model, missing),
+    FailedLoadBoard: ({ error }) => loadFailed(model, error),
     SucceededVisitBoard: ({ board }) => ({
-      model: modifyFields(model, { board: () => BoardState.Visiting({ board }) }),
+      model: modifyFields(model, { board: () => BoardData.Success({ data: BoardShown.Visiting({ board }) }) }),
     }),
     GotPeopleMessage: (got) => foldPeople(model, got.message),
     GotMakeMessage: (got) => foldMake(model, got.message),
@@ -123,8 +127,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     UpdatedText: ({ id, text }) => textUpdated(model, id, text),
     SelectedTextStyle: ({ id, style }) => styleSelected(model, id, style),
     SelectedPaper: ({ paper }) => paperSelected(model, paper),
-    SucceededUpdateBoard: () => ({ model }),
-    FailedUpdateBoard: () => ({ model }),
+    SucceededUpdatePaper: ({ board }) => paperSaved(model, board),
+    FailedUpdatePaper: ({ attempted, previous }) => paperFailed(model, attempted, previous),
     ElapsedSaveWait: ({ generation }) => saveNow(model, generation),
     SucceededSaveItems: ({ board }) => saved(model, board),
     FailedSaveItems: () => ({ model: modifyFields(model, { saving: () => Saving.Failed() }) }),
@@ -137,10 +141,10 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedPaste: () => ({ model: modifyFields(model, { isPasting: () => true }), commands: [ReadClipboard()] }),
     CompletedReadClipboard: ({ files }) => picturesChosen(model, files),
     SucceededAddImage: ({ imageId }) => addedImage(model, imageId),
-    FailedAddImage: ({ refused }) => ({ model: modifyFields(model, { upload: () => Upload.Failed({ refused }) }) }),
+    FailedAddImage: ({ problem }) => imageFailed(model, problem),
     ...pageSteps(model),
     ClickedSaveLook: () => lookRequested(model),
     SucceededSaveLook: ({ lookId }) => ({ model: modifyFields(model, { look: () => LookSave.Saved({ lookId }) }) }),
     FailedSaveLook: () => ({ model: modifyFields(model, { look: () => LookSave.Failed() }) }),
-    ClickedRetry: () => ({ model: modifyFields(model, { board: () => BoardState.Loading() }), commands: load(model) }),
+    ClickedRetry: () => ({ model: modifyFields(model, { board: () => AsyncData.Loading() }), commands: load(model) }),
   })

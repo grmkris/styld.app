@@ -5,7 +5,7 @@ import { Command, expectOutMessage, given, message, model, story } from 'foldkit
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 import { storySheetMoved } from './SheetFixtures.ts'
-import { AskToMake, init, Job, kinds, Message, PollGeneration, update } from '../src/page/Board/Make.ts'
+import { AskToMake, init, Job, kinds, Message, ReadGeneration, subscriptions, update } from '../src/page/Board/Make.ts'
 
 const boardId = `bd_${'sea'.padEnd(22, 'x')}`
 const generationId = `gj_${'sea'.padEnd(22, 'x')}`
@@ -23,6 +23,10 @@ const generation = (status: string, pictures: ReadonlyArray<string>, kind = 'moo
     })),
     createdAt: '2026-10-31T09:00:00.000Z',
   })
+
+/** What the job's poll waits on. */
+const pending = (current: Parameters<typeof update>[0]) =>
+  subscriptions.generationWhileRunning.modelToDependencies(current).pendingIds
 
 const choseSticker = [
   message(
@@ -54,12 +58,19 @@ describe('making a mood board or a sticker for a board', () => {
       }),
       ...storySheetMoved(2),
       Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
+      model((current) => expect(pending(current)).toEqual([generationId])),
+      message(Message.TickedGenerationRefresh()),
       Command.resolve(
-        PollGeneration({ generationId }),
-        Message.SucceededPoll({ generation: generation('arranging', []) }),
+        ReadGeneration({ generationId }),
+        Message.SucceededReadGeneration({ generation: generation('arranging', []) }),
       ),
-      Command.resolve(PollGeneration({ generationId }), Message.SucceededPoll({ generation: generation('done', []) })),
+      message(Message.TickedGenerationRefresh()),
+      Command.resolve(
+        ReadGeneration({ generationId }),
+        Message.SucceededReadGeneration({ generation: generation('done', []) }),
+      ),
       model(({ job }) => expect(Job.guards.Finished(job)).toBe(true)),
+      model((current) => expect(pending(current)).toEqual([])),
       expectOutMessage({ _tag: 'FinishedMaking' }),
     )
   })
@@ -90,33 +101,50 @@ describe('making a mood board or a sticker for a board', () => {
     )
   })
 
-  test('another kind starts a new operation, and polls that keep failing stop with a problem', () => {
+  test('another kind starts a new operation, and reads that keep failing stop with a problem', () => {
     const asking = modifyFields(init(boardId), {
       operationId: () => Option.some('op-make-1'),
-      job: () => Job.Running({ generation: generation('planning', []) }),
+      job: () => Job.Running({ generation: generation('planning', []), read: 'waiting' }),
     })
+    const missedRead = [
+      message(Message.TickedGenerationRefresh()),
+      Command.resolve(ReadGeneration({ generationId }), Message.FailedReadGeneration()),
+    ] as const
     story(
       update,
       given(asking),
       ...choseSticker,
       model(({ operationId }) => expect(operationId).toEqual(Option.none())),
-      message(Message.FailedPoll({ generationId })),
-      ...Array.from({ length: 4 }, () =>
-        Command.resolve(PollGeneration({ generationId }), Message.FailedPoll({ generationId })),
-      ),
+      ...missedRead,
+      ...missedRead,
+      ...missedRead,
+      ...missedRead,
+      model(({ job }) => expect(Job.guards.Running(job)).toBe(true)),
+      ...missedRead,
       model(({ job }) => expect(job).toEqual(Job.Failed({ problem: 'failed' }))),
+      model((current) => expect(pending(current)).toEqual([])),
     )
+  })
+
+  test('a tick while a read is on its way asks for nothing more, so reads never stack', () => {
+    const running = modifyFields(init(boardId), {
+      job: () => Job.Running({ generation: generation('planning', []), read: 'waiting' }),
+    })
+    const reading = update(running, Message.TickedGenerationRefresh())
+    expect(reading.commands?.map(({ name }) => name)).toEqual(['ReadGeneration'])
+    expect(update(reading.model, Message.TickedGenerationRefresh()).commands ?? []).toEqual([])
   })
 
   test('a board opened again follows the ask still being made, and only when nothing else is followed', () => {
     story(
       update,
       given(init(boardId)),
-      message(Message.SucceededFindRunning({ generation: generation('drawing', ['waiting'], 'sticker') })),
+      message(Message.CompletedFindRunningGeneration({ generation: generation('drawing', ['waiting'], 'sticker') })),
       model(({ job }) => expect(Job.guards.Running(job)).toBe(true)),
+      message(Message.TickedGenerationRefresh()),
       Command.resolve(
-        PollGeneration({ generationId }),
-        Message.SucceededPoll({ generation: generation('done', ['drawn'], 'sticker') }),
+        ReadGeneration({ generationId }),
+        Message.SucceededReadGeneration({ generation: generation('done', ['drawn'], 'sticker') }),
       ),
       model(({ job }) => expect(Job.guards.Finished(job)).toBe(true)),
       expectOutMessage({ _tag: 'FinishedMaking' }),
@@ -124,14 +152,14 @@ describe('making a mood board or a sticker for a board', () => {
     story(
       update,
       given(init(boardId)),
-      message(Message.SucceededFindRunning({ generation: null })),
+      message(Message.CompletedFindRunningGeneration({ generation: null })),
       model(({ job }) => expect(Job.guards.Idle(job)).toBe(true)),
     )
     const asking = modifyFields(init(boardId), { job: () => Job.Asking() })
     story(
       update,
       given(asking),
-      message(Message.SucceededFindRunning({ generation: generation('planning', []) })),
+      message(Message.CompletedFindRunningGeneration({ generation: generation('planning', []) })),
       model(({ job }) => expect(Job.guards.Asking(job)).toBe(true)),
     )
   })

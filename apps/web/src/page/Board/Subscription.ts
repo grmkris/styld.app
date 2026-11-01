@@ -3,6 +3,7 @@ import { Subscription } from 'foldkit'
 import * as Dom from 'foldkit/dom'
 import type { Pointer } from './Geometry.ts'
 import { Message } from './Message.ts'
+import * as Make from './Make.ts'
 import { Gesture, type Model } from './Model.ts'
 
 const pointerOf = (event: PointerEvent): Pointer => ({ pointerId: event.pointerId, x: event.clientX, y: event.clientY })
@@ -116,7 +117,14 @@ const visibleAgain = () =>
     Stream.map(() => Message.BecameVisible()),
   )
 
-/** What a board's page listens for, the grid's and the collage's alike. */
-export const pageSubscriptions = Subscription.make<Model, Message>()((entry) => ({
-  boardVisible: entry({}, { modelToDependencies: () => ({}), dependenciesToStream: visibleAgain }),
-}))
+/** What a board's page listens for, the grid's and the collage's alike: coming back into view, and a Make with Styld
+ * job while it runs. */
+export const pageSubscriptions = {
+  ...Subscription.make<Model, Message>()((entry) => ({
+    boardVisible: entry({}, { modelToDependencies: () => ({}), dependenciesToStream: visibleAgain }),
+  })),
+  ...Subscription.lift(Make.subscriptions)<Model, Message>({
+    read: (model) => Option.some(model.make),
+    toParentMessage: (message) => Message.GotMakeMessage({ message }),
+  }),
+}

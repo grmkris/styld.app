@@ -1,10 +1,23 @@
 import { Dialog, RadioGroup } from '@foldkit/ui'
 import { Board, Generation } from '@styld/protocol'
-import { Schema } from 'effect'
-import { click, Command, expect, given, keydown, Mount, role, scene, submit, text, type } from 'foldkit/scene'
+import { Option, Schema } from 'effect'
+import {
+  click,
+  Command,
+  expect,
+  given,
+  keydown,
+  Mount,
+  role,
+  scene,
+  submit,
+  Subscription,
+  text,
+  type,
+} from 'foldkit/scene'
 import { describe, test } from 'vitest'
-import { update } from '../src/App.ts'
-import { AskToMake, Message as MakeMessage, PollGeneration } from '../src/page/Board/Make.ts'
+import { Message, update } from '../src/App.ts'
+import { AskToMake, Message as MakeMessage, ReadGeneration } from '../src/page/Board/Make.ts'
 import { Message as BoardMessage } from '../src/page/Board/Message.ts'
 import { fromBoard, init as boardInit } from '../src/page/Board/Model.ts'
 import { ReloadBoard } from '../src/page/Board/PageCommands.ts'
@@ -132,8 +145,13 @@ describe('Make with Styld on a board', () => {
       Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
       Mount.expectEnded(Dialog.AcquireResources),
       expect(role('status')).toHaveText('Picking your pieces…'),
-      Command.resolve(PollGeneration, MakeMessage.SucceededPoll({ generation: generation('done', []) })),
-      Command.resolve(ReloadBoard, BoardMessage.SucceededReloadBoard({ board })),
+      Subscription.emit(
+        Message.GotBoardMessage({
+          message: BoardMessage.GotMakeMessage({ message: MakeMessage.TickedGenerationRefresh() }),
+        }),
+      ),
+      Command.resolve(ReadGeneration, MakeMessage.SucceededReadGeneration({ generation: generation('done', []) })),
+      Command.resolve(ReloadBoard, BoardMessage.CompletedReloadBoard({ maybeBoard: Option.some(board) })),
       expect(text('Your mood board is laid out.')).toExist(),
     )
   })

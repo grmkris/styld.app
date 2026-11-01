@@ -1,11 +1,11 @@
-import { Board, type BoardItem, BoardItemId, PieceItem } from '@styld/protocol'
+import { Board, BoardImageId, type BoardItem, BoardItemId, PieceItem } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
-import { SaveItems, WaitForExit, WaitForToast, WaitToSave } from '../src/page/Board/Commands.ts'
+import { SaveItems, UpdatePaper, WaitForExit, WaitForToast, WaitToSave } from '../src/page/Board/Commands.ts'
 import { Message } from '../src/page/Board/Message.ts'
-import { fromBoard, Gesture, init, type Model, Saving, Toast } from '../src/page/Board/Model.ts'
+import { fromBoard, Gesture, init, type Model, ownBoard, Saving, Toast, Upload } from '../src/page/Board/Model.ts'
 import { update } from '../src/page/Board/Update.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
@@ -165,5 +165,53 @@ describe('the board editor', () => {
         expect(current.maybeSelectedId).toEqual(Option.some(itemId('fresh-1')))
       }),
     )
+  })
+})
+
+const picture = (name: string) => new File(['x'], name, { type: 'image/png' })
+const imageId = Schema.decodeUnknownSync(BoardImageId)(`bm_${'sea'.padEnd(22, 'x')}`)
+
+describe('pictures sent to the board', () => {
+  test('one that fails leaves the others counted on their way, and the board says so once all have settled', () => {
+    const sending = update(open, Message.DroppedFiles({ files: [picture('a.png'), picture('b.png')] })).model
+    expect(sending.upload).toEqual(Upload.Sending({ count: 2, problem: Option.none() }))
+    const oneFailed = update(sending, Message.FailedAddImage({ problem: 'refused' })).model
+    expect(oneFailed.upload).toEqual(Upload.Sending({ count: 1, problem: Option.some('refused') }))
+    const settled = update(oneFailed, Message.SucceededAddImage({ imageId })).model
+    expect(settled.upload).toEqual(Upload.Failed({ problem: 'refused' }))
+    expect(settled.items).toHaveLength(3)
+  })
+
+  test('all of them reaching the board leaves nothing to say', () => {
+    const sending = update(open, Message.DroppedFiles({ files: [picture('a.png')] })).model
+    expect(update(sending, Message.SucceededAddImage({ imageId })).model.upload).toEqual(Upload.Idle())
+  })
+})
+
+const withPaper = (current: Model) => Option.map(ownBoard(current.board), ({ paper }) => paper)
+
+describe('the board’s paper', () => {
+  test('shows at once, and goes back to the one before when it does not save', () => {
+    story(
+      update,
+      given(open),
+      message(Message.SelectedPaper({ paper: 'sand' })),
+      model((current) => expect(withPaper(current)).toEqual(Option.some('sand'))),
+      Command.expectExact(UpdatePaper({ boardId: board.id, paper: 'sand', previous: 'paper' })),
+      Command.resolve(UpdatePaper, Message.FailedUpdatePaper({ attempted: 'sand', previous: 'paper' })),
+      model((current) => expect(withPaper(current)).toEqual(Option.some('paper'))),
+    )
+  })
+
+  test('an older paper’s failure or answer does not undo the one chosen since', () => {
+    const first = update(open, Message.SelectedPaper({ paper: 'sand' })).model
+    const second = update(first, Message.SelectedPaper({ paper: 'sage' })).model
+    const failedFirst = update(second, Message.FailedUpdatePaper({ attempted: 'sand', previous: 'paper' })).model
+    expect(withPaper(failedFirst)).toEqual(Option.some('sage'))
+    const answeredFirst = update(
+      second,
+      Message.SucceededUpdatePaper({ board: Schema.decodeUnknownSync(Board)({ ...board, paper: 'sand' }) }),
+    ).model
+    expect(withPaper(answeredFirst)).toEqual(Option.some('sage'))
   })
 })

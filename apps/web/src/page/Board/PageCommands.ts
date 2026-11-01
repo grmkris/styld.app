@@ -1,6 +1,6 @@
 import { newOperation, newOperationId } from '../../OperationIds.ts'
 import { BoardId, BoardName, LookId, Mood, PieceId, PinId } from '@styld/protocol'
-import { Effect, Schema } from 'effect'
+import { Effect, Option, Schema } from 'effect'
 import { Command, Dom } from 'foldkit'
 import { load as loadPage } from 'foldkit/navigation'
 import { boardsRouter } from '../../route.ts'
@@ -13,16 +13,17 @@ import { Message } from './Message.ts'
 // Commands.ts.
 
 const boardIdOf = (id: string) => Schema.decodeUnknownEffect(BoardId)(id)
-/** The board as it is now, read again when the page comes back into view. */
+/** The board as it is now, read again when the page comes back into view; none when it could not be read, and the
+ * page keeps what it shows. */
 export const ReloadBoard = Command.define('ReloadBoard', {
   args: { boardId: Schema.String },
-  messages: [Message.SucceededReloadBoard, Message.FailedReloadBoard],
+  messages: [Message.CompletedReloadBoard],
   execute: ({ boardId }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       const board = yield* api.board.getBoard({ params: { boardId: yield* boardIdOf(boardId) } })
-      return Message.SucceededReloadBoard({ board })
-    }).pipe(Effect.orElseSucceed(() => Message.FailedReloadBoard())),
+      return Message.CompletedReloadBoard({ maybeBoard: Option.some(board) })
+    }).pipe(Effect.orElseSucceed(() => Message.CompletedReloadBoard({ maybeBoard: Option.none() }))),
 })
 
 export const RenameBoard = Command.define('RenameBoard', {
@@ -57,19 +58,19 @@ export const SetBoardVisibility = Command.define('SetBoardVisibility', {
     ),
 })
 
-/** Save the board's moods for Explore. */
+/** Save the board's moods for Explore; the previous ones come back if this fails. */
 export const SetBoardMoods = Command.define('SetBoardMoods', {
-  args: { boardId: Schema.String, moods: Schema.Array(Mood) },
-  messages: [Message.SucceededSetMoods, Message.FailedSetMoods],
-  execute: ({ boardId, moods }) =>
+  args: { boardId: Schema.String, moods: Schema.Array(Mood), previous: Schema.Array(Mood) },
+  messages: [Message.SucceededSetBoardMoods, Message.FailedSetBoardMoods],
+  execute: ({ boardId, moods, previous }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       const board = yield* api.board.updateBoard({
         params: { boardId: yield* boardIdOf(boardId) },
         payload: { operationId: yield* newOperationId, moods },
       })
-      return Message.SucceededSetMoods({ board })
-    }).pipe(Effect.orElseSucceed(() => Message.FailedSetMoods())),
+      return Message.SucceededSetBoardMoods({ board })
+    }).pipe(Effect.orElseSucceed(() => Message.FailedSetBoardMoods({ attempted: moods, previous }))),
 })
 
 /** Delete the board; one already gone counts as deleted. */

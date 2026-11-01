@@ -3,10 +3,11 @@ import { Dialog, RadioGroup } from '@foldkit/ui'
 import { BoardId, Generation, GenerationKind } from '@styld/protocol'
 import { Duration, Effect, Option, Predicate, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
-import { Command, Update } from 'foldkit'
+import { Command, Subscription, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
+import { hasStopped, Misses, pollWhilePending } from '../../Polling.ts'
 import { StyldClient } from '../../StyldClient.ts'
 
 // Make with Styld, on a board's page (owner, 2026-10-31): a mood board of the person's own pieces from one sentence,
@@ -22,7 +23,8 @@ export type MakeProblem = typeof MakeProblem.Type
 export const Job = defineTaggedUnion({
   Idle: {},
   Asking: {},
-  Running: { generation: Generation },
+  /** A job being made, and whether the page is reading how it goes just now. */
+  Running: { generation: Generation, read: Schema.Literals(['waiting', 'reading']) },
   Finished: { generation: Generation },
   Failed: { problem: MakeProblem },
 })
@@ -43,8 +45,8 @@ export const Model = Schema.Struct({
   /** Drawn once per ask and kept for its retries, so a lost answer never makes a second job. */
   operationId: Schema.Option(Schema.String),
   job: Job,
-  /** Polls in a row that did not get through; after a few the page stops following and says so. */
-  missedPolls: Schema.Number,
+  /** Reads in a row that did not get through; after a few the page stops following and says so. */
+  misses: Misses,
 })
 export type Model = typeof Model.Type
 
@@ -56,7 +58,7 @@ export const init = (boardId: string): Model => ({
   words: '',
   operationId: Option.none(),
   job: Job.Idle(),
-  missedPolls: 0,
+  misses: 0,
 })
 
 // MESSAGE
@@ -69,10 +71,10 @@ export const Message = defineMessageUnion({
   SubmittedMake: {},
   SucceededAsk: { generation: Generation },
   FailedAsk: { problem: MakeProblem, operationId: Schema.Option(Schema.String) },
-  SucceededPoll: { generation: Generation },
-  FailedPoll: { generationId: Schema.String },
-  SucceededFindRunning: { generation: Schema.NullOr(Generation) },
-  FailedFindRunning: {},
+  TickedGenerationRefresh: {},
+  SucceededReadGeneration: { generation: Generation },
+  FailedReadGeneration: {},
+  CompletedFindRunningGeneration: { generation: Schema.NullOr(Generation) },
   ClickedDismiss: {},
 })
 export type Message = typeof Message.Type
@@ -125,37 +127,35 @@ export const AskToMake = Command.define('AskToMake', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedAsk({ problem: 'failed', operationId: Option.none() }))),
 })
 
-/** Polls in a row that may fail before the page stops following a job. */
-const mostMissedPolls = 5
+/** How long the page waits between asking how the pictures are going. */
+const readPause = Duration.millis(1500)
 
-/** How long the page waits before asking how the pictures are going. */
-const pollDelay = Duration.millis(1500)
-
-/** Ask again, after a moment, how the pictures are going.
+/** Ask how the pictures are going.
  * @internal Exported for its tests. */
-export const PollGeneration = Command.define('PollGeneration', {
+export const ReadGeneration = Command.define('ReadGeneration', {
   args: { generationId: Schema.String },
-  messages: [Message.SucceededPoll, Message.FailedPoll],
+  messages: [Message.SucceededReadGeneration, Message.FailedReadGeneration],
   execute: ({ generationId }) =>
     Effect.gen(function* () {
-      yield* Effect.sleep(pollDelay)
       const api = yield* (yield* StyldClient).api
       const id = yield* Schema.decodeUnknownEffect(Generation.fields.id)(generationId)
-      return Message.SucceededPoll({ generation: yield* api.generation.generation({ params: { generationId: id } }) })
-    }).pipe(Effect.orElseSucceed(() => Message.FailedPoll({ generationId }))),
+      const generation = yield* api.generation.generation({ params: { generationId: id } })
+      return Message.SucceededReadGeneration({ generation })
+    }).pipe(Effect.orElseSucceed(() => Message.FailedReadGeneration())),
 })
 
-/** Ask whether the board has an ask still being made, so a board opened again follows it. */
+/** Ask whether the board has an ask still being made, so a board opened again follows it; none when there is none or
+ * the question did not get through, and the page simply does not follow one. */
 const FindRunningGeneration = Command.define('FindRunningGeneration', {
   args: { boardId: Schema.String },
-  messages: [Message.SucceededFindRunning, Message.FailedFindRunning],
+  messages: [Message.CompletedFindRunningGeneration],
   execute: ({ boardId }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       const id = yield* Schema.decodeUnknownEffect(BoardId)(boardId)
       const { generation } = yield* api.generation.runningGeneration({ params: { boardId: id } })
-      return Message.SucceededFindRunning({ generation })
-    }).pipe(Effect.orElseSucceed(() => Message.FailedFindRunning())),
+      return Message.CompletedFindRunningGeneration({ generation })
+    }).pipe(Effect.orElseSucceed(() => Message.CompletedFindRunningGeneration({ generation: null }))),
 })
 
 /** Once the person's own board has loaded: pick up an ask made before they left it. */
@@ -224,16 +224,39 @@ const submitted = (model: Model): UpdateReturn =>
     : { model }
 
 /** The job moved on: follow it while it runs; once it ends, the board reloads. */
-const polled = (model: Model, generation: Generation): UpdateReturn =>
+const followed = (model: Model, generation: Generation): UpdateReturn =>
   finished(generation)
     ? {
         model: modifyFields(model, { job: () => Job.Finished({ generation }) }),
         outMessage: OutMessage.FinishedMaking(),
       }
+    : { model: modifyFields(model, { job: () => Job.Running({ generation, read: 'waiting' }) }) }
+
+/** A tick while a job runs reads how it goes, unless a read is on its way. */
+const ticked = (model: Model): UpdateReturn => {
+  const { job } = model
+  if (!Job.guards.Running(job) || job.read === 'reading') return { model }
+  return {
+    model: modifyFields(model, { job: () => Job.Running({ generation: job.generation, read: 'reading' }) }),
+    commands: [ReadGeneration({ generationId: job.generation.id })],
+  }
+}
+
+/** A read that did not get through: the page reads again on the next tick, and after five in a row it stops following
+ * and says so; the job goes on on the server either way. */
+const readFailed = (model: Model): UpdateReturn => {
+  const { job } = model
+  if (!Job.guards.Running(job)) return { model }
+  const missed = model.misses + 1
+  return hasStopped(missed)
+    ? { model: modifyFields(model, { job: () => Job.Failed({ problem: 'failed' }), misses: () => 0 }) }
     : {
-        model: modifyFields(model, { job: () => Job.Running({ generation }) }),
-        commands: [PollGeneration({ generationId: generation.id })],
+        model: modifyFields(model, {
+          job: () => Job.Running({ generation: job.generation, read: 'waiting' }),
+          misses: () => missed,
+        }),
       }
+}
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
@@ -248,24 +271,29 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SubmittedMake: () => submitted(model),
     SucceededAsk: ({ generation }) => {
       const closed = closeSheet(modifyFields(model, { words: () => '', operationId: () => Option.none() }))
-      const asked = polled(closed.model, generation)
+      const asked = followed(modifyFields(closed.model, { misses: () => 0 }), generation)
       return { ...asked, commands: [...(closed.commands ?? []), ...(asked.commands ?? [])] }
     },
     FailedAsk: ({ problem, operationId }) => ({
       model: modifyFields(model, { job: () => Job.Failed({ problem }), operationId: () => operationId }),
     }),
-    SucceededPoll: ({ generation }) => polled(modifyFields(model, { missedPolls: () => 0 }), generation),
-    // A poll that did not get through asks again, a few times; the job goes on on the server either way.
-    FailedPoll: ({ generationId }) =>
-      model.missedPolls + 1 >= mostMissedPolls
-        ? { model: modifyFields(model, { job: () => Job.Failed({ problem: 'failed' }), missedPolls: () => 0 }) }
-        : {
-            model: modifyFields(model, { missedPolls: (missed) => missed + 1 }),
-            commands: [PollGeneration({ generationId })],
-          },
+    TickedGenerationRefresh: () => ticked(model),
+    SucceededReadGeneration: ({ generation }) => followed(modifyFields(model, { misses: () => 0 }), generation),
+    FailedReadGeneration: () => readFailed(model),
     // Followed only while nothing else is: an ask made on this visit answers for itself.
-    SucceededFindRunning: ({ generation }) =>
-      generation !== null && Job.guards.Idle(model.job) ? polled(model, generation) : { model },
-    FailedFindRunning: () => ({ model }),
+    CompletedFindRunningGeneration: ({ generation }) =>
+      generation !== null && Job.guards.Idle(model.job) ? followed(model, generation) : { model },
     ClickedDismiss: () => ({ model: modifyFields(model, { job: () => Job.Idle() }) }),
   })
+
+// SUBSCRIPTION
+
+/** A running job is read again every moment while the board's page is open. */
+export const subscriptions = Subscription.make<Model, Message>()(() => ({
+  generationWhileRunning: pollWhilePending<Model, Message>({
+    pendingIds: (model) => (Job.guards.Running(model.job) ? [model.job.generation.id] : []),
+    misses: (model) => model.misses,
+    tick: Message.TickedGenerationRefresh(),
+    pause: readPause,
+  }),
+}))

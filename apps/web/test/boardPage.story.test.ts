@@ -8,7 +8,8 @@ import { describe, expect, test } from 'vitest'
 import { storySheetMoved } from './SheetFixtures.ts'
 import { Message } from '../src/page/Board/Message.ts'
 import {
-  BoardState,
+  BoardData,
+  BoardShown,
   fromBoard,
   init,
   type Model,
@@ -90,7 +91,7 @@ describe('a board page', () => {
       Command.expectExact(RenameBoard),
       Command.resolve(RenameBoard, Message.SucceededRename({ board: withPins([knitPin], { name: 'Late autumn' }) })),
       model(({ board: state, settings }) => {
-        expect(state).toEqual(BoardState.Ready({ name: 'Late autumn', paper: 'paper' }))
+        expect(state).toEqual(BoardData.Success({ data: BoardShown.Own({ name: 'Late autumn', paper: 'paper' }) }))
         expect(settings.isOpen).toBe(false)
       }),
       ...storySheetMoved(2),
@@ -137,13 +138,25 @@ describe('a board page', () => {
       message(Message.ToggledMood({ mood: 'sport' })),
       model(({ moods }) => expect(moods).toEqual(['rain', 'office', 'weekend'])),
       message(Message.ToggledMood({ mood: 'office' })),
-      Command.expectExact(SetBoardMoods({ boardId: board.id, moods: ['rain', 'weekend'] })),
+      Command.expectExact(
+        SetBoardMoods({ boardId: board.id, moods: ['rain', 'weekend'], previous: ['rain', 'office', 'weekend'] }),
+      ),
       Command.resolve(
-        SetBoardMoods({ boardId: board.id, moods: ['rain', 'weekend'] }),
-        Message.SucceededSetMoods({ board: withPins([knitPin], { moods: ['rain', 'weekend'] }) }),
+        SetBoardMoods({ boardId: board.id, moods: ['rain', 'weekend'], previous: ['rain', 'office', 'weekend'] }),
+        Message.SucceededSetBoardMoods({ board: withPins([knitPin], { moods: ['rain', 'weekend'] }) }),
       ),
       model(({ moods }) => expect(moods).toEqual(['rain', 'weekend'])),
     )
+  })
+
+  test('moods that do not save go back to the ones before, unless they were changed again since', () => {
+    const picked = update(open, Message.ToggledMood({ mood: 'rain' })).model
+    expect(picked.moods).toEqual(['rain'])
+    const failed = update(picked, Message.FailedSetBoardMoods({ attempted: ['rain'], previous: [] })).model
+    expect(failed.moods).toEqual([])
+    const changedAgain = update(picked, Message.ToggledMood({ mood: 'office' })).model
+    const olderFailed = update(changedAgain, Message.FailedSetBoardMoods({ attempted: ['rain'], previous: [] }))
+    expect(olderFailed.model.moods).toEqual(['rain', 'office'])
   })
 
   test('deleting asks once more, then leaves for the boards', () => {
@@ -254,7 +267,9 @@ describe('coming back to a board', () => {
       Command.expectExact(ReloadBoard),
       Command.resolve(
         ReloadBoard,
-        Message.SucceededReloadBoard({ board: withPins([shoesPin, knitPin], { version: 5, items: [] }) }),
+        Message.CompletedReloadBoard({
+          maybeBoard: Option.some(withPins([shoesPin, knitPin], { version: 5, items: [] })),
+        }),
       ),
       model(({ version, items, pins, past }) => {
         expect(version).toBe(5)

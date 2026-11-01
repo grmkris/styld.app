@@ -18,7 +18,7 @@ import {
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
-import { BoardState } from '../src/page/Board/Model.ts'
+import { BoardData, BoardShown } from '../src/page/Board/Model.ts'
 import { Shown as LookShown } from '../src/page/Look.ts'
 import { Message as PeopleMessage, SetSaved, Subject } from '../src/page/People.ts'
 import {
@@ -136,7 +136,7 @@ describe('a public profile', () => {
       { update, view },
       given(
         withPage(signedIn(opened(`/boards/${board.id}`)), lenses.board, (page) =>
-          modifyFields(page, { board: () => BoardState.Visiting({ board }) }),
+          modifyFields(page, { board: () => BoardData.Success({ data: BoardShown.Visiting({ board }) }) }),
         ),
       ),
       expect(role('heading', { name: 'Coats' })).toExist(),

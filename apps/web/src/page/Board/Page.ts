@@ -6,16 +6,20 @@ import { modifyFields } from 'foldkit/struct'
 import type { Services, UpdateReturn } from './Edits.ts'
 import { Message } from './Message.ts'
 import {
-  BoardState,
+  BoardData,
+  boardName,
+  BoardShown,
   fromBoard,
   Gesture,
   LooksData,
+  ownBoard,
   type Model,
   PinWork,
   Publishing,
   Removal,
   Rename,
   Saving,
+  withChecked,
   withSharing,
 } from './Model.ts'
 import {
@@ -68,20 +72,11 @@ const closeSettings = Update.foldChildStep({ update: Dialog.close, ...settingsSh
 const openPicker = Update.foldChildStep({ update: Dialog.open, ...pickerSheet })
 const closePicker = Update.foldChildStep({ update: Dialog.close, ...pickerSheet })
 
-const boardName = (model: Model) =>
-  BoardState.match(model.board, {
-    Loading: () => '',
-    Failed: () => '',
-    Missing: () => '',
-    Ready: ({ name }) => name,
-    Visiting: ({ board }) => board.name,
-  })
-
 /** The settings sheet opens on the board's name, with nothing pending. */
 const settingsOpened = (model: Model): UpdateReturn =>
   openSettings(
     modifyFields(model, {
-      nameDraft: () => boardName(model),
+      nameDraft: () => boardName(model.board),
       rename: () => Rename.Idle(),
       removal: () => Removal.Idle(),
     }),
@@ -89,7 +84,7 @@ const settingsOpened = (model: Model): UpdateReturn =>
 
 const renameSubmitted = (model: Model): UpdateReturn => {
   const name = model.nameDraft.trim()
-  if (name.length === 0 || name === boardName(model)) return closeSettings(model)
+  if (name.length === 0 || name === boardName(model.board)) return closeSettings(model)
   return {
     model: modifyFields(model, { rename: () => Rename.Saving() }),
     commands: [RenameBoard({ boardId: model.boardId, name })],
@@ -99,7 +94,7 @@ const renameSubmitted = (model: Model): UpdateReturn => {
 const renamed = (model: Model, board: Board): UpdateReturn =>
   closeSettings(
     modifyFields(model, {
-      board: () => BoardState.Ready({ name: board.name, paper: board.paper }),
+      board: () => BoardData.Success({ data: BoardShown.Own({ name: board.name, paper: board.paper }) }),
       rename: () => Rename.Idle(),
     }),
   )
@@ -115,9 +110,20 @@ const moodToggled = (model: Model, mood: Mood): UpdateReturn => {
     ? { model }
     : {
         model: modifyFields(model, { moods: () => moods }),
-        commands: [SetBoardMoods({ boardId: model.boardId, moods })],
+        commands: [SetBoardMoods({ boardId: model.boardId, moods, previous: model.moods })],
       }
 }
+
+const sameMoods = (left: ReadonlyArray<Mood>, right: ReadonlyArray<Mood>) =>
+  left.length === right.length && left.every((mood) => right.includes(mood))
+
+/** Moods that did not save give way to the ones before them, unless the person has changed them again since. */
+const moodsFailed = (model: Model, attempted: ReadonlyArray<Mood>, previous: ReadonlyArray<Mood>): UpdateReturn =>
+  sameMoods(model.moods, attempted) ? { model: modifyFields(model, { moods: () => previous }) } : { model }
+
+/** Moods saved: who sees the board and its check as the server has them, unless other moods are on their way. */
+const moodsSaved = (model: Model, board: Board): UpdateReturn =>
+  sameMoods(model.moods, board.moods) ? { model: withChecked(model, board) } : { model }
 
 /** Public or private, from the settings; the sheet stays open to show what Styld's check says. */
 const publicToggled = (model: Model, isPublic: boolean): UpdateReturn =>
@@ -207,7 +213,7 @@ const looksLoaded = (model: Model, looks: ReadonlyArray<Look>): UpdateReturn => 
 
 /** Coming back into view, the board is read again, but only while nothing is being changed or saved here. */
 const becameVisible = (model: Model): UpdateReturn =>
-  BoardState.guards.Ready(model.board) && Saving.guards.Saved(model.saving) && Gesture.guards.Idle(model.gesture)
+  Option.isSome(ownBoard(model.board)) && Saving.guards.Saved(model.saving) && Gesture.guards.Idle(model.gesture)
     ? { model, commands: [ReloadBoard({ boardId: model.boardId })] }
     : { model }
 
@@ -230,8 +236,7 @@ const reloaded = (model: Model, board: Board): UpdateReturn => {
 
 type PageTag =
   | 'BecameVisible'
-  | 'SucceededReloadBoard'
-  | 'FailedReloadBoard'
+  | 'CompletedReloadBoard'
   | 'ClickedSettings'
   | 'GotSettingsMessage'
   | 'UpdatedNameDraft'
@@ -240,8 +245,8 @@ type PageTag =
   | 'FailedRename'
   | 'ToggledPublic'
   | 'ToggledMood'
-  | 'SucceededSetMoods'
-  | 'FailedSetMoods'
+  | 'SucceededSetBoardMoods'
+  | 'FailedSetBoardMoods'
   | 'SucceededSetVisibility'
   | 'FailedSetVisibility'
   | 'ClickedDeleteBoard'
@@ -270,8 +275,8 @@ export const pageSteps = (
   model: Model,
 ): { readonly [Tag in PageTag]: (message: Extract<Message, { readonly _tag: Tag }>) => UpdateReturn } => ({
   BecameVisible: () => becameVisible(model),
-  SucceededReloadBoard: ({ board }) => reloaded(model, board),
-  FailedReloadBoard: () => ({ model }),
+  CompletedReloadBoard: ({ maybeBoard }) =>
+    Option.match(maybeBoard, { onNone: () => ({ model }), onSome: (board) => reloaded(model, board) }),
   ClickedSettings: () => settingsOpened(model),
   GotSettingsMessage: (got) => foldSettings(model, got.message),
   UpdatedNameDraft: ({ value }) => ({ model: modifyFields(model, { nameDraft: () => value }) }),
@@ -280,8 +285,8 @@ export const pageSteps = (
   FailedRename: () => ({ model: modifyFields(model, { rename: () => Rename.Failed() }) }),
   ToggledPublic: ({ isPublic }) => publicToggled(model, isPublic),
   ToggledMood: ({ mood }) => moodToggled(model, mood),
-  SucceededSetMoods: ({ board }) => ({ model: withSharing(model, board) }),
-  FailedSetMoods: () => ({ model }),
+  SucceededSetBoardMoods: ({ board }) => moodsSaved(model, board),
+  FailedSetBoardMoods: ({ attempted, previous }) => moodsFailed(model, attempted, previous),
   SucceededSetVisibility: ({ board }) => {
     const next = modifyFields(withSharing(model, board), { publishing: () => Publishing.Idle() })
     return { model: next, commands: readShown(next) }
