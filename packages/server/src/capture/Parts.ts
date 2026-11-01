@@ -1,8 +1,6 @@
 import { decodePng, type Rgba } from '@styld/imaging'
 import { CaptureUnavailable } from '@styld/protocol'
 import { Effect, Option } from 'effect'
-import * as Crypto from 'effect/Crypto'
-import * as Base64Url from 'effect/encoding/Base64Url'
 import { accountPrefix, piecePrefix } from '../wardrobe/Media.ts'
 import type { WorkMessage } from '../wardrobe/Processing.ts'
 import { makeStore } from '../wardrobe/Store.ts'
@@ -19,24 +17,14 @@ export interface CaptureBindings {
 
 export const unavailable = () => CaptureUnavailable.make({})
 
-/** What every capture operation shares: stores, bindings, ids and digests. */
+/** What every capture operation shares: stores and bindings. */
 export const makeParts = (bindings: CaptureBindings) =>
   Effect.gen(function* () {
-    const crypto = yield* Crypto.Crypto
-    const encoder = new TextEncoder()
-    const randomId = (prefix: 'cp' | 'dt' | 'pc') =>
-      crypto.randomBytes(16).pipe(
-        Effect.map((bytes) => `${prefix}_${Base64Url.encode(bytes)}`),
-        Effect.mapError(unavailable),
-      )
     return {
       bindings,
       pieceChanged: yield* PieceChanged,
       store: makeCaptureStore(bindings.database),
       wardrobeStore: makeStore(bindings.database),
-      randomId,
-      digest: (text: string) =>
-        crypto.digest('SHA-256', encoder.encode(text)).pipe(Effect.map(Base64Url.encode), Effect.mapError(unavailable)),
     }
   })
 export type Parts = Effect.Success<ReturnType<typeof makeParts>>

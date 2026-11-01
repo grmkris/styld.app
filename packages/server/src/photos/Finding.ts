@@ -1,6 +1,4 @@
 import { Effect, Option } from 'effect'
-import * as Crypto from 'effect/Crypto'
-import * as Base64Url from 'effect/encoding/Base64Url'
 import { comparedTypes, sameAs } from '../capture/Matching.ts'
 import { type CaptureBindings, makeParts, readObject, storedAs, unavailable, writeObject } from '../capture/Parts.ts'
 import { type CutPiece, morePrompts, samPieces, verdictOf } from '../capture/PhotoPipeline.ts'
@@ -11,6 +9,7 @@ import type { ImageBindings } from '../wardrobe/Delivery.ts'
 import { accountPrefix } from '../wardrobe/Media.ts'
 import { type GarmentRow, makePhotoStore, type PhotoRow } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
+import { newId } from '../kernel/Ids.ts'
 
 // Finding the garments in an outfit photo, one delivery of the piece queue at a time (owner, 2026-10-31). The same
 // cutting and suggesting as capture, without the held-piece rule: every garment the person wears counts. Each is
@@ -20,16 +19,10 @@ import { nowDate } from '../kernel/Db.ts'
  * with, the photo store and its ids. */
 export const makePhotoParts = (bindings: CaptureBindings & ImageBindings) =>
   Effect.gen(function* () {
-    const crypto = yield* Crypto.Crypto
     return {
       capture: yield* makeParts(bindings),
       images: { bucket: bindings.bucket, images: bindings.images } satisfies ImageBindings,
       photos: makePhotoStore(bindings.database),
-      newId: (prefix: 'ph' | 'pg') =>
-        crypto.randomBytes(16).pipe(
-          Effect.map((bytes) => `${prefix}_${Base64Url.encode(bytes)}`),
-          Effect.mapError(unavailable),
-        ),
     }
   })
 export type PhotoParts = Effect.Success<ReturnType<typeof makePhotoParts>>
@@ -55,7 +48,7 @@ const garmentOf = (parts: PhotoParts, photo: PhotoRow, piece: CutPiece, position
     const small = { bytes: yield* (yield* PictureWork).thumbnail(piece.png, 512), contentType: 'image/webp' } as const
     const suggestion = yield* (yield* GarmentVision).suggest(small)
     if (verdictOf(suggestion.whole) === 'drop') return Option.none<GarmentRow>()
-    const id = yield* parts.newId('pg')
+    const id = yield* newId('pg')
     const cutoutKey = `${photoPrefix(photo.accountId, photo.id)}${id}.png`
     yield* writeObject(parts.capture, cutoutKey, piece.png, 'image/png')
     const types = comparedTypes(suggestion.type ?? null)
@@ -99,7 +92,7 @@ const garmentsIn = (parts: PhotoParts, photo: PhotoRow) =>
 
 /** With the providers off (native acceptance), the whole photo stands for one garment, matched by the person. */
 const wholePhoto = (parts: PhotoParts, photo: PhotoRow) =>
-  Effect.map(parts.newId('pg'), (id): ReadonlyArray<GarmentRow> => [
+  Effect.map(newId('pg'), (id): ReadonlyArray<GarmentRow> => [
     {
       id,
       photoId: photo.id,

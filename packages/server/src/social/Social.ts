@@ -17,8 +17,6 @@ import {
   WardrobeUnavailable,
 } from '@styld/protocol'
 import { Context, DateTime, Duration, Effect, Match, Option, Schema } from 'effect'
-import * as Crypto from 'effect/Crypto'
-import * as Base64Url from 'effect/encoding/Base64Url'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import type { CheckTarget, Checks } from '../safety/Checks.ts'
 import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
@@ -26,6 +24,7 @@ import { feedFor } from './Feed.ts'
 import { authorOf, type PublicPages, summaryOf } from './Public.ts'
 import { makePublicStore } from './PublicStore.ts'
 import { makeSocialStore, type SaveRow, type SocialStore } from './SocialStore.ts'
+import { newId } from '../kernel/Ids.ts'
 
 // What people do with each other: saving what others made public, following, blocking and reporting. Everything
 // acts for `CurrentAccount`, sees others through the public pages' rules, and refuses one's own things.
@@ -80,7 +79,6 @@ interface Parts {
   readonly owners: ReturnType<typeof ownerOf>
   readonly pages: PublicPages['Service']
   readonly checks: Checks['Service']
-  readonly newId: (prefix: 'sv' | 'rp' | 'ws') => Effect.Effect<string, WardrobeUnavailable>
 }
 
 /** Whose a saved thing is. */
@@ -203,7 +201,7 @@ const saving = (p: Parts) => ({
     const at = yield* nowDate
     if (Option.isNone(yield* savedThing(p, row.kind, row.id, accountId, at.toISOString())))
       return yield* PublicNotFound.make({})
-    yield* stored(p.store.save({ id: yield* p.newId('sv'), accountId, ...columnsOf(row), createdAt: at }))
+    yield* stored(p.store.save({ id: yield* newId('sv'), accountId, ...columnsOf(row), createdAt: at }))
     return { saved: true }
   }),
 })
@@ -277,7 +275,7 @@ const reporting = (p: Parts) => ({
     if ((yield* stored(p.store.reportsSince(accountId, since))) >= reportsPerHour) return yield* TooManyReports.make({})
     const { filed, reporters } = yield* stored(
       p.store.report({
-        id: yield* p.newId('rp'),
+        id: yield* newId('rp'),
         reporterId: accountId,
         ownerId: owner,
         targetKind: check.kind,
@@ -294,18 +292,13 @@ const reporting = (p: Parts) => ({
 })
 
 const make = (database: Database, pages: PublicPages['Service'], checks: Checks['Service']) =>
-  Effect.gen(function* () {
-    const crypto = yield* Crypto.Crypto
+  Effect.sync(() => {
     const p: Parts = {
       database,
       store: makeSocialStore(database),
       owners: ownerOf(database),
       pages,
       checks,
-      newId: (prefix) =>
-        Effect.map(crypto.randomBytes(16), (bytes) => `${prefix}_${Base64Url.encode(bytes)}`).pipe(
-          Effect.mapError(unavailable),
-        ),
     }
     return { ...saving(p), ...relations(p), ...reporting(p) }
   })

@@ -17,8 +17,6 @@ import {
   UploadRefused,
 } from '@styld/protocol'
 import { Array, Context, Effect, Option } from 'effect'
-import * as Crypto from 'effect/Crypto'
-import * as Base64Url from 'effect/encoding/Base64Url'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { makeLookStore } from '../looks/Store.ts'
 import type { Checks } from '../safety/Checks.ts'
@@ -48,6 +46,7 @@ import {
   unavailable,
 } from './Parts.ts'
 import { nowDate } from '../kernel/Db.ts'
+import { digestOf, newId } from '../kernel/Ids.ts'
 
 /** Where a board picture came from: an upload, a picture Styld generated (its job and model), or an outfit photo of
  * My Gallery. */
@@ -87,10 +86,10 @@ const changes = (parts: Parts) => ({
   /** Start an empty board on plain paper, once per operation id. */
   createBoard: Effect.fn('Styld.Boards.create')(function* (input: CreateBoard) {
     const { accountId } = yield* CurrentAccount
-    const inputDigest = yield* parts.digest(JSON.stringify([input.name]))
+    const inputDigest = yield* digestOf(JSON.stringify([input.name]))
     const earlier = yield* createdBefore(parts, accountId, input.operationId, inputDigest)
     if (Option.isSome(earlier)) return earlier.value
-    const id = yield* parts.newId('bd')
+    const id = yield* newId('bd')
     const at = yield* nowDate
     const board: BoardRow = {
       id,
@@ -172,7 +171,7 @@ const pinning = (parts: Parts) => ({
     const { accountId } = yield* CurrentAccount
     const pieceIds = [...new Set(input.pieceIds ?? [])]
     const lookIds = [...new Set(input.lookIds ?? [])]
-    const inputDigest = yield* parts.digest(JSON.stringify([boardId, pieceIds, lookIds]))
+    const inputDigest = yield* digestOf(JSON.stringify([boardId, pieceIds, lookIds]))
     if (Option.isSome(yield* receiptFor(parts, accountId, input.operationId, 'addPins', inputDigest)))
       return yield* one(parts, accountId, boardId)
     yield* ownBoard(parts, accountId, boardId)
@@ -194,7 +193,7 @@ const pinning = (parts: Parts) => ({
   removePins: Effect.fn('Styld.Boards.removePins')(function* (boardId: BoardId, input: RemovePins) {
     const { accountId } = yield* CurrentAccount
     const pinIds = [...new Set(input.pinIds)]
-    const inputDigest = yield* parts.digest(JSON.stringify([boardId, pinIds]))
+    const inputDigest = yield* digestOf(JSON.stringify([boardId, pinIds]))
     if (Option.isSome(yield* receiptFor(parts, accountId, input.operationId, 'removePins', inputDigest)))
       return yield* one(parts, accountId, boardId)
     yield* ownBoard(parts, accountId, boardId)
@@ -295,7 +294,7 @@ const pictures = (parts: Parts) => ({
     origin: ImageOrigin = { kind: 'upload' },
   ) {
     const { accountId } = yield* CurrentAccount
-    const inputDigest = yield* parts.digest(JSON.stringify([boardId, input.uploadId]))
+    const inputDigest = yield* digestOf(JSON.stringify([boardId, input.uploadId]))
     const receipt = yield* stored(parts.store.findReceipt(accountId, input.operationId))
     if (Option.isSome(receipt))
       return receipt.value.inputDigest === inputDigest && receipt.value.command === 'addBoardImage'
@@ -304,8 +303,8 @@ const pictures = (parts: Parts) => ({
     yield* ownBoard(parts, accountId, boardId)
     const upload = yield* usableUpload(parts.wardrobeStore, accountId, input.uploadId)
     if (!upload.contentType.startsWith('image/')) return yield* UploadRefused.make({ reason: 'wrongType' })
-    const id = yield* parts.newId('bm')
-    const pinId = yield* parts.newId('pn')
+    const id = yield* newId('bm')
+    const pinId = yield* newId('pn')
     const at = yield* nowDate
     const added = yield* receiptRow(accountId, input.operationId, 'addBoardImage', inputDigest, id)
     const image = {
@@ -339,9 +338,7 @@ const pictures = (parts: Parts) => ({
 })
 
 const make = (bindings: BoardBindings, checks: Checks['Service']) =>
-  Effect.gen(function* () {
-    const crypto = yield* Crypto.Crypto
-    const encoder = new TextEncoder()
+  Effect.sync(() => {
     const parts: Parts = {
       bindings,
       store: makeBoardStore(bindings.database),
@@ -349,12 +346,6 @@ const make = (bindings: BoardBindings, checks: Checks['Service']) =>
       lookStore: makeLookStore(bindings.database),
       profileStore: makeProfileStore(bindings.database),
       checks,
-      newId: (prefix) =>
-        Effect.map(crypto.randomBytes(16), (bytes) => `${prefix}_${Base64Url.encode(bytes)}`).pipe(
-          Effect.mapError(unavailable),
-        ),
-      digest: (text) =>
-        Effect.map(crypto.digest('SHA-256', encoder.encode(text)), Base64Url.encode).pipe(Effect.mapError(unavailable)),
     }
     const edits = { ...changes(parts), ...tables(parts), ...pinning(parts), ...pictures(parts) }
     return {

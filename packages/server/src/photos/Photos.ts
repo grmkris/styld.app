@@ -32,6 +32,7 @@ import { cutOutPerson } from './Cutout.ts'
 import { finding, type PhotoParts, photoHold, photoPrefix } from './Finding.ts'
 import type { GarmentRow, PhotoRow } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
+import { newId } from '../kernel/Ids.ts'
 
 // My Gallery for the website (owner, 2026-10-31): adding a photo spends its upload and holds a credit while Styld finds
 // its garments; the person then confirms or corrects each match, marks favourites, and may delete a photo, which takes
@@ -113,7 +114,7 @@ const replayed = (parts: PhotoParts, accountId: string, input: AddPhoto) =>
 const added = (parts: PhotoParts, accountId: string, input: AddPhoto) =>
   Effect.gen(function* () {
     const upload = yield* usableUpload(parts, accountId, input.uploadId)
-    const id = yield* parts.newId('ph')
+    const id = yield* newId('ph')
     const at = yield* nowDate
     const usage = yield* Usage
     yield* usage.reserve(accountId, photoHold(id), 1)
@@ -162,8 +163,8 @@ const deleteObjects = (parts: PhotoParts, row: PhotoRow) =>
  * so the tray asks "Already in your wardrobe?" rather than adding a silent duplicate. */
 const offered = (parts: PhotoParts, photo: PhotoRow, garment: GarmentRow) =>
   Effect.gen(function* () {
-    const captureId = yield* parts.capture.randomId('cp')
-    const detectionId = yield* parts.capture.randomId('dt')
+    const captureId = yield* newId('cp')
+    const detectionId = yield* newId('dt')
     const bytes = yield* readObject(parts.capture, garment.cutoutKey)
     if (Option.isNone(bytes)) return yield* unavailable()
     // With the providers off the garment is the whole photo, as it was uploaded.

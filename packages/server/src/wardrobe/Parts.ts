@@ -62,8 +62,6 @@ export interface Parts {
   readonly store: Store
   readonly cutout: GarmentCutout['Service']
   readonly pieceChanged: PieceChanged['Service']
-  readonly randomToken: (bytes: number) => Effect.Effect<string, WardrobeUnavailable>
-  readonly digest: (text: string) => Effect.Effect<string, WardrobeUnavailable>
 }
 
 export const ownPiece = (parts: Parts) =>

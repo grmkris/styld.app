@@ -17,6 +17,7 @@ import type { CaptureRow, DetectionRow, FrameRow } from './Store.ts'
 import { Usage } from './Usage.ts'
 import { findMoov, videoDurationMs, videoFrameCount } from './VideoContainer.ts'
 import { nowDate } from '../kernel/Db.ts'
+import { digestOf, newId } from '../kernel/Ids.ts'
 
 /** A received upload of this account that has not made anything yet. */
 const usableUpload = (parts: Parts, accountId: string, uploadId: string) =>
@@ -146,7 +147,7 @@ const importOf = (parts: Parts, accountId: string, first: string | undefined) =>
 export const creating = (parts: Parts) => ({
   createCapture: Effect.fn('Styld.Capture.create')(function* (input: CreateCapture) {
     const { accountId } = yield* CurrentAccount
-    const inputDigest = yield* parts.digest(
+    const inputDigest = yield* digestOf(
       JSON.stringify([
         'photo',
         input.uploadId,
@@ -162,7 +163,7 @@ export const creating = (parts: Parts) => ({
     if (!upload.contentType.startsWith('image/')) return yield* UploadRefused.make({ reason: 'wrongType' })
     const policy = yield* CaptureConfig
     const capture: CaptureRow = {
-      ...baseCapture(accountId, yield* parts.randomId('cp'), upload, yield* nowDate),
+      ...baseCapture(accountId, yield* newId('cp'), upload, yield* nowDate),
       kind: 'photo',
       source: input.source,
       side: input.side ?? null,
@@ -174,7 +175,7 @@ export const creating = (parts: Parts) => ({
   }),
   createVideoCapture: Effect.fn('Styld.Capture.createVideo')(function* (input: CreateVideoCapture) {
     const { accountId } = yield* CurrentAccount
-    const inputDigest = yield* parts.digest(
+    const inputDigest = yield* digestOf(
       JSON.stringify([
         'video',
         input.videoUploadId,
@@ -191,7 +192,7 @@ export const creating = (parts: Parts) => ({
       return yield* UploadRefused.make({ reason: 'wrongType' })
     const measured = yield* measureVideo(parts, video)
     const policy = yield* CaptureConfig
-    const id = yield* parts.randomId('cp')
+    const id = yield* newId('cp')
     const capture: CaptureRow = {
       ...baseCapture(accountId, id, video, yield* nowDate),
       kind: 'video',

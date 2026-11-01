@@ -1,7 +1,5 @@
 import { CaptureUnavailable } from '@styld/protocol'
 import { Context, DateTime, Duration, Effect } from 'effect'
-import * as Crypto from 'effect/Crypto'
-import * as Base64Url from 'effect/encoding/Base64Url'
 import type { Boards } from '../boards/Boards.ts'
 import { CaptureConfig } from '../capture/Policy.ts'
 import { Usage } from '../capture/Usage.ts'
@@ -51,8 +49,6 @@ export class Generations extends Context.Service<Generations, ReturnType<typeof 
 
 export const makeGenerations = (bindings: GenerationBindings) =>
   Effect.gen(function* () {
-    const crypto = yield* Crypto.Crypto
-    const encoder = new TextEncoder()
     return Generations.of(
       make({
         store: makeGenerationStore(bindings.database),
@@ -66,14 +62,6 @@ export const makeGenerations = (bindings: GenerationBindings) =>
         planner: yield* MoodPlanner,
         painter: yield* PicturePainter,
         face: (yield* CaptureConfig).pictures.face,
-        newId: () =>
-          Effect.map(crypto.randomBytes(16), (bytes) => `gj_${Base64Url.encode(bytes)}`).pipe(
-            Effect.mapError(unavailable),
-          ),
-        digest: (text) =>
-          Effect.map(crypto.digest('SHA-256', encoder.encode(text)), Base64Url.encode).pipe(
-            Effect.mapError(unavailable),
-          ),
       }),
     )
   })

@@ -27,8 +27,6 @@ export interface Parts {
   readonly painter: PicturePainter['Service']
   /** A picture whose face score reaches this is never sent to the painter. */
   readonly face: number
-  readonly newId: () => Effect.Effect<string, CaptureUnavailable>
-  readonly digest: (text: string) => Effect.Effect<string, CaptureUnavailable>
 }
 
 export const unavailable = () => CaptureUnavailable.make({})

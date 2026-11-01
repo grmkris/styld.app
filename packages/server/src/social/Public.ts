@@ -10,8 +10,6 @@ import {
   WardrobeUnavailable,
 } from '@styld/protocol'
 import { Array, Context, Effect, Option, Schema } from 'effect'
-import * as Crypto from 'effect/Crypto'
-import * as Base64Url from 'effect/encoding/Base64Url'
 import { shownItem } from '../boards/Parts.ts'
 import { type BoardItemRow, type BoardRow, type BoardStore, makeBoardStore } from '../boards/Store.ts'
 import { type LookRow, type LookStore, makeLookStore } from '../looks/Store.ts'
@@ -25,6 +23,7 @@ import type { StoreUnavailable } from '../kernel/Db.ts'
 import type { ProfileRow } from './ProfileStore.ts'
 import { makePublicStore, type PublicStore } from './PublicStore.ts'
 import { makeSocialStore, type SocialStore } from './SocialStore.ts'
+import { digestOf } from '../kernel/Ids.ts'
 
 // What others may see. One rule throughout: a thing is shown while its owner's profile is published and shown, its
 // owner made it public, and Styld's check of it passed or was unsure (unsure stays on its own links; discovery,
@@ -394,8 +393,7 @@ const make = (
   bindings: ImageBindings & { readonly database: Parameters<typeof makePublicStore>[0] },
   checks: Checks['Service'],
 ) =>
-  Effect.gen(function* () {
-    const crypto = yield* Crypto.Crypto
+  Effect.sync(() => {
     const r: Reader = {
       store: makePublicStore(bindings.database),
       boards: makeBoardStore(bindings.database),
@@ -405,12 +403,6 @@ const make = (
       // Pictures are not gated by blocks: their ids are random, and every page that names one applies blocks.
       viewer: Option.none(),
     }
-    const encoder = new TextEncoder()
-    const versionOf = (key: string, size: ImageSize) =>
-      Effect.map(
-        crypto.digest('SHA-256', encoder.encode(key)),
-        (bytes) => `${Base64Url.encode(bytes).slice(0, 22)}.${size}`,
-      ).pipe(Effect.mapError(unavailable))
     return { ...pages(r), ...images(r, bindings, versionOf) }
   })
 
@@ -418,6 +410,10 @@ const make = (
 export class PublicPages extends Context.Service<PublicPages, Effect.Success<ReturnType<typeof make>>>()(
   '@styld/server/PublicPages',
 ) {}
+
+/** A public picture's version: a digest of its stored key, so a changed picture is a new address. */
+const versionOf = (key: string, size: ImageSize) =>
+  Effect.map(digestOf(key), (digest) => `${digest.slice(0, 22)}.${size}`)
 
 /** Public pages over the Worker's bindings, by the Worker's checks. Build it once per isolate. */
 export const makePublicPages = (

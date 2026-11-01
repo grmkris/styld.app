@@ -31,6 +31,7 @@ import {
   unavailable,
 } from './Parts.ts'
 import { nowDate } from '../kernel/Db.ts'
+import { digestOf, newId } from '../kernel/Ids.ts'
 
 // Saving a board's table: the editor's whole table, an assistant's arrangement, an assistant's exact table.
 
@@ -100,7 +101,7 @@ const savedTable = (
 const itemIds = (parts: Parts, count: number) =>
   Effect.forEach(
     Array.makeBy(count, () => undefined),
-    () => Effect.flatMap(parts.newId('bi'), (id) => Schema.decodeUnknownEffect(BoardItemId)(id).pipe(Effect.orDie)),
+    () => Effect.flatMap(newId('bi'), (id) => Schema.decodeUnknownEffect(BoardItemId)(id).pipe(Effect.orDie)),
   )
 
 /** What a placed thing becomes on the table, with its id and its place in the stack. */
@@ -135,7 +136,7 @@ export const tables = (parts: Parts) => ({
     const operation = {
       operationId: input.operationId,
       command: 'saveBoardItems',
-      inputDigest: yield* parts.digest(JSON.stringify([boardId, input.version, input.items])),
+      inputDigest: yield* digestOf(JSON.stringify([boardId, input.version, input.items])),
     }
     if (Option.isSome(yield* receiptFor(parts, accountId, input.operationId, operation.command, operation.inputDigest)))
       return yield* one(parts, accountId, boardId)
@@ -150,7 +151,7 @@ export const tables = (parts: Parts) => ({
     const operation = {
       operationId: input.operationId,
       command: 'arrangeBoard',
-      inputDigest: yield* parts.digest(JSON.stringify([boardId, input.layout, input.add ?? []])),
+      inputDigest: yield* digestOf(JSON.stringify([boardId, input.layout, input.add ?? []])),
     }
     if (Option.isSome(yield* receiptFor(parts, accountId, input.operationId, operation.command, operation.inputDigest)))
       return yield* one(parts, accountId, boardId)
@@ -185,7 +186,7 @@ export const tables = (parts: Parts) => ({
     const operation = {
       operationId: input.operationId,
       command: 'setTable',
-      inputDigest: yield* parts.digest(JSON.stringify([boardId, input.version, input.items])),
+      inputDigest: yield* digestOf(JSON.stringify([boardId, input.version, input.items])),
     }
     if (Option.isSome(yield* receiptFor(parts, accountId, input.operationId, operation.command, operation.inputDigest)))
       return yield* one(parts, accountId, boardId)

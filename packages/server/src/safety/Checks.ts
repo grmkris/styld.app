@@ -3,8 +3,6 @@ import { CheckReason, CheckState, type CheckStatus, WardrobeUnavailable } from '
 import { and, eq, inArray, isNotNull, lt, ne } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Array, Context, DateTime, Duration, Effect, Option, Schema } from 'effect'
-import * as Crypto from 'effect/Crypto'
-import * as Base64Url from 'effect/encoding/Base64Url'
 import type { Picture } from '../capture/Providers.ts'
 import { collect } from '../Streams.ts'
 import { deliverImage, type ImageBindings } from '../wardrobe/Delivery.ts'
@@ -12,6 +10,7 @@ import { reachedThrough } from '../social/PublicStore.ts'
 import { shownImage } from '../wardrobe/Shown.ts'
 import { chunked, nowDate } from '../kernel/Db.ts'
 import { type Content, ContentJudge, type Verdict, worse } from './Judge.ts'
+import { digestOf } from '../kernel/Ids.ts'
 
 /** What a check is of: a profile (by account), a board, a look or a piece. */
 export const CheckTarget = Schema.Struct({
@@ -258,18 +257,14 @@ const checkRows = (db: Database) => ({
     ).pipe(Effect.map((changed) => changed.length > 0)),
 })
 
+/** What a check judged: the words and pictures shown, as one digest. */
+const shownDigest = (shown: Shown) => digestOf(JSON.stringify([shown.texts, shown.pictures]))
+
 const make = (bindings: CheckBindings) =>
   Effect.gen(function* () {
-    const crypto = yield* Crypto.Crypto
     const judge = yield* ContentJudge
     const db = drizzle(bindings.database)
     const rows = checkRows(db)
-    const encoder = new TextEncoder()
-    const digestOf = (shown: Shown) =>
-      Effect.map(
-        crypto.digest('SHA-256', encoder.encode(JSON.stringify([shown.texts, shown.pictures]))),
-        Base64Url.encode,
-      ).pipe(Effect.mapError(unavailable))
     const enqueue = (targets: ReadonlyArray<CheckTarget>) =>
       Effect.forEach(
         Array.chunksOf(targets, queueBatch),
@@ -306,7 +301,7 @@ const make = (bindings: CheckBindings) =>
       ) {
         const shown = yield* shownBy(db, target)
         if (Option.isNone(shown) || !shown.value.public) return yield* rows.kept(target)
-        const digest = yield* digestOf(shown.value)
+        const digest = yield* shownDigest(shown.value)
         const known = yield* rows.pending(target, shown.value.accountId, digest)
         if (Option.isSome(known)) return known
         if (!(yield* judged(target, shown.value, digest))) {
@@ -335,7 +330,7 @@ const make = (bindings: CheckBindings) =>
       changed: Effect.fn('Styld.Checks.changed')(function* (target: CheckTarget) {
         const shown = yield* shownBy(db, target)
         if (Option.isNone(shown) || !shown.value.public) return false
-        const known = yield* rows.pending(target, shown.value.accountId, yield* digestOf(shown.value))
+        const known = yield* rows.pending(target, shown.value.accountId, yield* shownDigest(shown.value))
         if (Option.isNone(known)) yield* enqueue([target])
         return true
       }),
@@ -345,7 +340,7 @@ const make = (bindings: CheckBindings) =>
         if (hide) yield* rows.hide(target, 'reports')
         const shown = yield* shownBy(db, target)
         if (Option.isNone(shown) || !shown.value.public) return
-        const digest = yield* digestOf(shown.value)
+        const digest = yield* shownDigest(shown.value)
         const verdict = yield* verdictOn(shown.value)
         // A new verdict replaces the one it had, without a pending state in between; content changed meanwhile keeps
         // its pending check of the new content.

@@ -11,8 +11,6 @@ import {
   ThinkingSpent,
 } from '@styld/protocol'
 import { Array, Clock, Context, Effect, Option, Order } from 'effect'
-import * as Crypto from 'effect/Crypto'
-import * as Base64Url from 'effect/encoding/Base64Url'
 import type { CaptureMetrics } from '../capture/Metrics.ts'
 import type { Picture } from '../capture/Providers.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
@@ -23,6 +21,7 @@ import type { OutfitProposer } from './Proposer.ts'
 import { type Brief, missingOf, proposed, type Wearable } from './Rules.ts'
 import type { OutfitStore } from './Store.ts'
 import { type Owned, wearablesOf } from './Wearables.ts'
+import { newId } from '../kernel/Ids.ts'
 
 // The outfit engine (owner, 2026-10-31), shared by the website, the assistants and Styld: free at the account's pace,
 // Thinking at most `thinkingPerDay` times a day. Fast draws candidates by the rules; Thinking asks the model; Clef
@@ -130,11 +129,8 @@ const admitted = (parts: OutfitParts, accountId: string, mode: OutfitMode) =>
     if (!counted) return yield* ThinkingSpent.make({})
   })
 
-const make = (parts: OutfitParts, crypto: Effect.Success<typeof Crypto.Crypto>) => {
-  const newSession = crypto.randomBytes(16).pipe(
-    Effect.map((bytes) => OutfitSession.make(`os_${Base64Url.encode(bytes)}`)),
-    Effect.mapError(unavailable),
-  )
+const make = (parts: OutfitParts) => {
+  const newSession = Effect.map(newId('os'), (id) => OutfitSession.make(id))
   return {
     /** A ranked batch of new outfits for the account, as asked. */
     make: Effect.fn('Styld.Outfits.make')(function* (input: MakeOutfit) {
@@ -198,10 +194,7 @@ const make = (parts: OutfitParts, crypto: Effect.Success<typeof Crypto.Crypto>) 
 export class Outfits extends Context.Service<Outfits, ReturnType<typeof make>>()('@styld/server/Outfits') {}
 
 /** The engine over its parts. Build it once per isolate. */
-export const makeOutfits = (parts: OutfitParts) =>
-  Effect.gen(function* () {
-    return make(parts, yield* Crypto.Crypto)
-  })
+export const makeOutfits = (parts: OutfitParts) => Effect.sync(() => make(parts))
 
 /** Count a proposal the person kept: worn today, or kept on a board. */
 export const outfitKept = (metrics: CaptureMetrics['Service'], proposal: ProposalRef, outcome: 'worn' | 'kept') =>

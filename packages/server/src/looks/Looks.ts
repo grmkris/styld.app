@@ -10,14 +10,13 @@ import {
   WardrobeUnavailable,
 } from '@styld/protocol'
 import { Context, Effect, Option, Schema } from 'effect'
-import * as Crypto from 'effect/Crypto'
-import * as Base64Url from 'effect/encoding/Base64Url'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import type { Checks } from '../safety/Checks.ts'
 import { makeProfileStore, type ProfileStore, requirePublished } from '../social/ProfileStore.ts'
 import { toPiece } from '../wardrobe/Parts.ts'
 import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
 import { type LookRow, type LookStore, makeLookStore } from './Store.ts'
+import { digestOf, newId } from '../kernel/Ids.ts'
 
 const unavailable = () => WardrobeUnavailable.make({})
 const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
@@ -73,8 +72,7 @@ const sharing = (
 }
 
 const make = (database: Parameters<typeof makeLookStore>[0], checks: Checks['Service']) =>
-  Effect.gen(function* () {
-    const crypto = yield* Crypto.Crypto
+  Effect.sync(() => {
     const store = makeLookStore(database)
     const looksShown = (rows: ReadonlyArray<LookRow>) =>
       Effect.flatMap(
@@ -84,14 +82,6 @@ const make = (database: Parameters<typeof makeLookStore>[0], checks: Checks['Ser
         ),
         (statuses) => shownLooks(store, rows, statuses),
       )
-    const digest = (text: string) =>
-      crypto
-        .digest('SHA-256', new TextEncoder().encode(text))
-        .pipe(Effect.map(Base64Url.encode), Effect.mapError(unavailable))
-    const newId = crypto.randomBytes(16).pipe(
-      Effect.map((bytes) => `lk_${Base64Url.encode(bytes)}`),
-      Effect.mapError(unavailable),
-    )
     const one = (accountId: string, lookId: string) =>
       Effect.gen(function* () {
         const row = yield* stored(store.findLook(accountId, lookId))
@@ -104,7 +94,7 @@ const make = (database: Parameters<typeof makeLookStore>[0], checks: Checks['Ser
        * look; using it for another look is a conflict. */
       createLook: Effect.fn('Styld.Looks.create')(function* (input: CreateLook) {
         const { accountId } = yield* CurrentAccount
-        const inputDigest = yield* digest(JSON.stringify([input.name, input.occasion ?? null, input.pieceIds]))
+        const inputDigest = yield* digestOf(JSON.stringify([input.name, input.occasion ?? null, input.pieceIds]))
         const receipt = yield* stored(store.findReceipt(accountId, input.operationId))
         if (Option.isSome(receipt))
           return receipt.value.inputDigest === inputDigest && receipt.value.command === 'createLook'
@@ -113,7 +103,7 @@ const make = (database: Parameters<typeof makeLookStore>[0], checks: Checks['Ser
         const pieceIds = [...new Set(input.pieceIds)]
         const owned = yield* stored(store.ownPieces(accountId, pieceIds))
         if (pieceIds.some((id) => !owned.has(id))) return yield* PieceNotFound.make({})
-        const id = yield* newId
+        const id = yield* newId('lk')
         const at = yield* nowDate
         yield* stored(
           store.createLook(

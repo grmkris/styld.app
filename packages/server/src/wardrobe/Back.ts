@@ -3,6 +3,7 @@ import { Effect, Option } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { ownerPiece, ownPiece, type Parts, stored, typeOf, unavailable, usableUpload } from './Parts.ts'
 import { nowDate } from '../kernel/Db.ts'
+import { digestOf } from '../kernel/Ids.ts'
 
 /** A back of the piece: the person's photo of it, cut out like the front, for a photo's credit (owner, 2026-10-31).
  * Repeating the operation answers the piece again; a cut-out that could not be made keeps the photo. */
@@ -10,7 +11,7 @@ export const backing = (parts: Parts) => ({
   setBack: Effect.fn('Styld.Wardrobe.setBack')(function* (pieceId: PieceId, input: SetBack) {
     const { accountId } = yield* CurrentAccount
     const piece = yield* ownPiece(parts)(pieceId)
-    const inputDigest = yield* parts.digest(JSON.stringify(['back', pieceId, input.uploadId]))
+    const inputDigest = yield* digestOf(JSON.stringify(['back', pieceId, input.uploadId]))
     const receipt = yield* stored(parts.store.findReceipt(accountId, input.operationId))
     if (Option.isSome(receipt))
       return receipt.value.inputDigest === inputDigest

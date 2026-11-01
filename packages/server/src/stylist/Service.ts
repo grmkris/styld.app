@@ -9,8 +9,6 @@ import {
 } from '@styld/protocol'
 import { type Context, DateTime, Effect, type Layer, Option, Schema } from 'effect'
 import type { LanguageModel } from 'effect/ai'
-import * as Crypto from 'effect/Crypto'
-import * as Base64Url from 'effect/encoding/Base64Url'
 import type { CaptureMetrics } from '../capture/Metrics.ts'
 import type { Usage } from '../capture/Usage.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
@@ -21,6 +19,7 @@ import { historyText, outlineOf, systemPrompt } from './Prompt.ts'
 import type { StoredMessage, StylistMethods } from './StylistObject.ts'
 import { lookingUpToolNames, showingToolNames, turnTools } from './Tools.ts'
 import { runTurn } from './Turn.ts'
+import { digestOf, newId } from '../kernel/Ids.ts'
 
 /** How long a reply may be written before it shows as failed and another message may begin: longer than the queue's
  * attempts at it. */
@@ -97,22 +96,12 @@ const messageOf = (message: StoredMessage): ChatMessage => ({
 
 /** Ids for chats and messages, and a reply's id from the account and the request's operation id: the same request
  * is the same reply. */
-const idsOf = (crypto: Effect.Success<typeof Crypto.Crypto>) => {
-  const encoder = new TextEncoder()
-  return {
-    randomId: (prefix: 'ch' | 'ms') =>
-      crypto.randomBytes(16).pipe(
-        Effect.map((bytes) => `${prefix}_${Base64Url.encode(bytes)}`),
-        Effect.mapError(unavailable),
-      ),
-    turnIdOf: (accountId: string, operationId: string) =>
-      crypto.digest('SHA-256', encoder.encode(`${accountId}:${operationId}`)).pipe(
-        Effect.map((digest) => `tn_${Base64Url.encode(digest).slice(0, 22)}`),
-        Effect.mapError(unavailable),
-      ),
-  }
+const replyIds = {
+  randomId: (prefix: 'ch' | 'ms') => newId(prefix),
+  turnIdOf: (accountId: string, operationId: string) =>
+    Effect.map(digestOf(`${accountId}:${operationId}`), (digest) => `tn_${digest.slice(0, 22)}`),
 }
-type Ids = ReturnType<typeof idsOf>
+type Ids = typeof replyIds
 
 /** A reply that will not come: shown as failed, and its credit back. */
 const giveUp = <R>(parts: StylistParts<R>, accountId: string, turnId: string) =>
@@ -283,9 +272,6 @@ const queueing = <R>(parts: StylistParts<R>, ids: Ids) => ({
 
 /** Styld, the stylist in the app: the person's messages and chats, and its replies written on the queue. */
 export const makeStylist = <R>(parts: StylistParts<R>) =>
-  Effect.map(Crypto.Crypto, (crypto) => {
-    const ids = idsOf(crypto)
-    return { send: sending(parts, ids), ...reading(parts), ...queueing(parts, ids) }
-  })
+  Effect.sync(() => ({ send: sending(parts, replyIds), ...reading(parts), ...queueing(parts, replyIds) }))
 
 export type StylistService = Effect.Success<ReturnType<typeof makeStylist>>

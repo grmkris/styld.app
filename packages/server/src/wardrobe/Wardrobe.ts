@@ -15,8 +15,6 @@ import {
   UploadRefused,
 } from '@styld/protocol'
 import { Context, DateTime, Effect, Option, Predicate } from 'effect'
-import * as Crypto from 'effect/Crypto'
-import * as Base64Url from 'effect/encoding/Base64Url'
 import { type ByteStream, pump } from '../Streams.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { deliverImage } from './Delivery.ts'
@@ -40,6 +38,7 @@ import { nowDate } from '../kernel/Db.ts'
 import { pictureView, shownImage, shows, turnView } from './Shown.ts'
 import { makeStore, type PictureRow, type PieceRow, type UploadRow } from './Store.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
+import { digestOf, randomToken } from '../kernel/Ids.ts'
 
 /** A video's request body, as the Worker runtime streams it. */
 export type VideoBody =
@@ -109,7 +108,7 @@ const reads = (parts: Parts) => ({
 const tokenUpload = (parts: Parts, uploadId: string, token: string) =>
   Effect.gen(function* () {
     const row = yield* stored(parts.store.findUpload(uploadId))
-    if (Option.isNone(row) || (yield* parts.digest(token)) !== row.value.tokenDigest) return yield* refused('notFound')
+    if (Option.isNone(row) || (yield* digestOf(token)) !== row.value.tokenDigest) return yield* refused('notFound')
     if (!(yield* stored(parts.store.accountEnabled(row.value.accountId)))) return yield* refused('notFound')
     return row.value
   })
@@ -120,14 +119,14 @@ const uploads = (parts: Parts) => ({
     input: typeof CreateUpload.Type | typeof CreateVideoUpload.Type,
   ) {
     const { accountId } = yield* CurrentAccount
-    const uploadId = `up_${yield* parts.randomToken(16)}`
-    const token = yield* parts.randomToken(32)
+    const uploadId = `up_${yield* randomToken(16)}`
+    const token = yield* randomToken(32)
     const expiresAt = DateTime.toDateUtc(DateTime.add(yield* DateTime.now, uploadLifetime))
     yield* stored(
       parts.store.insertUpload({
         id: uploadId,
         accountId,
-        tokenDigest: yield* parts.digest(token),
+        tokenDigest: yield* digestOf(token),
         contentType: input.contentType,
         bytes: input.bytes,
         objectKey: uploadKey(accountId, uploadId),
@@ -284,7 +283,7 @@ const adding = (parts: Parts) => ({
   }),
   addPiece: Effect.fn('Styld.Wardrobe.addPiece')(function* (input: AddPiece) {
     const { accountId, via } = yield* CurrentAccount
-    const inputDigest = yield* parts.digest(addMeaning(input))
+    const inputDigest = yield* digestOf(addMeaning(input))
     const receipt = yield* stored(parts.store.findReceipt(accountId, input.operationId))
     if (Option.isSome(receipt))
       return receipt.value.inputDigest === inputDigest
@@ -292,7 +291,7 @@ const adding = (parts: Parts) => ({
         : yield* OperationConflict.make({})
     const upload = yield* usableUpload(parts.store, accountId, input.uploadId)
     const now = yield* nowDate
-    const row = newPiece(input, upload, { id: `pc_${yield* parts.randomToken(16)}`, via, now })
+    const row = newPiece(input, upload, { id: `pc_${yield* randomToken(16)}`, via, now })
     const receiptRow = {
       accountId,
       operationId: input.operationId,
@@ -442,17 +441,11 @@ const processing = (parts: Parts) => ({
 
 const make = (bindings: WardrobeBindings) =>
   Effect.gen(function* () {
-    const crypto = yield* Crypto.Crypto
-    const encoder = new TextEncoder()
     const parts: Parts = {
       bindings,
       store: makeStore(bindings.database),
       cutout: yield* GarmentCutout,
       pieceChanged: yield* PieceChanged,
-      randomToken: (bytes) =>
-        crypto.randomBytes(bytes).pipe(Effect.map(Base64Url.encode), Effect.mapError(unavailable)),
-      digest: (text) =>
-        crypto.digest('SHA-256', encoder.encode(text)).pipe(Effect.map(Base64Url.encode), Effect.mapError(unavailable)),
     }
     return {
       ...reads(parts),

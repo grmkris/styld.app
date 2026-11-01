@@ -19,6 +19,7 @@ import { type Store } from '../wardrobe/Store.ts'
 import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
 import { toPiece, type WardrobeBindings } from '../wardrobe/Parts.ts'
 import { type BoardItemRow, type BoardPinRow, type BoardRow, type BoardStore } from './Store.ts'
+import { newId } from '../kernel/Ids.ts'
 
 // What the board operations share: the bindings, how a board is shown, receipts, ownership and new pins.
 
@@ -74,8 +75,6 @@ export interface Parts {
   readonly lookStore: LookStore
   readonly profileStore: ProfileStore
   readonly checks: Checks['Service']
-  readonly newId: (prefix: 'bd' | 'bm' | 'pn' | 'bi') => Effect.Effect<string, WardrobeUnavailable>
-  readonly digest: (text: string) => Effect.Effect<string, WardrobeUnavailable>
 }
 
 export type PinWithPiece = Effect.Success<ReturnType<BoardStore['pinsOf']>>[number]
@@ -210,7 +209,7 @@ export const newPins = (
   at: Date,
 ) =>
   Effect.forEach(targets, (target, index) =>
-    Effect.map(parts.newId('pn'), (id): BoardPinRow => ({
+    Effect.map(newId('pn'), (id): BoardPinRow => ({
       id,
       boardId,
       ...target,

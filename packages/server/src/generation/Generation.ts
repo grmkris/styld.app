@@ -13,6 +13,7 @@ import { holdOf, type Parts, refund, send, unavailable, view } from './Parts.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { giveUp } from './Work.ts'
 import type { JobRow } from './Store.ts'
+import { digestOf, newId } from '../kernel/Ids.ts'
 
 /** A job not finished and not touched for this long lost its message: reading it sends it again. */
 const stalledMillis = 3 * 60 * 1000
@@ -55,7 +56,7 @@ export const generations = (parts: Parts) => ({
   /** A sticker from the words, or a mood board of the person's pieces: one credit each, held before anything runs. */
   admit: Effect.fn('Styld.Generation.admit')(function* (kind: GenerationKind, boardId: BoardId, input: Generate) {
     const { accountId } = yield* CurrentAccount
-    const inputDigest = yield* parts.digest(JSON.stringify([kind, boardId, input.prompt]))
+    const inputDigest = yield* digestOf(JSON.stringify([kind, boardId, input.prompt]))
     const earlier = yield* replayed(parts, accountId, input.operationId, inputDigest)
     if (Option.isSome(earlier))
       return yield* get(parts, earlier.value).pipe(
@@ -64,7 +65,7 @@ export const generations = (parts: Parts) => ({
     const board = yield* parts.boards
       .getBoard(boardId)
       .pipe(Effect.catchTag('WardrobeUnavailable', () => Effect.fail(unavailable())))
-    const id = yield* parts.newId()
+    const id = yield* newId('gj')
     // The job's queue deliveries and its reads record the same job id, so the ask, its work and its polls join.
     yield* Effect.annotateCurrentSpan('styld.job_id', id)
     // The credit first, so an account with none left asks no model anything.

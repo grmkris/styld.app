@@ -6,6 +6,7 @@ import { enqueuePicture, type Parts, storedAs, unavailable } from './Parts.ts'
 import { CaptureConfig } from './Policy.ts'
 import type { DetectionRow } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
+import { digestOf, newId } from '../kernel/Ids.ts'
 
 const decodeReviewed = Schema.decodeUnknownEffect(Schema.fromJsonString(Reviewed))
 
@@ -146,7 +147,7 @@ const countDecisions = (
 export const reviewing = (parts: Parts) => ({
   review: Effect.fn('Styld.Capture.review')(function* (input: Review) {
     const { accountId } = yield* CurrentAccount
-    const inputDigest = yield* parts.digest(JSON.stringify([input.keep, input.discard]))
+    const inputDigest = yield* digestOf(JSON.stringify([input.keep, input.discard]))
     const receipt = yield* storedAs(parts.wardrobeStore.findReceipt(accountId, input.operationId))
     if (Option.isSome(receipt)) {
       if (receipt.value.inputDigest !== inputDigest) return yield* OperationConflict.make({})
@@ -171,7 +172,7 @@ export const reviewing = (parts: Parts) => ({
           isPhoto(detection),
       )?.cutoutKey ?? null
     const kept = yield* Effect.forEach(input.keep, (keep) =>
-      Effect.map(parts.randomId('pc'), (pieceId) => ({ keep, pieceId, detection: open.get(keep.detectionId) })),
+      Effect.map(newId('pc'), (pieceId) => ({ keep, pieceId, detection: open.get(keep.detectionId) })),
     )
     const pieces = kept.flatMap(({ keep, pieceId, detection }) =>
       detection === undefined

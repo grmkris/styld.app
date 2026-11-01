@@ -16,6 +16,7 @@ import {
 import { GarmentSegmenter, GarmentVision, PictureWork, type Route, type WorkingCopies } from './Providers.ts'
 import type { Found } from './SamStream.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
+import { newId } from '../kernel/Ids.ts'
 
 /** One garment cut out of a photo, before it is stored. */
 export interface CutPiece {
@@ -155,7 +156,7 @@ export const detectionsOf = (
         const suggestion = yield* (yield* GarmentVision).suggest({ bytes: small, contentType: 'image/webp' })
         const verdict = verdictOf(suggestion.whole)
         if (verdict === 'drop') return []
-        const id = yield* parts.randomId('dt')
+        const id = yield* newId('dt')
         const key = captureKey(capture.accountId, capture.id, `${id}.png`)
         yield* writeObject(parts, key, piece.png, 'image/png')
         const detection = {
@@ -190,7 +191,7 @@ export const detectionsOf = (
 
 /** A detection that keeps the original photo: providers off, or nothing could be cut out. */
 export const originalOnly = (parts: Parts, capture: CaptureRow, sourceKey: string) =>
-  Effect.map(parts.randomId('dt'), (id): DetectionRow => ({
+  Effect.map(newId('dt'), (id): DetectionRow => ({
     id,
     captureId: capture.id,
     accountId: capture.accountId,
