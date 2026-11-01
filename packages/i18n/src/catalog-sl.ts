@@ -594,7 +594,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'board.loading': 'Odpiram zbirko …',
   'board.failed': 'Te zbirke ni bilo mogoče odpreti.',
   'board.missing': 'Te zbirke ni več.',
-  'board.retry': 'Poskusi znova',
   'board.paper': 'Miza',
   'board.empty': 'Tapni enega od svojih kosov, da ga položiš na mizo, ali dodaj besede in slike.',
   'board.tools': 'Orodja zbirke',

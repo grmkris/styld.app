@@ -1,4 +1,8 @@
 import { defineConfig } from '@x18n/core'
+import catalog from './packages/i18n/catalogs/en.json' with { type: 'json' }
+
+/** The catalogs' top-level sections; a quoted string under one of them is a message key. */
+const namespaces = Object.keys(catalog)
 
 /** x18n manages and checks the en/sl catalogs; `@styld/i18n` formats them at runtime.
  * `tools/i18n-check.ts` stays the authority on ICU syntax, arguments and plural forms. */
@@ -15,6 +19,18 @@ export default defineConfig({
     calls: [
       { callee: 'format', key: 1 },
       { callee: 'formatRich', key: 1 },
+    ],
+    // A view that chooses among messages keeps their keys in a typed table (`satisfies MessageKey`) and formats the
+    // one it picks, so a quoted key anywhere in the code counts as used.
+    regex: [{ extensions: ['ts'], patterns: [`'((?:${namespaces.join('|')})(?:\\.[A-Za-z_]+)+)'`] }],
+    // Keys built from a contract value at runtime: a piece's type, season, occasion, pattern and colour.
+    keysInUse: [
+      'wardrobe.types.*',
+      'wardrobe.typeWords.*',
+      'wardrobe.season.*',
+      'wardrobe.occasion.*',
+      'wardrobe.pattern.*',
+      'wardrobe.addPieceColor_*',
     ],
   },
   extract: {
