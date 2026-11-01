@@ -197,7 +197,11 @@ const structured = async (client: Client, name: string, args: Record<string, unk
  * operations the website uses, acting for the token's account. */
 const addPieceThroughTools = async (origin: string, client: Client) => {
   const upload = Schema.decodeUnknownSync(Schema.Struct({ uploadId: Schema.String, uploadUrl: Schema.String }))(
-    await structured(client, 'upload_create', { contentType: 'image/png', bytes: png.byteLength }),
+    await structured(client, 'upload_create', {
+      operationId: 'mcp-native-upload-1',
+      contentType: 'image/png',
+      bytes: png.byteLength,
+    }),
   )
   expect(upload.uploadUrl.startsWith(`${origin}/api/uploads/`)).toBe(true)
   const put = await fetch(upload.uploadUrl, {
@@ -222,7 +226,9 @@ const addPieceThroughTools = async (origin: string, client: Client) => {
     pieces: [{ id: pieceId }],
     nextCursor: null,
   })
-  expect(await structured(client, 'piece_update', { pieceId, colours: ['white'] })).toMatchObject({
+  expect(
+    await structured(client, 'piece_update', { pieceId, operationId: 'mcp-native-update-1', colours: ['white'] }),
+  ).toMatchObject({
     colours: ['white'],
   })
   const lookId = await lookThroughTools(origin, client, pieceId)

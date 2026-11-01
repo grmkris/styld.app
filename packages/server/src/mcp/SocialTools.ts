@@ -1,4 +1,4 @@
-import { CreateReport, FeedQuery, Handle, SetSaved } from '@styld/protocol'
+import { CreateReport, FeedQuery, Handle, SetBlocked, SetFollowing, SetSaved } from '@styld/protocol'
 import { Effect, Schema } from 'effect'
 import type { Social } from '../social/Social.ts'
 import { tool } from './Tools.ts'
@@ -30,9 +30,9 @@ export const socialTools = (social: Social['Service']) => [
     title: 'Follow or unfollow',
     description:
       'Follow someone by their handle, or stop. Following is private and one-way; nobody sees counts. Only when the person asks.',
-    parameters: Schema.Struct({ handle: Handle, following: Schema.Boolean }),
+    parameters: Schema.Struct({ handle: Handle, ...SetFollowing.fields }),
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-    handler: ({ handle, following }) => social.setFollowing(handle, { following }),
+    handler: ({ handle, ...input }) => social.setFollowing(handle, input),
   }),
   tool({
     name: 'following_list',
@@ -47,9 +47,9 @@ export const socialTools = (social: Social['Service']) => [
     title: 'Block or unblock',
     description:
       'Block someone by their handle: neither sees the other’s profile or boards and follows between them end; they are not told. Or unblock. Ask the person first.',
-    parameters: Schema.Struct({ handle: Handle, blocked: Schema.Boolean }),
+    parameters: Schema.Struct({ handle: Handle, ...SetBlocked.fields }),
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: true },
-    handler: ({ handle, blocked }) => social.setBlocked(handle, { blocked }),
+    handler: ({ handle, ...input }) => social.setBlocked(handle, input),
   }),
   tool({
     name: 'report_create',

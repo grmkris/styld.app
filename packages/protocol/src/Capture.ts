@@ -141,6 +141,7 @@ export type CameraLayout = typeof CameraLayout.Type
 
 /** The camera asks whether one garment is shown. Frames are small JPEGs, base64 encoded. */
 export const HeldCheckRequest = Schema.Struct({
+  operationId: OperationId,
   frame: Schema.String.check(Schema.isMaxLength(400_000)),
   previous: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(400_000))),
   layout: Schema.optionalKey(CameraLayout),

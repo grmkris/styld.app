@@ -21,7 +21,7 @@ import { type AppRoute, boardRouter, looksRouter, photosRouter } from './route.t
 
 export type Step = Update.Step<Model, Message, Services>
 
-const foldWardrobe = (update: typeof Wardrobe.revisit) =>
+const foldWardrobe = (update: typeof Wardrobe.enter) =>
   Update.foldChildStep({
     update,
     read: (model: Model) => Option.some(model.wardrobe),

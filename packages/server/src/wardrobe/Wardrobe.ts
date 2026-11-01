@@ -38,6 +38,7 @@ import { pictureView, shownImage, shows, turnView } from './Shown.ts'
 import { makeStore, type PictureRow, type PieceRow, type UploadRow } from './Store.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
 import { digestOf, randomToken } from '../kernel/Ids.ts'
+import { once, type Operation } from '../kernel/Receipts.ts'
 import { identify, priorResult, receiptRow, type Identified } from '../kernel/Receipts.ts'
 import { deleteKeys, deletePrefix } from '../kernel/Media.ts'
 
@@ -114,11 +115,30 @@ const tokenUpload = (parts: Parts, uploadId: string, token: string) =>
     return row.value
   })
 
-const uploads = (parts: Parts) => ({
-  /** Hand out a one-time upload path; its token is stored only as a digest. */
-  createUpload: Effect.fn('Styld.Wardrobe.createUpload')(function* (
-    input: typeof CreateUpload.Type | typeof CreateVideoUpload.Type,
-  ) {
+/** The upload path for a token. */
+const uploadPath = (uploadId: string, token: string) => `/api/uploads/${uploadId}?token=${token}`
+
+/** The upload an operation made, answered again with a fresh token: the first answer, and its token, were lost. */
+const reissued = (parts: Parts, accountId: string, uploadId: string) =>
+  Effect.gen(function* () {
+    const row = yield* stored(parts.store.findUpload(uploadId))
+    if (Option.isNone(row) || row.value.accountId !== accountId) return yield* refused('notFound')
+    const token = yield* randomToken(32)
+    yield* stored(parts.store.reissueUpload(uploadId, yield* digestOf(token)))
+    const upload: typeof Upload.Type = {
+      uploadId: UploadId.make(uploadId),
+      path: uploadPath(uploadId, token),
+      expiresAt: row.value.expiresAt.toISOString(),
+    }
+    return upload
+  })
+
+/** A one-time upload path for a file of this type and size; its token is stored only as a digest. */
+const newUpload = (parts: Parts) =>
+  Effect.fn('Styld.Wardrobe.newUpload')(function* (input: {
+    readonly contentType: UploadRow['contentType']
+    readonly bytes: number
+  }) {
     const { accountId } = yield* CurrentAccount
     const uploadId = `up_${yield* randomToken(16)}`
     const token = yield* randomToken(32)
@@ -137,10 +157,29 @@ const uploads = (parts: Parts) => ({
     )
     const upload: typeof Upload.Type = {
       uploadId: UploadId.make(uploadId),
-      path: `/api/uploads/${uploadId}?token=${token}`,
+      path: uploadPath(uploadId, token),
       expiresAt: expiresAt.toISOString(),
     }
     return upload
+  })
+
+const uploads = (parts: Parts) => ({
+  /** An upload Styld makes itself, for picture bytes it holds: an import, a photo pinned on a board. */
+  newUpload: newUpload(parts),
+  /** Hand out a one-time upload path; repeating the operation answers the same upload with a fresh token. */
+  createUpload: Effect.fn('Styld.Wardrobe.createUpload')(function* (
+    input: typeof CreateUpload.Type | typeof CreateVideoUpload.Type,
+  ) {
+    const { accountId } = yield* CurrentAccount
+    const { operationId, ...file } = input
+    return yield* once(
+      parts.store,
+      { accountId, operationId, command: 'createUpload', input: file },
+      {
+        replay: (uploadId) => reissued(parts, accountId, uploadId),
+        run: Effect.map(newUpload(parts)(file), (upload) => [upload, upload.uploadId] as const),
+      },
+    )
   }),
   /** Store a photo's bytes against its upload. The token is the only credential. */
   receiveUpload: Effect.fn('Styld.Wardrobe.receiveUpload')(function* (input: {
@@ -314,7 +353,11 @@ const editing = (parts: Parts) => ({
   updatePiece: Effect.fn('Styld.Wardrobe.updatePiece')(function* (pieceId: PieceId, input: UpdatePiece) {
     const { accountId } = yield* CurrentAccount
     const current = yield* toPiece(yield* ownPiece(parts)(pieceId))
-    const updated = yield* stored(parts.store.updatePiece(accountId, pieceId, { ...input, updatedAt: yield* nowDate }))
+    // Setting fields is the same change however often it is sent, so the operation id needs no receipt.
+    const { operationId: _operationId, ...changes } = input
+    const updated = yield* stored(
+      parts.store.updatePiece(accountId, pieceId, { ...changes, updatedAt: yield* nowDate }),
+    )
     if (Option.isNone(updated)) return yield* NotFound.make({})
     // Its name is what others read of it: a public piece renamed is checked again before they see the new name.
     if (input.name !== undefined && input.name !== current.name) yield* parts.pieceChanged.changed(pieceId)
@@ -431,6 +474,12 @@ const make = (bindings: WardrobeBindings) =>
       ...backing(parts),
       ...images(parts),
       ...processing(parts),
+      /** An operation of the person's whose work is not one D1 batch, answered once per operation id from the
+       * receipts (`kernel/Receipts.ts`): reading a shop's page into an upload. */
+      once: <A, E, R, E2, R2>(
+        operation: Omit<Operation, 'accountId'>,
+        answer: Parameters<typeof once<A, E, R, E2, R2>>[2],
+      ) => Effect.flatMap(CurrentAccount, ({ accountId }) => once(parts.store, { ...operation, accountId }, answer)),
     }
   })
 

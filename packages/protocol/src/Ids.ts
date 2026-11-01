@@ -11,3 +11,7 @@ export const OperationId = Schema.String.check(Schema.isPattern(/^[A-Za-z0-9_-]{
   Schema.brand('OperationId'),
 )
 export type OperationId = typeof OperationId.Type
+
+/** The payload of a write that needs nothing but its operation id: a delete, a retry, a status change. */
+export const Operation = Schema.Struct({ operationId: OperationId })
+export type Operation = typeof Operation.Type

@@ -1,4 +1,5 @@
-import { OperationId, Photo } from '@styld/protocol'
+import { newOperationId } from '../OperationIds.ts'
+import { Photo } from '@styld/protocol'
 import { Duration, Effect, Option, Predicate, Result, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import { AsyncData, Command, File, Update } from 'foldkit'
@@ -57,7 +58,7 @@ export const AddPhoto = Command.define('AddPhoto', {
   execute: ({ file }) =>
     Effect.gen(function* () {
       const uploadId = yield* uploadPicture(file)
-      const operationId = yield* Schema.decodeUnknownEffect(OperationId)(yield* (yield* Crypto.Crypto).randomUUIDv4())
+      const operationId = yield* newOperationId
       const api = yield* (yield* StyldClient).api
       const photo = yield* api.photo.addPhoto({ payload: { operationId, uploadId } })
       return Message.SucceededAddPhoto({ photo })

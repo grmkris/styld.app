@@ -7,7 +7,7 @@ import { CurrentAccount } from '../CurrentAccount.ts'
 import { publicClient } from '../mcp/ImageImport.ts'
 import { type Admit, asSessionAccount } from '../wardrobe/Http.ts'
 import { Wardrobe } from '../wardrobe/Wardrobe.ts'
-import { pictureFromLink } from './LinkPicture.ts'
+import { readLink } from './LinkPicture.ts'
 
 /** The website's link endpoint: a shop's product page read into an upload, at the account's pace. */
 export const linkHandlers = (
@@ -24,9 +24,7 @@ export const linkHandlers = (
             Effect.gen(function* () {
               const { accountId } = yield* CurrentAccount
               if (!(yield* allowLink(accountId))) return yield* SlowDown.make({})
-              return yield* pictureFromLink(wardrobe, payload.url).pipe(
-                Effect.provideService(HttpClient.HttpClient, http),
-              )
+              return yield* readLink(wardrobe, payload).pipe(Effect.provideService(HttpClient.HttpClient, http))
             }),
           ),
         ),

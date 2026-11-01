@@ -1,3 +1,4 @@
+import { newOperation, newOperationId } from '../OperationIds.ts'
 import {
   CaptureId,
   Colour,
@@ -138,10 +139,7 @@ export const RefreshTray = Command.define('RefreshTray', {
 /** @internal Exported for its tests. */
 export const DrawOperationId = Command.define('DrawOperationId', {
   messages: [Message.CompletedDrawOperationId],
-  execute: Effect.gen(function* () {
-    const operationId = yield* (yield* Crypto.Crypto).randomUUIDv4()
-    return Message.CompletedDrawOperationId({ operationId })
-  }).pipe(Effect.orDie),
+  execute: Effect.map(newOperationId, (operationId) => Message.CompletedDrawOperationId({ operationId })),
 })
 
 const ReviewArgs = Schema.Struct({
@@ -198,11 +196,12 @@ const onCapture = (
   act: (
     api: Effect.Success<StyldClient['Service']['api']>,
     params: { readonly captureId: CaptureId },
+    operationId: OperationId,
   ) => Effect.Effect<unknown, unknown>,
 ) =>
   Effect.gen(function* () {
     const api = yield* (yield* StyldClient).api
-    yield* act(api, { captureId: yield* Schema.decodeUnknownEffect(CaptureId)(captureId) })
+    yield* act(api, { captureId: yield* Schema.decodeUnknownEffect(CaptureId)(captureId) }, yield* newOperationId)
   }).pipe(
     Effect.as(Message.SucceededCaptureAction({ captureId })),
     Effect.orElseSucceed(() => Message.FailedCaptureAction({ captureId })),
@@ -212,14 +211,16 @@ const onCapture = (
 export const RetryCapture = Command.define('RetryCapture', {
   args: { captureId: Schema.String },
   messages: [Message.SucceededCaptureAction, Message.FailedCaptureAction],
-  execute: ({ captureId }) => onCapture(captureId, (api, params) => api.capture.retry({ params })),
+  execute: ({ captureId }) =>
+    onCapture(captureId, (api, params, operationId) => api.capture.retry({ params, payload: { operationId } })),
 })
 
 /** @internal Exported for its tests. */
 export const RemoveCapture = Command.define('RemoveCapture', {
   args: { captureId: Schema.String },
   messages: [Message.SucceededCaptureAction, Message.FailedCaptureAction],
-  execute: ({ captureId }) => onCapture(captureId, (api, params) => api.capture.remove({ params })),
+  execute: ({ captureId }) =>
+    onCapture(captureId, (api, params, operationId) => api.capture.remove({ params, payload: { operationId } })),
 })
 
 /** Show each sighting of a piece on its own card again, keyed in the page's actions by the piece's id.
@@ -230,7 +231,10 @@ export const SplitSightings = Command.define('SplitSightings', {
   execute: ({ detectionId }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
-      yield* api.capture.split({ params: { detectionId: yield* Schema.decodeUnknownEffect(DetectionId)(detectionId) } })
+      yield* api.capture.split({
+        params: { detectionId: yield* Schema.decodeUnknownEffect(DetectionId)(detectionId) },
+        payload: yield* newOperation,
+      })
     }).pipe(
       Effect.as(Message.SucceededCaptureAction({ captureId: detectionId })),
       Effect.orElseSucceed(() => Message.FailedCaptureAction({ captureId: detectionId })),

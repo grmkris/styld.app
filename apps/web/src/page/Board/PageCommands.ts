@@ -1,6 +1,6 @@
-import { BoardId, BoardName, LookId, Mood, OperationId, PieceId, PinId } from '@styld/protocol'
+import { newOperation, newOperationId } from '../../OperationIds.ts'
+import { BoardId, BoardName, LookId, Mood, PieceId, PinId } from '@styld/protocol'
 import { Effect, Schema } from 'effect'
-import * as Crypto from 'effect/Crypto'
 import { Command, Dom } from 'foldkit'
 import { load as loadPage } from 'foldkit/navigation'
 import { boardsRouter } from '../../route.ts'
@@ -13,10 +13,6 @@ import { Message } from './Message.ts'
 // Commands.ts.
 
 const boardIdOf = (id: string) => Schema.decodeUnknownEffect(BoardId)(id)
-const newOperationId = Effect.gen(function* () {
-  return yield* Schema.decodeUnknownEffect(OperationId)(yield* (yield* Crypto.Crypto).randomUUIDv4())
-})
-
 /** The board as it is now, read again when the page comes back into view. */
 export const ReloadBoard = Command.define('ReloadBoard', {
   args: { boardId: Schema.String },
@@ -37,7 +33,7 @@ export const RenameBoard = Command.define('RenameBoard', {
       const api = yield* (yield* StyldClient).api
       const board = yield* api.board.updateBoard({
         params: { boardId: yield* boardIdOf(boardId) },
-        payload: { name: yield* Schema.decodeUnknownEffect(BoardName)(name) },
+        payload: { operationId: yield* newOperationId, name: yield* Schema.decodeUnknownEffect(BoardName)(name) },
       })
       return Message.SucceededRename({ board })
     }).pipe(Effect.orElseSucceed(() => Message.FailedRename())),
@@ -52,7 +48,7 @@ export const SetBoardVisibility = Command.define('SetBoardVisibility', {
       const api = yield* (yield* StyldClient).api
       const board = yield* api.board.setBoardVisibility({
         params: { boardId: yield* boardIdOf(boardId) },
-        payload: { visibility: isPublic ? 'public' : 'private' },
+        payload: { operationId: yield* newOperationId, visibility: isPublic ? 'public' : 'private' },
       })
       return Message.SucceededSetVisibility({ board })
     }).pipe(
@@ -68,7 +64,10 @@ export const SetBoardMoods = Command.define('SetBoardMoods', {
   execute: ({ boardId, moods }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
-      const board = yield* api.board.updateBoard({ params: { boardId: yield* boardIdOf(boardId) }, payload: { moods } })
+      const board = yield* api.board.updateBoard({
+        params: { boardId: yield* boardIdOf(boardId) },
+        payload: { operationId: yield* newOperationId, moods },
+      })
       return Message.SucceededSetMoods({ board })
     }).pipe(Effect.orElseSucceed(() => Message.FailedSetMoods())),
 })
@@ -80,7 +79,10 @@ export const DeleteBoard = Command.define('DeleteBoard', {
   execute: ({ boardId }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
-      yield* api.board.deleteBoard({ params: { boardId: yield* boardIdOf(boardId) } })
+      yield* api.board.deleteBoard({
+        params: { boardId: yield* boardIdOf(boardId) },
+        payload: yield* newOperation,
+      })
       return Message.SucceededDeleteBoard()
     }).pipe(
       Effect.catchTag('NotFound', () => Effect.succeed(Message.SucceededDeleteBoard())),

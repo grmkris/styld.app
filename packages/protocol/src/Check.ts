@@ -1,3 +1,4 @@
+import { OperationId } from './Ids.ts'
 import { Schema } from 'effect'
 import { refusal } from './Errors.ts'
 
@@ -32,10 +33,10 @@ export type CheckStatus = typeof CheckStatus.Type
 export const Visibility = Schema.Literals(['private', 'public'])
 export type Visibility = typeof Visibility.Type
 
-export const SetVisibility = Schema.Struct({ visibility: Visibility })
+export const SetVisibility = Schema.Struct({ operationId: OperationId, visibility: Visibility })
 export type SetVisibility = typeof SetVisibility.Type
 
-export const ShareLook = Schema.Struct({ shared: Schema.Boolean })
+export const ShareLook = Schema.Struct({ operationId: OperationId, shared: Schema.Boolean })
 export type ShareLook = typeof ShareLook.Type
 
 /** A board goes public only from a published profile. */

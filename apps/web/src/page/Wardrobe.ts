@@ -1,3 +1,5 @@
+import * as Crypto from 'effect/Crypto'
+import { newOperationId } from '../OperationIds.ts'
 import { Dialog } from '@foldkit/ui'
 import { Colour, GarmentGroup, groupOf, Occasion, Piece, PieceType, Season } from '@styld/protocol'
 import { Array, Duration, Effect, Option, Order, Result, Schema, Stream } from 'effect'
@@ -128,7 +130,7 @@ export const DrawPictures = Command.define('DrawPictures', {
   messages: [Message.SucceededDrawPictures, Message.FailedDrawPictures],
   execute: Effect.gen(function* () {
     const api = yield* (yield* StyldClient).api
-    yield* api.capture.drawPictures()
+    yield* api.capture.drawPictures({ payload: { operationId: yield* newOperationId } })
     return Message.SucceededDrawPictures()
   }).pipe(Effect.orElseSucceed(() => Message.FailedDrawPictures())),
 })
@@ -138,7 +140,7 @@ export const load = () => [ListPieces()]
 
 // UPDATE
 
-type UpdateReturn = Update.Return<Model, Message, StyldClient>
+type UpdateReturn = Update.Return<Model, Message, StyldClient | Crypto.Crypto>
 
 const piecesCache = (revalidate: (pieces: PiecesData) => Option.Option<PiecesData>) =>
   Update.refresh<Model, Message, ReadonlyArray<Piece>, 'Unavailable', StyldClient>({

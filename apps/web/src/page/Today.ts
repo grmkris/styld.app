@@ -1,3 +1,5 @@
+import * as Crypto from 'effect/Crypto'
+import { newOperationId } from '../OperationIds.ts'
 import {
   BoardSummary,
   Day,
@@ -208,6 +210,7 @@ export const MakeOutfits = Command.define('MakeOutfits', {
     Effect.gen(function* () {
       const batch = yield* (yield* (yield* StyldClient).api).outfit.makeOutfit({
         payload: {
+          operationId: yield* newOperationId,
           mode: 'fast',
           day,
           brief,
@@ -231,14 +234,17 @@ export const Wear = Command.define('Wear', {
         onNone: () => ({ pieceIds }),
         onSome: (ref) => ({ pieceIds, proposal: ref }),
       })
-      const worn = yield* (yield* (yield* StyldClient).api).worn.wearPieces({ params: { day }, payload })
+      const worn = yield* (yield* (yield* StyldClient).api).worn.wearPieces({
+        params: { day },
+        payload: { operationId: yield* newOperationId, ...payload },
+      })
       return Message.SucceededWear({ pieceIds: worn.pieceIds })
     }).pipe(Effect.orElseSucceed(() => Message.FailedWear())),
 })
 
 // UPDATE
 
-type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient>
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
 
 const unavailable = Result.fail('Unavailable' as const)
 

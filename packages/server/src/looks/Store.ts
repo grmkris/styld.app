@@ -2,7 +2,7 @@ import { lookPieces, looks, operationReceipts, pieces } from '@styld/db'
 import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option } from 'effect'
-import { receiptQuery } from '../kernel/Receipts.ts'
+import { receiptRows } from '../kernel/Receipts.ts'
 import { ownPieceIds } from '../wardrobe/Store.ts'
 import { chunked, query } from '../kernel/Db.ts'
 
@@ -39,8 +39,7 @@ export const makeLookStore = (database: Parameters<typeof drizzle>[0]) => {
       ).pipe(Effect.asVoid),
     /** Which of these pieces belong to the account. */
     ownPieces: (accountId: string, pieceIds: ReadonlyArray<string>) => ownPieceIds(db, accountId, pieceIds),
-    findReceipt: (accountId: string, operationId: string) =>
-      query(() => receiptQuery(db, accountId, operationId)).pipe(Effect.map((rows) => Option.fromNullishOr(rows[0]))),
+    ...receiptRows(db),
     listLooks: (accountId: string) =>
       query(() =>
         db.select().from(looks).where(eq(looks.accountId, accountId)).orderBy(desc(looks.createdAt)).limit(200),

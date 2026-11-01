@@ -1,5 +1,6 @@
+import { newOperationId } from '../OperationIds.ts'
 import { Dialog } from '@foldkit/ui'
-import { BoardId, BoardName, BoardSummary, LookId, OperationId, PhotoId, PieceId } from '@styld/protocol'
+import { BoardId, BoardName, BoardSummary, LookId, PhotoId, PieceId } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import { AsyncData, Command, Update } from 'foldkit'
@@ -63,10 +64,6 @@ export const Message = defineMessageUnion({
 export type Message = typeof Message.Type
 
 // COMMAND
-
-const newOperationId = Effect.gen(function* () {
-  return yield* Schema.decodeUnknownEffect(OperationId)(yield* (yield* Crypto.Crypto).randomUUIDv4())
-})
 
 const pinsOf = (target: Target) =>
   target.kind === 'piece'

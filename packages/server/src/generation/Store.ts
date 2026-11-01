@@ -2,7 +2,7 @@ import { generationJobs, generationPictures, operationReceipts } from '@styld/db
 import { and, asc, desc, eq, inArray, lt, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect } from 'effect'
-import { receiptQuery } from '../kernel/Receipts.ts'
+import { receiptRows } from '../kernel/Receipts.ts'
 import { first, query } from '../kernel/Db.ts'
 
 export type JobRow = typeof generationJobs.$inferSelect
@@ -11,8 +11,7 @@ type ReceiptRow = typeof operationReceipts.$inferInsert
 
 /** Jobs: written once with their receipt, read for their owner or the queue, and moved on from a step. */
 const jobQueries = (db: ReturnType<typeof drizzle>) => ({
-  findReceipt: (accountId: string, operationId: string) =>
-    query(() => receiptQuery(db, accountId, operationId)).pipe(Effect.map(first)),
+  ...receiptRows(db),
   /** The job, its first pictures and the operation's receipt, as one batch. */
   insertJob: (job: JobRow, pictures: ReadonlyArray<PictureRow>, receipt: ReceiptRow) =>
     query(() =>

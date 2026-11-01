@@ -1,5 +1,6 @@
+import { operationIdOf } from '../../OperationIds.ts'
 import { Dialog, RadioGroup } from '@foldkit/ui'
-import { BoardId, Generation, GenerationKind, OperationId } from '@styld/protocol'
+import { BoardId, Generation, GenerationKind } from '@styld/protocol'
 import { Duration, Effect, Option, Predicate, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import { Command, Update } from 'foldkit'
@@ -101,11 +102,9 @@ export const AskToMake = Command.define('AskToMake', {
   messages: [Message.SucceededAsk, Message.FailedAsk],
   execute: (args) =>
     Effect.gen(function* () {
-      const drawn = Option.isSome(args.operationId)
-        ? args.operationId.value
-        : yield* (yield* Crypto.Crypto).randomUUIDv4()
+      const drawn = yield* operationIdOf(args.operationId)
       const asked = Effect.gen(function* () {
-        const operationId = yield* Schema.decodeUnknownEffect(OperationId)(drawn)
+        const operationId = drawn
         const boardId = yield* Schema.decodeUnknownEffect(BoardId)(args.boardId)
         const api = yield* (yield* StyldClient).api
         const request = { params: { boardId }, payload: { operationId, prompt: args.prompt } }

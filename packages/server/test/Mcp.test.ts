@@ -65,7 +65,9 @@ const notUsed = () => Effect.die('not used by these tests')
 const wardrobe = Wardrobe.of({
   listPieces: () => Effect.succeed(pieces),
   getPiece: notUsed,
+  newUpload: notUsed,
   createUpload: notUsed,
+  once: notUsed,
   receiveUpload: notUsed,
   receiveVideoUpload: notUsed,
   pieceAddedBy: () => Effect.succeed(Option.none()),

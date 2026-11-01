@@ -1,6 +1,6 @@
 import { mostLocked, mostProposals, mostSeen } from './Limits.ts'
 import { textLength, trimmedText } from './Text.ts'
-import { entityId } from './Ids.ts'
+import { entityId, OperationId } from './Ids.ts'
 import { LimitReached, NotFound, passing, RequestRefused, SlowDown, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
 import { Schema } from 'effect'
@@ -43,6 +43,7 @@ export type OutfitSession = typeof OutfitSession.Type
 /** Ask for outfits: `POST /api/outfits`. Free, at the account's pace; Thinking at most a set number of times a day.
  * The first request of a run names no session and gets one; refills name it. */
 export const MakeOutfit = Schema.Struct({
+  operationId: OperationId,
   mode: OutfitMode,
   brief: OutfitBrief,
   session: Schema.optionalKey(OutfitSession),

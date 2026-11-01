@@ -35,13 +35,29 @@ export const signIn = async (origin: string, id: string) => {
     .join('; ')
 }
 
+/** The paths whose writes are the typed API's, each naming its operation; sign-in, telemetry and an upload's bytes
+ * are not. */
+const namesOperation = (path: string, method: string) =>
+  method !== 'GET' &&
+  path.startsWith('/api/') &&
+  !['/api/auth/', '/api/telemetry/', '/api/uploads/up_'].some((prefix) => path.startsWith(prefix))
+
+/** The website names every write's operation: a request that chose none gets a new one, as a new change would. */
+export const withOperation = (path: string, init: RequestInit): RequestInit => {
+  if (!namesOperation(path, (init.method ?? 'GET').toUpperCase())) return init
+  if (init.body !== undefined && typeof init.body !== 'string') return init
+  const body: unknown = init.body === undefined ? {} : JSON.parse(init.body)
+  if (typeof body !== 'object' || body === null || Array.isArray(body) || 'operationId' in body) return init
+  return { ...init, body: JSON.stringify({ operationId: crypto.randomUUID(), ...body }) }
+}
+
 /** Requests the website would send for the signed-in account. */
 export const client =
   (origin: string, cookie: string) =>
   (path: string, init: RequestInit = {}) => {
     const headers = new Headers({ origin, cookie, 'x-effect-auth-csrf': '1', 'content-type': 'application/json' })
     for (const [name, value] of new Headers(init.headers)) headers.set(name, value)
-    return fetch(`${origin}${path}`, { ...init, headers })
+    return fetch(`${origin}${path}`, { ...withOperation(path, init), headers })
   }
 
 export type Call = ReturnType<typeof client>

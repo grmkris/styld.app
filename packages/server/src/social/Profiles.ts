@@ -105,7 +105,9 @@ const make = (database: Parameters<typeof makeProfileStore>[0], checks: Checks['
       const { accountId } = yield* CurrentAccount
       const before = yield* current(store, accountId)
       if (input.handle !== undefined && input.handle !== before.handle) yield* claimable(store, accountId, input.handle)
-      const next = { ...before, ...input, updatedAt: yield* nowDate }
+      // Setting fields is the same change however often it is sent, so the operation id needs no receipt.
+      const { operationId: _operationId, ...changes } = input
+      const next = { ...before, ...changes, updatedAt: yield* nowDate }
       const row = yield* saved(store, { ...next, searchText: searchText(next.name, next.handle) })
       return yield* checked(row)
     }),

@@ -1,3 +1,4 @@
+import { OperationId } from './Ids.ts'
 import { textLength, trimmedText } from './Text.ts'
 import { Schema } from 'effect'
 import { refusal } from './Errors.ts'
@@ -76,6 +77,7 @@ export type Profile = typeof Profile.Type
 
 /** Change the profile; fields left out stay, null clears the city or the bio. */
 export const UpdateProfile = Schema.Struct({
+  operationId: OperationId,
   handle: Schema.optionalKey(Handle),
   name: Schema.optionalKey(ProfileName),
   city: Schema.optionalKey(Schema.NullOr(City)),
@@ -84,7 +86,7 @@ export const UpdateProfile = Schema.Struct({
 })
 export type UpdateProfile = typeof UpdateProfile.Type
 
-export const PublishProfile = Schema.Struct({ published: Schema.Boolean })
+export const PublishProfile = Schema.Struct({ operationId: OperationId, published: Schema.Boolean })
 export type PublishProfile = typeof PublishProfile.Type
 
 /** Someone else has that handle. */

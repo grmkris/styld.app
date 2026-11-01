@@ -90,12 +90,10 @@ export const PieceTurn = Schema.Struct({
 })
 export type PieceTurn = typeof PieceTurn.Type
 
-/** Ask for a turn: `POST /api/pieces/:pieceId/turn`, a new `operationId` each time. */
-export const MakeTurn = Schema.Struct({ operationId: OperationId })
-
 /** The frame sheet the owner's browser cut from a turn's video: a PNG, base64, laid out as `layout` says. At most
  * 12 MB of base64, about 9 MB of PNG. */
 export const TurnSheet = Schema.Struct({
+  operationId: OperationId,
   layout: TurnLayout,
   sheet: Schema.String.check(Schema.isMaxLength(12 * 1024 * 1024)),
 })
@@ -111,7 +109,7 @@ export class SheetRefused extends Schema.TaggedError<SheetRefused>()(
 ) {}
 
 /** Show the drawing or the photo: `PUT /api/pieces/:pieceId/picture`. */
-export const ChoosePicture = Schema.Struct({ use: PictureChoice })
+export const ChoosePicture = Schema.Struct({ operationId: OperationId, use: PictureChoice })
 
 /** Ask for a new drawing of a piece, for a credit (owner, 2026-10-30). A new `operationId` for each request; repeating
  * one answers the first request again instead of drawing twice. */
@@ -149,12 +147,14 @@ export type Piece = typeof Piece.Type
 export const Pieces = Schema.Struct({ pieces: Schema.Array(Piece) })
 
 export const CreateUpload = Schema.Struct({
+  operationId: OperationId,
   contentType: ImageType,
   bytes: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: maximumImageBytes })),
 })
 
 /** An upload for a wardrobe video, streamed rather than read whole. */
 export const CreateVideoUpload = Schema.Struct({
+  operationId: OperationId,
   contentType: VideoType,
   bytes: Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: maximumVideoBytes })),
 })
@@ -182,8 +182,8 @@ export const AddPiece = Schema.Struct({
 })
 export type AddPiece = typeof AddPiece.Type
 
-/** Change a piece; fields left out stay, and null clears a field that may be empty. */
-export const UpdatePiece = Schema.Struct({
+/** A piece's fields to change; fields left out stay, and null clears a field that may be empty. */
+export const PieceChanges = Schema.Struct({
   name: Schema.optionalKey(Schema.NullOr(Name)),
   notes: Schema.optionalKey(Schema.NullOr(Notes)),
   type: Schema.optionalKey(PieceType),
@@ -194,6 +194,10 @@ export const UpdatePiece = Schema.Struct({
   brand: Schema.optionalKey(Schema.NullOr(Brand)),
   shopUrl: Schema.optionalKey(Schema.NullOr(ShopUrl)),
 })
+export type PieceChanges = typeof PieceChanges.Type
+
+/** Change a piece: `PATCH /api/pieces/:pieceId`. */
+export const UpdatePiece = Schema.Struct({ operationId: OperationId, ...PieceChanges.fields })
 export type UpdatePiece = typeof UpdatePiece.Type
 
 /** A photo of the piece's back: `PUT /api/pieces/:pieceId/back`, cut out like the front, for a photo's credit. A new

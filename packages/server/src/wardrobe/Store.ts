@@ -2,7 +2,7 @@ import { accounts, detections, operationReceipts, piecePictures, pieceTurns, pie
 import { and, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option } from 'effect'
-import { receiptQuery } from '../kernel/Receipts.ts'
+import { receiptRows } from '../kernel/Receipts.ts'
 import { chunked, first, query, StoreUnavailable } from '../kernel/Db.ts'
 
 export type PieceRow = typeof pieces.$inferSelect
@@ -69,6 +69,14 @@ const uploadQueries = (db: ReturnType<typeof drizzle>) => ({
   insertUpload: (row: UploadRow) => query(() => db.insert(uploads).values(row)).pipe(Effect.asVoid),
   findUpload: (uploadId: string) =>
     query(() => db.select().from(uploads).where(eq(uploads.id, uploadId)).limit(1)).pipe(Effect.map(first)),
+  /** A pending upload's token, replaced: the first answer with its token was lost. */
+  reissueUpload: (uploadId: string, tokenDigest: string) =>
+    query(() =>
+      db
+        .update(uploads)
+        .set({ tokenDigest })
+        .where(and(eq(uploads.id, uploadId), eq(uploads.status, 'pending'))),
+    ).pipe(Effect.asVoid),
   markUploadReceived: (uploadId: string) =>
     query(() =>
       db
@@ -200,8 +208,7 @@ export const makeStore = (database: Parameters<typeof drizzle>[0]) => {
           .where(and(eq(pieces.id, pieceId), eq(pieces.accountId, accountId)))
           .limit(1),
       ).pipe(Effect.map(first)),
-    findReceipt: (accountId: string, operationId: string) =>
-      query(() => receiptQuery(db, accountId, operationId)).pipe(Effect.map(first)),
+    ...receiptRows(db),
     /** The piece, its upload spent and the operation's receipt, as one atomic batch. The unique
      * upload id fails the whole batch when the upload already made a piece. */
     addPiece: (piece: PieceRow, receipt: ReceiptRow) =>

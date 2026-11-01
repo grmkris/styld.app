@@ -1,3 +1,5 @@
+import * as Crypto from 'effect/Crypto'
+import { newOperationId } from '../OperationIds.ts'
 import { CameraLayout, Side } from '@styld/protocol'
 import { Effect, Option, Schema, Stream } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
@@ -203,7 +205,9 @@ export const CheckHeld = Command.define('CheckHeld', {
       const api = yield* (yield* StyldClient).api
       const frame = yield* base64Of(check)
       const earlier = Option.isSome(previous) ? { previous: yield* base64Of(previous.value) } : {}
-      const answer = yield* api.capture.check({ payload: { frame, layout, ...earlier } })
+      const answer = yield* api.capture.check({
+        payload: { operationId: yield* newOperationId, frame, layout, ...earlier },
+      })
       return Message.SucceededCheckHeld({ token, check, still, ...answer })
     }).pipe(Effect.orElseSucceed(() => Message.FailedCheckHeld({ token }))),
 })
@@ -220,7 +224,7 @@ export const Buzz = Command.define('Buzz', {
 
 // UPDATE
 
-type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient>
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
 
 const watching = (hint: Hint) => Camera.Watching({ hint })
 

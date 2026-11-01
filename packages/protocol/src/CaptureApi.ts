@@ -1,3 +1,4 @@
+import { Operation } from './Ids.ts'
 import { LimitReached, NotFound, OperationConflict, RequestRefused, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
@@ -14,7 +15,6 @@ import {
   Tray,
 } from './Capture.ts'
 import {
-  MakeTurn,
   PictureBackfill,
   PictureRefused,
   PieceId,
@@ -55,20 +55,23 @@ export class CaptureApi extends HttpApiGroup.make('capture')
   .add(
     HttpApiEndpoint.post('split', '/captures/detections/:detectionId/split', {
       params: { detectionId: DetectionId },
+      payload: Operation,
       success: HttpApiSchema.NoContent,
-      error: [NotFound, Unavailable, RequestRefused],
+      error: [NotFound, OperationConflict, Unavailable, RequestRefused],
     }),
   )
   .add(
     HttpApiEndpoint.post('retry', '/captures/:captureId/retry', {
       params: { captureId: CaptureId },
+      payload: Operation,
       success: HttpApiSchema.NoContent,
-      error: [NotFound, LimitReached, Unavailable, RequestRefused],
+      error: [NotFound, LimitReached, OperationConflict, Unavailable, RequestRefused],
     }),
   )
   .add(
     HttpApiEndpoint.delete('remove', '/captures/:captureId', {
       params: { captureId: CaptureId },
+      payload: Operation,
       success: HttpApiSchema.NoContent,
       error: [NotFound, Unavailable, RequestRefused],
     }),
@@ -91,6 +94,7 @@ export class CaptureApi extends HttpApiGroup.make('capture')
   .add(HttpApiEndpoint.get('undrawnPictures', '/pictures', { success: PictureBackfill, error: Unavailable }))
   .add(
     HttpApiEndpoint.post('drawPictures', '/pictures', {
+      payload: Operation,
       success: PictureBackfill,
       error: [Unavailable, RequestRefused],
     }),
@@ -98,7 +102,7 @@ export class CaptureApi extends HttpApiGroup.make('capture')
   .add(
     HttpApiEndpoint.post('makeTurn', '/pieces/:pieceId/turn', {
       params: { pieceId: PieceId },
-      payload: MakeTurn,
+      payload: Operation,
       success: PieceTurn,
       error: [NotFound, TurnRefused, LimitReached, Unavailable, RequestRefused],
     }),

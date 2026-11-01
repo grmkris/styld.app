@@ -1,4 +1,5 @@
-import { Board, BoardName, BoardSummary, OperationId, SavedThing } from '@styld/protocol'
+import { newOperationId } from '../OperationIds.ts'
+import { Board, BoardName, BoardSummary, SavedThing } from '@styld/protocol'
 import { Effect, Option, Result, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import { AsyncData, Command, Update } from 'foldkit'
@@ -83,7 +84,7 @@ export const CreateBoard = Command.define('CreateBoard', {
   execute: ({ name }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
-      const operationId = yield* Schema.decodeUnknownEffect(OperationId)(yield* (yield* Crypto.Crypto).randomUUIDv4())
+      const operationId = yield* newOperationId
       const board = yield* api.board.createBoard({
         payload: { operationId, name: yield* Schema.decodeUnknownEffect(BoardName)(name) },
       })

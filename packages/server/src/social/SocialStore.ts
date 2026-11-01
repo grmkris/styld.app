@@ -1,3 +1,4 @@
+import { receiptRows } from '../kernel/Receipts.ts'
 import { blocks, follows, profiles, reports, saves } from '@styld/db'
 import { and, count, desc, eq, gte, inArray, or } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
@@ -176,7 +177,7 @@ const reportRows = (db: Database) => ({
 /** Saves, follows, blocks and reports in D1. Every read and write names the account it is for. */
 export const makeSocialStore = (database: Parameters<typeof drizzle>[0]) => {
   const db = drizzle(database)
-  return { ...savesAndFollows(db), ...blockRows(db), ...reportRows(db) }
+  return { ...savesAndFollows(db), ...blockRows(db), ...reportRows(db), ...receiptRows(db) }
 }
 
 export type SocialStore = ReturnType<typeof makeSocialStore>

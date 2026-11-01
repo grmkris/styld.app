@@ -26,8 +26,8 @@ import {
   type TableThing,
   TextStyle,
   UpdateBoard,
+  SetVisibility,
   Url,
-  Visibility,
 } from '@styld/protocol'
 import { Effect, Match, Option, Schema } from 'effect'
 import type * as HttpClient from 'effect/http/HttpClient'
@@ -175,9 +175,9 @@ const boardTools = (boards: Boards['Service'], origin: string) => {
       title: 'Make a board public or private',
       description:
         'Make a board public on the person’s published profile, at its link, or private again. Only when the person asks. Styld checks a public board before others see it: `check.state` is passed (shown everywhere), unsure (on the profile and its link only), failed (hidden from others, with a reason) or pending (being checked).',
-      parameters: Schema.Struct({ boardId: BoardId, visibility: Visibility }),
+      parameters: Schema.Struct({ boardId: BoardId, ...SetVisibility.fields }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-      handler: ({ boardId, visibility }) => boards.setBoardVisibility(boardId, { visibility }).pipe(Effect.map(show)),
+      handler: ({ boardId, ...input }) => boards.setBoardVisibility(boardId, input).pipe(Effect.map(show)),
     }),
     tool({
       name: 'board_delete',

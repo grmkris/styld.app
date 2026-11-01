@@ -1,3 +1,4 @@
+import { OperationId } from './Ids.ts'
 import { textLength } from './Text.ts'
 import { Schema } from 'effect'
 import { refusal } from './Errors.ts'
@@ -18,7 +19,7 @@ export const SaveTarget = Schema.Union([
 ])
 export type SaveTarget = typeof SaveTarget.Type
 
-export const SetSaved = Schema.Struct({ target: SaveTarget, saved: Schema.Boolean })
+export const SetSaved = Schema.Struct({ operationId: OperationId, target: SaveTarget, saved: Schema.Boolean })
 export type SetSaved = typeof SetSaved.Type
 
 /** One thing saved from someone else, while it is still public; whose it is, and when it was saved. */
@@ -36,10 +37,10 @@ export type Saved = typeof Saved.Type
 /** Whether the thing is saved now. */
 export const SavedState = Schema.Struct({ saved: Schema.Boolean })
 
-export const SetFollowing = Schema.Struct({ following: Schema.Boolean })
+export const SetFollowing = Schema.Struct({ operationId: OperationId, following: Schema.Boolean })
 export type SetFollowing = typeof SetFollowing.Type
 
-export const SetBlocked = Schema.Struct({ blocked: Schema.Boolean })
+export const SetBlocked = Schema.Struct({ operationId: OperationId, blocked: Schema.Boolean })
 export type SetBlocked = typeof SetBlocked.Type
 
 /** Where the person stands with someone: following them, or blocking them. */
@@ -73,6 +74,7 @@ export const ReportTarget = Schema.Union([
 export type ReportTarget = typeof ReportTarget.Type
 
 export const CreateReport = Schema.Struct({
+  operationId: OperationId,
   target: ReportTarget,
   reason: ReportReason,
   note: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(textLength.reportNote))),

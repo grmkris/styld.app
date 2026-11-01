@@ -1,3 +1,4 @@
+import { newOperationId } from './OperationIds.ts'
 import { ImageType } from '@styld/protocol'
 import { Data, Effect } from 'effect'
 import { File } from 'foldkit'
@@ -33,7 +34,9 @@ export const uploadPicture = Effect.fn('Styld.Web.uploadPicture')(function* (fil
   const { api: loadApi, sendFile } = yield* StyldClient
   const api = yield* loadApi
   const picture = yield* prepared(file)
-  const created = yield* api.wardrobe.createUpload({ payload: { contentType: 'image/webp', bytes: picture.size } })
+  const created = yield* api.wardrobe.createUpload({
+    payload: { operationId: yield* newOperationId, contentType: 'image/webp', bytes: picture.size },
+  })
   yield* sendFile(created.path, picture)
   return created.uploadId
 })

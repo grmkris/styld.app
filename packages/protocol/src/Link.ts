@@ -1,5 +1,6 @@
+import { OperationId } from './Ids.ts'
 import { Url } from './Text.ts'
-import { byCase, passing, refusal, RequestRefused, SlowDown, Unavailable } from './Errors.ts'
+import { byCase, OperationConflict, passing, refusal, RequestRefused, SlowDown, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
 import { Schema } from 'effect'
 import { HttpApiEndpoint, HttpApiGroup } from 'effect/http-api'
@@ -8,7 +9,7 @@ import { UploadId, UploadRefused } from './Wardrobe.ts'
 // Adding a piece from a shop's product page on the website (Boards, profiles and social, M6). Styld reads the
 // page's picture into an upload of the person's; the website then sends it to the review tray like a picked photo.
 
-export const ReadLink = Schema.Struct({ url: Url })
+export const ReadLink = Schema.Struct({ operationId: OperationId, url: Url })
 export type ReadLink = typeof ReadLink.Type
 
 /** The page's picture, received as the person's upload, and the name the page gives the product. */
@@ -50,7 +51,7 @@ export class LinkApi extends HttpApiGroup.make('link')
     HttpApiEndpoint.post('readLink', '/links/picture', {
       payload: ReadLink,
       success: LinkPicture,
-      error: [LinkRefused, SlowDown, UploadRefused, Unavailable, RequestRefused],
+      error: [LinkRefused, SlowDown, UploadRefused, OperationConflict, Unavailable, RequestRefused],
     }),
   )
   .middleware(SessionHttp.RequireSession) {}

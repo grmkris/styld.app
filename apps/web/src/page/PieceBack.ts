@@ -1,4 +1,5 @@
-import { OperationId, Piece, PieceId } from '@styld/protocol'
+import { newOperation, newOperationId } from '../OperationIds.ts'
+import { Piece, PieceId } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import { Command, File, Update } from 'foldkit'
@@ -54,7 +55,7 @@ export const SetBack = Command.define('SetBack', {
     Effect.gen(function* () {
       const uploadId = yield* uploadPicture(file)
       const api = yield* (yield* StyldClient).api
-      const operationId = yield* Schema.decodeUnknownEffect(OperationId)(yield* (yield* Crypto.Crypto).randomUUIDv4())
+      const operationId = yield* newOperationId
       const piece = yield* api.wardrobe.setBack({
         params: { pieceId: yield* pieceIdOf(pieceId) },
         payload: { operationId, uploadId },
@@ -71,7 +72,10 @@ export const RemoveBack = Command.define('RemoveBack', {
   execute: ({ pieceId }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
-      const piece = yield* api.wardrobe.removeBack({ params: { pieceId: yield* pieceIdOf(pieceId) } })
+      const piece = yield* api.wardrobe.removeBack({
+        params: { pieceId: yield* pieceIdOf(pieceId) },
+        payload: yield* newOperation,
+      })
       return Message.SucceededBack({ piece })
     }).pipe(Effect.orElseSucceed(() => Message.FailedBack())),
 })

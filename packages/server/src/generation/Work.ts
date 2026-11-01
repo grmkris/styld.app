@@ -168,7 +168,9 @@ const arrange = (parts: Parts, job: JobRow) =>
         .addPins(boardId, { operationId: OperationId.make(`gen-${job.id}-pins`), pieceIds: picks })
         .pipe(Effect.mapError(unavailable))
     if (board.moods.length === 0 && moods.length > 0)
-      yield* parts.boards.updateBoard(boardId, { moods }).pipe(Effect.mapError(unavailable))
+      yield* parts.boards
+        .updateBoard(boardId, { operationId: OperationId.make(`gen-${job.id}-moods`), moods })
+        .pipe(Effect.mapError(unavailable))
     if (board.version === job.collageVersion)
       yield* parts.boards
         .arrangeBoard(boardId, {

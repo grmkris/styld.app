@@ -1,3 +1,4 @@
+import { once } from '../kernel/Receipts.ts'
 import {
   CaptureId,
   NotFound,
@@ -7,6 +8,7 @@ import {
   Tray,
   UploadRefused,
   prices,
+  type OperationId,
 } from '@styld/protocol'
 import { Array, Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
@@ -258,9 +260,16 @@ export const reading = (parts: Parts) => ({
     }).pipe(Effect.orDie)
   }),
   /** Show each other sighting of a garment on its own card again: the import took different garments for one. */
-  split: Effect.fn('Styld.Capture.split')(function* (detectionId: string) {
+  split: Effect.fn('Styld.Capture.split')(function* (detectionId: string, operationId: OperationId) {
     const { accountId } = yield* CurrentAccount
-    if (!(yield* storedAs(parts.store.split(accountId, detectionId)))) return yield* NotFound.make({})
+    const split = Effect.gen(function* () {
+      if (!(yield* storedAs(parts.store.split(accountId, detectionId)))) return yield* NotFound.make({})
+    })
+    yield* once(
+      parts.wardrobeStore,
+      { accountId, operationId, command: 'splitDetection', input: detectionId },
+      { replay: () => Effect.void, run: Effect.as(split, [undefined, detectionId] as const) },
+    )
   }),
   check: Effect.fn('Styld.Capture.check')(function* (
     frame: Uint8Array,

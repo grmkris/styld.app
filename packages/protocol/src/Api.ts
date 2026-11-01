@@ -1,3 +1,4 @@
+import { Operation } from './Ids.ts'
 import { LimitReached, NotFound, OperationConflict, RequestRefused, SlowDown, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
@@ -71,6 +72,7 @@ class AccountApi extends HttpApiGroup.make('account')
   /** Delete the account, its wardrobe and photos, its sessions and assistants' access, for good. */
   .add(
     HttpApiEndpoint.delete('deleteMe', '/me', {
+      payload: Operation,
       success: HttpApiSchema.NoContent,
       error: [Unavailable, RequestRefused],
     }),
@@ -92,14 +94,14 @@ class WardrobeApi extends HttpApiGroup.make('wardrobe')
     HttpApiEndpoint.post('createUpload', '/uploads', {
       payload: CreateUpload,
       success: Upload,
-      error: [Unavailable, RequestRefused],
+      error: [UploadRefused, OperationConflict, Unavailable, RequestRefused],
     }),
   )
   .add(
     HttpApiEndpoint.post('createVideoUpload', '/uploads/video', {
       payload: CreateVideoUpload,
       success: Upload,
-      error: [Unavailable, RequestRefused],
+      error: [UploadRefused, OperationConflict, Unavailable, RequestRefused],
     }),
   )
   .add(
@@ -120,6 +122,7 @@ class WardrobeApi extends HttpApiGroup.make('wardrobe')
   .add(
     HttpApiEndpoint.delete('deletePiece', '/pieces/:pieceId', {
       params: { pieceId: PieceId },
+      payload: Operation,
       success: HttpApiSchema.NoContent,
       error: [NotFound, Unavailable, RequestRefused],
     }),
@@ -135,6 +138,7 @@ class WardrobeApi extends HttpApiGroup.make('wardrobe')
   .add(
     HttpApiEndpoint.delete('removeBack', '/pieces/:pieceId/back', {
       params: { pieceId: PieceId },
+      payload: Operation,
       success: Piece,
       error: [NotFound, Unavailable, RequestRefused],
     }),
@@ -170,6 +174,7 @@ class LookApi extends HttpApiGroup.make('look')
   .add(
     HttpApiEndpoint.delete('deleteLook', '/looks/:lookId', {
       params: { lookId: LookId },
+      payload: Operation,
       success: HttpApiSchema.NoContent,
       error: [NotFound, Unavailable, RequestRefused],
     }),
@@ -214,6 +219,7 @@ class BoardApi extends HttpApiGroup.make('board')
   .add(
     HttpApiEndpoint.delete('deleteBoard', '/boards/:boardId', {
       params: { boardId: BoardId },
+      payload: Operation,
       success: HttpApiSchema.NoContent,
       error: [NotFound, Unavailable, RequestRefused],
     }),
@@ -280,6 +286,7 @@ class WornApi extends HttpApiGroup.make('worn')
   .add(
     HttpApiEndpoint.delete('clearWorn', '/worn/:day', {
       params: { day: Day },
+      payload: Operation,
       success: HttpApiSchema.NoContent,
       error: [Unavailable, RequestRefused],
     }),
@@ -396,7 +403,7 @@ class SocialApi extends HttpApiGroup.make('social')
     HttpApiEndpoint.post('report', '/reports', {
       payload: CreateReport,
       success: HttpApiSchema.NoContent,
-      error: [NotFound, NotWithYourself, LimitReached, Unavailable, RequestRefused],
+      error: [NotFound, NotWithYourself, LimitReached, OperationConflict, Unavailable, RequestRefused],
     }),
   )
   .add(HttpApiEndpoint.get('feed', '/feed', { query: FeedQuery, success: Feed, error: Unavailable }))

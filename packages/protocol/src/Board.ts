@@ -117,6 +117,7 @@ export const CreateBoard = Schema.Struct({ operationId: OperationId, name: Board
 export type CreateBoard = typeof CreateBoard.Type
 
 export const UpdateBoard = Schema.Struct({
+  operationId: OperationId,
   name: Schema.optionalKey(BoardName),
   paper: Schema.optionalKey(Paper),
   /** Up to three moods, for Explore. */

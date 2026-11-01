@@ -52,7 +52,9 @@ const services = (
       wardrobe: Wardrobe.of({
         listPieces: notUsed,
         getPiece: notUsed,
+        newUpload: notUsed,
         createUpload: notUsed,
+        once: notUsed,
         receiveUpload: notUsed,
         receiveVideoUpload: notUsed,
         pieceAddedBy: notUsed,

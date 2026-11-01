@@ -2,7 +2,7 @@ import { boardImages, boardItems, boardPins, boards, operationReceipts, pieces }
 import { and, asc, count, desc, eq, inArray, lte, or, type SQL, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option } from 'effect'
-import { receiptQuery } from '../kernel/Receipts.ts'
+import { receiptRows } from '../kernel/Receipts.ts'
 import { ownPieceIds, receivedUploadKey, spendUpload } from '../wardrobe/Store.ts'
 import { chunked, first, query } from '../kernel/Db.ts'
 
@@ -41,8 +41,7 @@ export interface PinRemoval {
 type Database = ReturnType<typeof drizzle>
 
 const boardRows = (db: Database) => ({
-  findReceipt: (accountId: string, operationId: string) =>
-    query(() => receiptQuery(db, accountId, operationId)).pipe(Effect.map(first)),
+  ...receiptRows(db),
   /** The board and the operation's receipt, as one atomic batch. */
   createBoard: (board: BoardRow, receipt: ReceiptRow) =>
     query(() => db.batch([db.insert(boards).values(board), db.insert(operationReceipts).values(receipt)])).pipe(

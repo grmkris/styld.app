@@ -1,3 +1,4 @@
+import { once } from '../kernel/Receipts.ts'
 import {
   Author,
   type CreateReport,
@@ -269,6 +270,21 @@ const reporting = (p: Parts) => ({
    * profile only leaves discovery. Ten reports an hour at most. */
   report: Effect.fn('Styld.Social.report')(function* (input: CreateReport) {
     const { accountId } = yield* CurrentAccount
+    const { operationId, ...report } = input
+    yield* once(
+      p.store,
+      { accountId, operationId, command: 'report', input: report },
+      {
+        replay: () => Effect.void,
+        run: Effect.as(filedReport(p, accountId, report), [undefined, 'reported'] as const),
+      },
+    )
+  }),
+})
+
+/** File the report, unless it is the account's own thing or past the hour's count. */
+const filedReport = (p: Parts, accountId: string, input: Omit<CreateReport, 'operationId'>) =>
+  Effect.gen(function* () {
     const { owner, check } = yield* reported(p, accountId, input.target)
     if (owner === accountId) return yield* NotWithYourself.make({})
     const since = DateTime.toDateUtc(DateTime.subtractDuration(yield* DateTime.now, Duration.hours(1)))
@@ -289,8 +305,7 @@ const reporting = (p: Parts) => ({
     // The same person reporting the same thing again changes nothing, and asks the model nothing.
     if (!filed) return
     yield* p.checks.reported(check, reporters >= reportsToHide && check.kind !== 'profile')
-  }),
-})
+  })
 
 const make = (database: Database, pages: PublicPages['Service'], checks: Checks['Service']) =>
   Effect.sync(() => {

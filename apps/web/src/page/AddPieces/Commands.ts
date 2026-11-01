@@ -1,10 +1,10 @@
+import { newOperationId, operationIdOf } from '../../OperationIds.ts'
 import {
   CaptureId,
   CaptureSource,
   CreateVideoCapture,
   ImageType,
   LinkRefused,
-  OperationId,
   Side,
   UploadId,
   VideoType,
@@ -15,13 +15,6 @@ import { Command, File } from 'foldkit'
 import { FileNotSent, StyldClient } from '../../StyldClient.ts'
 import type { SampledStill } from '../../capture/Frames.ts'
 import { type LinkProblem, Message, type SendProblem, VideoPart } from './Message.ts'
-
-/** The operation id an earlier try drew, or a new one. */
-const operationIdOf = (known: Option.Option<string>) =>
-  Effect.gen(function* () {
-    const id = Option.isSome(known) ? known.value : yield* (yield* Crypto.Crypto).randomUUIDv4()
-    return yield* Schema.decodeUnknownEffect(OperationId)(id)
-  })
 
 /** What a failed send means for the person, from the error the API or the sampler answered. */
 const problemOf = (error: unknown): SendProblem => {
@@ -59,7 +52,9 @@ const uploadOnce = (photo: File.File, contentType: ImageType, known: Option.Opti
     onNone: () =>
       Effect.gen(function* () {
         const { api: loadApi, sendFile } = yield* StyldClient
-        const created = yield* (yield* loadApi).wardrobe.createUpload({ payload: { contentType, bytes: photo.size } })
+        const created = yield* (yield* loadApi).wardrobe.createUpload({
+          payload: { operationId: yield* newOperationId, contentType, bytes: photo.size },
+        })
         yield* sendFile(created.path, photo)
         return created.uploadId
       }),
@@ -157,7 +152,10 @@ export const SendLink = Command.define('SendLink', {
         Option.match(args.uploadId, {
           onSome: (id) =>
             Effect.map(Schema.decodeUnknownEffect(UploadId)(id), (uploadId) => ({ uploadId, name: null })),
-          onNone: () => api.link.readLink({ payload: { url: args.url } }),
+          onNone: () =>
+            Effect.flatMap(newOperationId, (readOnce) =>
+              api.link.readLink({ payload: { operationId: readOnce, url: args.url } }),
+            ),
         }),
       )
       if (Result.isFailure(picture)) return failed(Option.none(), picture.failure)
@@ -188,7 +186,9 @@ const sendStill = (still: SampledStill) =>
   Effect.gen(function* () {
     const { api: loadApi, sendFile } = yield* StyldClient
     const api = yield* loadApi
-    const created = yield* api.wardrobe.createUpload({ payload: { contentType: 'image/jpeg', bytes: still.jpeg.size } })
+    const created = yield* api.wardrobe.createUpload({
+      payload: { operationId: yield* newOperationId, contentType: 'image/jpeg', bytes: still.jpeg.size },
+    })
     yield* sendFile(created.path, still.jpeg)
     return { uploadId: created.uploadId, atMs: still.atMs, sharpness: still.sharpness }
   })
@@ -211,7 +211,7 @@ const uploadVideoCapture = (
     const api = yield* loadApi
     const operationId = yield* operationIdOf(Option.none())
     const clip = yield* api.wardrobe.createVideoUpload({
-      payload: { contentType: video.contentType, bytes: video.clip.size },
+      payload: { operationId: yield* newOperationId, contentType: video.contentType, bytes: video.clip.size },
     })
     yield* sendFile(clip.path, video.clip)
     const stills = yield* Effect.forEach(video.stills, sendStill, { concurrency: 3 })

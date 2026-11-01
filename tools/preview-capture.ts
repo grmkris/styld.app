@@ -61,7 +61,7 @@ const captured = async (request: APIRequestContext, name: string, contentType: s
   const bytes = await fixture(name)
   const upload = await request.post(`${origin}/api/uploads`, {
     headers,
-    data: { contentType, bytes: bytes.byteLength },
+    data: { operationId: `preview-${crypto.randomUUID()}`, contentType, bytes: bytes.byteLength },
   })
   const { uploadId, path } = Schema.decodeUnknownSync(Upload)(await upload.json())
   const put = await request.put(`${origin}${path}`, { headers: { 'content-type': contentType }, data: bytes })

@@ -1,3 +1,5 @@
+import * as Crypto from 'effect/Crypto'
+import { newOperationId } from '../OperationIds.ts'
 import { Handle, Profile, Tone } from '@styld/protocol'
 import { Effect, Match, Option, Predicate, Schema } from 'effect'
 import { Command, type Update } from 'foldkit'
@@ -99,6 +101,7 @@ export const SaveProfile = Command.define('SaveProfile', {
       const api = yield* (yield* StyldClient).api
       const profile = yield* api.profile.updateProfile({
         payload: {
+          operationId: yield* newOperationId,
           ...(Option.isSome(handle) ? { handle: handle.value } : {}),
           name: draft.name.trim(),
           city: blankAsNull(draft.city),
@@ -131,7 +134,9 @@ export const PublishProfile = Command.define('PublishProfile', {
   execute: ({ published }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
-      return Message.SucceededPublishProfile({ profile: yield* api.profile.publishProfile({ payload: { published } }) })
+      return Message.SucceededPublishProfile({
+        profile: yield* api.profile.publishProfile({ payload: { operationId: yield* newOperationId, published } }),
+      })
     }).pipe(
       Effect.catchIf(
         (error) => Predicate.isTagged(error, 'ProfileNeedsHandle'),
@@ -150,7 +155,7 @@ export const load = () => [LoadProfile()]
 export const OutMessage = defineMessageUnion({ SavedProfile: { profile: Profile } })
 export type OutMessage = typeof OutMessage.Type
 
-type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient>
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
 
 /** A field of the draft as typed. */
 const typed =

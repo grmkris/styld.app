@@ -1,4 +1,5 @@
-import { type CaptureId, NotFound } from '@styld/protocol'
+import { once } from '../kernel/Receipts.ts'
+import { type CaptureId, NotFound, type OperationId } from '@styld/protocol'
 import { DateTime, Effect, Option } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { captureKey, enqueueCapture, holdOf, type Parts, storedAs } from './Parts.ts'
@@ -40,10 +41,9 @@ const removeObjects = (parts: Parts, capture: CaptureRow, frames: ReadonlyArray<
     yield* deleteKeys(parts.bindings.bucket, keys)
   }).pipe(Effect.ignore({ log: true, message: 'Styld.Capture.remove could not delete stored objects' }))
 
-/** Try a capture again, or remove one. Each moves the capture only from the state it was read in. */
-export const retrying = (parts: Parts) => ({
-  retry: Effect.fn('Styld.Capture.retry')(function* (captureId: CaptureId) {
-    const { accountId } = yield* CurrentAccount
+/** Move a failed or stuck capture back to processing, holding its credits again if they went back. */
+const retried = (parts: Parts, accountId: string, captureId: CaptureId) =>
+  Effect.gen(function* () {
     const found = yield* storedAs(parts.store.findCapture(accountId, captureId))
     const now = yield* DateTime.now
     if (Option.isNone(found) || !canRetry(found.value, DateTime.toEpochMillis(now))) return yield* NotFound.make({})
@@ -67,6 +67,20 @@ export const retrying = (parts: Parts) => ({
       return yield* NotFound.make({})
     }
     yield* enqueueCapture(parts, capture.id)
+  })
+
+/** Try a capture again, or remove one. Each moves the capture only from the state it was read in. */
+export const retrying = (parts: Parts) => ({
+  retry: Effect.fn('Styld.Capture.retry')(function* (captureId: CaptureId, operationId: OperationId) {
+    const { accountId } = yield* CurrentAccount
+    yield* once(
+      parts.wardrobeStore,
+      { accountId, operationId, command: 'retryCapture', input: captureId },
+      {
+        replay: () => Effect.void,
+        run: Effect.as(retried(parts, accountId, captureId), [undefined, captureId] as const),
+      },
+    )
   }),
   remove: Effect.fn('Styld.Capture.remove')(function* (captureId: CaptureId) {
     const { accountId } = yield* CurrentAccount

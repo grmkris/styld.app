@@ -1,3 +1,4 @@
+import { OperationId } from './Ids.ts'
 import { maximumWornPieces } from './Limits.ts'
 import { Schema } from 'effect'
 import { Day } from './Day.ts'
@@ -13,6 +14,7 @@ export const WornDays = Schema.Struct({ days: Schema.Array(WornDay) })
 /** "Wear this": the day's outfit, replacing any recorded before, and the proposal it came from when the engine made
  * it. */
 export const WearPieces = Schema.Struct({
+  operationId: OperationId,
   pieceIds: Schema.Array(PieceId).check(Schema.isMinLength(1), Schema.isMaxLength(maximumWornPieces)),
   proposal: Schema.optionalKey(ProposalRef),
 })

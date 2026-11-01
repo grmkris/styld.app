@@ -1,3 +1,4 @@
+import { newOperation, newOperationId, operationIdOf } from '../OperationIds.ts'
 import {
   Colour,
   Occasion,
@@ -12,7 +13,7 @@ import {
   Season,
   ShopUrl,
   TurnLayout,
-  UpdatePiece,
+  PieceChanges,
 } from '@styld/protocol'
 import { Duration, Effect, Option, Predicate, Schema } from 'effect'
 import { Command, Mount, Update } from 'foldkit'
@@ -191,8 +192,8 @@ export const DeletePiece = Command.define('DeletePiece', {
   messages: [Message.SucceededDeletePiece, Message.FailedDeletePiece],
   execute: ({ pieceId }) =>
     Effect.gen(function* () {
-      const api = yield* (yield* StyldClient).api
-      yield* api.wardrobe.deletePiece({ params: { pieceId: yield* pieceIdOf(pieceId) } })
+      const params = { pieceId: yield* pieceIdOf(pieceId) }
+      yield* (yield* (yield* StyldClient).api).wardrobe.deletePiece({ params, payload: yield* newOperation })
       return Message.SucceededDeletePiece()
     }).pipe(
       // A piece already gone is the outcome the person asked for.
@@ -203,14 +204,14 @@ export const DeletePiece = Command.define('DeletePiece', {
 
 /** @internal Exported for its tests. */
 export const SavePiece = Command.define('SavePiece', {
-  args: { pieceId: Schema.String, changes: UpdatePiece },
+  args: { pieceId: Schema.String, changes: PieceChanges },
   messages: [Message.SucceededUpdatePiece, Message.FailedUpdatePiece],
   execute: ({ pieceId, changes }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       const piece = yield* api.wardrobe.updatePiece({
         params: { pieceId: yield* pieceIdOf(pieceId) },
-        payload: changes,
+        payload: { operationId: yield* newOperationId, ...changes },
       })
       return Message.SucceededUpdatePiece({ piece })
     }).pipe(Effect.orElseSucceed(() => Message.FailedUpdatePiece())),
@@ -225,7 +226,7 @@ export const ChoosePicture = Command.define('ChoosePicture', {
       const api = yield* (yield* StyldClient).api
       const piece = yield* api.wardrobe.choosePicture({
         params: { pieceId: yield* pieceIdOf(pieceId) },
-        payload: { use },
+        payload: { operationId: yield* newOperationId, use },
       })
       return Message.SucceededChoosePicture({ piece })
     }).pipe(Effect.orElseSucceed(() => Message.FailedChoosePicture())),
@@ -246,7 +247,7 @@ export const RedrawPicture = Command.define('RedrawPicture', {
   execute: ({ pieceId, hint, operationId }) =>
     Effect.gen(function* () {
       // A retry repeats the operation, so a lost answer never costs a second credit.
-      const id = Option.isSome(operationId) ? operationId.value : yield* (yield* Crypto.Crypto).randomUUIDv4()
+      const id = yield* operationIdOf(operationId)
       const words = hint.trim()
       const api = yield* (yield* StyldClient).api
       return yield* api.capture
@@ -280,7 +281,7 @@ export const MakeTurn = Command.define('MakeTurn', {
   messages: [Message.SucceededMakeTurn, Message.FailedMakeTurn],
   execute: ({ pieceId }) =>
     Effect.gen(function* () {
-      const operationId = yield* Schema.decodeUnknownEffect(OperationId)(yield* (yield* Crypto.Crypto).randomUUIDv4())
+      const operationId = yield* newOperationId
       const api = yield* (yield* StyldClient).api
       return yield* api.capture
         .makeTurn({ params: { pieceId: yield* pieceIdOf(pieceId) }, payload: { operationId } })
@@ -303,8 +304,11 @@ export const BuildTurnSheet = Command.define('BuildTurnSheet', {
       const video = yield* client.readFile(`/cdn/turns/${pieceId}/video?v=${version}`)
       const front = yield* client.readFile(`/cdn/turns/${pieceId}/front?v=${version}`)
       const built = yield* buildSheet(new Blob([new Uint8Array(video)], { type: 'video/mp4' }), front)
-      const api = yield* client.api
-      const turn = yield* api.capture.turnSheet({ params: { pieceId: yield* pieceIdOf(pieceId) }, payload: built })
+      const payload = { operationId: yield* newOperationId, ...built }
+      const turn = yield* (yield* client.api).capture.turnSheet({
+        params: { pieceId: yield* pieceIdOf(pieceId) },
+        payload,
+      })
       return Message.SucceededBuildTurnSheet({ turn })
     }).pipe(Effect.orElseSucceed(() => Message.FailedBuildTurnSheet())),
 })
@@ -369,7 +373,7 @@ const given = (value: string) => {
 }
 
 /** The saved form, as the API takes it: an empty field is no value, and an attribute left unchosen is cleared. */
-const changesOf = (draft: Draft): typeof UpdatePiece.Type => ({
+const changesOf = (draft: Draft): PieceChanges => ({
   name: given(draft.name),
   notes: given(draft.notes),
   ...Option.match(draft.details.type, { onNone: () => ({}), onSome: (type) => ({ type }) }),

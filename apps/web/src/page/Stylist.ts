@@ -1,4 +1,5 @@
-import { Chat, ChatId, Language, ChatSummary, OperationId } from '@styld/protocol'
+import { operationIdOf } from '../OperationIds.ts'
+import { Chat, ChatId, Language, ChatSummary } from '@styld/protocol'
 import { Duration, Effect, Option, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import { AsyncData, Command, Dom, Render, type Update } from 'foldkit'
@@ -135,12 +136,12 @@ export const SendMessage = Command.define('SendMessage', {
   messages: [Message.SucceededSend, Message.FailedSend],
   execute: ({ operationId, chatId, text, locale }) =>
     Effect.gen(function* () {
-      const drawn = Option.isSome(operationId) ? operationId.value : yield* (yield* Crypto.Crypto).randomUUIDv4()
+      const drawn = yield* operationIdOf(operationId)
       const sent = Effect.gen(function* () {
         const api = yield* (yield* StyldClient).api
         const { chatId: sentTo } = yield* api.stylist.send({
           payload: {
-            operationId: yield* Schema.decodeUnknownEffect(OperationId)(drawn),
+            operationId: drawn,
             text: text.trim(),
             locale,
             ...Option.match(chatId, {

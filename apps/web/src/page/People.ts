@@ -1,3 +1,5 @@
+import * as Crypto from 'effect/Crypto'
+import { newOperationId } from '../OperationIds.ts'
 import { Dialog } from '@foldkit/ui'
 import { BoardId, Handle, LookId, PieceId, Relation, ReportReason, textLength } from '@styld/protocol'
 import { Effect, Option, Predicate, Schema } from 'effect'
@@ -132,7 +134,7 @@ export const SetFollowing = Command.define('SetFollowing', {
       const api = yield* (yield* StyldClient).api
       const relation = yield* api.social.setFollowing({
         params: { handle: yield* handleOf(handle) },
-        payload: { following },
+        payload: { operationId: yield* newOperationId, following },
       })
       return Message.SucceededSetRelation({ relation })
     }).pipe(Effect.orElseSucceed(() => Message.FailedPeopleWork())),
@@ -147,7 +149,7 @@ export const SetBlocked = Command.define('SetBlocked', {
       const api = yield* (yield* StyldClient).api
       const relation = yield* api.social.setBlocked({
         params: { handle: yield* handleOf(handle) },
-        payload: { blocked },
+        payload: { operationId: yield* newOperationId, blocked },
       })
       return Message.SucceededSetRelation({ relation })
     }).pipe(Effect.orElseSucceed(() => Message.FailedPeopleWork())),
@@ -191,7 +193,7 @@ export const SetSaved = Command.define('SetSaved', {
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       const target = yield* saveTargetOf(subject)
-      const answer = yield* api.social.setSaved({ payload: { target, saved } })
+      const answer = yield* api.social.setSaved({ payload: { operationId: yield* newOperationId, target, saved } })
       return Message.SucceededSetSaved({ saved: answer.saved })
     }).pipe(Effect.orElseSucceed(() => Message.FailedPeopleWork())),
 })
@@ -205,7 +207,9 @@ export const SendReport = Command.define('SendReport', {
       const api = yield* (yield* StyldClient).api
       const target = yield* reportTargetOf(subject)
       const words = note.trim().slice(0, textLength.reportNote)
-      yield* api.social.report({ payload: { target, reason, ...(words.length > 0 ? { note: words } : {}) } })
+      yield* api.social.report({
+        payload: { operationId: yield* newOperationId, target, reason, ...(words.length > 0 ? { note: words } : {}) },
+      })
       return Message.SucceededReport()
     }).pipe(
       Effect.catchIf(
@@ -231,11 +235,11 @@ export const readRelation = (model: Model): Update.Return<Model, Message, StyldC
 
 // UPDATE
 
-type UpdateReturn = Update.Return<Model, Message, StyldClient>
+type UpdateReturn = Update.Return<Model, Message, StyldClient | Crypto.Crypto>
 
 const handleOfSubject = (model: Model) => (Subject.guards.Person(model.subject) ? model.subject.handle : '')
 
-const sending = (model: Model, command: Command.Command<Message, never, StyldClient>): UpdateReturn =>
+const sending = (model: Model, command: Command.Command<Message, never, StyldClient | Crypto.Crypto>): UpdateReturn =>
   Work.guards.Sending(model.work)
     ? { model }
     : { model: modifyFields(model, { work: () => Work.Sending(), confirmingBlock: () => false }), commands: [command] }

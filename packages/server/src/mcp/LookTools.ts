@@ -1,4 +1,4 @@
-import { CreateLook, type Look, LookId, maximumLookPieces } from '@styld/protocol'
+import { CreateLook, type Look, LookId, maximumLookPieces, ShareLook } from '@styld/protocol'
 import { Effect, Schema } from 'effect'
 import type { Looks } from '../looks/Looks.ts'
 import { tool } from './Tools.ts'
@@ -43,9 +43,9 @@ export const lookTools = (looks: Looks['Service'], origin: string) => {
       title: 'Share a look or stop sharing it',
       description:
         'Share a saved look on the person’s published profile, or stop sharing it. Only when the person asks. Styld checks a shared look before others see it; `check.state` says where that stands.',
-      parameters: Schema.Struct({ lookId: LookId, shared: Schema.Boolean }),
+      parameters: Schema.Struct({ lookId: LookId, ...ShareLook.fields }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
-      handler: ({ lookId, shared }) => looks.shareLook(lookId, { shared }).pipe(Effect.map(show)),
+      handler: ({ lookId, ...input }) => looks.shareLook(lookId, input).pipe(Effect.map(show)),
     }),
     tool({
       name: 'look_delete',

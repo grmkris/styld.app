@@ -1,9 +1,9 @@
 import { operationReceipts } from '@styld/db'
-import { OperationConflict } from '@styld/protocol'
+import { OperationConflict, Unavailable } from '@styld/protocol'
 import { and, eq } from 'drizzle-orm'
 import type { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option } from 'effect'
-import { nowDate } from './Db.ts'
+import { first, nowDate, query } from './Db.ts'
 import { digestOf } from './Ids.ts'
 
 // Every idempotent write answers a repeat the same way: the account's operation id names one command and one input.
@@ -67,3 +67,38 @@ export const receiptRow = (operation: Identified, result: string) =>
     result,
     createdAt,
   }))
+
+const unavailable = () => Unavailable.make({})
+
+/** Reading and writing receipts, for every store to spread into its own. */
+export const receiptRows = (db: Database) => ({
+  findReceipt: (accountId: string, operationId: string) =>
+    query(() => receiptQuery(db, accountId, operationId)).pipe(Effect.map(first)),
+  /** A receipt on its own, for an operation whose work is not one D1 batch. A receipt already there stays. */
+  saveReceipt: (receipt: typeof operationReceipts.$inferInsert) =>
+    query(() => db.insert(operationReceipts).values(receipt).onConflictDoNothing()).pipe(Effect.asVoid),
+})
+export type ReceiptRows = ReturnType<typeof receiptRows>
+
+/** An operation whose work is not one D1 batch (a fetch, an upload, a queue message, a status move): a repeat of it
+ * answers from its receipt (`replay` reads what `run` made from the receipt's result). The receipt is written once the
+ * work succeeded, so if that write is lost a repeat does the work once more; these operations allow that. */
+export const once = <A, E, R, E2, R2>(
+  receipts: ReceiptRows,
+  operation: Operation,
+  answer: {
+    readonly replay: (result: string) => Effect.Effect<A, E2, R2>
+    readonly run: Effect.Effect<readonly [A, string], E, R>
+  },
+) =>
+  Effect.gen(function* () {
+    const identified = yield* identify(operation)
+    const receipt = yield* receipts
+      .findReceipt(operation.accountId, operation.operationId)
+      .pipe(Effect.mapError(unavailable))
+    const prior = yield* priorResult(identified, receipt)
+    if (Option.isSome(prior)) return yield* answer.replay(prior.value)
+    const [value, result] = yield* answer.run
+    yield* receipts.saveReceipt(yield* receiptRow(identified, result)).pipe(Effect.mapError(unavailable))
+    return value
+  })

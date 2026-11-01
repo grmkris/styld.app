@@ -152,7 +152,7 @@ export const importImage = Effect.fn('Styld.Mcp.importImage')(function* (address
 })
 
 /** What an import needs of the wardrobe: making an upload and receiving its bytes. */
-export type Uploads = Pick<Wardrobe['Service'], 'createUpload' | 'receiveUpload'>
+export type Uploads = Pick<Wardrobe['Service'], 'newUpload' | 'receiveUpload'>
 
 /** Fetch a photo into a fresh received upload of the person's, through the same checks as one they send. */
 export const importedUpload = (wardrobe: Uploads, address: string) =>
@@ -164,7 +164,7 @@ export const receivedUpload = (
   { contentType, bytes }: { readonly contentType: ImageType; readonly bytes: Uint8Array },
 ) =>
   Effect.gen(function* () {
-    const upload = yield* wardrobe.createUpload({ contentType, bytes: bytes.byteLength })
+    const upload = yield* wardrobe.newUpload({ contentType, bytes: bytes.byteLength })
     // The upload's path carries its one-time token; the origin it is read against does not matter.
     const token = new URL(upload.path, 'https://styld.invalid').searchParams.get('token') ?? ''
     yield* wardrobe.receiveUpload({ uploadId: upload.uploadId, token, contentType, body: bytes })

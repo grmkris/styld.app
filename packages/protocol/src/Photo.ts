@@ -1,4 +1,4 @@
-import { entityId, OperationId } from './Ids.ts'
+import { entityId, Operation, OperationId } from './Ids.ts'
 import { LimitReached, NotFound, OperationConflict, refusal, RequestRefused, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
 import { Schema } from 'effect'
@@ -54,11 +54,11 @@ export const AddPhoto = Schema.Struct({ operationId: OperationId, uploadId: Uplo
 export type AddPhoto = typeof AddPhoto.Type
 
 /** Mark a photo a favourite or not: `PATCH /api/photos/:photoId`. */
-export const UpdatePhoto = Schema.Struct({ favourite: Schema.Boolean })
+export const UpdatePhoto = Schema.Struct({ operationId: OperationId, favourite: Schema.Boolean })
 
 /** Confirm a garment as one of the person's pieces, correct it to another, or say none of them is it:
  * `PUT /api/photos/:photoId/garments/:garmentId`. */
-export const MatchGarment = Schema.Struct({ pieceId: Schema.NullOr(PieceId) })
+export const MatchGarment = Schema.Struct({ operationId: OperationId, pieceId: Schema.NullOr(PieceId) })
 export type MatchGarment = typeof MatchGarment.Type
 
 /** "Wear it again": the photo's confirmed pieces saved as a look, under the name the person's language gives it:
@@ -120,6 +120,7 @@ export class PhotoApi extends HttpApiGroup.make('photo')
   .add(
     HttpApiEndpoint.delete('deletePhoto', '/photos/:photoId', {
       params: photoPath,
+      payload: Operation,
       success: HttpApiSchema.NoContent,
       error: [NotFound, Unavailable, RequestRefused],
     }),
@@ -135,6 +136,7 @@ export class PhotoApi extends HttpApiGroup.make('photo')
   .add(
     HttpApiEndpoint.post('offerGarment', '/photos/:photoId/garments/:garmentId/offer', {
       params: { ...photoPath, garmentId: PhotoGarmentId },
+      payload: Operation,
       success: Photo,
       error: [NotFound, Unavailable, RequestRefused],
     }),
@@ -150,6 +152,7 @@ export class PhotoApi extends HttpApiGroup.make('photo')
   .add(
     HttpApiEndpoint.post('cutOut', '/photos/:photoId/cutout', {
       params: photoPath,
+      payload: Operation,
       success: Photo,
       error: [NotFound, NoPersonFound, Unavailable, RequestRefused],
     }),

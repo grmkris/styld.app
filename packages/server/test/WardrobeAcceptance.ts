@@ -1,6 +1,6 @@
 import { expect } from 'bun:test'
 import { Schema } from 'effect'
-import { type Call, client, seedAccounts, send, signIn, signInBody } from './Accounts.ts'
+import { type Call, client, seedAccounts, send, signIn, signInBody, withOperation } from './Accounts.ts'
 
 /** A 1x1 PNG: the smallest photo the upload checks accept. */
 const png = Uint8Array.from(
@@ -177,20 +177,29 @@ export const verifyAccountDeletion = async (origin: string, fixtures: string): P
   const key = `accounts/native-farewell/uploads/${photo.uploadId}`
   expect(await (await fetch(`${fixtures}/test/identity/media?key=${key}`)).json()).toEqual({ exists: true })
   // A change from anywhere but the website itself is refused before it runs.
-  const bare = (method: string, path: string) => fetch(`${origin}${path}`, { method, headers: { cookie } })
+  const bare = (method: string, path: string) =>
+    fetch(`${origin}${path}`, {
+      ...withOperation(path, { method }),
+      headers: { cookie, 'content-type': 'application/json' },
+    })
   expect((await bare('DELETE', '/api/me')).status).toBe(403)
   expect(
     (
       await fetch(`${origin}/api/me`, {
-        method: 'DELETE',
-        headers: { cookie, origin: 'https://evil.invalid', 'x-effect-auth-csrf': '1' },
+        ...withOperation('/api/me', { method: 'DELETE' }),
+        headers: {
+          cookie,
+          origin: 'https://evil.invalid',
+          'x-effect-auth-csrf': '1',
+          'content-type': 'application/json',
+        },
       })
     ).status,
   ).toBe(403)
   const unadmitted = await fetch(`${origin}/api/uploads`, {
     method: 'POST',
     headers: { cookie, 'content-type': 'application/json' },
-    body: JSON.stringify({ contentType: 'image/png', bytes: png.byteLength }),
+    body: JSON.stringify({ operationId: 'native-unadmitted-upload', contentType: 'image/png', bytes: png.byteLength }),
   })
   expect(unadmitted.status).toBe(403)
   expect((await call('/api/me')).status).toBe(200)

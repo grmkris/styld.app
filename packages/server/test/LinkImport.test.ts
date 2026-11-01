@@ -128,7 +128,7 @@ describe('a product page for the review tray', () => {
   const uploadId = UploadId.make(`up_${'knit'.padEnd(22, 'x')}`)
   const received: Array<{ readonly token: string; readonly contentType: string; readonly bytes: number }> = []
   const uploads: Uploads = {
-    createUpload: () =>
+    newUpload: () =>
       Effect.succeed({ uploadId, path: `/api/uploads/${uploadId}?token=once`, expiresAt: '2026-10-31T09:00:00.000Z' }),
     receiveUpload: (input: { readonly token: string; readonly contentType: string; readonly body: Uint8Array }) =>
       Effect.as(
