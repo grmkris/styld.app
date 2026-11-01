@@ -32,6 +32,7 @@ import {
   refused,
   stored,
   toPiece,
+  typeOf,
   unavailable,
   usableUpload,
   type WardrobeBindings,
@@ -414,7 +415,7 @@ const processing = (parts: Parts) => ({
   processPiece: Effect.fn('Styld.Wardrobe.processPiece')(function* (pieceId: string) {
     const row = yield* stored(parts.store.findPieceForProcessing(pieceId))
     if (Option.isNone(row) || row.value.status !== 'processing') return
-    const { type } = yield* toPiece(row.value)
+    const type = yield* typeOf(row.value)
     const { imageKey } = yield* parts.cutout.cut({
       accountId: row.value.accountId,
       pieceId,

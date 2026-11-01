@@ -3,6 +3,7 @@ import {
   PieceNotFound,
   type PiecePicture,
   type PieceTurn,
+  PieceType,
   UploadRefused,
   WardrobeUnavailable,
 } from '@styld/protocol'
@@ -50,6 +51,11 @@ export const toPiece = (row: PieceRow, picture?: PiecePicture, turn?: PieceTurn)
     ...(turn === undefined ? {} : { turn }),
     // Only the service writes rows, through the same schemas; a row that does not decode is a bug.
   }).pipe(Effect.orDie)
+
+/** A stored piece's type, read alone: work that needs only the type, such as its cut-out, never depends on the rest of
+ * the row. Only the service writes the column, through the same schema; one that does not decode is a bug. */
+export const typeOf = (row: Pick<PieceRow, 'type'>) =>
+  Schema.decodeUnknownEffect(PieceType)(row.type).pipe(Effect.orDie)
 
 export interface Parts {
   readonly bindings: WardrobeBindings
