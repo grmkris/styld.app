@@ -28,7 +28,11 @@ import { StyldDatabase, StyldMedia, StyldPieceQueue } from '../src/Resources.ts'
 /** Local D1 answers SQLITE_BUSY for a while when another test (or another session's workerd) writes. Each fixture
  * write is one atomic batch, so it is retried on its own until the database is free. */
 const whenFree = <A, E, R>(write: Effect.Effect<A, E, R>) =>
-  write.pipe(Effect.retry({ times: 60, schedule: Schedule.spaced('200 millis') }))
+  write.pipe(
+    // Alchemy's D1 client turns a rejected call, SQLITE_BUSY among them, into a defect: it is tried again too.
+    Effect.catchDefect((defect) => Effect.fail(defect)),
+    Effect.retry({ times: 60, schedule: Schedule.spaced('200 millis') }),
+  )
 
 /** A one-key keyring of the fixture's own. */
 const testKeys = (material: string) => ({
