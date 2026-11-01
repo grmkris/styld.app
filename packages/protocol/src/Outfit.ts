@@ -97,7 +97,7 @@ export class ThinkingUnanswered extends Schema.TaggedError<ThinkingUnanswered>()
   },
 ) {}
 
-export class OutfitApi extends HttpApiGroup.make('outfits')
+export class OutfitApi extends HttpApiGroup.make('outfit')
   .add(
     HttpApiEndpoint.post('makeOutfit', '/outfits', {
       payload: MakeOutfit,
@@ -105,5 +105,4 @@ export class OutfitApi extends HttpApiGroup.make('outfits')
       error: [NotFound, SlowDown, LimitReached, ThinkingUnanswered, Unavailable, RequestRefused],
     }),
   )
-  .middleware(SessionHttp.RequireSession)
-  .prefix('/api') {}
+  .middleware(SessionHttp.RequireSession) {}

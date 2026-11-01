@@ -20,5 +20,4 @@ export class StylistApi extends HttpApiGroup.make('stylist')
       error: [NotFound, StylistBusy, LimitReached, OperationConflict, Unavailable, RequestRefused],
     }),
   )
-  .middleware(SessionHttp.RequireSession)
-  .prefix('/api') {}
+  .middleware(SessionHttp.RequireSession) {}

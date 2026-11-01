@@ -175,7 +175,7 @@ export const ReadFeed = Command.define('ReadFeed', {
 export const ReadFavourite = Command.define('ReadFavourite', {
   messages: [Message.SucceededReadFavourite, Message.FailedReadFavourite],
   execute: Effect.gen(function* () {
-    const { photos } = yield* (yield* (yield* StyldClient).api).photos.listPhotos()
+    const { photos } = yield* (yield* (yield* StyldClient).api).photo.listPhotos()
     const maybePhoto = Array.findFirst(photos, (photo) => photo.favourite && photo.status === 'ready')
     return Message.SucceededReadFavourite({ maybePhoto })
   }).pipe(Effect.orElseSucceed(() => Message.FailedReadFavourite())),
@@ -206,7 +206,7 @@ export const MakeOutfits = Command.define('MakeOutfits', {
   messages: [Message.SucceededMakeOutfits, Message.FailedMakeOutfits],
   execute: ({ day, brief, session, seen }) =>
     Effect.gen(function* () {
-      const batch = yield* (yield* (yield* StyldClient).api).outfits.makeOutfit({
+      const batch = yield* (yield* (yield* StyldClient).api).outfit.makeOutfit({
         payload: {
           mode: 'fast',
           day,

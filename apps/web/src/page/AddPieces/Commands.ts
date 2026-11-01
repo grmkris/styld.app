@@ -157,7 +157,7 @@ export const SendLink = Command.define('SendLink', {
         Option.match(args.uploadId, {
           onSome: (id) =>
             Effect.map(Schema.decodeUnknownEffect(UploadId)(id), (uploadId) => ({ uploadId, name: null })),
-          onNone: () => api.links.readLink({ payload: { url: args.url } }),
+          onNone: () => api.link.readLink({ payload: { url: args.url } }),
         }),
       )
       if (Result.isFailure(picture)) return failed(Option.none(), picture.failure)

@@ -14,7 +14,7 @@ export const linkHandlers = (
   admit: Admit,
   allowLink: (accountId: string) => Effect.Effect<boolean, never, RuntimeContext>,
 ) =>
-  HttpApiBuilder.group(StyldApi, 'links', (handlers) =>
+  HttpApiBuilder.group(StyldApi, 'link', (handlers) =>
     Effect.gen(function* () {
       const wardrobe = yield* Wardrobe
       const http = yield* publicClient

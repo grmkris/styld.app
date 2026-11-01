@@ -66,7 +66,7 @@ import {
 } from './Wardrobe.ts'
 
 /** The signed-in person's account. */
-export class AccountApi extends HttpApiGroup.make('account')
+class AccountApi extends HttpApiGroup.make('account')
   .add(HttpApiEndpoint.get('me', '/me', { success: Me }))
   /** Delete the account, its wardrobe and photos, its sessions and assistants' access, for good. */
   .add(
@@ -75,12 +75,11 @@ export class AccountApi extends HttpApiGroup.make('account')
       error: [Unavailable, RequestRefused],
     }),
   )
-  .middleware(SessionHttp.RequireSession)
-  .prefix('/api') {}
+  .middleware(SessionHttp.RequireSession) {}
 
 /** The signed-in person's pieces. A photo goes up first (`createUpload`, then a `PUT` of its bytes
  * to the returned path) and becomes a piece with `addPiece`. */
-export class WardrobeApi extends HttpApiGroup.make('wardrobe')
+class WardrobeApi extends HttpApiGroup.make('wardrobe')
   .add(HttpApiEndpoint.get('listPieces', '/pieces', { success: Pieces, error: Unavailable }))
   .add(
     HttpApiEndpoint.get('getPiece', '/pieces/:pieceId', {
@@ -148,12 +147,11 @@ export class WardrobeApi extends HttpApiGroup.make('wardrobe')
       error: [NotFound, NoCleanPicture, Unavailable, RequestRefused],
     }),
   )
-  .middleware(SessionHttp.RequireSession)
-  .prefix('/api') {}
+  .middleware(SessionHttp.RequireSession) {}
 
 /** Looks: outfits from the person's own pieces. Assistants make them, and so does the website when a
  * board or today's table is saved as a look. */
-export class LookApi extends HttpApiGroup.make('look')
+class LookApi extends HttpApiGroup.make('look')
   .add(HttpApiEndpoint.get('listLooks', '/looks', { success: Looks, error: Unavailable }))
   .add(
     HttpApiEndpoint.post('createLook', '/looks', {
@@ -184,13 +182,12 @@ export class LookApi extends HttpApiGroup.make('look')
       error: [NotFound, ProfileNotPublished, Unavailable, RequestRefused],
     }),
   )
-  .middleware(SessionHttp.RequireSession)
-  .prefix('/api') {}
+  .middleware(SessionHttp.RequireSession) {}
 
 /** Boards: the pieces, looks and pictures the person pins, and the table they lay some of them on. A picture
  * goes up as a photo upload first (`wardrobe.createUpload`, then a `PUT`) and joins the board with
  * `addBoardImage`. */
-export class BoardApi extends HttpApiGroup.make('board')
+class BoardApi extends HttpApiGroup.make('board')
   .add(HttpApiEndpoint.get('listBoards', '/boards', { success: Boards, error: Unavailable }))
   .add(
     HttpApiEndpoint.post('createBoard', '/boards', {
@@ -261,11 +258,10 @@ export class BoardApi extends HttpApiGroup.make('board')
       error: [NotFound, UploadRefused, OperationConflict, Unavailable, RequestRefused],
     }),
   )
-  .middleware(SessionHttp.RequireSession)
-  .prefix('/api') {}
+  .middleware(SessionHttp.RequireSession) {}
 
 /** What the person wore, by day: "Wear this" on today's table records it. */
-export class WornApi extends HttpApiGroup.make('worn')
+class WornApi extends HttpApiGroup.make('worn')
   .add(
     HttpApiEndpoint.get('listWorn', '/worn', {
       query: WornRange,
@@ -288,11 +284,10 @@ export class WornApi extends HttpApiGroup.make('worn')
       error: [Unavailable, RequestRefused],
     }),
   )
-  .middleware(SessionHttp.RequireSession)
-  .prefix('/api') {}
+  .middleware(SessionHttp.RequireSession) {}
 
 /** The person's public profile: a handle, a name, a city and a bio, published or not. */
-export class ProfileApi extends HttpApiGroup.make('profile')
+class ProfileApi extends HttpApiGroup.make('profile')
   .add(HttpApiEndpoint.get('getProfile', '/profile', { success: Profile, error: Unavailable }))
   .add(
     HttpApiEndpoint.patch('updateProfile', '/profile', {
@@ -308,8 +303,7 @@ export class ProfileApi extends HttpApiGroup.make('profile')
       error: [ProfileNeedsHandle, Unavailable, RequestRefused],
     }),
   )
-  .middleware(SessionHttp.RequireSession)
-  .prefix('/api') {}
+  .middleware(SessionHttp.RequireSession) {}
 
 /** What anyone may read, signed in or not: published profiles, public boards, shared looks and their pieces. */
 class PublicApi extends HttpApiGroup.make('public')
@@ -361,8 +355,7 @@ class PublicApi extends HttpApiGroup.make('public')
       success: PageMeta,
       error: [NotFound, SlowDown, Unavailable],
     }),
-  )
-  .prefix('/api') {}
+  ) {}
 
 /** What the person does with others: saves, follows, blocks, reports and the Following feed. */
 class SocialApi extends HttpApiGroup.make('social')
@@ -407,8 +400,7 @@ class SocialApi extends HttpApiGroup.make('social')
     }),
   )
   .add(HttpApiEndpoint.get('feed', '/feed', { query: FeedQuery, success: Feed, error: Unavailable }))
-  .middleware(SessionHttp.RequireSession)
-  .prefix('/api') {}
+  .middleware(SessionHttp.RequireSession) {}
 
 /** Styld's typed HTTP API: declared once, served by the API Worker and called by the website. */
 export class StyldApi extends HttpApi.make('styld')
@@ -425,4 +417,5 @@ export class StyldApi extends HttpApi.make('styld')
   .add(GenerationApi)
   .add(StylistApi)
   .add(OutfitApi)
-  .add(PhotoApi) {}
+  .add(PhotoApi)
+  .prefix('/api') {}

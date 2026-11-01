@@ -45,7 +45,7 @@ export class LinkRefused extends Schema.TaggedError<LinkRefused>()(
   },
 ) {}
 
-export class LinkApi extends HttpApiGroup.make('links')
+export class LinkApi extends HttpApiGroup.make('link')
   .add(
     HttpApiEndpoint.post('readLink', '/links/picture', {
       payload: ReadLink,
@@ -53,5 +53,4 @@ export class LinkApi extends HttpApiGroup.make('links')
       error: [LinkRefused, SlowDown, UploadRefused, Unavailable, RequestRefused],
     }),
   )
-  .middleware(SessionHttp.RequireSession)
-  .prefix('/api') {}
+  .middleware(SessionHttp.RequireSession) {}

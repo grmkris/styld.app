@@ -44,7 +44,7 @@ export type Message = typeof Message.Type
 export const ListPhotos = Command.define('ListPhotos', {
   messages: [Message.SucceededListPhotos, Message.FailedListPhotos],
   execute: Effect.gen(function* () {
-    const { photos } = yield* (yield* (yield* StyldClient).api).photos.listPhotos()
+    const { photos } = yield* (yield* (yield* StyldClient).api).photo.listPhotos()
     return Message.SucceededListPhotos({ photos })
   }).pipe(Effect.orElseSucceed(() => Message.FailedListPhotos())),
 })
@@ -59,7 +59,7 @@ export const AddPhoto = Command.define('AddPhoto', {
       const uploadId = yield* uploadPicture(file)
       const operationId = yield* Schema.decodeUnknownEffect(OperationId)(yield* (yield* Crypto.Crypto).randomUUIDv4())
       const api = yield* (yield* StyldClient).api
-      const photo = yield* api.photos.addPhoto({ payload: { operationId, uploadId } })
+      const photo = yield* api.photo.addPhoto({ payload: { operationId, uploadId } })
       return Message.SucceededAddPhoto({ photo })
     }).pipe(
       Effect.catch((error) =>

@@ -9,7 +9,7 @@ import { Photos } from './Photos.ts'
 /** My Gallery's endpoints, each the matching `Photos` operation for the session's account; changes are admitted
  * first. */
 export const photoHandlers = (admit: Admit) =>
-  HttpApiBuilder.group(StyldApi, 'photos', (handlers) =>
+  HttpApiBuilder.group(StyldApi, 'photo', (handlers) =>
     Effect.gen(function* () {
       const photos = yield* Photos
       return handlers

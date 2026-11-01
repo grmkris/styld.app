@@ -111,5 +111,4 @@ export class CaptureApi extends HttpApiGroup.make('capture')
       error: [NotFound, SheetRefused, Unavailable, RequestRefused],
     }),
   )
-  .middleware(SessionHttp.RequireSession)
-  .prefix('/api') {}
+  .middleware(SessionHttp.RequireSession) {}

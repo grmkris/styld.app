@@ -99,5 +99,4 @@ export class GenerationApi extends HttpApiGroup.make('generation')
       error: Unavailable,
     }),
   )
-  .middleware(SessionHttp.RequireSession)
-  .prefix('/api') {}
+  .middleware(SessionHttp.RequireSession) {}

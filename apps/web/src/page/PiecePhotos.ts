@@ -33,7 +33,7 @@ const ListPiecePhotos = Command.define('ListPiecePhotos', {
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       const params = { pieceId: yield* Schema.decodeUnknownEffect(PieceId)(pieceId) }
-      return Message.SucceededListPhotos({ photos: (yield* api.photos.piecePhotos({ params })).photos })
+      return Message.SucceededListPhotos({ photos: (yield* api.photo.piecePhotos({ params })).photos })
     }).pipe(Effect.orElseSucceed(() => Message.FailedListPhotos())),
 })
 

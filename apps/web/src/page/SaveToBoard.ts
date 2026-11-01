@@ -100,7 +100,7 @@ export const SaveTo = Command.define('SaveTo', {
           })).id
       const operationId = yield* newOperationId
       if (target.kind === 'photo')
-        yield* api.photos.addToBoard({
+        yield* api.photo.addToBoard({
           params: { photoId: yield* Schema.decodeUnknownEffect(PhotoId)(target.id) },
           payload: { operationId, boardId: id },
         })

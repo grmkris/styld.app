@@ -93,7 +93,7 @@ export class NothingConfirmed extends Schema.TaggedError<NothingConfirmed>()(
 
 const photoPath = { photoId: PhotoId }
 
-export class PhotoApi extends HttpApiGroup.make('photos')
+export class PhotoApi extends HttpApiGroup.make('photo')
   .add(HttpApiEndpoint.get('listPhotos', '/photos', { success: Photos, error: Unavailable }))
   .add(
     HttpApiEndpoint.post('addPhoto', '/photos', {
@@ -169,5 +169,4 @@ export class PhotoApi extends HttpApiGroup.make('photos')
       error: [NotFound, Unavailable],
     }),
   )
-  .middleware(SessionHttp.RequireSession)
-  .prefix('/api') {}
+  .middleware(SessionHttp.RequireSession) {}
