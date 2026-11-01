@@ -1,6 +1,6 @@
 # Delivery status
 
-Status: active. Sign-in, the wardrobe, capture with real cut-outs (photos, video import, a held-up camera), the review tray, the daily allowance, looks and the assistant's wardrobe view are deployed to the isolated workers.dev preview (release `f55b0ca`, with clean pictures, turns on a hanger, scan anything, the boards' pins, profiles, checks, link import and wishes, generated pictures and mood boards, and Styld, the stylist in the app). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping.
+Status: active. Sign-in, the wardrobe (shop-style garment types, browsing, a piece's back), capture with real cut-outs (photos, video import, a held-up camera, scan anything), the review tray, the daily allowance, looks, clean pictures and turns, the boards' pins, profiles, checks and link import, mood boards from the person's own pieces and stickers, the outfit engine (Fast and Thinking), My Gallery and Styld, the stylist in the app are deployed to the isolated workers.dev preview (release `889af38`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping; the plan in progress is "Plan: shopping your own wardrobe" below, waiting at owner gate 1.
 
 ## Screen fix pass, observability and mood board resume — 2026-10-31
 
@@ -190,10 +190,18 @@ studio, design, outfits, gallery, tryon, social, billing, operations). The worki
   writes: it failed its cut-out and, since the wardrobe list decodes every piece, would have failed that account's
   whole list. The row was trimmed on the preview (all 494 preview pieces decode) and the cut-out reads only the type
   (`7717973`).
-- **Owner gate 1 is next, and needs a wardrobe:** the blind rating page (`~/code/meta-hackathon/out/styld-outfit-calibration/`,
-  outside the repo) asks both ways for three outfits in a dozen situations. The preview test account holds only 10
-  fixture garments (seven tops, two trousers, one pair of shoes), too few to judge the ways by; it needs a good share
-  of the owner's own clothes first.
+- **Owner gate 1 is open, waiting for the owner's ratings:** the blind rating page
+  (`~/code/meta-hackathon/out/styld-outfit-calibration/`, outside the repo, on the tailnet as
+  `styld-outfit-calibration`) was built on 1 November from the owner's 74 carried-over pieces (all cut out, 73 with
+  attributes) and the 10 fixture garments: 62 outfits from 21 of 22 asks, both ways for each situation. Fast answered
+  in 3–8 s, Thinking in 11–24 s; for "a formal event" Thinking answered nothing the rules kept (503, "Try Fast"). Seen
+  while checking it: the owner's Derby shoes are typed heels (the Flats label is the owner's open decision), and the
+  fixture garments are still in the account. M4–M6 wait for the readout.
+- **Open from the carried-over wardrobes (1 November):** the tray's route still sends a pair of shoes, which it counts
+  as two, to SAM with the extra prompts, so a photo of one pair may be offered as two pieces; Cloudflare Images
+  answered 9529 ("too large or too busy") during a burst of about 90 cut-outs a minute, which the queue's retries
+  absorbed; the runtime's own `r2_get` span reports a judging-picture cache miss as an error, which crowds error
+  queries in Workers Logs.
 - **Open from M2–M3:** Home waits 4–6 s for its first table while Clef ranks twelve candidates (fewer candidates, or
   ranking after showing, are options); Thinking takes about 15 s.
 
