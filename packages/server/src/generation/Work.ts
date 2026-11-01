@@ -1,5 +1,6 @@
+import { isOutcomeUnknown } from '../providers/Errors.ts'
 import { BoardId, ImageType, Mood, OperationId, PieceId } from '@styld/protocol'
-import { Effect, Option, Predicate, Result, Schema } from 'effect'
+import { Effect, Option, Result, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import type { Picture } from '../capture/Providers.ts'
 import { receivedUpload } from '../mcp/ImageImport.ts'
@@ -97,12 +98,7 @@ const drawOne = (parts: Parts, job: JobRow, picture: PictureRow) =>
     const key = stickerKey(job.prompt)
     const painted = yield* Effect.result(parts.painter.paint({ prompt: picture.prompt, key }))
     if (Result.isFailure(painted))
-      return yield* ended(
-        parts,
-        job,
-        picture.index,
-        Predicate.isTagged(painted.failure, 'ProviderOutcomeUnknown') ? 'unknown' : 'refused',
-      )
+      return yield* ended(parts, job, picture.index, isOutcomeUnknown(painted.failure) ? 'unknown' : 'refused')
     const sticker = stickerOf(painted.success, key)
     if (Option.isNone(sticker)) return yield* ended(parts, job, picture.index, 'refused')
     // The painted bytes live only in this delivery: a picture that cannot be stored now is lost.

@@ -76,17 +76,20 @@ describe('Veo 3.1 Lite through the Vercel AI Gateway', () => {
   test('tries a throttled start again, never resends one whose answer was lost, and takes a refusal as final', async () => {
     const throttled = veo(status(429))
     expect(await Effect.runPromise(Effect.flip(throttled.generator.start(turn)))).toMatchObject({
-      _tag: 'ProviderFailed',
-      retryable: true,
+      _tag: 'ProviderError',
+      reason: { _tag: 'Busy' },
     })
-    expect(throttled.seen).toHaveLength(3)
+    expect(throttled.seen).toHaveLength(4)
     const lost = veo(() => Promise.reject(new Error('reset')))
     expect(await Effect.runPromise(Effect.flip(lost.generator.start(turn)))).toMatchObject({
-      _tag: 'ProviderOutcomeUnknown',
+      _tag: 'ProviderError',
+      reason: { _tag: 'OutcomeUnknown' },
     })
     expect(lost.seen).toHaveLength(1)
     const refused = veo(status(400))
-    expect(await Effect.runPromise(Effect.flip(refused.generator.start(turn)))).toMatchObject({ retryable: false })
+    expect(await Effect.runPromise(Effect.flip(refused.generator.start(turn)))).toMatchObject({
+      reason: { _tag: 'Refused' },
+    })
   })
 
   test('reads a job as pending, done with its video fetched, or failed', async () => {
@@ -109,7 +112,7 @@ describe('Veo 3.1 Lite through the Vercel AI Gateway', () => {
       await Effect.runPromise(veo(status(200, { status: 'error', error: 'filtered' })).generator.status(operation)),
     ).toEqual({ _tag: 'Failed' })
     expect(await Effect.runPromise(Effect.flip(veo(status(503)).generator.status(operation)))).toMatchObject({
-      retryable: true,
+      reason: { _tag: 'Busy' },
     })
   })
 })

@@ -1,3 +1,4 @@
+import { isBusy } from '../providers/Errors.ts'
 import { type PieceType, prices, slotOf } from '@styld/protocol'
 import { Effect, Layer, Option, Schema } from 'effect'
 import { accountPrefix } from '../wardrobe/Media.ts'
@@ -102,8 +103,7 @@ export const pieceCutout = (bucket: WardrobeBindings['bucket']) =>
             LimitReached: () => Effect.succeed(kept),
             NoCutout: () => Effect.succeed(kept),
             // A refusal, or an answer lost after the provider took the work, keeps the photo; busy tries again.
-            ProviderFailed: ({ retryable }) => (retryable ? CutoutFailed.make({}) : Effect.succeed(kept)),
-            ProviderOutcomeUnknown: () => Effect.succeed(kept),
+            ProviderError: (error) => (isBusy(error) ? CutoutFailed.make({}) : Effect.succeed(kept)),
           }),
           Effect.mapError(() => CutoutFailed.make({})),
         )

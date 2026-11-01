@@ -1,3 +1,4 @@
+import { type ProviderError, isBusy, isOutcomeUnknown } from '../providers/Errors.ts'
 import {
   chromaKey,
   crop,
@@ -12,7 +13,7 @@ import {
   shrink,
 } from '@styld/imaging'
 import { NotFound, prices, SheetRefused, type TurnLayout, TurnRefused } from '@styld/protocol'
-import { Effect, Match, Option, Predicate, Schema } from 'effect'
+import { Effect, Match, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { turnView } from '../wardrobe/Shown.ts'
 import { turnKept } from './CleanPicture.ts'
@@ -33,7 +34,6 @@ import {
   ImageGenerator,
   type Picture,
   PictureWork,
-  type ProviderFailed,
   type TurnStatus,
   VideoGenerator,
 } from './Providers.ts'
@@ -130,14 +130,10 @@ const sideView = (parts: Parts, turn: TurnRow, front: Rgba, key: 'green' | 'mage
 
 /** What a refused or lost provider call means for a claimed turn: busy hands it back to the queue, anything else ends
  * it (an answer lost after the provider took the work is never sent again). */
-const providerEnded =
-  (parts: Parts, pieceId: string) => (error: ProviderFailed | { readonly _tag: 'ProviderOutcomeUnknown' }) =>
-    Predicate.isTagged(error, 'ProviderFailed') && error.retryable
-      ? Effect.andThen(move(parts, pieceId, ['anchoring'], { state: 'requested' }), Effect.fail(error))
-      : Effect.as(
-          end(parts, pieceId, 'anchoring', Predicate.isTagged(error, 'ProviderFailed') ? 'refused' : 'unknown'),
-          'ended' as const,
-        )
+const providerEnded = (parts: Parts, pieceId: string) => (error: ProviderError) =>
+  isBusy(error)
+    ? Effect.andThen(move(parts, pieceId, ['anchoring'], { state: 'requested' }), Effect.fail(error))
+    : Effect.as(end(parts, pieceId, 'anchoring', isOutcomeUnknown(error) ? 'unknown' : 'refused'), 'ended' as const)
 
 /** A requested turn: claim it, lay its two frames on the key, and start the video model on them. The frames are kept,
  * so the browser can end the turn on the front and a retry never draws the side view again. */
@@ -153,10 +149,7 @@ const start = (parts: Parts, turn: TurnRow) =>
     const front = frontAnchor(clean.value, hanger())
     yield* writeObject(parts, turnKey(accountId, pieceId, 'front.png'), encodePng(front), 'image/png')
     const side = yield* sideView(parts, turn, front, key).pipe(
-      Effect.catchTags({
-        ProviderFailed: providerEnded(parts, pieceId),
-        ProviderOutcomeUnknown: providerEnded(parts, pieceId),
-      }),
+      Effect.catchTag('ProviderError', providerEnded(parts, pieceId)),
     )
     if (side === 'ended') return false
     if (Option.isNone(side)) return yield* end(parts, pieceId, 'anchoring', 'side')
@@ -166,10 +159,7 @@ const start = (parts: Parts, turn: TurnRow) =>
     const video = yield* VideoGenerator
     const job = yield* video.start({ side: first, front: last, key }).pipe(
       Effect.map(Option.some),
-      Effect.catchTags({
-        ProviderFailed: (error) => Effect.as(providerEnded(parts, pieceId)(error), Option.none()),
-        ProviderOutcomeUnknown: (error) => Effect.as(providerEnded(parts, pieceId)(error), Option.none()),
-      }),
+      Effect.catchTag('ProviderError', (error) => Effect.as(providerEnded(parts, pieceId)(error), Option.none())),
     )
     if (Option.isNone(job)) return false
     const operation = { job: job.value, startedAt: (yield* nowDate).getTime() }
@@ -199,8 +189,8 @@ const poll = (parts: Parts, turn: TurnRow) =>
     const status = yield* (yield* VideoGenerator)
       .status(started.value.job)
       .pipe(
-        Effect.catchTag('ProviderFailed', (error) =>
-          Effect.succeed<TurnStatus>(error.retryable ? { _tag: 'Pending' } : { _tag: 'Failed' }),
+        Effect.catchTag('ProviderError', (error) =>
+          Effect.succeed<TurnStatus>(isBusy(error) ? { _tag: 'Pending' } : { _tag: 'Failed' }),
         ),
       )
     return yield* Match.valueTags(status, {

@@ -1,3 +1,4 @@
+import { ProviderError } from '../providers/Errors.ts'
 import { chromaKey, flatten, framed, keyColourFor, shrink } from '@styld/imaging'
 import { Effect, Option, Schedule } from 'effect'
 import { gateFor, planFor } from './CleanPicture.ts'
@@ -114,21 +115,17 @@ const draw = (parts: Parts, claimed: PictureRow, front: Rgba, back: Option.Optio
       })
       .pipe(
         Effect.map(Option.some),
-        Effect.catchTag('ProviderOutcomeUnknown', () =>
-          Effect.as(end(parts, claimed, 'generating', 'unknown'), Option.none<Picture>()),
-        ),
-        Effect.catchTag('ProviderFailed', (error) =>
-          error.retryable
-            ? Effect.andThen(
-                move(parts, claimed, ['generating'], {
-                  state: 'queued',
-                  version: claimed.version - 1,
-                  claimedAt: null,
-                }),
-                Effect.fail(error),
-              )
-            : Effect.as(end(parts, claimed, 'generating', 'refused'), Option.none<Picture>()),
-        ),
+        Effect.catchReasons('ProviderError', {
+          OutcomeUnknown: () => Effect.as(end(parts, claimed, 'generating', 'unknown'), Option.none<Picture>()),
+          // Busy: the claim goes back for the queue's next try.
+          Busy: (reason) =>
+            Effect.andThen(
+              move(parts, claimed, ['generating'], { state: 'queued', version: claimed.version - 1, claimedAt: null }),
+              Effect.fail(ProviderError.make({ provider: 'meta-muse', reason })),
+            ),
+          Refused: () => Effect.as(end(parts, claimed, 'generating', 'refused'), Option.none<Picture>()),
+          Broken: () => Effect.as(end(parts, claimed, 'generating', 'refused'), Option.none<Picture>()),
+        }),
       )
     const ended = Option.none<{ readonly clean: Rgba; readonly checking: PictureRow }>()
     if (Option.isNone(answer)) return ended

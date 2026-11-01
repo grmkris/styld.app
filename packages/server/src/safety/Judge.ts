@@ -1,8 +1,9 @@
+import { type ProviderError, busy } from '../providers/Errors.ts'
 import type { CheckReason } from '@styld/protocol'
 import { Array, Context, Effect, Layer, Schema } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
 import type { RunClef } from '../capture/Clef.ts'
-import { type Picture, ProviderFailed } from '../capture/Providers.ts'
+import { type Picture } from '../capture/Providers.ts'
 
 /** What something public shows: its words and at most a few of its pictures. */
 export interface Content {
@@ -20,7 +21,7 @@ export interface Verdict {
 /** The model that decides whether something may be public (owner, 2026-10-30: no human queue). */
 export class ContentJudge extends Context.Service<
   ContentJudge,
-  { readonly judge: (content: Content) => Effect.Effect<Verdict, ProviderFailed> }
+  { readonly judge: (content: Content) => Effect.Effect<Verdict, ProviderError> }
 >()('@styld/server/ContentJudge') {}
 
 export const passed: Verdict = { state: 'passed', reason: null, model: 'none' }
@@ -64,7 +65,7 @@ const pictureVerdict = (scores: Readonly<Record<string, number>>): Verdict => {
   return { state: 'passed', reason: null, model: 'clef-flash' }
 }
 
-const failed = new ProviderFailed({ provider: 'workers-ai', retryable: true })
+const failed = busy('workers-ai')
 
 /** Llama Guard 3's answer: safe, or the hazard categories it saw. */
 const GuardAnswer = Schema.Struct({

@@ -1,3 +1,4 @@
+import { isOutcomeUnknown, ProviderError } from '../providers/Errors.ts'
 import { dailyCredits, LimitReached, Unavailable } from '@styld/protocol'
 import { OperationId, UserId } from '@styld/domain/Identity'
 import { ReserveCredits } from '@styld/domain/Wallet/ReserveCredits.command'
@@ -102,8 +103,10 @@ export class Holds extends Context.Service<
 
 /** How a failed attempt ended: a provider whose answer was lost after it took the work is `unknown`; anything else
  * failed. Both refund, so the difference is only what the span and the log say. */
+const isProviderError = Schema.is(ProviderError)
+
 const endingOf = (cause: Cause.Cause<unknown>): Ending =>
-  Option.exists(Cause.findErrorOption(cause), (error) => Predicate.isTagged(error, 'ProviderOutcomeUnknown'))
+  Option.exists(Cause.findErrorOption(cause), (error) => isProviderError(error) && isOutcomeUnknown(error))
     ? 'unknown'
     : 'failed'
 

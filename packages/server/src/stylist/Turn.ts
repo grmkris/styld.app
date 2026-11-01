@@ -1,4 +1,4 @@
-import { callPatience } from '../ai/WorkersAiFetch.ts'
+import { deadlines } from '../providers/Call.ts'
 import { Clock, Effect, Ref, Stream } from 'effect'
 import { Chat, type Tool, type Toolkit } from 'effect/ai'
 
@@ -38,7 +38,7 @@ const callModel = <Tools extends Record<string, Tool.Any>>(
         }
         return Effect.void
       }),
-      Effect.timeout(callPatience),
+      Effect.timeout(deadlines.chat),
       Effect.tapError(() =>
         Effect.flatMap(Clock.currentTimeMillis, (now) =>
           counted({ answered: false, milliseconds: now - started, inputTokens: 0, outputTokens: 0 }),

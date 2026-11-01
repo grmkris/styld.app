@@ -1,10 +1,13 @@
-import { Effect, Option, Predicate, Redacted, Schedule, Schema } from 'effect'
+import { refused, outcomeUnknown, broken, reasonOfStatus } from '../providers/Errors.ts'
+import { costs } from '../providers/Costs.ts'
+import { deadlines, providerCall } from '../providers/Call.ts'
+import { Effect, Option, Redacted, Schema } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
 import { cleanPrompt } from './CleanPrompt.ts'
 import { profilePrompt } from './TurnPrompt.ts'
-import { type CaptureMetrics, counted, prices } from './Metrics.ts'
+import type { CaptureMetrics } from './Metrics.ts'
 import type { PaintRequest } from '../generation/Painter.ts'
-import { type DrawRequest, type Picture, ProviderFailed, ProviderOutcomeUnknown } from './Providers.ts'
+import { type DrawRequest, type Picture } from './Providers.ts'
 
 /** What the Muse adapter needs: Meta's API and the key Styld already uses for SAM, and `fetch`. */
 export interface MuseSettings {
@@ -16,8 +19,7 @@ export interface MuseSettings {
 
 /** Meta's Standard model: Contributor variants would let Meta train on the person's garments. */
 const model = 'muse-image-1.0'
-const failed = (retryable: boolean) => new ProviderFailed({ provider: 'meta-muse', retryable })
-const unknown = () => new ProviderOutcomeUnknown({ provider: 'meta-muse' })
+const unknown = () => outcomeUnknown('meta-muse')
 
 const Edited = Schema.Struct({ data: Schema.Array(Schema.Struct({ b64_json: Schema.optionalKey(Schema.String) })) })
 
@@ -47,21 +49,21 @@ const drawBody = (request: DrawRequest) =>
   )
 
 /** Throttling and server errors were not billed and may pass on a later try; any other refusal would repeat. */
-const refusal = (response: Response) =>
-  Effect.fail(failed(response.status === 408 || response.status === 429 || response.status >= 500))
+const refusal = (response: Response) => Effect.fail(reasonOfStatus('meta-muse', response.status))
 
 /** The drawn picture in Muse's answer. No picture means Meta's safety filter removed it, unbilled and final; an
  * answer Styld cannot read would read the same way again. */
 const pictureOf = (response: Response) =>
   Effect.tryPromise({ try: () => response.json(), catch: unknown }).pipe(
-    Effect.flatMap((json) => Schema.decodeUnknownEffect(Edited)(json).pipe(Effect.mapError(() => failed(false)))),
-    Effect.flatMap(({ data }) => Effect.fromNullishOr(data[0]?.b64_json).pipe(Effect.mapError(() => failed(false)))),
-    Effect.flatMap((encoded) => Effect.fromResult(Base64.decode(encoded)).pipe(Effect.mapError(() => failed(false)))),
+    Effect.flatMap((json) => Schema.decodeUnknownEffect(Edited)(json).pipe(Effect.mapError(() => broken('meta-muse')))),
+    Effect.flatMap(({ data }) =>
+      Effect.fromNullishOr(data[0]?.b64_json).pipe(Effect.mapError(() => refused('meta-muse'))),
+    ),
+    Effect.flatMap((encoded) =>
+      Effect.fromResult(Base64.decode(encoded)).pipe(Effect.mapError(() => broken('meta-muse'))),
+    ),
     Effect.map((bytes): Picture => ({ bytes, contentType: 'image/png' })),
   )
-
-const outcomeOf = (error: ProviderFailed | ProviderOutcomeUnknown) =>
-  Predicate.isTagged(error, 'ProviderOutcomeUnknown') ? ('unknown' as const) : ('failed' as const)
 
 /** One Muse edit, retried in place while Muse is busy, counted as `kind`. A request that was sent but got no answer may
  * have been drawn and billed, so it is unknown and never resent. */
@@ -81,19 +83,11 @@ const edit = (
       }),
     catch: unknown,
   }).pipe(Effect.flatMap((response) => (response.ok ? pictureOf(response) : refusal(response))))
-  return counted(
+  return providerCall(
     settings.metrics,
-    send.pipe(
-      Effect.retry({
-        times: 3,
-        schedule: Schedule.exponential('400 millis'),
-        while: (error) => Predicate.isTagged(error, 'ProviderFailed') && error.retryable,
-      }),
-      Effect.timeoutOrElse({ duration: '90 seconds', orElse: () => Effect.fail(unknown()) }),
-    ),
-    { provider: 'meta-muse', model, kind },
-    () => ({ units: 1, costMicroUsd: prices.musePerImage }),
-    outcomeOf,
+    { provider: 'meta-muse', model, kind, deadline: deadlines.draw, replaySafe: false },
+    send,
+    () => ({ units: 1, costMicroUsd: costs.musePerImage }),
   )
 }
 

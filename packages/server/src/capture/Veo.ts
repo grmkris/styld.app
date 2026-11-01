@@ -1,7 +1,10 @@
-import { Effect, Option, Predicate, Redacted, Schedule, Schema } from 'effect'
+import { busy, refused, outcomeUnknown, broken, reasonOfStatus } from '../providers/Errors.ts'
+import { costs } from '../providers/Costs.ts'
+import { deadlines, providerCall } from '../providers/Call.ts'
+import { Effect, Option, Redacted, Schema } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
-import { type CaptureMetrics, counted, prices } from './Metrics.ts'
-import { type Picture, ProviderFailed, ProviderOutcomeUnknown, type TurnRequest, type TurnStatus } from './Providers.ts'
+import type { CaptureMetrics } from './Metrics.ts'
+import { type Picture, type TurnRequest, type TurnStatus } from './Providers.ts'
 import { turnPrompt } from './TurnPrompt.ts'
 
 /** What the Veo adapter needs: the Vercel AI Gateway, its key, and `fetch`. */
@@ -24,8 +27,8 @@ export const gatewayBase = 'https://ai-gateway.vercel.sh/v4/ai'
 // instead of $0.40; both Seedance models drifted (`meta-hackathon/out/styld-clean-turn/REPORT-turn-models.md`).
 const model = 'google/veo-3.1-lite-generate-001'
 const seconds = 4
-const failed = (retryable: boolean) => new ProviderFailed({ provider: 'vercel-gateway', retryable })
-const unknown = () => new ProviderOutcomeUnknown({ provider: 'vercel-gateway' })
+const failed = (retryable: boolean) => (retryable ? busy('vercel-gateway') : refused('vercel-gateway'))
+const unknown = () => outcomeUnknown('vercel-gateway')
 
 const Started = Schema.Struct({ operation: Schema.Unknown })
 const Video = Schema.Union([
@@ -68,7 +71,6 @@ const startBody = (request: TurnRequest) =>
   })
 
 /** Throttling and server errors were not billed and may pass on a later try; any other refusal would repeat. */
-const retryableStatus = (status: number) => status === 408 || status === 429 || status >= 500
 
 const post = (settings: VeoSettings, path: string, body: string) =>
   Effect.tryPromise({
@@ -87,7 +89,7 @@ const json = (response: Response) => Effect.tryPromise({ try: () => response.jso
 /** A finished video's bytes: fetched from where the gateway put it, or decoded when it came inline. */
 const videoOf = (settings: VeoSettings, video: typeof Video.Type) =>
   video.type === 'base64'
-    ? Effect.fromResult(Base64.decode(video.data)).pipe(Effect.mapError(() => failed(false)))
+    ? Effect.fromResult(Base64.decode(video.data)).pipe(Effect.mapError(() => broken('vercel-gateway')))
     : Effect.tryPromise({
         try: async (signal) => {
           const response = await settings.fetch(video.url, { method: 'GET', signal })
@@ -115,11 +117,8 @@ const refusal = (response: Response) =>
         'styld.provider.error': Option.getOrElse(type, () => 'unknown'),
       }),
     )
-    return yield* failed(retryableStatus(response.status))
+    return yield* reasonOfStatus('vercel-gateway', response.status)
   })
-
-const outcomeOf = (error: ProviderFailed | ProviderOutcomeUnknown) =>
-  Predicate.isTagged(error, 'ProviderOutcomeUnknown') ? ('unknown' as const) : ('failed' as const)
 
 /** Veo 3.1 Lite through the Vercel AI Gateway as Styld's turn maker. A start that was sent but got no answer may have
  * made and billed a job, so it is unknown and never resent; the job's id is kept before it is polled. */
@@ -133,30 +132,22 @@ export const makeVeoGenerator = (settings: VeoSettings) => ({
       Effect.flatMap((answer) => Schema.decodeUnknownEffect(Started)(answer).pipe(Effect.mapError(unknown))),
       Effect.map(({ operation }) => operation),
     )
-    return yield* counted(
+    return yield* providerCall(
       settings.metrics,
-      send.pipe(
-        Effect.retry({
-          times: 2,
-          schedule: Schedule.exponential('1 second'),
-          while: (error) => Predicate.isTagged(error, 'ProviderFailed') && error.retryable,
-        }),
-        Effect.timeoutOrElse({ duration: '60 seconds', orElse: () => Effect.fail(unknown()) }),
-      ),
-      { provider: 'vercel-gateway', model, kind: 'turn' },
-      () => ({ units: seconds, costMicroUsd: seconds * prices.veoLitePerSecond }),
-      outcomeOf,
+      { provider: 'vercel-gateway', model, kind: 'turn', deadline: deadlines.turn, replaySafe: false },
+      send,
+      () => ({ units: seconds, costMicroUsd: seconds * costs.veoLitePerSecond }),
     )
   }),
   /** Where a started job stands. A status the gateway could not give now is retryable; the job itself is untouched. */
   status: Effect.fn('Styld.Turn.status')(function* (operation: unknown) {
     const response = yield* post(settings, 'status', JSON.stringify({ operation })).pipe(
       Effect.mapError(() => failed(true)),
-      Effect.timeoutOrElse({ duration: '30 seconds', orElse: () => Effect.fail(failed(true)) }),
+      Effect.timeoutOrElse({ duration: deadlines.status, orElse: () => Effect.fail(failed(true)) }),
     )
-    if (!response.ok) return yield* failed(retryableStatus(response.status))
+    if (!response.ok) return yield* reasonOfStatus('vercel-gateway', response.status)
     const answer = yield* Effect.flatMap(json(response), (body) =>
-      Schema.decodeUnknownEffect(Status)(body).pipe(Effect.mapError(() => failed(false))),
+      Schema.decodeUnknownEffect(Status)(body).pipe(Effect.mapError(() => broken('vercel-gateway'))),
     )
     if (answer.status === 'pending') return { _tag: 'Pending' } satisfies TurnStatus
     if (answer.status !== 'completed') return { _tag: 'Failed' } satisfies TurnStatus

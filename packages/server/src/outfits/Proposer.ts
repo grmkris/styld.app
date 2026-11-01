@@ -1,9 +1,10 @@
+import { type ProviderError, refused } from '../providers/Errors.ts'
 import { outfitKeyOf } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import { structured, type TextMessage } from '../ai/TextModel.ts'
 import type { RunChat } from '../ai/WorkersAiFetch.ts'
 import type { CaptureMetrics } from '../capture/Metrics.ts'
-import { ProviderFailed } from '../capture/Providers.ts'
+
 import { type Brief, validated, type Wearable } from './Rules.ts'
 
 // Thinking (owner, 2026-10-31): a text model proposes outfits from the person's pieces, sent as short references,
@@ -18,7 +19,7 @@ export interface Proposed {
 }
 
 export interface OutfitProposer {
-  readonly propose: (request: Brief, count: number) => Effect.Effect<Proposed, ProviderFailed>
+  readonly propose: (request: Brief, count: number) => Effect.Effect<Proposed, ProviderError>
 }
 
 /** The most pieces and shown combinations one request sends. */
@@ -115,7 +116,7 @@ export const keptProposals = (
   return [...kept.values()]
 }
 
-export const nothingKept = () => new ProviderFailed({ provider: 'workers-ai', retryable: true })
+export const nothingKept = () => refused('workers-ai')
 
 /** Thinking's model: the one Styld answers with, which the owner's probe of 31 October found the best at Slovenian and
  * at following instructions. */

@@ -1,9 +1,9 @@
+import { outcomeUnknown } from '../src/providers/Errors.ts'
 import { describe, expect, it } from '@effect/vitest'
 import { LimitReached } from '@styld/protocol'
 import { Effect, Exit, Layer, Schema } from 'effect'
 import { type Charge, type Ending, holdId, Holds, metered, settlementOf } from '../src/usage/Holds.ts'
 
-class ProviderOutcomeUnknown extends Schema.TaggedError<ProviderOutcomeUnknown>()('ProviderOutcomeUnknown', {}) {}
 class Refused extends Schema.TaggedError<Refused>()('Refused', {}) {}
 
 /** A Wallet that records what was held and how each hold settled, and refuses past `credits`. */
@@ -39,7 +39,7 @@ describe('a metered call', () => {
     const { log, layer } = recording()
     return Effect.gen(function* () {
       const refused = yield* Effect.exit(metered(charge, Refused.make({})))
-      const lost = yield* Effect.exit(metered(charge, ProviderOutcomeUnknown.make({})))
+      const lost = yield* Effect.exit(metered(charge, outcomeUnknown('meta-sam')))
       expect(Exit.isFailure(refused) && Exit.isFailure(lost)).toBe(true)
       expect(log).toEqual([
         'reserve piece/pc_1/1',

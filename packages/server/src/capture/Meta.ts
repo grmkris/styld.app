@@ -1,7 +1,10 @@
-import { Clock, Effect, Option, Predicate, Redacted, Schedule, Schema } from 'effect'
+import { busy, refused, outcomeUnknown, broken } from '../providers/Errors.ts'
+import { costs } from '../providers/Costs.ts'
+import { deadlines, providerCall } from '../providers/Call.ts'
+import { Clock, Effect, Option, Redacted, Schema } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
-import { type CaptureMetrics, counted, prices } from './Metrics.ts'
-import { type Picture, ProviderFailed, ProviderOutcomeUnknown, type StoredVideo } from './Providers.ts'
+import type { CaptureMetrics } from './Metrics.ts'
+import { type Picture, type StoredVideo } from './Providers.ts'
 import { lineFrame, lineFrameSize, makeOutputLines, stillMasks, videoMasks } from './SamStream.ts'
 import { type ByteStream, pump } from '../Streams.ts'
 import { blankRanges } from './VideoContainer.ts'
@@ -18,8 +21,8 @@ export interface MetaSettings {
 }
 
 const model = 'sam-3.1'
-const failed = (retryable: boolean) => new ProviderFailed({ provider: 'meta-sam', retryable })
-const unknown = () => new ProviderOutcomeUnknown({ provider: 'meta-sam' })
+const failed = (retryable: boolean) => (retryable ? busy('meta-sam') : refused('meta-sam'))
+const unknown = () => outcomeUnknown('meta-sam')
 
 /** 4xx means Meta refused the request as sent. Throttling, server errors and `model_not_found` (Meta's
  * routing sometimes lands on a backend without the model; the next request usually reaches one) may
@@ -37,14 +40,6 @@ const refusal = (response: Response) =>
       ),
     ),
   )
-
-/** Retry a refusal worth retrying a few times in place before the queue's slower retry. */
-const retriedBriefly = <A>(effect: Effect.Effect<A, ProviderFailed | ProviderOutcomeUnknown>) =>
-  Effect.retry(effect, {
-    times: 3,
-    schedule: Schedule.exponential('400 millis'),
-    while: (error) => Predicate.isTagged(error, 'ProviderFailed') && error.retryable,
-  })
 
 const FileCreated = Schema.Struct({ id: Schema.String })
 
@@ -66,16 +61,9 @@ const readLines = (body: ByteStream, keep: (line: string) => boolean) =>
     catch: unknown,
   }).pipe(Effect.filterOrFail(({ end }) => end.completed, unknown))
 
-const outcomeOf = (error: ProviderFailed | ProviderOutcomeUnknown) =>
-  Predicate.isTagged(error, 'ProviderOutcomeUnknown') ? ('unknown' as const) : ('failed' as const)
-
-/** Start a streamed Responses request. `onSendFailure` says what a request that never got an answer
- * means: safe to retry for a still, unknown for a video whose frames Meta may already be billing. */
-const respond = (
-  settings: MetaSettings,
-  content: ReadonlyArray<object>,
-  onSendFailure: () => ProviderFailed | ProviderOutcomeUnknown,
-) =>
+/** Start a streamed Responses request. A request that never got an answer may have reached Meta, which bills a still
+ * and a video's frames once it takes them: its outcome is unknown, and it is never sent again on its own. */
+const respond = (settings: MetaSettings, content: ReadonlyArray<object>) =>
   Effect.tryPromise({
     try: (signal) =>
       settings.fetch(`${settings.apiBase}/v1/responses`, {
@@ -89,12 +77,11 @@ const respond = (
         }),
         signal,
       }),
-    catch: onSendFailure,
+    catch: unknown,
   }).pipe(
     Effect.flatMap((response) =>
       response.ok && response.body !== null ? Effect.succeed(response.body) : refusal(response),
     ),
-    retriedBriefly,
   )
 
 /** SAM on one still, sent inline. */
@@ -104,17 +91,15 @@ const segmentStill = (settings: MetaSettings) =>
       { type: 'input_text', text: prompt },
       { type: 'input_image', image_url: `data:${picture.contentType};base64,${Base64.encode(picture.bytes)}` },
     ]
-    return yield* counted(
+    return yield* providerCall(
       settings.metrics,
-      respond(settings, content, () => failed(true)).pipe(
+      { provider: 'meta-sam', model, kind: 'segment', deadline: deadlines.segment, replaySafe: false },
+      respond(settings, content).pipe(
         Effect.flatMap((body) => readLines(body, () => true)),
         // An answer SAM sent but Styld cannot read would read the same way again.
-        Effect.flatMap(({ lines }) => Effect.try({ try: () => stillMasks(lines), catch: () => failed(false) })),
-        Effect.timeoutOrElse({ duration: '90 seconds', orElse: () => Effect.fail(failed(true)) }),
+        Effect.flatMap(({ lines }) => Effect.try({ try: () => stillMasks(lines), catch: () => broken('meta-sam') })),
       ),
-      { provider: 'meta-sam', model, kind: 'segment' },
-      () => ({ units: 1, costMicroUsd: prices.samPerImage }),
-      outcomeOf,
+      () => ({ units: 1, costMicroUsd: costs.samPerImage }),
     )
   })
 
@@ -188,18 +173,17 @@ const sendVideo = (settings: MetaSettings, video: StoredVideo, frame: ReturnType
 const uploadVideo = (settings: MetaSettings) =>
   Effect.fn('Styld.Capture.uploadVideo')(function* (video: StoredVideo) {
     const frame = multipartFrame(video, yield* Clock.currentTimeMillis)
-    const response = yield* counted(
+    // Uploading is free and uploading again only makes another file: safe to send again.
+    const response = yield* providerCall(
       settings.metrics,
-      sendVideo(settings, video, frame).pipe(
-        Effect.timeoutOrElse({ duration: '5 minutes', orElse: () => Effect.fail(failed(true)) }),
-      ),
-      { provider: 'meta-sam', model: 'files', kind: 'upload' },
+      { provider: 'meta-sam', model: 'files', kind: 'upload', deadline: deadlines.upload, replaySafe: true },
+      sendVideo(settings, video, frame),
       () => ({ units: video.bytes, costMicroUsd: 0 }),
     )
     if (!response.ok) return yield* refusal(response)
     const created = yield* Effect.tryPromise({ try: () => response.json(), catch: () => failed(true) }).pipe(
       Effect.flatMap((json) =>
-        Schema.decodeUnknownEffect(FileCreated)(json).pipe(Effect.mapError(() => failed(false))),
+        Schema.decodeUnknownEffect(FileCreated)(json).pipe(Effect.mapError(() => broken('meta-sam'))),
       ),
     )
     return created.id
@@ -215,9 +199,10 @@ const trackVideo = (settings: MetaSettings) =>
     const wanted = (line: string) =>
       Option.match(Option.fromNullishOr(lineFrame(line)), { onNone: () => false, onSome: (frame) => frames.has(frame) })
     // Once the request left, Meta may have started billing frames: a lost answer is unknown, not retried.
-    return yield* counted(
+    return yield* providerCall(
       settings.metrics,
-      respond(settings, content, unknown).pipe(
+      { provider: 'meta-sam', model, kind: 'track', deadline: deadlines.track, replaySafe: false },
+      respond(settings, content).pipe(
         Effect.flatMap((body) => readLines(body, wanted)),
         // Meta billed the frames once it answered: an answer Styld cannot read is an unknown outcome.
         Effect.flatMap(({ lines, end }) =>
@@ -230,11 +215,8 @@ const trackVideo = (settings: MetaSettings) =>
             catch: unknown,
           }),
         ),
-        Effect.timeoutOrElse({ duration: '10 minutes', orElse: () => Effect.fail(unknown()) }),
       ),
-      { provider: 'meta-sam', model, kind: 'track' },
-      ({ framesBilled }) => ({ units: framesBilled, costMicroUsd: framesBilled * prices.samPerFrame }),
-      outcomeOf,
+      ({ framesBilled }) => ({ units: framesBilled, costMicroUsd: framesBilled * costs.samPerFrame }),
     )
   })
 

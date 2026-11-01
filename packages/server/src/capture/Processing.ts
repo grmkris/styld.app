@@ -81,22 +81,22 @@ const run = (parts: Parts, capture: CaptureRow) =>
     Effect.map((result) => Option.some<Result>(result)),
     // Another delivery is tracking this video; it finishes the capture.
     Effect.catchTag('TrackingClaimed', () => Effect.succeed(Option.none<Result>())),
-    Effect.catchTag('ProviderOutcomeUnknown', () =>
-      Effect.gen(function* () {
-        yield* storedAs(
-          parts.store.updateCapture(capture.id, { status: 'unknown', errorCode: 'unknown', updatedAt: yield* nowDate }),
-        )
-        yield* settleEnded(parts, { ...capture, status: 'unknown' })
-        return Option.none<Result>()
-      }),
-    ),
-    Effect.catchTag('ProviderFailed', (error) =>
-      Effect.gen(function* () {
-        if (error.retryable) return yield* error
-        yield* fail(parts, capture.id, 'refused')
-        return Option.none<Result>()
-      }),
-    ),
+    Effect.catchReasons('ProviderError', {
+      OutcomeUnknown: () =>
+        Effect.gen(function* () {
+          yield* storedAs(
+            parts.store.updateCapture(capture.id, {
+              status: 'unknown',
+              errorCode: 'unknown',
+              updatedAt: yield* nowDate,
+            }),
+          )
+          yield* settleEnded(parts, { ...capture, status: 'unknown' })
+          return Option.none<Result>()
+        }),
+      Refused: () => Effect.as(fail(parts, capture.id, 'refused'), Option.none<Result>()),
+      Broken: () => Effect.as(fail(parts, capture.id, 'refused'), Option.none<Result>()),
+    }),
   )
 
 /** Store what the pipeline found, consume the held credits, and pair a camera shot with its other side. */

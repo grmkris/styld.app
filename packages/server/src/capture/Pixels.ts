@@ -1,6 +1,6 @@
+import { refused } from '../providers/Errors.ts'
 import { type Box, crop, decodePng, type Rgba } from '@styld/imaging'
 import { Effect } from 'effect'
-import { ProviderFailed } from './Providers.ts'
 
 export { type Box, crop, decodePng, encodePng, opaqueBounds, type Rgba } from '@styld/imaging'
 
@@ -32,7 +32,7 @@ export const overlapShare = (mask: Mask, other: Mask) => {
 export const decodedPng = (bytes: Uint8Array) =>
   Effect.try({
     try: () => decodePng(bytes),
-    catch: () => new ProviderFailed({ provider: 'cloudflare-images', retryable: false }),
+    catch: () => refused('cloudflare-images'),
   })
 
 /** The garment alone: the original pixels inside `mask`, transparent elsewhere, cropped to the mask's box. */

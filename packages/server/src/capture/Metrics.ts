@@ -90,19 +90,6 @@ export class CaptureMetrics extends Context.Service<
   static readonly discard = Layer.succeed(this, this.discarding)
 }
 
-/** List prices in micro-dollars, read 2026-10-29 (`docs/ROADMAP.md` › Provider facts). Estimates only:
- * the providers' own invoices are the truth. */
-export const prices = {
-  clefFlashPerToken: 0.038,
-  imagesPerTransform: 500,
-  samPerImage: 2500,
-  samPerFrame: 200,
-  // Muse Image bills a flat $0.01 for each picture it returns (Meta's pricing page, 2026-10-27).
-  musePerImage: 10_000,
-  // Veo 3.1 Lite through the Vercel AI Gateway bills $0.03 a second of video (gateway balance, 30 October).
-  veoLitePerSecond: 30_000,
-} as const
-
 /** Time `effect` and count it as one provider call, whatever its outcome. */
 export const counted = <A, E, R>(
   metrics: CaptureMetrics['Service'],

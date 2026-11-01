@@ -1,13 +1,15 @@
+import { busy, refused, broken } from '../providers/Errors.ts'
+import { costs } from '../providers/Costs.ts'
+import { deadlines, providerCall } from '../providers/Call.ts'
 import { Colour, groupOf, Occasion, Pattern, PieceType, Season } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
-import { type CaptureMetrics, counted, prices } from './Metrics.ts'
+import type { CaptureMetrics } from './Metrics.ts'
 import {
   type Comparison,
   type HeldCheck,
   type Judgement,
   type Picture,
-  ProviderFailed,
   type Route,
   type Scene,
   type Suggestion,
@@ -35,7 +37,7 @@ const Answer = Schema.Struct({
 type Answer = typeof Answer.Type
 export type ClefAnswer = Answer
 
-const failed = (retryable: boolean) => new ProviderFailed({ provider: 'clef', retryable })
+const failed = (retryable: boolean) => (retryable ? busy('clef') : refused('clef'))
 
 /** A picture as Clef reads it. */
 export const imageOf = (picture: Picture) => ({
@@ -91,7 +93,7 @@ const colourCriteria = Object.fromEntries(Colour.literals.map((colour) => [colou
 /** What one answer cost: its input tokens, at Clef-flash's list price. */
 export const clefCost = (answer: Answer) => {
   const tokens = answer.usage?.input_tokens ?? 0
-  return { units: tokens, costMicroUsd: Math.round(tokens * prices.clefFlashPerToken) }
+  return { units: tokens, costMicroUsd: Math.round(tokens * costs.clefFlashPerToken) }
 }
 
 /** Ask Clef, counted as one provider call of `kind` with its tokens' cost. */
@@ -101,13 +103,12 @@ export const askClef = (
   kind: 'route' | 'suggest' | 'check' | 'judge' | 'compare' | 'match' | 'outfit',
   request: ClefRequest,
 ) =>
-  counted(
+  providerCall(
     metrics,
+    { provider: 'clef', model: 'clef-flash', kind, deadline: deadlines.clef, replaySafe: true },
     Effect.tryPromise({ try: () => run(request), catch: () => failed(true) }).pipe(
-      Effect.timeoutOrElse({ duration: '30 seconds', orElse: () => Effect.fail(failed(true)) }),
-      Effect.flatMap((raw) => Schema.decodeUnknownEffect(Answer)(raw).pipe(Effect.mapError(() => failed(false)))),
+      Effect.flatMap((raw) => Schema.decodeUnknownEffect(Answer)(raw).pipe(Effect.mapError(() => broken('clef')))),
     ),
-    { provider: 'clef', model: 'clef-flash', kind },
     clefCost,
   )
 

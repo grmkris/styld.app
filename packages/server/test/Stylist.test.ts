@@ -8,7 +8,7 @@ import { type Tool as AssistantTool, tool, ToolError } from '../src/mcp/Tools.ts
 import { historyText, outlineOf, systemPrompt } from '../src/stylist/Prompt.ts'
 import { lookingUpToolNames, modelSchema, showingToolNames, turnTools } from '../src/stylist/Tools.ts'
 import { TestClock } from 'effect/testing'
-import { callPatience } from '../src/ai/WorkersAiFetch.ts'
+import { deadlines } from '../src/providers/Call.ts'
 import { runTurn } from '../src/stylist/Turn.ts'
 import { type RunChat, workersAiFetch } from '../src/ai/WorkersAiFetch.ts'
 
@@ -120,7 +120,7 @@ describe('a reply', () => {
             counted: (usage) => Effect.sync(() => void (usage.answered ? undefined : failed.push(usage.milliseconds))),
           }).pipe(Effect.provide(modelOver(neverAnswering))),
         )
-        yield* TestClock.adjust(callPatience)
+        yield* TestClock.adjust(deadlines.chat)
         return yield* Effect.flip(Fiber.join(writing))
       }).pipe(Effect.provide(TestClock.layer())),
     )

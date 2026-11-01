@@ -1,3 +1,4 @@
+import { isBusy } from '../providers/Errors.ts'
 import { Effect, Option } from 'effect'
 import { comparedTypes, sameAs } from '../capture/Matching.ts'
 import { type CaptureBindings, makeParts, readObject, storedAs, unavailable, writeObject } from '../capture/Parts.ts'
@@ -120,9 +121,22 @@ export const finding = (parts: PhotoParts) => ({
     if (Option.isNone(photo)) return
     if (photo.value.status === 'finding') {
       const providers = (yield* CaptureConfig).providers
+      // Only a busy provider is tried again: one that may have taken the paid work (SAM bills each call) is never
+      // sent it twice, and a refusal would repeat. Both end the photo as failed, its credit back.
       const garments =
-        providers === 'off' ? yield* wholePhoto(parts, photo.value) : yield* garmentsIn(parts, photo.value)
-      yield* storedAs(parts.photos.finishFinding(photoId, garments, yield* nowDate))
+        providers === 'off'
+          ? Option.some(yield* wholePhoto(parts, photo.value))
+          : yield* garmentsIn(parts, photo.value).pipe(
+              Effect.map(Option.some),
+              Effect.catchTag('ProviderError', (error) =>
+                isBusy(error) ? Effect.fail(error) : Effect.succeed(Option.none<ReadonlyArray<GarmentRow>>()),
+              ),
+            )
+      if (Option.isNone(garments)) {
+        yield* storedAs(parts.photos.failFinding(photoId, yield* nowDate))
+        return yield* settlePhoto(photo.value.accountId, photoId, 'failed')
+      }
+      yield* storedAs(parts.photos.finishFinding(photoId, garments.value, yield* nowDate))
     }
     // Settled after the status moved, and again by any later delivery: the first settlement stands.
     yield* settlePhoto(photo.value.accountId, photoId, photo.value.status === 'failed' ? 'failed' : 'succeeded')

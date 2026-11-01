@@ -1,6 +1,7 @@
+import { refused, outcomeUnknown } from '../../src/providers/Errors.ts'
 import { encodePng, type KeyColour } from '@styld/imaging'
 import { Effect, Layer, Option } from 'effect'
-import { type Picture, ProviderFailed, ProviderOutcomeUnknown } from '../../src/capture/Providers.ts'
+import { type Picture } from '../../src/capture/Providers.ts'
 import type { PicturePainter } from '../../src/generation/Painter.ts'
 import { type MoodPlanner, planOf } from '../../src/generation/Planner.ts'
 import { nothingKept, type OutfitProposer } from '../../src/outfits/Proposer.ts'
@@ -30,9 +31,8 @@ const keyablePicture = (key: KeyColour): Picture => {
 export const fakePainter: PicturePainter['Service'] = {
   model: 'fake',
   paint: (request) => {
-    if (request.prompt.includes('[[refuse]]'))
-      return Effect.fail(new ProviderFailed({ provider: 'fake', retryable: false }))
-    if (request.prompt.includes('[[lost]]')) return Effect.fail(new ProviderOutcomeUnknown({ provider: 'fake' }))
+    if (request.prompt.includes('[[refuse]]')) return Effect.fail(refused('fake'))
+    if (request.prompt.includes('[[lost]]')) return Effect.fail(outcomeUnknown('fake'))
     return Effect.succeed(keyablePicture(request.key))
   },
 }

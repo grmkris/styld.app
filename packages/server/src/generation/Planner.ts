@@ -1,9 +1,9 @@
+import { type ProviderError } from '../providers/Errors.ts'
 import { Mood, maximumMoods } from '@styld/protocol'
 import { Context, Effect, Option, Schema } from 'effect'
 import { structured } from '../ai/TextModel.ts'
 import type { RunChat } from '../ai/WorkersAiFetch.ts'
 import type { CaptureMetrics } from '../capture/Metrics.ts'
-import { ProviderFailed } from '../capture/Providers.ts'
 
 // Make a mood board (owner, 2026-10-31): one sentence picks the person's own pieces that suit it, and up to three
 // moods. No picture is drawn: a mood board is made of real clothes. A Workers AI chat model plans it with a JSON
@@ -34,7 +34,7 @@ export const fewestPicks = 2
 /** Plans mood boards; none when the sentence asks for nothing Styld makes, or the wardrobe holds too little for it. */
 export class MoodPlanner extends Context.Service<
   MoodPlanner,
-  { readonly plan: (request: PlanRequest) => Effect.Effect<Option.Option<Plan>, ProviderFailed> }
+  { readonly plan: (request: PlanRequest) => Effect.Effect<Option.Option<Plan>, ProviderError> }
 >()('@styld/server/MoodPlanner') {}
 
 const Answer = Schema.Struct({

@@ -309,7 +309,7 @@ describe('Clef-flash', () => {
     const down = await errorOf(
       makeGarmentVision(() => Promise.reject(new Error('down')), CaptureMetrics.discarding).route(picture),
     )
-    expect(down).toMatchObject({ _tag: 'ProviderFailed', retryable: true })
+    expect(down).toMatchObject({ _tag: 'ProviderError', reason: { _tag: 'Busy' } })
   })
 })
 
@@ -392,8 +392,8 @@ describe('Meta SAM', () => {
   })
 
   test('tells a refusal from a failure worth retrying', async () => {
-    expect(await refusedWith(400)).toMatchObject({ _tag: 'ProviderFailed', retryable: false })
-    expect(await refusedWith(503)).toMatchObject({ _tag: 'ProviderFailed', retryable: true })
+    expect(await refusedWith(400)).toMatchObject({ _tag: 'ProviderError', reason: { _tag: 'Refused' } })
+    expect(await refusedWith(503)).toMatchObject({ _tag: 'ProviderError', reason: { _tag: 'Busy' } })
   })
 
   test("retries Meta's model_not_found in place, then leaves it to the queue", async () => {
@@ -408,14 +408,15 @@ describe('Meta SAM', () => {
       readVideo: () => Promise.resolve(null),
       metrics: CaptureMetrics.discarding,
     })
-    expect(await errorOf(misrouted.still(railFrame, 'clothing'))).toMatchObject({ retryable: true })
+    expect(await errorOf(misrouted.still(railFrame, 'clothing'))).toMatchObject({ reason: { _tag: 'Busy' } })
     expect(calls).toBe(4)
   })
 
   test('calls a stream that breaks after Meta accepted the request an unknown outcome', async () => {
     const cut = text('sam-still-rail.sse').split('event: response.completed')[0] ?? ''
     expect(await errorOf(segmenter(() => new Response(cut)).still(railFrame, 'clothing'))).toMatchObject({
-      _tag: 'ProviderOutcomeUnknown',
+      _tag: 'ProviderError',
+      reason: { _tag: 'OutcomeUnknown' },
     })
   })
 

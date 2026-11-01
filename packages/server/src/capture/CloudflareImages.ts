@@ -1,14 +1,17 @@
+import { busy } from '../providers/Errors.ts'
+import { costs } from '../providers/Costs.ts'
+import { deadlines, providerCall } from '../providers/Call.ts'
 import { Effect } from 'effect'
 import type { WardrobeBindings } from '../wardrobe/Parts.ts'
-import { type CaptureMetrics, counted, prices } from './Metrics.ts'
-import { ProviderFailed, type WorkingCopies } from './Providers.ts'
+import type { CaptureMetrics } from './Metrics.ts'
+import { type WorkingCopies } from './Providers.ts'
 import { collect } from '../Streams.ts'
 
 type Images = WardrobeBindings['images']
 type ImageTransform = Parameters<ReturnType<Images['input']>['transform']>[0]
 type ImageOutput = Parameters<ReturnType<Images['input']>['output']>[0]
 
-const failed = () => new ProviderFailed({ provider: 'cloudflare-images', retryable: true })
+const failed = () => busy('cloudflare-images')
 
 /** The bytes as the stream the Images binding reads. */
 const streamOf = (bytes: Uint8Array) =>
@@ -32,17 +35,23 @@ export const makePictureWork = (images: Images, metrics: CaptureMetrics['Service
     options: ImageTransform,
     output: ImageOutput,
   ) =>
-    counted(
+    providerCall(
       metrics,
+      {
+        provider: 'cloudflare-images',
+        model: options.segment === undefined ? 'transform' : 'segment',
+        kind,
+        deadline: deadlines.images,
+        replaySafe: true,
+      },
       Effect.tryPromise({
         try: async () => {
           const result = await images.input(streamOf(bytes)).transform(options).output(output)
           return collect(result.image())
         },
         catch: failed,
-      }).pipe(Effect.timeoutOrElse({ duration: '30 seconds', orElse: () => Effect.fail(failed()) })),
-      { provider: 'cloudflare-images', model: options.segment === undefined ? 'transform' : 'segment', kind },
-      () => ({ units: 1, costMicroUsd: prices.imagesPerTransform }),
+      }),
+      () => ({ units: 1, costMicroUsd: costs.imagesPerTransform }),
     )
   const sized = { width: workingSize, height: workingSize, fit: 'scale-down' } as const
   return {

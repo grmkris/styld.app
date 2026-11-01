@@ -1,10 +1,11 @@
+import { outcomeUnknown } from '../providers/Errors.ts'
 import { Array, Effect, Option, Record, Schema } from 'effect'
 import { bestSightings, frameAt, type SampledStill, type TrackSighting } from './FrameRanking.ts'
 import { type Parts, readObject, storedAs, unavailable } from './Parts.ts'
 import { decodedPng } from './Pixels.ts'
 import { CaptureConfig } from './Policy.ts'
 import { type CutPiece, detectionsOf, originalOnly, segmentedPieces } from './PhotoPipeline.ts'
-import { GarmentSegmenter, PictureWork, ProviderOutcomeUnknown } from './Providers.ts'
+import { GarmentSegmenter, PictureWork } from './Providers.ts'
 import type { CaptureRow, FrameRow } from './Store.ts'
 import { findMoov, metadataRanges, videoFrameCount } from './VideoContainer.ts'
 import { nowDate } from '../kernel/Db.ts'
@@ -63,7 +64,7 @@ const cutFromStills = (
  * an unknown outcome rather than paying again. The file at Meta is deleted once tracking settles. */
 const trackOnce = (parts: Parts, capture: CaptureRow, frames: ReadonlySet<number>, frameCount: number) =>
   Effect.gen(function* () {
-    if (capture.trackingStartedAt !== null) return yield* new ProviderOutcomeUnknown({ provider: 'meta-sam' })
+    if (capture.trackingStartedAt !== null) return yield* outcomeUnknown('meta-sam')
     const segmenter = yield* GarmentSegmenter
     const { metadata } = yield* readContainer(parts, capture)
     const fileId =

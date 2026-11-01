@@ -90,24 +90,27 @@ describe('Meta Muse Image', () => {
   test('tries again in place when throttled, then leaves it to the queue; a refusal is final', async () => {
     const throttled = muse(status(429))
     const busy = await Effect.runPromise(Effect.flip(throttled.generator.draw(request())))
-    expect(busy).toMatchObject({ _tag: 'ProviderFailed', provider: 'meta-muse', retryable: true })
+    expect(busy).toMatchObject({ _tag: 'ProviderError', provider: 'meta-muse', reason: { _tag: 'Busy' } })
     expect(throttled.seen).toHaveLength(4)
     const thenDrawn = muse(status(503), recorded)
     expect(Exit.isSuccess(await Effect.runPromiseExit(thenDrawn.generator.draw(request())))).toBe(true)
     const refused = muse(status(400))
-    expect(await Effect.runPromise(Effect.flip(refused.generator.draw(request())))).toMatchObject({ retryable: false })
+    expect(await Effect.runPromise(Effect.flip(refused.generator.draw(request())))).toMatchObject({
+      reason: { _tag: 'Refused' },
+    })
     expect(refused.seen).toHaveLength(1)
   })
 
   test('a picture the safety filter removed is a final refusal; an answer lost on the way is unknown', async () => {
     const removed = muse(() => Promise.resolve(new Response(JSON.stringify({ data: [] }))))
     expect(await Effect.runPromise(Effect.flip(removed.generator.draw(request())))).toMatchObject({
-      _tag: 'ProviderFailed',
-      retryable: false,
+      _tag: 'ProviderError',
+      reason: { _tag: 'Refused' },
     })
     const lost = muse(() => Promise.reject(new Error('connection reset')))
     expect(await Effect.runPromise(Effect.flip(lost.generator.draw(request())))).toMatchObject({
-      _tag: 'ProviderOutcomeUnknown',
+      _tag: 'ProviderError',
+      reason: { _tag: 'OutcomeUnknown' },
       provider: 'meta-muse',
     })
     expect(lost.seen).toHaveLength(1)

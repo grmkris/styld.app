@@ -1,3 +1,4 @@
+import { chatCost } from '../providers/Costs.ts'
 import type { StylistTurn } from './Queue.ts'
 import {
   ChatId,
@@ -46,18 +47,6 @@ export const titleOf = (text: string) => {
   const cut = line.slice(0, 60)
   const space = cut.lastIndexOf(' ')
   return `${(space > 30 ? cut.slice(0, space) : cut).trimEnd()}…`
-}
-
-/** List prices in micro-dollars a token, in and out (Workers AI's model page, 31 October). */
-const listPrices: Readonly<Record<string, readonly [number, number]>> = {
-  '@cf/deepseek-ai/deepseek-v4.1-flash-1017': [0.3, 1.2],
-}
-
-/** An estimate only, the providers' invoices being the truth; a model without a listed price is priced as the
- * default. */
-const priceOf = (model: string, inputTokens: number, outputTokens: number) => {
-  const [input, output] = listPrices[model] ?? [0.3, 1.2]
-  return Math.round(inputTokens * input + outputTokens * output)
 }
 
 /** One account's chats: its Durable Object's methods, callable from the Worker. */
@@ -151,7 +140,7 @@ const reply = <R>(
           outcome: usage.answered ? 'ok' : 'failed',
           milliseconds: usage.milliseconds,
           units: usage.inputTokens + usage.outputTokens,
-          costMicroUsd: priceOf(parts.model.model, usage.inputTokens, usage.outputTokens),
+          costMicroUsd: chatCost(parts.model.model, usage.inputTokens, usage.outputTokens),
         }),
     }).pipe(Effect.provide(parts.model.layer))
     return { text, parts: yield* tools.parts }
