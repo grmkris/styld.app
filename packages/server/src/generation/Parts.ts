@@ -1,5 +1,5 @@
 import { CaptureUnavailable, Generation } from '@styld/protocol'
-import { DateTime, Effect, Schema } from 'effect'
+import { Effect, Schema } from 'effect'
 import type { Boards } from '../boards/Boards.ts'
 import type { Usage } from '../capture/Usage.ts'
 import type { ContentJudge } from '../safety/Judge.ts'
@@ -32,8 +32,6 @@ export interface Parts {
 }
 
 export const unavailable = () => CaptureUnavailable.make({})
-export const nowDate = Effect.map(DateTime.now, DateTime.toDateUtc)
-
 /** A picture's credit in the Wallet: one per picture, its first and only attempt. */
 export const holdOf = (jobId: string, index: number) => `gen/${jobId}/${index}/0`
 

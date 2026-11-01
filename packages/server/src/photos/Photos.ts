@@ -15,7 +15,7 @@ import {
   PieceNotFound,
   UploadRefused,
 } from '@styld/protocol'
-import { Context, DateTime, Effect, Option, Predicate, Schema } from 'effect'
+import { Context, Effect, Option, Predicate, Schema } from 'effect'
 import { captureKey, enqueueMatch, readObject, storedAs, unavailable, writeObject } from '../capture/Parts.ts'
 import type { CaptureRow, DetectionRow } from '../capture/Store.ts'
 import type { CaptureConfig } from '../capture/Policy.ts'
@@ -31,12 +31,11 @@ import type { ImageSize } from '../wardrobe/Media.ts'
 import { cutOutPerson } from './Cutout.ts'
 import { finding, type PhotoParts, photoHold, photoPrefix } from './Finding.ts'
 import type { GarmentRow, PhotoRow } from './Store.ts'
+import { nowDate } from '../kernel/Db.ts'
 
 // My Gallery for the website (owner, 2026-10-31): adding a photo spends its upload and holds a credit while Styld finds
 // its garments; the person then confirms or corrects each match, marks favourites, and may delete a photo, which takes
 // its objects with it. Every operation acts for `CurrentAccount`.
-
-const now = Effect.map(DateTime.now, DateTime.toDateUtc)
 
 /** A stored photo as the protocol shows it. A confirmed garment whose piece was deleted shows as unmatched. Only the
  * service writes rows, through the same schemas; one that does not decode is a bug. */
@@ -115,7 +114,7 @@ const added = (parts: PhotoParts, accountId: string, input: AddPhoto) =>
   Effect.gen(function* () {
     const upload = yield* usableUpload(parts, accountId, input.uploadId)
     const id = yield* parts.newId('ph')
-    const at = yield* now
+    const at = yield* nowDate
     const usage = yield* Usage
     yield* usage.reserve(accountId, photoHold(id), 1)
     const row: PhotoRow = {
@@ -172,7 +171,7 @@ const offered = (parts: PhotoParts, photo: PhotoRow, garment: GarmentRow) =>
     const contentType = cutOut ? 'image/png' : photo.contentType
     const key = captureKey(photo.accountId, captureId, cutOut ? `${detectionId}.png` : detectionId)
     yield* writeObject(parts.capture, key, bytes.value, contentType)
-    const at = yield* now
+    const at = yield* nowDate
     const capture = {
       id: captureId,
       accountId: photo.accountId,
@@ -255,7 +254,7 @@ const reading = (parts: PhotoParts) => ({
 const changing = (parts: PhotoParts, looks: Looks['Service']) => ({
   updatePhoto: Effect.fn('Styld.Photos.update')(function* (photoId: string, input: { readonly favourite: boolean }) {
     const { accountId } = yield* CurrentAccount
-    const updated = yield* storedAs(parts.photos.setFavourite(accountId, photoId, input.favourite, yield* now))
+    const updated = yield* storedAs(parts.photos.setFavourite(accountId, photoId, input.favourite, yield* nowDate))
     if (Option.isNone(updated)) return yield* PhotoNotFound.make({})
     const [photo] = yield* photosOf(parts, [updated.value])
     return photo ?? (yield* PhotoNotFound.make({}))
@@ -305,7 +304,7 @@ const changing = (parts: PhotoParts, looks: Looks['Service']) => ({
         pieceIds: pieceIds.map((id) => PieceId.make(id)),
       })
       .pipe(Effect.mapError((error) => (Predicate.isTagged(error, 'OperationConflict') ? error : unavailable())))
-    yield* storedAs(parts.photos.setLook(accountId, photoId, look.id, yield* now))
+    yield* storedAs(parts.photos.setLook(accountId, photoId, look.id, yield* nowDate))
     return look
   }),
   piecePhotos: Effect.fn('Styld.Photos.ofPiece')(function* (pieceId: string) {

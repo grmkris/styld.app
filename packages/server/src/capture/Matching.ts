@@ -1,13 +1,12 @@
 import { PieceType, slotOf, typesInSlot } from '@styld/protocol'
-import { DateTime, Effect, Option, Schema } from 'effect'
+import { Effect, Option, Schema } from 'effect'
 import type { MatchOutcome, MatchScope } from './MatchStore.ts'
 import { enqueueMatch, type Parts, readPixels, storedAs } from './Parts.ts'
 import { judgedAt, sent } from './Pictures.ts'
 import { CaptureConfig } from './Policy.ts'
 import { GarmentVision, type Picture } from './Providers.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
-
-const now = Effect.map(DateTime.now, DateTime.toDateUtc)
+import { nowDate } from '../kernel/Db.ts'
 
 /** How long the import's next sighting is left to the delivery that claimed it, before another takes it over. */
 const patienceSeconds = 180
@@ -102,7 +101,7 @@ const matchNext = (parts: Parts, capture: CaptureRow) =>
   Effect.gen(function* () {
     const [next] = yield* storedAs(parts.store.toMatch(scopeOf(capture)))
     if (next === undefined) return false
-    const at = yield* now
+    const at = yield* nowDate
     const claimedAt = next.matchClaimedAt?.getTime() ?? 0
     if (next.matching === 'claimed' && at.getTime() - claimedAt < patienceSeconds * 1000) {
       // Another delivery compares it and the ones after it; this one looks again in case that one gives up.

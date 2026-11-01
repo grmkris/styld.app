@@ -1,5 +1,5 @@
 import { chromaKey, flatten, framed, keyColourFor, shrink } from '@styld/imaging'
-import { DateTime, Effect, Option, Schedule } from 'effect'
+import { Effect, Option, Schedule } from 'effect'
 import { gateFor, planFor } from './CleanPicture.ts'
 import { type Parts, pictureKey, readPixels, storedAs, unavailable, writeObject } from './Parts.ts'
 import { decodePng, encodePng, opaqueShare, type Rgba } from './Pixels.ts'
@@ -9,8 +9,7 @@ import { GarmentVision, ImageGenerator, type Picture } from './Providers.ts'
 import type { PictureRow, PictureState } from './Store.ts'
 import { Usage } from './Usage.ts'
 import { isStale } from '../wardrobe/Shown.ts'
-
-const now = Effect.map(DateTime.now, DateTime.toDateUtc)
+import { nowDate } from '../kernel/Db.ts'
 
 // What each provider sees: the decision model a 512 px copy, Muse a 1024 px one; the drawing is keyed at 1280 px,
 // enough for the piece page at twice the pixel density, and about a million pixels of CPU.
@@ -56,7 +55,9 @@ const move = (
 ) =>
   Effect.gen(function* () {
     const { state } = changes
-    const moved = yield* storedAs(parts.store.movePicture(picture.pieceId, from, { ...changes, updatedAt: yield* now }))
+    const moved = yield* storedAs(
+      parts.store.movePicture(picture.pieceId, from, { ...changes, updatedAt: yield* nowDate }),
+    )
     // A drawing that shows, stops showing or is dropped changes what others see of a public piece.
     if (moved) yield* parts.pieceChanged.changed(picture.pieceId)
     if (!moved || state === undefined) return moved
@@ -98,7 +99,7 @@ const check = (parts: Parts, picture: PictureRow, drawn: Rgba, real: Rgba) =>
   })
 
 /** Draw a claimed picture, key its background out and store it. Muse refusing ends it; Muse busy hands it back to
- * the queue; an answer lost on the way ends it as unknown, never drawn again. The stored drawing and the picture now
+ * the queue; an answer lost on the way ends it as unknown, never drawn again. The stored drawing and the picture nowDate
  * checking it, or none when it ended. */
 const draw = (parts: Parts, claimed: PictureRow, front: Rgba, back: Option.Option<Rgba>) =>
   Effect.gen(function* () {
@@ -180,7 +181,7 @@ const start = (parts: Parts, picture: PictureRow) =>
       keyColour: keyColourFor(front.value),
       provider: generator.provider,
       model: generator.model,
-      claimedAt: yield* now,
+      claimedAt: yield* nowDate,
       cleanKey: null,
       errorCode: null,
     }
@@ -226,7 +227,7 @@ export const picturing = (parts: Parts) => ({
     if (!(yield* storedAs(parts.wardrobeStore.accountEnabled(picture.accountId)))) return
     if (picture.state === 'queued') yield* start(parts, picture)
     else if (picture.state === 'checking') yield* checkStored(parts, picture)
-    else if (isStale(picture, yield* now)) yield* end(parts, picture, 'generating', 'unknown')
+    else if (isStale(picture, yield* nowDate)) yield* end(parts, picture, 'generating', 'unknown')
     yield* settleHold(parts, pieceId)
   }),
   /** The last attempt failed: the photo stays. A drawing that may have been made counts as unknown. */

@@ -12,15 +12,14 @@ import {
   type UpdateProfile,
   WardrobeUnavailable,
 } from '@styld/protocol'
-import { Context, DateTime, Effect, Option, Schema } from 'effect'
+import { Context, Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import type { Checks } from '../safety/Checks.ts'
-import type { StoreUnavailable } from '../kernel/Db.ts'
+import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
 import { makeProfileStore, type ProfileRow, type ProfileStore } from './ProfileStore.ts'
 
 const unavailable = () => WardrobeUnavailable.make({})
 const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
-const nowDate = Effect.map(DateTime.now, DateTime.toDateUtc)
 
 /** A tone that stays the same for an account until the person picks another. */
 const toneFor = (accountId: string): Tone => {

@@ -33,7 +33,6 @@ import { tables } from './Tables.ts'
 import {
   lookTarget,
   newPins,
-  nowDate,
   one,
   ownBoard,
   pieceTarget,
@@ -48,6 +47,7 @@ import {
   type Parts,
   unavailable,
 } from './Parts.ts'
+import { nowDate } from '../kernel/Db.ts'
 
 /** Where a board picture came from: an upload, a picture Styld generated (its job and model), or an outfit photo of
  * My Gallery. */

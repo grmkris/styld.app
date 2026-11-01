@@ -8,7 +8,7 @@ import {
   Tray,
   UploadRefused,
 } from '@styld/protocol'
-import { Array, DateTime, Effect, Option, Schema } from 'effect'
+import { Array, Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { CaptureConfig } from './Policy.ts'
 import { type Parts, enqueueCapture, holdOf, storedAs, unavailable } from './Parts.ts'
@@ -16,8 +16,7 @@ import { GarmentVision } from './Providers.ts'
 import type { CaptureRow, DetectionRow, FrameRow } from './Store.ts'
 import { Usage } from './Usage.ts'
 import { findMoov, videoDurationMs, videoFrameCount } from './VideoContainer.ts'
-
-const now = Effect.map(DateTime.now, DateTime.toDateUtc)
+import { nowDate } from '../kernel/Db.ts'
 
 /** A received upload of this account that has not made anything yet. */
 const usableUpload = (parts: Parts, accountId: string, uploadId: string) =>
@@ -163,7 +162,7 @@ export const creating = (parts: Parts) => ({
     if (!upload.contentType.startsWith('image/')) return yield* UploadRefused.make({ reason: 'wrongType' })
     const policy = yield* CaptureConfig
     const capture: CaptureRow = {
-      ...baseCapture(accountId, yield* parts.randomId('cp'), upload, yield* now),
+      ...baseCapture(accountId, yield* parts.randomId('cp'), upload, yield* nowDate),
       kind: 'photo',
       source: input.source,
       side: input.side ?? null,
@@ -194,7 +193,7 @@ export const creating = (parts: Parts) => ({
     const policy = yield* CaptureConfig
     const id = yield* parts.randomId('cp')
     const capture: CaptureRow = {
-      ...baseCapture(accountId, id, video, yield* now),
+      ...baseCapture(accountId, id, video, yield* nowDate),
       kind: 'video',
       source: 'video',
       durationMs: measured.durationMs,

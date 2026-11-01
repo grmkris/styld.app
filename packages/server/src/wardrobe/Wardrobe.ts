@@ -24,7 +24,6 @@ import { type ImageSize, isVideoContainer, piecePrefix, sniffImageType, uploadKe
 import { backing } from './Back.ts'
 import { GarmentCutout } from './Processing.ts'
 import {
-  nowDate,
   ownerPiece,
   ownPiece,
   type Parts,
@@ -37,6 +36,7 @@ import {
   usableUpload,
   type WardrobeBindings,
 } from './Parts.ts'
+import { nowDate } from '../kernel/Db.ts'
 import { pictureView, shownImage, shows, turnView } from './Shown.ts'
 import { makeStore, type PictureRow, type PieceRow, type UploadRow } from './Store.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'

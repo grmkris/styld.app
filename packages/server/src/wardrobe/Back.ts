@@ -1,7 +1,8 @@
 import { OperationConflict, PieceNotFound, type PieceId, type SetBack } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import { nowDate, ownerPiece, ownPiece, type Parts, stored, typeOf, unavailable, usableUpload } from './Parts.ts'
+import { ownerPiece, ownPiece, type Parts, stored, typeOf, unavailable, usableUpload } from './Parts.ts'
+import { nowDate } from '../kernel/Db.ts'
 
 /** A back of the piece: the person's photo of it, cut out like the front, for a photo's credit (owner, 2026-10-31).
  * Repeating the operation answers the piece again; a cut-out that could not be made keeps the photo. */

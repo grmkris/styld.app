@@ -12,7 +12,7 @@ import {
   shrink,
 } from '@styld/imaging'
 import { PieceNotFound, SheetRefused, type TurnLayout, TurnRefused } from '@styld/protocol'
-import { DateTime, Effect, Match, Option, Predicate, Schema } from 'effect'
+import { Effect, Match, Option, Predicate, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { turnView } from '../wardrobe/Shown.ts'
 import { turnKept } from './CleanPicture.ts'
@@ -39,8 +39,7 @@ import {
 } from './Providers.ts'
 import type { PictureRow, TurnRow, TurnState } from './Store.ts'
 import { Usage } from './Usage.ts'
-
-const now = Effect.map(DateTime.now, DateTime.toDateUtc)
+import { nowDate } from '../kernel/Db.ts'
 
 // Veo 3.1 Lite answers a 4 s turn in one to two minutes (30 October). The job asks every 15 s (`turns.pollSeconds`)
 // and gives up after 15 min; a claim older than 5 min belongs to a delivery that died, perhaps after the video model
@@ -81,7 +80,7 @@ const hasEnded = (state: TurnState): state is (typeof ends)[number] => ends.some
 /** Move a turn on from one of `from`; whether it moved. */
 const move = (parts: Parts, pieceId: string, from: ReadonlyArray<TurnState>, changes: Partial<TurnRow>) =>
   Effect.gen(function* () {
-    const moved = yield* storedAs(parts.store.moveTurn(pieceId, from, { ...changes, updatedAt: yield* now }))
+    const moved = yield* storedAs(parts.store.moveTurn(pieceId, from, { ...changes, updatedAt: yield* nowDate }))
     if (moved && changes.state !== undefined) yield* Effect.annotateCurrentSpan('styld.turn.state', changes.state)
     return moved
   })
@@ -168,7 +167,7 @@ const start = (parts: Parts, turn: TurnRow) =>
       }),
     )
     if (Option.isNone(job)) return false
-    const operation = { job: job.value, startedAt: (yield* now).getTime() }
+    const operation = { job: job.value, startedAt: (yield* nowDate).getTime() }
     if (
       !(yield* move(parts, pieceId, ['anchoring'], {
         state: 'generating',
@@ -183,14 +182,14 @@ const start = (parts: Parts, turn: TurnRow) =>
   })
 
 /** A turn the video model is making: ask where it stands, store the video once it is done, and ask again later
- * while it is not. A status the gateway cannot give now is asked again; the job itself is never restarted. */
+ * while it is not. A status the gateway cannot give nowDate is asked again; the job itself is never restarted. */
 const poll = (parts: Parts, turn: TurnRow) =>
   Effect.gen(function* () {
     const { pieceId, accountId } = turn
     const { pollSeconds } = (yield* CaptureConfig).turns
     const started = startedOf(turn)
     if (Option.isNone(started)) return yield* end(parts, pieceId, 'generating', 'unknown')
-    if ((yield* now).getTime() - started.value.startedAt > patienceMillis)
+    if ((yield* nowDate).getTime() - started.value.startedAt > patienceMillis)
       return yield* end(parts, pieceId, 'generating', 'timeout')
     const status = yield* (yield* VideoGenerator)
       .status(started.value.job)
@@ -259,7 +258,7 @@ export const turning = (parts: Parts) => ({
     if (!(yield* storedAs(parts.wardrobeStore.accountEnabled(turn.accountId)))) return
     if (turn.state === 'requested') yield* start(parts, turn)
     else if (turn.state === 'generating') yield* poll(parts, turn)
-    else if (turn.state === 'anchoring' && (yield* now).getTime() - turn.updatedAt.getTime() > claimMillis)
+    else if (turn.state === 'anchoring' && (yield* nowDate).getTime() - turn.updatedAt.getTime() > claimMillis)
       yield* end(parts, pieceId, 'anchoring', 'unknown')
     yield* settleTurn(parts, pieceId)
   }),
@@ -291,9 +290,9 @@ const acceptSheet = (parts: Parts, pieceId: string, layout: TurnLayout, bytes: U
     const { accountId } = yield* CurrentAccount
     const turn = yield* storedAs(parts.wardrobeStore.turnOf(accountId, pieceId))
     if (Option.isNone(turn)) return yield* PieceNotFound.make({})
-    if (turn.value.state !== 'video-ready') return turnView(turn.value, yield* now)
+    if (turn.value.state !== 'video-ready') return turnView(turn.value, yield* nowDate)
     const { sheet, clean } = yield* sheetAndFront(parts, pieceId, layout, bytes)
-    // A check the decision model cannot answer now leaves the turn waiting for the same sheet again.
+    // A check the decision model cannot answer nowDate leaves the turn waiting for the same sheet again.
     const { kept, scores } = yield* checked(sheet, layout, clean).pipe(Effect.mapError(unavailable))
     const sheetKey = turnKey(accountId, pieceId, 'sheet.png')
     if (kept) yield* writeObject(parts, sheetKey, bytes, 'image/png')
@@ -306,7 +305,7 @@ const acceptSheet = (parts: Parts, pieceId: string, layout: TurnLayout, bytes: U
     const settled = yield* storedAs(parts.store.findTurn(pieceId))
     return turnView(
       Option.getOrElse(settled, () => turn.value),
-      yield* now,
+      yield* nowDate,
     )
   })
 
@@ -388,7 +387,7 @@ export const askingTurns = (parts: Parts) => ({
     yield* settleTurn(parts, pieceId)
     const current = yield* storedAs(parts.store.findTurn(pieceId))
     const hold = `turn/${operationId}`
-    const at = yield* now
+    const at = yield* nowDate
     if (Option.isSome(current) && current.value.hold === hold) {
       // The same request again: its message may have been lost; the job starts a turn once however often it is sent.
       if (current.value.state === 'requested') yield* enqueueTurn(parts, pieceId)

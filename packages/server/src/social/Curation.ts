@@ -2,8 +2,9 @@ import { boards, contentChecks, profiles, reports } from '@styld/db'
 import { type CheckState, WardrobeUnavailable } from '@styld/protocol'
 import { count, desc, eq, inArray, max } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
-import { Context, DateTime, Effect, Option } from 'effect'
+import { Context, Effect, Option } from 'effect'
 import type { CheckTarget, Checks } from '../safety/Checks.ts'
+import { nowDate } from '../kernel/Db.ts'
 
 // What Styld's admins do through their assistants: feature boards and people for Explore, mark the house account
 // whose public boards are Edits from Styld, hide or restore anything whatever its check said, and read reports and
@@ -11,7 +12,6 @@ import type { CheckTarget, Checks } from '../safety/Checks.ts'
 
 const unavailable = () => WardrobeUnavailable.make({})
 const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: unavailable })
-const nowDate = Effect.map(DateTime.now, DateTime.toDateUtc)
 
 /** How many reports and checks a list shows. */
 const listLimit = 50

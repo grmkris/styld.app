@@ -21,7 +21,6 @@ import { CurrentAccount } from '../CurrentAccount.ts'
 import {
   itemRow,
   newPins,
-  nowDate,
   one,
   ownBoard,
   pieceTarget,
@@ -31,6 +30,7 @@ import {
   type Parts,
   unavailable,
 } from './Parts.ts'
+import { nowDate } from '../kernel/Db.ts'
 
 // Saving a board's table: the editor's whole table, an assistant's arrangement, an assistant's exact table.
 

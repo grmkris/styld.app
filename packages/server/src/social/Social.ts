@@ -21,7 +21,7 @@ import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import type { CheckTarget, Checks } from '../safety/Checks.ts'
-import type { StoreUnavailable } from '../kernel/Db.ts'
+import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
 import { feedFor } from './Feed.ts'
 import { authorOf, type PublicPages, summaryOf } from './Public.ts'
 import { makePublicStore } from './PublicStore.ts'
@@ -32,7 +32,6 @@ import { makeSocialStore, type SaveRow, type SocialStore } from './SocialStore.t
 
 const unavailable = () => WardrobeUnavailable.make({})
 const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
-const nowDate = Effect.map(DateTime.now, DateTime.toDateUtc)
 const orNotFound = <A>(found: Option.Option<A>) =>
   Option.match(found, { onNone: () => Effect.fail(PublicNotFound.make({})), onSome: Effect.succeed })
 

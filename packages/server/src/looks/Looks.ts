@@ -9,14 +9,14 @@ import {
   type ShareLook,
   WardrobeUnavailable,
 } from '@styld/protocol'
-import { Context, DateTime, Effect, Option, Schema } from 'effect'
+import { Context, Effect, Option, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import type { Checks } from '../safety/Checks.ts'
 import { makeProfileStore, type ProfileStore, requirePublished } from '../social/ProfileStore.ts'
 import { toPiece } from '../wardrobe/Parts.ts'
-import type { StoreUnavailable } from '../kernel/Db.ts'
+import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
 import { type LookRow, type LookStore, makeLookStore } from './Store.ts'
 
 const unavailable = () => WardrobeUnavailable.make({})
@@ -64,7 +64,7 @@ const sharing = (
       return yield* one(accountId, lookId)
     }
     yield* requirePublished(profileStore, accountId)
-    yield* stored(store.setShared(accountId, lookId, row.value.sharedAt ?? DateTime.toDateUtc(yield* DateTime.now)))
+    yield* stored(store.setShared(accountId, lookId, row.value.sharedAt ?? (yield* nowDate)))
     yield* checks.checkNow({ kind: 'look', id: lookId })
     const pieceIds = (yield* stored(store.piecesOf([lookId]))).map(({ piece }) => piece.id)
     yield* checks.checkLater(pieceIds.map((id) => ({ kind: 'piece' as const, id })))
@@ -114,7 +114,7 @@ const make = (database: Parameters<typeof makeLookStore>[0], checks: Checks['Ser
         const owned = yield* stored(store.ownPieces(accountId, pieceIds))
         if (pieceIds.some((id) => !owned.has(id))) return yield* PieceNotFound.make({})
         const id = yield* newId
-        const at = DateTime.toDateUtc(yield* DateTime.now)
+        const at = yield* nowDate
         yield* stored(
           store.createLook(
             { id, accountId, name: input.name, occasion: input.occasion ?? null, createdAt: at, sharedAt: null },

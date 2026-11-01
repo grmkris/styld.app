@@ -1,4 +1,4 @@
-import { Array, DateTime, Effect, Option, Record, Schema } from 'effect'
+import { Array, Effect, Option, Record, Schema } from 'effect'
 import { bestSightings, frameAt, type SampledStill, type TrackSighting } from './FrameRanking.ts'
 import { type Parts, readObject, storedAs, unavailable } from './Parts.ts'
 import { decodedPng } from './Pixels.ts'
@@ -7,14 +7,13 @@ import { type CutPiece, detectionsOf, originalOnly, segmentedPieces } from './Ph
 import { GarmentSegmenter, PictureWork, ProviderOutcomeUnknown } from './Providers.ts'
 import type { CaptureRow, FrameRow } from './Store.ts'
 import { findMoov, metadataRanges, videoFrameCount } from './VideoContainer.ts'
+import { nowDate } from '../kernel/Db.ts'
 
 /** At most this many pieces from one video. */
 const maximumPieces = 20
 
 /** Another delivery of the same capture already handed the video to Meta; this one stops. */
 export class TrackingClaimed extends Schema.TaggedError<TrackingClaimed>()('TrackingClaimed', {}) {}
-
-const now = Effect.map(DateTime.now, DateTime.toDateUtc)
 
 /** The clip's frame count and the byte ranges of its metadata, read from its container in the bucket. */
 const readContainer = (parts: Parts, capture: CaptureRow) =>
@@ -78,7 +77,8 @@ const trackOnce = (parts: Parts, capture: CaptureRow, frames: ReadonlySet<number
         metadata,
       }))
     yield* storedAs(parts.store.updateCapture(capture.id, { providerFileId: fileId, frameCount }))
-    if (!(yield* storedAs(parts.store.claimTracking(capture.id, yield* now)))) return yield* TrackingClaimed.make({})
+    if (!(yield* storedAs(parts.store.claimTracking(capture.id, yield* nowDate))))
+      return yield* TrackingClaimed.make({})
     return yield* segmenter.track(fileId, 'clothing', frames).pipe(Effect.ensuring(segmenter.forget(fileId)))
   })
 

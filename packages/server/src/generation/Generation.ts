@@ -9,7 +9,8 @@ import {
 import { Effect, Option, Predicate, Result } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { stickerKey, stickerPrompt } from './PaintPrompt.ts'
-import { holdOf, nowDate, type Parts, refund, send, unavailable, view } from './Parts.ts'
+import { holdOf, type Parts, refund, send, unavailable, view } from './Parts.ts'
+import { nowDate } from '../kernel/Db.ts'
 import { giveUp } from './Work.ts'
 import type { JobRow } from './Store.ts'
 

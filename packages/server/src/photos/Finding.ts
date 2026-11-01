@@ -1,4 +1,4 @@
-import { DateTime, Effect, Option } from 'effect'
+import { Effect, Option } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { comparedTypes, sameAs } from '../capture/Matching.ts'
@@ -10,6 +10,7 @@ import { Usage } from '../capture/Usage.ts'
 import type { ImageBindings } from '../wardrobe/Delivery.ts'
 import { accountPrefix } from '../wardrobe/Media.ts'
 import { type GarmentRow, makePhotoStore, type PhotoRow } from './Store.ts'
+import { nowDate } from '../kernel/Db.ts'
 
 // Finding the garments in an outfit photo, one delivery of the piece queue at a time (owner, 2026-10-31). The same
 // cutting and suggesting as capture, without the held-piece rule: every garment the person wears counts. Each is
@@ -113,8 +114,6 @@ const wholePhoto = (parts: PhotoParts, photo: PhotoRow) =>
     },
   ])
 
-const now = Effect.map(DateTime.now, DateTime.toDateUtc)
-
 /** The queue side of My Gallery. */
 export const finding = (parts: PhotoParts) => ({
   /** Find a photo's garments once; its credit is spent when they are stored. */
@@ -123,7 +122,7 @@ export const finding = (parts: PhotoParts) => ({
     if (Option.isNone(photo) || photo.value.status !== 'finding') return
     const providers = (yield* CaptureConfig).providers
     const garments = providers === 'off' ? yield* wholePhoto(parts, photo.value) : yield* garmentsIn(parts, photo.value)
-    yield* storedAs(parts.photos.finishFinding(photoId, garments, yield* now))
+    yield* storedAs(parts.photos.finishFinding(photoId, garments, yield* nowDate))
     yield* (yield* Usage)
       .settle(photo.value.accountId, photoHold(photoId), 'consumed')
       .pipe(Effect.ignore({ log: true }))
@@ -132,7 +131,7 @@ export const finding = (parts: PhotoParts) => ({
   failFinding: Effect.fn('Styld.Photos.failFinding')(function* (photoId: string) {
     const photo = yield* storedAs(parts.photos.photoForWork(photoId))
     if (Option.isNone(photo)) return
-    if (yield* storedAs(parts.photos.failFinding(photoId, yield* now)))
+    if (yield* storedAs(parts.photos.failFinding(photoId, yield* nowDate)))
       yield* (yield* Usage)
         .settle(photo.value.accountId, photoHold(photoId), 'refunded')
         .pipe(Effect.ignore({ log: true }))

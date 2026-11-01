@@ -1,5 +1,5 @@
 import { PictureRefused, PieceNotFound, type RedrawPicture } from '@styld/protocol'
-import { DateTime, Effect, Option } from 'effect'
+import { Effect, Option } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { isStale, pictureView } from '../wardrobe/Shown.ts'
 import { enqueuePicture, type Parts, storedAs } from './Parts.ts'
@@ -7,8 +7,7 @@ import { settleHold } from './Pictures.ts'
 import { CaptureConfig } from './Policy.ts'
 import type { PictureRow } from './Store.ts'
 import { Usage } from './Usage.ts'
-
-const now = Effect.map(DateTime.now, DateTime.toDateUtc)
+import { nowDate } from '../kernel/Db.ts'
 
 /** Whether a piece shows a cut-out, the only picture that may be sent to be drawn; a photo never leaves Styld. */
 const isCutout = (piece: { readonly imageKey: string | null; readonly originalKey: string }) =>
@@ -27,7 +26,7 @@ const settledPicture = (parts: Parts, pieceId: string, at: Date) =>
     return yield* storedAs(parts.store.findPicture(pieceId))
   })
 
-/** Why the piece's picture cannot be redrawn now, if it cannot. */
+/** Why the piece's picture cannot be redrawn nowDate, if it cannot. */
 const refusal = (picture: PictureRow, face: number): Option.Option<PictureRefused['reason']> => {
   if ((picture.face ?? 0) >= face) return Option.some('face')
   return ['queued', 'generating', 'checking'].includes(picture.state) ? Option.some('busy') : Option.none()
@@ -54,7 +53,7 @@ const queueRedraw = (
     const { accountId, pieceId, hold } = ids
     const usage = yield* Usage
     yield* usage.reserve(accountId, hold, (yield* CaptureConfig).credits.redraw)
-    const at = yield* now
+    const at = yield* nowDate
     const queued = { state: 'queued' as const, hint: hint ?? null, hold, shown: null, errorCode: null, updatedAt: at }
     const moved = Option.isSome(current)
       ? yield* storedAs(parts.store.movePicture(pieceId, [current.value.state], queued))
@@ -76,7 +75,7 @@ export const redrawing = (parts: Parts) => ({
   redrawPicture: Effect.fn('Styld.Picture.redraw')(function* (pieceId: string, input: RedrawPicture) {
     const { accountId } = yield* CurrentAccount
     yield* drawablePiece(parts, accountId, pieceId)
-    const at = yield* now
+    const at = yield* nowDate
     const hold = `picture/${input.operationId}`
     const current = yield* settledPicture(parts, pieceId, at)
     if (Option.isSome(current) && current.value.hold === hold) {
@@ -104,7 +103,7 @@ export const redrawing = (parts: Parts) => ({
     const policy = (yield* CaptureConfig).pictures
     if (policy.generator === 'off') return { pieces: 0 }
     const undrawn = yield* storedAs(parts.store.undrawnPieces(accountId, policy.face))
-    const at = yield* now
+    const at = yield* nowDate
     yield* storedAs(
       parts.store.addPictures(
         undrawn.map((pieceId) => ({ pieceId, accountId, state: 'queued', version: 0, createdAt: at, updatedAt: at })),

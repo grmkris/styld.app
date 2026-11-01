@@ -1,12 +1,11 @@
-import { DateTime, Effect, Option } from 'effect'
+import { Effect, Option } from 'effect'
 import { enqueueMatch, holdOf, type Parts, storedAs } from './Parts.ts'
 import type { Route } from './Providers.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
 import { processPhoto } from './PhotoPipeline.ts'
 import { Usage } from './Usage.ts'
 import { processVideo } from './VideoPipeline.ts'
-
-const now = Effect.map(DateTime.now, DateTime.toDateUtc)
+import { nowDate } from '../kernel/Db.ts'
 
 /** What a pipeline found in a capture, and how it was routed. */
 interface Result {
@@ -39,7 +38,7 @@ const fail = (parts: Parts, captureId: string, code: string) =>
     if (Option.isNone(found)) return
     if (found.value.status === 'processing')
       yield* storedAs(
-        parts.store.updateCapture(captureId, { status: 'failed', errorCode: code, updatedAt: yield* now }),
+        parts.store.updateCapture(captureId, { status: 'failed', errorCode: code, updatedAt: yield* nowDate }),
       )
     const latest = found.value.status === 'processing' ? { ...found.value, status: 'failed' as const } : found.value
     yield* settlePending(parts, latest)
@@ -71,7 +70,7 @@ const pairBack = (parts: Parts, accountId: string, frontCaptureId: string) =>
     const waiting = yield* storedAs(parts.store.waitingBack(accountId, frontCaptureId))
     if (Option.isNone(waiting)) return
     if (yield* attachBack(parts, accountId, frontCaptureId, waiting.value.detections))
-      yield* storedAs(parts.store.foldBack(waiting.value.capture.id, yield* now))
+      yield* storedAs(parts.store.foldBack(waiting.value.capture.id, yield* nowDate))
   })
 
 const pipeline = (parts: Parts, capture: CaptureRow) =>
@@ -91,7 +90,7 @@ const run = (parts: Parts, capture: CaptureRow) =>
     Effect.catchTag('ProviderOutcomeUnknown', () =>
       Effect.gen(function* () {
         yield* storedAs(
-          parts.store.updateCapture(capture.id, { status: 'unknown', errorCode: 'unknown', updatedAt: yield* now }),
+          parts.store.updateCapture(capture.id, { status: 'unknown', errorCode: 'unknown', updatedAt: yield* nowDate }),
         )
         return Option.none<Result>()
       }),
@@ -114,7 +113,7 @@ const record = (parts: Parts, capture: CaptureRow, result: Result) =>
         route: result.route?.garments ?? null,
         routeConfidence: result.route?.confidence ?? null,
         provider: result.provider,
-        updatedAt: yield* now,
+        updatedAt: yield* nowDate,
       }),
     )
     yield* settlePending(parts, { ...capture, status: 'review' })

@@ -1,10 +1,11 @@
 import { CaptureNotFound, type Keep, OperationConflict, PieceId, type Review, Reviewed } from '@styld/protocol'
-import { DateTime, Effect, Option, Schema } from 'effect'
+import { Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { CaptureMetrics, type ReviewDecision } from './Metrics.ts'
 import { enqueuePicture, type Parts, storedAs, unavailable } from './Parts.ts'
 import { CaptureConfig } from './Policy.ts'
 import type { DetectionRow } from './Store.ts'
+import { nowDate } from '../kernel/Db.ts'
 
 const decodeReviewed = Schema.decodeUnknownEffect(Schema.fromJsonString(Reviewed))
 
@@ -159,7 +160,7 @@ export const reviewing = (parts: Parts) => ({
     if (ids.some((id) => !open.has(id))) return yield* CaptureNotFound.make({})
     // A garment's other sightings in its import are kept or discarded with it.
     const others = yield* storedAs(parts.store.sightingsOf(accountId, ids))
-    const at = DateTime.toDateUtc(yield* DateTime.now)
+    const at = yield* nowDate
     const { typeOf, isPhoto, originOf, fromPhotos } = yield* sourcesOf(parts, accountId, [...found, ...others])
     const backOf = (detection: DetectionRow) =>
       others.find(

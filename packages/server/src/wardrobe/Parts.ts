@@ -7,14 +7,14 @@ import {
   UploadRefused,
   WardrobeUnavailable,
 } from '@styld/protocol'
-import { DateTime, Effect, Option, Schema } from 'effect'
+import { Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import type { PieceChanged } from '../safety/PieceChanged.ts'
 import type { ImageBindings } from './Delivery.ts'
 import type { GarmentCutout, WorkMessage } from './Processing.ts'
 import { pictureView, turnView } from './Shown.ts'
 import type { makeStore, PieceRow, Store, UploadRow } from './Store.ts'
-import type { StoreUnavailable } from '../kernel/Db.ts'
+import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
 
 // What every part of the wardrobe service shares: its bindings and stores, the piece as its owner reads it, and how
 // a store's failure reads to callers.
@@ -28,7 +28,6 @@ export interface WardrobeBindings extends ImageBindings {
 export const unavailable = () => WardrobeUnavailable.make({})
 export const refused = (reason: UploadRefused['reason']) => UploadRefused.make({ reason })
 export const stored = <A, R>(effect: Effect.Effect<A, StoreUnavailable, R>) => Effect.mapError(effect, unavailable)
-export const nowDate = Effect.map(DateTime.now, DateTime.toDateUtc)
 
 /** A stored piece as the protocol shows it, with its clean picture and its turn when they were asked for. */
 export const toPiece = (row: PieceRow, picture?: PiecePicture, turn?: PieceTurn) =>

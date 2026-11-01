@@ -8,7 +8,7 @@ import {
   OperationConflict,
   WardrobeUnavailable,
 } from '@styld/protocol'
-import { DateTime, Effect, Match, Option, Schema } from 'effect'
+import { Effect, Match, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { shownLooks } from '../looks/Looks.ts'
 import { type LookStore } from '../looks/Store.ts'
@@ -16,7 +16,7 @@ import type { Checks } from '../safety/Checks.ts'
 import type { ProfileStore } from '../social/ProfileStore.ts'
 import { type ImageBindings } from '../wardrobe/Delivery.ts'
 import { type Store } from '../wardrobe/Store.ts'
-import { type StoreUnavailable } from '../kernel/Db.ts'
+import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
 import { toPiece, type WardrobeBindings } from '../wardrobe/Parts.ts'
 import { type BoardItemRow, type BoardPinRow, type BoardRow, type BoardStore } from './Store.ts'
 
@@ -29,8 +29,6 @@ export interface BoardBindings extends ImageBindings {
 
 export const unavailable = () => WardrobeUnavailable.make({})
 export const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
-export const nowDate = Effect.map(DateTime.now, DateTime.toDateUtc)
-
 /** How many of its newest pins a board in a list shows. */
 export const coverPins = 4
 

@@ -1,10 +1,11 @@
 import { groupOf, PieceType } from '@styld/protocol'
-import { DateTime, Effect, Option, Schema } from 'effect'
+import { Effect, Option, Schema } from 'effect'
 import { shownImage } from '../wardrobe/Shown.ts'
 import type { PieceChanges, PieceRow } from '../wardrobe/Store.ts'
 import { type Parts, readPixels, storedAs, unavailable } from './Parts.ts'
 import { judgedAt, sent } from './Pictures.ts'
 import { GarmentVision, type Suggestion } from './Providers.ts'
+import { nowDate } from '../kernel/Db.ts'
 
 // Pieces carried over from the old categories (owner, 2026-10-31) got the nearest garment type by migration and no
 // attributes. The schedule's sweep asks the decision model about each once: its type is refined within the same group
@@ -18,7 +19,6 @@ const retypeAt = 0.6
 const sweepBatch = 50
 
 const isPieceType = Schema.is(PieceType)
-const now = Effect.map(DateTime.now, DateTime.toDateUtc)
 
 /** What a suggestion changes on a carried-over piece: its type only within the same group and when the model is
  * sure, and only the attributes still empty. */
@@ -48,7 +48,7 @@ export const suggesting = (parts: Parts) => ({
     const piece = found.value
     const picture = Option.getOrUndefined(yield* storedAs(parts.store.findPicture(pieceId)))
     const pixels = yield* readPixels(parts, shownImage(piece, picture).key)
-    const at = yield* now
+    const at = yield* nowDate
     if (Option.isNone(pixels)) {
       yield* storedAs(parts.wardrobeStore.updatePiece(piece.accountId, pieceId, { suggestedAt: at }))
       return
@@ -67,7 +67,7 @@ export const suggesting = (parts: Parts) => ({
   failSuggestion: Effect.fn('Styld.Capture.failSuggestion')(function* (pieceId: string) {
     const found = yield* storedAs(parts.wardrobeStore.findPieceForProcessing(pieceId))
     if (Option.isNone(found) || found.value.suggestedAt !== null) return
-    yield* storedAs(parts.wardrobeStore.updatePiece(found.value.accountId, pieceId, { suggestedAt: yield* now }))
+    yield* storedAs(parts.wardrobeStore.updatePiece(found.value.accountId, pieceId, { suggestedAt: yield* nowDate }))
   }),
   /** The schedule's sweep: carried-over pieces go to the queue to be asked about, a batch at a time. */
   sweepSuggestions: Effect.fn('Styld.Capture.sweepSuggestions')(function* () {
