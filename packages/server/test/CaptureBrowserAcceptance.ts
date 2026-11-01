@@ -164,10 +164,14 @@ export const verifyLongVideoJourney = async (browser: Browser, origin: string, f
     // Both parts went up; the second was refused when it asked for credits.
     expect(created.length).toBe(2)
     const original = await Bun.file(fixture('long-rail.mp4')).bytes()
-    for (const part of created) {
-      const stored = await fetch(
-        `${fixtures}/test/identity/media-bytes?key=accounts/native-video-browser/uploads/${part.videoUploadId}`,
-      )
+    const storedPart = (part: typeof Created.Type) =>
+      fetch(`${fixtures}/test/identity/media-bytes?key=accounts/native-video-browser/uploads/${part.videoUploadId}`)
+    // The first part's video goes once its garments are cut from its stills; the refused second stays stored, ready
+    // to be used again, and shows how the browser cut every part.
+    const second = created[1]
+    if (second === undefined) throw new Error('two parts went up')
+    for (const part of [second]) {
+      const stored = await storedPart(part)
       expect(stored.status).toBe(200)
       const clip = new Uint8Array(await stored.arrayBuffer())
       expect(clip.byteLength).not.toBe(original.byteLength)
