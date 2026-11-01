@@ -1,9 +1,9 @@
-import { OperationConflict, PieceNotFound, type PieceId, type SetBack } from '@styld/protocol'
+import { PieceNotFound, type PieceId, type SetBack } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { ownerPiece, ownPiece, type Parts, stored, typeOf, unavailable, usableUpload } from './Parts.ts'
 import { nowDate } from '../kernel/Db.ts'
-import { digestOf } from '../kernel/Ids.ts'
+import { identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
 
 /** A back of the piece: the person's photo of it, cut out like the front, for a photo's credit (owner, 2026-10-31).
  * Repeating the operation answers the piece again; a cut-out that could not be made keeps the photo. */
@@ -11,12 +11,14 @@ export const backing = (parts: Parts) => ({
   setBack: Effect.fn('Styld.Wardrobe.setBack')(function* (pieceId: PieceId, input: SetBack) {
     const { accountId } = yield* CurrentAccount
     const piece = yield* ownPiece(parts)(pieceId)
-    const inputDigest = yield* digestOf(JSON.stringify(['back', pieceId, input.uploadId]))
-    const receipt = yield* stored(parts.store.findReceipt(accountId, input.operationId))
-    if (Option.isSome(receipt))
-      return receipt.value.inputDigest === inputDigest
-        ? yield* ownerPiece(parts, accountId, piece)
-        : yield* OperationConflict.make({})
+    const operation = yield* identify({
+      accountId,
+      operationId: input.operationId,
+      command: 'setBack',
+      input: [pieceId, input.uploadId],
+    })
+    const prior = yield* priorResult(operation, yield* stored(parts.store.findReceipt(accountId, input.operationId)))
+    if (Option.isSome(prior)) return yield* ownerPiece(parts, accountId, piece)
     const upload = yield* usableUpload(parts.store, accountId, input.uploadId)
     const of = { side: 'back' as const, uploadId: upload.id }
     const type = yield* typeOf(piece)
@@ -32,7 +34,7 @@ export const backing = (parts: Parts) => ({
         accountId,
         pieceId,
         { key: imageKey, uploadId: upload.id, at },
-        { accountId, operationId: input.operationId, command: 'setBack', inputDigest, result: pieceId, createdAt: at },
+        yield* receiptRow(operation, pieceId),
       ),
     )
     if (Option.isNone(updated)) return yield* PieceNotFound.make({})

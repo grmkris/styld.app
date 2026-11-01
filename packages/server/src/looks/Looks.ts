@@ -4,7 +4,6 @@ import {
   Look,
   type LookId,
   LookNotFound,
-  OperationConflict,
   PieceNotFound,
   type ShareLook,
   WardrobeUnavailable,
@@ -16,7 +15,8 @@ import { makeProfileStore, type ProfileStore, requirePublished } from '../social
 import { toPiece } from '../wardrobe/Parts.ts'
 import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
 import { type LookRow, type LookStore, makeLookStore } from './Store.ts'
-import { digestOf, newId } from '../kernel/Ids.ts'
+import { newId } from '../kernel/Ids.ts'
+import { identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
 
 const unavailable = () => WardrobeUnavailable.make({})
 const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
@@ -94,12 +94,14 @@ const make = (database: Parameters<typeof makeLookStore>[0], checks: Checks['Ser
        * look; using it for another look is a conflict. */
       createLook: Effect.fn('Styld.Looks.create')(function* (input: CreateLook) {
         const { accountId } = yield* CurrentAccount
-        const inputDigest = yield* digestOf(JSON.stringify([input.name, input.occasion ?? null, input.pieceIds]))
-        const receipt = yield* stored(store.findReceipt(accountId, input.operationId))
-        if (Option.isSome(receipt))
-          return receipt.value.inputDigest === inputDigest && receipt.value.command === 'createLook'
-            ? yield* one(accountId, receipt.value.result)
-            : yield* OperationConflict.make({})
+        const operation = yield* identify({
+          accountId,
+          operationId: input.operationId,
+          command: 'createLook',
+          input: [input.name, input.occasion ?? null, input.pieceIds],
+        })
+        const prior = yield* priorResult(operation, yield* stored(store.findReceipt(accountId, input.operationId)))
+        if (Option.isSome(prior)) return yield* one(accountId, prior.value)
         const pieceIds = [...new Set(input.pieceIds)]
         const owned = yield* stored(store.ownPieces(accountId, pieceIds))
         if (pieceIds.some((id) => !owned.has(id))) return yield* PieceNotFound.make({})
@@ -109,14 +111,7 @@ const make = (database: Parameters<typeof makeLookStore>[0], checks: Checks['Ser
           store.createLook(
             { id, accountId, name: input.name, occasion: input.occasion ?? null, createdAt: at, sharedAt: null },
             pieceIds,
-            {
-              accountId,
-              operationId: input.operationId,
-              command: 'createLook',
-              inputDigest,
-              result: id,
-              createdAt: at,
-            },
+            yield* receiptRow(operation, id),
           ),
         )
         return yield* one(accountId, id)

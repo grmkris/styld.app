@@ -1,11 +1,4 @@
-import {
-  type BoardId,
-  type Generate,
-  type GenerationKind,
-  GenerationNotFound,
-  OperationConflict,
-  PromptRefused,
-} from '@styld/protocol'
+import { type BoardId, type Generate, type GenerationKind, GenerationNotFound, PromptRefused } from '@styld/protocol'
 import { Effect, Option, Predicate, Result } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { stickerKey, stickerPrompt } from './PaintPrompt.ts'
@@ -13,7 +6,8 @@ import { holdOf, type Parts, refund, send, unavailable, view } from './Parts.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { giveUp } from './Work.ts'
 import type { JobRow } from './Store.ts'
-import { digestOf, newId } from '../kernel/Ids.ts'
+import { newId } from '../kernel/Ids.ts'
+import { identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
 
 /** A job not finished and not touched for this long lost its message: reading it sends it again. */
 const stalledMillis = 3 * 60 * 1000
@@ -31,16 +25,6 @@ const holdOne = (parts: Parts, accountId: string, jobId: string) =>
     return yield* unavailable()
   })
 
-/** The receipt of an ask already made: the same job for the same words, a conflict for others. */
-const replayed = (parts: Parts, accountId: string, operationId: string, inputDigest: string) =>
-  Effect.gen(function* () {
-    const receipt = yield* stored(parts.store.findReceipt(accountId, operationId))
-    if (Option.isNone(receipt)) return Option.none<string>()
-    if (receipt.value.inputDigest !== inputDigest || receipt.value.command !== 'generate')
-      return yield* OperationConflict.make({})
-    return Option.some(receipt.value.result)
-  })
-
 /** The words are checked like anything public: words that fail are never sent to a model. */
 const checked = (parts: Parts, prompt: string) =>
   Effect.gen(function* () {
@@ -56,8 +40,13 @@ export const generations = (parts: Parts) => ({
   /** A sticker from the words, or a mood board of the person's pieces: one credit each, held before anything runs. */
   admit: Effect.fn('Styld.Generation.admit')(function* (kind: GenerationKind, boardId: BoardId, input: Generate) {
     const { accountId } = yield* CurrentAccount
-    const inputDigest = yield* digestOf(JSON.stringify([kind, boardId, input.prompt]))
-    const earlier = yield* replayed(parts, accountId, input.operationId, inputDigest)
+    const operation = yield* identify({
+      accountId,
+      operationId: input.operationId,
+      command: 'generate',
+      input: [kind, boardId, input.prompt],
+    })
+    const earlier = yield* priorResult(operation, yield* stored(parts.store.findReceipt(accountId, input.operationId)))
     if (Option.isSome(earlier))
       return yield* get(parts, earlier.value).pipe(
         Effect.catchTag('GenerationNotFound', () => Effect.fail(unavailable())),
@@ -101,15 +90,7 @@ export const generations = (parts: Parts) => ({
             },
           ]
         : []
-    const receipt = {
-      accountId,
-      operationId: input.operationId,
-      command: 'generate',
-      inputDigest,
-      result: id,
-      createdAt: at,
-    }
-    yield* stored(parts.store.insertJob(job, pictures, receipt)).pipe(
+    yield* stored(parts.store.insertJob(job, pictures, yield* receiptRow(operation, id))).pipe(
       Effect.tapError(() => refund(parts, accountId, id, 0, held)),
     )
     // A job that could not be queued would wait for someone to read it: it is given up at once, its credits back.

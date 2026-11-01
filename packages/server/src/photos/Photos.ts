@@ -9,7 +9,6 @@ import {
   NothingConfirmed,
   PieceId,
   type WearAgain,
-  OperationConflict,
   Photo,
   PhotoNotFound,
   PieceNotFound,
@@ -33,6 +32,7 @@ import { finding, type PhotoParts, photoHold, photoPrefix } from './Finding.ts'
 import type { GarmentRow, PhotoRow } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
+import { identify, priorResult, receiptRow, type Identified } from '../kernel/Receipts.ts'
 
 // My Gallery for the website (owner, 2026-10-31): adding a photo spends its upload and holds a credit while Styld finds
 // its garments; the person then confirms or corrects each match, marks favourites, and may delete a photo, which takes
@@ -100,19 +100,23 @@ const enqueue = (parts: PhotoParts, photoId: string) =>
 
 /** The photo an operation already made, for the same upload; a conflict for another. A photo still being found goes
  * to the queue again, in case the first message never left. */
-const replayed = (parts: PhotoParts, accountId: string, input: AddPhoto) =>
+const replayed = (parts: PhotoParts, operation: Identified) =>
   Effect.gen(function* () {
-    const receipt = yield* storedAs(parts.capture.wardrobeStore.findReceipt(accountId, input.operationId))
-    if (Option.isNone(receipt)) return Option.none<PhotoRow>()
-    if (receipt.value.inputDigest !== input.uploadId) return yield* OperationConflict.make({})
-    const photo = yield* ownPhoto(parts, accountId, receipt.value.result).pipe(Effect.mapError(unavailable))
+    const { accountId, operationId } = operation
+    const prior = yield* priorResult(
+      operation,
+      yield* storedAs(parts.capture.wardrobeStore.findReceipt(accountId, operationId)),
+    )
+    if (Option.isNone(prior)) return Option.none<PhotoRow>()
+    const photo = yield* ownPhoto(parts, accountId, prior.value).pipe(Effect.mapError(unavailable))
     if (photo.status === 'finding') yield* enqueue(parts, photo.id)
     return Option.some(photo)
   })
 
 /** Hold the credit, then write the photo and spend its upload; give the credit back if the write fails. */
-const added = (parts: PhotoParts, accountId: string, input: AddPhoto) =>
+const added = (parts: PhotoParts, operation: Identified, input: AddPhoto) =>
   Effect.gen(function* () {
+    const { accountId } = operation
     const upload = yield* usableUpload(parts, accountId, input.uploadId)
     const id = yield* newId('ph')
     const at = yield* nowDate
@@ -131,15 +135,7 @@ const added = (parts: PhotoParts, accountId: string, input: AddPhoto) =>
       createdAt: at,
       updatedAt: at,
     }
-    const receipt = {
-      accountId,
-      operationId: input.operationId,
-      command: 'addPhoto',
-      inputDigest: input.uploadId,
-      result: id,
-      createdAt: at,
-    }
-    yield* storedAs(parts.photos.addPhoto(row, receipt)).pipe(
+    yield* storedAs(parts.photos.addPhoto(row, yield* receiptRow(operation, id))).pipe(
       Effect.tapError(() => usage.settle(accountId, photoHold(id), 'refunded').pipe(Effect.ignore({ log: true }))),
     )
     yield* enqueue(parts, id)
@@ -240,8 +236,14 @@ const reading = (parts: PhotoParts) => ({
   }),
   addPhoto: Effect.fn('Styld.Photos.add')(function* (input: AddPhoto) {
     const { accountId } = yield* CurrentAccount
-    const earlier = yield* replayed(parts, accountId, input)
-    const row = Option.isSome(earlier) ? earlier.value : yield* added(parts, accountId, input)
+    const operation = yield* identify({
+      accountId,
+      operationId: input.operationId,
+      command: 'addPhoto',
+      input: [input.uploadId],
+    })
+    const earlier = yield* replayed(parts, operation)
+    const row = Option.isSome(earlier) ? earlier.value : yield* added(parts, operation, input)
     return yield* toPhoto(row, [])
   }),
   getPhoto: Effect.fn('Styld.Photos.get')(function* (photoId: string) {

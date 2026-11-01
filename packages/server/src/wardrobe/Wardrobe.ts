@@ -3,7 +3,6 @@ import {
   type CreateUpload,
   type CreateVideoUpload,
   NoCleanPicture,
-  OperationConflict,
   type PictureChoice,
   type OperationId,
   Piece,
@@ -39,6 +38,7 @@ import { pictureView, shownImage, shows, turnView } from './Shown.ts'
 import { makeStore, type PictureRow, type PieceRow, type UploadRow } from './Store.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
 import { digestOf, randomToken } from '../kernel/Ids.ts'
+import { identify, priorResult, receiptRow, type Identified } from '../kernel/Receipts.ts'
 
 /** A video's request body, as the Worker runtime streams it. */
 export type VideoBody =
@@ -221,25 +221,16 @@ const replay = (parts: Parts, accountId: string, pieceId: string) =>
 /** A batch the store refused. If the same operation committed after all (a lost answer or a
  * concurrent repeat), its receipt answers; otherwise another operation used the upload, or D1
  * failed. */
-const addFailure = (
-  parts: Parts,
-  input: {
-    readonly accountId: string
-    readonly operationId: string
-    readonly uploadId: string
-    readonly inputDigest: string
-  },
-) =>
+const addFailure = (parts: Parts, operation: Identified, uploadId: string) =>
   Effect.gen(function* () {
-    const receipt = yield* stored(parts.store.findReceipt(input.accountId, input.operationId))
-    if (Option.isSome(receipt) && receipt.value.inputDigest === input.inputDigest)
-      return yield* replay(parts, input.accountId, receipt.value.result)
-    const latest = yield* stored(parts.store.findUpload(input.uploadId))
+    const prior = yield* priorResult(
+      operation,
+      yield* stored(parts.store.findReceipt(operation.accountId, operation.operationId)),
+    )
+    if (Option.isSome(prior)) return yield* replay(parts, operation.accountId, prior.value)
+    const latest = yield* stored(parts.store.findUpload(uploadId))
     return yield* Option.exists(latest, ({ status }) => status === 'used') ? refused('alreadyUsed') : unavailable()
   })
-
-/** What an add means apart from its operation id: a repeat of the same meaning replays it. */
-const addMeaning = ({ operationId: _, ...meaning }: AddPiece) => JSON.stringify(meaning)
 
 const newPiece = (
   input: AddPiece,
@@ -283,29 +274,17 @@ const adding = (parts: Parts) => ({
   }),
   addPiece: Effect.fn('Styld.Wardrobe.addPiece')(function* (input: AddPiece) {
     const { accountId, via } = yield* CurrentAccount
-    const inputDigest = yield* digestOf(addMeaning(input))
-    const receipt = yield* stored(parts.store.findReceipt(accountId, input.operationId))
-    if (Option.isSome(receipt))
-      return receipt.value.inputDigest === inputDigest
-        ? yield* replay(parts, accountId, receipt.value.result)
-        : yield* OperationConflict.make({})
+    const { operationId, ...meaning } = input
+    const operation = yield* identify({ accountId, operationId, command: 'addPiece', input: meaning })
+    const prior = yield* priorResult(operation, yield* stored(parts.store.findReceipt(accountId, operationId)))
+    if (Option.isSome(prior)) return yield* replay(parts, accountId, prior.value)
     const upload = yield* usableUpload(parts.store, accountId, input.uploadId)
     const now = yield* nowDate
     const row = newPiece(input, upload, { id: `pc_${yield* randomToken(16)}`, via, now })
-    const receiptRow = {
-      accountId,
-      operationId: input.operationId,
-      command: 'addPiece',
-      inputDigest,
-      result: row.id,
-      createdAt: now,
-    }
-    const committed = yield* parts.store.addPiece(row, receiptRow).pipe(
+    const committed = yield* parts.store.addPiece(row, yield* receiptRow(operation, row.id)).pipe(
       Effect.as(Option.none<Piece>()),
       Effect.catchTag('StoreUnavailable', () =>
-        addFailure(parts, { accountId, operationId: input.operationId, uploadId: input.uploadId, inputDigest }).pipe(
-          Effect.map(Option.some),
-        ),
+        addFailure(parts, operation, input.uploadId).pipe(Effect.map(Option.some)),
       ),
     )
     if (Option.isSome(committed)) return committed.value

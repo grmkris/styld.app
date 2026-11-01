@@ -1,4 +1,4 @@
-import { CaptureNotFound, type Keep, OperationConflict, PieceId, type Review, Reviewed } from '@styld/protocol'
+import { CaptureNotFound, type Keep, PieceId, type Review, Reviewed } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { CaptureMetrics, type ReviewDecision } from './Metrics.ts'
@@ -6,7 +6,8 @@ import { enqueuePicture, type Parts, storedAs, unavailable } from './Parts.ts'
 import { CaptureConfig } from './Policy.ts'
 import type { DetectionRow } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
-import { digestOf, newId } from '../kernel/Ids.ts'
+import { newId } from '../kernel/Ids.ts'
+import { identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
 
 const decodeReviewed = Schema.decodeUnknownEffect(Schema.fromJsonString(Reviewed))
 
@@ -147,11 +148,18 @@ const countDecisions = (
 export const reviewing = (parts: Parts) => ({
   review: Effect.fn('Styld.Capture.review')(function* (input: Review) {
     const { accountId } = yield* CurrentAccount
-    const inputDigest = yield* digestOf(JSON.stringify([input.keep, input.discard]))
-    const receipt = yield* storedAs(parts.wardrobeStore.findReceipt(accountId, input.operationId))
-    if (Option.isSome(receipt)) {
-      if (receipt.value.inputDigest !== inputDigest) return yield* OperationConflict.make({})
-      const reviewed = yield* decodeReviewed(receipt.value.result).pipe(Effect.orDie)
+    const operation = yield* identify({
+      accountId,
+      operationId: input.operationId,
+      command: 'review',
+      input: [input.keep, input.discard],
+    })
+    const prior = yield* priorResult(
+      operation,
+      yield* storedAs(parts.wardrobeStore.findReceipt(accountId, input.operationId)),
+    )
+    if (Option.isSome(prior)) {
+      const reviewed = yield* decodeReviewed(prior.value).pipe(Effect.orDie)
       yield* sendPictures(parts, yield* storedAs(parts.store.waitingPictures(reviewed.pieceIds)))
       return reviewed
     }
@@ -197,14 +205,7 @@ export const reviewing = (parts: Parts) => ({
         ),
         finished: yield* finishedCaptures(parts, [...found, ...others], [...ids, ...others.map(({ id }) => id)]),
         pictures,
-        receipt: {
-          accountId,
-          operationId: input.operationId,
-          command: 'review',
-          inputDigest,
-          result: JSON.stringify({ pieceIds }),
-          createdAt: at,
-        },
+        receipt: yield* receiptRow(operation, JSON.stringify({ pieceIds })),
         now: at,
       }),
     )
