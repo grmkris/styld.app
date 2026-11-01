@@ -2,7 +2,6 @@ import { Effect, Option } from 'effect'
 import { captureHold, endingOf, enqueueMatch, forgetCaptureObjects, type Parts, storedAs } from './Parts.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
 import { type Found as Result, processPhoto } from './Detections.ts'
-import { Holds } from '../usage/Holds.ts'
 import { processVideo } from './VideoPipeline.ts'
 import { nowDate } from '../kernel/Db.ts'
 
@@ -13,7 +12,7 @@ export const settleEnded = (parts: Parts, capture: CaptureRow) =>
     const ending = endingOf(capture.status)
     // A garment offered from an outfit photo holds nothing: its photo paid.
     if (Option.isSome(ending) && capture.credits > 0)
-      yield* (yield* Holds).settle(capture.accountId, captureHold(capture), ending.value)
+      yield* parts.holds.settle(capture.accountId, captureHold(capture), ending.value)
   })
 
 /** A capture that cannot finish shows as failed, and its held credits come back. The status changes

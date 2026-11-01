@@ -1,7 +1,6 @@
 import { NoPersonFound } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import { readObject, storedAs, unavailable, writeObject } from '../capture/Parts.ts'
-import { Garments } from '../capture/Garments.ts'
 import { type PhotoParts, photoPrefix } from './Finding.ts'
 import type { PhotoRow } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
@@ -15,7 +14,7 @@ export const cutOutPerson = (parts: PhotoParts, photo: PhotoRow) =>
     if (photo.cutoutKey !== null) return
     const original = yield* readObject(parts.capture, photo.originalKey)
     if (Option.isNone(original)) return yield* unavailable()
-    const person = yield* (yield* Garments)
+    const person = yield* parts.capture.garments
       .cut(original.value, { for: 'person' })
       .pipe(Effect.catchTag('ProviderError', () => Effect.fail(unavailable())))
     if (Option.isNone(person)) return yield* NoPersonFound.make({})

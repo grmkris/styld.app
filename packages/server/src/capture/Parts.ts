@@ -1,4 +1,7 @@
-import { type Ending, holdId } from '../usage/Holds.ts'
+import { type Ending, Holds, holdId } from '../usage/Holds.ts'
+import { Garments } from './Garments.ts'
+import { CaptureMetrics } from './Metrics.ts'
+import { GarmentVision, ImageGenerator, PictureWork, VideoGenerator } from './Providers.ts'
 import { readPng } from '@styld/imaging'
 import { Unavailable } from '@styld/protocol'
 import { Effect, Option } from 'effect'
@@ -19,11 +22,19 @@ export interface CaptureBindings {
 
 export const unavailable = () => Unavailable.make({})
 
-/** What every capture operation shares: stores and bindings. */
+/** What every capture operation shares: bindings, stores and the providers, credits and call counter it was built
+ * with, so no operation asks its caller for them. */
 export const makeParts = (bindings: CaptureBindings) =>
   Effect.gen(function* () {
     return {
       bindings,
+      vision: yield* GarmentVision,
+      work: yield* PictureWork,
+      generator: yield* ImageGenerator,
+      videos: yield* VideoGenerator,
+      garments: yield* Garments,
+      holds: yield* Holds,
+      metrics: yield* CaptureMetrics,
       pieceChanged: yield* PieceChanged,
       store: makeCaptureStore(bindings.database),
       wardrobeStore: makeStore(bindings.database),

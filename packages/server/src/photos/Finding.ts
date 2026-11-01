@@ -2,10 +2,10 @@ import { isBusy } from '../providers/Errors.ts'
 import { Effect, Option } from 'effect'
 import { comparedTypes, sameAs } from '../capture/Matching.ts'
 import { type CaptureBindings, makeParts, readObject, storedAs, unavailable, writeObject } from '../capture/Parts.ts'
-import { type Garment, Garments, judgedAt } from '../capture/Garments.ts'
+import { type Garment, judgedAt } from '../capture/Garments.ts'
 import { capturePolicy } from '../capture/Policy.ts'
 import { modelPicture } from '@styld/imaging'
-import { type Ending, Holds, holdId } from '../usage/Holds.ts'
+import { type Ending, holdId } from '../usage/Holds.ts'
 import type { ImageBindings } from '../wardrobe/Delivery.ts'
 import { accountPrefix } from '../wardrobe/Media.ts'
 import { type GarmentRow, makePhotoStore, type PhotoRow } from './Store.ts'
@@ -35,8 +35,13 @@ export const photoPrefix = (accountId: string, photoId: string) => `${accountPre
 export const photoHold = (photoId: string) => holdId('photo', photoId, 0)
 
 /** Settle a photo's credit by how finding its garments ended. */
-const settlePhoto = Effect.fnUntraced(function* (accountId: string, photoId: string, ending: Ending) {
-  yield* (yield* Holds).settle(accountId, photoHold(photoId), ending)
+const settlePhoto = Effect.fnUntraced(function* (
+  parts: PhotoParts,
+  accountId: string,
+  photoId: string,
+  ending: Ending,
+) {
+  yield* parts.capture.holds.settle(accountId, photoHold(photoId), ending)
 })
 
 /** One garment found in the photo: stored, and matched with the wardrobe's pieces in its place, at the one bar for
@@ -75,7 +80,7 @@ const garmentsIn = (parts: PhotoParts, photo: PhotoRow) =>
   Effect.gen(function* () {
     const original = yield* readObject(parts.capture, photo.originalKey)
     if (Option.isNone(original)) return yield* unavailable()
-    const { garments } = yield* (yield* Garments).find(original.value, { for: 'gallery' })
+    const { garments } = yield* parts.capture.garments.find(original.value, { for: 'gallery' })
     return yield* Effect.forEach(garments, (garment, position) => garmentOf(parts, photo, garment, position), {
       concurrency: 4,
     })
@@ -98,12 +103,12 @@ export const finding = (parts: PhotoParts) => ({
       )
       if (Option.isNone(garments)) {
         yield* storedAs(parts.photos.failFinding(photoId, yield* nowDate))
-        return yield* settlePhoto(photo.value.accountId, photoId, 'failed')
+        return yield* settlePhoto(parts, photo.value.accountId, photoId, 'failed')
       }
       yield* storedAs(parts.photos.finishFinding(photoId, garments.value, yield* nowDate))
     }
     // Settled after the status moved, and again by any later delivery: the first settlement stands.
-    yield* settlePhoto(photo.value.accountId, photoId, photo.value.status === 'failed' ? 'failed' : 'succeeded')
+    yield* settlePhoto(parts, photo.value.accountId, photoId, photo.value.status === 'failed' ? 'failed' : 'succeeded')
   }),
   /** The last attempt failed: the photo shows as failed, and its credit comes back once. */
   failFinding: Effect.fn('Styld.Photos.failFinding')(function* (photoId: string) {
@@ -112,6 +117,6 @@ export const finding = (parts: PhotoParts) => ({
     yield* storedAs(parts.photos.failFinding(photoId, yield* nowDate))
     const ended = yield* storedAs(parts.photos.photoForWork(photoId))
     if (Option.isSome(ended))
-      yield* settlePhoto(photo.value.accountId, photoId, ended.value.status === 'ready' ? 'succeeded' : 'failed')
+      yield* settlePhoto(parts, photo.value.accountId, photoId, ended.value.status === 'ready' ? 'succeeded' : 'failed')
   }),
 })

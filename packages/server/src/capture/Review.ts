@@ -1,7 +1,7 @@
 import { NotFound, type Keep, PieceId, type Review, Reviewed } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import { CaptureMetrics, type ReviewDecision } from './Metrics.ts'
+import { type ReviewDecision } from './Metrics.ts'
 import { enqueuePicture, forgetCaptureObjects, type Parts, storedAs, unavailable } from './Parts.ts'
 
 import type { DetectionRow } from './Store.ts'
@@ -113,12 +113,13 @@ const finishedCaptures = (parts: Parts, found: ReadonlyArray<DetectionRow>, deci
 
 /** One review metric per decision, with the route and provider that made the piece, for keep rates. */
 const countDecisions = (
+  parts: Parts,
   input: Review,
   open: ReadonlyMap<string, DetectionRow>,
   originOf: (detection: DetectionRow) => { readonly route: string; readonly provider: string },
 ) =>
   Effect.gen(function* () {
-    const metrics = yield* CaptureMetrics
+    const metrics = parts.metrics
     const decisions: ReadonlyArray<{ readonly id: string; readonly decision: ReviewDecision['decision'] }> = [
       ...input.keep.map(
         (keep) => ({ id: keep.detectionId, decision: keep.useOriginal === true ? 'original' : 'kept' }) as const,
@@ -215,7 +216,7 @@ export const reviewing = (parts: Parts) => ({
       }),
     )
     yield* forgetFinished(parts, accountId, finished)
-    yield* countDecisions(input, open, originOf)
+    yield* countDecisions(parts, input, open, originOf)
     yield* sendPictures(
       parts,
       pictures.map(({ pieceId }) => pieceId),

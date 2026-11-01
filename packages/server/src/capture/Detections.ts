@@ -1,6 +1,6 @@
 import { Effect, Option } from 'effect'
 import { newId } from '../kernel/Ids.ts'
-import { type Garment, Garments } from './Garments.ts'
+import { type Garment } from './Garments.ts'
 import { verdictOf } from './GarmentRules.ts'
 import { captureKey, type Parts, readObject, unavailable, writeObject } from './Parts.ts'
 import type { Route } from './Providers.ts'
@@ -62,7 +62,7 @@ export const detectionsOf = (
 export const processPhoto = Effect.fn('Styld.Capture.processPhoto')(function* (parts: Parts, capture: CaptureRow) {
   const original = yield* readObject(parts, capture.originalKey)
   if (Option.isNone(original)) return yield* unavailable()
-  const finding = yield* (yield* Garments).find(original.value, {
+  const finding = yield* parts.garments.find(original.value, {
     for: 'tray',
     camera: capture.source === 'camera',
   })

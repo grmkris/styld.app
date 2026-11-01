@@ -2,7 +2,6 @@ import { outcomeUnknown } from '../providers/Errors.ts'
 import { Effect, Schema } from 'effect'
 import { detectionsOf, type Found } from './Detections.ts'
 import { frameAt } from './FrameRanking.ts'
-import { Garments } from './Garments.ts'
 import { type Parts, readObject, storedAs, unavailable } from './Parts.ts'
 import type { CaptureRow, FrameRow } from './Store.ts'
 import { findMoov, metadataRanges, videoFrameCount } from './VideoContainer.ts'
@@ -34,7 +33,7 @@ const handedOver = (parts: Parts, capture: CaptureRow, frameCount: number) =>
     const { metadata } = yield* readContainer(parts, capture)
     const fileId =
       capture.providerFileId ??
-      (yield* (yield* Garments).handOver({
+      (yield* parts.garments.handOver({
         key: capture.originalKey,
         bytes: capture.bytes,
         contentType: capture.contentType === 'video/quicktime' ? 'video/quicktime' : 'video/mp4',
@@ -68,7 +67,7 @@ export const processVideo = Effect.fn('Styld.Capture.processVideo')(function* (
     sharpness: frame.sharpness,
   }))
   const fileId = yield* handedOver(parts, capture, frameCount)
-  const garments = yield* (yield* Garments).track({
+  const garments = yield* parts.garments.track({
     fileId,
     stills,
     frameSize: { width: capture.width ?? 1, height: capture.height ?? 1 },

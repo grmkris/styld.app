@@ -4,7 +4,7 @@ import { DateTime, Effect, Option } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { captureHold, endingOf, enqueueCapture, forgetCaptureObjects, type Parts, storedAs } from './Parts.ts'
 import type { CaptureRow } from './Store.ts'
-import { type Ending, Holds } from '../usage/Holds.ts'
+import { type Ending } from '../usage/Holds.ts'
 
 /** A capture processing longer than this has lost its queue message: the person may retry or remove it. */
 const staleMillis = 30 * 60 * 1000
@@ -31,7 +31,7 @@ const retried = (parts: Parts, accountId: string, captureId: CaptureId) =>
     const now = yield* DateTime.now
     if (Option.isNone(found) || !canRetry(found.value, DateTime.toEpochMillis(now))) return yield* NotFound.make({})
     const capture = found.value
-    const holds = yield* Holds
+    const holds = parts.holds
     yield* holds.settle(accountId, captureHold(capture), ended(capture))
     const next = { ...capture, attempt: capture.attempt + 1 }
     yield* holds.reserve({ accountId, hold: captureHold(next), credits: capture.credits })
@@ -76,7 +76,7 @@ export const retrying = (parts: Parts) => ({
     // A capture whose pieces were kept stays: those pieces show its pictures.
     if (!removable || (yield* storedAs(parts.store.hasKept(capture.id)))) return yield* NotFound.make({})
     // Whatever did not reach the tray gets its credits back; the first settlement stands for one that did.
-    yield* (yield* Holds).settle(accountId, captureHold(capture), ended(capture))
+    yield* parts.holds.settle(accountId, captureHold(capture), ended(capture))
     // A back shot folded into this one goes first, with its photo: nothing else shows it.
     for (const back of yield* storedAs(parts.store.foldedBacks(accountId, capture.id))) {
       yield* storedAs(parts.store.deleteCapture(accountId, back.id))

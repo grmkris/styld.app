@@ -13,13 +13,13 @@ import {
   UploadId,
   UploadRefused,
 } from '@styld/protocol'
-import { Context, DateTime, Effect, Option, Predicate } from 'effect'
+import { Context, DateTime, Effect, Layer, Option, Predicate } from 'effect'
 import { type ByteStream, pump } from '../Streams.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { deliverImage } from './Delivery.ts'
 import { type ImageSize, isVideoContainer, piecePrefix, sniffImageType, uploadKey } from './Media.ts'
 import { backing } from './Back.ts'
-import { GarmentCutout } from './Processing.ts'
+import { GarmentCutout, PieceQueue } from './Processing.ts'
 import { processing } from './Work.ts'
 import { Holds } from '../usage/Holds.ts'
 import {
@@ -35,14 +35,14 @@ import {
   usableUpload,
   type WardrobeBindings,
 } from './Parts.ts'
-import { nowDate } from '../kernel/Db.ts'
+import { Database, nowDate } from '../kernel/Db.ts'
 import { pictureView, shownImage, shows, turnView } from './Shown.ts'
 import { makeStore, type PictureRow, type PieceRow, type UploadRow } from './Store.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
 import { digestOf, randomToken } from '../kernel/Ids.ts'
 import { once, type Operation } from '../kernel/Receipts.ts'
 import { identify, priorResult, receiptRow, type Identified } from '../kernel/Receipts.ts'
-import { keysUnder } from '../kernel/Media.ts'
+import { keysUnder, Media } from '../kernel/Media.ts'
 
 /** A video's request body, as the Worker runtime streams it. */
 export type VideoBody =
@@ -416,40 +416,47 @@ const images = (parts: Parts) => ({
   }),
 })
 
-const make = (bindings: WardrobeBindings) =>
-  Effect.gen(function* () {
-    const parts: Parts = {
-      bindings,
-      store: makeStore(bindings.database),
-      cutout: yield* GarmentCutout,
-      pieceChanged: yield* PieceChanged,
-      holds: yield* Holds,
-    }
-    return {
-      ...reads(parts),
-      ...uploads(parts),
-      ...videoUploads(parts),
-      ...adding(parts),
-      ...editing(parts),
-      ...backing(parts),
-      ...images(parts),
-      ...processing(parts),
-      /** An operation of the person's whose work is not one D1 batch, answered once per operation id from the
-       * receipts (`kernel/Receipts.ts`): reading a shop's page into an upload. */
-      once: <A, E, R, E2, R2>(
-        operation: Omit<Operation, 'accountId'>,
-        answer: Parameters<typeof once<A, E, R, E2, R2>>[2],
-      ) => Effect.flatMap(CurrentAccount, ({ accountId }) => once(parts.store, { ...operation, accountId }, answer)),
-    }
-  })
+const make = Effect.gen(function* () {
+  const database = yield* Database
+  const media = yield* Media
+  const bindings: WardrobeBindings = {
+    database: database.$client,
+    bucket: media.bucket,
+    images: media.images,
+    queue: yield* PieceQueue,
+  }
+  const parts: Parts = {
+    bindings,
+    store: makeStore(bindings.database),
+    cutout: yield* GarmentCutout,
+    pieceChanged: yield* PieceChanged,
+    holds: yield* Holds,
+  }
+  return {
+    ...reads(parts),
+    ...uploads(parts),
+    ...videoUploads(parts),
+    ...adding(parts),
+    ...editing(parts),
+    ...backing(parts),
+    ...images(parts),
+    ...processing(parts),
+    /** An operation of the person's whose work is not one D1 batch, answered once per operation id from the
+     * receipts (`kernel/Receipts.ts`): reading a shop's page into an upload. */
+    once: <A, E, R, E2, R2>(
+      operation: Omit<Operation, 'accountId'>,
+      answer: Parameters<typeof once<A, E, R, E2, R2>>[2],
+    ) => Effect.flatMap(CurrentAccount, ({ accountId }) => once(parts.store, { ...operation, accountId }, answer)),
+  }
+})
 
 /** One implementation of every wardrobe operation. HTTP and MCP are projections of it; both provide
  * `CurrentAccount`, so an operation never takes whose wardrobe it is from its input. */
-export class Wardrobe extends Context.Service<Wardrobe, Effect.Success<ReturnType<typeof make>>>()(
-  '@styld/server/Wardrobe',
-) {}
-
-/** The wardrobe over the Worker's bindings. Build it once per isolate and share it between the
- * routes and the queue consumer. */
-export const makeWardrobe = (bindings: WardrobeBindings) =>
-  Effect.map(make(bindings), (service) => Wardrobe.of(service))
+export class Wardrobe extends Context.Service<Wardrobe, Effect.Success<typeof make>>()(
+  '@styld/server/wardrobe/Wardrobe',
+) {
+  static readonly layer = Layer.effect(
+    this,
+    Effect.map(make, (service) => Wardrobe.of(service)),
+  )
+}

@@ -31,16 +31,9 @@ import {
   writeObject,
 } from './Parts.ts'
 import { capturePolicy } from './Policy.ts'
-import {
-  GarmentVision,
-  ImageGenerator,
-  type Picture,
-  PictureWork,
-  type TurnStatus,
-  VideoGenerator,
-} from './Providers.ts'
+import { type Picture, type TurnStatus } from './Providers.ts'
 import type { PictureRow, TurnRow, TurnState } from './Store.ts'
-import { Holds, holdId } from '../usage/Holds.ts'
+import { holdId } from '../usage/Holds.ts'
 import { once } from '../kernel/Receipts.ts'
 import { nowDate } from '../kernel/Db.ts'
 
@@ -56,9 +49,9 @@ const startedOf = (turn: TurnRow) => Schema.decodeUnknownOption(Started)(turn.op
 
 /** An opaque frame as the video model takes it: a JPEG, made by the Images binding; the PNG where the binding cannot
  * (the native stack), whose small test frames the stand-in takes. */
-const jpegOf = (picture: Rgba) =>
+const jpegOf = (parts: Parts, picture: Rgba) =>
   Effect.gen(function* () {
-    const bytes = yield* (yield* PictureWork).jpeg(encodePng(picture))
+    const bytes = yield* parts.work.jpeg(encodePng(picture))
     return { bytes, contentType: 'image/jpeg' } satisfies Picture
   }).pipe(Effect.orElseSucceed(() => pngPicture(picture)))
 
@@ -91,7 +84,7 @@ export const settleTurn = (parts: Parts, pieceId: string) =>
   Effect.gen(function* () {
     const found = yield* storedAs(parts.store.findTurn(pieceId))
     if (Option.isNone(found) || !hasEnded(found.value.state)) return
-    yield* (yield* Holds).settle(
+    yield* parts.holds.settle(
       found.value.accountId,
       turnHold(found.value),
       found.value.state === 'ready' ? 'succeeded' : 'failed',
@@ -111,7 +104,7 @@ const sideView = (parts: Parts, turn: TurnRow, front: Rgba, key: 'green' | 'mage
   Effect.gen(function* () {
     const stored = yield* readPixels(parts, turnKey(turn.accountId, turn.pieceId, 'side.png'))
     if (Option.isSome(stored)) return stored
-    const drawn = yield* (yield* ImageGenerator).profile(pngPicture(onKey(front, key)), key)
+    const drawn = yield* parts.generator.profile(pngPicture(onKey(front, key)), key)
     const fitted = Option.flatMap(readPng(drawn.bytes), (side) =>
       Option.flatMap(chromaKey(shrink(side, 1280), key), (keyed) => Option.fromNullishOr(fitSide(keyed, front))),
     )
@@ -147,8 +140,8 @@ const start = (parts: Parts, turn: TurnRow) =>
     if (Option.isNone(side)) return yield* end(parts, pieceId, 'anchoring', 'side')
     // The gateway refuses large requests (413 on two 720 by 1280 PNGs, 30 October): the frames go as JPEG, as the spike
     // sent them.
-    const [first, last] = yield* Effect.all([jpegOf(onKey(side.value, key)), jpegOf(onKey(front, key))])
-    const video = yield* VideoGenerator
+    const [first, last] = yield* Effect.all([jpegOf(parts, onKey(side.value, key)), jpegOf(parts, onKey(front, key))])
+    const video = parts.videos
     const job = yield* video.start({ side: first, front: last, key }).pipe(
       Effect.map(Option.some),
       Effect.catchTag('ProviderError', (error) => Effect.as(providerEnded(parts, pieceId)(error), Option.none())),
@@ -164,7 +157,7 @@ const start = (parts: Parts, turn: TurnRow) =>
       }))
     )
       return false
-    yield* enqueueTurn(parts, pieceId, (yield* VideoGenerator).pollSeconds)
+    yield* enqueueTurn(parts, pieceId, parts.videos.pollSeconds)
     return true
   })
 
@@ -173,12 +166,12 @@ const start = (parts: Parts, turn: TurnRow) =>
 const poll = (parts: Parts, turn: TurnRow) =>
   Effect.gen(function* () {
     const { pieceId, accountId } = turn
-    const { pollSeconds } = yield* VideoGenerator
+    const { pollSeconds } = parts.videos
     const started = startedOf(turn)
     if (Option.isNone(started)) return yield* end(parts, pieceId, 'generating', 'unknown')
     if ((yield* nowDate).getTime() - started.value.startedAt > patienceMillis)
       return yield* end(parts, pieceId, 'generating', 'timeout')
-    const status = yield* (yield* VideoGenerator)
+    const status = yield* parts.videos
       .status(started.value.job)
       .pipe(
         Effect.catchTag('ProviderError', (error) =>
@@ -216,9 +209,9 @@ const laidOut = (sheet: Rgba, layout: TurnLayout) =>
 
 /** How the turn's checked frames compare with the clean picture: whether it is kept (`turnKept`), and the weakest
  * colour and print and the average sameness, as the turn records them. */
-const checked = (sheet: Rgba, layout: TurnLayout, clean: Rgba) =>
+const checked = (parts: Parts, sheet: Rgba, layout: TurnLayout, clean: Rgba) =>
   Effect.gen(function* () {
-    const vision = yield* GarmentVision
+    const vision = parts.vision
     const policy = capturePolicy.turns
     const front = modelPicture(clean, judgedAt)
     const answers = yield* Effect.forEach(checkedFrames(layout.frames), (index) =>
@@ -280,7 +273,7 @@ const acceptSheet = (parts: Parts, pieceId: string, layout: TurnLayout, bytes: U
     if (turn.value.state !== 'video-ready') return turnView(turn.value, yield* nowDate)
     const { sheet, clean } = yield* sheetAndFront(parts, pieceId, layout, bytes)
     // A check the decision model cannot answer nowDate leaves the turn waiting for the same sheet again.
-    const { kept, scores } = yield* checked(sheet, layout, clean).pipe(Effect.mapError(unavailable))
+    const { kept, scores } = yield* checked(parts, sheet, layout, clean).pipe(Effect.mapError(unavailable))
     const sheetKey = turnKey(accountId, pieceId, 'sheet.png')
     if (kept) yield* writeObject(parts, sheetKey, bytes, 'image/png')
     yield* move(parts, pieceId, ['video-ready'], {
@@ -317,7 +310,7 @@ const queueTurn = (
     const { accountId, pieceId } = ids
     const attempt = Option.match(current, { onNone: () => 0, onSome: (turn) => turn.attempt + 1 })
     const hold = turnHold({ pieceId, attempt })
-    const holds = yield* Holds
+    const holds = parts.holds
     yield* holds.reserve({ accountId, hold, credits: prices.turn })
     const requested = {
       state: 'requested' as const,

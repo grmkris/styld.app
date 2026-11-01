@@ -23,6 +23,14 @@ export const WorkMessage = Schema.TaggedUnion({
 })
 export type WorkMessage = typeof WorkMessage.Type
 
+/** The piece queue's producer, as the Worker binds it: every module that queues piece work sends through it. */
+export class PieceQueue extends Context.Service<
+  PieceQueue,
+  { send(message: WorkMessage, options?: { readonly delaySeconds?: number }): Promise<unknown> }
+>()('@styld/server/wardrobe/PieceQueue') {
+  static readonly layer = (queue: PieceQueue['Service']) => Layer.succeed(this, queue)
+}
+
 /** The cut-out step could not produce an image this time; the queue retries it. */
 export class CutoutFailed extends Schema.TaggedError<CutoutFailed>()('CutoutFailed', {}) {}
 

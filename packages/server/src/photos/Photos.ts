@@ -14,27 +14,27 @@ import {
   UploadRefused,
   prices,
 } from '@styld/protocol'
-import { Context, Effect, Option, Predicate, Schema } from 'effect'
+import { Context, Effect, Layer, Option, Predicate, Schema } from 'effect'
 import { captureKey, enqueueMatch, readObject, storedAs, unavailable, writeObject } from '../capture/Parts.ts'
 import type { CaptureRow, DetectionRow } from '../capture/Store.ts'
-import type { Garments } from '../capture/Garments.ts'
-import type { GarmentVision } from '../capture/Providers.ts'
-import { Holds } from '../usage/Holds.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import type { Boards } from '../boards/Boards.ts'
-import type { Looks } from '../looks/Looks.ts'
+import { Boards } from '../boards/Boards.ts'
+import { Looks } from '../looks/Looks.ts'
 import { receivedUpload, type Uploads } from '../mcp/ImageImport.ts'
 import { deliverImage } from '../wardrobe/Delivery.ts'
 import { accountPiece, usableUpload as wardrobeUpload } from '../wardrobe/Parts.ts'
 import type { ShownImage } from '../wardrobe/Http.ts'
 import type { ImageSize } from '../wardrobe/Media.ts'
 import { cutOutPerson } from './Cutout.ts'
-import { finding, type PhotoParts, photoHold, photoPrefix } from './Finding.ts'
+import { finding, makePhotoParts, type PhotoParts, photoHold, photoPrefix } from './Finding.ts'
+import { Database } from '../kernel/Db.ts'
+import { PieceQueue } from '../wardrobe/Processing.ts'
+import { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import type { GarmentRow, PhotoRow } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 import { identify, once, priorResult, receiptRow, type Identified } from '../kernel/Receipts.ts'
-import { deleteAfterRows, keysUnder } from '../kernel/Media.ts'
+import { deleteAfterRows, keysUnder, Media } from '../kernel/Media.ts'
 
 // My Gallery for the website (owner, 2026-10-31): adding a photo spends its upload and holds a credit while Styld finds
 // its garments; the person then confirms or corrects each match, marks favourites, and may delete a photo, which takes
@@ -112,7 +112,7 @@ const replayed = (parts: PhotoParts, operation: Identified) =>
     const photo = yield* ownPhoto(parts, accountId, prior.value).pipe(Effect.mapError(unavailable))
     // Its credit is held again first (the same hold): the first request may have stopped before holding it.
     if (photo.status === 'finding') {
-      yield* (yield* Holds).reserve({ accountId, hold: photoHold(photo.id), credits: prices.galleryPhoto })
+      yield* parts.capture.holds.reserve({ accountId, hold: photoHold(photo.id), credits: prices.galleryPhoto })
       yield* enqueue(parts, photo.id)
     }
     return Option.some(photo)
@@ -141,7 +141,7 @@ const added = (parts: PhotoParts, operation: Identified, input: AddPhoto) =>
     // The photo first, then its credit: every hold has a row its sweep can settle. Past the daily limit the photo is
     // undone and its upload can be used again.
     yield* storedAs(parts.photos.addPhoto(row, yield* receiptRow(operation, id)))
-    yield* (yield* Holds)
+    yield* parts.capture.holds
       .reserve({ accountId, hold: photoHold(id), credits: prices.galleryPhoto })
       .pipe(
         Effect.tapErrorTag('LimitReached', () =>
@@ -419,40 +419,24 @@ const operations = (parts: PhotoParts, services: PhotoServices) => ({
   ...boarding(parts, services),
 })
 
-/** The capture providers, metering and policy a photo's work uses. */
-type Requirements = Garments | GarmentVision | Holds
-
-/** Every operation with the providers it was built with: callers provide only `CurrentAccount`. */
-const make = (parts: PhotoParts, services: PhotoServices) =>
-  Effect.gen(function* () {
-    const providers = yield* Effect.context<Requirements>()
-    const bound =
-      <Args extends ReadonlyArray<unknown>, A, E, R>(operation: (...args: Args) => Effect.Effect<A, E, R>) =>
-      (...args: Args) =>
-        Effect.provide(operation(...args), providers)
-    const all = operations(parts, services)
-    return {
-      findGarments: bound(all.findGarments),
-      failFinding: bound(all.failFinding),
-      listPhotos: bound(all.listPhotos),
-      addPhoto: bound(all.addPhoto),
-      getPhoto: bound(all.getPhoto),
-      updatePhoto: bound(all.updatePhoto),
-      deletePhoto: bound(all.deletePhoto),
-      matchGarment: bound(all.matchGarment),
-      offerGarment: bound(all.offerGarment),
-      wearAgain: bound(all.wearAgain),
-      addToBoard: bound(all.addToBoard),
-      cutOut: bound(all.cutOut),
-      piecePhotos: bound(all.piecePhotos),
-      photoImage: bound(all.photoImage),
-      garmentImage: bound(all.garmentImage),
-    }
+/** My Gallery over the application's database, media and piece queue, with the looks, boards and uploads it leans
+ * on. Callers provide only `CurrentAccount`. */
+const make = Effect.gen(function* () {
+  const database = yield* Database
+  const media = yield* Media
+  const parts = yield* makePhotoParts({
+    database: database.$client,
+    bucket: media.bucket,
+    images: media.images,
+    queue: yield* PieceQueue,
   })
+  return operations(parts, { looks: yield* Looks, boards: yield* Boards, uploads: yield* Wardrobe })
+})
 
 /** My Gallery for `CurrentAccount`, and its queue work. */
-export class Photos extends Context.Service<Photos, Effect.Success<ReturnType<typeof make>>>()(
-  '@styld/server/Photos',
-) {}
-
-export const makePhotos = make
+export class Photos extends Context.Service<Photos, Effect.Success<typeof make>>()('@styld/server/photos/Photos') {
+  static readonly layer = Layer.effect(
+    this,
+    Effect.map(make, (service) => Photos.of(service)),
+  )
+}

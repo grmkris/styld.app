@@ -5,11 +5,10 @@ import { gateFor, planFor } from './CleanPicture.ts'
 import { judgedAt } from './Garments.ts'
 import { type Parts, pictureKey, readPixels, storedAs, unavailable, writeObject } from './Parts.ts'
 import { encodePng, opaqueShare, type Rgba } from './Pixels.ts'
-import { CaptureMetrics } from './Metrics.ts'
 import { capturePolicy } from './Policy.ts'
-import { GarmentVision, ImageGenerator, type Picture } from './Providers.ts'
+import { type Picture } from './Providers.ts'
 import type { PictureRow, PictureState } from './Store.ts'
-import { Holds, holdId } from '../usage/Holds.ts'
+import { holdId } from '../usage/Holds.ts'
 import { isStale } from '../wardrobe/Shown.ts'
 import { nowDate } from '../kernel/Db.ts'
 
@@ -50,7 +49,7 @@ const move = (
     if (!moved || state === undefined) return moved
     yield* Effect.annotateCurrentSpan('styld.picture.state', state)
     if (hasEnded(state))
-      yield* (yield* CaptureMetrics).picture({
+      yield* parts.metrics.picture({
         state,
         provider: changes.provider ?? picture.provider ?? 'none',
         asked: picture.paid,
@@ -76,10 +75,7 @@ const endChecking = (parts: Parts, picture: PictureRow, errorCode: string) =>
 const check = (parts: Parts, picture: PictureRow, drawn: Rgba, real: Rgba) =>
   Effect.gen(function* () {
     const policy = capturePolicy.pictures
-    const comparison = yield* (yield* GarmentVision).compare(
-      modelPicture(drawn, judgedAt),
-      modelPicture(real, judgedAt),
-    )
+    const comparison = yield* parts.vision.compare(modelPicture(drawn, judgedAt), modelPicture(real, judgedAt))
     const scores = { same: comparison.same, faithful: comparison.faithful }
     const gate = gateFor(comparison, policy)
     if (gate !== 'rejected') return yield* move(parts, picture, ['checking'], { ...scores, state: gate })
@@ -95,7 +91,7 @@ const draw = (parts: Parts, claimed: PictureRow, front: Rgba, back: Option.Optio
   Effect.gen(function* () {
     const { pieceId } = claimed
     const key = claimed.keyColour ?? 'green'
-    const answer = yield* (yield* ImageGenerator)
+    const answer = yield* parts.generator
       .draw({
         front: modelPicture(front, drawnFrom),
         back: Option.map(back, (side) => modelPicture(side, drawnFrom)),
@@ -153,12 +149,12 @@ const start = (parts: Parts, picture: PictureRow) =>
     if (Option.isNone(piece)) return
     const front = yield* cutoutAt(parts, piece.value.imageKey)
     if (Option.isNone(front)) return yield* move(parts, picture, ['queued'], { state: 'kept-real' })
-    const judgement = yield* (yield* GarmentVision).judge(modelPicture(front.value, judgedAt))
+    const judgement = yield* parts.vision.judge(modelPicture(front.value, judgedAt))
     const judged = { judge: judgement.verdict, judgeConfidence: judgement.confidence, face: judgement.face }
     const asked = picture.paid && judgement.face < policy.face
     const { plan } = asked ? { plan: 'draw' as const } : planFor(judgement, policy)
     if (plan !== 'draw') return yield* move(parts, picture, ['queued'], { ...judged, state: plan })
-    const generator = yield* ImageGenerator
+    const generator = parts.generator
     const claim = {
       ...judged,
       state: 'generating' as const,
@@ -198,7 +194,7 @@ export const settleHold = (parts: Parts, pieceId: string) =>
     const found = yield* storedAs(parts.store.findPicture(pieceId))
     if (Option.isNone(found) || !found.value.paid || !hasEnded(found.value.state)) return
     const { accountId, state } = found.value
-    yield* (yield* Holds).settle(
+    yield* parts.holds.settle(
       accountId,
       redrawHold(found.value),
       state === 'ready' || state === 'proposed' ? 'succeeded' : 'failed',

@@ -13,27 +13,19 @@ import {
 } from '@styld/protocol'
 import { Array, Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
+import { usableUpload as wardrobeUpload } from '../wardrobe/Parts.ts'
 import { verdictOf } from './GarmentRules.ts'
 import { capturePolicy } from './Policy.ts'
 import { type Parts, captureHold, enqueueCapture, storedAs, unavailable } from './Parts.ts'
-import { GarmentVision } from './Providers.ts'
 import type { CaptureRow, DetectionRow, FrameRow } from './Store.ts'
-import { Holds } from '../usage/Holds.ts'
 import { findMoov, videoDurationMs, videoFrameCount } from './VideoContainer.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 import { identify, priorResult, receiptRow, type Identified } from '../kernel/Receipts.ts'
 
-/** A received upload of this account that has not made anything yet. */
+/** A received upload of this account that has not made anything yet (`wardrobe/Parts.ts`). */
 const usableUpload = (parts: Parts, accountId: string, uploadId: string) =>
-  Effect.gen(function* () {
-    const row = yield* storedAs(parts.wardrobeStore.findUpload(uploadId))
-    if (Option.isNone(row) || row.value.accountId !== accountId)
-      return yield* UploadRefused.make({ reason: 'notFound' })
-    if (row.value.status === 'used') return yield* UploadRefused.make({ reason: 'alreadyUsed' })
-    if (row.value.status !== 'received') return yield* UploadRefused.make({ reason: 'notReceived' })
-    return row.value
-  })
+  wardrobeUpload(parts.wardrobeStore, accountId, uploadId)
 
 /** The receipt of an operation already run: the same capture for the same meaning, a conflict otherwise.
  * A capture still processing is handed to the queue again, in case the first message never left. */
@@ -50,7 +42,7 @@ const replayed = (parts: Parts, operation: Identified) =>
     // between writing the capture and holding them.
     if (Option.isSome(capture) && capture.value.status === 'processing') {
       const { id, credits } = capture.value
-      yield* (yield* Holds).reserve({ accountId, hold: captureHold(capture.value), credits })
+      yield* parts.holds.reserve({ accountId, hold: captureHold(capture.value), credits })
       yield* enqueueCapture(parts, id)
     }
     return Option.some({ captureId: CaptureId.make(prior.value) })
@@ -102,7 +94,7 @@ const admit = (parts: Parts, capture: CaptureRow, frames: ReadonlyArray<FrameRow
       Effect.catchTag('StoreUnavailable', () => Effect.map(createFailure(parts, operation, uploadIds), Option.some)),
     )
     if (Option.isSome(written)) return written.value
-    yield* (yield* Holds)
+    yield* parts.holds
       .reserve({ accountId: capture.accountId, hold: captureHold(capture), credits: capture.credits })
       .pipe(
         Effect.tapErrorTag('LimitReached', () =>
@@ -270,7 +262,7 @@ export const reading = (parts: Parts) => ({
   tray: Effect.fn('Styld.Capture.tray')(function* () {
     const { accountId } = yield* CurrentAccount
     const open = yield* storedAs(parts.store.tray(accountId))
-    const remaining = yield* (yield* Holds).remaining(accountId)
+    const remaining = yield* parts.holds.remaining(accountId)
     // Only the service writes these rows, through the same schemas; a row that does not decode is a bug.
     return yield* Schema.decodeUnknownEffect(Tray)({
       captures: trayCards(open).map(({ capture, detections }) => ({
@@ -302,7 +294,7 @@ export const reading = (parts: Parts) => ({
     previous: Option.Option<Uint8Array>,
     layout: 'held' | 'flat',
   ) {
-    const vision = yield* GarmentVision
+    const vision = parts.vision
     const policy = capturePolicy
     const answer = yield* vision
       .checkHeld(

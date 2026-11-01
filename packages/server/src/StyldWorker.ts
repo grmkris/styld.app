@@ -23,7 +23,7 @@ import { socialServices } from './social/Modules.ts'
 import { apiRoutes } from './Api.ts'
 import { makeAuthHttp, withCodeRequestPolicy } from './AuthHttp.ts'
 import { captureRoutes } from './capture/Http.ts'
-import { Captures, makeCaptures } from './capture/Service.ts'
+import { Captures } from './capture/Service.ts'
 import { Holds } from './usage/Holds.ts'
 import { DomainLive } from './DomainLive.ts'
 import { authOptions } from './AuthConfiguration.ts'
@@ -55,7 +55,10 @@ import { type GenerationBindings, Generations, makeGenerations } from './generat
 import { wardrobeRoutes } from './wardrobe/Http.ts'
 import { pieceJobQueue, pieceJobs } from './wardrobe/Queue.ts'
 import type { WardrobeBindings } from './wardrobe/Parts.ts'
-import { makeWardrobe, Wardrobe } from './wardrobe/Wardrobe.ts'
+import { Wardrobe } from './wardrobe/Wardrobe.ts'
+import { PieceQueue } from './wardrobe/Processing.ts'
+import { Database } from './kernel/Db.ts'
+import { Media } from './kernel/Media.ts'
 import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
 import { applicationSweeps } from './jobs/Cron.ts'
 import { runSweeps } from './jobs/Sweeps.ts'
@@ -66,8 +69,7 @@ import { Stylist } from './stylist/StylistObject.ts'
 import { chatStoreOf, makeStylistLive } from './stylist/Live.ts'
 import { outfitsLive } from './outfits/Live.ts'
 import { photoRoutes } from './photos/Http.ts'
-import { makePhotoParts } from './photos/Finding.ts'
-import { makePhotos, Photos } from './photos/Photos.ts'
+import { Photos } from './photos/Photos.ts'
 import { Outfits, type OutfitParts } from './outfits/Outfits.ts'
 
 // The server formats in every language: page renders and code emails.
@@ -126,15 +128,30 @@ const storageServices = (
     const { checks: checksService, looks: looksService, boards: boardsService } = modules
     // A piece whose shown picture changes is checked again while others can see it.
     const pieceChanged = Layer.succeed(PieceChanged, modules.pieceChanged)
-    const wardrobeService = yield* makeWardrobe(bindings).pipe(Effect.provide(pieceChanged))
+    // The wardrobe, captures and My Gallery, each a service from its own layer, over the same database, media and
+    // piece queue; assistant-added pieces get the same cut-out pipeline as the tray.
+    const wardrobeModules = Layer.mergeAll(Captures.layer, Photos.layer).pipe(
+      Layer.provideMerge(Wardrobe.layer),
+      Layer.provideMerge(pieceCutout(bindings.bucket)),
+      Layer.provideMerge(
+        Layer.mergeAll(
+          Database.layer(bindings.database),
+          Media.layer({ bucket: bindings.bucket, images: bindings.images }),
+          PieceQueue.layer(bindings.queue),
+          pieceChanged,
+          Layer.succeed(Looks, looksService),
+          Layer.succeed(Boards, boardsService),
+        ),
+      ),
+    )
+    const {
+      wardrobe: wardrobeService,
+      captures: capturesService,
+      photos: photosService,
+    } = yield* Effect.all({ wardrobe: Wardrobe, captures: Captures, photos: Photos }).pipe(
+      Effect.provide(wardrobeModules),
+    )
     const lifecycleService = yield* makeAccountLifecycle(bindings, bindings.forgetChats)
-    const capturesService = yield* makeCaptures(bindings).pipe(Effect.provide(pieceChanged))
-    const photosParts = yield* makePhotoParts(bindings).pipe(Effect.provide(pieceChanged))
-    const photosService = yield* makePhotos(photosParts, {
-      looks: looksService,
-      boards: boardsService,
-      uploads: wardrobeService,
-    })
     const generationsService = yield* makeGenerations({
       ...bindings,
       queue: bindings.generationQueue,
@@ -170,7 +187,7 @@ const storageServices = (
       profilesService: modules.profiles,
       profiles: Layer.succeed(Profiles, modules.profiles),
     }
-  }).pipe(Effect.provide(Layer.mergeAll(layerCryptoWeb, pieceCutout(bindings.bucket))))
+  }).pipe(Effect.provide(layerCryptoWeb))
 
 /** The services the assistants' tools project. */
 const toolServices = (

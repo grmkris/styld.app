@@ -6,7 +6,6 @@ import { enqueuePicture, type Parts, storedAs } from './Parts.ts'
 import { redrawHold, settleHold } from './Pictures.ts'
 import { capturePolicy } from './Policy.ts'
 import type { PictureRow } from './Store.ts'
-import { Holds } from '../usage/Holds.ts'
 import { once } from '../kernel/Receipts.ts'
 import { nowDate } from '../kernel/Db.ts'
 
@@ -53,7 +52,7 @@ const queueRedraw = (
     const { accountId, pieceId } = ids
     const redraws = Option.match(current, { onNone: () => 1, onSome: (picture) => picture.redraws + 1 })
     const hold = redrawHold({ pieceId, redraws })
-    const holds = yield* Holds
+    const holds = parts.holds
     yield* holds.reserve({ accountId, hold, credits: prices.redraw })
     const at = yield* nowDate
     const queued = {

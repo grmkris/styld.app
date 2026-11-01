@@ -5,7 +5,7 @@ import { enqueueMatch, type Parts, readPixels, storedAs } from './Parts.ts'
 import { judgedAt } from './Garments.ts'
 import { modelPicture } from '@styld/imaging'
 import { capturePolicy } from './Policy.ts'
-import { GarmentVision, type Picture } from './Providers.ts'
+import { type Picture } from './Providers.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
 
@@ -36,7 +36,7 @@ export const sameAs = <A>(
   bar: number,
 ) =>
   Effect.gen(function* () {
-    const vision = yield* GarmentVision
+    const vision = parts.vision
     const scored = yield* Effect.forEach(
       candidates,
       (candidate) =>
