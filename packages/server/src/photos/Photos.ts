@@ -33,7 +33,7 @@ import { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import type { GarmentRow, PhotoRow } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
-import { identify, once, priorResult, receiptRow, type Identified } from '../kernel/Receipts.ts'
+import { deleting, identify, once, priorResult, receiptRow, type Identified } from '../kernel/Receipts.ts'
 import { deleteAfterRows, keysUnder, Media } from '../kernel/Media.ts'
 
 // My Gallery for the website (owner, 2026-10-31): adding a photo spends its upload and holds a credit while Styld finds
@@ -268,12 +268,17 @@ const changing = (parts: PhotoParts, looks: Looks['Service']) => ({
     const [photo] = yield* photosOf(parts, [updated.value])
     return photo ?? (yield* NotFound.make({}))
   }),
-  /** Delete a photo: its row and garments first, then its objects. */
-  deletePhoto: Effect.fn('Styld.Photos.delete')(function* (photoId: string) {
+  /** Delete a photo: its row and garments first, then its objects. A repeat of the same delete answers done. */
+  deletePhoto: Effect.fn('Styld.Photos.delete')(function* (photoId: string, operationId: OperationId) {
     const { accountId } = yield* CurrentAccount
-    const deleted = yield* storedAs(parts.photos.deletePhoto(accountId, photoId))
-    if (Option.isNone(deleted)) return yield* NotFound.make({})
-    yield* deleteObjects(parts, deleted.value)
+    const deletion = { accountId, operationId, command: 'deletePhoto', target: photoId }
+    yield* deleting(parts.capture.wardrobeStore, deletion, (receipt) =>
+      Effect.gen(function* () {
+        const deleted = yield* storedAs(parts.photos.deletePhoto(accountId, photoId, receipt))
+        if (Option.isNone(deleted)) return yield* NotFound.make({})
+        yield* deleteObjects(parts, deleted.value)
+      }),
+    )
   }),
   matchGarment: Effect.fn('Styld.Photos.match')(function* (photoId: string, garmentId: string, input: MatchGarment) {
     const { accountId } = yield* CurrentAccount

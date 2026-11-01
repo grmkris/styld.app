@@ -144,9 +144,14 @@ const writes = (db: Db) => ({
         )
         .returning({ id: photoGarments.id }),
     ).pipe(Effect.map((rows) => rows.length > 0)),
-  /** Remove the photo and its garments; the row as it was, so its objects can go too. */
-  deletePhoto: (accountId: string, photoId: string) =>
-    query(() => db.delete(outfitPhotos).where(ofAccount(accountId, photoId)).returning()).pipe(Effect.map(first)),
+  /** Remove the photo and its garments, with the delete's receipt; the row as it was, so its objects can go too. */
+  deletePhoto: (accountId: string, photoId: string, receipt: ReceiptRow) =>
+    query(() =>
+      db.batch([
+        db.delete(outfitPhotos).where(ofAccount(accountId, photoId)).returning(),
+        db.insert(operationReceipts).values(receipt),
+      ]),
+    ).pipe(Effect.map(([deleted]) => first(deleted))),
 })
 
 /** My Gallery's rows over D1: photos, their garments, and the receipt that makes adding one idempotent. */

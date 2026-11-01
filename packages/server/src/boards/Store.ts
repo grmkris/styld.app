@@ -73,8 +73,8 @@ const boardRows = (db: Database) => ({
         .where(and(eq(boards.id, boardId), eq(boards.accountId, accountId)))
         .returning(),
     ).pipe(Effect.map(first)),
-  /** Removes the board and its check; its items, pins and pictures' rows go with it. */
-  deleteBoard: (accountId: string, boardId: string) =>
+  /** Removes the board and its check, with the delete's receipt; its items, pins and pictures' rows go with it. */
+  deleteBoard: (accountId: string, boardId: string, receipt: ReceiptRow) =>
     query(() =>
       db.batch([
         db
@@ -82,6 +82,7 @@ const boardRows = (db: Database) => ({
           .where(and(eq(boards.id, boardId), eq(boards.accountId, accountId)))
           .returning({ id: boards.id }),
         forgetCheck(db, accountId, { kind: 'board', id: boardId }),
+        db.insert(operationReceipts).values(receipt),
       ]),
     ).pipe(Effect.map(([deleted]) => deleted.length > 0)),
 })

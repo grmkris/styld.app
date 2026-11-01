@@ -73,7 +73,7 @@ export class CaptureApi extends HttpApiGroup.make('capture')
       params: { captureId: CaptureId },
       payload: Operation,
       success: HttpApiSchema.NoContent,
-      error: [NotFound, Unavailable],
+      error: [NotFound, OperationConflict, Unavailable],
     }),
   )
   .add(

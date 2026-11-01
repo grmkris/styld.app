@@ -5,6 +5,7 @@ import {
   type LookId,
   NotFound,
   OperationConflict,
+  type OperationId,
   type ShareLook,
   Unavailable,
 } from '@styld/protocol'
@@ -16,7 +17,7 @@ import { ownPieceIds } from '../wardrobe/Store.ts'
 import { Database, nowDate, type StoreUnavailable } from '../kernel/Db.ts'
 import { type LookRow, type LookStore, lookStore } from './Store.ts'
 import { newId } from '../kernel/Ids.ts'
-import { identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
+import { deleting, identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
 
 const unavailable = () => Unavailable.make({})
 const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
@@ -91,10 +92,14 @@ const making = (deps: Deps) => ({
     )
     return yield* one(deps, accountId, id)
   }),
-  /** Delete the look and its check; its pins on boards go with it. */
-  deleteLook: Effect.fn('Styld.Looks.delete')(function* (lookId: LookId) {
+  /** Delete the look and its check; its pins on boards go with it. A repeat of the same delete answers done. */
+  deleteLook: Effect.fn('Styld.Looks.delete')(function* (lookId: LookId, operationId: OperationId) {
     const { accountId } = yield* CurrentAccount
-    if (!(yield* stored(deps.store.deleteLook(accountId, lookId)))) return yield* NotFound.make({})
+    yield* deleting(deps.store, { accountId, operationId, command: 'deleteLook', target: lookId }, (receipt) =>
+      Effect.flatMap(stored(deps.store.deleteLook(accountId, lookId, receipt)), (deleted) =>
+        deleted ? Effect.void : Effect.fail(NotFound.make({})),
+      ),
+    )
   }),
 })
 

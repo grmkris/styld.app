@@ -108,6 +108,34 @@ export const receiptRows = (db: Database) => ({
 })
 export type ReceiptRows = ReturnType<typeof receiptRows>
 
+/** A receipt as stored, for the batch of the operation it records. */
+export type ReceiptRow = typeof operationReceipts.$inferSelect
+
+/** A delete the account asks for under an operation id, of one thing (`target`, its id). */
+export interface Deletion {
+  readonly accountId: string
+  readonly operationId: string
+  readonly command: string
+  readonly target: string
+}
+
+/** A delete answered once: `remove` deletes the thing and writes the receipt it is given in the same D1 batch, so a
+ * repeat of the same delete answers done though what it deleted is gone, and the id used for anything else is
+ * `OperationConflict`. A repeat that raced the first (both found no receipt) fails that batch on the receipt's key
+ * and answers `Unavailable`, which the next repeat answers from the receipt. */
+export const deleting = Effect.fnUntraced(function* <E, R>(
+  receipts: ReceiptRows,
+  deletion: Deletion,
+  remove: (receipt: ReceiptRow) => Effect.Effect<void, E, R>,
+) {
+  const identified = yield* identify({ ...deletion, input: deletion.target })
+  const receipt = yield* receipts
+    .findReceipt(deletion.accountId, deletion.operationId)
+    .pipe(Effect.mapError(unavailable))
+  if (Option.isSome(yield* priorResult(identified, receipt))) return
+  yield* remove(yield* receiptRow(identified, deletion.target))
+})
+
 /** An operation whose work is not one D1 batch (a fetch, an upload, a queue message, a status move): a repeat of it
  * answers from its receipt (`replay` reads what `run` made from the receipt's result). The receipt is written once the
  * work succeeded, so if that write is lost a repeat does the work once more; these operations allow that. */

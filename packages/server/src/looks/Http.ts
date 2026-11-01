@@ -12,6 +12,6 @@ export const lookHandlers = HttpApiBuilder.group(StyldApi, 'look', (handlers) =>
       .handle('createLook', ({ payload }) => looks.createLook(payload))
       .handle('getLook', ({ params }) => looks.getLook(params.lookId))
       .handle('shareLook', ({ params, payload }) => looks.shareLook(params.lookId, payload))
-      .handle('deleteLook', ({ params }) => looks.deleteLook(params.lookId))
+      .handle('deleteLook', ({ params, payload }) => looks.deleteLook(params.lookId, payload.operationId))
   }),
 )

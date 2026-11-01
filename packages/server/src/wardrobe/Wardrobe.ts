@@ -7,6 +7,7 @@ import {
   NotFound,
   type PictureChoice,
   Piece,
+  type OperationId,
   type PieceId,
   type UpdatePiece,
   Upload,
@@ -39,7 +40,7 @@ import { pictureView, shownImage, shows, turnView } from './Shown.ts'
 import { makeStore, type PictureRow, type PieceRow, type UploadRow } from './Store.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
 import { digestOf, randomToken } from '../kernel/Ids.ts'
-import { once, type Operation } from '../kernel/Receipts.ts'
+import { deleting, once, type Operation } from '../kernel/Receipts.ts'
 import { identify, priorResult, receiptRow, type Identified } from '../kernel/Receipts.ts'
 import { keysUnder, Media } from '../kernel/Media.ts'
 
@@ -353,16 +354,22 @@ const editing = (parts: Parts) => ({
     return yield* ownerPiece(parts, accountId, updated.value)
   }),
   /** Delete a piece: its row, upload and check first, then its photo, cut-outs, back and drawings, except what another
-   * piece or a tray card still shows (a reviewed piece shares its photo with the others found in it). */
-  deletePiece: Effect.fn('Styld.Wardrobe.deletePiece')(function* (pieceId: PieceId) {
+   * piece or a tray card still shows (a reviewed piece shares its photo with the others found in it). A repeat of the
+   * same delete answers done. */
+  deletePiece: Effect.fn('Styld.Wardrobe.deletePiece')(function* (pieceId: PieceId, operationId: OperationId) {
     const { accountId } = yield* CurrentAccount
-    const piece = yield* ownPiece(parts)(pieceId)
-    if (!(yield* stored(parts.store.deletePiece(accountId, piece)))) return yield* NotFound.make({})
-    const own = yield* keysUnder(parts.bindings.bucket, piecePrefix(accountId, pieceId)).pipe(
-      Effect.orElseSucceed(() => []),
+    const deletion = { accountId, operationId, command: 'deletePiece', target: pieceId }
+    yield* deleting(parts.store, deletion, (receipt) =>
+      Effect.gen(function* () {
+        const piece = yield* ownPiece(parts)(pieceId)
+        if (!(yield* stored(parts.store.deletePiece(accountId, piece, receipt)))) return yield* NotFound.make({})
+        const own = yield* keysUnder(parts.bindings.bucket, piecePrefix(accountId, pieceId)).pipe(
+          Effect.orElseSucceed(() => []),
+        )
+        const shown = [piece.originalKey, piece.imageKey, piece.backImageKey].filter(Predicate.isNotNull)
+        yield* forgetObjects(parts, accountId, [...shown, ...own], 'piece')
+      }),
     )
-    const shown = [piece.originalKey, piece.imageKey, piece.backImageKey].filter(Predicate.isNotNull)
-    yield* forgetObjects(parts, accountId, [...shown, ...own], 'piece')
   }),
 })
 

@@ -161,7 +161,8 @@ const writeTools = (
       'Delete a piece and its photo from the wardrobe for good. Ask the person before deleting. Choose a new `operationId`.',
     parameters: Schema.Struct({ pieceId: PieceId, ...Operation.fields }),
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-    handler: ({ pieceId }) => wardrobe.deletePiece(pieceId).pipe(Effect.as({ deleted: true, pieceId })),
+    handler: ({ pieceId, operationId }) =>
+      wardrobe.deletePiece(pieceId, operationId).pipe(Effect.as({ deleted: true, pieceId })),
   }),
 ]
 

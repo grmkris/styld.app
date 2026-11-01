@@ -1,4 +1,4 @@
-import { once } from '../kernel/Receipts.ts'
+import { deleting, once } from '../kernel/Receipts.ts'
 import { type CaptureId, CurrentAccount, NotFound, type OperationId } from '@styld/protocol'
 import { DateTime, Effect, Option } from 'effect'
 import { captureHold, endingOf, enqueueCapture, forgetCaptureObjects, type Parts, storedAs } from './Parts.ts'
@@ -65,8 +65,20 @@ export const retrying = (parts: Parts) => ({
       },
     )
   }),
-  remove: Effect.fn('Styld.Capture.remove')(function* (captureId: CaptureId) {
+  /** Remove a capture. Its work is not one batch, so its receipt is written once it is gone: a repeat of the same
+   * remove answers done. */
+  remove: Effect.fn('Styld.Capture.remove')(function* (captureId: CaptureId, operationId: OperationId) {
     const { accountId } = yield* CurrentAccount
+    const deletion = { accountId, operationId, command: 'removeCapture', target: captureId }
+    yield* deleting(parts.wardrobeStore, deletion, (receipt) =>
+      Effect.andThen(removed(parts, accountId, captureId), storedAs(parts.wardrobeStore.saveReceipt(receipt))),
+    )
+  }),
+})
+
+/** Remove a capture that has not left the tray, and a back shot folded into it, then their objects. */
+const removed = (parts: Parts, accountId: string, captureId: CaptureId) =>
+  Effect.gen(function* () {
     const found = yield* storedAs(parts.store.findCapture(accountId, captureId))
     const nowMillis = DateTime.toEpochMillis(yield* DateTime.now)
     if (Option.isNone(found)) return yield* NotFound.make({})
@@ -84,5 +96,4 @@ export const retrying = (parts: Parts) => ({
     const frames = yield* storedAs(parts.store.frames(capture.id))
     yield* storedAs(parts.store.deleteCapture(accountId, captureId))
     yield* forgetCaptureObjects(parts, capture, frames)
-  }),
-})
+  })

@@ -66,8 +66,8 @@ export const lookStore = (db: Drizzle) => ({
         .set({ sharedAt })
         .where(and(eq(looks.id, lookId), eq(looks.accountId, accountId))),
     ).pipe(Effect.asVoid),
-  /** The look and its check, as one atomic batch; its pieces and pins go with it. */
-  deleteLook: (accountId: string, lookId: string) =>
+  /** The look and its check, with the delete's receipt, as one atomic batch; its pieces and pins go with it. */
+  deleteLook: (accountId: string, lookId: string, receipt: ReceiptRow) =>
     query(() =>
       db.batch([
         db
@@ -75,6 +75,7 @@ export const lookStore = (db: Drizzle) => ({
           .where(and(eq(looks.id, lookId), eq(looks.accountId, accountId)))
           .returning({ id: looks.id }),
         forgetCheck(db, accountId, { kind: 'look', id: lookId }),
+        db.insert(operationReceipts).values(receipt),
       ]),
     ).pipe(Effect.map(([deleted]) => deleted.length > 0)),
 })

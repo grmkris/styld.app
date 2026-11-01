@@ -123,7 +123,7 @@ export class PhotoApi extends HttpApiGroup.make('photo')
       params: photoPath,
       payload: Operation,
       success: HttpApiSchema.NoContent,
-      error: [NotFound, Unavailable],
+      error: [NotFound, OperationConflict, Unavailable],
     }),
   )
   .add(

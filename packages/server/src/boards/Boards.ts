@@ -10,6 +10,7 @@ import {
   maximumBoardPins,
   NotFound,
   OperationConflict,
+  type OperationId,
   PinRefused,
   type RemovePins,
   searchText,
@@ -47,7 +48,7 @@ import {
 } from './Parts.ts'
 import { Database, nowDate } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
-import { identify, receiptRow, type Identified } from '../kernel/Receipts.ts'
+import { deleting, identify, receiptRow, type Identified } from '../kernel/Receipts.ts'
 import { deleteAfterRows, Media } from '../kernel/Media.ts'
 
 /** Where a board picture came from: an upload, a picture Styld generated, or an outfit photo of My Gallery. */
@@ -130,13 +131,18 @@ const changes = (parts: Parts) => ({
     const [board] = yield* shown(parts, [updated.value])
     return board ?? (yield* NotFound.make({}))
   }),
-  /** Delete the board with its items, pins, pictures and check, then its pictures' bytes. */
-  deleteBoard: Effect.fn('Styld.Boards.delete')(function* (boardId: BoardId) {
+  /** Delete the board with its items, pins, pictures and check, then its pictures' bytes. A repeat of the same delete
+   * answers done. */
+  deleteBoard: Effect.fn('Styld.Boards.delete')(function* (boardId: BoardId, operationId: OperationId) {
     const { accountId } = yield* CurrentAccount
-    const board = yield* ownBoard(parts, accountId, boardId)
-    const keys = yield* stored(parts.store.imageKeys(board.id))
-    if (!(yield* stored(parts.store.deleteBoard(accountId, boardId)))) return yield* NotFound.make({})
-    yield* deleteAfterRows(parts.media.bucket, keys, 'board')
+    yield* deleting(parts.store, { accountId, operationId, command: 'deleteBoard', target: boardId }, (receipt) =>
+      Effect.gen(function* () {
+        const board = yield* ownBoard(parts, accountId, boardId)
+        const keys = yield* stored(parts.store.imageKeys(board.id))
+        if (!(yield* stored(parts.store.deleteBoard(accountId, boardId, receipt)))) return yield* NotFound.make({})
+        yield* deleteAfterRows(parts.media.bucket, keys, 'board')
+      }),
+    )
   }),
 })
 

@@ -54,7 +54,8 @@ export const lookTools = (looks: Looks['Service'], origin: string) => {
         'Delete a saved look. Its pieces stay in the wardrobe. Ask the person first. Choose a new `operationId`.',
       parameters: Schema.Struct({ lookId: LookId, ...Operation.fields }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-      handler: ({ lookId }) => looks.deleteLook(lookId).pipe(Effect.as({ deleted: true, lookId })),
+      handler: ({ lookId, operationId }) =>
+        looks.deleteLook(lookId, operationId).pipe(Effect.as({ deleted: true, lookId })),
     }),
   ]
 }

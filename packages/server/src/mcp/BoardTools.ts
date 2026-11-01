@@ -150,7 +150,8 @@ const boardTools = (boards: Boards['Service'], origin: string) => {
         'Delete a board with its pins, its collage and the pictures put on it. Pieces and looks stay. Ask the person first. Choose a new `operationId`.',
       parameters: Schema.Struct({ boardId: BoardId, ...Operation.fields }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
-      handler: ({ boardId }) => boards.deleteBoard(boardId).pipe(Effect.as({ deleted: true, boardId })),
+      handler: ({ boardId, operationId }) =>
+        boards.deleteBoard(boardId, operationId).pipe(Effect.as({ deleted: true, boardId })),
     }),
   ]
 }

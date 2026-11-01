@@ -279,9 +279,8 @@ export const makeStore = (database: Parameters<typeof drizzle>[0]) => {
           .where(and(eq(pieces.id, pieceId), eq(pieces.accountId, accountId)))
           .returning(),
       ).pipe(Effect.map(first)),
-    /** Removes the piece, its upload and its content check, as one batch; the piece as it was, so its objects can go
-     * after it. */
-    deletePiece: (accountId: string, piece: PieceRow) =>
+    /** Removes the piece, its upload and its content check, and records the delete's receipt, as one batch. */
+    deletePiece: (accountId: string, piece: PieceRow, receipt: ReceiptRow) =>
       query(() =>
         db.batch([
           db
@@ -289,6 +288,7 @@ export const makeStore = (database: Parameters<typeof drizzle>[0]) => {
             .where(and(eq(pieces.id, piece.id), eq(pieces.accountId, accountId)))
             .returning({ id: pieces.id }),
           forgetCheck(db, accountId, { kind: 'piece', id: piece.id }),
+          db.insert(operationReceipts).values(receipt),
           ...(piece.uploadId === null ? [] : [db.delete(uploads).where(eq(uploads.id, piece.uploadId))]),
         ]),
       ).pipe(Effect.map(([deleted]) => deleted.length > 0)),

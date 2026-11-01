@@ -125,7 +125,7 @@ class WardrobeApi extends HttpApiGroup.make('wardrobe')
       params: { pieceId: PieceId },
       payload: Operation,
       success: HttpApiSchema.NoContent,
-      error: [NotFound, Unavailable],
+      error: [NotFound, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -178,7 +178,7 @@ class LookApi extends HttpApiGroup.make('look')
       params: { lookId: LookId },
       payload: Operation,
       success: HttpApiSchema.NoContent,
-      error: [NotFound, Unavailable],
+      error: [NotFound, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -224,7 +224,7 @@ class BoardApi extends HttpApiGroup.make('board')
       params: { boardId: BoardId },
       payload: Operation,
       success: HttpApiSchema.NoContent,
-      error: [NotFound, Unavailable],
+      error: [NotFound, OperationConflict, Unavailable],
     }),
   )
   .add(
