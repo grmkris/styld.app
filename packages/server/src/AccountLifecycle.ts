@@ -85,7 +85,7 @@ const make = (
      * ask again. */
     const deleteAccount = Effect.fn('Styld.Account.delete')(function* (accountId: string) {
       yield* closeAccount(accountId)
-      yield* attempt(() => bindings.queue.send({ finishDeletionOf: accountId })).pipe(
+      yield* attempt(() => bindings.queue.send({ _tag: 'FinishDeletion', accountId })).pipe(
         Effect.catch(() => finishDeletion(accountId)),
       )
       yield* finishDeletion(accountId).pipe(Effect.ignore)

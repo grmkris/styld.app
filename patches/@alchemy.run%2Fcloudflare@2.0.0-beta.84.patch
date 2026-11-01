@@ -1,0 +1,88 @@
+diff --git a/lib/Queues/EventSource.js b/lib/Queues/EventSource.js
+index ad4459d2b24e293fa2dd3cdaa85df9ccd5545df5..2599df903c81f9a90942850009379e2655dcb1a6 100644
+--- a/lib/Queues/EventSource.js
++++ b/lib/Queues/EventSource.js
+@@ -89,8 +89,25 @@ export const EventSourceLive = Layer.effect(EventSource, Effect.gen(function* ()
+                 const queueName = yield* QueueName;
+                 if (batch.queue !== queueName)
+                     return;
+-                yield* process(Stream.fromIterable(batch.messages)).pipe(Effect.tap(() => Effect.sync(() => {
+-                    for (const msg of batch.messages)
++                // Styld patch: only messages the handler left unsettled are acked or retried as a batch.
++                const settled = new Set();
++                const messages = batch.messages.map((msg) => ({
++                    id: msg.id,
++                    timestamp: msg.timestamp,
++                    body: msg.body,
++                    attempts: msg.attempts,
++                    ack: () => {
++                        settled.add(msg.id);
++                        msg.ack();
++                    },
++                    retry: (options) => {
++                        settled.add(msg.id);
++                        msg.retry(options);
++                    },
++                }));
++                const unsettled = () => batch.messages.filter((msg) => !settled.has(msg.id));
++                yield* process(Stream.fromIterable(messages)).pipe(Effect.tap(() => Effect.sync(() => {
++                    for (const msg of unsettled())
+                         msg.ack();
+                 })), Effect.onError((cause) => Effect.sync(() => {
+                     // Surface the failure so the operator sees what
+@@ -99,7 +116,7 @@ export const EventSourceLive = Layer.effect(EventSource, Effect.gen(function* ()
+                     // attempt.
+                     console.error(`[EventSource] handler failed on queue ` +
+                         `"${queueName}": ${Cause.pretty(cause)}`);
+-                    for (const msg of batch.messages)
++                    for (const msg of unsettled())
+                         msg.retry();
+                 })), Effect.ignoreCause);
+             });
+diff --git a/src/Queues/EventSource.ts b/src/Queues/EventSource.ts
+index 3d7548b485e4a949be3c35af92920bc7749103d0..81aaf628d47b97614e5c56f61db8b19e4e6f8b64 100644
+--- a/src/Queues/EventSource.ts
++++ b/src/Queues/EventSource.ts
+@@ -222,10 +222,31 @@ export const EventSourceLive = Layer.effect(
+           const queueName = yield* QueueName;
+           if (batch.queue !== queueName) return;
+ 
+-          yield* process(Stream.fromIterable(batch.messages)).pipe(
++          // Styld patch: the handler may settle each message itself. Only the
++          // messages it left unsettled are acknowledged (or retried) as a
++          // batch, so a message is never acked after the handler retried it.
++          const settled = new Set<string>();
++          const messages = batch.messages.map(
++            (msg): cf.Message<Body> => ({
++              id: msg.id,
++              timestamp: msg.timestamp,
++              body: msg.body,
++              attempts: msg.attempts,
++              ack: () => {
++                settled.add(msg.id);
++                msg.ack();
++              },
++              retry: (options?: cf.QueueRetryOptions) => {
++                settled.add(msg.id);
++                msg.retry(options);
++              },
++            }),
++          );
++          const unsettled = () => batch.messages.filter((msg) => !settled.has(msg.id));
++          yield* process(Stream.fromIterable(messages)).pipe(
+             Effect.tap(() =>
+               Effect.sync(() => {
+-                for (const msg of batch.messages) msg.ack();
++                for (const msg of unsettled()) msg.ack();
+               }),
+             ),
+             Effect.onError((cause) =>
+@@ -238,7 +259,7 @@ export const EventSourceLive = Layer.effect(
+                   `[EventSource] handler failed on queue ` +
+                     `"${queueName}": ${Cause.pretty(cause)}`,
+                 );
+-                for (const msg of batch.messages) msg.retry();
++                for (const msg of unsettled()) msg.retry();
+               }),
+             ),
+             Effect.ignoreCause,

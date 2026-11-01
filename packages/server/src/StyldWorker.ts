@@ -51,20 +51,20 @@ import {
 import { type CheckBindings, makeChecks } from './safety/Checks.ts'
 import { contentJudge, type RunGuard } from './safety/Judge.ts'
 import { pieceChangedLayer } from './safety/PieceChanged.ts'
-import { checkAttempts, settleCheck } from './safety/Queue.ts'
+import { checkJobQueue, checkJobs } from './safety/Queue.ts'
 import type { RunChat } from './ai/WorkersAiFetch.ts'
 import type { MoodPlanner } from './generation/Planner.ts'
 import type { PicturePainter } from './generation/Painter.ts'
-import { generationAttempts, settleGeneration } from './generation/Queue.ts'
+import { generationJobQueue, generationJobs } from './generation/Queue.ts'
 import { type GenerationBindings, Generations, makeGenerations } from './generation/Service.ts'
 import { wardrobeRoutes } from './wardrobe/Http.ts'
-import { processingAttempts, settleMessage } from './wardrobe/Queue.ts'
+import { pieceJobQueue, pieceJobs } from './wardrobe/Queue.ts'
 import type { WardrobeBindings } from './wardrobe/Parts.ts'
 import { makeWardrobe, Wardrobe } from './wardrobe/Wardrobe.ts'
 import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
-import { asDelivery } from './QueueDelivery.ts'
+import { consume, consumerSettings, type JobQueue, type JobsOf, type Tagged } from './jobs/Jobs.ts'
 import { StylistChats } from './stylist/Http.ts'
-import { settleStylistTurn, stylistAttempts } from './stylist/Queue.ts'
+import { stylistJobQueue, stylistJobs } from './stylist/Queue.ts'
 import { Stylist } from './stylist/StylistObject.ts'
 import { chatStoreOf, makeStylistLive } from './stylist/Live.ts'
 import { askStandIn, captureProviders } from './capture/Live.ts'
@@ -493,50 +493,24 @@ export default StyldWorker.make(
         withObservability('styld.http', metadata),
       )
     }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs))
-    yield* Cloudflare.Queues.consumeQueueMessages(
-      bindings.pieceQueueResource,
-      { batchSize: 10, maxRetries: processingAttempts, retryDelay: '10 seconds' },
-      (messages) =>
+    /** Consume a queue's deliveries with the application its first delivery built. */
+    const consumer = <Body extends Tagged>(
+      resource: Parameters<typeof Cloudflare.Queues.consumeQueueMessages>[0],
+      queue: JobQueue<Body>,
+      jobsOf: (services: Effect.Success<ReturnType<ReturnType<typeof makeApplication>>>) => JobsOf<Body>,
+    ) =>
+      Cloudflare.Queues.consumeQueueMessages(resource, consumerSettings(queue), (messages) =>
         Effect.gen(function* () {
           const services = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
-          yield* Stream.runForEach(messages, (message) =>
-            settleMessage(services, message).pipe(asDelivery(services.observabilityBase, 'pieces', message)),
-          )
+          yield* Stream.runForEach(messages, consume(queue, services.observabilityBase, jobsOf(services)))
         }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
+      )
+    yield* consumer(bindings.pieceQueueResource, pieceJobQueue, pieceJobs)
+    yield* consumer(bindings.checksQueueResource, checkJobQueue, ({ checks }) => checkJobs(checks))
+    yield* consumer(bindings.generationQueueResource, generationJobQueue, ({ generations }) =>
+      generationJobs(generations),
     )
-    yield* Cloudflare.Queues.consumeQueueMessages(
-      bindings.checksQueueResource,
-      { batchSize: 10, maxRetries: checkAttempts, retryDelay: '30 seconds' },
-      (messages) =>
-        Effect.gen(function* () {
-          const { checks, observabilityBase } = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
-          yield* Stream.runForEach(messages, (message) =>
-            settleCheck(checks, message).pipe(asDelivery(observabilityBase, 'checks', message)),
-          )
-        }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
-    )
-    yield* Cloudflare.Queues.consumeQueueMessages(
-      bindings.generationQueueResource,
-      { batchSize: 4, maxRetries: generationAttempts, retryDelay: '20 seconds' },
-      (messages) =>
-        Effect.gen(function* () {
-          const { generations, observabilityBase } = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
-          yield* Stream.runForEach(messages, (message) =>
-            settleGeneration(generations, message).pipe(asDelivery(observabilityBase, 'generation', message)),
-          )
-        }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
-    )
-    yield* Cloudflare.Queues.consumeQueueMessages(
-      bindings.stylist.queueResource,
-      { batchSize: 1, maxRetries: stylistAttempts, retryDelay: '5 seconds' },
-      (messages) =>
-        Effect.gen(function* () {
-          const { stylist, observabilityBase } = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
-          yield* Stream.runForEach(messages, (message) =>
-            settleStylistTurn(stylist, message).pipe(asDelivery(observabilityBase, 'stylist', message)),
-          )
-        }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
-    )
+    yield* consumer(bindings.stylist.queueResource, stylistJobQueue, ({ stylist }) => stylistJobs(stylist))
     // Every ten minutes: generation jobs and checks whose messages were lost go to their queues again, pieces carried
     // over from the old categories go to be asked about, a batch at a time, and old Thinking counts are forgotten.
     yield* Cloudflare.Workers.cron('*/10 * * * *', () =>

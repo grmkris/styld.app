@@ -1,22 +1,18 @@
-import type * as Cloudflare from '@alchemy.run/cloudflare'
-import { Effect, Schema } from 'effect'
+import { Effect, Option } from 'effect'
+import { defineQueue, type JobsOf } from '../jobs/Jobs.ts'
 import { CheckMessage, type Checks } from './Checks.ts'
 
-/** Deliveries of one check before it stays pending: a model down for longer leaves the content hidden until it
- * changes again. */
-export const checkAttempts = 5
+/** Checks of what people make public: tried five times while the model does not answer. A check given up stays
+ * pending, hidden from others, until the content changes again or the sweep asks again. */
+export const checkJobQueue = defineQueue({
+  name: 'checks',
+  body: CheckMessage,
+  attempts: 5,
+  batchSize: 10,
+  retryDelay: '30 seconds',
+  jobOf: ({ target }) => Option.some(`${target.kind}:${target.id}`),
+})
 
-/** Settle one check message once: done, or tried again later while the model does not answer. A body that is no
- * check is dropped. */
-export const settleCheck = (checks: Checks['Service'], message: Cloudflare.Queues.Message) =>
-  Schema.decodeUnknownEffect(CheckMessage)(message.body).pipe(
-    Effect.matchEffect({
-      onFailure: () => Effect.succeed<'ack' | 'retry'>('ack'),
-      onSuccess: ({ target }) =>
-        checks.checkNow(target, 'fail').pipe(
-          Effect.as<'ack' | 'retry'>('ack'),
-          Effect.catchCause(() => Effect.succeed<'ack' | 'retry'>(message.attempts >= checkAttempts ? 'ack' : 'retry')),
-        ),
-    }),
-    Effect.flatMap((outcome) => Effect.sync(() => (outcome === 'ack' ? message.ack() : message.retry()))),
-  )
+export const checkJobs = (checks: Checks['Service']): JobsOf<typeof CheckMessage.Type> => ({
+  CheckContent: { run: ({ target }) => checks.checkNow(target, 'fail'), giveUp: () => Effect.void },
+})

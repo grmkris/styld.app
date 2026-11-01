@@ -21,7 +21,7 @@ export const CheckTarget = Schema.Struct({
 export type CheckTarget = typeof CheckTarget.Type
 
 /** The queue's message: check this target again. */
-export const CheckMessage = Schema.TaggedStruct('CheckContent', { target: CheckTarget })
+export const CheckMessage = Schema.TaggedUnion({ CheckContent: { target: CheckTarget } })
 
 export interface CheckBindings extends ImageBindings {
   readonly database: Parameters<typeof drizzle>[0]
@@ -270,7 +270,9 @@ const make = (bindings: CheckBindings) =>
       Effect.forEach(
         Array.chunksOf(targets, queueBatch),
         (chunk) =>
-          attempt(() => bindings.queue.sendBatch(chunk.map((target) => ({ body: CheckMessage.make({ target }) })))),
+          attempt(() =>
+            bindings.queue.sendBatch(chunk.map((target) => ({ body: { _tag: 'CheckContent' as const, target } }))),
+          ),
         { discard: true },
       )
     /** The model's verdict on everything the target shows: the words with its first pictures, then the rest a few

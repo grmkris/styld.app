@@ -1,3 +1,4 @@
+import type { StylistTurn } from './Queue.ts'
 import type * as Cloudflare from '@alchemy.run/cloudflare'
 import { OpenAiClient, OpenAiLanguageModel } from '@effect/ai-openai-compat'
 import { layerCryptoWeb } from '@yielded/auth/WebCrypto'
@@ -63,7 +64,7 @@ const unpaced: Pacing['Service'] = { link: () => Effect.succeed(false), generate
 export const makeStylistLive = (input: {
   readonly env: Readonly<Record<string, unknown>>
   readonly chatsOf: (accountId: string) => ChatStore
-  readonly queue: { send(message: { readonly stylistTurnOf: string; readonly accountId: string }): Promise<unknown> }
+  readonly queue: { send(message: StylistTurn): Promise<unknown> }
   readonly runChat: RunChat
   readonly tools: ToolServices
   /** The wardrobe, and the credits and call counter the capture providers were built with. */

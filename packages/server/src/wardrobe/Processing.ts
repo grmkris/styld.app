@@ -1,42 +1,25 @@
 import type { PieceType } from '@styld/protocol'
 import { Context, Effect, Layer, Schema } from 'effect'
 
-/** Queue message: prepare the photo of a newly added piece. */
-export const ProcessPiece = Schema.Struct({ pieceId: Schema.String })
-export type ProcessPiece = typeof ProcessPiece.Type
-
-/** Queue message: finish deleting an account whose access has already ended. */
-export const FinishAccountDeletion = Schema.Struct({ finishDeletionOf: Schema.String })
-
-/** Queue message: cut a photo or video into the pieces waiting in the tray. */
-export const ProcessCapture = Schema.Struct({ captureId: Schema.String })
-
-/** Queue message: draw a kept piece's clean picture, or carry on with one a delivery left. */
-export const CleanPicture = Schema.Struct({ cleanPictureOf: Schema.String })
-
-/** Queue message: carry a piece's turn on a hanger a step further. */
-export const MakeTurn = Schema.Struct({ turnOf: Schema.String })
-
-/** Queue message: compare a capture's new sightings with the rest of its import and with the wardrobe. */
-export const MatchCapture = Schema.Struct({ matchOf: Schema.String })
-
-/** Queue message: ask the decision model once about a piece carried over from the old categories. */
-export const SuggestPiece = Schema.Struct({ suggestFor: Schema.String })
-
-/** Queue message: find the garments in an outfit photo (My Gallery). */
-export const FindInPhoto = Schema.Struct({ findIn: Schema.String })
-
-/** Every message the Worker's queue carries. */
-export const WorkMessage = Schema.Union([
-  ProcessPiece,
-  FinishAccountDeletion,
-  ProcessCapture,
-  CleanPicture,
-  MakeTurn,
-  MatchCapture,
-  SuggestPiece,
-  FindInPhoto,
-])
+/** What the piece queue carries: work on a piece, a capture or an outfit photo, or the end of an account's deletion. */
+export const WorkMessage = Schema.TaggedUnion({
+  /** Prepare the photo of a newly added piece. */
+  ProcessPiece: { pieceId: Schema.String },
+  /** Finish deleting an account whose access has already ended. */
+  FinishDeletion: { accountId: Schema.String },
+  /** Cut a photo or video into the pieces waiting in the tray. */
+  ProcessCapture: { captureId: Schema.String },
+  /** Draw a kept piece's clean picture, or carry on with one a delivery left. */
+  DrawPicture: { pieceId: Schema.String },
+  /** Carry a piece's turn on a hanger a step further. */
+  MakeTurn: { pieceId: Schema.String },
+  /** Compare a capture's new sightings with the rest of its import and with the wardrobe. */
+  MatchCapture: { captureId: Schema.String },
+  /** Ask the decision model once about a piece carried over from the old categories. */
+  SuggestPiece: { pieceId: Schema.String },
+  /** Find the garments in an outfit photo (My Gallery). */
+  FindGarments: { photoId: Schema.String },
+})
 export type WorkMessage = typeof WorkMessage.Type
 
 /** The cut-out step could not produce an image this time; the queue retries it. */

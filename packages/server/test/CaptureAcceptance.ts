@@ -5,7 +5,7 @@ import { type Call, client, seedAccounts, send, signIn } from './Accounts.ts'
 
 /** The daily allowance the native stack configures: a photo costs 1, a video 5 for each started
  * half-minute. Seven lets a long video's first part through and stops its second. */
-export const nativeDailyAllowance = 7
+const nativeDailyAllowance = 7
 
 const fixture = (name: string) => new Uint8Array(readFileSync(new URL(`fixtures/capture/${name}`, import.meta.url)))
 

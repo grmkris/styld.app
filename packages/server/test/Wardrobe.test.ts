@@ -5,7 +5,8 @@ import { describe, expect, test } from 'vitest'
 import type { AccountLifecycle } from '../src/AccountLifecycle.ts'
 import { importImage } from '../src/mcp/ImageImport.ts'
 import { sniffImageType } from '../src/wardrobe/Media.ts'
-import { processingAttempts, settleMessage } from '../src/wardrobe/Queue.ts'
+import { consume } from '../src/jobs/Jobs.ts'
+import { pieceJobs, pieceJobQueue } from '../src/wardrobe/Queue.ts'
 import { pictureView, shownImage, turnView } from '../src/wardrobe/Shown.ts'
 import type { PictureRow, TurnRow } from '../src/wardrobe/Store.ts'
 import { Wardrobe } from '../src/wardrobe/Wardrobe.ts'
@@ -41,6 +42,13 @@ const message = (body: unknown, attempts = 1) => {
 }
 
 const notUsed = () => Effect.die('not used by these tests')
+const processingAttempts = pieceJobQueue.attempts
+const base = { environment: 'local', release: 'unit', component: 'server' } as const
+/** Deliver one message of the piece queue to these services. */
+const settleMessage = (
+  services: Parameters<typeof pieceJobs>[0],
+  delivery: Parameters<ReturnType<typeof consume>>[0],
+) => consume(pieceJobQueue, base, pieceJobs(services))(delivery)
 const services = (
   processPiece: Effect.Effect<void, Unavailable>,
   failPiece: Effect.Effect<void, Unavailable> = Effect.void,
@@ -92,24 +100,24 @@ const services = (
 
 describe('the processing queue', () => {
   test('settles each message once: done, retried, or failed after the last attempt', async () => {
-    const done = message({ pieceId: 'pc_1' })
+    const done = message({ _tag: 'ProcessPiece', pieceId: 'pc_1' })
     await Effect.runPromise(settleMessage(services(Effect.void).services, done.message))
     expect(done.settled).toEqual(['ack'])
 
-    const again = message({ pieceId: 'pc_1' }, 1)
+    const again = message({ _tag: 'ProcessPiece', pieceId: 'pc_1' }, 1)
     const flaky = services(Effect.fail(Unavailable.make({})))
     await Effect.runPromise(settleMessage(flaky.services, again.message))
     expect(again.settled).toEqual(['retry'])
     expect(flaky.failed).toEqual([])
 
-    const last = message({ pieceId: 'pc_1' }, processingAttempts)
+    const last = message({ _tag: 'ProcessPiece', pieceId: 'pc_1' }, processingAttempts)
     await Effect.runPromise(settleMessage(flaky.services, last.message))
     expect(last.settled).toEqual(['ack'])
     expect(flaky.failed).toEqual(['pc_1'])
   })
 
   test('retries when the piece cannot even be marked failed, and drops what it cannot read', async () => {
-    const last = message({ pieceId: 'pc_1' }, processingAttempts)
+    const last = message({ _tag: 'ProcessPiece', pieceId: 'pc_1' }, processingAttempts)
     await Effect.runPromise(
       settleMessage(
         services(Effect.fail(Unavailable.make({})), Effect.fail(Unavailable.make({}))).services,
@@ -140,9 +148,9 @@ describe('the processing queue', () => {
         failSuggestion: notUsed,
       },
     }
-    const first = message({ cleanPictureOf: 'pc_1' }, 1)
+    const first = message({ _tag: 'DrawPicture', pieceId: 'pc_1' }, 1)
     await Effect.runPromise(settleMessage(busy, first.message))
-    const last = message({ cleanPictureOf: 'pc_1' }, processingAttempts)
+    const last = message({ _tag: 'DrawPicture', pieceId: 'pc_1' }, processingAttempts)
     await Effect.runPromise(settleMessage(busy, last.message))
     expect([first.settled, last.settled]).toEqual([['retry'], ['ack']])
     expect(seen).toEqual(['draw pc_1', 'draw pc_1', 'give up pc_1'])
@@ -313,7 +321,7 @@ describe("a piece's turn", () => {
         failSuggestion: notUsed,
       },
     }
-    const last = message({ turnOf: 'pc_1' }, processingAttempts)
+    const last = message({ _tag: 'MakeTurn', pieceId: 'pc_1' }, processingAttempts)
     await Effect.runPromise(settleMessage(working, last.message))
     expect(last.settled).toEqual(['ack'])
     expect(seen).toEqual(['turn pc_1', 'give up pc_1'])

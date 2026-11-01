@@ -10,7 +10,7 @@ import type { PicturePainter } from './Painter.ts'
 import type { JobRow, makeGenerationStore, PictureRow } from './Store.ts'
 
 /** What the generation queue carries: a job to take further. */
-export const GenerationMessage = Schema.Struct({ jobId: Schema.String })
+export const GenerationMessage = Schema.TaggedUnion({ TakeJob: { jobId: Schema.String } })
 export type GenerationMessage = typeof GenerationMessage.Type
 
 /** Everything a generation reads and writes, and the services it acts through for the job's account. */
@@ -37,7 +37,7 @@ export const jobHold = (jobId: string) => holdId('generation', jobId, 0)
 export const pictureOperation = (jobId: string, index: number) => `gen-${jobId}-${index}`
 
 export const send = (parts: Parts, jobId: string) =>
-  Effect.tryPromise({ try: () => parts.queue.send({ jobId }), catch: unavailable }).pipe(Effect.asVoid)
+  Effect.tryPromise({ try: () => parts.queue.send({ _tag: 'TakeJob', jobId }), catch: unavailable }).pipe(Effect.asVoid)
 
 /** A job as its owner reads it, decoded against the protocol so a stored row that drifted never leaves. */
 export const view = (job: JobRow, pictures: ReadonlyArray<PictureRow>) =>

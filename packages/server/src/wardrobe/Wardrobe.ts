@@ -80,7 +80,7 @@ const videoRefusal = (
 }
 
 const enqueue = (parts: Parts, pieceId: string) =>
-  Effect.tryPromise({ try: () => parts.bindings.queue.send({ pieceId }), catch: unavailable })
+  Effect.tryPromise({ try: () => parts.bindings.queue.send({ _tag: 'ProcessPiece', pieceId }), catch: unavailable })
 
 const reads = (parts: Parts) => ({
   listPieces: Effect.fn('Styld.Wardrobe.listPieces')(function* () {

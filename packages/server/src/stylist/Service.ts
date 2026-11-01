@@ -1,3 +1,4 @@
+import type { StylistTurn } from './Queue.ts'
 import {
   ChatId,
   NotFound,
@@ -72,7 +73,7 @@ export type ChatStore = {
 
 export interface StylistParts<R> {
   readonly chatsOf: (accountId: string) => ChatStore
-  readonly queue: { send(message: { readonly stylistTurnOf: string; readonly accountId: string }): Promise<unknown> }
+  readonly queue: { send(message: StylistTurn): Promise<unknown> }
   readonly policy: StylistPolicy
   readonly model: Layer.Layer<LanguageModel.LanguageModel>
   /** The assistants' tools, and what they need to run for an account. */
@@ -189,7 +190,7 @@ const sending = <R>(parts: StylistParts<R>, ids: Ids) =>
       yield* refund
       return yield* begun.outcome === 'busy' ? StylistBusy.make({}) : NotFound.make({})
     }
-    const queued = yield* Effect.tryPromise(() => parts.queue.send({ stylistTurnOf: turnId, accountId })).pipe(
+    const queued = yield* Effect.tryPromise(() => parts.queue.send({ _tag: 'WriteReply', turnId, accountId })).pipe(
       Effect.as(true),
       Effect.orElseSucceed(() => false),
     )

@@ -1,85 +1,71 @@
-import type * as Cloudflare from '@alchemy.run/cloudflare'
-import { Cause, Effect, Schema } from 'effect'
+import { Effect, Option } from 'effect'
 import type { AccountLifecycle } from '../AccountLifecycle.ts'
 import type { Captures } from '../capture/Service.ts'
+import { defineQueue, type JobsOf } from '../jobs/Jobs.ts'
 import type { Photos } from '../photos/Photos.ts'
 import { WorkMessage } from './Processing.ts'
 import type { Wardrobe } from './Wardrobe.ts'
 
-/** Delivery attempts before a piece shows as failed; a deletion is retried as many times. */
-export const processingAttempts = 3
+/** The piece queue: three tries for each job before it shows as failed, its credits back. */
+export const pieceJobQueue = defineQueue({
+  name: 'pieces',
+  body: WorkMessage,
+  attempts: 3,
+  batchSize: 10,
+  retryDelay: '10 seconds',
+  // A piece's work keeps the queue's own message id.
+  jobOf: () => Option.none(),
+})
 
-type Outcome = 'ack' | 'retry'
-
-/** Settle one queue message exactly once: done, retried later, or after the last attempt marked
- * failed. Any failure counts, defects too, so a capture never stays processing because its pipeline
- * threw; each is logged with its cause. A body that is no known message can never succeed, so it is
- * dropped. */
-export const settleMessage = (
-  services: {
-    readonly wardrobe: Wardrobe['Service']
-    readonly lifecycle: AccountLifecycle['Service']
-    readonly captures: Pick<
-      Captures['Service'],
-      | 'processCapture'
-      | 'failCapture'
-      | 'processPicture'
-      | 'failPicture'
-      | 'processTurn'
-      | 'failTurn'
-      | 'processMatch'
-      | 'failMatch'
-      | 'suggestPiece'
-      | 'failSuggestion'
-    >
-    readonly photos: Pick<Photos['Service'], 'findGarments' | 'failFinding'>
+/** Every job the piece queue runs, and what giving each up does. A deletion is only tried again. */
+export const pieceJobs = (services: {
+  readonly wardrobe: Pick<Wardrobe['Service'], 'processPiece' | 'failPiece'>
+  readonly lifecycle: Pick<AccountLifecycle['Service'], 'finishDeletion'>
+  readonly captures: Pick<
+    Captures['Service'],
+    | 'processCapture'
+    | 'failCapture'
+    | 'processPicture'
+    | 'failPicture'
+    | 'processTurn'
+    | 'failTurn'
+    | 'processMatch'
+    | 'failMatch'
+    | 'suggestPiece'
+    | 'failSuggestion'
+  >
+  readonly photos: Pick<Photos['Service'], 'findGarments' | 'failFinding'>
+}): JobsOf<typeof WorkMessage.Type> => ({
+  ProcessPiece: {
+    run: ({ pieceId }, attempt) => services.wardrobe.processPiece(pieceId, attempt),
+    giveUp: ({ pieceId }) => services.wardrobe.failPiece(pieceId),
   },
-  message: Cloudflare.Queues.Message,
-) => {
-  const logged = (cause: Cause.Cause<unknown>) =>
-    Effect.logWarning('Styld.Queue work failed').pipe(
-      Effect.annotateLogs({ 'styld.queue.attempt': message.attempts, 'styld.queue.cause': Cause.pretty(cause) }),
-    )
-  const retryOrGiveUp = (giveUp: Effect.Effect<unknown, unknown>) =>
-    message.attempts >= processingAttempts
-      ? giveUp.pipe(
-          Effect.as<Outcome>('ack'),
-          Effect.catchCause((cause) => Effect.as(logged(cause), 'retry' as const)),
-        )
-      : Effect.succeed<Outcome>('retry')
-  const work = (run: Effect.Effect<unknown, unknown>, giveUp: Effect.Effect<unknown, unknown>) =>
-    run.pipe(
-      Effect.as<Outcome>('ack'),
-      Effect.catchCause((cause) => Effect.andThen(logged(cause), retryOrGiveUp(giveUp))),
-    )
-  return Schema.decodeUnknownEffect(WorkMessage)(message.body).pipe(
-    Effect.flatMap((body) => {
-      if ('pieceId' in body)
-        return work(
-          services.wardrobe.processPiece(body.pieceId, message.attempts),
-          services.wardrobe.failPiece(body.pieceId),
-        )
-      if ('captureId' in body)
-        return work(services.captures.processCapture(body.captureId), services.captures.failCapture(body.captureId))
-      if ('matchOf' in body)
-        return work(services.captures.processMatch(body.matchOf), services.captures.failMatch(body.matchOf))
-      if ('findIn' in body)
-        return work(services.photos.findGarments(body.findIn), services.photos.failFinding(body.findIn))
-      if ('suggestFor' in body)
-        return work(services.captures.suggestPiece(body.suggestFor), services.captures.failSuggestion(body.suggestFor))
-      if ('turnOf' in body)
-        return work(services.captures.processTurn(body.turnOf), services.captures.failTurn(body.turnOf))
-      if ('cleanPictureOf' in body)
-        return work(
-          services.captures.processPicture(body.cleanPictureOf),
-          services.captures.failPicture(body.cleanPictureOf),
-        )
-      return services.lifecycle.finishDeletion(body.finishDeletionOf).pipe(
-        Effect.as<Outcome>('ack'),
-        Effect.catchCause((cause) => Effect.as(logged(cause), 'retry' as const)),
-      )
-    }),
-    Effect.orElseSucceed((): Outcome => 'ack'),
-    Effect.flatMap((outcome) => Effect.sync(() => (outcome === 'ack' ? message.ack() : message.retry()))),
-  )
-}
+  FinishDeletion: {
+    run: ({ accountId }) => services.lifecycle.finishDeletion(accountId),
+    giveUp: () => Effect.void,
+  },
+  ProcessCapture: {
+    run: ({ captureId }) => services.captures.processCapture(captureId),
+    giveUp: ({ captureId }) => services.captures.failCapture(captureId),
+  },
+  DrawPicture: {
+    run: ({ pieceId }) => services.captures.processPicture(pieceId),
+    giveUp: ({ pieceId }) => services.captures.failPicture(pieceId),
+  },
+  MakeTurn: {
+    run: ({ pieceId }) => services.captures.processTurn(pieceId),
+    giveUp: ({ pieceId }) => services.captures.failTurn(pieceId),
+  },
+  MatchCapture: {
+    run: ({ captureId }) => services.captures.processMatch(captureId),
+    giveUp: ({ captureId }) => services.captures.failMatch(captureId),
+  },
+  SuggestPiece: {
+    run: ({ pieceId }) => services.captures.suggestPiece(pieceId),
+    giveUp: ({ pieceId }) => services.captures.failSuggestion(pieceId),
+  },
+  FindGarments: {
+    run: ({ photoId }) => services.photos.findGarments(photoId),
+    giveUp: ({ photoId }) => services.photos.failFinding(photoId),
+  },
+})

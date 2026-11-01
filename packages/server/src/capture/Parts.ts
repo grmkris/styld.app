@@ -79,28 +79,38 @@ export const turnKey = (
 export const enqueueTurn = (parts: Parts, pieceId: string, delaySeconds?: number) =>
   Effect.tryPromise({
     try: () =>
-      parts.bindings.queue.send({ turnOf: pieceId }, delaySeconds === undefined ? undefined : { delaySeconds }),
+      parts.bindings.queue.send(
+        { _tag: 'MakeTurn', pieceId },
+        delaySeconds === undefined ? undefined : { delaySeconds },
+      ),
     catch: unavailable,
   }).pipe(Effect.asVoid)
 
 /** Tell the queue a piece's clean picture is waiting to be drawn. */
 export const enqueuePicture = (parts: Parts, pieceId: string) =>
-  Effect.tryPromise({ try: () => parts.bindings.queue.send({ cleanPictureOf: pieceId }), catch: unavailable }).pipe(
-    Effect.asVoid,
-  )
+  Effect.tryPromise({
+    try: () => parts.bindings.queue.send({ _tag: 'DrawPicture', pieceId }),
+    catch: unavailable,
+  }).pipe(Effect.asVoid)
 
 /** Tell the queue a capture's sightings wait to be compared, now or after `delaySeconds` (another delivery has the
  * import's next one). */
 export const enqueueMatch = (parts: Parts, captureId: string, delaySeconds?: number) =>
   Effect.tryPromise({
     try: () =>
-      parts.bindings.queue.send({ matchOf: captureId }, delaySeconds === undefined ? undefined : { delaySeconds }),
+      parts.bindings.queue.send(
+        { _tag: 'MatchCapture', captureId },
+        delaySeconds === undefined ? undefined : { delaySeconds },
+      ),
     catch: unavailable,
   }).pipe(Effect.asVoid)
 
 /** Tell the queue a capture is ready to process. */
 export const enqueueCapture = (parts: Parts, captureId: string) =>
-  Effect.tryPromise({ try: () => parts.bindings.queue.send({ captureId }), catch: unavailable }).pipe(Effect.asVoid)
+  Effect.tryPromise({
+    try: () => parts.bindings.queue.send({ _tag: 'ProcessCapture', captureId }),
+    catch: unavailable,
+  }).pipe(Effect.asVoid)
 
 export const storedAs = <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.mapError(effect, unavailable)
 

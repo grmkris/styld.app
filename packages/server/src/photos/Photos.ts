@@ -97,7 +97,10 @@ const usableUpload = (parts: PhotoParts, accountId: string, uploadId: string) =>
   })
 
 const enqueue = (parts: PhotoParts, photoId: string) =>
-  Effect.tryPromise({ try: () => parts.capture.bindings.queue.send({ findIn: photoId }), catch: unavailable })
+  Effect.tryPromise({
+    try: () => parts.capture.bindings.queue.send({ _tag: 'FindGarments', photoId }),
+    catch: unavailable,
+  })
 
 /** The photo an operation already made, for the same upload; a conflict for another. A photo still being found goes
  * to the queue again, in case the first message never left. */

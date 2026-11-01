@@ -75,7 +75,10 @@ export const suggesting = (parts: Parts) => ({
     yield* Effect.forEach(
       pending,
       (pieceId) =>
-        Effect.tryPromise({ try: () => parts.bindings.queue.send({ suggestFor: pieceId }), catch: unavailable }),
+        Effect.tryPromise({
+          try: () => parts.bindings.queue.send({ _tag: 'SuggestPiece', pieceId }),
+          catch: unavailable,
+        }),
       { discard: true },
     )
     return pending.length
