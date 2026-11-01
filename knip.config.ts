@@ -19,6 +19,11 @@ export default {
         'test/**/*.test.ts',
       ],
       project: ['src/**/*.ts!', 'test/**/*.ts'],
+      // A Foldkit page's Commands, Messages and union constructors are used by its own update and are the surface its
+      // Story and Scene tests drive (FOLDKIT.md › Testing; Foldkit's own examples export them the same way), so an
+      // export the module itself uses is not reported as test-only; one nothing uses still is. The website only: the
+      // packages keep full unused-export detection.
+      ignoreExportsUsedInFile: true,
     },
     ...Object.fromEntries(
       ['auth', 'domain', 'observability', 'server'].map((name) => [
@@ -30,10 +35,6 @@ export default {
     'packages/imaging': { project: ['src/**/*.ts!'] },
     'packages/i18n': { project: ['src/**/*.ts!'] },
   },
-  // A Foldkit page's Commands, Messages and union constructors are used by its own update and are the surface its
-  // Story and Scene tests drive (FOLDKIT.md › Testing; Foldkit's own examples export them the same way), so an export
-  // the module itself uses is not reported as test-only; one nothing uses still is.
-  ignoreExportsUsedInFile: true,
   // Vendored source is checked byte-for-byte against its recorded upstream hash.
   // repos/ holds read-only upstream snapshots for agents (tools/vendored-repos.ts).
   ignore: ['tools/oxlint/anti-slop/**', 'repos/**'],
