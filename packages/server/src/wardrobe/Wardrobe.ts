@@ -5,7 +5,6 @@ import {
   CurrentAccount,
   NoCleanPicture,
   NotFound,
-  type OperationId,
   type PictureChoice,
   Piece,
   type PieceId,
@@ -306,14 +305,6 @@ const newPiece = (
 })
 
 const adding = (parts: Parts) => ({
-  /** The piece an operation id already added, if any: an assistant repeating an add from a photo
-   * address gets it back without the photo being fetched again. */
-  pieceAddedBy: Effect.fn('Styld.Wardrobe.pieceAddedBy')(function* (operationId: OperationId) {
-    const { accountId } = yield* CurrentAccount
-    const receipt = yield* stored(parts.store.findReceipt(accountId, operationId))
-    if (Option.isNone(receipt)) return Option.none<Piece>()
-    return Option.some(yield* replay(parts, accountId, receipt.value.result))
-  }),
   addPiece: Effect.fn('Styld.Wardrobe.addPiece')(function* (input: AddPiece) {
     const { accountId, via } = yield* CurrentAccount
     const { operationId, ...meaning } = input

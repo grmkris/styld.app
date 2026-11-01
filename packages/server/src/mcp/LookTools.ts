@@ -1,4 +1,4 @@
-import { CreateLook, type Look, LookId, maximumLookPieces, ShareLook } from '@styld/protocol'
+import { CreateLook, type Look, LookId, maximumLookPieces, Operation, ShareLook } from '@styld/protocol'
 import { Effect, Schema } from 'effect'
 import type { Looks } from '../looks/Looks.ts'
 import { tool } from './Tools.ts'
@@ -50,8 +50,9 @@ export const lookTools = (looks: Looks['Service'], origin: string) => {
     tool({
       name: 'look_delete',
       title: 'Delete a look',
-      description: 'Delete a saved look. Its pieces stay in the wardrobe. Ask the person first.',
-      parameters: Schema.Struct({ lookId: LookId }),
+      description:
+        'Delete a saved look. Its pieces stay in the wardrobe. Ask the person first. Choose a new `operationId`.',
+      parameters: Schema.Struct({ lookId: LookId, ...Operation.fields }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
       handler: ({ lookId }) => looks.deleteLook(lookId).pipe(Effect.as({ deleted: true, lookId })),
     }),

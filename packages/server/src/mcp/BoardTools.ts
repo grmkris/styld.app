@@ -11,7 +11,7 @@ import {
   maximumItemSize,
   minimumItemSize,
   Mood,
-  OperationId,
+  Operation,
   Paper,
   type Pin,
   pinsAtOnce,
@@ -21,10 +21,10 @@ import {
   UpdateBoard,
   Url,
 } from '@styld/protocol'
-import { Effect, Match, Option, Schema } from 'effect'
+import { Effect, Match, Schema } from 'effect'
 import type { Boards } from '../boards/Boards.ts'
 import { tool } from './Tools.ts'
-import type { Links } from '../links/Links.ts'
+import { fetchOperation, type Links } from '../links/Links.ts'
 
 /** A pin as assistants see it: what it holds and its page, never an image address. */
 const shownPin = (origin: string) => (pin: Pin) =>
@@ -147,8 +147,8 @@ const boardTools = (boards: Boards['Service'], origin: string) => {
       name: 'board_delete',
       title: 'Delete a board',
       description:
-        'Delete a board with its pins, its collage and the pictures put on it. Pieces and looks stay. Ask the person first.',
-      parameters: Schema.Struct({ boardId: BoardId }),
+        'Delete a board with its pins, its collage and the pictures put on it. Pieces and looks stay. Ask the person first. Choose a new `operationId`.',
+      parameters: Schema.Struct({ boardId: BoardId, ...Operation.fields }),
       annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
       handler: ({ boardId }) => boards.deleteBoard(boardId).pipe(Effect.as({ deleted: true, boardId })),
     }),
@@ -180,20 +180,13 @@ const pinTools = (boards: Boards['Service'], links: Links['Service'], origin: st
       title: 'Put a picture on a board',
       description:
         'Pin a picture from a public https address on a board, for mood and inspiration. It is pinned, not placed on the collage; place it with collage_arrange using the imageId board_get shows. Choose a new `operationId` for each picture.',
-      parameters: Schema.Struct({
-        boardId: BoardId,
-        operationId: OperationId,
-        imageUrl: Url,
-      }),
+      parameters: Schema.Struct({ boardId: BoardId, ...Operation.fields, imageUrl: Url }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       handler: ({ boardId, operationId, imageUrl }) =>
         Effect.gen(function* () {
-          // A retry answers from its receipt before fetching the address again.
-          const earlier = yield* boards.boardImageAddedBy(operationId)
-          if (Option.isNone(earlier)) {
-            const uploadId = yield* links.photoFrom(imageUrl)
-            yield* boards.addBoardImage(boardId, { operationId, uploadId })
-          }
+          // A retry answers from the fetch's receipt, then from the picture's.
+          const uploadId = yield* links.photoFrom({ operationId: fetchOperation(operationId), url: imageUrl })
+          yield* boards.addBoardImage(boardId, { operationId, uploadId })
           return show(yield* boards.getBoard(boardId))
         }),
     }),

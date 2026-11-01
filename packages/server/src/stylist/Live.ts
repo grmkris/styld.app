@@ -8,7 +8,7 @@ import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import type { CaptureMetrics } from '../capture/Metrics.ts'
 import type { Holds } from '../usage/Holds.ts'
 import { CurrentAccount } from '@styld/protocol'
-import { styldTools, type ToolServices } from '../mcp/StyldTools.ts'
+import type { AssistantTools } from '../mcp/StyldTools.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { stylistModelId } from './Policy.ts'
 import type { StylistModel } from '../Providers.ts'
@@ -49,12 +49,11 @@ export const stylistModel = (runChat: RunChat): StylistModel['Service'] => ({
 /** Styld for the Worker: its model, the assistants' own tools run for the account, and the chats in each account's
  * Durable Object. */
 export const makeStylistLive = (input: {
-  /** The public origin, for the tools' links. */
-  readonly origin: string
   readonly model: StylistModel['Service']
   readonly chatsOf: (accountId: string) => ChatStore
   readonly queue: { send(message: StylistTurn): Promise<unknown> }
-  readonly tools: ToolServices
+  /** The assistants' tools (`StyldTools.ts`), built once for the Worker. */
+  readonly tools: AssistantTools
   /** The wardrobe, and the credits and call counter the capture providers were built with. */
   readonly storage: {
     readonly wardrobeService: Wardrobe['Service']
@@ -67,7 +66,7 @@ export const makeStylistLive = (input: {
       chatsOf: input.chatsOf,
       queue: input.queue,
       model: input.model,
-      tools: styldTools(input.origin, input.tools),
+      tools: input.tools,
       toolContext: (accountId) => Context.make(CurrentAccount, { accountId, via: 'assistant' }),
       wardrobe: input.storage.wardrobeService,
       holds: input.storage.holds,

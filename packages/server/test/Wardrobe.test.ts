@@ -65,7 +65,6 @@ const services = (
         once: notUsed,
         receiveUpload: notUsed,
         receiveVideoUpload: notUsed,
-        pieceAddedBy: notUsed,
         addPiece: notUsed,
         updatePiece: notUsed,
         deletePiece: notUsed,

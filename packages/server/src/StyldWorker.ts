@@ -34,7 +34,7 @@ import { liveProviders, type ProvidersFor, StylistModel, type WorkersAiCalls } f
 import { health } from './Health.ts'
 import { onFirstUse } from './IsolateCache.ts'
 import { mcpRoutes } from './mcp/Route.ts'
-import type { ToolServices } from './mcp/StyldTools.ts'
+import { styldTools, type ToolServices } from './mcp/StyldTools.ts'
 import { makeMcpOAuth } from './OAuth.ts'
 import {
   emailSender,
@@ -275,13 +275,13 @@ const applicationServices = (
         thinking: (accountId) => runtime.pacing.allows('thinking', accountId),
       },
     })
-    // Styld answers with the assistants' own tools, for the account.
+    // The assistants' tools, built once: MCP serves them, and Styld answers with them for the account.
+    const tools = styldTools(runtime.origin, toolServices(services, outfitsService))
     const stylistService = yield* makeStylistLive({
-      origin: runtime.origin,
       model: yield* StylistModel,
       chatsOf,
       queue: yield* runtime.stylist.queue.raw,
-      tools: toolServices(services, outfitsService),
+      tools,
       storage: services,
     })
     return {
@@ -290,6 +290,7 @@ const applicationServices = (
       stylist: Layer.succeed(StylistChats, stylistService),
       outfitsService,
       outfits: Layer.succeed(Outfits, outfitsService),
+      tools,
     }
   })
 
@@ -352,9 +353,8 @@ const makeApplication =
         photoRoutes(auth).pipe(Layer.provide(services.photos)),
         oauth.routes,
         mcpRoutes(
-          authOrigin,
           observabilityBase.release,
-          { ...toolServices(services, services.outfitsService), curation: services.curationService },
+          { tools: services.tools, curation: services.curationService, accounts: services.lifecycleService },
           deployment.admins,
         ).pipe(Layer.provide(oauth.server)),
         HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),

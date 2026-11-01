@@ -7,6 +7,7 @@ import {
   Pattern,
   CreateUpload,
   ImageType,
+  Operation,
   OperationId,
   type Piece,
   PieceId,
@@ -21,10 +22,10 @@ import {
   wordMatches,
   wordsIn,
 } from '@styld/protocol'
-import { Effect, Option, Schema } from 'effect'
+import { Effect, Schema } from 'effect'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { tool, ToolError } from './Tools.ts'
-import type { Links } from '../links/Links.ts'
+import { fetchOperation, type Links } from '../links/Links.ts'
 
 /** A piece as assistants see it: its fields and its page on the website, never an image address. */
 const shown = (origin: string) => (piece: Piece) => ({ ...piece, url: `${origin}/wardrobe/${piece.id}` })
@@ -139,9 +140,8 @@ const writeTools = (
             recovery: 'Pass imageUrl for a photo on the web, or uploadId after upload_create.',
             retryable: false,
           })
-        const earlier = yield* wardrobe.pieceAddedBy(input.operationId)
-        if (Option.isSome(earlier)) return show(earlier.value)
-        const target = uploadId ?? (yield* links.photoFrom(imageUrl ?? ''))
+        const target =
+          uploadId ?? (yield* links.photoFrom({ operationId: fetchOperation(input.operationId), url: imageUrl ?? '' }))
         return show(yield* wardrobe.addPiece({ ...fields, uploadId: target }))
       }),
   }),
@@ -157,8 +157,9 @@ const writeTools = (
   tool({
     name: 'piece_delete',
     title: 'Delete a piece',
-    description: 'Delete a piece and its photo from the wardrobe for good. Ask the person before deleting.',
-    parameters: Schema.Struct({ pieceId: PieceId }),
+    description:
+      'Delete a piece and its photo from the wardrobe for good. Ask the person before deleting. Choose a new `operationId`.',
+    parameters: Schema.Struct({ pieceId: PieceId, ...Operation.fields }),
     annotations: { readOnlyHint: false, destructiveHint: true, idempotentHint: true, openWorldHint: false },
     handler: ({ pieceId }) => wardrobe.deletePiece(pieceId).pipe(Effect.as({ deleted: true, pieceId })),
   }),
@@ -175,11 +176,9 @@ const linkTools = (wardrobe: Wardrobe['Service'], links: Links['Service'], show:
     annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
     handler: ({ url, name: chosen, ...fields }) =>
       Effect.gen(function* () {
-        const earlier = yield* wardrobe.pieceAddedBy(fields.operationId)
-        if (Option.isSome(earlier)) return show(earlier.value)
-        // The same links operation the website calls, under its own id derived from the piece's.
-        const read = { operationId: OperationId.make(`${fields.operationId.slice(0, 59)}-link`), url }
-        const picture = yield* links.readLink(read)
+        // The same links operation the website calls, under its own id derived from the piece's: a repeat answers
+        // from its receipt, then from the piece's.
+        const picture = yield* links.readLink({ operationId: fetchOperation(fields.operationId), url })
         const named = chosen ?? picture.name
         return show(
           yield* wardrobe.addPiece({

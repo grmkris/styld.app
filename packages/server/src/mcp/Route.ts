@@ -8,7 +8,7 @@ import { challenge, McpScope } from './Policy.ts'
 import { readResource, resources } from './Resources.ts'
 import { type Curation, isAdmin } from '../social/Curation.ts'
 import { curationTools } from './CurationTools.ts'
-import { instructions, styldTools, type ToolServices } from './StyldTools.ts'
+import { type AssistantTools, instructions, type ToolServices } from './StyldTools.ts'
 import { callTool, renderTools } from './Tools.ts'
 
 type McpOAuthServer = typeof McpOAuth.Service.Service
@@ -27,31 +27,31 @@ const parseError = HttpServerResponse.jsonUnsafe(
 
 /** `/mcp`: a stateless Streamable HTTP endpoint for an OAuth-verified, still enabled account. */
 export const mcpRoutes = (
-  origin: string,
   release: string,
-  services: ToolServices & { readonly curation: Curation['Service'] },
+  served: {
+    readonly tools: AssistantTools
+    readonly curation: Curation['Service']
+    readonly accounts: ToolServices['accounts']
+  },
   admins: ReadonlySet<string>,
 ) =>
   Layer.unwrap(
-    Effect.gen(function* () {
-      const server = yield* McpOAuth.Service
-      const tools = styldTools(origin, services)
-      return routesFor(server, {
-        accounts: services.accounts,
-        origin,
+    Effect.map(McpOAuth.Service, (server) =>
+      routesFor(server, {
+        accounts: served.accounts,
         release,
-        tools,
-        adminTools: [...tools, ...curationTools(services.curation)],
+        tools: served.tools,
+        adminTools: [...served.tools, ...curationTools(served.curation)],
         admins,
-      })
-    }),
+      }),
+    ),
   )
 
 /** Answer one authorized request with the tools and views, acting for `account`. */
 const answerFor = Effect.fnUntraced(function* (
   served: {
     readonly release: string
-    readonly tools: ReadonlyArray<ReturnType<typeof styldTools>[number]>
+    readonly tools: ReadonlyArray<AssistantTools[number]>
     readonly toolList: ReadonlyArray<object>
   },
   account: CurrentAccount['Service'],
@@ -92,10 +92,9 @@ const routesFor = (
     admins,
   }: {
     readonly accounts: ToolServices['accounts']
-    readonly origin: string
     readonly release: string
-    readonly tools: ReturnType<typeof styldTools>
-    readonly adminTools: ReadonlyArray<ReturnType<typeof styldTools>[number]>
+    readonly tools: AssistantTools
+    readonly adminTools: ReadonlyArray<AssistantTools[number]>
     readonly admins: ReadonlySet<string>
   },
 ) => {

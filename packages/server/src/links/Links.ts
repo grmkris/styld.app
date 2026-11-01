@@ -1,4 +1,4 @@
-import { LinkPicture, type ReadLink, Unavailable } from '@styld/protocol'
+import { LinkPicture, OperationId, type ReadLink, Unavailable, UploadId } from '@styld/protocol'
 import { Context, Effect, Layer, Schema } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
 import { Pacing } from '../kernel/Pacing.ts'
@@ -35,12 +35,23 @@ const make = Effect.gen(function* () {
         },
       )
     }),
-    /** The photo at an address as a fresh received upload of the person's. */
-    photoFrom: Effect.fn('Styld.Links.photoFrom')(function* (address: string) {
-      return yield* fetched(importedUpload(wardrobe, address))
+    /** The photo at an address as a fresh received upload of the person's, answered once per operation id: a repeat
+     * neither fetches it again nor makes a second upload. */
+    photoFrom: Effect.fn('Styld.Links.photoFrom')(function* (input: ReadLink) {
+      return yield* wardrobe.once(
+        { operationId: input.operationId, command: 'importPhoto', input: input.url },
+        {
+          replay: (result) => Schema.decodeUnknownEffect(UploadId)(result).pipe(Effect.mapError(unavailable)),
+          run: Effect.map(fetched(importedUpload(wardrobe, input.url)), (uploadId) => [uploadId, uploadId] as const),
+        },
+      )
     }),
   }
 })
+
+/** The operation a write's fetch runs under, derived from the write's own: an assistant's `piece_add`, `link_import`
+ * or `picture_pin` fetches once, and its repeat answers from both receipts. */
+export const fetchOperation = (operationId: OperationId) => OperationId.make(`${operationId.slice(0, 59)}-link`)
 
 export class Links extends Context.Service<Links, Effect.Success<typeof make>>()('@styld/server/links/Links') {
   static readonly layer = Layer.effect(

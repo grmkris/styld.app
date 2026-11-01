@@ -261,13 +261,6 @@ const addImageFailure = (parts: Parts, operation: Identified, boardId: string, u
   })
 
 const pictures = (parts: Parts) => ({
-  /** The picture an operation already put on a board, so a retry from an address need not fetch it again. */
-  boardImageAddedBy: Effect.fn('Styld.Boards.imageAddedBy')(function* (operationId: string) {
-    const { accountId } = yield* CurrentAccount
-    const receipt = yield* stored(parts.store.findReceipt(accountId, operationId))
-    if (Option.isNone(receipt) || receipt.value.command !== 'addBoardImage') return Option.none<BoardImage>()
-    return Option.some(yield* replayImage(parts, accountId, receipt.value.result))
-  }),
   /** A received photo upload becomes a picture on the board, marked with where it came from. The same operation id
    * answers the same picture; using it for another upload or board is a conflict. */
   addBoardImage: Effect.fn('Styld.Boards.addImage')(function* (

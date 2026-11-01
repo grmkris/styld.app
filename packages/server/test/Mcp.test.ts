@@ -10,8 +10,9 @@ import {
   type Piece,
   PieceId,
   type RedrawPicture,
+  UploadId,
 } from '@styld/protocol'
-import { Effect, Exit, Layer, Option, Schema } from 'effect'
+import { Effect, Exit, Layer, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { readResource, resources, viewsUri } from '../src/mcp/Resources.ts'
 import { instructions, styldTools } from '../src/mcp/StyldTools.ts'
@@ -55,15 +56,20 @@ const pieces = [
 ]
 /** Answers reads from three pieces; anything else is not part of these tests. */
 const notUsed = () => Effect.die('not used by these tests')
+/** The upload an earlier try of `picture-replay-1` fetched, as its receipt answers it. */
+const replayedUpload = UploadId.make(`up_${'replay'.padEnd(22, 'x')}`)
 const wardrobe = Wardrobe.of({
   listPieces: () => Effect.succeed(pieces),
   getPiece: notUsed,
   newUpload: notUsed,
   createUpload: notUsed,
-  once: notUsed,
+  // Operations with a receipt answer from it; the rest run.
+  once: (operation, answer) =>
+    operation.operationId.startsWith('picture-replay-1')
+      ? answer.replay(replayedUpload)
+      : Effect.map(answer.run, ([value]) => value),
   receiveUpload: notUsed,
   receiveVideoUpload: notUsed,
-  pieceAddedBy: () => Effect.succeed(Option.none()),
   addPiece: notUsed,
   updatePiece: notUsed,
   deletePiece: notUsed,
@@ -140,6 +146,8 @@ const board = Schema.decodeUnknownSync(Board)({
   updatedAt: '2026-10-30T08:00:00.000Z',
 })
 const arrangements: Array<ArrangeBoard> = []
+/** The uploads pictures were pinned from. */
+const pinnedUploads: Array<string> = []
 const boards = Boards.of({
   listBoards: () => Effect.succeed([]),
   getBoard: () => Effect.succeed(board),
@@ -151,16 +159,12 @@ const boards = Boards.of({
   setTable: () => Effect.fail(BoardVersionConflict.make({ version: 4 })),
   addPins: notUsed,
   removePins: notUsed,
-  addBoardImage: notUsed,
+  addBoardImage: (_boardId, { uploadId }) =>
+    Effect.sync(() => pinnedUploads.push(uploadId)).pipe(
+      Effect.as({ imageId: BoardImageId.make(`bm_${'replay'.padEnd(22, 'x')}`) }),
+    ),
   addGeneratedImage: notUsed,
   addPhotoImage: notUsed,
-  // A picture an earlier try of `picture-replay-1` already put on the board.
-  boardImageAddedBy: (operationId) =>
-    Effect.succeed(
-      operationId === 'picture-replay-1'
-        ? Option.some({ imageId: BoardImageId.make(`bm_${'replay'.padEnd(22, 'x')}`) })
-        : Option.none(),
-    ),
   setBoardVisibility: notUsed,
   boardImage: notUsed,
 })
@@ -231,7 +235,7 @@ const call = (name: string, args: unknown) =>
   )
 
 describe('putting a picture on a board', () => {
-  test('a retry answers from its receipt, without fetching the address again', async () => {
+  test('a retry answers from the fetch’s receipt, without fetching the address again', async () => {
     const result = await call('picture_pin', {
       boardId: board.id,
       operationId: 'picture-replay-1',
@@ -239,6 +243,7 @@ describe('putting a picture on a board', () => {
     })
     expect(result.isError).toBeFalsy()
     expect(jsonOf(result)).toMatchObject({ id: board.id })
+    expect(pinnedUploads).toContain(replayedUpload)
   })
 })
 

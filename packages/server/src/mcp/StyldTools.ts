@@ -47,6 +47,10 @@ export interface ToolServices {
   readonly accounts: Pick<AccountLifecycle['Service'], 'readAccount'>
 }
 
+/** The assistants' tools, as `styldTools` builds them once for the Worker: MCP serves them, and Styld's chat uses a
+ * few of them. */
+export type AssistantTools = ReturnType<typeof styldTools>
+
 /** Styld's MCP tools: thin projections of the same reads and writes the website uses. */
 export const styldTools = (
   origin: string,
