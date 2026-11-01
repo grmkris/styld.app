@@ -14,22 +14,6 @@ const decodeReviewed = Schema.decodeUnknownEffect(Schema.fromJsonString(Reviewed
 /** The piece a kept detection becomes: the cut-out unless the person chose the original photo. Its back is the
  * camera's back shot, or else the garment's sighting in another photo picked with it (the pieces laid out again,
  * turned over). */
-/** Whether a kept garment was found before garment types (owner, 2026-10-31) and kept as the migration left it: its
- * type unchanged and no season, occasion or pattern ever suggested or chosen. The sweep then asks Clef about the new
- * piece once, as it does for every carried-over piece.
- * @internal Exported for its tests. */
-export const carriedOverUnchanged = (
-  detection: Pick<DetectionRow, 'suggestedType' | 'suggestedSeason' | 'suggestedOccasions' | 'suggestedPattern'>,
-  keep: Keep,
-) =>
-  keep.type === detection.suggestedType &&
-  detection.suggestedSeason === null &&
-  detection.suggestedOccasions.length === 0 &&
-  detection.suggestedPattern === null &&
-  keep.season === undefined &&
-  keep.occasions === undefined &&
-  keep.pattern === undefined
-
 const pieceOf = (
   accountId: string,
   pieceId: string,
@@ -53,7 +37,7 @@ const pieceOf = (
     pattern: keep.pattern ?? detection.suggestedPattern,
     brand: null,
     shopUrl: null,
-    suggestedAt: carriedOverUnchanged(detection, keep) ? null : at,
+    suggestedAt: at,
     status: 'ready' as const,
     source: 'website' as const,
     uploadId: null,
@@ -88,26 +72,34 @@ const picturesFor = (pieces: ReadonlyArray<ReturnType<typeof pieceOf>>, at: Date
 const sendPictures = (parts: Parts, pieceIds: ReadonlyArray<string>) =>
   Effect.forEach(pieceIds, (pieceId) => enqueuePicture(parts, pieceId), { discard: true })
 
-/** Where each detection came from: its source photo's content type (the person's own upload for a photo
- * capture, a sampled JPEG still for a video) and how its capture was routed and cut, for keep rates. */
+/** Where each detection came from: its source photo's content type (the upload of a photo capture or of a video's
+ * still, as it was received; a garment offered from an outfit photo is its capture's own copy) and how its capture was
+ * routed and cut, for keep rates. */
 const sourcesOf = (parts: Parts, accountId: string, found: ReadonlyArray<DetectionRow>) =>
-  Effect.map(
-    storedAs(parts.store.capturesOf(accountId, [...new Set(found.map(({ captureId }) => captureId))])),
-    (rows) => {
-      const originals = new Map(rows.map((row) => [row.originalKey, row.contentType]))
-      const byId = new Map(rows.map((row) => [row.id, row]))
-      return {
-        typeOf: (detection: DetectionRow) => originals.get(detection.sourceKey) ?? 'image/jpeg',
-        isPhoto: (detection: DetectionRow) => byId.get(detection.captureId)?.kind === 'photo',
-        /** Whether the garment was offered from an outfit photo (My Gallery). */
-        fromPhotos: (detection: DetectionRow) => byId.get(detection.captureId)?.source === 'photos',
-        originOf: (detection: DetectionRow) => {
-          const capture = byId.get(detection.captureId)
-          return { route: capture?.route ?? capture?.kind ?? 'unknown', provider: capture?.provider ?? 'unknown' }
-        },
-      }
-    },
-  )
+  Effect.gen(function* () {
+    const rows = yield* storedAs(
+      parts.store.capturesOf(accountId, [...new Set(found.map(({ captureId }) => captureId))]),
+    )
+    const received = yield* storedAs(
+      parts.store.uploadTypes(accountId, [...new Set(found.map(({ sourceKey }) => sourceKey))]),
+    )
+    const types = new Map([
+      ...rows.map((row) => [row.originalKey, row.contentType] as const),
+      ...received.map((row) => [row.objectKey, row.contentType] as const),
+    ])
+    const byId = new Map(rows.map((row) => [row.id, row]))
+    return {
+      /** Every source is a stored upload or a capture's own copy: one that is neither is a bug. */
+      typeOf: (detection: DetectionRow) => Option.getOrThrow(Option.fromNullishOr(types.get(detection.sourceKey))),
+      isPhoto: (detection: DetectionRow) => byId.get(detection.captureId)?.kind === 'photo',
+      /** Whether the garment was offered from an outfit photo (My Gallery). */
+      fromPhotos: (detection: DetectionRow) => byId.get(detection.captureId)?.source === 'photos',
+      originOf: (detection: DetectionRow) => {
+        const capture = byId.get(detection.captureId)
+        return { route: capture?.route ?? capture?.kind ?? 'unknown', provider: capture?.provider ?? 'unknown' }
+      },
+    }
+  })
 
 /** The captures a review leaves with nothing waiting, which the tray stops showing. */
 const finishedCaptures = (parts: Parts, found: ReadonlyArray<DetectionRow>, decided: ReadonlyArray<string>) =>

@@ -7,7 +7,7 @@ import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
-import { linkAction, primaryAction, secondaryAction } from '../Actions.styles.ts'
+import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { filtersIcon, loader } from '../Icon.ts'
 import { addPiecesRouter, pieceRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
@@ -25,32 +25,6 @@ import { sheetBody } from './Sheet.styles.ts'
 
 /** The small image of a piece; the API Worker serves it to its owner only. A new drawing is a new address. */
 const thumbnailPath = (piece: Piece) => cdn.pieceShown(piece, 'thumb')
-
-/** The kept cut-outs with no clean picture yet, and a free way to ask for theirs. */
-const backfillLine = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  if (model.backfill === 'sent')
-    return h.p(
-      [h.Role('status'), ...styled(h, styles.backfill())],
-      [format(locale, 'wardrobe.picture.backfillSent', {})],
-    )
-  if (model.undrawn === 0) return h.empty
-  return h.div(styled(h, styles.backfill()), [
-    h.span([], [format(locale, 'wardrobe.picture.backfill', { count: model.undrawn })]),
-    actionButton(
-      {
-        label: format(locale, 'wardrobe.picture.backfillAction', {}),
-        style: linkAction(),
-        onClick: Message.ClickedDrawPictures(),
-        isDisabled: model.backfill === 'sending',
-        leading: model.backfill === 'sending' ? loader(h) : h.empty,
-      },
-      h,
-    ),
-    model.backfill === 'failed'
-      ? h.p([h.Role('alert')], [format(locale, 'wardrobe.picture.backfillFailed', {})])
-      : h.empty,
-  ])
-}
 
 /** One chip of a filter row: its name, how many pieces it holds, and whether it is the one shown. */
 const filter = (label: string, total: number, pressed: boolean, onClick: Message, h: HtmlBuilder<Message>): Html =>
@@ -316,7 +290,6 @@ const loadedView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, 
   })
   const shown = shownPieces(pieces, model)
   return h.div(styled(h, styles.wardrobePage()), [
-    backfillLine(model, locale, h),
     h.div(styled(h, styles.browseRow()), [filtersButton(model, locale, h), groupRow(pieces, model, locale, h)]),
     typeRow(inGroup, model, locale, h),
     shown.length === 0

@@ -8,21 +8,11 @@ import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { seedIdentity } from './IdentityFixture.ts'
 
-// Test-only stand-ins for the decision model and the image model behind clean pictures, with seeded cut-outs. They
+// Test-only stand-ins for the decision model and the image model behind clean pictures, and their journey's account. They
 // answer by what a picture shows, not from recordings: the recorded answers are unit-tested against the adapters
 // (CleanPicture.test.ts); natively, the job, D1, R2, the queue and the Wallet are what is proved.
 
 export const picturesAccount = 'native-pictures'
-const prefix = `accounts/${picturesAccount}`
-
-/** The seeded pieces: a red tee to draw, kept as clean before every piece was drawn; a green shirt to draw on
- * magenta; a blue scrap too small to draw; and a piece kept as its photo. */
-export const seededPieces = {
-  red: `pc_${'nativepicturesred'.padEnd(22, '0')}`,
-  green: `pc_${'nativepicturesgreen'.padEnd(22, '0')}`,
-  blue: `pc_${'nativepicturesblue'.padEnd(22, '0')}`,
-  photo: `pc_${'nativepicturesphoto'.padEnd(22, '0')}`,
-} as const
 
 export const colours = { red: [196, 32, 40], green: [40, 150, 60], blue: [40, 60, 190] } as const
 
@@ -39,49 +29,8 @@ export const cutout = (colour: readonly [number, number, number]) => {
   return encodePng({ width, height, data })
 }
 
-const pieceRow = (id: string, imageKey: string, originalKey: string, contentType: string, now: number) =>
-  [id, picturesAccount, 'tops', '[]', 'ready', 'website', originalKey, imageKey, contentType, 1, now, now] as const
-
-/** The account and its pieces, each cut-out stored where a reviewed piece's would be. */
-const seed = (database: QueryDatabaseClient, media: ReadWriteBucketClient) =>
-  Effect.gen(function* () {
-    yield* seedIdentity(database, picturesAccount)
-    const now = yield* Clock.currentTimeMillis
-    const insert = database.prepare(
-      'INSERT INTO pieces (id, account_id, type, colours, status, source, original_key, image_key, content_type, bytes, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-    )
-    const rows = []
-    for (const name of ['red', 'green', 'blue'] as const) {
-      const id = seededPieces[name]
-      yield* media.put(`${prefix}/captures/seed/${name}-cutout.png`, cutout(colours[name]))
-      yield* media.put(`${prefix}/captures/seed/${name}.jpg`, 'a photo')
-      rows.push(
-        insert.bind(
-          ...pieceRow(
-            id,
-            `${prefix}/captures/seed/${name}-cutout.png`,
-            `${prefix}/captures/seed/${name}.jpg`,
-            'image/jpeg',
-            now,
-          ),
-        ),
-      )
-    }
-    yield* media.put(`${prefix}/uploads/photo`, cutout(colours.red))
-    rows.push(
-      insert.bind(
-        ...pieceRow(seededPieces.photo, `${prefix}/uploads/photo`, `${prefix}/uploads/photo`, 'image/png', now),
-      ),
-    )
-    rows.push(
-      database
-        .prepare(
-          "INSERT INTO piece_pictures (piece_id, account_id, state, version, judge, judge_confidence, face, created_at, updated_at) VALUES (?, ?, 'kept-real', 0, 'ready', 0.9, 0.01, ?, ?)",
-        )
-        .bind(seededPieces.red, picturesAccount, now, now),
-    )
-    yield* database.batch(rows)
-  })
+/** The account the clean-picture journey keeps its pieces in. */
+const seed = (database: QueryDatabaseClient) => seedIdentity(database, picturesAccount)
 
 /** The colour a flattened picture shows most, ignoring the light grey it was laid on. */
 const colourOf = (base64: string) => {
@@ -219,7 +168,7 @@ export const pictureRoutes = (database: QueryDatabaseClient, media: ReadWriteBuc
     HttpRouter.add(
       'POST',
       '/test/pictures/seed',
-      seed(database, media).pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 }))),
+      seed(database).pipe(Effect.orDie, Effect.as(HttpServerResponse.empty({ status: 204 }))),
     ),
     HttpRouter.add('POST', '/test/pictures/clef', clef),
     HttpRouter.add('POST', '/test/pictures/meta/v1/images/edits', muse(media)),

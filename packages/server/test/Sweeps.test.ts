@@ -214,7 +214,7 @@ describe('the sweeps', () => {
   it('are all on the schedule', () => {
     const sweeps = applicationSweeps(seeded(), {
       wardrobeService: { failPiece: notUsed, sweepUploads: notUsed },
-      capturesService: { failCapture: notUsed, failPicture: notUsed, failTurn: notUsed, sweepSuggestions: notUsed },
+      capturesService: { failCapture: notUsed, failPicture: notUsed, failTurn: notUsed },
       photosService: { failFinding: notUsed },
       generationsService: { sweep: notUsed },
       checksService: { sweep: notUsed },
@@ -228,7 +228,6 @@ describe('the sweeps', () => {
       'photos',
       'generation',
       'checks',
-      'suggestions',
       'thinking',
       'uploads',
       'receipts',

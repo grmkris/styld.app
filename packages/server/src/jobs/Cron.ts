@@ -29,7 +29,7 @@ export const applicationSweeps = (
   database: D1 & Parameters<typeof drizzle>[0],
   services: {
     readonly wardrobeService: Pick<Wardrobe['Service'], 'failPiece' | 'sweepUploads'>
-    readonly capturesService: Pick<Captures['Service'], 'failCapture' | 'failPicture' | 'failTurn' | 'sweepSuggestions'>
+    readonly capturesService: Pick<Captures['Service'], 'failCapture' | 'failPicture' | 'failTurn'>
     readonly photosService: Pick<Photos['Service'], 'failFinding'>
     readonly generationsService: Pick<Generations['Service'], 'sweep'>
     readonly checksService: Pick<Checks['Service'], 'sweep'>
@@ -50,7 +50,6 @@ export const applicationSweeps = (
     moving('photos', stuck.photos, services.photosService.failFinding),
     { name: 'generation', run: services.generationsService.sweep() },
     { name: 'checks', run: services.checksService.sweep() },
-    { name: 'suggestions', run: captures.sweepSuggestions() },
     { name: 'thinking', run: Effect.as(services.outfitsService.sweep(), 0) },
     { name: 'uploads', run: wardrobe.sweepUploads() },
     { name: 'receipts', run: forgetOldReceipts(drizzle(database), forgetBatch) },

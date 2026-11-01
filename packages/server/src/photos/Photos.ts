@@ -163,10 +163,8 @@ const offered = (parts: PhotoParts, photo: PhotoRow, garment: GarmentRow) =>
     const detectionId = yield* newId('dt')
     const bytes = yield* readObject(parts.capture, garment.cutoutKey)
     if (Option.isNone(bytes)) return yield* unavailable()
-    // With the providers off the garment is the whole photo, as it was uploaded.
-    const cutOut = garment.cutoutKey !== photo.originalKey
-    const contentType = cutOut ? 'image/png' : photo.contentType
-    const key = captureKey(photo.accountId, captureId, cutOut ? `${detectionId}.png` : detectionId)
+    const contentType = 'image/png'
+    const key = captureKey(photo.accountId, captureId, `${detectionId}.png`)
     yield* writeObject(parts.capture, key, bytes.value, contentType)
     const at = yield* nowDate
     const capture = {
@@ -204,7 +202,7 @@ const offered = (parts: PhotoParts, photo: PhotoRow, garment: GarmentRow) =>
       captureId,
       accountId: photo.accountId,
       status: 'review',
-      cutoutKey: cutOut ? key : null,
+      cutoutKey: key,
       sourceKey: key,
       backCutoutKey: null,
       track: null,
@@ -219,7 +217,7 @@ const offered = (parts: PhotoParts, photo: PhotoRow, garment: GarmentRow) =>
       whole: null,
       groupOf: null,
       duplicateOf: null,
-      matching: cutOut && garment.type !== null ? 'waiting' : null,
+      matching: garment.type === null ? null : 'waiting',
       matchClaimedAt: null,
       createdAt: at,
     } satisfies DetectionRow

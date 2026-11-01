@@ -1,7 +1,7 @@
 import { Option } from 'effect'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
-import { brandsOf, DrawPictures, enter, init, Message, OutMessage, shownPieces, update } from '../src/page/Wardrobe.ts'
+import { brandsOf, init, Message, OutMessage, shownPieces, update } from '../src/page/Wardrobe.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 describe('the wardrobe tab', () => {
@@ -31,26 +31,6 @@ describe('the wardrobe tab', () => {
       message(Message.ClickedGroup({ group: Option.none() })),
       model(({ group }) => expect(group).toEqual(Option.none())),
     )
-  })
-})
-
-describe('clean pictures for the pieces that have none', () => {
-  test('the wardrobe page counts them, and one tap asks for all of them and has the pieces read again', () => {
-    story(
-      update,
-      given(enter(init()).model),
-      message(Message.CompletedCountUndrawn({ pieces: 4 })),
-      model(({ undrawn }) => expect(undrawn).toBe(4)),
-      message(Message.ClickedDrawPictures()),
-      Command.expectExact(DrawPictures),
-      Command.resolve(DrawPictures, Message.SucceededDrawPictures()),
-      model(({ undrawn, backfill }) => expect({ undrawn, backfill }).toEqual({ undrawn: 0, backfill: 'sent' })),
-      expectOutMessage(OutMessage.RequestedPieces()),
-    )
-    expect(enter(init()).commands?.map(({ name }) => name)).toEqual(['CountUndrawn'])
-    // A second tap while the first is on its way asks for nothing more.
-    const sending = update(init(), Message.ClickedDrawPictures()).model
-    expect(update(sending, Message.ClickedDrawPictures()).commands ?? []).toEqual([])
   })
 })
 

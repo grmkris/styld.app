@@ -43,7 +43,6 @@ export const captureHandlers = (
         .handle('redrawPicture', ({ params, payload }) =>
           admit(asSessionAccount(captures.redrawPicture(params.pieceId, payload))),
         )
-        .handle('undrawnPictures', () => asSessionAccount(captures.undrawnPictures()))
         .handle('makeTurn', ({ params, payload }) =>
           admit(asSessionAccount(captures.makeTurn(params.pieceId, payload.operationId))),
         )
@@ -59,7 +58,6 @@ export const captureHandlers = (
             ),
           ),
         )
-        .handle('drawPictures', () => admit(asSessionAccount(captures.drawPictures())))
         .handle('check', ({ payload }) =>
           admit(
             asSessionAccount(

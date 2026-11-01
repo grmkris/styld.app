@@ -130,14 +130,9 @@
         "busy": "Čista slika tega kosa se že riše.",
         "face": "Na tem izrezu je morda videti obraz, zato ga ne pošljemo v risanje.",
         "photo": "Ta kos kaže tvojo izvirno fotografijo, ki je nikoli ne pošljemo v risanje.",
-        "off": "Čiste slike so izklopljene.",
         "dailyLimit": "Današnji krediti so porabljeni. Poskusi znova jutri.",
         "network": "Risanja ni bilo mogoče naročiti. Poskusi znova."
-      },
-      "backfill": "{count, plural, one {# kos še nima čiste slike.} two {# kosa še nimata čiste slike.} few {# kosi še nimajo čiste slike.} other {# kosov še nima čiste slike.}}",
-      "backfillAction": "Naredi čiste slike",
-      "backfillSent": "Rišem čiste slike. Vsaka se pokaže, ko je pripravljena.",
-      "backfillFailed": "Čistih slik ni bilo mogoče naročiti. Poskusi znova."
+      }
     },
     "turn": {
       "make": "Zavrti ga",
@@ -150,7 +145,6 @@
       "problem": {
         "busy": "Vrtenje tega kosa se že pripravlja.",
         "picture": "Ta kos najprej potrebuje čisto sliko.",
-        "off": "Vrtenje je izklopljeno.",
         "dailyLimit": "Današnji krediti so porabljeni. Poskusi znova jutri.",
         "network": "Vrtenja ni bilo mogoče naročiti. Poskusi znova.",
         "build": "Vrtenja ni bilo mogoče pripraviti na tej napravi. Odpri kos znova in poskusi še enkrat."

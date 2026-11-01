@@ -91,8 +91,6 @@ const services = (
         failTurn: notUsed,
         processMatch: notUsed,
         failMatch: notUsed,
-        suggestPiece: notUsed,
-        failSuggestion: notUsed,
       },
       photos: { findGarments: notUsed, failFinding: notUsed },
     },
@@ -145,8 +143,6 @@ describe('the processing queue', () => {
         failTurn: notUsed,
         processMatch: notUsed,
         failMatch: notUsed,
-        suggestPiece: notUsed,
-        failSuggestion: notUsed,
       },
     }
     const first = message({ _tag: 'DrawPicture', pieceId: 'pc_1' }, 1)
@@ -318,8 +314,6 @@ describe("a piece's turn", () => {
         failTurn: (pieceId: string) => Effect.sync(() => seen.push(`give up ${pieceId}`)),
         processMatch: notUsed,
         failMatch: notUsed,
-        suggestPiece: notUsed,
-        failSuggestion: notUsed,
       },
     }
     const last = message({ _tag: 'MakeTurn', pieceId: 'pc_1' }, processingAttempts)

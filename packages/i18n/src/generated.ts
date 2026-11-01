@@ -635,10 +635,6 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.pattern.striped': Readonly<Record<string, never>>
   'wardrobe.patternFact': Readonly<Record<string, never>>
   'wardrobe.patternLabel': Readonly<Record<string, never>>
-  'wardrobe.picture.backfill': { readonly count: number }
-  'wardrobe.picture.backfillAction': Readonly<Record<string, never>>
-  'wardrobe.picture.backfillFailed': Readonly<Record<string, never>>
-  'wardrobe.picture.backfillSent': Readonly<Record<string, never>>
   'wardrobe.picture.chooseFailed': Readonly<Record<string, never>>
   'wardrobe.picture.cleaned': Readonly<Record<string, never>>
   'wardrobe.picture.drawing': Readonly<Record<string, never>>
@@ -649,7 +645,6 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.picture.problem.dailyLimit': Readonly<Record<string, never>>
   'wardrobe.picture.problem.face': Readonly<Record<string, never>>
   'wardrobe.picture.problem.network': Readonly<Record<string, never>>
-  'wardrobe.picture.problem.off': Readonly<Record<string, never>>
   'wardrobe.picture.problem.photo': Readonly<Record<string, never>>
   'wardrobe.picture.proposed': Readonly<Record<string, never>>
   'wardrobe.picture.redraw': Readonly<Record<string, never>>
@@ -690,7 +685,6 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.turn.problem.busy': Readonly<Record<string, never>>
   'wardrobe.turn.problem.dailyLimit': Readonly<Record<string, never>>
   'wardrobe.turn.problem.network': Readonly<Record<string, never>>
-  'wardrobe.turn.problem.off': Readonly<Record<string, never>>
   'wardrobe.turn.problem.picture': Readonly<Record<string, never>>
   'wardrobe.turn.ready': Readonly<Record<string, never>>
   'wardrobe.typeLabel': Readonly<Record<string, never>>
@@ -786,4 +780,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '1576327ab37e76778f6e7cb9302644cc0e9a7fb133f3b6432dbc988857ad8a5d'
+export const catalogVersion = '1e740a990731e2297381b854f47b0dd3d838607139c796ba7f3d49a3afd35f08'

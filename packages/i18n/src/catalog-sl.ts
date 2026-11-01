@@ -119,14 +119,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.picture.problem.busy': 'Čista slika tega kosa se že riše.',
   'wardrobe.picture.problem.face': 'Na tem izrezu je morda videti obraz, zato ga ne pošljemo v risanje.',
   'wardrobe.picture.problem.photo': 'Ta kos kaže tvojo izvirno fotografijo, ki je nikoli ne pošljemo v risanje.',
-  'wardrobe.picture.problem.off': 'Čiste slike so izklopljene.',
   'wardrobe.picture.problem.dailyLimit': 'Današnji krediti so porabljeni. Poskusi znova jutri.',
   'wardrobe.picture.problem.network': 'Risanja ni bilo mogoče naročiti. Poskusi znova.',
-  'wardrobe.picture.backfill':
-    '{count, plural, one {# kos še nima čiste slike.} two {# kosa še nimata čiste slike.} few {# kosi še nimajo čiste slike.} other {# kosov še nima čiste slike.}}',
-  'wardrobe.picture.backfillAction': 'Naredi čiste slike',
-  'wardrobe.picture.backfillSent': 'Rišem čiste slike. Vsaka se pokaže, ko je pripravljena.',
-  'wardrobe.picture.backfillFailed': 'Čistih slik ni bilo mogoče naročiti. Poskusi znova.',
   'wardrobe.turn.make': 'Zavrti ga',
   'wardrobe.turn.cost':
     '{credits, plural, one {# kredit, ki ga} two {# kredita, ki ju} few {# krediti, ki jih} other {# kreditov, ki jih}} vrnemo, če vrtenje ne nastane.',
@@ -137,7 +131,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.turn.play': 'Zavrti',
   'wardrobe.turn.problem.busy': 'Vrtenje tega kosa se že pripravlja.',
   'wardrobe.turn.problem.picture': 'Ta kos najprej potrebuje čisto sliko.',
-  'wardrobe.turn.problem.off': 'Vrtenje je izklopljeno.',
   'wardrobe.turn.problem.dailyLimit': 'Današnji krediti so porabljeni. Poskusi znova jutri.',
   'wardrobe.turn.problem.network': 'Vrtenja ni bilo mogoče naročiti. Poskusi znova.',
   'wardrobe.turn.problem.build':

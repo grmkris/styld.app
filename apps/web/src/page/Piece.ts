@@ -50,7 +50,7 @@ export const TurnWork = defineTaggedUnion({ Idle: {}, Asking: {}, Building: {} }
 export type TurnWork = typeof TurnWork.Type
 
 /** Why a redraw was not asked for: the API's refusals, the day's credits, or no answer. */
-export const RedrawProblem = Schema.Literals(['busy', 'face', 'photo', 'off', 'dailyLimit', 'network'])
+export const RedrawProblem = Schema.Literals(['busy', 'face', 'photo', 'dailyLimit', 'network'])
 export type RedrawProblem = typeof RedrawProblem.Type
 
 /** The owner asking for a new drawing: their words about the piece, and the operation a retry repeats. */
@@ -64,7 +64,7 @@ export type Redraw = typeof Redraw.Type
 
 /** Why a turn was not made: the API's refusals, the day's credits, no answer, or a device that could not cut the
  * turn's video into frames. */
-export const TurnProblem = Schema.Literals(['busy', 'picture', 'off', 'dailyLimit', 'network', 'build'])
+export const TurnProblem = Schema.Literals(['busy', 'picture', 'dailyLimit', 'network', 'build'])
 export type TurnProblem = typeof TurnProblem.Type
 
 export const Model = Schema.Struct({

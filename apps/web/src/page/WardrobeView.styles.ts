@@ -98,17 +98,6 @@ export const message = style({
   color: 'ink2',
 })
 export const messageTitle = style({ fontSize: 'subheading', fontWeight: 600, color: 'ink' })
-/** The line offering clean pictures for pieces without one. */
-/** Pieces still without a clean picture: one quiet line, its last words the way to make them. */
-export const backfill = style({
-  display: 'flex',
-  flexWrap: 'wrap',
-  alignItems: 'center',
-  columnGap: 'actions',
-  margin: '0',
-  fontSize: 'label',
-  color: 'ink2',
-})
 /** The filter sheet's end: Clear beside the ink action that shows what is left (DESIGN.md › Controls). */
 /** Clear at the start and Show filling the rest of the row: the sheet's primary at its end, 8px apart. */
 export const sheetActions = style({

@@ -113,26 +113,4 @@ export const redrawing = (parts: Parts) => ({
       { replay: () => replayedRedraw(parts, pieceId), run: ask },
     )
   }),
-  /** How many of the account's kept cut-outs have no clean picture yet. */
-  undrawnPictures: Effect.fn('Styld.Picture.undrawn')(function* () {
-    const { accountId } = yield* CurrentAccount
-    const policy = capturePolicy.pictures
-    return { pieces: (yield* storedAs(parts.store.undrawnPieces(accountId, policy.face))).length }
-  }),
-  /** Queue a free clean picture for each of them, as a keep would have, and send again any still waiting. */
-  drawPictures: Effect.fn('Styld.Picture.backfill')(function* () {
-    const { accountId } = yield* CurrentAccount
-    const policy = capturePolicy.pictures
-    const undrawn = yield* storedAs(parts.store.undrawnPieces(accountId, policy.face))
-    const at = yield* nowDate
-    yield* storedAs(
-      parts.store.addPictures(
-        undrawn.map((pieceId) => ({ pieceId, accountId, state: 'queued', version: 0, createdAt: at, updatedAt: at })),
-      ),
-    )
-    yield* storedAs(parts.store.requeueKeptClean(accountId, policy.face, at))
-    const waiting = yield* storedAs(parts.store.queuedPicturesOf(accountId))
-    yield* Effect.forEach(waiting, (pieceId) => enqueuePicture(parts, pieceId), { discard: true })
-    return { pieces: undrawn.length }
-  }),
 })

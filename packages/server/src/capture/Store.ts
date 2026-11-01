@@ -9,7 +9,7 @@ import {
   pieceTurns,
   uploads,
 } from '@styld/db'
-import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, ne, or } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Array, Effect, Option } from 'effect'
 import { matchRows } from './MatchStore.ts'
@@ -333,6 +333,14 @@ const reviewRows = (db: Database) => ({
         ),
       ]),
     ).pipe(Effect.asVoid),
+  /** The content type each of these stored uploads was received as: a photo's, or a video's stills. */
+  uploadTypes: (accountId: string, keys: ReadonlyArray<string>) =>
+    readIn(keys, (chunk) =>
+      db
+        .select({ objectKey: uploads.objectKey, contentType: uploads.contentType })
+        .from(uploads)
+        .where(and(eq(uploads.accountId, accountId), inArray(uploads.objectKey, chunk))),
+    ),
   /** How many of the capture's detections still wait. */
   openDetections: (captureIds: ReadonlyArray<string>) =>
     readIn(captureIds, (chunk) =>
@@ -342,22 +350,6 @@ const reviewRows = (db: Database) => ({
         .where(and(inArray(detections.captureId, chunk), eq(detections.status, 'review'))),
     ),
 })
-
-/** Captures and their detections in D1. Reads and writes for a person name their account; the queue's
- * reads name only the capture it was handed. */
-/** The account's ready pieces that show a cut-out: the only pictures that may be sent to be drawn. */
-const shownCutouts = (accountId: string) =>
-  and(
-    eq(pieces.accountId, accountId),
-    eq(pieces.status, 'ready'),
-    isNotNull(pieces.imageKey),
-    ne(pieces.imageKey, pieces.originalKey),
-  )
-
-/** A picture kept as its photo only because its cut-out was judged clean, before every piece was drawn (owner,
- * 2026-10-31). One kept because a face may show stays kept. */
-const keptClean = (face: number) =>
-  and(eq(piecePictures.state, 'kept-real'), eq(piecePictures.judge, 'ready'), lt(piecePictures.face, face))
 
 /** Pieces' clean pictures. Only the picture job and the person's choice write them, and every write moves a picture
  * on only from a state it was read in, so two deliveries of one message never both draw it. */
@@ -380,43 +372,6 @@ const pictureRows = (db: Database) => ({
     query(() =>
       db.insert(piecePictures).values(picture).onConflictDoNothing().returning({ pieceId: piecePictures.pieceId }),
     ).pipe(Effect.map((rows) => rows.length > 0)),
-  /** Queue pictures for pieces that have none, leaving any a concurrent request added. */
-  addPictures: (pictures: ReadonlyArray<NewPicture>) => {
-    const [head, ...rest] = pictures.map((picture) => db.insert(piecePictures).values(picture).onConflictDoNothing())
-    return head === undefined ? Effect.void : query(() => db.batch([head, ...rest])).pipe(Effect.asVoid)
-  },
-  /** The account's kept cut-outs not drawn yet: no drawing was ever asked for, or the cut-out was kept as clean. A
-   * piece kept as its photo, or whose face at or above `face` may show, is not one. */
-  undrawnPieces: (accountId: string, face: number) =>
-    query(() =>
-      db
-        .select({ id: pieces.id })
-        .from(pieces)
-        .leftJoin(piecePictures, eq(piecePictures.pieceId, pieces.id))
-        .where(and(shownCutouts(accountId), or(isNull(piecePictures.pieceId), keptClean(face)))),
-    ).pipe(Effect.map((rows) => rows.map(({ id }) => id))),
-  /** Queue again the account's cut-outs kept as clean, leaving any picture a concurrent request moved on. */
-  requeueKeptClean: (accountId: string, face: number, at: Date) =>
-    query(() =>
-      db
-        .update(piecePictures)
-        .set({ state: 'queued', paid: false, updatedAt: at })
-        .where(
-          and(
-            eq(piecePictures.accountId, accountId),
-            keptClean(face),
-            inArray(piecePictures.pieceId, db.select({ id: pieces.id }).from(pieces).where(shownCutouts(accountId))),
-          ),
-        ),
-    ).pipe(Effect.asVoid),
-  /** The account's pictures still waiting for the queue. */
-  queuedPicturesOf: (accountId: string) =>
-    query(() =>
-      db
-        .select({ pieceId: piecePictures.pieceId })
-        .from(piecePictures)
-        .where(and(eq(piecePictures.accountId, accountId), eq(piecePictures.state, 'queued'))),
-    ).pipe(Effect.map((rows) => rows.map(({ pieceId }) => pieceId))),
   /** The pieces among `pieceIds` whose picture still waits for the queue. */
   waitingPictures: (pieceIds: ReadonlyArray<string>) =>
     readIn(pieceIds, (chunk) =>

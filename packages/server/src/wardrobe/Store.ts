@@ -1,5 +1,5 @@
 import { accounts, detections, operationReceipts, piecePictures, pieceTurns, pieces, uploads } from '@styld/db'
-import { and, asc, desc, eq, inArray, isNull, lt, ne, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, lt, ne, or, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option } from 'effect'
 import { receiptRows } from '../kernel/Receipts.ts'
@@ -193,17 +193,8 @@ const backQueries = (db: ReturnType<typeof drizzle>) => ({
     }).pipe(Effect.map(([updated]) => first(updated))),
 })
 
-/** Reads for the queue, which acts for no one in particular: pieces to process and pieces to ask about. */
+/** Reads for the queue, which acts for no one in particular: pieces to process. */
 const queueQueries = (db: ReturnType<typeof drizzle>) => ({
-  /** Ready pieces carried over from the old categories that the decision model has not been asked about yet. */
-  piecesToSuggest: (limit: number) =>
-    query(() =>
-      db
-        .select({ id: pieces.id })
-        .from(pieces)
-        .where(and(isNull(pieces.suggestedAt), eq(pieces.status, 'ready')))
-        .limit(limit),
-    ).pipe(Effect.map((rows) => rows.map(({ id }) => id))),
   /** For the processing queue, which acts for no one in particular. */
   findPieceForProcessing: (pieceId: string) =>
     query(() => db.select().from(pieces).where(eq(pieces.id, pieceId)).limit(1)).pipe(Effect.map(first)),

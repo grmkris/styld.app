@@ -130,14 +130,9 @@
         "busy": "A clean picture of this piece is already being drawn.",
         "face": "A face may show in this cut-out, so it is not sent to be drawn.",
         "photo": "This piece shows your original photo, which is never sent to be drawn.",
-        "off": "Clean pictures are switched off.",
         "dailyLimit": "Today's credits are used up. Try again tomorrow.",
         "network": "The drawing could not be asked for. Try again."
-      },
-      "backfill": "{count, plural, one {# piece has no clean picture yet.} other {# pieces have no clean picture yet.}}",
-      "backfillAction": "Make clean pictures",
-      "backfillSent": "Drawing clean pictures. Each appears when it is ready.",
-      "backfillFailed": "The clean pictures could not be asked for. Try again."
+      }
     },
     "turn": {
       "make": "Make it turn",
@@ -150,7 +145,6 @@
       "problem": {
         "busy": "A turn of this piece is already being made.",
         "picture": "This piece needs a clean picture first.",
-        "off": "Turns are switched off.",
         "dailyLimit": "Today's credits are used up. Try again tomorrow.",
         "network": "The turn could not be asked for. Try again.",
         "build": "The turn could not be prepared on this device. Open the piece again to retry."

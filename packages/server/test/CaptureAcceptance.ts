@@ -13,7 +13,7 @@ const fixture = (name: string) => new Uint8Array(readFileSync(new URL(`fixtures/
 const Created = Schema.Struct({ uploadId: Schema.String, path: Schema.String })
 
 /** Upload bytes through a one-time upload path, as the website does. */
-const uploaded = async (call: Call, origin: string, bytes: Uint8Array, contentType: string) => {
+export const uploaded = async (call: Call, origin: string, bytes: Uint8Array, contentType: string) => {
   const video = contentType.startsWith('video/')
   const created = await send(call, video ? '/api/uploads/video' : '/api/uploads', 'POST', {
     contentType,
@@ -51,7 +51,7 @@ const Tray = Schema.Struct({
 const tray = async (call: Call) => Schema.decodeUnknownSync(Tray)(await (await call('/api/captures/tray')).json())
 
 /** The tray once the queue has processed `captureId`. */
-const processed = async (call: Call, captureId: string) => {
+export const processed = async (call: Call, captureId: string) => {
   for (let attempt = 0; attempt < 80; attempt += 1) {
     const current = await tray(call)
     const capture = current.captures.find(({ id }) => id === captureId)

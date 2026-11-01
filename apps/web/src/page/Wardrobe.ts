@@ -1,9 +1,8 @@
 import * as Crypto from 'effect/Crypto'
-import { newOperationId } from '../OperationIds.ts'
 import { Dialog } from '@foldkit/ui'
 import { Colour, GarmentGroup, groupOf, Occasion, Piece, PieceType, Season } from '@styld/protocol'
-import { Array, Effect, Option, Order, Schema } from 'effect'
-import { Command, Update } from 'foldkit'
+import { Array, Option, Order, Schema } from 'effect'
+import type { Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { modifyFields } from 'foldkit/struct'
 import { sheetFolds } from './Sheet.ts'
@@ -56,18 +55,12 @@ export const shownPieces = (pieces: ReadonlyArray<Piece>, model: Model): Readonl
 export const brandsOf = (pieces: ReadonlyArray<Piece>): ReadonlyArray<string> =>
   Array.sort(Array.dedupe(pieces.flatMap((piece) => (piece.brand === null ? [] : [piece.brand]))), Order.String)
 
-/** Asking for clean pictures of the kept cut-outs that have none. */
-const Backfill = Schema.Literals(['idle', 'sending', 'sent', 'failed'])
-
 export const Model = Schema.Struct({
   /** The group the grid shows, then one of its types; none shows every piece. */
   group: Schema.Option(GarmentGroup),
   type: Schema.Option(PieceType),
   filters: Filters,
   filterSheet: Dialog.Model,
-  /** Kept cut-outs with no clean picture yet, and how asking for theirs went. */
-  undrawn: Schema.Number,
-  backfill: Backfill,
 })
 export type Model = typeof Model.Type
 
@@ -76,8 +69,6 @@ export const init = (): Model => ({
   type: Option.none(),
   filters: noFilters,
   filterSheet: Dialog.init({ id: 'wardrobe-filters', isAnimated: true }),
-  undrawn: 0,
-  backfill: 'idle',
 })
 
 // MESSAGE
@@ -94,36 +85,12 @@ export const Message = defineMessageUnion({
   ClickedClearFilters: {},
   ClickedShowPieces: {},
   ClickedRetry: {},
-  CompletedCountUndrawn: { pieces: Schema.Number },
-  ClickedDrawPictures: {},
-  SucceededDrawPictures: {},
-  FailedDrawPictures: {},
 })
 export type Message = typeof Message.Type
 
-/** The pieces are the app's: the page asks for them again after a failure, and once their pictures are being drawn. */
+/** The pieces are the app's: the page asks for them again after a failure. */
 export const OutMessage = defineMessageUnion({ RequestedPieces: {} })
 export type OutMessage = typeof OutMessage.Type
-
-// COMMAND
-
-export const CountUndrawn = Command.define('CountUndrawn', {
-  messages: [Message.CompletedCountUndrawn],
-  execute: Effect.gen(function* () {
-    const api = yield* (yield* StyldClient).api
-    const { pieces } = yield* api.capture.undrawnPictures()
-    return Message.CompletedCountUndrawn({ pieces })
-  }).pipe(Effect.orElseSucceed(() => Message.CompletedCountUndrawn({ pieces: 0 }))),
-})
-
-export const DrawPictures = Command.define('DrawPictures', {
-  messages: [Message.SucceededDrawPictures, Message.FailedDrawPictures],
-  execute: Effect.gen(function* () {
-    const api = yield* (yield* StyldClient).api
-    yield* api.capture.drawPictures({ payload: { operationId: yield* newOperationId } })
-    return Message.SucceededDrawPictures()
-  }).pipe(Effect.orElseSucceed(() => Message.FailedDrawPictures())),
-})
 
 // UPDATE
 
@@ -144,12 +111,6 @@ const chosenAgain = <A>(value: A, chosen: Option.Option<A>): Option.Option<A> =>
 
 const filtered = (model: Model, change: (filters: Filters) => Filters): UpdateReturn => ({
   model: modifyFields(model, { filters: change }),
-})
-
-/** Opening the wardrobe tab: how many kept cut-outs have no clean picture yet. */
-export const enter = (model: Model): Update.Return<Model, Message, StyldClient> => ({
-  model,
-  commands: [CountUndrawn()],
 })
 
 export const update = (model: Model, message: Message): UpdateReturn =>
@@ -175,15 +136,4 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedClearFilters: () => filtered(model, () => noFilters),
     ClickedShowPieces: () => closeFilterSheet(model),
     ClickedRetry: () => ({ model, outMessage: OutMessage.RequestedPieces() }),
-    CompletedCountUndrawn: ({ pieces }) => ({ model: modifyFields(model, { undrawn: () => pieces }) }),
-    ClickedDrawPictures: () =>
-      model.backfill === 'sending'
-        ? { model }
-        : { model: modifyFields(model, { backfill: () => 'sending' as const }), commands: [DrawPictures()] },
-    // The pieces are read again, so each shows its drawing on its way.
-    SucceededDrawPictures: () => ({
-      model: modifyFields(model, { undrawn: () => 0, backfill: () => 'sent' as const }),
-      outMessage: OutMessage.RequestedPieces(),
-    }),
-    FailedDrawPictures: () => ({ model: modifyFields(model, { backfill: () => 'failed' as const }) }),
   })

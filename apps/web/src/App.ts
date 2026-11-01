@@ -216,10 +216,7 @@ const entering = (route: AppRoute, signedIn: boolean): ReadonlyArray<Step> =>
           ]
         : [Update.foldChildStep({ update: Visit.enterExplore, ...at(lenses.explore) })],
     ),
-    Match.tag('Wardrobe', () => [
-      revisitPieces,
-      Update.foldChildStep({ update: Wardrobe.enter, ...at(lenses.wardrobe) }),
-    ]),
+    Match.tag('Wardrobe', () => [revisitPieces]),
     Match.tag('Ask', ({ q }) => [revisitPieces, Update.foldChildStep({ update: Ask.enter(q), ...at(lenses.ask) })]),
     Match.tag('Looks', () => [Update.foldChildStep({ update: Looks.revisit, ...at(lenses.looks) })]),
     Match.tag('Photos', () => [Update.foldChildStep({ update: Photos.revisit, ...at(lenses.photos) })]),

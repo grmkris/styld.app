@@ -18,8 +18,6 @@ export const WorkMessage = Schema.TaggedUnion({
   MakeTurn: { pieceId: Schema.String },
   /** Compare a capture's new sightings with the rest of its import and with the wardrobe. */
   MatchCapture: { captureId: Schema.String },
-  /** Ask the decision model once about a piece carried over from the old categories. */
-  SuggestPiece: { pieceId: Schema.String },
   /** Find the garments in an outfit photo (My Gallery). */
   FindGarments: { photoId: Schema.String },
 })

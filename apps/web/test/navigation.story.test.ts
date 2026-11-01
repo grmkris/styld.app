@@ -20,7 +20,6 @@ import {
 import { ReadProfile, Message as AccountMessage } from '../src/page/Account.ts'
 import { LoadSearchLanguages, Message as AskMessage } from '../src/page/Ask.ts'
 import { ListLooks, Message as LooksMessage } from '../src/page/Looks.ts'
-import { CountUndrawn, Message as WardrobeMessage } from '../src/page/Wardrobe.ts'
 import { AppRoute } from '../src/route.ts'
 import { at, pageOf, urlOf } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
@@ -115,9 +114,8 @@ describe('opening a tab page inside the page', () => {
       update,
       given(withData('/ask', PiecesData.Refreshing({ data: [tee] }))),
       message(Message.ChangedUrl({ url: urlOf('/wardrobe') })),
-      // The pieces on their way are not asked for again; the count of pieces without a clean picture is.
-      Command.expectExact(CountUndrawn, ScrollToTop, FocusPageTitle),
-      Command.resolve(CountUndrawn, WardrobeMessage.CompletedCountUndrawn({ pieces: 0 })),
+      // The pieces on their way are not asked for again.
+      Command.expectExact(ScrollToTop, FocusPageTitle),
       Command.resolve(ScrollToTop, Message.CompletedScrollToTop()),
       Command.resolve(FocusPageTitle, Message.CompletedFocusPageTitle()),
     )

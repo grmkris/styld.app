@@ -15,7 +15,6 @@ import {
   Tray,
 } from './Capture.ts'
 import {
-  PictureBackfill,
   PictureRefused,
   PieceId,
   PiecePicture,
@@ -89,14 +88,6 @@ export class CaptureApi extends HttpApiGroup.make('capture')
       payload: RedrawPicture,
       success: PiecePicture,
       error: [NotFound, PictureRefused, LimitReached, OperationConflict, Unavailable, RequestRefused],
-    }),
-  )
-  .add(HttpApiEndpoint.get('undrawnPictures', '/pictures', { success: PictureBackfill, error: Unavailable }))
-  .add(
-    HttpApiEndpoint.post('drawPictures', '/pictures', {
-      payload: Operation,
-      success: PictureBackfill,
-      error: [Unavailable, RequestRefused],
     }),
   )
   .add(

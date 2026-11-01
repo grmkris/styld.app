@@ -116,9 +116,6 @@ export const ChoosePicture = Schema.Struct({ operationId: OperationId, use: Pict
 export const RedrawPicture = Schema.Struct({ operationId: OperationId, hint: Schema.optionalKey(Hint) })
 export type RedrawPicture = typeof RedrawPicture.Type
 
-/** Pieces with no clean picture yet that one could be drawn for, or that were just queued for one. */
-export const PictureBackfill = Schema.Struct({ pieces: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)) })
-
 export const Piece = Schema.Struct({
   id: PieceId,
   name: Schema.NullOr(Name),
@@ -259,10 +256,10 @@ export class UploadRefused extends Schema.TaggedError<UploadRefused>()(
   },
 ) {}
 
-const PictureRefusal = Schema.Literals(['photo', 'face', 'busy', 'off'])
+const PictureRefusal = Schema.Literals(['photo', 'face', 'busy'])
 
 /** Why a piece cannot be drawn now: it shows its original photo, which never leaves Styld (`photo`); a face may show
- * in it (`face`); a drawing is already being made (`busy`); or clean pictures are off (`off`). */
+ * in it (`face`); or a drawing is already being made (`busy`). */
 export class PictureRefused extends Schema.TaggedError<PictureRefused>()(
   'PictureRefused',
   { reason: PictureRefusal },
@@ -284,19 +281,14 @@ export class PictureRefused extends Schema.TaggedError<PictureRefused>()(
         'A drawing of that piece is already being made.',
         'Wait about a minute, then read its picture with piece_get.',
       ),
-      off: refusal(
-        'picture_refused',
-        'Clean pictures are switched off on this Styld.',
-        'Tell the person; the piece keeps its photo.',
-      ),
     }),
   },
 ) {}
 
-const TurnRefusal = Schema.Literals(['picture', 'busy', 'off'])
+const TurnRefusal = Schema.Literals(['picture', 'busy'])
 
-/** Why a piece cannot turn now: it has no clean picture to turn (`picture`), a turn is already being made (`busy`),
- * or turns are off (`off`). */
+/** Why a piece cannot turn now: it has no clean picture to turn (`picture`), or a turn is already being made
+ * (`busy`). */
 export class TurnRefused extends Schema.TaggedError<TurnRefused>()(
   'TurnRefused',
   { reason: TurnRefusal },
@@ -305,7 +297,6 @@ export class TurnRefused extends Schema.TaggedError<TurnRefused>()(
     guide: byCase<typeof TurnRefusal.Type>('reason', {
       picture: refusal('turn_refused', 'That piece has no clean picture to turn.', 'Redraw its picture first.'),
       busy: passing('turn_refused', 'A turn of that piece is already being made.', 'Wait, then read the piece again.'),
-      off: refusal('turn_refused', 'Turns are switched off on this Styld.', 'Tell the person.'),
     }),
   },
 ) {}

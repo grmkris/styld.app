@@ -393,11 +393,9 @@ const pictureImage = (
 ) => {
   if (which === 'shown') return Option.some(shownImage(piece, picture))
   if (which === 'photo') return Option.some(shownImage(piece, undefined))
+  // The stored object's own type is what is served (`deliverImage`).
   if (which === 'back')
-    return Option.map(Option.fromNullishOr(piece.backImageKey), (key) => ({
-      key,
-      contentType: key.endsWith('.png') ? 'image/png' : piece.contentType,
-    }))
+    return Option.map(Option.fromNullishOr(piece.backImageKey), (key) => ({ key, contentType: piece.contentType }))
   const drawn = picture?.cleanKey ?? null
   return drawn !== null && (picture?.state === 'ready' || picture?.state === 'proposed')
     ? Option.some({ key: drawn, contentType: 'image/png' })

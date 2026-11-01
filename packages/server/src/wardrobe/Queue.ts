@@ -31,8 +31,6 @@ export const pieceJobs = (services: {
     | 'failTurn'
     | 'processMatch'
     | 'failMatch'
-    | 'suggestPiece'
-    | 'failSuggestion'
   >
   readonly photos: Pick<Photos['Service'], 'findGarments' | 'failFinding'>
 }): JobsOf<typeof WorkMessage.Type> => ({
@@ -59,10 +57,6 @@ export const pieceJobs = (services: {
   MatchCapture: {
     run: ({ captureId }) => services.captures.processMatch(captureId),
     giveUp: ({ captureId }) => services.captures.failMatch(captureId),
-  },
-  SuggestPiece: {
-    run: ({ pieceId }) => services.captures.suggestPiece(pieceId),
-    giveUp: ({ pieceId }) => services.captures.failSuggestion(pieceId),
   },
   FindGarments: {
     run: ({ photoId }) => services.photos.findGarments(photoId),

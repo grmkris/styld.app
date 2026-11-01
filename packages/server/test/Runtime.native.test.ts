@@ -166,7 +166,7 @@ test(
 test(
   'draws clean pictures, then turns one on its hanger: made on the queue, cut into frames here, checked, played on tap',
   inBrowser((browser, origin, testUrl) =>
-    verifyCleanPictures(origin, testUrl).then(() => verifyTurn(browser, origin, testUrl)),
+    verifyCleanPictures(origin, testUrl).then((pieces) => verifyTurn(browser, origin, testUrl, pieces)),
   ),
   { timeout: 260000 },
 )

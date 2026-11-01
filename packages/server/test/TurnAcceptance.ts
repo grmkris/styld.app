@@ -4,7 +4,7 @@ import { Schema } from 'effect'
 import type { Browser } from 'playwright'
 import { recordProblems } from './BrowserAcceptance.ts'
 import { Allowance, decoded } from './CleanPictureAcceptance.ts'
-import { picturesAccount, seededPieces } from './PictureFixture.ts'
+import { picturesAccount } from './PictureFixture.ts'
 import { client, signedInContext, signIn } from './Accounts.ts'
 
 const Turn = Schema.Struct({ state: Schema.String, version: Schema.Number, layout: Schema.optionalKey(Schema.Unknown) })
@@ -15,7 +15,12 @@ const Piece = Schema.Struct({ turn: Schema.optionalKey(Turn) })
  * cuts the video into frames in Chromium, Clef checks them, and the turn plays on tap with its credits consumed once.
  * The video model and Clef are the fixture's stand-ins; the video is a recorded Veo 3.1 Lite take. It turns the green
  * shirt whose drawing `verifyCleanPictures` offered and the owner took, so it runs in the same test after it. */
-export const verifyTurn = async (browser: Browser, origin: string, fixtures: string) => {
+export const verifyTurn = async (
+  browser: Browser,
+  origin: string,
+  fixtures: string,
+  kept: { readonly green: string; readonly photo: string },
+) => {
   const take = readFileSync(new URL('fixtures/capture/veo-turn-black-tee.mp4', import.meta.url))
   expect(
     (await fetch(`${fixtures}/test/pictures/answer?key=video`, { method: 'PUT', body: new Uint8Array(take) })).status,
@@ -23,7 +28,7 @@ export const verifyTurn = async (browser: Browser, origin: string, fixtures: str
   const owner = client(origin, await signIn(origin, picturesAccount))
   const remaining = async () => (await decoded(Allowance, await owner('/api/captures/tray'))).allowance.remaining
   const before = await remaining()
-  const asked = await owner(`/api/pieces/${seededPieces.green}/turn`, {
+  const asked = await owner(`/api/pieces/${kept.green}/turn`, {
     method: 'POST',
     body: JSON.stringify({ operationId: 'native-turn-0001' }),
   })
@@ -31,13 +36,13 @@ export const verifyTurn = async (browser: Browser, origin: string, fixtures: str
   expect(await remaining()).toBe(before - 5)
   // A second turn while one is made is refused; the photo-only piece has no clean picture to turn.
   const again = { method: 'POST', body: JSON.stringify({ operationId: 'native-turn-0002' }) }
-  expect((await owner(`/api/pieces/${seededPieces.green}/turn`, again)).status).toBe(409)
-  expect((await owner(`/api/pieces/${seededPieces.photo}/turn`, again)).status).toBe(409)
+  expect((await owner(`/api/pieces/${kept.green}/turn`, again)).status).toBe(409)
+  expect((await owner(`/api/pieces/${kept.photo}/turn`, again)).status).toBe(409)
   // Muse draws the side view, the video model is asked once while pending and then answers with the take.
   let state = 'making'
   for (let attempt = 0; attempt < 160 && state === 'making'; attempt += 1) {
     await Bun.sleep(250)
-    state = (await decoded(Piece, await owner(`/api/pieces/${seededPieces.green}`))).turn?.state ?? 'none'
+    state = (await decoded(Piece, await owner(`/api/pieces/${kept.green}`))).turn?.state ?? 'none'
   }
   expect(state).toBe('building')
 
@@ -49,7 +54,7 @@ export const verifyTurn = async (browser: Browser, origin: string, fixtures: str
     page.on('console', (message) => {
       if (message.type() === 'error' || message.type() === 'warning') consoled.push(message.text())
     })
-    await page.goto(`${origin}/wardrobe/${seededPieces.green}`, { waitUntil: 'networkidle' })
+    await page.goto(`${origin}/wardrobe/${kept.green}`, { waitUntil: 'networkidle' })
     // The page cuts the stored video into frames, sends them, and the checked turn replaces the still.
     await page
       .getByText('Tap the picture to turn it.')
@@ -66,8 +71,8 @@ export const verifyTurn = async (browser: Browser, origin: string, fixtures: str
   } finally {
     await context.close()
   }
-  const turned = await decoded(Piece, await owner(`/api/pieces/${seededPieces.green}`))
+  const turned = await decoded(Piece, await owner(`/api/pieces/${kept.green}`))
   expect(turned.turn).toMatchObject({ state: 'ready', layout: { frames: 30, columns: 6 } })
-  expect((await owner(`/cdn/turns/${seededPieces.green}/sheet?v=${turned.turn?.version}`)).status).toBe(200)
+  expect((await owner(`/cdn/turns/${kept.green}/sheet?v=${turned.turn?.version}`)).status).toBe(200)
   expect(await remaining()).toBe(before - 5)
 }
