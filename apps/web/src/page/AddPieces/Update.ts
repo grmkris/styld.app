@@ -5,6 +5,7 @@ import type * as Crypto from 'effect/Crypto'
 import { File, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import type { StyldClient } from '../../StyldClient.ts'
+import type { PictureEncoder } from '../../Upload.ts'
 import { InspectVideo, SendLink, SendPhoto, SendVideo, SendVideoPart } from './Commands.ts'
 import * as HeldCamera from '../HeldCamera.ts'
 import { Message, OutMessage, type VideoPlan } from './Message.ts'
@@ -20,7 +21,7 @@ import {
 
 // UPDATE
 
-type Services = StyldClient | Crypto.Crypto
+type Services = StyldClient | Crypto.Crypto | PictureEncoder
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Services>
 
 /** Two files go up at once, at most one of them a video; the rest wait their turn. */
@@ -75,7 +76,6 @@ const commandFor = (model: Model, item: Item, index: number) =>
     : SendPhoto({
         index,
         photo: item.file,
-        contentType: Schema.decodeUnknownSync(ImageType)(File.mimeType(item.file)),
         source: item.source,
         side: item.side,
         pairsWith: captureAt(model, item.front),

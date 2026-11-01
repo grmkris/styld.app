@@ -5,7 +5,7 @@ import * as Crypto from 'effect/Crypto'
 import { Command, File, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { modifyFields } from 'foldkit/struct'
-import { uploadPicture } from '../PictureUpload.ts'
+import { type PictureEncoder, uploadPicture } from '../Upload.ts'
 import { StyldClient } from '../StyldClient.ts'
 
 // A piece's back on its page (owner, 2026-10-31): Front and Back under the picture once it has one, and adding,
@@ -82,9 +82,17 @@ export const RemoveBack = Command.define('RemoveBack', {
 
 // UPDATE
 
-type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
+type UpdateReturn = Update.ReturnWithOutMessage<
+  Model,
+  Message,
+  OutMessage,
+  StyldClient | Crypto.Crypto | PictureEncoder
+>
 
-const sending = (model: Model, command: Command.Command<Message, never, StyldClient | Crypto.Crypto>) =>
+const sending = (
+  model: Model,
+  command: Command.Command<Message, never, StyldClient | Crypto.Crypto | PictureEncoder>,
+) =>
   model.work === 'sending'
     ? { model }
     : { model: modifyFields(model, { work: () => 'sending' as const }), commands: [command] }

@@ -4,29 +4,13 @@ import { Option, String } from 'effect'
 import type { Document, Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import type { Html as Styles } from 'zyzz/runtime'
-import { LocaleSave, Message, type Model, Session } from './App.ts'
+import { hasSession, LocaleSave, Message, type Model, Session } from './App.ts'
+import { lenses } from './Page.ts'
 import { actionButton } from './ActionButton.ts'
 import { primaryAction, secondaryAction } from './Actions.styles.ts'
 import { availableLocales } from './Locale.ts'
 import { styled } from './Styled.ts'
 import { askTabIcon, boardsTabIcon, homeTabIcon, wardrobeTabIcon } from './Icon.ts'
-import * as AddPiecesView from './page/AddPieces/View.ts'
-import * as AskView from './page/AskView.ts'
-import * as TodayView from './page/TodayView.ts'
-import * as BoardPageView from './page/Board/PageView.ts'
-import * as BoardView from './page/Board/View.ts'
-import * as BoardsView from './page/BoardsView.ts'
-import * as ReviewView from './page/ReviewView.ts'
-import { stylistPage } from './StylistPage.ts'
-import * as LooksView from './page/LooksView.ts'
-import { photoPage, photosPage } from './GalleryView.ts'
-import * as LookView from './page/LookView.ts'
-import * as VisitView from './page/VisitView.ts'
-import * as ProfileEditorView from './page/ProfileEditorView.ts'
-import { accountView } from './page/AccountView.ts'
-import * as LoginView from './page/LoginView.ts'
-import * as PieceView from './page/PieceView.ts'
-import * as WardrobeView from './page/WardrobeView.ts'
 import {
   accountRouter,
   AppRoute,
@@ -49,7 +33,6 @@ import {
   footerButton,
   footerLink,
   footerLinks,
-  intro,
   masthead,
   mastheadBesideRail,
   railLogo,
@@ -78,7 +61,7 @@ import {
 import { initials } from './Avatar.ts'
 import { You } from './You.ts'
 import { avatar as avatarStyle } from './Avatar.styles.ts'
-import { landingView } from './Landing.ts'
+import { pageView } from './PageViews.ts'
 
 const languages: ReadonlyArray<Readonly<{ locale: Locale; label: string }>> = [
   { locale: 'en', label: 'English' },
@@ -118,16 +101,6 @@ const languagePicker = (model: Model, h: HtmlBuilder<Message>): Html => {
     h,
   )
 }
-
-const notFoundView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.main(
-    [h.Id('main'), ...styled(h, intro())],
-    [
-      h.h1([], [format(locale, 'common.notFoundTitle', {})]),
-      h.p([], [format(locale, 'common.notFoundDescription', {})]),
-      h.a([h.Href(homeRouter({}))], [format(locale, 'common.goHome', {})]),
-    ],
-  )
 
 /** Asks before any browser diagnostics are recorded; the footer reopens it to change the choice. */
 const consentPrompt = (locale: Locale, h: HtmlBuilder<Message>): Html =>
@@ -232,7 +205,11 @@ const appNavigation = (model: Model, initial: string, h: HtmlBuilder<Message>): 
       // Ask keeps its search: coming back from another tab brings it back.
       item(
         'ask',
-        askRouter({ q: Option.liftPredicate(model.ask.query.trim(), String.isNonEmpty) }),
+        askRouter({
+          q: Option.flatMap(lenses.ask.read(model.page), (ask) =>
+            Option.liftPredicate(ask.query.trim(), String.isNonEmpty),
+          ),
+        }),
         format(locale, 'nav.ask', {}),
         askTabIcon(h),
         true,
@@ -272,155 +249,12 @@ const wordmark = (style: Styles.Attributes, h: HtmlBuilder<Message>): Html =>
     [h.img([h.Src('/brand/wordmark.svg'), h.Alt('Styld'), h.Width('53'), h.Height('20'), ...styled(h, brandMark())])],
   )
 
-/** Someone signed in, or on their way in with a session cookie: Home is their table rather than the landing page,
- * and public pages offer them Follow, Save and Report rather than a way to sign in. */
-const hasSession = (model: Model) =>
-  Session.match(model.session, {
-    SignedIn: () => true,
-    SigningOut: () => true,
-    Checking: () => model.context.hasSessionCookie === true,
-    SignedOut: () => false,
-    Unavailable: () => false,
-  })
-
 const pageTitle = (model: Model) =>
   format(
     model.context.locale,
     AppRoute.guards.Home(model.route) && hasSession(model) ? 'today.title' : routeMeta(model.route).title,
     {},
   )
-
-const loginPage = (model: Model, forConnection: boolean, h: HtmlBuilder<Message>): Html =>
-  h.submodel({
-    slotId: 'login',
-    model: model.login,
-    view: LoginView.view,
-    viewInputs: { forConnection, locale: model.context.locale },
-    toParentMessage: (message) => Message.GotLoginMessage({ message }),
-  })
-
-const wardrobePage = (model: Model, h: HtmlBuilder<Message>): Html =>
-  h.submodel({
-    slotId: 'wardrobe',
-    model: model.wardrobe,
-    view: WardrobeView.view,
-    viewInputs: { locale: model.context.locale },
-    toParentMessage: (message) => Message.GotWardrobeMessage({ message }),
-  })
-
-const piecePage = (model: Model, h: HtmlBuilder<Message>): Html =>
-  h.submodel({
-    slotId: 'piece',
-    model: model.piece,
-    view: PieceView.view,
-    viewInputs: { locale: model.context.locale },
-    toParentMessage: (message) => Message.GotPieceMessage({ message }),
-  })
-
-const addPiecesPage = (model: Model, h: HtmlBuilder<Message>): Html =>
-  h.submodel({
-    slotId: 'add-pieces',
-    model: model.addPieces,
-    view: AddPiecesView.view,
-    viewInputs: { locale: model.context.locale },
-    toParentMessage: (message) => Message.GotAddPiecesMessage({ message }),
-  })
-
-const looksPage = (model: Model, h: HtmlBuilder<Message>): Html =>
-  h.submodel({
-    slotId: 'looks',
-    model: model.looks,
-    view: LooksView.view,
-    viewInputs: { locale: model.context.locale },
-    toParentMessage: (message) => Message.GotLooksMessage({ message }),
-  })
-
-const profilePage = (model: Model, h: HtmlBuilder<Message>): Html =>
-  h.submodel({
-    slotId: 'profile',
-    model: model.profile,
-    view: ProfileEditorView.view,
-    viewInputs: { locale: model.context.locale },
-    toParentMessage: (message) => Message.GotProfileMessage({ message }),
-  })
-
-const visitPage = (model: Model, h: HtmlBuilder<Message>): Html =>
-  h.submodel({
-    slotId: 'visit',
-    model: model.visit,
-    view: VisitView.view,
-    viewInputs: { locale: model.context.locale, signedIn: hasSession(model), origin: model.context.origin },
-    toParentMessage: (message) => Message.GotVisitMessage({ message }),
-  })
-
-const lookPage = (model: Model, h: HtmlBuilder<Message>): Html =>
-  h.submodel({
-    slotId: 'look',
-    model: model.look,
-    view: LookView.view,
-    viewInputs: { locale: model.context.locale, signedIn: hasSession(model) },
-    toParentMessage: (message) => Message.GotLookMessage({ message }),
-  })
-
-/** Home: today's table for a signed-in person, the landing page for everyone else. While the session is read,
- * a request that came with a session cookie waits quietly instead of flashing the landing page. */
-const todayPage = (model: Model, h: HtmlBuilder<Message>): Html =>
-  h.submodel({
-    slotId: 'today',
-    model: model.today,
-    view: TodayView.view,
-    viewInputs: { locale: model.context.locale, pieces: model.wardrobe.pieces },
-    toParentMessage: (message) => Message.GotTodayMessage({ message }),
-  })
-
-const homePage = (model: Model, h: HtmlBuilder<Message>): Html =>
-  hasSession(model) ? todayPage(model, h) : landingView(model, h)
-
-const askPage = (model: Model, h: HtmlBuilder<Message>): Html =>
-  h.submodel({
-    slotId: 'ask',
-    model: model.ask,
-    view: AskView.view,
-    viewInputs: { locale: model.context.locale, pieces: model.wardrobe.pieces, boardStart: model.boards.creating },
-    toParentMessage: (message) => Message.GotAskMessage({ message }),
-  })
-
-const boardsPage = (model: Model, h: HtmlBuilder<Message>): Html =>
-  h.submodel({
-    slotId: 'boards',
-    model: model.boards,
-    view: BoardsView.view,
-    viewInputs: { locale: model.context.locale },
-    toParentMessage: (message) => Message.GotBoardsMessage({ message }),
-  })
-
-const boardPage = (model: Model, h: HtmlBuilder<Message>): Html =>
-  h.submodel({
-    slotId: 'board',
-    model: model.board,
-    view: BoardPageView.view,
-    viewInputs: { locale: model.context.locale, signedIn: hasSession(model) },
-    toParentMessage: (message) => Message.GotBoardMessage({ message }),
-  })
-
-const collagePage = (model: Model, h: HtmlBuilder<Message>): Html =>
-  h.submodel({
-    slotId: 'board-collage',
-    model: model.board,
-    view: BoardView.view,
-    viewInputs: { locale: model.context.locale },
-    toParentMessage: (message) => Message.GotBoardMessage({ message }),
-  })
-
-/** The person's pieces by id, named as the wardrobe names them, for the pieces Styld shows. */
-const reviewPage = (model: Model, h: HtmlBuilder<Message>): Html =>
-  h.submodel({
-    slotId: 'review',
-    model: model.review,
-    view: ReviewView.view,
-    viewInputs: { locale: model.context.locale, timeZone: model.context.timeZone },
-    toParentMessage: (message) => Message.GotReviewMessage({ message }),
-  })
 
 export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
   const { locale } = model.context
@@ -436,30 +270,7 @@ export const view = (model: Model, h: HtmlBuilder<Message>): Document => {
         wordmark(brand(), h),
         initial === undefined ? sessionLink(model, h) : youLink(model, initial, h),
       ]),
-      AppRoute.match(model.route, {
-        Home: () => homePage(model, h),
-        Login: () => loginPage(model, false, h),
-        LoginForConnection: () => loginPage(model, true, h),
-        Account: () => accountView(model, h),
-        Wardrobe: () => wardrobePage(model, h),
-        AddPieces: () => addPiecesPage(model, h),
-        Review: () => reviewPage(model, h),
-        Looks: () => looksPage(model, h),
-        Look: () => lookPage(model, h),
-        Photos: () => photosPage(model, h),
-        Photo: () => photoPage(model, h),
-        Profile: () => profilePage(model, h),
-        Ask: () => askPage(model, h),
-        Stylist: () => stylistPage(model, h),
-        Boards: () => boardsPage(model, h),
-        Board: () => boardPage(model, h),
-        BoardCollage: () => collagePage(model, h),
-        Piece: () => piecePage(model, h),
-        Person: () => visitPage(model, h),
-        PublicPiece: () => visitPage(model, h),
-        Explore: () => visitPage(model, h),
-        NotFound: () => notFoundView(locale, h),
-      }),
+      pageView(model, h),
       initial === undefined ? h.empty : appNavigation(model, initial, h),
       initial === undefined ? h.empty : wordmark(railLogo(), h),
       initial === undefined ? h.empty : h.div(styled(h, railLow()), [youLink(model, initial, h)]),

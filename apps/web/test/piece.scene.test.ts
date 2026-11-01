@@ -1,9 +1,10 @@
-import { catalogVersion } from '@styld/i18n'
 import { Option } from 'effect'
 import { Command, Mount, click, expect, given, role, scene, submit, text, type } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
-import { Message, Session, init, update } from '../src/App.ts'
+import { Message, update } from '../src/App.ts'
+import { lenses } from '../src/Page.ts'
+import { at, withPage } from './AppFixtures.ts'
 import { Navigate } from '../src/Navigation.ts'
 import {
   ChoosePicture,
@@ -16,7 +17,6 @@ import {
 import { view } from '../src/View.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
-const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
 const jeans = pieceFixture('jeans', {
   type: 'jeans',
   colours: ['navy'],
@@ -24,17 +24,8 @@ const jeans = pieceFixture('jeans', {
 })
 
 const piecePage = (load: typeof Load.Type) =>
-  modifyFields(
-    init({
-      locale: 'en',
-      catalogVersion,
-      timeZone: 'UTC',
-      referenceTime: 0,
-      pathname: `/wardrobe/${jeans.id}`,
-      origin: 'https://styld.test',
-      telemetryConsent: 'denied',
-    }).model,
-    { session: () => Session.SignedIn({ claims }), piece: (piece) => modifyFields(piece, { load: () => load }) },
+  withPage(at(`/wardrobe/${jeans.id}`, { signedIn: true }), lenses.piece, (piece) =>
+    modifyFields(piece, { load: () => load }),
   )
 
 describe('the piece page', () => {
@@ -177,9 +168,9 @@ describe('the piece page', () => {
     scene(
       { update, view },
       given(
-        modifyFields(piecePage(Load.Loaded({ piece: building })), {
-          piece: (piece) => modifyFields(piece, { turnProblem: () => Option.some('build' as const) }),
-        }),
+        withPage(piecePage(Load.Loaded({ piece: building })), lenses.piece, (piece) =>
+          modifyFields(piece, { turnProblem: () => Option.some('build' as const) }),
+        ),
       ),
       expect(role('alert')).toHaveText('The turn could not be prepared on this device. Open the piece again to retry.'),
       expect(role('button', { name: 'Make it turn' })).not.toExist(),

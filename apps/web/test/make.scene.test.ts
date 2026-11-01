@@ -2,7 +2,6 @@ import { Dialog, RadioGroup } from '@foldkit/ui'
 import { Board, Generation } from '@styld/protocol'
 import { Schema } from 'effect'
 import { click, Command, expect, given, keydown, Mount, role, scene, submit, text, type } from 'foldkit/scene'
-import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
 import { AskToMake, Message as MakeMessage, PollGeneration } from '../src/page/Board/Make.ts'
@@ -10,7 +9,8 @@ import { Message as BoardMessage } from '../src/page/Board/Message.ts'
 import { fromBoard, init as boardInit } from '../src/page/Board/Model.ts'
 import { ReloadBoard } from '../src/page/Board/PageCommands.ts'
 import { view } from '../src/View.ts'
-import { signedInAt } from './AppFixtures.ts'
+import { lenses } from '../src/Page.ts'
+import { at, withPage } from './AppFixtures.ts'
 import { sceneSheetMoved, sceneSheetOpened } from './SheetFixtures.ts'
 
 const boardId = `bd_${'sea'.padEnd(22, 'x')}`
@@ -50,9 +50,9 @@ const generation = (status: string, pictures: ReadonlyArray<string>) =>
     createdAt: '2026-10-31T09:00:00.000Z',
   })
 
-const page = modifyFields(signedInAt(`/boards/${boardId}`), {
-  board: () => fromBoard(boardInit(boardId), board),
-})
+const page = withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
+  fromBoard(boardInit(boardId, true), board),
+)
 
 const resolveFocus = Command.resolve(RadioGroup.FocusOption, RadioGroup.Message.CompletedFocusOption())
 

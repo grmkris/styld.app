@@ -1,16 +1,16 @@
-import { catalogVersion } from '@styld/i18n'
 import { Board, BoardSummary } from '@styld/protocol'
 import { Schema } from 'effect'
 import { click, Command, expect, given, role, scene, selector, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
-import { init, Message as AppMessage, Session, update } from '../src/App.ts'
+import { Message as AppMessage, update } from '../src/App.ts'
+import { lenses } from '../src/Page.ts'
+import { at, withPage } from './AppFixtures.ts'
 import { BoardsData, CreateBoard, Message as BoardsMessage } from '../src/page/Boards.ts'
 import { Navigate } from '../src/Navigation.ts'
 import { view } from '../src/View.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
-const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
 const boardId = (name: string) => `bd_${name.padEnd(22, 'x')}`
 const summary = (name: string, changes: object) =>
   Schema.decodeUnknownSync(BoardSummary)({
@@ -50,20 +50,8 @@ const created = Schema.decodeUnknownSync(Board)({
 })
 
 const boardsPage = (boards: ReadonlyArray<BoardSummary>) =>
-  modifyFields(
-    init({
-      locale: 'en',
-      catalogVersion,
-      timeZone: 'UTC',
-      referenceTime: 0,
-      pathname: '/boards',
-      origin: 'https://styld.test',
-      telemetryConsent: 'denied',
-    }).model,
-    {
-      session: () => Session.SignedIn({ claims }),
-      boards: (current) => modifyFields(current, { boards: () => BoardsData.Success({ data: boards }) }),
-    },
+  withPage(at('/boards', { signedIn: true }), lenses.boards, (current) =>
+    modifyFields(current, { boards: () => BoardsData.Success({ data: boards }) }),
   )
 
 describe('the boards list', () => {

@@ -3,9 +3,10 @@ import { AsyncData } from 'foldkit'
 import { UrlRequest } from 'foldkit/navigation'
 import { modifyFields } from 'foldkit/struct'
 import { Command, given, message, model, story } from 'foldkit/story'
-import { fromString, type Url } from 'foldkit/url'
 import { describe, expect, test } from 'vitest'
-import { Message, Session, update } from '../src/App.ts'
+import { Message, update } from '../src/App.ts'
+import { lenses } from '../src/Page.ts'
+import { ListPieces, Message as PiecesMessage, PiecesData } from '../src/ServerData.ts'
 import {
   FocusPageTitle,
   followLink,
@@ -19,16 +20,16 @@ import {
 import { ReadProfile, Message as AccountMessage } from '../src/page/Account.ts'
 import { LoadSearchLanguages, Message as AskMessage } from '../src/page/Ask.ts'
 import { ListLooks, Message as LooksMessage } from '../src/page/Looks.ts'
-import { CountUndrawn, ListPieces, Message as WardrobeMessage, PiecesData } from '../src/page/Wardrobe.ts'
+import { CountUndrawn, Message as WardrobeMessage } from '../src/page/Wardrobe.ts'
 import { AppRoute } from '../src/route.ts'
-import { pageAt, pieceFixture } from './WardrobeFixtures.ts'
+import { at, pageOf, urlOf } from './AppFixtures.ts'
+import { pieceFixture } from './WardrobeFixtures.ts'
 
-const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
-const urlOf = (path: string): Url =>
-  Option.getOrThrowWith(fromString(`https://styld.test${path}`), () => new Error(`Not a URL: ${path}`))
 const internal = (path: string) => UrlRequest.Internal({ url: urlOf(path) })
 const names = (commands: ReadonlyArray<{ readonly name: string }>) => commands.map(({ name }) => name)
-const signedIn = (path: string) => modifyFields(pageAt(path), { session: () => Session.SignedIn({ claims }) })
+const signedIn = (path: string) => at(path, { signedIn: true })
+const withData = (path: string, pieces: PiecesData) =>
+  modifyFields(signedIn(path), { data: (data) => modifyFields(data, { pieces: () => pieces }) })
 const tee = pieceFixture('tee', { name: 'White tee' })
 
 describe('following a link', () => {
@@ -84,22 +85,18 @@ describe('opening a tab page inside the page', () => {
   test('a page seen before shows its pieces at once and asks for them again behind them', () => {
     story(
       update,
-      given(
-        modifyFields(signedIn('/wardrobe'), {
-          wardrobe: (wardrobe) => modifyFields(wardrobe, { pieces: () => PiecesData.Success({ data: [tee] }) }),
-        }),
-      ),
+      given(withData('/wardrobe', PiecesData.Success({ data: [tee] }))),
       message(Message.ChangedUrl({ url: urlOf('/ask') })),
-      model(({ route, wardrobe }) => {
+      model(({ route, data }) => {
         expect(route).toEqual(AppRoute.Ask({ q: Option.none() }))
-        expect(wardrobe.pieces).toEqual(PiecesData.Refreshing({ data: [tee] }))
+        expect(data.pieces).toEqual(PiecesData.Refreshing({ data: [tee] }))
       }),
       Command.expectExact(ListPieces, LoadSearchLanguages, ScrollToTop, FocusPageTitle),
-      Command.resolve(ListPieces, WardrobeMessage.SucceededListPieces({ pieces: [tee] })),
+      Command.resolve(ListPieces, PiecesMessage.SucceededListPieces({ pieces: [tee] })),
       Command.resolve(LoadSearchLanguages, AskMessage.SucceededLoadSearchLanguages()),
       Command.resolve(ScrollToTop, Message.CompletedScrollToTop()),
       Command.resolve(FocusPageTitle, Message.CompletedFocusPageTitle()),
-      model(({ wardrobe }) => expect(AsyncData.isSuccess(wardrobe.pieces)).toBe(true)),
+      model(({ data }) => expect(AsyncData.isSuccess(data.pieces)).toBe(true)),
     )
   })
 
@@ -108,7 +105,7 @@ describe('opening a tab page inside the page', () => {
       update,
       given(signedIn('/wardrobe')),
       message(Message.ChangedUrl({ url: urlOf('/looks') })),
-      model(({ looks }) => expect(AsyncData.isLoading(looks.saved)).toBe(true)),
+      model((current) => expect(AsyncData.isLoading(pageOf(current, lenses.looks).saved)).toBe(true)),
       Command.expectExact(ListLooks, ScrollToTop, FocusPageTitle),
       Command.resolve(ListLooks, LooksMessage.SucceededListLooks({ looks: [] })),
       Command.resolve(ScrollToTop, Message.CompletedScrollToTop()),
@@ -116,11 +113,7 @@ describe('opening a tab page inside the page', () => {
     )
     story(
       update,
-      given(
-        modifyFields(signedIn('/ask'), {
-          wardrobe: (wardrobe) => modifyFields(wardrobe, { pieces: () => PiecesData.Refreshing({ data: [tee] }) }),
-        }),
-      ),
+      given(withData('/ask', PiecesData.Refreshing({ data: [tee] }))),
       message(Message.ChangedUrl({ url: urlOf('/wardrobe') })),
       // The pieces on their way are not asked for again; the count of pieces without a clean picture is.
       Command.expectExact(CountUndrawn, ScrollToTop, FocusPageTitle),

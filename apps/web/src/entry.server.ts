@@ -34,7 +34,6 @@ const renderApplication = (
       catalogVersion,
       timeZone: 'UTC',
       referenceTime: yield* Clock.currentTimeMillis,
-      pathname: url.pathname,
       origin: url.origin,
       telemetryConsent: consentFromCookies(request.headers.get('cookie')),
       hasSessionCookie: (request.headers.get('cookie') ?? '').includes(`${SessionHttp.cookieName}=`),

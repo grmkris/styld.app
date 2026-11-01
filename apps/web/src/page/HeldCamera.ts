@@ -153,7 +153,7 @@ export const ShowPhoto = Mount.define('ShowPhoto', {
 
 /** Run the camera in the element it is mounted on, loading the camera code only then. Code that fails
  * to load (offline, or a newer release) reports the camera as unavailable.
- * @internal Exported for its tests. */
+ */
 export const WatchCamera = Mount.defineStream('WatchCamera', {
   args: { facing: Facing },
   messages: [

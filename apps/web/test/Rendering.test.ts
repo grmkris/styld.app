@@ -8,6 +8,7 @@ import { CircleNotchRegular } from '../src/PhosphorIcons.ts'
 import { consentCookie, consentFromCookies, type TelemetryConsent } from '../src/TelemetryConsent.ts'
 import { SessionHttp } from '@styld/auth/config'
 import { renderDocument, renderRequest } from '../src/entry.server.ts'
+import { urlOf } from './AppFixtures.ts'
 
 const assets = { entryScript: '/entry.js', stylesheets: [], modulePreloads: [] }
 const request = (language: string) => new Request('https://styld.test/', { headers: { 'accept-language': language } })
@@ -69,15 +70,17 @@ test('language preference writes require same-origin POST and produce protected 
 })
 
 test('language changes serialize persistence and keep failure visible', () => {
-  const initial = init({
-    locale: 'en',
-    catalogVersion,
-    timeZone: 'UTC',
-    referenceTime: 0,
-    pathname: '/',
-    origin: 'https://styld.test',
-    telemetryConsent: 'granted',
-  }).model
+  const initial = init(
+    {
+      locale: 'en',
+      catalogVersion,
+      timeZone: 'UTC',
+      referenceTime: 0,
+      origin: 'https://styld.test',
+      telemetryConsent: 'granted',
+    },
+    urlOf('/'),
+  ).model
   const saving = update(initial, Message.SelectedLocale({ value: 'sl' }))
   expect(saving.commands?.[0]?.name).toBe('SaveLocale')
   expect(update(saving.model, Message.SelectedLocale({ value: 'en' })).commands).toBeUndefined()
@@ -109,15 +112,15 @@ const flags = (telemetryConsent: TelemetryConsent): Flags => ({
   catalogVersion,
   timeZone: 'UTC',
   referenceTime: 0,
-  pathname: '/',
+
   origin: 'https://styld.test',
   telemetryConsent,
 })
 
 test('asks for diagnostics consent until the visitor decides, and lets them reopen the choice', () => {
-  const asking = init(flags('undecided')).model
+  const asking = init(flags('undecided'), urlOf('/')).model
   expect(asking.telemetry).toEqual({ consent: 'undecided', prompting: true })
-  expect(init(flags('granted')).model.telemetry).toEqual({ consent: 'granted', prompting: false })
+  expect(init(flags('granted'), urlOf('/')).model.telemetry).toEqual({ consent: 'granted', prompting: false })
   const choosing = update(asking, Message.ChoseTelemetryConsent({ granted: false }))
   expect(choosing.model.telemetry.prompting).toBe(false)
   expect(choosing.commands?.[0]?.name).toBe('RecordTelemetryConsent')

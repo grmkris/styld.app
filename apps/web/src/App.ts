@@ -1,4 +1,5 @@
 import { Effect, Match, Option, Schema } from 'effect'
+import type { Tone } from '@styld/protocol'
 import { BrowserAuth } from '@styld/auth/client'
 import { AccountClaims } from '@styld/auth/config'
 import * as HttpClient from 'effect/http/HttpClient'
@@ -10,31 +11,16 @@ import { catalogVersion, loadCatalog } from '@styld/i18n'
 import { Locale, localeEndpoint, parseLocale } from './Locale.ts'
 import { Message } from './Message.ts'
 import { arrive, followLink, Navigate, returnAfterSignIn } from './Navigation.ts'
-import {
-  boardsFold,
-  foldAskLeave,
-  foldLook,
-  foldLooks,
-  foldPhoto,
-  foldPhotos,
-  foldStartBoard,
-  foldVisitRetry,
-  foldWardrobeRevisit,
-  openHome,
-  openPage,
-  type Step,
-} from './PageEntries.ts'
+import { lenses, openPage, Page, type PageLens } from './Page.ts'
+import * as ServerData from './ServerData.ts'
 import * as Crypto from 'effect/Crypto'
 import { ReadYou, You, youOf } from './You.ts'
 import * as AddPiecesMessage from './page/AddPieces/Message.ts'
-import * as AddPiecesModel from './page/AddPieces/Model.ts'
 import * as AddPiecesSubscription from './page/AddPieces/Subscription.ts'
 import * as AddPieces from './page/AddPieces/Update.ts'
 import * as Account from './page/Account.ts'
 import * as Ask from './page/Ask.ts'
 import * as Today from './page/Today.ts'
-import * as BoardMessage from './page/Board/Message.ts'
-import * as BoardModel from './page/Board/Model.ts'
 import * as BoardSubscription from './page/Board/Subscription.ts'
 import * as Board from './page/Board/Update.ts'
 import * as Boards from './page/Boards.ts'
@@ -51,19 +37,22 @@ import * as Stylist from './page/Stylist.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
 import {
   AppRoute,
+  boardRouter,
   connectionAuthorizePath,
   homeRouter,
   isSameTab,
-  routeMeta,
+  looksRouter,
+  photosRouter,
   reviewRouter,
-  routeFromPathname,
   routeFromUrl,
+  routeMeta,
   signInHref,
   tabOf,
   wardrobeRouter,
 } from './route.ts'
 import { type Url, toString as urlToString } from 'foldkit/url'
 import type { StyldClient } from './StyldClient.ts'
+import type { PictureEncoder } from './Upload.ts'
 import { TelemetryConsent, TelemetryConsentControl } from './TelemetryConsent.ts'
 import { ReadTimeZone } from './TimeZone.ts'
 
@@ -74,7 +63,6 @@ export const Flags = Schema.Struct({
   catalogVersion: Schema.Literal(catalogVersion),
   timeZone: Schema.String,
   referenceTime: Schema.Number,
-  pathname: Schema.String,
   /** The public origin the page was served from: assistants connect to its `/mcp`. */
   origin: Schema.String,
   telemetryConsent: TelemetryConsent,
@@ -101,26 +89,24 @@ export const Model = Schema.Struct({
   localeSave: LocaleSave,
   session: Session,
   you: You,
-  login: Login.Model,
-  wardrobe: Wardrobe.Model,
-  piece: Piece.Model,
-  addPieces: AddPiecesModel.Model,
-  review: Review.Model,
-  stylist: Stylist.Model,
-  looks: Looks.Model,
-  look: Look.Model,
-  photos: Photos.Model,
-  photo: Photo.Model,
-  profile: ProfileEditor.Model,
-  today: Today.Model,
-  ask: Ask.Model,
-  boards: Boards.Model,
-  board: BoardModel.Model,
-  visit: Visit.Model,
-  account: Account.Model,
+  /** What several pages show: the person's pieces. */
+  data: ServerData.Model,
+  /** The page the document shows (Page.ts). */
+  page: Page,
   telemetry: Schema.Struct({ consent: TelemetryConsent, prompting: Schema.Boolean }),
 })
 export type Model = typeof Model.Type
+
+/** Someone signed in, or on their way in with a session cookie: Home is their table rather than the landing page,
+ * and public pages offer them Follow, Save and Report rather than a way to sign in. */
+export const hasSession = (model: Model) =>
+  Session.match(model.session, {
+    SignedIn: () => true,
+    SigningOut: () => true,
+    Checking: () => model.context.hasSessionCookie === true,
+    SignedOut: () => false,
+    Unavailable: () => false,
+  })
 
 // MESSAGE
 
@@ -172,110 +158,113 @@ const RecordTelemetryConsent = Command.define('RecordTelemetryConsent', {
     }),
 })
 
-export type Services =
+type Services =
   | HttpClient.HttpClient
   | BrowserAuth
   | Login.EmailSignIn
   | TelemetryConsentControl
   | StyldClient
   | Crypto.Crypto
+  | PictureEncoder
 type UpdateReturn = Update.Return<Model, Message, Services>
+type Step = Update.Step<Model, Message, Services>
+
+// LENS
+
+/** A page's lens (Page.ts) from the app's Model. */
+const at = <Child, ChildMessage>(lens: PageLens<Child, ChildMessage>) => ({
+  read: (model: Model) => lens.read(model.page),
+  write: (model: Model, child: Child) => modifyFields(model, { page: (page) => lens.write(page, child) }),
+  toParentMessage: lens.toParentMessage,
+})
+
+const data = {
+  read: (model: Model) => Option.some(model.data),
+  write: (model: Model, nextData: ServerData.Model) => modifyFields(model, { data: () => nextData }),
+  toParentMessage: (message: ServerData.Message) => Message.GotServerDataMessage({ message }),
+}
+
+const revisitPieces = Update.foldChildStep({ update: ServerData.revisitPieces, ...data })
+
+/** Each page's Message folded through its lens, with what its OutMessages mean for the app. */
+const navigateTo =
+  (href: string): Step =>
+  (stepModel) => ({ model: stepModel, commands: [Navigate({ href })] })
+
+const foldBoards = {
+  ...at(lenses.boards),
+  foldOutMessage: Boards.OutMessage.match<Step>({
+    CreatedBoard: ({ boardId }) => navigateTo(boardRouter({ boardId })),
+  }),
+}
+
+/** Start a board from outside Boards (Ask's + sheet), through Boards' own step. */
+const startBoard = (defaultName: string) =>
+  Update.foldChildStep({ update: Boards.startBoard(defaultName), ...foldBoards })
 
 // INIT
 
-/** The Commands that open a page that loads whole each time. */
-const pageCommands = (
-  route: AppRoute,
-  pages: {
-    readonly piece: Piece.Model
-    readonly look: Look.Model
-    readonly photo: Photo.Model
-    readonly board: BoardModel.Model
-    readonly visit: Visit.Model
-  },
-) =>
+/** What entering a page asks for, on a first load and on every tab change: each page's own entry, and the pieces
+ * where the page shows them. `signedIn` is the session cookie's hint, or a session just read. */
+const entering = (route: AppRoute, signedIn: boolean): ReadonlyArray<Step> =>
   Match.value(route).pipe(
-    Match.tag('Person', 'PublicPiece', () =>
-      Command.mapMessages(Visit.load(pages.visit), (message) => Message.GotVisitMessage({ message })),
+    Match.withReturnType<ReadonlyArray<Step>>(),
+    // Signed out, Home is the landing, which shows Edits from Styld.
+    Match.tag('Home', () =>
+      signedIn
+        ? [
+            Update.foldChildStep({ update: Today.enter, ...at(lenses.today), foldOutMessage: foldTodayOut }),
+            revisitPieces,
+          ]
+        : [Update.foldChildStep({ update: Visit.enterExplore, ...at(lenses.explore) })],
     ),
-    Match.tag('Board', 'BoardCollage', () =>
-      Command.mapMessages(Board.load(pages.board), (message) => Message.GotBoardMessage({ message })),
-    ),
-    Match.tag('Piece', () =>
-      Command.mapMessages(Piece.load(pages.piece), (message) => Message.GotPieceMessage({ message })),
-    ),
-    Match.tag('Review', () => Command.mapMessages(Review.load(), (message) => Message.GotReviewMessage({ message }))),
-    // Styld's answers show the person's pieces by name, so the chat reads the wardrobe too.
-    Match.tag('Stylist', () => [
-      ...Command.mapMessages(Stylist.load(), (message) => Message.GotStylistMessage({ message })),
-      ...Command.mapMessages(Wardrobe.load(), (message) => Message.GotWardrobeMessage({ message })),
+    Match.tag('Wardrobe', () => [
+      revisitPieces,
+      Update.foldChildStep({ update: Wardrobe.enter, ...at(lenses.wardrobe) }),
     ]),
-    Match.tag('Look', () =>
-      Command.mapMessages(Look.load(pages.look), (message) => Message.GotLookMessage({ message })),
+    Match.tag('Ask', ({ q }) => [revisitPieces, Update.foldChildStep({ update: Ask.enter(q), ...at(lenses.ask) })]),
+    Match.tag('Looks', () => [Update.foldChildStep({ update: Looks.revisit, ...at(lenses.looks) })]),
+    Match.tag('Photos', () => [Update.foldChildStep({ update: Photos.revisit, ...at(lenses.photos) })]),
+    Match.tag('Boards', () => [Update.foldChildStep({ update: Boards.revisit, ...at(lenses.boards) })]),
+    Match.tag('Explore', () => [Update.foldChildStep({ update: Visit.enterExplore, ...at(lenses.explore) })]),
+    // The account needs a session; signed out the page sends the visitor to sign in.
+    Match.tag('Account', () =>
+      signedIn ? [Update.foldChildStep({ update: Account.enter, ...at(lenses.account) })] : [],
     ),
-    // A photo's garments are matched to the person's pieces, so the page reads the wardrobe too.
-    Match.tag('Photo', () => [
-      ...Command.mapMessages(Photo.load(pages.photo), (message) => Message.GotPhotoMessage({ message })),
-      ...Command.mapMessages(Wardrobe.load(), (message) => Message.GotWardrobeMessage({ message })),
-    ]),
-    Match.tag('Profile', () =>
-      Command.mapMessages(ProfileEditor.load(), (message) => Message.GotProfileMessage({ message })),
-    ),
+    // Styld's answers name the person's pieces, and a photo's garments are matched to them.
+    Match.tag('Stylist', 'Photo', () => [revisitPieces]),
+    // The collage's tray shows the pieces; signed out a board can only be someone's public one.
+    Match.tag('Board', 'BoardCollage', () => (signedIn ? [revisitPieces] : [])),
     Match.orElse(() => []),
   )
 
-/** The page opens at the URL the browser or the server hands over; tests may give the path in the Flags alone. */
-export const init = (context: Flags, url?: Url): UpdateReturn => {
-  const route = url === undefined ? routeFromPathname(context.pathname) : routeFromUrl(url)
-  const piece = Piece.init(AppRoute.guards.Piece(route) ? route.pieceId : '')
-  const look = Look.init(AppRoute.guards.Look(route) ? route.lookId : '')
-  const photo = Photo.init(AppRoute.guards.Photo(route) ? route.photoId : '')
-  const board = BoardModel.init(
-    AppRoute.guards.Board(route) || AppRoute.guards.BoardCollage(route) ? route.boardId : '',
-    context.hasSessionCookie === true,
-  )
-  const atFollow = url !== undefined && Option.contains(url.hash, 'follow')
-  const visit = Visit.init(Visit.targetFor(route), context.hasSessionCookie === true, atFollow)
-  const opened = Update.combine<Model, Message, Services>(
+/** The page opens at the URL the browser or the server hands over. */
+export const init = (context: Flags, url: Url): UpdateReturn => {
+  const route = routeFromUrl(url)
+  const signedIn = context.hasSessionCookie === true
+  const page = openPage(route, signedIn, Option.contains(url.hash, 'follow'))
+  const entered = Update.combine<Model, Message, Services>(
     {
       context,
       route,
       localeSave: LocaleSave.Saved(),
       session: Session.Checking(),
       you: You.Unknown(),
-      login: Login.init(),
-      wardrobe: Wardrobe.init(),
-      piece,
-      addPieces: AddPiecesModel.init(),
-      review: Review.init(),
-      stylist: Stylist.init(AppRoute.guards.Stylist(route) ? route.q : Option.none()),
-      looks: Looks.init(),
-      look,
-      photos: Photos.init(),
-      photo,
-      profile: ProfileEditor.init(),
-      today: Today.init(),
-      ask: Ask.init(),
-      boards: Boards.init(),
-      board,
-      visit,
-      account: Account.init(),
+      data: ServerData.init(),
+      page: page.model,
       telemetry: { consent: context.telemetryConsent, prompting: context.telemetryConsent === 'undecided' },
     },
-    openPage(route, context.hasSessionCookie === true),
+    entering(route, signedIn),
   )
   return {
-    model: opened.model,
-    commands: [
-      ReadSession(),
-      ReadTimeZone(),
-      ...pageCommands(route, { piece, look, photo, board, visit }),
-      ...(opened.commands ?? []),
-    ],
+    model: entered.model,
+    commands: [ReadSession(), ReadTimeZone(), ...(page.commands ?? []), ...(entered.commands ?? [])],
   }
 }
 
 // UPDATE
+
+const foldTodayOut = Today.OutMessage.match<Step>({ RequestedPieces: () => revisitPieces })
 
 /** The address changed in the page: its tab opens with what the app has, refreshed behind; any other page loads. */
 const changedUrl = (model: Model, url: Url): UpdateReturn => {
@@ -285,8 +274,8 @@ const changedUrl = (model: Model, url: Url): UpdateReturn => {
   if (isSameTab(model.route, route))
     return Option.isSome(url.hash) ? { model: moved, commands: arrive(url.hash) } : { model: moved }
   return Update.combine<Model, Message, Services>(moved, [
-    foldAskLeave,
-    ...openPage(route, true),
+    Update.foldChildStep({ update: Ask.leave, ...at(lenses.ask) }),
+    ...entering(route, true),
     (stepModel) => ({ model: stepModel, commands: arrive(url.hash) }),
   ])
 }
@@ -298,13 +287,12 @@ const afterSignIn =
   (model) =>
     Match.value(route).pipe(
       Match.withReturnType<UpdateReturn>(),
-      Match.tag('Login', ({ next }) => ({
-        model,
-        commands: [returnAfterSignIn(next)],
-      })),
+      Match.tag('Login', ({ next }) => ({ model, commands: [returnAfterSignIn(next)] })),
       Match.tag('LoginForConnection', () => ({ model, commands: [Navigate({ href: connectionAuthorizePath })] })),
       Match.tag('Home', () =>
-        model.context.hasSessionCookie === true ? { model } : Update.combine<Model, Message, Services>(model, openHome),
+        model.context.hasSessionCookie === true
+          ? { model }
+          : Update.combine<Model, Message, Services>(model, entering(route, true)),
       ),
       Match.orElse(() => ({ model })),
     )
@@ -313,23 +301,8 @@ const afterSignIn =
 const afterSignOut = (route: AppRoute) =>
   routeMeta(route).session === 'required' ? [Navigate({ href: signInHref })] : []
 
-const foldLoginOutMessage = Login.OutMessage.match<Update.Step<Model, Message, Services>>({
-  SignedIn:
-    ({ claims }) =>
-    (stepModel) =>
-      afterSignIn(stepModel.route)(modifyFields(stepModel, { session: () => Session.SignedIn({ claims }) })),
-})
-
-const foldLogin = Update.foldChild({
-  update: Login.update,
-  read: (model: Model) => Option.some(model.login),
-  write: (model: Model, nextLogin: Login.Model) => modifyFields(model, { login: () => nextLogin }),
-  toParentMessage: (message: Login.Message) => Message.GotLoginMessage({ message }),
-  foldOutMessage: foldLoginOutMessage,
-})
-
 /** Sign out of the session the page holds. */
-const requestSignOut = (model: Model): Update.Return<Model, Message, Services> => {
+const requestSignOut = (model: Model): UpdateReturn => {
   const { session } = model
   if (!Session.guards.SignedIn(session)) return { model }
   return {
@@ -338,12 +311,21 @@ const requestSignOut = (model: Model): Update.Return<Model, Message, Services> =
   }
 }
 
+const foldLogin = Update.foldChild({
+  update: Login.update,
+  ...at(lenses.login),
+  foldOutMessage: Login.OutMessage.match<Step>({
+    SignedIn:
+      ({ claims }) =>
+      (stepModel) =>
+        afterSignIn(stepModel.route)(modifyFields(stepModel, { session: () => Session.SignedIn({ claims }) })),
+  }),
+})
+
 const foldAccount = Update.foldChild({
   update: Account.update,
-  read: (model: Model) => Option.some(model.account),
-  write: (model: Model, account: Account.Model) => modifyFields(model, { account: () => account }),
-  toParentMessage: (message: Account.Message) => Message.GotAccountMessage({ message }),
-  foldOutMessage: Account.OutMessage.match<Update.Step<Model, Message, Services>>({
+  ...at(lenses.account),
+  foldOutMessage: Account.OutMessage.match<Step>({
     RequestedSignOut: () => requestSignOut,
     // The account is gone with its session: the visitor starts over on the home page.
     DeletedAccount: () => (stepModel) => ({
@@ -355,122 +337,98 @@ const foldAccount = Update.foldChild({
 
 const foldWardrobe = Update.foldChild({
   update: Wardrobe.update,
-  read: (model: Model) => Option.some(model.wardrobe),
-  write: (model: Model, wardrobe: Wardrobe.Model) => modifyFields(model, { wardrobe: () => wardrobe }),
-  toParentMessage: (message: Wardrobe.Message) => Message.GotWardrobeMessage({ message }),
+  ...at(lenses.wardrobe),
+  foldOutMessage: Wardrobe.OutMessage.match<Step>({ RequestedPieces: () => revisitPieces }),
 })
 
 const foldPiece = Update.foldChild({
   update: Piece.update,
-  read: (model: Model) => Option.some(model.piece),
-  write: (model: Model, piece: Piece.Model) => modifyFields(model, { piece: () => piece }),
-  toParentMessage: (message: Piece.Message) => Message.GotPieceMessage({ message }),
-  foldOutMessage: Piece.OutMessage.match<Update.Step<Model, Message, Services>>({
-    DeletedPiece: () => (stepModel) => ({ model: stepModel, commands: [Navigate({ href: wardrobeRouter({}) })] }),
-  }),
+  ...at(lenses.piece),
+  foldOutMessage: Piece.OutMessage.match<Step>({ DeletedPiece: () => navigateTo(wardrobeRouter({})) }),
 })
 
 /** A profile saved in the editor is who the masthead shows from then on. */
 const foldProfile = Update.foldChild({
   update: ProfileEditor.update,
-  read: (model: Model) => Option.some(model.profile),
-  write: (model: Model, profile: ProfileEditor.Model) => modifyFields(model, { profile: () => profile }),
-  toParentMessage: (message: ProfileEditor.Message) => Message.GotProfileMessage({ message }),
-  foldOutMessage: ProfileEditor.OutMessage.match<Update.Step<Model, Message, Services>>({
+  ...at(lenses.profile),
+  foldOutMessage: ProfileEditor.OutMessage.match<Step>({
     SavedProfile:
       ({ profile }) =>
-      (model) => ({ model: modifyFields(model, { you: () => youOf(profile.name, profile.tone) }) }),
+      (stepModel) => ({ model: modifyFields(stepModel, { you: () => youOf(profile.name, profile.tone) }) }),
   }),
 })
 
-const foldVisit = Update.foldChild({
-  update: Visit.update,
-  read: (model: Model) => Option.some(model.visit),
-  write: (model: Model, visit: Visit.Model) => modifyFields(model, { visit: () => visit }),
-  toParentMessage: (message: Visit.Message) => Message.GotVisitMessage({ message }),
-})
-
-const foldToday = Update.foldChild({
-  update: Today.update,
-  read: (model: Model) => Option.some(model.today),
-  write: (model: Model, today: Today.Model) => modifyFields(model, { today: () => today }),
-  toParentMessage: (message: Today.Message) => Message.GotTodayMessage({ message }),
-  foldOutMessage: Today.OutMessage.match<Step>({ RequestedPieces: () => foldWardrobeRevisit }),
-})
+const foldToday = Update.foldChild({ update: Today.update, ...at(lenses.today), foldOutMessage: foldTodayOut })
 
 const foldAsk = Update.foldChild({
   update: Ask.update,
-  read: (model: Model) => Option.some(model.ask),
-  write: (model: Model, ask: Ask.Model) => modifyFields(model, { ask: () => ask }),
-  toParentMessage: (message: Ask.Message) => Message.GotAskMessage({ message }),
+  ...at(lenses.ask),
   foldOutMessage: Ask.OutMessage.match<Step>({
-    RequestedPieces: () => foldWardrobeRevisit,
-    RequestedNewBoard: ({ defaultName }) => foldStartBoard(defaultName),
+    RequestedPieces: () => revisitPieces,
+    RequestedNewBoard: ({ defaultName }) => startBoard(defaultName),
   }),
-})
-
-const foldBoards = Update.foldChild({ update: Boards.update, ...boardsFold })
-
-const foldBoard = Update.foldChild({
-  update: Board.update,
-  read: (model: Model) => Option.some(model.board),
-  write: (model: Model, board: BoardModel.Model) => modifyFields(model, { board: () => board }),
-  toParentMessage: (message: BoardMessage.Message) => Message.GotBoardMessage({ message }),
 })
 
 const foldAddPieces = Update.foldChild({
   update: AddPieces.update,
-  read: (model: Model) => Option.some(model.addPieces),
-  write: (model: Model, addPieces: AddPiecesModel.Model) => modifyFields(model, { addPieces: () => addPieces }),
-  toParentMessage: (message: AddPiecesMessage.Message) => Message.GotAddPiecesMessage({ message }),
-  foldOutMessage: AddPiecesMessage.OutMessage.match<Update.Step<Model, Message, Services>>({
-    FinishedSending: () => (stepModel) => ({ model: stepModel, commands: [Navigate({ href: reviewRouter({}) })] }),
-  }),
-})
-
-/** Ongoing work the pages ask for. The add page keeps its own after the person moves on: a video still
- * being sent keeps the screen on wherever they are. */
-export const subscriptions = Subscription.aggregate(
-  Subscription.lift(AddPiecesSubscription.subscriptions)<Model, Message>({
-    read: (model) => Option.some(model.addPieces),
-    toParentMessage: (message) => Message.GotAddPiecesMessage({ message }),
-  }),
-  // The pieces are asked for again while one is processing, whichever page shows them.
-  Subscription.lift(Wardrobe.subscriptions)<Model, Message>({
-    read: (model) => Option.some(model.wardrobe),
-    toParentMessage: (message) => Message.GotWardrobeMessage({ message }),
-  }),
-  // A board's page listens for coming back into view; its collage editor also for hands, keys, pasted pictures and
-  // dropped files.
-  Subscription.lift(BoardSubscription.pageSubscriptions)<Model, Message>({
-    read: (model) =>
-      AppRoute.guards.Board(model.route) || AppRoute.guards.BoardCollage(model.route)
-        ? Option.some(model.board)
-        : Option.none(),
-    toParentMessage: (message) => Message.GotBoardMessage({ message }),
-  }),
-  Subscription.lift(BoardSubscription.subscriptions)<Model, Message>({
-    read: (model) => (AppRoute.guards.BoardCollage(model.route) ? Option.some(model.board) : Option.none()),
-    toParentMessage: (message) => Message.GotBoardMessage({ message }),
-  }),
-)
-
-const foldStylist = Update.foldChild({
-  update: Stylist.update,
-  read: (model: Model) => Option.some(model.stylist),
-  write: (model: Model, stylist: Stylist.Model) => modifyFields(model, { stylist: () => stylist }),
-  toParentMessage: (message: Stylist.Message) => Message.GotStylistMessage({ message }),
+  ...at(lenses.addPieces),
+  foldOutMessage: AddPiecesMessage.OutMessage.match<Step>({ FinishedSending: () => navigateTo(reviewRouter({})) }),
 })
 
 const foldReview = Update.foldChild({
   update: Review.update,
-  read: (model: Model) => Option.some(model.review),
-  write: (model: Model, review: Review.Model) => modifyFields(model, { review: () => review }),
-  toParentMessage: (message: Review.Message) => Message.GotReviewMessage({ message }),
-  foldOutMessage: Review.OutMessage.match<Update.Step<Model, Message, Services>>({
-    AddedPieces: () => (stepModel) => ({ model: stepModel, commands: [Navigate({ href: wardrobeRouter({}) })] }),
-  }),
+  ...at(lenses.review),
+  foldOutMessage: Review.OutMessage.match<Step>({ AddedPieces: () => navigateTo(wardrobeRouter({})) }),
 })
+
+const foldLook = Update.foldChild({
+  update: Look.update,
+  ...at(lenses.look),
+  foldOutMessage: Look.OutMessage.match<Step>({ DeletedLook: () => navigateTo(looksRouter({})) }),
+})
+
+const foldPhoto = Update.foldChild({
+  update: Photo.update,
+  ...at(lenses.photo),
+  foldOutMessage: Photo.OutMessage.match<Step>({ DeletedPhoto: () => navigateTo(photosRouter({})) }),
+})
+
+const foldPages = {
+  boards: Update.foldChild({ update: Boards.update, ...foldBoards }),
+  board: Update.foldChild({ update: Board.update, ...at(lenses.board) }),
+  looks: Update.foldChild({ update: Looks.update, ...at(lenses.looks) }),
+  photos: Update.foldChild({ update: Photos.update, ...at(lenses.photos) }),
+  stylist: Update.foldChild({ update: Stylist.update, ...at(lenses.stylist) }),
+  visit: Update.foldChild({ update: Visit.update, ...at(lenses.visit) }),
+  explore: Update.foldChild({ update: Visit.update, ...at(lenses.explore) }),
+  data: Update.foldChild({ update: ServerData.update, ...data }),
+}
+
+/** The landing's Try again, through Explore's own step. */
+const retryLanding = Update.foldChildStep({ update: Visit.retry, ...at(lenses.explore) })
+
+// SUBSCRIPTION
+
+/** The pages that show the pieces, which are asked for again while one is settling. */
+const showsPieces = (model: Model) =>
+  Match.value(model.route).pipe(
+    Match.tag('Wardrobe', 'Ask', 'BoardCollage', 'Photo', () => true),
+    Match.tag('Home', () => hasSession(model)),
+    Match.orElse(() => false),
+  )
+
+/** Ongoing work the open page asks for: each runs only while its page is open. */
+export const subscriptions = Subscription.aggregate(
+  Subscription.lift(AddPiecesSubscription.subscriptions)<Model, Message>(at(lenses.addPieces)),
+  Subscription.lift(ServerData.subscriptions)<Model, Message>({ ...data, when: showsPieces }),
+  // A board's page listens for coming back into view; its collage editor also for hands, keys, pasted pictures and
+  // dropped files.
+  Subscription.lift(BoardSubscription.pageSubscriptions)<Model, Message>(at(lenses.board)),
+  Subscription.lift(BoardSubscription.subscriptions)<Model, Message>({
+    ...at(lenses.board),
+    when: (model) => AppRoute.guards.BoardCollage(model.route),
+  }),
+)
 
 /** The session as read: signed out, or signed in, when sign-in hands over to another page (which reads its own) and
  * any other page shows you in the masthead, blank until the profile is read. */
@@ -490,39 +448,60 @@ const receivedSession = (model: Model, claims: AccountClaims | null): UpdateRetu
       }
 }
 
+const settings = (model: Model) => ({
+  SelectedLocale: ({ value }: { readonly value: string }): UpdateReturn => {
+    const locale = parseLocale(value)
+    if (locale === undefined || LocaleSave.guards.Saving(model.localeSave)) return { model }
+    return {
+      model: modifyFields(model, { localeSave: () => LocaleSave.Saving({ locale }) }),
+      commands: [SaveLocale({ locale })],
+    }
+  },
+  SucceededReadTimeZone: ({ timeZone }: { readonly timeZone: string }): UpdateReturn => ({
+    model: modifyFields(model, { context: (context) => modifyFields(context, { timeZone: () => timeZone }) }),
+  }),
+  SucceededSaveLocale: ({ locale }: { readonly locale: Locale }): UpdateReturn => ({
+    model: modifyFields(model, {
+      context: (context) => modifyFields(context, { locale: () => locale }),
+      localeSave: () => LocaleSave.Saved(),
+    }),
+  }),
+  FailedSaveLocale: (): UpdateReturn => ({ model: modifyFields(model, { localeSave: () => LocaleSave.Failed() }) }),
+  ChoseTelemetryConsent: ({ granted }: { readonly granted: boolean }): UpdateReturn => ({
+    model: modifyFields(model, { telemetry: (telemetry) => modifyFields(telemetry, { prompting: () => false }) }),
+    commands: [RecordTelemetryConsent({ granted })],
+  }),
+  RecordedTelemetryConsent: ({ granted }: { readonly granted: boolean }): UpdateReturn => {
+    const consent: TelemetryConsent = granted ? 'granted' : 'denied'
+    return { model: modifyFields(model, { telemetry: () => ({ consent, prompting: false }) }) }
+  },
+  OpenedTelemetrySettings: (): UpdateReturn => ({
+    model: modifyFields(model, { telemetry: (telemetry) => modifyFields(telemetry, { prompting: () => true }) }),
+  }),
+})
+
+const sessionUpdates = (model: Model) => ({
+  ReceivedSession: ({ claims }: { readonly claims: AccountClaims | null }) => receivedSession(model, claims),
+  SucceededReadYou: ({ name, tone }: { readonly name: string; readonly tone: Tone }): UpdateReturn => ({
+    model: modifyFields(model, { you: () => youOf(name, tone) }),
+  }),
+  FailedReadYou: (): UpdateReturn => ({ model: modifyFields(model, { you: () => You.Unknown() }) }),
+  FailedReadSession: (): UpdateReturn => ({ model: modifyFields(model, { session: () => Session.Unavailable() }) }),
+  RequestedSession: (): UpdateReturn => ({
+    model: modifyFields(model, { session: () => Session.Checking() }),
+    commands: [ReadSession()],
+  }),
+  SucceededSignOut: (): UpdateReturn => ({
+    model: modifyFields(model, { session: () => Session.SignedOut(), you: () => You.Unknown() }),
+    commands: afterSignOut(model.route),
+  }),
+  FailedSignOut: (): UpdateReturn => ({ model: modifyFields(model, { session: () => Session.Unavailable() }) }),
+})
+
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
-    SelectedLocale: ({ value }) => {
-      const locale = parseLocale(value)
-      if (locale === undefined || LocaleSave.guards.Saving(model.localeSave)) return { model }
-      return {
-        model: modifyFields(model, { localeSave: () => LocaleSave.Saving({ locale }) }),
-        commands: [SaveLocale({ locale })],
-      }
-    },
-    SucceededReadTimeZone: ({ timeZone }) => ({
-      model: modifyFields(model, { context: (context) => modifyFields(context, { timeZone: () => timeZone }) }),
-    }),
-    SucceededSaveLocale: ({ locale }) => ({
-      model: modifyFields(model, {
-        context: (context) => modifyFields(context, { locale: () => locale }),
-        localeSave: () => LocaleSave.Saved(),
-      }),
-    }),
-    FailedSaveLocale: () => ({ model: modifyFields(model, { localeSave: () => LocaleSave.Failed() }) }),
-    ReceivedSession: ({ claims }) => receivedSession(model, claims),
-    SucceededReadYou: ({ name, tone }) => ({ model: modifyFields(model, { you: () => youOf(name, tone) }) }),
-    FailedReadYou: () => ({ model: modifyFields(model, { you: () => You.Unknown() }) }),
-    FailedReadSession: () => ({ model: modifyFields(model, { session: () => Session.Unavailable() }) }),
-    RequestedSession: () => ({
-      model: modifyFields(model, { session: () => Session.Checking() }),
-      commands: [ReadSession()],
-    }),
-    SucceededSignOut: () => ({
-      model: modifyFields(model, { session: () => Session.SignedOut(), you: () => You.Unknown() }),
-      commands: afterSignOut(model.route),
-    }),
-    FailedSignOut: () => ({ model: modifyFields(model, { session: () => Session.Unavailable() }) }),
+    ...settings(model),
+    ...sessionUpdates(model),
     CompletedNavigate: () => ({ model }),
     ClickedLink: ({ request }) => ({
       model,
@@ -539,27 +518,18 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotPieceMessage: (got) => foldPiece(model, got.message),
     GotAddPiecesMessage: (got) => foldAddPieces(model, got.message),
     GotReviewMessage: (got) => foldReview(model, got.message),
-    GotStylistMessage: (got) => foldStylist(model, got.message),
-    GotLooksMessage: (got) => foldLooks(model, got.message),
-    GotPhotosMessage: (got) => foldPhotos(model, got.message),
+    GotStylistMessage: (got) => foldPages.stylist(model, got.message),
+    GotLooksMessage: (got) => foldPages.looks(model, got.message),
+    GotPhotosMessage: (got) => foldPages.photos(model, got.message),
     GotPhotoMessage: (got) => foldPhoto(model, got.message),
     GotLookMessage: (got) => foldLook(model, got.message),
     GotProfileMessage: (got) => foldProfile(model, got.message),
     GotTodayMessage: (got) => foldToday(model, got.message),
     GotAskMessage: (got) => foldAsk(model, got.message),
-    GotBoardsMessage: (got) => foldBoards(model, got.message),
-    GotBoardMessage: (got) => foldBoard(model, got.message),
-    GotVisitMessage: (got) => foldVisit(model, got.message),
-    ClickedRetryLanding: () => foldVisitRetry(model),
-    ChoseTelemetryConsent: ({ granted }) => ({
-      model: modifyFields(model, { telemetry: (telemetry) => modifyFields(telemetry, { prompting: () => false }) }),
-      commands: [RecordTelemetryConsent({ granted })],
-    }),
-    RecordedTelemetryConsent: ({ granted }) => {
-      const consent: TelemetryConsent = granted ? 'granted' : 'denied'
-      return { model: modifyFields(model, { telemetry: () => ({ consent, prompting: false }) }) }
-    },
-    OpenedTelemetrySettings: () => ({
-      model: modifyFields(model, { telemetry: (telemetry) => modifyFields(telemetry, { prompting: () => true }) }),
-    }),
+    GotBoardsMessage: (got) => foldPages.boards(model, got.message),
+    GotBoardMessage: (got) => foldPages.board(model, got.message),
+    GotVisitMessage: (got) => foldPages.visit(model, got.message),
+    GotExploreMessage: (got) => foldPages.explore(model, got.message),
+    GotServerDataMessage: (got) => foldPages.data(model, got.message),
+    ClickedRetryLanding: () => retryLanding(model),
   })

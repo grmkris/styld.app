@@ -4,11 +4,12 @@ import type * as Crypto from 'effect/Crypto'
 import type { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import type { StyldClient } from '../../StyldClient.ts'
+import type { PictureEncoder } from '../../Upload.ts'
 import { MakeIds, SaveItems, WaitToSave } from './Commands.ts'
 import type { Message } from './Message.ts'
 import { fromBoard, Gesture, type Model, Saving } from './Model.ts'
 
-export type Services = StyldClient | Crypto.Crypto
+export type Services = StyldClient | Crypto.Crypto | PictureEncoder
 export type UpdateReturn = Update.Return<Model, Message, Services>
 
 const historyLimit = 40

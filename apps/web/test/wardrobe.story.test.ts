@@ -1,78 +1,18 @@
 import { Option } from 'effect'
-import { AsyncData } from 'foldkit'
-import { modifyFields } from 'foldkit/struct'
-import { Command, given, message, model, story } from 'foldkit/story'
+import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
-import {
-  brandsOf,
-  shownPieces,
-  DrawPictures,
-  ListPieces,
-  Message,
-  PiecesData,
-  enter,
-  init,
-  revisit,
-  subscriptions,
-  update,
-} from '../src/page/Wardrobe.ts'
+import { brandsOf, DrawPictures, enter, init, Message, OutMessage, shownPieces, update } from '../src/page/Wardrobe.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
-const ready = pieceFixture('ready', { name: 'White tee' })
-const processing = pieceFixture('processing', { status: 'processing' })
-const showing = (...pieces: Parameters<typeof PiecesData.Success>[0]['data']) =>
-  modifyFields(init(), { pieces: () => PiecesData.Success({ data: pieces }) })
-
-describe('the wardrobe keeps its pieces current', () => {
-  test('a first visit asks for the pieces; coming back keeps them on screen while they are asked for again', () => {
-    const first = revisit(init())
-    expect(AsyncData.isLoading(first.model.pieces)).toBe(true)
-    expect(first.commands?.map(({ name }) => name)).toEqual(['ListPieces'])
-    const again = revisit(showing(ready))
-    expect(again.model.pieces).toEqual(PiecesData.Refreshing({ data: [ready] }))
-    expect(again.commands?.map(({ name }) => name)).toEqual(['ListPieces'])
-    // A request already on its way is not sent twice.
-    expect(revisit(again.model).commands ?? []).toEqual([])
-  })
-
-  test('while a piece is processing, each tick asks again, and the list settles once none is', () => {
+describe('the wardrobe tab', () => {
+  test('a wardrobe that cannot load asks the app for its pieces again on retry', () => {
     story(
       update,
-      given(showing(processing, ready)),
-      message(Message.TickedRefresh()),
-      model(({ pieces }) => expect(AsyncData.isRefreshing(pieces)).toBe(true)),
-      Command.expectExact(ListPieces),
-      Command.resolve(
-        ListPieces,
-        Message.SucceededListPieces({ pieces: [pieceFixture('processing', { status: 'ready' }), ready] }),
-      ),
-      Command.expectNone(),
-      model(({ pieces }) =>
-        expect(Option.map(AsyncData.getData(pieces), (list) => list.length)).toEqual(Option.some(2)),
-      ),
-    )
-  })
-
-  test('a failed refresh keeps the pieces already shown', () => {
-    story(
-      update,
-      given(showing(processing)),
-      message(Message.TickedRefresh()),
-      Command.resolve(ListPieces, Message.FailedListPieces()),
-      model(({ pieces }) => expect(pieces).toEqual(PiecesData.Stale({ error: 'Unavailable', data: [processing] }))),
-    )
-  })
-
-  test('a wardrobe that cannot load says so and loads again on retry', () => {
-    story(
-      update,
-      given(revisit(init()).model),
-      message(Message.FailedListPieces()),
-      model(({ pieces }) => expect(AsyncData.isFailure(pieces)).toBe(true)),
+      given(init()),
       message(Message.ClickedRetry()),
-      model(({ pieces }) => expect(AsyncData.isLoading(pieces)).toBe(true)),
-      Command.expectExact(ListPieces),
-      Command.resolve(ListPieces, Message.SucceededListPieces({ pieces: [] })),
+      Command.expectNone(),
+      model((current) => expect(current).toEqual(init())),
+      expectOutMessage(OutMessage.RequestedPieces()),
     )
   })
 
@@ -94,33 +34,23 @@ describe('the wardrobe keeps its pieces current', () => {
   })
 })
 
-/** Whether the wardrobe asks for its pieces again on each tick. */
-const refreshing = (current: Parameters<typeof update>[0]) =>
-  subscriptions.refreshWhileProcessing.modelToDependencies(current).isActive
-const drawn = (state: 'drawing' | 'ready') => pieceFixture('drawn', { picture: { state, shows: 'photo', version: 0 } })
-
 describe('clean pictures for the pieces that have none', () => {
-  test('the wardrobe page counts them, and one tap asks for all of them and reads the pieces again', () => {
-    expect(enter(init()).commands?.map(({ name }) => name)).toEqual(['ListPieces', 'CountUndrawn'])
-    const counted = update(showing(ready), Message.CompletedCountUndrawn({ pieces: 4 })).model
-    expect(counted.undrawn).toBe(4)
-    const sending = update(counted, Message.ClickedDrawPictures()).model
-    expect(update(sending, Message.ClickedDrawPictures()).commands ?? []).toEqual([])
+  test('the wardrobe page counts them, and one tap asks for all of them and has the pieces read again', () => {
     story(
       update,
-      given(counted),
+      given(enter(init()).model),
+      message(Message.CompletedCountUndrawn({ pieces: 4 })),
+      model(({ undrawn }) => expect(undrawn).toBe(4)),
       message(Message.ClickedDrawPictures()),
       Command.expectExact(DrawPictures),
       Command.resolve(DrawPictures, Message.SucceededDrawPictures()),
       model(({ undrawn, backfill }) => expect({ undrawn, backfill }).toEqual({ undrawn: 0, backfill: 'sent' })),
-      Command.expectExact(ListPieces),
-      Command.resolve(ListPieces, Message.SucceededListPieces({ pieces: [ready] })),
+      expectOutMessage(OutMessage.RequestedPieces()),
     )
-  })
-
-  test('the pieces are asked for again while a drawing is on its way, and not once it is done', () => {
-    expect(refreshing(showing(drawn('drawing'), ready))).toBe(true)
-    expect(refreshing(showing(drawn('ready'), ready))).toBe(false)
+    expect(enter(init()).commands?.map(({ name }) => name)).toEqual(['CountUndrawn'])
+    // A second tap while the first is on its way asks for nothing more.
+    const sending = update(init(), Message.ClickedDrawPictures()).model
+    expect(update(sending, Message.ClickedDrawPictures()).commands ?? []).toEqual([])
   })
 })
 

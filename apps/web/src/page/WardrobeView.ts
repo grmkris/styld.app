@@ -12,14 +12,15 @@ import { addPiecesRouter, pieceRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
+import type { PiecesData } from '../ServerData.ts'
 import { brandsOf, filterCount, Message, type Model, shownPieces } from './Wardrobe.ts'
 import { groupName, occasionName, pieceLabel, seasonName, typeName } from './WardrobeWords.ts'
 import { chipPicker, colourPicker } from './PieceFields.ts'
 import { bottomSheet, sheetShown } from './Sheet.ts'
 import * as styles from './WardrobeView.styles.ts'
 import { wardrobeMain } from './WardrobeTabs.ts'
-import { chip, chipSkeleton, sheetBody } from './AskView.styles.ts'
-import { chosen } from './ExploreView.styles.ts'
+import { chip, chipSkeleton, chosen } from '../Controls.styles.ts'
+import { sheetBody } from './Sheet.styles.ts'
 
 /** The small image of a piece; the API Worker serves it to its owner only. A new drawing is a new address. */
 const thumbnailPath = (piece: Piece) =>
@@ -363,18 +364,19 @@ const failedView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   ])
 
 /** The person's pieces on paper, browsed by group and type as a shop is (Gallery `wardrobe.html`). */
-export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
-  wardrobeMain(
-    'pieces',
-    styles.wardrobePage(),
-    [
-      AsyncData.matchData(model.pieces, {
-        onEmpty: () => loadingView(locale, h),
-        onFailure: () => failedView(locale, h),
-        onData: (pieces) => loadedView(pieces, model, locale, h),
-      }),
-    ],
-    locale,
-    h,
-  ),
+export const view = Submodel.defineView<Model, Message, { readonly locale: Locale; readonly pieces: PiecesData }>(
+  (model, { locale, pieces }, h) =>
+    wardrobeMain(
+      'pieces',
+      styles.wardrobePage(),
+      [
+        AsyncData.matchData(pieces, {
+          onEmpty: () => loadingView(locale, h),
+          onFailure: () => failedView(locale, h),
+          onData: (shown) => loadedView(shown, model, locale, h),
+        }),
+      ],
+      locale,
+      h,
+    ),
 )

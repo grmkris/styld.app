@@ -1,30 +1,16 @@
-import { catalogVersion } from '@styld/i18n'
 import { CaptureId } from '@styld/protocol'
 import { Option } from 'effect'
 import { Command, changeFiles, click, expect, given, role, scene, selector, submit, text, type } from 'foldkit/scene'
-import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
-import { Session, init, update } from '../src/App.ts'
+import { update } from '../src/App.ts'
+import { at } from './AppFixtures.ts'
 import { Message as AppMessage } from '../src/Message.ts'
 import { Navigate } from '../src/Navigation.ts'
 import { InspectVideo, SendLink, SendVideoPart } from '../src/page/AddPieces/Commands.ts'
 import { Message, type VideoPlan } from '../src/page/AddPieces/Message.ts'
 import { view } from '../src/View.ts'
 
-const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
-
-const addPage = modifyFields(
-  init({
-    locale: 'en',
-    catalogVersion,
-    timeZone: 'UTC',
-    referenceTime: 0,
-    pathname: '/wardrobe/add',
-    origin: 'https://styld.test',
-    telemetryConsent: 'denied',
-  }).model,
-  { session: () => Session.SignedIn({ claims }) },
-)
+const addPage = at('/wardrobe/add', { signedIn: true })
 
 const rail = new globalThis.File([new Uint8Array(8)], 'rail.mov', { type: 'video/quicktime' })
 

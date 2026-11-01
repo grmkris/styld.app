@@ -13,7 +13,6 @@ import {
 } from '@styld/protocol'
 import * as Make from './Make.ts'
 import * as People from '../People.ts'
-import * as WardrobePage from '../Wardrobe.ts'
 import { Schema } from 'effect'
 import { File } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
@@ -39,7 +38,6 @@ export const Message = defineMessageUnion({
   SucceededLoadBoard: { board: Board },
   FailedLoadBoard: { missing: Schema.Boolean },
   SucceededVisitBoard: { board: PublicBoard },
-  GotWardrobeMessage: { message: WardrobePage.Message },
   CompletedMakeIds: { ids: Schema.Array(BoardItemId) },
   MeasuredPaper: { width: Schema.Number },
 

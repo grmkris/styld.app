@@ -1,25 +1,12 @@
-import { catalogVersion } from '@styld/i18n'
 import { expect, given, role, scene, text } from 'foldkit/scene'
-import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
-import { init, Session, update } from '../src/App.ts'
+import { update } from '../src/App.ts'
+import { lenses } from '../src/Page.ts'
+import { at, withPage } from './AppFixtures.ts'
 import { SavedData } from '../src/page/Looks.ts'
 import { view } from '../src/View.ts'
 
-const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
-const looksWith = (saved: SavedData) =>
-  modifyFields(
-    init({
-      locale: 'en',
-      catalogVersion,
-      timeZone: 'UTC',
-      referenceTime: 0,
-      pathname: '/looks',
-      origin: 'https://styld.test',
-      telemetryConsent: 'denied',
-    }).model,
-    { session: () => Session.SignedIn({ claims }), looks: () => ({ saved }) },
-  )
+const looksWith = (saved: SavedData) => withPage(at('/looks', { signedIn: true }), lenses.looks, () => ({ saved }))
 
 describe('the looks tab', () => {
   test('with no looks yet, says where one is made and leads there', () => {

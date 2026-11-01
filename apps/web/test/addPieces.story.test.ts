@@ -73,10 +73,9 @@ const camera = (sent: HeldCameraMessage) => Message.GotHeldCameraMessage({ messa
 /** Where a photo came from; a camera shot overrides it. */
 const picker: CaptureSource = 'picker'
 
-const photoArgs = (index: number, photo: File, contentType: 'image/jpeg' | 'image/png' | 'image/webp') => ({
+const photoArgs = (index: number, photo: File) => ({
   index,
   photo,
-  contentType,
   source: picker,
   side: Option.none(),
   pairsWith: Option.none<CaptureId>(),
@@ -111,21 +110,21 @@ describe('choosing files to add', () => {
   })
 
   test('photos picked together go up as one import, after the first; the tray opens when all are sent', () => {
-    const joined = (index: number, photo: File, contentType: 'image/png' | 'image/webp') =>
-      SendPhoto({ ...photoArgs(index, photo, contentType), importOf: Option.some(captureOf(0)) })
+    const joined = (index: number, photo: File) =>
+      SendPhoto({ ...photoArgs(index, photo), importOf: Option.some(captureOf(0)) })
     story(
       update,
       given(init()),
       message(chosen(tee, jeans, coat)),
       // Two could go at once, but the others wait for the first's capture, to name it as their import.
-      Command.expectExact(SendPhoto(photoArgs(0, tee, 'image/jpeg'))),
+      Command.expectExact(SendPhoto(photoArgs(0, tee))),
       model(({ items }) =>
         expect(items.map(({ sending }) => Sending.guards.Sending(sending))).toEqual([true, false, false]),
       ),
-      Command.resolve(SendPhoto(photoArgs(0, tee, 'image/jpeg')), succeeded(0)),
-      Command.expectExact(joined(1, jeans, 'image/png'), joined(2, coat, 'image/webp')),
-      Command.resolve(joined(1, jeans, 'image/png'), succeeded(1)),
-      Command.resolve(joined(2, coat, 'image/webp'), succeeded(2)),
+      Command.resolve(SendPhoto(photoArgs(0, tee)), succeeded(0)),
+      Command.expectExact(joined(1, jeans), joined(2, coat)),
+      Command.resolve(joined(1, jeans), succeeded(1)),
+      Command.resolve(joined(2, coat), succeeded(2)),
       expectOutMessage({ _tag: 'FinishedSending' }),
     )
   })
@@ -135,9 +134,9 @@ describe('choosing files to add', () => {
       update,
       given(init()),
       message(chosen(rail, tee)),
-      Command.expectHas(SendPhoto(photoArgs(1, tee, 'image/jpeg'))),
+      Command.expectHas(SendPhoto(photoArgs(1, tee))),
       model(({ items }) => expect(items.map(({ joins }) => joins)).toEqual([Option.none(), Option.none()])),
-      Command.resolve(SendPhoto(photoArgs(1, tee, 'image/jpeg')), succeeded(1)),
+      Command.resolve(SendPhoto(photoArgs(1, tee)), succeeded(1)),
       Command.resolve(InspectVideo({ index: 0, video: rail }), failedOn('dailyLimit')),
     )
   })
@@ -171,14 +170,14 @@ describe('choosing files to add', () => {
       given(init()),
       message(chosen(tee)),
       model((current) => expect(screenOn(current)).toBe(false)),
-      Command.resolve(SendPhoto(photoArgs(0, tee, 'image/jpeg')), succeeded(0)),
+      Command.resolve(SendPhoto(photoArgs(0, tee)), succeeded(0)),
     )
     story(
       update,
       given(init()),
       message(chosen(rail, tee)),
       model((current) => expect(screenOn(current)).toBe(true)),
-      Command.resolve(SendPhoto(photoArgs(1, tee, 'image/jpeg')), succeeded(1)),
+      Command.resolve(SendPhoto(photoArgs(1, tee)), succeeded(1)),
       ...readThenSendFirstPart,
       // The same dependency between parts: the lock is held, not asked for again.
       model((current) => expect(screenOn(current)).toBe(true)),
@@ -208,11 +207,11 @@ describe('choosing files to add', () => {
       update,
       given(init()),
       message(chosen(rail, closet, tee)),
-      Command.expectExact(InspectVideo({ index: 0, video: rail }), SendPhoto(photoArgs(2, tee, 'image/jpeg'))),
+      Command.expectExact(InspectVideo({ index: 0, video: rail }), SendPhoto(photoArgs(2, tee))),
       model(({ items }) =>
         expect(items.map(({ sending }) => Sending.guards.Sending(sending))).toEqual([true, false, true]),
       ),
-      Command.resolve(SendPhoto(photoArgs(2, tee, 'image/jpeg')), succeeded(2)),
+      Command.resolve(SendPhoto(photoArgs(2, tee)), succeeded(2)),
       Command.resolve(
         InspectVideo({ index: 0, video: rail }),
         Message.SucceededInspectVideo({ index: 0, plan: { route: 'whole', durationMs: 20_000, parts: [] } }),
@@ -239,7 +238,7 @@ describe('choosing files to add', () => {
 
   test('trying again repeats the same operation and upload, so the server makes one capture', () => {
     const retried = {
-      ...photoArgs(0, tee, 'image/jpeg'),
+      ...photoArgs(0, tee),
       operationId: Option.some('op-1'),
       uploadId: Option.some('up_1'),
     }
@@ -248,7 +247,7 @@ describe('choosing files to add', () => {
       given(init()),
       message(chosen(tee)),
       Command.resolve(
-        SendPhoto(photoArgs(0, tee, 'image/jpeg')),
+        SendPhoto(photoArgs(0, tee)),
         Message.FailedSend({
           index: 0,
           problem: 'network',
@@ -267,7 +266,7 @@ describe('choosing files to add', () => {
 
   test('photos from the held-up camera go up as camera shots, and the tray waits for the camera to close', () => {
     const shot = file('camera-1.jpg', 'image/jpeg')
-    const sent = SendPhoto({ ...photoArgs(0, shot, 'image/jpeg'), source: 'camera', side: Option.some('front') })
+    const sent = SendPhoto({ ...photoArgs(0, shot), source: 'camera', side: Option.some('front') })
     story(
       update,
       given(init()),
@@ -289,7 +288,7 @@ describe('choosing files to add', () => {
   test("a garment's back waits for its front to be sent, then goes with the capture it pairs with", () => {
     const front = file('camera-1.jpg', 'image/jpeg')
     const back = file('camera-2.jpg', 'image/jpeg')
-    const shot = { ...photoArgs(0, front, 'image/jpeg'), source: 'camera' as const }
+    const shot = { ...photoArgs(0, front), source: 'camera' as const }
     const sendFront = SendPhoto({ ...shot, side: Option.some('front') })
     const sendBack = SendPhoto({
       ...shot,

@@ -1,5 +1,6 @@
 import { format, type Locale } from '@styld/i18n'
 import type { Paper, PublicBoard } from '@styld/protocol'
+import { Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../../ActionButton.ts'
 import { secondaryAction } from '../../Actions.styles.ts'
@@ -55,8 +56,9 @@ export const boardStateView = (
   ready: (name: string, paper: Paper) => Html,
   locale: Locale,
   h: HtmlBuilder<Message>,
-  visiting: (board: PublicBoard) => Html = () => notReady(format(locale, 'board.missing', {}), false, locale, h),
-  signedIn = true,
+  /** Someone else's public board: the page shows it as visitors see it; the editor, which only edits, as gone. */
+  visiting: Option.Option<(board: PublicBoard) => Html>,
+  signedIn: boolean,
 ): Html =>
   h.main(
     [h.Id('main')],
@@ -67,7 +69,11 @@ export const boardStateView = (
         Failed: () => notReady(format(locale, 'board.failed', {}), true, locale, h),
         Missing: () => notReady(format(locale, 'board.missing', {}), false, locale, h),
         Ready: ({ name, paper }) => ready(name, paper),
-        Visiting: ({ board: shown }) => visiting(shown),
+        Visiting: ({ board: shown }) =>
+          Option.match(visiting, {
+            onNone: () => notReady(format(locale, 'board.missing', {}), false, locale, h),
+            onSome: (visit) => visit(shown),
+          }),
       }),
     ],
   )

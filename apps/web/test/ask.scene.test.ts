@@ -1,35 +1,20 @@
-import { catalogVersion } from '@styld/i18n'
 import type { Piece } from '@styld/protocol'
 import { Dialog } from '@foldkit/ui'
 import { click, Command, expect, given, Mount, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
-import { Session, init, update } from '../src/App.ts'
+import { update } from '../src/App.ts'
+import { lenses } from '../src/Page.ts'
 import * as Ask from '../src/page/Ask.ts'
 import { CreateBoard, Message as BoardsMessage } from '../src/page/Boards.ts'
-import { PiecesData } from '../src/page/Wardrobe.ts'
 import { view } from '../src/View.ts'
 import { sceneSheetMoved } from './SheetFixtures.ts'
+import { at, withPage, withPieces } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
-const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
-
 const askWith = (pieces: ReadonlyArray<Piece>, query = '') =>
-  modifyFields(
-    init({
-      locale: 'en',
-      catalogVersion,
-      timeZone: 'UTC',
-      referenceTime: 0,
-      pathname: '/ask',
-      origin: 'https://styld.test',
-      telemetryConsent: 'denied',
-    }).model,
-    {
-      session: () => Session.SignedIn({ claims }),
-      wardrobe: (current) => modifyFields(current, { pieces: () => PiecesData.Success({ data: pieces }) }),
-      ask: (current) => modifyFields(current, { query: () => query }),
-    },
+  withPage(withPieces(at('/ask', { signedIn: true }), pieces), lenses.ask, (current) =>
+    modifyFields(current, { query: () => query }),
   )
 
 const tee = pieceFixture('tee', { name: 'White tee', type: 'tops', colours: ['white'] })
@@ -47,9 +32,7 @@ describe('Ask', () => {
   })
 
   test('the + sheet offers adding clothes, adding from a shop’s page, or starting a board', () => {
-    const open = modifyFields(askWith([tee]), {
-      ask: (current) => Ask.update(current, Ask.Message.ClickedAdd()).model,
-    })
+    const open = withPage(askWith([tee]), lenses.ask, (current) => Ask.update(current, Ask.Message.ClickedAdd()).model)
     scene(
       { update, view },
       given(open),

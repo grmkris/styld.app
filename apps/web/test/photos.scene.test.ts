@@ -5,9 +5,9 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
 import * as Photo from '../src/page/Photo.ts'
-import { PiecesData } from '../src/page/Wardrobe.ts'
 import { view } from '../src/View.ts'
-import { signedInAt } from './AppFixtures.ts'
+import { lenses } from '../src/Page.ts'
+import { at, withPage, withPieces } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const tee = pieceFixture('tee', { type: 'tops', name: 'White tee' })
@@ -34,10 +34,9 @@ const photo = Schema.decodeUnknownSync(PhotoContract)({
 
 /** The photo's page with the wardrobe read. */
 const onPhoto = () =>
-  modifyFields(signedInAt(`/wardrobe/gallery/${photo.id}`), {
-    wardrobe: (wardrobe) => modifyFields(wardrobe, { pieces: () => PiecesData.Success({ data: [tee, shirt, jeans] }) }),
-    photo: () => ({ ...Photo.init(photo.id), shown: Photo.Shown.Loaded({ photo }), choosing: Option.none() }),
-  })
+  withPage(withPieces(at(`/wardrobe/gallery/${photo.id}`, { signedIn: true }), [tee, shirt, jeans]), lenses.photo, () =>
+    modifyFields(Photo.init(photo.id), { shown: () => Photo.Shown.Loaded({ photo }), choosing: () => Option.none() }),
+  )
 
 describe('an outfit photo’s page', () => {
   test('asks about Styld’s guess, names a confirmed piece, and offers what the wardrobe lacks', () => {
@@ -77,7 +76,7 @@ describe('an outfit photo’s page', () => {
   test('the wardrobe’s tabs lead to the gallery', () => {
     scene(
       { update, view },
-      given(signedInAt('/wardrobe/gallery')),
+      given(at('/wardrobe/gallery', { signedIn: true })),
       expect(role('link', { name: 'Gallery' })).toHaveAttr('aria-current', 'page'),
       expect(role('link', { name: 'Gallery' })).toHaveAttr('href', '/wardrobe/gallery'),
     )

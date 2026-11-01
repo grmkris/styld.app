@@ -1,32 +1,21 @@
-import { catalogVersion } from '@styld/i18n'
 import { Chat, ChatSummary, LookId } from '@styld/protocol'
 import { AsyncData } from 'foldkit'
 import { Option, Schema } from 'effect'
 import { expect, given, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
-import { Session, init, update } from '../src/App.ts'
+import { update } from '../src/App.ts'
+import { lenses } from '../src/Page.ts'
+import { at, withPage } from './AppFixtures.ts'
 import * as Stylist from '../src/page/Stylist.ts'
 import { view } from '../src/View.ts'
 
-const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
 const chatId = `ch_${'tee'.padEnd(22, 'x')}`
 const pieceId = `pc_${'tee'.padEnd(22, 'x')}`
 const lookId = LookId.make(`lk_${'tee'.padEnd(22, 'x')}`)
 
 const stylistWith = (stylist: Stylist.Model) =>
-  modifyFields(
-    init({
-      locale: 'en',
-      catalogVersion,
-      timeZone: 'UTC',
-      referenceTime: 0,
-      pathname: '/ask/stylist',
-      origin: 'https://styld.test',
-      telemetryConsent: 'denied',
-    }).model,
-    { session: () => Session.SignedIn({ claims }), stylist: () => stylist },
-  )
+  withPage(at('/ask/stylist', { signedIn: true }), lenses.stylist, () => stylist)
 
 const chat = (replying?: 'writing' | 'failed') =>
   Schema.decodeUnknownSync(Chat)({

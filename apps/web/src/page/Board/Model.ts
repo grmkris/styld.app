@@ -13,7 +13,6 @@ import {
   Visibility,
 } from '@styld/protocol'
 import * as People from '../People.ts'
-import * as WardrobePage from '../Wardrobe.ts'
 import { Option, Schema } from 'effect'
 import { AsyncData } from 'foldkit'
 import { defineTaggedUnion } from 'foldkit/schema'
@@ -164,8 +163,6 @@ export const Model = Schema.Struct({
   generation: Schema.Int,
   /** Fresh item ids, made by a Command ahead of time so adding an item is instant. */
   ids: Schema.Array(BoardItemId),
-  /** The person's pieces for the tray, through the wardrobe page's own model. */
-  wardrobe: WardrobePage.Model,
   upload: Upload,
   look: LookSave,
   toast: Toast,
@@ -180,7 +177,7 @@ export const Model = Schema.Struct({
 })
 export type Model = typeof Model.Type
 
-export const init = (boardId: string, signedIn = true): Model => ({
+export const init = (boardId: string, signedIn: boolean): Model => ({
   boardId,
   signedIn,
   board: BoardState.Loading(),
@@ -211,7 +208,6 @@ export const init = (boardId: string, signedIn = true): Model => ({
   saving: Saving.Saved(),
   generation: 0,
   ids: [],
-  wardrobe: WardrobePage.init(),
   upload: Upload.Idle(),
   look: LookSave.Idle(),
   toast: Toast.Hidden(),

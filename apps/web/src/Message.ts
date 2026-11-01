@@ -5,6 +5,7 @@ import { defineMessageUnion } from 'foldkit/message'
 import { UrlRequest } from 'foldkit/navigation'
 import { Url } from 'foldkit/url'
 import { Locale } from './Locale.ts'
+import * as ServerData from './ServerData.ts'
 import * as Account from './page/Account.ts'
 import * as AddPiecesMessage from './page/AddPieces/Message.ts'
 import * as Ask from './page/Ask.ts'
@@ -65,6 +66,9 @@ export const Message = defineMessageUnion({
   GotBoardsMessage: { message: Boards.Message },
   GotBoardMessage: { message: BoardMessage.Message },
   GotVisitMessage: { message: Visit.Message },
+  /** Explore, and the landing a signed-out Home shows from it. */
+  GotExploreMessage: { message: Visit.Message },
+  GotServerDataMessage: { message: ServerData.Message },
   /** The landing's Try again, after its boards did not load. */
   ClickedRetryLanding: {},
   ChoseTelemetryConsent: { granted: Schema.Boolean },

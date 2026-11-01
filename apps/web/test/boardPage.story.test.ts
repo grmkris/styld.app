@@ -69,7 +69,7 @@ const board = Schema.decodeUnknownSync(Board)({
   check: null,
   updatedAt: '2026-10-30T08:00:00.000Z',
 })
-const open: Model = fromBoard(init(board.id), board)
+const open: Model = fromBoard(init(board.id, true), board)
 const withPins = (pins: ReadonlyArray<object>, changes: object = {}) =>
   Schema.decodeUnknownSync(Board)({ ...board, pins, ...changes })
 

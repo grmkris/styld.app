@@ -1,24 +1,22 @@
-import { catalogVersion } from '@styld/i18n'
 import { Day } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
 import { Message, ReadSession, Session, init, update } from '../src/App.ts'
+import { ListPieces, Message as PiecesMessage } from '../src/ServerData.ts'
 import { ReadYou, You } from '../src/You.ts'
 import { Navigate } from '../src/Navigation.ts'
 import { Message as AddPiecesMessage } from '../src/page/AddPieces/Message.ts'
 import { Message as ReviewMessage } from '../src/page/Review.ts'
 import * as Today from '../src/page/Today.ts'
-import * as Wardrobe from '../src/page/Wardrobe.ts'
 import { AppRoute } from '../src/route.ts'
-import { pageAt } from './WardrobeFixtures.ts'
+import { lenses } from '../src/Page.ts'
+import { at, claims, flags, pageOf, urlOf } from './AppFixtures.ts'
 
-const page = pageAt
+const page = (path: string) => at(path, { signedIn: false })
 
 const thursday = Schema.decodeUnknownSync(Day)('2026-10-29')
-
-const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
 
 /** Sign-in opened from a page, asked to return to `next` once signed in. */
 const atLogin = (next: string) =>
@@ -111,11 +109,11 @@ describe('the session decides where a visitor belongs', () => {
         Today.ReadFavourite,
         Today.ReadTray,
         Today.ReadFeed,
-        Wardrobe.ListPieces,
+        ListPieces,
         ReadYou,
       ),
       Command.resolve(ReadYou, Message.FailedReadYou()),
-      Command.resolve(Wardrobe.ListPieces, Wardrobe.Message.FailedListPieces()),
+      Command.resolve(ListPieces, PiecesMessage.FailedListPieces()),
       Command.resolve(Today.ListBoards, Today.Message.FailedListBoards()),
       Command.resolve(Today.ReadFavourite, Today.Message.FailedReadFavourite()),
       Command.resolve(Today.ReadTray, Today.Message.FailedReadTray()),
@@ -124,9 +122,9 @@ describe('the session decides where a visitor belongs', () => {
       // Knowing the day, Home asks the outfit engine for today's outfits and what was worn on it.
       Command.resolve(Today.MakeOutfits, Today.Message.FailedMakeOutfits()),
       Command.resolve(Today.ReadWorn, Today.Message.FailedReadWorn()),
-      model(({ route, today }) => {
-        expect(route).toEqual(AppRoute.Home())
-        expect(today.maybeDay).toEqual(Option.some(thursday))
+      model((current) => {
+        expect(current.route).toEqual(AppRoute.Home())
+        expect(pageOf(current, lenses.today).maybeDay).toEqual(Option.some(thursday))
       }),
     )
   })
@@ -160,18 +158,7 @@ describe('the session decides where a visitor belongs', () => {
   })
 })
 
-const opening = (pathname: string) =>
-  (
-    init({
-      locale: 'en',
-      catalogVersion,
-      timeZone: 'UTC',
-      referenceTime: 0,
-      pathname,
-      origin: 'https://styld.test',
-      telemetryConsent: 'denied',
-    }).commands ?? []
-  ).map(({ name }) => name)
+const opening = (path: string) => (init(flags(false), urlOf(path)).commands ?? []).map(({ name }) => name)
 
 describe('the time zone', () => {
   test('times read in the browser’s own zone once the page runs; the server’s first paint is in UTC', () => {

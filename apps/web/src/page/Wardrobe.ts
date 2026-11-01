@@ -2,17 +2,16 @@ import * as Crypto from 'effect/Crypto'
 import { newOperationId } from '../OperationIds.ts'
 import { Dialog } from '@foldkit/ui'
 import { Colour, GarmentGroup, groupOf, Occasion, Piece, PieceType, Season } from '@styld/protocol'
-import { Array, Duration, Effect, Option, Order, Result, Schema, Stream } from 'effect'
-import { AsyncData, Command, Subscription, Update } from 'foldkit'
+import { Array, Effect, Option, Order, Schema } from 'effect'
+import { Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
 
-// MODEL
+// The wardrobe tab: the person's pieces (the app's, read once for every page that shows them) browsed by group and
+// type and narrowed by the filter sheet.
 
-/** The person's pieces as last read. Pages that show them keep them on screen while they are asked for again. */
-export const PiecesData = AsyncData.Schema(Schema.Array(Piece), Schema.Literal('Unavailable'))
-export type PiecesData = typeof PiecesData.schema.Type
+// MODEL
 
 /** What else narrows the grid, from the filter sheet: any of these colours, a season, an occasion, a brand. */
 export const Filters = Schema.Struct({
@@ -56,8 +55,10 @@ export const shownPieces = (pieces: ReadonlyArray<Piece>, model: Model): Readonl
 export const brandsOf = (pieces: ReadonlyArray<Piece>): ReadonlyArray<string> =>
   Array.sort(Array.dedupe(pieces.flatMap((piece) => (piece.brand === null ? [] : [piece.brand]))), Order.String)
 
+/** Asking for clean pictures of the kept cut-outs that have none. */
+const Backfill = Schema.Literals(['idle', 'sending', 'sent', 'failed'])
+
 export const Model = Schema.Struct({
-  pieces: PiecesData.schema,
   /** The group the grid shows, then one of its types; none shows every piece. */
   group: Schema.Option(GarmentGroup),
   type: Schema.Option(PieceType),
@@ -65,12 +66,11 @@ export const Model = Schema.Struct({
   filterSheet: Dialog.Model,
   /** Kept cut-outs with no clean picture yet, and how asking for theirs went. */
   undrawn: Schema.Number,
-  backfill: Schema.Literals(['idle', 'sending', 'sent', 'failed']),
+  backfill: Backfill,
 })
 export type Model = typeof Model.Type
 
 export const init = (): Model => ({
-  pieces: AsyncData.Idle(),
   group: Option.none(),
   type: Option.none(),
   filters: noFilters,
@@ -82,8 +82,6 @@ export const init = (): Model => ({
 // MESSAGE
 
 export const Message = defineMessageUnion({
-  SucceededListPieces: { pieces: Schema.Array(Piece) },
-  FailedListPieces: {},
   ClickedGroup: { group: Schema.Option(GarmentGroup) },
   ClickedType: { type: Schema.Option(PieceType) },
   ClickedFilters: {},
@@ -95,7 +93,6 @@ export const Message = defineMessageUnion({
   ClickedClearFilters: {},
   ClickedShowPieces: {},
   ClickedRetry: {},
-  TickedRefresh: {},
   CompletedCountUndrawn: { pieces: Schema.Number },
   ClickedDrawPictures: {},
   SucceededDrawPictures: {},
@@ -103,17 +100,11 @@ export const Message = defineMessageUnion({
 })
 export type Message = typeof Message.Type
 
-// COMMAND
+/** The pieces are the app's: the page asks for them again after a failure, and once their pictures are being drawn. */
+export const OutMessage = defineMessageUnion({ RequestedPieces: {} })
+export type OutMessage = typeof OutMessage.Type
 
-/** @internal Exported for its tests. */
-export const ListPieces = Command.define('ListPieces', {
-  messages: [Message.SucceededListPieces, Message.FailedListPieces],
-  execute: Effect.gen(function* () {
-    const api = yield* (yield* StyldClient).api
-    const { pieces } = yield* api.wardrobe.listPieces()
-    return Message.SucceededListPieces({ pieces })
-  }).pipe(Effect.orElseSucceed(() => Message.FailedListPieces())),
-})
+// COMMAND
 
 /** @internal Exported for its tests. */
 export const CountUndrawn = Command.define('CountUndrawn', {
@@ -135,20 +126,9 @@ export const DrawPictures = Command.define('DrawPictures', {
   }).pipe(Effect.orElseSucceed(() => Message.FailedDrawPictures())),
 })
 
-/** The Commands that open the page for a page that keeps its own copy of the pieces. */
-export const load = () => [ListPieces()]
-
 // UPDATE
 
-type UpdateReturn = Update.Return<Model, Message, StyldClient | Crypto.Crypto>
-
-const piecesCache = (revalidate: (pieces: PiecesData) => Option.Option<PiecesData>) =>
-  Update.refresh<Model, Message, ReadonlyArray<Piece>, 'Unavailable', StyldClient>({
-    read: (model: Model) => Option.some(model.pieces),
-    revalidate,
-    write: (model: Model, pieces: PiecesData) => modifyFields(model, { pieces: () => pieces }),
-    load: ListPieces(),
-  })
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
 
 const sheetFold = {
   read: (model: Model) => Option.some(model.filterSheet),
@@ -171,80 +151,44 @@ const filtered = (model: Model, change: (filters: Filters) => Filters): UpdateRe
   model: modifyFields(model, { filters: change }),
 })
 
-/** Opening a page that shows the pieces: those already here stay on screen while they are asked for again, a
- * first visit asks, and a request on its way is not repeated. */
-export const revisit = piecesCache(AsyncData.revalidateOrLoad)
-/** Asking again for pieces already here, such as while one is processing. */
-const refresh = piecesCache(AsyncData.revalidate)
-
-/** Opening the wardrobe page itself: its pieces, and how many have no clean picture yet. */
-export const enter = (model: Model): UpdateReturn => {
-  const opened = revisit(model)
-  return { ...opened, commands: [...(opened.commands ?? []), CountUndrawn()] }
-}
+/** Opening the wardrobe tab: how many kept cut-outs have no clean picture yet. */
+export const enter = (model: Model): Update.Return<Model, Message, StyldClient> => ({
+  model,
+  commands: [CountUndrawn()],
+})
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
-    SucceededListPieces: ({ pieces }) => ({
-      model: modifyFields(model, { pieces: () => PiecesData.Success({ data: pieces }) }),
-    }),
-    // A failed refresh keeps the pieces already shown.
-    FailedListPieces: () => ({
-      model: modifyFields(model, { pieces: (pieces) => AsyncData.settle(pieces, Result.fail('Unavailable' as const)) }),
-    }),
     // Another group starts from all of its types.
     ClickedGroup: ({ group }) => ({ model: modifyFields(model, { group: () => group, type: () => Option.none() }) }),
     ClickedType: ({ type }) => ({ model: modifyFields(model, { type: () => type }) }),
     ClickedFilters: () => openFilterSheet(model),
     GotFilterSheetMessage: ({ message: sheetMessage }) => foldFilterSheet(model, sheetMessage),
     ToggledFilterColour: ({ colour }) =>
-      filtered(model, (filters) => ({
-        ...filters,
-        colours: filters.colours.includes(colour)
-          ? filters.colours.filter((each) => each !== colour)
-          : [...filters.colours, colour],
-      })),
+      filtered(model, (filters) =>
+        modifyFields(filters, {
+          colours: (colours) =>
+            colours.includes(colour) ? colours.filter((each) => each !== colour) : [...colours, colour],
+        }),
+      ),
     ChoseFilterSeason: ({ season }) =>
-      filtered(model, (filters) => ({ ...filters, season: chosenAgain(season, filters.season) })),
+      filtered(model, (filters) => modifyFields(filters, { season: (chosen) => chosenAgain(season, chosen) })),
     ChoseFilterOccasion: ({ occasion }) =>
-      filtered(model, (filters) => ({ ...filters, occasion: chosenAgain(occasion, filters.occasion) })),
+      filtered(model, (filters) => modifyFields(filters, { occasion: (chosen) => chosenAgain(occasion, chosen) })),
     ChoseFilterBrand: ({ brand }) =>
-      filtered(model, (filters) => ({ ...filters, brand: chosenAgain(brand, filters.brand) })),
+      filtered(model, (filters) => modifyFields(filters, { brand: (chosen) => chosenAgain(brand, chosen) })),
     ClickedClearFilters: () => filtered(model, () => noFilters),
     ClickedShowPieces: () => closeFilterSheet(model),
-    ClickedRetry: () => revisit(model),
-    TickedRefresh: () => refresh(model),
+    ClickedRetry: () => ({ model, outMessage: OutMessage.RequestedPieces() }),
     CompletedCountUndrawn: ({ pieces }) => ({ model: modifyFields(model, { undrawn: () => pieces }) }),
     ClickedDrawPictures: () =>
       model.backfill === 'sending'
         ? { model }
         : { model: modifyFields(model, { backfill: () => 'sending' as const }), commands: [DrawPictures()] },
     // The pieces are read again, so each shows its drawing on its way.
-    SucceededDrawPictures: () => refresh(modifyFields(model, { undrawn: () => 0, backfill: () => 'sent' as const })),
+    SucceededDrawPictures: () => ({
+      model: modifyFields(model, { undrawn: () => 0, backfill: () => 'sent' as const }),
+      outMessage: OutMessage.RequestedPieces(),
+    }),
     FailedDrawPictures: () => ({ model: modifyFields(model, { backfill: () => 'failed' as const }) }),
   })
-
-// SUBSCRIPTION
-
-/** A new photo is ready within seconds, so the pieces are asked for again this often while one is processing. */
-const refreshPause = Duration.seconds(2)
-
-/** Whether a piece is still processing or its clean picture is being drawn. */
-const isProcessing = (pieces: PiecesData) =>
-  AsyncData.getData(pieces).pipe(
-    Option.exists((list) => list.some((piece) => piece.status === 'processing' || piece.picture?.state === 'drawing')),
-  )
-
-export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
-  refreshWhileProcessing: entry(
-    { isActive: Schema.Boolean },
-    {
-      modelToDependencies: (model) => ({ isActive: isProcessing(model.pieces) }),
-      dependenciesToStream: ({ isActive }) =>
-        Stream.when(
-          Stream.tick(refreshPause).pipe(Stream.drop(1), Stream.map(Message.TickedRefresh)),
-          Effect.sync(() => isActive),
-        ),
-    },
-  ),
-}))

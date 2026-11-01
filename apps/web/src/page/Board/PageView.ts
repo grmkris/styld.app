@@ -1,24 +1,14 @@
 import { Dialog } from '@foldkit/ui'
 import { format, type Locale, type MessageKey } from '@styld/i18n'
-import {
-  type Look,
-  LookPin,
-  Mood,
-  type Paper,
-  type Piece,
-  type Pin,
-  PiecePin,
-  type PublicBoard,
-  textLength,
-} from '@styld/protocol'
-import { Array, Match, Option, Schema } from 'effect'
-import { AsyncData, Submodel } from 'foldkit'
+import { Mood, type Paper, type Piece, type Pin, type PublicBoard, textLength } from '@styld/protocol'
+import { Array, Match, Option } from 'effect'
+import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../../ActionButton.ts'
 import { primaryAction, secondaryAction, smallAction } from '../../Actions.styles.ts'
 import { textField } from '../../Fields.styles.ts'
-import { addIcon, backIcon, checkIcon, loader } from '../../Icon.ts'
+import { addIcon, backIcon, loader } from '../../Icon.ts'
 import { boardCollageRouter, boardsRouter, lookRouter, pieceRouter } from '../../route.ts'
 import { styled } from '../../Styled.ts'
 import * as PeopleView from '../PeopleView.ts'
@@ -28,25 +18,14 @@ import { checkNotice } from '../CheckNotice.ts'
 import { Message } from './Message.ts'
 import { unpinButton } from './Unpin.ts'
 import { boardStateView } from './Unready.ts'
+import { lookMosaic, pickerBody, pieceName } from './PickerView.ts'
 import { visitingView } from './Visiting.ts'
 import { type Model, PinWork, Publishing, Removal, Rename } from './Model.ts'
-import { chip } from '../AskView.styles.ts'
-import { chosen } from '../ExploreView.styles.ts'
+import { chip, chosen } from '../../Controls.styles.ts'
 import * as MakeView from './MakeView.ts'
 import { generatedMark } from './MakeView.ts'
 import * as styles from './PageView.styles.ts'
 import { boardImage, pieceImage, stillTable } from './Table.ts'
-
-const pieceName = (piece: Piece, locale: Locale) => piece.name ?? format(locale, 'board.pieceFallback', {})
-
-/** The pieces a look shows on its tile: its first four, two by two. */
-const lookMosaic = (look: Look, h: HtmlBuilder<Message>): Html =>
-  h.span(
-    styled(h, styles.mosaic()),
-    Array.map(Array.take(look.pieces, 4), (piece) =>
-      h.img([h.Src(pieceImage(piece.id)), h.Alt(''), h.Loading('lazy')]),
-    ),
-  )
 
 /** A pinned thing on the board; one the board shows others without (no picture of its own yet, or Styld's check held
  * it back) says so under it. */
@@ -211,89 +190,6 @@ const pinsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
     ],
   )
 
-const pickButton = (pick: string, label: string, content: Html, model: Model, h: HtmlBuilder<Message>): Html => {
-  const isPicked = model.picks.includes(pick)
-  return h.keyed('li')(
-    pick,
-    [],
-    [
-      h.button(
-        [
-          h.Type('button'),
-          h.AriaPressed(isPicked ? 'true' : 'false'),
-          h.AriaLabel(label),
-          ...styled(h, styles.pick()),
-          h.OnClick(Message.ToggledPick({ pick })),
-        ],
-        [content, isPicked ? h.span(styled(h, styles.picked()), [checkIcon(h)]) : h.empty],
-      ),
-    ],
-  )
-}
-
-const pickerBody = (model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => {
-  const pinned = new Set(
-    Array.flatMap(model.pins, (pin) => {
-      if (Schema.is(PiecePin)(pin)) return [`piece:${pin.piece.id}`]
-      return Schema.is(LookPin)(pin) ? [`look:${pin.look.id}`] : []
-    }),
-  )
-  const pieces = Array.filter(
-    Option.getOrElse(AsyncData.getData(model.wardrobe.pieces), () => []),
-    (piece) => piece.status === 'ready' && !pinned.has(`piece:${piece.id}`),
-  )
-  const looks = Array.filter(
-    Option.getOrElse(AsyncData.getData(model.looks), () => []),
-    (look) => !pinned.has(`look:${look.id}`),
-  )
-  const sending = PinWork.guards.Sending(model.pinWork)
-  return [
-    h.h3(styled(h, styles.sheetSection()), [format(locale, 'studio.addMenuPieces', {})]),
-    Array.match(pieces, {
-      onEmpty: () => h.p(styled(h, styles.meta()), [format(locale, 'board.pickerEmpty', {})]),
-      onNonEmpty: (ready) =>
-        h.ul(
-          styled(h, styles.pickGrid()),
-          Array.map(ready, (piece) =>
-            pickButton(
-              `piece:${piece.id}`,
-              pieceName(piece, locale),
-              h.img([h.Src(pieceImage(piece.id)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.cutout())]),
-              model,
-              h,
-            ),
-          ),
-        ),
-    }),
-    AsyncData.isFailure(model.looks)
-      ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'board.looksFailed', {})])
-      : looks.length === 0
-        ? h.empty
-        : h.div(styled(h, styles.head()), [
-            h.h3(styled(h, styles.sheetSection()), [format(locale, 'studio.addMenuLooks', {})]),
-            h.ul(
-              styled(h, styles.pickGrid()),
-              Array.map(looks, (look) => pickButton(`look:${look.id}`, look.name, lookMosaic(look, h), model, h)),
-            ),
-          ]),
-    PinWork.guards.Failed(model.pinWork)
-      ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'studio.addFailed', {})])
-      : h.empty,
-    actionButton(
-      {
-        label: sending
-          ? format(locale, 'studio.pinning', {})
-          : format(locale, 'board.pickSelected', { count: model.picks.length }),
-        style: primaryAction(),
-        isDisabled: sending || model.picks.length === 0,
-        leading: sending ? loader(h) : addIcon(h),
-        onClick: Message.SubmittedPicks(),
-      },
-      h,
-    ),
-  ]
-}
-
 const removalView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(
     styled(h, styles.danger()),
@@ -453,7 +349,14 @@ const makeSlot = (
     toParentMessage: (message) => Message.GotMakeMessage({ message }),
   })
 
-const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const readyView = (
+  model: Model,
+  wardrobe: ReadonlyArray<Piece>,
+  name: string,
+  paper: Paper,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html =>
   h.div(styled(h, styles.page()), [
     h.div(styled(h, styles.bar()), [
       h.a(
@@ -501,7 +404,7 @@ const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: 
           {
             dialog: model.picker,
             title: format(locale, 'board.pickerTitle', { name }),
-            body: () => [h.div(styled(h, styles.sheetBody()), pickerBody(model, locale, h))],
+            body: () => [h.div(styled(h, styles.sheetBody()), pickerBody(model, wardrobe, locale, h))],
             toParentMessage: (message) => Message.GotPickerMessage({ message }),
             locale,
           },
@@ -512,21 +415,23 @@ const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: 
   ])
 
 /** A board's page: its collage as a card that opens the editor, then its pins, newest first. */
-export const view = Submodel.defineView<Model, Message, PeopleView.Inputs>((model, { locale, signedIn }, h) => {
-  const actions = h.submodel({
-    slotId: 'board-people',
-    model: model.people,
-    view: PeopleView.view,
-    viewInputs: { locale, signedIn },
-    toParentMessage: (message) => Message.GotPeopleMessage({ message }),
-  })
-  const visiting = (board: PublicBoard) => visitingView(board, actions, locale, h)
-  return boardStateView(
-    model.board,
-    (name, paper) => readyView(model, name, paper, locale, h),
-    locale,
-    h,
-    visiting,
-    signedIn,
-  )
-})
+export const view = Submodel.defineView<Model, Message, PeopleView.Inputs & { readonly pieces: ReadonlyArray<Piece> }>(
+  (model, { locale, signedIn, pieces }, h) => {
+    const actions = h.submodel({
+      slotId: 'board-people',
+      model: model.people,
+      view: PeopleView.view,
+      viewInputs: { locale, signedIn },
+      toParentMessage: (message) => Message.GotPeopleMessage({ message }),
+    })
+    const visiting = (board: PublicBoard) => visitingView(board, actions, locale, h)
+    return boardStateView(
+      model.board,
+      (name, paper) => readyView(model, pieces, name, paper, locale, h),
+      locale,
+      h,
+      Option.some(visiting),
+      signedIn,
+    )
+  },
+)

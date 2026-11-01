@@ -1,18 +1,10 @@
 import { newOperationId, operationIdOf } from '../../OperationIds.ts'
-import {
-  CaptureId,
-  CaptureSource,
-  CreateVideoCapture,
-  ImageType,
-  LinkRefused,
-  Side,
-  UploadId,
-  VideoType,
-} from '@styld/protocol'
+import { CaptureId, CaptureSource, CreateVideoCapture, LinkRefused, Side, UploadId, VideoType } from '@styld/protocol'
 import { Effect, Option, Predicate, Result, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import { Command, File } from 'foldkit'
 import { FileNotSent, StyldClient } from '../../StyldClient.ts'
+import { uploadPictureOnce } from '../../Upload.ts'
 import type { SampledStill } from '../../capture/Frames.ts'
 import { type LinkProblem, Message, type SendProblem, VideoPart } from './Message.ts'
 
@@ -28,13 +20,13 @@ const problemOf = (error: unknown): SendProblem => {
   )
     return 'refused'
   if (error instanceof FileNotSent && error.refused) return 'refused'
+  if (Predicate.isTagged(error, 'NotAPicture')) return 'refused'
   return 'network'
 }
 
 const SendPhotoArgs = Schema.Struct({
   index: Schema.Number,
   photo: File.File,
-  contentType: ImageType,
   source: CaptureSource,
   side: Schema.Option(Side),
   /** The front capture a back shot pairs with. */
@@ -45,23 +37,9 @@ const SendPhotoArgs = Schema.Struct({
   uploadId: Schema.Option(Schema.String),
 })
 
-/** A photo's upload: the one it already has, or a new one with the bytes sent. */
-const uploadOnce = (photo: File.File, contentType: ImageType, known: Option.Option<string>) =>
-  Option.match(known, {
-    onSome: (id) => Schema.decodeUnknownEffect(UploadId)(id),
-    onNone: () =>
-      Effect.gen(function* () {
-        const { api: loadApi, sendFile } = yield* StyldClient
-        const created = yield* (yield* loadApi).wardrobe.createUpload({
-          payload: { operationId: yield* newOperationId, contentType, bytes: photo.size },
-        })
-        yield* sendFile(created.path, photo)
-        return created.uploadId
-      }),
-  })
-
-/** Upload a photo unless it already went up, then make it a capture. A failure worth retrying keeps
- * the operation id and the upload, so the next try asks for the same capture; a refusal starts over. */
+/** Upload a photo (re-encoded, so without its metadata) unless it already went up, then make it a capture. A failure
+ * worth retrying keeps the operation id and the upload, so the next try asks for the same capture; a refusal starts
+ * over. */
 export const SendPhoto = Command.define('SendPhoto', {
   args: SendPhotoArgs.fields,
   messages: [Message.SucceededSend, Message.FailedSend],
@@ -79,7 +57,7 @@ export const SendPhoto = Command.define('SendPhoto', {
           prepared: Option.none(),
         })
       }
-      const upload = yield* Effect.result(uploadOnce(args.photo, args.contentType, args.uploadId))
+      const upload = yield* Effect.result(uploadPictureOnce(args.photo, args.uploadId))
       if (Result.isFailure(upload)) return failed(Option.none(), upload.failure)
       const created = yield* Effect.result(
         Effect.gen(function* () {

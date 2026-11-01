@@ -1,4 +1,3 @@
-import { catalogVersion } from '@styld/i18n'
 import { CaptureId, DetectionId, PieceId, type TrayCapture } from '@styld/protocol'
 import { Option } from 'effect'
 import { expect, given, role, scene, text } from 'foldkit/scene'
@@ -6,10 +5,10 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { detailsOf } from '../src/page/PieceFields.ts'
 import { Session, init } from '../src/App.ts'
+import { lenses } from '../src/Page.ts'
+import { claims, flags, urlOf, withPage } from './AppFixtures.ts'
 import { Tray } from '../src/page/Review.ts'
 import { view } from '../src/View.ts'
-
-const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
 
 const emptyCapture = (n: number, source: 'picker' | 'video') => ({
   id: CaptureId.make(`cp_${String(n).padStart(22, '0')}`),
@@ -30,15 +29,9 @@ const failedCapture = (n: number, source: 'picker' | 'video') => ({
 const ljubljana = 'Europe/Ljubljana'
 
 const appModel = ({ locale, timeZone }: Context) =>
-  init({
-    locale,
-    catalogVersion,
-    timeZone,
-    referenceTime: 0,
-    pathname: '/wardrobe/review',
-    origin: 'https://styld.test',
-    telemetryConsent: 'denied',
-  }).model
+  modifyFields(init({ ...flags(true), locale, timeZone }, urlOf('/wardrobe/review')).model, {
+    session: () => Session.SignedIn({ claims }),
+  })
 
 /** The tray page signed in, showing `captures`, with `editing` open. */
 const reviewPage = (
@@ -46,28 +39,26 @@ const reviewPage = (
   editing = Option.none<string>(),
   context: Context = { locale: 'en', timeZone: 'UTC' },
 ) =>
-  modifyFields(appModel(context), {
-    session: () => Session.SignedIn({ claims }),
-    review: (review) =>
-      modifyFields(review, {
-        tray: () => Tray.Loaded({ tray: { captures, allowance: { remaining: 90, daily: 100 } } }),
-        editing: () => editing,
-        decisions: () =>
-          Object.fromEntries(
-            captures.flatMap(({ detections }) =>
-              detections.map((detection) => [
-                detection.id,
-                {
-                  keep: detection.preselected,
-                  details: detailsOf(detection.suggestion),
-                  name: '',
-                  useOriginal: false,
-                },
-              ]),
-            ),
+  withPage(appModel(context), lenses.review, (review) =>
+    modifyFields(review, {
+      tray: () => Tray.Loaded({ tray: { captures, allowance: { remaining: 90, daily: 100 } } }),
+      editing: () => editing,
+      decisions: () =>
+        Object.fromEntries(
+          captures.flatMap(({ detections }) =>
+            detections.map((detection) => [
+              detection.id,
+              {
+                keep: detection.preselected,
+                details: detailsOf(detection.suggestion),
+                name: '',
+                useOriginal: false,
+              },
+            ]),
           ),
-      }),
-  })
+        ),
+    }),
+  )
 
 /** A shirt found in a photo, offered unticked. */
 const shirt = {

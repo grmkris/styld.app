@@ -6,9 +6,9 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
 import { FavouriteData, LastBoardData, OutfitsData, TrayData, Worn } from '../src/page/Today.ts'
-import { PiecesData } from '../src/page/Wardrobe.ts'
 import { view } from '../src/View.ts'
-import { signedInAt } from './AppFixtures.ts'
+import { lenses } from '../src/Page.ts'
+import { at, withPage, withPieces } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const knit = pieceFixture('knit', { name: 'Cable knit' })
@@ -37,27 +37,23 @@ const layers = Schema.decodeUnknownSync(BoardSummary)({
 
 /** Home with the wardrobe read, the tray holding `waiting` pieces and the last board, if any. */
 const home = (waiting: number, maybeBoard: Option.Option<BoardSummary>, pictures: ReadonlyArray<string> = []) =>
-  modifyFields(signedInAt('/'), {
-    wardrobe: (wardrobe) => modifyFields(wardrobe, { pieces: () => PiecesData.Success({ data: [knit] }) }),
-    today: (today) =>
-      modifyFields(today, {
-        tray: () => TrayData.Success({ data: { waiting, pictures } }),
-        lastBoard: () => LastBoardData.Success({ data: maybeBoard }),
-        favourite: () => FavouriteData.Success({ data: Option.none() }),
-      }),
-  })
+  withPage(withPieces(at('/', { signedIn: true }), [knit]), lenses.today, (today) =>
+    modifyFields(today, {
+      tray: () => TrayData.Success({ data: { waiting, pictures } }),
+      lastBoard: () => LastBoardData.Success({ data: maybeBoard }),
+      favourite: () => FavouriteData.Success({ data: Option.none() }),
+    }),
+  )
 
 /** Home on a day already worn, with today's outfits as given. */
 const wornWith = (outfits: OutfitsData) =>
-  modifyFields(withOutfits(outfits), {
-    today: (today) => modifyFields(today, { worn: () => Worn.Worn({ pieceIds: [knit.id] }) }),
-  })
+  withPage(withOutfits(outfits), lenses.today, (today) =>
+    modifyFields(today, { worn: () => Worn.Worn({ pieceIds: [knit.id] }) }),
+  )
 
 /** Home with today's outfits as given. */
 const withOutfits = (outfits: OutfitsData) =>
-  modifyFields(home(0, Option.none()), {
-    today: (today) => modifyFields(today, { outfits: () => outfits }),
-  })
+  withPage(home(0, Option.none()), lenses.today, (today) => modifyFields(today, { outfits: () => outfits }))
 
 describe('Home', () => {
   test('the bar holds Home, Ask, Wardrobe and Boards, and Explore is the round in Home’s head', () => {

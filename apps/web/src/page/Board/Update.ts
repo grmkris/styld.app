@@ -21,7 +21,6 @@ import {
   toastElapsed,
   undoRemove,
 } from './Actions.ts'
-import * as WardrobePage from '../Wardrobe.ts'
 import { LoadBoard, MakeIds, ReadClipboard, unitsPerPixel, VisitBoard } from './Commands.ts'
 import { committed, redone, replaced, saved, saveNow, type Services, type UpdateReturn, undone } from './Edits.ts'
 import {
@@ -40,23 +39,10 @@ import * as People from '../People.ts'
 import * as Make from './Make.ts'
 import { readShown, ReloadBoard } from './PageCommands.ts'
 
-/** The Commands that open the board: the board, the wardrobe for the tray, and a first batch of ids. Signed out it
- * can only be someone's public board, read as visitors read it, with no wardrobe and nothing to edit. */
+/** The Commands that open the board: the board and a first batch of ids (the app reads the pieces for the tray).
+ * Signed out it can only be someone's public board, read as visitors read it, with nothing to edit. */
 export const load = (model: Model): ReadonlyArray<Command.Command<Message, never, Services>> =>
-  model.signedIn
-    ? [
-        LoadBoard({ boardId: model.boardId }),
-        ...Command.mapMessages(WardrobePage.load(), (message) => Message.GotWardrobeMessage({ message })),
-        MakeIds(),
-      ]
-    : [VisitBoard({ boardId: model.boardId })]
-
-const foldWardrobe = Update.foldChild({
-  update: WardrobePage.update,
-  read: (model: Model) => Option.some(model.wardrobe),
-  write: (model: Model, wardrobe: WardrobePage.Model) => modifyFields(model, { wardrobe: () => wardrobe }),
-  toParentMessage: (message: WardrobePage.Message) => Message.GotWardrobeMessage({ message }),
-})
+  model.signedIn ? [LoadBoard({ boardId: model.boardId }), MakeIds()] : [VisitBoard({ boardId: model.boardId })]
 
 const foldPeople = People.foldInto<Model, Message>((message) => Message.GotPeopleMessage({ message }))
 
@@ -105,7 +91,6 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SucceededVisitBoard: ({ board }) => ({
       model: modifyFields(model, { board: () => BoardState.Visiting({ board }) }),
     }),
-    GotWardrobeMessage: (got) => foldWardrobe(model, got.message),
     GotPeopleMessage: (got) => foldPeople(model, got.message),
     GotMakeMessage: (got) => foldMake(model, got.message),
     CompletedMakeIds: ({ ids }) => ({ model: modifyFields(model, { ids: (pool) => [...pool, ...ids] }) }),

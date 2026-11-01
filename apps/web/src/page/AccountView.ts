@@ -249,10 +249,16 @@ const checking = (locale: Locale, h: HtmlBuilder<AppMessage>): Html =>
     ],
   )
 
-const signedIn = (model: AppModel, claims: AccountClaims, signingOut: boolean, h: HtmlBuilder<AppMessage>): Html =>
+const signedIn = (
+  model: AppModel,
+  account: Model,
+  claims: AccountClaims,
+  signingOut: boolean,
+  h: HtmlBuilder<AppMessage>,
+): Html =>
   h.submodel({
     slotId: 'account',
-    model: model.account,
+    model: account,
     view,
     viewInputs: { claims, signingOut, locale: model.context.locale, origin: model.context.origin },
     toParentMessage: (message) => AppMessage.GotAccountMessage({ message }),
@@ -260,7 +266,7 @@ const signedIn = (model: AppModel, claims: AccountClaims, signingOut: boolean, h
 
 /** The account page. A signed-out visitor is on the way to the sign-in page, so they see the same
  * loading line as while the session is read. */
-export const accountView = (model: AppModel, h: HtmlBuilder<AppMessage>): Html => {
+export const accountView = (model: AppModel, account: Model, h: HtmlBuilder<AppMessage>): Html => {
   const { locale } = model.context
   return h.main(
     [h.Id('main'), ...styled(h, accountPage())],
@@ -268,8 +274,8 @@ export const accountView = (model: AppModel, h: HtmlBuilder<AppMessage>): Html =
       Session.match(model.session, {
         Checking: () => checking(locale, h),
         SignedOut: () => checking(locale, h),
-        SignedIn: ({ claims }) => signedIn(model, claims, false, h),
-        SigningOut: ({ claims }) => signedIn(model, claims, true, h),
+        SignedIn: ({ claims }) => signedIn(model, account, claims, false, h),
+        SigningOut: ({ claims }) => signedIn(model, account, claims, true, h),
         Unavailable: () =>
           h.section(styled(h, unavailable()), [
             h.p([h.Role('alert')], [format(locale, 'common.error', {})]),

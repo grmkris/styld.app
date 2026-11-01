@@ -1,12 +1,11 @@
 import * as Crypto from 'effect/Crypto'
 import { newOperationId } from '../OperationIds.ts'
 import { Explore, Handle, Mood, PieceId, PublicPiecePage, PublicProfile, SearchResults } from '@styld/protocol'
-import { Effect, Match, Option, Predicate, Record, Schema } from 'effect'
+import { Effect, Option, Predicate, Record, Schema } from 'effect'
 import { Command, Dom, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
-import type { AppRoute } from '../route.ts'
 import { StyldClient } from '../StyldClient.ts'
 import * as People from './People.ts'
 
@@ -86,16 +85,6 @@ export const searchFieldId = 'explore-search'
 export const searchResultsId = 'explore-results'
 /** The longest search the public search reads. */
 const searchLength = 80
-
-/** Which public page a route opens; any other route keeps an empty one. */
-export const targetFor = (route: AppRoute): Target =>
-  Match.value(route).pipe(
-    Match.withReturnType<Target>(),
-    Match.tag('Person', ({ handle }) => Target.Person({ handle })),
-    Match.tag('PublicPiece', ({ pieceId }) => Target.Piece({ pieceId })),
-    Match.tag('Explore', () => Target.Explore({ mood: Option.none() })),
-    Match.orElse(() => Target.Person({ handle: '' })),
-  )
 
 /** A page for a visitor; `atFollow` when it opened at `#follow`, where sign-in returns a Follow pressed signed out. */
 export const init = (target: Target, signedIn: boolean, atFollow = false): Model => ({

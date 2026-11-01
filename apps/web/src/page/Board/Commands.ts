@@ -4,7 +4,7 @@ import { Array, Duration, Effect, Option, Predicate, Queue, Schema, Stream } fro
 import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { Command, File, Mount } from 'foldkit'
-import { uploadPicture } from '../../PictureUpload.ts'
+import { uploadPicture } from '../../Upload.ts'
 import { StyldClient } from '../../StyldClient.ts'
 import { Message } from './Message.ts'
 

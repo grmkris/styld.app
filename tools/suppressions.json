@@ -12,6 +12,10 @@
     "comment": "@effect-diagnostics-next-line unstableApiUsage:off -- Effect's platform Web Crypto layer is the browser's only Crypto provider."
   },
   {
+    "file": "apps/web/test/upload.test.ts",
+    "comment": "@effect-diagnostics-next-line unstableApiUsage:off -- the browser Web Crypto layer draws operation ids, as entry.ts does"
+  },
+  {
     "file": "packages/server/test/RuntimeWorker.ts",
     "comment": "oxlint-disable-next-line max-lines-per-function -- native acceptance fixture keeps all endpoints in one Worker."
   },

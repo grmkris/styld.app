@@ -19,6 +19,7 @@ import { block } from '../../Skeleton.styles.ts'
 import { styled } from '../../Styled.ts'
 import { visuallyHidden } from '../../VisuallyHidden.styles.ts'
 import { cx } from 'zyzz'
+import type { PiecesData } from '../../ServerData.ts'
 import { MeasurePaper } from './Commands.ts'
 import { boardImage, itemContent, itemStyle, pieceImage, placement } from './Table.ts'
 import { type KeyStep, Message } from './Message.ts'
@@ -61,12 +62,11 @@ const pieceName = (pieces: ReadonlyArray<Piece>, pieceId: string, locale: Locale
     () => format(locale, 'board.pieceFallback', {}),
   )
 
-const wardrobePieces = (model: Model): ReadonlyArray<Piece> =>
-  Option.getOrElse(AsyncData.getData(model.wardrobe.pieces), () => [])
+const piecesOf = (pieces: PiecesData): ReadonlyArray<Piece> => Option.getOrElse(AsyncData.getData(pieces), () => [])
 
 /** What an item is called for assistive technology. */
-const itemLabel = (model: Model, item: BoardItem, locale: Locale) => {
-  if (Schema.is(PieceItem)(item)) return pieceName(wardrobePieces(model), item.pieceId, locale)
+const itemLabel = (pieces: PiecesData, item: BoardItem, locale: Locale) => {
+  if (Schema.is(PieceItem)(item)) return pieceName(piecesOf(pieces), item.pieceId, locale)
   if (Schema.is(TextItem)(item)) return format(locale, 'board.textItem', { text: item.text })
   return format(locale, 'board.picture', {})
 }
@@ -93,7 +93,7 @@ const handleView = (item: BoardItem, locale: Locale, h: HtmlBuilder<Message>): H
     }),
   ])
 
-const itemView = (model: Model, item: BoardItem, locale: Locale, h: HtmlBuilder<Message>): Html => {
+const itemView = (model: Model, pieces: PiecesData, item: BoardItem, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const isSelected = Option.contains(model.maybeSelectedId, item.id)
   const isHeld = Option.contains(heldId(model.gesture), item.id)
   return h.keyed('div')(
@@ -101,7 +101,7 @@ const itemView = (model: Model, item: BoardItem, locale: Locale, h: HtmlBuilder<
     [
       h.Role('button'),
       h.Tabindex(0),
-      h.AriaLabel(itemLabel(model, item, locale)),
+      h.AriaLabel(itemLabel(pieces, item, locale)),
       h.AriaPressed(isSelected ? 'true' : 'false'),
       h.AriaDescribedBy('board-keys'),
       h.DataAttribute('item', item.id),
@@ -140,7 +140,7 @@ const leavingView = (item: BoardItem, h: HtmlBuilder<Message>): Html =>
     [itemContent(item, h)],
   )
 
-const paperView = (model: Model, paper: Paper, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const paperView = (model: Model, pieces: PiecesData, paper: Paper, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.section(
     [
       h.AriaLabel(format(locale, 'board.paper', {})),
@@ -153,7 +153,7 @@ const paperView = (model: Model, paper: Paper, locale: Locale, h: HtmlBuilder<Me
       ),
     ],
     [
-      ...Array.map(model.items, (item) => itemView(model, item, locale, h)),
+      ...Array.map(model.items, (item) => itemView(model, pieces, item, locale, h)),
       ...Array.map(model.leaving, (item) => leavingView(item, h)),
       Array.isReadonlyArrayEmpty(model.items) && Array.isReadonlyArrayEmpty(model.leaving)
         ? h.p(styled(h, styles.emptyHint()), [format(locale, 'board.empty', {})])
@@ -276,7 +276,7 @@ const trayLoading = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   )
 
 /** The tray: what is pinned on the board first, then the rest of the wardrobe. */
-const trayView = (model: Model, locale: Locale, h: HtmlBuilder<Message>, top: Html): Html => {
+const trayView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuilder<Message>, top: Html): Html => {
   const onTable = new Set(Array.flatMap(model.items, (item) => (Schema.is(PieceItem)(item) ? [item.pieceId] : [])))
   const picturesOnTable = new Set(
     Array.flatMap(model.items, (item) => (Schema.is(ImageItem)(item) ? [item.imageId] : [])),
@@ -288,11 +288,11 @@ const trayView = (model: Model, locale: Locale, h: HtmlBuilder<Message>, top: Ht
   const offTable = Array.flatMap(model.pins, (pin) =>
     Schema.is(PicturePin)(pin) && !picturesOnTable.has(pin.imageId) ? [pin.imageId] : [],
   )
-  const body = AsyncData.matchData(model.wardrobe.pieces, {
+  const body = AsyncData.matchData(pieces, {
     onEmpty: () => trayLoading(locale, h),
     onFailure: () => h.p([h.Role('alert'), ...styled(h, styles.fine())], [format(locale, 'board.wardrobeFailed', {})]),
-    onData: (pieces) => {
-      const rest = Array.filter(pieces, (piece) => piece.status === 'ready' && !pinnedIds.has(piece.id))
+    onData: (wardrobe) => {
+      const rest = Array.filter(wardrobe, (piece) => piece.status === 'ready' && !pinnedIds.has(piece.id))
       const offered = [...pinnedPieces, ...rest]
       return offered.length + offTable.length === 0
         ? h.p(styled(h, styles.fine()), [format(locale, 'board.wardrobeEmpty', {})])
@@ -308,7 +308,14 @@ const trayView = (model: Model, locale: Locale, h: HtmlBuilder<Message>, top: Ht
   )
 }
 
-const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const readyView = (
+  model: Model,
+  pieces: PiecesData,
+  name: string,
+  paper: Paper,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html =>
   h.div(styled(h, styles.page()), [
     h.header(styled(h, styles.header()), [
       h.div(styled(h, styles.headerBar()), [
@@ -326,15 +333,23 @@ const readyView = (model: Model, name: string, paper: Paper, locale: Locale, h: 
     h.div(styled(h, styles.stage()), [
       toolbarView(model, locale, h),
       lookView(model, locale, h),
-      paperView(model, paper, locale, h),
+      paperView(model, pieces, paper, locale, h),
       toastView(model, locale, h),
-      trayView(model, locale, h, selectedView(model, locale, h)),
+      trayView(model, pieces, locale, h, selectedView(model, locale, h)),
       // After the tray: on a phone the table runs straight into the tray, and the paper is a scroll below.
       paperChoiceView(model, paper, locale, h),
       h.p([h.Id('board-keys'), ...styled(h, styles.fine())], [format(locale, 'board.keys', {})]),
     ]),
   ])
 
-export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
-  boardStateView(model.board, (name, paper) => readyView(model, name, paper, locale, h), locale, h),
+export const view = Submodel.defineView<Model, Message, { readonly locale: Locale; readonly pieces: PiecesData }>(
+  (model, { locale, pieces }, h) =>
+    boardStateView(
+      model.board,
+      (name, paper) => readyView(model, pieces, name, paper, locale, h),
+      locale,
+      h,
+      Option.none(),
+      model.signedIn,
+    ),
 )

@@ -44,7 +44,7 @@ const board = Schema.decodeUnknownSync(Board)({
 })
 
 /** A board open in the editor, its paper 500px wide: one page pixel is two table units. */
-const open: Model = modifyFields(fromBoard(init(board.id), board), {
+const open: Model = modifyFields(fromBoard(init(board.id, true), board), {
   pxPerUnit: () => 0.5,
   ids: () => [itemId('fresh-1'), itemId('fresh-2'), itemId('fresh-3'), itemId('fresh-4'), itemId('fresh-5')],
 })

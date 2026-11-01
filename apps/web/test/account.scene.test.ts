@@ -1,27 +1,15 @@
-import { catalogVersion } from '@styld/i18n'
 import { click, Command, expect, given, role, scene } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
-import { Session, init, update } from '../src/App.ts'
+import { update } from '../src/App.ts'
+import { lenses } from '../src/Page.ts'
+import { at, withPage } from './AppFixtures.ts'
 import * as Account from '../src/page/Account.ts'
 import { view } from '../src/View.ts'
 import { You } from '../src/You.ts'
 
-const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
-
 const accountWith = (account: Account.Model) =>
-  modifyFields(
-    init({
-      locale: 'en',
-      catalogVersion,
-      timeZone: 'UTC',
-      referenceTime: 0,
-      pathname: '/account',
-      origin: 'https://styld.test',
-      telemetryConsent: 'denied',
-    }).model,
-    { session: () => Session.SignedIn({ claims }), account: () => account },
-  )
+  withPage(at('/account', { signedIn: true }), lenses.account, () => account)
 
 describe('the account page', () => {
   test('shows you in the bar as your profile does: its initials, once it is read', () => {

@@ -3,7 +3,6 @@ import { Array, Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from './ActionButton.ts'
 import { primaryAction, secondaryAction } from './Actions.styles.ts'
-import type { Model } from './App.ts'
 import { Message } from './Message.ts'
 import * as styles from './Landing.styles.ts'
 
@@ -42,8 +41,7 @@ const loadingBoards = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   ])
 
 /** The landing's inspiration: Edits from Styld, or the newest public boards before there are any. */
-const inspirationBoards = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const shown = model.visit.shown
+const inspirationBoards = (shown: Visit.Shown, locale: Locale, h: HtmlBuilder<Message>): Html => {
   if (Visit.Shown.guards.Loading(shown)) return loadingBoards(locale, h)
   if (Visit.Shown.guards.Failed(shown))
     return h.div(styled(h, inspirationGrid()), [
@@ -73,8 +71,7 @@ const inspirationBoards = (model: Model, locale: Locale, h: HtmlBuilder<Message>
 
 /** The section is named for what it shows: Styld's edits, or the newest boards before there are any. Until the boards
  * arrive it is unknown which, so a heading's shape holds its place. */
-const inspirationTitle = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const shown = model.visit.shown
+const inspirationTitle = (shown: Visit.Shown, locale: Locale, h: HtmlBuilder<Message>): Html => {
   if (Visit.Shown.guards.Loading(shown)) return h.span([h.AriaHidden(true), ...styled(h, cx(line(), headingLine()))])
   const title =
     Visit.Shown.guards.Explore(shown) && shown.explore.edits.length === 0 ? 'explore.newest' : 'explore.edits'
@@ -103,8 +100,8 @@ const heroBoard = (shown: Visit.Shown, locale: Locale, h: HtmlBuilder<Message>):
 }
 
 /** The landing: what Styld is, a way in, and the inspiration below. */
-export const landingView = (model: Model, h: HtmlBuilder<Message>): Html => {
-  const { locale } = model.context
+/** `explore` is Explore's Model, whose boards the landing shows. */
+export const landingView = (explore: Visit.Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   return h.main(
     [h.Id('main')],
     [
@@ -121,15 +118,15 @@ export const landingView = (model: Model, h: HtmlBuilder<Message>): Html => {
               h.a([h.Href(browseAnchor), ...styled(h, secondaryAction())], [format(locale, 'landing.browse', {})]),
             ]),
           ]),
-          heroBoard(model.visit.shown, locale, h),
+          heroBoard(explore.shown, locale, h),
         ],
       ),
       h.section(
         [h.Id('inspiration'), ...styled(h, inspiration())],
         [
-          inspirationTitle(model, locale, h),
+          inspirationTitle(explore.shown, locale, h),
           h.p(styled(h, sectionNote()), [format(locale, 'landing.feedDescription', {})]),
-          inspirationBoards(model, locale, h),
+          inspirationBoards(explore.shown, locale, h),
         ],
       ),
     ],

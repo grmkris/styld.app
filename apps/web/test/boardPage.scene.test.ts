@@ -8,7 +8,8 @@ import { Message as BoardMessage } from '../src/page/Board/Message.ts'
 import { fromBoard, init as boardInit } from '../src/page/Board/Model.ts'
 import { FocusPin, UnpinThings } from '../src/page/Board/PageCommands.ts'
 import { view } from '../src/View.ts'
-import { signedInAt } from './AppFixtures.ts'
+import { lenses } from '../src/Page.ts'
+import { at, withPage } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const boardId = `bd_${'weekend'.padEnd(22, 'x')}`
@@ -25,15 +26,15 @@ const board = Schema.decodeUnknownSync(Board)({
   check: null,
   updatedAt: '2026-10-31T09:00:00.000Z',
 })
-const page = modifyFields(signedInAt(`/boards/${boardId}`), {
-  board: () => fromBoard(boardInit(boardId), board),
-})
+const page = withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
+  fromBoard(boardInit(boardId, true), board),
+)
 
 describe("a board's page", () => {
   test('keeps the way back and says what it is doing while the board loads', () => {
     scene(
       { update, view },
-      given(modifyFields(page, { board: () => boardInit(boardId) })),
+      given(withPage(page, lenses.board, () => boardInit(boardId, true))),
       expect(role('status')).toHaveText('Opening your board…'),
       expect(role('link', { name: 'All boards' })).toHaveAttr('href', '/boards'),
       expect(role('heading', { level: 1 })).not.toExist(),
@@ -41,12 +42,11 @@ describe("a board's page", () => {
   })
 
   test('says when visitors see fewer pins than are pinned', () => {
-    const shown = modifyFields(signedInAt(`/boards/${boardId}`), {
-      board: () =>
-        modifyFields(fromBoard(boardInit(boardId), { ...board, visibility: 'public' }), {
-          shownToOthers: () => Option.some([]),
-        }),
-    })
+    const shown = withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
+      modifyFields(fromBoard(boardInit(boardId, true), { ...board, visibility: 'public' }), {
+        shownToOthers: () => Option.some([]),
+      }),
+    )
     scene(
       { update, view },
       given(shown),

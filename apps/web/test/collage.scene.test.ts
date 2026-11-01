@@ -1,17 +1,17 @@
-import { catalogVersion } from '@styld/i18n'
 import { Board, BoardItemId, PieceItem } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import { expect, given, inside, Mount, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
-import { init, Session, update } from '../src/App.ts'
+import { update } from '../src/App.ts'
+import { lenses } from '../src/Page.ts'
+import { at, withPage } from './AppFixtures.ts'
 import { MeasurePaper } from '../src/page/Board/Commands.ts'
 import { Message as BoardMessage } from '../src/page/Board/Message.ts'
 import { fromBoard, init as boardInit } from '../src/page/Board/Model.ts'
 import { view } from '../src/View.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
-const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
 const boardId = `bd_${'weekend'.padEnd(22, 'x')}`
 const knit = PieceItem.make({
   id: Schema.decodeUnknownSync(BoardItemId)(`bi_${'knit'.padEnd(22, 'x')}`),
@@ -37,20 +37,8 @@ const boardWith = (items: ReadonlyArray<PieceItem>) =>
     updatedAt: '2026-10-31T09:00:00.000Z',
   })
 const editing = (items: ReadonlyArray<PieceItem>) =>
-  modifyFields(
-    init({
-      locale: 'en',
-      catalogVersion,
-      timeZone: 'UTC',
-      referenceTime: 0,
-      pathname: `/boards/${boardId}/collage`,
-      origin: 'https://styld.test',
-      telemetryConsent: 'denied',
-    }).model,
-    {
-      session: () => Session.SignedIn({ claims }),
-      board: () => fromBoard(boardInit(boardId), boardWith(items)),
-    },
+  withPage(at(`/boards/${boardId}/collage`, { signedIn: true }), lenses.board, () =>
+    fromBoard(boardInit(boardId, true), boardWith(items)),
   )
 
 /** The table reports its width once it is on the page. */
@@ -67,7 +55,11 @@ describe('the collage editor', () => {
     )
     scene(
       { update, view },
-      given(modifyFields(editing([knit]), { board: (board) => ({ ...board, maybeSelectedId: Option.some(knit.id) }) })),
+      given(
+        withPage(editing([knit]), lenses.board, (board) =>
+          modifyFields(board, { maybeSelectedId: () => Option.some(knit.id) }),
+        ),
+      ),
       measured,
       inside(role('region', { name: 'Your pieces' }), expect(role('toolbar', { name: 'Selected' })).toExist()),
       expect(role('group', { name: 'Paper' })).not.toExist(),

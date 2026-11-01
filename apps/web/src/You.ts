@@ -18,7 +18,7 @@ export const You = defineTaggedUnion({
 })
 export type You = typeof You.Type
 
-/** @internal Exported for its tests. The person's profile once signed in, for the masthead. */
+/** The person's profile once signed in, for the masthead. */
 export const ReadYou = Command.define('ReadYou', {
   messages: [Message.SucceededReadYou, Message.FailedReadYou],
   execute: readProfile(

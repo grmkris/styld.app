@@ -1,34 +1,20 @@
-import { catalogVersion } from '@styld/i18n'
 import type { Piece } from '@styld/protocol'
 import { Dialog } from '@foldkit/ui'
 import { Command, Mount, click, expect, given, role, scene, selector, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
-import { Session, init, update } from '../src/App.ts'
+import { update } from '../src/App.ts'
+import { at } from './AppFixtures.ts'
 import { AsyncData } from 'foldkit'
-import { ListPieces, Message as WardrobeMessage, PiecesData } from '../src/page/Wardrobe.ts'
+import { ListPieces, Message as PiecesMessage, PiecesData } from '../src/ServerData.ts'
 import { view } from '../src/View.ts'
 import { sceneSheetOpened } from './SheetFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
-const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
-
 const wardrobe = (pieces: PiecesData) =>
-  modifyFields(
-    init({
-      locale: 'en',
-      catalogVersion,
-      timeZone: 'UTC',
-      referenceTime: 0,
-      pathname: '/wardrobe',
-      origin: 'https://styld.test',
-      telemetryConsent: 'denied',
-    }).model,
-    {
-      session: () => Session.SignedIn({ claims }),
-      wardrobe: (current) => modifyFields(current, { pieces: () => pieces }),
-    },
-  )
+  modifyFields(at('/wardrobe', { signedIn: true }), {
+    data: (data) => modifyFields(data, { pieces: () => pieces }),
+  })
 
 const loaded = (...pieces: ReadonlyArray<Piece>) => wardrobe(PiecesData.Success({ data: pieces }))
 
@@ -106,7 +92,7 @@ describe('the wardrobe page', () => {
       expect(role('alert')).toHaveText('Could not load pieces. Try again.'),
       click(role('button', { name: 'Try again' })),
       expect(role('status')).toHaveText('Loading pieces…'),
-      Command.resolve(ListPieces, WardrobeMessage.SucceededListPieces({ pieces: [] })),
+      Command.resolve(ListPieces, PiecesMessage.SucceededListPieces({ pieces: [] })),
     )
   })
 

@@ -1,6 +1,6 @@
 export { chip, chipSkeleton, lede as note } from '../Controls.styles.ts'
 import { pressThenHover, style } from '../zyzz.config.ts'
-export { grab, scrim, sheet, sheetBody, sheetHead, sheetTitle } from './Sheet.styles.ts'
+export { grab, scrim, sheet, sheetHead, sheetTitle } from './Sheet.styles.ts'
 
 // Ask (Gallery 2: docs/design/gallery-2/site/v2/ask.html, `.askbar`): search your wardrobe, the stylist, the + sheet.
 

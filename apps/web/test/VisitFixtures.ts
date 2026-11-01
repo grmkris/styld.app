@@ -1,8 +1,9 @@
-import { catalogVersion } from '@styld/i18n'
 import { PublicProfile } from '@styld/protocol'
 import { Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
-import { init, type Model, Session } from '../src/App.ts'
+import { type Model, Session } from '../src/App.ts'
+import { lenses, Page } from '../src/Page.ts'
+import { at, claims, withPage } from './AppFixtures.ts'
 import type { Shown } from '../src/page/Visit.ts'
 
 // A public profile and the app opened on a visitor page, shared by the visit scenes.
@@ -41,22 +42,16 @@ export const nika = Schema.decodeUnknownSync(PublicProfile)({
   yours: false,
 })
 
+/** The app opened at a path by a visitor whose session has been read: signed out. */
 export const opened = (pathname: string) =>
-  modifyFields(
-    init({
-      locale: 'en',
-      catalogVersion,
-      timeZone: 'UTC',
-      referenceTime: 0,
-      pathname,
-      origin: 'https://styld.test',
-      telemetryConsent: 'denied',
-    }).model,
-    { session: () => Session.SignedOut() },
-  )
-export const visiting = (pathname: string, shown: Shown) =>
-  modifyFields(opened(pathname), { visit: (visit) => modifyFields(visit, { shown: () => shown }) })
+  modifyFields(at(pathname, { signedIn: false }), { session: () => Session.SignedOut() })
+
+/** A public page showing `shown`: Explore and the landing through Explore's Model, a profile or piece through its own. */
+export const visiting = (pathname: string, shown: Shown) => {
+  const model = opened(pathname)
+  const lens = Page.guards.Tabs(model.page) ? lenses.explore : lenses.visit
+  return withPage(model, lens, (visit) => modifyFields(visit, { shown: () => shown }))
+}
 export const by = { handle: 'nika.kovac', name: 'Nika Kovač', tone: 'clay' }
 export const suggested = { ...by, city: 'Maribor', bio: 'Red, black and one good coat.' }
-const claims = { accountId: 'acc_1', displayName: 'Ana', email: 'ana@example.com', emailVerified: true }
-export const signedIn = (model: Model): Model => ({ ...model, session: Session.SignedIn({ claims }) })
+export const signedIn = (model: Model): Model => modifyFields(model, { session: () => Session.SignedIn({ claims }) })

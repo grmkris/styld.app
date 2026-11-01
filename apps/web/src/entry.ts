@@ -11,6 +11,7 @@ import { emailSignInLayer } from './EmailSignIn.ts'
 import { isTabChange, routing } from './Navigation.ts'
 import { styldClientLayer } from './StyldClient.ts'
 import { startTelemetry, telemetryConsentLayer } from './Telemetry.ts'
+import { pictureEncoderLayer } from './Upload.ts'
 
 const telemetry = startTelemetry(window.location.origin, document.cookie)
 
@@ -37,6 +38,7 @@ const application = Runtime.makeApplication(
       styldClientLayer(window.location.origin).pipe(Layer.provide(FetchHttpClient.layer)),
       emailSignInLayer(document).pipe(Layer.provideMerge(browserAuthLayer(window.location.origin)), Layer.orDie),
       telemetryConsentLayer(document),
+      pictureEncoderLayer,
     ).pipe(
       // @effect-diagnostics-next-line unstableApiUsage:off -- Effect's platform Web Crypto layer is the browser's only Crypto provider.
       Layer.provideMerge(BrowserCrypto.layer),

@@ -6,7 +6,7 @@ import { AsyncData, Command, File, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
-import { uploadPicture } from '../PictureUpload.ts'
+import { type PictureEncoder, uploadPicture } from '../Upload.ts'
 import { StyldClient } from '../StyldClient.ts'
 
 // My Gallery (owner, 2026-10-31): the person's own outfit photos, newest first. Adding one sends it for a credit while
@@ -80,7 +80,7 @@ export const WaitWhileFinding = Command.define('WaitWhileFinding', {
 
 // UPDATE
 
-type UpdateReturn = Update.Return<Model, Message, StyldClient | Crypto.Crypto>
+type UpdateReturn = Update.Return<Model, Message, StyldClient | Crypto.Crypto | PictureEncoder>
 
 const isFinding = (photos: ReadonlyArray<Photo>) => photos.some(({ status }) => status === 'finding')
 

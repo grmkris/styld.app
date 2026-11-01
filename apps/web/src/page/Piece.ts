@@ -21,6 +21,7 @@ import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
+import type { PictureEncoder } from '../Upload.ts'
 import * as PieceBack from './PieceBack.ts'
 import * as PiecePhotos from './PiecePhotos.ts'
 import { changeDetails, Details, detailsOf } from './PieceFields.ts'
@@ -337,7 +338,8 @@ export const load = (model: Model): ReadonlyArray<Command.Command<Message, never
 
 // UPDATE
 
-type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
+type Services = StyldClient | Crypto.Crypto | PictureEncoder
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Services>
 
 const foldSaveToBoard = SaveToBoard.foldInto<Model, Message>((message) => Message.GotSaveToBoardMessage({ message }))
 
@@ -346,9 +348,7 @@ const foldBack = Update.foldChild({
   read: (model: Model) => Option.some(model.back),
   write: (model: Model, back: PieceBack.Model) => modifyFields(model, { back: () => back }),
   toParentMessage: (message: PieceBack.Message) => Message.GotBackMessage({ message }),
-  foldOutMessage: PieceBack.OutMessage.match<
-    Update.StepWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
-  >({
+  foldOutMessage: PieceBack.OutMessage.match<Update.StepWithOutMessage<Model, Message, OutMessage, Services>>({
     ChangedPiece:
       ({ piece }) =>
       (stepModel) => ({ model: modifyFields(stepModel, { load: () => Load.Loaded({ piece }) }) }),

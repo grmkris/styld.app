@@ -32,6 +32,8 @@ import {
 } from '../src/page/Visit.ts'
 import { view } from '../src/View.ts'
 import { by, knit, nika, opened, signedIn, suggested, visiting } from './VisitFixtures.ts'
+import { withPage } from './AppFixtures.ts'
+import { lenses } from '../src/Page.ts'
 
 /** The knit as it lies on a board's table. */
 const knitItem = {
@@ -104,9 +106,9 @@ describe('a public profile', () => {
     scene(
       { update, view },
       given(
-        modifyFields(visiting(`/pieces/${knit.id}`, Shown.Piece({ page })), {
-          visit: (visit) => modifyFields(visit, { cameFrom: () => Option.some(board) }),
-        }),
+        withPage(visiting(`/pieces/${knit.id}`, Shown.Piece({ page })), lenses.visit, (visit) =>
+          modifyFields(visit, { cameFrom: () => Option.some(board) }),
+        ),
       ),
       expect(role('link', { name: 'Back' })).toHaveAttr('href', board),
     )
@@ -133,9 +135,9 @@ describe('a public profile', () => {
     scene(
       { update, view },
       given(
-        modifyFields(signedIn(opened(`/boards/${board.id}`)), {
-          board: (page) => modifyFields(page, { board: () => BoardState.Visiting({ board }) }),
-        }),
+        withPage(signedIn(opened(`/boards/${board.id}`)), lenses.board, (page) =>
+          modifyFields(page, { board: () => BoardState.Visiting({ board }) }),
+        ),
       ),
       expect(role('heading', { name: 'Coats' })).toExist(),
       expect(role('link', { name: /By Nika Kovač/ })).toHaveAttr('href', '/@nika.kovac'),
@@ -163,9 +165,9 @@ describe('a public profile', () => {
     scene(
       { update, view },
       given(
-        modifyFields(signedIn(opened(`/looks/${page.look.id}`)), {
-          look: (look) => modifyFields(look, { shown: () => LookShown.Visiting({ page }) }),
-        }),
+        withPage(signedIn(opened(`/looks/${page.look.id}`)), lenses.look, (look) =>
+          modifyFields(look, { shown: () => LookShown.Visiting({ page }) }),
+        ),
       ),
       expect(role('heading', { name: 'Monday' })).toExist(),
       expect(text('Office')).toExist(),

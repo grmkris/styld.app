@@ -17,9 +17,10 @@ import {
 import { CopyServerUrl, DeleteAccount, Message as AccountMessage } from '../src/page/Account.ts'
 import { AppRoute } from '../src/route.ts'
 import { view } from '../src/View.ts'
-import { pageAt } from './WardrobeFixtures.ts'
+import { lenses } from '../src/Page.ts'
+import { at, withPage } from './AppFixtures.ts'
 
-const page = pageAt
+const page = (path: string) => at(path, { signedIn: false })
 
 const claims = { accountId: 'acc_1', displayName: 'ana', email: 'ana@example.com', emailVerified: true }
 
@@ -27,14 +28,13 @@ const sent = { flowId: 'flow_1', requestId: 'req_1', proofId: 'proof_1', keyId: 
 const resent = { flowId: 'flow_1', requestId: 'req_2', proofId: 'proof_2', keyId: 'key_1' }
 
 const awaitingCode = (pathname: string, code: Partial<Code> = {}) =>
-  modifyFields(page(pathname), {
-    login: (login) =>
-      modifyFields(login, {
-        email: () => 'ana@example.com',
-        step: () =>
-          Step.EnterCode({ code: { sent, use: 'open', rejections: 0, resent: false, canResend: false, ...code } }),
-      }),
-  })
+  withPage(page(pathname), lenses.login, (login) =>
+    modifyFields(login, {
+      email: () => 'ana@example.com',
+      step: () =>
+        Step.EnterCode({ code: { sent, use: 'open', rejections: 0, resent: false, canResend: false, ...code } }),
+    }),
+  )
 
 const codeField = label('Enter verification code')
 const verifyButton = role('button', { name: 'Verify code' })
@@ -42,9 +42,9 @@ const resendButton = role('button', { name: 'Resend code' })
 
 describe('email code sign-in', () => {
   test('a pending code request keeps its focusable button and ignores another submission', () => {
-    const sending = modifyFields(page('/login'), {
-      login: (login) => modifyFields(login, { email: () => 'ana@example.com', step: () => Step.SendingCode() }),
-    })
+    const sending = withPage(page('/login'), lenses.login, (login) =>
+      modifyFields(login, { email: () => 'ana@example.com', step: () => Step.SendingCode() }),
+    )
     const pendingButton = role('button', { name: 'Sending code...' })
     scene(
       { update, view },
