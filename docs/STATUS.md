@@ -2,6 +2,35 @@
 
 Status: active. Sign-in, the wardrobe (shop-style garment types, browsing, a piece's back), capture with real cut-outs (photos, video import, a held-up camera, scan anything), the review tray, the daily allowance, looks, clean pictures and turns, the boards' pins, profiles, checks and link import, mood boards from the person's own pieces and stickers, the outfit engine (Fast and Thinking), My Gallery and Styld, the stylist in the app are deployed to the isolated workers.dev preview (release `889af38`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping; the plan in progress is "Plan: shopping your own wardrobe" below, waiting at owner gate 1.
 
+## Cleanup C2: one way to declare the contract — 2026-11-01
+
+Milestone C2 of the cleanup plan (contract only; the preview is not redeployed until the milestone's review).
+
+- **Errors declared once** (`protocol/src/Errors.ts`): `Unavailable` (503), `SlowDown` (429, optional `retryAfter`),
+  `NotFound` (404), `LimitReached` (429, `limit`: `dailyCredits` with `resetsAt`, `thinking`, `reports`),
+  `OperationConflict` (409) and `RequestRefused` (403) replace 19 per-module classes. Thinking's failed answer keeps
+  its own refusal, `ThinkingUnanswered` (503); a wardrobe read failure is `Unavailable`. Every error declares a
+  `guide` annotation (code, retryable, message, recovery, per reason or limit); MCP's `toolErrorOf` derives every
+  tool error from it, replacing nine mapping tables and four `refused` helpers. A unit test keeps every API error
+  guided. Catalog keys were already concept-named (`dailyLimit`, `slowDown`, `unavailable`, `notFound`) and stay.
+- **Ids, text, limits, prices, languages:** `Ids.ts` (`entityId(prefix)` for 14 branded ids, `OperationId`,
+  `Operation`), `Text.ts` (`textLength`, `Name`, `Notes`, `Hint`, `Url`), `Limits.ts`, `Prices.ts` (photo 1, video
+  half-minute 5, redraw 1, turn 5, stylist message 1, sticker 1, mood board 1, gallery photo 1; catalog strings take
+  `{credits}`), `Languages.ts` (`Language` over `@styld/i18n` `languages`; the contract now depends on i18n). The
+  website's inputs and colour picker read the contract's numbers.
+- **Groups declared one way:** no group carries a prefix, `StyldApi` applies `/api` once; groups are singular
+  (`link`, `outfit`, `photo`); only `StyldApi` is exported.
+- **Every write names its operation:** all 51 non-GET endpoints take `operationId` (test walks `StyldApi`). Upload
+  creation, link reading, reports, capture retry and split answer a repeat from receipts (`kernel/Receipts.ts`
+  `once`, `receiptRows` spread by every store). The website draws ids one way (`apps/web/src/OperationIds.ts`).
+- **Leftovers:** `Day` exported directly, `SetMoods` gone, `Detection.partial` always a boolean, report reason
+  `selfHarm`.
+- **MCP:** tools take the protocol payloads (collage things as `TableThing`), search words are `q`, `account_get`
+  reads only a verified email through `AccountLifecycle.readAccount`, `link_import` calls the website's `readLink`,
+  `piece_search` folds words with `Search.ts`; a unit test calls every listed tool.
+- **Remaining for C2 (plan):** session middleware (`SessionAccount`), `Page.ts`, the upload PUT inside `HttpApi`,
+  closed inputs; makeOutfit, capture check and drawPictures take an id but keep no receipt (a repeat asks again).
+
 ## Screen fix pass, observability and mood board resume — 2026-10-31
 
 The owner asked for every screen of the preview to be reviewed critically (frontend-design, make-interfaces-feel-better,
