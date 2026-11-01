@@ -24,8 +24,8 @@ const request = (changes: Partial<DrawRequest> = {}): DrawRequest => ({
 const muse = (...answers: ReadonlyArray<() => Promise<Response>>) => {
   const seen: Array<{ readonly url: string; readonly init: RequestInit }> = []
   const generator = makeMuseGenerator({
-    apiBase: 'https://meta.test',
-    apiKey: Redacted.make('key'),
+    base: 'https://meta.test',
+    key: Redacted.make('key'),
     fetch: (url, init) => {
       seen.push({ url, init })
       const next = answers[Math.min(seen.length - 1, answers.length - 1)]

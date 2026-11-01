@@ -51,8 +51,8 @@ describe('SAM on a photo of several pieces', () => {
   const piecesWith = (other: () => Response) => {
     const asked: Array<string> = []
     const segmenter = makeGarmentSegmenter({
-      apiBase: 'https://meta.test',
-      apiKey: Redacted.make('key'),
+      base: 'https://meta.test',
+      key: Redacted.make('key'),
       fetch: (_input, init) => {
         const body = typeof init?.body === 'string' ? init.body : ''
         const prompt = ['clothing', 'shoes', 'bag', 'hat'].find((noun) => body.includes(`"${noun}"`))

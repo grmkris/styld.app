@@ -42,8 +42,8 @@ const wanted = new Set(
   Array.from({ length: Math.floor(frames / (fps * Number(every))) + 1 }, (_, n) => Math.round(n * fps * Number(every))),
 )
 const segmenter = makeGarmentSegmenter({
-  apiBase,
-  apiKey: Redacted.make(key),
+  base: apiBase,
+  key: Redacted.make(key),
   fetch: (input, init) => fetch(input, init),
   readVideo: () => Promise.resolve(null),
   metrics: CaptureMetrics.discarding,

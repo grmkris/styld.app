@@ -77,8 +77,8 @@ const chose = (choice: string, probability: number) => ({ choice, probabilities:
 /** SAM answering every request with `answer`. */
 const segmenter = (answer: () => Response) =>
   makeGarmentSegmenter({
-    apiBase: 'https://meta.test',
-    apiKey: Redacted.make('key'),
+    base: 'https://meta.test',
+    key: Redacted.make('key'),
     fetch: () => Promise.resolve(answer()),
     readVideo: () => Promise.resolve(null),
     metrics: CaptureMetrics.discarding,
@@ -399,8 +399,8 @@ describe('Meta SAM', () => {
   test("retries Meta's model_not_found in place, then leaves it to the queue", async () => {
     let calls = 0
     const misrouted = makeGarmentSegmenter({
-      apiBase: 'https://meta.test',
-      apiKey: Redacted.make('key'),
+      base: 'https://meta.test',
+      key: Redacted.make('key'),
       fetch: () => {
         calls++
         return Promise.resolve(new Response('{"error":{"code":"model_not_found"}}', { status: 404 }))

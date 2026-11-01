@@ -10,6 +10,7 @@ import { CaptureConfig } from './capture/Policy.ts'
 import { GarmentSegmenter, GarmentVision, ImageGenerator, PictureWork, VideoGenerator } from './capture/Providers.ts'
 import { gatewayBase, makeVeoGenerator, veoPollSeconds } from './capture/Veo.ts'
 import type { Deployment } from './Config.ts'
+import type { Fetch } from './providers/Http.ts'
 import { PicturePainter } from './generation/Painter.ts'
 import { livePlanner, MoodPlanner } from './generation/Planner.ts'
 import { clefJudge, type OutfitJudge } from './outfits/Judge.ts'
@@ -76,17 +77,17 @@ export const providersOver = (
   bindings: ProviderBindings,
   calls: WorkersAiCalls,
   http: {
-    readonly fetch: (input: string, init: RequestInit) => Promise<Response>
+    readonly fetch: Fetch
     readonly metaBase: string
     readonly gatewayBase: string
     readonly pollSeconds: number
   },
 ): Layer.Layer<ProviderServices> => {
   const { metrics, deployment } = bindings
-  const meta = { apiBase: http.metaBase, apiKey: deployment.secrets.metaApiKey, fetch: http.fetch, metrics }
+  const meta = { base: http.metaBase, key: deployment.secrets.metaApiKey, fetch: http.fetch, metrics }
   const veo = {
-    apiBase: http.gatewayBase,
-    apiKey: deployment.secrets.videoGatewayKey,
+    base: http.gatewayBase,
+    key: deployment.secrets.videoGatewayKey,
     fetch: http.fetch,
     metrics,
     pollSeconds: http.pollSeconds,

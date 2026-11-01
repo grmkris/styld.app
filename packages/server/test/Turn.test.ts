@@ -26,8 +26,8 @@ const answering = (...answers: ReadonlyArray<() => Promise<Response>>) => {
 const veo = (...answers: ReadonlyArray<() => Promise<Response>>) => {
   const provider = answering(...answers)
   const generator = makeVeoGenerator({
-    apiBase: 'https://gateway.test/v4/ai',
-    apiKey: Redacted.make('key'),
+    base: 'https://gateway.test/v4/ai',
+    key: Redacted.make('key'),
     fetch: provider.fetch,
     metrics: CaptureMetrics.discarding,
     pollSeconds: 15,
@@ -121,8 +121,8 @@ describe("Muse's side view", () => {
   test('turns the front anchor to a strict profile on the same 9:16 canvas', async () => {
     const provider = answering(() => Promise.resolve(new Response(fixture('muse-edit-red-tee.json'))))
     const muse = makeMuseGenerator({
-      apiBase: 'https://meta.test',
-      apiKey: Redacted.make('key'),
+      base: 'https://meta.test',
+      key: Redacted.make('key'),
       fetch: provider.fetch,
       metrics: CaptureMetrics.discarding,
     })
