@@ -36,7 +36,6 @@ const refusal = (picture: PictureRow, face: number): Option.Option<PictureRefuse
 /** The owner's piece, if it can be drawn: clean pictures are on and it shows a cut-out. */
 const drawablePiece = (parts: Parts, accountId: string, pieceId: string) =>
   Effect.gen(function* () {
-    if ((yield* CaptureConfig).pictures.generator === 'off') return yield* PictureRefused.make({ reason: 'off' })
     const piece = yield* storedAs(parts.wardrobeStore.findPiece(accountId, pieceId))
     if (Option.isNone(piece)) return yield* NotFound.make({})
     if (!isCutout(piece.value)) return yield* PictureRefused.make({ reason: 'photo' })
@@ -118,14 +117,12 @@ export const redrawing = (parts: Parts) => ({
   undrawnPictures: Effect.fn('Styld.Picture.undrawn')(function* () {
     const { accountId } = yield* CurrentAccount
     const policy = (yield* CaptureConfig).pictures
-    if (policy.generator === 'off') return { pieces: 0 }
     return { pieces: (yield* storedAs(parts.store.undrawnPieces(accountId, policy.face))).length }
   }),
   /** Queue a free clean picture for each of them, as a keep would have, and send again any still waiting. */
   drawPictures: Effect.fn('Styld.Picture.backfill')(function* () {
     const { accountId } = yield* CurrentAccount
     const policy = (yield* CaptureConfig).pictures
-    if (policy.generator === 'off') return { pieces: 0 }
     const undrawn = yield* storedAs(parts.store.undrawnPieces(accountId, policy.face))
     const at = yield* nowDate
     yield* storedAs(

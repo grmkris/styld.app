@@ -1,18 +1,11 @@
 import { expect } from 'bun:test'
-import * as Output from 'alchemy/Output'
-import { Redacted, Schema } from 'effect'
+import { Schema } from 'effect'
 import { Allowance, decoded } from './CleanPictureAcceptance.ts'
 import { addedPiece } from './GalleryAcceptance.ts'
 import { client, seedAccounts, signIn } from './Accounts.ts'
 import { waitUntilReady } from './WardrobeAcceptance.ts'
 
 /** The API Worker's settings for Styld on the native stack: the model is the fixture's stand-in gateway. */
-export const stylistEnvironment = (fixtures: Output.Output<string | undefined>) => ({
-  STYLIST: 'gateway',
-  STYLIST_GATEWAY_BASE: Output.interpolate`${fixtures}/test/stylist/v1`,
-  STYLIST_GATEWAY_API_KEY: Redacted.make('native-test-gateway-key'),
-})
-
 const Part = Schema.Struct({ _tag: Schema.String, pieceIds: Schema.optionalKey(Schema.Array(Schema.String)) })
 const Chat = Schema.Struct({
   id: Schema.String,

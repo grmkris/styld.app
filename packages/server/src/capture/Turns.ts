@@ -42,7 +42,7 @@ import { Holds, holdId } from '../usage/Holds.ts'
 import { once } from '../kernel/Receipts.ts'
 import { nowDate } from '../kernel/Db.ts'
 
-// Veo 3.1 Lite answers a 4 s turn in one to two minutes (30 October). The job asks every 15 s (`turns.pollSeconds`)
+// Veo 3.1 Lite answers a 4 s turn in one to two minutes (30 October). The job asks every 15 s (`pollSeconds`)
 // and gives up after 15 min; a claim older than 5 min belongs to a delivery that died, perhaps after the video model
 // took the work.
 const patienceMillis = 15 * 60 * 1000
@@ -182,7 +182,7 @@ const start = (parts: Parts, turn: TurnRow) =>
       }))
     )
       return false
-    yield* enqueueTurn(parts, pieceId, (yield* CaptureConfig).turns.pollSeconds)
+    yield* enqueueTurn(parts, pieceId, (yield* VideoGenerator).pollSeconds)
     return true
   })
 
@@ -191,7 +191,7 @@ const start = (parts: Parts, turn: TurnRow) =>
 const poll = (parts: Parts, turn: TurnRow) =>
   Effect.gen(function* () {
     const { pieceId, accountId } = turn
-    const { pollSeconds } = (yield* CaptureConfig).turns
+    const { pollSeconds } = yield* VideoGenerator
     const started = startedOf(turn)
     if (Option.isNone(started)) return yield* end(parts, pieceId, 'generating', 'unknown')
     if ((yield* nowDate).getTime() - started.value.startedAt > patienceMillis)
@@ -317,7 +317,6 @@ const acceptSheet = (parts: Parts, pieceId: string, layout: TurnLayout, bytes: U
 /** The owner's piece, if it can turn: turns are on and it has a clean picture shown or offered. */
 const turnablePiece = (parts: Parts, accountId: string, pieceId: string) =>
   Effect.gen(function* () {
-    if ((yield* CaptureConfig).turns.generator === 'off') return yield* TurnRefused.make({ reason: 'off' })
     if (Option.isNone(yield* storedAs(parts.wardrobeStore.findPiece(accountId, pieceId))))
       return yield* NotFound.make({})
     if (Option.isNone(cleanPicture(yield* storedAs(parts.store.findPicture(pieceId)))))

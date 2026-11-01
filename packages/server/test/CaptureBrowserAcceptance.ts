@@ -4,7 +4,7 @@ import { Schema } from 'effect'
 import type { Browser, Page } from 'playwright'
 import { readMoov, videoDurationMs, videoFrameCount } from '../src/capture/VideoContainer.ts'
 import { recordProblems } from './BrowserAcceptance.ts'
-import { seedAccounts, signedInContext } from './Accounts.ts'
+import { leaveCredits, seedAccounts, signedInContext } from './Accounts.ts'
 
 const fixture = (name: string) => fileURLToPath(new URL(`fixtures/capture/${name}`, import.meta.url))
 
@@ -46,6 +46,7 @@ const keepAs = async (page: Page, type: string, kind: string) => {
 export const verifyCaptureJourney = async (browser: Browser, origin: string, fixtures: string): Promise<void> => {
   await seedAccounts(fixtures, 'native-capture-browser')
   const context = await signedInContext(browser, origin, 'native-capture-browser')
+  await leaveCredits(origin, context, 7)
   try {
     const page = await context.newPage()
     const problems = recordProblems(page)
@@ -57,7 +58,7 @@ export const verifyCaptureJourney = async (browser: Browser, origin: string, fix
     await page.waitForURL(`${origin}/wardrobe/review`, { timeout: 30000 })
     await page.getByRole('heading', { name: '3 pieces found' }).waitFor({ state: 'visible', timeout: 30000 })
     expect(await page.getByRole('button', { name: 'Keep Choose what it is' }).count()).toBe(3)
-    await page.getByText('4 of 7 free credits left today').waitFor({ state: 'visible' })
+    await page.getByText('4 of 100 free credits left today').waitFor({ state: 'visible' })
 
     await keepAs(page, 'Tops & T-shirts', 'Top')
     await keepAs(page, 'Dresses', 'Dress')
@@ -143,6 +144,7 @@ const Created = Schema.Struct({
 export const verifyLongVideoJourney = async (browser: Browser, origin: string, fixtures: string): Promise<void> => {
   await seedAccounts(fixtures, 'native-video-browser')
   const context = await signedInContext(browser, origin, 'native-video-browser')
+  await leaveCredits(origin, context, 7)
   await context.addInitScript({ content: countedWakeLock })
   try {
     const page = await context.newPage()

@@ -162,7 +162,6 @@ const draw = (parts: Parts, claimed: PictureRow, front: Rgba, back: Option.Optio
 const start = (parts: Parts, picture: PictureRow) =>
   Effect.gen(function* () {
     const policy = (yield* CaptureConfig).pictures
-    if (policy.generator === 'off') return
     const { pieceId } = picture
     const piece = yield* storedAs(parts.wardrobeStore.findPiece(picture.accountId, pieceId))
     if (Option.isNone(piece)) return

@@ -118,7 +118,7 @@ describe('Meta Muse Image', () => {
 const clef = (name: string) =>
   makeGarmentVision(() => Promise.resolve(JSON.parse(fixture(name).toString('utf8'))), CaptureMetrics.discarding)
 
-const policy = capturePolicy({}).pictures
+const policy = capturePolicy.pictures
 
 describe('the decision model on a kept cut-out', () => {
   test('reads a clean drawn tee as ready, a scrap of a dress as a fragment, and no face in either', async () => {
@@ -170,11 +170,5 @@ describe('what happens to a kept cut-out and to its drawing', () => {
     expect(gateFor({ same: 0.95, faithful: 0.79 }, policy)).toBe('proposed')
     expect(gateFor({ same: 0.5, faithful: 0.9 }, policy)).toBe('proposed')
     expect(gateFor({ same: 0.49, faithful: 0.9 }, policy)).toBe('rejected')
-  })
-
-  test('is off unless the Worker names a generator', () => {
-    expect(capturePolicy({}).pictures.generator).toBe('off')
-    expect(capturePolicy({ CLEAN_PICTURES: 'muse' }).pictures.generator).toBe('muse')
-    expect(capturePolicy({ CLEAN_PICTURES: 'dall-e' }).pictures.generator).toBe('off')
   })
 })

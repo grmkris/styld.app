@@ -4,7 +4,7 @@ import { accountPrefix } from '../wardrobe/Media.ts'
 import { type CutSide, CutoutFailed, GarmentCutout } from '../wardrobe/Processing.ts'
 import type { WardrobeBindings } from '../wardrobe/Parts.ts'
 import { CaptureMetrics } from './Metrics.ts'
-import { CaptureConfig, type CapturePolicy } from './Policy.ts'
+import { CaptureConfig } from './Policy.ts'
 import { type CutPiece, foregroundPiece, type morePrompts, samPieces, showsPerson } from './PhotoPipeline.ts'
 import { GarmentSegmenter, GarmentVision, PictureWork, type Route } from './Providers.ts'
 import { Holds, holdId, metered } from '../usage/Holds.ts'
@@ -16,8 +16,7 @@ type CutInput = Parameters<GarmentCutout['Service']['cut']>[0]
  * the piece, a pair of shoes or gloves included, which the route counts as two (v1 product shots carried over, 1 November:
  * every pair went to SAM and came back empty). With a person in it, background removal would keep the person.
  * @internal Exported for its tests. */
-export const pieceCutterFor = (route: Route, policy: Pick<CapturePolicy, 'single'>): 'cloudflare' | 'sam' =>
-  showsPerson(route) || policy.single === 'sam' ? 'sam' : 'cloudflare'
+export const pieceCutterFor = (route: Route): 'cloudflare' | 'sam' => (showsPerson(route) ? 'sam' : 'cloudflare')
 
 /** What SAM is asked for, besides clothing, to find a piece of this kind: "clothing" misses shoes, bags and hats.
  * @internal Exported for its tests. */
@@ -42,10 +41,9 @@ export const pieceOfKind = <Cut extends Pick<CutPiece, 'track'>>(
 /** The piece in its own photo, cut out: background removal when nobody is in it, falling back to SAM. */
 const pieceIn = (original: Uint8Array, type: PieceType) =>
   Effect.gen(function* () {
-    const policy = yield* CaptureConfig
     const copies = yield* (yield* PictureWork).workingCopies(original)
     const route = yield* (yield* GarmentVision).route({ bytes: copies.small, contentType: 'image/jpeg' })
-    if (pieceCutterFor(route, policy) === 'cloudflare') {
+    if (pieceCutterFor(route) === 'cloudflare') {
       const [foreground] = yield* foregroundPiece(original)
       if (foreground !== undefined) return Option.some(foreground.png)
     }

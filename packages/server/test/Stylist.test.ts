@@ -5,7 +5,6 @@ import { Cause, Context, Effect, Fiber, Layer, Predicate, Schema, Stream } from 
 import { FetchHttpClient } from 'effect/http'
 import { describe, expect, test } from 'vitest'
 import { type Tool as AssistantTool, tool, ToolError } from '../src/mcp/Tools.ts'
-import { stylistPolicy } from '../src/stylist/Policy.ts'
 import { historyText, outlineOf, systemPrompt } from '../src/stylist/Prompt.ts'
 import { lookingUpToolNames, modelSchema, showingToolNames, turnTools } from '../src/stylist/Tools.ts'
 import { TestClock } from 'effect/testing'
@@ -373,20 +372,5 @@ describe('what Styld is told', () => {
         ],
       }),
     ).toBe(`Try these.\n[shown: ]\n[saved the look lk_${'b'.repeat(22)}]`)
-  })
-
-  test('is off unless the Worker names a provider, and answers on Workers AI by default', () => {
-    expect(stylistPolicy({}).mode).toBe('off')
-    expect(stylistPolicy({ STYLIST: 'workers-ai' })).toMatchObject({
-      mode: 'workers-ai',
-      model: '@cf/deepseek-ai/deepseek-v4.1-flash-1017',
-    })
-    expect(stylistPolicy({ STYLIST: 'workers-ai', STYLIST_MODEL: '@cf/zai-org/glm-5.3-flash' }).model).toBe(
-      '@cf/zai-org/glm-5.3-flash',
-    )
-    expect(stylistPolicy({ STYLIST: 'gateway' })).toMatchObject({
-      mode: 'gateway',
-      model: 'anthropic/claude-haiku-5.5',
-    })
   })
 })

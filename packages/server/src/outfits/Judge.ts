@@ -74,7 +74,6 @@ export const clefJudge = (run: RunClef, metrics: CaptureMetrics['Service']): Out
 })
 
 /** Without Clef, outfits keep the rules' order. */
-export const noJudge: OutfitJudge = { judge: () => Effect.succeed(Option.none()) }
 
 /** The largest picture sent when the Images binding cannot resize one. */
 const largestPicture = 2 * 1024 * 1024

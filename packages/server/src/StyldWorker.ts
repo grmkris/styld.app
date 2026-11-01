@@ -4,11 +4,10 @@ import * as AlchemyHttp from 'alchemy/Http'
 import { ProofDispatchSink } from '@styld/auth'
 import { RuntimeContext } from 'alchemy/RuntimeContext'
 import { layerCryptoWeb } from '@yielded/auth/WebCrypto'
-import { Effect, Layer, Logger, Option, Stream } from 'effect'
+import { Effect, Layer, Logger, Stream } from 'effect'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import * as UrlParams from 'effect/http/UrlParams'
-import { authConfiguration, authOptions } from './AuthConfiguration.ts'
 import { browserTelemetryRoutes } from './BrowserTelemetry.ts'
 import { AccountLifecycle, makeAccountLifecycle } from './AccountLifecycle.ts'
 import { Looks, makeLooks } from './looks/Looks.ts'
@@ -18,20 +17,20 @@ import { makePublicPages, PublicPages } from './social/Public.ts'
 import { publicImageRoutes } from './social/PublicHttp.ts'
 import { makeSocial, Social } from './social/Social.ts'
 import { Discovery, makeDiscovery } from './social/Discovery.ts'
-import { adminEmails, makeCuration } from './social/Curation.ts'
 import { boardRoutes } from './boards/Http.ts'
 import { makeWorn, Worn } from './worn/Worn.ts'
 import { apiRoutes } from './Api.ts'
 import { makeAuthHttp, withCodeRequestPolicy } from './AuthHttp.ts'
-import type { RunClef } from './capture/Clef.ts'
 import { captureRoutes } from './capture/Http.ts'
-import { type AnalyticsDataset, CaptureMetrics as CaptureMetricsService } from './capture/Metrics.ts'
-import { pieceCutout } from './capture/PieceCutout.ts'
-import type { CaptureConfig } from './capture/Policy.ts'
-import { GarmentSegmenter, GarmentVision, ImageGenerator, PictureWork, VideoGenerator } from './capture/Providers.ts'
 import { Captures, makeCaptures } from './capture/Service.ts'
 import { Holds } from './usage/Holds.ts'
 import { DomainLive } from './DomainLive.ts'
+import { authOptions } from './AuthConfiguration.ts'
+import { pieceCutout } from './capture/PieceCutout.ts'
+import { analyticsEngine, CaptureMetrics as CaptureMetricsService } from './capture/Metrics.ts'
+import { makeCuration } from './social/Curation.ts'
+import { deploymentOf } from './Config.ts'
+import { liveProviders, type ProvidersFor, StylistModel, type WorkersAiCalls } from './Providers.ts'
 import { health } from './Health.ts'
 import { onFirstUse } from './IsolateCache.ts'
 import { mcpRoutes } from './mcp/Route.ts'
@@ -49,12 +48,8 @@ import {
   StyldStylistQueue,
 } from './Resources.ts'
 import { type CheckBindings, makeChecks } from './safety/Checks.ts'
-import { contentJudge, type RunGuard } from './safety/Judge.ts'
 import { pieceChangedLayer } from './safety/PieceChanged.ts'
 import { checkJobQueue, checkJobs } from './safety/Queue.ts'
-import type { RunChat } from './ai/WorkersAiFetch.ts'
-import type { MoodPlanner } from './generation/Planner.ts'
-import type { PicturePainter } from './generation/Painter.ts'
 import { generationJobQueue, generationJobs } from './generation/Queue.ts'
 import { type GenerationBindings, Generations, makeGenerations } from './generation/Service.ts'
 import { wardrobeRoutes } from './wardrobe/Http.ts'
@@ -69,7 +64,6 @@ import { StylistChats } from './stylist/Http.ts'
 import { stylistJobQueue, stylistJobs } from './stylist/Queue.ts'
 import { Stylist } from './stylist/StylistObject.ts'
 import { chatStoreOf, makeStylistLive } from './stylist/Live.ts'
-import { askStandIn, captureProviders } from './capture/Live.ts'
 import { outfitsLive } from './outfits/Live.ts'
 import { photoRoutes } from './photos/Http.ts'
 import { makePhotoParts } from './photos/Finding.ts'
@@ -79,7 +73,8 @@ import { Outfits, type OutfitParts } from './outfits/Outfits.ts'
 // The server formats in every language: page renders and code emails.
 provideAllCatalogs()
 
-const Runtime = Layer.mergeAll(
+/** The Cloudflare and Domain services the API Worker runs on. */
+export const Runtime = Layer.mergeAll(
   DomainLive,
   Cloudflare.Telemetry({ headSamplingRate: 1 }),
   Cloudflare.D1.QueryDatabaseBinding,
@@ -114,31 +109,16 @@ const perClientLimit = (name: string, namespaceId: number, limit: number) =>
 
 /** One wardrobe, one account lifecycle, one capture service, the looks, boards and worn days per isolate, shared
  * by the routes and the processing queue. Assistant-added pieces get the same cut-out providers as the tray. */
-const storageServices = <R>(
+const storageServices = (
   bindings: WardrobeBindings & {
     readonly checksQueue: CheckBindings['queue']
     readonly generationQueue: GenerationBindings['queue']
     /** Forget an account's chats with Styld, when it is deleted. */
     readonly forgetChats: (accountId: string) => Effect.Effect<void, unknown>
   },
-  judge: ReturnType<typeof contentJudge>,
-  providers: Layer.Layer<
-    | PicturePainter
-    | MoodPlanner
-    | GarmentVision
-    | PictureWork
-    | GarmentSegmenter
-    | ImageGenerator
-    | VideoGenerator
-    | Holds
-    | CaptureConfig
-    | CaptureMetricsService,
-    never,
-    R
-  >,
 ) =>
   Effect.gen(function* () {
-    const checksService = yield* makeChecks({ ...bindings, queue: bindings.checksQueue }).pipe(Effect.provide(judge))
+    const checksService = yield* makeChecks({ ...bindings, queue: bindings.checksQueue })
     // A piece whose shown picture changes is checked again while others can see it.
     const pieceChanged = pieceChangedLayer(checksService)
     const wardrobeService = yield* makeWardrobe(bindings).pipe(Effect.provide(pieceChanged))
@@ -161,7 +141,7 @@ const storageServices = <R>(
       queue: bindings.generationQueue,
       boards: boardsService,
       wardrobe: wardrobeService,
-    }).pipe(Effect.provide(judge))
+    })
     return {
       // The credits and the provider-call counter the capture providers were built with, for Styld's replies too.
       holds: yield* Holds,
@@ -191,9 +171,7 @@ const storageServices = <R>(
       profilesService,
       profiles: Layer.succeed(Profiles, profilesService),
     }
-  }).pipe(
-    Effect.provide(Layer.mergeAll(layerCryptoWeb, pieceCutout(bindings.bucket)).pipe(Layer.provideMerge(providers))),
-  )
+  }).pipe(Effect.provide(Layer.mergeAll(layerCryptoWeb, pieceCutout(bindings.bucket))))
 
 /** The services the assistants' tools project. */
 const toolServices = (
@@ -301,72 +279,40 @@ const declareBindings = Effect.gen(function* () {
   }
 })
 
-/** Clef and the judge of what people make public, over the Workers AI binding. */
-const workersModels = (
-  env: Cloudflare.Workers.WorkerEnvironment['Service'],
-  aiRaw: Effect.Success<Effect.Success<typeof declareBindings>['ai']['raw']>,
-) => {
+/** Clef, the chat models and Llama Guard over the Worker's `AI` binding. */
+const workersAiCalls = (ai: Effect.Success<Effect.Success<typeof declareBindings>['ai']['raw']>): WorkersAiCalls => ({
   // SAFETY: Clef-flash is a Workers AI model newer than the pinned workers-types model list -- the request is the System One API shape Clef.ts builds and documents
-  const workersAi: RunClef = (request) => aiRaw.run('@cf/cloudflare/clef-flash' as never, request as never)
-  // Native acceptance only: the local stack cannot reach Workers AI, so it names a stand-in for Clef.
-  const clefStandIn: unknown = env.CLEF_API_BASE
-  const runClef: RunClef =
-    typeof clefStandIn === 'string' && clefStandIn.length > 0
-      ? (request) => askStandIn(clefStandIn, request)
-      : workersAi
-  const runGuard: RunGuard = ({ messages }) =>
-    aiRaw.run('@cf/meta/llama-guard-3-8b', { messages: messages.map((message) => ({ ...message })) })
-  // Only native acceptance names the stand-in judge.
-  return {
-    runClef,
-    // SAFETY: the text models Styld asks are Workers AI chat models outside the pinned workers-types model list -- the input is the Chat Completions body the caller built
-    runText: ((model, input) => aiRaw.run(model as never, input as never)) satisfies RunChat,
-    judge: contentJudge(env.CHECKS === 'stand-in' ? Option.none() : Option.some({ runClef, runGuard })),
-  }
-}
+  runClef: (request) => ai.run('@cf/cloudflare/clef-flash' as never, request as never),
+  // SAFETY: the text models Styld asks are Workers AI chat models outside the pinned workers-types model list -- the input is the Chat Completions body the caller built
+  runChat: (model, input) => ai.run(model as never, input as never),
+  runGuard: ({ messages }) =>
+    ai.run('@cf/meta/llama-guard-3-8b', { messages: messages.map((message) => ({ ...message })) }),
+})
 
-/** Every storage service over the Worker's bindings, with the providers its environment names. */
+/** Every storage service over the Worker's bindings, on the composition's providers. */
 const applicationServices = (
-  env: Cloudflare.Workers.WorkerEnvironment['Service'],
   bindings: Omit<Parameters<typeof storageServices>[0], 'forgetChats'>,
   runtime: {
-    readonly ai: Parameters<typeof workersModels>[1]
-    readonly dataset: AnalyticsDataset
-    readonly origin: { readonly environment: string; readonly release: string }
+    readonly origin: string
     readonly stylist: Effect.Success<typeof declareBindings>['stylist']
     readonly pace: OutfitParts['pace']
   },
 ) =>
   Effect.gen(function* () {
-    const { runClef, runText, judge } = workersModels(env, runtime.ai)
-    const providers = captureProviders(env, {
-      runClef,
-      runText,
-      images: bindings.images,
-      bucket: bindings.bucket,
-      dataset: runtime.dataset,
-      origin: runtime.origin,
-    })
     const chatsOf = chatStoreOf(runtime.stylist.objects)
-    const services = yield* storageServices(
-      { ...bindings, forgetChats: (accountId) => chatsOf(accountId).erase() },
-      judge,
-      providers,
-    )
-    const outfitsService = yield* outfitsLive(env, {
+    const services = yield* storageServices({ ...bindings, forgetChats: (accountId) => chatsOf(accountId).erase() })
+    const outfitsService = yield* outfitsLive({
       database: bindings.database,
       bindings,
-      runClef,
-      runText,
       metrics: services.metrics,
       pace: runtime.pace,
     })
     // Styld answers with the assistants' own tools, for the account.
     const stylistService = yield* makeStylistLive({
-      env,
+      origin: runtime.origin,
+      model: yield* StylistModel,
       chatsOf,
       queue: yield* runtime.stylist.queue.raw,
-      runChat: runText,
       tools: toolServices(services, outfitsService),
       storage: services,
     })
@@ -381,14 +327,21 @@ const applicationServices = (
 
 /** The application over the Worker's bindings, built from the request runtime's environment. */
 const makeApplication =
-  (bindings: Effect.Success<typeof declareBindings>) => (env: Cloudflare.Workers.WorkerEnvironment['Service']) =>
+  (bindings: Effect.Success<typeof declareBindings>, providersFor: ProvidersFor) =>
+  (env: Cloudflare.Workers.WorkerEnvironment['Service']) =>
     Effect.gen(function* () {
+      const deployment = yield* deploymentOf(env)
       const observabilityBase = yield* makeObservabilityBase({
-        environment: env.STYLD_ENV,
-        release: env.STYLD_RELEASE,
+        environment: deployment.environment,
+        release: deployment.release,
         component: 'server',
       }).pipe(Effect.orDie)
-      const configuration = yield* authConfiguration(env)
+      const configuration = deployment.auth
+      const metrics = analyticsEngine(yield* bindings.calls.raw, observabilityBase)
+      const bucket = yield* bindings.media.raw
+      const images = yield* bindings.images.raw
+      const workersAi = workersAiCalls(yield* bindings.ai.raw)
+      const providers = providersFor({ workersAi, images, bucket, metrics, deployment, env })
       // Auth checks the limit inside its own operations, which do not carry this request's
       // runtime context, so it gets the binding's runtime object.
       const allowCodeRequest = sharedLimit(yield* bindings.codeRequests.raw)
@@ -397,23 +350,16 @@ const makeApplication =
       const auth = makeAuthHttp(bindings.database, authOptions(configuration, yield* bindings.email.raw, emailSender))
       const db = yield* bindings.database.raw
       const services = yield* applicationServices(
-        env,
         {
           database: db,
-          bucket: yield* bindings.media.raw,
-          images: yield* bindings.images.raw,
+          bucket,
+          images,
           queue: yield* bindings.pieceQueue.raw,
           checksQueue: yield* bindings.checksQueue.raw,
           generationQueue: yield* bindings.generationQueue.raw,
         },
-        {
-          ai: yield* bindings.ai.raw,
-          dataset: yield* bindings.calls.raw,
-          origin: observabilityBase,
-          stylist: bindings.stylist,
-          pace: pacing,
-        },
-      )
+        { origin: authOrigin, stylist: bindings.stylist, pace: pacing },
+      ).pipe(Effect.provide(Layer.mergeAll(providers, Holds.layer, Layer.succeed(CaptureMetricsService, metrics))))
       const { wardrobeService, lifecycleService, capturesService, wardrobe, captures, boards } = services
       const oauth = makeMcpOAuth(db, auth, {
         origin: authOrigin,
@@ -439,7 +385,7 @@ const makeApplication =
           authOrigin,
           observabilityBase.release,
           { ...toolServices(services, services.outfitsService), curation: services.curationService, pacing },
-          adminEmails(env.STYLD_ADMIN_EMAILS),
+          deployment.admins,
         ).pipe(Layer.provide(oauth.server)),
         HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),
         browserTelemetryRoutes(authOrigin, bindings.allowTelemetry),
@@ -462,21 +408,25 @@ const makeApplication =
 
 export class StyldWorker extends Cloudflare.Worker<StyldWorker, Cloudflare.WorkerShape>()('StyldWorker') {}
 
-export default StyldWorker.make(
-  {
-    main: import.meta.url,
-    // Keep local workerd and deployed Workers on the same supported date; telemetry needs >= 2026-07-28.
-    compatibility: { date: '2026-10-19' },
-    workersDev: { enabled: false, previewsEnabled: false },
-    observability: { enabled: true, redactQueryString: true, logs: { enabled: true, invocationLogs: true } },
-  },
+/** How the API Worker is deployed, from the module that is its entry. */
+export const workerOptions = (main: string) => ({
+  main,
+  // Keep local workerd and deployed Workers on the same supported date; telemetry needs >= 2026-07-28.
+  compatibility: { date: '2026-10-19' },
+  workersDev: { enabled: false, previewsEnabled: false },
+  observability: { enabled: true, redactQueryString: true, logs: { enabled: true, invocationLogs: true } },
+})
+
+/** The API Worker's program on a composition's providers, run on `Runtime`: the Worker's own are the live ones (below);
+ * the native suite runs it on its fakes (`test/NativeWorker.ts`). */
+export const styldProgram = (providersFor: ProvidersFor) =>
   Effect.gen(function* () {
     const bindings = yield* declareBindings
     // Bindings configured by the stack (including the web origin and secrets)
     // exist only in the deployed request runtime, not while Alchemy evaluates
     // the Worker declaration during planning. Build the application on the
     // first request and reuse it for every later request in this isolate.
-    const application = yield* onFirstUse(makeApplication(bindings))
+    const application = yield* onFirstUse(makeApplication(bindings, providersFor))
     const fetch = Effect.gen(function* () {
       const env = yield* Cloudflare.Workers.WorkerEnvironment
       const { handle, observabilityBase, allowCodeRequest } = yield* application(env)
@@ -521,5 +471,9 @@ export default StyldWorker.make(
       }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
     )
     return { fetch }
-  }).pipe(Effect.provide(Runtime)),
+  })
+
+export default StyldWorker.make(
+  workerOptions(import.meta.url),
+  styldProgram(liveProviders).pipe(Effect.provide(Runtime)),
 )

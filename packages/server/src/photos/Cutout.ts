@@ -26,7 +26,7 @@ export const cutOutPerson = (parts: PhotoParts, photo: PhotoRow) =>
       .still({ bytes: copies.jpeg, contentType: 'image/jpeg' }, 'person')
       .pipe(Effect.mapError(unavailable))
     const picture = yield* decodedPng(copies.png).pipe(Effect.mapError(unavailable))
-    const [person] = segmentedPieces(picture, found, picture, policy.edges).toSorted((a, b) => b.area - a.area)
+    const [person] = segmentedPieces(picture, found, picture).toSorted((a, b) => b.area - a.area)
     if (person === undefined) return yield* NoPersonFound.make({})
     const key = `${photoPrefix(photo.accountId, photo.id)}cutout.png`
     yield* writeObject(parts.capture, key, person.png, 'image/png')

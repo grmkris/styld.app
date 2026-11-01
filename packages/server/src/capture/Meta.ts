@@ -256,6 +256,9 @@ const forgetVideo = (settings: MetaSettings) =>
   })
 
 /** Meta SAM 3.1 through `api.meta.ai`: stills inline, videos through the Files API, deleted once tracked. */
+/** Meta's API. */
+export const metaBase = 'https://api.meta.ai'
+
 export const makeGarmentSegmenter = (settings: MetaSettings) => ({
   still: segmentStill(settings),
   upload: uploadVideo(settings),

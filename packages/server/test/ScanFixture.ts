@@ -48,7 +48,7 @@ const captureNames = ['partOne', 'partTwo', 'partThree', 'partFour'] as const
 const seed = (
   database: QueryDatabaseClient,
   media: ReadWriteBucketClient,
-  queue: { send(message: { readonly matchOf: string }): Promise<unknown> },
+  queue: { send(message: { readonly _tag: 'MatchCapture'; readonly captureId: string }): Promise<unknown> },
 ) =>
   Effect.gen(function* () {
     yield* seedIdentity(database, scanAccount)
@@ -100,16 +100,20 @@ const seed = (
       )
     }
     yield* database.batch(rows)
-    yield* Effect.forEach(captureNames, (name) => Effect.tryPromise(() => queue.send({ matchOf: scanned[name] })), {
-      concurrency: 'unbounded',
-      discard: true,
-    })
+    yield* Effect.forEach(
+      captureNames,
+      (name) => Effect.tryPromise(() => queue.send({ _tag: 'MatchCapture', captureId: scanned[name] })),
+      {
+        concurrency: 'unbounded',
+        discard: true,
+      },
+    )
   })
 
 export const scanRoutes = (
   database: QueryDatabaseClient,
   media: ReadWriteBucketClient,
-  queue: { send(message: { readonly matchOf: string }): Promise<unknown> },
+  queue: { send(message: { readonly _tag: 'MatchCapture'; readonly captureId: string }): Promise<unknown> },
 ) =>
   Layer.mergeAll(
     HttpRouter.add(

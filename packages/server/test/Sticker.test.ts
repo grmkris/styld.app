@@ -2,10 +2,10 @@ import { decodePng } from '@styld/imaging'
 import { Effect, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { stickerKey } from '../src/generation/PaintPrompt.ts'
-import { standInPainter } from '../src/generation/Painter.ts'
+import { fakePainter } from './fakes/Models.ts'
 import { stickerOf } from '../src/generation/Sticker.ts'
 
-const painted = (key: 'green' | 'magenta') => Effect.runSync(standInPainter.paint({ prompt: 'a lemon', key }))
+const painted = (key: 'green' | 'magenta') => Effect.runSync(fakePainter.paint({ prompt: 'a lemon', key }))
 
 describe('a sticker', () => {
   test('is drawn on a key colour the words do not ask for', () => {

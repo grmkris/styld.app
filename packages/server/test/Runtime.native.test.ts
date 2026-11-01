@@ -10,13 +10,13 @@ import { type Browser, chromium } from 'playwright'
 import { seedAccounts, signInBody } from './Accounts.ts'
 import { testPassword } from './IdentityFixture.ts'
 import { verifyBrowser } from './BrowserAcceptance.ts'
-import { pictureEnvironment, verifyCleanPictures } from './CleanPictureAcceptance.ts'
+import { verifyCleanPictures } from './CleanPictureAcceptance.ts'
 import { verifyTurn } from './TurnAcceptance.ts'
 import { verifyCameraJourney, verifyCaptureJourney, verifyLongVideoJourney } from './CaptureBrowserAcceptance.ts'
 import { verifyGalleryJourney } from './GalleryBrowserAcceptance.ts'
 import { verifyCaptures } from './CaptureAcceptance.ts'
 import { verifyScan } from './ScanAcceptance.ts'
-import { stylistEnvironment, verifyStylist } from './StylistAcceptance.ts'
+import { verifyStylist } from './StylistAcceptance.ts'
 import { verifyGallery } from './GalleryAcceptance.ts'
 import { verifySocial } from './SocialAcceptance.ts'
 import { verifyGeneration } from './GenerationAcceptance.ts'
@@ -28,7 +28,7 @@ import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
 import { verifyMcp } from './McpAcceptance.ts'
 import { verifyAccountDeletion, verifyWardrobe } from './WardrobeAcceptance.ts'
 import RuntimeWorker from './RuntimeWorker.ts'
-import StyldWorkerLive, { StyldWorker } from '../src/StyldWorker.ts'
+import NativeWorkerLive, { NativeWorker } from './NativeWorker.ts'
 
 const makeStack = (generation: string) =>
   Alchemy.Stack(
@@ -40,7 +40,7 @@ const makeStack = (generation: string) =>
     Effect.gen(function* () {
       const worker = yield* RuntimeWorker
       yield* worker.bind('AcceptanceGeneration', { env: { TEST_GENERATION: generation } })
-      const styld = yield* StyldWorker
+      const styld = yield* NativeWorker
       // Execute the production SSR artifact in workerd. Website.Foldkit's dev
       // mode runs Vite in Node, which cannot prove the deployed Worker behavior.
       const website = yield* Cloudflare.Worker('NativeWebsite', {
@@ -61,17 +61,10 @@ const makeStack = (generation: string) =>
           AUTH_ORIGIN: edge.url,
           STYLD_ENV: 'local',
           STYLD_RELEASE: `native-${generation}`,
-          // Capture providers stay off natively: each capture keeps its original photo as one detection.
-          STYLD_PROVIDERS: 'off',
-          // The stand-in judge decides checks: `[[fail]]` and `[[unsure]]` in public text.
-          CHECKS: 'stand-in',
-          // The stand-in painter and planner make stickers and mood boards: `[[refuse]]`, `[[lost]]` and `[[unclear]]` in
-          // the words.
-          GENERATED_PICTURES: 'stand-in',
-          // Clef's stand-in ranks outfits and the rules stand in for Thinking's model: `[[unclear]]` in the words.
-          OUTFITS: 'stand-in',
-          ...pictureEnvironment(worker.url),
-          ...stylistEnvironment(worker.url),
+          // The fakes' providers ask the fixture Worker in Meta's, Veo's and Clef's place (`test/fakes/`).
+          TEST_FIXTURES: worker.url,
+          META_API_KEY: Redacted.make('native-test-meta-key'),
+          VIDEO_GATEWAY_API_KEY: Redacted.make('native-test-gateway-key'),
           AUTH_SECRET: Redacted.make('native-test-auth-secret-012345678901234567890123'),
           AUTH_SESSION_KEYS: Redacted.make(
             JSON.stringify({
@@ -93,7 +86,7 @@ const makeStack = (generation: string) =>
         apiUrl: styld.url.as<string>(),
         websiteUrl: website.url.as<string>(),
       }
-    }).pipe(Effect.provide(StyldWorkerLive)),
+    }).pipe(Effect.provide(NativeWorkerLive)),
   )
 
 const Stack = makeStack('before')

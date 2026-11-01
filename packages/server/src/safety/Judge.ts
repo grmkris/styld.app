@@ -1,5 +1,5 @@
 import type { CheckReason } from '@styld/protocol'
-import { Array, Context, Effect, Layer, Option, Schema } from 'effect'
+import { Array, Context, Effect, Layer, Schema } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
 import type { RunClef } from '../capture/Clef.ts'
 import { type Picture, ProviderFailed } from '../capture/Providers.ts'
@@ -23,7 +23,7 @@ export class ContentJudge extends Context.Service<
   { readonly judge: (content: Content) => Effect.Effect<Verdict, ProviderFailed> }
 >()('@styld/server/ContentJudge') {}
 
-const passed: Verdict = { state: 'passed', reason: null, model: 'none' }
+export const passed: Verdict = { state: 'passed', reason: null, model: 'none' }
 const rank = { passed: 0, unsure: 1, failed: 2 } as const
 
 /** The worse of two verdicts: a failure wins over an unsure answer, which wins over a pass. */
@@ -33,7 +33,7 @@ export const worse = (left: Verdict, right: Verdict): Verdict => (rank[right.sta
 const addressesAssistant =
   /\b(ignore|disregard|forget)\b.{0,40}\b(instructions|previous|above|rules)\b|\bsystem prompt\b|\byou are (now )?(chatgpt|claude|an? (ai|assistant))\b/iu
 
-const instructionsIn = (texts: ReadonlyArray<string>): Verdict =>
+export const instructionsIn = (texts: ReadonlyArray<string>): Verdict =>
   texts.some((text) => addressesAssistant.test(text))
     ? { state: 'unsure', reason: 'instructions', model: 'styld' }
     : passed
@@ -152,25 +152,6 @@ const live = (runClef: RunClef, runGuard: RunGuard) =>
     ),
   })
 
-/** Native runs and a preview without providers: words with `[[fail]]` fail and `[[unsure]]` are unsure, pictures
- * pass, and text that addresses an assistant is unsure as it is live. */
-const standIn = ContentJudge.of({
-  judge: (content) =>
-    Effect.succeed(
-      worse(
-        content.texts.some((text) => text.includes('[[fail]]'))
-          ? { state: 'failed', reason: 'other', model: 'stand-in' }
-          : content.texts.some((text) => text.includes('[[unsure]]'))
-            ? { state: 'unsure', reason: 'other', model: 'stand-in' }
-            : passed,
-        instructionsIn(content.texts),
-      ),
-    ),
-})
-
-/** The judge for this Worker: the live models when providers are on, the stand-in otherwise. */
-export const contentJudge = (providers: Option.Option<{ readonly runClef: RunClef; readonly runGuard: RunGuard }>) =>
-  Layer.succeed(
-    ContentJudge,
-    Option.match(providers, { onNone: () => standIn, onSome: ({ runClef, runGuard }) => live(runClef, runGuard) }),
-  )
+/** The judge of what people make public: Clef-flash on pictures, Llama Guard 3 on words. */
+export const contentJudge = (calls: { readonly runClef: RunClef; readonly runGuard: RunGuard }) =>
+  Layer.succeed(ContentJudge, live(calls.runClef, calls.runGuard))

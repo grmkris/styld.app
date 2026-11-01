@@ -1,10 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { expect } from 'bun:test'
+import { dailyCredits } from '@styld/protocol'
 import { Schema } from 'effect'
 import { type Call, client, seedAccounts, send, signIn } from './Accounts.ts'
 
-/** The daily allowance the native stack configures: a photo costs 1, a video 5 for each started
- * half-minute. Seven lets a long video's first part through and stops its second. */
+/** The credits the capture account is left with today (the native Worker spends the rest at the start): a photo costs
+ * 1, a video 5 for each started half-minute. Seven lets a long video's first part through and stops its second. */
 const nativeDailyAllowance = 7
 
 const fixture = (name: string) => new Uint8Array(readFileSync(new URL(`fixtures/capture/${name}`, import.meta.url)))
@@ -233,9 +234,19 @@ export const verifyCaptures = async (origin: string, fixtures: string): Promise<
   const owner = client(origin, await signIn(origin, 'native-capture'))
   const other = client(origin, await signIn(origin, 'native-capture-other'))
   expect((await fetch(`${origin}/api/captures/tray`)).status).toBe(401)
+  const { accountId } = Schema.decodeUnknownSync(Schema.Struct({ accountId: Schema.String }))(
+    await (await owner('/api/me')).json(),
+  )
+  expect((await send(owner, '/api/native/spend', 'POST', { accountId, leave: nativeDailyAllowance })).status).toBe(204)
+  const otherId = Schema.decodeUnknownSync(Schema.Struct({ accountId: Schema.String }))(
+    await (await other('/api/me')).json(),
+  ).accountId
+  expect(
+    (await send(other, '/api/native/spend', 'POST', { accountId: otherId, leave: nativeDailyAllowance })).status,
+  ).toBe(204)
   expect(await tray(owner)).toEqual({
     captures: [],
-    allowance: { remaining: nativeDailyAllowance, daily: nativeDailyAllowance },
+    allowance: { remaining: nativeDailyAllowance, daily: dailyCredits },
   })
   const { photo, first } = await verifyPhoto(origin, owner, other)
   const { video, still, clip, last, lastCapture } = await verifyAllowance(origin, owner)

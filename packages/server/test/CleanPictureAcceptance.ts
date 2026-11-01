@@ -1,23 +1,11 @@
 import { readFileSync } from 'node:fs'
 import { expect } from 'bun:test'
-import * as Output from 'alchemy/Output'
-import { Redacted, Schema } from 'effect'
+import { Schema } from 'effect'
 import { exists } from './CaptureAcceptance.ts'
 import { picturesAccount, seededPieces } from './PictureFixture.ts'
 import { type Call, client, signIn } from './Accounts.ts'
 
 /** The API Worker's settings for clean pictures on the native stack: Clef and Muse are the fixture's stand-ins. */
-export const pictureEnvironment = (fixtures: Output.Output<string | undefined>) => ({
-  CLEAN_PICTURES: 'muse',
-  CLEF_API_BASE: Output.interpolate`${fixtures}/test/pictures/clef`,
-  META_API_BASE: Output.interpolate`${fixtures}/test/pictures/meta`,
-  META_API_KEY: Redacted.make('native-test-meta-key'),
-  TURNS: 'veo',
-  TURN_POLL_SECONDS: '1',
-  VIDEO_GATEWAY_BASE: Output.interpolate`${fixtures}/test/pictures/gateway`,
-  VIDEO_GATEWAY_API_KEY: Redacted.make('native-test-gateway-key'),
-})
-
 const fixture = (name: string) => readFileSync(new URL(`fixtures/capture/${name}`, import.meta.url))
 
 /** Muse's recorded drawing of the red tee on green, as PNG bytes. */

@@ -9,14 +9,14 @@ import {
   Unavailable,
   prices,
 } from '@styld/protocol'
-import { type Context, DateTime, Effect, type Layer, Option, Schema } from 'effect'
-import type { LanguageModel } from 'effect/ai'
+import { type Context, DateTime, Effect, Option, Schema } from 'effect'
 import type { CaptureMetrics } from '../capture/Metrics.ts'
 import { type Holds, holdId } from '../usage/Holds.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import type { Tool as AssistantTool } from '../mcp/Tools.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
-import type { StylistPolicy } from './Policy.ts'
+import { maxSteps } from './Policy.ts'
+import type { StylistModel } from '../Providers.ts'
 import { historyText, outlineOf, systemPrompt } from './Prompt.ts'
 import type { StoredMessage, StylistMethods } from './StylistObject.ts'
 import { lookingUpToolNames, showingToolNames, turnTools } from './Tools.ts'
@@ -48,13 +48,9 @@ export const titleOf = (text: string) => {
   return `${(space > 30 ? cut.slice(0, space) : cut).trimEnd()}…`
 }
 
-/** What one model call costs, in micro-dollars, from list prices (estimates; the providers' invoices are the truth):
- * Claude Haiku 5.5 on the gateway, and GLM-5.3-flash on Workers AI at about 8.5 neurons for 330 tokens. */
-/** List prices in micro-dollars a token, in and out (Workers AI's model pages and the gateway, 31 October). */
+/** List prices in micro-dollars a token, in and out (Workers AI's model page, 31 October). */
 const listPrices: Readonly<Record<string, readonly [number, number]>> = {
   '@cf/deepseek-ai/deepseek-v4.1-flash-1017': [0.3, 1.2],
-  '@cf/zai-org/glm-5.3-flash': [0.15, 0.5],
-  'anthropic/claude-haiku-5.5': [0.1, 0.5],
 }
 
 /** An estimate only, the providers' invoices being the truth; a model without a listed price is priced as the
@@ -74,8 +70,7 @@ export type ChatStore = {
 export interface StylistParts<R> {
   readonly chatsOf: (accountId: string) => ChatStore
   readonly queue: { send(message: StylistTurn): Promise<unknown> }
-  readonly policy: StylistPolicy
-  readonly model: Layer.Layer<LanguageModel.LanguageModel>
+  readonly model: StylistModel['Service']
   /** The assistants' tools, and what they need to run for an account. */
   readonly tools: ReadonlyArray<AssistantTool<R>>
   readonly toolContext: (accountId: string) => Context.Context<R>
@@ -140,7 +135,7 @@ const reply = <R>(
         text: historyText({ role: message.role, text: message.text, parts: partsOf(message.parts) }),
       })),
       toolkit: yield* tools.toolkit.pipe(Effect.provide(tools.handlers)),
-      maxSteps: parts.policy.maxSteps,
+      maxSteps,
       showing: showingToolNames,
       lookingUp: lookingUpToolNames,
       progress: (sofar) =>
@@ -150,15 +145,15 @@ const reply = <R>(
         }),
       counted: (usage) =>
         parts.metrics.call({
-          provider: parts.policy.mode === 'gateway' ? 'vercel-gateway' : 'workers-ai',
-          model: parts.policy.model,
+          provider: 'workers-ai',
+          model: parts.model.model,
           kind: 'chat',
           outcome: usage.answered ? 'ok' : 'failed',
           milliseconds: usage.milliseconds,
           units: usage.inputTokens + usage.outputTokens,
-          costMicroUsd: priceOf(parts.policy.model, usage.inputTokens, usage.outputTokens),
+          costMicroUsd: priceOf(parts.model.model, usage.inputTokens, usage.outputTokens),
         }),
-    }).pipe(Effect.provide(parts.model))
+    }).pipe(Effect.provide(parts.model.layer))
     return { text, parts: yield* tools.parts }
   })
 
@@ -167,7 +162,6 @@ const reply = <R>(
 const sending = <R>(parts: StylistParts<R>, ids: Ids) =>
   Effect.fn('Styld.Stylist.send')(function* (input: SendChatMessage) {
     const { accountId } = yield* CurrentAccount
-    if (parts.policy.mode === 'off') return yield* unavailable()
     const turnId = yield* ids.turnIdOf(accountId, input.operationId)
     // The turn's queue delivery records the same job id, so the ask and its reply are found together.
     yield* Effect.annotateCurrentSpan('styld.job_id', turnId)

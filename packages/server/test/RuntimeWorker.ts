@@ -15,7 +15,6 @@ import { exerciseAttemptLimiter } from './AttemptLimiterFixture.ts'
 import { seedIdentity, disableIdentity } from './IdentityFixture.ts'
 import { pictureRoutes } from './PictureFixture.ts'
 import { scanRoutes } from './ScanFixture.ts'
-import { stylistRoutes } from './StylistFixture.ts'
 import { recoveryRoutes } from './RecoveryFixture.ts'
 import { socialRoutes } from './SocialFixture.ts'
 import { makeAuthHttp, withCodeRequestPolicy } from '../src/AuthHttp.ts'
@@ -91,7 +90,6 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
       yield* recoveryRoutes(database, media),
       pictureRoutes(database, media),
       scanRoutes(database, media, yield* pieceQueue.raw),
-      stylistRoutes,
       socialRoutes(database, media),
       // Accounts for a test: `{ ids }`, each with a verified email and the test password (test/Accounts.ts).
       HttpRouter.add(
@@ -196,7 +194,6 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
           url.pathname.startsWith('/test/recovery/') ||
           url.pathname.startsWith('/test/pictures/') ||
           url.pathname.startsWith('/test/scan/') ||
-          url.pathname.startsWith('/test/stylist/') ||
           url.pathname.startsWith('/test/social/')
         )
           // The fixture sends no codes; its auth still needs the per-request code policy.

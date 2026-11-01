@@ -30,6 +30,7 @@ const veo = (...answers: ReadonlyArray<() => Promise<Response>>) => {
     apiKey: Redacted.make('key'),
     fetch: provider.fetch,
     metrics: CaptureMetrics.discarding,
+    pollSeconds: 15,
   })
   return { generator, seen: provider.seen }
 }
@@ -159,7 +160,7 @@ describe("the decision model on a turn's frame", () => {
 const frame = (colour: number, print: number, printed: number) => ({ same: 0.8, colour, print, printed })
 
 describe("a turn's gate", () => {
-  const policy = capturePolicy({}).turns
+  const policy = capturePolicy.turns
   test('keeps colour on every frame, and the print only for a garment that has one', () => {
     // Plain navy trousers on the preview: colour kept, no print to keep.
     expect(turnKept([frame(0.93, 0.06, 0.05), frame(0.95, 0.1, 0.02), frame(0.94, 0.2, 0.1)], policy)).toBe(true)

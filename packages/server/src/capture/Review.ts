@@ -3,7 +3,7 @@ import { Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { CaptureMetrics, type ReviewDecision } from './Metrics.ts'
 import { enqueuePicture, type Parts, storedAs, unavailable } from './Parts.ts'
-import { CaptureConfig } from './Policy.ts'
+
 import type { DetectionRow } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
@@ -68,22 +68,19 @@ const pieceOf = (
   }
 }
 
-/** A clean picture waiting to be drawn for each kept piece shown as its cut-out, when an image model is set. A piece
- * kept as its original photo never leaves Styld. */
+/** A clean picture waiting to be drawn for each kept piece shown as its cut-out. A piece kept as its original photo
+ * never leaves Styld. */
 const picturesFor = (pieces: ReadonlyArray<ReturnType<typeof pieceOf>>, at: Date) =>
-  Effect.gen(function* () {
-    if ((yield* CaptureConfig).pictures.generator === 'off') return []
-    return pieces
-      .filter(({ imageKey, originalKey }) => imageKey !== originalKey)
-      .map(({ id, accountId }) => ({
-        pieceId: id,
-        accountId,
-        state: 'queued' as const,
-        version: 0,
-        createdAt: at,
-        updatedAt: at,
-      }))
-  })
+  pieces
+    .filter(({ imageKey, originalKey }) => imageKey !== originalKey)
+    .map(({ id, accountId }) => ({
+      pieceId: id,
+      accountId,
+      state: 'queued' as const,
+      version: 0,
+      createdAt: at,
+      updatedAt: at,
+    }))
 
 /** Hand pictures to the queue: after the batch that stored them, and again for those still waiting when the same
  * review is replayed, so a send lost between the two is made up. The job draws a picture once however often it is
@@ -193,7 +190,7 @@ export const reviewing = (parts: Parts) => ({
     const discarding = new Set<string>(input.discard)
     const discardedSightings = others.filter(({ groupOf }) => groupOf !== null && discarding.has(groupOf))
     const pieceIds = pieces.map(({ id }) => id)
-    const pictures = yield* picturesFor(pieces, at)
+    const pictures = picturesFor(pieces, at)
     yield* storedAs(
       parts.store.review({
         pieces,

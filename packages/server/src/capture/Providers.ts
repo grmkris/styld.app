@@ -189,15 +189,7 @@ export class ImageGenerator extends Context.Service<
       key: 'green' | 'magenta',
     ) => Effect.Effect<Picture, ProviderFailed | ProviderOutcomeUnknown>
   }
->()('@styld/server/ImageGenerator') {
-  /** No image model: every drawing is refused, so pieces keep their photos. */
-  static readonly off = {
-    provider: 'off',
-    model: 'off',
-    draw: () => Effect.fail(new ProviderFailed({ provider: 'off', retryable: false })),
-    profile: () => Effect.fail(new ProviderFailed({ provider: 'off', retryable: false })),
-  }
-}
+>()('@styld/server/ImageGenerator') {}
 
 /** What a turn is made from: the side view as its first frame and the clean front as its last, on one key colour,
  * both 720 by 1280 with the hanger's apex in the same place. */
@@ -220,15 +212,9 @@ export class VideoGenerator extends Context.Service<
   {
     readonly provider: string
     readonly model: string
+    /** How often a turn being made is asked about (the native fake asks every second). */
+    readonly pollSeconds: number
     readonly start: (request: TurnRequest) => Effect.Effect<unknown, ProviderFailed | ProviderOutcomeUnknown>
     readonly status: (operation: unknown) => Effect.Effect<TurnStatus, ProviderFailed>
   }
->()('@styld/server/VideoGenerator') {
-  /** No video model: every turn is refused before it holds anything. */
-  static readonly off = {
-    provider: 'off',
-    model: 'off',
-    start: () => Effect.fail(new ProviderFailed({ provider: 'off', retryable: false })),
-    status: () => Effect.succeed<TurnStatus>({ _tag: 'Failed' }),
-  }
-}
+>()('@styld/server/VideoGenerator') {}

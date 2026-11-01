@@ -4,7 +4,7 @@ import { structured, type TextMessage } from '../ai/TextModel.ts'
 import type { RunChat } from '../ai/WorkersAiFetch.ts'
 import type { CaptureMetrics } from '../capture/Metrics.ts'
 import { ProviderFailed } from '../capture/Providers.ts'
-import { type Brief, proposed, validated, type Wearable } from './Rules.ts'
+import { type Brief, validated, type Wearable } from './Rules.ts'
 
 // Thinking (owner, 2026-10-31): a text model proposes outfits from the person's pieces, sent as short references,
 // never their ids, photos or notes. The rules check every proposal; Clef ranks what passes. A model that does not
@@ -115,7 +115,11 @@ export const keptProposals = (
   return [...kept.values()]
 }
 
-const nothingKept = () => new ProviderFailed({ provider: 'workers-ai', retryable: true })
+export const nothingKept = () => new ProviderFailed({ provider: 'workers-ai', retryable: true })
+
+/** Thinking's model: the one Styld answers with, which the owner's probe of 31 October found the best at Slovenian and
+ * at following instructions. */
+export const thinkingModel = '@cf/deepseek-ai/deepseek-v4.1-flash-1017'
 
 /** Thinking through a Workers AI chat model. */
 export const liveProposer = (run: RunChat, metrics: CaptureMetrics['Service'], model: string): OutfitProposer => ({
@@ -129,15 +133,3 @@ export const liveProposer = (run: RunChat, metrics: CaptureMetrics['Service'], m
     )
   },
 })
-
-/** Native acceptance's Thinking: the rules' outfits from a seed of its own; `[[unclear]]` in the person's words answers
- * nothing usable. */
-export const standInProposer: OutfitProposer = {
-  propose: (request, count) =>
-    request.brief.words?.includes('[[unclear]]') === true
-      ? Effect.fail(nothingKept())
-      : Effect.succeed({ outfits: proposed(request, 'thinking', count).outfits, costMicroUsd: 0 }),
-}
-
-/** Without a model, Thinking cannot answer. */
-export const noProposer: OutfitProposer = { propose: () => Effect.fail(nothingKept()) }

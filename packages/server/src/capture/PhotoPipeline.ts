@@ -2,17 +2,7 @@ import { Effect, Option } from 'effect'
 import { refinedCutOut } from './Matte.ts'
 import { CaptureConfig, type CapturePolicy } from './Policy.ts'
 import { type Parts, captureKey, readObject, unavailable, writeObject } from './Parts.ts'
-import {
-  type Box,
-  cutOut,
-  decodedPng,
-  encodePng,
-  fitMask,
-  opaqueBounds,
-  overlapShare,
-  crop,
-  type Rgba,
-} from './Pixels.ts'
+import { type Box, decodedPng, encodePng, opaqueBounds, overlapShare, crop, type Rgba } from './Pixels.ts'
 import { GarmentSegmenter, GarmentVision, PictureWork, type Route, type WorkingCopies } from './Providers.ts'
 import type { Found } from './SamStream.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
@@ -57,19 +47,12 @@ export const segmentedPieces = (
     readonly confidence: number
   }>,
   from: { readonly width: number; readonly height: number },
-  edges: CapturePolicy['edges'],
 ) =>
   found.flatMap((mask): ReadonlyArray<CutPiece> => {
     const smallest = minimumShare * picture.width * picture.height
     const { track, confidence } = mask
-    if (edges === 'refined') {
-      const { piece, bounds, area } = refinedCutOut(picture, mask, from)
-      return piece.width === 0 || area < smallest ? [] : [{ png: encodePng(piece), bounds, area, track, confidence }]
-    }
-    const fitted = fitMask(mask, from, picture)
-    const area = fitted.raster.reduce((sum, value) => sum + (value === 0 ? 0 : 1), 0)
-    if (area < smallest) return []
-    return [{ png: encodePng(cutOut(picture, fitted)), bounds: fitted.bounds, area, track, confidence }]
+    const { piece, bounds, area } = refinedCutOut(picture, mask, from)
+    return piece.width === 0 || area < smallest ? [] : [{ png: encodePng(piece), bounds, area, track, confidence }]
   })
 
 /** What SAM is asked for besides clothing in a photo of several pieces or of pieces laid out: "clothing" misses
@@ -116,7 +99,7 @@ export const samPieces = (copies: WorkingCopies, more: ReadonlyArray<string> = [
     )
     const found = distinctMasks([{ prompt: 'clothing', found: clothing }, ...others])
     const picture = yield* decodedPng(copies.png)
-    return segmentedPieces(picture, found, picture, (yield* CaptureConfig).edges)
+    return segmentedPieces(picture, found, picture)
       .toSorted((a, b) => b.area - a.area)
       .slice(0, maximumPieces)
   })
@@ -232,13 +215,11 @@ export const holding = (capture: Pick<CaptureRow, 'source'>, route: Route) =>
  * @internal Exported for its tests. */
 export const cutterFor = (
   route: Route,
-  policy: Pick<CapturePolicy, 'single' | 'routeConfidence'>,
+  policy: Pick<CapturePolicy, 'routeConfidence'>,
 ): 'none' | 'cloudflare' | 'sam' => {
   const sure = route.confidence >= policy.routeConfidence
   if (route.garments === 'none' && sure) return 'none'
-  return route.garments === 'one' && sure && !showsPerson(route) && policy.single === 'cloudflare'
-    ? 'cloudflare'
-    : 'sam'
+  return route.garments === 'one' && sure && !showsPerson(route) ? 'cloudflare' : 'sam'
 }
 
 /** The pieces of a photo the decision model did not call empty: background removal (falling back to SAM

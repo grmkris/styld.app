@@ -45,7 +45,7 @@ describe('SAM on a photo of several pieces', () => {
   const height = 704
   const blank = encodePng({ width, height, data: new Uint8Array(width * height * 4) })
   const copies = { width, height, png: blank, jpeg: new Uint8Array([1]), small: new Uint8Array([1]) }
-  const config = { ...capturePolicy({}), edges: 'stepped' } as const
+  const config = capturePolicy
 
   /** SAM answering clothing with the recorded rail, and each other prompt as `other` says. */
   const piecesWith = (other: () => Response) => {

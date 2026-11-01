@@ -1,26 +1,22 @@
-import { Context } from 'effect'
+import { Context, Layer } from 'effect'
 
-/** How captures are processed, from the Worker's configuration. One provider per job kind: changing
- * `single` on the preview and comparing keep rates is the experiment. */
+/** How captures are processed: the decision model's bars, each a constant of this module (changing one is a commit).
+ * Single garments are cut out by Cloudflare, several by SAM, and every SAM mask's edge is refined against the photo
+ * (`Matte.ts`). */
 export interface CapturePolicy {
-  /** `off` keeps every photo as one detection with its original image: outages and native tests. */
+  /** `off` keeps every photo as one detection with its original image. Only the native test composition sets it,
+   * until the garment pipeline gets fakes of its own (C4a); the Worker always runs `live`. */
   readonly providers: 'live' | 'off'
-  /** Who cuts out a photo of one garment. Several garments, or an unsure answer, always go to SAM. */
-  readonly single: 'cloudflare' | 'sam'
   /** How sure the decision model must be before a photo counts as one garment, or none. */
   readonly routeConfidence: number
-  /** How a SAM mask becomes a cut-out's edge: `refined` snaps it to the photo's own edges (`Matte.ts`);
-   * `stepped` scales it by nearest pixel, as before, for comparing the two on the preview. */
-  readonly edges: 'refined' | 'stepped'
   /** How sure it must be that a garment is held up before the camera shoots. */
   readonly heldConfidence: number
   /** How sure it must be that a shot shows the same garment as the last one (its back). */
   readonly samePieceConfidence: number
-  /** Clean pictures drawn from kept cut-outs (owner, 30 October): who draws them (`off` keeps every real photo), and
-   * the decision model's bars. A drawing at least `show` like the cut-out is shown; below `reject` it is dropped;
-   * between, the person chooses. A cut-out at least `face` likely to show a face is never sent on. */
+  /** Clean pictures drawn from kept cut-outs (owner, 30 October): a drawing at least `show` like the cut-out is shown;
+   * below `reject` it is dropped; between, the person chooses. A cut-out at least `face` likely to show a face is
+   * never sent on. */
   readonly pictures: {
-    readonly generator: 'muse' | 'off'
     readonly show: number
     readonly reject: number
     readonly face: number
@@ -34,47 +30,26 @@ export interface CapturePolicy {
     readonly sightings: number
     readonly pieces: number
   }
-  /** Who turns clean pictures on their hangers: `veo` (Veo 3.1 Lite through the Vercel AI Gateway) or `off`; and the
-   * floors every checked frame must reach, beside the clean picture, for a turn to be kept: colour and logo or print
-   * (the 30 October comparison's gate, which every good take passed and the drifting models failed). */
+  /** The floors every checked frame of a turn must reach, beside the clean picture, for the turn to be kept: colour
+   * and logo or print (the 30 October comparison's gate, which every good take passed and the drifting models
+   * failed). */
   readonly turns: {
-    readonly generator: 'veo' | 'off'
     readonly colour: number
     readonly print: number
-    /** How often a turn being made is asked about (the native stack asks every second). */
-    readonly pollSeconds: number
   }
 }
 
-export class CaptureConfig extends Context.Service<CaptureConfig, CapturePolicy>()('@styld/server/CaptureConfig') {}
-
-const choice = <A extends string>(value: unknown, allowed: ReadonlyArray<A>, fallback: A): A =>
-  allowed.find((candidate) => candidate === value) ?? fallback
-
-const number = (value: unknown, fallback: number) => {
-  const parsed = typeof value === 'string' ? Number(value) : Number.NaN
-  return Number.isFinite(parsed) ? parsed : fallback
+/** The policy the Worker runs. */
+export const capturePolicy: CapturePolicy = {
+  providers: 'live',
+  routeConfidence: 0.75,
+  heldConfidence: 0.6,
+  samePieceConfidence: 0.6,
+  pictures: { show: 0.8, reject: 0.5, face: 0.3 },
+  matching: { same: 0.8, sightings: 10, pieces: 6 },
+  turns: { colour: 0.8, print: 0.6 },
 }
 
-/** The policy from the Worker's environment, with the run's defaults where a value is missing. */
-export const capturePolicy = (env: Readonly<Record<string, unknown>>): CapturePolicy => ({
-  providers: choice(env['STYLD_PROVIDERS'], ['live', 'off'], 'off'),
-  single: choice(env['CUTOUT_SINGLE'], ['cloudflare', 'sam'], 'cloudflare'),
-  routeConfidence: number(env['CUTOUT_ROUTE_CONFIDENCE'], 0.75),
-  edges: choice(env['CUTOUT_EDGES'], ['refined', 'stepped'], 'refined'),
-  heldConfidence: number(env['CAMERA_HELD_CONFIDENCE'], 0.6),
-  samePieceConfidence: number(env['CAMERA_SAME_PIECE_CONFIDENCE'], 0.6),
-  pictures: {
-    generator: choice(env['CLEAN_PICTURES'], ['muse', 'off'], 'off'),
-    show: number(env['CLEAN_PICTURE_SHOW'], 0.8),
-    reject: number(env['CLEAN_PICTURE_REJECT'], 0.5),
-    face: 0.3,
-  },
-  matching: { same: number(env['MATCH_SAME'], 0.8), sightings: 10, pieces: 6 },
-  turns: {
-    generator: choice(env['TURNS'], ['veo', 'off'], 'off'),
-    colour: 0.8,
-    print: 0.6,
-    pollSeconds: number(env['TURN_POLL_SECONDS'], 15),
-  },
-})
+export class CaptureConfig extends Context.Service<CaptureConfig, CapturePolicy>()('@styld/server/CaptureConfig') {
+  static readonly layer = Layer.succeed(this, capturePolicy)
+}

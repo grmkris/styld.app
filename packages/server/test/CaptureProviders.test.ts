@@ -317,7 +317,7 @@ describe('Clef-flash', () => {
 const route = (garments: 'none' | 'one' | 'several', confidence: number) => ({ garments, confidence, person: 0.02 })
 
 describe('photo routing', () => {
-  const policy = { single: 'cloudflare', routeConfidence: 0.75 } as const
+  const policy = { routeConfidence: 0.75 } as const
 
   test('one garment it is sure of goes to background removal; several, or an unsure answer, to SAM', () => {
     expect(cutterFor(route('one', 0.9), policy)).toBe('cloudflare')
@@ -349,12 +349,9 @@ describe('photo routing', () => {
 
   test('a piece’s own photo goes whole to background removal, unless a person is in it', () => {
     // A v1 product shot of a pair of boots (1 November): unsure between one and two, nobody in it.
-    expect(pieceCutterFor({ garments: 'several', confidence: 0.68, person: 0.0055 }, policy)).toBe('cloudflare')
-    expect(pieceCutterFor({ garments: 'one', confidence: 0.47, person: 0.0076, scene: 'other' }, policy)).toBe(
-      'cloudflare',
-    )
-    expect(pieceCutterFor({ garments: 'one', confidence: 0.86, person: 0.93 }, policy)).toBe('sam')
-    expect(pieceCutterFor(route('one', 0.94), { single: 'sam' })).toBe('sam')
+    expect(pieceCutterFor({ garments: 'several', confidence: 0.68, person: 0.0055 })).toBe('cloudflare')
+    expect(pieceCutterFor({ garments: 'one', confidence: 0.47, person: 0.0076, scene: 'other' })).toBe('cloudflare')
+    expect(pieceCutterFor({ garments: 'one', confidence: 0.86, person: 0.93 })).toBe('sam')
   })
 
   test('SAM looks for a piece of shoes, a bag or a hat by its kind, and takes its largest', () => {

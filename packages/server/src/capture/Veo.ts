@@ -10,7 +10,15 @@ export interface VeoSettings {
   readonly apiKey: Redacted.Redacted
   readonly fetch: (input: string, init: RequestInit) => Promise<Response>
   readonly metrics: CaptureMetrics['Service']
+  /** How often a turn being made is asked about. */
+  readonly pollSeconds: number
 }
+
+/** Veo answers a 4 s turn in one to two minutes (30 October): asking every 15 s finds it soon after. */
+export const veoPollSeconds = 15
+
+/** The Vercel AI Gateway's video model endpoints. */
+export const gatewayBase = 'https://ai-gateway.vercel.sh/v4/ai'
 
 // Veo 3.1 Lite: the 30 October comparison kept prints and colours as well as Veo 3.1 Fast at $0.12 a 4 s take
 // instead of $0.40; both Seedance models drifted (`meta-hackathon/out/styld-clean-turn/REPORT-turn-models.md`).
@@ -118,6 +126,7 @@ const outcomeOf = (error: ProviderFailed | ProviderOutcomeUnknown) =>
 export const makeVeoGenerator = (settings: VeoSettings) => ({
   provider: 'vercel-gateway',
   model,
+  pollSeconds: settings.pollSeconds,
   start: Effect.fn('Styld.Turn.start')(function* (request: TurnRequest) {
     const send = post(settings, 'start', startBody(request)).pipe(
       Effect.flatMap((response) => (response.ok ? json(response) : refusal(response))),

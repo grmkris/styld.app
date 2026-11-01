@@ -3,7 +3,7 @@ import type * as Cloudflare from '@alchemy.run/cloudflare'
 import { OpenAiClient, OpenAiLanguageModel } from '@effect/ai-openai-compat'
 import { layerCryptoWeb } from '@yielded/auth/WebCrypto'
 import { RuntimeContext } from 'alchemy/RuntimeContext'
-import { Context, Effect, Layer, Redacted } from 'effect'
+import { Context, Effect, Layer } from 'effect'
 import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import type { CaptureMetrics } from '../capture/Metrics.ts'
 import type { Holds } from '../usage/Holds.ts'
@@ -12,7 +12,8 @@ import { publicClient } from '../mcp/ImageImport.ts'
 import { Pacing } from '../mcp/Pacing.ts'
 import { styldTools, type ToolServices } from '../mcp/StyldTools.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
-import { type StylistPolicy, stylistPolicy } from './Policy.ts'
+import { stylistModelId } from './Policy.ts'
+import type { StylistModel } from '../Providers.ts'
 import { type ChatStore, makeStylist } from './Service.ts'
 import type { Stylist } from './StylistObject.ts'
 import { type RunChat, workersAiFetch } from '../ai/WorkersAiFetch.ts'
@@ -37,35 +38,28 @@ export const chatStoreOf =
     }
   }
 
-/** The model Styld answers with: on Workers AI through the binding (GLM thinks briefly), or through an
- * OpenAI-compatible gateway with its key. */
-const stylistModel = (policy: StylistPolicy, runChat: RunChat, key: unknown) => {
-  const viaBinding = policy.mode === 'workers-ai'
-  const fetch = workersAiFetch(runChat, policy.model.startsWith('@cf/zai-org/glm') ? { reasoning_effort: 'low' } : {})
-  return OpenAiLanguageModel.model(policy.model).pipe(
-    Layer.provide(
-      OpenAiClient.layer(
-        viaBinding
-          ? { apiUrl: 'https://workers-ai.invalid/v1' }
-          : { apiUrl: policy.apiBase, apiKey: Redacted.make(typeof key === 'string' ? key : '') },
-      ),
-    ),
+/** The model Styld answers with, on Workers AI through the Worker's binding, as an OpenAI-compatible model. */
+export const stylistModel = (runChat: RunChat): StylistModel['Service'] => ({
+  model: stylistModelId,
+  layer: OpenAiLanguageModel.model(stylistModelId).pipe(
+    Layer.provide(OpenAiClient.layer({ apiUrl: 'https://workers-ai.invalid/v1' })),
     Layer.provide(FetchHttpClient.layer),
-    Layer.provide(viaBinding ? Layer.succeed(FetchHttpClient.Fetch, fetch) : Layer.empty),
-  )
-}
+    Layer.provide(Layer.succeed(FetchHttpClient.Fetch, workersAiFetch(runChat))),
+  ),
+})
 
 /** The stylist's tools never fetch from the web or generate pictures, the only paced work: were one given such a
  * tool, it would be told to slow down. */
 const unpaced: Pacing['Service'] = { link: () => Effect.succeed(false), generate: () => Effect.succeed(false) }
 
-/** Styld for the Worker: its policy and model from the environment, the assistants' own tools run for the account,
- * and the chats in each account's Durable Object. */
+/** Styld for the Worker: its model, the assistants' own tools run for the account, and the chats in each account's
+ * Durable Object. */
 export const makeStylistLive = (input: {
-  readonly env: Readonly<Record<string, unknown>>
+  /** The public origin, for the tools' links. */
+  readonly origin: string
+  readonly model: StylistModel['Service']
   readonly chatsOf: (accountId: string) => ChatStore
   readonly queue: { send(message: StylistTurn): Promise<unknown> }
-  readonly runChat: RunChat
   readonly tools: ToolServices
   /** The wardrobe, and the credits and call counter the capture providers were built with. */
   readonly storage: {
@@ -75,15 +69,12 @@ export const makeStylistLive = (input: {
   }
 }) =>
   Effect.gen(function* () {
-    const policy = stylistPolicy(input.env)
-    const origin: unknown = input.env['AUTH_ORIGIN']
     const http = yield* publicClient.pipe(Effect.provide(FetchHttpClient.layer))
     return yield* makeStylist({
       chatsOf: input.chatsOf,
       queue: input.queue,
-      policy,
-      model: stylistModel(policy, input.runChat, input.env['STYLIST_GATEWAY_API_KEY']),
-      tools: styldTools(typeof origin === 'string' ? origin : '', input.tools, http),
+      model: input.model,
+      tools: styldTools(input.origin, input.tools, http),
       toolContext: (accountId) =>
         Context.make(CurrentAccount, { accountId, via: 'assistant' }).pipe(Context.add(Pacing, unpaced)),
       wardrobe: input.storage.wardrobeService,

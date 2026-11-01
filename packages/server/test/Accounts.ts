@@ -1,5 +1,5 @@
 import { expect } from 'bun:test'
-import type { Browser } from 'playwright'
+import type { Browser, BrowserContext } from 'playwright'
 import { testPassword } from './IdentityFixture.ts'
 
 // The native suite's accounts: seeded on the fixture Worker, each with the same password, signed in through the real
@@ -92,4 +92,16 @@ export const signedInContext = async (
   })
   expect(signedIn.status()).toBe(200)
   return context
+}
+
+/** Leave the signed-in account `leave` of today's credits: the native Worker spends the rest, so a journey reaches the
+ * daily limit without paying its way there. */
+export const leaveCredits = async (origin: string, context: BrowserContext, leave: number) => {
+  const me: unknown = await (await context.request.get(`${origin}/api/me`)).json()
+  const accountId = typeof me === 'object' && me !== null && 'accountId' in me ? me.accountId : undefined
+  const spent = await context.request.post(`${origin}/api/native/spend`, {
+    headers: { origin, 'x-effect-auth-csrf': '1' },
+    data: { accountId, leave },
+  })
+  expect(spent.status()).toBe(204)
 }

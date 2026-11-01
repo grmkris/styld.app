@@ -98,13 +98,3 @@ export const livePlanner = (run: RunChat, metrics: CaptureMetrics['Service']): M
       answer: Answer,
     }).pipe(Effect.map(({ answer }) => planOf(answer, request))),
 })
-
-/** Native acceptance's planner: the first three pieces picked; `[[unclear]]` plans nothing. */
-export const standInPlanner: MoodPlanner['Service'] = {
-  plan: (request) =>
-    Effect.succeed(
-      request.sentence.includes('[[unclear]]')
-        ? Option.none()
-        : planOf({ refuse: false, picks: request.wardrobe.slice(0, 3).map(({ ref }) => ref), moods: [] }, request),
-    ),
-}
