@@ -1,6 +1,6 @@
 import { boardImages, boardItems, boards, contentChecks, looks, pieces, piecePictures, profiles } from '@styld/db'
 import { CheckReason, CheckState, type CheckStatus, Unavailable } from '@styld/protocol'
-import { and, eq, inArray, isNotNull, lt, ne } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNotNull, lt, ne } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Array, Context, DateTime, Duration, Effect, Option, Schema } from 'effect'
 import type { Picture } from '../capture/Providers.ts'
@@ -177,8 +177,9 @@ const statusOf = (row: typeof contentChecks.$inferSelect): CheckStatus => ({
 const targetIs = (target: CheckTarget) =>
   and(eq(contentChecks.targetKind, target.kind), eq(contentChecks.targetId, target.id))
 
-/** The check rows: one per target, written only here. */
-const checkRows = (db: Database) => ({
+/** The check rows: one per target, written only here.
+ * @internal Exported for its tests. */
+export const checkRows = (db: Database) => ({
   /** Checks still pending since before `before`: their queue messages ran out, or never left. */
   stalePending: (before: Date, limit: number) =>
     attempt(() =>
@@ -186,7 +187,14 @@ const checkRows = (db: Database) => ({
         .select({ kind: contentChecks.targetKind, id: contentChecks.targetId })
         .from(contentChecks)
         .where(and(eq(contentChecks.state, 'pending'), lt(contentChecks.requestedAt, before)))
+        .orderBy(asc(contentChecks.requestedAt))
         .limit(limit),
+    ),
+  /** A pending check whose target is gone or private again is abandoned: nothing will answer it until the target is
+   * made public, which asks again. Answered checks stay, so the same content is not judged twice. */
+  abandon: (target: CheckTarget) =>
+    attempt(() => db.delete(contentChecks).where(and(targetIs(target), eq(contentChecks.state, 'pending')))).pipe(
+      Effect.asVoid,
     ),
   /** Where the target's check stands, if it has been public. */
   kept: (target: CheckTarget) =>
@@ -303,7 +311,10 @@ const make = (bindings: CheckBindings) =>
         unanswered: 'queue' | 'fail' = 'queue',
       ) {
         const shown = yield* shownBy(db, target)
-        if (Option.isNone(shown) || !shown.value.public) return yield* rows.kept(target)
+        if (Option.isNone(shown) || !shown.value.public) {
+          yield* rows.abandon(target)
+          return yield* rows.kept(target)
+        }
         const digest = yield* shownDigest(shown.value)
         const known = yield* rows.pending(target, shown.value.accountId, digest)
         if (Option.isSome(known)) return known
@@ -318,7 +329,7 @@ const make = (bindings: CheckBindings) =>
       /** An admin hides the target from everyone but its owner, or restores it to what its check says. */
       curate: rows.curate,
       /** The schedule's sweep: checks pending for five minutes go to the queue again, so nothing stays hidden only
-       * because a message was lost. */
+       * because a message was lost; the delivery abandons one whose target is gone or private. */
       sweep: Effect.fn('Styld.Checks.sweep')(function* () {
         const before = DateTime.toDateUtc(DateTime.subtractDuration(yield* DateTime.now, pendingPatience))
         const stale = yield* rows.stalePending(before, sweepBatch)

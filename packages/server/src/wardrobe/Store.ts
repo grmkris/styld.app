@@ -1,5 +1,5 @@
 import { accounts, detections, operationReceipts, piecePictures, pieceTurns, pieces, uploads } from '@styld/db'
-import { and, desc, eq, inArray, isNull, ne, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, lt, ne, or, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option } from 'effect'
 import { receiptRows } from '../kernel/Receipts.ts'
@@ -77,6 +77,27 @@ const uploadQueries = (db: ReturnType<typeof drizzle>) => ({
         .set({ tokenDigest })
         .where(and(eq(uploads.id, uploadId), eq(uploads.status, 'pending'))),
     ).pipe(Effect.asVoid),
+  /** Uploads never used: a path whose bytes never came before it expired, or bytes received but used by nothing a
+   * day after the path expired. Oldest first. */
+  unusedUploads: (expiredBefore: Date, receivedBefore: Date, limit: number) =>
+    query(() =>
+      db
+        .select({ id: uploads.id, objectKey: uploads.objectKey })
+        .from(uploads)
+        .where(
+          or(
+            and(eq(uploads.status, 'pending'), lt(uploads.expiresAt, expiredBefore)),
+            and(eq(uploads.status, 'received'), lt(uploads.expiresAt, receivedBefore)),
+          ),
+        )
+        .orderBy(asc(uploads.expiresAt))
+        .limit(limit),
+    ),
+  /** Forget an upload nothing used, unless something used it meanwhile. */
+  forgetUpload: (uploadId: string) =>
+    query(() => db.delete(uploads).where(and(eq(uploads.id, uploadId), ne(uploads.status, 'used')))).pipe(
+      Effect.asVoid,
+    ),
   markUploadReceived: (uploadId: string) =>
     query(() =>
       db

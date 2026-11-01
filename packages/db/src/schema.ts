@@ -58,7 +58,10 @@ export const oauthAssertions = sqliteTable(
     receipt: text('receipt').notNull(),
     expiresAt: integer('expires_at').notNull(),
   },
-  (table) => [primaryKey({ columns: [table.namespace, table.receipt] })],
+  (table) => [
+    primaryKey({ columns: [table.namespace, table.receipt] }),
+    index('oauth_assertions_expiry').on(table.expiresAt),
+  ],
 )
 
 /** A piece of clothing someone owns. Its photo lives in R2 under `accounts/<accountId>/`, so deleting
@@ -101,7 +104,10 @@ export const pieces = sqliteTable(
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
   },
-  (table) => [index('pieces_account_created').on(table.accountId, table.createdAt)],
+  (table) => [
+    index('pieces_account_created').on(table.accountId, table.createdAt),
+    index('pieces_status_updated').on(table.status, table.updatedAt),
+  ],
 )
 
 /** A photo on its way in. The token that authorises the `PUT` is stored only as its digest. */
@@ -168,6 +174,7 @@ export const captures = sqliteTable(
   },
   (table) => [
     index('captures_account_created').on(table.accountId, table.createdAt),
+    index('captures_status_updated').on(table.status, table.updatedAt),
     index('captures_account_import').on(table.accountId, table.importId),
   ],
 )
@@ -249,7 +256,10 @@ export const operationReceipts = sqliteTable(
     result: text('result').notNull(),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
   },
-  (table) => [primaryKey({ columns: [table.accountId, table.operationId] })],
+  (table) => [
+    primaryKey({ columns: [table.accountId, table.operationId] }),
+    index('operation_receipts_created').on(table.createdAt),
+  ],
 )
 
 /** An outfit the assistant put together from the person's pieces. */
@@ -523,7 +533,10 @@ export const piecePictures = sqliteTable(
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
   },
-  (table) => [index('piece_pictures_account').on(table.accountId)],
+  (table) => [
+    index('piece_pictures_account').on(table.accountId),
+    index('piece_pictures_state_updated').on(table.state, table.updatedAt),
+  ],
 )
 
 /** A piece's turn: its clean picture on a hanger turning a quarter-turn, made on request for credits (owner,
@@ -558,7 +571,10 @@ export const pieceTurns = sqliteTable(
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
   },
-  (table) => [index('piece_turns_account').on(table.accountId)],
+  (table) => [
+    index('piece_turns_account').on(table.accountId),
+    index('piece_turns_state_updated').on(table.state, table.updatedAt),
+  ],
 )
 
 export const appSchema = {

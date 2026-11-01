@@ -1,8 +1,8 @@
 import { operationReceipts } from '@styld/db'
 import { OperationConflict, Unavailable } from '@styld/protocol'
-import { and, eq } from 'drizzle-orm'
+import { and, asc, eq, inArray, lt, sql } from 'drizzle-orm'
 import type { drizzle } from 'drizzle-orm/d1'
-import { Effect, Option } from 'effect'
+import { DateTime, Duration, Effect, Option } from 'effect'
 import { first, nowDate, query } from './Db.ts'
 import { digestOf } from './Ids.ts'
 
@@ -69,6 +69,28 @@ export const receiptRow = (operation: Identified, result: string) =>
   }))
 
 const unavailable = () => Unavailable.make({})
+
+/** A receipt answers repeats for this long; after it, the same operation id is a new operation. */
+export const receiptLifetime = Duration.days(30)
+
+/** Forget receipts older than their lifetime, oldest first, a batch at a time; how many went. */
+export const forgetOldReceipts = (db: Database, limit: number) =>
+  Effect.gen(function* () {
+    const before = DateTime.toDateUtc(DateTime.subtractDuration(yield* DateTime.now, receiptLifetime))
+    const old = db
+      .select({ row: sql`rowid` })
+      .from(operationReceipts)
+      .where(lt(operationReceipts.createdAt, before))
+      .orderBy(asc(operationReceipts.createdAt))
+      .limit(limit)
+    const gone = yield* query(() =>
+      db
+        .delete(operationReceipts)
+        .where(inArray(sql`rowid`, old))
+        .returning({ operationId: operationReceipts.operationId }),
+    )
+    return gone.length
+  })
 
 /** Reading and writing receipts, for every store to spread into its own. */
 export const receiptRows = (db: Database) => ({

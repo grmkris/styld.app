@@ -62,6 +62,8 @@ import { pieceJobQueue, pieceJobs } from './wardrobe/Queue.ts'
 import type { WardrobeBindings } from './wardrobe/Parts.ts'
 import { makeWardrobe, Wardrobe } from './wardrobe/Wardrobe.ts'
 import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
+import { applicationSweeps } from './jobs/Cron.ts'
+import { runSweeps } from './jobs/Sweeps.ts'
 import { consume, consumerSettings, type JobQueue, type JobsOf, type Tagged } from './jobs/Jobs.ts'
 import { StylistChats } from './stylist/Http.ts'
 import { stylistJobQueue, stylistJobs } from './stylist/Queue.ts'
@@ -453,7 +455,7 @@ const makeApplication =
         checks: services.checksService,
         generations: services.generationsService,
         stylist: services.stylistService,
-        outfits: services.outfitsService,
+        sweeps: applicationSweeps(db, services),
         allowCodeRequest,
       }
     })
@@ -511,17 +513,11 @@ export default StyldWorker.make(
       generationJobs(generations),
     )
     yield* consumer(bindings.stylist.queueResource, stylistJobQueue, ({ stylist }) => stylistJobs(stylist))
-    // Every ten minutes: generation jobs and checks whose messages were lost go to their queues again, pieces carried
-    // over from the old categories go to be asked about, a batch at a time, and old Thinking counts are forgotten.
+    // Every ten minutes, every sweep on its own (`jobs/Sweeps.ts`): nothing stays pending forever.
     yield* Cloudflare.Workers.cron('*/10 * * * *', () =>
       Effect.gen(function* () {
-        const { generations, checks, captures, outfits, observabilityBase } = yield* application(
-          yield* Cloudflare.Workers.WorkerEnvironment,
-        )
-        const sweeps = [generations.sweep(), checks.sweep(), captures.sweepSuggestions(), outfits.sweep()]
-        yield* Effect.all(sweeps, { discard: true }).pipe(
-          withObservability('styld.cron', { ...observabilityBase, kind: 'cron.sweep' }),
-        )
+        const { sweeps, observabilityBase } = yield* application(yield* Cloudflare.Workers.WorkerEnvironment)
+        yield* runSweeps(sweeps).pipe(withObservability('styld.cron', { ...observabilityBase, kind: 'cron.sweep' }))
       }).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
     )
     return { fetch }

@@ -76,6 +76,7 @@ const wardrobe = Wardrobe.of({
   choosePicture: notUsed,
   processPiece: notUsed,
   failPiece: notUsed,
+  sweepUploads: notUsed,
 })
 const offline = HttpClient.make(() => Effect.die('unit tests make no requests'))
 /** Looks answer one saved look; anything else is not part of these tests. */

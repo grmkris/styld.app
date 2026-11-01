@@ -20,6 +20,8 @@ import { deliverImage } from './Delivery.ts'
 import { type ImageSize, isVideoContainer, piecePrefix, sniffImageType, uploadKey } from './Media.ts'
 import { backing } from './Back.ts'
 import { GarmentCutout } from './Processing.ts'
+import { processing } from './Work.ts'
+import { Holds } from '../usage/Holds.ts'
 import {
   ownerPiece,
   ownPiece,
@@ -28,7 +30,6 @@ import {
   refused,
   stored,
   toPiece,
-  typeOf,
   unavailable,
   usableUpload,
   type WardrobeBindings,
@@ -427,33 +428,6 @@ const images = (parts: Parts) => ({
   }),
 })
 
-const processing = (parts: Parts) => ({
-  /** Run the cut-out step for a piece the queue delivered. Finished pieces are left alone. */
-  processPiece: Effect.fn('Styld.Wardrobe.processPiece')(function* (pieceId: string, attempt: number) {
-    const row = yield* stored(parts.store.findPieceForProcessing(pieceId))
-    if (Option.isNone(row) || row.value.status !== 'processing') return
-    const type = yield* typeOf(row.value)
-    const { imageKey } = yield* parts.cutout.cut({
-      accountId: row.value.accountId,
-      pieceId,
-      originalKey: row.value.originalKey,
-      contentType: row.value.contentType,
-      type,
-      of: { side: 'front', attempt },
-    })
-    yield* stored(parts.store.finishProcessing(pieceId, { status: 'ready', imageKey, updatedAt: yield* nowDate }))
-    yield* parts.pieceChanged.changed(pieceId)
-  }),
-  /** The queue gave up on a piece: show it as failed rather than processing forever. */
-  failPiece: Effect.fn('Styld.Wardrobe.failPiece')(function* (pieceId: string) {
-    const row = yield* stored(parts.store.findPieceForProcessing(pieceId))
-    if (Option.isNone(row) || row.value.status !== 'processing') return
-    yield* stored(
-      parts.store.finishProcessing(pieceId, { status: 'failed', imageKey: null, updatedAt: yield* nowDate }),
-    )
-  }),
-})
-
 const make = (bindings: WardrobeBindings) =>
   Effect.gen(function* () {
     const parts: Parts = {
@@ -461,6 +435,7 @@ const make = (bindings: WardrobeBindings) =>
       store: makeStore(bindings.database),
       cutout: yield* GarmentCutout,
       pieceChanged: yield* PieceChanged,
+      holds: yield* Holds,
     }
     return {
       ...reads(parts),

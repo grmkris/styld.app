@@ -3,14 +3,14 @@ import type { AccountLifecycle } from '../AccountLifecycle.ts'
 import type { Captures } from '../capture/Service.ts'
 import { defineQueue, type JobsOf } from '../jobs/Jobs.ts'
 import type { Photos } from '../photos/Photos.ts'
-import { WorkMessage } from './Processing.ts'
+import { pieceAttempts, WorkMessage } from './Processing.ts'
 import type { Wardrobe } from './Wardrobe.ts'
 
 /** The piece queue: three tries for each job before it shows as failed, its credits back. */
 export const pieceJobQueue = defineQueue({
   name: 'pieces',
   body: WorkMessage,
-  attempts: 3,
+  attempts: pieceAttempts,
   batchSize: 10,
   retryDelay: '10 seconds',
   // A piece's work keeps the queue's own message id.

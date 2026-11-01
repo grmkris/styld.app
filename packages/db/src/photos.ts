@@ -27,6 +27,7 @@ export const outfitPhotos = sqliteTable(
   (table) => [
     uniqueIndex('outfit_photos_upload').on(table.uploadId),
     index('outfit_photos_account_created').on(table.accountId, table.createdAt),
+    index('outfit_photos_status_updated').on(table.status, table.updatedAt),
   ],
 )
 

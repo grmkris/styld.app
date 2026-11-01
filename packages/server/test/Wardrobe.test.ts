@@ -75,6 +75,7 @@ const services = (
         choosePicture: notUsed,
         processPiece: () => processPiece,
         failPiece: (pieceId) => Effect.sync(() => failed.push(pieceId)).pipe(Effect.andThen(failPiece)),
+        sweepUploads: notUsed,
       }),
       lifecycle: {
         deleteAccount: notUsed,

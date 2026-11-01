@@ -25,7 +25,10 @@ export const generationJobs = sqliteTable(
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
     updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
   },
-  (table) => [index('generation_jobs_account').on(table.accountId, table.createdAt)],
+  (table) => [
+    index('generation_jobs_account').on(table.accountId, table.createdAt),
+    index('generation_jobs_status_updated').on(table.status, table.updatedAt),
+  ],
 )
 
 /** A sticker job's picture: its prompt and its outcome. A picture whose draw started but whose answer was lost is

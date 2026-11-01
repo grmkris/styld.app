@@ -1,3 +1,4 @@
+import type { Holds } from '../usage/Holds.ts'
 import {
   Piece,
   NotFound,
@@ -62,6 +63,7 @@ export interface Parts {
   readonly store: Store
   readonly cutout: GarmentCutout['Service']
   readonly pieceChanged: PieceChanged['Service']
+  readonly holds: Holds['Service']
 }
 
 export const ownPiece = (parts: Parts) =>

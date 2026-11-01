@@ -1,0 +1,82 @@
+import { readdirSync, readFileSync } from 'node:fs'
+import { DatabaseSync, type SQLInputValue } from 'node:sqlite'
+import type { D1Database } from '@cloudflare/workers-types'
+import { Predicate } from 'effect'
+
+// A D1 database for unit tests: SQLite in memory with every migration applied, behind the slice of D1's API that
+// drizzle and the stores call (prepare, bind, all, raw, first, run, batch). Real SQL semantics, no Worker; the native
+// suite is still what proves workerd's D1.
+
+const migrations = new URL('../../db/migrations/', import.meta.url)
+
+const value = (input: unknown): SQLInputValue => {
+  if (Predicate.isBoolean(input)) return input ? 1 : 0
+  if (input === undefined || input === null) return null
+  if (Predicate.isString(input) || Predicate.isNumber(input) || Predicate.isBigInt(input)) return input
+  if (input instanceof Uint8Array) return input
+  throw new Error(`A D1 binding SQLite cannot take: ${typeof input}`)
+}
+
+class Statement {
+  constructor(
+    private readonly db: DatabaseSync,
+    private readonly sql: string,
+    private readonly params: ReadonlyArray<unknown> = [],
+  ) {}
+  bind(...params: ReadonlyArray<unknown>) {
+    return new Statement(this.db, this.sql, params)
+  }
+  private prepared() {
+    return this.db.prepare(this.sql)
+  }
+  private returns() {
+    return /^\s*(select|with)\b/i.test(this.sql) || /\breturning\b/i.test(this.sql)
+  }
+  async all() {
+    if (!this.returns()) return { results: [], meta: this.execute() }
+    return { results: this.prepared().all(...this.params.map(value)), meta: { changes: 0 } }
+  }
+  async raw() {
+    const statement = this.prepared()
+    statement.setReturnArrays(true)
+    return statement.all(...this.params.map(value))
+  }
+  async first() {
+    return this.prepared().get(...this.params.map(value)) ?? null
+  }
+  async run() {
+    if (this.returns()) return { results: this.prepared().all(...this.params.map(value)), meta: { changes: 0 } }
+    return { results: [], meta: this.execute() }
+  }
+  execute() {
+    const result = this.prepared().run(...this.params.map(value))
+    return { changes: Number(result.changes) }
+  }
+}
+
+/** A fresh database with the schema every migration builds. */
+export const localD1 = () => {
+  const db = new DatabaseSync(':memory:')
+  for (const folder of readdirSync(migrations).toSorted())
+    for (const statement of readFileSync(new URL(`${folder}/migration.sql`, migrations), 'utf8').split(
+      '--> statement-breakpoint',
+    ))
+      if (statement.trim().length > 0) db.exec(statement)
+  const d1 = {
+    prepare: (sql: string) => new Statement(db, sql),
+    batch: async (statements: ReadonlyArray<Statement>) => {
+      db.exec('BEGIN')
+      try {
+        const results = []
+        for (const statement of statements) results.push(await statement.run())
+        db.exec('COMMIT')
+        return results
+      } catch (error) {
+        db.exec('ROLLBACK')
+        throw error
+      }
+    },
+  }
+  // SAFETY: the shim implements the D1 calls drizzle and the stores make -- the rest of D1Database (exec, sessions, dump) is never called by them
+  return Object.assign<D1Database, { readonly sqlite: DatabaseSync }>(d1 as never, { sqlite: db })
+}

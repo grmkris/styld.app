@@ -57,6 +57,7 @@ const jobQueries = (db: ReturnType<typeof drizzle>) => ({
             lt(generationJobs.updatedAt, before),
           ),
         )
+        .orderBy(asc(generationJobs.updatedAt))
         .limit(limit),
     ).pipe(Effect.map((rows) => rows.map(({ id }) => id))),
   /** For the generation queue, which acts for the job's account. */

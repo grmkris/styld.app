@@ -1,6 +1,9 @@
 import type { PieceType } from '@styld/protocol'
 import { Context, Effect, Layer, Schema } from 'effect'
 
+/** Deliveries that run a piece's job before it is given up (`wardrobe/Queue.ts`). */
+export const pieceAttempts = 3
+
 /** What the piece queue carries: work on a piece, a capture or an outfit photo, or the end of an account's deletion. */
 export const WorkMessage = Schema.TaggedUnion({
   /** Prepare the photo of a newly added piece. */

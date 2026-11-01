@@ -267,13 +267,13 @@ export const turning = (parts: Parts) => ({
       yield* end(parts, pieceId, 'anchoring', 'unknown')
     yield* settleTurn(parts, pieceId)
   }),
-  /** The last attempt failed: the turn ends and its credits come back. */
+  /** The last attempt failed, or the sweep found the turn stuck (a video no browser cut into frames too): the turn
+   * ends and its credits come back. */
   failTurn: Effect.fn('Styld.Turn.fail')(function* (pieceId: string) {
     const found = yield* storedAs(parts.store.findTurn(pieceId))
     if (Option.isNone(found)) return
     const { state } = found.value
-    if (state === 'requested' || state === 'anchoring' || state === 'generating')
-      yield* end(parts, pieceId, state, 'gave-up')
+    if (!hasEnded(state)) yield* end(parts, pieceId, state, 'gave-up')
     yield* settleTurn(parts, pieceId)
   }),
 })
