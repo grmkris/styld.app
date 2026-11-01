@@ -46,7 +46,8 @@ const read = (parts: Parts, job: JobRow) =>
 
 /** Asking for pictures, and reading how they are going. */
 export const generations = (parts: Parts) => ({
-  /** A sticker from the words, or a mood board of the person's pieces: its price held before anything runs. */
+  /** A sticker from the words, or a mood board of the person's pieces, at the account's pace: its price held before
+   * anything runs. */
   admit: Effect.fn('Styld.Generation.admit')(function* (kind: GenerationKind, boardId: BoardId, input: Generate) {
     const { accountId } = yield* CurrentAccount
     const operation = yield* identify({
@@ -58,6 +59,8 @@ export const generations = (parts: Parts) => ({
     const earlier = yield* priorResult(operation, yield* stored(parts.store.findReceipt(accountId, input.operationId)))
     if (Option.isSome(earlier))
       return yield* get(parts, earlier.value).pipe(Effect.catchTag('NotFound', () => Effect.fail(unavailable())))
+    // A new ask, from the website, an assistant or Styld, at the account's pace.
+    yield* parts.pacing.account('generate')
     const board = yield* parts.boards.getBoard(boardId)
     const id = yield* newId('gj')
     // The job's queue deliveries and its reads record the same job id, so the ask, its work and its polls join.

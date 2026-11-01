@@ -1,5 +1,5 @@
 import { Operation } from './Ids.ts'
-import { LimitReached, NotFound, OperationConflict, Unavailable } from './Errors.ts'
+import { LimitReached, NotFound, OperationConflict, SlowDown, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
 import { SessionAccount } from './Session.ts'
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
@@ -80,7 +80,7 @@ export class CaptureApi extends HttpApiGroup.make('capture')
     HttpApiEndpoint.post('check', '/captures/check', {
       payload: HeldCheckRequest,
       success: HeldCheckAnswer,
-      error: Unavailable,
+      error: [SlowDown, Unavailable],
     }),
   )
   .add(

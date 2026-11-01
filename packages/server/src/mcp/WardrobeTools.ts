@@ -22,12 +22,9 @@ import {
   wordsIn,
 } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
-import * as HttpClient from 'effect/http/HttpClient'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
-import { importedUpload } from './ImageImport.ts'
-import { paced } from './Pacing.ts'
 import { tool, ToolError } from './Tools.ts'
-import { readLink } from '../links/LinkPicture.ts'
+import type { Links } from '../links/Links.ts'
 
 /** A piece as assistants see it: its fields and its page on the website, never an image address. */
 const shown = (origin: string) => (piece: Piece) => ({ ...piece, url: `${origin}/wardrobe/${piece.id}` })
@@ -110,9 +107,9 @@ const readTools = (wardrobe: Wardrobe['Service'], show: ReturnType<typeof shown>
 
 const writeTools = (
   wardrobe: Wardrobe['Service'],
+  links: Links['Service'],
   show: ReturnType<typeof shown>,
   origin: string,
-  http: HttpClient.HttpClient,
 ) => [
   tool({
     name: 'upload_create',
@@ -144,7 +141,7 @@ const writeTools = (
           })
         const earlier = yield* wardrobe.pieceAddedBy(input.operationId)
         if (Option.isSome(earlier)) return show(earlier.value)
-        const target = uploadId ?? (yield* uploadFrom(wardrobe, http, imageUrl ?? ''))
+        const target = uploadId ?? (yield* links.photoFrom(imageUrl ?? ''))
         return show(yield* wardrobe.addPiece({ ...fields, uploadId: target }))
       }),
   }),
@@ -168,7 +165,7 @@ const writeTools = (
 ]
 
 /** Adding a piece from a shop's product page. */
-const linkTools = (wardrobe: Wardrobe['Service'], show: ReturnType<typeof shown>, http: HttpClient.HttpClient) => [
+const linkTools = (wardrobe: Wardrobe['Service'], links: Links['Service'], show: ReturnType<typeof shown>) => [
   tool({
     name: 'link_import',
     title: 'Add a piece from a link',
@@ -182,9 +179,7 @@ const linkTools = (wardrobe: Wardrobe['Service'], show: ReturnType<typeof shown>
         if (Option.isSome(earlier)) return show(earlier.value)
         // The same links operation the website calls, under its own id derived from the piece's.
         const read = { operationId: OperationId.make(`${fields.operationId.slice(0, 59)}-link`), url }
-        const picture = yield* paced('link')(
-          readLink(wardrobe, read).pipe(Effect.provideService(HttpClient.HttpClient, http)),
-        )
+        const picture = yield* links.readLink(read)
         const named = chosen ?? picture.name
         return show(
           yield* wardrobe.addPiece({
@@ -198,15 +193,11 @@ const linkTools = (wardrobe: Wardrobe['Service'], show: ReturnType<typeof shown>
 ]
 
 /** The wardrobe's tools: thin projections of the same `Wardrobe` operations the website uses. */
-export const wardrobeTools = (wardrobe: Wardrobe['Service'], origin: string, http: HttpClient.HttpClient) => {
+export const wardrobeTools = (wardrobe: Wardrobe['Service'], links: Links['Service'], origin: string) => {
   const show = shown(origin)
-  return [...readTools(wardrobe, show), ...writeTools(wardrobe, show, origin, http), ...linkTools(wardrobe, show, http)]
+  return [
+    ...readTools(wardrobe, show),
+    ...writeTools(wardrobe, links, show, origin),
+    ...linkTools(wardrobe, links, show),
+  ]
 }
-
-/** Download the photo an assistant points at into a fresh upload. */
-export const uploadFrom = (wardrobe: Wardrobe['Service'], http: HttpClient.HttpClient, imageUrl: string) =>
-  paced('link')(fetchedUpload(wardrobe, http, imageUrl))
-
-/** The photo at an address as a fresh upload, without counting against the account's pace. */
-const fetchedUpload = (wardrobe: Wardrobe['Service'], http: HttpClient.HttpClient, imageUrl: string) =>
-  importedUpload(wardrobe, imageUrl).pipe(Effect.provideService(HttpClient.HttpClient, http))

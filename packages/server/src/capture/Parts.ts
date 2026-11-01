@@ -1,4 +1,5 @@
 import { type Ending, Holds, holdId } from '../usage/Holds.ts'
+import { Pacing } from '../kernel/Pacing.ts'
 import { Garments } from './Garments.ts'
 import { CaptureMetrics } from './Metrics.ts'
 import { GarmentVision, ImageGenerator, PictureWork, VideoGenerator } from './Providers.ts'
@@ -34,6 +35,7 @@ export const makeParts = (bindings: CaptureBindings) =>
       videos: yield* VideoGenerator,
       garments: yield* Garments,
       holds: yield* Holds,
+      pacing: yield* Pacing,
       metrics: yield* CaptureMetrics,
       pieceChanged: yield* PieceChanged,
       store: makeCaptureStore(bindings.database),

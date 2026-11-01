@@ -8,6 +8,7 @@ import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { type AuthHttp, sessionCookieAccount } from './AuthHttp.ts'
 import type { AuthSessionKeyring } from './AuthConfiguration.ts'
 import { hostedClientMetadata, McpScope, redirectUriAllowed } from './mcp/Policy.ts'
+import { networkOf } from './kernel/Pacing.ts'
 
 /** Styld's authorization server for MCP clients: Yielded's authorization-code server with PKCE,
  * rotating refresh tokens and client metadata documents. */
@@ -149,7 +150,7 @@ const registrationError = (error: string, description: string) =>
 const register = <R>(db: D1, allow: (client: string) => Effect.Effect<boolean, never, R>) =>
   Effect.gen(function* () {
     const request = yield* HttpServerRequest.HttpServerRequest
-    if (!(yield* allow(request.headers['cf-connecting-ip'] ?? 'unknown')))
+    if (!(yield* allow(networkOf(request.headers))))
       return HttpServerResponse.empty({ status: 429, headers: { 'retry-after': '60' } })
     const body = yield* request.json.pipe(Effect.option)
     const input = Option.flatMap(body, Schema.decodeUnknownOption(RegistrationRequest))

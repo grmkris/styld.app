@@ -8,8 +8,6 @@ import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import type { CaptureMetrics } from '../capture/Metrics.ts'
 import type { Holds } from '../usage/Holds.ts'
 import { CurrentAccount } from '@styld/protocol'
-import { publicClient } from '../mcp/ImageImport.ts'
-import { Pacing } from '../mcp/Pacing.ts'
 import { styldTools, type ToolServices } from '../mcp/StyldTools.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { stylistModelId } from './Policy.ts'
@@ -48,10 +46,6 @@ export const stylistModel = (runChat: RunChat): StylistModel['Service'] => ({
   ),
 })
 
-/** The stylist's tools never fetch from the web or generate pictures, the only paced work: were one given such a
- * tool, it would be told to slow down. */
-const unpaced: Pacing['Service'] = { link: () => Effect.succeed(false), generate: () => Effect.succeed(false) }
-
 /** Styld for the Worker: its model, the assistants' own tools run for the account, and the chats in each account's
  * Durable Object. */
 export const makeStylistLive = (input: {
@@ -69,14 +63,12 @@ export const makeStylistLive = (input: {
   }
 }) =>
   Effect.gen(function* () {
-    const http = yield* publicClient.pipe(Effect.provide(FetchHttpClient.layer))
     return yield* makeStylist({
       chatsOf: input.chatsOf,
       queue: input.queue,
       model: input.model,
-      tools: styldTools(input.origin, input.tools, http),
-      toolContext: (accountId) =>
-        Context.make(CurrentAccount, { accountId, via: 'assistant' }).pipe(Context.add(Pacing, unpaced)),
+      tools: styldTools(input.origin, input.tools),
+      toolContext: (accountId) => Context.make(CurrentAccount, { accountId, via: 'assistant' }),
       wardrobe: input.storage.wardrobeService,
       holds: input.storage.holds,
       metrics: input.storage.metrics,

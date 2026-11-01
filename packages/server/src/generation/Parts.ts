@@ -1,6 +1,7 @@
 import { Unavailable, Generation } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import type { Boards } from '../boards/Boards.ts'
+import type { Pacing } from '../kernel/Pacing.ts'
 import { type Ending, type Holds, holdId } from '../usage/Holds.ts'
 import type { ContentJudge } from '../safety/Judge.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
@@ -22,6 +23,7 @@ export interface Parts {
   readonly boards: Boards['Service']
   readonly wardrobe: Wardrobe['Service']
   readonly holds: Holds['Service']
+  readonly pacing: Pacing['Service']
   readonly judge: ContentJudge['Service']
   readonly planner: MoodPlanner['Service']
   readonly painter: PicturePainter['Service']

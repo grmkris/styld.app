@@ -2,7 +2,6 @@ import { SessionHttp } from '@styld/auth/config'
 import { CurrentAccount, StyldApi } from '@styld/protocol'
 import { Effect, Layer } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
-import type { RuntimeContext } from 'alchemy/RuntimeContext'
 import { AccountLifecycle } from './AccountLifecycle.ts'
 import type { AuthHttp } from './AuthHttp.ts'
 import { sessionAccountLayer, yieldedAdmission } from './SessionAccount.ts'
@@ -13,6 +12,8 @@ import type { Captures } from './capture/Service.ts'
 import { generationHandlers } from './generation/Http.ts'
 import type { Generations } from './generation/Service.ts'
 import { linkHandlers } from './links/Http.ts'
+import type { Links } from './links/Links.ts'
+import type { Pacing } from './kernel/Pacing.ts'
 import { lookHandlers } from './looks/Http.ts'
 import type { Looks } from './looks/Looks.ts'
 import { wardrobeHandlers } from './wardrobe/Http.ts'
@@ -22,7 +23,7 @@ import { profileHandlers } from './social/Http.ts'
 import type { Profiles } from './social/Profiles.ts'
 import type { Discovery } from './social/Discovery.ts'
 import type { PublicPages } from './social/Public.ts'
-import { type AllowRead, publicHandlers } from './social/PublicHttp.ts'
+import { publicHandlers } from './social/PublicHttp.ts'
 import type { Social } from './social/Social.ts'
 import { socialHandlers } from './social/SocialHttp.ts'
 import type { Worn } from './worn/Worn.ts'
@@ -59,6 +60,8 @@ export const apiRoutes = (
   auth: AuthHttp,
   services: {
     readonly wardrobe: Layer.Layer<Wardrobe>
+    readonly links: Layer.Layer<Links>
+    readonly pacing: Layer.Layer<Pacing>
     readonly lifecycle: Layer.Layer<AccountLifecycle>
     readonly captures: Layer.Layer<Captures>
     readonly looks: Layer.Layer<Looks>
@@ -73,29 +76,23 @@ export const apiRoutes = (
     readonly outfits: Layer.Layer<Outfits>
     readonly photos: Layer.Layer<Photos>
   },
-  limits: {
-    readonly allowCheck: (accountId: string) => Effect.Effect<boolean, never, RuntimeContext>
-    readonly allowLink: (accountId: string) => Effect.Effect<boolean, never, RuntimeContext>
-    readonly allowGenerate: (accountId: string) => Effect.Effect<boolean, never, RuntimeContext>
-    readonly allowRead: AllowRead
-  },
 ) =>
   HttpApiBuilder.layer(StyldApi).pipe(
     Layer.provide(accountHandlers.pipe(Layer.provide(services.lifecycle))),
     Layer.provide(wardrobeHandlers.pipe(Layer.provide(services.wardrobe))),
-    Layer.provide(captureHandlers(limits.allowCheck).pipe(Layer.provide(services.captures))),
+    Layer.provide(captureHandlers.pipe(Layer.provide(services.captures))),
     Layer.provide(lookHandlers.pipe(Layer.provide(services.looks))),
     Layer.provide(boardHandlers.pipe(Layer.provide(services.boards))),
     Layer.provide(wornHandlers.pipe(Layer.provide(services.worn))),
     Layer.provide(profileHandlers.pipe(Layer.provide(services.profiles))),
     Layer.provide(
-      publicHandlers(auth, limits.allowRead).pipe(
-        Layer.provide(Layer.mergeAll(services.publicPages, services.discovery)),
+      publicHandlers(auth).pipe(
+        Layer.provide(Layer.mergeAll(services.publicPages, services.discovery, services.pacing)),
       ),
     ),
     Layer.provide(socialHandlers.pipe(Layer.provide(services.social))),
-    Layer.provide(linkHandlers(limits.allowLink).pipe(Layer.provide(services.wardrobe))),
-    Layer.provide(generationHandlers(limits.allowGenerate).pipe(Layer.provide(services.generations))),
+    Layer.provide(linkHandlers.pipe(Layer.provide(services.links))),
+    Layer.provide(generationHandlers.pipe(Layer.provide(services.generations))),
     Layer.provide(stylistHandlers.pipe(Layer.provide(services.stylist))),
     Layer.provide(outfitHandlers.pipe(Layer.provide(services.outfits))),
     Layer.provide(photoHandlers.pipe(Layer.provide(services.photos))),

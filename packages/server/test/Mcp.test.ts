@@ -11,8 +11,7 @@ import {
   PieceId,
   type RedrawPicture,
 } from '@styld/protocol'
-import { Effect, Exit, Option, Schema } from 'effect'
-import * as HttpClient from 'effect/http/HttpClient'
+import { Effect, Exit, Layer, Option, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { readResource, resources, viewsUri } from '../src/mcp/Resources.ts'
 import { instructions, styldTools } from '../src/mcp/StyldTools.ts'
@@ -27,7 +26,8 @@ import { Discovery } from '../src/social/Discovery.ts'
 import { Social } from '../src/social/Social.ts'
 import { curationTools } from '../src/mcp/CurationTools.ts'
 import { adminEmails, Curation, isAdmin } from '../src/social/Curation.ts'
-import { Pacing } from '../src/mcp/Pacing.ts'
+import { Links } from '../src/links/Links.ts'
+import { unlimited } from './fakes/Pacing.ts'
 
 /** The account service: Ana, with her verified email. */
 const accounts = { readAccount: () => Effect.succeed({ displayName: 'Ana Novak', email: 'ana@example.com' }) }
@@ -78,7 +78,6 @@ const wardrobe = Wardrobe.of({
   failPiece: notUsed,
   sweepUploads: notUsed,
 })
-const offline = HttpClient.make(() => Effect.die('unit tests make no requests'))
 /** Looks answer one saved look; anything else is not part of these tests. */
 const looks = Looks.of({
   createLook: notUsed,
@@ -199,13 +198,25 @@ const discovery = Discovery.of({
 const generations = { admit: notUsed, get: notUsed }
 /** Outfits: not part of these tests. */
 const outfits = { make: notUsed, sweep: notUsed }
-const tools = styldTools(
-  'https://styld.test',
-  { wardrobe, looks, captures, boards, profiles, social, discovery, generations, outfits, accounts },
-  offline,
+/** What Styld fetches from the web, over the wardrobe above, at no pace. */
+const links = Effect.runSync(
+  Links.pipe(
+    Effect.provide(Links.layer.pipe(Layer.provide(Layer.merge(Layer.succeed(Wardrobe, wardrobe), unlimited)))),
+  ),
 )
-/** Every ask goes at once in these tests. */
-const unpaced = Pacing.of({ link: () => Effect.succeed(true), generate: () => Effect.succeed(true) })
+const tools = styldTools('https://styld.test', {
+  wardrobe,
+  links,
+  looks,
+  captures,
+  boards,
+  profiles,
+  social,
+  discovery,
+  generations,
+  outfits,
+  accounts,
+})
 /** The JSON of a result's first text block. */
 const jsonOf = (result: {
   readonly content: ReadonlyArray<{ readonly type: string; readonly text?: string }>
@@ -214,7 +225,6 @@ const call = (name: string, args: unknown) =>
   Effect.runPromise(
     callTool(tools, name, args).pipe(
       Effect.provideService(CurrentAccount, CurrentAccount.of({ accountId: 'acc_1', via: 'assistant' })),
-      Effect.provideService(Pacing, unpaced),
     ),
   )
 
@@ -514,7 +524,6 @@ describe('every MCP tool', () => {
       const exit = await Effect.runPromiseExit(
         callTool(tools, name, everyCall[name]).pipe(
           Effect.provideService(CurrentAccount, CurrentAccount.of({ accountId: 'acc_1', via: 'assistant' })),
-          Effect.provideService(Pacing, unpaced),
         ),
       )
       // A fake these tests leave unused dies when reached: the arguments decoded and the tool ran.

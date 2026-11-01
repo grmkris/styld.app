@@ -4,7 +4,7 @@ import * as AlchemyHttp from 'alchemy/Http'
 import { ProofDispatchSink } from '@styld/auth'
 import { RuntimeContext } from 'alchemy/RuntimeContext'
 import { layerCryptoWeb } from '@yielded/auth/WebCrypto'
-import { Effect, Layer, Logger, Stream } from 'effect'
+import { Effect, Layer, Logger, Record, Stream } from 'effect'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import * as UrlParams from 'effect/http/UrlParams'
@@ -59,6 +59,8 @@ import { Wardrobe } from './wardrobe/Wardrobe.ts'
 import { PieceQueue } from './wardrobe/Processing.ts'
 import { Database } from './kernel/Db.ts'
 import { Media } from './kernel/Media.ts'
+import { declarePaces, Pacing } from './kernel/Pacing.ts'
+import { Links } from './links/Links.ts'
 import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@styld/observability'
 import { applicationSweeps } from './jobs/Cron.ts'
 import { runSweeps } from './jobs/Sweeps.ts'
@@ -70,7 +72,7 @@ import { chatStoreOf, makeStylistLive } from './stylist/Live.ts'
 import { outfitsLive } from './outfits/Live.ts'
 import { photoRoutes } from './photos/Http.ts'
 import { Photos } from './photos/Photos.ts'
-import { Outfits, type OutfitParts } from './outfits/Outfits.ts'
+import { Outfits } from './outfits/Outfits.ts'
 
 // The server formats in every language: page renders and code emails.
 provideAllCatalogs()
@@ -92,22 +94,6 @@ export const Runtime = Layer.mergeAll(
   // Traces record request URLs; upload paths carry a one-time token in `token`.
   Layer.succeed(UrlParams.CurrentRedactedNames, [...UrlParams.CurrentRedactedNames.defaultValue(), 'token']),
 )
-
-/** A per-IP limit of `limit` requests a minute. A limiter error refuses: a limit is never worth an
- * outage or an open door. */
-/** A Workers RateLimit binding that allows `limit` a minute for each key. */
-const perMinuteLimit = (name: string, namespaceId: number, limit: number) =>
-  Cloudflare.Workers.RateLimit(name, { namespaceId, simple: { limit, period: 60 } })
-
-const perClientLimit = (name: string, namespaceId: number, limit: number) =>
-  Effect.gen(function* () {
-    const limiter = yield* perMinuteLimit(name, namespaceId, limit)
-    return (client: string) =>
-      limiter.limit({ key: client }).pipe(
-        Effect.map(({ success }) => success),
-        Effect.orElseSucceed(() => false),
-      )
-  })
 
 /** One wardrobe, one account lifecycle, one capture service, the looks, boards and worn days per isolate, shared
  * by the routes and the processing queue. Assistant-added pieces get the same cut-out providers as the tray. */
@@ -151,6 +137,9 @@ const storageServices = (
     } = yield* Effect.all({ wardrobe: Wardrobe, captures: Captures, photos: Photos }).pipe(
       Effect.provide(wardrobeModules),
     )
+    const linksService = yield* Links.pipe(
+      Effect.provide(Links.layer.pipe(Layer.provide(Layer.succeed(Wardrobe, wardrobeService)))),
+    )
     const lifecycleService = yield* makeAccountLifecycle(bindings, bindings.forgetChats)
     const generationsService = yield* makeGenerations({
       ...bindings,
@@ -177,6 +166,8 @@ const storageServices = (
       looksService,
       boardsService,
       wardrobe: Layer.succeed(Wardrobe, wardrobeService),
+      linksService,
+      links: Layer.succeed(Links, linksService),
       lifecycle: Layer.succeed(AccountLifecycle, lifecycleService),
       captures: Layer.succeed(Captures, capturesService),
       photosService,
@@ -195,6 +186,7 @@ const toolServices = (
   outfits: ToolServices['outfits'],
 ): ToolServices => ({
   wardrobe: services.wardrobeService,
+  links: services.linksService,
   looks: services.looksService,
   captures: services.capturesService,
   boards: services.boardsService,
@@ -205,25 +197,6 @@ const toolServices = (
   outfits,
   accounts: services.lifecycleService,
 })
-
-/** A Workers RateLimit binding's runtime object as a check: false when over the limit or failing. */
-const sharedLimit = (limiter: { limit(options: { key: string }): Promise<{ success: boolean }> }) => (key: string) =>
-  Effect.tryPromise(() => limiter.limit({ key })).pipe(
-    Effect.map(({ success }) => success),
-    Effect.orElseSucceed(() => false),
-  )
-
-/** Each account's pace, on the website and for assistants: fetching from the web, generating pictures, outfits and
- * Thinking. */
-const paceOf = (bindings: Effect.Success<typeof declareBindings>) =>
-  Effect.gen(function* () {
-    return {
-      link: sharedLimit(yield* bindings.linkLimit.raw),
-      generate: sharedLimit(yield* bindings.generateLimit.raw),
-      outfit: sharedLimit(yield* bindings.outfitLimit.raw),
-      thinking: sharedLimit(yield* bindings.thinkingLimit.raw),
-    }
-  })
 
 // Alchemy's Worker bridge gives every event `Logger.consolePretty`, which reaches Workers Logs
 // as one string. Requests log structured objects instead, so Workers Logs indexes every field.
@@ -251,24 +224,8 @@ const declareBindings = Effect.gen(function* () {
   // Clef-flash (Workers AI) routes photos and suggests details; provider calls are counted in Analytics Engine.
   const ai = yield* Cloudflare.Workers.AI('AI')
   const calls = yield* Cloudflare.AnalyticsEngine.WriteDataset(yield* StyldAiCalls)
-  // The browser telemetry relay is unauthenticated; each client IP may post 120 times a
-  // minute (the SDK flushes about twice every 5 seconds per tab).
-  const allowTelemetry = yield* perClientLimit('TELEMETRY_RATE_LIMIT', 2610281, 120)
-  // Dynamic client registration is open to anyone; each IP may register ten clients a minute.
-  const allowRegistration = yield* perClientLimit('OAUTH_REGISTER_RATE_LIMIT', 2610282, 10)
-  // The camera's garment check calls Clef; each account may check 40 frames a minute, a few a second at most.
-  const allowCheck = yield* perClientLimit('CAPTURE_CHECK_RATE_LIMIT', 2610284, 40)
-  // Public pages and their pictures are open to anyone; each network may read 300 a minute.
-  const allowRead = yield* perClientLimit('PUBLIC_READ_RATE_LIMIT', 2610285, 300)
-  // Reading a shop's product page fetches someone else's site; each account may read ten a minute.
-  const linkLimit = yield* perMinuteLimit('LINK_IMPORT_RATE_LIMIT', 2610286, 10)
-  // Generated pictures cost credits and a model's time; each account may ask six times a minute.
-  const generateLimit = yield* perMinuteLimit('GENERATE_RATE_LIMIT', 2610287, 6)
-  // Outfits are free but call Clef; each account may ask thirty times a minute, Thinking six of them.
-  const outfitLimit = yield* perMinuteLimit('OUTFIT_RATE_LIMIT', 2610288, 30)
-  const thinkingLimit = yield* perMinuteLimit('THINKING_RATE_LIMIT', 2610289, 6)
-  // Sign-in codes are real mail from styld.app; each network may ask for five a minute.
-  const codeRequests = yield* perMinuteLimit('EMAIL_CODE_RATE_LIMIT', 2610283, 5)
+  // Every pace's Workers RateLimit binding (`kernel/Pacing.ts`).
+  const paces = yield* declarePaces
   return {
     database,
     email,
@@ -283,15 +240,7 @@ const declareBindings = Effect.gen(function* () {
     stylist,
     ai,
     calls,
-    allowTelemetry,
-    allowRegistration,
-    allowCheck,
-    linkLimit,
-    generateLimit,
-    outfitLimit,
-    thinkingLimit,
-    allowRead,
-    codeRequests,
+    paces,
   }
 })
 
@@ -311,7 +260,7 @@ const applicationServices = (
   runtime: {
     readonly origin: string
     readonly stylist: Effect.Success<typeof declareBindings>['stylist']
-    readonly pace: OutfitParts['pace']
+    readonly pacing: Pacing['Service']
   },
 ) =>
   Effect.gen(function* () {
@@ -321,7 +270,10 @@ const applicationServices = (
       database: bindings.database,
       bindings,
       metrics: services.metrics,
-      pace: runtime.pace,
+      pace: {
+        outfit: (accountId) => runtime.pacing.allows('outfit', accountId),
+        thinking: (accountId) => runtime.pacing.allows('thinking', accountId),
+      },
     })
     // Styld answers with the assistants' own tools, for the account.
     const stylistService = yield* makeStylistLive({
@@ -341,6 +293,14 @@ const applicationServices = (
     }
   })
 
+/** Each pace over its binding's runtime object, as a layer and as the service: auth checks its own inside operations
+ * that do not carry this request's runtime context. */
+const pacingOf = (bindings: Effect.Success<typeof declareBindings>) =>
+  Effect.gen(function* () {
+    const paces = Pacing.layer(yield* Effect.all(Record.map(bindings.paces, (binding) => binding.raw)))
+    return { paces, pacing: yield* Pacing.pipe(Effect.provide(paces)) }
+  })
+
 /** The application over the Worker's bindings, built from the request runtime's environment. */
 const makeApplication =
   (bindings: Effect.Success<typeof declareBindings>, providersFor: ProvidersFor) =>
@@ -358,10 +318,8 @@ const makeApplication =
       const images = yield* bindings.images.raw
       const workersAi = workersAiCalls(yield* bindings.ai.raw)
       const providers = providersFor({ workersAi, images, bucket, metrics, deployment, env })
-      // Auth checks the limit inside its own operations, which do not carry this request's
-      // runtime context, so it gets the binding's runtime object.
-      const allowCodeRequest = sharedLimit(yield* bindings.codeRequests.raw)
-      const pacing = yield* paceOf(bindings)
+      const { paces, pacing } = yield* pacingOf(bindings)
+      const allowCodeRequest = (network: string) => pacing.allows('codeRequest', network)
       const authOrigin = configuration.origin
       const auth = makeAuthHttp(bindings.database, authOptions(configuration, yield* bindings.email.raw, emailSender))
       const db = yield* bindings.database.raw
@@ -374,23 +332,20 @@ const makeApplication =
           checksQueue: yield* bindings.checksQueue.raw,
           generationQueue: yield* bindings.generationQueue.raw,
         },
-        { origin: authOrigin, stylist: bindings.stylist, pace: pacing },
-      ).pipe(Effect.provide(Layer.mergeAll(providers, Holds.layer, Layer.succeed(CaptureMetricsService, metrics))))
+        { origin: authOrigin, stylist: bindings.stylist, pacing },
+      ).pipe(
+        Effect.provide(Layer.mergeAll(providers, Holds.layer, Layer.succeed(CaptureMetricsService, metrics), paces)),
+      )
       const { wardrobeService, lifecycleService, capturesService, wardrobe, captures, boards } = services
       const oauth = makeMcpOAuth(db, auth, {
         origin: authOrigin,
         keys: configuration.sessionKeys,
-        allowRegistration: bindings.allowRegistration,
+        allowRegistration: (network) => pacing.allows('registration', network),
       })
       const routes = Layer.mergeAll(
         auth.layer,
-        apiRoutes(auth, services, {
-          allowCheck: bindings.allowCheck,
-          allowLink: pacing.link,
-          allowGenerate: pacing.generate,
-          allowRead: bindings.allowRead,
-        }),
-        publicImageRoutes(bindings.allowRead).pipe(Layer.provide(services.publicPages)),
+        apiRoutes(auth, { ...services, pacing: paces }),
+        publicImageRoutes.pipe(Layer.provide(Layer.merge(services.publicPages, paces))),
         wardrobeRoutes(auth).pipe(Layer.provide(wardrobe)),
         boardRoutes(auth).pipe(Layer.provide(boards)),
         captureRoutes(auth).pipe(Layer.provide(captures)),
@@ -400,11 +355,11 @@ const makeApplication =
           db,
           authOrigin,
           observabilityBase.release,
-          { ...toolServices(services, services.outfitsService), curation: services.curationService, pacing },
+          { ...toolServices(services, services.outfitsService), curation: services.curationService },
           deployment.admins,
         ).pipe(Layer.provide(oauth.server)),
         HttpRouter.add('GET', '/api/health', health(observabilityBase.release)),
-        browserTelemetryRoutes(authOrigin, bindings.allowTelemetry),
+        browserTelemetryRoutes(authOrigin, (network) => pacing.allows('telemetry', network)),
       ).pipe(Layer.provide(AlchemyHttp.Platform))
       const handle = yield* HttpRouter.toHttpEffect(routes).pipe(Effect.orDie)
       return {

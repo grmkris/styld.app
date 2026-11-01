@@ -22,11 +22,9 @@ import {
   Url,
 } from '@styld/protocol'
 import { Effect, Match, Option, Schema } from 'effect'
-import type * as HttpClient from 'effect/http/HttpClient'
 import type { Boards } from '../boards/Boards.ts'
-import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { tool } from './Tools.ts'
-import { uploadFrom } from './WardrobeTools.ts'
+import type { Links } from '../links/Links.ts'
 
 /** A pin as assistants see it: what it holds and its page, never an image address. */
 const shownPin = (origin: string) => (pin: Pin) =>
@@ -157,12 +155,7 @@ const boardTools = (boards: Boards['Service'], origin: string) => {
   ]
 }
 
-const pinTools = (
-  boards: Boards['Service'],
-  wardrobe: Wardrobe['Service'],
-  origin: string,
-  http: HttpClient.HttpClient,
-) => {
+const pinTools = (boards: Boards['Service'], links: Links['Service'], origin: string) => {
   const show = shownBoard(origin)
   return [
     tool({
@@ -198,7 +191,7 @@ const pinTools = (
           // A retry answers from its receipt before fetching the address again.
           const earlier = yield* boards.boardImageAddedBy(operationId)
           if (Option.isNone(earlier)) {
-            const uploadId = yield* uploadFrom(wardrobe, http, imageUrl)
+            const uploadId = yield* links.photoFrom(imageUrl)
             yield* boards.addBoardImage(boardId, { operationId, uploadId })
           }
           return show(yield* boards.getBoard(boardId))
@@ -234,14 +227,9 @@ const collageTools = (boards: Boards['Service'], origin: string) => {
 }
 
 /** Boards in the assistants: thin projections of the same `Boards` operations the website uses. */
-export const boardMcpTools = (
-  boards: Boards['Service'],
-  wardrobe: Wardrobe['Service'],
-  origin: string,
-  http: HttpClient.HttpClient,
-) => [
+export const boardMcpTools = (boards: Boards['Service'], links: Links['Service'], origin: string) => [
   ...readTools(boards, origin),
   ...boardTools(boards, origin),
-  ...pinTools(boards, wardrobe, origin, http),
+  ...pinTools(boards, links, origin),
   ...collageTools(boards, origin),
 ]

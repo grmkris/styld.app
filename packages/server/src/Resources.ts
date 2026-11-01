@@ -32,5 +32,19 @@ export const StyldAiCalls = Cloudflare.AnalyticsEngine.Dataset('StyldV2AiCalls')
  * domain or DNS record of its own. */
 export const StyldEmail = Cloudflare.Email.SendEmail('STYLD_EMAIL', { allowedSenderAddresses: ['noreply@styld.app'] })
 
+/** The namespace of each pace's Workers RateLimit binding (`kernel/Pacing.ts`), unique within the Cloudflare account.
+ * C5 makes them the stage's. */
+export const rateLimitNamespaces = {
+  telemetry: 2610281,
+  registration: 2610282,
+  codeRequest: 2610283,
+  check: 2610284,
+  publicRead: 2610285,
+  link: 2610286,
+  generate: 2610287,
+  outfit: 2610288,
+  thinking: 2610289,
+} as const
+
 /** The sender every code email comes from. */
 export const emailSender = 'Styld <noreply@styld.app>'

@@ -3,6 +3,7 @@ import { Context, DateTime, Duration, Effect } from 'effect'
 import type { Boards } from '../boards/Boards.ts'
 import { capturePolicy } from '../capture/Policy.ts'
 import { Holds } from '../usage/Holds.ts'
+import { Pacing } from '../kernel/Pacing.ts'
 import { ContentJudge } from '../safety/Judge.ts'
 import { makeStore } from '../wardrobe/Store.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
@@ -58,6 +59,7 @@ export const makeGenerations = (bindings: GenerationBindings) =>
         boards: bindings.boards,
         wardrobe: bindings.wardrobe,
         holds: yield* Holds,
+        pacing: yield* Pacing,
         judge: yield* ContentJudge,
         planner: yield* MoodPlanner,
         painter: yield* PicturePainter,

@@ -3,6 +3,7 @@ import { Effect, Layer, Option, Schema } from 'effect'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
+import { networkOf } from './kernel/Pacing.ts'
 
 /** The browser SDK posts to `${origin}/api/telemetry` with a declared length; bodies above
  * this, or without a length, are refused unread. Large enough for a buffer that built up
@@ -13,7 +14,7 @@ export const maxSpansPerRequest = 100
 const maxText = 256
 const maxStack = 2048
 
-/** Whether a client (by IP) may post telemetry now; the Worker backs it with a rate limit. */
+/** Whether a client (by network) may post telemetry now; the Worker backs it with its `telemetry` pace. */
 export type TelemetryAllowance<R> = (client: string) => Effect.Effect<boolean, never, R>
 
 const SpanId = Schema.String.check(Schema.isPattern(/^[0-9a-f]{16}$/))
@@ -131,7 +132,7 @@ const admit = <R>(origin: string, allow: TelemetryAllowance<R>, contentType: str
     const length = request.headers['content-length']
     if (length === undefined || !/^\d+$/.test(length)) return Option.some(respond(411))
     if (Number(length) > maxBodyBytes) return Option.some(respond(413))
-    if (!(yield* allow(request.headers['cf-connecting-ip'] ?? 'unknown'))) return Option.some(respond(429))
+    if (!(yield* allow(networkOf(request.headers)))) return Option.some(respond(429))
     return Option.none()
   })
 

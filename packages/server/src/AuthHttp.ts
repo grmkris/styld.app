@@ -8,6 +8,7 @@ import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import type { QueryDatabaseClient } from '@alchemy.run/cloudflare/D1/QueryDatabase'
 import type { AuthHttpOptions } from './AuthConfiguration.ts'
+import { networkOf } from './kernel/Pacing.ts'
 
 /** Build the auth HTTP layer at the Worker boundary where the trusted origin
  * and the native D1 binding are available. */
@@ -48,17 +49,15 @@ export const sessionCookieAccount = (auth: AuthHttp) =>
     })
   }).pipe(Effect.provide(auth.dependencies))
 
-/** Per request, the network a code request comes from and whether it may ask for another. A
- * Worker has no socket peer, so the key is the visitor address Cloudflare sets in
- * `cf-connecting-ip` (absent only under local tooling, where every request shares one key). The
- * limit is the host's, shared by every isolate; Yielded's default would count per isolate. */
+/** Per request, the network a code request comes from (`networkOf`) and whether it may ask for another. The limit
+ * is the host's, shared by every isolate; Yielded's default would count per isolate. */
 export const withCodeRequestPolicy =
   (headers: Headers.Headers, allow: (networkKey: string) => Effect.Effect<boolean>) =>
   <A, E, R>(effect: Effect.Effect<A, E, R>) =>
     effect.pipe(
       Effect.provideService(
         Proofs.ProofRequestContext,
-        Effect.succeed({ networkKey: Redacted.make(headers['cf-connecting-ip'] ?? 'unknown') }),
+        Effect.succeed({ networkKey: Redacted.make(networkOf(headers)) }),
       ),
       Effect.provideService(
         Proofs.HostIngressLimiter,

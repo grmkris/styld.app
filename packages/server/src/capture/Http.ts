@@ -1,7 +1,6 @@
 import { CurrentAccount, DetectionId, PieceId, SheetRefused, StyldApi, type Unavailable } from '@styld/protocol'
 import { Effect, Layer, Option, Result, Schema } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
-import type { RuntimeContext } from 'alchemy/RuntimeContext'
 import * as Encoding from 'effect/encoding/Base64'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
@@ -15,44 +14,39 @@ const jpegOf = (text: string) =>
     (bytes) => bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff,
   )
 
-/** The answer for a frame Styld does not check: not a JPEG, or past the account's pace. */
-const notChecked = { held: false, side: 'unclear', samePrevious: false, holding: false } as const
+/** The answer for a frame that is not a JPEG, which Styld does not check. */
+const notJpeg = { held: false, side: 'unclear', samePrevious: false, holding: false } as const
 
 /** The website's capture endpoints, each the matching `Captures` operation for the session's account. */
-export const captureHandlers = (allowCheck: (accountId: string) => Effect.Effect<boolean, never, RuntimeContext>) =>
-  HttpApiBuilder.group(StyldApi, 'capture', (handlers) =>
-    Effect.gen(function* () {
-      const captures = yield* Captures
-      return handlers
-        .handle('createCapture', ({ payload }) => captures.createCapture(payload))
-        .handle('createVideoCapture', ({ payload }) => captures.createVideoCapture(payload))
-        .handle('tray', () => captures.tray())
-        .handle('review', ({ payload }) => captures.review(payload))
-        .handle('split', ({ params, payload }) => captures.split(params.detectionId, payload.operationId))
-        .handle('retry', ({ params, payload }) => captures.retry(params.captureId, payload.operationId))
-        .handle('remove', ({ params }) => captures.remove(params.captureId))
-        .handle('redrawPicture', ({ params, payload }) => captures.redrawPicture(params.pieceId, payload))
-        .handle('makeTurn', ({ params, payload }) => captures.makeTurn(params.pieceId, payload.operationId))
-        .handle('turnSheet', ({ params, payload }) =>
-          Effect.gen(function* () {
-            const sheet = yield* Effect.fromResult(Encoding.decode(payload.sheet)).pipe(
-              Effect.mapError(() => SheetRefused.make({})),
-            )
-            return yield* captures.acceptSheet(params.pieceId, payload.layout, sheet)
-          }),
-        )
-        .handle('check', ({ payload }) =>
-          Effect.gen(function* () {
-            const { accountId } = yield* CurrentAccount
-            const frame = jpegOf(payload.frame)
-            // Each check calls Clef, so a frame past the account's pace is answered without one.
-            if (Option.isNone(frame) || !(yield* allowCheck(accountId))) return notChecked
-            const previous = Option.flatMap(Option.fromNullishOr(payload.previous), jpegOf)
-            return yield* captures.check(frame.value, previous, payload.layout ?? 'held')
-          }),
-        )
-    }),
-  )
+export const captureHandlers = HttpApiBuilder.group(StyldApi, 'capture', (handlers) =>
+  Effect.gen(function* () {
+    const captures = yield* Captures
+    return handlers
+      .handle('createCapture', ({ payload }) => captures.createCapture(payload))
+      .handle('createVideoCapture', ({ payload }) => captures.createVideoCapture(payload))
+      .handle('tray', () => captures.tray())
+      .handle('review', ({ payload }) => captures.review(payload))
+      .handle('split', ({ params, payload }) => captures.split(params.detectionId, payload.operationId))
+      .handle('retry', ({ params, payload }) => captures.retry(params.captureId, payload.operationId))
+      .handle('remove', ({ params }) => captures.remove(params.captureId))
+      .handle('redrawPicture', ({ params, payload }) => captures.redrawPicture(params.pieceId, payload))
+      .handle('makeTurn', ({ params, payload }) => captures.makeTurn(params.pieceId, payload.operationId))
+      .handle('turnSheet', ({ params, payload }) =>
+        Effect.gen(function* () {
+          const sheet = yield* Effect.fromResult(Encoding.decode(payload.sheet)).pipe(
+            Effect.mapError(() => SheetRefused.make({})),
+          )
+          return yield* captures.acceptSheet(params.pieceId, payload.layout, sheet)
+        }),
+      )
+      .handle('check', ({ payload }) => {
+        const frame = jpegOf(payload.frame)
+        if (Option.isNone(frame)) return Effect.succeed(notJpeg)
+        const previous = Option.flatMap(Option.fromNullishOr(payload.previous), jpegOf)
+        return captures.check(frame.value, previous, payload.layout ?? 'held')
+      })
+  }),
+)
 
 const PictureTarget = Schema.Struct({
   detectionId: DetectionId,

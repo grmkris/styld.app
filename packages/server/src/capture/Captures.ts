@@ -294,6 +294,8 @@ export const reading = (parts: Parts) => ({
     previous: Option.Option<Uint8Array>,
     layout: 'held' | 'flat',
   ) {
+    // Each check calls Clef, at the account's pace.
+    yield* parts.pacing.account('check')
     const vision = parts.vision
     const policy = capturePolicy
     const answer = yield* vision
