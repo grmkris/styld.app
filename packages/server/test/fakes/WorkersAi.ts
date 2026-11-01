@@ -1,10 +1,9 @@
 import { Option, Schema } from 'effect'
-import type { RunChat } from '../../src/ai/WorkersAiFetch.ts'
+import type { WorkersAi } from '../../src/ai/LanguageModel.ts'
 import type { ClefRequest, RunClef } from '../../src/capture/Clef.ts'
-import type { RunGuard } from '../../src/safety/Judge.ts'
 
 // Workers AI as the native suite answers it: the local stack cannot reach Workers AI. Clef's questions go to the
-// fixture Worker, which answers from what each test stored there and records the prompts; the chat model Styld
+// fixture Worker, which answers from what each test stored there and records the prompts; the text model Styld
 // answers with is played in process, by where the reply is.
 
 /** Clef asked over HTTP, at the fixture Worker's stand-in. */
@@ -19,9 +18,6 @@ export const clefAt =
     if (!response.ok) throw new Error(`Clef stand-in answered ${response.status}`)
     return response.json()
   }
-
-/** Llama Guard is never asked natively: the fake judge decides the checks. */
-export const unusedGuard: RunGuard = () => Promise.reject(new Error('the native suite has no Llama Guard'))
 
 const Message = Schema.Struct({ role: Schema.String, content: Schema.optionalKey(Schema.NullOr(Schema.String)) })
 const Request = Schema.Struct({ messages: Schema.Array(Message) })
@@ -63,7 +59,7 @@ const answer = (messages: (typeof Request.Type)['messages']) => {
 }
 
 /** The chat model: a message with `[[fail]]` is refused, as a model that is down would be. */
-export const fakeChat: RunChat = async (_model, input) => {
+export const fakeChat: WorkersAi['Service']['run'] = async (_model, input) => {
   const request = Schema.decodeUnknownOption(Request)(input)
   if (Option.isNone(request)) throw new Error('Not a chat completion')
   const person = request.value.messages.findLast(({ role }) => role === 'user')

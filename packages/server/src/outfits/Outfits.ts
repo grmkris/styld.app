@@ -18,7 +18,7 @@ import type { Picture } from '../capture/Providers.ts'
 import type { ImageBindings } from '../wardrobe/Delivery.ts'
 import type { Store } from '../wardrobe/Store.ts'
 import { judgingPicture, type OutfitJudge } from './Judge.ts'
-import type { OutfitProposer } from './Proposer.ts'
+import type { Thinking } from './Proposer.ts'
 import { type Brief, missingOf, proposed, type Wearable } from './Rules.ts'
 import type { OutfitStore } from './Store.ts'
 import { type Owned, wearablesOf } from './Wearables.ts'
@@ -32,8 +32,8 @@ export interface OutfitParts {
   readonly wardrobe: Store
   readonly days: OutfitStore
   readonly bindings: ImageBindings
-  readonly judge: OutfitJudge
-  readonly proposer: OutfitProposer
+  readonly judge: OutfitJudge['Service']
+  readonly proposer: Thinking['Service']
   /** The account's pace: any outfit, and Thinking's tighter one. False when over it. */
   readonly pace: {
     readonly outfit: (accountId: string) => Effect.Effect<boolean>

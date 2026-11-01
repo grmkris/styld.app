@@ -1,7 +1,7 @@
 import type { Occasion, OutfitBrief, Season } from '@styld/protocol'
-import { Effect, Option } from 'effect'
+import { Context, Effect, Layer, Option } from 'effect'
 import { askClef, clefCost, imageOf, noulOf, type RunClef } from '../capture/Clef.ts'
-import type { CaptureMetrics } from '../capture/Metrics.ts'
+import { CaptureMetrics } from '../capture/Metrics.ts'
 import type { Picture } from '../capture/Providers.ts'
 import { collect } from '../Streams.ts'
 import { deliverImage, type ImageBindings } from '../wardrobe/Delivery.ts'
@@ -18,9 +18,19 @@ export interface Judged {
   readonly costMicroUsd: number
 }
 
-/** How outfits are judged: by Clef on the preview and natively (through its stand-in), or not at all. */
-export interface OutfitJudge {
-  readonly judge: (pictures: ReadonlyArray<Picture>, brief: OutfitBrief) => Effect.Effect<Option.Option<Judged>>
+/** How outfits are judged: by Clef, live and natively (through the fixture Worker); none when it could not look. */
+export class OutfitJudge extends Context.Service<
+  OutfitJudge,
+  { readonly judge: (pictures: ReadonlyArray<Picture>, brief: OutfitBrief) => Effect.Effect<Option.Option<Judged>> }
+>()('@styld/server/outfits/OutfitJudge') {
+  /** Clef over the Workers AI call it is asked through. */
+  static readonly layer = (run: RunClef) =>
+    Layer.effect(
+      this,
+      Effect.gen(function* () {
+        return OutfitJudge.of(clefJudge(run, yield* CaptureMetrics))
+      }),
+    )
 }
 
 const occasionWords: Readonly<Record<Occasion, string>> = {
@@ -49,7 +59,7 @@ const purposeOf = (brief: OutfitBrief): Option.Option<string> => {
 
 /** Clef judges: how well the pieces go together, times how well they suit the purpose when there is one. A failed call
  * leaves the outfit unjudged. */
-export const clefJudge = (run: RunClef, metrics: CaptureMetrics['Service']): OutfitJudge => ({
+const clefJudge = (run: RunClef, metrics: CaptureMetrics['Service']): OutfitJudge['Service'] => ({
   judge: (pictures, brief) => {
     const purpose = purposeOf(brief)
     return askClef(run, metrics, 'outfit', {

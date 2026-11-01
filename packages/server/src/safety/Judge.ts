@@ -1,10 +1,12 @@
-import { type ProviderError, broken, busy } from '../providers/Errors.ts'
-import { deadlines, providerCall } from '../providers/Call.ts'
-import { chatCost } from '../providers/Costs.ts'
+import { type ProviderError, busy } from '../providers/Errors.ts'
+import { deadlines } from '../providers/Call.ts'
+import { textModels } from '../providers/Costs.ts'
 import type { CheckReason } from '@styld/protocol'
-import { Array, Context, Effect, Layer, Schema } from 'effect'
+import { Array, Context, Effect, Layer, Option, Schema } from 'effect'
+import { LanguageModel } from 'effect/ai'
+import { providerErrorOf, type TextTask, workersAiModel } from '../ai/LanguageModel.ts'
 import { askClef, imageOf, noulOf, type RunClef } from '../capture/Clef.ts'
-import type { CaptureMetrics } from '../capture/Metrics.ts'
+import { CaptureMetrics } from '../capture/Metrics.ts'
 import { type Picture } from '../capture/Providers.ts'
 
 /** What something public shows: its words and at most a few of its pictures. */
@@ -62,19 +64,12 @@ const pictureVerdict = (score: (key: keyof typeof pictureQuestions) => number): 
   return { state: 'passed', reason: null, model: 'clef-flash' }
 }
 
-/** Llama Guard 3's answer: safe, or the hazard categories it saw, and the tokens it read and wrote. */
-const GuardAnswer = Schema.Struct({
-  response: Schema.Union([
-    Schema.String,
-    Schema.Struct({ safe: Schema.Boolean, categories: Schema.optionalKey(Schema.Array(Schema.String)) }),
-  ]),
-  usage: Schema.optionalKey(
-    Schema.Struct({
-      prompt_tokens: Schema.optionalKey(Schema.Number),
-      completion_tokens: Schema.optionalKey(Schema.Number),
-    }),
-  ),
-})
+/** Llama Guard 3's answer as an object: safe, or the hazard categories it saw. Its text answer is `safe`, or `unsafe`
+ * and the categories. */
+const GuardObject = Schema.fromJsonString(
+  Schema.Struct({ safe: Schema.Boolean, categories: Schema.optionalKey(Schema.Array(Schema.String)) }),
+)
+const decodeGuardObject = Schema.decodeUnknownOption(GuardObject)
 
 /** Llama Guard's hazard categories that take text down; the others keep it out of discovery. */
 const failingHazards = new Set(['S1', 'S3', 'S4', 'S9', 'S10', 'S11', 'S12'])
@@ -87,47 +82,33 @@ const hazardReasons: Readonly<Record<string, CheckReason>> = {
   S12: 'sexual',
 }
 
-const textVerdict = (answer: typeof GuardAnswer.Type): Verdict => {
-  const response = answer.response
-  const unsafe = typeof response === 'string' ? /unsafe/iu.test(response) : !response.safe
+const textVerdict = (answer: string): Verdict => {
+  const object = decodeGuardObject(answer)
+  const unsafe = Option.match(object, { onNone: () => /unsafe/iu.test(answer), onSome: ({ safe }) => !safe })
   if (!unsafe) return { state: 'passed', reason: null, model: 'llama-guard-3-8b' }
-  const categories = typeof response === 'string' ? (response.match(/S\d+/gu) ?? []) : (response.categories ?? [])
+  const categories = Option.match(object, {
+    onNone: () => answer.match(/S\d+/gu) ?? [],
+    onSome: (found) => found.categories ?? [],
+  })
   const hazard = categories.find((category) => failingHazards.has(category))
   return hazard === undefined
     ? { state: 'unsure', reason: hazardReasons[categories[0] ?? ''] ?? 'other', model: 'llama-guard-3-8b' }
     : { state: 'failed', reason: hazardReasons[hazard] ?? 'other', model: 'llama-guard-3-8b' }
 }
 
-/** The Workers AI binding narrowed to Llama Guard 3. */
-export type RunGuard = (input: {
-  readonly messages: ReadonlyArray<{ readonly role: 'user'; readonly content: string }>
-}) => Promise<unknown>
-
 /** How long a check waits for its models before it counts as not answered; it is tried again later. Each call keeps
  * its own deadline too (`providers/Call.ts`). */
 const patience = '20 seconds'
 
-const guardModel = '@cf/meta/llama-guard-3-8b'
+/** Llama Guard 3 reads the words, as one counted Workers AI call. */
+const guard: TextTask = { model: textModels.llamaGuard, kind: 'judge', deadline: deadlines.guard }
 
-/** Llama Guard on the words, as one counted Workers AI call. */
-const guarded = (runGuard: RunGuard, metrics: CaptureMetrics['Service'], texts: ReadonlyArray<string>) =>
-  providerCall(
-    metrics,
-    { provider: 'workers-ai', model: guardModel, kind: 'judge', deadline: deadlines.guard, replaySafe: true },
-    Effect.tryPromise({
-      try: () => runGuard({ messages: [{ role: 'user', content: texts.join('\n') }] }),
-      catch: () => busy('workers-ai'),
-    }).pipe(
-      Effect.flatMap((raw) =>
-        Schema.decodeUnknownEffect(GuardAnswer)(raw).pipe(Effect.mapError(() => broken('workers-ai'))),
-      ),
-    ),
-    ({ usage }) => {
-      const read = usage?.prompt_tokens ?? 0
-      const written = usage?.completion_tokens ?? 0
-      return { units: read + written, costMicroUsd: chatCost(guardModel, read, written) }
-    },
-  ).pipe(Effect.map(textVerdict))
+/** Llama Guard's verdict on the words. */
+const guarded = (model: LanguageModel.LanguageModel, texts: ReadonlyArray<string>) =>
+  model.generateText({ prompt: [{ role: 'user', content: texts.join('\n') }] }).pipe(
+    Effect.mapError(providerErrorOf),
+    Effect.map(({ text }) => textVerdict(text)),
+  )
 
 /** Clef on one picture, as one counted call. */
 const pictured = (runClef: RunClef, metrics: CaptureMetrics['Service'], picture: Picture) =>
@@ -139,29 +120,30 @@ const pictured = (runClef: RunClef, metrics: CaptureMetrics['Service'], picture:
   }).pipe(Effect.map((answer) => pictureVerdict((key) => noulOf(answer, key))))
 
 /** The judge of what people make public: Clef-flash on pictures, Llama Guard 3 on words, each call counted. */
-export const contentJudge = (calls: {
-  readonly runClef: RunClef
-  readonly runGuard: RunGuard
-  readonly metrics: CaptureMetrics['Service']
-}) =>
-  Layer.succeed(
+export const contentJudge = (runClef: RunClef) =>
+  Layer.effect(
     ContentJudge,
-    ContentJudge.of({
-      // Llama Guard has taken 7–16 s while a mood board's ask waited on it: the judging gets its own span and verdict.
-      judge: Effect.fn('Styld.Safety.judge')(
-        function* (content: Content) {
-          const texts = content.texts.filter((text) => text.trim().length > 0)
-          const textAnswer = texts.length === 0 ? passed : yield* guarded(calls.runGuard, calls.metrics, texts)
-          const pictureAnswers = yield* Effect.forEach(
-            content.pictures.slice(0, 3),
-            (picture) => pictured(calls.runClef, calls.metrics, picture),
-            { concurrency: 3 },
-          )
-          const verdict = Array.reduce([textAnswer, instructionsIn(texts), ...pictureAnswers], passed, worse)
-          yield* Effect.annotateCurrentSpan('styld.safety.verdict', verdict.state)
-          return verdict
-        },
-        Effect.timeoutOrElse({ duration: patience, orElse: () => Effect.fail(busy('workers-ai')) }),
-      ),
+    Effect.gen(function* () {
+      const metrics = yield* CaptureMetrics
+      const model = yield* LanguageModel.LanguageModel
+      return ContentJudge.of({
+        // Llama Guard has taken 7–16 s while a mood board's ask waited on it: the judging gets its own span and
+        // verdict.
+        judge: Effect.fn('Styld.Safety.judge')(
+          function* (content: Content) {
+            const texts = content.texts.filter((text) => text.trim().length > 0)
+            const textAnswer = texts.length === 0 ? passed : yield* guarded(model, texts)
+            const pictureAnswers = yield* Effect.forEach(
+              content.pictures.slice(0, 3),
+              (picture) => pictured(runClef, metrics, picture),
+              { concurrency: 3 },
+            )
+            const verdict = Array.reduce([textAnswer, instructionsIn(texts), ...pictureAnswers], passed, worse)
+            yield* Effect.annotateCurrentSpan('styld.safety.verdict', verdict.state)
+            return verdict
+          },
+          Effect.timeoutOrElse({ duration: patience, orElse: () => Effect.fail(busy('workers-ai')) }),
+        ),
+      })
     }),
-  )
+  ).pipe(Layer.provide(workersAiModel(guard)))

@@ -4,7 +4,7 @@ import { Effect, Layer, Option } from 'effect'
 import { type Picture } from '../../src/capture/Providers.ts'
 import type { PicturePainter } from '../../src/generation/Painter.ts'
 import { type MoodPlanner, planOf } from '../../src/generation/Planner.ts'
-import { nothingKept, type OutfitProposer } from '../../src/outfits/Proposer.ts'
+import { nothingKept, type Thinking } from '../../src/outfits/Proposer.ts'
 import { proposed } from '../../src/outfits/Rules.ts'
 import { ContentJudge, instructionsIn, passed, worse } from '../../src/safety/Judge.ts'
 
@@ -48,7 +48,7 @@ export const fakePlanner: MoodPlanner['Service'] = {
 }
 
 /** Thinking: the rules' outfits from a seed of its own; `[[unclear]]` in the person's words answers nothing usable. */
-export const fakeProposer: OutfitProposer = {
+export const fakeProposer: Thinking['Service'] = {
   propose: (request, count) =>
     request.brief.words?.includes('[[unclear]]') === true
       ? Effect.fail(nothingKept())

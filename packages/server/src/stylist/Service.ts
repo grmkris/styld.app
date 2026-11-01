@@ -1,4 +1,3 @@
-import { chatCost } from '../providers/Costs.ts'
 import type { StylistTurn } from './Queue.ts'
 import {
   ChatId,
@@ -12,12 +11,11 @@ import {
   Unavailable,
 } from '@styld/protocol'
 import { type Context, DateTime, Effect, Option, Schema } from 'effect'
-import type { CaptureMetrics } from '../capture/Metrics.ts'
 import { type Holds, holdId } from '../usage/Holds.ts'
 import type { Tool as AssistantTool } from '../mcp/Tools.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { maxSteps } from './Policy.ts'
-import type { StylistModel } from '../Providers.ts'
+import { LanguageModel } from 'effect/ai'
 import { historyText, outlineOf, systemPrompt } from './Prompt.ts'
 import type { StoredMessage, StylistMethods } from './StylistObject.ts'
 import { lookingUpToolNames, showingToolNames, turnTools } from './Tools.ts'
@@ -59,13 +57,12 @@ export type ChatStore = {
 export interface StylistParts<R> {
   readonly chatsOf: (accountId: string) => ChatStore
   readonly queue: { send(message: StylistTurn): Promise<unknown> }
-  readonly model: StylistModel['Service']
+  readonly model: LanguageModel.LanguageModel
   /** The assistants' tools, and what they need to run for an account. */
   readonly tools: ReadonlyArray<AssistantTool<R>>
   readonly toolContext: (accountId: string) => Context.Context<R>
   readonly wardrobe: Wardrobe['Service']
   readonly holds: Holds['Service']
-  readonly metrics: CaptureMetrics['Service']
 }
 
 const now = Effect.map(DateTime.now, DateTime.toEpochMillis)
@@ -132,17 +129,7 @@ const reply = <R>(
           const shown = JSON.stringify(yield* tools.parts)
           yield* parts.chatsOf(accountId).progress(turnId, sofar, shown).pipe(Effect.ignore)
         }),
-      counted: (usage) =>
-        parts.metrics.call({
-          provider: 'workers-ai',
-          model: parts.model.model,
-          kind: 'chat',
-          outcome: usage.answered ? 'ok' : 'failed',
-          milliseconds: usage.milliseconds,
-          units: usage.inputTokens + usage.outputTokens,
-          costMicroUsd: chatCost(parts.model.model, usage.inputTokens, usage.outputTokens),
-        }),
-    }).pipe(Effect.provide(parts.model.layer))
+    }).pipe(Effect.provideService(LanguageModel.LanguageModel, parts.model))
     return { text, parts: yield* tools.parts }
   })
 

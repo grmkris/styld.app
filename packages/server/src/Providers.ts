@@ -1,10 +1,9 @@
-import type { LanguageModel } from 'effect/ai'
-import { Context, Layer } from 'effect'
-import { type RunChat } from './ai/WorkersAiFetch.ts'
+import { Layer } from 'effect'
+import { WorkersAi } from './ai/LanguageModel.ts'
 import { makeGarmentVision, type RunClef } from './capture/Clef.ts'
 import { makePictureWork } from './capture/CloudflareImages.ts'
 import { makeGarmentSegmenter, metaBase } from './capture/Meta.ts'
-import type { CaptureMetrics } from './capture/Metrics.ts'
+import { CaptureMetrics } from './capture/Metrics.ts'
 import { makeMuseGenerator, makeMusePainter } from './capture/Muse.ts'
 import { Garments } from './capture/Garments.ts'
 import { GarmentSegmenter, GarmentVision, ImageGenerator, PictureWork, VideoGenerator } from './capture/Providers.ts'
@@ -12,28 +11,16 @@ import { gatewayBase, makeVeoGenerator, veoPollSeconds } from './capture/Veo.ts'
 import type { Deployment } from './Config.ts'
 import type { Fetch } from './providers/Http.ts'
 import { PicturePainter } from './generation/Painter.ts'
-import { livePlanner, MoodPlanner } from './generation/Planner.ts'
-import { clefJudge, type OutfitJudge } from './outfits/Judge.ts'
-import { liveProposer, type OutfitProposer, thinkingModel } from './outfits/Proposer.ts'
-import { ContentJudge, contentJudge, type RunGuard } from './safety/Judge.ts'
-import { stylistModel } from './stylist/Live.ts'
+import { MoodPlanner } from './generation/Planner.ts'
+import { OutfitJudge } from './outfits/Judge.ts'
+import { Thinking } from './outfits/Proposer.ts'
+import { ContentJudge, contentJudge } from './safety/Judge.ts'
 import type { WardrobeBindings } from './wardrobe/Parts.ts'
 
 // Every provider the application runs on, as layers: the decision model, image work, SAM, the image and video models,
-// the planner and Thinking, the content judge and the model Styld answers with. The Worker passes the live ones; the
-// native test composition passes its fakes (`packages/server/test/fakes/`). Nothing in here reads the environment.
-
-/** Clef's outfit ranking and Thinking's model, for the outfit engine. */
-export class OutfitModels extends Context.Service<
-  OutfitModels,
-  { readonly judge: OutfitJudge; readonly proposer: OutfitProposer }
->()('@styld/server/OutfitModels') {}
-
-/** The language model Styld, the stylist in the app, answers with, and its name for the call counter. */
-export class StylistModel extends Context.Service<
-  StylistModel,
-  { readonly model: string; readonly layer: Layer.Layer<LanguageModel.LanguageModel> }
->()('@styld/server/StylistModel') {}
+// the planner and Thinking, the content judge and the Workers AI binding Styld's language models run over. The Worker
+// passes the live ones; the native test composition passes its fakes (`packages/server/test/fakes/`). Nothing in here
+// reads the environment.
 
 /** What the application's provider layer gives it. */
 export type ProviderServices =
@@ -46,8 +33,9 @@ export type ProviderServices =
   | PicturePainter
   | MoodPlanner
   | ContentJudge
-  | OutfitModels
-  | StylistModel
+  | OutfitJudge
+  | Thinking
+  | WorkersAi
 
 /** What providers are built over: the Worker's own bindings, its call counter and its deployment's secrets. */
 export interface ProviderBindings {
@@ -64,11 +52,10 @@ export interface ProviderBindings {
 /** How a composition makes its providers. */
 export type ProvidersFor = (bindings: ProviderBindings) => Layer.Layer<ProviderServices>
 
-/** The three Workers AI calls Styld makes, over the Worker's `AI` binding. */
+/** The Workers AI calls Styld makes over the Worker's `AI` binding: Clef's questions, and its text models. */
 export interface WorkersAiCalls {
   readonly runClef: RunClef
-  readonly runChat: RunChat
-  readonly runGuard: RunGuard
+  readonly runModel: WorkersAi['Service']['run']
 }
 
 /** The providers from their Workers AI calls and their HTTP clients' fetch and addresses. The native composition
@@ -98,18 +85,19 @@ export const providersOver = (
     Layer.succeed(PictureWork, makePictureWork(bindings.images, metrics)),
     Layer.succeed(GarmentSegmenter, makeGarmentSegmenter({ ...meta, readVideo })),
   )
+  // The text models run over the binding and count their calls with the Worker's counter.
+  const models = Layer.mergeAll(
+    MoodPlanner.layer,
+    Thinking.layer,
+    contentJudge(calls.runClef),
+    OutfitJudge.layer(calls.runClef),
+  ).pipe(Layer.provideMerge(WorkersAi.layer(calls.runModel)), Layer.provide(Layer.succeed(CaptureMetrics, metrics)))
   return Layer.mergeAll(
     Garments.layer.pipe(Layer.provideMerge(garmentProviders)),
     Layer.succeed(ImageGenerator, makeMuseGenerator(meta)),
     Layer.succeed(VideoGenerator, makeVeoGenerator(veo)),
     Layer.succeed(PicturePainter, makeMusePainter(meta)),
-    Layer.succeed(MoodPlanner, livePlanner(calls.runChat, metrics)),
-    contentJudge({ ...calls, metrics }),
-    Layer.succeed(OutfitModels, {
-      judge: clefJudge(calls.runClef, metrics),
-      proposer: liveProposer(calls.runChat, metrics, thinkingModel),
-    }),
-    Layer.succeed(StylistModel, stylistModel(calls.runChat)),
+    models,
   )
 }
 

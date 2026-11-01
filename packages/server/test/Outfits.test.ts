@@ -1,8 +1,6 @@
 import { type Colour, type OutfitBrief, outfitKeyOf, PieceId, type PieceType, slotOf } from '@styld/protocol'
-import { Effect, Option, Result, Schema } from 'effect'
+import { Option } from 'effect'
 import { describe, expect, test } from 'vitest'
-import { structured } from '../src/ai/TextModel.ts'
-import { CaptureMetrics } from '../src/capture/Metrics.ts'
 import { keptProposals, proposalMessages } from '../src/outfits/Proposer.ts'
 import { type Brief, missingOf, proposed, validated, type Wearable } from '../src/outfits/Rules.ts'
 
@@ -185,39 +183,5 @@ describe('Thinking’s proposals', () => {
     expect(keptProposals(request, answer, pieceOf)).toEqual([[tee, jeans, trainers]])
     const seen = new Set([outfitKeyOf([tee.id, jeans.id, trainers.id])])
     expect(keptProposals({ ...request, seen }, answer, pieceOf)).toEqual([])
-  })
-})
-
-describe('the text model seam', () => {
-  const keptAnswer = Schema.Struct({ ok: Schema.Boolean })
-  const ask = (answer: unknown) =>
-    Effect.runPromise(
-      structured(() => Promise.resolve(answer), CaptureMetrics.discarding, {
-        model: '@cf/meta/llama-3.3-70b-instruct-fp8-fast',
-        kind: 'propose',
-        messages: [],
-        schema: {},
-        answer: keptAnswer,
-      }).pipe(Effect.result),
-    )
-
-  test('reads an answer as an object, as JSON text, fenced JSON or a Chat Completion, and prices its tokens', async () => {
-    const usage = { prompt_tokens: 1000, completion_tokens: 100 }
-    for (const raw of [
-      { response: { ok: true }, usage },
-      { response: '{"ok": true}', usage },
-      { response: '```json\n{"ok": true}\n```', usage },
-      { choices: [{ message: { content: '{"ok": true}' } }], usage },
-    ]) {
-      const result = await ask(raw)
-      expect(Result.isSuccess(result)).toBe(true)
-      expect(Result.getOrElse(result, () => null)).toMatchObject({ answer: { ok: true }, costMicroUsd: 515 })
-    }
-  })
-
-  test('an answer of another shape, or none, fails', async () => {
-    expect(Result.isFailure(await ask({ response: 'not json' }))).toBe(true)
-    expect(Result.isFailure(await ask({ response: { ok: 'yes' } }))).toBe(true)
-    expect(Result.isFailure(await ask({ nothing: true }))).toBe(true)
   })
 })

@@ -1,10 +1,10 @@
 import { type ProviderError, refused } from '../providers/Errors.ts'
 import { outfitKeyOf } from '@styld/protocol'
-import { Effect, Option, Schema } from 'effect'
-import { structured, type TextMessage } from '../ai/TextModel.ts'
-import type { RunChat } from '../ai/WorkersAiFetch.ts'
-import type { CaptureMetrics } from '../capture/Metrics.ts'
-
+import { Context, Effect, Layer, Option, Schema } from 'effect'
+import { LanguageModel } from 'effect/ai'
+import { providerErrorOf, type TextTask, workersAiModel } from '../ai/LanguageModel.ts'
+import { deadlines } from '../providers/Call.ts'
+import { textCost, textModels } from '../providers/Costs.ts'
 import { type Brief, validated, type Wearable } from './Rules.ts'
 
 // Thinking (owner, 2026-10-31): a text model proposes outfits from the person's pieces, sent as short references,
@@ -18,33 +18,18 @@ export interface Proposed {
   readonly costMicroUsd: number
 }
 
-export interface OutfitProposer {
-  readonly propose: (request: Brief, count: number) => Effect.Effect<Proposed, ProviderError>
-}
+/** Thinking's model: Styld's, which the owner's probe of 31 October found the best at Slovenian and at following
+ * instructions. */
+const thinking: TextTask = { model: textModels.deepSeekFlash, kind: 'propose', deadline: deadlines.chat }
 
 /** The most pieces and shown combinations one request sends. */
 const mostSent = 150
 const mostShownSent = 20
 
+/** What the model is asked to answer. */
 const Answer = Schema.Struct({
   outfits: Schema.Array(Schema.Struct({ pieces: Schema.Array(Schema.String) })),
 })
-
-/** What the model is asked to return. */
-const answerSchema = {
-  type: 'object',
-  properties: {
-    outfits: {
-      type: 'array',
-      items: {
-        type: 'object',
-        properties: { pieces: { type: 'array', items: { type: 'string' } } },
-        required: ['pieces'],
-      },
-    },
-  },
-  required: ['outfits'],
-} as const
 
 const instructions = (count: number) =>
   [
@@ -81,10 +66,10 @@ export const proposalMessages = (request: Brief, count: number) => {
       .join('+'),
   )
   const { season, occasion, words } = request.brief
-  const messages: ReadonlyArray<TextMessage> = [
-    { role: 'system', content: instructions(count) },
+  const messages = [
+    { role: 'system' as const, content: instructions(count) },
     {
-      role: 'user',
+      role: 'user' as const,
       content: [
         `Weather: ${season ?? 'any'}. Occasion: ${occasion ?? 'any'}.`,
         words === undefined ? null : `In the person’s words: “${words}”.`,
@@ -118,19 +103,28 @@ export const keptProposals = (
 
 export const nothingKept = () => refused('workers-ai')
 
-/** Thinking's model: the one Styld answers with, which the owner's probe of 31 October found the best at Slovenian and
- * at following instructions. */
-export const thinkingModel = '@cf/deepseek-ai/deepseek-v4.1-flash-1017'
-
-/** Thinking through a Workers AI chat model. */
-export const liveProposer = (run: RunChat, metrics: CaptureMetrics['Service'], model: string): OutfitProposer => ({
-  propose: (request, count) => {
-    const { messages, pieceOf } = proposalMessages(request, count)
-    return structured(run, metrics, { model, kind: 'propose', messages, schema: answerSchema, answer: Answer }).pipe(
-      Effect.flatMap(({ answer, costMicroUsd }) => {
-        const outfits = keptProposals(request, answer, pieceOf)
-        return outfits.length === 0 ? Effect.fail(nothingKept()) : Effect.succeed({ outfits, costMicroUsd })
-      }),
-    )
-  },
-})
+/** Thinking: proposals from a language model, kept to the rules; none kept is a refusal. */
+export class Thinking extends Context.Service<
+  Thinking,
+  { readonly propose: (request: Brief, count: number) => Effect.Effect<Proposed, ProviderError> }
+>()('@styld/server/outfits/Thinking') {
+  /** Thinking on its Workers AI model. */
+  static readonly layer = Layer.effect(
+    this,
+    Effect.gen(function* () {
+      const model = yield* LanguageModel.LanguageModel
+      return Thinking.of({
+        propose: Effect.fn('Styld.Outfits.think')(function* (request: Brief, count: number) {
+          const { messages, pieceOf } = proposalMessages(request, count)
+          const answer = yield* model
+            .generateObject({ objectName: 'outfits', prompt: messages, schema: Answer })
+            .pipe(Effect.mapError(providerErrorOf))
+          const outfits = keptProposals(request, answer.value, pieceOf)
+          if (outfits.length === 0) return yield* nothingKept()
+          const { inputTokens, outputTokens } = answer.usage
+          return { outfits, costMicroUsd: textCost(thinking.model, inputTokens.total ?? 0, outputTokens.total ?? 0) }
+        }),
+      })
+    }),
+  ).pipe(Layer.provide(workersAiModel(thinking)))
+}

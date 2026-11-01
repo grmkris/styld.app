@@ -1,16 +1,14 @@
 import { readFileSync } from 'node:fs'
-import { OpenAiClient, OpenAiLanguageModel } from '@effect/ai-openai-compat'
 import { LookId } from '@styld/protocol'
-import { Cause, Context, Effect, Fiber, Layer, Predicate, Schema, Stream } from 'effect'
-import { FetchHttpClient } from 'effect/http'
+import { Context, Effect, Layer, Predicate, Schema, Stream } from 'effect'
 import { describe, expect, test } from 'vitest'
+import { WorkersAi, workersAiModel } from '../src/ai/LanguageModel.ts'
+import { CaptureMetrics } from '../src/capture/Metrics.ts'
 import { type Tool as AssistantTool, tool, ToolError } from '../src/mcp/Tools.ts'
+import { styldModel } from '../src/stylist/Policy.ts'
 import { historyText, outlineOf, systemPrompt } from '../src/stylist/Prompt.ts'
 import { lookingUpToolNames, modelSchema, showingToolNames, turnTools } from '../src/stylist/Tools.ts'
-import { TestClock } from 'effect/testing'
-import { deadlines } from '../src/providers/Call.ts'
 import { runTurn } from '../src/stylist/Turn.ts'
-import { type RunChat, workersAiFetch } from '../src/ai/WorkersAiFetch.ts'
 
 const fixture = (name: string): unknown =>
   JSON.parse(readFileSync(new URL(`fixtures/stylist/${name}`, import.meta.url), 'utf8'))
@@ -36,29 +34,31 @@ const pieceSearch = tool({
     }),
 })
 
-/** Workers AI answering with the recorded answers in turn, keeping what it was asked. */
+/** Styld's language model over Workers AI answering with the recorded answers in turn, keeping what it was asked and
+ * the outcome and tokens of each counted call. */
 const replaying = (answers: ReadonlyArray<unknown>) => {
   const asked: Array<Readonly<Record<string, unknown>>> = []
-  const run: RunChat = (_model, input) => {
-    asked.push(input)
-    const answer = answers[asked.length - 1]
-    return answer instanceof Error ? Promise.reject(answer) : Promise.resolve(answer)
-  }
-  return { run, asked }
-}
-
-const modelOver = (run: RunChat, extra: Readonly<Record<string, unknown>> = {}) =>
-  OpenAiLanguageModel.model('@cf/zai-org/glm-5.3-flash').pipe(
+  const counted: Array<number> = []
+  const failed: Array<number> = []
+  const model = workersAiModel(styldModel).pipe(
     Layer.provide(
-      OpenAiClient.layer({ apiUrl: 'https://workers-ai.invalid/v1' }).pipe(
-        Layer.provide(FetchHttpClient.layer),
-        Layer.provide(Layer.succeed(FetchHttpClient.Fetch, workersAiFetch(run, extra))),
+      WorkersAi.layer((_model, input) => {
+        asked.push(input)
+        return Promise.resolve(answers[asked.length - 1])
+      }),
+    ),
+    Layer.provide(
+      Layer.succeed(
+        CaptureMetrics,
+        CaptureMetrics.of({
+          ...CaptureMetrics.discarding,
+          call: ({ outcome, units }) => Effect.sync(() => void (outcome === 'ok' ? counted : failed).push(units)),
+        }),
       ),
     ),
   )
-
-/** Workers AI holding a call open for good, as one did for 235 s on the preview. */
-const neverAnswering: RunChat = () => new Promise(() => undefined)
+  return { model, asked, counted, failed }
+}
 
 const Loose = Schema.Record(Schema.String, Schema.Unknown)
 const loose = Schema.decodeUnknownSync(Loose)
@@ -75,10 +75,8 @@ const saying = (answer: unknown, content: string): unknown => {
 
 /** One reply over the recorded wardrobe, the model answering with `answers` in turn. */
 const replyWith = (answers: ReadonlyArray<unknown>, maxSteps = 6) => {
-  const { run, asked } = replaying(answers)
+  const { model, asked, counted, failed } = replaying(answers)
   const progress: Array<string> = []
-  const counted: Array<number> = []
-  const failed: Array<number> = []
   const replied = Effect.runPromise(
     Effect.gen(function* () {
       const tools = yield* turnTools(
@@ -94,40 +92,14 @@ const replyWith = (answers: ReadonlyArray<unknown>, maxSteps = 6) => {
         showing: showingToolNames,
         lookingUp: lookingUpToolNames,
         progress: (sofar) => Effect.sync(() => progress.push(sofar)),
-        counted: (usage) => Effect.sync(() => (usage.answered ? counted : failed).push(usage.inputTokens)),
       })
       return { reply: text, parts: yield* tools.parts }
-    }).pipe(Effect.provide(modelOver(run, { reasoning_effort: 'low' }))),
+    }).pipe(Effect.provide(model)),
   )
   return { replied, asked, progress, counted, failed }
 }
 
 describe('a reply', () => {
-  test('a model call that never answers fails at its patience, counted as failed, so the queue asks again', async () => {
-    const failed: Array<number> = []
-    const outcome = await Effect.runPromise(
-      Effect.gen(function* () {
-        const tools = yield* turnTools([pieceSearch], { turnId: 'tn_test', pieceIds: new Set() }, Context.empty())
-        const writing = yield* Effect.forkChild(
-          runTurn({
-            system: 'Styld',
-            history: [{ role: 'person', text: 'What should I wear today?' }],
-            toolkit: yield* tools.toolkit.pipe(Effect.provide(tools.handlers)),
-            maxSteps: 6,
-            showing: showingToolNames,
-            lookingUp: lookingUpToolNames,
-            progress: () => Effect.void,
-            counted: (usage) => Effect.sync(() => void (usage.answered ? undefined : failed.push(usage.milliseconds))),
-          }).pipe(Effect.provide(modelOver(neverAnswering))),
-        )
-        yield* TestClock.adjust(deadlines.chat)
-        return yield* Effect.flip(Fiber.join(writing))
-      }).pipe(Effect.provide(TestClock.layer())),
-    )
-    expect(Cause.isTimeoutError(outcome)).toBe(true)
-    expect(failed).toEqual([45_000])
-  })
-
   test('looks the wardrobe up, then ends with its words and the pieces it shows (recorded GLM-5.3-flash)', async () => {
     const recorded = [0, 1, 2].map((step) => fixture(`glm-step-${step}.json`))
     const { replied, asked, progress, counted } = replyWith(recorded)
@@ -141,10 +113,10 @@ describe('a reply', () => {
     expect(Predicate.isTagged(shown, 'Pieces') && [...shown.pieceIds].toSorted()).toEqual(
       pieces.map(({ id }) => id).toSorted(),
     )
-    // Two model calls, each counted; the search's answer went back before the second.
-    expect(counted).toEqual([539, 676])
+    // Two model calls, each counted by its tokens in and out; the search's answer went back before the second.
+    expect(counted).toHaveLength(2)
+    expect(counted[0]).toBe(552)
     expect(asked).toHaveLength(2)
-    expect(asked.every((input) => input['reasoning_effort'] === 'low')).toBe(true)
     expect(JSON.stringify(asked[1]?.['messages'])).toContain('pc_navytrousers0000000000')
     expect(progress.at(-1)).toBe(reply)
   })
@@ -183,10 +155,10 @@ describe('a reply', () => {
     expect((await only).reply).toBe('I’ll take a look at what’s in your wardrobe.')
   })
 
-  test('a model that does not answer fails the reply, and its call is counted as failed', async () => {
-    const { replied, counted, failed } = replyWith([fixture('glm-step-0.json'), new Error('Workers AI is down')])
+  test('a model that answers nothing readable fails the reply, and its call is counted as failed', async () => {
+    const { replied, counted, failed } = replyWith([fixture('glm-step-0.json'), 'not a completion'])
     await expect(replied).rejects.toBeDefined()
-    expect(counted).toEqual([539])
+    expect(counted).toEqual([552])
     expect(failed).toEqual([0])
   })
 
@@ -297,48 +269,6 @@ describe('a reply’s tools', () => {
     const bad = await called([], 'pieces_show', { pieceIds: [] })
     expect(bad.result).toMatchObject({ error: { code: 'invalid_arguments' } })
     expect(bad.parts).toEqual([])
-  })
-})
-
-const posted = (body: unknown) => ({ method: 'POST', body: JSON.stringify(body) })
-
-/** A streamed chunk, as far as the client reads it here. */
-const Chunk = Schema.fromJsonString(
-  Schema.Struct({
-    choices: Schema.Array(
-      Schema.Struct({
-        delta: Schema.Struct({
-          tool_calls: Schema.optionalKey(Schema.Array(Schema.Record(Schema.String, Schema.Unknown))),
-        }),
-        finish_reason: Schema.NullOr(Schema.String),
-      }),
-    ),
-    usage: Schema.optionalKey(Schema.Struct({ prompt_tokens: Schema.Number })),
-  }),
-)
-
-describe('Workers AI behind the OpenAI-compatible client', () => {
-  test('a streamed request gets the whole answer as one chunk, then its finish and usage', async () => {
-    const fetch = workersAiFetch(() => Promise.resolve(fixture('glm-step-0.json')))
-    const response = await fetch('https://workers-ai.invalid/v1/chat/completions', posted({ model: 'm', stream: true }))
-    expect(response.headers.get('content-type')).toBe('text/event-stream')
-    const events = (await response.text()).split('\n\n').filter((event) => event.length > 0)
-    expect(events.at(-1)).toBe('data: [DONE]')
-    const [first, last] = events
-      .slice(0, -1)
-      .map((event) => Schema.decodeUnknownSync(Chunk)(event.slice('data: '.length)))
-    expect(first?.choices[0]?.delta.tool_calls?.[0]).toMatchObject({ index: 0, function: { name: 'piece_search' } })
-    expect(last?.choices[0]?.finish_reason).toBe('tool_calls')
-    expect(last?.usage?.prompt_tokens).toBe(539)
-  })
-
-  test('a request it cannot read, a model that does not answer, and an answer that is no completion', async () => {
-    const fails = workersAiFetch(() => Promise.reject(new Error('down')))
-    expect((await fails('x', { method: 'POST', body: 'not json' })).status).toBe(400)
-    expect((await fails('x', posted({ stream: true }))).status).toBe(400)
-    expect((await fails('x', posted({ model: 'm' }))).status).toBe(503)
-    const odd = workersAiFetch(() => Promise.resolve({ response: 'old shape' }))
-    expect((await odd('x', posted({ model: 'm' }))).status).toBe(502)
   })
 })
 

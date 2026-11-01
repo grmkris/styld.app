@@ -30,7 +30,7 @@ import { authOptions } from './AuthConfiguration.ts'
 import { pieceCutout } from './capture/PieceCutout.ts'
 import { analyticsEngine, CaptureMetrics as CaptureMetricsService } from './capture/Metrics.ts'
 import { deploymentOf } from './Config.ts'
-import { liveProviders, type ProvidersFor, StylistModel, type WorkersAiCalls } from './Providers.ts'
+import { liveProviders, type ProvidersFor, type WorkersAiCalls } from './Providers.ts'
 import { health } from './Health.ts'
 import { onFirstUse } from './IsolateCache.ts'
 import { mcpRoutes } from './mcp/Route.ts'
@@ -244,14 +244,12 @@ const declareBindings = Effect.gen(function* () {
   }
 })
 
-/** Clef, the chat models and Llama Guard over the Worker's `AI` binding. */
+/** Clef and the text models over the Worker's `AI` binding. */
 const workersAiCalls = (ai: Effect.Success<Effect.Success<typeof declareBindings>['ai']['raw']>): WorkersAiCalls => ({
   // SAFETY: Clef-flash is a Workers AI model newer than the pinned workers-types model list -- the request is the System One API shape Clef.ts builds and documents
   runClef: (request) => ai.run('@cf/cloudflare/clef-flash' as never, request as never),
-  // SAFETY: the text models Styld asks are Workers AI chat models outside the pinned workers-types model list -- the input is the Chat Completions body the caller built
-  runChat: (model, input) => ai.run(model as never, input as never),
-  runGuard: ({ messages }) =>
-    ai.run('@cf/meta/llama-guard-3-8b', { messages: messages.map((message) => ({ ...message })) }),
+  // SAFETY: the text models Styld asks are Workers AI chat models outside the pinned workers-types model list -- the input is the Chat Completions body ai/LanguageModel.ts builds
+  runModel: (model, input) => ai.run(model as never, input as never),
 })
 
 /** Every storage service over the Worker's bindings, on the composition's providers. */
@@ -278,7 +276,6 @@ const applicationServices = (
     // The assistants' tools, built once: MCP serves them, and Styld answers with them for the account.
     const tools = styldTools(runtime.origin, toolServices(services, outfitsService))
     const stylistService = yield* makeStylistLive({
-      model: yield* StylistModel,
       chatsOf,
       queue: yield* runtime.stylist.queue.raw,
       tools,

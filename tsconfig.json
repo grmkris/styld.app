@@ -61,8 +61,7 @@
           "effect/http-api",
           "effect/rpc",
           "effect/Crypto",
-          "effect/ai",
-          "@effect/ai-openai-compat"
+          "effect/ai"
         ],
         "overrides": [
           {

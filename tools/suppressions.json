@@ -37,7 +37,7 @@
   },
   {
     "file": "packages/server/src/StyldWorker.ts",
-    "comment": "SAFETY: the text models Styld asks are Workers AI chat models outside the pinned workers-types model list -- the input is the Chat Completions body the caller built"
+    "comment": "SAFETY: the text models Styld asks are Workers AI chat models outside the pinned workers-types model list -- the input is the Chat Completions body ai/LanguageModel.ts builds"
   },
   {
     "file": "packages/server/src/capture/CloudflareImages.ts",

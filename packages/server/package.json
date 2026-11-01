@@ -9,7 +9,6 @@
   "dependencies": {
     "@alchemy.run/cloudflare": "catalog:",
     "@alchemy.run/domain": "catalog:",
-    "@effect/ai-openai-compat": "catalog:",
     "@meta-sam/parser": "catalog:",
     "@modelcontextprotocol/server": "catalog:",
     "@styld/auth": "workspace:*",

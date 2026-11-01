@@ -12,15 +12,19 @@ export const costs = {
   veoLitePerSecond: 30_000,
 } as const
 
-/** Workers AI chat models, per token in and out (Workers AI pricing, 31 October). */
-const chatPrices: Readonly<Record<string, { readonly input: number; readonly output: number }>> = {
-  '@cf/meta/llama-3.3-70b-instruct-fp8-fast': { input: 0.29, output: 2.25 },
-  '@cf/deepseek-ai/deepseek-v4.1-flash-1017': { input: 0.3, output: 1.2 },
-  '@cf/meta/llama-guard-3-8b': { input: 0.48, output: 0.03 },
-}
+/** The Workers AI text models Styld asks, each named once here, with its price per token in and out (Workers AI
+ * pricing, 31 October). Each task names the one it uses. */
+export const textModels = {
+  /** Llama 3.3 70B: the mood-board planner. */
+  llama70b: { id: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', input: 0.29, output: 2.25 },
+  /** DeepSeek V4.1 Flash: Styld and Thinking. Of five models probed on 31 October it wrote the best Slovenian and
+   * called tools reliably. */
+  deepSeekFlash: { id: '@cf/deepseek-ai/deepseek-v4.1-flash-1017', input: 0.3, output: 1.2 },
+  /** Llama Guard 3: the words of anything public. */
+  llamaGuard: { id: '@cf/meta/llama-guard-3-8b', input: 0.48, output: 0.03 },
+} as const
+export type TextModel = (typeof textModels)[keyof typeof textModels]
 
-/** One chat call's cost; a model without a listed price is priced as DeepSeek V4.1 Flash. */
-export const chatCost = (model: string, inputTokens: number, outputTokens: number) => {
-  const price = chatPrices[model] ?? { input: 0.3, output: 1.2 }
-  return Math.round(inputTokens * price.input + outputTokens * price.output)
-}
+/** One text model call's cost. */
+export const textCost = (model: TextModel, inputTokens: number, outputTokens: number) =>
+  Math.round(inputTokens * model.input + outputTokens * model.output)
