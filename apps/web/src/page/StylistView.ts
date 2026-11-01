@@ -1,4 +1,4 @@
-import { textLength } from '@styld/protocol'
+import { textLength, prices } from '@styld/protocol'
 import { format, type Locale, type MessageKey } from '@styld/i18n'
 import type { Chat, ChatLocale, ChatMessage, ReplyPart } from '@styld/protocol'
 import { Array, Match, Option } from 'effect'
@@ -274,7 +274,8 @@ const composerView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Ht
       ],
     ),
     Option.match(problem, {
-      onNone: () => h.p(styled(h, styles.price()), [format(locale, 'stylist.price', {})]),
+      onNone: () =>
+        h.p(styled(h, styles.price()), [format(locale, 'stylist.price', { credits: prices.stylistMessage })]),
       onSome: (failed) =>
         h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, problemKey[failed], {})]),
     }),

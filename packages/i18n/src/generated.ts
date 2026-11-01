@@ -93,7 +93,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'board.make.drawing': Readonly<Record<string, never>>
   'board.make.kindLabel': Readonly<Record<string, never>>
   'board.make.moodBoard': Readonly<Record<string, never>>
-  'board.make.moodBoardCost': Readonly<Record<string, never>>
+  'board.make.moodBoardCost': { readonly credits: number }
   'board.make.moodBoardDone': Readonly<Record<string, never>>
   'board.make.moodBoardHint': Readonly<Record<string, never>>
   'board.make.note': Readonly<Record<string, never>>
@@ -106,7 +106,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'board.make.problem.slowDown': Readonly<Record<string, never>>
   'board.make.sticker': Readonly<Record<string, never>>
   'board.make.stickerAdded': Readonly<Record<string, never>>
-  'board.make.stickerCost': Readonly<Record<string, never>>
+  'board.make.stickerCost': { readonly credits: number }
   'board.make.stickerHint': Readonly<Record<string, never>>
   'board.make.stickerWordsLabel': Readonly<Record<string, never>>
   'board.make.stickerWordsPlaceholder': Readonly<Record<string, never>>
@@ -365,7 +365,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'photo.workFailed': Readonly<Record<string, never>>
   'photo.yes': Readonly<Record<string, never>>
   'photos.add': Readonly<Record<string, never>>
-  'photos.addCost': Readonly<Record<string, never>>
+  'photos.addCost': { readonly credits: number }
   'photos.addFailed': Readonly<Record<string, never>>
   'photos.back': Readonly<Record<string, never>>
   'photos.emptyHint': Readonly<Record<string, never>>
@@ -531,7 +531,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'stylist.openLook': { readonly name: string | number }
   'stylist.openPiece': Readonly<Record<string, never>>
   'stylist.placeholder': Readonly<Record<string, never>>
-  'stylist.price': Readonly<Record<string, never>>
+  'stylist.price': { readonly credits: number }
   'stylist.problem.busy': Readonly<Record<string, never>>
   'stylist.problem.dailyLimit': Readonly<Record<string, never>>
   'stylist.problem.network': Readonly<Record<string, never>>
@@ -589,7 +589,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.allItems': Readonly<Record<string, never>>
   'wardrobe.back': Readonly<Record<string, never>>
   'wardrobe.backAlt': { readonly name: string | number }
-  'wardrobe.backCost': Readonly<Record<string, never>>
+  'wardrobe.backCost': { readonly credits: number }
   'wardrobe.backFailed': Readonly<Record<string, never>>
   'wardrobe.backSending': Readonly<Record<string, never>>
   'wardrobe.backToWardrobe': Readonly<Record<string, never>>
@@ -652,7 +652,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.picture.problem.photo': Readonly<Record<string, never>>
   'wardrobe.picture.proposed': Readonly<Record<string, never>>
   'wardrobe.picture.redraw': Readonly<Record<string, never>>
-  'wardrobe.picture.redrawCost': Readonly<Record<string, never>>
+  'wardrobe.picture.redrawCost': { readonly credits: number }
   'wardrobe.picture.retake': Readonly<Record<string, never>>
   'wardrobe.picture.showClean': Readonly<Record<string, never>>
   'wardrobe.picture.showPhoto': Readonly<Record<string, never>>
@@ -680,7 +680,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.tabPieces': Readonly<Record<string, never>>
   'wardrobe.title': Readonly<Record<string, never>>
   'wardrobe.turn.building': Readonly<Record<string, never>>
-  'wardrobe.turn.cost': Readonly<Record<string, never>>
+  'wardrobe.turn.cost': { readonly credits: number }
   'wardrobe.turn.failed': Readonly<Record<string, never>>
   'wardrobe.turn.make': Readonly<Record<string, never>>
   'wardrobe.turn.making': Readonly<Record<string, never>>
@@ -785,4 +785,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '7c717964785a17a12eea85780ee4c3bc909a319b101332b00165164e456ebaea'
+export const catalogVersion = 'ac9655c02c9d0de21097d788dec2fda1cb52ea86bb8af5e7a2dd005cc842a398'

@@ -1,4 +1,4 @@
-import { textLength } from '@styld/protocol'
+import { textLength, prices } from '@styld/protocol'
 import type { Piece, PiecePicture } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import { Option } from 'effect'
@@ -167,7 +167,7 @@ const redrawForm = (redraw: Redraw, locale: Locale, h: HtmlBuilder<Message>): Ht
         h.OnInput((value) => Message.UpdatedHint({ value })),
         ...styled(h, textField()),
       ]),
-      h.p(styled(h, styles.pictureNote()), [format(locale, 'wardrobe.picture.redrawCost', {})]),
+      h.p(styled(h, styles.pictureNote()), [format(locale, 'wardrobe.picture.redrawCost', { credits: prices.redraw })]),
       Option.match(redraw.problem, {
         onNone: () => h.empty,
         onSome: (problem) =>
@@ -431,7 +431,10 @@ const turnLine = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Mes
       },
       h,
     ),
-    h.p([h.Id('turn-cost'), ...styled(h, styles.pictureNote())], [format(locale, 'wardrobe.turn.cost', {})]),
+    h.p(
+      [h.Id('turn-cost'), ...styled(h, styles.pictureNote())],
+      [format(locale, 'wardrobe.turn.cost', { credits: prices.turn })],
+    ),
   ])
 }
 

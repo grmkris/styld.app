@@ -6,6 +6,7 @@ import {
   type SendChatMessage,
   StylistBusy,
   Unavailable,
+  prices,
 } from '@styld/protocol'
 import { type Context, DateTime, Effect, type Layer, Option, Schema } from 'effect'
 import type { LanguageModel } from 'effect/ai'
@@ -169,7 +170,7 @@ const sending = <R>(parts: StylistParts<R>, ids: Ids) =>
     const turnId = yield* ids.turnIdOf(accountId, input.operationId)
     // The turn's queue delivery records the same job id, so the ask and its reply are found together.
     yield* Effect.annotateCurrentSpan('styld.job_id', turnId)
-    yield* parts.usage.reserve(accountId, holdOf(turnId), parts.policy.credits)
+    yield* parts.usage.reserve(accountId, holdOf(turnId), prices.stylistMessage)
     const begun = yield* stored(
       parts.chatsOf(accountId).begin({
         turnId,

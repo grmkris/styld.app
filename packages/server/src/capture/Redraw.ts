@@ -1,4 +1,4 @@
-import { PictureRefused, NotFound, type RedrawPicture } from '@styld/protocol'
+import { NotFound, PictureRefused, prices, type RedrawPicture } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { isStale, pictureView } from '../wardrobe/Shown.ts'
@@ -52,7 +52,7 @@ const queueRedraw = (
   Effect.gen(function* () {
     const { accountId, pieceId, hold } = ids
     const usage = yield* Usage
-    yield* usage.reserve(accountId, hold, (yield* CaptureConfig).credits.redraw)
+    yield* usage.reserve(accountId, hold, prices.redraw)
     const at = yield* nowDate
     const queued = { state: 'queued' as const, hint: hint ?? null, hold, shown: null, errorCode: null, updatedAt: at }
     const moved = Option.isSome(current)

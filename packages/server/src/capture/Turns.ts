@@ -11,7 +11,7 @@ import {
   type Rgba,
   shrink,
 } from '@styld/imaging'
-import { NotFound, SheetRefused, type TurnLayout, TurnRefused } from '@styld/protocol'
+import { NotFound, prices, SheetRefused, type TurnLayout, TurnRefused } from '@styld/protocol'
 import { Effect, Match, Option, Predicate, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { turnView } from '../wardrobe/Shown.ts'
@@ -330,7 +330,7 @@ const queueTurn = (
   Effect.gen(function* () {
     const { accountId, pieceId, hold } = ids
     const usage = yield* Usage
-    yield* usage.reserve(accountId, hold, (yield* CaptureConfig).credits.turn)
+    yield* usage.reserve(accountId, hold, prices.turn)
     const requested = {
       state: 'requested' as const,
       hold,

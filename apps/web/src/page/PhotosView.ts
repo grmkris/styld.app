@@ -1,3 +1,4 @@
+import { prices } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import type { Photo } from '@styld/protocol'
 import { AsyncData, Submodel } from 'foldkit'
@@ -73,7 +74,10 @@ const addView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
             ]),
           ],
         ),
-    h.p([h.Id('add-photo-cost'), ...styled(h, styles.note())], [format(locale, 'photos.addCost', {})]),
+    h.p(
+      [h.Id('add-photo-cost'), ...styled(h, styles.note())],
+      [format(locale, 'photos.addCost', { credits: prices.galleryPhoto })],
+    ),
     Adding.guards.Failed(model.adding)
       ? h.p(
           [h.Role('alert'), ...styled(h, styles.note())],

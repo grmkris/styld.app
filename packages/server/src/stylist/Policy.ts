@@ -8,8 +8,6 @@ export interface StylistPolicy {
   readonly model: string
   /** The gateway's OpenAI-compatible base address. */
   readonly apiBase: string
-  /** Credits a message costs, from the daily allowance; refunded when no reply comes. */
-  readonly credits: number
   /** Model calls a reply may take, each answering the tools the last one called. */
   readonly maxSteps: number
 }
@@ -35,7 +33,6 @@ export const stylistPolicy = (env: Readonly<Record<string, unknown>>): StylistPo
     mode,
     model: text(env['STYLIST_MODEL'], defaultModels[mode]),
     apiBase: text(env['STYLIST_GATEWAY_BASE'], 'https://ai-gateway.vercel.sh/v1'),
-    credits: 1,
     maxSteps: 6,
   }
 }

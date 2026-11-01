@@ -113,7 +113,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.picture.redraw': 'Nariši znova',
   'wardrobe.picture.hintLabel': 'Kaj je to? (neobvezno)',
   'wardrobe.picture.hintPlaceholder': 'črna volnena kapa',
-  'wardrobe.picture.redrawCost': 'Stane 1 kredit, ki ga vrnemo, če slika ne nastane.',
+  'wardrobe.picture.redrawCost':
+    'Stane {credits, plural, one {# kredit, ki ga} two {# kredita, ki ju} few {# kredite, ki jih} other {# kreditov, ki jih}} vrnemo, če slika ne nastane.',
   'wardrobe.picture.problem.busy': 'Čista slika tega kosa se že riše.',
   'wardrobe.picture.problem.face': 'Na tem izrezu je morda videti obraz, zato ga ne pošljemo v risanje.',
   'wardrobe.picture.problem.photo': 'Ta kos kaže tvojo izvirno fotografijo, ki je nikoli ne pošljemo v risanje.',
@@ -126,7 +127,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.picture.backfillSent': 'Rišem čiste slike. Vsaka se pokaže, ko je pripravljena.',
   'wardrobe.picture.backfillFailed': 'Čistih slik ni bilo mogoče naročiti. Poskusi znova.',
   'wardrobe.turn.make': 'Zavrti ga',
-  'wardrobe.turn.cost': '5 kreditov, ki jih vrnemo, če vrtenje ne nastane.',
+  'wardrobe.turn.cost':
+    '{credits, plural, one {# kredit, ki ga} two {# kredita, ki ju} few {# krediti, ki jih} other {# kreditov, ki jih}} vrnemo, če vrtenje ne nastane.',
   'wardrobe.turn.making': 'Pripravljam vrtenje. Traja približno dve minuti.',
   'wardrobe.turn.building': 'Dokončujem vrtenje …',
   'wardrobe.turn.ready': 'Tapni sliko, da se zavrti.',
@@ -271,7 +273,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.removeBack': 'Odstrani hrbtno stran',
   'wardrobe.backSending': 'Izrezujem hrbtno stran …',
   'wardrobe.backFailed': 'Hrbtna stran ni uspela. Poskusi znova.',
-  'wardrobe.backCost': '1 kredit od današnjih brezplačnih.',
+  'wardrobe.backCost':
+    '{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} od današnjih brezplačnih.',
   'wardrobe.patternFact': 'Vzorec',
   'wardrobe.shopLink': 'Odpri stran v trgovini',
   'wardrobe.shopFact': 'Trgovina',
@@ -669,10 +672,11 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'board.make.moodBoard': 'Tabla razpoloženja',
   'board.make.moodBoardHint': 'Tvoji kosi, ki nosijo ta občutek, pripeti in razporejeni na kolaž.',
   'board.make.moodBoardCost':
-    '1 kredit od današnjih brezplačnih. Če je v tvoji garderobi zanjo še premalo, ga dobiš nazaj.',
+    '{credits, plural, one {# kredit od današnjih brezplačnih. Če je v tvoji garderobi zanjo še premalo, ga} two {# kredita od današnjih brezplačnih. Če je v tvoji garderobi zanjo še premalo, ju} few {# krediti od današnjih brezplačnih. Če je v tvoji garderobi zanjo še premalo, jih} other {# kreditov od današnjih brezplačnih. Če je v tvoji garderobi zanjo še premalo, jih}} dobiš nazaj.',
   'board.make.sticker': 'Nalepka',
   'board.make.stickerHint': 'Majhna okrasna risba po tvojih besedah, izrezana za kolaž.',
-  'board.make.stickerCost': '1 kredit od današnjih brezplačnih. Če nalepka ne nastane, ga dobiš nazaj.',
+  'board.make.stickerCost':
+    '{credits, plural, one {# kredit od današnjih brezplačnih. Če nalepka ne nastane, ga} two {# kredita od današnjih brezplačnih. Če nalepka ne nastane, ju} few {# krediti od današnjih brezplačnih. Če nalepka ne nastane, jih} other {# kreditov od današnjih brezplačnih. Če nalepka ne nastane, jih}} dobiš nazaj.',
   'board.make.wordsLabel': 'Kakšen naj bo občutek?',
   'board.make.wordsPlaceholder': 'Deževna nedelja v mestu',
   'board.make.stickerWordsLabel': 'Kaj naj Styld nariše?',
@@ -768,7 +772,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'stylist.fieldLabel': 'Sporočilo Styldu',
   'stylist.placeholder': 'Vprašaj o svojih oblačilih',
   'stylist.send': 'Pošlji',
-  'stylist.price': 'Vsako sporočilo porabi 1 kredit današnje brezplačne kvote.',
+  'stylist.price':
+    'Vsako sporočilo porabi {credits, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}} današnje brezplačne kvote.',
   'stylist.writing': 'Styld piše …',
   'stylist.failed': 'Odgovor tokrat ni prišel, kredit je vrnjen. Vprašaj znova.',
   'stylist.loadFailed': 'Pogovorov ni bilo mogoče naložiti.',
@@ -782,7 +787,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'stylist.chatToday': 'Danes ob {time}',
   'photos.back': 'Nazaj v galerijo',
   'photos.add': 'Dodaj fotografijo',
-  'photos.addCost': '1 kredit iz današnjih brezplačnih, za iskanje oblačil na njej.',
+  'photos.addCost':
+    '{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} iz današnjih brezplačnih, za iskanje oblačil na njej.',
   'photos.sending': 'Pošiljam …',
   'photos.spent': 'Današnji brezplačni krediti so porabljeni. Poskusi znova jutri.',
   'photos.addFailed': 'Fotografija ni šla skozi. Poskusi znova.',

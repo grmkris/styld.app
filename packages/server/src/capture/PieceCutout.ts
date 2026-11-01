@@ -1,4 +1,4 @@
-import { type PieceType, slotOf } from '@styld/protocol'
+import { type PieceType, prices, slotOf } from '@styld/protocol'
 import { Effect, Layer, Option } from 'effect'
 import { accountPrefix } from '../wardrobe/Media.ts'
 import { type CutSide, CutoutFailed, GarmentCutout } from '../wardrobe/Processing.ts'
@@ -87,7 +87,7 @@ export const pieceCutout = (bucket: WardrobeBindings['bucket']) =>
         if (policy.providers === 'off') return kept
         const hold = holdOf(input.pieceId, input.of)
         // A retried attempt repeats the same reservation, which the Wallet answers as already held.
-        const held = yield* (yield* Usage).reserve(input.accountId, hold, policy.credits.photo).pipe(
+        const held = yield* (yield* Usage).reserve(input.accountId, hold, prices.photo).pipe(
           Effect.as(true),
           Effect.catchTag('LimitReached', () => Effect.succeed(false)),
           Effect.mapError(() => CutoutFailed.make({})),

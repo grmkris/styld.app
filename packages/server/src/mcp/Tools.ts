@@ -52,6 +52,9 @@ export const toolErrorOf = (error: Refusal): ToolError => {
   })
 }
 
+/** A price in credits as a description says it. */
+export const creditsText = (credits: number) => (credits === 1 ? '1 credit' : `${String(credits)} credits`)
+
 export type ToolAnnotations = {
   readonly readOnlyHint: boolean
   readonly destructiveHint?: boolean

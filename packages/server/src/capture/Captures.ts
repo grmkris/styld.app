@@ -6,6 +6,7 @@ import {
   type HeldCheckAnswer,
   Tray,
   UploadRefused,
+  prices,
 } from '@styld/protocol'
 import { Array, Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
@@ -145,7 +146,6 @@ export const creating = (parts: Parts) => ({
     if (Option.isSome(earlier)) return earlier.value
     const upload = yield* usableUpload(parts, accountId, input.uploadId)
     if (!upload.contentType.startsWith('image/')) return yield* UploadRefused.make({ reason: 'wrongType' })
-    const policy = yield* CaptureConfig
     const capture: CaptureRow = {
       ...baseCapture(accountId, yield* newId('cp'), upload, yield* nowDate),
       kind: 'photo',
@@ -153,7 +153,7 @@ export const creating = (parts: Parts) => ({
       side: input.side ?? null,
       pairsWith: input.pairsWith ?? null,
       importId: yield* importOf(parts, accountId, input.importOf),
-      credits: policy.credits.photo,
+      credits: prices.photo,
     }
     return yield* admit(parts, capture, [], operation)
   }),
@@ -173,7 +173,6 @@ export const creating = (parts: Parts) => ({
     if (uploads.some(({ contentType }) => !contentType.startsWith('image/')))
       return yield* UploadRefused.make({ reason: 'wrongType' })
     const measured = yield* measureVideo(parts, video)
-    const policy = yield* CaptureConfig
     const id = yield* newId('cp')
     const capture: CaptureRow = {
       ...baseCapture(accountId, id, video, yield* nowDate),
@@ -185,7 +184,7 @@ export const creating = (parts: Parts) => ({
       height: input.height,
       importId: yield* importOf(parts, accountId, input.importOf),
       // Priced by its measured length: a 30-second part of a long video is 5 credits.
-      credits: Math.max(1, Math.ceil(measured.durationMs / 30_000)) * policy.credits.videoHalfMinute,
+      credits: Math.max(1, Math.ceil(measured.durationMs / 30_000)) * prices.videoHalfMinute,
     }
     const frames = Array.zipWith(input.stills, uploads, (still, upload): FrameRow => ({
       captureId: id,

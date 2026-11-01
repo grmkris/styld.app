@@ -1,4 +1,4 @@
-import { textLength } from '@styld/protocol'
+import { textLength, prices } from '@styld/protocol'
 import { format, type Locale, type MessageKey } from '@styld/i18n'
 import type { Generation, GenerationKind } from '@styld/protocol'
 import { Option } from 'effect'
@@ -26,10 +26,10 @@ const kindKey: { readonly [Kind in GenerationKind]: { readonly title: MessageKey
   sticker: { title: 'board.make.sticker', hint: 'board.make.stickerHint' },
 }
 
-/** What the chosen kind costs, as the server charges it: one credit, held first, spent once the board has it and
+/** What the chosen kind costs, as the server charges it: its price, held first, spent once the board has it and
  * given back otherwise. */
 const costOf = (kind: GenerationKind, locale: Locale): string =>
-  format(locale, kind === 'sticker' ? 'board.make.stickerCost' : 'board.make.moodBoardCost', {})
+  format(locale, kind === 'sticker' ? 'board.make.stickerCost' : 'board.make.moodBoardCost', { credits: prices[kind] })
 
 type Inputs = { readonly locale: Locale }
 

@@ -12,6 +12,7 @@ import {
   Photo,
   NotFound,
   UploadRefused,
+  prices,
 } from '@styld/protocol'
 import { Context, Effect, Option, Predicate, Schema } from 'effect'
 import { captureKey, enqueueMatch, readObject, storedAs, unavailable, writeObject } from '../capture/Parts.ts'
@@ -121,7 +122,7 @@ const added = (parts: PhotoParts, operation: Identified, input: AddPhoto) =>
     const id = yield* newId('ph')
     const at = yield* nowDate
     const usage = yield* Usage
-    yield* usage.reserve(accountId, photoHold(id), 1)
+    yield* usage.reserve(accountId, photoHold(id), prices.galleryPhoto)
     const row: PhotoRow = {
       id,
       accountId,

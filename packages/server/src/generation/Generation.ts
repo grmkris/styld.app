@@ -1,4 +1,4 @@
-import { type BoardId, type Generate, type GenerationKind, NotFound, PromptRefused } from '@styld/protocol'
+import { type BoardId, type Generate, type GenerationKind, NotFound, prices, PromptRefused } from '@styld/protocol'
 import { Effect, Option, Predicate, Result } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { stickerKey, stickerPrompt } from './PaintPrompt.ts'
@@ -14,10 +14,10 @@ const stalledMillis = 3 * 60 * 1000
 
 const stored = <A, E>(effect: Effect.Effect<A, E>) => Effect.mapError(effect, unavailable)
 
-/** Hold the ask's one credit: a sticker's, or a mood board's. */
-const holdOne = (parts: Parts, accountId: string, jobId: string) =>
+/** Hold the ask's price: a sticker's, or a mood board's. */
+const holdOne = (parts: Parts, accountId: string, jobId: string, kind: GenerationKind) =>
   Effect.gen(function* () {
-    const reserved = yield* Effect.result(parts.usage.reserve(accountId, holdOf(jobId, 0), 1))
+    const reserved = yield* Effect.result(parts.usage.reserve(accountId, holdOf(jobId, 0), prices[kind]))
     if (Result.isSuccess(reserved)) return
     if (Predicate.isTagged(reserved.failure, 'LimitReached')) return yield* reserved.failure
     // The Wallet may have taken it before its answer was lost.
@@ -37,7 +37,7 @@ const read = (parts: Parts, job: JobRow) =>
 
 /** Asking for pictures, and reading how they are going. */
 export const generations = (parts: Parts) => ({
-  /** A sticker from the words, or a mood board of the person's pieces: one credit each, held before anything runs. */
+  /** A sticker from the words, or a mood board of the person's pieces: its price held before anything runs. */
   admit: Effect.fn('Styld.Generation.admit')(function* (kind: GenerationKind, boardId: BoardId, input: Generate) {
     const { accountId } = yield* CurrentAccount
     const operation = yield* identify({
@@ -54,7 +54,7 @@ export const generations = (parts: Parts) => ({
     // The job's queue deliveries and its reads record the same job id, so the ask, its work and its polls join.
     yield* Effect.annotateCurrentSpan('styld.job_id', id)
     // The credit first, so an account with none left asks no model anything.
-    yield* holdOne(parts, accountId, id)
+    yield* holdOne(parts, accountId, id, kind)
     const held = 1
     yield* checked(parts, input.prompt).pipe(Effect.tapError(() => refund(parts, accountId, id, 0, held)))
     const at = yield* nowDate
