@@ -290,7 +290,7 @@ const newPiece = (
   pattern: input.pattern ?? null,
   brand: input.brand ?? null,
   shopUrl: input.shopUrl ?? null,
-  // Whoever adds a piece names its type; only pieces carried over from the old categories wait for a suggestion.
+  // Nothing reads it since the v1 carry-over went (C4a); written until the C5 baseline drops the column.
   suggestedAt: context.now,
   detectionId: null,
   backImageKey: null,

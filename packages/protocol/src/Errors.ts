@@ -142,17 +142,9 @@ export class OperationConflict extends Schema.TaggedError<OperationConflict>()(
 ) {}
 
 /** A change the server refused before running it: it did not come from the website itself (wrong Origin or missing
- * CSRF header). */
+ * CSRF header). Only the website's session meets it, never an assistant, so it has no guide. */
 export class RequestRefused extends Schema.TaggedError<RequestRefused>()(
   'RequestRefused',
   {},
-  {
-    httpApiStatus: 403,
-    guide: {
-      code: 'request_refused',
-      message: 'The request was refused before it ran.',
-      recovery: 'Call the tool again.',
-      retryable: false,
-    },
-  },
+  { httpApiStatus: 403 },
 ) {}

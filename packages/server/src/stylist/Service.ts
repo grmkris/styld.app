@@ -10,7 +10,7 @@ import {
   Unavailable,
   prices,
 } from '@styld/protocol'
-import { Context, DateTime, Effect, Layer, Option, Schema } from 'effect'
+import { Context, DateTime, Effect, Layer, Schema } from 'effect'
 import { LanguageModel } from 'effect/ai'
 import { workersAiModel } from '../ai/LanguageModel.ts'
 import { Holds, holdId } from '../usage/Holds.ts'
@@ -35,9 +35,10 @@ const unavailable = () => Unavailable.make({})
 /** A failure's kind for the logs: its name, such as TimeoutError or AiError, never its message. */
 const failureOf = (error: unknown) => (error instanceof Error ? error.name : typeof error).slice(0, 80)
 
-const decodeParts = Schema.decodeUnknownOption(Schema.fromJsonString(Schema.Array(ReplyPart)))
-/** A reply's parts as stored; none for any that do not read, which only an older shape could leave. */
-const partsOf = (json: string): ReadonlyArray<ReplyPart> => Option.getOrElse(decodeParts(json), () => [])
+const decodeParts = Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.Array(ReplyPart)))
+/** A reply's parts as stored. Only the service writes them, through the same schema; parts that do not decode are a
+ * bug. */
+const partsOf = (json: string) => decodeParts(json).pipe(Effect.orDie)
 
 /** A chat's title: its first message, cut at a word near 60 characters. */
 export const titleOf = (text: string) => {
@@ -82,13 +83,14 @@ const now = Effect.map(DateTime.now, DateTime.toEpochMillis)
 const holdOf = (turnId: string) => holdId('stylist', turnId, 0)
 const stored = <A, E, RX>(effect: Effect.Effect<A, E, RX>) => Effect.mapError(effect, unavailable)
 
-const messageOf = (message: StoredMessage): ChatMessage => ({
-  id: message.id,
-  role: message.role,
-  text: message.text,
-  parts: partsOf(message.parts),
-  at: new Date(message.at).toISOString(),
-})
+const messageOf = (message: StoredMessage) =>
+  Effect.map(partsOf(message.parts), (parts): ChatMessage => ({
+    id: message.id,
+    role: message.role,
+    text: message.text,
+    parts,
+    at: new Date(message.at).toISOString(),
+  }))
 
 /** Ids for chats and messages, and a reply's id from the account and the request's operation id: the same request
  * is the same reply. */
@@ -129,10 +131,12 @@ const reply = (
     const today = DateTime.formatIsoDateUtc(yield* DateTime.now)
     const text = yield* runTurn({
       system: systemPrompt({ locale: input.locale === 'sl' ? 'sl' : 'en', today, outline: outlineOf(pieces) }),
-      history: input.messages.map((message) => ({
-        role: message.role,
-        text: historyText({ role: message.role, text: message.text, parts: partsOf(message.parts) }),
-      })),
+      history: yield* Effect.forEach(input.messages, (message) =>
+        Effect.map(partsOf(message.parts), (parts) => ({
+          role: message.role,
+          text: historyText({ role: message.role, text: message.text, parts }),
+        })),
+      ),
       toolkit: yield* tools.toolkit.pipe(Effect.provide(tools.handlers)),
       maxSteps,
       showing: showingToolNames,
@@ -205,10 +209,10 @@ const reading = (deps: Deps) => ({
     return {
       id: chatId,
       title: found.title,
-      messages: found.messages.map(messageOf),
+      messages: yield* Effect.forEach(found.messages, messageOf),
       ...(replying === undefined
         ? {}
-        : { replying: { state: replying.state, text: replying.text, parts: partsOf(replying.parts) } }),
+        : { replying: { state: replying.state, text: replying.text, parts: yield* partsOf(replying.parts) } }),
     }
   }),
 })
