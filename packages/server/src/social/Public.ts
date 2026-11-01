@@ -1,7 +1,6 @@
 import {
   Author,
   type BoardImageId,
-  type CheckStatus,
   PublicBoard,
   PublicBoardSummary,
   PublicLook,
@@ -23,6 +22,7 @@ import type { StoreUnavailable } from '../kernel/Db.ts'
 import type { ProfileRow } from './ProfileStore.ts'
 import { makePublicStore, type PublicStore } from './PublicStore.ts'
 import { makeSocialStore, type SocialStore } from './SocialStore.ts'
+import { heldBack, visibleAt } from './Visibility.ts'
 import { digestOf } from '../kernel/Ids.ts'
 
 // What others may see. One rule throughout: a thing is shown while its owner's profile is published and shown, its
@@ -35,10 +35,6 @@ const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapErro
 const notFound = () => PublicNotFound.make({})
 const orNotFound = <A>(found: Option.Option<A>) =>
   Option.match(found, { onNone: () => Effect.fail(notFound()), onSome: Effect.succeed })
-
-/** Whether others may see past this check: it passed, or is unsure, and nobody hid it. */
-export const shownToOthers = (check: CheckStatus | undefined): boolean =>
-  check !== undefined && !check.hidden && (check.state === 'passed' || check.state === 'unsure')
 
 interface PieceWithPicture {
   readonly piece: PieceRow
@@ -94,15 +90,15 @@ const publicPins = (seen: Seen, pins: ReadonlyArray<PinRow>): ReadonlyArray<obje
     const look = pin.lookId === null ? undefined : seen.looks.get(pin.lookId)
     if (pin.kind === 'piece' && piece !== undefined) return [{ _tag: 'PublicPiecePin', ...base, piece }]
     // An outfit photo of My Gallery is held back from visitors.
-    if (pin.kind === 'picture' && pin.imageId !== null && origin !== 'photo')
+    if (pin.kind === 'picture' && pin.imageId !== null && !heldBack(origin))
       return [{ _tag: 'PublicPicturePin', ...base, imageId: pin.imageId, generated: origin === 'generated' }]
     if (pin.kind === 'look' && look !== undefined) return [{ _tag: 'PublicLookPin', ...base, look }]
     return []
   })
 
 /** The board's outfit photos (My Gallery), which visitors never see on its pins or its table. */
-const heldBack = (pins: ReadonlyArray<PinRow>): ReadonlySet<string> =>
-  new Set(pins.flatMap(({ pin, origin }) => (origin === 'photo' && pin.imageId !== null ? [pin.imageId] : [])))
+const heldBackImages = (pins: ReadonlyArray<PinRow>): ReadonlySet<string> =>
+  new Set(pins.flatMap(({ pin, origin }) => (heldBack(origin) && pin.imageId !== null ? [pin.imageId] : [])))
 
 /** The table without the pieces others may not see, nor the outfit photos; its other pictures and labels are the
  * board's, checked with it. */
@@ -129,7 +125,7 @@ const shownProfile = (r: Reader, row: ProfileRow) =>
     const author = authorOf(row)
     if (Option.isNone(author)) return Option.none<{ readonly row: ProfileRow; readonly author: Author }>()
     const check = (yield* r.checks.statuses('profile', [row.accountId])).get(row.accountId)
-    if (!shownToOthers(check)) return Option.none()
+    if (!visibleAt('link', check)) return Option.none()
     const reader = Option.getOrNull(r.viewer)
     const blocked =
       reader !== null && reader !== row.accountId && (yield* stored(r.social.blockedBetween(reader, row.accountId)))
@@ -150,7 +146,7 @@ const shownPieces = (r: Reader, accountId: string, rows: ReadonlyArray<PieceWith
       'piece',
       ready.map(({ piece }) => piece.id),
     )
-    const kept = ready.filter(({ piece }) => shownToOthers(statuses.get(piece.id)))
+    const kept = ready.filter(({ piece }) => visibleAt('link', statuses.get(piece.id)))
     const shown = yield* Effect.forEach(kept, ({ piece }) => publicPiece(piece))
     return new Map<string, PublicPiece>(shown.map((piece) => [piece.id, piece]))
   })
@@ -167,7 +163,7 @@ const shownLooks = (r: Reader, accountId: string, rows: ReadonlyArray<LookRow>) 
       'look',
       shared.map(({ id }) => id),
     )
-    const kept = shared.filter(({ id }) => shownToOthers(statuses.get(id)))
+    const kept = shared.filter(({ id }) => visibleAt('link', statuses.get(id)))
     const found = yield* stored(r.looks.piecesOf(kept.map(({ id }) => id)))
     const pieces = yield* piecesById(
       r,
@@ -211,7 +207,7 @@ const shownBoard = (r: Reader, boardId: string) =>
     if (row.visibility !== 'public') return yield* notFound()
     const owner = yield* Effect.flatMap(ownerOf(r, row.accountId), orNotFound)
     const check = (yield* r.checks.statuses('board', [row.id])).get(row.id)
-    if (!shownToOthers(check)) return yield* notFound()
+    if (!visibleAt('link', check)) return yield* notFound()
     return { row, owner }
   })
 
@@ -221,7 +217,7 @@ const summaries = (r: Reader, accountId: string, rows: ReadonlyArray<BoardRow>) 
       'board',
       rows.map(({ id }) => id),
     )
-    const kept = rows.filter(({ id }) => shownToOthers(statuses.get(id)))
+    const kept = rows.filter(({ id }) => visibleAt('link', statuses.get(id)))
     const ids = kept.map(({ id }) => id)
     const items = yield* stored(r.boards.itemsOf(ids))
     // Every pin, so a board's count and cover are what others see of it, not what it holds.
@@ -239,7 +235,7 @@ const summaries = (r: Reader, accountId: string, rows: ReadonlyArray<BoardRow>) 
         items: publicItems(
           seen,
           items.filter(({ boardId }) => boardId === row.id),
-          heldBack(pins.filter(({ pin }) => pin.boardId === row.id)),
+          heldBackImages(pins.filter(({ pin }) => pin.boardId === row.id)),
         ),
         cover: shown.slice(0, 4),
         pinCount: shown.length,
@@ -264,10 +260,6 @@ const shownPiece = (r: Reader, pieceId: string) =>
 /** The same reader, for one visitor. */
 const readBy = (r: Reader, viewer: Option.Option<string>): Reader => ({ ...r, viewer })
 
-/** Discovery's gate: a check that passed, never one that was unsure, and nothing hidden. */
-const passedForDiscovery = (check: CheckStatus | undefined) =>
-  check !== undefined && check.state === 'passed' && !check.hidden
-
 /** Public boards of any owners as discovery shows them, in the order given: each owner's profile and each board
  * must have passed its check, and no block may stand between owner and reader. */
 const discovered = (r: Reader, rows: ReadonlyArray<BoardRow>) =>
@@ -280,10 +272,12 @@ const discovered = (r: Reader, rows: ReadonlyArray<BoardRow>) =>
     const profileChecks = yield* r.checks.statuses('profile', owners)
     const found = yield* Effect.forEach(owners, (accountId) =>
       Effect.gen(function* () {
-        if (!passedForDiscovery(profileChecks.get(accountId))) return []
+        if (!visibleAt('discovery', profileChecks.get(accountId))) return []
         const owner = yield* ownerOf(r, accountId)
         if (Option.isNone(owner)) return []
-        const theirs = rows.filter((row) => row.accountId === accountId && passedForDiscovery(boardChecks.get(row.id)))
+        const theirs = rows.filter(
+          (row) => row.accountId === accountId && visibleAt('discovery', boardChecks.get(row.id)),
+        )
         const shown = yield* summaries(r, accountId, theirs)
         return shown.map((board) => ({
           board,
@@ -325,7 +319,7 @@ const pages = (base: Reader) => ({
       id: row.id,
       name: row.name,
       paper: row.paper,
-      items: publicItems(seen, items, heldBack(pins)),
+      items: publicItems(seen, items, heldBackImages(pins)),
       pins: publicPins(seen, pins),
       by: owner.author,
       publishedAt: (row.publishedAt ?? row.updatedAt).toISOString(),
@@ -345,7 +339,8 @@ const pages = (base: Reader) => ({
   findable: (accountId: string, viewer: Option.Option<string>) =>
     Effect.gen(function* () {
       const r = readBy(base, viewer)
-      if (!passedForDiscovery((yield* r.checks.statuses('profile', [accountId])).get(accountId))) return Option.none()
+      if (!visibleAt('discovery', (yield* r.checks.statuses('profile', [accountId])).get(accountId)))
+        return Option.none()
       return yield* ownerOf(r, accountId)
     }),
   piece: Effect.fn('Styld.Public.piece')(function* (pieceId: string, viewer: Option.Option<string> = Option.none()) {
@@ -380,7 +375,7 @@ const images = (
     pictureImage: Effect.fn('Styld.Public.pictureImage')(function* (imageId: BoardImageId, size: ImageSize) {
       const image = yield* stored(r.store.image(imageId))
       // An outfit photo of My Gallery is never shown to anyone but its owner.
-      if (Option.isNone(image) || image.value.origin === 'photo') return Option.none<ShownImage>()
+      if (Option.isNone(image) || heldBack(image.value.origin)) return Option.none<ShownImage>()
       const board = yield* shownBoard(r, image.value.boardId).pipe(Effect.option)
       if (Option.isNone(board)) return Option.none<ShownImage>()
       const { objectKey, contentType } = image.value

@@ -9,10 +9,11 @@ import {
   pieces,
   profiles,
 } from '@styld/db'
-import { and, desc, eq, exists, inArray, isNotNull, isNull, type SQL } from 'drizzle-orm'
+import { and, desc, eq, exists, inArray, isNotNull, type SQL } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Array, Effect } from 'effect'
 import { chunked, first, query } from '../kernel/Db.ts'
+import { checkLets } from './Visibility.ts'
 
 /** The most boards and looks a profile shows. */
 const boardLimit = 60
@@ -20,18 +21,16 @@ const lookLimit = 60
 
 export type Database = ReturnType<typeof drizzle>
 
-/** A check others may see past: passed, or unsure (which stays on its own links), and not hidden. */
-const checkLets = (kind: 'board' | 'look', id: SQL | typeof boards.id | typeof looks.id) =>
-  and(
-    eq(contentChecks.targetKind, kind),
-    eq(contentChecks.targetId, id),
-    inArray(contentChecks.state, ['passed', 'unsure']),
-    isNull(contentChecks.hidden),
-  )
-
 /** With `checked`, a condition that the board's or look's check lets others see it; otherwise none. */
 const lets = (db: Database, checked: boolean, kind: 'board' | 'look', id: typeof boards.id | typeof looks.id) =>
-  checked ? exists(db.select({ id: contentChecks.targetId }).from(contentChecks).where(checkLets(kind, id))) : undefined
+  checked
+    ? exists(
+        db
+          .select({ id: contentChecks.targetId })
+          .from(contentChecks)
+          .where(checkLets('link', kind, id)),
+      )
+    : undefined
 
 /** Whether the piece is on one of its owner's public boards or in one of their shared looks; `checked` asks only
  * for those others may see past their check. Someone else's board never counts. */

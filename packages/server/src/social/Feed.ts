@@ -6,6 +6,7 @@ import { Array, DateTime, Effect, Option } from 'effect'
 import type { Checks } from '../safety/Checks.ts'
 import { type PublicPages, summaryOf } from './Public.ts'
 import type { SocialStore } from './SocialStore.ts'
+import { visibleAt } from './Visibility.ts'
 
 // The Following feed is a query over follows, not a table of its own: a second writer of what is public would have to
 // follow every unpublish, failed check and block. Three bounded reads, newest first, each gated as discovery is (a
@@ -126,10 +127,6 @@ export const feedFor = (
     }
   })
 
-/** Discovery's gate: only what passed Styld's check, never what it was unsure of. */
-const ok = (check: { readonly state: string; readonly hidden: boolean } | undefined) =>
-  check !== undefined && check.state === 'passed' && !check.hidden
-
 const passedOnly = (checks: Checks['Service'], found: ReadonlyArray<Candidate>) =>
   Effect.gen(function* () {
     const ids = (kind: 'board' | 'look') =>
@@ -141,7 +138,10 @@ const passedOnly = (checks: Checks['Service'], found: ReadonlyArray<Candidate>) 
     const boardChecks = yield* checks.statuses('board', ids('board'))
     const lookChecks = yield* checks.statuses('look', ids('look'))
     return found.filter((candidate) =>
-      candidate.kind === 'look' ? ok(lookChecks.get(candidate.id)) : ok(boardChecks.get(candidate.boardId)),
+      visibleAt(
+        'discovery',
+        candidate.kind === 'look' ? lookChecks.get(candidate.id) : boardChecks.get(candidate.boardId),
+      ),
     )
   })
 

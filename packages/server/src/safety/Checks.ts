@@ -11,6 +11,7 @@ import { shownImage } from '../wardrobe/Shown.ts'
 import { chunked, nowDate } from '../kernel/Db.ts'
 import { type Content, ContentJudge, type Verdict, worse } from './Judge.ts'
 import { digestOf } from '../kernel/Ids.ts'
+import { heldBackOrigin } from '../social/Visibility.ts'
 
 /** What a check is of: a profile (by account), a board, a look or a piece. */
 export const CheckTarget = Schema.Struct({
@@ -78,7 +79,7 @@ const boardShows = (db: Database, boardId: string) =>
         .select({ key: boardImages.objectKey, contentType: boardImages.contentType })
         .from(boardImages)
         // An outfit photo is never shown to others, so it is never judged for them.
-        .where(and(eq(boardImages.boardId, boardId), ne(boardImages.origin, 'photo'))),
+        .where(and(eq(boardImages.boardId, boardId), ne(boardImages.origin, heldBackOrigin))),
     )
     return Option.some<Shown>({
       accountId: row.value.accountId,
