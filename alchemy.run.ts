@@ -56,7 +56,7 @@ export default Alchemy.Stack(
         // Meta SAM splits several and tracks videos. `CUTOUT_SINGLE=sam` sends single garments to SAM too.
         STYLD_PROVIDERS: 'live',
         CUTOUT_SINGLE: 'cloudflare',
-        DAILY_ALLOWANCE: '100',
+        DAILY_ALLOWANCE: '400',
         META_API_BASE: 'https://api.meta.ai',
         META_API_KEY: yield* Config.Redacted('META_MUSE_API_KEY'),
         // Clean pictures of kept cut-outs (docs/ROADMAP.md › Clean pictures): Clef judges, Meta Muse Image draws.
