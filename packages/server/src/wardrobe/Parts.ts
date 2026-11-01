@@ -13,7 +13,8 @@ import type { PieceChanged } from '../safety/PieceChanged.ts'
 import type { ImageBindings } from './Delivery.ts'
 import type { GarmentCutout, WorkMessage } from './Processing.ts'
 import { pictureView, turnView } from './Shown.ts'
-import type { makeStore, PieceRow, Store, StoreUnavailable, UploadRow } from './Store.ts'
+import type { makeStore, PieceRow, Store, UploadRow } from './Store.ts'
+import type { StoreUnavailable } from '../kernel/Db.ts'
 
 // What every part of the wardrobe service shares: its bindings and stores, the piece as its owner reads it, and how
 // a store's failure reads to callers.

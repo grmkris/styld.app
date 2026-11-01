@@ -11,7 +11,7 @@ import { Context, Effect } from 'effect'
 import type { CaptureMetrics } from '../capture/Metrics.ts'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { outfitKept } from '../outfits/Outfits.ts'
-import type { StoreUnavailable } from '../wardrobe/Store.ts'
+import type { StoreUnavailable } from '../kernel/Db.ts'
 import { makeWornStore } from './Store.ts'
 
 type Range = typeof WornRange.Type

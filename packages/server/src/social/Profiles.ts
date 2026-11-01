@@ -15,7 +15,7 @@ import {
 import { Context, DateTime, Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import type { Checks } from '../safety/Checks.ts'
-import type { StoreUnavailable } from '../wardrobe/Store.ts'
+import type { StoreUnavailable } from '../kernel/Db.ts'
 import { makeProfileStore, type ProfileRow, type ProfileStore } from './ProfileStore.ts'
 
 const unavailable = () => WardrobeUnavailable.make({})

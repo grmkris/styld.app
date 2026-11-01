@@ -16,7 +16,7 @@ import { CurrentAccount } from '../CurrentAccount.ts'
 import type { Checks } from '../safety/Checks.ts'
 import { makeProfileStore, type ProfileStore, requirePublished } from '../social/ProfileStore.ts'
 import { toPiece } from '../wardrobe/Parts.ts'
-import type { StoreUnavailable } from '../wardrobe/Store.ts'
+import type { StoreUnavailable } from '../kernel/Db.ts'
 import { type LookRow, type LookStore, makeLookStore } from './Store.ts'
 
 const unavailable = () => WardrobeUnavailable.make({})

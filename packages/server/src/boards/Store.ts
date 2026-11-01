@@ -3,16 +3,14 @@ import { and, asc, count, desc, eq, inArray, lte, or, type SQL, sql } from 'driz
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option } from 'effect'
 import { receiptQuery } from '../Receipts.ts'
-import { chunked, ownPieceIds, receivedUploadKey, spendUpload, StoreUnavailable } from '../wardrobe/Store.ts'
+import { ownPieceIds, receivedUploadKey, spendUpload } from '../wardrobe/Store.ts'
+import { chunked, first, query } from '../kernel/Db.ts'
 
 export type BoardRow = typeof boards.$inferSelect
 export type BoardItemRow = typeof boardItems.$inferSelect
 export type BoardImageRow = typeof boardImages.$inferSelect
 export type BoardPinRow = typeof boardPins.$inferSelect
 type ReceiptRow = typeof operationReceipts.$inferSelect
-
-const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: () => StoreUnavailable.make({}) })
-const first = <A>(rows: ReadonlyArray<A>) => Option.fromNullishOr(rows[0])
 
 /** The most boards a list shows. */
 const listLimit = 100
@@ -44,18 +42,18 @@ type Database = ReturnType<typeof drizzle>
 
 const boardRows = (db: Database) => ({
   findReceipt: (accountId: string, operationId: string) =>
-    attempt(() => receiptQuery(db, accountId, operationId)).pipe(Effect.map(first)),
+    query(() => receiptQuery(db, accountId, operationId)).pipe(Effect.map(first)),
   /** The board and the operation's receipt, as one atomic batch. */
   createBoard: (board: BoardRow, receipt: ReceiptRow) =>
-    attempt(() => db.batch([db.insert(boards).values(board), db.insert(operationReceipts).values(receipt)])).pipe(
+    query(() => db.batch([db.insert(boards).values(board), db.insert(operationReceipts).values(receipt)])).pipe(
       Effect.asVoid,
     ),
   listBoards: (accountId: string) =>
-    attempt(() =>
+    query(() =>
       db.select().from(boards).where(eq(boards.accountId, accountId)).orderBy(desc(boards.updatedAt)).limit(listLimit),
     ),
   findBoard: (accountId: string, boardId: string) =>
-    attempt(() =>
+    query(() =>
       db
         .select()
         .from(boards)
@@ -69,7 +67,7 @@ const boardRows = (db: Database) => ({
       Pick<BoardRow, 'name' | 'paper' | 'searchText' | 'moods' | 'visibility' | 'publishedAt' | 'updatedAt'>
     >,
   ) =>
-    attempt(() =>
+    query(() =>
       db
         .update(boards)
         .set(changes)
@@ -78,7 +76,7 @@ const boardRows = (db: Database) => ({
     ).pipe(Effect.map(first)),
   /** Removes the board; its items and pictures go with it. */
   deleteBoard: (accountId: string, boardId: string) =>
-    attempt(() =>
+    query(() =>
       db
         .delete(boards)
         .where(and(eq(boards.id, boardId), eq(boards.accountId, accountId)))
@@ -91,7 +89,7 @@ const itemRows = (db: Database) => ({
   itemsOf: (boardIds: ReadonlyArray<string>) =>
     Effect.map(
       Effect.forEach(chunked(boardIds), (chunk) =>
-        attempt(() =>
+        query(() =>
           db
             .select()
             .from(boardItems)
@@ -113,7 +111,7 @@ const itemRows = (db: Database) => ({
       eq(boards.version, save.version),
     )
     const boardAtVersion = sql<string>`${db.select({ id: boards.id }).from(boards).where(loaded)}`
-    return attempt(() =>
+    return query(() =>
       db.batch([
         db.delete(boardItems).where(eq(boardItems.boardId, boardAtVersion)),
         ...save.items.map((item) => db.insert(boardItems).values({ ...item, boardId: boardAtVersion })),
@@ -148,7 +146,7 @@ const pinReads = (db: Database) => ({
   /** The pins of these boards, newest first, each piece pin with its piece. */
   pinsOf: (boardIds: ReadonlyArray<string>) =>
     Effect.map(
-      Effect.forEach(chunked(boardIds), (chunk) => attempt(() => pinWithPiece(db, inArray(boardPins.boardId, chunk)))),
+      Effect.forEach(chunked(boardIds), (chunk) => query(() => pinWithPiece(db, inArray(boardPins.boardId, chunk)))),
       (rows) => rows.flat(),
     ),
   /** Each board's newest pins, at most `limit` of them: the cover of a board in a list. */
@@ -166,7 +164,7 @@ const pinReads = (db: Database) => ({
           .where(inArray(boardPins.boardId, chunk))
           .as('ranked')
         const newest = db.select({ id: ranked.id }).from(ranked).where(lte(ranked.rank, limit))
-        return attempt(() => pinWithPiece(db, inArray(boardPins.id, newest)))
+        return query(() => pinWithPiece(db, inArray(boardPins.id, newest)))
       }),
       (rows) => rows.flat(),
     ),
@@ -174,7 +172,7 @@ const pinReads = (db: Database) => ({
   pinCounts: (boardIds: ReadonlyArray<string>) =>
     Effect.map(
       Effect.forEach(chunked(boardIds), (chunk) =>
-        attempt(() =>
+        query(() =>
           db
             .select({ boardId: boardPins.boardId, pins: count() })
             .from(boardPins)
@@ -188,7 +186,7 @@ const pinReads = (db: Database) => ({
   piecesPinned: (boardId: string, pieceIds: ReadonlyArray<string>) =>
     Effect.map(
       Effect.forEach(chunked(pieceIds), (chunk) =>
-        attempt(() =>
+        query(() =>
           db
             .select({ id: boardPins.pieceId })
             .from(boardPins)
@@ -202,7 +200,7 @@ const pinReads = (db: Database) => ({
 const pinWrites = (db: Database) => ({
   /** These pins of the board, to take off. */
   pinsOn: (boardId: string, pinIds: ReadonlyArray<string>) =>
-    attempt(() =>
+    query(() =>
       db
         .select()
         .from(boardPins)
@@ -210,7 +208,7 @@ const pinWrites = (db: Database) => ({
     ),
   /** The pins and the operation's receipt, as one atomic batch. What is pinned already stays as it was. */
   addPins: (accountId: string, boardId: string, pins: ReadonlyArray<BoardPinRow>, receipt: ReceiptRow, at: Date) =>
-    attempt(() =>
+    query(() =>
       db.batch([
         db
           .update(boards)
@@ -223,7 +221,7 @@ const pinWrites = (db: Database) => ({
   /** Take the pins off and their pieces and pictures off the table, delete the pictures' rows and count the
    * change as a save, so an editor holding the old table reloads, as one atomic batch. */
   removePins: (removal: PinRemoval) =>
-    attempt(() =>
+    query(() =>
       db.batch([
         db
           .delete(boardItems)
@@ -256,7 +254,7 @@ const imageRows = (db: Database) => ({
   imagesOn: (boardId: string, imageIds: ReadonlyArray<string>) =>
     Effect.map(
       Effect.forEach(chunked(imageIds), (chunk) =>
-        attempt(() =>
+        query(() =>
           db
             .select({ id: boardImages.id })
             .from(boardImages)
@@ -267,21 +265,21 @@ const imageRows = (db: Database) => ({
     ),
   /** The keys of the board's pictures, to delete their bytes with it. */
   imageKeys: (boardId: string) =>
-    attempt(() =>
+    query(() =>
       db.select({ key: boardImages.objectKey }).from(boardImages).where(eq(boardImages.boardId, boardId)),
     ).pipe(Effect.map((rows) => rows.map(({ key }) => key))),
   /** The keys of these pictures of the board. */
   imageKeysOf: (boardId: string, imageIds: ReadonlyArray<string>) =>
     imageIds.length === 0
       ? Effect.succeed<ReadonlyArray<string>>([])
-      : attempt(() =>
+      : query(() =>
           db
             .select({ key: boardImages.objectKey })
             .from(boardImages)
             .where(and(eq(boardImages.boardId, boardId), inArray(boardImages.id, [...imageIds]))),
         ).pipe(Effect.map((rows) => rows.map(({ key }) => key))),
   findImage: (accountId: string, imageId: string) =>
-    attempt(() =>
+    query(() =>
       db
         .select()
         .from(boardImages)
@@ -291,7 +289,7 @@ const imageRows = (db: Database) => ({
   /** The picture, its pin, its upload spent and the operation's receipt, as one atomic batch. The picture
    * keeps the upload's key, read in the same statement, so an upload spent meanwhile fails the batch. */
   addImage: (image: Omit<BoardImageRow, 'objectKey'>, pinId: string, uploadId: string, receipt: ReceiptRow) =>
-    attempt(() =>
+    query(() =>
       db.batch([
         db.insert(boardImages).values({ ...image, objectKey: receivedUploadKey(db, image.accountId, uploadId) }),
         db.insert(boardPins).values({

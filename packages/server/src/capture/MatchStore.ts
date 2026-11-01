@@ -2,12 +2,10 @@ import { captures, detections, pieces } from '@styld/db'
 import { and, asc, desc, eq, exists, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm'
 import type { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option } from 'effect'
-import { StoreUnavailable } from '../wardrobe/Store.ts'
+import { query } from '../kernel/Db.ts'
 
 type Database = ReturnType<typeof drizzle>
 type DetectionRow = typeof detections.$inferSelect
-
-const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: () => StoreUnavailable.make({}) })
 
 /** The captures whose sightings are compared with each other: every capture of an import, or one on its own. */
 export interface MatchScope {
@@ -38,7 +36,7 @@ export interface MatchOutcome {
 const claimRows = (db: Database) => ({
   /** The scope's detections still to be compared, oldest first. */
   toMatch: (scope: MatchScope) =>
-    attempt(() =>
+    query(() =>
       db
         .select()
         .from(detections)
@@ -53,7 +51,7 @@ const claimRows = (db: Database) => ({
     ),
   /** Claim a detection as it was read: waiting, or claimed by a delivery that gave up. Whether it was claimed. */
   claimMatch: (detection: DetectionRow, at: Date) =>
-    attempt(() =>
+    query(() =>
       db
         .update(detections)
         .set({ matching: 'claimed', matchClaimedAt: at })
@@ -69,7 +67,7 @@ const claimRows = (db: Database) => ({
     ).pipe(Effect.map((rows) => rows.length > 0)),
   /** Let a claimed detection be compared by the next delivery, after this one failed. */
   releaseMatch: (detectionId: string, claimedAt: Date) =>
-    attempt(() =>
+    query(() =>
       db
         .update(detections)
         .set({ matching: 'waiting', matchClaimedAt: null })
@@ -83,7 +81,7 @@ const claimRows = (db: Database) => ({
     ).pipe(Effect.asVoid),
   /** Stop comparing the scope's detections, after the last delivery gave up: each stays its own card. */
   abandonMatches: (scope: MatchScope) =>
-    attempt(() =>
+    query(() =>
       db
         .update(detections)
         .set({ matching: 'done', matchClaimedAt: null })
@@ -103,7 +101,7 @@ const candidateRows = (db: Database) => ({
    * their own card, and waiting for the person. `except` leaves out a capture's own (a photo's pieces are
    * different garments). */
   shownSightings: (scope: MatchScope, types: ReadonlyArray<string>, except: string | undefined, limit: number) =>
-    attempt(() =>
+    query(() =>
       db
         .select()
         .from(detections)
@@ -125,7 +123,7 @@ const candidateRows = (db: Database) => ({
   /** The account's pieces of one of `types` shown as cut-outs that a new garment may already be, those sharing its main
    * colour first. */
   wardrobeCandidates: (accountId: string, types: ReadonlyArray<string>, colour: string | undefined, limit: number) =>
-    attempt(() =>
+    query(() =>
       db
         .select({ id: pieces.id, imageKey: pieces.imageKey })
         .from(pieces)
@@ -189,7 +187,7 @@ const outcomeRows = (db: Database) => ({
           ),
         finish(null),
       ])
-    return attempt(() =>
+    return query(() =>
       Option.match(outcome.joins, {
         onNone: () => finish(null).then(() => undefined),
         onSome: ({ head, replaces }) => (replaces ? replacing(head) : finish(head)).then(() => undefined),
@@ -200,7 +198,7 @@ const outcomeRows = (db: Database) => ({
   sightingsOf: (accountId: string, heads: ReadonlyArray<string>) =>
     heads.length === 0
       ? Effect.succeed<ReadonlyArray<DetectionRow>>([])
-      : attempt(() =>
+      : query(() =>
           db
             .select()
             .from(detections)
@@ -214,7 +212,7 @@ const outcomeRows = (db: Database) => ({
         ),
   /** Show every other sighting of `head`'s garment on its own card again; whether there were any. */
   split: (accountId: string, head: string) =>
-    attempt(() =>
+    query(() =>
       db
         .update(detections)
         .set({ groupOf: null })

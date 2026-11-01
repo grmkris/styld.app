@@ -12,8 +12,8 @@ import {
 import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Array, Effect, Option } from 'effect'
-import { StoreUnavailable } from '../wardrobe/Store.ts'
 import { matchRows } from './MatchStore.ts'
+import { chunked, first, query } from '../kernel/Db.ts'
 
 export type CaptureRow = typeof captures.$inferSelect
 export type FrameRow = typeof captureFrames.$inferSelect
@@ -26,26 +26,22 @@ type NewPicture = typeof piecePictures.$inferInsert
 export type TurnRow = typeof pieceTurns.$inferSelect
 export type TurnState = TurnRow['state']
 
-const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: () => StoreUnavailable.make({}) })
-const first = <A>(rows: ReadonlyArray<A>) => Option.fromNullishOr(rows[0])
-
 type Database = ReturnType<typeof drizzle>
 
 /** D1 binds at most 100 parameters to a statement. Rows are written one statement each, and id lists
  * go in chunks small enough to leave room for the rest of the statement. */
-const chunked = (ids: ReadonlyArray<string>) => Array.chunksOf(ids, 90).map((chunk) => [...chunk])
 
 /** A read over many ids: one query per chunk, the rows together. */
-const readIn = <A>(ids: ReadonlyArray<string>, query: (chunk: Array<string>) => Promise<ReadonlyArray<A>>) =>
+const readIn = <A>(ids: ReadonlyArray<string>, read: (chunk: Array<string>) => Promise<ReadonlyArray<A>>) =>
   Effect.map(
-    Effect.forEach(chunked(ids), (chunk) => attempt(() => query(chunk))),
+    Effect.forEach(chunked(ids), (chunk) => query(() => read(chunk))),
     (rows) => rows.flat(),
   )
 
 const captureRows = (db: Database) => ({
   /** The capture, its uploads spent, its stills and the operation's receipt, as one atomic batch. */
   createCapture: (capture: CaptureRow, frames: ReadonlyArray<FrameRow>, receipt: ReceiptRow) =>
-    attempt(() =>
+    query(() =>
       db.batch([
         db.insert(captures).values(capture),
         ...chunked([capture.uploadId, ...frames.map(({ uploadId }) => uploadId)]).map((chunk) =>
@@ -56,7 +52,7 @@ const captureRows = (db: Database) => ({
       ]),
     ).pipe(Effect.asVoid),
   findCapture: (accountId: string, captureId: string) =>
-    attempt(() =>
+    query(() =>
       db
         .select()
         .from(captures)
@@ -65,7 +61,7 @@ const captureRows = (db: Database) => ({
     ).pipe(Effect.map(first)),
   /** For the processing queue, which acts for no one in particular. */
   captureForProcessing: (captureId: string) =>
-    attempt(() => db.select().from(captures).where(eq(captures.id, captureId)).limit(1)).pipe(Effect.map(first)),
+    query(() => db.select().from(captures).where(eq(captures.id, captureId)).limit(1)).pipe(Effect.map(first)),
   capturesOf: (accountId: string, captureIds: ReadonlyArray<string>) =>
     readIn(captureIds, (chunk) =>
       db
@@ -74,14 +70,14 @@ const captureRows = (db: Database) => ({
         .where(and(eq(captures.accountId, accountId), inArray(captures.id, chunk))),
     ),
   frames: (captureId: string) =>
-    attempt(() => db.select().from(captureFrames).where(eq(captureFrames.captureId, captureId))),
+    query(() => db.select().from(captureFrames).where(eq(captureFrames.captureId, captureId))),
   updateCapture: (captureId: string, changes: Partial<CaptureRow>) =>
-    attempt(() => db.update(captures).set(changes).where(eq(captures.id, captureId))).pipe(Effect.asVoid),
+    query(() => db.update(captures).set(changes).where(eq(captures.id, captureId))).pipe(Effect.asVoid),
   /** The capture's detections and its new status, together. Detections from an earlier attempt are
    * replaced, so a retried capture never shows a piece twice; a capture no longer processing keeps its
    * status. */
   finishCapture: (captureId: string, found: ReadonlyArray<DetectionRow>, changes: Partial<CaptureRow>) =>
-    attempt(() =>
+    query(() =>
       db.batch([
         db.delete(detections).where(and(eq(detections.captureId, captureId), eq(detections.status, 'review'))),
         ...found.map((detection) => db.insert(detections).values(detection)),
@@ -92,7 +88,7 @@ const captureRows = (db: Database) => ({
       ]),
     ).pipe(Effect.asVoid),
   deleteCapture: (accountId: string, captureId: string) =>
-    attempt(() =>
+    query(() =>
       db
         .delete(captures)
         .where(and(eq(captures.id, captureId), eq(captures.accountId, accountId)))
@@ -105,7 +101,7 @@ const trayRows = (db: Database) => ({
   /** Captures still waiting for the person (not `done`), newest first, with their open detections. */
   tray: (accountId: string) =>
     Effect.gen(function* () {
-      const open = yield* attempt(() =>
+      const open = yield* query(() =>
         db
           .select()
           .from(captures)
@@ -137,7 +133,7 @@ const trayRows = (db: Database) => ({
         .where(and(eq(detections.accountId, accountId), inArray(detections.id, chunk))),
     ),
   findDetection: (accountId: string, detectionId: string) =>
-    attempt(() =>
+    query(() =>
       db
         .select()
         .from(detections)
@@ -150,7 +146,7 @@ const trayRows = (db: Database) => ({
 const pairRows = (db: Database) => {
   /** The back shots of `frontCaptureId` in `status`: waiting in the tray, or folded into it. */
   const backsOf = (accountId: string, frontCaptureId: string, status: 'review' | 'done') =>
-    attempt(() =>
+    query(() =>
       db
         .select()
         .from(captures)
@@ -169,7 +165,7 @@ const pairRows = (db: Database) => {
     attachBack: (accountId: string, captureId: string, backKey: string) =>
       Effect.gen(function* () {
         const front = first(
-          yield* attempt(() =>
+          yield* query(() =>
             db
               .select({ id: detections.id })
               .from(detections)
@@ -185,7 +181,7 @@ const pairRows = (db: Database) => {
           ),
         )
         if (Option.isNone(front)) return false
-        const rows = yield* attempt(() =>
+        const rows = yield* query(() =>
           db
             .update(detections)
             .set({ backCutoutKey: backKey })
@@ -200,7 +196,7 @@ const pairRows = (db: Database) => {
       Effect.gen(function* () {
         const back = first(yield* backsOf(accountId, frontCaptureId, 'review'))
         if (Option.isNone(back)) return Option.none()
-        const found = yield* attempt(() =>
+        const found = yield* query(() =>
           db
             .select()
             .from(detections)
@@ -212,7 +208,7 @@ const pairRows = (db: Database) => {
     foldedBacks: (accountId: string, frontCaptureId: string) => backsOf(accountId, frontCaptureId, 'done'),
     /** A back shot folded into its front: its own detections leave the tray and the capture is done. */
     foldBack: (captureId: string, updatedAt: Date) =>
-      attempt(() =>
+      query(() =>
         db.batch([
           db
             .update(detections)
@@ -237,7 +233,7 @@ const transitionRows = (db: Database) => ({
     seen: { readonly status: CaptureRow['status']; readonly attempt: number; readonly updatedAt: Date },
     changes: Partial<CaptureRow>,
   ) =>
-    attempt(() =>
+    query(() =>
       db
         .update(captures)
         .set(changes)
@@ -254,7 +250,7 @@ const transitionRows = (db: Database) => ({
     ).pipe(Effect.map((rows) => rows.length > 0)),
   /** Mark a video as handed to Meta, unless a delivery already did. */
   claimTracking: (captureId: string, at: Date) =>
-    attempt(() =>
+    query(() =>
       db
         .update(captures)
         .set({ trackingStartedAt: at })
@@ -263,7 +259,7 @@ const transitionRows = (db: Database) => ({
     ).pipe(Effect.map((rows) => rows.length > 0)),
   /** Whether any of the capture's detections became a piece. */
   hasKept: (captureId: string) =>
-    attempt(() =>
+    query(() =>
       db
         .select({ id: detections.id })
         .from(detections)
@@ -275,7 +271,7 @@ const transitionRows = (db: Database) => ({
     Effect.map(
       // Each key is bound three times, so a chunk holds 30 of them.
       Effect.forEach(Array.chunksOf(keys, 30), (chunk) =>
-        attempt(() =>
+        query(() =>
           db
             .select({ originalKey: pieces.originalKey, imageKey: pieces.imageKey, backImageKey: pieces.backImageKey })
             .from(pieces)
@@ -309,7 +305,7 @@ const reviewRows = (db: Database) => ({
     readonly receipt: ReceiptRow
     readonly now: Date
   }) =>
-    attempt(() =>
+    query(() =>
       db.batch([
         db.insert(operationReceipts).values(input.receipt),
         ...input.pieces.map((piece) => db.insert(pieces).values(piece)),
@@ -367,12 +363,12 @@ const keptClean = (face: number) =>
  * on only from a state it was read in, so two deliveries of one message never both draw it. */
 const pictureRows = (db: Database) => ({
   findPicture: (pieceId: string) =>
-    attempt(() => db.select().from(piecePictures).where(eq(piecePictures.pieceId, pieceId)).limit(1)).pipe(
+    query(() => db.select().from(piecePictures).where(eq(piecePictures.pieceId, pieceId)).limit(1)).pipe(
       Effect.map(first),
     ),
   /** Move a picture on from one of `from`, with `changes`; whether it moved. */
   movePicture: (pieceId: string, from: ReadonlyArray<PictureState>, changes: Partial<PictureRow>) =>
-    attempt(() =>
+    query(() =>
       db
         .update(piecePictures)
         .set(changes)
@@ -381,18 +377,18 @@ const pictureRows = (db: Database) => ({
     ).pipe(Effect.map((rows) => rows.length > 0)),
   /** A picture the owner asked for, unless the piece already has one; whether it was added. */
   addPicture: (picture: NewPicture) =>
-    attempt(() =>
+    query(() =>
       db.insert(piecePictures).values(picture).onConflictDoNothing().returning({ pieceId: piecePictures.pieceId }),
     ).pipe(Effect.map((rows) => rows.length > 0)),
   /** Queue pictures for pieces that have none, leaving any a concurrent request added. */
   addPictures: (pictures: ReadonlyArray<NewPicture>) => {
     const [head, ...rest] = pictures.map((picture) => db.insert(piecePictures).values(picture).onConflictDoNothing())
-    return head === undefined ? Effect.void : attempt(() => db.batch([head, ...rest])).pipe(Effect.asVoid)
+    return head === undefined ? Effect.void : query(() => db.batch([head, ...rest])).pipe(Effect.asVoid)
   },
   /** The account's kept cut-outs not drawn yet: no drawing was ever asked for, or the cut-out was kept as clean. A
    * piece kept as its photo, or whose face at or above `face` may show, is not one. */
   undrawnPieces: (accountId: string, face: number) =>
-    attempt(() =>
+    query(() =>
       db
         .select({ id: pieces.id })
         .from(pieces)
@@ -401,7 +397,7 @@ const pictureRows = (db: Database) => ({
     ).pipe(Effect.map((rows) => rows.map(({ id }) => id))),
   /** Queue again the account's cut-outs kept as clean, leaving any picture a concurrent request moved on. */
   requeueKeptClean: (accountId: string, face: number, at: Date) =>
-    attempt(() =>
+    query(() =>
       db
         .update(piecePictures)
         .set({ state: 'queued', updatedAt: at })
@@ -415,7 +411,7 @@ const pictureRows = (db: Database) => ({
     ).pipe(Effect.asVoid),
   /** The account's pictures still waiting for the queue. */
   queuedPicturesOf: (accountId: string) =>
-    attempt(() =>
+    query(() =>
       db
         .select({ pieceId: piecePictures.pieceId })
         .from(piecePictures)
@@ -434,10 +430,10 @@ const pictureRows = (db: Database) => ({
 /** Pieces' turns. Only the turn job and the owner's request write them, each move from the state it was read in. */
 const turnRows = (db: Database) => ({
   findTurn: (pieceId: string) =>
-    attempt(() => db.select().from(pieceTurns).where(eq(pieceTurns.pieceId, pieceId)).limit(1)).pipe(Effect.map(first)),
+    query(() => db.select().from(pieceTurns).where(eq(pieceTurns.pieceId, pieceId)).limit(1)).pipe(Effect.map(first)),
   /** Move a turn on from one of `from`, with `changes`; whether it moved. */
   moveTurn: (pieceId: string, from: ReadonlyArray<TurnState>, changes: Partial<TurnRow>) =>
-    attempt(() =>
+    query(() =>
       db
         .update(pieceTurns)
         .set(changes)
@@ -446,7 +442,7 @@ const turnRows = (db: Database) => ({
     ).pipe(Effect.map((rows) => rows.length > 0)),
   /** A turn the owner asked for, unless the piece already has one; whether it was added. */
   addTurn: (turn: typeof pieceTurns.$inferInsert) =>
-    attempt(() =>
+    query(() =>
       db.insert(pieceTurns).values(turn).onConflictDoNothing().returning({ pieceId: pieceTurns.pieceId }),
     ).pipe(Effect.map((rows) => rows.length > 0)),
 })

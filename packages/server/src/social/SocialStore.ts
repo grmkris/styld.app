@@ -2,12 +2,10 @@ import { blocks, follows, profiles, reports, saves } from '@styld/db'
 import { and, count, desc, eq, gte, inArray, or } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Array, Effect, Option } from 'effect'
-import { StoreUnavailable } from '../wardrobe/Store.ts'
+import { query } from '../kernel/Db.ts'
 
 export type SaveRow = typeof saves.$inferSelect
 export type ReportRow = typeof reports.$inferSelect
-
-const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: () => StoreUnavailable.make({}) })
 
 /** The most saves, follows and blocks a list shows. */
 const listLimit = 200
@@ -21,20 +19,20 @@ type Database = ReturnType<typeof drizzle>
 const savesAndFollows = (db: Database) => ({
   /** The account's saves, newest first. */
   saves: (accountId: string) =>
-    attempt(() =>
+    query(() =>
       db.select().from(saves).where(eq(saves.accountId, accountId)).orderBy(desc(saves.createdAt)).limit(listLimit),
     ),
   /** Save the target once; saving it again keeps the first save. */
-  save: (row: SaveRow) => attempt(() => db.insert(saves).values(row).onConflictDoNothing()).pipe(Effect.asVoid),
+  save: (row: SaveRow) => query(() => db.insert(saves).values(row).onConflictDoNothing()).pipe(Effect.asVoid),
   unsave: (accountId: string, kind: SaveRow['kind'], targetId: string) =>
-    attempt(() =>
+    query(() =>
       db
         .delete(saves)
         .where(and(eq(saves.accountId, accountId), eq(saves.kind, kind), eq(savedColumn(kind), targetId))),
     ).pipe(Effect.asVoid),
   /** The account behind a published handle. */
   accountOf: (handle: string) =>
-    attempt(() =>
+    query(() =>
       db
         .select({ accountId: profiles.accountId })
         .from(profiles)
@@ -43,11 +41,11 @@ const savesAndFollows = (db: Database) => ({
     ).pipe(Effect.map((rows) => Option.map(Option.fromNullishOr(rows[0]), ({ accountId }) => accountId))),
   /** The account behind a handle, published or not: someone can be blocked, and unblocked, whatever they show. */
   accountOfAnyHandle: (handle: string) =>
-    attempt(() =>
+    query(() =>
       db.select({ accountId: profiles.accountId }).from(profiles).where(eq(profiles.handle, handle)).limit(1),
     ).pipe(Effect.map((rows) => Option.map(Option.fromNullishOr(rows[0]), ({ accountId }) => accountId))),
   isFollowing: (followerId: string, followeeId: string) =>
-    attempt(() =>
+    query(() =>
       db
         .select({ id: follows.followeeId })
         .from(follows)
@@ -55,16 +53,16 @@ const savesAndFollows = (db: Database) => ({
         .limit(1),
     ).pipe(Effect.map((rows) => rows.length > 0)),
   follow: (followerId: string, followeeId: string, at: Date) =>
-    attempt(() => db.insert(follows).values({ followerId, followeeId, createdAt: at }).onConflictDoNothing()).pipe(
+    query(() => db.insert(follows).values({ followerId, followeeId, createdAt: at }).onConflictDoNothing()).pipe(
       Effect.asVoid,
     ),
   unfollow: (followerId: string, followeeId: string) =>
-    attempt(() =>
+    query(() =>
       db.delete(follows).where(and(eq(follows.followerId, followerId), eq(follows.followeeId, followeeId))),
     ).pipe(Effect.asVoid),
   /** Those the account follows, the most recently followed first. */
   followees: (followerId: string) =>
-    attempt(() =>
+    query(() =>
       db
         .select({ accountId: follows.followeeId })
         .from(follows)
@@ -77,7 +75,7 @@ const savesAndFollows = (db: Database) => ({
 const blockRows = (db: Database) => ({
   /** Whether either account blocked the other. */
   blockedBetween: (left: string, right: string) =>
-    attempt(() =>
+    query(() =>
       db
         .select({ id: blocks.blockerId })
         .from(blocks)
@@ -90,7 +88,7 @@ const blockRows = (db: Database) => ({
         .limit(1),
     ).pipe(Effect.map((rows) => rows.length > 0)),
   hasBlocked: (blockerId: string, blockedId: string) =>
-    attempt(() =>
+    query(() =>
       db
         .select({ id: blocks.blockedId })
         .from(blocks)
@@ -99,7 +97,7 @@ const blockRows = (db: Database) => ({
     ).pipe(Effect.map((rows) => rows.length > 0)),
   /** A block, and every follow between the two, as one atomic batch. */
   block: (blockerId: string, blockedId: string, at: Date) =>
-    attempt(() =>
+    query(() =>
       db.batch([
         db.insert(blocks).values({ blockerId, blockedId, createdAt: at }).onConflictDoNothing(),
         db
@@ -113,12 +111,12 @@ const blockRows = (db: Database) => ({
       ]),
     ).pipe(Effect.asVoid),
   unblock: (blockerId: string, blockedId: string) =>
-    attempt(() => db.delete(blocks).where(and(eq(blocks.blockerId, blockerId), eq(blocks.blockedId, blockedId)))).pipe(
+    query(() => db.delete(blocks).where(and(eq(blocks.blockerId, blockerId), eq(blocks.blockedId, blockedId)))).pipe(
       Effect.asVoid,
     ),
   /** Those the account blocked, the most recent first. */
   blockedBy: (blockerId: string) =>
-    attempt(() =>
+    query(() =>
       db
         .select({ accountId: blocks.blockedId })
         .from(blocks)
@@ -130,7 +128,7 @@ const blockRows = (db: Database) => ({
    * stay under D1's 100 parameters. */
   blockedAmong: (accountId: string, others: ReadonlyArray<string>) =>
     Effect.forEach(Array.chunksOf(others, 45), (group) =>
-      attempt(() =>
+      query(() =>
         db
           .select({ blockerId: blocks.blockerId, blockedId: blocks.blockedId })
           .from(blocks)
@@ -152,7 +150,7 @@ const blockRows = (db: Database) => ({
 const reportRows = (db: Database) => ({
   /** How many reports the account filed since `since`. */
   reportsSince: (reporterId: string, since: Date) =>
-    attempt(() =>
+    query(() =>
       db
         .select({ total: count() })
         .from(reports)
@@ -162,10 +160,10 @@ const reportRows = (db: Database) => ({
    * the target. */
   report: (row: ReportRow) =>
     Effect.gen(function* () {
-      const filed = yield* attempt(() =>
+      const filed = yield* query(() =>
         db.insert(reports).values(row).onConflictDoNothing().returning({ id: reports.id }),
       )
-      const reporters = yield* attempt(() =>
+      const reporters = yield* query(() =>
         db
           .select({ total: count() })
           .from(reports)

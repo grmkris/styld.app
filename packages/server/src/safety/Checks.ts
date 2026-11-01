@@ -10,7 +10,7 @@ import { collect } from '../Streams.ts'
 import { deliverImage, type ImageBindings } from '../wardrobe/Delivery.ts'
 import { reachedThrough } from '../social/PublicStore.ts'
 import { shownImage } from '../wardrobe/Shown.ts'
-import { chunked } from '../wardrobe/Store.ts'
+import { chunked } from '../kernel/Db.ts'
 import { type Content, ContentJudge, type Verdict, worse } from './Judge.ts'
 
 /** What a check is of: a profile (by account), a board, a look or a piece. */

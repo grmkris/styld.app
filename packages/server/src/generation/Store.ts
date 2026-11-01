@@ -1,24 +1,21 @@
 import { generationJobs, generationPictures, operationReceipts } from '@styld/db'
 import { and, asc, desc, eq, inArray, lt, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
-import { Effect, Option } from 'effect'
+import { Effect } from 'effect'
 import { receiptQuery } from '../Receipts.ts'
-import { StoreUnavailable } from '../wardrobe/Store.ts'
+import { first, query } from '../kernel/Db.ts'
 
 export type JobRow = typeof generationJobs.$inferSelect
 export type PictureRow = typeof generationPictures.$inferSelect
 type ReceiptRow = typeof operationReceipts.$inferInsert
 
-const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: () => StoreUnavailable.make({}) })
-const first = <A>(rows: ReadonlyArray<A>) => Option.fromNullishOr(rows[0])
-
 /** Jobs: written once with their receipt, read for their owner or the queue, and moved on from a step. */
 const jobQueries = (db: ReturnType<typeof drizzle>) => ({
   findReceipt: (accountId: string, operationId: string) =>
-    attempt(() => receiptQuery(db, accountId, operationId)).pipe(Effect.map(first)),
+    query(() => receiptQuery(db, accountId, operationId)).pipe(Effect.map(first)),
   /** The job, its first pictures and the operation's receipt, as one batch. */
   insertJob: (job: JobRow, pictures: ReadonlyArray<PictureRow>, receipt: ReceiptRow) =>
-    attempt(() =>
+    query(() =>
       db.batch([
         db.insert(generationJobs).values(job),
         ...pictures.map((picture) => db.insert(generationPictures).values(picture)),
@@ -26,7 +23,7 @@ const jobQueries = (db: ReturnType<typeof drizzle>) => ({
       ]),
     ).pipe(Effect.asVoid),
   findJob: (accountId: string, jobId: string) =>
-    attempt(() =>
+    query(() =>
       db
         .select()
         .from(generationJobs)
@@ -35,7 +32,7 @@ const jobQueries = (db: ReturnType<typeof drizzle>) => ({
     ).pipe(Effect.map(first)),
   /** The account's newest job for the board that has not ended. */
   runningJob: (accountId: string, boardId: string) =>
-    attempt(() =>
+    query(() =>
       db
         .select()
         .from(generationJobs)
@@ -51,7 +48,7 @@ const jobQueries = (db: ReturnType<typeof drizzle>) => ({
     ).pipe(Effect.map(first)),
   /** Jobs not ended and not touched since `before`: their messages were lost or their deliveries died. */
   stalledJobs: (before: Date, limit: number) =>
-    attempt(() =>
+    query(() =>
       db
         .select({ id: generationJobs.id })
         .from(generationJobs)
@@ -65,11 +62,9 @@ const jobQueries = (db: ReturnType<typeof drizzle>) => ({
     ).pipe(Effect.map((rows) => rows.map(({ id }) => id))),
   /** For the generation queue, which acts for the job's account. */
   jobForWork: (jobId: string) =>
-    attempt(() => db.select().from(generationJobs).where(eq(generationJobs.id, jobId)).limit(1)).pipe(
-      Effect.map(first),
-    ),
+    query(() => db.select().from(generationJobs).where(eq(generationJobs.id, jobId)).limit(1)).pipe(Effect.map(first)),
   picturesOf: (jobId: string) =>
-    attempt(() =>
+    query(() =>
       db
         .select()
         .from(generationPictures)
@@ -78,7 +73,7 @@ const jobQueries = (db: ReturnType<typeof drizzle>) => ({
     ),
   /** The plan's pictures, once, while the job is still being planned: a redelivered plan finds them there. */
   planned: (jobId: string, pictures: ReadonlyArray<PictureRow>, job: Partial<JobRow>) =>
-    attempt(() =>
+    query(() =>
       db.batch([
         db
           .update(generationJobs)
@@ -89,7 +84,7 @@ const jobQueries = (db: ReturnType<typeof drizzle>) => ({
     ).pipe(Effect.asVoid),
   /** Move the job on only from a step it is still at, so a job given up stays given up. */
   advanceJob: (jobId: string, from: ReadonlyArray<JobRow['status']>, job: Partial<JobRow>) =>
-    attempt(() =>
+    query(() =>
       db
         .update(generationJobs)
         .set(job)
@@ -103,7 +98,7 @@ const pictureQueries = (db: ReturnType<typeof drizzle>) => ({
   /** Claim a waiting picture of a job still drawing; none when another delivery claimed it first, or the job was
    * given up. The claim marks the job as moving, so reading it does not send it again. */
   claimPicture: (jobId: string, index: number, at: Date) =>
-    attempt(() =>
+    query(() =>
       db.batch([
         db
           .update(generationPictures)
@@ -122,7 +117,7 @@ const pictureQueries = (db: ReturnType<typeof drizzle>) => ({
     ).pipe(Effect.map(([claimed]) => claimed.length > 0)),
   /** A drawing's outcome, written only over the claim; the job is marked as moving. */
   finishPicture: (jobId: string, index: number, outcome: Pick<PictureRow, 'status' | 'imageId'>, at: Date) =>
-    attempt(() =>
+    query(() =>
       db.batch([
         db
           .update(generationPictures)
@@ -139,7 +134,7 @@ const pictureQueries = (db: ReturnType<typeof drizzle>) => ({
     ).pipe(Effect.asVoid),
   /** Put a claim back: the painter was never reached, so the picture waits for the next delivery. */
   releasePicture: (jobId: string, index: number) =>
-    attempt(() =>
+    query(() =>
       db
         .update(generationPictures)
         .set({ status: 'waiting', startedAt: null })
@@ -153,7 +148,7 @@ const pictureQueries = (db: ReturnType<typeof drizzle>) => ({
     ).pipe(Effect.asVoid),
   /** Give up a job not yet ended: it fails, and its waiting pictures are refused so no delivery claims them. */
   giveUp: (jobId: string, at: Date) =>
-    attempt(() =>
+    query(() =>
       db.batch([
         db
           .update(generationJobs)

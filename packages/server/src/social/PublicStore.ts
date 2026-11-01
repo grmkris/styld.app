@@ -11,11 +11,8 @@ import {
 } from '@styld/db'
 import { and, desc, eq, exists, inArray, isNotNull, isNull, type SQL } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
-import { Array, Effect, Option } from 'effect'
-import { chunked, StoreUnavailable } from '../wardrobe/Store.ts'
-
-const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: () => StoreUnavailable.make({}) })
-const first = <A>(rows: ReadonlyArray<A>) => Option.fromNullishOr(rows[0])
+import { Array, Effect } from 'effect'
+import { chunked, first, query } from '../kernel/Db.ts'
 
 /** The most boards and looks a profile shows. */
 const boardLimit = 60
@@ -40,7 +37,7 @@ const lets = (db: Database, checked: boolean, kind: 'board' | 'look', id: typeof
  * for those others may see past their check. Someone else's board never counts. */
 export const reachedThrough = (db: Database, accountId: string, pieceId: string, checked: boolean) =>
   Effect.gen(function* () {
-    const onBoard = yield* attempt(() =>
+    const onBoard = yield* query(() =>
       db
         .select({ id: boardPins.id })
         .from(boardPins)
@@ -56,7 +53,7 @@ export const reachedThrough = (db: Database, accountId: string, pieceId: string,
         .limit(1),
     )
     if (onBoard.length > 0) return true
-    const inLook = yield* attempt(() =>
+    const inLook = yield* query(() =>
       db
         .select({ id: looks.id })
         .from(lookPieces)
@@ -87,7 +84,7 @@ export const makePublicStore = (database: Parameters<typeof drizzle>[0]) => {
   return {
     /** A published profile by its handle. */
     publishedProfile: (handle: string) =>
-      attempt(() =>
+      query(() =>
         db
           .select()
           .from(profiles)
@@ -95,14 +92,12 @@ export const makePublicStore = (database: Parameters<typeof drizzle>[0]) => {
           .limit(1),
       ).pipe(Effect.map(first)),
     profileOf: (accountId: string) =>
-      attempt(() => db.select().from(profiles).where(eq(profiles.accountId, accountId)).limit(1)).pipe(
-        Effect.map(first),
-      ),
+      query(() => db.select().from(profiles).where(eq(profiles.accountId, accountId)).limit(1)).pipe(Effect.map(first)),
     board: (boardId: string) =>
-      attempt(() => db.select().from(boards).where(eq(boards.id, boardId)).limit(1)).pipe(Effect.map(first)),
+      query(() => db.select().from(boards).where(eq(boards.id, boardId)).limit(1)).pipe(Effect.map(first)),
     /** The account's public boards, the most recently published first. */
     publicBoards: (accountId: string) =>
-      attempt(() =>
+      query(() =>
         db
           .select()
           .from(boards)
@@ -111,10 +106,10 @@ export const makePublicStore = (database: Parameters<typeof drizzle>[0]) => {
           .limit(boardLimit),
       ),
     look: (lookId: string) =>
-      attempt(() => db.select().from(looks).where(eq(looks.id, lookId)).limit(1)).pipe(Effect.map(first)),
+      query(() => db.select().from(looks).where(eq(looks.id, lookId)).limit(1)).pipe(Effect.map(first)),
     /** The account's shared looks, the most recently shared first. */
     sharedLooks: (accountId: string) =>
-      attempt(() =>
+      query(() =>
         db
           .select()
           .from(looks)
@@ -125,11 +120,11 @@ export const makePublicStore = (database: Parameters<typeof drizzle>[0]) => {
     /** These pieces with the picture each shows. */
     pieces: (pieceIds: ReadonlyArray<string>) =>
       Effect.map(
-        Effect.forEach(chunked(pieceIds), (chunk) => attempt(() => piecesWith(inArray(pieces.id, chunk)))),
+        Effect.forEach(chunked(pieceIds), (chunk) => query(() => piecesWith(inArray(pieces.id, chunk)))),
         Array.flatten,
       ),
     image: (imageId: string) =>
-      attempt(() => db.select().from(boardImages).where(eq(boardImages.id, imageId)).limit(1)).pipe(Effect.map(first)),
+      query(() => db.select().from(boardImages).where(eq(boardImages.id, imageId)).limit(1)).pipe(Effect.map(first)),
     /** Whether the piece is on its owner's public boards or shared looks that others may see. */
     onShownBoardOrLook: (accountId: string, pieceId: string) => reachedThrough(db, accountId, pieceId, true),
   }

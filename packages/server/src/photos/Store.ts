@@ -1,15 +1,13 @@
 import { captures, detections, operationReceipts, outfitPhotos, photoGarments } from '@styld/db'
 import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
-import { Effect, Option } from 'effect'
+import { Effect } from 'effect'
 import type { CaptureRow, DetectionRow } from '../capture/Store.ts'
-import { type ReceiptRow, spendUpload, StoreUnavailable } from '../wardrobe/Store.ts'
+import { type ReceiptRow, spendUpload } from '../wardrobe/Store.ts'
+import { first, query } from '../kernel/Db.ts'
 
 export type PhotoRow = typeof outfitPhotos.$inferSelect
 export type GarmentRow = typeof photoGarments.$inferSelect
-
-const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: () => StoreUnavailable.make({}) })
-const first = <A>(rows: ReadonlyArray<A>) => Option.fromNullishOr(rows[0])
 
 /** The most photos one list reads, newest first. */
 const mostListed = 200
@@ -22,11 +20,11 @@ const ofAccount = (accountId: string, photoId: string) =>
 /** Reading photos and their garments. */
 const reads = (db: Db) => ({
   findPhoto: (accountId: string, photoId: string) =>
-    attempt(() => db.select().from(outfitPhotos).where(ofAccount(accountId, photoId)).limit(1)).pipe(Effect.map(first)),
+    query(() => db.select().from(outfitPhotos).where(ofAccount(accountId, photoId)).limit(1)).pipe(Effect.map(first)),
   photoForWork: (photoId: string) =>
-    attempt(() => db.select().from(outfitPhotos).where(eq(outfitPhotos.id, photoId)).limit(1)).pipe(Effect.map(first)),
+    query(() => db.select().from(outfitPhotos).where(eq(outfitPhotos.id, photoId)).limit(1)).pipe(Effect.map(first)),
   listPhotos: (accountId: string) =>
-    attempt(() =>
+    query(() =>
       db
         .select()
         .from(outfitPhotos)
@@ -36,7 +34,7 @@ const reads = (db: Db) => ({
     ),
   /** The photos a piece is confirmed in, newest first. */
   photosOfPiece: (accountId: string, pieceId: string) =>
-    attempt(() =>
+    query(() =>
       db
         .selectDistinct({ photo: outfitPhotos })
         .from(outfitPhotos)
@@ -54,7 +52,7 @@ const reads = (db: Db) => ({
   garmentsOf: (photoIds: ReadonlyArray<string>) =>
     photoIds.length === 0
       ? Effect.succeed<ReadonlyArray<GarmentRow>>([])
-      : attempt(() =>
+      : query(() =>
           db
             .select()
             .from(photoGarments)
@@ -67,7 +65,7 @@ const reads = (db: Db) => ({
 const writes = (db: Db) => ({
   /** The photo, its upload spent and the operation's receipt, as one batch: an upload makes one photo. */
   addPhoto: (photo: PhotoRow, receipt: ReceiptRow) =>
-    attempt(() =>
+    query(() =>
       db.batch([
         db.insert(outfitPhotos).values(photo),
         spendUpload(db, photo.uploadId),
@@ -76,7 +74,7 @@ const writes = (db: Db) => ({
     ).pipe(Effect.asVoid),
   /** The garments found, and the photo ready, in one batch; only while it is still being found. */
   finishFinding: (photoId: string, garments: ReadonlyArray<GarmentRow>, at: Date) =>
-    attempt(() =>
+    query(() =>
       db.batch([
         db.delete(photoGarments).where(eq(photoGarments.photoId, photoId)),
         ...garments.map((garment) => db.insert(photoGarments).values(garment)),
@@ -88,7 +86,7 @@ const writes = (db: Db) => ({
     ).pipe(Effect.asVoid),
   /** A garment offered to the review tray: its capture and detection, and the garment marked offered, in one batch. */
   offerGarment: (garmentId: string, capture: CaptureRow, detection: DetectionRow) =>
-    attempt(() =>
+    query(() =>
       db.batch([
         db.insert(captures).values(capture),
         db.insert(detections).values(detection),
@@ -100,7 +98,7 @@ const writes = (db: Db) => ({
     ).pipe(Effect.asVoid),
   /** The photo's finding given up: whether this call ended it. */
   failFinding: (photoId: string, at: Date) =>
-    attempt(() =>
+    query(() =>
       db
         .update(outfitPhotos)
         .set({ status: 'failed', updatedAt: at })
@@ -108,22 +106,22 @@ const writes = (db: Db) => ({
         .returning({ id: outfitPhotos.id }),
     ).pipe(Effect.map((rows) => rows.length > 0)),
   setFavourite: (accountId: string, photoId: string, favourite: boolean, at: Date) =>
-    attempt(() =>
+    query(() =>
       db.update(outfitPhotos).set({ favourite, updatedAt: at }).where(ofAccount(accountId, photoId)).returning(),
     ).pipe(Effect.map(first)),
   /** The person cut out of the photo, for collages. */
   setCutout: (accountId: string, photoId: string, cutoutKey: string, at: Date) =>
-    attempt(() => db.update(outfitPhotos).set({ cutoutKey, updatedAt: at }).where(ofAccount(accountId, photoId))).pipe(
+    query(() => db.update(outfitPhotos).set({ cutoutKey, updatedAt: at }).where(ofAccount(accountId, photoId))).pipe(
       Effect.asVoid,
     ),
   /** The look "Wear it again" saved from the photo. */
   setLook: (accountId: string, photoId: string, lookId: string, at: Date) =>
-    attempt(() => db.update(outfitPhotos).set({ lookId, updatedAt: at }).where(ofAccount(accountId, photoId))).pipe(
+    query(() => db.update(outfitPhotos).set({ lookId, updatedAt: at }).where(ofAccount(accountId, photoId))).pipe(
       Effect.asVoid,
     ),
   /** A garment confirmed as a piece, or found in none: only the account's own, on its own photo. */
   matchGarment: (accountId: string, photoId: string, garmentId: string, pieceId: string | null) =>
-    attempt(() =>
+    query(() =>
       db
         .update(photoGarments)
         .set({ pieceId, state: pieceId === null ? 'unmatched' : 'confirmed' })
@@ -138,7 +136,7 @@ const writes = (db: Db) => ({
     ).pipe(Effect.map((rows) => rows.length > 0)),
   /** Remove the photo and its garments; the row as it was, so its objects can go too. */
   deletePhoto: (accountId: string, photoId: string) =>
-    attempt(() => db.delete(outfitPhotos).where(ofAccount(accountId, photoId)).returning()).pipe(Effect.map(first)),
+    query(() => db.delete(outfitPhotos).where(ofAccount(accountId, photoId)).returning()).pipe(Effect.map(first)),
 })
 
 /** My Gallery's rows over D1: photos, their garments, and the receipt that makes adding one idempotent. */

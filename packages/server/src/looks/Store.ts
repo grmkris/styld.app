@@ -3,12 +3,11 @@ import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option } from 'effect'
 import { receiptQuery } from '../Receipts.ts'
-import { chunked, ownPieceIds, StoreUnavailable } from '../wardrobe/Store.ts'
+import { ownPieceIds } from '../wardrobe/Store.ts'
+import { chunked, query } from '../kernel/Db.ts'
 
 export type LookRow = typeof looks.$inferSelect
 type ReceiptRow = typeof operationReceipts.$inferSelect
-
-const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: () => StoreUnavailable.make({}) })
 
 /** Looks and their pieces in D1. Every read and write names the account. */
 export const makeLookStore = (database: Parameters<typeof drizzle>[0]) => {
@@ -17,7 +16,7 @@ export const makeLookStore = (database: Parameters<typeof drizzle>[0]) => {
   const piecesOf = (lookIds: ReadonlyArray<string>) =>
     Effect.map(
       Effect.forEach(chunked(lookIds), (chunk) =>
-        attempt(() =>
+        query(() =>
           db
             .select({ lookId: lookPieces.lookId, piece: pieces })
             .from(lookPieces)
@@ -31,7 +30,7 @@ export const makeLookStore = (database: Parameters<typeof drizzle>[0]) => {
   return {
     /** The look, its pieces in order and the operation's receipt, as one atomic batch. */
     createLook: (look: LookRow, pieceIds: ReadonlyArray<string>, receipt: ReceiptRow) =>
-      attempt(() =>
+      query(() =>
         db.batch([
           db.insert(looks).values(look),
           ...pieceIds.map((pieceId, position) => db.insert(lookPieces).values({ lookId: look.id, pieceId, position })),
@@ -41,16 +40,16 @@ export const makeLookStore = (database: Parameters<typeof drizzle>[0]) => {
     /** Which of these pieces belong to the account. */
     ownPieces: (accountId: string, pieceIds: ReadonlyArray<string>) => ownPieceIds(db, accountId, pieceIds),
     findReceipt: (accountId: string, operationId: string) =>
-      attempt(() => receiptQuery(db, accountId, operationId)).pipe(Effect.map((rows) => Option.fromNullishOr(rows[0]))),
+      query(() => receiptQuery(db, accountId, operationId)).pipe(Effect.map((rows) => Option.fromNullishOr(rows[0]))),
     listLooks: (accountId: string) =>
-      attempt(() =>
+      query(() =>
         db.select().from(looks).where(eq(looks.accountId, accountId)).orderBy(desc(looks.createdAt)).limit(200),
       ),
     /** These looks, whoever's they are: a board's pins read the looks pinned on it. */
     looksById: (lookIds: ReadonlyArray<string>) =>
       Effect.map(
         Effect.forEach(chunked(lookIds), (chunk) =>
-          attempt(() => db.select().from(looks).where(inArray(looks.id, chunk))),
+          query(() => db.select().from(looks).where(inArray(looks.id, chunk))),
         ),
         (rows) => rows.flat(),
       ),
@@ -58,7 +57,7 @@ export const makeLookStore = (database: Parameters<typeof drizzle>[0]) => {
     ownLooks: (accountId: string, lookIds: ReadonlyArray<string>) =>
       Effect.map(
         Effect.forEach(chunked(lookIds), (chunk) =>
-          attempt(() =>
+          query(() =>
             db
               .select({ id: looks.id })
               .from(looks)
@@ -68,7 +67,7 @@ export const makeLookStore = (database: Parameters<typeof drizzle>[0]) => {
         (rows) => new Set(rows.flat().map(({ id }) => id)),
       ),
     findLook: (accountId: string, lookId: string) =>
-      attempt(() =>
+      query(() =>
         db
           .select()
           .from(looks)
@@ -78,14 +77,14 @@ export const makeLookStore = (database: Parameters<typeof drizzle>[0]) => {
     piecesOf,
     /** Share the look from this time, or stop sharing it. */
     setShared: (accountId: string, lookId: string, sharedAt: Date | null) =>
-      attempt(() =>
+      query(() =>
         db
           .update(looks)
           .set({ sharedAt })
           .where(and(eq(looks.id, lookId), eq(looks.accountId, accountId))),
       ).pipe(Effect.asVoid),
     deleteLook: (accountId: string, lookId: string) =>
-      attempt(() =>
+      query(() =>
         db
           .delete(looks)
           .where(and(eq(looks.id, lookId), eq(looks.accountId, accountId)))
