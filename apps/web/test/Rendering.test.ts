@@ -5,7 +5,12 @@ import * as Server from 'foldkit/experimental/server'
 import { LocaleSave, Message, init, update, type Flags } from '../src/App.ts'
 import { offeredLocales, requestLocale } from '../src/Locale.ts'
 import { CircleNotchRegular } from '../src/PhosphorIcons.ts'
-import { consentCookie, consentFromCookies, type TelemetryConsent } from '../src/TelemetryConsent.ts'
+import {
+  consentFromCookies,
+  type TelemetryConsent,
+  TelemetryConsentControl,
+  telemetryConsentLayer,
+} from '../src/TelemetryConsent.ts'
 import { SessionHttp } from '@styld/auth/config'
 import { renderDocument, renderRequest } from '../src/entry.server.ts'
 import { urlOf } from './AppFixtures.ts'
@@ -136,7 +141,20 @@ test('reads only a recorded diagnostics choice from cookies', () => {
   expect(consentFromCookies('a=b; styld_diagnostics=granted')).toBe('granted')
   expect(consentFromCookies('styld_diagnostics=denied')).toBe('denied')
   expect(consentFromCookies('styld_diagnostics=yes; styld_diagnosticsx=granted')).toBe('undecided')
-  expect(consentCookie(true, true)).toBe('styld_diagnostics=granted; Path=/; Max-Age=15552000; SameSite=Lax; Secure')
+})
+
+test('a choice is kept in the preference cookie and handed to telemetry running on the page', () => {
+  const written: Array<string> = []
+  const applied: Array<boolean> = []
+  const browser = telemetryConsentLayer({
+    secure: true,
+    writeCookie: (cookie) => written.push(cookie),
+    applyConsent: (granted) => applied.push(granted),
+  })
+  Effect.runSync(TelemetryConsentControl.use((control) => control.record(true)).pipe(Effect.provide(browser)))
+  expect(written).toEqual(['styld_diagnostics=granted; Path=/; Max-Age=15552000; SameSite=Lax; Secure'])
+  expect(consentFromCookies(written[0])).toBe('granted')
+  expect(applied).toEqual([true])
 })
 
 const renderPage = async (path: string, cookie?: string) => {

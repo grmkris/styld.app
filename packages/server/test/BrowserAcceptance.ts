@@ -49,6 +49,8 @@ export const verifyBrowser = async (browser: Browser, origin: string): Promise<v
     await page.getByRole('button', { name: 'Allow', exact: true }).click()
     await prompt.waitFor({ state: 'hidden' })
     expect((await context.cookies()).find((cookie) => cookie.name === 'styld_diagnostics')?.value).toBe('granted')
+    // The telemetry SDK downloads only for a visitor who allowed it, so diagnostics start with the next page load.
+    await page.reload({ waitUntil: 'networkidle' })
     expect(await page.locator('h1').textContent()).toBe('A wardrobe shaped by you.')
     // Compiled zyzz styles reach the page: the masthead lays out as a flex row on Gallery paper (#f1eee7),
     // and the self-hosted font is in use.

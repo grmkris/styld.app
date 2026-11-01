@@ -10,40 +10,48 @@ import { view } from './View.ts'
 import { emailSignInLayer } from './EmailSignIn.ts'
 import { isTabChange, routing } from './Navigation.ts'
 import { styldClientLayer } from './StyldClient.ts'
-import { startTelemetry, telemetryConsentLayer } from './Telemetry.ts'
+import { consentFromCookies, telemetryConsentLayer } from './TelemetryConsent.ts'
 import { pictureEncoderLayer } from './Upload.ts'
 
-const telemetry = startTelemetry(window.location.origin, document.cookie)
+// Telemetry's code loads only for a visitor who allowed it; everyone else never downloads it. Only the page's language
+// ships with it; another one loads when the person switches to it.
+const [telemetry] = await Promise.all([
+  consentFromCookies(document.cookie) === 'granted'
+    ? import('./Telemetry.ts').then(({ startTelemetry }) => startTelemetry(window.location.origin))
+    : Promise.resolve(undefined),
+  loadCatalog(normalizeLocale(document.documentElement.lang)),
+])
 
-// Only the page's language ships with it; another one loads when the person switches to it.
-await loadCatalog(normalizeLocale(document.documentElement.lang))
+const config = {
+  Model,
+  Flags,
+  init,
+  update,
+  view,
+  subscriptions,
+  container: document.getElementById('root'),
+  // Tab pages switch inside the page and cross-fade; every other link loads whole (Navigation.ts).
+  routing,
+  viewTransition: ({ previousModel, model }: Runtime.ViewTransitionContext<Model, Message>) =>
+    isTabChange(previousModel.route, model.route),
+  // The DevTools MCP may dispatch decoded Messages; the bridge only runs under Vite's dev server.
+  devTools: { Message },
+  resources: Layer.mergeAll(
+    FetchHttpClient.layer,
+    styldClientLayer(window.location.origin).pipe(Layer.provide(FetchHttpClient.layer)),
+    emailSignInLayer(document).pipe(Layer.provideMerge(browserAuthLayer(window.location.origin)), Layer.orDie),
+    telemetryConsentLayer({
+      secure: document.location.protocol === 'https:',
+      writeCookie: (cookie) => {
+        document.cookie = cookie
+      },
+      applyConsent: (granted) => telemetry?.applyConsent(granted),
+    }),
+    pictureEncoderLayer,
+  ).pipe(
+    // @effect-diagnostics-next-line unstableApiUsage:off -- Effect's platform Web Crypto layer is the browser's only Crypto provider.
+    Layer.provideMerge(BrowserCrypto.layer),
+  ),
+}
 
-const application = Runtime.makeApplication(
-  telemetry.instrument({
-    Model,
-    Flags,
-    init,
-    update,
-    view,
-    subscriptions,
-    container: document.getElementById('root'),
-    // Tab pages switch inside the page and cross-fade; every other link loads whole (Navigation.ts).
-    routing,
-    viewTransition: ({ previousModel, model }: Runtime.ViewTransitionContext<Model, Message>) =>
-      isTabChange(previousModel.route, model.route),
-    // The DevTools MCP may dispatch decoded Messages; the bridge only runs under Vite's dev server.
-    devTools: { Message },
-    resources: Layer.mergeAll(
-      FetchHttpClient.layer,
-      styldClientLayer(window.location.origin).pipe(Layer.provide(FetchHttpClient.layer)),
-      emailSignInLayer(document).pipe(Layer.provideMerge(browserAuthLayer(window.location.origin)), Layer.orDie),
-      telemetryConsentLayer(document),
-      pictureEncoderLayer,
-    ).pipe(
-      // @effect-diagnostics-next-line unstableApiUsage:off -- Effect's platform Web Crypto layer is the browser's only Crypto provider.
-      Layer.provideMerge(BrowserCrypto.layer),
-    ),
-  }),
-)
-
-Runtime.hydrate(application)
+Runtime.hydrate(Runtime.makeApplication(telemetry === undefined ? config : telemetry.instrument(config)))

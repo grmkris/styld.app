@@ -1,4 +1,4 @@
-import { Context, type Effect, Schema } from 'effect'
+import { Context, Effect, Layer, Schema } from 'effect'
 
 /** The visitor's choice about browser diagnostics; `undecided` shows the prompt. */
 export const TelemetryConsent = Schema.Literals(['undecided', 'granted', 'denied'])
@@ -16,13 +16,28 @@ export const consentFromCookies = (cookies: string | null | undefined): Telemetr
   return value === 'granted' || value === 'denied' ? value : 'undecided'
 }
 
-/** A first-party preference cookie that page code can read: the browser entry applies a
- * stored grant before the first span, and server rendering hides a decided prompt. */
-export const consentCookie = (granted: boolean, secure: boolean): string =>
+/** A first-party preference cookie that page code can read: the browser entry loads telemetry only when it holds a
+ * grant, and server rendering hides a decided prompt. */
+const consentCookie = (granted: boolean, secure: boolean): string =>
   `${cookieName}=${granted ? 'granted' : 'denied'}; Path=/; Max-Age=15552000; SameSite=Lax${secure ? '; Secure' : ''}`
 
-/** Records a choice in the browser: the preference cookie and the telemetry SDK's consent. */
+/** Records a choice in the browser: the preference cookie, and the telemetry SDK's consent where it runs. */
 export class TelemetryConsentControl extends Context.Service<
   TelemetryConsentControl,
   { readonly record: (granted: boolean) => Effect.Effect<void> }
 >()('@styld/web/TelemetryConsentControl') {}
+
+/** The browser's consent control: it writes the preference cookie and hands the choice to telemetry running on this
+ * page (`applyConsent`), so a withdrawal stops it at once and a grant starts it from the next page load. */
+export const telemetryConsentLayer = (browser: {
+  readonly secure: boolean
+  readonly writeCookie: (cookie: string) => void
+  readonly applyConsent: (granted: boolean) => void
+}) =>
+  Layer.succeed(TelemetryConsentControl, {
+    record: (granted) =>
+      Effect.sync(() => {
+        browser.writeCookie(consentCookie(granted, browser.secure))
+        browser.applyConsent(granted)
+      }),
+  })
