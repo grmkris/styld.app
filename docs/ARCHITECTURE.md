@@ -84,6 +84,19 @@ Decisions for the delivery in `docs/ROADMAP.md` (Shopping your own wardrobe).
 - **Try-on's privacy exception** is the only path that sends a person's own photo to a provider; it never sends
   anyone else's, and garment inputs still pass the face rule.
 
+## Cleanup before the first production release (owner, 2026-11-01)
+
+Feature work is frozen while one pattern per concern replaces what grew one feature at a time; each pattern lands
+with a gate that keeps it. Decisions:
+
+- **A lost provider answer refunds the person.** When a provider accepted paid work and its answer is lost, the hold
+  is refunded, in every flow; Styld carries the possible provider charge.
+- **One baseline schema.** Until the rebuild, migrations only add; the constraining schema (CHECKs from the protocol's
+  literals, foreign keys, one copy of each fact) is generated once as a single baseline on a fresh preview, and both
+  testers' v1 wardrobes are imported again through the operator importer the production cutover reuses.
+- **Release testing happens on the rebuilt preview;** the deploy configuration becomes stage-ready without creating
+  another stage.
+
 ## Delivery boundary
 
 Deliver an isolated preview at workers.dev, with safe test data and functioning provider paths. No production DNS cutover, destructive v1 migration or personal-data copying into preview. Provide a reconciled export/import rehearsal and documented production migration procedure as part of parity readiness.
