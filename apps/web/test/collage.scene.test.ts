@@ -31,6 +31,7 @@ const boardWith = (items: ReadonlyArray<PieceItem>) =>
     version: 1,
     items,
     pins: [],
+    publicPins: [],
     moods: [],
     visibility: 'private',
     check: null,

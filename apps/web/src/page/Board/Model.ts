@@ -150,9 +150,9 @@ export const Model = Schema.Struct({
   /** What is pinned on the board, newest first. */
   pins: Schema.Array(Pin),
   pinWork: PinWork,
-  /** The pins visitors see, read through the public page while the board is public: a piece shows others only with a
-   * picture of its own and once Styld's check lets it, so it can be fewer than are pinned. */
-  shownToOthers: Schema.Option(Schema.Array(Schema.String)),
+  /** The pins visitors see while the board is public, as the server says: a piece shows others only with a picture of
+   * its own and once Styld's check lets it, so it can be fewer than are pinned. */
+  publicPins: Schema.Array(Schema.String),
   /** The pin whose × was pressed: it asks once more, since it comes off the table too (and a picture is deleted). */
   unpinning: Schema.Option(Schema.String),
   /** The settings sheet: the name being typed, a rename and a deletion. */
@@ -207,7 +207,7 @@ export const init = (boardId: string, signedIn: boolean): Model => ({
   pins: [],
   pinWork: PinWork.Idle(),
   unpinning: Option.none(),
-  shownToOthers: Option.none(),
+  publicPins: [],
   settings: Dialog.init({ id: 'board-settings', isAnimated: true }),
   nameDraft: '',
   rename: Rename.Idle(),
@@ -238,9 +238,13 @@ export const init = (boardId: string, signedIn: boolean): Model => ({
   make: Make.init(boardId),
 })
 
-/** Who sees the board and Styld's check of it, as the server last confirmed them. */
+/** Who sees the board and which of its pins, and Styld's check of it, as the server last confirmed them. */
 export const withChecked = (model: Model, board: Board): Model =>
-  modifyFields(model, { visibility: () => board.visibility, check: () => Option.fromNullishOr(board.check) })
+  modifyFields(model, {
+    visibility: () => board.visibility,
+    publicPins: () => board.publicPins,
+    check: () => Option.fromNullishOr(board.check),
+  })
 
 /** The board as the server last confirmed it: its name, paper, moods, visibility and check. */
 export const withSharing = (model: Model, board: Board): Model =>

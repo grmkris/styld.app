@@ -1,7 +1,6 @@
 import { Board } from '@styld/protocol'
-import { Option, Schema } from 'effect'
+import { Schema } from 'effect'
 import { click, Command, expect, given, role, scene, text } from 'foldkit/scene'
-import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
 import { Message as BoardMessage } from '../src/page/Board/Message.ts'
@@ -21,6 +20,7 @@ const board = Schema.decodeUnknownSync(Board)({
   version: 1,
   items: [],
   pins: [{ _tag: 'PiecePin', id: `pn_${'knit'.padEnd(22, 'x')}`, piece: knit, addedAt: '2026-10-31T09:00:00.000Z' }],
+  publicPins: [],
   moods: [],
   visibility: 'private',
   check: null,
@@ -41,17 +41,31 @@ describe("a board's page", () => {
     )
   })
 
-  test('says when visitors see fewer pins than are pinned', () => {
+  test('says when visitors see fewer pins than are pinned, as the board it read says', () => {
     const shown = withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
-      modifyFields(fromBoard(boardInit(boardId, true), { ...board, visibility: 'public' }), {
-        shownToOthers: () => Option.some([]),
-      }),
+      fromBoard(boardInit(boardId, true), { ...board, visibility: 'public', publicPins: [] }),
     )
     scene(
       { update, view },
       given(shown),
       expect(text('1 pin, 0 of them public on your profile')).toExist(),
       expect(text('Only you see this one until it has its own picture and passes Styld’s check')).toExist(),
+    )
+  })
+
+  test('marks no pin when visitors see every one of them', () => {
+    const shown = withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
+      fromBoard(boardInit(boardId, true), {
+        ...board,
+        visibility: 'public',
+        publicPins: board.pins.map(({ id }) => id),
+      }),
+    )
+    scene(
+      { update, view },
+      given(shown),
+      expect(text('1 pin, 0 of them public on your profile')).not.toExist(),
+      expect(text('Only you see this one until it has its own picture and passes Styld’s check')).not.toExist(),
     )
   })
 

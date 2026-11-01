@@ -22,6 +22,7 @@ import { Looks } from '../looks/Looks.ts'
 import { ownLookIds } from '../looks/Store.ts'
 import { Checks } from '../safety/Checks.ts'
 import { requirePublished } from '../social/ProfileStore.ts'
+import { PublicPages } from '../social/Public.ts'
 import { deliverImage } from '../wardrobe/Delivery.ts'
 import type { ShownImage } from '../wardrobe/Http.ts'
 import type { ImageSize } from '../wardrobe/Media.ts'
@@ -328,6 +329,7 @@ const make = Effect.gen(function* () {
     wardrobeStore: makeStore(db.$client),
     checks: yield* Checks,
     looks: yield* Looks,
+    pages: yield* PublicPages,
   }
   const edits = { ...changes(parts), ...tables(parts), ...pinning(parts), ...pictures(parts) }
   return {

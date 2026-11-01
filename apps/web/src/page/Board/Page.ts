@@ -33,7 +33,6 @@ import {
   SetBoardVisibility,
   FocusPin,
   keepPinId,
-  readShown,
   UnpinThings,
   unpinId,
 } from './PageCommands.ts'
@@ -254,8 +253,6 @@ type PageTag =
   | 'FailedLoadLooks'
   | 'SucceededPins'
   | 'FailedPins'
-  | 'SucceededReadShown'
-  | 'FailedReadShown'
 
 /** How the board page's own Messages change the board, for the board's update to spread into its match. */
 export const pageSteps = (
@@ -275,8 +272,7 @@ export const pageSteps = (
   SucceededSetBoardMoods: ({ board }) => moodsSaved(model, board),
   FailedSetBoardMoods: ({ attempted, previous }) => moodsFailed(model, attempted, previous),
   SucceededSetVisibility: ({ board }) => {
-    const next = modifyFields(withSharing(model, board), { publishing: () => Publishing.Idle() })
-    return { model: next, commands: readShown(next) }
+    return { model: modifyFields(withSharing(model, board), { publishing: () => Publishing.Idle() }) }
   },
   FailedSetVisibility: ({ needsProfile }) => ({
     model: modifyFields(model, { publishing: () => Publishing.Failed({ needsProfile }) }),
@@ -299,11 +295,6 @@ export const pageSteps = (
   FailedLoadLooks: () => ({
     model: modifyFields(model, { looks: () => LooksData.Failure({ error: 'Unavailable' }) }),
   }),
-  SucceededPins: ({ board }) => {
-    const changed = pinsChanged(model, board)
-    return { ...changed, commands: [...(changed.commands ?? []), ...readShown(changed.model)] }
-  },
-  SucceededReadShown: ({ pinIds }) => ({ model: modifyFields(model, { shownToOthers: () => Option.some(pinIds) }) }),
-  FailedReadShown: () => ({ model: modifyFields(model, { shownToOthers: () => Option.none() }) }),
+  SucceededPins: ({ board }) => pinsChanged(model, board),
   FailedPins: () => ({ model: modifyFields(model, { pinWork: () => PinWork.Failed() }) }),
 })

@@ -89,6 +89,9 @@ export const Board = Schema.Struct({
   version: Schema.Int,
   items: Schema.Array(BoardItem),
   pins: Schema.Array(Pin),
+  /** The pins others see while the board is public, by the public page's rule: a piece needs a picture of its own and a
+   * check that lets others see it, a look its own check, and an outfit photo never shows. None while it is private. */
+  publicPins: Schema.Array(PinId),
   /** Up to three moods, for Explore. */
   moods: Schema.Array(Mood),
   visibility: Visibility,

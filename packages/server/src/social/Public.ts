@@ -375,6 +375,16 @@ const images = (r: Reader, media: Media['Service']) => {
   }
 }
 
+/** What the owner of a board reads about who sees its pins. */
+const owners = (r: Reader) => ({
+  /** Which of these pins of the account's boards others see once their board is public: the pieces and looks others
+   * may see past their checks and the pictures that are not held back; the owner's board page marks the rest. */
+  pinsShown: Effect.fn('Styld.Public.pinsShown')(function* (accountId: string, pins: ReadonlyArray<PinRow>) {
+    const seen = yield* seenOn(r, accountId, pins, [])
+    return new Set(publicPins(seen, pins).map(({ id }) => id))
+  }),
+})
+
 const make = Effect.gen(function* () {
   const db = yield* Database
   const r: Reader = {
@@ -387,7 +397,7 @@ const make = Effect.gen(function* () {
     // Pictures are not gated by blocks: their ids are random, and every page that names one applies blocks.
     viewer: Option.none(),
   }
-  return { ...pages(r), ...images(r, yield* Media) }
+  return { ...pages(r), ...images(r, yield* Media), ...owners(r) }
 })
 
 /** Public pages: what anyone may read, signed in or not, by the one visibility rule. */

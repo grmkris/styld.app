@@ -117,6 +117,12 @@ const previewOf = async (origin: string, path: string) => {
   return page.text()
 }
 
+/** The owner's board as far as these checks read it: its pins and which of them visitors see. */
+const OwnPins = Schema.Struct({
+  pins: Schema.Array(Schema.Struct({ _tag: Schema.String, id: Schema.String })),
+  publicPins: Schema.Array(Schema.String),
+})
+
 /** A public board, read signed out: pictures shown, a piece only once it has a cut-out (its photo never goes
  * public), nothing private on it, and everything gone the moment it goes private. Publishing the profile never shows
  * the wardrobe: a piece is public only while it is on a public board or a shared look (owner, 2026-10-31). */
@@ -140,6 +146,9 @@ const verifyPublicPages = async (origin: string, fixtures: string, owner: Call) 
     check: { state: 'passed' },
   })
   expect(await publicPins(origin, boardId, (tags) => tags.length > 0)).toEqual(['PublicPicturePin'])
+  // The owner's own read of the board says which pins visitors see: the piece only once it has a cut-out.
+  const before = Schema.decodeUnknownSync(OwnPins)(await (await owner(`/api/boards/${boardId}`)).json())
+  expect(before.publicPins).toEqual(before.pins.filter(({ _tag }) => _tag === 'PicturePin').map(({ id }) => id))
   const shown = await anyone(`/cdn/public/pictures/${imageId}/thumb`)
   expect(shown.status).toBe(200)
   expect(shown.headers.get('content-type')).toBe('image/webp')
@@ -150,6 +159,8 @@ const verifyPublicPages = async (origin: string, fixtures: string, owner: Call) 
   // the check, as review does, so it shows once its new picture passed.
   await send(owner, `/api/pieces/${pieceId}`, 'PATCH', { name: 'Grey square' })
   expect(await publicPins(origin, boardId, (tags) => tags.length > 1)).toEqual(['PublicPicturePin', 'PublicPiecePin'])
+  const after = Schema.decodeUnknownSync(OwnPins)(await (await owner(`/api/boards/${boardId}`)).json())
+  expect(after.publicPins.toSorted()).toEqual(after.pins.map(({ id }) => id).toSorted())
   const thumb = await anyone(`/cdn/public/pieces/${pieceId}/thumb`)
   expect(thumb.headers.get('content-type')).toBe('image/webp')
   const etag = thumb.headers.get('etag') ?? ''

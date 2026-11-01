@@ -41,7 +41,7 @@ import type { LoadError } from '../../ServerData.ts'
 import { pageSteps } from './Page.ts'
 import * as People from '../People.ts'
 import * as Make from './Make.ts'
-import { readShown, ReloadBoard } from './PageCommands.ts'
+import { ReloadBoard } from './PageCommands.ts'
 
 /** The Commands that open the board: the board and a first batch of ids (the app reads the pieces for the tray).
  * Signed out it can only be someone's public board, read as visitors read it, with nothing to edit. */
@@ -81,16 +81,10 @@ const loadFailed = (model: Model, error: LoadError): UpdateReturn => ({
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
-    SucceededLoadBoard: ({ board }) => {
-      const next = fromBoard(model, board)
-      return {
-        model: next,
-        commands: [
-          ...Command.mapMessages(Make.resume(model.make), (made) => Message.GotMakeMessage({ message: made })),
-          ...readShown(next),
-        ],
-      }
-    },
+    SucceededLoadBoard: ({ board }) => ({
+      model: fromBoard(model, board),
+      commands: Command.mapMessages(Make.resume(model.make), (made) => Message.GotMakeMessage({ message: made })),
+    }),
     FailedLoadBoard: ({ error }) => loadFailed(model, error),
     SucceededVisitBoard: ({ board }) => ({
       model: modifyFields(model, { board: () => BoardData.Success({ data: BoardShown.Visiting({ board }) }) }),

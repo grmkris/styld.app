@@ -3,6 +3,7 @@ import { Effect, Match, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import type { Looks } from '../looks/Looks.ts'
 import type { Checks } from '../safety/Checks.ts'
+import type { PublicPages } from '../social/Public.ts'
 import { type Store } from '../wardrobe/Store.ts'
 import type { Database, StoreUnavailable } from '../kernel/Db.ts'
 import type { Media } from '../kernel/Media.ts'
@@ -62,6 +63,7 @@ export interface Parts {
   readonly wardrobeStore: Store
   readonly checks: Checks['Service']
   readonly looks: Looks['Service']
+  readonly pages: PublicPages['Service']
 }
 
 export type PinWithPiece = PinRow
@@ -101,13 +103,25 @@ export const shownPins = (parts: Parts, pins: ReadonlyArray<PinWithPiece>) =>
     return (boardId: string) => shownRows.filter((row) => row.boardId === boardId).flatMap((row) => row.pins)
   })
 
-/** Boards as their owner sees them, each with its table and pins. */
+/** The pins others see on these boards of one account while they are public, by the public pages' rule. */
+const publicPinIds = (parts: Parts, rows: ReadonlyArray<BoardRow>, pins: ReadonlyArray<PinWithPiece>) => {
+  const publicBoards = new Set(rows.filter(({ visibility }) => visibility === 'public').map(({ id }) => id))
+  const [owner] = rows
+  if (owner === undefined || publicBoards.size === 0) return Effect.succeed(new Set<string>())
+  return parts.pages.pinsShown(
+    owner.accountId,
+    pins.filter(({ pin }) => publicBoards.has(pin.boardId)),
+  )
+}
+
+/** Boards as their owner sees them, each with its table, its pins and which of them others see. */
 export const shown = (parts: Parts, rows: ReadonlyArray<BoardRow>) =>
   Effect.gen(function* () {
     const ids = rows.map(({ id }) => id)
     const items = yield* stored(parts.store.itemsOf(ids))
     const pins = yield* stored(parts.store.pinsOf(ids))
     const pinsOf = yield* shownPins(parts, pins)
+    const seen = yield* publicPinIds(parts, rows, pins)
     const checks = yield* parts.checks.statuses('board', ids)
     return yield* Effect.forEach(rows, (row) =>
       // Only the service writes rows, through the same schemas; a row that does not decode is a bug.
@@ -118,6 +132,7 @@ export const shown = (parts: Parts, rows: ReadonlyArray<BoardRow>) =>
         version: row.version,
         items: items.filter(({ boardId }) => boardId === row.id).map(shownItem),
         pins: pinsOf(row.id),
+        publicPins: pins.flatMap(({ pin }) => (pin.boardId === row.id && seen.has(pin.id) ? [pin.id] : [])),
         // Only the service writes moods, through the protocol's literals; others were never stored.
         moods: row.moods,
         visibility: row.visibility,

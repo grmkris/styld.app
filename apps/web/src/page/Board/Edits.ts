@@ -63,6 +63,7 @@ export const saved = (model: Model, board: Board): UpdateReturn => {
   const next = modifyFields(model, {
     version: () => board.version,
     pins: () => board.pins,
+    publicPins: () => board.publicPins,
     saving: () => Saving.Saved(),
   })
   return dirty ? scheduled(next) : { model: next }

@@ -24,7 +24,6 @@ import {
   LeaveBoard,
   LoadLooks,
   PinThings,
-  ReadShown,
   ReloadBoard,
   RenameBoard,
   SetBoardMoods,
@@ -65,6 +64,7 @@ const board = Schema.decodeUnknownSync(Board)({
   version: 2,
   items: [knitOnTable],
   pins: [knitPin],
+  publicPins: [],
   moods: [],
   visibility: 'private',
   check: null,
@@ -117,17 +117,19 @@ describe('a board page', () => {
       message(Message.ToggledPublic({ isPublic: true })),
       Command.resolve(
         SetBoardVisibility({ boardId: board.id, isPublic: true }),
-        Message.SucceededSetVisibility({ board: withPins([knitPin], { visibility: 'public', check: pending }) }),
+        Message.SucceededSetVisibility({
+          board: withPins([knitPin, shoesPin], { visibility: 'public', check: pending, publicPins: [knitPin.id] }),
+        }),
       ),
-      model(({ visibility, check, publishing, version }) => {
+      // The board the server answers says which pins others see: a piece shows them only with a picture of its own.
+      Command.expectNone(),
+      model(({ visibility, check, publishing, version, publicPins }) => {
         expect(visibility).toBe('public')
         expect(check).toEqual(Option.some(pending))
         expect(Publishing.guards.Idle(publishing)).toBe(true)
         expect(version).toBe(2)
+        expect(publicPins).toEqual([knitPin.id])
       }),
-      // Public, it reads how many pins others see: a piece shows them only with a picture of its own.
-      Command.resolve(ReadShown({ boardId: board.id }), Message.SucceededReadShown({ pinIds: [] })),
-      model(({ shownToOthers }) => expect(shownToOthers).toEqual(Option.some([]))),
     )
   })
 

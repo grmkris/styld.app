@@ -113,23 +113,17 @@ const pinContent = (pin: Pin, asking: boolean, locale: Locale, h: HtmlBuilder<Me
     }),
   )
 
-/** Public, and read through the public page without this pin. */
-const heldBack = (model: Model, pinId: string) =>
-  model.visibility === 'public' &&
-  Option.match(model.shownToOthers, { onNone: () => false, onSome: (shown) => !shown.includes(pinId) })
+/** Public, and this pin is not among those others see. */
+const heldBack = (model: Model, pinId: string) => model.visibility === 'public' && !model.publicPins.includes(pinId)
 
 /** Its pins and who sees it; public, how many of them others see when that is fewer (a piece shows others only with a
  * picture of its own, once Styld's check lets it). */
 const statusLine = (model: Model, locale: Locale) => {
   const count = model.pins.length
-  const shown = Option.filter(
-    Option.map(model.shownToOthers, (seen) => seen.length),
-    (seen) => model.visibility === 'public' && seen < count,
-  )
-  return Option.match(shown, {
-    onNone: () => format(locale, 'studio.boardStatus', { count, visibility: model.visibility }),
-    onSome: (seen) => format(locale, 'studio.boardStatusPartly', { count, shown: seen }),
-  })
+  const shown = model.publicPins.length
+  return model.visibility === 'public' && shown < count
+    ? format(locale, 'studio.boardStatusPartly', { count, shown })
+    : format(locale, 'studio.boardStatus', { count, visibility: model.visibility })
 }
 
 /** The collage as a card that opens the editor, named by its visible words. */
