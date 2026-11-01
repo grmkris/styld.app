@@ -2,6 +2,35 @@
 
 Status: active. Sign-in, the wardrobe (shop-style garment types, browsing, a piece's back), capture with real cut-outs (photos, video import, a held-up camera, scan anything), the review tray, the daily allowance, looks, clean pictures and turns, the boards' pins, profiles, checks and link import, mood boards from the person's own pieces and stickers, the outfit engine (Fast and Thinking), My Gallery and Styld, the stylist in the app are deployed to the isolated workers.dev preview (release `889af38`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping; the plan in progress is "Plan: shopping your own wardrobe" below, waiting at owner gate 1.
 
+## Cleanup C4c: generation, stylist, outfits, one language model — 2026-11-01
+
+Milestone C4c of the cleanup plan (server; the preview is not redeployed until the milestone's review).
+
+- **One language model** (`server/src/ai/LanguageModel.ts`): Effect's `LanguageModel` over the Worker's Workers AI
+  binding (`WorkersAi` service). The mood-board planner and Thinking ask `generateObject` with a Schema, Styld chats
+  with its Toolkit, Llama Guard reads words with `generateText`; every call goes through `providerCall` (deadline
+  `chat` 45 s or `guard` 20 s, retried only while busy, counted, priced) and its failures map one way to
+  `ProviderError`. Each model is named once with its price (`providers/Costs.ts` `textModels`); the tasks are planner
+  Llama 3.3 70B, Thinking and Styld DeepSeek V4.1 Flash, the content judge Llama Guard 3. Deleted:
+  `ai/TextModel.ts`, the `WorkersAiFetch` shim and `@effect/ai-openai-compat`, the stylist's own counting, timeout and
+  prices, the unpriced-model fallback, `OutfitModels`, `StylistModel`. The native suite plays the chat model at the
+  binding; the planner, painter, Thinking and the content judge stay service fakes.
+- **Services:** `Generations`, `Outfits` and `StylistChats` are `Context.Service`s with layers over the kernel
+  `Database` and `Media` and their own queue services (`GenerationQueue`, `StylistQueue`, `ChatStores`,
+  `StylistTools`), pacing through C4d's `Pacing`; `outfits/Live.ts` and `makeStylistLive` are gone.
+- **Credits:** a sticker or mood-board ask writes its job first, then holds its credit; past the limit or with words
+  that fail the check the job is undone (refund first) and the operation may ask again (native check).
+- **Leftovers:** a generation has one sticker (`Generation.sticker`; the `pictures` array and its `index` are gone
+  from the contract); board operations are `gen-<job>-sticker|pins|moods|layout`; `generation_pictures.index` and
+  `generation_jobs.held` are written as constants for C5 to drop; `PicturePainter.model` is gone. `makeOutfit` answers
+  a repeat from its receipt (`once`), so a repeated Thinking request counts against the day once (unit test on
+  SQLite); another request under the same id is `OperationConflict`. The Thinking day uses `DateTime.formatIsoDateUtc`.
+- **Remaining:** Outfits reads the wardrobe through `makeStore(db.$client)` (one more drizzle; the wardrobe store
+  should take the `Database` service, C4a's file); Styld's hold is still reserved before its turn begins in the
+  Durable Object; a failed generation job whose settle is lost has no sweep (the sweep re-sends only running jobs);
+  the stylist's recorded GLM fixtures still drive its turn tests; a Thinking call that times out is retried while busy
+  up to four times (about three minutes worst case) inside a synchronous request.
+
 ## Cleanup C4d: MCP, auth, links, edge, pacing — 2026-11-01
 
 Milestone C4d of the cleanup plan (server, contract and the web's API client; the preview is not redeployed until
