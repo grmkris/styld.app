@@ -1,5 +1,5 @@
 import { refused } from '../providers/Errors.ts'
-import { type Box, crop, decodePng, type Rgba } from '@styld/imaging'
+import { type Box, crop, readPng, type Rgba } from '@styld/imaging'
 import { Effect } from 'effect'
 
 export { type Box, crop, decodePng, encodePng, opaqueBounds, type Rgba } from '@styld/imaging'
@@ -30,10 +30,7 @@ export const overlapShare = (mask: Mask, other: Mask) => {
 /** Decode a PNG a provider made. One that does not decode is the provider's failure, and trying the same
  * picture again would fail the same way. */
 export const decodedPng = (bytes: Uint8Array) =>
-  Effect.try({
-    try: () => decodePng(bytes),
-    catch: () => refused('cloudflare-images'),
-  })
+  Effect.fromOption(readPng(bytes)).pipe(Effect.mapError(() => refused('cloudflare-images')))
 
 /** The garment alone: the original pixels inside `mask`, transparent elsewhere, cropped to the mask's box. */
 export const cutOut = (picture: Rgba, mask: Mask): Rgba => {

@@ -1,5 +1,5 @@
 import { type Ending, holdId } from '../usage/Holds.ts'
-import { decodePng, type Rgba } from '@styld/imaging'
+import { readPng } from '@styld/imaging'
 import { Unavailable } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import { accountPrefix, piecePrefix } from '../wardrobe/Media.ts'
@@ -46,17 +46,7 @@ export const readObject = (parts: Parts, key: string) =>
 
 /** A stored PNG's pixels: none when it is gone, or is not a PNG. */
 export const readPixels = (parts: Parts, key: string) =>
-  readObject(parts, key).pipe(
-    Effect.map(
-      Option.flatMap((bytes) => {
-        try {
-          return Option.some(decodePng(bytes))
-        } catch {
-          return Option.none<Rgba>()
-        }
-      }),
-    ),
-  )
+  readObject(parts, key).pipe(Effect.map(Option.flatMap(readPng)))
 
 export const writeObject = (parts: Parts, key: string, bytes: Uint8Array, contentType: string) =>
   Effect.tryPromise({

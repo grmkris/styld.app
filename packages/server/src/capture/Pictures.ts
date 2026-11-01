@@ -1,9 +1,9 @@
 import { ProviderError } from '../providers/Errors.ts'
-import { chromaKey, flatten, framed, keyColourFor, shrink } from '@styld/imaging'
+import { chromaKey, framed, keyColourFor, modelPicture, readPng, shrink } from '@styld/imaging'
 import { Effect, Option, Schedule } from 'effect'
 import { gateFor, planFor } from './CleanPicture.ts'
 import { type Parts, pictureKey, readPixels, storedAs, unavailable, writeObject } from './Parts.ts'
-import { decodePng, encodePng, opaqueShare, type Rgba } from './Pixels.ts'
+import { encodePng, opaqueShare, type Rgba } from './Pixels.ts'
 import { CaptureMetrics } from './Metrics.ts'
 import { CaptureConfig } from './Policy.ts'
 import { GarmentVision, ImageGenerator, type Picture } from './Providers.ts'
@@ -20,26 +20,12 @@ const keyedAt = 1280
 // The room left around a keyed garment, as a share of its longer side.
 const margin = 0.03
 
-/** A PNG's pixels, or none for bytes that are not one. */
-const decoded = (bytes: Uint8Array) => {
-  try {
-    return Option.some(decodePng(bytes))
-  } catch {
-    return Option.none<Rgba>()
-  }
-}
-
 /** A stored cut-out's pixels: none when it is gone, or is a photo rather than a cut-out (no transparency), which
  * never leaves Styld. */
 export const cutoutAt = (parts: Parts, key: string | null) =>
   key === null
     ? Effect.succeed(Option.none<Rgba>())
     : readPixels(parts, key).pipe(Effect.map(Option.filter((picture) => opaqueShare(picture) < 0.98)))
-
-const asPng = (picture: Rgba): Picture => ({ bytes: encodePng(picture), contentType: 'image/png' })
-
-/** A picture as a provider sees it: at most `longest` pixels, on light grey instead of transparency. */
-export const sent = (picture: Rgba, longest: number) => asPng(flatten(shrink(picture, longest)))
 
 const ends = ['ready', 'proposed', 'rejected', 'retake', 'kept-real', 'failed'] as const
 
@@ -90,7 +76,10 @@ const endChecking = (parts: Parts, picture: PictureRow, errorCode: string) =>
 const check = (parts: Parts, picture: PictureRow, drawn: Rgba, real: Rgba) =>
   Effect.gen(function* () {
     const policy = (yield* CaptureConfig).pictures
-    const comparison = yield* (yield* GarmentVision).compare(sent(drawn, judgedAt), sent(real, judgedAt))
+    const comparison = yield* (yield* GarmentVision).compare(
+      modelPicture(drawn, judgedAt),
+      modelPicture(real, judgedAt),
+    )
     const scores = { same: comparison.same, faithful: comparison.faithful }
     const gate = gateFor(comparison, policy)
     if (gate !== 'rejected') return yield* move(parts, picture, ['checking'], { ...scores, state: gate })
@@ -108,8 +97,8 @@ const draw = (parts: Parts, claimed: PictureRow, front: Rgba, back: Option.Optio
     const key = claimed.keyColour ?? 'green'
     const answer = yield* (yield* ImageGenerator)
       .draw({
-        front: sent(front, drawnFrom),
-        back: Option.map(back, (side) => sent(side, drawnFrom)),
+        front: modelPicture(front, drawnFrom),
+        back: Option.map(back, (side) => modelPicture(side, drawnFrom)),
         key,
         hint: Option.fromNullishOr(claimed.hint),
       })
@@ -129,7 +118,7 @@ const draw = (parts: Parts, claimed: PictureRow, front: Rgba, back: Option.Optio
       )
     const ended = Option.none<{ readonly clean: Rgba; readonly checking: PictureRow }>()
     if (Option.isNone(answer)) return ended
-    const keyed = Option.flatMap(decoded(answer.value.bytes), (drawn) => chromaKey(shrink(drawn, keyedAt), key))
+    const keyed = Option.flatMap(readPng(answer.value.bytes), (drawn) => chromaKey(shrink(drawn, keyedAt), key))
     if (Option.isNone(keyed)) {
       yield* end(parts, claimed, 'generating', 'key')
       return ended
@@ -164,7 +153,7 @@ const start = (parts: Parts, picture: PictureRow) =>
     if (Option.isNone(piece)) return
     const front = yield* cutoutAt(parts, piece.value.imageKey)
     if (Option.isNone(front)) return yield* move(parts, picture, ['queued'], { state: 'kept-real' })
-    const judgement = yield* (yield* GarmentVision).judge(sent(front.value, judgedAt))
+    const judgement = yield* (yield* GarmentVision).judge(modelPicture(front.value, judgedAt))
     const judged = { judge: judgement.verdict, judgeConfidence: judgement.confidence, face: judgement.face }
     const asked = picture.paid && judgement.face < policy.face
     const { plan } = asked ? { plan: 'draw' as const } : planFor(judgement, policy)

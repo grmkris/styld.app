@@ -2,7 +2,8 @@ import { PieceType, slotOf, typesInSlot } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import type { MatchOutcome, MatchScope } from './MatchStore.ts'
 import { enqueueMatch, type Parts, readPixels, storedAs } from './Parts.ts'
-import { judgedAt, sent } from './Pictures.ts'
+import { judgedAt } from './Pictures.ts'
+import { modelPicture } from '@styld/imaging'
 import { CaptureConfig } from './Policy.ts'
 import { GarmentVision, type Picture } from './Providers.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
@@ -23,7 +24,7 @@ export const comparable = (parts: Parts, key: string | null) =>
     ? Effect.succeed(Option.none<Picture>())
     : Effect.map(
         readPixels(parts, key),
-        Option.map((picture) => sent(picture, judgedAt)),
+        Option.map((picture) => modelPicture(picture, judgedAt)),
       )
 
 /** The one of `candidates` most likely the garment in `picture`, if the decision model is at least `bar` sure of it. */

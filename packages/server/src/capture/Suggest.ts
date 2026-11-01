@@ -3,7 +3,8 @@ import { Effect, Option, Schema } from 'effect'
 import { shownImage } from '../wardrobe/Shown.ts'
 import type { PieceChanges, PieceRow } from '../wardrobe/Store.ts'
 import { type Parts, readPixels, storedAs, unavailable } from './Parts.ts'
-import { judgedAt, sent } from './Pictures.ts'
+import { judgedAt } from './Pictures.ts'
+import { modelPicture } from '@styld/imaging'
 import { GarmentVision, type Suggestion } from './Providers.ts'
 import { nowDate } from '../kernel/Db.ts'
 
@@ -54,7 +55,7 @@ export const suggesting = (parts: Parts) => ({
       return
     }
     const suggestion = yield* (yield* GarmentVision)
-      .suggest(sent(pixels.value, judgedAt))
+      .suggest(modelPicture(pixels.value, judgedAt))
       .pipe(Effect.mapError(unavailable))
     yield* storedAs(
       parts.wardrobeStore.updatePiece(piece.accountId, pieceId, {

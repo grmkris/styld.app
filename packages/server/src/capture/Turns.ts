@@ -2,14 +2,15 @@ import { type ProviderError, isBusy, isOutcomeUnknown } from '../providers/Error
 import {
   chromaKey,
   crop,
-  decodePng,
   encodePng,
   fitSide,
-  flatten,
   frontAnchor,
   keyColourFor,
+  modelPicture,
   onKey,
+  pngPicture,
   type Rgba,
+  readPng,
   shrink,
 } from '@styld/imaging'
 import { NotFound, prices, SheetRefused, type TurnLayout, TurnRefused } from '@styld/protocol'
@@ -17,6 +18,7 @@ import { Effect, Match, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { turnView } from '../wardrobe/Shown.ts'
 import { turnKept } from './CleanPicture.ts'
+import { judgedAt } from './Pictures.ts'
 import { hanger } from './Hanger.ts'
 import {
   enqueueTurn,
@@ -52,27 +54,17 @@ const claimMillis = 5 * 60 * 1000
 const Started = Schema.Struct({ job: Schema.Unknown, startedAt: Schema.Number })
 const startedOf = (turn: TurnRow) => Schema.decodeUnknownOption(Started)(turn.operation)
 
-const png = (picture: Rgba): Picture => ({ bytes: encodePng(picture), contentType: 'image/png' })
-
 /** An opaque frame as the video model takes it: a JPEG, made by the Images binding; the PNG where the binding cannot
  * (the native stack), whose small test frames the stand-in takes. */
 const jpegOf = (picture: Rgba) =>
   Effect.gen(function* () {
     const bytes = yield* (yield* PictureWork).jpeg(encodePng(picture))
     return { bytes, contentType: 'image/jpeg' } satisfies Picture
-  }).pipe(Effect.orElseSucceed(() => png(picture)))
+  }).pipe(Effect.orElseSucceed(() => pngPicture(picture)))
 
 interface TurnVideo {
   readonly bytes: Uint8Array
   readonly contentType: 'video/mp4'
-}
-
-const decoded = (bytes: Uint8Array) => {
-  try {
-    return Option.some(decodePng(bytes))
-  } catch {
-    return Option.none<Rgba>()
-  }
 }
 
 const ends = ['ready', 'rejected', 'failed'] as const
@@ -119,8 +111,8 @@ const sideView = (parts: Parts, turn: TurnRow, front: Rgba, key: 'green' | 'mage
   Effect.gen(function* () {
     const stored = yield* readPixels(parts, turnKey(turn.accountId, turn.pieceId, 'side.png'))
     if (Option.isSome(stored)) return stored
-    const drawn = yield* (yield* ImageGenerator).profile(png(onKey(front, key)), key)
-    const fitted = Option.flatMap(decoded(drawn.bytes), (side) =>
+    const drawn = yield* (yield* ImageGenerator).profile(pngPicture(onKey(front, key)), key)
+    const fitted = Option.flatMap(readPng(drawn.bytes), (side) =>
       Option.flatMap(chromaKey(shrink(side, 1280), key), (keyed) => Option.fromNullishOr(fitSide(keyed, front))),
     )
     if (Option.isSome(fitted))
@@ -228,9 +220,9 @@ const checked = (sheet: Rgba, layout: TurnLayout, clean: Rgba) =>
   Effect.gen(function* () {
     const vision = yield* GarmentVision
     const policy = (yield* CaptureConfig).turns
-    const front = png(flatten(shrink(clean, 512)))
+    const front = modelPicture(clean, judgedAt)
     const answers = yield* Effect.forEach(checkedFrames(layout.frames), (index) =>
-      vision.compareTurn(png(flatten(cellOf(sheet, layout, index))), front),
+      vision.compareTurn(modelPicture(cellOf(sheet, layout, index), judgedAt), front),
     )
     return {
       kept: turnKept(answers, policy),
@@ -271,7 +263,7 @@ export const turning = (parts: Parts) => ({
 /** A sheet laid out as it says, and the clean picture to check it against; refused without either. */
 const sheetAndFront = (parts: Parts, pieceId: string, layout: TurnLayout, bytes: Uint8Array) =>
   Effect.gen(function* () {
-    const sheet = Option.filter(decoded(bytes), (pixels) => laidOut(pixels, layout))
+    const sheet = Option.filter(readPng(bytes), (pixels) => laidOut(pixels, layout))
     const picture = cleanPicture(yield* storedAs(parts.store.findPicture(pieceId)))
     const clean = Option.isNone(picture) ? Option.none<Rgba>() : yield* readPixels(parts, picture.value.cleanKey)
     if (Option.isNone(sheet) || Option.isNone(clean)) return yield* SheetRefused.make({})

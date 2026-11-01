@@ -1,3 +1,4 @@
+import { Option } from 'effect'
 import { convertIndexedToRgb, decode, encode } from 'fast-png'
 
 /** A picture in memory: four bytes a pixel (red, green, blue, alpha), rows top to bottom. The Worker and the
@@ -50,6 +51,24 @@ export const decodePng = (bytes: Uint8Array): Rgba => {
 export const encodePng = (picture: Rgba): Uint8Array =>
   encode({ width: picture.width, height: picture.height, data: picture.data, channels: 4, depth: 8 })
 
+/** The one way stored or provider bytes are read as pixels: none for bytes that are not a PNG. */
+export const readPng = (bytes: Uint8Array): Option.Option<Rgba> => {
+  try {
+    return Option.some(decodePng(bytes))
+  } catch {
+    return Option.none()
+  }
+}
+
+/** Encoded PNG bytes with their content type, as a provider or the bucket takes them. */
+export interface PngPicture {
+  readonly bytes: Uint8Array
+  readonly contentType: 'image/png'
+}
+
+/** A picture as a PNG to send or store. */
+export const pngPicture = (picture: Rgba): PngPicture => ({ bytes: encodePng(picture), contentType: 'image/png' })
+
 /** The average of `picture`'s pixels in the rectangle from (left, top) up to (right, bottom), into `out` at `to`. */
 const average = (picture: Rgba, box: readonly [number, number, number, number], out: Uint8Array, to: number) => {
   const [left, top, right, bottom] = box
@@ -97,6 +116,11 @@ export const flatten = (picture: Rgba, ground = 236): Rgba => {
   }
   return { width: picture.width, height: picture.height, data }
 }
+
+/** A picture as a model sees it, the one shape every model input takes: at most `longest` pixels on its long edge,
+ * on light grey instead of transparency, as a PNG. */
+export const modelPicture = (picture: Rgba, longest: number): PngPicture =>
+  pngPicture(flatten(shrink(picture, longest)))
 
 /** A rectangle in pixels: `left`/`top` inclusive, `right`/`bottom` exclusive. */
 export interface Box {
