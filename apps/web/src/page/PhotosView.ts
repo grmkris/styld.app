@@ -11,7 +11,7 @@ import { photoRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
-import { couldNotLoad } from './LooksView.ts'
+import { retryView } from './Retry.ts'
 import { Adding, Message, type Model } from './Photos.ts'
 import * as styles from './PhotosView.styles.ts'
 import { wardrobeMain } from './WardrobeTabs.ts'
@@ -104,7 +104,7 @@ const photosPage = (model: Model, inputs: Inputs, h: HtmlBuilder<Message>): Html
     styles.photosPage(),
     AsyncData.matchData(model.photos, {
       onEmpty: () => loadingView(locale, h),
-      onFailure: () => [couldNotLoad(format(locale, 'photos.loadFailed', {}), locale, h, Message.ClickedRetry())],
+      onFailure: () => [retryView(format(locale, 'photos.loadFailed', {}), locale, Message.ClickedRetry(), h)],
       onData: (photos) =>
         photos.length === 0
           ? [

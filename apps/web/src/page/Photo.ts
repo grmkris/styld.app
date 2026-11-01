@@ -1,13 +1,14 @@
 import { newOperation, newOperationId } from '../OperationIds.ts'
 import { Look, Photo as PhotoContract, PhotoGarmentId, PhotoId, PieceId } from '@styld/protocol'
-import { Effect, Option, Predicate, Schema } from 'effect'
+import { Effect, Number, Option, Predicate, Result, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
-import { Command, Update } from 'foldkit'
+import { AsyncData, Command, Subscription, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
-import { findingPause } from './Photos.ts'
+import { Misses, pollWhilePending } from '../Polling.ts'
+import { LoadError } from '../ServerData.ts'
 import * as SaveToBoard from './SaveToBoard.ts'
 
 // One outfit photo of My Gallery (owner, 2026-10-31): the garments Styld found, each confirmed as one of the person's
@@ -16,13 +17,9 @@ import * as SaveToBoard from './SaveToBoard.ts'
 
 // MODEL
 
-export const Shown = defineTaggedUnion({
-  Loading: {},
-  Loaded: { photo: PhotoContract },
-  NotFound: {},
-  Failed: {},
-})
-export type Shown = typeof Shown.Type
+/** The photo as last read. */
+export const PhotoData = AsyncData.Schema(PhotoContract, LoadError)
+export type PhotoData = typeof PhotoData.schema.Type
 
 /** A change on its way, one that did not go through, or a cut-out that found no one. */
 export const Work = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {}, NoPerson: {} })
@@ -33,18 +30,20 @@ export type Deletion = typeof Deletion.Type
 
 export const Model = Schema.Struct({
   photoId: Schema.String,
-  shown: Shown,
+  photo: PhotoData.schema,
   work: Work,
   deletion: Deletion,
   /** The garment whose wardrobe picker is open. */
   choosing: Schema.Option(PhotoGarmentId),
   saveToBoard: SaveToBoard.Model,
+  misses: Misses,
 })
 export type Model = typeof Model.Type
 
 export const init = (photoId: string): Model => ({
   photoId,
-  shown: Shown.Loading(),
+  photo: AsyncData.Loading(),
+  misses: 0,
   work: Work.Idle(),
   deletion: Deletion.Idle(),
   choosing: Option.none(),
@@ -55,9 +54,9 @@ export const init = (photoId: string): Model => ({
 
 export const Message = defineMessageUnion({
   SucceededGetPhoto: { photo: PhotoContract },
-  FailedGetPhoto: { notFound: Schema.Boolean },
+  FailedGetPhoto: { error: LoadError },
   ClickedRetry: {},
-  ElapsedFindingPause: {},
+  TickedFindingRefresh: {},
   ClickedFavourite: { favourite: Schema.Boolean },
   /** A garment confirmed as a piece, or none of them. */
   ClickedMatch: { garmentId: PhotoGarmentId, pieceId: Schema.NullOr(PieceId) },
@@ -98,15 +97,11 @@ export const GetPhoto = Command.define('GetPhoto', {
       return Message.SucceededGetPhoto({ photo })
     }).pipe(
       Effect.catch((error) =>
-        Effect.succeed(Message.FailedGetPhoto({ notFound: Predicate.isTagged(error, 'NotFound') })),
+        Effect.succeed(
+          Message.FailedGetPhoto({ error: Predicate.isTagged(error, 'NotFound') ? 'NotFound' : 'Unavailable' }),
+        ),
       ),
     ),
-})
-
-/** @internal Exported for its tests. */
-export const WaitWhileFinding = Command.define('WaitWhileFinding', {
-  messages: [Message.ElapsedFindingPause],
-  execute: findingPause.pipe(Effect.as(Message.ElapsedFindingPause())),
 })
 
 /** @internal Exported for its tests. */
@@ -216,9 +211,17 @@ const sending = (model: Model, command: Command.Command<Message, never, StyldCli
     ? { model }
     : { model: modifyFields(model, { work: () => Work.Sending(), choosing: () => Option.none() }), commands: [command] }
 
-const loaded = (model: Model, photo: PhotoContract): UpdateReturn => ({
-  model: modifyFields(model, { shown: () => Shown.Loaded({ photo }), work: () => Work.Idle() }),
-  commands: photo.status === 'finding' ? [WaitWhileFinding()] : [],
+const photoCache = (revalidate: (photo: PhotoData) => Option.Option<PhotoData>) => (model: Model) =>
+  Update.refresh<Model, Message, PhotoContract, LoadError, StyldClient>({
+    read: (current: Model) => Option.some(current.photo),
+    revalidate,
+    write: (current: Model, photo: PhotoData) => modifyFields(current, { photo: () => photo }),
+    load: GetPhoto({ photoId: model.photoId }),
+  })(model)
+
+/** A change went through: the photo as the server answered it, and the page ready for the next change. */
+const changed = (model: Model, photo: PhotoContract): UpdateReturn => ({
+  model: modifyFields(model, { photo: () => PhotoData.Success({ data: photo }), work: () => Work.Idle() }),
 })
 
 const foldSaveToBoard = SaveToBoard.foldInto<Model, Message>((message) => Message.GotSaveToBoardMessage({ message }))
@@ -234,22 +237,24 @@ const confirmDelete = (model: Model): UpdateReturn =>
 const wornAgain = (model: Model, look: Look): UpdateReturn => ({
   model: modifyFields(model, {
     work: () => Work.Idle(),
-    shown: (shown) =>
-      Shown.guards.Loaded(shown) ? Shown.Loaded({ photo: { ...shown.photo, lookId: look.id } }) : shown,
+    photo: AsyncData.map((photo) => ({ ...photo, lookId: look.id })),
   }),
 })
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
-    SucceededGetPhoto: ({ photo }) => loaded(model, photo),
-    FailedGetPhoto: ({ notFound }) => ({
-      model: modifyFields(model, { shown: () => (notFound ? Shown.NotFound() : Shown.Failed()) }),
+    // A read (the first, or a poll while the garments are found) shows the photo; a change on its way stays so.
+    SucceededGetPhoto: ({ photo }) => ({
+      model: modifyFields(model, { photo: () => PhotoData.Success({ data: photo }), misses: () => 0 }),
     }),
-    ClickedRetry: () => ({
-      model: modifyFields(model, { shown: () => Shown.Loading() }),
-      commands: [GetPhoto({ photoId: model.photoId })],
+    FailedGetPhoto: ({ error }) => ({
+      model: modifyFields(model, {
+        photo: (photo) => AsyncData.settle(photo, Result.fail(error)),
+        misses: Number.increment,
+      }),
     }),
-    ElapsedFindingPause: () => ({ model, commands: [GetPhoto({ photoId: model.photoId })] }),
+    ClickedRetry: () => photoCache(AsyncData.revalidateOrLoad)(modifyFields(model, { misses: () => 0 })),
+    TickedFindingRefresh: () => photoCache(AsyncData.revalidate)(model),
     ClickedFavourite: ({ favourite }) => sending(model, SetFavourite({ photoId: model.photoId, favourite })),
     ClickedMatch: ({ garmentId, pieceId }) =>
       sending(model, MatchGarment({ photoId: model.photoId, garmentId, pieceId })),
@@ -261,7 +266,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     FailedCutOut: ({ noPerson }) => ({
       model: modifyFields(model, { work: () => (noPerson ? Work.NoPerson() : Work.Failed()) }),
     }),
-    SucceededChange: ({ photo }) => loaded(model, photo),
+    SucceededChange: ({ photo }) => changed(model, photo),
     SucceededWearAgain: ({ look }) => wornAgain(model, look),
     FailedChange: () => ({ model: modifyFields(model, { work: () => Work.Failed() }) }),
     ClickedDelete: () => ({ model: modifyFields(model, { deletion: () => Deletion.Confirming() }) }),
@@ -271,3 +276,18 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     FailedDeletePhoto: () => ({ model: modifyFields(model, { deletion: () => Deletion.Failed() }) }),
     GotSaveToBoardMessage: (got) => foldSaveToBoard(model, got.message),
   })
+
+// SUBSCRIPTION
+
+/** The photo is asked for again while Styld finds its garments; a change on its way is left as it is. */
+export const subscriptions = Subscription.make<Model, Message>()(() => ({
+  photoWhileFinding: pollWhilePending<Model, Message>({
+    pendingIds: (model) =>
+      Option.match(AsyncData.getData(model.photo), {
+        onNone: (): ReadonlyArray<string> => [],
+        onSome: (photo) => (photo.status === 'finding' ? [photo.id] : []),
+      }),
+    misses: (model) => model.misses,
+    tick: Message.TickedFindingRefresh(),
+  }),
+}))

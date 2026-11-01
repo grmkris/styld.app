@@ -3,12 +3,12 @@ import { format, type Locale } from '@styld/i18n'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
-import { actionButton } from '../ActionButton.ts'
 import { secondaryAction } from '../Actions.styles.ts'
 import { boardsRouter, lookRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
+import { retryView } from './Retry.ts'
 import { wardrobeMain } from './WardrobeTabs.ts'
 import { Message, type Model } from './Looks.ts'
 import { message as messageSection, messageTitle } from './WardrobeView.styles.ts'
@@ -47,16 +47,6 @@ const card = (look: Look, locale: Locale, h: HtmlBuilder<Message>): Html =>
     ],
   )
 
-/** Looks that could not be read, and trying again. */
-export const couldNotLoad = <Message>(title: string, locale: Locale, h: HtmlBuilder<Message>, onRetry: Message): Html =>
-  h.section(
-    [h.Role('alert'), ...styled(h, messageSection())],
-    [
-      h.h2(styled(h, messageTitle()), [title]),
-      actionButton({ label: format(locale, 'common.tryAgain', {}), style: secondaryAction(), onClick: onRetry }, h),
-    ],
-  )
-
 const skeletonCards = ['a', 'b'] as const
 
 /** The shape of what is coming: two cards with a square for the pieces, a name and a line. */
@@ -80,7 +70,7 @@ const looksPage = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html 
     styles.looksPage(),
     AsyncData.matchData(model.saved, {
       onEmpty: () => loadingView(locale, h),
-      onFailure: () => [couldNotLoad(format(locale, 'looks.loadFailed', {}), locale, h, Message.ClickedRetry())],
+      onFailure: () => [retryView(format(locale, 'looks.loadFailed', {}), locale, Message.ClickedRetry(), h)],
       onData: (looks) =>
         looks.length === 0
           ? [

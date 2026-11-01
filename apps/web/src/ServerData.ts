@@ -11,6 +11,11 @@ import { StyldClient } from './StyldClient.ts'
 
 // MODEL
 
+/** Why something a page asked for is not shown: it does not exist (or is not the person's), or the server did not
+ * answer. Pages read their data as `AsyncData` with this error; a failure keeps what was shown before. */
+export const LoadError = Schema.Literals(['NotFound', 'Unavailable'])
+export type LoadError = typeof LoadError.Type
+
 /** The person's pieces as last read. */
 export const PiecesData = AsyncData.Schema(Schema.Array(Piece), Schema.Literal('Unavailable'))
 export type PiecesData = typeof PiecesData.schema.Type

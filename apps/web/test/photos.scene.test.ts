@@ -35,7 +35,10 @@ const photo = Schema.decodeUnknownSync(PhotoContract)({
 /** The photo's page with the wardrobe read. */
 const onPhoto = () =>
   withPage(withPieces(at(`/wardrobe/gallery/${photo.id}`, { signedIn: true }), [tee, shirt, jeans]), lenses.photo, () =>
-    modifyFields(Photo.init(photo.id), { shown: () => Photo.Shown.Loaded({ photo }), choosing: () => Option.none() }),
+    modifyFields(Photo.init(photo.id), {
+      photo: () => Photo.PhotoData.Success({ data: photo }),
+      choosing: () => Option.none(),
+    }),
   )
 
 describe('an outfit photo’s page', () => {

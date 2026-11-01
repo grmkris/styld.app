@@ -18,7 +18,8 @@ import * as SaveToBoardView from './SaveToBoardView.ts'
 import { barStart, round } from './PageBar.styles.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
-import { collage, couldNotLoad } from './LooksView.ts'
+import { collage } from './LooksView.ts'
+import { retryView } from './Retry.ts'
 import { kindName, pieceLabel } from './WardrobeWords.ts'
 import { cx } from 'zyzz'
 import * as styles from './LooksView.styles.ts'
@@ -166,7 +167,7 @@ export const view = Submodel.defineView<Model, Message, PeopleView.Inputs>((mode
         Visiting: ({ page }) => visitingView(model, page, { locale, signedIn }, h),
         Failed: () => [
           h.h1([], [format(locale, 'looks.title', {})]),
-          couldNotLoad(format(locale, 'looks.loadFailed', {}), locale, h, Message.ClickedRetry()),
+          retryView(format(locale, 'looks.loadFailed', {}), locale, Message.ClickedRetry(), h),
         ],
         Loaded: ({ look }) => [
           h.h1([], [look.name]),

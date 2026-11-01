@@ -421,6 +421,12 @@ const showsPieces = (model: Model) =>
 export const subscriptions = Subscription.aggregate(
   Subscription.lift(AddPiecesSubscription.subscriptions)<Model, Message>(at(lenses.addPieces)),
   Subscription.lift(ServerData.subscriptions)<Model, Message>({ ...data, when: showsPieces }),
+  // Tab pages keep their Model while another tab shows, so My Gallery's poll also waits for its own route.
+  Subscription.lift(Photos.subscriptions)<Model, Message>({
+    ...at(lenses.photos),
+    when: (model) => AppRoute.guards.Photos(model.route),
+  }),
+  Subscription.lift(Photo.subscriptions)<Model, Message>(at(lenses.photo)),
   // A board's page listens for coming back into view; its collage editor also for hands, keys, pasted pictures and
   // dropped files.
   Subscription.lift(BoardSubscription.pageSubscriptions)<Model, Message>(at(lenses.board)),

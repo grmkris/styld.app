@@ -20,7 +20,7 @@ export const Misses = Schema.Int
 export type Misses = typeof Misses.Type
 
 /** Whether a page has stopped following its work after too many failed polls. */
-const hasStopped = (misses: Misses) => misses >= mostMisses
+export const hasStopped = (misses: Misses) => misses >= mostMisses
 
 const PendingIds = Schema.Struct({ pendingIds: Schema.Array(Schema.String) })
 

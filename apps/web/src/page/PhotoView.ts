@@ -1,7 +1,7 @@
 import { format, type Locale } from '@styld/i18n'
 import { type Photo, type PhotoGarment, type Piece, slotOf } from '@styld/protocol'
 import { Option } from 'effect'
-import { Submodel } from 'foldkit'
+import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
@@ -11,8 +11,10 @@ import { loader } from '../Icon.ts'
 import { lookRouter, reviewRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { backToGallery } from './PageBar.ts'
+import { hasStopped } from '../Polling.ts'
+import { retryView } from './Retry.ts'
 import * as SaveToBoardView from './SaveToBoardView.ts'
-import { Deletion, Message, type Model, Shown, Work } from './Photo.ts'
+import { Deletion, Message, type Model, Work } from './Photo.ts'
 import { photoDate } from './PhotosView.ts'
 import * as styles from './PhotosView.styles.ts'
 import { pieceLabel } from './WardrobeWords.ts'
@@ -272,26 +274,24 @@ export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, 
     [h.Id('main'), ...styled(h, styles.photoPage())],
     [
       h.div(styled(h, styles.bar()), [backToGallery(inputs.locale, h)]),
-      ...Shown.match(model.shown, {
-        Loading: () => [
+      ...AsyncData.matchData(model.photo, {
+        onEmpty: () => [
           h.p(
             [h.Role('status'), ...styled(h, styles.note())],
             [loader(h), format(inputs.locale, 'common.loading', {})],
           ),
         ],
-        NotFound: () => [h.p([], [format(inputs.locale, 'photo.notFound', {})])],
-        Failed: () => [
-          h.p([h.Role('alert')], [format(inputs.locale, 'photos.loadFailed', {})]),
-          actionButton(
-            {
-              label: format(inputs.locale, 'common.tryAgain', {}),
-              style: secondaryAction(),
-              onClick: Message.ClickedRetry(),
-            },
-            h,
-          ),
+        onFailure: (error) =>
+          error === 'NotFound'
+            ? [h.p([], [format(inputs.locale, 'photo.notFound', {})])]
+            : [retryView(format(inputs.locale, 'photos.loadFailed', {}), inputs.locale, Message.ClickedRetry(), h)],
+        onData: (photo) => [
+          ...loadedView(model, photo, inputs, h),
+          // Styld was still finding its garments when the polls stopped getting through.
+          hasStopped(model.misses)
+            ? retryView(format(inputs.locale, 'photos.loadFailed', {}), inputs.locale, Message.ClickedRetry(), h)
+            : h.empty,
         ],
-        Loaded: ({ photo }) => loadedView(model, photo, inputs, h),
       }),
     ],
   ),

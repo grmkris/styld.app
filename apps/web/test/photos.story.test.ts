@@ -1,10 +1,13 @@
 import { Look, Photo as PhotoContract, PhotoGarmentId, PieceId } from '@styld/protocol'
-import { Option, Schema } from 'effect'
+import { Array, Option, Schema } from 'effect'
 import { AsyncData } from 'foldkit'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import * as Photo from '../src/page/Photo.ts'
 import * as Photos from '../src/page/Photos.ts'
+import { subscriptions as appSubscriptions } from '../src/App.ts'
+import { lenses } from '../src/Page.ts'
+import { at, withPage } from './AppFixtures.ts'
 
 const garmentId = PhotoGarmentId.make(`pg_${'tee'.padEnd(22, 'x')}`)
 const pieceId = PieceId.make(`pc_${'tee'.padEnd(22, 'x')}`)
@@ -32,20 +35,66 @@ const look = Schema.decodeUnknownSync(Look)({
 })
 const file = new File(['x'], 'outfit.jpg', { type: 'image/jpeg' })
 
+/** What My Gallery's poll waits on. */
+const galleryPending = (current: Photos.Model) =>
+  Photos.subscriptions.photosWhileFinding.modelToDependencies(current).pendingIds
+
+/** What the photo page's poll waits on. */
+const photoPending = (current: Photo.Model) =>
+  Photo.subscriptions.photoWhileFinding.modelToDependencies(current).pendingIds
+
 describe('My Gallery', () => {
-  test('a picked photo is sent for a credit, shows first while its clothes are found, and is asked about again', () => {
+  test('a picked photo is sent for a credit, shows first while its clothes are found, and is followed until found', () => {
     story(
       Photos.update,
       given(Photos.init()),
       message(Photos.Message.ChosePhoto({ files: [file] })),
       Command.expectExact(Photos.AddPhoto({ file: file })),
       Command.resolve(Photos.AddPhoto, Photos.Message.SucceededAddPhoto({ photo: finding })),
-      Command.expectExact(Photos.WaitWhileFinding()),
-      Command.resolve(Photos.WaitWhileFinding, Photos.Message.ElapsedFindingPause()),
+      Command.expectNone(),
+      model((current) => expect(galleryPending(current)).toEqual([finding.id])),
+      message(Photos.Message.TickedFindingRefresh()),
       Command.expectExact(Photos.ListPhotos()),
       Command.resolve(Photos.ListPhotos, Photos.Message.SucceededListPhotos({ photos: [ready] })),
       model(({ photos }) => expect(AsyncData.getData(photos)).toEqual(Option.some([ready]))),
+      model((current) => expect(galleryPending(current)).toEqual([])),
     )
+  })
+
+  test('ticks while a read is on its way ask for nothing more, so polls never stack', () => {
+    const shown = Photos.update(Photos.init(), Photos.Message.SucceededListPhotos({ photos: [finding] })).model
+    const asking = Photos.update(shown, Photos.Message.TickedFindingRefresh())
+    expect(asking.commands?.map(({ name }) => name)).toEqual(['ListPhotos'])
+    expect(Photos.update(asking.model, Photos.Message.TickedFindingRefresh()).commands ?? []).toEqual([])
+  })
+
+  test('a photo added while an older read was on its way stays when that read answers without it', () => {
+    const other = photoOf({ id: `ph_${'other'.padEnd(22, 'x')}` })
+    const shown = Photos.update(Photos.init(), Photos.Message.SucceededListPhotos({ photos: [other] })).model
+    const asking = Photos.update(shown, Photos.Message.TickedFindingRefresh()).model
+    const added = Photos.update(asking, Photos.Message.SucceededAddPhoto({ photo: finding })).model
+    const stale = Photos.update(added, Photos.Message.SucceededListPhotos({ photos: [other] })).model
+    expect(AsyncData.getData(stale.photos)).toEqual(Option.some([finding, other]))
+    const caughtUp = Photos.update(stale, Photos.Message.SucceededListPhotos({ photos: [ready, other] })).model
+    expect(AsyncData.getData(caughtUp.photos)).toEqual(Option.some([ready, other]))
+  })
+
+  test('after five polls that do not get through the page stops following and Try again starts it over', () => {
+    const shown = Photos.update(Photos.init(), Photos.Message.SucceededListPhotos({ photos: [finding] })).model
+    const missed = Array.reduce(
+      Array.range(1, 5),
+      shown,
+      (current) =>
+        Photos.update(
+          Photos.update(current, Photos.Message.TickedFindingRefresh()).model,
+          Photos.Message.FailedListPhotos(),
+        ).model,
+    )
+    expect(AsyncData.getData(missed.photos)).toEqual(Option.some([finding]))
+    expect(galleryPending(missed)).toEqual([])
+    const retried = Photos.update(missed, Photos.Message.ClickedRetry())
+    expect(retried.commands?.map(({ name }) => name)).toEqual(['ListPhotos'])
+    expect(galleryPending(retried.model)).toEqual([finding.id])
   })
 
   test('with today’s free credits spent, adding says so', () => {
@@ -61,21 +110,45 @@ describe('My Gallery', () => {
 
 describe('an outfit photo', () => {
   const opened = Photo.init(ready.id)
+  const loaded = { ...opened, photo: Photo.PhotoData.Success({ data: ready }) }
 
-  test('opening it asks for it, and while its clothes are found it asks again', () => {
+  test('opening it asks for it, and while its clothes are found a tick asks again, once at a time', () => {
     expect(Photo.load(opened).map(({ name }) => name)).toEqual(['GetPhoto'])
+    const stillFinding = Photo.update(opened, Photo.Message.SucceededGetPhoto({ photo: finding })).model
+    expect(photoPending(stillFinding)).toEqual([finding.id])
     story(
       Photo.update,
-      given(opened),
-      message(Photo.Message.SucceededGetPhoto({ photo: finding })),
-      Command.resolve(Photo.WaitWhileFinding, Photo.Message.ElapsedFindingPause()),
+      given(stillFinding),
+      message(Photo.Message.TickedFindingRefresh()),
+      Command.expectExact(Photo.GetPhoto({ photoId: ready.id })),
       Command.resolve(Photo.GetPhoto, Photo.Message.SucceededGetPhoto({ photo: ready })),
-      model(({ shown }) => expect(shown).toEqual(Photo.Shown.Loaded({ photo: ready }))),
+      model(({ photo }) => expect(photo).toEqual(Photo.PhotoData.Success({ data: ready }))),
+      model((current) => expect(photoPending(current)).toEqual([])),
     )
+    const asking = Photo.update(stillFinding, Photo.Message.TickedFindingRefresh()).model
+    expect(Photo.update(asking, Photo.Message.TickedFindingRefresh()).commands ?? []).toEqual([])
+  })
+
+  test('a poll that answers while a change is on its way leaves the change on its way, and a failed one shown', () => {
+    const findingLoaded = { ...opened, photo: Photo.PhotoData.Success({ data: finding }) }
+    const sending = Photo.update(findingLoaded, Photo.Message.ClickedFavourite({ favourite: true })).model
+    const polled = Photo.update(sending, Photo.Message.SucceededGetPhoto({ photo: finding })).model
+    expect(polled.work).toEqual(Photo.Work.Sending())
+    const failed = Photo.update(polled, Photo.Message.FailedChange()).model
+    const polledAgain = Photo.update(failed, Photo.Message.SucceededGetPhoto({ photo: finding })).model
+    expect(polledAgain.work).toEqual(Photo.Work.Failed())
+  })
+
+  test('a photo that is not the person’s says so; one that did not load keeps what it showed and offers Try again', () => {
+    expect(Photo.update(opened, Photo.Message.FailedGetPhoto({ error: 'NotFound' })).model.photo).toEqual(
+      Photo.PhotoData.Failure({ error: 'NotFound' }),
+    )
+    const stale = Photo.update(loaded, Photo.Message.FailedGetPhoto({ error: 'Unavailable' })).model
+    expect(stale.photo).toEqual(Photo.PhotoData.Stale({ error: 'Unavailable', data: ready }))
+    expect(Photo.update(stale, Photo.Message.ClickedRetry()).commands?.map(({ name }) => name)).toEqual(['GetPhoto'])
   })
 
   test('a garment is confirmed or sent to the tray, the photo marked a favourite and worn again as a look', () => {
-    const loaded = { ...opened, shown: Photo.Shown.Loaded({ photo: ready }) }
     story(
       Photo.update,
       given(loaded),
@@ -88,14 +161,16 @@ describe('an outfit photo', () => {
       Command.resolve(Photo.SetFavourite, Photo.Message.SucceededChange({ photo: ready })),
       message(Photo.Message.ClickedWearAgain({ name: 'Outfit from 31 Oct' })),
       Command.resolve(Photo.WearAgain, Photo.Message.SucceededWearAgain({ look })),
-      model(({ shown }) => expect(Photo.Shown.guards.Loaded(shown) ? shown.photo.lookId : null).toBe(look.id)),
+      model(({ photo }) =>
+        expect(Option.map(AsyncData.getData(photo), ({ lookId }) => lookId)).toEqual(Option.some(look.id)),
+      ),
     )
   })
 
   test('Cut out the outfit asks once, and says so when Styld found no one in the photo', () => {
     story(
       Photo.update,
-      given({ ...opened, shown: Photo.Shown.Loaded({ photo: ready }) }),
+      given(loaded),
       message(Photo.Message.ClickedCutOut()),
       Command.expectExact(Photo.CutOut({ photoId: ready.id })),
       Command.resolve(Photo.CutOut, Photo.Message.FailedCutOut({ noPerson: true })),
@@ -113,5 +188,24 @@ describe('an outfit photo', () => {
       Command.resolve(Photo.DeletePhoto, Photo.Message.SucceededDeletePhoto()),
       expectOutMessage(Photo.OutMessage.DeletedPhoto()),
     )
+  })
+})
+
+/** The app on a page with My Gallery showing a photo whose garments are being found. */
+const galleryAt = (path: string) =>
+  withPage(
+    at(path, { signedIn: true }),
+    lenses.photos,
+    (photos) => Photos.update(photos, Photos.Message.SucceededListPhotos({ photos: [finding] })).model,
+  )
+
+/** What the app's gallery poll waits on at a path; none while it does not run. */
+const galleryPolled = (path: string) =>
+  appSubscriptions.photosWhileFinding.modelToDependencies(galleryAt(path)).maybeDependencies
+
+describe('My Gallery follows its photos only while it shows', () => {
+  test('on My Gallery the poll runs; on another tab, which keeps the gallery as it was, it does not', () => {
+    expect(galleryPolled('/wardrobe/gallery')).toEqual(Option.some({ pendingIds: [finding.id] }))
+    expect(galleryPolled('/wardrobe')).toEqual(Option.none())
   })
 })
