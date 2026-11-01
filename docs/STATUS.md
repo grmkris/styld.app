@@ -2,6 +2,39 @@
 
 Status: active. Sign-in, the wardrobe (shop-style garment types, browsing, a piece's back), capture with real cut-outs (photos, video import, a held-up camera, scan anything), the review tray, the daily allowance, looks, clean pictures and turns, the boards' pins, profiles, checks and link import, mood boards from the person's own pieces and stickers, the outfit engine (Fast and Thinking), My Gallery and Styld, the stylist in the app are deployed to the isolated workers.dev preview (release `889af38`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping; the plan in progress is "Plan: shopping your own wardrobe" below, waiting at owner gate 1.
 
+## Cleanup C4a: capture, photos, wardrobe — 2026-11-01
+
+Milestone C4a of the cleanup plan (server; the preview is not redeployed until the milestone's review).
+
+- **One garment pipeline** (`server/src/capture/Garments.ts`, rules in `GarmentRules.ts`, bars and caps in
+  `Policy.ts` as constants): `find` (tray, gallery), `cut` (piece, person), `handOver`/`track` (video) share one
+  route, cutter rule, prompt table (a video is tracked for clothing only: Meta bills every frame per prompt), mask
+  selection, piece caps (tray and video 20, gallery 8), description and pair join. A pair of shoes is one piece
+  (two of one shoe type and colour, the smaller at least half the larger) in the tray, My Gallery and a video's
+  still; a piece's pair of boots is one cut-out. Every model input is `modelPicture` at 512 px (`packages/imaging`,
+  with `readPng` and `pngPicture`), so describing a cut-out costs no Images thumbnail and My Gallery matches on the
+  same picture capture does; "the same garment?" has one bar, 0.8, in capture and My Gallery. Meta, Muse and Veo
+  share one HTTP client (`providers/Http.ts`).
+- **Providers are never off:** `CaptureConfig` (and `providers: 'off'`), `originalOnly`, `wholePhoto` are gone; the
+  native stack provides a fake garment pipeline (`test/fakes/Garments.ts`: one garment per picture, cut out as the
+  picture itself, kind unknown; a piece's own photo keeps its photo). Deleted: the v1 carry-over sweep
+  (`Suggest.ts`, `SuggestPiece`, `carriedOverUnchanged`), the clean-picture backfill endpoints and wardrobe line,
+  the `'off'` picture and turn refusals, content types guessed from keys.
+- **Ownership and lifecycle:** capture writes pieces, uploads and photo garments through their owners' statement
+  builders (`PieceRows`, `UploadRows`, `GarmentRows`), My Gallery offers through `OfferedRows`. `spendUpload` only
+  spends a received upload and otherwise fails the batch (one upload, one use). Captures and gallery photos write
+  their row before holding credits (undone past the limit). One in-use check (`keysInUse`) and one delete order
+  (rows, then `deleteAfterRows`): a processed capture's video, unused stills and earlier attempts' cut-outs go;
+  discarded cut-outs go when a review finishes the capture; a piece's delete takes its row, upload and content
+  check in one batch, then every object nothing shows; a replaced or removed back and its raw upload go.
+  `addToBoard` answers repeats from its receipt and keys the board picture by photo and board.
+- **Services:** Wardrobe, Captures and Photos are `Context.Service`s with layers over `Database`, `Media` and a
+  new `PieceQueue`; no `bound` wrappers.
+- **Remaining:** the garment pipeline's model-input change (WebP thumbnail to flattened 512 px PNG for describing)
+  and the pair rule need the fixture comparison and one real photo per intent on the preview; capture's internal
+  operations are still grouped as `(parts) => ({…})` records inside the one service; the live adapters still sit in
+  `capture/` rather than `providers/`.
+
 ## Cleanup C4b: social, boards, looks, safety, worn — 2026-11-01
 
 Milestone C4b of the cleanup plan (server modules and the board page; the preview is not redeployed until the
