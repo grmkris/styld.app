@@ -111,7 +111,6 @@ export class EmailSignIn extends Context.Service<
 
 // COMMAND
 
-/** @internal Exported for its tests. */
 export const RequestCode = Command.define('RequestCode', {
   args: { email: Schema.String, flowId: Schema.Option(Schema.String) },
   messages: [Message.SucceededRequestCode, Message.FailedRequestCode],
@@ -122,7 +121,6 @@ export const RequestCode = Command.define('RequestCode', {
     }).pipe(Effect.catchTag('SignInRefused', ({ problem }) => Effect.succeed(Message.FailedRequestCode({ problem })))),
 })
 
-/** @internal Exported for its tests. */
 export const ResendCode = Command.define('ResendCode', {
   args: { email: Schema.String, flowId: Schema.String },
   messages: [Message.SucceededResendCode, Message.FailedResendCode],
@@ -133,7 +131,6 @@ export const ResendCode = Command.define('ResendCode', {
     }).pipe(Effect.catchTag('SignInRefused', ({ problem }) => Effect.succeed(Message.FailedResendCode({ problem })))),
 })
 
-/** @internal Exported for its tests. */
 export const VerifyCode = Command.define('VerifyCode', {
   args: { email: Schema.String, sent: CodeSent },
   messages: [Message.SucceededVerifyCode, Message.FailedVerifyCode],
@@ -144,14 +141,12 @@ export const VerifyCode = Command.define('VerifyCode', {
     }).pipe(Effect.catchTag('SignInRefused', ({ problem }) => Effect.succeed(Message.FailedVerifyCode({ problem })))),
 })
 
-/** @internal Exported for its tests. */
 export const WaitToResend = Command.define('WaitToResend', {
   args: { requestId: Schema.String },
   messages: [Message.ElapsedResendPause],
   execute: ({ requestId }) => Effect.sleep(resendPause).pipe(Effect.as(Message.ElapsedResendPause({ requestId }))),
 })
 
-/** @internal Exported for its tests. */
 export const WaitForCodeExpiry = Command.define('WaitForCodeExpiry', {
   args: { requestId: Schema.String },
   messages: [Message.ElapsedCodeLifetime],
@@ -165,7 +160,7 @@ const emailShape = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, EmailSignIn>
 
 /** The code the step holds, whatever is happening to it.
- * @internal Exported for its tests. */
+ */
 export const currentCode = (step: Step): Option.Option<Code> =>
   Step.guards.EnterCode(step) || Step.guards.VerifyingCode(step) || Step.guards.ResendingCode(step)
     ? Option.some(step.code)

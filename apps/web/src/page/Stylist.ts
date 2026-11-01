@@ -89,7 +89,6 @@ export type Message = typeof Message.Type
 
 // COMMAND
 
-/** @internal Exported for its tests. */
 export const LoadChats = Command.define('LoadChats', {
   messages: [Message.SucceededLoadChats, Message.FailedLoadChats],
   execute: Effect.gen(function* () {
@@ -104,7 +103,6 @@ const readChat = (chatId: string) =>
     return yield* api.stylist.chat({ params: { chatId: yield* Schema.decodeUnknownEffect(ChatId)(chatId) } })
   })
 
-/** @internal Exported for its tests. */
 export const LoadChat = Command.define('LoadChat', {
   args: { chatId: Schema.String },
   messages: [Message.SucceededLoadChat, Message.FailedLoadChat],
@@ -116,7 +114,7 @@ export const LoadChat = Command.define('LoadChat', {
 })
 
 /** The chat again, while Styld writes its reply.
- * @internal Exported for its tests. */
+ */
 export const RefreshChat = Command.define('RefreshChat', {
   args: { chatId: Schema.String },
   messages: [Message.SucceededRefreshChat, Message.FailedRefreshChat],
@@ -131,7 +129,7 @@ const refused = (problem: SendProblem) => () =>
   Effect.succeed(Message.FailedSend({ problem, operationId: Option.none() }))
 
 /** Send the message to Styld, in the chat open or a new one, under a new operation id or the one a lost send had.
- * @internal Exported for its tests. */
+ */
 export const SendMessage = Command.define('SendMessage', {
   args: {
     operationId: Schema.Option(Schema.String),
@@ -191,7 +189,7 @@ export const threadId = 'stylist-thread'
 
 /** Bring the newest message into view above the composer: when a chat opens and when a reply lands, never while
  * one is being written, so it does not pull the page from under someone reading back.
- * @internal Exported for its tests. */
+ */
 export const ScrollToLatest = Command.define('ScrollToLatest', {
   messages: [Message.CompletedScrollToLatest],
   execute: Dom.scrollIntoViewAfterPaint(`#${latestId}`, { block: 'end' }).pipe(
@@ -202,7 +200,7 @@ export const ScrollToLatest = Command.define('ScrollToLatest', {
 
 /** A new chat starts at the top of the page with its title focused, as a page opened from the navigation does
  * (Navigation.ts): New chat removes itself, and the chat it leaves may have been scrolled far down.
- * @internal Exported for its tests. */
+ */
 export const StartAtTop = Command.define('StartAtTop', {
   messages: [Message.CompletedStartAtTop],
   execute: Effect.gen(function* () {
@@ -215,7 +213,7 @@ export const StartAtTop = Command.define('StartAtTop', {
 
 /** The thread a press opened takes focus, so keyboard and screen reader follow it from the earlier chat pressed,
  * which is gone; the newest message is still what is scrolled to.
- * @internal Exported for its tests. */
+ */
 export const FocusThread = Command.define('FocusThread', {
   messages: [Message.CompletedFocusThread],
   execute: Dom.focus(`#${threadId}`, { preventScroll: true, makeFocusable: true }).pipe(

@@ -1,21 +1,18 @@
 import * as Crypto from 'effect/Crypto'
 import { newOperationId } from '../OperationIds.ts'
 import { Handle, Profile, Tone } from '@styld/protocol'
-import { Effect, Match, Option, Predicate, Schema } from 'effect'
-import { Command, type Update } from 'foldkit'
+import { Effect, Match, Option, Predicate, Result, Schema } from 'effect'
+import { AsyncData, Command, type Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
-import { readProfile } from './ProfileRead.ts'
+import { ProfileData, readProfile } from './ProfileRead.ts'
 
 // The person's public profile, edited: a handle, a name, a city, a bio, an avatar tone and whether the wardrobe shows,
 // then published or taken down.
 
 // MODEL
-
-export const Load = defineTaggedUnion({ Loading: {}, Failed: {}, Ready: { profile: Profile } })
-export type Load = typeof Load.Type
 
 /** What the form holds, as typed. */
 export const Draft = Schema.Struct({
@@ -37,13 +34,18 @@ export type Saving = typeof Saving.Type
 export const Publishing = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: { needsHandle: Schema.Boolean } })
 export type Publishing = typeof Publishing.Type
 
-export const Model = Schema.Struct({ load: Load, draft: Draft, saving: Saving, publishing: Publishing })
+export const Model = Schema.Struct({
+  profile: ProfileData.schema,
+  draft: Draft,
+  saving: Saving,
+  publishing: Publishing,
+})
 export type Model = typeof Model.Type
 
 const emptyDraft: Draft = { handle: '', name: '', city: '', bio: '', tone: 'sand' }
 
 export const init = (): Model => ({
-  load: Load.Loading(),
+  profile: AsyncData.Loading(),
   draft: emptyDraft,
   saving: Saving.Idle(),
   publishing: Publishing.Idle(),
@@ -89,7 +91,6 @@ const LoadProfile = Command.define('LoadProfile', {
 
 const blankAsNull = (value: string) => (value.trim().length === 0 ? null : value.trim())
 
-/** @internal Exported for its tests. */
 export const SaveProfile = Command.define('SaveProfile', {
   args: { draft: Draft },
   messages: [Message.SucceededSaveProfile, Message.FailedSaveProfile],
@@ -127,7 +128,6 @@ export const SaveProfile = Command.define('SaveProfile', {
     ),
 })
 
-/** @internal Exported for its tests. */
 export const PublishProfile = Command.define('PublishProfile', {
   args: { published: Schema.Boolean },
   messages: [Message.SucceededPublishProfile, Message.FailedPublishProfile],
@@ -170,14 +170,22 @@ const typed =
     )
 
 const loaded = (model: Model, profile: Profile): UpdateReturn => ({
-  model: modifyFields(model, { load: () => Load.Ready({ profile }), draft: () => draftOf(profile) }),
+  model: modifyFields(model, { profile: () => ProfileData.Success({ data: profile }), draft: () => draftOf(profile) }),
 })
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     SucceededLoadProfile: ({ profile }) => loaded(model, profile),
-    FailedLoadProfile: () => ({ model: modifyFields(model, { load: () => Load.Failed() }) }),
-    ClickedRetry: () => ({ model: modifyFields(model, { load: () => Load.Loading() }), commands: [LoadProfile()] }),
+    FailedLoadProfile: () => ({
+      model: modifyFields(model, {
+        profile: (profile) => AsyncData.settle(profile, Result.fail('Unavailable' as const)),
+      }),
+    }),
+    ClickedRetry: () =>
+      Option.match(AsyncData.revalidateOrLoad(model.profile), {
+        onNone: () => ({ model }),
+        onSome: (profile) => ({ model: modifyFields(model, { profile: () => profile }), commands: [LoadProfile()] }),
+      }),
     UpdatedField: ({ field, value }) => ({
       model: modifyFields(model, { draft: typed(field, value), saving: () => Saving.Idle() }),
     }),
@@ -207,7 +215,10 @@ export const update = (model: Model, message: Message): UpdateReturn =>
             commands: [PublishProfile({ published })],
           },
     SucceededPublishProfile: ({ profile }) => ({
-      model: modifyFields(model, { load: () => Load.Ready({ profile }), publishing: () => Publishing.Idle() }),
+      model: modifyFields(model, {
+        profile: () => ProfileData.Success({ data: profile }),
+        publishing: () => Publishing.Idle(),
+      }),
     }),
     FailedPublishProfile: ({ needsHandle }) => ({
       model: modifyFields(model, { publishing: () => Publishing.Failed({ needsHandle }) }),

@@ -19,7 +19,7 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
 import { BoardData, BoardShown } from '../src/page/Board/Model.ts'
-import { Shown as LookShown } from '../src/page/Look.ts'
+import { LookData, LookShown } from '../src/page/Look.ts'
 import { Message as PeopleMessage, SetSaved, Subject } from '../src/page/People.ts'
 import {
   FocusExploreResults,
@@ -28,10 +28,9 @@ import {
   LoadExplore,
   Message as VisitMessage,
   SearchExplore,
-  Shown,
 } from '../src/page/Visit.ts'
 import { view } from '../src/View.ts'
-import { by, knit, nika, opened, signedIn, suggested, visiting } from './VisitFixtures.ts'
+import { by, knit, nika, opened, shownAs, signedIn, suggested, visiting } from './VisitFixtures.ts'
 import { withPage } from './AppFixtures.ts'
 import { lenses } from '../src/Page.ts'
 
@@ -61,7 +60,7 @@ describe('a public profile', () => {
   test('shows the person and their public boards and looks, signed out', () => {
     scene(
       { update, view },
-      given(visiting('/@nika.kovac', Shown.Person({ profile: nika }))),
+      given(visiting('/@nika.kovac', shownAs.Person({ profile: nika }))),
       expect(role('heading', { name: 'Nika Kovač' })).toExist(),
       expect(text('@nika.kovac, Maribor')).toExist(),
       expect(text('Red, black and one good coat.')).toExist(),
@@ -79,7 +78,7 @@ describe('a public profile', () => {
   test('a missing profile says so', () => {
     scene(
       { update, view },
-      given(visiting('/@nobody', Shown.Missing())),
+      given(visiting('/@nobody', shownAs.Missing())),
       expect(role('heading', { name: 'Page not found' })).toExist(),
     )
   })
@@ -92,7 +91,7 @@ describe('a public profile', () => {
     })
     scene(
       { update, view },
-      given(visiting(`/pieces/${knit.id}`, Shown.Piece({ page }))),
+      given(visiting(`/pieces/${knit.id}`, shownAs.Piece({ page }))),
       expect(role('heading', { name: 'Navy knit' })).toExist(),
       expect(text('Top')).toExist(),
       expect(role('img', { name: 'Navy knit' })).toHaveAttr('src', `/cdn/public/pieces/${knit.id}/full`),
@@ -106,7 +105,7 @@ describe('a public profile', () => {
     scene(
       { update, view },
       given(
-        withPage(visiting(`/pieces/${knit.id}`, Shown.Piece({ page })), lenses.visit, (visit) =>
+        withPage(visiting(`/pieces/${knit.id}`, shownAs.Piece({ page })), lenses.visit, (visit) =>
           modifyFields(visit, { cameFrom: () => Option.some(board) }),
         ),
       ),
@@ -118,7 +117,7 @@ describe('a public profile', () => {
     const page = Schema.decodeUnknownSync(PublicPiecePage)({ yours: true, piece: knit, by })
     scene(
       { update, view },
-      given(signedIn(visiting(`/pieces/${knit.id}`, Shown.Piece({ page })))),
+      given(signedIn(visiting(`/pieces/${knit.id}`, shownAs.Piece({ page })))),
       expect(text('This piece is yours')).toExist(),
       expect(role('link', { name: 'Open in your wardrobe' })).toHaveAttr('href', `/wardrobe/${knit.id}`),
       expect(role('link', { name: /By Nika Kovač/ })).toBeAbsent(),
@@ -166,7 +165,7 @@ describe('a public profile', () => {
       { update, view },
       given(
         withPage(signedIn(opened(`/looks/${page.look.id}`)), lenses.look, (look) =>
-          modifyFields(look, { shown: () => LookShown.Visiting({ page }) }),
+          modifyFields(look, { look: () => LookData.Success({ data: LookShown.Visiting({ page }) }) }),
         ),
       ),
       expect(role('heading', { name: 'Monday' })).toExist(),
@@ -181,7 +180,7 @@ describe('a public profile', () => {
     const explore = rainyExplore()
     scene(
       { update, view },
-      given(visiting('/explore', Shown.Explore({ explore }))),
+      given(visiting('/explore', shownAs.Explore({ explore }))),
       expect(role('heading', { name: 'Explore' })).toExist(),
       expect(role('heading', { name: 'Edits from Styld' })).toExist(),
       expect(role('heading', { name: 'People to follow' })).toExist(),
@@ -201,7 +200,7 @@ describe('a public profile', () => {
     const headings = all.role('heading', { level: 2 })
     scene(
       { update, view },
-      given(visiting('/explore', Shown.Explore({ explore }))),
+      given(visiting('/explore', shownAs.Explore({ explore }))),
       inside(
         role('main'),
         expect(role('search')).toExist(),
@@ -221,7 +220,7 @@ describe('a public profile', () => {
     const nothing = Schema.decodeUnknownSync(SearchResults)({ people: [], boards: [] })
     scene(
       { update, view },
-      given(visiting('/explore', Shown.Explore({ explore }))),
+      given(visiting('/explore', shownAs.Explore({ explore }))),
       type(role('searchbox', { name: 'Search people and boards' }), 'nika'),
       submit(role('search')),
       expect(role('status')).toHaveText('Searching…'),
@@ -259,7 +258,7 @@ describe('a public profile', () => {
     const explore = Schema.decodeUnknownSync(Explore)({ edits: [], featured: [], people: [suggested], newest: [] })
     scene(
       { update, view },
-      given(visiting('/explore', Shown.Explore({ explore }))),
+      given(visiting('/explore', shownAs.Explore({ explore }))),
       inside(
         role('region', { name: 'People to follow' }),
         expect(role('link', { name: /^Nika Kovač/ })).toHaveAttr('href', '/@nika.kovac'),
@@ -276,7 +275,7 @@ describe('a public profile', () => {
     const explore = Schema.decodeUnknownSync(Explore)({ edits: [], featured: [], people: [suggested], newest: [] })
     scene(
       { update, view },
-      given(signedIn(visiting('/explore', Shown.Explore({ explore })))),
+      given(signedIn(visiting('/explore', shownAs.Explore({ explore })))),
       inside(
         role('region', { name: 'People to follow' }),
         expect(role('button', { name: 'Follow' })).toHaveAttr('aria-pressed', 'false'),
@@ -304,7 +303,7 @@ describe('a public profile', () => {
     const explore = Schema.decodeUnknownSync(Explore)({ edits: [found], featured: [], people: [], newest: [] })
     scene(
       { update, view },
-      given(visiting('/explore', Shown.Explore({ explore }))),
+      given(visiting('/explore', shownAs.Explore({ explore }))),
       expect(role('link', { name: /Coats/ })).toHaveAttr('href', `/boards/bd_${'coats'.padEnd(22, 'x')}`),
       // Whose it is reads inside the card, which stays the one link.
       expect(role('link', { name: /By Nika Kovač$/ })).toHaveAttr('href', `/boards/bd_${'coats'.padEnd(22, 'x')}`),
@@ -318,7 +317,7 @@ describe('a public profile', () => {
   test('while Explore, a profile or a piece loads, its shape holds the page and a status says it is loading', () => {
     scene(
       { update, view },
-      given(visiting('/explore', Shown.Loading())),
+      given(visiting('/explore', shownAs.Loading())),
       expect(role('heading', { name: 'Explore', level: 1 })).toExist(),
       expect(role('search')).toExist(),
       expect(role('status')).toHaveText('Loading…'),
@@ -326,12 +325,12 @@ describe('a public profile', () => {
     )
     scene(
       { update, view },
-      given(visiting('/@nika.kovac', Shown.Loading())),
+      given(visiting('/@nika.kovac', shownAs.Loading())),
       expect(role('status')).toHaveText('Loading…'),
     )
     scene(
       { update, view },
-      given(visiting(`/pieces/${knit.id}`, Shown.Loading())),
+      given(visiting(`/pieces/${knit.id}`, shownAs.Loading())),
       expect(role('status')).toHaveText('Loading…'),
     )
   })
@@ -341,7 +340,7 @@ describe('a public profile', () => {
     const explore = Schema.decodeUnknownSync(Explore)({ edits: [found], featured: [], people: [], newest: [] })
     scene(
       { update, view },
-      given(visiting('/', Shown.Explore({ explore }))),
+      given(visiting('/', shownAs.Explore({ explore }))),
       expect(role('heading', { name: 'Edits from Styld' })).toExist(),
       expect(role('link', { name: /Coats.*By Nika Kovač$/ })).toHaveAttr(
         'href',
@@ -356,14 +355,14 @@ describe('a public profile', () => {
     const explore = Schema.decodeUnknownSync(Explore)({ edits: [], featured: [], people: [], newest: [found] })
     scene(
       { update, view },
-      given(visiting('/', Shown.Loading())),
+      given(visiting('/', shownAs.Loading())),
       expect(role('heading', { name: 'Edits from Styld' })).not.toExist(),
       expect(role('heading', { name: 'Newest boards' })).not.toExist(),
       expect(role('status')).toHaveText('Loading…'),
     )
     scene(
       { update, view },
-      given(visiting('/', Shown.Explore({ explore }))),
+      given(visiting('/', shownAs.Explore({ explore }))),
       expect(role('heading', { name: 'Newest boards' })).toExist(),
       expect(role('heading', { name: 'Edits from Styld' })).not.toExist(),
     )
@@ -385,12 +384,12 @@ describe('a public profile', () => {
     const hero = role('region', { name: 'A wardrobe shaped by you.' })
     scene(
       { update, view },
-      given(visiting('/', Shown.Loading())),
+      given(visiting('/', shownAs.Loading())),
       inside(hero, expect(selector('[data-skeleton]')).toExist(), expect(selector('[data-paper]')).not.toExist()),
     )
     scene(
       { update, view },
-      given(visiting('/', Shown.Explore({ explore: exploreOf([coats], [layered]) }))),
+      given(visiting('/', shownAs.Explore({ explore: exploreOf([coats], [layered]) }))),
       inside(
         hero,
         expect(selector('[data-skeleton]')).not.toExist(),
@@ -401,7 +400,7 @@ describe('a public profile', () => {
     scene(
       { update, view },
       // Without a collage anywhere, a board's pins on its paper.
-      given(visiting('/', Shown.Explore({ explore: exploreOf([coats], []) }))),
+      given(visiting('/', shownAs.Explore({ explore: exploreOf([coats], []) }))),
       inside(
         hero,
         expect(selector('[data-skeleton]')).not.toExist(),
@@ -415,7 +414,7 @@ describe('a public profile', () => {
     const explore = Schema.decodeUnknownSync(Explore)({ edits: [found], featured: [], people: [], newest: [] })
     scene(
       { update, view },
-      given(visiting('/', Shown.Failed())),
+      given(visiting('/', shownAs.Failed())),
       expect(role('alert')).toHaveText("The boards didn't load."),
       expect(role('link', { name: 'Start free' })).toHaveAttr('href', '/login'),
       click(role('button', { name: 'Try again' })),

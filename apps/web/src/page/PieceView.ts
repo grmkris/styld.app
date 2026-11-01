@@ -9,7 +9,7 @@ import { linkAction, primaryAction, secondaryAction } from '../Actions.styles.ts
 import { fieldLabel, formError, textField } from '../Fields.styles.ts'
 import { editIcon, loader } from '../Icon.ts'
 import { wardrobeRouter } from '../route.ts'
-import { confirmActions } from '../ConfirmActions.ts'
+import { confirmActions } from '../Confirm.ts'
 import { styled } from '../Styled.ts'
 import { Choosing, Deletion, Message, type Model, type Redraw, ShowTurn, TurnWork } from './Piece.ts'
 import { type Draft, DraftSave } from './PieceDraft.ts'

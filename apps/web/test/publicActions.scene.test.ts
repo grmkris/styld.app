@@ -4,7 +4,8 @@ import { click, Command, expect, given, role, scene } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { type Model, update } from '../src/App.ts'
-import { Message as VisitMessage, ShareLink, Shown } from '../src/page/Visit.ts'
+import { Message as VisitMessage, ShareLink, type ShownData } from '../src/page/Visit.ts'
+import { shownAs } from './VisitFixtures.ts'
 import { view } from '../src/View.ts'
 import { lenses } from '../src/Page.ts'
 import { at, withPage } from './AppFixtures.ts'
@@ -17,14 +18,14 @@ const profileOf = (yours: boolean) =>
   Schema.decodeUnknownSync(PublicProfile)({ ...ana, city: null, bio: null, boards: [], looks: [], yours })
 const scarfPage = (yours: boolean) =>
   Schema.decodeUnknownSync(PublicPiecePage)({ piece: { ...scarf, colours: [] }, by: ana, yours })
-const showing = (model: Model, shown: Shown): Model =>
+const showing = (model: Model, shown: ShownData): Model =>
   withPage(model, lenses.visit, (visit) => modifyFields(visit, { shown: () => shown }))
 
 describe('a public page’s head bar and Share', () => {
   test('a profile goes back to Explore and shares its link; a share sheet says the rest itself', () => {
     scene(
       { update, view },
-      given(showing(at('/@ana.novak', { signedIn: false }), Shown.Person({ profile: profileOf(false) }))),
+      given(showing(at('/@ana.novak', { signedIn: false }), shownAs.Person({ profile: profileOf(false) }))),
       expect(role('link', { name: 'Back' })).toHaveAttr('href', '/explore'),
       click(role('button', { name: 'Share' })),
       Command.resolve(
@@ -39,7 +40,7 @@ describe('a public page’s head bar and Share', () => {
     const share = ShareLink({ url: `https://styld.test/pieces/${scarf.id}`, title: 'Grey scarf' })
     scene(
       { update, view },
-      given(showing(at(`/pieces/${scarf.id}`, { signedIn: false }), Shown.Piece({ page: scarfPage(false) }))),
+      given(showing(at(`/pieces/${scarf.id}`, { signedIn: false }), shownAs.Piece({ page: scarfPage(false) }))),
       expect(role('link', { name: 'Back' })).toHaveAttr('href', '/@ana.novak'),
       click(role('button', { name: 'Share' })),
       Command.resolve(share, VisitMessage.SucceededShareLink({ copied: true })),
@@ -53,7 +54,7 @@ describe('a public page’s head bar and Share', () => {
   test('one’s own profile offers Edit profile and Share, with nobody to follow or report, and Back to Account', () => {
     scene(
       { update, view },
-      given(showing(at('/@ana.novak', { signedIn: true }), Shown.Person({ profile: profileOf(true) }))),
+      given(showing(at('/@ana.novak', { signedIn: true }), shownAs.Person({ profile: profileOf(true) }))),
       expect(role('link', { name: 'Edit profile' })).toHaveAttr('href', '/profile'),
       expect(role('button', { name: 'Share' })).toExist(),
       expect(role('link', { name: 'Back' })).toHaveAttr('href', '/account'),

@@ -28,7 +28,7 @@ const dateOf = (day: string) => {
 }
 
 /** `THU 30`: the weekday and the date, written the way the logo speaks.
- * @internal Exported for its tests. */
+ */
 export const headline = (day: string, locale: Locale) => {
   const date = dateOf(day)
   const weekday = new Intl.DateTimeFormat(intlLocale(locale), { weekday: 'short', timeZone: 'UTC' })
@@ -225,7 +225,7 @@ const clamp = (top: number) => Math.min(Math.max(top, 0), 625)
 
 /** How far down a board's 4:5 table its 16:10 window on Home starts, as a share of the table's height (0 to a half),
  * so the window centres on what lies there. A table is 1250 units tall and the window 625.
- * @internal Exported for its tests. */
+ */
 export const cropFrom = (items: ReadonlyArray<BoardItem>): number => windowTop(items) / 1250
 
 /** Whether an item lies whole inside the 625-unit window starting at `top`. */

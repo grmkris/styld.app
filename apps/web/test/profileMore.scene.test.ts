@@ -5,10 +5,10 @@ import { click, Command, expect, given, Mount, role, scene, text } from 'foldkit
 import { describe, test } from 'vitest'
 import { Message, update } from '../src/App.ts'
 import { FocusMoreTitle, Message as PeopleMessage, SetBlocked } from '../src/page/People.ts'
-import { Message as VisitMessage, Shown } from '../src/page/Visit.ts'
+import { Message as VisitMessage } from '../src/page/Visit.ts'
 import { view } from '../src/View.ts'
 import { sceneSheetMoved, sceneSheetOpened } from './SheetFixtures.ts'
-import { nika, signedIn, visiting } from './VisitFixtures.ts'
+import { nika, shownAs, signedIn, visiting } from './VisitFixtures.ts'
 
 const relation = (blocked: boolean) =>
   Schema.decodeUnknownSync(Relation)({ handle: 'nika.kovac', following: false, blocked })
@@ -16,7 +16,7 @@ const relation = (blocked: boolean) =>
 /** Nika's profile, signed in, once it is known the visitor does not follow or block her. */
 const known = () =>
   update(
-    signedIn(visiting('/@nika.kovac', Shown.Person({ profile: nika }))),
+    signedIn(visiting('/@nika.kovac', shownAs.Person({ profile: nika }))),
     Message.GotVisitMessage({
       message: VisitMessage.GotPeopleMessage({
         message: PeopleMessage.SucceededLoadRelation({ relation: relation(false) }),

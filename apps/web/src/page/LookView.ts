@@ -1,17 +1,18 @@
 import { format, type Locale } from '@styld/i18n'
-import type { Look, PublicLookPage } from '@styld/protocol'
-import { Submodel } from 'foldkit'
+import type { Look as LookContract, PublicLookPage } from '@styld/protocol'
+import { Option } from 'effect'
+import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
 import { linkAction, quietLinkAction, secondaryAction } from '../Actions.styles.ts'
-import { confirmActions } from '../ConfirmActions.ts'
+import { confirmActions } from '../Confirm.ts'
 import { formError } from '../Fields.styles.ts'
 import { backIcon } from '../Icon.ts'
 import { looksRouter, pieceRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
-import { Deletion, Message, type Model, Sharing, Shown } from './Look.ts'
+import { Deletion, LookShown, Message, type Model, Sharing } from './Look.ts'
 import { checkNotice } from './CheckNotice.ts'
-import { publicToggle } from './PublicToggle.ts'
+import { type PublicWork, publicToggle } from './PublicToggle.ts'
 import * as PeopleView from './PeopleView.ts'
 import { byline, pieceTile, tileGrid } from './PublicTiles.ts'
 import * as SaveToBoardView from './SaveToBoardView.ts'
@@ -104,7 +105,7 @@ const visitingView = (
 ]
 
 /** The look's pieces as rows (Gallery `outfit.html` › piece rows): each cutout small on paper, its name and kind. */
-const pieceRows = (look: Look, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const pieceRows = (look: LookContract, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.section(
     [h.AriaLabelledBy('look-pieces'), ...styled(h, styles.pieces())],
     [
@@ -160,51 +161,61 @@ export const view = Submodel.defineView<Model, Message, PeopleView.Inputs>((mode
   h.main(
     [h.Id('main'), ...styled(h, cx(styles.looksPage(), styles.lookPage()))],
     [
-      Shown.guards.Visiting(model.shown) ? h.empty : h.div([], [backToLooks(locale, h)]),
-      ...Shown.match(model.shown, {
-        Loading: () => loadingView(locale, h),
-        NotFound: () => [h.h1([], [format(locale, 'looks.notFound', {})])],
-        Visiting: ({ page }) => visitingView(model, page, { locale, signedIn }, h),
-        Failed: () => [
-          h.h1([], [format(locale, 'looks.title', {})]),
-          retryView(format(locale, 'looks.loadFailed', {}), locale, Message.ClickedRetry(), h),
-        ],
-        Loaded: ({ look }) => [
-          h.h1([], [look.name]),
-          // Where it stands, in one quiet line under the title (DESIGN › Your public things), then the check.
-          h.p(styled(h, styles.status()), [
-            format(locale, look.shared ? 'looks.statusPublic' : 'looks.statusPrivate', {}),
-          ]),
-          look.shared ? checkNotice(look.check, locale, h) : h.empty,
-          look.occasion === null ? h.empty : h.p(styled(h, styles.lede()), [look.occasion]),
-          h.div(styled(h, styles.lookCollage()), [collage(look, h)]),
-          h.submodel({
-            slotId: 'look-save-to-board',
-            model: model.saveToBoard,
-            view: SaveToBoardView.view,
-            viewInputs: { locale },
-            toParentMessage: (message) => Message.GotSaveToBoardMessage({ message }),
+      isVisiting(model) ? h.empty : h.div([], [backToLooks(locale, h)]),
+      ...AsyncData.matchData(model.look, {
+        onEmpty: () => loadingView(locale, h),
+        onFailure: (error) =>
+          error === 'NotFound'
+            ? [h.h1([], [format(locale, 'looks.notFound', {})])]
+            : [
+                h.h1([], [format(locale, 'looks.title', {})]),
+                retryView(format(locale, 'looks.loadFailed', {}), locale, Message.ClickedRetry(), h),
+              ],
+        onData: (shown) =>
+          LookShown.match(shown, {
+            Visiting: ({ page }) => visitingView(model, page, { locale, signedIn }, h),
+            Own: ({ look }) => ownView(model, look, locale, h),
           }),
-          publicToggle(
-            {
-              id: 'look-public',
-              isPublic: look.shared,
-              check: look.check,
-              work: Sharing.match(model.sharing, {
-                Idle: () => 'idle' as const,
-                Sending: () => 'sending' as const,
-                Failed: ({ needsProfile }) => (needsProfile ? ('needsProfile' as const) : ('failed' as const)),
-              }),
-              describe: false,
-              onToggle: (shared) => Message.ToggledShared({ shared }),
-            },
-            locale,
-            h,
-          ),
-          pieceRows(look, locale, h),
-          h.div(styled(h, styles.deletion()), deletion(model, locale, h)),
-        ],
       }),
     ],
   ),
 )
+
+/** Whether the page shows someone else's look, which has no way back to the person's own looks. */
+const isVisiting = (model: Model) =>
+  Option.exists(AsyncData.getData(model.look), (shown) => LookShown.guards.Visiting(shown))
+
+/** The person's own look. */
+const ownView = (model: Model, look: LookContract, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
+  h.h1([], [look.name]),
+  // Where it stands, in one quiet line under the title (DESIGN › Your public things), then the check.
+  h.p(styled(h, styles.status()), [format(locale, look.shared ? 'looks.statusPublic' : 'looks.statusPrivate', {})]),
+  look.shared ? checkNotice(look.check, locale, h) : h.empty,
+  look.occasion === null ? h.empty : h.p(styled(h, styles.lede()), [look.occasion]),
+  h.div(styled(h, styles.lookCollage()), [collage(look, h)]),
+  h.submodel({
+    slotId: 'look-save-to-board',
+    model: model.saveToBoard,
+    view: SaveToBoardView.view,
+    viewInputs: { locale },
+    toParentMessage: (message) => Message.GotSaveToBoardMessage({ message }),
+  }),
+  publicToggle(
+    {
+      id: 'look-public',
+      isPublic: look.shared,
+      check: look.check,
+      work: Sharing.match<PublicWork>(model.sharing, {
+        Idle: () => 'idle',
+        Sending: () => 'sending',
+        Failed: ({ needsProfile }) => (needsProfile ? 'needsProfile' : 'failed'),
+      }),
+      describe: false,
+      onToggle: (shared) => Message.ToggledShared({ shared }),
+    },
+    locale,
+    h,
+  ),
+  pieceRows(look, locale, h),
+  h.div(styled(h, styles.deletion()), deletion(model, locale, h)),
+]

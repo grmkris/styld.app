@@ -93,7 +93,7 @@ const problemOf = (error: unknown): MakeProblem => {
 }
 
 /** Ask Styld for a mood board or a sticker, under an operation id drawn once for this ask.
- * @internal Exported for its tests. */
+ */
 export const AskToMake = Command.define('AskToMake', {
   args: {
     boardId: Schema.String,
@@ -131,7 +131,7 @@ export const AskToMake = Command.define('AskToMake', {
 const readPause = Duration.millis(1500)
 
 /** Ask how the pictures are going.
- * @internal Exported for its tests. */
+ */
 export const ReadGeneration = Command.define('ReadGeneration', {
   args: { generationId: Schema.String },
   messages: [Message.SucceededReadGeneration, Message.FailedReadGeneration],

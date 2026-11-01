@@ -20,6 +20,7 @@ import { AsyncData, Command, Mount, Subscription, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
+import { Deletion } from '../Confirm.ts'
 import { StyldClient } from '../StyldClient.ts'
 import type { PictureEncoder } from '../Upload.ts'
 import { Misses, pollWhilePending } from '../Polling.ts'
@@ -37,7 +38,7 @@ import * as Crypto from 'effect/Crypto'
 export const PieceData = AsyncData.Schema(Piece, LoadError)
 export type PieceData = typeof PieceData.schema.Type
 
-export const Deletion = defineTaggedUnion({ Idle: {}, Confirming: {}, Deleting: {}, Failed: {} })
+export { Deletion }
 
 /** A change of the picture shown: none, on its way, or one that failed. */
 export const Choosing = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {} })
@@ -156,7 +157,6 @@ export type OutMessage = typeof OutMessage.Type
 /** A malformed id names no piece, so it is missing without asking. */
 const pieceIdOf = (pieceId: string) => Schema.decodeUnknownEffect(PieceId)(pieceId)
 
-/** @internal Exported for its tests. */
 export const GetPiece = Command.define('GetPiece', {
   args: { pieceId: Schema.String },
   messages: [Message.SucceededGetPiece, Message.FailedGetPiece],
@@ -174,7 +174,6 @@ export const GetPiece = Command.define('GetPiece', {
     ),
 })
 
-/** @internal Exported for its tests. */
 export const DeletePiece = Command.define('DeletePiece', {
   args: { pieceId: Schema.String },
   messages: [Message.SucceededDeletePiece, Message.FailedDeletePiece],
@@ -190,7 +189,6 @@ export const DeletePiece = Command.define('DeletePiece', {
     ),
 })
 
-/** @internal Exported for its tests. */
 export const SavePiece = Command.define('SavePiece', {
   args: { pieceId: Schema.String, changes: PieceChanges },
   messages: [Message.SucceededUpdatePiece, Message.FailedUpdatePiece],
@@ -205,7 +203,6 @@ export const SavePiece = Command.define('SavePiece', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedUpdatePiece())),
 })
 
-/** @internal Exported for its tests. */
 export const ChoosePicture = Command.define('ChoosePicture', {
   args: { pieceId: Schema.String, use: PictureChoice },
   messages: [Message.SucceededChoosePicture, Message.FailedChoosePicture],
@@ -228,7 +225,6 @@ const redrawProblemOf = (error: unknown): RedrawProblem => {
   return 'network'
 }
 
-/** @internal Exported for its tests. */
 export const RedrawPicture = Command.define('RedrawPicture', {
   args: { pieceId: Schema.String, hint: Schema.String, operationId: Schema.Option(Schema.String) },
   messages: [Message.SucceededRedrawPicture, Message.FailedRedrawPicture],
@@ -263,7 +259,6 @@ const turnProblemOf = (error: unknown): TurnProblem => {
   return 'network'
 }
 
-/** @internal Exported for its tests. */
 export const MakeTurn = Command.define('MakeTurn', {
   args: { pieceId: Schema.String },
   messages: [Message.SucceededMakeTurn, Message.FailedMakeTurn],
@@ -281,7 +276,7 @@ export const MakeTurn = Command.define('MakeTurn', {
 })
 
 /** Cut the turn's video into its frame sheet here, loading the video code only then, and hand the sheet to Styld.
- * @internal Exported for its tests. */
+ */
 export const BuildTurnSheet = Command.define('BuildTurnSheet', {
   args: { pieceId: Schema.String, version: Schema.Number },
   messages: [Message.SucceededBuildTurnSheet, Message.FailedBuildTurnSheet],

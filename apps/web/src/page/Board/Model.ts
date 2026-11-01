@@ -16,6 +16,7 @@ import * as People from '../People.ts'
 import { Option, Schema } from 'effect'
 import { AsyncData } from 'foldkit'
 import { defineTaggedUnion } from 'foldkit/schema'
+import { Deletion } from '../../Confirm.ts'
 import { modifyFields } from 'foldkit/struct'
 import { LoadError } from '../../ServerData.ts'
 import * as Make from './Make.ts'
@@ -127,8 +128,8 @@ export const Publishing = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: { n
 export type Publishing = typeof Publishing.Type
 
 /** Deleting the board: asked once more, then sent. */
-export const Removal = defineTaggedUnion({ Idle: {}, Confirming: {}, Deleting: {}, Failed: {} })
-export type Removal = typeof Removal.Type
+export const Removal = Deletion
+export type Removal = Deletion
 
 /** The person's looks, for the picker. */
 export const LooksData = AsyncData.Schema(Schema.Array(Look), Schema.Literal('Unavailable'))

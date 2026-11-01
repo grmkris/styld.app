@@ -49,7 +49,7 @@ export type Reporting = typeof Reporting.Type
 
 /** A Follow pressed signed out comes back with sign-in at `#follow`. Whether sign-in brought this tab here is checked
  * first; a follow so confirmed waits for the standing to be read, and is then spent.
- * @internal Exported for its tests. */
+ */
 export const FollowArrival = defineTaggedUnion({ None: {}, Checking: {}, Confirmed: {} })
 export type FollowArrival = typeof FollowArrival.Type
 
@@ -126,7 +126,6 @@ const TakeFollowArrival = Command.define('TakeFollowArrival', {
   execute: Effect.map(tookReturn, (fromSignIn) => Message.CheckedFollowArrival({ fromSignIn })),
 })
 
-/** @internal Exported for its tests. */
 export const SetFollowing = Command.define('SetFollowing', {
   args: { handle: Schema.String, following: Schema.Boolean },
   messages: [Message.SucceededSetRelation, Message.FailedPeopleWork],
@@ -141,7 +140,6 @@ export const SetFollowing = Command.define('SetFollowing', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedPeopleWork())),
 })
 
-/** @internal Exported for its tests. */
 export const SetBlocked = Command.define('SetBlocked', {
   args: { handle: Schema.String, blocked: Schema.Boolean },
   messages: [Message.SucceededSetRelation, Message.FailedPeopleWork],
@@ -186,7 +184,6 @@ const reportTargetOf = (subject: Subject) =>
       Effect.map(Schema.decodeUnknownEffect(LookId)(lookId), (id) => ({ _tag: 'ReportedLook' as const, lookId: id })),
   })
 
-/** @internal Exported for its tests. */
 export const SetSaved = Command.define('SetSaved', {
   args: { subject: Subject, saved: Schema.Boolean },
   messages: [Message.SucceededSetSaved, Message.FailedPeopleWork],
@@ -199,7 +196,6 @@ export const SetSaved = Command.define('SetSaved', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedPeopleWork())),
 })
 
-/** @internal Exported for its tests. */
 export const SendReport = Command.define('SendReport', {
   args: { subject: Subject, reason: ReportReason, note: Schema.String },
   messages: [Message.SucceededReport, Message.FailedReport],
@@ -277,7 +273,7 @@ const leaveMore = (model: Model): UpdateReturn => (model.more.isOpen ? closeMore
 
 /** The More sheet's title, once its content changes to a question or the report form, so focus and a screen reader
  * follow it there.
- * @internal Exported for its tests. */
+ */
 export const FocusMoreTitle = Command.define('FocusMoreTitle', {
   args: { id: Schema.String },
   messages: [Message.CompletedFocusMoreTitle],
@@ -302,7 +298,6 @@ const submitted = (model: Model): UpdateReturn => {
   }
 }
 
-/** @internal Exported for its tests. */
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     SucceededLoadRelation: ({ relation }) =>

@@ -40,7 +40,6 @@ export type Message = typeof Message.Type
 
 // COMMAND
 
-/** @internal Exported for its tests. */
 export const ListPieces = Command.define('ListPieces', {
   messages: [Message.SucceededListPieces, Message.FailedListPieces],
   execute: Effect.gen(function* () {

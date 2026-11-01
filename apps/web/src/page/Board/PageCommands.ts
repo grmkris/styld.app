@@ -115,7 +115,7 @@ export const PinThings = Command.define('PinThings', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedPins())),
 })
 
-/** @internal Exported for its tests. Which of the board's pins others see: the public page, read as a visitor reads
+/** Which of the board's pins others see: the public page, read as a visitor reads
  * it, is the one rule for that. A board others cannot see at all (its check is out, or it hid) leaves it unknown; its
  * check's own line says why. */
 export const ReadShown = Command.define('ReadShown', {

@@ -5,6 +5,7 @@ import { update } from '../src/App.ts'
 import { lenses } from '../src/Page.ts'
 import { at, withPage } from './AppFixtures.ts'
 import * as Account from '../src/page/Account.ts'
+import { ProfileData } from '../src/page/ProfileRead.ts'
 import { view } from '../src/View.ts'
 import { You } from '../src/You.ts'
 
@@ -22,7 +23,9 @@ describe('the account page', () => {
   test('says when the profile did not load, and reads it again on Try again', () => {
     scene(
       { update, view },
-      given(accountWith(modifyFields(Account.init(), { profile: () => Account.ProfileState.Failed() }))),
+      given(
+        accountWith(modifyFields(Account.init(), { profile: () => ProfileData.Failure({ error: 'Unavailable' }) })),
+      ),
       expect(role('alert')).toHaveText("Your profile didn't load."),
       click(role('button', { name: 'Try again' })),
       Command.resolve(Account.ReadProfile, Account.Message.FailedReadProfile()),

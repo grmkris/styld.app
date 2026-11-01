@@ -1,16 +1,16 @@
 import type { AccountClaims } from '@styld/auth/config'
 import { format, type Locale } from '@styld/i18n'
 import { Option } from 'effect'
-import { Submodel } from 'foldkit'
+import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { linkAction, primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { Message as AppMessage, type Model as AppModel, Session } from '../App.ts'
 import { loader } from '../Icon.ts'
-import { confirmActions } from '../ConfirmActions.ts'
+import { confirmActions } from '../Confirm.ts'
 import { styled } from '../Styled.ts'
-import { Copy, Deletion, Message, type Model, ProfileState } from './Account.ts'
+import { Copy, Deletion, Message, type Model } from './Account.ts'
 import { avatar as personAvatar } from '../Avatar.ts'
 import { checkNotice } from './CheckNotice.ts'
 import {
@@ -136,7 +136,7 @@ const deletion = (model: Model, { locale }: Inputs, h: HtmlBuilder<Message>): Ht
 /** Who they are: the name and tone their profile shows others, in shape while it is read, so the sign-in name never
  * shows first and then changes; the sign-in name on stone if the profile has none or cannot be read. */
 const identityView = (model: Model, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
-  if (ProfileState.guards.Loading(model.profile))
+  if (AsyncData.isLoading(model.profile) || AsyncData.isIdle(model.profile))
     return h.div(styled(h, identity()), [
       h.span([h.AriaHidden(true), ...styled(h, cx(block(), avatarSkeleton()))]),
       h.div(styled(h, identityText()), [
@@ -144,7 +144,7 @@ const identityView = (model: Model, inputs: Inputs, h: HtmlBuilder<Message>): Ht
         h.span(styled(h, identityEmail()), [inputs.claims.email]),
       ]),
     ])
-  const profile = ProfileState.guards.Loaded(model.profile) ? Option.some(model.profile.profile) : Option.none()
+  const profile = AsyncData.getData(model.profile)
   const named = Option.filter(profile, ({ name }) => name.trim() !== '')
   return h.div(styled(h, identity()), [
     Option.match(named, {
@@ -164,10 +164,12 @@ const identityView = (model: Model, inputs: Inputs, h: HtmlBuilder<Message>): Ht
 const profileSection = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.section(styled(h, section()), [
     h.h2(styled(h, sectionTitle()), [format(locale, 'profile.card.title', {})]),
-    ...ProfileState.match(model.profile, {
-      Loading: () => [h.span([h.AriaHidden(true), ...styled(h, cx(line(), statusSkeleton()))])],
-      Failed: () => [h.p([h.Role('alert'), ...styled(h, problem())], [format(locale, 'profile.card.loadFailed', {})])],
-      Loaded: ({ profile }) =>
+    ...AsyncData.matchData(model.profile, {
+      onEmpty: () => [h.span([h.AriaHidden(true), ...styled(h, cx(line(), statusSkeleton()))])],
+      onFailure: () => [
+        h.p([h.Role('alert'), ...styled(h, problem())], [format(locale, 'profile.card.loadFailed', {})]),
+      ],
+      onData: (profile) =>
         profile.handle === null
           ? [h.p(styled(h, sectionText()), [format(locale, 'profile.card.setUp', {})])]
           : [
@@ -180,7 +182,7 @@ const profileSection = (model: Model, locale: Locale, h: HtmlBuilder<Message>): 
             ],
     }),
     h.div(styled(h, rowActions()), [
-      ProfileState.guards.Failed(model.profile)
+      AsyncData.isFailure(model.profile)
         ? actionButton(
             {
               label: format(locale, 'common.tryAgain', {}),
@@ -190,14 +192,19 @@ const profileSection = (model: Model, locale: Locale, h: HtmlBuilder<Message>): 
             h,
           )
         : h.empty,
-      ProfileState.guards.Loaded(model.profile) &&
-      model.profile.profile.published &&
-      model.profile.profile.handle !== null
-        ? h.a(
-            [h.Href(personRouter({ handle: model.profile.profile.handle })), ...styled(h, linkAction())],
-            [format(locale, 'profile.card.viewPage', {})],
-          )
-        : h.empty,
+      Option.match(
+        Option.flatMap(AsyncData.getData(model.profile), (profile) =>
+          profile.published ? Option.fromNullishOr(profile.handle) : Option.none(),
+        ),
+        {
+          onNone: () => h.empty,
+          onSome: (handle) =>
+            h.a(
+              [h.Href(personRouter({ handle })), ...styled(h, linkAction())],
+              [format(locale, 'profile.card.viewPage', {})],
+            ),
+        },
+      ),
       h.a([h.Href(profileRouter({})), ...styled(h, linkAction())], [format(locale, 'profile.editor.mode.edit', {})]),
     ]),
   ])

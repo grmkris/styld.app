@@ -8,7 +8,8 @@ import {
   Message as LookMessage,
   ShareLook,
   Sharing,
-  Shown,
+  LookData,
+  LookShown,
   init as initLook,
   update as updateLook,
 } from '../src/page/Look.ts'
@@ -41,12 +42,24 @@ describe('the looks page', () => {
 })
 
 describe('one look', () => {
+  test('a look that did not load is tried again; a failed read later keeps the look shown', () => {
+    const failed = updateLook(initLook(lookId), LookMessage.FailedGetLook({ error: 'Unavailable' })).model
+    expect(failed.look).toEqual(LookData.Failure({ error: 'Unavailable' }))
+    const retried = updateLook(failed, LookMessage.ClickedRetry())
+    expect(retried.model.look).toEqual(LookData.Loading())
+    expect(retried.commands?.map(({ name }) => name)).toEqual(['GetLook'])
+    const shown = updateLook(retried.model, LookMessage.SucceededGetLook({ look: weekend })).model
+    expect(updateLook(shown, LookMessage.FailedGetLook({ error: 'Unavailable' })).model.look).toEqual(
+      LookData.Stale({ error: 'Unavailable', data: LookShown.Own({ look: weekend }) }),
+    )
+  })
+
   test('a missing look says so rather than failing', () => {
     story(
       updateLook,
       given(initLook(lookId)),
-      message(LookMessage.FailedGetLook({ notFound: true })),
-      model(({ shown }) => expect(Shown.guards.NotFound(shown)).toBe(true)),
+      message(LookMessage.FailedGetLook({ error: 'NotFound' })),
+      model(({ look }) => expect(look).toEqual(LookData.Failure({ error: 'NotFound' }))),
     )
   })
 
@@ -61,8 +74,8 @@ describe('one look', () => {
       model(({ sharing }) => expect(sharing).toEqual(Sharing.Failed({ needsProfile: true }))),
       message(LookMessage.ToggledShared({ shared: true })),
       Command.resolve(ShareLook({ lookId, shared: true }), LookMessage.SucceededShareLook({ look: shared })),
-      model(({ shown, sharing }) => {
-        expect(shown).toEqual(Shown.Loaded({ look: shared }))
+      model(({ look, sharing }) => {
+        expect(look).toEqual(LookData.Success({ data: LookShown.Own({ look: shared }) }))
         expect(Sharing.guards.Idle(sharing)).toBe(true)
       }),
     )

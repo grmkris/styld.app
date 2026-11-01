@@ -102,7 +102,6 @@ export type OutMessage = typeof OutMessage.Type
 
 // COMMAND
 
-/** @internal Exported for its tests. */
 export const LoadTray = Command.define('LoadTray', {
   messages: [Message.SucceededLoadTray, Message.FailedLoadTray],
   execute: Effect.gen(function* () {
@@ -111,7 +110,6 @@ export const LoadTray = Command.define('LoadTray', {
   }).pipe(Effect.orElseSucceed(() => Message.FailedLoadTray())),
 })
 
-/** @internal Exported for its tests. */
 export const DrawOperationId = Command.define('DrawOperationId', {
   messages: [Message.CompletedDrawOperationId],
   execute: Effect.map(newOperationId, (operationId) => Message.CompletedDrawOperationId({ operationId })),
@@ -131,7 +129,6 @@ const ReviewArgs = Schema.Struct({
   discard: Schema.Array(Schema.String),
 })
 
-/** @internal Exported for its tests. */
 export const SendReview = Command.define('SendReview', {
   args: ReviewArgs.fields,
   messages: [Message.SucceededReview, Message.FailedReview],
@@ -182,7 +179,6 @@ const onCapture = (
     Effect.orElseSucceed(() => Message.FailedCaptureAction({ captureId })),
   )
 
-/** @internal Exported for its tests. */
 export const RetryCapture = Command.define('RetryCapture', {
   args: { captureId: Schema.String },
   messages: [Message.SucceededCaptureAction, Message.FailedCaptureAction],
@@ -190,7 +186,6 @@ export const RetryCapture = Command.define('RetryCapture', {
     onCapture(captureId, (api, params, operationId) => api.capture.retry({ params, payload: { operationId } })),
 })
 
-/** @internal Exported for its tests. */
 export const RemoveCapture = Command.define('RemoveCapture', {
   args: { captureId: Schema.String },
   messages: [Message.SucceededCaptureAction, Message.FailedCaptureAction],
@@ -199,7 +194,7 @@ export const RemoveCapture = Command.define('RemoveCapture', {
 })
 
 /** Show each sighting of a piece on its own card again, keyed in the page's actions by the piece's id.
- * @internal Exported for its tests. */
+ */
 export const SplitSightings = Command.define('SplitSightings', {
   args: { detectionId: Schema.String },
   messages: [Message.SucceededCaptureAction, Message.FailedCaptureAction],

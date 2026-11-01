@@ -1,29 +1,31 @@
 import { newOperation, newOperationId } from '../OperationIds.ts'
 import { Look as LookContract, LookId, PublicLookPage } from '@styld/protocol'
-import { Effect, Schema } from 'effect'
+import { Effect, Option, Result, Schema } from 'effect'
 import type * as Crypto from 'effect/Crypto'
-import { Command, Update } from 'foldkit'
+import { AsyncData, Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
+import { Deletion } from '../Confirm.ts'
+import { LoadError } from '../ServerData.ts'
 import { StyldClient } from '../StyldClient.ts'
 import * as People from './People.ts'
 import * as SaveToBoard from './SaveToBoard.ts'
 
 // MODEL
 
-export const Shown = defineTaggedUnion({
-  Loading: {},
-  Loaded: { look: LookContract },
-  /** Someone else's shared look, or the person's own read signed out: shown as others see it. */
+/** The look as the page shows it: the person's own, or someone else's shared look (or the person's own read signed
+ * out), shown as others see it. */
+export const LookShown = defineTaggedUnion({
+  Own: { look: LookContract },
   Visiting: { page: PublicLookPage },
-  NotFound: {},
-  Failed: {},
 })
-export type Shown = typeof Shown.Type
+export type LookShown = typeof LookShown.Type
 
-export const Deletion = defineTaggedUnion({ Idle: {}, Confirming: {}, Deleting: {}, Failed: {} })
-export type Deletion = typeof Deletion.Type
+export const LookData = AsyncData.Schema(LookShown, LoadError)
+export type LookData = typeof LookData.schema.Type
+
+export { Deletion }
 
 /** Sharing the look on the profile, or no longer; only a published profile shares. */
 export const Sharing = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: { needsProfile: Schema.Boolean } })
@@ -31,7 +33,7 @@ export type Sharing = typeof Sharing.Type
 
 export const Model = Schema.Struct({
   lookId: Schema.String,
-  shown: Shown,
+  look: LookData.schema,
   deletion: Deletion,
   sharing: Sharing,
   saveToBoard: SaveToBoard.Model,
@@ -42,7 +44,7 @@ export type Model = typeof Model.Type
 
 export const init = (lookId: string): Model => ({
   lookId,
-  shown: Shown.Loading(),
+  look: AsyncData.Loading(),
   deletion: Deletion.Idle(),
   sharing: Sharing.Idle(),
   saveToBoard: SaveToBoard.init({ kind: 'look', id: lookId }),
@@ -53,7 +55,7 @@ export const init = (lookId: string): Model => ({
 
 export const Message = defineMessageUnion({
   SucceededGetLook: { look: LookContract },
-  FailedGetLook: { notFound: Schema.Boolean },
+  FailedGetLook: { error: LoadError },
   SucceededVisitLook: { page: PublicLookPage },
   ClickedRetry: {},
   ToggledShared: { shared: Schema.Boolean },
@@ -81,8 +83,8 @@ const visitLook = (lookId: string) =>
     const page = yield* api.public.look({ params: { lookId: yield* Schema.decodeUnknownEffect(LookId)(lookId) } })
     return Message.SucceededVisitLook({ page })
   }).pipe(
-    Effect.catchTag('NotFound', () => Effect.succeed(Message.FailedGetLook({ notFound: true }))),
-    Effect.orElseSucceed(() => Message.FailedGetLook({ notFound: false })),
+    Effect.catchTag('NotFound', () => Effect.succeed(Message.FailedGetLook({ error: 'NotFound' }))),
+    Effect.orElseSucceed(() => Message.FailedGetLook({ error: 'Unavailable' })),
   )
 
 const GetLook = Command.define('GetLook', {
@@ -95,15 +97,14 @@ const GetLook = Command.define('GetLook', {
       return Message.SucceededGetLook({ look: yield* api.look.getLook({ params: { lookId: id } }) })
     }).pipe(
       Effect.catchTags({
-        SchemaError: () => Effect.succeed(Message.FailedGetLook({ notFound: true })),
-        Unavailable: () => Effect.succeed(Message.FailedGetLook({ notFound: false })),
+        SchemaError: () => Effect.succeed(Message.FailedGetLook({ error: 'NotFound' })),
+        Unavailable: () => Effect.succeed(Message.FailedGetLook({ error: 'Unavailable' })),
       }),
       // Not this account's look, or nobody signed in: it may be shared.
       Effect.catch(() => visitLook(lookId)),
     ),
 })
 
-/** @internal Exported for its tests. */
 export const ShareLook = Command.define('ShareLook', {
   args: { lookId: Schema.String, shared: Schema.Boolean },
   messages: [Message.SucceededShareLook, Message.FailedShareLook],
@@ -121,7 +122,6 @@ export const ShareLook = Command.define('ShareLook', {
     ),
 })
 
-/** @internal Exported for its tests. */
 export const DeleteLook = Command.define('DeleteLook', {
   args: { lookId: Schema.String },
   messages: [Message.SucceededDeleteLook, Message.FailedDeleteLook],
@@ -147,17 +147,25 @@ const foldPeople = People.foldInto<Model, Message>((message) => Message.GotPeopl
 
 const foldSaveToBoard = SaveToBoard.foldInto<Model, Message>((message) => Message.GotSaveToBoardMessage({ message }))
 
+const showing = (model: Model, shown: LookShown): Model =>
+  modifyFields(model, { look: () => LookData.Success({ data: shown }) })
+
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
-    SucceededGetLook: ({ look }) => ({ model: modifyFields(model, { shown: () => Shown.Loaded({ look }) }) }),
-    SucceededVisitLook: ({ page }) => ({ model: modifyFields(model, { shown: () => Shown.Visiting({ page }) }) }),
-    FailedGetLook: ({ notFound }) => ({
-      model: modifyFields(model, { shown: () => (notFound ? Shown.NotFound() : Shown.Failed()) }),
+    SucceededGetLook: ({ look }) => ({ model: showing(model, LookShown.Own({ look })) }),
+    SucceededVisitLook: ({ page }) => ({ model: showing(model, LookShown.Visiting({ page })) }),
+    // A failure keeps a look already shown; a first read that fails says why.
+    FailedGetLook: ({ error }) => ({
+      model: modifyFields(model, { look: (look) => AsyncData.settle(look, Result.fail(error)) }),
     }),
-    ClickedRetry: () => ({
-      model: modifyFields(model, { shown: () => Shown.Loading() }),
-      commands: [GetLook({ lookId: model.lookId })],
-    }),
+    ClickedRetry: () =>
+      Option.match(AsyncData.revalidateOrLoad(model.look), {
+        onNone: () => ({ model }),
+        onSome: (look) => ({
+          model: modifyFields(model, { look: () => look }),
+          commands: [GetLook({ lookId: model.lookId })],
+        }),
+      }),
     ToggledShared: ({ shared }) =>
       Sharing.guards.Sending(model.sharing)
         ? { model }
@@ -166,7 +174,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
             commands: [ShareLook({ lookId: model.lookId, shared })],
           },
     SucceededShareLook: ({ look }) => ({
-      model: modifyFields(model, { shown: () => Shown.Loaded({ look }), sharing: () => Sharing.Idle() }),
+      model: modifyFields(showing(model, LookShown.Own({ look })), { sharing: () => Sharing.Idle() }),
     }),
     FailedShareLook: ({ needsProfile }) => ({
       model: modifyFields(model, { sharing: () => Sharing.Failed({ needsProfile }) }),

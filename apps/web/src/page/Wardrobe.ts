@@ -107,7 +107,6 @@ export type OutMessage = typeof OutMessage.Type
 
 // COMMAND
 
-/** @internal Exported for its tests. */
 export const CountUndrawn = Command.define('CountUndrawn', {
   messages: [Message.CompletedCountUndrawn],
   execute: Effect.gen(function* () {
@@ -117,7 +116,6 @@ export const CountUndrawn = Command.define('CountUndrawn', {
   }).pipe(Effect.orElseSucceed(() => Message.CompletedCountUndrawn({ pieces: 0 }))),
 })
 
-/** @internal Exported for its tests. */
 export const DrawPictures = Command.define('DrawPictures', {
   messages: [Message.SucceededDrawPictures, Message.FailedDrawPictures],
   execute: Effect.gen(function* () {

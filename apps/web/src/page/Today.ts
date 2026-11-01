@@ -63,7 +63,6 @@ export const Outfits = Schema.Struct({
   refilling: Schema.Boolean,
 })
 export type Outfits = typeof Outfits.Type
-/** @internal Exported for its tests. */
 export const OutfitsData = AsyncData.Schema(Outfits, Schema.Literal('Unavailable'))
 export type OutfitsData = typeof OutfitsData.schema.Type
 
@@ -129,7 +128,7 @@ export type OutMessage = typeof OutMessage.Type
 // COMMAND
 
 /** Today in the browser's own time zone (the server renders in UTC). `en-CA` writes dates as `2026-10-30`.
- * @internal Exported for its tests. */
+ */
 export const DetermineDay = Command.define('DetermineDay', {
   messages: [Message.CompletedDetermineDay],
   execute: Clock.currentTimeMillis.pipe(
@@ -142,7 +141,6 @@ export const DetermineDay = Command.define('DetermineDay', {
   ),
 })
 
-/** @internal Exported for its tests. */
 export const ReadWorn = Command.define('ReadWorn', {
   args: { day: Day },
   messages: [Message.SucceededReadWorn, Message.FailedReadWorn],
@@ -153,7 +151,6 @@ export const ReadWorn = Command.define('ReadWorn', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedReadWorn())),
 })
 
-/** @internal Exported for its tests. */
 export const ListBoards = Command.define('ListBoards', {
   messages: [Message.SucceededListBoards, Message.FailedListBoards],
   execute: Effect.gen(function* () {
@@ -163,8 +160,6 @@ export const ListBoards = Command.define('ListBoards', {
   }).pipe(Effect.orElseSucceed(() => Message.FailedListBoards())),
 })
 
-/** @internal Exported for its tests. */
-/** @internal Exported for its tests. */
 export const ReadFeed = Command.define('ReadFeed', {
   messages: [Message.SucceededReadFeed, Message.FailedReadFeed],
   execute: Effect.gen(function* () {
@@ -173,7 +168,6 @@ export const ReadFeed = Command.define('ReadFeed', {
   }).pipe(Effect.orElseSucceed(() => Message.FailedReadFeed())),
 })
 
-/** @internal Exported for its tests. */
 export const ReadFavourite = Command.define('ReadFavourite', {
   messages: [Message.SucceededReadFavourite, Message.FailedReadFavourite],
   execute: Effect.gen(function* () {
@@ -183,7 +177,6 @@ export const ReadFavourite = Command.define('ReadFavourite', {
   }).pipe(Effect.orElseSucceed(() => Message.FailedReadFavourite())),
 })
 
-/** @internal Exported for its tests. */
 export const ReadTray = Command.define('ReadTray', {
   messages: [Message.SucceededReadTray, Message.FailedReadTray],
   execute: Effect.gen(function* () {
@@ -202,7 +195,7 @@ const batchSize = 6
 const refillAt = 2
 
 /** Today's outfits, made by the engine's Fast way, as a new run or more of one.
- * @internal Exported for its tests. */
+ */
 export const MakeOutfits = Command.define('MakeOutfits', {
   args: { day: Day, brief: OutfitBrief, session: Schema.Option(OutfitSession), seen: Schema.Array(OutfitKey) },
   messages: [Message.SucceededMakeOutfits, Message.FailedMakeOutfits],
@@ -224,7 +217,6 @@ export const MakeOutfits = Command.define('MakeOutfits', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedMakeOutfits())),
 })
 
-/** @internal Exported for its tests. */
 export const Wear = Command.define('Wear', {
   args: { day: Day, pieceIds: Schema.Array(PieceId), proposal: Schema.Option(ProposalRef) },
   messages: [Message.SucceededWear, Message.FailedWear],
@@ -283,7 +275,7 @@ export const enter = (model: Model): Update.Return<Model, Message, StyldClient> 
 
 /** The weather a day's outfit is for, by its month where Styld's people live: cold from November to March, warm from
  * June to August, and either in between.
- * @internal Exported for its tests. */
+ */
 export const briefFor = (day: Day): OutfitBrief => {
   const month = Number(day.slice(5, 7))
   if (month >= 11 || month <= 3) return { season: 'cold' }

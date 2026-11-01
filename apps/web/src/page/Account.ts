@@ -1,29 +1,27 @@
 import * as Crypto from 'effect/Crypto'
 import { newOperationId } from '../OperationIds.ts'
 import { Profile } from '@styld/protocol'
-import { Effect, Schema } from 'effect'
-import { Command, type Update } from 'foldkit'
+import { Effect, Option, Result, Schema } from 'effect'
+import { AsyncData, Command, type Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
+import { Deletion } from '../Confirm.ts'
 import { StyldClient } from '../StyldClient.ts'
-import { readProfile } from './ProfileRead.ts'
+import { ProfileData, readProfile } from './ProfileRead.ts'
 
 // MODEL
 
 /** Deleting the account: a confirmation in the page, then the request. */
-export const Deletion = defineTaggedUnion({ Idle: {}, Confirming: {}, Deleting: {}, Failed: {} })
+export { Deletion }
 
 /** Copying the assistants' server address. */
 export const Copy = defineTaggedUnion({ Idle: {}, Copied: {}, Failed: {} })
 
-/** The public profile, read when the page opens, so the page says where it stands. */
-export const ProfileState = defineTaggedUnion({ Loading: {}, Loaded: { profile: Profile }, Failed: {} })
-
-export const Model = Schema.Struct({ deletion: Deletion, copy: Copy, profile: ProfileState })
+export const Model = Schema.Struct({ deletion: Deletion, copy: Copy, profile: ProfileData.schema })
 export type Model = typeof Model.Type
 
-export const init = (): Model => ({ deletion: Deletion.Idle(), copy: Copy.Idle(), profile: ProfileState.Loading() })
+export const init = (): Model => ({ deletion: Deletion.Idle(), copy: Copy.Idle(), profile: AsyncData.Loading() })
 
 // MESSAGE
 
@@ -48,7 +46,6 @@ export type OutMessage = typeof OutMessage.Type
 
 // COMMAND
 
-/** @internal Exported for its tests. */
 export const DeleteAccount = Command.define('DeleteAccount', {
   messages: [Message.SucceededDeleteAccount, Message.FailedDeleteAccount],
   execute: Effect.gen(function* () {
@@ -58,7 +55,6 @@ export const DeleteAccount = Command.define('DeleteAccount', {
   }).pipe(Effect.orElseSucceed(() => Message.FailedDeleteAccount())),
 })
 
-/** @internal Exported for its tests. */
 export const CopyServerUrl = Command.define('CopyServerUrl', {
   args: { url: Schema.String },
   messages: [Message.SucceededCopyServerUrl, Message.FailedCopyServerUrl],
@@ -69,7 +65,6 @@ export const CopyServerUrl = Command.define('CopyServerUrl', {
     ),
 })
 
-/** @internal Exported for its tests. */
 export const ReadProfile = Command.define('ReadProfile', {
   messages: [Message.SucceededReadProfile, Message.FailedReadProfile],
   execute: readProfile(
@@ -103,14 +98,17 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SucceededCopyServerUrl: () => ({ model: modifyFields(model, { copy: () => Copy.Copied() }) }),
     FailedCopyServerUrl: () => ({ model: modifyFields(model, { copy: () => Copy.Failed() }) }),
     SucceededReadProfile: ({ profile }) => ({
-      model: modifyFields(model, { profile: () => ProfileState.Loaded({ profile }) }),
+      model: modifyFields(model, { profile: () => ProfileData.Success({ data: profile }) }),
     }),
-    FailedReadProfile: () =>
-      ProfileState.guards.Loaded(model.profile)
-        ? { model }
-        : { model: modifyFields(model, { profile: () => ProfileState.Failed() }) },
-    ClickedRetryProfile: () => ({
-      model: modifyFields(model, { profile: () => ProfileState.Loading() }),
-      commands: [ReadProfile()],
+    // A failed read keeps the profile already shown.
+    FailedReadProfile: () => ({
+      model: modifyFields(model, {
+        profile: (profile) => AsyncData.settle(profile, Result.fail('Unavailable' as const)),
+      }),
     }),
+    ClickedRetryProfile: () =>
+      Option.match(AsyncData.revalidateOrLoad(model.profile), {
+        onNone: () => ({ model }),
+        onSome: (profile) => ({ model: modifyFields(model, { profile: () => profile }), commands: [ReadProfile()] }),
+      }),
   })

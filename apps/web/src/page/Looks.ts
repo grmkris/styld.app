@@ -27,7 +27,6 @@ export type Message = typeof Message.Type
 
 // COMMAND
 
-/** @internal Exported for its tests. */
 export const ListLooks = Command.define('ListLooks', {
   messages: [Message.SucceededListLooks, Message.FailedListLooks],
   execute: Effect.gen(function* () {

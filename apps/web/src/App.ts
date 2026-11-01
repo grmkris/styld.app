@@ -114,7 +114,6 @@ export { Message }
 
 // COMMAND
 
-/** @internal Exported for its tests. */
 export const ReadSession = Command.define('ReadSession', {
   messages: [Message.ReceivedSession, Message.FailedReadSession],
   execute: Effect.gen(function* () {
@@ -124,7 +123,6 @@ export const ReadSession = Command.define('ReadSession', {
   }).pipe(Effect.catch(() => Effect.succeed(Message.FailedReadSession()))),
 })
 
-/** @internal Exported for its tests. */
 export const SignOut = Command.define('SignOut', {
   messages: [Message.SucceededSignOut, Message.FailedSignOut],
   execute: Effect.gen(function* () {

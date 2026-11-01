@@ -9,13 +9,17 @@ import {
   FocusExploreSearch,
   FollowSuggested,
   cameFromOf,
+  enterExplore,
+  exploreOf,
   init,
   load,
   Message,
   SearchExplore,
+  ShownData,
   suggestionOf,
   Target,
   update,
+  VisitShown,
 } from '../src/page/Visit.ts'
 
 const profile = (yours: boolean) =>
@@ -189,5 +193,38 @@ describe('following from Explore', () => {
       message(Message.SucceededLoadExplore({ explore: empty })),
       model((current) => expect(current.suggestions).toEqual({})),
     )
+  })
+})
+
+describe('reading a public page', () => {
+  const empty = Schema.decodeUnknownSync(Explore)({ edits: [], featured: [], people: [], newest: [] })
+  const person = init(Target.Person({ handle: 'nika.kovac' }), false)
+
+  test('a profile that is not there for others is missing; one that did not load offers Try again, which reads it', () => {
+    expect(update(person, Message.FailedLoadPerson({ error: 'NotFound' })).model.shown).toEqual(
+      ShownData.Failure({ error: 'NotFound' }),
+    )
+    const failed = update(person, Message.FailedLoadPerson({ error: 'Unavailable' })).model
+    expect(failed.shown).toEqual(ShownData.Failure({ error: 'Unavailable' }))
+    const retried = update(failed, Message.ClickedRetry())
+    expect(retried.model.shown).toEqual(ShownData.Loading())
+    expect(retried.commands?.map(({ name }) => name)).toEqual(['LoadPerson'])
+    // A read already on its way is not sent twice.
+    expect(update(retried.model, Message.ClickedRetry()).commands ?? []).toEqual([])
+  })
+
+  test('Explore keeps what it showed while it is read again, and when that read fails', () => {
+    const shown = update(
+      init(Target.Explore({ mood: Option.none() }), false),
+      Message.SucceededLoadExplore({ explore: empty }),
+    )
+    const entered = enterExplore(shown.model)
+    expect(entered.model.shown).toEqual(ShownData.Refreshing({ data: VisitShown.Explore({ explore: empty }) }))
+    expect(entered.commands?.map(({ name }) => name)).toEqual(['LoadExplore'])
+    const failed = update(entered.model, Message.FailedLoadExplore()).model
+    expect(failed.shown).toEqual(
+      ShownData.Stale({ error: 'Unavailable', data: VisitShown.Explore({ explore: empty }) }),
+    )
+    expect(exploreOf(failed.shown)).toEqual(Option.some(empty))
   })
 })

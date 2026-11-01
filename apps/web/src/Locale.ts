@@ -11,7 +11,7 @@ const layoutTestEnvironments: ReadonlySet<string> = new Set(['local', 'preview']
 
 /** Pseudo-locales test text expansion and RTL layout. Only known test environments offer them;
  * production and any unknown environment offer only the reviewed languages.
- * @internal Exported for its test; the application reads `availableLocales`. */
+ * The application reads `availableLocales`. */
 export const offeredLocales = (environment: string): ReadonlyArray<Locale> =>
   layoutTestEnvironments.has(environment) ? Locale.literals : languages
 

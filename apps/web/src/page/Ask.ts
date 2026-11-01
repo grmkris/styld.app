@@ -72,7 +72,7 @@ export type OutMessage = typeof OutMessage.Type
 
 /** English and Slovenian both, so "shoes" finds shoes on a Slovenian page and "čevlji" on an English one; the
  * page's own language is already here.
- * @internal Exported for its tests. */
+ */
 export const LoadSearchLanguages = Command.define('LoadSearchLanguages', {
   messages: [Message.SucceededLoadSearchLanguages, Message.FailedLoadSearchLanguages],
   execute: Effect.tryPromise(() => Promise.all([loadCatalog('en'), loadCatalog('sl')])).pipe(
@@ -89,7 +89,7 @@ const WaitBeforeWritingQuery = Command.define('WaitBeforeWritingQuery', {
 })
 
 /** The search in the address (`/ask?q=…`), replacing the current entry rather than adding one.
- * @internal Exported for its tests. */
+ */
 export const WriteQuery = Command.define('WriteQuery', {
   args: { query: Schema.String },
   messages: [Message.CompletedWriteQuery],
@@ -101,14 +101,14 @@ export const WriteQuery = Command.define('WriteQuery', {
 })
 
 /** Focus to the search field, after clearing it.
- * @internal Exported for its tests. */
+ */
 export const FocusSearch = Command.define('FocusSearch', {
   messages: [Message.CompletedFocus],
   execute: Dom.focus(`#${searchFieldId}`).pipe(Effect.ignore, Effect.as(Message.CompletedFocus())),
 })
 
 /** People and public boards for the query, searched on the server; the wardrobe is searched here.
- * @internal Exported for its tests. */
+ */
 export const SearchPublic = Command.define('SearchPublic', {
   args: { query: Schema.String },
   messages: [Message.SucceededSearchPublic, Message.FailedSearchPublic],
@@ -124,7 +124,7 @@ export const SearchPublic = Command.define('SearchPublic', {
 const searchable = (query: string) => query.trim().length >= 2
 
 /** Focus to what was found, after Enter: the keyboard closes and a screen reader reads the count.
- * @internal Exported for its tests. */
+ */
 export const FocusResults = Command.define('FocusResults', {
   messages: [Message.CompletedFocus],
   execute: Dom.focus(`#${resultsId}`, { makeFocusable: true }).pipe(Effect.ignore, Effect.as(Message.CompletedFocus())),

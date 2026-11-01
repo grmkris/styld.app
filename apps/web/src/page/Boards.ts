@@ -60,7 +60,6 @@ export const boardSummaries = Effect.gen(function* () {
   return (yield* api.board.listBoards()).boards
 })
 
-/** @internal Exported for its tests. */
 export const ListBoards = Command.define('ListBoards', {
   messages: [Message.SucceededListBoards, Message.FailedListBoards],
   execute: boardSummaries.pipe(
@@ -77,7 +76,6 @@ const ListSaved = Command.define('ListSaved', {
   }).pipe(Effect.orElseSucceed(() => Message.FailedListSaved())),
 })
 
-/** @internal Exported for its tests. */
 export const CreateBoard = Command.define('CreateBoard', {
   args: { name: Schema.String },
   messages: [Message.SucceededCreateBoard, Message.FailedCreateBoard],

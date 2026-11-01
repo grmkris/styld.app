@@ -48,7 +48,6 @@ export const ports = {
 
 // MODEL
 
-/** @internal Exported for its tests. */
 export const Showing = defineTaggedUnion({
   Waiting: {},
   Wardrobe: { view: WardrobeView },
@@ -62,14 +61,12 @@ const Model = Schema.Struct({
 })
 type Model = typeof Model.Type
 
-/** @internal Exported for its tests. */
 export const init = (): Update.Return<Model, Message> => ({
   model: { showing: Showing.Waiting(), images: {}, language: 'en' },
 })
 
 // MESSAGE
 
-/** @internal Exported for its tests. */
 export const Message = defineMessageUnion({
   ReceivedHost: { input: HostInput },
   ClickedOpen: { url: Schema.String },
@@ -79,7 +76,6 @@ type Message = typeof Message.Type
 
 // COMMAND
 
-/** @internal Exported for its tests. */
 export const OpenLink = Command.define('OpenLink', {
   args: { url: Schema.String },
   messages: [Message.CompletedOpen],
@@ -110,7 +106,6 @@ const receive = (model: Model, input: HostInput): UpdateReturn =>
     }),
   )
 
-/** @internal Exported for its tests. */
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     ReceivedHost: ({ input }) => receive(model, input),

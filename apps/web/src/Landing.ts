@@ -1,5 +1,7 @@
 import { format, type Locale } from '@styld/i18n'
+import type { FoundBoard } from '@styld/protocol'
 import { Array, Option } from 'effect'
+import { AsyncData } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from './ActionButton.ts'
 import { primaryAction, secondaryAction } from './Actions.styles.ts'
@@ -30,6 +32,9 @@ import {
 
 const browseAnchor = '#inspiration'
 
+/** Nothing read yet, and nothing failed: the boards are on their way. */
+const isPending = (shown: Visit.ShownData) => Option.isNone(AsyncData.getData(shown)) && !AsyncData.isFailure(shown)
+
 /** Two board cards' shapes while the boards load, and what is loading for assistive technology. */
 const loadingBoards = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, inspirationGrid()), [
@@ -41,9 +46,9 @@ const loadingBoards = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   ])
 
 /** The landing's inspiration: Edits from Styld, or the newest public boards before there are any. */
-const inspirationBoards = (shown: Visit.Shown, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  if (Visit.Shown.guards.Loading(shown)) return loadingBoards(locale, h)
-  if (Visit.Shown.guards.Failed(shown))
+const inspirationBoards = (shown: Visit.ShownData, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  if (isPending(shown)) return loadingBoards(locale, h)
+  if (Option.isNone(Visit.exploreOf(shown)) && AsyncData.isFailure(shown))
     return h.div(styled(h, inspirationGrid()), [
       h.p([h.Role('alert'), ...styled(h, emptyState())], [format(locale, 'landing.feedFailed', {})]),
       actionButton(
@@ -55,9 +60,10 @@ const inspirationBoards = (shown: Visit.Shown, locale: Locale, h: HtmlBuilder<Me
         h,
       ),
     ])
-  const boards = Visit.Shown.guards.Explore(shown)
-    ? (shown.explore.edits.length > 0 ? shown.explore.edits : shown.explore.newest).slice(0, 6)
-    : []
+  const boards = Option.match(Visit.exploreOf(shown), {
+    onNone: (): ReadonlyArray<FoundBoard> => [],
+    onSome: (explore) => (explore.edits.length > 0 ? explore.edits : explore.newest).slice(0, 6),
+  })
   return boards.length === 0
     ? h.div(styled(h, inspirationGrid()), [h.p(styled(h, emptyState()), [format(locale, 'landing.feedEmpty', {})])])
     : h.div(styled(h, inspirationGrid()), [
@@ -71,22 +77,26 @@ const inspirationBoards = (shown: Visit.Shown, locale: Locale, h: HtmlBuilder<Me
 
 /** The section is named for what it shows: Styld's edits, or the newest boards before there are any. Until the boards
  * arrive it is unknown which, so a heading's shape holds its place. */
-const inspirationTitle = (shown: Visit.Shown, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  if (Visit.Shown.guards.Loading(shown)) return h.span([h.AriaHidden(true), ...styled(h, cx(line(), headingLine()))])
-  const title =
-    Visit.Shown.guards.Explore(shown) && shown.explore.edits.length === 0 ? 'explore.newest' : 'explore.edits'
+const inspirationTitle = (shown: Visit.ShownData, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  if (isPending(shown)) return h.span([h.AriaHidden(true), ...styled(h, cx(line(), headingLine()))])
+  const title = Option.exists(Visit.exploreOf(shown), (explore) => explore.edits.length === 0)
+    ? 'explore.newest'
+    : 'explore.edits'
   return h.h2([], [format(locale, title, {})])
 }
 
 /** Beside the words on a desktop, the first public board with something to show: its collage as it lies, else its
  * pins on its paper. It draws once the boards arrive (a table's placement is set in the browser), in outline until
  * then, and not at all without one. Its clothes are a picture of what Styld is for; the boards below are the way in. */
-const heroBoard = (shown: Visit.Shown, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  if (Visit.Shown.guards.Loading(shown))
+const heroBoard = (shown: Visit.ShownData, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  if (isPending(shown))
     return h.div(styled(h, styles.heroBoard()), [
       h.span([h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, cx(block(), styles.heroSkeleton()))]),
     ])
-  const boards = Visit.Shown.guards.Explore(shown) ? [...shown.explore.edits, ...shown.explore.newest] : []
+  const boards = Option.match(Visit.exploreOf(shown), {
+    onNone: (): ReadonlyArray<FoundBoard> => [],
+    onSome: (explore) => [...explore.edits, ...explore.newest],
+  })
   // A collage is the better picture; without one anywhere, a board's pins on its paper.
   const pick = Option.orElse(
     Array.findFirst(boards, ({ board }) => Array.isReadonlyArrayNonEmpty(board.items)),

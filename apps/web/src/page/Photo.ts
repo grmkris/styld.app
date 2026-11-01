@@ -6,6 +6,7 @@ import { AsyncData, Command, Subscription, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
+import { Deletion } from '../Confirm.ts'
 import { StyldClient } from '../StyldClient.ts'
 import { Misses, pollWhilePending } from '../Polling.ts'
 import { LoadError } from '../ServerData.ts'
@@ -25,8 +26,7 @@ export type PhotoData = typeof PhotoData.schema.Type
 export const Work = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {}, NoPerson: {} })
 export type Work = typeof Work.Type
 
-export const Deletion = defineTaggedUnion({ Idle: {}, Confirming: {}, Deleting: {}, Failed: {} })
-export type Deletion = typeof Deletion.Type
+export { Deletion }
 
 export const Model = Schema.Struct({
   photoId: Schema.String,
@@ -86,7 +86,6 @@ export type OutMessage = typeof OutMessage.Type
 // COMMAND
 
 const photoIdOf = (photoId: string) => Schema.decodeUnknownEffect(PhotoId)(photoId)
-/** @internal Exported for its tests. */
 export const GetPhoto = Command.define('GetPhoto', {
   args: { photoId: Schema.String },
   messages: [Message.SucceededGetPhoto, Message.FailedGetPhoto],
@@ -104,7 +103,6 @@ export const GetPhoto = Command.define('GetPhoto', {
     ),
 })
 
-/** @internal Exported for its tests. */
 export const SetFavourite = Command.define('SetFavourite', {
   args: { photoId: Schema.String, favourite: Schema.Boolean },
   messages: [Message.SucceededChange, Message.FailedChange],
@@ -119,7 +117,6 @@ export const SetFavourite = Command.define('SetFavourite', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedChange())),
 })
 
-/** @internal Exported for its tests. */
 export const MatchGarment = Command.define('MatchGarment', {
   args: { photoId: Schema.String, garmentId: PhotoGarmentId, pieceId: Schema.NullOr(PieceId) },
   messages: [Message.SucceededChange, Message.FailedChange],
@@ -134,7 +131,6 @@ export const MatchGarment = Command.define('MatchGarment', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedChange())),
 })
 
-/** @internal Exported for its tests. */
 export const OfferGarment = Command.define('OfferGarment', {
   args: { photoId: Schema.String, garmentId: PhotoGarmentId },
   messages: [Message.SucceededChange, Message.FailedChange],
@@ -149,7 +145,6 @@ export const OfferGarment = Command.define('OfferGarment', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedChange())),
 })
 
-/** @internal Exported for its tests. */
 export const WearAgain = Command.define('WearAgain', {
   args: { photoId: Schema.String, name: Schema.String },
   messages: [Message.SucceededWearAgain, Message.FailedChange],
@@ -164,7 +159,6 @@ export const WearAgain = Command.define('WearAgain', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedChange())),
 })
 
-/** @internal Exported for its tests. */
 export const CutOut = Command.define('CutOut', {
   args: { photoId: Schema.String },
   messages: [Message.SucceededChange, Message.FailedCutOut],
@@ -183,7 +177,6 @@ export const CutOut = Command.define('CutOut', {
     ),
 })
 
-/** @internal Exported for its tests. */
 export const DeletePhoto = Command.define('DeletePhoto', {
   args: { photoId: Schema.String },
   messages: [Message.SucceededDeletePhoto, Message.FailedDeletePhoto],

@@ -190,7 +190,7 @@ const base64Of = (file: File.File) =>
   Effect.tryPromise(() => file.arrayBuffer()).pipe(Effect.map((bytes) => Base64.encode(new Uint8Array(bytes))))
 
 /** Ask whether one garment is shown in the settled picture, which side, and whether a person holds it.
- * @internal Exported for its tests. */
+ */
 export const CheckHeld = Command.define('CheckHeld', {
   args: {
     token: Schema.Number,
@@ -213,7 +213,7 @@ export const CheckHeld = Command.define('CheckHeld', {
 })
 
 /** A short buzz on phones that have one, when a photo is taken.
- * @internal Exported for its tests. */
+ */
 export const Buzz = Command.define('Buzz', {
   messages: [Message.CompletedBuzz],
   execute: Effect.sync(() => {

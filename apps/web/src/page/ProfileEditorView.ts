@@ -1,6 +1,6 @@
 import { format, type Locale } from '@styld/i18n'
 import { type Profile, Tone, textLength } from '@styld/protocol'
-import { Submodel } from 'foldkit'
+import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
 import { linkAction, primaryAction, secondaryAction, smallAction } from '../Actions.styles.ts'
@@ -14,7 +14,8 @@ import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { cx } from 'zyzz'
-import { Load, Message, type Model, Publishing, Saving } from './ProfileEditor.ts'
+import { Message, type Model, Publishing, Saving } from './ProfileEditor.ts'
+import { retryView } from './Retry.ts'
 import * as styles from './ProfileEditorView.styles.ts'
 
 const savingView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
@@ -243,16 +244,10 @@ const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Htm
 export const view = Submodel.defineView<Model, Message, { readonly locale: Locale }>((model, { locale }, h) =>
   h.main(
     [h.Id('main'), ...styled(h, styles.page())],
-    Load.match(model.load, {
-      Loading: () => loadingView(locale, h),
-      Failed: () => [
-        h.p([h.Role('alert')], [format(locale, 'profile.card.loadFailed', {})]),
-        actionButton(
-          { label: format(locale, 'studio.retry', {}), style: secondaryAction(), onClick: Message.ClickedRetry() },
-          h,
-        ),
-      ],
-      Ready: ({ profile }) => [
+    AsyncData.matchData(model.profile, {
+      onEmpty: () => loadingView(locale, h),
+      onFailure: () => [retryView(format(locale, 'profile.card.loadFailed', {}), locale, Message.ClickedRetry(), h)],
+      onData: (profile) => [
         h.div(styled(h, styles.who()), [
           avatar(model.draft.name, model.draft.tone, 'large', h),
           h.h1([], [format(locale, 'profile.editor.title', {})]),

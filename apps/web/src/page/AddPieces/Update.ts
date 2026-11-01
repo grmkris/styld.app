@@ -32,7 +32,7 @@ const videoTypes: ReadonlyArray<string> = VideoType.literals
 
 /** What a chosen file becomes, by its own type and size; the server checks the bytes again. A video's
  * size does not matter here: this device reads it and sends small parts.
- * @internal Exported for its tests. */
+ */
 export const classify = (file: File.File): { kind: 'photo' | 'video' } | { problem: FileProblem } => {
   const type = File.mimeType(file)
   if (imageTypes.includes(type))

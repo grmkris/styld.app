@@ -1,10 +1,10 @@
-import { PublicProfile } from '@styld/protocol'
+import { type Explore, type PublicPiecePage, PublicProfile } from '@styld/protocol'
 import { Schema } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { type Model, Session } from '../src/App.ts'
 import { lenses, Page } from '../src/Page.ts'
 import { at, claims, withPage } from './AppFixtures.ts'
-import type { Shown } from '../src/page/Visit.ts'
+import { ShownData, VisitShown } from '../src/page/Visit.ts'
 
 // A public profile and the app opened on a visitor page, shared by the visit scenes.
 
@@ -46,8 +46,18 @@ export const nika = Schema.decodeUnknownSync(PublicProfile)({
 export const opened = (pathname: string) =>
   modifyFields(at(pathname, { signedIn: false }), { session: () => Session.SignedOut() })
 
+/** What a public page has read: a profile, a piece or Explore, still loading, not there, or not read. */
+export const shownAs = {
+  Person: (fields: { readonly profile: PublicProfile }) => ShownData.Success({ data: VisitShown.Person(fields) }),
+  Piece: (fields: { readonly page: PublicPiecePage }) => ShownData.Success({ data: VisitShown.Piece(fields) }),
+  Explore: (fields: { readonly explore: Explore }) => ShownData.Success({ data: VisitShown.Explore(fields) }),
+  Loading: (): ShownData => ShownData.Loading(),
+  Missing: (): ShownData => ShownData.Failure({ error: 'NotFound' }),
+  Failed: (): ShownData => ShownData.Failure({ error: 'Unavailable' }),
+}
+
 /** A public page showing `shown`: Explore and the landing through Explore's Model, a profile or piece through its own. */
-export const visiting = (pathname: string, shown: Shown) => {
+export const visiting = (pathname: string, shown: ShownData) => {
   const model = opened(pathname)
   const lens = Page.guards.Tabs(model.page) ? lenses.explore : lenses.visit
   return withPage(model, lens, (visit) => modifyFields(visit, { shown: () => shown }))

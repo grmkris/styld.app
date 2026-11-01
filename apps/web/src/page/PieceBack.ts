@@ -47,7 +47,7 @@ export type OutMessage = typeof OutMessage.Type
 const pieceIdOf = (pieceId: string) => Schema.decodeUnknownEffect(PieceId)(pieceId)
 
 /** Send a photo of the piece's back: it is uploaded, then cut out on the server.
- * @internal Exported for its tests. */
+ */
 export const SetBack = Command.define('SetBack', {
   args: { pieceId: Schema.String, file: File.File },
   messages: [Message.SucceededBack, Message.FailedBack],
@@ -65,7 +65,7 @@ export const SetBack = Command.define('SetBack', {
 })
 
 /** Forget the piece's back.
- * @internal Exported for its tests. */
+ */
 export const RemoveBack = Command.define('RemoveBack', {
   args: { pieceId: Schema.String },
   messages: [Message.SucceededBack, Message.FailedBack],

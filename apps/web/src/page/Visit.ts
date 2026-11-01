@@ -1,11 +1,12 @@
 import * as Crypto from 'effect/Crypto'
 import { newOperationId } from '../OperationIds.ts'
 import { Explore, Handle, Mood, PieceId, PublicPiecePage, PublicProfile, SearchResults } from '@styld/protocol'
-import { Effect, Option, Predicate, Record, Schema } from 'effect'
-import { Command, Dom, Update } from 'foldkit'
+import { Effect, Option, Predicate, Record, Result, Schema } from 'effect'
+import { AsyncData, Command, Dom, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
+import { LoadError } from '../ServerData.ts'
 import { StyldClient } from '../StyldClient.ts'
 import * as People from './People.ts'
 
@@ -27,15 +28,24 @@ export type Target = typeof Target.Type
 export const PersonTab = Schema.Literals(['boards', 'looks'])
 export type PersonTab = typeof PersonTab.Type
 
-export const Shown = defineTaggedUnion({
-  Loading: {},
-  Missing: {},
-  Failed: {},
+/** What a public page shows once read. */
+export const VisitShown = defineTaggedUnion({
   Person: { profile: PublicProfile },
   Piece: { page: PublicPiecePage },
   Explore: { explore: Explore },
 })
-export type Shown = typeof Shown.Type
+export type VisitShown = typeof VisitShown.Type
+
+/** The page as last read; a failure keeps what was shown, and one for a page that is not there for others is
+ * NotFound. */
+export const ShownData = AsyncData.Schema(VisitShown, LoadError)
+export type ShownData = typeof ShownData.schema.Type
+
+/** Explore as last read, if it has been. */
+export const exploreOf = (shown: ShownData): Option.Option<Explore> =>
+  Option.flatMap(AsyncData.getData(shown), (data) =>
+    VisitShown.guards.Explore(data) ? Option.some(data.explore) : Option.none(),
+  )
 
 /** Explore's search over people and public boards: none, asked, answered or failed, each for the words searched. */
 export const ExploreSearch = defineTaggedUnion({
@@ -61,7 +71,7 @@ export type Sharing = typeof Sharing.Type
 
 export const Model = Schema.Struct({
   target: Target,
-  shown: Shown,
+  shown: ShownData.schema,
   tab: PersonTab,
   people: People.Model,
   /** A session came with the page: only then is there a relation to read. */
@@ -89,7 +99,7 @@ const searchLength = 80
 /** A page for a visitor; `atFollow` when it opened at `#follow`, where sign-in returns a Follow pressed signed out. */
 export const init = (target: Target, signedIn: boolean, atFollow = false): Model => ({
   target,
-  shown: Shown.Loading(),
+  shown: AsyncData.Loading(),
   tab: 'boards',
   signedIn,
   query: '',
@@ -112,11 +122,13 @@ export const init = (target: Target, signedIn: boolean, atFollow = false): Model
 
 export const Message = defineMessageUnion({
   SucceededLoadPerson: { profile: PublicProfile },
+  FailedLoadPerson: { error: LoadError },
   SucceededLoadPublicPiece: { page: PublicPiecePage },
+  FailedLoadPublicPiece: { error: LoadError },
   SucceededReadCameFrom: { path: Schema.Option(Schema.String) },
   SucceededLoadExplore: { explore: Explore },
+  FailedLoadExplore: {},
   ChoseMood: { mood: Schema.Option(Mood) },
-  FailedLoadVisit: { missing: Schema.Boolean },
   ClickedRetry: {},
   ChoseTab: { tab: PersonTab },
   GotPeopleMessage: { message: People.Message },
@@ -144,7 +156,7 @@ const isMissing = (error: unknown) => Predicate.isTagged(error, 'NotFound') || P
 
 const LoadPerson = Command.define('LoadPerson', {
   args: { handle: Schema.String },
-  messages: [Message.SucceededLoadPerson, Message.FailedLoadVisit],
+  messages: [Message.SucceededLoadPerson, Message.FailedLoadPerson],
   execute: ({ handle }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
@@ -153,39 +165,38 @@ const LoadPerson = Command.define('LoadPerson', {
       })
       return Message.SucceededLoadPerson({ profile })
     }).pipe(
-      Effect.catchIf(isMissing, () => Effect.succeed(Message.FailedLoadVisit({ missing: true }))),
-      Effect.orElseSucceed(() => Message.FailedLoadVisit({ missing: false })),
+      Effect.catchIf(isMissing, () => Effect.succeed(Message.FailedLoadPerson({ error: 'NotFound' }))),
+      Effect.orElseSucceed(() => Message.FailedLoadPerson({ error: 'Unavailable' })),
     ),
 })
 
 const LoadPublicPiece = Command.define('LoadPublicPiece', {
   args: { pieceId: Schema.String },
-  messages: [Message.SucceededLoadPublicPiece, Message.FailedLoadVisit],
+  messages: [Message.SucceededLoadPublicPiece, Message.FailedLoadPublicPiece],
   execute: ({ pieceId }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       const page = yield* api.public.piece({ params: { pieceId: yield* Schema.decodeUnknownEffect(PieceId)(pieceId) } })
       return Message.SucceededLoadPublicPiece({ page })
     }).pipe(
-      Effect.catchIf(isMissing, () => Effect.succeed(Message.FailedLoadVisit({ missing: true }))),
-      Effect.orElseSucceed(() => Message.FailedLoadVisit({ missing: false })),
+      Effect.catchIf(isMissing, () => Effect.succeed(Message.FailedLoadPublicPiece({ error: 'NotFound' }))),
+      Effect.orElseSucceed(() => Message.FailedLoadPublicPiece({ error: 'Unavailable' })),
     ),
 })
 
-/** @internal Exported for its tests. */
 export const LoadExplore = Command.define('LoadExplore', {
   args: { mood: Schema.Option(Mood) },
-  messages: [Message.SucceededLoadExplore, Message.FailedLoadVisit],
+  messages: [Message.SucceededLoadExplore, Message.FailedLoadExplore],
   execute: ({ mood }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       const explore = yield* api.public.explore({ query: Option.isSome(mood) ? { mood: mood.value } : {} })
       return Message.SucceededLoadExplore({ explore })
-    }).pipe(Effect.orElseSucceed(() => Message.FailedLoadVisit({ missing: false }))),
+    }).pipe(Effect.orElseSucceed(() => Message.FailedLoadExplore())),
 })
 
 /** People and public boards for the words searched; signed out too, since the public search needs no account.
- * @internal Exported for its tests. */
+ */
 export const SearchExplore = Command.define('SearchExplore', {
   args: { query: Schema.String },
   messages: [Message.SucceededSearchExplore, Message.FailedSearchExplore],
@@ -198,14 +209,14 @@ export const SearchExplore = Command.define('SearchExplore', {
 })
 
 /** Focus back to the search field, after clearing it.
- * @internal Exported for its tests. */
+ */
 export const FocusExploreSearch = Command.define('FocusExploreSearch', {
   messages: [Message.CompletedFocusExploreSearch],
   execute: Dom.focus(`#${searchFieldId}`).pipe(Effect.ignore, Effect.as(Message.CompletedFocusExploreSearch())),
 })
 
 /** Focus to what was found: the phone's keyboard closes and a screen reader reads what the results are for.
- * @internal Exported for its tests. */
+ */
 export const FocusExploreResults = Command.define('FocusExploreResults', {
   messages: [Message.CompletedFocusExploreResults],
   execute: Dom.focus(`#${searchResultsId}`, { makeFocusable: true }).pipe(
@@ -215,7 +226,7 @@ export const FocusExploreResults = Command.define('FocusExploreResults', {
 })
 
 /** Follows or stops following someone Explore suggests, answering for them by handle.
- * @internal Exported for its tests. */
+ */
 export const FollowSuggested = Command.define('FollowSuggested', {
   args: { handle: Schema.String, following: Schema.Boolean },
   messages: [Message.SucceededFollowSuggested, Message.FailedFollowSuggested],
@@ -236,7 +247,7 @@ const shareRefusal = (error: unknown): 'dismissed' | 'refused' =>
 
 /** The browser's share sheet where it has one for the link, else the link copied to the clipboard; a share sheet that
  * fails for any reason but being closed copies instead.
- * @internal Exported for its tests. */
+ */
 export const ShareLink = Command.define('ShareLink', {
   args: { url: Schema.String, title: Schema.String },
   messages: [Message.SucceededShareLink, Message.FailedShareLink],
@@ -260,7 +271,7 @@ const boardOrLook = /^\/(?:(?:boards\/bd_|looks\/lk_)[\w-]{22}|boards)?$/
 
 /** The board or look page a piece was opened from, from where the page was loaded: a same-origin referrer naming
  * one, nothing for a shared link or any other page.
- * @internal Exported for its tests. */
+ */
 export const cameFromOf = (referrer: string, origin: string): Option.Option<string> =>
   Option.flatMap(Option.liftThrowable(() => new URL(referrer))(), (url) =>
     url.origin === origin && boardOrLook.test(url.pathname) ? Option.some(url.pathname) : Option.none(),
@@ -307,13 +318,21 @@ type UpdateReturn = Update.Return<Model, Message, StyldClient | Crypto.Crypto>
 const openingTab = (profile: PublicProfile): PersonTab =>
   profile.boards.length === 0 && profile.looks.length > 0 ? 'looks' : 'boards'
 
+/** The page read again: what it showed stays while it is (a failure keeps it too), a page with nothing yet loads, and
+ * a read already on its way is not repeated. */
+const readAgain = (model: Model): UpdateReturn =>
+  Option.match(AsyncData.revalidateOrLoad(model.shown), {
+    onNone: () => ({ model }),
+    onSome: (shown) => ({ model: modifyFields(model, { shown: () => shown }), commands: [loadTarget(model.target)] }),
+  })
+
 /** Opening Explore as a tab: what it showed stays while it is asked for again; a first visit asks. */
 export const enterExplore = (model: Model): UpdateReturn => {
   const mood = Target.guards.Explore(model.target) ? model.target.mood : Option.none()
-  return Shown.guards.Explore(model.shown)
-    ? { model, commands: [LoadExplore({ mood })] }
+  return Option.isSome(exploreOf(model.shown))
+    ? readAgain(model)
     : {
-        model: modifyFields(model, { target: () => Target.Explore({ mood }), shown: () => Shown.Loading() }),
+        model: modifyFields(model, { target: () => Target.Explore({ mood }), shown: () => AsyncData.Loading() }),
         commands: [LoadExplore({ mood })],
       }
 }
@@ -321,9 +340,11 @@ export const enterExplore = (model: Model): UpdateReturn => {
 const foldPeople = People.foldInto<Model, Message>((message) => Message.GotPeopleMessage({ message }))
 
 /** Reading the page again after it failed; the landing asks for it from its own Try again. */
-export const retry = (model: Model): UpdateReturn => ({
-  model: modifyFields(model, { shown: () => Shown.Loading() }),
-  commands: [loadTarget(model.target)],
+export const retry = readAgain
+
+/** A read that did not come: the page keeps what it showed and says why. */
+const failed = (model: Model, error: LoadError): UpdateReturn => ({
+  model: modifyFields(model, { shown: (shown) => AsyncData.settle(shown, Result.fail(error)) }),
 })
 
 /** The words in the field are searched; a blank field brings Explore's sections back. */
@@ -361,22 +382,30 @@ export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     SucceededLoadPerson: ({ profile }) =>
       withRelation(
-        modifyFields(model, { shown: () => Shown.Person({ profile }), tab: () => openingTab(profile) }),
+        modifyFields(model, {
+          shown: () => ShownData.Success({ data: VisitShown.Person({ profile }) }),
+          tab: () => openingTab(profile),
+        }),
         profile,
       ),
-    SucceededLoadPublicPiece: ({ page }) => ({ model: modifyFields(model, { shown: () => Shown.Piece({ page }) }) }),
+    SucceededLoadPublicPiece: ({ page }) => ({
+      model: modifyFields(model, { shown: () => ShownData.Success({ data: VisitShown.Piece({ page }) }) }),
+    }),
     SucceededReadCameFrom: ({ path }) => ({ model: modifyFields(model, { cameFrom: () => path }) }),
     // Fresh people come without anyone already followed, so what was tapped before starts over.
     SucceededLoadExplore: ({ explore }) => ({
-      model: modifyFields(model, { shown: () => Shown.Explore({ explore }), suggestions: () => ({}) }),
+      model: modifyFields(model, {
+        shown: () => ShownData.Success({ data: VisitShown.Explore({ explore }) }),
+        suggestions: () => ({}),
+      }),
     }),
     ChoseMood: ({ mood }) => ({
       model: modifyFields(model, { target: () => Target.Explore({ mood }) }),
       commands: [LoadExplore({ mood })],
     }),
-    FailedLoadVisit: ({ missing }) => ({
-      model: modifyFields(model, { shown: () => (missing ? Shown.Missing() : Shown.Failed()) }),
-    }),
+    FailedLoadPerson: ({ error }) => failed(model, error),
+    FailedLoadPublicPiece: ({ error }) => failed(model, error),
+    FailedLoadExplore: () => failed(model, 'Unavailable'),
     ClickedRetry: () => retry(model),
     ChoseTab: ({ tab }) => ({ model: modifyFields(model, { tab: () => tab }) }),
     GotPeopleMessage: (got) => foldPeople(model, got.message),

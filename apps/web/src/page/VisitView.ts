@@ -1,7 +1,7 @@
 import { format, type Locale, type MessageKey } from '@styld/i18n'
 import type { Mood, PublicPiecePage, PublicProfile } from '@styld/protocol'
 import { Option } from 'effect'
-import { Submodel } from 'foldkit'
+import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
 import { secondaryAction } from '../Actions.styles.ts'
@@ -19,7 +19,8 @@ import { boardCard, byline, lookTile, tileGrid } from './PublicTiles.ts'
 import { exploreLoading, exploreSearchForm, exploreSections, searchView } from './ExploreView.ts'
 import { head as exploreHead, page as explorePage } from './ExploreView.styles.ts'
 import { pageTitle } from './PageHead.ts'
-import { ExploreSearch, Message, type Model, type PersonTab, Sharing, Shown, Target } from './Visit.ts'
+import { retryView } from './Retry.ts'
+import { exploreOf, ExploreSearch, Message, type Model, type PersonTab, Sharing, Target, VisitShown } from './Visit.ts'
 import * as styles from './VisitView.styles.ts'
 import { kindName, pieceLabel } from './WardrobeWords.ts'
 
@@ -230,8 +231,10 @@ const exploreContent = (
   h: HtmlBuilder<Message>,
 ): ReadonlyArray<Html> => {
   if (!ExploreSearch.guards.Off(model.search)) return [searchView(model.search, locale, h)]
-  if (Shown.guards.Explore(model.shown)) return exploreSections(model.shown.explore, mood, model, signedIn, locale, h)
-  return Shown.guards.Failed(model.shown) ? [failedView(locale, h)] : exploreLoading(locale, h)
+  return Option.match(exploreOf(model.shown), {
+    onSome: (explore) => exploreSections(explore, mood, model, signedIn, locale, h),
+    onNone: () => (AsyncData.isFailure(model.shown) ? [failedView(locale, h)] : exploreLoading(locale, h)),
+  })
 }
 
 /** Explore: one title above whatever it shows, so a tab arriving on it keeps the title focused as it loads, then the
@@ -278,13 +281,7 @@ const loadingView = (target: Target, locale: Locale, h: HtmlBuilder<Message>): H
   ])
 
 const failedView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.div(styled(h, styles.page()), [
-    h.p([h.Role('alert')], [format(locale, 'common.error', {})]),
-    actionButton(
-      { label: format(locale, 'common.retry', {}), style: secondaryAction(), onClick: Message.ClickedRetry() },
-      h,
-    ),
-  ])
+  h.div(styled(h, styles.page()), [retryView(format(locale, 'common.error', {}), locale, Message.ClickedRetry(), h)])
 
 export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, h) => {
   const { locale } = inputs
@@ -293,14 +290,17 @@ export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, 
     [
       Target.guards.Explore(model.target)
         ? exploreMain(model, model.target.mood, inputs, h)
-        : Shown.match(model.shown, {
-            Loading: () => loadingView(model.target, locale, h),
-            Missing: () => h.h1([], [format(locale, 'common.notFoundTitle', {})]),
-            Failed: () => failedView(locale, h),
-            Person: ({ profile }) => personView(model, profile, inputs, h),
-            Piece: ({ page }) => pieceView(model, page, inputs, h),
-            // Explore is drawn above; a stray answer for it elsewhere shows nothing.
-            Explore: () => h.empty,
+        : AsyncData.matchData(model.shown, {
+            onEmpty: () => loadingView(model.target, locale, h),
+            onFailure: (error) =>
+              error === 'NotFound' ? h.h1([], [format(locale, 'common.notFoundTitle', {})]) : failedView(locale, h),
+            onData: (shown) =>
+              VisitShown.match(shown, {
+                Person: ({ profile }) => personView(model, profile, inputs, h),
+                Piece: ({ page }) => pieceView(model, page, inputs, h),
+                // Explore is drawn above; a stray answer for it elsewhere shows nothing.
+                Explore: () => h.empty,
+              }),
           }),
     ],
   )

@@ -48,7 +48,6 @@ export type Message = typeof Message.Type
 
 // COMMAND
 
-/** @internal Exported for its tests. */
 export const ListPhotos = Command.define('ListPhotos', {
   messages: [Message.SucceededListPhotos, Message.FailedListPhotos],
   execute: Effect.gen(function* () {
@@ -58,7 +57,7 @@ export const ListPhotos = Command.define('ListPhotos', {
 })
 
 /** Send a picked photo, shrunk and without its metadata, then add it for a credit.
- * @internal Exported for its tests. */
+ */
 export const AddPhoto = Command.define('AddPhoto', {
   args: { file: File.File },
   messages: [Message.SucceededAddPhoto, Message.FailedAddPhoto],

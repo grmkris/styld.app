@@ -22,7 +22,7 @@ const measureWidth = 128
 const tiles = 8
 
 /** Relative sharpness of each tile: the mean absolute Laplacian of its grey pixels, squashed into 0–1.
- * @internal Exported for its tests. */
+ */
 export const tileSharpness = (grey: Uint8ClampedArray | Uint8Array, width: number, height: number) => {
   const sums = Array.from({ length: tiles * tiles }, () => 0)
   const counts = Array.from({ length: tiles * tiles }, () => 0)

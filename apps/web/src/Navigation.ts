@@ -20,7 +20,7 @@ export const Navigate = Command.define('Navigate', {
 })
 
 /** Follow pressed signed out: sign-in, with the profile it returns to noted for this tab, so only that arrival follows.
- * @internal Exported for its tests. */
+ */
 export const SignInToFollow = Command.define('SignInToFollow', {
   args: { href: Schema.String, returnTo: Schema.String },
   messages: [Message.CompletedNavigate],
@@ -33,7 +33,7 @@ export const returnAfterSignIn = (next: Option.Option<string>) =>
   Navigate({ href: Option.getOrElse(returnPath(next), () => accountRouter({})) })
 
 /** Another tab page in the same document: the address changes and `ChangedUrl` opens it.
- * @internal Exported for its tests. */
+ */
 export const NavigateInternal = Command.define('NavigateInternal', {
   args: { href: Schema.String },
   messages: [Message.CompletedNavigateInternal],
@@ -41,7 +41,7 @@ export const NavigateInternal = Command.define('NavigateInternal', {
 })
 
 /** To the top of the new page, once it is drawn, so it wins over the browser's own restore on Back.
- * @internal Exported for its tests. */
+ */
 export const ScrollToTop = Command.define('ScrollToTop', {
   messages: [Message.CompletedScrollToTop],
   execute: Effect.gen(function* () {
@@ -52,7 +52,7 @@ export const ScrollToTop = Command.define('ScrollToTop', {
 })
 
 /** To a section of the page, which then takes focus.
- * @internal Exported for its tests. */
+ */
 export const ScrollToAnchor = Command.define('ScrollToAnchor', {
   args: { hash: Schema.String },
   messages: [Message.CompletedScrollToAnchor],
@@ -65,7 +65,7 @@ export const ScrollToAnchor = Command.define('ScrollToAnchor', {
 })
 
 /** The new page's title takes focus, so a screen reader starts there.
- * @internal Exported for its tests. */
+ */
 export const FocusPageTitle = Command.define('FocusPageTitle', {
   messages: [Message.CompletedFocusPageTitle],
   execute: Dom.focus('#main h1', { preventScroll: true, makeFocusable: true }).pipe(

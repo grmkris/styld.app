@@ -5,7 +5,7 @@ import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
 import { lenses } from '../src/Page.ts'
 import { at, withPage } from './AppFixtures.ts'
-import { init as initLook, Message as LookMessage, ShareLook, Shown } from '../src/page/Look.ts'
+import { init as initLook, LookData, LookShown, Message as LookMessage, ShareLook } from '../src/page/Look.ts'
 import { view } from '../src/View.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
@@ -21,7 +21,7 @@ const weekend: LookContract = {
   createdAt: '2026-10-29T12:00:00.000Z',
 }
 const lookPage = withPage(at(`/looks/${lookId}`, { signedIn: true }), lenses.look, () =>
-  modifyFields(initLook(lookId), { shown: () => Shown.Loaded({ look: weekend }) }),
+  modifyFields(initLook(lookId), { look: () => LookData.Success({ data: LookShown.Own({ look: weekend }) }) }),
 )
 
 describe('a look of your own', () => {
