@@ -1,3 +1,4 @@
+import { cdn } from '../Cdn.ts'
 import * as Crypto from 'effect/Crypto'
 import { newOperationId } from '../OperationIds.ts'
 import {
@@ -183,9 +184,7 @@ export const ReadTray = Command.define('ReadTray', {
     const { captures } = yield* (yield* (yield* StyldClient).api).capture.tray()
     const detections = captures.flatMap((capture) => capture.detections)
     // A found piece's cut-out when it has one, else its photo, as the tray first shows it.
-    const pictures = detections
-      .slice(0, 3)
-      .map((detection) => `/cdn/detections/${detection.id}/${detection.hasCutout ? 'cutout' : 'original'}`)
+    const pictures = detections.slice(0, 3).map((detection) => cdn.detection(detection.id, detection.hasCutout))
     return Message.SucceededReadTray({ tray: { waiting: detections.length, pictures } })
   }).pipe(Effect.orElseSucceed(() => Message.FailedReadTray())),
 })

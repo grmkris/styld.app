@@ -1,3 +1,4 @@
+import { cdn } from '../Cdn.ts'
 import { format, type Locale } from '@styld/i18n'
 import type { Look as LookContract, PublicLookPage } from '@styld/protocol'
 import { Option } from 'effect'
@@ -121,7 +122,7 @@ const pieceRows = (look: LookContract, locale: Locale, h: HtmlBuilder<Message>):
                 [h.Href(pieceRouter({ pieceId: piece.id })), ...styled(h, styles.pieceRow())],
                 [
                   h.img([
-                    h.Src(`/cdn/pieces/${piece.id}/thumb`),
+                    h.Src(cdn.piece(piece.id)),
                     h.Alt(''),
                     h.Loading('lazy'),
                     ...styled(h, styles.pieceRowImage()),

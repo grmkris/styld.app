@@ -1,3 +1,4 @@
+import { cdn } from '../Cdn.ts'
 import { prices } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import type { Photo } from '@styld/protocol'
@@ -38,12 +39,7 @@ const tile = (photo: Photo, inputs: Inputs, h: HtmlBuilder<Message>): Html =>
           ...styled(h, styles.tile()),
         ],
         [
-          h.img([
-            h.Src(`/cdn/photos/${photo.id}/thumb`),
-            h.Alt(''),
-            h.Loading('lazy'),
-            ...styled(h, styles.tileImage()),
-          ]),
+          h.img([h.Src(cdn.photo(photo.id, 'thumb')), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.tileImage())]),
           photo.status === 'finding'
             ? h.span(styled(h, styles.badge()), [loader(h), format(inputs.locale, 'photos.finding', {})])
             : photo.favourite

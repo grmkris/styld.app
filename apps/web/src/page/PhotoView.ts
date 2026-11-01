@@ -1,3 +1,4 @@
+import { cdn } from '../Cdn.ts'
 import { format, type Locale } from '@styld/i18n'
 import { type Photo, type PhotoGarment, type Piece, slotOf } from '@styld/protocol'
 import { Option } from 'effect'
@@ -26,7 +27,7 @@ interface Inputs {
 }
 
 const pieceThumb = (piece: Piece, h: HtmlBuilder<Message>): Html =>
-  h.img([h.Src(`/cdn/pieces/${piece.id}/thumb`), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.smallThumb())])
+  h.img([h.Src(cdn.piece(piece.id)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.smallThumb())])
 
 /** The wardrobe's pieces that sit where the garment does, or all of them when Styld could not tell what it is. */
 const candidates = (garment: PhotoGarment, pieces: ReadonlyArray<Piece>) => {
@@ -128,12 +129,7 @@ const matchView = (garment: PhotoGarment, inputs: Inputs, h: HtmlBuilder<Message
 
 const garmentRow = (model: Model, photo: Photo, garment: PhotoGarment, inputs: Inputs, h: HtmlBuilder<Message>): Html =>
   h.keyed('li')(garment.id, styled(h, styles.garment()), [
-    h.img([
-      h.Src(`/cdn/photos/${photo.id}/garments/${garment.id}`),
-      h.Alt(''),
-      h.Loading('lazy'),
-      ...styled(h, styles.thumb()),
-    ]),
+    h.img([h.Src(cdn.photoGarment(photo.id, garment.id)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.thumb())]),
     Option.contains(model.choosing, garment.id) ? picker(garment, inputs, h) : matchView(garment, inputs, h),
   ])
 
@@ -228,7 +224,7 @@ const loadedView = (model: Model, photo: Photo, inputs: Inputs, h: HtmlBuilder<M
   const date = photoDate(photo.createdAt, inputs)
   return [
     h.img([
-      h.Src(`/cdn/photos/${photo.id}/full`),
+      h.Src(cdn.photo(photo.id, 'full')),
       h.Alt(format(locale, 'photos.open', { date })),
       ...styled(h, styles.photo()),
     ]),

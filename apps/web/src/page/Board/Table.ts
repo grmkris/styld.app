@@ -1,3 +1,4 @@
+import { cdn } from '../../Cdn.ts'
 import type { BoardItem, ImageItem, Paper } from '@styld/protocol'
 import { PieceItem, TextItem } from '@styld/protocol'
 import { Array, Schema } from 'effect'
@@ -11,8 +12,8 @@ import * as styles from './View.styles.ts'
 // The table as a picture: pieces, text and pictures laid on paper. The board editor adds hands to it; Boards
 // and Home show it as it is.
 
-export const pieceImage = (pieceId: string) => `/cdn/pieces/${pieceId}/thumb`
-export const boardImage = (imageId: string, size: 'thumb' | 'full' = 'full') => `/cdn/boards/images/${imageId}/${size}`
+export const pieceImage = (pieceId: string) => cdn.piece(pieceId)
+export const boardImage = cdn.boardImage
 
 /** Where an item lies, as the custom properties its styles read. The browser sets them through the CSSOM
  * after the data loads; the edge CSP would refuse them as an inline attribute in server-rendered HTML. */
@@ -33,10 +34,8 @@ const fromStyld: ImageSource = (item, size) =>
   Schema.is(PieceItem)(item) ? pieceImage(item.pieceId) : boardImage(item.imageId, size)
 
 /** What others see of a public board: its pieces' and pictures' public addresses. */
-export const publicPieceImage = (pieceId: string, size: 'thumb' | 'full' = 'thumb') =>
-  `/cdn/public/pieces/${pieceId}/${size}`
-export const publicPicture = (imageId: string, size: 'thumb' | 'full' = 'full') =>
-  `/cdn/public/pictures/${imageId}/${size}`
+export const publicPieceImage = (pieceId: string, size: 'thumb' | 'full' = 'thumb') => cdn.publicPiece(pieceId, size)
+export const publicPicture = (imageId: string, size: 'thumb' | 'full' = 'full') => cdn.publicPicture(imageId, size)
 export const fromPublic: ImageSource = (item, size) =>
   Schema.is(PieceItem)(item) ? publicPieceImage(item.pieceId) : publicPicture(item.imageId, size)
 

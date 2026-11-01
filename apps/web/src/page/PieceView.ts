@@ -1,3 +1,4 @@
+import { cdn } from '../Cdn.ts'
 import { textLength, prices } from '@styld/protocol'
 import type { Piece, PiecePicture } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
@@ -29,11 +30,10 @@ import * as PiecePhotosView from './PiecePhotosView.ts'
 import * as SaveToBoardView from './SaveToBoardView.ts'
 
 /** The picture the piece shows; a new drawing, or a change of picture, is a new address. */
-const fullPath = (piece: Piece) =>
-  `/cdn/pieces/${piece.id}/full${piece.picture === undefined ? '' : `?v=${piece.picture.shows}${piece.picture.version}`}`
+const fullPath = (piece: Piece) => cdn.pieceShown(piece, 'full')
 
 /** The piece's back; a new back is a new piece version, so a new address. */
-const backPath = (piece: Piece) => `/cdn/pieces/${piece.id}/back/full?v=${Date.parse(piece.updatedAt)}`
+const backPath = cdn.pieceBack
 
 const confirmDelete = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const deleting = Deletion.guards.Deleting(model.deletion)
@@ -238,7 +238,7 @@ const pictureChoices = (picture: PiecePicture, model: Model, locale: Locale, h: 
 const proposal = (piece: Piece, picture: PiecePicture, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.proposal()), [
     h.img([
-      h.Src(`/cdn/pieces/${piece.id}/clean/thumb?v=${picture.version}`),
+      h.Src(cdn.pieceClean(piece.id, picture.version)),
       h.Alt(format(locale, 'wardrobe.picture.cleaned', {})),
       ...styled(h, styles.proposalImage()),
     ]),

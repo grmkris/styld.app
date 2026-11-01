@@ -1,3 +1,4 @@
+import { cdn } from '../Cdn.ts'
 import type { Look } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import { AsyncData, Submodel } from 'foldkit'
@@ -20,7 +21,7 @@ export const collage = <Message>(look: Look, h: HtmlBuilder<Message>): Html =>
     styled(h, styles.collage()),
     look.pieces.slice(0, 4).map((piece) =>
       h.img([
-        h.Src(`/cdn/pieces/${piece.id}/thumb`),
+        h.Src(cdn.piece(piece.id)),
         // The card's name says what the look is; listing every piece would drown it.
         h.Alt(''),
         h.Loading('lazy'),

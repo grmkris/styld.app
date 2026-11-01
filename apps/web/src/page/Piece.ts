@@ -1,3 +1,4 @@
+import { cdn } from '../Cdn.ts'
 import { newOperation, newOperationId, operationIdOf } from '../OperationIds.ts'
 import {
   Colour,
@@ -284,8 +285,8 @@ export const BuildTurnSheet = Command.define('BuildTurnSheet', {
     Effect.gen(function* () {
       const { buildSheet } = yield* Effect.tryPromise(() => import('../turn/BuildSheet.ts'))
       const client = yield* StyldClient
-      const video = yield* client.readFile(`/cdn/turns/${pieceId}/video?v=${version}`)
-      const front = yield* client.readFile(`/cdn/turns/${pieceId}/front?v=${version}`)
+      const video = yield* client.readFile(cdn.turn(pieceId, 'video', version))
+      const front = yield* client.readFile(cdn.turn(pieceId, 'front', version))
       const built = yield* buildSheet(new Blob([new Uint8Array(video)], { type: 'video/mp4' }), front)
       const payload = { operationId: yield* newOperationId, ...built }
       const turn = yield* (yield* client.api).capture.turnSheet({
@@ -304,7 +305,7 @@ export const ShowTurn = Mount.define('ShowTurn', {
     Effect.tryPromise(() => import('../turn/Player.ts')).pipe(
       Effect.flatMap(({ playTurn }) =>
         element instanceof HTMLCanvasElement
-          ? playTurn(element, `/cdn/turns/${pieceId}/sheet?v=${version}`, layout)
+          ? playTurn(element, cdn.turn(pieceId, 'sheet', version), layout)
           : Effect.void,
       ),
       Effect.ignore,

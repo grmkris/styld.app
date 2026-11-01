@@ -1,3 +1,4 @@
+import { cdn } from '../Cdn.ts'
 import { format, type Locale } from '@styld/i18n'
 import { type BoardItem, type BoardSummary, flatLay, type Piece, type Slot } from '@styld/protocol'
 import { Array, Option } from 'effect'
@@ -308,12 +309,7 @@ const pickUpView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBui
           'pick-up-photo',
           format(locale, 'today.lovedOutfit', {}),
           { href: photoRouter({ photoId: photo.id }), label: format(locale, 'photo.wearAgain', {}) },
-          h.img([
-            h.Src(`/cdn/photos/${photo.id}/thumb`),
-            h.Alt(''),
-            h.Loading('lazy'),
-            ...styled(h, styles.photoCrop()),
-          ]),
+          h.img([h.Src(cdn.photo(photo.id, 'thumb')), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.photoCrop())]),
           h,
         ),
       ],

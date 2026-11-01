@@ -1,3 +1,4 @@
+import { cdn } from '../Cdn.ts'
 import { Button } from '@foldkit/ui'
 import { GarmentGroup, groupOf, Occasion, type Piece, type PieceType, Season, typesIn } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
@@ -23,8 +24,7 @@ import { chip, chipSkeleton, chosen } from '../Controls.styles.ts'
 import { sheetBody } from './Sheet.styles.ts'
 
 /** The small image of a piece; the API Worker serves it to its owner only. A new drawing is a new address. */
-const thumbnailPath = (piece: Piece) =>
-  `/cdn/pieces/${piece.id}/thumb${piece.picture === undefined ? '' : `?v=${piece.picture.shows}${piece.picture.version}`}`
+const thumbnailPath = (piece: Piece) => cdn.pieceShown(piece, 'thumb')
 
 /** The kept cut-outs with no clean picture yet, and a free way to ask for theirs. */
 const backfillLine = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {

@@ -1,3 +1,4 @@
+import { cdn } from '../Cdn.ts'
 import { Button, Dialog } from '@foldkit/ui'
 import { format, type Locale } from '@styld/i18n'
 import { type Colour, type Piece, type PieceType } from '@styld/protocol'
@@ -141,12 +142,7 @@ const resultTile = (piece: Piece, locale: Locale, h: HtmlBuilder<Message>): Html
         [h.Href(pieceRouter({ pieceId: piece.id })), ...styled(h, styles.result())],
         [
           // The caption names the piece; the picture would only say it twice.
-          h.img([
-            h.Src(`/cdn/pieces/${piece.id}/thumb`),
-            h.Alt(''),
-            h.Loading('lazy'),
-            ...styled(h, styles.resultImage()),
-          ]),
+          h.img([h.Src(cdn.piece(piece.id)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.resultImage())]),
           h.span(styled(h, styles.resultName()), [pieceLabel(piece, locale)]),
         ],
       ),

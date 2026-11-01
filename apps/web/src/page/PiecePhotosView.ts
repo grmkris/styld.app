@@ -1,3 +1,4 @@
+import { cdn } from '../Cdn.ts'
 import { format, type Locale } from '@styld/i18n'
 import { AsyncData, Submodel } from 'foldkit'
 import { Option } from 'effect'
@@ -32,7 +33,7 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
                         [h.Href(photoRouter({ photoId: photo.id })), ...styled(h, styles.tile())],
                         [
                           h.img([
-                            h.Src(`/cdn/photos/${photo.id}/thumb`),
+                            h.Src(cdn.photo(photo.id, 'thumb')),
                             h.Alt(''),
                             h.Loading('lazy'),
                             ...styled(h, styles.tileImage()),

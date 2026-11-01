@@ -1,3 +1,4 @@
+import { cdn } from '../Cdn.ts'
 import { textLength, prices } from '@styld/protocol'
 import { format, languageOf, type Locale, type MessageKey } from '@styld/i18n'
 import type { Chat, ChatMessage, ReplyPart } from '@styld/protocol'
@@ -90,12 +91,7 @@ const shownPiece = (pieceId: string, { locale, names }: Inputs, h: HtmlBuilder<M
           ...styled(h, styles.pieceLink()),
         ],
         [
-          h.img([
-            h.Src(`/cdn/pieces/${pieceId}/thumb`),
-            h.Alt(''),
-            h.Loading('lazy'),
-            ...styled(h, styles.pieceImage()),
-          ]),
+          h.img([h.Src(cdn.piece(pieceId)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.pieceImage())]),
           name === undefined ? h.empty : h.span(styled(h, styles.pieceName()), [name]),
         ],
       ),
