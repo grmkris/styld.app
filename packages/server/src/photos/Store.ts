@@ -1,9 +1,11 @@
-import { captures, detections, operationReceipts, outfitPhotos, photoGarments } from '@styld/db'
+import { operationReceipts, outfitPhotos, photoGarments } from '@styld/db'
 import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect } from 'effect'
+import { OfferedRows } from '../capture/Rows.ts'
 import type { CaptureRow, DetectionRow } from '../capture/Store.ts'
-import { type ReceiptRow, spendUpload } from '../wardrobe/Store.ts'
+import { type ReceiptRow, spendUpload, UploadRows } from '../wardrobe/Store.ts'
+import { forgetReceipt } from '../kernel/Receipts.ts'
 import { first, query } from '../kernel/Db.ts'
 
 export type PhotoRow = typeof outfitPhotos.$inferSelect
@@ -72,6 +74,15 @@ const writes = (db: Db) => ({
         db.insert(operationReceipts).values(receipt),
       ]),
     ).pipe(Effect.asVoid),
+  /** Undo a photo whose credit could not be held: the photo, its receipt, and its upload received again. */
+  undoPhoto: (photo: PhotoRow, operationId: string) =>
+    query(() =>
+      db.batch([
+        db.delete(outfitPhotos).where(and(eq(outfitPhotos.id, photo.id), eq(outfitPhotos.status, 'finding'))),
+        forgetReceipt(db, photo.accountId, operationId),
+        UploadRows.restore(db, photo.uploadId),
+      ]),
+    ).pipe(Effect.asVoid),
   /** The garments found, and the photo ready, in one batch; only while it is still being found. */
   finishFinding: (photoId: string, garments: ReadonlyArray<GarmentRow>, at: Date) =>
     query(() =>
@@ -88,8 +99,7 @@ const writes = (db: Db) => ({
   offerGarment: (garmentId: string, capture: CaptureRow, detection: DetectionRow) =>
     query(() =>
       db.batch([
-        db.insert(captures).values(capture),
-        db.insert(detections).values(detection),
+        ...OfferedRows.insert(db, capture, detection),
         db
           .update(photoGarments)
           .set({ state: 'offered', captureId: capture.id, pieceId: null })

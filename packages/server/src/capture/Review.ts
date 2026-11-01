@@ -2,7 +2,7 @@ import { NotFound, type Keep, PieceId, type Review, Reviewed } from '@styld/prot
 import { Effect, Option, Schema } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
 import { CaptureMetrics, type ReviewDecision } from './Metrics.ts'
-import { enqueuePicture, type Parts, storedAs, unavailable } from './Parts.ts'
+import { enqueuePicture, forgetCaptureObjects, type Parts, storedAs, unavailable } from './Parts.ts'
 
 import type { DetectionRow } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
@@ -132,6 +132,21 @@ const countDecisions = (
     })
   })
 
+/** A capture with nothing left waiting keeps only what its pieces show: discarded cut-outs, its unused stills and a
+ * video go. */
+const forgetFinished = (parts: Parts, accountId: string, finished: ReadonlyArray<string>) =>
+  Effect.gen(function* () {
+    const done = yield* storedAs(parts.store.capturesOf(accountId, finished))
+    yield* Effect.forEach(
+      done,
+      (capture) =>
+        Effect.flatMap(storedAs(parts.store.frames(capture.id)), (frames) =>
+          forgetCaptureObjects(parts, capture, frames),
+        ),
+      { discard: true },
+    )
+  })
+
 /** The person's decisions on waiting pieces: kept ones become pieces, the rest are dropped. Replaying an
  * operation id returns the same pieces; reusing it for other decisions is a conflict. */
 export const reviewing = (parts: Parts) => ({
@@ -183,6 +198,7 @@ export const reviewing = (parts: Parts) => ({
     const discardedSightings = others.filter(({ groupOf }) => groupOf !== null && discarding.has(groupOf))
     const pieceIds = pieces.map(({ id }) => id)
     const pictures = picturesFor(pieces, at)
+    const finished = yield* finishedCaptures(parts, [...found, ...others], [...ids, ...others.map(({ id }) => id)])
     yield* storedAs(
       parts.store.review({
         pieces,
@@ -192,12 +208,13 @@ export const reviewing = (parts: Parts) => ({
         linked: kept.flatMap(({ pieceId, detection }) =>
           detection !== undefined && fromPhotos(detection) ? [{ captureId: detection.captureId, pieceId }] : [],
         ),
-        finished: yield* finishedCaptures(parts, [...found, ...others], [...ids, ...others.map(({ id }) => id)]),
+        finished,
         pictures,
         receipt: yield* receiptRow(operation, JSON.stringify({ pieceIds })),
         now: at,
       }),
     )
+    yield* forgetFinished(parts, accountId, finished)
     yield* countDecisions(input, open, originOf)
     yield* sendPictures(
       parts,

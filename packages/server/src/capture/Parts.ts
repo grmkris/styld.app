@@ -2,6 +2,7 @@ import { type Ending, holdId } from '../usage/Holds.ts'
 import { readPng } from '@styld/imaging'
 import { Unavailable } from '@styld/protocol'
 import { Effect, Option } from 'effect'
+import { deleteAfterRows, keysUnder } from '../kernel/Media.ts'
 import { accountPrefix, piecePrefix } from '../wardrobe/Media.ts'
 import type { WorkMessage } from '../wardrobe/Processing.ts'
 import { makeStore } from '../wardrobe/Store.ts'
@@ -53,6 +54,25 @@ export const writeObject = (parts: Parts, key: string, bytes: Uint8Array, conten
     try: () => parts.bindings.bucket.put(key, bytes, { httpMetadata: { contentType } }),
     catch: unavailable,
   }).pipe(Effect.asVoid)
+
+/** The objects of a capture whose rows were deleted or decided: everything under its own folder, its photo or video
+ * and its stills, except what a piece or an open tray card still shows (`keysInUse`). Rows first, then objects; a
+ * failed listing or delete is logged, its bytes left under the account's prefix for account deletion. */
+export const forgetCaptureObjects = (
+  parts: Parts,
+  capture: Pick<CaptureRow, 'id' | 'accountId' | 'originalKey'>,
+  frames: ReadonlyArray<{ readonly objectKey: string }>,
+) =>
+  Effect.gen(function* () {
+    const listed = yield* keysUnder(parts.bindings.bucket, captureKey(capture.accountId, capture.id, ''))
+    const candidates = [...new Set([...listed, capture.originalKey, ...frames.map(({ objectKey }) => objectKey)])]
+    const inUse = yield* storedAs(parts.wardrobeStore.keysInUse(capture.accountId, candidates))
+    yield* deleteAfterRows(
+      parts.bindings.bucket,
+      candidates.filter((key) => !inUse.has(key)),
+      'capture',
+    )
+  }).pipe(Effect.ignore({ log: true, message: 'Styld.Capture could not forget stored objects' }))
 
 /** Where a piece's clean picture lives: a new name for each drawing, so a cached old one is never served. */
 export const pictureKey = (accountId: string, pieceId: string, version: number) =>

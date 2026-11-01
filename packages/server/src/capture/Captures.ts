@@ -46,7 +46,13 @@ const replayed = (parts: Parts, operation: Identified) =>
     )
     if (Option.isNone(prior)) return Option.none<{ readonly captureId: CaptureId }>()
     const capture = yield* storedAs(parts.store.findCapture(accountId, prior.value))
-    if (Option.isSome(capture) && capture.value.status === 'processing') yield* enqueueCapture(parts, capture.value.id)
+    // Its credits are held again first (the same hold, so holding twice is once): the first request may have stopped
+    // between writing the capture and holding them.
+    if (Option.isSome(capture) && capture.value.status === 'processing') {
+      const { id, credits } = capture.value
+      yield* (yield* Holds).reserve({ accountId, hold: captureHold(capture.value), credits })
+      yield* enqueueCapture(parts, id)
+    }
     return Option.some({ captureId: CaptureId.make(prior.value) })
   })
 
@@ -74,20 +80,37 @@ const measureVideo = (parts: Parts, video: { readonly objectKey: string; readonl
     return { durationMs, frameCount }
   })
 
-/** Hold the credits, then write the capture; give them back if the write fails. */
+/** A capture whose batch failed: the same operation committed after all (its receipt answers), another used one of
+ * its uploads, or D1 failed. */
+const createFailure = (parts: Parts, operation: Identified, uploadIds: ReadonlyArray<string>) =>
+  Effect.gen(function* () {
+    const earlier = yield* replayed(parts, operation)
+    if (Option.isSome(earlier)) return earlier.value
+    const used = yield* Effect.forEach(uploadIds, (uploadId) => storedAs(parts.wardrobeStore.findUpload(uploadId)))
+    return yield* used.some(Option.exists(({ status }) => status === 'used'))
+      ? UploadRefused.make({ reason: 'alreadyUsed' })
+      : unavailable()
+  })
+
+/** Write the capture first, its uploads spent, then hold its credits: every hold has a row its sweep can settle. Past
+ * the daily limit the capture is undone and its uploads can be used again. */
 const admit = (parts: Parts, capture: CaptureRow, frames: ReadonlyArray<FrameRow>, operation: Identified) =>
   Effect.gen(function* () {
-    const holds = yield* Holds
-    const hold = captureHold(capture)
-    yield* holds.reserve({ accountId: capture.accountId, hold, credits: capture.credits })
-    yield* parts.store.createCapture(capture, frames, yield* receiptRow(operation, capture.id)).pipe(
-      Effect.tapError(() =>
-        holds
-          .settle(capture.accountId, hold, 'failed')
-          .pipe(Effect.ignore({ log: true, message: 'Styld.Capture.admit could not refund a failed capture' })),
-      ),
-      Effect.mapError(unavailable),
+    const uploadIds = [capture.uploadId, ...frames.map(({ uploadId }) => uploadId)]
+    const written = yield* parts.store.createCapture(capture, frames, yield* receiptRow(operation, capture.id)).pipe(
+      Effect.as(Option.none<{ readonly captureId: CaptureId }>()),
+      Effect.catchTag('StoreUnavailable', () => Effect.map(createFailure(parts, operation, uploadIds), Option.some)),
     )
+    if (Option.isSome(written)) return written.value
+    yield* (yield* Holds)
+      .reserve({ accountId: capture.accountId, hold: captureHold(capture), credits: capture.credits })
+      .pipe(
+        Effect.tapErrorTag('LimitReached', () =>
+          storedAs(parts.store.undoCapture(capture, frames, operation.operationId)).pipe(
+            Effect.ignore({ log: true, message: 'Styld.Capture.admit could not undo a capture past the limit' }),
+          ),
+        ),
+      )
     yield* enqueueCapture(parts, capture.id)
     return { captureId: CaptureId.make(capture.id) }
   })

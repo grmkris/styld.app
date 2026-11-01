@@ -3,17 +3,19 @@ import {
   captures,
   detections,
   operationReceipts,
-  photoGarments,
   piecePictures,
   pieces,
   pieceTurns,
   uploads,
 } from '@styld/db'
-import { and, desc, eq, inArray, isNull, ne, or } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, ne } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
 import { Array, Effect, Option } from 'effect'
 import { matchRows } from './MatchStore.ts'
 import { chunked, first, query } from '../kernel/Db.ts'
+import { forgetReceipt } from '../kernel/Receipts.ts'
+import { GarmentRows } from '../photos/Rows.ts'
+import { PieceRows, UploadRows } from '../wardrobe/Store.ts'
 
 export type CaptureRow = typeof captures.$inferSelect
 export type FrameRow = typeof captureFrames.$inferSelect
@@ -39,18 +41,39 @@ const readIn = <A>(ids: ReadonlyArray<string>, read: (chunk: Array<string>) => P
   )
 
 const captureRows = (db: Database) => ({
-  /** The capture, its uploads spent, its stills and the operation's receipt, as one atomic batch. */
+  /** The capture, its uploads spent, its stills and the operation's receipt, as one atomic batch: an upload already
+   * spent fails it whole (`spendUpload`). */
   createCapture: (capture: CaptureRow, frames: ReadonlyArray<FrameRow>, receipt: ReceiptRow) =>
     query(() =>
       db.batch([
         db.insert(captures).values(capture),
-        ...chunked([capture.uploadId, ...frames.map(({ uploadId }) => uploadId)]).map((chunk) =>
-          db.update(uploads).set({ status: 'used' }).where(inArray(uploads.id, chunk)),
-        ),
         ...frames.map((frame) => db.insert(captureFrames).values(frame)),
+        ...[capture.uploadId, ...frames.map(({ uploadId }) => uploadId)].map((uploadId) =>
+          UploadRows.spend(db, uploadId),
+        ),
         db.insert(operationReceipts).values(receipt),
       ]),
     ).pipe(Effect.asVoid),
+  /** Undo a capture whose credits could not be held: the capture (its stills with it), its receipt, and its uploads
+   * received again, as one batch. */
+  undoCapture: (capture: CaptureRow, frames: ReadonlyArray<FrameRow>, operationId: string) =>
+    query(() =>
+      db.batch([
+        db.delete(captures).where(and(eq(captures.id, capture.id), eq(captures.status, 'processing'))),
+        forgetReceipt(db, capture.accountId, operationId),
+        ...[capture.uploadId, ...frames.map(({ uploadId }) => uploadId)].map((uploadId) =>
+          UploadRows.restore(db, uploadId),
+        ),
+      ]),
+    ).pipe(Effect.asVoid),
+  /** The keys of every detection the capture holds, whatever their state. */
+  detectionKeys: (captureId: string) =>
+    query(() =>
+      db
+        .select({ cutoutKey: detections.cutoutKey, sourceKey: detections.sourceKey })
+        .from(detections)
+        .where(eq(detections.captureId, captureId)),
+    ),
   findCapture: (accountId: string, captureId: string) =>
     query(() =>
       db
@@ -266,29 +289,6 @@ const transitionRows = (db: Database) => ({
         .where(and(eq(detections.captureId, captureId), eq(detections.status, 'kept')))
         .limit(1),
     ).pipe(Effect.map((rows) => rows.length > 0)),
-  /** Which of these stored objects a piece of the account still shows, as its photo, image or back. */
-  keysInUse: (accountId: string, keys: ReadonlyArray<string>) =>
-    Effect.map(
-      // Each key is bound three times, so a chunk holds 30 of them.
-      Effect.forEach(Array.chunksOf(keys, 30), (chunk) =>
-        query(() =>
-          db
-            .select({ originalKey: pieces.originalKey, imageKey: pieces.imageKey, backImageKey: pieces.backImageKey })
-            .from(pieces)
-            .where(
-              and(
-                eq(pieces.accountId, accountId),
-                or(
-                  inArray(pieces.originalKey, [...chunk]),
-                  inArray(pieces.imageKey, [...chunk]),
-                  inArray(pieces.backImageKey, [...chunk]),
-                ),
-              ),
-            ),
-        ),
-      ),
-      (rows) => new Set(rows.flat().flatMap((row) => [row.originalKey, row.imageKey, row.backImageKey])),
-    ),
 })
 
 const reviewRows = (db: Database) => ({
@@ -308,7 +308,7 @@ const reviewRows = (db: Database) => ({
     query(() =>
       db.batch([
         db.insert(operationReceipts).values(input.receipt),
-        ...input.pieces.map((piece) => db.insert(pieces).values(piece)),
+        ...input.pieces.map((piece) => PieceRows.insert(db, piece)),
         ...input.pictures.map((picture) => db.insert(piecePictures).values(picture)),
         ...input.kept.map(({ detectionId, pieceId }) =>
           db
@@ -322,12 +322,7 @@ const reviewRows = (db: Database) => ({
             .set({ status: 'discarded' })
             .where(and(inArray(detections.id, chunk), eq(detections.status, 'review'))),
         ),
-        ...input.linked.map(({ captureId, pieceId }) =>
-          db
-            .update(photoGarments)
-            .set({ pieceId, state: 'confirmed' })
-            .where(and(eq(photoGarments.captureId, captureId), eq(photoGarments.state, 'offered'))),
-        ),
+        ...input.linked.map(({ captureId, pieceId }) => GarmentRows.confirm(db, captureId, pieceId)),
         ...chunked(input.finished).map((chunk) =>
           db.update(captures).set({ status: 'done', updatedAt: input.now }).where(inArray(captures.id, chunk)),
         ),

@@ -162,7 +162,7 @@ export class PhotoApi extends HttpApiGroup.make('photo')
       params: photoPath,
       payload: AddPhotoToBoard,
       success: HttpApiSchema.NoContent,
-      error: [NotFound, Unavailable, RequestRefused],
+      error: [NotFound, OperationConflict, Unavailable, RequestRefused],
     }),
   )
   .add(

@@ -1,8 +1,9 @@
 import { accounts, detections, operationReceipts, piecePictures, pieceTurns, pieces, uploads } from '@styld/db'
 import { and, asc, desc, eq, inArray, lt, ne, or, sql } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
-import { Effect, Option } from 'effect'
+import { Array, Effect } from 'effect'
 import { receiptRows } from '../kernel/Receipts.ts'
+import { forgetCheck } from '../safety/Checks.ts'
 import { chunked, first, query, StoreUnavailable } from '../kernel/Db.ts'
 
 export type PieceRow = typeof pieces.$inferSelect
@@ -52,9 +53,71 @@ export const receivedUploadKey = (db: ReturnType<typeof drizzle>, accountId: str
     .from(uploads)
     .where(and(eq(uploads.id, uploadId), eq(uploads.accountId, accountId), eq(uploads.status, 'received')))}`
 
-/** Spend an upload, in the batch that records what it made. */
+/** Spend an upload, in the batch that records what it made: the one way an upload is used. Only a received upload can
+ * be spent; spending one already used (or not yet received) sets its status to null, which the NOT NULL column refuses,
+ * failing the whole batch, so one upload never makes two things (a capture and a piece's back, say). */
 export const spendUpload = (db: ReturnType<typeof drizzle>, uploadId: string) =>
-  db.update(uploads).set({ status: 'used' }).where(eq(uploads.id, uploadId))
+  db
+    .update(uploads)
+    .set({ status: sql<'used'>`CASE WHEN ${uploads.status} = 'received' THEN 'used' END` })
+    .where(eq(uploads.id, uploadId))
+
+/** The wardrobe's statements for another module's batch: a piece it creates (a kept detection), and an upload given
+ * back when the batch that spent it is undone. */
+export const PieceRows = {
+  insert: (db: ReturnType<typeof drizzle>, row: PieceRow) => db.insert(pieces).values(row),
+}
+export const UploadRows = {
+  spend: spendUpload,
+  restore: (db: ReturnType<typeof drizzle>, uploadId: string) =>
+    db
+      .update(uploads)
+      .set({ status: 'received' })
+      .where(and(eq(uploads.id, uploadId), eq(uploads.status, 'used'))),
+}
+
+/** Which of these stored objects the account still shows: as a piece's photo, image or back, or as an open detection's
+ * photo, cut-out or back in the tray. The one in-use check: an object goes only when nothing shows it. */
+export const keysInUse = (db: ReturnType<typeof drizzle>, accountId: string, keys: ReadonlyArray<string>) =>
+  Effect.map(
+    // Each key is bound three times, so a chunk holds 30 of them.
+    Effect.forEach(Array.chunksOf(keys, 30), (chunk) =>
+      Effect.all([
+        query(() =>
+          db
+            .select({ a: pieces.originalKey, b: pieces.imageKey, c: pieces.backImageKey })
+            .from(pieces)
+            .where(
+              and(
+                eq(pieces.accountId, accountId),
+                or(
+                  inArray(pieces.originalKey, [...chunk]),
+                  inArray(pieces.imageKey, [...chunk]),
+                  inArray(pieces.backImageKey, [...chunk]),
+                ),
+              ),
+            ),
+        ),
+        query(() =>
+          db
+            .select({ a: detections.sourceKey, b: detections.cutoutKey, c: detections.backCutoutKey })
+            .from(detections)
+            .where(
+              and(
+                eq(detections.accountId, accountId),
+                eq(detections.status, 'review'),
+                or(
+                  inArray(detections.sourceKey, [...chunk]),
+                  inArray(detections.cutoutKey, [...chunk]),
+                  inArray(detections.backCutoutKey, [...chunk]),
+                ),
+              ),
+            ),
+        ),
+      ]),
+    ),
+    (found) => new Set(found.flat(2).flatMap(({ a, b, c }) => [a, b, c].filter((key) => key !== null))),
+  )
 
 /** Uploads, and whether their account still takes photos. */
 const uploadQueries = (db: ReturnType<typeof drizzle>) => ({
@@ -105,30 +168,6 @@ const uploadQueries = (db: ReturnType<typeof drizzle>) => ({
         .set({ status: 'received' })
         .where(and(eq(uploads.id, uploadId), eq(uploads.status, 'pending'))),
     ).pipe(Effect.asVoid),
-})
-
-/** A photo one capture shared between pieces is deleted only with the last one showing it. */
-const sharedPhotoQueries = (db: ReturnType<typeof drizzle>) => ({
-  /** Whether another piece, or a piece still waiting in the tray, shows this photo. */
-  originalInUse: (accountId: string, key: string, exceptPieceId: string) =>
-    Effect.all([
-      query(() =>
-        db
-          .select({ id: pieces.id })
-          .from(pieces)
-          .where(and(eq(pieces.accountId, accountId), eq(pieces.originalKey, key), ne(pieces.id, exceptPieceId)))
-          .limit(1),
-      ),
-      query(() =>
-        db
-          .select({ id: detections.id })
-          .from(detections)
-          .where(
-            and(eq(detections.accountId, accountId), eq(detections.sourceKey, key), eq(detections.status, 'review')),
-          )
-          .limit(1),
-      ),
-    ]).pipe(Effect.map(([others, waiting]) => others.length > 0 || waiting.length > 0)),
 })
 
 /** Pieces' clean pictures as their owner reads and chooses them. The picture job writes everything else. */
@@ -206,7 +245,6 @@ export const makeStore = (database: Parameters<typeof drizzle>[0]) => {
   const db = drizzle(database)
   return {
     ...uploadQueries(db),
-    ...sharedPhotoQueries(db),
     ...pictureQueries(db),
     ...queueQueries(db),
     ...backQueries(db),
@@ -241,23 +279,20 @@ export const makeStore = (database: Parameters<typeof drizzle>[0]) => {
           .where(and(eq(pieces.id, pieceId), eq(pieces.accountId, accountId)))
           .returning(),
       ).pipe(Effect.map(first)),
-    /** Removes the piece and its upload; returns the piece so its photos can be deleted. */
-    deletePiece: (accountId: string, pieceId: string) =>
+    /** Removes the piece, its upload and its content check, as one batch; the piece as it was, so its objects can go
+     * after it. */
+    deletePiece: (accountId: string, piece: PieceRow) =>
       query(() =>
-        db
-          .delete(pieces)
-          .where(and(eq(pieces.id, pieceId), eq(pieces.accountId, accountId)))
-          .returning(),
-      ).pipe(
-        Effect.map(first),
-        Effect.tap((deleted) =>
-          Option.match(deleted, {
-            onNone: () => Effect.void,
-            onSome: ({ uploadId }) =>
-              uploadId === null ? Effect.void : query(() => db.delete(uploads).where(eq(uploads.id, uploadId))),
-          }),
-        ),
-      ),
+        db.batch([
+          db
+            .delete(pieces)
+            .where(and(eq(pieces.id, piece.id), eq(pieces.accountId, accountId)))
+            .returning({ id: pieces.id }),
+          forgetCheck(db, accountId, { kind: 'piece', id: piece.id }),
+          ...(piece.uploadId === null ? [] : [db.delete(uploads).where(eq(uploads.id, piece.uploadId))]),
+        ]),
+      ).pipe(Effect.map(([deleted]) => deleted.length > 0)),
+    keysInUse: (accountId: string, keys: ReadonlyArray<string>) => keysInUse(db, accountId, keys),
     /** Records the processed photo; a piece no longer processing is left as it is. */
     finishProcessing: (pieceId: string, changes: Pick<PieceRow, 'status' | 'imageKey' | 'updatedAt'>) =>
       query(() =>

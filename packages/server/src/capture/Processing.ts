@@ -1,5 +1,5 @@
 import { Effect, Option } from 'effect'
-import { captureHold, endingOf, enqueueMatch, type Parts, storedAs } from './Parts.ts'
+import { captureHold, endingOf, enqueueMatch, forgetCaptureObjects, type Parts, storedAs } from './Parts.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
 import { type Found as Result, processPhoto } from './Detections.ts'
 import { Holds } from '../usage/Holds.ts'
@@ -103,6 +103,13 @@ const record = (parts: Parts, capture: CaptureRow, result: Result) =>
       }),
     )
     yield* settleEnded(parts, { ...capture, status: 'review' })
+    // What no detection shows goes: an earlier attempt's (or a losing delivery's) cut-outs, a video once its garments
+    // are cut from its stills, and the stills none was cut from.
+    yield* forgetCaptureObjects(
+      parts,
+      capture,
+      capture.kind === 'video' ? yield* storedAs(parts.store.frames(capture.id)) : [],
+    )
     if (result.found.some(({ matching }) => matching === 'waiting')) yield* enqueueMatch(parts, capture.id)
     // A back shot of the garment before it becomes that piece's back and stops waiting on its own.
     if (capture.side === 'back' && capture.pairsWith !== null)

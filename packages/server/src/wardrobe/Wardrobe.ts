@@ -24,6 +24,7 @@ import { processing } from './Work.ts'
 import { Holds } from '../usage/Holds.ts'
 import {
   ownerPiece,
+  forgetObjects,
   ownPiece,
   type Parts,
   pictureRow,
@@ -41,7 +42,7 @@ import { PieceChanged } from '../safety/PieceChanged.ts'
 import { digestOf, randomToken } from '../kernel/Ids.ts'
 import { once, type Operation } from '../kernel/Receipts.ts'
 import { identify, priorResult, receiptRow, type Identified } from '../kernel/Receipts.ts'
-import { deleteKeys, deletePrefix } from '../kernel/Media.ts'
+import { keysUnder } from '../kernel/Media.ts'
 
 /** A video's request body, as the Worker runtime streams it. */
 export type VideoBody =
@@ -336,10 +337,6 @@ const adding = (parts: Parts) => ({
   }),
 })
 
-/** A piece's clean drawings, every version, which go with it. */
-const deleteDrawings = (parts: Parts, accountId: string, pieceId: string) =>
-  deletePrefix(parts.bindings.bucket, piecePrefix(accountId, pieceId))
-
 const editing = (parts: Parts) => ({
   /** Show the clean drawing or the photo. Only a drawing that is ready or proposed can be chosen. */
   choosePicture: Effect.fn('Styld.Wardrobe.choosePicture')(function* (pieceId: PieceId, use: PictureChoice) {
@@ -364,24 +361,17 @@ const editing = (parts: Parts) => ({
     if (input.name !== undefined && input.name !== current.name) yield* parts.pieceChanged.changed(pieceId)
     return yield* ownerPiece(parts, accountId, updated.value)
   }),
+  /** Delete a piece: its row, upload and check first, then its photo, cut-outs, back and drawings, except what another
+   * piece or a tray card still shows (a reviewed piece shares its photo with the others found in it). */
   deletePiece: Effect.fn('Styld.Wardrobe.deletePiece')(function* (pieceId: PieceId) {
     const { accountId } = yield* CurrentAccount
-    // Photos first: if the row's delete fails, a retry finds the piece and finishes.
     const piece = yield* ownPiece(parts)(pieceId)
-    // A reviewed piece shares its photo with the other pieces found in it; that photo goes with the last.
-    const originalShared =
-      piece.detectionId !== null && (yield* stored(parts.store.originalInUse(accountId, piece.originalKey, piece.id)))
-    const keys = [
-      ...new Set(
-        [originalShared ? null : piece.originalKey, piece.imageKey, piece.backImageKey].filter(Predicate.isNotNull),
-      ),
-    ].filter((key) => !originalShared || key !== piece.originalKey)
-    yield* deleteKeys(parts.bindings.bucket, keys).pipe(
-      Effect.andThen(deleteDrawings(parts, accountId, pieceId)),
-      Effect.catchTag('MediaUnavailable', () => Effect.fail(unavailable())),
+    if (!(yield* stored(parts.store.deletePiece(accountId, piece)))) return yield* NotFound.make({})
+    const own = yield* keysUnder(parts.bindings.bucket, piecePrefix(accountId, pieceId)).pipe(
+      Effect.orElseSucceed(() => []),
     )
-    const deleted = yield* stored(parts.store.deletePiece(accountId, pieceId))
-    if (Option.isNone(deleted)) return yield* NotFound.make({})
+    const shown = [piece.originalKey, piece.imageKey, piece.backImageKey].filter(Predicate.isNotNull)
+    yield* forgetObjects(parts, accountId, [...shown, ...own], 'piece')
   }),
 })
 

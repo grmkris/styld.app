@@ -1,7 +1,7 @@
 import { NotFound, type PieceId, type SetBack } from '@styld/protocol'
-import { Effect, Option } from 'effect'
+import { Effect, Option, Predicate } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import { ownerPiece, ownPiece, type Parts, stored, typeOf, unavailable, usableUpload } from './Parts.ts'
+import { forgetObjects, ownerPiece, ownPiece, type Parts, stored, typeOf, unavailable, usableUpload } from './Parts.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
 
@@ -35,16 +35,20 @@ export const backing = (parts: Parts) => ({
       ),
     )
     if (Option.isNone(updated)) return yield* NotFound.make({})
+    // The back it replaced goes, and the upload's own photo once a cut-out stands for it.
+    const replaced = [piece.backImageKey, imageKey === upload.objectKey ? null : upload.objectKey]
+    yield* forgetObjects(parts, accountId, replaced.filter(Predicate.isNotNull), 'back')
     return yield* ownerPiece(parts, accountId, updated.value)
   }),
-  /** Forget the back. Its picture stays stored until the account goes: a tray card may still show it. */
+  /** Forget the back, and its picture unless a tray card still shows it. */
   removeBack: Effect.fn('Styld.Wardrobe.removeBack')(function* (pieceId: PieceId) {
     const { accountId } = yield* CurrentAccount
-    yield* ownPiece(parts)(pieceId)
+    const piece = yield* ownPiece(parts)(pieceId)
     const updated = yield* stored(
       parts.store.updatePiece(accountId, pieceId, { backImageKey: null, updatedAt: yield* nowDate }),
     )
     if (Option.isNone(updated)) return yield* NotFound.make({})
+    if (piece.backImageKey !== null) yield* forgetObjects(parts, accountId, [piece.backImageKey], 'back')
     return yield* ownerPiece(parts, accountId, updated.value)
   }),
 })

@@ -16,6 +16,7 @@ import type { GarmentCutout, WorkMessage } from './Processing.ts'
 import { pictureView, turnView } from './Shown.ts'
 import type { makeStore, PieceRow, Store, UploadRow } from './Store.ts'
 import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
+import { deleteAfterRows } from '../kernel/Media.ts'
 
 // What every part of the wardrobe service shares: its bindings and stores, the piece as its owner reads it, and how
 // a store's failure reads to callers.
@@ -66,11 +67,17 @@ export interface Parts {
   readonly holds: Holds['Service']
 }
 
+/** The account's own piece, or `NotFound`, as if another account's did not exist: the one ownership check for a
+ * piece, which My Gallery reuses. */
+export const accountPiece = Effect.fnUntraced(function* (store: Store, accountId: string, pieceId: string) {
+  const row = yield* stored(store.findPiece(accountId, pieceId))
+  return yield* Option.match(row, { onNone: () => Effect.fail(NotFound.make({})), onSome: Effect.succeed })
+})
+
 export const ownPiece = (parts: Parts) =>
   Effect.fnUntraced(function* (pieceId: string) {
     const { accountId } = yield* CurrentAccount
-    const row = yield* stored(parts.store.findPiece(accountId, pieceId))
-    return yield* Option.match(row, { onNone: () => Effect.fail(NotFound.make({})), onSome: Effect.succeed })
+    return yield* accountPiece(parts.store, accountId, pieceId)
   })
 
 /** The piece's clean picture row, if a drawing was ever asked for. */
@@ -111,3 +118,15 @@ export const usableUpload = Effect.fnUntraced(function* (store: Store, accountId
     return yield* refused(Option.getOrElse(refusal, () => 'notFound'))
   return upload.value
 })
+
+/** Delete the objects of rows already deleted (or changed) that nothing else shows any more (`keysInUse`): the one
+ * order objects go in, rows first. A failed delete is logged, its bytes left under the account's prefix. */
+export const forgetObjects = (parts: Parts, accountId: string, keys: ReadonlyArray<string>, owner: string) =>
+  Effect.gen(function* () {
+    const inUse = yield* stored(parts.store.keysInUse(accountId, keys))
+    yield* deleteAfterRows(
+      parts.bindings.bucket,
+      [...new Set(keys)].filter((key) => !inUse.has(key)),
+      owner,
+    )
+  })

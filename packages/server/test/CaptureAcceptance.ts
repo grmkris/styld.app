@@ -258,7 +258,9 @@ export const verifyCaptures = async (origin: string, fixtures: string): Promise<
     await (await owner('/api/me')).json(),
   )
   const key = (uploadId: string) => `accounts/${me.accountId}/uploads/${uploadId}`
-  expect(await exists(fixtures, key(video))).toBe(true)
+  // A video goes once its garments are cut from its stills; the still its garment shows stays with its card.
+  expect(await exists(fixtures, key(video))).toBe(false)
+  expect(await exists(fixtures, key(still))).toBe(true)
   // A capture whose pieces were kept stays: those pieces show its pictures.
   expect((await owner(`/api/captures/${first}`, { method: 'DELETE' })).status).toBe(404)
   expect((await owner(`/api/captures/${clip}`, { method: 'DELETE' })).status).toBe(204)

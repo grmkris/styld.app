@@ -48,6 +48,12 @@ export const receiptQuery = (db: Database, accountId: string, operationId: strin
     .where(and(eq(operationReceipts.accountId, accountId), eq(operationReceipts.operationId, operationId)))
     .limit(1)
 
+/** The statement that forgets an operation's receipt, for the batch that undoes what the operation wrote. */
+export const forgetReceipt = (db: Database, accountId: string, operationId: string) =>
+  db
+    .delete(operationReceipts)
+    .where(and(eq(operationReceipts.accountId, accountId), eq(operationReceipts.operationId, operationId)))
+
 /** What the operation already made, judged from the receipt stored under its id: the same command and input answer
  * its result; a different one under the same id is a conflict. */
 export const priorResult = (operation: Identified, receipt: Option.Option<typeof operationReceipts.$inferSelect>) => {

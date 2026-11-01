@@ -2,10 +2,9 @@ import { once } from '../kernel/Receipts.ts'
 import { type CaptureId, NotFound, type OperationId } from '@styld/protocol'
 import { DateTime, Effect, Option } from 'effect'
 import { CurrentAccount } from '../CurrentAccount.ts'
-import { captureHold, captureKey, endingOf, enqueueCapture, type Parts, storedAs } from './Parts.ts'
-import type { CaptureRow, FrameRow } from './Store.ts'
+import { captureHold, endingOf, enqueueCapture, forgetCaptureObjects, type Parts, storedAs } from './Parts.ts'
+import type { CaptureRow } from './Store.ts'
 import { type Ending, Holds } from '../usage/Holds.ts'
-import { deleteKeys, keysUnder } from '../kernel/Media.ts'
 
 /** A capture processing longer than this has lost its queue message: the person may retry or remove it. */
 const staleMillis = 30 * 60 * 1000
@@ -23,18 +22,6 @@ const canRetry = (capture: CaptureRow, nowMillis: number) =>
 
 /** How a capture the person retries or removes ended: a stuck one failed. */
 const ended = (capture: CaptureRow): Ending => Option.getOrElse(endingOf(capture.status), () => 'failed' as const)
-
-/** The capture's own folder and its sources, except anything a piece still shows. R2 lists a page at a
- * time; deleting is tried once, and a failure is logged rather than failing the removal. */
-const removeObjects = (parts: Parts, capture: CaptureRow, frames: ReadonlyArray<FrameRow>) =>
-  Effect.gen(function* () {
-    const prefix = captureKey(capture.accountId, capture.id, '')
-    const listed = yield* keysUnder(parts.bindings.bucket, prefix)
-    const candidates = [...listed, capture.originalKey, ...frames.map(({ objectKey }) => objectKey)]
-    const inUse = yield* storedAs(parts.store.keysInUse(capture.accountId, candidates))
-    const keys = candidates.filter((key) => !inUse.has(key))
-    yield* deleteKeys(parts.bindings.bucket, keys)
-  }).pipe(Effect.ignore({ log: true, message: 'Styld.Capture.remove could not delete stored objects' }))
 
 /** Move a failed or stuck capture back to processing as its next attempt, paid like the first: the last attempt's
  * hold is refunded (a stuck one's too), and the next one holds the credits again. */
@@ -93,10 +80,10 @@ export const retrying = (parts: Parts) => ({
     // A back shot folded into this one goes first, with its photo: nothing else shows it.
     for (const back of yield* storedAs(parts.store.foldedBacks(accountId, capture.id))) {
       yield* storedAs(parts.store.deleteCapture(accountId, back.id))
-      yield* removeObjects(parts, back, [])
+      yield* forgetCaptureObjects(parts, back, [])
     }
     const frames = yield* storedAs(parts.store.frames(capture.id))
     yield* storedAs(parts.store.deleteCapture(accountId, captureId))
-    yield* removeObjects(parts, capture, frames)
+    yield* forgetCaptureObjects(parts, capture, frames)
   }),
 })
