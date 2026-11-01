@@ -1,16 +1,9 @@
-import type { StylistTurn } from './Queue.ts'
 import type * as Cloudflare from '@alchemy.run/cloudflare'
-import { layerCryptoWeb } from '@yielded/auth/WebCrypto'
-import { RuntimeContext } from 'alchemy/RuntimeContext'
-import { Context, Effect } from 'effect'
-import { LanguageModel } from 'effect/ai'
-import { workersAiModel } from '../ai/LanguageModel.ts'
-import type { Holds } from '../usage/Holds.ts'
 import { CurrentAccount } from '@styld/protocol'
+import { RuntimeContext } from 'alchemy/RuntimeContext'
+import { Effect, Layer } from 'effect'
 import type { AssistantTools } from '../mcp/StyldTools.ts'
-import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
-import { styldModel } from './Policy.ts'
-import { type ChatStore, makeStylist } from './Service.ts'
+import { type ChatStore, StylistTools } from './Service.ts'
 import type { Stylist } from './StylistObject.ts'
 
 /** A call through a Durable Object stub. Its methods carry `RuntimeContext` in their type only: the stub is the
@@ -33,27 +26,17 @@ export const chatStoreOf =
     }
   }
 
-/** Styld for the Worker: its model on Workers AI, the assistants' own tools run for the account, and the chats in
- * each account's Durable Object. */
-export const makeStylistLive = (input: {
-  readonly chatsOf: (accountId: string) => ChatStore
-  readonly queue: { send(message: StylistTurn): Promise<unknown> }
-  /** The assistants' tools (`StyldTools.ts`), built once for the Worker. */
-  readonly tools: AssistantTools
-  /** The wardrobe, and the credits the capture providers were built with. */
-  readonly storage: {
-    readonly wardrobeService: Wardrobe['Service']
-    readonly holds: Holds['Service']
-  }
-}) =>
-  Effect.gen(function* () {
-    return yield* makeStylist({
-      chatsOf: input.chatsOf,
-      queue: input.queue,
-      model: yield* LanguageModel.LanguageModel,
-      tools: input.tools,
-      toolContext: (accountId) => Context.make(CurrentAccount, { accountId, via: 'assistant' }),
-      wardrobe: input.storage.wardrobeService,
-      holds: input.storage.holds,
-    })
-  }).pipe(Effect.provide([layerCryptoWeb, workersAiModel(styldModel)]))
+/** Styld's tools for the Worker: the assistants' own (`StyldTools.ts`, built once), each run for the account as an
+ * assistant would. */
+export const stylistTools = (tools: AssistantTools) =>
+  Layer.succeed(
+    StylistTools,
+    StylistTools.of({
+      forAccount: (accountId) =>
+        tools.map((tool) => ({
+          ...tool,
+          run: (args: unknown) =>
+            tool.run(args).pipe(Effect.provideService(CurrentAccount, { accountId, via: 'assistant' })),
+        })),
+    }),
+  )

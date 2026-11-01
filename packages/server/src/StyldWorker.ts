@@ -65,10 +65,10 @@ import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@
 import { applicationSweeps } from './jobs/Cron.ts'
 import { runSweeps } from './jobs/Sweeps.ts'
 import { consume, consumerSettings, type JobQueue, type JobsOf, type Tagged } from './jobs/Jobs.ts'
-import { StylistChats } from './stylist/Http.ts'
-import { stylistJobQueue, stylistJobs } from './stylist/Queue.ts'
+import { ChatStores, StylistChats } from './stylist/Service.ts'
+import { StylistQueue, stylistJobQueue, stylistJobs } from './stylist/Queue.ts'
 import { Stylist } from './stylist/StylistObject.ts'
-import { chatStoreOf, makeStylistLive } from './stylist/Live.ts'
+import { chatStoreOf, stylistTools } from './stylist/Live.ts'
 import { photoRoutes } from './photos/Http.ts'
 import { Photos } from './photos/Photos.ts'
 import { Outfits } from './outfits/Outfits.ts'
@@ -148,9 +148,6 @@ const storageServices = (
     )
     const lifecycleService = yield* makeAccountLifecycle(bindings, bindings.forgetChats)
     return {
-      // The credits and the provider-call counter the capture providers were built with, for Styld's replies too.
-      holds: yield* Holds,
-      metrics: yield* CaptureMetricsService,
       generationsService,
       generations: Layer.succeed(Generations, generationsService),
       outfitsService,
@@ -267,12 +264,20 @@ const applicationServices = (
     const services = yield* storageServices({ ...bindings, forgetChats: (accountId) => chatsOf(accountId).erase() })
     // The assistants' tools, built once: MCP serves them, and Styld answers with them for the account.
     const tools = styldTools(runtime.origin, toolServices(services, services.outfitsService))
-    const stylistService = yield* makeStylistLive({
-      chatsOf,
-      queue: yield* runtime.stylist.queue.raw,
-      tools,
-      storage: services,
-    })
+    const stylistService = yield* StylistChats.pipe(
+      Effect.provide(
+        StylistChats.layer.pipe(
+          Layer.provide(
+            Layer.mergeAll(
+              ChatStores.layer(chatsOf),
+              StylistQueue.layer(yield* runtime.stylist.queue.raw),
+              stylistTools(tools),
+              services.wardrobe,
+            ),
+          ),
+        ),
+      ),
+    )
     return {
       ...services,
       stylistService,
