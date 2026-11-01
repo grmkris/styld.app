@@ -2,6 +2,26 @@
 
 Status: active. Sign-in, the wardrobe (shop-style garment types, browsing, a piece's back), capture with real cut-outs (photos, video import, a held-up camera, scan anything), the review tray, the daily allowance, looks, clean pictures and turns, the boards' pins, profiles, checks and link import, mood boards from the person's own pieces and stickers, the outfit engine (Fast and Thinking), My Gallery and Styld, the stylist in the app are deployed to the isolated workers.dev preview (release `889af38`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping; the plan in progress is "Plan: shopping your own wardrobe" below, waiting at owner gate 1.
 
+## Cleanup C4b: social, boards, looks, safety, worn — 2026-11-01
+
+Milestone C4b of the cleanup plan (server modules and the board page; the preview is not redeployed until the
+milestone's review).
+
+- **Services:** checks, looks, worn, profiles, public pages, social, discovery, curation and boards are each a
+  `Context.Service` with a static layer over the kernel's `Database` (one drizzle over the D1 binding) and `Media`
+  (bucket and Images); `social/Modules.ts` builds them once. Ownership is `ownPieceIds`/`ownLookIds`, a profile or a
+  handle's owner is `ProfileStore`, the pieces-with-pictures join is `Visibility.piecesWithPictures`.
+- **Visibility:** the check judge reads only what others would see (`publicImage`): a piece with only its photo is not
+  judged and never public. Its Clef and Llama Guard calls are counted through `providerCall`. Deleting a board or a look
+  forgets its check in the same batch; the checks sweep forgets the checks of anything deleted without them.
+- **Public pins from the API:** `Board.publicPins` says which pins visitors see (`PublicPages.pinsShown`); the board
+  page's second read of the public board and its diff are gone.
+- **Lifecycle:** boards and pins go rows first, then objects (`kernel/Media` `deleteAfterRows`, failures logged);
+  board pictures no longer write `board_images.job_id/model` (C5 drops the columns).
+- **Remaining:** the board operations still share one dependency record (`boards/Parts.ts`), built from services in
+  the layer; `Boards` reaches the wardrobe's store through `makeStore(db.$client)` until C4a gives the wardrobe a
+  layer; piece deletion (wardrobe) does not forget the piece's check in its batch, the sweep does.
+
 ## Cleanup C3: money, work, providers — 2026-11-01
 
 Milestone C3 of the cleanup plan (server only; the preview is not redeployed until the milestone's review).
