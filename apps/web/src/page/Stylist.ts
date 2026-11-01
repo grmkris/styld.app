@@ -1,4 +1,4 @@
-import { Chat, ChatId, ChatLocale, ChatSummary, OperationId } from '@styld/protocol'
+import { Chat, ChatId, Language, ChatSummary, OperationId } from '@styld/protocol'
 import { Duration, Effect, Option, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import { AsyncData, Command, Dom, Render, type Update } from 'foldkit'
@@ -63,8 +63,8 @@ export const Message = defineMessageUnion({
   SucceededRefreshChat: { chat: Chat },
   FailedRefreshChat: { chatId: Schema.String },
   UpdatedDraft: { value: Schema.String },
-  SubmittedMessage: { locale: ChatLocale },
-  ClickedStarter: { text: Schema.String, locale: ChatLocale },
+  SubmittedMessage: { locale: Language },
+  ClickedStarter: { text: Schema.String, locale: Language },
   SucceededSend: { chatId: ChatId },
   FailedSend: { problem: SendProblem, operationId: Schema.Option(Schema.String) },
   ClickedNewChat: {},
@@ -130,7 +130,7 @@ export const SendMessage = Command.define('SendMessage', {
     operationId: Schema.Option(Schema.String),
     chatId: Schema.Option(Schema.String),
     text: Schema.String,
-    locale: ChatLocale,
+    locale: Language,
   },
   messages: [Message.SucceededSend, Message.FailedSend],
   execute: ({ operationId, chatId, text, locale }) =>
@@ -228,7 +228,7 @@ const showChat = (model: Model, chat: Chat): UpdateReturn => {
 }
 
 /** Send what is written: a message lost on the network goes again as the same one. */
-const submit = (model: Model, locale: ChatLocale, fromStarter = false): UpdateReturn => {
+const submit = (model: Model, locale: Language, fromStarter = false): UpdateReturn => {
   if (!canSend(model)) return { model }
   return {
     model: modifyFields(model, { sending: () => Sending.Sending({ fromStarter }) }),

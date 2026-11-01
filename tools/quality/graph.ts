@@ -25,7 +25,7 @@ const directions: Readonly<Record<string, readonly string[]>> = {
   // Auth writes the code email, in the person's language.
   '@styld/auth': ['@styld/db', '@styld/i18n'],
   // Browser-safe contracts: the typed API and the schemas assistants and the website share.
-  '@styld/protocol': ['@styld/auth'],
+  '@styld/protocol': ['@styld/auth', '@styld/i18n'],
   '@styld/domain': [],
   '@styld/db': [],
   '@styld/i18n': [],

@@ -1,6 +1,7 @@
+import { languages } from '@styld/i18n'
 import { Schema } from 'effect'
 
-export const Locale = Schema.Literals(['en', 'sl', 'en-XA', 'ar-XB'])
+export const Locale = Schema.Literals([...languages, 'en-XA', 'ar-XB'])
 export type Locale = typeof Locale.Type
 export const localeEndpoint = '/locale'
 /** The locale dates and numbers are written in: Slovenian, else British English (29 Oct), as the pseudo-locales too. */
@@ -12,7 +13,7 @@ const layoutTestEnvironments: ReadonlySet<string> = new Set(['local', 'preview']
  * production and any unknown environment offer only the reviewed languages.
  * @internal Exported for its test; the application reads `availableLocales`. */
 export const offeredLocales = (environment: string): ReadonlyArray<Locale> =>
-  layoutTestEnvironments.has(environment) ? ['en', 'sl', 'en-XA', 'ar-XB'] : ['en', 'sl']
+  layoutTestEnvironments.has(environment) ? Locale.literals : languages
 
 // An unset environment is a local development or test build.
 export const availableLocales = offeredLocales(import.meta.env.VITE_STYLD_ENV ?? 'local')
@@ -22,7 +23,7 @@ export const parseLocale = (value: string | null | undefined): Locale | undefine
 
 const languageRange = (range: string): Locale | undefined => {
   const language = range.trim().toLowerCase().split('-')[0]
-  return language === 'sl' || language === 'en' ? language : undefined
+  return languages.find((known) => known === language)
 }
 
 /** Request-local negotiation. Invalid cookies and q=0 ranges never select a language. */

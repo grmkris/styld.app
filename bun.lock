@@ -123,6 +123,7 @@
       "name": "@styld/protocol",
       "dependencies": {
         "@styld/auth": "workspace:*",
+        "@styld/i18n": "workspace:*",
         "effect": "catalog:",
       },
     },

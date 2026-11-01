@@ -1,4 +1,5 @@
 import { AuthContract, Email, Hooks, Operations, Proofs, Schema as AuthSchema } from '@yielded/auth'
+import { languages } from '@styld/i18n'
 import { Predicate, Schema } from 'effect'
 
 /** Browser-safe schemas for unified email-code entry. The server strategy (EmailEntry.ts) adds the
@@ -6,7 +7,7 @@ import { Predicate, Schema } from 'effect'
  * (Y/auth/actions.ts:167-179); browsers never send it. */
 
 /** The code email is written in the catalog locale the browser is showing. */
-const EmailEntryLocale = Schema.Literals(['en', 'sl'])
+const EmailEntryLocale = Schema.Literals(languages)
 
 // Same wire shape as Yielded's own email input (Y/email/module.ts:57): trimmed and lower-cased on decode.
 const EmailAddress = Schema.String.check(Schema.isMaxLength(320)).pipe(Schema.decodeTo(AuthSchema.Email))

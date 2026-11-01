@@ -1,3 +1,4 @@
+import { Language } from './Languages.ts'
 import { textLength, trimmedText } from './Text.ts'
 import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
@@ -13,16 +14,12 @@ export type ChatId = typeof ChatId.Type
 /** What the person writes to Styld. */
 export const ChatText = trimmedText(textLength.chat)
 
-/** The languages Styld answers in. */
-export const ChatLocale = Schema.Literals(['en', 'sl'])
-export type ChatLocale = typeof ChatLocale.Type
-
 /** A message to Styld: in a chat, or starting one. Repeating its operation id returns the same chat and sends it once. */
 export const SendChatMessage = Schema.Struct({
   operationId: OperationId,
   chatId: Schema.optionalKey(ChatId),
   text: ChatText,
-  locale: ChatLocale,
+  locale: Language,
 })
 export type SendChatMessage = typeof SendChatMessage.Type
 

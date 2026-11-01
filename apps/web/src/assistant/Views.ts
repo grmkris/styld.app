@@ -7,6 +7,7 @@ import {
   type ViewPiece,
   type ViewPin,
   WardrobeView,
+  Language,
 } from '@styld/protocol'
 import { Effect, Match, Option, Record, Schema } from 'effect'
 import { Command, Port, Runtime, Subscription, type Update } from 'foldkit'
@@ -33,7 +34,7 @@ import {
 /** What the host bridge hands the view: a tool result to show, or the host's language. */
 const HostInput = Schema.Union([
   Schema.TaggedStruct('ShowedResult', { view: AssistantView, images: ViewImages }),
-  Schema.TaggedStruct('ChangedLanguage', { language: Schema.Literals(['en', 'sl']) }),
+  Schema.TaggedStruct('ChangedLanguage', { language: Language }),
 ])
 type HostInput = typeof HostInput.Type
 
@@ -57,7 +58,7 @@ export const Showing = defineTaggedUnion({
 const Model = Schema.Struct({
   showing: Showing,
   images: ViewImages,
-  language: Schema.Literals(['en', 'sl']),
+  language: Language,
 })
 type Model = typeof Model.Type
 

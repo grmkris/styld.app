@@ -1,6 +1,6 @@
 import { textLength, prices } from '@styld/protocol'
-import { format, type Locale, type MessageKey } from '@styld/i18n'
-import type { Chat, ChatLocale, ChatMessage, ReplyPart } from '@styld/protocol'
+import { format, languageOf, type Locale, type MessageKey } from '@styld/i18n'
+import type { Chat, ChatMessage, ReplyPart } from '@styld/protocol'
 import { Array, Match, Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
@@ -32,7 +32,6 @@ import * as styles from './StylistView.styles.ts'
 const composerId = 'stylist-message'
 
 /** The language Styld answers in: the page's, where it has one. */
-const chatLocale = (locale: Locale): ChatLocale => (locale === 'sl' ? 'sl' : 'en')
 
 const problemKey: { readonly [Problem in SendProblem]: MessageKey } = {
   busy: 'stylist.problem.busy',
@@ -192,7 +191,7 @@ const startView = (model: Model, inputs: Inputs, h: HtmlBuilder<Message>): Html 
           [
             h.Type('button'),
             ...styled(h, cx(chip(), styles.starter())),
-            h.OnClick(Message.ClickedStarter({ text, locale: chatLocale(locale) })),
+            h.OnClick(Message.ClickedStarter({ text, locale: languageOf(locale) })),
           ],
           [text],
         )
@@ -245,7 +244,7 @@ const composerView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Ht
   const problem = Sending.guards.Failed(model.sending) ? Option.some(model.sending.problem) : Option.none()
   return h.div(styled(h, styles.composer()), [
     h.form(
-      [h.OnSubmit(Message.SubmittedMessage({ locale: chatLocale(locale) })), ...styled(h, styles.composerRow())],
+      [h.OnSubmit(Message.SubmittedMessage({ locale: languageOf(locale) })), ...styled(h, styles.composerRow())],
       [
         h.textarea([
           h.Id(composerId),
