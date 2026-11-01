@@ -1,5 +1,6 @@
 import {
   type CheckStatus,
+  CurrentAccount,
   type Handle,
   HandleReserved,
   HandleTaken,
@@ -9,11 +10,10 @@ import {
   reservedHandles,
   searchText,
   Tone,
-  type UpdateProfile,
   Unavailable,
+  type UpdateProfile,
 } from '@styld/protocol'
 import { Context, Effect, Layer, Option, Schema } from 'effect'
-import { CurrentAccount } from '../CurrentAccount.ts'
 import { Checks } from '../safety/Checks.ts'
 import { Database, nowDate, type StoreUnavailable } from '../kernel/Db.ts'
 import { handleOwner, profileOf, type ProfileRow, saveProfile } from './ProfileStore.ts'

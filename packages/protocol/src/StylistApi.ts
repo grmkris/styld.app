@@ -1,5 +1,6 @@
-import { LimitReached, NotFound, OperationConflict, RequestRefused, Unavailable } from './Errors.ts'
+import { LimitReached, NotFound, OperationConflict, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
+import { SessionAccount } from './Session.ts'
 import { HttpApiEndpoint, HttpApiGroup } from 'effect/http-api'
 import { Chat, ChatId, ChatMessageSent, Chats, SendChatMessage, StylistBusy } from './Stylist.ts'
 
@@ -17,7 +18,8 @@ export class StylistApi extends HttpApiGroup.make('stylist')
     HttpApiEndpoint.post('send', '/stylist/messages', {
       payload: SendChatMessage,
       success: ChatMessageSent,
-      error: [NotFound, StylistBusy, LimitReached, OperationConflict, Unavailable, RequestRefused],
+      error: [NotFound, StylistBusy, LimitReached, OperationConflict, Unavailable],
     }),
   )
+  .middleware(SessionAccount)
   .middleware(SessionHttp.RequireSession) {}

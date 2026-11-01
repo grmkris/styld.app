@@ -1,6 +1,7 @@
 import { Operation } from './Ids.ts'
-import { LimitReached, NotFound, OperationConflict, RequestRefused, SlowDown, Unavailable } from './Errors.ts'
+import { LimitReached, NotFound, OperationConflict, SlowDown, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
+import { SessionAccount } from './Session.ts'
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
 import { Me } from './Account.ts'
 import { CaptureApi } from './CaptureApi.ts'
@@ -75,9 +76,10 @@ class AccountApi extends HttpApiGroup.make('account')
     HttpApiEndpoint.delete('deleteMe', '/me', {
       payload: Operation,
       success: HttpApiSchema.NoContent,
-      error: [Unavailable, RequestRefused],
+      error: Unavailable,
     }),
   )
+  .middleware(SessionAccount)
   .middleware(SessionHttp.RequireSession) {}
 
 /** The signed-in person's pieces. A photo goes up first (`createUpload`, then a `PUT` of its bytes
@@ -95,21 +97,21 @@ class WardrobeApi extends HttpApiGroup.make('wardrobe')
     HttpApiEndpoint.post('createUpload', '/uploads', {
       payload: CreateUpload,
       success: Upload,
-      error: [UploadRefused, OperationConflict, Unavailable, RequestRefused],
+      error: [UploadRefused, OperationConflict, Unavailable],
     }),
   )
   .add(
     HttpApiEndpoint.post('createVideoUpload', '/uploads/video', {
       payload: CreateVideoUpload,
       success: Upload,
-      error: [UploadRefused, OperationConflict, Unavailable, RequestRefused],
+      error: [UploadRefused, OperationConflict, Unavailable],
     }),
   )
   .add(
     HttpApiEndpoint.post('addPiece', '/pieces', {
       payload: AddPiece,
       success: Piece,
-      error: [UploadRefused, OperationConflict, Unavailable, RequestRefused],
+      error: [UploadRefused, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -117,7 +119,7 @@ class WardrobeApi extends HttpApiGroup.make('wardrobe')
       params: { pieceId: PieceId },
       payload: UpdatePiece,
       success: Piece,
-      error: [NotFound, Unavailable, RequestRefused],
+      error: [NotFound, Unavailable],
     }),
   )
   .add(
@@ -125,7 +127,7 @@ class WardrobeApi extends HttpApiGroup.make('wardrobe')
       params: { pieceId: PieceId },
       payload: Operation,
       success: HttpApiSchema.NoContent,
-      error: [NotFound, Unavailable, RequestRefused],
+      error: [NotFound, Unavailable],
     }),
   )
   .add(
@@ -133,7 +135,7 @@ class WardrobeApi extends HttpApiGroup.make('wardrobe')
       params: { pieceId: PieceId },
       payload: SetBack,
       success: Piece,
-      error: [NotFound, UploadRefused, OperationConflict, Unavailable, RequestRefused],
+      error: [NotFound, UploadRefused, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -141,7 +143,7 @@ class WardrobeApi extends HttpApiGroup.make('wardrobe')
       params: { pieceId: PieceId },
       payload: Operation,
       success: Piece,
-      error: [NotFound, Unavailable, RequestRefused],
+      error: [NotFound, Unavailable],
     }),
   )
   .add(
@@ -149,9 +151,10 @@ class WardrobeApi extends HttpApiGroup.make('wardrobe')
       params: { pieceId: PieceId },
       payload: ChoosePicture,
       success: Piece,
-      error: [NotFound, NoCleanPicture, Unavailable, RequestRefused],
+      error: [NotFound, NoCleanPicture, Unavailable],
     }),
   )
+  .middleware(SessionAccount)
   .middleware(SessionHttp.RequireSession) {}
 
 /** Looks: outfits from the person's own pieces. Assistants make them, and so does the website when a
@@ -162,7 +165,7 @@ class LookApi extends HttpApiGroup.make('look')
     HttpApiEndpoint.post('createLook', '/looks', {
       payload: CreateLook,
       success: Look,
-      error: [NotFound, OperationConflict, Unavailable, RequestRefused],
+      error: [NotFound, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -177,7 +180,7 @@ class LookApi extends HttpApiGroup.make('look')
       params: { lookId: LookId },
       payload: Operation,
       success: HttpApiSchema.NoContent,
-      error: [NotFound, Unavailable, RequestRefused],
+      error: [NotFound, Unavailable],
     }),
   )
   .add(
@@ -185,9 +188,10 @@ class LookApi extends HttpApiGroup.make('look')
       params: { lookId: LookId },
       payload: ShareLook,
       success: Look,
-      error: [NotFound, ProfileNotPublished, Unavailable, RequestRefused],
+      error: [NotFound, ProfileNotPublished, Unavailable],
     }),
   )
+  .middleware(SessionAccount)
   .middleware(SessionHttp.RequireSession) {}
 
 /** Boards: the pieces, looks and pictures the person pins, and the table they lay some of them on. A picture
@@ -199,7 +203,7 @@ class BoardApi extends HttpApiGroup.make('board')
     HttpApiEndpoint.post('createBoard', '/boards', {
       payload: CreateBoard,
       success: Board,
-      error: [OperationConflict, Unavailable, RequestRefused],
+      error: [OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -214,7 +218,7 @@ class BoardApi extends HttpApiGroup.make('board')
       params: { boardId: BoardId },
       payload: UpdateBoard,
       success: Board,
-      error: [NotFound, Unavailable, RequestRefused],
+      error: [NotFound, Unavailable],
     }),
   )
   .add(
@@ -222,7 +226,7 @@ class BoardApi extends HttpApiGroup.make('board')
       params: { boardId: BoardId },
       payload: Operation,
       success: HttpApiSchema.NoContent,
-      error: [NotFound, Unavailable, RequestRefused],
+      error: [NotFound, Unavailable],
     }),
   )
   .add(
@@ -230,7 +234,7 @@ class BoardApi extends HttpApiGroup.make('board')
       params: { boardId: BoardId },
       payload: SaveBoardItems,
       success: Board,
-      error: [NotFound, BoardVersionConflict, BoardItemRefused, OperationConflict, Unavailable, RequestRefused],
+      error: [NotFound, BoardVersionConflict, BoardItemRefused, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -238,7 +242,7 @@ class BoardApi extends HttpApiGroup.make('board')
       params: { boardId: BoardId },
       payload: AddPins,
       success: Board,
-      error: [NotFound, PinRefused, OperationConflict, Unavailable, RequestRefused],
+      error: [NotFound, PinRefused, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -246,7 +250,7 @@ class BoardApi extends HttpApiGroup.make('board')
       params: { boardId: BoardId },
       payload: RemovePins,
       success: Board,
-      error: [NotFound, OperationConflict, Unavailable, RequestRefused],
+      error: [NotFound, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -254,7 +258,7 @@ class BoardApi extends HttpApiGroup.make('board')
       params: { boardId: BoardId },
       payload: SetVisibility,
       success: Board,
-      error: [NotFound, ProfileNotPublished, Unavailable, RequestRefused],
+      error: [NotFound, ProfileNotPublished, Unavailable],
     }),
   )
   .add(
@@ -262,9 +266,10 @@ class BoardApi extends HttpApiGroup.make('board')
       params: { boardId: BoardId },
       payload: AddBoardImage,
       success: BoardImage,
-      error: [NotFound, UploadRefused, OperationConflict, Unavailable, RequestRefused],
+      error: [NotFound, UploadRefused, OperationConflict, Unavailable],
     }),
   )
+  .middleware(SessionAccount)
   .middleware(SessionHttp.RequireSession) {}
 
 /** What the person wore, by day: "Wear this" on today's table records it. */
@@ -281,7 +286,7 @@ class WornApi extends HttpApiGroup.make('worn')
       params: { day: Day },
       payload: WearPieces,
       success: WornDay,
-      error: [NotFound, Unavailable, RequestRefused],
+      error: [NotFound, Unavailable],
     }),
   )
   .add(
@@ -289,9 +294,10 @@ class WornApi extends HttpApiGroup.make('worn')
       params: { day: Day },
       payload: Operation,
       success: HttpApiSchema.NoContent,
-      error: [Unavailable, RequestRefused],
+      error: Unavailable,
     }),
   )
+  .middleware(SessionAccount)
   .middleware(SessionHttp.RequireSession) {}
 
 /** The person's public profile: a handle, a name, a city and a bio, published or not. */
@@ -301,16 +307,17 @@ class ProfileApi extends HttpApiGroup.make('profile')
     HttpApiEndpoint.patch('updateProfile', '/profile', {
       payload: UpdateProfile,
       success: Profile,
-      error: [HandleTaken, HandleReserved, Unavailable, RequestRefused],
+      error: [HandleTaken, HandleReserved, Unavailable],
     }),
   )
   .add(
     HttpApiEndpoint.put('publishProfile', '/profile/published', {
       payload: PublishProfile,
       success: Profile,
-      error: [ProfileNeedsHandle, Unavailable, RequestRefused],
+      error: [ProfileNeedsHandle, Unavailable],
     }),
   )
+  .middleware(SessionAccount)
   .middleware(SessionHttp.RequireSession) {}
 
 /** What anyone may read, signed in or not: published profiles, public boards, shared looks and their pieces. */
@@ -372,7 +379,7 @@ class SocialApi extends HttpApiGroup.make('social')
     HttpApiEndpoint.put('setSaved', '/saved', {
       payload: SetSaved,
       success: SavedState,
-      error: [NotFound, NotWithYourself, Unavailable, RequestRefused],
+      error: [NotFound, NotWithYourself, Unavailable],
     }),
   )
   .add(
@@ -387,7 +394,7 @@ class SocialApi extends HttpApiGroup.make('social')
       params: { handle: Handle },
       payload: SetFollowing,
       success: Relation,
-      error: [NotFound, NotWithYourself, Unavailable, RequestRefused],
+      error: [NotFound, NotWithYourself, Unavailable],
     }),
   )
   .add(
@@ -395,7 +402,7 @@ class SocialApi extends HttpApiGroup.make('social')
       params: { handle: Handle },
       payload: SetBlocked,
       success: Relation,
-      error: [NotFound, NotWithYourself, Unavailable, RequestRefused],
+      error: [NotFound, NotWithYourself, Unavailable],
     }),
   )
   .add(HttpApiEndpoint.get('following', '/following', { success: People, error: Unavailable }))
@@ -404,10 +411,11 @@ class SocialApi extends HttpApiGroup.make('social')
     HttpApiEndpoint.post('report', '/reports', {
       payload: CreateReport,
       success: HttpApiSchema.NoContent,
-      error: [NotFound, NotWithYourself, LimitReached, OperationConflict, Unavailable, RequestRefused],
+      error: [NotFound, NotWithYourself, LimitReached, OperationConflict, Unavailable],
     }),
   )
   .add(HttpApiEndpoint.get('feed', '/feed', { query: FeedQuery, success: Feed, error: Unavailable }))
+  .middleware(SessionAccount)
   .middleware(SessionHttp.RequireSession) {}
 
 /** Styld's typed HTTP API: declared once, served by the API Worker and called by the website. */

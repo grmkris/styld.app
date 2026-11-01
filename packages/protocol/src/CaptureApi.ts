@@ -1,6 +1,7 @@
 import { Operation } from './Ids.ts'
-import { LimitReached, NotFound, OperationConflict, RequestRefused, Unavailable } from './Errors.ts'
+import { LimitReached, NotFound, OperationConflict, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
+import { SessionAccount } from './Session.ts'
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
 import {
   CaptureCreated,
@@ -33,14 +34,14 @@ export class CaptureApi extends HttpApiGroup.make('capture')
     HttpApiEndpoint.post('createCapture', '/captures', {
       payload: CreateCapture,
       success: CaptureCreated,
-      error: [UploadRefused, OperationConflict, LimitReached, Unavailable, RequestRefused],
+      error: [UploadRefused, OperationConflict, LimitReached, Unavailable],
     }),
   )
   .add(
     HttpApiEndpoint.post('createVideoCapture', '/captures/video', {
       payload: CreateVideoCapture,
       success: CaptureCreated,
-      error: [UploadRefused, OperationConflict, LimitReached, Unavailable, RequestRefused],
+      error: [UploadRefused, OperationConflict, LimitReached, Unavailable],
     }),
   )
   .add(HttpApiEndpoint.get('tray', '/captures/tray', { success: Tray, error: Unavailable }))
@@ -48,7 +49,7 @@ export class CaptureApi extends HttpApiGroup.make('capture')
     HttpApiEndpoint.post('review', '/captures/review', {
       payload: Review,
       success: Reviewed,
-      error: [NotFound, OperationConflict, Unavailable, RequestRefused],
+      error: [NotFound, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -56,7 +57,7 @@ export class CaptureApi extends HttpApiGroup.make('capture')
       params: { detectionId: DetectionId },
       payload: Operation,
       success: HttpApiSchema.NoContent,
-      error: [NotFound, OperationConflict, Unavailable, RequestRefused],
+      error: [NotFound, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -64,7 +65,7 @@ export class CaptureApi extends HttpApiGroup.make('capture')
       params: { captureId: CaptureId },
       payload: Operation,
       success: HttpApiSchema.NoContent,
-      error: [NotFound, LimitReached, OperationConflict, Unavailable, RequestRefused],
+      error: [NotFound, LimitReached, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -72,14 +73,14 @@ export class CaptureApi extends HttpApiGroup.make('capture')
       params: { captureId: CaptureId },
       payload: Operation,
       success: HttpApiSchema.NoContent,
-      error: [NotFound, Unavailable, RequestRefused],
+      error: [NotFound, Unavailable],
     }),
   )
   .add(
     HttpApiEndpoint.post('check', '/captures/check', {
       payload: HeldCheckRequest,
       success: HeldCheckAnswer,
-      error: [Unavailable, RequestRefused],
+      error: Unavailable,
     }),
   )
   .add(
@@ -87,7 +88,7 @@ export class CaptureApi extends HttpApiGroup.make('capture')
       params: { pieceId: PieceId },
       payload: RedrawPicture,
       success: PiecePicture,
-      error: [NotFound, PictureRefused, LimitReached, OperationConflict, Unavailable, RequestRefused],
+      error: [NotFound, PictureRefused, LimitReached, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -95,7 +96,7 @@ export class CaptureApi extends HttpApiGroup.make('capture')
       params: { pieceId: PieceId },
       payload: Operation,
       success: PieceTurn,
-      error: [NotFound, TurnRefused, LimitReached, OperationConflict, Unavailable, RequestRefused],
+      error: [NotFound, TurnRefused, LimitReached, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -103,7 +104,8 @@ export class CaptureApi extends HttpApiGroup.make('capture')
       params: { pieceId: PieceId },
       payload: TurnSheet,
       success: PieceTurn,
-      error: [NotFound, SheetRefused, Unavailable, RequestRefused],
+      error: [NotFound, SheetRefused, Unavailable],
     }),
   )
+  .middleware(SessionAccount)
   .middleware(SessionHttp.RequireSession) {}

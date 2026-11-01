@@ -4,6 +4,7 @@ import {
   type BoardImageId,
   BoardView,
   type BoardViewLabels,
+  type CurrentAccount,
   type PieceId,
   type Pin,
   type ViewLabels,
@@ -14,7 +15,6 @@ import { format, type Locale } from '@styld/i18n'
 import { groupOf, type Piece, type ViewImages } from '@styld/protocol'
 import { Array, Effect, Match, Option, Record, Schema } from 'effect'
 import type { Boards } from '../boards/Boards.ts'
-import type { CurrentAccount } from '../CurrentAccount.ts'
 import * as Base64 from 'effect/encoding/Base64'
 import { collect } from '../Streams.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'

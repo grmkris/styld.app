@@ -16,6 +16,7 @@ import { type APIRequestContext, type BrowserContext, chromium } from 'playwrigh
 import { Schema } from 'effect'
 import { CaptureCreated, Piece, Reviewed, Tray, Upload } from '../packages/protocol/src/index.ts'
 import { decodePng } from '../packages/server/src/capture/Pixels.ts'
+import { csrf } from '../packages/auth/src/config.ts'
 
 const origin = process.env['STYLD_PREVIEW_URL'] ?? ''
 const email = process.env['STYLD_PREVIEW_EMAIL'] ?? ''
@@ -24,7 +25,7 @@ const stateFile = process.env['STYLD_PREVIEW_STATE'] ?? '/tmp/styld-preview-stat
 if (origin === '' || email === '') throw new Error('Set STYLD_PREVIEW_URL and STYLD_PREVIEW_EMAIL')
 
 const fixture = (name: string) => readFile(new URL(`../packages/server/test/fixtures/capture/${name}`, import.meta.url))
-const headers = { origin, 'x-effect-auth-csrf': '1' }
+const headers = { origin, [csrf.header]: csrf.value }
 
 /** The code the operator wrote down, once it is there. */
 const awaitCode = async () => {

@@ -1,7 +1,8 @@
 import { OperationId } from './Ids.ts'
 import { Url } from './Text.ts'
-import { byCase, OperationConflict, passing, refusal, RequestRefused, SlowDown, Unavailable } from './Errors.ts'
+import { byCase, OperationConflict, passing, refusal, SlowDown, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
+import { SessionAccount } from './Session.ts'
 import { Schema } from 'effect'
 import { HttpApiEndpoint, HttpApiGroup } from 'effect/http-api'
 import { UploadId, UploadRefused } from './Wardrobe.ts'
@@ -51,7 +52,8 @@ export class LinkApi extends HttpApiGroup.make('link')
     HttpApiEndpoint.post('readLink', '/links/picture', {
       payload: ReadLink,
       success: LinkPicture,
-      error: [LinkRefused, SlowDown, UploadRefused, OperationConflict, Unavailable, RequestRefused],
+      error: [LinkRefused, SlowDown, UploadRefused, OperationConflict, Unavailable],
     }),
   )
+  .middleware(SessionAccount)
   .middleware(SessionHttp.RequireSession) {}

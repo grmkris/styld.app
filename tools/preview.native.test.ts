@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test'
 import { Schema } from 'effect'
 import { chromium } from 'playwright'
 import { verifyBrowser } from '../packages/server/test/BrowserAcceptance.ts'
+import { csrf } from '../packages/auth/src/config.ts'
 
 const origin = new URL(process.env.STYLD_PREVIEW_URL ?? '')
 if (!origin.hostname.startsWith('styldappv2-styldedge-preview-') || !origin.hostname.endsWith('.workers.dev')) {
@@ -16,13 +17,13 @@ test('deployed preview serves API/auth contracts and the hydrated website', asyn
     expect(health.status()).toBe(200)
     expect(await health.json()).toMatchObject({ service: 'styldappv2', status: 'ok' })
     const session = await context.request.post(new URL('/api/auth/getSession', origin).toString(), {
-      headers: { origin: origin.origin, 'x-effect-auth-csrf': '1' },
+      headers: { origin: origin.origin, [csrf.header]: csrf.value },
       data: {},
     })
     expect(session.status()).toBe(200)
     expect(await session.json()).toMatchObject({ _tag: 'Success' })
     const rejected = await context.request.post(new URL('/api/auth/getSession', origin).toString(), {
-      headers: { origin: 'https://evil.invalid', 'x-effect-auth-csrf': '1' },
+      headers: { origin: 'https://evil.invalid', [csrf.header]: csrf.value },
       data: {},
     })
     expect(rejected.status()).toBe(403)

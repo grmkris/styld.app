@@ -1,6 +1,5 @@
-import { NotFound, type PieceId, type SetBack } from '@styld/protocol'
+import { CurrentAccount, NotFound, type PieceId, type SetBack } from '@styld/protocol'
 import { Effect, Option, Predicate } from 'effect'
-import { CurrentAccount } from '../CurrentAccount.ts'
 import { forgetObjects, ownerPiece, ownPiece, type Parts, stored, typeOf, unavailable, usableUpload } from './Parts.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { identify, priorResult, receiptRow } from '../kernel/Receipts.ts'

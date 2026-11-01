@@ -1,6 +1,5 @@
-import { ExploreQuery, SearchQuery } from '@styld/protocol'
+import { CurrentAccount, ExploreQuery, SearchQuery } from '@styld/protocol'
 import { Effect, Option } from 'effect'
-import { CurrentAccount } from '../CurrentAccount.ts'
 import type { Discovery } from '../social/Discovery.ts'
 import { tool } from './Tools.ts'
 

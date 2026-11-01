@@ -1,8 +1,9 @@
 import { mostLocked, mostProposals, mostSeen } from './Limits.ts'
 import { textLength, trimmedText } from './Text.ts'
 import { entityId, OperationId } from './Ids.ts'
-import { LimitReached, NotFound, passing, RequestRefused, SlowDown, Unavailable } from './Errors.ts'
+import { LimitReached, NotFound, passing, SlowDown, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
+import { SessionAccount } from './Session.ts'
 import { Schema } from 'effect'
 import { HttpApiEndpoint, HttpApiGroup } from 'effect/http-api'
 import { Day } from './Day.ts'
@@ -103,7 +104,8 @@ export class OutfitApi extends HttpApiGroup.make('outfit')
     HttpApiEndpoint.post('makeOutfit', '/outfits', {
       payload: MakeOutfit,
       success: OutfitProposals,
-      error: [NotFound, SlowDown, LimitReached, ThinkingUnanswered, Unavailable, RequestRefused],
+      error: [NotFound, SlowDown, LimitReached, ThinkingUnanswered, Unavailable],
     }),
   )
+  .middleware(SessionAccount)
   .middleware(SessionHttp.RequireSession) {}

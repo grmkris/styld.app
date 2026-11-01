@@ -5,9 +5,6 @@ import * as HttpClient from 'effect/http/HttpClient'
 import * as HttpClientRequest from 'effect/http/HttpClientRequest'
 import type * as HttpApiClient from 'effect/http-api/HttpApiClient'
 
-/** The API Worker refuses a mutation without this header, so a cross-site form cannot make one. */
-export const csrfHeader = HttpClient.mapRequest(HttpClientRequest.setHeader('x-effect-auth-csrf', '1'))
-
 /** A file's bytes did not get through to its upload. */
 export class FileNotSent extends Schema.TaggedError<FileNotSent>()('FileNotSent', {
   /** The server looked at the bytes and refused them (415, or 413 when too large). */
@@ -41,7 +38,7 @@ export const styldClientLayer = (origin: string) =>
           Effect.provideService(HttpClient.HttpClient, http),
         ),
       )
-      const client = HttpClient.filterStatusOk(csrfHeader(http))
+      const client = HttpClient.filterStatusOk(http)
       return {
         api,
         sendFile: (path, file) =>

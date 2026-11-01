@@ -1,4 +1,5 @@
 import { expect } from 'bun:test'
+import { csrf } from '@styld/auth/config'
 
 /** A page's first signed-in requests arrive together. On an isolate whose application was built without
  * reading a session, none may wait on another request's session setup, which workerd cancels as hung:
@@ -10,7 +11,7 @@ export const verifyFirstSignedInTogether = async (origin: string, cookie: string
       headers: {
         origin: new URL(origin).origin,
         'content-type': 'application/json',
-        'x-effect-auth-csrf': '1',
+        [csrf.header]: csrf.value,
         cookie,
       },
       body: JSON.stringify({ payload: {} }),

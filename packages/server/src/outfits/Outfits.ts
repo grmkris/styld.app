@@ -1,20 +1,20 @@
 import {
+  CurrentAccount,
+  LimitReached,
   type MakeOutfit,
+  NotFound,
+  outfitKeyOf,
   type OutfitMode,
   type OutfitProposal,
-  outfitKeyOf,
   OutfitSession,
+  type ProposalRef,
   SlowDown,
   ThinkingUnanswered,
-  NotFound,
-  type ProposalRef,
-  LimitReached,
   Unavailable,
 } from '@styld/protocol'
 import { Array, Clock, Context, Effect, Option, Order } from 'effect'
 import type { CaptureMetrics } from '../capture/Metrics.ts'
 import type { Picture } from '../capture/Providers.ts'
-import { CurrentAccount } from '../CurrentAccount.ts'
 import type { ImageBindings } from '../wardrobe/Delivery.ts'
 import type { Store } from '../wardrobe/Store.ts'
 import { judgingPicture, type OutfitJudge } from './Judge.ts'

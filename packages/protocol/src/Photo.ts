@@ -1,6 +1,7 @@
 import { entityId, Operation, OperationId } from './Ids.ts'
-import { LimitReached, NotFound, OperationConflict, refusal, RequestRefused, Unavailable } from './Errors.ts'
+import { LimitReached, NotFound, OperationConflict, refusal, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
+import { SessionAccount } from './Session.ts'
 import { Schema } from 'effect'
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
 import { BoardId } from './Board.ts'
@@ -99,7 +100,7 @@ export class PhotoApi extends HttpApiGroup.make('photo')
     HttpApiEndpoint.post('addPhoto', '/photos', {
       payload: AddPhoto,
       success: Photo,
-      error: [UploadRefused, OperationConflict, LimitReached, Unavailable, RequestRefused],
+      error: [UploadRefused, OperationConflict, LimitReached, Unavailable],
     }),
   )
   .add(
@@ -114,7 +115,7 @@ export class PhotoApi extends HttpApiGroup.make('photo')
       params: photoPath,
       payload: UpdatePhoto,
       success: Photo,
-      error: [NotFound, Unavailable, RequestRefused],
+      error: [NotFound, Unavailable],
     }),
   )
   .add(
@@ -122,7 +123,7 @@ export class PhotoApi extends HttpApiGroup.make('photo')
       params: photoPath,
       payload: Operation,
       success: HttpApiSchema.NoContent,
-      error: [NotFound, Unavailable, RequestRefused],
+      error: [NotFound, Unavailable],
     }),
   )
   .add(
@@ -130,7 +131,7 @@ export class PhotoApi extends HttpApiGroup.make('photo')
       params: { ...photoPath, garmentId: PhotoGarmentId },
       payload: MatchGarment,
       success: Photo,
-      error: [NotFound, Unavailable, RequestRefused],
+      error: [NotFound, Unavailable],
     }),
   )
   .add(
@@ -138,7 +139,7 @@ export class PhotoApi extends HttpApiGroup.make('photo')
       params: { ...photoPath, garmentId: PhotoGarmentId },
       payload: Operation,
       success: Photo,
-      error: [NotFound, Unavailable, RequestRefused],
+      error: [NotFound, Unavailable],
     }),
   )
   .add(
@@ -146,7 +147,7 @@ export class PhotoApi extends HttpApiGroup.make('photo')
       params: photoPath,
       payload: WearAgain,
       success: Look,
-      error: [NotFound, NothingConfirmed, OperationConflict, Unavailable, RequestRefused],
+      error: [NotFound, NothingConfirmed, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -154,7 +155,7 @@ export class PhotoApi extends HttpApiGroup.make('photo')
       params: photoPath,
       payload: Operation,
       success: Photo,
-      error: [NotFound, NoPersonFound, Unavailable, RequestRefused],
+      error: [NotFound, NoPersonFound, Unavailable],
     }),
   )
   .add(
@@ -162,7 +163,7 @@ export class PhotoApi extends HttpApiGroup.make('photo')
       params: photoPath,
       payload: AddPhotoToBoard,
       success: HttpApiSchema.NoContent,
-      error: [NotFound, OperationConflict, Unavailable, RequestRefused],
+      error: [NotFound, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -172,4 +173,5 @@ export class PhotoApi extends HttpApiGroup.make('photo')
       error: [NotFound, Unavailable],
     }),
   )
+  .middleware(SessionAccount)
   .middleware(SessionHttp.RequireSession) {}

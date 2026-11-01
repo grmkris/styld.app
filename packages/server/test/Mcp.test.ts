@@ -3,17 +3,17 @@ import {
   Board,
   BoardImageId,
   BoardVersionConflict,
+  CurrentAccount,
   Handle,
-  type Piece,
-  PieceId,
   NotFound,
   PictureRefused,
+  type Piece,
+  PieceId,
   type RedrawPicture,
 } from '@styld/protocol'
 import { Effect, Exit, Option, Schema } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
 import { describe, expect, test } from 'vitest'
-import { CurrentAccount } from '../src/CurrentAccount.ts'
 import { readResource, resources, viewsUri } from '../src/mcp/Resources.ts'
 import { instructions, styldTools } from '../src/mcp/StyldTools.ts'
 import { callTool, renderTools } from '../src/mcp/Tools.ts'

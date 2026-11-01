@@ -1,8 +1,11 @@
 import { makeAuthRuntime } from '@styld/auth'
+import { csrf, SessionHttp } from '@styld/auth/config'
+import { Unavailable } from '@styld/protocol'
 import { Http, Proofs, Sessions } from '@yielded/auth'
-import { Effect, Layer, Redacted } from 'effect'
+import { Effect, Layer, Option, Redacted } from 'effect'
 import type * as Headers from 'effect/http/Headers'
 import * as HttpRouter from 'effect/http/HttpRouter'
+import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import type { QueryDatabaseClient } from '@alchemy.run/cloudflare/D1/QueryDatabase'
 import type { AuthHttpOptions } from './AuthConfiguration.ts'
 
@@ -13,6 +16,7 @@ export const makeAuthHttp = (database: QueryDatabaseClient, options: AuthHttpOpt
   const http = Http.make(runtime.auth, {
     origin: options.origin,
     cookie: { secure: options.secureCookies },
+    csrf,
   })
   const dependencies = Layer.mergeAll(runtime.layer, Layer.succeed(Sessions.SessionSigningKeys, options.sessionKeys))
   return {
@@ -22,6 +26,27 @@ export const makeAuthHttp = (database: QueryDatabaseClient, options: AuthHttpOpt
     router: http,
   }
 }
+
+/** The website's auth over the Worker's database: its routes, its runtime and Yielded's request handling. */
+export type AuthHttp = ReturnType<typeof makeAuthHttp>
+
+/** The account behind the website's session cookie, for the routes outside the typed API (owner-only images and
+ * files, public pages a signed-in reader sees, the OAuth login): none signed out or with a session that is no longer
+ * valid, `Unavailable` when the session could not be checked. */
+export const sessionCookieAccount = (auth: AuthHttp) =>
+  Effect.gen(function* () {
+    const api = yield* auth.runtime.auth
+    return Effect.gen(function* () {
+      const request = yield* HttpServerRequest.HttpServerRequest
+      const cookie = request.cookies[SessionHttp.cookieName]
+      if (cookie === undefined) return Option.none()
+      return yield* api.verifySession(Redacted.make(cookie)).pipe(
+        Effect.map(({ subjectId }) => Option.some(subjectId)),
+        Effect.catchTag('SessionInvalid', () => Effect.succeedNone),
+        Effect.mapError(() => Unavailable.make({})),
+      )
+    })
+  }).pipe(Effect.provide(auth.dependencies))
 
 /** Per request, the network a code request comes from and whether it may ask for another. A
  * Worker has no socket peer, so the key is the visitor address Cloudflare sets in

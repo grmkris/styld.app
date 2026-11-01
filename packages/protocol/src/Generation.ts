@@ -1,7 +1,8 @@
 import { textLength } from './Text.ts'
 import { entityId, OperationId } from './Ids.ts'
-import { LimitReached, NotFound, OperationConflict, refusal, RequestRefused, SlowDown, Unavailable } from './Errors.ts'
+import { LimitReached, NotFound, OperationConflict, refusal, SlowDown, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
+import { SessionAccount } from './Session.ts'
 import { Schema } from 'effect'
 import { HttpApiEndpoint, HttpApiGroup } from 'effect/http-api'
 import { BoardId, BoardImageId } from './Board.ts'
@@ -66,7 +67,7 @@ export class PromptRefused extends Schema.TaggedError<PromptRefused>()(
   },
 ) {}
 
-const generateErrors = [NotFound, PromptRefused, LimitReached, SlowDown, OperationConflict, Unavailable, RequestRefused]
+const generateErrors = [NotFound, PromptRefused, LimitReached, SlowDown, OperationConflict, Unavailable]
 
 export class GenerationApi extends HttpApiGroup.make('generation')
   .add(
@@ -99,4 +100,5 @@ export class GenerationApi extends HttpApiGroup.make('generation')
       error: Unavailable,
     }),
   )
+  .middleware(SessionAccount)
   .middleware(SessionHttp.RequireSession) {}

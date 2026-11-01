@@ -1,5 +1,6 @@
 import {
   type CreateLook,
+  CurrentAccount,
   Look,
   type LookId,
   NotFound,
@@ -8,7 +9,6 @@ import {
   Unavailable,
 } from '@styld/protocol'
 import { Context, Effect, Layer, Option, Schema } from 'effect'
-import { CurrentAccount } from '../CurrentAccount.ts'
 import { Checks } from '../safety/Checks.ts'
 import { requirePublished } from '../social/ProfileStore.ts'
 import { toPiece } from '../wardrobe/Parts.ts'

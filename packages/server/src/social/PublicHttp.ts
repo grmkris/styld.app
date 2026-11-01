@@ -6,8 +6,8 @@ import { HttpApiBuilder } from 'effect/http-api'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
-import type { makeAuthHttp } from '../AuthHttp.ts'
-import { cookieAccount, type ShownImage, ShownSize } from '../wardrobe/Http.ts'
+import { type AuthHttp, sessionCookieAccount } from '../AuthHttp.ts'
+import { type ShownImage, ShownSize } from '../wardrobe/Http.ts'
 import { Discovery } from './Discovery.ts'
 import { PublicPages } from './Public.ts'
 import { pageMeta } from './PublicMeta.ts'
@@ -34,13 +34,13 @@ const limited =
 
 /** The public pages' endpoints: anyone may read them, signed in or not, a few hundred times a minute. A signed-in
  * reader sees nothing of someone a block stands between. */
-export const publicHandlers = (auth: ReturnType<typeof makeAuthHttp>, allowRead: AllowRead) =>
+export const publicHandlers = (auth: AuthHttp, allowRead: AllowRead) =>
   HttpApiBuilder.group(StyldApi, 'public', (handlers) =>
     Effect.gen(function* () {
       const pages = yield* PublicPages
       const discovery = yield* Discovery
       const within = limited(allowRead)
-      const reader = yield* cookieAccount(auth)
+      const reader = yield* sessionCookieAccount(auth)
       const read = <A, E, R>(page: (viewer: Option.Option<string>) => Effect.Effect<A, E, R>) =>
         within(Effect.flatMap(reader, page))
       return handlers

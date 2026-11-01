@@ -1,6 +1,7 @@
 import { expect } from 'bun:test'
 import { Schema } from 'effect'
 import { type Call, client, seedAccounts, send, signIn, signInBody, withOperation } from './Accounts.ts'
+import { csrf } from '@styld/auth/config'
 
 /** A 1x1 PNG: the smallest photo the upload checks accept. */
 const png = Uint8Array.from(
@@ -190,7 +191,7 @@ export const verifyAccountDeletion = async (origin: string, fixtures: string): P
         headers: {
           cookie,
           origin: 'https://evil.invalid',
-          'x-effect-auth-csrf': '1',
+          [csrf.header]: csrf.value,
           'content-type': 'application/json',
         },
       })
@@ -209,7 +210,7 @@ export const verifyAccountDeletion = async (origin: string, fixtures: string): P
   expect(await (await fetch(`${fixtures}/test/identity/media?key=${key}`)).json()).toEqual({ exists: false })
   const again = await fetch(`${origin}/api/auth/signIn`, {
     method: 'POST',
-    headers: { origin, 'content-type': 'application/json', 'x-effect-auth-csrf': '1' },
+    headers: { origin, 'content-type': 'application/json', [csrf.header]: csrf.value },
     body: JSON.stringify(signInBody('native-farewell')),
   })
   expect(await again.json()).toMatchObject({ _tag: 'Failure' })

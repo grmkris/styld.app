@@ -5,6 +5,7 @@ import { expect } from 'bun:test'
 import { Schema } from 'effect'
 import { toolNames } from './ToolNames.ts'
 import { seedAccounts, signInBody } from './Accounts.ts'
+import { csrf } from '@styld/auth/config'
 
 /** Test-only acceptance: an MCP client's whole journey through the public edge. */
 
@@ -36,7 +37,7 @@ const cookies = (jar: Jar) => [...jar].map(([name, value]) => `${name}=${value}`
 const signIn = async (origin: string, jar: Jar) => {
   const response = await fetch(`${origin}/api/auth/signIn`, {
     method: 'POST',
-    headers: { origin, 'content-type': 'application/json', 'x-effect-auth-csrf': '1' },
+    headers: { origin, 'content-type': 'application/json', [csrf.header]: csrf.value },
     body: JSON.stringify(signInBody('native-mcp')),
   })
   expect(response.status).toBe(200)
@@ -123,11 +124,11 @@ const authorize = async (
   expect(consent.status, page.slice(0, 200)).toBe(200)
   expect(consent.headers.get('content-security-policy')).toContain('form-action')
   const action = /action="([^"]+)"/.exec(page)?.[1]?.replaceAll('&amp;', '&') ?? ''
-  const csrf = /name="csrf" value="([^"]+)"/.exec(page)?.[1] ?? ''
+  const consentCsrf = /name="csrf" value="([^"]+)"/.exec(page)?.[1] ?? ''
   const approved = await fetch(new URL(action, origin), {
     method: 'POST',
     headers: { cookie: cookies(jar), origin, 'content-type': 'application/x-www-form-urlencoded' },
-    body: new URLSearchParams({ csrf, decision: 'approve' }),
+    body: new URLSearchParams({ csrf: consentCsrf, decision: 'approve' }),
     redirect: 'manual',
   })
   remember(jar, approved)

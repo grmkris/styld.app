@@ -1,7 +1,6 @@
 import { isOutcomeUnknown } from '../providers/Errors.ts'
-import { BoardId, ImageType, Mood, OperationId, PieceId } from '@styld/protocol'
+import { BoardId, CurrentAccount, ImageType, Mood, OperationId, PieceId } from '@styld/protocol'
 import { Effect, Option, Result, Schema } from 'effect'
-import { CurrentAccount } from '../CurrentAccount.ts'
 import type { Picture } from '../capture/Providers.ts'
 import { receivedUpload } from '../mcp/ImageImport.ts'
 import { stickerKey } from './PaintPrompt.ts'

@@ -1,6 +1,5 @@
-import { prices } from '@styld/protocol'
+import { CurrentAccount, prices } from '@styld/protocol'
 import { Effect, Schema } from 'effect'
-import { CurrentAccount } from '../CurrentAccount.ts'
 import { creditsText, tool } from './Tools.ts'
 import type { AccountLifecycle } from '../AccountLifecycle.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'

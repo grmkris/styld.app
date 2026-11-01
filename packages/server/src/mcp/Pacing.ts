@@ -1,6 +1,5 @@
-import { SlowDown } from '@styld/protocol'
+import { CurrentAccount, SlowDown } from '@styld/protocol'
 import { Context, Effect } from 'effect'
-import { CurrentAccount } from '../CurrentAccount.ts'
 
 /** The same per-account limits the website's endpoints keep, for what an assistant asks: fetching from the web (a
  * product page or a photo's address) and generating pictures. */

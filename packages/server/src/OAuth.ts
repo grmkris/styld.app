@@ -1,12 +1,11 @@
-import { SessionHttp } from '@styld/auth/config'
 import { OAuthServer } from '@yielded/auth'
 import * as WorkerdServices from '@yielded/auth/WorkerdServices'
-import { Clock, Effect, Layer, Option, Redacted, Schema } from 'effect'
+import { Clock, Effect, Layer, Option, Schema } from 'effect'
 import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
-import type { makeAuthHttp } from './AuthHttp.ts'
+import { type AuthHttp, sessionCookieAccount } from './AuthHttp.ts'
 import type { AuthSessionKeyring } from './AuthConfiguration.ts'
 import { hostedClientMetadata, McpScope, redirectUriAllowed } from './mcp/Policy.ts'
 
@@ -121,28 +120,17 @@ const registeredClients = (db: D1) =>
           ),
   })
 
-/** The signed-in person behind an authorization request: the same session cookie the website uses,
- * verified explicitly. A missing or invalid session is anonymous and leads to the login page. */
-const sessionIdentity = (auth: ReturnType<typeof makeAuthHttp>) =>
+/** The signed-in person behind an authorization request: the same session cookie the website uses. A missing or
+ * invalid session is anonymous and leads to the login page. */
+const sessionIdentity = (auth: AuthHttp) =>
   Layer.effect(
     McpOAuth.Identity,
-    Effect.gen(function* () {
-      const api = yield* auth.runtime.auth
-      return McpOAuth.Identity.of({
-        current: Effect.gen(function* () {
-          const request = yield* HttpServerRequest.HttpServerRequest
-          const cookie = request.cookies[SessionHttp.cookieName]
-          if (cookie === undefined) return undefined
-          const session = yield* api.verifySession(Redacted.make(cookie)).pipe(
-            Effect.map(Option.some),
-            Effect.catchTag('SessionInvalid', () => Effect.succeedNone),
-            Effect.mapError(unavailable),
-          )
-          return Option.getOrUndefined(Option.map(session, ({ subjectId }) => subjectId))
-        }),
-      })
-    }),
-  ).pipe(Layer.provide(auth.dependencies))
+    Effect.map(sessionCookieAccount(auth), (account) =>
+      McpOAuth.Identity.of({
+        current: account.pipe(Effect.map(Option.getOrUndefined), Effect.mapError(unavailable)),
+      }),
+    ),
+  )
 
 const RegistrationRequest = Schema.Struct({
   client_name: Schema.optional(Schema.String),
@@ -245,7 +233,7 @@ export type McpOAuthOptions<R> = {
 }
 
 /** The OAuth server for MCP and its routes, built on the session auth and the D1 binding. */
-export const makeMcpOAuth = <R>(db: D1, auth: ReturnType<typeof makeAuthHttp>, options: McpOAuthOptions<R>) => {
+export const makeMcpOAuth = <R>(db: D1, auth: AuthHttp, options: McpOAuthOptions<R>) => {
   const server = McpOAuth.layer({
     origin: options.origin,
     resource: `${options.origin}/mcp`,

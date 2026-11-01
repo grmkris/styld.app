@@ -1,6 +1,5 @@
-import { NotFound, PictureRefused, prices, type RedrawPicture } from '@styld/protocol'
+import { CurrentAccount, NotFound, PictureRefused, prices, type RedrawPicture } from '@styld/protocol'
 import { Effect, Option } from 'effect'
-import { CurrentAccount } from '../CurrentAccount.ts'
 import { isStale, pictureView } from '../wardrobe/Shown.ts'
 import { enqueuePicture, type Parts, storedAs } from './Parts.ts'
 import { redrawHold, settleHold } from './Pictures.ts'

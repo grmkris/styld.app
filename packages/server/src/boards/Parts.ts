@@ -1,6 +1,14 @@
-import { Board, type BoardId, type BoardItem, NotFound, BoardSummary, type Look, Unavailable } from '@styld/protocol'
+import {
+  Board,
+  type BoardId,
+  type BoardItem,
+  BoardSummary,
+  CurrentAccount,
+  type Look,
+  NotFound,
+  Unavailable,
+} from '@styld/protocol'
 import { Effect, Match, Option, Schema } from 'effect'
-import { CurrentAccount } from '../CurrentAccount.ts'
 import type { Looks } from '../looks/Looks.ts'
 import type { Checks } from '../safety/Checks.ts'
 import type { PublicPages } from '../social/Public.ts'

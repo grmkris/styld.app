@@ -1,6 +1,7 @@
 import { expect } from 'bun:test'
 import type { Browser, BrowserContext } from 'playwright'
 import { testPassword } from './IdentityFixture.ts'
+import { csrf } from '@styld/auth/config'
 
 // The native suite's accounts: seeded on the fixture Worker, each with the same password, signed in through the real
 // edge. One place for the seed call, the sign-in and the signed-in browser, so every test does them the same way.
@@ -25,7 +26,7 @@ export const seedAccounts = async (fixtures: string, ...ids: ReadonlyArray<strin
 export const signIn = async (origin: string, id: string) => {
   const response = await fetch(`${origin}/api/auth/signIn`, {
     method: 'POST',
-    headers: { origin, 'content-type': 'application/json', 'x-effect-auth-csrf': '1' },
+    headers: { origin, 'content-type': 'application/json', [csrf.header]: csrf.value },
     body: JSON.stringify(signInBody(id)),
   })
   expect(response.status).toBe(200)
@@ -55,7 +56,7 @@ export const withOperation = (path: string, init: RequestInit): RequestInit => {
 export const client =
   (origin: string, cookie: string) =>
   (path: string, init: RequestInit = {}) => {
-    const headers = new Headers({ origin, cookie, 'x-effect-auth-csrf': '1', 'content-type': 'application/json' })
+    const headers = new Headers({ origin, cookie, [csrf.header]: csrf.value, 'content-type': 'application/json' })
     for (const [name, value] of new Headers(init.headers)) headers.set(name, value)
     return fetch(`${origin}${path}`, { ...withOperation(path, init), headers })
   }
@@ -87,7 +88,7 @@ export const signedInContext = async (
   })
   if (options.answered ?? true) await context.addCookies([{ name: 'styld_diagnostics', value: 'denied', url: origin }])
   const signedIn = await context.request.post(`${origin}/api/auth/signIn`, {
-    headers: { origin, 'x-effect-auth-csrf': '1' },
+    headers: { origin, [csrf.header]: csrf.value },
     data: signInBody(id),
   })
   expect(signedIn.status()).toBe(200)
@@ -100,7 +101,7 @@ export const leaveCredits = async (origin: string, context: BrowserContext, leav
   const me: unknown = await (await context.request.get(`${origin}/api/me`)).json()
   const accountId = typeof me === 'object' && me !== null && 'accountId' in me ? me.accountId : undefined
   const spent = await context.request.post(`${origin}/api/native/spend`, {
-    headers: { origin, 'x-effect-auth-csrf': '1' },
+    headers: { origin, [csrf.header]: csrf.value },
     data: { accountId, leave },
   })
   expect(spent.status()).toBe(204)

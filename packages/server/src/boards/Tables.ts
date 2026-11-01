@@ -1,11 +1,12 @@
 import {
   type ArrangeBoard,
   arranged,
-  BoardItemId,
   type BoardId,
   type BoardItem,
+  BoardItemId,
   BoardItemRefused,
   BoardVersionConflict,
+  CurrentAccount,
   ImageItem,
   landed,
   maximumBoardItems,
@@ -17,7 +18,6 @@ import {
   TextItem,
 } from '@styld/protocol'
 import { Array, Effect, Match, Option, Predicate, Schema } from 'effect'
-import { CurrentAccount } from '../CurrentAccount.ts'
 import { ownPieceIds } from '../wardrobe/Store.ts'
 import { itemRow, newPins, one, ownBoard, pieceTarget, priorOf, stored, type Parts, unavailable } from './Parts.ts'
 import { nowDate } from '../kernel/Db.ts'

@@ -36,6 +36,10 @@ export const AuthApi = AuthContract.make('styld/Auth', {
   }),
 })
 
+/** The header every change from the website carries, so a cross-site form cannot make one: Yielded's auth routes and
+ * the API's session middleware (`@styld/protocol` `SessionAccount`) both check it. */
+export const csrf = { header: 'x-effect-auth-csrf', value: '1' } as const
+
 /** The signed-in session for HttpApi endpoints: they declare `SessionHttp.RequireSession` and read
  * `SessionHttp.CurrentSession`; the API Worker implements it with Yielded's session check. The name
  * is the host-only secure cookie the API Worker sets in every environment. */

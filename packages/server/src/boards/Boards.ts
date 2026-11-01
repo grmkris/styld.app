@@ -5,9 +5,10 @@ import {
   type BoardId,
   type BoardImage,
   BoardImageId,
-  NotFound,
   type CreateBoard,
+  CurrentAccount,
   maximumBoardPins,
+  NotFound,
   OperationConflict,
   PinRefused,
   type RemovePins,
@@ -17,7 +18,6 @@ import {
   UploadRefused,
 } from '@styld/protocol'
 import { Context, Effect, Layer, Option } from 'effect'
-import { CurrentAccount } from '../CurrentAccount.ts'
 import { Looks } from '../looks/Looks.ts'
 import { ownLookIds } from '../looks/Store.ts'
 import { Checks } from '../safety/Checks.ts'

@@ -3,6 +3,7 @@ import { readdir, readFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import type { Browser, Page } from 'playwright'
 import { nextTraceExport, recordProblems, recordTelemetry } from './BrowserAcceptance.ts'
+import { csrf } from '@styld/auth/config'
 
 /** Where local workerd's `send_email` emulation writes each message's text part. */
 const sentMail = join(import.meta.dir, '../../../.alchemy/local/email/text')
@@ -76,7 +77,7 @@ export const verifyBrowserIdentity = async (browser: Browser, origin: string): P
     const replay = await context.request.post(new URL('/api/auth/getSession', origin).toString(), {
       headers: {
         origin: new URL(origin).origin,
-        'x-effect-auth-csrf': '1',
+        [csrf.header]: csrf.value,
         cookie: cookies.map(({ name, value }) => `${name}=${value}`).join('; '),
       },
       data: {},

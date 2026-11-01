@@ -29,6 +29,7 @@ import { verifyMcp } from './McpAcceptance.ts'
 import { verifyAccountDeletion, verifyWardrobe } from './WardrobeAcceptance.ts'
 import RuntimeWorker from './RuntimeWorker.ts'
 import NativeWorkerLive, { NativeWorker } from './NativeWorker.ts'
+import { csrf } from '@styld/auth/config'
 
 const makeStack = (generation: string) =>
   Alchemy.Stack(
@@ -100,7 +101,7 @@ const authCall =
       headers: {
         origin: new URL(origin).origin,
         'content-type': 'application/json',
-        'x-effect-auth-csrf': '1',
+        [csrf.header]: csrf.value,
         cookie,
       },
       body: HttpBody.text(JSON.stringify({ payload }), 'application/json'),
@@ -307,7 +308,7 @@ test(
       headers: new Headers({
         origin: new URL(styldUrl).origin,
         'content-type': 'application/json',
-        'x-effect-auth-csrf': '1',
+        [csrf.header]: csrf.value,
       }),
       body: HttpBody.text('{}', 'application/json'),
     })
@@ -318,7 +319,7 @@ test(
       headers: new Headers({
         origin: 'https://evil.invalid',
         'content-type': 'application/json',
-        'x-effect-auth-csrf': '1',
+        [csrf.header]: csrf.value,
       }),
       body: HttpBody.text('{}', 'application/json'),
     })
@@ -378,7 +379,7 @@ test(
       headers: new Headers({
         origin: 'http://localhost',
         'content-type': 'application/json',
-        'x-effect-auth-csrf': '1',
+        [csrf.header]: csrf.value,
       }),
       body: HttpBody.text('{}', 'application/json'),
     })
@@ -460,7 +461,7 @@ test(
     yield* Effect.promise(() => seedAccounts(url, 'native-limited'))
     const attempt = () =>
       HttpClient.post(`${styldUrl}/api/auth/signIn`, {
-        headers: { origin: new URL(styldUrl).origin, 'content-type': 'application/json', 'x-effect-auth-csrf': '1' },
+        headers: { origin: new URL(styldUrl).origin, 'content-type': 'application/json', [csrf.header]: csrf.value },
         body: HttpBody.text(
           JSON.stringify({
             payload: signInBody('native-limited').payload,

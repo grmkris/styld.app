@@ -1,6 +1,13 @@
-import { type BoardId, type Generate, type GenerationKind, NotFound, prices, PromptRefused } from '@styld/protocol'
+import {
+  type BoardId,
+  CurrentAccount,
+  type Generate,
+  type GenerationKind,
+  NotFound,
+  prices,
+  PromptRefused,
+} from '@styld/protocol'
 import { Effect, Option, Result } from 'effect'
-import { CurrentAccount } from '../CurrentAccount.ts'
 import { stickerKey, stickerPrompt } from './PaintPrompt.ts'
 import { jobHold, type Parts, send, unavailable, view } from './Parts.ts'
 import { nowDate } from '../kernel/Db.ts'

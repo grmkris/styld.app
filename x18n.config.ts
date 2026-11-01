@@ -51,6 +51,8 @@ export default defineConfig({
       'packages/server/src/OAuthAssertions.ts': ['/[\\s\\S]*/'],
       // A broken invariant of the server's own hold ids, read only in its logs.
       'packages/server/src/usage/Holds.ts': ['/reserved with another amount$/'],
+      // A broken invariant of the API's composition, read only in its logs.
+      'packages/server/src/SessionAccount.ts': ['/outside the auth middleware$/'],
       // The conditional spend of an upload is SQL.
       'packages/server/src/wardrobe/Store.ts': ['/^CASE WHEN /'],
       // Questions put to the decision model and provider protocol text; no person ever reads them.

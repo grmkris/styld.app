@@ -1,7 +1,6 @@
 import { once } from '../kernel/Receipts.ts'
-import { type CaptureId, NotFound, type OperationId } from '@styld/protocol'
+import { type CaptureId, CurrentAccount, NotFound, type OperationId } from '@styld/protocol'
 import { DateTime, Effect, Option } from 'effect'
-import { CurrentAccount } from '../CurrentAccount.ts'
 import { captureHold, endingOf, enqueueCapture, forgetCaptureObjects, type Parts, storedAs } from './Parts.ts'
 import type { CaptureRow } from './Store.ts'
 import { type Ending } from '../usage/Holds.ts'

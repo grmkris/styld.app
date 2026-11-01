@@ -1,63 +1,40 @@
-import { SessionHttp } from '@styld/auth/config'
 import {
   maximumImageBytes,
   maximumVideoBytes,
   PieceId,
-  RequestRefused,
+  CurrentAccount,
   StyldApi,
   UploadId,
   UploadRefused,
   type Unavailable,
 } from '@styld/protocol'
-import type { AuthRequest } from '@yielded/auth/Auth'
-import { Effect, Layer, Option, Redacted, Schema } from 'effect'
+import { Effect, Layer, Option, Schema } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
-import type { makeAuthHttp } from '../AuthHttp.ts'
-import { CurrentAccount } from '../CurrentAccount.ts'
+import { type AuthHttp, sessionCookieAccount } from '../AuthHttp.ts'
 import type { DeliveredImage } from './Delivery.ts'
 import { Wardrobe } from './Wardrobe.ts'
 
-export const asSessionAccount = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
-  Effect.gen(function* () {
-    const { claims } = yield* SessionHttp.CurrentSession
-    return yield* Effect.provideService(effect, CurrentAccount, { accountId: claims.accountId, via: 'session' })
-  })
-
-/** Admits a change only from the website itself (its Origin and CSRF header), before it runs. */
-export type Admit = <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.Effect<A, E | RequestRefused, R | AuthRequest>
-
-/** Yielded's mutation admission as the protocol's refusal. */
-export const admitWith =
-  (auth: ReturnType<typeof makeAuthHttp>): Admit =>
-  (effect) =>
-    auth.router.protect(effect).pipe(Effect.catchTag('HookDenied', () => Effect.fail(RequestRefused.make({}))))
-
 /** The website's wardrobe endpoints: each one is the matching `Wardrobe` operation for the session's
- * account; changes are admitted first. */
-export const wardrobeHandlers = (admit: Admit) =>
-  HttpApiBuilder.group(StyldApi, 'wardrobe', (handlers) =>
-    Effect.gen(function* () {
-      const wardrobe = yield* Wardrobe
-      return handlers
-        .handle('listPieces', () => asSessionAccount(wardrobe.listPieces()).pipe(Effect.map((pieces) => ({ pieces }))))
-        .handle('getPiece', ({ params }) => asSessionAccount(wardrobe.getPiece(params.pieceId)))
-        .handle('createUpload', ({ payload }) => admit(asSessionAccount(wardrobe.createUpload(payload))))
-        .handle('createVideoUpload', ({ payload }) => admit(asSessionAccount(wardrobe.createUpload(payload))))
-        .handle('addPiece', ({ payload }) => admit(asSessionAccount(wardrobe.addPiece(payload))))
-        .handle('updatePiece', ({ params, payload }) =>
-          admit(asSessionAccount(wardrobe.updatePiece(params.pieceId, payload))),
-        )
-        .handle('deletePiece', ({ params }) => admit(asSessionAccount(wardrobe.deletePiece(params.pieceId))))
-        .handle('setBack', ({ params, payload }) => admit(asSessionAccount(wardrobe.setBack(params.pieceId, payload))))
-        .handle('removeBack', ({ params }) => admit(asSessionAccount(wardrobe.removeBack(params.pieceId))))
-        .handle('choosePicture', ({ params, payload }) =>
-          admit(asSessionAccount(wardrobe.choosePicture(params.pieceId, payload.use))),
-        )
-    }),
-  )
+ * account (`SessionAccount` admits changes). */
+export const wardrobeHandlers = HttpApiBuilder.group(StyldApi, 'wardrobe', (handlers) =>
+  Effect.gen(function* () {
+    const wardrobe = yield* Wardrobe
+    return handlers
+      .handle('listPieces', () => wardrobe.listPieces().pipe(Effect.map((pieces) => ({ pieces }))))
+      .handle('getPiece', ({ params }) => wardrobe.getPiece(params.pieceId))
+      .handle('createUpload', ({ payload }) => wardrobe.createUpload(payload))
+      .handle('createVideoUpload', ({ payload }) => wardrobe.createUpload(payload))
+      .handle('addPiece', ({ payload }) => wardrobe.addPiece(payload))
+      .handle('updatePiece', ({ params, payload }) => wardrobe.updatePiece(params.pieceId, payload))
+      .handle('deletePiece', ({ params }) => wardrobe.deletePiece(params.pieceId))
+      .handle('setBack', ({ params, payload }) => wardrobe.setBack(params.pieceId, payload))
+      .handle('removeBack', ({ params }) => wardrobe.removeBack(params.pieceId))
+      .handle('choosePicture', ({ params, payload }) => wardrobe.choosePicture(params.pieceId, payload.use))
+  }),
+)
 
 const refusalStatus: { readonly [Reason in UploadRefused['reason']]: number } = {
   notFound: 404,
@@ -119,33 +96,18 @@ const receiveUpload = Effect.gen(function* () {
   })
 })
 
-/** The signed-in account behind the website's session cookie, for routes outside the typed API. */
-export const cookieAccount = (auth: ReturnType<typeof makeAuthHttp>) =>
-  Effect.gen(function* () {
-    const api = yield* auth.runtime.auth
-    return Effect.gen(function* () {
-      const request = yield* HttpServerRequest.HttpServerRequest
-      const cookie = request.cookies[SessionHttp.cookieName]
-      if (cookie === undefined) return Option.none<string>()
-      return yield* api.verifySession(Redacted.make(cookie)).pipe(
-        Effect.map(({ subjectId }) => Option.some<string>(subjectId)),
-        Effect.orElseSucceed(() => Option.none<string>()),
-      )
-    })
-  }).pipe(Effect.provide(auth.dependencies))
-
 /** An image a route shows, and the version its ETag names. */
 export type ShownImage = DeliveredImage & { readonly version: string }
 
 /** A `GET` route that shows an image to its owner only, through the website's session cookie: 401 signed
  * out, and 404 for another account's image, like a missing one. */
 export const ownerImage = <A, I extends Readonly<Record<string, string | undefined>>>(
-  auth: ReturnType<typeof makeAuthHttp>,
+  auth: AuthHttp,
   target: Schema.ConstraintCodec<A, I, never, unknown>,
   find: (target: A) => Effect.Effect<Option.Option<ShownImage>, Unavailable, CurrentAccount>,
 ) =>
   Effect.gen(function* () {
-    const account = yield* cookieAccount(auth)
+    const account = yield* sessionCookieAccount(auth)
     return Effect.gen(function* () {
       const accountId = yield* account
       if (Option.isNone(accountId)) return HttpServerResponse.empty({ status: 401 })
@@ -167,14 +129,13 @@ export const ownerImage = <A, I extends Readonly<Record<string, string | undefin
             },
           }),
         ),
-        Effect.catchTag('Unavailable', () => Effect.succeed(HttpServerResponse.empty({ status: 503 }))),
       )
-    })
+    }).pipe(Effect.catchTag('Unavailable', () => Effect.succeed(HttpServerResponse.empty({ status: 503 }))))
   })
 
 /** `GET /cdn/pieces/:pieceId/:size`: the picture a piece shows, and `GET /cdn/pieces/:pieceId/:which/:size`: its
  * photo, its clean drawing or its back, for its owner only. */
-const pieceImage = (auth: ReturnType<typeof makeAuthHttp>) =>
+const pieceImage = (auth: AuthHttp) =>
   Effect.gen(function* () {
     const wardrobe = yield* Wardrobe
     const found = (image: ReturnType<typeof wardrobe.pieceImage>) =>
@@ -191,7 +152,7 @@ const pieceImage = (auth: ReturnType<typeof makeAuthHttp>) =>
   })
 
 /** The wardrobe's routes outside the typed API: photo uploads and images. */
-export const wardrobeRoutes = (auth: ReturnType<typeof makeAuthHttp>) =>
+export const wardrobeRoutes = (auth: AuthHttp) =>
   Layer.mergeAll(
     Layer.unwrap(Effect.map(receiveUpload, (handler) => HttpRouter.add('PUT', '/api/uploads/:uploadId', handler))),
     Layer.unwrap(
