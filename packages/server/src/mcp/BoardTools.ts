@@ -26,6 +26,7 @@ import {
   type TableThing,
   TextStyle,
   UpdateBoard,
+  Url,
   Visibility,
 } from '@styld/protocol'
 import { Effect, Match, Option, Schema } from 'effect'
@@ -232,7 +233,7 @@ const pinTools = (
       parameters: Schema.Struct({
         boardId: BoardId,
         operationId: OperationId,
-        imageUrl: Schema.String.check(Schema.isMaxLength(2048)),
+        imageUrl: Url,
       }),
       annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: true },
       handler: ({ boardId, operationId, imageUrl }) =>

@@ -1,6 +1,6 @@
 import type { Dialog } from '@foldkit/ui'
 import { format, type Locale } from '@styld/i18n'
-import { ReportReason } from '@styld/protocol'
+import { ReportReason, textLength } from '@styld/protocol'
 import { Option } from 'effect'
 import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
@@ -85,7 +85,7 @@ const reportForm = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html
               h.textarea([
                 h.Id('report-note'),
                 h.Value(note),
-                h.Attribute('maxlength', '500'),
+                h.Maxlength(textLength.reportNote),
                 h.Placeholder(format(locale, 'safety.reportDialog.notePlaceholder', {})),
                 h.OnInput((value) => Message.UpdatedReportNote({ value })),
                 ...styled(h, textField()),

@@ -1,3 +1,4 @@
+import { textLength } from './Text.ts'
 import { entityId, OperationId } from './Ids.ts'
 import { LimitReached, NotFound, OperationConflict, refusal, RequestRefused, SlowDown, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
@@ -16,7 +17,7 @@ export type GenerationId = typeof GenerationId.Type
 /** What the person asks for, in their own words. */
 export const Generate = Schema.Struct({
   operationId: OperationId,
-  prompt: Schema.String.check(Schema.isMinLength(3), Schema.isMaxLength(280)),
+  prompt: Schema.String.check(Schema.isMinLength(3), Schema.isMaxLength(textLength.prompt)),
 })
 export type Generate = typeof Generate.Type
 

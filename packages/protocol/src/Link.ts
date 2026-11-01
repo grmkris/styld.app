@@ -1,3 +1,4 @@
+import { Url } from './Text.ts'
 import { byCase, passing, refusal, RequestRefused, SlowDown, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
 import { Schema } from 'effect'
@@ -7,7 +8,7 @@ import { UploadId, UploadRefused } from './Wardrobe.ts'
 // Adding a piece from a shop's product page on the website (Boards, profiles and social, M6). Styld reads the
 // page's picture into an upload of the person's; the website then sends it to the review tray like a picked photo.
 
-export const ReadLink = Schema.Struct({ url: Schema.String.check(Schema.isMaxLength(2048)) })
+export const ReadLink = Schema.Struct({ url: Url })
 export type ReadLink = typeof ReadLink.Type
 
 /** The page's picture, received as the person's upload, and the name the page gives the product. */

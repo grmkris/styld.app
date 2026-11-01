@@ -8,6 +8,7 @@ import {
   PieceType,
   Season,
   typesIn,
+  maximumColours,
 } from '@styld/protocol'
 import { format, type Locale, type MessageKey } from '@styld/i18n'
 import { Array, Option, Schema } from 'effect'
@@ -22,7 +23,6 @@ import * as styles from './PieceFields.styles.ts'
 const colours: ReadonlyArray<Colour> = ColourSchema.literals
 
 /** At most six colours per piece; the picker refuses a seventh. */
-const maximumColours = 6
 
 /** What a piece form holds of a piece: the type it must have, its colours and the attributes it may have. */
 export const Details = Schema.Struct({

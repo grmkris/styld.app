@@ -1,3 +1,4 @@
+import { textLength, trimmedText } from './Text.ts'
 import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
 import { passing } from './Errors.ts'
@@ -10,7 +11,7 @@ export const ChatId = entityId('ch').pipe(Schema.brand('ChatId'))
 export type ChatId = typeof ChatId.Type
 
 /** What the person writes to Styld. */
-export const ChatText = Schema.String.check(Schema.isTrimmed(), Schema.isMinLength(1), Schema.isMaxLength(2000))
+export const ChatText = trimmedText(textLength.chat)
 
 /** The languages Styld answers in. */
 export const ChatLocale = Schema.Literals(['en', 'sl'])

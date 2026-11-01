@@ -1,3 +1,4 @@
+import { textLength } from './Text.ts'
 import { Schema } from 'effect'
 import { Mood } from './Mood.ts'
 import { Author, PublicBoardSummary } from './Public.ts'
@@ -30,7 +31,7 @@ export const Explore = Schema.Struct({
 })
 export type Explore = typeof Explore.Type
 
-export const SearchQuery = Schema.Struct({ q: Schema.String.check(Schema.isMaxLength(80)) })
+export const SearchQuery = Schema.Struct({ q: Schema.String.check(Schema.isMaxLength(textLength.search)) })
 export type SearchQuery = typeof SearchQuery.Type
 
 /** People by name and handle, and boards by name and mood. The person's own wardrobe is searched on the device. */

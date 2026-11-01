@@ -1,10 +1,8 @@
+import { maximumWornPieces } from './Limits.ts'
 import { Schema } from 'effect'
 import { Day } from './Day.ts'
 import { ProposalRef } from './Outfit.ts'
 import { PieceId } from './Wardrobe.ts'
-
-/** The most pieces one day's outfit records. */
-export const maximumWornPieces = 12
 
 /** What the person wore on a day: the pieces still in the wardrobe. */
 export const WornDay = Schema.Struct({ day: Day, pieceIds: Schema.Array(PieceId) })

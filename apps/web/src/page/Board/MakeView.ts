@@ -1,3 +1,4 @@
+import { textLength } from '@styld/protocol'
 import { format, type Locale, type MessageKey } from '@styld/i18n'
 import type { Generation, GenerationKind } from '@styld/protocol'
 import { Option } from 'effect'
@@ -139,7 +140,7 @@ const sheetBody = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Reado
           h.Id('board-make-words'),
           h.Name('words'),
           h.Attribute('rows', '3'),
-          h.Attribute('maxlength', '280'),
+          h.Maxlength(textLength.prompt),
           h.Placeholder(
             format(
               locale,

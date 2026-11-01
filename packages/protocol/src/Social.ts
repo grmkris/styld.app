@@ -1,3 +1,4 @@
+import { textLength } from './Text.ts'
 import { Schema } from 'effect'
 import { refusal } from './Errors.ts'
 import { BoardId } from './Board.ts'
@@ -71,13 +72,10 @@ export const ReportTarget = Schema.Union([
 ])
 export type ReportTarget = typeof ReportTarget.Type
 
-/** The most a reporter's own words may run to (v1's limit). */
-export const reportNoteLength = 500
-
 export const CreateReport = Schema.Struct({
   target: ReportTarget,
   reason: ReportReason,
-  note: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(reportNoteLength))),
+  note: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(textLength.reportNote))),
 })
 export type CreateReport = typeof CreateReport.Type
 

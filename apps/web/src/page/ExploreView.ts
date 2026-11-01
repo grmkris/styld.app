@@ -7,6 +7,7 @@ import {
   Mood,
   type SearchResults,
   type SuggestedPerson,
+  textLength,
 } from '@styld/protocol'
 import { Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
@@ -267,7 +268,7 @@ export const exploreSearchForm = (query: string, locale: Locale, h: HtmlBuilder<
         h.Name('q'),
         h.Placeholder(format(locale, 'explore.searchLabel', {})),
         h.Value(query),
-        h.Attribute('maxlength', '80'),
+        h.Maxlength(textLength.search),
         h.Autocomplete('off'),
         h.Attribute('enterkeyhint', 'search'),
         h.Attribute('autocapitalize', 'none'),

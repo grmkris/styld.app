@@ -1,3 +1,5 @@
+import { mostLocked, mostProposals, mostSeen } from './Limits.ts'
+import { textLength, trimmedText } from './Text.ts'
 import { entityId } from './Ids.ts'
 import { LimitReached, NotFound, passing, RequestRefused, SlowDown, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
@@ -16,7 +18,7 @@ import { PieceId } from './Wardrobe.ts'
 export const OutfitMode = Schema.Literals(['fast', 'thinking'])
 export type OutfitMode = typeof OutfitMode.Type
 
-const Words = Schema.String.check(Schema.isTrimmed(), Schema.isMinLength(1), Schema.isMaxLength(140))
+const Words = trimmedText(textLength.label)
 
 /** What the outfit is for, when known: the weather, the occasion, and the person's own words ("a dinner out"), which
  * are never logged. */
@@ -26,11 +28,6 @@ export const OutfitBrief = Schema.Struct({
   words: Schema.optionalKey(Words),
 })
 export type OutfitBrief = typeof OutfitBrief.Type
-
-/** The most proposals one request returns, pieces it locks, and combinations it says were shown. */
-export const mostProposals = 6
-export const mostLocked = 5
-export const mostSeen = 60
 
 /** A combination's key: its piece ids, sorted and joined. Two proposals of the same pieces share one key. */
 export const OutfitKey = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(240))

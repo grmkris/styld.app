@@ -1,3 +1,4 @@
+import { textLength, trimmedText } from './Text.ts'
 import { Schema } from 'effect'
 import { refusal } from './Errors.ts'
 import { CheckStatus } from './Check.ts'
@@ -6,7 +7,7 @@ import { CheckStatus } from './Check.ts'
  * shape (v1's rule), so one can be carried over unchanged. */
 export const Handle = Schema.String.check(
   Schema.isMinLength(3),
-  Schema.isMaxLength(30),
+  Schema.isMaxLength(textLength.handle),
   Schema.isPattern(/^[a-z0-9_](?:[a-z0-9_]|\.(?!\.))*[a-z0-9_]$/),
 ).pipe(Schema.brand('Handle'))
 export type Handle = typeof Handle.Type
@@ -56,10 +57,9 @@ export const reservedHandles: ReadonlySet<string> = new Set([
 export const Tone = Schema.Literals(['sand', 'sage', 'slate', 'clay', 'stone', 'plum', 'olive', 'ink'])
 export type Tone = typeof Tone.Type
 
-const Trimmed = Schema.String.check(Schema.isTrimmed(), Schema.isMinLength(1))
-export const ProfileName = Trimmed.check(Schema.isMaxLength(60))
-export const City = Trimmed.check(Schema.isMaxLength(60))
-export const Bio = Schema.String.check(Schema.isMaxLength(160))
+export const ProfileName = trimmedText(textLength.profileName)
+export const City = trimmedText(textLength.city)
+export const Bio = Schema.String.check(Schema.isMaxLength(textLength.bio))
 
 /** The person's own profile. It is public only once published, which needs a handle. */
 export const Profile = Schema.Struct({

@@ -15,6 +15,8 @@ import {
   UpdatePiece,
   UploadId,
   maximumImageBytes,
+  textLength,
+  Url,
 } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
@@ -29,14 +31,14 @@ const shown = (origin: string) => (piece: Piece) => ({ ...piece, url: `${origin}
 
 /** What piece_search filters by: words, and any of the piece's type, group and attributes. */
 const SearchFilter = Schema.Struct({
-  query: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(80))),
+  query: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(textLength.search))),
   type: Schema.optionalKey(PieceType),
   group: Schema.optionalKey(GarmentGroup),
   colour: Schema.optionalKey(Colour),
   season: Schema.optionalKey(Season),
   occasion: Schema.optionalKey(Occasion),
   pattern: Schema.optionalKey(Pattern),
-  brand: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(60))),
+  brand: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(textLength.brand))),
 })
 
 const matches = (piece: Piece, input: typeof SearchFilter.Type) => {
@@ -62,13 +64,13 @@ const { operationId: _operationId, uploadId: _uploadId, ...PieceFields } = AddPi
 
 const LinkImport = Schema.Struct({
   operationId: OperationId,
-  url: Schema.String.check(Schema.isMaxLength(2048)),
+  url: Url,
   ...PieceFields,
 })
 
 const PieceAdd = Schema.Struct({
   operationId: OperationId,
-  imageUrl: Schema.optionalKey(Schema.String.check(Schema.isMaxLength(2048))),
+  imageUrl: Schema.optionalKey(Url),
   uploadId: Schema.optionalKey(UploadId),
   ...PieceFields,
 })

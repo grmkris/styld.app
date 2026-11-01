@@ -1,3 +1,4 @@
+import { textLength } from '@styld/protocol'
 import type { Piece, PiecePicture } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import { Option } from 'effect'
@@ -68,7 +69,7 @@ const shopFields = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Read
     h.Id('piece-brand'),
     h.Name('brand'),
     h.Type('text'),
-    h.Maxlength(60),
+    h.Maxlength(textLength.brand),
     h.Autocomplete('off'),
     h.Value(draft.brand),
     h.OnInput((value) => Message.UpdatedBrand({ value })),
@@ -80,7 +81,7 @@ const shopFields = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Read
     h.Name('shop'),
     h.Type('url'),
     h.InputMode('url'),
-    h.Maxlength(2048),
+    h.Maxlength(textLength.url),
     h.Value(draft.shopUrl),
     h.OnInput((value) => Message.UpdatedShopUrl({ value })),
     ...(draft.shopUrlInvalid ? [h.AriaInvalid(true), h.AriaDescribedBy('piece-shop-problem')] : []),
@@ -103,7 +104,7 @@ const editForm = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Html =
         h.Id('piece-name'),
         h.Name('name'),
         h.Type('text'),
-        h.Maxlength(80),
+        h.Maxlength(textLength.name),
         h.Value(draft.name),
         h.OnInput((value) => Message.UpdatedName({ value })),
         ...styled(h, textField()),
@@ -118,7 +119,7 @@ const editForm = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Html =
       h.textarea([
         h.Id('piece-notes'),
         h.Name('notes'),
-        h.Maxlength(500),
+        h.Maxlength(textLength.notes),
         h.Placeholder(format(locale, 'wardrobe.notesPlaceholder', {})),
         h.Value(draft.notes),
         h.OnInput((value) => Message.UpdatedNotes({ value })),
@@ -160,7 +161,7 @@ const redrawForm = (redraw: Redraw, locale: Locale, h: HtmlBuilder<Message>): Ht
         h.Id('picture-hint'),
         h.Name('hint'),
         h.Type('text'),
-        h.Maxlength(80),
+        h.Maxlength(textLength.hint),
         h.Value(redraw.hint),
         h.Placeholder(format(locale, 'wardrobe.picture.hintPlaceholder', {})),
         h.OnInput((value) => Message.UpdatedHint({ value })),

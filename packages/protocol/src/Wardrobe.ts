@@ -1,3 +1,5 @@
+import { maximumColours, maximumImageBytes, maximumVideoBytes } from './Limits.ts'
+import { Hint, Name, Notes } from './Text.ts'
 import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
 import { byCase, passing, refusal } from './Errors.ts'
@@ -22,7 +24,7 @@ export const Colour = Schema.Literals([
 export type Colour = typeof Colour.Type
 
 /** A piece's colours: distinct, at most six. */
-export const Colours = Schema.Array(Colour).check(Schema.isUnique(), Schema.isMaxLength(6))
+export const Colours = Schema.Array(Colour).check(Schema.isUnique(), Schema.isMaxLength(maximumColours))
 
 export const PieceId = entityId('pc').pipe(Schema.brand('PieceId'))
 export type PieceId = typeof PieceId.Type
@@ -33,17 +35,9 @@ export type UploadId = typeof UploadId.Type
 export const ImageType = Schema.Literals(['image/jpeg', 'image/png', 'image/webp', 'image/avif', 'image/gif'])
 export type ImageType = typeof ImageType.Type
 
-export const maximumImageBytes = 15 * 1024 * 1024
-
 /** A wardrobe video: the containers phones record and Meta SAM reads. */
 export const VideoType = Schema.Literals(['video/mp4', 'video/quicktime'])
 export type VideoType = typeof VideoType.Type
-
-/** The most a Worker request carries is 100 MB; a minute of 1080p phone video fits under this. */
-export const maximumVideoBytes = 95 * 1024 * 1024
-
-const Name = Schema.String.check(Schema.isTrimmed(), Schema.isMinLength(1), Schema.isMaxLength(80))
-const Notes = Schema.String.check(Schema.isMaxLength(500))
 
 /** A piece waits in `processing` while its photo is prepared, then shows as `ready`. */
 export const PieceStatus = Schema.Literals(['processing', 'ready', 'failed'])
@@ -118,9 +112,6 @@ export class SheetRefused extends Schema.TaggedError<SheetRefused>()(
 
 /** Show the drawing or the photo: `PUT /api/pieces/:pieceId/picture`. */
 export const ChoosePicture = Schema.Struct({ use: PictureChoice })
-
-/** The owner's own words about a piece for its next drawing, such as "a black wool beanie". */
-const Hint = Schema.String.check(Schema.isTrimmed(), Schema.isMinLength(1), Schema.isMaxLength(80))
 
 /** Ask for a new drawing of a piece, for a credit (owner, 2026-10-30). A new `operationId` for each request; repeating
  * one answers the first request again instead of drawing twice. */

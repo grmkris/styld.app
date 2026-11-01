@@ -1,3 +1,4 @@
+import { Name } from './Text.ts'
 import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
 import { Occasions, Pattern, PieceType, Season } from './Garment.ts'
@@ -109,8 +110,6 @@ export const Tray = Schema.Struct({
   allowance: Schema.Struct({ remaining: Schema.Int, daily: Schema.Int }),
 })
 export type Tray = typeof Tray.Type
-
-const Name = Schema.String.check(Schema.isTrimmed(), Schema.isMinLength(1), Schema.isMaxLength(80))
 
 /** One piece the person keeps, with the details they confirmed. */
 export const Keep = Schema.Struct({

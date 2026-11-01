@@ -1,8 +1,10 @@
+import { maximumBoardItems, maximumMoods, pinsAtOnce } from './Limits.ts'
+import { textLength, trimmedText } from './Text.ts'
 import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
 import { byCase, passing, refusal } from './Errors.ts'
 import { CheckStatus, Visibility } from './Check.ts'
-import { maximumMoods, Mood } from './Mood.ts'
+import { Mood } from './Mood.ts'
 import { Look, LookId } from './Look.ts'
 import { Piece, PieceId, UploadId } from './Wardrobe.ts'
 
@@ -20,11 +22,6 @@ export type PinId = typeof PinId.Type
 /** A board's table is a sheet 1000 units across and 1250 down (4:5); placements are in those units. */
 export const boardWidth = 1000
 export const boardHeight = 1250
-/** The most things one board's table holds. */
-export const maximumBoardItems = 60
-/** The most things pinned on one board, and the most one call pins or unpins. */
-export const maximumBoardPins = 500
-export const pinsAtOnce = 50
 export const minimumItemSize = 40
 export const maximumItemSize = 1200
 
@@ -36,8 +33,8 @@ export type Paper = typeof Paper.Type
 export const TextStyle = Schema.Literals(['label', 'headline'])
 export type TextStyle = typeof TextStyle.Type
 
-export const BoardName = Schema.String.check(Schema.isTrimmed(), Schema.isMinLength(1), Schema.isMaxLength(60))
-export const LabelText = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(140))
+export const BoardName = trimmedText(textLength.boardName)
+export const LabelText = Schema.String.check(Schema.isMinLength(1), Schema.isMaxLength(textLength.label))
 
 /** Where a thing lies: its centre, its width, how far it is turned (degrees), its stacking and whether it is
  * mirrored. */

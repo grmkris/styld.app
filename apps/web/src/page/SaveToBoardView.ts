@@ -1,3 +1,4 @@
+import { textLength } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import type { BoardSummary } from '@styld/protocol'
 import { Array } from 'effect'
@@ -95,7 +96,7 @@ const newBoardView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Ht
             ...styled(h, textField()),
             h.Placeholder(format(locale, 'saveToBoard.newBoardPlaceholder', {})),
             h.Value(model.name),
-            h.Attribute('maxlength', '60'),
+            h.Maxlength(textLength.boardName),
             h.Readonly(isSending),
             h.OnInput((value) => Message.UpdatedName({ value })),
           ]),

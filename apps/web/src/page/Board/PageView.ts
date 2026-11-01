@@ -1,6 +1,16 @@
 import { Dialog } from '@foldkit/ui'
 import { format, type Locale, type MessageKey } from '@styld/i18n'
-import { type Look, LookPin, Mood, type Paper, type Piece, type Pin, PiecePin, type PublicBoard } from '@styld/protocol'
+import {
+  type Look,
+  LookPin,
+  Mood,
+  type Paper,
+  type Piece,
+  type Pin,
+  PiecePin,
+  type PublicBoard,
+  textLength,
+} from '@styld/protocol'
 import { Array, Match, Option, Schema } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
@@ -398,7 +408,7 @@ const settingsBody = (
               ...info.initialFocus,
               ...styled(h, textField()),
               h.Value(model.nameDraft),
-              h.Attribute('maxlength', '60'),
+              h.Maxlength(textLength.boardName),
               h.Readonly(saving),
               h.OnInput((value) => Message.UpdatedNameDraft({ value })),
             ]),

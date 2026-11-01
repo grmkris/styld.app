@@ -1,5 +1,5 @@
 import { format, type Locale } from '@styld/i18n'
-import { type Profile, Tone } from '@styld/protocol'
+import { type Profile, Tone, textLength } from '@styld/protocol'
 import { Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
@@ -58,7 +58,7 @@ const textInput = (
         h.Id(id),
         ...styled(h, textField()),
         h.Value(value),
-        h.Attribute('maxlength', String(attributes.maxLength)),
+        h.Maxlength(attributes.maxLength),
         ...(attributes.placeholder === undefined ? [] : [h.Placeholder(attributes.placeholder)]),
         h.OnInput(onInput),
       ]),
@@ -75,7 +75,7 @@ const bioView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
         h.Id('profile-bio'),
         h.Rows(3),
         h.Value(model.draft.bio),
-        h.Attribute('maxlength', '160'),
+        h.Maxlength(textLength.bio),
         h.AriaDescribedBy('profile-bio-count'),
         h.Placeholder(format(locale, 'profile.editor.bioPlaceholder', {})),
         ...styled(h, cx(textField(), textArea())),
@@ -126,7 +126,7 @@ const formView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
               h.Id('profile-handle'),
               ...styled(h, textField()),
               h.Value(model.draft.handle),
-              h.Attribute('maxlength', '30'),
+              h.Maxlength(textLength.handle),
               h.Attribute('autocapitalize', 'none'),
               h.Attribute('spellcheck', 'false'),
               h.Placeholder(format(locale, 'profile.editor.usernamePlaceholder', {})),
@@ -141,7 +141,7 @@ const formView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
         format(locale, 'profile.editor.nameLabel', {}),
         model.draft.name,
         (value) => Message.UpdatedField({ field: 'name', value }),
-        { maxLength: 60 },
+        { maxLength: textLength.profileName },
         h,
       ),
       textInput(
@@ -149,7 +149,7 @@ const formView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
         format(locale, 'profile.editor.cityLabel', {}),
         model.draft.city,
         (value) => Message.UpdatedField({ field: 'city', value }),
-        { maxLength: 60 },
+        { maxLength: textLength.city },
         h,
       ),
       bioView(model, locale, h),

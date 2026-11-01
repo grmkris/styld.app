@@ -1,5 +1,5 @@
 import { Dialog } from '@foldkit/ui'
-import { BoardId, Handle, LookId, PieceId, Relation, ReportReason, reportNoteLength } from '@styld/protocol'
+import { BoardId, Handle, LookId, PieceId, Relation, ReportReason, textLength } from '@styld/protocol'
 import { Effect, Option, Predicate, Schema } from 'effect'
 import { Command, Dom, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
@@ -204,7 +204,7 @@ export const SendReport = Command.define('SendReport', {
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       const target = yield* reportTargetOf(subject)
-      const words = note.trim().slice(0, reportNoteLength)
+      const words = note.trim().slice(0, textLength.reportNote)
       yield* api.social.report({ payload: { target, reason, ...(words.length > 0 ? { note: words } : {}) } })
       return Message.SucceededReport()
     }).pipe(

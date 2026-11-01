@@ -1,6 +1,6 @@
 import { Button, FileDrop } from '@foldkit/ui'
 import { format, type Locale, type MessageKey } from '@styld/i18n'
-import { type BoardItem, ImageType, Paper, PieceItem, TextItem, TextStyle } from '@styld/protocol'
+import { type BoardItem, ImageType, Paper, PieceItem, TextItem, TextStyle, textLength } from '@styld/protocol'
 import { Array, Option, Schema } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../../ActionButton.ts'
@@ -142,7 +142,7 @@ const textEditor = (item: typeof TextItem.Type, locale: Locale, h: HtmlBuilder<M
       h.Id('board-text'),
       h.Rows(2),
       h.Value(item.text),
-      h.Attribute('maxlength', '140'),
+      h.Maxlength(textLength.label),
       ...styled(h, styles.field()),
       h.OnInput((text) => Message.UpdatedText({ id: item.id, text })),
     ]),

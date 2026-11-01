@@ -1,3 +1,4 @@
+import { textLength } from '@styld/protocol'
 import { Button } from '@foldkit/ui'
 import type { Detection, TrayCapture } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
@@ -242,7 +243,7 @@ const editor = (detection: Detection, decision: Decision, locale: Locale, h: Htm
       h.input([
         h.Id('found-name'),
         h.Type('text'),
-        h.Maxlength(80),
+        h.Maxlength(textLength.name),
         h.Autocomplete('off'),
         h.Value(decision.name),
         h.OnInput((value) => Message.UpdatedName({ value })),

@@ -1,3 +1,5 @@
+import { maximumOccasions } from './Limits.ts'
+import { textLength, trimmedText, Url } from './Text.ts'
 import { Schema } from 'effect'
 
 // What a piece is (owner, 2026-10-31): Styld's own garment types, predefined and grouped the way shops sort them, so
@@ -99,13 +101,13 @@ export type Season = typeof Season.Type
 export const Occasion = Schema.Literals(['casual', 'smart', 'formal', 'sport', 'lounge'])
 export type Occasion = typeof Occasion.Type
 
-export const Occasions = Schema.Array(Occasion).check(Schema.isUnique(), Schema.isMaxLength(5))
+export const Occasions = Schema.Array(Occasion).check(Schema.isUnique(), Schema.isMaxLength(maximumOccasions))
 
 export const Pattern = Schema.Literals(['plain', 'striped', 'checked', 'printed'])
 export type Pattern = typeof Pattern.Type
 
 /** A brand as the person writes it. */
-export const Brand = Schema.String.check(Schema.isTrimmed(), Schema.isMinLength(1), Schema.isMaxLength(60))
+export const Brand = trimmedText(textLength.brand)
 
 /** Where the piece is sold: an https address. */
-export const ShopUrl = Schema.String.check(Schema.isMaxLength(2048), Schema.isPattern(/^https:\/\/\S+$/))
+export const ShopUrl = Url.check(Schema.isPattern(/^https:\/\/\S+$/))
