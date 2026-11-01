@@ -140,7 +140,23 @@ const sessionLink = (model: Model, h: HtmlBuilder<Message>): Html => {
       ),
     SigningOut: () => h.empty,
     Checking: () => h.empty,
-    Unavailable: () => h.empty,
+    // The session could not be read: the bar keeps a way on (Explore) and offers to read it again, rather than
+    // standing empty.
+    Unavailable: () =>
+      h.div(styled(h, signedOutLinks()), [
+        AppRoute.guards.Explore(model.route)
+          ? h.empty
+          : h.a([h.Href(exploreRouter({})), ...styled(h, signInLink())], [format(locale, 'explore.title', {})]),
+        h.button(
+          [
+            h.Type('button'),
+            h.AriaLabel(format(locale, 'nav.sessionUnavailable', {})),
+            h.OnClick(Message.RequestedSession()),
+            ...styled(h, signInLink()),
+          ],
+          [format(locale, 'common.tryAgain', {})],
+        ),
+      ]),
     // Signed out the bar keeps Explore and Sign in (DESIGN › Navigation); neither shows on its own page.
     SignedOut: () => {
       const onLogin = AppRoute.guards.Login(model.route) || AppRoute.guards.LoginForConnection(model.route)

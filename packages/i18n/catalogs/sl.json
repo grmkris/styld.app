@@ -46,7 +46,8 @@
     "account": "Račun",
     "navigation": "Navigacija",
     "ask": "Vprašaj",
-    "boards": "Zbirke"
+    "boards": "Zbirke",
+    "sessionUnavailable": "Računa ni bilo mogoče doseči. Poskusi znova"
   },
   "account": {
     "title": "Račun",

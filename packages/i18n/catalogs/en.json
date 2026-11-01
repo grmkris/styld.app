@@ -46,7 +46,8 @@
     "account": "Account",
     "navigation": "Navigation",
     "ask": "Ask",
-    "boards": "Boards"
+    "boards": "Boards",
+    "sessionUnavailable": "Your account could not be reached. Try again"
   },
   "account": {
     "title": "Account",

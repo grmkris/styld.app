@@ -43,6 +43,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'nav.navigation': 'Navigation',
   'nav.ask': 'Ask',
   'nav.boards': 'Boards',
+  'nav.sessionUnavailable': 'Your account could not be reached. Try again',
   'account.title': 'Account',
   'account.assistants.title': 'Use Styld in ChatGPT or Claude',
   'account.assistants.description':

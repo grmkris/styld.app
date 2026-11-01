@@ -43,6 +43,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'nav.navigation': 'Navigacija',
   'nav.ask': 'Vprašaj',
   'nav.boards': 'Zbirke',
+  'nav.sessionUnavailable': 'Računa ni bilo mogoče doseči. Poskusi znova',
   'account.title': 'Račun',
   'account.assistants.title': 'Uporabi Styld v ChatGPT ali Claudu',
   'account.assistants.description':
