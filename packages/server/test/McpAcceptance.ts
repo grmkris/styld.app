@@ -234,12 +234,18 @@ const addPieceThroughTools = async (origin: string, client: Client) => {
   })
   const lookId = await lookThroughTools(origin, client, pieceId)
   await boardThroughTools(origin, client, pieceId, lookId)
-  expect(await structured(client, 'piece_delete', { pieceId })).toEqual({ deleted: true, pieceId })
+  expect(await structured(client, 'piece_delete', { pieceId, operationId: 'mcp-native-delete-1' })).toEqual({
+    deleted: true,
+    pieceId,
+  })
   const gone = await client.callTool({ name: 'piece_get', arguments: { pieceId } })
   expect(gone.isError).toBe(true)
   // A deleted piece leaves its looks; deleting the look leaves nothing behind.
   expect(await structured(client, 'look_get', { lookId })).toMatchObject({ id: lookId, pieces: [] })
-  expect(await structured(client, 'look_delete', { lookId })).toEqual({ deleted: true, lookId })
+  expect(await structured(client, 'look_delete', { lookId, operationId: 'mcp-native-look-delete-1' })).toEqual({
+    deleted: true,
+    lookId,
+  })
   expect((await client.callTool({ name: 'look_get', arguments: { lookId } })).isError).toBe(true)
 }
 
