@@ -1,12 +1,20 @@
 # Styld v2
 
-The full Styld migration to Effect, Foldkit and Cloudflare. Implementation is in progress; this repository is not yet feature-complete or ready for acceptance.
+Styld rewritten on Effect, Foldkit and Cloudflare. It ports the v1 behaviour worth keeping (`docs/ROADMAP.md`), runs
+on an isolated `workers.dev` preview for two testers, and is not yet released to production; v1 and its data stay
+untouched.
 
-The user-authorized target is feature parity with the frozen Styld v1 baseline, deployed on an isolated `workers.dev` URL, with native runtime tests and multiple final architecture/behavior reviews.
+- [Status](docs/STATUS.md): the release on the preview, the gates, what is built, open items
+- [Delivery map](docs/DELIVERY.md): each kept feature and the tests and readbacks that prove it
+- [Architecture](docs/ARCHITECTURE.md): the decisions in force
+- [Roadmap](docs/ROADMAP.md): remaining scope
+- [Handoff](docs/HANDOFF.md) and [Deployment](docs/DEPLOYMENT.md): how to resume, deploy, rebuild and import
+- [Testing guide](docs/TESTING-GUIDE.md): what the testers try and how to report a problem
+- [Agent instructions](AGENTS.md): workflow, commands and the workspace map
 
-- [Delivery plan](docs/DELIVERY.md)
-- [Architecture](docs/ARCHITECTURE.md)
-- [Parity baseline](docs/migration/v1-inventory.json)
-- [Progress and evidence](docs/STATUS.md)
+```sh
+bun install --frozen-lockfile
+heavy --wait bun run check   # every gate CI runs
+```
 
-The existing Railway application and its data remain untouched. Cloudflare resource identities are prefixed `styldappv2`; no production domain cutover is part of preview delivery.
+Cloudflare resource names are prefixed `styldappv2`; no production domain is attached.

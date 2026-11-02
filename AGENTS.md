@@ -12,13 +12,15 @@ Only isolated v2 Cloudflare resources and a workers.dev preview are authorized. 
 
 ```bash
 bun install --frozen-lockfile
-heavy --wait bun run check          # the full gate CI runs: format, provenance, vendor, icons, i18n, x18n, graph,
-                                    # suppressions, canaries, typecheck, lint, Knip, jscpd, unit, native, budgets
+heavy --wait bun run check          # the full gate CI runs: format, agents (skills), vendor (hashes), icons, x18n,
+                                    # i18n, graph, patterns, style tokens, suppressions, canaries, typecheck, lint,
+                                    # Knip, jscpd, build, budgets, unit, native
 bun run format                      # oxfmt; cheap gates run directly: format:check, graph:check, unused:check
 heavy --wait bun run typecheck      # effect-tsrs: TypeScript and Effect diagnostics
 heavy --wait bun run lint           # Oxlint with the checksum-verified tsrs-lint backend
 heavy --wait bun run test:unit
 heavy --wait bun run test:native    # builds, then workerd + Chromium acceptance through the real edge
+STYLD_PREVIEW_URL=… heavy --wait bun test tools/preview.native.test.ts  # deployed readback; release must be HEAD
 bun run translations:check          # x18n; bun run i18n:generate after catalog edits
 bun run icons:generate              # after editing apps/web/src/icons.json (Phosphor, DESIGN.md › Icons)
 bun run --cwd apps/web dev          # Vite dev server; with the page open, foldkit_* MCP tools inspect it
@@ -38,13 +40,15 @@ Read installed library source before using unfamiliar APIs. Domain models follow
 
 ## Workspace map
 
-- `apps/web`: the Foldkit website (SSR entry, browser entry, views, zyzz styles, browser telemetry and consent).
-- `packages/server`: the public edge Worker, the API Worker (auth, health, telemetry relay) and native test fixtures.
-- `packages/domain`: Alchemy Domain models (the Wallet), with story tests.
-- `packages/auth`: Yielded Auth contract, D1 persistence, browser client and password attempt limiter.
-- `packages/db`: Drizzle schema and generated D1 migrations.
+- `apps/web`: the Foldkit website (SSR entry, browser entry, pages, zyzz styles, browser telemetry and consent) and the MCP Apps views (`src/assistant`).
+- `packages/protocol`: the contract shared by the website, the API and MCP: `StyldApi` groups, errors with their assistant guides, ids and operation ids, text, limits, prices, garments.
+- `packages/server`: the public edge Worker and the API Worker: `kernel/` (database, ids, receipts, media, visibility, pacing, metrics), `Modules.ts` (the module list) and one folder per module (`wardrobe`, `capture`, `photos`, `looks`, `outfits`, `boards`, `generation`, `stylist`, `social`, `safety`, `links`, `worn`, `imports`, `mcp`), `usage/` (credit holds), `jobs/` (queues and sweeps), `providers/` and `ai/` (every provider call), `Config.ts` and `Resources.ts` (deployment facts and stages); native tests and fakes in `test/`.
+- `packages/imaging`: PNG and raster helpers shared by the browser and the Worker (model pictures, chroma, sheets, turns).
+- `packages/db`: Drizzle schema, one file per owning module, and the one baseline D1 migration.
+- `packages/domain`: the Alchemy Domain Wallet (the daily credit pool's holds), with story tests.
+- `packages/auth`: Yielded Auth contract, email-code sign-in, D1 persistence, browser client and password attempt limiter.
 - `packages/i18n`: en/sl ICU catalogs and the runtime formatter; `packages/observability`: the bounded telemetry seam.
-- `tools/`: the gates; `repos/foldkit`: read-only Foldkit reference; `FOLDKIT.md`: Foldkit's conventions; `docs/`: delivery plan, architecture, status, handoff, deployment.
+- `tools/`: the gates (`bun run check`), operator scripts listed in `knip.config.ts` (`import-v1/`, `provider-live.ts`, `preview-capture.ts`, `ai-usage-report.ts`) and the preview readback (`preview.native.test.ts`); `repos/foldkit`: read-only Foldkit reference; `FOLDKIT.md`: Foldkit's conventions; `docs/`: status, delivery map, architecture, roadmap, handoff, deployment, the testers' guide, `archive/` for history.
 
 ## Skills
 
@@ -60,7 +64,7 @@ This file, `DESIGN.md` and the local skills win where a vendored skill disagrees
 
 ## Architecture and testing
 
-One authoritative writer for each invariant. Domain owns usage reservations and generation lifecycles; D1 owns ordinary relational entities. Typed application operations are shared by HTTP/MCP/jobs. Domain `decide`/`evolve` are pure. Durable reactions and provider calls have explicit idempotency and unknown-outcome handling.
+One authoritative writer for each invariant. The Domain Wallet owns credit holds; D1 rows driven by queues own work lifecycles (captures, pictures, turns, generation jobs) and every relational entity. Typed application operations are shared by HTTP/MCP/jobs. Domain `decide`/`evolve` are pure. Durable reactions and provider calls have explicit idempotency and unknown-outcome handling.
 
 Browser code imports contracts, never server adapters. Foldkit views are pure, updates emit named Commands, request state uses explicit schemas. Rendering receives locale, version, time zone and a stable reference time. Catalogs stay reviewed in Git.
 
