@@ -1,3 +1,7 @@
+/**
+ * The website's size budgets, read from the build `bun run build` writes to `apps/web/dist` (`bun run check` runs
+ * the build, then this, then the tests; the native suite serves the same build).
+ */
 import { readFile } from 'node:fs/promises'
 import { gzipSync } from 'node:zlib'
 import { Schema } from 'effect'
