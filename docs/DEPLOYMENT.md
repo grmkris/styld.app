@@ -68,7 +68,8 @@ if needed.
 
 ## Rebuild and import (C5, and the production cutover)
 
-The schema is one baseline migration (`packages/db/migrations/`). Alchemy records applied migrations in
+The schema is the baseline migration and the migrations after it (`packages/db/migrations/`), which a deploy applies
+in order. Alchemy records applied migrations in
 `__alchemy_migrations` and refuses a database whose recorded history the files no longer contain
 (`RewrittenMigrationHistoryError`), so a stage made before the baseline is **destroyed and deployed again**, never
 migrated in place. Its D1 rows, R2 objects, Durable Objects (Wallets and Styld's chats, keyed by account id) and

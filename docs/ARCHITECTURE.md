@@ -44,13 +44,16 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 - **Ids, text, limits, prices, languages** live in the contract (`Ids.ts`, `Text.ts`, `Limits.ts`, `Prices.ts`,
   `Languages.ts`); the website, the server and MCP read the same numbers.
 - **Every write names its operation.** All non-GET endpoints take an `operationId`. A repeat answers from its receipt
-  (`kernel/Receipts.ts` `once`, `deleting`); the same id with another input is `OperationConflict`. Receipts are kept 30
-  days, then swept.
+  (`kernel/Receipts.ts` `recorded` for a write that is one D1 batch, its receipt in that batch; `deleting`; `once`) and
+  writes nothing, so a late repeat never undoes a later change; the same id with another input is `OperationConflict`,
+  declared on every endpoint that keeps its id (`protocol/test/Api.test.ts` names the few that do not yet). Receipts
+  are kept 30 days, then swept.
 - **Session handled once:** protocol `SessionAccount` middleware provides `CurrentAccount` and admits every non-GET
   request through the Origin/CSRF check; public pages read an optional visitor.
-- **Every row decodes.** One baseline migration (`packages/db/migrations/`) with CHECKs from the protocol's literals,
-  foreign keys on every link, NOT NULL where always set and one copy of each fact; a test compares the live schema with
-  its snapshot. Schema changes after the baseline are new migrations; a rewritten history means destroy and rebuild.
+- **Every row decodes.** The baseline migration (`packages/db/migrations/`) with CHECKs from the protocol's literals,
+  foreign keys on every link, NOT NULL where always set and one copy of each fact; a test applies every migration in
+  order and compares the live schema with the latest snapshot. Schema changes after the baseline are new migrations
+  (the first: `account_deletions` and `provider_files`); a rewritten history means destroy and rebuild.
 
 ## Credits, jobs and sweeps
 
@@ -100,8 +103,11 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 - **Yielded Auth** with stateful sessions and no positive cookie cache: logout, disablement and security-revision
   changes take effect on the next request. Email sign-in is one six-digit code for sign-in and registration
   (`packages/auth/src/EmailEntry.ts`); mail goes out after the response through `waitUntil`. Password attempts use
-  atomic D1 token buckets keyed by HMAC; password sign-up is refused. Account deletion is application-owned
-  (`AccountLifecycle`): access ends first, then media, then rows.
+  atomic D1 token buckets keyed by HMAC; password sign-up is refused. Account deletion is application-owned and
+  durable (`AccountLifecycle`): the batch that ends access records the deletion (`account_deletions`), the account's
+  public content is hidden from that moment, and the queue and then the account sweep purge the prefix, the chats, the
+  videos at Meta and the rows until done; the record waits a day for writers admitted before it, purges the prefix a
+  last time and goes. The Wallet's Durable Object is not purged yet (STATUS › Open items).
 - **MCP** at `/mcp`: Styld is its own OAuth issuer (one scope, `styld`), bearer-only, CIMD first with compatible DCR,
   HTTPS or loopback redirects, consent re-read and immediate revoke. Tools are `noun_verb` projections of the same
   operations, inputs are the protocol's payloads, closed, and refusals name the bad argument without its value. Admin

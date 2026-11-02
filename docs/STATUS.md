@@ -55,8 +55,9 @@ all 610,441, SSR 1,891,364. Preview readback of release `54a6601` (`tools/previe
 
 Each line is a kept feature; `docs/DELIVERY.md` maps it to the tests and readbacks that prove it.
 
-- **Sign-in:** one six-digit email code for sign-in and sign-up; logout; account deletion (access first, then photos,
-  then rows); admins by sign-in email (`STYLD_ADMIN_EMAILS`).
+- **Sign-in:** one six-digit email code for sign-in and sign-up; logout; account deletion (recorded as access ends,
+  public content hidden at once, every store purged by the queue or the account sweep, a last prefix purge a day
+  later); admins by sign-in email (`STYLD_ADMIN_EMAILS`).
 - **Adding clothes:** photos from the picker; the "hold it up" and "lay it out" cameras (Clef fires the
   shutter, front then back); videos up to 15 minutes cut into parts on the phone; add from a shop's page.
 - **Cut-outs:** one garment pipeline (`capture/Garments.ts`): Clef routes, Cloudflare Images cuts out one garment, SAM
@@ -96,7 +97,36 @@ Each line is a kept feature; `docs/DELIVERY.md` maps it to the tests and readbac
 - **Operator tools:** the v1 importer (`tools/import-v1/`, admin `POST|GET /api/admin/imports/:id`), the AI usage
   report, the live provider probe.
 
+## C8 review fixes (safety, contracts, deletion, privacy, gates)
+
+From the two reviews of `56a619b`; not deployed yet (the next deploy applies migration `20261102150114_deletions`).
+
+- **Safety judge fails closed:** a Llama Guard answer in neither of its formats, or an empty one, is Broken and leaves
+  the check pending (re-queued, then swept); Workers AI's answer schema refuses `{}` and empty messages.
+- **Writes keep their operation id:** profile edits and publishing, saves, follows, blocks, piece edits, back removal,
+  picture choice, look sharing, board edits and visibility and worn days write their receipt in the mutation's batch
+  (`kernel/Receipts.ts` `recorded`); a repeat writes nothing; changed input is `OperationConflict`, declared on the
+  endpoints and enforced by `protocol/test/Api.test.ts`.
+- **Derived link fetch ids** are a digest of the whole parent id and the tool.
+- **Account deletion is durable** (`account_deletions`, the `accountDeletions` sweep); public profiles, boards, looks
+  and pieces of a closing account are hidden at once (`social/ProfileStore.ts` reads only open accounts).
+- **Videos at Meta** are recorded (`provider_files`) until Meta confirms the delete (or has no such file); the
+  `providerFiles` sweep and account deletion delete them.
+- **MCP thumbnails** are only transformed images, never the stored original.
+- **Link previews** are read as the signed-in viewer (the edge forwards the cookie), so a block hides them too.
+- **Save to board** keeps its create-board and pin operation ids and the board it made across a failure.
+- **Patterns gate:** HTTP transports only in `providers/` (`providers/PublicWeb.ts` is the public web's), names
+  resolved through aliases and namespace imports (`tools/quality/patterns.ts` and its tests).
+
 ## Open items
+
+From C8's review fixes:
+
+- The Wallet's Durable Object (its state and command receipts) is not purged with the account: Alchemy Domain beta.84
+  exposes no way to erase an aggregate's storage, so it needs a dependency patch or an upstream API.
+- `photo.updatePhoto`, `photo.matchGarment`, `photo.offerGarment`, `photo.cutOut`, `import.startImport` and
+  `capture.turnSheet` take an operation id they do not keep yet (named in `protocol/test/Api.test.ts`).
+- A video Meta accepted whose capture row then failed to record its id is not in `provider_files`.
 
 From the cleanup's milestones, still open after the later ones:
 
