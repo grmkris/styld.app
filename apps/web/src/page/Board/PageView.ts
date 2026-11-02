@@ -18,7 +18,8 @@ import { checkNotice } from '../CheckNotice.ts'
 import { Message } from './Message.ts'
 import { unpinButton } from './Unpin.ts'
 import { boardStateView } from './Unready.ts'
-import { lookMosaic, pickerBody, pieceName } from './PickerView.ts'
+import { lookMosaic, pickerBody } from './PickerView.ts'
+import { pieceDescription } from '../WardrobeWords.ts'
 import { visitingView } from './Visiting.ts'
 import { type Model, PinWork, Publishing, Removal, Rename } from './Model.ts'
 import { chip, chosen } from '../../Controls.styles.ts'
@@ -60,7 +61,7 @@ const pinContent = (pin: Pin, asking: boolean, locale: Locale, h: HtmlBuilder<Me
             h.span(styled(h, styles.pinFrame()), [
               h.img([
                 h.Src(pieceImage(piece.id)),
-                h.Alt(pieceName(piece, locale)),
+                h.Alt(pieceDescription(piece, locale)),
                 h.Loading('lazy'),
                 ...styled(h, styles.cutout()),
               ]),
@@ -70,7 +71,7 @@ const pinContent = (pin: Pin, asking: boolean, locale: Locale, h: HtmlBuilder<Me
         unpinButton(
           {
             pinId: id,
-            label: format(locale, 'board.unpin', { name: pieceName(piece, locale) }),
+            label: format(locale, 'board.unpin', { name: pieceDescription(piece, locale) }),
             question: 'board.unpinAsk',
           },
           asking,

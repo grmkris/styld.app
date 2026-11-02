@@ -183,6 +183,7 @@
       "jewellery": "Jewellery",
       "eyewear": "Sunglasses & glasses"
     },
+    "pieceDescribed": "{kind} ({colours})",
     "typeOne": {
       "tops": "Top",
       "shirts": "Shirt",

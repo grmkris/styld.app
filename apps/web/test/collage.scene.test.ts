@@ -5,7 +5,7 @@ import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
 import { lenses } from '../src/Page.ts'
-import { at, withPage } from './AppFixtures.ts'
+import { at, withPage, withPieces } from './AppFixtures.ts'
 import { MeasurePaper } from '../src/page/Board/Commands.ts'
 import { Message as BoardMessage } from '../src/page/Board/Message.ts'
 import { fromBoard, init as boardInit } from '../src/page/Board/Model.ts'
@@ -37,8 +37,8 @@ const boardWith = (items: ReadonlyArray<PieceItem>) =>
     check: null,
     updatedAt: '2026-10-31T09:00:00.000Z',
   })
-const editing = (items: ReadonlyArray<PieceItem>) =>
-  withPage(at(`/boards/${boardId}/collage`, { signedIn: true }), lenses.board, () =>
+const editing = (items: ReadonlyArray<PieceItem>, locale: 'en' | 'sl' = 'en') =>
+  withPage(at(`/boards/${boardId}/collage`, { signedIn: true, locale }), lenses.board, () =>
     fromBoard(boardInit(boardId, true), boardWith(items)),
   )
 
@@ -87,6 +87,32 @@ describe('the collage editor', () => {
       measured,
       expect(role('button', { name: 'Save as a look' })).not.toHaveAttr('aria-disabled', 'true'),
       expect(text('Put some of your pieces on the table first.')).not.toExist(),
+    )
+  })
+
+  test('tells every piece in its tray apart: its name, or what it is and its colours, in both languages', () => {
+    const wardrobe = [
+      pieceFixture('knit', { type: 'knitwear', colours: ['white', 'navy'] }),
+      pieceFixture('tee', { type: 'shirts', colours: ['black'] }),
+      pieceFixture('plain', { type: 'shirts' }),
+      pieceFixture('coat', { name: 'Navy wool coat', type: 'coats', colours: ['navy'] }),
+    ]
+    scene(
+      { update, view },
+      given(withPieces(editing([knit]), wardrobe)),
+      measured,
+      expect(role('button', { name: 'Take Knit (white and navy) off the table' })).toExist(),
+      expect(role('button', { name: 'Put Shirt (black) on the table' })).toExist(),
+      expect(role('button', { name: 'Put Shirt on the table' })).toExist(),
+      expect(role('button', { name: 'Put Navy wool coat on the table' })).toExist(),
+    )
+    scene(
+      { update, view },
+      given(withPieces(editing([knit], 'sl'), wardrobe)),
+      measured,
+      expect(role('button', { name: 'Umakni z mize: Pletenina (bela in mornarsko modra)' })).toExist(),
+      expect(role('button', { name: 'Položi na mizo: Srajca (črna)' })).toExist(),
+      expect(role('button', { name: 'Položi na mizo: Navy wool coat' })).toExist(),
     )
   })
 })

@@ -24,10 +24,11 @@ export const flags = (signedIn: boolean): Flags => ({
 /** The address of a path on the test origin. */
 export const urlOf = (path: string) => Option.getOrThrow(fromString(`https://styld.test${path}`))
 
-/** The app opened at a path in English, as the server starts it: signed in, the request came with Ana's session
- * cookie and her session has been read; signed out, it came with none and the session is still being read. */
-export const at = (path: string, options: { readonly signedIn: boolean }): Model => {
-  const opened = init(flags(options.signedIn), urlOf(path)).model
+/** The app opened at a path, in English unless `locale` says otherwise, as the server starts it: signed in, the
+ * request came with Ana's session cookie and her session has been read; signed out, it came with none and the
+ * session is still being read. */
+export const at = (path: string, options: { readonly signedIn: boolean; readonly locale?: 'en' | 'sl' }): Model => {
+  const opened = init({ ...flags(options.signedIn), locale: options.locale ?? 'en' }, urlOf(path)).model
   return options.signedIn ? modifyFields(opened, { session: () => Session.SignedIn({ claims }) }) : opened
 }
 

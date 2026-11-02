@@ -183,6 +183,7 @@
       "jewellery": "Nakit",
       "eyewear": "Očala"
     },
+    "pieceDescribed": "{kind} ({colours})",
     "typeOne": {
       "tops": "Majica",
       "shirts": "Srajca",

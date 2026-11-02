@@ -164,6 +164,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.types.hats': 'Hats',
   'wardrobe.types.jewellery': 'Jewellery',
   'wardrobe.types.eyewear': 'Sunglasses & glasses',
+  'wardrobe.pieceDescribed': '{kind} ({colours})',
   'wardrobe.typeOne.tops': 'Top',
   'wardrobe.typeOne.shirts': 'Shirt',
   'wardrobe.typeOne.bodysuits': 'Bodysuit',

@@ -11,10 +11,9 @@ import { Message } from './Message.ts'
 import { type Model, PinWork } from './Model.ts'
 import * as styles from './PageView.styles.ts'
 import { pieceImage } from './Table.ts'
+import { pieceDescription } from '../WardrobeWords.ts'
 
 // The board's picker: the person's ready pieces and looks that are not pinned yet, ticked and pinned together.
-
-export const pieceName = (piece: Piece, locale: Locale) => piece.name ?? format(locale, 'board.pieceFallback', {})
 
 /** The pieces a look shows on its tile: its first four, two by two. */
 export const lookMosaic = (look: Look, h: HtmlBuilder<Message>): Html =>
@@ -74,7 +73,7 @@ export const pickerBody = (
           Array.map(ready, (piece) =>
             pickButton(
               `piece:${piece.id}`,
-              pieceName(piece, locale),
+              pieceDescription(piece, locale),
               h.img([h.Src(pieceImage(piece.id)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.cutout())]),
               model,
               h,

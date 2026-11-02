@@ -26,6 +26,7 @@ import { type KeyStep, Message } from './Message.ts'
 import { Gesture, LookSave, type Model, Saving, Toast, Upload } from './Model.ts'
 import { boardStateView } from './Unready.ts'
 import * as styles from './View.styles.ts'
+import { pieceDescription } from '../WardrobeWords.ts'
 import { paperChoiceView, saveLookView, selectedView, toolbarView } from './ViewTools.ts'
 
 const primaryButton = 0
@@ -54,12 +55,12 @@ const heldId = (gesture: Gesture): Option.Option<string> =>
   })
 
 const pieceName = (pieces: ReadonlyArray<Piece>, pieceId: string, locale: Locale) =>
-  Option.getOrElse(
-    Option.flatMap(
-      Array.findFirst(pieces, (piece) => piece.id === pieceId),
-      (piece) => Option.fromNullishOr(piece.name),
-    ),
-    () => format(locale, 'board.pieceFallback', {}),
+  Option.match(
+    Array.findFirst(pieces, (piece) => piece.id === pieceId),
+    {
+      onNone: () => format(locale, 'board.pieceFallback', {}),
+      onSome: (piece) => pieceDescription(piece, locale),
+    },
   )
 
 const piecesOf = (pieces: PiecesData): ReadonlyArray<Piece> => Option.getOrElse(AsyncData.getData(pieces), () => [])
@@ -223,7 +224,7 @@ const lookView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
   })
 
 const trayPiece = (piece: Piece, isOn: boolean, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const name = piece.name ?? format(locale, 'board.pieceFallback', {})
+  const name = pieceDescription(piece, locale)
   return h.keyed('li')(
     piece.id,
     [],

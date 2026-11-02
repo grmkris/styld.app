@@ -1,6 +1,8 @@
 import { Board } from '@styld/protocol'
 import { Schema } from 'effect'
-import { click, Command, expect, given, role, scene, text } from 'foldkit/scene'
+import { Dialog } from '@foldkit/ui'
+import { click, Command, expect, given, Mount, role, scene, text } from 'foldkit/scene'
+import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
 import { Message as BoardMessage } from '../src/page/Board/Message.ts'
@@ -8,7 +10,7 @@ import { fromBoard, init as boardInit } from '../src/page/Board/Model.ts'
 import { FocusPin, UnpinThings } from '../src/page/Board/PageCommands.ts'
 import { view } from '../src/View.ts'
 import { lenses } from '../src/Page.ts'
-import { at, withPage } from './AppFixtures.ts'
+import { at, withPage, withPieces } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const boardId = `bd_${'weekend'.padEnd(22, 'x')}`
@@ -29,6 +31,19 @@ const board = Schema.decodeUnknownSync(Board)({
 const page = withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
   fromBoard(boardInit(boardId, true), board),
 )
+
+/** The board's page with its picker open over the person's pieces, in `locale`. */
+const picking = (locale: 'en' | 'sl') =>
+  withPieces(
+    withPage(at(`/boards/${boardId}`, { signedIn: true, locale }), lenses.board, () =>
+      modifyFields(fromBoard(boardInit(boardId, true), board), { picker: (picker) => ({ ...picker, isOpen: true }) }),
+    ),
+    [
+      knit,
+      pieceFixture('tee', { type: 'shirts', colours: ['white', 'blue'] }),
+      pieceFixture('shoes', { type: 'flats', colours: ['black'] }),
+    ],
+  )
 
 describe("a board's page", () => {
   test('keeps the way back and says what it is doing while the board loads', () => {
@@ -98,6 +113,23 @@ describe("a board's page", () => {
       Command.expectExact(UnpinThings),
       Command.resolve(UnpinThings, BoardMessage.SucceededPins({ board: { ...board, pins: [], version: 2 } })),
       expect(role('button', { name: 'Take Cable knit off the board' })).not.toExist(),
+    )
+  })
+
+  test('the picker tells each piece apart by its name, or what it is and its colours', () => {
+    scene(
+      { update, view },
+      given(picking('en')),
+      Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
+      expect(role('button', { name: 'Shirt (white and blue)' })).toExist(),
+      expect(role('button', { name: 'Flats (black)' })).toExist(),
+    )
+    scene(
+      { update, view },
+      given(picking('sl')),
+      Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
+      expect(role('button', { name: 'Srajca (bela in modra)' })).toExist(),
+      expect(role('button', { name: 'Balerinke (črna)' })).toExist(),
     )
   })
 })
