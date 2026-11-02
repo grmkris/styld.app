@@ -8,6 +8,14 @@ const origin = new URL(process.env.STYLD_PREVIEW_URL ?? '')
 if (!origin.hostname.startsWith('styldappv2-styldedge-preview-') || !origin.hostname.endsWith('.workers.dev')) {
   throw new Error('Acceptance requires the isolated v2 preview URL')
 }
+/** The release being read back: `STYLD_EXPECTED_RELEASE`, or the checkout's HEAD (what the deploy passes as `STYLD_RELEASE`). */
+const expectedRelease = (() => {
+  const named = process.env.STYLD_EXPECTED_RELEASE
+  if (named !== undefined && named !== '') return named
+  const head = Bun.spawnSync(['git', 'rev-parse', 'HEAD'], { cwd: import.meta.dir })
+  if (head.exitCode !== 0) throw new Error('Set STYLD_EXPECTED_RELEASE: git rev-parse HEAD failed')
+  return head.stdout.toString().trim()
+})()
 
 test('deployed preview serves API/auth contracts and the hydrated website', async () => {
   const browser = await chromium.launch({ headless: true })
@@ -15,7 +23,7 @@ test('deployed preview serves API/auth contracts and the hydrated website', asyn
     const context = await browser.newContext()
     const health = await context.request.get(new URL('/api/health', origin).toString())
     expect(health.status()).toBe(200)
-    expect(await health.json()).toMatchObject({ service: 'styldappv2', status: 'ok' })
+    expect(await health.json()).toMatchObject({ service: 'styldappv2', status: 'ok', release: expectedRelease })
     const session = await context.request.post(new URL('/api/auth/getSession', origin).toString(), {
       headers: { origin: origin.origin, [csrf.header]: csrf.value },
       data: {},
