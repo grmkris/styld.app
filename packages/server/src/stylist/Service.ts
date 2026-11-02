@@ -16,7 +16,8 @@ import { Holds } from '../usage/Holds.ts'
 import type { Tool as AssistantTool } from '../mcp/Tools.ts'
 import { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { maxSteps, styldModel } from './Policy.ts'
-import { historyText, outlineOf, systemPrompt } from './Prompt.ts'
+import { historyMessages, languageOf, outlineOf, systemPrompt } from './Prompt.ts'
+import { finishedReply, readableReply } from './Reply.ts'
 import type { StoredMessage } from './StylistObject.ts'
 import { ChatStores, chatsOf, giveUp, holdOf, now, settled, stored, sweepTurn, unavailable } from './Chats.ts'
 import { StylistTurns } from './Store.ts'
@@ -82,7 +83,9 @@ const replyIds = {
     Effect.map(digestOf(`${accountId}:${operationId}`), (digest) => `tn_${digest.slice(0, 22)}`),
 }
 
-/** Write one reply: the model answers the chat so far with the account's tools, reporting what it has written. */
+/** Write one reply: the model answers the chat so far with the account's tools, reporting what it has written, in the
+ * language of the person's latest message (the app's where its words do not tell). What the person reads is made
+ * readable and checked against their pieces (`Reply.ts`). */
 const reply = (
   accountId: string,
   turnId: string,
@@ -93,20 +96,20 @@ const reply = (
     const pieces = yield* (yield* Wardrobe)
       .listPieces()
       .pipe(Effect.provideService(CurrentAccount, { accountId, via: 'assistant' }))
+    const own = new Set<string>(pieces.map(({ id }) => id))
     const tools = yield* turnTools(
       (yield* StylistTools).forAccount(accountId),
-      { turnId, pieceIds: new Set(pieces.map(({ id }) => id)) },
+      { turnId, pieceIds: own },
       Context.empty(),
     )
     const today = DateTime.formatIsoDateUtc(yield* DateTime.now)
-    const text = yield* runTurn({
-      system: systemPrompt({ locale: input.locale === 'sl' ? 'sl' : 'en', today, outline: outlineOf(pieces) }),
-      history: yield* Effect.forEach(input.messages, (message) =>
-        Effect.map(partsOf(message.parts), (parts) => ({
-          role: message.role,
-          text: historyText({ role: message.role, text: message.text, parts }),
-        })),
-      ),
+    const latest = input.messages.findLast(({ role }) => role === 'person')?.text ?? ''
+    const language = languageOf(latest, input.locale === 'sl' ? 'sl' : 'en')
+    const written = yield* runTurn({
+      system: systemPrompt({ language, today, outline: outlineOf(pieces) }),
+      history: (yield* Effect.forEach(input.messages, (message, index) =>
+        Effect.map(partsOf(message.parts), (parts) => historyMessages({ ...message, parts }, index)),
+      )).flat(),
       toolkit: yield* tools.toolkit.pipe(Effect.provide(tools.handlers)),
       maxSteps,
       showing: showingToolNames,
@@ -114,10 +117,10 @@ const reply = (
       progress: (sofar) =>
         Effect.gen(function* () {
           const shown = JSON.stringify(yield* tools.parts)
-          yield* chats.progress(turnId, sofar, shown).pipe(Effect.ignore)
+          yield* chats.progress(turnId, readableReply(sofar), shown).pipe(Effect.ignore)
         }),
     })
-    return { text, parts: yield* tools.parts }
+    return finishedReply(written, yield* tools.parts, own)
   })
 
 /** Sending a message: the reply begun, then opened in D1, then its credit held, then handed to the queue. The reply

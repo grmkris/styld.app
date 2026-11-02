@@ -208,10 +208,21 @@ const finishOf = (reason: string | null | undefined, called: boolean): Response.
   return called || reason === 'tool_calls' ? 'tool-calls' : 'stop'
 }
 
+/** Words without the model's reasoning: a reasoning model's thoughts come in `reasoning_content`, which is never read,
+ * or in its words between `<think>` tags, or before a lone `</think>` when the opening tag was in the prompt's
+ * template. None of it is the answer. */
+const withoutReasoning = (text: string) =>
+  text
+    .replace(/<think>[\s\S]*?(?:<\/think>|$)/gu, '')
+    .replace(/^[\s\S]*<\/think>/u, '')
+    .trimStart()
+
 /** The answer's words: the message's, or an older model's `response` (an object asked for, as its JSON). */
 const textOf = (output: Output, json: boolean) => {
   const content = output.choices?.[0]?.message.content ?? output.response
-  const text = typeof content === 'string' ? content : content === undefined ? '' : JSON.stringify(content)
+  const text = withoutReasoning(
+    typeof content === 'string' ? content : content === undefined ? '' : JSON.stringify(content),
+  )
   return json ? unfenced(text) : text
 }
 

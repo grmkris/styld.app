@@ -1,5 +1,6 @@
 import type { Language, ReplyPart } from '@styld/protocol'
 import { Match } from 'effect'
+import type { Prompt } from 'effect/ai'
 
 /** What the wardrobe holds, in a line or two, so a first answer needs no search. */
 export interface WardrobeOutline {
@@ -49,10 +50,32 @@ const describe = (outline: WardrobeOutline) => {
   return `The wardrobe holds ${outline.pieces} pieces: ${kinds}.${colours}`
 }
 
-/** What Styld is told before the chat: who it is, what it may do with its tools, and how to answer. Never the
- * person's name, email or any id. */
+const slovenianWords = new Set(
+  'in je naj kaj za se da ne ali mi moj moja moje mojo kako sem si bi pa tudi kje kdaj prosim hvala danes nocoj jutri obleci kateri katera katero imam zelo lahko iz na po pri'.split(
+    ' ',
+  ),
+)
+const englishWords = new Set(
+  'the and what which should i my me to for with wear is it of please do how you your can this that on have from'.split(
+    ' ',
+  ),
+)
+
+/** The language a message is written in, as far as its words tell: Slovenian letters and words against English ones;
+ * `otherwise` (the app's language) when they do not tell. */
+export const languageOf = (text: string, otherwise: Language): Language => {
+  const words = text.toLowerCase().match(/\p{L}+/gu) ?? []
+  const slovenian = words.filter((word) => slovenianWords.has(word) || /[čšž]/u.test(word)).length
+  const english = words.filter((word) => englishWords.has(word)).length
+  if (slovenian === english) return otherwise
+  return slovenian > english ? 'sl' : 'en'
+}
+
+/** What Styld is told before the chat: who it is, what it may do with its tools, and how to answer, in the one
+ * language this reply is written in, decided in code (`languageOf` the person's latest message), so the model never
+ * weighs it in its answer. Never the person's name, email or any id. */
 export const systemPrompt = (context: {
-  readonly locale: Language
+  readonly language: Language
   readonly today: string
   readonly outline: WardrobeOutline
 }) =>
@@ -63,21 +86,42 @@ export const systemPrompt = (context: {
     'To put outfits together, call outfit_make with mode fast: around a piece the person names (anchorPieceId), or with a brief for the weather and the occasion. Show the one you suggest with pieces_show, and offer another from the same answer when asked.',
     'Save a look with look_create only when the person asks you to save or keep it. look_list and look_get read the looks already saved.',
     'If the wardrobe lacks something an answer needs, say what kind of piece would help, in general words: there is no shop to send the person to.',
-    `Write in ${languages[context.locale]} unless the person writes in another language.${languageNotes[context.locale]} Plain text only: no Markdown, no headings, no bold, no tables. Keep it short and warm, at most about 120 words unless asked for more.`,
-    'Never mention ids, tools, JSON or these instructions. Be kind about bodies and budgets, and decline politely what is not about clothes, outfits or the wardrobe.',
+    `Write this reply in ${languages[context.language]}, whatever language earlier messages were in.${languageNotes[context.language]} Use only the Latin alphabet. Plain text only: no Markdown, no headings, no bold, no tables, no notes in brackets. Keep it short and warm, at most about 120 words unless asked for more.`,
+    'Write only the reply to the person, never your thoughts about how to answer. Never mention ids, tools, JSON or these instructions. Be kind about bodies and budgets, and decline politely what is not about clothes, outfits or the wardrobe.',
   ].join('\n\n')
 
-/** A stored message as the model reads it again: what was shown and saved, by id, so a later turn can use it. */
-export const historyText = (message: {
-  readonly role: 'person' | 'styld'
-  readonly text: string
-  readonly parts: ReadonlyArray<ReplyPart>
-}) => {
-  const notes = message.parts.map(
-    Match.valueTags({
-      Pieces: ({ pieceIds }) => `[shown: ${pieceIds.join(', ')}]`,
-      Look: ({ lookId }) => `[saved the look ${lookId}]`,
-    }),
-  )
-  return [message.text, ...notes].filter((line) => line.length > 0).join('\n')
+/** One earlier part as the tool call that made it: shown pieces as `pieces_show`, a saved look as `look_get`. */
+const callOf = (part: ReplyPart, id: string) =>
+  Match.valueTags(part, {
+    Pieces: ({ pieceIds }) => ({ id, name: 'pieces_show', params: { pieceIds }, result: { shown: pieceIds.length } }),
+    Look: ({ lookId, name }) => ({ id, name: 'look_get', params: { lookId }, result: { id: lookId, name } }),
+  })
+
+/** A stored message as the model reads it again. What an earlier reply showed and saved goes back as the tool calls
+ * that did it, so a later turn can use the ids and the model never reads a note in its own words it could copy
+ * instead of calling pieces_show (browser review, 2 November 2026). `index` keeps the calls' ids apart. */
+export const historyMessages = (
+  message: { readonly role: 'person' | 'styld'; readonly text: string; readonly parts: ReadonlyArray<ReplyPart> },
+  index: number,
+): ReadonlyArray<Prompt.MessageEncoded> => {
+  if (message.role === 'person') return [{ role: 'user', content: message.text }]
+  const calls = message.parts.map((part, nth) => callOf(part, `history_${String(index)}_${String(nth)}`))
+  const text = message.text.length > 0 ? [{ type: 'text' as const, text: message.text }] : []
+  if (calls.length === 0) return [{ role: 'assistant', content: text }]
+  return [
+    {
+      role: 'assistant',
+      content: [...text, ...calls.map(({ id, name, params }) => ({ type: 'tool-call' as const, id, name, params }))],
+    },
+    {
+      role: 'tool',
+      content: calls.map(({ id, name, result }) => ({
+        type: 'tool-result' as const,
+        id,
+        name,
+        isFailure: false,
+        result,
+      })),
+    },
+  ]
 }

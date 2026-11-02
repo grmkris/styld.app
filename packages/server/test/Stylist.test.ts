@@ -1,12 +1,14 @@
 import { readFileSync } from 'node:fs'
-import { LookId } from '@styld/protocol'
+import { LookId, PieceId } from '@styld/protocol'
 import { Context, Effect, Layer, Predicate, Schema, Stream } from 'effect'
+import type { Prompt } from 'effect/ai'
 import { describe, expect, test } from 'vitest'
 import { WorkersAi, workersAiModel } from '../src/ai/LanguageModel.ts'
 import { CaptureMetrics } from '../src/kernel/Metrics.ts'
 import { type Tool as AssistantTool, tool, ToolError } from '../src/mcp/Tools.ts'
 import { styldModel } from '../src/stylist/Policy.ts'
-import { historyText, outlineOf, systemPrompt } from '../src/stylist/Prompt.ts'
+import { historyMessages, languageOf, outlineOf, systemPrompt } from '../src/stylist/Prompt.ts'
+import { finishedReply } from '../src/stylist/Reply.ts'
 import { lookingUpToolNames, modelSchema, showingToolNames, turnTools } from '../src/stylist/Tools.ts'
 import { runTurn } from '../src/stylist/Turn.ts'
 
@@ -74,7 +76,13 @@ const saying = (answer: unknown, content: string): unknown => {
 }
 
 /** One reply over the recorded wardrobe, the model answering with `answers` in turn. */
-const replyWith = (answers: ReadonlyArray<unknown>, maxSteps = 6) => {
+const replyWith = (
+  answers: ReadonlyArray<unknown>,
+  maxSteps = 6,
+  history: ReadonlyArray<Prompt.MessageEncoded> = [
+    { role: 'user', content: 'What should I wear today? Something casual.' },
+  ],
+) => {
   const { model, asked, counted, failed } = replaying(answers)
   const progress: Array<string> = []
   const replied = Effect.runPromise(
@@ -85,8 +93,8 @@ const replyWith = (answers: ReadonlyArray<unknown>, maxSteps = 6) => {
         Context.empty(),
       )
       const text = yield* runTurn({
-        system: systemPrompt({ locale: 'en', today: '2026-10-31', outline: outlineOf(pieces) }),
-        history: [{ role: 'person', text: 'What should I wear today? Something casual.' }],
+        system: systemPrompt({ language: 'en', today: '2026-10-31', outline: outlineOf(pieces) }),
+        history,
         toolkit: yield* tools.toolkit.pipe(Effect.provide(tools.handlers)),
         maxSteps,
         showing: showingToolNames,
@@ -274,33 +282,138 @@ describe('a reply’s tools', () => {
 
 describe('what Styld is told', () => {
   test('the date and season, the wardrobe in a line, and the person’s language; never an id', () => {
-    const prompt = systemPrompt({ locale: 'sl', today: '2026-01-12', outline: outlineOf(pieces) })
+    const prompt = systemPrompt({ language: 'sl', today: '2026-01-12', outline: outlineOf(pieces) })
     expect(prompt).toContain('Today is 2026-01-12 (winter).')
     expect(prompt).toContain('The wardrobe holds 4 pieces: 1 trousers, 2 tops, 1 trainers.')
-    expect(prompt).toContain('Write in Slovenian')
+    expect(prompt).toContain('Write this reply in Slovenian')
     expect(prompt).toContain('informal singular ti')
     // The app's word for a look, and no gender chosen for the person (DESIGN.md › Copy and chrome).
     expect(prompt).toContain('a videz (plural videzi), as the app names it, never pogled')
     expect(prompt).toContain("Never choose the person's gender")
     expect(prompt).toContain('Speak of yourself in the present too (predlagam, svetujem)')
     expect(prompt).toContain('a cable knit is a pulover s kitami, never s kablom')
-    expect(systemPrompt({ locale: 'en', today: '2026-07-01', outline: outlineOf(pieces) })).not.toContain(' ti,')
+    expect(systemPrompt({ language: 'en', today: '2026-07-01', outline: outlineOf(pieces) })).not.toContain(' ti,')
     expect(prompt).not.toMatch(/pc_/)
-    expect(systemPrompt({ locale: 'en', today: '2026-07-01', outline: outlineOf([]) })).toContain(
+    expect(systemPrompt({ language: 'en', today: '2026-07-01', outline: outlineOf([]) })).toContain(
       'The wardrobe is empty',
     )
   })
 
-  test('an earlier reply is read back with what it showed and saved', () => {
+  test('one language for the reply, the latest message’s, never weighed by the model', () => {
+    expect(languageOf('Kaj naj oblečem nocoj za večerjo v Ljubljani? Izberi kose iz moje garderobe.', 'en')).toBe('sl')
     expect(
-      historyText({
-        role: 'styld',
-        text: 'Try these.',
-        parts: [
-          { _tag: 'Pieces', pieceIds: [] },
-          { _tag: 'Look', lookId: LookId.make(`lk_${'b'.repeat(22)}`), name: 'Friday' },
+      languageOf('Which jacket from my wardrobe should I wear over that outfit if it is cold? Please finish.', 'sl'),
+    ).toBe('en')
+    // Words that do not tell leave the app's language.
+    expect(languageOf('Ok!', 'sl')).toBe('sl')
+    expect(languageOf('', 'en')).toBe('en')
+    const english = systemPrompt({ language: 'en', today: '2026-11-02', outline: outlineOf(pieces) })
+    expect(english).toContain('Write this reply in English, whatever language earlier messages were in.')
+    expect(english).not.toContain('unless the person writes')
+    expect(english).toContain('never your thoughts about how to answer')
+  })
+
+  test('an earlier reply is read back as the calls that showed and saved, never as a note it could copy', () => {
+    const lookId = LookId.make(`lk_${'b'.repeat(22)}`)
+    const shown = pieces.slice(0, 2).map(({ id }) => id)
+    expect(
+      historyMessages(
+        {
+          role: 'styld',
+          text: 'Try these.',
+          parts: [
+            { _tag: 'Pieces', pieceIds: shown.map((id) => PieceId.make(id)) },
+            { _tag: 'Look', lookId, name: 'Friday' },
+          ],
+        },
+        3,
+      ),
+    ).toEqual([
+      {
+        role: 'assistant',
+        content: [
+          { type: 'text', text: 'Try these.' },
+          { type: 'tool-call', id: 'history_3_0', name: 'pieces_show', params: { pieceIds: shown } },
+          { type: 'tool-call', id: 'history_3_1', name: 'look_get', params: { lookId } },
         ],
-      }),
-    ).toBe(`Try these.\n[shown: ]\n[saved the look lk_${'b'.repeat(22)}]`)
+      },
+      {
+        role: 'tool',
+        content: [
+          { type: 'tool-result', id: 'history_3_0', name: 'pieces_show', isFailure: false, result: { shown: 2 } },
+          {
+            type: 'tool-result',
+            id: 'history_3_1',
+            name: 'look_get',
+            isFailure: false,
+            result: { id: lookId, name: 'Friday' },
+          },
+        ],
+      },
+    ])
+    expect(historyMessages({ role: 'person', text: 'Hvala', parts: [] }, 0)).toEqual([
+      { role: 'user', content: 'Hvala' },
+    ])
+  })
+})
+
+describe('what the person reads (browser review, 2 November 2026)', () => {
+  const own = new Set(pieces.map(({ id }) => id))
+  const first = PieceId.make('pc_navytrousers0000000000')
+  const second = PieceId.make('pc_whitetee00000000000000')
+  // The chat as the review had it: a Slovenian question answered with pieces, then a question in English.
+  const history = [
+    { role: 'person', text: 'Kaj naj oblečem nocoj za večerjo v Ljubljani?', parts: [] },
+    {
+      role: 'styld',
+      text: 'Predlagam belo majico in temnomodre hlače.',
+      parts: [{ _tag: 'Pieces', pieceIds: [first, second] }],
+    },
+    { role: 'person', text: 'Which jacket should I wear over that outfit if it is cold?', parts: [] },
+  ] as const
+  // DeepSeek's answer on the preview, in kind: a note to itself on the language, the pieces as a written note (one of
+  // them not the person's) instead of pieces_show, and a Chinese word inside English.
+  const drafted = [
+    'For a cold evening, the grey knit over the white tee works well with the navy trousers.',
+    'Slovene answer maybe? User wrote in Slovene first, then English. Last message in English, so reply in English.',
+    'You don’t own a真正 waterproof rain shell, so keep an umbrella handy.',
+    `[shown: pc_greyknit00000000000000, pc_someoneelse00000000000, ${pieces[0]?.id ?? ''}]`,
+  ].join('\n\n')
+
+  test('a reply that drafts aloud, writes its pieces as a note and slips script reads as finished advice', async () => {
+    const { replied, asked } = replyWith(
+      [saying(fixture('deepseek-step-2.json'), drafted)],
+      6,
+      history.flatMap((message, index) => historyMessages(message, index)),
+    )
+    const { reply, parts } = await replied
+    const finished = finishedReply(reply, parts, own)
+    expect(finished.text).toBe(
+      [
+        'For a cold evening, the grey knit over the white tee works well with the navy trousers.',
+        'You don’t own a waterproof rain shell, so keep an umbrella handy.',
+      ].join('\n\n'),
+    )
+    // The note's pieces show as cards: only the person's own, each once; the earlier reply's pieces went back as a
+    // pieces_show call, so the model read no note to copy.
+    expect(finished.parts).toEqual([{ _tag: 'Pieces', pieceIds: ['pc_greyknit00000000000000', pieces[0]?.id] }])
+    const sent = JSON.stringify(asked[0]?.['messages'])
+    expect(sent).not.toContain('[shown')
+    expect(sent).toContain('"name":"pieces_show"')
+    expect(JSON.stringify(asked[0]?.['messages'])).toContain('"role":"tool"')
+  })
+
+  test('pieces already shown are not shown twice, and a note naming none of theirs shows nothing', () => {
+    const shown = [{ _tag: 'Pieces', pieceIds: [first] }] as const
+    expect(finishedReply(`Wear it.\n\n[shown: ${first}]`, shown, own)).toEqual({ text: 'Wear it.', parts: shown })
+    expect(finishedReply('Wear it. [shown: pc_someoneelse00000000000]', [], own)).toEqual({
+      text: 'Wear it.',
+      parts: [],
+    })
+  })
+
+  test('a note still being written is hidden while the reply is shown in progress', () => {
+    const { text } = finishedReply('Try the knit.\n\n[shown: pc_greykn', [], own)
+    expect(text).toBe('Try the knit.')
   })
 })

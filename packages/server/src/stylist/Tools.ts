@@ -46,14 +46,17 @@ export const modelSchema = (schema: object): { readonly schema: JsonSchema; read
   }
 }
 
+/** The most pieces one reply's `pieces_show` shows. */
+export const showLimit = 8
+
 const ShowPieces = Schema.Struct({
-  pieceIds: Schema.Array(Schema.String).check(Schema.isMinLength(1), Schema.isMaxLength(8)),
+  pieceIds: Schema.Array(Schema.String).check(Schema.isMinLength(1), Schema.isMaxLength(showLimit)),
 })
 const decodeShowPieces = Schema.decodeUnknownOption(ShowPieces)
 
 const showPiecesSchema: JsonSchema = {
   type: 'object',
-  properties: { pieceIds: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: 8 } },
+  properties: { pieceIds: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: showLimit } },
   required: ['pieceIds'],
   additionalProperties: false,
 }

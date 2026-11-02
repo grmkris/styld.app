@@ -1,5 +1,5 @@
 import { Clock, Effect, Ref, Stream } from 'effect'
-import { Chat, type Tool, type Toolkit } from 'effect/ai'
+import { Chat, type Prompt, type Tool, type Toolkit } from 'effect/ai'
 
 /** How often the reply so far is reported while it is written. */
 const progressEvery = 250
@@ -51,7 +51,7 @@ const endsReply = (text: string, calls: ReadonlyArray<string>, showing: Readonly
  * says something. */
 export const runTurn = <Tools extends Record<string, Tool.Any>>(input: {
   readonly system: string
-  readonly history: ReadonlyArray<{ readonly role: 'person' | 'styld'; readonly text: string }>
+  readonly history: ReadonlyArray<Prompt.MessageEncoded>
   readonly toolkit: Toolkit.WithHandler<Tools>
   readonly maxSteps: number
   readonly showing: ReadonlySet<string>
@@ -59,14 +59,7 @@ export const runTurn = <Tools extends Record<string, Tool.Any>>(input: {
   readonly progress: (text: string) => Effect.Effect<void>
 }) =>
   Effect.gen(function* () {
-    const chat = yield* Chat.fromPrompt([
-      { role: 'system', content: input.system },
-      ...input.history.map((message) =>
-        message.role === 'person'
-          ? ({ role: 'user', content: message.text } as const)
-          : ({ role: 'assistant', content: message.text } as const),
-      ),
-    ])
+    const chat = yield* Chat.fromPrompt([{ role: 'system', content: input.system }, ...input.history])
     const said: Array<Said> = []
     const reported = yield* Ref.make(0)
     const report = (text: string, force: boolean) =>

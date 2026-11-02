@@ -174,3 +174,21 @@ describe('a chat with tools', () => {
     }).pipe(Effect.provide(layer))
   })
 })
+
+describe('a reasoning model’s answer', () => {
+  for (const [shape, content] of [
+    ['between think tags', '<think>Slovene answer maybe? Reply in English.</think>\n\nWear the navy coat.'],
+    ['before a lone closing tag', 'Slovene answer maybe? Reply in English.\n</think>\n\nWear the navy coat.'],
+  ] as const)
+    it.effect(`leaves out its reasoning ${shape}, and never reads reasoning_content`, () => {
+      const { layer } = workersAi([
+        { choices: [{ message: { content, reasoning_content: 'The user wrote in Slovene first.' } }] },
+      ])
+      return Effect.gen(function* () {
+        const answer = yield* Effect.flatMap(LanguageModel.LanguageModel, (model) =>
+          model.generateText({ prompt: 'What to wear?' }),
+        )
+        expect(answer.text).toBe('Wear the navy coat.')
+      }).pipe(Effect.provide(layer))
+    })
+})
