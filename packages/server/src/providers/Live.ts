@@ -22,7 +22,8 @@ import type { WardrobeBindings } from '../wardrobe/Parts.ts'
 // passes the live ones; the native test composition passes its fakes (`packages/server/test/fakes/`). Nothing in here
 // reads the environment.
 
-/** What the application's provider layer gives it. */
+/** What the application's provider layer gives it.
+ * @internal Exported for its tests. */
 export type ProviderServices =
   | Garments
   | GarmentVision
@@ -37,7 +38,8 @@ export type ProviderServices =
   | Thinking
   | WorkersAi
 
-/** What providers are built over: the Worker's own bindings, its call counter and its deployment's secrets. */
+/** What providers are built over: the Worker's own bindings, its call counter and its deployment's secrets.
+ * @internal Exported for its tests. */
 export interface ProviderBindings {
   /** Workers AI over the Worker's `AI` binding. */
   readonly workersAi: WorkersAiCalls
@@ -59,7 +61,8 @@ export interface WorkersAiCalls {
 }
 
 /** The providers from their Workers AI calls and their HTTP clients' fetch and addresses. The native composition
- * builds these over its fixture Worker, then lays its fakes over the ones it replaces. */
+ * builds these over its fixture Worker, then lays its fakes over the ones it replaces.
+ * @internal Exported for its tests. */
 export const providersOver = (
   bindings: ProviderBindings,
   calls: WorkersAiCalls,

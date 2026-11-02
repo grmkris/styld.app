@@ -7,7 +7,7 @@ import { nowDate } from '../kernel/Db.ts'
 
 /** Settle the hold of a capture that ended, by how it ended: one in the tray or done consumes it, one that failed
  * or whose answer was lost refunds it. The first settlement stands, so settling again on every redelivery is safe. */
-export const settleEnded = (parts: Parts, capture: CaptureRow) =>
+const settleEnded = (parts: Parts, capture: CaptureRow) =>
   Effect.gen(function* () {
     const ending = endingOf(capture.status)
     // A garment offered from an outfit photo holds nothing: its photo paid.

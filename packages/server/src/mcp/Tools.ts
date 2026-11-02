@@ -41,7 +41,7 @@ const filled = (text: string, error: Refusal) =>
   })
 
 /** Every refusal as the tool error its guide declares: one mapping for every tool. */
-export const toolErrorOf = (error: Refusal): ToolError => {
+const toolErrorOf = (error: Refusal): ToolError => {
   if (error instanceof ToolError) return error
   const guide = guideOf(error)
   return new ToolError({
@@ -169,7 +169,7 @@ export const renderTools = <R>(tools: ReadonlyArray<Tool<R>>) =>
 const json = (value: unknown) => [{ type: 'text' as const, text: JSON.stringify(value) }]
 
 /** A success: the same JSON as text and, for objects, as structured content. */
-export const textAndStructured = (value: unknown): CallToolResult => {
+const textAndStructured = (value: unknown): CallToolResult => {
   if (value instanceof ViewResult)
     return { content: json(value.value), structuredContent: { ...value.value }, _meta: { ...value.meta } }
   return Predicate.isObject(value) && !Array.isArray(value)

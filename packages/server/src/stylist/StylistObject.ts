@@ -17,14 +17,14 @@ export interface StoredMessage {
 
 /** How a message to Styld began: a new reply, the same one again (the request was repeated), refused while another
  * reply is being written, or for a chat that is not there. */
-export type Begun =
+type Begun =
   | { readonly outcome: 'started'; readonly chatId: string }
   | { readonly outcome: 'replayed'; readonly chatId: string }
   | { readonly outcome: 'busy' }
   | { readonly outcome: 'missing' }
 
 /** A reply as the queue reads it: its chat so far and the language to answer in. */
-export type TurnInput =
+type TurnInput =
   | { readonly found: false }
   | {
       readonly found: true
@@ -33,7 +33,7 @@ export type TurnInput =
       readonly messages: ReadonlyArray<StoredMessage>
     }
 
-export interface StoredChat {
+interface StoredChat {
   readonly id: string
   readonly title: string
   readonly messages: ReadonlyArray<StoredMessage>
@@ -41,7 +41,7 @@ export interface StoredChat {
   readonly replying?: { readonly state: 'writing' | 'failed'; readonly text: string; readonly parts: string }
 }
 
-export interface BeginInput {
+interface BeginInput {
   readonly turnId: string
   readonly chatId: string
   readonly newChat: boolean
@@ -53,7 +53,7 @@ export interface BeginInput {
   readonly patience: number
 }
 
-export interface FinishInput {
+interface FinishInput {
   readonly turnId: string
   readonly outcome: 'done' | 'failed'
   readonly text: string
@@ -62,7 +62,7 @@ export interface FinishInput {
   readonly now: number
 }
 
-export interface ChatRow {
+interface ChatRow {
   readonly id: string
   readonly title: string
   readonly updated_at: number

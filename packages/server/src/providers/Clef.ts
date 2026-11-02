@@ -406,7 +406,7 @@ const alsoWorn = 0.35
 
 /** The answers as a suggestion a person confirms: the type with how sure the model is of its group, a second colour
  * only when the model is fairly sure of it, and every occasion it gives a fair share. */
-export const suggestionOf = (answer: Answer): Suggestion => {
+const suggestionOf = (answer: Answer): Suggestion => {
   const typed = choiceOf(answer, 'type')
   const type = Option.flatMap(typed, ({ choice }) => decodeType(choice))
   const confidence = Option.match(Option.all([typed, type]), {

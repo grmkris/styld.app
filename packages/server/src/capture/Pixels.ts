@@ -2,7 +2,7 @@ import { refused } from '../providers/Errors.ts'
 import { type Box, crop, readPng, type Rgba } from '@styld/imaging'
 import { Effect } from 'effect'
 
-export { type Box, crop, decodePng, encodePng, opaqueBounds, type Rgba } from '@styld/imaging'
+export { type Box, encodePng, type Rgba } from '@styld/imaging'
 
 /** A one-bit mask covering `bounds` of a picture: one byte a pixel, non-zero inside the garment. */
 export interface Mask {
@@ -32,7 +32,8 @@ export const overlapShare = (mask: Mask, other: Mask) => {
 export const decodedPng = (bytes: Uint8Array) =>
   Effect.fromOption(readPng(bytes)).pipe(Effect.mapError(() => refused('cloudflare-images')))
 
-/** The garment alone: the original pixels inside `mask`, transparent elsewhere, cropped to the mask's box. */
+/** The garment alone: the original pixels inside `mask`, transparent elsewhere, cropped to the mask's box.
+ * @internal Exported for its tests. */
 export const cutOut = (picture: Rgba, mask: Mask): Rgba => {
   const piece = crop(picture, mask.bounds)
   const maskWidth = mask.bounds.right - mask.bounds.left
@@ -54,7 +55,8 @@ export const opaqueShare = (picture: Rgba, threshold = 16): number => {
 }
 
 /** A mask moved into another picture's pixels: turned a quarter clockwise when the two disagree on
- * portrait or landscape (a phone video's rotation flag), then scaled to the picture's size. */
+ * portrait or landscape (a phone video's rotation flag), then scaled to the picture's size.
+ * @internal Exported for its tests. */
 export const fitMask = (
   mask: Mask,
   from: { readonly width: number; readonly height: number },

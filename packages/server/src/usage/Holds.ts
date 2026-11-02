@@ -25,7 +25,8 @@ export const holdId = (kind: HoldKind, entityId: string, attempt: number): HoldI
 /** How work that held credits ended. */
 export type Ending = 'succeeded' | 'failed' | 'unknown'
 
-/** The one settlement policy: only work that succeeded is paid for. */
+/** The one settlement policy: only work that succeeded is paid for.
+ * @internal Exported for its tests. */
 export const settlementOf = (ending: Ending) => (ending === 'succeeded' ? 'consumed' : 'refunded')
 
 /** Credits to hold for one attempt at paid work. */

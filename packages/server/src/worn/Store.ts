@@ -30,5 +30,3 @@ export const wornStore = (db: Database['Service']) => {
       query(() => db.delete(wornPieces).where(ofDay(accountId, day))).pipe(Effect.asVoid),
   }
 }
-
-export type WornStore = ReturnType<typeof wornStore>

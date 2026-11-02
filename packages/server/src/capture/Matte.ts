@@ -21,7 +21,7 @@ export interface EdgeSettings {
   readonly sharpness: number
 }
 
-export const edgeSettings: EdgeSettings = { band: 3, radius: 4, epsilon: 0.0025, sharpness: 3 }
+const edgeSettings: EdgeSettings = { band: 3, radius: 4, epsilon: 0.0025, sharpness: 3 }
 
 /** Parts of a garment smaller than this share of its largest part are specks, and holes smaller than this
  * share of the garment are pinholes; a hole a hand left is far larger and stays. */

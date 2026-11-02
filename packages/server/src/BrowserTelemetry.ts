@@ -8,8 +8,9 @@ import { networkOf } from './kernel/Pacing.ts'
 /** The browser SDK posts to `${origin}/api/telemetry` with a declared length; bodies above
  * this, or without a length, are refused unread. Large enough for a buffer that built up
  * while the relay was unreachable, so the client can drain it instead of retrying forever. */
-export const maxBodyBytes = 1024 * 1024
-/** At most this many spans of one request are logged; the rest and invalid spans are counted. */
+const maxBodyBytes = 1024 * 1024
+/** At most this many spans of one request are logged; the rest and invalid spans are counted.
+ * @internal Exported for its tests. */
 export const maxSpansPerRequest = 100
 const maxText = 256
 const maxStack = 2048
@@ -39,6 +40,7 @@ const Span = Schema.Struct({
   ),
   status: Schema.optional(Schema.Struct({ code: Schema.optional(Schema.Int) })),
 })
+/** @internal Exported for its tests. */
 export type BrowserSpan = typeof Span.Type
 /** The OTLP/JSON envelope; spans are decoded one by one so an invalid span cannot sink a batch. */
 const TraceEnvelope = Schema.Struct({
@@ -47,7 +49,8 @@ const TraceEnvelope = Schema.Struct({
   ),
 })
 
-/** Spans of a trace export, skipping (and counting) invalid ones; `None` for a malformed envelope. */
+/** Spans of a trace export, skipping (and counting) invalid ones; `None` for a malformed envelope.
+ * @internal Exported for its tests. */
 export const decodeTraceExport = (
   body: unknown,
 ): Option.Option<{ readonly spans: ReadonlyArray<BrowserSpan>; readonly invalid: number }> =>
@@ -79,6 +82,7 @@ const allowed: ReadonlyMap<string, number> = new Map([
 ])
 
 type Field = string | number | boolean
+/** @internal Exported for its tests. */
 export type BrowserSpanRecord = Readonly<Record<string, Field>>
 
 const safeName = (name: string): string => name.replaceAll(/[^\w .:/@-]/g, '_').slice(0, 128)
@@ -103,7 +107,8 @@ const copyAllowed = (record: Record<string, Field>, attributes: ReadonlyArray<ty
 const durationMs = (start: string | number, end: string | number): number =>
   Math.max(0, Number((BigInt(end) - BigInt(start)) / 1_000_000n))
 
-/** One bounded, allowlisted log record per browser span, capped per request. */
+/** One bounded, allowlisted log record per browser span, capped per request.
+ * @internal Exported for its tests. */
 export const browserSpanRecords = (spans: ReadonlyArray<BrowserSpan>): ReadonlyArray<BrowserSpanRecord> =>
   spans.slice(0, maxSpansPerRequest).map((span) => {
     const record: Record<string, Field> = {

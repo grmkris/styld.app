@@ -34,12 +34,13 @@ export const runSweeps = Effect.fn('Styld.Sweeps.run')(function* (sweeps: Readon
   )
 })
 
-/** The most rows one sweep moves. */
+/** The most rows one sweep moves.
+ * @internal Exported for its tests. */
 export const sweepBatch = 50
 
 /** How long a row may sit in a working state before nothing will move it: every queue gives a job up well within
  * this (three or four deliveries, seconds apart), and the slowest provider work (a turn, 15 minutes) too. */
-export const stuckAfter = Duration.minutes(30)
+const stuckAfter = Duration.minutes(30)
 
 /** A turn's video waits this long for the owner's browser to cut it into frames. */
 export const unbuiltAfter = Duration.hours(2)
@@ -49,7 +50,7 @@ export const before = (patience: Duration.Duration) =>
   Effect.map(DateTime.now, (now) => DateTime.toDateUtc(DateTime.subtractDuration(now, patience)))
 
 /** Hand each stuck row to its owner; one that cannot be moved now is logged and left for the next sweep. */
-export const sweepEach = <A, R>(rows: ReadonlyArray<A>, move: (row: A) => Effect.Effect<unknown, unknown, R>) =>
+const sweepEach = <A, R>(rows: ReadonlyArray<A>, move: (row: A) => Effect.Effect<unknown, unknown, R>) =>
   Effect.as(
     Effect.forEach(rows, (row) => move(row).pipe(Effect.ignore({ log: true, message: 'Styld.Sweep left a row' })), {
       discard: true,
@@ -59,7 +60,8 @@ export const sweepEach = <A, R>(rows: ReadonlyArray<A>, move: (row: A) => Effect
 
 const ids = (rows: ReadonlyArray<{ readonly id: string }>) => rows.map(({ id }) => id)
 
-/** The rows stuck in a working state since before a moment, oldest first: read here, moved by their owners. */
+/** The rows stuck in a working state since before a moment, oldest first: read here, moved by their owners.
+ * @internal Exported for its tests. */
 export const stuckRows = (db: Database['Service']) => ({
   pieces: (until: Date) =>
     query(() =>

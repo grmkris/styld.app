@@ -14,6 +14,7 @@ interface Pace {
   readonly perMinute: number
 }
 
+/** @internal Exported for its tests. */
 export const paces = {
   // Network paces, keyed by the visitor's address (`networkOf`).
   /** The browser telemetry relay is unauthenticated; the SDK flushes about twice every 5 seconds per tab. */

@@ -26,11 +26,17 @@ export default {
       ignoreExportsUsedInFile: true,
     },
     ...Object.fromEntries(
-      ['auth', 'domain', 'observability', 'server'].map((name) => [
+      ['auth', 'domain', 'observability'].map((name) => [
         `packages/${name}`,
         { project: ['src/**/*.ts!', 'test/**/*.ts'] },
       ]),
     ),
+    // The API Worker and the stack's resources are the package's exports; the edge Worker is a stack's `main` by path.
+    // An export only a unit test or the native fakes use is tagged `@internal`, which production mode allows.
+    'packages/server': {
+      entry: ['src/EdgeWorker.ts!', 'test/**/*.test.ts'],
+      project: ['src/**/*.ts!', 'test/**/*.ts'],
+    },
     'packages/db': { project: ['src/**/*.ts!'] },
     'packages/imaging': { project: ['src/**/*.ts!'] },
     'packages/i18n': { project: ['src/**/*.ts!'] },

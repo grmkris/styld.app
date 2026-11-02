@@ -76,7 +76,8 @@ export const UploadRows = {
 }
 
 /** Which of these stored objects the account still shows: as a piece's photo, image or back, or as an open detection's
- * photo, cut-out or back in the tray. The one in-use check: an object goes only when nothing shows it. */
+ * photo, cut-out or back in the tray. The one in-use check: an object goes only when nothing shows it.
+ * @internal Exported for its tests. */
 export const keysInUse = (db: Database['Service'], accountId: string, keys: ReadonlyArray<string>) =>
   Effect.map(
     // Each key is bound three times, so a chunk holds 30 of them.
@@ -239,7 +240,8 @@ const queueQueries = (db: Database['Service']) => ({
 })
 
 /** The wardrobe's rows in D1. Every read and write of a person's rows names their account, so
- * one account can never reach another's pieces. */
+ * one account can never reach another's pieces.
+ * @internal Exported for its tests. */
 export const makeStore = (db: Database['Service']) => ({
   ...uploadQueries(db),
   ...pictureQueries(db),

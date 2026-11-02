@@ -53,7 +53,8 @@ const line = (ref: string, piece: Wearable) =>
     .filter((part) => part !== null)
     .join('; ')
 
-/** The request's messages, and the refs they gave the pieces. */
+/** The request's messages, and the refs they gave the pieces.
+ * @internal Exported for its tests. */
 export const proposalMessages = (request: Brief, count: number) => {
   const fixedIds = new Set<string>(request.fixed.map(({ id }) => id))
   const pieces = [...request.fixed, ...request.wardrobe.filter(({ id }) => !fixedIds.has(id))].slice(0, mostSent)
@@ -85,7 +86,8 @@ export const proposalMessages = (request: Brief, count: number) => {
   return { messages, pieceOf }
 }
 
-/** The model's outfits kept to the rules: the request's own pieces, new combinations only, once each. */
+/** The model's outfits kept to the rules: the request's own pieces, new combinations only, once each.
+ * @internal Exported for its tests. */
 export const keptProposals = (
   request: Brief,
   answer: typeof Answer.Type,
@@ -101,6 +103,7 @@ export const keptProposals = (
   return [...kept.values()]
 }
 
+/** @internal Exported for its tests. */
 export const nothingKept = () => refused('workers-ai')
 
 /** Thinking: proposals from a language model, kept to the rules; none kept is a refusal. */

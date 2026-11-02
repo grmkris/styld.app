@@ -8,7 +8,7 @@ import { findMoov, metadataRanges, videoFrameCount } from './VideoContainer.ts'
 import { nowDate } from '../kernel/Db.ts'
 
 /** Another delivery of the same capture already handed the video to Meta; this one stops. */
-export class TrackingClaimed extends Schema.TaggedError<TrackingClaimed>()('TrackingClaimed', {}) {}
+class TrackingClaimed extends Schema.TaggedError<TrackingClaimed>()('TrackingClaimed', {}) {}
 
 /** The clip's frame count and the byte ranges of its metadata, read from its container in the bucket. */
 const readContainer = (parts: Parts, capture: CaptureRow) =>

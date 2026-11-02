@@ -29,7 +29,7 @@ interface Candidate {
 }
 
 /** Reorder so that no more than `run` items of one person come in a row, keeping the order otherwise. */
-export const interleaved = <A>(items: ReadonlyArray<A>, personOf: (item: A) => string, run = maxRun): Array<A> => {
+const interleaved = <A>(items: ReadonlyArray<A>, personOf: (item: A) => string, run = maxRun): Array<A> => {
   const waiting = [...items]
   const placed: Array<A> = []
   while (waiting.length > 0) {

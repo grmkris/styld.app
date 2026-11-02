@@ -79,7 +79,7 @@ const turnHold = (turn: Pick<TurnRow, 'pieceId' | 'attempt'>) => holdId('turn', 
 
 /** A turn's credits, once it ended: consumed for a turn the owner can play, refunded otherwise. The first settlement
  * stands, so settling an ended turn again is safe. */
-export const settleTurn = (parts: Parts, pieceId: string) =>
+const settleTurn = (parts: Parts, pieceId: string) =>
   Effect.gen(function* () {
     const found = yield* storedAs(parts.store.findTurn(pieceId))
     if (Option.isNone(found) || !hasEnded(found.value.state)) return

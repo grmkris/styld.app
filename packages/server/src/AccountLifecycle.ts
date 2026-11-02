@@ -132,6 +132,7 @@ export class AccountLifecycle extends Context.Service<AccountLifecycle, Effect.S
   )
 }
 
+/** @internal Exported for its tests. */
 export const makeAccountLifecycle = (
   bindings: LifecycleBindings,
   forgetChats: (accountId: string) => Effect.Effect<void, unknown>,

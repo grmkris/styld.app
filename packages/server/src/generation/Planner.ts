@@ -28,9 +28,10 @@ export interface PlanRequest {
   readonly wardrobe: ReadonlyArray<Wearable>
 }
 
-/** The most pieces a mood board picks, and the fewest that make one. */
+/** The most pieces a mood board picks, and the fewest that make one.
+ * @internal Exported for its tests. */
 export const mostPicks = 12
-export const fewestPicks = 2
+const fewestPicks = 2
 
 /** The planner's model: Llama 3.3 70B, which planned the owner's boards since 31 October. */
 const planner: TextTask = { model: textModels.llama70b, kind: 'plan', deadline: deadlines.chat }
@@ -58,7 +59,7 @@ const instructions = [
 ].join(' ')
 
 /** The plan's request: the sentence and the person's pieces, one short line each. */
-export const planPrompt = (request: PlanRequest) => [
+const planPrompt = (request: PlanRequest) => [
   { role: 'system' as const, content: instructions },
   {
     role: 'user' as const,
@@ -72,7 +73,8 @@ export const planPrompt = (request: PlanRequest) => [
 
 const isMood = Schema.is(Mood)
 
-/** The model's answer, kept to what a plan may hold: the person's own pieces, once each, and moods from the list. */
+/** The model's answer, kept to what a plan may hold: the person's own pieces, once each, and moods from the list.
+ * @internal Exported for its tests. */
 export const planOf = (answer: Answered, request: PlanRequest): Option.Option<Plan> => {
   const refs = new Set(request.wardrobe.map(({ ref }) => ref))
   const picks = [...new Set(answer.picks.filter((ref) => refs.has(ref)))].slice(0, mostPicks)

@@ -59,7 +59,8 @@ const isPublicHost = (hostname: string) =>
   hostname !== 'localhost' &&
   !privateSuffixes.some((suffix) => hostname.endsWith(suffix))
 
-/** Only public https on the default port: no other schemes, ports, credentials or private hosts in the address. */
+/** Only public https on the default port: no other schemes, ports, credentials or private hosts in the address.
+ * @internal Exported for its tests. */
 export const allowedUrl = (text: string, base?: URL): Option.Option<URL> => {
   const url = URL.parse(text, base)
   if (url === null) return Option.none()
@@ -145,7 +146,8 @@ export const publicClient = HttpClient.HttpClient.pipe(
   ),
 )
 
-/** Fetch a photo an assistant points at. */
+/** Fetch a photo an assistant points at.
+ * @internal Exported for its tests. */
 export const importImage = Effect.fn('Styld.Mcp.importImage')(function* (address: string) {
   const { response } = yield* fetchPublic(address, 'image/*')
   return yield* photoFrom(response)

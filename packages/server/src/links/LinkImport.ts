@@ -95,7 +95,8 @@ const productOf = (html: string) =>
       .find(isProduct),
   )
 
-/** What a product page says about itself, read from its HTML; its picture's address is made absolute on the page. */
+/** What a product page says about itself, read from its HTML; its picture's address is made absolute on the page.
+ * @internal Exported for its tests. */
 export const productFrom = (html: string, page: URL): Option.Option<ProductPage> => {
   const product = productOf(html)
   const image = Option.flatMap(product, (node) => imageOf(node['image'])).pipe(

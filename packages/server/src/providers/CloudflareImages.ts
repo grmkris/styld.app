@@ -18,7 +18,8 @@ const streamOf = (bytes: Uint8Array) =>
   // SAFETY: a Response body is the Worker runtime's own ReadableStream -- the server package types globals with the DOM lib and the Images binding with workers-types
   new Response(bytes.slice().buffer).body as never
 
-/** The width and height a PNG declares in its IHDR chunk. */
+/** The width and height a PNG declares in its IHDR chunk.
+ * @internal Exported for its tests. */
 export const pngSize = (png: Uint8Array) => {
   const view = new DataView(png.buffer, png.byteOffset, png.byteLength)
   return png.byteLength >= 24 ? { width: view.getUint32(16), height: view.getUint32(20) } : { width: 0, height: 0 }

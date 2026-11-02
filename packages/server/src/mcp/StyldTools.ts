@@ -52,7 +52,8 @@ export interface ToolServices {
  * few of them. */
 export type AssistantTools = ReturnType<typeof styldTools>
 
-/** Styld's MCP tools: thin projections of the same reads and writes the website uses. */
+/** Styld's MCP tools: thin projections of the same reads and writes the website uses.
+ * @internal Exported for its tests. */
 export const styldTools = (
   origin: string,
   {

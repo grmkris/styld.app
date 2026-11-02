@@ -9,7 +9,7 @@ import { Cause, Effect, Exit, Option, Predicate, Schema, Stream } from 'effect'
 // Each delivery writes one structured log line, and is its own span with the job it carries.
 
 /** The queues the API Worker consumes. */
-export type QueueName = 'pieces' | 'checks' | 'generation' | 'stylist'
+type QueueName = 'pieces' | 'checks' | 'generation' | 'stylist'
 
 /** A queue body: one tagged case of its union. */
 export interface Tagged {
@@ -31,7 +31,8 @@ export interface JobQueue<Body extends Tagged> {
 export const defineQueue = <Body extends Tagged>(queue: JobQueue<Body>) => queue
 
 /** What Cloudflare is told: `maxRetries` counts retries after the first delivery, so the queue delivers `attempts`
- * times to run the work and once more if giving it up failed. */
+ * times to run the work and once more if giving it up failed.
+ * @internal Exported for its tests. */
 export const consumerSettings = (queue: Pick<JobQueue<Tagged>, 'attempts' | 'batchSize' | 'retryDelay'>) => ({
   batchSize: queue.batchSize,
   maxRetries: queue.attempts,
@@ -39,7 +40,7 @@ export const consumerSettings = (queue: Pick<JobQueue<Tagged>, 'attempts' | 'bat
 })
 
 /** One kind of job: the work a delivery runs (with its 1-based attempt), and what giving up on it does. */
-export interface Job<Body> {
+interface Job<Body> {
   readonly run: (body: Body, attempt: number) => Effect.Effect<unknown, unknown>
   readonly giveUp: (body: Body) => Effect.Effect<unknown, unknown>
 }
@@ -50,7 +51,7 @@ export type JobsOf<Body extends Tagged> = {
 }
 
 /** How a delivery ended. */
-export type Outcome = 'done' | 'retry' | 'gave-up' | 'dropped'
+type Outcome = 'done' | 'retry' | 'gave-up' | 'dropped'
 
 /** How one delivery settled, and why when it failed. */
 interface Settled {
@@ -74,7 +75,7 @@ const jobFor = <Body extends Tagged>(jobs: JobsOf<Body>, body: Body): [string, J
 }
 
 /** Run one delivery and decide how it settles: the one policy every queue shares. */
-export const settle = Effect.fnUntraced(function* <Body extends Tagged>(
+const settle = Effect.fnUntraced(function* <Body extends Tagged>(
   queue: JobQueue<Body>,
   jobs: JobsOf<Body>,
   body: unknown,
@@ -92,7 +93,8 @@ export const settle = Effect.fnUntraced(function* <Body extends Tagged>(
   return yield* givenUp(job, decoded.value, kind, true)
 })
 
-/** Consume one delivery of the queue: settled once, by `settle`, with one log line and a span of its own. */
+/** Consume one delivery of the queue: settled once, by `settle`, with one log line and a span of its own.
+ * @internal Exported for its tests. */
 export const consume =
   <Body extends Tagged>(queue: JobQueue<Body>, base: ObservabilityBase, jobs: JobsOf<Body>) =>
   (message: Cloudflare.Queues.Message) =>
@@ -126,7 +128,7 @@ export type Delivering<R> = (
 ) => Effect.Effect<void, unknown, Cloudflare.Workers.WorkerEnvironment>
 
 /** The queue resource a consumer is declared on. */
-export type QueueResource = Parameters<typeof Cloudflare.Queues.consumeQueueMessages>[0]
+type QueueResource = Parameters<typeof Cloudflare.Queues.consumeQueueMessages>[0]
 
 /** A queue a module consumes: its jobs come from the application's services on each delivery. */
 export interface Consumer<R> {

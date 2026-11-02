@@ -27,7 +27,7 @@ export interface Cut {
 const { garments: bars } = capturePolicy
 
 /** Whether a photo shows any part of a person. */
-export const showsPerson = (route: Route) => route.person >= capturePolicy.person
+const showsPerson = (route: Route) => route.person >= capturePolicy.person
 
 /** Whether a photo for the tray is about one piece held up or shown: a camera shot, or a person in the picture, whose
  * worn clothes are offered unticked. Pieces laid out are all the subject, even with a hand at the edge or from the
@@ -49,7 +49,7 @@ export const cutterFor = (intent: 'tray' | 'piece', route: Route): 'none' | 'clo
 
 /** What SAM is asked for besides clothing: "clothing" misses shoes, bags and hats (capture brainstorm, 30 October).
  * Each is one more call. */
-export const morePrompts = ['shoes', 'bag', 'hat'] as const
+const morePrompts = ['shoes', 'bag', 'hat'] as const
 type MorePrompt = (typeof morePrompts)[number]
 
 /** The prompt that finds a piece of this kind, when clothing would miss it. */
@@ -150,7 +150,8 @@ export const pieceOfKind = <A extends Pick<Cut, 'track'>>(
 
 /** The pieces grouped into pairs: two of one pair kind (`kindOf`), the smaller at least `pairArea` of the larger,
  * each paired with the unpaired one nearest its size; every other piece on its own. Groups keep the order of their
- * first piece, so the largest still comes first. */
+ * first piece, so the largest still comes first.
+ * @internal Exported for its tests. */
 export const pairsOf = <A extends Pick<Cut, 'area'>>(
   pieces: ReadonlyArray<A>,
   kindOf: (piece: A) => Option.Option<string>,
@@ -179,7 +180,8 @@ export const pairsOf = <A extends Pick<Cut, 'area'>>(
   return groups
 }
 
-/** Two cuts of one picture as one: both garments in one cut-out, over the box that holds both. */
+/** Two cuts of one picture as one: both garments in one cut-out, over the box that holds both.
+ * @internal Exported for its tests. */
 export const joined = <A extends Cut>(one: A, other: A): A => {
   const bounds = {
     left: Math.min(one.bounds.left, other.bounds.left),

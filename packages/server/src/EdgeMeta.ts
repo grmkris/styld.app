@@ -31,7 +31,8 @@ const entities: Readonly<Record<string, string>> = {
   "'": '&#39;',
 }
 
-/** Text made safe inside a quoted HTML attribute. */
+/** Text made safe inside a quoted HTML attribute.
+ * @internal Exported for its tests. */
 export const escaped = (text: string): string => text.replace(/[&<>"']/gu, (character) => entities[character] ?? '')
 
 /** The head's tags for a preview of the page at `url`: description, Open Graph, Twitter's card and the canonical

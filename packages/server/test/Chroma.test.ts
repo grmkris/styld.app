@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { chromaKey, flatten, keyColourFor, shrink, type Rgba } from '@styld/imaging'
 import { Option } from 'effect'
 import { describe, expect, test } from 'vitest'
-import { decodePng } from '../src/capture/Pixels.ts'
+import { decodePng } from '@styld/imaging'
 
 const fixture = (name: string) =>
   decodePng(new Uint8Array(readFileSync(new URL(`fixtures/capture/${name}`, import.meta.url))))

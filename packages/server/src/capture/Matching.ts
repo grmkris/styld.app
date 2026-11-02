@@ -19,7 +19,7 @@ const scopeOf = (capture: CaptureRow): MatchScope => ({
 })
 
 /** A stored cut-out as the decision model compares it; none when it is gone or is not a cut-out. */
-export const comparable = (parts: Parts, key: string | null) =>
+const comparable = (parts: Parts, key: string | null) =>
   key === null
     ? Effect.succeed(Option.none<Picture>())
     : Effect.map(

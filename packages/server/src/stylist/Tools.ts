@@ -6,7 +6,7 @@ import type { Tool as AssistantTool } from '../mcp/Tools.ts'
 
 /** The assistants' tools Styld uses: it reads the wardrobe and the saved looks, makes outfits, and saves a look when
  * asked. */
-export const stylistToolNames: ReadonlyArray<string> = [
+const stylistToolNames: ReadonlyArray<string> = [
   'piece_search',
   'piece_get',
   'outfit_make',
@@ -30,7 +30,8 @@ export const lookingUpToolNames: ReadonlySet<string> = new Set([
 export const showingToolNames: ReadonlySet<string> = new Set(['pieces_show'])
 
 /** A tool's input schema as the model sees it: without `operationId`, which the turn chooses for each call so a
- * retried reply saves once. */
+ * retried reply saves once.
+ * @internal Exported for its tests. */
 export const modelSchema = (schema: object): { readonly schema: JsonSchema; readonly operation: boolean } => {
   const whole: JsonSchema = { ...schema }
   if (!Predicate.hasProperty(schema, 'properties') || !Predicate.isObject(schema.properties)) {

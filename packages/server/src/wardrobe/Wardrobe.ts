@@ -44,10 +44,6 @@ import { deleting, once, type Operation } from '../kernel/Receipts.ts'
 import { identify, priorResult, receiptRow, type Identified } from '../kernel/Receipts.ts'
 import { keysUnder, Media } from '../kernel/Media.ts'
 
-/** A video's request body, as the Worker runtime streams it. */
-export type VideoBody =
-  Parameters<FixedLengthStream['writable']['getWriter']> extends [] ? Request['body'] & object : never
-
 /** An upload path stays valid this long after it is handed out. */
 const uploadLifetime = { minutes: 15 }
 

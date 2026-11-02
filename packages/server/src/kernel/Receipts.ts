@@ -41,7 +41,7 @@ export const identify = Effect.fnUntraced(function* (operation: Operation) {
 })
 
 /** The receipt stored under an account's operation id. */
-export const receiptQuery = (db: Database, accountId: string, operationId: string) =>
+const receiptQuery = (db: Database, accountId: string, operationId: string) =>
   db
     .select()
     .from(operationReceipts)
@@ -77,7 +77,7 @@ export const receiptRow = (operation: Identified, result: string) =>
 const unavailable = () => Unavailable.make({})
 
 /** A receipt answers repeats for this long; after it, the same operation id is a new operation. */
-export const receiptLifetime = Duration.days(30)
+const receiptLifetime = Duration.days(30)
 
 /** Forget receipts older than their lifetime, oldest first, a batch at a time; how many went. */
 export const forgetOldReceipts = (db: Database, limit: number) =>

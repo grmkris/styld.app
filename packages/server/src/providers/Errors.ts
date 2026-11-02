@@ -6,10 +6,10 @@ import { Predicate, Schema } from 'effect'
 // - OutcomeUnknown: the provider may have taken paid work and its answer was lost; sending it again could pay twice.
 // - Broken: the provider answered something Styld cannot read; the same request would read the same way.
 
-export class Refused extends Schema.TaggedError<Refused>()('Refused', {}) {}
-export class Busy extends Schema.TaggedError<Busy>()('Busy', {}) {}
-export class OutcomeUnknown extends Schema.TaggedError<OutcomeUnknown>()('OutcomeUnknown', {}) {}
-export class Broken extends Schema.TaggedError<Broken>()('Broken', {}) {}
+class Refused extends Schema.TaggedError<Refused>()('Refused', {}) {}
+class Busy extends Schema.TaggedError<Busy>()('Busy', {}) {}
+class OutcomeUnknown extends Schema.TaggedError<OutcomeUnknown>()('OutcomeUnknown', {}) {}
+class Broken extends Schema.TaggedError<Broken>()('Broken', {}) {}
 
 export class ProviderError extends Schema.TaggedError<ProviderError>()('ProviderError', {
   provider: Schema.String,

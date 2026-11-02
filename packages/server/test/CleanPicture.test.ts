@@ -6,7 +6,7 @@ import { gateFor, planFor } from '../src/capture/CleanPicture.ts'
 import { cleanPrompt } from '../src/capture/CleanPrompt.ts'
 import { CaptureMetrics } from '../src/kernel/Metrics.ts'
 import { makeMuseGenerator } from '../src/providers/Muse.ts'
-import { decodePng } from '../src/capture/Pixels.ts'
+import { decodePng } from '@styld/imaging'
 import { capturePolicy } from '../src/capture/Policy.ts'
 import type { DrawRequest } from '../src/capture/Providers.ts'
 

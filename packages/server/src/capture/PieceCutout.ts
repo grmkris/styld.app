@@ -14,7 +14,7 @@ const holdOf = (pieceId: string, of: CutSide) =>
   of.side === 'front' ? holdId('piece', pieceId, of.attempt) : holdId('back', of.uploadId, 0)
 
 /** Where a side's cut-out is stored: under the piece, so it goes with it. */
-export const cutoutKey = (accountId: string, pieceId: string, of: CutSide) =>
+const cutoutKey = (accountId: string, pieceId: string, of: CutSide) =>
   `${piecePrefix(accountId, pieceId)}${of.side === 'front' ? 'cutout' : `back-${of.uploadId}`}.png`
 
 /** Nothing to cut: the photo is gone, or no garment was found in it. The side keeps its photo, and its credit back. */

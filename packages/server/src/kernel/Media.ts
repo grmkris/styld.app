@@ -29,7 +29,7 @@ export interface Listing {
 }
 
 /** R2 did not answer; the operation may be retried. */
-export class MediaUnavailable extends Schema.TaggedError<MediaUnavailable>()('MediaUnavailable', {}) {}
+class MediaUnavailable extends Schema.TaggedError<MediaUnavailable>()('MediaUnavailable', {}) {}
 
 /** R2 deletes at most this many keys a call. */
 const deleteBatch = 1000

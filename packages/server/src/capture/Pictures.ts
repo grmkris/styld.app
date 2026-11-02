@@ -21,7 +21,7 @@ const margin = 0.03
 
 /** A stored cut-out's pixels: none when it is gone, or is a photo rather than a cut-out (no transparency), which
  * never leaves Styld. */
-export const cutoutAt = (parts: Parts, key: string | null) =>
+const cutoutAt = (parts: Parts, key: string | null) =>
   key === null
     ? Effect.succeed(Option.none<Rgba>())
     : readPixels(parts, key).pipe(Effect.map(Option.filter((picture) => opaqueShare(picture) < 0.98)))

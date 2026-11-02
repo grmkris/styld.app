@@ -29,7 +29,7 @@ class AuthHttpConfigurationError extends Schema.TaggedError<AuthHttpConfiguratio
   { reason: Schema.Literals(['session-keys', 'secret', 'proof-keys', 'request-binding-keys']) },
 ) {}
 
-export type AuthSessionKeyring = Sessions.SessionSigningKeyring
+type AuthSessionKeyring = Sessions.SessionSigningKeyring
 
 /** Auth's facts about the deployment: its public origin and its secrets (`Config.ts` decodes them). */
 export interface AuthSecrets {

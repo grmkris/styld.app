@@ -26,7 +26,7 @@ import { priorResult, type Identified } from '../kernel/Receipts.ts'
 export const unavailable = () => Unavailable.make({})
 export const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
 /** How many of its newest pins a board in a list shows. */
-export const coverPins = 4
+const coverPins = 4
 
 /** A stored item as the protocol shows it. */
 export const shownItem = (row: BoardItemRow) => {
@@ -77,7 +77,7 @@ export interface Parts {
 export type PinWithPiece = PinRow
 
 /** The looks these pins hold, by id. */
-export const pinnedLooks = (parts: Parts, pins: ReadonlyArray<PinWithPiece>) =>
+const pinnedLooks = (parts: Parts, pins: ReadonlyArray<PinWithPiece>) =>
   Effect.gen(function* () {
     const lookIds = [...new Set(pins.flatMap(({ pin }) => (pin.lookId === null ? [] : [pin.lookId])))]
     if (lookIds.length === 0) return new Map<string, Look>()
@@ -87,7 +87,7 @@ export const pinnedLooks = (parts: Parts, pins: ReadonlyArray<PinWithPiece>) =>
 
 /** A stored pin as the protocol shows it, to be decoded with its board; a pin whose piece, look or picture is
  * gone shows nothing. */
-export const shownPin = (row: PinWithPiece, looks: ReadonlyMap<string, Look>) =>
+const shownPin = (row: PinWithPiece, looks: ReadonlyMap<string, Look>) =>
   Effect.gen(function* () {
     const base = { id: row.pin.id, addedAt: row.pin.createdAt.toISOString() }
     const look = row.pin.lookId === null ? undefined : looks.get(row.pin.lookId)
@@ -102,7 +102,7 @@ export const shownPin = (row: PinWithPiece, looks: ReadonlyMap<string, Look>) =>
     return shownRow
   })
 
-export const shownPins = (parts: Parts, pins: ReadonlyArray<PinWithPiece>) =>
+const shownPins = (parts: Parts, pins: ReadonlyArray<PinWithPiece>) =>
   Effect.gen(function* () {
     const looks = yield* pinnedLooks(parts, pins)
     const shownRows = yield* Effect.forEach(pins, (row) =>

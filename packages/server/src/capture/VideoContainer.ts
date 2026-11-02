@@ -132,7 +132,8 @@ export const findMoov = async (
   return undefined
 }
 
-/** Find and read the `moov` box of a stored file, given a ranged reader and the file's size. */
+/** Find and read the `moov` box of a stored file, given a ranged reader and the file's size.
+ * @internal Exported for its tests. */
 export const readMoov = async (
   readRange: (offset: number, length: number) => Promise<Uint8Array>,
   size: number,

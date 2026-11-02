@@ -8,7 +8,8 @@ import { bestSightings, frameAt, type SampledStill } from '../src/capture/FrameR
 import { makeGarmentSegmenter } from '../src/providers/Meta.ts'
 import { analyticsEngine, CaptureMetrics } from '../src/kernel/Metrics.ts'
 import { cutterFor, holding, kindPrompt, pieceOfKind, verdictOf } from '../src/capture/GarmentRules.ts'
-import { type Box, cutOut, decodePng, encodePng, fitMask, opaqueBounds, type Rgba } from '../src/capture/Pixels.ts'
+import { decodePng, opaqueBounds } from '@styld/imaging'
+import { type Box, cutOut, encodePng, fitMask, type Rgba } from '../src/capture/Pixels.ts'
 import { lineFrame, lineFrameSize, makeOutputLines, stillMasks, videoMasks } from '../src/providers/SamStream.ts'
 import {
   blankRanges,

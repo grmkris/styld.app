@@ -28,6 +28,7 @@ export class ContentJudge extends Context.Service<
   { readonly judge: (content: Content) => Effect.Effect<Verdict, ProviderError> }
 >()('@styld/server/ContentJudge') {}
 
+/** @internal Exported for its tests. */
 export const passed: Verdict = { state: 'passed', reason: null, model: 'none' }
 const rank = { passed: 0, unsure: 1, failed: 2 } as const
 
@@ -38,6 +39,7 @@ export const worse = (left: Verdict, right: Verdict): Verdict => (rank[right.sta
 const addressesAssistant =
   /\b(ignore|disregard|forget)\b.{0,40}\b(instructions|previous|above|rules)\b|\bsystem prompt\b|\byou are (now )?(chatgpt|claude|an? (ai|assistant))\b/iu
 
+/** @internal Exported for its tests. */
 export const instructionsIn = (texts: ReadonlyArray<string>): Verdict =>
   texts.some((text) => addressesAssistant.test(text))
     ? { state: 'unsure', reason: 'instructions', model: 'styld' }

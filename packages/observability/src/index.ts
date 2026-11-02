@@ -40,7 +40,7 @@ const DeploymentIdentity = Schema.Struct({
   component: Schema.Literals(['server', 'web', 'edge']),
 })
 
-export class InvalidDeploymentIdentity extends Schema.TaggedError<InvalidDeploymentIdentity>()(
+class InvalidDeploymentIdentity extends Schema.TaggedError<InvalidDeploymentIdentity>()(
   'InvalidDeploymentIdentity',
   {},
 ) {}

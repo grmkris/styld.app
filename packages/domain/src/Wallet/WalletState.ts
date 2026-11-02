@@ -4,7 +4,7 @@ import { Credits } from './Credits.ts'
 import { Day } from './Day.ts'
 
 /** Credits held for an operation until it settles, and the day they were taken from. */
-export const Reservation = Schema.Struct({ day: Day, amount: Credits })
+const Reservation = Schema.Struct({ day: Day, amount: Credits })
 export const WalletState = Schema.Struct({
   /** The free allowance left today: it resets, rather than accumulates, when the day changes. */
   daily: Schema.Struct({ day: Schema.NullOr(Day), remaining: Credits }),

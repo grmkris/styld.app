@@ -4,7 +4,8 @@
   "type": "module",
   "sideEffects": false,
   "exports": {
-    "./*": "./src/*.ts"
+    "./StyldWorker": "./src/StyldWorker.ts",
+    "./Resources": "./src/Resources.ts"
   },
   "dependencies": {
     "@alchemy.run/cloudflare": "catalog:",

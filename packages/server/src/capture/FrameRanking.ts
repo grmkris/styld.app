@@ -30,7 +30,7 @@ const overlap = (a: Box, b: Box) =>
 const boxArea = (box: Box) => (box.right - box.left) * (box.bottom - box.top)
 
 /** How sharp the still is under `box`: the mean of the tiles the box touches. */
-export const sharpnessIn = (still: SampledStill, box: Box): number => {
+const sharpnessIn = (still: SampledStill, box: Box): number => {
   const columns = Math.floor((box.left / still.width) * 8)
   const lastColumn = Math.min(7, Math.floor(((box.right - 1) / still.width) * 8))
   const rows = Math.floor((box.top / still.height) * 8)

@@ -15,7 +15,7 @@ import { chmod, readFile, rm } from 'node:fs/promises'
 import { type APIRequestContext, type BrowserContext, chromium } from 'playwright'
 import { Schema } from 'effect'
 import { CaptureCreated, Piece, Reviewed, Tray, Upload } from '../packages/protocol/src/index.ts'
-import { decodePng } from '../packages/server/src/capture/Pixels.ts'
+import { decodePng } from '../packages/imaging/src/index.ts'
 import { csrf } from '../packages/auth/src/config.ts'
 
 const origin = process.env['STYLD_PREVIEW_URL'] ?? ''

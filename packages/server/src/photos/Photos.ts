@@ -347,7 +347,7 @@ const changing = (parts: PhotoParts, looks: Looks['Service']) => ({
 })
 
 /** What a photo's page leans on beyond its own store: looks to wear it again, boards and uploads to pin it. */
-export interface PhotoServices {
+interface PhotoServices {
   readonly looks: Looks['Service']
   readonly boards: Pick<Boards['Service'], 'addPhotoImage' | 'addPins'>
   readonly uploads: Uploads

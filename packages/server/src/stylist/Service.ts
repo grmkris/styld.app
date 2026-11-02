@@ -41,7 +41,7 @@ const decodeParts = Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.Arra
 const partsOf = (json: string) => decodeParts(json).pipe(Effect.orDie)
 
 /** A chat's title: its first message, cut at a word near 60 characters. */
-export const titleOf = (text: string) => {
+const titleOf = (text: string) => {
   const line = text.replace(/\s+/g, ' ').trim()
   if (line.length <= 60) return line
   const cut = line.slice(0, 60)

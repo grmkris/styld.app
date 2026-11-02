@@ -85,7 +85,7 @@ const isStatement = (piece: Wearable) =>
 const slotRank = (piece: Wearable) => wearingOrder.indexOf(slotOf(piece.type)) + (isMidLayer(piece) ? 0.5 : 0)
 
 /** The pieces in the order they are worn. */
-export const inWearingOrder = (pieces: ReadonlyArray<Wearable>): ReadonlyArray<Wearable> =>
+const inWearingOrder = (pieces: ReadonlyArray<Wearable>): ReadonlyArray<Wearable> =>
   Array.sort(pieces, Order.mapInput(Order.Number, slotRank))
 
 const isActivity = (brief: OutfitBrief) => brief.occasion === 'sport' || brief.occasion === 'lounge'
