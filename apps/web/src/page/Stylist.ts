@@ -1,5 +1,5 @@
-import { operationIdOf } from '../OperationIds.ts'
-import { Chat, ChatId, Language, ChatSummary } from '@styld/protocol'
+import { drawOperationId } from '../OperationIds.ts'
+import { Chat, ChatId, Language, ChatSummary, OperationId } from '@styld/protocol'
 import { Duration, Effect, Number, Option, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import { AsyncData, Command, Dom, Render, Subscription, type Update } from 'foldkit'
@@ -22,7 +22,7 @@ export type SendProblem = typeof SendProblem.Type
 export const Sending = defineTaggedUnion({
   Idle: {},
   Sending: { fromStarter: Schema.Boolean },
-  Failed: { problem: SendProblem, operationId: Schema.Option(Schema.String) },
+  Failed: { problem: SendProblem, operationId: Schema.Option(OperationId) },
 })
 export type Sending = typeof Sending.Type
 
@@ -77,7 +77,7 @@ export const Message = defineMessageUnion({
   SubmittedMessage: { locale: Language },
   ClickedStarter: { text: Schema.String, locale: Language },
   SucceededSend: { chatId: ChatId },
-  FailedSend: { problem: SendProblem, operationId: Schema.Option(Schema.String) },
+  FailedSend: { problem: SendProblem, operationId: Schema.Option(OperationId) },
   ClickedNewChat: {},
   ClickedChat: { chatId: Schema.String },
   ClickedRetryLoad: {},
@@ -132,7 +132,7 @@ const refused = (problem: SendProblem) => () =>
  */
 export const SendMessage = Command.define('SendMessage', {
   args: {
-    operationId: Schema.Option(Schema.String),
+    operationId: Schema.Option(OperationId),
     chatId: Schema.Option(Schema.String),
     text: Schema.String,
     locale: Language,
@@ -140,7 +140,7 @@ export const SendMessage = Command.define('SendMessage', {
   messages: [Message.SucceededSend, Message.FailedSend],
   execute: ({ operationId, chatId, text, locale }) =>
     Effect.gen(function* () {
-      const drawn = yield* operationIdOf(operationId)
+      const drawn = yield* drawOperationId(operationId)
       const sent = Effect.gen(function* () {
         const api = yield* (yield* StyldClient).api
         const { chatId: sentTo } = yield* api.stylist.send({

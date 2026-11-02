@@ -1,4 +1,4 @@
-import { newOperation, newOperationId } from '../OperationIds.ts'
+import { drawOperationId } from '../OperationIds.ts'
 import { Look as LookContract, LookId, PublicLookPage } from '@styld/protocol'
 import { Effect, Option, Result, Schema } from 'effect'
 import type * as Crypto from 'effect/Crypto'
@@ -114,7 +114,7 @@ export const ShareLook = Command.define('ShareLook', {
       const api = yield* (yield* StyldClient).api
       const look = yield* api.look.shareLook({
         params: { lookId: yield* Schema.decodeUnknownEffect(LookId)(lookId) },
-        payload: { operationId: yield* newOperationId, shared },
+        payload: { operationId: yield* drawOperationId(), shared },
       })
       return Message.SucceededShareLook({ look })
     }).pipe(
@@ -131,7 +131,7 @@ export const DeleteLook = Command.define('DeleteLook', {
       const api = yield* (yield* StyldClient).api
       yield* api.look.deleteLook({
         params: { lookId: yield* Schema.decodeUnknownEffect(LookId)(lookId) },
-        payload: yield* newOperation,
+        payload: { operationId: yield* drawOperationId() },
       })
       return Message.SucceededDeleteLook()
     }).pipe(Effect.orElseSucceed(() => Message.FailedDeleteLook())),

@@ -1,7 +1,7 @@
 import { ImageType, UploadId } from '@styld/protocol'
 import { Context, Data, Effect, Layer, Option, Schema } from 'effect'
 import { File } from 'foldkit'
-import { newOperationId } from './OperationIds.ts'
+import { drawOperationId } from './OperationIds.ts'
 import { StyldClient } from './StyldClient.ts'
 
 // Every picture the person sends (a photo to add pieces from, a gallery photo, a piece's back, a board's picture) goes
@@ -46,7 +46,7 @@ export const uploadPicture = Effect.fn('Styld.Web.uploadPicture')(function* (fil
   const picture = yield* (yield* PictureEncoder).encode(file)
   const { api: loadApi, sendFile } = yield* StyldClient
   const created = yield* (yield* loadApi).wardrobe.createUpload({
-    payload: { operationId: yield* newOperationId, contentType: 'image/webp', bytes: picture.size },
+    payload: { operationId: yield* drawOperationId(), contentType: 'image/webp', bytes: picture.size },
   })
   yield* sendFile(created.path, picture)
   return created.uploadId

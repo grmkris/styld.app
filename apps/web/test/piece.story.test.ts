@@ -1,3 +1,4 @@
+import { OperationId } from '@styld/protocol'
 import { Array, Option } from 'effect'
 import { AsyncData } from 'foldkit'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
@@ -216,7 +217,7 @@ describe('a piece you own', () => {
       message(Message.UpdatedHint({ value: ' dark selvedge jeans ' })),
       message(Message.SubmittedRedraw()),
       Command.expectExact(
-        RedrawPicture({ pieceId: piece.id, hint: ' dark selvedge jeans ', operationId: Option.none() }),
+        RedrawPicture({ pieceId: piece.id, hint: ' dark selvedge jeans ', maybeOperationId: Option.none() }),
       ),
       Command.resolve(
         RedrawPicture,
@@ -247,17 +248,24 @@ describe('a piece you own', () => {
       given(update(init(piece.id), Message.SucceededGetPiece({ piece: ready })).model),
       message(Message.ClickedRedraw()),
       message(Message.SubmittedRedraw()),
-      Command.resolve(RedrawPicture, Message.FailedRedrawPicture({ problem: 'network', operationId: 'redraw-0001' })),
+      Command.resolve(
+        RedrawPicture,
+        Message.FailedRedrawPicture({ problem: 'network', operationId: OperationId.make('redraw-0001') }),
+      ),
       model(({ redraw }) =>
         expect(Option.map(redraw, ({ send }) => send)).toEqual(
-          Option.some(RedrawSend.Failed({ problem: 'network', maybeOperationId: Option.some('redraw-0001') })),
+          Option.some(
+            RedrawSend.Failed({ problem: 'network', maybeOperationId: Option.some(OperationId.make('redraw-0001')) }),
+          ),
         ),
       ),
       message(Message.SubmittedRedraw()),
-      Command.expectExact(RedrawPicture({ pieceId: piece.id, hint: '', operationId: Option.some('redraw-0001') })),
+      Command.expectExact(
+        RedrawPicture({ pieceId: piece.id, hint: '', maybeOperationId: Option.some(OperationId.make('redraw-0001')) }),
+      ),
       Command.resolve(
         RedrawPicture,
-        Message.FailedRedrawPicture({ problem: 'dailyLimit', operationId: 'redraw-0001' }),
+        Message.FailedRedrawPicture({ problem: 'dailyLimit', operationId: OperationId.make('redraw-0001') }),
       ),
       model(({ redraw }) =>
         expect(Option.map(redraw, ({ send }) => send)).toEqual(
@@ -265,7 +273,7 @@ describe('a piece you own', () => {
         ),
       ),
       message(Message.SubmittedRedraw()),
-      Command.expectExact(RedrawPicture({ pieceId: piece.id, hint: '', operationId: Option.none() })),
+      Command.expectExact(RedrawPicture({ pieceId: piece.id, hint: '', maybeOperationId: Option.none() })),
       Command.resolve(
         RedrawPicture,
         Message.SucceededRedrawPicture({ picture: { state: 'drawing', shows: 'photo', version: 2 } }),

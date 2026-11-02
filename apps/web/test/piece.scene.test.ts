@@ -1,3 +1,4 @@
+import { OperationId } from '@styld/protocol'
 import { Dialog } from '@foldkit/ui'
 import { Option } from 'effect'
 import { Command, Mount, click, expect, given, role, scene, submit, text, type } from 'foldkit/scene'
@@ -172,8 +173,8 @@ describe('the piece page', () => {
       submit(role('form')),
       expect(role('button', { name: 'Redraw' })).toBeDisabled(),
       Command.resolve(
-        RedrawPicture({ pieceId: shown.id, hint: 'a navy wool scarf', operationId: Option.none() }),
-        PieceMessage.FailedRedrawPicture({ problem: 'face', operationId: 'redraw-0001' }),
+        RedrawPicture({ pieceId: shown.id, hint: 'a navy wool scarf', maybeOperationId: Option.none() }),
+        PieceMessage.FailedRedrawPicture({ problem: 'face', operationId: OperationId.make('redraw-0001') }),
       ),
       expect(role('alert')).toHaveText('A face may show in this cut-out, so it is not sent to be drawn.'),
     )

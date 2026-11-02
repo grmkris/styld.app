@@ -1,4 +1,4 @@
-import { newOperation, newOperationId } from '../OperationIds.ts'
+import { drawOperationId } from '../OperationIds.ts'
 import {
   CaptureId,
   Colour,
@@ -36,12 +36,12 @@ export const Decision = Schema.Struct({
 })
 export type Decision = typeof Decision.Type
 
-/** Adding the kept pieces. A retry repeats the operation id, so the pieces are made once. */
+/** Adding the kept pieces. A failure whose answer may have been lost keeps the operation id it was sent under, so the
+ * retry repeats it and the pieces are made once. */
 export const Saving = defineTaggedUnion({
   Idle: {},
-  Preparing: {},
-  Saving: { operationId: Schema.String },
-  Failed: { operationId: Schema.Option(Schema.String) },
+  Saving: {},
+  Failed: { maybeOperationId: Schema.Option(OperationId) },
 })
 export type Saving = typeof Saving.Type
 
@@ -85,9 +85,8 @@ export const Message = defineMessageUnion({
   UpdatedName: { value: Schema.String },
   ToggledUseOriginal: {},
   ClickedAdd: {},
-  CompletedDrawOperationId: { operationId: Schema.String },
   SucceededReview: { count: Schema.Number },
-  FailedReview: { retry: Schema.Literals(['same', 'fresh']) },
+  FailedReview: { maybeOperationId: Schema.Option(OperationId) },
   ClickedRetryCapture: { captureId: Schema.String },
   ClickedRemoveCapture: { captureId: Schema.String },
   ClickedSplit: { detectionId: Schema.String },
@@ -110,13 +109,8 @@ export const LoadTray = Command.define('LoadTray', {
   }).pipe(Effect.orElseSucceed(() => Message.FailedLoadTray())),
 })
 
-export const DrawOperationId = Command.define('DrawOperationId', {
-  messages: [Message.CompletedDrawOperationId],
-  execute: Effect.map(newOperationId, (operationId) => Message.CompletedDrawOperationId({ operationId })),
-})
-
 const ReviewArgs = Schema.Struct({
-  operationId: Schema.String,
+  maybeOperationId: Schema.Option(OperationId),
   keep: Schema.Array(
     Schema.Struct({
       detectionId: Schema.String,
@@ -129,37 +123,42 @@ const ReviewArgs = Schema.Struct({
   discard: Schema.Array(Schema.String),
 })
 
+/** Add the kept pieces and drop the rest, under a new operation id or the one a lost answer had. */
 export const SendReview = Command.define('SendReview', {
   args: ReviewArgs.fields,
   messages: [Message.SucceededReview, Message.FailedReview],
   execute: (args) =>
     Effect.gen(function* () {
-      const api = yield* (yield* StyldClient).api
-      const keep = yield* Effect.forEach(args.keep, (kept) =>
-        Effect.map(Schema.decodeUnknownEffect(DetectionId)(kept.detectionId), (detectionId): Keep => ({
-          detectionId,
-          type: kept.type,
-          ...detailsPayload(kept.details),
-          ...Option.match(kept.name, { onNone: () => ({}), onSome: (name) => ({ name }) }),
-          ...(kept.useOriginal ? { useOriginal: true } : {}),
-        })),
-      )
-      const reviewed = yield* api.capture.review({
-        payload: {
-          operationId: yield* Schema.decodeUnknownEffect(OperationId)(args.operationId),
-          keep,
-          discard: yield* Effect.forEach(args.discard, (id) => Schema.decodeUnknownEffect(DetectionId)(id)),
-        },
+      const operationId = yield* drawOperationId(args.maybeOperationId)
+      const sent = Effect.gen(function* () {
+        const api = yield* (yield* StyldClient).api
+        const keep = yield* Effect.forEach(args.keep, (kept) =>
+          Effect.map(Schema.decodeUnknownEffect(DetectionId)(kept.detectionId), (detectionId): Keep => ({
+            detectionId,
+            type: kept.type,
+            ...detailsPayload(kept.details),
+            ...Option.match(kept.name, { onNone: () => ({}), onSome: (name) => ({ name }) }),
+            ...(kept.useOriginal ? { useOriginal: true } : {}),
+          })),
+        )
+        const reviewed = yield* api.capture.review({
+          payload: {
+            operationId,
+            keep,
+            discard: yield* Effect.forEach(args.discard, (id) => Schema.decodeUnknownEffect(DetectionId)(id)),
+          },
+        })
+        return Message.SucceededReview({ count: reviewed.pieceIds.length })
       })
-      return Message.SucceededReview({ count: reviewed.pieceIds.length })
-    }).pipe(
-      // Pieces someone already decided, or a reused operation id, cannot succeed as sent: the tray is read again.
-      Effect.catchTags({
-        NotFound: () => Effect.succeed(Message.FailedReview({ retry: 'fresh' })),
-        OperationConflict: () => Effect.succeed(Message.FailedReview({ retry: 'fresh' })),
-      }),
-      Effect.orElseSucceed(() => Message.FailedReview({ retry: 'same' })),
-    ),
+      return yield* sent.pipe(
+        // Pieces someone already decided, or a reused operation id, cannot succeed as sent: the tray is read again.
+        Effect.catchTags({
+          NotFound: () => Effect.succeed(Message.FailedReview({ maybeOperationId: Option.none() })),
+          OperationConflict: () => Effect.succeed(Message.FailedReview({ maybeOperationId: Option.none() })),
+        }),
+        Effect.orElseSucceed(() => Message.FailedReview({ maybeOperationId: Option.some(operationId) })),
+      )
+    }),
 })
 
 /** Ask the API to act on one capture, and say whether it did. */
@@ -173,7 +172,7 @@ const onCapture = (
 ) =>
   Effect.gen(function* () {
     const api = yield* (yield* StyldClient).api
-    yield* act(api, { captureId: yield* Schema.decodeUnknownEffect(CaptureId)(captureId) }, yield* newOperationId)
+    yield* act(api, { captureId: yield* Schema.decodeUnknownEffect(CaptureId)(captureId) }, yield* drawOperationId())
   }).pipe(
     Effect.as(Message.SucceededCaptureAction({ captureId })),
     Effect.orElseSucceed(() => Message.FailedCaptureAction({ captureId })),
@@ -203,7 +202,7 @@ export const SplitSightings = Command.define('SplitSightings', {
       const api = yield* (yield* StyldClient).api
       yield* api.capture.split({
         params: { detectionId: yield* Schema.decodeUnknownEffect(DetectionId)(detectionId) },
-        payload: yield* newOperation,
+        payload: { operationId: yield* drawOperationId() },
       })
     }).pipe(
       Effect.as(Message.SucceededCaptureAction({ captureId: detectionId })),
@@ -306,14 +305,14 @@ const toggled = (model: Model, detectionId: string): UpdateReturn => {
 const givenName = (value: string) => (value.trim().length === 0 ? Option.none() : Option.some(value.trim()))
 
 /** Send the decisions: kept pieces, and every other piece shown discarded. */
-const send = (model: Model, operationId: string): UpdateReturn => {
+const send = (model: Model, maybeOperationId: Option.Option<OperationId>): UpdateReturn => {
   const kept = keptOf(model)
   const keptIds = new Set(kept.map(({ id }) => id))
   return {
-    model: modifyFields(model, { saving: () => Saving.Saving({ operationId }) }),
+    model: modifyFields(model, { saving: () => Saving.Saving() }),
     commands: [
       SendReview({
-        operationId,
+        maybeOperationId,
         keep: kept.map(({ id, decision, type }) => ({
           detectionId: id,
           type,
@@ -332,16 +331,8 @@ const send = (model: Model, operationId: string): UpdateReturn => {
 const clickedAdd = (model: Model): UpdateReturn => {
   if (keptOf(model).length === 0) return { model }
   return Saving.match(model.saving, {
-    Idle: () => ({ model: modifyFields(model, { saving: () => Saving.Preparing() }), commands: [DrawOperationId()] }),
-    Failed: ({ operationId }) =>
-      Option.match(operationId, {
-        onNone: () => ({
-          model: modifyFields(model, { saving: () => Saving.Preparing() }),
-          commands: [DrawOperationId()],
-        }),
-        onSome: (id) => send(model, id),
-      }),
-    Preparing: () => ({ model }),
+    Idle: () => send(model, Option.none()),
+    Failed: ({ maybeOperationId }) => send(model, maybeOperationId),
     Saving: () => ({ model }),
   })
 }
@@ -367,24 +358,15 @@ const editHandlers = (model: Model) => ({
 const savingHandlers = (model: Model) => ({
   ToggledKeep: ({ detectionId }: { readonly detectionId: string }) => toggled(model, detectionId),
   ClickedAdd: () => clickedAdd(model),
-  CompletedDrawOperationId: ({ operationId }: { readonly operationId: string }): UpdateReturn =>
-    Saving.guards.Preparing(model.saving) ? send(model, operationId) : { model },
   SucceededReview: ({ count }: { readonly count: number }): UpdateReturn => ({
     model: modifyFields(model, { saving: () => Saving.Idle() }),
     outMessage: OutMessage.AddedPieces({ count }),
   }),
-  // A retry worth repeating keeps the operation id; pieces decided elsewhere send the tray to be read again.
-  FailedReview: ({ retry }: { readonly retry: 'same' | 'fresh' }): UpdateReturn =>
-    retry === 'same'
-      ? {
-          model: modifyFields(model, {
-            saving: (saving) =>
-              Saving.Failed({
-                operationId: Saving.guards.Saving(saving) ? Option.some(saving.operationId) : Option.none(),
-              }),
-          }),
-        }
-      : readAgain(modifyFields(model, { saving: () => Saving.Failed({ operationId: Option.none() }) })),
+  // A lost answer keeps the operation id for the retry; a refusal (pieces decided elsewhere) reads the tray again.
+  FailedReview: ({ maybeOperationId }: { readonly maybeOperationId: Option.Option<OperationId> }): UpdateReturn => {
+    const failed = modifyFields(model, { saving: () => Saving.Failed({ maybeOperationId }) })
+    return Option.isSome(maybeOperationId) ? { model: failed } : readAgain(failed)
+  },
 })
 
 /** Try a capture again, remove it, or split a piece's sightings, once at a time for each. */

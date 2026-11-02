@@ -1,5 +1,5 @@
 import * as Crypto from 'effect/Crypto'
-import { newOperationId } from '../OperationIds.ts'
+import { drawOperationId } from '../OperationIds.ts'
 import { Handle, Profile, Tone } from '@styld/protocol'
 import { Effect, Match, Option, Predicate, Result, Schema } from 'effect'
 import { AsyncData, Command, type Update } from 'foldkit'
@@ -102,7 +102,7 @@ export const SaveProfile = Command.define('SaveProfile', {
       const api = yield* (yield* StyldClient).api
       const profile = yield* api.profile.updateProfile({
         payload: {
-          operationId: yield* newOperationId,
+          operationId: yield* drawOperationId(),
           ...(Option.isSome(handle) ? { handle: handle.value } : {}),
           name: draft.name.trim(),
           city: blankAsNull(draft.city),
@@ -135,7 +135,7 @@ export const PublishProfile = Command.define('PublishProfile', {
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       return Message.SucceededPublishProfile({
-        profile: yield* api.profile.publishProfile({ payload: { operationId: yield* newOperationId, published } }),
+        profile: yield* api.profile.publishProfile({ payload: { operationId: yield* drawOperationId(), published } }),
       })
     }).pipe(
       Effect.catchIf(

@@ -1,4 +1,4 @@
-import { newOperation, newOperationId } from '../OperationIds.ts'
+import { drawOperationId } from '../OperationIds.ts'
 import { Piece, PieceId } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
@@ -55,7 +55,7 @@ export const SetBack = Command.define('SetBack', {
     Effect.gen(function* () {
       const uploadId = yield* uploadPicture(file)
       const api = yield* (yield* StyldClient).api
-      const operationId = yield* newOperationId
+      const operationId = yield* drawOperationId()
       const piece = yield* api.wardrobe.setBack({
         params: { pieceId: yield* pieceIdOf(pieceId) },
         payload: { operationId, uploadId },
@@ -74,7 +74,7 @@ export const RemoveBack = Command.define('RemoveBack', {
       const api = yield* (yield* StyldClient).api
       const piece = yield* api.wardrobe.removeBack({
         params: { pieceId: yield* pieceIdOf(pieceId) },
-        payload: yield* newOperation,
+        payload: { operationId: yield* drawOperationId() },
       })
       return Message.SucceededBack({ piece })
     }).pipe(Effect.orElseSucceed(() => Message.FailedBack())),

@@ -1,5 +1,5 @@
 import * as Crypto from 'effect/Crypto'
-import { newOperationId } from '../OperationIds.ts'
+import { drawOperationId } from '../OperationIds.ts'
 import { CameraLayout, Side } from '@styld/protocol'
 import { Effect, Option, Schema, Stream } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
@@ -206,7 +206,7 @@ export const CheckHeld = Command.define('CheckHeld', {
       const frame = yield* base64Of(check)
       const earlier = Option.isSome(previous) ? { previous: yield* base64Of(previous.value) } : {}
       const answer = yield* api.capture.check({
-        payload: { operationId: yield* newOperationId, frame, layout, ...earlier },
+        payload: { operationId: yield* drawOperationId(), frame, layout, ...earlier },
       })
       return Message.SucceededCheckHeld({ token, check, still, ...answer })
     }).pipe(Effect.orElseSucceed(() => Message.FailedCheckHeld({ token }))),

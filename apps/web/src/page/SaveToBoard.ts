@@ -1,4 +1,4 @@
-import { newOperationId } from '../OperationIds.ts'
+import { drawOperationId } from '../OperationIds.ts'
 import { Dialog } from '@foldkit/ui'
 import { BoardId, BoardName, LookId, PhotoId, PieceId } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
@@ -80,11 +80,11 @@ export const SaveTo = Command.define('SaveTo', {
         ? yield* Schema.decodeUnknownEffect(BoardId)(boardId.value)
         : (yield* api.board.createBoard({
             payload: {
-              operationId: yield* newOperationId,
+              operationId: yield* drawOperationId(),
               name: yield* Schema.decodeUnknownEffect(BoardName)(boardName),
             },
           })).id
-      const operationId = yield* newOperationId
+      const operationId = yield* drawOperationId()
       if (target.kind === 'photo')
         yield* api.photo.addToBoard({
           params: { photoId: yield* Schema.decodeUnknownEffect(PhotoId)(target.id) },

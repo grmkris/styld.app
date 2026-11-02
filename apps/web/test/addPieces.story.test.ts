@@ -1,5 +1,5 @@
 import { FileDrop } from '@foldkit/ui'
-import { CaptureId, type CaptureSource, CreateVideoCapture } from '@styld/protocol'
+import { CaptureId, type CaptureSource, CreateVideoCapture, OperationId } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
@@ -239,7 +239,7 @@ describe('choosing files to add', () => {
   test('trying again repeats the same operation and upload, so the server makes one capture', () => {
     const retried = {
       ...photoArgs(0, tee),
-      operationId: Option.some('op-1'),
+      operationId: Option.some(OperationId.make('op-review-1')),
       uploadId: Option.some('up_1'),
     }
     story(
@@ -251,7 +251,7 @@ describe('choosing files to add', () => {
         Message.FailedSend({
           index: 0,
           problem: 'network',
-          operationId: Option.some('op-1'),
+          operationId: Option.some(OperationId.make('op-review-1')),
           uploadId: Option.some('up_1'),
           prepared: Option.none(),
         }),
@@ -329,7 +329,7 @@ describe('choosing files to add', () => {
 describe('a shop’s product page', () => {
   const url = 'https://shop.test/p/knit'
   const upload = `up_${'k'.repeat(22)}`
-  const sent = (operationId: Option.Option<string>, uploadId: Option.Option<string>) =>
+  const sent = (operationId: Option.Option<OperationId>, uploadId: Option.Option<string>) =>
     SendLink({ index: 0, url, operationId, uploadId })
 
   test('an empty address sends nothing', () => {
@@ -353,13 +353,13 @@ describe('a shop’s product page', () => {
         Message.FailedSendLink({
           index: 0,
           problem: 'network',
-          operationId: Option.some('op-link-1'),
+          operationId: Option.some(OperationId.make('op-link-0001')),
           uploadId: Option.some(upload),
         }),
       ),
       message(Message.ClickedRetryLink({ index: 0 })),
       Command.resolve(
-        sent(Option.some('op-link-1'), Option.some(upload)),
+        sent(Option.some(OperationId.make('op-link-0001')), Option.some(upload)),
         Message.SucceededSendLink({ index: 0, captureId: captureOf(1), name: Option.some('Navy cable knit') }),
       ),
       model(({ links }) => expect(links[0]?.name).toEqual(Option.some('Navy cable knit'))),

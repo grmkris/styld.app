@@ -1,5 +1,14 @@
-import { newOperationId, operationIdOf } from '../../OperationIds.ts'
-import { CaptureId, CaptureSource, CreateVideoCapture, LinkRefused, Side, UploadId, VideoType } from '@styld/protocol'
+import { drawOperationId } from '../../OperationIds.ts'
+import {
+  CaptureId,
+  CaptureSource,
+  CreateVideoCapture,
+  LinkRefused,
+  Side,
+  UploadId,
+  VideoType,
+  OperationId,
+} from '@styld/protocol'
 import { Effect, Option, Predicate, Result, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import { Command, File } from 'foldkit'
@@ -33,7 +42,7 @@ const SendPhotoArgs = Schema.Struct({
   pairsWith: Schema.Option(CaptureId),
   /** The first capture of the photos picked with this one. */
   importOf: Schema.Option(CaptureId),
-  operationId: Schema.Option(Schema.String),
+  operationId: Schema.Option(OperationId),
   uploadId: Schema.Option(Schema.String),
 })
 
@@ -45,7 +54,7 @@ export const SendPhoto = Command.define('SendPhoto', {
   messages: [Message.SucceededSend, Message.FailedSend],
   execute: (args) =>
     Effect.gen(function* () {
-      const operationId = yield* operationIdOf(args.operationId)
+      const operationId = yield* drawOperationId(args.operationId)
       const failed = (uploadId: Option.Option<string>, error: unknown) => {
         const problem = problemOf(error)
         const keep = problem === 'network'
@@ -103,7 +112,7 @@ const linkProblemOf = (error: unknown): LinkProblem => {
 const SendLinkArgs = Schema.Struct({
   index: Schema.Number,
   url: Schema.String,
-  operationId: Schema.Option(Schema.String),
+  operationId: Schema.Option(OperationId),
   uploadId: Schema.Option(Schema.String),
 })
 
@@ -114,7 +123,7 @@ export const SendLink = Command.define('SendLink', {
   messages: [Message.SucceededSendLink, Message.FailedSendLink],
   execute: (args) =>
     Effect.gen(function* () {
-      const operationId = yield* operationIdOf(args.operationId)
+      const operationId = yield* drawOperationId(args.operationId)
       const api = yield* (yield* StyldClient).api
       const failed = (uploadId: Option.Option<string>, error: unknown) => {
         const problem = linkProblemOf(error)
@@ -131,7 +140,7 @@ export const SendLink = Command.define('SendLink', {
           onSome: (id) =>
             Effect.map(Schema.decodeUnknownEffect(UploadId)(id), (uploadId) => ({ uploadId, name: null })),
           onNone: () =>
-            Effect.flatMap(newOperationId, (readOnce) =>
+            Effect.flatMap(drawOperationId(), (readOnce) =>
               api.link.readLink({ payload: { operationId: readOnce, url: args.url } }),
             ),
         }),
@@ -165,7 +174,7 @@ const sendStill = (still: SampledStill) =>
     const { api: loadApi, sendFile } = yield* StyldClient
     const api = yield* loadApi
     const created = yield* api.wardrobe.createUpload({
-      payload: { operationId: yield* newOperationId, contentType: 'image/jpeg', bytes: still.jpeg.size },
+      payload: { operationId: yield* drawOperationId(), contentType: 'image/jpeg', bytes: still.jpeg.size },
     })
     yield* sendFile(created.path, still.jpeg)
     return { uploadId: created.uploadId, atMs: still.atMs, sharpness: still.sharpness }
@@ -187,9 +196,9 @@ const uploadVideoCapture = (
   Effect.gen(function* () {
     const { api: loadApi, sendFile } = yield* StyldClient
     const api = yield* loadApi
-    const operationId = yield* operationIdOf(Option.none())
+    const operationId = yield* drawOperationId()
     const clip = yield* api.wardrobe.createVideoUpload({
-      payload: { operationId: yield* newOperationId, contentType: video.contentType, bytes: video.clip.size },
+      payload: { operationId: yield* drawOperationId(), contentType: video.contentType, bytes: video.clip.size },
     })
     yield* sendFile(clip.path, video.clip)
     const stills = yield* Effect.forEach(video.stills, sendStill, { concurrency: 3 })

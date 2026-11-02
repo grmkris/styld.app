@@ -1,5 +1,5 @@
 import * as Crypto from 'effect/Crypto'
-import { newOperationId } from '../OperationIds.ts'
+import { drawOperationId } from '../OperationIds.ts'
 import { Explore, Handle, Mood, PieceId, PublicPiecePage, PublicProfile, SearchResults } from '@styld/protocol'
 import { Effect, Option, Predicate, Record, Result, Schema } from 'effect'
 import { AsyncData, Command, Dom, Update } from 'foldkit'
@@ -224,7 +224,7 @@ export const FollowSuggested = Command.define('FollowSuggested', {
       const api = yield* (yield* StyldClient).api
       const relation = yield* api.social.setFollowing({
         params: { handle: yield* Schema.decodeUnknownEffect(Handle)(handle) },
-        payload: { operationId: yield* newOperationId, following },
+        payload: { operationId: yield* drawOperationId(), following },
       })
       return Message.SucceededFollowSuggested({ handle, following: relation.following })
     }).pipe(Effect.orElseSucceed(() => Message.FailedFollowSuggested({ handle }))),

@@ -1,5 +1,5 @@
 import { cdn } from '../Cdn.ts'
-import { newOperation, newOperationId, operationIdOf } from '../OperationIds.ts'
+import { drawOperationId } from '../OperationIds.ts'
 import {
   Colour,
   Occasion,
@@ -63,7 +63,7 @@ export type RedrawProblem = typeof RedrawProblem.Type
 export const RedrawSend = defineTaggedUnion({
   Writing: {},
   Sending: {},
-  Failed: { problem: RedrawProblem, maybeOperationId: Schema.Option(Schema.String) },
+  Failed: { problem: RedrawProblem, maybeOperationId: Schema.Option(OperationId) },
 })
 export type RedrawSend = typeof RedrawSend.Type
 
@@ -141,7 +141,7 @@ export const Message = defineMessageUnion({
   UpdatedHint: { value: Schema.String },
   SubmittedRedraw: {},
   SucceededRedrawPicture: { picture: PiecePicture },
-  FailedRedrawPicture: { problem: RedrawProblem, operationId: Schema.String },
+  FailedRedrawPicture: { problem: RedrawProblem, operationId: OperationId },
   ClickedMakeTurn: {},
   SucceededMakeTurn: { turn: PieceTurn },
   FailedMakeTurn: { problem: TurnProblem },
@@ -184,7 +184,10 @@ export const DeletePiece = Command.define('DeletePiece', {
   execute: ({ pieceId }) =>
     Effect.gen(function* () {
       const params = { pieceId: yield* pieceIdOf(pieceId) }
-      yield* (yield* (yield* StyldClient).api).wardrobe.deletePiece({ params, payload: yield* newOperation })
+      yield* (yield* (yield* StyldClient).api).wardrobe.deletePiece({
+        params,
+        payload: { operationId: yield* drawOperationId() },
+      })
       return Message.SucceededDeletePiece()
     }).pipe(
       // A piece already gone is the outcome the person asked for.
@@ -201,7 +204,7 @@ export const SavePiece = Command.define('SavePiece', {
       const api = yield* (yield* StyldClient).api
       const piece = yield* api.wardrobe.updatePiece({
         params: { pieceId: yield* pieceIdOf(pieceId) },
-        payload: { operationId: yield* newOperationId, ...changes },
+        payload: { operationId: yield* drawOperationId(), ...changes },
       })
       return Message.SucceededUpdatePiece({ piece })
     }).pipe(Effect.orElseSucceed(() => Message.FailedUpdatePiece())),
@@ -215,7 +218,7 @@ export const ChoosePicture = Command.define('ChoosePicture', {
       const api = yield* (yield* StyldClient).api
       const piece = yield* api.wardrobe.choosePicture({
         params: { pieceId: yield* pieceIdOf(pieceId) },
-        payload: { operationId: yield* newOperationId, use },
+        payload: { operationId: yield* drawOperationId(), use },
       })
       return Message.SucceededChoosePicture({ piece })
     }).pipe(Effect.orElseSucceed(() => Message.FailedChoosePicture())),
@@ -230,26 +233,26 @@ const redrawProblemOf = (error: unknown): RedrawProblem => {
 }
 
 export const RedrawPicture = Command.define('RedrawPicture', {
-  args: { pieceId: Schema.String, hint: Schema.String, operationId: Schema.Option(Schema.String) },
+  args: { pieceId: Schema.String, hint: Schema.String, maybeOperationId: Schema.Option(OperationId) },
   messages: [Message.SucceededRedrawPicture, Message.FailedRedrawPicture],
-  execute: ({ pieceId, hint, operationId }) =>
+  execute: ({ pieceId, hint, maybeOperationId }) =>
     Effect.gen(function* () {
       // A retry repeats the operation, so a lost answer never costs a second credit.
-      const id = yield* operationIdOf(operationId)
+      const operationId = yield* drawOperationId(maybeOperationId)
       const words = hint.trim()
       const api = yield* (yield* StyldClient).api
       return yield* api.capture
         .redrawPicture({
           params: { pieceId: yield* pieceIdOf(pieceId) },
           payload: {
-            operationId: yield* Schema.decodeUnknownEffect(OperationId)(id),
+            operationId,
             ...(words.length === 0 ? {} : { hint: words.slice(0, textLength.hint) }),
           },
         })
         .pipe(
           Effect.map((picture) => Message.SucceededRedrawPicture({ picture })),
           Effect.catch((error) =>
-            Effect.succeed(Message.FailedRedrawPicture({ problem: redrawProblemOf(error), operationId: id })),
+            Effect.succeed(Message.FailedRedrawPicture({ problem: redrawProblemOf(error), operationId })),
           ),
         )
     }).pipe(Effect.orDie),
@@ -268,7 +271,7 @@ export const MakeTurn = Command.define('MakeTurn', {
   messages: [Message.SucceededMakeTurn, Message.FailedMakeTurn],
   execute: ({ pieceId }) =>
     Effect.gen(function* () {
-      const operationId = yield* newOperationId
+      const operationId = yield* drawOperationId()
       const api = yield* (yield* StyldClient).api
       return yield* api.capture
         .makeTurn({ params: { pieceId: yield* pieceIdOf(pieceId) }, payload: { operationId } })
@@ -291,7 +294,7 @@ export const BuildTurnSheet = Command.define('BuildTurnSheet', {
       const video = yield* client.readFile(cdn.turn(pieceId, 'video', version))
       const front = yield* client.readFile(cdn.turn(pieceId, 'front', version))
       const built = yield* buildSheet(new Blob([new Uint8Array(video)], { type: 'video/mp4' }), front)
-      const payload = { operationId: yield* newOperationId, ...built }
+      const payload = { operationId: yield* drawOperationId(), ...built }
       const turn = yield* (yield* client.api).capture.turnSheet({
         params: { pieceId: yield* pieceIdOf(pieceId) },
         payload,
@@ -440,12 +443,12 @@ const submittedRedraw = (model: Model): UpdateReturn =>
     onNone: () => ({ model }),
     onSome: (redraw) => {
       if (RedrawSend.guards.Sending(redraw.send)) return { model }
-      const operationId = RedrawSend.guards.Failed(redraw.send) ? redraw.send.maybeOperationId : Option.none()
+      const maybeOperationId = RedrawSend.guards.Failed(redraw.send) ? redraw.send.maybeOperationId : Option.none()
       return {
         model: modifyFields(model, {
           redraw: () => Option.some(modifyFields(redraw, { send: () => RedrawSend.Sending() })),
         }),
-        commands: [RedrawPicture({ pieceId: model.pieceId, hint: redraw.hint, operationId })],
+        commands: [RedrawPicture({ pieceId: model.pieceId, hint: redraw.hint, maybeOperationId })],
       }
     },
   })
@@ -481,7 +484,7 @@ const pictureUpdates = (model: Model) => ({
     operationId,
   }: {
     readonly problem: RedrawProblem
-    readonly operationId: string
+    readonly operationId: OperationId
   }): UpdateReturn =>
     editRedraw(model, (redraw) =>
       modifyFields(redraw, {

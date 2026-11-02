@@ -1,6 +1,6 @@
-import { operationIdOf } from '../../OperationIds.ts'
+import { drawOperationId } from '../../OperationIds.ts'
 import { Dialog, RadioGroup } from '@foldkit/ui'
-import { BoardId, Generation, GenerationKind } from '@styld/protocol'
+import { BoardId, Generation, GenerationKind, OperationId } from '@styld/protocol'
 import { Duration, Effect, Option, Predicate, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import { Command, Subscription, Update } from 'foldkit'
@@ -43,7 +43,7 @@ export const Model = Schema.Struct({
   kindChoice: RadioGroup.Model,
   words: Schema.String,
   /** Drawn once per ask and kept for its retries, so a lost answer never makes a second job. */
-  operationId: Schema.Option(Schema.String),
+  operationId: Schema.Option(OperationId),
   job: Job,
   /** Reads in a row that did not get through; after a few the page stops following and says so. */
   misses: Misses,
@@ -70,7 +70,7 @@ export const Message = defineMessageUnion({
   ChangedWords: { words: Schema.String },
   SubmittedMake: {},
   SucceededAsk: { generation: Generation },
-  FailedAsk: { problem: MakeProblem, operationId: Schema.Option(Schema.String) },
+  FailedAsk: { problem: MakeProblem, operationId: Schema.Option(OperationId) },
   TickedGenerationRefresh: {},
   SucceededReadGeneration: { generation: Generation },
   FailedReadGeneration: {},
@@ -99,12 +99,12 @@ export const AskToMake = Command.define('AskToMake', {
     boardId: Schema.String,
     kind: GenerationKind,
     prompt: Schema.String,
-    operationId: Schema.Option(Schema.String),
+    operationId: Schema.Option(OperationId),
   },
   messages: [Message.SucceededAsk, Message.FailedAsk],
   execute: (args) =>
     Effect.gen(function* () {
-      const drawn = yield* operationIdOf(args.operationId)
+      const drawn = yield* drawOperationId(args.operationId)
       const asked = Effect.gen(function* () {
         const operationId = drawn
         const boardId = yield* Schema.decodeUnknownEffect(BoardId)(args.boardId)

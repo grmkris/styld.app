@@ -1,5 +1,5 @@
 import { Dialog, RadioGroup } from '@foldkit/ui'
-import { Generation } from '@styld/protocol'
+import { Generation, OperationId } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
@@ -81,7 +81,10 @@ describe('making a mood board or a sticker for a board', () => {
       ...choseSticker,
       message(Message.ChangedWords({ words: 'a lemon on a blue plate' })),
       message(Message.SubmittedMake()),
-      Command.resolve(AskToMake, Message.FailedAsk({ problem: 'failed', operationId: Option.some('op-make-1') })),
+      Command.resolve(
+        AskToMake,
+        Message.FailedAsk({ problem: 'failed', operationId: Option.some(OperationId.make('op-make-0001')) }),
+      ),
       model(({ job }) => expect(job).toEqual(Job.Failed({ problem: 'failed' }))),
       message(Message.SubmittedMake()),
       Command.expectExact(
@@ -89,7 +92,7 @@ describe('making a mood board or a sticker for a board', () => {
           boardId,
           kind: 'sticker',
           prompt: 'a lemon on a blue plate',
-          operationId: Option.some('op-make-1'),
+          operationId: Option.some(OperationId.make('op-make-0001')),
         }),
       ),
       Command.resolve(AskToMake, Message.FailedAsk({ problem: 'dailyLimit', operationId: Option.none() })),
@@ -102,7 +105,7 @@ describe('making a mood board or a sticker for a board', () => {
 
   test('another kind starts a new operation, and reads that keep failing stop with a problem', () => {
     const asking = modifyFields(init(boardId), {
-      operationId: () => Option.some('op-make-1'),
+      operationId: () => Option.some(OperationId.make('op-make-0001')),
       job: () => Job.Running({ generation: generation('planning', []), read: 'waiting' }),
     })
     const missedRead = [

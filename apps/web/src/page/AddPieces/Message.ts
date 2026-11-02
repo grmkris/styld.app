@@ -1,5 +1,5 @@
 import { FileDrop } from '@foldkit/ui'
-import { CaptureId, CreateVideoCapture } from '@styld/protocol'
+import { CaptureId, CreateVideoCapture, OperationId } from '@styld/protocol'
 import { Schema } from 'effect'
 import { defineMessageUnion } from 'foldkit/message'
 import * as HeldCamera from '../HeldCamera.ts'
@@ -48,7 +48,7 @@ export const Message = defineMessageUnion({
   FailedSend: {
     index: Schema.Number,
     problem: SendProblem,
-    operationId: Schema.Option(Schema.String),
+    operationId: Schema.Option(OperationId),
     uploadId: Schema.Option(Schema.String),
     prepared: Schema.Option(CreateVideoCapture),
   },
@@ -59,7 +59,7 @@ export const Message = defineMessageUnion({
   FailedSendLink: {
     index: Schema.Number,
     problem: LinkProblem,
-    operationId: Schema.Option(Schema.String),
+    operationId: Schema.Option(OperationId),
     uploadId: Schema.Option(Schema.String),
   },
   ClickedRetryLink: { index: Schema.Number },

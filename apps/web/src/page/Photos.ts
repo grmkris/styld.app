@@ -1,4 +1,4 @@
-import { newOperationId } from '../OperationIds.ts'
+import { drawOperationId } from '../OperationIds.ts'
 import { Photo, PhotoId } from '@styld/protocol'
 import { Array, Effect, Number, Option, Predicate, Result, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
@@ -64,7 +64,7 @@ export const AddPhoto = Command.define('AddPhoto', {
   execute: ({ file }) =>
     Effect.gen(function* () {
       const uploadId = yield* uploadPicture(file)
-      const operationId = yield* newOperationId
+      const operationId = yield* drawOperationId()
       const api = yield* (yield* StyldClient).api
       const photo = yield* api.photo.addPhoto({ payload: { operationId, uploadId } })
       return Message.SucceededAddPhoto({ photo })

@@ -1,5 +1,5 @@
 import { FileDrop } from '@foldkit/ui'
-import { CaptureId, CaptureSource, CreateVideoCapture, Side } from '@styld/protocol'
+import { CaptureId, CaptureSource, CreateVideoCapture, Side, OperationId } from '@styld/protocol'
 import { Schema } from 'effect'
 import { File } from 'foldkit'
 import { defineTaggedUnion } from 'foldkit/schema'
@@ -37,7 +37,7 @@ export const Item = Schema.Struct({
   joins: Schema.Option(Schema.Number),
   /** The capture the file became, once sent; for a video cut into parts, its first part's. */
   captureId: Schema.Option(CaptureId),
-  operationId: Schema.Option(Schema.String),
+  operationId: Schema.Option(OperationId),
   uploadId: Schema.Option(Schema.String),
   /** A video, or a part of one, sampled and uploaded whose capture request got no answer: trying again
    * sends the same request, so the server makes one capture. */
@@ -60,7 +60,7 @@ export const LinkItem = Schema.Struct({
   url: Schema.String,
   /** The name the page gives the product, once read. */
   name: Schema.Option(Schema.String),
-  operationId: Schema.Option(Schema.String),
+  operationId: Schema.Option(OperationId),
   uploadId: Schema.Option(Schema.String),
   sending: LinkSending,
 })

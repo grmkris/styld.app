@@ -1,4 +1,4 @@
-import { newOperationId } from '../../OperationIds.ts'
+import { drawOperationId } from '../../OperationIds.ts'
 import { BoardId, BoardItem, BoardItemId, boardWidth, Paper, PieceId } from '@styld/protocol'
 import { Array, Duration, Effect, Option, Predicate, Queue, Schema, Stream } from 'effect'
 import * as Crypto from 'effect/Crypto'
@@ -83,7 +83,7 @@ export const SaveItems = Command.define('SaveItems', {
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       const id = yield* boardIdOf(boardId)
-      const operationId = yield* newOperationId
+      const operationId = yield* drawOperationId()
       const current = api.board
         .getBoard({ params: { boardId: id } })
         .pipe(Effect.map((board) => Message.ReplacedByNewerBoard({ board })))
@@ -106,7 +106,7 @@ export const UpdatePaper = Command.define('UpdatePaper', {
       const api = yield* (yield* StyldClient).api
       const board = yield* api.board.updateBoard({
         params: { boardId: yield* boardIdOf(boardId) },
-        payload: { operationId: yield* newOperationId, paper },
+        payload: { operationId: yield* drawOperationId(), paper },
       })
       return Message.SucceededUpdatePaper({ board })
     }).pipe(Effect.orElseSucceed(() => Message.FailedUpdatePaper({ attempted: paper, previous }))),
@@ -132,7 +132,7 @@ export const AddImage = Command.define('AddImage', {
     Effect.gen(function* () {
       const uploadId = yield* uploadPicture(file)
       const api = yield* (yield* StyldClient).api
-      const operationId = yield* newOperationId
+      const operationId = yield* drawOperationId()
       const { imageId } = yield* api.board.addBoardImage({
         params: { boardId: yield* boardIdOf(boardId) },
         payload: { operationId, uploadId },
@@ -178,7 +178,7 @@ export const SaveLook = Command.define('SaveLook', {
   execute: ({ name, pieceIds }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
-      const operationId = yield* newOperationId
+      const operationId = yield* drawOperationId()
       const look = yield* api.look.createLook({ payload: { operationId, name, pieceIds } })
       return Message.SucceededSaveLook({ lookId: look.id })
     }).pipe(Effect.orElseSucceed(() => Message.FailedSaveLook())),

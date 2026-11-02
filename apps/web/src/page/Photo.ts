@@ -1,4 +1,4 @@
-import { newOperation, newOperationId } from '../OperationIds.ts'
+import { drawOperationId } from '../OperationIds.ts'
 import { Look, Photo as PhotoContract, PhotoGarmentId, PhotoId, PieceId } from '@styld/protocol'
 import { Effect, Number, Option, Predicate, Result, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
@@ -112,7 +112,7 @@ export const SetFavourite = Command.define('SetFavourite', {
       const api = yield* (yield* StyldClient).api
       const photo = yield* api.photo.updatePhoto({
         params: { photoId: yield* photoIdOf(photoId) },
-        payload: { operationId: yield* newOperationId, favourite },
+        payload: { operationId: yield* drawOperationId(), favourite },
       })
       return Message.SucceededChange({ photo })
     }).pipe(Effect.orElseSucceed(() => Message.FailedChange())),
@@ -126,7 +126,7 @@ export const MatchGarment = Command.define('MatchGarment', {
       const api = yield* (yield* StyldClient).api
       const photo = yield* api.photo.matchGarment({
         params: { photoId: yield* photoIdOf(photoId), garmentId },
-        payload: { operationId: yield* newOperationId, pieceId },
+        payload: { operationId: yield* drawOperationId(), pieceId },
       })
       return Message.SucceededChange({ photo })
     }).pipe(Effect.orElseSucceed(() => Message.FailedChange())),
@@ -140,7 +140,7 @@ export const OfferGarment = Command.define('OfferGarment', {
       const api = yield* (yield* StyldClient).api
       const photo = yield* api.photo.offerGarment({
         params: { photoId: yield* photoIdOf(photoId), garmentId },
-        payload: yield* newOperation,
+        payload: { operationId: yield* drawOperationId() },
       })
       return Message.SucceededChange({ photo })
     }).pipe(Effect.orElseSucceed(() => Message.FailedChange())),
@@ -154,7 +154,7 @@ export const WearAgain = Command.define('WearAgain', {
       const api = yield* (yield* StyldClient).api
       const look = yield* api.photo.wearAgain({
         params: { photoId: yield* photoIdOf(photoId) },
-        payload: { operationId: yield* newOperationId, name },
+        payload: { operationId: yield* drawOperationId(), name },
       })
       return Message.SucceededWearAgain({ look })
     }).pipe(Effect.orElseSucceed(() => Message.FailedChange())),
@@ -168,7 +168,7 @@ export const CutOut = Command.define('CutOut', {
       const api = yield* (yield* StyldClient).api
       const photo = yield* api.photo.cutOut({
         params: { photoId: yield* photoIdOf(photoId) },
-        payload: yield* newOperation,
+        payload: { operationId: yield* drawOperationId() },
       })
       return Message.SucceededChange({ photo })
     }).pipe(
@@ -186,7 +186,7 @@ export const DeletePhoto = Command.define('DeletePhoto', {
       const api = yield* (yield* StyldClient).api
       yield* api.photo.deletePhoto({
         params: { photoId: yield* photoIdOf(photoId) },
-        payload: yield* newOperation,
+        payload: { operationId: yield* drawOperationId() },
       })
       return Message.SucceededDeletePhoto()
     }).pipe(Effect.orElseSucceed(() => Message.FailedDeletePhoto())),

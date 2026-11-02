@@ -1,4 +1,4 @@
-import { Chat, ChatSummary } from '@styld/protocol'
+import { Chat, ChatSummary, OperationId } from '@styld/protocol'
 import { Array, Option, Schema } from 'effect'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
@@ -23,7 +23,7 @@ import {
 const chatId = `ch_${'tee'.padEnd(22, 'x')}`
 const olderId = `ch_${'old'.padEnd(22, 'x')}`
 const pieceId = `pc_${'tee'.padEnd(22, 'x')}`
-const operationId = '7f9c2ba4-e88f-4f2a-9d1c-3b6e5a0d4c21'
+const operationId = OperationId.make('7f9c2ba4-e88f-4f2a-9d1c-3b6e5a0d4c21')
 
 const asked = { id: 'm1', role: 'person', text: 'What should I wear today?', parts: [], at: '2026-10-31T09:00:00.000Z' }
 const chat = (replying?: { state: 'writing' | 'failed'; text: string }, answered = false) =>
@@ -157,7 +157,7 @@ describe('Styld, the stylist in the app', () => {
   })
 
   test('a message lost on the network goes again as the same one; a refused or rewritten one goes as a new one', () => {
-    const tomorrow = (sentAs: Option.Option<string>, text = ' And tomorrow? ') =>
+    const tomorrow = (sentAs: Option.Option<OperationId>, text = ' And tomorrow? ') =>
       SendMessage({ operationId: sentAs, chatId: Option.some(chatId), text, locale: 'sl' })
     story(
       update,

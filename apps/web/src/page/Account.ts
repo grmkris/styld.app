@@ -1,5 +1,5 @@
 import * as Crypto from 'effect/Crypto'
-import { newOperationId } from '../OperationIds.ts'
+import { drawOperationId } from '../OperationIds.ts'
 import { Profile } from '@styld/protocol'
 import { Effect, Option, Result, Schema } from 'effect'
 import { AsyncData, Command, type Update } from 'foldkit'
@@ -50,7 +50,7 @@ export const DeleteAccount = Command.define('DeleteAccount', {
   messages: [Message.SucceededDeleteAccount, Message.FailedDeleteAccount],
   execute: Effect.gen(function* () {
     const api = yield* (yield* StyldClient).api
-    yield* api.account.deleteMe({ payload: { operationId: yield* newOperationId } })
+    yield* api.account.deleteMe({ payload: { operationId: yield* drawOperationId() } })
     return Message.SucceededDeleteAccount()
   }).pipe(Effect.orElseSucceed(() => Message.FailedDeleteAccount())),
 })

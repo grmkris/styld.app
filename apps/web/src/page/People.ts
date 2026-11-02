@@ -1,5 +1,5 @@
 import * as Crypto from 'effect/Crypto'
-import { newOperationId } from '../OperationIds.ts'
+import { drawOperationId } from '../OperationIds.ts'
 import { Dialog } from '@foldkit/ui'
 import { BoardId, Handle, LookId, PieceId, Relation, ReportReason, textLength } from '@styld/protocol'
 import { Effect, Option, Predicate, Schema } from 'effect'
@@ -134,7 +134,7 @@ export const SetFollowing = Command.define('SetFollowing', {
       const api = yield* (yield* StyldClient).api
       const relation = yield* api.social.setFollowing({
         params: { handle: yield* handleOf(handle) },
-        payload: { operationId: yield* newOperationId, following },
+        payload: { operationId: yield* drawOperationId(), following },
       })
       return Message.SucceededSetRelation({ relation })
     }).pipe(Effect.orElseSucceed(() => Message.FailedPeopleWork())),
@@ -148,7 +148,7 @@ export const SetBlocked = Command.define('SetBlocked', {
       const api = yield* (yield* StyldClient).api
       const relation = yield* api.social.setBlocked({
         params: { handle: yield* handleOf(handle) },
-        payload: { operationId: yield* newOperationId, blocked },
+        payload: { operationId: yield* drawOperationId(), blocked },
       })
       return Message.SucceededSetRelation({ relation })
     }).pipe(Effect.orElseSucceed(() => Message.FailedPeopleWork())),
@@ -191,7 +191,7 @@ export const SetSaved = Command.define('SetSaved', {
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
       const target = yield* saveTargetOf(subject)
-      const answer = yield* api.social.setSaved({ payload: { operationId: yield* newOperationId, target, saved } })
+      const answer = yield* api.social.setSaved({ payload: { operationId: yield* drawOperationId(), target, saved } })
       return Message.SucceededSetSaved({ saved: answer.saved })
     }).pipe(Effect.orElseSucceed(() => Message.FailedPeopleWork())),
 })
@@ -205,7 +205,12 @@ export const SendReport = Command.define('SendReport', {
       const target = yield* reportTargetOf(subject)
       const words = note.trim().slice(0, textLength.reportNote)
       yield* api.social.report({
-        payload: { operationId: yield* newOperationId, target, reason, ...(words.length > 0 ? { note: words } : {}) },
+        payload: {
+          operationId: yield* drawOperationId(),
+          target,
+          reason,
+          ...(words.length > 0 ? { note: words } : {}),
+        },
       })
       return Message.SucceededReport()
     }).pipe(

@@ -1,4 +1,4 @@
-import { CaptureId } from '@styld/protocol'
+import { CaptureId, OperationId } from '@styld/protocol'
 import { Option } from 'effect'
 import { Command, changeFiles, click, expect, given, role, scene, selector, submit, text, type } from 'foldkit/scene'
 import { describe, test } from 'vitest'
@@ -83,7 +83,7 @@ describe('adding from a shop’s page', () => {
         Message.FailedSendLink({
           index: 0,
           problem: 'network',
-          operationId: Option.some('op-link-1'),
+          operationId: Option.some(OperationId.make('op-link-0001')),
           uploadId: Option.none(),
         }),
       ),

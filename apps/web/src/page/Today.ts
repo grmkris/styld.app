@@ -1,6 +1,6 @@
 import { cdn } from '../Cdn.ts'
 import * as Crypto from 'effect/Crypto'
-import { newOperationId } from '../OperationIds.ts'
+import { drawOperationId } from '../OperationIds.ts'
 import {
   Day,
   Feed,
@@ -188,7 +188,7 @@ export const MakeOutfits = Command.define('MakeOutfits', {
     Effect.gen(function* () {
       const batch = yield* (yield* (yield* StyldClient).api).outfit.makeOutfit({
         payload: {
-          operationId: yield* newOperationId,
+          operationId: yield* drawOperationId(),
           mode: 'fast',
           day,
           brief,
@@ -213,7 +213,7 @@ export const Wear = Command.define('Wear', {
       })
       const worn = yield* (yield* (yield* StyldClient).api).worn.wearPieces({
         params: { day },
-        payload: { operationId: yield* newOperationId, ...payload },
+        payload: { operationId: yield* drawOperationId(), ...payload },
       })
       return Message.SucceededWear({ pieceIds: worn.pieceIds })
     }).pipe(Effect.orElseSucceed(() => Message.FailedWear())),

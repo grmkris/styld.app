@@ -1,4 +1,4 @@
-import { newOperationId } from '../OperationIds.ts'
+import { drawOperationId } from '../OperationIds.ts'
 import { Board, BoardName, SavedThing } from '@styld/protocol'
 import { Effect, Option, Result, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
@@ -63,7 +63,7 @@ export const CreateBoard = Command.define('CreateBoard', {
   execute: ({ name }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
-      const operationId = yield* newOperationId
+      const operationId = yield* drawOperationId()
       const board = yield* api.board.createBoard({
         payload: { operationId, name: yield* Schema.decodeUnknownEffect(BoardName)(name) },
       })

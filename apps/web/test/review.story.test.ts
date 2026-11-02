@@ -1,9 +1,8 @@
-import { CaptureId, DetectionId, type Tray as TrayContract } from '@styld/protocol'
+import { CaptureId, DetectionId, type Tray as TrayContract, OperationId } from '@styld/protocol'
 import { Array, Option } from 'effect'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import {
-  DrawOperationId,
   keptOf,
   LoadTray,
   Message,
@@ -94,40 +93,51 @@ describe('the review tray', () => {
   })
 
   test('adds the ticked pieces and drops the rest in one request, repeated as is after a lost answer', () => {
-    const sent = SendReview({
-      operationId: 'op-1',
-      keep: [
-        {
-          detectionId: id('dt', 1),
-          type: 'tops',
-          details: {
-            type: Option.some('tops'),
-            colours: ['navy'],
-            season: Option.none(),
-            occasions: [],
-            pattern: Option.none(),
+    const lost = OperationId.make('op-review-1')
+    const sent = (maybeOperationId: Option.Option<OperationId>) =>
+      SendReview({
+        maybeOperationId,
+        keep: [
+          {
+            detectionId: id('dt', 1),
+            type: 'tops',
+            details: {
+              type: Option.some('tops'),
+              colours: ['navy'],
+              season: Option.none(),
+              occasions: [],
+              pattern: Option.none(),
+            },
+            name: Option.none(),
+            useOriginal: false,
           },
-          name: Option.none(),
-          useOriginal: false,
-        },
-      ],
-      discard: [id('dt', 2), id('dt', 3)],
-    })
+        ],
+        discard: [id('dt', 2), id('dt', 3)],
+      })
     story(
       update,
       given(init()),
       message(Message.SucceededLoadTray({ tray: found })),
       message(Message.ToggledKeep({ detectionId: id('dt', 2) })),
       message(Message.ClickedAdd()),
-      Command.resolve(DrawOperationId, Message.CompletedDrawOperationId({ operationId: 'op-1' })),
-      Command.expectExact(sent),
-      Command.resolve(sent, Message.FailedReview({ retry: 'same' })),
+      Command.expectExact(sent(Option.none())),
+      Command.resolve(SendReview, Message.FailedReview({ maybeOperationId: Option.some(lost) })),
+      model(({ saving }) => expect(saving).toEqual(Saving.Failed({ maybeOperationId: Option.some(lost) }))),
       message(Message.ClickedAdd()),
-      Command.expectExact(sent),
-      Command.resolve(sent, Message.SucceededReview({ count: 1 })),
+      Command.expectExact(sent(Option.some(lost))),
+      Command.resolve(SendReview, Message.SucceededReview({ count: 1 })),
       expectOutMessage({ _tag: 'AddedPieces', count: 1 }),
       model(({ saving }) => expect(Saving.guards.Idle(saving)).toBe(true)),
     )
+  })
+
+  test('a refused add reads the tray again, and the next add is a new operation', () => {
+    const shown = update(init(), Message.SucceededLoadTray({ tray: found })).model
+    const adding = update(shown, Message.ClickedAdd())
+    expect(adding.commands?.map(({ name }) => name)).toEqual([SendReview.name])
+    const refused = update(adding.model, Message.FailedReview({ maybeOperationId: Option.none() }))
+    expect(refused.model.saving).toEqual(Saving.Failed({ maybeOperationId: Option.none() }))
+    expect(refused.commands?.map(({ name }) => name)).toEqual([LoadTray.name])
   })
 
   test('polls one read at a time: a tick while a read is on its way asks for nothing more', () => {
@@ -152,7 +162,7 @@ describe('the review tray', () => {
       update(adding, Message.TickedTrayRefresh()).model,
       Message.SucceededLoadTray({ tray: withWaiting }),
     ).model
-    expect(polled.saving).toEqual(Saving.Preparing())
+    expect(polled.saving).toEqual(Saving.Saving())
     expect(polled.editing).toEqual(Option.some(id('dt', 1)))
     expect(keptOf(polled).map(({ id: kept }) => kept)).toEqual([id('dt', 1)])
   })

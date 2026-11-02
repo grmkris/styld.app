@@ -1,4 +1,4 @@
-import { newOperation, newOperationId } from '../../OperationIds.ts'
+import { drawOperationId } from '../../OperationIds.ts'
 import { BoardId, BoardName, LookId, Mood, PieceId, PinId } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import { Command, Dom } from 'foldkit'
@@ -34,7 +34,7 @@ export const RenameBoard = Command.define('RenameBoard', {
       const api = yield* (yield* StyldClient).api
       const board = yield* api.board.updateBoard({
         params: { boardId: yield* boardIdOf(boardId) },
-        payload: { operationId: yield* newOperationId, name: yield* Schema.decodeUnknownEffect(BoardName)(name) },
+        payload: { operationId: yield* drawOperationId(), name: yield* Schema.decodeUnknownEffect(BoardName)(name) },
       })
       return Message.SucceededRename({ board })
     }).pipe(Effect.orElseSucceed(() => Message.FailedRename())),
@@ -49,7 +49,7 @@ export const SetBoardVisibility = Command.define('SetBoardVisibility', {
       const api = yield* (yield* StyldClient).api
       const board = yield* api.board.setBoardVisibility({
         params: { boardId: yield* boardIdOf(boardId) },
-        payload: { operationId: yield* newOperationId, visibility: isPublic ? 'public' : 'private' },
+        payload: { operationId: yield* drawOperationId(), visibility: isPublic ? 'public' : 'private' },
       })
       return Message.SucceededSetVisibility({ board })
     }).pipe(
@@ -67,7 +67,7 @@ export const SetBoardMoods = Command.define('SetBoardMoods', {
       const api = yield* (yield* StyldClient).api
       const board = yield* api.board.updateBoard({
         params: { boardId: yield* boardIdOf(boardId) },
-        payload: { operationId: yield* newOperationId, moods },
+        payload: { operationId: yield* drawOperationId(), moods },
       })
       return Message.SucceededSetBoardMoods({ board })
     }).pipe(Effect.orElseSucceed(() => Message.FailedSetBoardMoods({ attempted: moods, previous }))),
@@ -82,7 +82,7 @@ export const DeleteBoard = Command.define('DeleteBoard', {
       const api = yield* (yield* StyldClient).api
       yield* api.board.deleteBoard({
         params: { boardId: yield* boardIdOf(boardId) },
-        payload: yield* newOperation,
+        payload: { operationId: yield* drawOperationId() },
       })
       return Message.SucceededDeleteBoard()
     }).pipe(
@@ -106,7 +106,7 @@ export const PinThings = Command.define('PinThings', {
       const board = yield* api.board.addPins({
         params: { boardId: yield* boardIdOf(boardId) },
         payload: {
-          operationId: yield* newOperationId,
+          operationId: yield* drawOperationId(),
           pieceIds: yield* Schema.decodeUnknownEffect(Schema.Array(PieceId))(pieceIds),
           lookIds: yield* Schema.decodeUnknownEffect(Schema.Array(LookId))(lookIds),
         },
@@ -135,7 +135,7 @@ export const UnpinThings = Command.define('UnpinThings', {
       const board = yield* api.board.removePins({
         params: { boardId: yield* boardIdOf(boardId) },
         payload: {
-          operationId: yield* newOperationId,
+          operationId: yield* drawOperationId(),
           pinIds: yield* Schema.decodeUnknownEffect(Schema.Array(PinId))(pinIds),
         },
       })

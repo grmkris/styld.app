@@ -255,7 +255,7 @@ const editor = (detection: Detection, decision: Decision, locale: Locale, h: Htm
 
 const footer = (model: Model, locale: Locale, h: HtmlBuilder<Message>, editing: boolean): Html => {
   const count = keptOf(model).length
-  const busy = Saving.guards.Preparing(model.saving) || Saving.guards.Saving(model.saving)
+  const busy = Saving.guards.Saving(model.saving)
   return h.div(styled(h, styles.footer()), [
     h.div(styled(h, styles.footerInner()), [
       Saving.guards.Failed(model.saving)
