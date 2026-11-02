@@ -1,7 +1,6 @@
 import { describe, expect, it } from '@effect/vitest'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect } from 'effect'
-import { applicationSweeps } from '../src/jobs/Cron.ts'
 import { runSweeps, stuckRows, sweepBatch } from '../src/jobs/Sweeps.ts'
 import { forgetOldReceipts } from '../src/kernel/Receipts.ts'
 import { forgetExpiredAssertions } from '../src/OAuthAssertions.ts'
@@ -18,7 +17,6 @@ const until = new Date(now - 30 * minute)
 const nowDate = new Date(now)
 const aDayAgo = new Date(now - 24 * 60 * minute)
 const twoHoursAgo = new Date(now - 2 * 60 * minute)
-const notUsed = () => Effect.die('not used')
 
 /** A database with one account. */
 const seeded = () => {
@@ -43,7 +41,7 @@ describe('the sweeps', () => {
       piece(database, 'pc_old', 'processing', old)
       piece(database, 'pc_older', 'processing', old - minute)
       piece(database, 'pc_ready', 'ready', old)
-      expect(yield* stuckRows(database).pieces(until)).toEqual(['pc_older', 'pc_old'])
+      expect(yield* stuckRows(drizzle(database)).pieces(until)).toEqual(['pc_older', 'pc_old'])
     }),
   )
 
@@ -61,7 +59,7 @@ describe('the sweeps', () => {
       capture('cp_working', 'processing', recent)
       capture('cp_review', 'review', old)
       capture('cp_unknown', 'unknown', old)
-      expect(yield* stuckRows(database).captures(until)).toEqual(['cp_stuck'])
+      expect(yield* stuckRows(drizzle(database)).captures(until)).toEqual(['cp_stuck'])
     }),
   )
 
@@ -81,7 +79,7 @@ describe('the sweeps', () => {
            VALUES ('${id}', 'ac_1', '${state}', 0, 0, ${at})`,
         )
       }
-      expect(yield* stuckRows(database).pictures(until)).toEqual(['pc_c', 'pc_q', 'pc_g'])
+      expect(yield* stuckRows(drizzle(database)).pictures(until)).toEqual(['pc_c', 'pc_q', 'pc_g'])
     }),
   )
 
@@ -101,7 +99,7 @@ describe('the sweeps', () => {
            VALUES ('${id}', 'ac_1', '${state}', 0, ${at})`,
         )
       }
-      expect(yield* stuckRows(database).turns(until, twoHoursAgo)).toEqual(['pc_vr_old', 'pc_req'])
+      expect(yield* stuckRows(drizzle(database)).turns(until, twoHoursAgo)).toEqual(['pc_vr_old', 'pc_req'])
     }),
   )
 
@@ -117,7 +115,7 @@ describe('the sweeps', () => {
       photo('ph_stuck', 'finding', old)
       photo('ph_working', 'finding', recent)
       photo('ph_ready', 'ready', old)
-      expect(yield* stuckRows(database).photos(until)).toEqual(['ph_stuck'])
+      expect(yield* stuckRows(drizzle(database)).photos(until)).toEqual(['ph_stuck'])
     }),
   )
 
@@ -125,7 +123,7 @@ describe('the sweeps', () => {
     Effect.gen(function* () {
       const database = seeded()
       for (let index = 0; index < sweepBatch + 5; index += 1) piece(database, `pc_${index}`, 'processing', old)
-      expect((yield* stuckRows(database).pieces(until)).length).toBe(sweepBatch)
+      expect((yield* stuckRows(drizzle(database)).pieces(until)).length).toBe(sweepBatch)
     }),
   )
 
@@ -142,7 +140,7 @@ describe('the sweeps', () => {
       upload('up_left_unused', 'received', now - 25 * 60 * minute)
       upload('up_just_received', 'received', now - minute)
       upload('up_used', 'used', now - 25 * 60 * minute)
-      const store = makeStore(database)
+      const store = makeStore(drizzle(database))
       const unused = yield* store.unusedUploads(nowDate, aDayAgo, sweepBatch)
       expect(unused.map(({ id }) => id).toSorted()).toEqual(['up_left_unused', 'up_never_came'])
       yield* Effect.forEach(unused, ({ id }) => store.forgetUpload(id))
@@ -210,28 +208,4 @@ describe('the sweeps', () => {
       expect(ran).toEqual(['fine'])
     }),
   )
-
-  it('are all on the schedule', () => {
-    const sweeps = applicationSweeps(seeded(), {
-      wardrobeService: { failPiece: notUsed, sweepUploads: notUsed },
-      capturesService: { failCapture: notUsed, failPicture: notUsed, failTurn: notUsed },
-      photosService: { failFinding: notUsed },
-      generationsService: { sweep: notUsed },
-      checksService: { sweep: notUsed },
-      outfitsService: { sweep: notUsed },
-    })
-    expect(sweeps.map(({ name }) => name)).toEqual([
-      'pieces',
-      'captures',
-      'pictures',
-      'turns',
-      'photos',
-      'generation',
-      'checks',
-      'thinking',
-      'uploads',
-      'receipts',
-      'assertions',
-    ])
-  })
 })

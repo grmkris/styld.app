@@ -1,6 +1,6 @@
-import type * as Cloudflare from '@alchemy.run/cloudflare'
+import * as Cloudflare from '@alchemy.run/cloudflare'
 import { type ObservabilityBase, withObservability } from '@styld/observability'
-import { Cause, Effect, Exit, Option, Predicate, Schema } from 'effect'
+import { Cause, Effect, Exit, Option, Predicate, Schema, Stream } from 'effect'
 
 // Every queue the API Worker consumes, and the one way its deliveries settle. A body is one case of the queue's tagged
 // union; each case names the work that runs on a delivery and what giving up on it does. A delivery that worked is
@@ -119,3 +119,33 @@ export const consume =
         attempt: message.attempts,
       }),
     )
+
+/** How the Worker runs a delivery's work: with the application's services (`R`) and its observability base. */
+export type Delivering<R> = (
+  work: (base: ObservabilityBase) => Effect.Effect<void, unknown, R>,
+) => Effect.Effect<void, unknown, Cloudflare.Workers.WorkerEnvironment>
+
+/** The queue resource a consumer is declared on. */
+export type QueueResource = Parameters<typeof Cloudflare.Queues.consumeQueueMessages>[0]
+
+/** A queue a module consumes: its jobs come from the application's services on each delivery. */
+export interface Consumer<R> {
+  readonly name: QueueName
+  /** Declare the consumer of the queue's resource while the Worker is planned. */
+  readonly declare: (
+    resource: QueueResource,
+    delivering: Delivering<R>,
+  ) => Effect.Effect<void, never, Cloudflare.Queues.EventSource>
+}
+
+/** The consumer of a queue whose jobs `jobs` reads from the application's services. */
+export const consumer = <Body extends Tagged, R>(
+  queue: JobQueue<Body>,
+  jobs: Effect.Effect<JobsOf<Body>, never, R>,
+): Consumer<R> => ({
+  name: queue.name,
+  declare: (resource, delivering) =>
+    Cloudflare.Queues.consumeQueueMessages(resource, consumerSettings(queue), (messages) =>
+      delivering((base) => Effect.flatMap(jobs, (found) => Stream.runForEach(messages, consume(queue, base, found)))),
+    ),
+})

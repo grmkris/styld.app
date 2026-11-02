@@ -1,12 +1,11 @@
 import { operationReceipts, outfitPhotos, photoGarments } from '@styld/db'
 import { and, asc, desc, eq, inArray } from 'drizzle-orm'
-import { drizzle } from 'drizzle-orm/d1'
-import { Effect } from 'effect'
+import { Context, Effect, Layer } from 'effect'
 import { OfferedRows } from '../capture/Rows.ts'
 import type { CaptureRow, DetectionRow } from '../capture/Store.ts'
 import { type ReceiptRow, spendUpload, UploadRows } from '../wardrobe/Store.ts'
 import { forgetReceipt } from '../kernel/Receipts.ts'
-import { first, query } from '../kernel/Db.ts'
+import { Database, first, query } from '../kernel/Db.ts'
 
 export type PhotoRow = typeof outfitPhotos.$inferSelect
 export type GarmentRow = typeof photoGarments.$inferSelect
@@ -14,7 +13,7 @@ export type GarmentRow = typeof photoGarments.$inferSelect
 /** The most photos one list reads, newest first. */
 const mostListed = 200
 
-type Db = ReturnType<typeof drizzle>
+type Db = Database['Service']
 
 const ofAccount = (accountId: string, photoId: string) =>
   and(eq(outfitPhotos.id, photoId), eq(outfitPhotos.accountId, accountId))
@@ -155,8 +154,11 @@ const writes = (db: Db) => ({
 })
 
 /** My Gallery's rows over D1: photos, their garments, and the receipt that makes adding one idempotent. */
-export const makePhotoStore = (database: Parameters<typeof drizzle>[0]) => {
-  const db = drizzle(database)
-  return { ...reads(db), ...writes(db) }
+export const makePhotoStore = (db: Db) => ({ ...reads(db), ...writes(db) })
+
+/** My Gallery's rows over the application's one database. */
+export class PhotoStore extends Context.Service<PhotoStore, ReturnType<typeof makePhotoStore>>()(
+  '@styld/server/photos/PhotoStore',
+) {
+  static readonly layer = Layer.effect(this, Effect.map(Database, makePhotoStore))
 }
-export type PhotoStore = ReturnType<typeof makePhotoStore>

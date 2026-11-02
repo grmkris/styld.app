@@ -2,14 +2,15 @@ import { authTables } from '@styld/auth/storage'
 import { accounts, oauthGrants } from '@styld/db'
 import { CurrentAccount, NotFound, Unavailable } from '@styld/protocol'
 import { eq, sql } from 'drizzle-orm'
-import { drizzle } from 'drizzle-orm/d1'
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core'
-import { Context, Effect, Schema } from 'effect'
+import { Context, Effect, Layer, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { accountPrefix } from './wardrobe/Media.ts'
-import type { WardrobeBindings } from './wardrobe/Parts.ts'
-import { deletePrefix, type Listing } from './kernel/Media.ts'
+import { Database } from './kernel/Db.ts'
+import { deletePrefix, type Listing, Media } from './kernel/Media.ts'
+import { ChatStores } from './stylist/Service.ts'
+import { PieceQueue } from './wardrobe/Processing.ts'
 
 const unavailable = () => Unavailable.make({})
 
@@ -24,15 +25,15 @@ const AccountRow = Schema.Struct({
 
 /** What closing an account touches: the database, the bucket its objects live in and the queue that finishes it. */
 interface LifecycleBindings {
-  readonly database: WardrobeBindings['database']
+  readonly database: Database['Service']
   readonly bucket: Listing
-  readonly queue: WardrobeBindings['queue']
+  readonly queue: PieceQueue['Service']
 }
 
 const make = (bindings: LifecycleBindings, forgetChats: (accountId: string) => Effect.Effect<void, unknown>) =>
   Effect.gen(function* () {
     const crypto = yield* Crypto.Crypto
-    const db = drizzle(bindings.database)
+    const db = bindings.database
     // The managed auth tables are typed generically, so their subject column is named in SQL.
     const ofSubject = (table: SQLiteTable, accountId: string) =>
       db.run(sql`delete from ${table} where ${sql.identifier('subject_id')} = ${accountId}`)
@@ -119,7 +120,17 @@ const make = (bindings: LifecycleBindings, forgetChats: (accountId: string) => E
 /** Account termination, owned by the application: Yielded's `SubjectLifecycle` leaves it to us. */
 export class AccountLifecycle extends Context.Service<AccountLifecycle, Effect.Success<ReturnType<typeof make>>>()(
   '@styld/server/AccountLifecycle',
-) {}
+) {
+  /** Over the application's database, bucket and piece queue; an account's chats with Styld go with it. */
+  static readonly layer = Layer.effect(
+    this,
+    Effect.gen(function* () {
+      const chats = yield* ChatStores
+      const bindings = { database: yield* Database, bucket: (yield* Media).bucket, queue: yield* PieceQueue }
+      return yield* makeAccountLifecycle(bindings, (accountId) => chats.of(accountId).erase())
+    }),
+  )
+}
 
 export const makeAccountLifecycle = (
   bindings: LifecycleBindings,

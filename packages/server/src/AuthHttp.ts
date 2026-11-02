@@ -2,7 +2,7 @@ import { makeAuthRuntime } from '@styld/auth'
 import { csrf, SessionHttp } from '@styld/auth/config'
 import { Unavailable } from '@styld/protocol'
 import { Http, Proofs, Sessions } from '@yielded/auth'
-import { Effect, Layer, Option, Redacted } from 'effect'
+import { Context, Effect, Layer, Option, Redacted } from 'effect'
 import type * as Headers from 'effect/http/Headers'
 import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import type { QueryDatabaseClient } from '@alchemy.run/cloudflare/D1/QueryDatabase'
@@ -29,6 +29,13 @@ export const makeAuthHttp = (database: QueryDatabaseClient, options: AuthHttpOpt
 
 /** The website's auth over the Worker's database: its routes, its runtime and Yielded's request handling. */
 export type AuthHttp = ReturnType<typeof makeAuthHttp>
+
+/** The website's auth, built once per runtime, for the modules whose routes read the session cookie. */
+export class Auth extends Context.Service<Auth, AuthHttp>()('@styld/server/Auth') {}
+
+/** Routes built over the website's auth. */
+export const withAuth = <A, E, R>(routes: (auth: AuthHttp) => Layer.Layer<A, E, R>) =>
+  Layer.unwrap(Effect.map(Auth, routes))
 
 /** The account behind the website's session cookie, for the routes outside the typed API (owner-only images and
  * files, public pages a signed-in reader sees, the OAuth login): none signed out or with a session that is no longer

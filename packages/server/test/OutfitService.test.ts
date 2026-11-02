@@ -6,6 +6,7 @@ import { Database } from '../src/kernel/Db.ts'
 import { Media } from '../src/kernel/Media.ts'
 import { OutfitJudge } from '../src/outfits/Judge.ts'
 import { Outfits } from '../src/outfits/Outfits.ts'
+import { WardrobeStore } from '../src/wardrobe/Store.ts'
 import { Thinking } from '../src/outfits/Proposer.ts'
 import { proposed } from '../src/outfits/Rules.ts'
 import { unlimited } from './fakes/Pacing.ts'
@@ -36,6 +37,7 @@ const seeded = () => {
 /** The engine over the database; Clef never looks, Thinking proposes the rules' outfits and counts its asks. */
 const engine = (database: ReturnType<typeof localD1>, thought: Array<number>) =>
   Outfits.layer.pipe(
+    Layer.provide(WardrobeStore.layer),
     Layer.provide(
       Layer.mergeAll(
         Database.layer(database),

@@ -20,7 +20,7 @@ import { newId } from '../kernel/Ids.ts'
 import { Media } from '../kernel/Media.ts'
 import { Pacing } from '../kernel/Pacing.ts'
 import { once, receiptRows } from '../kernel/Receipts.ts'
-import { makeStore } from '../wardrobe/Store.ts'
+import { WardrobeStore } from '../wardrobe/Store.ts'
 import { judgingPicture, OutfitJudge } from './Judge.ts'
 import { Thinking } from './Proposer.ts'
 import { type Brief, missingOf, proposed, type Wearable } from './Rules.ts'
@@ -56,7 +56,7 @@ interface Deps {
   readonly pacing: Pacing['Service']
   readonly metrics: CaptureMetrics['Service']
   readonly days: ReturnType<typeof outfitStore>
-  readonly wardrobe: ReturnType<typeof makeStore>
+  readonly wardrobe: WardrobeStore['Service']
   readonly receipts: ReturnType<typeof receiptRows>
 }
 
@@ -190,7 +190,7 @@ const make = Effect.gen(function* () {
     pacing: yield* Pacing,
     metrics: yield* CaptureMetrics,
     days: outfitStore(db),
-    wardrobe: makeStore(db.$client),
+    wardrobe: yield* WardrobeStore,
     receipts: receiptRows(db),
   }
   return {

@@ -9,10 +9,9 @@ import {
   uploads,
 } from '@styld/db'
 import { and, desc, eq, inArray, isNull, ne } from 'drizzle-orm'
-import { drizzle } from 'drizzle-orm/d1'
-import { Array, Effect, Option } from 'effect'
+import { Array, Context, Effect, Layer, Option } from 'effect'
 import { matchRows } from './MatchStore.ts'
-import { chunked, first, query } from '../kernel/Db.ts'
+import { chunked, Database as Db, first, query } from '../kernel/Db.ts'
 import { forgetReceipt } from '../kernel/Receipts.ts'
 import { GarmentRows } from '../photos/Rows.ts'
 import { PieceRows, UploadRows } from '../wardrobe/Store.ts'
@@ -28,7 +27,7 @@ type NewPicture = typeof piecePictures.$inferInsert
 export type TurnRow = typeof pieceTurns.$inferSelect
 export type TurnState = TurnRow['state']
 
-type Database = ReturnType<typeof drizzle>
+type Database = Db['Service']
 
 /** D1 binds at most 100 parameters to a statement. Rows are written one statement each, and id lists
  * go in chunks small enough to leave room for the rest of the statement. */
@@ -397,18 +396,21 @@ const turnRows = (db: Database) => ({
     ).pipe(Effect.map((rows) => rows.length > 0)),
 })
 
-export const makeCaptureStore = (database: Parameters<typeof drizzle>[0]) => {
-  const db = drizzle(database)
-  return {
-    ...captureRows(db),
-    ...trayRows(db),
-    ...pairRows(db),
-    ...reviewRows(db),
-    ...transitionRows(db),
-    ...pictureRows(db),
-    ...turnRows(db),
-    ...matchRows(db),
-  }
-}
+const makeCaptureStore = (db: Database) => ({
+  ...captureRows(db),
+  ...trayRows(db),
+  ...pairRows(db),
+  ...reviewRows(db),
+  ...transitionRows(db),
+  ...pictureRows(db),
+  ...turnRows(db),
+  ...matchRows(db),
+})
 
-export type CaptureStore = ReturnType<typeof makeCaptureStore>
+/** Captures' rows over the application's one database: captures, their detections and frames, pieces' clean pictures
+ * and turns. */
+export class CaptureStore extends Context.Service<CaptureStore, ReturnType<typeof makeCaptureStore>>()(
+  '@styld/server/capture/CaptureStore',
+) {
+  static readonly layer = Layer.effect(this, Effect.map(Db, makeCaptureStore))
+}

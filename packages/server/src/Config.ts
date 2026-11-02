@@ -1,5 +1,5 @@
 import { Environment } from '@styld/observability'
-import { Config, ConfigProvider, Effect, Schema } from 'effect'
+import { Config, ConfigProvider, Context, Effect, Schema } from 'effect'
 import {
   decodeAuthSecret,
   decodeAuthSessionKeyring,
@@ -48,4 +48,7 @@ export const deploymentOf = Effect.fn('Styld.Config.deployment')(function* (env:
   }
 })
 
-export type Deployment = Effect.Success<ReturnType<typeof deploymentOf>>
+/** The deployment, decoded once per runtime, for the modules that need its origin, release, admins or keys. */
+export class Deployment extends Context.Service<Deployment, Effect.Success<ReturnType<typeof deploymentOf>>>()(
+  '@styld/server/Deployment',
+) {}

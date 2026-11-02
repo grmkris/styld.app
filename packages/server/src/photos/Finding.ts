@@ -8,7 +8,7 @@ import { modelPicture } from '@styld/imaging'
 import { type Ending, holdId } from '../usage/Holds.ts'
 import type { ImageBindings } from '../wardrobe/Delivery.ts'
 import { accountPrefix } from '../wardrobe/Media.ts'
-import { type GarmentRow, makePhotoStore, type PhotoRow } from './Store.ts'
+import { type GarmentRow, PhotoStore, type PhotoRow } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
 
@@ -23,7 +23,7 @@ export const makePhotoParts = (bindings: CaptureBindings & ImageBindings) =>
     return {
       capture: yield* makeParts(bindings),
       images: { bucket: bindings.bucket, images: bindings.images } satisfies ImageBindings,
-      photos: makePhotoStore(bindings.database),
+      photos: yield* PhotoStore,
     }
   })
 export type PhotoParts = Effect.Success<ReturnType<typeof makePhotoParts>>

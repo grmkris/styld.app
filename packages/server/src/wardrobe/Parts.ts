@@ -14,7 +14,7 @@ import type { PieceChanged } from '../safety/PieceChanged.ts'
 import type { ImageBindings } from './Delivery.ts'
 import type { GarmentCutout, WorkMessage } from './Processing.ts'
 import { pictureView, turnView } from './Shown.ts'
-import type { makeStore, PieceRow, Store, UploadRow } from './Store.ts'
+import type { PieceRow, Store, UploadRow } from './Store.ts'
 import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
 import { deleteAfterRows } from '../kernel/Media.ts'
 
@@ -23,7 +23,6 @@ import { deleteAfterRows } from '../kernel/Media.ts'
 
 /** The Cloudflare bindings the wardrobe stores into, as Alchemy's runtime objects. */
 export interface WardrobeBindings extends ImageBindings {
-  readonly database: Parameters<typeof makeStore>[0]
   readonly queue: { send(message: WorkMessage): Promise<unknown> }
 }
 

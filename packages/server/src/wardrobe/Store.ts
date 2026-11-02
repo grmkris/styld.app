@@ -1,10 +1,9 @@
 import { accounts, detections, operationReceipts, piecePictures, pieceTurns, pieces, uploads } from '@styld/db'
 import { and, asc, desc, eq, inArray, lt, ne, or, sql } from 'drizzle-orm'
-import { drizzle } from 'drizzle-orm/d1'
-import { Array, Effect } from 'effect'
+import { Array, Context, Effect, Layer } from 'effect'
 import { receiptRows } from '../kernel/Receipts.ts'
 import { forgetCheck } from '../safety/Checks.ts'
-import { chunked, first, query, StoreUnavailable } from '../kernel/Db.ts'
+import { chunked, Database, first, query, StoreUnavailable } from '../kernel/Db.ts'
 
 export type PieceRow = typeof pieces.$inferSelect
 export type UploadRow = typeof uploads.$inferSelect
@@ -31,7 +30,7 @@ export type PieceChanges = Partial<
 >
 
 /** Which of these pieces belong to the account. */
-export const ownPieceIds = (db: ReturnType<typeof drizzle>, accountId: string, pieceIds: ReadonlyArray<string>) =>
+export const ownPieceIds = (db: Database['Service'], accountId: string, pieceIds: ReadonlyArray<string>) =>
   Effect.map(
     Effect.forEach(chunked(pieceIds), (chunk) =>
       query(() =>
@@ -47,7 +46,7 @@ export const ownPieceIds = (db: ReturnType<typeof drizzle>, accountId: string, p
 /** The key of an upload the account received and has not used, read inside the statement that records what
  * the upload makes. Once the upload is spent it reads as null, which a NOT NULL column refuses, failing the
  * whole batch: spending the upload and recording what it made are one atomic step. */
-export const receivedUploadKey = (db: ReturnType<typeof drizzle>, accountId: string, uploadId: string) =>
+export const receivedUploadKey = (db: Database['Service'], accountId: string, uploadId: string) =>
   sql<string>`${db
     .select({ key: uploads.objectKey })
     .from(uploads)
@@ -56,7 +55,7 @@ export const receivedUploadKey = (db: ReturnType<typeof drizzle>, accountId: str
 /** Spend an upload, in the batch that records what it made: the one way an upload is used. Only a received upload can
  * be spent; spending one already used (or not yet received) sets its status to null, which the NOT NULL column refuses,
  * failing the whole batch, so one upload never makes two things (a capture and a piece's back, say). */
-export const spendUpload = (db: ReturnType<typeof drizzle>, uploadId: string) =>
+export const spendUpload = (db: Database['Service'], uploadId: string) =>
   db
     .update(uploads)
     .set({ status: sql<'used'>`CASE WHEN ${uploads.status} = 'received' THEN 'used' END` })
@@ -65,11 +64,11 @@ export const spendUpload = (db: ReturnType<typeof drizzle>, uploadId: string) =>
 /** The wardrobe's statements for another module's batch: a piece it creates (a kept detection), and an upload given
  * back when the batch that spent it is undone. */
 export const PieceRows = {
-  insert: (db: ReturnType<typeof drizzle>, row: PieceRow) => db.insert(pieces).values(row),
+  insert: (db: Database['Service'], row: PieceRow) => db.insert(pieces).values(row),
 }
 export const UploadRows = {
   spend: spendUpload,
-  restore: (db: ReturnType<typeof drizzle>, uploadId: string) =>
+  restore: (db: Database['Service'], uploadId: string) =>
     db
       .update(uploads)
       .set({ status: 'received' })
@@ -78,7 +77,7 @@ export const UploadRows = {
 
 /** Which of these stored objects the account still shows: as a piece's photo, image or back, or as an open detection's
  * photo, cut-out or back in the tray. The one in-use check: an object goes only when nothing shows it. */
-export const keysInUse = (db: ReturnType<typeof drizzle>, accountId: string, keys: ReadonlyArray<string>) =>
+export const keysInUse = (db: Database['Service'], accountId: string, keys: ReadonlyArray<string>) =>
   Effect.map(
     // Each key is bound three times, so a chunk holds 30 of them.
     Effect.forEach(Array.chunksOf(keys, 30), (chunk) =>
@@ -120,7 +119,7 @@ export const keysInUse = (db: ReturnType<typeof drizzle>, accountId: string, key
   )
 
 /** Uploads, and whether their account still takes photos. */
-const uploadQueries = (db: ReturnType<typeof drizzle>) => ({
+const uploadQueries = (db: Database['Service']) => ({
   accountEnabled: (accountId: string) =>
     query(() =>
       db
@@ -171,7 +170,7 @@ const uploadQueries = (db: ReturnType<typeof drizzle>) => ({
 })
 
 /** Pieces' clean pictures as their owner reads and chooses them. The picture job writes everything else. */
-const pictureQueries = (db: ReturnType<typeof drizzle>) => ({
+const pictureQueries = (db: Database['Service']) => ({
   picturesOf: (accountId: string) =>
     query(() => db.select().from(piecePictures).where(eq(piecePictures.accountId, accountId))),
   turnsOf: (accountId: string) => query(() => db.select().from(pieceTurns).where(eq(pieceTurns.accountId, accountId))),
@@ -209,7 +208,7 @@ const pictureQueries = (db: ReturnType<typeof drizzle>) => ({
 })
 
 /** A piece's back, written with its upload spent and the operation's receipt. */
-const backQueries = (db: ReturnType<typeof drizzle>) => ({
+const backQueries = (db: Database['Service']) => ({
   /** A back for the piece, its upload spent and the operation's receipt, as one atomic batch. */
   setBack: (
     accountId: string,
@@ -233,7 +232,7 @@ const backQueries = (db: ReturnType<typeof drizzle>) => ({
 })
 
 /** Reads for the queue, which acts for no one in particular: pieces to process. */
-const queueQueries = (db: ReturnType<typeof drizzle>) => ({
+const queueQueries = (db: Database['Service']) => ({
   /** For the processing queue, which acts for no one in particular. */
   findPieceForProcessing: (pieceId: string) =>
     query(() => db.select().from(pieces).where(eq(pieces.id, pieceId)).limit(1)).pipe(Effect.map(first)),
@@ -241,67 +240,69 @@ const queueQueries = (db: ReturnType<typeof drizzle>) => ({
 
 /** The wardrobe's rows in D1. Every read and write of a person's rows names their account, so
  * one account can never reach another's pieces. */
-export const makeStore = (database: Parameters<typeof drizzle>[0]) => {
-  const db = drizzle(database)
-  return {
-    ...uploadQueries(db),
-    ...pictureQueries(db),
-    ...queueQueries(db),
-    ...backQueries(db),
-    listPieces: (accountId: string) =>
-      query(() => db.select().from(pieces).where(eq(pieces.accountId, accountId)).orderBy(desc(pieces.createdAt))),
-    findPiece: (accountId: string, pieceId: string) =>
-      query(() =>
-        db
-          .select()
-          .from(pieces)
-          .where(and(eq(pieces.id, pieceId), eq(pieces.accountId, accountId)))
-          .limit(1),
-      ).pipe(Effect.map(first)),
-    ...receiptRows(db),
-    /** The piece, its upload spent and the operation's receipt, as one atomic batch. The unique
-     * upload id fails the whole batch when the upload already made a piece. */
-    addPiece: (piece: PieceRow, receipt: ReceiptRow) =>
-      Effect.tryPromise({
-        try: () =>
-          db.batch([
-            db.insert(pieces).values(piece),
-            spendUpload(db, piece.uploadId ?? ''),
-            db.insert(operationReceipts).values(receipt),
-          ]),
-        catch: () => StoreUnavailable.make({}),
-      }).pipe(Effect.asVoid),
-    updatePiece: (accountId: string, pieceId: string, changes: PieceChanges) =>
-      query(() =>
-        db
-          .update(pieces)
-          .set(changes)
-          .where(and(eq(pieces.id, pieceId), eq(pieces.accountId, accountId)))
-          .returning(),
-      ).pipe(Effect.map(first)),
-    /** Removes the piece, its upload and its content check, and records the delete's receipt, as one batch. */
-    deletePiece: (accountId: string, piece: PieceRow, receipt: ReceiptRow) =>
-      query(() =>
+export const makeStore = (db: Database['Service']) => ({
+  ...uploadQueries(db),
+  ...pictureQueries(db),
+  ...queueQueries(db),
+  ...backQueries(db),
+  listPieces: (accountId: string) =>
+    query(() => db.select().from(pieces).where(eq(pieces.accountId, accountId)).orderBy(desc(pieces.createdAt))),
+  findPiece: (accountId: string, pieceId: string) =>
+    query(() =>
+      db
+        .select()
+        .from(pieces)
+        .where(and(eq(pieces.id, pieceId), eq(pieces.accountId, accountId)))
+        .limit(1),
+    ).pipe(Effect.map(first)),
+  ...receiptRows(db),
+  /** The piece, its upload spent and the operation's receipt, as one atomic batch. The unique
+   * upload id fails the whole batch when the upload already made a piece. */
+  addPiece: (piece: PieceRow, receipt: ReceiptRow) =>
+    Effect.tryPromise({
+      try: () =>
         db.batch([
-          db
-            .delete(pieces)
-            .where(and(eq(pieces.id, piece.id), eq(pieces.accountId, accountId)))
-            .returning({ id: pieces.id }),
-          forgetCheck(db, accountId, { kind: 'piece', id: piece.id }),
+          db.insert(pieces).values(piece),
+          spendUpload(db, piece.uploadId ?? ''),
           db.insert(operationReceipts).values(receipt),
-          ...(piece.uploadId === null ? [] : [db.delete(uploads).where(eq(uploads.id, piece.uploadId))]),
         ]),
-      ).pipe(Effect.map(([deleted]) => deleted.length > 0)),
-    keysInUse: (accountId: string, keys: ReadonlyArray<string>) => keysInUse(db, accountId, keys),
-    /** Records the processed photo; a piece no longer processing is left as it is. */
-    finishProcessing: (pieceId: string, changes: Pick<PieceRow, 'status' | 'imageKey' | 'updatedAt'>) =>
-      query(() =>
+      catch: () => StoreUnavailable.make({}),
+    }).pipe(Effect.asVoid),
+  updatePiece: (accountId: string, pieceId: string, changes: PieceChanges) =>
+    query(() =>
+      db
+        .update(pieces)
+        .set(changes)
+        .where(and(eq(pieces.id, pieceId), eq(pieces.accountId, accountId)))
+        .returning(),
+    ).pipe(Effect.map(first)),
+  /** Removes the piece, its upload and its content check, and records the delete's receipt, as one batch. */
+  deletePiece: (accountId: string, piece: PieceRow, receipt: ReceiptRow) =>
+    query(() =>
+      db.batch([
         db
-          .update(pieces)
-          .set(changes)
-          .where(and(eq(pieces.id, pieceId), eq(pieces.status, 'processing'))),
-      ).pipe(Effect.asVoid),
-  }
-}
+          .delete(pieces)
+          .where(and(eq(pieces.id, piece.id), eq(pieces.accountId, accountId)))
+          .returning({ id: pieces.id }),
+        forgetCheck(db, accountId, { kind: 'piece', id: piece.id }),
+        db.insert(operationReceipts).values(receipt),
+        ...(piece.uploadId === null ? [] : [db.delete(uploads).where(eq(uploads.id, piece.uploadId))]),
+      ]),
+    ).pipe(Effect.map(([deleted]) => deleted.length > 0)),
+  keysInUse: (accountId: string, keys: ReadonlyArray<string>) => keysInUse(db, accountId, keys),
+  /** Records the processed photo; a piece no longer processing is left as it is. */
+  finishProcessing: (pieceId: string, changes: Pick<PieceRow, 'status' | 'imageKey' | 'updatedAt'>) =>
+    query(() =>
+      db
+        .update(pieces)
+        .set(changes)
+        .where(and(eq(pieces.id, pieceId), eq(pieces.status, 'processing'))),
+    ).pipe(Effect.asVoid),
+})
 
 export type Store = ReturnType<typeof makeStore>
+
+/** The wardrobe's store over the application's one database, for the modules that read or spend its rows. */
+export class WardrobeStore extends Context.Service<WardrobeStore, Store>()('@styld/server/wardrobe/WardrobeStore') {
+  static readonly layer = Layer.effect(this, Effect.map(Database, makeStore))
+}

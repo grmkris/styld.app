@@ -1,26 +1,27 @@
 import { prices } from '@styld/protocol'
-import { Effect, Schema } from 'effect'
+import { Context, Effect, Layer, Schema } from 'effect'
 import { creditsText, tool } from './Tools.ts'
-import type { AccountLifecycle } from '../AccountLifecycle.ts'
-import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
-import type { Links } from '../links/Links.ts'
+import { AccountLifecycle } from '../AccountLifecycle.ts'
+import { Deployment } from '../Config.ts'
+import { Wardrobe } from '../wardrobe/Wardrobe.ts'
+import { Links } from '../links/Links.ts'
 import { viewTools } from './ViewTools.ts'
 import { lookTools } from './LookTools.ts'
 import { outfitTools } from './OutfitTools.ts'
 import { wardrobeTools } from './WardrobeTools.ts'
-import type { Looks } from '../looks/Looks.ts'
-import type { Outfits } from '../outfits/Outfits.ts'
-import type { Boards } from '../boards/Boards.ts'
+import { Looks } from '../looks/Looks.ts'
+import { Outfits } from '../outfits/Outfits.ts'
+import { Boards } from '../boards/Boards.ts'
 import { boardMcpTools } from './BoardTools.ts'
 import { profileTools } from './ProfileTools.ts'
-import type { Profiles } from '../social/Profiles.ts'
-import type { Social } from '../social/Social.ts'
+import { Profiles } from '../social/Profiles.ts'
+import { Social } from '../social/Social.ts'
 import { socialTools } from './SocialTools.ts'
-import type { Discovery } from '../social/Discovery.ts'
+import { Discovery } from '../social/Discovery.ts'
 import { discoveryTools } from './DiscoveryTools.ts'
-import type { Captures } from '../capture/Service.ts'
+import { Captures } from '../capture/Service.ts'
 import { pictureTools } from './PictureTools.ts'
-import type { Generations } from '../generation/Service.ts'
+import { Generations } from '../generation/Service.ts'
 import { generationTools } from './GenerationTools.ts'
 
 /** What assistants read first: what Styld is and how to treat tool output. The first paragraph
@@ -87,3 +88,29 @@ export const styldTools = (
   ...socialTools(social),
   ...discoveryTools(discovery, origin),
 ]
+
+/** The assistants' tools, built once per runtime over the application's services: MCP serves them, and Styld answers
+ * with them. */
+export class AssistantToolset extends Context.Service<AssistantToolset, AssistantTools>()(
+  '@styld/server/mcp/AssistantToolset',
+) {
+  static readonly layer = Layer.effect(
+    this,
+    Effect.gen(function* () {
+      const { origin } = yield* Deployment
+      return styldTools(origin, {
+        wardrobe: yield* Wardrobe,
+        links: yield* Links,
+        looks: yield* Looks,
+        captures: yield* Captures,
+        boards: yield* Boards,
+        profiles: yield* Profiles,
+        social: yield* Social,
+        discovery: yield* Discovery,
+        generations: yield* Generations,
+        outfits: yield* Outfits,
+        accounts: yield* AccountLifecycle,
+      })
+    }),
+  )
+}

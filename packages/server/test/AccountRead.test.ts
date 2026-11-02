@@ -1,6 +1,7 @@
 import { describe, expect, it } from '@effect/vitest'
 import { CurrentAccount, NotFound } from '@styld/protocol'
 import { layerCryptoWeb } from '@yielded/auth/WebCrypto'
+import { drizzle } from 'drizzle-orm/d1'
 import { Effect } from 'effect'
 import { AccountLifecycle, makeAccountLifecycle } from '../src/AccountLifecycle.ts'
 import { localD1 } from './LocalD1.ts'
@@ -22,7 +23,7 @@ const accounts = () => {
              ('email', 'new@example.com', 'm', 'c3', 'ac_new', 'r', NULL, 1);
   `)
   return makeAccountLifecycle(
-    { database, bucket: { list: notUsed, delete: notUsed }, queue: { send: notUsed } },
+    { database: drizzle(database), bucket: { list: notUsed, delete: notUsed }, queue: { send: notUsed } },
     () => Effect.void,
   ).pipe(Effect.provide(layerCryptoWeb))
 }

@@ -54,7 +54,7 @@ describe('a delete sent again', () => {
   it.effect('of a piece answers done, removing it once', () =>
     Effect.gen(function* () {
       const database = seeded()
-      const store = makeStore(database)
+      const store = makeStore(drizzle(database))
       const [piece] = yield* store.listPieces('ac_1')
       if (piece === undefined) return expect.unreachable()
       const { removed, other } = yield* sentAgain(database, 'deletePiece', 'pc_1', (receipt) =>

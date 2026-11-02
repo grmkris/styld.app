@@ -27,7 +27,6 @@ import type { ShownImage } from '../wardrobe/Http.ts'
 import type { ImageSize } from '../wardrobe/Media.ts'
 import { cutOutPerson } from './Cutout.ts'
 import { finding, makePhotoParts, type PhotoParts, photoHold, photoPrefix } from './Finding.ts'
-import { Database } from '../kernel/Db.ts'
 import { PieceQueue } from '../wardrobe/Processing.ts'
 import { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import type { GarmentRow, PhotoRow } from './Store.ts'
@@ -427,10 +426,8 @@ const operations = (parts: PhotoParts, services: PhotoServices) => ({
 /** My Gallery over the application's database, media and piece queue, with the looks, boards and uploads it leans
  * on. Callers provide only `CurrentAccount`. */
 const make = Effect.gen(function* () {
-  const database = yield* Database
   const media = yield* Media
   const parts = yield* makePhotoParts({
-    database: database.$client,
     bucket: media.bucket,
     images: media.images,
     queue: yield* PieceQueue,

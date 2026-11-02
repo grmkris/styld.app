@@ -44,7 +44,7 @@ export interface ProviderBindings {
   readonly images: WardrobeBindings['images']
   readonly bucket: WardrobeBindings['bucket']
   readonly metrics: CaptureMetrics['Service']
-  readonly deployment: Deployment
+  readonly deployment: Deployment['Service']
   /** The Worker's environment: only a test composition reads anything from it. */
   readonly env: Readonly<Record<string, unknown>>
 }

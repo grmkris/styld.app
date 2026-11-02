@@ -35,9 +35,9 @@ import {
   usableUpload,
   type WardrobeBindings,
 } from './Parts.ts'
-import { Database, nowDate } from '../kernel/Db.ts'
+import { nowDate } from '../kernel/Db.ts'
 import { pictureView, shownImage, shows, turnView } from './Shown.ts'
-import { makeStore, type PictureRow, type PieceRow, type UploadRow } from './Store.ts'
+import { type PictureRow, type PieceRow, type UploadRow, WardrobeStore } from './Store.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
 import { digestOf, randomToken } from '../kernel/Ids.ts'
 import { deleting, once, type Operation } from '../kernel/Receipts.ts'
@@ -415,17 +415,15 @@ const images = (parts: Parts) => ({
 })
 
 const make = Effect.gen(function* () {
-  const database = yield* Database
   const media = yield* Media
   const bindings: WardrobeBindings = {
-    database: database.$client,
     bucket: media.bucket,
     images: media.images,
     queue: yield* PieceQueue,
   }
   const parts: Parts = {
     bindings,
-    store: makeStore(bindings.database),
+    store: yield* WardrobeStore,
     cutout: yield* GarmentCutout,
     pieceChanged: yield* PieceChanged,
     holds: yield* Holds,

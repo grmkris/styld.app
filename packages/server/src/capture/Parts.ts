@@ -9,14 +9,13 @@ import { Effect, Option } from 'effect'
 import { deleteAfterRows, keysUnder } from '../kernel/Media.ts'
 import { accountPrefix, piecePrefix } from '../wardrobe/Media.ts'
 import type { WorkMessage } from '../wardrobe/Processing.ts'
-import { makeStore } from '../wardrobe/Store.ts'
+import { WardrobeStore } from '../wardrobe/Store.ts'
 import type { WardrobeBindings } from '../wardrobe/Parts.ts'
-import { type CaptureRow, makeCaptureStore } from './Store.ts'
+import { type CaptureRow, CaptureStore } from './Store.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
 
 /** The Cloudflare bindings captures read and write. */
 export interface CaptureBindings {
-  readonly database: WardrobeBindings['database']
   readonly bucket: WardrobeBindings['bucket']
   readonly queue: { send(message: WorkMessage, options?: { readonly delaySeconds?: number }): Promise<unknown> }
 }
@@ -38,8 +37,8 @@ export const makeParts = (bindings: CaptureBindings) =>
       pacing: yield* Pacing,
       metrics: yield* CaptureMetrics,
       pieceChanged: yield* PieceChanged,
-      store: makeCaptureStore(bindings.database),
-      wardrobeStore: makeStore(bindings.database),
+      store: yield* CaptureStore,
+      wardrobeStore: yield* WardrobeStore,
     }
   })
 export type Parts = Effect.Success<ReturnType<typeof makeParts>>

@@ -1,5 +1,4 @@
 import { Context, Effect, Layer } from 'effect'
-import { Database } from '../kernel/Db.ts'
 import { Media } from '../kernel/Media.ts'
 import { PieceQueue } from '../wardrobe/Processing.ts'
 import { creating, reading } from './Captures.ts'
@@ -15,9 +14,8 @@ import { detectionPictures, reviewing } from './Review.ts'
 /** Every capture operation over the application's database, media and piece queue, with the providers, credits and
  * call counter it was built with (`Parts.ts`). Callers provide only `CurrentAccount` (for a person's operations). */
 const make = Effect.gen(function* () {
-  const database = yield* Database
   const media = yield* Media
-  const parts = yield* makeParts({ database: database.$client, bucket: media.bucket, queue: yield* PieceQueue })
+  const parts = yield* makeParts({ bucket: media.bucket, queue: yield* PieceQueue })
   return {
     ...creating(parts),
     ...reading(parts),

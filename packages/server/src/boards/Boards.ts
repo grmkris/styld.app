@@ -27,7 +27,7 @@ import { PublicPages } from '../social/Public.ts'
 import { deliverImage } from '../wardrobe/Delivery.ts'
 import type { ShownImage } from '../wardrobe/Http.ts'
 import type { ImageSize } from '../wardrobe/Media.ts'
-import { makeStore, ownPieceIds } from '../wardrobe/Store.ts'
+import { ownPieceIds, WardrobeStore } from '../wardrobe/Store.ts'
 import { usableUpload } from '../wardrobe/Parts.ts'
 import { type BoardRow, boardStore, type PinRemoval } from './Store.ts'
 import { tables } from './Tables.ts'
@@ -324,8 +324,8 @@ const make = Effect.gen(function* () {
     db,
     media: yield* Media,
     store: boardStore(db),
-    // The wardrobe's store, over the same D1 binding, for the uploads a picture spends.
-    wardrobeStore: makeStore(db.$client),
+    // The wardrobe's store, for the uploads a picture spends.
+    wardrobeStore: yield* WardrobeStore,
     checks: yield* Checks,
     looks: yield* Looks,
     pages: yield* PublicPages,

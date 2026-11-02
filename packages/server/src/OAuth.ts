@@ -5,10 +5,11 @@ import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
-import { type AuthHttp, sessionCookieAccount } from './AuthHttp.ts'
-import type { AuthSessionKeyring } from './AuthConfiguration.ts'
+import { Auth, type AuthHttp, sessionCookieAccount } from './AuthHttp.ts'
+import { Deployment } from './Config.ts'
+import { Database } from './kernel/Db.ts'
 import { hostedClientMetadata, McpScope, redirectUriAllowed } from './mcp/Policy.ts'
-import { networkOf } from './kernel/Pacing.ts'
+import { networkOf, Pacing } from './kernel/Pacing.ts'
 
 /** Styld's authorization server for MCP clients: Yielded's authorization-code server with PKCE,
  * rotating refresh tokens and client metadata documents. */
@@ -227,32 +228,36 @@ const routes = <R>(db: D1, origin: string, allowRegistration: (client: string) =
     }),
   )
 
-export type McpOAuthOptions<R> = {
-  readonly origin: string
-  readonly keys: AuthSessionKeyring
-  readonly allowRegistration: (client: string) => Effect.Effect<boolean, never, R>
-}
+/** The OAuth server for MCP, over the application's database and the website's session. */
+export const mcpOAuthServer = Layer.unwrap(
+  Effect.gen(function* () {
+    const db = (yield* Database).$client
+    const deployment = yield* Deployment
+    return McpOAuth.layer({
+      origin: deployment.origin,
+      resource: `${deployment.origin}/mcp`,
+      clients: [],
+      clientMetadata: { allowedOrigins: ['https://claude.ai', 'https://chatgpt.com', 'https://vscode.dev'] },
+      loginPath: '/login/connect',
+      keys: deployment.auth.sessionKeys,
+    }).pipe(
+      Layer.provide(Layer.succeed(OAuthServer.Persistence, persistence(db))),
+      Layer.provide(Layer.succeed(McpOAuth.Clients, registeredClients(db))),
+      Layer.provide(sessionIdentity(yield* Auth)),
+      // Metadata documents are fetched without following redirects.
+      Layer.provide(FetchHttpClient.layer),
+      Layer.provide(Layer.succeed(FetchHttpClient.RequestInit, { redirect: 'manual' })),
+      Layer.provide(WorkerdServices.layer),
+    )
+  }),
+)
 
-/** The OAuth server for MCP and its routes, built on the session auth and the D1 binding. */
-export const makeMcpOAuth = <R>(db: D1, auth: AuthHttp, options: McpOAuthOptions<R>) => {
-  const server = McpOAuth.layer({
-    origin: options.origin,
-    resource: `${options.origin}/mcp`,
-    clients: [],
-    clientMetadata: { allowedOrigins: ['https://claude.ai', 'https://chatgpt.com', 'https://vscode.dev'] },
-    loginPath: '/login/connect',
-    keys: options.keys,
-  }).pipe(
-    Layer.provide(Layer.succeed(OAuthServer.Persistence, persistence(db))),
-    Layer.provide(Layer.succeed(McpOAuth.Clients, registeredClients(db))),
-    Layer.provide(sessionIdentity(auth)),
-    // Metadata documents are fetched without following redirects.
-    Layer.provide(FetchHttpClient.layer),
-    Layer.provide(Layer.succeed(FetchHttpClient.RequestInit, { redirect: 'manual' })),
-    Layer.provide(WorkerdServices.layer),
-  )
-  return {
-    server,
-    routes: routes(db, options.origin, options.allowRegistration).pipe(Layer.provide(server)),
-  }
-}
+/** The OAuth routes over the server, registration paced by network. */
+export const mcpOAuthRoutes = Layer.unwrap(
+  Effect.gen(function* () {
+    const db = (yield* Database).$client
+    const { origin } = yield* Deployment
+    const pacing = yield* Pacing
+    return routes(db, origin, (network) => pacing.allows('registration', network))
+  }),
+)
