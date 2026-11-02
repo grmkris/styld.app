@@ -1,8 +1,8 @@
 import { generationJobs, generationPictures, operationReceipts } from '@styld/db'
 import { and, asc, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm'
-import { Effect } from 'effect'
+import { Context, Effect, Layer } from 'effect'
 import { forgetReceipt, receiptRows } from '../kernel/Receipts.ts'
-import { type Database, first, query } from '../kernel/Db.ts'
+import { Database, first, query } from '../kernel/Db.ts'
 
 export type JobRow = typeof generationJobs.$inferSelect
 /** A sticker job's one picture. Its `index` column is always 0 until the baseline drops it. */
@@ -155,6 +155,13 @@ const stickerQueries = (db: Drizzle) => ({
 })
 
 /** Generation jobs and their stickers over the application's database. A job is written once with its receipt; its
- * sticker moves only from the state it was read in, so two deliveries never draw it twice. */
+ * sticker moves only from the state it was read in, so two deliveries never draw it twice.
+ * @internal Exported for its tests. */
 export const generationStore = (db: Drizzle) => ({ ...jobQueries(db), ...stickerQueries(db) })
-export type GenerationStore = ReturnType<typeof generationStore>
+
+/** The generation store over the application's one database. */
+export class GenerationStore extends Context.Service<GenerationStore, ReturnType<typeof generationStore>>()(
+  '@styld/server/generation/GenerationStore',
+) {
+  static readonly layer = Layer.effect(this, Effect.map(Database, generationStore))
+}

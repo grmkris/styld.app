@@ -1,9 +1,9 @@
 import { describe, expect, it } from '@effect/vitest'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect } from 'effect'
-import { settleJob } from '../src/generation/Deps.ts'
+import { settleJob } from '../src/generation/Shared.ts'
 import { generationStore } from '../src/generation/Store.ts'
-import type { Ending, Holds } from '../src/usage/Holds.ts'
+import { type Ending, Holds } from '../src/usage/Holds.ts'
 import { localD1 } from './LocalD1.ts'
 
 // A generation job that ended has its credit settled by the delivery that ended it; if that settle is lost, the sweep
@@ -49,7 +49,7 @@ describe('the generation sweep', () => {
       }
       const ended = yield* store.endedJobs(hourAgo, fiveMinutesAgo, 50)
       expect(ended.map(({ id }) => id)).toEqual(['gj_done', 'gj_refused', 'gj_failed'])
-      yield* Effect.forEach(ended, (job) => settleJob(holds, job))
+      yield* Effect.forEach(ended, settleJob).pipe(Effect.provideService(Holds, holds))
       expect(settled.map(([, ending]) => ending)).toEqual(['succeeded', 'failed', 'failed'])
       expect(settled.every(([hold]) => hold.startsWith('generation'))).toBe(true)
     }),
