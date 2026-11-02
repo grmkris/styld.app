@@ -27,6 +27,31 @@ suppressions; unit 663 tests in 106 files; native 29 pass, 0 fail; bundle initia
 all 610,441, SSR 1,891,364. Preview readback of release `54a6601` (`tools/preview.native.test.ts` with
 `STYLD_EXPECTED_RELEASE`): 3 pass.
 
+## C8 fixes: credits, paid work and durability (2 November, not deployed)
+
+From the two C8 reviews of `56a619b`, each with a test (unit on the SQLite D1 harness, layer tests with the
+in-memory Wallet, or native):
+
+- **Concurrent requests never settle another's hold:** a redraw, a turn and a capture retry claim their attempt with
+  a conditional D1 write before reserving; a loser holds nothing and answers busy (`PaidClaims.test.ts`; the native
+  redraw and first-turn checks race two requests).
+- **Paid work runs once** (`usage/Attempts.ts`, table `paid_attempts`): piece and back cut-outs, gallery finding,
+  capture processing and Styld's replies claim the work, store its result and resume from it on a redelivery; a live
+  claim is left to its delivery; a claim whose delivery died past the 15-minute lease is an unknown outcome, refunded
+  and never sent again (`PaidAttempts.test.ts`).
+- **`once()` claims the operation id** with a pending receipt before its work (`operation_receipts.result` nullable);
+  paid callers resume a request that died rather than run it again; `saveReceipt` refuses a competing receipt
+  (`Receipts.test.ts`).
+- **Durable settlement** (table `pending_settlements`): every hold is recorded before it is reserved and kept until
+  the Wallet confirms; the `settlements` sweep settles recorded endings and refunds a hold whose work never ended
+  after 6 hours, whatever the content's status (`Settlements.test.ts`). `failPiece` refunds before leaving
+  processing; deleting a photo while finding refunds it; the generation sweep's one-hour re-settlement is gone.
+- **Veo:** an accepted start whose answer cannot be read is `OutcomeUnknown` (refunded, never resent).
+- **Gallery person cut-out:** asked once per photo, the outcome (including no person) kept, 6 a minute per account.
+- **Uploads:** 60 paths a minute per account, at most 100 uploads or 512 MiB waiting unused; the unused sweep forgets
+  500 expired paths and 500 unused uploads per run, rows before objects.
+- **Importer:** a permanent `(account, v1 id)` mapping (`imported_pieces`) instead of expiring receipts.
+
 ## Gates
 
 `heavy --wait bun run check` runs, in order:
@@ -158,8 +183,12 @@ From C8's review fixes:
 
 From the cleanup's milestones, still open after the later ones:
 
-- An import run again after its receipts expire (30 days) would import the same pieces again.
-- No tool lists pending Wallet holds; the readback reads them from Workers Logs and the sweeps.
+- No tool lists pending Wallet holds; `pending_settlements` holds every one the Wallet has not confirmed settled (a
+  D1 query reads them), and the `settlements` sweep logs how many it settled.
+- C8's credit and durability fixes (below) are not deployed: the preview needs the three forward migrations and a
+  readback of a redraw, a turn, a capture retry, a gallery photo and a cut-out under concurrent requests.
+- The website words a refused upload path (`LimitReached` `uploads`, `SlowDown`) as its generic limit message; the
+  catalogs have no upload-specific wording yet.
 - The native suite's shared local D1 answers `SQLITE_BUSY` under load; the gallery browser journey ("sideways
   scroll") flakes under box load (rerun alone with `-t "lays out today"`).
 - `AccountLifecycle` still takes its bindings as a record (`makeAccountLifecycle`, its tests' seam over a listing

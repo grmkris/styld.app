@@ -46,8 +46,10 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 - **Every write names its operation.** All non-GET endpoints take an `operationId`. A repeat answers from its receipt
   (`kernel/Receipts.ts` `recorded` for a write that is one D1 batch, its receipt in that batch; `deleting`; `once`) and
   writes nothing, so a late repeat never undoes a later change; the same id with another input is `OperationConflict`,
-  declared on every endpoint that keeps its id (`protocol/test/Api.test.ts` names the few that do not yet). Receipts
-  are kept 30 days, then swept.
+  declared on every endpoint that keeps its id (`protocol/test/Api.test.ts` names the few that do not yet). `once`
+  claims the id with a pending receipt before its work, so a concurrent repeat waits; a request that died leaves a
+  pending receipt that paid operations resume from where the work left things. Receipts are kept 30 days, then swept;
+  a v1 import's pieces are mapped permanently in `imported_pieces`, not by receipts.
 - **Session handled once:** protocol `SessionAccount` middleware provides `CurrentAccount` and admits every non-GET
   request through the Origin/CSRF check; public pages read an optional visitor.
 - **Every row decodes.** The baseline migration (`packages/db/migrations/`) with CHECKs from the protocol's literals,
@@ -59,8 +61,16 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 
 - **Credits are reserved before paid work and settled once** (`server/src/usage/Holds.ts`): `holdId(kind, entity,
   attempt)` names every hold; `metered(charge, work)` settles synchronous work by its exit. Success consumes; a known
-  failure or a **lost provider answer refunds** (owner, 2026-11-01). A row exists before its hold, so a sweep can
-  settle it from the row's status.
+  failure or a **lost provider answer refunds** (owner, 2026-11-01). A request claims its attempt (a conditional D1
+  write on the row it moves) before it reserves, so only the owner of a hold settles it. Every hold is kept in
+  `pending_settlements` from before it is reserved until the Wallet confirms it settled: the first ending recorded
+  stands, the `settlements` sweep settles what the Wallet could not take, and a hold whose work never ended is refunded
+  after 6 hours, whatever became of the work's rows.
+- **Paid work runs once** (`server/src/usage/Attempts.ts`, `paid_attempts`): work a queue may deliver twice (cut-outs,
+  finding garments, captures, Styld's replies, a gallery photo's person) is claimed by one delivery, which stores its
+  result; a repeat resumes from the result, a live claim is left to its delivery, and a claim whose delivery died past
+  the 15-minute lease is an unknown outcome: refunded, never sent again. A claim is released only when the work failed
+  before the provider could have taken it.
 - **The Wallet** (Alchemy Domain on a SQLite Durable Object per account, `packages/domain/src/Wallet/`) owns only the
   daily credit pool and its reservations: `dailyCredits` (100) per UTC day, unused credits do not carry over.
   `WalletCommandIds.ts` is the only place Wallet command ids are derived. There are no subscription or purchased pools
