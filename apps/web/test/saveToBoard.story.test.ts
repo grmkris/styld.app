@@ -1,4 +1,6 @@
 import { Dialog } from '@foldkit/ui'
+import { OperationId } from '@styld/protocol'
+import { Option } from 'effect'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import { storySheetMoved } from './SheetFixtures.ts'
@@ -7,6 +9,16 @@ import { boardSummaryFixture } from './BoardFixtures.ts'
 
 const autumn = boardSummaryFixture('autumn', { name: 'Autumn', pinCount: 3 })
 const fresh = init({ kind: 'piece', id: `pc_${'knit'.padEnd(22, 'x')}` })
+
+/** A new board named Trip, made before its pin failed: what the next try to Trip resumes. */
+const trip = { boardId: Option.none<string>(), boardName: 'Trip' }
+const tripBoard = `bd_${'trip'.padEnd(22, 'x')}`
+const failedPin = {
+  destination: trip,
+  createOperationId: OperationId.make('op-board-0001'),
+  pinOperationId: OperationId.make('op-pin-0001'),
+  createdBoardId: Option.some(tripBoard),
+}
 
 describe('save to board', () => {
   test('opening asks the app for the person’s boards, and the one tapped gets the piece', () => {
@@ -34,12 +46,49 @@ describe('save to board', () => {
       Command.expectNone(),
       message(Message.UpdatedName({ value: '  Trip ' })),
       message(Message.SubmittedNewBoard()),
-      Command.expectExact(SaveTo),
-      Command.resolve(SaveTo, Message.FailedSave()),
+      Command.expectExact(SaveTo({ target: fresh.target, destination: trip, resume: Option.none() })),
+      Command.resolve(SaveTo, Message.FailedSave({ resume: failedPin })),
       model(({ saving, name }) => {
         expect(Saving.guards.Failed(saving)).toBe(true)
         expect(name).toBe('  Trip ')
       }),
+    )
+  })
+
+  test('a board made before its pin failed is resumed, not made again, under the same operations', () => {
+    story(
+      update,
+      given(fresh),
+      message(Message.UpdatedName({ value: 'Trip' })),
+      message(Message.SubmittedNewBoard()),
+      Command.resolve(SaveTo, Message.FailedSave({ resume: failedPin })),
+      message(Message.SubmittedNewBoard()),
+      Command.expectExact(SaveTo({ target: fresh.target, destination: trip, resume: Option.some(failedPin) })),
+      Command.resolve(SaveTo, Message.SucceededSave({ boardId: tripBoard, boardName: 'Trip' })),
+      model(({ resume, saving }) => {
+        expect(resume).toEqual(Option.none())
+        expect(saving).toEqual(Saving.Saved({ boardId: tripBoard, boardName: 'Trip' }))
+      }),
+    )
+  })
+
+  test('a save somewhere else after a failure starts afresh', () => {
+    story(
+      update,
+      given(fresh),
+      message(Message.UpdatedName({ value: 'Trip' })),
+      message(Message.SubmittedNewBoard()),
+      Command.resolve(SaveTo, Message.FailedSave({ resume: failedPin })),
+      message(Message.ClickedBoard({ boardId: autumn.id, boardName: autumn.name })),
+      Command.expectExact(
+        SaveTo({
+          target: fresh.target,
+          destination: { boardId: Option.some(autumn.id), boardName: autumn.name },
+          resume: Option.none(),
+        }),
+      ),
+      Command.resolve(SaveTo, Message.SucceededSave({ boardId: autumn.id, boardName: autumn.name })),
+      model(({ resume }) => expect(resume).toEqual(Option.none())),
     )
   })
 

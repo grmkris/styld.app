@@ -1,6 +1,6 @@
 import { drawOperationId } from '../OperationIds.ts'
 import { Dialog } from '@foldkit/ui'
-import { BoardId, BoardName, LookId, PhotoId, PieceId } from '@styld/protocol'
+import { BoardId, BoardName, LookId, OperationId, PhotoId, PieceId } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import { Command, Update } from 'foldkit'
@@ -28,11 +28,27 @@ export const Saving = defineTaggedUnion({
 })
 export type Saving = typeof Saving.Type
 
+/** Where a save goes: a board the person tapped, or a new board by its name. */
+export const Destination = Schema.Struct({ boardId: Schema.Option(Schema.String), boardName: Schema.String })
+export type Destination = typeof Destination.Type
+
+/** What a failed save keeps for the next try to the same place: the operation ids it was sent under and the board it
+ * made, so trying again resumes it (the server answers a repeated id from its receipt) instead of making a second
+ * board. */
+export const Resume = Schema.Struct({
+  destination: Destination,
+  createOperationId: OperationId,
+  pinOperationId: OperationId,
+  createdBoardId: Schema.Option(Schema.String),
+})
+export type Resume = typeof Resume.Type
+
 export const Model = Schema.Struct({
   target: Target,
   sheet: Dialog.Model,
   name: Schema.String,
   saving: Saving,
+  resume: Schema.Option(Resume),
 })
 export type Model = typeof Model.Type
 
@@ -41,6 +57,7 @@ export const init = (target: Target): Model => ({
   sheet: Dialog.init({ id: `save-to-board-${target.kind}`, isAnimated: true }),
   name: '',
   saving: Saving.Idle(),
+  resume: Option.none(),
 })
 
 // MESSAGE
@@ -53,7 +70,7 @@ export const Message = defineMessageUnion({
   UpdatedName: { value: Schema.String },
   SubmittedNewBoard: {},
   SucceededSave: { boardId: Schema.String, boardName: Schema.String },
-  FailedSave: {},
+  FailedSave: { resume: Resume },
 })
 export type Message = typeof Message.Type
 
@@ -68,31 +85,48 @@ const pinsOf = (target: Target) =>
     ? Effect.map(Schema.decodeUnknownEffect(PieceId)(target.id), (pieceId) => ({ pieceIds: [pieceId] }))
     : Effect.map(Schema.decodeUnknownEffect(LookId)(target.id), (lookId) => ({ lookIds: [lookId] }))
 
-/** Pin the target on a board, a new one first when it has only a name.
- */
+/** The board a save goes to: the one tapped, the one an earlier try made, or a new one made under `operationId`. */
+const boardFor = (destination: Destination, createdBoardId: Option.Option<string>, operationId: OperationId) =>
+  Effect.gen(function* () {
+    const known = Option.orElse(destination.boardId, () => createdBoardId)
+    if (Option.isSome(known)) return yield* Schema.decodeUnknownEffect(BoardId)(known.value)
+    const api = yield* (yield* StyldClient).api
+    const name = yield* Schema.decodeUnknownEffect(BoardName)(destination.boardName)
+    return (yield* api.board.createBoard({ payload: { operationId, name } })).id
+  })
+
+/** Put the target on the board under `operationId`. */
+const pinned = (target: Target, boardId: BoardId, operationId: OperationId) =>
+  Effect.gen(function* () {
+    const api = yield* (yield* StyldClient).api
+    if (target.kind === 'photo')
+      yield* api.photo.addToBoard({
+        params: { photoId: yield* Schema.decodeUnknownEffect(PhotoId)(target.id) },
+        payload: { operationId, boardId },
+      })
+    else yield* api.board.addPins({ params: { boardId }, payload: { operationId, ...(yield* pinsOf(target)) } })
+  })
+
+/** Pin the target on a board, a new one first when it has only a name. A failure carries back what the next try to
+ * the same place resumes: the operation ids drawn here (or given by the try before) and the board made. */
 export const SaveTo = Command.define('SaveTo', {
-  args: { target: Target, boardId: Schema.Option(Schema.String), boardName: Schema.String },
+  args: { target: Target, destination: Destination, resume: Schema.Option(Resume) },
   messages: [Message.SucceededSave, Message.FailedSave],
-  execute: ({ target, boardId, boardName }) =>
+  execute: ({ target, destination, resume }) =>
     Effect.gen(function* () {
-      const api = yield* (yield* StyldClient).api
-      const id = Option.isSome(boardId)
-        ? yield* Schema.decodeUnknownEffect(BoardId)(boardId.value)
-        : (yield* api.board.createBoard({
-            payload: {
-              operationId: yield* drawOperationId(),
-              name: yield* Schema.decodeUnknownEffect(BoardName)(boardName),
-            },
-          })).id
-      const operationId = yield* drawOperationId()
-      if (target.kind === 'photo')
-        yield* api.photo.addToBoard({
-          params: { photoId: yield* Schema.decodeUnknownEffect(PhotoId)(target.id) },
-          payload: { operationId, boardId: id },
-        })
-      else yield* api.board.addPins({ params: { boardId: id }, payload: { operationId, ...(yield* pinsOf(target)) } })
-      return Message.SucceededSave({ boardId: id, boardName })
-    }).pipe(Effect.orElseSucceed(() => Message.FailedSave())),
+      const createOperationId = yield* drawOperationId(Option.map(resume, (earlier) => earlier.createOperationId))
+      const pinOperationId = yield* drawOperationId(Option.map(resume, (earlier) => earlier.pinOperationId))
+      const createdBefore = Option.flatMap(resume, (earlier) => earlier.createdBoardId)
+      const failed = (createdBoardId: Option.Option<string>) =>
+        Message.FailedSave({ resume: { destination, createOperationId, pinOperationId, createdBoardId } })
+      const boardId = yield* Effect.option(boardFor(destination, createdBefore, createOperationId))
+      if (Option.isNone(boardId)) return failed(createdBefore)
+      const made = Option.isNone(destination.boardId) ? boardId : Option.none<string>()
+      const done = yield* Effect.option(pinned(target, boardId.value, pinOperationId))
+      return Option.isSome(done)
+        ? Message.SucceededSave({ boardId: boardId.value, boardName: destination.boardName })
+        : failed(made)
+    }),
 })
 
 // UPDATE
@@ -115,9 +149,23 @@ const opened = (model: Model): UpdateReturn =>
     OutMessage.RequestedBoards(),
   )
 
-const sent = (model: Model, boardId: Option.Option<string>, boardName: string): UpdateReturn => ({
+/** Whether two saves go to the same place: the same board tapped, or a new board of the same name. */
+const samePlace = (left: Destination, right: Destination) =>
+  Option.match(left.boardId, {
+    onNone: () => Option.isNone(right.boardId) && left.boardName === right.boardName,
+    onSome: (boardId) => Option.contains(right.boardId, boardId),
+  })
+
+/** Send the save; a try to where the last one failed resumes it. */
+const sent = (model: Model, destination: Destination): UpdateReturn => ({
   model: modifyFields(model, { saving: () => Saving.Sending() }),
-  commands: [SaveTo({ target: model.target, boardId, boardName })],
+  commands: [
+    SaveTo({
+      target: model.target,
+      destination,
+      resume: Option.filter(model.resume, (earlier) => samePlace(earlier.destination, destination)),
+    }),
+  ],
 })
 
 /** "Save to board" inside a page whose model keeps it as `saveToBoard`; its request for the boards goes on up as the
@@ -139,14 +187,20 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedSave: () => opened(model),
     GotSheetMessage: (got) => foldSheet(model, got.message),
     ClickedRetry: () => ({ model, outMessage: OutMessage.RequestedBoards() }),
-    ClickedBoard: ({ boardId, boardName }) => sent(model, Option.some(boardId), boardName),
+    ClickedBoard: ({ boardId, boardName }) => sent(model, { boardId: Option.some(boardId), boardName }),
     UpdatedName: ({ value }) => ({ model: modifyFields(model, { name: () => value }) }),
     SubmittedNewBoard: () => {
       const name = model.name.trim()
-      return name.length === 0 ? { model } : sent(model, Option.none(), name)
+      return name.length === 0 ? { model } : sent(model, { boardId: Option.none(), boardName: name })
     },
     SucceededSave: ({ boardId, boardName }) => ({
-      model: modifyFields(model, { saving: () => Saving.Saved({ boardId, boardName }), name: () => '' }),
+      model: modifyFields(model, {
+        saving: () => Saving.Saved({ boardId, boardName }),
+        name: () => '',
+        resume: () => Option.none(),
+      }),
     }),
-    FailedSave: () => ({ model: modifyFields(model, { saving: () => Saving.Failed() }) }),
+    FailedSave: ({ resume }) => ({
+      model: modifyFields(model, { saving: () => Saving.Failed(), resume: () => Option.some(resume) }),
+    }),
   })
