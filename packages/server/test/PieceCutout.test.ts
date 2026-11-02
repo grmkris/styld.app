@@ -1,10 +1,14 @@
 import { describe, expect, it } from '@effect/vitest'
 import { encodePng } from '@styld/imaging'
-import { Effect, Layer, Option } from 'effect'
+import { CurrentAccount } from '@styld/protocol'
+import { Effect, Layer, Option, Record } from 'effect'
 import { Garments } from '../src/capture/Garments.ts'
 import { pieceCutout } from '../src/capture/PieceCutout.ts'
 import { GarmentVision } from '../src/capture/Providers.ts'
 import { Media } from '../src/kernel/Media.ts'
+import { Pacing, paces } from '../src/kernel/Pacing.ts'
+import { cutOutPerson } from '../src/photos/Cutout.ts'
+import { type PhotoRow, PhotoStore } from '../src/photos/Store.ts'
 import { Holds } from '../src/usage/Holds.ts'
 import { PaidAttempts } from '../src/usage/Attempts.ts'
 import { Database } from '../src/kernel/Db.ts'
@@ -12,17 +16,28 @@ import { localD1 } from './LocalD1.ts'
 import { GarmentCutout } from '../src/wardrobe/Processing.ts'
 import { importedDetails } from '../src/wardrobe/Work.ts'
 
-// A piece's own cut-out: the account pays a photo's credit for its own piece, Styld pays for a piece imported from v1,
-// and a stored cut-out is described by the decision model (an import's attributes).
+// Cut-outs SAM bills for. A piece's own: the account pays a photo's credit for its own piece, Styld pays for a piece
+// imported from v1, and a stored cut-out is described by the decision model (an import's attributes). A gallery
+// photo's person: free to the person, so asked once per photo, whether a person was found or not, at the account's
+// pace.
 
-/** A provider call a piece's own cut-out never makes. */
-const unused = () => Effect.die(new Error('not called by a piece cut-out'))
+/** A provider call a cut-out never makes. */
+const unused = () => Effect.die(new Error('not called by a cut-out'))
 
 const cut = encodePng({ width: 4, height: 4, data: new Uint8Array(64).fill(200) })
 
-const over = () => {
+/** The cut-out services over a bucket holding `photo.jpg`: SAM answers `found`, and the account may go on `allowed`
+ * times a minute. */
+const over = (found: Option.Option<Uint8Array> = Option.some(cut), allowed = 10) => {
   const held: Array<string> = []
+  const asked = { sam: 0, paces: 0 }
   const stored = new Map<string, Uint8Array>([['photo.jpg', new Uint8Array([0xff, 0xd8, 0xff])]])
+  const limiter = {
+    limit: async () => {
+      asked.paces += 1
+      return { success: asked.paces <= allowed }
+    },
+  }
   const bucket = {
     get: async (key: string) => {
       const bytes = stored.get(key)
@@ -37,7 +52,7 @@ const over = () => {
       Garments,
       Garments.of({
         find: unused,
-        cut: () => Effect.succeed(Option.some(cut)),
+        cut: () => Effect.sync(() => ((asked.sam += 1), found)),
         handOver: unused,
         track: unused,
       }),
@@ -72,13 +87,26 @@ const over = () => {
         sweep: Effect.succeed(0),
       }),
     ),
+    Pacing.layer(Record.map(paces, () => limiter)),
   )
   const database = localD1()
-  database.sqlite.exec(
-    "INSERT INTO accounts (id, security_revision, display_name, created_at) VALUES ('ac_1', 0, 'Ana', 0)",
-  )
-  const attempts = PaidAttempts.layer.pipe(Layer.provide(Layer.merge(services, Database.layer(database))))
-  return { held, layer: pieceCutout.pipe(Layer.provide(Layer.merge(services, attempts))) }
+  database.sqlite.exec(`
+    INSERT INTO accounts (id, security_revision, display_name, created_at) VALUES ('ac_1', 0, 'Ana', 0);
+    INSERT INTO uploads (id, account_id, token_digest, content_type, bytes, object_key, status, expires_at)
+      VALUES ('up_1', 'ac_1', 'd', 'image/jpeg', 3, 'photo.jpg', 'used', 0);
+    INSERT INTO outfit_photos (id, account_id, upload_id, original_key, content_type, status, favourite, created_at,
+      updated_at)
+      VALUES ('ph_1', 'ac_1', 'up_1', 'photo.jpg', 'image/jpeg', 'ready', 0, 0, 0);
+  `)
+  const kernel = Layer.merge(services, Database.layer(database))
+  const attempts = PaidAttempts.layer.pipe(Layer.provide(kernel))
+  return {
+    held,
+    asked,
+    stored,
+    layer: pieceCutout.pipe(Layer.provide(Layer.merge(services, attempts))),
+    gallery: Layer.mergeAll(PhotoStore.layer, attempts).pipe(Layer.provideMerge(kernel)),
+  }
 }
 
 const input = (payer: 'account' | 'styld') => ({
@@ -155,5 +183,52 @@ describe("an imported piece's details", () => {
     expect(importedDetails({ type: 'trainers', colours: [] }, { ...described, confidence: 0.9 })).toMatchObject({
       type: 'jeans',
     })
+  })
+})
+
+const photo: PhotoRow = {
+  id: 'ph_1',
+  accountId: 'ac_1',
+  uploadId: 'up_1',
+  originalKey: 'photo.jpg',
+  contentType: 'image/jpeg',
+  status: 'ready',
+  favourite: false,
+  lookId: null,
+  cutoutKey: null,
+  createdAt: new Date(0),
+  updatedAt: new Date(0),
+}
+
+const asOwner = Effect.provideService(CurrentAccount, { accountId: 'ac_1', via: 'session' })
+
+describe("a gallery photo's person cut-out", () => {
+  it.effect('asks SAM once for a photo with nobody in it, and answers again from that outcome', () => {
+    const { asked, gallery } = over(Option.none())
+    return Effect.gen(function* () {
+      const first = yield* Effect.flip(cutOutPerson(photo))
+      const again = yield* Effect.flip(cutOutPerson(photo))
+      expect([first, again]).toMatchObject([{ _tag: 'NoPersonFound' }, { _tag: 'NoPersonFound' }])
+      expect(asked.sam).toBe(1)
+    }).pipe(asOwner, Effect.provide(gallery))
+  })
+
+  it.effect('keeps a person found with the photo', () => {
+    const { asked, gallery, stored } = over()
+    return Effect.gen(function* () {
+      yield* cutOutPerson(photo)
+      const kept = yield* (yield* PhotoStore).photoForWork('ph_1')
+      const key = 'accounts/ac_1/photos/ph_1/cutout.png'
+      expect(Option.map(kept, ({ cutoutKey }) => cutoutKey)).toEqual(Option.some(key))
+      expect([stored.has(key), asked.sam]).toEqual([true, 1])
+    }).pipe(asOwner, Effect.provide(gallery))
+  })
+
+  it.effect("asks no faster than the account's pace", () => {
+    const { asked, gallery } = over(Option.none(), 0)
+    return Effect.gen(function* () {
+      expect(yield* Effect.flip(cutOutPerson(photo))).toMatchObject({ _tag: 'SlowDown' })
+      expect(asked.sam).toBe(0)
+    }).pipe(asOwner, Effect.provide(gallery))
   })
 })

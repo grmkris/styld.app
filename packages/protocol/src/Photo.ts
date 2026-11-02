@@ -1,5 +1,5 @@
 import { entityId, Operation, OperationId } from './Ids.ts'
-import { LimitReached, NotFound, OperationConflict, refusal, Unavailable } from './Errors.ts'
+import { LimitReached, NotFound, OperationConflict, refusal, SlowDown, Unavailable } from './Errors.ts'
 import { SessionHttp } from '@styld/auth/config'
 import { SessionAccount } from './Session.ts'
 import { Schema } from 'effect'
@@ -155,7 +155,7 @@ export class PhotoApi extends HttpApiGroup.make('photo')
       params: photoPath,
       payload: Operation,
       success: Photo,
-      error: [NotFound, NoPersonFound, Unavailable],
+      error: [NotFound, NoPersonFound, SlowDown, Unavailable],
     }),
   )
   .add(
