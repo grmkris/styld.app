@@ -1,10 +1,11 @@
 import type { Occasion, OutfitBrief, Season } from '@styld/protocol'
 import { Context, Effect, Layer, Option } from 'effect'
 import { askClef, clefCost, imageOf, noulOf, type RunClef } from '../providers/Clef.ts'
+import type { Media } from '../kernel/Media.ts'
 import { CaptureMetrics } from '../kernel/Metrics.ts'
 import type { Picture } from '../capture/Providers.ts'
 import { collect } from '../Streams.ts'
-import { deliverImage, type ImageBindings } from '../wardrobe/Delivery.ts'
+import { deliverImage } from '../wardrobe/Delivery.ts'
 import { piecePrefix } from '../wardrobe/Media.ts'
 import type { Owned } from './Wearables.ts'
 
@@ -98,7 +99,7 @@ const pictureType = (contentType: string | undefined): Option.Option<Picture['co
 
 /** A piece's picture for Clef: kept beside the piece after the first time, else its shown image at the grid's
  * thumbnail size, kept for next time. None when it cannot be read or is too large to send. */
-export const judgingPicture = (bindings: ImageBindings, accountId: string, owned: Owned) =>
+export const judgingPicture = (bindings: Media['Service'], accountId: string, owned: Owned) =>
   Effect.gen(function* () {
     const key = judgingKey(accountId, owned)
     const kept = yield* Effect.tryPromise(() => bindings.bucket.get(key))

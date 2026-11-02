@@ -13,7 +13,7 @@ import {
   UploadRefused,
 } from '@styld/protocol'
 import { Array, Effect, Option, Schema } from 'effect'
-import { usableUpload as wardrobeUpload } from '../wardrobe/Parts.ts'
+import { usableUpload } from '../wardrobe/Shared.ts'
 import { verdictOf } from './GarmentRules.ts'
 import { capturePolicy } from './Policy.ts'
 import { captureHold, enqueueCapture, storedAs, unavailable } from './Shared.ts'
@@ -29,10 +29,6 @@ import { GarmentVision } from './Providers.ts'
 import { Holds } from '../usage/Holds.ts'
 import { Pacing } from '../kernel/Pacing.ts'
 import type { CaptureServices } from './Shared.ts'
-
-/** A received upload of this account that has not made anything yet (`wardrobe/Parts.ts`). */
-const usableUpload = (accountId: string, uploadId: string) =>
-  Effect.flatMap(WardrobeStore, (store) => wardrobeUpload(store, accountId, uploadId))
 
 /** The receipt of an operation already run: the same capture for the same meaning, a conflict otherwise.
  * A capture still processing is handed to the queue again, in case the first message never left. */

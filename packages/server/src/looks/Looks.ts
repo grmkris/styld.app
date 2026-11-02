@@ -12,7 +12,7 @@ import {
 import { Context, Effect, Layer, Option, Schema } from 'effect'
 import { Checks } from '../safety/Checks.ts'
 import { requirePublished } from '../social/ProfileStore.ts'
-import { toPiece } from '../wardrobe/Parts.ts'
+import { toPiece } from '../wardrobe/Shared.ts'
 import { ownPieceIds } from '../wardrobe/Store.ts'
 import { Database, nowDate, type StoreUnavailable } from '../kernel/Db.ts'
 import { type LookRow, LookStore } from './Store.ts'

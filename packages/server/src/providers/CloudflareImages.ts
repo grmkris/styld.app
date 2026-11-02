@@ -2,14 +2,13 @@ import { busy } from './Errors.ts'
 import { costs } from './Costs.ts'
 import { deadlines, providerCall } from './Call.ts'
 import { Effect } from 'effect'
-import type { WardrobeBindings } from '../wardrobe/Parts.ts'
+import type { ImagesBinding } from '../kernel/Media.ts'
 import type { CaptureMetrics } from '../kernel/Metrics.ts'
 import { type WorkingCopies } from '../capture/Providers.ts'
 import { collect } from '../Streams.ts'
 
-type Images = WardrobeBindings['images']
-type ImageTransform = Parameters<ReturnType<Images['input']>['transform']>[0]
-type ImageOutput = Parameters<ReturnType<Images['input']>['output']>[0]
+type ImageTransform = Parameters<ReturnType<ImagesBinding['input']>['transform']>[0]
+type ImageOutput = Parameters<ReturnType<ImagesBinding['input']>['output']>[0]
 
 const failed = () => busy('cloudflare-images')
 
@@ -29,7 +28,7 @@ export const pngSize = (png: Uint8Array) => {
 const workingSize = 2048
 
 /** Cloudflare Images through the Worker binding: working copies, background removal, thumbnails. */
-export const makePictureWork = (images: Images, metrics: CaptureMetrics['Service']) => {
+export const makePictureWork = (images: ImagesBinding, metrics: CaptureMetrics['Service']) => {
   const transform = (
     bytes: Uint8Array,
     kind: 'normalise' | 'foreground',

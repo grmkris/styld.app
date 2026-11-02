@@ -3,6 +3,7 @@ import { WorkersAi } from '../ai/LanguageModel.ts'
 import { makeGarmentVision, type RunClef } from './Clef.ts'
 import { makePictureWork } from './CloudflareImages.ts'
 import { makeGarmentSegmenter, metaBase } from './Meta.ts'
+import type { Bucket, ImagesBinding } from '../kernel/Media.ts'
 import { CaptureMetrics } from '../kernel/Metrics.ts'
 import { makeMuseGenerator, makeMusePainter } from './Muse.ts'
 import { Garments } from '../capture/Garments.ts'
@@ -15,7 +16,6 @@ import { MoodPlanner } from '../generation/Planner.ts'
 import { OutfitJudge } from '../outfits/Judge.ts'
 import { Thinking } from '../outfits/Proposer.ts'
 import { ContentJudge, contentJudge } from '../safety/Judge.ts'
-import type { WardrobeBindings } from '../wardrobe/Parts.ts'
 
 // Every provider the application runs on, as layers: the decision model, image work, SAM, the image and video models,
 // the planner and Thinking, the content judge and the Workers AI binding Styld's language models run over. The Worker
@@ -43,8 +43,8 @@ export type ProviderServices =
 export interface ProviderBindings {
   /** Workers AI over the Worker's `AI` binding. */
   readonly workersAi: WorkersAiCalls
-  readonly images: WardrobeBindings['images']
-  readonly bucket: WardrobeBindings['bucket']
+  readonly images: ImagesBinding
+  readonly bucket: Bucket
   readonly metrics: CaptureMetrics['Service']
   readonly deployment: Deployment['Service']
   /** The Worker's environment: only a test composition reads anything from it. */

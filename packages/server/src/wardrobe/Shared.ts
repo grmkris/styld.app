@@ -11,20 +11,18 @@ import {
 } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import type { PieceChanged } from '../safety/PieceChanged.ts'
-import type { ImageBindings } from './Delivery.ts'
-import type { GarmentCutout, WorkMessage } from './Processing.ts'
+import type { GarmentCutout, PieceQueue } from './Processing.ts'
 import { pictureView, turnView } from './Shown.ts'
-import type { PieceRow, Store, UploadRow } from './Store.ts'
+import { type PieceRow, type UploadRow, WardrobeStore } from './Store.ts'
 import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
-import { deleteAfterRows } from '../kernel/Media.ts'
+import { deleteAfterRows, Media } from '../kernel/Media.ts'
 
-// What every part of the wardrobe service shares: its bindings and stores, the piece as its owner reads it, and how
-// a store's failure reads to callers.
+// What every part of the wardrobe service shares: the services it acts through, the piece as its owner reads it, the
+// ownership checks of pieces and uploads, and how a store's failure reads to callers. Every operation yields the
+// services it uses; the `Wardrobe` layer provides them once (`Wardrobe.ts`).
 
-/** The Cloudflare bindings the wardrobe stores into, as Alchemy's runtime objects. */
-export interface WardrobeBindings extends ImageBindings {
-  readonly queue: { send(message: WorkMessage): Promise<unknown> }
-}
+/** The services the wardrobe's operations act through, provided once by the `Wardrobe` layer. */
+export type WardrobeServices = WardrobeStore | Media | PieceQueue | GarmentCutout | PieceChanged | Holds
 
 export const unavailable = () => Unavailable.make({})
 export const refused = (reason: UploadRefused['reason']) => UploadRefused.make({ reason })
@@ -58,36 +56,31 @@ export const toPiece = (row: PieceRow, picture?: PiecePicture, turn?: PieceTurn)
 export const typeOf = (row: Pick<PieceRow, 'type'>) =>
   Schema.decodeUnknownEffect(PieceType)(row.type).pipe(Effect.orDie)
 
-export interface Parts {
-  readonly bindings: WardrobeBindings
-  readonly store: Store
-  readonly cutout: GarmentCutout['Service']
-  readonly pieceChanged: PieceChanged['Service']
-  readonly holds: Holds['Service']
-}
-
 /** The account's own piece, or `NotFound`, as if another account's did not exist: the one ownership check for a
  * piece, which My Gallery reuses. */
-export const accountPiece = Effect.fnUntraced(function* (store: Store, accountId: string, pieceId: string) {
-  const row = yield* stored(store.findPiece(accountId, pieceId))
+export const accountPiece = Effect.fnUntraced(function* (accountId: string, pieceId: string) {
+  const row = yield* stored((yield* WardrobeStore).findPiece(accountId, pieceId))
   return yield* Option.match(row, { onNone: () => Effect.fail(NotFound.make({})), onSome: Effect.succeed })
 })
 
-export const ownPiece = (parts: Parts) =>
-  Effect.fnUntraced(function* (pieceId: string) {
-    const { accountId } = yield* CurrentAccount
-    return yield* accountPiece(parts.store, accountId, pieceId)
-  })
+/** The current account's own piece (`accountPiece`). */
+export const ownPiece = Effect.fnUntraced(function* (pieceId: string) {
+  const { accountId } = yield* CurrentAccount
+  return yield* accountPiece(accountId, pieceId)
+})
 
 /** The piece's clean picture row, if a drawing was ever asked for. */
-export const pictureRow = (parts: Parts, accountId: string, pieceId: string) =>
-  Effect.map(stored(parts.store.pictureOf(accountId, pieceId)), Option.getOrUndefined)
+export const pictureRow = (accountId: string, pieceId: string) =>
+  Effect.map(
+    stored(Effect.flatMap(WardrobeStore, (store) => store.pictureOf(accountId, pieceId))),
+    Option.getOrUndefined,
+  )
 
 /** A piece as its owner sees it, with its clean picture and its turn. */
-export const ownerPiece = (parts: Parts, accountId: string, row: PieceRow) =>
+export const ownerPiece = (accountId: string, row: PieceRow) =>
   Effect.gen(function* () {
-    const picture = yield* pictureRow(parts, accountId, row.id)
-    const turn = Option.getOrUndefined(yield* stored(parts.store.turnOf(accountId, row.id)))
+    const picture = yield* pictureRow(accountId, row.id)
+    const turn = Option.getOrUndefined(yield* stored((yield* WardrobeStore).turnOf(accountId, row.id)))
     const at = yield* nowDate
     return yield* toPiece(
       row,
@@ -108,10 +101,11 @@ const useRefusal = (upload: Option.Option<UploadRow>): Option.Option<UploadRefus
           : Option.none(),
   })
 
-/** A received upload of the account that has not made anything yet: what a piece or a board's picture is
- * made from. Another account's upload reads as not found. */
-export const usableUpload = Effect.fnUntraced(function* (store: Store, accountId: string, uploadId: string) {
-  const upload = Option.filter(yield* stored(store.findUpload(uploadId)), (row) => row.accountId === accountId)
+/** A received upload of the account that has not made anything yet: what a piece, a capture, an outfit photo or a
+ * board's picture is made from. Another account's upload reads as not found. */
+export const usableUpload = Effect.fnUntraced(function* (accountId: string, uploadId: string) {
+  const found = yield* stored((yield* WardrobeStore).findUpload(uploadId))
+  const upload = Option.filter(found, (row) => row.accountId === accountId)
   const refusal = useRefusal(upload)
   if (Option.isSome(refusal) || Option.isNone(upload))
     return yield* refused(Option.getOrElse(refusal, () => 'notFound'))
@@ -120,11 +114,11 @@ export const usableUpload = Effect.fnUntraced(function* (store: Store, accountId
 
 /** Delete the objects of rows already deleted (or changed) that nothing else shows any more (`keysInUse`): the one
  * order objects go in, rows first. A failed delete is logged, its bytes left under the account's prefix. */
-export const forgetObjects = (parts: Parts, accountId: string, keys: ReadonlyArray<string>, owner: string) =>
+export const forgetObjects = (accountId: string, keys: ReadonlyArray<string>, owner: string) =>
   Effect.gen(function* () {
-    const inUse = yield* stored(parts.store.keysInUse(accountId, keys))
+    const inUse = yield* stored((yield* WardrobeStore).keysInUse(accountId, keys))
     yield* deleteAfterRows(
-      parts.bindings.bucket,
+      (yield* Media).bucket,
       [...new Set(keys)].filter((key) => !inUse.has(key)),
       owner,
     )

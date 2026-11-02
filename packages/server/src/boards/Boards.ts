@@ -27,8 +27,8 @@ import { requirePublished } from '../social/ProfileStore.ts'
 import { deliverImage } from '../wardrobe/Delivery.ts'
 import type { ShownImage } from '../wardrobe/Http.ts'
 import type { ImageSize } from '../wardrobe/Media.ts'
-import { ownPieceIds, WardrobeStore } from '../wardrobe/Store.ts'
-import { usableUpload } from '../wardrobe/Parts.ts'
+import { ownPieceIds } from '../wardrobe/Store.ts'
+import { usableUpload } from '../wardrobe/Shared.ts'
 import { type BoardRow, type PinRemoval } from './Store.ts'
 import { tables } from './Tables.ts'
 import {
@@ -263,7 +263,7 @@ const addImageFailure = (operation: Identified, boardId: string, uploadId: strin
     const prior = yield* priorOf(operation)
     if (Option.isSome(prior)) return yield* replayImage(operation.accountId, prior.value)
     yield* ownBoard(operation.accountId, boardId)
-    yield* usableUpload(yield* WardrobeStore, operation.accountId, uploadId)
+    yield* usableUpload(operation.accountId, uploadId)
     return yield* unavailable()
   })
 
@@ -285,7 +285,7 @@ const pictures = Effect.map(Effect.context<BoardServices>(), (context) => ({
     const prior = yield* priorOf(operation)
     if (Option.isSome(prior)) return yield* replayImage(accountId, prior.value)
     yield* ownBoard(accountId, boardId)
-    const upload = yield* usableUpload(yield* WardrobeStore, accountId, input.uploadId)
+    const upload = yield* usableUpload(accountId, input.uploadId)
     if (!upload.contentType.startsWith('image/')) return yield* UploadRefused.make({ reason: 'wrongType' })
     const id = yield* newId('bm')
     const pinId = yield* newId('pn')

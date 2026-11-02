@@ -22,7 +22,7 @@ import { Boards } from '../boards/Boards.ts'
 import { Looks } from '../looks/Looks.ts'
 import { receivedUpload } from '../mcp/ImageImport.ts'
 import { deliverImage } from '../wardrobe/Delivery.ts'
-import { accountPiece, usableUpload as wardrobeUpload } from '../wardrobe/Parts.ts'
+import { accountPiece, usableUpload as wardrobeUpload } from '../wardrobe/Shared.ts'
 import type { ShownImage } from '../wardrobe/Http.ts'
 import type { ImageSize } from '../wardrobe/Media.ts'
 import { cutOutPerson } from './Cutout.ts'
@@ -77,18 +77,18 @@ const ownPhoto = (accountId: string, photoId: string) =>
     Option.match({ onNone: () => Effect.fail(NotFound.make({})), onSome: Effect.succeed }),
   )
 
-/** The account's own ready piece, or `NotFound` (`wardrobe/Parts.ts`). */
+/** The account's own ready piece, or `NotFound` (`wardrobe/Shared.ts`). */
 const ownPiece = (accountId: string, pieceId: string) =>
-  Effect.flatMap(WardrobeStore, (store) => accountPiece(store, accountId, pieceId)).pipe(
+  accountPiece(accountId, pieceId).pipe(
     Effect.filterOrFail(
       (piece) => piece.status === 'ready',
       () => NotFound.make({}),
     ),
   )
 
-/** A received image upload of this account that has not made anything yet (`wardrobe/Parts.ts`). */
+/** A received image upload of this account that has not made anything yet (`wardrobe/Shared.ts`). */
 const usableUpload = (accountId: string, uploadId: string) =>
-  Effect.flatMap(WardrobeStore, (store) => wardrobeUpload(store, accountId, uploadId)).pipe(
+  wardrobeUpload(accountId, uploadId).pipe(
     Effect.filterOrFail(
       ({ contentType }) => contentType.startsWith('image/'),
       () => UploadRefused.make({ reason: 'wrongType' }),
