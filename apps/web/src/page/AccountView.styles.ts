@@ -52,5 +52,7 @@ export const serverUrl = style({
   userSelect: 'all',
 })
 export const rowActions = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'related' })
+/** Signing out, under who they are and above the first section's rule. */
+export const signOutRow = style({ marginBlockStart: '-8px', paddingBlockEnd: '24px' })
 export const notice = style({ fontSize: 'label', color: 'ink2', margin: '0' })
 export const problem = style({ fontSize: 'label', color: 'error', margin: '0' })

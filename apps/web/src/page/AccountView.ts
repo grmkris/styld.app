@@ -32,6 +32,7 @@ import {
   sectionText,
   sectionTitle,
   serverUrl,
+  signOutRow,
   statusSkeleton,
   steps,
   unavailable,
@@ -209,28 +210,33 @@ const profileSection = (model: Model, locale: Locale, h: HtmlBuilder<Message>): 
     ]),
   ])
 
-/** The signed-in person's account (Gallery `account.html`): who they are, connecting an assistant,
- * signing out and deleting the account. */
+/** Signing out, under who they are: on a phone it is in the first screen, never below the assistants' setup (browser
+ * review, 2 November 2026). */
+const signOut = ({ locale, signingOut }: Inputs, h: HtmlBuilder<Message>): Html =>
+  h.div(styled(h, cx(rowActions(), signOutRow())), [
+    actionButton(
+      {
+        label: format(locale, 'auth.signOut', {}),
+        style: secondaryAction(),
+        onClick: Message.ClickedSignOut(),
+        isDisabled: signingOut,
+        leading: signingOut ? loader(h) : h.empty,
+      },
+      h,
+    ),
+  ])
+
+/** The signed-in person's account (Gallery `account.html`): who they are and signing out, their profile, connecting
+ * an assistant, and deleting the account. */
 const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, h) =>
   h.section(
     [],
     [
       pageHead(pageTitle(format(inputs.locale, 'account.title', {}), h), Option.none(), h),
       identityView(model, inputs, h),
+      signOut(inputs, h),
       profileSection(model, inputs.locale, h),
       assistants(model, inputs, h),
-      h.section(styled(h, section()), [
-        actionButton(
-          {
-            label: format(inputs.locale, 'auth.signOut', {}),
-            style: secondaryAction(),
-            onClick: Message.ClickedSignOut(),
-            isDisabled: inputs.signingOut,
-            leading: inputs.signingOut ? loader(h) : h.empty,
-          },
-          h,
-        ),
-      ]),
       deletion(model, inputs, h),
     ],
   ),
