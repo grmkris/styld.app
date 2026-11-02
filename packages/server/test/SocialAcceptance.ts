@@ -229,6 +229,10 @@ const verifyPeople = async (origin: string, owner: Call, other: Call, reporters:
   expect((await other('/api/people/nika.kovac')).status).toBe(404)
   expect((await other('/api/public/profiles/nika.kovac')).status).toBe(404)
   expect((await fetch(`${origin}/api/public/profiles/nika.kovac`)).status).toBe(200)
+  // A link preview is read as its page is: none for the blocked person, signed out it still shows.
+  const preview = `/api/public/meta?path=${encodeURIComponent('/@nika.kovac')}`
+  expect((await other(preview)).status).toBe(404)
+  expect((await fetch(`${origin}${preview}`)).status).toBe(200)
   expect(await (await other('/api/following')).json()).toEqual({ people: [] })
   expect(await (await other('/api/saved')).json()).toEqual({ saved: [] })
   await send(owner, '/api/people/luka.other/blocked', 'PUT', { blocked: false })

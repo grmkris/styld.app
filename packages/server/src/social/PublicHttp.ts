@@ -44,16 +44,21 @@ export const publicHandlers = (auth: AuthHttp) =>
       const reader = yield* sessionCookieAccount(auth)
       const read = <A, E, R>(page: (viewer: Option.Option<string>) => Effect.Effect<A, E, R>) =>
         within(Effect.flatMap(reader, page))
-      return handlers
-        .handle('profile', ({ params }) => read((viewer) => pages.profile(params.handle, viewer)))
-        .handle('board', ({ params }) => read((viewer) => pages.board(params.boardId, viewer)))
-        .handle('look', ({ params }) => read((viewer) => pages.look(params.lookId, viewer)))
-        .handle('piece', ({ params }) => read((viewer) => pages.piece(params.pieceId, viewer)))
-        .handle('explore', ({ query }) => read((viewer) => discovery.explore(Option.fromNullishOr(query.mood), viewer)))
-        .handle('search', ({ query }) => read((viewer) => discovery.search(query.q, viewer)))
-        .handle('meta', ({ query }) =>
-          within(Effect.flatMap(readerLocale, (locale) => pageMeta(pages, query.path, locale))),
-        )
+      return (
+        handlers
+          .handle('profile', ({ params }) => read((viewer) => pages.profile(params.handle, viewer)))
+          .handle('board', ({ params }) => read((viewer) => pages.board(params.boardId, viewer)))
+          .handle('look', ({ params }) => read((viewer) => pages.look(params.lookId, viewer)))
+          .handle('piece', ({ params }) => read((viewer) => pages.piece(params.pieceId, viewer)))
+          .handle('explore', ({ query }) =>
+            read((viewer) => discovery.explore(Option.fromNullishOr(query.mood), viewer)),
+          )
+          .handle('search', ({ query }) => read((viewer) => discovery.search(query.q, viewer)))
+          // The preview is read as the page is: a block hides its title and pictures too (the edge forwards the cookie).
+          .handle('meta', ({ query }) =>
+            read((viewer) => Effect.flatMap(readerLocale, (locale) => pageMeta(pages, query.path, locale, viewer))),
+          )
+      )
     }),
   )
 

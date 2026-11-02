@@ -127,22 +127,34 @@ describe('public edge routing', () => {
     expect(page.headers.get('x-robots-tag')).toBe('noindex')
   })
 
-  test('reads a public page’s preview from the API Worker while the page renders, in the reader’s language', async () => {
-    const asked: Array<{ readonly url: string; readonly language: string | null }> = []
+  test('reads a public page’s preview from the API Worker while the page renders, in the reader’s language and as the reader', async () => {
+    const asked: Array<{ readonly url: string; readonly language: string | null; readonly cookie: string | null }> = []
     const api = {
       fetch: async (request: Request) => {
-        asked.push({ url: request.url, language: request.headers.get('accept-language') })
+        asked.push({
+          url: request.url,
+          language: request.headers.get('accept-language'),
+          cookie: request.headers.get('cookie'),
+        })
         return Response.json({ title: 'Nika on Styld', description: 'Boards', image: null })
       },
     }
     const page = await edge.fetch(
-      new Request('https://styld.test/@nika.kovac', { headers: { 'accept-language': 'sl' } }),
+      new Request('https://styld.test/@nika.kovac', {
+        headers: { 'accept-language': 'sl', cookie: 'styld_session=reader' },
+      }),
       {
         API: api,
         WEBSITE: { fetch: async () => new Response('<!doctype html>', { headers: { 'content-type': 'text/html' } }) },
       },
     )
     expect(page.status).toBe(200)
-    expect(asked).toEqual([{ url: 'https://styld.test/api/public/meta?path=%2F%40nika.kovac', language: 'sl' }])
+    expect(asked).toEqual([
+      {
+        url: 'https://styld.test/api/public/meta?path=%2F%40nika.kovac',
+        language: 'sl',
+        cookie: 'styld_session=reader',
+      },
+    ])
   })
 })

@@ -22,11 +22,12 @@ export const isApiPath = (path: string): boolean =>
 /** How long a public page waits for its link preview before it goes out without one. */
 const previewPatience = 1500
 
-/** The link preview of a public page, read from the API Worker in the reader's language; none if it is not public,
- * slow or failing. */
+/** The link preview of a public page, read from the API Worker in the reader's language and as the reader (the
+ * session cookie goes along, so a block hides the preview as it hides the page); none if it is not public, slow or
+ * failing. */
 const previewOf = async (request: Request, env: EdgeEnvironment, path: string): Promise<PageMeta | undefined> => {
   const headers = new Headers()
-  for (const name of ['accept-language', 'cf-connecting-ip', 'x-styld-correlation-id']) {
+  for (const name of ['accept-language', 'cf-connecting-ip', 'cookie', 'x-styld-correlation-id']) {
     const value = request.headers.get(name)
     if (value !== null) headers.set(name, value)
   }
