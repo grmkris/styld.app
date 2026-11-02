@@ -97,11 +97,12 @@ queues go with it; v1's wardrobes are brought back by the importer. The producti
    `mediaBucket`, and read `/api/health` (its release is HEAD).
 
 4. **Import each wardrobe by email**. An admin's session (sign in on the new URL with an address in
-   `STYLD_ADMIN_EMAILS` and copy the `Cookie` header of an `/api/` request), and an R2 API token for the stage's bucket:
+   `STYLD_ADMIN_EMAILS` and copy the `Cookie` header of an `/api/` request); the bundle goes through the R2 REST API
+   with the API token that deploys:
 
    ```sh
    STYLD_URL="<edge url>" STYLD_SESSION='<cookie header>' \
-   R2_ACCOUNT_ID=bceaeae4788dce3493514fde194b4a7e R2_ACCESS_KEY_ID=… R2_SECRET_ACCESS_KEY=… R2_BUCKET="<mediaBucket>" \
+   CLOUDFLARE_ACCOUNT_ID=bceaeae4788dce3493514fde194b4a7e CLOUDFLARE_API_TOKEN=… R2_BUCKET="<mediaBucket>" \
      bun tools/import-v1/Import.ts ~/private/styld-v1/<person>
    ```
 

@@ -5,16 +5,16 @@
  * for it if there is none. Running it again imports nothing twice. docs/DEPLOYMENT.md › Rebuild and import.
  *
  *   STYLD_URL=https://… STYLD_SESSION='<the admin's session cookie header>' \
- *   R2_ACCOUNT_ID=… R2_ACCESS_KEY_ID=… R2_SECRET_ACCESS_KEY=… R2_BUCKET=… \
+ *   CLOUDFLARE_ACCOUNT_ID=… CLOUDFLARE_API_TOKEN=… R2_BUCKET=<the stage's mediaBucket output> \
  *     bun tools/import-v1/Import.ts <private-folder> [--keep-bundle]
  *
- * Credentials come from the environment only and are never printed. The bucket is the stage's media bucket (EU
- * jurisdiction); `--keep-bundle` leaves the uploaded bundle in it, which is deleted once the import settled otherwise.
+ * Credentials come from the environment only and are never printed. The bundle goes through Cloudflare's R2 REST API
+ * with the operator's API token (the one that deploys), so no separate S3 key is made; the bucket is the stage's media
+ * bucket (EU jurisdiction); `--keep-bundle` leaves the uploaded bundle in it, which is deleted once the import settled otherwise.
  * Prints counts, never names or pictures.
  */
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
-import { S3Client } from 'bun'
 import { csrf } from '@styld/auth/config'
 import { ImportStarted, ImportStatus, type ImportManifest, type ImportPiece } from '@styld/protocol'
 import { Match, Schema } from 'effect'
@@ -32,12 +32,27 @@ const required = (name: string) => {
 
 const origin = new URL(required('STYLD_URL')).origin
 const session = required('STYLD_SESSION')
-const bucket = new S3Client({
-  accessKeyId: required('R2_ACCESS_KEY_ID'),
-  secretAccessKey: required('R2_SECRET_ACCESS_KEY'),
-  bucket: required('R2_BUCKET'),
-  endpoint: `https://${required('R2_ACCOUNT_ID')}.eu.r2.cloudflarestorage.com`,
-})
+/** The stage's media bucket through the R2 REST API: write and delete one object. */
+const objects = `https://api.cloudflare.com/client/v4/accounts/${required('CLOUDFLARE_ACCOUNT_ID')}/r2/buckets/${required('R2_BUCKET')}/objects`
+const r2 = { authorization: `Bearer ${required('CLOUDFLARE_API_TOKEN')}`, 'cf-r2-jurisdiction': 'eu' }
+const objectCall = async (method: 'PUT' | 'DELETE', key: string, init: { body?: BodyInit; type?: string } = {}) => {
+  for (let attempt = 0; ; attempt += 1) {
+    const response = await fetch(`${objects}/${key.split('/').map(encodeURIComponent).join('/')}`, {
+      method,
+      headers: { ...r2, ...(init.type === undefined ? {} : { 'content-type': init.type }) },
+      ...(init.body === undefined ? {} : { body: init.body }),
+    })
+    if (response.ok) return
+    // The API paces bursts; a few waits get past it.
+    if (response.status !== 429 || attempt >= 8) throw new Error(`R2 ${method} answered ${response.status}`)
+    await Bun.sleep(1000 * 2 ** Math.min(attempt, 5))
+  }
+}
+const bucket = {
+  write: (key: string, body: Uint8Array | string, options: { readonly type: string }) =>
+    objectCall('PUT', key, { body: typeof body === 'string' ? body : Uint8Array.from(body), type: options.type }),
+  delete: (key: string) => objectCall('DELETE', key),
+}
 
 const exported = Schema.decodeUnknownSync(Schema.fromJsonString(V1Export))(
   await readFile(path.join(folder, 'export.json'), 'utf8'),
