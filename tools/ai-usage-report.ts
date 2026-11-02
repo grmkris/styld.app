@@ -2,23 +2,25 @@
  * What capture providers cost and how often their pieces are kept, from the Worker's Analytics Engine
  * dataset (`packages/server/src/kernel/Metrics.ts` writes it):
  *
- *   bun tools/ai-usage-report.ts [environment=preview] [days=7]
+ *   bun tools/ai-usage-report.ts [stage=preview] [days=7]
  *
- * Reads `CLOUDFLARE_API_TOKEN` (Account Analytics read) and `CLOUDFLARE_ACCOUNT_ID` (default: the v2
+ * Each stage counts in its own dataset (`packages/server/src/Resources.ts` `stages`). Reads `CLOUDFLARE_API_TOKEN` (Account Analytics read) and `CLOUDFLARE_ACCOUNT_ID` (default: the v2
  * preview account) from the environment and never prints them. Costs are list-price estimates; the
  * providers' invoices are the truth. Analytics Engine samples per index, so every sum is weighted by
  * `_sample_interval`; indexes are `call.<provider>.<kind>`, `review.<decision>` (plain `call` and
  * `review` before 2026-10-29 16:00), `picture.<state>`, where each clean picture ended (from 2026-10-30), and
  * `outfit.<make|keep>.<mode>`, the outfit engine's Fast and Thinking experiment (from 2026-10-31).
  */
+import { isStageName, stages } from '@styld/server/Resources'
 import { Schema } from 'effect'
 
-const [environment = 'preview', days = '7'] = process.argv.slice(2)
+const [stage = 'preview', days = '7'] = process.argv.slice(2)
 const token = process.env['CLOUDFLARE_API_TOKEN']
 const account = process.env['CLOUDFLARE_ACCOUNT_ID'] ?? 'bceaeae4788dce3493514fde194b4a7e'
 if (token === undefined) throw new Error('Set CLOUDFLARE_API_TOKEN')
-if (!/^[a-z]+$/.test(environment) || !/^\d{1,3}$/.test(days))
-  throw new Error('Usage: bun tools/ai-usage-report.ts [environment] [days]')
+if (!isStageName(stage) || !/^\d{1,3}$/.test(days))
+  throw new Error(`Usage: bun tools/ai-usage-report.ts [${Object.keys(stages).join('|')}] [days]`)
+const { aiCalls: dataset, environment } = stages[stage]
 
 const Rows = Schema.Struct({ data: Schema.Array(Schema.Record(Schema.String, Schema.Unknown)) })
 
@@ -41,7 +43,7 @@ const calls = await query(`
          SUM(_sample_interval * double1) / SUM(_sample_interval) AS avg_ms,
          SUM(_sample_interval * double2) AS units,
          SUM(_sample_interval * double3) / 1000000 AS est_usd
-  FROM StyldV2AiCalls
+  FROM ${dataset}
   WHERE index1 LIKE 'call%' AND ${within}
   GROUP BY provider, model, kind, outcome
   ORDER BY est_usd DESC
@@ -49,19 +51,19 @@ const calls = await query(`
 
 const reviews = await query(`
   SELECT blob3 AS route, blob4 AS provider, blob5 AS decision, SUM(_sample_interval) AS pieces
-  FROM StyldV2AiCalls
+  FROM ${dataset}
   WHERE index1 LIKE 'review%' AND ${within}
   GROUP BY route, provider, decision
   ORDER BY pieces DESC
   FORMAT JSON`)
 
-console.log(`Provider calls, ${environment}, last ${days} days`)
+console.log(`Provider calls, ${stage}, last ${days} days`)
 console.table(calls)
 const total = calls.reduce((sum, row) => sum + Number(row['est_usd'] ?? 0), 0)
 console.log(`Estimated total: $${total.toFixed(4)}`)
 const pictures = await query(`
   SELECT blob3 AS state, blob4 AS provider, blob5 AS asked, SUM(_sample_interval) AS pictures
-  FROM StyldV2AiCalls
+  FROM ${dataset}
   WHERE index1 LIKE 'picture.%' AND ${within}
   GROUP BY state, provider, asked
   ORDER BY pictures DESC
@@ -79,7 +81,7 @@ const outfitMakes = await query(`
          quantileExactWeighted(0.95)(double1, _sample_interval) AS p95_ms,
          SUM(_sample_interval * double2) / SUM(_sample_interval) AS avg_proposals,
          SUM(_sample_interval * double3) / 1000000 AS est_usd
-  FROM StyldV2AiCalls
+  FROM ${dataset}
   WHERE index1 LIKE 'outfit.make.%' AND ${within}
   GROUP BY mode, outcome, judged
   ORDER BY mode, makes DESC
@@ -90,7 +92,7 @@ const outfitKeeps = await query(`
          SUM(_sample_interval) AS kept,
          SUM(_sample_interval * double1) / SUM(_sample_interval) AS avg_position,
          SUM(if(blob7 = 'edited', _sample_interval, 0)) AS edited
-  FROM StyldV2AiCalls
+  FROM ${dataset}
   WHERE index1 LIKE 'outfit.keep.%' AND ${within}
   GROUP BY mode, outcome
   FORMAT JSON`)
@@ -100,7 +102,7 @@ const sessionsBy = async (phase: 'make' | 'keep') =>
     (
       await query(`
         SELECT blob4 AS mode, COUNT(DISTINCT blob6) AS sessions
-        FROM StyldV2AiCalls
+        FROM ${dataset}
         WHERE index1 LIKE 'outfit.${phase}.%' AND ${within}
         GROUP BY mode
         FORMAT JSON`)

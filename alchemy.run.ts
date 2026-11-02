@@ -1,21 +1,25 @@
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import * as Alchemy from 'alchemy'
 import { Config, Effect } from 'effect'
-import { StyldMedia } from '@styld/server/Resources'
+import { currentStage, StyldMedia } from '@styld/server/Resources'
 import StyldWorkerLive, { StyldWorker } from '@styld/server/StyldWorker'
 
-/** Isolated v2 stack. The worker's stable URL is the only output used by acceptance tests. */
+/** Isolated v2 stack, one per stage (`--stage preview`; `production` only at the cutover). The stage's name decides its
+ * environment, robots, Analytics Engine dataset and rate-limit namespaces (`Resources.ts` `stages`). Its state lives in
+ * the account's Cloudflare state store, so any operator's checkout plans against the same resources. The worker's
+ * stable URL is the only output used by acceptance tests. */
 export default Alchemy.Stack(
   'StyldAppV2',
-  { providers: Cloudflare.providers(), state: Alchemy.localState() },
+  { providers: Cloudflare.providers(), state: Cloudflare.state() },
   Effect.gen(function* () {
     const release = yield* Config.String('STYLD_RELEASE')
+    const stage = yield* currentStage
     // The stack owns the media bucket even while no Worker serves media yet.
     yield* StyldMedia
     const api = yield* StyldWorker
     const website = yield* Cloudflare.Website.Foldkit('StyldWebsite', {
       rootDir: 'apps/web',
-      env: { VITE_STYLD_ENV: 'preview', VITE_STYLD_RELEASE: release },
+      env: { VITE_STYLD_ENV: stage.environment, VITE_STYLD_RELEASE: release },
       compatibility: { date: '2026-10-19' },
       observability: {
         enabled: true,
@@ -27,8 +31,8 @@ export default Alchemy.Stack(
     })
     const edge = yield* Cloudflare.Worker('StyldEdge', {
       main: 'packages/server/src/EdgeWorker.ts',
-      // The preview stays out of search engines; link previews still read its pages.
-      env: { API: api, WEBSITE: website, ROBOTS: 'noindex' },
+      // Every stage but production stays out of search engines; link previews still read its pages.
+      env: { API: api, WEBSITE: website, ROBOTS: stage.robots },
       // Service-binding fetch enters the SSR handler without the website's
       // public asset router. Serve the same build's files at the public edge.
       assets: { directory: 'apps/web/dist/client' },
@@ -46,7 +50,7 @@ export default Alchemy.Stack(
     yield* api.bind('RuntimeConfiguration', {
       env: {
         AUTH_ORIGIN: edge.url,
-        STYLD_ENV: 'preview',
+        STYLD_ENV: stage.environment,
         STYLD_RELEASE: release,
         AUTH_SECRET: yield* Config.Redacted('STYLD_AUTH_SECRET'),
         AUTH_SESSION_KEYS: yield* Config.Redacted('STYLD_AUTH_SESSION_KEYS'),

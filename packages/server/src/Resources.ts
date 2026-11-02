@@ -1,4 +1,61 @@
 import * as Cloudflare from '@alchemy.run/cloudflare'
+import type { Environment } from '@styld/observability'
+import { Stage } from 'alchemy/Stage'
+import { Effect } from 'effect'
+
+/** What a stage's name decides about its deployment. */
+interface StageFacts {
+  /** `STYLD_ENV` and `VITE_STYLD_ENV`: what logs, traces and the website call the deployment. */
+  readonly environment: Environment
+  /** Whether search engines may index its pages (the edge's `ROBOTS`); link previews read them either way. */
+  readonly robots: 'index' | 'noindex'
+  /** The Analytics Engine dataset its provider calls are counted in (`kernel/Metrics.ts`, `tools/ai-usage-report.ts`). */
+  readonly aiCalls: string
+  /** The first of its RateLimit namespace ids, each pace's offset from it (`kernel/Pacing.ts`); unique within the
+   * Cloudflare account. */
+  readonly firstRateLimitNamespace: number
+}
+
+/**
+ * Every stage the stack is deployed or run as (docs/DEPLOYMENT.md). `preview` is the isolated workers.dev preview;
+ * `production` is defined for the cutover and is not created before it; `local` (`alchemy dev`) and `local-native` (the
+ * native suite) run in workerd on this machine. Any other stage name stops the plan.
+ */
+export const stages = {
+  local: { environment: 'local', robots: 'noindex', aiCalls: 'styld_local_ai_calls', firstRateLimitNamespace: 2619001 },
+  'local-native': {
+    environment: 'local',
+    robots: 'noindex',
+    aiCalls: 'styld_local_ai_calls',
+    firstRateLimitNamespace: 2619101,
+  },
+  preview: {
+    environment: 'preview',
+    robots: 'noindex',
+    aiCalls: 'styld_preview_ai_calls',
+    firstRateLimitNamespace: 2610281,
+  },
+  production: {
+    environment: 'production',
+    robots: 'index',
+    aiCalls: 'styld_production_ai_calls',
+    firstRateLimitNamespace: 2611001,
+  },
+} as const satisfies Record<string, StageFacts>
+
+export type StageName = keyof typeof stages
+
+export const isStageName = (stage: string): stage is StageName => Object.hasOwn(stages, stage)
+
+/** The facts of the stage being planned or run. */
+export const currentStage = Effect.gen(function* () {
+  const stage = yield* Stage
+  if (!isStageName(stage))
+    return yield* Effect.die(
+      new Error(`Stage "${stage}" is not one of ${Object.keys(stages).join(', ')} (Resources.ts)`),
+    )
+  return stages[stage]
+})
 
 /**
  * v2 owns its Cloudflare data plane. These resources are intentionally named
@@ -25,26 +82,14 @@ export const StyldGenerationQueue = Cloudflare.Queues.Queue('StyldV2Generation')
 export const StyldStylistQueue = Cloudflare.Queues.Queue('StyldV2Stylist')
 
 /** Every capture provider call and review decision, for cost and keep rates (`tools/ai-usage-report.ts`). */
-export const StyldAiCalls = Cloudflare.AnalyticsEngine.Dataset('StyldV2AiCalls')
+export const StyldAiCalls = Effect.flatMap(currentStage, ({ aiCalls }) =>
+  Cloudflare.AnalyticsEngine.Dataset('StyldAiCalls', { dataset: aiCalls }),
+)
 
 /** Cloudflare Email Service's `send_email` binding, named `STYLD_EMAIL` in the Worker's env. The
  * styld.app sending domain is already set up in this account, so the stack declares no sending
  * domain or DNS record of its own. */
 export const StyldEmail = Cloudflare.Email.SendEmail('STYLD_EMAIL', { allowedSenderAddresses: ['noreply@styld.app'] })
-
-/** The namespace of each pace's Workers RateLimit binding (`kernel/Pacing.ts`), unique within the Cloudflare account.
- * C5 makes them the stage's. */
-export const rateLimitNamespaces = {
-  telemetry: 2610281,
-  registration: 2610282,
-  codeRequest: 2610283,
-  check: 2610284,
-  publicRead: 2610285,
-  link: 2610286,
-  generate: 2610287,
-  outfit: 2610288,
-  thinking: 2610289,
-} as const
 
 /** The sender every code email comes from. */
 export const emailSender = 'Styld <noreply@styld.app>'
