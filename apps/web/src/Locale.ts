@@ -7,19 +7,13 @@ export const localeEndpoint = '/locale'
 /** The locale dates and numbers are written in: Slovenian, else British English (29 Oct), as the pseudo-locales too. */
 export const intlLocale = (locale: Locale) => (locale === 'sl' ? 'sl' : 'en-GB')
 
-const layoutTestEnvironments: ReadonlySet<string> = new Set(['local', 'preview'])
+const isLanguage = Schema.is(Schema.Literals(languages))
 
-/** Pseudo-locales test text expansion and RTL layout. Only known test environments offer them;
- * production and any unknown environment offer only the reviewed languages.
- * The application reads `availableLocales`. */
-export const offeredLocales = (environment: string): ReadonlyArray<Locale> =>
-  layoutTestEnvironments.has(environment) ? Locale.literals : languages
-
-// An unset environment is a local development or test build.
-export const availableLocales = offeredLocales(import.meta.env.VITE_STYLD_ENV ?? 'local')
-
+/** A language a person can choose: only the reviewed ones, whatever the deployment. The pseudo-locales that test text
+ * expansion and right-to-left layout are never chosen through a request, a cookie or the menu; a test or a developer
+ * opens the app in one through code (its `Flags`). */
 export const parseLocale = (value: string | null | undefined): Locale | undefined =>
-  Schema.is(Locale)(value) && availableLocales.includes(value) ? value : undefined
+  isLanguage(value) ? value : undefined
 
 const languageRange = (range: string): Locale | undefined => {
   const language = range.trim().toLowerCase().split('-')[0]

@@ -72,9 +72,18 @@ export const verifyBrowser = async (browser: Browser, origin: string): Promise<v
     await page.reload({ waitUntil: 'networkidle' })
     expect(await exported).toBe(204)
     expect(await page.locator('html').getAttribute('lang')).toBe('sl')
-    await page.selectOption('#language', 'ar-XB')
-    await page.waitForFunction(() => document.documentElement.dir === 'rtl')
+    // The menu offers only the reviewed languages; right-to-left layout is checked by turning the page's direction
+    // in code, as the RTL pseudo-locale would.
+    expect(
+      await page.locator('#language option').evaluateAll((options) => options.map((option) => option.textContent)),
+    ).toEqual(['English', 'Slovenščina'])
+    await page.evaluate(() => {
+      document.documentElement.dir = 'rtl'
+    })
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true)
+    await page.evaluate(() => {
+      document.documentElement.dir = 'ltr'
+    })
     await page.selectOption('#language', 'en')
     await page.waitForFunction(() => document.documentElement.lang === 'en')
     const loginResponse = await page.goto(new URL('/login', origin).toString(), { waitUntil: 'networkidle' })

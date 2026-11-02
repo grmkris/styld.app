@@ -1,5 +1,5 @@
 import { Select } from '@foldkit/ui'
-import { direction, format, type Locale } from '@styld/i18n'
+import { direction, format, type Language, languageOf, type Locale } from '@styld/i18n'
 import { Option, String } from 'effect'
 import type { Document, Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
@@ -8,7 +8,6 @@ import { hasSession, LocaleSave, Message, type Model, Session } from './App.ts'
 import { lenses } from './Page.ts'
 import { actionButton } from './ActionButton.ts'
 import { primaryAction, secondaryAction } from './Actions.styles.ts'
-import { availableLocales } from './Locale.ts'
 import { styled } from './Styled.ts'
 import { askTabIcon, boardsTabIcon, homeTabIcon, wardrobeTabIcon } from './Icon.ts'
 import {
@@ -63,11 +62,10 @@ import { You } from './You.ts'
 import { avatar as avatarStyle } from './Avatar.styles.ts'
 import { pageView } from './PageViews.ts'
 
-const languages: ReadonlyArray<Readonly<{ locale: Locale; label: string }>> = [
+/** The languages the menu offers, each in its own words: the reviewed ones only (`parseLocale`). */
+const languages: ReadonlyArray<Readonly<{ locale: Language; label: string }>> = [
   { locale: 'en', label: 'English' },
   { locale: 'sl', label: 'Slovenščina' },
-  { locale: 'en-XA', label: 'English (expanded)' },
-  { locale: 'ar-XB', label: 'English (RTL)' },
 ]
 
 const languagePicker = (model: Model, h: HtmlBuilder<Message>): Html => {
@@ -77,7 +75,8 @@ const languagePicker = (model: Model, h: HtmlBuilder<Message>): Html => {
   return Select.view(
     {
       id: 'language',
-      value: locale,
+      // A pseudo-locale, opened through code, shows as the language it is written over.
+      value: languageOf(locale),
       isDisabled: pending,
       hasDescription: failed,
       onChange: (value) => Message.SelectedLocale({ value }),
@@ -86,9 +85,9 @@ const languagePicker = (model: Model, h: HtmlBuilder<Message>): Html => {
           h.label(attributes.label, [format(locale, 'auth.language', {})]),
           h.select(
             [...attributes.select, ...styled(h, pickerSelect()), h.AriaBusy(pending)],
-            languages
-              .filter((language) => availableLocales.includes(language.locale))
-              .map((language) => h.keyed('option')(language.locale, [h.Value(language.locale)], [language.label])),
+            languages.map((language) =>
+              h.keyed('option')(language.locale, [h.Value(language.locale)], [language.label]),
+            ),
           ),
           failed
             ? h.p(

@@ -3,7 +3,7 @@ import { expect, test } from 'vitest'
 import { catalogVersion } from '@styld/i18n'
 import * as Server from 'foldkit/experimental/server'
 import { LocaleSave, Message, init, update, type Flags } from '../src/App.ts'
-import { offeredLocales, requestLocale } from '../src/Locale.ts'
+import { parseLocale, requestLocale } from '../src/Locale.ts'
 import { CircleNotchRegular } from '../src/PhosphorIcons.ts'
 import {
   consentFromCookies,
@@ -12,7 +12,7 @@ import {
   telemetryConsentLayer,
 } from '../src/TelemetryConsent.ts'
 import { SessionHttp } from '@styld/auth/config'
-import { renderDocument, renderRequest } from '../src/entry.server.ts'
+import { application, renderDocument, renderRequest } from '../src/entry.server.ts'
 import { urlOf } from './AppFixtures.ts'
 
 const assets = { entryScript: '/entry.js', stylesheets: [], modulePreloads: [] }
@@ -50,9 +50,14 @@ test('negotiation respects explicit locale, cookie, language weights and exclusi
   expect(requestLocale(request('en;q=0,sl-SI;q=0.8'))).toBe('sl')
   expect(requestLocale(request('de,sl;q=0.9,en;q=0.5'))).toBe('sl')
   expect(requestLocale(request('sl;q=0,en;q=0.5'))).toBe('en')
-  expect(requestLocale(new Request('https://styld.test/?lang=ar-XB', { headers: { cookie: 'styld_locale=sl' } }))).toBe(
-    'ar-XB',
+  expect(requestLocale(new Request('https://styld.test/?lang=sl', { headers: { cookie: 'styld_locale=en' } }))).toBe(
+    'sl',
   )
+  // A pseudo-locale is never chosen through a request: neither the address nor the cookie selects one.
+  expect(requestLocale(new Request('https://styld.test/?lang=ar-XB', { headers: { cookie: 'styld_locale=sl' } }))).toBe(
+    'sl',
+  )
+  expect(requestLocale(new Request('https://styld.test/', { headers: { cookie: 'styld_locale=en-XA' } }))).toBe('en')
   expect(
     requestLocale(
       new Request('https://styld.test/', { headers: { cookie: 'styld_locale=sl', 'accept-language': 'en' } }),
@@ -95,21 +100,28 @@ test('language changes serialize persistence and keep failure visible', () => {
   expect(update(saving.model, Message.SucceededSaveLocale({ locale: 'sl' })).model.context.locale).toBe('sl')
 })
 
-test('RTL and expanded locales render without pretending to be Arabic translations', async () => {
-  const rtl = await Effect.runPromise(renderRequest(new Request('https://styld.test/?lang=ar-XB'), { buildId: 'test' }))
-  const html = await Server.toResponse((app) => renderDocument(app, assets), rtl).text()
+test('the RTL pseudo-locale, opened through code, renders without pretending to be an Arabic translation', async () => {
+  const rtl = await Effect.runPromise(
+    Server.renderToString(application, {
+      buildId: 'test',
+      url: 'https://styld.test/',
+      flags: { ...flags('denied'), locale: 'ar-XB' },
+    }),
+  )
+  const html = renderDocument(rtl, assets)
   expect(html).toContain('dir="rtl"')
   expect(html).toContain('lang="ar-XB"')
-  expect(html).toContain('English (RTL)')
   const missing = await Effect.runPromise(renderRequest(new Request('https://styld.test/missing'), { buildId: 'test' }))
   expect(Server.toResponse((app) => renderDocument(app, assets), missing).status).toBe(404)
 })
 
-test('only known test environments add the layout pseudo-locales', () => {
-  expect(offeredLocales('production')).toEqual(['en', 'sl'])
-  expect(offeredLocales('prodution')).toEqual(['en', 'sl'])
-  expect(offeredLocales('preview')).toEqual(['en', 'sl', 'en-XA', 'ar-XB'])
-  expect(offeredLocales('local')).toEqual(['en', 'sl', 'en-XA', 'ar-XB'])
+test('the language menu offers the reviewed languages only, never a testing pseudo-locale', async () => {
+  const page = await Effect.runPromise(renderRequest(request('en'), { buildId: 'test' }))
+  const html = await Server.toResponse((app) => renderDocument(app, assets), page).text()
+  expect(html).toContain('Slovenščina')
+  expect(html).not.toContain('English (expanded)')
+  expect(html).not.toContain('English (RTL)')
+  expect(['en', 'sl', 'en-XA', 'ar-XB', 'de'].map(parseLocale)).toEqual(['en', 'sl', undefined, undefined, undefined])
 })
 
 const flags = (telemetryConsent: TelemetryConsent): Flags => ({
