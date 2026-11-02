@@ -2,6 +2,37 @@
 
 Status: active. Sign-in, the wardrobe (shop-style garment types, browsing, a piece's back), capture with real cut-outs (photos, video import, a held-up camera, scan anything), the review tray, the daily allowance, looks, clean pictures and turns, the boards' pins, profiles, checks and link import, mood boards from the person's own pieces and stickers, the outfit engine (Fast and Thinking), My Gallery and Styld, the stylist in the app are deployed to the isolated workers.dev preview (release `889af38`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping; the plan in progress is "Plan: shopping your own wardrobe" below, waiting at owner gate 1.
 
+## Cleanup C6b: web leftovers — 2026-11-02
+
+Leftovers of milestone C6 (website only; the preview is not redeployed until the milestone's review).
+
+- **One operation-id maker:** `apps/web/src/OperationIds.ts` `drawOperationId` is drawn inside the Command that sends
+  the write (FOLDKIT.md › Commands): a new id, or the one an earlier try drew, which that try's failure Message carried
+  back into the Model. `newOperationId`, `newOperation`, `operationIdOf`, Review's own `DrawOperationId` Command and
+  its `Preparing` step are gone; ids in Messages, Command args and Models are typed `OperationId`, so no Command
+  decodes one inline. `EmailSignIn`'s flow and request ids are the auth contract's, not operation ids, and stay.
+- **One boards list:** `ServerData` reads the person's boards once for the document (`ListBoards`,
+  `revisitBoards`). The Boards page, Save to board on a piece, look or photo, and Home's last board take them as a
+  view input and ask for them through OutMessages (`RequestedBoards`); the three page-local lists, `boardSummaries`,
+  `ListBoardsToSaveTo` and Today's `ListBoards` are gone. A board made on Boards opens its own page (a full load), so
+  the list no longer prepends it.
+- **No do-nothing failures:** Ask records that the other language's words did not load (`SearchLanguages.
+  OtherUnavailable`) and says so under the results with Try again; Home records that today's log did not load
+  (`Worn.Unread`) and says so in its note with Try again (Wear this still logs the outfit). New keys
+  `ask.otherLanguageFailed`, `today.wornUnread` (en, sl).
+- **Unions for state:** Piece's redraw is `{ hint, send: Writing | Sending | Failed{problem, maybeOperationId} }`, and
+  a turn's work and its problem are one `TurnWork` (`Failed{problem}`). Make keeps its operation id beside its job:
+  the id outlives a reopened sheet, which resets the job.
+- **Catalogs:** x18n counts a quoted key under a catalog section as used (keys in typed `MessageKey` tables) and the
+  runtime-built wardrobe keys through `usage.keysInUse`; `board.retry` is deleted. `translations:check` reports no
+  unused key, ready for C7 to make them errors.
+- **Knip:** `ignoreExportsUsedInFile` applies to `apps/web` only.
+- **Remaining:** the packages' unused-export detection is still ineffective: `packages/server` exports `./*`, so
+  every source file is an entry and knip never reports its exports (with `includeEntryExports` it reports 35 exports
+  and 15 types in the server and 7 exports in auth, domain and observability); that is the server track's to fix. The directly tested helpers
+  (`classify`, `briefFor`, `headline`, `cropFrom`, `currentCode`, `cameFromOf`, `tileSharpness`, `offeredLocales`)
+  stay as they are.
+
 ## Cleanup C4c: generation, stylist, outfits, one language model — 2026-11-01
 
 Milestone C4c of the cleanup plan (server; the preview is not redeployed until the milestone's review).
