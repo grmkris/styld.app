@@ -12,6 +12,9 @@ import { importedDetails } from '../src/wardrobe/Work.ts'
 // A piece's own cut-out: the account pays a photo's credit for its own piece, Styld pays for a piece imported from v1,
 // and a stored cut-out is described by the decision model (an import's attributes).
 
+/** A provider call a piece's own cut-out never makes. */
+const unused = () => Effect.die(new Error('not called by a piece cut-out'))
+
 const cut = encodePng({ width: 4, height: 4, data: new Uint8Array(64).fill(200) })
 
 const over = () => {
@@ -29,13 +32,17 @@ const over = () => {
     Layer.succeed(Media, Media.of({ bucket, images: {} } as never)),
     Layer.succeed(
       Garments,
-      // SAFETY: a piece's cut-out calls only `cut` -- finding, handing over and tracking belong to captures
-      Garments.of({ cut: () => Effect.succeed(Option.some(cut)) } as never),
+      Garments.of({
+        find: unused,
+        cut: () => Effect.succeed(Option.some(cut)),
+        handOver: unused,
+        track: unused,
+      }),
     ),
     Layer.succeed(
       GarmentVision,
-      // SAFETY: describing a cut-out calls only `suggest` -- the other questions belong to captures and pictures
       GarmentVision.of({
+        route: unused,
         suggest: () =>
           Effect.succeed({
             type: 'knitwear',
@@ -46,7 +53,12 @@ const over = () => {
             pattern: 'plain',
             whole: 0.9,
           }),
-      } as never),
+        checkHeld: unused,
+        judge: unused,
+        compare: unused,
+        sameGarment: unused,
+        compareTurn: unused,
+      }),
     ),
     Layer.succeed(
       Holds,
