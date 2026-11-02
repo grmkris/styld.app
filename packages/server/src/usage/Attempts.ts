@@ -131,8 +131,9 @@ const steps = (rows: ReturnType<typeof attemptRows>, holds: Holds['Service']) =>
       const decoded = yield* Schema.decodeUnknownEffect(resultJson(work))(result).pipe(Effect.orDie)
       return { _tag: 'Stored', result: decoded, hold } satisfies Begun<A>
     }
-    if (claimedAt === null || at.getTime() - claimedAt.getTime() < Duration.toMillis(lease))
-      return yield* AttemptElsewhere.make({})
+    // Released between the claim and this read: free again, so the caller tries again rather than leaving it.
+    if (claimedAt === null) return yield* unavailable()
+    if (at.getTime() - claimedAt.getTime() < Duration.toMillis(lease)) return yield* AttemptElsewhere.make({})
     if (Option.isSome(hold)) yield* holds.settle(work.accountId, hold.value, 'unknown')
     return yield* outcomeUnknown(work.provider)
   })
