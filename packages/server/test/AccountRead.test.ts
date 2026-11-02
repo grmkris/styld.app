@@ -24,7 +24,7 @@ const accounts = () => {
   `)
   return makeAccountLifecycle(
     { database: drizzle(database), bucket: { list: notUsed, delete: notUsed }, queue: { send: notUsed } },
-    () => Effect.void,
+    { chats: () => Effect.void, providerFiles: () => Effect.void },
   ).pipe(Effect.provide(layerCryptoWeb))
 }
 

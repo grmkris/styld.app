@@ -18,9 +18,16 @@ const accountHandlers = HttpApiBuilder.group(StyldApi, 'account', (handlers) =>
   }),
 )
 
-/** The account: signing in (Yielded's auth routes), reading it and deleting it with everything it owns. */
+/** The account: signing in (Yielded's auth routes), reading it and deleting it with everything it owns; the sweep
+ * finishes every deletion the queue did not. */
 export const account = module({
   layer: AccountLifecycle.layer,
   api: accountHandlers,
   routes: withAuth((auth) => auth.layer),
+  sweeps: [
+    {
+      name: 'accountDeletions',
+      run: Effect.flatMap(AccountLifecycle, (lifecycle) => lifecycle.sweepDeletions()),
+    },
+  ],
 })

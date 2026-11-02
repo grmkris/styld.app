@@ -14,6 +14,7 @@ import {
 import { and, count, desc, eq, inArray, isNotNull, like, notExists, or, type SQL, sql } from 'drizzle-orm'
 import { Context, Effect, Layer, Option, Schema } from 'effect'
 import { Database, query } from '../kernel/Db.ts'
+import { shownToOthers } from './ProfileStore.ts'
 import { PublicPages } from './Public.ts'
 
 // Explore and search over people and public boards. Rows are found here; what may show is the public pages' rule
@@ -96,7 +97,7 @@ const makeQueries = (db: Database['Service']) => {
           .from(profiles)
           .where(
             and(
-              eq(profiles.published, true),
+              shownToOthers(db),
               Option.isSome(viewer)
                 ? notExists(
                     db
@@ -115,7 +116,7 @@ const makeQueries = (db: Database['Service']) => {
         db
           .select({ accountId: profiles.accountId, handle: profiles.handle })
           .from(profiles)
-          .where(and(eq(profiles.published, true), ...words.map((word) => wordLike(profiles.searchText, word))))
+          .where(and(shownToOthers(db), ...words.map((word) => wordLike(profiles.searchText, word))))
           .orderBy(desc(profiles.publishedAt))
           .limit(peopleLimit * 2),
       ),

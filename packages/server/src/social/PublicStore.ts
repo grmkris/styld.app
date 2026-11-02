@@ -2,6 +2,7 @@ import { boardImages, boardPins, boards, contentChecks, lookPieces, looks, piece
 import { and, desc, eq, exists, inArray, isNotNull } from 'drizzle-orm'
 import { Context, Effect, Layer } from 'effect'
 import { Database, first, inChunks, query } from '../kernel/Db.ts'
+import { shownToOthers } from './ProfileStore.ts'
 import { checkLets, piecesWithPictures } from './Visibility.ts'
 
 /** The most boards and looks a profile shows. */
@@ -67,7 +68,7 @@ const publicStore = (db: Drizzle) => ({
       db
         .select()
         .from(profiles)
-        .where(and(eq(profiles.handle, handle), eq(profiles.published, true)))
+        .where(and(eq(profiles.handle, handle), shownToOthers(db)))
         .limit(1),
     ).pipe(Effect.map(first)),
   board: (boardId: string) =>

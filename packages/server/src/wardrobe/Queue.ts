@@ -17,7 +17,7 @@ export const pieceJobQueue = defineQueue({
   jobOf: () => Option.none(),
 })
 
-/** Every job the piece queue runs, and what giving each up does. A deletion is only tried again. */
+/** Every job the piece queue runs, and what giving each up does. A deletion given up is left to the account sweep. */
 export const pieceJobs = (services: {
   readonly wardrobe: Pick<Wardrobe['Service'], 'processPiece' | 'failPiece'>
   readonly lifecycle: Pick<AccountLifecycle['Service'], 'finishDeletion'>
@@ -40,6 +40,7 @@ export const pieceJobs = (services: {
   },
   FinishDeletion: {
     run: ({ accountId }) => services.lifecycle.finishDeletion(accountId),
+    // The deletion stays recorded until it is purged: the account sweep finishes what the queue gave up on.
     giveUp: () => Effect.void,
   },
   ProcessCapture: {

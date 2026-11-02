@@ -79,6 +79,7 @@ const services = (
       lifecycle: {
         deleteAccount: notUsed,
         finishDeletion: () => Effect.void,
+        sweepDeletions: notUsed,
         readAccount: notUsed,
       } satisfies AccountLifecycle['Service'],
       captures: {

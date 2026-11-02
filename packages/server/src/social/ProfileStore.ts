@@ -1,6 +1,6 @@
-import { profiles } from '@styld/db'
+import { accounts, profiles } from '@styld/db'
 import { ProfileNotPublished, Unavailable } from '@styld/protocol'
-import { and, eq } from 'drizzle-orm'
+import { and, eq, exists } from 'drizzle-orm'
 import { Effect, Option } from 'effect'
 import { type Database, first, query } from '../kernel/Db.ts'
 
@@ -9,17 +9,36 @@ import { type Database, first, query } from '../kernel/Db.ts'
 
 export type ProfileRow = typeof profiles.$inferSelect
 
-/** The account's profile, if it has one. */
-export const profileOf = (db: Database['Service'], accountId: string) =>
-  query(() => db.select().from(profiles).where(eq(profiles.accountId, accountId)).limit(1)).pipe(Effect.map(first))
+/** The profile's account is open. An account being deleted is closed from the moment deletion begins, so its profile,
+ * and with it everything it shows others, is read by nobody while its rows are purged. */
+const accountOpen = (db: Database['Service']) =>
+  exists(
+    db
+      .select({ id: accounts.id })
+      .from(accounts)
+      .where(and(eq(accounts.id, profiles.accountId), eq(accounts.enabled, true))),
+  )
 
-/** The account behind a handle, if anyone's; `published` asks only for a published profile. */
+/** A profile others may be shown: published, of an open account. */
+export const shownToOthers = (db: Database['Service']) => and(eq(profiles.published, true), accountOpen(db))
+
+/** The account's profile, if it has one and the account is open. */
+export const profileOf = (db: Database['Service'], accountId: string) =>
+  query(() =>
+    db
+      .select()
+      .from(profiles)
+      .where(and(eq(profiles.accountId, accountId), accountOpen(db)))
+      .limit(1),
+  ).pipe(Effect.map(first))
+
+/** The account behind a handle, if anyone's; `published` asks only for a profile others may be shown. */
 export const handleOwner = (db: Database['Service'], handle: string, published: 'any' | 'published' = 'any') =>
   query(() =>
     db
       .select({ accountId: profiles.accountId })
       .from(profiles)
-      .where(and(eq(profiles.handle, handle), published === 'published' ? eq(profiles.published, true) : undefined))
+      .where(and(eq(profiles.handle, handle), published === 'published' ? shownToOthers(db) : undefined))
       .limit(1),
   ).pipe(Effect.map((rows) => Option.map(first(rows), ({ accountId }) => accountId)))
 

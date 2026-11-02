@@ -1,20 +1,39 @@
 import { authTables } from '@styld/auth/storage'
-import { accounts, oauthGrants } from '@styld/db'
+import { accountDeletions, accounts, oauthGrants } from '@styld/db'
 import { CurrentAccount, NotFound, Unavailable } from '@styld/protocol'
-import { eq, sql } from 'drizzle-orm'
+import { and, asc, eq, isNull, lt, or, sql } from 'drizzle-orm'
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core'
-import { Context, Effect, Layer, Schema } from 'effect'
+import { Context, DateTime, Duration, Effect, Layer, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import * as Base64Url from 'effect/encoding/Base64Url'
+import { forgetFilesOf } from './capture/ProviderFiles.ts'
+import { GarmentSegmenter } from './capture/Providers.ts'
 import { accountPrefix } from './wardrobe/Media.ts'
-import { Database } from './kernel/Db.ts'
+import { Database, nowDate } from './kernel/Db.ts'
 import { deletePrefix, type Listing, Media } from './kernel/Media.ts'
 import { ChatStores } from './stylist/Chats.ts'
 import { PieceQueue } from './wardrobe/Processing.ts'
 
+// Deleting an account is durable: the batch that closes access also records the deletion (`account_deletions`), and
+// the record stays until every store is purged (the account's D1 rows, its objects under the prefix, its chats and its
+// videos at Meta). The queue finishes it at once; the sweep finishes whatever the queue gave up on. Purged, the record
+// waits for the writers admitted before deletion (a queue delivery, a provider call, an upload) to drain, purges the
+// prefix and the chats a last time, and goes. From the first moment the account is closed, nothing of it is shown to
+// others (`social/ProfileStore.ts`).
+
 const unavailable = () => Unavailable.make({})
 
 const attempt = <A>(run: () => Promise<A>) => Effect.tryPromise({ try: run, catch: unavailable })
+
+/** A deletion the queue has not finished within this is finished by the sweep. */
+const queuedPatience = Duration.minutes(10)
+
+/** How long a purged account's record waits before the last purge: every queue delivery, provider call and upload
+ * admitted before deletion ends within hours. */
+const drainedAfter = Duration.hours(24)
+
+/** The most deletions one sweep finishes. */
+const sweepBatch = 20
 
 /** The account as its owner sees it: its name and its verified email address, if it has one. */
 const AccountRow = Schema.Struct({
@@ -30,73 +49,143 @@ interface LifecycleBindings {
   readonly queue: PieceQueue['Service']
 }
 
-const make = (bindings: LifecycleBindings, forgetChats: (accountId: string) => Effect.Effect<void, unknown>) =>
+/** The account's stores outside D1 and the bucket, each forgotten for good: its chats with Styld and its videos at
+ * Meta. Safe to run again. */
+export interface OutsideStores {
+  readonly chats: (accountId: string) => Effect.Effect<void, unknown>
+  readonly providerFiles: (accountId: string) => Effect.Effect<void, unknown>
+}
+
+/** The moment `patience` ago. */
+const ago = (patience: Duration.Duration) =>
+  Effect.map(DateTime.now, (now) => DateTime.toDateUtc(DateTime.subtractDuration(now, patience)))
+
+type Drizzle = Database['Service']
+
+// The managed auth tables are typed generically, so their subject column is named in SQL.
+const ofSubject = (db: Drizzle, table: SQLiteTable, accountId: string) =>
+  db.run(sql`delete from ${table} where ${sql.identifier('subject_id')} = ${accountId}`)
+
+/** Delete every object under the account's prefix. */
+const sweepPhotos = (bucket: Listing, accountId: string) =>
+  deletePrefix(bucket, accountPrefix(accountId)).pipe(
+    Effect.catchTag('MediaUnavailable', () => Effect.fail(unavailable())),
+  )
+
+/** Every store outside D1: the objects under the prefix, the chats and the videos at Meta. */
+const purgeOutside = Effect.fnUntraced(function* (bucket: Listing, outside: OutsideStores, accountId: string) {
+  yield* sweepPhotos(bucket, accountId)
+  yield* outside.chats(accountId).pipe(Effect.mapError(unavailable))
+  yield* outside.providerFiles(accountId).pipe(Effect.mapError(unavailable))
+})
+
+/** Access ends at once, and the deletion is recorded in the same batch: disabled, a new security revision, no
+ * sessions, no assistant grants. */
+const closeAccount = Effect.fnUntraced(function* (db: Drizzle, accountId: string) {
+  const crypto = yield* Crypto.Crypto
+  const revision = Base64Url.encode(yield* crypto.randomBytes(16).pipe(Effect.mapError(unavailable)))
+  const requestedAt = yield* nowDate
+  yield* attempt(() =>
+    db.batch([
+      db.insert(accountDeletions).values({ accountId, requestedAt }).onConflictDoNothing(),
+      db.update(accounts).set({ enabled: false, securityRevision: revision }).where(eq(accounts.id, accountId)),
+      ofSubject(db, authTables.sessions, accountId),
+      db.delete(oauthGrants).where(eq(oauthGrants.subjectId, accountId)),
+    ]),
+  )
+})
+
+/** The account's auth rows, the codes sent to its addresses and the account itself (its pieces, uploads, receipts,
+ * captures, looks, boards and worn days cascade). */
+const deleteRows = Effect.fnUntraced(function* (db: Drizzle, accountId: string) {
+  const addresses = yield* attempt(() =>
+    db.all<{ value: string }>(
+      sql`select ${sql.identifier('value')} as value from ${authTables.identifiers} where ${sql.identifier('subject_id')} = ${accountId}`,
+    ),
+  )
+  yield* attempt(() =>
+    db.batch([
+      ofSubject(db, authTables.pending, accountId),
+      ofSubject(db, authTables.emailCredentials, accountId),
+      ofSubject(db, authTables.passwords, accountId),
+      ofSubject(db, authTables.credentials, accountId),
+      ofSubject(db, authTables.identifiers, accountId),
+      // Codes keep the address in their binding; they go with the account.
+      ...addresses.map(({ value }) =>
+        db.run(
+          sql`delete from ${authTables.proofs} where json_extract(${sql.identifier('binding')}, '$.identifier.value') = ${value}`,
+        ),
+      ),
+      db.delete(accounts).where(eq(accounts.id, accountId)),
+    ]),
+  )
+})
+
+/** The deletions the sweep moves: those still owed a purge the queue did not finish, and those drained since their
+ * purge, the oldest first. */
+const dueDeletions = (db: Drizzle, queued: Date, drained: Date) =>
+  attempt(() =>
+    db
+      .select()
+      .from(accountDeletions)
+      .where(
+        or(
+          and(isNull(accountDeletions.purgedAt), lt(accountDeletions.requestedAt, queued)),
+          lt(accountDeletions.purgedAt, drained),
+        ),
+      )
+      .orderBy(asc(accountDeletions.requestedAt))
+      .limit(sweepBatch),
+  )
+
+const make = (bindings: LifecycleBindings, outside: OutsideStores) =>
   Effect.gen(function* () {
     const crypto = yield* Crypto.Crypto
     const db = bindings.database
-    // The managed auth tables are typed generically, so their subject column is named in SQL.
-    const ofSubject = (table: SQLiteTable, accountId: string) =>
-      db.run(sql`delete from ${table} where ${sql.identifier('subject_id')} = ${accountId}`)
+    const { bucket } = bindings
 
-    /** Delete every object under the account's prefix. */
-    const sweepPhotos = (accountId: string) =>
-      deletePrefix(bindings.bucket, accountPrefix(accountId)).pipe(
-        Effect.catchTag('MediaUnavailable', () => Effect.fail(unavailable())),
-      )
-
-    /** Access ends at once: disabled, a new security revision, no sessions, no assistant grants. */
-    const closeAccount = Effect.fnUntraced(function* (accountId: string) {
-      const revision = Base64Url.encode(yield* crypto.randomBytes(16).pipe(Effect.mapError(unavailable)))
-      yield* attempt(() =>
-        db.batch([
-          db.update(accounts).set({ enabled: false, securityRevision: revision }).where(eq(accounts.id, accountId)),
-          ofSubject(authTables.sessions, accountId),
-          db.delete(oauthGrants).where(eq(oauthGrants.subjectId, accountId)),
-        ]),
-      )
-    })
-
-    /** Remove what a closed account owns: photos, its chats with Styld, codes sent to its addresses, its auth rows and
-     * the account (its pieces, uploads, receipts, captures, looks, boards and worn days cascade; board
-     * pictures keep their upload's key under the prefix). Safe to run again; the photos are swept
-     * again last, for any upload that landed meanwhile. */
+    /** Remove what a closed account owns, in every store, then mark its deletion purged. Safe to run again; the
+     * objects are swept again last, for any upload that landed meanwhile. */
     const finishDeletion = Effect.fn('Styld.Account.finishDeletion')(function* (accountId: string) {
-      const addresses = yield* attempt(() =>
-        db.all<{ value: string }>(
-          sql`select ${sql.identifier('value')} as value from ${authTables.identifiers} where ${sql.identifier('subject_id')} = ${accountId}`,
-        ),
-      )
-      yield* sweepPhotos(accountId)
-      // The chats with Styld live in the account's own Durable Object.
-      yield* forgetChats(accountId).pipe(Effect.mapError(unavailable))
+      yield* purgeOutside(bucket, outside, accountId)
+      yield* deleteRows(db, accountId)
+      yield* sweepPhotos(bucket, accountId)
+      const purgedAt = yield* nowDate
       yield* attempt(() =>
-        db.batch([
-          ofSubject(authTables.pending, accountId),
-          ofSubject(authTables.emailCredentials, accountId),
-          ofSubject(authTables.passwords, accountId),
-          ofSubject(authTables.credentials, accountId),
-          ofSubject(authTables.identifiers, accountId),
-          // Codes keep the address in their binding; they go with the account.
-          ...addresses.map(({ value }) =>
-            db.run(
-              sql`delete from ${authTables.proofs} where json_extract(${sql.identifier('binding')}, '$.identifier.value') = ${value}`,
-            ),
-          ),
-          db.delete(accounts).where(eq(accounts.id, accountId)),
-        ]),
+        db.update(accountDeletions).set({ purgedAt }).where(eq(accountDeletions.accountId, accountId)),
       )
-      yield* sweepPhotos(accountId)
     })
 
-    /** Delete an account and everything it owns. Once access has ended, the rest is queued as well
-     * as tried at once: if it fails here, the queue finishes it, since the person can no longer
-     * ask again. */
+    /** Delete an account and everything it owns. Once access has ended and the deletion is recorded, the rest is
+     * queued as well as tried at once; what neither finishes, the sweep does. */
     const deleteAccount = Effect.fn('Styld.Account.delete')(function* (accountId: string) {
-      yield* closeAccount(accountId)
-      yield* attempt(() => bindings.queue.send({ _tag: 'FinishDeletion', accountId })).pipe(
-        Effect.catch(() => finishDeletion(accountId)),
-      )
+      yield* closeAccount(db, accountId).pipe(Effect.provideService(Crypto.Crypto, crypto))
+      yield* attempt(() => bindings.queue.send({ _tag: 'FinishDeletion', accountId })).pipe(Effect.ignore)
       yield* finishDeletion(accountId).pipe(Effect.ignore)
+    })
+
+    /** One recorded deletion, moved on: one still owed a purge is finished; one purged and drained is purged a last
+     * time and forgotten. */
+    const sweptDeletion = Effect.fnUntraced(function* (row: typeof accountDeletions.$inferSelect, drained: Date) {
+      if (row.purgedAt === null) return yield* finishDeletion(row.accountId)
+      if (row.purgedAt >= drained) return
+      yield* purgeOutside(bucket, outside, row.accountId)
+      yield* attempt(() => db.delete(accountDeletions).where(eq(accountDeletions.accountId, row.accountId)))
+    })
+
+    /** The schedule's sweep of deletions, each on its own. How many it moved. */
+    const sweepDeletions = Effect.fn('Styld.Account.sweepDeletions')(function* () {
+      const drained = yield* ago(drainedAfter)
+      const rows = yield* dueDeletions(db, yield* ago(queuedPatience), drained)
+      yield* Effect.forEach(
+        rows,
+        (row) =>
+          sweptDeletion(row, drained).pipe(
+            Effect.ignore({ log: true, message: 'Styld.Account.sweepDeletions left a deletion' }),
+          ),
+        { discard: true },
+      )
+      return rows.length
     })
 
     /** The account an operation acts for, while it is enabled: its name and the email address it signs in with (only
@@ -114,26 +203,34 @@ const make = (bindings: LifecycleBindings, forgetChats: (accountId: string) => E
       return yield* Schema.decodeUnknownEffect(AccountRow)(row).pipe(Effect.mapError(unavailable))
     })
 
-    return { deleteAccount, finishDeletion, readAccount }
+    return { deleteAccount, finishDeletion, sweepDeletions, readAccount }
   })
 
 /** Account termination, owned by the application: Yielded's `SubjectLifecycle` leaves it to us. */
 export class AccountLifecycle extends Context.Service<AccountLifecycle, Effect.Success<ReturnType<typeof make>>>()(
   '@styld/server/AccountLifecycle',
 ) {
-  /** Over the application's database, bucket and piece queue; an account's chats with Styld go with it. */
+  /** Over the application's database, bucket and piece queue; an account's chats with Styld and its videos at Meta
+   * go with it. */
   static readonly layer = Layer.effect(
     this,
     Effect.gen(function* () {
       const chats = yield* ChatStores
-      const bindings = { database: yield* Database, bucket: (yield* Media).bucket, queue: yield* PieceQueue }
-      return yield* makeAccountLifecycle(bindings, (accountId) => chats.of(accountId).erase())
+      const database = yield* Database
+      const segmenter = yield* GarmentSegmenter
+      const bindings = { database, bucket: (yield* Media).bucket, queue: yield* PieceQueue }
+      return yield* makeAccountLifecycle(bindings, {
+        chats: (accountId) => chats.of(accountId).erase(),
+        providerFiles: (accountId) =>
+          forgetFilesOf(accountId).pipe(
+            Effect.provideService(Database, database),
+            Effect.provideService(GarmentSegmenter, segmenter),
+          ),
+      })
     }),
   )
 }
 
 /** @internal Exported for its tests. */
-export const makeAccountLifecycle = (
-  bindings: LifecycleBindings,
-  forgetChats: (accountId: string) => Effect.Effect<void, unknown>,
-) => Effect.map(make(bindings, forgetChats), (service) => AccountLifecycle.of(service))
+export const makeAccountLifecycle = (bindings: LifecycleBindings, outside: OutsideStores) =>
+  Effect.map(make(bindings, outside), (service) => AccountLifecycle.of(service))
