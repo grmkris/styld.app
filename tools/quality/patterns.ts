@@ -73,6 +73,7 @@ const owners: Readonly<Record<string, ReadonlyArray<string>>> = {
   stylistTurns: ['stylist/'],
   pendingSettlements: ['usage/'],
   paidAttempts: ['usage/'],
+  importedPieces: ['imports/'],
   // Every operation writes its receipt in its own batch (`kernel/Receipts.ts`).
   operationReceipts: ['*'],
 }

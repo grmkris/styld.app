@@ -11,10 +11,9 @@ import {
 import { Array, Context, Effect, Layer, Option, Schema } from 'effect'
 import { AccountLifecycle } from '../AccountLifecycle.ts'
 import { Deployment } from '../Config.ts'
-import { nowDate } from '../kernel/Db.ts'
+import { first, nowDate } from '../kernel/Db.ts'
 import { digestOf, newId, randomToken } from '../kernel/Ids.ts'
 import { Media } from '../kernel/Media.ts'
-import { identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
 import { isAdmin } from '../social/Curation.ts'
 import { sniffImageType, uploadKey } from '../wardrobe/Media.ts'
 import type { PieceRow, UploadRow } from '../wardrobe/Store.ts'
@@ -25,15 +24,12 @@ import { ImportStore } from './Store.ts'
 // A wardrobe brought over from v1 at the switch (owner, 2026-11-01): the operator's importer (`tools/import-v1`) puts
 // a bundle under `imports/<importId>/` and an admin starts it. The account is the one the bundle's email signs in to,
 // made for it when there is none (the person later signs in with the usual email code and finds their wardrobe). Each
-// piece is imported once, by a receipt named for its v1 id, on the import queue at the pace Cloudflare Images keeps;
-// it is cut out and described by the decision model as it is imported, paid by Styld, never the account's credits.
+// v1 piece is imported into an account once (`imported_pieces`, whichever bundle carries it), on the import queue at
+// the pace Cloudflare Images keeps; it is cut out and described by the decision model as it is imported, paid by Styld,
+// never the account's credits.
 
 const unavailable = () => Unavailable.make({})
 const stored = <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.mapError(effect, unavailable)
-
-/** The receipt an imported piece is made under: one per v1 piece, whichever bundle carries it. */
-const operationOf = (v1Id: string) => `v1/${v1Id}`
-const command = 'importPiece'
 
 /** Queues take at most this many messages a call. */
 const sendBatch = 100
@@ -83,18 +79,18 @@ const accountFor = Effect.fnUntraced(function* (manifest: ImportManifest) {
 /** Each piece of the manifest as it stands in the account. */
 const piecesIn = Effect.fnUntraced(function* (accountId: string, manifest: ImportManifest) {
   const store = yield* ImportStore
-  const receipts = yield* stored(
-    store.receiptsOf(
+  const imported = yield* stored(
+    store.importedOf(
       accountId,
-      manifest.pieces.map(({ v1Id }) => operationOf(v1Id)),
+      manifest.pieces.map(({ v1Id }) => v1Id),
     ),
   )
-  const made = new Map(receipts.map(({ operationId, result }) => [operationId, result]))
+  const made = new Map(imported.map(({ v1Id, pieceId }) => [v1Id, pieceId]))
   const statuses = new Map(
     (yield* stored(store.statusesOf(accountId, [...made.values()]))).map(({ id, status }) => [id, status]),
   )
   return manifest.pieces.map(({ v1Id }): ImportedPiece => {
-    const pieceId = made.get(operationOf(v1Id))
+    const pieceId = made.get(v1Id)
     return pieceId === undefined
       ? { v1Id, pieceId: null, status: 'waiting' }
       : { v1Id, pieceId: PieceId.make(pieceId), status: statuses.get(pieceId) ?? 'failed' }
@@ -142,15 +138,19 @@ const rowsOf = Effect.fnUntraced(function* (accountId: string, piece: ImportPiec
   return { upload, row }
 })
 
-/** The piece a delivery imports: the one its receipt names, or a new one made from the bundle's picture. */
+/** The piece the account's v1 piece became, if it was imported. */
+const importedAs = (accountId: string, v1Id: string) =>
+  Effect.flatMap(ImportStore, (store) =>
+    stored(store.importedOf(accountId, [v1Id])).pipe(
+      Effect.map((rows) => Option.map(first(rows), (row) => row.pieceId)),
+    ),
+  )
+
+/** The piece a delivery imports: the one the v1 piece already became, or a new one made from the bundle's picture. */
 const pieceOf = Effect.fnUntraced(function* (message: ImportMessage) {
   const store = yield* ImportStore
   const { accountId, importId, piece } = message
-  const operation = yield* identify({ accountId, operationId: operationOf(piece.v1Id), command, input: piece.v1Id })
-  const earlier = () =>
-    Effect.flatMap(stored(store.findReceipt(accountId, operation.operationId)), (receipt) =>
-      priorResult(operation, receipt),
-    )
+  const earlier = () => importedAs(accountId, piece.v1Id)
   const prior = yield* earlier()
   if (Option.isSome(prior)) return prior.value
   const { bucket } = yield* Media
@@ -166,7 +166,7 @@ const pieceOf = Effect.fnUntraced(function* (message: ImportMessage) {
     try: () => bucket.put(upload.objectKey, bytes, { httpMetadata: { contentType: piece.contentType } }),
     catch: unavailable,
   })
-  const made = yield* store.createPiece(upload, row, yield* receiptRow(operation, row.id)).pipe(Effect.option)
+  const made = yield* store.createPiece(upload, row, piece.v1Id).pipe(Effect.option)
   if (Option.isSome(made)) return row.id
   // A delivery that raced this one made it; its photo is the one kept, this copy goes with the account.
   return yield* Effect.flatMap(earlier(), Option.match({ onNone: unavailable, onSome: Effect.succeed }))
@@ -216,8 +216,7 @@ const make = Effect.gen(function* () {
     /** The queue gave up on a piece: one that was made shows as failed rather than processing forever. */
     giveUpPiece: Effect.fn('Styld.Imports.giveUp')(function* (message: ImportMessage) {
       const { accountId, piece } = message
-      const receipt = yield* stored((yield* ImportStore).findReceipt(accountId, operationOf(piece.v1Id)))
-      const pieceId = Option.flatMapNullishOr(receipt, ({ result }) => result)
+      const pieceId = yield* importedAs(accountId, piece.v1Id)
       if (Option.isSome(pieceId)) yield* (yield* Wardrobe).failPiece(pieceId.value)
     }, Effect.provide(context)),
   }

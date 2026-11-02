@@ -17,6 +17,7 @@ const modules = [
   'outfits',
   'stylist',
   'usage',
+  'imports',
 ]
 
 export default defineConfig({
