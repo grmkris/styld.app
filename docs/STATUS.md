@@ -2,6 +2,35 @@
 
 Status: active. Sign-in, the wardrobe (shop-style garment types, browsing, a piece's back), capture with real cut-outs (photos, video import, a held-up camera, scan anything), the review tray, the daily allowance, looks, clean pictures and turns, the boards' pins, profiles, checks and link import, mood boards from the person's own pieces and stickers, the outfit engine (Fast and Thinking), My Gallery and Styld, the stylist in the app are deployed to the isolated workers.dev preview (release `889af38`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping; the plan in progress is "Plan: shopping your own wardrobe" below, waiting at owner gate 1.
 
+## Cleanup C5: baseline, stage, importer (code) — 2026-11-02
+
+The code half of milestone C5; the rebuild itself is the operator's (docs/DEPLOYMENT.md › Rebuild and import). The
+preview still runs the pre-C5 release until then.
+
+- **One baseline schema** (`packages/db/src/<module>.ts`, one migration): CHECKs from the protocol's literals (types,
+  seasons, patterns, statuses, sources, moods lists as JSON arrays…), foreign keys on every link, NOT NULL where always
+  set, indexes for FK cascades and the feed cursor. Dropped: the Wallet hold mirrors, write-only columns (error codes,
+  judge and turn scores, providers' model names, `route_confidence`, `pieces.bytes`/`suggested_at`, content check
+  attempts/suggestions/checked_at, `board_images.job_id`/`model`, `detections.track`, turn video/sheet keys), and
+  defaults that served ALTERs. One copy of each fact: `pieces.detection_id` (its UNIQUE is what stops two reviews of one
+  detection making two pieces; `detections.piece_id` is gone); `captures.upload_id` is only an upload, a garment offered
+  from My Gallery is `captures.garment_id` (UNIQUE; `photo_garments.capture_id` is gone); a mood board's picks are
+  `generation_picks` rows, a sticker is keyed by its job. Unit D1 enforces foreign keys like D1; `Schema.test.ts` and
+  the native storage readback compare the live schema with the baseline snapshot.
+- **Stages** (`Resources.ts` `stages`): the stage name decides `STYLD_ENV`/`VITE_STYLD_ENV`, robots, the Analytics
+  Engine dataset and the rate-limit namespace block; `preview` is deployed, `production` defined, `local` and
+  `local-native` local; any other name stops the plan. Alchemy state is in the account's Cloudflare state store.
+- **v1 compatibility gone:** the `/share/board/:id` redirect (owner). The MCP SDK's 2025-era protocol support stays: it
+  serves external assistant hosts.
+- **v1 importer:** `tools/import-v1/` (Export, Mapping, Import, Report) and the admin operation `POST|GET
+  /api/admin/imports/:id` (`imports/`): the account the email signs in to, or one made for it (verified email, no
+  password); one receipt per v1 piece; the `StyldV2Imports` queue at two pieces at once; cut-outs paid by Styld and
+  Clef's description at import. Native acceptance into an existing and a made account, twice.
+- **Remaining:** the rebuild (destroy, deploy, import both wardrobes, reconcile 74/313, read back) is the operator's
+  run; receipts live 30 days, so an import re-run after that would import again; there is no tool that lists pending
+  Wallet holds (the readback reads it from Workers Logs and the sweeps); the native suite's shared local D1 still
+  answers SQLITE_BUSY under load (the clean-picture journey and the import journey each passed alone after one did).
+
 ## Cleanup C4f: last server patterns — 2026-11-02
 
 The rest of milestone C4 (server; the preview is not redeployed until the milestone's review).
