@@ -1,0 +1,108 @@
+/**
+ * Import one exported v1 wardrobe (`Export.ts`'s private folder) into a deployed stage: map it (`Mapping.ts`), upload
+ * the bundle to the media bucket under `imports/<id>/`, start the import as an admin, wait until every piece settled,
+ * and write the report (`Report.ts`) beside the export. The account is the one the export's email signs in to, made
+ * for it if there is none. Running it again imports nothing twice. docs/DEPLOYMENT.md › Rebuild and import.
+ *
+ *   STYLD_URL=https://… STYLD_SESSION='<the admin's session cookie header>' \
+ *   R2_ACCOUNT_ID=… R2_ACCESS_KEY_ID=… R2_SECRET_ACCESS_KEY=… R2_BUCKET=… \
+ *     bun tools/import-v1/Import.ts <private-folder> [--keep-bundle]
+ *
+ * Credentials come from the environment only and are never printed. The bucket is the stage's media bucket (EU
+ * jurisdiction); `--keep-bundle` leaves the uploaded bundle in it, which is deleted once the import settled otherwise.
+ * Prints counts, never names or pictures.
+ */
+import { readFile, writeFile } from 'node:fs/promises'
+import path from 'node:path'
+import { S3Client } from 'bun'
+import { csrf } from '@styld/auth/config'
+import { ImportStarted, ImportStatus, type ImportManifest, type ImportPiece } from '@styld/protocol'
+import { Match, Schema } from 'effect'
+import { mapPiece, V1Export } from './Mapping.ts'
+import { reportOf, summaryOf, type ImportReport } from './Report.ts'
+
+const [folder, ...flags] = process.argv.slice(2)
+if (folder === undefined) throw new Error('Usage: bun tools/import-v1/Import.ts <folder> [--keep-bundle]')
+
+const required = (name: string) => {
+  const value = process.env[name]
+  if (value === undefined || value.length === 0) throw new Error(`Set ${name}`)
+  return value
+}
+
+const origin = new URL(required('STYLD_URL')).origin
+const session = required('STYLD_SESSION')
+const bucket = new S3Client({
+  accessKeyId: required('R2_ACCESS_KEY_ID'),
+  secretAccessKey: required('R2_SECRET_ACCESS_KEY'),
+  bucket: required('R2_BUCKET'),
+  endpoint: `https://${required('R2_ACCOUNT_ID')}.eu.r2.cloudflarestorage.com`,
+})
+
+const exported = Schema.decodeUnknownSync(Schema.fromJsonString(V1Export))(
+  await readFile(path.join(folder, 'export.json'), 'utf8'),
+)
+
+// Map every piece; the refused ones go in the report.
+const mapped: Array<{ readonly piece: ImportPiece; readonly bytes: Uint8Array }> = []
+const refusals: Array<ImportReport['refusals'][number]> = []
+for (const piece of exported.pieces) {
+  const bytes = new Uint8Array(await readFile(path.join(folder, piece.picture)))
+  Match.valueTags(mapPiece(piece, bytes), {
+    Refused: ({ v1Id, reason }) => refusals.push({ v1Id, reason }),
+    Mapped: (result) => mapped.push({ piece: result.piece, bytes }),
+  })
+}
+
+// One bundle per export: running the import again uploads the same bundle and starts the same import.
+const digest = new Bun.CryptoHasher('sha256').update(`${exported.email}\n${exported.exportedAt}`).digest('hex')
+const importId = `v1-${digest.slice(0, 24)}`
+const manifest: ImportManifest = {
+  version: 1,
+  email: exported.email,
+  displayName: (exported.name ?? exported.email.split('@')[0] ?? 'Styld').trim().slice(0, 64) || 'Styld',
+  pieces: mapped.map(({ piece }) => piece),
+}
+const prefix = `imports/${importId}/`
+for (const { piece, bytes } of mapped)
+  await bucket.write(`${prefix}${piece.picture}`, bytes, { type: piece.contentType })
+await bucket.write(`${prefix}manifest.json`, JSON.stringify(manifest), { type: 'application/json' })
+console.log(`Uploaded bundle ${importId}: ${mapped.length} pieces, ${refusals.length} refused`)
+
+/** A request as the admin, through the public edge. */
+const admin = async (method: 'GET' | 'POST', body?: unknown) => {
+  const response = await fetch(`${origin}/api/admin/imports/${importId}`, {
+    method,
+    headers: { origin, cookie: session, [csrf.header]: csrf.value, 'content-type': 'application/json' },
+    ...(body === undefined ? {} : { body: JSON.stringify(body) }),
+  })
+  if (!response.ok) throw new Error(`The import answered ${response.status}: is the session an admin's?`)
+  return response.json()
+}
+
+const started = Schema.decodeUnknownSync(ImportStarted)(await admin('POST', { operationId: `start-${importId}` }))
+console.log(`Started into ${started.accountCreated ? 'a new account' : 'an existing account'}`)
+
+/** How long an import may take: Cloudflare Images keeps it to a few pieces a minute at most. */
+const patience = 3 * 60 * 60 * 1000
+const startedAt = Date.now()
+let status = Schema.decodeUnknownSync(ImportStatus)(await admin('GET'))
+const unsettled = (current: ImportStatus) =>
+  current.pieces.filter(({ status: now }) => now === 'waiting' || now === 'processing').length
+while (unsettled(status) > 0 && Date.now() - startedAt < patience) {
+  console.log(`${status.pieces.length - unsettled(status)} of ${status.pieces.length} settled`)
+  await Bun.sleep(15_000)
+  status = Schema.decodeUnknownSync(ImportStatus)(await admin('GET'))
+}
+
+const report = reportOf(exported.pieces.length, refusals, started, status)
+const reportPath = path.join(folder, `report-${importId}.json`)
+await writeFile(reportPath, `${JSON.stringify(report, null, 2)}\n`, { mode: 0o600 })
+console.log(summaryOf(report))
+console.log(`Report: ${reportPath}`)
+
+if (!flags.includes('--keep-bundle') && unsettled(status) === 0) {
+  for (const { piece } of mapped) await bucket.delete(`${prefix}${piece.picture}`)
+  await bucket.delete(`${prefix}manifest.json`)
+  console.log('Deleted the bundle from the bucket')
+}

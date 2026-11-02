@@ -14,8 +14,8 @@ export default Alchemy.Stack(
   Effect.gen(function* () {
     const release = yield* Config.String('STYLD_RELEASE')
     const stage = yield* currentStage
-    // The stack owns the media bucket even while no Worker serves media yet.
-    yield* StyldMedia
+    // The media bucket; its name is what the v1 importer uploads bundles to (docs/DEPLOYMENT.md).
+    const media = yield* StyldMedia
     const api = yield* StyldWorker
     const website = yield* Cloudflare.Website.Foldkit('StyldWebsite', {
       rootDir: 'apps/web',
@@ -68,6 +68,6 @@ export default Alchemy.Stack(
         ),
       },
     })
-    return { url: edge.url.as<string>() }
+    return { url: edge.url.as<string>(), mediaBucket: media.bucketName.as<string>() }
   }).pipe(Effect.provide(StyldWorkerLive)),
 )

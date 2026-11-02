@@ -3,7 +3,13 @@ import type { KnipConfig } from 'knip'
 export default {
   workspaces: {
     '.': {
-      entry: ['alchemy.run.ts!', 'tools/*.ts', 'tools/**/*.test.ts', '*.config.ts'],
+      entry: [
+        'alchemy.run.ts!',
+        'tools/*.ts',
+        'tools/import-v1/{Import,Export}.ts',
+        'tools/**/*.test.ts',
+        '*.config.ts',
+      ],
       project: ['tools/**/*.ts', '*.ts'],
       // effect-tsrs embeds the plugin named by tsconfig; it is not a JS dependency.
       ignoreDependencies: ['@effect/language-service'],
