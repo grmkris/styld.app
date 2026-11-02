@@ -2,6 +2,7 @@ import { accounts, detections, operationReceipts, piecePictures, pieceTurns, pie
 import { and, asc, desc, eq, inArray, lt, ne, or, sql } from 'drizzle-orm'
 import { Array, Context, Effect, Layer } from 'effect'
 import { receiptRows } from '../kernel/Receipts.ts'
+import { PictureRows } from '../capture/Rows.ts'
 import { forgetCheck } from '../safety/Checks.ts'
 import { chunked, Database, first, query, StoreUnavailable } from '../kernel/Db.ts'
 
@@ -191,21 +192,9 @@ const pictureQueries = (db: Database['Service']) => ({
         .where(and(eq(piecePictures.pieceId, pieceId), eq(piecePictures.accountId, accountId)))
         .limit(1),
     ).pipe(Effect.map(first)),
-  /** Show the drawing or the photo; only a drawing that is ready or proposed can be chosen. The picture, if chosen. */
+  /** Show the drawing or the photo, by capture's statement (`PictureRows`). The picture, if chosen. */
   choosePicture: (accountId: string, pieceId: string, shown: 'clean' | 'photo', at: Date) =>
-    query(() =>
-      db
-        .update(piecePictures)
-        .set({ shown, updatedAt: at })
-        .where(
-          and(
-            eq(piecePictures.pieceId, pieceId),
-            eq(piecePictures.accountId, accountId),
-            inArray(piecePictures.state, ['ready', 'proposed']),
-          ),
-        )
-        .returning(),
-    ).pipe(Effect.map(first)),
+    query(() => PictureRows.show(db, accountId, pieceId, shown, at)).pipe(Effect.map(first)),
 })
 
 /** A piece's back, written with its upload spent and the operation's receipt. */

@@ -1,7 +1,8 @@
-import { boards, contentChecks, profiles, reports } from '@styld/db'
+import { contentChecks, profiles, reports } from '@styld/db'
 import { type CheckState, Unavailable } from '@styld/protocol'
 import { count, desc, eq, inArray, max } from 'drizzle-orm'
 import { Context, Effect, Layer, Option, Predicate } from 'effect'
+import { BoardRows } from '../boards/Rows.ts'
 import { type CheckTarget, Checks } from '../safety/Checks.ts'
 import { Database, nowDate, query } from '../kernel/Db.ts'
 import { handleOwner } from './ProfileStore.ts'
@@ -69,16 +70,10 @@ const reading = (db: Drizzle) => ({
 
 /** Featuring boards and people, and the house account. */
 const featuring = (db: Drizzle) => ({
-  /** Feature a public board in Explore, or stop featuring it. */
+  /** Feature a public board in Explore, or stop featuring it, by the boards' statement (`BoardRows`). */
   featureBoard: Effect.fn('Styld.Curation.featureBoard')(function* (boardId: string, featured: boolean) {
     const at = yield* nowDate
-    const rows = yield* read(() =>
-      db
-        .update(boards)
-        .set({ featuredAt: featured ? at : null })
-        .where(eq(boards.id, boardId))
-        .returning({ id: boards.id }),
-    )
+    const rows = yield* read(() => BoardRows.feature(db, boardId, featured ? at : null))
     return rows.length > 0
   }),
   /** Feature a person among People to follow, or stop. */

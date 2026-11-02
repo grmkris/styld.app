@@ -110,8 +110,9 @@ with a gate that keeps it. Decisions:
 - **Patterns are gated** (`tools/patterns-check.ts`, in `bun run check`): `drizzle(` only in `kernel/Db.ts`; `fetch(`
   only in `providers/` (the edge Worker's service bindings and the MCP SDK's in-process handler excepted); `env.` only
   in `Config.ts`/`Resources.ts` (the plain-TypeScript edge Worker excepted); no `'x' in y` (the edge's `EdgeMeta.ts`
-  excepted); no stand-ins in server source; each `@styld/db` table written only by its owner per the script's map (two
-  shared writes: the wardrobe sets `piece_pictures.shown`, curation sets `boards.featured_at`).
+  excepted); no stand-ins in server source; each `@styld/db` table written only by its owner per the script's map; another
+  module's write is a statement the owner exports in its `Rows.ts` and the caller composes (the wardrobe shows a
+  picture through capture's `PictureRows`, curation features a board through `BoardRows`).
 
 ## Delivery boundary
 

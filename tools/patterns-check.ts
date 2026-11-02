@@ -34,8 +34,7 @@ const owners: Readonly<Record<string, ReadonlyArray<string>>> = {
   oauthGrants: ['AccountLifecycle.ts'],
   pieces: ['wardrobe/'],
   uploads: ['wardrobe/'],
-  // Captures draw a piece's clean picture; the wardrobe records only which picture its owner chose to show.
-  piecePictures: ['capture/', 'wardrobe/Store.ts'],
+  piecePictures: ['capture/'],
   pieceTurns: ['capture/'],
   captures: ['capture/'],
   captureFrames: ['capture/'],
@@ -44,8 +43,7 @@ const owners: Readonly<Record<string, ReadonlyArray<string>>> = {
   photoGarments: ['photos/'],
   looks: ['looks/'],
   lookPieces: ['looks/'],
-  // An admin's curation features a board (`featured_at`); everything else of a board is the boards module's.
-  boards: ['boards/', 'social/Curation.ts'],
+  boards: ['boards/'],
   boardItems: ['boards/'],
   boardPins: ['boards/'],
   boardImages: ['boards/'],
