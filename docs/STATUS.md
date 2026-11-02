@@ -118,7 +118,35 @@ From the two reviews of `56a619b`; not deployed yet (the next deploy applies mig
 - **Patterns gate:** HTTP transports only in `providers/` (`providers/PublicWeb.ts` is the public web's), names
   resolved through aliases and namespace imports (`tools/quality/patterns.ts` and its tests).
 
+## C8 browser review fixes
+
+From the live browser review of 2 November (`meta-hackathon/out/styld-c8/browser/findings.md`, F1–F9); unit, scene
+and native evidence, not deployed yet.
+
+- **F1 Styld's replies:** the reply's language is decided in code from the person's latest message (the app's when its
+  words do not tell) and stated once, so the model never weighs it aloud; earlier shown pieces and saved looks go back
+  to the model as the `pieces_show`/`look_get` calls that made them, never as `[shown: …]` notes it copied; what the
+  person reads drops bracketed notes (their own pieces among the ids show as cards, others' are dropped), paragraphs
+  about "the user", Han/kana/Hangul characters and `<think>` reasoning (`stylist/Reply.ts`, `ai/LanguageModel.ts`).
+  Evidence: unit tests with the review's answer replayed through the real turn. Live behaviour of DeepSeek on the
+  preview is not yet read back.
+- **F2 labels on a tidied board:** labels go centred across the top, never larger than a label drawn within the
+  table's width; pieces on a grid below (`protocol/Placement.ts`).
+- **F3 board reads** give up after 10 s and are tried once more, then the page offers Try again. The server-side cause
+  of the 90-second read was not reproduced.
+- **F4 garment names:** the board picker and the collage tray name a piece by its name, else its type and colours.
+- **F5 In your looks:** `GET /api/pieces/:pieceId/looks` and the piece page's look cards (native acceptance covers the
+  read on D1).
+- **F6** the `flats` type reads Low shoes / Nizki čevlji; Styld's Slovenian note says the same.
+- **F7 first outfit:** Fast's twelve candidates are judged in one wave and ranking stops at 4 s (unit: three-second
+  Clef calls 6 s → 3 s; a stalled Clef answers at 4 s with the rules' order). Live latency not yet measured.
+- **F8** the language menu offers English and Slovenian only; pseudo-locales open only through code.
+- **F9** Sign out sits under the identity on Account.
+
 ## Open items
+
+From C8's browser review: deploy and read back F1 (a Slovenian then English chat on the preview) and F7 (POST
+`/api/outfits` timing on a cold visit).
 
 From C8's review fixes:
 
