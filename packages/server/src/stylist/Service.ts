@@ -69,19 +69,15 @@ export class StylistTools extends Context.Service<
   { readonly forAccount: (accountId: string) => ReadonlyArray<AssistantTool<never>> }
 >()('@styld/server/stylist/StylistTools') {}
 
-/** What every Styld operation acts through, built once by the `StylistChats` layer. */
-interface Deps {
-  readonly chatsOf: (accountId: string) => ChatStore
-  readonly queue: StylistQueue['Service']
-  readonly model: LanguageModel.LanguageModel
-  readonly tools: StylistTools['Service']
-  readonly wardrobe: Wardrobe['Service']
-  readonly holds: Holds['Service']
-}
+/** The services every Styld operation acts through, provided once by the `StylistChats` layer. */
+type StylistServices = ChatStores | StylistQueue | LanguageModel.LanguageModel | StylistTools | Wardrobe | Holds
 
 const now = Effect.map(DateTime.now, DateTime.toEpochMillis)
 const holdOf = (turnId: string) => holdId('stylist', turnId, 0)
 const stored = <A, E, RX>(effect: Effect.Effect<A, E, RX>) => Effect.mapError(effect, unavailable)
+
+/** One account's chats, through its Durable Object. */
+const chatsOf = (accountId: string) => Effect.map(ChatStores, (stores) => stores.of(accountId))
 
 const messageOf = (message: StoredMessage) =>
   Effect.map(partsOf(message.parts), (parts): ChatMessage => ({
@@ -99,32 +95,28 @@ const replyIds = {
   turnIdOf: (accountId: string, operationId: string) =>
     Effect.map(digestOf(`${accountId}:${operationId}`), (digest) => `tn_${digest.slice(0, 22)}`),
 }
-type Ids = typeof replyIds
 
 /** A reply that will not come: shown as failed, and its credit back. */
-const giveUp = (deps: Deps, accountId: string, turnId: string) =>
+const giveUp = (accountId: string, turnId: string) =>
   Effect.gen(function* () {
-    yield* stored(
-      deps
-        .chatsOf(accountId)
-        .finish({ turnId, outcome: 'failed', text: '', parts: '[]', messageId: '', now: yield* now }),
-    )
-    yield* deps.holds.settle(accountId, holdOf(turnId), 'failed')
+    const chats = yield* chatsOf(accountId)
+    yield* stored(chats.finish({ turnId, outcome: 'failed', text: '', parts: '[]', messageId: '', now: yield* now }))
+    yield* (yield* Holds).settle(accountId, holdOf(turnId), 'failed')
   })
 
 /** Write one reply: the model answers the chat so far with the account's tools, reporting what it has written. */
 const reply = (
-  deps: Deps,
   accountId: string,
   turnId: string,
   input: { readonly locale: string; readonly messages: ReadonlyArray<StoredMessage> },
 ) =>
   Effect.gen(function* () {
-    const pieces = yield* deps.wardrobe
+    const chats = yield* chatsOf(accountId)
+    const pieces = yield* (yield* Wardrobe)
       .listPieces()
       .pipe(Effect.provideService(CurrentAccount, { accountId, via: 'assistant' }))
     const tools = yield* turnTools(
-      deps.tools.forAccount(accountId),
+      (yield* StylistTools).forAccount(accountId),
       { turnId, pieceIds: new Set(pieces.map(({ id }) => id)) },
       Context.empty(),
     )
@@ -144,9 +136,9 @@ const reply = (
       progress: (sofar) =>
         Effect.gen(function* () {
           const shown = JSON.stringify(yield* tools.parts)
-          yield* deps.chatsOf(accountId).progress(turnId, sofar, shown).pipe(Effect.ignore)
+          yield* chats.progress(turnId, sofar, shown).pipe(Effect.ignore)
         }),
-    }).pipe(Effect.provideService(LanguageModel.LanguageModel, deps.model))
+    })
     return { text, parts: yield* tools.parts }
   })
 
@@ -154,45 +146,45 @@ const reply = (
  * hold, so whatever settles a reply (its delivery, giving it up) finds it; a credit that cannot be held takes the reply
  * back. A repeated request returns the same chat, holds the same credit (holding twice is once) and sends the reply to
  * the queue again: one lost on the way is made up, and the queue writes it once. */
-const sending = (deps: Deps, ids: Ids) =>
-  Effect.fn('Styld.Stylist.send')(function* (input: SendChatMessage) {
-    const { accountId } = yield* CurrentAccount
-    const turnId = yield* ids.turnIdOf(accountId, input.operationId)
-    // The turn's queue delivery records the same job id, so the ask and its reply are found together.
-    yield* Effect.annotateCurrentSpan('styld.job_id', turnId)
-    const chats = deps.chatsOf(accountId)
-    const begun = yield* stored(
-      chats.begin({
-        turnId,
-        chatId: input.chatId ?? (yield* ids.randomId('ch')),
-        newChat: input.chatId === undefined,
-        text: input.text,
-        title: titleOf(input.text),
-        locale: input.locale,
-        messageId: yield* ids.randomId('ms'),
-        now: yield* now,
-        patience,
-      }),
-    )
-    if (begun.outcome === 'busy') return yield* StylistBusy.make({})
-    if (begun.outcome === 'missing') return yield* NotFound.make({})
-    yield* deps.holds
-      .reserve({ accountId, hold: holdOf(turnId), credits: prices.stylistMessage })
-      .pipe(Effect.tapError(() => Effect.ignore(stored(chats.withdraw(turnId)))))
-    const queued = yield* Effect.tryPromise(() => deps.queue.send({ _tag: 'WriteReply', turnId, accountId })).pipe(
-      Effect.as(true),
-      Effect.orElseSucceed(() => false),
-    )
-    if (queued || begun.outcome === 'replayed') return { chatId: ChatId.make(begun.chatId) }
-    yield* giveUp(deps, accountId, turnId)
-    return yield* unavailable()
-  })
+const send = Effect.fn('Styld.Stylist.send')(function* (input: SendChatMessage) {
+  const { accountId } = yield* CurrentAccount
+  const turnId = yield* replyIds.turnIdOf(accountId, input.operationId)
+  // The turn's queue delivery records the same job id, so the ask and its reply are found together.
+  yield* Effect.annotateCurrentSpan('styld.job_id', turnId)
+  const chats = yield* chatsOf(accountId)
+  const begun = yield* stored(
+    chats.begin({
+      turnId,
+      chatId: input.chatId ?? (yield* replyIds.randomId('ch')),
+      newChat: input.chatId === undefined,
+      text: input.text,
+      title: titleOf(input.text),
+      locale: input.locale,
+      messageId: yield* replyIds.randomId('ms'),
+      now: yield* now,
+      patience,
+    }),
+  )
+  if (begun.outcome === 'busy') return yield* StylistBusy.make({})
+  if (begun.outcome === 'missing') return yield* NotFound.make({})
+  const queue = yield* StylistQueue
+  yield* (yield* Holds)
+    .reserve({ accountId, hold: holdOf(turnId), credits: prices.stylistMessage })
+    .pipe(Effect.tapError(() => Effect.ignore(stored(chats.withdraw(turnId)))))
+  const queued = yield* Effect.tryPromise(() => queue.send({ _tag: 'WriteReply', turnId, accountId })).pipe(
+    Effect.as(true),
+    Effect.orElseSucceed(() => false),
+  )
+  if (queued || begun.outcome === 'replayed') return { chatId: ChatId.make(begun.chatId) }
+  yield* giveUp(accountId, turnId)
+  return yield* unavailable()
+})
 
 /** Reading the person's chats, the latest first, and one of them with the reply being written to it. */
-const reading = (deps: Deps) => ({
+const reading = Effect.map(Effect.context<StylistServices>(), (context) => ({
   chats: Effect.fn('Styld.Stylist.chats')(function* () {
     const { accountId } = yield* CurrentAccount
-    const rows = yield* stored(deps.chatsOf(accountId).chats(listed))
+    const rows = yield* stored((yield* chatsOf(accountId)).chats(listed))
     return {
       chats: rows.map((row) => ({
         id: ChatId.make(row.id),
@@ -200,10 +192,10 @@ const reading = (deps: Deps) => ({
         updatedAt: new Date(row.updated_at).toISOString(),
       })),
     }
-  }),
+  }, Effect.provide(context)),
   chat: Effect.fn('Styld.Stylist.chat')(function* (chatId: ChatId) {
     const { accountId } = yield* CurrentAccount
-    const found = yield* stored(deps.chatsOf(accountId).chat(chatId, yield* now, patience))
+    const found = yield* stored((yield* chatsOf(accountId)).chat(chatId, yield* now, patience))
     if (found === undefined) return yield* NotFound.make({})
     const { replying } = found
     return {
@@ -214,18 +206,20 @@ const reading = (deps: Deps) => ({
         ? {}
         : { replying: { state: replying.state, text: replying.text, parts: yield* partsOf(replying.parts) } }),
     }
-  }),
-})
+  }, Effect.provide(context)),
+}))
 
 /** The queue's side: write a reply once, give one up, and forget an account's chats. */
-const queueing = (deps: Deps, ids: Ids) => ({
+const queueing = Effect.map(Effect.context<StylistServices>(), (context) => ({
   /** A reply already ended only has its credit settled. */
   processTurn: Effect.fn('Styld.Stylist.processTurn')(function* (accountId: string, turnId: string) {
-    const input = yield* stored(deps.chatsOf(accountId).turn(turnId))
+    const chats = yield* chatsOf(accountId)
+    const holds = yield* Holds
+    const input = yield* stored(chats.turn(turnId))
     if (!input.found) return
     if (input.state !== 'writing')
-      return yield* deps.holds.settle(accountId, holdOf(turnId), input.state === 'done' ? 'succeeded' : 'failed')
-    const answered = yield* reply(deps, accountId, turnId, input).pipe(
+      return yield* holds.settle(accountId, holdOf(turnId), input.state === 'done' ? 'succeeded' : 'failed')
+    const answered = yield* reply(accountId, turnId, input).pipe(
       // What failed, by its kind alone (a call past its patience, the model's error), never its words.
       Effect.tapError((error) =>
         Effect.logWarning('Styld.Stylist model failed').pipe(
@@ -237,37 +231,35 @@ const queueing = (deps: Deps, ids: Ids) => ({
     // A model that wrote nothing and showed nothing has not answered: the queue asks again.
     if (answered.text.length === 0 && answered.parts.length === 0) return yield* unavailable()
     yield* stored(
-      deps.chatsOf(accountId).finish({
+      chats.finish({
         turnId,
         outcome: 'done',
         text: answered.text,
         parts: JSON.stringify(answered.parts),
-        messageId: yield* ids.randomId('ms'),
+        messageId: yield* replyIds.randomId('ms'),
         now: yield* now,
       }),
     )
-    yield* deps.holds.settle(accountId, holdOf(turnId), 'succeeded')
-  }),
+    yield* holds.settle(accountId, holdOf(turnId), 'succeeded')
+  }, Effect.provide(context)),
   /** The queue's last attempt failed: the reply shows as failed and its credit comes back. */
   failTurn: Effect.fn('Styld.Stylist.failTurn')(function* (accountId: string, turnId: string) {
-    yield* giveUp(deps, accountId, turnId)
-  }),
+    yield* giveUp(accountId, turnId)
+  }, Effect.provide(context)),
   /** Forget every chat of an account being deleted. */
   erase: Effect.fn('Styld.Stylist.erase')(function* (accountId: string) {
-    yield* stored(deps.chatsOf(accountId).erase())
-  }),
-})
+    yield* stored((yield* chatsOf(accountId)).erase())
+  }, Effect.provide(context)),
+}))
 
+/** Every Styld operation, each group built over the services it yields (`StylistServices`). */
 const make = Effect.gen(function* () {
-  const deps: Deps = {
-    chatsOf: (yield* ChatStores).of,
-    queue: yield* StylistQueue,
-    model: yield* LanguageModel.LanguageModel,
-    tools: yield* StylistTools,
-    wardrobe: yield* Wardrobe,
-    holds: yield* Holds,
+  const context = yield* Effect.context<StylistServices>()
+  return {
+    send: (input: SendChatMessage) => send(input).pipe(Effect.provide(context)),
+    ...(yield* reading),
+    ...(yield* queueing),
   }
-  return { send: sending(deps, replyIds), ...reading(deps), ...queueing(deps, replyIds) }
 })
 
 /** Styld, the stylist in the app: the person's messages and chats, and its replies written on the queue, with its
