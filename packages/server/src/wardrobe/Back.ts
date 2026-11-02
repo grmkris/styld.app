@@ -1,4 +1,4 @@
-import { CurrentAccount, NotFound, type PieceId, type SetBack } from '@styld/protocol'
+import { CurrentAccount, NotFound, type OperationId, type PieceId, type SetBack } from '@styld/protocol'
 import { Effect, Option, Predicate } from 'effect'
 import {
   forgetObjects,
@@ -51,15 +51,26 @@ export const backing = Effect.map(Effect.context<WardrobeServices>(), (context) 
     yield* forgetObjects(accountId, replaced.filter(Predicate.isNotNull), 'back')
     return yield* ownerPiece(accountId, updated.value)
   }, Effect.provide(context)),
-  /** Forget the back, and its picture unless a tray card still shows it. */
-  removeBack: Effect.fn('Styld.Wardrobe.removeBack')(function* (pieceId: PieceId) {
+  /** Forget the back, and its picture unless a tray card still shows it. The receipt keeps the picture's key, so a
+   * repeat forgets it again if the first request's delete was lost, and never removes a back set since. */
+  removeBack: Effect.fn('Styld.Wardrobe.removeBack')(function* (pieceId: PieceId, operationId: OperationId) {
     const { accountId } = yield* CurrentAccount
-    const piece = yield* ownPiece(pieceId)
-    const updated = yield* stored(
-      (yield* WardrobeStore).updatePiece(accountId, pieceId, { backImageKey: null, updatedAt: yield* nowDate }),
+    const store = yield* WardrobeStore
+    const write = Effect.gen(function* () {
+      const piece = yield* ownPiece(pieceId)
+      const update = store.updatePiece(accountId, pieceId, { backImageKey: null, updatedAt: yield* nowDate })
+      return { statements: [update], result: piece.backImageKey ?? '' }
+    })
+    return yield* store.recorded(
+      { accountId, operationId, command: 'removeBack', input: pieceId },
+      {
+        write,
+        answer: (removed) =>
+          Effect.gen(function* () {
+            if (removed !== '') yield* forgetObjects(accountId, [removed], 'back')
+            return yield* ownerPiece(accountId, yield* ownPiece(pieceId))
+          }),
+      },
     )
-    if (Option.isNone(updated)) return yield* NotFound.make({})
-    if (piece.backImageKey !== null) yield* forgetObjects(accountId, [piece.backImageKey], 'back')
-    return yield* ownerPiece(accountId, updated.value)
   }, Effect.provide(context)),
 }))

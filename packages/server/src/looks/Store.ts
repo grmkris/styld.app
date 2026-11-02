@@ -1,7 +1,7 @@
 import { lookPieces, looks, operationReceipts, pieces } from '@styld/db'
 import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 import { Context, Effect, Layer } from 'effect'
-import { receiptRows } from '../kernel/Receipts.ts'
+import { receiptRows, recordedWrites } from '../kernel/Receipts.ts'
 import { forgetCheck } from '../safety/Checks.ts'
 import { Database, first, inChunks, query } from '../kernel/Db.ts'
 
@@ -24,6 +24,7 @@ export const ownLookIds = (db: Drizzle, accountId: string, lookIds: ReadonlyArra
 /** Looks and their pieces in D1. Every read and write of a look names the account, but for `looksById`. */
 export const lookStore = (db: Drizzle) => ({
   ...receiptRows(db),
+  ...recordedWrites(db),
   /** The look, its pieces in order and the operation's receipt, as one atomic batch. */
   createLook: (look: LookRow, pieceIds: ReadonlyArray<string>, receipt: ReceiptRow) =>
     query(() =>
@@ -59,13 +60,12 @@ export const lookStore = (db: Drizzle) => ({
         .orderBy(asc(lookPieces.position)),
     ),
   /** Share the look from this time, or stop sharing it. */
+  /** The statement that shares the look or stops sharing it, for its operation's batch (`recorded`). */
   setShared: (accountId: string, lookId: string, sharedAt: Date | null) =>
-    query(() =>
-      db
-        .update(looks)
-        .set({ sharedAt })
-        .where(and(eq(looks.id, lookId), eq(looks.accountId, accountId))),
-    ).pipe(Effect.asVoid),
+    db
+      .update(looks)
+      .set({ sharedAt })
+      .where(and(eq(looks.id, lookId), eq(looks.accountId, accountId))),
   /** The look and its check, with the delete's receipt, as one atomic batch; its pieces and pins go with it. */
   deleteLook: (accountId: string, lookId: string, receipt: ReceiptRow) =>
     query(() =>

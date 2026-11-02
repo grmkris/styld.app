@@ -1,4 +1,4 @@
-import { once } from '../kernel/Receipts.ts'
+import { once, recorded } from '../kernel/Receipts.ts'
 import {
   Author,
   type CreateReport,
@@ -183,17 +183,24 @@ const saving = Effect.map(Effect.context<SocialServices>(), (context) => ({
   /** Save something someone else made public, or take the save back; one's own things are on one's boards. */
   setSaved: Effect.fn('Styld.Social.setSaved')(function* (input: SetSaved) {
     const { accountId } = yield* CurrentAccount
-    const row = saveRowOf(input.target)
-    if (!input.saved) {
-      yield* stored((yield* SocialStore).unsave(accountId, row.kind, row.id))
-      return { saved: false }
-    }
-    const owner = yield* Effect.flatMap(ownerOfSaved(row), orNotFound)
-    if (owner === accountId) return yield* NotWithYourself.make({})
-    const at = yield* nowDate
-    if (Option.isNone(yield* savedThing(row.kind, row.id, accountId, at.toISOString()))) return yield* NotFound.make({})
-    yield* stored((yield* SocialStore).save({ id: yield* newId('sv'), accountId, ...columnsOf(row), createdAt: at }))
-    return { saved: true }
+    const { operationId, ...change } = input
+    const store = yield* SocialStore
+    const row = saveRowOf(change.target)
+    const write = Effect.gen(function* () {
+      if (!change.saved) return { statements: [store.unsave(accountId, row.kind, row.id)], result: 'unsaved' }
+      const owner = yield* Effect.flatMap(ownerOfSaved(row), orNotFound)
+      if (owner === accountId) return yield* NotWithYourself.make({})
+      const at = yield* nowDate
+      if (Option.isNone(yield* savedThing(row.kind, row.id, accountId, at.toISOString())))
+        return yield* NotFound.make({})
+      const saved = store.save({ id: yield* newId('sv'), accountId, ...columnsOf(row), createdAt: at })
+      return { statements: [saved], result: 'saved' }
+    })
+    return yield* recorded(
+      yield* Database,
+      { accountId, operationId, command: 'setSaved', input: change },
+      { write, answer: (result) => Effect.succeed({ saved: result === 'saved' }) },
+    )
   }, Effect.provide(context)),
 }))
 
@@ -205,22 +212,36 @@ const relations = Effect.map(Effect.context<SocialServices>(), (context) => ({
   /** Follow someone, privately, or stop. */
   setFollowing: Effect.fn('Styld.Social.setFollowing')(function* (handle: string, input: SetFollowing) {
     const { accountId } = yield* CurrentAccount
+    const store = yield* SocialStore
     const other = yield* someone(accountId, handle)
-    if (input.following) {
-      if (yield* stored((yield* SocialStore).hasBlocked(accountId, other))) return yield* NotFound.make({})
-      yield* stored((yield* SocialStore).follow(accountId, other, yield* nowDate))
-    } else yield* stored((yield* SocialStore).unfollow(accountId, other))
-    return yield* relationOf(accountId, handle, other)
+    const write = Effect.gen(function* () {
+      if (!input.following) return { statements: [store.unfollow(accountId, other)], result: other }
+      if (yield* stored(store.hasBlocked(accountId, other))) return yield* NotFound.make({})
+      return { statements: [store.follow(accountId, other, yield* nowDate)], result: other }
+    })
+    return yield* recorded(
+      yield* Database,
+      { accountId, operationId: input.operationId, command: 'setFollowing', input: [handle, input.following] },
+      { write, answer: () => relationOf(accountId, handle, other) },
+    )
   }, Effect.provide(context)),
   /** Block someone, which hides each from the other and ends follows both ways, or unblock them. They are never
    * told. */
   setBlocked: Effect.fn('Styld.Social.setBlocked')(function* (handle: string, input: SetBlocked) {
     const { accountId } = yield* CurrentAccount
-    const other = yield* Effect.flatMap(stored(handleOwner(yield* Database, handle)), orNotFound)
+    const store = yield* SocialStore
+    const db = yield* Database
+    const other = yield* Effect.flatMap(stored(handleOwner(db, handle)), orNotFound)
     if (other === accountId) return yield* NotWithYourself.make({})
-    if (input.blocked) yield* stored((yield* SocialStore).block(accountId, other, yield* nowDate))
-    else yield* stored((yield* SocialStore).unblock(accountId, other))
-    return yield* relationOf(accountId, handle, other)
+    const write = Effect.map(nowDate, (at) => ({
+      statements: input.blocked ? store.block(accountId, other, at) : [store.unblock(accountId, other)],
+      result: other,
+    }))
+    return yield* recorded(
+      db,
+      { accountId, operationId: input.operationId, command: 'setBlocked', input: [handle, input.blocked] },
+      { write, answer: () => relationOf(accountId, handle, other) },
+    )
   }, Effect.provide(context)),
   following: Effect.fn('Styld.Social.following')(function* () {
     const { accountId } = yield* CurrentAccount

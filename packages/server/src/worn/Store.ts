@@ -1,6 +1,5 @@
 import { wornPieces } from '@styld/db'
 import { and, asc, eq, gte, lte } from 'drizzle-orm'
-import { Effect } from 'effect'
 import { type Database, query } from '../kernel/Db.ts'
 
 const ofDay = (accountId: string, day: string) => and(eq(wornPieces.accountId, accountId), eq(wornPieces.day, day))
@@ -18,15 +17,12 @@ export const wornStore = (db: Database['Service']) => {
           .where(and(eq(wornPieces.accountId, accountId), gte(wornPieces.day, from), lte(wornPieces.day, to)))
           .orderBy(asc(wornPieces.day), asc(wornPieces.position)),
       ),
-    /** Replace the day's pieces, as one atomic batch. */
-    wear: (accountId: string, day: string, pieceIds: ReadonlyArray<string>) =>
-      query(() =>
-        db.batch([
-          db.delete(wornPieces).where(ofDay(accountId, day)),
-          ...pieceIds.map((pieceId, position) => db.insert(wornPieces).values({ accountId, day, pieceId, position })),
-        ]),
-      ).pipe(Effect.asVoid),
-    clear: (accountId: string, day: string) =>
-      query(() => db.delete(wornPieces).where(ofDay(accountId, day))).pipe(Effect.asVoid),
+    /** The statements that replace the day's pieces, for their operation's batch (`recorded`). */
+    wear: (accountId: string, day: string, pieceIds: ReadonlyArray<string>) => [
+      db.delete(wornPieces).where(ofDay(accountId, day)),
+      ...pieceIds.map((pieceId, position) => db.insert(wornPieces).values({ accountId, day, pieceId, position })),
+    ],
+    /** The statement that clears the day, for its operation's batch. */
+    clear: (accountId: string, day: string) => db.delete(wornPieces).where(ofDay(accountId, day)),
   }
 }

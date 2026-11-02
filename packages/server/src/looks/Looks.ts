@@ -118,24 +118,35 @@ const reading = Effect.map(Effect.context<LookServices>(), (context) => ({
 }))
 
 const sharing = Effect.map(Effect.context<LookServices>(), (context) => ({
-  /** Share the look on the profile, which needs a published profile, or stop sharing it. A shared look is checked as
-   * it is now, and its pieces through the queue. */
+  /** Share the look on the profile, which needs a published profile, or stop sharing it, once per operation id: a
+   * repeat writes nothing, so an old share never undoes a later unshare. A shared look is checked as it is now, and
+   * its pieces through the queue. */
   shareLook: Effect.fn('Styld.Looks.share')(function* (lookId: LookId, input: ShareLook) {
     const { accountId } = yield* CurrentAccount
     const store = yield* LookStore
     const checks = yield* Checks
-    const row = yield* stored(store.findLook(accountId, lookId))
-    if (Option.isNone(row)) return yield* NotFound.make({})
-    if (!input.shared) {
-      yield* stored(store.setShared(accountId, lookId, null))
-      return yield* one(accountId, lookId)
-    }
-    yield* requirePublished(yield* Database, accountId)
-    yield* stored(store.setShared(accountId, lookId, row.value.sharedAt ?? (yield* nowDate)))
-    yield* checks.checkNow({ kind: 'look', id: lookId })
-    const pieceIds = (yield* stored(store.piecesOf([lookId]))).map(({ piece }) => piece.id)
-    yield* checks.checkLater(pieceIds.map((id) => ({ kind: 'piece' as const, id })))
-    return yield* one(accountId, lookId)
+    const { operationId, shared } = input
+    const write = Effect.gen(function* () {
+      const row = yield* stored(store.findLook(accountId, lookId))
+      if (Option.isNone(row)) return yield* NotFound.make({})
+      if (shared) yield* requirePublished(yield* Database, accountId)
+      const sharedAt = shared ? (row.value.sharedAt ?? (yield* nowDate)) : null
+      return { statements: [store.setShared(accountId, lookId, sharedAt)], result: lookId }
+    })
+    const answer = () =>
+      Effect.gen(function* () {
+        const row = yield* stored(store.findLook(accountId, lookId))
+        if (Option.isNone(row)) return yield* NotFound.make({})
+        if (row.value.sharedAt === null) return yield* one(accountId, lookId)
+        yield* checks.checkNow({ kind: 'look', id: lookId })
+        const pieceIds = (yield* stored(store.piecesOf([lookId]))).map(({ piece }) => piece.id)
+        yield* checks.checkLater(pieceIds.map((id) => ({ kind: 'piece' as const, id })))
+        return yield* one(accountId, lookId)
+      })
+    return yield* store.recorded(
+      { accountId, operationId, command: 'shareLook', input: [lookId, shared] },
+      { write, answer },
+    )
   }, Effect.provide(context)),
 }))
 

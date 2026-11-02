@@ -11,6 +11,6 @@ export const wornHandlers = HttpApiBuilder.group(StyldApi, 'worn', (handlers) =>
     return handlers
       .handle('listWorn', ({ query }) => worn.listWorn(query).pipe(Effect.map((days) => ({ days }))))
       .handle('wearPieces', ({ params, payload }) => worn.wearPieces(params.day, payload))
-      .handle('clearWorn', ({ params }) => worn.clearWorn(params.day))
+      .handle('clearWorn', ({ params, payload }) => worn.clearWorn(params.day, payload.operationId))
   }),
 )

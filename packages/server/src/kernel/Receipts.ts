@@ -1,6 +1,7 @@
 import { operationReceipts } from '@styld/db'
 import { OperationConflict, Unavailable } from '@styld/protocol'
 import { and, asc, eq, inArray, lt, sql } from 'drizzle-orm'
+import type { BatchItem } from 'drizzle-orm/batch'
 import type { drizzle } from 'drizzle-orm/d1'
 import { DateTime, Duration, Effect, Option } from 'effect'
 import { first, nowDate, query } from './Db.ts'
@@ -108,6 +109,13 @@ export const receiptRows = (db: Database) => ({
 })
 export type ReceiptRows = ReturnType<typeof receiptRows>
 
+/** Recorded writes over the store's database, for a store to spread into its own. */
+export const recordedWrites = (db: Database) => ({
+  /** A write that is one D1 batch, done once per operation id (`recorded`). */
+  recorded: <A, E, R, E2, R2>(operation: Operation, steps: RecordedSteps<A, E, R, E2, R2>) =>
+    recorded(db, operation, steps),
+})
+
 /** What the operation already made, by the receipt stored under its id (`priorResult`). */
 export const madeBefore = (receipts: ReceiptRows, operation: Identified) =>
   Effect.flatMap(
@@ -141,6 +149,45 @@ export const deleting = Effect.fnUntraced(function* <E, R>(
     .pipe(Effect.mapError(unavailable))
   if (Option.isSome(yield* priorResult(identified, receipt))) return
   yield* remove(yield* receiptRow(identified, deletion.target))
+})
+
+/** A write that is D1 statements and nothing else. */
+interface Recorded {
+  /** The write's statements, run in one batch with the receipt. */
+  readonly statements: ReadonlyArray<BatchItem<'sqlite'>>
+  /** What the receipt keeps of what the write made, for `answer`. */
+  readonly result: string
+}
+
+/** How a recorded write is done the first time, and how it and every repeat answer. */
+export interface RecordedSteps<A, E, R, E2, R2> {
+  readonly write: Effect.Effect<Recorded, E, R>
+  readonly answer: (result: string) => Effect.Effect<A, E2, R2>
+}
+
+/** A write whose work is one D1 batch, done once per operation id: `write` decides the statements only while the id
+ * has no receipt, and the receipt joins their batch, so it exists exactly when the write happened. The first request
+ * and every repeat answer `answer(result)`; a repeat writes nothing, so it never undoes a later operation. Changed input
+ * under the id is `OperationConflict`. A request that raced the first (both found no receipt) fails its batch on the
+ * receipt's key and answers from the receipt the winner wrote; any other failed batch is `Unavailable`. */
+export const recorded = Effect.fnUntraced(function* <A, E, R, E2, R2>(
+  db: Database,
+  operation: Operation,
+  steps: RecordedSteps<A, E, R, E2, R2>,
+) {
+  const identified = yield* identify(operation)
+  const stored = Effect.flatMap(
+    query(() => receiptQuery(db, operation.accountId, operation.operationId)).pipe(Effect.mapError(unavailable)),
+    (rows) => priorResult(identified, first(rows)),
+  )
+  const prior = yield* stored
+  if (Option.isSome(prior)) return yield* steps.answer(prior.value)
+  const { statements, result } = yield* steps.write
+  const receipt = db.insert(operationReceipts).values(yield* receiptRow(identified, result))
+  const committed = yield* query(() => db.batch([receipt, ...statements])).pipe(Effect.option)
+  if (Option.isSome(committed)) return yield* steps.answer(result)
+  const raced = yield* stored
+  return yield* Option.isSome(raced) ? steps.answer(raced.value) : Effect.fail(unavailable())
 })
 
 /** An operation whose work is not one D1 batch (a fetch, an upload, a queue message, a status move): a repeat of it

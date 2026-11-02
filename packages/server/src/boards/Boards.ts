@@ -117,20 +117,26 @@ const changes = Effect.map(Effect.context<BoardServices>(), (context) => ({
     const [created] = yield* shown([board])
     return created ?? (yield* unavailable())
   }, Effect.provide(context)),
-  /** Rename the board or change its paper. Its table is untouched, so the version stays. */
+  /** Rename the board, change its paper or moods, once per operation id: a repeat answers the board as it is now and
+   * writes nothing, so it never undoes a later change. */
   updateBoard: Effect.fn('Styld.Boards.update')(function* (boardId: BoardId, input: UpdateBoard) {
     const { accountId } = yield* CurrentAccount
-    const updated = yield* stored(
-      (yield* BoardStore).updateBoard(accountId, boardId, {
-        ...(input.name === undefined ? {} : { name: input.name, searchText: searchText(input.name) }),
-        ...(input.paper === undefined ? {} : { paper: input.paper }),
-        ...(input.moods === undefined ? {} : { moods: [...new Set(input.moods)] }),
+    const store = yield* BoardStore
+    const { operationId, ...edit } = input
+    const write = Effect.gen(function* () {
+      yield* ownBoard(accountId, boardId)
+      const update = store.updateBoard(accountId, boardId, {
+        ...(edit.name === undefined ? {} : { name: edit.name, searchText: searchText(edit.name) }),
+        ...(edit.paper === undefined ? {} : { paper: edit.paper }),
+        ...(edit.moods === undefined ? {} : { moods: [...new Set(edit.moods)] }),
         updatedAt: yield* nowDate,
-      }),
+      })
+      return { statements: [update], result: boardId }
+    })
+    return yield* store.recorded(
+      { accountId, operationId, command: 'updateBoard', input: [boardId, edit] },
+      { write, answer: () => one(accountId, boardId) },
     )
-    if (Option.isNone(updated)) return yield* NotFound.make({})
-    const [board] = yield* shown([updated.value])
-    return board ?? (yield* NotFound.make({}))
   }, Effect.provide(context)),
   /** Delete the board with its items, pins, pictures and check, then its pictures' bytes. A repeat of the same delete
    * answers done. */
@@ -228,22 +234,34 @@ const pinning = Effect.map(Effect.context<BoardServices>(), (context) => ({
 const publishing = Effect.map(Effect.context<BoardServices>(), (context) => ({
   /** Make the board public, which needs a published profile, or private again. A public board is checked as it
    * is now, and its own pieces through the queue; others see it once the check lets them. */
+  /** Make the board public or private, once per operation id: a repeat writes nothing, so an old request to make it
+   * public never undoes a later one that made it private. */
   setBoardVisibility: Effect.fn('Styld.Boards.setVisibility')(function* (boardId: BoardId, input: SetVisibility) {
     const { accountId } = yield* CurrentAccount
-    const board = yield* ownBoard(accountId, boardId)
-    if (input.visibility === 'public') yield* requirePublished(yield* Database, accountId)
-    const goesPublic = input.visibility === 'public' && board.visibility !== 'public'
-    yield* stored(
-      (yield* BoardStore).updateBoard(accountId, boardId, {
-        visibility: input.visibility,
+    const store = yield* BoardStore
+    const { operationId, visibility } = input
+    const write = Effect.gen(function* () {
+      const board = yield* ownBoard(accountId, boardId)
+      if (visibility === 'public') yield* requirePublished(yield* Database, accountId)
+      const goesPublic = visibility === 'public' && board.visibility !== 'public'
+      const update = store.updateBoard(accountId, boardId, {
+        visibility,
         publishedAt: goesPublic ? yield* nowDate : board.publishedAt,
-      }),
+      })
+      return { statements: [update], result: boardId }
+    })
+    const answer = () =>
+      Effect.gen(function* () {
+        const board = yield* one(accountId, boardId)
+        if (board.visibility !== 'public') return board
+        yield* (yield* Checks).checkNow({ kind: 'board', id: boardId })
+        yield* pinnedPiecesChecked(accountId, boardId)
+        return yield* one(accountId, boardId)
+      })
+    return yield* store.recorded(
+      { accountId, operationId, command: 'setBoardVisibility', input: [boardId, visibility] },
+      { write, answer },
     )
-    if (input.visibility === 'public') {
-      yield* (yield* Checks).checkNow({ kind: 'board', id: boardId })
-      yield* pinnedPiecesChecked(accountId, boardId)
-    }
-    return yield* one(accountId, boardId)
   }, Effect.provide(context)),
 }))
 

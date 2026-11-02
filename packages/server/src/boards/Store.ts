@@ -1,7 +1,7 @@
 import { boardImages, boardItems, boardPins, boards, operationReceipts, pieces } from '@styld/db'
 import { and, asc, count, desc, eq, inArray, lte, or, type SQL, sql } from 'drizzle-orm'
 import { Context, Effect, Layer, Option } from 'effect'
-import { receiptRows } from '../kernel/Receipts.ts'
+import { receiptRows, recordedWrites } from '../kernel/Receipts.ts'
 import { forgetCheck } from '../safety/Checks.ts'
 import { receivedUploadKey, spendUpload } from '../wardrobe/Store.ts'
 import { Database as Db, first, inChunks, query } from '../kernel/Db.ts'
@@ -42,6 +42,7 @@ type Database = Db['Service']
 
 const boardRows = (db: Database) => ({
   ...receiptRows(db),
+  ...recordedWrites(db),
   /** The board and the operation's receipt, as one atomic batch. */
   createBoard: (board: BoardRow, receipt: ReceiptRow) =>
     query(() => db.batch([db.insert(boards).values(board), db.insert(operationReceipts).values(receipt)])).pipe(
@@ -59,6 +60,7 @@ const boardRows = (db: Database) => ({
         .where(and(eq(boards.id, boardId), eq(boards.accountId, accountId)))
         .limit(1),
     ).pipe(Effect.map(first)),
+  /** The statement that changes the account's board, for its operation's batch (`recorded`). */
   updateBoard: (
     accountId: string,
     boardId: string,
@@ -66,13 +68,10 @@ const boardRows = (db: Database) => ({
       Pick<BoardRow, 'name' | 'paper' | 'searchText' | 'moods' | 'visibility' | 'publishedAt' | 'updatedAt'>
     >,
   ) =>
-    query(() =>
-      db
-        .update(boards)
-        .set(changes)
-        .where(and(eq(boards.id, boardId), eq(boards.accountId, accountId)))
-        .returning(),
-    ).pipe(Effect.map(first)),
+    db
+      .update(boards)
+      .set(changes)
+      .where(and(eq(boards.id, boardId), eq(boards.accountId, accountId))),
   /** Removes the board and its check, with the delete's receipt; its items, pins and pictures' rows go with it. */
   deleteBoard: (accountId: string, boardId: string, receipt: ReceiptRow) =>
     query(() =>

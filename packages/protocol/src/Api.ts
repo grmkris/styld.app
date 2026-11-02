@@ -118,7 +118,7 @@ class WardrobeApi extends HttpApiGroup.make('wardrobe')
       params: { pieceId: PieceId },
       payload: UpdatePiece,
       success: Piece,
-      error: [NotFound, Unavailable],
+      error: [NotFound, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -142,7 +142,7 @@ class WardrobeApi extends HttpApiGroup.make('wardrobe')
       params: { pieceId: PieceId },
       payload: Operation,
       success: Piece,
-      error: [NotFound, Unavailable],
+      error: [NotFound, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -150,7 +150,7 @@ class WardrobeApi extends HttpApiGroup.make('wardrobe')
       params: { pieceId: PieceId },
       payload: ChoosePicture,
       success: Piece,
-      error: [NotFound, NoCleanPicture, Unavailable],
+      error: [NotFound, NoCleanPicture, OperationConflict, Unavailable],
     }),
   )
   .middleware(SessionAccount)
@@ -187,7 +187,7 @@ class LookApi extends HttpApiGroup.make('look')
       params: { lookId: LookId },
       payload: ShareLook,
       success: Look,
-      error: [NotFound, ProfileNotPublished, Unavailable],
+      error: [NotFound, ProfileNotPublished, OperationConflict, Unavailable],
     }),
   )
   .middleware(SessionAccount)
@@ -217,7 +217,7 @@ class BoardApi extends HttpApiGroup.make('board')
       params: { boardId: BoardId },
       payload: UpdateBoard,
       success: Board,
-      error: [NotFound, Unavailable],
+      error: [NotFound, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -257,7 +257,7 @@ class BoardApi extends HttpApiGroup.make('board')
       params: { boardId: BoardId },
       payload: SetVisibility,
       success: Board,
-      error: [NotFound, ProfileNotPublished, Unavailable],
+      error: [NotFound, ProfileNotPublished, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -285,7 +285,7 @@ class WornApi extends HttpApiGroup.make('worn')
       params: { day: Day },
       payload: WearPieces,
       success: WornDay,
-      error: [NotFound, Unavailable],
+      error: [NotFound, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -293,7 +293,7 @@ class WornApi extends HttpApiGroup.make('worn')
       params: { day: Day },
       payload: Operation,
       success: HttpApiSchema.NoContent,
-      error: Unavailable,
+      error: [OperationConflict, Unavailable],
     }),
   )
   .middleware(SessionAccount)
@@ -306,14 +306,14 @@ class ProfileApi extends HttpApiGroup.make('profile')
     HttpApiEndpoint.patch('updateProfile', '/profile', {
       payload: UpdateProfile,
       success: Profile,
-      error: [HandleTaken, HandleReserved, Unavailable],
+      error: [HandleTaken, HandleReserved, OperationConflict, Unavailable],
     }),
   )
   .add(
     HttpApiEndpoint.put('publishProfile', '/profile/published', {
       payload: PublishProfile,
       success: Profile,
-      error: [ProfileNeedsHandle, Unavailable],
+      error: [ProfileNeedsHandle, OperationConflict, Unavailable],
     }),
   )
   .middleware(SessionAccount)
@@ -378,7 +378,7 @@ class SocialApi extends HttpApiGroup.make('social')
     HttpApiEndpoint.put('setSaved', '/saved', {
       payload: SetSaved,
       success: SavedState,
-      error: [NotFound, NotWithYourself, Unavailable],
+      error: [NotFound, NotWithYourself, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -393,7 +393,7 @@ class SocialApi extends HttpApiGroup.make('social')
       params: { handle: Handle },
       payload: SetFollowing,
       success: Relation,
-      error: [NotFound, NotWithYourself, Unavailable],
+      error: [NotFound, NotWithYourself, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -401,7 +401,7 @@ class SocialApi extends HttpApiGroup.make('social')
       params: { handle: Handle },
       payload: SetBlocked,
       success: Relation,
-      error: [NotFound, NotWithYourself, Unavailable],
+      error: [NotFound, NotWithYourself, OperationConflict, Unavailable],
     }),
   )
   .add(HttpApiEndpoint.get('following', '/following', { success: People, error: Unavailable }))

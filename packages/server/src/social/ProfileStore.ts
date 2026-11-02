@@ -23,12 +23,11 @@ export const handleOwner = (db: Database['Service'], handle: string, published: 
       .limit(1),
   ).pipe(Effect.map((rows) => Option.map(first(rows), ({ accountId }) => accountId)))
 
-/** Write the profile whole. A handle someone else took meanwhile fails on its unique index. */
-export const saveProfile = (db: Database['Service'], row: ProfileRow) => {
-  const { accountId, createdAt, ...changes } = row
-  return query(() =>
-    db.insert(profiles).values(row).onConflictDoUpdate({ target: profiles.accountId, set: changes }).returning(),
-  ).pipe(Effect.map((rows) => Option.getOrElse(first(rows), () => ({ ...row, accountId, createdAt }))))
+/** The statement that writes the profile whole, for its operation's batch. A handle someone else took meanwhile fails
+ * on its unique index. */
+export const profileWrite = (db: Database['Service'], row: ProfileRow) => {
+  const { accountId: _accountId, createdAt: _createdAt, ...changes } = row
+  return db.insert(profiles).values(row).onConflictDoUpdate({ target: profiles.accountId, set: changes })
 }
 
 /** Boards go public and looks are shared only from a published profile. */

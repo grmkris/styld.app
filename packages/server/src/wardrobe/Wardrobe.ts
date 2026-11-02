@@ -5,7 +5,7 @@ import {
   CurrentAccount,
   NoCleanPicture,
   NotFound,
-  type PictureChoice,
+  ChoosePicture,
   Piece,
   type OperationId,
   type PieceId,
@@ -331,27 +331,56 @@ const adding = Effect.map(Effect.context<WardrobeServices>(), (context) => ({
 
 const editing = Effect.map(Effect.context<WardrobeServices>(), (context) => ({
   /** Show the clean drawing or the photo. Only a drawing that is ready or proposed can be chosen. */
-  choosePicture: Effect.fn('Styld.Wardrobe.choosePicture')(function* (pieceId: PieceId, use: PictureChoice) {
+  choosePicture: Effect.fn('Styld.Wardrobe.choosePicture')(function* (
+    pieceId: PieceId,
+    input: typeof ChoosePicture.Type,
+  ) {
     const { accountId } = yield* CurrentAccount
-    const piece = yield* ownPiece(pieceId)
-    const at = yield* nowDate
-    const chosen = yield* stored((yield* WardrobeStore).choosePicture(accountId, pieceId, use, at))
-    if (Option.isNone(chosen)) return yield* NoCleanPicture.make({})
-    yield* (yield* PieceChanged).changed(pieceId)
-    return yield* ownerPiece(accountId, piece)
+    const store = yield* WardrobeStore
+    const { use, operationId } = input
+    const write = Effect.gen(function* () {
+      yield* ownPiece(pieceId)
+      const picture = yield* pictureRow(accountId, pieceId)
+      if (picture?.state !== 'ready' && picture?.state !== 'proposed') return yield* NoCleanPicture.make({})
+      return { statements: [store.choosePicture(accountId, pieceId, use, yield* nowDate)], result: pieceId }
+    })
+    return yield* store.recorded(
+      { accountId, operationId, command: 'choosePicture', input: [pieceId, use] },
+      {
+        write,
+        answer: () =>
+          Effect.gen(function* () {
+            // What it shows is what others see of it: a public piece is checked again (no change, no new check).
+            yield* (yield* PieceChanged).changed(pieceId)
+            return yield* ownerPiece(accountId, yield* ownPiece(pieceId))
+          }),
+      },
+    )
   }, Effect.provide(context)),
+  /** Change the piece's words and labels, once per operation id: a repeat answers the piece as it is now and writes
+   * nothing, so it never undoes a later edit. */
   updatePiece: Effect.fn('Styld.Wardrobe.updatePiece')(function* (pieceId: PieceId, input: UpdatePiece) {
     const { accountId } = yield* CurrentAccount
-    const current = yield* toPiece(yield* ownPiece(pieceId))
-    // Setting fields is the same change however often it is sent, so the operation id needs no receipt.
-    const { operationId: _operationId, ...changes } = input
-    const updated = yield* stored(
-      (yield* WardrobeStore).updatePiece(accountId, pieceId, { ...changes, updatedAt: yield* nowDate }),
+    const store = yield* WardrobeStore
+    const { operationId, ...changes } = input
+    const write = Effect.gen(function* () {
+      yield* ownPiece(pieceId)
+      const update = store.updatePiece(accountId, pieceId, { ...changes, updatedAt: yield* nowDate })
+      return { statements: [update], result: pieceId }
+    })
+    return yield* store.recorded(
+      { accountId, operationId, command: 'updatePiece', input: [pieceId, changes] },
+      {
+        write,
+        answer: () =>
+          Effect.gen(function* () {
+            // Its name is what others read of it: a public piece renamed is checked again before they see the new
+            // name; the same name asks for nothing.
+            if (changes.name !== undefined) yield* (yield* PieceChanged).changed(pieceId)
+            return yield* ownerPiece(accountId, yield* ownPiece(pieceId))
+          }),
+      },
     )
-    if (Option.isNone(updated)) return yield* NotFound.make({})
-    // Its name is what others read of it: a public piece renamed is checked again before they see the new name.
-    if (input.name !== undefined && input.name !== current.name) yield* (yield* PieceChanged).changed(pieceId)
-    return yield* ownerPiece(accountId, updated.value)
   }, Effect.provide(context)),
   /** Delete a piece: its row, upload and check first, then its photo, cut-outs, back and drawings, except what another
    * piece or a tray card still shows (a reviewed piece shares its photo with the others found in it). A repeat of the

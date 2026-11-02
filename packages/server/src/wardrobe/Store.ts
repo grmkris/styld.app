@@ -1,7 +1,7 @@
 import { accounts, detections, operationReceipts, piecePictures, pieceTurns, pieces, uploads } from '@styld/db'
 import { and, asc, desc, eq, inArray, lt, ne, or, sql } from 'drizzle-orm'
 import { Array, Context, Effect, Layer } from 'effect'
-import { receiptRows } from '../kernel/Receipts.ts'
+import { receiptRows, recordedWrites } from '../kernel/Receipts.ts'
 import { PictureRows } from '../capture/Rows.ts'
 import { forgetCheck } from '../safety/Checks.ts'
 import { chunked, Database, first, query, StoreUnavailable } from '../kernel/Db.ts'
@@ -193,9 +193,9 @@ const pictureQueries = (db: Database['Service']) => ({
         .where(and(eq(piecePictures.pieceId, pieceId), eq(piecePictures.accountId, accountId)))
         .limit(1),
     ).pipe(Effect.map(first)),
-  /** Show the drawing or the photo, by capture's statement (`PictureRows`). The picture, if chosen. */
+  /** The statement that shows the drawing or the photo, capture's (`PictureRows`), for its operation's batch. */
   choosePicture: (accountId: string, pieceId: string, shown: 'clean' | 'photo', at: Date) =>
-    query(() => PictureRows.show(db, accountId, pieceId, shown, at)).pipe(Effect.map(first)),
+    PictureRows.show(db, accountId, pieceId, shown, at),
 })
 
 /** A piece's back, written with its upload spent and the operation's receipt. */
@@ -248,6 +248,7 @@ export const makeStore = (db: Database['Service']) => ({
         .limit(1),
     ).pipe(Effect.map(first)),
   ...receiptRows(db),
+  ...recordedWrites(db),
   /** The piece, its upload spent and the operation's receipt, as one atomic batch. The unique
    * upload id fails the whole batch when the upload already made a piece. */
   addPiece: (piece: PieceRow, receipt: ReceiptRow) =>
@@ -260,14 +261,12 @@ export const makeStore = (db: Database['Service']) => ({
         ]),
       catch: () => StoreUnavailable.make({}),
     }).pipe(Effect.asVoid),
+  /** The statement that changes the account's piece, for its operation's batch (`recorded`). */
   updatePiece: (accountId: string, pieceId: string, changes: PieceChanges) =>
-    query(() =>
-      db
-        .update(pieces)
-        .set(changes)
-        .where(and(eq(pieces.id, pieceId), eq(pieces.accountId, accountId)))
-        .returning(),
-    ).pipe(Effect.map(first)),
+    db
+      .update(pieces)
+      .set(changes)
+      .where(and(eq(pieces.id, pieceId), eq(pieces.accountId, accountId))),
   /** Removes the piece, its upload and its content check, and records the delete's receipt, as one batch. */
   deletePiece: (accountId: string, piece: PieceRow, receipt: ReceiptRow) =>
     query(() =>

@@ -2,6 +2,7 @@ import {
   CurrentAccount,
   Day,
   NotFound,
+  type OperationId,
   PieceId,
   Unavailable,
   type WearPieces,
@@ -12,6 +13,7 @@ import { Context, Effect, Layer } from 'effect'
 import { CaptureMetrics } from '../kernel/Metrics.ts'
 import { outfitKept } from '../outfits/Outfits.ts'
 import { Database, type StoreUnavailable } from '../kernel/Db.ts'
+import { recorded } from '../kernel/Receipts.ts'
 import { ownPieceIds } from '../wardrobe/Store.ts'
 import { wornStore } from './Store.ts'
 
@@ -61,17 +63,31 @@ const make = Effect.gen(function* () {
      * outfit engine when it proposed the outfit. */
     wearPieces: Effect.fn('Styld.Worn.wear')(function* (day: Day, input: WearPieces) {
       const { accountId } = yield* CurrentAccount
-      const pieceIds = [...new Set(input.pieceIds)]
-      const owned = yield* stored(ownPieceIds(db, accountId, pieceIds))
-      if (pieceIds.some((id) => !owned.has(id))) return yield* NotFound.make({})
-      yield* stored(store.wear(accountId, day, pieceIds))
-      if (input.proposal !== undefined) yield* outfitKept(metrics, input.proposal, 'worn')
+      const { operationId, ...wearing } = input
+      const pieceIds = [...new Set(wearing.pieceIds)]
+      const write = Effect.gen(function* () {
+        const owned = yield* stored(ownPieceIds(db, accountId, pieceIds))
+        if (pieceIds.some((id) => !owned.has(id))) return yield* NotFound.make({})
+        if (wearing.proposal !== undefined) yield* outfitKept(metrics, wearing.proposal, 'worn')
+        return { statements: store.wear(accountId, day, pieceIds), result: day }
+      })
       const worn: WornDay = { day, pieceIds }
-      return worn
+      return yield* recorded(
+        db,
+        { accountId, operationId, command: 'wearPieces', input: [day, wearing] },
+        { write, answer: () => Effect.succeed(worn) },
+      )
     }),
-    clearWorn: Effect.fn('Styld.Worn.clear')(function* (day: Day) {
+    clearWorn: Effect.fn('Styld.Worn.clear')(function* (day: Day, operationId: OperationId) {
       const { accountId } = yield* CurrentAccount
-      yield* stored(store.clear(accountId, day))
+      yield* recorded(
+        db,
+        { accountId, operationId, command: 'clearWorn', input: day },
+        {
+          write: Effect.succeed({ statements: [store.clear(accountId, day)], result: day }),
+          answer: () => Effect.void,
+        },
+      )
     }),
   }
 })

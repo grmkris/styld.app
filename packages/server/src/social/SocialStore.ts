@@ -22,14 +22,11 @@ const savesAndFollows = (db: Drizzle) => ({
     query(() =>
       db.select().from(saves).where(eq(saves.accountId, accountId)).orderBy(desc(saves.createdAt)).limit(listLimit),
     ),
-  /** Save the target once; saving it again keeps the first save. */
-  save: (row: SaveRow) => query(() => db.insert(saves).values(row).onConflictDoNothing()).pipe(Effect.asVoid),
+  /** The statement that saves the target once; saving it again keeps the first save. */
+  save: (row: SaveRow) => db.insert(saves).values(row).onConflictDoNothing(),
+  /** The statement that takes a save back. */
   unsave: (accountId: string, kind: SaveRow['kind'], targetId: string) =>
-    query(() =>
-      db
-        .delete(saves)
-        .where(and(eq(saves.accountId, accountId), eq(saves.kind, kind), eq(savedColumn(kind), targetId))),
-    ).pipe(Effect.asVoid),
+    db.delete(saves).where(and(eq(saves.accountId, accountId), eq(saves.kind, kind), eq(savedColumn(kind), targetId))),
   isFollowing: (followerId: string, followeeId: string) =>
     query(() =>
       db
@@ -38,14 +35,12 @@ const savesAndFollows = (db: Drizzle) => ({
         .where(and(eq(follows.followerId, followerId), eq(follows.followeeId, followeeId)))
         .limit(1),
     ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** The statement that follows someone once. */
   follow: (followerId: string, followeeId: string, at: Date) =>
-    query(() => db.insert(follows).values({ followerId, followeeId, createdAt: at }).onConflictDoNothing()).pipe(
-      Effect.asVoid,
-    ),
+    db.insert(follows).values({ followerId, followeeId, createdAt: at }).onConflictDoNothing(),
+  /** The statement that stops following someone. */
   unfollow: (followerId: string, followeeId: string) =>
-    query(() =>
-      db.delete(follows).where(and(eq(follows.followerId, followerId), eq(follows.followeeId, followeeId))),
-    ).pipe(Effect.asVoid),
+    db.delete(follows).where(and(eq(follows.followerId, followerId), eq(follows.followeeId, followeeId))),
   /** Those the account follows, the most recently followed first. */
   followees: (followerId: string) =>
     query(() =>
@@ -81,25 +76,21 @@ const blockRows = (db: Drizzle) => ({
         .where(and(eq(blocks.blockerId, blockerId), eq(blocks.blockedId, blockedId)))
         .limit(1),
     ).pipe(Effect.map((rows) => rows.length > 0)),
-  /** A block, and every follow between the two, as one atomic batch. */
-  block: (blockerId: string, blockedId: string, at: Date) =>
-    query(() =>
-      db.batch([
-        db.insert(blocks).values({ blockerId, blockedId, createdAt: at }).onConflictDoNothing(),
-        db
-          .delete(follows)
-          .where(
-            or(
-              and(eq(follows.followerId, blockerId), eq(follows.followeeId, blockedId)),
-              and(eq(follows.followerId, blockedId), eq(follows.followeeId, blockerId)),
-            ),
-          ),
-      ]),
-    ).pipe(Effect.asVoid),
+  /** The statements of a block: the block, and the end of every follow between the two, for one batch. */
+  block: (blockerId: string, blockedId: string, at: Date) => [
+    db.insert(blocks).values({ blockerId, blockedId, createdAt: at }).onConflictDoNothing(),
+    db
+      .delete(follows)
+      .where(
+        or(
+          and(eq(follows.followerId, blockerId), eq(follows.followeeId, blockedId)),
+          and(eq(follows.followerId, blockedId), eq(follows.followeeId, blockerId)),
+        ),
+      ),
+  ],
+  /** The statement that lifts a block. */
   unblock: (blockerId: string, blockedId: string) =>
-    query(() => db.delete(blocks).where(and(eq(blocks.blockerId, blockerId), eq(blocks.blockedId, blockedId)))).pipe(
-      Effect.asVoid,
-    ),
+    db.delete(blocks).where(and(eq(blocks.blockerId, blockerId), eq(blocks.blockedId, blockedId))),
   /** Those the account blocked, the most recent first. */
   blockedBy: (blockerId: string) =>
     query(() =>
