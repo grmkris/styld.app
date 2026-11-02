@@ -257,3 +257,23 @@ export const pieceTurns = sqliteTable(
     oneOf('piece_turns_state', table.state, turnStates),
   ],
 )
+
+const fileProviders = ['meta-sam'] as const
+
+/** A video handed to a provider (Meta's Files API), written with the capture that holds its id and kept until the
+ * provider confirms it deleted the file; a sweep deletes what tracking could not. No foreign key: a file outlives its
+ * capture and its account until the provider has let it go. */
+export const providerFiles = sqliteTable(
+  'provider_files',
+  {
+    fileId: text('file_id').primaryKey(),
+    provider: text('provider', { enum: fileProviders }).notNull(),
+    accountId: text('account_id').notNull(),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    index('provider_files_created').on(table.createdAt),
+    index('provider_files_account').on(table.accountId),
+    oneOf('provider_files_provider', table.provider, fileProviders),
+  ],
+)

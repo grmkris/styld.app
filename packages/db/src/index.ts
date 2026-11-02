@@ -1,10 +1,18 @@
 // The application's tables, one file per owning module (`tools/patterns-check.ts` names who writes each). Yielded
-// Auth's own tables are declared in `@styld/auth/storage`; Drizzle Kit reads both for the one baseline migration.
+// Auth's own tables are declared in `@styld/auth/storage`; Drizzle Kit reads both for the migrations: the baseline, then
+// each change since.
 
-export { accounts, authAttemptBuckets, oauthAssertions, oauthClients, oauthGrants } from './identity.ts'
+export {
+  accountDeletions,
+  accounts,
+  authAttemptBuckets,
+  oauthAssertions,
+  oauthClients,
+  oauthGrants,
+} from './identity.ts'
 export { operationReceipts } from './receipts.ts'
 export { pieces, uploads } from './wardrobe.ts'
-export { captureFrames, captures, detections, piecePictures, pieceTurns } from './capture.ts'
+export { captureFrames, captures, detections, piecePictures, pieceTurns, providerFiles } from './capture.ts'
 export { outfitPhotos, photoGarments } from './photos.ts'
 export { lookPieces, looks } from './looks.ts'
 export { boardImages, boardItems, boardPins, boards } from './boards.ts'

@@ -2,23 +2,28 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { Schema } from 'effect'
 import { column, foreignKey, type SchemaShape } from './SchemaShape.ts'
 
-// The baseline migration's Drizzle snapshot as a schema shape (`SchemaShape.ts`), and its SQL, for the tests that
-// compare a live database with it.
+// The latest migration's Drizzle snapshot as a schema shape (`SchemaShape.ts`), and every migration's SQL in order (the
+// baseline, then each change since), for the tests that compare a live database with it.
 
 const migrations = new URL('../../db/migrations/', import.meta.url)
 
-/** The one baseline migration's folder. */
-const baseline = () => {
-  const folders = readdirSync(migrations)
-  if (folders.length !== 1) throw new Error(`Expected one baseline migration, found ${folders.length}`)
-  return new URL(`${String(folders[0])}/`, migrations)
+/** The migrations' folders, oldest first: their names start with the time they were made. */
+const folders = () => readdirSync(migrations).toSorted()
+
+/** The latest migration's folder, whose snapshot is the schema as it is now. */
+const latest = () => {
+  const last = folders().at(-1)
+  if (last === undefined) throw new Error('Expected the baseline migration')
+  return new URL(`${last}/`, migrations)
 }
 
-/** The baseline's statements, in order. */
-export const baselineStatements = () =>
-  readFileSync(new URL('migration.sql', baseline()), 'utf8')
-    .split('--> statement-breakpoint')
-    .filter((statement) => statement.trim().length > 0)
+/** Every migration's statements, in the order D1 applies them. */
+export const migrationStatements = () =>
+  folders().flatMap((folder) =>
+    readFileSync(new URL(`${folder}/migration.sql`, migrations), 'utf8')
+      .split('--> statement-breakpoint')
+      .filter((statement) => statement.trim().length > 0),
+  )
 
 const Entity = Schema.Union([
   Schema.Struct({ entityType: Schema.Literal('tables'), name: Schema.String }),
@@ -41,10 +46,10 @@ const Entity = Schema.Union([
 ])
 const Snapshot = Schema.Struct({ ddl: Schema.Array(Entity) })
 
-/** The shape the baseline's snapshot says the schema has. */
+/** The shape the latest snapshot says the schema has. */
 export const snapshotShape = (): SchemaShape => {
   const { ddl } = Schema.decodeUnknownSync(Snapshot)(
-    JSON.parse(readFileSync(new URL('snapshot.json', baseline()), 'utf8')),
+    JSON.parse(readFileSync(new URL('snapshot.json', latest()), 'utf8')),
   )
   const lines = (pick: (entity: (typeof ddl)[number]) => ReadonlyArray<string>) => ddl.flatMap(pick).toSorted()
   return {

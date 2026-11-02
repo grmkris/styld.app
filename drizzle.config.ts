@@ -1,7 +1,7 @@
 import { defineConfig } from 'drizzle-kit'
 
-// One baseline migration (C5) from the tables of `@styld/db`, one file per owning module, and Yielded Auth's in
-// `@styld/auth/storage`.
+// The migrations (the C5 baseline, then each change since) from the tables of `@styld/db`, one file per owning module,
+// and Yielded Auth's in `@styld/auth/storage`.
 const modules = [
   'identity',
   'receipts',

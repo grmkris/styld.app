@@ -1,9 +1,9 @@
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite'
 import type { D1Database } from '@cloudflare/workers-types'
 import { Predicate } from 'effect'
-import { baselineStatements } from './SchemaSnapshot.ts'
+import { migrationStatements } from './SchemaSnapshot.ts'
 
-// A D1 database for unit tests: SQLite in memory with the baseline migration applied and foreign keys enforced, as D1
+// A D1 database for unit tests: SQLite in memory with every migration applied and foreign keys enforced, as D1
 // enforces them, behind the slice of D1's API that drizzle and the stores call (prepare, bind, all, raw, first, run,
 // batch). Real SQL semantics, no Worker; the native suite is still what proves workerd's D1.
 
@@ -52,11 +52,11 @@ class Statement {
   }
 }
 
-/** A fresh database with the baseline schema. */
+/** A fresh database with the schema the migrations make. */
 export const localD1 = () => {
   const db = new DatabaseSync(':memory:')
   db.exec('PRAGMA foreign_keys = ON')
-  for (const statement of baselineStatements()) db.exec(statement)
+  for (const statement of migrationStatements()) db.exec(statement)
   const d1 = {
     prepare: (sql: string) => new Statement(db, sql),
     batch: async (statements: ReadonlyArray<Statement>) => {

@@ -31,7 +31,9 @@ const inAllowed: Allowances = {
 /** Every table of `@styld/db` a server module writes, and who may write it: a folder (`capture/`) or a file. */
 const owners: Readonly<Record<string, ReadonlyArray<string>>> = {
   accounts: ['AccountLifecycle.ts'],
+  accountDeletions: ['AccountLifecycle.ts'],
   oauthGrants: ['AccountLifecycle.ts'],
+  providerFiles: ['capture/'],
   pieces: ['wardrobe/'],
   uploads: ['wardrobe/'],
   piecePictures: ['capture/'],

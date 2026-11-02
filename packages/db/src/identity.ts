@@ -16,6 +16,19 @@ export const accounts = sqliteTable('accounts', {
     .$defaultFn(() => new Date()),
 })
 
+/** An account being deleted (`AccountLifecycle.ts`): written in the batch that closes access, and kept until every store
+ * is purged and the writers admitted before it have drained; then forgotten. No foreign key: it outlives the account. */
+export const accountDeletions = sqliteTable(
+  'account_deletions',
+  {
+    accountId: text('account_id').primaryKey(),
+    requestedAt: integer('requested_at', { mode: 'timestamp_ms' }).notNull(),
+    /** When every store was last found purged; none while a purge is still owed. */
+    purgedAt: integer('purged_at', { mode: 'timestamp_ms' }),
+  },
+  (table) => [index('account_deletions_requested').on(table.requestedAt)],
+)
+
 /** The sign-in attempt limiter's token buckets (`@styld/auth` AttemptLimiter), swept once expired. */
 export const authAttemptBuckets = sqliteTable(
   'auth_attempt_buckets',
