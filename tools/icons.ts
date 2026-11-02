@@ -2,10 +2,9 @@
  * Phosphor icons for the website (DESIGN.md › Icons), generated from the pinned
  * `@phosphor-icons/core`. `apps/web/src/icons.json` lists the icons in use by weight; each
  * becomes one exported path in `apps/web/src/PhosphorIcons.ts`, so only listed icons ship.
- * `docs/migration/v1-icons.json` maps every Lucide icon v1 used to its Phosphor counterpart.
- * Both files must name real Phosphor icons, and the allowlist stays sorted and unique.
+ * The allowlist must name real Phosphor icons and stays sorted and unique.
  *
- *   bun tools/icons.ts           verify the module, the allowlist and the v1 map (part of `bun run check`)
+ *   bun tools/icons.ts           verify the module and the allowlist (part of `bun run check`)
  *   bun tools/icons.ts --write   regenerate the module after editing the allowlist
  */
 import { readFile, writeFile } from 'node:fs/promises'
@@ -17,16 +16,11 @@ import { Schema } from 'effect'
 const Weights = ['light', 'regular'] as const
 type Weight = (typeof Weights)[number]
 const Allowlist = Schema.Struct({ light: Schema.Array(Schema.String), regular: Schema.Array(Schema.String) })
-const V1Map = Schema.Record(
-  Schema.String,
-  Schema.Struct({ phosphor: Schema.String, files: Schema.Int, note: Schema.optional(Schema.String) }),
-)
 const Manifest = Schema.Struct({ devDependencies: Schema.Record(Schema.String, Schema.String) })
 
 const root = path.resolve(import.meta.dir, '..')
 const allowlistPath = path.join(root, 'apps/web/src/icons.json')
 const modulePath = path.join(root, 'apps/web/src/PhosphorIcons.ts')
-const v1MapPath = path.join(root, 'docs/migration/v1-icons.json')
 const pascalNames: ReadonlyMap<string, string> = new Map(icons.map((icon) => [icon.name, icon.pascal_name]))
 
 const readJson = async <A>(schema: Schema.Codec<A, unknown>, file: string): Promise<A> =>
@@ -74,22 +68,15 @@ const generate = async (): Promise<string> => {
   ].join('\n')
 }
 
-const verifyV1Map = async () => {
-  const map = await readJson(V1Map, v1MapPath)
-  for (const [lucide, entry] of Object.entries(map))
-    pascalName(entry.phosphor, `docs/migration/v1-icons.json (${lucide})`)
-  return Object.keys(map).length
-}
-
 const [mode] = process.argv.slice(2)
 if (mode === '--write') {
   await writeFile(modulePath, await generate())
   console.log('Wrote apps/web/src/PhosphorIcons.ts')
 } else if (mode === undefined) {
-  const [expected, current, mapped] = await Promise.all([generate(), readFile(modulePath, 'utf8'), verifyV1Map()])
+  const [expected, current] = await Promise.all([generate(), readFile(modulePath, 'utf8')])
   if (expected !== current)
     throw new Error('apps/web/src/PhosphorIcons.ts is stale or edited; run bun run icons:generate')
-  console.log(`Verified PhosphorIcons.ts against icons.json and ${mapped} v1 icon mappings`)
+  console.log('Verified PhosphorIcons.ts against icons.json')
 } else {
   throw new Error('Usage: bun tools/icons.ts [--write]')
 }
