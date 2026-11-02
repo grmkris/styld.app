@@ -1,6 +1,7 @@
 import { Effect, Layer } from 'effect'
 import { withAuth } from '../AuthHttp.ts'
 import { Boards } from '../boards/Boards.ts'
+import { BoardStore } from '../boards/Store.ts'
 import { boardHandlers, boardRoutes } from '../boards/Http.ts'
 import { consumer } from '../jobs/Jobs.ts'
 import { module } from '../kernel/Module.ts'
@@ -29,7 +30,7 @@ export const social = module({
       Layer.mergeAll(Looks.layer, PublicPages.layer, Profiles.layer, Curation.layer, Worn.layer, PieceChanged.layer),
     ),
     Layer.provideMerge(Checks.layer),
-    Layer.provide(WardrobeStore.layer),
+    Layer.provide([WardrobeStore.layer, BoardStore.layer]),
   ),
   api: Layer.mergeAll(
     lookHandlers,

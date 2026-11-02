@@ -1,86 +1,81 @@
-import { type Ending, Holds, holdId } from '../usage/Holds.ts'
-import { Pacing } from '../kernel/Pacing.ts'
-import { Garments } from './Garments.ts'
-import { CaptureMetrics } from '../kernel/Metrics.ts'
-import { GarmentVision, ImageGenerator, PictureWork, VideoGenerator } from './Providers.ts'
+import { type Ending, type Holds, holdId } from '../usage/Holds.ts'
+import type { Pacing } from '../kernel/Pacing.ts'
+import type { Garments } from './Garments.ts'
+import type { CaptureMetrics } from '../kernel/Metrics.ts'
+import type { GarmentVision, ImageGenerator, PictureWork, VideoGenerator } from './Providers.ts'
 import { readPng } from '@styld/imaging'
 import { Unavailable } from '@styld/protocol'
 import { Effect, Option } from 'effect'
-import { deleteAfterRows, keysUnder } from '../kernel/Media.ts'
+import { deleteAfterRows, keysUnder, Media } from '../kernel/Media.ts'
 import { accountPrefix, piecePrefix } from '../wardrobe/Media.ts'
-import type { WorkMessage } from '../wardrobe/Processing.ts'
+import { PieceQueue } from '../wardrobe/Processing.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
-import type { WardrobeBindings } from '../wardrobe/Parts.ts'
-import { type CaptureRow, CaptureStore } from './Store.ts'
-import { PieceChanged } from '../safety/PieceChanged.ts'
+import type { CaptureRow, CaptureStore } from './Store.ts'
+import type { PieceChanged } from '../safety/PieceChanged.ts'
 
-/** The Cloudflare bindings captures read and write. */
-export interface CaptureBindings {
-  readonly bucket: WardrobeBindings['bucket']
-  readonly queue: { send(message: WorkMessage, options?: { readonly delaySeconds?: number }): Promise<unknown> }
-}
+// What capture's operations share: the services they act through, where a capture's objects live, reading and writing
+// them, the piece queue's messages, and how a capture's status ends its hold. Every operation yields the services it
+// uses; the `Captures` layer provides them once (`Service.ts`).
+
+/** The services capture's operations act through, provided once by the `Captures` layer. */
+export type CaptureServices =
+  | CaptureStore
+  | WardrobeStore
+  | Media
+  | PieceQueue
+  | GarmentVision
+  | PictureWork
+  | ImageGenerator
+  | VideoGenerator
+  | Garments
+  | Holds
+  | Pacing
+  | CaptureMetrics
+  | PieceChanged
 
 export const unavailable = () => Unavailable.make({})
-
-/** What every capture operation shares: bindings, stores and the providers, credits and call counter it was built
- * with, so no operation asks its caller for them. */
-export const makeParts = (bindings: CaptureBindings) =>
-  Effect.gen(function* () {
-    return {
-      bindings,
-      vision: yield* GarmentVision,
-      work: yield* PictureWork,
-      generator: yield* ImageGenerator,
-      videos: yield* VideoGenerator,
-      garments: yield* Garments,
-      holds: yield* Holds,
-      pacing: yield* Pacing,
-      metrics: yield* CaptureMetrics,
-      pieceChanged: yield* PieceChanged,
-      store: yield* CaptureStore,
-      wardrobeStore: yield* WardrobeStore,
-    }
-  })
-export type Parts = Effect.Success<ReturnType<typeof makeParts>>
 
 /** Where a capture's own objects live, under the account's prefix so deletion sweeps them. */
 export const captureKey = (accountId: string, captureId: string, name: string) =>
   `${accountPrefix(accountId)}captures/${captureId}/${name}`
 
 /** A stored object's bytes, or none when it is gone. */
-export const readObject = (parts: Parts, key: string) =>
-  Effect.tryPromise({
+export const readObject = Effect.fnUntraced(function* (key: string) {
+  const { bucket } = yield* Media
+  return yield* Effect.tryPromise({
     try: async () => {
-      const object = await parts.bindings.bucket.get(key)
+      const object = await bucket.get(key)
       return object === null ? Option.none<Uint8Array>() : Option.some(new Uint8Array(await object.arrayBuffer()))
     },
     catch: unavailable,
   })
+})
 
 /** A stored PNG's pixels: none when it is gone, or is not a PNG. */
-export const readPixels = (parts: Parts, key: string) =>
-  readObject(parts, key).pipe(Effect.map(Option.flatMap(readPng)))
+export const readPixels = (key: string) => readObject(key).pipe(Effect.map(Option.flatMap(readPng)))
 
-export const writeObject = (parts: Parts, key: string, bytes: Uint8Array, contentType: string) =>
-  Effect.tryPromise({
-    try: () => parts.bindings.bucket.put(key, bytes, { httpMetadata: { contentType } }),
+export const writeObject = Effect.fnUntraced(function* (key: string, bytes: Uint8Array, contentType: string) {
+  const { bucket } = yield* Media
+  yield* Effect.tryPromise({
+    try: () => bucket.put(key, bytes, { httpMetadata: { contentType } }),
     catch: unavailable,
-  }).pipe(Effect.asVoid)
+  })
+})
 
 /** The objects of a capture whose rows were deleted or decided: everything under its own folder, its photo or video
  * and its stills, except what a piece or an open tray card still shows (`keysInUse`). Rows first, then objects; a
  * failed listing or delete is logged, its bytes left under the account's prefix for account deletion. */
 export const forgetCaptureObjects = (
-  parts: Parts,
   capture: Pick<CaptureRow, 'id' | 'accountId' | 'originalKey'>,
   frames: ReadonlyArray<{ readonly objectKey: string }>,
 ) =>
   Effect.gen(function* () {
-    const listed = yield* keysUnder(parts.bindings.bucket, captureKey(capture.accountId, capture.id, ''))
+    const { bucket } = yield* Media
+    const listed = yield* keysUnder(bucket, captureKey(capture.accountId, capture.id, ''))
     const candidates = [...new Set([...listed, capture.originalKey, ...frames.map(({ objectKey }) => objectKey)])]
-    const inUse = yield* storedAs(parts.wardrobeStore.keysInUse(capture.accountId, candidates))
+    const inUse = yield* storedAs((yield* WardrobeStore).keysInUse(capture.accountId, candidates))
     yield* deleteAfterRows(
-      parts.bindings.bucket,
+      bucket,
       candidates.filter((key) => !inUse.has(key)),
       'capture',
     )
@@ -97,42 +92,29 @@ export const turnKey = (
   name: 'front.png' | 'side.png' | 'turn.mp4' | 'sheet.png',
 ) => `${piecePrefix(accountId, pieceId)}turn-${name}`
 
+/** Send the piece queue a message, now or after `delaySeconds`. */
+const enqueue = (message: Parameters<PieceQueue['Service']['send']>[0], delaySeconds?: number) =>
+  Effect.flatMap(PieceQueue, (queue) =>
+    Effect.tryPromise({
+      try: () => queue.send(message, delaySeconds === undefined ? undefined : { delaySeconds }),
+      catch: unavailable,
+    }),
+  ).pipe(Effect.asVoid)
+
 /** Tell the queue a piece's turn has a step waiting, now or after `delaySeconds` (polling the video model). */
-export const enqueueTurn = (parts: Parts, pieceId: string, delaySeconds?: number) =>
-  Effect.tryPromise({
-    try: () =>
-      parts.bindings.queue.send(
-        { _tag: 'MakeTurn', pieceId },
-        delaySeconds === undefined ? undefined : { delaySeconds },
-      ),
-    catch: unavailable,
-  }).pipe(Effect.asVoid)
+export const enqueueTurn = (pieceId: string, delaySeconds?: number) =>
+  enqueue({ _tag: 'MakeTurn', pieceId }, delaySeconds)
 
 /** Tell the queue a piece's clean picture is waiting to be drawn. */
-export const enqueuePicture = (parts: Parts, pieceId: string) =>
-  Effect.tryPromise({
-    try: () => parts.bindings.queue.send({ _tag: 'DrawPicture', pieceId }),
-    catch: unavailable,
-  }).pipe(Effect.asVoid)
+export const enqueuePicture = (pieceId: string) => enqueue({ _tag: 'DrawPicture', pieceId })
 
 /** Tell the queue a capture's sightings wait to be compared, now or after `delaySeconds` (another delivery has the
  * import's next one). */
-export const enqueueMatch = (parts: Parts, captureId: string, delaySeconds?: number) =>
-  Effect.tryPromise({
-    try: () =>
-      parts.bindings.queue.send(
-        { _tag: 'MatchCapture', captureId },
-        delaySeconds === undefined ? undefined : { delaySeconds },
-      ),
-    catch: unavailable,
-  }).pipe(Effect.asVoid)
+export const enqueueMatch = (captureId: string, delaySeconds?: number) =>
+  enqueue({ _tag: 'MatchCapture', captureId }, delaySeconds)
 
 /** Tell the queue a capture is ready to process. */
-export const enqueueCapture = (parts: Parts, captureId: string) =>
-  Effect.tryPromise({
-    try: () => parts.bindings.queue.send({ _tag: 'ProcessCapture', captureId }),
-    catch: unavailable,
-  }).pipe(Effect.asVoid)
+export const enqueueCapture = (captureId: string) => enqueue({ _tag: 'ProcessCapture', captureId })
 
 export const storedAs = <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.mapError(effect, unavailable)
 

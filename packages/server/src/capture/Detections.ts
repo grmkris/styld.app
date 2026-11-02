@@ -2,9 +2,10 @@ import { Effect, Option } from 'effect'
 import { newId } from '../kernel/Ids.ts'
 import { type Garment } from './Garments.ts'
 import { verdictOf } from './GarmentRules.ts'
-import { captureKey, type Parts, readObject, unavailable, writeObject } from './Parts.ts'
+import { captureKey, readObject, unavailable, writeObject } from './Shared.ts'
 import type { Route } from './Providers.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
+import { Garments } from './Garments.ts'
 
 /** What a capture's pipeline found, and how it was routed. */
 export interface Found {
@@ -17,7 +18,6 @@ export interface Found {
  * stored under the capture. A whole garment of a known kind is compared with the import's other sightings and the
  * wardrobe; part of one is not. */
 export const detectionsOf = (
-  parts: Parts,
   capture: CaptureRow,
   found: ReadonlyArray<{ readonly garment: Garment; readonly sourceKey: string }>,
 ) =>
@@ -27,7 +27,7 @@ export const detectionsOf = (
       Effect.gen(function* () {
         const id = yield* newId('dt')
         const key = captureKey(capture.accountId, capture.id, `${id}.png`)
-        yield* writeObject(parts, key, garment.png, 'image/png')
+        yield* writeObject(key, garment.png, 'image/png')
         const { suggestion } = garment
         const whole = verdictOf(suggestion.whole) === 'preselect' && suggestion.type !== undefined
         return {
@@ -59,15 +59,14 @@ export const detectionsOf = (
   )
 
 /** Cut a photo into the garments it shows, as detections. */
-export const processPhoto = Effect.fn('Styld.Capture.processPhoto')(function* (parts: Parts, capture: CaptureRow) {
-  const original = yield* readObject(parts, capture.originalKey)
+export const processPhoto = Effect.fn('Styld.Capture.processPhoto')(function* (capture: CaptureRow) {
+  const original = yield* readObject(capture.originalKey)
   if (Option.isNone(original)) return yield* unavailable()
-  const finding = yield* parts.garments.find(original.value, {
+  const finding = yield* (yield* Garments).find(original.value, {
     for: 'tray',
     camera: capture.source === 'camera',
   })
   const found = yield* detectionsOf(
-    parts,
     capture,
     finding.garments.map((garment) => ({ garment, sourceKey: capture.originalKey })),
   )

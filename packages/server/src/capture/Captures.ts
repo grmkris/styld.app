@@ -16,34 +16,38 @@ import { Array, Effect, Option, Schema } from 'effect'
 import { usableUpload as wardrobeUpload } from '../wardrobe/Parts.ts'
 import { verdictOf } from './GarmentRules.ts'
 import { capturePolicy } from './Policy.ts'
-import { type Parts, captureHold, enqueueCapture, storedAs, unavailable } from './Parts.ts'
+import { captureHold, enqueueCapture, storedAs, unavailable } from './Shared.ts'
 import type { CaptureRow, DetectionRow, FrameRow } from './Store.ts'
 import { findMoov, videoDurationMs, videoFrameCount } from './VideoContainer.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
-import { identify, priorResult, receiptRow, type Identified } from '../kernel/Receipts.ts'
+import { identify, madeBefore, receiptRow, type Identified } from '../kernel/Receipts.ts'
+import { CaptureStore } from './Store.ts'
+import { WardrobeStore } from '../wardrobe/Store.ts'
+import { Media } from '../kernel/Media.ts'
+import { GarmentVision } from './Providers.ts'
+import { Holds } from '../usage/Holds.ts'
+import { Pacing } from '../kernel/Pacing.ts'
+import type { CaptureServices } from './Shared.ts'
 
 /** A received upload of this account that has not made anything yet (`wardrobe/Parts.ts`). */
-const usableUpload = (parts: Parts, accountId: string, uploadId: string) =>
-  wardrobeUpload(parts.wardrobeStore, accountId, uploadId)
+const usableUpload = (accountId: string, uploadId: string) =>
+  Effect.flatMap(WardrobeStore, (store) => wardrobeUpload(store, accountId, uploadId))
 
 /** The receipt of an operation already run: the same capture for the same meaning, a conflict otherwise.
  * A capture still processing is handed to the queue again, in case the first message never left. */
-const replayed = (parts: Parts, operation: Identified) =>
+const replayed = (operation: Identified) =>
   Effect.gen(function* () {
-    const { accountId, operationId } = operation
-    const prior = yield* priorResult(
-      operation,
-      yield* storedAs(parts.wardrobeStore.findReceipt(accountId, operationId)),
-    )
+    const { accountId } = operation
+    const prior = yield* madeBefore(yield* WardrobeStore, operation)
     if (Option.isNone(prior)) return Option.none<{ readonly captureId: CaptureId }>()
-    const capture = yield* storedAs(parts.store.findCapture(accountId, prior.value))
+    const capture = yield* storedAs((yield* CaptureStore).findCapture(accountId, prior.value))
     // Its credits are held again first (the same hold, so holding twice is once): the first request may have stopped
     // between writing the capture and holding them.
     if (Option.isSome(capture) && capture.value.status === 'processing') {
       const { id, credits } = capture.value
-      yield* parts.holds.reserve({ accountId, hold: captureHold(capture.value), credits })
-      yield* enqueueCapture(parts, id)
+      yield* (yield* Holds).reserve({ accountId, hold: captureHold(capture.value), credits })
+      yield* enqueueCapture(id)
     }
     return Option.some({ captureId: CaptureId.make(prior.value) })
   })
@@ -54,12 +58,13 @@ const mostVideoFrames = 61 * 60
 
 /** The video's real length and frame count, read from its container in the bucket; the browser's word
  * for them is not what is billed. */
-const measureVideo = (parts: Parts, video: { readonly objectKey: string; readonly bytes: number }) =>
+const measureVideo = (video: { readonly objectKey: string; readonly bytes: number }) =>
   Effect.gen(function* () {
+    const { bucket } = yield* Media
     const moov = yield* Effect.tryPromise({
       try: () =>
         findMoov(async (offset, length) => {
-          const object = await parts.bindings.bucket.get(video.objectKey, { range: { offset, length } })
+          const object = await bucket.get(video.objectKey, { range: { offset, length } })
           return object === null ? new Uint8Array() : new Uint8Array(await object.arrayBuffer())
         }, video.bytes),
       catch: unavailable,
@@ -74,11 +79,12 @@ const measureVideo = (parts: Parts, video: { readonly objectKey: string; readonl
 
 /** A capture whose batch failed: the same operation committed after all (its receipt answers), another used one of
  * its uploads, or D1 failed. */
-const createFailure = (parts: Parts, operation: Identified, uploadIds: ReadonlyArray<string>) =>
+const createFailure = (operation: Identified, uploadIds: ReadonlyArray<string>) =>
   Effect.gen(function* () {
-    const earlier = yield* replayed(parts, operation)
+    const earlier = yield* replayed(operation)
     if (Option.isSome(earlier)) return earlier.value
-    const used = yield* Effect.forEach(uploadIds, (uploadId) => storedAs(parts.wardrobeStore.findUpload(uploadId)))
+    const store = yield* WardrobeStore
+    const used = yield* Effect.forEach(uploadIds, (uploadId) => storedAs(store.findUpload(uploadId)))
     return yield* used.some(Option.exists(({ status }) => status === 'used'))
       ? UploadRefused.make({ reason: 'alreadyUsed' })
       : unavailable()
@@ -86,24 +92,26 @@ const createFailure = (parts: Parts, operation: Identified, uploadIds: ReadonlyA
 
 /** Write the capture first, its uploads spent, then hold its credits: every hold has a row its sweep can settle. Past
  * the daily limit the capture is undone and its uploads can be used again. */
-const admit = (parts: Parts, capture: CaptureRow, frames: ReadonlyArray<FrameRow>, operation: Identified) =>
+const admit = (capture: CaptureRow, frames: ReadonlyArray<FrameRow>, operation: Identified) =>
   Effect.gen(function* () {
     const uploadIds = [capture.uploadId, ...frames.map(({ uploadId }) => uploadId)]
-    const written = yield* parts.store.createCapture(capture, frames, yield* receiptRow(operation, capture.id)).pipe(
-      Effect.as(Option.none<{ readonly captureId: CaptureId }>()),
-      Effect.catchTag('StoreUnavailable', () => Effect.map(createFailure(parts, operation, uploadIds), Option.some)),
-    )
+    const written = yield* (yield* CaptureStore)
+      .createCapture(capture, frames, yield* receiptRow(operation, capture.id))
+      .pipe(
+        Effect.as(Option.none<{ readonly captureId: CaptureId }>()),
+        Effect.catchTag('StoreUnavailable', () => Effect.map(createFailure(operation, uploadIds), Option.some)),
+      )
     if (Option.isSome(written)) return written.value
-    yield* parts.holds
+    yield* (yield* Holds)
       .reserve({ accountId: capture.accountId, hold: captureHold(capture), credits: capture.credits })
       .pipe(
         Effect.tapErrorTag('LimitReached', () =>
-          storedAs(parts.store.undoCapture(capture, frames, operation.operationId)).pipe(
-            Effect.ignore({ log: true, message: 'Styld.Capture.admit could not undo a capture past the limit' }),
-          ),
+          storedAs(
+            Effect.flatMap(CaptureStore, (store) => store.undoCapture(capture, frames, operation.operationId)),
+          ).pipe(Effect.ignore({ log: true, message: 'Styld.Capture.admit could not undo a capture past the limit' })),
         ),
       )
-    yield* enqueueCapture(parts, capture.id)
+    yield* enqueueCapture(capture.id)
     return { captureId: CaptureId.make(capture.id) }
   })
 
@@ -143,18 +151,18 @@ const baseCapture = (
 
 /** The import a capture joins: that of the account's capture it names, which starts one when it has none. A capture
  * that is gone or another account's names none. */
-const importOf = (parts: Parts, accountId: string, first: string | undefined) =>
+const importOf = (accountId: string, first: string | undefined) =>
   Effect.gen(function* () {
     if (first === undefined) return null
-    const found = yield* storedAs(parts.store.findCapture(accountId, first))
+    const found = yield* storedAs((yield* CaptureStore).findCapture(accountId, first))
     if (Option.isNone(found)) return null
     if (found.value.importId !== null) return found.value.importId
-    yield* storedAs(parts.store.updateCapture(found.value.id, { importId: found.value.id }))
+    yield* storedAs((yield* CaptureStore).updateCapture(found.value.id, { importId: found.value.id }))
     return found.value.id
   })
 
 /** Creating captures: photos from the picker or the camera, and videos with their stills. */
-export const creating = (parts: Parts) => ({
+export const creating = Effect.map(Effect.context<CaptureServices>(), (context) => ({
   createCapture: Effect.fn('Styld.Capture.create')(function* (input: CreateCapture) {
     const { accountId } = yield* CurrentAccount
     const operation = yield* identify({
@@ -163,9 +171,9 @@ export const creating = (parts: Parts) => ({
       command: 'createCapture',
       input: [input.uploadId, input.source, input.side ?? null, input.pairsWith ?? null, input.importOf ?? null],
     })
-    const earlier = yield* replayed(parts, operation)
+    const earlier = yield* replayed(operation)
     if (Option.isSome(earlier)) return earlier.value
-    const upload = yield* usableUpload(parts, accountId, input.uploadId)
+    const upload = yield* usableUpload(accountId, input.uploadId)
     if (!upload.contentType.startsWith('image/')) return yield* UploadRefused.make({ reason: 'wrongType' })
     const capture: CaptureRow = {
       ...baseCapture(accountId, yield* newId('cp'), upload, yield* nowDate),
@@ -173,11 +181,11 @@ export const creating = (parts: Parts) => ({
       source: input.source,
       side: input.side ?? null,
       pairsWith: input.pairsWith ?? null,
-      importId: yield* importOf(parts, accountId, input.importOf),
+      importId: yield* importOf(accountId, input.importOf),
       credits: prices.photo,
     }
-    return yield* admit(parts, capture, [], operation)
-  }),
+    return yield* admit(capture, [], operation)
+  }, Effect.provide(context)),
   createVideoCapture: Effect.fn('Styld.Capture.createVideo')(function* (input: CreateVideoCapture) {
     const { accountId } = yield* CurrentAccount
     const operation = yield* identify({
@@ -186,14 +194,14 @@ export const creating = (parts: Parts) => ({
       command: 'createVideoCapture',
       input: [input.videoUploadId, input.stills.map(({ uploadId }) => uploadId), input.importOf ?? null],
     })
-    const earlier = yield* replayed(parts, operation)
+    const earlier = yield* replayed(operation)
     if (Option.isSome(earlier)) return earlier.value
-    const video = yield* usableUpload(parts, accountId, input.videoUploadId)
+    const video = yield* usableUpload(accountId, input.videoUploadId)
     if (!video.contentType.startsWith('video/')) return yield* UploadRefused.make({ reason: 'wrongType' })
-    const uploads = yield* Effect.forEach(input.stills, (still) => usableUpload(parts, accountId, still.uploadId))
+    const uploads = yield* Effect.forEach(input.stills, (still) => usableUpload(accountId, still.uploadId))
     if (uploads.some(({ contentType }) => !contentType.startsWith('image/')))
       return yield* UploadRefused.make({ reason: 'wrongType' })
-    const measured = yield* measureVideo(parts, video)
+    const measured = yield* measureVideo(video)
     const id = yield* newId('cp')
     const capture: CaptureRow = {
       ...baseCapture(accountId, id, video, yield* nowDate),
@@ -203,7 +211,7 @@ export const creating = (parts: Parts) => ({
       frameCount: measured.frameCount,
       width: input.width,
       height: input.height,
-      importId: yield* importOf(parts, accountId, input.importOf),
+      importId: yield* importOf(accountId, input.importOf),
       // Priced by its measured length: a 30-second part of a long video is 5 credits.
       credits: Math.max(1, Math.ceil(measured.durationMs / 30_000)) * prices.videoHalfMinute,
     }
@@ -215,9 +223,9 @@ export const creating = (parts: Parts) => ({
       atMs: still.atMs,
       sharpness: still.sharpness,
     })).map((frame, idx) => ({ ...frame, idx }))
-    return yield* admit(parts, capture, frames, operation)
-  }),
-})
+    return yield* admit(capture, frames, operation)
+  }, Effect.provide(context)),
+}))
 
 const detectionView = (row: DetectionRow, sightings: number) => ({
   id: row.id,
@@ -258,11 +266,11 @@ const trayCards = (open: {
 }
 
 /** The tray: what waits for the person, and today's allowance. */
-export const reading = (parts: Parts) => ({
+export const reading = Effect.map(Effect.context<CaptureServices>(), (context) => ({
   tray: Effect.fn('Styld.Capture.tray')(function* () {
     const { accountId } = yield* CurrentAccount
-    const open = yield* storedAs(parts.store.tray(accountId))
-    const remaining = yield* parts.holds.remaining(accountId)
+    const open = yield* storedAs((yield* CaptureStore).tray(accountId))
+    const remaining = yield* (yield* Holds).remaining(accountId)
     // Only the service writes these rows, through the same schemas; a row that does not decode is a bug.
     return yield* Schema.decodeUnknownEffect(Tray)({
       captures: trayCards(open).map(({ capture, detections }) => ({
@@ -276,27 +284,27 @@ export const reading = (parts: Parts) => ({
       })),
       allowance: { remaining, daily: dailyCredits },
     }).pipe(Effect.orDie)
-  }),
+  }, Effect.provide(context)),
   /** Show each other sighting of a garment on its own card again: the import took different garments for one. */
   split: Effect.fn('Styld.Capture.split')(function* (detectionId: string, operationId: OperationId) {
     const { accountId } = yield* CurrentAccount
     const split = Effect.gen(function* () {
-      if (!(yield* storedAs(parts.store.split(accountId, detectionId)))) return yield* NotFound.make({})
+      if (!(yield* storedAs((yield* CaptureStore).split(accountId, detectionId)))) return yield* NotFound.make({})
     })
     yield* once(
-      parts.wardrobeStore,
+      yield* WardrobeStore,
       { accountId, operationId, command: 'splitDetection', input: detectionId },
       { replay: () => Effect.void, run: Effect.as(split, [undefined, detectionId] as const) },
     )
-  }),
+  }, Effect.provide(context)),
   check: Effect.fn('Styld.Capture.check')(function* (
     frame: Uint8Array,
     previous: Option.Option<Uint8Array>,
     layout: 'held' | 'flat',
   ) {
     // Each check calls Clef, at the account's pace.
-    yield* parts.pacing.account('check')
-    const vision = parts.vision
+    yield* (yield* Pacing).account('check')
+    const vision = yield* GarmentVision
     const policy = capturePolicy
     const answer = yield* vision
       .checkHeld(
@@ -311,5 +319,5 @@ export const reading = (parts: Parts) => ({
       samePrevious: answer.samePrevious >= policy.samePieceConfidence,
       holding: answer.holding >= policy.heldConfidence,
     } satisfies HeldCheckAnswer
-  }),
-})
+  }, Effect.provide(context)),
+}))

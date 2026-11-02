@@ -1,33 +1,29 @@
 import { Context, Effect, Layer } from 'effect'
-import { Media } from '../kernel/Media.ts'
-import { PieceQueue } from '../wardrobe/Processing.ts'
 import { creating, reading } from './Captures.ts'
 import { retrying } from './Retrying.ts'
 import { matching } from './Matching.ts'
-import { makeParts } from './Parts.ts'
 import { processing } from './Processing.ts'
 import { picturing } from './Pictures.ts'
 import { redrawing } from './Redraw.ts'
 import { askingTurns, turning } from './Turns.ts'
 import { detectionPictures, reviewing } from './Review.ts'
 
-/** Every capture operation over the application's database, media and piece queue, with the providers, credits and
- * call counter it was built with (`Parts.ts`). Callers provide only `CurrentAccount` (for a person's operations). */
+/** Every capture operation, each group built over the services it yields (`Shared.ts` `CaptureServices`): the
+ * application's database, media and piece queue, the providers, credits, pacing and call counter. Callers provide only
+ * `CurrentAccount` (for a person's operations). */
 const make = Effect.gen(function* () {
-  const media = yield* Media
-  const parts = yield* makeParts({ bucket: media.bucket, queue: yield* PieceQueue })
   return {
-    ...creating(parts),
-    ...reading(parts),
-    ...retrying(parts),
-    ...reviewing(parts),
-    ...detectionPictures(parts),
-    ...processing(parts),
-    ...matching(parts),
-    ...picturing(parts),
-    ...redrawing(parts),
-    ...turning(parts),
-    ...askingTurns(parts),
+    ...(yield* creating),
+    ...(yield* reading),
+    ...(yield* retrying),
+    ...(yield* reviewing),
+    ...(yield* detectionPictures),
+    ...(yield* processing),
+    ...(yield* matching),
+    ...(yield* picturing),
+    ...(yield* redrawing),
+    ...(yield* turning),
+    ...(yield* askingTurns),
   }
 })
 

@@ -9,7 +9,7 @@ import {
   Unavailable,
 } from '@styld/protocol'
 import { Array, Context, Effect, Layer, Option, Schema } from 'effect'
-import { shownItem } from '../boards/Parts.ts'
+import { shownItem } from '../boards/Shared.ts'
 import { type BoardItemRow, type BoardRow, type BoardStore, boardStore, type PinRow } from '../boards/Store.ts'
 import { type LookRow, type LookStore, lookStore } from '../looks/Store.ts'
 import { Checks } from '../safety/Checks.ts'
@@ -102,7 +102,7 @@ const publicItems = (seen: Seen, items: ReadonlyArray<BoardItemRow>, held: Reado
 interface Reader {
   readonly db: Database['Service']
   readonly store: PublicStore
-  readonly boards: BoardStore
+  readonly boards: BoardStore['Service']
   readonly looks: LookStore
   readonly social: SocialStore
   readonly checks: Checks['Service']

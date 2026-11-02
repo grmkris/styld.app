@@ -16,24 +16,27 @@ import {
   type WearAgain,
 } from '@styld/protocol'
 import { Context, Effect, Layer, Option, Predicate, Schema } from 'effect'
-import { captureKey, enqueueMatch, readObject, storedAs, unavailable, writeObject } from '../capture/Parts.ts'
+import { captureKey, enqueueMatch, readObject, storedAs, unavailable, writeObject } from '../capture/Shared.ts'
 import type { CaptureRow, DetectionRow } from '../capture/Store.ts'
 import { Boards } from '../boards/Boards.ts'
 import { Looks } from '../looks/Looks.ts'
-import { receivedUpload, type Uploads } from '../mcp/ImageImport.ts'
+import { receivedUpload } from '../mcp/ImageImport.ts'
 import { deliverImage } from '../wardrobe/Delivery.ts'
 import { accountPiece, usableUpload as wardrobeUpload } from '../wardrobe/Parts.ts'
 import type { ShownImage } from '../wardrobe/Http.ts'
 import type { ImageSize } from '../wardrobe/Media.ts'
 import { cutOutPerson } from './Cutout.ts'
-import { finding, makePhotoParts, type PhotoParts, photoHold, photoPrefix } from './Finding.ts'
+import { finding, type PhotoServices, photoHold, photoPrefix } from './Finding.ts'
 import { PieceQueue } from '../wardrobe/Processing.ts'
 import { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import type { GarmentRow, PhotoRow } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
-import { deleting, identify, once, priorResult, receiptRow, type Identified } from '../kernel/Receipts.ts'
+import { deleting, identify, madeBefore, once, receiptRow, type Identified } from '../kernel/Receipts.ts'
 import { deleteAfterRows, keysUnder, Media } from '../kernel/Media.ts'
+import { WardrobeStore } from '../wardrobe/Store.ts'
+import { PhotoStore } from './Store.ts'
+import { Holds } from '../usage/Holds.ts'
 
 // My Gallery for the website (owner, 2026-10-31): adding a photo spends its upload and holds a credit while Styld finds
 // its garments; the person then confirms or corrects each match, marks favourites, and may delete a photo, which takes
@@ -61,22 +64,22 @@ const toPhoto = (row: PhotoRow, garments: ReadonlyArray<GarmentRow>) =>
   }).pipe(Effect.orDie)
 
 /** Photos as the protocol shows them, each with its garments. */
-const photosOf = (parts: PhotoParts, rows: ReadonlyArray<PhotoRow>) =>
+const photosOf = (rows: ReadonlyArray<PhotoRow>) =>
   Effect.gen(function* () {
-    const garments = yield* storedAs(parts.photos.garmentsOf(rows.map(({ id }) => id)))
+    const garments = yield* storedAs((yield* PhotoStore).garmentsOf(rows.map(({ id }) => id)))
     return yield* Effect.forEach(rows, (row) => toPhoto(row, garments))
   })
 
 /** The account's own photo, or `NotFound`, as if another account's did not exist. */
-const ownPhoto = (parts: PhotoParts, accountId: string, photoId: string) =>
+const ownPhoto = (accountId: string, photoId: string) =>
   Effect.flatMap(
-    storedAs(parts.photos.findPhoto(accountId, photoId)),
+    storedAs(Effect.flatMap(PhotoStore, (store) => store.findPhoto(accountId, photoId))),
     Option.match({ onNone: () => Effect.fail(NotFound.make({})), onSome: Effect.succeed }),
   )
 
 /** The account's own ready piece, or `NotFound` (`wardrobe/Parts.ts`). */
-const ownPiece = (parts: PhotoParts, accountId: string, pieceId: string) =>
-  accountPiece(parts.capture.wardrobeStore, accountId, pieceId).pipe(
+const ownPiece = (accountId: string, pieceId: string) =>
+  Effect.flatMap(WardrobeStore, (store) => accountPiece(store, accountId, pieceId)).pipe(
     Effect.filterOrFail(
       (piece) => piece.status === 'ready',
       () => NotFound.make({}),
@@ -84,44 +87,40 @@ const ownPiece = (parts: PhotoParts, accountId: string, pieceId: string) =>
   )
 
 /** A received image upload of this account that has not made anything yet (`wardrobe/Parts.ts`). */
-const usableUpload = (parts: PhotoParts, accountId: string, uploadId: string) =>
-  wardrobeUpload(parts.capture.wardrobeStore, accountId, uploadId).pipe(
+const usableUpload = (accountId: string, uploadId: string) =>
+  Effect.flatMap(WardrobeStore, (store) => wardrobeUpload(store, accountId, uploadId)).pipe(
     Effect.filterOrFail(
       ({ contentType }) => contentType.startsWith('image/'),
       () => UploadRefused.make({ reason: 'wrongType' }),
     ),
   )
 
-const enqueue = (parts: PhotoParts, photoId: string) =>
-  Effect.tryPromise({
-    try: () => parts.capture.bindings.queue.send({ _tag: 'FindGarments', photoId }),
-    catch: unavailable,
-  })
+const enqueue = (photoId: string) =>
+  Effect.flatMap(PieceQueue, (queue) =>
+    Effect.tryPromise({ try: () => queue.send({ _tag: 'FindGarments', photoId }), catch: unavailable }),
+  )
 
 /** The photo an operation already made, for the same upload; a conflict for another. A photo still being found goes
  * to the queue again, in case the first message never left. */
-const replayed = (parts: PhotoParts, operation: Identified) =>
+const replayed = (operation: Identified) =>
   Effect.gen(function* () {
-    const { accountId, operationId } = operation
-    const prior = yield* priorResult(
-      operation,
-      yield* storedAs(parts.capture.wardrobeStore.findReceipt(accountId, operationId)),
-    )
-    if (Option.isNone(prior)) return Option.none<PhotoRow>()
-    const photo = yield* ownPhoto(parts, accountId, prior.value).pipe(Effect.mapError(unavailable))
+    const made = yield* madeBefore(yield* WardrobeStore, operation)
+    if (Option.isNone(made)) return Option.none<PhotoRow>()
+    const { accountId } = operation
+    const photo = yield* ownPhoto(accountId, made.value).pipe(Effect.mapError(unavailable))
     // Its credit is held again first (the same hold): the first request may have stopped before holding it.
     if (photo.status === 'finding') {
-      yield* parts.capture.holds.reserve({ accountId, hold: photoHold(photo.id), credits: prices.galleryPhoto })
-      yield* enqueue(parts, photo.id)
+      yield* (yield* Holds).reserve({ accountId, hold: photoHold(photo.id), credits: prices.galleryPhoto })
+      yield* enqueue(photo.id)
     }
     return Option.some(photo)
   })
 
 /** Hold the credit, then write the photo and spend its upload; give the credit back if the write fails. */
-const added = (parts: PhotoParts, operation: Identified, input: AddPhoto) =>
+const added = (operation: Identified, input: AddPhoto) =>
   Effect.gen(function* () {
     const { accountId } = operation
-    const upload = yield* usableUpload(parts, accountId, input.uploadId)
+    const upload = yield* usableUpload(accountId, input.uploadId)
     const id = yield* newId('ph')
     const at = yield* nowDate
     const row: PhotoRow = {
@@ -139,24 +138,24 @@ const added = (parts: PhotoParts, operation: Identified, input: AddPhoto) =>
     }
     // The photo first, then its credit: every hold has a row its sweep can settle. Past the daily limit the photo is
     // undone and its upload can be used again.
-    yield* storedAs(parts.photos.addPhoto(row, yield* receiptRow(operation, id)))
-    yield* parts.capture.holds
+    yield* storedAs((yield* PhotoStore).addPhoto(row, yield* receiptRow(operation, id)))
+    yield* (yield* Holds)
       .reserve({ accountId, hold: photoHold(id), credits: prices.galleryPhoto })
       .pipe(
         Effect.tapErrorTag('LimitReached', () =>
-          storedAs(parts.photos.undoPhoto(row, operation.operationId)).pipe(
+          storedAs(Effect.flatMap(PhotoStore, (store) => store.undoPhoto(row, operation.operationId))).pipe(
             Effect.ignore({ log: true, message: 'Styld.Photos.add could not undo a photo past the limit' }),
           ),
         ),
       )
-    yield* enqueue(parts, id)
+    yield* enqueue(id)
     return row
   })
 
 /** The photo's objects, once its row is gone: its original upload, and everything under its own prefix. */
-const deleteObjects = (parts: PhotoParts, row: PhotoRow) =>
+const deleteObjects = (row: PhotoRow) =>
   Effect.gen(function* () {
-    const bucket = parts.capture.bindings.bucket
+    const bucket = (yield* Media).bucket
     const listed = yield* keysUnder(bucket, photoPrefix(row.accountId, row.id)).pipe(Effect.orElseSucceed(() => []))
     yield* deleteAfterRows(bucket, [row.originalKey, ...listed], 'photo')
   })
@@ -164,15 +163,15 @@ const deleteObjects = (parts: PhotoParts, row: PhotoRow) =>
 /** A garment offered to the review tray, as a capture of its own (source `photos`, no credit). Its picture is copied
  * under the capture, so the photo and the tray never share an object; a cut-out is compared with the wardrobe there,
  * so the tray asks "Already in your wardrobe?" rather than adding a silent duplicate. */
-const offered = (parts: PhotoParts, photo: PhotoRow, garment: GarmentRow) =>
+const offered = (photo: PhotoRow, garment: GarmentRow) =>
   Effect.gen(function* () {
     const captureId = yield* newId('cp')
     const detectionId = yield* newId('dt')
-    const bytes = yield* readObject(parts.capture, garment.cutoutKey)
+    const bytes = yield* readObject(garment.cutoutKey)
     if (Option.isNone(bytes)) return yield* unavailable()
     const contentType = 'image/png'
     const key = captureKey(photo.accountId, captureId, `${detectionId}.png`)
-    yield* writeObject(parts.capture, key, bytes.value, contentType)
+    yield* writeObject(key, bytes.value, contentType)
     const at = yield* nowDate
     const capture = {
       id: captureId,
@@ -228,17 +227,16 @@ const offered = (parts: PhotoParts, photo: PhotoRow, garment: GarmentRow) =>
       matchClaimedAt: null,
       createdAt: at,
     } satisfies DetectionRow
-    yield* storedAs(parts.photos.offerGarment(garment.id, capture, detection))
-    if (detection.matching === 'waiting') yield* enqueueMatch(parts.capture, captureId)
+    yield* storedAs((yield* PhotoStore).offerGarment(garment.id, capture, detection))
+    if (detection.matching === 'waiting') yield* enqueueMatch(captureId)
   })
 
 /** Reading and adding photos, and the queue's work. */
-const reading = (parts: PhotoParts) => ({
-  ...finding(parts),
+const reading = Effect.map(Effect.context<PhotoServices>(), (context) => ({
   listPhotos: Effect.fn('Styld.Photos.list')(function* () {
     const { accountId } = yield* CurrentAccount
-    return yield* photosOf(parts, yield* storedAs(parts.photos.listPhotos(accountId)))
-  }),
+    return yield* photosOf(yield* storedAs((yield* PhotoStore).listPhotos(accountId)))
+  }, Effect.provide(context)),
   addPhoto: Effect.fn('Styld.Photos.add')(function* (input: AddPhoto) {
     const { accountId } = yield* CurrentAccount
     const operation = yield* identify({
@@ -247,111 +245,111 @@ const reading = (parts: PhotoParts) => ({
       command: 'addPhoto',
       input: [input.uploadId],
     })
-    const earlier = yield* replayed(parts, operation)
-    const row = Option.isSome(earlier) ? earlier.value : yield* added(parts, operation, input)
+    const earlier = yield* replayed(operation)
+    const row = Option.isSome(earlier) ? earlier.value : yield* added(operation, input)
     return yield* toPhoto(row, [])
-  }),
+  }, Effect.provide(context)),
   getPhoto: Effect.fn('Styld.Photos.get')(function* (photoId: string) {
     const { accountId } = yield* CurrentAccount
-    const [photo] = yield* photosOf(parts, [yield* ownPhoto(parts, accountId, photoId)])
+    const [photo] = yield* photosOf([yield* ownPhoto(accountId, photoId)])
     return photo ?? (yield* NotFound.make({}))
-  }),
-})
+  }, Effect.provide(context)),
+}))
 
 /** Changing a photo: favourite, delete, match, offer and wear again. */
-const changing = (parts: PhotoParts, looks: Looks['Service']) => ({
+const changing = Effect.map(Effect.context<PhotoServices>(), (context) => ({
   updatePhoto: Effect.fn('Styld.Photos.update')(function* (photoId: string, input: { readonly favourite: boolean }) {
     const { accountId } = yield* CurrentAccount
-    const updated = yield* storedAs(parts.photos.setFavourite(accountId, photoId, input.favourite, yield* nowDate))
+    const updated = yield* storedAs(
+      (yield* PhotoStore).setFavourite(accountId, photoId, input.favourite, yield* nowDate),
+    )
     if (Option.isNone(updated)) return yield* NotFound.make({})
-    const [photo] = yield* photosOf(parts, [updated.value])
+    const [photo] = yield* photosOf([updated.value])
     return photo ?? (yield* NotFound.make({}))
-  }),
+  }, Effect.provide(context)),
   /** Delete a photo: its row and garments first, then its objects. A repeat of the same delete answers done. */
   deletePhoto: Effect.fn('Styld.Photos.delete')(function* (photoId: string, operationId: OperationId) {
     const { accountId } = yield* CurrentAccount
     const deletion = { accountId, operationId, command: 'deletePhoto', target: photoId }
-    yield* deleting(parts.capture.wardrobeStore, deletion, (receipt) =>
+    yield* deleting(yield* WardrobeStore, deletion, (receipt) =>
       Effect.gen(function* () {
-        const deleted = yield* storedAs(parts.photos.deletePhoto(accountId, photoId, receipt))
+        const deleted = yield* storedAs((yield* PhotoStore).deletePhoto(accountId, photoId, receipt))
         if (Option.isNone(deleted)) return yield* NotFound.make({})
-        yield* deleteObjects(parts, deleted.value)
+        yield* deleteObjects(deleted.value)
       }),
     )
-  }),
+  }, Effect.provide(context)),
   matchGarment: Effect.fn('Styld.Photos.match')(function* (photoId: string, garmentId: string, input: MatchGarment) {
     const { accountId } = yield* CurrentAccount
-    yield* ownPhoto(parts, accountId, photoId)
-    if (input.pieceId !== null) yield* ownPiece(parts, accountId, input.pieceId)
-    if (!(yield* storedAs(parts.photos.matchGarment(accountId, photoId, garmentId, input.pieceId))))
+    yield* ownPhoto(accountId, photoId)
+    if (input.pieceId !== null) yield* ownPiece(accountId, input.pieceId)
+    if (!(yield* storedAs((yield* PhotoStore).matchGarment(accountId, photoId, garmentId, input.pieceId))))
       return yield* NotFound.make({})
-    const [photo] = yield* photosOf(parts, [yield* ownPhoto(parts, accountId, photoId)])
+    const [photo] = yield* photosOf([yield* ownPhoto(accountId, photoId)])
     return photo ?? (yield* NotFound.make({}))
-  }),
+  }, Effect.provide(context)),
   /** Offer a garment to the review tray, once: offering it again answers the photo as it is. */
   offerGarment: Effect.fn('Styld.Photos.offer')(function* (photoId: string, garmentId: string) {
     const { accountId } = yield* CurrentAccount
-    const photo = yield* ownPhoto(parts, accountId, photoId)
-    const garment = (yield* storedAs(parts.photos.garmentsOf([photoId]))).find(({ id }) => id === garmentId)
+    const photo = yield* ownPhoto(accountId, photoId)
+    const garment = (yield* storedAs((yield* PhotoStore).garmentsOf([photoId]))).find(({ id }) => id === garmentId)
     if (garment === undefined) return yield* NotFound.make({})
-    if (garment.state !== 'offered') yield* offered(parts, photo, garment)
-    const [shown] = yield* photosOf(parts, [photo])
+    if (garment.state !== 'offered') yield* offered(photo, garment)
+    const [shown] = yield* photosOf([photo])
     return shown ?? (yield* NotFound.make({}))
-  }),
+  }, Effect.provide(context)),
   /** "Wear it again": the photo's confirmed pieces as a look, remembered on the photo. Repeating the operation answers
    * the same look. */
   wearAgain: Effect.fn('Styld.Photos.wearAgain')(function* (photoId: string, input: WearAgain) {
     const { accountId } = yield* CurrentAccount
-    yield* ownPhoto(parts, accountId, photoId)
-    const garments = yield* storedAs(parts.photos.garmentsOf([photoId]))
+    yield* ownPhoto(accountId, photoId)
+    const garments = yield* storedAs((yield* PhotoStore).garmentsOf([photoId]))
     const pieceIds = [
       ...new Set(
         garments.flatMap(({ state, pieceId }) => (state === 'confirmed' && pieceId !== null ? [pieceId] : [])),
       ),
     ].slice(0, maximumLookPieces)
     if (pieceIds.length === 0) return yield* NothingConfirmed.make({})
-    const look = yield* looks
+    const look = yield* (yield* Looks)
       .createLook({
         operationId: input.operationId,
         name: input.name,
         pieceIds: pieceIds.map((id) => PieceId.make(id)),
       })
       .pipe(Effect.mapError((error) => (Predicate.isTagged(error, 'OperationConflict') ? error : unavailable())))
-    yield* storedAs(parts.photos.setLook(accountId, photoId, look.id, yield* nowDate))
+    yield* storedAs((yield* PhotoStore).setLook(accountId, photoId, look.id, yield* nowDate))
     return look
-  }),
+  }, Effect.provide(context)),
+}))
+
+/** Showing photos: a piece's, and their pictures. */
+const showing = Effect.map(Effect.context<PhotoServices>(), (context) => ({
   piecePhotos: Effect.fn('Styld.Photos.ofPiece')(function* (pieceId: string) {
     const { accountId } = yield* CurrentAccount
-    yield* ownPiece(parts, accountId, pieceId)
-    return yield* photosOf(parts, yield* storedAs(parts.photos.photosOfPiece(accountId, pieceId)))
-  }),
+    yield* ownPiece(accountId, pieceId)
+    return yield* photosOf(yield* storedAs((yield* PhotoStore).photosOfPiece(accountId, pieceId)))
+  }, Effect.provide(context)),
   /** One of the account's photos, resized: none when it is not theirs or is gone. */
   photoImage: Effect.fn('Styld.Photos.image')(function* (photoId: string, size: ImageSize) {
     const { accountId } = yield* CurrentAccount
-    const photo = yield* storedAs(parts.photos.findPhoto(accountId, photoId))
+    const photo = yield* storedAs((yield* PhotoStore).findPhoto(accountId, photoId))
     if (Option.isNone(photo)) return Option.none<ShownImage>()
     const { originalKey: key, contentType } = photo.value
-    const image = yield* deliverImage(parts.images, { key, contentType }, size).pipe(Effect.mapError(unavailable))
+    const image = yield* deliverImage(yield* Media, { key, contentType }, size).pipe(Effect.mapError(unavailable))
     return Option.map(image, (delivered): ShownImage => ({ ...delivered, version: `${photoId}.${size}` }))
-  }),
+  }, Effect.provide(context)),
   /** A garment found in one of the account's photos, at the grid's size. */
   garmentImage: Effect.fn('Styld.Photos.garmentImage')(function* (photoId: string, garmentId: string) {
     const { accountId } = yield* CurrentAccount
-    if (Option.isNone(yield* storedAs(parts.photos.findPhoto(accountId, photoId)))) return Option.none<ShownImage>()
-    const garment = (yield* storedAs(parts.photos.garmentsOf([photoId]))).find(({ id }) => id === garmentId)
+    if (Option.isNone(yield* storedAs((yield* PhotoStore).findPhoto(accountId, photoId))))
+      return Option.none<ShownImage>()
+    const garment = (yield* storedAs((yield* PhotoStore).garmentsOf([photoId]))).find(({ id }) => id === garmentId)
     if (garment === undefined) return Option.none<ShownImage>()
     const stored = { key: garment.cutoutKey, contentType: 'image/png' }
-    const image = yield* deliverImage(parts.images, stored, 'thumb').pipe(Effect.mapError(unavailable))
+    const image = yield* deliverImage(yield* Media, stored, 'thumb').pipe(Effect.mapError(unavailable))
     return Option.map(image, (delivered): ShownImage => ({ ...delivered, version: garmentId }))
-  }),
-})
-
-/** What a photo's page leans on beyond its own store: looks to wear it again, boards and uploads to pin it. */
-interface PhotoServices {
-  readonly looks: Looks['Service']
-  readonly boards: Pick<Boards['Service'], 'addPhotoImage' | 'addPins'>
-  readonly uploads: Uploads
-}
+  }, Effect.provide(context)),
+}))
 
 /** The board operations a photo goes on a board under: keyed by the photo and the board, so putting the photo on the
  * same board again, whatever the request's id, answers the same picture and the same look pin. Ids are at most 64
@@ -362,14 +360,14 @@ const boardOperations = (photoId: string, boardId: string) => ({
 })
 
 /** The photo's picture for a board (the person cut out of it once there is one) as a received upload. */
-const photoUpload = (parts: PhotoParts, services: PhotoServices, photo: PhotoRow) =>
+const photoUpload = (photo: PhotoRow) =>
   Effect.gen(function* () {
-    const bytes = yield* readObject(parts.capture, photo.cutoutKey ?? photo.originalKey)
+    const bytes = yield* readObject(photo.cutoutKey ?? photo.originalKey)
     if (Option.isNone(bytes)) return yield* unavailable()
     const contentType = yield* Schema.decodeUnknownEffect(ImageType)(
       photo.cutoutKey === null ? photo.contentType : 'image/png',
     ).pipe(Effect.mapError(unavailable))
-    return yield* receivedUpload(services.uploads, { contentType, bytes: bytes.value }).pipe(
+    return yield* receivedUpload(yield* Wardrobe, { contentType, bytes: bytes.value }).pipe(
       Effect.mapError(unavailable),
     )
   })
@@ -381,58 +379,53 @@ const onBoard = <A, E>(effect: Effect.Effect<A, E, CurrentAccount>) =>
 /** A photo for collages: the person cut out of it, and putting it on a board as its own picture (the cut-out once
  * there is one), held back from visitors, with the look worn from it. A retried request whose picture is on the board
  * already answers as done. */
-const boarding = (parts: PhotoParts, services: PhotoServices) => ({
+const boarding = Effect.map(Effect.context<PhotoServices>(), (context) => ({
   /** Cut the person out of the photo for collages, once; free. */
   cutOut: Effect.fn('Styld.Photos.cutOut')(function* (photoId: string) {
     const { accountId } = yield* CurrentAccount
-    yield* cutOutPerson(parts, yield* ownPhoto(parts, accountId, photoId))
-    const [shown] = yield* photosOf(parts, [yield* ownPhoto(parts, accountId, photoId)])
+    yield* cutOutPerson(yield* ownPhoto(accountId, photoId))
+    const [shown] = yield* photosOf([yield* ownPhoto(accountId, photoId)])
     return shown ?? (yield* NotFound.make({}))
-  }),
+  }, Effect.provide(context)),
   /** Put the photo on one of the person's boards, once: a repeat of the operation answers done, and the photo's
    * picture is uploaded only until the board holds it. */
   addToBoard: Effect.fn('Styld.Photos.addToBoard')(function* (photoId: string, input: AddPhotoToBoard) {
     const { accountId } = yield* CurrentAccount
-    const photo = yield* ownPhoto(parts, accountId, photoId)
+    const photo = yield* ownPhoto(accountId, photoId)
     const onBoardOnce = Effect.gen(function* () {
       const operations = boardOperations(photo.id, input.boardId)
-      const placed = yield* storedAs(parts.capture.wardrobeStore.findReceipt(accountId, operations.image))
+      const placed = yield* storedAs((yield* WardrobeStore).findReceipt(accountId, operations.image))
       if (Option.isNone(placed)) {
-        const uploadId = yield* photoUpload(parts, services, photo)
-        yield* onBoard(services.boards.addPhotoImage(input.boardId, { operationId: operations.image, uploadId }))
+        const uploadId = yield* photoUpload(photo)
+        yield* onBoard((yield* Boards).addPhotoImage(input.boardId, { operationId: operations.image, uploadId }))
       }
       if (photo.lookId !== null)
         yield* onBoard(
-          services.boards.addPins(input.boardId, {
+          (yield* Boards).addPins(input.boardId, {
             operationId: operations.look,
             lookIds: [LookId.make(photo.lookId)],
           }),
         )
     })
     yield* once(
-      parts.capture.wardrobeStore,
+      yield* WardrobeStore,
       { accountId, operationId: input.operationId, command: 'addPhotoToBoard', input: [photoId, input.boardId] },
       { replay: () => Effect.void, run: Effect.as(onBoardOnce, [undefined, photoId] as const) },
     )
-  }),
-})
+  }, Effect.provide(context)),
+}))
 
-const operations = (parts: PhotoParts, services: PhotoServices) => ({
-  ...reading(parts),
-  ...changing(parts, services.looks),
-  ...boarding(parts, services),
-})
-
-/** My Gallery over the application's database, media and piece queue, with the looks, boards and uploads it leans
- * on. Callers provide only `CurrentAccount`. */
+/** My Gallery over the services its operations yield (`PhotoServices`): its own store, capture's stores and garment
+ * pipeline, media, the piece queue, credits, and the looks, boards and uploads it leans on. Callers provide only
+ * `CurrentAccount`. */
 const make = Effect.gen(function* () {
-  const media = yield* Media
-  const parts = yield* makePhotoParts({
-    bucket: media.bucket,
-    images: media.images,
-    queue: yield* PieceQueue,
-  })
-  return operations(parts, { looks: yield* Looks, boards: yield* Boards, uploads: yield* Wardrobe })
+  return {
+    ...(yield* finding),
+    ...(yield* reading),
+    ...(yield* changing),
+    ...(yield* showing),
+    ...(yield* boarding),
+  }
 })
 
 /** My Gallery for `CurrentAccount`, and its queue work. */

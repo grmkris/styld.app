@@ -108,6 +108,13 @@ export const receiptRows = (db: Database) => ({
 })
 export type ReceiptRows = ReturnType<typeof receiptRows>
 
+/** What the operation already made, by the receipt stored under its id (`priorResult`). */
+export const madeBefore = (receipts: ReceiptRows, operation: Identified) =>
+  Effect.flatMap(
+    receipts.findReceipt(operation.accountId, operation.operationId).pipe(Effect.mapError(unavailable)),
+    (receipt) => priorResult(operation, receipt),
+  )
+
 /** A receipt as stored, for the batch of the operation it records. */
 export type ReceiptRow = typeof operationReceipts.$inferSelect
 

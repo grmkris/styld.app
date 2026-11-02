@@ -2,6 +2,8 @@ import { provideAllCatalogs } from '@styld/i18n/all'
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import * as AlchemyHttp from 'alchemy/Http'
 import { ProofDispatchSink } from '@styld/auth'
+import { Proofs } from '@yielded/auth'
+import type { HttpBodyError } from 'effect/http/HttpBody'
 import { RuntimeContext } from 'alchemy/RuntimeContext'
 import { layerCryptoWeb } from '@yielded/auth/WebCrypto'
 import { Context, Effect, Layer, Logger, Record } from 'effect'
@@ -159,6 +161,36 @@ const parts = {
   sweeps: modules.flatMap(({ sweeps }): ReadonlyArray<Sweep<SweepUsesOf<AnyModule>>> => sweeps ?? []),
 }
 
+/** Two types each assignable to the other: a requirement compared by identity, not by shape (service tags of
+ * different services can be assignable one way). */
+type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
+
+/** What the Worker's runtime gives the application's services: the Wallet aggregate (`Holds`) and the runtime
+ * context. */
+type RuntimeServices = Layer.Services<typeof Holds.layer> | RuntimeContext
+
+/** What the HTTP handler leaves to each request: the router `toHttpEffect` provides, the code-request limiter
+ * (`withCodeRequestPolicy`) and the body error a route may answer. */
+type RequestServices =
+  | RuntimeServices
+  | HttpRouter.HttpRouter
+  | HttpRouter.Request<'Error', HttpBodyError>
+  | HttpRouter.Request<'Requires', Proofs.HostIngressLimiter>
+
+type SameAsOneOf<R, Allowed> = Allowed extends unknown ? Same<R, Allowed> : never
+/** The requirements of `R` that are not among `Allowed`, compared by identity. */
+type Unexpected<R, Allowed> = R extends unknown ? (true extends SameAsOneOf<R, Allowed> ? never : R) : never
+
+/** A layer checked to need nothing but `Allowed`: a module whose layer or routes need a service no kernel layer or
+ * module provides is a type error here, not a missing service on the first request. */
+const closed =
+  <Allowed>() =>
+  <K, E, R>(
+    layer: Layer.Layer<K, E, R> &
+      ([Unexpected<R, Allowed>] extends [never] ? unknown : { readonly unprovided: Unexpected<R, Allowed> }),
+  ) =>
+    layer
+
 /** The application over the Worker's bindings, built from the request runtime's environment: every service once, and
  * the HTTP handler over them. */
 const makeApplication =
@@ -166,14 +198,14 @@ const makeApplication =
     Effect.gen(function* () {
       const { kernel, auth, observabilityBase } = yield* kernelOf(bindings, providersFor, env)
       // A module that cannot be built is a broken deployment.
-      const context = yield* Layer.build(servicesOver(kernel)).pipe(Effect.orDie)
+      const context = yield* Layer.build(closed<RuntimeServices>()(servicesOver(kernel))).pipe(Effect.orDie)
       const routes = Layer.mergeAll(apiRoutes(auth, Layer.mergeAll(Layer.empty, ...parts.api)), ...parts.routes).pipe(
         Layer.provide(Layer.succeedContext(context)),
         Layer.provide(AlchemyHttp.Platform),
       )
       const pacing = Context.get(context, Pacing)
       return {
-        handle: yield* HttpRouter.toHttpEffect(routes).pipe(Effect.orDie),
+        handle: yield* HttpRouter.toHttpEffect(closed<RequestServices>()(routes)).pipe(Effect.orDie),
         context,
         observabilityBase,
         allowCodeRequest: (network: string) => pacing.allows('codeRequest', network),

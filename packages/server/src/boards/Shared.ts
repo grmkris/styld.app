@@ -9,22 +9,22 @@ import {
   Unavailable,
 } from '@styld/protocol'
 import { Effect, Match, Option, Schema } from 'effect'
-import type { Looks } from '../looks/Looks.ts'
-import type { Checks } from '../safety/Checks.ts'
-import type { PublicPages } from '../social/Public.ts'
-import { type Store } from '../wardrobe/Store.ts'
+import type { WardrobeStore } from '../wardrobe/Store.ts'
 import type { Database, StoreUnavailable } from '../kernel/Db.ts'
 import type { Media } from '../kernel/Media.ts'
 import { toPiece } from '../wardrobe/Parts.ts'
-import { type BoardItemRow, type BoardPinRow, type BoardRow, type BoardStore, type PinRow } from './Store.ts'
+import { type BoardItemRow, type BoardPinRow, type BoardRow, BoardStore, type PinRow } from './Store.ts'
 import { newId } from '../kernel/Ids.ts'
-import { priorResult, type Identified } from '../kernel/Receipts.ts'
+import { madeBefore, type Identified } from '../kernel/Receipts.ts'
+import { Checks } from '../safety/Checks.ts'
+import { Looks } from '../looks/Looks.ts'
+import { PublicPages } from '../social/Public.ts'
 
 // What the board operations share: the services they work through, how a board is shown, receipts, ownership and new
 // pins.
 
 export const unavailable = () => Unavailable.make({})
-export const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
+export const stored = <A, R>(effect: Effect.Effect<A, StoreUnavailable, R>) => Effect.mapError(effect, unavailable)
 /** How many of its newest pins a board in a list shows. */
 const coverPins = 4
 
@@ -63,25 +63,17 @@ export const itemRow = (item: BoardItem): Omit<BoardItemRow, 'boardId'> => {
   )
 }
 
-/** The services the board operations work through, taken once when the `Boards` layer is built. */
-export interface Parts {
-  readonly db: Database['Service']
-  readonly media: Media['Service']
-  readonly store: BoardStore
-  readonly wardrobeStore: Store
-  readonly checks: Checks['Service']
-  readonly looks: Looks['Service']
-  readonly pages: PublicPages['Service']
-}
+/** The services the board operations work through, provided once by the `Boards` layer. */
+export type BoardServices = Database | Media | BoardStore | WardrobeStore | Checks | Looks | PublicPages
 
 export type PinWithPiece = PinRow
 
 /** The looks these pins hold, by id. */
-const pinnedLooks = (parts: Parts, pins: ReadonlyArray<PinWithPiece>) =>
+const pinnedLooks = (pins: ReadonlyArray<PinWithPiece>) =>
   Effect.gen(function* () {
     const lookIds = [...new Set(pins.flatMap(({ pin }) => (pin.lookId === null ? [] : [pin.lookId])))]
     if (lookIds.length === 0) return new Map<string, Look>()
-    const looks = yield* parts.looks.looksById(lookIds)
+    const looks = yield* (yield* Looks).looksById(lookIds)
     return new Map(looks.map((look) => [look.id, look]))
   })
 
@@ -102,9 +94,9 @@ const shownPin = (row: PinWithPiece, looks: ReadonlyMap<string, Look>) =>
     return shownRow
   })
 
-const shownPins = (parts: Parts, pins: ReadonlyArray<PinWithPiece>) =>
+const shownPins = (pins: ReadonlyArray<PinWithPiece>) =>
   Effect.gen(function* () {
-    const looks = yield* pinnedLooks(parts, pins)
+    const looks = yield* pinnedLooks(pins)
     const shownRows = yield* Effect.forEach(pins, (row) =>
       Effect.map(shownPin(row, looks), (shownRow) => ({ boardId: row.pin.boardId, pins: shownRow })),
     )
@@ -112,25 +104,27 @@ const shownPins = (parts: Parts, pins: ReadonlyArray<PinWithPiece>) =>
   })
 
 /** The pins others see on these boards of one account while they are public, by the public pages' rule. */
-const publicPinIds = (parts: Parts, rows: ReadonlyArray<BoardRow>, pins: ReadonlyArray<PinWithPiece>) => {
+const publicPinIds = (rows: ReadonlyArray<BoardRow>, pins: ReadonlyArray<PinWithPiece>) => {
   const publicBoards = new Set(rows.filter(({ visibility }) => visibility === 'public').map(({ id }) => id))
   const [owner] = rows
   if (owner === undefined || publicBoards.size === 0) return Effect.succeed(new Set<string>())
-  return parts.pages.pinsShown(
-    owner.accountId,
-    pins.filter(({ pin }) => publicBoards.has(pin.boardId)),
+  return Effect.flatMap(PublicPages, (pages) =>
+    pages.pinsShown(
+      owner.accountId,
+      pins.filter(({ pin }) => publicBoards.has(pin.boardId)),
+    ),
   )
 }
 
 /** Boards as their owner sees them, each with its table, its pins and which of them others see. */
-export const shown = (parts: Parts, rows: ReadonlyArray<BoardRow>) =>
+export const shown = (rows: ReadonlyArray<BoardRow>) =>
   Effect.gen(function* () {
     const ids = rows.map(({ id }) => id)
-    const items = yield* stored(parts.store.itemsOf(ids))
-    const pins = yield* stored(parts.store.pinsOf(ids))
-    const pinsOf = yield* shownPins(parts, pins)
-    const seen = yield* publicPinIds(parts, rows, pins)
-    const checks = yield* parts.checks.statuses('board', ids)
+    const items = yield* stored((yield* BoardStore).itemsOf(ids))
+    const pins = yield* stored((yield* BoardStore).pinsOf(ids))
+    const pinsOf = yield* shownPins(pins)
+    const seen = yield* publicPinIds(rows, pins)
+    const checks = yield* (yield* Checks).statuses('board', ids)
     return yield* Effect.forEach(rows, (row) =>
       // Only the service writes rows, through the same schemas; a row that does not decode is a bug.
       Schema.decodeUnknownEffect(Board)({
@@ -151,12 +145,12 @@ export const shown = (parts: Parts, rows: ReadonlyArray<BoardRow>) =>
   })
 
 /** Boards in a list: each with its table, its newest pins and how many it holds. */
-export const summaries = (parts: Parts, rows: ReadonlyArray<BoardRow>) =>
+export const summaries = (rows: ReadonlyArray<BoardRow>) =>
   Effect.gen(function* () {
     const ids = rows.map(({ id }) => id)
-    const items = yield* stored(parts.store.itemsOf(ids))
-    const coverOf = yield* shownPins(parts, yield* stored(parts.store.coversOf(ids, coverPins)))
-    const counts = yield* stored(parts.store.pinCounts(ids))
+    const items = yield* stored((yield* BoardStore).itemsOf(ids))
+    const coverOf = yield* shownPins(yield* stored((yield* BoardStore).coversOf(ids, coverPins)))
+    const counts = yield* stored((yield* BoardStore).pinCounts(ids))
     return yield* Effect.forEach(rows, (row) =>
       Schema.decodeUnknownEffect(BoardSummary)({
         id: row.id,
@@ -171,26 +165,22 @@ export const summaries = (parts: Parts, rows: ReadonlyArray<BoardRow>) =>
     )
   })
 
-export const ownBoard = (parts: Parts, accountId: string, boardId: string) =>
-  Effect.flatMap(stored(parts.store.findBoard(accountId, boardId)), (row) =>
+export const ownBoard = (accountId: string, boardId: string) =>
+  Effect.flatMap(stored(Effect.flatMap(BoardStore, (store) => store.findBoard(accountId, boardId))), (row) =>
     Option.match(row, { onNone: () => Effect.fail(NotFound.make({})), onSome: Effect.succeed }),
   )
 
-export const one = (parts: Parts, accountId: string, boardId: string) =>
+export const one = (accountId: string, boardId: string) =>
   Effect.gen(function* () {
-    const [board] = yield* shown(parts, [yield* ownBoard(parts, accountId, boardId)])
+    const [board] = yield* shown([yield* ownBoard(accountId, boardId)])
     return board ?? (yield* NotFound.make({}))
   })
 
 /** What an operation already made on the boards, by the kernel's receipt rule. */
-export const priorOf = (parts: Parts, operation: Identified) =>
-  Effect.flatMap(stored(parts.store.findReceipt(operation.accountId, operation.operationId)), (receipt) =>
-    priorResult(operation, receipt),
-  )
+export const priorOf = (operation: Identified) => Effect.flatMap(BoardStore, (store) => madeBefore(store, operation))
 
 /** New pins for things a board does not hold yet, the first of them newest. */
 export const newPins = (
-  parts: Parts,
   boardId: string,
   targets: ReadonlyArray<Pick<BoardPinRow, 'kind' | 'pieceId' | 'lookId' | 'imageId'>>,
   at: Date,
@@ -206,23 +196,23 @@ export const newPins = (
 
 /** The account's pieces pinned on a public board go to the queue: the board puts them in front of others, and a
  * piece changed while it was private must not show under its old check. The queue skips what was checked as it is. */
-export const pinnedPiecesChecked = (parts: Parts, accountId: string, boardId: string) =>
+export const pinnedPiecesChecked = (accountId: string, boardId: string) =>
   Effect.gen(function* () {
-    const pieceIds = (yield* stored(parts.store.pinsOf([boardId]))).flatMap(({ piece }) =>
+    const pieceIds = (yield* stored((yield* BoardStore).pinsOf([boardId]))).flatMap(({ piece }) =>
       piece !== null && piece.accountId === accountId ? [piece.id] : [],
     )
-    yield* parts.checks.checkLater(pieceIds.map((id) => ({ kind: 'piece' as const, id })))
+    yield* (yield* Checks).checkLater(pieceIds.map((id) => ({ kind: 'piece' as const, id })))
   })
 
 /** An edit of a board, after which a public board's check is pending again and its new pieces are checked. */
 export const rechecked =
-  <I, A, E, R>(parts: Parts, edit: (boardId: BoardId, input: I) => Effect.Effect<A, E, R>) =>
+  <I, A, E, R>(edit: (boardId: BoardId, input: I) => Effect.Effect<A, E, R>) =>
   (boardId: BoardId, input: I) =>
     Effect.tap(edit(boardId, input), () =>
       Effect.gen(function* () {
-        if (!(yield* parts.checks.changed({ kind: 'board', id: boardId }))) return
+        if (!(yield* (yield* Checks).changed({ kind: 'board', id: boardId }))) return
         const { accountId } = yield* CurrentAccount
-        yield* pinnedPiecesChecked(parts, accountId, boardId)
+        yield* pinnedPiecesChecked(accountId, boardId)
       }),
     )
 

@@ -1,10 +1,10 @@
 import { boardImages, boardItems, boardPins, boards, operationReceipts, pieces } from '@styld/db'
 import { and, asc, count, desc, eq, inArray, lte, or, type SQL, sql } from 'drizzle-orm'
-import { Effect, Option } from 'effect'
+import { Context, Effect, Layer, Option } from 'effect'
 import { receiptRows } from '../kernel/Receipts.ts'
 import { forgetCheck } from '../safety/Checks.ts'
 import { receivedUploadKey, spendUpload } from '../wardrobe/Store.ts'
-import { type Database as Db, first, inChunks, query } from '../kernel/Db.ts'
+import { Database as Db, first, inChunks, query } from '../kernel/Db.ts'
 
 export type BoardRow = typeof boards.$inferSelect
 export type BoardItemRow = typeof boardItems.$inferSelect
@@ -307,7 +307,12 @@ export const boardStore = (db: Database) => ({
   ...imageRows(db),
 })
 
-export type BoardStore = ReturnType<typeof boardStore>
+/** The boards' store over the application's one database. */
+export class BoardStore extends Context.Service<BoardStore, ReturnType<typeof boardStore>>()(
+  '@styld/server/boards/BoardStore',
+) {
+  static readonly layer = Layer.effect(this, Effect.map(Db, boardStore))
+}
 
 /** A pin with the piece it holds and where its picture came from, as the board's reads find it. */
-export type PinRow = Effect.Success<ReturnType<BoardStore['pinsOf']>>[number]
+export type PinRow = Effect.Success<ReturnType<BoardStore['Service']['pinsOf']>>[number]
