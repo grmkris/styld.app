@@ -57,7 +57,8 @@ const attemptRows = (db: Database['Service']) => ({
         .onConflictDoUpdate({
           target: paidAttempts.work,
           set: { attempt: sql`${paidAttempts.attempt} + 1`, holdId: null, claimedAt: at, updatedAt: at },
-          setWhere: sql`${paidAttempts.claimedAt} IS NULL AND ${paidAttempts.result} IS NULL`,
+          // Taken again only once released, and never once its result is stored.
+          setWhere: and(isNull(paidAttempts.claimedAt), isNull(paidAttempts.result)) ?? isNull(paidAttempts.result),
         })
         .returning({ attempt: paidAttempts.attempt }),
     ).pipe(Effect.map((rows) => Option.map(first(rows), ({ attempt }) => attempt))),
