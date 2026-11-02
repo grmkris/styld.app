@@ -70,20 +70,18 @@ export default defineConfig({
       // The conditional spend of an upload is SQL.
       'packages/server/src/wardrobe/Store.ts': ['/^CASE WHEN /'],
       // Questions put to the decision model and provider protocol text; no person ever reads them.
-      'packages/server/src/capture/Clef.ts': ['/[\\s\\S]*/'],
+      'packages/server/src/providers/Clef.ts': ['/[\\s\\S]*/'],
       'packages/server/src/capture/TurnPrompt.ts': ['/[\\s\\S]*/'],
-      'packages/server/src/capture/Veo.ts': ['/[\\s\\S]*/'],
-      'packages/server/src/capture/Meta.ts': ['/[\\s\\S]*/'],
+      'packages/server/src/providers/Veo.ts': ['/[\\s\\S]*/'],
+      'packages/server/src/providers/Meta.ts': ['/[\\s\\S]*/'],
       // The prompt an image model draws a clean picture from, and Muse's protocol text.
       'packages/server/src/capture/CleanPrompt.ts': ['/[\\s\\S]*/'],
-      'packages/server/src/capture/Muse.ts': ['/[\\s\\S]*/'],
+      'packages/server/src/providers/Muse.ts': ['/[\\s\\S]*/'],
       // The prompts a generated picture is painted from and the mood board planner's instructions.
       'packages/server/src/generation/PaintPrompt.ts': ['/[\\s\\S]*/'],
       'packages/server/src/generation/Planner.ts': ['/[\\s\\S]*/'],
       // SQL fragments discovery orders and filters by.
       'packages/server/src/social/Discovery.ts': ['/json_each/', '/ is null$/'],
-      // The capture providers as the Worker builds them (moved out of StyldWorker.ts), with their stand-in's errors.
-      'packages/server/src/capture/Live.ts': ['/[\\s\\S]*/'],
       // Styld's instructions and tool descriptions are written for its model, its chats are stored with SQL, and its
       // model speaks the Chat Completions protocol; no person reads any of it. The person reads only the model's reply.
       'packages/server/src/stylist/Prompt.ts': ['/[\\s\\S]*/'],
