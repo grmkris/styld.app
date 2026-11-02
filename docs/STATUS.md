@@ -22,7 +22,10 @@ milestone, with its evidence, is in `docs/archive/STATUS-2026-10-28-to-2026-11-0
 
 ## Gate results
 
-Gate results: see the C7 run below.
+`heavy --wait bun run check` exit 0 on `26aa13a` (C7, 2 November): effect-tsrs 628 files, 0 findings; 17 reviewed
+suppressions; unit 663 tests in 106 files; native 29 pass, 0 fail; bundle initial 346,504 gzip bytes (budget 357,677),
+all 610,441, SSR 1,891,364. Preview readback of release `54a6601` (`tools/preview.native.test.ts` with
+`STYLD_EXPECTED_RELEASE`): 3 pass.
 
 ## Gates
 
