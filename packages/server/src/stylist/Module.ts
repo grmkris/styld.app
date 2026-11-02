@@ -1,5 +1,6 @@
 import { Effect, Layer } from 'effect'
 import { consumer } from '../jobs/Jobs.ts'
+import { moving } from '../jobs/Sweeps.ts'
 import { module } from '../kernel/Module.ts'
 import { toolset } from '../mcp/Module.ts'
 import { AssistantToolset } from '../mcp/StyldTools.ts'
@@ -18,4 +19,11 @@ export const stylist = module({
   ),
   api: stylistHandlers,
   consumers: [consumer(stylistJobQueue, Effect.map(StylistChats, stylistJobs))],
+  sweeps: [
+    moving(
+      'stylist',
+      (stuck, until) => stuck.stylistTurns(until),
+      (turnId) => Effect.flatMap(StylistChats, (owner) => owner.sweepTurn(turnId)),
+    ),
+  ],
 })

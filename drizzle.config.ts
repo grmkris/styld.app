@@ -8,6 +8,7 @@ export default defineConfig({
     './packages/db/src/generation.ts',
     './packages/db/src/outfits.ts',
     './packages/db/src/photos.ts',
+    './packages/db/src/stylist.ts',
     './packages/auth/src/storage.ts',
   ],
   out: './packages/db/migrations',

@@ -9,7 +9,7 @@ import * as Base64Url from 'effect/encoding/Base64Url'
 import { accountPrefix } from './wardrobe/Media.ts'
 import { Database } from './kernel/Db.ts'
 import { deletePrefix, type Listing, Media } from './kernel/Media.ts'
-import { ChatStores } from './stylist/Service.ts'
+import { ChatStores } from './stylist/Chats.ts'
 import { PieceQueue } from './wardrobe/Processing.ts'
 
 const unavailable = () => Unavailable.make({})

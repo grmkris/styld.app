@@ -7,20 +7,22 @@ import {
   ReplyPart,
   type SendChatMessage,
   StylistBusy,
-  Unavailable,
   prices,
 } from '@styld/protocol'
 import { Context, DateTime, Effect, Layer, Schema } from 'effect'
 import { LanguageModel } from 'effect/ai'
 import { workersAiModel } from '../ai/LanguageModel.ts'
-import { Holds, holdId } from '../usage/Holds.ts'
+import { Holds } from '../usage/Holds.ts'
 import type { Tool as AssistantTool } from '../mcp/Tools.ts'
 import { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { maxSteps, styldModel } from './Policy.ts'
 import { historyText, outlineOf, systemPrompt } from './Prompt.ts'
-import type { StoredMessage, StylistMethods } from './StylistObject.ts'
+import type { StoredMessage } from './StylistObject.ts'
+import { ChatStores, chatsOf, giveUp, holdOf, now, settled, stored, sweepTurn, unavailable } from './Chats.ts'
+import { StylistTurns } from './Store.ts'
 import { lookingUpToolNames, showingToolNames, turnTools } from './Tools.ts'
 import { runTurn } from './Turn.ts'
+import { nowDate } from '../kernel/Db.ts'
 import { digestOf, newId } from '../kernel/Ids.ts'
 
 /** How long a reply may be written before it shows as failed and another message may begin: longer than the queue's
@@ -29,8 +31,6 @@ const patience = 5 * 60_000
 
 /** Chats a list shows. */
 const listed = 30
-
-const unavailable = () => Unavailable.make({})
 
 /** A failure's kind for the logs: its name, such as TimeoutError or AiError, never its message. */
 const failureOf = (error: unknown) => (error instanceof Error ? error.name : typeof error).slice(0, 80)
@@ -49,20 +49,6 @@ const titleOf = (text: string) => {
   return `${(space > 30 ? cut.slice(0, space) : cut).trimEnd()}…`
 }
 
-/** One account's chats: its Durable Object's methods, callable from the Worker. */
-export type ChatStore = {
-  readonly [Method in keyof StylistMethods]: (
-    ...args: Parameters<StylistMethods[Method]>
-  ) => Effect.Effect<Effect.Success<ReturnType<StylistMethods[Method]>>, unknown>
-}
-
-/** Each account's chats, in its Durable Object. */
-export class ChatStores extends Context.Service<ChatStores, { readonly of: (accountId: string) => ChatStore }>()(
-  '@styld/server/stylist/ChatStores',
-) {
-  static readonly layer = (of: (accountId: string) => ChatStore) => Layer.succeed(this, { of })
-}
-
 /** The assistants' own tools Styld answers with, each running for the account it is given. */
 export class StylistTools extends Context.Service<
   StylistTools,
@@ -70,14 +56,14 @@ export class StylistTools extends Context.Service<
 >()('@styld/server/stylist/StylistTools') {}
 
 /** The services every Styld operation acts through, provided once by the `StylistChats` layer. */
-type StylistServices = ChatStores | StylistQueue | LanguageModel.LanguageModel | StylistTools | Wardrobe | Holds
-
-const now = Effect.map(DateTime.now, DateTime.toEpochMillis)
-const holdOf = (turnId: string) => holdId('stylist', turnId, 0)
-const stored = <A, E, RX>(effect: Effect.Effect<A, E, RX>) => Effect.mapError(effect, unavailable)
-
-/** One account's chats, through its Durable Object. */
-const chatsOf = (accountId: string) => Effect.map(ChatStores, (stores) => stores.of(accountId))
+type StylistServices =
+  | ChatStores
+  | StylistTurns
+  | StylistQueue
+  | LanguageModel.LanguageModel
+  | StylistTools
+  | Wardrobe
+  | Holds
 
 const messageOf = (message: StoredMessage) =>
   Effect.map(partsOf(message.parts), (parts): ChatMessage => ({
@@ -95,14 +81,6 @@ const replyIds = {
   turnIdOf: (accountId: string, operationId: string) =>
     Effect.map(digestOf(`${accountId}:${operationId}`), (digest) => `tn_${digest.slice(0, 22)}`),
 }
-
-/** A reply that will not come: shown as failed, and its credit back. */
-const giveUp = (accountId: string, turnId: string) =>
-  Effect.gen(function* () {
-    const chats = yield* chatsOf(accountId)
-    yield* stored(chats.finish({ turnId, outcome: 'failed', text: '', parts: '[]', messageId: '', now: yield* now }))
-    yield* (yield* Holds).settle(accountId, holdOf(turnId), 'failed')
-  })
 
 /** Write one reply: the model answers the chat so far with the account's tools, reporting what it has written. */
 const reply = (
@@ -142,9 +120,9 @@ const reply = (
     return { text, parts: yield* tools.parts }
   })
 
-/** Sending a message: the reply begun, then its credit held, then handed to the queue. The reply exists before its
- * hold, so whatever settles a reply (its delivery, giving it up) finds it; a credit that cannot be held takes the reply
- * back. A repeated request returns the same chat, holds the same credit (holding twice is once) and sends the reply to
+/** Sending a message: the reply begun, then opened in D1, then its credit held, then handed to the queue. The reply
+ * and its open row exist before its hold, so whatever settles a reply (its delivery, giving it up, the sweep) finds it;
+ * a row that cannot be written or a credit that cannot be held takes the reply back. A repeated request returns the same chat, holds the same credit (holding twice is once) and sends the reply to
  * the queue again: one lost on the way is made up, and the queue writes it once. */
 const send = Effect.fn('Styld.Stylist.send')(function* (input: SendChatMessage) {
   const { accountId } = yield* CurrentAccount
@@ -168,9 +146,11 @@ const send = Effect.fn('Styld.Stylist.send')(function* (input: SendChatMessage) 
   if (begun.outcome === 'busy') return yield* StylistBusy.make({})
   if (begun.outcome === 'missing') return yield* NotFound.make({})
   const queue = yield* StylistQueue
+  const withdraw = Effect.ignore(stored(chats.withdraw(turnId)))
+  yield* stored((yield* StylistTurns).open(turnId, accountId, yield* nowDate)).pipe(Effect.tapError(() => withdraw))
   yield* (yield* Holds)
     .reserve({ accountId, hold: holdOf(turnId), credits: prices.stylistMessage })
-    .pipe(Effect.tapError(() => Effect.ignore(stored(chats.withdraw(turnId)))))
+    .pipe(Effect.tapError(() => withdraw))
   const queued = yield* Effect.tryPromise(() => queue.send({ _tag: 'WriteReply', turnId, accountId })).pipe(
     Effect.as(true),
     Effect.orElseSucceed(() => false),
@@ -214,11 +194,10 @@ const queueing = Effect.map(Effect.context<StylistServices>(), (context) => ({
   /** A reply already ended only has its credit settled. */
   processTurn: Effect.fn('Styld.Stylist.processTurn')(function* (accountId: string, turnId: string) {
     const chats = yield* chatsOf(accountId)
-    const holds = yield* Holds
     const input = yield* stored(chats.turn(turnId))
     if (!input.found) return
     if (input.state !== 'writing')
-      return yield* holds.settle(accountId, holdOf(turnId), input.state === 'done' ? 'succeeded' : 'failed')
+      return yield* settled(accountId, turnId, input.state === 'done' ? 'succeeded' : 'failed')
     const answered = yield* reply(accountId, turnId, input).pipe(
       // What failed, by its kind alone (a call past its patience, the model's error), never its words.
       Effect.tapError((error) =>
@@ -240,12 +219,14 @@ const queueing = Effect.map(Effect.context<StylistServices>(), (context) => ({
         now: yield* now,
       }),
     )
-    yield* holds.settle(accountId, holdOf(turnId), 'succeeded')
+    yield* settled(accountId, turnId, 'succeeded')
   }, Effect.provide(context)),
   /** The queue's last attempt failed: the reply shows as failed and its credit comes back. */
   failTurn: Effect.fn('Styld.Stylist.failTurn')(function* (accountId: string, turnId: string) {
     yield* giveUp(accountId, turnId)
   }, Effect.provide(context)),
+  /** The sweep: a turn still open past its patience is settled from its status (`Chats.ts` `sweepTurn`). */
+  sweepTurn: (turnId: string) => sweepTurn(turnId).pipe(Effect.provide(context)),
   /** Forget every chat of an account being deleted. */
   erase: Effect.fn('Styld.Stylist.erase')(function* (accountId: string) {
     yield* stored((yield* chatsOf(accountId)).erase())
@@ -270,5 +251,5 @@ export class StylistChats extends Context.Service<StylistChats, Effect.Success<t
   static readonly layer = Layer.effect(
     this,
     Effect.map(make, (service) => StylistChats.of(service)),
-  ).pipe(Layer.provide(workersAiModel(styldModel)))
+  ).pipe(Layer.provide([workersAiModel(styldModel), StylistTurns.layer]))
 }

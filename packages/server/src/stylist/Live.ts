@@ -3,7 +3,8 @@ import { CurrentAccount } from '@styld/protocol'
 import { RuntimeContext } from 'alchemy/RuntimeContext'
 import { Effect, Layer } from 'effect'
 import type { AssistantTools } from '../mcp/StyldTools.ts'
-import { type ChatStore, StylistTools } from './Service.ts'
+import type { ChatStore } from './Chats.ts'
+import { StylistTools } from './Service.ts'
 import type { Stylist } from './StylistObject.ts'
 
 /** A call through a Durable Object stub. Its methods carry `RuntimeContext` in their type only: the stub is the
