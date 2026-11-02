@@ -97,22 +97,53 @@ export const landing = (items: ReadonlyArray<BoardItem>, size: number) => {
 
 const tilts = [-3, 4, 2, -5, 3, -2] as const
 
-/** Lay the items out on an even grid, in stacking order, each with a small tilt. */
+const isTextItem = Schema.is(TextItem)
+
+/** The largest a label is drawn while it stays on the sheet: its frame fits its words up to 90% of the table's
+ * width at this size (the editor draws items 400 units wide and scales them by size / 400), so a label this size or
+ * smaller, centred across the table, never runs off an edge. */
+export const widestLabel = 400
+
+/** A label's line across the top of a tidied table, and the most of the table the labels take. */
+const labelLine = 120
+const labelsReach = boardHeight / 3
+
+/** Lay the items out in stacking order: labels centred across the top, a line each and never larger than
+ * `widestLabel`, so their words stay on the sheet (a label put in a grid cell near an edge ran off it, browser review
+ * 2 November 2026); everything else on an even grid below them, each with a small tilt. */
 export const tidied = (items: ReadonlyArray<BoardItem>): ReadonlyArray<BoardItem> => {
-  const columns = Math.max(1, Math.ceil(Math.sqrt(items.length * 0.8)))
-  const rows = Math.max(1, Math.ceil(items.length / columns))
-  const cell = Math.min(boardWidth / columns, boardHeight / rows)
-  const order = stackOrder(items)
-  return Array.map(items, (item) => {
-    const index = order.indexOf(item.id)
-    return settle({
-      ...item,
-      x: (boardWidth / columns) * ((index % columns) + 0.5),
-      y: (boardHeight / rows) * (Math.floor(index / columns) + 0.5),
-      size: cell * 0.92,
-      turn: tilts[index % tilts.length] ?? 0,
-    })
-  })
+  const stacked = Array.sort(items, byZ)
+  const labels = stacked.filter(isTextItem)
+  const things = stacked.filter((item) => !isTextItem(item))
+  const line = labels.length === 0 ? 0 : Math.min(labelLine, labelsReach / labels.length)
+  const top = labels.length * line
+  const columns = Math.max(1, Math.ceil(Math.sqrt(things.length * 0.8)))
+  const rows = Math.max(1, Math.ceil(things.length / columns))
+  const height = boardHeight - top
+  const cell = Math.min(boardWidth / columns, height / rows)
+  const placed = new Map<string, BoardItem>([
+    ...labels.map((label, index): readonly [string, BoardItem] => [
+      label.id,
+      settle({
+        ...label,
+        x: boardWidth / 2,
+        y: line * (index + 0.5),
+        size: Math.min(label.size, widestLabel),
+        turn: 0,
+      }),
+    ]),
+    ...things.map((item, index): readonly [string, BoardItem] => [
+      item.id,
+      settle({
+        ...item,
+        x: (boardWidth / columns) * ((index % columns) + 0.5),
+        y: top + (height / rows) * (Math.floor(index / columns) + 0.5),
+        size: cell * 0.92,
+        turn: tilts[index % tilts.length] ?? 0,
+      }),
+    ]),
+  ])
+  return Array.map(items, (item) => placed.get(item.id) ?? item)
 }
 
 const isPieceItem = Schema.is(PieceItem)
@@ -138,7 +169,8 @@ const nothingPlaced: ReadonlyArray<BoardItem> = []
 const outfitted = (items: ReadonlyArray<BoardItem>): ReadonlyArray<BoardItem> =>
   Array.reduce(Array.sort(items, byZ), nothingPlaced, (placed, item) => {
     const spot = landing(placed, item.size)
-    return [...placed, settle({ ...item, ...spot, x: Schema.is(TextItem)(item) ? boardWidth / 2 : spot.x })]
+    if (!isTextItem(item)) return [...placed, settle({ ...item, ...spot })]
+    return [...placed, settle({ ...item, ...spot, x: boardWidth / 2, size: Math.min(item.size, widestLabel) })]
   })
 
 /** The table laid out as asked: as it is, on an even grid, or in an outfit's places. */

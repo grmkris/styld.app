@@ -17,6 +17,7 @@ import {
   TablePiece,
   TextItem,
   tidied,
+  widestLabel,
 } from '../src/index.ts'
 
 const itemId = (seed: string) => Schema.decodeUnknownSync(BoardItemId)(`bi_${seed.padEnd(22, 'x')}`)
@@ -66,10 +67,41 @@ describe('tidying a table', () => {
     expect(tidy.map(({ id }) => id)).toEqual(items.map(({ id }) => id))
     expect(tidy.every(onTheSheet)).toBe(true)
     expect(tidy.map(({ x, y }) => [x, y])).toEqual([
-      [250, 937.5],
-      [250, 312.5],
-      [750, 312.5],
+      [750, 685],
+      [250, 685],
+      [500, 60],
     ])
+  })
+
+  test('a mood board’s pieces arranged around a label keep its words on the sheet (browser review, 2 November)', () => {
+    // The review's board: three pinned pieces and a long label, then five pieces a mood board added, tidied.
+    const long = TextItem.make({
+      id: itemId('label'),
+      text: 'C8 — večerja v mestu',
+      style: 'label',
+      ...at,
+      size: 520,
+      z: 4,
+    })
+    const items = [
+      piece('a', 1),
+      piece('b', 2),
+      piece('c', 3),
+      long,
+      ...['d', 'e', 'f', 'g', 'h'].map((seed, index) => piece(seed, 5 + index)),
+    ]
+    const tidy = tidied(items)
+    const placedLabel = tidy.find(({ id }) => id === long.id)
+    // Centred, and no larger than a label drawn within 90% of the table's width.
+    expect(placedLabel).toMatchObject({ x: boardWidth / 2, size: widestLabel, turn: 0 })
+    const others = tidy.filter(({ id }) => id !== long.id)
+    expect(others.every(({ y, size }) => y - size / 2 >= (placedLabel?.y ?? 0))).toBe(true)
+    expect(tidy.every(onTheSheet)).toBe(true)
+    // An outfit layout keeps a label within the same reach.
+    expect(arranged(items, 'outfit').find(({ id }) => id === long.id)).toMatchObject({
+      x: boardWidth / 2,
+      size: widestLabel,
+    })
   })
 })
 
