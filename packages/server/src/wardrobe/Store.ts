@@ -24,7 +24,6 @@ export type PieceChanges = Partial<
     | 'pattern'
     | 'brand'
     | 'shopUrl'
-    | 'suggestedAt'
     | 'backImageKey'
     | 'updatedAt'
   >

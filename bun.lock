@@ -81,6 +81,7 @@
     "packages/db": {
       "name": "@styld/db",
       "dependencies": {
+        "@styld/protocol": "workspace:*",
         "drizzle-orm": "catalog:",
       },
     },

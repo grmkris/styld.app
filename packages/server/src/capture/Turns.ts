@@ -68,9 +68,10 @@ const move = (pieceId: string, from: ReadonlyArray<TurnState>, changes: Partial<
     return moved
   })
 
-/** A turn that cannot finish: the piece keeps its still picture, and its credits come back (`settleTurn`). */
-const end = (pieceId: string, from: TurnState, errorCode: string) =>
-  move(pieceId, [from], { state: 'failed', errorCode })
+/** A turn that cannot finish: the piece keeps its still picture, and its credits come back (`settleTurn`). Why is on
+ * the span, not in the row. */
+const end = (pieceId: string, from: TurnState, why: string) =>
+  Effect.andThen(Effect.annotateCurrentSpan('styld.turn.failed', why), move(pieceId, [from], { state: 'failed' }))
 
 /** The hold paying for a piece's latest turn. */
 const turnHold = (turn: Pick<TurnRow, 'pieceId' | 'attempt'>) => holdId('turn', turn.pieceId, turn.attempt)
@@ -126,7 +127,7 @@ const start = (turn: TurnRow) =>
     if (Option.isNone(picture)) return yield* end(pieceId, 'requested', 'picture')
     const clean = yield* readPixels(picture.value.cleanKey)
     if (Option.isNone(clean)) return yield* end(pieceId, 'requested', 'picture')
-    if (!(yield* move(pieceId, ['requested'], { state: 'anchoring', errorCode: null }))) return false
+    if (!(yield* move(pieceId, ['requested'], { state: 'anchoring' }))) return false
     const key = picture.value.keyColour ?? keyColourFor(clean.value)
     const front = frontAnchor(clean.value, hanger())
     yield* writeObject(turnKey(accountId, pieceId, 'front.png'), encodePng(front), 'image/png')
@@ -146,8 +147,6 @@ const start = (turn: TurnRow) =>
     if (
       !(yield* move(pieceId, ['anchoring'], {
         state: 'generating',
-        provider: video.provider,
-        model: video.model,
         operation,
       }))
     )
@@ -178,9 +177,8 @@ const poll = (turn: TurnRow) =>
       Failed: () => end(pieceId, 'generating', 'video'),
       Done: ({ video }) =>
         Effect.gen(function* () {
-          const videoKey = turnKey(accountId, pieceId, 'turn.mp4')
-          yield* writeObject(videoKey, video.bytes, video.contentType)
-          return yield* move(pieceId, ['generating'], { state: 'video-ready', videoKey })
+          yield* writeObject(turnKey(accountId, pieceId, 'turn.mp4'), video.bytes, video.contentType)
+          return yield* move(pieceId, ['generating'], { state: 'video-ready' })
         }),
     })
   })
@@ -269,13 +267,13 @@ const acceptSheet = (pieceId: string, layout: TurnLayout, bytes: Uint8Array) =>
     const { sheet, clean } = yield* sheetAndFront(pieceId, layout, bytes)
     // A check the decision model cannot answer nowDate leaves the turn waiting for the same sheet again.
     const { kept, scores } = yield* checked(sheet, layout, clean).pipe(Effect.mapError(unavailable))
-    const sheetKey = turnKey(accountId, pieceId, 'sheet.png')
-    if (kept) yield* writeObject(sheetKey, bytes, 'image/png')
-    yield* move(pieceId, ['video-ready'], {
-      ...scores,
-      state: kept ? 'ready' : 'rejected',
-      ...(kept ? { sheetKey, layout } : {}),
+    yield* Effect.annotateCurrentSpan({
+      'styld.turn.colour': scores.colour,
+      'styld.turn.print': scores.print,
+      'styld.turn.same': scores.same,
     })
+    if (kept) yield* writeObject(turnKey(accountId, pieceId, 'sheet.png'), bytes, 'image/png')
+    yield* move(pieceId, ['video-ready'], { state: kept ? 'ready' : 'rejected', ...(kept ? { layout } : {}) })
     yield* settleTurn(pieceId)
     const settled = yield* storedAs((yield* CaptureStore).findTurn(pieceId))
     return turnView(
@@ -309,16 +307,8 @@ const queueTurn = (
     const requested = {
       state: 'requested' as const,
       attempt,
-      provider: null,
-      model: null,
       operation: null,
-      videoKey: null,
-      sheetKey: null,
       layout: null,
-      colour: null,
-      print: null,
-      same: null,
-      errorCode: null,
       updatedAt: at,
     }
     const moved = yield* storedAs(
@@ -331,7 +321,7 @@ const queueTurn = (
       return yield* TurnRefused.make({ reason: 'busy' })
     }
     yield* enqueueTurn(pieceId)
-    return { ...requested, hold: null, pieceId, accountId, createdAt: at }
+    return { ...requested, pieceId, accountId, createdAt: at }
   })
 
 /** The turn a repeated request asked for, as it stands now; one still requested goes to the queue again. */

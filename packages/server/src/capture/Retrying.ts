@@ -41,7 +41,6 @@ const retried = (accountId: string, captureId: CaptureId) =>
     const moved = yield* storedAs(
       (yield* CaptureStore).retryCapture(accountId, capture.id, capture, {
         status: 'processing',
-        errorCode: null,
         attempt: next.attempt,
         // The person asked again, so a video may be tracked again.
         trackingStartedAt: null,

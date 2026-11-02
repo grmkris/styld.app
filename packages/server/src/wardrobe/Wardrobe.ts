@@ -292,8 +292,6 @@ const newPiece = (
   pattern: input.pattern ?? null,
   brand: input.brand ?? null,
   shopUrl: input.shopUrl ?? null,
-  // Nothing reads it since the v1 carry-over went (C4a); written until the C5 baseline drops the column.
-  suggestedAt: context.now,
   detectionId: null,
   backImageKey: null,
   status: 'processing',
@@ -302,7 +300,6 @@ const newPiece = (
   originalKey: upload.objectKey,
   imageKey: null,
   contentType: upload.contentType,
-  bytes: upload.bytes,
   createdAt: context.now,
   updatedAt: context.now,
 })

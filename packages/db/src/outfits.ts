@@ -1,5 +1,5 @@
-import { integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
-import { accounts } from './schema.ts'
+import { index, integer, primaryKey, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import { accounts } from './identity.ts'
 
 // The outfit engine keeps no outfits (owner, 2026-10-31): only how often each account asked Thinking today, the one
 // counter its daily cap needs.
@@ -15,5 +15,5 @@ export const thinkingDays = sqliteTable(
     day: text('day').notNull(),
     asked: integer('asked').notNull(),
   },
-  (table) => [primaryKey({ columns: [table.accountId, table.day] })],
+  (table) => [primaryKey({ columns: [table.accountId, table.day] }), index('thinking_days_day').on(table.day)],
 )

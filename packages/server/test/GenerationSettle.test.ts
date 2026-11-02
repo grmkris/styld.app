@@ -19,14 +19,14 @@ const seeded = () => {
   const database = localD1()
   database.sqlite.exec(`
     INSERT INTO accounts (id, security_revision, display_name, created_at) VALUES ('ac_1', 0, 'Ana', 0);
-    INSERT INTO boards (id, account_id, name, paper, version, visibility, created_at, updated_at)
-      VALUES ('bd_1', 'ac_1', 'Autumn', 'paper', 0, 'private', 0, 0);
+    INSERT INTO boards (id, account_id, name, paper, version, visibility, moods, search_text, created_at, updated_at)
+      VALUES ('bd_1', 'ac_1', 'Autumn', 'paper', 0, 'private', '[]', ' autumn', 0, 0);
   `)
   const job = (id: string, status: string, updatedAt: number) =>
     database.sqlite.exec(
-      `INSERT INTO generation_jobs (id, account_id, board_id, kind, prompt, status, held, collage_version, picks, moods,
-         created_at, updated_at)
-       VALUES ('${id}', 'ac_1', 'bd_1', 'sticker', 'a fern', '${status}', 1, 0, '[]', '[]', 0, ${updatedAt})`,
+      `INSERT INTO generation_jobs (id, account_id, board_id, kind, prompt, status, collage_version, moods, created_at,
+         updated_at)
+       VALUES ('${id}', 'ac_1', 'bd_1', 'sticker', 'a fern', '${status}', 0, '[]', 0, ${updatedAt})`,
     )
   job('gj_failed', 'failed', now - 20 * minute)
   job('gj_refused', 'refused', now - 30 * minute)

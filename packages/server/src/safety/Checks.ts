@@ -264,7 +264,6 @@ export const checkRows = (db: Drizzle) => ({
             accountId,
             digest,
             state: 'pending',
-            attempts: 0,
             requestedAt: at,
           })
           .onConflictDoUpdate({
@@ -276,13 +275,11 @@ export const checkRows = (db: Drizzle) => ({
     }),
   /** Record the model's answer, only on the digest it read: content changed meanwhile is checked again. */
   answered: (target: CheckTarget, digest: string, verdict: Verdict) =>
-    Effect.flatMap(nowDate, (at) =>
-      read(() =>
-        db
-          .update(contentChecks)
-          .set({ state: verdict.state, reason: verdict.reason, model: verdict.model, checkedAt: at })
-          .where(and(targetIs(target), eq(contentChecks.digest, digest))),
-      ),
+    read(() =>
+      db
+        .update(contentChecks)
+        .set({ state: verdict.state, reason: verdict.reason, model: verdict.model })
+        .where(and(targetIs(target), eq(contentChecks.digest, digest))),
     ),
   /** Where the checks of these targets stand. */
   statuses: (kind: CheckTarget['kind'], ids: ReadonlyArray<string>) =>

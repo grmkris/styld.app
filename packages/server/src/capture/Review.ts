@@ -42,7 +42,6 @@ const pieceOf = (
     pattern: keep.pattern ?? detection.suggestedPattern,
     brand: null,
     shopUrl: null,
-    suggestedAt: at,
     status: 'ready' as const,
     source: 'website' as const,
     uploadId: null,
@@ -51,7 +50,6 @@ const pieceOf = (
     originalKey: detection.sourceKey,
     imageKey: original ? detection.sourceKey : detection.cutoutKey,
     contentType: source.type,
-    bytes: 0,
     createdAt: at,
     updatedAt: at,
   }
@@ -67,6 +65,8 @@ const picturesFor = (pieces: ReadonlyArray<ReturnType<typeof pieceOf>>, at: Date
       accountId,
       state: 'queued' as const,
       version: 0,
+      redraws: 0,
+      paid: false,
       createdAt: at,
       updatedAt: at,
     }))
@@ -196,8 +196,8 @@ export const reviewing = Effect.map(Effect.context<CaptureServices>(), (context)
         ? []
         : [pieceOf(accountId, pieceId, detection, { type: typeOf(detection), back: backOf(detection) }, keep, at)],
     )
-    const keptSightings = kept.flatMap(({ keep, pieceId }) =>
-      others.filter(({ groupOf }) => groupOf === keep.detectionId).map(({ id }) => ({ detectionId: id, pieceId })),
+    const keptSightings = kept.flatMap(({ keep }) =>
+      others.filter(({ groupOf }) => groupOf === keep.detectionId).map(({ id }) => id),
     )
     const discarding = new Set<string>(input.discard)
     const discardedSightings = others.filter(({ groupOf }) => groupOf !== null && discarding.has(groupOf))
@@ -207,7 +207,7 @@ export const reviewing = Effect.map(Effect.context<CaptureServices>(), (context)
     yield* storedAs(
       (yield* CaptureStore).review({
         pieces,
-        kept: [...kept.map(({ keep, pieceId }) => ({ detectionId: keep.detectionId, pieceId })), ...keptSightings],
+        kept: [...kept.map(({ keep }) => keep.detectionId), ...keptSightings],
         discarded: [...input.discard, ...discardedSightings.map(({ id }) => id)],
         // A garment offered from an outfit photo is that photo's garment: the new piece is confirmed in it.
         linked: kept.flatMap(({ pieceId, detection }) =>

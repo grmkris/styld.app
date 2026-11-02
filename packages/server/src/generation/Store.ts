@@ -1,11 +1,11 @@
-import { generationJobs, generationPictures, operationReceipts } from '@styld/db'
+import { generationJobs, generationPictures, generationPicks, operationReceipts } from '@styld/db'
 import { and, asc, desc, eq, gte, inArray, lt, sql } from 'drizzle-orm'
 import { Context, Effect, Layer } from 'effect'
 import { forgetReceipt, receiptRows } from '../kernel/Receipts.ts'
 import { Database, first, query } from '../kernel/Db.ts'
 
 export type JobRow = typeof generationJobs.$inferSelect
-/** A sticker job's one picture. Its `index` column is always 0 until the baseline drops it. */
+/** A sticker job's one picture. */
 export type StickerRow = typeof generationPictures.$inferSelect
 type ReceiptRow = typeof operationReceipts.$inferInsert
 type Drizzle = Database['Service']
@@ -101,6 +101,37 @@ const jobQueries = (db: Drizzle) => ({
     ).pipe(Effect.map((rows) => rows.length > 0)),
 })
 
+/** A mood board's plan: the pieces it picked, in order. */
+const pickQueries = (db: Drizzle) => ({
+  /** A mood board planned: its picks, in order, and its moods, moving it on to arranging only from planning. A
+   * redelivery that planned again keeps the first plan's picks. */
+  planned: (
+    jobId: string,
+    plan: { readonly picks: ReadonlyArray<string>; readonly moods: ReadonlyArray<string> },
+    at: Date,
+  ) =>
+    query(() =>
+      db.batch([
+        db
+          .update(generationJobs)
+          .set({ status: 'arranging', moods: plan.moods, updatedAt: at })
+          .where(and(eq(generationJobs.id, jobId), eq(generationJobs.status, 'planning'))),
+        ...plan.picks.map((pieceId, position) =>
+          db.insert(generationPicks).values({ jobId, position, pieceId }).onConflictDoNothing(),
+        ),
+      ]),
+    ).pipe(Effect.asVoid),
+  /** The pieces a mood board's plan picked that are still there, in its order. */
+  picksOf: (jobId: string) =>
+    query(() =>
+      db
+        .select({ pieceId: generationPicks.pieceId })
+        .from(generationPicks)
+        .where(eq(generationPicks.jobId, jobId))
+        .orderBy(asc(generationPicks.position)),
+    ).pipe(Effect.map((rows) => rows.map(({ pieceId }) => pieceId))),
+})
+
 /** A sticker job's picture, claimed, finished or given up only from the state it was read in. */
 const stickerQueries = (db: Drizzle) => ({
   /** The job's sticker, if it is a sticker job. */
@@ -157,7 +188,7 @@ const stickerQueries = (db: Drizzle) => ({
 /** Generation jobs and their stickers over the application's database. A job is written once with its receipt; its
  * sticker moves only from the state it was read in, so two deliveries never draw it twice.
  * @internal Exported for its tests. */
-export const generationStore = (db: Drizzle) => ({ ...jobQueries(db), ...stickerQueries(db) })
+export const generationStore = (db: Drizzle) => ({ ...jobQueries(db), ...pickQueries(db), ...stickerQueries(db) })
 
 /** The generation store over the application's one database. */
 export class GenerationStore extends Context.Service<GenerationStore, ReturnType<typeof generationStore>>()(

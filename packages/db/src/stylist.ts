@@ -1,5 +1,5 @@
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
-import { accounts } from './schema.ts'
+import { accounts } from './identity.ts'
 
 // Styld's chats live in each account's Durable Object, which nothing can list. D1 keeps only the turns whose credit is
 // still held, so the sweep can find a turn whose queue message was lost and settle it from the object's status.

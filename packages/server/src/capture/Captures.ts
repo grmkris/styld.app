@@ -17,7 +17,7 @@ import { usableUpload } from '../wardrobe/Shared.ts'
 import { verdictOf } from './GarmentRules.ts'
 import { capturePolicy } from './Policy.ts'
 import { captureHold, enqueueCapture, storedAs, unavailable } from './Shared.ts'
-import type { CaptureRow, DetectionRow, FrameRow } from './Store.ts'
+import type { CaptureRow, DetectionRow, FrameRow, UploadedCapture } from './Store.ts'
 import { findMoov, videoDurationMs, videoFrameCount } from './VideoContainer.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
@@ -88,7 +88,7 @@ const createFailure = (operation: Identified, uploadIds: ReadonlyArray<string>) 
 
 /** Write the capture first, its uploads spent, then hold its credits: every hold has a row its sweep can settle. Past
  * the daily limit the capture is undone and its uploads can be used again. */
-const admit = (capture: CaptureRow, frames: ReadonlyArray<FrameRow>, operation: Identified) =>
+const admit = (capture: UploadedCapture, frames: ReadonlyArray<FrameRow>, operation: Identified) =>
   Effect.gen(function* () {
     const uploadIds = [capture.uploadId, ...frames.map(({ uploadId }) => uploadId)]
     const written = yield* (yield* CaptureStore)
@@ -116,30 +116,26 @@ const baseCapture = (
   id: string,
   upload: { readonly id: string; readonly objectKey: string; readonly contentType: string; readonly bytes: number },
   at: Date,
-): Omit<CaptureRow, 'kind' | 'source' | 'credits'> => ({
-  // The hold and settlement columns go in the baseline (C5); the Wallet is the only record of a hold.
-  hold: null,
+): Omit<UploadedCapture, 'kind' | 'source' | 'credits'> => ({
   attempt: 0,
   trackingStartedAt: null,
   id,
   accountId,
   status: 'processing',
   uploadId: upload.id,
+  garmentId: null,
   originalKey: upload.objectKey,
   contentType: upload.contentType,
   bytes: upload.bytes,
   side: null,
   pairsWith: null,
   route: null,
-  routeConfidence: null,
   provider: null,
   providerFileId: null,
   frameCount: null,
   durationMs: null,
   width: null,
   height: null,
-  settlement: 'held',
-  errorCode: null,
   importId: null,
   createdAt: at,
   updatedAt: at,
@@ -171,7 +167,7 @@ export const creating = Effect.map(Effect.context<CaptureServices>(), (context) 
     if (Option.isSome(earlier)) return earlier.value
     const upload = yield* usableUpload(accountId, input.uploadId)
     if (!upload.contentType.startsWith('image/')) return yield* UploadRefused.make({ reason: 'wrongType' })
-    const capture: CaptureRow = {
+    const capture: UploadedCapture = {
       ...baseCapture(accountId, yield* newId('cp'), upload, yield* nowDate),
       kind: 'photo',
       source: input.source,
@@ -199,7 +195,7 @@ export const creating = Effect.map(Effect.context<CaptureServices>(), (context) 
       return yield* UploadRefused.make({ reason: 'wrongType' })
     const measured = yield* measureVideo(video)
     const id = yield* newId('cp')
-    const capture: CaptureRow = {
+    const capture: UploadedCapture = {
       ...baseCapture(accountId, id, video, yield* nowDate),
       kind: 'video',
       source: 'video',
@@ -271,9 +267,8 @@ export const reading = Effect.map(Effect.context<CaptureServices>(), (context) =
     return yield* Schema.decodeUnknownEffect(Tray)({
       captures: trayCards(open).map(({ capture, detections }) => ({
         id: capture.id,
-        // The tray tells only how a person added something: an assistant's photo and a garment offered from an outfit
-        // photo show as picked.
-        source: capture.source === 'assistant' || capture.source === 'photos' ? 'picker' : capture.source,
+        // The tray tells only how a person added something: a garment offered from an outfit photo shows as picked.
+        source: capture.source === 'photos' ? 'picker' : capture.source,
         status: capture.status,
         createdAt: capture.createdAt.toISOString(),
         detections,

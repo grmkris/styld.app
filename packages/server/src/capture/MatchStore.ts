@@ -1,3 +1,4 @@
+import type { PieceType } from '@styld/protocol'
 import { captures, detections, pieces } from '@styld/db'
 import { and, asc, desc, eq, exists, inArray, isNotNull, isNull, ne, or, sql } from 'drizzle-orm'
 import type { drizzle } from 'drizzle-orm/d1'
@@ -100,7 +101,7 @@ const candidateRows = (db: Database) => ({
   /** The sightings that show a garment of one of `types` in the scope's tray, newest first: compared already, shown on
    * their own card, and waiting for the person. `except` leaves out a capture's own (a photo's pieces are
    * different garments). */
-  shownSightings: (scope: MatchScope, types: ReadonlyArray<string>, except: string | undefined, limit: number) =>
+  shownSightings: (scope: MatchScope, types: ReadonlyArray<PieceType>, except: string | undefined, limit: number) =>
     query(() =>
       db
         .select()
@@ -122,7 +123,7 @@ const candidateRows = (db: Database) => ({
     ),
   /** The account's pieces of one of `types` shown as cut-outs that a new garment may already be, those sharing its main
    * colour first. */
-  wardrobeCandidates: (accountId: string, types: ReadonlyArray<string>, colour: string | undefined, limit: number) =>
+  wardrobeCandidates: (accountId: string, types: ReadonlyArray<PieceType>, colour: string | undefined, limit: number) =>
     query(() =>
       db
         .select({ id: pieces.id, imageKey: pieces.imageKey })

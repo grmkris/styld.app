@@ -18,9 +18,9 @@ import { localD1 } from './LocalD1.ts'
 /** One of Ana's ready pieces, with only its photo. */
 const piece = (id: string, type: string) =>
   `INSERT INTO pieces (id, account_id, name, type, colours, occasions, status, source, original_key, image_key,
-      content_type, bytes, created_at, updated_at)
+      content_type, created_at, updated_at)
     VALUES ('${id}', 'ac_1', NULL, '${type}', '[]', '[]', 'ready', 'website', 'ac_1/${id}.jpg', NULL, 'image/jpeg',
-      1, 0, 0);`
+      0, 0);`
 
 /** Ana's wardrobe: a tee, jeans and trainers. */
 const seeded = () => {

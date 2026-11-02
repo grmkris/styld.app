@@ -58,13 +58,21 @@ const seed = (
     const rows = [
       database
         .prepare(
-          "INSERT INTO pieces (id, account_id, type, colours, status, source, original_key, image_key, content_type, bytes, created_at, updated_at) VALUES (?, ?, 'tops', '[\"green\"]', 'ready', 'website', ?, ?, 'image/png', 1, ?, ?)",
+          "INSERT INTO pieces (id, account_id, type, colours, occasions, status, source, original_key, image_key, content_type, created_at, updated_at) VALUES (?, ?, 'tops', '[\"green\"]', '[]', 'ready', 'website', ?, ?, 'image/png', ?, ?)",
         )
         .bind(scanned.greenPiece, scanAccount, `${prefix}/uploads/green`, greenKey, now, now),
+      // Each part's video upload, then the part.
+      ...captureNames.map((name) =>
+        database
+          .prepare(
+            "INSERT INTO uploads (id, account_id, token_digest, content_type, bytes, object_key, status, expires_at) VALUES (?, ?, 'seeded', 'video/mp4', 1, ?, 'used', ?)",
+          )
+          .bind(id('up', name), scanAccount, `${prefix}/uploads/${name}`, now),
+      ),
       ...captureNames.map((name, at) =>
         database
           .prepare(
-            "INSERT INTO captures (id, account_id, kind, source, status, upload_id, original_key, content_type, bytes, credits, settlement, import_id, created_at, updated_at) VALUES (?, ?, 'video', 'video', 'review', ?, ?, 'video/mp4', 1, 5, 'consumed', ?, ?, ?)",
+            "INSERT INTO captures (id, account_id, kind, source, status, upload_id, original_key, content_type, bytes, credits, attempt, import_id, created_at, updated_at) VALUES (?, ?, 'video', 'video', 'review', ?, ?, 'video/mp4', 1, 5, 0, ?, ?, ?)",
           )
           .bind(
             scanned[name],
@@ -92,7 +100,7 @@ const seed = (
       rows.push(
         database
           .prepare(
-            "INSERT INTO detections (id, capture_id, account_id, status, cutout_key, source_key, preselected, suggested_type, suggested_colours, whole, matching, created_at) VALUES (?, ?, ?, 'review', ?, ?, ?, 'tops', ?, ?, ?, ?)",
+            "INSERT INTO detections (id, capture_id, account_id, status, cutout_key, source_key, preselected, suggested_type, suggested_colours, suggested_occasions, whole, matching, created_at) VALUES (?, ?, ?, 'review', ?, ?, ?, 'tops', ?, '[]', ?, ?, ?)",
           )
           .bind(
             scanned[sighting.detection],

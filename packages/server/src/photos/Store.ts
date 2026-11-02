@@ -101,7 +101,7 @@ const writes = (db: Db) => ({
         ...OfferedRows.insert(db, capture, detection),
         db
           .update(photoGarments)
-          .set({ state: 'offered', captureId: capture.id, pieceId: null })
+          .set({ state: 'offered', pieceId: null })
           .where(and(eq(photoGarments.id, garmentId), eq(photoGarments.accountId, capture.accountId))),
       ]),
     ).pipe(Effect.asVoid),

@@ -21,15 +21,15 @@ const settleEnded = (capture: CaptureRow) =>
 
 /** A capture that cannot finish shows as failed, and its held credits come back. The status changes
  * first; if the refund then fails, the next delivery settles it (`settlePending`). */
-const fail = (captureId: string, code: string) =>
+const fail = (captureId: string, why: string) =>
   Effect.gen(function* () {
+    yield* Effect.annotateCurrentSpan('styld.capture.failed', why)
     const found = yield* storedAs((yield* CaptureStore).captureForProcessing(captureId))
     if (Option.isNone(found)) return
     if (found.value.status === 'processing')
       yield* storedAs(
         (yield* CaptureStore).updateCapture(captureId, {
           status: 'failed',
-          errorCode: code,
           updatedAt: yield* nowDate,
         }),
       )
@@ -86,7 +86,6 @@ const run = (capture: CaptureRow) =>
           yield* storedAs(
             (yield* CaptureStore).updateCapture(capture.id, {
               status: 'unknown',
-              errorCode: 'unknown',
               updatedAt: yield* nowDate,
             }),
           )
@@ -105,7 +104,6 @@ const record = (capture: CaptureRow, result: Result) =>
       (yield* CaptureStore).finishCapture(capture.id, result.found, {
         status: 'review',
         route: result.route?.garments ?? null,
-        routeConfidence: result.route?.confidence ?? null,
         provider: result.provider,
         updatedAt: yield* nowDate,
       }),

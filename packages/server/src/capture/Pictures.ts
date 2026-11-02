@@ -70,15 +70,15 @@ const remove = (key: string | null) =>
     ? Effect.void
     : Effect.flatMap(Media, ({ bucket }) => Effect.tryPromise({ try: () => bucket.delete(key), catch: unavailable }))
 
-/** A drawing that cannot finish: the photo stays the piece's picture. */
-const end = (picture: PictureRow, from: PictureState, errorCode: string) =>
-  move(picture, [from], { state: 'failed', errorCode })
+/** A drawing that cannot finish: the photo stays the piece's picture. Why is on the span, not in the row. */
+const end = (picture: PictureRow, from: PictureState, why: string) =>
+  Effect.andThen(Effect.annotateCurrentSpan('styld.picture.failed', why), move(picture, [from], { state: 'failed' }))
 
 /** A stored drawing that cannot be checked ends, and its file goes. */
-const endChecking = (picture: PictureRow, errorCode: string) =>
+const endChecking = (picture: PictureRow, why: string) =>
   Effect.gen(function* () {
-    if (yield* move(picture, ['checking'], { state: 'failed', errorCode, cleanKey: null }))
-      yield* remove(picture.cleanKey)
+    yield* Effect.annotateCurrentSpan('styld.picture.failed', why)
+    if (yield* move(picture, ['checking'], { state: 'failed', cleanKey: null })) yield* remove(picture.cleanKey)
   })
 
 /** Ask the decision model how like the real cut-out the drawing is, and show it, offer it or drop it. */
@@ -89,11 +89,13 @@ const check = (picture: PictureRow, drawn: Rgba, real: Rgba) =>
       modelPicture(drawn, judgedAt),
       modelPicture(real, judgedAt),
     )
-    const scores = { same: comparison.same, faithful: comparison.faithful }
+    yield* Effect.annotateCurrentSpan({
+      'styld.picture.same': comparison.same,
+      'styld.picture.faithful': comparison.faithful,
+    })
     const gate = gateFor(comparison, policy)
-    if (gate !== 'rejected') return yield* move(picture, ['checking'], { ...scores, state: gate })
-    if (yield* move(picture, ['checking'], { ...scores, state: 'rejected', cleanKey: null }))
-      yield* remove(picture.cleanKey)
+    if (gate !== 'rejected') return yield* move(picture, ['checking'], { state: gate })
+    if (yield* move(picture, ['checking'], { state: 'rejected', cleanKey: null })) yield* remove(picture.cleanKey)
     return true
   })
 
@@ -163,7 +165,8 @@ const start = (picture: PictureRow) =>
     const front = yield* cutoutAt(piece.value.imageKey)
     if (Option.isNone(front)) return yield* move(picture, ['queued'], { state: 'kept-real' })
     const judgement = yield* (yield* GarmentVision).judge(modelPicture(front.value, judgedAt))
-    const judged = { judge: judgement.verdict, judgeConfidence: judgement.confidence, face: judgement.face }
+    yield* Effect.annotateCurrentSpan('styld.picture.verdict', judgement.verdict)
+    const judged = { face: judgement.face }
     const asked = picture.paid && judgement.face < policy.face
     const { plan } = asked ? { plan: 'draw' as const } : planFor(judgement, policy)
     if (plan !== 'draw') return yield* move(picture, ['queued'], { ...judged, state: plan })
@@ -174,10 +177,8 @@ const start = (picture: PictureRow) =>
       version: picture.version + 1,
       keyColour: keyColourFor(front.value),
       provider: generator.provider,
-      model: generator.model,
       claimedAt: yield* nowDate,
       cleanKey: null,
-      errorCode: null,
     }
     if (!(yield* move(picture, ['queued'], claim))) return
     yield* remove(picture.cleanKey)

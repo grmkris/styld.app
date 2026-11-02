@@ -62,14 +62,8 @@ const plan = (job: JobRow) =>
         store.advanceJob(job.id, ['planning'], { status: 'refused', reason: 'unclear', updatedAt: at }),
       )
     const idOf = new Map(wardrobe.map(({ wearable, id }) => [wearable.ref, id]))
-    yield* stored(
-      store.advanceJob(job.id, ['planning'], {
-        status: 'arranging',
-        picks: planned.value.picks.flatMap((ref) => Option.toArray(Option.fromNullishOr(idOf.get(ref)))),
-        moods: planned.value.moods,
-        updatedAt: at,
-      }),
-    )
+    const picks = planned.value.picks.flatMap((ref) => Option.toArray(Option.fromNullishOr(idOf.get(ref))))
+    yield* stored(store.planned(job.id, { picks, moods: planned.value.moods }, at))
   })
 
 /** A sticker that will not be drawn: refused, or lost on the way. The job ends refused, so its credit goes back
@@ -150,7 +144,7 @@ const draw = (job: JobRow) =>
 const arrange = (job: JobRow) =>
   Effect.gen(function* () {
     const boardId = BoardId.make(job.boardId)
-    const picks = job.picks.map((id) => PieceId.make(id))
+    const picks = (yield* stored((yield* GenerationStore).picksOf(job.id))).map((id) => PieceId.make(id))
     const moods = job.moods.filter(isMood)
     const boards = yield* Boards
     const board = yield* boards.getBoard(boardId).pipe(Effect.mapError(unavailable))

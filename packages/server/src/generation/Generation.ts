@@ -50,10 +50,7 @@ const newJob = Effect.fnUntraced(function* (kind: GenerationKind, boardId: Board
     prompt: input.prompt,
     status: kind === 'sticker' ? 'drawing' : 'planning',
     reason: null,
-    // Written for the column alone until the baseline drops it; the Wallet is the only record of a hold.
-    held: 1,
     collageVersion: version,
-    picks: [],
     moods: [],
     createdAt: at,
     updatedAt: at,
@@ -63,8 +60,6 @@ const newJob = Effect.fnUntraced(function* (kind: GenerationKind, boardId: Board
       ? [
           {
             jobId: id,
-            // Written for the column alone until the baseline drops it: a job has one sticker.
-            index: 0,
             prompt: stickerPrompt(input.prompt, stickerKey(input.prompt)),
             status: 'waiting',
             imageId: null,

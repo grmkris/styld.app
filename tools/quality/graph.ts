@@ -27,7 +27,8 @@ const directions: Readonly<Record<string, readonly string[]>> = {
   // Browser-safe contracts: the typed API and the schemas assistants and the website share.
   '@styld/protocol': ['@styld/auth', '@styld/i18n'],
   '@styld/domain': [],
-  '@styld/db': [],
+  // The schema's CHECKs are the contract's own literals.
+  '@styld/db': ['@styld/protocol'],
   '@styld/i18n': [],
   // Pure pixel work, the same in the Worker and the browser: keying a drawn picture, shrinking, flattening.
   '@styld/imaging': [],

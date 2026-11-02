@@ -17,6 +17,8 @@ import { GarmentRows } from '../photos/Rows.ts'
 import { PieceRows, UploadRows } from '../wardrobe/Store.ts'
 
 export type CaptureRow = typeof captures.$inferSelect
+/** A capture made from the person's own upload: every source but a garment offered from an outfit photo. */
+export type UploadedCapture = CaptureRow & { readonly uploadId: string }
 export type FrameRow = typeof captureFrames.$inferSelect
 export type DetectionRow = typeof detections.$inferSelect
 type PieceRow = typeof pieces.$inferSelect
@@ -42,7 +44,7 @@ const readIn = <A>(ids: ReadonlyArray<string>, read: (chunk: Array<string>) => P
 const captureRows = (db: Database) => ({
   /** The capture, its uploads spent, its stills and the operation's receipt, as one atomic batch: an upload already
    * spent fails it whole (`spendUpload`). */
-  createCapture: (capture: CaptureRow, frames: ReadonlyArray<FrameRow>, receipt: ReceiptRow) =>
+  createCapture: (capture: UploadedCapture, frames: ReadonlyArray<FrameRow>, receipt: ReceiptRow) =>
     query(() =>
       db.batch([
         db.insert(captures).values(capture),
@@ -55,7 +57,7 @@ const captureRows = (db: Database) => ({
     ).pipe(Effect.asVoid),
   /** Undo a capture whose credits could not be held: the capture (its stills with it), its receipt, and its uploads
    * received again, as one batch. */
-  undoCapture: (capture: CaptureRow, frames: ReadonlyArray<FrameRow>, operationId: string) =>
+  undoCapture: (capture: UploadedCapture, frames: ReadonlyArray<FrameRow>, operationId: string) =>
     query(() =>
       db.batch([
         db.delete(captures).where(and(eq(captures.id, capture.id), eq(captures.status, 'processing'))),
@@ -294,7 +296,9 @@ const reviewRows = (db: Database) => ({
   /** Kept pieces, decided detections, finished captures and the receipt, as one atomic batch. */
   review: (input: {
     readonly pieces: ReadonlyArray<PieceRow>
-    readonly kept: ReadonlyArray<{ readonly detectionId: string; readonly pieceId: string }>
+    /** The detections kept, the pieces' own and their other sightings: a piece names its detection
+     * (`pieces.detection_id`). */
+    readonly kept: ReadonlyArray<string>
     readonly discarded: ReadonlyArray<string>
     /** Garments offered from outfit photos, confirmed as the pieces kept from them. */
     readonly linked: ReadonlyArray<{ readonly captureId: string; readonly pieceId: string }>
@@ -309,11 +313,11 @@ const reviewRows = (db: Database) => ({
         db.insert(operationReceipts).values(input.receipt),
         ...input.pieces.map((piece) => PieceRows.insert(db, piece)),
         ...input.pictures.map((picture) => db.insert(piecePictures).values(picture)),
-        ...input.kept.map(({ detectionId, pieceId }) =>
+        ...chunked(input.kept).map((chunk) =>
           db
             .update(detections)
-            .set({ status: 'kept', pieceId })
-            .where(and(eq(detections.id, detectionId), eq(detections.status, 'review'))),
+            .set({ status: 'kept' })
+            .where(and(inArray(detections.id, chunk), eq(detections.status, 'review'))),
         ),
         ...chunked(input.discarded).map((chunk) =>
           db

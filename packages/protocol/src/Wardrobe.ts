@@ -43,8 +43,9 @@ export type VideoType = typeof VideoType.Type
 export const PieceStatus = Schema.Literals(['processing', 'ready', 'failed'])
 export type PieceStatus = typeof PieceStatus.Type
 
-/** Who added the piece: the person on the website, or an assistant on their behalf. */
-export const PieceSource = Schema.Literals(['website', 'assistant'])
+/** Who added the piece: the person on the website, an assistant on their behalf, or Styld bringing their wardrobe over
+ * from the first Styld (`tools/import-v1`). */
+export const PieceSource = Schema.Literals(['website', 'assistant', 'import'])
 
 /** A piece's clean picture (owner, 2026-10-30): an image model's drawing of the garment from its kept cut-out, shown
  * beside the real photo and marked as AI-cleaned. `drawing` while it is made; `ready` when shown on its own; `proposed`

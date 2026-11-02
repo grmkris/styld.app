@@ -28,6 +28,8 @@ import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
 import { verifyMcp } from './McpAcceptance.ts'
 import { verifyAccountDeletion, verifyWardrobe } from './WardrobeAcceptance.ts'
 import RuntimeWorker from './RuntimeWorker.ts'
+import { LiveSchema, liveShape } from './SchemaShape.ts'
+import { snapshotShape } from './SchemaSnapshot.ts'
 import NativeWorkerLive, { NativeWorker } from './NativeWorker.ts'
 import { csrf } from '@styld/auth/config'
 
@@ -348,25 +350,19 @@ test(
 )
 
 test(
-  'serves the isolated D1 schema and R2 binding',
+  'serves the D1 schema its baseline snapshot records, and the R2 binding',
   Effect.gen(function* () {
     const { url } = yield* stack
     const response = yield* HttpClient.get(`${url}/storage`)
     expect(response.status).toBe(200)
-    expect(yield* response.json).toMatchObject({
-      database: {
-        // Every table, in SQLite's name order.
-        tables: (
-          'accounts auth_attempt_buckets blocks board_images board_items board_pins boards capture_frames ' +
-          'captures content_checks detections follows generation_jobs generation_pictures look_pieces looks ' +
-          'oauth_assertions oauth_clients ' +
-          'oauth_grants operation_receipts outfit_photos photo_garments piece_pictures piece_turns pieces profiles reports saves ' +
-          'styld_auth_credentials styld_auth_email_credentials styld_auth_identifiers styld_auth_passwords ' +
-          'styld_auth_pending styld_auth_proofs styld_auth_sessions stylist_turns thinking_days uploads worn_pieces'
-        ).split(' '),
-      },
-      media: { sentinel: false },
-    })
+    const storage = yield* Effect.flatMap(
+      response.json,
+      Schema.decodeUnknownEffect(
+        Schema.Struct({ database: LiveSchema, media: Schema.Struct({ sentinel: Schema.Boolean }) }),
+      ),
+    )
+    expect(liveShape(storage.database)).toEqual(snapshotShape())
+    expect(storage.media).toEqual({ sentinel: false })
   }).pipe(Effect.provide(FetchHttpClient.layer)),
   { timeout: 60000 },
 )

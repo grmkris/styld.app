@@ -14,14 +14,14 @@ const seeded = (imageKey: string | null) => {
   const database = localD1()
   database.sqlite.exec(`
     INSERT INTO accounts (id, security_revision, display_name, created_at) VALUES ('ac_1', 0, 'Ana', 0);
-    INSERT INTO profiles (account_id, handle, name, tone, published, search_text, created_at, updated_at)
-      VALUES ('ac_1', 'ana', 'Ana', 'sand', 1, ' ana', 0, 0);
+    INSERT INTO profiles (account_id, handle, name, tone, published, house, search_text, created_at, updated_at)
+      VALUES ('ac_1', 'ana', 'Ana', 'sand', 1, 0, ' ana', 0, 0);
     INSERT INTO pieces (id, account_id, name, type, colours, occasions, status, source, original_key, image_key,
-        content_type, bytes, created_at, updated_at)
+        content_type, created_at, updated_at)
       VALUES ('pc_1', 'ac_1', 'Knit', 'knitwear', '[]', '[]', 'ready', 'website', 'ac_1/original.jpg',
-        ${imageKey === null ? 'NULL' : `'${imageKey}'`}, 'image/jpeg', 1, 0, 0);
-    INSERT INTO boards (id, account_id, name, paper, version, visibility, created_at, updated_at)
-      VALUES ('bd_1', 'ac_1', 'Autumn', 'paper', 0, 'public', 0, 0);
+        ${imageKey === null ? 'NULL' : `'${imageKey}'`}, 'image/jpeg', 0, 0);
+    INSERT INTO boards (id, account_id, name, paper, version, visibility, moods, search_text, created_at, updated_at)
+      VALUES ('bd_1', 'ac_1', 'Autumn', 'paper', 0, 'public', '[]', ' autumn', 0, 0);
     INSERT INTO board_pins (id, board_id, kind, piece_id, created_at) VALUES ('pn_1', 'bd_1', 'piece', 'pc_1', 0);
   `)
   return database
@@ -113,9 +113,9 @@ describe('the checks', () => {
     const seen = witness()
     const database = seeded('ac_1/cutout.png')
     database.sqlite.exec(`
-      INSERT INTO content_checks (target_kind, target_id, account_id, digest, state, attempts, requested_at)
-        VALUES ('piece', 'pc_1', 'ac_1', 'd', 'passed', 1, 0), ('piece', 'pc_gone', 'ac_1', 'd', 'passed', 1, 0),
-          ('board', 'bd_gone', 'ac_1', 'd', 'failed', 1, 0), ('look', 'lk_gone', 'ac_1', 'd', 'pending', 0, 0)
+      INSERT INTO content_checks (target_kind, target_id, account_id, digest, state, requested_at)
+        VALUES ('piece', 'pc_1', 'ac_1', 'd', 'passed', 0), ('piece', 'pc_gone', 'ac_1', 'd', 'passed', 0),
+          ('board', 'bd_gone', 'ac_1', 'd', 'failed', 0), ('look', 'lk_gone', 'ac_1', 'd', 'pending', 0)
     `)
     return Effect.gen(function* () {
       const checks = yield* Checks

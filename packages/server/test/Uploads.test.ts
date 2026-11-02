@@ -59,17 +59,17 @@ describe('the one in-use check', () => {
     Effect.gen(function* () {
       const database = seeded()
       database.sqlite.exec(
-        `INSERT INTO pieces (id, account_id, colours, status, source, original_key, image_key, back_image_key, content_type, bytes, created_at, updated_at)
-         VALUES ('pc_1', 'ac_1', '[]', 'ready', 'website', 'k/photo', 'k/cutout', NULL, 'image/png', 1, 0, 0)`,
+        `INSERT INTO pieces (id, account_id, type, colours, occasions, status, source, original_key, image_key, back_image_key, content_type, created_at, updated_at)
+         VALUES ('pc_1', 'ac_1', 'tops', '[]', '[]', 'ready', 'website', 'k/photo', 'k/cutout', NULL, 'image/png', 0, 0)`,
       )
       database.sqlite.exec(
-        `INSERT INTO captures (id, account_id, kind, source, status, upload_id, original_key, content_type, bytes, credits, settlement, created_at, updated_at)
-         VALUES ('cp_1', 'ac_1', 'photo', 'picker', 'review', 'up_1', 'k/tray', 'image/png', 1, 1, 'held', 0, 0)`,
+        `INSERT INTO captures (id, account_id, kind, source, status, upload_id, original_key, content_type, bytes, credits, attempt, created_at, updated_at)
+         VALUES ('cp_1', 'ac_1', 'photo', 'picker', 'review', 'up_1', 'k/tray', 'image/png', 1, 1, 0, 0, 0)`,
       )
       database.sqlite.exec(
-        `INSERT INTO detections (id, capture_id, account_id, status, cutout_key, source_key, preselected, suggested_colours, created_at)
-         VALUES ('dt_1', 'cp_1', 'ac_1', 'review', 'k/open', 'k/tray', 1, '[]', 0),
-                ('dt_2', 'cp_1', 'ac_1', 'discarded', 'k/discarded', 'k/tray', 0, '[]', 0)`,
+        `INSERT INTO detections (id, capture_id, account_id, status, cutout_key, source_key, preselected, suggested_colours, suggested_occasions, created_at)
+         VALUES ('dt_1', 'cp_1', 'ac_1', 'review', 'k/open', 'k/tray', 1, '[]', '[]', 0),
+                ('dt_2', 'cp_1', 'ac_1', 'discarded', 'k/discarded', 'k/tray', 0, '[]', '[]', 0)`,
       )
       const keys = ['k/photo', 'k/cutout', 'k/open', 'k/tray', 'k/discarded', 'k/gone']
       const inUse = yield* keysInUse(drizzle(database), 'ac_1', keys)

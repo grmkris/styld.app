@@ -1,13 +1,11 @@
-import { readdirSync, readFileSync } from 'node:fs'
 import { DatabaseSync, type SQLInputValue } from 'node:sqlite'
 import type { D1Database } from '@cloudflare/workers-types'
 import { Predicate } from 'effect'
+import { baselineStatements } from './SchemaSnapshot.ts'
 
-// A D1 database for unit tests: SQLite in memory with every migration applied, behind the slice of D1's API that
-// drizzle and the stores call (prepare, bind, all, raw, first, run, batch). Real SQL semantics, no Worker; the native
-// suite is still what proves workerd's D1.
-
-const migrations = new URL('../../db/migrations/', import.meta.url)
+// A D1 database for unit tests: SQLite in memory with the baseline migration applied and foreign keys enforced, as D1
+// enforces them, behind the slice of D1's API that drizzle and the stores call (prepare, bind, all, raw, first, run,
+// batch). Real SQL semantics, no Worker; the native suite is still what proves workerd's D1.
 
 const value = (input: unknown): SQLInputValue => {
   if (Predicate.isBoolean(input)) return input ? 1 : 0
@@ -54,14 +52,11 @@ class Statement {
   }
 }
 
-/** A fresh database with the schema every migration builds. */
+/** A fresh database with the baseline schema. */
 export const localD1 = () => {
   const db = new DatabaseSync(':memory:')
-  for (const folder of readdirSync(migrations).toSorted())
-    for (const statement of readFileSync(new URL(`${folder}/migration.sql`, migrations), 'utf8').split(
-      '--> statement-breakpoint',
-    ))
-      if (statement.trim().length > 0) db.exec(statement)
+  db.exec('PRAGMA foreign_keys = ON')
+  for (const statement of baselineStatements()) db.exec(statement)
   const d1 = {
     prepare: (sql: string) => new Statement(db, sql),
     batch: async (statements: ReadonlyArray<Statement>) => {

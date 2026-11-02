@@ -15,12 +15,12 @@ const seeded = () => {
   const database = localD1()
   database.sqlite.exec(`
     INSERT INTO accounts (id, security_revision, display_name, created_at) VALUES ('ac_1', 0, 'Ana', 0);
-    INSERT INTO pieces (id, account_id, colours, status, source, original_key, content_type, bytes, created_at,
-        updated_at)
-      VALUES ('pc_1', 'ac_1', '[]', 'ready', 'website', 'ac_1/pc_1.jpg', 'image/jpeg', 1, 0, 0);
+    INSERT INTO pieces (id, account_id, type, colours, occasions, status, source, original_key, content_type,
+        created_at, updated_at)
+      VALUES ('pc_1', 'ac_1', 'tops', '[]', '[]', 'ready', 'website', 'ac_1/pc_1.jpg', 'image/jpeg', 0, 0);
     INSERT INTO looks (id, account_id, name, created_at) VALUES ('lk_1', 'ac_1', 'Friday', 0);
-    INSERT INTO boards (id, account_id, name, paper, version, visibility, created_at, updated_at)
-      VALUES ('bd_1', 'ac_1', 'Autumn', 'paper', 0, 'private', 0, 0);
+    INSERT INTO boards (id, account_id, name, paper, version, visibility, moods, search_text, created_at, updated_at)
+      VALUES ('bd_1', 'ac_1', 'Autumn', 'paper', 0, 'private', '[]', ' autumn', 0, 0);
   `)
   return database
 }

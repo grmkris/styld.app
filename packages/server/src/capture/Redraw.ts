@@ -26,7 +26,6 @@ const settledPicture = (pieceId: string, at: Date) =>
       yield* storedAs(
         (yield* CaptureStore).movePicture(pieceId, ['generating'], {
           state: 'failed',
-          errorCode: 'unknown',
           updatedAt: at,
         }),
       )
@@ -68,7 +67,6 @@ const queueRedraw = (
       redraws,
       paid: true,
       shown: null,
-      errorCode: null,
       updatedAt: at,
     }
     const moved = yield* storedAs(

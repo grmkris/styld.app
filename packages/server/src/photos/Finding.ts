@@ -68,7 +68,6 @@ const garmentOf = (photo: PhotoRow, garment: Garment, position: number) =>
       colours: suggestion.colours,
       pieceId: Option.match(match, { onNone: () => null, onSome: ({ id: pieceId }) => pieceId }),
       state: Option.isSome(match) ? 'suggested' : 'unmatched',
-      captureId: null,
     } satisfies GarmentRow
   })
 
