@@ -12,7 +12,7 @@ import {
   LimitReached,
   Unavailable,
 } from '@styld/protocol'
-import { Array, Clock, Context, DateTime, Effect, Layer, Option, Order, Schema } from 'effect'
+import { Array, Clock, Context, DateTime, Duration, Effect, Layer, Option, Order, Schema } from 'effect'
 import { CaptureMetrics } from '../kernel/Metrics.ts'
 import type { Picture } from '../capture/Providers.ts'
 import { newId } from '../kernel/Ids.ts'
@@ -20,7 +20,7 @@ import { Media } from '../kernel/Media.ts'
 import { Pacing } from '../kernel/Pacing.ts'
 import { once } from '../kernel/Receipts.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
-import { judgingPicture, OutfitJudge } from './Judge.ts'
+import { type Judged, judgingPicture, OutfitJudge } from './Judge.ts'
 import { Thinking } from './Proposer.ts'
 import { type Brief, missingOf, proposed, type Wearable } from './Rules.ts'
 import { OutfitStore } from './Store.ts'
@@ -37,8 +37,14 @@ const thinkingPerDay = 50
 /** The most candidates Fast draws for Clef to rank. */
 const mostCandidates = 12
 
-/** Clef calls and picture reads at once. */
-const concurrency = 6
+/** Clef calls and picture reads at once: every candidate in one wave, not two (a cold first outfit took 11 s on the
+ * preview, browser review 2 November 2026). */
+const concurrency = mostCandidates
+
+/** How long ranking may take. Outfits Clef has not judged by then follow the judged ones in the rules' order, so a cold
+ * wardrobe (pictures still being made, Clef's first call slow) answers in seconds with the rules' best.
+ * @internal Exported for its tests. */
+export const judgingBudget = Duration.seconds(4)
 
 const unavailable = () => Unavailable.make({})
 
@@ -51,30 +57,37 @@ const dayOf = (now: DateTime.Utc) => DateTime.formatIsoDateUtc(now)
 /** The services the engine works through, provided once by the `Outfits` layer. */
 type OutfitServices = Media | OutfitJudge | Thinking | Pacing | CaptureMetrics | OutfitStore | WardrobeStore
 
-/** Clef's score for each outfit (none when it could not look) and what the calls cost, judged a few at a time; each
- * piece's picture read once. */
+/** Clef's score for each outfit (none when it could not look, or had not by `judgingBudget`) and what the calls cost,
+ * all judged at once; each piece's picture read once. */
 const judged = (accountId: string, owned: ReadonlyMap<string, Owned>, request: Brief) =>
   Effect.fn('Styld.Outfits.judge')(function* (outfits: ReadonlyArray<ReadonlyArray<Wearable>>) {
     const media = yield* Media
     const judge = yield* OutfitJudge
     const pieceIds = [...new Set<string>(outfits.flatMap((outfit) => outfit.map(({ id }) => id)))]
     const pictures = new Map<string, Picture>()
-    yield* Effect.forEach(
-      pieceIds.flatMap((id) => Option.toArray(Option.fromNullishOr(owned.get(id)))),
-      (piece) =>
-        Effect.map(judgingPicture(media, accountId, piece), (picture) =>
-          Option.map(picture, (found) => pictures.set(piece.wearable.id, found)),
-        ),
-      { concurrency, discard: true },
-    )
-    return yield* Effect.forEach(
-      outfits,
-      (outfit) => {
-        const shown = outfit.flatMap(({ id }) => Option.toArray(Option.fromNullishOr(pictures.get(id))))
-        return shown.length === 0 ? Effect.succeed(Option.none()) : judge.judge(shown, request.brief)
-      },
-      { concurrency },
-    )
+    const scores: Array<Option.Option<Judged>> = outfits.map(() => Option.none())
+    const judging = Effect.gen(function* () {
+      yield* Effect.forEach(
+        pieceIds.flatMap((id) => Option.toArray(Option.fromNullishOr(owned.get(id)))),
+        (piece) =>
+          Effect.map(judgingPicture(media, accountId, piece), (picture) =>
+            Option.map(picture, (found) => pictures.set(piece.wearable.id, found)),
+          ),
+        { concurrency, discard: true },
+      )
+      yield* Effect.forEach(
+        outfits,
+        (outfit, at) => {
+          const shown = outfit.flatMap(({ id }) => Option.toArray(Option.fromNullishOr(pictures.get(id))))
+          if (shown.length === 0) return Effect.void
+          return Effect.map(judge.judge(shown, request.brief), (score) => void (scores[at] = score))
+        },
+        { concurrency, discard: true },
+      )
+    })
+    // Past the budget the calls still out are given up; what was judged by then ranks.
+    yield* Effect.timeoutOption(judging, judgingBudget)
+    return scores
   })
 
 /** The outfits best first: judged ones by their score, then the unjudged in the order they were made. */

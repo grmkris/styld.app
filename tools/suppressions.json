@@ -72,6 +72,10 @@
     "comment": "SAFETY: no picture is ever read here -- every piece's read fails over to an unjudged outfit, as a missing picture does"
   },
   {
+    "file": "packages/server/test/OutfitRanking.test.ts",
+    "comment": "SAFETY: every judging picture is already kept beside its piece -- judgingPicture calls only bucket.get, which the fake answers"
+  },
+  {
     "file": "packages/server/test/LocalD1.ts",
     "comment": "SAFETY: the shim implements the D1 calls drizzle and the stores make -- the rest of D1Database (exec, sessions, dump) is never called by them"
   },
