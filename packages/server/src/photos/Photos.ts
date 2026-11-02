@@ -5,6 +5,7 @@ import {
   ImageType,
   LookId,
   type MatchGarment,
+  type UpdatePhoto,
   maximumLookPieces,
   NotFound,
   NothingConfirmed,
@@ -76,6 +77,35 @@ const ownPhoto = (accountId: string, photoId: string) =>
     storedAs(Effect.flatMap(PhotoStore, (store) => store.findPhoto(accountId, photoId))),
     Option.match({ onNone: () => Effect.fail(NotFound.make({})), onSome: Effect.succeed }),
   )
+
+/** The account's own photo as it stands, as the protocol shows it. */
+const shownPhoto = (accountId: string, photoId: string) =>
+  Effect.gen(function* () {
+    const [photo] = yield* photosOf([yield* ownPhoto(accountId, photoId)])
+    return photo ?? (yield* NotFound.make({}))
+  })
+
+/** A change to a photo done once per operation id (`once`): a repeat answers the photo as it stands and changes
+ * nothing, so a late repeat never undoes a later change; the same id for anything else is `OperationConflict`. */
+const changedOnce = <E, R>(
+  operation: { readonly operationId: string; readonly command: string; readonly input: unknown },
+  photoId: string,
+  change: Effect.Effect<unknown, E, R>,
+) =>
+  Effect.gen(function* () {
+    const { accountId } = yield* CurrentAccount
+    return yield* once(
+      yield* WardrobeStore,
+      { accountId, ...operation },
+      {
+        replay: () => shownPhoto(accountId, photoId),
+        run: Effect.andThen(
+          change,
+          Effect.map(shownPhoto(accountId, photoId), (photo) => [photo, photoId] as const),
+        ),
+      },
+    )
+  })
 
 /** The account's own ready piece, or `NotFound` (`wardrobe/Shared.ts`). */
 const ownPiece = (accountId: string, pieceId: string) =>
@@ -253,14 +283,16 @@ const reading = Effect.map(Effect.context<PhotoServices>(), (context) => ({
 
 /** Changing a photo: favourite, delete, match, offer and wear again. */
 const changing = Effect.map(Effect.context<PhotoServices>(), (context) => ({
-  updatePhoto: Effect.fn('Styld.Photos.update')(function* (photoId: string, input: { readonly favourite: boolean }) {
+  updatePhoto: Effect.fn('Styld.Photos.update')(function* (photoId: string, input: typeof UpdatePhoto.Type) {
     const { accountId } = yield* CurrentAccount
-    const updated = yield* storedAs(
-      (yield* PhotoStore).setFavourite(accountId, photoId, input.favourite, yield* nowDate),
-    )
-    if (Option.isNone(updated)) return yield* NotFound.make({})
-    const [photo] = yield* photosOf([updated.value])
-    return photo ?? (yield* NotFound.make({}))
+    const change = Effect.gen(function* () {
+      const updated = yield* storedAs(
+        (yield* PhotoStore).setFavourite(accountId, photoId, input.favourite, yield* nowDate),
+      )
+      if (Option.isNone(updated)) return yield* NotFound.make({})
+    })
+    const operation = { operationId: input.operationId, command: 'updatePhoto', input: [photoId, input.favourite] }
+    return yield* changedOnce(operation, photoId, change)
   }, Effect.provide(context)),
   /** Delete a photo: its row and garments first, then its objects. A repeat of the same delete answers done. */
   deletePhoto: Effect.fn('Styld.Photos.delete')(function* (photoId: string, operationId: OperationId) {
@@ -278,22 +310,29 @@ const changing = Effect.map(Effect.context<PhotoServices>(), (context) => ({
   }, Effect.provide(context)),
   matchGarment: Effect.fn('Styld.Photos.match')(function* (photoId: string, garmentId: string, input: MatchGarment) {
     const { accountId } = yield* CurrentAccount
-    yield* ownPhoto(accountId, photoId)
-    if (input.pieceId !== null) yield* ownPiece(accountId, input.pieceId)
-    if (!(yield* storedAs((yield* PhotoStore).matchGarment(accountId, photoId, garmentId, input.pieceId))))
-      return yield* NotFound.make({})
-    const [photo] = yield* photosOf([yield* ownPhoto(accountId, photoId)])
-    return photo ?? (yield* NotFound.make({}))
+    const change = Effect.gen(function* () {
+      yield* ownPhoto(accountId, photoId)
+      if (input.pieceId !== null) yield* ownPiece(accountId, input.pieceId)
+      if (!(yield* storedAs((yield* PhotoStore).matchGarment(accountId, photoId, garmentId, input.pieceId))))
+        return yield* NotFound.make({})
+    })
+    const operation = {
+      operationId: input.operationId,
+      command: 'matchGarment',
+      input: [photoId, garmentId, input.pieceId],
+    }
+    return yield* changedOnce(operation, photoId, change)
   }, Effect.provide(context)),
   /** Offer a garment to the review tray, once: offering it again answers the photo as it is. */
-  offerGarment: Effect.fn('Styld.Photos.offer')(function* (photoId: string, garmentId: string) {
+  offerGarment: Effect.fn('Styld.Photos.offer')(function* (photoId: string, garmentId: string, operationId: string) {
     const { accountId } = yield* CurrentAccount
-    const photo = yield* ownPhoto(accountId, photoId)
-    const garment = (yield* storedAs((yield* PhotoStore).garmentsOf([photoId]))).find(({ id }) => id === garmentId)
-    if (garment === undefined) return yield* NotFound.make({})
-    if (garment.state !== 'offered') yield* offered(photo, garment)
-    const [shown] = yield* photosOf([photo])
-    return shown ?? (yield* NotFound.make({}))
+    const change = Effect.gen(function* () {
+      const photo = yield* ownPhoto(accountId, photoId)
+      const garment = (yield* storedAs((yield* PhotoStore).garmentsOf([photoId]))).find(({ id }) => id === garmentId)
+      if (garment === undefined) return yield* NotFound.make({})
+      if (garment.state !== 'offered') yield* offered(photo, garment)
+    })
+    return yield* changedOnce({ operationId, command: 'offerGarment', input: [photoId, garmentId] }, photoId, change)
   }, Effect.provide(context)),
   /** "Wear it again": the photo's confirmed pieces as a look, remembered on the photo. Repeating the operation answers
    * the same look. */
@@ -378,11 +417,10 @@ const onBoard = <A, E>(effect: Effect.Effect<A, E, CurrentAccount>) =>
  * already answers as done. */
 const boarding = Effect.map(Effect.context<PhotoServices>(), (context) => ({
   /** Cut the person out of the photo for collages, once; free. */
-  cutOut: Effect.fn('Styld.Photos.cutOut')(function* (photoId: string) {
+  cutOut: Effect.fn('Styld.Photos.cutOut')(function* (photoId: string, operationId: string) {
     const { accountId } = yield* CurrentAccount
-    yield* cutOutPerson(yield* ownPhoto(accountId, photoId))
-    const [shown] = yield* photosOf([yield* ownPhoto(accountId, photoId)])
-    return shown ?? (yield* NotFound.make({}))
+    const change = Effect.flatMap(ownPhoto(accountId, photoId), cutOutPerson)
+    return yield* changedOnce({ operationId, command: 'cutOutPerson', input: photoId }, photoId, change)
   }, Effect.provide(context)),
   /** Put the photo on one of the person's boards, once: a repeat of the operation answers done, and the photo's
    * picture is uploaded only until the board holds it. */

@@ -115,7 +115,7 @@ export class PhotoApi extends HttpApiGroup.make('photo')
       params: photoPath,
       payload: UpdatePhoto,
       success: Photo,
-      error: [NotFound, Unavailable],
+      error: [NotFound, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -131,7 +131,7 @@ export class PhotoApi extends HttpApiGroup.make('photo')
       params: { ...photoPath, garmentId: PhotoGarmentId },
       payload: MatchGarment,
       success: Photo,
-      error: [NotFound, Unavailable],
+      error: [NotFound, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -139,7 +139,7 @@ export class PhotoApi extends HttpApiGroup.make('photo')
       params: { ...photoPath, garmentId: PhotoGarmentId },
       payload: Operation,
       success: Photo,
-      error: [NotFound, Unavailable],
+      error: [NotFound, OperationConflict, Unavailable],
     }),
   )
   .add(
@@ -155,7 +155,7 @@ export class PhotoApi extends HttpApiGroup.make('photo')
       params: photoPath,
       payload: Operation,
       success: Photo,
-      error: [NotFound, NoPersonFound, SlowDown, Unavailable],
+      error: [NotFound, NoPersonFound, SlowDown, OperationConflict, Unavailable],
     }),
   )
   .add(

@@ -359,9 +359,23 @@ const files = {
 
 /** The owner's request for a turn, and the files it makes. */
 export const askingTurns = Effect.map(Effect.context<CaptureServices>(), (context) => ({
-  /** Take the frame sheet the owner's browser built from the turn's video. */
-  acceptSheet: Effect.fn('Styld.Turn.sheet')(function* (pieceId: string, layout: TurnLayout, sheet: Uint8Array) {
-    return yield* acceptSheet(pieceId, layout, sheet)
+  /** Take the frame sheet the owner's browser built from the turn's video, once per operation id: a repeat answers
+   * the turn as it stands. */
+  acceptSheet: Effect.fn('Styld.Turn.sheet')(function* (
+    pieceId: string,
+    operationId: string,
+    layout: TurnLayout,
+    sheet: Uint8Array,
+  ) {
+    const { accountId } = yield* CurrentAccount
+    return yield* once(
+      yield* WardrobeStore,
+      { accountId, operationId, command: 'turnSheet', input: [pieceId, layout, sheet.byteLength] },
+      {
+        replay: () => replayedTurn(accountId, pieceId),
+        run: Effect.map(acceptSheet(pieceId, layout, sheet), (turn) => [turn, pieceId] as const),
+      },
+    )
   }, Effect.provide(context)),
   /** One of a turn's files for its owner: the video the browser cuts into frames, the front frame the turn ends on,
    * or the frame sheet the piece page plays. */

@@ -18,9 +18,11 @@ export const photoHandlers = HttpApiBuilder.group(StyldApi, 'photo', (handlers) 
       .handle('updatePhoto', ({ params, payload }) => photos.updatePhoto(params.photoId, payload))
       .handle('deletePhoto', ({ params, payload }) => photos.deletePhoto(params.photoId, payload.operationId))
       .handle('matchGarment', ({ params, payload }) => photos.matchGarment(params.photoId, params.garmentId, payload))
-      .handle('offerGarment', ({ params }) => photos.offerGarment(params.photoId, params.garmentId))
+      .handle('offerGarment', ({ params, payload }) =>
+        photos.offerGarment(params.photoId, params.garmentId, payload.operationId),
+      )
       .handle('wearAgain', ({ params, payload }) => photos.wearAgain(params.photoId, payload))
-      .handle('cutOut', ({ params }) => photos.cutOut(params.photoId))
+      .handle('cutOut', ({ params, payload }) => photos.cutOut(params.photoId, payload.operationId))
       .handle('addToBoard', ({ params, payload }) => photos.addToBoard(params.photoId, payload))
       .handle('piecePhotos', ({ params }) =>
         photos.piecePhotos(params.pieceId).pipe(Effect.map((list) => ({ photos: list }))),

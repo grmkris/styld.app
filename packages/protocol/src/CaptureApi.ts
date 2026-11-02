@@ -104,7 +104,7 @@ export class CaptureApi extends HttpApiGroup.make('capture')
       params: { pieceId: PieceId },
       payload: TurnSheet,
       success: PieceTurn,
-      error: [NotFound, SheetRefused, Unavailable],
+      error: [NotFound, SheetRefused, OperationConflict, Unavailable],
     }),
   )
   .middleware(SessionAccount)

@@ -36,7 +36,7 @@ export const captureHandlers = HttpApiBuilder.group(StyldApi, 'capture', (handle
           const sheet = yield* Effect.fromResult(Encoding.decode(payload.sheet)).pipe(
             Effect.mapError(() => SheetRefused.make({})),
           )
-          return yield* captures.acceptSheet(params.pieceId, payload.layout, sheet)
+          return yield* captures.acceptSheet(params.pieceId, payload.operationId, payload.layout, sheet)
         }),
       )
       .handle('check', ({ payload }) => {
