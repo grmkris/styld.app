@@ -5,7 +5,7 @@ import { Cause, Effect, Exit, Option, Predicate, Schema, Stream } from 'effect'
 // Every queue the API Worker consumes, and the one way its deliveries settle. A body is one case of the queue's tagged
 // union; each case names the work that runs on a delivery and what giving up on it does. A delivery that worked is
 // acknowledged; one that failed is retried until its last attempt, which gives the work up (the row moves to a
-// terminal state and its credits come back through `metered`/`Holds`); a body that is no case of the queue is dropped.
+// terminal state and its credits come back through `Holds`); a body that is no case of the queue is dropped.
 // Each delivery writes one structured log line, and is its own span with the job it carries.
 
 /** The queues the API Worker consumes. */

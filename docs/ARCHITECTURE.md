@@ -60,7 +60,7 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 ## Credits, jobs and sweeps
 
 - **Credits are reserved before paid work and settled once** (`server/src/usage/Holds.ts`): `holdId(kind, entity,
-  attempt)` names every hold; `metered(charge, work)` settles synchronous work by its exit. Success consumes; a known
+  attempt)` names every hold; paid work held per attempt settles once its result is stored. Success consumes; a known
   failure or a **lost provider answer refunds** (owner, 2026-11-01). A request claims its attempt (a conditional D1
   write on the row it moves) before it reserves, so only the owner of a hold settles it. Every hold is kept in
   `pending_settlements` from before it is reserved until the Wallet confirms it settled: the first ending recorded

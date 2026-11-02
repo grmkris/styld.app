@@ -7,7 +7,7 @@ import { SettleCredits } from '@styld/domain/Wallet/SettleCredits.command'
 import { Wallet } from '@styld/domain/Wallet/Wallet.aggregate'
 import { reserveCommandId, settleCommandId } from '@styld/domain/Wallet/WalletCommandIds'
 import { asc, eq, isNotNull, lt, or, sql } from 'drizzle-orm'
-import { Cause, Context, DateTime, Duration, Effect, Exit, Layer, Option, Predicate, Schedule, Schema } from 'effect'
+import { Cause, Context, DateTime, Duration, Effect, Layer, Option, Predicate, Schedule, Schema } from 'effect'
 import { Database, first, nowDate, query } from '../kernel/Db.ts'
 
 // Every paid action holds its credits in the account's Wallet before the work runs and settles them once after it
@@ -215,16 +215,3 @@ export const failedEnding = (cause: Cause.Cause<unknown>): Ending =>
   Option.exists(Cause.findErrorOption(cause), (error) => isProviderError(error) && isOutcomeUnknown(error))
     ? 'unknown'
     : 'failed'
-
-/** Run paid work that ends within this effect: its credits held first, then settled by how it ended. A settlement the
- * Wallet cannot take now stays recorded for the sweep. */
-export const metered = <A, E, R>(charge: Charge, work: Effect.Effect<A, E, R>) =>
-  Effect.gen(function* () {
-    const holds = yield* Holds
-    yield* holds.reserve(charge)
-    const exit = yield* Effect.exit(work)
-    yield* holds
-      .settle(charge.accountId, charge.hold, Exit.isSuccess(exit) ? 'succeeded' : failedEnding(exit.cause))
-      .pipe(Effect.ignore({ log: true, message: 'Styld.Holds could not settle a hold' }))
-    return yield* exit
-  })
