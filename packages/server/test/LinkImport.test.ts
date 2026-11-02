@@ -1,8 +1,9 @@
-import { CurrentAccount, UploadId } from '@styld/protocol'
-import { Effect, Option } from 'effect'
+import { CurrentAccount, OperationId, UploadId } from '@styld/protocol'
+import { Effect, Option, Schema } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
 import { describe, expect, test } from 'vitest'
 import { productFrom, readProductPage } from '../src/links/LinkImport.ts'
+import { fetchOperation } from '../src/links/Links.ts'
 import { allowedUrl } from '../src/mcp/ImageImport.ts'
 import { pictureFromLink } from '../src/links/LinkPicture.ts'
 import type { Uploads } from '../src/mcp/ImageImport.ts'
@@ -167,5 +168,21 @@ describe('a product page for the review tray', () => {
         'https://shop.test/i/knit.webp': () => new Response('<svg/>', { headers: { 'content-type': 'image/svg+xml' } }),
       }),
     ).toBe('noPicture')
+  })
+})
+
+describe("a write's fetch operation", () => {
+  test('is derived from the whole id and the tool: ids that differ only past the 59th character fetch apart', async () => {
+    const stem = 'a'.repeat(59)
+    const [first, second, otherTool] = await Effect.runPromise(
+      Effect.all([
+        fetchOperation(OperationId.make(`${stem}00001`), 'piece_add'),
+        fetchOperation(OperationId.make(`${stem}00002`), 'piece_add'),
+        fetchOperation(OperationId.make(`${stem}00001`), 'picture_pin'),
+      ]),
+    )
+    expect(new Set([first, second, otherTool]).size).toBe(3)
+    expect(await Effect.runPromise(fetchOperation(OperationId.make(`${stem}00001`), 'piece_add'))).toBe(first)
+    expect(Schema.is(OperationId)(first)).toBe(true)
   })
 })

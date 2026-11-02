@@ -6,6 +6,7 @@ import {
   CurrentAccount,
   Handle,
   NotFound,
+  OperationId,
   PictureRefused,
   type Piece,
   PieceId,
@@ -27,7 +28,7 @@ import { Discovery } from '../src/social/Discovery.ts'
 import { Social } from '../src/social/Social.ts'
 import { curationTools } from '../src/mcp/CurationTools.ts'
 import { adminEmails, Curation, isAdmin } from '../src/social/Curation.ts'
-import { Links } from '../src/links/Links.ts'
+import { fetchOperation, Links } from '../src/links/Links.ts'
 import { unlimited } from './fakes/Pacing.ts'
 
 /** The account service: Ana, with her verified email. */
@@ -58,6 +59,8 @@ const pieces = [
 const notUsed = () => Effect.die('not used by these tests')
 /** The upload an earlier try of `picture-replay-1` fetched, as its receipt answers it. */
 const replayedUpload = UploadId.make(`up_${'replay'.padEnd(22, 'x')}`)
+/** The fetch `picture-replay-1` runs under, which has that receipt. */
+const replayedFetch = await Effect.runPromise(fetchOperation(OperationId.make('picture-replay-1'), 'picture_pin'))
 const wardrobe = Wardrobe.of({
   listPieces: () => Effect.succeed(pieces),
   getPiece: notUsed,
@@ -65,7 +68,7 @@ const wardrobe = Wardrobe.of({
   createUpload: notUsed,
   // Operations with a receipt answer from it; the rest run.
   once: (operation, answer) =>
-    operation.operationId.startsWith('picture-replay-1')
+    operation.operationId === replayedFetch
       ? answer.replay(replayedUpload)
       : Effect.map(answer.run, ([value]) => value),
   receiveUpload: notUsed,

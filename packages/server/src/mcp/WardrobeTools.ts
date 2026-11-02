@@ -141,7 +141,11 @@ const writeTools = (
             retryable: false,
           })
         const target =
-          uploadId ?? (yield* links.photoFrom({ operationId: fetchOperation(input.operationId), url: imageUrl ?? '' }))
+          uploadId ??
+          (yield* links.photoFrom({
+            operationId: yield* fetchOperation(input.operationId, 'piece_add'),
+            url: imageUrl ?? '',
+          }))
         return show(yield* wardrobe.addPiece({ ...fields, uploadId: target }))
       }),
   }),
@@ -179,7 +183,10 @@ const linkTools = (wardrobe: Wardrobe['Service'], links: Links['Service'], show:
       Effect.gen(function* () {
         // The same links operation the website calls, under its own id derived from the piece's: a repeat answers
         // from its receipt, then from the piece's.
-        const picture = yield* links.readLink({ operationId: fetchOperation(fields.operationId), url })
+        const picture = yield* links.readLink({
+          operationId: yield* fetchOperation(fields.operationId, 'link_import'),
+          url,
+        })
         const named = chosen ?? picture.name
         return show(
           yield* wardrobe.addPiece({

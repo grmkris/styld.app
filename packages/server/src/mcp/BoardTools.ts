@@ -186,7 +186,10 @@ const pinTools = (boards: Boards['Service'], links: Links['Service'], origin: st
       handler: ({ boardId, operationId, imageUrl }) =>
         Effect.gen(function* () {
           // A retry answers from the fetch's receipt, then from the picture's.
-          const uploadId = yield* links.photoFrom({ operationId: fetchOperation(operationId), url: imageUrl })
+          const uploadId = yield* links.photoFrom({
+            operationId: yield* fetchOperation(operationId, 'picture_pin'),
+            url: imageUrl,
+          })
           yield* boards.addBoardImage(boardId, { operationId, uploadId })
           return show(yield* boards.getBoard(boardId))
         }),

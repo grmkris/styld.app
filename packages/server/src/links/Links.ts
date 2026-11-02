@@ -1,6 +1,7 @@
 import { LinkPicture, OperationId, type ReadLink, Unavailable, UploadId } from '@styld/protocol'
 import { Context, Effect, Layer, Schema } from 'effect'
 import * as HttpClient from 'effect/http/HttpClient'
+import { digestOf } from '../kernel/Ids.ts'
 import { Pacing } from '../kernel/Pacing.ts'
 import { importedUpload, publicClient } from '../mcp/ImageImport.ts'
 import { Wardrobe } from '../wardrobe/Wardrobe.ts'
@@ -49,9 +50,14 @@ const make = Effect.gen(function* () {
   }
 })
 
-/** The operation a write's fetch runs under, derived from the write's own: an assistant's `piece_add`, `link_import`
- * or `picture_pin` fetches once, and its repeat answers from both receipts. */
-export const fetchOperation = (operationId: OperationId) => OperationId.make(`${operationId.slice(0, 59)}-link`)
+/** The tool whose write fetches from the web, which scopes the fetch's own operation. */
+type FetchingTool = 'piece_add' | 'link_import' | 'picture_pin'
+
+/** The operation a write's fetch runs under, derived from the write's whole id and the tool: an assistant's
+ * `piece_add`, `link_import` or `picture_pin` fetches once, and its repeat answers from both receipts. A digest, so
+ * two ids that differ anywhere name two fetches (a 64-character id cut short would not). */
+export const fetchOperation = (operationId: OperationId, tool: FetchingTool) =>
+  Effect.map(digestOf(JSON.stringify([tool, operationId])), (digest) => OperationId.make(`link-${digest}`))
 
 export class Links extends Context.Service<Links, Effect.Success<typeof make>>()('@styld/server/links/Links') {
   static readonly layer = Layer.effect(
