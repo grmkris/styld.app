@@ -185,7 +185,7 @@ From the cleanup's milestones, still open after the later ones:
 
 - No tool lists pending Wallet holds; `pending_settlements` holds every one the Wallet has not confirmed settled (a
   D1 query reads them), and the `settlements` sweep logs how many it settled.
-- C8's credit and durability fixes (below) are not deployed: the preview needs the three forward migrations and a
+- C8's credit and durability fixes (below) are not deployed: the preview needs the forward migration `credits_paid_work_imports` and a
   readback of a redraw, a turn, a capture retry, a gallery photo and a cut-out under concurrent requests.
 - The website words a refused upload path (`LimitReached` `uploads`, `SlowDown`) as its generic limit message; the
   catalogs have no upload-specific wording yet.
