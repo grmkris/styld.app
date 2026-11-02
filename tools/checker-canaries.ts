@@ -64,6 +64,8 @@ export const missingArgument = format('en', 'looks.pieceCount', {})
     `export const bad = (value: object) => Reflect.get(value, 'key')
 Promise.resolve(1)
 export const tag = (value: { readonly _tag: 'Ready' | 'Done' }) => value._tag === 'Ready'
+export const loose = (value: any): unknown => value
+export const asserted = (value: string | undefined) => value!.length
 `,
   )
   const lint = await run(
@@ -80,7 +82,13 @@ export const tag = (value: { readonly _tag: 'Ready' | 'Done' }) => value._tag ==
     ],
     await oxlintEnv(),
   )
-  for (const rule of ['no-floating-promises', 'no-reflect-get', 'no-manual-tag-comparison'])
+  for (const rule of [
+    'no-floating-promises',
+    'no-reflect-get',
+    'no-manual-tag-comparison',
+    'no-explicit-any',
+    'no-non-null-assertion',
+  ])
     if (lint.code !== 1 || !lint.stdout.includes(rule))
       throw new Error(`Lint canary missed ${rule}: ${lint.stdout}${lint.stderr}`)
   console.log(

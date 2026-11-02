@@ -40,7 +40,9 @@ export default defineConfig({
     'zyzz/valid-styles': 'error',
     // @effect/vitest's it.effect is a test block too.
     'vitest/no-standalone-expect': ['error', { additionalTestBlockFunctions: ['it.effect', 'it.live', 'it.scoped'] }],
+    // The only bans on `any` and `!`; tools/suppressions-check.ts keeps the census of reviewed suppressions.
     'typescript/no-explicit-any': 'error',
+    'typescript/no-non-null-assertion': 'error',
     'typescript/no-floating-promises': ['error', { ignoreVoid: false }],
     'typescript/no-misused-promises': 'error',
     'typescript/switch-exhaustiveness-check': 'error',
