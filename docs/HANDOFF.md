@@ -30,8 +30,8 @@ The previous handoff (31 October) is in `docs/archive/HANDOFF-2026-10-31.md`.
   imported as 73 plus 1 refused placeholder; the second tester's 313 were importing at the time of writing. Their
   report must reconcile (`exported = ready + refused`) and the readback in DEPLOYMENT step 6 be recorded in STATUS.
 - **C7 (this round):** one vendored-hash gate, one `any` ban, one i18n parity owner, unused catalog keys as errors,
-  cyclomatic complexity ≤ 20, explicit Knip entries for operator scripts (`tools/manual/`), split web and workers
-  tsconfigs, the preview test checks the deployed release; STATUS, DELIVERY, ARCHITECTURE, ROADMAP and this file
+  cyclomatic complexity ≤ 20, explicit Knip entries for operator scripts, one explicit build before the budgets and
+  the native suite, the preview test checks the deployed release; STATUS, DELIVERY, ARCHITECTURE, ROADMAP and this file
   rewritten with their history archived in `docs/archive/`.
 - **Frozen:** M4 template boards and export, M5 Before you buy, M6 Travel, M8 try-on test, M9 try-on. Their decisions
   are in the archived roadmap; their order comes from the testers' findings.

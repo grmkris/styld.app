@@ -38,13 +38,15 @@ Gate results: see the C7 run below.
 - `i18n:check`: ICU syntax, argument and plural parity, approved rich tags, the generated catalog modules.
 - `graph:check` (package boundaries), `patterns:check` (`tools/patterns-check.ts`, ARCHITECTURE › Patterns),
   `style-tokens:check`, `suppressions:check` (the census of reviewed suppressions only), `canaries:check`.
-- `typecheck`: effect-tsrs over `tsconfig.web.json`, `tsconfig.workers.json` and the tools.
+- `typecheck`: effect-tsrs (TypeScript and Effect diagnostics) over the one root `tsconfig.json`; the planned web/workers
+  split is not done (Open items).
 - `lint`: type-aware Oxlint with anti-slop; no explicit `any`, no non-null assertions, cyclomatic complexity ≤ 20,
   cognitive 15, function and file size limits.
-- `unused:check`, `unused:production` (Knip; operator scripts listed explicitly under `tools/manual/`).
+- `unused:check`, `unused:production` (Knip; the gates are entries through `package.json`, the operator scripts are
+  listed one by one in `knip.config.ts`, so a script nothing runs is reported).
 - `duplicates:check` (jscpd).
-- `build`, `test:unit`, `test:native` (workerd + Chromium through the real edge), `bundle:check` (reads the build
-  that step made).
+- `build`, then `bundle:check` (reads that build), `test:unit`, `test:native:built` (workerd + Chromium through the
+  real edge, on the same build).
 
 ## What is built
 
@@ -108,6 +110,11 @@ From the cleanup's milestones, still open after the later ones:
 - `capture/Providers.ts` and the stylist's and language model's `(parts) =>` records remain beside the services.
 - The garment pipeline's 512 px model input and the pair rule need the fixture comparison and one real photo per
   intent read back on the preview (C4a).
+- C7's web/workers tsconfig split is not done: the native suite is one program that imports the server's source and
+  runs Playwright callbacks that need the DOM lib, and tsrs has no build mode or project references, so the server's
+  stream casts (`CloudflareImages.ts`, `Meta.ts`, `Wardrobe.ts`) stay needed there. Without the DOM lib the server
+  source compiles without the `Meta.ts` and `Wardrobe.ts` casts, after small fixes (`crypto`, `import.meta.url`,
+  `URL` in `fetch`, a nullable `Response.body`).
 
 From the product (carried from 31 October – 1 November):
 

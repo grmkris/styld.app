@@ -17,7 +17,7 @@ with acceptance at the right evidence level for every kept feature. Scope and or
   Below, a native journey is named by its acceptance file.
 - **Preview:** `tools/preview.native.test.ts` against the deployed release (health and release, auth contracts,
   hydration, MCP discovery), plus a recorded browser walk on phone and desktop in en and sl.
-- **Live provider:** `tools/manual/provider-live.ts` per provider against the preview.
+- **Live provider:** `tools/provider-live.ts` (Meta's SAM video path) run by hand.
 
 A source file, a green build or a stub answer does not prove a feature. A feature is accepted when every level its row
 names passes at the release under test and the preview readback is recorded in STATUS.
