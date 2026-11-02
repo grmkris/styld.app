@@ -51,7 +51,7 @@ interface LifecycleBindings {
 
 /** The account's stores outside D1 and the bucket, each forgotten for good: its chats with Styld and its videos at
  * Meta. Safe to run again. */
-export interface OutsideStores {
+interface OutsideStores {
   readonly chats: (accountId: string) => Effect.Effect<void, unknown>
   readonly providerFiles: (accountId: string) => Effect.Effect<void, unknown>
 }

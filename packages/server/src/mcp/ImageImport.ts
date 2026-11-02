@@ -7,7 +7,7 @@ import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 /** Why a photo address could not be imported, in words an assistant can act on. */
 const ImportRefusal = Schema.Literals(['notHttps', 'tooManyRedirects', 'notReached', 'notAnImage', 'tooLarge'])
 
-export class ImportRefused extends Schema.TaggedError<ImportRefused>()(
+class ImportRefused extends Schema.TaggedError<ImportRefused>()(
   'ImportRefused',
   { reason: ImportRefusal },
   {
