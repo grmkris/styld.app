@@ -68,13 +68,14 @@ export const processing = Effect.map(Effect.context<WardrobeServices>(), (contex
     const holds = yield* Holds
     const row = yield* stored(store.findPieceForProcessing(pieceId))
     if (Option.isNone(row) || row.value.status !== 'processing') return
-    yield* stored(store.finishProcessing(pieceId, { status: 'failed', imageKey: null, updatedAt: yield* nowDate }))
+    // The refunds are recorded before the piece leaves processing, so none is lost with the status that found it.
     const attempts = Array.from({ length: pieceAttempts }, (_, index) => index + 1)
     yield* Effect.forEach(
       attempts,
       (attempt) => holds.settle(row.value.accountId, holdId('piece', pieceId, attempt), 'failed'),
       { discard: true },
     )
+    yield* stored(store.finishProcessing(pieceId, { status: 'failed', imageKey: null, updatedAt: yield* nowDate }))
   }, Effect.provide(context)),
   /** The sweep of uploads nothing used: their bytes, then their rows. */
   sweepUploads: Effect.fn('Styld.Wardrobe.sweepUploads')(function* () {

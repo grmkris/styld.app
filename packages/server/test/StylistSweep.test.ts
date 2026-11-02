@@ -78,6 +78,7 @@ describe('the stylist sweep', () => {
       const holds = Holds.of({
         reserve: () => Effect.void,
         remaining: () => Effect.succeed(0),
+        sweep: Effect.succeed(0),
         settle: (_accountId, hold, ending) => Effect.sync(() => void settled.push([hold, ending])),
       })
       const services = Layer.mergeAll(

@@ -130,11 +130,12 @@ const kernelOf = (bindings: Bindings, providersFor: ProvidersFor, env: Readonly<
     const workersAi = workersAiCalls(yield* bindings.ai.raw)
     const auth = makeAuthHttp(bindings.database, authOptions(deployment.auth, yield* bindings.email.raw, emailSender))
     const writers = bindings.writers
+    const database = Database.layer(yield* bindings.database.raw)
     const kernel = Layer.mergeAll(
       providersFor({ workersAi, images, bucket, metrics, deployment, env }),
-      Holds.layer,
+      Holds.layer.pipe(Layer.provide(database)),
       Pacing.layer(yield* Effect.all(Record.map(bindings.paces, (binding) => binding.raw))),
-      Database.layer(yield* bindings.database.raw),
+      database,
       Media.layer({ bucket, images }),
       PieceQueue.layer(yield* writers.pieces.raw),
       CheckQueue.layer(yield* writers.checks.raw),
@@ -171,7 +172,7 @@ type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false
 
 /** What the Worker's runtime gives the application's services: the Wallet aggregate (`Holds`) and the runtime
  * context. */
-type RuntimeServices = Layer.Services<typeof Holds.layer> | RuntimeContext
+type RuntimeServices = Exclude<Layer.Services<typeof Holds.layer>, Database> | RuntimeContext
 
 /** What the HTTP handler leaves to each request: the router `toHttpEffect` provides, the code-request limiter
  * (`withCodeRequestPolicy`) and the body error a route may answer. */

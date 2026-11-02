@@ -1,16 +1,20 @@
 import { isOutcomeUnknown, ProviderError } from '../providers/Errors.ts'
+import { pendingSettlements } from '@styld/db'
 import { dailyCredits, LimitReached, Unavailable } from '@styld/protocol'
 import { OperationId, UserId } from '@styld/domain/Identity'
 import { ReserveCredits } from '@styld/domain/Wallet/ReserveCredits.command'
 import { SettleCredits } from '@styld/domain/Wallet/SettleCredits.command'
 import { Wallet } from '@styld/domain/Wallet/Wallet.aggregate'
 import { reserveCommandId, settleCommandId } from '@styld/domain/Wallet/WalletCommandIds'
-import { Cause, Context, DateTime, Effect, Exit, Layer, Option, Predicate, Schedule, Schema } from 'effect'
+import { asc, eq, isNotNull, lt, or, sql } from 'drizzle-orm'
+import { Cause, Context, DateTime, Duration, Effect, Exit, Layer, Option, Predicate, Schedule, Schema } from 'effect'
+import { Database, first, nowDate, query } from '../kernel/Db.ts'
 
 // Every paid action holds its credits in the account's Wallet before the work runs and settles them once after it
 // ends, by one policy: work that succeeded consumes them; work that failed, or whose provider answer was lost after it
 // was sent, refunds them (owner, 2026-11-01). A hold is named by what it pays for and the attempt, so a hold id is
 // never reused: the Wallet's receipts would answer a reused id as already reserved, and the work would run unpaid.
+// Every hold is kept in D1 (`pending_settlements`) from before it is reserved until the Wallet confirms it settled.
 
 /** What a hold pays for. */
 export type HoldKind = 'capture' | 'piece' | 'back' | 'photo' | 'generation' | 'picture' | 'turn' | 'stylist'
@@ -45,58 +49,159 @@ const unavailable = () => Unavailable.make({})
 /** A Wallet the same isolate just reached may refuse for a moment while its object starts. */
 const walletPatience = { schedule: Schedule.exponential('100 millis'), times: 2 }
 
-/** Credit holds through the Wallet (Domain owns usage reservations). */
+/** A hold whose work never recorded how it ended is refunded after this long: longer than any work's own patience (a
+ * turn's video waits two hours for the owner's browser; every other job is given up within half an hour), so only a
+ * hold whose work was lost before it could end reaches it. */
+const abandonedAfter = Duration.hours(6)
+
+/** The most holds one sweep settles. */
+const settleBatch = 50
+
+/** The holds the Wallet has not yet confirmed settled: a row is written before its hold is reserved and goes once the
+ * Wallet settled it, so a settlement lost on the way (the Wallet unreachable, the work's own rows ended or deleted
+ * meanwhile) is never lost for good: the sweep finds it here, whatever became of the work.
+ * @internal Exported for its tests. */
+export const settlementRows = (db: Database['Service']) => ({
+  /** The hold is about to be reserved; a hold opened again (the same charge held twice) keeps its row. */
+  open: (accountId: string, hold: HoldId, at: Date) =>
+    query(() =>
+      db
+        .insert(pendingSettlements)
+        .values({ holdId: hold, accountId, ending: null, updatedAt: at })
+        .onConflictDoNothing(),
+    ),
+  /** Record how the work ended; the first ending recorded stands, and is the one answered. */
+  end: (accountId: string, hold: HoldId, ending: Ending, at: Date) =>
+    query(() =>
+      db
+        .insert(pendingSettlements)
+        .values({ holdId: hold, accountId, ending, updatedAt: at })
+        .onConflictDoUpdate({
+          target: pendingSettlements.holdId,
+          set: { ending: sql`coalesce(${pendingSettlements.ending}, excluded.ending)`, updatedAt: at },
+        })
+        .returning({ ending: pendingSettlements.ending }),
+    ).pipe(
+      Effect.map((rows) =>
+        Option.getOrElse(
+          Option.flatMapNullishOr(first(rows), (row) => row.ending),
+          () => ending,
+        ),
+      ),
+    ),
+  /** The Wallet settled the hold, or never held it. */
+  forget: (hold: HoldId) => query(() => db.delete(pendingSettlements).where(eq(pendingSettlements.holdId, hold))),
+  /** Holds to settle now, oldest first: every one whose ending is recorded, and every one opened before `abandoned`
+   * whose work never recorded one, refunded as `unknown`. */
+  unsettled: (abandoned: Date, limit: number) =>
+    query(() =>
+      db
+        .select()
+        .from(pendingSettlements)
+        .where(or(isNotNull(pendingSettlements.ending), lt(pendingSettlements.updatedAt, abandoned)))
+        .orderBy(asc(pendingSettlements.updatedAt))
+        .limit(limit),
+    ).pipe(
+      Effect.map((rows) =>
+        rows.map(({ holdId: hold, accountId, ending }) => ({
+          hold: HoldId.make(hold),
+          accountId,
+          ending: ending ?? ('unknown' as const),
+        })),
+      ),
+    ),
+})
+
+/** Credit holds through the Wallet (Domain owns usage reservations), each kept in D1 until it is settled. */
 export class Holds extends Context.Service<
   Holds,
   {
     /** Hold the charge's credits; holding the same charge again is the same hold. */
     readonly reserve: (charge: Charge) => Effect.Effect<void, LimitReached | Unavailable>
-    /** Settle a hold by how its work ended; the first settlement stands, and one with no hold is done. */
+    /** Settle a hold by how its work ended; the first settlement stands, and one with no hold is done. Done once the
+     * ending is recorded: a Wallet that cannot take it now is settled by the sweep. */
     readonly settle: (accountId: string, hold: HoldId, ending: Ending) => Effect.Effect<void, Unavailable>
     /** The credits the account has left today. */
     readonly remaining: (accountId: string) => Effect.Effect<number, Unavailable>
+    /** Settle the holds still kept, a batch at a time; how many it tried. */
+    readonly sweep: Effect.Effect<number, Unavailable>
   }
 >()('@styld/server/usage/Holds') {
   static readonly layer = Layer.effect(
     this,
     Effect.gen(function* () {
       const wallets = yield* Wallet
+      const ledger = settlementRows(yield* Database)
+      /** The Wallet's settlement, then the row forgotten (one that cannot be forgotten now is settled again later). A
+       * hold the Wallet does not hold (never reserved, or settled before) is settled. */
+      const settled = (accountId: string, hold: HoldId, ending: Ending) => {
+        const command = new SettleCredits({ operationId: OperationId.make(hold), outcome: settlementOf(ending) })
+        return wallets.send(UserId.make(accountId), command, { commandId: settleCommandId(command) }).pipe(
+          Effect.asVoid,
+          Effect.catchTag('ReservationNotFound', () => Effect.void),
+          Effect.retry(walletPatience),
+          Effect.mapError(unavailable),
+          Effect.andThen(Effect.ignore(ledger.forget(hold))),
+        )
+      }
       return Holds.of({
         reserve: Effect.fn('Styld.Holds.reserve')(function* (charge: Charge) {
           yield* Effect.annotateCurrentSpan('styld.hold', charge.hold)
           const now = yield* DateTime.now
+          // No hold without its row: the row is what settles it if everything after this is lost.
+          yield* ledger.open(charge.accountId, charge.hold, DateTime.toDateUtc(now)).pipe(Effect.mapError(unavailable))
           const command = new ReserveCredits({
             operationId: OperationId.make(charge.hold),
             amount: charge.credits,
             day: dayOf(now),
             dailyAllowance: dailyCredits,
           })
+          const refusedToday = () => LimitReached.make({ limit: 'dailyCredits', resetsAt: nextDay(now) })
           yield* wallets.send(UserId.make(charge.accountId), command, { commandId: reserveCommandId(command) }).pipe(
             Effect.catchTags({
-              InsufficientCredits: () => LimitReached.make({ limit: 'dailyCredits', resetsAt: nextDay(now) }),
-              TooManyReservations: () => LimitReached.make({ limit: 'dailyCredits', resetsAt: nextDay(now) }),
+              InsufficientCredits: refusedToday,
+              TooManyReservations: refusedToday,
               ReservationConflict: () => Effect.die(new Error(`Hold ${charge.hold} reserved with another amount`)),
             }),
             Effect.asVoid,
             Effect.mapError((error) => (Predicate.isTagged(error, 'LimitReached') ? error : unavailable())),
+            // Refused outright, nothing is held and the row goes; a Wallet that did not answer leaves it to the sweep.
+            Effect.tapError((error) =>
+              Predicate.isTagged(error, 'LimitReached') ? Effect.ignore(ledger.forget(charge.hold)) : Effect.void,
+            ),
           )
         }),
         settle: Effect.fn('Styld.Holds.settle')(function* (accountId: string, hold: HoldId, ending: Ending) {
           yield* Effect.annotateCurrentSpan({ 'styld.hold': hold, 'styld.hold.ending': ending })
-          const command = new SettleCredits({ operationId: OperationId.make(hold), outcome: settlementOf(ending) })
-          yield* wallets.send(UserId.make(accountId), command, { commandId: settleCommandId(command) }).pipe(
-            Effect.asVoid,
-            // No hold under this id: it was never reserved, or the first settlement already took it.
-            Effect.catchTag('ReservationNotFound', () => Effect.void),
-            Effect.retry(walletPatience),
-            Effect.mapError(unavailable),
+          const recorded = yield* Effect.option(ledger.end(accountId, hold, ending, yield* nowDate))
+          const now = settled(
+            accountId,
+            hold,
+            Option.getOrElse(recorded, () => ending),
           )
+          // Recorded, the sweep settles what the Wallet cannot take now; unrecorded, only this call can.
+          yield* Option.isSome(recorded)
+            ? now.pipe(Effect.ignore({ log: true, message: 'Styld.Holds left a settlement to the sweep' }))
+            : now
         }),
         remaining: Effect.fn('Styld.Holds.remaining')(function* (accountId: string) {
           const today = dayOf(yield* DateTime.now)
           const state = yield* wallets.state(UserId.make(accountId)).pipe(Effect.mapError(unavailable))
           return state.daily.day === today ? state.daily.remaining : dailyCredits
         }),
+        sweep: Effect.gen(function* () {
+          const abandoned = DateTime.toDateUtc(DateTime.subtractDuration(yield* DateTime.now, abandonedAfter))
+          const open = yield* ledger.unsettled(abandoned, settleBatch).pipe(Effect.mapError(unavailable))
+          yield* Effect.forEach(
+            open,
+            ({ accountId, hold, ending }) =>
+              settled(accountId, hold, ending).pipe(
+                Effect.ignore({ log: true, message: 'Styld.Holds could not settle a hold yet' }),
+              ),
+            { discard: true },
+          )
+          return open.length
+        }).pipe(Effect.withSpan('Styld.Holds.sweep')),
       })
     }),
   )
@@ -111,8 +216,8 @@ const endingOf = (cause: Cause.Cause<unknown>): Ending =>
     ? 'unknown'
     : 'failed'
 
-/** Run paid work that ends within this effect: its credits held first, then settled by how it ended. A hold that
- * cannot be settled now is logged and left to the work's status sweep. */
+/** Run paid work that ends within this effect: its credits held first, then settled by how it ended. A settlement the
+ * Wallet cannot take now stays recorded for the sweep. */
 export const metered = <A, E, R>(charge: Charge, work: Effect.Effect<A, E, R>) =>
   Effect.gen(function* () {
     const holds = yield* Holds

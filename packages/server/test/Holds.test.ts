@@ -19,6 +19,7 @@ const recording = (credits = 10) => {
       settle: (_accountId: string, hold: string, ending: Ending) =>
         Effect.sync(() => void log.push(`${settlementOf(ending)} ${hold} (${ending})`)),
       remaining: () => Effect.succeed(credits),
+      sweep: Effect.succeed(0),
     }),
   )
   return { log, layer }

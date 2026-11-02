@@ -7,12 +7,19 @@ import { Database } from './kernel/Db.ts'
 import { module } from './kernel/Module.ts'
 import { Pacing } from './kernel/Pacing.ts'
 import { forgetOldReceipts } from './kernel/Receipts.ts'
+import { Holds } from './usage/Holds.ts'
+import type { Sweep } from './jobs/Sweeps.ts'
 
 /** Receipts go a larger batch at a time: deleting them is one statement. */
 const forgetBatch = 500
 
-/** What every deployment serves besides its modules: health, the browser telemetry relay, and forgetting receipts
- * past their lifetime. */
+const sweeps: ReadonlyArray<Sweep<Database | Holds>> = [
+  { name: 'receipts', run: Effect.flatMap(Database, (db) => forgetOldReceipts(db, forgetBatch)) },
+  { name: 'settlements', run: Effect.flatMap(Holds, (holds) => holds.sweep) },
+]
+
+/** What every deployment serves besides its modules: health, the browser telemetry relay, forgetting receipts past
+ * their lifetime, and settling the credit holds the Wallet has not confirmed settled. */
 export const platform = module({
   layer: Layer.empty,
   routes: Layer.unwrap(
@@ -25,5 +32,5 @@ export const platform = module({
       )
     }),
   ),
-  sweeps: [{ name: 'receipts', run: Effect.flatMap(Database, (db) => forgetOldReceipts(db, forgetBatch)) }],
+  sweeps,
 })

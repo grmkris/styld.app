@@ -66,6 +66,7 @@ const over = () => {
         reserve: (charge) => Effect.sync(() => void held.push(`reserve ${charge.hold}`)),
         settle: (_accountId, hold, ending) => Effect.sync(() => void held.push(`${ending} ${hold}`)),
         remaining: () => Effect.succeed(10),
+        sweep: Effect.succeed(0),
       }),
     ),
   )

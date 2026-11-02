@@ -358,7 +358,7 @@ test(
 )
 
 test(
-  'serves the D1 schema its baseline snapshot records, and the R2 binding',
+  'serves the D1 schema its latest migration snapshot records, and the R2 binding',
   Effect.gen(function* () {
     const { url } = yield* stack
     const response = yield* HttpClient.get(`${url}/storage`)

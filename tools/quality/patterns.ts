@@ -71,6 +71,7 @@ const owners: Readonly<Record<string, ReadonlyArray<string>>> = {
   thinkingDays: ['outfits/'],
   wornPieces: ['worn/'],
   stylistTurns: ['stylist/'],
+  pendingSettlements: ['usage/'],
   // Every operation writes its receipt in its own batch (`kernel/Receipts.ts`).
   operationReceipts: ['*'],
 }

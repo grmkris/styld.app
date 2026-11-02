@@ -270,6 +270,8 @@ const changing = Effect.map(Effect.context<PhotoServices>(), (context) => ({
       Effect.gen(function* () {
         const deleted = yield* storedAs((yield* PhotoStore).deletePhoto(accountId, photoId, receipt))
         if (Option.isNone(deleted)) return yield* NotFound.make({})
+        // A photo deleted while its garments were being found gets its credit back: no delivery will settle it now.
+        if (deleted.value.status === 'finding') yield* (yield* Holds).settle(accountId, photoHold(photoId), 'failed')
         yield* deleteObjects(deleted.value)
       }),
     )

@@ -4,12 +4,12 @@ import { localD1 } from './LocalD1.ts'
 import { liveShape, readSchema } from './SchemaShape.ts'
 import { snapshotShape } from './SchemaSnapshot.ts'
 
-// The one baseline migration builds exactly the schema its snapshot records (the native suite checks the same against
+// The migrations, the baseline and each one after it, build exactly the schema the latest snapshot records (the native suite checks the same against
 // workerd's D1), and the schema refuses rows the protocol never writes.
 
 const fresh = () => localD1().sqlite
 
-describe('the baseline schema', () => {
+describe('the migrated schema', () => {
   test('is what its snapshot records: tables, columns, foreign keys, indexes and checks', () => {
     const db = fresh()
     const live = Effect.runSync(readSchema((sql) => Effect.sync(() => db.prepare(sql).all())))

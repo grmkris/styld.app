@@ -1,5 +1,5 @@
 import { Context, DateTime, Duration, Effect, Layer } from 'effect'
-import { type GenerationServices, send, settleJob, stored } from './Shared.ts'
+import { type GenerationServices, send, stored } from './Shared.ts'
 import { generations } from './Generation.ts'
 import { GenerationStore } from './Store.ts'
 import { giveUp, work } from './Work.ts'
@@ -7,8 +7,6 @@ import { giveUp, work } from './Work.ts'
 /** A job untouched this long lost its delivery: a drawing takes 90 s at most. */
 const sweepPatience = Duration.minutes(5)
 const sweepBatch = 50
-/** A job that ended is settled again by every sweep for this long: six sweeps, ten minutes apart. */
-const settledAgainFor = Duration.hours(1)
 
 /** Every generation operation over the services it yields (`Shared.ts` `GenerationServices`): the store, the queue,
  * boards, the wardrobe, credits, pacing, the content judge, the planner and the painter. */
@@ -20,19 +18,16 @@ const make = Effect.gen(function* () {
     work: (jobId: string) => work(jobId).pipe(Effect.provide(context)),
     /** The queue's last try failed: the job fails and its unspent credits go back. */
     giveUp: (jobId: string) => giveUp(jobId).pipe(Effect.provide(context)),
-    /** The schedule's sweep: jobs stalled past a drawing's patience go to the queue again, which settles them; jobs
-     * that ended within the last hour have their credit settled again from their status (the first settlement stands),
-     * so a failed job whose refund was lost still gives its credit back. */
+    /** The schedule's sweep: jobs stalled past a drawing's patience go to the queue again, which settles them. A
+     * settlement the Wallet could not take is the credit ledger's to finish (`usage/Holds.ts`), whatever the job's
+     * status. */
     sweep: Effect.fn('Styld.Generation.sweep')(function* () {
       const store = yield* GenerationStore
       const now = yield* DateTime.now
       const before = DateTime.toDateUtc(DateTime.subtractDuration(now, sweepPatience))
       const stalled = yield* stored(store.stalledJobs(before, sweepBatch))
       yield* Effect.forEach(stalled, send, { discard: true })
-      const after = DateTime.toDateUtc(DateTime.subtractDuration(now, settledAgainFor))
-      const ended = yield* stored(store.endedJobs(after, before, sweepBatch))
-      yield* Effect.forEach(ended, settleJob, { discard: true })
-      return stalled.length + ended.length
+      return stalled.length
     }, Effect.provide(context)),
   }
 })
