@@ -19,11 +19,22 @@ const toastDuration = Duration.seconds(5)
 
 const boardIdOf = (id: string) => Schema.decodeUnknownEffect(BoardId)(id)
 
+/** How long one read of a board may take; it is tried once more, so the page offers Try again after about 20
+ * seconds rather than showing its shape for ever (a read that never answered, browser review, 2 November 2026). */
+export const boardReadPatience = Duration.seconds(10)
+
+/** A board read that gives up after its patience, tried twice. */
+export const patiently = <A, E, R>(read: Effect.Effect<A, E, R>) =>
+  read.pipe(
+    Effect.timeout(boardReadPatience),
+    Effect.retry({ times: 1, while: (error) => Predicate.isTagged(error, 'TimeoutError') }),
+  )
+
 /** A board as others see it, once it is public and Styld's check lets them. */
 const visitBoard = (boardId: string) =>
   Effect.gen(function* () {
     const api = yield* (yield* StyldClient).api
-    const board = yield* api.public.board({ params: { boardId: yield* boardIdOf(boardId) } })
+    const board = yield* patiently(api.public.board({ params: { boardId: yield* boardIdOf(boardId) } }))
     return Message.SucceededVisitBoard({ board })
   }).pipe(
     Effect.catchTag('NotFound', () => Effect.succeed(Message.FailedLoadBoard({ error: 'NotFound' }))),
@@ -36,11 +47,13 @@ export const LoadBoard = Command.define('LoadBoard', {
   execute: ({ boardId }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
-      const board = yield* api.board.getBoard({ params: { boardId: yield* boardIdOf(boardId) } })
+      const board = yield* patiently(api.board.getBoard({ params: { boardId: yield* boardIdOf(boardId) } }))
       return Message.SucceededLoadBoard({ board })
     }).pipe(
       Effect.catchTag('SchemaError', () => Effect.succeed(Message.FailedLoadBoard({ error: 'NotFound' }))),
-      Effect.catchTag('Unavailable', () => Effect.succeed(Message.FailedLoadBoard({ error: 'Unavailable' }))),
+      Effect.catchTag(['Unavailable', 'TimeoutError'], () =>
+        Effect.succeed(Message.FailedLoadBoard({ error: 'Unavailable' })),
+      ),
       // Not this account's board, or nobody signed in: it may be public.
       Effect.catch(() => visitBoard(boardId)),
     ),

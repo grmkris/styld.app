@@ -5,6 +5,7 @@ import { Command, Dom } from 'foldkit'
 import { load as loadPage } from 'foldkit/navigation'
 import { boardsRouter } from '../../route.ts'
 import { StyldClient } from '../../StyldClient.ts'
+import { patiently } from './Commands.ts'
 import { Message } from './Message.ts'
 
 // COMMAND
@@ -21,7 +22,7 @@ export const ReloadBoard = Command.define('ReloadBoard', {
   execute: ({ boardId }) =>
     Effect.gen(function* () {
       const api = yield* (yield* StyldClient).api
-      const board = yield* api.board.getBoard({ params: { boardId: yield* boardIdOf(boardId) } })
+      const board = yield* patiently(api.board.getBoard({ params: { boardId: yield* boardIdOf(boardId) } }))
       return Message.CompletedReloadBoard({ maybeBoard: Option.some(board) })
     }).pipe(Effect.orElseSucceed(() => Message.CompletedReloadBoard({ maybeBoard: Option.none() }))),
 })
