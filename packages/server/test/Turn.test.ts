@@ -86,6 +86,12 @@ describe('Veo 3.1 Lite through the Vercel AI Gateway', () => {
       reason: { _tag: 'OutcomeUnknown' },
     })
     expect(lost.seen).toHaveLength(1)
+    // An accepted start whose answer cannot be read may have made a job: unknown, and never sent again.
+    const unread = veo(() => Promise.resolve(new Response('{"operation":', { status: 200 })))
+    expect(await Effect.runPromise(Effect.flip(unread.generator.start(turn)))).toMatchObject({
+      reason: { _tag: 'OutcomeUnknown' },
+    })
+    expect(unread.seen).toHaveLength(1)
     const refused = veo(status(400))
     expect(await Effect.runPromise(Effect.flip(refused.generator.start(turn)))).toMatchObject({
       reason: { _tag: 'Refused' },

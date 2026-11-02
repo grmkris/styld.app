@@ -103,7 +103,8 @@ export const makeVeoGenerator = (settings: VeoSettings) => {
     pollSeconds: settings.pollSeconds,
     start: Effect.fn('Styld.Turn.start')(function* (request: TurnRequest) {
       const send = http.postJson('/video-model/start', startBody(request), 'unknown').pipe(
-        Effect.flatMap((response) => (response.ok ? http.json(response, 'busy') : refusal(response))),
+        // A start the gateway accepted may have made and billed a job even when its answer cannot be read.
+        Effect.flatMap((response) => (response.ok ? http.json(response, 'unknown') : refusal(response))),
         Effect.flatMap((answer) => Schema.decodeUnknownEffect(Started)(answer).pipe(Effect.mapError(unknown))),
         Effect.map(({ operation }) => operation),
       )
