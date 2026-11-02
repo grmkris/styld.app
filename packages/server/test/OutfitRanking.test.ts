@@ -90,25 +90,27 @@ const fast: MakeOutfit = {
 /** One turn of the event loop, outside the test clock. */
 const settled = Effect.promise(() => new Promise<void>((resolve) => setImmediate(resolve)))
 
-/** The batch, and how long it took on the test clock, the clock moved a second at a time. */
-const timed = Effect.gen(function* () {
-  const making = yield* Effect.forkChild((yield* Outfits).make(fast))
-  for (let turn = 0; turn < 20; turn++) yield* settled
-  for (let second = 1; second <= 30; second++) {
-    yield* TestClock.adjust(Duration.seconds(1))
-    // D1's answers are real promises: let them settle before looking.
-    for (let turn = 0; turn < 20 && making.pollUnsafe() === undefined; turn++) yield* settled
-    const done = making.pollUnsafe()
-    if (done !== undefined) return { batch: yield* Fiber.join(making), seconds: second }
-  }
-  return yield* Effect.die('the batch never came')
-}).pipe(Effect.provideService(CurrentAccount, { accountId: 'ac_1', via: 'session' }))
+/** The batch, and how long it took on the test clock, the clock moved a second at a time once Clef's calls are out:
+ * the wardrobe's reads are real promises, so the clock waits for them however busy the machine is. */
+const timed = (calls: { readonly now: number }) =>
+  Effect.gen(function* () {
+    const making = yield* Effect.forkChild((yield* Outfits).make(fast))
+    for (let turn = 0; turn < 10_000 && calls.now === 0 && making.pollUnsafe() === undefined; turn++) yield* settled
+    for (let second = 1; second <= 30; second++) {
+      yield* TestClock.adjust(Duration.seconds(1))
+      // D1's answers are real promises: let them settle before looking.
+      for (let turn = 0; turn < 20 && making.pollUnsafe() === undefined; turn++) yield* settled
+      const done = making.pollUnsafe()
+      if (done !== undefined) return { batch: yield* Fiber.join(making), seconds: second }
+    }
+    return yield* Effect.die('the batch never came')
+  }).pipe(Effect.provideService(CurrentAccount, { accountId: 'ac_1', via: 'session' }))
 
 describe('Fast’s first outfit', () => {
   it.effect('judges all twelve candidates at once: one wave of Clef’s latency, not two', () => {
     const calls = { now: 0, most: 0 }
     return Effect.gen(function* () {
-      const { batch, seconds } = yield* timed
+      const { batch, seconds } = yield* timed(calls)
       // Six at a time, three-second calls took six seconds; all at once take three.
       expect(seconds).toBe(3)
       expect(calls.most).toBe(12)
@@ -123,7 +125,7 @@ describe('Fast’s first outfit', () => {
   it.effect('a slow Clef is given up at the budget, and the rules’ outfits answer unjudged', () => {
     const calls = { now: 0, most: 0 }
     return Effect.gen(function* () {
-      const { batch, seconds } = yield* timed
+      const { batch, seconds } = yield* timed(calls)
       expect(seconds).toBe(Duration.toSeconds(judgingBudget))
       expect(batch.proposals).toHaveLength(3)
       expect(batch.proposals.every(({ score }) => score === null)).toBe(true)
