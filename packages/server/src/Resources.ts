@@ -1,7 +1,7 @@
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import type { Environment } from '@styld/observability'
 import { Stage } from 'alchemy/Stage'
-import { Effect } from 'effect'
+import { Effect, Schema } from 'effect'
 
 /** What a stage's name decides about its deployment. */
 interface StageFacts {
@@ -47,13 +47,16 @@ export type StageName = keyof typeof stages
 
 export const isStageName = (stage: string): stage is StageName => Object.hasOwn(stages, stage)
 
+/** A stage the table does not name: the plan stops. */
+class UnknownStage extends Schema.TaggedError<UnknownStage>()('UnknownStage', {
+  stage: Schema.String,
+  known: Schema.Array(Schema.String),
+}) {}
+
 /** The facts of the stage being planned or run. */
 export const currentStage = Effect.gen(function* () {
   const stage = yield* Stage
-  if (!isStageName(stage))
-    return yield* Effect.die(
-      new Error(`Stage "${stage}" is not one of ${Object.keys(stages).join(', ')} (Resources.ts)`),
-    )
+  if (!isStageName(stage)) return yield* Effect.die(new UnknownStage({ stage, known: Object.keys(stages) }))
   return stages[stage]
 })
 
