@@ -23,16 +23,18 @@ Worker named `alchemy-state-store` with its token and encryption key in the acco
 deploy that uses it. Every operator's checkout plans against the same state; nothing is kept under `.alchemy/`. The
 API token needs Workers, D1, R2, Queues, Secrets Store and Account Analytics permissions.
 
-Stages deployed before C5 kept local state (`.alchemy/` in the checkout that deployed them, `Alchemy.localState()`).
-Destroy such a stage from that checkout before the first deploy with Cloudflare state (step 2 below), or the new
-deploy will try to create resources whose names the old ones still hold.
+The preview was destroyed and deployed again on 2 November 2026 (release `54a6601`) and has been on the Cloudflare
+state store since; any checkout plans against it. Stages deployed before C5 kept local state (`.alchemy/` in the
+checkout that deployed them); none is left.
 
 ## Secrets and environment
 
 The ignored `.env.preview.local` file (mode 600) holds the stage's secrets: `STYLD_AUTH_SECRET`,
 `STYLD_AUTH_SESSION_KEYS`, `STYLD_AUTH_PROOF_KEYS`, `STYLD_AUTH_REQUEST_BINDING_KEYS`, `META_MUSE_API_KEY`,
 `STYLD_AI_GATEWAY_API_KEY` (or `AI_GATEWAY_API_KEY`) and `STYLD_ADMIN_EMAILS` (the admins' sign-in emails,
-comma-separated: they get the curation tools and may run imports). Keyrings are JSON with an `activeKeyId` and `keys`
+comma-separated: they get the curation tools and may run imports). `alchemy.run.ts` reads them at deploy and binds
+them to the API Worker; `STYLD_ADMIN_EMAILS` unset means no admins, so no imports. `STYLD_RELEASE` (the commit) is
+passed on the command line, as below. Keyrings are JSON with an `activeKeyId` and `keys`
 of `{ id, material }`, material at least 32 random bytes as unpadded base64url. Never print the file, commit it, or use
 v1 or production secrets in it. `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN` come from the environment (both:
 a token alone falls back to the configured profile); the preview's account is `bceaeae4788dce3493514fde194b4a7e`.
@@ -55,6 +57,9 @@ ids, bindings and public access settings, then:
 ```sh
 STYLD_PREVIEW_URL="<edge url>" heavy --wait bun test tools/preview.native.test.ts
 ```
+
+The readback fails unless `/api/health` names the commit being read back: HEAD of the checkout, or
+`STYLD_EXPECTED_RELEASE=<sha>` when reading back an earlier deploy.
 
 Cloudflare bot controls may answer Error 1010 to ad-hoc non-browser clients; use the browser acceptance path when
 validating the public URL. The native suite (`heavy --wait bun run test:native`) runs the production Foldkit artifact in
@@ -82,9 +87,8 @@ queues go with it; v1's wardrobes are brought back by the importer. The producti
      bun tools/import-v1/Export.ts <their-email> ~/private/styld-v1/<person>
    ```
 
-2. **Destroy the stage**, from the checkout whose state knows it (before C5: the main checkout's `.alchemy/`, at the
-   last pre-C5 commit, e.g. `git worktree add ../styld-pre-c5 0633596` with `.alchemy/` copied in). It removes the edge,
-   API and SSR Workers, the D1 database, the R2 bucket and its objects, the Durable Object namespaces and the queues.
+2. **Destroy the stage** (its state is in the Cloudflare state store, so any checkout can). It removes the edge, API
+   and SSR Workers, the D1 database, the R2 bucket and its objects, the Durable Object namespaces and the queues.
 
    ```sh
    STYLD_RELEASE=destroy heavy --wait bunx alchemy destroy --stage preview --env-file .env.preview.local
@@ -117,8 +121,8 @@ queues go with it; v1's wardrobes are brought back by the importer. The producti
    waiting (the last line says `reconciled`). A failed piece is re-run by running the importer again after the cause
    is fixed; a refusal is checked by hand against v1.
 
-6. **Read back**: `/api/health` release equals HEAD; `STYLD_PREVIEW_URL=… heavy --wait bun test
-   tools/preview.native.test.ts`; each tester's wardrobe lists (every row decodes, or the list fails); no piece is left
+6. **Read back**: `STYLD_PREVIEW_URL=… heavy --wait bun test tools/preview.native.test.ts` (it checks that
+   `/api/health`'s release is HEAD); each tester's wardrobe lists (every row decodes, or the list fails); no piece is left
    processing and the sweeps are idle in Workers Logs (`Styld.Sweep` lines with nothing moved); the Wallets hold no
    pending reservations (every hold settled). The private folders stay outside the repository; delete them once both
    testers confirmed their wardrobes.
