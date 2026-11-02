@@ -1,4 +1,5 @@
 import type { PaidAttempts } from '../usage/Attempts.ts'
+import type { Pacing } from '../kernel/Pacing.ts'
 import type { Holds } from '../usage/Holds.ts'
 import {
   CurrentAccount,
@@ -23,7 +24,15 @@ import { deleteAfterRows, Media } from '../kernel/Media.ts'
 // services it uses; the `Wardrobe` layer provides them once (`Wardrobe.ts`).
 
 /** The services the wardrobe's operations act through, provided once by the `Wardrobe` layer. */
-export type WardrobeServices = WardrobeStore | Media | PieceQueue | GarmentCutout | PieceChanged | Holds | PaidAttempts
+export type WardrobeServices =
+  | WardrobeStore
+  | Media
+  | PieceQueue
+  | GarmentCutout
+  | PieceChanged
+  | Holds
+  | PaidAttempts
+  | Pacing
 
 export const unavailable = () => Unavailable.make({})
 export const refused = (reason: UploadRefused['reason']) => UploadRefused.make({ reason })

@@ -34,6 +34,7 @@ import {
   type WardrobeServices,
 } from './Shared.ts'
 import { nowDate } from '../kernel/Db.ts'
+import { admitUpload } from './Admission.ts'
 import { pictureView, shownImage, shows, turnView } from './Shown.ts'
 import { type PictureRow, type PieceRow, type UploadRow, WardrobeStore } from './Store.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
@@ -176,7 +177,10 @@ const uploads = Effect.map(Effect.context<WardrobeServices>(), (context) => ({
       { accountId, operationId, command: 'createUpload', input: file },
       {
         replay: (uploadId) => reissued(accountId, uploadId),
-        run: Effect.map(newUpload(file), (upload) => [upload, upload.uploadId] as const),
+        run: Effect.andThen(
+          admitUpload(file.bytes),
+          Effect.map(newUpload(file), (upload) => [upload, upload.uploadId] as const),
+        ),
       },
     )
   }, Effect.provide(context)),

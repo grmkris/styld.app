@@ -93,11 +93,11 @@ export class NotFound extends Schema.TaggedError<NotFound>()(
 ) {}
 
 /** Which of the account's allowances is spent. */
-export const Limit = Schema.Literals(['dailyCredits', 'thinking', 'reports'])
+export const Limit = Schema.Literals(['dailyCredits', 'thinking', 'reports', 'uploads'])
 export type Limit = typeof Limit.Type
 
-/** One of the account's allowances is spent: today's credits (back at `resetsAt`), today's Thinking outfits, or this
- * hour's reports. */
+/** One of the account's allowances is spent: today's credits (back at `resetsAt`), today's Thinking outfits, this
+ * hour's reports, or the uploads that may wait unused. */
 export class LimitReached extends Schema.TaggedError<LimitReached>()(
   'LimitReached',
   { limit: Limit, resetsAt: Schema.optionalKey(Schema.String) },
@@ -120,6 +120,12 @@ export class LimitReached extends Schema.TaggedError<LimitReached>()(
         code: 'too_many_reports',
         message: 'Ten reports an hour at most.',
         recovery: 'Try again in an hour.',
+        retryable: false,
+      },
+      uploads: {
+        code: 'too_many_uploads',
+        message: 'Too many uploads are waiting unused.',
+        recovery: 'Use the photos and videos already uploaded, or try again tomorrow.',
         retryable: false,
       },
     }),

@@ -10,7 +10,10 @@ import { type PieceRow, WardrobeStore } from './Store.ts'
 
 /** Bytes received but used by nothing are kept this long after their upload path expired. */
 const unusedPatience = Duration.days(1)
-const uploadBatch = 50
+
+/** The most uploads of each kind (paths never used, bytes never used) one sweep forgets: 1,000 every ten minutes, well
+ * above what the upload pace and the waiting cap let accounts leave behind (`Wardrobe.ts`). */
+const uploadBatch = 500
 
 /** How sure the decision model must be of a type's group to change an imported piece's type to it. */
 const typeConfidence = 0.75
@@ -78,22 +81,16 @@ export const processing = Effect.map(Effect.context<WardrobeServices>(), (contex
     yield* (yield* PaidAttempts).abandon(`piece/${pieceId}`, row.value.accountId)
     yield* stored(store.finishProcessing(pieceId, { status: 'failed', imageKey: null, updatedAt: yield* nowDate }))
   }, Effect.provide(context)),
-  /** The sweep of uploads nothing used: their bytes, then their rows. */
+  /** The sweep of uploads nothing used: their rows, then the bytes of those forgotten (an upload used meanwhile keeps
+   * both). */
   sweepUploads: Effect.fn('Styld.Wardrobe.sweepUploads')(function* () {
     const store = yield* WardrobeStore
     const now = yield* DateTime.now
-    const unused = yield* stored(
-      store.unusedUploads(
-        DateTime.toDateUtc(now),
-        DateTime.toDateUtc(DateTime.subtractDuration(now, unusedPatience)),
-        uploadBatch,
-      ),
-    )
-    yield* deleteKeys(
-      (yield* Media).bucket,
-      unused.map(({ objectKey }) => objectKey),
-    )
-    yield* Effect.forEach(unused, ({ id }) => stored(store.forgetUpload(id)), { discard: true })
-    return unused.length
+    const expired = yield* stored(store.unusedUploads('pending', DateTime.toDateUtc(now), uploadBatch))
+    const received = DateTime.toDateUtc(DateTime.subtractDuration(now, unusedPatience))
+    const unused = yield* stored(store.unusedUploads('received', received, uploadBatch))
+    const forgotten = yield* stored(store.forgetUploads([...expired, ...unused]))
+    yield* deleteKeys((yield* Media).bucket, forgotten)
+    return forgotten.length
   }, Effect.provide(context)),
 }))

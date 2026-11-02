@@ -1,5 +1,5 @@
 import { accounts, detections, operationReceipts, piecePictures, pieceTurns, pieces, uploads } from '@styld/db'
-import { and, asc, desc, eq, inArray, lt, ne, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, inArray, lt, ne, or, sql } from 'drizzle-orm'
 import { Array, Context, Effect, Layer } from 'effect'
 import { receiptRows, recordedWrites } from '../kernel/Receipts.ts'
 import { PictureRows } from '../capture/Rows.ts'
@@ -142,27 +142,43 @@ const uploadQueries = (db: Database['Service']) => ({
         .set({ tokenDigest })
         .where(and(eq(uploads.id, uploadId), eq(uploads.status, 'pending'))),
     ).pipe(Effect.asVoid),
-  /** Uploads never used: a path whose bytes never came before it expired, or bytes received but used by nothing a
-   * day after the path expired. Oldest first. */
-  unusedUploads: (expiredBefore: Date, receivedBefore: Date, limit: number) =>
+  /** Uploads never used, in `status`, whose path expired before `before`; oldest first, over the status and expiry
+   * index. */
+  unusedUploads: (status: 'pending' | 'received', before: Date, limit: number) =>
     query(() =>
       db
-        .select({ id: uploads.id, objectKey: uploads.objectKey })
+        .select({ id: uploads.id })
         .from(uploads)
-        .where(
-          or(
-            and(eq(uploads.status, 'pending'), lt(uploads.expiresAt, expiredBefore)),
-            and(eq(uploads.status, 'received'), lt(uploads.expiresAt, receivedBefore)),
-          ),
-        )
+        .where(and(eq(uploads.status, status), lt(uploads.expiresAt, before)))
         .orderBy(asc(uploads.expiresAt))
         .limit(limit),
+    ).pipe(Effect.map((rows) => rows.map(({ id }) => id))),
+  /** Forget uploads nothing used, unless something used them meanwhile; the objects of those forgotten. */
+  forgetUploads: (uploadIds: ReadonlyArray<string>) =>
+    Effect.map(
+      Effect.forEach(chunked(uploadIds), (chunk) =>
+        query(() =>
+          db
+            .delete(uploads)
+            .where(and(inArray(uploads.id, chunk), ne(uploads.status, 'used')))
+            .returning({ objectKey: uploads.objectKey }),
+        ),
+      ),
+      (rows) => rows.flat().map(({ objectKey }) => objectKey),
     ),
-  /** Forget an upload nothing used, unless something used it meanwhile. */
-  forgetUpload: (uploadId: string) =>
-    query(() => db.delete(uploads).where(and(eq(uploads.id, uploadId), ne(uploads.status, 'used')))).pipe(
-      Effect.asVoid,
-    ),
+  /** What of the account's uploads waits unused: paths not yet expired, and bytes received that nothing used. */
+  waitingUploads: (accountId: string, now: Date) =>
+    query(() =>
+      db
+        .select({ count: sql<number>`count(*)`, bytes: sql<number>`coalesce(sum(${uploads.bytes}), 0)` })
+        .from(uploads)
+        .where(
+          and(
+            eq(uploads.accountId, accountId),
+            or(and(eq(uploads.status, 'pending'), gt(uploads.expiresAt, now)), eq(uploads.status, 'received')),
+          ),
+        ),
+    ).pipe(Effect.map((rows) => rows[0] ?? { count: 0, bytes: 0 })),
   markUploadReceived: (uploadId: string) =>
     query(() =>
       db

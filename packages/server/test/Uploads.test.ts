@@ -2,9 +2,12 @@ import { describe, expect, it } from '@effect/vitest'
 import { pieces } from '@styld/db'
 import { eq } from 'drizzle-orm'
 import { drizzle } from 'drizzle-orm/d1'
-import { Effect, Exit, Schema } from 'effect'
-import { query } from '../src/kernel/Db.ts'
-import { keysInUse, spendUpload } from '../src/wardrobe/Store.ts'
+import { CurrentAccount } from '@styld/protocol'
+import { Effect, Exit, Layer, Record, Schema } from 'effect'
+import { Database, query } from '../src/kernel/Db.ts'
+import { Pacing, paces } from '../src/kernel/Pacing.ts'
+import { admitUpload } from '../src/wardrobe/Admission.ts'
+import { keysInUse, spendUpload, WardrobeStore } from '../src/wardrobe/Store.ts'
 import { localD1 } from './LocalD1.ts'
 
 /** A database with one account and one received upload. */
@@ -80,6 +83,44 @@ describe('the one in-use check', () => {
         'k/tray',
       ])
       expect((yield* keysInUse(drizzle(database), 'ac_2', keys)).size).toBe(0)
+    }),
+  )
+})
+
+/** The account's admission over a database where `waiting` uploads of `bytes` each wait unused. */
+const admission = (waiting: number, bytes: number, allowed = 60) => {
+  const database = seeded()
+  for (let index = 0; index < waiting; index += 1)
+    database.sqlite.exec(
+      `INSERT INTO uploads (id, account_id, token_digest, content_type, bytes, object_key, status, expires_at)
+       VALUES ('up_w${index}', 'ac_1', 'd', 'video/mp4', ${bytes}, 'k/w${index}', 'pending', ${Date.now() + 60_000})`,
+    )
+  let asked = 0
+  const limiter = { limit: async () => ({ success: (asked += 1) <= allowed }) }
+  return Layer.mergeAll(
+    WardrobeStore.layer.pipe(Layer.provide(Database.layer(database))),
+    Pacing.layer(Record.map(paces, () => limiter)),
+    Layer.succeed(CurrentAccount, { accountId: 'ac_1', via: 'session' }),
+  )
+}
+
+describe('handing out upload paths', () => {
+  const megabytes = 1024 * 1024
+
+  it.live('admits paths while what waits unused stays under the cap', () =>
+    admitUpload(95 * megabytes).pipe(Effect.provide(admission(4, 95 * megabytes))),
+  )
+
+  it.live('refuses one more path past the waiting bytes or count, and past the pace', () =>
+    Effect.gen(function* () {
+      const bytes = yield* Effect.flip(admitUpload(95 * megabytes).pipe(Effect.provide(admission(5, 95 * megabytes))))
+      const count = yield* Effect.flip(admitUpload(1).pipe(Effect.provide(admission(100, 1))))
+      const paced = yield* Effect.flip(admitUpload(1).pipe(Effect.provide(admission(0, 1, 0))))
+      expect([bytes, count, paced]).toMatchObject([
+        { _tag: 'LimitReached', limit: 'uploads' },
+        { _tag: 'LimitReached', limit: 'uploads' },
+        { _tag: 'SlowDown' },
+      ])
     }),
   )
 })

@@ -96,14 +96,14 @@ class WardrobeApi extends HttpApiGroup.make('wardrobe')
     HttpApiEndpoint.post('createUpload', '/uploads', {
       payload: CreateUpload,
       success: Upload,
-      error: [UploadRefused, OperationConflict, Unavailable],
+      error: [UploadRefused, LimitReached, SlowDown, OperationConflict, Unavailable],
     }),
   )
   .add(
     HttpApiEndpoint.post('createVideoUpload', '/uploads/video', {
       payload: CreateVideoUpload,
       success: Upload,
-      error: [UploadRefused, OperationConflict, Unavailable],
+      error: [UploadRefused, LimitReached, SlowDown, OperationConflict, Unavailable],
     }),
   )
   .add(

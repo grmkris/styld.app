@@ -153,9 +153,14 @@ describe('the sweeps', () => {
       upload('up_just_received', 'received', now - minute)
       upload('up_used', 'used', now - 25 * 60 * minute)
       const store = makeStore(drizzle(database))
-      const unused = yield* store.unusedUploads(nowDate, aDayAgo, sweepBatch)
-      expect(unused.map(({ id }) => id).toSorted()).toEqual(['up_left_unused', 'up_never_came'])
-      yield* Effect.forEach(unused, ({ id }) => store.forgetUpload(id))
+      // What waits unused counts against the account's cap: the open path and the bytes nothing took yet.
+      expect(yield* store.waitingUploads('ac_1', nowDate)).toEqual({ count: 3, bytes: 3 })
+      const expired = yield* store.unusedUploads('pending', nowDate, sweepBatch)
+      const unused = yield* store.unusedUploads('received', aDayAgo, sweepBatch)
+      expect([...expired, ...unused]).toEqual(['up_never_came', 'up_left_unused'])
+      // A used upload is never forgotten, even when a sweep listed it before it was used.
+      const forgotten = yield* store.forgetUploads([...expired, ...unused, 'up_used'])
+      expect(forgotten.toSorted()).toEqual(['k/up_left_unused', 'k/up_never_came'])
       const left = database.sqlite.prepare('SELECT id FROM uploads ORDER BY id').all()
       expect(left.map(({ id }) => id)).toEqual(['up_just_received', 'up_still_open', 'up_used'])
     }),
