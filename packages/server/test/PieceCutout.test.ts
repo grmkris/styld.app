@@ -6,6 +6,9 @@ import { pieceCutout } from '../src/capture/PieceCutout.ts'
 import { GarmentVision } from '../src/capture/Providers.ts'
 import { Media } from '../src/kernel/Media.ts'
 import { Holds } from '../src/usage/Holds.ts'
+import { PaidAttempts } from '../src/usage/Attempts.ts'
+import { Database } from '../src/kernel/Db.ts'
+import { localD1 } from './LocalD1.ts'
 import { GarmentCutout } from '../src/wardrobe/Processing.ts'
 import { importedDetails } from '../src/wardrobe/Work.ts'
 
@@ -70,7 +73,12 @@ const over = () => {
       }),
     ),
   )
-  return { held, layer: pieceCutout.pipe(Layer.provide(services)) }
+  const database = localD1()
+  database.sqlite.exec(
+    "INSERT INTO accounts (id, security_revision, display_name, created_at) VALUES ('ac_1', 0, 'Ana', 0)",
+  )
+  const attempts = PaidAttempts.layer.pipe(Layer.provide(Layer.merge(services, Database.layer(database))))
+  return { held, layer: pieceCutout.pipe(Layer.provide(Layer.merge(services, attempts))) }
 }
 
 const input = (payer: 'account' | 'styld') => ({
@@ -79,7 +87,7 @@ const input = (payer: 'account' | 'styld') => ({
   originalKey: 'photo.jpg',
   contentType: 'image/jpeg',
   type: 'tops' as const,
-  of: { side: 'front' as const, attempt: 1, payer },
+  of: { side: 'front' as const, payer },
 })
 
 describe("a piece's cut-out", () => {
@@ -89,8 +97,14 @@ describe("a piece's cut-out", () => {
       const cutout = yield* GarmentCutout
       expect(yield* cutout.cut(input('account'))).toEqual({ imageKey: 'accounts/ac_1/pieces/pc_1/cutout.png' })
       expect(held).toEqual(['reserve piece/pc_1/1', 'succeeded piece/pc_1/1'])
+      // Asked again (a redelivery), the stored cut-out answers: nothing is cut or held again.
       held.length = 0
-      expect(yield* cutout.cut(input('styld'))).toEqual({ imageKey: 'accounts/ac_1/pieces/pc_1/cutout.png' })
+      expect(yield* cutout.cut(input('account'))).toEqual({ imageKey: 'accounts/ac_1/pieces/pc_1/cutout.png' })
+      expect(held).toEqual(['succeeded piece/pc_1/1'])
+      held.length = 0
+      expect(yield* cutout.cut({ ...input('styld'), pieceId: 'pc_2' })).toEqual({
+        imageKey: 'accounts/ac_1/pieces/pc_2/cutout.png',
+      })
       expect(held).toEqual([])
     }).pipe(Effect.provide(layer))
   })

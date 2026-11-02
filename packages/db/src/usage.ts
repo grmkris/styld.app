@@ -25,3 +25,27 @@ export const pendingSettlements = sqliteTable(
     oneOf('pending_settlements_ending', table.ending, holdEndings),
   ],
 )
+
+/** Paid provider work that must run once (`server/src/usage/Attempts.ts`): one row per piece of work, claimed by one
+ * delivery at a time, its result kept once the provider answered so a retry resumes from it instead of paying again.
+ * A claim no result followed within the lease belongs to a delivery that died after the provider may have taken the
+ * work: its outcome is unknown, refunded and never sent again. Forgotten a day after the work last moved. */
+export const paidAttempts = sqliteTable(
+  'paid_attempts',
+  {
+    work: text('work').primaryKey(),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    /** Counts the claims; a released claim is taken again as the next attempt. */
+    attempt: integer('attempt').notNull(),
+    /** The hold the current attempt is paid by, when it holds the account's credits. */
+    holdId: text('hold_id'),
+    /** When the current attempt was claimed; none once it was released. */
+    claimedAt: integer('claimed_at', { mode: 'timestamp_ms' }),
+    /** The work's result as JSON, once stored. */
+    result: text('result'),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [index('paid_attempts_updated').on(table.updatedAt)],
+)

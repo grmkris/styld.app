@@ -1,5 +1,6 @@
 import type { Colour, Occasion, Pattern, PieceType, Season } from '@styld/protocol'
 import { Context, Effect, Layer, Option, Schema } from 'effect'
+import type { AttemptElsewhere } from '../usage/Attempts.ts'
 
 /** Deliveries that run a piece's job before it is given up (`wardrobe/Queue.ts`). */
 export const pieceAttempts = 3
@@ -34,11 +35,10 @@ export class PieceQueue extends Context.Service<
 /** The cut-out step could not produce an image this time; the queue retries it. */
 export class CutoutFailed extends Schema.TaggedError<CutoutFailed>()('CutoutFailed', {}) {}
 
-/** Which side of a piece a photo shows: its front, cut out when the piece is added (by the queue delivery `attempt`),
- * paid by the account, or by Styld for a piece imported from v1; or a back the person adds later, cut out from its own
- * upload. */
+/** Which side of a piece a photo shows: its front, cut out when the piece is added, paid by the account, or by Styld
+ * for a piece imported from v1; or a back the person adds later, cut out from its own upload. */
 export type CutSide =
-  | { readonly side: 'front'; readonly attempt: number; readonly payer: 'account' | 'styld' }
+  | { readonly side: 'front'; readonly payer: 'account' | 'styld' }
   | { readonly side: 'back'; readonly uploadId: string }
 
 /** What the decision model takes a piece's cut-out for: its type (and how sure it is of the type's group), colours,
@@ -65,7 +65,7 @@ export class GarmentCutout extends Context.Service<
       /** What the piece is, which tells the cut-out what to look for. */
       readonly type: PieceType
       readonly of: CutSide
-    }) => Effect.Effect<{ readonly imageKey: string }, CutoutFailed>
+    }) => Effect.Effect<{ readonly imageKey: string }, CutoutFailed | AttemptElsewhere>
     /** What a stored cut-out shows, as the decision model reads it; none when it cannot be read or answered. */
     readonly describe: (cutoutKey: string) => Effect.Effect<Option.Option<PieceDescription>>
   }

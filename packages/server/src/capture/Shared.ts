@@ -1,3 +1,4 @@
+import type { PaidAttempts } from '../usage/Attempts.ts'
 import { type Ending, type Holds, holdId } from '../usage/Holds.ts'
 import type { Pacing } from '../kernel/Pacing.ts'
 import type { Garments } from './Garments.ts'
@@ -29,6 +30,7 @@ export type CaptureServices =
   | VideoGenerator
   | Garments
   | Holds
+  | PaidAttempts
   | Pacing
   | CaptureMetrics
   | PieceChanged

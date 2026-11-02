@@ -7,19 +7,21 @@ import { Database } from './kernel/Db.ts'
 import { module } from './kernel/Module.ts'
 import { Pacing } from './kernel/Pacing.ts'
 import { forgetOldReceipts } from './kernel/Receipts.ts'
+import { PaidAttempts } from './usage/Attempts.ts'
 import { Holds } from './usage/Holds.ts'
 import type { Sweep } from './jobs/Sweeps.ts'
 
 /** Receipts go a larger batch at a time: deleting them is one statement. */
 const forgetBatch = 500
 
-const sweeps: ReadonlyArray<Sweep<Database | Holds>> = [
+const sweeps: ReadonlyArray<Sweep<Database | Holds | PaidAttempts>> = [
   { name: 'receipts', run: Effect.flatMap(Database, (db) => forgetOldReceipts(db, forgetBatch)) },
   { name: 'settlements', run: Effect.flatMap(Holds, (holds) => holds.sweep) },
+  { name: 'attempts', run: Effect.flatMap(PaidAttempts, (attempts) => attempts.sweep) },
 ]
 
 /** What every deployment serves besides its modules: health, the browser telemetry relay, forgetting receipts past
- * their lifetime, and settling the credit holds the Wallet has not confirmed settled. */
+ * their lifetime, settling the credit holds the Wallet has not confirmed settled, and forgetting finished paid work. */
 export const platform = module({
   layer: Layer.empty,
   routes: Layer.unwrap(

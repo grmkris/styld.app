@@ -1,5 +1,6 @@
 import { isBusy } from '../providers/Errors.ts'
-import { Effect, Option } from 'effect'
+import { GarmentMatch, PieceType } from '@styld/protocol'
+import { Effect, Option, Schema } from 'effect'
 import { comparedTypes, sameAs } from '../capture/Matching.ts'
 import { type CaptureServices, readObject, storedAs, unavailable, writeObject } from '../capture/Shared.ts'
 import { type Garment, judgedAt } from '../capture/Garments.ts'
@@ -16,6 +17,7 @@ import { newId } from '../kernel/Ids.ts'
 import { CaptureStore } from '../capture/Store.ts'
 import { Garments } from '../capture/Garments.ts'
 import { Holds } from '../usage/Holds.ts'
+import { PaidAttempts } from '../usage/Attempts.ts'
 
 // Finding the garments in an outfit photo, one delivery of the piece queue at a time (owner, 2026-10-31). The same
 // cutting and suggesting as capture, without the held-piece rule: every garment the person wears counts. Each is
@@ -71,12 +73,26 @@ const garmentOf = (photo: PhotoRow, garment: Garment, position: number) =>
     } satisfies GarmentRow
   })
 
+/** The garments found in a photo, as their rows are written: what a delivery keeps once SAM answered, so a retry
+ * writes them without asking it again. */
+const FoundGarments = Schema.Array(
+  Schema.Struct({
+    id: Schema.String,
+    photoId: Schema.String,
+    accountId: Schema.String,
+    position: Schema.Number,
+    cutoutKey: Schema.String,
+    type: Schema.NullOr(PieceType),
+    colours: Schema.Array(Schema.String),
+    pieceId: Schema.NullOr(Schema.String),
+    state: GarmentMatch,
+  }),
+)
+
 /** The garments the pipeline finds in the photo, stored and matched. */
-const garmentsIn = (photo: PhotoRow) =>
+const garmentsIn = (photo: PhotoRow, original: Uint8Array) =>
   Effect.gen(function* () {
-    const original = yield* readObject(photo.originalKey)
-    if (Option.isNone(original)) return yield* unavailable()
-    const { garments } = yield* (yield* Garments).find(original.value, { for: 'gallery' })
+    const { garments } = yield* (yield* Garments).find(original, { for: 'gallery' })
     return yield* Effect.forEach(garments, (garment, position) => garmentOf(photo, garment, position), {
       concurrency: 4,
     })
@@ -84,19 +100,30 @@ const garmentsIn = (photo: PhotoRow) =>
 
 /** The queue side of My Gallery. */
 export const finding = Effect.map(Effect.context<PhotoServices>(), (context) => ({
-  /** Find a photo's garments once; its credit is spent when they are stored. */
+  /** Find a photo's garments once (`PaidAttempts`: a redelivery writes what the first found, and leaves one being
+   * found to its delivery); its credit is spent when they are stored. */
   findGarments: Effect.fn('Styld.Photos.find')(function* (photoId: string) {
     const photo = yield* storedAs((yield* PhotoStore).photoForWork(photoId))
     if (Option.isNone(photo)) return
     if (photo.value.status === 'finding') {
+      const original = yield* readObject(photo.value.originalKey)
+      if (Option.isNone(original)) return yield* unavailable()
+      const work = {
+        key: `photo/${photoId}`,
+        accountId: photo.value.accountId,
+        provider: 'meta-sam',
+        result: FoundGarments,
+      }
       // Only a busy provider is tried again: one that may have taken the paid work (SAM bills each call) is never
       // sent it twice, and a refusal would repeat. Both end the photo as failed, its credit back.
-      const garments = yield* garmentsIn(photo.value).pipe(
+      const garments = yield* (yield* PaidAttempts).run(work, garmentsIn(photo.value, original.value)).pipe(
         Effect.map(Option.some),
         Effect.catchTag('ProviderError', (error) =>
           isBusy(error) ? Effect.fail(error) : Effect.succeed(Option.none<ReadonlyArray<GarmentRow>>()),
         ),
+        Effect.catchTag('AttemptElsewhere', () => Effect.succeed('elsewhere' as const)),
       )
+      if (garments === 'elsewhere') return
       if (Option.isNone(garments)) {
         yield* storedAs((yield* PhotoStore).failFinding(photoId, yield* nowDate))
         return yield* settlePhoto(photo.value.accountId, photoId, 'failed')

@@ -207,11 +207,11 @@ export class Holds extends Context.Service<
   )
 }
 
-/** How a failed attempt ended: a provider whose answer was lost after it took the work is `unknown`; anything else
- * failed. Both refund, so the difference is only what the span and the log say. */
 const isProviderError = Schema.is(ProviderError)
 
-const endingOf = (cause: Cause.Cause<unknown>): Ending =>
+/** How a failed attempt ended: a provider whose answer was lost after it took the work is `unknown`; anything else
+ * failed. Both refund, so the difference is only what the span and the log say. */
+export const failedEnding = (cause: Cause.Cause<unknown>): Ending =>
   Option.exists(Cause.findErrorOption(cause), (error) => isProviderError(error) && isOutcomeUnknown(error))
     ? 'unknown'
     : 'failed'
@@ -224,7 +224,7 @@ export const metered = <A, E, R>(charge: Charge, work: Effect.Effect<A, E, R>) =
     yield* holds.reserve(charge)
     const exit = yield* Effect.exit(work)
     yield* holds
-      .settle(charge.accountId, charge.hold, Exit.isSuccess(exit) ? 'succeeded' : endingOf(exit.cause))
+      .settle(charge.accountId, charge.hold, Exit.isSuccess(exit) ? 'succeeded' : failedEnding(exit.cause))
       .pipe(Effect.ignore({ log: true, message: 'Styld.Holds could not settle a hold' }))
     return yield* exit
   })

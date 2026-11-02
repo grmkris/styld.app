@@ -1,12 +1,13 @@
 import { Effect, Option } from 'effect'
 import { captureHold, endingOf, enqueueMatch, forgetCaptureObjects, storedAs } from './Shared.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
-import { type Found as Result, processPhoto } from './Detections.ts'
+import { Found, type Found as Result, processPhoto } from './Detections.ts'
 import { processVideo } from './VideoPipeline.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { CaptureStore } from './Store.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
 import { Holds } from '../usage/Holds.ts'
+import { PaidAttempts } from '../usage/Attempts.ts'
 import type { CaptureServices } from './Shared.ts'
 
 /** Settle the hold of a capture that ended, by how it ended: one in the tray or done consumes it, one that failed
@@ -66,10 +67,18 @@ const pairBack = (accountId: string, frontCaptureId: string) =>
       yield* storedAs((yield* CaptureStore).foldBack(waiting.value.capture.id, yield* nowDate))
   })
 
+/** The capture's paid work, run once per attempt the person asked for (`PaidAttempts`): a redelivery records what the
+ * first found, and leaves one still being found to its delivery. */
 const pipeline = (capture: CaptureRow) =>
   Effect.gen(function* () {
-    if (capture.kind === 'photo') return yield* processPhoto(capture)
-    return yield* processVideo(capture, yield* storedAs((yield* CaptureStore).frames(capture.id)))
+    const work = { key: `capture/${capture.id}/${capture.attempt}`, accountId: capture.accountId, provider: 'meta-sam' }
+    const found =
+      capture.kind === 'photo'
+        ? processPhoto(capture)
+        : Effect.flatMap(storedAs(Effect.flatMap(CaptureStore, (store) => store.frames(capture.id))), (frames) =>
+            processVideo(capture, frames),
+          )
+    return yield* (yield* PaidAttempts).run({ ...work, result: Found }, found)
   })
 
 /** Run a capture's pipeline. A provider that refused the work ends it as failed, and one whose answer was lost
@@ -78,8 +87,11 @@ const pipeline = (capture: CaptureRow) =>
 const run = (capture: CaptureRow) =>
   pipeline(capture).pipe(
     Effect.map((result) => Option.some<Result>(result)),
-    // Another delivery is tracking this video; it finishes the capture.
-    Effect.catchTag('TrackingClaimed', () => Effect.succeed(Option.none<Result>())),
+    // Another delivery is finding the garments, or tracking this video; it finishes the capture.
+    Effect.catchTags({
+      TrackingClaimed: () => Effect.succeed(Option.none<Result>()),
+      AttemptElsewhere: () => Effect.succeed(Option.none<Result>()),
+    }),
     Effect.catchReasons('ProviderError', {
       OutcomeUnknown: () =>
         Effect.gen(function* () {

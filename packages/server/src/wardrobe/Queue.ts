@@ -35,7 +35,7 @@ export const pieceJobs = (services: {
   readonly photos: Pick<Photos['Service'], 'findGarments' | 'failFinding'>
 }): JobsOf<typeof WorkMessage.Type> => ({
   ProcessPiece: {
-    run: ({ pieceId }, attempt) => services.wardrobe.processPiece(pieceId, attempt),
+    run: ({ pieceId }) => services.wardrobe.processPiece(pieceId),
     giveUp: ({ pieceId }) => services.wardrobe.failPiece(pieceId),
   },
   FinishDeletion: {

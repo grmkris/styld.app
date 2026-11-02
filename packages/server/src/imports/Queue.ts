@@ -34,7 +34,7 @@ export const importJobs = (
   imports: Pick<Imports['Service'], 'importPiece' | 'giveUpPiece'>,
 ): JobsOf<ImportMessage> => ({
   ImportPiece: {
-    run: (message, attempt) => imports.importPiece(message, attempt),
+    run: (message) => imports.importPiece(message),
     giveUp: (message) => imports.giveUpPiece(message),
   },
 })

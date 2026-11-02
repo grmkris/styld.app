@@ -9,10 +9,11 @@ import {
   StylistBusy,
   prices,
 } from '@styld/protocol'
-import { Context, DateTime, Effect, Layer, Schema } from 'effect'
+import { Context, DateTime, Effect, Layer, Option, Schema } from 'effect'
 import { LanguageModel } from 'effect/ai'
 import { workersAiModel } from '../ai/LanguageModel.ts'
 import { Holds } from '../usage/Holds.ts'
+import { PaidAttempts } from '../usage/Attempts.ts'
 import type { Tool as AssistantTool } from '../mcp/Tools.ts'
 import { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { maxSteps, styldModel } from './Policy.ts'
@@ -41,6 +42,9 @@ const decodeParts = Schema.decodeUnknownEffect(Schema.fromJsonString(Schema.Arra
  * bug. */
 const partsOf = (json: string) => decodeParts(json).pipe(Effect.orDie)
 
+/** A written reply as a delivery keeps it until it is in the chat, so a retry finishes it without asking again. */
+const Written = Schema.Struct({ text: Schema.String, parts: Schema.Array(ReplyPart) })
+
 /** A chat's title: its first message, cut at a word near 60 characters. */
 const titleOf = (text: string) => {
   const line = text.replace(/\s+/g, ' ').trim()
@@ -65,6 +69,7 @@ type StylistServices =
   | StylistTools
   | Wardrobe
   | Holds
+  | PaidAttempts
 
 const messageOf = (message: StoredMessage) =>
   Effect.map(partsOf(message.parts), (parts): ChatMessage => ({
@@ -194,14 +199,15 @@ const reading = Effect.map(Effect.context<StylistServices>(), (context) => ({
 
 /** The queue's side: write a reply once, give one up, and forget an account's chats. */
 const queueing = Effect.map(Effect.context<StylistServices>(), (context) => ({
-  /** A reply already ended only has its credit settled. */
+  /** A reply already ended only has its credit settled. The reply is written once (`PaidAttempts`): a redelivery
+   * finishes what the first wrote, leaves one being written to its delivery, and gives up one whose delivery died. */
   processTurn: Effect.fn('Styld.Stylist.processTurn')(function* (accountId: string, turnId: string) {
     const chats = yield* chatsOf(accountId)
     const input = yield* stored(chats.turn(turnId))
     if (!input.found) return
     if (input.state !== 'writing')
       return yield* settled(accountId, turnId, input.state === 'done' ? 'succeeded' : 'failed')
-    const answered = yield* reply(accountId, turnId, input).pipe(
+    const writing = reply(accountId, turnId, input).pipe(
       // What failed, by its kind alone (a call past its patience, the model's error), never its words.
       Effect.tapError((error) =>
         Effect.logWarning('Styld.Stylist model failed').pipe(
@@ -209,20 +215,32 @@ const queueing = Effect.map(Effect.context<StylistServices>(), (context) => ({
         ),
       ),
       Effect.mapError(unavailable),
+      // A model that wrote nothing and showed nothing has not answered: the queue asks again.
+      Effect.filterOrFail((answer) => answer.text.length > 0 || answer.parts.length > 0, unavailable),
     )
-    // A model that wrote nothing and showed nothing has not answered: the queue asks again.
-    if (answered.text.length === 0 && answered.parts.length === 0) return yield* unavailable()
+    const attempts = yield* PaidAttempts
+    const work = { key: `stylist/${turnId}`, accountId, provider: 'workers-ai', result: Written }
+    const answered = yield* attempts.run(work, writing).pipe(
+      Effect.map(Option.some),
+      Effect.catchTags({
+        AttemptElsewhere: () => Effect.succeedNone,
+        ProviderError: () => Effect.as(giveUp(accountId, turnId), Option.none()),
+      }),
+    )
+    if (Option.isNone(answered)) return
     yield* stored(
       chats.finish({
         turnId,
         outcome: 'done',
-        text: answered.text,
-        parts: JSON.stringify(answered.parts),
+        text: answered.value.text,
+        parts: JSON.stringify(answered.value.parts),
         messageId: yield* replyIds.randomId('ms'),
         now: yield* now,
       }),
     )
     yield* settled(accountId, turnId, 'succeeded')
+    // The reply is in the chat: D1 keeps none of its words.
+    yield* attempts.forget(work.key).pipe(Effect.ignore)
   }, Effect.provide(context)),
   /** The queue's last attempt failed: the reply shows as failed and its credit comes back. */
   failTurn: Effect.fn('Styld.Stylist.failTurn')(function* (accountId: string, turnId: string) {

@@ -45,6 +45,7 @@ import { chatStoreOf } from './stylist/Live.ts'
 import { StylistQueue } from './stylist/Queue.ts'
 import { ChatStores } from './stylist/Chats.ts'
 import { Stylist } from './stylist/StylistObject.ts'
+import { PaidAttempts } from './usage/Attempts.ts'
 import { Holds } from './usage/Holds.ts'
 import { PieceQueue } from './wardrobe/Processing.ts'
 
@@ -131,9 +132,11 @@ const kernelOf = (bindings: Bindings, providersFor: ProvidersFor, env: Readonly<
     const auth = makeAuthHttp(bindings.database, authOptions(deployment.auth, yield* bindings.email.raw, emailSender))
     const writers = bindings.writers
     const database = Database.layer(yield* bindings.database.raw)
+    const holds = Holds.layer.pipe(Layer.provide(database))
     const kernel = Layer.mergeAll(
       providersFor({ workersAi, images, bucket, metrics, deployment, env }),
-      Holds.layer.pipe(Layer.provide(database)),
+      holds,
+      PaidAttempts.layer.pipe(Layer.provide(Layer.merge(holds, database))),
       Pacing.layer(yield* Effect.all(Record.map(bindings.paces, (binding) => binding.raw))),
       database,
       Media.layer({ bucket, images }),
