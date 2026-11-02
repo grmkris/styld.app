@@ -33,6 +33,44 @@ Leftovers of milestone C6 (website only; the preview is not redeployed until the
   (`classify`, `briefFor`, `headline`, `cropFrom`, `currentCode`, `cameFromOf`, `tileSharpness`, `offeredLocales`)
   stay as they are.
 
+## Cleanup C4e: composition root and server gaps — 2026-11-02
+
+Milestone C4e of the cleanup plan (server; the preview is not redeployed until the milestone's review).
+
+- **Composition root:** `server/src/Modules.ts` lists the modules (platform, account, social, wardrobe, capture,
+  photos, generation, outfits, links, stylist, mcp), each one value `{ layer, api?, routes?, consumers?, sweeps? }`
+  (`kernel/Module.ts`, ARCHITECTURE › Cleanup). `StyldWorker.ts` builds the kernel once per runtime and every module
+  over it, with a type-level check that no module needs a service nobody provides. `Api.ts` takes the modules' group
+  handlers; `jobs/Cron.ts` and `social/Modules.ts` are gone. A unit test proves a layer provided by reference is built
+  once (`test/LayerSharing.test.ts`).
+- **One database:** the wardrobe, capture, My Gallery and board stores are services over the kernel `Database`;
+  `AccountLifecycle`, the sweeps and the MCP OAuth server take it too. No `drizzle(` or `makeStore(db.$client)`
+  remains outside `kernel/Db.ts`.
+- **No Parts records** in capture, My Gallery and boards: each operation group is built over the services it yields
+  (`capture/Shared.ts`, `boards/Shared.ts`).
+- **Providers:** Meta (with its SAM stream), Muse, Veo, Clef, Cloudflare Images and the live composition are in
+  `providers/`; the call counter is `kernel/Metrics.ts`.
+- **Idempotent deletes:** deleting a piece, look, board or photo writes its receipt in the delete's batch, and
+  removing a capture writes it once the capture is gone (`kernel/Receipts.ts` `deleting`): the same delete sent again
+  answers done, the id used for another delete is `OperationConflict` (now declared on those endpoints). Unit tests on
+  SQLite (`test/Deletes.test.ts`).
+- **Credits:** a message to Styld begins its turn in the Durable Object before its credit is held; a credit that
+  cannot be held withdraws the turn and its message (`Stylist.withdraw`). The generation sweep also settles every job
+  that ended within the hour from its status, so a failed job whose refund was lost gives its credit back
+  (`test/GenerationSettle.test.ts`).
+- **Compatibility deleted:** Styld's stored reply parts decode strictly (no skipping of older shapes);
+  `RequestRefused` has no MCP guide (only the website's session meets it).
+- **Gates:** `tools/patterns-check.ts` (ARCHITECTURE › Cleanup) runs in `bun run check`; the three `'x' in y` checks it
+  found use `Predicate`. Knip now reports the server's unused exports: the package exports only `StyldWorker` and
+  `Resources`; 35 exports and 15 types nobody imported were made module-local (5 more in domain and observability);
+  exports only tests use are tagged `@internal`.
+- **Remaining:** the wardrobe (`wardrobe/Parts.ts`), looks, outfits, stylist and generation still build their
+  operations over a `Deps`/`Parts` record of services; `pieces.suggested_at` is written for C5 to drop; the MCP SDK's
+  answer for 2025-era protocol clients (`mcp/Sdk.ts` `answerLegacy`) and the v1 share-link redirect stay as external
+  compatibility for the owner to decide; `capture/Pixels.ts` still re-exports a few `@styld/imaging` names; a Styld
+  turn whose queue message is lost keeps its hold until its next delivery (no stylist sweep); the auth storage tables
+  stay exported for Drizzle Kit.
+
 ## Cleanup C4c: generation, stylist, outfits, one language model — 2026-11-01
 
 Milestone C4c of the cleanup plan (server; the preview is not redeployed until the milestone's review).

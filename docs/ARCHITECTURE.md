@@ -96,6 +96,22 @@ with a gate that keeps it. Decisions:
   testers' v1 wardrobes are imported again through the operator importer the production cutover reuses.
 - **Release testing happens on the rebuilt preview;** the deploy configuration becomes stage-ready without creating
   another stage.
+- **The API Worker is a list of modules over one kernel** (C4e). `server/src/Modules.ts` lists every module; each is
+  one value (`kernel/Module.ts`): `{ layer, api?, routes?, consumers?, sweeps? }` — its services, the handlers of its
+  `StyldApi` groups, its plain routes, the queues it consumes (`jobs/Jobs.ts` `consumer`) and its sweeps
+  (`jobs/Sweeps.ts` `moving`). A module provides the layers of the modules it uses by reference; Effect builds a layer
+  once per build, so every service has one instance. `StyldWorker.ts` builds the kernel once per runtime from the
+  Worker's bindings (one `Database` over D1, media, queue producers, Styld's chats, credits, pacing, the call counter,
+  auth, the deployment, the providers), builds every module over it, and checks by identity that nothing is left
+  unprovided but the Worker runtime's Wallet and runtime context. Adding a module is one entry in that list. Operation
+  groups too large for one file are built over the services they yield (`Effect.context`, provided to each method once,
+  as in `capture/Shared.ts`), never over a hand-rolled record of dependencies. Deviation: Alchemy declares queue
+  consumers while it plans the Worker, so a consumer names its queue and the root binds the declared resource to it.
+- **Patterns are gated** (`tools/patterns-check.ts`, in `bun run check`): `drizzle(` only in `kernel/Db.ts`; `fetch(`
+  only in `providers/` (the edge Worker's service bindings and the MCP SDK's in-process handler excepted); `env.` only
+  in `Config.ts`/`Resources.ts` (the plain-TypeScript edge Worker excepted); no `'x' in y` (the edge's `EdgeMeta.ts`
+  excepted); no stand-ins in server source; each `@styld/db` table written only by its owner per the script's map (two
+  shared writes: the wardrobe sets `piece_pictures.shown`, curation sets `boards.featured_at`).
 
 ## Delivery boundary
 
