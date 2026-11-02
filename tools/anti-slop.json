@@ -1,0 +1,65 @@
+{
+  "source": "https://github.com/dmmulroy/anti-slop/tree/c44ef22ca116d0ba62a3ff663a0bd13a3f3fa40b",
+  "files": [
+    {
+      "path": "tools/oxlint/anti-slop/LICENSE",
+      "sha256": "10ed33bf340d6d63dc0633dfc917a346b369b6aa41fe20734aefc6a3fb75ba17"
+    },
+    {
+      "path": "tools/oxlint/anti-slop/PROVENANCE.md",
+      "sha256": "095e47598c3bfcaa311667fd2ea091194dae09ede73073c4e92b34802ea24743"
+    },
+    {
+      "path": "tools/oxlint/anti-slop/effect/index.ts",
+      "sha256": "d2e305e896ac7f4450554044cab21ff9689e91c01a304b6cb167d88ff6159f50"
+    },
+    {
+      "path": "tools/oxlint/anti-slop/effect/rules/no-manual-effect-error-tag.ts",
+      "sha256": "a0a1a5ff161d064d2da4f7fb10a88384410090a960526f3e9489aa124a1f8d0c"
+    },
+    {
+      "path": "tools/oxlint/anti-slop/effect/rules/no-manual-tag-comparison.ts",
+      "sha256": "c3f0f7165bbffbea1e2b35aaf7cfcf87ff5345bcd3b71aec4a0d54bc5ac27610"
+    },
+    {
+      "path": "tools/oxlint/anti-slop/effect/shared/tagged-values.ts",
+      "sha256": "4087e3aca32338baad1bd0dfcb2beee3d5b75d7e5ac01dfae6a71770456b8641"
+    },
+    {
+      "path": "tools/oxlint/anti-slop/index.ts",
+      "sha256": "9ec2a7c3821dabe7b4fc72a97b1e19be9c87ca985c50cc34ce5bd6e83cee318e"
+    },
+    {
+      "path": "tools/oxlint/anti-slop/rules/no-chained-type-assertions.ts",
+      "sha256": "2e8ccab70026ff37fd78c9224367b429b5158494130da4395d8ba6e7e779d4d1"
+    },
+    {
+      "path": "tools/oxlint/anti-slop/rules/no-module-mocking.ts",
+      "sha256": "4c7a614ef6ac77b09a9d6147c9afec19780187fe2a6a1a89da150d8e736f9280"
+    },
+    {
+      "path": "tools/oxlint/anti-slop/rules/no-reflect-apply.ts",
+      "sha256": "2359825b1cb430a0f0b08f43bd2d2879156a3acd806cee8d8686d111f4f1d1ce"
+    },
+    {
+      "path": "tools/oxlint/anti-slop/rules/no-reflect-get.ts",
+      "sha256": "6de3ab9e7e66e3d0636aabf6384efe91372812c958e5450e359d530013d8ceb7"
+    },
+    {
+      "path": "tools/oxlint/anti-slop/rules/no-widen-then-assert.ts",
+      "sha256": "9b6e4f136a5cb5fa47d96868ef018acf76e48793686c6779b478a87969b0fd0c"
+    },
+    {
+      "path": "tools/oxlint/anti-slop/rules/require-safety-comment-for-type-assertion.ts",
+      "sha256": "e560c004b1baf3de6471db785e477090ebbd5a409ab63122aaf5faa21938b074"
+    },
+    {
+      "path": "tools/oxlint/anti-slop/shared/reflect-method.ts",
+      "sha256": "55cbb8c69716f427108001fa56061b7c4d2913718a83fb40f2ac40bac61f41b0"
+    },
+    {
+      "path": "tools/oxlint/anti-slop/shared/scope.ts",
+      "sha256": "461f1c2ca5d55b63cb52573994e6be53b8dc9516899f39426963c786aab3aa9b"
+    }
+  ]
+}

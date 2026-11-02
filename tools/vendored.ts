@@ -1,15 +1,19 @@
 /**
- * Upstream repositories vendored under `repos/` as read-only references for agents
- * (the `foldkit` skill expects `repos/foldkit/`). Each snapshot is pinned to one
- * upstream commit and verified by a tree hash in `repos/sources.json`. A snapshot of
- * an installed package must match its catalog version, and skills vendored from the
- * same repository must share its commit. Upstream agent instructions are excluded or
- * renamed so no agent loads another project's rules as this repository's. Files an
- * upstream ships for its consumers (Foldkit's `FOLDKIT.md`) are copied out verbatim,
- * refreshed on pull and verified against the snapshot.
+ * The one hash gate for vendored code this repository keeps itself (`vendor:check`). Vendored skills in
+ * `.agents/skills` are repoagents' (`agents:check` verifies their tree hashes, licenses and harness links); everything
+ * else vendored is verified here:
  *
- *   bun tools/vendored-repos.ts                     verify every snapshot (part of `bun run check`)
- *   bun tools/vendored-repos.ts --pull <name> <ref> replace a snapshot with the given tag or commit
+ * - `tools/oxlint/anti-slop`: lint rules copied file by file from upstream, each pinned by its SHA-256 in
+ *   `tools/anti-slop.json` (`tools/oxlint/anti-slop/PROVENANCE.md` says what was copied and how to update it).
+ * - `repos/<name>`: upstream repositories kept as read-only references for agents (the `foldkit` skill expects
+ *   `repos/foldkit/`). Each snapshot is pinned to one upstream commit and verified by a tree hash in
+ *   `repos/sources.json`. A snapshot of an installed package must match its catalog version, and skills vendored from
+ *   the same repository must share its commit. Upstream agent instructions are excluded or renamed so no agent loads
+ *   another project's rules as this repository's. Files an upstream ships for its consumers (Foldkit's `FOLDKIT.md`)
+ *   are copied out verbatim, refreshed on pull and verified against the snapshot.
+ *
+ *   bun tools/vendored.ts                     verify the anti-slop rules and every snapshot (part of `bun run check`)
+ *   bun tools/vendored.ts --pull <name> <ref> replace a snapshot with the given tag or commit
  */
 import { spawnSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
@@ -40,8 +44,35 @@ const Skills = Schema.Struct({
   skills: Schema.Record(Schema.String, Schema.Struct({ repository: Schema.String, commit: Schema.String })),
 })
 
+const CopiedFiles = Schema.Struct({
+  source: Schema.String,
+  files: Schema.Array(Schema.Struct({ path: Schema.String, sha256: Schema.String })),
+})
+
 const root = path.resolve(import.meta.dir, '..')
 const manifestPath = path.join(root, 'repos/sources.json')
+const antiSlop = 'tools/oxlint/anti-slop'
+
+const sha256Of = (content: string | Buffer) => createHash('sha256').update(content).digest('hex')
+
+/** Every file of the copied anti-slop rules is recorded, and each is byte-identical to its record. */
+const verifyAntiSlop = async () => {
+  const { source, files } = Schema.decodeUnknownSync(Schema.fromJsonString(CopiedFiles))(
+    await readFile(path.join(root, 'tools/anti-slop.json'), 'utf8'),
+  )
+  const present = (await readdir(path.join(root, antiSlop), { recursive: true, withFileTypes: true }))
+    .filter((entry) => !entry.isDirectory())
+    .map((entry) => path.relative(root, path.join(entry.parentPath, entry.name)))
+  const recorded = new Set(files.map((file) => file.path))
+  const unrecorded = present.filter((file) => !recorded.has(file))
+  if (unrecorded.length !== 0) throw new Error(`Unrecorded vendored files: ${unrecorded.join(', ')}`)
+  for (const file of files) {
+    if (sha256Of(await readFile(path.join(root, file.path))) !== file.sha256) {
+      throw new Error(`Vendored source changed: ${file.path}; copy it again from ${source} and record its hash`)
+    }
+  }
+  console.log(`Verified ${antiSlop} (${files.length} files) at ${source}`)
+}
 
 const readManifest = async (): Promise<Manifest> =>
   Schema.decodeUnknownSync(Schema.fromJsonString(Manifest))(await readFile(manifestPath, 'utf8'))
@@ -55,10 +86,10 @@ const treeSha256 = async (directory: string): Promise<{ readonly files: number; 
     const absolute = path.join(entry.parentPath, entry.name)
     const relative = path.relative(directory, absolute)
     const content = (await lstat(absolute)).isSymbolicLink() ? await readlink(absolute) : await readFile(absolute)
-    lines.push(`${createHash('sha256').update(content).digest('hex')}  ${relative}\n`)
+    lines.push(`${sha256Of(content)}  ${relative}\n`)
   }
   lines.sort((left, right) => (left < right ? -1 : left > right ? 1 : 0))
-  return { files: lines.length, sha256: createHash('sha256').update(lines.join('')).digest('hex') }
+  return { files: lines.length, sha256: sha256Of(lines.join('')) }
 }
 
 const run = (command: string, args: ReadonlyArray<string>, cwd = root) => {
@@ -108,6 +139,7 @@ const assertCopied = async (name: string, snapshot: Manifest[string]) => {
 }
 
 const verify = async () => {
+  await verifyAntiSlop()
   const manifest = await readManifest()
   const catalog = Schema.decodeUnknownSync(Schema.fromJsonString(Catalog))(
     await readFile(path.join(root, 'package.json'), 'utf8'),
@@ -171,4 +203,4 @@ const pull = async (name: string, ref: string) => {
 const [mode, name, ref] = process.argv.slice(2)
 if (mode === undefined) await verify()
 else if (mode === '--pull' && name !== undefined && ref !== undefined) await pull(name, ref)
-else throw new Error('Usage: bun tools/vendored-repos.ts [--pull <name> <ref>]')
+else throw new Error('Usage: bun tools/vendored.ts [--pull <name> <ref>]')

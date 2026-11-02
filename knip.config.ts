@@ -47,7 +47,6 @@ export default {
     'packages/imaging': { project: ['src/**/*.ts!'] },
     'packages/i18n': { project: ['src/**/*.ts!'] },
   },
-  // Vendored source is checked byte-for-byte against its recorded upstream hash.
-  // repos/ holds read-only upstream snapshots for agents (tools/vendored-repos.ts).
+  // Vendored source: the anti-slop rules and the read-only repos/ snapshots, both verified by tools/vendored.ts.
   ignore: ['tools/oxlint/anti-slop/**', 'repos/**'],
 } satisfies KnipConfig
