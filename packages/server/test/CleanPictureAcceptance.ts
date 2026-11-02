@@ -120,13 +120,20 @@ export const verifyCleanPictures = async (origin: string, fixtures: string) => {
 
   // A redraw holds a credit, sends the owner's words, replaces the drawing and consumes the credit once.
   const before = (await decoded(Allowance, await owner('/api/captures/tray'))).allowance.remaining
-  const asked = { operationId: 'native-redraw-0001', hint: 'a red cotton tee' }
-  expect(await decoded(Picture, await redraw(owner, kept.red, asked))).toEqual({
+  // Two redraws asked at once: one claims the drawing and holds its credit; the other holds nothing and is told the
+  // picture is busy, so it never settles the winner's hold.
+  const hint = 'a red cotton tee'
+  const ask = (operationId: string) => redraw(owner, kept.red, { operationId, hint })
+  const raced = await Promise.all([ask('native-redraw-0001'), ask('native-redraw-0003')])
+  expect(raced.map(({ status }) => status).toSorted((one, other) => one - other)).toEqual([200, 409])
+  const [first, second] = raced
+  const won = first?.status === 200 ? first : second
+  expect(won === undefined ? 'none' : await decoded(Picture, won)).toEqual({
     state: 'drawing',
     shows: 'photo',
     version: 1,
   })
-  expect((await redraw(owner, kept.red, asked)).status).toBe(200)
+  expect((await ask(first?.status === 200 ? 'native-redraw-0001' : 'native-redraw-0003')).status).toBe(200)
   expect((await settled(owner, kept.red)).picture).toEqual({ state: 'ready', shows: 'clean', version: 2 })
   const sent = await prompts()
   expect(sent).toHaveLength(3)

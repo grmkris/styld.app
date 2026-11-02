@@ -291,8 +291,28 @@ const turnablePiece = (accountId: string, pieceId: string) =>
       return yield* TurnRefused.make({ reason: 'picture' })
   })
 
-/** Hold the turn's credits and queue it as the piece's next turn, moving it on from the state it was read in; the turn
- * as queued. A request that lost the race, or could not be stored, gets its credits back. */
+/** The attempt a piece's next turn is. */
+const nextAttempt = (current: Option.Option<TurnRow>) =>
+  Option.match(current, { onNone: () => 0, onSome: (turn) => turn.attempt + 1 })
+
+/** A claimed turn whose credits could not be held: its hold refunded (whatever the Wallet did, it paid for nothing),
+ * then the turn as it was, keeping the attempt's number so its hold is never named again. */
+const unclaimed = (ids: { readonly accountId: string; readonly pieceId: string }, current: Option.Option<TurnRow>) =>
+  Effect.gen(function* () {
+    const { accountId, pieceId } = ids
+    const attempt = nextAttempt(current)
+    yield* (yield* Holds).settle(accountId, turnHold({ pieceId, attempt }), 'failed')
+    const store = yield* CaptureStore
+    yield* Option.match(current, {
+      onNone: () => store.dropTurn(pieceId, attempt),
+      onSome: ({ state, operation, layout, updatedAt }) =>
+        store.claimTurn(pieceId, { state: 'requested', attempt }, { state, operation, layout, updatedAt }),
+    })
+  }).pipe(Effect.ignore({ log: true, message: 'Styld.Turn.ask could not take back a claim' }))
+
+/** Claim the piece's next turn, moving it on from the state and attempt it was read in, then hold its credits and
+ * queue it; the turn as queued. Only the request that claimed the attempt holds and settles its credits: one that lost
+ * the race holds nothing and is told the turn is busy. */
 const queueTurn = (
   ids: { readonly accountId: string; readonly pieceId: string },
   current: Option.Option<TurnRow>,
@@ -300,10 +320,7 @@ const queueTurn = (
 ) =>
   Effect.gen(function* () {
     const { accountId, pieceId } = ids
-    const attempt = Option.match(current, { onNone: () => 0, onSome: (turn) => turn.attempt + 1 })
-    const hold = turnHold({ pieceId, attempt })
-    const holds = yield* Holds
-    yield* holds.reserve({ accountId, hold, credits: prices.turn })
+    const attempt = nextAttempt(current)
     const requested = {
       state: 'requested' as const,
       attempt,
@@ -311,15 +328,16 @@ const queueTurn = (
       layout: null,
       updatedAt: at,
     }
-    const moved = yield* storedAs(
+    const store = yield* CaptureStore
+    const claimed = yield* storedAs(
       Option.isSome(current)
-        ? (yield* CaptureStore).moveTurn(pieceId, [current.value.state], requested)
-        : (yield* CaptureStore).addTurn({ ...requested, pieceId, accountId, createdAt: at }),
-    ).pipe(Effect.tapError(() => holds.settle(accountId, hold, 'failed').pipe(Effect.ignore)))
-    if (!moved) {
-      yield* holds.settle(accountId, hold, 'failed')
-      return yield* TurnRefused.make({ reason: 'busy' })
-    }
+        ? store.claimTurn(pieceId, current.value, requested)
+        : store.addTurn({ ...requested, pieceId, accountId, createdAt: at }),
+    )
+    if (!claimed) return yield* TurnRefused.make({ reason: 'busy' })
+    yield* (yield* Holds)
+      .reserve({ accountId, hold: turnHold({ pieceId, attempt }), credits: prices.turn })
+      .pipe(Effect.tapError(() => unclaimed(ids, current)))
     yield* enqueueTurn(pieceId)
     return { ...requested, pieceId, accountId, createdAt: at }
   })

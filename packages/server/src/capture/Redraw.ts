@@ -47,8 +47,24 @@ const drawablePiece = (accountId: string, pieceId: string) =>
     if (!isCutout(piece.value)) return yield* PictureRefused.make({ reason: 'photo' })
   })
 
-/** Hold the redraw's credit and queue the picture, moving it on from the state it was read in. A request that lost
- * the race gets its credit back. */
+/** A claimed redraw whose credit could not be held: its hold refunded (whatever the Wallet did, it paid for nothing),
+ * then the picture as it was, keeping the redraw's number so its hold is never named again. */
+const unclaimed = (accountId: string, current: Option.Option<PictureRow>, claimed: Pick<PictureRow, 'pieceId'>) =>
+  Effect.gen(function* () {
+    const { pieceId } = claimed
+    const redraws = Option.match(current, { onNone: () => 1, onSome: (picture) => picture.redraws + 1 })
+    yield* (yield* Holds).settle(accountId, redrawHold({ pieceId, redraws }), 'failed')
+    const store = yield* CaptureStore
+    yield* Option.match(current, {
+      onNone: () => store.dropPicture(pieceId, redraws),
+      onSome: ({ state, hint, paid, shown, updatedAt }) =>
+        store.claimRedraw(pieceId, { state: 'queued', redraws }, { state, hint, paid, shown, updatedAt }),
+    })
+  }).pipe(Effect.ignore({ log: true, message: 'Styld.Picture.redraw could not take back a claim' }))
+
+/** Claim the picture's next redraw, moving it on from the state and redraw it was read in, then hold its credit and
+ * queue it. Only the request that claimed the redraw holds and settles its credit: one that lost the race holds
+ * nothing and is told the picture is busy. */
 const queueRedraw = (
   ids: { readonly accountId: string; readonly pieceId: string },
   current: Option.Option<PictureRow>,
@@ -57,9 +73,6 @@ const queueRedraw = (
   Effect.gen(function* () {
     const { accountId, pieceId } = ids
     const redraws = Option.match(current, { onNone: () => 1, onSome: (picture) => picture.redraws + 1 })
-    const hold = redrawHold({ pieceId, redraws })
-    const holds = yield* Holds
-    yield* holds.reserve({ accountId, hold, credits: prices.redraw })
     const at = yield* nowDate
     const queued = {
       state: 'queued' as const,
@@ -69,15 +82,16 @@ const queueRedraw = (
       shown: null,
       updatedAt: at,
     }
-    const moved = yield* storedAs(
+    const store = yield* CaptureStore
+    const claimed = yield* storedAs(
       Option.isSome(current)
-        ? (yield* CaptureStore).movePicture(pieceId, [current.value.state], queued)
-        : (yield* CaptureStore).addPicture({ ...queued, pieceId, accountId, version: 0, createdAt: at }),
-    ).pipe(Effect.tapError(() => holds.settle(accountId, hold, 'failed').pipe(Effect.ignore)))
-    if (!moved) {
-      yield* holds.settle(accountId, hold, 'failed')
-      return yield* PictureRefused.make({ reason: 'busy' })
-    }
+        ? store.claimRedraw(pieceId, current.value, queued)
+        : store.addPicture({ ...queued, pieceId, accountId, version: 0, createdAt: at }),
+    )
+    if (!claimed) return yield* PictureRefused.make({ reason: 'busy' })
+    yield* (yield* Holds)
+      .reserve({ accountId, hold: redrawHold({ pieceId, redraws }), credits: prices.redraw })
+      .pipe(Effect.tapError(() => unclaimed(accountId, current, { pieceId })))
     // A drawing being redrawn stops showing; the photo shows meanwhile.
     yield* (yield* PieceChanged).changed(pieceId)
     yield* enqueuePicture(pieceId)

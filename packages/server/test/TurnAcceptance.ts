@@ -28,11 +28,14 @@ export const verifyTurn = async (
   const owner = client(origin, await signIn(origin, picturesAccount))
   const remaining = async () => (await decoded(Allowance, await owner('/api/captures/tray'))).allowance.remaining
   const before = await remaining()
-  const asked = await owner(`/api/pieces/${kept.green}/turn`, {
-    method: 'POST',
-    body: JSON.stringify({ operationId: 'native-turn-0001' }),
-  })
-  expect((await decoded(Turn, asked)).state).toBe('making')
+  // Two requests at once for the piece's first turn: one claims it and holds its credits; the other holds nothing, so
+  // it never settles the winner's hold.
+  const ask = (operationId: string) =>
+    owner(`/api/pieces/${kept.green}/turn`, { method: 'POST', body: JSON.stringify({ operationId }) })
+  const raced = await Promise.all([ask('native-turn-0001'), ask('native-turn-0003')])
+  expect(raced.map(({ status }) => status).toSorted((one, other) => one - other)).toEqual([200, 409])
+  const asked = raced.find(({ status }) => status === 200)
+  expect(asked === undefined ? 'none' : (await decoded(Turn, asked)).state).toBe('making')
   expect(await remaining()).toBe(before - 5)
   // A second turn while one is made is refused; the photo-only piece has no clean picture to turn.
   const again = { method: 'POST', body: JSON.stringify({ operationId: 'native-turn-0002' }) }

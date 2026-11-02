@@ -375,6 +375,35 @@ const pictureRows = (db: Database) => ({
         .where(and(eq(piecePictures.pieceId, pieceId), inArray(piecePictures.state, [...from])))
         .returning({ pieceId: piecePictures.pieceId }),
     ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** Claim a picture's next paid redraw, or take back one claimed: move it only from the state and the redraw it was
+   * read in, so of two requests reading the same picture one owns the redraw and its hold; whether it moved. */
+  claimRedraw: (pieceId: string, seen: Pick<PictureRow, 'state' | 'redraws'>, changes: Partial<PictureRow>) =>
+    query(() =>
+      db
+        .update(piecePictures)
+        .set(changes)
+        .where(
+          and(
+            eq(piecePictures.pieceId, pieceId),
+            eq(piecePictures.state, seen.state),
+            eq(piecePictures.redraws, seen.redraws),
+          ),
+        )
+        .returning({ pieceId: piecePictures.pieceId }),
+    ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** Drop a first picture the owner asked for whose credit could not be held, while it still waits as added. */
+  dropPicture: (pieceId: string, redraws: number) =>
+    query(() =>
+      db
+        .delete(piecePictures)
+        .where(
+          and(
+            eq(piecePictures.pieceId, pieceId),
+            eq(piecePictures.state, 'queued'),
+            eq(piecePictures.redraws, redraws),
+          ),
+        ),
+    ).pipe(Effect.asVoid),
   /** A picture the owner asked for, unless the piece already has one; whether it was added. */
   addPicture: (picture: NewPicture) =>
     query(() =>
@@ -403,6 +432,27 @@ const turnRows = (db: Database) => ({
         .where(and(eq(pieceTurns.pieceId, pieceId), inArray(pieceTurns.state, [...from])))
         .returning({ pieceId: pieceTurns.pieceId }),
     ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** Claim a piece's next turn, or take back one claimed: move it only from the state and the attempt it was read in,
+   * so of two requests reading the same turn one owns the attempt and its hold; whether it moved. */
+  claimTurn: (pieceId: string, seen: Pick<TurnRow, 'state' | 'attempt'>, changes: Partial<TurnRow>) =>
+    query(() =>
+      db
+        .update(pieceTurns)
+        .set(changes)
+        .where(
+          and(eq(pieceTurns.pieceId, pieceId), eq(pieceTurns.state, seen.state), eq(pieceTurns.attempt, seen.attempt)),
+        )
+        .returning({ pieceId: pieceTurns.pieceId }),
+    ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** Drop a first turn whose credits could not be held, while it still waits as added. */
+  dropTurn: (pieceId: string, attempt: number) =>
+    query(() =>
+      db
+        .delete(pieceTurns)
+        .where(
+          and(eq(pieceTurns.pieceId, pieceId), eq(pieceTurns.state, 'requested'), eq(pieceTurns.attempt, attempt)),
+        ),
+    ).pipe(Effect.asVoid),
   /** A turn the owner asked for, unless the piece already has one; whether it was added. */
   addTurn: (turn: typeof pieceTurns.$inferInsert) =>
     query(() =>

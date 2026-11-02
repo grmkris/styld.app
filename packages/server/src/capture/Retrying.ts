@@ -1,6 +1,6 @@
 import { deleting, once } from '../kernel/Receipts.ts'
 import { type CaptureId, CurrentAccount, NotFound, type OperationId } from '@styld/protocol'
-import { DateTime, Effect, Option } from 'effect'
+import { DateTime, Effect, Option, Predicate } from 'effect'
 import { captureHold, endingOf, enqueueCapture, forgetCaptureObjects, storedAs } from './Shared.ts'
 import type { CaptureRow } from './Store.ts'
 import { type Ending } from '../usage/Holds.ts'
@@ -26,32 +26,55 @@ const canRetry = (capture: CaptureRow, nowMillis: number) =>
 /** How a capture the person retries or removes ended: a stuck one failed. */
 const ended = (capture: CaptureRow): Ending => Option.getOrElse(endingOf(capture.status), () => 'failed' as const)
 
-/** Move a failed or stuck capture back to processing as its next attempt, paid like the first: the last attempt's
- * hold is refunded (a stuck one's too), and the next one holds the credits again. */
+/** A claimed retry whose credits could not be held: the capture as it was. Refused outright, nothing was held and the
+ * attempt is not used up; a Wallet that did not answer may have held it, so that hold is refunded and its attempt's
+ * number kept, never named again. */
+const unretried = (accountId: string, capture: CaptureRow, claimed: Date, refused: boolean) =>
+  Effect.gen(function* () {
+    const attempt = capture.attempt + 1
+    if (!refused) yield* (yield* Holds).settle(accountId, captureHold({ ...capture, attempt }), 'failed')
+    yield* (yield* CaptureStore).retryCapture(
+      accountId,
+      capture.id,
+      { status: 'processing', attempt, updatedAt: claimed },
+      {
+        status: capture.status,
+        attempt: refused ? capture.attempt : attempt,
+        trackingStartedAt: capture.trackingStartedAt,
+        updatedAt: capture.updatedAt,
+      },
+    )
+  }).pipe(Effect.ignore({ log: true, message: 'Styld.Capture.retry could not take back a claim' }))
+
+/** Move a failed or stuck capture back to processing as its next attempt, paid like the first. The move from the
+ * state and attempt the person saw claims the attempt, so only one of two requests holds and settles its credits;
+ * then the last attempt's hold is refunded (a stuck one's too), and the next one holds the credits again. */
 const retried = (accountId: string, captureId: CaptureId) =>
   Effect.gen(function* () {
     const found = yield* storedAs((yield* CaptureStore).findCapture(accountId, captureId))
     const now = yield* DateTime.now
     if (Option.isNone(found) || !canRetry(found.value, DateTime.toEpochMillis(now))) return yield* NotFound.make({})
     const capture = found.value
-    const holds = yield* Holds
-    yield* holds.settle(accountId, captureHold(capture), ended(capture))
+    const claimed = DateTime.toDateUtc(now)
     const next = { ...capture, attempt: capture.attempt + 1 }
-    yield* holds.reserve({ accountId, hold: captureHold(next), credits: capture.credits })
     const moved = yield* storedAs(
       (yield* CaptureStore).retryCapture(accountId, capture.id, capture, {
         status: 'processing',
         attempt: next.attempt,
         // The person asked again, so a video may be tracked again.
         trackingStartedAt: null,
-        updatedAt: DateTime.toDateUtc(now),
+        updatedAt: claimed,
       }),
-    ).pipe(Effect.tapError(() => holds.settle(accountId, captureHold(next), 'failed').pipe(Effect.ignore)))
-    if (!moved) {
-      // Another request moved it first: the new hold goes back.
-      yield* holds.settle(accountId, captureHold(next), 'failed')
-      return yield* NotFound.make({})
-    }
+    )
+    // Another request moved it first, and holds the next attempt's credits.
+    if (!moved) return yield* NotFound.make({})
+    const holds = yield* Holds
+    yield* holds.settle(accountId, captureHold(capture), ended(capture))
+    yield* holds
+      .reserve({ accountId, hold: captureHold(next), credits: capture.credits })
+      .pipe(
+        Effect.tapError((error) => unretried(accountId, capture, claimed, Predicate.isTagged(error, 'LimitReached'))),
+      )
     yield* enqueueCapture(capture.id)
   })
 
