@@ -4,8 +4,9 @@ import catalog from './packages/i18n/catalogs/en.json' with { type: 'json' }
 /** The catalogs' top-level sections; a quoted string under one of them is a message key. */
 const namespaces = Object.keys(catalog)
 
-/** x18n manages and checks the en/sl catalogs; `@styld/i18n` formats them at runtime.
- * `tools/i18n-check.ts` stays the authority on ICU syntax, arguments and plural forms. */
+/** x18n manages and checks the en/sl catalogs (which keys exist in each language, unused keys, hard-coded strings);
+ * `@styld/i18n` formats them at runtime. `tools/i18n-check.ts` owns ICU syntax, arguments, plural forms and the
+ * generated modules. */
 export default defineConfig({
   sourceLocale: 'en',
   locales: ['en', 'sl'],
@@ -99,13 +100,11 @@ export default defineConfig({
       'apps/web/src/zyzz.config.ts': ['/[\\s\\S]*/'],
     },
   },
-  // v1 leaves these onboarding result prompts empty in both locales on purpose.
-  ignoreKeys: ['onboardingFlows.*.results.question'],
   checks: {
     // x18n 0.1.2 reads the first word of a Slovenian plural branch as a placeholder.
     'placeholder-mismatch': 'off',
-    // Most v1 screens are not ported yet; raise to `error` once parity is reached.
-    'unused-key': 'info',
+    // A message no code formats is deleted, not kept for later.
+    'unused-key': 'error',
     'hard-string': 'warning',
   },
 })

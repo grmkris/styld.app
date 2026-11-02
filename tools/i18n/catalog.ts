@@ -4,17 +4,9 @@ export type Catalog = Readonly<Record<string, string>>
 export type ArgumentKind = 'text' | 'number' | 'date' | 'tag'
 export type Contract = ReadonlyMap<string, ArgumentKind>
 
-// Frozen v1 result screens omit their question; these are optional copy, not untranslated messages.
-const optionalCopy = new Set([
-  'onboardingFlows.default-v4.results.question',
-  'onboardingFlows.outfit-check.results.question',
-  'onboardingFlows.try-on.results.question',
-  'onboardingFlows.wardrobe.results.question',
-])
-
 export const flatten = (input: unknown, prefix = ''): Catalog => {
   if (typeof input === 'string') {
-    if (!input.trim() && !(input === '' && optionalCopy.has(prefix))) throw new Error(`Empty message: ${prefix}`)
+    if (!input.trim()) throw new Error(`Empty message: ${prefix}`)
     return { [prefix]: input }
   }
   if (typeof input !== 'object' || input === null) throw new Error(`Invalid catalog node: ${prefix}`)
@@ -24,14 +16,6 @@ export const flatten = (input: unknown, prefix = ''): Catalog => {
     Object.assign(output, flatten(child, prefix ? `${prefix}.${key}` : key))
   }
   return output
-}
-
-// Exact frozen-copy waivers: preserve existing wording, reject newly missing plural forms.
-const pluralWaivers: Readonly<Record<string, string>> = {
-  'en:admin.versionsCount:count:one': '{count, plural, =1 {# version} other {# versions}}',
-  'sl:activity.activeCount:count:two': '{count, plural, one {# v teku} few {# v teku} other {# v teku}}',
-  'sl:profile.shop.piecesCount:feed:two,few':
-    '{feed, plural, one {# s tvoje strani} other {# s tvoje strani}}, {manual, plural, one {# dodan ročno} two {# dodana ročno} few {# dodani ročno} other {# dodanih ročno}}',
 }
 
 const compatible = (left: ArgumentKind, right: ArgumentKind): ArgumentKind => {
@@ -73,8 +57,7 @@ const checkPlural = (locale: string, key: string, message: string, node: Message
   if (node.type !== TYPE.plural) return
   const categories = new Intl.PluralRules(locale, { type: node.pluralType }).resolvedOptions().pluralCategories
   const missing = categories.filter((category) => !(category in node.options))
-  const waiver = `${locale}:${key}:${node.value}:${missing.join(',')}`
-  if (missing.length && pluralWaivers[waiver] !== message) throw new Error(`Missing plural forms: ${waiver}`)
+  if (missing.length) throw new Error(`Missing plural forms: ${locale}:${key}:${node.value}:${missing.join(',')}`)
 }
 
 export const contractFor = (locale: string, key: string, message: string): Contract => {
@@ -92,14 +75,17 @@ export const contractFor = (locale: string, key: string, message: string): Contr
   return contract
 }
 
+/**
+ * Each message's ICU contract: its arguments must agree across the languages. Which keys exist is x18n's
+ * (`translations:check`: a key missing in Slovenian, or one only Slovenian has, fails there), so a missing
+ * translation here only stops the generator.
+ */
 export const validateCatalogs = (en: Catalog, sl: Catalog): ReadonlyMap<string, Contract> => {
-  const keys = Object.keys(en).toSorted()
-  if (JSON.stringify(keys) !== JSON.stringify(Object.keys(sl).toSorted())) throw new Error('Catalog key parity failed')
   const contracts = new Map<string, Contract>()
-  for (const key of keys) {
+  for (const key of Object.keys(en).toSorted()) {
     const source = en[key]
     const target = sl[key]
-    if (source === undefined || target === undefined) throw new Error(`Missing message: ${key}`)
+    if (source === undefined || target === undefined) throw new Error(`Missing message: ${key}; run translations:check`)
     const left = contractFor('en', key, source)
     const right = contractFor('sl', key, target)
     if (JSON.stringify([...left.keys()].toSorted()) !== JSON.stringify([...right.keys()].toSorted()))

@@ -3,7 +3,7 @@ import { contractFor, flatten, validateCatalogs } from './catalog.ts'
 
 describe('catalog acceptance', () => {
   test('rejects missing keys, malformed ICU, empty text and variable drift', () => {
-    expect(() => validateCatalogs({ hello: 'Hi' }, {})).toThrow('key parity')
+    expect(() => validateCatalogs({ hello: 'Hi' }, {})).toThrow('Missing message')
     expect(() => contractFor('en', 'bad', '{count, plural')).toThrow('EXPECT_SELECT_ARGUMENT_OPTIONS')
     expect(() => flatten({ empty: '' })).toThrow('Empty message')
     expect(() => flatten({ number: 1 })).toThrow('Invalid catalog node')
