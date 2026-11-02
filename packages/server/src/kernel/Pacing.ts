@@ -38,8 +38,9 @@ export const paces = {
   outfit: { binding: 'OUTFIT_RATE_LIMIT', namespace: 7, perMinute: 30 },
   /** Thinking asks a model as well, so it keeps a tighter pace inside the outfit one. */
   thinking: { binding: 'THINKING_RATE_LIMIT', namespace: 8, perMinute: 6 },
-  /** Upload paths: a phone adding a camera roll's selection asks for a few dozen at once, never a minute of them. */
-  upload: { binding: 'UPLOAD_RATE_LIMIT', namespace: 9, perMinute: 60 },
+  /** Upload paths: a long video goes up as 30-second parts with about thirty stills each, and a fast phone cuts several
+   * parts a minute; a camera roll's selection asks for a few dozen at once. */
+  upload: { binding: 'UPLOAD_RATE_LIMIT', namespace: 9, perMinute: 300 },
   /** Cutting the person out of a gallery photo is free, but SAM bills each call. */
   cutout: { binding: 'CUTOUT_RATE_LIMIT', namespace: 10, perMinute: 6 },
 } as const satisfies Record<string, Pace>

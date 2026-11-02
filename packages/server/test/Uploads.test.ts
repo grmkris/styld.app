@@ -88,7 +88,7 @@ describe('the one in-use check', () => {
 })
 
 /** The account's admission over a database where `waiting` uploads of `bytes` each wait unused. */
-const admission = (waiting: number, bytes: number, allowed = 60) => {
+const admission = (waiting: number, bytes: number, allowed = 300) => {
   const database = seeded()
   for (let index = 0; index < waiting; index += 1)
     database.sqlite.exec(

@@ -48,7 +48,7 @@ in-memory Wallet, or native):
   processing; deleting a photo while finding refunds it; the generation sweep's one-hour re-settlement is gone.
 - **Veo:** an accepted start whose answer cannot be read is `OutcomeUnknown` (refunded, never resent).
 - **Gallery person cut-out:** asked once per photo, the outcome (including no person) kept, 6 a minute per account.
-- **Uploads:** 60 paths a minute per account, at most 100 uploads or 512 MiB waiting unused; the unused sweep forgets
+- **Uploads:** 300 paths a minute per account (a video part's stills are about thirty uploads), at most 100 uploads or 512 MiB waiting unused; the unused sweep forgets
   500 expired paths and 500 unused uploads per run, rows before objects.
 - **Importer:** a permanent `(account, v1 id)` mapping (`imported_pieces`) instead of expiring receipts.
 
