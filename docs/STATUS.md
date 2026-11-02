@@ -2,6 +2,29 @@
 
 Status: active. Sign-in, the wardrobe (shop-style garment types, browsing, a piece's back), capture with real cut-outs (photos, video import, a held-up camera, scan anything), the review tray, the daily allowance, looks, clean pictures and turns, the boards' pins, profiles, checks and link import, mood boards from the person's own pieces and stickers, the outfit engine (Fast and Thinking), My Gallery and Styld, the stylist in the app are deployed to the isolated workers.dev preview (release `889af38`). Videos of up to 15 minutes are cut into parts on the device. Scope follows `docs/ROADMAP.md`: v2 ports only the v1 behaviour worth keeping; the plan in progress is "Plan: shopping your own wardrobe" below, waiting at owner gate 1.
 
+## Cleanup C4f: last server patterns — 2026-11-02
+
+The rest of milestone C4 (server; the preview is not redeployed until the milestone's review).
+
+- **No dependency records:** the wardrobe, looks, outfits, Styld's chats, generation, garment finding, social and the
+  public pages build their operations over the services they yield (`Effect.context`, provided to each method once,
+  as capture and boards do); `wardrobe/Parts.ts` and `generation/Deps.ts` became `Shared.ts`, and their helpers
+  (`ownPiece`, `usableUpload`, `forgetObjects`, `send`, `settleJob`) read the store themselves. New store layers:
+  `LookStore`, `OutfitStore`, `GenerationStore`, `PublicStore`, `SocialStore`. The `Media` service type replaces
+  `WardrobeBindings` and `ImageBindings`. A public read is given only its viewer.
+- **Owners write their tables:** the wardrobe shows a picture through capture's `PictureRows.show` and curation
+  features a board through `BoardRows.feature`; `tools/patterns-check.ts` has no shared-write allowance left.
+- **No re-exports or aliases:** callers import `Box`, `Rgba` and `encodePng` from `@styld/imaging`; `PinRow` and
+  `ClefAnswer` are named once.
+- **Stylist sweep:** a turn opens a row in D1 (`stylist_turns`, an additive migration) before its credit is held and
+  closes it once the credit settles. The `stylist` sweep (`jobs/Sweeps.ts`) reads turns open past thirty minutes and
+  settles each from its Durable Object's status: a written reply is spent; one still writing is given up and refunded
+  (the person's chat already shows it failed after five minutes), as is a failed or withdrawn one
+  (`test/StylistSweep.test.ts`, SQLite).
+- **Remaining:** `AccountLifecycle` still takes its bindings as a record (`makeAccountLifecycle`, its tests' seam over
+  a listing bucket); `pieces.suggested_at` is written for C5 to drop; `mcp/Sdk.ts` `answerLegacy` and the v1
+  share-link redirect stay for the owner to decide; the auth storage tables stay exported for Drizzle Kit.
+
 ## Cleanup C6b: web leftovers — 2026-11-02
 
 Leftovers of milestone C6 (website only; the preview is not redeployed until the milestone's review).
@@ -64,12 +87,7 @@ Milestone C4e of the cleanup plan (server; the preview is not redeployed until t
   found use `Predicate`. Knip now reports the server's unused exports: the package exports only `StyldWorker` and
   `Resources`; 35 exports and 15 types nobody imported were made module-local (5 more in domain and observability);
   exports only tests use are tagged `@internal`.
-- **Remaining:** the wardrobe (`wardrobe/Parts.ts`), looks, outfits, stylist and generation still build their
-  operations over a `Deps`/`Parts` record of services; `pieces.suggested_at` is written for C5 to drop; the MCP SDK's
-  answer for 2025-era protocol clients (`mcp/Sdk.ts` `answerLegacy`) and the v1 share-link redirect stay as external
-  compatibility for the owner to decide; `capture/Pixels.ts` still re-exports a few `@styld/imaging` names; a Styld
-  turn whose queue message is lost keeps its hold until its next delivery (no stylist sweep); the auth storage tables
-  stay exported for Drizzle Kit.
+- **Remaining:** taken up by C4f (above).
 
 ## Cleanup C4c: generation, stylist, outfits, one language model — 2026-11-01
 
