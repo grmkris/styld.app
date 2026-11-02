@@ -27,6 +27,30 @@ suppressions; unit 663 tests in 106 files; native 29 pass, 0 fail; bundle initia
 all 610,441, SSR 1,891,364. Preview readback of release `54a6601` (`tools/preview.native.test.ts` with
 `STYLD_EXPECTED_RELEASE`): 3 pass.
 
+## Incident: D1 overloaded by the wardrobe's thumbnails (2 November, not deployed)
+
+Workers Logs on `b9cfffe` showed 66 `d1_all` errors "D1 DB is overloaded. Requests queued for too long" and 500s on
+`/cdn/pieces/:id/thumb`, `/api/pieces` and `/api/auth/getSession`: each owner picture read the session, the piece and its
+picture row from D1, and a wardrobe screen loads 60–80 at once (one account has 313 pieces).
+
+- **Signed picture addresses** (`server/src/kernel/SignedMedia.ts`): HMAC-SHA256 over account, piece, R2 key, content
+  type, size, version and expiry; the key is derived from `AUTH_SECRET` under `styld-media-v1` (no new secret).
+  Expiry is the next full hour plus 24 hours, so an address is stable for an hour. Only `via: 'session'` gets them;
+  an assistant never does. `Piece.images` (`thumb`, `full`, `clean?`, `back?`) carries them in every owner read
+  (list, piece, looks' and boards' pieces, which now join their picture row so they show the drawing).
+- **`GET /cdn/media/:entityId/:size`** (`wardrobe/SignedImage.ts`) verifies the signature (403 otherwise), reads R2,
+  transforms with the Images binding (transformed bytes only), answers `private, max-age=<until expiry>, immutable` and
+  keeps a copy in the edge Cache API under the signed URL (the Cache API may do nothing on workers.dev; a miss or a
+  failure is never an error). No session, no D1. `/cdn/pieces/…` is gone.
+- **Web:** `Cdn.ts` reads `piece.images`; what names a piece by id (tables, Styld's answers, the tray's "already
+  have") looks it up in the person's pieces, so Boards and Review now load them too.
+- **Evidence:** unit (`SignedMedia.test.ts`: tamper, expiry, other account, other secret, assistant gets none; web
+  scenes); native `WardrobeAcceptance`, `CaptureAcceptance` and `CleanPictureAcceptance` updated to load the
+  addresses without a cookie and to refuse altered ones, not run yet.
+- **Still per image through D1 (follow-ups):** board pictures `/cdn/boards/images`, gallery photos `/cdn/photos`,
+  tray detections `/cdn/detections`, turns `/cdn/turns`, and the MCP views' server-side thumbnails
+  (`wardrobe.pieceImage`, `boards.boardImage`).
+
 ## C8 fixes: credits, paid work and durability (2 November, not deployed)
 
 From the two C8 reviews of `56a619b`, each with a test (unit on the SQLite D1 harness, layer tests with the
