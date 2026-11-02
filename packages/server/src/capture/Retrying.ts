@@ -88,6 +88,8 @@ export const retrying = Effect.map(Effect.context<CaptureServices>(), (context) 
       {
         replay: () => Effect.void,
         run: Effect.as(retried(accountId, captureId), [undefined, captureId] as const),
+        // A request that died while it retried is answered as done: the capture shows where it stands.
+        resume: Effect.void,
       },
     )
   }, Effect.provide(context)),
@@ -99,7 +101,7 @@ export const retrying = Effect.map(Effect.context<CaptureServices>(), (context) 
     yield* deleting(yield* WardrobeStore, deletion, (receipt) =>
       Effect.andThen(
         removed(accountId, captureId),
-        storedAs(Effect.flatMap(WardrobeStore, (store) => store.saveReceipt(receipt))),
+        Effect.flatMap(WardrobeStore, (store) => store.saveReceipt(receipt)),
       ),
     )
   }, Effect.provide(context)),

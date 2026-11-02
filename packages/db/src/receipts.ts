@@ -14,7 +14,7 @@ export const operationReceipts = sqliteTable(
     operationId: text('operation_id').notNull(),
     command: text('command').notNull(),
     inputDigest: text('input_digest').notNull(),
-    result: text('result').notNull(),
+    result: text('result'),
     createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
   },
   (table) => [

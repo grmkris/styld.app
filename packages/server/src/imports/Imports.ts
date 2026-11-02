@@ -217,7 +217,8 @@ const make = Effect.gen(function* () {
     giveUpPiece: Effect.fn('Styld.Imports.giveUp')(function* (message: ImportMessage) {
       const { accountId, piece } = message
       const receipt = yield* stored((yield* ImportStore).findReceipt(accountId, operationOf(piece.v1Id)))
-      if (Option.isSome(receipt)) yield* (yield* Wardrobe).failPiece(receipt.value.result)
+      const pieceId = Option.flatMapNullishOr(receipt, ({ result }) => result)
+      if (Option.isSome(pieceId)) yield* (yield* Wardrobe).failPiece(pieceId.value)
     }, Effect.provide(context)),
   }
 })

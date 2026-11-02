@@ -389,7 +389,7 @@ export const askingTurns = Effect.map(Effect.context<CaptureServices>(), (contex
       yield* WardrobeStore,
       { accountId, operationId, command: 'makeTurn', input: pieceId },
       // The same request again: its message may have been lost; the job starts a turn once however often it is sent.
-      { replay: () => replayedTurn(accountId, pieceId), run: ask },
+      { replay: () => replayedTurn(accountId, pieceId), run: ask, resume: replayedTurn(accountId, pieceId) },
     )
   }, Effect.provide(context)),
 }))

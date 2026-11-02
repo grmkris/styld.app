@@ -34,6 +34,10 @@ const importStore = (db: Drizzle) => ({
         .select({ operationId: operationReceipts.operationId, result: operationReceipts.result })
         .from(operationReceipts)
         .where(and(eq(operationReceipts.accountId, accountId), inArray(operationReceipts.operationId, chunk))),
+    ).pipe(
+      Effect.map((rows) =>
+        rows.flatMap(({ operationId, result }) => (result === null ? [] : [{ operationId, result }])),
+      ),
     ),
   /** Where these pieces of the account stand. */
   statusesOf: (accountId: string, pieceIds: ReadonlyArray<string>) =>

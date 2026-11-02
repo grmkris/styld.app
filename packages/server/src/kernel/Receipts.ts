@@ -1,9 +1,9 @@
 import { operationReceipts } from '@styld/db'
 import { OperationConflict, Unavailable } from '@styld/protocol'
-import { and, asc, eq, inArray, lt, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, lt, sql } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
 import type { drizzle } from 'drizzle-orm/d1'
-import { DateTime, Duration, Effect, Option } from 'effect'
+import { DateTime, Duration, Effect, Exit, Option, Predicate } from 'effect'
 import { first, nowDate, query } from './Db.ts'
 import { digestOf } from './Ids.ts'
 
@@ -55,13 +55,21 @@ export const forgetReceipt = (db: Database, accountId: string, operationId: stri
     .delete(operationReceipts)
     .where(and(eq(operationReceipts.accountId, accountId), eq(operationReceipts.operationId, operationId)))
 
+/** Whether a stored receipt is the operation's own: the same command and input under its id. */
+const sameOperation = (operation: Identified, receipt: typeof operationReceipts.$inferSelect) =>
+  receipt.command === operation.command && receipt.inputDigest === operation.digest
+
 /** What the operation already made, judged from the receipt stored under its id: the same command and input answer
- * its result; a different one under the same id is a conflict. */
-export const priorResult = (operation: Identified, receipt: Option.Option<typeof operationReceipts.$inferSelect>) => {
-  if (Option.isNone(receipt)) return Effect.succeed(Option.none<string>())
-  return receipt.value.command === operation.command && receipt.value.inputDigest === operation.digest
-    ? Effect.succeed(Option.some(receipt.value.result))
-    : Effect.fail(OperationConflict.make({}))
+ * its result (one still pending is being made, and is asked for again later); a different one under the same id is a
+ * conflict. */
+export const priorResult = (
+  operation: Identified,
+  receipt: Option.Option<typeof operationReceipts.$inferSelect>,
+): Effect.Effect<Option.Option<string>, OperationConflict | Unavailable> => {
+  if (Option.isNone(receipt)) return Effect.succeed(Option.none())
+  if (!sameOperation(operation, receipt.value)) return Effect.fail(OperationConflict.make({}))
+  const { result } = receipt.value
+  return result === null ? Effect.fail(Unavailable.make({})) : Effect.succeed(Option.some(result))
 }
 
 /** The receipt row to write in the operation's batch, recording what it made. */
@@ -99,13 +107,62 @@ export const forgetOldReceipts = (db: Database, limit: number) =>
     return gone.length
   })
 
+/** The receipt under an account's operation id, while it is still pending. */
+const pendingOf = (accountId: string, operationId: string) =>
+  and(
+    eq(operationReceipts.accountId, accountId),
+    eq(operationReceipts.operationId, operationId),
+    isNull(operationReceipts.result),
+  )
+
 /** Reading and writing receipts, for every store to spread into its own. */
 export const receiptRows = (db: Database) => ({
   findReceipt: (accountId: string, operationId: string) =>
     query(() => receiptQuery(db, accountId, operationId)).pipe(Effect.map(first)),
-  /** A receipt on its own, for an operation whose work is not one D1 batch. A receipt already there stays. */
-  saveReceipt: (receipt: typeof operationReceipts.$inferInsert) =>
-    query(() => db.insert(operationReceipts).values(receipt).onConflictDoNothing()).pipe(Effect.asVoid),
+  /** A receipt on its own, for an operation whose work is not one D1 batch. One already under the id must be the same
+   * operation's, or the id is in conflict. */
+  saveReceipt: Effect.fnUntraced(function* (
+    receipt: ReceiptRow,
+  ): Effect.fn.Return<void, OperationConflict | Unavailable> {
+    const written = yield* query(() =>
+      db
+        .insert(operationReceipts)
+        .values(receipt)
+        .onConflictDoNothing()
+        .returning({ operationId: operationReceipts.operationId }),
+    ).pipe(Effect.mapError(unavailable))
+    if (written.length > 0) return
+    const stored = yield* query(() => receiptQuery(db, receipt.accountId, receipt.operationId)).pipe(
+      Effect.map(first),
+      Effect.mapError(unavailable),
+    )
+    const operation = { ...receipt, digest: receipt.inputDigest }
+    if (Option.isNone(stored) || !sameOperation(operation, stored.value)) return yield* OperationConflict.make({})
+  }),
+  /** Claim an operation id for work about to run: a pending receipt, unless one is there; whether it was claimed. */
+  claimReceipt: (receipt: ReceiptRow) =>
+    query(() =>
+      db
+        .insert(operationReceipts)
+        .values(receipt)
+        .onConflictDoNothing()
+        .returning({ operationId: operationReceipts.operationId }),
+    ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** Claim again a pending receipt whose request died, as it was seen; whether it was claimed. */
+  reclaimReceipt: (receipt: ReceiptRow, seen: Date) =>
+    query(() =>
+      db
+        .update(operationReceipts)
+        .set({ createdAt: receipt.createdAt })
+        .where(and(pendingOf(receipt.accountId, receipt.operationId), eq(operationReceipts.createdAt, seen)))
+        .returning({ operationId: operationReceipts.operationId }),
+    ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** The pending operation's result, once its work succeeded. */
+  answerReceipt: (accountId: string, operationId: string, result: string) =>
+    query(() => db.update(operationReceipts).set({ result }).where(pendingOf(accountId, operationId))),
+  /** The pending operation's work failed: its id is free for a repeat to run it again. */
+  dropPending: (accountId: string, operationId: string) =>
+    query(() => db.delete(operationReceipts).where(pendingOf(accountId, operationId))),
 })
 export type ReceiptRows = ReturnType<typeof receiptRows>
 
@@ -190,25 +247,74 @@ export const recorded = Effect.fnUntraced(function* <A, E, R, E2, R2>(
   return yield* Option.isSome(raced) ? steps.answer(raced.value) : Effect.fail(unavailable())
 })
 
-/** An operation whose work is not one D1 batch (a fetch, an upload, a queue message, a status move): a repeat of it
- * answers from its receipt (`replay` reads what `run` made from the receipt's result). The receipt is written once the
- * work succeeded, so if that write is lost a repeat does the work once more; these operations allow that. */
-export const once = <A, E, R, E2, R2>(
+/** A pending receipt older than this belongs to a request that died before it answered: every operation run by
+ * `once` answers within it. */
+const pendingPatience = Duration.minutes(2)
+
+/** How a request found its operation id: claimed for it to run, or answered by what a receipt holds. */
+type Found =
+  | { readonly _tag: 'Claimed' }
+  | { readonly _tag: 'Made'; readonly result: string }
+  | { readonly _tag: 'Lost' }
+
+/** Claim the operation id for this request, or find what holds it: the same operation's result, its request still
+ * running (`Unavailable`, asked again later), a request that died before it answered (`Lost`), or another operation
+ * (`OperationConflict`). */
+const claimed = Effect.fnUntraced(function* (receipts: ReceiptRows, operation: Identified) {
+  const pending = { ...(yield* receiptRow(operation, '')), result: null }
+  if (yield* receipts.claimReceipt(pending).pipe(Effect.mapError(unavailable)))
+    return { _tag: 'Claimed' } satisfies Found
+  const stored = yield* receipts
+    .findReceipt(operation.accountId, operation.operationId)
+    .pipe(Effect.mapError(unavailable))
+  if (Option.isNone(stored)) return yield* unavailable()
+  if (!sameOperation(operation, stored.value)) return yield* OperationConflict.make({})
+  const { result, createdAt } = stored.value
+  if (result !== null) return { _tag: 'Made', result } satisfies Found
+  if (pending.createdAt.getTime() - createdAt.getTime() < Duration.toMillis(pendingPatience))
+    return yield* unavailable()
+  return { _tag: 'Lost' } satisfies Found
+})
+
+/** An operation whose work is not one D1 batch (a fetch, an upload, a queue message, a status move), answered once:
+ * its id is claimed by a pending receipt before the work runs, so two requests never both run it, and a repeat
+ * answers from the receipt (`replay` reads what `run` made from its result). Work that fails frees the id for a
+ * repeat. A request that died while its work ran leaves its outcome unknown: `resume` answers it from where the work
+ * left things (paid work, never run twice); without one the work runs again, which these operations allow. */
+export const once = <A, E, R, E2, R2, E3 = never, R3 = never>(
   receipts: ReceiptRows,
   operation: Operation,
   answer: {
     readonly replay: (result: string) => Effect.Effect<A, E2, R2>
     readonly run: Effect.Effect<readonly [A, string], E, R>
+    readonly resume?: Effect.Effect<A, E3, R3>
   },
 ) =>
   Effect.gen(function* () {
     const identified = yield* identify(operation)
-    const receipt = yield* receipts
-      .findReceipt(operation.accountId, operation.operationId)
-      .pipe(Effect.mapError(unavailable))
-    const prior = yield* priorResult(identified, receipt)
-    if (Option.isSome(prior)) return yield* answer.replay(prior.value)
-    const [value, result] = yield* answer.run
-    yield* receipts.saveReceipt(yield* receiptRow(identified, result)).pipe(Effect.mapError(unavailable))
+    const { accountId, operationId } = operation
+    const found = yield* claimed(receipts, identified)
+    if (Predicate.isTagged(found, 'Made')) return yield* answer.replay(found.result)
+    if (Predicate.isTagged(found, 'Lost')) {
+      if (answer.resume !== undefined) return yield* answer.resume
+      const stored = yield* receipts.findReceipt(accountId, operationId).pipe(Effect.mapError(unavailable))
+      const again = { ...(yield* receiptRow(identified, '')), result: null }
+      const seen = Option.map(stored, ({ createdAt }) => createdAt)
+      if (
+        Option.isNone(seen) ||
+        !(yield* receipts.reclaimReceipt(again, seen.value).pipe(Effect.mapError(unavailable)))
+      )
+        return yield* unavailable()
+    }
+    const exit = yield* Effect.exit(answer.run)
+    if (Exit.isFailure(exit)) {
+      yield* receipts.dropPending(accountId, operationId).pipe(Effect.ignore)
+      return yield* Effect.failCause(exit.cause)
+    }
+    const [value, result] = exit.value
+    // The work is done; a result that cannot be kept now leaves the receipt pending, answered by `resume` later.
+    yield* receipts
+      .answerReceipt(accountId, operationId, result)
+      .pipe(Effect.ignore({ log: true, message: 'Styld.Receipts could not keep a result' }))
     return value
   })

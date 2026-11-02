@@ -127,8 +127,9 @@ export const redrawing = Effect.map(Effect.context<CaptureServices>(), (context)
     return yield* once(
       yield* WardrobeStore,
       { accountId, operationId: input.operationId, command: 'redrawPicture', input: [pieceId, input.hint ?? null] },
-      // The same request again: its message may have been lost, and the job draws once however often it is sent.
-      { replay: () => replayedRedraw(pieceId), run: ask },
+      // The same request again: its message may have been lost, and the job draws once however often it is sent. A
+      // request that died while it asked is answered as the picture stands, never asked again.
+      { replay: () => replayedRedraw(pieceId), run: ask, resume: replayedRedraw(pieceId) },
     )
   }, Effect.provide(context)),
 }))
