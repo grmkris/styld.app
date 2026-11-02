@@ -1,9 +1,13 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "eb5ab426-0360-4f17-89da-26ee87b4f245",
-  "prevIds": ["6bb29799-bbc7-4a08-b6f5-774188d97784"],
+  "id": "8a56379e-5942-414f-93fb-d891a88f1bda",
+  "prevIds": ["ac2e3eaf-540c-4fb1-87f7-f060010d54f8"],
   "ddl": [
+    {
+      "name": "account_deletions",
+      "entityType": "tables"
+    },
     {
       "name": "accounts",
       "entityType": "tables"
@@ -54,6 +58,10 @@
     },
     {
       "name": "piece_turns",
+      "entityType": "tables"
+    },
+    {
+      "name": "provider_files",
       "entityType": "tables"
     },
     {
@@ -137,7 +145,15 @@
       "entityType": "tables"
     },
     {
+      "name": "paid_attempts",
+      "entityType": "tables"
+    },
+    {
       "name": "pending_settlements",
+      "entityType": "tables"
+    },
+    {
+      "name": "imported_pieces",
       "entityType": "tables"
     },
     {
@@ -167,6 +183,36 @@
     {
       "name": "styld_auth_sessions",
       "entityType": "tables"
+    },
+    {
+      "table": "account_deletions",
+      "name": "account_id",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "account_deletions",
+      "name": "requested_at",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "account_deletions",
+      "name": "purged_at",
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
     },
     {
       "table": "accounts",
@@ -442,7 +488,7 @@
       "table": "operation_receipts",
       "name": "result",
       "type": "text",
-      "notNull": true,
+      "notNull": false,
       "autoincrement": false,
       "default": null,
       "generated": null,
@@ -1481,6 +1527,46 @@
     {
       "table": "piece_turns",
       "name": "updated_at",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "provider_files",
+      "name": "file_id",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "provider_files",
+      "name": "provider",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "provider_files",
+      "name": "account_id",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "provider_files",
+      "name": "created_at",
       "type": "integer",
       "notNull": true,
       "autoincrement": false,
@@ -2889,6 +2975,76 @@
       "entityType": "columns"
     },
     {
+      "table": "paid_attempts",
+      "name": "work",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "paid_attempts",
+      "name": "account_id",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "paid_attempts",
+      "name": "attempt",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "paid_attempts",
+      "name": "hold_id",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "paid_attempts",
+      "name": "claimed_at",
+      "type": "integer",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "paid_attempts",
+      "name": "result",
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "paid_attempts",
+      "name": "updated_at",
+      "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
       "table": "pending_settlements",
       "name": "hold_id",
       "type": "text",
@@ -2922,6 +3078,36 @@
       "table": "pending_settlements",
       "name": "updated_at",
       "type": "integer",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "imported_pieces",
+      "name": "account_id",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "imported_pieces",
+      "name": "v1_id",
+      "type": "text",
+      "notNull": true,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "entityType": "columns"
+    },
+    {
+      "table": "imported_pieces",
+      "name": "piece_id",
+      "type": "text",
       "notNull": true,
       "autoincrement": false,
       "default": null,
@@ -3489,6 +3675,20 @@
       "entityType": "columns"
     },
     {
+      "table": "account_deletions",
+      "name": "account_deletions_requested",
+      "columns": [
+        {
+          "value": "requested_at",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
       "table": "auth_attempt_buckets",
       "name": "auth_attempt_buckets_expiry",
       "columns": [
@@ -3806,6 +4006,34 @@
         },
         {
           "value": "updated_at",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "provider_files",
+      "name": "provider_files_created",
+      "columns": [
+        {
+          "value": "created_at",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "provider_files",
+      "name": "provider_files_account",
+      "columns": [
+        {
+          "value": "account_id",
           "isExpression": false
         }
       ],
@@ -4515,11 +4743,39 @@
       "entityType": "indexes"
     },
     {
+      "table": "paid_attempts",
+      "name": "paid_attempts_updated",
+      "columns": [
+        {
+          "value": "updated_at",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
       "table": "pending_settlements",
       "name": "pending_settlements_updated",
       "columns": [
         {
           "value": "updated_at",
+          "isExpression": false
+        }
+      ],
+      "isUnique": false,
+      "where": null,
+      "origin": "manual",
+      "entityType": "indexes"
+    },
+    {
+      "table": "imported_pieces",
+      "name": "imported_pieces_piece",
+      "columns": [
+        {
+          "value": "piece_id",
           "isExpression": false
         }
       ],
@@ -5495,10 +5751,43 @@
       "entityType": "fks"
     },
     {
+      "table": "paid_attempts",
+      "name": "fk_paid_attempts_account_id_accounts_id_fk",
+      "columns": ["account_id"],
+      "tableTo": "accounts",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "entityType": "fks"
+    },
+    {
       "table": "pending_settlements",
       "name": "fk_pending_settlements_account_id_accounts_id_fk",
       "columns": ["account_id"],
       "tableTo": "accounts",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "entityType": "fks"
+    },
+    {
+      "table": "imported_pieces",
+      "name": "fk_imported_pieces_account_id_accounts_id_fk",
+      "columns": ["account_id"],
+      "tableTo": "accounts",
+      "columnsTo": ["id"],
+      "onUpdate": "NO ACTION",
+      "onDelete": "CASCADE",
+      "nameExplicit": false,
+      "entityType": "fks"
+    },
+    {
+      "table": "imported_pieces",
+      "name": "fk_imported_pieces_piece_id_pieces_id_fk",
+      "columns": ["piece_id"],
+      "tableTo": "pieces",
       "columnsTo": ["id"],
       "onUpdate": "NO ACTION",
       "onDelete": "CASCADE",
@@ -5590,6 +5879,20 @@
       "entityType": "pks"
     },
     {
+      "table": "imported_pieces",
+      "name": "imported_pieces_pk",
+      "columns": ["account_id", "v1_id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "table": "account_deletions",
+      "name": "account_deletions_pk",
+      "columns": ["account_id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
       "table": "accounts",
       "name": "accounts_pk",
       "columns": ["id"],
@@ -5649,6 +5952,13 @@
       "table": "piece_turns",
       "name": "piece_turns_pk",
       "columns": ["piece_id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "table": "provider_files",
+      "name": "provider_files_pk",
+      "columns": ["file_id"],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -5733,6 +6043,13 @@
       "table": "stylist_turns",
       "name": "stylist_turns_pk",
       "columns": ["id"],
+      "nameExplicit": false,
+      "entityType": "pks"
+    },
+    {
+      "table": "paid_attempts",
+      "name": "paid_attempts_pk",
+      "columns": ["work"],
       "nameExplicit": false,
       "entityType": "pks"
     },
@@ -5951,6 +6268,12 @@
       "table": "piece_turns",
       "name": "piece_turns_state",
       "value": "\"state\" IN ('requested', 'anchoring', 'generating', 'video-ready', 'ready', 'rejected', 'failed')",
+      "entityType": "checks"
+    },
+    {
+      "table": "provider_files",
+      "name": "provider_files_provider",
+      "value": "\"provider\" IN ('meta-sam')",
       "entityType": "checks"
     },
     {
