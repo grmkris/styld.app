@@ -27,13 +27,39 @@ const over = () => {
     database.sqlite
       .prepare('UPDATE pending_settlements SET updated_at = ? WHERE hold_id = ?')
       .run(Date.now() - hours * hourMillis, hold)
-  return { layer, kept, age, ledger: settlementRows(drizzle(database)) }
+  return { layer, kept, age, database, ledger: settlementRows(drizzle(database)) }
 }
 
 const first = holdId('piece', 'pc_1', 1)
 const second = holdId('piece', 'pc_2', 1)
 
 describe('the credit ledger', () => {
+  it.effect('refuses a settled reservation receipt as permission for more paid work', () => {
+    const { layer } = over()
+    return Effect.gen(function* () {
+      const holds = yield* Holds
+      yield* holds.reserve({ accountId: 'ac_1', hold: first, credits: 2 })
+      yield* holds.settle('ac_1', first, 'failed')
+      expect(yield* Effect.flip(holds.reserve({ accountId: 'ac_1', hold: first, credits: 2 }))).toMatchObject({
+        _tag: 'Unavailable',
+      })
+      expect(yield* holds.remaining('ac_1')).toBe(dailyCredits)
+    }).pipe(Effect.provide(layer))
+  })
+
+  it.effect('keeps and settles an outstanding hold after its account rows are deleted', () => {
+    const { layer, kept, database, ledger } = over()
+    return Effect.gen(function* () {
+      const holds = yield* Holds
+      yield* holds.reserve({ accountId: 'ac_1', hold: first, credits: 2 })
+      database.sqlite.exec("DELETE FROM accounts WHERE id = 'ac_1'")
+      expect(kept()).toEqual([{ hold_id: first, ending: null }])
+      yield* ledger.end('ac_1', first, 'failed', yield* nowDate)
+      yield* holds.sweep
+      expect(kept()).toEqual([])
+      expect(yield* holds.remaining('ac_1')).toBe(dailyCredits)
+    }).pipe(Effect.provide(layer))
+  })
   it.effect('keeps a hold from before it is reserved until the Wallet settled it', () => {
     const { layer, kept } = over()
     return Effect.gen(function* () {

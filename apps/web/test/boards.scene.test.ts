@@ -1,5 +1,5 @@
-import { Board, BoardSummary } from '@styld/protocol'
-import { Schema } from 'effect'
+import { Board, BoardSummary, OperationId } from '@styld/protocol'
+import { Option, Schema } from 'effect'
 import { click, Command, expect, given, role, scene, selector, text } from 'foldkit/scene'
 import { describe, test } from 'vitest'
 import { Message as AppMessage, update } from '../src/App.ts'
@@ -84,7 +84,10 @@ describe('the boards list', () => {
       expect(role('textbox')).toBeAbsent(),
       click(role('button', { name: 'New board' })),
       expect(role('button', { name: 'Creating…' })).toBeDisabled(),
-      Command.resolve(CreateBoard({ name: 'My board' }), BoardsMessage.SucceededCreateBoard({ board: created })),
+      Command.resolve(
+        CreateBoard({ name: 'My board', maybeOperationId: Option.none() }),
+        BoardsMessage.SucceededCreateBoard({ board: created }),
+      ),
       Command.resolve(Navigate({ href: `/boards/${created.id}` }), AppMessage.CompletedNavigate()),
     )
   })
@@ -94,10 +97,19 @@ describe('the boards list', () => {
       { update, view },
       given(boardsPage([])),
       click(role('button', { name: 'New board' })),
-      Command.resolve(CreateBoard, BoardsMessage.FailedCreateBoard()),
+      Command.resolve(
+        CreateBoard,
+        BoardsMessage.FailedCreateBoard({ operationId: OperationId.make('create-board-1'), name: 'My board' }),
+      ),
       expect(role('alert')).toHaveText('The board wasn’t created. Try again.'),
       expect(role('button', { name: 'New board' })).toBeEnabled(),
       expect(text('No boards yet. Make one and lay out an outfit, a trip or a season.')).toExist(),
+      click(role('button', { name: 'New board' })),
+      Command.expectExact(
+        CreateBoard({ name: 'My board', maybeOperationId: Option.some(OperationId.make('create-board-1')) }),
+      ),
+      Command.resolve(CreateBoard, BoardsMessage.SucceededCreateBoard({ board: created })),
+      Command.resolve(Navigate, AppMessage.CompletedNavigate()),
     )
   })
 })

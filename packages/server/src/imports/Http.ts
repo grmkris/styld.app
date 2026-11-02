@@ -7,7 +7,7 @@ import { Imports } from './Imports.ts'
 export const importHandlers = HttpApiBuilder.group(StyldApi, 'import', (handlers) =>
   Effect.map(Imports, (imports) =>
     handlers
-      .handle('startImport', ({ params }) => imports.startImport(params.importId))
+      .handle('startImport', ({ params, payload }) => imports.startImport(params.importId, payload.operationId))
       .handle('importStatus', ({ params }) => imports.importStatus(params.importId)),
   ),
 )

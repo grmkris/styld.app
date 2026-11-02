@@ -1,7 +1,7 @@
 import { SessionHttp } from '@styld/auth/config'
 import { Schema } from 'effect'
 import { HttpApiEndpoint, HttpApiGroup } from 'effect/http-api'
-import { NotFound, Unavailable } from './Errors.ts'
+import { NotFound, OperationConflict, Unavailable } from './Errors.ts'
 import { PieceType } from './Garment.ts'
 import { Operation } from './Ids.ts'
 import { SessionAccount } from './Session.ts'
@@ -65,7 +65,7 @@ export class ImportApi extends HttpApiGroup.make('import')
       params: { importId: ImportId },
       payload: Operation,
       success: ImportStarted,
-      error: [NotFound, Unavailable],
+      error: [NotFound, OperationConflict, Unavailable],
     }),
   )
   .add(

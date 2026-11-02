@@ -229,12 +229,15 @@ const sweepRows = (db: Drizzle) => ({
       ),
       (gone) => gone.length,
     ),
-  /** A pending check whose target is gone or private again is abandoned: nothing will answer it until the target is
-   * made public, which asks again. Answered checks stay, so the same content is not judged twice. */
+  /** Stop pending work for a private target without erasing reports or an admin's hide. Clearing the digest forces
+   * a fresh check on republishing; deleted targets are removed by forgetGone. */
   abandon: (target: CheckTarget) =>
-    read(() => db.delete(contentChecks).where(and(targetIs(target), eq(contentChecks.state, 'pending')))).pipe(
-      Effect.asVoid,
-    ),
+    read(() =>
+      db
+        .update(contentChecks)
+        .set({ state: 'unsure', digest: '', reason: null })
+        .where(and(targetIs(target), eq(contentChecks.state, 'pending'))),
+    ).pipe(Effect.asVoid),
 })
 
 /** The check rows: one per target, written only here.

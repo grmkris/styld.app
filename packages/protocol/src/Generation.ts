@@ -26,7 +26,15 @@ export const GenerationKind = Schema.Literals(['sticker', 'moodBoard'])
 export type GenerationKind = typeof GenerationKind.Type
 
 /** How far Styld got: planning the mood board, drawing the sticker, laying out the collage, done; or stopped. */
-export const GenerationStatus = Schema.Literals(['planning', 'drawing', 'arranging', 'done', 'refused', 'failed'])
+export const GenerationStatus = Schema.Literals([
+  'admitting',
+  'planning',
+  'drawing',
+  'arranging',
+  'done',
+  'refused',
+  'failed',
+])
 export type GenerationStatus = typeof GenerationStatus.Type
 
 /** Why a generation stopped short: the plan found too little in the wardrobe for the words, the image model refused

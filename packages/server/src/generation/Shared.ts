@@ -6,6 +6,7 @@ import type { StoreUnavailable } from '../kernel/Db.ts'
 import { type Ending, Holds, holdId } from '../usage/Holds.ts'
 import type { ContentJudge } from '../safety/Judge.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
+import type { PaidAttempts } from '../usage/Attempts.ts'
 import type { MoodPlanner } from './Planner.ts'
 import type { PicturePainter } from './Painter.ts'
 import { GenerationQueue } from './Queue.ts'
@@ -26,6 +27,7 @@ export type GenerationServices =
   | ContentJudge
   | MoodPlanner
   | PicturePainter
+  | PaidAttempts
 
 export const unavailable = () => Unavailable.make({})
 export const stored = <A, R>(effect: Effect.Effect<A, StoreUnavailable, R>) => Effect.mapError(effect, unavailable)

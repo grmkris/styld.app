@@ -21,6 +21,22 @@ const failedPin = {
 }
 
 describe('save to board', () => {
+  test('while saving, another click or reopening cannot submit another save', () => {
+    story(
+      update,
+      given({ ...fresh, saving: Saving.Sending(), name: 'Trip' }),
+      message(Message.ClickedBoard({ boardId: autumn.id, boardName: autumn.name })),
+      Command.expectNone(),
+      message(Message.SubmittedNewBoard()),
+      Command.expectNone(),
+      message(Message.ClickedSave()),
+      Command.expectNone(),
+      model(({ saving, name }) => {
+        expect(Saving.guards.Sending(saving)).toBe(true)
+        expect(name).toBe('Trip')
+      }),
+    )
+  })
   test('opening asks the app for the person’s boards, and the one tapped gets the piece', () => {
     story(
       update,

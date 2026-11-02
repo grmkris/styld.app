@@ -147,7 +147,7 @@ const sendVideo = (
           await writer.abort(error)
           throw error
         }),
-      catch: () => failed(true),
+      catch: unknown,
     })
     const [answer] = yield* Effect.all(
       [
@@ -156,7 +156,7 @@ const sendVideo = (
           contentType: `multipart/form-data; boundary=${frame.boundary}`,
           // SAFETY: FixedLengthStream's readable is a Worker runtime stream -- the fetch type here is the DOM lib's, which names its own ReadableStream
           body: readable as never,
-          lost: 'busy',
+          lost: 'unknown',
         }),
         sending,
       ],
@@ -169,18 +169,16 @@ const sendVideo = (
 const uploadVideo = (settings: MetaSettings, http: HttpProvider) =>
   Effect.fn('Styld.Capture.uploadVideo')(function* (video: StoredVideo) {
     const frame = multipartFrame(video, yield* Clock.currentTimeMillis)
-    // Uploading is free and uploading again only makes another file: safe to send again.
+    // A lost response may have created a file whose id we do not know and cannot delete. Never replay that upload.
     const response = yield* providerCall(
       settings.metrics,
-      { provider: 'meta-sam', model: 'files', kind: 'upload', deadline: deadlines.upload, replaySafe: true },
+      { provider: 'meta-sam', model: 'files', kind: 'upload', deadline: deadlines.upload, replaySafe: false },
       sendVideo(settings, http, video, frame),
       () => ({ units: video.bytes, costMicroUsd: 0 }),
     )
     if (!response.ok) return yield* refusal(response)
-    const created = yield* Effect.tryPromise({ try: () => response.json(), catch: () => failed(true) }).pipe(
-      Effect.flatMap((json) =>
-        Schema.decodeUnknownEffect(FileCreated)(json).pipe(Effect.mapError(() => broken('meta-sam'))),
-      ),
+    const created = yield* Effect.tryPromise({ try: () => response.json(), catch: unknown }).pipe(
+      Effect.flatMap((json) => Schema.decodeUnknownEffect(FileCreated)(json).pipe(Effect.mapError(unknown))),
     )
     return created.id
   })

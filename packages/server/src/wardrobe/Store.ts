@@ -1,5 +1,5 @@
 import { accounts, detections, operationReceipts, piecePictures, pieceTurns, pieces, uploads } from '@styld/db'
-import { and, asc, desc, eq, gt, inArray, lt, ne, or, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, inArray, lt, ne, or, sql, type SQL } from 'drizzle-orm'
 import { Array, Context, Effect, Layer } from 'effect'
 import { receiptRows, recordedWrites } from '../kernel/Receipts.ts'
 import { PictureRows } from '../capture/Rows.ts'
@@ -65,10 +65,30 @@ export const spendUpload = (db: Database['Service'], uploadId: string) =>
  * back when the batch that spent it is undone. */
 export const PieceRows = {
   insert: (db: Database['Service'], row: PieceRow) => db.insert(pieces).values(row),
+  /** A failed import keeps its identity and source photo when the operator starts it again. */
+  retryImport: (db: Database['Service'], accountId: string, pieceId: string, at: Date) =>
+    db
+      .update(pieces)
+      .set({ status: 'processing', updatedAt: at })
+      .where(
+        and(
+          eq(pieces.id, pieceId),
+          eq(pieces.accountId, accountId),
+          eq(pieces.source, 'import'),
+          eq(pieces.status, 'failed'),
+          sql`exists (select 1 from ${accounts} where ${accounts.id} = ${accountId} and ${accounts.enabled} = 1)`,
+        ),
+      ),
 }
 export const UploadRows = {
   /** An upload Styld stored itself and a piece took at once: an imported piece's photo. */
-  insertUsed: (db: Database['Service'], row: UploadRow) => db.insert(uploads).values({ ...row, status: 'used' }),
+  insertUsed: (db: Database['Service'], row: UploadRow, claim: SQL) =>
+    db.insert(uploads).values({
+      ...row,
+      status: 'used',
+      // The NOT NULL constraint fences adoption against account closure in the same batch as the piece.
+      accountId: sql`(select ${accounts.id} from ${accounts} where ${accounts.id} = ${row.accountId} and ${accounts.enabled} = 1 and ${claim})`,
+    }),
   spend: spendUpload,
   restore: (db: Database['Service'], uploadId: string) =>
     db

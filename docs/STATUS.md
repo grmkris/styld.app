@@ -29,6 +29,26 @@ all 610,441, SSR 1,891,364. Preview readback of release `54a6601` (`tools/previe
 
 ## C8 fixes: credits, paid work and durability (2 November, not deployed)
 
+The follow-up remediation is implemented locally; final integration validation is in progress. No deployment or
+live-provider acceptance was run in this pass. The forward migration `20261102202631_c8_durability` follows
+`credits_paid_work_imports`; it preserves existing generation picks and pictures while rebuilding their parent with
+foreign keys enabled (rehearsed by `DurabilityMigration.test.ts`).
+
+- Generation jobs remain `admitting` until credits and the prompt check pass, resume by their exact operation
+  receipt, and expire after 30 minutes. Only the admission that wins its failure transition can undo its job.
+  Mood-board planning keeps a durable result and conditional picks; competing deliveries leave the winner alone.
+- Replaying a settled Wallet reservation cannot authorize new paid work. Settlement records survive account-row
+  deletion. Paid-attempt results are retained until explicitly forgotten or their account is removed.
+- Imports keep a copy intent before R2 writes, adopt it atomically, and claim discard before deleting abandoned
+  copies. Closed accounts cannot adopt or process imports. Import starts keep their operation IDs; the CLI's
+  `--retry-failed` starts a fresh run and failed pieces become processing before queue submission.
+- Capture/photo result application is fenced by the active claim. Video upload is claimed before calling Meta;
+  uncertain upload outcomes are not replayed, and known file IDs are recorded independently of capture rows.
+- Making content private preserves moderation enforcement. Search revisions reject stale responses and timers;
+  URL restoration preserves in-progress spaces. Board creation retries reuse their operation and original name;
+  save-to-board ignores duplicate submissions. Failed saved-content and piece-look reads offer retry. API-client
+  loading retries failures and shares successful loads; locale loading fails visibly before persisting a change.
+
 From the two C8 reviews of `56a619b`, each with a test (unit on the SQLite D1 harness, layer tests with the
 in-memory Wallet, or native):
 
@@ -177,15 +197,14 @@ From C8's review fixes:
 
 - The Wallet's Durable Object (its state and command receipts) is not purged with the account: Alchemy Domain beta.84
   exposes no way to erase an aggregate's storage, so it needs a dependency patch or an upstream API.
-- `photo.updatePhoto`, `photo.matchGarment`, `photo.offerGarment`, `photo.cutOut`, `import.startImport` and
-  `capture.turnSheet` take an operation id they do not keep yet (named in `protocol/test/Api.test.ts`).
-- A video Meta accepted whose capture row then failed to record its id is not in `provider_files`.
+- A video Meta accepted whose response loses its file ID cannot be reconciled without provider support. If the ID
+  is returned but both durable recording (after retries) and immediate deletion fail, cleanup is still best effort.
 
 From the cleanup's milestones, still open after the later ones:
 
 - No tool lists pending Wallet holds; `pending_settlements` holds every one the Wallet has not confirmed settled (a
   D1 query reads them), and the `settlements` sweep logs how many it settled.
-- C8's credit and durability fixes (below) are not deployed: the preview needs the forward migration `credits_paid_work_imports` and a
+- C8's credit and durability fixes are not deployed: the preview needs the forward migrations `credits_paid_work_imports` and `c8_durability`, and a
   readback of a redraw, a turn, a capture retry, a gallery photo and a cut-out under concurrent requests.
 - The website words a refused upload path (`LimitReached` `uploads`, `SlowDown`) as its generic limit message; the
   catalogs have no upload-specific wording yet.

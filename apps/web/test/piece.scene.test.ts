@@ -121,7 +121,8 @@ describe('the piece page', () => {
     const withLooks = (looks: ReadonlyArray<Look>) =>
       withPage(piecePage(PieceData.Success({ data: jeans })), lenses.piece, (piece) =>
         modifyFields(piece, {
-          looks: () => PieceLooks.update(PieceLooks.init(), PieceLooks.Message.SucceededListLooks({ looks })).model,
+          looks: () =>
+            PieceLooks.update(PieceLooks.init(jeans.id), PieceLooks.Message.SucceededListLooks({ looks })).model,
         }),
       )
     scene(

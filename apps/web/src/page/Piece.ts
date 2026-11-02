@@ -105,7 +105,7 @@ export const init = (pieceId: string): Model => ({
   turnShown: false,
   back: PieceBack.init(pieceId),
   photos: PiecePhotos.init(),
-  looks: PieceLooks.init(),
+  looks: PieceLooks.init(pieceId),
   saveToBoard: SaveToBoard.init({ kind: 'piece', id: pieceId }),
 })
 
@@ -362,6 +362,8 @@ const foldBack = Update.foldChild({
   }),
 })
 
+const foldLooks = PieceLooks.foldInto<Model, Message>((message) => Message.GotLooksMessage({ message }))
+
 const editDraft = (model: Model, change: (draft: Draft) => Draft): UpdateReturn => ({
   model: modifyFields(model, {
     draft: Option.map((draft) =>
@@ -552,9 +554,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotPhotosMessage: ({ message: photosMessage }) => ({
       model: modifyFields(model, { photos: (photos) => PiecePhotos.update(photos, photosMessage).model }),
     }),
-    GotLooksMessage: ({ message: looksMessage }) => ({
-      model: modifyFields(model, { looks: (looks) => PieceLooks.update(looks, looksMessage).model }),
-    }),
+    GotLooksMessage: (got) => foldLooks(model, got.message),
     FailedUpdatePiece: () => ({
       model: modifyFields(model, {
         draft: Option.map((draft) => modifyFields(draft, { save: () => DraftSave.Failed() })),

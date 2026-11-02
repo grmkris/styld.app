@@ -1,5 +1,5 @@
 import { drawOperationId } from '../OperationIds.ts'
-import { Board, BoardName, SavedThing } from '@styld/protocol'
+import { Board, BoardName, OperationId, SavedThing } from '@styld/protocol'
 import { Effect, Option, Result, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import { AsyncData, Command, Update } from 'foldkit'
@@ -14,7 +14,11 @@ import { StyldClient } from '../StyldClient.ts'
 export const SavedData = AsyncData.Schema(Schema.Array(SavedThing), Schema.Literal('Unavailable'))
 export type SavedData = typeof SavedData.schema.Type
 
-export const Creating = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {} })
+export const Creating = defineTaggedUnion({
+  Idle: {},
+  Sending: {},
+  Failed: { operationId: OperationId, name: Schema.String },
+})
 export type Creating = typeof Creating.Type
 
 /** The Boards page: making a board and what the person saved from others. The boards themselves are the app's
@@ -34,9 +38,10 @@ export const init = (): Model => ({
 
 export const Message = defineMessageUnion({
   ClickedRetry: {},
+  ClickedRetrySaved: {},
   ClickedNewBoard: { defaultName: Schema.String },
   SucceededCreateBoard: { board: Board },
-  FailedCreateBoard: {},
+  FailedCreateBoard: { operationId: OperationId, name: Schema.String },
   SucceededListSaved: { saved: Schema.Array(SavedThing) },
   FailedListSaved: {},
 })
@@ -58,17 +63,19 @@ const ListSaved = Command.define('ListSaved', {
 })
 
 export const CreateBoard = Command.define('CreateBoard', {
-  args: { name: Schema.String },
+  args: { name: Schema.String, maybeOperationId: Schema.Option(OperationId) },
   messages: [Message.SucceededCreateBoard, Message.FailedCreateBoard],
-  execute: ({ name }) =>
+  execute: ({ name, maybeOperationId }) =>
     Effect.gen(function* () {
-      const api = yield* (yield* StyldClient).api
-      const operationId = yield* drawOperationId()
-      const board = yield* api.board.createBoard({
-        payload: { operationId, name: yield* Schema.decodeUnknownEffect(BoardName)(name) },
-      })
-      return Message.SucceededCreateBoard({ board })
-    }).pipe(Effect.orElseSucceed(() => Message.FailedCreateBoard())),
+      const operationId = yield* drawOperationId(maybeOperationId)
+      return yield* Effect.gen(function* () {
+        const api = yield* (yield* StyldClient).api
+        const board = yield* api.board.createBoard({
+          payload: { operationId, name: yield* Schema.decodeUnknownEffect(BoardName)(name) },
+        })
+        return Message.SucceededCreateBoard({ board })
+      }).pipe(Effect.orElseSucceed(() => Message.FailedCreateBoard({ operationId, name })))
+    }),
 })
 
 // UPDATE
@@ -101,12 +108,20 @@ export const startBoard =
       ? { model }
       : {
           model: modifyFields(model, { creating: () => Creating.Sending() }),
-          commands: [CreateBoard({ name: defaultName })],
+          commands: [
+            CreateBoard({
+              name: Creating.guards.Failed(model.creating) ? model.creating.name : defaultName,
+              maybeOperationId: Creating.guards.Failed(model.creating)
+                ? Option.some(model.creating.operationId)
+                : Option.none(),
+            }),
+          ],
         }
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     ClickedRetry: () => ({ model, outMessage: OutMessage.RequestedBoards() }),
+    ClickedRetrySaved: () => refreshSaved(model),
     SucceededListSaved: ({ saved }) => ({
       model: modifyFields(model, { saved: () => SavedData.Success({ data: saved }) }),
     }),
@@ -115,5 +130,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     }),
     ClickedNewBoard: ({ defaultName }) => startBoard(defaultName)(model),
     SucceededCreateBoard: ({ board }) => created(model, board),
-    FailedCreateBoard: () => ({ model: modifyFields(model, { creating: () => Creating.Failed() }) }),
+    FailedCreateBoard: ({ operationId, name }) => ({
+      model: modifyFields(model, { creating: () => Creating.Failed({ operationId, name }) }),
+    }),
   })

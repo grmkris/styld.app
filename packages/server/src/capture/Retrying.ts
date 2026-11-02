@@ -41,6 +41,7 @@ const unretried = (accountId: string, capture: CaptureRow, claimed: Date, refuse
         status: capture.status,
         attempt: refused ? capture.attempt : attempt,
         trackingStartedAt: capture.trackingStartedAt,
+        providerFileId: capture.providerFileId,
         updatedAt: capture.updatedAt,
       },
     )
@@ -63,6 +64,7 @@ const retried = (accountId: string, captureId: CaptureId) =>
         attempt: next.attempt,
         // The person asked again, so a video may be tracked again.
         trackingStartedAt: null,
+        providerFileId: null,
         updatedAt: claimed,
       }),
     )

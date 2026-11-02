@@ -144,10 +144,12 @@ const openSheet = sheet.open
 
 /** The sheet opens fresh, and asks for the boards again so a board made meanwhile is there. */
 const opened = (model: Model): UpdateReturn =>
-  Update.withOutMessage(
-    openSheet(modifyFields(model, { name: () => '', saving: () => Saving.Idle() })),
-    OutMessage.RequestedBoards(),
-  )
+  Saving.guards.Sending(model.saving)
+    ? { model }
+    : Update.withOutMessage(
+        openSheet(modifyFields(model, { name: () => '', saving: () => Saving.Idle() })),
+        OutMessage.RequestedBoards(),
+      )
 
 /** Whether two saves go to the same place: the same board tapped, or a new board of the same name. */
 const samePlace = (left: Destination, right: Destination) =>
@@ -157,16 +159,19 @@ const samePlace = (left: Destination, right: Destination) =>
   })
 
 /** Send the save; a try to where the last one failed resumes it. */
-const sent = (model: Model, destination: Destination): UpdateReturn => ({
-  model: modifyFields(model, { saving: () => Saving.Sending() }),
-  commands: [
-    SaveTo({
-      target: model.target,
-      destination,
-      resume: Option.filter(model.resume, (earlier) => samePlace(earlier.destination, destination)),
-    }),
-  ],
-})
+const sent = (model: Model, destination: Destination): UpdateReturn =>
+  Saving.guards.Sending(model.saving)
+    ? { model }
+    : {
+        model: modifyFields(model, { saving: () => Saving.Sending() }),
+        commands: [
+          SaveTo({
+            target: model.target,
+            destination,
+            resume: Option.filter(model.resume, (earlier) => samePlace(earlier.destination, destination)),
+          }),
+        ],
+      }
 
 /** "Save to board" inside a page whose model keeps it as `saveToBoard`; its request for the boards goes on up as the
  * page's own OutMessage. */

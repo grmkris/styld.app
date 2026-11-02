@@ -1,8 +1,9 @@
 import { generationJobs, generationPictures, generationPicks, operationReceipts } from '@styld/db'
-import { and, asc, desc, eq, inArray, lt, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, lt, notExists, sql } from 'drizzle-orm'
 import { Context, Effect, Layer } from 'effect'
-import { forgetReceipt, receiptRows } from '../kernel/Receipts.ts'
+import { receiptRows } from '../kernel/Receipts.ts'
 import { Database, first, query } from '../kernel/Db.ts'
+import { insertWhen } from '../kernel/Conditional.ts'
 
 export type JobRow = typeof generationJobs.$inferSelect
 /** A sticker job's one picture. */
@@ -11,7 +12,7 @@ type ReceiptRow = typeof operationReceipts.$inferInsert
 type Drizzle = Database['Service']
 
 /** The statuses of a job not yet ended. */
-const running = ['planning', 'drawing', 'arranging'] as const
+const running = ['admitting', 'planning', 'drawing', 'arranging'] as const
 
 /** Jobs: written once with their receipt, read for their owner or the queue, and moved on from a step. */
 const jobQueries = (db: Drizzle) => ({
@@ -25,14 +26,23 @@ const jobQueries = (db: Drizzle) => ({
         db.insert(operationReceipts).values(receipt),
       ]),
     ).pipe(Effect.asVoid),
-  /** Undo a job that was never taken on (past the daily limit, or words that failed the check): the job, its picture
-   * and its receipt, so the same operation asks again. */
+  /** Admission failures never became queue work; remove the job and free its operation id for a retry. */
   undoJob: (job: Pick<JobRow, 'id' | 'accountId'>, operationId: string) =>
     query(() =>
       db.batch([
-        db.delete(generationPictures).where(eq(generationPictures.jobId, job.id)),
-        db.delete(generationJobs).where(eq(generationJobs.id, job.id)),
-        forgetReceipt(db, job.accountId, operationId),
+        db
+          .delete(generationJobs)
+          .where(and(eq(generationJobs.id, job.id), inArray(generationJobs.status, ['failed', 'refused']))),
+        db
+          .delete(operationReceipts)
+          .where(
+            and(
+              eq(operationReceipts.accountId, job.accountId),
+              eq(operationReceipts.operationId, operationId),
+              eq(operationReceipts.result, job.id),
+              notExists(db.select({ id: generationJobs.id }).from(generationJobs).where(eq(generationJobs.id, job.id))),
+            ),
+          ),
       ]),
     ).pipe(Effect.asVoid),
   findJob: (accountId: string, jobId: string) =>
@@ -96,11 +106,20 @@ const pickQueries = (db: Drizzle) => ({
       db.batch([
         db
           .update(generationJobs)
-          .set({ status: 'arranging', moods: plan.moods, updatedAt: at })
+          .set({ updatedAt: at })
           .where(and(eq(generationJobs.id, jobId), eq(generationJobs.status, 'planning'))),
         ...plan.picks.map((pieceId, position) =>
-          db.insert(generationPicks).values({ jobId, position, pieceId }).onConflictDoNothing(),
+          insertWhen(
+            db,
+            generationPicks,
+            { jobId, position, pieceId },
+            sql`exists (select 1 from ${generationJobs} where ${generationJobs.id} = ${jobId} and ${generationJobs.status} = 'planning')`,
+          ),
         ),
+        db
+          .update(generationJobs)
+          .set({ status: 'arranging', moods: plan.moods, updatedAt: at })
+          .where(and(eq(generationJobs.id, jobId), eq(generationJobs.status, 'planning'))),
       ]),
     ).pipe(Effect.asVoid),
   /** The pieces a mood board's plan picked that are still there, in its order. */

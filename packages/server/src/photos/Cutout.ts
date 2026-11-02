@@ -8,6 +8,7 @@ import { Pacing } from '../kernel/Pacing.ts'
 import { PhotoStore } from './Store.ts'
 import { Garments } from '../capture/Garments.ts'
 import { PaidAttempts } from '../usage/Attempts.ts'
+import { outcomeUnknown } from '../providers/Errors.ts'
 
 // Cut out the outfit (owner, 2026-10-31): the person in an outfit photo, cut out as one picture for collages. Free to
 // the person, but SAM bills each call, so it is asked once per photo (`PaidAttempts`): the outcome is kept whether a
@@ -22,7 +23,7 @@ const cut = (photo: PhotoRow, original: Uint8Array) =>
     const person = yield* (yield* Garments).cut(original, { for: 'person' })
     if (Option.isNone(person)) return { key: null }
     const key = `${photoPrefix(photo.accountId, photo.id)}cutout.png`
-    yield* writeObject(key, person.value, 'image/png')
+    yield* writeObject(key, person.value, 'image/png').pipe(Effect.mapError(() => outcomeUnknown('meta-sam')))
     return { key }
   })
 
@@ -39,8 +40,7 @@ export const cutOutPerson = (photo: PhotoRow) =>
     const made = yield* attempts.run(work, cut(photo, original.value)).pipe(
       Effect.catchTags({
         AttemptElsewhere: () => unavailable(),
-        // A request that died while SAM was asked: its answer is lost, so it may be asked again, at the pace.
-        ProviderError: () => Effect.andThen(Effect.ignore(attempts.forget(work.key)), unavailable()),
+        ProviderError: () => unavailable(),
       }),
     )
     if (made.key === null) return yield* NoPersonFound.make({})

@@ -52,6 +52,7 @@ export const fakeGarments = Layer.succeed(
   Garments.of({
     find: (photo) => Effect.succeed({ garments: [garmentIn(photo)], route: Option.none(), provider: 'fake' }),
     cut: (photo, intent) => Effect.succeed(intent.for === 'person' ? Option.some(garmentIn(photo).png) : Option.none()),
+    forget: () => Effect.void,
     handOver: () => Effect.succeed('fake-file'),
     // A video shows one garment, at its sharpest still.
     track: (video) =>

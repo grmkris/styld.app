@@ -1,5 +1,5 @@
 import type { StyldApi } from '@styld/protocol'
-import { Context, Effect, Layer, Schema } from 'effect'
+import { Context, Effect, Exit, Layer, Schema } from 'effect'
 import * as HttpBody from 'effect/http/HttpBody'
 import * as HttpClient from 'effect/http/HttpClient'
 import * as HttpClientRequest from 'effect/http/HttpClientRequest'
@@ -14,12 +14,19 @@ export class FileNotSent extends Schema.TaggedError<FileNotSent>()('FileNotSent'
 /** A stored file could not be read back. */
 export class FileNotRead extends Schema.TaggedError<FileNotRead>()('FileNotRead', {}) {}
 
+/** The browser could not load the code for its API client; the next request may try again. */
+export class ClientNotLoaded extends Schema.TaggedError<ClientNotLoaded>()('ClientNotLoaded', {}) {}
+
+/** Share a load while it runs and keep only successful code loads. */
+export const cachedClient = <A>(load: Effect.Effect<A, ClientNotLoaded>) =>
+  Effect.cachedWithTTL(load, (exit) => (Exit.isSuccess(exit) ? 'Infinity' : 0))
+
 /** Styld's typed API, called from the browser. The session travels as a same-origin cookie. */
 export class StyldClient extends Context.Service<
   StyldClient,
   {
     /** The typed client; its code loads the first time a page asks for it. */
-    readonly api: Effect.Effect<HttpApiClient.ForApi<typeof StyldApi>>
+    readonly api: Effect.Effect<HttpApiClient.ForApi<typeof StyldApi>, ClientNotLoaded>
     /** Send a photo's or video's bytes to the path `createUpload` or `createVideoUpload` returned. */
     readonly sendFile: (path: string, file: Blob) => Effect.Effect<void, FileNotSent>
     /** Read one of the account's stored files from its same-origin path, such as a turn's video. */
@@ -32,8 +39,8 @@ export const styldClientLayer = (origin: string) =>
     StyldClient,
     Effect.gen(function* () {
       const http = yield* HttpClient.HttpClient
-      const api = yield* Effect.cached(
-        Effect.promise(() => import('./StyldApiClient.ts')).pipe(
+      const api = yield* cachedClient(
+        Effect.tryPromise({ try: () => import('./StyldApiClient.ts'), catch: () => ClientNotLoaded.make({}) }).pipe(
           Effect.flatMap(({ makeApi }) => makeApi(origin)),
           Effect.provideService(HttpClient.HttpClient, http),
         ),

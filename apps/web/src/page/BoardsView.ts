@@ -127,7 +127,7 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
             : h.empty,
         ]),
         listView(boards, locale, h),
-        savedView(model.saved, locale, h),
+        savedView(model.saved, locale, Message.ClickedRetrySaved(), h),
       ],
     ),
 )

@@ -23,4 +23,4 @@ export { generationJobs, generationPictures, generationPicks } from './generatio
 export { thinkingDays } from './outfits.ts'
 export { stylistTurns } from './stylist.ts'
 export { paidAttempts, pendingSettlements } from './usage.ts'
-export { importedPieces } from './imports.ts'
+export { importedPieces, importCopies } from './imports.ts'

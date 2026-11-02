@@ -28,9 +28,6 @@ const takesOperationId = (endpoint: HttpApiEndpoint.Top) =>
 const unkept = new Map([
   ['capture.check', 'reads a camera frame and stores nothing, so a repeat is the same reading'],
   ['account.deleteMe', 'ends the session it is asked in, so a repeat is signed out; deleting again changes nothing'],
-  // Pending (C8): the operator's importer (`tools/import-v1`) starts an import under `start-<importId>` every run and
-  // relies on a start again sending what is not imported yet; keeping the id needs the tool to name each run.
-  ['import.startImport', 'pending'],
 ])
 
 describe('StyldApi', () => {

@@ -1,15 +1,16 @@
-import type { Piece } from '@styld/protocol'
+import { Option } from 'effect'
+import { type Piece, OperationId } from '@styld/protocol'
 import { Dialog } from '@foldkit/ui'
-import { click, Command, expect, given, Mount, role, scene, text } from 'foldkit/scene'
+import { click, Command, expect, given, Mount, role, scene, Subscription, text, type } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
-import { update } from '../src/App.ts'
+import { Message as AppMessage, update } from '../src/App.ts'
 import { lenses } from '../src/Page.ts'
 import * as Ask from '../src/page/Ask.ts'
 import { CreateBoard, Message as BoardsMessage } from '../src/page/Boards.ts'
 import { view } from '../src/View.ts'
 import { sceneSheetMoved } from './SheetFixtures.ts'
-import { at, withPage, withPieces } from './AppFixtures.ts'
+import { at, urlOf, withPage, withPieces } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const askWith = (pieces: ReadonlyArray<Piece>, query = '') =>
@@ -21,6 +22,21 @@ const tee = pieceFixture('tee', { name: 'White tee', type: 'tops', colours: ['wh
 const boots = pieceFixture('boots', { type: 'trainers', status: 'processing' })
 
 describe('Ask', () => {
+  test('its normalized address preserves a trailing space in the search field', () => {
+    scene(
+      { update, view },
+      given(askWith([tee])),
+      type(role('searchbox'), 'red '),
+      Command.resolve(Ask.WaitBeforeWritingQuery, Ask.Message.ElapsedQueryPause({ query: 'red ', revision: 2 })),
+      Command.resolve(Ask.WriteQuery, Ask.Message.CompletedWriteQuery()),
+      Command.resolve(
+        Ask.SearchPublic,
+        Ask.Message.SucceededSearchPublic({ query: 'red ', revision: 2, results: { people: [], boards: [] } }),
+      ),
+      Subscription.emit(AppMessage.ChangedUrl({ url: urlOf('/ask?q=red') })),
+      expect(role('searchbox')).toHaveValue('red '),
+    )
+  })
   test('an empty wardrobe says what belongs here and the one way to fill it, with no empty suggestions', () => {
     scene(
       { update, view },
@@ -42,7 +58,10 @@ describe('Ask', () => {
       expect(role('link', { name: /^Add from a link/ })).toHaveAttr('href', '/wardrobe/add#link'),
       // Start a board makes one under the default name, as Boards' + does; the sheet stays and says if it was refused.
       click(role('button', { name: /^Start a board/ })),
-      Command.resolve(CreateBoard({ name: 'My board' }), BoardsMessage.FailedCreateBoard()),
+      Command.resolve(
+        CreateBoard({ name: 'My board', maybeOperationId: Option.none() }),
+        BoardsMessage.FailedCreateBoard({ operationId: OperationId.make('create-board-1'), name: 'My board' }),
+      ),
       expect(role('alert')).toHaveText('The board wasn’t created. Try again.'),
     )
   })

@@ -8,8 +8,9 @@ import {
   pieceTurns,
   uploads,
 } from '@styld/db'
-import { and, desc, eq, inArray, isNull, ne } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNull, ne, exists } from 'drizzle-orm'
 import { Array, Context, Effect, Layer, Option } from 'effect'
+import { insertWhen } from '../kernel/Conditional.ts'
 import { matchRows } from './MatchStore.ts'
 import { fileRecord } from './ProviderFiles.ts'
 import { chunked, Database as Db, first, query } from '../kernel/Db.ts'
@@ -41,6 +42,32 @@ const readIn = <A>(ids: ReadonlyArray<string>, read: (chunk: Array<string>) => P
     Effect.forEach(chunked(ids), (chunk) => query(() => read(chunk))),
     (rows) => rows.flat(),
   )
+
+const finishCapture = (
+  db: Database,
+  capture: Pick<CaptureRow, 'id' | 'attempt'>,
+  found: ReadonlyArray<DetectionRow>,
+  changes: Partial<CaptureRow>,
+) => {
+  const current = and(
+    eq(captures.id, capture.id),
+    eq(captures.status, 'processing'),
+    eq(captures.attempt, capture.attempt),
+  )
+  const owns = exists(db.select({ id: captures.id }).from(captures).where(current))
+  return query(() =>
+    db.batch([
+      db.delete(detections).where(and(eq(detections.captureId, capture.id), eq(detections.status, 'review'), owns)),
+      ...found.map((detection) => insertWhen(db, detections, detection, owns)),
+      db.update(captures).set(changes).where(current).returning({ id: captures.id }),
+    ]),
+  ).pipe(
+    Effect.map((results) => {
+      const last = results.at(-1)
+      return globalThis.Array.isArray(last) && last.length === 1
+    }),
+  )
+}
 
 const captureRows = (db: Database) => ({
   /** The capture, its uploads spent, its stills and the operation's receipt, as one atomic batch: an upload already
@@ -98,29 +125,26 @@ const captureRows = (db: Database) => ({
     query(() => db.select().from(captureFrames).where(eq(captureFrames.captureId, captureId))),
   updateCapture: (captureId: string, changes: Partial<CaptureRow>) =>
     query(() => db.update(captures).set(changes).where(eq(captures.id, captureId))).pipe(Effect.asVoid),
-  /** The capture's file at Meta, recorded with it in one batch so the file is deleted even if the capture is not
-   * (`ProviderFiles.ts`). */
-  handedOver: (capture: CaptureRow, fileId: string, frameCount: number, at: Date) =>
+  /** File ownership is recorded independently of the capture, including when the account closed during upload. */
+  recordFile: (capture: CaptureRow, fileId: string, at: Date) =>
+    query(() => fileRecord(db, { fileId, accountId: capture.accountId, createdAt: at })).pipe(Effect.asVoid),
+  handedOver: (capture: CaptureRow, fileId: string, frameCount: number) =>
     query(() =>
-      db.batch([
-        db.update(captures).set({ providerFileId: fileId, frameCount }).where(eq(captures.id, capture.id)),
-        fileRecord(db, { fileId, accountId: capture.accountId, createdAt: at }),
-      ]),
-    ).pipe(Effect.asVoid),
-  /** The capture's detections and its new status, together. Detections from an earlier attempt are
-   * replaced, so a retried capture never shows a piece twice; a capture no longer processing keeps its
-   * status. */
-  finishCapture: (captureId: string, found: ReadonlyArray<DetectionRow>, changes: Partial<CaptureRow>) =>
-    query(() =>
-      db.batch([
-        db.delete(detections).where(and(eq(detections.captureId, captureId), eq(detections.status, 'review'))),
-        ...found.map((detection) => db.insert(detections).values(detection)),
-        db
-          .update(captures)
-          .set(changes)
-          .where(and(eq(captures.id, captureId), eq(captures.status, 'processing'))),
-      ]),
-    ).pipe(Effect.asVoid),
+      db
+        .update(captures)
+        .set({ providerFileId: fileId, frameCount })
+        .where(
+          and(eq(captures.id, capture.id), eq(captures.status, 'processing'), eq(captures.attempt, capture.attempt)),
+        )
+        .returning({ id: captures.id }),
+    ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** Apply only the result of the current processing attempt. Every child write uses the same claim, which is
+   * ended last in the atomic batch; a replay cannot replace detections the person already reviewed. */
+  finishCapture: (
+    capture: Pick<CaptureRow, 'id' | 'attempt'>,
+    found: ReadonlyArray<DetectionRow>,
+    changes: Partial<CaptureRow>,
+  ) => finishCapture(db, capture, found, changes),
   deleteCapture: (accountId: string, captureId: string) =>
     query(() =>
       db
@@ -283,14 +307,36 @@ const transitionRows = (db: Database) => ({
         .returning({ id: captures.id }),
     ).pipe(Effect.map((rows) => rows.length > 0)),
   /** Mark a video as handed to Meta, unless a delivery already did. */
-  claimTracking: (captureId: string, at: Date) =>
+  claimTracking: (capture: Pick<CaptureRow, 'id' | 'attempt'>, at: Date) =>
     query(() =>
       db
         .update(captures)
         .set({ trackingStartedAt: at })
-        .where(and(eq(captures.id, captureId), eq(captures.status, 'processing'), isNull(captures.trackingStartedAt)))
+        .where(
+          and(
+            eq(captures.id, capture.id),
+            eq(captures.attempt, capture.attempt),
+            eq(captures.status, 'processing'),
+            isNull(captures.trackingStartedAt),
+          ),
+        )
         .returning({ id: captures.id }),
     ).pipe(Effect.map((rows) => rows.length > 0)),
+  /** Only a confirmed failure before the upload was accepted releases its claim. */
+  releaseTracking: (capture: Pick<CaptureRow, 'id' | 'attempt'>) =>
+    query(() =>
+      db
+        .update(captures)
+        .set({ trackingStartedAt: null })
+        .where(
+          and(
+            eq(captures.id, capture.id),
+            eq(captures.attempt, capture.attempt),
+            eq(captures.status, 'processing'),
+            isNull(captures.providerFileId),
+          ),
+        ),
+    ).pipe(Effect.asVoid),
   /** Whether any of the capture's detections became a piece. */
   hasKept: (captureId: string) =>
     query(() =>
@@ -460,7 +506,7 @@ const turnRows = (db: Database) => ({
     ).pipe(Effect.map((rows) => rows.length > 0)),
 })
 
-const makeCaptureStore = (db: Database) => ({
+export const makeCaptureStore = (db: Database) => ({
   ...captureRows(db),
   ...trayRows(db),
   ...pairRows(db),

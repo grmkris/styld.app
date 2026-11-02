@@ -195,7 +195,7 @@ describe('the sweeps', () => {
     }),
   )
 
-  it.effect('abandon a pending check whose target is gone, keeping answered ones', () =>
+  it.effect('stop a private target’s pending check while retaining enforcement and answered checks', () =>
     Effect.gen(function* () {
       const database = seeded()
       database.sqlite.exec(
@@ -208,8 +208,11 @@ describe('the sweeps', () => {
       yield* rows.abandon({ kind: 'board', id: 'bd_gone' })
       yield* rows.abandon({ kind: 'board', id: 'bd_passed' })
       expect(yield* rows.stalePending(until, sweepBatch)).toEqual([])
-      expect(database.sqlite.prepare('SELECT target_id FROM content_checks').all()).toEqual([
-        { target_id: 'bd_passed' },
+      expect(
+        database.sqlite.prepare('SELECT target_id, state, digest FROM content_checks ORDER BY target_id').all(),
+      ).toEqual([
+        { target_id: 'bd_gone', state: 'unsure', digest: '' },
+        { target_id: 'bd_passed', state: 'passed', digest: 'd' },
       ])
     }),
   )

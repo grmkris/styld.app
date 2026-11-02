@@ -79,7 +79,8 @@ export class Garments extends Context.Service<
       photo: Uint8Array,
       intent: { readonly for: 'piece'; readonly type: PieceType } | { readonly for: 'person' },
     ) => Effect.Effect<Option.Option<Uint8Array>, ProviderError>
-    /** Hand a stored video to SAM; its file id, which `track` reads. Handing it over again is safe. */
+    /** Hand a stored video to SAM; its file id, which `track` reads. An uncertain upload is never automatically repeated. */
+    readonly forget: (fileId: string) => Effect.Effect<void, ProviderError>
     readonly handOver: (video: StoredVideo) => Effect.Effect<string, ProviderError>
     /** The garments of a handed-over video, each cut from its best still; the file at SAM is forgotten after. */
     readonly track: (
@@ -100,6 +101,8 @@ export class Garments extends Context.Service<
           yield* Effect.annotateCurrentSpan('styld.garments.intent', intent.for)
           return intent.for === 'piece' ? yield* pieceIn(photo, intent.type) : yield* personIn(photo)
         }, Effect.provide(context)),
+        forget: (fileId) =>
+          Effect.flatMap(GarmentSegmenter, (segmenter) => segmenter.forget(fileId)).pipe(Effect.provide(context)),
         handOver: Effect.fn('Styld.Garments.handOver')(function* (video) {
           return yield* (yield* GarmentSegmenter).upload(video)
         }, Effect.provide(context)),

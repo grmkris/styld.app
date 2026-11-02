@@ -100,6 +100,7 @@ export const processPhoto = Effect.fn('Styld.Capture.processPhoto')(function* (c
   const found = yield* detectionsOf(
     capture,
     finding.garments.map((garment) => ({ garment, sourceKey: capture.originalKey })),
-  )
+  ).pipe(Effect.mapError(() => outcomeUnknown('meta-sam')))
   return { found, route: Option.getOrNull(finding.route), provider: finding.provider } satisfies Found
 })
+import { outcomeUnknown } from '../providers/Errors.ts'

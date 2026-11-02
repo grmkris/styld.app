@@ -1,7 +1,7 @@
 import { paidAttempts } from '@styld/db'
 import { type LimitReached, Unavailable } from '@styld/protocol'
-import { and, asc, eq, inArray, isNull, lt, sql } from 'drizzle-orm'
-import { Context, DateTime, Duration, Effect, Exit, Layer, Option, Predicate, Schema } from 'effect'
+import { and, eq, isNull, sql } from 'drizzle-orm'
+import { Context, Duration, Effect, Exit, Layer, Option, Predicate, Schema } from 'effect'
 import { Database, first, nowDate, query } from '../kernel/Db.ts'
 import { outcomeUnknown, type ProviderError } from '../providers/Errors.ts'
 import { type Ending, failedEnding, HoldId, Holds } from './Holds.ts'
@@ -15,12 +15,6 @@ import { type Ending, failedEnding, HoldId, Holds } from './Holds.ts'
 
 /** A queue consumer runs for 15 minutes at most: a claim older than that belongs to a delivery that died. */
 const lease = Duration.minutes(15)
-
-/** Work that last moved this long ago has ended its own way: every job ends or is given up within half an hour. */
-const forgottenAfter = Duration.days(1)
-
-/** The most attempts one sweep forgets: deleting them is one statement. */
-const forgetBatch = 500
 
 /** Another delivery holds the work's claim and is still within its lease: the work is left to it. */
 export class AttemptElsewhere extends Schema.TaggedError<AttemptElsewhere>()('AttemptElsewhere', {}) {}
@@ -90,24 +84,6 @@ const attemptRows = (db: Database['Service']) => ({
         .where(and(eq(paidAttempts.work, key), eq(paidAttempts.attempt, attempt), isNull(paidAttempts.result))),
     ),
   forget: (key: string) => query(() => db.delete(paidAttempts).where(eq(paidAttempts.work, key))),
-  /** Forget work that last moved before `before`, oldest first; how many went. */
-  forgetOld: (before: Date, limit: number) =>
-    query(() =>
-      db
-        .delete(paidAttempts)
-        .where(
-          inArray(
-            paidAttempts.work,
-            db
-              .select({ work: paidAttempts.work })
-              .from(paidAttempts)
-              .where(lt(paidAttempts.updatedAt, before))
-              .orderBy(asc(paidAttempts.updatedAt))
-              .limit(limit),
-          ),
-        )
-        .returning({ work: paidAttempts.work }),
-    ).pipe(Effect.map((rows) => rows.length)),
 })
 
 /** The JSON a result is stored as. A stored result that no longer decodes is a broken invariant. */
@@ -179,8 +155,6 @@ export class PaidAttempts extends Context.Service<
     readonly abandon: (key: string, accountId: string) => Effect.Effect<void, Unavailable>
     /** Forget the work's attempts once its result is kept where it belongs. */
     readonly forget: (key: string) => Effect.Effect<void, Unavailable>
-    /** Forget work that last moved over a day ago, a batch at a time; how many went. */
-    readonly sweep: Effect.Effect<number, Unavailable>
   }
 >()('@styld/server/usage/PaidAttempts') {
   static readonly layer = Layer.effect(
@@ -233,10 +207,6 @@ export class PaidAttempts extends Context.Service<
           yield* holds.settle(accountId, HoldId.make(found.value.holdId), 'failed')
         }),
         forget: (key) => rows.forget(key).pipe(Effect.asVoid, Effect.mapError(unavailable)),
-        sweep: Effect.gen(function* () {
-          const before = DateTime.toDateUtc(DateTime.subtractDuration(yield* DateTime.now, forgottenAfter))
-          return yield* rows.forgetOld(before, forgetBatch).pipe(Effect.mapError(unavailable))
-        }).pipe(Effect.withSpan('Styld.PaidAttempts.sweep')),
       })
     }),
   )

@@ -62,7 +62,7 @@ const persistence = (db: D1) =>
         query(() =>
           db
             .prepare(
-              'UPDATE oauth_grants SET version = ?, record = ?, subject_id = ?, expires_at = ? WHERE namespace = ? AND id = ? AND version = ?',
+              "UPDATE oauth_grants SET version = ?, record = ?, subject_id = ?, expires_at = ? WHERE namespace = ? AND id = ? AND version = ? AND json_extract(record, '$.status') != 'Revoked'",
             )
             .bind(record.version, json, record.subjectId ?? null, record.expiresAtMillis, namespace, id, version)
             .run(),

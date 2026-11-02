@@ -22,20 +22,21 @@ const settleEnded = (capture: CaptureRow) =>
 
 /** A capture that cannot finish shows as failed, and its held credits come back. The status changes
  * first; if the refund then fails, the next delivery settles it (`settlePending`). */
-const fail = (captureId: string, why: string) =>
+const fail = (captureId: string, why: string, seen?: CaptureRow) =>
   Effect.gen(function* () {
     yield* Effect.annotateCurrentSpan('styld.capture.failed', why)
-    const found = yield* storedAs((yield* CaptureStore).captureForProcessing(captureId))
+    const found =
+      seen === undefined ? yield* storedAs((yield* CaptureStore).captureForProcessing(captureId)) : Option.some(seen)
     if (Option.isNone(found)) return
     if (found.value.status === 'processing')
       yield* storedAs(
-        (yield* CaptureStore).updateCapture(captureId, {
+        (yield* CaptureStore).retryCapture(found.value.accountId, captureId, found.value, {
           status: 'failed',
           updatedAt: yield* nowDate,
         }),
       )
-    const latest = found.value.status === 'processing' ? { ...found.value, status: 'failed' as const } : found.value
-    yield* settleEnded(latest)
+    const latest = yield* storedAs((yield* CaptureStore).captureForProcessing(captureId))
+    if (Option.isSome(latest)) yield* settleEnded(latest.value)
   })
 
 /** A back shot's cut-out becomes the back of the front shot's piece; whether it did. */
@@ -95,31 +96,32 @@ const run = (capture: CaptureRow) =>
     Effect.catchReasons('ProviderError', {
       OutcomeUnknown: () =>
         Effect.gen(function* () {
-          yield* storedAs(
-            (yield* CaptureStore).updateCapture(capture.id, {
+          const moved = yield* storedAs(
+            (yield* CaptureStore).retryCapture(capture.accountId, capture.id, capture, {
               status: 'unknown',
               updatedAt: yield* nowDate,
             }),
           )
-          yield* settleEnded({ ...capture, status: 'unknown' })
+          if (moved) yield* settleEnded({ ...capture, status: 'unknown' })
           return Option.none<Result>()
         }),
-      Refused: () => Effect.as(fail(capture.id, 'refused'), Option.none<Result>()),
-      Broken: () => Effect.as(fail(capture.id, 'refused'), Option.none<Result>()),
+      Refused: () => Effect.as(fail(capture.id, 'refused', capture), Option.none<Result>()),
+      Broken: () => Effect.as(fail(capture.id, 'refused', capture), Option.none<Result>()),
     }),
   )
 
 /** Store what the pipeline found, consume the held credits, and pair a camera shot with its other side. */
 const record = (capture: CaptureRow, result: Result) =>
   Effect.gen(function* () {
-    yield* storedAs(
-      (yield* CaptureStore).finishCapture(capture.id, result.found, {
+    const applied = yield* storedAs(
+      (yield* CaptureStore).finishCapture(capture, result.found, {
         status: 'review',
         route: result.route?.garments ?? null,
         provider: result.provider,
         updatedAt: yield* nowDate,
       }),
     )
+    if (!applied) return
     yield* settleEnded({ ...capture, status: 'review' })
     // What no detection shows goes: an earlier attempt's (or a losing delivery's) cut-outs, a video once its garments
     // are cut from its stills, and the stills none was cut from.

@@ -53,6 +53,7 @@ const over = (found: Option.Option<Uint8Array> = Option.some(cut), allowed = 10)
       Garments.of({
         find: unused,
         cut: () => Effect.sync(() => ((asked.sam += 1), found)),
+        forget: () => Effect.void,
         handOver: unused,
         track: unused,
       }),

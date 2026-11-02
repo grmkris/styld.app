@@ -1,4 +1,4 @@
-import { isBusy } from '../providers/Errors.ts'
+import { isBusy, outcomeUnknown } from '../providers/Errors.ts'
 import { GarmentMatch, PieceType } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import { comparedTypes, sameAs } from '../capture/Matching.ts'
@@ -95,7 +95,36 @@ const garmentsIn = (photo: PhotoRow, original: Uint8Array) =>
     const { garments } = yield* (yield* Garments).find(original, { for: 'gallery' })
     return yield* Effect.forEach(garments, (garment, position) => garmentOf(photo, garment, position), {
       concurrency: 4,
-    })
+    }).pipe(Effect.mapError(() => outcomeUnknown('meta-sam')))
+  })
+
+const foundIn = Effect.fnUntraced(function* (photo: PhotoRow, photoId: string, original: Uint8Array) {
+  const work = {
+    key: `photo/${photoId}`,
+    accountId: photo.accountId,
+    provider: 'meta-sam',
+    result: FoundGarments,
+  }
+  return yield* (yield* PaidAttempts).run(work, garmentsIn(photo, original)).pipe(
+    Effect.map((garments): Option.Option<ReadonlyArray<GarmentRow>> => Option.some(garments)),
+    Effect.catchTag('ProviderError', (error) =>
+      isBusy(error) ? Effect.fail(error) : Effect.succeed(Option.none<ReadonlyArray<GarmentRow>>()),
+    ),
+    Effect.catchTag('AttemptElsewhere', () => Effect.succeed('elsewhere' as const)),
+  )
+})
+
+const settleFound = (photo: PhotoRow, photoId: string) =>
+  Effect.gen(function* () {
+    const ended = yield* storedAs((yield* PhotoStore).photoForWork(photoId))
+    if (Option.isSome(ended))
+      yield* settlePhoto(photo.accountId, photoId, ended.value.status === 'ready' ? 'succeeded' : 'failed')
+  })
+
+const failFound = (photo: PhotoRow, photoId: string) =>
+  Effect.gen(function* () {
+    yield* storedAs((yield* PhotoStore).failFinding(photoId, yield* nowDate))
+    yield* settleFound(photo, photoId)
   })
 
 /** The queue side of My Gallery. */
@@ -108,30 +137,18 @@ export const finding = Effect.map(Effect.context<PhotoServices>(), (context) => 
     if (photo.value.status === 'finding') {
       const original = yield* readObject(photo.value.originalKey)
       if (Option.isNone(original)) return yield* unavailable()
-      const work = {
-        key: `photo/${photoId}`,
-        accountId: photo.value.accountId,
-        provider: 'meta-sam',
-        result: FoundGarments,
-      }
       // Only a busy provider is tried again: one that may have taken the paid work (SAM bills each call) is never
       // sent it twice, and a refusal would repeat. Both end the photo as failed, its credit back.
-      const garments = yield* (yield* PaidAttempts).run(work, garmentsIn(photo.value, original.value)).pipe(
-        Effect.map(Option.some),
-        Effect.catchTag('ProviderError', (error) =>
-          isBusy(error) ? Effect.fail(error) : Effect.succeed(Option.none<ReadonlyArray<GarmentRow>>()),
-        ),
-        Effect.catchTag('AttemptElsewhere', () => Effect.succeed('elsewhere' as const)),
-      )
+      const garments = yield* foundIn(photo.value, photoId, original.value)
       if (garments === 'elsewhere') return
       if (Option.isNone(garments)) {
-        yield* storedAs((yield* PhotoStore).failFinding(photoId, yield* nowDate))
-        return yield* settlePhoto(photo.value.accountId, photoId, 'failed')
+        yield* failFound(photo.value, photoId)
+        return
       }
       yield* storedAs((yield* PhotoStore).finishFinding(photoId, garments.value, yield* nowDate))
     }
     // Settled after the status moved, and again by any later delivery: the first settlement stands.
-    yield* settlePhoto(photo.value.accountId, photoId, photo.value.status === 'failed' ? 'failed' : 'succeeded')
+    yield* settleFound(photo.value, photoId)
   }, Effect.provide(context)),
   /** The last attempt failed: the photo shows as failed, and its credit comes back once. */
   failFinding: Effect.fn('Styld.Photos.failFinding')(function* (photoId: string) {

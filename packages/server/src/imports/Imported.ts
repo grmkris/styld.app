@@ -1,20 +1,40 @@
-import { importedPieces, pieces } from '@styld/db'
-import { and, eq, inArray } from 'drizzle-orm'
+import { importCopies, importedPieces, pieces } from '@styld/db'
+import { and, eq, inArray, exists } from 'drizzle-orm'
 import { Effect } from 'effect'
 import { type Database, inChunks, query } from '../kernel/Db.ts'
+import { copyRows } from './Copies.ts'
 import { type PieceRow, PieceRows, type UploadRow, UploadRows } from '../wardrobe/Store.ts'
 
 /** An import's pieces: each with its photo and the v1 piece it is (`imported_pieces`), and where they stand. Pieces
  * and uploads are written through the wardrobe's statements. */
 export const importedRows = (db: Database['Service']) => ({
+  ...copyRows(db),
+  retryFailed: (accountId: string, pieceId: string, at: Date) =>
+    query(() => PieceRows.retryImport(db, accountId, pieceId, at)),
   /** An imported piece, its photo's upload and which v1 piece it is, as one batch: a v1 piece the account already
    * has fails it. */
   createPiece: (upload: UploadRow, piece: PieceRow, v1Id: string) =>
     query(() =>
       db.batch([
-        UploadRows.insertUsed(db, upload),
+        UploadRows.insertUsed(
+          db,
+          upload,
+          exists(
+            db
+              .select({ key: importCopies.objectKey })
+              .from(importCopies)
+              .where(
+                and(
+                  eq(importCopies.objectKey, upload.objectKey),
+                  eq(importCopies.accountId, upload.accountId),
+                  eq(importCopies.state, 'copying'),
+                ),
+              ),
+          ),
+        ),
         PieceRows.insert(db, piece),
         db.insert(importedPieces).values({ accountId: piece.accountId, v1Id, pieceId: piece.id }),
+        db.delete(importCopies).where(eq(importCopies.objectKey, upload.objectKey)),
       ]),
     ).pipe(Effect.asVoid),
   /** The pieces these v1 pieces became in the account. */

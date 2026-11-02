@@ -1,12 +1,12 @@
 import { isOutcomeUnknown, ProviderError } from '../providers/Errors.ts'
-import { pendingSettlements } from '@styld/db'
+import { accounts, pendingSettlements } from '@styld/db'
 import { dailyCredits, LimitReached, Unavailable } from '@styld/protocol'
 import { OperationId, UserId } from '@styld/domain/Identity'
 import { ReserveCredits } from '@styld/domain/Wallet/ReserveCredits.command'
 import { SettleCredits } from '@styld/domain/Wallet/SettleCredits.command'
 import { Wallet } from '@styld/domain/Wallet/Wallet.aggregate'
 import { reserveCommandId, settleCommandId } from '@styld/domain/Wallet/WalletCommandIds'
-import { asc, eq, isNotNull, lt, or, sql } from 'drizzle-orm'
+import { and, asc, eq, isNotNull, lt, or, sql } from 'drizzle-orm'
 import { Cause, Context, DateTime, Duration, Effect, Layer, Option, Predicate, Schedule, Schema } from 'effect'
 import { Database, first, nowDate, query } from '../kernel/Db.ts'
 
@@ -62,6 +62,14 @@ const settleBatch = 50
  * meanwhile) is never lost for good: the sweep finds it here, whatever became of the work.
  * @internal Exported for its tests. */
 export const settlementRows = (db: Database['Service']) => ({
+  enabled: (accountId: string) =>
+    query(() =>
+      db
+        .select({ id: accounts.id })
+        .from(accounts)
+        .where(and(eq(accounts.id, accountId), eq(accounts.enabled, true)))
+        .limit(1),
+    ).pipe(Effect.map((rows) => rows.length > 0)),
   /** The hold is about to be reserved; a hold opened again (the same charge held twice) keeps its row. */
   open: (accountId: string, hold: HoldId, at: Date) =>
     query(() =>
@@ -148,6 +156,7 @@ export class Holds extends Context.Service<
         reserve: Effect.fn('Styld.Holds.reserve')(function* (charge: Charge) {
           yield* Effect.annotateCurrentSpan('styld.hold', charge.hold)
           const now = yield* DateTime.now
+          if (!(yield* ledger.enabled(charge.accountId).pipe(Effect.mapError(unavailable)))) return yield* unavailable()
           // No hold without its row: the row is what settles it if everything after this is lost.
           yield* ledger.open(charge.accountId, charge.hold, DateTime.toDateUtc(now)).pipe(Effect.mapError(unavailable))
           const command = new ReserveCredits({
@@ -170,6 +179,10 @@ export class Holds extends Context.Service<
               Predicate.isTagged(error, 'LimitReached') ? Effect.ignore(ledger.forget(charge.hold)) : Effect.void,
             ),
           )
+          // Domain replays accepted commands even after their reservation was settled. That receipt alone is not
+          // permission to start more work: this exact hold must still be present in the Wallet.
+          const state = yield* wallets.state(UserId.make(charge.accountId)).pipe(Effect.mapError(unavailable))
+          if (state.reservations[OperationId.make(charge.hold)] === undefined) return yield* unavailable()
         }),
         settle: Effect.fn('Styld.Holds.settle')(function* (accountId: string, hold: HoldId, ending: Ending) {
           yield* Effect.annotateCurrentSpan({ 'styld.hold': hold, 'styld.hold.ending': ending })

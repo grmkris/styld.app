@@ -1,5 +1,5 @@
-import { outcomeUnknown } from '../providers/Errors.ts'
-import { Effect, Schema } from 'effect'
+import { isBusy, outcomeUnknown } from '../providers/Errors.ts'
+import { Effect, Schedule, Schema } from 'effect'
 import { detectionsOf, type Found } from './Detections.ts'
 import { frameAt } from './FrameRanking.ts'
 import { readObject, storedAs, unavailable } from './Shared.ts'
@@ -36,17 +36,28 @@ const handedOver = (capture: CaptureRow, frameCount: number) =>
   Effect.gen(function* () {
     if (capture.trackingStartedAt !== null) return yield* outcomeUnknown('meta-sam')
     const { metadata } = yield* readContainer(capture)
+    const store = yield* CaptureStore
+    if (!(yield* storedAs(store.claimTracking(capture, yield* nowDate)))) return yield* TrackingClaimed.make({})
+    const garments = yield* Garments
     const fileId =
       capture.providerFileId ??
-      (yield* (yield* Garments).handOver({
-        key: capture.originalKey,
-        bytes: capture.bytes,
-        contentType: capture.contentType === 'video/quicktime' ? 'video/quicktime' : 'video/mp4',
-        metadata,
-      }))
-    yield* storedAs((yield* CaptureStore).handedOver(capture, fileId, frameCount, yield* nowDate))
-    if (!(yield* storedAs((yield* CaptureStore).claimTracking(capture.id, yield* nowDate))))
+      (yield* garments
+        .handOver({
+          key: capture.originalKey,
+          bytes: capture.bytes,
+          contentType: capture.contentType === 'video/quicktime' ? 'video/quicktime' : 'video/mp4',
+          metadata,
+        })
+        .pipe(Effect.tapError((error) => (isBusy(error) ? storedAs(store.releaseTracking(capture)) : Effect.void))))
+    yield* storedAs(store.recordFile(capture, fileId, yield* nowDate)).pipe(
+      Effect.retry({ times: 2, schedule: Schedule.exponential('100 millis') }),
+      Effect.tapError(() => garments.forget(fileId).pipe(Effect.ignore)),
+      Effect.mapError(() => outcomeUnknown('meta-sam')),
+    )
+    if (!(yield* storedAs(store.handedOver(capture, fileId, frameCount)))) {
+      yield* garments.forget(fileId).pipe(Effect.ignore)
       return yield* TrackingClaimed.make({})
+    }
     return fileId
   })
 
@@ -81,6 +92,6 @@ export const processVideo = Effect.fn('Styld.Capture.processVideo')(function* (
   const found = yield* detectionsOf(
     capture,
     garments.map((garment) => ({ garment, sourceKey: garment.still })),
-  )
+  ).pipe(Effect.mapError(() => outcomeUnknown('meta-sam')))
   return { found, route: null, provider: 'sam' } satisfies Found
 })

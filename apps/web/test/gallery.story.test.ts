@@ -189,7 +189,7 @@ describe('boards', () => {
       Boards.update,
       given(Boards.init()),
       message(Boards.Message.ClickedNewBoard({ defaultName: 'My board' })),
-      Command.expectExact(Boards.CreateBoard({ name: 'My board' })),
+      Command.expectExact(Boards.CreateBoard({ name: 'My board', maybeOperationId: Option.none() })),
       Command.resolve(Boards.CreateBoard, Boards.Message.SucceededCreateBoard({ board: created })),
       expectOutMessage(Boards.OutMessage.CreatedBoard({ boardId: created.id })),
       model(({ creating }) => expect(Boards.Creating.guards.Idle(creating)).toBe(true)),

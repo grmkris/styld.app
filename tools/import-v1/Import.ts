@@ -6,7 +6,7 @@
  *
  *   STYLD_URL=https://… STYLD_SESSION='<the admin's session cookie header>' \
  *   CLOUDFLARE_ACCOUNT_ID=… CLOUDFLARE_API_TOKEN=… R2_BUCKET=<the stage's mediaBucket output> \
- *     bun tools/import-v1/Import.ts <private-folder> [--keep-bundle]
+ *     bun tools/import-v1/Import.ts <private-folder> [--keep-bundle] [--retry-failed]
  *
  * Credentials come from the environment only and are never printed. The bundle goes through Cloudflare's R2 REST API
  * with the operator's API token (the one that deploys), so no separate S3 key is made; the bucket is the stage's media
@@ -22,7 +22,8 @@ import { mapPiece, V1Export } from './Mapping.ts'
 import { reportOf, summaryOf, type ImportReport } from './Report.ts'
 
 const [folder, ...flags] = process.argv.slice(2)
-if (folder === undefined) throw new Error('Usage: bun tools/import-v1/Import.ts <folder> [--keep-bundle]')
+if (folder === undefined)
+  throw new Error('Usage: bun tools/import-v1/Import.ts <folder> [--keep-bundle] [--retry-failed]')
 
 const required = (name: string) => {
   const value = process.env[name]
@@ -69,7 +70,7 @@ for (const piece of exported.pieces) {
   })
 }
 
-// One bundle per export: running the import again uploads the same bundle and starts the same import.
+// One bundle per export. A normal retry reuses its start receipt; --retry-failed deliberately starts another run.
 const digest = new Bun.CryptoHasher('sha256').update(`${exported.email}\n${exported.exportedAt}`).digest('hex')
 const importId = `v1-${digest.slice(0, 24)}`
 const manifest: ImportManifest = {
@@ -95,7 +96,11 @@ const admin = async (method: 'GET' | 'POST', body?: unknown) => {
   return response.json()
 }
 
-const started = Schema.decodeUnknownSync(ImportStarted)(await admin('POST', { operationId: `start-${importId}` }))
+const started = Schema.decodeUnknownSync(ImportStarted)(
+  await admin('POST', {
+    operationId: flags.includes('--retry-failed') ? `retry-${crypto.randomUUID()}` : `start-${importId}`,
+  }),
+)
 console.log(`Started into ${started.accountCreated ? 'a new account' : 'an existing account'}`)
 
 /** How long an import may take: Cloudflare Images keeps it to a few pieces a minute at most. */

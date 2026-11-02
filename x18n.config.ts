@@ -71,6 +71,8 @@ export default defineConfig({
       'packages/server/src/SessionAccount.ts': ['/outside the auth middleware$/'],
       // The conditional spend of an upload is SQL.
       'packages/server/src/wardrobe/Store.ts': ['/^CASE WHEN /'],
+      // Conditional inserts are SQL composed from Drizzle columns, never user-facing text.
+      'packages/server/src/kernel/Conditional.ts': ['/^insert into /'],
       // Questions put to the decision model and provider protocol text; no person ever reads them.
       'packages/server/src/providers/Clef.ts': ['/[\\s\\S]*/'],
       'packages/server/src/capture/TurnPrompt.ts': ['/[\\s\\S]*/'],

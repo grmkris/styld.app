@@ -23,6 +23,7 @@ export const SearchLanguages = defineTaggedUnion({ PageOnly: {}, Both: {}, Other
 export const Model = Schema.Struct({
   /** What is typed in the search, as typed; the address carries it too, so coming back to Ask brings it back. */
   query: Schema.String,
+  revision: Schema.Number,
   languages: SearchLanguages,
   /** The + sheet: what you can add from here. */
   addSheet: Dialog.Model,
@@ -36,6 +37,7 @@ export const resultsId = 'ask-results'
 
 export const init = (): Model => ({
   query: '',
+  revision: 0,
   languages: SearchLanguages.PageOnly(),
   addSheet: Dialog.init({ id: 'ask-add-sheet', isAnimated: true }),
   search: PublicSearch.Off(),
@@ -45,7 +47,7 @@ export const init = (): Model => ({
 
 export const Message = defineMessageUnion({
   UpdatedQuery: { value: Schema.String },
-  ElapsedQueryPause: { query: Schema.String },
+  ElapsedQueryPause: { query: Schema.String, revision: Schema.Number },
   CompletedWriteQuery: {},
   ClickedSuggestion: { query: Schema.String },
   ClickedClear: {},
@@ -58,8 +60,8 @@ export const Message = defineMessageUnion({
   SucceededLoadSearchLanguages: {},
   FailedLoadSearchLanguages: {},
   ClickedRetrySearchLanguages: {},
-  SucceededSearchPublic: { query: Schema.String, results: SearchResults },
-  FailedSearchPublic: { query: Schema.String },
+  SucceededSearchPublic: { query: Schema.String, revision: Schema.Number, results: SearchResults },
+  FailedSearchPublic: { query: Schema.String, revision: Schema.Number },
 })
 export type Message = typeof Message.Type
 
@@ -85,10 +87,11 @@ export const LoadSearchLanguages = Command.define('LoadSearchLanguages', {
 })
 
 /** Typing settles before the address follows, so the browser's history isn't written on every key. */
-const WaitBeforeWritingQuery = Command.define('WaitBeforeWritingQuery', {
-  args: { query: Schema.String },
+export const WaitBeforeWritingQuery = Command.define('WaitBeforeWritingQuery', {
+  args: { query: Schema.String, revision: Schema.Number },
   messages: [Message.ElapsedQueryPause],
-  execute: ({ query }) => Effect.sleep(Duration.millis(300)).pipe(Effect.as(Message.ElapsedQueryPause({ query }))),
+  execute: ({ query, revision }) =>
+    Effect.sleep(Duration.millis(300)).pipe(Effect.as(Message.ElapsedQueryPause({ query, revision }))),
 })
 
 /** The search in the address (`/ask?q=…`), replacing the current entry rather than adding one.
@@ -113,13 +116,13 @@ export const FocusSearch = Command.define('FocusSearch', {
 /** People and public boards for the query, searched on the server; the wardrobe is searched here.
  */
 export const SearchPublic = Command.define('SearchPublic', {
-  args: { query: Schema.String },
+  args: { query: Schema.String, revision: Schema.Number },
   messages: [Message.SucceededSearchPublic, Message.FailedSearchPublic],
-  execute: ({ query }) =>
+  execute: ({ query, revision }) =>
     Effect.gen(function* () {
       const results = yield* searchPublic(query)
-      return Message.SucceededSearchPublic({ query, results })
-    }).pipe(Effect.orElseSucceed(() => Message.FailedSearchPublic({ query }))),
+      return Message.SucceededSearchPublic({ query, revision, results })
+    }).pipe(Effect.orElseSucceed(() => Message.FailedSearchPublic({ query, revision }))),
 })
 
 /** Words long enough to look for people and boards with. */
@@ -145,44 +148,64 @@ const foldAddSheet = addSheet.update
 const openAddSheet = addSheet.open
 const closeAddSheet = addSheet.close
 
-/** Opening Ask: a search in the address is brought back, and the search learns the other language once. */
+/** Restore a URL search without writing another history entry. */
 export const enter =
   (maybeQuery: Option.Option<string>) =>
-  (model: Model): Update.Return<Model, Message> => {
-    const query = Option.getOrElse(maybeQuery, () => model.query)
-    const next = query === model.query ? model : modifyFields(model, { query: () => query })
-    return SearchLanguages.guards.Both(model.languages)
-      ? { model: next }
-      : { model: next, commands: [LoadSearchLanguages()] }
+  (model: Model): Update.Return<Model, Message, StyldClient> => {
+    const query = Option.getOrElse(maybeQuery, () => '')
+    if (query === model.query && !PublicSearch.guards.Off(model.search)) return { model }
+    const revision = model.revision + 1
+    return {
+      model: modifyFields(model, {
+        query: () => query,
+        revision: () => revision,
+        search: () => (searchable(query) ? PublicSearch.Searching({ query }) : PublicSearch.Off()),
+      }),
+      commands: [
+        ...(SearchLanguages.guards.Both(model.languages) ? [] : [LoadSearchLanguages()]),
+        ...(searchable(query) ? [SearchPublic({ query, revision })] : []),
+      ],
+    }
   }
 
-/** Leaving Ask closes the + sheet. */
-export const leave = closeAddSheet
+/** Invalidate timers and responses when leaving the tab. */
+export const leave = (model: Model) =>
+  closeAddSheet(modifyFields(model, { revision: (revision) => revision + 1, search: () => PublicSearch.Off() }))
+
+/** Our own normalized address update leaves the person's in-progress typing and search alone. Back/forward to
+ * another query restores that search. */
+export const changedQuery = (maybeQuery: Option.Option<string>) => (model: Model) =>
+  Option.getOrElse(maybeQuery, () => '') === model.query.trim() ? { model } : enter(maybeQuery)(model)
 
 /** The words written to the address, and searched for people and boards once they are long enough. */
 const written = (model: Model, query: string): UpdateReturn =>
   searchable(query)
     ? {
         model: modifyFields(model, { search: () => PublicSearch.Searching({ query }) }),
-        commands: [WriteQuery({ query }), SearchPublic({ query })],
+        commands: [WriteQuery({ query }), SearchPublic({ query, revision: model.revision })],
       }
     : { model: modifyFields(model, { search: () => PublicSearch.Off() }), commands: [WriteQuery({ query })] }
 
 const searched = (model: Model, query: string): UpdateReturn =>
-  written(modifyFields(model, { query: () => query }), query)
+  written(modifyFields(model, { query: () => query, revision: (revision) => revision + 1 }), query)
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     UpdatedQuery: ({ value }) => ({
-      model: modifyFields(model, { query: () => value }),
-      commands: [WaitBeforeWritingQuery({ query: value })],
+      model: modifyFields(model, { query: () => value, revision: (revision) => revision + 1 }),
+      commands: [WaitBeforeWritingQuery({ query: value, revision: model.revision + 1 })],
     }),
     // Only the newest query is written: an older pause finds the query moved on.
-    ElapsedQueryPause: ({ query }) => (query === model.query ? written(model, query) : { model }),
+    ElapsedQueryPause: ({ query, revision }) =>
+      revision === model.revision && query === model.query ? written(model, query) : { model },
     CompletedWriteQuery: () => ({ model }),
     ClickedSuggestion: ({ query }) => searched(model, query),
     ClickedClear: () => ({
-      model: modifyFields(model, { query: () => '', search: () => PublicSearch.Off() }),
+      model: modifyFields(model, {
+        query: () => '',
+        revision: (revision) => revision + 1,
+        search: () => PublicSearch.Off(),
+      }),
       commands: [WriteQuery({ query: '' }), FocusSearch()],
     }),
     SubmittedSearch: () => ({ model, commands: [WriteQuery({ query: model.query }), FocusResults()] }),
@@ -202,12 +225,12 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       commands: [LoadSearchLanguages()],
     }),
     // An answer for a query since changed is dropped.
-    SucceededSearchPublic: ({ query, results }) =>
-      awaits(model.search, query)
+    SucceededSearchPublic: ({ query, revision, results }) =>
+      revision === model.revision && awaits(model.search, query)
         ? { model: modifyFields(model, { search: () => PublicSearch.Found({ query, results }) }) }
         : { model },
-    FailedSearchPublic: ({ query }) =>
-      awaits(model.search, query)
+    FailedSearchPublic: ({ query, revision }) =>
+      revision === model.revision && awaits(model.search, query)
         ? { model: modifyFields(model, { search: () => PublicSearch.Failed({ query }) }) }
         : { model },
   })

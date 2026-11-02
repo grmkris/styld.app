@@ -1,6 +1,6 @@
 import { Look, PieceId } from '@styld/protocol'
-import { Effect, Result, Schema } from 'effect'
-import { AsyncData, Command } from 'foldkit'
+import { Effect, Option, Result, Schema } from 'effect'
+import { AsyncData, Command, Update, type Update as UpdateType } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
@@ -11,16 +11,17 @@ import { StyldClient } from '../StyldClient.ts'
 
 const LooksData = AsyncData.Schema(Schema.Array(Look), Schema.Literal('Unavailable'))
 
-export const Model = Schema.Struct({ looks: LooksData.schema })
+export const Model = Schema.Struct({ pieceId: Schema.String, looks: LooksData.schema })
 export type Model = typeof Model.Type
 
-export const init = (): Model => ({ looks: AsyncData.Loading() })
+export const init = (pieceId: string): Model => ({ pieceId, looks: AsyncData.Loading() })
 
 // MESSAGE
 
 export const Message = defineMessageUnion({
   SucceededListLooks: { looks: Schema.Array(Look) },
   FailedListLooks: {},
+  ClickedRetry: {},
 })
 export type Message = typeof Message.Type
 
@@ -43,11 +44,26 @@ export const load = (pieceId: string) => [ListPieceLooks({ pieceId })]
 // UPDATE
 
 export const update = (model: Model, message: Message) =>
-  Message.match(message, {
+  Message.match<UpdateType.Return<Model, Message, StyldClient>>(message, {
+    ClickedRetry: () => ({
+      model: modifyFields(model, { looks: () => AsyncData.Loading() }),
+      commands: load(model.pieceId),
+    }),
     SucceededListLooks: ({ looks }) => ({
       model: modifyFields(model, { looks: () => LooksData.Success({ data: looks }) }),
     }),
     FailedListLooks: () => ({
       model: modifyFields(model, { looks: (looks) => AsyncData.settle(looks, Result.fail('Unavailable' as const)) }),
     }),
+  })
+
+/** Fold the child page into a parent that stores its model under `looks`. */
+export const foldInto = <Parent extends { readonly looks: Model }, ParentMessage>(
+  toParentMessage: (message: Message) => ParentMessage,
+) =>
+  Update.foldChild({
+    update,
+    read: (parent: Parent) => Option.some(parent.looks),
+    write: (parent: Parent, looks: Model): Parent => ({ ...parent, looks }),
+    toParentMessage,
   })

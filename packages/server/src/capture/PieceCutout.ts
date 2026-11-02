@@ -1,5 +1,5 @@
 import { modelPicture, readPng } from '@styld/imaging'
-import { isBusy } from '../providers/Errors.ts'
+import { isBusy, outcomeUnknown } from '../providers/Errors.ts'
 import { prices } from '@styld/protocol'
 import { Effect, Layer, Option, Schedule, Schema } from 'effect'
 import { piecePrefix } from '../wardrobe/Media.ts'
@@ -66,7 +66,10 @@ export const pieceCutout = Layer.effect(
       yield* Effect.tryPromise({
         try: () => bucket.put(key, png.value, { httpMetadata: { contentType: 'image/png' } }),
         catch: () => CutoutFailed.make({}),
-      }).pipe(Effect.retry({ times: 2, schedule: Schedule.exponential('200 millis') }))
+      }).pipe(
+        Effect.retry({ times: 2, schedule: Schedule.exponential('200 millis') }),
+        Effect.mapError(() => outcomeUnknown('meta-sam')),
+      )
       return { imageKey: key } satisfies Cut
     })
     return GarmentCutout.of({

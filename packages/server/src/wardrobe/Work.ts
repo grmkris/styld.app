@@ -40,6 +40,7 @@ export const processing = Effect.map(Effect.context<WardrobeServices>(), (contex
     const store = yield* WardrobeStore
     const row = yield* stored(store.findPieceForProcessing(pieceId))
     if (Option.isNone(row) || row.value.status !== 'processing') return
+    if (!(yield* stored(store.accountEnabled(row.value.accountId)))) return
     const type = yield* typeOf(row.value)
     const imported = row.value.source === 'import'
     const cutout = yield* GarmentCutout

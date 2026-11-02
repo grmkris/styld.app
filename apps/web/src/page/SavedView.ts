@@ -1,12 +1,13 @@
 import { format, type Locale } from '@styld/i18n'
 import type { SavedThing } from '@styld/protocol'
-import { Match, Option } from 'effect'
+import { Match } from 'effect'
 import { AsyncData } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { styled } from '../Styled.ts'
 import type { SavedData } from './Boards.ts'
 import * as styles from './FeedView.styles.ts'
 import { boardCard, byline, lookTile, pieceTile, tileGrid } from './PublicTiles.ts'
+import { retryView } from './Retry.ts'
 
 const savedTile = <Message>(thing: SavedThing, locale: Locale, h: HtmlBuilder<Message>) =>
   Match.value(thing).pipe(
@@ -27,10 +28,11 @@ const savedTile = <Message>(thing: SavedThing, locale: Locale, h: HtmlBuilder<Me
   )
 
 /** Saved from others: what the person saved, while its owners keep it public, once there is something. */
-export const savedView = <Message>(saved: SavedData, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  Option.match(AsyncData.getData(saved), {
-    onNone: () => h.empty,
-    onSome: (things) =>
+export const savedView = <Message>(saved: SavedData, locale: Locale, onRetry: Message, h: HtmlBuilder<Message>): Html =>
+  AsyncData.matchData(saved, {
+    onEmpty: () => h.empty,
+    onFailure: () => retryView(format(locale, 'common.error', {}), locale, onRetry, h),
+    onData: (things) =>
       things.length === 0
         ? h.empty
         : h.section(

@@ -136,14 +136,13 @@ const SaveLocale = Command.define('SaveLocale', {
   messages: [Message.SucceededSaveLocale, Message.FailedSaveLocale],
   execute: ({ locale }) =>
     Effect.gen(function* () {
+      yield* Effect.tryPromise(() => loadCatalog(locale))
       const client = yield* HttpClient.HttpClient
       yield* HttpClient.filterStatusOk(client).execute(
         HttpClientRequest.post(localeEndpoint).pipe(HttpClientRequest.bodyUrlParams({ locale })),
       )
-      // The new language's messages arrive before the page switches to them.
-      yield* Effect.promise(() => loadCatalog(locale))
       return Message.SucceededSaveLocale({ locale })
-    }).pipe(Effect.catchTag('HttpClientError', () => Effect.succeed(Message.FailedSaveLocale()))),
+    }).pipe(Effect.orElseSucceed(() => Message.FailedSaveLocale())),
 })
 
 const RecordTelemetryConsent = Command.define('RecordTelemetryConsent', {
@@ -269,6 +268,11 @@ const changedUrl = (model: Model, url: Url): UpdateReturn => {
   const route = routeFromUrl(url)
   if (Option.isNone(tabOf(route))) return { model, commands: [Navigate({ href: urlToString(url) })] }
   const moved = modifyFields(model, { route: () => route })
+  if (AppRoute.guards.Ask(route) && AppRoute.guards.Ask(model.route))
+    return Update.combine<Model, Message, Services>(moved, [
+      Update.foldChildStep({ update: Ask.changedQuery(route.q), ...at(lenses.ask) }),
+      (stepModel) => ({ model: stepModel, commands: Option.isSome(url.hash) ? arrive(url.hash) : [] }),
+    ])
   if (isSameTab(model.route, route))
     return Option.isSome(url.hash) ? { model: moved, commands: arrive(url.hash) } : { model: moved }
   return Update.combine<Model, Message, Services>(moved, [

@@ -2,7 +2,8 @@ import {
   type ImportedPiece,
   ImportManifest,
   type ImportPiece,
-  type ImportStarted,
+  ImportStarted,
+  type OperationId,
   type ImportStatus,
   NotFound,
   PieceId,
@@ -11,13 +12,15 @@ import {
 import { Array, Context, Effect, Layer, Option, Schema } from 'effect'
 import { AccountLifecycle } from '../AccountLifecycle.ts'
 import { Deployment } from '../Config.ts'
-import { first, nowDate } from '../kernel/Db.ts'
+import { Database, first, nowDate } from '../kernel/Db.ts'
+import { once } from '../kernel/Receipts.ts'
 import { digestOf, newId, randomToken } from '../kernel/Ids.ts'
 import { Media } from '../kernel/Media.ts'
 import { isAdmin } from '../social/Curation.ts'
 import { sniffImageType, uploadKey } from '../wardrobe/Media.ts'
 import type { PieceRow, UploadRow } from '../wardrobe/Store.ts'
 import { Wardrobe } from '../wardrobe/Wardrobe.ts'
+import { discardCopy } from './Copies.ts'
 import { type ImportMessage, ImportQueue } from './Queue.ts'
 import { ImportStore } from './Store.ts'
 
@@ -35,10 +38,12 @@ const stored = <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.mapError(effe
 const sendBatch = 100
 
 /** An import is an admin's: to anyone else it is not there. */
-const asAdmin = Effect.gen(function* () {
+const adminAccount = Effect.gen(function* () {
   const account = yield* (yield* AccountLifecycle).readAccount()
   if (!isAdmin((yield* Deployment).admins, account)) return yield* NotFound.make({})
+  return account
 })
+const asAdmin = adminAccount.pipe(Effect.asVoid)
 
 /** The bundle's manifest; none when there is no such import. */
 const manifestOf = Effect.fnUntraced(function* (importId: string) {
@@ -97,6 +102,9 @@ const piecesIn = Effect.fnUntraced(function* (accountId: string, manifest: Impor
   })
 })
 
+const replayImport = (result: string) =>
+  Schema.decodeUnknownEffect(Schema.fromJsonString(ImportStarted))(result).pipe(Effect.mapError(unavailable))
+
 /** The rows an imported piece is made of: its photo's upload, stored by Styld and taken at once, and the piece. */
 const rowsOf = Effect.fnUntraced(function* (accountId: string, piece: ImportPiece, bytes: number) {
   const at = yield* nowDate
@@ -152,7 +160,10 @@ const pieceOf = Effect.fnUntraced(function* (message: ImportMessage) {
   const { accountId, importId, piece } = message
   const earlier = () => importedAs(accountId, piece.v1Id)
   const prior = yield* earlier()
-  if (Option.isSome(prior)) return prior.value
+  if (Option.isSome(prior)) {
+    yield* stored(store.retryFailed(accountId, prior.value, yield* nowDate))
+    return prior.value
+  }
   const { bucket } = yield* Media
   const object = yield* Effect.tryPromise({
     try: () => bucket.get(`imports/${importId}/${piece.picture}`),
@@ -162,42 +173,59 @@ const pieceOf = Effect.fnUntraced(function* (message: ImportMessage) {
   const bytes = new Uint8Array(yield* Effect.tryPromise({ try: () => object.arrayBuffer(), catch: unavailable }))
   if (!Option.contains(sniffImageType(bytes), piece.contentType)) return yield* NotFound.make({})
   const { upload, row } = yield* rowsOf(accountId, piece, bytes.byteLength)
+  yield* stored(store.beginCopy(upload.objectKey, accountId, yield* nowDate))
   yield* Effect.tryPromise({
     try: () => bucket.put(upload.objectKey, bytes, { httpMetadata: { contentType: piece.contentType } }),
     catch: unavailable,
   })
   const made = yield* store.createPiece(upload, row, piece.v1Id).pipe(Effect.option)
   if (Option.isSome(made)) return row.id
-  // A delivery that raced this one made it; its photo is the one kept, this copy goes with the account.
+  yield* discardCopy(upload.objectKey).pipe(Effect.ignore)
+  // A racing delivery may have committed the same v1 identity.
   return yield* Effect.flatMap(earlier(), Option.match({ onNone: unavailable, onSome: Effect.succeed }))
 })
 
 const make = Effect.gen(function* () {
-  const context = yield* Effect.context<AccountLifecycle | Deployment | Media | ImportStore | ImportQueue | Wardrobe>()
+  const context = yield* Effect.context<
+    AccountLifecycle | Deployment | Media | ImportStore | ImportQueue | Wardrobe | Database
+  >()
   return {
     /** Start an import as an admin: its account, found or made, and every piece not imported yet sent to the queue. */
-    startImport: Effect.fn('Styld.Imports.start')(function* (importId: string) {
-      yield* asAdmin
-      const manifest = yield* manifestOf(importId)
-      const { accountId, created } = yield* accountFor(manifest)
-      const pieces = yield* piecesIn(accountId, manifest)
-      const waiting = manifest.pieces.filter((_, index) => pieces[index]?.pieceId === null)
-      const queue = yield* ImportQueue
-      yield* Effect.forEach(
-        Array.chunksOf(waiting, sendBatch),
-        (chunk) =>
-          Effect.tryPromise({
-            try: () =>
-              queue.sendBatch(chunk.map((piece) => ({ body: { _tag: 'ImportPiece', importId, accountId, piece } }))),
-            catch: unavailable,
-          }),
-        { discard: true },
-      )
-      yield* Effect.annotateCurrentSpan({
-        'styld.import.pieces': manifest.pieces.length,
-        'styld.import.sent': waiting.length,
+    startImport: Effect.fn('Styld.Imports.start')(function* (importId: string, operationId: OperationId) {
+      const operator = yield* adminAccount
+      const store = yield* ImportStore
+      const operation = { accountId: operator.accountId, operationId, command: 'startImport', input: importId }
+      const run = Effect.gen(function* () {
+        const manifest = yield* manifestOf(importId)
+        const { accountId, created } = yield* accountFor(manifest)
+        const pieces = yield* piecesIn(accountId, manifest)
+        const waiting = manifest.pieces.filter((_, index) => pieces[index]?.status !== 'ready')
+        // Mark known failures before the queue is sent: status polling must observe the rerun as unfinished.
+        for (const piece of pieces) {
+          if (piece.status === 'failed' && piece.pieceId !== null)
+            yield* stored(store.retryFailed(accountId, piece.pieceId, yield* nowDate))
+        }
+        const queue = yield* ImportQueue
+        yield* Effect.forEach(
+          Array.chunksOf(waiting, sendBatch),
+          (chunk) =>
+            Effect.tryPromise({
+              try: () =>
+                queue.sendBatch(chunk.map((piece) => ({ body: { _tag: 'ImportPiece', importId, accountId, piece } }))),
+              catch: unavailable,
+            }),
+          { discard: true },
+        )
+        yield* Effect.annotateCurrentSpan({
+          'styld.import.pieces': manifest.pieces.length,
+          'styld.import.sent': waiting.length,
+        })
+        return { importId, accountId, pieces, accountCreated: created } satisfies ImportStarted
       })
-      return { importId, accountId, pieces, accountCreated: created } satisfies ImportStarted
+      return yield* once(store, operation, {
+        replay: replayImport,
+        run: Effect.map(run, (value) => [value, JSON.stringify(value)] as const),
+      })
     }, Effect.provide(context)),
     /** An import as it stands, as an admin. */
     importStatus: Effect.fn('Styld.Imports.status')(function* (importId: string) {

@@ -78,7 +78,7 @@ describe('searching your wardrobe', () => {
       model((current) => expect(Ask.SearchLanguages.guards.Both(current.languages)).toBe(true)),
     )
     expect(Ask.enter(Option.none())(Ask.init()).commands?.map(({ name }) => name)).toEqual(['LoadSearchLanguages'])
-    expect(Ask.enter(Option.none())({ ...Ask.init(), languages: Ask.SearchLanguages.Both() }).commands).toBeUndefined()
+    expect(Ask.enter(Option.none())({ ...Ask.init(), languages: Ask.SearchLanguages.Both() }).commands).toEqual([])
     expect(Command).toBeDefined()
   })
 
@@ -86,12 +86,15 @@ describe('searching your wardrobe', () => {
     story(
       Ask.update,
       given({ ...Ask.init(), query: 'knit' }),
-      message(Ask.Message.ElapsedQueryPause({ query: 'kn' })),
+      message(Ask.Message.ElapsedQueryPause({ query: 'kn', revision: 0 })),
       Command.expectNone(),
-      message(Ask.Message.ElapsedQueryPause({ query: 'knit' })),
+      message(Ask.Message.ElapsedQueryPause({ query: 'knit', revision: 0 })),
       Command.expectExact(Ask.WriteQuery, Ask.SearchPublic),
       Command.resolve(Ask.WriteQuery, Ask.Message.CompletedWriteQuery()),
-      Command.resolve(Ask.SearchPublic, Ask.Message.SucceededSearchPublic({ query: 'knit', results: knitResults })),
+      Command.resolve(
+        Ask.SearchPublic,
+        Ask.Message.SucceededSearchPublic({ query: 'knit', revision: 0, results: knitResults }),
+      ),
       model((searched) => {
         expect(searched.query).toBe('knit')
         expect(searched.search).toEqual(PublicSearch.Found({ query: 'knit', results: knitResults }))
@@ -103,7 +106,7 @@ describe('searching your wardrobe', () => {
     story(
       Ask.update,
       given({ ...Ask.init(), query: 'knitwear' }),
-      message(Ask.Message.SucceededSearchPublic({ query: 'knit', results: knitResults })),
+      message(Ask.Message.SucceededSearchPublic({ query: 'knit', revision: 0, results: knitResults })),
       model((searched) => expect(searched.search).toEqual(PublicSearch.Off())),
     )
   })
@@ -112,11 +115,11 @@ describe('searching your wardrobe', () => {
     story(
       Ask.update,
       given({ ...Ask.init(), query: 'knit' }),
-      message(Ask.Message.ElapsedQueryPause({ query: 'knit' })),
+      message(Ask.Message.ElapsedQueryPause({ query: 'knit', revision: 0 })),
       Command.resolve(Ask.WriteQuery, Ask.Message.CompletedWriteQuery()),
-      Command.resolve(Ask.SearchPublic, Ask.Message.FailedSearchPublic({ query: 'knit' })),
+      Command.resolve(Ask.SearchPublic, Ask.Message.FailedSearchPublic({ query: 'knit', revision: 0 })),
       model((searched) => expect(searched.search).toEqual(PublicSearch.Failed({ query: 'knit' }))),
-      message(Ask.Message.FailedSearchPublic({ query: 'kn' })),
+      message(Ask.Message.FailedSearchPublic({ query: 'kn', revision: 0 })),
       model((searched) => expect(searched.search).toEqual(PublicSearch.Failed({ query: 'knit' }))),
     )
   })

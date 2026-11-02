@@ -1,3 +1,4 @@
+import { admitJob, generationLifetimeMillis } from './Admission.ts'
 import { isOutcomeUnknown } from '../providers/Errors.ts'
 import { BoardId, CurrentAccount, ImageType, Mood, OperationId, PieceId } from '@styld/protocol'
 import { Effect, Option, Result, Schema } from 'effect'
@@ -13,6 +14,7 @@ import { stickerKey } from './PaintPrompt.ts'
 import type { Wearable } from './Planner.ts'
 import { stickerOf } from './Sticker.ts'
 import { GenerationStore, type JobRow, type StickerRow } from './Store.ts'
+import { PaidAttempts } from '../usage/Attempts.ts'
 
 // Taking a job further, one delivery of the generation queue at a time: draw a sticker once, or plan a mood board from
 // the person's pieces and lay the board out. Every step reads where the job stands, so a redelivery picks up where the
@@ -52,18 +54,41 @@ const wardrobeOf = Effect.flatMap(Wardrobe, (wardrobe) =>
 const plan = (job: JobRow) =>
   Effect.gen(function* () {
     const store = yield* GenerationStore
-    const wardrobe = yield* wardrobeOf.pipe(Effect.mapError(unavailable))
-    const planned = yield* (yield* MoodPlanner)
-      .plan({ sentence: job.prompt, wardrobe: wardrobe.map(({ wearable }) => wearable) })
-      .pipe(Effect.mapError(unavailable))
+    const attempt = yield* (yield* PaidAttempts)
+      .run(
+        {
+          key: `generation/${job.id}/plan`,
+          accountId: job.accountId,
+          provider: 'workers-ai',
+          result: Schema.Option(Schema.Struct({ picks: Schema.Array(Schema.String), moods: Schema.Array(Mood) })),
+        },
+        Effect.gen(function* () {
+          const wardrobe = yield* wardrobeOf.pipe(Effect.mapError(unavailable))
+          const answer = yield* (yield* MoodPlanner).plan({
+            sentence: job.prompt,
+            wardrobe: wardrobe.map(({ wearable }) => wearable),
+          })
+          const idOf = new Map(wardrobe.map(({ wearable, id }) => [wearable.ref, id]))
+          return Option.map(answer, (value) => ({
+            picks: value.picks.flatMap((ref) => Option.toArray(Option.fromNullishOr(idOf.get(ref)))),
+            moods: value.moods,
+          }))
+        }),
+      )
+      .pipe(
+        Effect.map(Option.some),
+        Effect.catchTag('AttemptElsewhere', () => Effect.succeed(Option.none())),
+        Effect.mapError(unavailable),
+      )
+    // Another delivery owns the planner claim. Leave the job in planning so its winner can finish it.
+    if (Option.isNone(attempt)) return
+    const planned = attempt.value
     const at = yield* nowDate
     if (Option.isNone(planned))
       return yield* stored(
         store.advanceJob(job.id, ['planning'], { status: 'refused', reason: 'unclear', updatedAt: at }),
       )
-    const idOf = new Map(wardrobe.map(({ wearable, id }) => [wearable.ref, id]))
-    const picks = planned.value.picks.flatMap((ref) => Option.toArray(Option.fromNullishOr(idOf.get(ref))))
-    yield* stored(store.planned(job.id, { picks, moods: planned.value.moods }, at))
+    yield* stored(store.planned(job.id, planned.value, at))
   })
 
 /** A sticker that will not be drawn: refused, or lost on the way. The job ends refused, so its credit goes back
@@ -175,9 +200,16 @@ export const work = Effect.fn('Styld.Generation.work')(function* (jobId: string)
   const step = stored((yield* GenerationStore).jobForWork(jobId))
   const start = yield* step
   if (Option.isNone(start)) return
+  const now = yield* nowDate
+  if (now.getTime() - start.value.createdAt.getTime() > generationLifetimeMillis) {
+    yield* giveUp(jobId)
+    return
+  }
   const account = { accountId: start.value.accountId, via: 'assistant' as const }
   const act = <A, E, R>(effect: Effect.Effect<A, E, R>) => Effect.provideService(effect, CurrentAccount, account)
-  if (start.value.status === 'planning') yield* act(plan(start.value))
+  if (start.value.status === 'admitting') yield* admitJob(start.value)
+  const admitted = yield* step
+  if (Option.isSome(admitted) && admitted.value.status === 'planning') yield* act(plan(admitted.value))
   const planned = yield* step
   if (Option.isSome(planned) && planned.value.status === 'drawing') yield* act(draw(planned.value))
   const drawn = yield* step

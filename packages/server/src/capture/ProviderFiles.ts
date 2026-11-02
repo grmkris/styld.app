@@ -5,8 +5,8 @@ import type { Sweep } from '../jobs/Sweeps.ts'
 import { Database, query } from '../kernel/Db.ts'
 import { GarmentSegmenter } from './Providers.ts'
 
-// Videos handed to Meta's Files API are the person's own footage at a provider: each is recorded (`provider_files`) in
-// the batch that gives its capture the file id, and forgotten only once Meta confirms it deleted the file or has none.
+// Videos handed to Meta's Files API are the person's own footage at a provider: each is recorded (`provider_files`) before
+// its capture is given the file id, and forgotten only once Meta confirms it deleted the file or has none.
 // Tracking deletes it at once (`Garments.ts`); the sweep deletes whatever is still recorded after that, a failed delete
 // included, and account deletion deletes the account's files straight away.
 

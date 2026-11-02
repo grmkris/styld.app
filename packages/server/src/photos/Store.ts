@@ -1,6 +1,7 @@
 import { operationReceipts, outfitPhotos, photoGarments } from '@styld/db'
-import { and, asc, desc, eq, inArray } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, exists } from 'drizzle-orm'
 import { Context, Effect, Layer } from 'effect'
+import { insertWhen } from '../kernel/Conditional.ts'
 import { OfferedRows } from '../capture/Rows.ts'
 import type { CaptureRow, DetectionRow } from '../capture/Store.ts'
 import { type ReceiptRow, spendUpload, UploadRows } from '../wardrobe/Store.ts'
@@ -17,6 +18,18 @@ type Db = Database['Service']
 
 const ofAccount = (accountId: string, photoId: string) =>
   and(eq(outfitPhotos.id, photoId), eq(outfitPhotos.accountId, accountId))
+
+const finishFinding = (db: Db, photoId: string, garments: ReadonlyArray<GarmentRow>, at: Date) => {
+  const current = and(eq(outfitPhotos.id, photoId), eq(outfitPhotos.status, 'finding'))
+  const owns = exists(db.select({ id: outfitPhotos.id }).from(outfitPhotos).where(current))
+  return query(() =>
+    db.batch([
+      db.delete(photoGarments).where(and(eq(photoGarments.photoId, photoId), owns)),
+      ...garments.map((garment) => insertWhen(db, photoGarments, garment, owns)),
+      db.update(outfitPhotos).set({ status: 'ready', updatedAt: at }).where(current).returning({ id: outfitPhotos.id }),
+    ]),
+  ).pipe(Effect.asVoid)
+}
 
 /** Reading photos and their garments. */
 const reads = (db: Db) => ({
@@ -84,16 +97,7 @@ const writes = (db: Db) => ({
     ).pipe(Effect.asVoid),
   /** The garments found, and the photo ready, in one batch; only while it is still being found. */
   finishFinding: (photoId: string, garments: ReadonlyArray<GarmentRow>, at: Date) =>
-    query(() =>
-      db.batch([
-        db.delete(photoGarments).where(eq(photoGarments.photoId, photoId)),
-        ...garments.map((garment) => db.insert(photoGarments).values(garment)),
-        db
-          .update(outfitPhotos)
-          .set({ status: 'ready', updatedAt: at })
-          .where(and(eq(outfitPhotos.id, photoId), eq(outfitPhotos.status, 'finding'))),
-      ]),
-    ).pipe(Effect.asVoid),
+    finishFinding(db, photoId, garments, at),
   /** A garment offered to the review tray: its capture and detection, and the garment marked offered, in one batch. */
   offerGarment: (garmentId: string, capture: CaptureRow, detection: DetectionRow) =>
     query(() =>
