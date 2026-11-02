@@ -18,6 +18,7 @@ import {
 } from './Profile.ts'
 import { GenerationApi } from './Generation.ts'
 import { LinkApi } from './Link.ts'
+import { ImportApi } from './Import.ts'
 import {
   CreateReport,
   Feed,
@@ -432,4 +433,5 @@ export class StyldApi extends HttpApi.make('styld')
   .add(StylistApi)
   .add(OutfitApi)
   .add(PhotoApi)
+  .add(ImportApi)
   .prefix('/api') {}

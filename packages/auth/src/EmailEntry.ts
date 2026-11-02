@@ -317,6 +317,8 @@ const bindEntry = <Claims extends Auth.ClaimsCodec, const Id extends string, con
 
   return Object.freeze({
     strategy,
+    /** The namespace the email credentials are stored under (`Provisioning.ts`). */
+    moduleId: modules.moduleId,
     /** Provide in live.ts: verified email credential -> AccountClaims. */
     SessionClaims: code.SessionClaims,
     /** Provide in live.ts from `@yielded/auth-persistence-drizzle/D1` (EmailPersistence.ts). */

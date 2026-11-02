@@ -84,6 +84,9 @@ export const StyldGenerationQueue = Cloudflare.Queues.Queue('StyldV2Generation')
 /** Styld's replies on their way (`stylist/Queue.ts`), one at a time so each starts at once. */
 export const StyldStylistQueue = Cloudflare.Queues.Queue('StyldV2Stylist')
 
+/** Wardrobes brought over from v1 at the switch (`imports/`), one piece a delivery at a pace Cloudflare Images keeps. */
+export const StyldImportQueue = Cloudflare.Queues.Queue('StyldV2Imports')
+
 /** Every capture provider call and review decision, for cost and keep rates (`tools/ai-usage-report.ts`). */
 export const StyldAiCalls = Effect.flatMap(currentStage, ({ aiCalls }) =>
   Cloudflare.AnalyticsEngine.Dataset('StyldAiCalls', { dataset: aiCalls }),

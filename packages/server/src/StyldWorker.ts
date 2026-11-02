@@ -17,6 +17,7 @@ import { authOptions } from './AuthConfiguration.ts'
 import { Deployment, deploymentOf } from './Config.ts'
 import { DomainLive } from './DomainLive.ts'
 import { GenerationQueue } from './generation/Queue.ts'
+import { ImportQueue } from './imports/Queue.ts'
 import { onFirstUse } from './IsolateCache.ts'
 import type { Consumer, Delivering } from './jobs/Jobs.ts'
 import { runSweeps, type Sweep } from './jobs/Sweeps.ts'
@@ -34,6 +35,7 @@ import {
   StyldDatabase,
   StyldEmail,
   StyldGenerationQueue,
+  StyldImportQueue,
   StyldMedia,
   StyldPieceQueue,
   StyldStylistQueue,
@@ -83,6 +85,7 @@ const declareBindings = Effect.gen(function* () {
     checks: yield* StyldChecksQueue,
     generation: yield* StyldGenerationQueue,
     stylist: yield* StyldStylistQueue,
+    imports: yield* StyldImportQueue,
   }
   return {
     database: yield* Cloudflare.D1.QueryDatabase(StyldDatabase),
@@ -137,6 +140,7 @@ const kernelOf = (bindings: Bindings, providersFor: ProvidersFor, env: Readonly<
       CheckQueue.layer(yield* writers.checks.raw),
       GenerationQueue.layer(yield* writers.generation.raw),
       StylistQueue.layer(yield* writers.stylist.raw),
+      ImportQueue.layer(yield* writers.imports.raw),
       ChatStores.layer(chatStoreOf(bindings.stylists)),
       Layer.succeed(CaptureMetrics, metrics),
       Layer.succeed(Auth, auth),

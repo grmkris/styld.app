@@ -1,6 +1,7 @@
 import { account } from './Account.ts'
 import { capture } from './capture/Module.ts'
 import { generation } from './generation/Module.ts'
+import { imports } from './imports/Module.ts'
 import { links } from './links/Module.ts'
 import { mcp } from './mcp/Module.ts'
 import { outfits } from './outfits/Module.ts'
@@ -24,4 +25,5 @@ export const modules = [
   links,
   stylist,
   mcp,
+  imports,
 ] as const

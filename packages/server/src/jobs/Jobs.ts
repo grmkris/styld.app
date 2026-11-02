@@ -9,7 +9,7 @@ import { Cause, Effect, Exit, Option, Predicate, Schema, Stream } from 'effect'
 // Each delivery writes one structured log line, and is its own span with the job it carries.
 
 /** The queues the API Worker consumes. */
-type QueueName = 'pieces' | 'checks' | 'generation' | 'stylist'
+type QueueName = 'pieces' | 'checks' | 'generation' | 'stylist' | 'imports'
 
 /** A queue body: one tagged case of its union. */
 export interface Tagged {
@@ -24,6 +24,8 @@ export interface JobQueue<Body extends Tagged> {
   /** Deliveries that run the work; one more delivery may follow only to give it up. */
   readonly attempts: number
   readonly batchSize: number
+  /** How many batches run at once, where a provider's rate needs a pace; Cloudflare scales out otherwise. */
+  readonly maxConcurrency?: number
   readonly retryDelay: `${number} seconds`
   readonly jobOf: (body: Body) => Option.Option<string>
 }
@@ -33,10 +35,13 @@ export const defineQueue = <Body extends Tagged>(queue: JobQueue<Body>) => queue
 /** What Cloudflare is told: `maxRetries` counts retries after the first delivery, so the queue delivers `attempts`
  * times to run the work and once more if giving it up failed.
  * @internal Exported for its tests. */
-export const consumerSettings = (queue: Pick<JobQueue<Tagged>, 'attempts' | 'batchSize' | 'retryDelay'>) => ({
+export const consumerSettings = (
+  queue: Pick<JobQueue<Tagged>, 'attempts' | 'batchSize' | 'maxConcurrency' | 'retryDelay'>,
+) => ({
   batchSize: queue.batchSize,
   maxRetries: queue.attempts,
   retryDelay: queue.retryDelay,
+  ...(queue.maxConcurrency === undefined ? {} : { maxConcurrency: queue.maxConcurrency }),
 })
 
 /** One kind of job: the work a delivery runs (with its 1-based attempt), and what giving up on it does. */

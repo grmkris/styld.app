@@ -67,6 +67,8 @@ export const PieceRows = {
   insert: (db: Database['Service'], row: PieceRow) => db.insert(pieces).values(row),
 }
 export const UploadRows = {
+  /** An upload Styld stored itself and a piece took at once: an imported piece's photo. */
+  insertUsed: (db: Database['Service'], row: UploadRow) => db.insert(uploads).values({ ...row, status: 'used' }),
   spend: spendUpload,
   restore: (db: Database['Service'], uploadId: string) =>
     db
@@ -281,7 +283,11 @@ export const makeStore = (db: Database['Service']) => ({
     ).pipe(Effect.map(([deleted]) => deleted.length > 0)),
   keysInUse: (accountId: string, keys: ReadonlyArray<string>) => keysInUse(db, accountId, keys),
   /** Records the processed photo; a piece no longer processing is left as it is. */
-  finishProcessing: (pieceId: string, changes: Pick<PieceRow, 'status' | 'imageKey' | 'updatedAt'>) =>
+  finishProcessing: (
+    pieceId: string,
+    changes: Pick<PieceRow, 'status' | 'imageKey' | 'updatedAt'> &
+      Partial<Pick<PieceRow, 'type' | 'colours' | 'season' | 'occasions' | 'pattern'>>,
+  ) =>
     query(() =>
       db
         .update(pieces)

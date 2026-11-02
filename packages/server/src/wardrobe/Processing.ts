@@ -1,5 +1,5 @@
-import type { PieceType } from '@styld/protocol'
-import { Context, Effect, Layer, Schema } from 'effect'
+import type { Colour, Occasion, Pattern, PieceType, Season } from '@styld/protocol'
+import { Context, Effect, Layer, Option, Schema } from 'effect'
 
 /** Deliveries that run a piece's job before it is given up (`wardrobe/Queue.ts`). */
 export const pieceAttempts = 3
@@ -35,10 +35,22 @@ export class PieceQueue extends Context.Service<
 export class CutoutFailed extends Schema.TaggedError<CutoutFailed>()('CutoutFailed', {}) {}
 
 /** Which side of a piece a photo shows: its front, cut out when the piece is added (by the queue delivery `attempt`),
- * or a back the person adds later, cut out from its own upload. */
+ * paid by the account, or by Styld for a piece imported from v1; or a back the person adds later, cut out from its own
+ * upload. */
 export type CutSide =
-  | { readonly side: 'front'; readonly attempt: number }
+  | { readonly side: 'front'; readonly attempt: number; readonly payer: 'account' | 'styld' }
   | { readonly side: 'back'; readonly uploadId: string }
+
+/** What the decision model takes a piece's cut-out for: its type (and how sure it is of the type's group), colours,
+ * season, occasions and pattern. */
+export interface PieceDescription {
+  readonly type: PieceType | undefined
+  readonly confidence: number
+  readonly colours: ReadonlyArray<Colour>
+  readonly season: Season | undefined
+  readonly occasions: ReadonlyArray<Occasion>
+  readonly pattern: Pattern | undefined
+}
 
 /** The step that turns a piece's photo into the image the wardrobe shows. The garment cut-out model
  * plugs in here; until then `keepOriginal` shows the photo as it arrived. */
@@ -54,9 +66,12 @@ export class GarmentCutout extends Context.Service<
       readonly type: PieceType
       readonly of: CutSide
     }) => Effect.Effect<{ readonly imageKey: string }, CutoutFailed>
+    /** What a stored cut-out shows, as the decision model reads it; none when it cannot be read or answered. */
+    readonly describe: (cutoutKey: string) => Effect.Effect<Option.Option<PieceDescription>>
   }
 >()('@styld/server/GarmentCutout') {
   static readonly keepOriginal = Layer.succeed(this, {
     cut: ({ originalKey }) => Effect.succeed({ imageKey: originalKey }),
+    describe: () => Effect.succeedNone,
   })
 }

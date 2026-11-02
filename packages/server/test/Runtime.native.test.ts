@@ -22,6 +22,7 @@ import { verifySocial } from './SocialAcceptance.ts'
 import { verifyGeneration } from './GenerationAcceptance.ts'
 import { verifyOutfits } from './OutfitAcceptance.ts'
 import { verifyPhotos } from './PhotosAcceptance.ts'
+import { verifyImports } from './ImportAcceptance.ts'
 import { verifyFirstSignedInTogether } from './SessionSetupAcceptance.ts'
 import { verifyPublicJourney } from './SocialBrowserAcceptance.ts'
 import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
@@ -64,6 +65,8 @@ const makeStack = (generation: string) =>
           AUTH_ORIGIN: edge.url,
           STYLD_ENV: 'local',
           STYLD_RELEASE: `native-${generation}`,
+          // The import journey's admin (`ImportAcceptance.ts`).
+          STYLD_ADMIN_EMAILS: 'native-import-admin@example.invalid',
           // The fakes' providers ask the fixture Worker in Meta's, Veo's and Clef's place (`test/fakes/`).
           TEST_FIXTURES: worker.url,
           META_API_KEY: Redacted.make('native-test-meta-key'),
@@ -188,6 +191,11 @@ test(
   'keeps the person’s outfit photos private: finding garments for a credit, matching, favourites and deletion',
   overHttp(verifyPhotos),
   { timeout: 60000 },
+)
+test(
+  'imports a v1 wardrobe for an admin, into the account its email signs in to or one made for it, once',
+  overHttp(verifyImports),
+  { timeout: 90000 },
 )
 test(
   'makes ranked outfits of the person’s own pieces, Fast and Thinking, never repeating one and keeping their pace and cap',
