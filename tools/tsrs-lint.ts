@@ -41,7 +41,7 @@ export const assetUrl = (forTarget: Target): string =>
   `https://github.com/${TSRS_LINT.repository}/releases/download/${TSRS_LINT.tag}/tsrs-lint-${forTarget}`
 
 /** Where the verified binary lives, one per machine; an empty `XDG_CACHE_HOME` counts as unset, as the XDG spec says. */
-export const cachedBinary = (env: NodeJS.ProcessEnv = process.env): string => {
+const cachedBinary = (env: NodeJS.ProcessEnv = process.env): string => {
   const xdg = env.XDG_CACHE_HOME
   const cache = xdg === undefined || xdg === '' ? path.join(os.homedir(), '.cache') : xdg
   return path.join(cache, 'tsrs-lint', TSRS_LINT.tag, 'tsrs-lint')
@@ -79,7 +79,7 @@ export const fetchVerified = async ({ url, sha256: expected, file }: Asset): Pro
 }
 
 /** The verified binary for this machine, downloaded once per tag. */
-export const tsrsLint = (): Promise<string> => {
+const tsrsLint = (): Promise<string> => {
   const forTarget = target()
   return fetchVerified({ url: assetUrl(forTarget), sha256: TSRS_LINT.sha256[forTarget], file: cachedBinary() })
 }

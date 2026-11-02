@@ -3,16 +3,23 @@ import type { KnipConfig } from 'knip'
 export default {
   workspaces: {
     '.': {
+      // The gates are entries through package.json's scripts. Scripts an operator runs by hand are listed one by one,
+      // so a script nothing runs is reported instead of hiding behind a glob.
       entry: [
         'alchemy.run.ts!',
-        'tools/*.ts',
+        'tools/ai-usage-report.ts',
+        'tools/preview-capture.ts',
+        'tools/provider-live.ts',
+        // Prints the verified binary's path for an editor's type-aware lint (.vscode/settings.json).
+        'tools/tsrs-lint.ts',
         'tools/import-v1/{Import,Export}.ts',
         'tools/**/*.test.ts',
         '*.config.ts',
       ],
       project: ['tools/**/*.ts', '*.ts'],
-      // effect-tsrs embeds the plugin named by tsconfig; it is not a JS dependency.
-      ignoreDependencies: ['@effect/language-service'],
+      // effect-tsrs embeds the plugin named by tsconfig; it is not a JS dependency. tools/typecheck.ts and the canaries
+      // run the effect-tsrs binary by its path.
+      ignoreDependencies: ['@effect/language-service', '@yielded/effect-tsrs'],
     },
     'apps/web': {
       // The zyzz Vite plugin discovers GlobalStyles.ts; nothing imports it.
