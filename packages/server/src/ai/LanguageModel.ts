@@ -40,9 +40,22 @@ const ToolCall = Schema.Struct({
   function: Schema.Struct({ name: Schema.String, arguments: Schema.optionalKey(Schema.Unknown) }),
 })
 
+/** Whether an answer says something: the first choice's words or tool calls, or else an older model's `response`. An
+ * answer with neither (`{}`, an empty message) is unreadable, never an empty answer. */
+const answers = (output: {
+  readonly response?: unknown
+  readonly choices?: ReadonlyArray<{
+    readonly message: { readonly content?: string | null; readonly tool_calls?: ReadonlyArray<unknown> | null }
+  }>
+}) => {
+  const message = output.choices?.[0]?.message
+  if (message === undefined) return output.response !== undefined && output.response !== ''
+  return (message.content ?? '').length > 0 || (message.tool_calls ?? []).length > 0
+}
+
 /** Workers AI answers older models with `response` (text, or the object asked for), newer ones as a Chat Completion. */
 const Output = Schema.Struct({
-  response: Schema.optionalKey(Schema.Unknown),
+  response: Schema.optionalKey(Schema.Union([Schema.String, Schema.Record(Schema.String, Schema.Unknown)])),
   choices: Schema.optionalKey(
     Schema.Array(
       Schema.Struct({
@@ -55,7 +68,7 @@ const Output = Schema.Struct({
     ),
   ),
   usage: Schema.optionalKey(Usage),
-})
+}).check(Schema.makeFilter(answers))
 type Output = typeof Output.Type
 
 /** How a provider failure reads as an `AiError`, and back: one mapping each way, so a caller of the language model

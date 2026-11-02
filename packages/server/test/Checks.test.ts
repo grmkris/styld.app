@@ -1,13 +1,16 @@
 import { describe, expect, it } from '@effect/vitest'
 import { Effect, Layer, Option } from 'effect'
+import { WorkersAi } from '../src/ai/LanguageModel.ts'
 import { Database } from '../src/kernel/Db.ts'
 import { Media } from '../src/kernel/Media.ts'
+import { CaptureMetrics } from '../src/kernel/Metrics.ts'
 import { CheckQueue, Checks } from '../src/safety/Checks.ts'
-import { type Content, ContentJudge, passed } from '../src/safety/Judge.ts'
+import { type Content, ContentJudge, contentJudge, passed } from '../src/safety/Judge.ts'
 import { localD1 } from './LocalD1.ts'
 
 // The checks judge only what others would see of a thing: a piece's cut-out or clean drawing, never the photo it came
-// from, and nothing of a piece that has no picture of its own. A check is forgotten with its target.
+// from, and nothing of a piece that has no picture of its own. A model answer that is no verdict leaves the check
+// pending, never passed. A check is forgotten with its target.
 
 /** Ana, published, with a public board holding one ready piece. */
 const seeded = (imageKey: string | null) => {
@@ -58,7 +61,31 @@ const mediaFor = (seen: Witness) => {
   return Media.of(fake as never)
 }
 
-const checksOver = (database: ReturnType<typeof localD1>, seen: Witness) =>
+/** A judge that passes everything it is shown. */
+const passing = (seen: Witness) =>
+  Layer.succeed(
+    ContentJudge,
+    ContentJudge.of({
+      judge: (content) =>
+        Effect.sync(() => {
+          seen.judged.push(content)
+          return passed
+        }),
+    }),
+  )
+
+/** The real judge, with Llama Guard answering `answer` and Clef never asked. */
+const guardAnswering = (answer: unknown) =>
+  contentJudge(() => Promise.reject(new Error('no pictures in these checks'))).pipe(
+    Layer.provide(WorkersAi.layer(() => Promise.resolve(answer))),
+    Layer.provide(Layer.succeed(CaptureMetrics, CaptureMetrics.discarding)),
+  )
+
+const checksOver = (
+  database: ReturnType<typeof localD1>,
+  seen: Witness,
+  judge: Layer.Layer<ContentJudge> = passing(seen),
+) =>
   Checks.layer.pipe(
     Layer.provide(
       Layer.mergeAll(
@@ -69,16 +96,7 @@ const checksOver = (database: ReturnType<typeof localD1>, seen: Witness) =>
             seen.queued.push(...messages)
           },
         }),
-        Layer.succeed(
-          ContentJudge,
-          ContentJudge.of({
-            judge: (content) =>
-              Effect.sync(() => {
-                seen.judged.push(content)
-                return passed
-              }),
-          }),
-        ),
+        judge,
       ),
     ),
   )
@@ -108,6 +126,25 @@ describe('the checks', () => {
       expect(seen.queued).toEqual([])
     }).pipe(Effect.provide(checksOver(database, seen)))
   })
+
+  for (const [shape, answer] of [
+    ['words in neither of its formats', { response: 'Sorry, the service is temporarily unavailable.' }],
+    ['an empty answer', { response: '' }],
+    ['no answer at all', {}],
+  ] as const)
+    it.effect(`keep a published profile pending when Llama Guard answers ${shape}, and ask again`, () => {
+      const seen = witness()
+      const database = seeded('ac_1/cutout.png')
+      return Effect.gen(function* () {
+        const checks = yield* Checks
+        const status = yield* checks.checkNow({ kind: 'profile', id: 'ac_1' })
+        expect(Option.map(status, ({ state }) => state)).toEqual(Option.some('pending'))
+        expect(seen.queued).toEqual([{ body: { _tag: 'CheckContent', target: { kind: 'profile', id: 'ac_1' } } }])
+        expect(yield* Effect.flip(checks.checkNow({ kind: 'profile', id: 'ac_1' }, 'fail'))).toMatchObject({
+          _tag: 'Unavailable',
+        })
+      }).pipe(Effect.provide(checksOver(database, seen, guardAnswering(answer))))
+    })
 
   it.effect('forget the checks of things deleted without them, and keep the others', () => {
     const seen = witness()

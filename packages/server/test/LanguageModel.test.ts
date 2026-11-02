@@ -81,6 +81,21 @@ describe('an object asked of a Workers AI model', () => {
     }).pipe(Effect.provide(layer))
   })
 
+  for (const [shape, raw] of [
+    ['nothing', {}],
+    ['an empty response', { response: '' }],
+    ['an empty message', { choices: [{ message: { content: null } }] }],
+  ] as const)
+    it.effect(`an answer of ${shape} is Broken, never an empty answer`, () => {
+      const { asked, layer } = workersAi([raw])
+      return Effect.gen(function* () {
+        const text = Effect.flatMap(LanguageModel.LanguageModel, (model) => model.generateText({ prompt: 'Hello' }))
+        const error = providerErrorOf(yield* Effect.flip(text))
+        expect(Predicate.isTagged(error.reason, 'Broken')).toBe(true)
+        expect(asked).toHaveLength(1)
+      }).pipe(Effect.provide(layer))
+    })
+
   it.effect('a model that does not answer is Busy: tried three more times, counted once as failed', () => {
     const { asked, calls, layer } = workersAi([new Error('down')])
     return Effect.gen(function* () {

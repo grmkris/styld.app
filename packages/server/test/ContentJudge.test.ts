@@ -3,7 +3,7 @@ import { Effect, Layer, Predicate } from 'effect'
 import { WorkersAi } from '../src/ai/LanguageModel.ts'
 import type { RunClef } from '../src/providers/Clef.ts'
 import { CaptureMetrics, type ProviderCall } from '../src/kernel/Metrics.ts'
-import { ContentJudge, contentJudge } from '../src/safety/Judge.ts'
+import { ContentJudge, contentJudge, textVerdict } from '../src/safety/Judge.ts'
 
 // The content judge's model calls go the one provider way: each deadlined and counted with what it cost, Llama Guard
 // through the language model.
@@ -57,6 +57,31 @@ describe('the content judge', () => {
       expect(verdict).toEqual({ state: 'unsure', reason: 'other', model: 'llama-guard-3-8b' })
     }).pipe(Effect.provide(judge))
   })
+
+  for (const [answer, verdict] of [
+    ['safe', { state: 'passed', reason: null }],
+    [' Safe\n', { state: 'passed', reason: null }],
+    ['unsafe', { state: 'unsure', reason: 'other' }],
+    ['unsafe\nS2', { state: 'unsure', reason: 'other' }],
+    ['unsafe\nS2, S11', { state: 'failed', reason: 'selfHarm' }],
+  ] as const)
+    it.effect(`reads Llama Guard's text answer ${JSON.stringify(answer)}`, () =>
+      Effect.map(textVerdict(answer), (read) => expect(read).toEqual({ ...verdict, model: 'llama-guard-3-8b' })),
+    )
+
+  for (const answer of [
+    'Sorry, I cannot help with that.',
+    'temporarily unavailable',
+    'The text is safe to publish.',
+    'unsafe content: none',
+    '',
+    '{"categories": ["S1"]}',
+  ])
+    it.effect(`gives no verdict on an answer in neither of Llama Guard's formats: ${JSON.stringify(answer)}`, () =>
+      Effect.map(Effect.flip(textVerdict(answer)), (error) =>
+        expect(Predicate.isTagged(error.reason, 'Broken')).toBe(true),
+      ),
+    )
 
   it.effect('counts a picture Clef could not read as failed, and gives no verdict', () => {
     const { calls, judge } = judging({ response: 'safe' }, async () => 'not an answer')

@@ -1,4 +1,4 @@
-import { type ProviderError, busy } from '../providers/Errors.ts'
+import { type ProviderError, broken, busy } from '../providers/Errors.ts'
 import { deadlines } from '../providers/Call.ts'
 import { textModels } from '../providers/Costs.ts'
 import type { CheckReason } from '@styld/protocol'
@@ -84,19 +84,41 @@ const hazardReasons: Readonly<Record<string, CheckReason>> = {
   S12: 'sexual',
 }
 
-const textVerdict = (answer: string): Verdict => {
-  const object = decodeGuardObject(answer)
-  const unsafe = Option.match(object, { onNone: () => /unsafe/iu.test(answer), onSome: ({ safe }) => !safe })
-  if (!unsafe) return { state: 'passed', reason: null, model: 'llama-guard-3-8b' }
-  const categories = Option.match(object, {
-    onNone: () => answer.match(/S\d+/gu) ?? [],
-    onSome: (found) => found.categories ?? [],
-  })
-  const hazard = categories.find((category) => failingHazards.has(category))
-  return hazard === undefined
-    ? { state: 'unsure', reason: hazardReasons[categories[0] ?? ''] ?? 'other', model: 'llama-guard-3-8b' }
-    : { state: 'failed', reason: hazardReasons[hazard] ?? 'other', model: 'llama-guard-3-8b' }
+/** Llama Guard's text answer: `safe`, or `unsafe` and, on the next line, the categories it saw. */
+const guardText = /^\s*(?:(?<safe>safe)|unsafe(?:\s*\n\s*(?<categories>S\d+(?:\s*,\s*S\d+)*))?)\s*$/iu
+
+interface GuardAnswer {
+  readonly safe: boolean
+  readonly categories: ReadonlyArray<string>
 }
+
+/** Llama Guard's answer in one of its two formats; none for anything else (an empty or cut-off answer, an apology),
+ * which is no verdict at all. */
+const guardAnswer = (answer: string): Option.Option<GuardAnswer> =>
+  Option.orElse(
+    Option.map(decodeGuardObject(answer), ({ safe, categories }) => ({ safe, categories: categories ?? [] })),
+    () =>
+      Option.map(Option.fromNullishOr(guardText.exec(answer)?.groups), (groups) => ({
+        safe: groups['safe'] !== undefined,
+        categories: groups['categories']?.split(',').map((category) => category.trim().toUpperCase()) ?? [],
+      })),
+  )
+
+/** @internal Exported for its tests. Llama Guard's verdict on the words. An answer in neither of its formats is a
+ * Broken provider answer: the check stays pending and is asked again, and is never passed. */
+export const textVerdict = (answer: string): Effect.Effect<Verdict, ProviderError> =>
+  Option.match(guardAnswer(answer), {
+    onNone: () => Effect.fail(broken('workers-ai')),
+    onSome: ({ safe, categories }): Effect.Effect<Verdict> => {
+      if (safe) return Effect.succeed({ state: 'passed', reason: null, model: 'llama-guard-3-8b' })
+      const hazard = categories.find((category) => failingHazards.has(category))
+      return Effect.succeed(
+        hazard === undefined
+          ? { state: 'unsure', reason: hazardReasons[categories[0] ?? ''] ?? 'other', model: 'llama-guard-3-8b' }
+          : { state: 'failed', reason: hazardReasons[hazard] ?? 'other', model: 'llama-guard-3-8b' },
+      )
+    },
+  })
 
 /** How long a check waits for its models before it counts as not answered; it is tried again later. Each call keeps
  * its own deadline too (`providers/Call.ts`). */
@@ -109,7 +131,7 @@ const guard: TextTask = { model: textModels.llamaGuard, kind: 'judge', deadline:
 const guarded = (model: LanguageModel.LanguageModel, texts: ReadonlyArray<string>) =>
   model.generateText({ prompt: [{ role: 'user', content: texts.join('\n') }] }).pipe(
     Effect.mapError(providerErrorOf),
-    Effect.map(({ text }) => textVerdict(text)),
+    Effect.flatMap(({ text }) => textVerdict(text)),
   )
 
 /** Clef on one picture, as one counted call. */
