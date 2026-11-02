@@ -47,7 +47,7 @@ const services = (database: ReturnType<typeof localD1>) => {
     Layer.provideMerge(
       Layer.mergeAll(
         Database.layer(database),
-        // SAFETY: nothing these writes do reads or stores an object
+        // SAFETY: the media binding is an empty fake -- no profile or social write reads or stores an object
         Layer.succeed(Media, Media.of({} as never)),
         Layer.succeed(CurrentAccount, CurrentAccount.of({ accountId: 'ac_1', via: 'session' })),
       ),

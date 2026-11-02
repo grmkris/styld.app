@@ -54,7 +54,7 @@ const untransformableFake = {
     }),
   },
 }
-// SAFETY: delivery reads only `get` of the bucket and `input` of the Images binding, which the fake implements
+// SAFETY: the fake implements the bucket read and the Images transform delivery calls -- the rest of R2 and Images is never called by a delivery
 const untransformable = Media.of(untransformableFake as never)
 
 describe('delivered images', () => {

@@ -56,6 +56,18 @@
     "comment": "SAFETY: the fake implements the bucket read and the Images transform the judge's picture reads call -- the rest of R2 and Images is never called by a check"
   },
   {
+    "file": "packages/server/test/Media.test.ts",
+    "comment": "SAFETY: the fake implements the bucket read and the Images transform delivery calls -- the rest of R2 and Images is never called by a delivery"
+  },
+  {
+    "file": "packages/server/test/Operations.test.ts",
+    "comment": "SAFETY: the media binding is an empty fake -- no profile or social write reads or stores an object"
+  },
+  {
+    "file": "packages/server/test/ProviderFiles.test.ts",
+    "comment": "SAFETY: the fake segmenter implements only forget -- the sweep and account deletion call nothing else of it"
+  },
+  {
     "file": "packages/server/test/OutfitService.test.ts",
     "comment": "SAFETY: no picture is ever read here -- every piece's read fails over to an unjudged outfit, as a missing picture does"
   },

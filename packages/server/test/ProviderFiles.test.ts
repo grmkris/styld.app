@@ -29,7 +29,7 @@ const seeded = () => {
 const meta = (asked: Array<string>) =>
   Layer.succeed(
     GarmentSegmenter,
-    // SAFETY: the sweep and account deletion call only `forget`
+    // SAFETY: the fake segmenter implements only forget -- the sweep and account deletion call nothing else of it
     GarmentSegmenter.of({
       forget: (fileId: string) =>
         Effect.suspend(() => {
