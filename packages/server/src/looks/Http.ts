@@ -9,6 +9,9 @@ export const lookHandlers = HttpApiBuilder.group(StyldApi, 'look', (handlers) =>
     const looks = yield* Looks
     return handlers
       .handle('listLooks', () => looks.listLooks().pipe(Effect.map((found) => ({ looks: found }))))
+      .handle('pieceLooks', ({ params }) =>
+        looks.pieceLooks(params.pieceId).pipe(Effect.map((found) => ({ looks: found }))),
+      )
       .handle('createLook', ({ payload }) => looks.createLook(payload))
       .handle('getLook', ({ params }) => looks.getLook(params.lookId))
       .handle('shareLook', ({ params, payload }) => looks.shareLook(params.lookId, payload))

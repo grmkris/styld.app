@@ -566,6 +566,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.linkProblem.slowDown': 'Too many links at once. Try again in a minute.',
   'capture.linkPlaceholder': 'https://…',
   'looks.title': 'Looks',
+  'looks.inYourLooks': 'In your looks',
   'looks.pieceCount': '{count, plural, one {# piece} other {# pieces}}',
   'looks.emptyTitle': 'No looks yet',
   'looks.emptyHint': "Lay pieces out on a board's table and save it as a look, or ask Styld for one.",

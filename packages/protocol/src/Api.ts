@@ -161,6 +161,14 @@ class WardrobeApi extends HttpApiGroup.make('wardrobe')
 class LookApi extends HttpApiGroup.make('look')
   .add(HttpApiEndpoint.get('listLooks', '/looks', { success: Looks, error: Unavailable }))
   .add(
+    /** The person's looks one of their pieces is in, newest first: a piece's "In your looks". */
+    HttpApiEndpoint.get('pieceLooks', '/pieces/:pieceId/looks', {
+      params: { pieceId: PieceId },
+      success: Looks,
+      error: Unavailable,
+    }),
+  )
+  .add(
     HttpApiEndpoint.post('createLook', '/looks', {
       payload: CreateLook,
       success: Look,

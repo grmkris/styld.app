@@ -9,6 +9,9 @@ export type LookRow = typeof looks.$inferSelect
 type ReceiptRow = typeof operationReceipts.$inferSelect
 type Drizzle = Database['Service']
 
+/** The most looks a piece's page lists. */
+const piecesLooks = 50
+
 /** Which of these looks belong to the account: the one ownership check of looks, for boards too. */
 export const ownLookIds = (db: Drizzle, accountId: string, lookIds: ReadonlyArray<string>) =>
   Effect.map(
@@ -38,6 +41,17 @@ export const lookStore = (db: Drizzle) => ({
     query(() =>
       db.select().from(looks).where(eq(looks.accountId, accountId)).orderBy(desc(looks.createdAt)).limit(200),
     ),
+  /** The account's looks this piece is in, newest first. */
+  looksWithPiece: (accountId: string, pieceId: string) =>
+    query(() =>
+      db
+        .select({ look: looks })
+        .from(looks)
+        .innerJoin(lookPieces, eq(lookPieces.lookId, looks.id))
+        .where(and(eq(looks.accountId, accountId), eq(lookPieces.pieceId, pieceId)))
+        .orderBy(desc(looks.createdAt))
+        .limit(piecesLooks),
+    ).pipe(Effect.map((rows) => rows.map(({ look }) => look))),
   /** These looks, whoever's they are: a board's pins read the looks pinned on it. */
   looksById: (lookIds: ReadonlyArray<string>) =>
     inChunks(lookIds, (chunk) => db.select().from(looks).where(inArray(looks.id, chunk))),

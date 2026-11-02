@@ -27,6 +27,7 @@ import type { PictureEncoder } from '../Upload.ts'
 import { Misses, pollWhilePending } from '../Polling.ts'
 import { LoadError } from '../ServerData.ts'
 import * as PieceBack from './PieceBack.ts'
+import * as PieceLooks from './PieceLooks.ts'
 import * as PiecePhotos from './PiecePhotos.ts'
 import { changeDetails, type Details } from './PieceFields.ts'
 import { changesOf, Draft, DraftSave, draftOf, shopUrlSendable } from './PieceDraft.ts'
@@ -84,6 +85,8 @@ export const Model = Schema.Struct({
   back: PieceBack.Model,
   /** The outfit photos it is confirmed in. */
   photos: PiecePhotos.Model,
+  /** The saved looks it is in. */
+  looks: PieceLooks.Model,
   /** Whether the turn's player has drawn its first frame; until then the still shows under it. */
   turnShown: Schema.Boolean,
   saveToBoard: SaveToBoard.Model,
@@ -102,6 +105,7 @@ export const init = (pieceId: string): Model => ({
   turnShown: false,
   back: PieceBack.init(pieceId),
   photos: PiecePhotos.init(),
+  looks: PieceLooks.init(),
   saveToBoard: SaveToBoard.init({ kind: 'piece', id: pieceId }),
 })
 
@@ -132,6 +136,7 @@ export const Message = defineMessageUnion({
   SucceededUpdatePiece: { piece: Piece },
   GotBackMessage: { message: PieceBack.Message },
   GotPhotosMessage: { message: PiecePhotos.Message },
+  GotLooksMessage: { message: PieceLooks.Message },
   FailedUpdatePiece: {},
   ClickedShowPicture: { use: PictureChoice },
   SucceededChoosePicture: { piece: Piece },
@@ -323,6 +328,7 @@ export const ShowTurn = Mount.define('ShowTurn', {
 export const load = (model: Model): ReadonlyArray<Command.Command<Message, never, StyldClient>> => [
   GetPiece({ pieceId: model.pieceId }),
   ...Command.mapMessages(PiecePhotos.load(model.pieceId), (message) => Message.GotPhotosMessage({ message })),
+  ...Command.mapMessages(PieceLooks.load(model.pieceId), (message) => Message.GotLooksMessage({ message })),
 ]
 
 // UPDATE
@@ -545,6 +551,9 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotBackMessage: ({ message: backMessage }) => foldBack(model, backMessage),
     GotPhotosMessage: ({ message: photosMessage }) => ({
       model: modifyFields(model, { photos: (photos) => PiecePhotos.update(photos, photosMessage).model }),
+    }),
+    GotLooksMessage: ({ message: looksMessage }) => ({
+      model: modifyFields(model, { looks: (looks) => PieceLooks.update(looks, looksMessage).model }),
     }),
     FailedUpdatePiece: () => ({
       model: modifyFields(model, {

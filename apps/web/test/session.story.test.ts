@@ -172,7 +172,13 @@ describe('the time zone', () => {
 describe('the wardrobe pages', () => {
   test('each page asks for what it shows as it opens', () => {
     expect(opening('/wardrobe')).toEqual(['ReadSession', 'ReadTimeZone', 'ListPieces'])
-    expect(opening('/wardrobe/pc_abc')).toEqual(['ReadSession', 'ReadTimeZone', 'GetPiece', 'ListPiecePhotos'])
+    expect(opening('/wardrobe/pc_abc')).toEqual([
+      'ReadSession',
+      'ReadTimeZone',
+      'GetPiece',
+      'ListPiecePhotos',
+      'ListPieceLooks',
+    ])
     expect(opening('/wardrobe/add')).toEqual(['ReadSession', 'ReadTimeZone'])
     expect(opening('/wardrobe/review')).toEqual(['ReadSession', 'ReadTimeZone', 'LoadTray'])
     expect(opening('/looks')).toEqual(['ReadSession', 'ReadTimeZone', 'ListLooks'])

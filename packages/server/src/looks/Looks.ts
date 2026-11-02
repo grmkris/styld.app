@@ -6,6 +6,7 @@ import {
   NotFound,
   OperationConflict,
   type OperationId,
+  type PieceId,
   type ShareLook,
   Unavailable,
 } from '@styld/protocol'
@@ -105,6 +106,11 @@ const reading = Effect.map(Effect.context<LookServices>(), (context) => ({
   listLooks: Effect.fn('Styld.Looks.list')(function* () {
     const { accountId } = yield* CurrentAccount
     return yield* shown(yield* stored((yield* LookStore).listLooks(accountId)))
+  }, Effect.provide(context)),
+  /** The looks one of the person's pieces is in, newest first; none for a piece that is not theirs. */
+  pieceLooks: Effect.fn('Styld.Looks.ofPiece')(function* (pieceId: PieceId) {
+    const { accountId } = yield* CurrentAccount
+    return yield* shown(yield* stored((yield* LookStore).looksWithPiece(accountId, pieceId)))
   }, Effect.provide(context)),
   getLook: Effect.fn('Styld.Looks.get')(function* (lookId: LookId) {
     const { accountId } = yield* CurrentAccount

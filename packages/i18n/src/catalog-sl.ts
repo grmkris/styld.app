@@ -579,6 +579,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.linkProblem.slowDown': 'Preveč povezav naenkrat. Poskusi znova čez minuto.',
   'capture.linkPlaceholder': 'https://…',
   'looks.title': 'Videzi',
+  'looks.inYourLooks': 'V tvojih videzih',
   'looks.pieceCount': '{count, plural, one {# kos} two {# kosa} few {# kosi} other {# kosov}}',
   'looks.emptyTitle': 'Še ni videzov',
   'looks.emptyHint': 'Kose razporedi na mizo zbirke in jo shrani kot videz ali pa ga prosi Stylda.',

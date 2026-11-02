@@ -1,6 +1,6 @@
-import { OperationId } from '@styld/protocol'
+import { Look, OperationId } from '@styld/protocol'
 import { Dialog } from '@foldkit/ui'
-import { Option } from 'effect'
+import { Option, Schema } from 'effect'
 import { Command, Mount, click, expect, given, role, scene, submit, text, type } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
@@ -17,6 +17,7 @@ import {
   ShowTurn,
   TurnWork,
 } from '../src/page/Piece.ts'
+import * as PieceLooks from '../src/page/PieceLooks.ts'
 import { ListBoards, Message as DataMessage } from '../src/ServerData.ts'
 import { view } from '../src/View.ts'
 import { sceneSheetOpened } from './SheetFixtures.ts'
@@ -105,6 +106,31 @@ describe('the piece page', () => {
       expect(role('heading', { name: 'Weekend denim' })).toExist(),
       expect(text('Jeans')).toExist(),
     )
+  })
+
+  test('lists the saved looks the piece is in, each opening its look, and nothing when it is in none', () => {
+    const look = Schema.decodeUnknownSync(Look)({
+      id: `lk_${'dinner'.padEnd(22, 'x')}`,
+      name: 'Moja zbirka',
+      occasion: null,
+      pieces: [jeans],
+      shared: false,
+      check: null,
+      createdAt: '2026-11-02T14:00:00.000Z',
+    })
+    const withLooks = (looks: ReadonlyArray<Look>) =>
+      withPage(piecePage(PieceData.Success({ data: jeans })), lenses.piece, (piece) =>
+        modifyFields(piece, {
+          looks: () => PieceLooks.update(PieceLooks.init(), PieceLooks.Message.SucceededListLooks({ looks })).model,
+        }),
+      )
+    scene(
+      { update, view },
+      given(withLooks([look])),
+      expect(role('heading', { name: 'In your looks' })).toExist(),
+      expect(role('link', { name: /^Moja zbirka/ })).toHaveAttr('href', `/looks/${look.id}`),
+    )
+    scene({ update, view }, given(withLooks([])), expect(role('heading', { name: 'In your looks' })).not.toExist())
   })
 
   test('deleting confirms in the page and returns to the wardrobe', () => {

@@ -20,7 +20,7 @@ import { instructions, styldTools } from '../src/mcp/StyldTools.ts'
 import { callTool, renderTools } from '../src/mcp/Tools.ts'
 import { challenge, hostedClientMetadata, redirectUriAllowed } from '../src/mcp/Policy.ts'
 import { Wardrobe } from '../src/wardrobe/Wardrobe.ts'
-import { Looks } from '../src/looks/Looks.ts'
+import { noLooks } from './fakes/Looks.ts'
 import { Boards } from '../src/boards/Boards.ts'
 import { Profiles } from '../src/social/Profiles.ts'
 import { everyCall, toolNames } from './ToolNames.ts'
@@ -87,15 +87,6 @@ const wardrobe = Wardrobe.of({
   processPiece: notUsed,
   failPiece: notUsed,
   sweepUploads: notUsed,
-})
-/** Looks answer one saved look; anything else is not part of these tests. */
-const looks = Looks.of({
-  createLook: notUsed,
-  listLooks: () => Effect.succeed([]),
-  getLook: notUsed,
-  shareLook: notUsed,
-  deleteLook: notUsed,
-  looksById: notUsed,
 })
 /** Redraws: the first piece is drawn again; the second shows its original photo, which is never sent on. */
 const redraws: Array<{ readonly pieceId: string; readonly input: RedrawPicture }> = []
@@ -215,7 +206,7 @@ const links = Effect.runSync(
 const tools = styldTools('https://styld.test', {
   wardrobe,
   links,
-  looks,
+  looks: noLooks,
   captures,
   boards,
   profiles,

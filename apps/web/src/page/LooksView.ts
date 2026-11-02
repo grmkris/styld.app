@@ -30,7 +30,8 @@ export const collage = <Message>(look: Look, h: HtmlBuilder<Message>): Html =>
     ),
   )
 
-const card = (look: Look, locale: Locale, h: HtmlBuilder<Message>): Html =>
+/** A look as a card that opens it: its pieces together, its name and its occasion or count. */
+export const lookCard = <Message>(look: Look, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.keyed('li')(
     look.id,
     [],
@@ -88,7 +89,7 @@ const looksPage = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html 
           : [
               h.ul(
                 styled(h, styles.grid()),
-                looks.map((look) => card(look, locale, h)),
+                looks.map((look) => lookCard(look, locale, h)),
               ),
             ],
     }),

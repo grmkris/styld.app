@@ -26,6 +26,7 @@ import { cx } from 'zyzz'
 import * as styles from './PieceView.styles.ts'
 import { factsView } from './PieceFactsView.ts'
 import * as PieceBackView from './PieceBackView.ts'
+import * as PieceLooksView from './PieceLooksView.ts'
 import * as PiecePhotosView from './PiecePhotosView.ts'
 import * as SaveToBoardView from './SaveToBoardView.ts'
 
@@ -332,6 +333,13 @@ const pieceDetails = (
       view: PiecePhotosView.view,
       viewInputs: { locale },
       toParentMessage: (message) => Message.GotPhotosMessage({ message }),
+    }),
+    h.submodel({
+      slotId: 'piece-looks',
+      model: model.looks,
+      view: PieceLooksView.view,
+      viewInputs: { locale },
+      toParentMessage: (message) => Message.GotLooksMessage({ message }),
     }),
     // Save to board is the page's one action; Delete is quiet, at the end, and asks first.
     Deletion.guards.Idle(model.deletion)

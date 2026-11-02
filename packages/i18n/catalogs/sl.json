@@ -661,6 +661,7 @@
   },
   "looks": {
     "title": "Videzi",
+    "inYourLooks": "V tvojih videzih",
     "pieceCount": "{count, plural, one {# kos} two {# kosa} few {# kosi} other {# kosov}}",
     "emptyTitle": "Še ni videzov",
     "emptyHint": "Kose razporedi na mizo zbirke in jo shrani kot videz ali pa ga prosi Stylda.",

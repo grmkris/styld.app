@@ -322,6 +322,11 @@ const verifyWebLook = async (origin: string, cookie: string, pieceId: string, st
     await (await owner('/api/looks')).json(),
   )
   expect(looks.map(({ id }) => id)).toContain(lookId)
+  // The piece's page lists the looks it is in; a piece that is not the person's is in none of theirs.
+  const inLooks = Schema.decodeUnknownSync(Schema.Struct({ looks: Schema.Array(Identified) }))
+  const ofPiece = inLooks(await (await owner(`/api/pieces/${pieceId}/looks`)).json())
+  expect(ofPiece.looks.map(({ id }) => id)).toContain(lookId)
+  expect(inLooks(await (await owner(`/api/pieces/${strangerPieceId}/looks`)).json()).looks).toEqual([])
 }
 
 /** Deleting the account takes its boards, pictures and worn days with it, the pictures' bytes included. */

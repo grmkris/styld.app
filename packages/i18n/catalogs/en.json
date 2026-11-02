@@ -661,6 +661,7 @@
   },
   "looks": {
     "title": "Looks",
+    "inYourLooks": "In your looks",
     "pieceCount": "{count, plural, one {# piece} other {# pieces}}",
     "emptyTitle": "No looks yet",
     "emptyHint": "Lay pieces out on a board's table and save it as a look, or ask Styld for one.",
