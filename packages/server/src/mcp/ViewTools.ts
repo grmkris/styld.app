@@ -17,6 +17,7 @@ import { Array, Effect, Match, Option, Record, Schema } from 'effect'
 import type { Boards } from '../boards/Boards.ts'
 import * as Base64 from 'effect/encoding/Base64'
 import { collect } from '../Streams.ts'
+import { transformedOnly } from '../wardrobe/Delivery.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { showsView } from './Resources.ts'
 import { tool, ViewResult } from './Tools.ts'
@@ -37,7 +38,8 @@ const labelsIn = (locale: Locale): ViewLabels => ({
  * the model's context, because a host's sandbox cannot load Styld's private image routes. */
 const viewImageLimit = 24
 
-/** A thumbnail larger than this is not one: the image service fell back to the stored original. */
+/** A thumbnail is only what the Images binding transformed (`transformedOnly`): an original photo, which may carry its
+ * EXIF and GPS, never goes to a host. A transformed one larger than this is left out too. */
 const largestThumbnail = 200 * 1024
 
 type Thumbnail = { readonly body: Parameters<typeof collect>[0]; readonly contentType: string }
@@ -72,7 +74,9 @@ const readThumbnails = (reads: ReadonlyArray<ThumbnailRead>) =>
 
 /** Thumbnails of the first pieces the view shows, keyed by piece id. */
 const thumbnails = (wardrobe: Wardrobe['Service'], pieces: ReadonlyArray<Piece>) =>
-  readThumbnails(pieces.map((piece) => [piece.id, wardrobe.pieceImage(piece.id, 'thumb')] as const))
+  readThumbnails(
+    pieces.map((piece) => [piece.id, wardrobe.pieceImage(piece.id, 'thumb', 'shown', transformedOnly)] as const),
+  )
 
 /** A board's view words in one language, from the reviewed catalogs. */
 const boardLabelsIn = (locale: Locale): BoardViewLabels => ({
@@ -106,11 +110,14 @@ const viewPin =
 
 /** The board's thumbnails, the collage's first, each picture once. */
 const boardThumbnails = (wardrobe: Wardrobe['Service'], boards: Boards['Service'], board: Board) => {
-  const ofPiece = (pieceId: PieceId): ThumbnailRead => [`piece:${pieceId}`, wardrobe.pieceImage(pieceId, 'thumb')]
+  const ofPiece = (pieceId: PieceId): ThumbnailRead => [
+    `piece:${pieceId}`,
+    wardrobe.pieceImage(pieceId, 'thumb', 'shown', transformedOnly),
+  ]
   const ofPicture = (imageId: BoardImageId): ThumbnailRead => [
     `picture:${imageId}`,
     boards
-      .boardImage(imageId, 'thumb')
+      .boardImage(imageId, 'thumb', transformedOnly)
       .pipe(Effect.flatMap(Option.match({ onNone: () => Effect.fail('missing' as const), onSome: Effect.succeed }))),
   ]
   const onTable = board.items

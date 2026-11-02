@@ -24,7 +24,7 @@ import { ownLookIds } from '../looks/Store.ts'
 import { Checks } from '../safety/Checks.ts'
 import { requirePublished } from '../social/ProfileStore.ts'
 
-import { deliverImage } from '../wardrobe/Delivery.ts'
+import { type Delivery, deliverImage } from '../wardrobe/Delivery.ts'
 import type { ShownImage } from '../wardrobe/Http.ts'
 import type { ImageSize } from '../wardrobe/Media.ts'
 import { ownPieceIds } from '../wardrobe/Store.ts'
@@ -327,12 +327,12 @@ const pictures = Effect.map(Effect.context<BoardServices>(), (context) => ({
   }, Effect.provide(context)),
   /** A board picture for its owner, resized to WebP by the Images binding; another account's reads as none.
    * A picture never changes, so its id and size are its version. */
-  boardImage: Effect.fn('Styld.Boards.image')(function* (imageId: BoardImageId, size: ImageSize) {
+  boardImage: Effect.fn('Styld.Boards.image')(function* (imageId: BoardImageId, size: ImageSize, delivery?: Delivery) {
     const { accountId } = yield* CurrentAccount
     const image = yield* stored((yield* BoardStore).findImage(accountId, imageId))
     if (Option.isNone(image)) return Option.none<ShownImage>()
     const { objectKey, contentType } = image.value
-    const delivered = yield* deliverImage(yield* Media, { key: objectKey, contentType }, size)
+    const delivered = yield* deliverImage(yield* Media, { key: objectKey, contentType }, size, delivery)
     return Option.map(delivered, (shownImage): ShownImage => ({ ...shownImage, version: `${imageId}.${size}` }))
   }, Effect.provide(context)),
 }))

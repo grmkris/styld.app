@@ -12,15 +12,22 @@ export interface DeliveredImage {
 
 const unavailable = () => Unavailable.make({})
 
+/** What a failed transform answers: the stored bytes (the owner's own browser), or no image (anything that leaves
+ * Styld: others' pages, an assistant's host), since the stored bytes may be an original photo with its metadata. */
+export interface Delivery {
+  readonly fallback: 'stored' | 'none'
+}
+
+/** Only what the Images binding transformed: no original bytes, so no EXIF or GPS. */
+export const transformedOnly: Delivery = { fallback: 'none' }
+
 /** A stored photo resized to WebP by the Images binding, at one of the sizes the website shows. A photo the
  * binding cannot transform is served as it was stored; a photo no longer in the bucket is none. */
 export const deliverImage = Effect.fnUntraced(function* (
   bindings: Media['Service'],
   stored: { readonly key: string; readonly contentType: string },
   size: ImageSize,
-  /** `none` for anything others see: a failed transform answers no image rather than the stored bytes, which may
-   * be an original photo with its metadata. */
-  options: { readonly fallback: 'stored' | 'none' } = { fallback: 'stored' },
+  options: Delivery = { fallback: 'stored' },
 ) {
   const read = Effect.tryPromise({ try: () => bindings.bucket.get(stored.key), catch: unavailable })
   const object = yield* read

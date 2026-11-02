@@ -16,7 +16,7 @@ import {
 } from '@styld/protocol'
 import { Context, DateTime, Effect, Layer, Option, Predicate } from 'effect'
 import { type ByteStream, pump } from '../Streams.ts'
-import { deliverImage } from './Delivery.ts'
+import { type Delivery, deliverImage } from './Delivery.ts'
 import { type ImageSize, isVideoContainer, piecePrefix, sniffImageType, uploadKey } from './Media.ts'
 import { backing } from './Back.ts'
 import { PieceQueue } from './Processing.ts'
@@ -422,18 +422,20 @@ const pictureImage = (
 
 const images = Effect.map(Effect.context<WardrobeServices>(), (context) => ({
   /** One of the piece's pictures (the one it shows unless asked), resized to WebP by the Images binding. A photo
-   * it cannot transform is served as it was stored. */
+   * it cannot transform is served as it was stored, to its owner's browser only: `transformedOnly` answers
+   * unavailable instead. */
   pieceImage: Effect.fn('Styld.Wardrobe.pieceImage')(function* (
     pieceId: PieceId,
     size: ImageSize,
     which: 'shown' | 'photo' | 'clean' | 'back' = 'shown',
+    delivery?: Delivery,
   ) {
     const { accountId } = yield* CurrentAccount
     const piece = yield* ownPiece(pieceId)
     const picture = yield* pictureRow(accountId, pieceId)
     const source = pictureImage(piece, picture, which)
     if (Option.isNone(source)) return yield* NotFound.make({})
-    const image = yield* deliverImage(yield* Media, source.value, size)
+    const image = yield* deliverImage(yield* Media, source.value, size, delivery)
     if (Option.isNone(image)) return yield* NotFound.make({})
     // A new drawing, or a change of which picture shows, is a new version of the shown image.
     const drawing =

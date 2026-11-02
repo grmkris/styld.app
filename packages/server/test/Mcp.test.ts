@@ -57,9 +57,8 @@ const pieces = [
 ]
 /** Answers reads from three pieces; anything else is not part of these tests. */
 const notUsed = () => Effect.die('not used by these tests')
-/** The upload an earlier try of `picture-replay-1` fetched, as its receipt answers it. */
+/** The upload an earlier try of `picture-replay-1` fetched, as the receipt of its fetch (`replayedFetch`) answers. */
 const replayedUpload = UploadId.make(`up_${'replay'.padEnd(22, 'x')}`)
-/** The fetch `picture-replay-1` runs under, which has that receipt. */
 const replayedFetch = await Effect.runPromise(fetchOperation(OperationId.make('picture-replay-1'), 'picture_pin'))
 const wardrobe = Wardrobe.of({
   listPieces: () => Effect.succeed(pieces),
@@ -78,10 +77,10 @@ const wardrobe = Wardrobe.of({
   deletePiece: notUsed,
   setBack: notUsed,
   removeBack: notUsed,
-  // The first piece has a thumbnail; the others cannot be read, and the view goes without them.
-  pieceImage: (pieceId) =>
+  // The first piece has a thumbnail, the others none; the view asks only for transformed images, never originals.
+  pieceImage: (pieceId, _size, _which, delivery) =>
     Effect.gen(function* () {
-      if (pieceId !== pieces[0]?.id) return yield* NotFound.make({})
+      if (delivery?.fallback !== 'none' || pieceId !== pieces[0]?.id) return yield* NotFound.make({})
       return { body: new Blob(['webp']).stream(), contentType: 'image/webp', version: 'v1' }
     }),
   choosePicture: notUsed,
