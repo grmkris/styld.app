@@ -243,9 +243,16 @@ const inVideo = Effect.fnUntraced(function* (video: VideoToTrack) {
   const [prompt] = promptsFor('video')
   const frames = new Set(video.stills.map(({ frame }) => frame))
   const segmenter = yield* GarmentSegmenter
+  // The file is deleted at once; a delete Meta does not confirm is left to the sweep (`ProviderFiles.ts`).
   const tracked = yield* segmenter
     .track(video.fileId, prompt, frames)
-    .pipe(Effect.ensuring(segmenter.forget(video.fileId)))
+    .pipe(
+      Effect.ensuring(
+        segmenter
+          .forget(video.fileId)
+          .pipe(Effect.ignore({ log: true, message: 'Styld.Capture.forgetVideo left a video at Meta' })),
+      ),
+    )
   const frameSize = tracked.frameSize ?? video.frameSize
   const stills = new Map(video.stills.map((still) => [still.frame, { ...still, ...frameSize }]))
   const sightings = tracked.found.map((found) => ({

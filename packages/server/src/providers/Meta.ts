@@ -216,15 +216,15 @@ const trackVideo = (settings: MetaSettings, http: HttpProvider) =>
     )
   })
 
-/** Delete an uploaded video at Meta. Tracking already settled, so a failure is only logged. */
+/** Delete an uploaded video at Meta: done once Meta says it deleted it, or that it has no such file (deleted before).
+ * Any other answer fails, so the file stays recorded and is deleted again later (`capture/ProviderFiles.ts`). */
 const forgetVideo = (http: HttpProvider) =>
   Effect.fn('Styld.Capture.forgetVideo')(function* (fileId: string) {
-    yield* http
+    const response = yield* http
       .send(`/v1/files/${encodeURIComponent(fileId)}`, { method: 'DELETE', lost: 'busy' })
-      .pipe(
-        Effect.timeoutOrElse({ duration: '30 seconds', orElse: () => Effect.fail(failed(true)) }),
-        Effect.ignore({ log: true, message: 'Styld.Capture.forgetVideo could not delete a video at Meta' }),
-      )
+      .pipe(Effect.timeoutOrElse({ duration: '30 seconds', orElse: () => Effect.fail(failed(true)) }))
+    if (response.ok || response.status === 404) return
+    return yield* refusal(response)
   })
 
 /** Meta SAM 3.1 through `api.meta.ai`: stills inline, videos through the Files API, deleted once tracked. */

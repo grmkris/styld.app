@@ -44,7 +44,7 @@ const handedOver = (capture: CaptureRow, frameCount: number) =>
         contentType: capture.contentType === 'video/quicktime' ? 'video/quicktime' : 'video/mp4',
         metadata,
       }))
-    yield* storedAs((yield* CaptureStore).updateCapture(capture.id, { providerFileId: fileId, frameCount }))
+    yield* storedAs((yield* CaptureStore).handedOver(capture, fileId, frameCount, yield* nowDate))
     if (!(yield* storedAs((yield* CaptureStore).claimTracking(capture.id, yield* nowDate))))
       return yield* TrackingClaimed.make({})
     return fileId

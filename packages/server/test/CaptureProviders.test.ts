@@ -419,6 +419,20 @@ describe('Meta SAM', () => {
     })
   })
 
+  test('deletes a video only when Meta confirms it, or has no such file', async () => {
+    const forget = (status: number) =>
+      run(segmenter(() => new Response(status === 204 ? null : '{}', { status })).forget('file_1'))
+    expect(Exit.isSuccess(await forget(200))).toBe(true)
+    expect(Exit.isSuccess(await forget(204))).toBe(true)
+    expect(Exit.isSuccess(await forget(404))).toBe(true)
+    expect(await errorOf(segmenter(() => new Response('{}', { status: 500 })).forget('file_1'))).toMatchObject({
+      reason: { _tag: 'Busy' },
+    })
+    expect(await errorOf(segmenter(() => new Response('{}', { status: 403 })).forget('file_1'))).toMatchObject({
+      reason: { _tag: 'Refused' },
+    })
+  })
+
   test('tracks a video and keeps only the frames asked for', async () => {
     const tracked = await run(
       segmenter(() => new Response(text('sam-video-tiny-rail.sse'))).track('file_1', 'clothing', new Set([0, 24])),

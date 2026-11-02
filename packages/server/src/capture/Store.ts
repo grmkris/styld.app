@@ -11,6 +11,7 @@ import {
 import { and, desc, eq, inArray, isNull, ne } from 'drizzle-orm'
 import { Array, Context, Effect, Layer, Option } from 'effect'
 import { matchRows } from './MatchStore.ts'
+import { fileRecord } from './ProviderFiles.ts'
 import { chunked, Database as Db, first, query } from '../kernel/Db.ts'
 import { forgetReceipt } from '../kernel/Receipts.ts'
 import { GarmentRows } from '../photos/Rows.ts'
@@ -97,6 +98,15 @@ const captureRows = (db: Database) => ({
     query(() => db.select().from(captureFrames).where(eq(captureFrames.captureId, captureId))),
   updateCapture: (captureId: string, changes: Partial<CaptureRow>) =>
     query(() => db.update(captures).set(changes).where(eq(captures.id, captureId))).pipe(Effect.asVoid),
+  /** The capture's file at Meta, recorded with it in one batch so the file is deleted even if the capture is not
+   * (`ProviderFiles.ts`). */
+  handedOver: (capture: CaptureRow, fileId: string, frameCount: number, at: Date) =>
+    query(() =>
+      db.batch([
+        db.update(captures).set({ providerFileId: fileId, frameCount }).where(eq(captures.id, capture.id)),
+        fileRecord(db, { fileId, accountId: capture.accountId, createdAt: at }),
+      ]),
+    ).pipe(Effect.asVoid),
   /** The capture's detections and its new status, together. Detections from an earlier attempt are
    * replaced, so a retried capture never shows a piece twice; a capture no longer processing keeps its
    * status. */

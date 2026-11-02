@@ -146,8 +146,8 @@ export class GarmentSegmenter extends Context.Service<
       },
       ProviderError
     >
-    /** Delete an uploaded video at Meta once it is tracked; a failure is logged, never raised. */
-    readonly forget: (fileId: string) => Effect.Effect<void>
+    /** Delete an uploaded video at Meta: succeeds once Meta deleted it or has no such file. */
+    readonly forget: (fileId: string) => Effect.Effect<void, ProviderError>
   }
 >()('@styld/server/GarmentSegmenter') {}
 
