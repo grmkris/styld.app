@@ -117,15 +117,8 @@ describe('public edge routing', () => {
     expect(fromWebsite.headers.get('content-security-policy')).toBe(documentPolicy)
   })
 
-  test('sends v1 share links to the board and keeps a preview deployment out of search engines', async () => {
+  test('keeps a preview deployment out of search engines', async () => {
     const unused = { fetch: async () => new Response('unused') }
-    const board = `bd_${'a'.repeat(22)}`
-    const moved = await edge.fetch(new Request(`https://styld.test/share/board/${board}`), {
-      API: unused,
-      WEBSITE: unused,
-    })
-    expect(moved.status).toBe(301)
-    expect(moved.headers.get('location')).toBe(`https://styld.test/boards/${board}`)
     const page = await edge.fetch(new Request('https://styld.test/'), {
       API: unused,
       WEBSITE: { fetch: async () => new Response('<!doctype html>', { headers: { 'content-type': 'text/html' } }) },

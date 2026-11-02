@@ -186,9 +186,6 @@ const verifyPublicPages = async (origin: string, fixtures: string, owner: Call) 
   expect(board).toContain(`<meta property="og:image" content="${origin}/cdn/public/`)
   expect(board).toContain(`<link rel="canonical" href="${origin}/boards/${boardId}">`)
   expect(await previewOf(origin, '/@nika.kovac')).toContain('content="Nika Kovač (@nika.kovac) on Styld"')
-  const moved = await fetch(`${origin}/share/board/${boardId}`, { redirect: 'manual' })
-  expect(moved.status).toBe(301)
-  expect(moved.headers.get('location')).toBe(`${origin}/boards/${boardId}`)
   const page = Schema.decodeUnknownSync(Schema.Struct({ piece: Schema.Record(Schema.String, Schema.Unknown) }))(
     await (await anyone(`/api/public/pieces/${pieceId}`)).json(),
   )

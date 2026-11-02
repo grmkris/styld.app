@@ -50,9 +50,6 @@ const withPreview = (response: Response, meta: PageMeta | undefined, url: URL): 
     .transform(response)
 }
 
-/** v1's share links, `/share/board/:id`, now open the board's own address. */
-const sharedBoard = /^\/share\/board\/([A-Za-z0-9_-]{1,40})$/u
-
 /** Native transport boundary. Reserved telemetry fields belong to the edge;
  * callers cannot choose log labels or smuggle payloads through correlation IDs.
  * Request bodies and responses keep their native streaming semantics; the edge
@@ -67,9 +64,6 @@ export default {
     headers.set('x-styld-correlation-id', correlationId)
     const forwarded = new Request(request, { headers })
     const url = new URL(request.url)
-    const shared = sharedBoard.exec(url.pathname)?.[1]
-    if (shared !== undefined)
-      return withSecurityHeaders(Response.redirect(new URL(`/boards/${shared}`, url).href, 301), documentPolicy)
     const api = isApiPath(url.pathname)
     // The preview is read while the page renders.
     const preview =
