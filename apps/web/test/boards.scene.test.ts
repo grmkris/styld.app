@@ -55,7 +55,7 @@ describe('the boards list', () => {
     scene(
       { update, view },
       given(boardsPage([summary('Sea', { cover: pins, pinCount: 2 }), summary('Empty', {})])),
-      expect(selector(`img[src="/cdn/pieces/${knit.id}/thumb"]`)).toExist(),
+      expect(selector(`img[src="${knit.images?.thumb ?? ''}"]`)).toExist(),
       expect(selector(`img[src="/cdn/boards/images/${pictureId}/thumb"]`)).toExist(),
       expect(text('Nothing pinned yet')).toExist(),
       expect(role('link', { name: /^Empty\s*0 pins$/ })).toExist(),

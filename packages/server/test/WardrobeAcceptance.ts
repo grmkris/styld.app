@@ -60,18 +60,33 @@ const checkedUpload = async (origin: string, owner: Call) => {
   return photo
 }
 
-/** A back added on the piece's page: shown to its owner only, repeated as is, and forgotten again. */
+const PieceImages = Schema.Struct({
+  images: Schema.Struct({ thumb: Schema.String, full: Schema.String, back: Schema.optionalKey(Schema.String) }),
+})
+
+/** The signed addresses the website is handed for a piece's pictures. */
+const imagesOf = async (owner: Call, pieceId: string) =>
+  Schema.decodeUnknownSync(PieceImages)(await (await owner(`/api/pieces/${pieceId}`)).json()).images
+
+/** A signed address with one of its signed fields changed. */
+const altered = (address: string, field: string, value: string) => {
+  const url = new URL(address, 'https://styld.test')
+  url.searchParams.set(field, value)
+  return `${url.pathname}${url.search}`
+}
+
+/** A back added on the piece's page: shown by its signed address only, repeated as is, and forgotten again. */
 const verifyBack = async (origin: string, owner: Call, other: Call, pieceId: string) => {
   const back = { operationId: 'native-back-0001', uploadId: await receivedPhoto(origin, owner) }
   expect((await send(other, `/api/pieces/${pieceId}/back`, 'PUT', back)).status).toBe(404)
   const set = await send(owner, `/api/pieces/${pieceId}/back`, 'PUT', back)
   expect(await set.json()).toMatchObject({ id: pieceId, hasBack: true })
   expect(await (await send(owner, `/api/pieces/${pieceId}/back`, 'PUT', back)).json()).toMatchObject({ hasBack: true })
-  expect((await owner(`/cdn/pieces/${pieceId}/back/thumb`)).status).toBe(200)
-  expect((await other(`/cdn/pieces/${pieceId}/back/thumb`)).status).toBe(404)
+  const backImage = (await imagesOf(owner, pieceId)).back
+  expect((await fetch(`${origin}${backImage ?? ''}`)).status).toBe(200)
   const removed = await owner(`/api/pieces/${pieceId}/back`, { method: 'DELETE' })
   expect(await removed.json()).toMatchObject({ hasBack: false })
-  expect((await owner(`/cdn/pieces/${pieceId}/back/thumb`)).status).toBe(404)
+  expect((await imagesOf(owner, pieceId)).back).toBeUndefined()
 }
 
 /** A photo goes up, becomes a piece, is processed by the queue and shown through the Images
@@ -117,16 +132,24 @@ export const verifyWardrobe = async (origin: string, fixtures: string): Promise<
 
   expect(await waitUntilReady(owner, piece.id)).toBe('ready')
   await verifyBack(origin, owner, other, piece.id)
-  const thumb = await owner(`/cdn/pieces/${piece.id}/thumb`)
+  // The wardrobe's pictures load by their signed addresses alone: no session cookie, so no session read and no D1.
+  const images = await imagesOf(owner, piece.id)
+  const thumb = await fetch(`${origin}${images.thumb}`)
   expect(thumb.status).toBe(200)
   expect(thumb.headers.get('content-type')).toMatch(/^image\//)
-  expect(thumb.headers.get('cache-control')).toContain('private')
-  const etag = thumb.headers.get('etag') ?? ''
-  expect((await owner(`/cdn/pieces/${piece.id}/thumb`, { headers: { 'if-none-match': etag } })).status).toBe(304)
+  expect(thumb.headers.get('cache-control')).toMatch(/^private, max-age=\d+, immutable$/)
+  expect((await fetch(`${origin}${images.full}`)).status).toBe(200)
+  // An altered address, or one pointed at another account's object, is refused before anything is read.
+  const otherKey = altered(images.thumb, 'k', 'accounts/acc_other/uploads/up_other')
+  expect((await fetch(`${origin}${otherKey}`)).status).toBe(403)
+  expect((await fetch(`${origin}${altered(otherKey, 'a', 'acc_other')}`)).status).toBe(403)
+  expect((await fetch(`${origin}${altered(images.thumb, 'e', '1')}`)).status).toBe(403)
+  expect((await fetch(`${origin}${images.thumb.replace('/thumb?', '/full?')}`)).status).toBe(403)
+  // The pieces list hands over the same addresses.
+  expect(await (await owner('/api/pieces')).json()).toMatchObject({ pieces: [{ id: piece.id, images }] })
 
   // Another account cannot see, change, show or delete the piece.
   expect((await other(`/api/pieces/${piece.id}`)).status).toBe(404)
-  expect((await other(`/cdn/pieces/${piece.id}/full`)).status).toBe(404)
   expect(await (await other('/api/pieces')).json()).toEqual({ pieces: [] })
   expect((await send(other, `/api/pieces/${piece.id}`, 'PATCH', { name: 'Mine now' })).status).toBe(404)
   expect((await other(`/api/pieces/${piece.id}`, { method: 'DELETE' })).status).toBe(404)

@@ -19,13 +19,13 @@ const coverTile = <Message>({ id, source }: CoverPicture, h: HtmlBuilder<Message
 
 /** A board as a list shows it, inside a link that names it: its collage; with no collage yet, its newest pins two by
  * two; with no pins either, its paper saying so. Its pictures and words are not read aloud: the link's name and pin
- * count say what it holds. Pictures come from Styld's own routes unless `source` says otherwise. */
+ * count say what it holds. `source` says where its pictures come from. */
 export const boardFace = <Message>(
   face: {
     readonly items: ReadonlyArray<BoardItem>
     readonly paper: Paper
     readonly cover: ReadonlyArray<CoverPicture>
-    readonly source?: ImageSource
+    readonly source: ImageSource
   },
   locale: Locale,
   h: HtmlBuilder<Message>,

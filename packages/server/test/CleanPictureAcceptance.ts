@@ -104,9 +104,14 @@ export const verifyCleanPictures = async (origin: string, fixtures: string) => {
   expect(drawn.filter((prompt) => prompt.includes('magenta #ff00ff'))).toHaveLength(1)
   const tee = `accounts/${picturesAccount}/pieces/${kept.red}`
   expect(await exists(fixtures, `${tee}/clean-1.png`)).toBe(true)
-  for (const which of ['full', 'photo/full', 'clean/full'])
-    expect((await owner(`/cdn/pieces/${kept.red}/${which}`)).status).toBe(200)
-  expect((await owner(`/cdn/pieces/${kept.blue}/clean/full`)).status).toBe(404)
+  const PieceImages = Schema.Struct({
+    images: Schema.Struct({ thumb: Schema.String, full: Schema.String, clean: Schema.optionalKey(Schema.String) }),
+  })
+  const imagesOf = async (pieceId: string) =>
+    Schema.decodeUnknownSync(PieceImages)(await (await owner(`/api/pieces/${pieceId}`)).json()).images
+  const red = await imagesOf(kept.red)
+  for (const address of [red.full, red.clean ?? '']) expect((await fetch(`${origin}${address}`)).status).toBe(200)
+  expect((await imagesOf(kept.blue)).clean).toBeUndefined()
 
   // The owner takes the offered drawing; a scrap has none to take.
   const choose = (pieceId: string) =>

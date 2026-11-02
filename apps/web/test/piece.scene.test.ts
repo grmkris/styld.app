@@ -21,7 +21,7 @@ import * as PieceLooks from '../src/page/PieceLooks.ts'
 import { ListBoards, Message as DataMessage } from '../src/ServerData.ts'
 import { view } from '../src/View.ts'
 import { sceneSheetOpened } from './SheetFixtures.ts'
-import { pieceFixture } from './WardrobeFixtures.ts'
+import { pieceFixture, signedPicture } from './WardrobeFixtures.ts'
 import { boardSummaryFixture } from './BoardFixtures.ts'
 
 const jeans = pieceFixture('jeans', {
@@ -59,7 +59,7 @@ describe('the piece page', () => {
       { update, view },
       given(piecePage(PieceData.Success({ data: jeans }))),
       expect(role('heading', { name: 'Jeans' })).toExist(),
-      expect(role('img', { name: 'Jeans' })).toHaveAttr('src', `/cdn/pieces/${jeans.id}/full`),
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('src', jeans.images?.full ?? ''),
       // Unnamed, its title already says what it is: no line repeating it.
       expect(text('Colour')).toExist(),
       expect(text('Navy')).toExist(),
@@ -166,22 +166,26 @@ describe('the piece page', () => {
   })
 
   test('a proposed clean picture waits beside the photo until the owner takes it', () => {
-    const proposed = { ...jeans, picture: { state: 'proposed', shows: 'photo', version: 2 } } as const
-    const taken = { ...jeans, picture: { state: 'proposed', shows: 'clean', version: 2 } } as const
+    // The API signs a new address for every picture it shows, so taking the drawing loads a new one.
+    const images = {
+      thumb: signedPicture(jeans.id, 'thumb', 'photo2'),
+      full: signedPicture(jeans.id, 'full', 'photo2'),
+      clean: signedPicture(jeans.id, 'thumb', 'clean2'),
+    }
+    const proposed = { ...jeans, images, picture: { state: 'proposed', shows: 'photo', version: 2 } } as const
+    const takenImages = { ...images, full: signedPicture(jeans.id, 'full', 'clean2') }
+    const taken = { ...jeans, images: takenImages, picture: { state: 'proposed', shows: 'clean', version: 2 } } as const
     scene(
       { update, view },
       given(piecePage(PieceData.Success({ data: proposed }))),
-      expect(role('img', { name: 'Jeans' })).toHaveAttr('src', `/cdn/pieces/${proposed.id}/full?v=photo2`),
-      expect(role('img', { name: 'AI-cleaned picture' })).toHaveAttr(
-        'src',
-        `/cdn/pieces/${proposed.id}/clean/thumb?v=2`,
-      ),
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('src', images.full),
+      expect(role('img', { name: 'AI-cleaned picture' })).toHaveAttr('src', images.clean),
       click(role('button', { name: 'Use this picture' })),
       Command.resolve(
         ChoosePicture({ pieceId: proposed.id, use: 'clean' }),
         PieceMessage.SucceededChoosePicture({ piece: taken }),
       ),
-      expect(role('img', { name: 'Jeans' })).toHaveAttr('src', `/cdn/pieces/${proposed.id}/full?v=clean2`),
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('src', takenImages.full),
       expect(text('AI-cleaned picture')).toExist(),
       expect(role('button', { name: 'Show my photo' })).toExist(),
     )

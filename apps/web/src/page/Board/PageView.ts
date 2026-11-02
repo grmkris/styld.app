@@ -1,3 +1,4 @@
+import { cdn } from '../../Cdn.ts'
 import { Dialog } from '@foldkit/ui'
 import { format, type Locale, type MessageKey } from '@styld/i18n'
 import { Mood, type Paper, type Piece, type Pin, type PublicBoard, textLength } from '@styld/protocol'
@@ -26,7 +27,7 @@ import { chip, chosen } from '../../Controls.styles.ts'
 import * as MakeView from './MakeView.ts'
 import { generatedMark } from './MakeView.ts'
 import * as styles from './PageView.styles.ts'
-import { boardImage, pieceImage, stillTable } from './Table.ts'
+import { boardImage, fromStyld, pinnedPieces, stillTable } from './Table.ts'
 
 /** A pinned thing on the board; one the board shows others without (no picture of its own yet, or Styld's check held
  * it back) says so under it. */
@@ -60,7 +61,7 @@ const pinContent = (pin: Pin, asking: boolean, locale: Locale, h: HtmlBuilder<Me
           [
             h.span(styled(h, styles.pinFrame()), [
               h.img([
-                h.Src(pieceImage(piece.id)),
+                h.Src(cdn.piece(piece)),
                 h.Alt(pieceDescription(piece, locale)),
                 h.Loading('lazy'),
                 ...styled(h, styles.cutout()),
@@ -132,7 +133,7 @@ const collageView = (model: Model, paper: Paper, locale: Locale, h: HtmlBuilder<
   h.a(
     [h.Href(boardCollageRouter({ boardId: model.boardId })), ...styled(h, styles.collage())],
     [
-      stillTable(model.items, paper, [], h),
+      stillTable(model.items, paper, [], h, fromStyld(pinnedPieces(model.pins))),
       h.span(styled(h, styles.collageLabel()), [format(locale, 'studio.editCollage', {})]),
     ],
   )

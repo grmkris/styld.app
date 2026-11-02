@@ -1,4 +1,4 @@
-import { lookPieces, looks, operationReceipts, pieces } from '@styld/db'
+import { lookPieces, looks, operationReceipts, piecePictures, pieces } from '@styld/db'
 import { and, asc, desc, eq, inArray } from 'drizzle-orm'
 import { Context, Effect, Layer } from 'effect'
 import { receiptRows, recordedWrites } from '../kernel/Receipts.ts'
@@ -67,9 +67,10 @@ export const lookStore = (db: Drizzle) => ({
   piecesOf: (lookIds: ReadonlyArray<string>) =>
     inChunks(lookIds, (chunk) =>
       db
-        .select({ lookId: lookPieces.lookId, piece: pieces })
+        .select({ lookId: lookPieces.lookId, piece: pieces, picture: piecePictures })
         .from(lookPieces)
         .innerJoin(pieces, eq(pieces.id, lookPieces.pieceId))
+        .leftJoin(piecePictures, eq(piecePictures.pieceId, pieces.id))
         .where(inArray(lookPieces.lookId, chunk))
         .orderBy(asc(lookPieces.position)),
     ),

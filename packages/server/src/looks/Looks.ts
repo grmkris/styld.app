@@ -18,13 +18,14 @@ import { ownPieceIds } from '../wardrobe/Store.ts'
 import { Database, nowDate, type StoreUnavailable } from '../kernel/Db.ts'
 import { type LookRow, LookStore } from './Store.ts'
 import { newId } from '../kernel/Ids.ts'
+import type { SignedMedia } from '../kernel/SignedMedia.ts'
 import { deleting, identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
 
 const unavailable = () => Unavailable.make({})
 const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
 
 /** The services the look operations work through, provided once by the `Looks` layer. */
-type LookServices = Database | Checks | LookStore
+type LookServices = Database | Checks | LookStore | SignedMedia
 
 /** Looks as their owner sees them, each with the pieces still in the wardrobe and its check, if it has been shared. */
 const shown = Effect.fnUntraced(function* (rows: ReadonlyArray<LookRow>) {
@@ -35,7 +36,7 @@ const shown = Effect.fnUntraced(function* (rows: ReadonlyArray<LookRow>) {
     Effect.gen(function* () {
       const lookPieces = yield* Effect.forEach(
         found.filter(({ lookId }) => lookId === row.id),
-        ({ piece }) => toPiece(piece),
+        ({ piece, picture }) => toPiece(piece, picture ?? undefined),
       )
       // Only the service writes rows, through the same schemas; a row that does not decode is a bug.
       return yield* Schema.decodeUnknownEffect(Look)({

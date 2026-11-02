@@ -117,6 +117,17 @@ export const ChoosePicture = Schema.Struct({ operationId: OperationId, use: Pict
 export const RedrawPicture = Schema.Struct({ operationId: OperationId, hint: Schema.optionalKey(Hint) })
 export type RedrawPicture = typeof RedrawPicture.Type
 
+/** Where the owner's browser loads a piece's pictures: signed addresses that need no session, each good for about a
+ * day and the same for an hour at a time. `thumb` and `full` are the picture it shows; `clean` the drawing (ready or
+ * proposed), `back` its back, when it has them. */
+export const PieceImages = Schema.Struct({
+  thumb: Schema.String,
+  full: Schema.String,
+  clean: Schema.optionalKey(Schema.String),
+  back: Schema.optionalKey(Schema.String),
+})
+export type PieceImages = typeof PieceImages.Type
+
 export const Piece = Schema.Struct({
   id: PieceId,
   name: Schema.NullOr(Name),
@@ -139,6 +150,8 @@ export const Piece = Schema.Struct({
   picture: Schema.optionalKey(PiecePicture),
   /** Absent for a piece never asked to turn. */
   turn: Schema.optionalKey(PieceTurn),
+  /** Only the website's browser is handed them; an assistant never gets an address of a picture. */
+  images: Schema.optionalKey(PieceImages),
 })
 export type Piece = typeof Piece.Type
 

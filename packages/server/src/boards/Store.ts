@@ -1,4 +1,4 @@
-import { boardImages, boardItems, boardPins, boards, operationReceipts, pieces } from '@styld/db'
+import { boardImages, boardItems, boardPins, boards, operationReceipts, piecePictures, pieces } from '@styld/db'
 import { and, asc, count, desc, eq, inArray, lte, or, type SQL, sql } from 'drizzle-orm'
 import { Context, Effect, Layer, Option } from 'effect'
 import { receiptRows, recordedWrites } from '../kernel/Receipts.ts'
@@ -131,9 +131,10 @@ const itemRows = (db: Database) => ({
 /** The pin's own columns, with the piece a piece pin holds and where a picture pin's picture came from. */
 const pinWithPiece = (db: Database, where: SQL) =>
   db
-    .select({ pin: boardPins, piece: pieces, origin: boardImages.origin })
+    .select({ pin: boardPins, piece: pieces, picture: piecePictures, origin: boardImages.origin })
     .from(boardPins)
     .leftJoin(pieces, eq(pieces.id, boardPins.pieceId))
+    .leftJoin(piecePictures, eq(piecePictures.pieceId, boardPins.pieceId))
     .leftJoin(boardImages, eq(boardImages.id, boardPins.imageId))
     .where(where)
     .orderBy(desc(boardPins.createdAt), desc(boardPins.id))

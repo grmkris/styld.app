@@ -1,3 +1,4 @@
+import { cdn } from '../../Cdn.ts'
 import { format, type Locale } from '@styld/i18n'
 import { type Look, LookPin, type Piece, PiecePin } from '@styld/protocol'
 import { Array, Option, Schema } from 'effect'
@@ -10,7 +11,6 @@ import { styled } from '../../Styled.ts'
 import { Message } from './Message.ts'
 import { type Model, PinWork } from './Model.ts'
 import * as styles from './PageView.styles.ts'
-import { pieceImage } from './Table.ts'
 import { pieceDescription } from '../WardrobeWords.ts'
 
 // The board's picker: the person's ready pieces and looks that are not pinned yet, ticked and pinned together.
@@ -19,9 +19,7 @@ import { pieceDescription } from '../WardrobeWords.ts'
 export const lookMosaic = (look: Look, h: HtmlBuilder<Message>): Html =>
   h.span(
     styled(h, styles.mosaic()),
-    Array.map(Array.take(look.pieces, 4), (piece) =>
-      h.img([h.Src(pieceImage(piece.id)), h.Alt(''), h.Loading('lazy')]),
-    ),
+    Array.map(Array.take(look.pieces, 4), (piece) => h.img([h.Src(cdn.piece(piece)), h.Alt(''), h.Loading('lazy')])),
   )
 
 const pickButton = (pick: string, label: string, content: Html, model: Model, h: HtmlBuilder<Message>): Html => {
@@ -74,7 +72,7 @@ export const pickerBody = (
             pickButton(
               `piece:${piece.id}`,
               pieceDescription(piece, locale),
-              h.img([h.Src(pieceImage(piece.id)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.cutout())]),
+              h.img([h.Src(cdn.piece(piece)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.cutout())]),
               model,
               h,
             ),

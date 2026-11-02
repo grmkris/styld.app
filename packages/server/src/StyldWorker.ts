@@ -23,6 +23,7 @@ import type { Consumer, Delivering } from './jobs/Jobs.ts'
 import { runSweeps, type Sweep } from './jobs/Sweeps.ts'
 import { Database } from './kernel/Db.ts'
 import { Media } from './kernel/Media.ts'
+import { SignedMedia } from './kernel/SignedMedia.ts'
 import { analyticsEngine, CaptureMetrics } from './kernel/Metrics.ts'
 import type { ConsumerUsesOf, SweepUsesOf } from './kernel/Module.ts'
 import { declarePaces, Pacing } from './kernel/Pacing.ts'
@@ -140,6 +141,7 @@ const kernelOf = (bindings: Bindings, providersFor: ProvidersFor, env: Readonly<
       Pacing.layer(yield* Effect.all(Record.map(bindings.paces, (binding) => binding.raw))),
       database,
       Media.layer({ bucket, images }),
+      SignedMedia.layer(deployment.auth.secret),
       PieceQueue.layer(yield* writers.pieces.raw),
       CheckQueue.layer(yield* writers.checks.raw),
       GenerationQueue.layer(yield* writers.generation.raw),

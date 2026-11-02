@@ -34,7 +34,7 @@ describe('the wardrobe page', () => {
       expect(role('link', { name: 'White tee' })).toHaveAttr('href', `/wardrobe/${tee.id}`),
       // The caption names a piece once; its picture is decoration inside the link.
       expect(role('link', { name: 'Jeans' })).toHaveAttr('href', `/wardrobe/${jeans.id}`),
-      expect(selector(`img[src="/cdn/pieces/${jeans.id}/thumb"]`)).toHaveAttr('alt', ''),
+      expect(selector(`img[src="${jeans.images?.thumb ?? ''}"]`)).toHaveAttr('alt', ''),
       expect(role('button', { name: 'All 3' })).toHaveAttr('aria-pressed', 'true'),
       expect(role('button', { name: 'Clothing 2' })).toExist(),
       expect(role('button', { name: 'Shoes 1' })).toExist(),

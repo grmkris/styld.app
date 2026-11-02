@@ -128,7 +128,10 @@ const verifyPhoto = async (origin: string, owner: Call, other: Call) => {
     type: 'tops',
     name: 'Red tee',
   })
-  expect((await owner(`/cdn/pieces/${pieceIds[0]}/thumb`)).status).toBe(200)
+  const { images } = Schema.decodeUnknownSync(Schema.Struct({ images: Schema.Struct({ thumb: Schema.String }) }))(
+    await (await owner(`/api/pieces/${pieceIds[0]}`)).json(),
+  )
+  expect((await fetch(`${origin}${images.thumb}`)).status).toBe(200)
   expect((await tray(owner)).captures.find(({ id }) => id === first)).toBeUndefined()
   return { photo, first }
 }

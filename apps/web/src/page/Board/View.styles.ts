@@ -412,6 +412,6 @@ export const trayImage = style({
   objectFit: 'contain',
   pointerEvents: 'none',
   // A piece's picture that is still its photo lets the pale backdrop give way to the tile; a picture pinned on the
-  // board (`/cdn/boards/…`) keeps its true colour.
-  '&[src^="/cdn/pieces/"]': { mixBlendMode: 'darken' },
+  // board (`/cdn/boards/…`) keeps its true colour. A piece's picture is its signed address (`/cdn/media/…`).
+  '&[src^="/cdn/media/"]': { mixBlendMode: 'darken' },
 })

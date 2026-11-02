@@ -1,4 +1,4 @@
-import { cdn } from '../Cdn.ts'
+import { cdn, type PieceImagesById } from '../Cdn.ts'
 import { textLength, prices } from '@styld/protocol'
 import { format, languageOf, type Locale, type MessageKey } from '@styld/i18n'
 import type { Chat, ChatMessage, ReplyPart } from '@styld/protocol'
@@ -53,10 +53,11 @@ const starters: ReadonlyArray<MessageKey> = [
 /** A reply as plain text: a model that still writes **bold** loses the marks. */
 const plain = (text: string) => text.replaceAll('**', '')
 
-/** What the page knows besides the chat: the language, and the names of the person's pieces. */
+/** What the page knows besides the chat: the language, and the names and pictures of the person's pieces. */
 type Inputs = {
   readonly locale: Locale
   readonly names: ReadonlyMap<string, string>
+  readonly images: PieceImagesById
   readonly timeZone: string
   /** The render's stable now, so a chat from today says when today. */
   readonly referenceTime: number
@@ -78,7 +79,7 @@ const chatDate = (updatedAt: string, { locale, timeZone, referenceTime }: Inputs
 
 /** A piece Styld shows: its cutout on the paper and its name, the link's words. Before the wardrobe is read the
  * link says only that it opens a piece. */
-const shownPiece = (pieceId: string, { locale, names }: Inputs, h: HtmlBuilder<Message>): Html => {
+const shownPiece = (pieceId: string, { locale, names, images }: Inputs, h: HtmlBuilder<Message>): Html => {
   const name = names.get(pieceId)
   return h.keyed('li')(
     pieceId,
@@ -91,7 +92,12 @@ const shownPiece = (pieceId: string, { locale, names }: Inputs, h: HtmlBuilder<M
           ...styled(h, styles.pieceLink()),
         ],
         [
-          h.img([h.Src(cdn.piece(pieceId)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.pieceImage())]),
+          h.img([
+            h.Src(cdn.pieceById(images, pieceId)),
+            h.Alt(''),
+            h.Loading('lazy'),
+            ...styled(h, styles.pieceImage()),
+          ]),
           name === undefined ? h.empty : h.span(styled(h, styles.pieceName()), [name]),
         ],
       ),

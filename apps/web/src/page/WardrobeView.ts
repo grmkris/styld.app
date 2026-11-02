@@ -24,7 +24,7 @@ import { chip, chipSkeleton, chosen } from '../Controls.styles.ts'
 import { sheetBody } from './Sheet.styles.ts'
 
 /** The small image of a piece; the API Worker serves it to its owner only. A new drawing is a new address. */
-const thumbnailPath = (piece: Piece) => cdn.pieceShown(piece, 'thumb')
+const thumbnailPath = (piece: Piece) => cdn.piece(piece, 'thumb')
 
 /** One chip of a filter row: its name, how many pieces it holds, and whether it is the one shown. */
 const filter = (label: string, total: number, pressed: boolean, onClick: Message, h: HtmlBuilder<Message>): Html =>
