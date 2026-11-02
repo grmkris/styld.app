@@ -47,7 +47,7 @@ const Started = Schema.Struct({ job: Schema.Unknown, startedAt: Schema.Number })
 const startedOf = (turn: TurnRow) => Schema.decodeUnknownOption(Started)(turn.operation)
 
 /** An opaque frame as the video model takes it: a JPEG, made by the Images binding; the PNG where the binding cannot
- * (the native stack), whose small test frames the stand-in takes. */
+ * (the native stack), whose small test frames the native fake takes. */
 const jpegOf = (parts: Parts, picture: Rgba) =>
   Effect.gen(function* () {
     const bytes = yield* parts.work.jpeg(encodePng(picture))

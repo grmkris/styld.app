@@ -1,5 +1,5 @@
 import type { CallToolResult } from '@modelcontextprotocol/server'
-import type { Guide } from '@styld/protocol'
+import type { Guide, GuideByCase } from '@styld/protocol'
 import { Effect, Predicate, Schema, SchemaAST, SchemaIssue } from 'effect'
 
 /** A refusal an assistant can act on: what went wrong and what to do next (the owner's myapps shape). */
@@ -23,12 +23,17 @@ const unguided: Guide = {
   retryable: false,
 }
 
+/** Whether a guide has one guide per case. */
+function byCase(guide: Guide | GuideByCase): guide is GuideByCase {
+  return Predicate.hasProperty(guide, 'cases')
+}
+
 /** The guide the error's class declares, for its case when the guide has one per case. */
 const guideOf = (error: Refusal): Guide => {
   const declared: unknown = error.constructor
   const guide = Schema.isSchema(declared) ? Schema.resolveAnnotations(declared)?.guide : undefined
   if (guide === undefined) return unguided
-  if (!('cases' in guide)) return guide
+  if (!byCase(guide)) return guide
   const value = Predicate.hasProperty(error, guide.field) ? error[guide.field] : undefined
   return (Predicate.isString(value) ? guide.cases[value] : undefined) ?? unguided
 }

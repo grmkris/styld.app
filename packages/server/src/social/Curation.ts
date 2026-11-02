@@ -1,7 +1,7 @@
 import { boards, contentChecks, profiles, reports } from '@styld/db'
 import { type CheckState, Unavailable } from '@styld/protocol'
 import { count, desc, eq, inArray, max } from 'drizzle-orm'
-import { Context, Effect, Layer, Option } from 'effect'
+import { Context, Effect, Layer, Option, Predicate } from 'effect'
 import { type CheckTarget, Checks } from '../safety/Checks.ts'
 import { Database, nowDate, query } from '../kernel/Db.ts'
 import { handleOwner } from './ProfileStore.ts'
@@ -160,8 +160,4 @@ export const adminEmails = (configured: unknown): ReadonlySet<string> =>
 
 /** Whether the signed-in account's email is on the admin list. */
 export const isAdmin = (admins: ReadonlySet<string>, row: unknown) =>
-  typeof row === 'object' &&
-  row !== null &&
-  'email' in row &&
-  typeof row.email === 'string' &&
-  admins.has(row.email.toLowerCase())
+  Predicate.hasProperty(row, 'email') && Predicate.isString(row.email) && admins.has(row.email.toLowerCase())

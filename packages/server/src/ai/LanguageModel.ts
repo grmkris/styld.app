@@ -158,12 +158,17 @@ const toolsOf = (options: LanguageModel.ProviderOptions) => {
   const toolChoice =
     typeof choice === 'string'
       ? choice
-      : 'tool' in choice
+      : namesTool(choice)
         ? { type: 'function', function: { name: choice.tool } }
         : choice.mode === 'required'
           ? 'required'
           : 'auto'
   return { tools, tool_choice: toolChoice }
+}
+
+/** Whether a tool choice names one tool, rather than a mode. */
+function namesTool(choice: Exclude<LanguageModel.ToolChoice<string>, string>): choice is { readonly tool: string } {
+  return Predicate.hasProperty(choice, 'tool')
 }
 
 /** The request Workers AI is sent: the messages, the tools, and for an object the JSON schema it must answer in. */
