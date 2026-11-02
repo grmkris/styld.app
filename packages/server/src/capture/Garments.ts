@@ -90,56 +90,45 @@ export class Garments extends Context.Service<
   static readonly layer = Layer.effect(
     this,
     Effect.gen(function* () {
-      const providers: Providers = {
-        vision: yield* GarmentVision,
-        work: yield* PictureWork,
-        segmenter: yield* GarmentSegmenter,
-      }
+      const context = yield* Effect.context<GarmentProviders>()
       return Garments.of({
         find: Effect.fn('Styld.Garments.find')(function* (photo, intent) {
           yield* Effect.annotateCurrentSpan('styld.garments.intent', intent.for)
-          return intent.for === 'tray'
-            ? yield* forTray(providers, photo, intent.camera)
-            : yield* forGallery(providers, photo)
-        }),
+          return intent.for === 'tray' ? yield* forTray(photo, intent.camera) : yield* forGallery(photo)
+        }, Effect.provide(context)),
         cut: Effect.fn('Styld.Garments.cut')(function* (photo, intent) {
           yield* Effect.annotateCurrentSpan('styld.garments.intent', intent.for)
-          return intent.for === 'piece'
-            ? yield* pieceIn(providers, photo, intent.type)
-            : yield* personIn(providers, photo)
-        }),
+          return intent.for === 'piece' ? yield* pieceIn(photo, intent.type) : yield* personIn(photo)
+        }, Effect.provide(context)),
         handOver: Effect.fn('Styld.Garments.handOver')(function* (video) {
-          return yield* providers.segmenter.upload(video)
-        }),
+          return yield* (yield* GarmentSegmenter).upload(video)
+        }, Effect.provide(context)),
         track: Effect.fn('Styld.Garments.track')(function* (video) {
-          return yield* inVideo(providers, video)
-        }),
+          return yield* inVideo(video)
+        }, Effect.provide(context)),
       })
     }),
   )
 }
 
-interface Providers {
-  readonly vision: GarmentVision['Service']
-  readonly work: PictureWork['Service']
-  readonly segmenter: GarmentSegmenter['Service']
-}
+/** The providers finding garments works through, provided once by the `Garments` layer. */
+type GarmentProviders = GarmentVision | PictureWork | GarmentSegmenter
 
 /** SAM on a working copy for each prompt: the first is the picture's answer; a later one is a best effort, whose
  * failure leaves its pieces out rather than paying for the first again. The cuts, largest first. */
 const samCuts = Effect.fnUntraced(function* (
-  providers: Providers,
   copies: WorkingCopies,
   [first, ...more]: readonly [string, ...Array<string>],
 ) {
+  const segmenter = yield* GarmentSegmenter
   const sent = { bytes: copies.jpeg, contentType: 'image/jpeg' } as const
   const [found, others] = yield* Effect.all(
     [
-      providers.segmenter.still(sent, first),
+      segmenter.still(sent, first),
       Effect.forEach(
         more,
         (prompt) =>
-          providers.segmenter.still(sent, prompt).pipe(
+          segmenter.still(sent, prompt).pipe(
             Effect.map((masks) => ({ prompt, found: masks })),
             Effect.orElseSucceed(() => ({ prompt, found: [] })),
           ),
@@ -153,14 +142,14 @@ const samCuts = Effect.fnUntraced(function* (
 })
 
 /** Background removal: the whole foreground as one cut, none when nothing is in front. */
-const foregroundOf = Effect.fnUntraced(function* (providers: Providers, original: Uint8Array) {
-  const foreground = yield* decodedPng(yield* providers.work.foreground(original))
+const foregroundOf = Effect.fnUntraced(function* (original: Uint8Array) {
+  const foreground = yield* decodedPng(yield* (yield* PictureWork).foreground(original))
   return foregroundCut(foreground, opaqueBounds(foreground))
 })
 
 /** A cut described by the decision model, from the copy it judges; a scrap is none. */
-const described = Effect.fnUntraced(function* (providers: Providers, cut: Cut) {
-  const suggestion = yield* providers.vision.suggest(modelPicture(cut.picture, judgedAt))
+const described = Effect.fnUntraced(function* (cut: Cut) {
+  const suggestion = yield* (yield* GarmentVision).suggest(modelPicture(cut.picture, judgedAt))
   return verdictOf(suggestion.whole) === 'drop' ? Option.none() : Option.some({ ...cut, suggestion })
 })
 
@@ -173,8 +162,8 @@ const pairKind = ({ suggestion }: Described) =>
   )
 
 /** Each cut described, scraps dropped, a pair joined into one piece (whole as its surer half). */
-const describedPieces = Effect.fnUntraced(function* (providers: Providers, cuts: ReadonlyArray<Cut>, most: number) {
-  const found = yield* Effect.forEach(cuts.slice(0, most), (cut) => described(providers, cut), { concurrency: 4 })
+const describedPieces = Effect.fnUntraced(function* (cuts: ReadonlyArray<Cut>, most: number) {
+  const found = yield* Effect.forEach(cuts.slice(0, most), described, { concurrency: 4 })
   const pieces = found.flatMap(Option.toArray)
   return withPairsJoined(pieces, pairKind).map((piece) => {
     const halves = pieces.filter(({ track }) => piece.track.split('+').includes(track))
@@ -194,16 +183,16 @@ const garmentOf = (piece: Described, held: boolean): Garment => ({
 
 /** A tray photo: routed, cut by background removal (SAM when it finds nothing) or SAM, described, and when the photo
  * is about one piece held up, only that one offered ticked. */
-const forTray = Effect.fnUntraced(function* (providers: Providers, original: Uint8Array, camera: boolean) {
-  const copies = yield* providers.work.workingCopies(original)
-  const route = yield* providers.vision.route({ bytes: copies.small, contentType: 'image/jpeg' })
+const forTray = Effect.fnUntraced(function* (original: Uint8Array, camera: boolean) {
+  const copies = yield* (yield* PictureWork).workingCopies(original)
+  const route = yield* (yield* GarmentVision).route({ bytes: copies.small, contentType: 'image/jpeg' })
   const cutter = cutterFor('tray', route)
   if (cutter === 'none') return { garments: [], route: Option.some(route), provider: 'clef' } satisfies Finding
-  const foreground = cutter === 'cloudflare' ? yield* foregroundOf(providers, original) : Option.none<Cut>()
+  const foreground = cutter === 'cloudflare' ? yield* foregroundOf(original) : Option.none<Cut>()
   const cuts = Option.isSome(foreground)
     ? [foreground.value]
-    : yield* samCuts(providers, copies, promptsFor({ for: 'tray', route }))
-  const pieces = yield* describedPieces(providers, cuts, capturePolicy.garments.pieces.tray)
+    : yield* samCuts(copies, promptsFor({ for: 'tray', route }))
+  const pieces = yield* describedPieces(cuts, capturePolicy.garments.pieces.tray)
   const held = holding(camera, route) ? heldOf(pieces, copies) : undefined
   return {
     garments: pieces.map((piece) => garmentOf(piece, held === undefined || piece === held)),
@@ -213,10 +202,10 @@ const forTray = Effect.fnUntraced(function* (providers: Providers, original: Uin
 })
 
 /** An outfit photo: every garment the person wears counts, so there is no route and no held piece. */
-const forGallery = Effect.fnUntraced(function* (providers: Providers, original: Uint8Array) {
-  const copies = yield* providers.work.workingCopies(original)
-  const cuts = yield* samCuts(providers, copies, promptsFor('gallery'))
-  const pieces = yield* describedPieces(providers, cuts, capturePolicy.garments.pieces.gallery)
+const forGallery = Effect.fnUntraced(function* (original: Uint8Array) {
+  const copies = yield* (yield* PictureWork).workingCopies(original)
+  const cuts = yield* samCuts(copies, promptsFor('gallery'))
+  const pieces = yield* describedPieces(cuts, capturePolicy.garments.pieces.gallery)
   return {
     garments: pieces.map((piece) => garmentOf(piece, true)),
     route: Option.none(),
@@ -226,15 +215,15 @@ const forGallery = Effect.fnUntraced(function* (providers: Providers, original: 
 
 /** A piece's own photo: background removal when nobody is in it, falling back to SAM, which is asked for the piece's
  * kind too and takes the largest of it (a pair of shoes as one). */
-const pieceIn = Effect.fnUntraced(function* (providers: Providers, original: Uint8Array, type: PieceType) {
-  const copies = yield* providers.work.workingCopies(original)
-  const route = yield* providers.vision.route({ bytes: copies.small, contentType: 'image/jpeg' })
+const pieceIn = Effect.fnUntraced(function* (original: Uint8Array, type: PieceType) {
+  const copies = yield* (yield* PictureWork).workingCopies(original)
+  const route = yield* (yield* GarmentVision).route({ bytes: copies.small, contentType: 'image/jpeg' })
   if (cutterFor('piece', route) === 'cloudflare') {
-    const foreground = yield* foregroundOf(providers, original)
+    const foreground = yield* foregroundOf(original)
     if (Option.isSome(foreground)) return Option.some(encodePng(foreground.value.picture))
   }
   const kind = kindPrompt(type)
-  const cuts = yield* samCuts(providers, copies, promptsFor({ for: 'piece', type }))
+  const cuts = yield* samCuts(copies, promptsFor({ for: 'piece', type }))
   const pairs = withPairsJoined(cuts, ({ track }) =>
     Option.filter(kind, (prompt) => prompt === 'shoes' && track.startsWith(`${prompt}-`)),
   )
@@ -242,20 +231,21 @@ const pieceIn = Effect.fnUntraced(function* (providers: Providers, original: Uin
 })
 
 /** The person in an outfit photo: the largest SAM finds. */
-const personIn = Effect.fnUntraced(function* (providers: Providers, original: Uint8Array) {
-  const copies = yield* providers.work.workingCopies(original)
-  const [person] = yield* samCuts(providers, copies, promptsFor('person'))
+const personIn = Effect.fnUntraced(function* (original: Uint8Array) {
+  const copies = yield* (yield* PictureWork).workingCopies(original)
+  const [person] = yield* samCuts(copies, promptsFor('person'))
   return Option.map(Option.fromNullishOr(person), ({ picture }) => encodePng(picture))
 })
 
 /** A video's garments: SAM tracks clothing through it, each track's best sighting is cut from its still (each still's
  * working copies made once), described, and a pair seen in one still joined. */
-const inVideo = Effect.fnUntraced(function* (providers: Providers, video: VideoToTrack) {
+const inVideo = Effect.fnUntraced(function* (video: VideoToTrack) {
   const [prompt] = promptsFor('video')
   const frames = new Set(video.stills.map(({ frame }) => frame))
-  const tracked = yield* providers.segmenter
+  const segmenter = yield* GarmentSegmenter
+  const tracked = yield* segmenter
     .track(video.fileId, prompt, frames)
-    .pipe(Effect.ensuring(providers.segmenter.forget(video.fileId)))
+    .pipe(Effect.ensuring(segmenter.forget(video.fileId)))
   const frameSize = tracked.frameSize ?? video.frameSize
   const stills = new Map(video.stills.map((still) => [still.frame, { ...still, ...frameSize }]))
   const sightings = tracked.found.map((found) => ({
@@ -276,7 +266,7 @@ const inVideo = Effect.fnUntraced(function* (providers: Providers, video: VideoT
       Effect.gen(function* () {
         const bytes = yield* video.read(key)
         if (Option.isNone(bytes)) return []
-        const picture = yield* decodedPng((yield* providers.work.workingCopies(bytes.value)).png)
+        const picture = yield* decodedPng((yield* (yield* PictureWork).workingCopies(bytes.value)).png)
         const cuts = cutsOf(
           picture,
           inStill.flatMap(({ sighting }) =>
@@ -290,7 +280,7 @@ const inVideo = Effect.fnUntraced(function* (providers: Providers, video: VideoT
           ),
           frameSize,
         )
-        const pieces = yield* describedPieces(providers, cuts, cuts.length)
+        const pieces = yield* describedPieces(cuts, cuts.length)
         return pieces.map((piece) => ({ ...garmentOf(piece, true), still: key }))
       }),
     { concurrency: 2 },
