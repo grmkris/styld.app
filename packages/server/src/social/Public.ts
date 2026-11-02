@@ -103,7 +103,7 @@ interface Reader {
   readonly db: Database['Service']
   readonly store: PublicStore
   readonly boards: BoardStore['Service']
-  readonly looks: LookStore
+  readonly looks: LookStore['Service']
   readonly social: SocialStore
   readonly checks: Checks['Service']
   /** Who is reading, when signed in: a block either way hides the other's things from them. */

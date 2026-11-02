@@ -1,9 +1,9 @@
 import { lookPieces, looks, operationReceipts, pieces } from '@styld/db'
 import { and, asc, desc, eq, inArray } from 'drizzle-orm'
-import { Effect } from 'effect'
+import { Context, Effect, Layer } from 'effect'
 import { receiptRows } from '../kernel/Receipts.ts'
 import { forgetCheck } from '../safety/Checks.ts'
-import { type Database, first, inChunks, query } from '../kernel/Db.ts'
+import { Database, first, inChunks, query } from '../kernel/Db.ts'
 
 export type LookRow = typeof looks.$inferSelect
 type ReceiptRow = typeof operationReceipts.$inferSelect
@@ -80,4 +80,9 @@ export const lookStore = (db: Drizzle) => ({
     ).pipe(Effect.map(([deleted]) => deleted.length > 0)),
 })
 
-export type LookStore = ReturnType<typeof lookStore>
+/** The looks' store over the application's one database. */
+export class LookStore extends Context.Service<LookStore, ReturnType<typeof lookStore>>()(
+  '@styld/server/looks/LookStore',
+) {
+  static readonly layer = Layer.effect(this, Effect.map(Database, lookStore))
+}
