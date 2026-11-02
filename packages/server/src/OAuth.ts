@@ -1,7 +1,7 @@
 import { OAuthServer } from '@yielded/auth'
 import * as WorkerdServices from '@yielded/auth/WorkerdServices'
 import { Clock, Effect, Layer, Option, Schema } from 'effect'
-import * as FetchHttpClient from 'effect/http/FetchHttpClient'
+import { publicWebTransport } from './providers/PublicWeb.ts'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
@@ -244,9 +244,8 @@ export const mcpOAuthServer = Layer.unwrap(
       Layer.provide(Layer.succeed(OAuthServer.Persistence, persistence(db))),
       Layer.provide(Layer.succeed(McpOAuth.Clients, registeredClients(db))),
       Layer.provide(sessionIdentity(yield* Auth)),
-      // Metadata documents are fetched without following redirects.
-      Layer.provide(FetchHttpClient.layer),
-      Layer.provide(Layer.succeed(FetchHttpClient.RequestInit, { redirect: 'manual' })),
+      // Client metadata documents are fetched from the public web without following redirects.
+      Layer.provide(publicWebTransport),
       Layer.provide(WorkerdServices.layer),
     )
   }),

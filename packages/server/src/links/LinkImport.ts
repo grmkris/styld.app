@@ -1,7 +1,7 @@
 import { LinkRefused } from '@styld/protocol'
 import { Effect, Option, Stream } from 'effect'
 import type * as HttpClientResponse from 'effect/http/HttpClientResponse'
-import { fetchPublic } from '../mcp/ImageImport.ts'
+import { fetchPublic } from '../providers/PublicWeb.ts'
 
 // A product page as Styld reads it: its picture and its name, from the page's JSON-LD `Product`, else its Open
 // Graph or Twitter tags. Only public https pages, fetched with the same guard as a photo; a shop that refuses
