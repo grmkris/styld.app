@@ -1,4 +1,4 @@
-import type { Box } from './Pixels.ts'
+import type { Box } from '@styld/imaging'
 
 /** A still the browser sampled from the video: when, its size, and how sharp each of its 8×8 tiles is. */
 export interface SampledStill {

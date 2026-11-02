@@ -66,10 +66,8 @@ export const itemRow = (item: BoardItem): Omit<BoardItemRow, 'boardId'> => {
 /** The services the board operations work through, provided once by the `Boards` layer. */
 export type BoardServices = Database | Media | BoardStore | WardrobeStore | Checks | Looks | PublicPages
 
-export type PinWithPiece = PinRow
-
 /** The looks these pins hold, by id. */
-const pinnedLooks = (pins: ReadonlyArray<PinWithPiece>) =>
+const pinnedLooks = (pins: ReadonlyArray<PinRow>) =>
   Effect.gen(function* () {
     const lookIds = [...new Set(pins.flatMap(({ pin }) => (pin.lookId === null ? [] : [pin.lookId])))]
     if (lookIds.length === 0) return new Map<string, Look>()
@@ -79,7 +77,7 @@ const pinnedLooks = (pins: ReadonlyArray<PinWithPiece>) =>
 
 /** A stored pin as the protocol shows it, to be decoded with its board; a pin whose piece, look or picture is
  * gone shows nothing. */
-const shownPin = (row: PinWithPiece, looks: ReadonlyMap<string, Look>) =>
+const shownPin = (row: PinRow, looks: ReadonlyMap<string, Look>) =>
   Effect.gen(function* () {
     const base = { id: row.pin.id, addedAt: row.pin.createdAt.toISOString() }
     const look = row.pin.lookId === null ? undefined : looks.get(row.pin.lookId)
@@ -94,7 +92,7 @@ const shownPin = (row: PinWithPiece, looks: ReadonlyMap<string, Look>) =>
     return shownRow
   })
 
-const shownPins = (pins: ReadonlyArray<PinWithPiece>) =>
+const shownPins = (pins: ReadonlyArray<PinRow>) =>
   Effect.gen(function* () {
     const looks = yield* pinnedLooks(pins)
     const shownRows = yield* Effect.forEach(pins, (row) =>
@@ -104,7 +102,7 @@ const shownPins = (pins: ReadonlyArray<PinWithPiece>) =>
   })
 
 /** The pins others see on these boards of one account while they are public, by the public pages' rule. */
-const publicPinIds = (rows: ReadonlyArray<BoardRow>, pins: ReadonlyArray<PinWithPiece>) => {
+const publicPinIds = (rows: ReadonlyArray<BoardRow>, pins: ReadonlyArray<PinRow>) => {
   const publicBoards = new Set(rows.filter(({ visibility }) => visibility === 'public').map(({ id }) => id))
   const [owner] = rows
   if (owner === undefined || publicBoards.size === 0) return Effect.succeed(new Set<string>())

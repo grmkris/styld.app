@@ -1,5 +1,6 @@
 import { onBorder } from '@styld/imaging'
-import { type Box, type Mask, type Rgba, upright } from './Pixels.ts'
+import type { Box, Rgba } from '@styld/imaging'
+import { type Mask, upright } from './Pixels.ts'
 
 /** A size in pixels. */
 interface Size {

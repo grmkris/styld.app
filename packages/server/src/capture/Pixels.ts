@@ -2,8 +2,6 @@ import { refused } from '../providers/Errors.ts'
 import { type Box, crop, readPng, type Rgba } from '@styld/imaging'
 import { Effect } from 'effect'
 
-export { type Box, encodePng, type Rgba } from '@styld/imaging'
-
 /** A one-bit mask covering `bounds` of a picture: one byte a pixel, non-zero inside the garment. */
 export interface Mask {
   readonly bounds: Box

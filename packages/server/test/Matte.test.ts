@@ -2,7 +2,8 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, test } from 'vitest'
 import { refinedCutOut } from '../src/capture/Matte.ts'
 import { decodePng } from '@styld/imaging'
-import { type Box, cutOut, fitMask, type Mask, type Rgba } from '../src/capture/Pixels.ts'
+import type { Box, Rgba } from '@styld/imaging'
+import { cutOut, fitMask, type Mask } from '../src/capture/Pixels.ts'
 import { makeOutputLines, stillMasks } from '../src/providers/SamStream.ts'
 
 const fixture = (name: string) => readFileSync(new URL(`fixtures/capture/${name}`, import.meta.url))

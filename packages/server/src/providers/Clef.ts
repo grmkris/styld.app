@@ -34,8 +34,7 @@ const Answer = Schema.Struct({
   answers: Schema.Record(Schema.String, Schema.Unknown),
   usage: Schema.optionalKey(Schema.Struct({ input_tokens: Schema.optionalKey(Schema.Number) })),
 })
-type Answer = typeof Answer.Type
-export type ClefAnswer = Answer
+export type ClefAnswer = typeof Answer.Type
 
 const failed = (retryable: boolean) => (retryable ? busy('clef') : refused('clef'))
 
@@ -45,7 +44,7 @@ export const imageOf = (picture: Picture) => ({
   base64: Base64.encode(picture.bytes),
 })
 
-const choiceOf = (answer: Answer, id: string) =>
+const choiceOf = (answer: ClefAnswer, id: string) =>
   Option.flatMap(Option.fromNullishOr(answer.answers[id]), Schema.decodeUnknownOption(Choice))
 /** A yes-or-no answer's likelihood of yes, 0 when it is missing. */
 export const noulOf = (answer: ClefAnswer, id: string) =>
@@ -91,7 +90,7 @@ const typeCriteria: { readonly [Type in PieceType]: string } & { readonly none: 
 const colourCriteria = Object.fromEntries(Colour.literals.map((colour) => [colour, `Mostly ${colour}`]))
 
 /** What one answer cost: its input tokens, at Clef-flash's list price. */
-export const clefCost = (answer: Answer) => {
+export const clefCost = (answer: ClefAnswer) => {
   const tokens = answer.usage?.input_tokens ?? 0
   return { units: tokens, costMicroUsd: Math.round(tokens * costs.clefFlashPerToken) }
 }
@@ -222,7 +221,7 @@ const verdicts: ReadonlyArray<Verdict> = ['ready', 'improve', 'repair', 'fragmen
 
 /** The judgement in an answer. Without a readable verdict the cut-out is treated as needing a redraw, and a face is
  * assumed without an answer about it, so nothing unanswered is sent on. */
-const judgementOf = (answer: Answer): Judgement => {
+const judgementOf = (answer: ClefAnswer): Judgement => {
   const face = Option.match(Option.fromNullishOr(answer.answers['face']), {
     onNone: () => 1,
     onSome: () => noulOf(answer, 'face'),
@@ -269,14 +268,14 @@ const routeQuestions = {
 const scenes: ReadonlyArray<Scene> = ['held', 'flat', 'hanging', 'worn', 'other']
 
 /** The scene the decision model chose, when it gave it at least even odds. */
-const sceneOf = (answer: Answer) =>
+const sceneOf = (answer: ClefAnswer) =>
   Option.flatMap(choiceOf(answer, 'scene'), ({ choice, probabilities }) =>
     (probabilities[choice] ?? 0) >= 0.5
       ? Option.fromNullishOr(scenes.find((scene) => scene === choice))
       : Option.none(),
   )
 
-const routeOf = (answer: Answer): Route => {
+const routeOf = (answer: ClefAnswer): Route => {
   // Without an answer a person is assumed, which keeps the photo away from background removal.
   const person = Option.match(choiceOf(answer, 'person'), {
     onNone: () => 1,
@@ -406,7 +405,7 @@ const alsoWorn = 0.35
 
 /** The answers as a suggestion a person confirms: the type with how sure the model is of its group, a second colour
  * only when the model is fairly sure of it, and every occasion it gives a fair share. */
-const suggestionOf = (answer: Answer): Suggestion => {
+const suggestionOf = (answer: ClefAnswer): Suggestion => {
   const typed = choiceOf(answer, 'type')
   const type = Option.flatMap(typed, ({ choice }) => decodeType(choice))
   const confidence = Option.match(Option.all([typed, type]), {

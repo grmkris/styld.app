@@ -1,6 +1,7 @@
 import { decodeMaskToRaster, formats, frameIndexOf, recordsOfKind } from '@meta-sam/parser'
 import { Option, Schema } from 'effect'
-import type { Box, Mask } from '../capture/Pixels.ts'
+import type { Box } from '@styld/imaging'
+import type { Mask } from '../capture/Pixels.ts'
 
 /** One garment SAM found: its mask in source pixels, its confidence and (for a video) its track and frame. */
 export interface Found extends Mask {
