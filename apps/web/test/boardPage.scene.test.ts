@@ -122,14 +122,14 @@ describe("a board's page", () => {
       given(picking('en')),
       Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
       expect(role('button', { name: 'Shirt (white and blue)' })).toExist(),
-      expect(role('button', { name: 'Flats (black)' })).toExist(),
+      expect(role('button', { name: 'Low shoes (black)' })).toExist(),
     )
     scene(
       { update, view },
       given(picking('sl')),
       Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
       expect(role('button', { name: 'Srajca (bela in modra)' })).toExist(),
-      expect(role('button', { name: 'Balerinke (črna)' })).toExist(),
+      expect(role('button', { name: 'Nizki čevlji (črna)' })).toExist(),
     )
   })
 })
