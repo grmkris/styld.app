@@ -2,10 +2,10 @@ import { boardPins, boards, looks } from '@styld/db'
 import { type Author, type FeedItem, Unavailable } from '@styld/protocol'
 import { and, desc, eq, inArray, isNotNull, lt } from 'drizzle-orm'
 import { Array, DateTime, Effect, Option } from 'effect'
-import { type Database, query } from '../kernel/Db.ts'
-import type { Checks } from '../safety/Checks.ts'
-import { type PublicPages, summaryOf } from './Public.ts'
-import type { SocialStore } from './SocialStore.ts'
+import { Database, query } from '../kernel/Db.ts'
+import { Checks } from '../safety/Checks.ts'
+import { PublicPages, summaryOf } from './Public.ts'
+import { SocialStore } from './SocialStore.ts'
 import { visibleAt } from './Visibility.ts'
 
 // The Following feed is a query over follows, not a table of its own: a second writer of what is public would have to
@@ -97,26 +97,19 @@ const candidatesOf = (db: Database['Service'], people: ReadonlyArray<string>, be
   })
 
 /** The feed's page for the account, from `cursor` (an instant) back. */
-export const feedFor = (
-  services: {
-    readonly db: Database['Service']
-    readonly pages: PublicPages['Service']
-    readonly social: SocialStore
-    readonly checks: Checks['Service']
-  },
-  viewer: string,
-  cursor: string | undefined,
-) =>
+export const feedFor = (viewer: string, cursor: string | undefined) =>
   Effect.gen(function* () {
-    const followed = yield* services.social.followees(viewer).pipe(Effect.mapError(unavailable))
-    const blocked = yield* services.social.blockedAmong(viewer, followed).pipe(Effect.mapError(unavailable))
+    const social = yield* SocialStore
+    const followed = yield* social.followees(viewer).pipe(Effect.mapError(unavailable))
+    const blocked = yield* social.blockedAmong(viewer, followed).pipe(Effect.mapError(unavailable))
     const people = followed.filter((accountId) => !blocked.has(accountId))
     if (people.length === 0) return { items: [], cursor: null }
     const parsed = cursor === undefined ? Option.none() : DateTime.make(cursor)
     const before = Option.match(parsed, { onNone: () => new Date(8.64e15), onSome: DateTime.toDateUtc })
-    const found = yield* candidates(services.db, people, before)
-    const passed = yield* passedOnly(services.checks, found)
-    const items = yield* Effect.forEach(passed, (candidate) => shown(services.pages, candidate, viewer), {
+    const found = yield* candidates(yield* Database, people, before)
+    const passed = yield* passedOnly(yield* Checks, found)
+    const pages = yield* PublicPages
+    const items = yield* Effect.forEach(passed, (candidate) => shown(pages, candidate, viewer), {
       concurrency: 8,
     })
     const kept = items.flatMap(Option.toArray)

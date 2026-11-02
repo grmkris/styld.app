@@ -10,8 +10,8 @@ import {
 } from '@styld/protocol'
 import { Array, Context, Effect, Layer, Option, Schema } from 'effect'
 import { shownItem } from '../boards/Shared.ts'
-import { type BoardItemRow, type BoardRow, type BoardStore, boardStore, type PinRow } from '../boards/Store.ts'
-import { type LookRow, type LookStore, lookStore } from '../looks/Store.ts'
+import { type BoardItemRow, type BoardRow, BoardStore, type PinRow } from '../boards/Store.ts'
+import { type LookRow, LookStore } from '../looks/Store.ts'
 import { Checks } from '../safety/Checks.ts'
 import { deliverImage } from '../wardrobe/Delivery.ts'
 import type { ShownImage } from '../wardrobe/Http.ts'
@@ -20,8 +20,8 @@ import type { PieceRow } from '../wardrobe/Store.ts'
 import { Database, type StoreUnavailable } from '../kernel/Db.ts'
 import { Media } from '../kernel/Media.ts'
 import { profileOf, type ProfileRow } from './ProfileStore.ts'
-import { publicStore, type PublicStore } from './PublicStore.ts'
-import { socialStore, type SocialStore } from './SocialStore.ts'
+import { PublicStore } from './PublicStore.ts'
+import { SocialStore } from './SocialStore.ts'
 import { heldBack, type PieceWithPicture, publicImage, visibleAt } from './Visibility.ts'
 import { digestOf } from '../kernel/Ids.ts'
 
@@ -31,7 +31,7 @@ import { digestOf } from '../kernel/Ids.ts'
 // the photo it came from.
 
 const unavailable = () => Unavailable.make({})
-const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
+const stored = <A, R>(effect: Effect.Effect<A, StoreUnavailable, R>) => Effect.mapError(effect, unavailable)
 const notFound = () => NotFound.make({})
 const orNotFound = <A>(found: Option.Option<A>) =>
   Option.match(found, { onNone: () => Effect.fail(notFound()), onSome: Effect.succeed })
@@ -98,42 +98,38 @@ const publicItems = (seen: Seen, items: ReadonlyArray<BoardItemRow>, held: Reado
     .filter((item) => item.kind !== 'image' || item.imageId === null || !held.has(item.imageId))
     .map(shownItem)
 
-/** The stores and checks public pages read through. */
-interface Reader {
-  readonly db: Database['Service']
-  readonly store: PublicStore
-  readonly boards: BoardStore['Service']
-  readonly looks: LookStore['Service']
-  readonly social: SocialStore
-  readonly checks: Checks['Service']
-  /** Who is reading, when signed in: a block either way hides the other's things from them. */
-  readonly viewer: Option.Option<string>
-}
+/** The stores and checks public pages read through, provided once by the `PublicPages` layer. */
+type PublicServices = Database | PublicStore | BoardStore | LookStore | SocialStore | Checks | Media
+
+/** Who is reading, when signed in: a block either way hides the other's things from them. */
+type Viewer = Option.Option<string>
 
 /** The owner's profile and byline, while others may see the profile. */
-const shownProfile = (r: Reader, row: ProfileRow) =>
+const shownProfile = (viewer: Viewer, row: ProfileRow) =>
   Effect.gen(function* () {
     const author = authorOf(row)
     if (Option.isNone(author)) return Option.none<{ readonly row: ProfileRow; readonly author: Author }>()
-    const check = (yield* r.checks.statuses('profile', [row.accountId])).get(row.accountId)
+    const check = (yield* (yield* Checks).statuses('profile', [row.accountId])).get(row.accountId)
     if (!visibleAt('link', check)) return Option.none()
-    const reader = Option.getOrNull(r.viewer)
+    const reader = Option.getOrNull(viewer)
     const blocked =
-      reader !== null && reader !== row.accountId && (yield* stored(r.social.blockedBetween(reader, row.accountId)))
+      reader !== null &&
+      reader !== row.accountId &&
+      (yield* stored((yield* SocialStore).blockedBetween(reader, row.accountId)))
     return blocked ? Option.none() : Option.some({ row, author: author.value })
   })
-const ownerOf = (r: Reader, accountId: string) =>
-  Effect.flatMap(stored(profileOf(r.db, accountId)), (row) =>
-    Option.isNone(row) ? Effect.succeed(Option.none()) : shownProfile(r, row.value),
+const ownerOf = (viewer: Viewer, accountId: string) =>
+  Effect.flatMap(stored(Effect.flatMap(Database, (db) => profileOf(db, accountId))), (row) =>
+    Option.isNone(row) ? Effect.succeed(Option.none()) : shownProfile(viewer, row.value),
   )
 
 /** Those of the account's pieces others may see, by id. */
-const shownPieces = (r: Reader, accountId: string, rows: ReadonlyArray<PieceWithPicture>) =>
+const shownPieces = (accountId: string, rows: ReadonlyArray<PieceWithPicture>) =>
   Effect.gen(function* () {
     const ready = rows.filter(
       (row) => row.piece.accountId === accountId && row.piece.status === 'ready' && Option.isSome(publicImage(row)),
     )
-    const statuses = yield* r.checks.statuses(
+    const statuses = yield* (yield* Checks).statuses(
       'piece',
       ready.map(({ piece }) => piece.id),
     )
@@ -141,23 +137,24 @@ const shownPieces = (r: Reader, accountId: string, rows: ReadonlyArray<PieceWith
     const shown = yield* Effect.forEach(kept, ({ piece }) => publicPiece(piece))
     return new Map<string, PublicPiece>(shown.map((piece) => [piece.id, piece]))
   })
-const piecesById = (r: Reader, accountId: string, pieceIds: ReadonlyArray<string>) =>
+const piecesById = (accountId: string, pieceIds: ReadonlyArray<string>) =>
   pieceIds.length === 0
     ? Effect.succeed(new Map<string, PublicPiece>())
-    : Effect.flatMap(stored(r.store.pieces([...new Set(pieceIds)])), (rows) => shownPieces(r, accountId, rows))
+    : Effect.flatMap(stored(Effect.flatMap(PublicStore, (store) => store.pieces([...new Set(pieceIds)]))), (rows) =>
+        shownPieces(accountId, rows),
+      )
 
 /** Those of the account's shared looks others may see, each with the pieces others may see. */
-const shownLooks = (r: Reader, accountId: string, rows: ReadonlyArray<LookRow>) =>
+const shownLooks = (accountId: string, rows: ReadonlyArray<LookRow>) =>
   Effect.gen(function* () {
     const shared = rows.filter((row) => row.accountId === accountId && row.sharedAt !== null)
-    const statuses = yield* r.checks.statuses(
+    const statuses = yield* (yield* Checks).statuses(
       'look',
       shared.map(({ id }) => id),
     )
     const kept = shared.filter(({ id }) => visibleAt('link', statuses.get(id)))
-    const found = yield* stored(r.looks.piecesOf(kept.map(({ id }) => id)))
+    const found = yield* stored((yield* LookStore).piecesOf(kept.map(({ id }) => id)))
     const pieces = yield* piecesById(
-      r,
       accountId,
       found.map(({ piece }) => piece.id),
     )
@@ -176,44 +173,45 @@ const shownLooks = (r: Reader, accountId: string, rows: ReadonlyArray<LookRow>) 
   })
 
 /** What others may see of these boards' pins and tables. */
-const seenOn = (r: Reader, accountId: string, pins: ReadonlyArray<PinRow>, items: ReadonlyArray<BoardItemRow>) =>
+const seenOn = (accountId: string, pins: ReadonlyArray<PinRow>, items: ReadonlyArray<BoardItemRow>) =>
   Effect.gen(function* () {
     const pieceIds = [
       ...pins.flatMap(({ pin }) => (pin.pieceId === null ? [] : [pin.pieceId])),
       ...items.flatMap(({ pieceId }) => (pieceId === null ? [] : [pieceId])),
     ]
     const lookIds = [...new Set(pins.flatMap(({ pin }) => (pin.lookId === null ? [] : [pin.lookId])))]
-    const looks = lookIds.length === 0 ? [] : yield* shownLooks(r, accountId, yield* stored(r.looks.looksById(lookIds)))
+    const looks =
+      lookIds.length === 0 ? [] : yield* shownLooks(accountId, yield* stored((yield* LookStore).looksById(lookIds)))
     const seen: Seen = {
-      pieces: yield* piecesById(r, accountId, pieceIds),
+      pieces: yield* piecesById(accountId, pieceIds),
       looks: new Map<string, PublicLook>(looks.map((look) => [look.id, look])),
     }
     return seen
   })
 
 /** A public board and its owner, while others may see it. */
-const shownBoard = (r: Reader, boardId: string) =>
+const shownBoard = (viewer: Viewer, boardId: string) =>
   Effect.gen(function* () {
-    const row = yield* Effect.flatMap(stored(r.store.board(boardId)), orNotFound)
+    const row = yield* Effect.flatMap(stored((yield* PublicStore).board(boardId)), orNotFound)
     if (row.visibility !== 'public') return yield* notFound()
-    const owner = yield* Effect.flatMap(ownerOf(r, row.accountId), orNotFound)
-    const check = (yield* r.checks.statuses('board', [row.id])).get(row.id)
+    const owner = yield* Effect.flatMap(ownerOf(viewer, row.accountId), orNotFound)
+    const check = (yield* (yield* Checks).statuses('board', [row.id])).get(row.id)
     if (!visibleAt('link', check)) return yield* notFound()
     return { row, owner }
   })
 
-const summaries = (r: Reader, accountId: string, rows: ReadonlyArray<BoardRow>) =>
+const summaries = (accountId: string, rows: ReadonlyArray<BoardRow>) =>
   Effect.gen(function* () {
-    const statuses = yield* r.checks.statuses(
+    const statuses = yield* (yield* Checks).statuses(
       'board',
       rows.map(({ id }) => id),
     )
     const kept = rows.filter(({ id }) => visibleAt('link', statuses.get(id)))
     const ids = kept.map(({ id }) => id)
-    const items = yield* stored(r.boards.itemsOf(ids))
+    const items = yield* stored((yield* BoardStore).itemsOf(ids))
     // Every pin, so a board's count and cover are what others see of it, not what it holds.
-    const pins = yield* stored(r.boards.pinsOf(ids))
-    const seen = yield* seenOn(r, accountId, pins, items)
+    const pins = yield* stored((yield* BoardStore).pinsOf(ids))
+    const seen = yield* seenOn(accountId, pins, items)
     return yield* Effect.forEach(kept, (row) => {
       const shown = publicPins(
         seen,
@@ -237,39 +235,37 @@ const summaries = (r: Reader, accountId: string, rows: ReadonlyArray<BoardRow>) 
 
 /** A piece others may see on its own page: it is on one of its owner's public boards or shared looks that others may
  * see. Publishing a profile never shows the whole wardrobe (owner, 2026-10-31). */
-const shownPiece = (r: Reader, pieceId: string) =>
+const shownPiece = (viewer: Viewer, pieceId: string) =>
   Effect.gen(function* () {
-    const row = yield* Effect.flatMap(stored(r.store.pieces([pieceId])), (rows) => orNotFound(Array.head(rows)))
-    const owner = yield* Effect.flatMap(ownerOf(r, row.piece.accountId), orNotFound)
-    const piece = yield* orNotFound(
-      Option.fromNullishOr((yield* shownPieces(r, owner.row.accountId, [row])).get(pieceId)),
+    const row = yield* Effect.flatMap(stored((yield* PublicStore).pieces([pieceId])), (rows) =>
+      orNotFound(Array.head(rows)),
     )
-    if (!(yield* stored(r.store.onShownBoardOrLook(owner.row.accountId, pieceId)))) return yield* notFound()
+    const owner = yield* Effect.flatMap(ownerOf(viewer, row.piece.accountId), orNotFound)
+    const piece = yield* orNotFound(Option.fromNullishOr((yield* shownPieces(owner.row.accountId, [row])).get(pieceId)))
+    if (!(yield* stored((yield* PublicStore).onShownBoardOrLook(owner.row.accountId, pieceId))))
+      return yield* notFound()
     return { row, piece, owner }
   })
 
-/** The same reader, for one visitor. */
-const readBy = (r: Reader, viewer: Option.Option<string>): Reader => ({ ...r, viewer })
-
 /** Public boards of any owners as discovery shows them, in the order given: each owner's profile and each board
  * must have passed its check, and no block may stand between owner and reader. */
-const discovered = (r: Reader, rows: ReadonlyArray<BoardRow>) =>
+const discovered = (viewer: Viewer, rows: ReadonlyArray<BoardRow>) =>
   Effect.gen(function* () {
-    const boardChecks = yield* r.checks.statuses(
+    const boardChecks = yield* (yield* Checks).statuses(
       'board',
       rows.map(({ id }) => id),
     )
     const owners = [...new Set(rows.map(({ accountId }) => accountId))]
-    const profileChecks = yield* r.checks.statuses('profile', owners)
+    const profileChecks = yield* (yield* Checks).statuses('profile', owners)
     const found = yield* Effect.forEach(owners, (accountId) =>
       Effect.gen(function* () {
         if (!visibleAt('discovery', profileChecks.get(accountId))) return []
-        const owner = yield* ownerOf(r, accountId)
+        const owner = yield* ownerOf(viewer, accountId)
         if (Option.isNone(owner)) return []
         const theirs = rows.filter(
           (row) => row.accountId === accountId && visibleAt('discovery', boardChecks.get(row.id)),
         )
-        const shown = yield* summaries(r, accountId, theirs)
+        const shown = yield* summaries(accountId, theirs)
         return shown.map((board) => ({
           board,
           by: owner.value.author,
@@ -284,13 +280,13 @@ const discovered = (r: Reader, rows: ReadonlyArray<BoardRow>) =>
     })
   })
 
-const pages = (base: Reader) => ({
+const pages = Effect.map(Effect.context<PublicServices>(), (context) => ({
   profile: Effect.fn('Styld.Public.profile')(function* (handle: string, viewer: Option.Option<string> = Option.none()) {
-    const r = readBy(base, viewer)
-    const row = yield* Effect.flatMap(stored(r.store.publishedProfile(handle)), orNotFound)
-    const { author } = yield* Effect.flatMap(shownProfile(r, row), orNotFound)
-    const boards = yield* summaries(r, row.accountId, yield* stored(r.store.publicBoards(row.accountId)))
-    const looks = yield* shownLooks(r, row.accountId, yield* stored(r.store.sharedLooks(row.accountId)))
+    const store = yield* PublicStore
+    const row = yield* Effect.flatMap(stored(store.publishedProfile(handle)), orNotFound)
+    const { author } = yield* Effect.flatMap(shownProfile(viewer, row), orNotFound)
+    const boards = yield* summaries(row.accountId, yield* stored(store.publicBoards(row.accountId)))
+    const looks = yield* shownLooks(row.accountId, yield* stored(store.sharedLooks(row.accountId)))
     return {
       ...author,
       city: row.city,
@@ -299,13 +295,12 @@ const pages = (base: Reader) => ({
       looks,
       yours: Option.contains(viewer, row.accountId),
     }
-  }),
+  }, Effect.provide(context)),
   board: Effect.fn('Styld.Public.board')(function* (boardId: string, viewer: Option.Option<string> = Option.none()) {
-    const r = readBy(base, viewer)
-    const { row, owner } = yield* shownBoard(r, boardId)
-    const items = yield* stored(r.boards.itemsOf([row.id]))
-    const pins = yield* stored(r.boards.pinsOf([row.id]))
-    const seen = yield* seenOn(r, row.accountId, pins, items)
+    const { row, owner } = yield* shownBoard(viewer, boardId)
+    const items = yield* stored((yield* BoardStore).itemsOf([row.id]))
+    const pins = yield* stored((yield* BoardStore).pinsOf([row.id]))
+    const seen = yield* seenOn(row.accountId, pins, items)
     return yield* decoded(PublicBoard, {
       id: row.id,
       name: row.name,
@@ -315,89 +310,75 @@ const pages = (base: Reader) => ({
       by: owner.author,
       publishedAt: (row.publishedAt ?? row.updatedAt).toISOString(),
     })
-  }),
+  }, Effect.provide(context)),
   look: Effect.fn('Styld.Public.look')(function* (lookId: string, viewer: Option.Option<string> = Option.none()) {
-    const r = readBy(base, viewer)
-    const row = yield* Effect.flatMap(stored(r.store.look(lookId)), orNotFound)
-    const owner = yield* Effect.flatMap(ownerOf(r, row.accountId), orNotFound)
-    const [look] = yield* shownLooks(r, row.accountId, [row])
+    const row = yield* Effect.flatMap(stored((yield* PublicStore).look(lookId)), orNotFound)
+    const owner = yield* Effect.flatMap(ownerOf(viewer, row.accountId), orNotFound)
+    const [look] = yield* shownLooks(row.accountId, [row])
     return { look: yield* orNotFound(Option.fromNullishOr(look)), by: owner.author }
-  }),
+  }, Effect.provide(context)),
   /** Boards for Explore and search, gated as discovery is. */
-  discover: (rows: ReadonlyArray<BoardRow>, viewer: Option.Option<string>) => discovered(readBy(base, viewer), rows),
+  discover: (rows: ReadonlyArray<BoardRow>, viewer: Viewer) => discovered(viewer, rows).pipe(Effect.provide(context)),
   /** A person others may find, with their profile's row: a published profile whose check passed, with no block in
    * between. */
-  findable: (accountId: string, viewer: Option.Option<string>) =>
+  findable: (accountId: string, viewer: Viewer) =>
     Effect.gen(function* () {
-      const r = readBy(base, viewer)
-      if (!visibleAt('discovery', (yield* r.checks.statuses('profile', [accountId])).get(accountId)))
+      if (!visibleAt('discovery', (yield* (yield* Checks).statuses('profile', [accountId])).get(accountId)))
         return Option.none()
-      return yield* ownerOf(r, accountId)
-    }),
+      return yield* ownerOf(viewer, accountId)
+    }).pipe(Effect.provide(context)),
   piece: Effect.fn('Styld.Public.piece')(function* (pieceId: string, viewer: Option.Option<string> = Option.none()) {
-    const { piece, owner } = yield* shownPiece(readBy(base, viewer), pieceId)
+    const { piece, owner } = yield* shownPiece(viewer, pieceId)
     return { piece, by: owner.author, yours: Option.contains(viewer, owner.row.accountId) }
-  }),
-})
+  }, Effect.provide(context)),
+}))
 
 /** A public picture's version: a digest of its stored key, so a changed picture is a new address. */
 const versionOf = (key: string, size: ImageSize) =>
   Effect.map(digestOf(key), (digest) => `${digest.slice(0, 22)}.${size}`)
 
-const images = (r: Reader, media: Media['Service']) => {
-  const delivered = (
-    source: { readonly key: string; readonly contentType: string },
-    size: ImageSize,
-    version: string,
-  ) =>
-    Effect.map(deliverImage(media, source, size, { fallback: 'none' }), (image) =>
-      Option.map(image, (shown): ShownImage => ({ ...shown, version })),
-    )
-  return {
-    /** A public piece's picture, re-encoded by the Images binding; a failed transform shows none. */
-    pieceImage: Effect.fn('Styld.Public.pieceImage')(function* (pieceId: string, size: ImageSize) {
-      const shown = yield* shownPiece(r, pieceId).pipe(Effect.option)
-      if (Option.isNone(shown)) return Option.none<ShownImage>()
-      const image = publicImage(shown.value.row)
-      if (Option.isNone(image)) return Option.none<ShownImage>()
-      return yield* delivered(image.value, size, yield* versionOf(image.value.key, size))
-    }),
-    /** A picture on a public board others may see. A picture never changes, so its id and size are its version. */
-    pictureImage: Effect.fn('Styld.Public.pictureImage')(function* (imageId: BoardImageId, size: ImageSize) {
-      const image = yield* stored(r.store.image(imageId))
-      // An outfit photo of My Gallery is never shown to anyone but its owner.
-      if (Option.isNone(image) || heldBack(image.value.origin)) return Option.none<ShownImage>()
-      const board = yield* shownBoard(r, image.value.boardId).pipe(Effect.option)
-      if (Option.isNone(board)) return Option.none<ShownImage>()
-      const { objectKey, contentType } = image.value
-      return yield* delivered({ key: objectKey, contentType }, size, `${imageId}.${size}`)
-    }),
-  }
-}
+/** A stored picture as others get it: re-encoded, or none when the transform fails. */
+const delivered = (source: { readonly key: string; readonly contentType: string }, size: ImageSize, version: string) =>
+  Effect.map(
+    Effect.flatMap(Media, (media) => deliverImage(media, source, size, { fallback: 'none' })),
+    (image) => Option.map(image, (shown): ShownImage => ({ ...shown, version })),
+  )
+
+const images = Effect.map(Effect.context<PublicServices>(), (context) => ({
+  /** A public piece's picture, re-encoded by the Images binding; a failed transform shows none. */
+  pieceImage: Effect.fn('Styld.Public.pieceImage')(function* (pieceId: string, size: ImageSize) {
+    // Pictures are not gated by blocks: their ids are random, and every page that names one applies blocks.
+    const shown = yield* shownPiece(Option.none(), pieceId).pipe(Effect.option)
+    if (Option.isNone(shown)) return Option.none<ShownImage>()
+    const image = publicImage(shown.value.row)
+    if (Option.isNone(image)) return Option.none<ShownImage>()
+    return yield* delivered(image.value, size, yield* versionOf(image.value.key, size))
+  }, Effect.provide(context)),
+  /** A picture on a public board others may see. A picture never changes, so its id and size are its version. */
+  pictureImage: Effect.fn('Styld.Public.pictureImage')(function* (imageId: BoardImageId, size: ImageSize) {
+    const image = yield* stored((yield* PublicStore).image(imageId))
+    // An outfit photo of My Gallery is never shown to anyone but its owner.
+    if (Option.isNone(image) || heldBack(image.value.origin)) return Option.none<ShownImage>()
+    const board = yield* shownBoard(Option.none(), image.value.boardId).pipe(Effect.option)
+    if (Option.isNone(board)) return Option.none<ShownImage>()
+    const { objectKey, contentType } = image.value
+    return yield* delivered({ key: objectKey, contentType }, size, `${imageId}.${size}`)
+  }, Effect.provide(context)),
+}))
 
 /** What the owner of a board reads about who sees its pins. */
-const owners = (r: Reader) => ({
+const owners = Effect.map(Effect.context<PublicServices>(), (context) => ({
   /** Which of these pins of the account's boards others see once their board is public: the pieces and looks others
    * may see past their checks and the pictures that are not held back; the owner's board page marks the rest. */
   pinsShown: Effect.fn('Styld.Public.pinsShown')(function* (accountId: string, pins: ReadonlyArray<PinRow>) {
-    const seen = yield* seenOn(r, accountId, pins, [])
+    const seen = yield* seenOn(accountId, pins, [])
     return new Set(publicPins(seen, pins).map(({ id }) => id))
-  }),
-})
+  }, Effect.provide(context)),
+}))
 
+/** Every public read, each group built over the services it yields (`PublicServices`). */
 const make = Effect.gen(function* () {
-  const db = yield* Database
-  const r: Reader = {
-    db,
-    store: publicStore(db),
-    boards: boardStore(db),
-    looks: lookStore(db),
-    social: socialStore(db),
-    checks: yield* Checks,
-    // Pictures are not gated by blocks: their ids are random, and every page that names one applies blocks.
-    viewer: Option.none(),
-  }
-  return { ...pages(r), ...images(r, yield* Media), ...owners(r) }
+  return { ...(yield* pages), ...(yield* images), ...(yield* owners) }
 })
 
 /** Public pages: what anyone may read, signed in or not, by the one visibility rule. */
@@ -407,5 +388,5 @@ export class PublicPages extends Context.Service<PublicPages, Effect.Success<typ
   static readonly layer = Layer.effect(
     this,
     Effect.map(make, (service) => PublicPages.of(service)),
-  )
+  ).pipe(Layer.provide([PublicStore.layer, SocialStore.layer, LookStore.layer]))
 }

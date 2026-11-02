@@ -1,7 +1,7 @@
 import { boardImages, boardPins, boards, contentChecks, lookPieces, looks, pieces, profiles } from '@styld/db'
 import { and, desc, eq, exists, inArray, isNotNull } from 'drizzle-orm'
-import { Effect } from 'effect'
-import { type Database, first, inChunks, query } from '../kernel/Db.ts'
+import { Context, Effect, Layer } from 'effect'
+import { Database, first, inChunks, query } from '../kernel/Db.ts'
 import { checkLets, piecesWithPictures } from './Visibility.ts'
 
 /** The most boards and looks a profile shows. */
@@ -60,7 +60,7 @@ export const reachedThrough = (db: Drizzle, accountId: string, pieceId: string, 
   })
 
 /** What public pages read in D1. Visibility is decided by `Public.ts`; this only finds rows. */
-export const publicStore = (db: Drizzle) => ({
+const publicStore = (db: Drizzle) => ({
   /** A published profile by its handle. */
   publishedProfile: (handle: string) =>
     query(() =>
@@ -103,4 +103,9 @@ export const publicStore = (db: Drizzle) => ({
   onShownBoardOrLook: (accountId: string, pieceId: string) => reachedThrough(db, accountId, pieceId, true),
 })
 
-export type PublicStore = ReturnType<typeof publicStore>
+/** The public pages' store over the application's one database. */
+export class PublicStore extends Context.Service<PublicStore, ReturnType<typeof publicStore>>()(
+  '@styld/server/social/PublicStore',
+) {
+  static readonly layer = Layer.effect(this, Effect.map(Database, publicStore))
+}

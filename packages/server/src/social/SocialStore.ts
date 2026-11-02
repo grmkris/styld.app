@@ -1,8 +1,8 @@
 import { receiptRows } from '../kernel/Receipts.ts'
 import { blocks, follows, reports, saves } from '@styld/db'
 import { and, count, desc, eq, gte, inArray, or } from 'drizzle-orm'
-import { Array, Effect } from 'effect'
-import { type Database, query } from '../kernel/Db.ts'
+import { Array, Context, Effect, Layer } from 'effect'
+import { Database, query } from '../kernel/Db.ts'
 
 export type SaveRow = typeof saves.$inferSelect
 export type ReportRow = typeof reports.$inferSelect
@@ -160,11 +160,16 @@ const reportRows = (db: Drizzle) => ({
 })
 
 /** Saves, follows, blocks and reports in D1. Every read and write names the account it is for. */
-export const socialStore = (db: Drizzle) => ({
+const socialStore = (db: Drizzle) => ({
   ...savesAndFollows(db),
   ...blockRows(db),
   ...reportRows(db),
   ...receiptRows(db),
 })
 
-export type SocialStore = ReturnType<typeof socialStore>
+/** Saves, follows, blocks and reports over the application's one database. */
+export class SocialStore extends Context.Service<SocialStore, ReturnType<typeof socialStore>>()(
+  '@styld/server/social/SocialStore',
+) {
+  static readonly layer = Layer.effect(this, Effect.map(Database, socialStore))
+}

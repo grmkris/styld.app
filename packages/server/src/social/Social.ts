@@ -24,41 +24,36 @@ import { Database, nowDate, type StoreUnavailable } from '../kernel/Db.ts'
 import { feedFor } from './Feed.ts'
 import { handleOwner, profileOf } from './ProfileStore.ts'
 import { authorOf, PublicPages, summaryOf } from './Public.ts'
-import { publicStore } from './PublicStore.ts'
-import { type SaveRow, type SocialStore, socialStore } from './SocialStore.ts'
+import { PublicStore } from './PublicStore.ts'
+import { type SaveRow, SocialStore } from './SocialStore.ts'
 import { newId } from '../kernel/Ids.ts'
 
 // What people do with each other: saving what others made public, following, blocking and reporting. Everything
 // acts for `CurrentAccount`, sees others through the public pages' rules, and refuses one's own things.
 
 const unavailable = () => Unavailable.make({})
-const stored = <A>(effect: Effect.Effect<A, StoreUnavailable>) => Effect.mapError(effect, unavailable)
+const stored = <A, R>(effect: Effect.Effect<A, StoreUnavailable, R>) => Effect.mapError(effect, unavailable)
 const orNotFound = <A>(found: Option.Option<A>) =>
   Option.match(found, { onNone: () => Effect.fail(NotFound.make({})), onSome: Effect.succeed })
 
-type Drizzle = Database['Service']
-
 /** Whose a saveable or reportable thing is, read without regard to who may see it. */
-const ownerOf = (db: Drizzle) => {
-  const store = publicStore(db)
-  return {
-    piece: (pieceId: string) =>
-      Effect.map(stored(store.pieces([pieceId])), (rows) =>
-        Option.map(Option.fromNullishOr(rows[0]), ({ piece }) => piece.accountId),
-      ),
-    look: (lookId: string) =>
-      Effect.map(
-        stored(store.look(lookId)),
-        Option.map(({ accountId }) => accountId),
-      ),
-    board: (boardId: string) =>
-      Effect.map(
-        stored(store.board(boardId)),
-        Option.map(({ accountId }) => accountId),
-      ),
-    profiles: (accountIds: ReadonlyArray<string>) =>
-      Effect.forEach(accountIds, (accountId) => stored(profileOf(db, accountId))),
-  }
+const owners = {
+  piece: (pieceId: string) =>
+    Effect.map(stored(Effect.flatMap(PublicStore, (store) => store.pieces([pieceId]))), (rows) =>
+      Option.map(Option.fromNullishOr(rows[0]), ({ piece }) => piece.accountId),
+    ),
+  look: (lookId: string) =>
+    Effect.map(
+      stored(Effect.flatMap(PublicStore, (store) => store.look(lookId))),
+      Option.map(({ accountId }) => accountId),
+    ),
+  board: (boardId: string) =>
+    Effect.map(
+      stored(Effect.flatMap(PublicStore, (store) => store.board(boardId))),
+      Option.map(({ accountId }) => accountId),
+    ),
+  profiles: (accountIds: ReadonlyArray<string>) =>
+    Effect.flatMap(Database, (db) => Effect.forEach(accountIds, (accountId) => stored(profileOf(db, accountId)))),
 }
 
 /** A save's target as the protocol names it, and its column values. */
@@ -74,18 +69,12 @@ const saveRowOf = (target: SaveTarget) =>
 /** The row's target id, whichever column holds it. */
 const savedId = (row: SaveRow) => row.pieceId ?? row.lookId ?? row.boardId ?? ''
 
-/** What the social operations share. */
-interface Parts {
-  readonly db: Drizzle
-  readonly store: SocialStore
-  readonly owners: ReturnType<typeof ownerOf>
-  readonly pages: PublicPages['Service']
-  readonly checks: Checks['Service']
-}
+/** The services the social operations work through, provided once by the `Social` layer. */
+type SocialServices = Database | SocialStore | PublicStore | PublicPages | Checks
 
 /** Whose a saved thing is. */
-const ownerOfSaved = (p: Parts, row: { readonly kind: SaveRow['kind']; readonly id: string }) =>
-  row.kind === 'piece' ? p.owners.piece(row.id) : row.kind === 'look' ? p.owners.look(row.id) : p.owners.board(row.id)
+const ownerOfSaved = (row: { readonly kind: SaveRow['kind']; readonly id: string }) =>
+  row.kind === 'piece' ? owners.piece(row.id) : row.kind === 'look' ? owners.look(row.id) : owners.board(row.id)
 
 /** A save's target in its own column. */
 const columnsOf = (row: { readonly kind: SaveRow['kind']; readonly id: string }) => ({
@@ -97,151 +86,151 @@ const columnsOf = (row: { readonly kind: SaveRow['kind']; readonly id: string })
 
 /** A saved thing as it is now, or none once its owner made it private, it failed its check, or a block came
  * between. */
-const savedThing = (p: Parts, kind: SaveRow['kind'], id: string, viewer: string, savedAt: string) => {
-  const shown =
-    kind === 'piece'
-      ? Effect.map(p.pages.piece(id, Option.some(viewer)), ({ piece, by }): SavedThing => ({
-          _tag: 'SavedPiece',
-          piece,
-          by,
-          savedAt,
-        }))
-      : kind === 'look'
-        ? Effect.map(p.pages.look(id, Option.some(viewer)), ({ look, by }): SavedThing => ({
-            _tag: 'SavedLook',
-            look,
+const savedThing = (kind: SaveRow['kind'], id: string, viewer: string, savedAt: string) =>
+  Effect.flatMap(PublicPages, (pages) => {
+    const shown =
+      kind === 'piece'
+        ? Effect.map(pages.piece(id, Option.some(viewer)), ({ piece, by }): SavedThing => ({
+            _tag: 'SavedPiece',
+            piece,
             by,
             savedAt,
           }))
-        : Effect.map(p.pages.board(id, Option.some(viewer)), (board): SavedThing => ({
-            _tag: 'SavedBoard',
-            board: summaryOf(board),
-            by: board.by,
-            savedAt,
-          }))
-  return shown.pipe(
-    Effect.catchTag('NotFound', () => Effect.succeed(undefined)),
-    Effect.map(Option.fromNullishOr),
-  )
-}
+        : kind === 'look'
+          ? Effect.map(pages.look(id, Option.some(viewer)), ({ look, by }): SavedThing => ({
+              _tag: 'SavedLook',
+              look,
+              by,
+              savedAt,
+            }))
+          : Effect.map(pages.board(id, Option.some(viewer)), (board): SavedThing => ({
+              _tag: 'SavedBoard',
+              board: summaryOf(board),
+              by: board.by,
+              savedAt,
+            }))
+    return shown.pipe(
+      Effect.catchTag('NotFound', () => Effect.succeed(undefined)),
+      Effect.map(Option.fromNullishOr),
+    )
+  })
 
 /** Someone by handle, while they are published and no block stands between them and the account. */
-const someone = (p: Parts, viewer: string, handle: string) =>
+const someone = (viewer: string, handle: string) =>
   Effect.gen(function* () {
-    const accountId = yield* Effect.flatMap(stored(handleOwner(p.db, handle, 'published')), orNotFound)
+    const accountId = yield* Effect.flatMap(stored(handleOwner(yield* Database, handle, 'published')), orNotFound)
     if (accountId === viewer) return yield* NotWithYourself.make({})
-    if (yield* stored(p.store.hasBlocked(accountId, viewer))) return yield* NotFound.make({})
+    if (yield* stored((yield* SocialStore).hasBlocked(accountId, viewer))) return yield* NotFound.make({})
     return accountId
   })
-const relationOf = (p: Parts, viewer: string, handle: string, accountId: string) =>
+const relationOf = (viewer: string, handle: string, accountId: string) =>
   Effect.gen(function* () {
     const relation: Relation = {
       handle: yield* Schema.decodeUnknownEffect(Handle)(handle).pipe(Effect.orDie),
-      following: yield* stored(p.store.isFollowing(viewer, accountId)),
-      blocked: yield* stored(p.store.hasBlocked(viewer, accountId)),
+      following: yield* stored((yield* SocialStore).isFollowing(viewer, accountId)),
+      blocked: yield* stored((yield* SocialStore).hasBlocked(viewer, accountId)),
     }
     return relation
   })
-const authors = (p: Parts, accountIds: ReadonlyArray<string>) =>
-  Effect.map(p.owners.profiles(accountIds), (rows) =>
+const authors = (accountIds: ReadonlyArray<string>) =>
+  Effect.map(owners.profiles(accountIds), (rows) =>
     rows.flatMap((row) => (Option.isSome(row) ? Option.toArray(authorOf(row.value)) : [])),
   )
 
 /** The reported thing's owner and its check, while the reporter can see it. */
-const reported = (p: Parts, viewer: string, target: ReportTarget) =>
+const reported = (viewer: string, target: ReportTarget) =>
   Match.value(target).pipe(
     Match.tagsExhaustive({
       ReportedProfile: ({ handle }) =>
         Effect.gen(function* () {
-          yield* p.pages.profile(handle, Option.some(viewer))
-          const accountId = yield* Effect.flatMap(stored(handleOwner(p.db, handle, 'published')), orNotFound)
+          yield* (yield* PublicPages).profile(handle, Option.some(viewer))
+          const accountId = yield* Effect.flatMap(stored(handleOwner(yield* Database, handle, 'published')), orNotFound)
           return { owner: accountId, check: { kind: 'profile', id: accountId } satisfies CheckTarget }
         }),
       ReportedBoard: ({ boardId }) =>
         Effect.gen(function* () {
-          yield* p.pages.board(boardId, Option.some(viewer))
-          const owner = yield* Effect.flatMap(p.owners.board(boardId), orNotFound)
+          yield* (yield* PublicPages).board(boardId, Option.some(viewer))
+          const owner = yield* Effect.flatMap(owners.board(boardId), orNotFound)
           return { owner, check: { kind: 'board', id: boardId } satisfies CheckTarget }
         }),
       ReportedLook: ({ lookId }) =>
         Effect.gen(function* () {
-          yield* p.pages.look(lookId, Option.some(viewer))
-          const owner = yield* Effect.flatMap(p.owners.look(lookId), orNotFound)
+          yield* (yield* PublicPages).look(lookId, Option.some(viewer))
+          const owner = yield* Effect.flatMap(owners.look(lookId), orNotFound)
           return { owner, check: { kind: 'look', id: lookId } satisfies CheckTarget }
         }),
       ReportedPiece: ({ pieceId }) =>
         Effect.gen(function* () {
-          yield* p.pages.piece(pieceId, Option.some(viewer))
-          const owner = yield* Effect.flatMap(p.owners.piece(pieceId), orNotFound)
+          yield* (yield* PublicPages).piece(pieceId, Option.some(viewer))
+          const owner = yield* Effect.flatMap(owners.piece(pieceId), orNotFound)
           return { owner, check: { kind: 'piece', id: pieceId } satisfies CheckTarget }
         }),
     }),
   )
 
-const saving = (p: Parts) => ({
+const saving = Effect.map(Effect.context<SocialServices>(), (context) => ({
   /** What the account saved from others, newest first, while each is still public to them. */
   listSaved: Effect.fn('Styld.Social.saved')(function* () {
     const { accountId } = yield* CurrentAccount
-    const rows = yield* stored(p.store.saves(accountId))
+    const rows = yield* stored((yield* SocialStore).saves(accountId))
     const shown = yield* Effect.forEach(
       rows,
-      (row) => savedThing(p, row.kind, savedId(row), accountId, row.createdAt.toISOString()),
+      (row) => savedThing(row.kind, savedId(row), accountId, row.createdAt.toISOString()),
       { concurrency: 8 },
     )
     return { saved: shown.flatMap(Option.toArray) }
-  }),
+  }, Effect.provide(context)),
   /** Save something someone else made public, or take the save back; one's own things are on one's boards. */
   setSaved: Effect.fn('Styld.Social.setSaved')(function* (input: SetSaved) {
     const { accountId } = yield* CurrentAccount
     const row = saveRowOf(input.target)
     if (!input.saved) {
-      yield* stored(p.store.unsave(accountId, row.kind, row.id))
+      yield* stored((yield* SocialStore).unsave(accountId, row.kind, row.id))
       return { saved: false }
     }
-    const owner = yield* Effect.flatMap(ownerOfSaved(p, row), orNotFound)
+    const owner = yield* Effect.flatMap(ownerOfSaved(row), orNotFound)
     if (owner === accountId) return yield* NotWithYourself.make({})
     const at = yield* nowDate
-    if (Option.isNone(yield* savedThing(p, row.kind, row.id, accountId, at.toISOString())))
-      return yield* NotFound.make({})
-    yield* stored(p.store.save({ id: yield* newId('sv'), accountId, ...columnsOf(row), createdAt: at }))
+    if (Option.isNone(yield* savedThing(row.kind, row.id, accountId, at.toISOString()))) return yield* NotFound.make({})
+    yield* stored((yield* SocialStore).save({ id: yield* newId('sv'), accountId, ...columnsOf(row), createdAt: at }))
     return { saved: true }
-  }),
-})
+  }, Effect.provide(context)),
+}))
 
-const relations = (p: Parts) => ({
+const relations = Effect.map(Effect.context<SocialServices>(), (context) => ({
   relation: Effect.fn('Styld.Social.relation')(function* (handle: string) {
     const { accountId } = yield* CurrentAccount
-    return yield* relationOf(p, accountId, handle, yield* someone(p, accountId, handle))
-  }),
+    return yield* relationOf(accountId, handle, yield* someone(accountId, handle))
+  }, Effect.provide(context)),
   /** Follow someone, privately, or stop. */
   setFollowing: Effect.fn('Styld.Social.setFollowing')(function* (handle: string, input: SetFollowing) {
     const { accountId } = yield* CurrentAccount
-    const other = yield* someone(p, accountId, handle)
+    const other = yield* someone(accountId, handle)
     if (input.following) {
-      if (yield* stored(p.store.hasBlocked(accountId, other))) return yield* NotFound.make({})
-      yield* stored(p.store.follow(accountId, other, yield* nowDate))
-    } else yield* stored(p.store.unfollow(accountId, other))
-    return yield* relationOf(p, accountId, handle, other)
-  }),
+      if (yield* stored((yield* SocialStore).hasBlocked(accountId, other))) return yield* NotFound.make({})
+      yield* stored((yield* SocialStore).follow(accountId, other, yield* nowDate))
+    } else yield* stored((yield* SocialStore).unfollow(accountId, other))
+    return yield* relationOf(accountId, handle, other)
+  }, Effect.provide(context)),
   /** Block someone, which hides each from the other and ends follows both ways, or unblock them. They are never
    * told. */
   setBlocked: Effect.fn('Styld.Social.setBlocked')(function* (handle: string, input: SetBlocked) {
     const { accountId } = yield* CurrentAccount
-    const other = yield* Effect.flatMap(stored(handleOwner(p.db, handle)), orNotFound)
+    const other = yield* Effect.flatMap(stored(handleOwner(yield* Database, handle)), orNotFound)
     if (other === accountId) return yield* NotWithYourself.make({})
-    if (input.blocked) yield* stored(p.store.block(accountId, other, yield* nowDate))
-    else yield* stored(p.store.unblock(accountId, other))
-    return yield* relationOf(p, accountId, handle, other)
-  }),
+    if (input.blocked) yield* stored((yield* SocialStore).block(accountId, other, yield* nowDate))
+    else yield* stored((yield* SocialStore).unblock(accountId, other))
+    return yield* relationOf(accountId, handle, other)
+  }, Effect.provide(context)),
   following: Effect.fn('Styld.Social.following')(function* () {
     const { accountId } = yield* CurrentAccount
-    const people: ReadonlyArray<Author> = yield* authors(p, yield* stored(p.store.followees(accountId)))
+    const people: ReadonlyArray<Author> = yield* authors(yield* stored((yield* SocialStore).followees(accountId)))
     return { people }
-  }),
+  }, Effect.provide(context)),
   /** Who the account blocked, by their handle and name even once they stopped publishing, so they can be unblocked. */
   blocked: Effect.fn('Styld.Social.blocked')(function* () {
     const { accountId } = yield* CurrentAccount
-    const rows = yield* p.owners.profiles(yield* stored(p.store.blockedBy(accountId)))
+    const rows = yield* owners.profiles(yield* stored((yield* SocialStore).blockedBy(accountId)))
     const people: ReadonlyArray<Author> = rows.flatMap((row) =>
       Option.isSome(row)
         ? Option.toArray(
@@ -254,41 +243,41 @@ const relations = (p: Parts) => ({
         : [],
     )
     return { people }
-  }),
+  }, Effect.provide(context)),
   /** What people the account follows made public lately, from `cursor` back. */
   feed: Effect.fn('Styld.Social.feed')(function* (cursor: string | undefined) {
     const { accountId } = yield* CurrentAccount
-    return yield* feedFor({ db: p.db, pages: p.pages, social: p.store, checks: p.checks }, accountId, cursor)
-  }),
-})
+    return yield* feedFor(accountId, cursor)
+  }, Effect.provide(context)),
+}))
 
-const reporting = (p: Parts) => ({
+const reporting = Effect.map(Effect.context<SocialServices>(), (context) => ({
   /** Report something others can see. Styld's check looks at it again, and three people's reports hide it; a
    * profile only leaves discovery. Ten reports an hour at most. */
   report: Effect.fn('Styld.Social.report')(function* (input: CreateReport) {
     const { accountId } = yield* CurrentAccount
     const { operationId, ...report } = input
     yield* once(
-      p.store,
+      yield* SocialStore,
       { accountId, operationId, command: 'report', input: report },
       {
         replay: () => Effect.void,
-        run: Effect.as(filedReport(p, accountId, report), [undefined, 'reported'] as const),
+        run: Effect.as(filedReport(accountId, report), [undefined, 'reported'] as const),
       },
     )
-  }),
-})
+  }, Effect.provide(context)),
+}))
 
 /** File the report, unless it is the account's own thing or past the hour's count. */
-const filedReport = (p: Parts, accountId: string, input: Omit<CreateReport, 'operationId'>) =>
+const filedReport = (accountId: string, input: Omit<CreateReport, 'operationId'>) =>
   Effect.gen(function* () {
-    const { owner, check } = yield* reported(p, accountId, input.target)
+    const { owner, check } = yield* reported(accountId, input.target)
     if (owner === accountId) return yield* NotWithYourself.make({})
     const since = DateTime.toDateUtc(DateTime.subtractDuration(yield* DateTime.now, Duration.hours(1)))
-    if ((yield* stored(p.store.reportsSince(accountId, since))) >= reportsPerHour)
+    if ((yield* stored((yield* SocialStore).reportsSince(accountId, since))) >= reportsPerHour)
       return yield* LimitReached.make({ limit: 'reports' })
     const { filed, reporters } = yield* stored(
-      p.store.report({
+      (yield* SocialStore).report({
         id: yield* newId('rp'),
         reporterId: accountId,
         ownerId: owner,
@@ -301,19 +290,12 @@ const filedReport = (p: Parts, accountId: string, input: Omit<CreateReport, 'ope
     )
     // The same person reporting the same thing again changes nothing, and asks the model nothing.
     if (!filed) return
-    yield* p.checks.reported(check, reporters >= reportsToHide && check.kind !== 'profile')
+    yield* (yield* Checks).reported(check, reporters >= reportsToHide && check.kind !== 'profile')
   })
 
+/** Every social operation, each group built over the services it yields (`SocialServices`). */
 const make = Effect.gen(function* () {
-  const db = yield* Database
-  const p: Parts = {
-    db,
-    store: socialStore(db),
-    owners: ownerOf(db),
-    pages: yield* PublicPages,
-    checks: yield* Checks,
-  }
-  return { ...saving(p), ...relations(p), ...reporting(p) }
+  return { ...(yield* saving), ...(yield* relations), ...(yield* reporting) }
 })
 
 /** Saves, follows, blocks and reports. */
@@ -321,5 +303,5 @@ export class Social extends Context.Service<Social, Effect.Success<typeof make>>
   static readonly layer = Layer.effect(
     this,
     Effect.map(make, (service) => Social.of(service)),
-  )
+  ).pipe(Layer.provide([SocialStore.layer, PublicStore.layer]))
 }
