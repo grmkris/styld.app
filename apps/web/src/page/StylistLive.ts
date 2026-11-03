@@ -1,6 +1,6 @@
 import { decodeLiveText, type LiveTextFrame } from '@yielded/agent-platform-cloudflare/live-text'
 import { ThreadId } from '@yielded/agent/identifiers'
-import { Match, Stream } from 'effect'
+import { Predicate, Stream } from 'effect'
 
 // The words of Styld's reply as its Thread writes them (Yielded LiveText), decoded in the browser: Ask Styld loads
 // this module when a reply is being written, never in the first load. A draft is provisional: the chat read after the
@@ -22,30 +22,20 @@ const textOf = (drafts: Drafts) => [...drafts.values()].join('')
 
 /** One frame's change to the drafts, and whether the attempt ended with it. */
 const applied = (drafts: Drafts, frame: LiveTextFrame): readonly [Drafts, boolean] =>
-  Match.value(frame).pipe(
-    Match.tag('Reset', (): readonly [Drafts, boolean] => [new Map(), false]),
-    Match.tag('Event', ({ event }) => appliedEvent(drafts, event)),
-    Match.exhaustive,
-  )
+  Predicate.isTagged(frame, 'Reset') ? [new Map(), false] : appliedEvent(drafts, frame.event)
 
-const appliedEvent = (drafts: Drafts, event: Event): readonly [Drafts, boolean] =>
-  Match.value(event).pipe(
-    Match.tag('AttemptEnded', ({ attemptId }): readonly [Drafts, boolean] => [
-      new Map([...drafts].filter(([key]) => !key.startsWith(`${JSON.stringify(attemptId)},`))),
-      true,
-    ]),
-    Match.tag('Discard', (discarded): readonly [Drafts, boolean] => {
-      const next = new Map(drafts)
-      next.delete(keyOf(discarded))
-      return [next, false]
-    }),
-    Match.tag('Text', (text): readonly [Drafts, boolean] => {
-      if (text.part.type !== 'text-delta') return [drafts, false]
-      const key = keyOf(text)
-      return [new Map(drafts).set(key, `${drafts.get(key) ?? ''}${text.part.delta}`), false]
-    }),
-    Match.exhaustive,
-  )
+const appliedEvent = (drafts: Drafts, event: Event): readonly [Drafts, boolean] => {
+  if (Predicate.isTagged(event, 'AttemptEnded'))
+    return [new Map([...drafts].filter(([key]) => !key.startsWith(`${JSON.stringify(event.attemptId)},`))), true]
+  if (Predicate.isTagged(event, 'Discard')) {
+    const next = new Map(drafts)
+    next.delete(keyOf(event))
+    return [next, false]
+  }
+  if (event.part.type !== 'text-delta') return [drafts, false]
+  const key = keyOf(event)
+  return [new Map(drafts).set(key, `${drafts.get(key) ?? ''}${event.part.delta}`), false]
+}
 
 /** A model turn's draft key: its attempt first, so an ended attempt's drafts go together. */
 const keyOf = (event: {

@@ -7,6 +7,7 @@ import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { hasStopped, Misses } from '../Polling.ts'
+import * as HttpClient from 'effect/http/HttpClient'
 import { StyldClient } from '../StyldClient.ts'
 
 // MODEL
@@ -426,27 +427,27 @@ const liveReply = ({
 }) =>
   chatId === ''
     ? Stream.empty
-    : Stream.fromEffectDrain(Effect.sleep(Duration.seconds(misses))).pipe(
-        Stream.concat(
-          Stream.unwrap(
-            Effect.gen(function* () {
-              const client = yield* StyldClient
-              const { followLive } = yield* Effect.tryPromise(() => import('./StylistLive.ts'))
-              return followLive(thread, client.readStream(`/api/stylist/chats/${chatId}/live`)).pipe(
-                Stream.map((draft) =>
-                  draft.ended
-                    ? Message.EndedLiveReply({ chatId })
-                    : Message.ReceivedLiveDraft({ chatId, text: draft.text }),
-                ),
-              )
-            }),
-          ),
-        ),
-        Stream.catch(() => Stream.make(Message.LostLiveReply({ chatId }))),
-      )
+    : Stream.unwrap(
+        Effect.gen(function* () {
+          // A moment later after each loss.
+          yield* Effect.sleep(Duration.seconds(misses))
+          const { followLive } = yield* Effect.tryPromise(() => import('./StylistLive.ts'))
+          const http = HttpClient.filterStatusOk(yield* HttpClient.HttpClient)
+          const response = yield* http.get(
+            new URL(`/api/stylist/chats/${chatId}/live`, window.location.origin).toString(),
+          )
+          return followLive(thread, response.stream).pipe(
+            Stream.map((draft) =>
+              draft.ended
+                ? Message.EndedLiveReply({ chatId })
+                : Message.ReceivedLiveDraft({ chatId, text: draft.text }),
+            ),
+          )
+        }),
+      ).pipe(Stream.catch(() => Stream.make(Message.LostLiveReply({ chatId }))))
 
 /** The open chat's reply, followed live while it is written: no polling. */
-export const subscriptions = Subscription.make<Model, Message, StyldClient>()((entry) => ({
+export const subscriptions = Subscription.make<Model, Message, HttpClient.HttpClient>()((entry) => ({
   liveReply: entry(Following, {
     modelToDependencies: (model) =>
       Option.match(
