@@ -1,6 +1,6 @@
 import { cdn } from '../Cdn.ts'
 import { textLength, prices } from '@styld/protocol'
-import type { Piece, PiecePicture, PieceRotation } from '@styld/protocol'
+import type { Piece, PiecePicture } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import { Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
@@ -387,22 +387,16 @@ const shownPicture = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
     onNone: () => piece.rotation,
     onSome: (draft) => draft.rotation,
   })
-  const pictureStyle = () =>
-    cx(
-      styles.photo(),
-      rotation === 0
-        ? styles.photoRotation0()
-        : rotation === 90
-          ? styles.photoRotation90()
-          : rotation === 180
-            ? styles.photoRotation180()
-            : styles.photoRotation270(),
-    )
+  // A quarter turn as a data attribute: zyzz composes only statically known styles, so the rotation is a selector.
+  const pictureStyle = [
+    h.DataAttribute('rotation', String(rotation)),
+    ...styled(h, cx(styles.photo(), styles.rotated())),
+  ]
   if (piece.hasBack && model.back.side === 'back')
     return h.img([
       h.Src(backPath(piece)),
       h.Alt(format(locale, 'wardrobe.backAlt', { name: pieceLabel(piece, locale) })),
-      ...styled(h, pictureStyle()),
+      ...pictureStyle,
     ])
   const turn = piece.turn
   const still = (underPlayer: boolean) =>
@@ -410,7 +404,7 @@ const shownPicture = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
       h.Src(fullPath(piece)),
       h.Alt(pieceLabel(piece, locale)),
       ...(underPlayer ? [h.AriaHidden(true)] : []),
-      ...styled(h, pictureStyle()),
+      ...pictureStyle,
     ])
   if (turn?.state !== 'ready' || turn.layout === undefined || piece.picture?.shows !== 'clean') return still(false)
   const sheet = turn.media?.sheet
@@ -430,7 +424,7 @@ const shownPicture = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
           h.Role('img'),
           h.AriaLabel(pieceLabel(piece, locale)),
           h.OnMount(ShowTurn({ sheet, layout: turn.layout })),
-          ...styled(h, pictureStyle()),
+          ...pictureStyle,
         ]),
       ],
     ),
