@@ -1,89 +1,79 @@
-import { type Duration, Context, Effect, Layer, Predicate, Schema, Stream } from 'effect'
+import { type Duration, Effect, Layer, Predicate, Schema, Stream } from 'effect'
 import { AiError, LanguageModel, Prompt, type Response, Tool } from 'effect/ai'
 import { toCodecOpenAI } from 'effect/ai/OpenAiStructuredOutput'
 import { CaptureMetrics, type ProviderCall } from '../kernel/Metrics.ts'
 import { providerCall } from '../providers/Call.ts'
 import { type TextModel, textCost } from '../providers/Costs.ts'
-import { broken, busy, outcomeUnknown, type ProviderError, refused } from '../providers/Errors.ts'
+import { busy, outcomeUnknown, type ProviderError, refused } from '../providers/Errors.ts'
+import { TextCompletions } from '../providers/Text.ts'
 
-// One language model for every text task (owner, 2026-11-01): Effect's `LanguageModel` over the Worker's Workers AI
-// binding, so the mood-board planner and Thinking ask for an object of a Schema (`generateObject`), Styld chats with
-// its Toolkit (`Chat`) and Llama Guard reads words (`generateText`), each call through `providerCall`: deadlined,
-// tried again only while busy, counted and priced. Workers AI is asked without streaming (its streamed answers end
-// without a finish reason, 31 October); a streamed request gets the whole answer at once. What a model is sent and
-// answers is never logged.
-
-/** The Worker's `AI` binding, as Styld runs its text models: a model id and its input, the model's answer. */
-export class WorkersAi extends Context.Service<
-  WorkersAi,
-  { readonly run: (model: string, input: Readonly<Record<string, unknown>>) => Promise<unknown> }
->()('@styld/server/ai/WorkersAi') {
-  static readonly layer = (run: WorkersAi['Service']['run']) => Layer.succeed(this, { run })
-}
+// Every text task uses Effect's LanguageModel over Styld's paid LiteLLM route. Clef keeps the Workers AI binding.
+// Objects are requested as JSON with an explicit schema in the prompt and decoded by Effect: DeepSeek supports
+// JSON Object mode, rather than provider-enforced JSON Schema. Replies are buffered as before; neither prompts,
+// answers nor reasoning are logged.
 
 /** One text task: the model it asks, what its calls are counted as, and how long one call may take. */
 export interface TextTask {
   readonly model: TextModel
   readonly kind: ProviderCall['kind']
   readonly deadline: Duration.Input
+  readonly maxTokens: number
 }
 
-const provider = 'workers-ai'
+const provider = 'litellm'
 
+const TokenCount = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
 const Usage = Schema.Struct({
-  prompt_tokens: Schema.optionalKey(Schema.Number),
-  completion_tokens: Schema.optionalKey(Schema.Number),
+  prompt_tokens: TokenCount,
+  completion_tokens: TokenCount,
+  prompt_tokens_details: Schema.optionalKey(
+    Schema.NullOr(Schema.Struct({ cached_tokens: Schema.optionalKey(Schema.NullOr(TokenCount)) })),
+  ),
+  completion_tokens_details: Schema.optionalKey(
+    Schema.NullOr(Schema.Struct({ reasoning_tokens: Schema.optionalKey(Schema.NullOr(TokenCount)) })),
+  ),
 })
 
 const ToolCall = Schema.Struct({
-  id: Schema.optionalKey(Schema.String),
-  function: Schema.Struct({ name: Schema.String, arguments: Schema.optionalKey(Schema.Unknown) }),
+  id: Schema.NonEmptyString,
+  function: Schema.Struct({ name: Schema.NonEmptyString, arguments: Schema.String }),
 })
 
-/** Whether an answer says something: the first choice's words or tool calls, or else an older model's `response`. An
- * answer with neither (`{}`, an empty message) is unreadable, never an empty answer. */
-const answers = (output: {
-  readonly response?: unknown
-  readonly choices?: ReadonlyArray<{
-    readonly message: { readonly content?: string | null; readonly tool_calls?: ReadonlyArray<unknown> | null }
-  }>
-}) => {
-  const message = output.choices?.[0]?.message
-  if (message === undefined) return output.response !== undefined && output.response !== ''
-  return (message.content ?? '').length > 0 || (message.tool_calls ?? []).length > 0
-}
-
-/** Workers AI answers older models with `response` (text, or the object asked for), newer ones as a Chat Completion. */
+/** An empty answer or absent usage is a protocol failure, never a free successful call. */
 const Output = Schema.Struct({
-  response: Schema.optionalKey(Schema.Union([Schema.String, Schema.Record(Schema.String, Schema.Unknown)])),
-  choices: Schema.optionalKey(
-    Schema.Array(
-      Schema.Struct({
-        message: Schema.Struct({
-          content: Schema.optionalKey(Schema.NullOr(Schema.String)),
-          tool_calls: Schema.optionalKey(Schema.NullOr(Schema.Array(ToolCall))),
-        }),
-        finish_reason: Schema.optionalKey(Schema.NullOr(Schema.String)),
+  choices: Schema.Array(
+    Schema.Struct({
+      message: Schema.Struct({
+        content: Schema.optionalKey(Schema.NullOr(Schema.String)),
+        tool_calls: Schema.optionalKey(Schema.NullOr(Schema.Array(ToolCall))),
       }),
-    ),
+      finish_reason: Schema.String,
+    }),
   ),
-  usage: Schema.optionalKey(Usage),
-}).check(Schema.makeFilter(answers))
+  usage: Usage,
+}).check(
+  Schema.makeFilter((output) => {
+    const first = output.choices[0]
+    return (
+      first !== undefined && ((first.message.content ?? '').length > 0 || (first.message.tool_calls ?? []).length > 0)
+    )
+  }),
+)
 type Output = typeof Output.Type
 
 /** How a provider failure reads as an `AiError`, and back: one mapping each way, so a caller of the language model
  * handles the same `ProviderError` reasons as any other provider call. */
 const aiErrorOf = (method: string) => (error: ProviderError) =>
   AiError.make({
-    module: 'WorkersAi',
+    module: 'StyldText',
     method,
     reason: Predicate.isTagged(error.reason, 'Broken')
-      ? new AiError.InvalidOutputError({ description: 'Workers AI answered something unreadable' })
+      ? new AiError.InvalidOutputError({ description: 'The text provider answered something unreadable' })
       : Predicate.isTagged(error.reason, 'Refused')
-        ? new AiError.InvalidRequestError({ description: 'Workers AI refused the request' })
+        ? new AiError.InvalidRequestError({ description: 'The text provider refused the request' })
         : Predicate.isTagged(error.reason, 'OutcomeUnknown')
-          ? new AiError.UnknownError({ description: 'Workers AI may have answered' })
-          : new AiError.InternalProviderError({ description: 'Workers AI did not answer in time' }),
+          ? new AiError.UnknownError({ description: 'The text provider may have answered' })
+          : new AiError.InternalProviderError({ description: 'The text provider did not answer in time' }),
   })
 
 const readingFailures = [
@@ -100,7 +90,9 @@ const refusals = ['InvalidRequestError', 'ContentPolicyError', 'InvalidUserInput
  * reads the same way), a refusal Refused, a lost answer OutcomeUnknown, anything else Busy. */
 export const providerErrorOf = (error: AiError.AiError): ProviderError => {
   const is = (tags: ReadonlyArray<string>) => tags.some((tag) => Predicate.isTagged(error.reason, tag))
-  if (is(readingFailures)) return broken(provider)
+  // A paid gateway can have billed a completion before returning malformed JSON or a schema mismatch. Keep that
+  // outcome claimed so a caller cannot pay for the same request again while trying to read it.
+  if (is(readingFailures)) return outcomeUnknown(provider)
   if (is(refusals)) return refused(provider)
   return is(['UnknownError']) ? outcomeUnknown(provider) : busy(provider)
 }
@@ -112,7 +104,7 @@ const unfenced = (text: string) =>
     .replace(/^```(?:json)?\s*/u, '')
     .replace(/\s*```$/u, '')
 
-/** The prompt as Chat Completions messages. Styld sends only words, so a file in it is a request Workers AI cannot
+/** The prompt as Chat Completions messages. Styld sends only words, so a file in it is a request The text provider cannot
  * take. */
 const messagesOf = (prompt: Prompt.Prompt) =>
   prompt.content.flatMap((message): ReadonlyArray<Readonly<Record<string, unknown>>> => {
@@ -163,8 +155,9 @@ const toolsOf = (options: LanguageModel.ProviderOptions) => {
     function: {
       name: nameOf(tool),
       ...(Tool.getDescription(tool) === undefined ? {} : { description: Tool.getDescription(tool) }),
-      parameters: Tool.getJsonSchema(tool, { transformer: toCodecOpenAI }),
-      strict: Tool.getStrictMode(tool) ?? true,
+      // Tool arguments are function parameters, not provider-enforced structured output. Keep Effect's ordinary
+      // object schema here; the OpenAI transformer rejects an empty object tool schema as a non-object `not null`.
+      parameters: Tool.getJsonSchema(tool),
     },
   }))
   const choice: LanguageModel.ToolChoice<string> = options.toolChoice
@@ -184,28 +177,34 @@ function namesTool(choice: Exclude<LanguageModel.ToolChoice<string>, string>): c
   return Predicate.hasProperty(choice, 'tool')
 }
 
-/** The request Workers AI is sent: the messages, the tools, and for an object the JSON schema it must answer in. */
-const requestOf = (options: LanguageModel.ProviderOptions) =>
+/** JSON Object mode promises JSON syntax; Effect still enforces the requested schema before a caller can use it. */
+const requestOf = (task: TextTask, options: LanguageModel.ProviderOptions) =>
   Effect.try({
-    try: (): Readonly<Record<string, unknown>> => ({
-      messages: messagesOf(options.prompt),
-      ...toolsOf(options),
-      ...(options.responseFormat.type === 'json'
-        ? {
-            response_format: {
-              type: 'json_schema',
-              json_schema: Tool.getJsonSchemaFromSchema(options.responseFormat.schema, { transformer: toCodecOpenAI }),
-            },
-          }
-        : {}),
-    }),
+    try: (): Readonly<Record<string, unknown>> => {
+      const messages = messagesOf(options.prompt)
+      if (options.responseFormat.type === 'json') {
+        const schema = Tool.getJsonSchemaFromSchema(options.responseFormat.schema, { transformer: toCodecOpenAI })
+        messages.unshift({
+          role: 'system',
+          content: `Return only a JSON object matching this JSON schema: ${JSON.stringify(schema)}`,
+        })
+      }
+      return {
+        messages,
+        ...toolsOf(options),
+        max_tokens: task.maxTokens,
+        reasoning_effort: 'none',
+        ...(options.responseFormat.type === 'json' ? { response_format: { type: 'json_object' } } : {}),
+      }
+    },
     catch: () => refused(provider),
   })
 
 const finishOf = (reason: string | null | undefined, called: boolean): Response.FinishPartEncoded['reason'] => {
   if (reason === 'length') return 'length'
   if (reason === 'content_filter') return 'content-filter'
-  return called || reason === 'tool_calls' ? 'tool-calls' : 'stop'
+  if (reason === 'tool_calls' || (reason === 'stop' && called)) return 'tool-calls'
+  return reason === 'stop' ? 'stop' : 'unknown'
 }
 
 /** Words without the model's reasoning: a reasoning model's thoughts come in `reasoning_content`, which is never read,
@@ -217,22 +216,16 @@ const withoutReasoning = (text: string) =>
     .replace(/^[\s\S]*<\/think>/u, '')
     .trimStart()
 
-/** The answer's words: the message's, or an older model's `response` (an object asked for, as its JSON). */
+/** The answer's words, excluding reasoning. */
 const textOf = (output: Output, json: boolean) => {
-  const content = output.choices?.[0]?.message.content ?? output.response
-  const text = withoutReasoning(
-    typeof content === 'string' ? content : content === undefined ? '' : JSON.stringify(content),
-  )
+  const text = withoutReasoning(output.choices[0]?.message.content ?? '')
   return json ? unfenced(text) : text
 }
 
 const paramsOf = (call: typeof ToolCall.Type) =>
   Effect.try({
-    try: () =>
-      typeof call.function.arguments === 'string'
-        ? Tool.unsafeSecureJsonParse(call.function.arguments)
-        : (call.function.arguments ?? {}),
-    catch: () => broken(provider),
+    try: () => Tool.unsafeSecureJsonParse(call.function.arguments),
+    catch: () => outcomeUnknown(provider),
   })
 
 /** The answer as response parts: its words, its tool calls and its finish with the tokens billed. */
@@ -240,22 +233,31 @@ const partsOf = Effect.fnUntraced(function* (output: Output, json: boolean) {
   const choice = output.choices?.[0]
   const calls = choice?.message.tool_calls ?? []
   const text = textOf(output, json)
-  const toolCalls = yield* Effect.forEach(calls, (call, index) =>
+  const toolCalls = yield* Effect.forEach(calls, (call) =>
     Effect.map(paramsOf(call), (params): Response.PartEncoded => ({
       type: 'tool-call',
-      id: call.id ?? `call_${String(index)}`,
+      id: call.id,
       name: call.function.name,
       params,
     })),
   )
-  const input = output.usage?.prompt_tokens
-  const written = output.usage?.completion_tokens
+  const input = output.usage.prompt_tokens
+  const written = output.usage.completion_tokens
   const finish: Response.PartEncoded = {
     type: 'finish',
     reason: finishOf(choice?.finish_reason, toolCalls.length > 0),
     usage: {
-      inputTokens: { uncached: input, total: input, cacheRead: undefined, cacheWrite: undefined },
-      outputTokens: { total: written, text: written, reasoning: undefined },
+      inputTokens: {
+        uncached: input - (output.usage.prompt_tokens_details?.cached_tokens ?? 0),
+        total: input,
+        cacheRead: output.usage.prompt_tokens_details?.cached_tokens ?? undefined,
+        cacheWrite: undefined,
+      },
+      outputTokens: {
+        total: written,
+        text: written - (output.usage.completion_tokens_details?.reasoning_tokens ?? 0),
+        reasoning: output.usage.completion_tokens_details?.reasoning_tokens ?? undefined,
+      },
     },
   }
   return [...(text.length > 0 ? [{ type: 'text' as const, text }] : []), ...toolCalls, finish]
@@ -273,32 +275,39 @@ const streamed = (parts: ReadonlyArray<Response.PartEncoded>): ReadonlyArray<Res
   })
 
 /** One counted call of the task's model. */
-const ask = (task: TextTask, run: WorkersAi['Service']['run'], metrics: CaptureMetrics['Service']) =>
+const ask = (task: TextTask, run: TextCompletions['Service']['run'], metrics: CaptureMetrics['Service']) =>
   Effect.fnUntraced(function* (options: LanguageModel.ProviderOptions) {
-    const request = yield* requestOf(options)
+    const request = yield* requestOf(task, options)
     return yield* providerCall(
       metrics,
-      { provider, model: task.model.id, kind: task.kind, deadline: task.deadline, replaySafe: true },
-      Effect.tryPromise({ try: () => run(task.model.id, request), catch: () => busy(provider) }).pipe(
-        Effect.flatMap((raw) => Schema.decodeUnknownEffect(Output)(raw).pipe(Effect.mapError(() => broken(provider)))),
+      { provider, model: task.model.id, kind: task.kind, deadline: task.deadline, replaySafe: false },
+      run(task.model.id, request).pipe(
+        Effect.flatMap((raw) =>
+          Schema.decodeUnknownEffect(Output)(raw).pipe(Effect.mapError(() => outcomeUnknown(provider))),
+        ),
+        Effect.flatMap((output) =>
+          options.responseFormat.type === 'json' && output.choices[0]?.finish_reason !== 'stop'
+            ? Effect.fail(outcomeUnknown(provider))
+            : Effect.succeed(output),
+        ),
         Effect.flatMap((output) =>
           Effect.map(partsOf(output, options.responseFormat.type === 'json'), (parts) => ({ output, parts })),
         ),
       ),
       ({ output }) => {
-        const input = output.usage?.prompt_tokens ?? 0
-        const written = output.usage?.completion_tokens ?? 0
+        const input = output.usage.prompt_tokens ?? 0
+        const written = output.usage.completion_tokens ?? 0
         return { units: input + written, costMicroUsd: textCost(task.model, input, written) }
       },
     ).pipe(Effect.map(({ parts }) => parts))
   })
 
-/** The task's language model over Workers AI. */
-export const workersAiModel = (task: TextTask) =>
+/** The task's language model over The text provider. */
+export const textModel = (task: TextTask) =>
   Layer.effect(
     LanguageModel.LanguageModel,
     Effect.gen(function* () {
-      const { run } = yield* WorkersAi
+      const { run } = yield* TextCompletions
       const call = ask(task, run, yield* CaptureMetrics)
       return yield* LanguageModel.make({
         codecTransformer: toCodecOpenAI,

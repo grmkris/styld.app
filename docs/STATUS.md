@@ -250,13 +250,13 @@ Each line is a kept feature; `docs/DELIVERY.md` maps it to the tests and readbac
   own pieces from one sentence, pinned and laid out (1 credit).
 - **My Gallery:** the person's own outfit photos (1 credit to find the clothes), matched to pieces, favourites, Wear
   it again, Add to board (held back from visitors), Cut out the outfit, a missing garment offered to the tray.
-- **Styld, the stylist:** a chat at `/ask/stylist` over the person's own pieces and looks (DeepSeek V4.1 Flash on
-  Workers AI), 1 credit a message, back when no reply comes.
+- **Styld, the stylist:** a chat at `/ask/stylist` over the person's own pieces and looks (DeepSeek V4.1 Flash through
+  the paid LiteLLM gateway), 1 credit a message, back when no reply comes.
 - **Public profile and social:** `/@handle` with Boards and Looks; public boards, looks and pieces with share links
   and link previews; Save, one-way private Follow, Block, Report; readable signed out.
 - **Explore and search:** Edits from Styld, featured boards and people, newest by mood; Ask searches the wardrobe,
   people and boards.
-- **Safety:** every public item is checked first (Clef for pictures, Llama Guard 3 for words); unsure stays out of
+- **Safety:** every public item is checked first (Clef for pictures, DeepSeek through the paid LiteLLM gateway for words); unsure stays out of
   discovery, failed is hidden with a notice; three reports hide; admin MCP tools hide, restore and feature.
 - **ChatGPT and Claude (MCP):** OAuth (CIMD and DCR), consent and immediate revoke at `/mcp`; noun_verb tools over
   the same operations; MCP Apps views (the wardrobe and a board) inside the host.
@@ -271,8 +271,10 @@ Each line is a kept feature; `docs/DELIVERY.md` maps it to the tests and readbac
 From the two reviews of `56a619b`; included in release `8ff72e7`. Preview D1 records migration
 `20261102150114_deletions` and the subsequent credit/durability migrations as applied.
 
-- **Safety judge fails closed:** a Llama Guard answer in neither of its formats, or an empty one, is Broken and leaves
-  the check pending (re-queued, then swept); Workers AI's answer schema refuses `{}` and empty messages.
+- **Safety judge fails closed:** DeepSeek text answers are required to be complete Chat Completions with usage and a
+  schema-valid JSON verdict. Lost, incomplete or unreadable paid answers become an unsure verdict and are never
+  submitted again; Clef still judges pictures. Unknown/busy provider outcomes and their queue treatment remain open
+  for live acceptance.
 - **Writes keep their operation id:** profile edits and publishing, saves, follows, blocks, piece edits, back removal,
   picture choice, look sharing, board edits and visibility and worn days write their receipt in the mutation's batch
   (`kernel/Receipts.ts` `recorded`); a repeat writes nothing; changed input is `OperationConflict`, declared on the
@@ -340,7 +342,8 @@ From the cleanup's milestones, still open after the later ones:
   bucket).
 - `mcp/Sdk.ts` still answers the MCP SDK's older protocol era (`answerLegacy`) for external assistant hosts.
 - The auth storage tables stay exported from `@styld/db` for Drizzle Kit.
-- Styld's turn tests still run on the recorded GLM fixtures (`test/fixtures/stylist/glm-*.json`), not DeepSeek's.
+- Styld's unit turn tests include recorded DeepSeek Chat Completions; live paid-gateway behavior and moderation quality
+  remain unverified until the dedicated Railway route is configured.
 - A Thinking call that times out is retried while busy (up to three more times) inside a synchronous request.
 - `capture/Providers.ts` and the stylist's and language model's `(parts) =>` records remain beside the services.
 - The garment pipeline's 512 px model input and the pair rule need the fixture comparison and one real photo per
@@ -354,7 +357,8 @@ From the cleanup's milestones, still open after the later ones:
 From the product (carried from 31 October – 1 November):
 
 - Home waits 4–6 s for its first table while Clef ranks twelve candidates; Thinking takes about 15 s.
-- A Workers AI call sometimes hangs on "save that as a look" turns (bounded at 45 s and retried).
+- A paid text call can still consume up to its 45-second stylist deadline; ambiguous gateway outcomes are retained as
+  unknown and are not retried automatically.
 - Cloudflare Images answers 9529 ("too busy") in bursts of about 90 cut-outs a minute; the queue absorbs it.
 - The runtime's own `r2_get` span reports a judging-picture cache miss as an error, crowding Workers Logs queries.
 - My Gallery has no readback on a real worn photo (finding and cutting out a person); favourites are not yet clues

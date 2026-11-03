@@ -3,7 +3,8 @@ import { LookId, PieceId } from '@styld/protocol'
 import { Context, Effect, Layer, Predicate, Schema, Stream } from 'effect'
 import type { Prompt } from 'effect/ai'
 import { describe, expect, test } from 'vitest'
-import { WorkersAi, workersAiModel } from '../src/ai/LanguageModel.ts'
+import { textModel } from '../src/ai/LanguageModel.ts'
+import { TextCompletions } from '../src/providers/Text.ts'
 import { CaptureMetrics } from '../src/kernel/Metrics.ts'
 import { type Tool as AssistantTool, tool, ToolError } from '../src/mcp/Tools.ts'
 import { styldModel } from '../src/stylist/Policy.ts'
@@ -42,11 +43,11 @@ const replaying = (answers: ReadonlyArray<unknown>) => {
   const asked: Array<Readonly<Record<string, unknown>>> = []
   const counted: Array<number> = []
   const failed: Array<number> = []
-  const model = workersAiModel(styldModel).pipe(
+  const model = textModel(styldModel).pipe(
     Layer.provide(
-      WorkersAi.layer((_model, input) => {
+      TextCompletions.layer((_model, input) => {
         asked.push(input)
-        return Promise.resolve(answers[asked.length - 1])
+        return Effect.succeed(answers[asked.length - 1])
       }),
     ),
     Layer.provide(

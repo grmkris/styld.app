@@ -21,11 +21,21 @@ export const nativeProviders: ProvidersFor = (bindings) => {
   const fixtures = fixturesOf(bindings.env)
   const live = providersOver(
     bindings,
-    { runClef: clefAt(`${fixtures}/test/pictures/clef`), runModel: fakeChat },
+    { runClef: clefAt(`${fixtures}/test/pictures/clef`) },
     {
-      fetch: (input, init) => globalThis.fetch(input, init),
+      fetch: async (input, init) => {
+        if (input === `${fixtures}/test/text/chat/completions`) {
+          try {
+            return Response.json(await fakeChat(await new Response(init.body).json()))
+          } catch {
+            return Response.json({ error: { code: 'unavailable' } }, { status: 503 })
+          }
+        }
+        return globalThis.fetch(input, init)
+      },
       metaBase: `${fixtures}/test/pictures/meta`,
       gatewayBase: `${fixtures}/test/pictures/gateway`,
+      textBase: `${fixtures}/test/text`,
       pollSeconds: 1,
     },
   )

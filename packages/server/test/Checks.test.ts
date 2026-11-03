@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@effect/vitest'
 import { Effect, Layer, Option } from 'effect'
-import { WorkersAi } from '../src/ai/LanguageModel.ts'
+import { TextCompletions } from '../src/providers/Text.ts'
 import { Database } from '../src/kernel/Db.ts'
 import { Media } from '../src/kernel/Media.ts'
 import { CaptureMetrics } from '../src/kernel/Metrics.ts'
@@ -74,10 +74,10 @@ const passing = (seen: Witness) =>
     }),
   )
 
-/** The real judge, with Llama Guard answering `answer` and Clef never asked. */
+/** The real judge, with DeepSeek answering `answer` and Clef never asked. */
 const guardAnswering = (answer: unknown) =>
   contentJudge(() => Promise.reject(new Error('no pictures in these checks'))).pipe(
-    Layer.provide(WorkersAi.layer(() => Promise.resolve(answer))),
+    Layer.provide(TextCompletions.layer(() => Effect.succeed(answer))),
     Layer.provide(Layer.succeed(CaptureMetrics, CaptureMetrics.discarding)),
   )
 
@@ -132,17 +132,17 @@ describe('the checks', () => {
     ['an empty answer', { response: '' }],
     ['no answer at all', {}],
   ] as const)
-    it.effect(`keep a published profile pending when Llama Guard answers ${shape}, and ask again`, () => {
+    it.effect(`keep a published profile unsure when DeepSeek answers ${shape}`, () => {
       const seen = witness()
       const database = seeded('ac_1/cutout.png')
       return Effect.gen(function* () {
         const checks = yield* Checks
         const status = yield* checks.checkNow({ kind: 'profile', id: 'ac_1' })
-        expect(Option.map(status, ({ state }) => state)).toEqual(Option.some('pending'))
-        expect(seen.queued).toEqual([{ body: { _tag: 'CheckContent', target: { kind: 'profile', id: 'ac_1' } } }])
-        expect(yield* Effect.flip(checks.checkNow({ kind: 'profile', id: 'ac_1' }, 'fail'))).toMatchObject({
-          _tag: 'Unavailable',
-        })
+        expect(Option.map(status, ({ state }) => state)).toEqual(Option.some('unsure'))
+        expect(seen.queued).toEqual([])
+        expect(
+          Option.map(yield* checks.checkNow({ kind: 'profile', id: 'ac_1' }, 'fail'), ({ state }) => state),
+        ).toEqual(Option.some('unsure'))
       }).pipe(Effect.provide(checksOver(database, seen, guardAnswering(answer))))
     })
 

@@ -11,6 +11,7 @@ import { Thinking } from '../src/outfits/Proposer.ts'
 import { proposed } from '../src/outfits/Rules.ts'
 import { unlimited } from './fakes/Pacing.ts'
 import { localD1 } from './LocalD1.ts'
+import { PaidAttempts } from '../src/usage/Attempts.ts'
 
 // The outfit engine as a service over SQLite with every migration: a repeated request answers the same batch from its
 // receipt and is counted against Thinking's day once; another request under the same operation is a conflict.
@@ -52,6 +53,15 @@ const engine = (database: ReturnType<typeof localD1>, thought: Array<number>) =>
                 thought.push(count)
                 return { outfits: proposed(request, 'thinking', count).outfits, costMicroUsd: 0 }
               }),
+          }),
+        ),
+        Layer.succeed(
+          PaidAttempts,
+          PaidAttempts.of({
+            run: (_work, effect) => effect,
+            charged: () => Effect.die('not used by this test'),
+            abandon: () => Effect.die('not used by this test'),
+            forget: () => Effect.void,
           }),
         ),
         unlimited,

@@ -11,6 +11,7 @@ import {
   type ProposalRef,
   LimitReached,
   Unavailable,
+  Piece,
 } from '@styld/protocol'
 import { Array, Clock, Context, DateTime, Duration, Effect, Layer, Option, Order, Schema } from 'effect'
 import { CaptureMetrics } from '../kernel/Metrics.ts'
@@ -25,6 +26,7 @@ import { Thinking } from './Proposer.ts'
 import { type Brief, missingOf, proposed, type Wearable } from './Rules.ts'
 import { OutfitStore } from './Store.ts'
 import { type Owned, wearablesOf } from './Wearables.ts'
+import { PaidAttempts } from '../usage/Attempts.ts'
 
 // The outfit engine (owner, 2026-10-31), shared by the website, the assistants and Styld: free at the account's pace,
 // Thinking at most `thinkingPerDay` times a day. Fast draws candidates by the rules; Thinking asks the model; Clef
@@ -51,11 +53,38 @@ const unavailable = () => Unavailable.make({})
 /** Thinking's model gave no usable outfit: Fast may still answer. */
 const unanswered = () => ThinkingUnanswered.make({})
 
+/** The durable shape of a completed Thinking response. A lost or unreadable paid answer stays claimed by this key. */
+const proposedResult = Schema.Struct({
+  outfits: Schema.Array(
+    Schema.Array(
+      Schema.Struct({
+        id: Piece.fields.id,
+        type: Piece.fields.type,
+        colours: Piece.fields.colours,
+        season: Piece.fields.season,
+        occasions: Piece.fields.occasions,
+        pattern: Piece.fields.pattern,
+        name: Piece.fields.name,
+        drawn: Schema.Boolean,
+      }),
+    ),
+  ),
+  costMicroUsd: Schema.Number,
+})
+
 /** The UTC day of an instant, as the Thinking counter keys it. */
 const dayOf = (now: DateTime.Utc) => DateTime.formatIsoDateUtc(now)
 
 /** The services the engine works through, provided once by the `Outfits` layer. */
-type OutfitServices = Media | OutfitJudge | Thinking | Pacing | CaptureMetrics | OutfitStore | WardrobeStore
+type OutfitServices =
+  | Media
+  | OutfitJudge
+  | Thinking
+  | Pacing
+  | CaptureMetrics
+  | OutfitStore
+  | WardrobeStore
+  | PaidAttempts
 
 /** Clef's score for each outfit (none when it could not look, or had not by `judgingBudget`) and what the calls cost,
  * all judged at once; each piece's picture read once. */
@@ -118,7 +147,17 @@ const candidatesFor = (input: MakeOutfit, request: Brief, session: string, accou
     }
     // Nothing new by the rules is nothing to ask the model for.
     if (proposed(request, 'probe', 1).outfits.length === 0) return { outfits: [], costMicroUsd: 0, exhausted: true }
-    const thought = yield* (yield* Thinking).propose(request, input.count + 2).pipe(Effect.mapError(unanswered))
+    const thought = yield* (yield* PaidAttempts)
+      .run(
+        {
+          key: `outfits/${accountId}/${input.operationId}`,
+          accountId,
+          provider: 'litellm',
+          result: proposedResult,
+        },
+        (yield* Thinking).propose(request, input.count + 2),
+      )
+      .pipe(Effect.mapError(unanswered))
     return { ...thought, exhausted: false }
   })
 
@@ -196,6 +235,7 @@ const make = Effect.map(Effect.context<OutfitServices>(), (context) => ({
   make: Effect.fn('Styld.Outfits.make')(function* (input: MakeOutfit) {
     const { accountId } = yield* CurrentAccount
     const { operationId, ...asked } = input
+    const paidKey = `outfits/${accountId}/${operationId}`
     return yield* once(
       yield* OutfitStore,
       { accountId, operationId, command: 'makeOutfit', input: asked },
@@ -207,6 +247,7 @@ const make = Effect.map(Effect.context<OutfitServices>(), (context) => ({
             (result) => [batch, result] as const,
           ),
         ),
+        after: Effect.flatMap(PaidAttempts, (attempts) => attempts.forget(paidKey)),
       },
     )
   }, Effect.provide(context)),

@@ -2,12 +2,12 @@ import { type ProviderError } from '../providers/Errors.ts'
 import { Mood, maximumMoods } from '@styld/protocol'
 import { Context, Effect, Layer, Option, Schema } from 'effect'
 import { LanguageModel } from 'effect/ai'
-import { providerErrorOf, type TextTask, workersAiModel } from '../ai/LanguageModel.ts'
+import { providerErrorOf, type TextTask, textModel } from '../ai/LanguageModel.ts'
 import { deadlines } from '../providers/Call.ts'
 import { textModels } from '../providers/Costs.ts'
 
 // Make a mood board (owner, 2026-10-31): one sentence picks the person's own pieces that suit it, and up to three
-// moods. No picture is drawn: a mood board is made of real clothes. A Workers AI chat model plans it as an object of
+// moods. No picture is drawn: a mood board is made of real clothes. A LiteLLM chat model plans it as an object of
 // `Answer`; the person's pieces go to it as short references, never their ids, photos or notes.
 
 /** One of the person's ready pieces, as the plan sees it. */
@@ -33,8 +33,8 @@ export interface PlanRequest {
 export const mostPicks = 12
 const fewestPicks = 2
 
-/** The planner's model: Llama 3.3 70B, which planned the owner's boards since 31 October. */
-const planner: TextTask = { model: textModels.llama70b, kind: 'plan', deadline: deadlines.chat }
+/** The planner's model, shared with Styld and Thinking. */
+const planner: TextTask = { model: textModels.deepSeekFlash, kind: 'plan', deadline: deadlines.chat, maxTokens: 1024 }
 
 /** What the model is asked to answer. */
 const Answer = Schema.Struct({
@@ -87,7 +87,7 @@ export class MoodPlanner extends Context.Service<
   MoodPlanner,
   { readonly plan: (request: PlanRequest) => Effect.Effect<Option.Option<Plan>, ProviderError> }
 >()('@styld/server/generation/MoodPlanner') {
-  /** The planner on its Workers AI model. */
+  /** The planner on its LiteLLM model. */
   static readonly layer = Layer.effect(
     this,
     Effect.gen(function* () {
@@ -101,5 +101,5 @@ export class MoodPlanner extends Context.Service<
         }),
       })
     }),
-  ).pipe(Layer.provide(workersAiModel(planner)))
+  ).pipe(Layer.provide(textModel(planner)))
 }

@@ -27,6 +27,9 @@ const deploymentConfig = Config.all({
   metaApiKey: Config.Redacted('META_API_KEY'),
   /** The Vercel AI Gateway's key, for Veo. */
   videoGatewayKey: Config.Redacted('VIDEO_GATEWAY_API_KEY'),
+  /** Styld's own paid text route; the key is restricted to its model and budget in LiteLLM. */
+  textBase: Config.schema(Schema.NonEmptyString, 'STYLD_LITELLM_URL'),
+  textKey: Config.Redacted('STYLD_LITELLM_KEY'),
 })
 
 /** The deployment, from the Worker's bindings. */
@@ -44,7 +47,8 @@ export const deploymentOf = Effect.fn('Styld.Config.deployment')(function* (env:
       proofKeys: yield* decodeProofKeyring(raw.proofKeys).pipe(Effect.orDie),
       requestBindingKeys: yield* decodeRequestBindingKeyring(raw.requestBindingKeys).pipe(Effect.orDie),
     },
-    secrets: { metaApiKey: raw.metaApiKey, videoGatewayKey: raw.videoGatewayKey },
+    textBase: raw.textBase.replace(/\/$/u, ''),
+    secrets: { metaApiKey: raw.metaApiKey, videoGatewayKey: raw.videoGatewayKey, textKey: raw.textKey },
   }
 })
 

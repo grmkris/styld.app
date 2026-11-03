@@ -71,8 +71,18 @@ export const Runtime = Layer.mergeAll(
   Cloudflare.Workers.CronEventSourceLive,
   Cloudflare.Workers.AIBinding,
   Cloudflare.AnalyticsEngine.WriteDatasetBinding,
-  // Traces record request URLs; upload paths carry a one-time token in `token`.
-  Layer.succeed(UrlParams.CurrentRedactedNames, [...UrlParams.CurrentRedactedNames.defaultValue(), 'token']),
+  // Traces record request URLs; upload paths carry a one-time token in `token`, and signed media paths carry
+  // bearer-capability material in every query parameter. Preserve Effect's built-in provider redactions.
+  Layer.succeed(UrlParams.CurrentRedactedNames, [
+    ...UrlParams.CurrentRedactedNames.defaultValue(),
+    'token',
+    'a',
+    'k',
+    't',
+    'v',
+    'e',
+    's',
+  ]),
 )
 
 // Alchemy's Worker bridge gives every event `Logger.consolePretty`, which reaches Workers Logs
@@ -98,7 +108,7 @@ const declareBindings = Effect.gen(function* () {
     writers: yield* Effect.all(Record.map(queues, (queue) => Cloudflare.Queues.WriteQueue(queue))),
     // Styld's chats, one Durable Object per account.
     stylists: yield* Stylist,
-    // Clef-flash and the text models (Workers AI); provider calls are counted in Analytics Engine.
+    // Clef-flash (Workers AI); provider calls are counted in Analytics Engine.
     ai: yield* Cloudflare.Workers.AI('AI'),
     calls: yield* Cloudflare.AnalyticsEngine.WriteDataset(yield* StyldAiCalls),
     // Every pace's Workers RateLimit binding (`kernel/Pacing.ts`).
@@ -108,12 +118,10 @@ const declareBindings = Effect.gen(function* () {
 
 type Bindings = Effect.Success<typeof declareBindings>
 
-/** Clef and the text models over the Worker's `AI` binding. */
+/** Clef over the Worker's `AI` binding. */
 const workersAiCalls = (ai: Effect.Success<Bindings['ai']['raw']>): WorkersAiCalls => ({
   // SAFETY: Clef-flash is a Workers AI model newer than the pinned workers-types model list -- the request is the System One API shape Clef.ts builds and documents
   runClef: (request) => ai.run('@cf/cloudflare/clef-flash' as never, request as never),
-  // SAFETY: the text models Styld asks are Workers AI chat models outside the pinned workers-types model list -- the input is the Chat Completions body ai/LanguageModel.ts builds
-  runModel: (model, input) => ai.run(model as never, input as never),
 })
 
 /** What every module is built over, once per runtime: the Worker's bindings as services, credits, pacing, the call
@@ -233,7 +241,12 @@ export const workerOptions = (main: string) => ({
   // Keep local workerd and deployed Workers on the same supported date; telemetry needs >= 2026-07-28.
   compatibility: { date: '2026-10-19' },
   workersDev: { enabled: false, previewsEnabled: false },
-  observability: { enabled: true, redactQueryString: true, logs: { enabled: true, invocationLogs: true } },
+  observability: {
+    enabled: true,
+    redactQueryString: true,
+    logs: { enabled: true, invocationLogs: true },
+    traces: { enabled: true, headSamplingRate: 1 },
+  },
 })
 
 /** The API Worker's program on a composition's providers, run on `Runtime`: the Worker's own are the live ones (below);

@@ -31,7 +31,8 @@ checkout that deployed them); none is left.
 
 The ignored `.env.preview.local` file (mode 600) holds the stage's secrets: `STYLD_AUTH_SECRET`,
 `STYLD_AUTH_SESSION_KEYS`, `STYLD_AUTH_PROOF_KEYS`, `STYLD_AUTH_REQUEST_BINDING_KEYS`, `META_MUSE_API_KEY`,
-`STYLD_AI_GATEWAY_API_KEY` (or `AI_GATEWAY_API_KEY`) and `STYLD_ADMIN_EMAILS` (the admins' sign-in emails,
+`STYLD_AI_GATEWAY_API_KEY` (or `AI_GATEWAY_API_KEY`), `STYLD_LITELLM_URL`, `STYLD_LITELLM_KEY` and
+`STYLD_ADMIN_EMAILS` (the admins' sign-in emails,
 comma-separated: they get the curation tools and may run imports). `alchemy.run.ts` reads them at deploy and binds
 them to the API Worker; `STYLD_ADMIN_EMAILS` unset means no admins, so no imports. `STYLD_RELEASE` (the commit) is
 passed on the command line, as below. Keyrings are JSON with an `activeKeyId` and `keys`

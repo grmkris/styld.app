@@ -2,7 +2,7 @@ import { type ProviderError, refused } from '../providers/Errors.ts'
 import { outfitKeyOf } from '@styld/protocol'
 import { Context, Effect, Layer, Option, Schema } from 'effect'
 import { LanguageModel } from 'effect/ai'
-import { providerErrorOf, type TextTask, workersAiModel } from '../ai/LanguageModel.ts'
+import { providerErrorOf, type TextTask, textModel } from '../ai/LanguageModel.ts'
 import { deadlines } from '../providers/Call.ts'
 import { textCost, textModels } from '../providers/Costs.ts'
 import { type Brief, validated, type Wearable } from './Rules.ts'
@@ -20,7 +20,12 @@ export interface Proposed {
 
 /** Thinking's model: Styld's, which the owner's probe of 31 October found the best at Slovenian and at following
  * instructions. */
-const thinking: TextTask = { model: textModels.deepSeekFlash, kind: 'propose', deadline: deadlines.chat }
+const thinking: TextTask = {
+  model: textModels.deepSeekFlash,
+  kind: 'propose',
+  deadline: deadlines.chat,
+  maxTokens: 2048,
+}
 
 /** The most pieces and shown combinations one request sends. */
 const mostSent = 150
@@ -104,14 +109,14 @@ export const keptProposals = (
 }
 
 /** @internal Exported for its tests. */
-export const nothingKept = () => refused('workers-ai')
+export const nothingKept = () => refused('litellm')
 
 /** Thinking: proposals from a language model, kept to the rules; none kept is a refusal. */
 export class Thinking extends Context.Service<
   Thinking,
   { readonly propose: (request: Brief, count: number) => Effect.Effect<Proposed, ProviderError> }
 >()('@styld/server/outfits/Thinking') {
-  /** Thinking on its Workers AI model. */
+  /** Thinking on its LiteLLM model. */
   static readonly layer = Layer.effect(
     this,
     Effect.gen(function* () {
@@ -129,5 +134,5 @@ export class Thinking extends Context.Service<
         }),
       })
     }),
-  ).pipe(Layer.provide(workersAiModel(thinking)))
+  ).pipe(Layer.provide(textModel(thinking)))
 }

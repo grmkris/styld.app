@@ -1,5 +1,4 @@
 import { Option, Schema } from 'effect'
-import type { WorkersAi } from '../../src/ai/LanguageModel.ts'
 import type { ClefRequest, RunClef } from '../../src/providers/Clef.ts'
 
 // Workers AI as the native suite answers it: the local stack cannot reach Workers AI. Clef's questions go to the
@@ -59,7 +58,7 @@ const answer = (messages: (typeof Request.Type)['messages']) => {
 }
 
 /** The chat model: a message with `[[fail]]` is refused, as a model that is down would be. */
-export const fakeChat: WorkersAi['Service']['run'] = async (_model, input) => {
+export const fakeChat = async (input: unknown) => {
   const request = Schema.decodeUnknownOption(Request)(input)
   if (Option.isNone(request)) throw new Error('Not a chat completion')
   const person = request.value.messages.findLast(({ role }) => role === 'user')

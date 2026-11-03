@@ -1,194 +1,264 @@
 import { describe, expect, it } from '@effect/vitest'
-import { Effect, Fiber, Layer, Predicate, Schema } from 'effect'
-import { LanguageModel, Tool, Toolkit } from 'effect/ai'
+import { Effect, Fiber, Layer, Schema } from 'effect'
+import { Chat, LanguageModel, Tool, Toolkit } from 'effect/ai'
 import { TestClock } from 'effect/testing'
-import { providerErrorOf, type TextTask, WorkersAi, workersAiModel } from '../src/ai/LanguageModel.ts'
+import { providerErrorOf, textModel, type TextTask } from '../src/ai/LanguageModel.ts'
 import { CaptureMetrics, type ProviderCall } from '../src/kernel/Metrics.ts'
 import { deadlines } from '../src/providers/Call.ts'
 import { textModels } from '../src/providers/Costs.ts'
+import { makeTextCompletions, TextCompletions } from '../src/providers/Text.ts'
+import { Redacted } from 'effect'
 
-// One language model over the Workers AI binding: what it sends, how it reads every answer shape, and that each call
-// is deadlined, tried again only while busy, counted and priced.
+const task: TextTask = { model: textModels.deepSeekFlash, kind: 'plan', deadline: deadlines.chat, maxTokens: 1024 }
+const usage = { prompt_tokens: 1000, completion_tokens: 100 }
+const completion = (content: string | null, toolCalls: ReadonlyArray<unknown> = [], finish = 'stop') => ({
+  choices: [{ message: { content, tool_calls: toolCalls }, finish_reason: finish }],
+  usage,
+})
 
-const task: TextTask = { model: textModels.llama70b, kind: 'plan', deadline: deadlines.chat }
-
-/** Workers AI answering `answers` in turn (the last again once they run out), keeping what it was asked and each
- * call counted. */
-const workersAi = (answers: ReadonlyArray<unknown>) => {
+/** The actual HTTP adapter over bounded fixture responses. Captures only synthetic requests. */
+const gateway = (answers: ReadonlyArray<unknown>) => {
   const asked: Array<Readonly<Record<string, unknown>>> = []
+  const signals: Array<AbortSignal> = []
   const calls: Array<Omit<ProviderCall, 'milliseconds'>> = []
-  const layer = workersAiModel(task).pipe(
+  const client = makeTextCompletions({
+    base: 'https://gateway.invalid/v1',
+    key: Redacted.make('test-key'),
+    fetch: async (url, init) => {
+      expect(url).toBe('https://gateway.invalid/v1/chat/completions')
+      expect(init.headers).toMatchObject({ authorization: 'Bearer test-key', 'content-type': 'application/json' })
+      const body: unknown = await new Response(init.body).json()
+      asked.push(Schema.decodeUnknownSync(Schema.Record(Schema.String, Schema.Unknown))(body))
+      if (init.signal) signals.push(init.signal)
+      const answer = answers[Math.min(asked.length, answers.length) - 1]
+      if (answer instanceof Error) throw answer
+      if (answer === 'never') return new Promise(() => undefined)
+      return answer instanceof Response ? answer.clone() : Response.json(answer)
+    },
+  })
+  const layer = textModel(task).pipe(
+    Layer.provide(Layer.succeed(TextCompletions, client)),
     Layer.provide(
-      WorkersAi.layer((_model, input) => {
-        asked.push(input)
-        const answer = answers[Math.min(asked.length, answers.length) - 1]
-        return answer instanceof Error
-          ? Promise.reject(answer)
-          : answer === 'never'
-            ? new Promise(() => undefined)
-            : Promise.resolve(answer)
+      Layer.succeed(CaptureMetrics, {
+        ...CaptureMetrics.discarding,
+        call: ({ milliseconds: _milliseconds, ...call }) => Effect.sync(() => void calls.push(call)),
       }),
     ),
-    Layer.provide(
-      Layer.succeed(
-        CaptureMetrics,
-        CaptureMetrics.of({
-          ...CaptureMetrics.discarding,
-          call: ({ milliseconds: _milliseconds, ...call }) => Effect.sync(() => void calls.push(call)),
-        }),
-      ),
-    ),
   )
-  return { asked, calls, layer }
+  return { asked, signals, calls, layer }
 }
 
 const Answer = Schema.Struct({ ok: Schema.Boolean })
 const object = Effect.flatMap(LanguageModel.LanguageModel, (model) =>
   model.generateObject({ objectName: 'answer', prompt: 'Is it ok?', schema: Answer }),
 )
+const text = Effect.flatMap(LanguageModel.LanguageModel, (model) => model.generateText({ prompt: 'Hello' }))
 
-describe('an object asked of a Workers AI model', () => {
-  const usage = { prompt_tokens: 1000, completion_tokens: 100 }
-
-  for (const [shape, raw] of [
-    ['an object', { response: { ok: true }, usage }],
-    ['JSON text', { response: '{"ok": true}', usage }],
-    ['fenced JSON', { response: '```json\n{"ok": true}\n```', usage }],
-    ['a Chat Completion', { choices: [{ message: { content: '{"ok": true}' } }], usage }],
-  ] as const)
-    it.effect(`reads ${shape}, priced by its tokens, and sends the answer's JSON schema`, () => {
-      const { asked, calls, layer } = workersAi([raw])
+describe('the paid text route', () => {
+  for (const content of ['{"ok":true}', '```json\n{"ok":true}\n```'])
+    it.effect('validates JSON locally and counts the gateway model and its usage', () => {
+      const { asked, calls, layer } = gateway([completion(content)])
       return Effect.gen(function* () {
-        const answer = yield* object
-        expect(answer.value).toEqual({ ok: true })
-        expect(calls).toEqual([
-          { provider: 'workers-ai', model: task.model.id, kind: 'plan', outcome: 'ok', units: 1100, costMicroUsd: 515 },
-        ])
-        expect(asked[0]?.['response_format']).toMatchObject({
-          type: 'json_schema',
-          json_schema: { type: 'object', required: ['ok'] },
+        expect((yield* object).value).toEqual({ ok: true })
+        expect(asked[0]).toMatchObject({
+          model: 'styld-deepseek-v4.1-flash',
+          stream: false,
+          max_tokens: 1024,
+          reasoning_effort: 'none',
+          response_format: { type: 'json_object' },
         })
-        expect(asked[0]?.['messages']).toEqual([{ role: 'user', content: 'Is it ok?' }])
+        expect(JSON.stringify(asked[0]?.['messages'])).toContain('JSON schema')
+        expect(JSON.stringify(asked[0]?.['messages'])).toContain('required')
+        expect(calls).toEqual([
+          { provider: 'litellm', model: task.model.id, kind: 'plan', outcome: 'ok', units: 1100, costMicroUsd: 396 },
+        ])
       }).pipe(Effect.provide(layer))
     })
 
-  it.effect('an answer of another shape is Broken, and is not asked again', () => {
-    const { asked, layer } = workersAi([{ response: { ok: 'yes' } }])
-    return Effect.gen(function* () {
-      const error = providerErrorOf(yield* Effect.flip(object))
-      expect(Predicate.isTagged(error.reason, 'Broken')).toBe(true)
-      expect(asked).toHaveLength(1)
-    }).pipe(Effect.provide(layer))
-  })
-
-  for (const [shape, raw] of [
-    ['nothing', {}],
-    ['an empty response', { response: '' }],
-    ['an empty message', { choices: [{ message: { content: null } }] }],
-  ] as const)
-    it.effect(`an answer of ${shape} is Broken, never an empty answer`, () => {
-      const { asked, layer } = workersAi([raw])
+  for (const raw of [
+    {},
+    { response: 'legacy' },
+    completion(''),
+    { choices: [{ message: { content: 'Hello' }, finish_reason: 'stop' }] },
+    { ...completion('Hello'), usage: { prompt_tokens: -1, completion_tokens: 2 } },
+  ])
+    it.effect('rejects unreadable, empty, unpriced and legacy answers without retry', () => {
+      const { asked, layer } = gateway([raw])
       return Effect.gen(function* () {
-        const text = Effect.flatMap(LanguageModel.LanguageModel, (model) => model.generateText({ prompt: 'Hello' }))
-        const error = providerErrorOf(yield* Effect.flip(text))
-        expect(Predicate.isTagged(error.reason, 'Broken')).toBe(true)
+        expect(providerErrorOf(yield* Effect.flip(text))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
         expect(asked).toHaveLength(1)
       }).pipe(Effect.provide(layer))
     })
 
-  it.effect('a model that does not answer is Busy: tried three more times, counted once as failed', () => {
-    const { asked, calls, layer } = workersAi([new Error('down')])
+  it.effect('rejects valid JSON that violates the requested schema', () => {
+    const { asked, layer } = gateway([completion('{"ok":"yes"}')])
     return Effect.gen(function* () {
-      const failing = yield* Effect.forkChild(Effect.flip(object))
-      yield* TestClock.adjust('10 seconds')
-      const error = providerErrorOf(yield* Fiber.join(failing))
-      expect(Predicate.isTagged(error.reason, 'Busy')).toBe(true)
-      expect(asked).toHaveLength(4)
-      expect(calls.map(({ outcome }) => outcome)).toEqual(['failed'])
+      expect(providerErrorOf(yield* Effect.flip(object))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
+      expect(asked).toHaveLength(1)
     }).pipe(Effect.provide(layer))
   })
 
-  it.effect('a call held open past its deadline is Busy, then answered on a later try', () => {
-    const { asked, layer } = workersAi(['never', { response: '{"ok": false}' }])
+  for (const finish of ['length', 'content_filter', 'tool_calls', 'mystery'])
+    it.effect(`does not accept a structured answer with finish reason ${finish}`, () => {
+      const { asked, calls, layer } = gateway([completion('{"ok":true}', [], finish)])
+      return Effect.gen(function* () {
+        expect(providerErrorOf(yield* Effect.flip(object))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
+        expect(asked).toHaveLength(1)
+        expect(calls.map(({ outcome }) => outcome)).toEqual(['unknown'])
+      }).pipe(Effect.provide(layer))
+    })
+
+  it.effect('accepts null usage detail objects when totals are present', () => {
+    const { layer } = gateway([
+      {
+        ...completion('{"ok":true}'),
+        usage: {
+          prompt_tokens: 1000,
+          completion_tokens: 100,
+          prompt_tokens_details: null,
+          completion_tokens_details: null,
+        },
+      },
+    ])
     return Effect.gen(function* () {
-      const asking = yield* Effect.forkChild(object)
+      expect((yield* object).value).toEqual({ ok: true })
+    }).pipe(Effect.provide(layer))
+  })
+
+  for (const status of [400, 401, 402, 403])
+    it.effect(`does not retry an HTTP ${status} refusal`, () => {
+      const { asked, layer } = gateway([Response.json({ error: { code: 'refused' } }, { status })])
+      return Effect.gen(function* () {
+        expect(providerErrorOf(yield* Effect.flip(text))).toMatchObject({ reason: { _tag: 'Refused' } })
+        expect(asked).toHaveLength(1)
+      }).pipe(Effect.provide(layer))
+    })
+
+  for (const status of [429])
+    it.effect(`retries a provider-busy HTTP ${status} response, then uses its answer`, () => {
+      const { asked, layer } = gateway([Response.json({}, { status }), completion('Hello')])
+      return Effect.gen(function* () {
+        const fiber = yield* Effect.forkChild(text)
+        yield* TestClock.adjust('2 seconds')
+        expect((yield* Fiber.join(fiber)).text).toBe('Hello')
+        expect(asked).toHaveLength(2)
+      }).pipe(Effect.provide(layer))
+    })
+
+  for (const status of [408, 500, 502, 503, 504])
+    it.effect(`does not resubmit an ambiguous HTTP ${status} gateway failure`, () => {
+      const { asked, calls, layer } = gateway([Response.json({}, { status })])
+      return Effect.gen(function* () {
+        expect(providerErrorOf(yield* Effect.flip(text))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
+        expect(asked).toHaveLength(1)
+        expect(calls.map(({ outcome }) => outcome)).toEqual(['unknown'])
+      }).pipe(Effect.provide(layer))
+    })
+
+  it.effect('a lost paid response is unknown and never sent twice', () => {
+    const { asked, calls, layer } = gateway([new Error('connection reset')])
+    return Effect.gen(function* () {
+      expect(providerErrorOf(yield* Effect.flip(text))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
+      expect(asked).toHaveLength(1)
+      expect(calls.map(({ outcome }) => outcome)).toEqual(['unknown'])
+    }).pipe(Effect.provide(layer))
+  })
+
+  it.effect('aborts a timed-out request and never resends its unknown outcome', () => {
+    const { asked, signals, calls, layer } = gateway(['never'])
+    return Effect.gen(function* () {
+      const fiber = yield* Effect.forkChild(Effect.flip(text))
       yield* TestClock.adjust(deadlines.chat)
-      yield* TestClock.adjust('1 second')
-      expect((yield* Fiber.join(asking)).value).toEqual({ ok: false })
-      expect(asked).toHaveLength(2)
+      expect(providerErrorOf(yield* Fiber.join(fiber))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
+      expect(asked).toHaveLength(1)
+      expect(signals[0]?.aborted).toBe(true)
+      expect(calls.map(({ outcome }) => outcome)).toEqual(['unknown'])
     }).pipe(Effect.provide(layer))
   })
 })
 
 describe('a chat with tools', () => {
-  it.effect('tool calls come back as tool-call parts, and the chat so far goes as Chat Completions messages', () => {
-    const { asked, layer } = workersAi([
-      {
-        choices: [
-          {
-            message: {
-              content: 'Looking.',
-              tool_calls: [{ id: 'call_1', function: { name: 'piece_search', arguments: '{"type":"tops"}' } }],
-            },
-            finish_reason: 'tool_calls',
-          },
-        ],
-      },
+  it.effect('executes a validated tool once and sends its result with the original call id', () => {
+    const { asked, layer } = gateway([
+      completion(
+        'Looking.',
+        [{ id: 'call_1', type: 'function', function: { name: 'piece_search', arguments: '{"type":"tops"}' } }],
+        'tool_calls',
+      ),
+      completion('Wear the navy shirt.'),
     ])
-    const search = Tool.dynamic('piece_search', {
+    const search = Tool.make('piece_search', {
       description: 'Search the wardrobe.',
-      parameters: { type: 'object', properties: { type: { type: 'string' } } },
+      parameters: Schema.Struct({ type: Schema.String }),
+      success: Schema.String,
     })
     const toolkit = Toolkit.make(search)
+    let executions = 0
+    return Effect.gen(function* () {
+      const chat = yield* Chat.empty
+      const handlers = toolkit.toLayer({
+        piece_search: ({ type }) =>
+          Effect.sync(() => {
+            executions++
+            return type
+          }),
+      })
+      const tools = yield* toolkit.pipe(Effect.provide(handlers))
+      yield* chat.generateText({ prompt: 'What to wear?', toolkit: tools })
+      expect((yield* chat.generateText({ prompt: [], toolkit: tools })).text).toBe('Wear the navy shirt.')
+      expect(executions).toBe(1)
+      expect(JSON.stringify(asked[1]?.['messages'])).toContain('call_1')
+      expect(asked[0]?.['tools']).toMatchObject([{ type: 'function', function: { name: 'piece_search' } }])
+    }).pipe(Effect.provide(layer))
+  })
+
+  it.effect('does not execute a tool from a truncated answer', () => {
+    const { layer } = gateway([
+      completion('', [{ id: 'call_1', function: { name: 'search', arguments: '{}' } }], 'length'),
+    ])
+    const search = Tool.make('search', { parameters: Schema.Struct({}), success: Schema.String })
+    const toolkit = Toolkit.make(search)
+    let executions = 0
     return Effect.gen(function* () {
       const model = yield* LanguageModel.LanguageModel
-      const answer = yield* model.generateText({
-        prompt: [
-          { role: 'system', content: 'Styld' },
-          { role: 'user', content: 'What to wear?' },
-          { role: 'assistant', content: 'Let me see.' },
-        ],
-        toolkit: yield* toolkit.pipe(
-          Effect.provide(toolkit.toLayer({ piece_search: () => Effect.succeed({ pieces: [] }) })),
+      const tools = yield* toolkit.pipe(
+        Effect.provide(
+          toolkit.toLayer({
+            search: () =>
+              Effect.sync(() => {
+                executions++
+                return 'found'
+              }),
+          }),
         ),
-      })
-      expect(answer.text).toBe('Looking.')
-      expect(answer.toolCalls.map(({ name, params }) => [name, params])).toEqual([['piece_search', { type: 'tops' }]])
-      expect(answer.finishReason).toBe('tool-calls')
-      expect(asked[0]?.['messages']).toEqual([
-        { role: 'system', content: 'Styld' },
-        { role: 'user', content: 'What to wear?' },
-        { role: 'assistant', content: 'Let me see.' },
-      ])
-      expect(asked[0]?.['tools']).toEqual([
-        {
-          type: 'function',
-          function: {
-            name: 'piece_search',
-            description: 'Search the wardrobe.',
-            parameters: { type: 'object', properties: { type: { type: 'string' } } },
-            strict: true,
-          },
-        },
-      ])
+      )
+      const answer = yield* model.generateText({ prompt: 'Find', toolkit: tools })
+      expect(answer.finishReason).toBe('length')
+      expect(executions).toBe(0)
     }).pipe(Effect.provide(layer))
   })
 })
 
-describe('a reasoning model’s answer', () => {
-  for (const [shape, content] of [
-    ['between think tags', '<think>Slovene answer maybe? Reply in English.</think>\n\nWear the navy coat.'],
-    ['before a lone closing tag', 'Slovene answer maybe? Reply in English.\n</think>\n\nWear the navy coat.'],
-  ] as const)
-    it.effect(`leaves out its reasoning ${shape}, and never reads reasoning_content`, () => {
-      const { layer } = workersAi([
-        { choices: [{ message: { content, reasoning_content: 'The user wrote in Slovene first.' } }] },
-      ])
+describe('a reasoning response', () => {
+  for (const content of [
+    '<think>private thought</think>Wear the navy coat.',
+    'private thought</think>Wear the navy coat.',
+  ])
+    it.effect('shows only the answer while accounting for billed reasoning and cached tokens', () => {
+      const raw = {
+        ...completion(content),
+        usage: {
+          ...usage,
+          prompt_tokens_details: { cached_tokens: 200 },
+          completion_tokens_details: { reasoning_tokens: 40 },
+        },
+      }
+      const { layer } = gateway([raw])
       return Effect.gen(function* () {
-        const answer = yield* Effect.flatMap(LanguageModel.LanguageModel, (model) =>
-          model.generateText({ prompt: 'What to wear?' }),
-        )
+        const answer = yield* text
         expect(answer.text).toBe('Wear the navy coat.')
+        expect(answer.usage.inputTokens).toMatchObject({ total: 1000, uncached: 800, cacheRead: 200 })
+        expect(answer.usage.outputTokens).toMatchObject({ total: 100, text: 60, reasoning: 40 })
       }).pipe(Effect.provide(layer))
     })
 })

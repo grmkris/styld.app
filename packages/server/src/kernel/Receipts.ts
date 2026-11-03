@@ -159,7 +159,13 @@ export const receiptRows = (db: Database) => ({
     ).pipe(Effect.map((rows) => rows.length > 0)),
   /** The pending operation's result, once its work succeeded. */
   answerReceipt: (accountId: string, operationId: string, result: string) =>
-    query(() => db.update(operationReceipts).set({ result }).where(pendingOf(accountId, operationId))),
+    query(() =>
+      db
+        .update(operationReceipts)
+        .set({ result })
+        .where(pendingOf(accountId, operationId))
+        .returning({ operationId: operationReceipts.operationId }),
+    ).pipe(Effect.map((rows) => rows.length > 0)),
   /** The pending operation's work failed: its id is free for a repeat to run it again. */
   dropPending: (accountId: string, operationId: string) =>
     query(() => db.delete(operationReceipts).where(pendingOf(accountId, operationId))),
@@ -276,6 +282,11 @@ const claimed = Effect.fnUntraced(function* (receipts: ReceiptRows, operation: I
   return { _tag: 'Lost' } satisfies Found
 })
 
+const resumed = <A, E, R>(found: Found, resume: Effect.Effect<A, E, R> | undefined) =>
+  Predicate.isTagged(found, 'Lost') && resume !== undefined
+    ? Option.some(resume)
+    : Option.none<Effect.Effect<A, E, R>>()
+
 /** An operation whose work is not one D1 batch (a fetch, an upload, a queue message, a status move), answered once:
  * its id is claimed by a pending receipt before the work runs, so two requests never both run it, and a repeat
  * answers from the receipt (`replay` reads what `run` made from its result). Work that fails frees the id for a
@@ -288,23 +299,31 @@ export const once = <A, E, R, E2, R2, E3 = never, R3 = never>(
     readonly replay: (result: string) => Effect.Effect<A, E2, R2>
     readonly run: Effect.Effect<readonly [A, string], E, R>
     readonly resume?: Effect.Effect<A, E3, R3>
+    /** Cleanup for a durable provider claim after this receipt is committed. */
+    readonly after?: Effect.Effect<void, E3, R3>
   },
 ) =>
   Effect.gen(function* () {
     const identified = yield* identify(operation)
     const { accountId, operationId } = operation
     const found = yield* claimed(receipts, identified)
-    if (Predicate.isTagged(found, 'Made')) return yield* answer.replay(found.result)
-    if (Predicate.isTagged(found, 'Lost')) {
-      if (answer.resume !== undefined) return yield* answer.resume
+    const lost = Predicate.isTagged(found, 'Lost')
+    if (Predicate.isTagged(found, 'Made')) {
+      const value = yield* answer.replay(found.result)
+      yield* (answer.after ?? Effect.void).pipe(Effect.ignore)
+      return value
+    }
+    const resume = resumed(found, answer.resume)
+    if (Option.isSome(resume)) return yield* resume.value
+    if (lost) {
       const stored = yield* receipts.findReceipt(accountId, operationId).pipe(Effect.mapError(unavailable))
       const again = { ...(yield* receiptRow(identified, '')), result: null }
       const seen = Option.map(stored, ({ createdAt }) => createdAt)
-      if (
-        Option.isNone(seen) ||
-        !(yield* receipts.reclaimReceipt(again, seen.value).pipe(Effect.mapError(unavailable)))
-      )
-        return yield* unavailable()
+      const reclaimed = yield* Option.match(seen, {
+        onNone: () => Effect.succeed(false),
+        onSome: (createdAt) => receipts.reclaimReceipt(again, createdAt).pipe(Effect.mapError(unavailable)),
+      })
+      if (!reclaimed) return yield* unavailable()
     }
     const exit = yield* Effect.exit(answer.run)
     if (Exit.isFailure(exit)) {
@@ -313,8 +332,11 @@ export const once = <A, E, R, E2, R2, E3 = never, R3 = never>(
     }
     const [value, result] = exit.value
     // The work is done; a result that cannot be kept now leaves the receipt pending, answered by `resume` later.
-    yield* receipts
-      .answerReceipt(accountId, operationId, result)
-      .pipe(Effect.ignore({ log: true, message: 'Styld.Receipts could not keep a result' }))
+    const committed = yield* receipts.answerReceipt(accountId, operationId, result).pipe(
+      Effect.tapError(() => Effect.logWarning('Styld.Receipts could not keep a result')),
+      Effect.option,
+    )
+    const kept = Option.filter(committed, (committedValue) => committedValue)
+    if (Option.isSome(kept)) yield* (answer.after ?? Effect.void).pipe(Effect.ignore)
     return value
   })

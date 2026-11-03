@@ -11,6 +11,7 @@ import { Thinking } from '../src/outfits/Proposer.ts'
 import { WardrobeStore } from '../src/wardrobe/Store.ts'
 import { unlimited } from './fakes/Pacing.ts'
 import { localD1 } from './LocalD1.ts'
+import { PaidAttempts } from '../src/usage/Attempts.ts'
 
 // How long Fast's first outfit takes (browser review, 2 November 2026: POST /api/outfits answered in 11.3 s on a cold
 // visit). Fast draws 12 candidates and Clef judges each; they used to be judged six at a time, two waves of Clef's
@@ -71,6 +72,15 @@ const engine = (latency: Duration.Input, calls: { now: number; most: number }) =
         Layer.succeed(Media, Media.of({ bucket: kept, images: {} } as never)),
         Layer.succeed(OutfitJudge, judge),
         Layer.succeed(Thinking, Thinking.of({ propose: () => Effect.die('not asked') })),
+        Layer.succeed(
+          PaidAttempts,
+          PaidAttempts.of({
+            run: (_work, effect) => effect,
+            charged: () => Effect.die('not used by this test'),
+            abandon: () => Effect.die('not used by this test'),
+            forget: () => Effect.void,
+          }),
+        ),
         unlimited,
         CaptureMetrics.discard,
       ),

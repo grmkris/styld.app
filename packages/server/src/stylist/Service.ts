@@ -11,7 +11,7 @@ import {
 } from '@styld/protocol'
 import { Context, DateTime, Effect, Layer, Option, Schema } from 'effect'
 import { LanguageModel } from 'effect/ai'
-import { workersAiModel } from '../ai/LanguageModel.ts'
+import { providerErrorOf, textModel } from '../ai/LanguageModel.ts'
 import { Holds } from '../usage/Holds.ts'
 import { PaidAttempts } from '../usage/Attempts.ts'
 import type { Tool as AssistantTool } from '../mcp/Tools.ts'
@@ -214,12 +214,13 @@ const queueing = Effect.map(Effect.context<StylistServices>(), (context) => ({
           Effect.annotateLogs({ 'styld.stylist.failure': failureOf(error) }),
         ),
       ),
-      Effect.mapError(unavailable),
+      // Keep unknown paid outcomes visible to PaidAttempts, which must retain the claim rather than resubmit.
+      Effect.catchTag('AiError', (error) => Effect.fail(providerErrorOf(error))),
       // A model that wrote nothing and showed nothing has not answered: the queue asks again.
       Effect.filterOrFail((answer) => answer.text.length > 0 || answer.parts.length > 0, unavailable),
     )
     const attempts = yield* PaidAttempts
-    const work = { key: `stylist/${turnId}`, accountId, provider: 'workers-ai', result: Written }
+    const work = { key: `stylist/${turnId}`, accountId, provider: 'litellm', result: Written }
     const answered = yield* attempts.run(work, writing).pipe(
       Effect.map(Option.some),
       Effect.catchTags({
@@ -265,12 +266,12 @@ const make = Effect.gen(function* () {
 })
 
 /** Styld, the stylist in the app: the person's messages and chats, and its replies written on the queue, with its
- * model on Workers AI. */
+ * model through its paid LiteLLM route. */
 export class StylistChats extends Context.Service<StylistChats, Effect.Success<typeof make>>()(
   '@styld/server/stylist/StylistChats',
 ) {
   static readonly layer = Layer.effect(
     this,
     Effect.map(make, (service) => StylistChats.of(service)),
-  ).pipe(Layer.provide([workersAiModel(styldModel), StylistTurns.layer]))
+  ).pipe(Layer.provide([textModel(styldModel), StylistTurns.layer]))
 }

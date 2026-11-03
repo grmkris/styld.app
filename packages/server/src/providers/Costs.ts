@@ -12,16 +12,10 @@ export const costs = {
   veoLitePerSecond: 30_000,
 } as const
 
-/** The Workers AI text models Styld asks, each named once here, with its price per token in and out (Workers AI
- * pricing, 31 October). Each task names the one it uses. */
+/** Alibaba Model Studio paid DeepSeek, through Styld's isolated LiteLLM alias. Singapore/global peak list prices,
+ * read 3 November 2026 (model-pricing); estimates deliberately exclude idle-hour and cache discounts. */
 export const textModels = {
-  /** Llama 3.3 70B: the mood-board planner. */
-  llama70b: { id: '@cf/meta/llama-3.3-70b-instruct-fp8-fast', input: 0.29, output: 2.25 },
-  /** DeepSeek V4.1 Flash: Styld and Thinking. Of five models probed on 31 October it wrote the best Slovenian and
-   * called tools reliably. */
-  deepSeekFlash: { id: '@cf/deepseek-ai/deepseek-v4.1-flash-1017', input: 0.3, output: 1.2 },
-  /** Llama Guard 3: the words of anything public. */
-  llamaGuard: { id: '@cf/meta/llama-guard-3-8b', input: 0.48, output: 0.03 },
+  deepSeekFlash: { id: 'styld-deepseek-v4.1-flash', input: 0.283, output: 1.131 },
 } as const
 export type TextModel = (typeof textModels)[keyof typeof textModels]
 

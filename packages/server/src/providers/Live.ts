@@ -1,5 +1,5 @@
 import { Layer } from 'effect'
-import { WorkersAi } from '../ai/LanguageModel.ts'
+import { makeTextCompletions, TextCompletions } from './Text.ts'
 import { makeGarmentVision, type RunClef } from './Clef.ts'
 import { makePictureWork } from './CloudflareImages.ts'
 import { makeGarmentSegmenter, metaBase } from './Meta.ts'
@@ -18,7 +18,7 @@ import { Thinking } from '../outfits/Proposer.ts'
 import { ContentJudge, contentJudge } from '../safety/Judge.ts'
 
 // Every provider the application runs on, as layers: the decision model, image work, SAM, the image and video models,
-// the planner and Thinking, the content judge and the Workers AI binding Styld's language models run over. The Worker
+// the planner and Thinking, the content judge and the paid text gateway. The Worker
 // passes the live ones; the native test composition passes its fakes (`packages/server/test/fakes/`). Nothing in here
 // reads the environment.
 
@@ -36,7 +36,7 @@ export type ProviderServices =
   | ContentJudge
   | OutfitJudge
   | Thinking
-  | WorkersAi
+  | TextCompletions
 
 /** What providers are built over: the Worker's own bindings, its call counter and its deployment's secrets.
  * @internal Exported for its tests. */
@@ -54,10 +54,9 @@ export interface ProviderBindings {
 /** How a composition makes its providers. */
 export type ProvidersFor = (bindings: ProviderBindings) => Layer.Layer<ProviderServices>
 
-/** The Workers AI calls Styld makes over the Worker's `AI` binding: Clef's questions, and its text models. */
+/** The Workers AI calls Styld makes over the Worker's `AI` binding: Clef's questions. */
 export interface WorkersAiCalls {
   readonly runClef: RunClef
-  readonly runModel: WorkersAi['Service']['run']
 }
 
 /** The providers from their Workers AI calls and their HTTP clients' fetch and addresses. The native composition
@@ -70,6 +69,7 @@ export const providersOver = (
     readonly fetch: Fetch
     readonly metaBase: string
     readonly gatewayBase: string
+    readonly textBase: string
     readonly pollSeconds: number
   },
 ): Layer.Layer<ProviderServices> => {
@@ -88,13 +88,17 @@ export const providersOver = (
     Layer.succeed(PictureWork, makePictureWork(bindings.images, metrics)),
     Layer.succeed(GarmentSegmenter, makeGarmentSegmenter({ ...meta, readVideo })),
   )
-  // The text models run over the binding and count their calls with the Worker's counter.
+  const text = makeTextCompletions({ base: http.textBase, key: deployment.secrets.textKey, fetch: http.fetch })
+  // Text uses the paid gateway; Clef continues over Workers AI.
   const models = Layer.mergeAll(
     MoodPlanner.layer,
     Thinking.layer,
     contentJudge(calls.runClef),
     OutfitJudge.layer(calls.runClef),
-  ).pipe(Layer.provideMerge(WorkersAi.layer(calls.runModel)), Layer.provide(Layer.succeed(CaptureMetrics, metrics)))
+  ).pipe(
+    Layer.provideMerge(Layer.succeed(TextCompletions, text)),
+    Layer.provide(Layer.succeed(CaptureMetrics, metrics)),
+  )
   return Layer.mergeAll(
     Garments.layer.pipe(Layer.provideMerge(garmentProviders)),
     Layer.succeed(ImageGenerator, makeMuseGenerator(meta)),
@@ -104,11 +108,12 @@ export const providersOver = (
   )
 }
 
-/** The Worker's providers: Workers AI through its binding, Meta and the gateway over the internet. */
+/** The Worker's providers: Clef through its binding, Meta and both gateways over the internet. */
 export const liveProviders: ProvidersFor = (bindings) =>
   providersOver(bindings, bindings.workersAi, {
     fetch: (input, init) => globalThis.fetch(input, init),
     metaBase,
     gatewayBase,
+    textBase: bindings.deployment.textBase,
     pollSeconds: veoPollSeconds,
   })

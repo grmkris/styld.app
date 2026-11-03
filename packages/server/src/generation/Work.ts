@@ -54,12 +54,14 @@ const wardrobeOf = Effect.flatMap(Wardrobe, (wardrobe) =>
 const plan = (job: JobRow) =>
   Effect.gen(function* () {
     const store = yield* GenerationStore
-    const attempt = yield* (yield* PaidAttempts)
+    const attempts = yield* PaidAttempts
+    const paidKey = `generation/${job.id}/plan`
+    const attempt = yield* attempts
       .run(
         {
-          key: `generation/${job.id}/plan`,
+          key: paidKey,
           accountId: job.accountId,
-          provider: 'workers-ai',
+          provider: 'litellm',
           result: Schema.Option(Schema.Struct({ picks: Schema.Array(Schema.String), moods: Schema.Array(Mood) })),
         },
         Effect.gen(function* () {
@@ -84,11 +86,14 @@ const plan = (job: JobRow) =>
     if (Option.isNone(attempt)) return
     const planned = attempt.value
     const at = yield* nowDate
-    if (Option.isNone(planned))
-      return yield* stored(
-        store.advanceJob(job.id, ['planning'], { status: 'refused', reason: 'unclear', updatedAt: at }),
-      )
+    if (Option.isNone(planned)) {
+      yield* stored(store.advanceJob(job.id, ['planning'], { status: 'refused', reason: 'unclear', updatedAt: at }))
+      yield* attempts.forget(paidKey).pipe(Effect.ignore)
+      return
+    }
     yield* stored(store.planned(job.id, planned.value, at))
+    // The job's durable rows now contain the plan; the paid-attempt row is no longer needed for replay.
+    yield* attempts.forget(paidKey).pipe(Effect.ignore)
   })
 
 /** A sticker that will not be drawn: refused, or lost on the way. The job ends refused, so its credit goes back

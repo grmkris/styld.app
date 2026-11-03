@@ -58,6 +58,8 @@ export default Alchemy.Stack(
         AUTH_REQUEST_BINDING_KEYS: yield* Config.Redacted('STYLD_AUTH_REQUEST_BINDING_KEYS'),
         // Meta's key, for SAM (cut-outs, videos) and Muse Image (clean pictures, stickers).
         META_API_KEY: yield* Config.Redacted('META_MUSE_API_KEY'),
+        STYLD_LITELLM_URL: yield* Config.String('STYLD_LITELLM_URL'),
+        STYLD_LITELLM_KEY: yield* Config.Redacted('STYLD_LITELLM_KEY'),
         // Accounts whose assistants get the curation tools (feature, house, hide, reports, checks): their sign-in
         // emails, comma-separated, from the owner's `.env.preview.local`; none when unset.
         STYLD_ADMIN_EMAILS: yield* Config.String('STYLD_ADMIN_EMAILS').pipe(Config.orElse(() => Config.succeed(''))),

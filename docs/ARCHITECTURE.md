@@ -92,12 +92,14 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 - **Providers** (`server/src/providers/`): Clef (Workers AI) routes, describes, judges and ranks; Cloudflare Images
   re-encodes every upload (EXIF and location stripped) and cuts out single garments; Meta SAM 3.1 splits several
   garments and tracks video; Meta Muse draws clean pictures and stickers; Veo (through the AI Gateway) makes turns.
-  Text models go through Effect's `LanguageModel` over Workers AI (`ai/LanguageModel.ts`): DeepSeek V4.1 Flash for
-  Styld and Thinking, Llama 3.3 70B for the mood board planner, Llama Guard 3 for words.
+  Text models go through Effect's `LanguageModel` over the paid LiteLLM gateway (`ai/LanguageModel.ts`): one isolated
+  Alibaba Model Studio DeepSeek V4.1 Flash alias serves Styld, Thinking, mood-board planning and text moderation.
+  Clef remains the Workers AI visual judge and garment/attribute model.
 - **Every call goes through `providerCall`** (`providers/Call.ts`): a deadline from one table, one `ProviderError`
   with reason `Refused | Busy | OutcomeUnknown | Broken`, retries only while `Busy`, counted into Analytics Engine and
-  priced from one cost table (`providers/Costs.ts`). A paid call (SAM, Muse, Veo) past its deadline is
-  `OutcomeUnknown` and is never retried. `fetch` appears only in `providers/` (gated).
+  priced from one cost table (`providers/Costs.ts`). Paid HTTP text calls treat gateway timeouts, server failures,
+  lost responses and unreadable completions as `OutcomeUnknown` and never resubmit them. `fetch` appears only in
+  `providers/` (gated).
 - **Configuration is deployment facts only** (`server/src/Config.ts`): stage, release, origin, auth secrets, admin
   emails, Meta's and the gateway's keys, decoded once. Model ids, thresholds, prices, the allowance, paces and which
   provider does which task are constants in their owning module; changing one is a commit. **No feature flags, no
