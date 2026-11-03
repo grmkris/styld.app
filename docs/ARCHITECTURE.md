@@ -109,6 +109,7 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
   garments and tracks video; Meta Muse draws clean pictures and stickers; Veo (through the AI Gateway) makes turns.
   Text models go through Effect's `LanguageModel` over the paid LiteLLM gateway (`ai/LanguageModel.ts`): one isolated
   Alibaba Model Studio DeepSeek V4.1 Flash alias serves Styld, Thinking, mood-board planning and text moderation.
+  Styld's replies stream over the same transport (Server-Sent Events, usage in the last chunk) from its Threads.
   Clef remains the Workers AI visual judge and garment/attribute model.
 - **Every call goes through `providerCall`** (`providers/Call.ts`): a deadline from one table, one `ProviderError`
   with reason `Refused | Busy | OutcomeUnknown | Broken`, retries only while `Busy`, counted into Analytics Engine and

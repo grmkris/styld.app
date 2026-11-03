@@ -6,7 +6,7 @@ phone/desktop and live-provider acceptance below is still open.
 Feature work on the 31 October plan (M4–M6, M8–M9) stays frozen until testing starts. The history of every earlier
 milestone, with its evidence, is in `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`.
 
-## Ask Styld on Yielded Agent (T-14 streaming, M1 and M3–M5, 3 November, not deployed)
+## Ask Styld on Yielded Agent (T-14 streaming, M1–M6, 3 November, not deployed)
 
 Built on the M0 upgrade in its own worktree; the vertical slice works natively, nothing is deployed.
 
@@ -24,9 +24,39 @@ Built on the M0 upgrade in its own worktree; the vertical slice works natively, 
   cards are read from its Thread's canonical records; `GET /api/stylist/chats/:chatId/live` forwards LiveText NDJSON
   to the chat's owner. The page follows a reply with a Subscription over that stream (decoder in a lazy chunk),
   with no polling; the reply's cards appear when the chat is read at the attempt's end.
-- **Model:** Effect's OpenAI-compatible client over `STYLD_LITELLM_URL`/`STYLD_LITELLM_KEY`, model alias
-  `styld-deepseek-v4.1-flash` (the names of the LiteLLM route being prepared beside this work). Not yet wrapped in
-  `providerCall` (no per-call deadline, Analytics Engine count or cost row); the agent's `maxDuration` is 3 minutes.
+- **Model:** the same LiteLLM transport and text model as every text task (`providers/Text.ts`,
+  `ai/LanguageModel.ts`), streamed: `stream: true` with `include_usage`, words passed on as deltas, tool calls
+  assembled, each call within the chat deadline (45 s; past it the paid call is `OutcomeUnknown`), classified like
+  the buffered call (429 Busy, 408/5xx unknown, other refusals Refused), counted in Analytics Engine with its cost
+  from the streamed usage; an answer without usage fails closed as unknown. The Thread Worker is bound
+  `STYLD_LITELLM_URL`/`STYLD_LITELLM_KEY`, `STYLD_ENV`, `STYLD_RELEASE` and the `AI_CALLS` dataset.
+- **Account deletion:** Yielded Agent beta.191 has no Thread delete. Each Thread Object has an `erase()` that deletes
+  its alarm and all its storage (records, ledger, outbox) and aborts its incarnation; the account purge erases every
+  chat in the account's D1 list before the rows go.
+- **Removed (M6):** the per-account `StylistObject`, `ChatStores`, the stylist queue and its job, `stylist_turns`
+  (forward migration `20261103192009_drop_stylist_turns`) and the page's reply polling.
+- **Evidence (full gate run once, 3 November, on top of 7f9e630):** format, agents, vendor, icons, assistant views, x18n,
+  i18n, graph, patterns, style tokens, suppressions, canaries, typecheck (688 files, 0 findings), lint, Knip and Knip
+  production passed; jscpd failed on 5 clones that all exist unchanged in 7f9e630 (`Today.ts`, `Outfits.ts`/
+  `Wearables.ts`, `OutfitRanking`/`OutfitService` tests, `LanguageModel.test.ts` 157-174). The remaining steps, run
+  after it: build, bundle budgets (initial 358,201 gzip bytes against the raised 359,000, below), 809 unit tests in 122
+  files, native 30 pass and 1 fail of 31 (1,535 assertions). The failure is the Gallery journey's instant-tabs step,
+  which waits for a `/looks` tab link after T-08 (`e13f05f`) moved Looks into The Lab; its Ask Styld steps (live words
+  before the reply, then the card) passed before it. The stylist's HTTP acceptance passed.
+- **Bundle budget:** initial raised from 357,677 to 359,000 gzip bytes: main measured 357,238; following a reply's
+  LiveText adds 963 (the page's subscription and settling 570; Schema and Stream shared with the lazy decoder chunk
+  399). The decoder (`StylistLive.ts`) loads only while a reply is written.
+- **Model:** the same LiteLLM transport and text model as every text task (`providers/Text.ts`,
+  `ai/LanguageModel.ts`), streamed: `stream: true` with `include_usage`, words passed on as deltas, tool calls
+  assembled, each call within the chat deadline (45 s; past it the paid call is `OutcomeUnknown`), classified like
+  the buffered call (429 Busy, 408/5xx unknown, other refusals Refused), counted in Analytics Engine with its cost
+  from the streamed usage; an answer without usage fails closed as unknown. The Thread Worker is bound
+  `STYLD_LITELLM_URL`/`STYLD_LITELLM_KEY`, `STYLD_ENV`, `STYLD_RELEASE` and the `AI_CALLS` dataset.
+- **Account deletion:** Yielded Agent beta.191 has no Thread delete. Each Thread Object has an `erase()` that deletes
+  its alarm and all its storage (records, ledger, outbox) and aborts its incarnation; the account purge erases every
+  chat in the account's D1 list before the rows go.
+- **Removed (M6):** the per-account `StylistObject`, `ChatStores`, the stylist queue and its job, `stylist_turns`
+  (forward migration `20261103192009_drop_stylist_turns`) and the page's reply polling.
 - **Evidence:** native `lets Styld answer about the person's own wardrobe…` passed (streamed deltas arrive before the
   reply is in the chat and equal its words; pieces card from the recorded pieces_show; one credit per message
   however often sent; refunded when the model fails; analysis card; another account gets 404 for the chat and its
@@ -34,10 +64,9 @@ Built on the M0 upgrade in its own worktree; the vertical slice works natively, 
   typecheck, lint of touched files, patterns, graph, Knip (one existing finding in `VisitView.styles.ts`),
   suppressions, x18n and bundle budgets (initial 356,885 of 357,677 gzip bytes) passed. The full `bun run check` has
   not run on this batch.
-- **Still open:** account deletion does not erase the account's Threads (their Objects keep the chats; the D1 index
-  goes with the account); M6 removal of `StylistObject`, the stylist queue and `stylist_turns`; `providerCall`
-  semantics and a live model readback once the LiteLLM route and its secrets exist; the Thread Worker needs
-  `STYLD_LITELLM_URL`/`STYLD_LITELLM_KEY` in the preview's environment before a deploy.
+- **Still open:** a live model readback on the preview (streaming through the LiteLLM route, tool calls, usage in
+  the stream); no native test reads a deleted account's Thread back (the erase path is covered only by its call); the
+  first deploy deletes the old `Stylist` Durable Object class and the `StyldV2Stylist` queue.
 
 ## Eva review document (3 November)
 
