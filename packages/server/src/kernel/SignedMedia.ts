@@ -59,12 +59,14 @@ const signedBytes = (grant: SignedGrant) =>
     ]),
   )
 
-/** When an address made now ends: the next full hour, a day on. */
+/** When an address made now ends: the next full hour, a day on.
+ * @internal Exported for its boundary tests. */
 export const expiryOf = (nowMillis: number) =>
   (Math.floor(nowMillis / 1000 / hourSeconds) + 1) * hourSeconds + lifetimeSeconds
 
 /** The HMAC key addresses are signed with, derived from the auth secret under `keyLabel`, so the media key is never
- * the secret itself and needs no secret of its own. */
+ * the secret itself and needs no secret of its own.
+ * @internal Exported for its signature tests. */
 export const mediaKey = (authSecret: Redacted.Redacted) =>
   Effect.promise(async () => {
     const algorithm = { name: 'HMAC', hash: 'SHA-256' }
@@ -93,7 +95,8 @@ export const signGrant = (key: CryptoKey, grant: SignedGrant) =>
 const one = (value: string | ReadonlyArray<string> | undefined) => (typeof value === 'string' ? value : undefined)
 
 /** The grant a presented address was signed for, at `nowMillis`: none for a wrong signature, an altered field, an
- * expired address, one that claims to live longer than any is made to, or a key outside its account's prefix. */
+ * expired address, one that claims to live longer than any is made to, or a key outside its account's prefix.
+ * @internal Exported for its tamper and expiry tests. */
 export const verifyGrant = Effect.fnUntraced(function* (key: CryptoKey, presented: Presented, nowMillis: number) {
   const { query } = presented
   const [accountId, objectKey, contentType, version, expiresText, signature] = ['a', 'k', 't', 'v', 'e', 's'].map(
