@@ -91,3 +91,15 @@ physical-phone or acceptance evidence for any of the findings. No message was se
 - Application release `15ddacaca5105bf0f7c7b8b33cb2ba396a24deeb` is deployed separately to the isolated preview;
   its exact-release smoke acceptance passed 3 tests / 42 assertions. The tracker publication does not change
   application resources. Physical-phone and real-provider acceptance remain separate.
+
+## Rotation safety follow-up — 3 November 2026
+
+- Stable URL remains https://styld-review-07c26b483ccc.pages.dev; this update is published at
+  https://31fc3453.styld-review-07c26b483ccc.pages.dev.
+- The document records the rotation migration safety fix and the zyzz data-attribute rendering fix. Its build still
+  validates 51 findings, 21 tickets, 35 original screenshots and 34 comparison pairs.
+- `bun run assistant-views:check` passes after regenerating the derived assistant view. The focused migration regression
+  test preserves look, board, worn, picture and turn rows while adding rotation under foreign keys.
+- The focused native T-15 screenshot journey remains blocked by this box's Alchemy profile `chmod` (`EROFS`) before the
+  browser starts. No native rotation screenshots, authenticated preview readback or phone acceptance is claimed, and no
+  Styld application preview deployment was made.
