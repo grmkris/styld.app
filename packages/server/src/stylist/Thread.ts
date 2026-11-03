@@ -148,7 +148,7 @@ const settlements = Layer.effect(
 
 /** The Thread Object class over a language model: the Worker's own asks Styld's model (`ThreadWorker.ts`); the native
  * suite's a streaming fake. */
-export const makeStylistThread = (model: Layer.Layer<LanguageModel.LanguageModel>) =>
+export const makeStylistThread = (model: Layer.Layer<LanguageModel.LanguageModel, never, WorkerEnvironment>) =>
   ThreadObject.make(
     ThreadObject.layer(
       [

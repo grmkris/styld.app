@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@effect/vitest'
-import { Effect, Layer } from 'effect'
+import { Effect, Layer, Stream } from 'effect'
 import type { RunClef } from '../src/providers/Clef.ts'
 import { CaptureMetrics, type ProviderCall } from '../src/kernel/Metrics.ts'
 import { ContentJudge, contentJudge } from '../src/safety/Judge.ts'
@@ -24,7 +24,9 @@ const judging = (answer: unknown, clef: RunClef) => {
     }),
   )
   const judge = contentJudge(clef).pipe(
-    Layer.provide(TextCompletions.layer(() => Effect.succeed(answer))),
+    Layer.provide(
+      TextCompletions.layer({ run: () => Effect.succeed(answer), stream: () => Stream.die('not streamed') }),
+    ),
     Layer.provide(metrics),
   )
   return { calls, judge }

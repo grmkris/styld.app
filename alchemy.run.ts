@@ -3,6 +3,7 @@ import * as Alchemy from 'alchemy'
 import { Config, Effect } from 'effect'
 import {
   currentStage,
+  StyldAiCalls,
   StyldMedia,
   stylistThreadObjects,
   stylistThreadsOf,
@@ -30,6 +31,10 @@ export default Alchemy.Stack(
       env: {
         STYLD_API: api,
         STYLIST_THREADS: stylistThreadObjects,
+        STYLD_ENV: stage.environment,
+        STYLD_RELEASE: release,
+        // Each chat model call is counted where every other provider call is (`kernel/Metrics.ts`).
+        AI_CALLS: yield* StyldAiCalls,
         STYLD_LITELLM_URL: yield* Config.String('STYLD_LITELLM_URL'),
         STYLD_LITELLM_KEY: yield* Config.Redacted('STYLD_LITELLM_KEY'),
       },

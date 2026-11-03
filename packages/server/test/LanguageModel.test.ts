@@ -1,11 +1,11 @@
 import { describe, expect, it } from '@effect/vitest'
-import { Effect, Fiber, Layer, Schema } from 'effect'
+import { Effect, Fiber, Layer, Schema, Stream } from 'effect'
 import { Chat, LanguageModel, Tool, Toolkit } from 'effect/ai'
 import { TestClock } from 'effect/testing'
 import { providerErrorOf, textModel, type TextTask } from '../src/ai/LanguageModel.ts'
 import { CaptureMetrics, type ProviderCall } from '../src/kernel/Metrics.ts'
 import { deadlines } from '../src/providers/Call.ts'
-import { textModels } from '../src/providers/Costs.ts'
+import { textCost, textModels } from '../src/providers/Costs.ts'
 import { makeTextCompletions, TextCompletions } from '../src/providers/Text.ts'
 import { Redacted } from 'effect'
 
@@ -15,6 +15,11 @@ const completion = (content: string | null, toolCalls: ReadonlyArray<unknown> = 
   choices: [{ message: { content, tool_calls: toolCalls }, finish_reason: finish }],
   usage,
 })
+
+/** A streamed answer, made fresh for its request. */
+class Streamed {
+  constructor(readonly response: () => Response) {}
+}
 
 /** The actual HTTP adapter over bounded fixture responses. Captures only synthetic requests. */
 const gateway = (answers: ReadonlyArray<unknown>) => {
@@ -33,6 +38,8 @@ const gateway = (answers: ReadonlyArray<unknown>) => {
       const answer = answers[Math.min(asked.length, answers.length) - 1]
       if (answer instanceof Error) throw answer
       if (answer === 'never') return new Promise(() => undefined)
+      // A streamed answer is made fresh for its request: a clone's body would wait on the unread original.
+      if (answer instanceof Streamed) return answer.response()
       return answer instanceof Response ? answer.clone() : Response.json(answer)
     },
   })
@@ -261,4 +268,119 @@ describe('a reasoning response', () => {
         expect(answer.usage.outputTokens).toMatchObject({ total: 100, text: 60, reasoning: 40 })
       }).pipe(Effect.provide(layer))
     })
+})
+
+/** A streamed answer as Server-Sent Events: each chunk a `data:` line, then `[DONE]`. */
+const sse = (chunks: ReadonlyArray<unknown>) =>
+  new Streamed(
+    () =>
+      new Response([...chunks.map((chunk) => `data: ${JSON.stringify(chunk)}\n\n`), 'data: [DONE]\n\n'].join(''), {
+        headers: { 'content-type': 'text/event-stream' },
+      }),
+  )
+const delta = (content: string) => ({ choices: [{ delta: { content } }] })
+const showing = Toolkit.make(
+  Tool.dynamic('pieces_show', {
+    description: 'Show pieces.',
+    parameters: { type: 'object', properties: { pieceIds: { type: 'array', items: { type: 'string' } } } },
+  }),
+)
+const streamedText = Effect.gen(function* () {
+  const model = yield* LanguageModel.LanguageModel
+  const toolkit = yield* showing.pipe(
+    Effect.provide(showing.toLayer({ pieces_show: () => Effect.succeed({ shown: 1 }) })),
+  )
+  return yield* model.streamText({ prompt: 'Hello', toolkit }).pipe(Stream.runCollect)
+})
+
+describe('the paid text route, streamed (Styld’s replies)', () => {
+  it.effect('passes the words on as they come, then the tool calls whole and the billed usage, counted once', () => {
+    const { asked, calls, layer } = gateway([
+      sse([
+        delta('Wear '),
+        delta('the coat.'),
+        {
+          choices: [
+            {
+              delta: {
+                tool_calls: [{ index: 0, id: 'call_1', function: { name: 'pieces_show', arguments: '{"pie' } }],
+              },
+            },
+          ],
+        },
+        { choices: [{ delta: { tool_calls: [{ index: 0, function: { arguments: 'ceIds":["pc_x"]}' } }] } }] },
+        { choices: [{ delta: {}, finish_reason: 'tool_calls' }] },
+        { choices: [], usage },
+      ]),
+    ])
+    return Effect.gen(function* () {
+      const parts = yield* streamedText
+      expect(
+        parts.filter(({ type }) => type === 'text-delta').map((part) => (part.type === 'text-delta' ? part.delta : '')),
+      ).toEqual(['Wear ', 'the coat.'])
+      expect(parts.find(({ type }) => type === 'tool-call')).toMatchObject({
+        name: 'pieces_show',
+        params: { pieceIds: ['pc_x'] },
+      })
+      expect(parts.at(-1)).toMatchObject({ type: 'finish', reason: 'tool-calls' })
+      expect(asked[0]).toMatchObject({ stream: true, stream_options: { include_usage: true } })
+      expect(calls).toEqual([
+        expect.objectContaining({
+          provider: 'litellm',
+          outcome: 'ok',
+          units: 1100,
+          costMicroUsd: textCost(task.model, 1000, 100),
+        }),
+      ])
+    }).pipe(Effect.provide(layer))
+  })
+
+  it.effect('an answer that never says what it billed fails closed as unknown, and is counted so', () => {
+    const { calls, layer } = gateway([
+      sse([delta('Wear the coat.'), { choices: [{ delta: {}, finish_reason: 'stop' }] }]),
+    ])
+    return Effect.gen(function* () {
+      expect(providerErrorOf(yield* Effect.flip(streamedText))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
+      expect(calls.map(({ outcome, costMicroUsd }) => [outcome, costMicroUsd])).toEqual([['unknown', 0]])
+    }).pipe(Effect.provide(layer))
+  })
+
+  for (const [status, reason] of [
+    [429, 'Busy'],
+    [402, 'Refused'],
+    [502, 'OutcomeUnknown'],
+  ] as const)
+    it.effect(`an HTTP ${String(status)} before any words is ${reason}, sent once`, () => {
+      const { asked, layer } = gateway([Response.json({}, { status })])
+      return Effect.gen(function* () {
+        expect(providerErrorOf(yield* Effect.flip(streamedText))).toMatchObject({ reason: { _tag: reason } })
+        expect(asked).toHaveLength(1)
+      }).pipe(Effect.provide(layer))
+    })
+
+  it.effect('a stream that outlives its deadline is unknown: the paid call is never sent again', () => {
+    const { asked, calls, layer } = gateway([
+      new Streamed(
+        () =>
+          new Response(
+            new ReadableStream({
+              start: (controller) =>
+                controller.enqueue(new TextEncoder().encode(`data: ${JSON.stringify(delta('Wear'))}\n\n`)),
+            }),
+            {
+              headers: { 'content-type': 'text/event-stream' },
+            },
+          ),
+      ),
+    ])
+    return Effect.gen(function* () {
+      const fiber = yield* Effect.forkChild(Effect.flip(streamedText))
+      // The request is on its way and its first words in before the clock moves past the deadline.
+      yield* Effect.promise(() => new Promise((resolve) => setTimeout(resolve, 50)))
+      yield* TestClock.adjust(deadlines.chat)
+      expect(providerErrorOf(yield* Fiber.join(fiber))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
+      expect(asked).toHaveLength(1)
+      expect(calls.map(({ outcome }) => outcome)).toEqual(['unknown'])
+    }).pipe(Effect.provide(layer))
+  })
 })

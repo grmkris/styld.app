@@ -1,5 +1,5 @@
 import { describe, expect, it } from '@effect/vitest'
-import { Effect, Layer, Option } from 'effect'
+import { Effect, Layer, Option, Stream } from 'effect'
 import { TextCompletions } from '../src/providers/Text.ts'
 import { Database } from '../src/kernel/Db.ts'
 import { Media } from '../src/kernel/Media.ts'
@@ -77,7 +77,9 @@ const passing = (seen: Witness) =>
 /** The real judge, with DeepSeek answering `answer` and Clef never asked. */
 const guardAnswering = (answer: unknown) =>
   contentJudge(() => Promise.reject(new Error('no pictures in these checks'))).pipe(
-    Layer.provide(TextCompletions.layer(() => Effect.succeed(answer))),
+    Layer.provide(
+      TextCompletions.layer({ run: () => Effect.succeed(answer), stream: () => Stream.die('not streamed') }),
+    ),
     Layer.provide(Layer.succeed(CaptureMetrics, CaptureMetrics.discarding)),
   )
 

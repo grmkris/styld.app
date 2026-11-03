@@ -2,6 +2,7 @@ import { ChatMessage, Language, Replying } from '@styld/protocol'
 import { DefinitionDigestInput } from '@yielded/agent/records'
 import { AgentId, ThreadId } from '@yielded/agent/identifiers'
 import { Schema } from 'effect'
+import { textModels } from '../providers/Costs.ts'
 import { catalogue } from './Catalogue.ts'
 
 // Styld's chat as a Yielded Agent (owner, 3 November 2026): one Thread per chat, hosted by its own Worker
@@ -27,8 +28,8 @@ export const stylistAgentId = AgentId.make('styld-stylist')
 /** The agent as a submission names it: its id and input. */
 export const stylistSubmitAgent = { definition: { id: stylistAgentId, input: StylistInput } }
 
-/** The model the chat answers with, as the definitions name it (`providers/StylistModel.ts` asks it). */
-export const stylistModelName = 'styld-deepseek-v4.1-flash'
+/** The model the chat answers with, as the definitions name it (`Policy.ts` `styldModel`). */
+export const stylistModelName = textModels.deepSeekFlash.id
 
 /** A chat's Thread: the account's id and the chat's, joined by the API Worker from the session, never from the
  * browser. Thread Objects are named by it. */

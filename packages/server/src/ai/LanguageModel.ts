@@ -1,10 +1,10 @@
-import { type Duration, Effect, Layer, Predicate, Schema, Stream } from 'effect'
+import { Clock, type Duration, Effect, Exit, Layer, Option, Predicate, Schema, Stream } from 'effect'
 import { AiError, LanguageModel, Prompt, type Response, Tool } from 'effect/ai'
 import { toCodecOpenAI } from 'effect/ai/OpenAiStructuredOutput'
 import { CaptureMetrics, type ProviderCall } from '../kernel/Metrics.ts'
 import { providerCall } from '../providers/Call.ts'
 import { type TextModel, textCost } from '../providers/Costs.ts'
-import { busy, outcomeUnknown, type ProviderError, refused } from '../providers/Errors.ts'
+import { busy, isOutcomeUnknown, outcomeUnknown, type ProviderError, refused } from '../providers/Errors.ts'
 import { TextCompletions } from '../providers/Text.ts'
 
 // Every text task uses Effect's LanguageModel over Styld's paid LiteLLM route. Clef keeps the Workers AI binding.
@@ -263,17 +263,6 @@ const partsOf = Effect.fnUntraced(function* (output: Output, json: boolean) {
   return [...(text.length > 0 ? [{ type: 'text' as const, text }] : []), ...toolCalls, finish]
 })
 
-/** The same parts as a stream: the words as one delta. */
-const streamed = (parts: ReadonlyArray<Response.PartEncoded>): ReadonlyArray<Response.StreamPartEncoded> =>
-  parts.flatMap((part): ReadonlyArray<Response.StreamPartEncoded> => {
-    if (part.type !== 'text') return part.type === 'tool-call' || part.type === 'finish' ? [part] : []
-    return [
-      { type: 'text-start', id: 'text' },
-      { type: 'text-delta', id: 'text', delta: part.text },
-      { type: 'text-end', id: 'text' },
-    ]
-  })
-
 /** One counted call of the task's model. */
 const ask = (task: TextTask, run: TextCompletions['Service']['run'], metrics: CaptureMetrics['Service']) =>
   Effect.fnUntraced(function* (options: LanguageModel.ProviderOptions) {
@@ -302,18 +291,151 @@ const ask = (task: TextTask, run: TextCompletions['Service']['run'], metrics: Ca
     ).pipe(Effect.map(({ parts }) => parts))
   })
 
-/** The task's language model over The text provider. */
+/** One streamed chunk, as far as Styld reads it: the words and tool-call fragments of its first choice, why it
+ * finished, and (in the last chunk) the tokens billed. */
+const Chunk = Schema.Struct({
+  choices: Schema.Array(
+    Schema.Struct({
+      delta: Schema.optionalKey(
+        Schema.Struct({
+          content: Schema.optionalKey(Schema.NullOr(Schema.String)),
+          tool_calls: Schema.optionalKey(
+            Schema.NullOr(
+              Schema.Array(
+                Schema.Struct({
+                  index: Schema.Int,
+                  id: Schema.optionalKey(Schema.NullOr(Schema.String)),
+                  function: Schema.optionalKey(
+                    Schema.Struct({
+                      name: Schema.optionalKey(Schema.NullOr(Schema.String)),
+                      arguments: Schema.optionalKey(Schema.NullOr(Schema.String)),
+                    }),
+                  ),
+                }),
+              ),
+            ),
+          ),
+        }),
+      ),
+      finish_reason: Schema.optionalKey(Schema.NullOr(Schema.String)),
+    }),
+  ),
+  usage: Schema.optionalKey(Schema.NullOr(Usage)),
+})
+const decodeChunk = Schema.decodeUnknownEffect(Chunk)
+
+/** What a streamed answer has said so far: whether its words began, its tool calls by index, why it finished and
+ * what it billed. */
+interface Streaming {
+  started: boolean
+  readonly calls: Map<number, { id: string; name: string; arguments: string }>
+  finish: string | null
+  usage: typeof Usage.Type | undefined
+}
+
+/** One chunk as response parts: its words as they come; tool calls and the finish wait for the end. */
+const chunkParts = (state: Streaming, chunk: typeof Chunk.Type): ReadonlyArray<Response.StreamPartEncoded> => {
+  if (chunk.usage !== undefined && chunk.usage !== null) state.usage = chunk.usage
+  const [choice] = chunk.choices
+  if (choice === undefined) return []
+  if (choice.finish_reason !== undefined && choice.finish_reason !== null) state.finish = choice.finish_reason
+  for (const call of choice.delta?.tool_calls ?? []) {
+    const known = state.calls.get(call.index) ?? { id: '', name: '', arguments: '' }
+    state.calls.set(call.index, {
+      id: call.id ?? known.id,
+      name: known.name + (call.function?.name ?? ''),
+      arguments: known.arguments + (call.function?.arguments ?? ''),
+    })
+  }
+  const delta = choice.delta?.content ?? ''
+  if (delta.length === 0) return []
+  const start: ReadonlyArray<Response.StreamPartEncoded> = state.started ? [] : [{ type: 'text-start', id: 'text' }]
+  state.started = true
+  return [...start, { type: 'text-delta', id: 'text', delta }]
+}
+
+/** The answer's end: its words closed, its tool calls whole, and its finish with the tokens billed. An answer that
+ * billed nothing it says is unreadable, and paid: unknown, never free. */
+const endParts = (state: Streaming) =>
+  Effect.gen(function* () {
+    const usage = state.usage
+    if (usage === undefined || (!state.started && state.calls.size === 0))
+      return yield* Effect.fail(outcomeUnknown(provider))
+    const calls = yield* Effect.forEach([...state.calls.values()], (call) =>
+      Effect.map(
+        paramsOf({ id: call.id, function: { name: call.name, arguments: call.arguments } }),
+        (params): Response.StreamPartEncoded => ({ type: 'tool-call', id: call.id, name: call.name, params }),
+      ),
+    )
+    const finish: Response.StreamPartEncoded = {
+      type: 'finish',
+      reason: finishOf(state.finish, calls.length > 0),
+      usage: {
+        inputTokens: { uncached: undefined, total: usage.prompt_tokens, cacheRead: undefined, cacheWrite: undefined },
+        outputTokens: { total: usage.completion_tokens, text: undefined, reasoning: undefined },
+      },
+    }
+    const end: ReadonlyArray<Response.StreamPartEncoded> = state.started ? [{ type: 'text-end', id: 'text' }] : []
+    return [...end, ...calls, finish]
+  })
+
+/** One streamed call of the task's model, as `providerCall` makes a call: within its deadline (past it, the paid
+ * call's outcome is unknown), counted with its tokens and cost once it ends, never sent again on its own. */
+const askStreaming =
+  (task: TextTask, stream: TextCompletions['Service']['stream'], metrics: CaptureMetrics['Service']) =>
+  (options: LanguageModel.ProviderOptions): Stream.Stream<Response.StreamPartEncoded, ProviderError> =>
+    Stream.unwrap(
+      Effect.gen(function* () {
+        const request = yield* requestOf(task, options)
+        const started = yield* Clock.currentTimeMillis
+        const state: Streaming = { started: false, calls: new Map(), finish: null, usage: undefined }
+        const count = (outcome: ProviderCall['outcome']) =>
+          Effect.flatMap(Clock.currentTimeMillis, (now) => {
+            const input = outcome === 'ok' ? (state.usage?.prompt_tokens ?? 0) : 0
+            const written = outcome === 'ok' ? (state.usage?.completion_tokens ?? 0) : 0
+            return metrics.call({
+              provider,
+              model: task.model.id,
+              kind: task.kind,
+              outcome,
+              milliseconds: now - started,
+              units: input + written,
+              costMicroUsd: textCost(task.model, input, written),
+            })
+          })
+        return stream(task.model.id, request).pipe(
+          Stream.mapEffect((raw) => Effect.mapError(decodeChunk(raw), () => outcomeUnknown(provider))),
+          Stream.flatMap((chunk) => Stream.fromIterable(chunkParts(state, chunk))),
+          Stream.concat(Stream.fromIterableEffect(Effect.suspend(() => endParts(state)))),
+          Stream.interruptWhen(Effect.andThen(Effect.sleep(task.deadline), Effect.fail(outcomeUnknown(provider)))),
+          Stream.onExit((exit) =>
+            Exit.isSuccess(exit)
+              ? count('ok')
+              : count(
+                  Option.match(Exit.findErrorOption(exit), {
+                    onNone: () => 'failed' as const,
+                    onSome: (error) => (isOutcomeUnknown(error) ? 'unknown' : 'failed'),
+                  }),
+                ),
+          ),
+        )
+      }),
+    )
+
+/** The task's language model over the text provider: a buffered call for words and objects, a streamed one for
+ * Styld's replies. */
 export const textModel = (task: TextTask) =>
   Layer.effect(
     LanguageModel.LanguageModel,
     Effect.gen(function* () {
-      const { run } = yield* TextCompletions
-      const call = ask(task, run, yield* CaptureMetrics)
+      const completions = yield* TextCompletions
+      const metrics = yield* CaptureMetrics
+      const call = ask(task, completions.run, metrics)
+      const streaming = askStreaming(task, completions.stream, metrics)
       return yield* LanguageModel.make({
         codecTransformer: toCodecOpenAI,
         generateText: (options) => call(options).pipe(Effect.mapError(aiErrorOf('generateText'))),
-        streamText: (options) =>
-          Stream.fromIterableEffect(call(options).pipe(Effect.map(streamed), Effect.mapError(aiErrorOf('streamText')))),
+        streamText: (options) => streaming(options).pipe(Stream.mapError(aiErrorOf('streamText'))),
       })
     }),
   )

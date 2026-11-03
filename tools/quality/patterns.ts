@@ -20,6 +20,8 @@ const fetchAllowed: Allowances = {
 /** `env.` beyond `Config.ts` and `Resources.ts`. */
 const envAllowed: Allowances = {
   'EdgeWorker.ts': 'the edge Worker is plain TypeScript and reads its own two service bindings and robots flag',
+  'providers/StylistModel.ts':
+    "the Thread Worker's model reads its own call dataset binding through effect-cf; scalars come through Config",
   'stylist/Thread.ts':
     "the Thread Worker is a plain module: its Objects and entrypoint read its own bindings (the API Worker, the Objects' namespace)",
 }
