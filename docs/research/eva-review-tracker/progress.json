@@ -271,18 +271,18 @@
       ]
     },
     "T-07": {
-      "status": "not_started",
-      "owner": "",
+      "status": "planned",
+      "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "",
+      "note": "Claude batch 02, after T-08. Wardrobe drills down: Clothing / Sport / Shoes / Accessories cards (only those with pieces, each showing its newest piece), then subcategory cards, then a label-free grid with one Filter button. Sport follows shops: sports clothing and sports shoes; swimwear and loungewear stay in Clothing. Phone Back goes up a level.",
       "evidence": [],
       "criteriaDone": []
     },
     "T-08": {
-      "status": "not_started",
-      "owner": "",
+      "status": "in_progress",
+      "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "",
+      "note": "Claude batch 02 (owner decisions 3 Nov). The 4th tab becomes Lab (sl Lab), header Laboratory, grid icon, opening on Boards, with Boards | Gallery | Looks sub-tabs; Wardrobe keeps only pieces. Gallery moves to /gallery; old /wardrobe/gallery links still open.",
       "evidence": [],
       "criteriaDone": []
     },
@@ -389,10 +389,10 @@
       ]
     },
     "T-12": {
-      "status": "not_started",
-      "owner": "",
+      "status": "planned",
+      "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "",
+      "note": "Claude batch 02, after Codex lands T-15 and the LiteLLM change (same files). Owner decisions 3 Nov: built-in types extended (loafers, lace-ups, sport shoes, hiking and snow boots, gloves, socks, hair accessories); existing pieces keep their type; seasons are any of spring/summer/autumn/winter plus Rainproof; custom categories sit under a built-in type, the AI suggests one in the review tray and it is created only on keep; managed from the piece editor.",
       "evidence": [],
       "criteriaDone": []
     },
@@ -536,10 +536,10 @@
       "criteriaDone": []
     },
     "T-17": {
-      "status": "not_started",
-      "owner": "",
+      "status": "planned",
+      "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "",
+      "note": "Claude batch 02. Owner decision 3 Nov: the outfit cut-out stays manual (SAM is the right tool for picking a person; auto waits for T-03). Planned: a clear working state and the cut-out shown at once, swipe between the photo and its cut-out, a heart over the photo instead of the Favourite pill, and Add to board pins whichever is showing. 1-step Add to wardrobe stays out.",
       "evidence": [],
       "criteriaDone": []
     },
