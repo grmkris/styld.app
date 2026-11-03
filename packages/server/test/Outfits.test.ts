@@ -137,6 +137,31 @@ describe('the outfit rules', () => {
     expect(cold.some((outfit) => outfit.includes(knit) && outfit.includes(tee))).toBe(true)
   })
 
+  test('a dress never takes a top, not even a knit or a hoodie over it, while a coat or a blazer may go over it', () => {
+    const hoodie = piece('hoodies')
+    const blazer = piece('blazers')
+    const layered = [...wardrobe, hoodie, blazer]
+    for (const season of ['cold', 'allYear'] as const) {
+      const outfits = drawnOver(brief(layered, { fixed: [dress], brief: { season } }))
+      expect(outfits.length).toBeGreaterThan(0)
+      for (const outfit of outfits) {
+        expect(outfit).toContain(dress)
+        expect(slotsOf(outfit)).not.toContain('top')
+        expect(slotsOf(outfit)).not.toContain('bottom')
+      }
+      expect(outfits.some((outfit) => outfit.includes(coat) || outfit.includes(blazer))).toBe(true)
+    }
+    // Free of a fixed piece, an outfit on a dress keeps the same rule.
+    for (const outfit of drawnOver(brief(layered, { brief: { season: 'cold' } })).filter((one) => one.includes(dress)))
+      expect(slotsOf(outfit)).not.toContain('top')
+    expect(validated(brief(layered), [dress.id, knit.id, trainers.id])).toEqual(Option.none())
+    expect(validated(brief(layered), [dress.id, hoodie.id, trainers.id])).toEqual(Option.none())
+    expect(validated(brief(layered), [dress.id, coat.id, trainers.id])).toEqual(Option.some([dress, coat, trainers]))
+    expect(validated(brief(layered), [dress.id, blazer.id, trainers.id])).toEqual(
+      Option.some([dress, blazer, trainers]),
+    )
+  })
+
   test('a proposal with a foreign piece, two tops, no shoes or a fixed piece left out is refused', () => {
     const request = brief(wardrobe, { fixed: [jeans] })
     const stranger = PieceId.make(`pc_${'z'.repeat(22)}`)
