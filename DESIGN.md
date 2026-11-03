@@ -38,6 +38,7 @@ skill covers usage). Add a token there before a screen needs a new value.
 | signal: the one slate accent                                | `#2f4f7c`             | `signal`           |
 | on-ink: text and icons on an ink fill                       | `#f7f4ee`             | `onInk`            |
 | focus ring                                                  | `#2f5bd3`             | `focus`            |
+| frost: a light round over a photo (Gallery's favourite)     | paper at 92%          | `frost`            |
 | error text, invalid field edge                              | v2's own              | `error`, `invalid` |
 
 Text in ink-3 keeps 4.5:1 on paper, paper-2 and stock (`#8b827a` until 2026-10-31 was 3.25:1).
@@ -55,8 +56,7 @@ A board's paper takes one of six colours (`Paper` in `packages/protocol/src/Boar
 are glass: the `glass` fill and a `glassEdge` hairline.
 
 The prototype has more tokens that v2 adds with the first screen that needs them: `veil` and `scrim` (overlays on photos
-and behind sheets), `frost` (round buttons over photos), `line` (a hairline over a
-photo), the avatar tones (`--t-*`, the ground behind a person's initials) and the catalog colour swatches (`--c-*`,
+and behind sheets), `line` (a hairline over a photo), the avatar tones (`--t-*`, the ground behind a person's initials) and the catalog colour swatches (`--c-*`,
 v1's catalog classification colours).
 
 ### Signal
@@ -169,7 +169,8 @@ Follow the prototype's `board`, `boards`, `person`, `explore`, `pin`, `wishlist`
 ## Icons
 
 - Phosphor (`@phosphor-icons/core`, pinned): Regular below 24px (Gallery's 20px control icons), Light at 24px and
-  larger. One family; no icons from another set.
+  larger. One family; no icons from another set. Fill only for a toggle that is on, beside its Regular outline when off
+  (the favourite heart over a Gallery photo).
 - An icon takes the colour of the text beside it; the signal colours it only when it marks state (the loader, the current
   tab).
 - Icons are hidden from assistive technology and sit beside a visible label that carries the meaning. An icon-only control

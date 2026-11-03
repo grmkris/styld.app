@@ -13,9 +13,14 @@ import { fileURLToPath } from 'node:url'
 import { icons } from '@phosphor-icons/core'
 import { Schema } from 'effect'
 
-const Weights = ['light', 'regular'] as const
+const Weights = ['light', 'regular', 'fill'] as const
 type Weight = (typeof Weights)[number]
-const Allowlist = Schema.Struct({ light: Schema.Array(Schema.String), regular: Schema.Array(Schema.String) })
+const Allowlist = Schema.Struct({
+  light: Schema.Array(Schema.String),
+  regular: Schema.Array(Schema.String),
+  fill: Schema.Array(Schema.String),
+})
+const suffixes: Record<Weight, string> = { light: 'Light', regular: 'Regular', fill: 'Fill' }
 const Manifest = Schema.Struct({ devDependencies: Schema.Record(Schema.String, Schema.String) })
 
 const root = path.resolve(import.meta.dir, '..')
@@ -56,7 +61,7 @@ const generate = async (): Promise<string> => {
   for (const weight of Weights) {
     assertSortedUnique(allowlist[weight], weight)
     for (const name of allowlist[weight]) {
-      const exportName = `${pascalName(name, 'apps/web/src/icons.json')}${weight === 'light' ? 'Light' : 'Regular'}`
+      const exportName = `${pascalName(name, 'apps/web/src/icons.json')}${suffixes[weight]}`
       exports.push(
         `/** Phosphor \`${name}\`, ${weight} weight. */\nexport const ${exportName} = '${await iconPath(name, weight)}'\n`,
       )

@@ -108,6 +108,10 @@ describe('My Gallery', () => {
   })
 })
 
+/** A press on the photo's picture at `from`, let go at `to`. */
+const swipe = (start: Photo.Model, from: { x: number; y: number }, to: { x: number; y: number }) =>
+  Photo.update(Photo.update(start, Photo.Message.PressedPicture(from)).model, Photo.Message.ReleasedPicture(to)).model
+
 describe('an outfit photo', () => {
   const opened = Photo.init(ready.id)
   const loaded = { ...opened, photo: Photo.PhotoData.Success({ data: ready }) }
@@ -173,9 +177,57 @@ describe('an outfit photo', () => {
       given(loaded),
       message(Photo.Message.ClickedCutOut()),
       Command.expectExact(Photo.CutOut({ photoId: ready.id })),
-      Command.resolve(Photo.CutOut, Photo.Message.FailedCutOut({ noPerson: true })),
+      model((cutting) => {
+        expect(cutting.work).toEqual(Photo.Work.CuttingOut())
+        // A second press while it works asks nothing more, and neither does a favourite.
+        expect(Photo.update(cutting, Photo.Message.ClickedCutOut()).commands ?? []).toEqual([])
+        expect(Photo.update(cutting, Photo.Message.ClickedFavourite({ favourite: true })).commands ?? []).toEqual([])
+      }),
+      Command.resolve(Photo.CutOut, Photo.Message.FailedCutOut({ reason: 'noPerson' })),
       model(({ work }) => expect(work).toEqual(Photo.Work.NoPerson())),
     )
+  })
+
+  test('a cut-out asked for too soon after others says to wait, apart from one that failed', () => {
+    const cutting = Photo.update(loaded, Photo.Message.ClickedCutOut()).model
+    expect(Photo.update(cutting, Photo.Message.FailedCutOut({ reason: 'slowDown' })).model.work).toEqual(
+      Photo.Work.SlowDown(),
+    )
+    expect(Photo.update(cutting, Photo.Message.FailedCutOut({ reason: 'failed' })).model.work).toEqual(
+      Photo.Work.Failed(),
+    )
+  })
+
+  test('the cut-out shows as soon as it is made, and a board then gets the cut-out (T-17)', () => {
+    const cut = { ...ready, hasCutout: true }
+    story(
+      Photo.update,
+      given(loaded),
+      message(Photo.Message.ClickedCutOut()),
+      Command.resolve(Photo.CutOut, Photo.Message.SucceededChange({ photo: cut })),
+      model(({ showing, work, saveToBoard }) => {
+        expect(showing).toBe('cutout')
+        expect(work).toEqual(Photo.Work.Idle())
+        expect(saveToBoard.target).toEqual({ kind: 'cutout', id: ready.id })
+      }),
+      message(Photo.Message.ClickedShow({ showing: 'photo' })),
+      model(({ showing, saveToBoard }) => {
+        expect(showing).toBe('photo')
+        expect(saveToBoard.target).toEqual({ kind: 'photo', id: ready.id })
+      }),
+    )
+  })
+
+  test('a sideways swipe shows the other picture; a short or a mostly upright one does not', () => {
+    const withCutout = { ...opened, photo: Photo.PhotoData.Success({ data: { ...ready, hasCutout: true } }) }
+    const left = swipe(withCutout, { x: 300, y: 400 }, { x: 180, y: 410 })
+    expect(left.showing).toBe('cutout')
+    expect(left.press).toEqual(Option.none())
+    expect(swipe(left, { x: 100, y: 400 }, { x: 220, y: 400 }).showing).toBe('photo')
+    expect(swipe(withCutout, { x: 300, y: 400 }, { x: 270, y: 400 }).showing).toBe('photo')
+    expect(swipe(withCutout, { x: 300, y: 400 }, { x: 200, y: 560 }).showing).toBe('photo')
+    // Without a cut-out there is nothing to swipe to.
+    expect(swipe(loaded, { x: 300, y: 400 }, { x: 100, y: 400 }).showing).toBe('photo')
   })
 
   test('deleting asks first, then goes back to the gallery', () => {

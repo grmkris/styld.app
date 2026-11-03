@@ -1,6 +1,6 @@
 import { Photo as PhotoContract, PhotoGarmentId } from '@styld/protocol'
 import { Option, Schema } from 'effect'
-import { click, expect, given, inside, role, scene, text } from 'foldkit/scene'
+import { Command, click, expect, given, inside, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
@@ -58,6 +58,40 @@ describe('an outfit photo’s page', () => {
       expect(role('button', { name: 'Favourite' })).toHaveAttr('aria-pressed', 'false'),
       // It goes on a board as the owner's own picture, with the look worn from it.
       expect(role('button', { name: 'Save to board' })).toExist(),
+    )
+  })
+
+  test('with its outfit cut out, the page offers the photo or the cut-out, and the heart says it is a favourite', () => {
+    const cut = { ...photo, hasCutout: true, favourite: true }
+    scene(
+      { update, view },
+      given(
+        withPage(withPieces(at(`/gallery/${photo.id}`, { signedIn: true }), [tee, shirt, jeans]), lenses.photo, () =>
+          modifyFields(Photo.init(photo.id), { photo: () => Photo.PhotoData.Success({ data: cut }) }),
+        ),
+      ),
+      expect(role('button', { name: 'Favourite' })).toHaveAttr('aria-pressed', 'true'),
+      inside(
+        role('group', { name: 'Photo or cut-out' }),
+        expect(role('button', { name: 'Photo' })).toHaveAttr('aria-pressed', 'true'),
+        expect(role('button', { name: 'Cut-out' })).toHaveAttr('aria-pressed', 'false'),
+      ),
+      expect(role('button', { name: 'Cut out the outfit' })).not.toExist(),
+      click(role('button', { name: 'Cut-out' })),
+      expect(role('img', { name: 'Outfit cut out of the photo from 31 Oct' })).toExist(),
+    )
+  })
+
+  test('cutting out says so on the picture and on the button until it is done', () => {
+    scene(
+      { update, view },
+      given(onPhoto()),
+      click(role('button', { name: 'Cut out the outfit' })),
+      expect(role('status')).toHaveText('Cutting out the outfit…'),
+      expect(role('button', { name: 'Cutting out the outfit…' })).toHaveAttr('aria-disabled', 'true'),
+      expect(role('group', { name: 'Photo or cut-out' })).not.toExist(),
+      Command.resolve(Photo.CutOut, Photo.Message.FailedCutOut({ reason: 'slowDown' })),
+      expect(role('alert')).toHaveText('Many cut-outs at once. Try again in a minute.'),
     )
   })
 

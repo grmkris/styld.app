@@ -941,8 +941,13 @@
     "findFailed": "Na tej fotografiji ni bilo mogoče najti oblačil. Kredit je vrnjen.",
     "notFound": "Te fotografije ni več.",
     "cutOut": "Izreži opravo",
-    "cutOutDone": "Oprava je izrezana: na tablo gre sama.",
-    "noPerson": "Na tej fotografiji ni bilo mogoče najti osebe."
+    "noPerson": "Na tej fotografiji ni bilo mogoče najti osebe.",
+    "cuttingOut": "Izrezujem opravo …",
+    "showPhoto": "Fotografija",
+    "showCutout": "Izrez",
+    "pictures": "Fotografija ali izrez",
+    "cutOutSlowDown": "Naenkrat je bilo preveč izrezov. Poskusi znova čez minuto.",
+    "cutoutOf": "Oprava, izrezana iz fotografije z dne {date}"
   },
   "lab": {
     "title": "Laboratorij"

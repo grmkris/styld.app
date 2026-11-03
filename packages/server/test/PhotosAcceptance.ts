@@ -14,6 +14,7 @@ const Photo = Schema.Struct({
   favourite: Schema.Boolean,
   hasCutout: Schema.Boolean,
   images: Schema.Struct({ thumb: Schema.String, full: Schema.String }),
+  cutoutImages: Schema.optionalKey(Schema.Struct({ thumb: Schema.String, full: Schema.String })),
   garments: Schema.Array(
     Schema.Struct({
       id: Schema.String,
@@ -151,6 +152,12 @@ const verifyOffering = async (origin: string, owner: Call) => {
   // The person cut out for collages, once: cutting again answers the same photo.
   const cutOut = await photoOf(await send(owner, `/api/photos/${photo.id}/cutout`, 'POST'))
   expect(cutOut).toMatchObject({ hasCutout: true })
+  // The page shows the cut-out at once (T-17): its signed address serves the PNG.
+  const cutoutAddress = cutOut.cutoutImages?.full ?? ''
+  expect(cutoutAddress).not.toBe('')
+  const cutoutPicture = await fetch(new URL(cutoutAddress, origin))
+  expect(cutoutPicture.status).toBe(200)
+  expect(cutoutPicture.headers.get('content-type')).toContain('image/png')
   expect((await photoOf(await send(owner, `/api/photos/${photo.id}/cutout`, 'POST'))).id).toBe(photo.id)
   await verifyOnBoard(origin, owner, photo.id)
 }
@@ -170,20 +177,27 @@ const publicBoard = async (origin: string, boardId: string) => {
   throw new Error('The board never became public')
 }
 
-/** Add to board: the photo and the look worn from it go on the person's own board, once; a visitor to the public
- * board sees neither the photo's pin nor its picture. */
+/** Add to board: the picture the page shows (the cut-out, then the photo itself; T-17) and the look worn from it go on
+ * the person's own board, each once; a visitor to the public board sees neither the photo's pins nor its pictures. */
 const verifyOnBoard = async (origin: string, owner: Call, photoId: string) => {
   await send(owner, '/api/profile', 'PATCH', { handle: 'native.photos', name: 'Native Photos', tone: 'clay' })
   expect((await send(owner, '/api/profile/published', 'PUT', { published: true })).status).toBe(200)
   const board = await send(owner, '/api/boards', 'POST', { operationId: 'native-photo-board-1', name: 'Saturday' })
   const { id: boardId } = Schema.decodeUnknownSync(Schema.Struct({ id: Schema.String }))(await board.json())
-  const toBoard = { operationId: 'native-photo-to-board-1', boardId }
-  expect((await send(owner, `/api/photos/${photoId}/board`, 'POST', toBoard)).status).toBe(204)
-  expect((await send(owner, `/api/photos/${photoId}/board`, 'POST', toBoard)).status).toBe(204)
+  const cutoutToBoard = { operationId: 'native-photo-to-board-1', boardId, picture: 'cutout' }
+  expect((await send(owner, `/api/photos/${photoId}/board`, 'POST', cutoutToBoard)).status).toBe(204)
+  expect((await send(owner, `/api/photos/${photoId}/board`, 'POST', cutoutToBoard)).status).toBe(204)
+  const withCutout = Schema.decodeUnknownSync(BoardPins)(await (await owner(`/api/boards/${boardId}`)).json())
+  expect(withCutout.pins.filter(({ _tag }) => _tag === 'PicturePin')).toHaveLength(1)
+  // The photo itself is another picture; the same request again, under another id, places nothing more.
+  const photoToBoard = { operationId: 'native-photo-to-board-2', boardId, picture: 'photo' }
+  expect((await send(owner, `/api/photos/${photoId}/board`, 'POST', photoToBoard)).status).toBe(204)
+  const again = { ...photoToBoard, operationId: 'native-photo-to-board-3' }
+  expect((await send(owner, `/api/photos/${photoId}/board`, 'POST', again)).status).toBe(204)
   const own = Schema.decodeUnknownSync(BoardPins)(await (await owner(`/api/boards/${boardId}`)).json())
   const pictures = own.pins.filter(({ _tag }) => _tag === 'PicturePin')
-  expect(pictures).toHaveLength(1)
-  expect(own.items).toEqual([{ _tag: 'ImageItem' }])
+  expect(pictures).toHaveLength(2)
+  expect(own.items).toEqual([{ _tag: 'ImageItem' }, { _tag: 'ImageItem' }])
   expect(own.pins.some(({ _tag }) => _tag === 'LookPin')).toBe(true)
   const visibility = await send(owner, `/api/boards/${boardId}/visibility`, 'PUT', { visibility: 'public' })
   expect(visibility.status).toBe(200)

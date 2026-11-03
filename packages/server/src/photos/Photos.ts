@@ -12,6 +12,7 @@ import {
   NothingConfirmed,
   OperationId,
   Photo,
+  type PhotoPicture,
   PieceId,
   prices,
   UploadRefused,
@@ -51,6 +52,15 @@ const toPhoto = Effect.fnUntraced(function* (row: PhotoRow, garments: ReadonlyAr
     contentType: row.contentType,
     version: String(row.updatedAt.getTime()),
   })
+  const cutoutImages =
+    row.cutoutKey === null
+      ? Option.none()
+      : yield* imageAddresses({
+          entityId: row.id,
+          key: row.cutoutKey,
+          contentType: 'image/png',
+          version: row.cutoutKey,
+        })
   const shownGarments = yield* Effect.forEach(
     garments.filter(({ photoId }) => photoId === row.id),
     (garment) =>
@@ -81,6 +91,7 @@ const toPhoto = Effect.fnUntraced(function* (row: PhotoRow, garments: ReadonlyAr
     hasCutout: row.cutoutKey !== null,
     createdAt: row.createdAt.toISOString(),
     ...Option.match(images, { onNone: () => ({}), onSome: (addresses) => ({ images: addresses }) }),
+    ...Option.match(cutoutImages, { onNone: () => ({}), onSome: (addresses) => ({ cutoutImages: addresses }) }),
   }).pipe(Effect.orDie)
 })
 
@@ -387,22 +398,26 @@ const showing = Effect.map(Effect.context<PhotoServices>(), (context) => ({
   }, Effect.provide(context)),
 }))
 
-/** The board operations a photo goes on a board under: keyed by the photo and the board, so putting the photo on the
- * same board again, whatever the request's id, answers the same picture and the same look pin. Ids are at most 64
- * characters: the photo's and the board's are 25 each. */
-const boardOperations = (photoId: string, boardId: string) => ({
-  image: OperationId.make(`pi-${photoId}-${boardId}`.slice(0, 64)),
+/** The board operations a photo's picture goes on a board under: keyed by the photo, the picture and the board, so
+ * putting the same picture on the same board again, whatever the request's id, answers the same picture; the photo and
+ * its cut-out are two pictures, and the look pin is the photo's either way. Ids are at most 64 characters: the
+ * photo's and the board's are 25 each. */
+const boardOperations = (photoId: string, picture: PhotoPicture, boardId: string) => ({
+  image: OperationId.make(`${picture === 'cutout' ? 'pc' : 'pi'}-${photoId}-${boardId}`.slice(0, 64)),
   look: OperationId.make(`pl-${photoId}-${boardId}`.slice(0, 64)),
-  table: OperationId.make(`pt-${photoId}-${boardId}`.slice(0, 64)),
+  table: OperationId.make(`${picture === 'cutout' ? 'pu' : 'pt'}-${photoId}-${boardId}`.slice(0, 64)),
 })
 
-/** The photo's picture for a board (the person cut out of it once there is one) as a received upload. */
-const photoUpload = (photo: PhotoRow) =>
+/** One of the photo's pictures for a board, the photo or the person cut out of it, as a received upload. A photo
+ * with no cut-out has no cut-out to give. */
+const photoUpload = (photo: PhotoRow, picture: PhotoPicture) =>
   Effect.gen(function* () {
-    const bytes = yield* readObject(photo.cutoutKey ?? photo.originalKey)
+    const key = picture === 'cutout' ? photo.cutoutKey : photo.originalKey
+    if (key === null) return yield* unavailable()
+    const bytes = yield* readObject(key)
     if (Option.isNone(bytes)) return yield* unavailable()
     const contentType = yield* Schema.decodeUnknownEffect(ImageType)(
-      photo.cutoutKey === null ? photo.contentType : 'image/png',
+      picture === 'cutout' ? 'image/png' : photo.contentType,
     ).pipe(Effect.mapError(unavailable))
     return yield* receivedUpload(yield* Wardrobe, { contentType, bytes: bytes.value }).pipe(
       Effect.mapError(unavailable),
@@ -413,8 +428,8 @@ const photoUpload = (photo: PhotoRow) =>
 const onBoard = <A, E>(effect: Effect.Effect<A, E, CurrentAccount>) =>
   effect.pipe(Effect.mapError((error) => (Predicate.isTagged(error, 'NotFound') ? error : unavailable())))
 
-/** A photo for collages: the person cut out of it, and putting it on a board as its own picture (the cut-out once
- * there is one), held back from visitors, with the look worn from it. A retried request whose picture is on the board
+/** A photo for collages: the person cut out of it, and putting it on a board as its own picture (the photo or its
+ * cut-out, as the person chose), held back from visitors, with the look worn from it. A retried request whose picture is on the board
  * already answers as done. */
 const boarding = Effect.map(Effect.context<PhotoServices>(), (context) => ({
   /** Cut the person out of the photo for collages, once; free. */
@@ -429,10 +444,10 @@ const boarding = Effect.map(Effect.context<PhotoServices>(), (context) => ({
     const { accountId } = yield* CurrentAccount
     const photo = yield* ownPhoto(accountId, photoId)
     const onBoardOnce = Effect.gen(function* () {
-      const operations = boardOperations(photo.id, input.boardId)
+      const operations = boardOperations(photo.id, input.picture, input.boardId)
       const placed = yield* storedAs((yield* WardrobeStore).findReceipt(accountId, operations.image))
       if (Option.isNone(placed)) {
-        const uploadId = yield* photoUpload(photo)
+        const uploadId = yield* photoUpload(photo, input.picture)
         yield* onBoard((yield* Boards).addPhotoImage(input.boardId, { operationId: operations.image, uploadId }))
       }
       const imageReceipt = yield* storedAs((yield* WardrobeStore).findReceipt(accountId, operations.image))

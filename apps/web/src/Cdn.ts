@@ -21,6 +21,8 @@ export const cdn = {
   /** The API supplies private media addresses after authorizing the containing entity once. */
   turn: (turn: PieceTurn | undefined, part: 'video' | 'front' | 'sheet') => turn?.media?.[part] ?? '',
   photo: (photo: Photo, size: Size) => photo.images?.[size] ?? '',
+  /** The person cut out of an outfit photo, once there is one (T-17). */
+  photoCutout: (photo: Photo, size: Size) => photo.cutoutImages?.[size] ?? '',
   photoGarment: (garment: PhotoGarment) => garment.image ?? '',
   detection: (detection: Detection, cutout: boolean) => detection.images?.[cutout ? 'cutout' : 'original'] ?? '',
   boardImage: (

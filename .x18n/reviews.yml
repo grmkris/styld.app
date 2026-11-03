@@ -29,14 +29,34 @@ sources:
     sl: e9c3a77c57f9d
   capture.done:
     sl: 2936f6c715a06
+  lab.title:
+    sl: 6df3339a8b353
+  nav.lab:
+    sl: 1e73eb4a4b97a
+  photo.cutOutSlowDown:
+    sl: 15ad5cab9a2ab4
+  photo.cutoutOf:
+    sl: a6304d10b8d68
+  photo.cuttingOut:
+    sl: 17d7fe64a9fc5e
+  photo.pictures:
+    sl: dbc8186de4256
+  photo.showCutout:
+    sl: df34eaf63bb5f
+  photo.showPhoto:
+    sl: 1bd883fd814ac6
   saveToBoard.add:
     sl: 1607b6b648f427
   today.wornUnread:
     sl: ecfc9a548ec3e
   wardrobe.addPieceColorsLabel:
     sl: 6b42de829fd1b
+  wardrobe.backToGroup:
+    sl: 714f962314936
   wardrobe.colorsLabel:
     sl: 14fa0a8fb57d83
+  wardrobe.groups.sport:
+    sl: 16e60b79dff00a
   wardrobe.nameLabel:
     sl: e6fc8ec64fb21
   wardrobe.namePlaceholder:

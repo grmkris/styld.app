@@ -42,16 +42,79 @@ export const badge = style({
   color: 'ink',
   fontSize: 'small',
 })
+/** A favourite photo's tile: the filled heart in a frosted round at the corner, as on the photo's page. */
+export const favouriteBadge = style({
+  position: 'absolute',
+  insetBlockStart: '8px',
+  insetInlineEnd: '8px',
+  display: 'inline-grid',
+  placeItems: 'center',
+  inlineSize: '32px',
+  blockSize: '32px',
+  borderRadius: 'pill',
+  backgroundColor: 'frost',
+  boxShadow: 'overPhoto',
+  color: 'ink',
+})
 /** A photo's own page: its bar, the photo, then what was found in it. */
 export const photoPage = style({ display: 'grid', gap: 'grid', paddingBlock: '8px 40px', maxInlineSize: '40rem' })
 export const bar = style({ display: 'flex', alignItems: 'center', minBlockSize: '44px' })
 export const photo = style({
+  display: 'block',
   inlineSize: '100%',
   maxBlockSize: '70vh',
   objectFit: 'contain',
   borderRadius: 'photo',
   backgroundColor: 'stock',
+  // The person cut out of it stands on the paper, as a piece's cut-out does.
+  '[data-cutout] > &': { backgroundColor: 'paper2' },
 })
+/** The picture, then its choice of photo or cut-out under it. */
+export const pictures = style({ display: 'grid', gap: 'related' })
+/** The photo or its cut-out with the favourite over its corner: a sideways swipe chooses between them, so the page
+ * keeps vertical scrolling and the picture keeps its text from being selected by the press. */
+export const picture = style({ position: 'relative', touchAction: 'pan-y', userSelect: 'none' })
+/** The favourite heart: a frosted round over the photo's corner (DESIGN.md › Controls, Round). */
+export const favourite = style({
+  position: 'absolute',
+  insetBlockStart: '10px',
+  insetInlineEnd: '10px',
+  display: 'inline-grid',
+  placeItems: 'center',
+  inlineSize: '44px',
+  blockSize: '44px',
+  padding: '0',
+  borderWidth: '0',
+  borderRadius: 'pill',
+  backgroundColor: 'frost',
+  boxShadow: 'overPhoto',
+  color: 'ink',
+  cursor: 'pointer',
+  transitionProperty: 'transform',
+  transitionDuration: 'press',
+  transitionTimingFunction: 'standard',
+  ':active': { transform: 'scale(0.94)' },
+  ':disabled': { cursor: 'default' },
+})
+/** While the outfit is cut out: the photo dims under a frosted note that says so. */
+export const cutting = style({
+  position: 'absolute',
+  insetBlockEnd: '12px',
+  insetInlineStart: '12px',
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 'snug',
+  margin: '0',
+  paddingBlock: '6px',
+  paddingInline: '12px',
+  borderRadius: 'pill',
+  backgroundColor: 'frost',
+  boxShadow: 'overPhoto',
+  color: 'ink',
+  fontSize: 'small',
+})
+/** The photo or the cut-out, chosen by name under the picture once both exist. */
+export const pictureChoice = style({ display: 'flex', justifyContent: 'center', gap: 'actions' })
 export const title = style({ fontSize: 'panelTitle', lineHeight: 1.08, fontWeight: 600, letterSpacing: '-0.02em' })
 export const garments = style({ display: 'grid', gap: 'related', padding: '0', listStyleType: 'none' })
 /** One garment: its cut-out, and beside it the piece it is or what to do about it. */

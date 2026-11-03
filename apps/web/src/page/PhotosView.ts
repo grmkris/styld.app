@@ -7,7 +7,7 @@ import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { secondaryAction } from '../Actions.styles.ts'
-import { loader } from '../Icon.ts'
+import { favouriteOnIcon, loader } from '../Icon.ts'
 import { intlLocale } from '../Locale.ts'
 import { photoRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
@@ -45,7 +45,10 @@ const tile = (photo: Photo, inputs: Inputs, h: HtmlBuilder<Message>): Html =>
           photo.status === 'finding'
             ? h.span(styled(h, styles.badge()), [loader(h), format(inputs.locale, 'photos.finding', {})])
             : photo.favourite
-              ? h.span(styled(h, styles.badge()), [format(inputs.locale, 'photos.favourite', {})])
+              ? h.span(styled(h, styles.favouriteBadge()), [
+                  favouriteOnIcon(h),
+                  h.span(styled(h, visuallyHidden()), [format(inputs.locale, 'photos.favourite', {})]),
+                ])
               : h.empty,
         ],
       ),

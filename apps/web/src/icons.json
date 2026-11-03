@@ -18,6 +18,7 @@
     "copy",
     "dots-three",
     "export",
+    "heart",
     "image",
     "link",
     "magnifying-glass",
@@ -29,5 +30,6 @@
     "trash",
     "video-camera",
     "x"
-  ]
+  ],
+  "fill": ["heart"]
 }

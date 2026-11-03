@@ -843,7 +843,12 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'photo.findFailed': 'Na tej fotografiji ni bilo mogoče najti oblačil. Kredit je vrnjen.',
   'photo.notFound': 'Te fotografije ni več.',
   'photo.cutOut': 'Izreži opravo',
-  'photo.cutOutDone': 'Oprava je izrezana: na tablo gre sama.',
   'photo.noPerson': 'Na tej fotografiji ni bilo mogoče najti osebe.',
+  'photo.cuttingOut': 'Izrezujem opravo …',
+  'photo.showPhoto': 'Fotografija',
+  'photo.showCutout': 'Izrez',
+  'photo.pictures': 'Fotografija ali izrez',
+  'photo.cutOutSlowDown': 'Naenkrat je bilo preveč izrezov. Poskusi znova čez minuto.',
+  'photo.cutoutOf': 'Oprava, izrezana iz fotografije z dne {date}',
   'lab.title': 'Laboratorij',
 }

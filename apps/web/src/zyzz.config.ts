@@ -29,6 +29,8 @@ export const { style, vars } = defineConfig({
       onInk: '#f7f4ee',
       // Gallery's scrim: round controls and chips over a photo, such as the camera's picture.
       scrim: 'oklch(0.2 0.02 50 / 0.4)',
+      // Gallery's frost: a light round over a photo, such as the Gallery photo's favourite heart (T-17).
+      frost: 'oklch(0.98 0.005 80 / 0.92)',
       // Gallery 2's glass: the floating nav and the Ask panel only (DESIGN.md › Surfaces), with its bright edge.
       glass: 'oklch(0.985 0.005 80 / 0.74)',
       glassEdge: 'oklch(1 0 0 / 0.6)',

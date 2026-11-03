@@ -46,6 +46,8 @@ export const Photo = Schema.Struct({
   lookId: Schema.NullOr(LookId),
   hasCutout: Schema.Boolean,
   images: Schema.optionalKey(Schema.Struct({ thumb: Schema.String, full: Schema.String })),
+  /** The person cut out of the photo, once there is one: its owner's signed addresses (T-17). */
+  cutoutImages: Schema.optionalKey(Schema.Struct({ thumb: Schema.String, full: Schema.String })),
   createdAt: Schema.String,
 })
 export type Photo = typeof Photo.Type
@@ -71,7 +73,12 @@ export type WearAgain = typeof WearAgain.Type
 
 /** Put an outfit photo (its cut-out once it has one) on one of the person's boards, with the look worn from it:
  * `POST /api/photos/:photoId/board`. The board shows the photo to its owner only. */
-export const AddPhotoToBoard = Schema.Struct({ operationId: OperationId, boardId: BoardId })
+/** Which of a photo's pictures goes on a board: the photo itself, or the person cut out of it (owner, 2026-11-03,
+ * T-17: whichever the photo's page shows). */
+export const PhotoPicture = Schema.Literals(['photo', 'cutout'])
+export type PhotoPicture = typeof PhotoPicture.Type
+
+export const AddPhotoToBoard = Schema.Struct({ operationId: OperationId, boardId: BoardId, picture: PhotoPicture })
 export type AddPhotoToBoard = typeof AddPhotoToBoard.Type
 
 /** Styld found no person to cut out of the photo. */

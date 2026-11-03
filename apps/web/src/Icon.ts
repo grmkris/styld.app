@@ -7,6 +7,8 @@ import {
   ArrowsLeftRightRegular,
   ArrowUpRegular,
   BookmarkSimpleRegular,
+  HeartFill,
+  HeartRegular,
   BroomRegular,
   ChatCircleRegular,
   ClipboardTextRegular,
@@ -100,6 +102,9 @@ export const stylistIcon = control(ChatCircleRegular)
 export const closeIcon = control(XRegular)
 export const shareIcon = control(ExportRegular)
 export const saveIcon = control(BookmarkSimpleRegular)
+/** A favourite: the outline while it is not one, filled once it is (DESIGN.md › Icons). */
+export const favouriteIcon = control(HeartRegular)
+export const favouriteOnIcon = control(HeartFill)
 
 /** 24px tab icons in the Light weight. */
 export const homeTabIcon = tab(HouseLight)

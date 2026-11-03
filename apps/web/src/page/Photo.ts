@@ -1,5 +1,5 @@
 import { drawOperationId } from '../OperationIds.ts'
-import { Look, Photo as PhotoContract, PhotoGarmentId, PhotoId, PieceId } from '@styld/protocol'
+import { Look, Photo as PhotoContract, PhotoGarmentId, PhotoId, PhotoPicture, PieceId } from '@styld/protocol'
 import { Effect, Number, Option, Predicate, Result, Schema } from 'effect'
 import * as Crypto from 'effect/Crypto'
 import { AsyncData, Command, Subscription, Update } from 'foldkit'
@@ -14,7 +14,8 @@ import * as SaveToBoard from './SaveToBoard.ts'
 
 // One outfit photo of My Gallery (owner, 2026-10-31): the garments Styld found, each confirmed as one of the person's
 // pieces, corrected, said to be none of them, or offered to the review tray; a favourite or not; worn again as a
-// look; deleted.
+// look; deleted. Once the outfit is cut out (by hand, 2026-11-03, T-17) the page shows the photo or the cut-out,
+// swiped between or chosen, and a board gets whichever it shows.
 
 // MODEL
 
@@ -22,8 +23,16 @@ import * as SaveToBoard from './SaveToBoard.ts'
 export const PhotoData = AsyncData.Schema(PhotoContract, LoadError)
 export type PhotoData = typeof PhotoData.schema.Type
 
-/** A change on its way, one that did not go through, or a cut-out that found no one. */
-export const Work = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {}, NoPerson: {} })
+/** A change on its way, the outfit being cut out, one that did not go through, a cut-out that found no one, or one
+ * asked for too soon after others. */
+export const Work = defineTaggedUnion({
+  Idle: {},
+  Sending: {},
+  CuttingOut: {},
+  Failed: {},
+  NoPerson: {},
+  SlowDown: {},
+})
 export type Work = typeof Work.Type
 
 export { Deletion }
@@ -37,8 +46,16 @@ export const Model = Schema.Struct({
   choosing: Schema.Option(PhotoGarmentId),
   saveToBoard: SaveToBoard.Model,
   misses: Misses,
+  /** The picture the page shows: the photo, or the person cut out of it once there is one. */
+  showing: PhotoPicture,
+  /** Where a press on the picture began, to tell a sideways swipe from a tap or a scroll. */
+  press: Schema.Option(Schema.Struct({ x: Schema.Number, y: Schema.Number })),
 })
 export type Model = typeof Model.Type
+
+/** How far a press must travel sideways, and how much more than it travels up or down, to be a swipe. */
+const swipeDistance = 48
+const swipeSlant = 1.5
 
 export const init = (photoId: string): Model => ({
   photoId,
@@ -48,6 +65,8 @@ export const init = (photoId: string): Model => ({
   deletion: Deletion.Idle(),
   choosing: Option.none(),
   saveToBoard: SaveToBoard.init({ kind: 'photo', id: photoId }),
+  showing: 'photo',
+  press: Option.none(),
 })
 
 // MESSAGE
@@ -66,7 +85,10 @@ export const Message = defineMessageUnion({
   /** "Wear it again", with the look's name in the person's language. */
   ClickedWearAgain: { name: Schema.String },
   ClickedCutOut: {},
-  FailedCutOut: { noPerson: Schema.Boolean },
+  FailedCutOut: { reason: Schema.Literals(['noPerson', 'slowDown', 'failed']) },
+  ClickedShow: { showing: PhotoPicture },
+  PressedPicture: { x: Schema.Number, y: Schema.Number },
+  ReleasedPicture: { x: Schema.Number, y: Schema.Number },
   SucceededChange: { photo: PhotoContract },
   SucceededWearAgain: { look: Look },
   FailedChange: {},
@@ -173,7 +195,15 @@ export const CutOut = Command.define('CutOut', {
       return Message.SucceededChange({ photo })
     }).pipe(
       Effect.catch((error) =>
-        Effect.succeed(Message.FailedCutOut({ noPerson: Predicate.isTagged(error, 'NoPersonFound') })),
+        Effect.succeed(
+          Message.FailedCutOut({
+            reason: Predicate.isTagged(error, 'NoPersonFound')
+              ? 'noPerson'
+              : Predicate.isTagged(error, 'SlowDown')
+                ? 'slowDown'
+                : 'failed',
+          }),
+        ),
       ),
     ),
 })
@@ -199,11 +229,40 @@ type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Styl
 /** What opening the page asks for: the photo. */
 export const load = (model: Model) => [GetPhoto({ photoId: model.photoId })]
 
-/** A change sent, unless one is already on its way. */
-const sending = (model: Model, command: Command.Command<Message, never, StyldClient | Crypto.Crypto>): UpdateReturn =>
-  Work.guards.Sending(model.work)
+const busy = (work: Work) => Work.guards.Sending(work) || Work.guards.CuttingOut(work)
+
+/** A change sent, unless one is already on its way; `work` says what is on its way. */
+const sending = (
+  model: Model,
+  command: Command.Command<Message, never, StyldClient | Crypto.Crypto>,
+  work: Work = Work.Sending(),
+): UpdateReturn =>
+  busy(model.work)
     ? { model }
-    : { model: modifyFields(model, { work: () => Work.Sending(), choosing: () => Option.none() }), commands: [command] }
+    : { model: modifyFields(model, { work: () => work, choosing: () => Option.none() }), commands: [command] }
+
+/** The page shows the photo or its cut-out (only once there is one), and a board gets the one it shows. */
+const show = (model: Model, showing: PhotoPicture): Model => {
+  const hasCutout = Option.exists(AsyncData.getData(model.photo), (photo) => photo.hasCutout)
+  const shown = showing === 'cutout' && !hasCutout ? 'photo' : showing
+  return modifyFields(model, {
+    showing: () => shown,
+    saveToBoard: (saveToBoard) => modifyFields(saveToBoard, { target: () => ({ kind: shown, id: model.photoId }) }),
+  })
+}
+
+/** A press let go: a sideways swipe shows the other picture, leftwards the cut-out and rightwards the photo. */
+const released = (model: Model, x: number, y: number): UpdateReturn => {
+  const unpressed = modifyFields(model, { press: () => Option.none() })
+  return Option.match(model.press, {
+    onNone: () => ({ model: unpressed }),
+    onSome: (press) => {
+      const across = x - press.x
+      const swiped = Math.abs(across) >= swipeDistance && Math.abs(across) > Math.abs(y - press.y) * swipeSlant
+      return { model: swiped ? show(unpressed, across < 0 ? 'cutout' : 'photo') : unpressed }
+    },
+  })
+}
 
 const photoCache = (revalidate: (photo: PhotoData) => Option.Option<PhotoData>) => (model: Model) =>
   Update.refresh<Model, Message, PhotoContract, LoadError, StyldClient>({
@@ -213,10 +272,14 @@ const photoCache = (revalidate: (photo: PhotoData) => Option.Option<PhotoData>) 
     load: GetPhoto({ photoId: model.photoId }),
   })(model)
 
-/** A change went through: the photo as the server answered it, and the page ready for the next change. */
-const changed = (model: Model, photo: PhotoContract): UpdateReturn => ({
-  model: modifyFields(model, { photo: () => PhotoData.Success({ data: photo }), work: () => Work.Idle() }),
-})
+/** A change went through: the photo as the server answered it, and the page ready for the next change. A cut-out
+ * just made is shown at once. */
+const changed = (model: Model, photo: PhotoContract): UpdateReturn => {
+  const answered = modifyFields(model, { photo: () => PhotoData.Success({ data: photo }), work: () => Work.Idle() })
+  return { model: Work.guards.CuttingOut(model.work) && photo.hasCutout ? show(answered, 'cutout') : answered }
+}
+
+const cutOutFailures = { noPerson: Work.NoPerson(), slowDown: Work.SlowDown(), failed: Work.Failed() } as const
 
 const foldSaveToBoard = SaveToBoard.foldInto<Model, Message, OutMessage>(
   (message) => Message.GotSaveToBoardMessage({ message }),
@@ -259,10 +322,11 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedCancelChoose: () => ({ model: modifyFields(model, { choosing: () => Option.none() }) }),
     ClickedOffer: ({ garmentId }) => sending(model, OfferGarment({ photoId: model.photoId, garmentId })),
     ClickedWearAgain: ({ name }) => sending(model, WearAgain({ photoId: model.photoId, name })),
-    ClickedCutOut: () => sending(model, CutOut({ photoId: model.photoId })),
-    FailedCutOut: ({ noPerson }) => ({
-      model: modifyFields(model, { work: () => (noPerson ? Work.NoPerson() : Work.Failed()) }),
-    }),
+    ClickedCutOut: () => sending(model, CutOut({ photoId: model.photoId }), Work.CuttingOut()),
+    FailedCutOut: ({ reason }) => ({ model: modifyFields(model, { work: () => cutOutFailures[reason] }) }),
+    ClickedShow: ({ showing }) => ({ model: show(model, showing) }),
+    PressedPicture: ({ x, y }) => ({ model: modifyFields(model, { press: () => Option.some({ x, y }) }) }),
+    ReleasedPicture: ({ x, y }) => released(model, x, y),
     SucceededChange: ({ photo }) => changed(model, photo),
     SucceededWearAgain: ({ look }) => wornAgain(model, look),
     FailedChange: () => ({ model: modifyFields(model, { work: () => Work.Failed() }) }),

@@ -8,7 +8,8 @@ import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { linkAction, primaryAction, quietLinkAction, secondaryAction } from '../Actions.styles.ts'
 import { formError } from '../Fields.styles.ts'
-import { loader } from '../Icon.ts'
+import { favouriteIcon, favouriteOnIcon, loader } from '../Icon.ts'
+import { chip, chosen } from '../Controls.styles.ts'
 import { lookRouter, photoRouter, reviewRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { backToGallery } from './PageBar.ts'
@@ -143,6 +144,8 @@ const garmentRow = (model: Model, garment: PhotoGarment, inputs: Inputs, h: Html
 /** Favourite, Wear it again (or the look it made), and Delete. */
 const actionsView = (model: Model, photo: Photo, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
   const { locale } = inputs
+  const cutting = Work.guards.CuttingOut(model.work)
+  const isBusy = cutting || Work.guards.Sending(model.work)
   const confirmed = photo.garments.some(({ match, pieceId }) => match === 'confirmed' && pieceId !== null)
   return h.div(styled(h, styles.actions()), [
     photo.lookId === null
@@ -154,7 +157,7 @@ const actionsView = (model: Model, photo: Photo, inputs: Inputs, h: HtmlBuilder<
               onClick: Message.ClickedWearAgain({
                 name: format(locale, 'photo.lookName', { date: photoDate(photo.createdAt, inputs) }),
               }),
-              isDisabled: Work.guards.Sending(model.work),
+              isDisabled: isBusy,
             },
             h,
           )
@@ -163,26 +166,19 @@ const actionsView = (model: Model, photo: Photo, inputs: Inputs, h: HtmlBuilder<
           [h.Href(lookRouter({ lookId: photo.lookId })), ...styled(h, secondaryAction())],
           [format(locale, 'photo.openLook', {})],
         ),
+    // Cutting out stays the person's choice (owner, 2026-11-03, T-17): the button says while it works.
     photo.hasCutout
       ? h.empty
       : actionButton(
           {
-            label: format(locale, 'photo.cutOut', {}),
+            label: format(locale, cutting ? 'photo.cuttingOut' : 'photo.cutOut', {}),
+            ...(cutting ? { leading: loader(h) } : {}),
             style: secondaryAction(),
             onClick: Message.ClickedCutOut(),
-            isDisabled: Work.guards.Sending(model.work),
+            isDisabled: isBusy,
           },
           h,
         ),
-    h.button(
-      [
-        h.Type('button'),
-        h.AriaPressed(String(photo.favourite)),
-        h.OnClick(Message.ClickedFavourite({ favourite: !photo.favourite })),
-        ...styled(h, secondaryAction()),
-      ],
-      [format(locale, 'photos.favourite', {})],
-    ),
     actionButton(
       {
         label: format(locale, 'photo.delete', {}),
@@ -226,15 +222,84 @@ const deletionView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Ht
         ],
       )
 
+/** The favourite: a heart over the picture's corner, filled once the photo is one (Eva's review, F-24). */
+const favouriteButton = (model: Model, photo: Photo, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  h.button(
+    [
+      h.Type('button'),
+      h.AriaLabel(format(locale, 'photos.favourite', {})),
+      h.AriaPressed(String(photo.favourite)),
+      h.Disabled(Work.guards.Sending(model.work) || Work.guards.CuttingOut(model.work)),
+      h.OnClick(Message.ClickedFavourite({ favourite: !photo.favourite })),
+      ...styled(h, styles.favourite()),
+    ],
+    [photo.favourite ? favouriteOnIcon(h) : favouriteIcon(h)],
+  )
+
+/** The photo or the person cut out of it, as the page shows; a sideways swipe, or the two names under it once there is
+ * a cut-out, chooses (T-17). */
+const pictureView = (model: Model, photo: Photo, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
+  const { locale } = inputs
+  const date = photoDate(photo.createdAt, inputs)
+  const cutout = model.showing === 'cutout'
+  const choice = (showing: 'photo' | 'cutout', label: 'photo.showPhoto' | 'photo.showCutout') =>
+    h.button(
+      [
+        h.Type('button'),
+        h.AriaPressed(String(model.showing === showing)),
+        h.OnClick(Message.ClickedShow({ showing })),
+        ...styled(h, cx(chip(), chosen())),
+      ],
+      [format(locale, label, {})],
+    )
+  return h.div(styled(h, styles.pictures()), [
+    h.div(
+      [
+        ...(cutout ? [h.DataAttribute('cutout', '')] : []),
+        h.OnPointerDown((_type, _button, screenX, screenY) =>
+          Option.some(Message.PressedPicture({ x: screenX, y: screenY })),
+        ),
+        h.OnPointerUp((screenX, screenY) => Option.some(Message.ReleasedPicture({ x: screenX, y: screenY }))),
+        ...styled(h, styles.picture()),
+      ],
+      [
+        h.img([
+          h.Src(cutout ? cdn.photoCutout(photo, 'full') : cdn.photo(photo, 'full')),
+          h.Alt(format(locale, cutout ? 'photo.cutoutOf' : 'photos.open', { date })),
+          h.Draggable(false),
+          ...styled(h, styles.photo()),
+        ]),
+        favouriteButton(model, photo, locale, h),
+        Work.guards.CuttingOut(model.work)
+          ? h.p([h.Role('status'), ...styled(h, styles.cutting())], [loader(h), format(locale, 'photo.cuttingOut', {})])
+          : h.empty,
+      ],
+    ),
+    photo.hasCutout
+      ? h.div(
+          [h.Role('group'), h.AriaLabel(format(locale, 'photo.pictures', {})), ...styled(h, styles.pictureChoice())],
+          [choice('photo', 'photo.showPhoto'), choice('cutout', 'photo.showCutout')],
+        )
+      : h.empty,
+  ])
+}
+
+/** What went wrong with the last change, if anything did. */
+const workProblem = (work: Model['work']) =>
+  Work.match(work, {
+    Idle: () => Option.none(),
+    Sending: () => Option.none(),
+    CuttingOut: () => Option.none(),
+    Failed: () => Option.some('photo.workFailed' as const),
+    NoPerson: () => Option.some('photo.noPerson' as const),
+    SlowDown: () => Option.some('photo.cutOutSlowDown' as const),
+  })
+
 const loadedView = (model: Model, photo: Photo, inputs: Inputs, h: HtmlBuilder<Message>): ReadonlyArray<Html> => {
   const { locale } = inputs
   const date = photoDate(photo.createdAt, inputs)
   return [
-    h.img([
-      h.Src(cdn.photo(photo, 'full')),
-      h.Alt(format(locale, 'photos.open', { date })),
-      ...styled(h, styles.photo()),
-    ]),
+    pictureView(model, photo, inputs, h),
     h.h1(styled(h, styles.title()), [date]),
     actionsView(model, photo, inputs, h),
     photo.status === 'ready'
@@ -247,13 +312,10 @@ const loadedView = (model: Model, photo: Photo, inputs: Inputs, h: HtmlBuilder<M
         })
       : h.empty,
     deletionView(model, locale, h),
-    Work.guards.Failed(model.work) || Work.guards.NoPerson(model.work)
-      ? h.p(
-          [h.Role('alert'), ...styled(h, formError())],
-          [format(locale, Work.guards.NoPerson(model.work) ? 'photo.noPerson' : 'photo.workFailed', {})],
-        )
-      : h.empty,
-    photo.hasCutout ? h.p(styled(h, styles.note()), [format(locale, 'photo.cutOutDone', {})]) : h.empty,
+    Option.match(workProblem(model.work), {
+      onNone: () => h.empty,
+      onSome: (problem) => h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, problem, {})]),
+    }),
     photo.status === 'finding'
       ? h.p([h.Role('status'), ...styled(h, styles.note())], [loader(h), format(locale, 'photos.finding', {})])
       : photo.status === 'failed'

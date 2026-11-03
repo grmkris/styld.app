@@ -823,7 +823,12 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'photo.findFailed': 'Styld couldn’t find the clothes in this photo. Your credit came back.',
   'photo.notFound': 'This photo isn’t here any more.',
   'photo.cutOut': 'Cut out the outfit',
-  'photo.cutOutDone': 'The outfit is cut out: a board gets it on its own.',
   'photo.noPerson': 'Styld found no one to cut out of this photo.',
+  'photo.cuttingOut': 'Cutting out the outfit…',
+  'photo.showPhoto': 'Photo',
+  'photo.showCutout': 'Cut-out',
+  'photo.pictures': 'Photo or cut-out',
+  'photo.cutOutSlowDown': 'Many cut-outs at once. Try again in a minute.',
+  'photo.cutoutOf': 'Outfit cut out of the photo from {date}',
   'lab.title': 'Laboratory',
 }
