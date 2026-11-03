@@ -129,6 +129,7 @@ const rowsOf = Effect.fnUntraced(function* (accountId: string, piece: ImportPiec
     colours: piece.colours,
     seasons: [],
     rainproof: false,
+    category: null,
     occasions: [],
     pattern: null,
     brand: null,

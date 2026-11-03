@@ -27,6 +27,7 @@ import * as WardrobeView from './page/WardrobeView.ts'
 import { pieceLabel } from './page/WardrobeWords.ts'
 import { AppRoute, homeRouter, parentReturn } from './route.ts'
 import { piecesOf } from './ServerData.ts'
+import { categoriesOf } from './page/PieceFields.ts'
 import { styled } from './Styled.ts'
 import { intro } from './View.styles.ts'
 
@@ -176,6 +177,7 @@ const wardrobePages = (model: Model, h: HtmlBuilder<Message>) => {
   const { locale, timeZone } = model.context
   const signedIn = hasSession(model)
   const pieces = piecesOf(model.data)
+  const categories = categoriesOf(pieces)
   return {
     Login: () => loginPage(model, false, h),
     LoginForConnection: () => loginPage(model, true, h),
@@ -208,6 +210,7 @@ const wardrobePages = (model: Model, h: HtmlBuilder<Message>) => {
               timeZone,
               images: piecesById(piecesOf(model.data)),
               returnTo: parentReturn(from, 'Photo'),
+              categories,
             },
           }),
         h,
@@ -220,7 +223,7 @@ const wardrobePages = (model: Model, h: HtmlBuilder<Message>) => {
           h.submodel({
             ...slot(lenses.piece, piece),
             view: PieceView.view,
-            viewInputs: { locale, boards: model.data.boards, returnTo: parentReturn(from, 'Wardrobe') },
+            viewInputs: { locale, boards: model.data.boards, returnTo: parentReturn(from, 'Wardrobe'), categories },
           }),
         h,
       ),

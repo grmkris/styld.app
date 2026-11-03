@@ -49,6 +49,7 @@ export const changesOf = (draft: Draft): PieceChanges => ({
   colours: draft.details.colours,
   seasons: draft.details.seasons,
   rainproof: draft.details.rainproof,
+  category: given(draft.details.category),
   occasions: draft.details.occasions,
   pattern: Option.getOrNull(draft.details.pattern),
   brand: given(draft.brand),
@@ -58,3 +59,12 @@ export const changesOf = (draft: Draft): PieceChanges => ({
 
 /** Whether a shop link can be sent: none, or an https address. */
 export const shopUrlSendable = (shopUrl: string) => shopUrl.trim() === '' || Schema.is(ShopUrl)(shopUrl.trim())
+
+/** The form's words a person types: the name, the notes and the brand. */
+export const DraftText = Schema.Literals(['name', 'notes', 'brand'])
+export type DraftText = typeof DraftText.Type
+
+/** The form with one of its words typed in. */
+export const typedInto =
+  (field: DraftText, value: string) =>
+  (draft: Draft): Draft => ({ ...draft, [field]: value })

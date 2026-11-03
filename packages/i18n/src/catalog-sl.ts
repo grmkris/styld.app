@@ -300,6 +300,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.namePlaceholder': 'npr. laneni suknjič Zara',
   'wardrobe.backToGroup': 'Nazaj na {group}',
   'wardrobe.rainproof': 'Za dež',
+  'wardrobe.categoryLabel': 'Lastna kategorija (neobvezno)',
+  'wardrobe.categoryPlaceholder': 'npr. Smučarske hlače',
   'landing.feedDescription': 'Javne zbirke Stylda in ljudi, ki ga uporabljajo.',
   'landing.feedEmpty': 'Javnih zbirk še ni. Ko bodo, jih najdeš v Razišči.',
   'landing.retry': 'Poskusi znova',

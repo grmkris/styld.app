@@ -56,6 +56,33 @@ describe('the wardrobe page', () => {
     )
   })
 
+  test('a category of the person’s own is a card of its own beside its type, holding only its pieces (T-12)', () => {
+    const skiPants = pieceFixture('ski', { name: 'Blue ski pants', type: 'sportswear', category: 'Ski pants' })
+    const leggings = pieceFixture('leggings', { name: 'Black leggings', type: 'sportswear' })
+    scene(
+      { update, view },
+      given(loadedAt('/wardrobe?group=sport', skiPants, leggings)),
+      expect(role('link', { name: 'Sportswear' })).toHaveAttr('href', '/wardrobe?group=sport&type=sportswear'),
+      expect(role('link', { name: 'Ski pants' })).toHaveAttr(
+        'href',
+        '/wardrobe?group=sport&type=sportswear&category=Ski+pants',
+      ),
+    )
+    scene(
+      { update, view },
+      given(loadedAt('/wardrobe?group=sport&type=sportswear&category=Ski+pants', skiPants, leggings)),
+      expect(role('heading', { name: 'Ski pants' })).toExist(),
+      expect(role('link', { name: 'Blue ski pants' })).toExist(),
+      expect(role('link', { name: 'Black leggings' })).not.toExist(),
+    )
+    scene(
+      { update, view },
+      given(loadedAt('/wardrobe?group=sport&type=sportswear', skiPants, leggings)),
+      expect(role('link', { name: 'Black leggings' })).toExist(),
+      expect(role('link', { name: 'Blue ski pants' })).not.toExist(),
+    )
+  })
+
   test('a type shows its pieces without labels, each link named for the piece, back to its group', () => {
     const shirt = pieceFixture('shirt', { name: 'Linen shirt' })
     scene(

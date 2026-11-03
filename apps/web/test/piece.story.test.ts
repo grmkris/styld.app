@@ -23,7 +23,7 @@ import {
   init,
   update,
 } from '../src/page/Piece.ts'
-import { DraftSave } from '../src/page/PieceDraft.ts'
+import { changesOf, DraftSave } from '../src/page/PieceDraft.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const piece = pieceFixture('jeans', {
@@ -32,6 +32,9 @@ const piece = pieceFixture('jeans', {
   notes: 'Hem taken up',
 })
 const opened = () => update(init(piece.id), Message.SucceededGetPiece({ piece })).model
+/** The piece's form opened, then these sent to it. */
+const edited = (messages: ReadonlyArray<Message>) =>
+  messages.reduce((current, sent) => update(current, sent).model, update(opened(), Message.ClickedEdit()).model)
 const processing = pieceFixture('jeans', { status: 'processing' })
 const showingProcessing = () => update(init(piece.id), Message.SucceededGetPiece({ piece: processing })).model
 
@@ -147,12 +150,26 @@ describe('a piece you own', () => {
     )
   })
 
+  test('a category of the person’s own sets its type; chosen again it goes, and a new one is typed (T-12)', () => {
+    const chosen = edited([Message.ChoseCategory({ type: 'sportswear', name: 'Ski pants' })])
+    expect(Option.map(chosen.draft, ({ details }) => [details.type, details.category])).toEqual(
+      Option.some([Option.some('sportswear'), 'Ski pants']),
+    )
+    const unchosen = edited([
+      Message.ChoseCategory({ type: 'sportswear', name: 'Ski pants' }),
+      Message.ChoseCategory({ type: 'sportswear', name: 'Ski pants' }),
+    ])
+    expect(Option.map(unchosen.draft, ({ details }) => details.category)).toEqual(Option.some(''))
+    const typed = edited([Message.UpdatedCategory({ value: '  Ski pants ' })])
+    expect(Option.map(typed.draft, (draft) => changesOf(draft).category)).toEqual(Option.some('Ski pants'))
+  })
+
   test('editing sends the changed piece: its type, colours, attributes, brand and shop link', () => {
     story(
       update,
       given(opened()),
       message(Message.ClickedEdit()),
-      message(Message.UpdatedName({ value: '  Dark jeans ' })),
+      message(Message.UpdatedText({ field: 'name', value: '  Dark jeans ' })),
       message(Message.ChoseType({ type: 'jackets' })),
       message(Message.ToggledColour({ colour: 'black' })),
       message(Message.ToggledWorn({ when: 'autumn' })),
@@ -163,8 +180,8 @@ describe('a piece you own', () => {
       message(Message.ToggledOccasion({ occasion: 'casual' })),
       message(Message.ChosePattern({ pattern: 'plain' })),
       message(Message.ChosePattern({ pattern: 'plain' })),
-      message(Message.UpdatedBrand({ value: ' Levi’s ' })),
-      message(Message.UpdatedNotes({ value: '' })),
+      message(Message.UpdatedText({ field: 'brand', value: ' Levi’s ' })),
+      message(Message.UpdatedText({ field: 'notes', value: '' })),
       message(Message.SubmittedEdit()),
       Command.expectExact(
         SavePiece({
@@ -176,6 +193,7 @@ describe('a piece you own', () => {
             colours: ['navy', 'black'],
             seasons: ['autumn', 'winter'],
             rainproof: true,
+            category: null,
             occasions: ['smart'],
             pattern: null,
             brand: 'Levi’s',
@@ -213,6 +231,7 @@ describe('a piece you own', () => {
             colours: ['navy'],
             seasons: [],
             rainproof: false,
+            category: null,
             occasions: [],
             pattern: null,
             brand: null,

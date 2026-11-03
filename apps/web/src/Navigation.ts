@@ -130,7 +130,7 @@ const specialNavigation = (route: AppRoute, target: AppRoute, href: string) => {
   if (
     AppRoute.guards.Wardrobe(route) &&
     AppRoute.guards.Wardrobe(target) &&
-    (route.group !== target.group || route.type !== target.type)
+    (route.group !== target.group || route.type !== target.type || route.category !== target.category)
   )
     return [NavigateInternal({ href })]
   const wardrobeReturn =

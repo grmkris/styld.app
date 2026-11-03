@@ -20,6 +20,7 @@ export const pieceFixture = (seed: string, fields: Partial<Record<keyof typeof P
     colours: [],
     seasons: [],
     rainproof: false,
+    category: null,
     occasions: [],
     pattern: null,
     brand: null,

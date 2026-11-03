@@ -27,6 +27,7 @@ import {
   pictureRow,
   refused,
   stored,
+  spelled,
   toPiece,
   unavailable,
   usableUpload,
@@ -272,7 +273,12 @@ const addFailure = (operation: Identified, uploadId: string) =>
 const newPiece = (
   input: AddPiece,
   upload: UploadRow,
-  context: { readonly id: string; readonly via: 'session' | 'assistant'; readonly now: Date },
+  context: {
+    readonly id: string
+    readonly via: 'session' | 'assistant'
+    readonly now: Date
+    readonly category: string | null
+  },
 ): PieceRow => ({
   id: context.id,
   accountId: upload.accountId,
@@ -282,6 +288,7 @@ const newPiece = (
   colours: input.colours ?? [],
   seasons: input.seasons ?? [],
   rainproof: input.rainproof ?? false,
+  category: context.category,
   occasions: input.occasions ?? [],
   pattern: input.pattern ?? null,
   brand: input.brand ?? null,
@@ -311,7 +318,8 @@ const adding = Effect.map(Effect.context<WardrobeServices>(), (context) => ({
     if (Option.isSome(prior)) return yield* replay(accountId, prior.value)
     const upload = yield* usableUpload(accountId, input.uploadId)
     const now = yield* nowDate
-    const row = newPiece(input, upload, { id: `pc_${yield* randomToken(16)}`, via, now })
+    const category = input.category === undefined ? null : yield* spelled(accountId, input.type, input.category)
+    const row = newPiece(input, upload, { id: `pc_${yield* randomToken(16)}`, via, now, category })
     const committed = yield* (yield* WardrobeStore).addPiece(row, yield* receiptRow(operation, row.id)).pipe(
       Effect.as(Option.none<Piece>()),
       Effect.catchTag('StoreUnavailable', () => addFailure(operation, input.uploadId).pipe(Effect.map(Option.some))),
@@ -359,8 +367,17 @@ const editing = Effect.map(Effect.context<WardrobeServices>(), (context) => ({
     const store = yield* WardrobeStore
     const { operationId, ...changes } = input
     const write = Effect.gen(function* () {
-      yield* ownPiece(pieceId)
-      const update = store.updatePiece(accountId, pieceId, { ...changes, updatedAt: yield* nowDate })
+      const piece = yield* ownPiece(pieceId)
+      // A category is the person's own under the piece's type, spelled as they already spell it (T-12).
+      const category =
+        changes.category === undefined || changes.category === null
+          ? changes.category
+          : yield* spelled(accountId, changes.type ?? piece.type, changes.category)
+      const update = store.updatePiece(accountId, pieceId, {
+        ...changes,
+        ...(category === undefined ? {} : { category }),
+        updatedAt: yield* nowDate,
+      })
       return { statements: [update], result: pieceId }
     })
     return yield* store.recorded(

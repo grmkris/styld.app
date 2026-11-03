@@ -45,6 +45,7 @@ export const toPiece = Effect.fnUntraced(function* (row: PieceRow, picture?: Pic
     colours: row.colours,
     seasons: row.seasons,
     rainproof: row.rainproof,
+    category: row.category,
     occasions: row.occasions,
     pattern: row.pattern,
     brand: row.brand,
@@ -129,3 +130,9 @@ export const forgetObjects = (accountId: string, keys: ReadonlyArray<string>, ow
       owner,
     )
   })
+
+/** A category as the account already spells it under the type, or as given when it is new (T-12). */
+export const spelled = Effect.fnUntraced(function* (accountId: string, type: PieceType, name: string) {
+  const existing = yield* stored((yield* WardrobeStore).categorySpelling(accountId, type, name))
+  return existing ?? name
+})

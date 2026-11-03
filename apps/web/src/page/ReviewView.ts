@@ -16,7 +16,7 @@ import { addPiecesRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
-import { piecePickers } from './PieceFields.ts'
+import { type PieceCategory, piecePickers } from './PieceFields.ts'
 import { type Decision, keptOf, Message, type Model, Saving } from './Review.ts'
 import { kindName } from './WardrobeWords.ts'
 import { backTo, backToWardrobe } from './PageBar.ts'
@@ -128,6 +128,8 @@ type Inputs = {
   readonly timeZone: string
   readonly images: PieceImagesById
   readonly returnTo?: Option.Option<string>
+  /** The person's own categories, for a found piece to go into (T-12). */
+  readonly categories: ReadonlyArray<PieceCategory>
 }
 
 /** When a capture was added, as the time of day in the person's time zone ("14:05"). */
@@ -213,7 +215,12 @@ const alreadyHave = (detection: Detection, images: PieceImagesById, locale: Loca
       ])
 
 /** The open piece: its picture, the original photo instead, what it is and its name. */
-const editor = (detection: Detection, decision: Decision, { locale, images }: Inputs, h: HtmlBuilder<Message>): Html =>
+const editor = (
+  detection: Detection,
+  decision: Decision,
+  { locale, images, categories }: Inputs,
+  h: HtmlBuilder<Message>,
+): Html =>
   h.section(
     [h.AriaLabel(label(decision, locale)), ...styled(h, styles.editor())],
     [
@@ -241,6 +248,7 @@ const editor = (detection: Detection, decision: Decision, { locale, images }: In
           details: decision.details,
           typeMissing: false,
           coloursLegend: 'wardrobe.addPieceColorsLabel',
+          categories,
           messages: Message,
         },
         locale,

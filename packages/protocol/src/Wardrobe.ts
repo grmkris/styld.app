@@ -1,5 +1,5 @@
 import { maximumColours, maximumImageBytes, maximumVideoBytes } from './Limits.ts'
-import { Hint, Name, Notes } from './Text.ts'
+import { CategoryName, Hint, Name, Notes } from './Text.ts'
 import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
 import { byCase, passing, refusal } from './Errors.ts'
@@ -150,6 +150,8 @@ export const Piece = Schema.Struct({
   seasons: Seasons,
   /** Made for rain: a rain jacket, wellies (T-12). */
   rainproof: Schema.Boolean,
+  /** The person's own category under its type, if they gave it one: it shows as a card of its own (T-12). */
+  category: Schema.NullOr(CategoryName),
   occasions: Occasions,
   pattern: Schema.NullOr(Pattern),
   brand: Schema.NullOr(Brand),
@@ -197,6 +199,7 @@ const pieceDetails = {
   name: Schema.optionalKey(Name),
   seasons: Schema.optionalKey(Seasons),
   rainproof: Schema.optionalKey(Schema.Boolean),
+  category: Schema.optionalKey(CategoryName),
   occasions: Schema.optionalKey(Occasions),
   pattern: Schema.optionalKey(Pattern),
   brand: Schema.optionalKey(Brand),
@@ -219,6 +222,8 @@ export const PieceChanges = Schema.Struct({
   colours: Schema.optionalKey(Colours),
   seasons: Schema.optionalKey(Seasons),
   rainproof: Schema.optionalKey(Schema.Boolean),
+  /** The person's own category under the piece's type; null takes it out of one. */
+  category: Schema.optionalKey(Schema.NullOr(CategoryName)),
   occasions: Schema.optionalKey(Occasions),
   pattern: Schema.optionalKey(Schema.NullOr(Pattern)),
   brand: Schema.optionalKey(Schema.NullOr(Brand)),
@@ -344,3 +349,18 @@ export class NoCleanPicture extends Schema.TaggedError<NoCleanPicture>()(
     guide: refusal('no_clean_picture', 'That piece has no clean drawing to show.', 'Redraw its picture first.'),
   },
 ) {}
+
+/** Rename one of the person's categories under a type: every piece in it moves to the new name, joining a category
+ * already called so (`PATCH /api/categories`). */
+export const RenameCategory = Schema.Struct({
+  operationId: OperationId,
+  type: PieceType,
+  name: CategoryName,
+  to: CategoryName,
+})
+export type RenameCategory = typeof RenameCategory.Type
+
+/** Delete one of the person's categories under a type: its pieces stay, under the type alone (`DELETE
+ * /api/categories`). */
+export const DeleteCategory = Schema.Struct({ operationId: OperationId, type: PieceType, name: CategoryName })
+export type DeleteCategory = typeof DeleteCategory.Type

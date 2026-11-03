@@ -325,7 +325,9 @@
     "shopFact": "Shop",
     "namePlaceholder": "e.g. Zara linen blazer",
     "backToGroup": "Back to {group}",
-    "rainproof": "Rainproof"
+    "rainproof": "Rainproof",
+    "categoryLabel": "Your own category (optional)",
+    "categoryPlaceholder": "e.g. Ski pants"
   },
   "landing": {
     "feedDescription": "Public boards from Styld and the people using it.",

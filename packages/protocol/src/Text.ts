@@ -4,6 +4,8 @@ import { Schema } from 'effect'
 export const textLength = {
   /** A piece's, a capture's or a look's name. */
   name: 80,
+  /** A person's own category of pieces, such as Ski pants. */
+  category: 40,
   notes: 500,
   /** The owner's words about a piece for its next drawing. */
   hint: 80,
@@ -29,6 +31,9 @@ export const trimmedText = (maximum: number) =>
 
 /** A piece's, a capture's or a look's name. */
 export const Name = trimmedText(textLength.name)
+
+/** A category of the person's own under a garment type (owner, 2026-11-03, T-12): Ski pants under Sportswear. */
+export const CategoryName = trimmedText(textLength.category)
 
 export const Notes = Schema.String.check(Schema.isMaxLength(textLength.notes))
 

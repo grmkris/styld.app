@@ -6,6 +6,7 @@ import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import type { DeliveredImage } from './Delivery.ts'
 import { signedImage } from './SignedImage.ts'
+import { Categories } from './Categories.ts'
 import { Wardrobe } from './Wardrobe.ts'
 
 /** The website's wardrobe endpoints: each one is the matching `Wardrobe` operation for the session's
@@ -13,12 +14,15 @@ import { Wardrobe } from './Wardrobe.ts'
 export const wardrobeHandlers = HttpApiBuilder.group(StyldApi, 'wardrobe', (handlers) =>
   Effect.gen(function* () {
     const wardrobe = yield* Wardrobe
+    const categories = yield* Categories
     return handlers
       .handle('listPieces', () => wardrobe.listPieces().pipe(Effect.map((pieces) => ({ pieces }))))
       .handle('getPiece', ({ params }) => wardrobe.getPiece(params.pieceId))
       .handle('createUpload', ({ payload }) => wardrobe.createUpload(payload))
       .handle('createVideoUpload', ({ payload }) => wardrobe.createUpload(payload))
       .handle('addPiece', ({ payload }) => wardrobe.addPiece(payload))
+      .handle('renameCategory', ({ payload }) => categories.rename(payload))
+      .handle('deleteCategory', ({ payload }) => categories.delete(payload))
       .handle('updatePiece', ({ params, payload }) => wardrobe.updatePiece(params.pieceId, payload))
       .handle('deletePiece', ({ params, payload }) => wardrobe.deletePiece(params.pieceId, payload.operationId))
       .handle('setBack', ({ params, payload }) => wardrobe.setBack(params.pieceId, payload))

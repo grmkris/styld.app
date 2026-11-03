@@ -53,6 +53,10 @@ sources:
     sl: 6b42de829fd1b
   wardrobe.backToGroup:
     sl: 714f962314936
+  wardrobe.categoryLabel:
+    sl: 1dc624b094a76
+  wardrobe.categoryPlaceholder:
+    sl: 90cd09d61b7d1
   wardrobe.colorsLabel:
     sl: 14fa0a8fb57d83
   wardrobe.groups.sport:

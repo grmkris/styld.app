@@ -30,7 +30,7 @@ import * as PieceBack from './PieceBack.ts'
 import * as PieceLooks from './PieceLooks.ts'
 import * as PiecePhotos from './PiecePhotos.ts'
 import { changeDetails, type Details, WornWhen } from './PieceFields.ts'
-import { changesOf, Draft, DraftSave, draftOf, shopUrlSendable } from './PieceDraft.ts'
+import { changesOf, Draft, DraftSave, draftOf, DraftText, shopUrlSendable, typedInto } from './PieceDraft.ts'
 import * as SaveToBoard from './SaveToBoard.ts'
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 
@@ -123,14 +123,15 @@ export const Message = defineMessageUnion({
   FailedDeletePiece: {},
   ClickedEdit: {},
   ClickedCancelEdit: {},
-  UpdatedName: { value: Schema.String },
-  UpdatedNotes: { value: Schema.String },
+  /** The name, the notes or the brand typed into the form. */
+  UpdatedText: { field: DraftText, value: Schema.String },
   ChoseType: { type: PieceType },
   ToggledColour: { colour: Colour },
   ToggledWorn: { when: WornWhen },
   ToggledOccasion: { occasion: Occasion },
   ChosePattern: { pattern: Pattern },
-  UpdatedBrand: { value: Schema.String },
+  UpdatedCategory: { value: Schema.String },
+  ChoseCategory: { type: PieceType, name: Schema.String },
   UpdatedShopUrl: { value: Schema.String },
   ClickedRotate: {},
   SubmittedEdit: {},
@@ -541,14 +542,14 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         onSome: (piece) => ({ model: modifyFields(model, { draft: () => Option.some(draftOf(piece)) }) }),
       }),
     ClickedCancelEdit: () => ({ model: modifyFields(model, { draft: () => Option.none() }) }),
-    UpdatedName: ({ value }) => editDraft(model, (draft) => modifyFields(draft, { name: () => value })),
-    UpdatedNotes: ({ value }) => editDraft(model, (draft) => modifyFields(draft, { notes: () => value })),
+    UpdatedText: ({ field, value }) => editDraft(model, typedInto(field, value)),
     ChoseType: ({ type }) => editDetails(model, changeDetails.type(type)),
     ToggledColour: ({ colour }) => editDetails(model, changeDetails.colour(colour)),
     ToggledWorn: ({ when }) => editDetails(model, changeDetails.worn(when)),
     ToggledOccasion: ({ occasion }) => editDetails(model, changeDetails.occasion(occasion)),
     ChosePattern: ({ pattern }) => editDetails(model, changeDetails.pattern(pattern)),
-    UpdatedBrand: ({ value }) => editDraft(model, (draft) => modifyFields(draft, { brand: () => value })),
+    UpdatedCategory: ({ value }) => editDetails(model, changeDetails.category(value)),
+    ChoseCategory: (category) => editDetails(model, changeDetails.chosenCategory(category)),
     UpdatedShopUrl: ({ value }) =>
       editDraft(model, (draft) => modifyFields(draft, { shopUrl: () => value, shopUrlInvalid: () => false })),
     ClickedRotate: () => editDraft(model, (draft) => modifyFields(draft, { rotation: nextRotation })),

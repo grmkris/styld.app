@@ -38,6 +38,7 @@ const pieceOf = (
     // suggested.
     seasons: keep.seasons ?? detection.suggestedSeasons,
     rainproof: keep.rainproof ?? detection.suggestedRainproof,
+    category: keep.category ?? detection.suggestedCategory,
     occasions: keep.occasions ?? detection.suggestedOccasions,
     pattern: keep.pattern ?? detection.suggestedPattern,
     brand: null,

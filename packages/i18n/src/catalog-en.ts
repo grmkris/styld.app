@@ -295,6 +295,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.namePlaceholder': 'e.g. Zara linen blazer',
   'wardrobe.backToGroup': 'Back to {group}',
   'wardrobe.rainproof': 'Rainproof',
+  'wardrobe.categoryLabel': 'Your own category (optional)',
+  'wardrobe.categoryPlaceholder': 'e.g. Ski pants',
   'landing.feedDescription': 'Public boards from Styld and the people using it.',
   'landing.feedEmpty': "No public boards yet. When there are, you'll find them in Explore.",
   'landing.retry': 'Try again',

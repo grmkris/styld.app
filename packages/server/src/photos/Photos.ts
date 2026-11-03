@@ -275,6 +275,7 @@ const offered = (photo: PhotoRow, garment: GarmentRow) =>
       suggestedColours: garment.colours,
       suggestedSeasons: [],
       suggestedRainproof: false,
+      suggestedCategory: null,
       suggestedOccasions: [],
       suggestedPattern: null,
       whole: null,

@@ -3,17 +3,20 @@ import {
   type Colour,
   Colour as ColourSchema,
   GarmentGroup,
+  groupOf,
   Occasion,
   Pattern,
   PieceType,
   Season,
   typesIn,
   maximumColours,
+  textLength,
 } from '@styld/protocol'
 import { format, type Locale, type MessageKey } from '@styld/i18n'
-import { Array, Option, Schema } from 'effect'
+import { Array, Option, Order, Schema } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import type { Html as Styles } from 'zyzz/runtime'
+import { fieldLabel, textField } from '../Fields.styles.ts'
 import { checkIcon } from '../Icon.ts'
 import { styled } from '../Styled.ts'
 import { cx } from 'zyzz'
@@ -31,6 +34,8 @@ export const Details = Schema.Struct({
   /** The seasons it is worn in, none for all year, and whether it is made for rain (T-12). */
   seasons: Schema.Array(Season),
   rainproof: Schema.Boolean,
+  /** The person's own category under the type, as typed; empty is none (T-12). */
+  category: Schema.String,
   occasions: Schema.Array(Occasion),
   pattern: Schema.Option(Pattern),
 })
@@ -42,6 +47,7 @@ export const detailsOf = (piece: {
   readonly colours: ReadonlyArray<Colour>
   readonly seasons: ReadonlyArray<Season>
   readonly rainproof: boolean
+  readonly category?: string | null
   readonly occasions: ReadonlyArray<Occasion>
   readonly pattern: Pattern | null
 }): Details => ({
@@ -49,6 +55,7 @@ export const detailsOf = (piece: {
   colours: piece.colours,
   seasons: piece.seasons,
   rainproof: piece.rainproof,
+  category: piece.category ?? '',
   occasions: piece.occasions,
   pattern: Option.fromNullishOr(piece.pattern),
 })
@@ -84,13 +91,41 @@ export const changeDetails = {
     occasions: toggled(occasion, Occasion.literals.length)(details.occasions),
   }),
   pattern: (pattern: Pattern) => (details: Details) => ({ ...details, pattern: chosenAgain(pattern, details.pattern) }),
+  category: (category: string) => (details: Details) => ({ ...details, category }),
+  /** One of the person's categories chosen, with its type; chosen again, the piece is under its type alone. */
+  chosenCategory: (category: PieceCategory) => (details: Details) =>
+    isCategory(details, category)
+      ? { ...details, category: '' }
+      : { ...details, type: Option.some(category.type), category: category.name },
 }
+
+/** One of the person's own categories under a type (T-12). */
+export interface PieceCategory {
+  readonly type: PieceType
+  readonly name: string
+}
+
+const isCategory = (details: Details, category: PieceCategory) =>
+  Option.contains(details.type, category.type) && details.category.trim().toLowerCase() === category.name.toLowerCase()
+
+/** The person's categories, from their pieces: each type and name once, in the order the names sort. */
+export const categoriesOf = (
+  pieces: ReadonlyArray<{ readonly type: PieceType; readonly category: string | null }>,
+): ReadonlyArray<PieceCategory> =>
+  Array.sort(
+    Array.dedupeWith(
+      pieces.flatMap(({ type, category }) => (category === null ? [] : [{ type, name: category }])),
+      (left, right) => left.type === right.type && left.name === right.name,
+    ),
+    Order.mapInput(Order.String, (category: PieceCategory) => category.name),
+  )
 
 /** The details as the API takes them: a type, and attributes only where there are any. */
 export const detailsPayload = (details: Details) => ({
   ...(details.colours.length === 0 ? {} : { colours: details.colours }),
   ...(details.seasons.length === 0 ? {} : { seasons: details.seasons }),
   ...(details.rainproof ? { rainproof: true } : {}),
+  ...(details.category.trim() === '' ? {} : { category: details.category.trim() }),
   ...(details.occasions.length === 0 ? {} : { occasions: details.occasions }),
   ...Option.match(details.pattern, { onNone: () => ({}), onSome: (pattern) => ({ pattern }) }),
 })
@@ -135,7 +170,14 @@ const chip = <Message>(label: string, pressed: boolean, onClick: Message, h: Htm
 
 /** One required type, as chips under their group's name, the way a shop lists them. */
 const typePicker = <Message>(
-  config: Labelled & Readonly<{ chosen: Option.Option<PieceType>; onChoose: (type: PieceType) => Message }>,
+  config: Labelled &
+    Readonly<{
+      chosen: Option.Option<PieceType>
+      onChoose: (type: PieceType) => Message
+      details: Details
+      categories: ReadonlyArray<PieceCategory>
+      onChooseCategory: (category: PieceCategory) => Message
+    }>,
   locale: Locale,
   h: HtmlBuilder<Message>,
 ): Html =>
@@ -145,12 +187,22 @@ const typePicker = <Message>(
     GarmentGroup.literals.map((garmentGroup) =>
       h.div(styled(h, styles.typeGroup()), [
         h.span(styled(h, styles.typeGroupName()), [format(locale, groupName(garmentGroup), {})]),
-        h.div(
-          styled(h, styles.chipSet()),
-          typesIn(garmentGroup).map((type) =>
-            chip(format(locale, typeName(type), {}), Option.contains(config.chosen, type), config.onChoose(type), h),
+        h.div(styled(h, styles.chipSet()), [
+          ...typesIn(garmentGroup).map((type) =>
+            chip(
+              format(locale, typeName(type), {}),
+              Option.contains(config.chosen, type) && config.details.category.trim() === '',
+              config.onChoose(type),
+              h,
+            ),
           ),
-        ),
+          // The person's own categories sit beside the shop's types (T-12).
+          ...config.categories
+            .filter(({ type }) => groupOf(type) === garmentGroup)
+            .map((category) =>
+              chip(category.name, isCategory(config.details, category), config.onChooseCategory(category), h),
+            ),
+        ]),
       ]),
     ),
     locale,
@@ -241,9 +293,31 @@ type PickerMessages<Message> = Readonly<{
   ChoseType: (fields: { readonly type: PieceType }) => Message
   ToggledColour: (fields: { readonly colour: Colour }) => Message
   ToggledWorn: (fields: { readonly when: WornWhen }) => Message
+  UpdatedCategory: (fields: { readonly value: string }) => Message
+  ChoseCategory: (fields: { readonly type: PieceType; readonly name: string }) => Message
   ToggledOccasion: (fields: { readonly occasion: Occasion }) => Message
   ChosePattern: (fields: { readonly pattern: Pattern }) => Message
 }>
+
+/** A category of the person's own under the type: typed new, or one of theirs chosen among the types (T-12). */
+const categoryField = <Message>(
+  details: Details,
+  messages: PickerMessages<Message>,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): ReadonlyArray<Html> => [
+  h.label([h.For('piece-category'), ...styled(h, fieldLabel())], [format(locale, 'wardrobe.categoryLabel', {})]),
+  h.input([
+    h.Id('piece-category'),
+    h.Name('category'),
+    h.Type('text'),
+    h.Maxlength(textLength.category),
+    h.Placeholder(format(locale, 'wardrobe.categoryPlaceholder', {})),
+    h.Value(details.category),
+    h.OnInput((value) => messages.UpdatedCategory({ value })),
+    ...styled(h, textField()),
+  ]),
+]
 
 /** The pickers in the order both piece forms show them: what it is, its colours, then when, what for and its
  * pattern. */
@@ -252,6 +326,7 @@ export const piecePickers = <Message>(
     details: Details
     typeMissing: boolean
     coloursLegend: MessageKey
+    categories: ReadonlyArray<PieceCategory>
     messages: PickerMessages<Message>
   }>,
   locale: Locale,
@@ -264,10 +339,14 @@ export const piecePickers = <Message>(
       problem: config.typeMissing ? Option.some('wardrobe.needsType') : Option.none(),
       chosen: config.details.type,
       onChoose: (type) => config.messages.ChoseType({ type }),
+      details: config.details,
+      categories: config.categories,
+      onChooseCategory: (category) => config.messages.ChoseCategory(category),
     },
     locale,
     h,
   ),
+  ...categoryField(config.details, config.messages, locale, h),
   colourPicker(
     {
       id: 'piece-colours',

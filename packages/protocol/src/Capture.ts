@@ -1,4 +1,4 @@
-import { Name } from './Text.ts'
+import { CategoryName, Name } from './Text.ts'
 import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
 import { Occasions, Pattern, PieceType, Seasons } from './Garment.ts'
@@ -126,6 +126,8 @@ export const Keep = Schema.Struct({
   colours: Schema.optionalKey(Colours),
   seasons: Schema.optionalKey(Seasons),
   rainproof: Schema.optionalKey(Schema.Boolean),
+  /** A category of the person's own under the type, made when the piece is kept (T-12). */
+  category: Schema.optionalKey(CategoryName),
   occasions: Schema.optionalKey(Occasions),
   pattern: Schema.optionalKey(Pattern),
   name: Schema.optionalKey(Name),

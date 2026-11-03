@@ -325,7 +325,9 @@
     "shopFact": "Trgovina",
     "namePlaceholder": "npr. laneni suknjič Zara",
     "backToGroup": "Nazaj na {group}",
-    "rainproof": "Za dež"
+    "rainproof": "Za dež",
+    "categoryLabel": "Lastna kategorija (neobvezno)",
+    "categoryPlaceholder": "npr. Smučarske hlače"
   },
   "landing": {
     "feedDescription": "Javne zbirke Stylda in ljudi, ki ga uporabljajo.",

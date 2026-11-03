@@ -13,7 +13,10 @@ import { confirmActions } from '../Confirm.ts'
 import { styled } from '../Styled.ts'
 import { Deletion, Message, type Model, ShowTurn, TurnWork } from './Piece.ts'
 import { type Draft, DraftSave } from './PieceDraft.ts'
-import { piecePickers } from './PieceFields.ts'
+import { type PieceCategory, piecePickers } from './PieceFields.ts'
+
+/** The person's own categories, for the form's type picker. */
+type Categories = ReadonlyArray<PieceCategory>
 import { kindName, pieceLabel } from './WardrobeWords.ts'
 import { backToWardrobe } from './PageBar.ts'
 import { hasStopped } from '../Polling.ts'
@@ -76,7 +79,7 @@ const shopFields = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Read
     h.Maxlength(textLength.brand),
     h.Autocomplete('off'),
     h.Value(draft.brand),
-    h.OnInput((value) => Message.UpdatedBrand({ value })),
+    h.OnInput((value) => Message.UpdatedText({ field: 'brand', value })),
     ...styled(h, textField()),
   ]),
   h.label([h.For('piece-shop'), ...styled(h, fieldLabel())], [format(locale, 'wardrobe.shopUrlLabel', {})]),
@@ -99,7 +102,7 @@ const shopFields = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Read
     : h.empty,
 ]
 
-const editForm = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const editForm = (draft: Draft, categories: Categories, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.form(
     [
       h.OnSubmit(Message.SubmittedEdit()),
@@ -127,11 +130,17 @@ const editForm = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Html =
         h.Maxlength(textLength.name),
         h.Placeholder(format(locale, 'wardrobe.namePlaceholder', {})),
         h.Value(draft.name),
-        h.OnInput((value) => Message.UpdatedName({ value })),
+        h.OnInput((value) => Message.UpdatedText({ field: 'name', value })),
         ...styled(h, textField()),
       ]),
       ...piecePickers(
-        { details: draft.details, typeMissing: false, coloursLegend: 'wardrobe.colorsLabel', messages: Message },
+        {
+          details: draft.details,
+          typeMissing: false,
+          coloursLegend: 'wardrobe.colorsLabel',
+          categories,
+          messages: Message,
+        },
         locale,
         h,
       ),
@@ -143,7 +152,7 @@ const editForm = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Html =
         h.Maxlength(textLength.notes),
         h.Placeholder(format(locale, 'wardrobe.notesPlaceholder', {})),
         h.Value(draft.notes),
-        h.OnInput((value) => Message.UpdatedNotes({ value })),
+        h.OnInput((value) => Message.UpdatedText({ field: 'notes', value })),
         ...styled(h, styles.notesField()),
       ]),
       DraftSave.guards.Failed(draft.save)
@@ -358,7 +367,7 @@ const backSlot = (
 const loadedView = (
   piece: Piece,
   model: Model,
-  inputs: SaveToBoardView.ViewInputs,
+  inputs: SaveToBoardView.ViewInputs & { readonly categories: ReadonlyArray<PieceCategory> },
   h: HtmlBuilder<Message>,
 ): ReadonlyArray<Html> => {
   const { locale } = inputs
@@ -373,7 +382,7 @@ const loadedView = (
           ...(Deletion.guards.Idle(model.deletion)
             ? [
                 backSlot('piece-back', PieceBackView.actions, piece, model, locale, h),
-                editForm(draft, locale, h),
+                editForm(draft, inputs.categories, locale, h),
                 actionButton(
                   {
                     label: format(locale, 'wardrobe.deleteLabel', {}),
@@ -395,7 +404,10 @@ const loadedView = (
 export const view = Submodel.defineView<
   Model,
   Message,
-  SaveToBoardView.ViewInputs & { readonly returnTo?: Option.Option<string> }
+  SaveToBoardView.ViewInputs & {
+    readonly returnTo?: Option.Option<string>
+    readonly categories: ReadonlyArray<PieceCategory>
+  }
 >((model, inputs, h) => {
   const { locale } = inputs
   return h.main(

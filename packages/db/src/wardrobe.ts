@@ -54,6 +54,8 @@ export const pieces = sqliteTable(
       .default(sql`'[]'`)
       .$type<ReadonlyArray<string>>(),
     rainproof: integer('rainproof', { mode: 'boolean' }).notNull().default(false),
+    /** The person's own category under its type, such as Ski pants under sportswear (T-12). */
+    category: text('category'),
     occasions: text('occasions', { mode: 'json' }).notNull().$type<ReadonlyArray<string>>(),
     pattern: text('pattern', { enum: Pattern.literals }),
     brand: text('brand'),

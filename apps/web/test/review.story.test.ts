@@ -107,6 +107,7 @@ describe('the review tray', () => {
               colours: ['navy'],
               seasons: [],
               rainproof: false,
+              category: '',
               occasions: [],
               pattern: Option.none(),
             },

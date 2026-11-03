@@ -1,5 +1,6 @@
 import { accounts, detections, operationReceipts, piecePictures, pieceTurns, pieces, uploads } from '@styld/db'
 import { and, asc, desc, eq, gt, inArray, lt, ne, or, sql, type SQL } from 'drizzle-orm'
+import type { PieceType } from '@styld/protocol'
 import { Array, Context, Effect, Layer } from 'effect'
 import { receiptRows, recordedWrites } from '../kernel/Receipts.ts'
 import { PictureRows } from '../capture/Rows.ts'
@@ -21,6 +22,7 @@ export type PieceChanges = Partial<
     | 'colours'
     | 'seasons'
     | 'rainproof'
+    | 'category'
     | 'occasions'
     | 'pattern'
     | 'brand'
@@ -299,6 +301,27 @@ export const makeStore = (db: Database['Service']) => ({
         ]),
       catch: () => StoreUnavailable.make({}),
     }).pipe(Effect.asVoid),
+  /** How the account already spells one of its categories under a type, whatever the case it is asked in, so "ski
+   * pants" joins "Ski pants" rather than making a second card (T-12). */
+  categorySpelling: (accountId: string, type: PieceType, name: string) =>
+    query(() =>
+      db
+        .selectDistinct({ category: pieces.category })
+        .from(pieces)
+        .where(
+          and(eq(pieces.accountId, accountId), eq(pieces.type, type), sql`lower(${pieces.category}) = lower(${name})`),
+        )
+        .limit(1),
+    ).pipe(Effect.map((rows) => rows[0]?.category ?? null)),
+  /** The statement that moves every piece of one of the account's categories to another name, or out of any (null),
+   * for its operation's batch (`recorded`). */
+  recategorise: (accountId: string, type: PieceType, name: string, to: string | null, at: Date) =>
+    db
+      .update(pieces)
+      .set({ category: to, updatedAt: at })
+      .where(
+        and(eq(pieces.accountId, accountId), eq(pieces.type, type), sql`lower(${pieces.category}) = lower(${name})`),
+      ),
   /** The statement that changes the account's piece, for its operation's batch (`recorded`). */
   updatePiece: (accountId: string, pieceId: string, changes: PieceChanges) =>
     db

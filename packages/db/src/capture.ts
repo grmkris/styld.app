@@ -138,6 +138,8 @@ export const detections = sqliteTable(
       .default(sql`'[]'`)
       .$type<ReadonlyArray<string>>(),
     suggestedRainproof: integer('suggested_rainproof', { mode: 'boolean' }).notNull().default(false),
+    /** A category of the person's own the decision model suggested, created only when the piece is kept (T-12). */
+    suggestedCategory: text('suggested_category'),
     suggestedOccasions: text('suggested_occasions', { mode: 'json' }).notNull().$type<ReadonlyArray<string>>(),
     suggestedPattern: text('suggested_pattern', { enum: Pattern.literals }),
     /** How likely the decision model thinks the cut-out shows one whole garment (0–1); under 0.5 the tray lists it

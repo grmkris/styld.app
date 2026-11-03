@@ -51,6 +51,8 @@ export const shownPieces = (pieces: ReadonlyArray<Piece>, model: Model): Readonl
     (piece) =>
       Option.match(model.group, { onNone: () => true, onSome: (group) => groupOf(piece.type) === group }) &&
       Option.match(model.type, { onNone: () => true, onSome: (type) => piece.type === type }) &&
+      // Under a type, its pieces of no category of the person's own, or those of the one chosen (T-12).
+      (Option.isNone(model.type) || piece.category === Option.getOrNull(model.category)) &&
       (model.filters.colours.length === 0 || piece.colours.some((colour) => model.filters.colours.includes(colour))) &&
       Option.match(model.filters.season, {
         onNone: () => true,
@@ -81,6 +83,7 @@ export const Model = Schema.Struct({
   /** The group being browsed, then one of its types, whose pieces show; none shows the groups. */
   group: Schema.Option(GarmentGroup),
   type: Schema.Option(PieceType),
+  category: Schema.Option(Schema.String),
   filters: Filters,
   filterSheet: Dialog.Model,
 })
@@ -97,6 +100,7 @@ const browsing = (query: BrowseQuery) => ({
     Option.fromNullishOr(query.type),
     (type) => query.group === undefined || groupOf(type) === query.group,
   ),
+  category: query.type === undefined ? Option.none() : Option.fromNullishOr(query.category),
   filters: {
     colours: Option.getOrElse(browseColours(query.colours?.split(',') ?? []), () => []),
     season: Option.fromNullishOr(query.season),
@@ -111,6 +115,7 @@ export const restore = (model: Model, query: BrowseQuery): Model => {
   return modifyFields(model, {
     group: () => restored.group,
     type: () => restored.type,
+    category: () => restored.category,
     filters: () => restored.filters,
   })
 }
@@ -118,6 +123,7 @@ export const restore = (model: Model, query: BrowseQuery): Model => {
 export const queryOf = (model: Model): BrowseQuery => ({
   ...Option.match(model.group, { onNone: () => ({}), onSome: (group) => ({ group }) }),
   ...Option.match(model.type, { onNone: () => ({}), onSome: (type) => ({ type }) }),
+  ...Option.match(model.category, { onNone: () => ({}), onSome: (category) => ({ category }) }),
   ...(model.filters.colours.length === 0 ? {} : { colours: model.filters.colours.join(',') }),
   ...Option.match(model.filters.season, { onNone: () => ({}), onSome: (season) => ({ season }) }),
   ...(model.filters.rainproof ? { rainproof: 'yes' as const } : {}),

@@ -64,6 +64,8 @@ import {
   Pieces,
   SetBack,
   UpdatePiece,
+  RenameCategory,
+  DeleteCategory,
   Upload,
   UploadRefused,
 } from './Wardrobe.ts'
@@ -119,6 +121,20 @@ class WardrobeApi extends HttpApiGroup.make('wardrobe')
       payload: UpdatePiece,
       success: Piece,
       error: [NotFound, OperationConflict, Unavailable],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.patch('renameCategory', '/categories', {
+      payload: RenameCategory,
+      success: HttpApiSchema.NoContent,
+      error: [OperationConflict, Unavailable],
+    }),
+  )
+  .add(
+    HttpApiEndpoint.delete('deleteCategory', '/categories', {
+      payload: DeleteCategory,
+      success: HttpApiSchema.NoContent,
+      error: [OperationConflict, Unavailable],
     }),
   )
   .add(

@@ -17,7 +17,7 @@ import type { PiecesData } from '../ServerData.ts'
 import { brandsOf, filterCount, Message, type Model, newestOf, queryOf, shownPieces } from './Wardrobe.ts'
 import { groupName, occasionName, pieceLabel, seasonName, typeName } from './WardrobeWords.ts'
 import { backTo, backToWardrobe } from './PageBar.ts'
-import { chipPicker, colourPicker, WornWhen } from './PieceFields.ts'
+import { categoriesOf, chipPicker, colourPicker, WornWhen } from './PieceFields.ts'
 import { bottomSheet, sheetShown } from './Sheet.ts'
 import * as styles from './WardrobeView.styles.ts'
 import { wardrobeMain } from './SectionMain.ts'
@@ -76,21 +76,18 @@ const categoryCard = (name: string, href: string, pieces: ReadonlyArray<Piece>, 
     ],
   )
 
+/** A category's card as the grid lists it: its name, where it leads and what it holds. */
+interface Card {
+  readonly name: string
+  readonly href: string
+  readonly pieces: ReadonlyArray<Piece>
+}
+
 /** The cards of the categories that hold pieces; one that holds none is not shown, so the wardrobe grows with them. */
-const categoryCards = <A extends string>(
-  label: string,
-  categories: ReadonlyArray<A>,
-  piecesIn: (category: A) => ReadonlyArray<Piece>,
-  nameOf: (category: A) => string,
-  hrefOf: (category: A) => string,
-  h: HtmlBuilder<Message>,
-): Html =>
+const categoryCards = (label: string, cards: ReadonlyArray<Card>, h: HtmlBuilder<Message>): Html =>
   h.ul(
     [h.AriaLabel(label), ...styled(h, styles.categories())],
-    categories.flatMap((category) => {
-      const inCategory = piecesIn(category)
-      return inCategory.length === 0 ? [] : [categoryCard(nameOf(category), hrefOf(category), inCategory, h)]
-    }),
+    cards.flatMap((card) => (card.pieces.length === 0 ? [] : [categoryCard(card.name, card.href, card.pieces, h)])),
   )
 
 /** A level's head below the wardrobe's: the round back a step up, and the category's name. */
@@ -250,7 +247,8 @@ const typeView = (
         format(locale, 'wardrobe.backToGroup', { group: format(locale, groupName(group), {}) }),
         h,
       ),
-      format(locale, typeName(type), {}),
+      // A category of the person's own is named as they named it (T-12).
+      Option.getOrElse(model.category, () => format(locale, typeName(type), {})),
       [filtersButton(model, locale, h)],
       h,
     ),
@@ -271,10 +269,11 @@ const levelView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, h
     return [
       categoryCards(
         format(locale, 'wardrobe.filterCategories', {}),
-        GarmentGroup.literals,
-        inGroup,
-        (group) => format(locale, groupName(group), {}),
-        (group) => wardrobeRouter({ group }),
+        GarmentGroup.literals.map((group) => ({
+          name: format(locale, groupName(group), {}),
+          href: wardrobeRouter({ group }),
+          pieces: inGroup(group),
+        })),
         h,
       ),
     ]
@@ -288,10 +287,19 @@ const levelView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, h
       ? h.p(styled(h, styles.message()), [format(locale, 'wardrobe.noneFiltered', {})])
       : categoryCards(
           groupLabel,
-          typesIn(group),
-          (type) => pieceOfGroup.filter((piece) => piece.type === type),
-          (type) => format(locale, typeName(type), {}),
-          (type) => wardrobeRouter({ group, type }),
+          [
+            // The shop's types hold the pieces of no category of the person's own; each of theirs is a card too.
+            ...typesIn(group).map((type) => ({
+              name: format(locale, typeName(type), {}),
+              href: wardrobeRouter({ group, type }),
+              pieces: pieceOfGroup.filter((piece) => piece.type === type && piece.category === null),
+            })),
+            ...categoriesOf(pieceOfGroup).map(({ type, name }) => ({
+              name,
+              href: wardrobeRouter({ group, type, category: name }),
+              pieces: pieceOfGroup.filter((piece) => piece.type === type && piece.category === name),
+            })),
+          ],
           h,
         ),
   ]
