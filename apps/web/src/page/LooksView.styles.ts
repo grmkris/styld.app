@@ -1,4 +1,4 @@
-import { pressThenHover, style } from '../zyzz.config.ts'
+import { cutoutGlow, pressThenHover, style } from '../zyzz.config.ts'
 export { lede } from '../Controls.styles.ts'
 
 // Styles for the looks in LooksView.ts and LookView.ts (Gallery: looks.html, a board's collage).
@@ -49,6 +49,8 @@ export const collageImage = style({
   minBlockSize: '0',
   objectFit: 'contain',
   mixBlendMode: 'darken',
+  // DESIGN.md › Dark: no blend on the dark paper, where darken would sink a dark garment.
+  '@media (prefers-color-scheme: dark)': { mixBlendMode: 'normal', filter: cutoutGlow },
 })
 export const cardName = style({ fontSize: 'control', fontWeight: 600 })
 /** The loading cards: the pieces' square, the name and the line under it. */
@@ -84,6 +86,8 @@ export const pieceRowImage = style({
   backgroundColor: 'paper',
   boxShadow: 'edge',
   mixBlendMode: 'darken',
+  // DESIGN.md › Dark: no blend on the dark paper, where darken would sink a dark garment.
+  '@media (prefers-color-scheme: dark)': { mixBlendMode: 'normal' },
 })
 export const pieceRowText = style({ display: 'grid', minInlineSize: '0' })
 export const pieceRowName = style({ fontSize: 'control', fontWeight: 600 })

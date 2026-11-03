@@ -1,4 +1,4 @@
-import { pressThenHover, style } from '../zyzz.config.ts'
+import { cutoutGlow, pressThenHover, style } from '../zyzz.config.ts'
 export { lede, problem } from '../Controls.styles.ts'
 
 // Styles for Styld's chat in StylistView.ts: a column of messages above a composer that stays in reach.
@@ -87,6 +87,8 @@ export const pieceLink = style({
   color: 'ink',
   textDecorationLine: 'none',
   mixBlendMode: 'darken',
+  // DESIGN.md › Dark: no blend on the dark paper, where darken would sink a dark garment.
+  '@media (prefers-color-scheme: dark)': { mixBlendMode: 'normal', '& img': { filter: cutoutGlow } },
   transitionProperty: 'transform, translate',
   transitionDuration: pressThenHover,
   transitionTimingFunction: 'standard',

@@ -1,4 +1,4 @@
-import { pressThenHover, style } from '../zyzz.config.ts'
+import { cutoutGlow, pressThenHover, style } from '../zyzz.config.ts'
 
 // Styles for the wardrobe in WardrobeView.ts (Gallery: wardrobe.html, wardrobe-desktop.html).
 export const wardrobePage = style({ display: 'grid', gap: 'related', paddingBlock: '0 40px' })
@@ -88,8 +88,10 @@ export const cutImage = style({
   aspectRatio: '1 / 1',
   objectFit: 'contain',
   borderRadius: 'photo',
-  // A photo's pale backdrop gives way to the paper, as the looks' collage does.
+  // A photo's pale backdrop gives way to the paper, as the looks' collage does. On the dark paper darken would sink a
+  // dark garment into it, so there a cutout lies as it is and a photo keeps its own backdrop (DESIGN.md › Dark).
   mixBlendMode: 'darken',
+  '@media (prefers-color-scheme: dark)': { mixBlendMode: 'normal', filter: cutoutGlow },
 })
 /** Work in progress takes the signal colour (DESIGN.md › Signal). */
 export const pieceState = style({

@@ -1,5 +1,5 @@
 import { keyframes } from 'zyzz/web'
-import { style, vars } from '../zyzz.config.ts'
+import { cutoutGlow, style, vars } from '../zyzz.config.ts'
 
 // Home's table (Gallery 2: docs/design/gallery-2/site/v2/home.html).
 
@@ -194,6 +194,8 @@ export const trayThumb = style({
   minBlockSize: '0',
   objectFit: 'contain',
   mixBlendMode: 'darken',
+  // DESIGN.md › Dark: no blend on the dark paper, where darken would sink a dark garment.
+  '@media (prefers-color-scheme: dark)': { mixBlendMode: 'normal', filter: cutoutGlow },
 })
 export const boardCrop = style({
   position: 'relative',

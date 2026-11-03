@@ -1,4 +1,4 @@
-import { style } from '../zyzz.config.ts'
+import { cutoutGlow, style } from '../zyzz.config.ts'
 
 // A board as a list shows it, in BoardFace.ts.
 
@@ -22,6 +22,8 @@ export const coverImage = style({
   minBlockSize: '0',
   objectFit: 'contain',
   mixBlendMode: 'darken',
+  // DESIGN.md › Dark: no blend on the dark paper, where darken would sink a dark garment.
+  '@media (prefers-color-scheme: dark)': { mixBlendMode: 'normal', filter: cutoutGlow },
 })
 /** A board with nothing pinned: its paper, with the words over it. */
 export const blank = style({ display: 'grid', '& > *': { gridArea: '1 / 1' } })

@@ -76,9 +76,13 @@ const facePreloads = (lang: string | undefined) =>
     .map((href) => `<link rel="preload" href="${href}" as="font" type="font/woff2" crossorigin>`)
     .join('')
 
-/** Light only, and no forced dark (`GlobalStyles.ts` `:root`): the meta lets the browser know before any style loads. */
+/** Light and dark (`GlobalStyles.ts` `:root`): the meta lets the browser know before any style loads, so it never
+ * forces its own dark, and the browser's bars take the paper of the scheme in use (zyzz.config.ts `paper`). */
 const documentHead =
-  '<meta name="color-scheme" content="only light"><meta name="theme-color" content="#f1eee7"><link rel="icon" href="/favicon.svg">'
+  '<meta name="color-scheme" content="light dark">' +
+  '<meta name="theme-color" media="(prefers-color-scheme: light)" content="#f1eee7">' +
+  '<meta name="theme-color" media="(prefers-color-scheme: dark)" content="#17120f">' +
+  '<link rel="icon" href="/favicon.svg">'
 
 export const renderDocument: Server.DocumentRenderer = (renderedApplication, assets) =>
   Server.renderDocument(renderedApplication, assets, {

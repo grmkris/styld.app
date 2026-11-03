@@ -18,8 +18,10 @@ const flyIn = keyframes(
   { id: 'styld-camera-fly' },
 )
 
-/** The camera screen, a dialog over the whole page, the scrollbar's gutter too. */
+/** The camera screen, a dialog over the whole page, the scrollbar's gutter too. Always the light scheme's colours: its
+ * ink ground, on-ink words and scrims sit over the camera's picture, not the paper, so they never turn in dark. */
 export const screen = style({
+  colorScheme: 'light',
   inlineSize: '100vw',
   blockSize: '100dvh',
   maxInlineSize: 'none',

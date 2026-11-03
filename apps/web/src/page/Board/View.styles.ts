@@ -1,5 +1,5 @@
 import { keyframes } from 'zyzz/web'
-import { style, vars } from '../../zyzz.config.ts'
+import { cutoutGlow, style, vars } from '../../zyzz.config.ts'
 
 // The board editor (Gallery 2: docs/design/gallery-2, the canvas spike in docs/design/canvas-spike).
 
@@ -168,6 +168,8 @@ export const cutout = style({
   objectFit: 'contain',
   pointerEvents: 'none',
   WebkitUserDrag: 'none',
+  // DESIGN.md › Dark: a dark garment keeps its edge on a dark table.
+  '@media (prefers-color-scheme: dark)': { filter: cutoutGlow },
 })
 export const picture = style({
   display: 'block',

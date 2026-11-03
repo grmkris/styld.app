@@ -1,4 +1,4 @@
-import { pressThenHover, style } from '../../zyzz.config.ts'
+import { cutoutGlow, pressThenHover, style } from '../../zyzz.config.ts'
 export { problem } from '../../Controls.styles.ts'
 
 // A board's page (Gallery 2: docs/design/gallery-2/site/v2/board.html): its collage above the grid of its pins.
@@ -88,6 +88,8 @@ export const cutout = style({
   padding: '8px',
   objectFit: 'contain',
   mixBlendMode: 'darken',
+  // DESIGN.md › Dark: no blend on the dark paper, where darken would sink a dark garment.
+  '@media (prefers-color-scheme: dark)': { mixBlendMode: 'normal', filter: cutoutGlow },
 })
 export const photo = style({
   inlineSize: '100%',
@@ -103,7 +105,14 @@ export const mosaic = style({
   inlineSize: '100%',
   blockSize: '100%',
   padding: '6px',
-  '& img': { inlineSize: '100%', blockSize: '100%', minBlockSize: '0', objectFit: 'contain', mixBlendMode: 'darken' },
+  '& img': {
+    inlineSize: '100%',
+    blockSize: '100%',
+    minBlockSize: '0',
+    objectFit: 'contain',
+    mixBlendMode: 'darken',
+    '@media (prefers-color-scheme: dark)': { mixBlendMode: 'normal', filter: cutoutGlow },
+  },
 })
 export const pinName = style({ paddingInline: '4px', fontSize: 'small', fontWeight: 600 })
 /** Under a pin the board shows others without: a quiet line saying only its owner sees it. */

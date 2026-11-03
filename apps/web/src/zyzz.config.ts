@@ -1,56 +1,78 @@
 import { defineConfig } from 'zyzz'
 
-/** Styld's Gallery 2 tokens (`DESIGN.md`, prototype in `docs/design/gallery-2`). Light mode only.
+/** Styld's Gallery 2 tokens (`DESIGN.md`, prototype in `docs/design/gallery-2`), light and dark.
  * Styles compile to `class`/`style` attributes that `Styled.ts` hands to Foldkit. */
 export const { style, vars } = defineConfig({
   id: 'styld',
   output: 'html',
   vars: {
+    // Every colour is a light/dark pair: the light one is Gallery's, the dark one a warm umber night. They compile to
+    // `light-dark()`, so the document's `color-scheme: light dark` (GlobalStyles.ts) picks one from the device's
+    // setting, with no script. Dark keeps the roles: paper is the deepest, stock and paper-2 step up from it, and the
+    // ink is a warm off-white (DESIGN.md › Dark).
     color: {
-      // styld.app's own paper, so wardrobe cutouts sit on it without a seam.
-      paper: '#f1eee7',
-      // Quiet surfaces: hovered controls, inactive chips, the search pill.
-      paper2: '#e7e2d9',
+      // styld.app's own paper, so wardrobe cutouts sit on it without a seam. Dark: a deep umber, never black.
+      paper: { light: '#f1eee7', dark: '#17120f' },
+      // Quiet surfaces: hovered controls, inactive chips, the search pill. Dark: a step above stock.
+      paper2: { light: '#e7e2d9', dark: '#2a231d' },
       // A hovered paper-2 control: paper-2 mixed towards ink; repeats both literals, so change them together.
-      paper2Hover: 'color-mix(in oklab, #e7e2d9 80%, #1c1410)',
-      // Card stock: fields, sheets and cards that sit above the paper.
-      stock: '#fbf9f5',
-      ink: '#1c1410',
+      paper2Hover: {
+        light: 'color-mix(in oklab, #e7e2d9 80%, #1c1410)',
+        dark: 'color-mix(in oklab, #2a231d 80%, #f2ebe2)',
+      },
+      // Card stock: fields, sheets and cards that sit above the paper. Dark: a step lighter than the paper.
+      stock: { light: '#fbf9f5', dark: '#211b17' },
+      // Text and the primary fill. Dark: a warm off-white, so a primary action is a light pill with dark words.
+      ink: { light: '#1c1410', dark: '#f2ebe2' },
       // Hovered ink fill: ink mixed towards paper; repeats both literals, so change them together.
-      inkHover: 'color-mix(in oklab, #1c1410 86%, #f1eee7)',
-      // Secondary text and meta.
-      ink2: '#5d554e',
-      // Tertiary text: counts, dividers' words, placeholders. At least 4.5:1 on paper, paper-2 and stock.
-      ink3: '#6b635b',
-      rule: '#ddd6cc',
-      // The one slate accent: link underlines and state such as work in progress (DESIGN.md › Signal).
-      signal: '#2f4f7c',
-      // Text and icons on an ink fill.
-      onInk: '#f7f4ee',
-      // Gallery's scrim: round controls and chips over a photo, such as the camera's picture.
-      scrim: 'oklch(0.2 0.02 50 / 0.4)',
-      // Gallery's frost: a light round over a photo, such as the Gallery photo's favourite heart (T-17).
-      frost: 'oklch(0.98 0.005 80 / 0.92)',
-      // Gallery 2's glass: the floating nav and the Ask panel only (DESIGN.md › Surfaces), with its bright edge.
-      glass: 'oklch(0.985 0.005 80 / 0.74)',
-      glassEdge: 'oklch(1 0 0 / 0.6)',
-      // Soft shadows for things that float: the nav, sheets, a held piece.
-      shade1: 'oklch(0 0 0 / 0.05)',
-      shade2: 'oklch(0 0 0 / 0.1)',
-      shade3: 'oklch(0 0 0 / 0.16)',
-      // A board's paper tints (`Paper` in packages/protocol/src/Board.ts), used only as a table's ground.
-      tintSand: '#e0d3b8',
-      tintSage: '#c3cbb7',
-      tintSlate: '#bec8d4',
-      tintClay: '#dcc0ad',
+      inkHover: {
+        light: 'color-mix(in oklab, #1c1410 86%, #f1eee7)',
+        dark: 'color-mix(in oklab, #f2ebe2 86%, #17120f)',
+      },
+      // Secondary text and meta. Dark: 7.4:1 on paper-2.
+      ink2: { light: '#5d554e', dark: '#bdb1a4' },
+      // Tertiary text: counts, dividers' words, placeholders. At least 4.5:1 on paper, paper-2 and stock (dark: 5.1:1 on
+      // paper-2, 6.1:1 on paper).
+      ink3: { light: '#6b635b', dark: '#9e9286' },
+      // Hairlines and field edges. Dark: quiet, a little above stock.
+      rule: { light: '#ddd6cc', dark: '#3a312a' },
+      // The one slate accent: link underlines and state such as work in progress (DESIGN.md › Signal). Dark: a pale
+      // slate, 7.6:1 on paper-2.
+      signal: { light: '#2f4f7c', dark: '#9db8e0' },
+      // Text and icons on an ink fill. Dark: the paper, on the off-white ink.
+      onInk: { light: '#f7f4ee', dark: '#17120f' },
+      // Gallery's scrim: round controls and chips over a photo, and the shade behind a sheet. Dark: deeper, so a sheet
+      // still stands off the dark page.
+      scrim: { light: 'oklch(0.2 0.02 50 / 0.4)', dark: 'oklch(0.08 0.01 50 / 0.6)' },
+      // Gallery's frost: a light round over a photo, such as the Gallery photo's favourite heart (T-17). It sits on the
+      // photo, not the page, so it stays light in both schemes.
+      frost: { light: 'oklch(0.98 0.005 80 / 0.92)', dark: 'oklch(0.98 0.005 80 / 0.92)' },
+      // Gallery 2's glass: the floating nav and the Ask panel only (DESIGN.md › Surfaces), with its bright edge. Dark: a
+      // smoked umber with a faint edge.
+      glass: { light: 'oklch(0.985 0.005 80 / 0.74)', dark: 'oklch(0.27 0.014 55 / 0.74)' },
+      glassEdge: { light: 'oklch(1 0 0 / 0.6)', dark: 'oklch(1 0 0 / 0.1)' },
+      // Soft shadows for things that float: the nav, sheets, a held piece. Dark: denser, as a shadow on a dark page
+      // must be to show.
+      shade1: { light: 'oklch(0 0 0 / 0.05)', dark: 'oklch(0 0 0 / 0.25)' },
+      shade2: { light: 'oklch(0 0 0 / 0.1)', dark: 'oklch(0 0 0 / 0.35)' },
+      shade3: { light: 'oklch(0 0 0 / 0.16)', dark: 'oklch(0 0 0 / 0.45)' },
+      // A board's paper tints (`Paper` in packages/protocol/src/Board.ts), used only as a table's ground, and avatar
+      // tones. Dark: the same four hues, deep and quiet, so a board keeps its colour and cutouts stay the brightest
+      // thing on it.
+      tintSand: { light: '#e0d3b8', dark: '#3d3426' },
+      tintSage: { light: '#c3cbb7', dark: '#2e3529' },
+      tintSlate: { light: '#bec8d4', dark: '#2a313b' },
+      tintClay: { light: '#dcc0ad', dark: '#3e2f26' },
       // The other avatar tones behind a person's initials (with the tints above and ink).
-      toneStone: '#d3cdc3',
-      tonePlum: '#cfc1ca',
-      toneOlive: '#cdcbad',
-      focus: '#2f5bd3',
-      error: 'oklch(48% 0.16 25)',
-      invalid: 'oklch(58% 0.16 25)',
-      // The thirteen colours a piece can have, as swatches (v1's CATALOG_COLOR_HEX).
+      toneStone: { light: '#d3cdc3', dark: '#38322c' },
+      tonePlum: { light: '#cfc1ca', dark: '#3a2e36' },
+      toneOlive: { light: '#cdcbad', dark: '#363526' },
+      // The keyboard focus ring. Dark: a lighter blue, 6.7:1 on paper-2.
+      focus: { light: '#2f5bd3', dark: '#8aa8ff' },
+      // Error text, and an invalid field's edge. Dark: lighter reds that keep 4.5:1 (text) and 3:1 (edge) on stock.
+      error: { light: 'oklch(48% 0.16 25)', dark: 'oklch(74% 0.13 25)' },
+      invalid: { light: 'oklch(58% 0.16 25)', dark: 'oklch(66% 0.15 25)' },
+      // The thirteen colours a piece can have, as swatches (v1's CATALOG_COLOR_HEX): the colour itself in either scheme.
       swatchBlack: '#111111',
       swatchWhite: '#ffffff',
       swatchGrey: '#8a8a8a',
@@ -149,30 +171,40 @@ export const { style, vars } = defineConfig({
     },
     // inset: a table inside a card with 8px padding, so its corner is the card's 16px less the padding.
     radius: { photo: '4px', inset: '8px', field: '12px', panel: '16px', sheet: '24px', table: '28px', pill: '999px' },
+    // A shadow holds its colours as `light-dark()` pairs, as the colour tokens compile to: denser on the dark paper.
+    // The rings repeat their colour token's literals (rule, ink, signal, paper, ink-3), so change them together.
     shadow: {
       // Gallery's lift-1: a card or a sheet's panel resting just above the paper.
-      lift1: '0 1px 2px oklch(0 0 0 / 0.05), 0 8px 24px oklch(0 0 0 / 0.05)',
+      lift1:
+        '0 1px 2px light-dark(oklch(0 0 0 / 0.05), oklch(0 0 0 / 0.3)), 0 8px 24px light-dark(oklch(0 0 0 / 0.05), oklch(0 0 0 / 0.3))',
       // A sheet or the Ask panel rising from the bottom edge.
-      sheet: '0 -8px 32px oklch(0 0 0 / 0.14)',
+      sheet: '0 -8px 32px light-dark(oklch(0 0 0 / 0.14), oklch(0 0 0 / 0.5))',
       // A hairline inside an edge, in rule: a table's paper, a frame around a picture, the search pill.
-      edge: 'inset 0 0 0 1px #ddd6cc',
+      edge: 'inset 0 0 0 1px light-dark(#ddd6cc, #3a312a)',
       // The chosen tile, or the focused search pill: a 1.5px ink ring inside the edge.
-      chosen: 'inset 0 0 0 1.5px #1c1410',
+      chosen: 'inset 0 0 0 1.5px light-dark(#1c1410, #f2ebe2)',
       // A table taking dropped pictures: a 2px signal ring inside its edge.
-      dropTarget: 'inset 0 0 0 2px #2f4f7c',
+      dropTarget: 'inset 0 0 0 2px light-dark(#2f4f7c, #9db8e0)',
       // A paper halo that keeps the resize handle's dot clear of what it sits on.
-      handleHalo: '0 0 0 3px #f1eee7',
+      handleHalo: '0 0 0 3px light-dark(#f1eee7, #17120f)',
       // Gallery's lift-2: something raised above the page, as the ink Ask circle.
-      lift2: '0 2px 6px oklch(0 0 0 / 0.1), 0 20px 48px oklch(0 0 0 / 0.1)',
+      lift2:
+        '0 2px 6px light-dark(oklch(0 0 0 / 0.1), oklch(0 0 0 / 0.35)), 0 20px 48px light-dark(oklch(0 0 0 / 0.1), oklch(0 0 0 / 0.35))',
       // The floating glass nav and rail: a light inner edge over lift-2.
-      glass: 'inset 0 0 0 1px oklch(1 0 0 / 0.6), 0 2px 6px oklch(0 0 0 / 0.1), 0 20px 48px oklch(0 0 0 / 0.1)',
+      glass:
+        'inset 0 0 0 1px light-dark(oklch(1 0 0 / 0.6), oklch(1 0 0 / 0.1)), 0 2px 6px light-dark(oklch(0 0 0 / 0.1), oklch(0 0 0 / 0.35)), 0 20px 48px light-dark(oklch(0 0 0 / 0.1), oklch(0 0 0 / 0.35))',
       // A small round over a picture, such as a pin's ×.
-      overPhoto: '0 1px 4px oklch(0 0 0 / 0.12)',
+      overPhoto: '0 1px 4px light-dark(oklch(0 0 0 / 0.12), oklch(0 0 0 / 0.4))',
       // A switch that is off: a 1.5px ink-3 ring, so its edge keeps 3:1 on the paper (WCAG 1.4.11).
-      switchEdge: 'inset 0 0 0 1.5px #6b635b',
+      switchEdge: 'inset 0 0 0 1.5px light-dark(#6b635b, #9e9286)',
     },
   },
 })
+
+/** Dark only (DESIGN.md › Dark): a faint warm glow that follows a cutout's own edge, so a dark garment (a black shoe, a
+ * navy knit) stands off the dark paper instead of sinking into it. `filter` takes no token, so its value lives here with
+ * the colours. On an uncut photo it rims the picture's rectangle, as softly. */
+export const cutoutGlow = 'drop-shadow(0 0 8px oklch(0.9 0.03 70 / 0.16))'
 
 /** A press and a hover on one element (`transform` then a colour or `translate`): a duration token holds one time, so
  * the pair of the press and hover tokens is written here, where every other motion value lives. */

@@ -46,9 +46,10 @@ fontFace({
 // Document defaults (DESIGN.md › Type). Component styles live beside the views that use them.
 global({
   ':root': {
-    // `only light` (not `light`) also refuses the browser's forced dark: Chrome on a dark-mode Android phone otherwise
-    // repaints the paper dark and the cut-outs' darken blend sinks them into grey squares (Eva, 2 Nov; DESIGN.md).
-    colorScheme: 'only light',
+    // Light or dark as the device prefers (DESIGN.md › Dark): the colour tokens are `light-dark()` pairs, and the
+    // browser's own controls follow. A page that offers dark is one a browser leaves alone; with `only light`, Samsung
+    // Internet's dark mode still forced its own dark on Styld and sank the cut-outs into muddy tiles (Eva, 3 Nov).
+    colorScheme: 'light dark',
     fontFamily: vars.fontFamily.body,
     fontSize: vars.fontSize.body,
     backgroundColor: vars.color.paper,

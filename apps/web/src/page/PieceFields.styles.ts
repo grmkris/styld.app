@@ -58,7 +58,8 @@ export const swatch = style({
 export const colourList = style({ display: 'grid', gap: 'snug', margin: '0', padding: '0', listStyleType: 'none' })
 export const colourItem = style({ display: 'flex', alignItems: 'center', gap: 'actions' })
 export const factDot = style({ inlineSize: '16px', blockSize: '16px' })
-/** A colour dot; its `data-colour` picks the swatch, and a chosen dot's check takes the ink that reads on it. */
+/** A colour dot; its `data-colour` picks the swatch, and a chosen dot's check is white or black, whichever reads on it.
+ * The swatches are the colours themselves in either scheme, so the check is too (not ink, which turns in dark). */
 export const swatchDot = style({
   display: 'inline-grid',
   placeItems: 'center',
@@ -68,18 +69,18 @@ export const swatchDot = style({
   borderStyle: 'solid',
   borderColor: 'rule',
   borderRadius: 'pill',
-  color: 'onInk',
+  color: 'swatchWhite',
   '&[data-colour="black"]': { backgroundColor: 'swatchBlack' },
-  '&[data-colour="white"]': { backgroundColor: 'swatchWhite', color: 'ink' },
-  '&[data-colour="grey"]': { backgroundColor: 'swatchGrey', color: 'ink' },
-  '&[data-colour="beige"]': { backgroundColor: 'swatchBeige', color: 'ink' },
+  '&[data-colour="white"]': { backgroundColor: 'swatchWhite', color: 'swatchBlack' },
+  '&[data-colour="grey"]': { backgroundColor: 'swatchGrey', color: 'swatchBlack' },
+  '&[data-colour="beige"]': { backgroundColor: 'swatchBeige', color: 'swatchBlack' },
   '&[data-colour="brown"]': { backgroundColor: 'swatchBrown' },
   '&[data-colour="navy"]': { backgroundColor: 'swatchNavy' },
   '&[data-colour="blue"]': { backgroundColor: 'swatchBlue' },
   '&[data-colour="green"]': { backgroundColor: 'swatchGreen' },
   '&[data-colour="red"]': { backgroundColor: 'swatchRed' },
-  '&[data-colour="pink"]': { backgroundColor: 'swatchPink', color: 'ink' },
-  '&[data-colour="yellow"]': { backgroundColor: 'swatchYellow', color: 'ink' },
+  '&[data-colour="pink"]': { backgroundColor: 'swatchPink', color: 'swatchBlack' },
+  '&[data-colour="yellow"]': { backgroundColor: 'swatchYellow', color: 'swatchBlack' },
   '&[data-colour="orange"]': { backgroundColor: 'swatchOrange' },
   '&[data-colour="purple"]': { backgroundColor: 'swatchPurple' },
 })

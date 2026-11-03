@@ -1,4 +1,4 @@
-import { style } from '../zyzz.config.ts'
+import { cutoutGlow, style } from '../zyzz.config.ts'
 export { actionRow as backActions } from '../Controls.styles.ts'
 
 // Styles for a piece you own in PieceView.ts (Gallery: item.html, item-desktop.html).
@@ -42,6 +42,8 @@ export const photo = style({
   objectFit: 'contain',
   borderRadius: 'photo',
   '@media (min-width: 900px)': { aspectRatio: 'auto', blockSize: 'min(520px, 60vh)' },
+  // DESIGN.md › Dark: a dark garment keeps its edge on the dark paper.
+  '@media (prefers-color-scheme: dark)': { filter: cutoutGlow },
 })
 /** The piece's picture turned as its owner set it (`data-rotation`, a quarter turn at a time). */
 export const rotated = style({
