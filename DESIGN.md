@@ -15,9 +15,8 @@ This file states the rules, and every screen agent reads it and the prototype fi
 prototype's layout and this file's rules; where they disagree, ask. Change this file on purpose; it is the rule.
 
 Things you own are cutouts on paper. One sans face, plus the logo's condensed face in exactly two places (Type). Warm
-paper, umber ink, one slate signal. Pill-shaped actions, soft panels and sheets, photos with small corners. Light mode
-only, also on a phone set to dark: the document says `color-scheme: only light`, so the browser never forces dark
-on it (forced dark sank the cut-outs into grey squares on Eva's Android, 2 November 2026).
+paper, umber ink, one slate signal. Pill-shaped actions, soft panels and sheets, photos with small corners. Light by
+default, and Styld's own dark when the device prefers dark (owner, 3 November 2026; Dark below).
 
 ## Tokens
 
@@ -42,6 +41,26 @@ skill covers usage). Add a token there before a screen needs a new value.
 | error text, invalid field edge                              | v2's own              | `error`, `invalid` |
 
 Text in ink-3 keeps 4.5:1 on paper, paper-2 and stock (`#8b827a` until 2026-10-31 was 3.25:1).
+
+### Dark
+
+Styld has its own dark theme, used when the device prefers dark; light stays the look everywhere else. A browser
+leaves a page alone only when it offers dark itself: with `color-scheme: only light`, Samsung Internet's dark mode still
+forced its own dark on Styld and sank the cut-outs into muddy tiles (Eva, 3 November 2026).
+
+- **Tokens in pairs.** Every colour token is a `{ light, dark }` pair in `zyzz.config.ts`, compiled to `light-dark()`;
+  the shadow tokens write their colours as `light-dark()` too. Never a colour that only suits one scheme.
+- **CSS-selected.** `:root` says `color-scheme: light dark` and the document's meta says the same, with a
+  `theme-color` for each scheme. No script reads the preference and there is no in-app switch.
+- **Cutouts are not blended in dark.** In light a picture's pale backdrop gives way to the paper through `darken`; in
+  dark that would sink a dark garment into the paper, so the blend is `normal`: a cutout lies on the dark paper as it
+  is, with a faint warm glow along its edge (`cutoutGlow`), and an uncut photo shows its own backdrop.
+- **Over a photo, always light.** The camera keeps the light scheme's ink, on-ink and scrims (`colorScheme: 'light'`),
+  since it sits over the picture, not the paper. Catalog swatches are the colours themselves in both schemes.
+- **Palette.** A warm umber night, never black: paper `#17120f`, stock `#211b17` and paper-2 `#2a231d` a step above
+  it, rule `#3a312a`, ink a warm off-white `#f2ebe2` (so a primary action is a light pill with dark words), ink-2
+  `#bdb1a4`, ink-3 `#9e9286` (5.1:1 on paper-2), signal a pale slate `#9db8e0`, focus `#8aa8ff`. The board tints and
+  avatar tones keep their hues, deep and quiet. Shadows are denser, as they must be to show on a dark page.
 
 Radii: `photo` 4px, `inset` 8px (a table inside a card), `field` 12px, `panel` 16px, `sheet` 24px, `table` 28px (the paper of a table), `pill` for actions,
 chips, the search field and the floating nav. Shadows are tokens too: `lift1` and `lift2` (Gallery's lift-1, a card above the paper, and lift-2, raised), `glass`
