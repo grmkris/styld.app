@@ -21,17 +21,17 @@ export const guidanceList = style({
   color: 'ink2',
   fontSize: 'label',
 })
-/** The ways in: the library across the top, the camera's two ways side by side below it on a phone. */
+/** Guided cameras first, with library upload underneath on a phone. */
 export const sources = style({
   display: 'grid',
   gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
   gap: 'related',
   marginBlockStart: '16px',
-  '& > :first-child': { gridColumn: '1 / -1' },
+  '& > :last-child': { gridColumn: '1 / -1' },
   // On a wide screen the three ways in sit on one line.
   '@media (min-width: 900px)': {
     gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-    '& > :first-child': { gridColumn: 'auto' },
+    '& > :last-child': { gridColumn: 'auto' },
   },
 })
 /** A source: a stock panel that is a label for its hidden file input, and takes dropped files. */
@@ -48,7 +48,7 @@ export const source = style({
   // are buttons with a solid edge.
   borderStyle: 'solid',
   borderColor: 'rule',
-  '&:is(label)': { borderStyle: 'dashed' },
+  '&:is(label)': { borderStyle: 'dashed', minBlockSize: '104px' },
   borderRadius: 'panel',
   backgroundColor: 'stock',
   color: 'ink2',

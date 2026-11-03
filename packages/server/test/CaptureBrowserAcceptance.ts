@@ -84,7 +84,7 @@ const PairedTray = Schema.Struct({
 
 /** The held-up camera on Chromium's stand-in camera, whose picture never settles, so the shutter takes each
  * photo. It opens over the whole page with the shutter focused and the screen kept on, takes a piece's
- * front and then asks for its back, and closes on Escape. The two photos become one piece with its back in
+ * front and then asks for its back, and closes through the piece count. The two photos become one piece with its back in
  * the review tray. */
 export const verifyCameraJourney = async (browser: Browser, origin: string, fixtures: string): Promise<void> => {
   await seedAccounts(fixtures, 'native-camera-browser')
@@ -110,9 +110,9 @@ export const verifyCameraJourney = async (browser: Browser, origin: string, fixt
     expect(await camera.locator('[aria-current="step"]').textContent()).toBe('Front')
     expect(await page.evaluate('globalThis.styldWakeLocks')).toEqual({ requested: 1, released: 0 })
 
-    // Escape closes the camera; with both photos sent the review tray takes over, a new page that holds no
+    // The piece count finishes capture; with both photos sent the review tray takes over, a new page that holds no
     // lock on the screen.
-    await page.keyboard.press('Escape')
+    await camera.getByRole('button', { name: 'Finish and review 1 piece' }).click()
     await page.waitForURL(`${origin}/wardrobe/review`, { timeout: 30000 })
     let paired = false
     for (let attempt = 0; attempt < 80 && !paired; attempt += 1) {

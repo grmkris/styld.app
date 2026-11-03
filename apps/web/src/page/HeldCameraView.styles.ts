@@ -116,6 +116,16 @@ export const step = style({
   '&[aria-current="step"]': { backgroundColor: 'onInk', color: 'ink' },
 })
 export const count = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'snug',
+  minBlockSize: '44px',
+  paddingInline: '12px',
+  borderStyle: 'none',
+  borderRadius: 'pill',
+  backgroundColor: 'stock',
+  color: 'ink',
+  cursor: 'pointer',
   justifySelf: 'end',
   alignSelf: 'center',
   fontSize: 'label',
@@ -166,17 +176,18 @@ export const controls = style({
   maxInlineSize: '440px',
   paddingInline: '8px',
 })
-/** Done, as the stack of photos taken. */
+/** A distinct Finish control containing the last photo. */
 export const stack = style({
   justifySelf: 'start',
   display: 'grid',
   justifyItems: 'center',
   gap: 'tight',
-  padding: '0',
+  padding: '8px 12px',
   borderStyle: 'none',
-  backgroundColor: 'transparent !custom',
-  color: 'onInk',
-  fontSize: 'small',
+  borderRadius: 'field',
+  backgroundColor: 'stock',
+  color: 'ink',
+  fontSize: 'label',
   fontWeight: 600,
   cursor: 'pointer',
 })

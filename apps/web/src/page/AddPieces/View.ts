@@ -166,7 +166,6 @@ const sources = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Readonl
     : [
         guidance(locale, h),
         h.div(styled(h, styles.sources()), [
-          library(model, locale, h),
           cameraSource(
             { onClick: Message.ClickedLayOut(), title: 'capture.layOutTitle', hint: 'capture.layOutHint' },
             locale,
@@ -177,6 +176,7 @@ const sources = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Readonl
             locale,
             h,
           ),
+          library(model, locale, h),
         ]),
         linkSource(model, locale, h),
       ]

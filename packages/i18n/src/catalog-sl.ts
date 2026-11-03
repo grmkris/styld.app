@@ -489,8 +489,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.addTitle': 'Dodaj oblačila',
   'capture.addHint':
     'Fotografije ali video do 15 minut, posnet počasi z razdalje približno enega metra. Vsak kos izrežemo, ti pa ga obdržiš ali zavržeš.',
-  'capture.chooseTitle': 'Fotografije ali video',
-  'capture.chooseHint': 'Iz tvoje galerije',
+  'capture.chooseTitle': 'Naloži iz galerije',
+  'capture.chooseHint': 'Fotografije ali video',
   'capture.notSupported': '{name} ni fotografija ali video, ki ga Styld lahko uporabi',
   'capture.tooLarge': '{name} je prevelik',
   'capture.queueLabel': 'Pošiljanje',
@@ -532,7 +532,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
     '{count, plural, one {Dodaj # v garderobo} two {Dodaj # v garderobo} few {Dodaj # v garderobo} other {Dodaj # v garderobo}}',
   'capture.addFailed': 'Ni jih bilo mogoče dodati. Poskusi znova.',
   'capture.addMore': 'Dodaj še',
-  'capture.done': 'Končano',
+  'capture.done': 'Končaj',
   'capture.holdUpTitle': 'Pokaži kose kameri',
   'capture.holdUpHint': 'Kamera vsakega fotografira sama',
   'capture.layOutTitle': 'Razporedi kose',
@@ -562,6 +562,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.camera.skipBack': 'Brez hrbtne strani',
   'capture.camera.denied': 'Dostop do kamere je izklopljen. Dovoli ga v nastavitvah brskalnika ali izberi fotografije.',
   'capture.camera.unavailable': 'Kamere tukaj ni mogoče zagnati. Izberi fotografije.',
+  'capture.camera.finish': 'Končaj in preglej {count, plural, one {# kos} two {# kosa} few {# kose} other {# kosov}}',
   'capture.retryFile': 'Poskusi znova: {name}',
   'capture.queueSummary':
     'Poslano {sent} od {total}{failed, plural, =0 {} one {, # ni šla} two {, # nista šli} few {, # niso šle} other {, # jih ni šlo}}',

@@ -571,8 +571,8 @@
   "capture": {
     "addTitle": "Add clothes",
     "addHint": "Photos, or a video up to 15 minutes filmed slowly from about a metre away. Every piece is cut out for you to keep or drop.",
-    "chooseTitle": "Photos or a video",
-    "chooseHint": "From your library",
+    "chooseTitle": "Upload from library",
+    "chooseHint": "Photos or a video",
     "notSupported": "{name} isn't a photo or video Styld can use",
     "tooLarge": "{name} is too large",
     "queueLabel": "Sending",
@@ -609,7 +609,7 @@
     "addCount": "{count, plural, one {Add # to my wardrobe} other {Add # to my wardrobe}}",
     "addFailed": "Couldn't add them. Try again.",
     "addMore": "Add more",
-    "done": "Done",
+    "done": "Finish",
     "holdUpTitle": "Hold pieces up",
     "holdUpHint": "Your camera takes each one",
     "layOutTitle": "Lay pieces out",
@@ -640,7 +640,8 @@
       "flip": "Switch camera",
       "skipBack": "Skip the back",
       "denied": "Camera access is off. Allow it in your browser's settings, or choose photos instead.",
-      "unavailable": "The camera can't start here. Choose photos instead."
+      "unavailable": "The camera can't start here. Choose photos instead.",
+      "finish": "Finish and review {count, plural, one {# piece} other {# pieces}}"
     },
     "retryFile": "Try {name} again",
     "queueSummary": "{sent} of {total} sent{failed, plural, =0 {} one {, # didn't go} other {, # didn't go}}",

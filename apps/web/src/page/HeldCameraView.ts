@@ -86,7 +86,7 @@ const ringCircle = (h: HtmlBuilder<Message>) => [
   h.Attribute('pathLength', '100'),
 ]
 
-/** Done, shown as the stack of photos taken: each new photo flies into it from the picture. */
+/** Finish, shown beside the stack of photos taken. */
 const stack = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.button(
     [h.Type('button'), h.OnClick(Message.ClickedDone()), ...styled(h, cx(styles.press(), styles.stack()))],
@@ -112,7 +112,15 @@ const top = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
     steps(model, locale, h),
     model.pieces === 0
       ? h.empty
-      : h.span(styled(h, styles.count()), [format(locale, 'capture.camera.count', { count: model.pieces })]),
+      : h.button(
+          [
+            h.Type('button'),
+            h.OnClick(Message.ClickedDone()),
+            h.AriaLabel(format(locale, 'capture.camera.finish', { count: model.pieces })),
+            ...styled(h, cx(styles.press(), styles.count())),
+          ],
+          [format(locale, 'capture.camera.count', { count: model.pieces }), checkIcon(h)],
+        ),
   ])
 
 /** What the camera is doing, the way past the back, and the controls, over the bottom of the picture. */

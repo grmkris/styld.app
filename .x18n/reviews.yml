@@ -5,6 +5,14 @@ sources:
     sl: 133375c41998fb
   ask.title:
     sl: 25151b7829ac9
+  capture.camera.finish:
+    sl: b298d94ca95c4
+  capture.chooseHint:
+    sl: 18270bd7fd8e2e
+  capture.chooseTitle:
+    sl: e9c3a77c57f9d
+  capture.done:
+    sl: 4882775e5c807
   saveToBoard.add:
     sl: 1607b6b648f427
   today.wornUnread:

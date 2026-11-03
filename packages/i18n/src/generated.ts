@@ -194,6 +194,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'capture.camera.checking': Readonly<Record<string, never>>
   'capture.camera.count': { readonly count: number }
   'capture.camera.denied': Readonly<Record<string, never>>
+  'capture.camera.finish': { readonly count: number }
   'capture.camera.flip': Readonly<Record<string, never>>
   'capture.camera.front': Readonly<Record<string, never>>
   'capture.camera.holdOne': Readonly<Record<string, never>>
@@ -785,4 +786,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '3b2a9041abfc78dfa953ca35e058a82fa5322f151db958989e5ab1f7ee3e34a9'
+export const catalogVersion = '54acf90260f4e9bedd96c190033c8be45032735c80b5f3871cbf2fc677597cc0'
