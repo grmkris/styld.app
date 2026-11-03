@@ -451,7 +451,7 @@
       "status": "in_progress",
       "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "Claude. Analyze my wardrobe card: built and gated, landing with batch A. Streaming replies (owner decision 3 Nov): Ask Styld moves to Yielded Agent (a chat Thread Durable Object in its own Worker, tools over a service binding, provisional live text with snapshot, Alchemy's streaming Workers AI model wrapped in providerCall). Spike passed in workerd. Milestones M0 stack upgrade to Effect 4.1 (Alchemy beta.85, Foldkit 0.170, Yielded Auth beta.47; touches the lockfile and every package, landed in a quiet window), M1 chat Worker, M2 streaming model, M3 credits, M4 routes, M5 browser live text, M6 remove the stylist queue/StylistObject/polling and accept on the preview.",
+      "note": "Landed on main at 7f1db11 (not deployed; styldappv2-51 deploys). Analyze my wardrobe: exact server counts as a card plus a short comment (wardrobe_analyze tool). Ask Styld now runs on Yielded Agent: one Thread per chat in its own Worker, words stream to the page live (polling gone), tools run in the API Worker over RPC, credits held before and settled once from the Thread's outbox, the model streams through the LiteLLM text transport with deadlines, classification and cost per call. Old StylistObject, stylist queue and stylist_turns removed (migration 20261103200008_stylist_threads: create stylist_chats, drop stylist_turns; no table rebuild). Native: stylist acceptance passes; streamed words seen in the browser before the final reply. Remaining: live readback on the preview with the real LiteLLM route.",
       "evidence": [],
       "criteriaDone": []
     },
@@ -557,7 +557,7 @@
       "status": "in_progress",
       "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "Phone check by Eva (3 Nov, 19:40): Samsung Internet's Dark mode still darkens the wardrobe; it ignores color-scheme 'only light' (Chrome honours it). Owner decision: Styld gets its own proper dark theme (light/dark token pairs selected by the device's preference, cut-outs not blended on dark paper), which also stops every browser's forced darkening. In progress (Claude).",
+      "note": "Landed on main at 7f1db11 (not deployed; styldappv2-51 deploys). Styld now has its own dark theme when the device prefers dark (every colour a light/dark token pair, color-scheme light dark, theme-color per scheme, cut-outs unblended with a faint glow), so Samsung Internet's forced dark no longer applies. Remaining: deploy, then Eva's check on her Samsung in dark mode.",
       "evidence": [
         {
           "level": "unit",
@@ -1545,10 +1545,30 @@
         "T-15",
         "T-21"
       ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Claude landed its stack on main (7f1db11): Effect 4.1 upgrade (M0), Ask Styld on Yielded Agent with live streaming (T-14), Styld's own dark theme (T-18), and the piece-rotation build fix. Deploy and live readback by styldappv2-51.",
+      "items": [
+        "T-14",
+        "T-18"
+      ]
     }
   ],
   "overview": {
     "label": "T-15 rotation implementation in progress",
     "note": "T-01/T-05 client reliability, T-15 rotation, and T-21 shared media are implemented and recorded with their evidence boundaries. T-01/T-05 remain partial pending phone/live-provider recognition checks; T-15 remains partial pending rotation screenshots, authenticated preview readback and phone acceptance; T-21 remains ready for review pending authenticated media/Workers Logs/expiry evidence. T-16 board-to-Look is next after the owner's gate."
-  }
+  },
+  "evidence": [
+    {
+      "level": "unit",
+      "date": "2026-11-03",
+      "summary": "823 unit tests; analysis rules, tool, history; streaming transport, settlement and Thread tests."
+    },
+    {
+      "level": "native",
+      "date": "2026-11-03",
+      "summary": "Stylist HTTP acceptance (streamed pieces before the stored reply, credit once, refund on failure, analysis card, other account 404) and the browser journey showing live words."
+    }
+  ]
 }
