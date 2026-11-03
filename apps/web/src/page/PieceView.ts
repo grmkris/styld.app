@@ -31,7 +31,7 @@ import * as PiecePhotosView from './PiecePhotosView.ts'
 import * as SaveToBoardView from './SaveToBoardView.ts'
 
 /** The picture the piece shows; a new drawing, or a change of picture, is a new address. */
-const fullPath = (piece: Piece) => cdn.pieceShown(piece, 'full')
+const fullPath = (piece: Piece) => cdn.piece(piece, 'full')
 
 /** The piece's back; a new back is a new piece version, so a new address. */
 const backPath = cdn.pieceBack
@@ -239,7 +239,7 @@ const pictureChoices = (picture: PiecePicture, model: Model, locale: Locale, h: 
 const proposal = (piece: Piece, picture: PiecePicture, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.proposal()), [
     h.img([
-      h.Src(cdn.pieceClean(piece.id, picture.version)),
+      h.Src(cdn.pieceClean(piece)),
       h.Alt(format(locale, 'wardrobe.picture.cleaned', {})),
       ...styled(h, styles.proposalImage()),
     ]),

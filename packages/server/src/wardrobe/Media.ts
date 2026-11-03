@@ -1,5 +1,5 @@
 import type { ImageType } from '@styld/protocol'
-import { Option } from 'effect'
+import { Option, Schema } from 'effect'
 
 /** Every object of an account sits under one prefix, so deleting an account is one sweep. */
 export const accountPrefix = (accountId: string) => `accounts/${accountId}/`
@@ -35,3 +35,7 @@ export const isVideoContainer = (head: Uint8Array) =>
 /** The sizes the website shows: a grid thumbnail and the piece's own page. */
 export const imageSizes = { thumb: 480, full: 1600 } as const
 export type ImageSize = keyof typeof imageSizes
+
+/** The sizes an image route serves (`imageSizes`). */
+export const ShownSize = Schema.Literals(['thumb', 'full'])
+export type ShownSize = typeof ShownSize.Type

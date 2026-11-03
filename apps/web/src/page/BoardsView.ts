@@ -1,3 +1,4 @@
+import { cdn, piecesById } from '../Cdn.ts'
 import { Button } from '@foldkit/ui'
 import { format, type Locale } from '@styld/i18n'
 import type { BoardSummary, Pin } from '@styld/protocol'
@@ -12,28 +13,28 @@ import { boardRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
-import { boardImage, pieceImage } from './Board/Table.ts'
+import { boardImage, fromStyld, type ImageSource } from './Board/Table.ts'
 import { boardFace, type CoverPicture } from './BoardFace.ts'
 import { Creating, Message, type Model } from './Boards.ts'
 import * as styles from './BoardsView.styles.ts'
 import { pageHead, pageTitle } from './PageHead.ts'
 import { roundAction, wideAction, wideLabel } from './PageHead.styles.ts'
 import { savedView } from './SavedView.ts'
-import type { BoardsData } from '../ServerData.ts'
+import type { BoardsData, PiecesData } from '../ServerData.ts'
 
 /** Where a pin's picture comes from on its board's tile: a look shows its first piece. */
 const coverSource = (pin: Pin): CoverPicture => ({
   id: pin.id,
   source: Match.value(pin).pipe(
     Match.tagsExhaustive({
-      PiecePin: ({ piece }) => pieceImage(piece.id),
+      PiecePin: ({ piece }) => cdn.piece(piece),
       PicturePin: ({ imageId }) => boardImage(imageId, 'thumb'),
-      LookPin: ({ look }) => (look.pieces[0] === undefined ? '' : pieceImage(look.pieces[0].id)),
+      LookPin: ({ look }) => (look.pieces[0] === undefined ? '' : cdn.piece(look.pieces[0])),
     }),
   ),
 })
 
-const tileView = (board: BoardSummary, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const tileView = (board: BoardSummary, source: ImageSource, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.keyed('li')(
     board.id,
     [],
@@ -41,7 +42,7 @@ const tileView = (board: BoardSummary, locale: Locale, h: HtmlBuilder<Message>):
       h.a(
         [h.Href(boardRouter({ boardId: board.id })), ...styled(h, styles.tile())],
         [
-          boardFace({ items: board.items, paper: board.paper, cover: board.cover.map(coverSource) }, locale, h),
+          boardFace({ items: board.items, paper: board.paper, cover: board.cover.map(coverSource), source }, locale, h),
           h.span(styled(h, styles.tileName()), [board.name]),
           h.span(styled(h, styles.tileMeta()), [format(locale, 'studio.pinCount', { count: board.pinCount })]),
         ],
@@ -91,7 +92,7 @@ const loadingView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
     ],
   )
 
-const listView = (boards: BoardsData, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const listView = (boards: BoardsData, source: ImageSource, locale: Locale, h: HtmlBuilder<Message>): Html =>
   AsyncData.matchData(boards, {
     onEmpty: () => loadingView(locale, h),
     onFailure: () =>
@@ -108,26 +109,29 @@ const listView = (boards: BoardsData, locale: Locale, h: HtmlBuilder<Message>): 
         onNonEmpty: (some) =>
           h.ul(
             styled(h, styles.grid()),
-            Array.map(some, (board) => tileView(board, locale, h)),
+            Array.map(some, (board) => tileView(board, source, locale, h)),
           ),
       }),
   })
 
-/** The Boards page; its boards are the app's, as last read. */
-export const view = Submodel.defineView<Model, Message, { readonly locale: Locale; readonly boards: BoardsData }>(
-  (model, { locale, boards }, h) =>
-    h.main(
-      [h.Id('main'), ...styled(h, styles.page())],
-      [
-        h.div(styled(h, styles.head()), [
-          pageHead(pageTitle(format(locale, 'boards.title', {}), h), Option.some(newBoardAction(model, locale, h)), h),
-          h.p(styled(h, styles.intro()), [format(locale, 'boards.intro', {})]),
-          Creating.guards.Failed(model.creating)
-            ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'boards.createFailed', {})])
-            : h.empty,
-        ]),
-        listView(boards, locale, h),
-        savedView(model.saved, locale, Message.ClickedRetrySaved(), h),
-      ],
-    ),
+/** The Boards page; its boards are the app's, as last read, their tables' pieces from the person's pieces. */
+export const view = Submodel.defineView<
+  Model,
+  Message,
+  { readonly locale: Locale; readonly boards: BoardsData; readonly pieces: PiecesData }
+>((model, { locale, boards, pieces }, h) =>
+  h.main(
+    [h.Id('main'), ...styled(h, styles.page())],
+    [
+      h.div(styled(h, styles.head()), [
+        pageHead(pageTitle(format(locale, 'boards.title', {}), h), Option.some(newBoardAction(model, locale, h)), h),
+        h.p(styled(h, styles.intro()), [format(locale, 'boards.intro', {})]),
+        Creating.guards.Failed(model.creating)
+          ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'boards.createFailed', {})])
+          : h.empty,
+      ]),
+      listView(boards, fromStyld(piecesById(Option.getOrElse(AsyncData.getData(pieces), () => []))), locale, h),
+      savedView(model.saved, locale, Message.ClickedRetrySaved(), h),
+    ],
+  ),
 )

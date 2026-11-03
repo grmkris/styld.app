@@ -1,4 +1,4 @@
-import { cdn } from '../Cdn.ts'
+import { cdn, type PieceImagesById, piecesById } from '../Cdn.ts'
 import { format, type Locale } from '@styld/i18n'
 import { type BoardItem, type BoardSummary, flatLay, type Piece, type Slot } from '@styld/protocol'
 import { Array, Option } from 'effect'
@@ -13,7 +13,7 @@ import { block } from '../Skeleton.styles.ts'
 import { intlLocale } from '../Locale.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
-import { stillTable } from './Board/Table.ts'
+import { fromStyld, stillTable } from './Board/Table.ts'
 import { Message, type Model, showsWornOutfit, TableMotion, tableOutfit, Worn } from './Today.ts'
 import type { BoardsData, PiecesData } from '../ServerData.ts'
 import { barEnd, round } from './PageBar.styles.ts'
@@ -73,7 +73,13 @@ const tableView = (model: Model, pieces: ReadonlyArray<Piece>, locale: Locale, h
   const outfit = tableOutfit(model, pieces)
   const names = outfit.map((piece) => pieceLabel(piece, locale)).join(', ')
   return h.div(TableMotion.guards.Spun(model.motion) ? styled(h, styles.table()) : [], [
-    stillTable(flatLay(outfit), 'paper', [h.Role('img'), h.AriaLabel(format(locale, 'today.outfit', { names }))], h),
+    stillTable(
+      flatLay(outfit),
+      'paper',
+      [h.Role('img'), h.AriaLabel(format(locale, 'today.outfit', { names }))],
+      h,
+      fromStyld(piecesById(outfit)),
+    ),
   ])
 }
 
@@ -293,14 +299,14 @@ const pickUpCard = (
     ),
   ])
 
-const boardCard = (board: BoardSummary, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const boardCard = (board: BoardSummary, pieces: PieceImagesById, locale: Locale, h: HtmlBuilder<Message>): Html =>
   pickUpCard(
     'pick-up-board',
     board.name,
     { href: boardRouter({ boardId: board.id }), label: format(locale, 'today.keepGoing', {}) },
     h.div(
       [h.Style({ '--crop': String(cropFrom(board.items)) }), ...styled(h, styles.boardCrop())],
-      [stillTable(inView(board.items), board.paper, [], h)],
+      [stillTable(inView(board.items), board.paper, [], h, fromStyld(pieces))],
     ),
     h,
   )
@@ -349,7 +355,9 @@ const pickUpView = (model: Model, data: Data, locale: Locale, h: HtmlBuilder<Mes
       : []),
     ...Option.match(lastBoard(data.boards), {
       onNone: () => [],
-      onSome: (board) => [boardCard(board, locale, h)],
+      onSome: (board) => [
+        boardCard(board, piecesById(Option.getOrElse(AsyncData.getData(data.pieces), () => [])), locale, h),
+      ],
     }),
   ]
   return Array.match(cards, {

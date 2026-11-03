@@ -122,12 +122,7 @@ const pieceRows = (look: LookContract, locale: Locale, h: HtmlBuilder<Message>):
               h.a(
                 [h.Href(pieceRouter({ pieceId: piece.id })), ...styled(h, styles.pieceRow())],
                 [
-                  h.img([
-                    h.Src(cdn.piece(piece.id)),
-                    h.Alt(''),
-                    h.Loading('lazy'),
-                    ...styled(h, styles.pieceRowImage()),
-                  ]),
+                  h.img([h.Src(cdn.piece(piece)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.pieceRowImage())]),
                   h.span(styled(h, styles.pieceRowText()), [
                     h.span(styled(h, styles.pieceRowName()), [pieceLabel(piece, locale)]),
                     // What one of its kind is, under its name; an unnamed piece is already called that.

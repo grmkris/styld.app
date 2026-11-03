@@ -1,7 +1,6 @@
 import {
   maximumImageBytes,
   maximumVideoBytes,
-  PieceId,
   CurrentAccount,
   StyldApi,
   UploadId,
@@ -15,6 +14,7 @@ import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { type AuthHttp, sessionCookieAccount } from '../AuthHttp.ts'
 import type { DeliveredImage } from './Delivery.ts'
+import { signedImage } from './SignedImage.ts'
 import { Wardrobe } from './Wardrobe.ts'
 
 /** The website's wardrobe endpoints: each one is the matching `Wardrobe` operation for the session's
@@ -48,15 +48,6 @@ const refusalStatus: { readonly [Reason in UploadRefused['reason']]: number } = 
 }
 
 const UploadTarget = Schema.Struct({ uploadId: UploadId, token: Schema.String })
-/** The sizes an image route serves (`imageSizes`). */
-export const ShownSize = Schema.Literals(['thumb', 'full'])
-const ImageTarget = Schema.Struct({ pieceId: PieceId, size: ShownSize })
-/** One picture of a piece in particular: its photo, its clean drawing (ready or proposed), or its back. */
-const PictureTarget = Schema.Struct({
-  pieceId: PieceId,
-  which: Schema.Literals(['photo', 'clean', 'back']),
-  size: ShownSize,
-})
 
 /** `PUT /api/uploads/:uploadId?token=`: a photo's bytes. The token in the query string, which Workers
  * logs redact, is the only credential, so an assistant can upload without the website's cookie. */
@@ -133,34 +124,8 @@ export const ownerImage = <A, I extends Readonly<Record<string, string | undefin
     }).pipe(Effect.catchTag('Unavailable', () => Effect.succeed(HttpServerResponse.empty({ status: 503 }))))
   })
 
-/** `GET /cdn/pieces/:pieceId/:size`: the picture a piece shows, and `GET /cdn/pieces/:pieceId/:which/:size`: its
- * photo, its clean drawing or its back, for its owner only. */
-const pieceImage = (auth: AuthHttp) =>
-  Effect.gen(function* () {
-    const wardrobe = yield* Wardrobe
-    const found = (image: ReturnType<typeof wardrobe.pieceImage>) =>
-      image.pipe(
-        Effect.map(Option.some),
-        Effect.catchTag('NotFound', () => Effect.succeed(Option.none<ShownImage>())),
-      )
-    return {
-      shown: yield* ownerImage(auth, ImageTarget, ({ pieceId, size }) => found(wardrobe.pieceImage(pieceId, size))),
-      either: yield* ownerImage(auth, PictureTarget, ({ pieceId, which, size }) =>
-        found(wardrobe.pieceImage(pieceId, size, which)),
-      ),
-    }
-  })
-
-/** The wardrobe's routes outside the typed API: photo uploads and images. */
-export const wardrobeRoutes = (auth: AuthHttp) =>
-  Layer.mergeAll(
-    Layer.unwrap(Effect.map(receiveUpload, (handler) => HttpRouter.add('PUT', '/api/uploads/:uploadId', handler))),
-    Layer.unwrap(
-      Effect.map(pieceImage(auth), ({ shown, either }) =>
-        Layer.mergeAll(
-          HttpRouter.add('GET', '/cdn/pieces/:pieceId/:size', shown),
-          HttpRouter.add('GET', '/cdn/pieces/:pieceId/:which/:size', either),
-        ),
-      ),
-    ),
-  )
+/** The wardrobe's routes outside the typed API: photo uploads and owner-only pictures by signed address. */
+export const wardrobeRoutes = Layer.mergeAll(
+  Layer.unwrap(Effect.map(receiveUpload, (handler) => HttpRouter.add('PUT', '/api/uploads/:uploadId', handler))),
+  Layer.unwrap(Effect.map(signedImage, (handler) => HttpRouter.add('GET', '/cdn/media/:entityId/:size', handler))),
+)

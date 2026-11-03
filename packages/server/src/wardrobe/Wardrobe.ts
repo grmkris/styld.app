@@ -35,8 +35,8 @@ import {
 } from './Shared.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { admitUpload } from './Admission.ts'
-import { pictureView, shownImage, shows, turnView } from './Shown.ts'
-import { type PictureRow, type PieceRow, type UploadRow, WardrobeStore } from './Store.ts'
+import { pictureImage, type PieceView, pictureVersion } from './Images.ts'
+import { type PieceRow, type UploadRow, WardrobeStore } from './Store.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
 import { digestOf, randomToken } from '../kernel/Ids.ts'
 import { deleting, once, type Operation } from '../kernel/Receipts.ts'
@@ -89,16 +89,7 @@ const reads = Effect.map(Effect.context<WardrobeServices>(), (context) => ({
       (yield* stored((yield* WardrobeStore).picturesOf(accountId))).map((row) => [row.pieceId, row]),
     )
     const turns = new Map((yield* stored((yield* WardrobeStore).turnsOf(accountId))).map((row) => [row.pieceId, row]))
-    const at = yield* nowDate
-    return yield* Effect.forEach(rows, (row) => {
-      const picture = pictures.get(row.id)
-      const turn = turns.get(row.id)
-      return toPiece(
-        row,
-        picture === undefined ? undefined : pictureView(picture, at),
-        turn === undefined ? undefined : turnView(turn, at),
-      )
-    })
+    return yield* Effect.forEach(rows, (row) => toPiece(row, pictures.get(row.id), turns.get(row.id)))
   }, Effect.provide(context)),
   getPiece: Effect.fn('Styld.Wardrobe.getPiece')(function* (pieceId: PieceId) {
     const { accountId } = yield* CurrentAccount
@@ -407,23 +398,6 @@ const editing = Effect.map(Effect.context<WardrobeServices>(), (context) => ({
   }, Effect.provide(context)),
 }))
 
-/** The stored image behind one of a piece's pictures: the one it shows, its photo, its clean drawing or its back. */
-const pictureImage = (
-  piece: PieceRow,
-  picture: PictureRow | undefined,
-  which: 'shown' | 'photo' | 'clean' | 'back',
-) => {
-  if (which === 'shown') return Option.some(shownImage(piece, picture))
-  if (which === 'photo') return Option.some(shownImage(piece, undefined))
-  // The stored object's own type is what is served (`deliverImage`).
-  if (which === 'back')
-    return Option.map(Option.fromNullishOr(piece.backImageKey), (key) => ({ key, contentType: piece.contentType }))
-  const drawn = picture?.cleanKey ?? null
-  return drawn !== null && (picture?.state === 'ready' || picture?.state === 'proposed')
-    ? Option.some({ key: drawn, contentType: 'image/png' })
-    : Option.none()
-}
-
 const images = Effect.map(Effect.context<WardrobeServices>(), (context) => ({
   /** One of the piece's pictures (the one it shows unless asked), resized to WebP by the Images binding. A photo
    * it cannot transform is served as it was stored, to its owner's browser only: `transformedOnly` answers
@@ -431,7 +405,7 @@ const images = Effect.map(Effect.context<WardrobeServices>(), (context) => ({
   pieceImage: Effect.fn('Styld.Wardrobe.pieceImage')(function* (
     pieceId: PieceId,
     size: ImageSize,
-    which: 'shown' | 'photo' | 'clean' | 'back' = 'shown',
+    which: PieceView = 'shown',
     delivery?: Delivery,
   ) {
     const { accountId } = yield* CurrentAccount
@@ -441,12 +415,7 @@ const images = Effect.map(Effect.context<WardrobeServices>(), (context) => ({
     if (Option.isNone(source)) return yield* NotFound.make({})
     const image = yield* deliverImage(yield* Media, source.value, size, delivery)
     if (Option.isNone(image)) return yield* NotFound.make({})
-    // A new drawing, or a change of which picture shows, is a new version of the shown image.
-    const drawing =
-      which === 'photo' || which === 'back'
-        ? which
-        : `${which === 'clean' ? 'clean' : shows(picture)}${picture?.version ?? 0}`
-    return { ...image.value, version: `${piece.id}.${piece.updatedAt.getTime()}.${drawing}.${size}` }
+    return { ...image.value, version: `${piece.id}.${pictureVersion(piece, picture, which)}.${size}` }
   }, Effect.provide(context)),
 }))
 

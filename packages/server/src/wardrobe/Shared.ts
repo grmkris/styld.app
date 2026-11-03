@@ -1,23 +1,16 @@
 import type { PaidAttempts } from '../usage/Attempts.ts'
 import type { Pacing } from '../kernel/Pacing.ts'
 import type { Holds } from '../usage/Holds.ts'
-import {
-  CurrentAccount,
-  NotFound,
-  Piece,
-  type PiecePicture,
-  type PieceTurn,
-  PieceType,
-  Unavailable,
-  UploadRefused,
-} from '@styld/protocol'
+import { CurrentAccount, NotFound, Piece, PieceType, Unavailable, UploadRefused } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import type { PieceChanged } from '../safety/PieceChanged.ts'
 import type { GarmentCutout, PieceQueue } from './Processing.ts'
 import { pictureView, turnView } from './Shown.ts'
-import { type PieceRow, type UploadRow, WardrobeStore } from './Store.ts'
+import { pieceImages } from './Images.ts'
+import { type PictureRow, type PieceRow, type TurnRow, type UploadRow, WardrobeStore } from './Store.ts'
 import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
 import { deleteAfterRows, Media } from '../kernel/Media.ts'
+import type { SignedMedia } from '../kernel/SignedMedia.ts'
 
 // What every part of the wardrobe service shares: the services it acts through, the piece as its owner reads it, the
 // ownership checks of pieces and uploads, and how a store's failure reads to callers. Every operation yields the
@@ -27,6 +20,7 @@ import { deleteAfterRows, Media } from '../kernel/Media.ts'
 export type WardrobeServices =
   | WardrobeStore
   | Media
+  | SignedMedia
   | PieceQueue
   | GarmentCutout
   | PieceChanged
@@ -38,9 +32,12 @@ export const unavailable = () => Unavailable.make({})
 export const refused = (reason: UploadRefused['reason']) => UploadRefused.make({ reason })
 export const stored = <A, R>(effect: Effect.Effect<A, StoreUnavailable, R>) => Effect.mapError(effect, unavailable)
 
-/** A stored piece as the protocol shows it, with its clean picture and its turn when they were asked for. */
-export const toPiece = (row: PieceRow, picture?: PiecePicture, turn?: PieceTurn) =>
-  Schema.decodeUnknownEffect(Piece)({
+/** A stored piece as the protocol shows it, with its clean picture and its turn when they were asked for, and, for the
+ * owner's browser, the signed addresses of its pictures (`Images.ts`). */
+export const toPiece = Effect.fnUntraced(function* (row: PieceRow, picture?: PictureRow, turn?: TurnRow) {
+  const at = yield* nowDate
+  const images = yield* pieceImages(row, picture)
+  return yield* Schema.decodeUnknownEffect(Piece)({
     id: row.id,
     name: row.name,
     notes: row.notes,
@@ -56,10 +53,12 @@ export const toPiece = (row: PieceRow, picture?: PiecePicture, turn?: PieceTurn)
     source: row.source,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
-    ...(picture === undefined ? {} : { picture }),
-    ...(turn === undefined ? {} : { turn }),
+    ...(picture === undefined ? {} : { picture: pictureView(picture, at) }),
+    ...(turn === undefined ? {} : { turn: turnView(turn, at) }),
+    ...Option.match(images, { onNone: () => ({}), onSome: (shown) => ({ images: shown }) }),
     // Only the service writes rows, through the same schemas; a row that does not decode is a bug.
   }).pipe(Effect.orDie)
+})
 
 /** A stored piece's type, read alone: work that needs only the type, such as its cut-out, never depends on the rest of
  * the row. Only the service writes the column, through the same schema; one that does not decode is a bug. */
@@ -91,12 +90,7 @@ export const ownerPiece = (accountId: string, row: PieceRow) =>
   Effect.gen(function* () {
     const picture = yield* pictureRow(accountId, row.id)
     const turn = Option.getOrUndefined(yield* stored((yield* WardrobeStore).turnOf(accountId, row.id)))
-    const at = yield* nowDate
-    return yield* toPiece(
-      row,
-      picture === undefined ? undefined : pictureView(picture, at),
-      turn === undefined ? undefined : turnView(turn, at),
-    )
+    return yield* toPiece(row, picture, turn)
   })
 
 /** Why an upload cannot make something, if it cannot. */

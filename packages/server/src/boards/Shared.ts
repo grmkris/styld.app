@@ -12,6 +12,7 @@ import { Effect, Match, Option, Schema } from 'effect'
 import type { WardrobeStore } from '../wardrobe/Store.ts'
 import type { Database, StoreUnavailable } from '../kernel/Db.ts'
 import type { Media } from '../kernel/Media.ts'
+import type { SignedMedia } from '../kernel/SignedMedia.ts'
 import { toPiece } from '../wardrobe/Shared.ts'
 import { type BoardItemRow, type BoardPinRow, type BoardRow, BoardStore, type PinRow } from './Store.ts'
 import { newId } from '../kernel/Ids.ts'
@@ -64,7 +65,7 @@ export const itemRow = (item: BoardItem): Omit<BoardItemRow, 'boardId'> => {
 }
 
 /** The services the board operations work through, provided once by the `Boards` layer. */
-export type BoardServices = Database | Media | BoardStore | WardrobeStore | Checks | Looks | PublicPages
+export type BoardServices = Database | Media | SignedMedia | BoardStore | WardrobeStore | Checks | Looks | PublicPages
 
 /** The looks these pins hold, by id. */
 const pinnedLooks = (pins: ReadonlyArray<PinRow>) =>
@@ -83,7 +84,7 @@ const shownPin = (row: PinRow, looks: ReadonlyMap<string, Look>) =>
     const look = row.pin.lookId === null ? undefined : looks.get(row.pin.lookId)
     const shownRow: ReadonlyArray<object> =
       row.pin.kind === 'piece' && row.piece !== null
-        ? [{ _tag: 'PiecePin', ...base, piece: yield* toPiece(row.piece) }]
+        ? [{ _tag: 'PiecePin', ...base, piece: yield* toPiece(row.piece, row.picture ?? undefined) }]
         : row.pin.kind === 'picture' && row.pin.imageId !== null
           ? [{ _tag: 'PicturePin', ...base, imageId: row.pin.imageId, generated: row.origin === 'generated' }]
           : row.pin.kind === 'look' && look !== undefined

@@ -112,7 +112,7 @@ try {
   })
   const { pieceIds } = Schema.decodeUnknownSync(Reviewed)(await kept.json())
   const piece = Schema.decodeUnknownSync(Piece)(await (await request.get(`${origin}/api/pieces/${pieceIds[0]}`)).json())
-  const thumb = await request.get(`${origin}/cdn/pieces/${pieceIds[0]}/thumb`)
+  const thumb = await request.get(`${origin}${piece.images?.thumb ?? '/cdn/media/missing/thumb'}`)
 
   const rail = await captured(request, 'rail-frame.jpg', 'image/jpeg')
   console.log(

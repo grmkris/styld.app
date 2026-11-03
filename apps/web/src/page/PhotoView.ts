@@ -29,7 +29,7 @@ interface Inputs {
 }
 
 const pieceThumb = (piece: Piece, h: HtmlBuilder<Message>): Html =>
-  h.img([h.Src(cdn.piece(piece.id)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.smallThumb())])
+  h.img([h.Src(cdn.piece(piece)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.smallThumb())])
 
 /** The wardrobe's pieces that sit where the garment does, or all of them when Styld could not tell what it is. */
 const candidates = (garment: PhotoGarment, pieces: ReadonlyArray<Piece>) => {

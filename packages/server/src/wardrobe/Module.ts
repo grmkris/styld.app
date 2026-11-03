@@ -1,6 +1,5 @@
 import { Effect, Layer } from 'effect'
 import { AccountLifecycle } from '../AccountLifecycle.ts'
-import { withAuth } from '../AuthHttp.ts'
 import { pieceCutout } from '../capture/PieceCutout.ts'
 import { Captures } from '../capture/Service.ts'
 import { consumer } from '../jobs/Jobs.ts'
@@ -18,7 +17,7 @@ import { Wardrobe } from './Wardrobe.ts'
 export const wardrobe = module({
   layer: Wardrobe.layer.pipe(Layer.provide([WardrobeStore.layer, pieceCutout, social.layer])),
   api: wardrobeHandlers,
-  routes: withAuth(wardrobeRoutes),
+  routes: wardrobeRoutes,
   consumers: [
     consumer(
       pieceJobQueue,

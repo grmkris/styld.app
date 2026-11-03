@@ -222,7 +222,12 @@ const entering = (route: AppRoute, signedIn: boolean): ReadonlyArray<Step> =>
     Match.tag('Ask', ({ q }) => [revisitPieces, Update.foldChildStep({ update: Ask.enter(q), ...at(lenses.ask) })]),
     Match.tag('Looks', () => [Update.foldChildStep({ update: Looks.revisit, ...at(lenses.looks) })]),
     Match.tag('Photos', () => [Update.foldChildStep({ update: Photos.revisit, ...at(lenses.photos) })]),
-    Match.tag('Boards', () => [revisitBoards, Update.foldChildStep({ update: Boards.revisit, ...at(lenses.boards) })]),
+    // A board's table names its pieces by id; their pictures come with the person's pieces.
+    Match.tag('Boards', () => [
+      revisitBoards,
+      revisitPieces,
+      Update.foldChildStep({ update: Boards.revisit, ...at(lenses.boards) }),
+    ]),
     Match.tag('Explore', () => [Update.foldChildStep({ update: Visit.enterExplore, ...at(lenses.explore) })]),
     // The account needs a session; signed out the page sends the visitor to sign in.
     Match.tag('Account', () =>
@@ -230,6 +235,8 @@ const entering = (route: AppRoute, signedIn: boolean): ReadonlyArray<Step> =>
     ),
     // Styld's answers name the person's pieces, and a photo's garments are matched to them.
     Match.tag('Stylist', 'Photo', () => [revisitPieces]),
+    // A garment taken for one of the person's pieces shows that piece beside it.
+    Match.tag('Review', () => [revisitPieces]),
     // The collage's tray shows the pieces; signed out a board can only be someone's public one.
     Match.tag('Board', 'BoardCollage', () => (signedIn ? [revisitPieces] : [])),
     Match.orElse(() => []),

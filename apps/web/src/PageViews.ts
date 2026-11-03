@@ -2,6 +2,7 @@ import { format, type Locale } from '@styld/i18n'
 import { Option } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { hasSession, Message, type Model } from './App.ts'
+import { piecesById } from './Cdn.ts'
 import { landingView } from './Landing.ts'
 import { lenses, type PageLens } from './Page.ts'
 import * as AddPiecesView from './page/AddPieces/View.ts'
@@ -163,7 +164,7 @@ const tabPages = (model: Model, h: HtmlBuilder<Message>) => {
           h.submodel({
             ...slot(lenses.boards, boards),
             view: BoardsView.view,
-            viewInputs: { locale, boards: model.data.boards },
+            viewInputs: { locale, boards: model.data.boards, pieces },
           }),
         h,
       ),
@@ -200,7 +201,11 @@ const wardrobePages = (model: Model, h: HtmlBuilder<Message>) => {
         model,
         lenses.review,
         (review) =>
-          h.submodel({ ...slot(lenses.review, review), view: ReviewView.view, viewInputs: { locale, timeZone } }),
+          h.submodel({
+            ...slot(lenses.review, review),
+            view: ReviewView.view,
+            viewInputs: { locale, timeZone, images: piecesById(piecesOf(model.data)) },
+          }),
         h,
       ),
     Piece: () =>
@@ -256,7 +261,13 @@ const otherPages = (model: Model, h: HtmlBuilder<Message>) => {
           h.submodel({
             ...slot(lenses.stylist, stylist),
             view: StylistView.view,
-            viewInputs: { locale, names: pieceNames(model), timeZone, referenceTime: model.context.referenceTime },
+            viewInputs: {
+              locale,
+              names: pieceNames(model),
+              images: piecesById(piecesOf(model.data)),
+              timeZone,
+              referenceTime: model.context.referenceTime,
+            },
           }),
         h,
       ),

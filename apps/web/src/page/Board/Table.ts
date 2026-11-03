@@ -1,7 +1,7 @@
-import { cdn } from '../../Cdn.ts'
-import type { BoardItem, ImageItem, Paper } from '@styld/protocol'
+import { cdn, type PieceImagesById, piecesById } from '../../Cdn.ts'
+import type { BoardItem, ImageItem, Paper, Pin } from '@styld/protocol'
 import { PieceItem, TextItem } from '@styld/protocol'
-import { Array, Schema } from 'effect'
+import { Array, Match, Schema } from 'effect'
 import type { Attribute, Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { styled } from '../../Styled.ts'
@@ -12,7 +12,6 @@ import * as styles from './View.styles.ts'
 // The table as a picture: pieces, text and pictures laid on paper. The board editor adds hands to it; Boards
 // and Home show it as it is.
 
-export const pieceImage = (pieceId: string) => cdn.piece(pieceId)
 export const boardImage = cdn.boardImage
 
 /** Where an item lies, as the custom properties its styles read. The browser sets them through the CSSOM
@@ -30,8 +29,25 @@ export const placement = (item: BoardItem) => ({
  * assistant's sandboxed view. None draws nothing. */
 export type ImageSource = (item: PieceItem | ImageItem, size: 'thumb' | 'full') => string | undefined
 
-const fromStyld: ImageSource = (item, size) =>
-  Schema.is(PieceItem)(item) ? pieceImage(item.pieceId) : boardImage(item.imageId, size)
+/** The person's own table: its pieces' signed addresses from the pieces at hand, its pictures from Styld's route. */
+export const fromStyld =
+  (pieces: PieceImagesById): ImageSource =>
+  (item, size) =>
+    Schema.is(PieceItem)(item) ? pieces.get(item.pieceId)?.thumb : boardImage(item.imageId, size)
+
+/** The pieces a board's pins hold, a look's too: every piece its table places is pinned. */
+export const pinnedPieces = (pins: ReadonlyArray<Pin>): PieceImagesById =>
+  piecesById(
+    pins.flatMap((pin) =>
+      Match.value(pin).pipe(
+        Match.tagsExhaustive({
+          PiecePin: ({ piece }) => [piece],
+          LookPin: ({ look }) => look.pieces,
+          PicturePin: () => [],
+        }),
+      ),
+    ),
+  )
 
 /** What others see of a public board: its pieces' and pictures' public addresses. */
 export const publicPieceImage = (pieceId: string, size: 'thumb' | 'full' = 'thumb') => cdn.publicPiece(pieceId, size)
@@ -42,8 +58,8 @@ export const fromPublic: ImageSource = (item, size) =>
 export const itemContent = <Message>(
   item: BoardItem,
   h: HtmlBuilder<Message>,
-  size: 'thumb' | 'full' = 'full',
-  source: ImageSource = fromStyld,
+  size: 'thumb' | 'full',
+  source: ImageSource,
 ): Html => {
   if (Schema.is(TextItem)(item))
     return h.span([h.DataAttribute('style', item.style), ...styled(h, styles.label())], [item.text])
@@ -73,7 +89,7 @@ export const stillTable = <Message>(
   paper: Paper,
   attributes: ReadonlyArray<Attribute<Message>>,
   h: HtmlBuilder<Message>,
-  source: ImageSource = fromStyld,
+  source: ImageSource,
 ): Html =>
   h.div(
     [h.DataAttribute('paper', paper), ...styled(h, cx(styles.paper(), styles.still())), ...attributes],

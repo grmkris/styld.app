@@ -21,7 +21,7 @@ export const collage = <Message>(look: Look, h: HtmlBuilder<Message>): Html =>
     styled(h, styles.collage()),
     look.pieces.slice(0, 4).map((piece) =>
       h.img([
-        h.Src(cdn.piece(piece.id)),
+        h.Src(cdn.piece(piece)),
         // The card's name says what the look is; listing every piece would drown it.
         h.Alt(''),
         h.Loading('lazy'),

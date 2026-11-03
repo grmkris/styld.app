@@ -180,7 +180,7 @@ describe('the wardrobe pages', () => {
       'ListPieceLooks',
     ])
     expect(opening('/wardrobe/add')).toEqual(['ReadSession', 'ReadTimeZone'])
-    expect(opening('/wardrobe/review')).toEqual(['ReadSession', 'ReadTimeZone', 'LoadTray'])
+    expect(opening('/wardrobe/review')).toEqual(['ReadSession', 'ReadTimeZone', 'LoadTray', 'ListPieces'])
     expect(opening('/looks')).toEqual(['ReadSession', 'ReadTimeZone', 'ListLooks'])
     expect(opening(`/looks/lk_${'a'.repeat(22)}`)).toEqual(['ReadSession', 'ReadTimeZone', 'GetLook'])
     expect(opening('/wardrobe/gallery')).toEqual(['ReadSession', 'ReadTimeZone', 'ListPhotos'])

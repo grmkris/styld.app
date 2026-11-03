@@ -1,3 +1,4 @@
+import { cdn, piecesById } from '../../Cdn.ts'
 import { format, type Locale } from '@styld/i18n'
 import {
   type BoardItem,
@@ -21,7 +22,7 @@ import { visuallyHidden } from '../../VisuallyHidden.styles.ts'
 import { cx } from 'zyzz'
 import type { PiecesData } from '../../ServerData.ts'
 import { MeasurePaper } from './Commands.ts'
-import { boardImage, itemContent, itemStyle, pieceImage, placement } from './Table.ts'
+import { boardImage, fromStyld, type ImageSource, itemContent, itemStyle, placement } from './Table.ts'
 import { type KeyStep, Message } from './Message.ts'
 import { Gesture, LookSave, type Model, Saving, Toast, Upload } from './Model.ts'
 import { boardStateView } from './Unready.ts'
@@ -94,7 +95,14 @@ const handleView = (item: BoardItem, locale: Locale, h: HtmlBuilder<Message>): H
     }),
   ])
 
-const itemView = (model: Model, pieces: PiecesData, item: BoardItem, locale: Locale, h: HtmlBuilder<Message>): Html => {
+const itemView = (
+  model: Model,
+  pieces: PiecesData,
+  source: ImageSource,
+  item: BoardItem,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html => {
   const isSelected = Option.contains(model.maybeSelectedId, item.id)
   const isHeld = Option.contains(heldId(model.gesture), item.id)
   return h.keyed('div')(
@@ -130,19 +138,20 @@ const itemView = (model: Model, pieces: PiecesData, item: BoardItem, locale: Loc
         ),
       ),
     ],
-    [itemContent(item, h), isSelected ? handleView(item, locale, h) : h.empty],
+    [itemContent(item, h, 'full', source), isSelected ? handleView(item, locale, h) : h.empty],
   )
 }
 
-const leavingView = (item: BoardItem, h: HtmlBuilder<Message>): Html =>
+const leavingView = (item: BoardItem, source: ImageSource, h: HtmlBuilder<Message>): Html =>
   h.keyed('div')(
     `leaving-${item.id}`,
     [h.AriaHidden(true), h.DataAttribute('leaving', ''), ...styled(h, itemStyle(item)), h.Style(placement(item))],
-    [itemContent(item, h)],
+    [itemContent(item, h, 'full', source)],
   )
 
-const paperView = (model: Model, pieces: PiecesData, paper: Paper, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.section(
+const paperView = (model: Model, pieces: PiecesData, paper: Paper, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  const source = fromStyld(piecesById(piecesOf(pieces)))
+  return h.section(
     [
       h.AriaLabel(format(locale, 'board.paper', {})),
       h.DataAttribute('paper', paper),
@@ -154,14 +163,15 @@ const paperView = (model: Model, pieces: PiecesData, paper: Paper, locale: Local
       ),
     ],
     [
-      ...Array.map(model.items, (item) => itemView(model, pieces, item, locale, h)),
-      ...Array.map(model.leaving, (item) => leavingView(item, h)),
+      ...Array.map(model.items, (item) => itemView(model, pieces, source, item, locale, h)),
+      ...Array.map(model.leaving, (item) => leavingView(item, source, h)),
       Array.isReadonlyArrayEmpty(model.items) && Array.isReadonlyArrayEmpty(model.leaving)
         ? h.p(styled(h, styles.emptyHint()), [format(locale, 'board.empty', {})])
         : h.empty,
       model.isDropping ? h.p(styled(h, styles.dropHint()), [format(locale, 'board.dropHere', {})]) : h.empty,
     ],
   )
+}
 
 const savingStatus = (model: Model, locale: Locale) =>
   Saving.match(model.saving, {
@@ -237,7 +247,7 @@ const trayPiece = (piece: Piece, isOn: boolean, locale: Locale, h: HtmlBuilder<M
           ...styled(h, styles.trayPiece()),
           h.OnClick(Message.ClickedWardrobePiece({ pieceId: piece.id })),
         ],
-        [h.img([h.Src(pieceImage(piece.id)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.trayImage())])],
+        [h.img([h.Src(cdn.piece(piece)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.trayImage())])],
       ),
     ],
   )

@@ -3,7 +3,8 @@ import { Effect, Layer, Schema } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import type { AuthHttp } from '../AuthHttp.ts'
-import { ownerImage, ShownSize } from '../wardrobe/Http.ts'
+import { ownerImage } from '../wardrobe/Http.ts'
+import { ShownSize } from '../wardrobe/Media.ts'
 import { Boards } from './Boards.ts'
 
 /** The website's board endpoints, each the matching `Boards` operation for the session's account; changes are

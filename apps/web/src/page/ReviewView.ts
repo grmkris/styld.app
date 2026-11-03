@@ -1,4 +1,4 @@
-import { cdn } from '../Cdn.ts'
+import { cdn, type PieceImagesById } from '../Cdn.ts'
 import { textLength } from '@styld/protocol'
 import { Button } from '@foldkit/ui'
 import type { Detection, TrayCapture } from '@styld/protocol'
@@ -122,7 +122,8 @@ const pendingTile = (capture: TrayCapture, locale: Locale, h: HtmlBuilder<Messag
   )
 
 /** What the page knows besides the tray: the language, and the person's time zone for the times it shows. */
-type Inputs = { readonly locale: Locale; readonly timeZone: string }
+/** The language, the time zone, and the person's pieces' pictures for a garment taken for one of them. */
+type Inputs = { readonly locale: Locale; readonly timeZone: string; readonly images: PieceImagesById }
 
 /** When a capture was added, as the time of day in the person's time zone ("14:05"). */
 const addedAt = (capture: TrayCapture, { locale, timeZone }: Inputs) =>
@@ -193,12 +194,12 @@ const sightings = (detection: Detection, locale: Locale, h: HtmlBuilder<Message>
     : h.empty
 
 /** The wardrobe's piece the garment was taken for, beside the way to keep both. */
-const alreadyHave = (detection: Detection, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const alreadyHave = (detection: Detection, images: PieceImagesById, locale: Locale, h: HtmlBuilder<Message>): Html =>
   detection.alreadyHave === undefined
     ? h.empty
     : h.div(styled(h, styles.alreadyHave()), [
         h.img([
-          h.Src(cdn.piece(detection.alreadyHave)),
+          h.Src(cdn.pieceById(images, detection.alreadyHave)),
           h.Alt(format(locale, 'capture.alreadyHaveImage', {})),
           h.Loading('lazy'),
           ...styled(h, styles.alreadyHaveImage()),
@@ -207,7 +208,7 @@ const alreadyHave = (detection: Detection, locale: Locale, h: HtmlBuilder<Messag
       ])
 
 /** The open piece: its picture, the original photo instead, what it is and its name. */
-const editor = (detection: Detection, decision: Decision, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const editor = (detection: Detection, decision: Decision, { locale, images }: Inputs, h: HtmlBuilder<Message>): Html =>
   h.section(
     [h.AriaLabel(label(decision, locale)), ...styled(h, styles.editor())],
     [
@@ -217,7 +218,7 @@ const editor = (detection: Detection, decision: Decision, locale: Locale, h: Htm
         h.Alt(label(decision, locale)),
         ...styled(h, styles.editorImage()),
       ]),
-      alreadyHave(detection, locale, h),
+      alreadyHave(detection, images, locale, h),
       detection.partial ? h.p(styled(h, styles.sightings()), [format(locale, 'capture.betterLookHint', {})]) : h.empty,
       sightings(detection, locale, h),
       detection.hasCutout
@@ -371,7 +372,7 @@ export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, 
         h.a([h.Href(addPiecesRouter({})), ...styled(h, styles.addMore())], [format(locale, 'capture.addMore', {})]),
       ]),
       ...Option.match(open, {
-        onSome: ({ detection, decision }) => [editor(detection, decision, locale, h), footer(model, locale, h, true)],
+        onSome: ({ detection, decision }) => [editor(detection, decision, inputs, h), footer(model, locale, h, true)],
         onNone: () => [
           ...header(model, locale, h),
           ...AsyncData.matchData(model.tray, {
