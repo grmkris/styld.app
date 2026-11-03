@@ -39,3 +39,20 @@ over rewriting that evidence to satisfy the style scanner. No decorative emoji w
 
 This is browser and publishing evidence for the document. It is not live-provider, authenticated Styld,
 physical-phone or acceptance evidence for any of the findings. No message was sent to Eva.
+
+## Batch 01 publication — 3 November 2026
+
+- Tracker source commit `f943415`; deployment https://4ec6b90a.styld-review-07c26b483ccc.pages.dev;
+  stable URL unchanged. Pages uploaded 23 changed/new files and reused 41 (64 static files plus headers).
+- The public document has 51 findings, 21 tickets, 35 original screenshots and 9 before/after pairs (18 new PNGs).
+  T-13 is verified; T-15 and T-05 remain in progress with explicit partial scope. Five findings are verified.
+- Public Chromium readback passed the three ticket statuses, all 18 comparison images, 320/390/1440px layout,
+  direct ticket links, search/reset and JavaScript-disabled comparison reading, with zero browser errors.
+  The public response carries the expected CSP and noindex headers.
+- The comparison policy refuses a completed ticket without screenshots, a missing image and mismatched viewport
+  widths. Original finding text and all original ticket bodies were compared against `c5d6f52` and are intact;
+  only the tracked checklists of the three active tickets were added.
+- Application release `c05071e` passed the full gate (755 unit, 29 native / 1,276 assertions), deployed to the
+  isolated preview, and passed release smoke readback (3 tests / 42 assertions). See `BATCH-01.md` for exact scope,
+  screenshots, Worker deployment ids and evidence boundaries. Physical-phone and real-provider acceptance are
+  separate. This publication adds no application changes beyond that tested release.
