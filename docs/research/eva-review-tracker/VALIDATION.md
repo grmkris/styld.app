@@ -81,7 +81,7 @@ physical-phone or acceptance evidence for any of the findings. No message was se
 - Tracker source commit: `39cb762`; stable deployment remains https://styld-review-07c26b483ccc.pages.dev.
   The camera update uploaded the changed tracker assets and reused the existing static files. The document contains
   51 findings, 21 tickets, 35 original screenshots and 19 before/after pairs.
-- T-01 and T-05 received four matching synthetic camera pairs each at 390×844 and 1440×844. F-49 is verified
+- T-01 and T-05 received four matching synthetic camera pairs in total: two per ticket, at 390×844 and 1440×844. F-49 is verified
   at the native and exact-release preview-smoke boundary; T-01/T-05 remain partial. T-21 remains not started and
   explicitly records the remaining signed-media migration plus authenticated load evidence.
 - The tracker build passed its data/IDs/evidence/image checks. `bun run format:check` and `git diff --check` passed.
