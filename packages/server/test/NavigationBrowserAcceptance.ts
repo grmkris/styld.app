@@ -52,6 +52,8 @@ export const verifyNavigationJourney = async (browser: Browser, origin: string, 
     await page.getByRole('link', { name: 'Navigation flats 20', exact: true }).click()
     await page.getByRole('button', { name: 'Edit', exact: true }).waitFor()
     await shootPiece(page, 'before', width)
+    // Rotation is part of editing the piece (T-15): Edit previews a quarter turn and Save keeps it.
+    await page.getByRole('button', { name: 'Edit', exact: true }).click()
     await page.getByRole('button', { name: 'Rotate image 90°', exact: true }).click()
     await shootPiece(page, 'after', width)
     await page.goBack({ waitUntil: 'networkidle' })

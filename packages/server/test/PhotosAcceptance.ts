@@ -152,12 +152,13 @@ const verifyOffering = async (origin: string, owner: Call) => {
   // The person cut out for collages, once: cutting again answers the same photo.
   const cutOut = await photoOf(await send(owner, `/api/photos/${photo.id}/cutout`, 'POST'))
   expect(cutOut).toMatchObject({ hasCutout: true })
-  // The page shows the cut-out at once (T-17): its signed address serves the PNG.
+  // The page shows the cut-out at once (T-17): its signed address serves it transformed to WebP, transparency kept
+  // (signed media, T-21).
   const cutoutAddress = cutOut.cutoutImages?.full ?? ''
   expect(cutoutAddress).not.toBe('')
   const cutoutPicture = await fetch(new URL(cutoutAddress, origin))
   expect(cutoutPicture.status).toBe(200)
-  expect(cutoutPicture.headers.get('content-type')).toContain('image/png')
+  expect(cutoutPicture.headers.get('content-type')).toContain('image/webp')
   expect((await photoOf(await send(owner, `/api/photos/${photo.id}/cutout`, 'POST'))).id).toBe(photo.id)
   await verifyOnBoard(origin, owner, photo.id)
 }

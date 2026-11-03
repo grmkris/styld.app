@@ -264,7 +264,8 @@ const verifyBoardPage = async (page: Page, origin: string) => {
   await page.getByText('3 pins').waitFor({ state: 'visible' })
 
   // The piece taken off goes back on from its own page.
-  await page.goto(`${origin}/wardrobe`, { waitUntil: 'networkidle' })
+  // The wardrobe opens on its groups; a type's own page lists its pieces (T-07).
+  await page.goto(`${origin}/wardrobe?group=shoes&type=trainers`, { waitUntil: 'networkidle' })
   await page.getByRole('link', { name: 'Derby shoes', exact: true }).first().click()
   await page.getByRole('button', { name: 'Add to board' }).click()
   await page.getByRole('button', { name: /^Weekend away/ }).click()
@@ -451,7 +452,8 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
     expect(await page.locator('#today-headline').textContent()).toMatch(/^[A-ZČŠŽ]{3} \d{1,2}$/)
     await shoot(page, 'desktop-home-sl')
     await page.goto(`${origin}/boards`, { waitUntil: 'networkidle' })
-    await page.getByRole('heading', { name: 'Zbirke', level: 1 }).waitFor({ state: 'visible' })
+    // Boards is the Lab's first tab, under the Lab's own title (T-08).
+    await page.getByRole('heading', { name: 'Laboratorij', level: 1 }).waitFor({ state: 'visible' })
     await page.getByRole('link', { name: /^Weekend away/ }).click()
     // Four pins: the piece taken off was saved back from its own page.
     await page.getByText('4 kartice').waitFor({ state: 'visible' })
