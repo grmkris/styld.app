@@ -175,14 +175,21 @@
       "trainers": "Trainers",
       "boots": "Boots",
       "heels": "Heels",
-      "flats": "Low shoes",
+      "flats": "Flats",
       "sandals": "Sandals",
       "bags": "Bags",
       "belts": "Belts",
       "scarves": "Scarves",
       "hats": "Hats",
       "jewellery": "Jewellery",
-      "eyewear": "Sunglasses & glasses"
+      "eyewear": "Sunglasses & glasses",
+      "loafers": "Loafers",
+      "laceUps": "Lace-ups",
+      "sportShoes": "Sports shoes",
+      "outdoorShoes": "Hiking & snow boots",
+      "gloves": "Gloves",
+      "socks": "Socks & tights",
+      "hairAccessories": "Hair accessories"
     },
     "pieceDescribed": "{kind} ({colours})",
     "typeOne": {
@@ -207,14 +214,21 @@
       "trainers": "Trainers",
       "boots": "Boots",
       "heels": "Heels",
-      "flats": "Low shoes",
+      "flats": "Flats",
       "sandals": "Sandals",
       "bags": "Bag",
       "belts": "Belt",
       "scarves": "Scarf",
       "hats": "Hat",
       "jewellery": "Jewellery",
-      "eyewear": "Glasses"
+      "eyewear": "Glasses",
+      "loafers": "Loafers",
+      "laceUps": "Lace-ups",
+      "sportShoes": "Sports shoes",
+      "outdoorShoes": "Hiking boots",
+      "gloves": "Gloves",
+      "socks": "Socks",
+      "hairAccessories": "Hair accessory"
     },
     "typeWords": {
       "tops": "top, tops, t-shirt, tee, tank, camisole",
@@ -238,14 +252,21 @@
       "trainers": "trainers, sneakers, shoes",
       "boots": "boots, shoes",
       "heels": "heels, pumps, shoes",
-      "flats": "low shoes, flats, loafers, ballet flats, brogues, oxfords, derbies, shoes",
+      "flats": "flats, ballet flats, mary janes, espadrilles, shoes",
       "sandals": "sandals, slides, shoes",
       "bags": "bag, bags, handbag, backpack, purse",
       "belts": "belt, belts",
       "scarves": "scarf, shawl",
       "hats": "hat, cap, beanie",
       "jewellery": "jewellery, jewelry, necklace, earrings, ring, bracelet, watch",
-      "eyewear": "glasses, sunglasses"
+      "eyewear": "glasses, sunglasses",
+      "loafers": "loafers, moccasins, shoes",
+      "laceUps": "lace-ups, oxfords, derbies, brogues, shoes",
+      "sportShoes": "sports shoes, running shoes, training shoes, court shoes, gym shoes",
+      "outdoorShoes": "hiking boots, walking boots, snow boots, outdoor shoes",
+      "gloves": "gloves, mittens",
+      "socks": "socks, tights",
+      "hairAccessories": "hair clip, headband, hairband, scrunchie"
     },
     "groups": {
       "clothing": "Clothing",
@@ -258,9 +279,10 @@
     "typePlaceholder": "Choose what it is",
     "seasonLabel": "When it’s worn (optional)",
     "season": {
-      "warm": "Warm weather",
-      "cold": "Cold weather",
-      "allYear": "All year"
+      "spring": "Spring",
+      "summer": "Summer",
+      "autumn": "Autumn",
+      "winter": "Winter"
     },
     "occasionsLabel": "What it’s for (optional)",
     "occasion": {
@@ -302,7 +324,8 @@
     "shopLink": "Open the shop’s page",
     "shopFact": "Shop",
     "namePlaceholder": "e.g. Zara linen blazer",
-    "backToGroup": "Back to {group}"
+    "backToGroup": "Back to {group}",
+    "rainproof": "Rainproof"
   },
   "landing": {
     "feedDescription": "Public boards from Styld and the people using it.",

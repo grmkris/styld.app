@@ -106,7 +106,7 @@ export const verifyWardrobe = async (origin: string, fixtures: string): Promise<
     type: 'knitwear',
     colours: ['navy'],
     name: 'Cable knit',
-    season: 'cold',
+    seasons: ['autumn', 'winter'],
     occasions: ['casual', 'smart'],
   }
   expect((await send(owner, '/api/pieces', 'POST', { ...add, type: 'jumper' })).status).toBe(400)
@@ -118,7 +118,7 @@ export const verifyWardrobe = async (origin: string, fixtures: string): Promise<
     status: 'processing',
     source: 'website',
     type: 'knitwear',
-    season: 'cold',
+    seasons: ['autumn', 'winter'],
     occasions: ['casual', 'smart'],
     pattern: null,
     brand: null,
@@ -158,18 +158,20 @@ export const verifyWardrobe = async (origin: string, fixtures: string): Promise<
       .status,
   ).toBe(422)
 
-  // A change names only what it changes; null clears an attribute.
+  // A change names only what it changes; null clears an attribute, and no season is all year.
   const edited = await send(owner, `/api/pieces/${piece.id}`, 'PATCH', {
     name: 'Navy jumper',
     type: 'jackets',
-    season: null,
+    seasons: [],
+    rainproof: true,
     brand: 'COS',
     shopUrl: 'https://shop.example/knit',
   })
   expect(await edited.json()).toMatchObject({
     name: 'Navy jumper',
     type: 'jackets',
-    season: null,
+    seasons: [],
+    rainproof: true,
     occasions: ['casual', 'smart'],
     brand: 'COS',
     shopUrl: 'https://shop.example/knit',

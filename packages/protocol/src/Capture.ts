@@ -1,7 +1,7 @@
 import { Name } from './Text.ts'
 import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
-import { Occasions, Pattern, PieceType, Season } from './Garment.ts'
+import { Occasions, Pattern, PieceType, Seasons } from './Garment.ts'
 import { Colours, PieceId, UploadId } from './Wardrobe.ts'
 
 export const CaptureId = entityId('cp').pipe(Schema.brand('CaptureId'))
@@ -70,7 +70,8 @@ export const CaptureCreated = Schema.Struct({ captureId: CaptureId })
 export const Suggestion = Schema.Struct({
   type: Schema.NullOr(PieceType),
   colours: Colours,
-  season: Schema.NullOr(Season),
+  seasons: Seasons,
+  rainproof: Schema.Boolean,
   occasions: Occasions,
   pattern: Schema.NullOr(Pattern),
 })
@@ -123,7 +124,8 @@ export const Keep = Schema.Struct({
   detectionId: DetectionId,
   type: PieceType,
   colours: Schema.optionalKey(Colours),
-  season: Schema.optionalKey(Season),
+  seasons: Schema.optionalKey(Seasons),
+  rainproof: Schema.optionalKey(Schema.Boolean),
   occasions: Schema.optionalKey(Occasions),
   pattern: Schema.optionalKey(Pattern),
   name: Schema.optionalKey(Name),

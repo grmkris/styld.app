@@ -22,15 +22,17 @@ describe('the migrated schema', () => {
     const piece = (id: string, type: string, colours: string, uploadId: string | null) =>
       db
         .prepare(
-          `INSERT INTO pieces (id, account_id, type, colours, occasions, status, source, upload_id, original_key,
+          `INSERT INTO pieces (id, account_id, type, colours, seasons, occasions, status, source, upload_id, original_key,
              content_type, created_at, updated_at)
-           VALUES (?, 'ac_1', ?, ?, '[]', 'ready', 'website', ?, 'k', 'image/png', 0, 0)`,
+           VALUES (?, 'ac_1', ?, ?, '[]', '[]', 'ready', 'website', ?, 'k', 'image/png', 0, 0)`,
         )
         .run(id, type, colours, uploadId)
     expect(() => piece('pc_1', 'cardigans', '[]', null)).toThrow(/CHECK constraint failed: pieces_type/)
     expect(() => piece('pc_2', 'tops', '"black"', null)).toThrow(/CHECK constraint failed: pieces_colours/)
     expect(() => piece('pc_3', 'tops', '[]', 'up_missing')).toThrow(/FOREIGN KEY constraint failed/)
+    // A type added since the baseline (T-12) is accepted.
+    piece('pc_5', 'sportShoes', '[]', null)
     piece('pc_4', 'knitwear', '["black"]', null)
-    expect(db.prepare('SELECT count(*) AS pieces FROM pieces').get()).toEqual({ pieces: 1 })
+    expect(db.prepare('SELECT count(*) AS pieces FROM pieces').get()).toEqual({ pieces: 2 })
   })
 })

@@ -12,7 +12,8 @@ const piece = (type: PieceType, details: Partial<Omit<Wearable, 'id' | 'type'>> 
     id: PieceId.make(`pc_${String(pieces).padStart(22, '0')}`),
     type,
     colours: ['navy'],
-    season: null,
+    seasons: [],
+    rainproof: false,
     occasions: [],
     pattern: 'plain',
     name: null,
@@ -33,14 +34,14 @@ const loud = (colour: Colour) => ({ colours: [colour] as const })
 
 const tee = piece('tops')
 const shirt = piece('shirts', loud('red'))
-const knit = piece('knitwear', { season: 'cold' })
+const knit = piece('knitwear', { seasons: ['autumn', 'winter'] })
 const jeans = piece('jeans')
 const skirt = piece('skirts', loud('yellow'))
-const shorts = piece('shorts', { season: 'warm' })
+const shorts = piece('shorts', { seasons: ['summer'] })
 const dress = piece('dresses', { pattern: 'printed' })
 const trainers = piece('trainers')
-const sandals = piece('sandals', { season: 'warm' })
-const coat = piece('coats', { season: 'cold' })
+const sandals = piece('sandals', { seasons: ['spring', 'summer'] })
+const coat = piece('coats', { seasons: ['autumn', 'winter'] })
 const bag = piece('bags')
 const leggings = piece('sportswear', { occasions: ['sport'] })
 const wardrobe = [tee, shirt, knit, jeans, skirt, shorts, dress, trainers, sandals, coat, bag, leggings]
@@ -95,12 +96,38 @@ describe('the outfit rules', () => {
     }
   })
 
+  test('a piece with no season is worn in any; one in some is worn only in those (T-12)', () => {
+    const allYear = piece('tops', { name: 'Grey tee' })
+    const springTop = piece('tops', { seasons: ['spring'] })
+    const tops = [allYear, springTop, jeans, trainers]
+    for (const outfit of drawnOver(brief(tops, { brief: { season: 'winter' } })))
+      expect(outfit).not.toContain(springTop)
+    expect(drawnOver(brief(tops, { brief: { season: 'winter' } })).some((outfit) => outfit.includes(allYear))).toBe(
+      true,
+    )
+    expect(drawnOver(brief(tops, { brief: { season: 'spring' } })).some((outfit) => outfit.includes(springTop))).toBe(
+      true,
+    )
+  })
+
+  test('sport shoes go with sport only, everyday trainers with anything (T-12)', () => {
+    const runners = piece('sportShoes')
+    const hikers = piece('outdoorShoes')
+    const shod = [...wardrobe, runners, hikers]
+    for (const outfit of drawnOver(brief(shod, { brief: { occasion: 'casual' } }))) {
+      expect(outfit).not.toContain(runners)
+      expect(outfit).not.toContain(hikers)
+    }
+    const sporty = drawnOver(brief(shod, { brief: { occasion: 'sport' } }))
+    expect(sporty.some((outfit) => outfit.includes(runners) || outfit.includes(hikers))).toBe(true)
+  })
+
   test('nothing for the other season while something suits, and a set only for sport', () => {
-    for (const outfit of drawnOver(brief(wardrobe, { brief: { season: 'warm' } }))) {
+    for (const outfit of drawnOver(brief(wardrobe, { brief: { season: 'summer' } }))) {
       expect(outfit).not.toContain(knit)
       expect(outfit).not.toContain(coat)
     }
-    for (const outfit of drawnOver(brief(wardrobe, { brief: { season: 'cold' } }))) {
+    for (const outfit of drawnOver(brief(wardrobe, { brief: { season: 'winter' } }))) {
       expect(outfit).not.toContain(shorts)
       expect(outfit).not.toContain(sandals)
     }
@@ -133,7 +160,7 @@ describe('the outfit rules', () => {
     expect(validated(request, [tee.id, shirt.id, jeans.id, trainers.id])).toEqual(Option.none())
     const hoodie = piece('hoodies')
     expect(validated(brief([...wardrobe, hoodie]), [knit.id, hoodie.id, jeans.id, trainers.id])).toEqual(Option.none())
-    const cold = drawnOver(brief(wardrobe, { brief: { season: 'cold' } }))
+    const cold = drawnOver(brief(wardrobe, { brief: { season: 'winter' } }))
     expect(cold.some((outfit) => outfit.includes(knit) && outfit.includes(tee))).toBe(true)
   })
 
@@ -141,7 +168,7 @@ describe('the outfit rules', () => {
     const hoodie = piece('hoodies')
     const blazer = piece('blazers')
     const layered = [...wardrobe, hoodie, blazer]
-    for (const season of ['cold', 'allYear'] as const) {
+    for (const season of ['winter', 'autumn'] as const) {
       const outfits = drawnOver(brief(layered, { fixed: [dress], brief: { season } }))
       expect(outfits.length).toBeGreaterThan(0)
       for (const outfit of outfits) {
@@ -152,7 +179,9 @@ describe('the outfit rules', () => {
       expect(outfits.some((outfit) => outfit.includes(coat) || outfit.includes(blazer))).toBe(true)
     }
     // Free of a fixed piece, an outfit on a dress keeps the same rule.
-    for (const outfit of drawnOver(brief(layered, { brief: { season: 'cold' } })).filter((one) => one.includes(dress)))
+    for (const outfit of drawnOver(brief(layered, { brief: { season: 'winter' } })).filter((one) =>
+      one.includes(dress),
+    ))
       expect(slotsOf(outfit)).not.toContain('top')
     expect(validated(brief(layered), [dress.id, knit.id, trainers.id])).toEqual(Option.none())
     expect(validated(brief(layered), [dress.id, hoodie.id, trainers.id])).toEqual(Option.none())

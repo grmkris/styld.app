@@ -50,7 +50,7 @@ const matches = (piece: Piece, input: typeof SearchFilter.Type) => {
     (input.type === undefined || piece.type === input.type) &&
     (input.group === undefined || groupOf(piece.type) === input.group) &&
     (input.colour === undefined || piece.colours.includes(input.colour)) &&
-    (input.season === undefined || piece.season === input.season || piece.season === 'allYear') &&
+    (input.season === undefined || piece.seasons.length === 0 || piece.seasons.includes(input.season)) &&
     (input.occasion === undefined || piece.occasions.includes(input.occasion)) &&
     (input.pattern === undefined || piece.pattern === input.pattern) &&
     (input.brand === undefined || normalise(piece.brand ?? '') === normalise(input.brand)) &&

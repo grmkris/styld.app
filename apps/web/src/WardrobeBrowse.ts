@@ -6,6 +6,7 @@ export const BrowseQuery = Schema.Struct({
   type: Schema.optionalKey(PieceType),
   colours: Schema.optionalKey(Schema.String),
   season: Schema.optionalKey(Season),
+  rainproof: Schema.optionalKey(Schema.Literal('yes')),
   occasion: Schema.optionalKey(Occasion),
   brand: Schema.optionalKey(Brand),
 })

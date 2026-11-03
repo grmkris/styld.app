@@ -61,5 +61,63 @@ sources:
     sl: e6fc8ec64fb21
   wardrobe.namePlaceholder:
     sl: 18fa4932302e5d
+  wardrobe.rainproof:
+    sl: 125cd4f3eba9f1
+  wardrobe.season.autumn:
+    sl: 1b0c1be399721d
+  wardrobe.season.spring:
+    sl: 1e33200575d23f
+  wardrobe.season.summer:
+    sl: 266ac87f4cab7
+  wardrobe.season.winter:
+    sl: 12916aaa31415e
   wardrobe.typeLabel:
     sl: 1cd3f1615a304b
+  wardrobe.typeOne.flats:
+    sl: 1f3c5da40259c
+  wardrobe.typeOne.gloves:
+    sl: 1e5a9451d58830
+  wardrobe.typeOne.hairAccessories:
+    sl: 1cd83cd82655b9
+  wardrobe.typeOne.laceUps:
+    sl: 196a42c6282b65
+  wardrobe.typeOne.loafers:
+    sl: cc6683b94f2c6
+  wardrobe.typeOne.outdoorShoes:
+    sl: 6d25e5c6cc790
+  wardrobe.typeOne.socks:
+    sl: 8c2de2c65b8bf
+  wardrobe.typeOne.sportShoes:
+    sl: 9b0e7196078be
+  wardrobe.typeWords.flats:
+    sl: 28018356a577c
+  wardrobe.typeWords.gloves:
+    sl: 117787778d9266
+  wardrobe.typeWords.hairAccessories:
+    sl: 107db57e573dc6
+  wardrobe.typeWords.laceUps:
+    sl: 1e65acbda6863e
+  wardrobe.typeWords.loafers:
+    sl: 1e3f4df1b1d8e2
+  wardrobe.typeWords.outdoorShoes:
+    sl: 1666f5c1ed70ea
+  wardrobe.typeWords.socks:
+    sl: 16d65f2b025dba
+  wardrobe.typeWords.sportShoes:
+    sl: 9bdbe938bc902
+  wardrobe.types.flats:
+    sl: 1f3c5da40259c
+  wardrobe.types.gloves:
+    sl: 1e5a9451d58830
+  wardrobe.types.hairAccessories:
+    sl: 1f5faa23cdbe8a
+  wardrobe.types.laceUps:
+    sl: 196a42c6282b65
+  wardrobe.types.loafers:
+    sl: cc6683b94f2c6
+  wardrobe.types.outdoorShoes:
+    sl: 13529a70867678
+  wardrobe.types.socks:
+    sl: 142d57c47d7221
+  wardrobe.types.sportShoes:
+    sl: 9b0e7196078be

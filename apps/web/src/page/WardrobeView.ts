@@ -1,6 +1,6 @@
 import { cdn } from '../Cdn.ts'
 import { Button } from '@foldkit/ui'
-import { GarmentGroup, groupOf, Occasion, type Piece, type PieceType, Season, typesIn } from '@styld/protocol'
+import { GarmentGroup, groupOf, Occasion, type Piece, type PieceType, typesIn } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import { Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
@@ -17,7 +17,7 @@ import type { PiecesData } from '../ServerData.ts'
 import { brandsOf, filterCount, Message, type Model, newestOf, queryOf, shownPieces } from './Wardrobe.ts'
 import { groupName, occasionName, pieceLabel, seasonName, typeName } from './WardrobeWords.ts'
 import { backTo, backToWardrobe } from './PageBar.ts'
-import { chipPicker, colourPicker } from './PieceFields.ts'
+import { chipPicker, colourPicker, WornWhen } from './PieceFields.ts'
 import { bottomSheet, sheetShown } from './Sheet.ts'
 import * as styles from './WardrobeView.styles.ts'
 import { wardrobeMain } from './SectionMain.ts'
@@ -153,10 +153,12 @@ const filterPickers = (
         id: 'filter-season',
         legend: 'wardrobe.filterSeason',
         problem: Option.none(),
-        values: Season.literals,
-        label: (season) => format(locale, seasonName(season), {}),
-        isChosen: (season) => Option.contains(model.filters.season, season),
-        onChoose: (season) => Message.ChoseFilterSeason({ season }),
+        values: WornWhen.literals,
+        label: (when) => format(locale, when === 'rainproof' ? 'wardrobe.rainproof' : seasonName(when), {}),
+        isChosen: (when) =>
+          when === 'rainproof' ? model.filters.rainproof : Option.contains(model.filters.season, when),
+        onChoose: (when) =>
+          when === 'rainproof' ? Message.ToggledFilterRainproof() : Message.ChoseFilterSeason({ season: when }),
       },
       locale,
       h,

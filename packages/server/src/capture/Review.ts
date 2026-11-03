@@ -36,7 +36,8 @@ const pieceOf = (
     colours: keep.colours ?? [],
     // The person confirmed what the decision model suggested, or changed it; an attribute they left out stays as
     // suggested.
-    season: keep.season ?? detection.suggestedSeason,
+    seasons: keep.seasons ?? detection.suggestedSeasons,
+    rainproof: keep.rainproof ?? detection.suggestedRainproof,
     occasions: keep.occasions ?? detection.suggestedOccasions,
     pattern: keep.pattern ?? detection.suggestedPattern,
     brand: null,

@@ -8,6 +8,7 @@ import {
   outfitKeyOf,
   type Season,
   type Slot,
+  groupOf,
   slotOf,
 } from '@styld/protocol'
 import { Array, Option, Order } from 'effect'
@@ -15,14 +16,16 @@ import { Array, Option, Order } from 'effect'
 // The outfit rules (owner, 2026-10-31): the one validator of every proposal, whichever way made it, and Fast's
 // generator. One piece in each place (a knit or a hoodie may go over a shirt or a tee), a whole outfit when the wardrobe has one (a top and a bottom, a one-piece, or
 // for sport and lounging a set), shoes when there are any, every fixed piece kept, at most one statement piece
-// besides them, and nothing for the other season or another occasion while something suitable is there. Pure.
+// besides them, and nothing for another season or occasion while something suitable is there. Pure.
 
 /** One of the person's ready pieces, as the rules read it. */
 export interface Wearable {
   readonly id: PieceId
   readonly type: PieceType
   readonly colours: ReadonlyArray<Colour>
-  readonly season: Season | null
+  /** The seasons it is worn in, none for all year; made for rain (T-12). */
+  readonly seasons: ReadonlyArray<Season>
+  readonly rainproof: boolean
   readonly occasions: ReadonlyArray<Occasion>
   readonly pattern: Pattern | null
   readonly name: string | null
@@ -90,15 +93,17 @@ const inWearingOrder = (pieces: ReadonlyArray<Wearable>): ReadonlyArray<Wearable
 
 const isActivity = (brief: OutfitBrief) => brief.occasion === 'sport' || brief.occasion === 'lounge'
 
-const opposite: Readonly<Record<Season, Season | null>> = { warm: 'cold', cold: 'warm', allYear: null }
+/** Shoes made for sport (running shoes, hiking and snow boots): an outfit wears them only for sport (T-12). */
+const isSportShoe = (piece: Wearable) => groupOf(piece.type) === 'sport' && slotOf(piece.type) === 'shoes'
 
-/** Whether a piece suits the brief: not made for the other season, and worn for its occasion when it says. */
+/** Whether a piece suits the brief: worn in the season asked for, worn for its occasion when it says, and sport shoes
+ * only for sport. */
 const suits = (piece: Wearable, brief: OutfitBrief) => {
-  const against = brief.season === undefined ? null : opposite[brief.season]
-  const seasonFits = against === null || piece.season !== against
+  // A piece with no season is worn all year (T-12).
+  const seasonFits = brief.season === undefined || piece.seasons.length === 0 || piece.seasons.includes(brief.season)
   const occasionFits =
     brief.occasion === undefined || piece.occasions.length === 0 || piece.occasions.includes(brief.occasion)
-  return seasonFits && occasionFits
+  return seasonFits && occasionFits && (!isSportShoe(piece) || brief.occasion === 'sport')
 }
 
 /** Places an outfit can do without: they are left empty rather than filled with something unsuitable. */
@@ -208,11 +213,11 @@ const ordered = (pieces: ReadonlyArray<Wearable>, seed: string, drawingsFirst: b
   return drawingsFirst && drawings.length >= 2 ? [...drawings, ...order.filter(({ drawn }) => !drawn)] : order
 }
 
-/** How often an optional place is worn, out of 6, by the weather asked for. */
-const layerChance: Readonly<Record<Season | 'any', number>> = { cold: 6, allYear: 2, any: 2, warm: 1 }
+/** How often an optional place is worn, out of 6, by the season asked for. */
+const layerChance: Readonly<Record<Season | 'any', number>> = { winter: 6, autumn: 4, spring: 2, any: 2, summer: 1 }
 
-/** How often a knit or a hoodie goes over a lighter top, out of 6, by the weather asked for. */
-const overChance: Readonly<Record<Season | 'any', number>> = { cold: 3, allYear: 1, any: 1, warm: 0 }
+/** How often a knit or a hoodie goes over a lighter top, out of 6, by the season asked for. */
+const overChance: Readonly<Record<Season | 'any', number>> = { winter: 3, autumn: 2, spring: 1, any: 1, summer: 0 }
 
 /** One draw: a shape, then a piece for each place it needs, the fixed pieces where they sit, and the optional places
  * by chance; clean drawings first when asked. */

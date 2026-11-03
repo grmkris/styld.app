@@ -272,7 +272,8 @@ describe('Clef-flash', () => {
           type: { choice: 'jeans', probabilities: { jeans: 0.5, trousers: 0.3, trainers: 0.1, none: 0.1 } },
           colour: chose('navy', 0.6),
           secondColour: chose('white', 0.4),
-          season: chose('allYear', 0.7),
+          season: chose('cold', 0.7),
+          rain: chose('rain', 0.8),
           occasion: { choice: 'casual', probabilities: { casual: 0.55, smart: 0.36, formal: 0.05, sport: 0.04 } },
           pattern: chose('plain', 0.9),
           whole: chose('part', 0.7),
@@ -284,7 +285,9 @@ describe('Clef-flash', () => {
         type: 'jeans',
         confidence: 0.8,
         colours: ['navy', 'white'],
-        season: 'allYear',
+        // Cold weather is autumn and winter (T-12); made for rain.
+        seasons: ['autumn', 'winter'],
+        rainproof: true,
         occasions: ['casual', 'smart'],
         pattern: 'plain',
         // `chose` gives only the chosen answer a probability, so "whole" has none.

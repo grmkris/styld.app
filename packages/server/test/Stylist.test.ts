@@ -212,7 +212,7 @@ describe('what Styld is told', () => {
     expect(prompt).toContain("Never choose the person's gender")
     expect(prompt).toContain('Speak of yourself in the present too (predlagam, svetujem)')
     expect(prompt).toContain('a cable knit is a pulover s kitami, never s kablom')
-    expect(prompt).toContain('balerinke only when it is a ballet flat')
+    expect(prompt).toContain('The type flats is balerinke (ballet flats and Mary Janes)')
     expect(systemPrompt({ language: 'en', today: '2026-07-01', outline: outlineOf(pieces) })).not.toContain(' ti,')
     expect(prompt).not.toMatch(/pc_/)
     expect(systemPrompt({ language: 'en', today: '2026-07-01', outline: outlineOf([]) })).toContain(

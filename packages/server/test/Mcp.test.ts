@@ -36,9 +36,10 @@ import { unlimited } from './fakes/Pacing.ts'
 const accounts = {
   readAccount: () => Effect.succeed({ accountId: 'acc_1', displayName: 'Ana Novak', email: 'ana@example.com' }),
 }
-/** A piece no one has described yet: no season, occasions, pattern, brand, shop link or back. */
+/** A piece no one has described yet: no seasons (all year), not rainproof, no occasions, pattern, brand, shop link or back. */
 const undescribed = {
-  season: null,
+  seasons: [],
+  rainproof: false,
   occasions: [],
   pattern: null,
   brand: null,

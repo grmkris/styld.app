@@ -19,7 +19,8 @@ export type PieceChanges = Partial<
     | 'notes'
     | 'type'
     | 'colours'
-    | 'season'
+    | 'seasons'
+    | 'rainproof'
     | 'occasions'
     | 'pattern'
     | 'brand'
@@ -322,7 +323,7 @@ export const makeStore = (db: Database['Service']) => ({
   finishProcessing: (
     pieceId: string,
     changes: Pick<PieceRow, 'status' | 'imageKey' | 'updatedAt'> &
-      Partial<Pick<PieceRow, 'type' | 'colours' | 'season' | 'occasions' | 'pattern'>>,
+      Partial<Pick<PieceRow, 'type' | 'colours' | 'seasons' | 'rainproof' | 'occasions' | 'pattern'>>,
   ) =>
     query(() =>
       db

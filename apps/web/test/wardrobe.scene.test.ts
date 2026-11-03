@@ -75,8 +75,13 @@ describe('the wardrobe page', () => {
   })
 
   test('Filters opens a sheet of colours, seasons, occasions and the brands written down, and says what is left', () => {
-    const coat = pieceFixture('coat', { name: 'Camel coat', type: 'coats', season: 'cold', brand: 'COS' })
-    const mac = pieceFixture('mac', { name: 'Light mac', type: 'coats', season: 'warm' })
+    const coat = pieceFixture('coat', {
+      name: 'Camel coat',
+      type: 'coats',
+      seasons: ['autumn', 'winter'],
+      brand: 'COS',
+    })
+    const mac = pieceFixture('mac', { name: 'Light mac', type: 'coats', seasons: ['spring'] })
     scene(
       { update, view },
       given(loadedAt('/wardrobe?group=clothing&type=coats', coat, mac, tee)),
@@ -87,7 +92,7 @@ describe('the wardrobe page', () => {
       Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
       ...sceneSheetOpened,
       expect(role('heading', { name: 'Filter your wardrobe' })).toExist(),
-      click(role('button', { name: 'Cold weather' })),
+      click(role('button', { name: 'Winter' })),
       Command.resolve(ReplaceInternal, Message.CompletedNavigateInternal()),
       expect(role('button', { name: 'Show 1 piece' })).toExist(),
       expect(role('button', { name: 'COS' })).toExist(),

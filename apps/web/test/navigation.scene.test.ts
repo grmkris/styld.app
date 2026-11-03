@@ -13,17 +13,17 @@ const flats = pieceFixture('flats', {
   type: 'flats',
   colours: ['blue'],
   brand: 'COS',
-  season: 'cold',
+  seasons: ['autumn', 'winter'],
   occasions: ['smart'],
 })
 const dress = pieceFixture('dress', { name: 'Red dress', type: 'dresses', colours: ['red'] })
 
 test('a reloaded wardrobe restores every filter and the piece link carries the same return context', () => {
-  const path = '/wardrobe?group=shoes&type=flats&colours=blue&season=cold&occasion=smart&brand=COS'
+  const path = '/wardrobe?group=shoes&type=flats&colours=blue&season=winter&occasion=smart&brand=COS'
   scene(
     { update, view },
     given(withPieces(at(path, { signedIn: true }), [flats, dress])),
-    expect(role('heading', { name: 'Low shoes' })).toExist(),
+    expect(role('heading', { name: 'Flats' })).toExist(),
     expect(role('link', { name: 'Back to Shoes' })).toHaveAttr('href', '/wardrobe?group=shoes'),
     expect(role('button', { name: 'Filters 4' })).toExist(),
     expect(role('link', { name: 'Red dress' })).not.toExist(),
@@ -37,13 +37,13 @@ test('a reloaded wardrobe restores every filter and the piece link carries the s
 test('choosing a filter replaces the current address rather than adding a Back step', () => {
   scene(
     { update, view },
-    given(withPieces(at('/wardrobe?group=shoes&type=flats&season=cold', { signedIn: true }), [flats, dress])),
+    given(withPieces(at('/wardrobe?group=shoes&type=flats&season=winter', { signedIn: true }), [flats, dress])),
     click(role('button', { name: 'Filters 1' })),
     Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
     Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
     ...sceneSheetOpened,
     click(role('button', { name: 'Smart' })),
-    Command.expectExact(ReplaceInternal({ href: '/wardrobe?group=shoes&type=flats&season=cold&occasion=smart' })),
+    Command.expectExact(ReplaceInternal({ href: '/wardrobe?group=shoes&type=flats&season=winter&occasion=smart' })),
     Command.resolve(ReplaceInternal, Message.CompletedNavigateInternal()),
     expect(role('link', { name: 'Blue flats' })).toExist(),
   )

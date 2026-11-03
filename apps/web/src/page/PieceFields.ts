@@ -28,7 +28,9 @@ const colours: ReadonlyArray<Colour> = ColourSchema.literals
 export const Details = Schema.Struct({
   type: Schema.Option(PieceType),
   colours: Schema.Array(ColourSchema),
-  season: Schema.Option(Season),
+  /** The seasons it is worn in, none for all year, and whether it is made for rain (T-12). */
+  seasons: Schema.Array(Season),
+  rainproof: Schema.Boolean,
   occasions: Schema.Array(Occasion),
   pattern: Schema.Option(Pattern),
 })
@@ -38,13 +40,15 @@ export type Details = typeof Details.Type
 export const detailsOf = (piece: {
   readonly type: PieceType | null
   readonly colours: ReadonlyArray<Colour>
-  readonly season: Season | null
+  readonly seasons: ReadonlyArray<Season>
+  readonly rainproof: boolean
   readonly occasions: ReadonlyArray<Occasion>
   readonly pattern: Pattern | null
 }): Details => ({
   type: Option.fromNullishOr(piece.type),
   colours: piece.colours,
-  season: Option.fromNullishOr(piece.season),
+  seasons: piece.seasons,
+  rainproof: piece.rainproof,
   occasions: piece.occasions,
   pattern: Option.fromNullishOr(piece.pattern),
 })
@@ -70,7 +74,11 @@ export const changeDetails = {
     ...details,
     colours: toggled(colour, maximumColours)(details.colours),
   }),
-  season: (season: Season) => (details: Details) => ({ ...details, season: chosenAgain(season, details.season) }),
+  /** A season chosen or unchosen, or Rainproof (T-12). */
+  worn: (when: WornWhen) => (details: Details) =>
+    when === 'rainproof'
+      ? { ...details, rainproof: !details.rainproof }
+      : { ...details, seasons: toggled(when, Season.literals.length)(details.seasons) },
   occasion: (occasion: Occasion) => (details: Details) => ({
     ...details,
     occasions: toggled(occasion, Occasion.literals.length)(details.occasions),
@@ -81,7 +89,8 @@ export const changeDetails = {
 /** The details as the API takes them: a type, and attributes only where there are any. */
 export const detailsPayload = (details: Details) => ({
   ...(details.colours.length === 0 ? {} : { colours: details.colours }),
-  ...Option.match(details.season, { onNone: () => ({}), onSome: (season) => ({ season }) }),
+  ...(details.seasons.length === 0 ? {} : { seasons: details.seasons }),
+  ...(details.rainproof ? { rainproof: true } : {}),
   ...(details.occasions.length === 0 ? {} : { occasions: details.occasions }),
   ...Option.match(details.pattern, { onNone: () => ({}), onSome: (pattern) => ({ pattern }) }),
 })
@@ -223,11 +232,15 @@ export const colourList = <Message>(chosen: ReadonlyArray<Colour>, locale: Local
     ),
   )
 
+/** When a piece is worn, as the forms and the filter offer it: the four seasons, then Rainproof. */
+export const WornWhen = Schema.Literals([...Season.literals, 'rainproof'])
+export type WornWhen = typeof WornWhen.Type
+
 /** The Messages a piece form sends from its pickers; a page passes its own Message union. */
 type PickerMessages<Message> = Readonly<{
   ChoseType: (fields: { readonly type: PieceType }) => Message
   ToggledColour: (fields: { readonly colour: Colour }) => Message
-  ChoseSeason: (fields: { readonly season: Season }) => Message
+  ToggledWorn: (fields: { readonly when: WornWhen }) => Message
   ToggledOccasion: (fields: { readonly occasion: Occasion }) => Message
   ChosePattern: (fields: { readonly pattern: Pattern }) => Message
 }>
@@ -266,15 +279,16 @@ export const piecePickers = <Message>(
     locale,
     h,
   ),
+  // Any of the four seasons, none for all year, and Rainproof beside them (Eva's review, F-45).
   chipPicker(
     {
       id: 'piece-season',
       legend: 'wardrobe.seasonLabel',
       problem: Option.none(),
-      values: Season.literals,
-      label: (season) => format(locale, seasonName(season), {}),
-      isChosen: (season) => Option.contains(config.details.season, season),
-      onChoose: (season) => config.messages.ChoseSeason({ season }),
+      values: WornWhen.literals,
+      label: (when) => format(locale, when === 'rainproof' ? 'wardrobe.rainproof' : seasonName(when), {}),
+      isChosen: (when) => (when === 'rainproof' ? config.details.rainproof : config.details.seasons.includes(when)),
+      onChoose: (when) => config.messages.ToggledWorn({ when }),
     },
     locale,
     h,

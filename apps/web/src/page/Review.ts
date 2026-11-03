@@ -8,7 +8,6 @@ import {
   OperationId,
   Pattern,
   PieceType,
-  Season,
   Tray as TrayContract,
 } from '@styld/protocol'
 import { Effect, Number, Option, Record, Result, Schema } from 'effect'
@@ -19,7 +18,7 @@ import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { Misses, pollWhilePending } from '../Polling.ts'
 import { StyldClient } from '../StyldClient.ts'
-import { changeDetails, Details, detailsOf, detailsPayload } from './PieceFields.ts'
+import { changeDetails, Details, detailsOf, detailsPayload, WornWhen } from './PieceFields.ts'
 
 // MODEL
 
@@ -79,7 +78,7 @@ export const Message = defineMessageUnion({
   ClickedDoneEditing: {},
   ChoseType: { type: PieceType },
   ToggledColour: { colour: Colour },
-  ChoseSeason: { season: Season },
+  ToggledWorn: { when: WornWhen },
   ToggledOccasion: { occasion: Occasion },
   ChosePattern: { pattern: Pattern },
   UpdatedName: { value: Schema.String },
@@ -347,7 +346,7 @@ const editHandlers = (model: Model) => ({
   ChoseType: ({ type }: { readonly type: PieceType }) =>
     decide(model, (decision) => ({ ...decision, details: changeDetails.type(type)(decision.details), keep: true })),
   ToggledColour: ({ colour }: { readonly colour: Colour }) => changed(model, changeDetails.colour(colour)),
-  ChoseSeason: ({ season }: { readonly season: Season }) => changed(model, changeDetails.season(season)),
+  ToggledWorn: ({ when }: { readonly when: WornWhen }) => changed(model, changeDetails.worn(when)),
   ToggledOccasion: ({ occasion }: { readonly occasion: Occasion }) => changed(model, changeDetails.occasion(occasion)),
   ChosePattern: ({ pattern }: { readonly pattern: Pattern }) => changed(model, changeDetails.pattern(pattern)),
   UpdatedName: ({ value }: { readonly value: string }) => decide(model, (decision) => ({ ...decision, name: value })),

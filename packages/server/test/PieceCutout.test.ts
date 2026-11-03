@@ -67,7 +67,8 @@ const over = (found: Option.Option<Uint8Array> = Option.some(cut), allowed = 10)
             type: 'knitwear',
             confidence: 0.9,
             colours: ['beige'],
-            season: 'cold',
+            seasons: ['autumn', 'winter'],
+            rainproof: false,
             occasions: ['casual'],
             pattern: 'plain',
             whole: 0.9,
@@ -148,7 +149,8 @@ describe("a piece's cut-out", () => {
           type: 'knitwear',
           confidence: 0.9,
           colours: ['beige'],
-          season: 'cold',
+          seasons: ['autumn', 'winter'],
+          rainproof: false,
           occasions: ['casual'],
           pattern: 'plain',
           whole: 0.9,
@@ -164,20 +166,23 @@ describe("an imported piece's details", () => {
     type: 'jeans' as const,
     confidence: 0.5,
     colours: ['blue' as const],
-    season: 'allYear' as const,
+    seasons: [],
+    rainproof: true,
     occasions: ['casual' as const],
     pattern: undefined,
   }
   it("take the model's type within the mapped group, or when it is sure; v1's colours stay unless there were none", () => {
     expect(importedDetails({ type: 'trousers', colours: ['black'] }, described)).toEqual({
       type: 'jeans',
-      season: 'allYear',
+      seasons: [],
+      rainproof: true,
       occasions: ['casual'],
       pattern: null,
     })
     expect(importedDetails({ type: 'trainers', colours: [] }, described)).toEqual({
       colours: ['blue'],
-      season: 'allYear',
+      seasons: [],
+      rainproof: true,
       occasions: ['casual'],
       pattern: null,
     })

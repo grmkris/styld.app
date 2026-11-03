@@ -251,7 +251,8 @@ const detectionView = Effect.fnUntraced(function* (row: DetectionRow, sightings:
     suggestion: {
       type: row.suggestedType,
       colours: row.suggestedColours,
-      season: row.suggestedSeason,
+      seasons: row.suggestedSeasons,
+      rainproof: row.suggestedRainproof,
       occasions: row.suggestedOccasions,
       pattern: row.suggestedPattern,
     },

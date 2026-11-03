@@ -307,13 +307,13 @@ export const enter = (model: Model): Update.Return<Model, Message, StyldClient> 
     }),
   ])
 
-/** The weather a day's outfit is for, by its month where Styld's people live: cold from November to March, warm from
- * June to August, and either in between.
- */
+/** The season a day's outfit is for, by its month where Styld's people live (the northern hemisphere): winter from
+ * December to February, spring to May, summer to August, autumn to November (T-12). */
 export const briefFor = (day: Day): OutfitBrief => {
   const month = Number(day.slice(5, 7))
-  if (month >= 11 || month <= 3) return { season: 'cold' }
-  return month >= 6 && month <= 8 ? { season: 'warm' } : {}
+  if (month === 12 || month <= 2) return { season: 'winter' }
+  if (month <= 5) return { season: 'spring' }
+  return month <= 8 ? { season: 'summer' } : { season: 'autumn' }
 }
 
 /** The proposal on the table, when the run has one. */

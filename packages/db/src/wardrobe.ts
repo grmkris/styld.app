@@ -1,13 +1,4 @@
-import {
-  ImageType,
-  Pattern,
-  PieceRotation,
-  PieceSource,
-  PieceStatus,
-  PieceType,
-  Season,
-  VideoType,
-} from '@styld/protocol'
+import { ImageType, Pattern, PieceRotation, PieceSource, PieceStatus, PieceType, VideoType } from '@styld/protocol'
 import { sql } from 'drizzle-orm'
 import { type AnySQLiteColumn, check, index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import { jsonArray, oneOf } from './checks.ts'
@@ -57,7 +48,12 @@ export const pieces = sqliteTable(
     type: text('type', { enum: PieceType.literals }).notNull(),
     /** Distinct colours, at most six; matching reads them with `instr`. */
     colours: text('colours', { mode: 'json' }).notNull().$type<ReadonlyArray<string>>(),
-    season: text('season', { enum: Season.literals }),
+    /** The seasons it is worn in, none for all year (T-12). */
+    seasons: text('seasons', { mode: 'json' })
+      .notNull()
+      .default(sql`'[]'`)
+      .$type<ReadonlyArray<string>>(),
+    rainproof: integer('rainproof', { mode: 'boolean' }).notNull().default(false),
     occasions: text('occasions', { mode: 'json' }).notNull().$type<ReadonlyArray<string>>(),
     pattern: text('pattern', { enum: Pattern.literals }),
     brand: text('brand'),
@@ -88,7 +84,7 @@ export const pieces = sqliteTable(
     index('pieces_account_created').on(table.accountId, table.createdAt),
     index('pieces_status_updated').on(table.status, table.updatedAt),
     oneOf('pieces_type', table.type, PieceType.literals),
-    oneOf('pieces_season', table.season, Season.literals),
+    jsonArray('pieces_seasons', table.seasons),
     oneOf('pieces_pattern', table.pattern, Pattern.literals),
     oneOf('pieces_status', table.status, PieceStatus.literals),
     oneOf('pieces_source', table.source, PieceSource.literals),

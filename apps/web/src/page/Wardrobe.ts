@@ -15,26 +15,36 @@ import { browseColours, BrowseQuery } from '../WardrobeBrowse.ts'
 
 // MODEL
 
-/** What else narrows the grid, from the filter sheet: any of these colours, a season, an occasion, a brand. */
+/** What else narrows the grid, from the filter sheet: any of these colours, a season, made for rain, an occasion, a
+ * brand. */
 export const Filters = Schema.Struct({
   colours: Schema.Array(Colour),
   season: Schema.Option(Season),
+  rainproof: Schema.Boolean,
   occasion: Schema.Option(Occasion),
   brand: Schema.Option(Schema.String),
 })
 export type Filters = typeof Filters.Type
 
-const noFilters: Filters = { colours: [], season: Option.none(), occasion: Option.none(), brand: Option.none() }
+const noFilters: Filters = {
+  colours: [],
+  season: Option.none(),
+  rainproof: false,
+  occasion: Option.none(),
+  brand: Option.none(),
+}
 
 /** How many filters are set, for the button that opens them. */
 export const filterCount = (filters: Filters) =>
   filters.colours.length +
   Number(Option.isSome(filters.season)) +
+  Number(filters.rainproof) +
   Number(Option.isSome(filters.occasion)) +
   Number(Option.isSome(filters.brand))
 
 /** The pieces the browsing and the filters leave: in the group and type chosen, of any chosen colour, worn in the
- * chosen season (an all-year piece is worn in any), for the chosen occasion and of the chosen brand. */
+ * chosen season (a piece with no season is worn in any), made for rain when asked, for the chosen occasion and of the
+ * chosen brand. */
 export const shownPieces = (pieces: ReadonlyArray<Piece>, model: Model): ReadonlyArray<Piece> =>
   Array.filter(
     pieces,
@@ -44,8 +54,9 @@ export const shownPieces = (pieces: ReadonlyArray<Piece>, model: Model): Readonl
       (model.filters.colours.length === 0 || piece.colours.some((colour) => model.filters.colours.includes(colour))) &&
       Option.match(model.filters.season, {
         onNone: () => true,
-        onSome: (season) => piece.season === season || piece.season === 'allYear',
+        onSome: (season) => piece.seasons.length === 0 || piece.seasons.includes(season),
       }) &&
+      (!model.filters.rainproof || piece.rainproof) &&
       Option.match(model.filters.occasion, {
         onNone: () => true,
         onSome: (occasion) => piece.occasions.includes(occasion),
@@ -89,6 +100,7 @@ const browsing = (query: BrowseQuery) => ({
   filters: {
     colours: Option.getOrElse(browseColours(query.colours?.split(',') ?? []), () => []),
     season: Option.fromNullishOr(query.season),
+    rainproof: query.rainproof === 'yes',
     occasion: Option.fromNullishOr(query.occasion),
     brand: Option.fromNullishOr(query.brand),
   },
@@ -108,6 +120,7 @@ export const queryOf = (model: Model): BrowseQuery => ({
   ...Option.match(model.type, { onNone: () => ({}), onSome: (type) => ({ type }) }),
   ...(model.filters.colours.length === 0 ? {} : { colours: model.filters.colours.join(',') }),
   ...Option.match(model.filters.season, { onNone: () => ({}), onSome: (season) => ({ season }) }),
+  ...(model.filters.rainproof ? { rainproof: 'yes' as const } : {}),
   ...Option.match(model.filters.occasion, { onNone: () => ({}), onSome: (occasion) => ({ occasion }) }),
   ...Option.match(model.filters.brand, { onNone: () => ({}), onSome: (brand) => ({ brand }) }),
 })
@@ -119,6 +132,7 @@ export const Message = defineMessageUnion({
   GotFilterSheetMessage: { message: Dialog.Message },
   ToggledFilterColour: { colour: Colour },
   ChoseFilterSeason: { season: Season },
+  ToggledFilterRainproof: {},
   ChoseFilterOccasion: { occasion: Occasion },
   ChoseFilterBrand: { brand: Schema.String },
   ClickedClearFilters: {},
@@ -169,6 +183,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       ),
     ChoseFilterSeason: ({ season }) =>
       filtered(model, (filters) => modifyFields(filters, { season: (chosen) => chosenAgain(season, chosen) })),
+    ToggledFilterRainproof: () =>
+      filtered(model, (filters) => modifyFields(filters, { rainproof: (rainproof) => !rainproof })),
     ChoseFilterOccasion: ({ occasion }) =>
       filtered(model, (filters) => modifyFields(filters, { occasion: (chosen) => chosenAgain(occasion, chosen) })),
     ChoseFilterBrand: ({ brand }) =>

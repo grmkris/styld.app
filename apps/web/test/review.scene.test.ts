@@ -71,7 +71,8 @@ const shirt = {
   suggestion: {
     type: 'shirts' as const,
     colours: ['navy' as const],
-    season: null,
+    seasons: [],
+    rainproof: false,
     occasions: [],
     pattern: null,
   },

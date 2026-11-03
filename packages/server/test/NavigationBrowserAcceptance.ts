@@ -38,11 +38,11 @@ export const verifyNavigationJourney = async (browser: Browser, origin: string, 
     // The groups, then a group's types, then a type's pieces: each step down is a page of its own (T-07).
     await page.getByRole('link', { name: 'Shoes', exact: true }).click()
     await page.waitForFunction(() => location.search.includes('group=shoes'))
-    await page.getByRole('link', { name: 'Low shoes', exact: true }).click()
+    await page.getByRole('link', { name: 'Flats', exact: true }).click()
     await page.waitForFunction(() => location.search.includes('type=flats'))
     expect(await page.evaluate(() => history.length)).toBe(historyLength + 2)
     await page.reload({ waitUntil: 'networkidle' })
-    await page.getByRole('heading', { name: 'Low shoes', level: 2 }).waitFor()
+    await page.getByRole('heading', { name: 'Flats', level: 2 }).waitFor()
     await page.getByRole('link', { name: 'Navigation flats 20', exact: true }).click()
     await page.getByRole('button', { name: 'Edit', exact: true }).waitFor()
     await page.getByRole('link', { name: 'Back to wardrobe', exact: true }).click()

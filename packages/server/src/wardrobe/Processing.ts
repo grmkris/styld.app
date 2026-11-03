@@ -47,7 +47,9 @@ export interface PieceDescription {
   readonly type: PieceType | undefined
   readonly confidence: number
   readonly colours: ReadonlyArray<Colour>
-  readonly season: Season | undefined
+  /** The seasons it is worn in, none for all year; made for rain (T-12). */
+  readonly seasons: ReadonlyArray<Season>
+  readonly rainproof: boolean
   readonly occasions: ReadonlyArray<Occasion>
   readonly pattern: Pattern | undefined
 }

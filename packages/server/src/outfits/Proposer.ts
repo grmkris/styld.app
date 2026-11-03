@@ -52,7 +52,8 @@ const line = (ref: string, piece: Wearable) =>
     piece.name === null ? null : `“${piece.name}”`,
     piece.colours.join('/') || null,
     piece.pattern,
-    piece.season,
+    piece.seasons.join('/') || null,
+    piece.rainproof ? 'rainproof' : null,
     piece.occasions.join('/') || null,
   ]
     .filter((part) => part !== null)
@@ -77,7 +78,7 @@ export const proposalMessages = (request: Brief, count: number) => {
     {
       role: 'user' as const,
       content: [
-        `Weather: ${season ?? 'any'}. Occasion: ${occasion ?? 'any'}.`,
+        `Season: ${season ?? 'any'}. Occasion: ${occasion ?? 'any'}.`,
         words === undefined ? null : `In the person’s words: “${words}”.`,
         `Fixed: ${request.fixed.map(({ id }) => refOf.get(id)).join(', ') || 'none'}.`,
         'Pieces:',

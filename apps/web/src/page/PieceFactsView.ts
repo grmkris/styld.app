@@ -24,9 +24,17 @@ export const factsView = <Message>(piece: Piece, locale: Locale, h: HtmlBuilder<
           colourList(piece.colours, locale, h),
           h,
         ),
-    piece.season === null
+    // When it is worn: its seasons and Rainproof; a piece with no season says nothing, as it is worn all year.
+    piece.seasons.length === 0 && !piece.rainproof
       ? h.empty
-      : fact(format(locale, 'wardrobe.filterSeason', {}), format(locale, seasonName(piece.season), {}), h),
+      : fact(
+          format(locale, 'wardrobe.filterSeason', {}),
+          [
+            ...piece.seasons.map((season) => format(locale, seasonName(season), {})),
+            ...(piece.rainproof ? [format(locale, 'wardrobe.rainproof', {})] : []),
+          ].join(', '),
+          h,
+        ),
     piece.occasions.length === 0
       ? h.empty
       : fact(

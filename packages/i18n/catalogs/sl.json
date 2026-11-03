@@ -175,14 +175,21 @@
       "trainers": "Superge",
       "boots": "Škornji",
       "heels": "Petke",
-      "flats": "Nizki čevlji",
+      "flats": "Balerinke",
       "sandals": "Sandali",
       "bags": "Torbice",
       "belts": "Pasovi",
       "scarves": "Šali",
       "hats": "Klobuki in kape",
       "jewellery": "Nakit",
-      "eyewear": "Očala"
+      "eyewear": "Očala",
+      "loafers": "Mokasini",
+      "laceUps": "Čevlji na vezalke",
+      "sportShoes": "Športni copati",
+      "outdoorShoes": "Pohodni in snežni čevlji",
+      "gloves": "Rokavice",
+      "socks": "Nogavice",
+      "hairAccessories": "Dodatki za lase"
     },
     "pieceDescribed": "{kind} ({colours})",
     "typeOne": {
@@ -207,14 +214,21 @@
       "trainers": "Superge",
       "boots": "Škornji",
       "heels": "Petke",
-      "flats": "Nizki čevlji",
+      "flats": "Balerinke",
       "sandals": "Sandali",
       "bags": "Torbica",
       "belts": "Pas",
       "scarves": "Šal",
       "hats": "Klobuk",
       "jewellery": "Nakit",
-      "eyewear": "Očala"
+      "eyewear": "Očala",
+      "loafers": "Mokasini",
+      "laceUps": "Čevlji na vezalke",
+      "sportShoes": "Športni copati",
+      "outdoorShoes": "Pohodni čevlji",
+      "gloves": "Rokavice",
+      "socks": "Nogavice",
+      "hairAccessories": "Dodatek za lase"
     },
     "typeWords": {
       "tops": "majica, majice, top, topi",
@@ -238,14 +252,21 @@
       "trainers": "superge, čevlji, obutev",
       "boots": "škornji, gležnjarji, čevlji, obutev",
       "heels": "petke, salonarji, čevlji, obutev",
-      "flats": "nizki čevlji, balerinke, mokasini, oksfordke, čevlji, obutev",
+      "flats": "balerinke, mary jane, espadrile, čevlji, obutev",
       "sandals": "sandali, natikači, japonke, obutev",
       "bags": "torbica, torba, nahrbtnik",
       "belts": "pas, pasovi",
       "scarves": "šal, ruta",
       "hats": "klobuk, kapa, kape",
       "jewellery": "nakit, ogrlica, uhani, prstan, zapestnica, ura",
-      "eyewear": "očala, sončna očala"
+      "eyewear": "očala, sončna očala",
+      "loafers": "mokasini, čevlji, obutev",
+      "laceUps": "čevlji na vezalke, oksfordke, derbiji, brogue, čevlji, obutev",
+      "sportShoes": "športni copati, tekaški copati, copati za fitnes, obutev",
+      "outdoorShoes": "pohodni čevlji, gojzarji, snežni škornji, obutev",
+      "gloves": "rokavice, palčniki",
+      "socks": "nogavice, hlačne nogavice",
+      "hairAccessories": "sponka, obroč za lase, trak za lase, elastika"
     },
     "groups": {
       "clothing": "Oblačila",
@@ -258,9 +279,10 @@
     "typePlaceholder": "Izberi, kaj je",
     "seasonLabel": "Kdaj ga nosiš (neobvezno)",
     "season": {
-      "warm": "Toplo vreme",
-      "cold": "Hladno vreme",
-      "allYear": "Vse leto"
+      "spring": "Pomlad",
+      "summer": "Poletje",
+      "autumn": "Jesen",
+      "winter": "Zima"
     },
     "occasionsLabel": "Za kaj je (neobvezno)",
     "occasion": {
@@ -302,7 +324,8 @@
     "shopLink": "Odpri stran v trgovini",
     "shopFact": "Trgovina",
     "namePlaceholder": "npr. laneni suknjič Zara",
-    "backToGroup": "Nazaj na {group}"
+    "backToGroup": "Nazaj na {group}",
+    "rainproof": "Za dež"
   },
   "landing": {
     "feedDescription": "Javne zbirke Stylda in ljudi, ki ga uporabljajo.",

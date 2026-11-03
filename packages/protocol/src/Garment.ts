@@ -29,17 +29,24 @@ export const PieceType = Schema.Literals([
   'shorts',
   'skirts',
   'sportswear',
+  'sportShoes',
+  'outdoorShoes',
   'swimwear',
   'loungewear',
   'trainers',
   'boots',
   'heels',
   'flats',
+  'loafers',
+  'laceUps',
   'sandals',
   'bags',
   'belts',
   'scarves',
   'hats',
+  'gloves',
+  'socks',
+  'hairAccessories',
   'jewellery',
   'eyewear',
 ])
@@ -67,17 +74,25 @@ const kinds: { readonly [Type in PieceType]: { readonly group: GarmentGroup; rea
   shorts: { group: 'clothing', slot: 'bottom' },
   skirts: { group: 'clothing', slot: 'bottom' },
   sportswear: { group: 'sport', slot: 'set' },
+  // Shoes made for sport: worn only when an outfit is for sport (outfits/Rules.ts › suits).
+  sportShoes: { group: 'sport', slot: 'shoes' },
+  outdoorShoes: { group: 'sport', slot: 'shoes' },
   swimwear: { group: 'clothing', slot: 'set' },
   loungewear: { group: 'clothing', slot: 'set' },
   trainers: { group: 'shoes', slot: 'shoes' },
   boots: { group: 'shoes', slot: 'shoes' },
   heels: { group: 'shoes', slot: 'shoes' },
   flats: { group: 'shoes', slot: 'shoes' },
+  loafers: { group: 'shoes', slot: 'shoes' },
+  laceUps: { group: 'shoes', slot: 'shoes' },
   sandals: { group: 'shoes', slot: 'shoes' },
   bags: { group: 'accessories', slot: 'accessory' },
   belts: { group: 'accessories', slot: 'accessory' },
   scarves: { group: 'accessories', slot: 'accessory' },
   hats: { group: 'accessories', slot: 'accessory' },
+  gloves: { group: 'accessories', slot: 'accessory' },
+  socks: { group: 'accessories', slot: 'accessory' },
+  hairAccessories: { group: 'accessories', slot: 'accessory' },
   jewellery: { group: 'accessories', slot: 'accessory' },
   eyewear: { group: 'accessories', slot: 'accessory' },
 }
@@ -94,9 +109,11 @@ export const typesIn = (group: GarmentGroup): ReadonlyArray<PieceType> =>
 export const typesInSlot = (slot: Slot): ReadonlyArray<PieceType> =>
   PieceType.literals.filter((type) => slotOf(type) === slot)
 
-/** When a piece is worn. */
-export const Season = Schema.Literals(['warm', 'cold', 'allYear'])
+/** When a piece is worn (owner, 2026-11-03, T-12): any of the four seasons; a piece with none is worn all year. */
+export const Season = Schema.Literals(['spring', 'summer', 'autumn', 'winter'])
 export type Season = typeof Season.Type
+export const Seasons = Schema.Array(Season).check(Schema.isUnique())
+export type Seasons = typeof Seasons.Type
 
 /** What a piece is worn for; a piece can suit several. */
 export const Occasion = Schema.Literals(['casual', 'smart', 'formal', 'sport', 'lounge'])

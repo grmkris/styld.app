@@ -42,10 +42,11 @@ const occasionWords: Readonly<Record<Occasion, string>> = {
   lounge: 'lounging at home',
 }
 
-const seasonWords: Readonly<Record<Season, string | null>> = {
-  warm: 'warm weather',
-  cold: 'cold weather',
-  allYear: null,
+const seasonWords: Readonly<Record<Season, string>> = {
+  spring: 'spring',
+  summer: 'summer',
+  autumn: 'autumn',
+  winter: 'winter',
 }
 
 /** What the outfit is for, in Clef's words, when the brief says anything. */

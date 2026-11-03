@@ -19,15 +19,16 @@ const uploadBatch = 500
 const typeConfidence = 0.75
 
 /** An imported piece's details as the decision model describes them: its type when the model is sure of the group or
- * the type stays in the mapped one's group, v1's colours unless it had none, and the season, occasions and pattern v1
- * never had.
+ * the type stays in the mapped one's group, v1's colours unless it had none, and the seasons, Rainproof, occasions and
+ * pattern v1 never had.
  * @internal Exported for its tests. */
 export const importedDetails = (row: Pick<PieceRow, 'type' | 'colours'>, found: PieceDescription) => ({
   ...(found.type !== undefined && (found.confidence >= typeConfidence || groupOf(found.type) === groupOf(row.type))
     ? { type: found.type }
     : {}),
   ...(row.colours.length === 0 && found.colours.length > 0 ? { colours: found.colours } : {}),
-  season: found.season ?? null,
+  seasons: found.seasons,
+  rainproof: found.rainproof,
   occasions: found.occasions,
   pattern: found.pattern ?? null,
 })

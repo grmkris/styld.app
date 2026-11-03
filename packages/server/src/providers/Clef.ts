@@ -70,18 +70,25 @@ const typeCriteria: { readonly [Type in PieceType]: string } & { readonly none: 
   trousers: 'Trousers, chinos, joggers or leggings',
   shorts: 'Shorts',
   skirts: 'A skirt',
-  sportswear: 'Sportswear for exercise: sports top, sports bra, sports leggings or tracksuit',
+  sportswear: 'Sportswear for exercise: sports top, sports bra, sports leggings, tracksuit or ski trousers',
+  sportShoes: 'Shoes made for sport: running shoes, training shoes or indoor court shoes',
+  outdoorShoes: 'Hiking boots, walking boots or snow boots',
   swimwear: 'Swimwear: swimsuit, bikini or swim shorts',
   loungewear: 'Loungewear or nightwear: pyjamas, nightdress or robe',
-  trainers: 'Trainers or sneakers',
-  boots: 'Boots or ankle boots',
+  trainers: 'Everyday trainers or sneakers, worn for style rather than sport',
+  boots: 'Everyday boots or ankle boots, not hiking or snow boots',
   heels: 'Shoes with heels',
-  flats: 'Flat shoes: ballet flats, loafers, brogues or espadrilles',
+  flats: 'Ballet flats, Mary Janes or espadrilles',
+  loafers: 'Loafers or moccasins',
+  laceUps: 'Lace-up shoes: oxfords, derbies or brogues',
   sandals: 'Sandals, sliders or flip-flops',
   bags: 'A bag, backpack or purse',
   belts: 'A belt',
   scarves: 'A scarf or shawl',
   hats: 'A hat, cap or beanie',
+  gloves: 'Gloves or mittens',
+  socks: 'Socks or tights',
+  hairAccessories: 'A hair accessory: hair clip, headband, hairband or scrunchie',
   jewellery: 'Jewellery or a watch',
   eyewear: 'Sunglasses or glasses',
   none: 'Not a garment, shoe or accessory',
@@ -119,6 +126,14 @@ const suggestQuestions = {
     type: 'choice',
     instructions: 'In which weather is it worn?',
     criteria: { warm: 'Warm weather', cold: 'Cold weather', allYear: 'Any time of year' },
+  },
+  rain: {
+    type: 'choice',
+    instructions: 'Is it made for rain?',
+    criteria: {
+      rain: 'Made for rain: waterproof, such as a rain jacket, a raincoat, wellies or waterproof boots',
+      dry: 'Not made for rain',
+    },
   },
   occasion: {
     type: 'choice',
@@ -396,7 +411,13 @@ export const makeGarmentVision = (run: RunClef, metrics: CaptureMetrics['Service
 
 const decodeType = Schema.decodeUnknownOption(PieceType)
 const decodeColour = Schema.decodeUnknownOption(Colour)
-const decodeSeason = Schema.decodeUnknownOption(Season)
+/** The seasons a piece of the weather Clef named is worn in (T-12): warm weather is spring and summer, cold autumn
+ * and winter, and any time of year none, which the wardrobe reads as all year. A migration maps stored pieces the
+ * same way. */
+const weatherSeasons: Readonly<Record<string, ReadonlyArray<Season>>> = {
+  warm: ['spring', 'summer'],
+  cold: ['autumn', 'winter'],
+}
 const decodeOccasion = Schema.decodeUnknownOption(Occasion)
 const decodePattern = Schema.decodeUnknownOption(Pattern)
 
@@ -431,7 +452,11 @@ const suggestionOf = (answer: ClefAnswer): Suggestion => {
     type: Option.getOrUndefined(type),
     confidence,
     colours: [...Option.toArray(main), ...Option.toArray(second)],
-    season: Option.getOrUndefined(Option.flatMap(choiceOf(answer, 'season'), ({ choice }) => decodeSeason(choice))),
+    seasons: Option.match(choiceOf(answer, 'season'), {
+      onNone: () => [],
+      onSome: ({ choice }) => weatherSeasons[choice] ?? [],
+    }),
+    rainproof: Option.exists(choiceOf(answer, 'rain'), ({ choice }) => choice === 'rain'),
     occasions,
     pattern: Option.getOrUndefined(Option.flatMap(choiceOf(answer, 'pattern'), ({ choice }) => decodePattern(choice))),
     // An answer without the question offers the piece as before, preselected.

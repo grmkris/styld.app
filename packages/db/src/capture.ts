@@ -1,4 +1,4 @@
-import { CaptureSource, CaptureStatus, Pattern, PictureChoice, PieceType, Season, Side } from '@styld/protocol'
+import { CaptureSource, CaptureStatus, Pattern, PictureChoice, PieceType, Side } from '@styld/protocol'
 import { sql } from 'drizzle-orm'
 import {
   type AnySQLiteColumn,
@@ -133,7 +133,11 @@ export const detections = sqliteTable(
     preselected: integer('preselected', { mode: 'boolean' }).notNull(),
     suggestedType: text('suggested_type', { enum: PieceType.literals }),
     suggestedColours: text('suggested_colours', { mode: 'json' }).notNull().$type<ReadonlyArray<string>>(),
-    suggestedSeason: text('suggested_season', { enum: Season.literals }),
+    suggestedSeasons: text('suggested_seasons', { mode: 'json' })
+      .notNull()
+      .default(sql`'[]'`)
+      .$type<ReadonlyArray<string>>(),
+    suggestedRainproof: integer('suggested_rainproof', { mode: 'boolean' }).notNull().default(false),
     suggestedOccasions: text('suggested_occasions', { mode: 'json' }).notNull().$type<ReadonlyArray<string>>(),
     suggestedPattern: text('suggested_pattern', { enum: Pattern.literals }),
     /** How likely the decision model thinks the cut-out shows one whole garment (0–1); under 0.5 the tray lists it
@@ -158,7 +162,7 @@ export const detections = sqliteTable(
     index('detections_duplicate').on(table.duplicateOf),
     oneOf('detections_status', table.status, detectionStatuses),
     oneOf('detections_suggested_type', table.suggestedType, PieceType.literals),
-    oneOf('detections_suggested_season', table.suggestedSeason, Season.literals),
+    jsonArray('detections_suggested_seasons', table.suggestedSeasons),
     oneOf('detections_suggested_pattern', table.suggestedPattern, Pattern.literals),
     oneOf('detections_matching', table.matching, matchingStates),
     jsonArray('detections_suggested_colours', table.suggestedColours),

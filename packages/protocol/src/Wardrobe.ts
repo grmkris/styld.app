@@ -3,7 +3,7 @@ import { Hint, Name, Notes } from './Text.ts'
 import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
 import { byCase, passing, refusal } from './Errors.ts'
-import { Brand, Occasions, Pattern, PieceType, Season, ShopUrl } from './Garment.ts'
+import { Brand, Occasions, Pattern, PieceType, Seasons, ShopUrl } from './Garment.ts'
 
 /** The thirteen plain colours a person can pick (v1's `CATALOG_COLORS`). */
 export const Colour = Schema.Literals([
@@ -146,7 +146,10 @@ export const Piece = Schema.Struct({
   notes: Schema.NullOr(Notes),
   type: PieceType,
   colours: Colours,
-  season: Schema.NullOr(Season),
+  /** The seasons it is worn in; none is all year. */
+  seasons: Seasons,
+  /** Made for rain: a rain jacket, wellies (T-12). */
+  rainproof: Schema.Boolean,
   occasions: Occasions,
   pattern: Schema.NullOr(Pattern),
   brand: Schema.NullOr(Brand),
@@ -192,7 +195,8 @@ export const Upload = Schema.Struct({ uploadId: UploadId, path: Schema.String, e
 const pieceDetails = {
   colours: Schema.optionalKey(Colours),
   name: Schema.optionalKey(Name),
-  season: Schema.optionalKey(Season),
+  seasons: Schema.optionalKey(Seasons),
+  rainproof: Schema.optionalKey(Schema.Boolean),
   occasions: Schema.optionalKey(Occasions),
   pattern: Schema.optionalKey(Pattern),
   brand: Schema.optionalKey(Brand),
@@ -213,7 +217,8 @@ export const PieceChanges = Schema.Struct({
   notes: Schema.optionalKey(Schema.NullOr(Notes)),
   type: Schema.optionalKey(PieceType),
   colours: Schema.optionalKey(Colours),
-  season: Schema.optionalKey(Schema.NullOr(Season)),
+  seasons: Schema.optionalKey(Seasons),
+  rainproof: Schema.optionalKey(Schema.Boolean),
   occasions: Schema.optionalKey(Occasions),
   pattern: Schema.optionalKey(Schema.NullOr(Pattern)),
   brand: Schema.optionalKey(Schema.NullOr(Brand)),

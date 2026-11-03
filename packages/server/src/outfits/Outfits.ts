@@ -11,7 +11,6 @@ import {
   type ProposalRef,
   LimitReached,
   Unavailable,
-  Piece,
 } from '@styld/protocol'
 import { Array, Clock, Context, DateTime, Duration, Effect, Layer, Option, Order, Schema } from 'effect'
 import { CaptureMetrics } from '../kernel/Metrics.ts'
@@ -25,7 +24,7 @@ import { type Judged, judgingPicture, OutfitJudge } from './Judge.ts'
 import { Thinking } from './Proposer.ts'
 import { type Brief, missingOf, proposed, type Wearable } from './Rules.ts'
 import { OutfitStore } from './Store.ts'
-import { type Owned, wearablesOf } from './Wearables.ts'
+import { type Owned, WearableRow, wearablesOf } from './Wearables.ts'
 import { PaidAttempts } from '../usage/Attempts.ts'
 
 // The outfit engine (owner, 2026-10-31), shared by the website, the assistants and Styld: free at the account's pace,
@@ -55,20 +54,7 @@ const unanswered = () => ThinkingUnanswered.make({})
 
 /** The durable shape of a completed Thinking response. A lost or unreadable paid answer stays claimed by this key. */
 const proposedResult = Schema.Struct({
-  outfits: Schema.Array(
-    Schema.Array(
-      Schema.Struct({
-        id: Piece.fields.id,
-        type: Piece.fields.type,
-        colours: Piece.fields.colours,
-        season: Piece.fields.season,
-        occasions: Piece.fields.occasions,
-        pattern: Piece.fields.pattern,
-        name: Piece.fields.name,
-        drawn: Schema.Boolean,
-      }),
-    ),
-  ),
+  outfits: Schema.Array(Schema.Array(Schema.Struct({ ...WearableRow.fields, drawn: Schema.Boolean }))),
   costMicroUsd: Schema.Number,
 })
 

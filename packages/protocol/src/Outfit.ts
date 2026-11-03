@@ -21,7 +21,7 @@ export type OutfitMode = typeof OutfitMode.Type
 
 const Words = trimmedText(textLength.label)
 
-/** What the outfit is for, when known: the weather, the occasion, and the person's own words ("a dinner out"), which
+/** What the outfit is for, when known: the season, the occasion, and the person's own words ("a dinner out"), which
  * are never logged. */
 export const OutfitBrief = Schema.Struct({
   season: Schema.optionalKey(Season),

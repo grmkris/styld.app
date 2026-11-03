@@ -70,15 +70,17 @@ describe("today's table", () => {
       given(Today.init()),
       message(Today.Message.CompletedDetermineDay({ day: thursday })),
       Command.expectExact(
-        Today.MakeOutfits({ day: thursday, brief: {}, session: Option.none(), seen: [] }),
+        Today.MakeOutfits({ day: thursday, brief: { season: 'autumn' }, session: Option.none(), seen: [] }),
         Today.ReadWorn({ day: thursday }),
       ),
       Command.resolve(Today.MakeOutfits, Today.Message.SucceededMakeOutfits({ batch: batchOf(outfits) })),
       Command.resolve(Today.ReadWorn, Today.Message.SucceededReadWorn({ pieceIds: [] })),
       model((current) => expect(Today.tableOutfit(current, wardrobe)).toEqual([navyKnit, greenTrousers, blackShoes])),
     )
-    expect(Today.briefFor(Schema.decodeUnknownSync(Day)('2026-11-02'))).toEqual({ season: 'cold' })
-    expect(Today.briefFor(Schema.decodeUnknownSync(Day)('2026-07-14'))).toEqual({ season: 'warm' })
+    expect(Today.briefFor(Schema.decodeUnknownSync(Day)('2026-11-02'))).toEqual({ season: 'autumn' })
+    expect(Today.briefFor(Schema.decodeUnknownSync(Day)('2026-07-14'))).toEqual({ season: 'summer' })
+    expect(Today.briefFor(Schema.decodeUnknownSync(Day)('2026-01-20'))).toEqual({ season: 'winter' })
+    expect(Today.briefFor(Schema.decodeUnknownSync(Day)('2026-04-02'))).toEqual({ season: 'spring' })
   })
 
   test('Spin walks the batch and asks for more, naming what was shown, while two are left', () => {
@@ -89,7 +91,7 @@ describe("today's table", () => {
       Command.expectExact(
         Today.MakeOutfits({
           day: thursday,
-          brief: {},
+          brief: { season: 'autumn' },
           session: Option.some(session),
           seen: outfits.map(({ key }) => key),
         }),
@@ -125,7 +127,9 @@ describe("today's table", () => {
       message(Today.Message.FailedMakeOutfits()),
       model((current) => expect(AsyncData.isFailure(current.outfits)).toBe(true)),
       message(Today.Message.ClickedRetryOutfits()),
-      Command.expectExact(Today.MakeOutfits({ day: thursday, brief: {}, session: Option.none(), seen: [] })),
+      Command.expectExact(
+        Today.MakeOutfits({ day: thursday, brief: { season: 'autumn' }, session: Option.none(), seen: [] }),
+      ),
       Command.resolve(Today.MakeOutfits, Today.Message.SucceededMakeOutfits({ batch: batchOf(outfits) })),
       model((current) => expect(AsyncData.isSuccess(current.outfits)).toBe(true)),
     )
@@ -181,7 +185,7 @@ describe("today's table", () => {
       Command.expectExact(
         Today.SwapPiece({
           day: thursday,
-          brief: {},
+          brief: { season: 'autumn' },
           session,
           lockedPieceIds: [greenTrousers.id, blackShoes.id],
           seen: outfits.map(({ key }) => key),

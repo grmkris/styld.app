@@ -41,18 +41,27 @@ describe('the wardrobe tab', () => {
 })
 
 describe('filtering the wardrobe', () => {
-  const coat = pieceFixture('coat', { type: 'coats', colours: ['beige'], season: 'cold', brand: 'COS' })
-  const tee = pieceFixture('tee', { type: 'tops', colours: ['white'], season: 'warm', occasions: ['casual'] })
-  const jeans = pieceFixture('jeans', { type: 'jeans', colours: ['blue'], season: 'allYear', brand: 'Levi’s' })
+  const coat = pieceFixture('coat', { type: 'coats', colours: ['beige'], seasons: ['autumn', 'winter'], brand: 'COS' })
+  const tee = pieceFixture('tee', { type: 'tops', colours: ['white'], seasons: ['summer'], occasions: ['casual'] })
+  const jeans = pieceFixture('jeans', {
+    type: 'jeans',
+    colours: ['blue'],
+    seasons: [],
+    rainproof: true,
+    brand: 'Levi’s',
+  })
   const pieces = [coat, tee, jeans]
   const shown = (current: Parameters<typeof update>[0]) => shownPieces(pieces, current).map(({ id }) => id)
 
-  test('any chosen colour, the season (all-year pieces too), the occasion and the brand narrow the grid', () => {
+  test('any chosen colour, the season (pieces with no season too), Rainproof, the occasion and the brand narrow the grid', () => {
     story(
       update,
       given(init()),
-      message(Message.ChoseFilterSeason({ season: 'cold' })),
+      message(Message.ChoseFilterSeason({ season: 'winter' })),
       model((current) => expect(shown(current)).toEqual([coat.id, jeans.id])),
+      message(Message.ToggledFilterRainproof()),
+      model((current) => expect(shown(current)).toEqual([jeans.id])),
+      message(Message.ToggledFilterRainproof()),
       message(Message.ToggledFilterColour({ colour: 'blue' })),
       message(Message.ToggledFilterColour({ colour: 'beige' })),
       model((current) => expect(shown(current)).toEqual([coat.id, jeans.id])),

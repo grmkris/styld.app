@@ -17,11 +17,13 @@ export interface Owned {
 /** The most pieces one request reads, newest first. */
 const mostRead = 300
 
-const WearableRow = Schema.Struct({
+/** A ready piece as the outfit rules read it, without whether it shows a drawing. */
+export const WearableRow = Schema.Struct({
   id: Piece.fields.id,
   type: Piece.fields.type,
   colours: Piece.fields.colours,
-  season: Piece.fields.season,
+  seasons: Piece.fields.seasons,
+  rainproof: Piece.fields.rainproof,
   occasions: Piece.fields.occasions,
   pattern: Piece.fields.pattern,
   name: Piece.fields.name,

@@ -29,7 +29,9 @@ export interface Suggestion {
   /** How sure the model is of the kind of thing it is: the share of its answer on the type's group. */
   readonly confidence: number
   readonly colours: ReadonlyArray<Colour>
-  readonly season: Season | undefined
+  /** The seasons it is worn in, none for all year; made for rain (T-12). */
+  readonly seasons: ReadonlyArray<Season>
+  readonly rainproof: boolean
   readonly occasions: ReadonlyArray<Occasion>
   readonly pattern: Pattern | undefined
   /** How likely the piece is one whole garment, shown completely, rather than part of one, several, or not
