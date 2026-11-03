@@ -1,5 +1,5 @@
 import { accounts, detections, operationReceipts, piecePictures, pieceTurns, pieces, uploads } from '@styld/db'
-import { and, asc, desc, eq, gt, inArray, lt, ne, or, sql, type SQL } from 'drizzle-orm'
+import { and, asc, desc, eq, gt, inArray, isNull, lt, ne, or, sql, type SQL } from 'drizzle-orm'
 import type { PieceType } from '@styld/protocol'
 import { Array, Context, Effect, Layer } from 'effect'
 import { receiptRows, recordedWrites } from '../kernel/Receipts.ts'
@@ -83,6 +83,25 @@ export const PieceRows = {
           sql`exists (select 1 from ${accounts} where ${accounts.id} = ${accountId} and ${accounts.enabled} = 1)`,
         ),
       ),
+  /** The back a guided-camera shot brought, for the account's pieces made from these detections that have none yet:
+   * a back that finished after its front was kept (capture's pairing). */
+  backOfDetections: (
+    db: Database['Service'],
+    accountId: string,
+    detectionIds: ReadonlyArray<string>,
+    backKey: string,
+  ) =>
+    db
+      .update(pieces)
+      .set({ backImageKey: backKey })
+      .where(
+        and(
+          eq(pieces.accountId, accountId),
+          isNull(pieces.backImageKey),
+          inArray(pieces.detectionId, [...detectionIds]),
+        ),
+      )
+      .returning({ id: pieces.id }),
 }
 export const UploadRows = {
   /** An upload Styld stored itself and a piece took at once: an imported piece's photo. */

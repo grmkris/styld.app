@@ -202,33 +202,29 @@ const trayRows = (db: Database) => ({
 
 /** A back that finished after its front was kept becomes the back of the piece the front became, when that piece
  * has none yet; whether it did. Without it a person who keeps the front before the back is ready loses the back,
- * which then waits in the tray on its own (the guided camera's native journey, 3 November). */
+ * which then waits in the tray on its own (the guided camera's native journey, 3 November). The piece's write is the
+ * wardrobe's (`PieceRows.backOfDetections`). */
 const backOfKept = (db: Database, accountId: string, captureId: string, backKey: string) =>
-  query(() =>
-    db
-      .update(pieces)
-      .set({ backImageKey: backKey })
-      .where(
-        and(
-          eq(pieces.accountId, accountId),
-          isNull(pieces.backImageKey),
-          inArray(
-            pieces.detectionId,
-            db
-              .select({ id: detections.id })
-              .from(detections)
-              .where(
-                and(
-                  eq(detections.accountId, accountId),
-                  eq(detections.captureId, captureId),
-                  eq(detections.status, 'kept'),
-                ),
-              ),
-          ),
+  Effect.gen(function* () {
+    const kept = yield* query(() =>
+      db
+        .select({ id: detections.id })
+        .from(detections)
+        .where(
+          and(eq(detections.accountId, accountId), eq(detections.captureId, captureId), eq(detections.status, 'kept')),
         ),
-      )
-      .returning({ id: pieces.id }),
-  ).pipe(Effect.map((rows) => rows.length > 0))
+    )
+    if (kept.length === 0) return false
+    const backed = yield* query(() =>
+      PieceRows.backOfDetections(
+        db,
+        accountId,
+        kept.map(({ id }) => id),
+        backKey,
+      ),
+    )
+    return backed.length > 0
+  })
 
 /** Front and back camera shots of one garment, paired once both are stored. */
 const pairRows = (db: Database) => {
