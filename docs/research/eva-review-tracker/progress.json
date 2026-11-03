@@ -459,7 +459,7 @@
       "status": "in_progress",
       "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "Partial delivery: back-photo actions and their credit text are above Name in Edit; a compact Add to board icon sits beside the read-only title; Name is optional with an example, Category is labelled, and Delete lives in Edit with confirmation and draft preservation. Read-only attributes stay read-only. Rotation and upside-down legacy cutouts (F-08) remain open. Dense metadata/long names still need Eva’s phone review.",
+      "note": "The remaining F-08 rotation path is implemented locally: pieces persist a constrained 0/90/180/270 orientation, Edit previews and saves a 90-degree step, signed media carries the capability, and Cloudflare Images applies the transform without a per-image read. Focused type, schema, story, scene, signed-media and delivery checks pass. Native screenshot capture is blocked in this environment by Alchemy/Bun listen permissions; authenticated preview and physical-phone acceptance remain open.",
       "evidence": [
         {
           "level": "unit",
@@ -476,6 +476,11 @@
           "date": "2026-11-03",
           "summary": "Deployed c05071e0351cef5bb74caf249eea808775042842. Exact-release smoke readback passed: 3 tests / 42 assertions (hydration, assets, API/auth, MCP). Authenticated product interactions are covered by native fixtures, not a real-user preview walk.",
           "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
+        },
+        {
+          "level": "unit",
+          "date": "2026-11-03",
+          "summary": "Focused rotation batch: typecheck (681 files, zero findings), schema snapshot/migration checks, 69 piece/media/import/MCP tests, and Cloudflare Images rotation option coverage passed."
         }
       ],
       "criteriaDone": [
@@ -1501,10 +1506,18 @@
       "items": [
         "T-18"
       ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Started T-15 rotation follow-up. Added a durable piece orientation field and migration, signed-media rotation capabilities, Edit preview/save control, Slovenian and English copy, and focused unit coverage. Native screenshot capture is still open because this environment refuses Alchemy profile chmod and local listen; no deployment or phone acceptance is claimed.",
+      "items": [
+        "T-15",
+        "F-08"
+      ]
     }
   ],
   "overview": {
-    "label": "Navigation batch 05 ready for review",
-    "note": "T-06 is ready for review with native browser evidence and four matching screenshot pairs; preview and phone acceptance remain open. T-21 remains ready for review with authenticated media/load acceptance open. Next: T-15 rotation, recognition plus Kris’s phone test, then T-16 board-to-Look and the first T-10 template. Claude owns T-14/T-18/T-19/T-20."
+    "label": "T-15 rotation implementation in progress",
+    "note": "T-15 now has a durable quarter-turn correction for upside-down legacy piece images. The protocol, D1 migration, signed media transform, Edit control and focused unit coverage are in place; matching rotation screenshots, authenticated preview readback and Kris phone acceptance remain open. T-01/T-05 recognition and T-16 board-to-Look are next."
   }
 }
