@@ -95,7 +95,7 @@ const matchOne = (capture: CaptureRow, detection: DetectionRow) =>
       (yield* CaptureStore).wardrobeCandidates(
         capture.accountId,
         types.value,
-        detection.suggestedColours[0],
+        { type: detection.suggestedType, colour: detection.suggestedColours[0] },
         policy.pieces,
       ),
     )

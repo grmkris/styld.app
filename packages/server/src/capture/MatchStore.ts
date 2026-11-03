@@ -121,9 +121,15 @@ const candidateRows = (db: Database) => ({
         .orderBy(desc(detections.createdAt))
         .limit(limit),
     ),
-  /** The account's pieces of one of `types` shown as cut-outs that a new garment may already be, those sharing its main
-   * colour first. */
-  wardrobeCandidates: (accountId: string, types: ReadonlyArray<PieceType>, colour: string | undefined, limit: number) =>
+  /** The account's pieces of one of `types` shown as cut-outs that a new garment may already be: those of its own type
+   * first, then those sharing its main colour, then the newest. The decision model's colour for a garment worn in
+   * shade is often wrong; its type is surer (Eva's review, 2 November: 8 coats, 49 tops). */
+  wardrobeCandidates: (
+    accountId: string,
+    types: ReadonlyArray<PieceType>,
+    like: { readonly type: string | null; readonly colour: string | undefined },
+    limit: number,
+  ) =>
     query(() =>
       db
         .select({ id: pieces.id, imageKey: pieces.imageKey })
@@ -137,8 +143,12 @@ const candidateRows = (db: Database) => ({
             ne(pieces.imageKey, pieces.originalKey),
           ),
         )
+        // A term left out, not ordered by a constant: SQLite reads `ORDER BY 0` as a column number and refuses it.
         .orderBy(
-          desc(colour === undefined ? sql`0` : sql`instr(${pieces.colours}, ${JSON.stringify(colour)}) > 0`),
+          ...(like.type === null ? [] : [desc(sql`${pieces.type} = ${like.type}`)]),
+          ...(like.colour === undefined
+            ? []
+            : [desc(sql`instr(${pieces.colours}, ${JSON.stringify(like.colour)}) > 0`)]),
           desc(pieces.createdAt),
         )
         .limit(limit),

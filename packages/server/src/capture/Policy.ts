@@ -57,6 +57,9 @@ export interface CapturePolicy {
     readonly same: number
     readonly sightings: number
     readonly pieces: number
+    /** An outfit photo's garment is compared with more of the wardrobe's pieces: worn and partly hidden, its colour
+     * is a weaker guide to which of many like pieces it is. */
+    readonly photoPieces: number
   }
   /** The floors every checked frame of a turn must reach, beside the clean picture, for the turn to be kept: colour
    * and logo or print (the 30 October comparison's gate, which every good take passed and the drifting models
@@ -83,6 +86,6 @@ export const capturePolicy: CapturePolicy = {
     carried: 0.25,
   },
   pictures: { show: 0.8, reject: 0.5, face: 0.3 },
-  matching: { same: 0.8, sightings: 10, pieces: 6 },
+  matching: { same: 0.8, sightings: 10, pieces: 6, photoPieces: 12 },
   turns: { colour: 0.8, print: 0.6 },
 }

@@ -54,8 +54,8 @@ const garmentOf = (photo: PhotoRow, garment: Garment, position: number) =>
           (yield* CaptureStore).wardrobeCandidates(
             photo.accountId,
             types.value,
-            suggestion.colours[0],
-            matching.pieces,
+            { type: suggestion.type ?? null, colour: suggestion.colours[0] },
+            matching.photoPieces,
           ),
         )
     const picture = modelPicture(garment.picture, judgedAt)
