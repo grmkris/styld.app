@@ -394,10 +394,10 @@
       ]
     },
     "T-14": {
-      "status": "not_started",
-      "owner": "",
+      "status": "planned",
+      "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "",
+      "note": "Claude track (parallel to Codex). Planned: an \"Analyze my wardrobe\" starter answered by an exact server-side analysis card (counts per group/slot/type, colours, wear, surpluses and gaps) plus one short model comment; then real streaming replies instead of 800 ms polling, after a reference study of DO WebSocket streaming that the owner reviews before it is built.",
       "evidence": [],
       "criteriaDone": []
     },
@@ -490,26 +490,26 @@
       "criteriaDone": []
     },
     "T-18": {
-      "status": "not_started",
-      "owner": "",
+      "status": "planned",
+      "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "",
+      "note": "Claude track. Owner decision 3 Nov: light only for v1. Planned: opt out of Chrome Android forced dark (color-scheme only light, meta and CSS), which repaints the page and leaves grey squares and inverted colours; drop the tile backgrounds behind cut-outs. Force-dark before/after screenshots, then a real phone check.",
       "evidence": [],
       "criteriaDone": []
     },
     "T-19": {
-      "status": "not_started",
-      "owner": "",
+      "status": "planned",
+      "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "",
+      "note": "Claude track, starts once Codex commits T-21 (shared Today files). v2 never writes a tuck note (rules forbid a top over a one-piece); a rules test will pin that. Planned: swap a single piece while keeping the rest (locked pieces), and a \"Logged for today\" confirmation on Wear this. No repeat-avoidance promise (owner).",
       "evidence": [],
       "criteriaDone": []
     },
     "T-20": {
-      "status": "not_started",
-      "owner": "",
+      "status": "planned",
+      "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "",
+      "note": "Claude track, starts once Codex commits T-21 (shared board and Gallery files). Planned: Share on a board using the existing share-link command (public URL; private boards are offered the visibility toggle; no PNG export); every image picker accept=image/* with client re-encode; the tab-restore black screen is probably forced dark, addressed by T-18.",
       "evidence": [],
       "criteriaDone": []
     },
@@ -1164,6 +1164,16 @@
         "F-48",
         "F-49",
         "T-21"
+      ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Claude took T-14, T-18, T-19 and T-20 in parallel to Codex's batch 04. T-18 and T-14's analysis card first; T-19 and T-20 after Codex commits T-21, since they share files. Claude works in its own worktree and deploys its own batches from committed main.",
+      "items": [
+        "T-14",
+        "T-18",
+        "T-19",
+        "T-20"
       ]
     }
   ],
