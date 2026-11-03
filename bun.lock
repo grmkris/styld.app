@@ -58,6 +58,8 @@
         "@styld/imaging": "workspace:*",
         "@styld/observability": "workspace:*",
         "@styld/protocol": "workspace:*",
+        "@yielded/agent": "catalog:",
+        "@yielded/agent-platform-cloudflare": "catalog:",
         "effect": "catalog:",
         "foldkit": "catalog:",
         "mediabunny": "catalog:",

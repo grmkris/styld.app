@@ -30,6 +30,7 @@ const chat = (replying?: { state: 'writing' | 'failed'; text: string }, answered
   Schema.decodeUnknownSync(Chat)({
     id: chatId,
     title: 'What should I wear today?',
+    thread: `acct--${chatId}`,
     messages: answered
       ? [
           asked,
@@ -47,8 +48,9 @@ const chat = (replying?: { state: 'writing' | 'failed'; text: string }, answered
 const summary = (id: string) =>
   Schema.decodeUnknownSync(ChatSummary)({ id, title: 'Earlier', updatedAt: '2026-10-30T18:00:00.000Z' })
 
-/** The chat ids the reply's poll waits on. */
-const pending = (current: Model) => subscriptions.replyWhileWriting.modelToDependencies(current).pendingIds
+/** The chat whose live words the page listens to, if any. */
+const pending = (current: Model) =>
+  Array.filter([subscriptions.liveReply.modelToDependencies(current).chatId], (id) => id !== '')
 
 /** The page with a chat open whose reply Styld is writing. */
 const writingChat = (): Model =>
@@ -94,11 +96,13 @@ describe('Styld, the stylist in the app', () => {
         expect(canSend({ ...current, draft: 'And tomorrow?' })).toBe(false)
       }),
       model((current) => expect(pending(current)).toEqual([chatId])),
-      // A failed read is not tried again by itself: the next tick asks.
-      message(Message.TickedReplyRefresh()),
-      Command.resolve(RefreshChat, Message.FailedRefreshChat({ chatId })),
-      Command.expectNone(),
-      message(Message.TickedReplyRefresh()),
+      // The words arrive live, then the attempt ends and the chat is read with the reply in it.
+      message(Message.ReceivedLiveDraft({ chatId, text: 'Wear your white' })),
+      model((current) =>
+        expect(Option.map(current.open, ({ replying }) => replying?.text)).toEqual(Option.some('Wear your white')),
+      ),
+      message(Message.EndedLiveReply({ chatId })),
+      Command.expectExact(RefreshChat({ chatId, pause: 0 })),
       Command.resolve(RefreshChat, Message.SucceededRefreshChat({ chat: chat(undefined, true) })),
       Command.resolve(ScrollToLatest, Message.CompletedScrollToLatest()),
       Command.expectNone(),
@@ -110,20 +114,32 @@ describe('Styld, the stylist in the app', () => {
     )
   })
 
-  test('a tick while a read of the reply is on its way asks for nothing more', () => {
-    const writing = writingChat()
-    const asking = update(writing, Message.TickedReplyRefresh())
-    expect(asking.commands?.map(({ name }) => name)).toEqual(['RefreshChat'])
-    expect(update(asking.model, Message.TickedReplyRefresh()).commands ?? []).toEqual([])
+  test('an ended attempt whose reply is not in the chat yet is read again a moment later, a few times at most', () => {
+    const ended = update(writingChat(), Message.EndedLiveReply({ chatId }))
+    expect(ended.commands?.map(({ name }) => name)).toEqual(['RefreshChat'])
+    // A second end while the read is on its way asks for nothing more.
+    expect(update(ended.model, Message.EndedLiveReply({ chatId })).commands ?? []).toEqual([])
+    const stillWriting = update(
+      ended.model,
+      Message.SucceededRefreshChat({ chat: chat({ state: 'writing', text: 'W' }) }),
+    )
+    expect(stillWriting.commands?.map(({ name, args }) => [name, args])).toEqual([
+      ['RefreshChat', { chatId, pause: 500 }],
+    ])
+    const exhausted = Array.reduce(
+      Array.range(1, 8),
+      stillWriting.model,
+      (current) => update(current, Message.SucceededRefreshChat({ chat: chat({ state: 'writing', text: 'W' }) })).model,
+    )
+    expect(exhausted.settling).toBe(8)
+    expect(update(exhausted, Message.ClickedRetryLoad()).commands?.map(({ name }) => name)).toEqual(['RefreshChat'])
   })
 
-  test('after five failed reads of the reply it stops following, and Try again resumes', () => {
-    const missed = Array.reduce(
-      Array.range(1, 5),
-      writingChat(),
-      (current) =>
-        update(update(current, Message.TickedReplyRefresh()).model, Message.FailedRefreshChat({ chatId })).model,
-    )
+  test('after five lost live streams it stops listening, and Try again resumes', () => {
+    const missed = Array.reduce(Array.range(1, 5), writingChat(), (current) => {
+      const lost = update(current, Message.LostLiveReply({ chatId }))
+      return update(lost.model, Message.SucceededRefreshChat({ chat: chat({ state: 'writing', text: 'W' }) })).model
+    })
     expect(pending(missed)).toEqual([])
     const retried = update(missed, Message.ClickedRetryLoad())
     expect(retried.commands?.map(({ name }) => name)).toEqual(['RefreshChat'])

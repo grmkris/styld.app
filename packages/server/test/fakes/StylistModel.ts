@@ -10,8 +10,9 @@ const usage = { inputTokens: { total: 100 }, outputTokens: { total: 20 } }
 const Found = Schema.Struct({ pieces: Schema.Array(Schema.Struct({ id: Schema.String, type: Schema.String })) })
 const decodeFound = Schema.decodeUnknownOption(Found)
 
-/** How long the fake waits between words: long enough that the first ones arrive well before the reply settles. */
-const pause = '150 millis'
+/** How long the fake waits between words: long enough that a page opened after the message was sent still sees them
+ * arrive before the reply settles. */
+const pause = '400 millis'
 
 const toolCall = (name: string, params: object): Stream.Stream<Response.StreamPartEncoded> =>
   Stream.make({ type: 'tool-call', id: `call_${name}`, name, params }, { type: 'finish', reason: 'tool-calls', usage })

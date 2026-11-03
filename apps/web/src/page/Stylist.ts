@@ -1,12 +1,12 @@
 import { drawOperationId } from '../OperationIds.ts'
 import { Chat, ChatId, Language, ChatSummary, OperationId } from '@styld/protocol'
-import { Duration, Effect, Number, Option, Schema } from 'effect'
+import { Duration, Effect, Number, Option, Schema, Stream } from 'effect'
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { AsyncData, Command, Dom, Render, Subscription, type Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
-import { hasStopped, Misses, pollWhilePending } from '../Polling.ts'
+import { hasStopped, Misses } from '../Polling.ts'
 import { StyldClient } from '../StyldClient.ts'
 
 // MODEL
@@ -37,7 +37,7 @@ export const Opening = defineTaggedUnion({
 })
 export type Opening = typeof Opening.Type
 
-/** While Styld writes a reply, the open chat is read again: nothing on its way, or a read on its way. */
+/** The open chat read again once its reply's attempt ended: nothing on its way, or a read on its way. */
 const Refresh = defineTaggedUnion({ Idle: {}, Reading: {} })
 type Refresh = typeof Refresh.Type
 
@@ -49,6 +49,9 @@ export const Model = Schema.Struct({
   draft: Schema.String,
   sending: Sending,
   refresh: Refresh,
+  /** Reads of the chat since its reply's attempt ended, while the chat still shows it being written. */
+  settling: Schema.Int,
+  /** Times in a row the reply's live words were lost; each loss reads the chat and listens again. */
   misses: Misses,
 })
 export type Model = typeof Model.Type
@@ -60,6 +63,7 @@ export const init = (draft: Option.Option<string>): Model => ({
   draft: Option.getOrElse(draft, () => ''),
   sending: Sending.Idle(),
   refresh: Refresh.Idle(),
+  settling: 0,
   misses: 0,
 })
 
@@ -72,7 +76,9 @@ export const Message = defineMessageUnion({
   FailedLoadChat: { chatId: Schema.String },
   SucceededRefreshChat: { chat: Chat },
   FailedRefreshChat: { chatId: Schema.String },
-  TickedReplyRefresh: {},
+  ReceivedLiveDraft: { chatId: Schema.String, text: Schema.String },
+  EndedLiveReply: { chatId: Schema.String },
+  LostLiveReply: { chatId: Schema.String },
   UpdatedDraft: { value: Schema.String },
   SubmittedMessage: { locale: Language },
   ClickedStarter: { text: Schema.String, locale: Language },
@@ -113,13 +119,13 @@ export const LoadChat = Command.define('LoadChat', {
     ),
 })
 
-/** The chat again, while Styld writes its reply.
+/** The chat again, after `pause` milliseconds: once its reply's attempt ended, or its live words were lost.
  */
 export const RefreshChat = Command.define('RefreshChat', {
-  args: { chatId: Schema.String },
+  args: { chatId: Schema.String, pause: Schema.Int },
   messages: [Message.SucceededRefreshChat, Message.FailedRefreshChat],
-  execute: ({ chatId }) =>
-    readChat(chatId).pipe(
+  execute: ({ chatId, pause }) =>
+    Effect.andThen(Effect.sleep(Duration.millis(pause)), readChat(chatId)).pipe(
       Effect.map((chat) => Message.SucceededRefreshChat({ chat })),
       Effect.orElseSucceed(() => Message.FailedRefreshChat({ chatId })),
     ),
@@ -222,7 +228,7 @@ export const FocusThread = Command.define('FocusThread', {
   ),
 })
 
-/** A chat read: shown when it is still the one open. While its reply is written the page's poll reads it again. */
+/** A chat read: shown when it is still the one open. While its reply is written its live words follow it. */
 const showChat = (model: Model, chat: Chat): UpdateReturn =>
   Option.exists(model.open, ({ id }) => id === chat.id)
     ? { model: modifyFields(model, { open: () => Option.some(chat) }) }
@@ -232,27 +238,60 @@ const showChat = (model: Model, chat: Chat): UpdateReturn =>
 const writingChatId = (model: Model): Option.Option<string> =>
   Option.flatMap(model.open, (chat) => (chat.replying?.state === 'writing' ? Option.some(chat.id) : Option.none()))
 
-/** Read the chat being written again, unless a read is already on its way. */
-const refreshReply = (model: Model): UpdateReturn =>
+/** Read the chat being written again after `pause`, unless a read is already on its way. */
+const refreshReply = (model: Model, pause = 0): UpdateReturn =>
   Option.match(writingChatId(model), {
     onNone: () => ({ model }),
     onSome: (chatId) =>
       Refresh.guards.Reading(model.refresh)
         ? { model }
-        : { model: modifyFields(model, { refresh: () => Refresh.Reading() }), commands: [RefreshChat({ chatId })] },
+        : {
+            model: modifyFields(model, { refresh: () => Refresh.Reading() }),
+            commands: [RefreshChat({ chatId, pause })],
+          },
   })
 
-/** Following the reply being written: each tick reads it once at a time; five failed reads in a row stop it. */
-const refreshUpdates = (model: Model) => ({
-  TickedReplyRefresh: (): UpdateReturn => refreshReply(model),
+/** How long to wait before reading a chat again whose reply's attempt ended but which still shows it being written. */
+const settlePause = 500
+/** Reads of such a chat before the page stops waiting and offers Try again. */
+const mostSettlingReads = 8
+
+/** The open chat's reply being written, with its live words so far. */
+const withDraft = (model: Model, chatId: string, text: string): Model =>
+  modifyFields(model, {
+    open: Option.map((chat) =>
+      chat.id === chatId && chat.replying?.state === 'writing'
+        ? { ...chat, replying: { ...chat.replying, text } }
+        : chat,
+    ),
+    misses: () => 0,
+  })
+
+/** Following the reply being written: its live words as they come; when its attempt ends, the chat read until it
+ * holds the reply; when the words are lost, the chat read and listened to again, up to five losses in a row. */
+const liveUpdates = (model: Model) => ({
+  ReceivedLiveDraft: ({ chatId, text }: { readonly chatId: string; readonly text: string }): UpdateReturn => ({
+    model: withDraft(model, chatId, text),
+  }),
+  EndedLiveReply: (): UpdateReturn => refreshReply(modifyFields(model, { settling: () => 1 })),
+  LostLiveReply: (): UpdateReturn => refreshReply(modifyFields(model, { misses: Number.increment })),
   SucceededRefreshChat: ({ chat }: { readonly chat: Chat }): UpdateReturn => {
     const before = Option.match(model.open, { onNone: () => 0, onSome: ({ messages }) => messages.length })
-    const shown = showChat(modifyFields(model, { refresh: () => Refresh.Idle(), misses: () => 0 }), chat)
+    const stillWriting = chat.replying?.state === 'writing'
+    const settling = stillWriting && model.settling > 0 && model.settling < mostSettlingReads
+    const shown = showChat(
+      modifyFields(model, {
+        refresh: () => Refresh.Idle(),
+        settling: (reads) => (settling ? reads + 1 : stillWriting && reads > 0 ? mostSettlingReads : 0),
+      }),
+      chat,
+    )
+    if (settling) return refreshReply(shown.model, settlePause)
     return chat.messages.length > before && Option.exists(model.open, ({ id }) => id === chat.id)
       ? { ...shown, commands: [ScrollToLatest()] }
       : shown
   },
-  // A failed read keeps the chat shown; the next tick asks again, up to five misses in a row.
+  // A failed read keeps the chat shown and counts as a loss: the live words are listened to again.
   FailedRefreshChat: ({ chatId }: { readonly chatId: string }): UpdateReturn => ({
     model: modifyFields(model, {
       refresh: () => Refresh.Idle(),
@@ -330,7 +369,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       isReading(model, chatId)
         ? { model: modifyFields(model, { opening: () => Opening.Failed({ chatId }) }) }
         : { model },
-    ...refreshUpdates(model),
+    ...liveUpdates(model),
     CompletedScrollToLatest: () => ({ model }),
     // Changing what is written makes it a new message, not the one a lost send would repeat.
     UpdatedDraft: ({ value }) => ({
@@ -363,22 +402,60 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     // Try again: the chat that did not open, the reply that stopped being followed, or the list of chats.
     ClickedRetryLoad: () => {
       if (Opening.guards.Failed(model.opening)) return openChat(model, model.opening.chatId, true)
-      if (hasStopped(model.misses)) return refreshReply(modifyFields(model, { misses: () => 0 }))
+      if (hasStopped(model.misses) || model.settling >= mostSettlingReads)
+        return refreshReply(modifyFields(model, { misses: () => 0, settling: () => 0 }))
       return { model, commands: [LoadChats()] }
     },
   })
 
 // SUBSCRIPTION
 
-/** While Styld writes a reply, the open chat is read again this often. */
-const replyPause = Duration.millis(800)
+/** The reply being written: its chat, the Thread its live words name, and the losses so far (each loss listens
+ * again, a moment later). Nothing while no reply is being written or after too many losses. */
+const Following = { chatId: Schema.String, thread: Schema.String, misses: Misses }
 
-/** The open chat is read again while its reply is written, and not after five failed reads in a row. */
-export const subscriptions = Subscription.make<Model, Message>()(() => ({
-  replyWhileWriting: pollWhilePending<Model, Message>({
-    pendingIds: (model) => Option.toArray(writingChatId(model)),
-    misses: (model) => model.misses,
-    tick: Message.TickedReplyRefresh(),
-    pause: replyPause,
+/** The chat's live words while its reply is written, decoded by a module loaded only then (`StylistLive.ts`). */
+const liveReply = ({
+  chatId,
+  thread,
+  misses,
+}: {
+  readonly chatId: string
+  readonly thread: string
+  readonly misses: Misses
+}) =>
+  chatId === ''
+    ? Stream.empty
+    : Stream.fromEffectDrain(Effect.sleep(Duration.seconds(misses))).pipe(
+        Stream.concat(
+          Stream.unwrap(
+            Effect.gen(function* () {
+              const client = yield* StyldClient
+              const { followLive } = yield* Effect.tryPromise(() => import('./StylistLive.ts'))
+              return followLive(thread, client.readStream(`/api/stylist/chats/${chatId}/live`)).pipe(
+                Stream.map((draft) =>
+                  draft.ended
+                    ? Message.EndedLiveReply({ chatId })
+                    : Message.ReceivedLiveDraft({ chatId, text: draft.text }),
+                ),
+              )
+            }),
+          ),
+        ),
+        Stream.catch(() => Stream.make(Message.LostLiveReply({ chatId }))),
+      )
+
+/** The open chat's reply, followed live while it is written: no polling. */
+export const subscriptions = Subscription.make<Model, Message, StyldClient>()((entry) => ({
+  liveReply: entry(Following, {
+    modelToDependencies: (model) =>
+      Option.match(
+        Option.filter(model.open, (chat) => chat.replying?.state === 'writing' && !hasStopped(model.misses)),
+        {
+          onNone: () => ({ chatId: '', thread: '', misses: 0 }),
+          onSome: (chat) => ({ chatId: chat.id, thread: chat.thread, misses: model.misses }),
+        },
+      ),
+    dependenciesToStream: liveReply,
   }),
 }))

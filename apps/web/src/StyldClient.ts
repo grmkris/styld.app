@@ -1,5 +1,5 @@
 import type { StyldApi } from '@styld/protocol'
-import { Context, Effect, Exit, Layer, Schema } from 'effect'
+import { Context, Effect, Exit, Layer, Schema, Stream } from 'effect'
 import * as HttpBody from 'effect/http/HttpBody'
 import * as HttpClient from 'effect/http/HttpClient'
 import * as HttpClientRequest from 'effect/http/HttpClientRequest'
@@ -13,6 +13,9 @@ export class FileNotSent extends Schema.TaggedError<FileNotSent>()('FileNotSent'
 
 /** A stored file could not be read back. */
 export class FileNotRead extends Schema.TaggedError<FileNotRead>()('FileNotRead', {}) {}
+
+/** A same-origin stream could not be read, or stopped before its end. */
+export class StreamNotRead extends Schema.TaggedError<StreamNotRead>()('StreamNotRead', {}) {}
 
 /** The browser could not load the code for its API client; the next request may try again. */
 export class ClientNotLoaded extends Schema.TaggedError<ClientNotLoaded>()('ClientNotLoaded', {}) {}
@@ -31,6 +34,8 @@ export class StyldClient extends Context.Service<
     readonly sendFile: (path: string, file: Blob) => Effect.Effect<void, FileNotSent>
     /** Read one of the account's stored files from its same-origin path, such as a turn's video. */
     readonly readFile: (path: string) => Effect.Effect<Uint8Array, FileNotRead>
+    /** The bytes of a same-origin path as they arrive, such as a chat's live words. */
+    readonly readStream: (path: string) => Stream.Stream<Uint8Array, StreamNotRead>
   }
 >()('@styld/web/StyldClient') {}
 
@@ -66,6 +71,10 @@ export const styldClientLayer = (origin: string) =>
             Effect.flatMap((response) => response.arrayBuffer),
             Effect.map((buffer) => new Uint8Array(buffer)),
             Effect.mapError(() => FileNotRead.make({})),
+          ),
+        readStream: (path) =>
+          Stream.unwrap(Effect.map(client.get(new URL(path, origin).toString()), (response) => response.stream)).pipe(
+            Stream.mapError(() => StreamNotRead.make({})),
           ),
       }
     }),

@@ -21,6 +21,7 @@ const chat = (replying?: 'writing' | 'failed') =>
   Schema.decodeUnknownSync(Chat)({
     id: chatId,
     title: 'What should I wear today?',
+    thread: `acct--${chatId}`,
     messages: [
       { id: 'm1', role: 'person', text: 'What should I wear today?', parts: [], at: '2026-10-31T09:00:00.000Z' },
       {
@@ -106,6 +107,7 @@ describe('Styld, the stylist in the app', () => {
     const analysed = Schema.decodeUnknownSync(Chat)({
       id: chatId,
       title: 'Analyze my wardrobe',
+      thread: `acct--${chatId}`,
       messages: [
         { id: 'm1', role: 'person', text: 'Analyze my wardrobe', parts: [], at: '2026-11-03T09:00:00.000Z' },
         {

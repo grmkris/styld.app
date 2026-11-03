@@ -294,8 +294,8 @@ const verifyAskAndWardrobe = async (page: Page, origin: string) => {
   await page.getByRole('link', { name: 'Gallery', exact: true }).waitFor({ state: 'visible' })
 }
 
-/** Styld from Ask: what was typed goes to Styld, whose reply is written on the queue by the real turn with the
- * stand-in model, the piece it shows one tap away; coming back opens the chat again, and New chat starts over. */
+/** Styld from Ask: what was typed goes to Styld, whose reply its chat's Thread writes with the stand-in model, its
+ * words shown as they come, the piece it shows one tap away; coming back opens the chat again, and New chat starts over. */
 const verifyStylist = async (page: Page, origin: string) => {
   const question = 'what goes with the knit'
   await page.goto(`${origin}/ask`, { waitUntil: 'networkidle' })
@@ -305,7 +305,11 @@ const verifyStylist = async (page: Page, origin: string) => {
   expect(await page.getByRole('textbox', { name: 'Message to Styld' }).inputValue()).toBe(question)
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await page.getByRole('list', { name: question }).waitFor({ state: 'visible' })
+  // The reply's words show as they are written (its Thread's live text), before the whole reply is in the chat.
+  await page.getByText(/^\s*Wear( your)?( \w+)?\s*$/).waitFor({ state: 'visible', timeout: 30000 })
   await page.getByText(/^Wear your \w+ today\.$/).waitFor({ state: 'visible', timeout: 30000 })
+  // The card comes with the reply as the chat holds it, from the recorded pieces_show.
+  await page.getByRole('list', { name: 'Pieces Styld suggests' }).waitFor({ state: 'visible', timeout: 30000 })
   const shown = page.getByRole('list', { name: 'Pieces Styld suggests' }).getByRole('link')
   expect(await shown.count()).toBe(1)
   expect(await shown.getAttribute('href')).toMatch(/^\/wardrobe\/pc_/)
