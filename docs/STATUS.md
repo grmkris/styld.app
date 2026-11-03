@@ -115,6 +115,12 @@ queues or Durable Object changes were planned.
 
 ## Gate results
 
+Stack upgrade (M0, 3 November, not deployed): Effect 4.1.2, Alchemy 2.0.0-beta.85, Foldkit 0.170.0 and Yielded
+Auth 0.1.0-beta.47; `heavy --wait bun run check` exited 0 on it (effect-tsrs 670 files, 0 findings; 778 unit tests in
+121 files; native 30 pass, 0 fail, 1,450 assertions; initial browser 350,895 gzip bytes, all browser 615,247, SSR
+1,915,504 source bytes, budgets unchanged). Patches are in `docs/dependency-patches.md`; the preview still runs the
+previous release.
+
 `heavy --wait bun run check` exited 0 for media batch `ac535e1` (3 November): effect-tsrs 670 files,
 0 findings; lint and static gates green; 777 unit tests in 121 files; native 30 pass, 0 fail,
 1,453 assertions. Gate build budgets passed: initial browser 349,617 gzip bytes, all browser 613,980 and
@@ -322,7 +328,7 @@ From C8's browser review: read back F1 (a Slovenian then English chat on the pre
 
 From C8's review fixes:
 
-- The Wallet's Durable Object (its state and command receipts) is not purged with the account: Alchemy Domain beta.84
+- The Wallet's Durable Object (its state and command receipts) is not purged with the account: Alchemy Domain beta.85
   exposes no way to erase an aggregate's storage, so it needs a dependency patch or an upstream API.
 - A video Meta accepted whose response loses its file ID cannot be reconciled without provider support. If the ID
   is returned but both durable recording (after retries) and immediate deletion fail, cleanup is still best effort.
