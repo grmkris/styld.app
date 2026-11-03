@@ -7,6 +7,22 @@ import { view } from '../src/View.ts'
 import { at, claims } from './AppFixtures.ts'
 
 describe('the masthead', () => {
+  test('Ask opens the stylist directly, while keyword search stays in Wardrobe', () => {
+    scene(
+      { update, view },
+      given(at('/wardrobe', { signedIn: true })),
+      expect(role('link', { name: 'Ask' })).toHaveAttr('href', '/ask/stylist'),
+      expect(role('link', { name: 'Search your wardrobe' })).toHaveAttr('href', '/ask'),
+    )
+    scene(
+      { update, view },
+      given(at('/ask/stylist', { signedIn: true })),
+      expect(role('link', { name: 'Back' })).toHaveAttr('href', '/wardrobe'),
+      expect(role('searchbox')).not.toExist(),
+      expect(role('textbox', { name: 'Message to Styld' })).toExist(),
+    )
+  })
+
   test('a session that could not be read leaves a way on and reads it again, rather than an empty bar', () => {
     scene(
       { update, view },

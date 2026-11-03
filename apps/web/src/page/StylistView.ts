@@ -10,7 +10,7 @@ import { actionButton } from '../ActionButton.ts'
 import { textArea, textField } from '../Fields.styles.ts'
 import { secondaryAction } from '../Actions.styles.ts'
 import { backIcon, forwardIcon, loader } from '../Icon.ts'
-import { askRouter, lookRouter, pieceRouter } from '../route.ts'
+import { wardrobeRouter, lookRouter, pieceRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { barStart, round } from './PageBar.styles.ts'
@@ -294,7 +294,7 @@ export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, 
       h.div(styled(h, styles.pageBar()), [
         h.a(
           [
-            h.Href(askRouter({ q: Option.none() })),
+            h.Href(wardrobeRouter({})),
             h.AriaLabel(format(locale, 'common.back', {})),
             ...styled(h, cx(round(), barStart())),
           ],

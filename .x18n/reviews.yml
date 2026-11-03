@@ -3,6 +3,8 @@ x18n: 1
 sources:
   ask.otherLanguageFailed:
     sl: 133375c41998fb
+  ask.title:
+    sl: 25151b7829ac9
   today.wornUnread:
     sl: ecfc9a548ec3e
   wardrobe.addPieceColorsLabel:

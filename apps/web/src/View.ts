@@ -1,11 +1,10 @@
 import { Select } from '@foldkit/ui'
 import { direction, format, type Language, languageOf, type Locale } from '@styld/i18n'
-import { Option, String } from 'effect'
+import { Option } from 'effect'
 import type { Document, Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import type { Html as Styles } from 'zyzz/runtime'
 import { hasSession, LocaleSave, Message, type Model, Session } from './App.ts'
-import { lenses } from './Page.ts'
 import { actionButton } from './ActionButton.ts'
 import { primaryAction, secondaryAction } from './Actions.styles.ts'
 import { styled } from './Styled.ts'
@@ -13,7 +12,7 @@ import { askTabIcon, boardsTabIcon, homeTabIcon, wardrobeTabIcon } from './Icon.
 import {
   accountRouter,
   AppRoute,
-  askRouter,
+  stylistRouter,
   boardsRouter,
   exploreRouter,
   homeRouter,
@@ -217,18 +216,8 @@ const appNavigation = (model: Model, initial: string, h: HtmlBuilder<Message>): 
     ],
     [
       item('home', homeRouter({}), format(locale, 'nav.home', {}), homeTabIcon(h)),
-      // Ask keeps its search: coming back from another tab brings it back.
-      item(
-        'ask',
-        askRouter({
-          q: Option.flatMap(lenses.ask.read(model.page), (ask) =>
-            Option.liftPredicate(ask.query.trim(), String.isNonEmpty),
-          ),
-        }),
-        format(locale, 'nav.ask', {}),
-        askTabIcon(h),
-        true,
-      ),
+      // Ask opens the stylist directly; wardrobe search has its own entry in Wardrobe.
+      item('ask', stylistRouter({ q: Option.none() }), format(locale, 'nav.ask', {}), askTabIcon(h), true),
       item('wardrobe', wardrobeRouter({}), format(locale, 'nav.wardrobe', {}), wardrobeTabIcon(h)),
       item('boards', boardsRouter({}), format(locale, 'nav.boards', {}), boardsTabIcon(h)),
     ],

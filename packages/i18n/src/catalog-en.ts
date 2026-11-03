@@ -691,7 +691,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'boards.loading': 'Loading your boards…',
   'boards.failed': 'Your boards didn’t load.',
   'boards.retry': 'Try again',
-  'ask.title': 'Ask',
+  'ask.title': 'Search',
   'ask.searchLabel': 'Search your wardrobe',
   'ask.placeholder': 'Search your wardrobe',
   'ask.clear': 'Clear the search',

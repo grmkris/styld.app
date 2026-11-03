@@ -274,7 +274,9 @@ const verifyBoardPage = async (page: Page, origin: string) => {
 }
 
 const verifyAskAndWardrobe = async (page: Page, origin: string) => {
-  await page.goto(`${origin}/ask`, { waitUntil: 'networkidle' })
+  await page.goto(`${origin}/wardrobe`, { waitUntil: 'networkidle' })
+  await page.getByRole('link', { name: 'Search your wardrobe' }).click()
+  await page.waitForURL(`${origin}/ask`)
   await page.getByRole('searchbox', { name: 'Search your wardrobe' }).fill('knit')
   await page.getByRole('link', { name: 'Cable knit' }).waitFor({ state: 'visible' })
   await page.getByRole('button', { name: 'Add clothes or a board', exact: true }).click()
@@ -318,7 +320,10 @@ const verifyStylist = async (page: Page, origin: string) => {
     { x: (language?.x ?? 0) + (language?.width ?? 0) / 2, y: (language?.y ?? 0) + (language?.height ?? 0) / 2 },
   )
   expect(reached).toBe(true)
-  await page.goto(`${origin}/ask/stylist`, { waitUntil: 'networkidle' })
+  await page.goto(`${origin}/wardrobe`, { waitUntil: 'networkidle' })
+  await page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'Ask', exact: true }).click()
+  await page.waitForURL(`${origin}/ask/stylist`)
+  expect(await page.getByRole('searchbox').count()).toBe(0)
   await page.getByRole('list', { name: question }).waitFor({ state: 'visible' })
   await page.getByRole('button', { name: 'New chat' }).click()
   await page.getByRole('button', { name: 'What should I wear today?' }).waitFor({ state: 'visible' })

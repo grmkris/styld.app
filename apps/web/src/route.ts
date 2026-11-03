@@ -229,7 +229,7 @@ export const routeMeta = AppRoute.match<RouteMeta>({
   Photos: () =>
     meta('/wardrobe/gallery', 'wardrobe.tabGallery', { session: required, tab: 'Photos', section: 'wardrobe' }),
   Photo: () => meta('/wardrobe/gallery/:photo', 'wardrobe.tabGallery', { session: required, section: 'wardrobe' }),
-  Ask: () => meta('/ask', 'ask.title', { session: required, tab: 'Ask', section: 'ask' }),
+  Ask: () => meta('/ask', 'ask.title', { session: required, tab: 'Ask', section: 'wardrobe' }),
   Stylist: () => meta('/ask/stylist', 'stylist.title', { session: required, section: 'ask' }),
   Boards: () => meta('/boards', 'boards.title', { session: required, tab: 'Boards', section: 'boards' }),
   Board: () => meta('/boards/:board', 'boards.title', { section: 'boards' }),

@@ -198,8 +198,8 @@ Follow the prototype's `board`, `boards`, `person`, `explore`, `pin`, `wishlist`
 
 - No eyebrow above a head that says the same thing; where a head is figurative, the plain label becomes the head.
 - No middle-dot-joined meta (`A · B · C`): use a line break, a comma, a column or a `<dl>`. No arrow glued to a label.
-- No decorative status dot. No emoji as an icon; icons are Phosphor (Icons above). Sparkles only where AI is literally
-  running right now.
+- No decorative status dot. No emoji as an icon; icons are Phosphor (Icons above). A static sparkle identifies
+  Ask Styld in navigation (Eva review T-13); elsewhere sparkles only appear while AI is running.
 - Every data region draws loading (a skeleton in the shape of what is coming), empty (what belongs here and the one
   action that fills it), error (what broke and what to do) and full.
 - Words in both `packages/i18n/catalogs/en.json` and `sl.json`, same keys; `bun run translations:check` fails on a

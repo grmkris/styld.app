@@ -21,8 +21,14 @@ export const head = style({
   minBlockSize: '52px',
   paddingBlockStart: '8px',
   '& > h1': { order: 1 },
-  '& > a': { order: 2 },
-  '@media (min-width: 900px)': { columnGap: 'column', '& > a': { order: 3 } },
+  '@media (min-width: 900px)': { columnGap: 'column' },
+})
+export const actions = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'snug',
+  order: 2,
+  '@media (min-width: 900px)': { order: 3 },
 })
 export const tab = style({
   display: 'inline-flex',

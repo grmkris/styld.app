@@ -13,7 +13,7 @@ import {
   CopyRegular,
   DotsThreeRegular,
   ExportRegular,
-  MagnifyingGlassLight,
+  SparkleLight,
   MagnifyingGlassRegular,
   ShuffleRegular,
   SlidersHorizontalRegular,
@@ -105,5 +105,5 @@ export const saveIcon = control(BookmarkSimpleRegular)
 export const homeTabIcon = tab(HouseLight)
 export const exploreTabIcon = tab(CompassLight)
 export const wardrobeTabIcon = tab(TShirtLight)
-export const askTabIcon = tab(MagnifyingGlassLight)
+export const askTabIcon = tab(SparkleLight)
 export const boardsTabIcon = tab(SquaresFourLight)

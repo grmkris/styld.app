@@ -1,7 +1,10 @@
 import { format, type Locale } from '@styld/i18n'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import type { Html as Styles } from 'zyzz/runtime'
-import { looksRouter, photosRouter, wardrobeRouter } from '../route.ts'
+import { Option } from 'effect'
+import { askRouter, looksRouter, photosRouter, wardrobeRouter } from '../route.ts'
+import { searchIcon } from '../Icon.ts'
+import { round } from './PageBar.styles.ts'
 import { styled } from '../Styled.ts'
 import { addPiecesAction, pageTitle } from './PageHead.ts'
 import * as styles from './WardrobeTabs.styles.ts'
@@ -41,7 +44,17 @@ export const wardrobeMain = <Message>(
       h.div(styled(h, styles.head()), [
         pageTitle(format(locale, 'wardrobe.title', {}), h),
         wardrobeTabs(current, locale, h),
-        addPiecesAction(locale, h),
+        h.div(styled(h, styles.actions()), [
+          h.a(
+            [
+              h.Href(askRouter({ q: Option.none() })),
+              h.AriaLabel(format(locale, 'ask.searchLabel', {})),
+              ...styled(h, round()),
+            ],
+            [searchIcon(h)],
+          ),
+          addPiecesAction(locale, h),
+        ]),
       ]),
       ...content,
     ],
