@@ -75,3 +75,19 @@ physical-phone or acceptance evidence for any of the findings. No message was se
   320/390/1440px, no document overflow, search/reset and JavaScript-disabled comparisons. CSP/noindex headers
   were present; no page or console errors occurred. The first harness waited indefinitely on a lazy image;
   scrolling images into view and bounding the decode wait fixed the harness. No site change was needed.
+
+## Camera batch 03 publication — 3 November 2026
+
+- Tracker source commit: `39cb762`; stable deployment remains https://styld-review-07c26b483ccc.pages.dev.
+  The camera update uploaded the changed tracker assets and reused the existing static files. The document contains
+  51 findings, 21 tickets, 35 original screenshots and 19 before/after pairs.
+- T-01 and T-05 received four matching synthetic camera pairs each at 390×844 and 1440×844. F-49 is verified
+  at the native and exact-release preview-smoke boundary; T-01/T-05 remain partial. T-21 remains not started and
+  explicitly records the remaining signed-media migration plus authenticated load evidence.
+- The tracker build passed its data/IDs/evidence/image checks. `bun run format:check` and `git diff --check` passed.
+  The public Chromium readback checked T-01, T-05, T-21 and F-49 at 320/390/1440px, decoded all 14 camera
+  comparison images, verified search/reset, Back, JavaScript-disabled reading, no overflow, CSP/noindex headers
+  and no page or console errors.
+- Application release `15ddacaca5105bf0f7c7b8b33cb2ba396a24deeb` is deployed separately to the isolated preview;
+  its exact-release smoke acceptance passed 3 tests / 42 assertions. The tracker publication does not change
+  application resources. Physical-phone and real-provider acceptance remain separate.
