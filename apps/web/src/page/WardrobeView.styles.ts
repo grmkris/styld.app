@@ -2,20 +2,48 @@ import { pressThenHover, style } from '../zyzz.config.ts'
 
 // Styles for the wardrobe in WardrobeView.ts (Gallery: wardrobe.html, wardrobe-desktop.html).
 export const wardrobePage = style({ display: 'grid', gap: 'related', paddingBlock: '0 40px' })
-/** Browsing as a shop does (owner, 2026-10-31): a row of groups, then a row of the chosen group's types, each chip
- * with its count (DESIGN.md › Chips, Gallery 2 `.chips.scroll`): a row that scrolls, cut at the screen's edge rather
- * than the gutter. */
-export const filterRow = style({
-  display: 'flex',
-  gap: 'actions',
-  marginInline: '-20px',
-  paddingInline: '20px',
-  paddingBlock: '4px',
-  scrollPaddingInline: '20px',
-  overflowX: 'auto',
-  scrollbarWidth: 'none',
-  whiteSpace: 'nowrap',
+/** The category cards (owner, 2026-11-03, T-07; Eva's ABOUT YOU reference): two a row on a phone, four on a wide
+ * screen, each its name at the start and its newest piece at the end, on the paper's deeper tone. */
+export const categories = style({
+  display: 'grid',
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  gap: 'related',
+  margin: '0',
+  padding: '0',
+  listStyleType: 'none',
+  '@media (min-width: 900px)': { gridTemplateColumns: 'repeat(4, minmax(0, 1fr))', gap: 'grid' },
 })
+export const category = style({
+  display: 'grid',
+  gridTemplateColumns: 'minmax(0, 1fr) 44%',
+  alignItems: 'center',
+  gap: 'tight',
+  minBlockSize: '96px',
+  paddingBlock: '10px',
+  paddingInline: '14px 8px',
+  borderRadius: 'photo',
+  backgroundColor: 'paper2',
+  color: 'ink',
+  textDecorationLine: 'none',
+  transitionProperty: 'transform, background-color',
+  transitionDuration: pressThenHover,
+  transitionTimingFunction: 'standard',
+  '&:active': { transform: 'scale(0.97)' },
+  '@media (hover: hover) and (pointer: fine)': { '&:hover': { backgroundColor: 'paper2Hover' } },
+})
+export const categoryName = style({ fontSize: 'control', fontWeight: 600, overflowWrap: 'anywhere' })
+export const categoryImage = style({
+  display: 'block',
+  inlineSize: '100%',
+  aspectRatio: '1 / 1',
+  objectFit: 'contain',
+  // A photo's pale backdrop gives way to the card, as the grid's does to the paper.
+  mixBlendMode: 'darken',
+})
+export const categorySkeleton = style({ minBlockSize: '96px', borderRadius: 'photo' })
+/** A level's head: the round back a step up, the category's name, and on a type's page its Filter button. */
+export const levelHead = style({ display: 'flex', alignItems: 'center', gap: 'snug', minBlockSize: '44px' })
+export const levelTitle = style({ flexGrow: 1, margin: '0', fontSize: 'subheading', fontWeight: 600 })
 /** Ask's chip, chosen as Explore's is (`cx(chip(), chosen(), filterChip())`), with its count beside its name. */
 export const filterChip = style({ display: 'inline-flex', alignItems: 'center', gap: 'snug' })
 /** A chip's count, quieter than its name; on the chosen chip and on Filters once set it takes the on-ink colour. */
@@ -26,12 +54,6 @@ export const count = style({
   '[aria-pressed="true"] > &': { color: 'onInk' },
   '[data-set] > &': { color: 'onInk' },
 })
-/** Filters pinned at the start of the groups' row, which scrolls beside it. */
-// No wider than the page's column: without a floor the row's chips set the column's width, and the page ran past the
-// phone's edge (398px on a 390px screen).
-export const browseRow = style({ display: 'flex', alignItems: 'center', gap: 'actions', minInlineSize: '0' })
-/** The groups' row beside Filters: cut at the screen's right edge only. */
-export const groupScroll = style({ flexGrow: 1, minInlineSize: '0', marginInlineStart: '0', paddingInlineStart: '0' })
 /** Filters once any is set: filled in, as a chosen chip is. */
 export const filtersSet = style({ '&[data-set]': { backgroundColor: 'ink', color: 'onInk' } })
 /** The signature grid of pieces on paper, dense as a shop's: three columns on a phone, up to six on a wide screen. */
@@ -69,14 +91,6 @@ export const cutImage = style({
   // A photo's pale backdrop gives way to the paper, as the looks' collage does.
   mixBlendMode: 'darken',
 })
-export const caption = style({
-  maxInlineSize: '100%',
-  overflow: 'hidden',
-  fontSize: 'small',
-  fontWeight: 500,
-  textOverflow: 'ellipsis',
-  whiteSpace: 'nowrap',
-})
 /** Work in progress takes the signal colour (DESIGN.md › Signal). */
 export const pieceState = style({
   display: 'inline-flex',
@@ -86,10 +100,6 @@ export const pieceState = style({
   color: 'signal',
 })
 export const pieceFailed = style({ fontSize: 'micro', color: 'error' })
-/** The filter chips' row while the pieces load: pills where the chips will be (AskView.styles.ts › chipSkeleton). */
-export const filterRowSkeleton = style({ display: 'flex', alignItems: 'center', gap: 'actions', minBlockSize: '44px' })
-export const tileSkeleton = style({ inlineSize: '100%', aspectRatio: '1 / 1' })
-export const captionSkeleton = style({ fontSize: 'small' })
 export const message = style({
   display: 'grid',
   justifyItems: 'start',

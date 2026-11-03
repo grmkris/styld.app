@@ -1,7 +1,7 @@
 import { Option } from 'effect'
 import { Command, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
-import { brandsOf, init, Message, OutMessage, shownPieces, update } from '../src/page/Wardrobe.ts'
+import { brandsOf, init, Message, newestOf, OutMessage, restore, shownPieces, update } from '../src/page/Wardrobe.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 describe('the wardrobe tab', () => {
@@ -16,21 +16,27 @@ describe('the wardrobe tab', () => {
     )
   })
 
-  test('a group, then one of its types, filters the grid; another group starts from all its types', () => {
-    story(
-      update,
-      given(init()),
-      message(Message.ClickedGroup({ group: Option.some('shoes') })),
-      message(Message.ClickedType({ type: Option.some('boots') })),
-      model(({ group, type }) => {
-        expect(group).toEqual(Option.some('shoes'))
-        expect(type).toEqual(Option.some('boots'))
-      }),
-      message(Message.ClickedGroup({ group: Option.some('clothing') })),
-      model(({ type }) => expect(type).toEqual(Option.none())),
-      message(Message.ClickedGroup({ group: Option.none() })),
-      model(({ group }) => expect(group).toEqual(Option.none())),
-    )
+  test('the address says how deep the browsing is: the groups, a group’s types, or a type’s pieces', () => {
+    expect(init()).toMatchObject({ group: Option.none(), type: Option.none() })
+    expect(init({ group: 'shoes' })).toMatchObject({ group: Option.some('shoes'), type: Option.none() })
+    expect(init({ group: 'shoes', type: 'boots' })).toMatchObject({
+      group: Option.some('shoes'),
+      type: Option.some('boots'),
+    })
+    // A type that is not of the group is not shown under it.
+    expect(init({ group: 'shoes', type: 'jeans' }).type).toEqual(Option.none())
+    // Sportswear is the Sport group's, as in a shop (T-07).
+    expect(init({ group: 'sport', type: 'sportswear' }).type).toEqual(Option.some('sportswear'))
+    const browsing = restore(init({ group: 'shoes', type: 'boots' }), {})
+    expect(browsing).toMatchObject({ group: Option.none(), type: Option.none() })
+  })
+
+  test('a category’s card shows its newest piece', () => {
+    const older = pieceFixture('older', { createdAt: '2026-10-01T10:00:00.000Z' })
+    const newer = pieceFixture('newer', { createdAt: '2026-11-02T10:00:00.000Z' })
+    expect(newestOf([older, newer])).toEqual(Option.some(newer))
+    expect(newestOf([newer, older])).toEqual(Option.some(newer))
+    expect(newestOf([])).toEqual(Option.none())
   })
 })
 

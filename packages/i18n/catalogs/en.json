@@ -249,7 +249,8 @@
     "groups": {
       "clothing": "Clothing",
       "shoes": "Shoes",
-      "accessories": "Accessories"
+      "accessories": "Accessories",
+      "sport": "Sport"
     },
     "typeLabel": "Category",
     "needsType": "Choose what it is to add it.",
@@ -299,7 +300,8 @@
     "patternFact": "Pattern",
     "shopLink": "Open the shop’s page",
     "shopFact": "Shop",
-    "namePlaceholder": "e.g. Zara linen blazer"
+    "namePlaceholder": "e.g. Zara linen blazer",
+    "backToGroup": "Back to {group}"
   },
   "landing": {
     "feedDescription": "Public boards from Styld and the people using it.",

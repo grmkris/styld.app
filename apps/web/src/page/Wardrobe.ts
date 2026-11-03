@@ -9,8 +9,9 @@ import { sheetFolds } from './Sheet.ts'
 import { StyldClient } from '../StyldClient.ts'
 import { browseColours, BrowseQuery } from '../WardrobeBrowse.ts'
 
-// The wardrobe tab: the person's pieces (the app's, read once for every page that shows them) browsed by group and
-// type and narrowed by the filter sheet.
+// The wardrobe tab: the person's pieces (the app's, read once for every page that shows them), browsed as a shop is
+// (owner, 2026-11-03, T-07): the groups as cards, then the chosen group's types as cards, then the chosen type's
+// pieces, narrowed by the filter sheet. Each step down is a link, so the phone's Back goes a step up.
 
 // MODEL
 
@@ -56,8 +57,17 @@ export const shownPieces = (pieces: ReadonlyArray<Piece>, model: Model): Readonl
 export const brandsOf = (pieces: ReadonlyArray<Piece>): ReadonlyArray<string> =>
   Array.sort(Array.dedupe(pieces.flatMap((piece) => (piece.brand === null ? [] : [piece.brand]))), Order.String)
 
+/** The newest of some pieces, whose picture stands for them on a category's card (owner, 2026-11-03). */
+export const newestOf = (pieces: ReadonlyArray<Piece>): Option.Option<Piece> =>
+  Array.reduce(pieces, Option.none<Piece>(), (newest, piece) =>
+    Option.match(newest, {
+      onNone: () => Option.some(piece),
+      onSome: (kept) => (piece.createdAt > kept.createdAt ? Option.some(piece) : newest),
+    }),
+  )
+
 export const Model = Schema.Struct({
-  /** The group the grid shows, then one of its types; none shows every piece. */
+  /** The group being browsed, then one of its types, whose pieces show; none shows the groups. */
   group: Schema.Option(GarmentGroup),
   type: Schema.Option(PieceType),
   filters: Filters,
@@ -105,8 +115,6 @@ export const queryOf = (model: Model): BrowseQuery => ({
 // MESSAGE
 
 export const Message = defineMessageUnion({
-  ClickedGroup: { group: Schema.Option(GarmentGroup) },
-  ClickedType: { type: Schema.Option(PieceType) },
   ClickedFilters: {},
   GotFilterSheetMessage: { message: Dialog.Message },
   ToggledFilterColour: { colour: Colour },
@@ -150,9 +158,6 @@ const filtered = (model: Model, change: (filters: Filters) => Filters): UpdateRe
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
-    // Another group starts from all of its types.
-    ClickedGroup: ({ group }) => browsed(modifyFields(model, { group: () => group, type: () => Option.none() })),
-    ClickedType: ({ type }) => browsed(modifyFields(model, { type: () => type })),
     ClickedFilters: () => openFilterSheet(model),
     GotFilterSheetMessage: ({ message: sheetMessage }) => foldFilterSheet(model, sheetMessage),
     ToggledFilterColour: ({ colour }) =>

@@ -126,6 +126,13 @@ const specialNavigation = (route: AppRoute, target: AppRoute, href: string) => {
       ? parentReturn(route.from, 'Photo')
       : Option.none()
   if (Option.exists(parent, (path) => new URL(path, href).href === href)) return [ReturnToParent({ href })]
+  // A step through the wardrobe's groups and types is a page of its own: Back goes a step up (T-07).
+  if (
+    AppRoute.guards.Wardrobe(route) &&
+    AppRoute.guards.Wardrobe(target) &&
+    (route.group !== target.group || route.type !== target.type)
+  )
+    return [NavigateInternal({ href })]
   const wardrobeReturn =
     AppRoute.guards.Wardrobe(route) && AppRoute.guards.Piece(target)
       ? parentReturn(target.from, 'Wardrobe')

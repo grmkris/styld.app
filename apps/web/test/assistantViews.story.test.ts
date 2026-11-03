@@ -7,7 +7,7 @@ const labels = {
   wardrobeTitle: 'Wardrobe',
   empty: 'Your wardrobe is empty',
   openInStyld: 'Open in Styld',
-  groups: { clothing: 'Clothing', shoes: 'Shoes', accessories: 'Accessories' },
+  groups: { clothing: 'Clothing', sport: 'Sport', shoes: 'Shoes', accessories: 'Accessories' },
 }
 const wardrobe = WardrobeView.make({
   pieces: [

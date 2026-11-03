@@ -28,6 +28,7 @@ const labelsIn = (locale: Locale): ViewLabels => ({
   openInStyld: format(locale, 'assistantView.openInStyld', {}),
   groups: {
     clothing: format(locale, 'wardrobe.groups.clothing', {}),
+    sport: format(locale, 'wardrobe.groups.sport', {}),
     shoes: format(locale, 'wardrobe.groups.shoes', {}),
     accessories: format(locale, 'wardrobe.groups.accessories', {}),
   },

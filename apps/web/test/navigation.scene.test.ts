@@ -1,9 +1,11 @@
-import { Command, click, expect, given, role, scene } from 'foldkit/scene'
+import { Dialog } from '@foldkit/ui'
+import { Command, Mount, click, expect, given, role, scene } from 'foldkit/scene'
 import { test } from 'vitest'
 import { Message, update } from '../src/App.ts'
 import { ReplaceInternal } from '../src/Navigation.ts'
 import { view } from '../src/View.ts'
 import { at, withPieces } from './AppFixtures.ts'
+import { sceneSheetOpened } from './SheetFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const flats = pieceFixture('flats', {
@@ -21,8 +23,8 @@ test('a reloaded wardrobe restores every filter and the piece link carries the s
   scene(
     { update, view },
     given(withPieces(at(path, { signedIn: true }), [flats, dress])),
-    expect(role('button', { name: 'Shoes 1' })).toHaveAttr('aria-pressed', 'true'),
-    expect(role('button', { name: 'Low shoes 1' })).toHaveAttr('aria-pressed', 'true'),
+    expect(role('heading', { name: 'Low shoes' })).toExist(),
+    expect(role('link', { name: 'Back to Shoes' })).toHaveAttr('href', '/wardrobe?group=shoes'),
     expect(role('button', { name: 'Filters 4' })).toExist(),
     expect(role('link', { name: 'Red dress' })).not.toExist(),
     expect(role('link', { name: 'Blue flats' })).toHaveAttr(
@@ -32,14 +34,18 @@ test('a reloaded wardrobe restores every filter and the piece link carries the s
   )
 })
 
-test('choosing a category replaces the current address rather than adding a Back step', () => {
+test('choosing a filter replaces the current address rather than adding a Back step', () => {
   scene(
     { update, view },
-    given(withPieces(at('/wardrobe', { signedIn: true }), [flats, dress])),
-    click(role('button', { name: 'Shoes 1' })),
-    Command.expectExact(ReplaceInternal({ href: '/wardrobe?group=shoes' })),
+    given(withPieces(at('/wardrobe?group=shoes&type=flats&season=cold', { signedIn: true }), [flats, dress])),
+    click(role('button', { name: 'Filters 1' })),
+    Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
+    Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+    ...sceneSheetOpened,
+    click(role('button', { name: 'Smart' })),
+    Command.expectExact(ReplaceInternal({ href: '/wardrobe?group=shoes&type=flats&season=cold&occasion=smart' })),
     Command.resolve(ReplaceInternal, Message.CompletedNavigateInternal()),
-    expect(role('link', { name: 'Red dress' })).not.toExist(),
+    expect(role('link', { name: 'Blue flats' })).toExist(),
   )
 })
 

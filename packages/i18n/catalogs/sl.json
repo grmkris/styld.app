@@ -249,7 +249,8 @@
     "groups": {
       "clothing": "Oblačila",
       "shoes": "Obutev",
-      "accessories": "Dodatki"
+      "accessories": "Dodatki",
+      "sport": "Šport"
     },
     "typeLabel": "Kategorija",
     "needsType": "Izberi, kaj je, da ga dodaš.",
@@ -299,7 +300,8 @@
     "patternFact": "Vzorec",
     "shopLink": "Odpri stran v trgovini",
     "shopFact": "Trgovina",
-    "namePlaceholder": "npr. laneni suknjič Zara"
+    "namePlaceholder": "npr. laneni suknjič Zara",
+    "backToGroup": "Nazaj na {group}"
   },
   "landing": {
     "feedDescription": "Javne zbirke Stylda in ljudi, ki ga uporabljajo.",

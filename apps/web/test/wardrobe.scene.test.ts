@@ -12,12 +12,13 @@ import { view } from '../src/View.ts'
 import { sceneSheetOpened } from './SheetFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
-const wardrobe = (pieces: PiecesData) =>
-  modifyFields(at('/wardrobe', { signedIn: true }), {
+const wardrobe = (pieces: PiecesData, path = '/wardrobe') =>
+  modifyFields(at(path, { signedIn: true }), {
     data: (data) => modifyFields(data, { pieces: () => pieces }),
   })
 
 const loaded = (...pieces: ReadonlyArray<Piece>) => wardrobe(PiecesData.Success({ data: pieces }))
+const loadedAt = (path: string, ...pieces: ReadonlyArray<Piece>) => wardrobe(PiecesData.Success({ data: pieces }), path)
 
 const tee = pieceFixture('tee', { name: 'White tee' })
 const jeans = pieceFixture('jeans', { type: 'jeans' })
@@ -28,42 +29,57 @@ describe('the wardrobe page', () => {
     scene({ update, view }, given(wardrobe(AsyncData.Loading())), expect(role('status')).toHaveText('Loading pieces…'))
   })
 
-  test('shows each piece by name, or by what it is, browsed by group and then by type as a shop is', () => {
+  test('opens on the groups that hold pieces, each a card with its newest piece (T-07)', () => {
     scene(
       { update, view },
       given(loaded(tee, jeans, boots)),
+      expect(role('link', { name: 'Clothing' })).toHaveAttr('href', '/wardrobe?group=clothing'),
+      expect(role('link', { name: 'Shoes' })).toHaveAttr('href', '/wardrobe?group=shoes'),
+      expect(role('link', { name: 'Accessories' })).not.toExist(),
+      expect(role('link', { name: 'Sport' })).not.toExist(),
+      expect(selector(`img[src="${boots.images?.thumb ?? ''}"]`)).toHaveAttr('alt', ''),
+      // The groups come first: no piece is listed yet.
+      expect(role('link', { name: 'White tee' })).not.toExist(),
+    )
+  })
+
+  test('a group shows its types that hold pieces, and goes back to the groups', () => {
+    scene(
+      { update, view },
+      given(loadedAt('/wardrobe?group=clothing', tee, jeans, boots)),
+      expect(role('heading', { name: 'Clothing' })).toExist(),
+      expect(role('link', { name: 'Back to wardrobe' })).toHaveAttr('href', '/wardrobe'),
+      expect(role('link', { name: 'Tops & T-shirts' })).toHaveAttr('href', '/wardrobe?group=clothing&type=tops'),
+      expect(role('link', { name: 'Jeans' })).toHaveAttr('href', '/wardrobe?group=clothing&type=jeans'),
+      expect(role('link', { name: 'Boots' })).not.toExist(),
+      expect(role('link', { name: 'Coats' })).not.toExist(),
+    )
+  })
+
+  test('a type shows its pieces without labels, each link named for the piece, back to its group', () => {
+    const shirt = pieceFixture('shirt', { name: 'Linen shirt' })
+    scene(
+      { update, view },
+      given(loadedAt('/wardrobe?group=clothing&type=tops', tee, shirt, jeans)),
+      expect(role('heading', { name: 'Tops & T-shirts' })).toExist(),
+      expect(role('link', { name: 'Back to Clothing' })).toHaveAttr('href', '/wardrobe?group=clothing'),
       expect(role('link', { name: 'White tee' })).toHaveAttr(
         'href',
-        `/wardrobe/${tee.id}?from=%2Fwardrobe%23piece-${tee.id}`,
+        `/wardrobe/${tee.id}?from=%2Fwardrobe%3Fgroup%3Dclothing%26type%3Dtops%23piece-${tee.id}`,
       ),
-      // The caption names a piece once; its picture is decoration inside the link.
-      expect(role('link', { name: 'Jeans' })).toHaveAttr(
-        'href',
-        `/wardrobe/${jeans.id}?from=%2Fwardrobe%23piece-${jeans.id}`,
-      ),
-      expect(selector(`img[src="${jeans.images?.thumb ?? ''}"]`)).toHaveAttr('alt', ''),
-      expect(role('button', { name: 'All 3' })).toHaveAttr('aria-pressed', 'true'),
-      expect(role('button', { name: 'Clothing 2' })).toExist(),
-      expect(role('button', { name: 'Shoes 1' })).toExist(),
-      expect(role('button', { name: 'Accessories 0' })).not.toExist(),
-      expect(role('group', { name: 'Clothing' })).not.toExist(),
-      click(role('button', { name: 'Clothing 2' })),
-      Command.resolve(ReplaceInternal, Message.CompletedNavigateInternal()),
-      expect(role('button', { name: 'Clothing 2' })).toHaveAttr('aria-pressed', 'true'),
-      expect(role('link', { name: 'Boots' })).not.toExist(),
-      expect(role('group', { name: 'Clothing' })).toExist(),
-      click(role('button', { name: 'Jeans 1' })),
-      Command.resolve(ReplaceInternal, Message.CompletedNavigateInternal()),
-      expect(role('link', { name: 'White tee' })).not.toExist(),
-      expect(role('link', { name: 'Jeans' })).toExist(),
+      expect(role('link', { name: 'Linen shirt' })).toExist(),
+      expect(text('White tee')).not.toExist(),
+      expect(selector(`img[src="${tee.images?.thumb ?? ''}"]`)).toHaveAttr('alt', ''),
+      expect(role('link', { name: 'Jeans' })).not.toExist(),
     )
   })
 
   test('Filters opens a sheet of colours, seasons, occasions and the brands written down, and says what is left', () => {
     const coat = pieceFixture('coat', { name: 'Camel coat', type: 'coats', season: 'cold', brand: 'COS' })
+    const mac = pieceFixture('mac', { name: 'Light mac', type: 'coats', season: 'warm' })
     scene(
       { update, view },
-      given(loaded(tee, coat)),
+      given(loadedAt('/wardrobe?group=clothing&type=coats', coat, mac, tee)),
       expect(role('button', { name: 'Filters' })).not.toHaveAttr('data-set'),
       expect(role('button', { name: 'Filters' })).toHaveAttr('aria-expanded', 'false'),
       click(role('button', { name: 'Filters' })),
@@ -75,14 +91,18 @@ describe('the wardrobe page', () => {
       Command.resolve(ReplaceInternal, Message.CompletedNavigateInternal()),
       expect(role('button', { name: 'Show 1 piece' })).toExist(),
       expect(role('button', { name: 'COS' })).toExist(),
-      expect(role('link', { name: 'White tee' })).not.toExist(),
+      expect(role('link', { name: 'Light mac' })).not.toExist(),
       expect(role('button', { name: 'Filters 1' })).toHaveAttr('data-set', ''),
       expect(role('button', { name: 'Filters 1' })).not.toHaveAttr('aria-pressed'),
     )
   })
 
   test('a piece still processing says so', () => {
-    scene({ update, view }, given(loaded(boots)), expect(text('Processing')).toExist())
+    scene(
+      { update, view },
+      given(loadedAt('/wardrobe?group=shoes&type=boots', boots)),
+      expect(text('Processing')).toExist(),
+    )
   })
 
   test('an empty wardrobe offers the one action that fills it', () => {

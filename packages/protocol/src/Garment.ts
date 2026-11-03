@@ -6,8 +6,9 @@ import { Schema } from 'effect'
 // the wardrobe browses like a shop. A piece stores its type alone; its group and its place in an outfit follow from
 // the type, so they can never disagree with it.
 
-/** The three groups, in the order the wardrobe shows them. */
-export const GarmentGroup = Schema.Literals(['clothing', 'shoes', 'accessories'])
+/** The groups, in the order the wardrobe shows them. Sport holds what is worn for sport, as a shop's Sport section
+ * does (owner, 2026-11-03, T-07); swimwear and loungewear stay with the clothes. */
+export const GarmentGroup = Schema.Literals(['clothing', 'sport', 'shoes', 'accessories'])
 export type GarmentGroup = typeof GarmentGroup.Type
 
 /** Every garment type, keyed in English, in the order the wardrobe shows them. */
@@ -65,7 +66,7 @@ const kinds: { readonly [Type in PieceType]: { readonly group: GarmentGroup; rea
   trousers: { group: 'clothing', slot: 'bottom' },
   shorts: { group: 'clothing', slot: 'bottom' },
   skirts: { group: 'clothing', slot: 'bottom' },
-  sportswear: { group: 'clothing', slot: 'set' },
+  sportswear: { group: 'sport', slot: 'set' },
   swimwear: { group: 'clothing', slot: 'set' },
   loungewear: { group: 'clothing', slot: 'set' },
   trainers: { group: 'shoes', slot: 'shoes' },

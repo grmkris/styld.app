@@ -74,6 +74,15 @@ describe('following a link', () => {
     expect(names(followLink(AppRoute.Home(), false, internal('/#inspiration')))).toEqual(['NavigateInternal'])
   })
 
+  test('a step through the wardrobe’s groups and types adds a Back step; the same step only scrolls up', () => {
+    const groups = AppRoute.Wardrobe({})
+    const shoes = AppRoute.Wardrobe({ group: 'shoes' })
+    expect(names(followLink(groups, true, internal('/wardrobe?group=shoes')))).toEqual(['NavigateInternal'])
+    expect(names(followLink(shoes, true, internal('/wardrobe?group=shoes&type=boots')))).toEqual(['NavigateInternal'])
+    expect(names(followLink(shoes, true, internal('/wardrobe')))).toEqual(['NavigateInternal'])
+    expect(names(followLink(shoes, true, internal('/wardrobe?group=shoes')))).toEqual(['ScrollToTop'])
+  })
+
   test('only a change of tab cross-fades', () => {
     expect(isTabChange(AppRoute.Home(), AppRoute.Wardrobe({}))).toBe(true)
     expect(isTabChange(AppRoute.Ask({ q: Option.none() }), AppRoute.Ask({ q: Option.none() }))).toBe(false)

@@ -623,6 +623,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.backCost': { readonly credits: number }
   'wardrobe.backFailed': Readonly<Record<string, never>>
   'wardrobe.backSending': Readonly<Record<string, never>>
+  'wardrobe.backToGroup': { readonly group: string | number }
   'wardrobe.backToWardrobe': Readonly<Record<string, never>>
   'wardrobe.brandLabel': Readonly<Record<string, never>>
   'wardrobe.clearFilters': Readonly<Record<string, never>>
@@ -645,6 +646,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.groups.accessories': Readonly<Record<string, never>>
   'wardrobe.groups.clothing': Readonly<Record<string, never>>
   'wardrobe.groups.shoes': Readonly<Record<string, never>>
+  'wardrobe.groups.sport': Readonly<Record<string, never>>
   'wardrobe.itemNotFound': Readonly<Record<string, never>>
   'wardrobe.itemProcessFailed': Readonly<Record<string, never>>
   'wardrobe.nameLabel': Readonly<Record<string, never>>
@@ -811,4 +813,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '97af6122b1357c1ceff6114a9e023936f23f898e6c6380b4e036448f3f1e6014'
+export const catalogVersion = 'ea8581dbaab4da96b9963de76b6585f0650f87a8c01dad16e827f1a1f0f85039'

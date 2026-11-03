@@ -10,46 +10,22 @@ import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { filtersIcon, loader } from '../Icon.ts'
 import { addPiecesRouter, pieceRouter, wardrobeRouter } from '../route.ts'
-import { block, line } from '../Skeleton.styles.ts'
+import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import type { PiecesData } from '../ServerData.ts'
-import { brandsOf, filterCount, Message, type Model, queryOf, shownPieces } from './Wardrobe.ts'
+import { brandsOf, filterCount, Message, type Model, newestOf, queryOf, shownPieces } from './Wardrobe.ts'
 import { groupName, occasionName, pieceLabel, seasonName, typeName } from './WardrobeWords.ts'
+import { backTo, backToWardrobe } from './PageBar.ts'
 import { chipPicker, colourPicker } from './PieceFields.ts'
 import { bottomSheet, sheetShown } from './Sheet.ts'
 import * as styles from './WardrobeView.styles.ts'
 import { wardrobeMain } from './SectionMain.ts'
-import { chip, chipSkeleton, chosen } from '../Controls.styles.ts'
+import { chip } from '../Controls.styles.ts'
 import { sheetBody } from './Sheet.styles.ts'
 
 /** The small image of a piece; the API Worker serves it to its owner only. A new drawing is a new address. */
 const thumbnailPath = (piece: Piece) => cdn.piece(piece, 'thumb')
-
-/** One chip of a filter row: its name, how many pieces it holds, and whether it is the one shown. */
-const filter = (label: string, total: number, pressed: boolean, onClick: Message, h: HtmlBuilder<Message>): Html =>
-  Button.view(
-    {
-      onClick,
-      toView: (attributes) =>
-        h.button(
-          [
-            ...attributes.button,
-            h.AriaPressed(String(pressed)),
-            ...styled(h, cx(chip(), chosen(), styles.filterChip())),
-          ],
-          [label, ' ', h.span(styled(h, styles.count()), [String(total)])],
-        ),
-    },
-    h,
-  )
-
-const filterRow = (
-  label: string,
-  chips: ReadonlyArray<Html>,
-  h: HtmlBuilder<Message>,
-  look: Parameters<typeof styled>[1] = styles.filterRow(),
-): Html => h.div([h.Role('group'), h.AriaLabel(label), ...styled(h, look)], [...chips])
 
 /** Opens the filter sheet, a control rather than a category: it opens a dialog and toggles nothing. Once filters are
  * set it is filled in and says how many. */
@@ -78,70 +54,48 @@ const filtersButton = (model: Model, locale: Locale, h: HtmlBuilder<Message>): H
   )
 }
 
-/** The groups the person has pieces in, with All first; they scroll beside Filters and are cut at the screen's edge. */
-const groupRow = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  filterRow(
-    format(locale, 'wardrobe.filterCategories', {}),
+/** A category's card: its name, and the picture of its newest piece (Eva's review, ABOUT YOU's categories; owner,
+ * 2026-11-03). The name says what it is; the picture would only say it twice. */
+const categoryCard = (name: string, href: string, pieces: ReadonlyArray<Piece>, h: HtmlBuilder<Message>): Html =>
+  h.keyed('li')(
+    href,
+    [],
     [
-      filter(
-        format(locale, 'wardrobe.allItems', {}),
-        pieces.length,
-        Option.isNone(model.group),
-        Message.ClickedGroup({ group: Option.none() }),
-        h,
-      ),
-      ...GarmentGroup.literals.flatMap((group) => {
-        const total = pieces.filter((piece) => groupOf(piece.type) === group).length
-        return total === 0
-          ? []
-          : [
-              filter(
-                format(locale, groupName(group), {}),
-                total,
-                Option.contains(model.group, group),
-                Message.ClickedGroup({ group: Option.some(group) }),
-                h,
-              ),
-            ]
-      }),
-    ],
-    h,
-    cx(styles.filterRow(), styles.groupScroll()),
-  )
-
-/** The chosen group's types the person has, with All of the group first. */
-const typeRow = (inGroup: ReadonlyArray<Piece>, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  Option.match(model.group, {
-    onNone: () => h.empty,
-    onSome: (group) =>
-      filterRow(
-        format(locale, groupName(group), {}),
+      h.a(
+        [h.Href(href), ...styled(h, styles.category())],
         [
-          filter(
-            format(locale, 'wardrobe.allItems', {}),
-            inGroup.length,
-            Option.isNone(model.type),
-            Message.ClickedType({ type: Option.none() }),
-            h,
-          ),
-          ...typesIn(group).flatMap((type: PieceType) => {
-            const total = inGroup.filter((piece) => piece.type === type).length
-            return total === 0
-              ? []
-              : [
-                  filter(
-                    format(locale, typeName(type), {}),
-                    total,
-                    Option.contains(model.type, type),
-                    Message.ClickedType({ type: Option.some(type) }),
-                    h,
-                  ),
-                ]
+          h.span(styled(h, styles.categoryName()), [name]),
+          ...Option.match(newestOf(pieces), {
+            onNone: () => [],
+            onSome: (piece) => [
+              h.img([h.Src(thumbnailPath(piece)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.categoryImage())]),
+            ],
           }),
         ],
-        h,
       ),
-  })
+    ],
+  )
+
+/** The cards of the categories that hold pieces; one that holds none is not shown, so the wardrobe grows with them. */
+const categoryCards = <A extends string>(
+  label: string,
+  categories: ReadonlyArray<A>,
+  piecesIn: (category: A) => ReadonlyArray<Piece>,
+  nameOf: (category: A) => string,
+  hrefOf: (category: A) => string,
+  h: HtmlBuilder<Message>,
+): Html =>
+  h.ul(
+    [h.AriaLabel(label), ...styled(h, styles.categories())],
+    categories.flatMap((category) => {
+      const inCategory = piecesIn(category)
+      return inCategory.length === 0 ? [] : [categoryCard(nameOf(category), hrefOf(category), inCategory, h)]
+    }),
+  )
+
+/** A level's head below the wardrobe's: the round back a step up, and the category's name. */
+const levelHead = (back: Html, title: string, rest: ReadonlyArray<Html>, h: HtmlBuilder<Message>): Html =>
+  h.div(styled(h, styles.levelHead()), [back, h.h2(styled(h, styles.levelTitle()), [title]), ...rest])
 
 const pieceState = (piece: Piece, locale: Locale, h: HtmlBuilder<Message>): Html => {
   if (piece.status === 'processing')
@@ -160,12 +114,13 @@ const pieceTile = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Me
       h.a(
         [
           h.Href(pieceRouter({ pieceId: piece.id, from: `${wardrobeRouter(queryOf(model))}#piece-${piece.id}` })),
+          // No label under the cut-out (Eva's review, F-11): the link carries the piece's name for whoever cannot see
+          // the picture, and the piece's page says the rest.
+          h.AriaLabel(label),
           ...styled(h, styles.cut()),
         ],
         [
-          // The caption names the piece; the picture would only say it twice.
           h.img([h.Src(thumbnailPath(piece)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.cutImage())]),
-          h.span(styled(h, styles.caption()), [label]),
           pieceState(piece, locale, h),
         ],
       ),
@@ -276,25 +231,27 @@ const filterSheet = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale,
   )
 }
 
-const loadedView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  if (pieces.length === 0)
-    return h.section(styled(h, styles.message()), [
-      h.h2(styled(h, styles.messageTitle()), [format(locale, 'wardrobe.closetEmptyTitle', {})]),
-      h.p([], [format(locale, 'wardrobe.emptyHint', {})]),
-      // The head's + is the page's one ink action; this one says the same quietly, as Looks' does.
-      h.a(
-        [h.Href(addPiecesRouter({})), ...styled(h, secondaryAction())],
-        [format(locale, 'wardrobe.scanPhotosCta', {})],
-      ),
-    ])
-  const inGroup = Option.match(model.group, {
-    onNone: () => pieces,
-    onSome: (group) => pieces.filter((piece) => groupOf(piece.type) === group),
-  })
+/** The chosen type's pieces, label-free, with the one Filter button that narrows them (Eva's review, F-11). */
+const typeView = (
+  group: GarmentGroup,
+  type: PieceType,
+  pieces: ReadonlyArray<Piece>,
+  model: Model,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): ReadonlyArray<Html> => {
   const shown = shownPieces(pieces, model)
-  return h.div(styled(h, styles.wardrobePage()), [
-    h.div(styled(h, styles.browseRow()), [filtersButton(model, locale, h), groupRow(pieces, model, locale, h)]),
-    typeRow(inGroup, model, locale, h),
+  return [
+    levelHead(
+      backTo(
+        wardrobeRouter({ group }),
+        format(locale, 'wardrobe.backToGroup', { group: format(locale, groupName(group), {}) }),
+        h,
+      ),
+      format(locale, typeName(type), {}),
+      [filtersButton(model, locale, h)],
+      h,
+    ),
     shown.length === 0
       ? h.p(styled(h, styles.message()), [format(locale, 'wardrobe.noneFiltered', {})])
       : h.ul(
@@ -302,31 +259,64 @@ const loadedView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, 
           shown.map((piece) => pieceTile(piece, model, locale, h)),
         ),
     sheetShown(model.filterSheet) ? filterSheet(pieces, model, locale, h) : h.empty,
-  ])
+  ]
 }
 
-const skeletonTiles = ['a', 'b', 'c', 'd', 'e', 'f'] as const
+/** One step of browsing (owner, 2026-11-03, T-07): the groups, a group's types, or a type's pieces. */
+const levelView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, h: HtmlBuilder<Message>) => {
+  const inGroup = (group: GarmentGroup) => pieces.filter((piece) => groupOf(piece.type) === group)
+  if (Option.isNone(model.group))
+    return [
+      categoryCards(
+        format(locale, 'wardrobe.filterCategories', {}),
+        GarmentGroup.literals,
+        inGroup,
+        (group) => format(locale, groupName(group), {}),
+        (group) => wardrobeRouter({ group }),
+        h,
+      ),
+    ]
+  const group = model.group.value
+  const pieceOfGroup = inGroup(group)
+  if (Option.isSome(model.type)) return typeView(group, model.type.value, pieceOfGroup, model, locale, h)
+  const groupLabel = format(locale, groupName(group), {})
+  return [
+    levelHead(backToWardrobe(locale, h), groupLabel, [], h),
+    pieceOfGroup.length === 0
+      ? h.p(styled(h, styles.message()), [format(locale, 'wardrobe.noneFiltered', {})])
+      : categoryCards(
+          groupLabel,
+          typesIn(group),
+          (type) => pieceOfGroup.filter((piece) => piece.type === type),
+          (type) => format(locale, typeName(type), {}),
+          (type) => wardrobeRouter({ group, type }),
+          h,
+        ),
+  ]
+}
 
-/** The shape of what is coming: the group row and six captioned squares, where the pieces will be. */
+const loadedView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  pieces.length === 0
+    ? h.section(styled(h, styles.message()), [
+        h.h2(styled(h, styles.messageTitle()), [format(locale, 'wardrobe.closetEmptyTitle', {})]),
+        h.p([], [format(locale, 'wardrobe.emptyHint', {})]),
+        // The head's + is the page's one ink action; this one says the same quietly, as Looks' does.
+        h.a(
+          [h.Href(addPiecesRouter({})), ...styled(h, secondaryAction())],
+          [format(locale, 'wardrobe.scanPhotosCta', {})],
+        ),
+      ])
+    : h.div(styled(h, styles.wardrobePage()), levelView(pieces, model, locale, h))
+
+const skeletonCards = ['a', 'b', 'c', 'd'] as const
+
+/** The shape of what is coming: the category cards, where the groups will be. */
 const loadingView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.wardrobePage()), [
     h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'wardrobe.shelves.loadingPieces', {})]),
-    h.div(
-      [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.filterRowSkeleton())],
-      [
-        h.span(styled(h, cx(block(), chipSkeleton()))),
-        h.span(styled(h, cx(block(), chipSkeleton()))),
-        h.span(styled(h, cx(block(), chipSkeleton()))),
-      ],
-    ),
     h.ul(
-      [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.grid())],
-      skeletonTiles.map((slot) =>
-        h.keyed('li')(slot, styled(h, styles.cut()), [
-          h.span(styled(h, cx(block(), styles.tileSkeleton()))),
-          h.span(styled(h, cx(line(), styles.captionSkeleton()))),
-        ]),
-      ),
+      [h.AriaHidden(true), h.DataAttribute('skeleton', ''), ...styled(h, styles.categories())],
+      skeletonCards.map((slot) => h.keyed('li')(slot, styled(h, cx(block(), styles.categorySkeleton())))),
     ),
   ])
 
@@ -339,7 +329,7 @@ const failedView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
     ),
   ])
 
-/** The person's pieces on paper, browsed by group and type as a shop is (Gallery `wardrobe.html`). */
+/** The person's pieces on paper, browsed by group and type as a shop is (Gallery `wardrobe.html`; T-07). */
 export const view = Submodel.defineView<Model, Message, { readonly locale: Locale; readonly pieces: PiecesData }>(
   (model, { locale, pieces }, h) =>
     wardrobeMain(
