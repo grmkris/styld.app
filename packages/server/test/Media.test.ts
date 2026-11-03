@@ -83,6 +83,7 @@ describe('delivered images', () => {
       },
       output: async () => ({ image: () => new Blob(['webp']).stream(), contentType: () => 'image/webp' }),
     }
+    // SAFETY: the transform reads only `bucket.get` and `images.input`, which these stubs implement.
     const media = Media.of({
       bucket: { get: async () => ({ body: new Blob(['photo']).stream() }) },
       images: { input: () => transformer },

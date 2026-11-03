@@ -158,7 +158,7 @@ export const verifyGrant = Effect.fnUntraced(function* (key: CryptoKey, presente
     variant: presented.variant,
     version,
     expires,
-    rotation: rotation as PieceRotation,
+    rotation,
   }
   const signatureBytes = Uint8Array.from(decoded.success)
   const valid = yield* Effect.promise(() => crypto.subtle.verify('HMAC', key, signatureBytes, signedBytes(grant)))
