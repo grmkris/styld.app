@@ -34,12 +34,64 @@
       "criteriaDone": []
     },
     "T-05": {
-      "status": "not_started",
-      "owner": "",
+      "status": "in_progress",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
-      "evidence": [],
-      "criteriaDone": []
+      "note": "Partial delivery: guided cameras are first, library upload is explicit, the taken count finishes scanning, and Finish is prominent. Native acceptance confirms front/back photos survive finishing and reach review. Countdown, longer flipping delay and no-garment/face recognition changes remain open. The file picker remains subject to OS behavior.",
+      "evidence": [
+        {
+          "level": "unit",
+          "date": "2026-11-03",
+          "summary": "Final batch: 755 unit tests passed, including navigation, piece edit/delete and existing camera lifecycle coverage."
+        },
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Native workerd/Chromium: full gate passed 29 tests, including direct chat navigation/resumption, the compact board picker, and finishing capture with paired photos. Matching synthetic before/after captures are below; no paid providers or physical phones were used."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed c05071e0351cef5bb74caf249eea808775042842. Exact-release smoke readback passed: 3 tests / 42 assertions (hydration, assets, API/auth, MCP). Authenticated product interactions are covered by native fixtures, not a real-user preview walk.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
+        }
+      ],
+      "criteriaDone": [
+        0,
+        1
+      ],
+      "comparisons": [
+        {
+          "title": "Add clothes",
+          "width": 390,
+          "height": 844,
+          "before": "batch-01/T-05-add-clothes-before-390.png",
+          "after": "batch-01/T-05-add-clothes-after-390.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching Chromium viewports through local workerd with synthetic wardrobe and camera fixtures. Before: c5d6f52; after: c05071e. Full-page captures; not physical-phone or live-provider proof"
+        },
+        {
+          "title": "Add clothes",
+          "width": 1440,
+          "height": 844,
+          "before": "batch-01/T-05-add-clothes-before-1440.png",
+          "after": "batch-01/T-05-add-clothes-after-1440.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching Chromium viewports through local workerd with synthetic wardrobe and camera fixtures. Before: c5d6f52; after: c05071e. Full-page captures; not physical-phone or live-provider proof"
+        },
+        {
+          "title": "Camera finish",
+          "width": 390,
+          "height": 844,
+          "before": "batch-01/T-05-camera-finish-before-390.png",
+          "after": "batch-01/T-05-camera-finish-after-390.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching Chromium viewports through local workerd with synthetic wardrobe and camera fixtures. Before: c5d6f52; after: c05071e. Full-page captures; not physical-phone or live-provider proof"
+        }
+      ]
     },
     "T-06": {
       "status": "not_started",
@@ -98,12 +150,55 @@
       "criteriaDone": []
     },
     "T-13": {
-      "status": "not_started",
-      "owner": "",
+      "status": "verified",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
-      "evidence": [],
-      "criteriaDone": []
+      "note": "Completed: sparkle navigation opens Ask Styld directly; Back returns to Wardrobe; returning through Ask resumes the latest saved chat. The intermediate search step is removed from the Ask flow. Useful keyword search remains separately labelled Search in Wardrobe. Native interaction acceptance, preview release readback and matching phone/desktop screenshots passed.",
+      "evidence": [
+        {
+          "level": "unit",
+          "date": "2026-11-03",
+          "summary": "Final batch: 755 unit tests passed, including navigation, piece edit/delete and existing camera lifecycle coverage."
+        },
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Native workerd/Chromium: full gate passed 29 tests, including direct chat navigation/resumption, the compact board picker, and finishing capture with paired photos. Matching synthetic before/after captures are below; no paid providers or physical phones were used."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed c05071e0351cef5bb74caf249eea808775042842. Exact-release smoke readback passed: 3 tests / 42 assertions (hydration, assets, API/auth, MCP). Authenticated product interactions are covered by native fixtures, not a real-user preview walk.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
+        }
+      ],
+      "criteriaDone": [
+        0,
+        1,
+        2
+      ],
+      "comparisons": [
+        {
+          "title": "Ask entry",
+          "width": 390,
+          "height": 844,
+          "before": "batch-01/T-13-ask-entry-before-390.png",
+          "after": "batch-01/T-13-ask-entry-after-390.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching Chromium viewports through local workerd with synthetic wardrobe and camera fixtures. Before: c5d6f52; after: c05071e. Full-page captures; not physical-phone or live-provider proof"
+        },
+        {
+          "title": "Ask entry",
+          "width": 1440,
+          "height": 844,
+          "before": "batch-01/T-13-ask-entry-before-1440.png",
+          "after": "batch-01/T-13-ask-entry-after-1440.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching Chromium viewports through local workerd with synthetic wardrobe and camera fixtures. Before: c5d6f52; after: c05071e. Full-page captures; not physical-phone or live-provider proof"
+        }
+      ]
     },
     "T-14": {
       "status": "not_started",
@@ -114,12 +209,76 @@
       "criteriaDone": []
     },
     "T-15": {
-      "status": "not_started",
-      "owner": "",
+      "status": "in_progress",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
-      "evidence": [],
-      "criteriaDone": []
+      "note": "Partial delivery: back-photo actions and their credit text are above Name in Edit; a compact Add to board icon sits beside the read-only title; Name is optional with an example, Category is labelled, and Delete lives in Edit with confirmation and draft preservation. Read-only attributes stay read-only. Rotation and upside-down legacy cutouts (F-08) remain open. Dense metadata/long names still need Eva’s phone review.",
+      "evidence": [
+        {
+          "level": "unit",
+          "date": "2026-11-03",
+          "summary": "Final batch: 755 unit tests passed, including navigation, piece edit/delete and existing camera lifecycle coverage."
+        },
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Native workerd/Chromium: full gate passed 29 tests, including direct chat navigation/resumption, the compact board picker, and finishing capture with paired photos. Matching synthetic before/after captures are below; no paid providers or physical phones were used."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed c05071e0351cef5bb74caf249eea808775042842. Exact-release smoke readback passed: 3 tests / 42 assertions (hydration, assets, API/auth, MCP). Authenticated product interactions are covered by native fixtures, not a real-user preview walk.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
+        }
+      ],
+      "criteriaDone": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "comparisons": [
+        {
+          "title": "Piece detail",
+          "width": 390,
+          "height": 844,
+          "before": "batch-01/T-15-piece-detail-before-390.png",
+          "after": "batch-01/T-15-piece-detail-after-390.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching Chromium viewports through local workerd with synthetic wardrobe and camera fixtures. Before: c5d6f52; after: c05071e. Full-page captures; not physical-phone or live-provider proof"
+        },
+        {
+          "title": "Piece detail",
+          "width": 1440,
+          "height": 844,
+          "before": "batch-01/T-15-piece-detail-before-1440.png",
+          "after": "batch-01/T-15-piece-detail-after-1440.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching Chromium viewports through local workerd with synthetic wardrobe and camera fixtures. Before: c5d6f52; after: c05071e. Full-page captures; not physical-phone or live-provider proof"
+        },
+        {
+          "title": "Piece edit",
+          "width": 390,
+          "height": 844,
+          "before": "batch-01/T-15-piece-edit-before-390.png",
+          "after": "batch-01/T-15-piece-edit-after-390.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching Chromium viewports through local workerd with synthetic wardrobe and camera fixtures. Before: c5d6f52; after: c05071e. Full-page captures; not physical-phone or live-provider proof"
+        },
+        {
+          "title": "Piece edit",
+          "width": 1440,
+          "height": 844,
+          "before": "batch-01/T-15-piece-edit-before-1440.png",
+          "after": "batch-01/T-15-piece-edit-after-1440.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching Chromium viewports through local workerd with synthetic wardrobe and camera fixtures. Before: c5d6f52; after: c05071e. Full-page captures; not physical-phone or live-provider proof"
+        }
+      ]
     },
     "T-16": {
       "status": "not_started",
@@ -235,11 +394,23 @@
       "evidence": []
     },
     "F-10": {
-      "status": "not_started",
-      "owner": "",
+      "status": "verified",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
-      "evidence": []
+      "note": "Optional Name/example and explicit Category labels are implemented; genuine saved names are preserved. Scene checks and matched screenshots passed. Preview release readback passed. Eva’s physical-phone usability feedback is still welcome.",
+      "evidence": [
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Batch c05071e: 755 unit and 29 native tests passed. See linked ticket for scope and matching before/after screenshots."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed c05071e0351cef5bb74caf249eea808775042842. Exact-release smoke readback passed: 3 tests / 42 assertions (hydration, assets, API/auth, MCP). Authenticated product interactions are covered by native fixtures, not a real-user preview walk.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
+        }
+      ]
     },
     "F-11": {
       "status": "not_started",
@@ -326,11 +497,23 @@
       "evidence": []
     },
     "F-23": {
-      "status": "not_started",
-      "owner": "",
+      "status": "verified",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
-      "evidence": []
+      "note": "Delete is inside Edit, asks for confirmation and preserves the draft on Cancel. It is disabled and guarded during a save. Scene/story checks passed; preview release readback passed.",
+      "evidence": [
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Batch c05071e: 755 unit and 29 native tests passed. See linked ticket for scope and matching before/after screenshots."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed c05071e0351cef5bb74caf249eea808775042842. Exact-release smoke readback passed: 3 tests / 42 assertions (hydration, assets, API/auth, MCP). Authenticated product interactions are covered by native fixtures, not a real-user preview walk.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
+        }
+      ]
     },
     "F-24": {
       "status": "not_started",
@@ -438,11 +621,23 @@
       "evidence": []
     },
     "F-39": {
-      "status": "not_started",
-      "owner": "",
+      "status": "verified",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
-      "evidence": []
+      "note": "Implemented and passed native acceptance: the sparkle navigation opens Ask Styld directly, Back returns to Wardrobe, and returning through Ask resumes the latest saved chat. Keyword search remains a separately labelled Wardrobe action. Preview release readback passed.",
+      "evidence": [
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Batch c05071e: 755 unit and 29 native tests passed. See linked ticket for scope and matching before/after screenshots."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed c05071e0351cef5bb74caf249eea808775042842. Exact-release smoke readback passed: 3 tests / 42 assertions (hydration, assets, API/auth, MCP). Authenticated product interactions are covered by native fixtures, not a real-user preview walk.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
+        }
+      ]
     },
     "F-40": {
       "status": "not_started",
@@ -459,11 +654,23 @@
       "evidence": []
     },
     "F-42": {
-      "status": "not_started",
-      "owner": "",
+      "status": "ready_for_review",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
-      "evidence": []
+      "note": "Back-photo actions/cost moved to Edit; compact Add to board is beside the title and its native board-saving journey passed. Matched screenshots show the shorter detail page. Dense metadata, long names and pending picture states still need a phone review before claiming all metadata always fits above the fold.",
+      "evidence": [
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Batch c05071e: 755 unit and 29 native tests passed. See linked ticket for scope and matching before/after screenshots."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed c05071e0351cef5bb74caf249eea808775042842. Exact-release smoke readback passed: 3 tests / 42 assertions (hydration, assets, API/auth, MCP). Authenticated product interactions are covered by native fixtures, not a real-user preview walk.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
+        }
+      ]
     },
     "F-43": {
       "status": "not_started",
@@ -473,11 +680,23 @@
       "evidence": []
     },
     "F-44": {
-      "status": "not_started",
-      "owner": "",
+      "status": "verified",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
-      "evidence": []
+      "note": "Read-only attribute rows and the pencil Edit mode are preserved. Scene checks and before/after screenshots passed; preview release readback passed.",
+      "evidence": [
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Batch c05071e: 755 unit and 29 native tests passed. See linked ticket for scope and matching before/after screenshots."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed c05071e0351cef5bb74caf249eea808775042842. Exact-release smoke readback passed: 3 tests / 42 assertions (hydration, assets, API/auth, MCP). Authenticated product interactions are covered by native fixtures, not a real-user preview walk.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
+        }
+      ]
     },
     "F-45": {
       "status": "not_started",
@@ -494,11 +713,23 @@
       "evidence": []
     },
     "F-47": {
-      "status": "not_started",
-      "owner": "",
+      "status": "verified",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
-      "evidence": []
+      "note": "Guided camera choices precede Upload from library, with the library card smaller on phones. Native browser screenshots passed; preview release readback passed. The OS still controls which file-picker choices it offers.",
+      "evidence": [
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Batch c05071e: 755 unit and 29 native tests passed. See linked ticket for scope and matching before/after screenshots."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed c05071e0351cef5bb74caf249eea808775042842. Exact-release smoke readback passed: 3 tests / 42 assertions (hydration, assets, API/auth, MCP). Authenticated product interactions are covered by native fixtures, not a real-user preview walk.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
+        }
+      ]
     },
     "F-48": {
       "status": "not_started",
@@ -515,11 +746,23 @@
       "evidence": []
     },
     "F-50": {
-      "status": "not_started",
-      "owner": "",
+      "status": "in_progress",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
-      "evidence": []
+      "note": "Taken count and prominent Finish both close capture through the existing lifecycle. Native acceptance verifies paired photos reach review. Recognition/face suppression is unchanged and remains open.",
+      "evidence": [
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Batch c05071e: 755 unit and 29 native tests passed. See linked ticket for scope and matching before/after screenshots."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed c05071e0351cef5bb74caf249eea808775042842. Exact-release smoke readback passed: 3 tests / 42 assertions (hydration, assets, API/auth, MCP). Authenticated product interactions are covered by native fixtures, not a real-user preview walk.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
+        }
+      ]
     },
     "F-51": {
       "status": "not_started",
@@ -534,10 +777,60 @@
       "date": "2026-11-03",
       "text": "Imported all 51 findings, 21 ticket drafts and 35 screenshots. Recorded the code-review notes and agreed direction. Implementation and planning have not started.",
       "items": []
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Started batch 01 after owner approval. Captured baseline screenshots at 390 and 1440 px; completion requires matching after screenshots and acceptance evidence.",
+      "items": [
+        "T-13",
+        "T-15",
+        "T-05"
+      ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Added explicit batch acceptance checklists without changing the original ticket drafts. T-13 removes search from the Ask flow while keeping keyword search separately in Wardrobe. T-15 and T-05 retain rotation, countdown and recognition follow-ups. Every completed ticket now requires before/after image pairs.",
+      "items": [
+        "T-13",
+        "T-15",
+        "T-05"
+      ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Captured and visually reviewed nine before/after pairs (18 images) from synthetic fixtures. All 755 unit tests passed; native acceptance is running. Tracker image loading, 320/390/1440 px layouts, search and no-JavaScript comparisons passed.",
+      "items": [
+        "T-13",
+        "T-15",
+        "T-05"
+      ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Full batch gate passed on c05071e: 755 unit tests and 29 native tests (1,276 assertions). Native journeys verified chat entry/resumption, saving from the compact board action and finishing paired capture. The preview deployment is next.",
+      "items": [
+        "T-13",
+        "T-15",
+        "T-05"
+      ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Deployed batch c05071e to the isolated preview and passed exact-release readback (3 tests, 42 assertions). Closed T-13 and verified F-10, F-23, F-39, F-44 and F-47. T-15/T-05 remain partial; F-42 awaits dense-metadata phone review and F-50 retains recognition work. Nine before/after pairs are attached to the tickets.",
+      "items": [
+        "T-13",
+        "T-15",
+        "T-05",
+        "F-10",
+        "F-23",
+        "F-39",
+        "F-44",
+        "F-47"
+      ]
     }
   ],
   "overview": {
-    "label": "Awaiting planning",
-    "note": "Planning has not started. Effort labels and code notes are preliminary. Source priorities are the review’s suggestions, not a committed delivery order."
+    "label": "First easy fixes deployed",
+    "note": "T-13 is complete. T-15 and T-05 have delivered subsets with explicit open follow-ups. Five findings are verified; nine before/after comparisons show the changes. Rotation, countdown, recognition and denser metadata/physical-phone review remain open. This is the isolated v2 preview, with native fixture and release smoke evidence."
   }
 }

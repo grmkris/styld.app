@@ -6,6 +6,7 @@ import html
 import json
 import re
 import shutil
+import struct
 import subprocess
 from pathlib import Path
 
@@ -56,7 +57,25 @@ def validate(review, analysis, progress):
                 assert evidence["summary"] and evidence["date"]
                 assert not evidence.get("url") or evidence["url"].startswith("https://")
     for ticket in review["tickets"]:
-        criteria = progress["tickets"][ticket["id"]]["criteriaDone"]
+        state = progress["tickets"][ticket["id"]]
+        criteria = state["criteriaDone"]
+        comparisons = state.get("comparisons", [])
+        if state["status"] == "verified":
+            assert comparisons, f"Completed tickets need before/after screenshots: {ticket['id']}"
+        for comparison in comparisons:
+            assert comparison["title"] and comparison["note"] and comparison["date"]
+            assert comparison["level"] in ["native", "preview", "user_review"]
+            assert all(isinstance(comparison[k], int) and comparison[k] > 0 for k in ["width", "height"])
+            assert comparison["before"] != comparison["after"], "Use separate before/after captures"
+            for key in ["before", "after"]:
+                name = comparison[key]
+                assert re.fullmatch(r"[A-Za-z0-9_/-]+\.png", name), f"Invalid screenshot path: {name}"
+                path = ROOT / "evidence" / name
+                assert path.is_file(), f"Missing {key} screenshot: {name}"
+                header = path.read_bytes()[:24]
+                assert header[:8] == b"\x89PNG\r\n\x1a\n", f"Not a PNG: {name}"
+                width, height = struct.unpack(">II", header[16:24])
+                assert width == comparison["width"] and height >= comparison["height"], f"Viewport mismatch: {name}"
         assert len(criteria) == len(set(criteria))
         assert all(isinstance(n, int) and 0 <= n < len(ticket["criteria"]) for n in criteria)
         if progress["tickets"][ticket["id"]]["status"] == "verified":
@@ -96,6 +115,18 @@ def evidence_view(state):
     return '<ul class="evidence-list">' + "".join(rows) + "</ul>"
 
 
+def comparisons_view(state):
+    rows = []
+    for pair in state.get("comparisons", []):
+        pictures = []
+        for key, label in [("before", "Before"), ("after", "After")]:
+            src = "./evidence/" + esc(pair[key])
+            alt = esc(f"{label}: {pair['title']} at {pair['width']} px")
+            pictures.append(f'<figure><figcaption>{label}</figcaption><a href="{src}" target="_blank" rel="noreferrer" aria-label="Open full screenshot: {alt}"><img src="{src}" alt="{alt}" loading="lazy"></a></figure>')
+        rows.append(f'<details class="comparison"><summary>{esc(pair["title"])} — {pair["width"]} × {pair["height"]}</summary><p class="muted">{esc(pair["note"])} ({esc(pair["level"].replace("_", " "))}, {esc(pair["date"])}). Open an image for full size.</p><div class="comparison-pair">{"".join(pictures)}</div></details>')
+    return '<section class="comparisons"><h3>Before and after</h3>' + "".join(rows) + '</section>' if rows else ''
+
+
 def options(values):
     return "".join(f'<option value="{esc(value)}">{esc(label)}</option>' for value, label in values)
 
@@ -131,7 +162,7 @@ def build(destination):
           <p class="related">Related findings {links(ticket['findings'])}</p>
           <div class="analysis-note"><h3>What the code review adds</h3><p>{esc(note['note'])}</p><details class="code-pointers"><summary>Code pointers</summary><ul>{code}</ul></details></div>
           <div class="progress-note"><h3>Progress</h3><p>{esc(state['note'] or 'Work has not started. This draft is awaiting planning.')}</p><p class="muted">Owner: {esc(state['owner'] or 'Unassigned')}. Updated {esc(state['updatedAt'])}.</p>{evidence_view(state)}</div>
-          {checklist}<details class="original"><summary>Read the complete original ticket draft</summary><h3>{esc(plain(ticket['originalTitle']))}</h3><div class="prose">{draft}</div></details></div></details>''')
+          {comparisons_view(state)}{checklist}<details class="original"><summary>Read the complete original ticket draft</summary><h3>{esc(plain(ticket['originalTitle']))}</h3><div class="prose">{draft}</div></details></div></details>''')
     findings = []
     for finding in review["findings"]:
         timestamps, quote, current, expected = [next(field_html) for _ in range(4)]
@@ -163,6 +194,7 @@ def build(destination):
     substitutions = {
         "TITLE":esc(review["title"]), "UPDATED":esc(progress["updatedAt"]), "COMMIT":esc(analysis["codeCommit"]),
         "FINDING_COUNT":str(len(findings)), "TICKET_COUNT":str(len(tickets)), "IMAGE_COUNT":str(len(photos)),
+        "COMPARISON_COUNT":str(sum(len(t.get("comparisons", [])) for t in progress["tickets"].values())),
         "VERIFIED":str(counts["verified"]), "ACTIVE":str(counts["in_progress"]), "READY":str(counts["ready_for_review"]),
         "WORKSTREAMS":"".join(workstreams), "TICKETS":"".join(tickets), "FINDINGS":"".join(findings),
         "TICKET_FILTERS":filters("tickets",analysis), "FINDING_FILTERS":filters("findings",analysis),
@@ -195,7 +227,7 @@ def build(destination):
   Cache-Control: no-cache
 ''')
     (destination/"robots.txt").write_text('User-agent: *\nAllow: /\n')
-    manifest = {"updatedAt":progress["updatedAt"],"findings":len(findings),"tickets":len(tickets),"screenshots":len(photos),"codeReviewed":analysis["codeCommit"],"sourceDigest":hashlib.sha256((ROOT/"review.json").read_bytes()).hexdigest()}
+    manifest = {"updatedAt":progress["updatedAt"],"findings":len(findings),"tickets":len(tickets),"screenshots":len(photos),"comparisons":sum(len(t.get("comparisons", [])) for t in progress["tickets"].values()),"codeReviewed":analysis["codeCommit"],"sourceDigest":hashlib.sha256((ROOT/"review.json").read_bytes()).hexdigest()}
     (destination/"manifest.json").write_text(json.dumps(manifest,indent=2)+'\n')
     print(json.dumps({"output":str(destination),**manifest}))
 

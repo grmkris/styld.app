@@ -10,8 +10,10 @@ milestone, with its evidence, is in `docs/archive/STATUS-2026-10-28-to-2026-11-0
 
 The independent [review tracker](https://styld-review-07c26b483ccc.pages.dev) is published on Cloudflare Pages.
 It contains 51 findings, 21 ticket drafts, 35 screenshots, eight workstreams and preliminary code-review notes.
-The owner approved public access, including the screenshots. Planning and implementation remain unstarted in
-this tracker; source priorities are not a committed delivery order. The code-analysis snapshot is `d73475c`.
+The owner approved public access, including the screenshots, and then authorized an easy-fix batch. Direct Ask
+entry, piece edit clarity and camera entry/finish controls are deployed to the isolated preview. Larger capture and rotation work stay
+open. Every completed ticket requires matching before/after screenshots; source priorities are not a committed
+delivery order. The original code-analysis snapshot is `d73475c`.
 
 Sources and the update/deploy procedure are in `docs/research/eva-review-tracker/README.md`. Shared progress is
 stored in `progress.json` and republished to the same URL. Live Chromium checks passed search, filters, reset,
@@ -20,21 +22,35 @@ browser errors. The page returns its CSP and noindex headers. The complete repos
 (753 unit tests, 29 native tests); document-specific evidence is in the tracker's `VALIDATION.md`.
 This document deployment changes no Styld application resources or feature acceptance.
 
+## Eva easy-fix batch 01 (deployed 3 November)
+
+- T-13: Ask navigation opens the existing stylist directly with a sparkle icon. Back returns to Wardrobe;
+  keyword search remains separately accessible from the Wardrobe header, labelled Search.
+- T-15 (partial): back-photo actions and Delete move into Edit, Name is explicitly optional, Category is named,
+  and a compact Add to board icon sits beside the piece title. Cancelling deletion retains the draft; saving
+  disables deletion. Rotation remains open.
+- T-05 (partial): guided cameras precede library upload; the taken count finishes capture, and Finish is more
+  prominent. Countdown, timing and no-garment/face suppression remain open.
+
+Baseline screenshots use synthetic fixtures through local workerd and Chromium at 390×844 and 1440×844.
+Nine matching before/after pairs are published in the tracker. The full gate and exact-release preview readback
+passed on `c05071e`; T-13 is verified, while T-15 and T-05 remain partial. This is not physical-phone or
+live-provider acceptance. The tracker retains partial tickets and records evidence separately for each finding.
+
 ## The preview
 
 - **URL:** https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev (isolated workers.dev,
   noindex, no custom domain). `/api/health` names the running release.
-- **Release:** `8ff72e7cb83ba6636526d95a830d126204a484a3`, pushed to `main` and deployed on 3 November at
-  02:53 UTC. `/api/health` and the API Worker's release binding match. This includes C8 (`395549c`), the signed-picture
-  merge (`d73475c`), regenerated assistant views and test-only export annotations. The later documentation receipt
-  does not change the deployed code SHA.
+- **Release:** `c05071e0351cef5bb74caf249eea808775042842`, committed on `main` and deployed on 3 November at
+  04:42 UTC. `/api/health` and the API Worker's release binding match. This adds Eva batch 01 to C8 and the signed-picture
+  fixes. Later documentation receipts do not change the deployed application SHA.
 - **Deployment:** Alchemy reported three successful Worker updates and two release-binding changes; D1, R2, queues
-  and Durable Object namespaces were unchanged. All four migrations, through `20261102202631_c8_durability`, are
-  recorded in preview D1 (the last was already applied at 01:08:45 UTC). No rebuild was needed.
+  and Durable Object namespaces were unchanged. The four migrations through `20261102202631_c8_durability` were
+  recorded by the preceding preview readback; this batch planned no migration or storage changes.
 - **Cloudflare readback:** the edge alone exposes workers.dev; the API and SSR Workers have both workers.dev and
-  preview URLs disabled. No custom domains are attached; query-string redaction remains enabled on all three.
-  Deployment ids: edge `ebdcb6d9-3932-4de7-bc37-01b16b86563b`, SSR `25d81e66-1753-43ee-95ba-bc54b2298a46`,
-  API `348b5497-255c-4608-887c-72520858ebeb` (each at 100%).
+  preview URLs disabled. No custom domains are attached.
+  Deployment ids: edge `1bbd071b-826e-4bda-a0e3-2a1d78de0c37`, SSR `f687a6fd-3389-4e91-bd08-65a45b4385ee`,
+  API `ea7695d7-dc27-4058-ae21-2cc1c74fc330` (each at 100%).
 - **Rebuilt from scratch** (C5): stage `preview` destroyed and deployed again on the one baseline migration, with
   Alchemy's state in the Cloudflare account's state store (`docs/DEPLOYMENT.md` › Rebuild and import).
 - **Testers' wardrobes, last recorded 2 November** (owner-approved, `docs/ARCHITECTURE.md` › Delivery boundary): the owner's 74 v1 pieces were
@@ -47,17 +63,16 @@ This document deployment changes no Styld application resources or feature accep
 
 ## Gate results
 
-`heavy --wait bun run check` exit 0 on the exact source committed as `8ff72e7` (3 November): effect-tsrs 659 files,
-0 findings; lint green; 21 reviewed suppressions; unit 753 tests in 119 files; native 29 pass, 0 fail, 1,274 assertions.
-The gate's build measured initial browser 348,527 gzip bytes (budget 357,677), all browser 612,542 and SSR 1,906,548
-source bytes. `bun run bundle:check` also passed on the deployment's release-stamped build: initial 348,522, all
-612,577 gzip bytes, SSR 2,033,643 source bytes.
+`heavy --wait bun run check` exited 0 on `c05071e` (3 November): effect-tsrs 659 files, 0 findings; lint green;
+21 reviewed suppressions; 755 unit tests in 119 files; native 29 pass, 0 fail, 1,276 assertions. The gate's build
+measured initial browser 349,191 gzip bytes, all browser 613,255 and SSR 1,909,788 source bytes. The deployment's
+release-stamped build also passed bundle budgets: initial 349,192, all 613,293 gzip bytes, SSR 2,036,836 source bytes.
 
-Deployed acceptance (`STYLD_PREVIEW_URL=<above> STYLD_EXPECTED_RELEASE=8ff72e7cb83ba6636526d95a830d126204a484a3
+Deployed acceptance (`STYLD_PREVIEW_URL=<above> STYLD_EXPECTED_RELEASE=c05071e0351cef5bb74caf249eea808775042842
 heavy --wait bun test tools/preview.native.test.ts`) exited 0: 3 pass, 0 fail, 42 assertions. It verified the exact
 health/release, auth and CSRF contracts, hydrated website, MCP discovery/challenge/registration and immutable static
 assets. Native tests use fake providers; this is not acceptance of real paid-provider outcomes or every signed-in
-product journey.
+preview journey. Batch screenshots, scope and review notes are in the tracker's `BATCH-01.md`.
 
 ## Incident: D1 overloaded by the wardrobe's thumbnails (2 November, fix deployed 3 November)
 

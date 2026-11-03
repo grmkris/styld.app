@@ -682,7 +682,12 @@
         "fig23a_add_clothes_card_hierarchy.png",
         "fig23b_hold_pieces_up_camera_ui.png"
       ],
-      "criteria": []
+      "criteria": [
+        "Guided camera choices precede the clearly labelled library upload.",
+        "The taken count finishes capture and the bottom Finish control is prominent; finishing retains captured photos.",
+        "Add a large central countdown and enough time to flip/position garments (F-49).",
+        "Prevent auto-capture of a face/person when no garment is held up (F-50)."
+      ]
     },
     {
       "id": "T-06",
@@ -802,7 +807,11 @@
         "fig21a_obsolete_search_screen.png",
         "fig21c_ask_styld_response_and_carousel.png"
       ],
-      "criteria": []
+      "criteria": [
+        "Ask navigation uses a sparkle icon and opens the existing Ask Styld chat directly.",
+        "Back from chat returns to Wardrobe, so search is no longer an intermediate step in the Ask flow. Keyword search remains explicitly labelled Search under Wardrobe.",
+        "Returning through Ask navigation resumes the latest saved chat."
+      ]
     },
     {
       "id": "T-14",
@@ -834,7 +843,13 @@
         "fig22a_piece_detail_buttons_above_fold.png",
         "fig05b_edit_name_vs_what_it_is.png"
       ],
-      "criteria": []
+      "criteria": [
+        "Read-only details keep attribute rows and the pencil Edit mode; back-photo controls and their credit text move above Name in Edit.",
+        "A compact Add to board action beside the title opens the existing board picker.",
+        "Name is optional with an example placeholder; Category is distinct and genuine saved names are preserved.",
+        "Delete is available inside Edit, confirms before deleting, preserves the draft when cancelled, and cannot start during a pending save.",
+        "Provide image rotation and address upside-down legacy cutouts (F-08)."
+      ]
     },
     {
       "id": "T-16",

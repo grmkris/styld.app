@@ -3,8 +3,8 @@
 Shared document: https://styld-review-07c26b483ccc.pages.dev
 
 This independent Cloudflare Pages document contains 51 findings, 21 original ticket drafts and 35 screenshots
-from the 2 November 2026 review. It adds eight workstreams and preliminary code-review notes. Planning and
-implementation have not started. Priority and effort labels are inputs to planning, not commitments.
+from the 2 November 2026 review. It adds eight workstreams and preliminary code-review notes. The first easy-fix
+batch is deployed to the isolated preview; `progress.json` records completed and partial scope. Priority and effort labels remain inputs to planning, not commitments.
 
 The owner approved a public URL and the screenshots on 3 November. Anyone with the link can view them;
 the random project name and noindex headers are not access controls. No message has been sent to Eva.
@@ -55,6 +55,14 @@ an HTTPS receipt. The builder enforces evidence presence, not whether the eviden
 `criteriaDone` contains zero-based indexes into a ticket's `criteria` list. All explicit criteria must be complete
 before `verified`. A ticket whose acceptance is prose still requires human review against that prose. Finding
 verification remains separate. Do not mark all findings resolved just because the app builds.
+
+Every completed ticket must include **before and after screenshots**, at matching viewports, in its own
+`comparisons` list. Store captures under `evidence/<batch>/`, with separate `before` and `after` paths relative
+to `evidence/`, plus `title`, `width`, `height`, `date`, `level` and a `note` explaining the fixture and evidence
+boundary. The builder checks both PNG files, matching widths and viewport heights and refuses `verified`
+tickets without comparisons. Full-page image heights may differ as content changes. Use native test fixtures,
+not private account data; identify emulated viewports separately from real-device or deployed evidence.
+Partial tickets can include comparisons while remaining open.
 
 ```json
 {

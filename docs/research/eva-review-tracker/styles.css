@@ -105,6 +105,11 @@ code { font-size: .875em; background: var(--paper-2); padding: .1em .25em; borde
 .criteria li { margin-block: .8rem; }
 .criterion-state { font-size: .8125rem; font-weight: 600; color: var(--signal); }
 .criteria p { display: inline; font-size: .9375rem; }
+.comparisons { margin-block: 1.5rem; }
+.comparison { border-block-end: 1px solid var(--rule); }
+.comparison-pair { display: grid; grid-template-columns: repeat(auto-fit,minmax(min(100%,20rem),1fr)); gap: 1rem; margin-block: 1rem; }
+.comparison-pair figcaption { padding-block: .5rem; font-weight: 600; color: var(--ink); }
+.comparison-pair img { max-block-size: 36rem; object-fit: contain; object-position: top; }
 .original { margin-block-start: 1rem; border-block-start: 1px solid var(--rule); }
 .original > summary { font-size: .875rem; }
 .prose { max-inline-size: 75ch; font-size: .9375rem; color: var(--ink-2); }

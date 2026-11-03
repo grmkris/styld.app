@@ -84,4 +84,20 @@ Eva's 2 November review has a separate [public tracker](https://styld-review-07c
 in `docs/research/eva-review-tracker/`. It preserves 51 findings, 21 ticket drafts and 35 screenshots, with code
 observations and shared progress. Acceptance of this document covers source completeness, navigation, mobile
 reading, screenshot delivery and repeatable publishing. Its live browser checks passed on 3 November; see
-`VALIDATION.md` in that directory. It does not mark any application feature accepted or begin implementation.
+`VALIDATION.md` in that directory. Its publication alone does not establish application acceptance. The owner subsequently authorized batch 01;
+its application evidence is tracked separately below.
+
+## Eva easy-fix batch 01
+
+| Change                                                      | Focused behavior                                                                                                     | Native / preview boundary                                                                                               |
+| ----------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------- |
+| T-13: direct Ask, separate Wardrobe search                  | `masthead.scene`, existing `ask.scene`                                                                               | `GalleryBrowserAcceptance`: navigation opens chat and resumes it; passed                                                |
+| T-15 (partial): piece edit/detail clarity                   | `piece.scene` and `piece.story`: board picker, edit controls, delete confirmation, draft preservation and save guard | Matching before/after screens and preview readback passed; rotation remains open                                        |
+| T-05 (partial): camera source hierarchy and finish controls | Existing camera stories: closing invalidates pending recognition                                                     | `CaptureBrowserAcceptance`: count finishes and retains paired photos; passed; countdown/recognition changes remain open |
+
+Every completed ticket must carry before/after screenshots in the shared tracker. Native fixtures, Chromium
+viewports, deployed smoke acceptance, physical devices and paid-provider behavior are distinct evidence levels.
+
+Batch `c05071e` passed the full gate on 3 November (755 unit tests, 29 native tests / 1,276 assertions), deployed
+to the isolated preview, and passed exact-release smoke acceptance (3 tests / 42 assertions). Nine before/after
+pairs are attached to T-13, T-15 and T-05. T-13 is verified; T-15/T-05 remain partial. See the tracker’s `BATCH-01.md`.
