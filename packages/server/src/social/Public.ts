@@ -334,13 +334,19 @@ const pages = Effect.map(Effect.context<PublicServices>(), (context) => ({
 }))
 
 /** A public picture's version: a digest of its stored key, so a changed picture is a new address. */
-const versionOf = (key: string, size: ImageSize) =>
-  Effect.map(digestOf(key), (digest) => `${digest.slice(0, 22)}.${size}`)
+const versionOf = (key: string, size: ImageSize, rotation: PieceRow['rotation']) =>
+  Effect.map(digestOf(`${key}:${String(rotation)}`), (digest) => `${digest.slice(0, 22)}.${size}`)
 
 /** A stored picture as others get it: re-encoded, or none when the transform fails. */
-const delivered = (source: { readonly key: string; readonly contentType: string }, size: ImageSize, version: string) =>
+const delivered = (
+  source: { readonly key: string; readonly contentType: string; readonly rotation?: PieceRow['rotation'] },
+  size: ImageSize,
+  version: string,
+) =>
   Effect.map(
-    Effect.flatMap(Media, (media) => deliverImage(media, source, size, { fallback: 'none' })),
+    Effect.flatMap(Media, (media) =>
+      deliverImage(media, source, size, { fallback: 'none', rotation: source.rotation }),
+    ),
     (image) => Option.map(image, (shown): ShownImage => ({ ...shown, version })),
   )
 
@@ -352,7 +358,11 @@ const images = Effect.map(Effect.context<PublicServices>(), (context) => ({
     if (Option.isNone(shown)) return Option.none<ShownImage>()
     const image = publicImage(shown.value.row)
     if (Option.isNone(image)) return Option.none<ShownImage>()
-    return yield* delivered(image.value, size, yield* versionOf(image.value.key, size))
+    return yield* delivered(
+      { ...image.value, rotation: shown.value.row.piece.rotation },
+      size,
+      yield* versionOf(image.value.key, size, shown.value.row.piece.rotation),
+    )
   }, Effect.provide(context)),
   /** A picture on a public board others may see. A picture never changes, so its id and size are its version. */
   pictureImage: Effect.fn('Styld.Public.pictureImage')(function* (imageId: BoardImageId, size: ImageSize) {
