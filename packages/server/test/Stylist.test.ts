@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs'
-import { LookId, PieceId } from '@styld/protocol'
+import { LookId, PieceId, type WardrobeAnalysis } from '@styld/protocol'
 import { Context, Effect, Layer, Predicate, Schema, Stream } from 'effect'
 import type { Prompt } from 'effect/ai'
 import { describe, expect, test } from 'vitest'
@@ -7,6 +7,7 @@ import { textModel } from '../src/ai/LanguageModel.ts'
 import { TextCompletions } from '../src/providers/Text.ts'
 import { CaptureMetrics } from '../src/kernel/Metrics.ts'
 import { type Tool as AssistantTool, tool, ToolError } from '../src/mcp/Tools.ts'
+import { analysisOf } from '../src/stylist/Analysis.ts'
 import { styldModel } from '../src/stylist/Policy.ts'
 import { historyMessages, languageOf, outlineOf, systemPrompt } from '../src/stylist/Prompt.ts'
 import { finishedReply } from '../src/stylist/Reply.ts'
@@ -23,6 +24,20 @@ const pieces = [
   { id: 'pc_greyknit00000000000000', name: 'Grey knit', type: 'tops', colours: ['grey'] },
   { id: 'pc_whitesneakers000000000', name: 'White sneakers', type: 'trainers', colours: ['white'] },
 ]
+
+/** A reply that never asks for the wardrobe's analysis. */
+const notAnalyzed = Effect.die('the analysis was not asked for')
+
+/** The recorded wardrobe's analysis, with no days worn. */
+const recordedAnalysis = analysisOf(
+  [
+    { id: PieceId.make('pc_navytrousers0000000000'), type: 'trousers', colours: ['navy'] },
+    { id: PieceId.make('pc_whitetee00000000000000'), type: 'tops', colours: ['white'] },
+    { id: PieceId.make('pc_greyknit00000000000000'), type: 'tops', colours: ['grey'] },
+    { id: PieceId.make('pc_whitesneakers000000000'), type: 'trainers', colours: ['white'] },
+  ],
+  { days: 60, pieceIds: [] },
+)
 
 const pieceSearch = tool({
   name: 'piece_search',
@@ -90,7 +105,7 @@ const replyWith = (
     Effect.gen(function* () {
       const tools = yield* turnTools(
         [pieceSearch],
-        { turnId: 'tn_test', pieceIds: new Set(pieces.map(({ id }) => id)) },
+        { turnId: 'tn_test', pieceIds: new Set(pieces.map(({ id }) => id)), analyze: notAnalyzed },
         Context.empty(),
       )
       const text = yield* runTurn({
@@ -186,10 +201,11 @@ const called = (
   name: string,
   params: unknown,
   pieceIds: ReadonlySet<string> = new Set(),
+  analyze: Effect.Effect<{ readonly analysis: WardrobeAnalysis; readonly told: unknown }, unknown> = notAnalyzed,
 ) =>
   Effect.runPromise(
     Effect.gen(function* () {
-      const tools = yield* turnTools(assistants, { turnId: 'tn_abc', pieceIds }, Context.empty())
+      const tools = yield* turnTools(assistants, { turnId: 'tn_abc', pieceIds, analyze }, Context.empty())
       const kit = yield* tools.toolkit.pipe(Effect.provide(tools.handlers))
       const results = yield* kit.handle(name, params).pipe(Effect.flatMap(Stream.runCollect))
       return { result: results.at(-1)?.result, parts: yield* tools.parts }
@@ -242,7 +258,7 @@ describe('a reply’s tools', () => {
         for (const lookedUpFirst of [false, true]) {
           const tools = yield* turnTools(
             [lookCreate, refusing],
-            { turnId: 'tn_abc', pieceIds: new Set() },
+            { turnId: 'tn_abc', pieceIds: new Set(), analyze: notAnalyzed },
             Context.empty(),
           )
           const kit = yield* tools.toolkit.pipe(Effect.provide(tools.handlers))
@@ -265,9 +281,13 @@ describe('a reply’s tools', () => {
     const { result } = await called([refusing], 'piece_get', { pieceId: 'pc_x' })
     expect(result).toEqual({ error: { code: 'not_found', message: 'No such piece.', recovery: 'Search first.' } })
     const tools = await Effect.runPromise(
-      turnTools([{ ...refusing, name: 'piece_delete' }], { turnId: 'tn_abc', pieceIds: new Set() }, Context.empty()),
+      turnTools(
+        [{ ...refusing, name: 'piece_delete' }],
+        { turnId: 'tn_abc', pieceIds: new Set(), analyze: notAnalyzed },
+        Context.empty(),
+      ),
     )
-    expect(Object.keys(tools.toolkit.tools).toSorted()).toEqual(['pieces_show'])
+    expect(Object.keys(tools.toolkit.tools).toSorted()).toEqual(['pieces_show', 'wardrobe_analyze'])
   })
 
   test('only the person’s own pieces are shown, and a bad call is answered with what to fix', async () => {
@@ -278,6 +298,50 @@ describe('a reply’s tools', () => {
     const bad = await called([], 'pieces_show', { pieceIds: [] })
     expect(bad.result).toMatchObject({ error: { code: 'invalid_arguments' } })
     expect(bad.parts).toEqual([])
+  })
+})
+
+describe('the wardrobe’s analysis (Eva’s review, T-14)', () => {
+  const analyzing = Effect.succeed({ analysis: recordedAnalysis, told: { pieces: 4 } })
+
+  test('the model is told the counts, and the person sees them once as a card however often it asks', async () => {
+    const first = await called([], 'wardrobe_analyze', {}, new Set(), analyzing)
+    expect(first.result).toEqual({ pieces: 4 })
+    expect(first.parts).toEqual([{ _tag: 'Analysis', analysis: recordedAnalysis }])
+    const twice = await Effect.runPromise(
+      Effect.gen(function* () {
+        const tools = yield* turnTools(
+          [],
+          { turnId: 'tn_abc', pieceIds: new Set(), analyze: analyzing },
+          Context.empty(),
+        )
+        const kit = yield* tools.toolkit.pipe(Effect.provide(tools.handlers))
+        for (const _ of [1, 2]) yield* kit.handle('wardrobe_analyze', {}).pipe(Effect.flatMap(Stream.runCollect))
+        return yield* tools.parts
+      }),
+    )
+    expect(twice).toHaveLength(1)
+  })
+
+  test('a wardrobe that cannot be counted is answered with what to do instead, and no card', async () => {
+    const failed = await called([], 'wardrobe_analyze', {}, new Set(), Effect.fail('worn log unavailable'))
+    expect(failed.result).toMatchObject({ error: { code: 'unavailable' } })
+    expect(failed.parts).toEqual([])
+  })
+
+  test('an earlier analysis is read back as the call that made it', () => {
+    const [call, result] = historyMessages(
+      { role: 'styld', text: 'Mostly tops.', parts: [{ _tag: 'Analysis', analysis: recordedAnalysis }] },
+      1,
+    )
+    expect(call).toMatchObject({ content: [{ type: 'text' }, { type: 'tool-call', name: 'wardrobe_analyze' }] })
+    expect(result).toMatchObject({ content: [{ type: 'tool-result', result: recordedAnalysis }] })
+  })
+
+  test('Styld is told to analyse with the tool and comment, never to list the numbers again', () => {
+    expect(systemPrompt({ language: 'en', today: '2026-11-03', outline: outlineOf(pieces) })).toContain(
+      'call wardrobe_analyze once',
+    )
   })
 })
 

@@ -6,7 +6,11 @@ import { client, seedAccounts, signIn } from './Accounts.ts'
 import { waitUntilReady } from './WardrobeAcceptance.ts'
 
 /** The API Worker's settings for Styld on the native stack: the model is the fixture's stand-in gateway. */
-const Part = Schema.Struct({ _tag: Schema.String, pieceIds: Schema.optionalKey(Schema.Array(Schema.String)) })
+const Part = Schema.Struct({
+  _tag: Schema.String,
+  pieceIds: Schema.optionalKey(Schema.Array(Schema.String)),
+  analysis: Schema.optionalKey(Schema.Struct({ pieces: Schema.Number })),
+})
 const Chat = Schema.Struct({
   id: Schema.String,
   title: Schema.String,
@@ -62,6 +66,20 @@ export const verifyStylist = async (origin: string, fixtures: string) => {
   const failed = await settled((chat) => chat.replying?.state === 'failed')
   expect(failed.replying?.state).toBe('failed')
   expect(await remaining()).toBe(before - 1)
+
+  // "Analyze my wardrobe" (T-14): the model asks for the analysis and comments; the card carries the server's count.
+  const analysed = await decoded(Sent, await send('native-stylist-0003', 'Analyze my wardrobe'))
+  const readAnalysed = async () => decoded(Chat, await owner(`/api/stylist/chats/${analysed.chatId}`))
+  let analysis = await readAnalysed()
+  for (let attempt = 0; attempt < 160 && analysis.messages.length < 2; attempt += 1) {
+    await Bun.sleep(250)
+    analysis = await readAnalysed()
+  }
+  const [, comment] = analysis.messages
+  expect(comment?.text).toBe('Mostly tops: a pair of trousers would make more of them.')
+  expect(comment?.parts.map(({ _tag }) => _tag)).toEqual(['Analysis'])
+  expect(comment?.parts[0]?.analysis?.pieces).toBe(ownPieces.size)
+  expect(await remaining()).toBe(before - 2)
 
   // Someone else's chat is not there for them.
   const other = client(origin, await signIn(origin, 'native-stylist-other'))

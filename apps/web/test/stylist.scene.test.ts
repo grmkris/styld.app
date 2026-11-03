@@ -81,6 +81,7 @@ describe('Styld, the stylist in the app', () => {
       given(stylistWith(opened({}))),
       expect(role('heading', { name: 'Ask Styld', level: 1 })).toExist(),
       expect(role('button', { name: 'What should I wear today?' })).toExist(),
+      expect(role('button', { name: 'Analyze my wardrobe' })).toExist(),
       expect(role('textbox', { name: 'Message to Styld' })).toExist(),
       expect(role('button', { name: 'Send' })).toBeDisabled(),
       expect(text('Each message uses 1 credit of today’s free allowance.')).toExist(),
@@ -98,6 +99,51 @@ describe('Styld, the stylist in the app', () => {
       expect(role('link', { name: 'Open the look Saturday' })).toHaveAttr('href', `/looks/${lookId}`),
       expect(role('button', { name: 'Send' })).not.toBeDisabled(),
       expect(role('button', { name: 'New chat' })).toExist(),
+    )
+  })
+
+  test('an analysis shows the exact counts as a card: groups, colours, what was worn, too much and too little', () => {
+    const analysed = Schema.decodeUnknownSync(Chat)({
+      id: chatId,
+      title: 'Analyze my wardrobe',
+      messages: [
+        { id: 'm1', role: 'person', text: 'Analyze my wardrobe', parts: [], at: '2026-11-03T09:00:00.000Z' },
+        {
+          id: 'm2',
+          role: 'styld',
+          text: 'Mostly tops: a pair of trousers would make more of them.',
+          parts: [
+            {
+              _tag: 'Analysis',
+              analysis: {
+                pieces: 14,
+                groups: [
+                  { group: 'clothing', count: 12 },
+                  { group: 'shoes', count: 2 },
+                ],
+                types: [{ type: 'tops', count: 9 }],
+                colours: [{ colour: 'white', count: 6 }],
+                worn: { days: 60, pieces: 5, never: 9, most: [{ pieceId, days: 4 }] },
+                surpluses: ['tops'],
+                gaps: ['bottoms', 'layers'],
+              },
+            },
+          ],
+          at: '2026-11-03T09:00:05.000Z',
+        },
+      ],
+    })
+    scene(
+      { update, view },
+      given(stylistWith(opened({ open: Option.some(analysed) }))),
+      expect(role('region', { name: 'Your wardrobe in numbers' })).toExist(),
+      expect(text('14 pieces')).toExist(),
+      expect(text('Clothing 12')).toExist(),
+      expect(text('White 6')).toExist(),
+      expect(text('Worn in the last 60 days: 5 of 14 · 9 pieces not worn')).toExist(),
+      expect(role('list', { name: 'Worn most' })).toExist(),
+      expect(text('Plenty of tops')).toExist(),
+      expect(text('Could use more trousers and skirts, jackets and coats')).toExist(),
     )
   })
 

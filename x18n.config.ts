@@ -32,6 +32,8 @@ export default defineConfig({
       'wardrobe.occasion.*',
       'wardrobe.pattern.*',
       'wardrobe.addPieceColor_*',
+      // "Analyze my wardrobe": the areas with too much or too little (`WardrobeArea`).
+      'stylist.analysis.areas.*',
     ],
   },
   extract: {

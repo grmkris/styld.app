@@ -43,9 +43,15 @@ const completion = (content: string, toolCalls: ReadonlyArray<object> = []) => (
 })
 
 /** The next answer, by the messages since the person's last one: first it searches the wardrobe, then it suggests the
- * first piece it found and shows it, which ends the reply. */
+ * first piece it found and shows it, which ends the reply. Asked to analyse the wardrobe, it counts it with
+ * `wardrobe_analyze` and then comments. */
 const answer = (messages: (typeof Request.Type)['messages']) => {
   const since = messages.slice(messages.findLastIndex(({ role }) => role === 'user') + 1)
+  const asked = messages.findLast(({ role }) => role === 'user')?.content ?? ''
+  if (/analy[sz]e|analiz/i.test(asked))
+    return since.some(({ role }) => role === 'tool')
+      ? completion('Mostly tops: a pair of trousers would make more of them.')
+      : completion('', [call('wardrobe_analyze', {})])
   const searched = since.find(({ role, content }) => role === 'tool' && (content ?? '').includes('"pieces"'))
   if (searched === undefined) return completion('', [call('piece_search', {})])
   const [first] = Option.match(Schema.decodeUnknownOption(Found)(searched.content ?? ''), {

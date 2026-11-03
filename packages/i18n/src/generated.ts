@@ -527,6 +527,25 @@ export interface MessageArgumentsByKey<_T = string> {
   'studio.renameFailed': Readonly<Record<string, never>>
   'studio.retry': Readonly<Record<string, never>>
   'studio.save': Readonly<Record<string, never>>
+  'stylist.analysis.areas.accessories': Readonly<Record<string, never>>
+  'stylist.analysis.areas.bottoms': Readonly<Record<string, never>>
+  'stylist.analysis.areas.dresses': Readonly<Record<string, never>>
+  'stylist.analysis.areas.layers': Readonly<Record<string, never>>
+  'stylist.analysis.areas.shoes': Readonly<Record<string, never>>
+  'stylist.analysis.areas.tops': Readonly<Record<string, never>>
+  'stylist.analysis.colourCount': { readonly colour: string | number; readonly count: string | number }
+  'stylist.analysis.colours': Readonly<Record<string, never>>
+  'stylist.analysis.label': Readonly<Record<string, never>>
+  'stylist.analysis.mostWorn': Readonly<Record<string, never>>
+  'stylist.analysis.never': { readonly count: number }
+  'stylist.analysis.pieces': { readonly count: number }
+  'stylist.analysis.tooLittle': Readonly<Record<string, never>>
+  'stylist.analysis.tooMuch': Readonly<Record<string, never>>
+  'stylist.analysis.worn': {
+    readonly days: string | number
+    readonly worn: string | number
+    readonly pieces: string | number
+  }
   'stylist.chatToday': { readonly time: string | number }
   'stylist.earlier': Readonly<Record<string, never>>
   'stylist.failed': Readonly<Record<string, never>>
@@ -544,6 +563,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'stylist.problem.unavailable': Readonly<Record<string, never>>
   'stylist.send': Readonly<Record<string, never>>
   'stylist.shownPieces': Readonly<Record<string, never>>
+  'stylist.starter.analyze': Readonly<Record<string, never>>
   'stylist.starter.missing': Readonly<Record<string, never>>
   'stylist.starter.today': Readonly<Record<string, never>>
   'stylist.starter.together': Readonly<Record<string, never>>
@@ -791,4 +811,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'c3079883bf16f51b288239a585e08394b9b712084ef4c1d9d4a3d98284e716fb'
+export const catalogVersion = '97af6122b1357c1ceff6114a9e023936f23f898e6c6380b4e036448f3f1e6014'

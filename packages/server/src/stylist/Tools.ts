@@ -1,4 +1,4 @@
-import { LookId, PieceId, type ReplyPart } from '@styld/protocol'
+import { LookId, PieceId, type ReplyPart, type WardrobeAnalysis } from '@styld/protocol'
 import { type Context, Effect, Option, Predicate, Ref, Schema } from 'effect'
 import { Tool, Toolkit } from 'effect/ai'
 import type { JsonSchema } from 'effect/JsonSchema'
@@ -18,6 +18,7 @@ const stylistToolNames: ReadonlyArray<string> = [
 /** Tools that look something up: words a call writes beside them are the model thinking aloud ("I'll take a look"),
  * left out of the reply when it says anything else. */
 export const lookingUpToolNames: ReadonlySet<string> = new Set([
+  'wardrobe_analyze',
   'piece_search',
   'piece_get',
   'outfit_make',
@@ -61,6 +62,9 @@ const showPiecesSchema: JsonSchema = {
   additionalProperties: false,
 }
 
+/** `wardrobe_analyze` takes nothing: it counts the whole wardrobe. */
+const analyzeSchema: JsonSchema = { type: 'object', properties: {}, additionalProperties: false }
+
 const SavedLook = Schema.Struct({ id: LookId, name: Schema.String })
 const decodeSavedLook = Schema.decodeUnknownOption(SavedLook)
 
@@ -69,13 +73,46 @@ const refusal = (error: { readonly code: string; readonly message: string; reado
   error: { code: error.code, message: error.message, recovery: error.recovery },
 })
 
+/** `wardrobe_analyze`: the wardrobe counted (`Analysis.ts`), shown once as a card through `show`, and told to the model. A
+ * wardrobe that cannot be counted is a refusal the model answers around. */
+const analyzeTool = (
+  analyze: Effect.Effect<{ readonly analysis: WardrobeAnalysis; readonly told: unknown }, unknown>,
+  show: (analysis: WardrobeAnalysis) => Effect.Effect<void>,
+) => ({
+  definition: Tool.dynamic('wardrobe_analyze', {
+    description:
+      'Count the whole wardrobe exactly: pieces by group, type and colour, what was worn lately and what never, and the areas with too much or too little. The person sees the counts as a card under your reply, so call it once when they ask about their wardrobe as a whole, then comment on what matters most instead of repeating the numbers.',
+    parameters: analyzeSchema,
+  }),
+  handler: (_params: unknown) =>
+    Effect.gen(function* () {
+      const { analysis, told } = yield* analyze
+      yield* show(analysis)
+      return told
+    }).pipe(
+      Effect.orElseSucceed(() =>
+        refusal({
+          code: 'unavailable',
+          message: 'The wardrobe could not be counted just now.',
+          recovery: 'Answer from the outline you were given.',
+        }),
+      ),
+    ),
+})
+
 /** One reply's tools: the assistants' own, run in `context` (the account and its pace), and `pieces_show`, which shows the person's own
  * pieces under the reply. What the reply shows and saves is collected in `parts`. A tool that writes gets the
  * operation id `<turnId>-<tool>-<n>`, its nth write in the reply: the queue may write a reply again, and its model may
  * look things up in another order, so the id counts only that tool's writes and a retried turn saves its look once. */
 export const turnTools = <R>(
   tools: ReadonlyArray<AssistantTool<R>>,
-  turn: { readonly turnId: string; readonly pieceIds: ReadonlySet<string> },
+  turn: {
+    readonly turnId: string
+    readonly pieceIds: ReadonlySet<string>
+    /** The wardrobe's analysis, counted when the model asks for it: the card the person sees, and what the model is
+     * told (piece names in place of ids). */
+    readonly analyze: Effect.Effect<{ readonly analysis: WardrobeAnalysis; readonly told: unknown }, unknown>
+  },
   context: Context.Context<R>,
 ) =>
   Effect.gen(function* () {
@@ -132,7 +169,12 @@ export const turnTools = <R>(
           return { shown: own.length }
         }),
     }
-    const all = [show, ...bridged]
+    const analyze = analyzeTool(turn.analyze, (analysis) =>
+      Ref.update(parts, (all): ReadonlyArray<ReplyPart> =>
+        all.some(({ _tag }) => _tag === 'Analysis') ? all : [...all, { _tag: 'Analysis', analysis }],
+      ),
+    )
+    const all = [show, analyze, ...bridged]
     const toolkit = Toolkit.make(...all.map(({ definition }) => definition))
     const handlers = toolkit.toLayer(
       Object.fromEntries(all.map(({ definition, handler }) => [definition.name, handler])),

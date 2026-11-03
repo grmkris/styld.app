@@ -860,7 +860,27 @@
     "starter": {
       "today": "What should I wear today?",
       "together": "What goes well together in my wardrobe?",
-      "missing": "What is missing from my wardrobe?"
+      "missing": "What is missing from my wardrobe?",
+      "analyze": "Analyze my wardrobe"
+    },
+    "analysis": {
+      "label": "Your wardrobe in numbers",
+      "pieces": "{count, plural, one {# piece} other {# pieces}}",
+      "colours": "Colours",
+      "colourCount": "{colour} {count}",
+      "worn": "Worn in the last {days} days: {worn} of {pieces}",
+      "never": "{count, plural, one {# piece not worn} other {# pieces not worn}}",
+      "mostWorn": "Worn most",
+      "tooMuch": "Plenty of",
+      "tooLittle": "Could use more",
+      "areas": {
+        "tops": "tops",
+        "bottoms": "trousers and skirts",
+        "dresses": "dresses",
+        "layers": "jackets and coats",
+        "shoes": "shoes",
+        "accessories": "accessories"
+      }
     },
     "earlier": "Earlier chats",
     "newChat": "New chat",

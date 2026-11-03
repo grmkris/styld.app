@@ -105,6 +105,30 @@ export const pieceName = style({
   color: 'ink2',
   textAlign: 'center',
 })
+/** "Analyze my wardrobe": a soft panel of exact counts under the reply (DESIGN.md › soft panels). */
+export const analysis = style({
+  display: 'grid',
+  gap: 'close',
+  padding: '14px 16px',
+  borderRadius: 'panel',
+  backgroundColor: 'paper2',
+  color: 'ink',
+})
+export const analysisTotal = style({ margin: '0', fontSize: 'subheading', fontWeight: 600 })
+export const analysisCounts = style({
+  display: 'flex',
+  flexWrap: 'wrap',
+  gap: 'actions',
+  margin: '0',
+  padding: '0',
+  listStyleType: 'none',
+  fontSize: 'label',
+  color: 'ink2',
+  fontVariantNumeric: 'tabular-nums',
+})
+export const analysisColour = style({ display: 'inline-flex', alignItems: 'center', gap: 'tight' })
+export const analysisLine = style({ margin: '0', fontSize: 'label', color: 'ink2' })
+export const analysisTerm = style({ color: 'ink', fontWeight: 600 })
 /** Where the newest message is scrolled to: 16px above the composer resting in its place. A scroll into view adds
  * the page's own scroll padding, which on a phone already holds the floating nav's 88px and the safe area
  * (GlobalStyles.ts), so the margin adds the rest: the composer's 96px inset and 88px less that 88px, and the 16px

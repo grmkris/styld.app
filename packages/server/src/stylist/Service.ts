@@ -2,6 +2,7 @@ import { StylistQueue } from './Queue.ts'
 import {
   ChatId,
   CurrentAccount,
+  Day,
   NotFound,
   type ChatMessage,
   ReplyPart,
@@ -16,7 +17,9 @@ import { Holds } from '../usage/Holds.ts'
 import { PaidAttempts } from '../usage/Attempts.ts'
 import type { Tool as AssistantTool } from '../mcp/Tools.ts'
 import { Wardrobe } from '../wardrobe/Wardrobe.ts'
-import { maxSteps, styldModel } from './Policy.ts'
+import { analysisDays, maxSteps, styldModel } from './Policy.ts'
+import { analysisOf } from './Analysis.ts'
+import { Worn } from '../worn/Worn.ts'
 import { historyMessages, languageOf, outlineOf, systemPrompt } from './Prompt.ts'
 import { finishedReply, readableReply } from './Reply.ts'
 import type { StoredMessage } from './StylistObject.ts'
@@ -68,6 +71,7 @@ type StylistServices =
   | LanguageModel.LanguageModel
   | StylistTools
   | Wardrobe
+  | Worn
   | Holds
   | PaidAttempts
 
@@ -102,12 +106,26 @@ const reply = (
       .listPieces()
       .pipe(Effect.provideService(CurrentAccount, { accountId, via: 'assistant' }))
     const own = new Set<string>(pieces.map(({ id }) => id))
+    const moment = yield* DateTime.now
+    const today = DateTime.formatIsoDateUtc(moment)
+    const worn = yield* Worn
+    const analyze = Effect.gen(function* () {
+      const from = Day.make(DateTime.formatIsoDateUtc(DateTime.subtract(moment, { days: analysisDays })))
+      const wornDays = yield* worn.listWorn({ from, to: Day.make(today) })
+      const analysis = analysisOf(pieces, {
+        days: analysisDays,
+        pieceIds: wornDays.flatMap(({ pieceIds }) => pieceIds),
+      })
+      const names = new Map<string, string>(pieces.map(({ id, name, type }) => [id, name ?? type]))
+      // The model reads the most worn pieces by name; their ids stay in the card.
+      const most = analysis.worn.most.map(({ pieceId, days }) => ({ piece: names.get(pieceId) ?? '', days }))
+      return { analysis, told: { ...analysis, worn: { ...analysis.worn, most } } }
+    }).pipe(Effect.provideService(CurrentAccount, { accountId, via: 'assistant' }))
     const tools = yield* turnTools(
       (yield* StylistTools).forAccount(accountId),
-      { turnId, pieceIds: own },
+      { turnId, pieceIds: own, analyze },
       Context.empty(),
     )
-    const today = DateTime.formatIsoDateUtc(yield* DateTime.now)
     const latest = input.messages.findLast(({ role }) => role === 'person')?.text ?? ''
     const language = languageOf(latest, input.locale === 'sl' ? 'sl' : 'en')
     const written = yield* runTurn({

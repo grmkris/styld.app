@@ -860,7 +860,27 @@
     "starter": {
       "today": "Kaj naj oblečem danes?",
       "together": "Kaj se v moji garderobi dobro ujema?",
-      "missing": "Kaj manjka v moji garderobi?"
+      "missing": "Kaj manjka v moji garderobi?",
+      "analyze": "Analiziraj mojo garderobo"
+    },
+    "analysis": {
+      "label": "Tvoja garderoba v številkah",
+      "pieces": "{count, plural, one {# kos} two {# kosa} few {# kosi} other {# kosov}}",
+      "colours": "Barve",
+      "colourCount": "{colour} {count}",
+      "worn": "Nošeno v zadnjih {days} dneh: {worn} od {pieces}",
+      "never": "{count, plural, one {# kos ni bil nošen} two {# kosa nista bila nošena} few {# kosi niso bili nošeni} other {# kosov ni bilo nošenih}}",
+      "mostWorn": "Največkrat nošeno",
+      "tooMuch": "Veliko imaš",
+      "tooLittle": "Prav bi prišlo še",
+      "areas": {
+        "tops": "zgornjih delov",
+        "bottoms": "hlač in kril",
+        "dresses": "oblek",
+        "layers": "jakn in plaščev",
+        "shoes": "čevljev",
+        "accessories": "dodatkov"
+      }
     },
     "earlier": "Prejšnji pogovori",
     "newChat": "Nov pogovor",

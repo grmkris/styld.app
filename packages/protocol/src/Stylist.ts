@@ -4,7 +4,8 @@ import { entityId, OperationId } from './Ids.ts'
 import { Schema } from 'effect'
 import { passing } from './Errors.ts'
 import { LookId } from './Look.ts'
-import { PieceId } from './Wardrobe.ts'
+import { GarmentGroup, PieceType } from './Garment.ts'
+import { Colour, PieceId } from './Wardrobe.ts'
 
 // Styld, the stylist in the app (owner, 2026-10-31): a chat about the person's own wardrobe and looks.
 
@@ -25,10 +26,36 @@ export type SendChatMessage = typeof SendChatMessage.Type
 
 export const ChatMessageSent = Schema.Struct({ chatId: ChatId })
 
-/** What a reply shows besides its words: pieces of the wardrobe, or a look it saved. */
+/** The parts of a wardrobe "Analyze my wardrobe" weighs against each other, in the words people use (an outfit's slots,
+ * without the sets worn on their own for sport, swimming or lounging). */
+export const WardrobeArea = Schema.Literals(['tops', 'bottoms', 'dresses', 'layers', 'shoes', 'accessories'])
+export type WardrobeArea = typeof WardrobeArea.Type
+
+const Count = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
+
+/** "Analyze my wardrobe" (Eva's review, T-14): what the wardrobe holds, counted exactly by the server, never by the
+ * model. Groups, types and colours come commonest first; `worn` covers the last `days` days of the worn log. */
+export const WardrobeAnalysis = Schema.Struct({
+  pieces: Count,
+  groups: Schema.Array(Schema.Struct({ group: GarmentGroup, count: Count })),
+  types: Schema.Array(Schema.Struct({ type: PieceType, count: Count })),
+  colours: Schema.Array(Schema.Struct({ colour: Colour, count: Count })),
+  worn: Schema.Struct({
+    days: Count,
+    pieces: Count,
+    never: Count,
+    most: Schema.Array(Schema.Struct({ pieceId: PieceId, days: Count })),
+  }),
+  surpluses: Schema.Array(WardrobeArea),
+  gaps: Schema.Array(WardrobeArea),
+})
+export type WardrobeAnalysis = typeof WardrobeAnalysis.Type
+
+/** What a reply shows besides its words: pieces of the wardrobe, a look it saved, or the wardrobe's analysis. */
 export const ReplyPart = Schema.Union([
   Schema.TaggedStruct('Pieces', { pieceIds: Schema.Array(PieceId) }),
   Schema.TaggedStruct('Look', { lookId: LookId, name: Schema.String }),
+  Schema.TaggedStruct('Analysis', { analysis: WardrobeAnalysis }),
 ])
 export type ReplyPart = typeof ReplyPart.Type
 

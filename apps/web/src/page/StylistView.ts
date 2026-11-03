@@ -1,7 +1,7 @@
 import { cdn, type PieceImagesById } from '../Cdn.ts'
 import { textLength, prices } from '@styld/protocol'
 import { format, languageOf, type Locale, type MessageKey } from '@styld/i18n'
-import type { Chat, ChatMessage, ReplyPart } from '@styld/protocol'
+import type { Chat, ChatMessage, ReplyPart, WardrobeAnalysis, WardrobeArea } from '@styld/protocol'
 import { Array, Match, Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
@@ -15,6 +15,8 @@ import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { barStart, round } from './PageBar.styles.ts'
 import { chip } from '../Controls.styles.ts'
+import { factDot, swatchDot } from './PieceFields.styles.ts'
+import { colourName, groupName } from './WardrobeWords.ts'
 import { intlLocale } from '../Locale.ts'
 import {
   canSend,
@@ -48,6 +50,7 @@ const starters: ReadonlyArray<MessageKey> = [
   'stylist.starter.today',
   'stylist.starter.together',
   'stylist.starter.missing',
+  'stylist.starter.analyze',
 ]
 
 /** A reply as plain text: a model that still writes **bold** loses the marks. */
@@ -105,6 +108,70 @@ const shownPiece = (pieceId: string, { locale, names, images }: Inputs, h: HtmlB
   )
 }
 
+const areaName = (area: WardrobeArea) => `stylist.analysis.areas.${area}` as const satisfies MessageKey
+
+/** "Analyze my wardrobe": the server's exact counts as a card under the reply (T-14). Groups, colours as named dots,
+ * what was worn lately with the most worn pieces, then the areas with too much and too little. */
+const analysisView = (analysis: WardrobeAnalysis, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
+  const { locale } = inputs
+  const areas = (key: MessageKey, list: ReadonlyArray<WardrobeArea>) =>
+    list.length === 0
+      ? h.empty
+      : h.p(styled(h, styles.analysisLine()), [
+          h.span(styled(h, styles.analysisTerm()), [format(locale, key, {})]),
+          ' ',
+          list.map((area) => format(locale, areaName(area), {})).join(', '),
+        ])
+  return h.section(
+    [h.AriaLabel(format(locale, 'stylist.analysis.label', {})), ...styled(h, styles.analysis())],
+    [
+      h.p(styled(h, styles.analysisTotal()), [format(locale, 'stylist.analysis.pieces', { count: analysis.pieces })]),
+      h.ul(
+        styled(h, styles.analysisCounts()),
+        analysis.groups.map(({ group, count }) =>
+          h.keyed('li')(group, [], [`${format(locale, groupName(group), {})} ${String(count)}`]),
+        ),
+      ),
+      analysis.colours.length === 0
+        ? h.empty
+        : h.ul(
+            [h.AriaLabel(format(locale, 'stylist.analysis.colours', {})), ...styled(h, styles.analysisCounts())],
+            analysis.colours.map(({ colour, count }) =>
+              h.keyed('li')(colour, styled(h, styles.analysisColour()), [
+                h.span([
+                  h.AriaHidden(true),
+                  h.DataAttribute('colour', colour),
+                  ...styled(h, cx(swatchDot(), factDot())),
+                ]),
+                format(locale, 'stylist.analysis.colourCount', {
+                  colour: format(locale, colourName(colour), {}),
+                  count: String(count),
+                }),
+              ]),
+            ),
+          ),
+      h.p(styled(h, styles.analysisLine()), [
+        format(locale, 'stylist.analysis.worn', {
+          days: analysis.worn.days,
+          worn: analysis.worn.pieces,
+          pieces: analysis.pieces,
+        }),
+        analysis.worn.never === 0
+          ? ''
+          : ` · ${format(locale, 'stylist.analysis.never', { count: analysis.worn.never })}`,
+      ]),
+      analysis.worn.most.length === 0
+        ? h.empty
+        : h.ul(
+            [h.AriaLabel(format(locale, 'stylist.analysis.mostWorn', {})), ...styled(h, styles.pieces())],
+            analysis.worn.most.map(({ pieceId }) => shownPiece(pieceId, inputs, h)),
+          ),
+      areas('stylist.analysis.tooMuch', analysis.surpluses),
+      areas('stylist.analysis.tooLittle', analysis.gaps),
+    ],
+  )
+}
+
 const partView = (part: ReplyPart, inputs: Inputs, h: HtmlBuilder<Message>): Html =>
   Match.valueTags(part, {
     Pieces: ({ pieceIds }) =>
@@ -117,6 +184,7 @@ const partView = (part: ReplyPart, inputs: Inputs, h: HtmlBuilder<Message>): Htm
         [h.Href(lookRouter({ lookId })), ...styled(h, secondaryAction())],
         [format(inputs.locale, 'stylist.openLook', { name })],
       ),
+    Analysis: ({ analysis }) => analysisView(analysis, inputs, h),
   })
 
 const replyView = (text: string, parts: ReadonlyArray<ReplyPart>, inputs: Inputs, h: HtmlBuilder<Message>): Html =>
