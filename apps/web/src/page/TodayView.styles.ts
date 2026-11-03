@@ -92,6 +92,20 @@ export const spin = style({
   ':active': { transform: 'scale(0.96)' },
   '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2Hover' } },
 })
+/** Swap one piece: a wrapping set of chips, one for each piece on the table. */
+export const swaps = style({ display: 'flex', flexWrap: 'wrap', gap: 'actions' })
+/** One swap chip's place in the set: never wider than the row. */
+export const swapItem = style({ display: 'flex', minInlineSize: '0', maxInlineSize: '100%' })
+/** A swap chip: its icon before the piece's name. */
+export const swapChip = style({
+  display: 'inline-flex',
+  alignItems: 'center',
+  gap: 'snug',
+  minInlineSize: '0',
+  '&[data-disabled]': { opacity: 0.5, cursor: 'not-allowed' },
+})
+/** A long piece name ends in an ellipsis rather than leaving the row; the chip's label still says it whole. */
+export const swapName = style({ minInlineSize: '0', overflow: 'hidden', textOverflow: 'ellipsis' })
 export const note = style({
   minBlockSize: '1.5em',
   fontSize: 'label',

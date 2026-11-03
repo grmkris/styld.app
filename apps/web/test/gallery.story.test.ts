@@ -167,6 +167,114 @@ describe("today's table", () => {
       Command.expectNone(),
     )
   })
+
+  test('swapping one piece locks the others, keeps them on the table, and Wear this reports the outfit as edited', () => {
+    const ready = spun()
+    const shown = [navyKnit, greenTrousers, blackShoes].map(({ id }) => id)
+    const from = outfitKeyOf(shown)
+    const swappedIn = [redTop.id, greenTrousers.id, blackShoes.id]
+    const coat = pieceFixture('camel-coat', { type: 'coats', colours: ['beige'], name: 'Camel coat' })
+    story(
+      Today.update,
+      given(ready),
+      message(Today.Message.ClickedSwapPiece({ pieceId: navyKnit.id, pieceIds: shown })),
+      Command.expectExact(
+        Today.SwapPiece({
+          day: thursday,
+          brief: {},
+          session,
+          lockedPieceIds: [greenTrousers.id, blackShoes.id],
+          seen: outfits.map(({ key }) => key),
+          pieceId: navyKnit.id,
+          from,
+        }),
+      ),
+      model((current) => expect(Today.Swap.guards.Swapping(current.swap)).toBe(true)),
+      // The first still wears the knit, the second brings a coat besides; the third swaps the knit alone.
+      Command.resolve(
+        Today.SwapPiece,
+        Today.Message.SucceededSwapPiece({
+          pieceId: navyKnit.id,
+          from,
+          proposals: [
+            proposal([navyKnit, greenTrousers, blackShoes, coat]),
+            proposal([redTop, greenTrousers, coat, blackShoes]),
+            proposal([redTop, greenTrousers, blackShoes]),
+          ],
+        }),
+      ),
+      model((current) => {
+        expect(Today.tableOutfit(current, [...wardrobe, coat])).toEqual([redTop, greenTrousers, blackShoes])
+        expect(Today.Swap.guards.Idle(current.swap)).toBe(true)
+      }),
+      message(Today.Message.ClickedWear({ pieceIds: swappedIn })),
+      Command.expectExact(
+        Today.Wear({
+          day: thursday,
+          pieceIds: swappedIn,
+          proposal: Option.some({ session, mode: 'fast', position: 0, edited: true }),
+        }),
+      ),
+      Command.resolve(Today.Wear, Today.Message.SucceededWear({ pieceIds: swappedIn })),
+    )
+  })
+
+  test('a swap that only keeps the piece or leaves its place empty changes nothing and says so; one overtaken by Spin is dropped', () => {
+    const shown = [navyKnit, greenTrousers, blackShoes].map(({ id }) => id)
+    const from = outfitKeyOf(shown)
+    story(
+      Today.update,
+      given(spun()),
+      message(Today.Message.ClickedSwapPiece({ pieceId: blackShoes.id, pieceIds: shown })),
+      Command.resolve(
+        Today.SwapPiece,
+        Today.Message.SucceededSwapPiece({
+          pieceId: blackShoes.id,
+          from,
+          proposals: [proposal([navyKnit, greenTrousers, blackShoes, redTop]), proposal([navyKnit, greenTrousers])],
+        }),
+      ),
+      model((current) => {
+        expect(Today.tableOutfit(current, wardrobe)).toEqual([navyKnit, greenTrousers, blackShoes])
+        expect(current.swap).toEqual(Today.Swap.NoOther({ pieceId: blackShoes.id }))
+      }),
+      message(Today.Message.ClickedSpin()),
+      Command.resolve(Today.MakeOutfits, Today.Message.SucceededMakeOutfits({ batch: batchOf([]) })),
+      message(
+        Today.Message.SucceededSwapPiece({
+          pieceId: blackShoes.id,
+          from,
+          proposals: [proposal([navyKnit, greenTrousers, redTop])],
+        }),
+      ),
+      model((current) => {
+        expect(Today.tableOutfit(current, wardrobe)).toEqual([redTop, greenTrousers, blackShoes])
+        expect(Today.Swap.guards.Idle(current.swap)).toBe(true)
+      }),
+    )
+  })
+
+  test('an outfit with more pieces than the engine locks offers no swap', () => {
+    const many = Array.from({ length: 7 }, (_, at) => pieceFixture(`many-${String(at)}`, { type: 'tops' }))
+    const big = modifyFields(spun(), {
+      outfits: () =>
+        Today.OutfitsData.Success({
+          data: { session, proposals: [proposal(many)], at: 0, missing: [], exhausted: true, refilling: false },
+        }),
+    })
+    expect(Today.canSwap(big, many)).toBe(false)
+    expect(Today.canSwap(big, many.slice(0, 6))).toBe(true)
+    const [first] = many
+    if (first === undefined) {
+      throw new Error('the outfit has pieces')
+    }
+    story(
+      Today.update,
+      given(big),
+      message(Today.Message.ClickedSwapPiece({ pieceId: first.id, pieceIds: many.map(({ id }) => id) })),
+      Command.expectNone(),
+    )
+  })
 })
 
 describe('boards', () => {

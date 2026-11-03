@@ -5,7 +5,7 @@ import { AsyncData } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
-import { FavouriteData, Message, OutfitsData, ReadWorn, TrayData, Worn } from '../src/page/Today.ts'
+import { FavouriteData, Message, OutfitsData, ReadWorn, SwapPiece, TrayData, Wear, Worn } from '../src/page/Today.ts'
 import { view } from '../src/View.ts'
 import { lenses } from '../src/Page.ts'
 import { at, withBoards, withPage, withPieces } from './AppFixtures.ts'
@@ -56,6 +56,35 @@ const wornWith = (outfits: OutfitsData) =>
 /** Home with today's outfits as given. */
 const withOutfits = (outfits: OutfitsData) =>
   withPage(home(0, Option.none()), lenses.today, (today) => modifyFields(today, { outfits: () => outfits }))
+
+const jeans = pieceFixture('jeans', { type: 'jeans' })
+const trainers = pieceFixture('trainers', { type: 'trainers' })
+const boots = pieceFixture('boots', { type: 'boots' })
+const proposalOf = (pieces: ReadonlyArray<typeof knit>) => ({
+  key: outfitKeyOf(pieces.map(({ id }) => id)),
+  pieceIds: pieces.map(({ id }) => id),
+  score: 0.8,
+})
+const thursday = Schema.decodeUnknownSync(Day)('2026-10-29')
+
+/** Home on a known day with the knit, jeans and trainers on the table, and boots in the wardrobe. */
+const dressed = () =>
+  withPage(withPieces(home(0, Option.none()), [knit, jeans, trainers, boots]), lenses.today, (today) =>
+    modifyFields(today, {
+      maybeDay: () => Option.some(thursday),
+      outfits: () =>
+        OutfitsData.Success({
+          data: {
+            session: OutfitSession.make(`os_${'a'.repeat(22)}`),
+            proposals: [proposalOf([knit, jeans, trainers])],
+            at: 0,
+            missing: [],
+            exhausted: true,
+            refilling: false,
+          },
+        }),
+    }),
+  )
 
 describe('Home', () => {
   test('the bar holds Home, Ask, Wardrobe and Boards, and Explore is the round in Home’s head', () => {
@@ -136,7 +165,6 @@ describe('Home', () => {
   })
 
   test('a log of today that did not load says so, and Try again reads it again', () => {
-    const thursday = Schema.decodeUnknownSync(Day)('2026-10-29')
     const unread = withPage(home(0, Option.none()), lenses.today, (today) =>
       modifyFields(today, { maybeDay: () => Option.some(thursday), worn: () => Worn.Unread() }),
     )
@@ -173,6 +201,55 @@ describe('Home', () => {
       { update, view },
       given(home(0, Option.none())),
       expect(role('region', { name: 'Pick up where you left off' })).not.toExist(),
+    )
+  })
+
+  test('one piece swaps for another while the rest stays, and Wear this then says the outfit is logged', () => {
+    const from = outfitKeyOf([knit.id, jeans.id, trainers.id])
+    scene(
+      { update, view },
+      given(dressed()),
+      inside(
+        role('group', { name: 'Swap one piece' }),
+        expect(role('button', { name: 'Swap Cable knit' })).toExist(),
+        expect(role('button', { name: 'Swap Jeans' })).toExist(),
+        expect(role('button', { name: 'Swap Trainers' })).toExist(),
+      ),
+      click(role('button', { name: 'Swap Trainers' })),
+      expect(role('button', { name: 'Swap Jeans' })).toHaveAttr('aria-disabled', 'true'),
+      expect(role('button', { name: 'Wear this' })).toHaveAttr('aria-disabled', 'true'),
+      Command.resolve(
+        SwapPiece,
+        Message.SucceededSwapPiece({ pieceId: trainers.id, from, proposals: [proposalOf([knit, jeans, boots])] }),
+      ),
+      expect(role('button', { name: 'Swap Boots' })).toExist(),
+      expect(role('button', { name: 'Swap Trainers' })).not.toExist(),
+      expect(role('button', { name: 'Swap Cable knit' })).toExist(),
+      expect(role('img', { name: 'Today’s outfit: Cable knit, Jeans, Boots' })).toExist(),
+      expect(role('status')).toHaveText(''),
+      click(role('button', { name: 'Wear this' })),
+      Command.resolve(Wear, Message.SucceededWear({ pieceIds: [knit.id, jeans.id, boots.id] })),
+      expect(role('button', { name: 'Worn today' })).toExist(),
+      expect(role('status')).toHaveText('Logged for today.'),
+      expect(role('group', { name: 'Swap one piece' })).not.toExist(),
+    )
+  })
+
+  test('a piece with nothing else to go with the rest stays, and the note says so', () => {
+    scene(
+      { update, view },
+      given(dressed()),
+      click(role('button', { name: 'Swap Trainers' })),
+      Command.resolve(
+        SwapPiece,
+        Message.SucceededSwapPiece({
+          pieceId: trainers.id,
+          from: outfitKeyOf([knit.id, jeans.id, trainers.id]),
+          proposals: [],
+        }),
+      ),
+      expect(role('button', { name: 'Swap Trainers' })).toExist(),
+      expect(role('status')).toHaveText('Trainers: nothing else fits this outfit.'),
     )
   })
 })

@@ -2,25 +2,27 @@ import { cdn, type PieceImagesById, piecesById } from '../Cdn.ts'
 import { format, type Locale } from '@styld/i18n'
 import { type BoardItem, type BoardSummary, flatLay, type Piece, type Slot } from '@styld/protocol'
 import { Array, Option } from 'effect'
+import { Button } from '@foldkit/ui'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { linkAction, primaryAction, secondaryAction, smallAction } from '../Actions.styles.ts'
-import { addIcon, checkIcon, exploreTabIcon, loader, spinIcon } from '../Icon.ts'
+import { chip } from '../Controls.styles.ts'
+import { addIcon, checkIcon, exploreTabIcon, loader, retryIcon, spinIcon } from '../Icon.ts'
 import { addPiecesRouter, boardRouter, exploreRouter, photoRouter, reviewRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { intlLocale } from '../Locale.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { fromStyld, stillTable } from './Board/Table.ts'
-import { Message, type Model, showsWornOutfit, TableMotion, tableOutfit, Worn } from './Today.ts'
+import { canSwap, Message, type Model, showsWornOutfit, Swap, TableMotion, tableOutfit, Worn } from './Today.ts'
 import type { BoardsData, PiecesData } from '../ServerData.ts'
 import { barEnd, round } from './PageBar.styles.ts'
 import { pageHead } from './PageHead.ts'
 import { title as headTitle } from './PageHead.styles.ts'
 import * as styles from './TodayView.styles.ts'
-import { pieceLabel } from './WardrobeWords.ts'
+import { pieceDescription, pieceLabel } from './WardrobeWords.ts'
 import { feedView } from './FeedView.ts'
 
 const dateOf = (day: string) => {
@@ -92,9 +94,42 @@ const wearButton = (model: Model, pieces: ReadonlyArray<Piece>, locale: Locale, 
       leading: isWorn ? checkIcon(h) : saving ? loader(h) : h.empty,
       style: isWorn ? cx(primaryAction(), styles.worn()) : cx(primaryAction(), styles.wear()),
       onClick: Message.ClickedWear({ pieceIds: tableOutfit(model, pieces).map((piece) => piece.id) }),
-      isDisabled: saving,
+      isDisabled: saving || Swap.guards.Swapping(model.swap),
     },
     h,
+  )
+}
+
+/** Swap one piece of the outfit on the table, keeping the others: a chip for each, named for the piece. While a swap
+ * or Wear this is on its way every chip waits, the piece being swapped turning. */
+const swapView = (outfit: ReadonlyArray<Piece>, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  if (!canSwap(model, outfit)) return h.empty
+  const pieceIds = outfit.map((piece) => piece.id)
+  const waiting = Swap.guards.Swapping(model.swap) || Worn.guards.Saving(model.worn)
+  return h.div(
+    [h.Role('group'), h.AriaLabel(format(locale, 'today.swapPieces', {})), ...styled(h, styles.swaps())],
+    outfit.map((piece) => {
+      const name = pieceLabel(piece, locale)
+      const turning = Swap.guards.Swapping(model.swap) && model.swap.pieceId === piece.id
+      return h.keyed('span')(piece.id, styled(h, styles.swapItem()), [
+        Button.view(
+          {
+            onClick: Message.ClickedSwapPiece({ pieceId: piece.id, pieceIds }),
+            isDisabled: waiting,
+            toView: (attributes) =>
+              h.button(
+                [
+                  ...attributes.button,
+                  h.AriaLabel(format(locale, 'today.swap', { name: pieceDescription(piece, locale) })),
+                  ...styled(h, cx(chip(), styles.swapChip())),
+                ],
+                [turning ? loader(h) : retryIcon(h), h.span(styled(h, styles.swapName()), [name])],
+              ),
+          },
+          h,
+        ),
+      ])
+    }),
   )
 }
 
@@ -124,14 +159,30 @@ const missingView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Htm
       ),
   })
 
-const noteView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+/** What a swap that did not change the table says: nothing else fits in place of the piece, or the swap failed. */
+const swapNote = (model: Model, pieces: ReadonlyArray<Piece>, locale: Locale) => {
+  const nameOf = (pieceId: string) =>
+    Option.match(
+      Array.findFirst(pieces, (piece) => piece.id === pieceId),
+      { onNone: () => '', onSome: (piece) => pieceLabel(piece, locale) },
+    )
+  return Swap.match(model.swap, {
+    Idle: () => '',
+    Swapping: () => '',
+    NoOther: ({ pieceId }) => format(locale, 'today.swapNone', { name: nameOf(pieceId) }),
+    Failed: () => format(locale, 'today.swapFailed', {}),
+  })
+}
+
+/** The table's one polite status line: today's log not read, Wear this failed, the outfit logged, or how a swap went. */
+const noteView = (model: Model, pieces: ReadonlyArray<Piece>, locale: Locale, h: HtmlBuilder<Message>): Html => {
   if (Worn.guards.Unread(model.worn)) return unreadView(locale, h)
-  const failed = Worn.guards.Failed(model.worn)
-  const text = failed
+  const failed = Worn.guards.Failed(model.worn) || Swap.guards.Failed(model.swap)
+  const text = Worn.guards.Failed(model.worn)
     ? format(locale, 'today.wearFailed', {})
     : showsWornOutfit(model)
       ? format(locale, 'today.wornNote', {})
-      : ''
+      : swapNote(model, pieces, locale)
   return h.p(
     [h.Role('status'), ...(failed ? [h.DataAttribute('tone', 'error')] : []), ...styled(h, styles.note())],
     [text],
@@ -236,7 +287,8 @@ const todayView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuil
       headlineView(model.maybeDay, locale, h),
       tableArea(model, pieces, locale, h),
       actionsView(model, pieces, loaded, locale, h),
-      noteView(model, locale, h),
+      swapView(tableOutfit(model, loaded), model, locale, h),
+      noteView(model, loaded, locale, h),
       loaded.some((piece) => piece.status === 'ready') ? missingView(model, locale, h) : h.empty,
     ],
   )
