@@ -1,5 +1,6 @@
 import { Environment } from '@styld/observability'
-import { Config, ConfigProvider, Context, Effect, Schema } from 'effect'
+import type { StylistThreadsApi } from './stylist/Agent.ts'
+import { Config, ConfigProvider, Context, Effect, Predicate, Schema } from 'effect'
 import {
   decodeAuthSecret,
   decodeAuthSessionKeyring,
@@ -56,3 +57,14 @@ export const deploymentOf = Effect.fn('Styld.Config.deployment')(function* (env:
 export class Deployment extends Context.Service<Deployment, Effect.Success<ReturnType<typeof deploymentOf>>>()(
   '@styld/server/Deployment',
 ) {}
+
+/** A service binding with RPC, as far as the Worker can tell: something it can call. */
+const isThreadWorker = (value: unknown): value is StylistThreadsApi =>
+  Predicate.hasProperty(value, 'admit') && Predicate.isFunction(value.admit)
+
+/** The Thread Worker's entrypoint (`stylist/Thread.ts`), which the stack binds to the API Worker as
+ * `STYLIST_THREADS` (`alchemy.run.ts`). A Worker without it is a broken deployment. */
+export const stylistThreadsOf = (env: Readonly<Record<string, unknown>>) =>
+  isThreadWorker(env.STYLIST_THREADS)
+    ? Effect.succeed(env.STYLIST_THREADS)
+    : Effect.die(new Error('STYLIST_THREADS is not bound to the API Worker'))

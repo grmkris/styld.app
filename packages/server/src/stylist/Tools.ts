@@ -1,95 +1,98 @@
-import { LookId, PieceId, type ReplyPart, type WardrobeAnalysis } from '@styld/protocol'
-import { type Context, Effect, Option, Predicate, Ref, Schema } from 'effect'
-import { Tool, Toolkit } from 'effect/ai'
-import type { JsonSchema } from 'effect/JsonSchema'
+import { PieceId, type WardrobeAnalysis } from '@styld/protocol'
+import { Effect, Option, Predicate, Schema } from 'effect'
+import { digestOf } from '../kernel/Ids.ts'
 import type { Tool as AssistantTool } from '../mcp/Tools.ts'
+import { catalogue, showLimit } from './Catalogue.ts'
 
-/** The assistants' tools Styld uses: it reads the wardrobe and the saved looks, makes outfits, and saves a look when
- * asked. */
-const stylistToolNames: ReadonlyArray<string> = [
-  'piece_search',
-  'piece_get',
-  'outfit_make',
-  'look_list',
-  'look_get',
-  'look_create',
-]
-
-/** Tools that look something up: words a call writes beside them are the model thinking aloud ("I'll take a look"),
- * left out of the reply when it says anything else. */
-export const lookingUpToolNames: ReadonlySet<string> = new Set([
-  'wardrobe_analyze',
-  'piece_search',
-  'piece_get',
-  'outfit_make',
-  'look_list',
-  'look_get',
-])
-
-/** Tools that only show something under the reply: their answer tells the model nothing new, so a call that has
- * written its words and calls only these ends the reply, rather than asking the model again to restate it. */
-export const showingToolNames: ReadonlySet<string> = new Set(['pieces_show'])
-
-/** A tool's input schema as the model sees it: without `operationId`, which the turn chooses for each call so a
- * retried reply saves once.
- * @internal Exported for its tests. */
-export const modelSchema = (schema: object): { readonly schema: JsonSchema; readonly operation: boolean } => {
-  const whole: JsonSchema = { ...schema }
-  if (!Predicate.hasProperty(schema, 'properties') || !Predicate.isObject(schema.properties)) {
-    return { schema: whole, operation: false }
-  }
-  const { operationId, ...properties } = schema.properties
-  if (operationId === undefined) return { schema: whole, operation: false }
-  const required = Predicate.hasProperty(schema, 'required') && Array.isArray(schema.required) ? schema.required : []
-  return {
-    schema: { ...whole, properties, required: required.filter((name) => name !== 'operationId') },
-    operation: true,
-  }
-}
-
-/** The most pieces one reply's `pieces_show` shows. */
-export const showLimit = 8
-
-const ShowPieces = Schema.Struct({
-  pieceIds: Schema.Array(Schema.String).check(Schema.isMinLength(1), Schema.isMaxLength(showLimit)),
-})
-const decodeShowPieces = Schema.decodeUnknownOption(ShowPieces)
-
-const showPiecesSchema: JsonSchema = {
-  type: 'object',
-  properties: { pieceIds: { type: 'array', items: { type: 'string' }, minItems: 1, maxItems: showLimit } },
-  required: ['pieceIds'],
-  additionalProperties: false,
-}
-
-/** `wardrobe_analyze` takes nothing: it counts the whole wardrobe. */
-const analyzeSchema: JsonSchema = { type: 'object', properties: {}, additionalProperties: false }
-
-const SavedLook = Schema.Struct({ id: LookId, name: Schema.String })
-const decodeSavedLook = Schema.decodeUnknownOption(SavedLook)
+// The chat's tools as the API Worker runs them, one call at a time, when a reply's Thread asks (`Thread.ts`): the
+// assistants' own for the chat's account, `pieces_show`, which shows the person's own pieces, and `wardrobe_analyze`,
+// which counts the wardrobe. What a call shows under the reply is in its result, which the Thread records; the chat's
+// cards are read back from there (`History.ts`).
 
 /** A refusal as the model reads it, to recover from on its own. */
 const refusal = (error: { readonly code: string; readonly message: string; readonly recovery: string }) => ({
   error: { code: error.code, message: error.message, recovery: error.recovery },
 })
 
-/** `wardrobe_analyze`: the wardrobe counted (`Analysis.ts`), shown once as a card through `show`, and told to the model. A
- * wardrobe that cannot be counted is a refusal the model answers around. */
-const analyzeTool = (
-  analyze: Effect.Effect<{ readonly analysis: WardrobeAnalysis; readonly told: unknown }, unknown>,
-  show: (analysis: WardrobeAnalysis) => Effect.Effect<void>,
-) => ({
-  definition: Tool.dynamic('wardrobe_analyze', {
-    description:
-      'Count the whole wardrobe exactly: pieces by group, type and colour, what was worn lately and what never, and the areas with too much or too little. The person sees the counts as a card under your reply, so call it once when they ask about their wardrobe as a whole, then comment on what matters most instead of repeating the numbers.',
-    parameters: analyzeSchema,
-  }),
-  handler: (_params: unknown) =>
-    Effect.gen(function* () {
-      const { analysis, told } = yield* analyze
-      yield* show(analysis)
-      return told
-    }).pipe(
+const ShowPieces = Schema.Struct({
+  pieceIds: Schema.Array(Schema.String).check(Schema.isMinLength(1), Schema.isMaxLength(showLimit)),
+})
+const decodeShowPieces = Schema.decodeUnknownOption(ShowPieces)
+
+/** The operation id of a write the model asked for: the same call in the same reply (repeated after an interruption)
+ * is the same write. Yielded records each call's parameters before it runs, so a repeated call has the same ones.
+ * @internal Exported for its tests. */
+export const operationOf = (submissionId: string, name: string, params: unknown) =>
+  Effect.map(digestOf(`${submissionId}:${name}:${JSON.stringify(params)}`), (digest) => `sq_${digest.slice(0, 40)}`)
+
+/** What one call needs of the account: its assistants' tools, its pieces and its wardrobe counted. */
+export interface ToolAccount {
+  readonly tools: ReadonlyArray<AssistantTool<never>>
+  readonly pieceIds: Effect.Effect<ReadonlySet<string>, unknown>
+  /** The wardrobe's analysis, the card the person sees, with the most worn pieces' names beside their ids for the
+   * model. */
+  readonly analyze: Effect.Effect<
+    { readonly analysis: WardrobeAnalysis; readonly names: ReadonlyMap<string, string> },
+    unknown
+  >
+}
+
+/** `pieces_show`: the person's own pieces among those asked for, each once; `shown` is what the card shows. */
+const showPieces = (account: ToolAccount, params: unknown) =>
+  Effect.gen(function* () {
+    const decoded = decodeShowPieces(params)
+    if (Option.isNone(decoded))
+      return refusal({
+        code: 'invalid_arguments',
+        message: 'Give 1 to 8 piece ids.',
+        recovery: 'Call pieces_show with pieceIds.',
+      })
+    const own = yield* account.pieceIds
+    const shown = [...new Set(decoded.value.pieceIds)].filter((id) => own.has(id)).map((id) => PieceId.make(id))
+    return { shown }
+  })
+
+/** `wardrobe_analyze`: the counts, which the card shows, with the most worn pieces' names for the model to say. */
+const analyzeWardrobe = (account: ToolAccount) =>
+  account.analyze.pipe(
+    Effect.map(({ analysis, names }) => ({
+      ...analysis,
+      worn: {
+        ...analysis.worn,
+        most: analysis.worn.most.map((worn) => ({ ...worn, piece: names.get(worn.pieceId) ?? '' })),
+      },
+    })),
+  )
+
+/** An assistant's tool, with the write's operation id when it takes one. */
+const assistantCall = (
+  tool: AssistantTool<never>,
+  operation: boolean,
+  request: { readonly submissionId: string; readonly params: unknown },
+) =>
+  Effect.gen(function* () {
+    const args =
+      operation && Predicate.isObject(request.params)
+        ? { ...request.params, operationId: yield* operationOf(request.submissionId, tool.name, request.params) }
+        : request.params
+    return yield* tool.run(args)
+  }).pipe(Effect.catchTag('ToolError', (error) => Effect.succeed<unknown>(refusal(error))))
+
+/** Run one of the chat's tools for the account. A tool that cannot run now is a refusal the model answers around;
+ * a name the chat does not offer is refused. */
+export const runTool = (
+  account: ToolAccount,
+  request: { readonly submissionId: string; readonly name: string; readonly params: unknown },
+): Effect.Effect<unknown> => {
+  const unavailable = refusal({
+    code: 'unavailable',
+    message: 'Styld could not do that just now.',
+    recovery: 'Answer from what you already know.',
+  })
+  if (request.name === 'pieces_show')
+    return showPieces(account, request.params).pipe(Effect.orElseSucceed(() => unavailable))
+  if (request.name === 'wardrobe_analyze')
+    return analyzeWardrobe(account).pipe(
       Effect.orElseSucceed(() =>
         refusal({
           code: 'unavailable',
@@ -97,87 +100,12 @@ const analyzeTool = (
           recovery: 'Answer from the outline you were given.',
         }),
       ),
-    ),
-})
-
-/** One reply's tools: the assistants' own, run in `context` (the account and its pace), and `pieces_show`, which shows the person's own
- * pieces under the reply. What the reply shows and saves is collected in `parts`. A tool that writes gets the
- * operation id `<turnId>-<tool>-<n>`, its nth write in the reply: the queue may write a reply again, and its model may
- * look things up in another order, so the id counts only that tool's writes and a retried turn saves its look once. */
-export const turnTools = <R>(
-  tools: ReadonlyArray<AssistantTool<R>>,
-  turn: {
-    readonly turnId: string
-    readonly pieceIds: ReadonlySet<string>
-    /** The wardrobe's analysis, counted when the model asks for it: the card the person sees, and what the model is
-     * told (piece names in place of ids). */
-    readonly analyze: Effect.Effect<{ readonly analysis: WardrobeAnalysis; readonly told: unknown }, unknown>
-  },
-  context: Context.Context<R>,
-) =>
-  Effect.gen(function* () {
-    const parts = yield* Ref.make<ReadonlyArray<ReplyPart>>([])
-    const writes = yield* Ref.make<Readonly<Record<string, number>>>({})
-    const add = (part: ReplyPart) => Ref.update(parts, (all) => [...all, part])
-    /** The operation id of a tool's next write in this reply: `<turnId>-<tool>-<n>`. */
-    const nextOperation = (tool: string) =>
-      Ref.modify(writes, (counts) => {
-        const nth = counts[tool] ?? 0
-        return [`${turn.turnId}-${tool}-${nth}`, { ...counts, [tool]: nth + 1 }] as const
-      })
-    /** A writing tool's call, given its operation id; any other call as the model made it. */
-    const withOperation = (tool: string, operation: boolean, params: unknown) =>
-      operation && Predicate.isObject(params)
-        ? Effect.map(nextOperation(tool), (operationId): unknown => ({ ...params, operationId }))
-        : Effect.succeed(params)
-    const bridged = tools
-      .filter(({ name }) => stylistToolNames.includes(name))
-      .map((assistant) => {
-        const { schema, operation } = modelSchema(assistant.inputSchema)
-        const handler = (params: unknown) =>
-          Effect.gen(function* () {
-            const args = yield* withOperation(assistant.name, operation, params)
-            const result = yield* assistant.run(args).pipe(Effect.provide(context))
-            const look = assistant.name === 'look_create' ? decodeSavedLook(result) : Option.none()
-            if (Option.isSome(look)) yield* add({ _tag: 'Look', lookId: look.value.id, name: look.value.name })
-            return result
-          }).pipe(Effect.catchTag('ToolError', (error) => Effect.succeed<unknown>(refusal(error))))
-        return {
-          definition: Tool.dynamic(assistant.name, { description: assistant.description, parameters: schema }),
-          handler,
-        }
-      })
-    const show = {
-      definition: Tool.dynamic('pieces_show', {
-        description:
-          'Show the person the pieces you suggest, as pictures under your reply: 1 to 8 piece ids from piece_search or piece_get, in the order to show them.',
-        parameters: showPiecesSchema,
-      }),
-      handler: (params: unknown) =>
-        Effect.gen(function* () {
-          const decoded = decodeShowPieces(params)
-          if (Option.isNone(decoded))
-            return refusal({
-              code: 'invalid_arguments',
-              message: 'Give 1 to 8 piece ids.',
-              recovery: 'Call pieces_show with pieceIds.',
-            })
-          const own = [...new Set(decoded.value.pieceIds)]
-            .filter((id) => turn.pieceIds.has(id))
-            .map((id) => PieceId.make(id))
-          if (own.length > 0) yield* add({ _tag: 'Pieces', pieceIds: own })
-          return { shown: own.length }
-        }),
-    }
-    const analyze = analyzeTool(turn.analyze, (analysis) =>
-      Ref.update(parts, (all): ReadonlyArray<ReplyPart> =>
-        all.some(({ _tag }) => _tag === 'Analysis') ? all : [...all, { _tag: 'Analysis', analysis }],
-      ),
     )
-    const all = [show, analyze, ...bridged]
-    const toolkit = Toolkit.make(...all.map(({ definition }) => definition))
-    const handlers = toolkit.toLayer(
-      Object.fromEntries(all.map(({ definition, handler }) => [definition.name, handler])),
+  const entry = catalogue.find(({ name }) => name === request.name)
+  const tool = account.tools.find(({ name }) => name === request.name)
+  if (entry === undefined || tool === undefined)
+    return Effect.succeed(
+      refusal({ code: 'unknown_tool', message: 'There is no such tool.', recovery: 'Call one of the tools offered.' }),
     )
-    return { toolkit, handlers, parts: Ref.get(parts) }
-  })
+  return assistantCall(tool, entry.operation, request)
+}

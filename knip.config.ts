@@ -44,11 +44,14 @@ export default {
         { project: ['src/**/*.ts!', 'test/**/*.ts'] },
       ]),
     ),
-    // The API Worker and the stack's resources are the package's exports; the edge Worker is a stack's `main` by path.
-    // An export only a unit test or the native fakes use is tagged `@internal`, which production mode allows.
+    // The API Worker and the stack's resources are the package's exports; the edge Worker and the Thread Workers (the
+    // native suite's over its fake model) are a stack's `main` by path. An export only a unit test or the native fakes
+    // use is tagged `@internal`, which production mode allows.
     'packages/server': {
-      entry: ['src/EdgeWorker.ts!', 'test/**/*.test.ts'],
+      entry: ['src/EdgeWorker.ts!', 'src/stylist/ThreadWorker.ts!', 'test/StylistThreadWorker.ts', 'test/**/*.test.ts'],
       project: ['src/**/*.ts!', 'test/**/*.ts'],
+      // `cloudflare:workers` is workerd's own module, which the Thread Worker's entrypoint extends.
+      ignoreDependencies: ['cloudflare'],
     },
     'packages/db': { project: ['src/**/*.ts!'] },
     'packages/imaging': { project: ['src/**/*.ts!'] },

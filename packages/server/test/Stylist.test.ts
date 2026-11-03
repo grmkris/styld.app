@@ -1,243 +1,79 @@
-import { readFileSync } from 'node:fs'
-import { LookId, PieceId, type WardrobeAnalysis } from '@styld/protocol'
-import { Context, Effect, Layer, Predicate, Schema, Stream } from 'effect'
-import type { Prompt } from 'effect/ai'
+import { PieceId } from '@styld/protocol'
+import { CanonicalRecordPayload } from '@yielded/agent/records'
+import { DateTime, Effect, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
-import { textModel } from '../src/ai/LanguageModel.ts'
-import { TextCompletions } from '../src/providers/Text.ts'
-import { CaptureMetrics } from '../src/kernel/Metrics.ts'
-import { type Tool as AssistantTool, tool, ToolError } from '../src/mcp/Tools.ts'
+import { tool, ToolError } from '../src/mcp/Tools.ts'
+import { stylistDefinitions, accountOfThread, threadIdOf } from '../src/stylist/Agent.ts'
 import { analysisOf } from '../src/stylist/Analysis.ts'
-import { styldModel } from '../src/stylist/Policy.ts'
-import { historyMessages, languageOf, outlineOf, systemPrompt } from '../src/stylist/Prompt.ts'
+import { catalogue, modelSchema } from '../src/stylist/Catalogue.ts'
+import { chatOf } from '../src/stylist/History.ts'
+import { languageOf, outlineOf, systemPrompt } from '../src/stylist/Prompt.ts'
 import { finishedReply } from '../src/stylist/Reply.ts'
-import { lookingUpToolNames, modelSchema, showingToolNames, turnTools } from '../src/stylist/Tools.ts'
-import { runTurn } from '../src/stylist/Turn.ts'
+import { operationOf, runTool, type ToolAccount } from '../src/stylist/Tools.ts'
 
-const fixture = (name: string): unknown =>
-  JSON.parse(readFileSync(new URL(`fixtures/stylist/${name}`, import.meta.url), 'utf8'))
-
-// The recording's wardrobe (fixtures/stylist/README.md).
 const pieces = [
   { id: 'pc_navytrousers0000000000', name: 'Navy trousers', type: 'trousers', colours: ['navy'] },
   { id: 'pc_whitetee00000000000000', name: 'White tee', type: 'tops', colours: ['white'] },
   { id: 'pc_greyknit00000000000000', name: 'Grey knit', type: 'tops', colours: ['grey'] },
   { id: 'pc_whitesneakers000000000', name: 'White sneakers', type: 'trainers', colours: ['white'] },
 ]
+const own = new Set(pieces.map(({ id }) => id))
 
-/** A reply that never asks for the wardrobe's analysis. */
-const notAnalyzed = Effect.die('the analysis was not asked for')
-
-/** The recorded wardrobe's analysis, with no days worn. */
-const recordedAnalysis = analysisOf(
-  [
-    { id: PieceId.make('pc_navytrousers0000000000'), type: 'trousers', colours: ['navy'] },
-    { id: PieceId.make('pc_whitetee00000000000000'), type: 'tops', colours: ['white'] },
-    { id: PieceId.make('pc_greyknit00000000000000'), type: 'tops', colours: ['grey'] },
-    { id: PieceId.make('pc_whitesneakers000000000'), type: 'trainers', colours: ['white'] },
-  ],
-  { days: 60, pieceIds: [] },
+const analysis = analysisOf(
+  pieces.map(({ id, type, colours }) => ({
+    id: PieceId.make(id),
+    type: Schema.decodeUnknownSync(Schema.Literals(['trousers', 'tops', 'trainers']))(type),
+    colours: Schema.decodeUnknownSync(Schema.Array(Schema.Literals(['navy', 'white', 'grey'])))(colours),
+  })),
+  { days: 60, pieceIds: ['pc_whitetee00000000000000', 'pc_whitetee00000000000000'] },
 )
 
-const pieceSearch = tool({
-  name: 'piece_search',
-  title: 'Search the wardrobe',
-  description: 'Pieces in the wardrobe, newest first, filtered by words, a garment type or a colour.',
-  parameters: Schema.Struct({ query: Schema.optionalKey(Schema.String), type: Schema.optionalKey(Schema.String) }),
+const lookCreate = tool({
+  name: 'look_create',
+  title: 'Put a look together',
+  description: 'Save an outfit.',
+  parameters: Schema.Struct({ operationId: Schema.String, name: Schema.String, pieceIds: Schema.Array(Schema.String) }),
+  annotations: { readOnlyHint: false, destructiveHint: false, idempotentHint: true, openWorldHint: false },
+  handler: (input) => Effect.succeed({ id: `lk_${'a'.repeat(22)}`, name: input.name, operation: input.operationId }),
+})
+const refusing = tool({
+  name: 'piece_get',
+  title: 'A piece',
+  description: 'One piece.',
+  parameters: Schema.Struct({ pieceId: Schema.String }),
   annotations: { readOnlyHint: true, openWorldHint: false },
-  handler: (input) =>
-    Effect.succeed({
-      pieces: pieces.filter((piece) => input.type === undefined || piece.type === input.type),
-      nextCursor: null,
-    }),
+  handler: () =>
+    Effect.fail(
+      new ToolError({ code: 'not_found', message: 'No such piece.', recovery: 'Search first.', retryable: false }),
+    ),
 })
 
-/** Styld's language model over Workers AI answering with the recorded answers in turn, keeping what it was asked and
- * the outcome and tokens of each counted call. */
-const replaying = (answers: ReadonlyArray<unknown>) => {
-  const asked: Array<Readonly<Record<string, unknown>>> = []
-  const counted: Array<number> = []
-  const failed: Array<number> = []
-  const model = textModel(styldModel).pipe(
-    Layer.provide(
-      TextCompletions.layer((_model, input) => {
-        asked.push(input)
-        return Effect.succeed(answers[asked.length - 1])
-      }),
-    ),
-    Layer.provide(
-      Layer.succeed(
-        CaptureMetrics,
-        CaptureMetrics.of({
-          ...CaptureMetrics.discarding,
-          call: ({ outcome, units }) => Effect.sync(() => void (outcome === 'ok' ? counted : failed).push(units)),
-        }),
-      ),
-    ),
-  )
-  return { model, asked, counted, failed }
-}
+const account = (overrides: Partial<ToolAccount> = {}): ToolAccount => ({
+  tools: [lookCreate, refusing],
+  pieceIds: Effect.succeed(own),
+  analyze: Effect.succeed({ analysis, names: new Map(pieces.map(({ id, name }) => [id, name])) }),
+  ...overrides,
+})
 
-const Loose = Schema.Record(Schema.String, Schema.Unknown)
-const loose = Schema.decodeUnknownSync(Loose)
+const call = (name: string, params: unknown, submissionId = 'sub-1', on = account()) =>
+  Effect.runPromise(runTool(on, { submissionId, name, params }))
 
-/** A recorded answer with other words, or none. */
-const saying = (answer: unknown, content: string): unknown => {
-  const whole = loose(answer)
-  const choices = Schema.decodeUnknownSync(Schema.Array(Loose))(whole['choices'])
-  return {
-    ...whole,
-    choices: choices.map((choice) => ({ ...choice, message: { ...loose(choice['message']), content } })),
-  }
-}
-
-/** One reply over the recorded wardrobe, the model answering with `answers` in turn. */
-const replyWith = (
-  answers: ReadonlyArray<unknown>,
-  maxSteps = 6,
-  history: ReadonlyArray<Prompt.MessageEncoded> = [
-    { role: 'user', content: 'What should I wear today? Something casual.' },
-  ],
-) => {
-  const { model, asked, counted, failed } = replaying(answers)
-  const progress: Array<string> = []
-  const replied = Effect.runPromise(
-    Effect.gen(function* () {
-      const tools = yield* turnTools(
-        [pieceSearch],
-        { turnId: 'tn_test', pieceIds: new Set(pieces.map(({ id }) => id)), analyze: notAnalyzed },
-        Context.empty(),
-      )
-      const text = yield* runTurn({
-        system: systemPrompt({ language: 'en', today: '2026-10-31', outline: outlineOf(pieces) }),
-        history,
-        toolkit: yield* tools.toolkit.pipe(Effect.provide(tools.handlers)),
-        maxSteps,
-        showing: showingToolNames,
-        lookingUp: lookingUpToolNames,
-        progress: (sofar) => Effect.sync(() => progress.push(sofar)),
-      })
-      return { reply: text, parts: yield* tools.parts }
-    }).pipe(Effect.provide(model)),
-  )
-  return { replied, asked, progress, counted, failed }
-}
-
-describe('a reply', () => {
-  test('looks the wardrobe up, then ends with its words and the pieces it shows (recorded GLM-5.3-flash)', async () => {
-    const recorded = [0, 1, 2].map((step) => fixture(`glm-step-${step}.json`))
-    const { replied, asked, progress, counted } = replyWith(recorded)
-    const { reply, parts } = await replied
-    expect(reply).toMatch(/^For a casual autumn day, I'd go with your grey knit over a white tee/)
-    // Its last recorded call only restated the answer: a call with words that only shows pieces ends the reply.
-    expect(reply).not.toContain("It's an easy")
-    // It showed all four pieces of the outfit, once.
-    expect(parts).toHaveLength(1)
-    const [shown] = parts
-    expect(Predicate.isTagged(shown, 'Pieces') && [...shown.pieceIds].toSorted()).toEqual(
-      pieces.map(({ id }) => id).toSorted(),
-    )
-    // Two model calls, each counted by its tokens in and out; the search's answer went back before the second.
-    expect(counted).toHaveLength(2)
-    expect(counted[0]).toBe(552)
-    expect(asked).toHaveLength(2)
-    expect(JSON.stringify(asked[1]?.['messages'])).toContain('pc_navytrousers0000000000')
-    expect(progress.at(-1)).toBe(reply)
-  })
-
-  test('the same reply on DeepSeek V4.1 Flash: three searches at once, the pieces, then the words (recorded)', async () => {
-    const { replied, asked } = replyWith([0, 1, 2].map((step) => fixture(`deepseek-step-${step}.json`)))
-    const { reply, parts } = await replied
-    expect(asked).toHaveLength(3)
-    // Its first call said it would take a look while it searched: thinking aloud, left out.
-    expect(reply).toMatch(/^Easy casual outfit for today: the white tee with your navy trousers and white sneakers\./)
-    expect(reply).not.toContain('take a look')
-    const [shown] = parts
-    expect(Predicate.isTagged(shown, 'Pieces') && shown.pieceIds).toEqual([
-      'pc_whitetee00000000000000',
-      'pc_navytrousers0000000000',
-      'pc_whitesneakers000000000',
+describe('the chat’s tools, as the model is offered them', () => {
+  test('the six assistants’ tools and the chat’s two, each with how it may be repeated', () => {
+    expect(catalogue.map(({ name, execution }) => [name, execution])).toEqual([
+      ['pieces_show', 'readonly'],
+      ['wardrobe_analyze', 'readonly'],
+      ['piece_search', 'readonly'],
+      ['piece_get', 'readonly'],
+      ['outfit_make', 'readonly'],
+      ['look_list', 'readonly'],
+      ['look_get', 'readonly'],
+      ['look_create', 'idempotent'],
     ])
+    expect(stylistDefinitions.tools).toEqual(catalogue.map(({ name, execution }) => ({ name, execution })))
   })
 
-  test('pieces shown before any words: it goes on for the words', async () => {
-    const shownFirst = saying(fixture('glm-step-1.json'), '')
-    const { replied, asked } = replyWith([fixture('glm-step-0.json'), shownFirst, fixture('glm-step-2.json')])
-    const { reply, parts } = await replied
-    expect(asked).toHaveLength(3)
-    expect(reply).toMatch(/^It's an easy, clean combination/)
-    expect(parts).toHaveLength(1)
-  })
-
-  test('words written beside a search are thinking aloud, left out once it says something else', async () => {
-    const aloud = saying(fixture('glm-step-0.json'), 'I’ll take a look at what’s in your wardrobe.')
-    const { replied } = replyWith([aloud, fixture('glm-step-1.json')])
-    const { reply } = await replied
-    expect(reply).toMatch(/^For a casual autumn day/)
-    // With nothing else said, they are the reply rather than none.
-    const { replied: only } = replyWith([aloud], 1)
-    expect((await only).reply).toBe('I’ll take a look at what’s in your wardrobe.')
-  })
-
-  test('a model that answers nothing readable fails the reply, and its call is counted as failed', async () => {
-    const { replied, counted, failed } = replyWith([fixture('glm-step-0.json'), 'not a completion'])
-    await expect(replied).rejects.toBeDefined()
-    expect(counted).toEqual([552])
-    expect(failed).toEqual([0])
-  })
-
-  test('stops after its last allowed call, keeping what it wrote', async () => {
-    const { replied, asked } = replyWith([fixture('glm-step-0.json')], 1)
-    const { reply, parts } = await replied
-    expect(asked).toHaveLength(1)
-    expect(reply).toBe('')
-    expect(parts).toEqual([])
-  })
-})
-
-/** Run one of a turn's tools as the model would call it, returning what the model reads back. */
-const called = (
-  assistants: ReadonlyArray<AssistantTool<never>>,
-  name: string,
-  params: unknown,
-  pieceIds: ReadonlySet<string> = new Set(),
-  analyze: Effect.Effect<{ readonly analysis: WardrobeAnalysis; readonly told: unknown }, unknown> = notAnalyzed,
-) =>
-  Effect.runPromise(
-    Effect.gen(function* () {
-      const tools = yield* turnTools(assistants, { turnId: 'tn_abc', pieceIds, analyze }, Context.empty())
-      const kit = yield* tools.toolkit.pipe(Effect.provide(tools.handlers))
-      const results = yield* kit.handle(name, params).pipe(Effect.flatMap(Stream.runCollect))
-      return { result: results.at(-1)?.result, parts: yield* tools.parts }
-    }),
-  )
-
-describe('a reply’s tools', () => {
-  const lookCreate = tool({
-    name: 'look_create',
-    title: 'Put a look together',
-    description: 'Save an outfit.',
-    parameters: Schema.Struct({
-      operationId: Schema.String,
-      name: Schema.String,
-      pieceIds: Schema.Array(Schema.String),
-    }),
-    annotations: { readOnlyHint: false, openWorldHint: false },
-    handler: (input) => Effect.succeed({ id: `lk_${'a'.repeat(22)}`, name: input.name, operation: input.operationId }),
-  })
-  const refusing = tool({
-    name: 'piece_get',
-    title: 'A piece',
-    description: 'One piece.',
-    parameters: Schema.Struct({ pieceId: Schema.String }),
-    annotations: { readOnlyHint: true, openWorldHint: false },
-    handler: () =>
-      Effect.fail(
-        new ToolError({ code: 'not_found', message: 'No such piece.', recovery: 'Search first.', retryable: false }),
-      ),
-  })
-
-  test('the model never sees operationId; each writing call gets one of its own, and a saved look is shown', async () => {
+  test('the model never sees operationId: the chat chooses it', () => {
     const { schema, operation } = modelSchema({
       type: 'object',
       properties: { operationId: { type: 'string' }, name: { type: 'string' } },
@@ -245,102 +81,121 @@ describe('a reply’s tools', () => {
     })
     expect(operation).toBe(true)
     expect(schema).toEqual({ type: 'object', properties: { name: { type: 'string' } }, required: ['name'] })
-    const { result, parts } = await called([lookCreate], 'look_create', { name: 'Friday', pieceIds: ['pc_x'] })
-    expect(result).toMatchObject({ operation: 'tn_abc-look_create-0' })
-    expect(parts).toEqual([{ _tag: 'Look', lookId: `lk_${'a'.repeat(22)}`, name: 'Friday' }])
+    const create = catalogue.find(({ name }) => name === 'look_create')
+    expect(create?.operation).toBe(true)
+    expect(JSON.stringify(create?.parameters)).not.toContain('operationId')
   })
 
-  test('a reply written again saves its look under the same operation, whatever it looked up first', async () => {
-    // The queue's second attempt at a reply: this time the model looks a piece up before it saves.
-    const operations = await Effect.runPromise(
-      Effect.gen(function* () {
-        const ids: Array<unknown> = []
-        for (const lookedUpFirst of [false, true]) {
-          const tools = yield* turnTools(
-            [lookCreate, refusing],
-            { turnId: 'tn_abc', pieceIds: new Set(), analyze: notAnalyzed },
-            Context.empty(),
-          )
-          const kit = yield* tools.toolkit.pipe(Effect.provide(tools.handlers))
-          if (lookedUpFirst) yield* kit.handle('piece_get', { pieceId: 'pc_x' }).pipe(Effect.flatMap(Stream.runCollect))
-          const saved = yield* kit
-            .handle('look_create', { name: 'Friday', pieceIds: ['pc_x'] })
-            .pipe(Effect.flatMap(Stream.runCollect))
-          ids.push(Predicate.isObject(saved.at(-1)?.result) ? saved.at(-1)?.result : undefined)
-        }
-        return ids
-      }),
-    )
-    expect(operations).toEqual([
-      expect.objectContaining({ operation: 'tn_abc-look_create-0' }),
-      expect.objectContaining({ operation: 'tn_abc-look_create-0' }),
-    ])
-  })
-
-  test('a refusal goes back to the model to act on, and tools outside the stylist’s are left out', async () => {
-    const { result } = await called([refusing], 'piece_get', { pieceId: 'pc_x' })
-    expect(result).toEqual({ error: { code: 'not_found', message: 'No such piece.', recovery: 'Search first.' } })
-    const tools = await Effect.runPromise(
-      turnTools(
-        [{ ...refusing, name: 'piece_delete' }],
-        { turnId: 'tn_abc', pieceIds: new Set(), analyze: notAnalyzed },
-        Context.empty(),
-      ),
-    )
-    expect(Object.keys(tools.toolkit.tools).toSorted()).toEqual(['pieces_show', 'wardrobe_analyze'])
-  })
-
-  test('only the person’s own pieces are shown, and a bad call is answered with what to fix', async () => {
-    const own = pieces[0]?.id ?? ''
-    const shown = await called([], 'pieces_show', { pieceIds: [own, 'pc_someoneelse00000000000', own] }, new Set([own]))
-    expect(shown.result).toEqual({ shown: 1 })
-    expect(shown.parts).toEqual([{ _tag: 'Pieces', pieceIds: [own] }])
-    const bad = await called([], 'pieces_show', { pieceIds: [] })
-    expect(bad.result).toMatchObject({ error: { code: 'invalid_arguments' } })
-    expect(bad.parts).toEqual([])
+  test('a chat’s Thread is named by the account and the chat, and names its account back', () => {
+    expect(threadIdOf('acct_1', 'ch_2')).toBe('acct_1--ch_2')
+    expect(accountOfThread('acct_1--ch_2')).toBe('acct_1')
+    expect(accountOfThread('no-account')).toBe('')
   })
 })
 
-describe('the wardrobe’s analysis (Eva’s review, T-14)', () => {
-  const analyzing = Effect.succeed({ analysis: recordedAnalysis, told: { pieces: 4 } })
+describe('a tool call the Thread asks for', () => {
+  test('a write gets the operation id of its call: the same call repeated after an interruption saves once', async () => {
+    const params = { name: 'Friday', pieceIds: ['pc_x'] }
+    const first = await call('look_create', params)
+    const again = await call('look_create', params)
+    const elsewhere = await call('look_create', params, 'sub-2')
+    const operation = await Effect.runPromise(operationOf('sub-1', 'look_create', params))
+    expect(first).toMatchObject({ operation })
+    expect(operation).toMatch(/^sq_[A-Za-z0-9_-]{40}$/u)
+    expect(again).toEqual(first)
+    expect(elsewhere).not.toEqual(first)
+  })
 
-  test('the model is told the counts, and the person sees them once as a card however often it asks', async () => {
-    const first = await called([], 'wardrobe_analyze', {}, new Set(), analyzing)
-    expect(first.result).toEqual({ pieces: 4 })
-    expect(first.parts).toEqual([{ _tag: 'Analysis', analysis: recordedAnalysis }])
-    const twice = await Effect.runPromise(
-      Effect.gen(function* () {
-        const tools = yield* turnTools(
-          [],
-          { turnId: 'tn_abc', pieceIds: new Set(), analyze: analyzing },
-          Context.empty(),
-        )
-        const kit = yield* tools.toolkit.pipe(Effect.provide(tools.handlers))
-        for (const _ of [1, 2]) yield* kit.handle('wardrobe_analyze', {}).pipe(Effect.flatMap(Stream.runCollect))
-        return yield* tools.parts
-      }),
+  test('a refusal goes back to the model to act on, and a tool the chat does not offer is refused', async () => {
+    expect(await call('piece_get', { pieceId: 'pc_x' })).toEqual({
+      error: { code: 'not_found', message: 'No such piece.', recovery: 'Search first.' },
+    })
+    expect(await call('piece_delete', { pieceId: 'pc_x' })).toMatchObject({ error: { code: 'unknown_tool' } })
+  })
+
+  test('only the person’s own pieces are shown, each once, and a bad call is answered with what to fix', async () => {
+    const [first] = pieces
+    expect(await call('pieces_show', { pieceIds: [first?.id, 'pc_someoneelse00000000000', first?.id] })).toEqual({
+      shown: [first?.id],
+    })
+    expect(await call('pieces_show', { pieceIds: [] })).toMatchObject({ error: { code: 'invalid_arguments' } })
+  })
+
+  test('the wardrobe counted: the card’s numbers, with the most worn pieces named for the model', async () => {
+    const counted = await call('wardrobe_analyze', {})
+    expect(counted).toMatchObject({
+      pieces: 4,
+      worn: { most: [{ pieceId: 'pc_whitetee00000000000000', piece: 'White tee' }] },
+    })
+    const failed = await call(
+      'wardrobe_analyze',
+      {},
+      'sub-1',
+      account({ analyze: Effect.fail('worn log unavailable') }),
     )
-    expect(twice).toHaveLength(1)
+    expect(failed).toMatchObject({ error: { code: 'unavailable' } })
+  })
+})
+
+const decodePayload = Schema.decodeUnknownSync(CanonicalRecordPayload)
+const at = DateTime.makeUnsafe('2026-11-03T10:00:00.000Z')
+const record = (payload: unknown) => ({ createdAt: at, payload: decodePayload(payload) })
+const asked = (submissionId: string, text: string) =>
+  record({
+    _tag: 'UserInputRecorded',
+    kind: 'user',
+    submissionId,
+    input: { text, language: 'en', today: '2026-11-03', outline: { pieces: 4, byType: {}, colours: [] } },
+  })
+const toolSettled = (toolName: string, result: unknown, isFailure = false) =>
+  record({ _tag: 'ToolCallSettled', runId: 'run-1', toolCallId: `call-${toolName}`, toolName, result, isFailure })
+const settled = (submissionId: string, outcome: 'completed' | 'aborted', result?: string) =>
+  record({
+    _tag: 'SubmissionSettled',
+    submissionId,
+    settlementId: `settled-${submissionId}`,
+    receiptId: `receipt-${submissionId}`,
+    outcome,
+    ...(result === undefined ? {} : { result }),
   })
 
-  test('a wardrobe that cannot be counted is answered with what to do instead, and no card', async () => {
-    const failed = await called([], 'wardrobe_analyze', {}, new Set(), Effect.fail('worn log unavailable'))
-    expect(failed.result).toMatchObject({ error: { code: 'unavailable' } })
-    expect(failed.parts).toEqual([])
+describe('a chat read from its Thread', () => {
+  test('each message, and the reply with the cards its tools showed, from the recorded results', () => {
+    const counted = {
+      ...analysis,
+      worn: { ...analysis.worn, most: [{ ...analysis.worn.most[0], piece: 'White tee' }] },
+    }
+    const chat = chatOf([
+      asked('sub-1', 'What should I wear?'),
+      toolSettled('piece_search', { pieces: [{ id: 'pc_greyknit00000000000000' }] }),
+      toolSettled('pieces_show', { shown: ['pc_whitetee00000000000000'] }),
+      toolSettled('look_create', { id: `lk_${'b'.repeat(22)}`, name: 'Friday', pieces: [] }),
+      toolSettled('wardrobe_analyze', counted),
+      toolSettled('pieces_show', { error: { code: 'unavailable' } }, true),
+      settled('sub-1', 'completed', 'Wear the white tee. [shown: pc_greyknit00000000000000]'),
+    ])
+    expect(chat.replying).toBeUndefined()
+    expect(chat.messages.map(({ role, text }) => [role, text])).toEqual([
+      ['person', 'What should I wear?'],
+      ['styld', 'Wear the white tee.'],
+    ])
+    expect(chat.messages[1]?.parts).toEqual([
+      { _tag: 'Pieces', pieceIds: ['pc_whitetee00000000000000'] },
+      { _tag: 'Look', lookId: `lk_${'b'.repeat(22)}`, name: 'Friday' },
+      { _tag: 'Analysis', analysis },
+      // A piece the reply only named in a note shows when its tools read it.
+      { _tag: 'Pieces', pieceIds: ['pc_greyknit00000000000000'] },
+    ])
   })
 
-  test('an earlier analysis is read back as the call that made it', () => {
-    const [call, result] = historyMessages(
-      { role: 'styld', text: 'Mostly tops.', parts: [{ _tag: 'Analysis', analysis: recordedAnalysis }] },
-      1,
-    )
-    expect(call).toMatchObject({ content: [{ type: 'text' }, { type: 'tool-call', name: 'wardrobe_analyze' }] })
-    expect(result).toMatchObject({ content: [{ type: 'tool-result', result: recordedAnalysis }] })
-  })
-
-  test('Styld is told to analyse with the tool and comment, never to list the numbers again', () => {
-    expect(systemPrompt({ language: 'en', today: '2026-11-03', outline: outlineOf(pieces) })).toContain(
-      'call wardrobe_analyze once',
+  test('a message being answered shows the reply being written; one that did not come shows it failed', () => {
+    expect(chatOf([asked('sub-1', 'Hi')]).replying).toEqual({ state: 'writing', text: '', parts: [] })
+    const failed = chatOf([asked('sub-1', 'Hi'), settled('sub-1', 'aborted')])
+    expect(failed.replying).toEqual({ state: 'failed', text: '', parts: [] })
+    expect(failed.messages.map(({ role }) => role)).toEqual(['person'])
+    // The next message is answered afresh.
+    expect(chatOf([asked('sub-1', 'Hi'), settled('sub-1', 'aborted'), asked('sub-2', 'Again')]).replying?.state).toBe(
+      'writing',
     )
   })
 })
@@ -363,6 +218,7 @@ describe('what Styld is told', () => {
     expect(systemPrompt({ language: 'en', today: '2026-07-01', outline: outlineOf([]) })).toContain(
       'The wardrobe is empty',
     )
+    expect(prompt).toContain('call wardrobe_analyze once')
   })
 
   test('one language for the reply, the latest message’s, never weighed by the model', () => {
@@ -375,98 +231,30 @@ describe('what Styld is told', () => {
     expect(languageOf('', 'en')).toBe('en')
     const english = systemPrompt({ language: 'en', today: '2026-11-02', outline: outlineOf(pieces) })
     expect(english).toContain('Write this reply in English, whatever language earlier messages were in.')
-    expect(english).not.toContain('unless the person writes')
     expect(english).toContain('never your thoughts about how to answer')
-  })
-
-  test('an earlier reply is read back as the calls that showed and saved, never as a note it could copy', () => {
-    const lookId = LookId.make(`lk_${'b'.repeat(22)}`)
-    const shown = pieces.slice(0, 2).map(({ id }) => id)
-    expect(
-      historyMessages(
-        {
-          role: 'styld',
-          text: 'Try these.',
-          parts: [
-            { _tag: 'Pieces', pieceIds: shown.map((id) => PieceId.make(id)) },
-            { _tag: 'Look', lookId, name: 'Friday' },
-          ],
-        },
-        3,
-      ),
-    ).toEqual([
-      {
-        role: 'assistant',
-        content: [
-          { type: 'text', text: 'Try these.' },
-          { type: 'tool-call', id: 'history_3_0', name: 'pieces_show', params: { pieceIds: shown } },
-          { type: 'tool-call', id: 'history_3_1', name: 'look_get', params: { lookId } },
-        ],
-      },
-      {
-        role: 'tool',
-        content: [
-          { type: 'tool-result', id: 'history_3_0', name: 'pieces_show', isFailure: false, result: { shown: 2 } },
-          {
-            type: 'tool-result',
-            id: 'history_3_1',
-            name: 'look_get',
-            isFailure: false,
-            result: { id: lookId, name: 'Friday' },
-          },
-        ],
-      },
-    ])
-    expect(historyMessages({ role: 'person', text: 'Hvala', parts: [] }, 0)).toEqual([
-      { role: 'user', content: 'Hvala' },
-    ])
   })
 })
 
 describe('what the person reads (browser review, 2 November 2026)', () => {
-  const own = new Set(pieces.map(({ id }) => id))
   const first = PieceId.make('pc_navytrousers0000000000')
-  const second = PieceId.make('pc_whitetee00000000000000')
-  // The chat as the review had it: a Slovenian question answered with pieces, then a question in English.
-  const history = [
-    { role: 'person', text: 'Kaj naj oblečem nocoj za večerjo v Ljubljani?', parts: [] },
-    {
-      role: 'styld',
-      text: 'Predlagam belo majico in temnomodre hlače.',
-      parts: [{ _tag: 'Pieces', pieceIds: [first, second] }],
-    },
-    { role: 'person', text: 'Which jacket should I wear over that outfit if it is cold?', parts: [] },
-  ] as const
   // DeepSeek's answer on the preview, in kind: a note to itself on the language, the pieces as a written note (one of
   // them not the person's) instead of pieces_show, and a Chinese word inside English.
   const drafted = [
     'For a cold evening, the grey knit over the white tee works well with the navy trousers.',
     'Slovene answer maybe? User wrote in Slovene first, then English. Last message in English, so reply in English.',
     'You don’t own a真正 waterproof rain shell, so keep an umbrella handy.',
-    `[shown: pc_greyknit00000000000000, pc_someoneelse00000000000, ${pieces[0]?.id ?? ''}]`,
+    `[shown: pc_greyknit00000000000000, pc_someoneelse00000000000, ${first}]`,
   ].join('\n\n')
 
-  test('a reply that drafts aloud, writes its pieces as a note and slips script reads as finished advice', async () => {
-    const { replied, asked } = replyWith(
-      [saying(fixture('deepseek-step-2.json'), drafted)],
-      6,
-      history.flatMap((message, index) => historyMessages(message, index)),
-    )
-    const { reply, parts } = await replied
-    const finished = finishedReply(reply, parts, own)
+  test('a reply that drafts aloud, writes its pieces as a note and slips script reads as finished advice', () => {
+    const finished = finishedReply(drafted, [], own)
     expect(finished.text).toBe(
       [
         'For a cold evening, the grey knit over the white tee works well with the navy trousers.',
         'You don’t own a waterproof rain shell, so keep an umbrella handy.',
       ].join('\n\n'),
     )
-    // The note's pieces show as cards: only the person's own, each once; the earlier reply's pieces went back as a
-    // pieces_show call, so the model read no note to copy.
-    expect(finished.parts).toEqual([{ _tag: 'Pieces', pieceIds: ['pc_greyknit00000000000000', pieces[0]?.id] }])
-    const sent = JSON.stringify(asked[0]?.['messages'])
-    expect(sent).not.toContain('[shown')
-    expect(sent).toContain('"name":"pieces_show"')
-    expect(JSON.stringify(asked[0]?.['messages'])).toContain('"role":"tool"')
+    expect(finished.parts).toEqual([{ _tag: 'Pieces', pieceIds: ['pc_greyknit00000000000000', first] }])
   })
 
   test('pieces already shown are not shown twice, and a note naming none of theirs shows nothing', () => {

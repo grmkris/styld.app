@@ -1,6 +1,6 @@
 import { PieceId, type ReplyPart } from '@styld/protocol'
 import { Predicate } from 'effect'
-import { showLimit } from './Tools.ts'
+import { showLimit } from './Catalogue.ts'
 
 // What a reply may show the person (browser review, 2 November 2026): DeepSeek wrote a note to itself about which
 // language to answer in, copied the `[shown: pc_…]` notes earlier history used to carry as words instead of calling
@@ -33,7 +33,7 @@ const tidy = (text: string) =>
 
 /** A reply's words as the person reads them: notes and ids gone, a paragraph addressed to the model's self dropped,
  * other scripts removed. */
-export const readableReply = (text: string) =>
+const readableReply = (text: string) =>
   tidy(
     text
       .replace(pieceNote, '')

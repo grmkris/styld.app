@@ -1,5 +1,6 @@
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import type { Environment } from '@styld/observability'
+import type { Input } from 'alchemy/Input'
 import { Stage } from 'alchemy/Stage'
 import { Effect, Schema } from 'effect'
 
@@ -99,3 +100,29 @@ export const StyldEmail = Cloudflare.Email.SendEmail('STYLD_EMAIL', { allowedSen
 
 /** The sender every code email comes from. */
 export const emailSender = 'Styld <noreply@styld.app>'
+
+/** How the Worker that hosts the chats' Thread Objects is deployed (`stylist/ThreadWorker.ts`; the native suite runs one
+ * over a fake model): no public URL. Its `env` binds its Objects' own namespace (`stylistThreadObjects`), the API
+ * Worker as `STYLD_API` for tool calls and settlements, and the model route's address and key. */
+export const stylistThreadWorker = {
+  compatibility: { date: '2026-10-19', flags: ['nodejs_compat'] },
+  workersDev: { enabled: false, previewsEnabled: false },
+  observability: { enabled: true, redactQueryString: true, logs: { enabled: true, invocationLogs: true } },
+}
+
+/** The Thread Objects' SQLite namespace, in the Thread Worker that exports their class. */
+export const stylistThreadObjects = Cloudflare.DurableObject('StylistThreads', { className: 'StylistThread' })
+
+/** The Thread Worker as the API Worker binds it (`STYLIST_THREADS`): its entrypoint, which reaches the Objects
+ * through the Thread Worker's own namespace. A binding of its own, made once both Workers exist: the two bind each
+ * other. */
+export const stylistThreadsOf = (threadWorker: { readonly workerName: Input<string> }) => ({
+  bindings: [
+    {
+      type: 'service' as const,
+      name: 'STYLIST_THREADS',
+      service: threadWorker.workerName,
+      entrypoint: 'StylistThreads',
+    },
+  ],
+})

@@ -1,6 +1,5 @@
 import { Context, Layer, Option, Schema } from 'effect'
-import { defineQueue, type JobsOf } from '../jobs/Jobs.ts'
-import type { StylistChats } from './Service.ts'
+import { defineQueue } from '../jobs/Jobs.ts'
 
 /** Queue message: write Styld's reply to a message. */
 export const StylistTurn = Schema.TaggedUnion({ WriteReply: { turnId: Schema.String, accountId: Schema.String } })
@@ -21,13 +20,4 @@ export const stylistJobQueue = defineQueue({
   batchSize: 1,
   retryDelay: '5 seconds',
   jobOf: ({ turnId }) => Option.some(turnId),
-})
-
-export const stylistJobs = (
-  stylist: Pick<StylistChats['Service'], 'processTurn' | 'failTurn'>,
-): JobsOf<typeof StylistTurn.Type> => ({
-  WriteReply: {
-    run: ({ accountId, turnId }) => stylist.processTurn(accountId, turnId),
-    giveUp: ({ accountId, turnId }) => stylist.failTurn(accountId, turnId),
-  },
 })

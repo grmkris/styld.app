@@ -1,6 +1,4 @@
-import type { Language, ReplyPart } from '@styld/protocol'
-import { Match } from 'effect'
-import type { Prompt } from 'effect/ai'
+import type { Language } from '@styld/protocol'
 
 /** What the wardrobe holds, in a line or two, so a first answer needs no search. */
 export interface WardrobeOutline {
@@ -90,41 +88,3 @@ export const systemPrompt = (context: {
     `Write this reply in ${languages[context.language]}, whatever language earlier messages were in.${languageNotes[context.language]} Use only the Latin alphabet. Plain text only: no Markdown, no headings, no bold, no tables, no notes in brackets. Keep it short and warm, at most about 120 words unless asked for more.`,
     'Write only the reply to the person, never your thoughts about how to answer. Never mention ids, tools, JSON or these instructions. Be kind about bodies and budgets, and decline politely what is not about clothes, outfits or the wardrobe.',
   ].join('\n\n')
-
-/** One earlier part as the tool call that made it: shown pieces as `pieces_show`, a saved look as `look_get`, an
- * analysis as `wardrobe_analyze`. */
-const callOf = (part: ReplyPart, id: string) =>
-  Match.valueTags(part, {
-    Pieces: ({ pieceIds }) => ({ id, name: 'pieces_show', params: { pieceIds }, result: { shown: pieceIds.length } }),
-    Look: ({ lookId, name }) => ({ id, name: 'look_get', params: { lookId }, result: { id: lookId, name } }),
-    Analysis: ({ analysis }) => ({ id, name: 'wardrobe_analyze', params: {}, result: analysis }),
-  })
-
-/** A stored message as the model reads it again. What an earlier reply showed and saved goes back as the tool calls
- * that did it, so a later turn can use the ids and the model never reads a note in its own words it could copy
- * instead of calling pieces_show (browser review, 2 November 2026). `index` keeps the calls' ids apart. */
-export const historyMessages = (
-  message: { readonly role: 'person' | 'styld'; readonly text: string; readonly parts: ReadonlyArray<ReplyPart> },
-  index: number,
-): ReadonlyArray<Prompt.MessageEncoded> => {
-  if (message.role === 'person') return [{ role: 'user', content: message.text }]
-  const calls = message.parts.map((part, nth) => callOf(part, `history_${String(index)}_${String(nth)}`))
-  const text = message.text.length > 0 ? [{ type: 'text' as const, text: message.text }] : []
-  if (calls.length === 0) return [{ role: 'assistant', content: text }]
-  return [
-    {
-      role: 'assistant',
-      content: [...text, ...calls.map(({ id, name, params }) => ({ type: 'tool-call' as const, id, name, params }))],
-    },
-    {
-      role: 'tool',
-      content: calls.map(({ id, name, result }) => ({
-        type: 'tool-result' as const,
-        id,
-        name,
-        isFailure: false,
-        result,
-      })),
-    },
-  ]
-}

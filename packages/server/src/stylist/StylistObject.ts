@@ -7,7 +7,7 @@ import { Effect } from 'effect'
 // order, and one at a time.
 
 /** A stored message: parts are the reply's `ReplyPart`s as JSON, decoded by the service. */
-export interface StoredMessage {
+interface StoredMessage {
   readonly id: string
   readonly role: 'person' | 'styld'
   readonly text: string

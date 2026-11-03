@@ -1,7 +1,13 @@
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import * as Alchemy from 'alchemy'
 import { Config, Effect } from 'effect'
-import { currentStage, StyldMedia } from '@styld/server/Resources'
+import {
+  currentStage,
+  StyldMedia,
+  stylistThreadObjects,
+  stylistThreadsOf,
+  stylistThreadWorker,
+} from '@styld/server/Resources'
 import StyldWorkerLive, { StyldWorker } from '@styld/server/StyldWorker'
 
 /** Isolated v2 stack, one per stage (`--stage preview`; `production` only at the cutover). The stage's name decides its
@@ -17,6 +23,18 @@ export default Alchemy.Stack(
     // The media bucket; its name is what the v1 importer uploads bundles to (docs/DEPLOYMENT.md).
     const media = yield* StyldMedia
     const api = yield* StyldWorker
+    // Styld's chats: each a Thread Object in this Worker, asking the chat model over Styld's own LiteLLM route.
+    const threads = yield* Cloudflare.Worker('StyldStylistThreads', {
+      ...stylistThreadWorker,
+      main: 'packages/server/src/stylist/ThreadWorker.ts',
+      env: {
+        STYLD_API: api,
+        STYLIST_THREADS: stylistThreadObjects,
+        STYLD_LITELLM_URL: yield* Config.String('STYLD_LITELLM_URL'),
+        STYLD_LITELLM_KEY: yield* Config.Redacted('STYLD_LITELLM_KEY'),
+      },
+    })
+    yield* api.bind('StylistThreads', stylistThreadsOf(threads))
     const website = yield* Cloudflare.Website.Foldkit('StyldWebsite', {
       rootDir: 'apps/web',
       env: { VITE_STYLD_ENV: stage.environment, VITE_STYLD_RELEASE: release },

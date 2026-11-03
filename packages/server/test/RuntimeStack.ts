@@ -1,6 +1,7 @@
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import * as Alchemy from 'alchemy'
 import { Effect, Redacted } from 'effect'
+import { stylistThreadObjects, stylistThreadsOf, stylistThreadWorker } from '../src/Resources.ts'
 import RuntimeWorker from './RuntimeWorker.ts'
 import NativeWorkerLive, { NativeWorker } from './NativeWorker.ts'
 
@@ -15,6 +16,13 @@ export const makeStack = (generation: string) =>
       const worker = yield* RuntimeWorker
       yield* worker.bind('AcceptanceGeneration', { env: { TEST_GENERATION: generation } })
       const styld = yield* NativeWorker
+      // The chats' Threads over the streaming fake model (`StylistThreadWorker.ts`).
+      const threads = yield* Cloudflare.Worker('NativeStylistThreads', {
+        ...stylistThreadWorker,
+        main: 'packages/server/test/StylistThreadWorker.ts',
+        env: { STYLD_API: styld, STYLIST_THREADS: stylistThreadObjects },
+      })
+      yield* styld.bind('StylistThreads', stylistThreadsOf(threads))
       // Execute the production SSR artifact in workerd. Website.Foldkit's dev
       // mode runs Vite in Node, which cannot prove the deployed Worker behavior.
       const website = yield* Cloudflare.Worker('NativeWebsite', {

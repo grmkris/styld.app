@@ -82,5 +82,13 @@
   {
     "file": "packages/server/test/PieceCutout.test.ts",
     "comment": "SAFETY: the fake implements the bucket get and put a piece's cut-out calls -- the rest of R2 and Images is never called here"
+  },
+  {
+    "file": "packages/server/src/providers/StylistModel.ts",
+    "comment": "@effect-diagnostics-next-line unstableApiUsage:off -- Effect's OpenAI-compatible model is the chat's streaming client"
+  },
+  {
+    "file": "packages/server/src/providers/StylistModel.ts",
+    "comment": "@effect-diagnostics-next-line unstableApiUsage:off -- the OpenAI-compatible client reads the route's address and key once"
   }
 ]

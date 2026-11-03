@@ -15,6 +15,13 @@ export class StylistApi extends HttpApiGroup.make('stylist')
     }),
   )
   .add(
+    // The chat's live words while Styld writes a reply: Yielded LiveText NDJSON, read by the page's own decoder.
+    HttpApiEndpoint.get('live', '/stylist/chats/:chatId/live', {
+      params: { chatId: ChatId },
+      error: [NotFound, Unavailable],
+    }),
+  )
+  .add(
     HttpApiEndpoint.post('send', '/stylist/messages', {
       payload: SendChatMessage,
       success: ChatMessageSent,

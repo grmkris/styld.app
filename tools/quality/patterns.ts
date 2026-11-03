@@ -20,6 +20,8 @@ const fetchAllowed: Allowances = {
 /** `env.` beyond `Config.ts` and `Resources.ts`. */
 const envAllowed: Allowances = {
   'EdgeWorker.ts': 'the edge Worker is plain TypeScript and reads its own two service bindings and robots flag',
+  'stylist/Thread.ts':
+    "the Thread Worker is a plain module: its Objects and entrypoint read its own bindings (the API Worker, the Objects' namespace)",
 }
 
 /** `'x' in y` checks. */
@@ -71,6 +73,7 @@ const owners: Readonly<Record<string, ReadonlyArray<string>>> = {
   thinkingDays: ['outfits/'],
   wornPieces: ['worn/'],
   stylistTurns: ['stylist/'],
+  stylistChats: ['stylist/'],
   pendingSettlements: ['usage/'],
   paidAttempts: ['usage/'],
   importedPieces: ['imports/'],

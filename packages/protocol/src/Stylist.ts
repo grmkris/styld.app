@@ -79,6 +79,8 @@ export type Replying = typeof Replying.Type
 export const Chat = Schema.Struct({
   id: ChatId,
   title: Schema.String,
+  /** The Thread its replies are written in: what the chat's live words name (`/stylist/chats/:chatId/live`). */
+  thread: Schema.String,
   messages: Schema.Array(ChatMessage),
   replying: Schema.optionalKey(Replying),
 })

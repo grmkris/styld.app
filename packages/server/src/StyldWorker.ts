@@ -14,7 +14,7 @@ import { makeObservabilityBase, metadataFromHeaders, withObservability } from '@
 import { apiRoutes } from './Api.ts'
 import { Auth, makeAuthHttp, withCodeRequestPolicy } from './AuthHttp.ts'
 import { authOptions } from './AuthConfiguration.ts'
-import { Deployment, deploymentOf } from './Config.ts'
+import { Deployment, deploymentOf, stylistThreadsOf } from './Config.ts'
 import { DomainLive } from './DomainLive.ts'
 import { GenerationQueue } from './generation/Queue.ts'
 import { ImportQueue } from './imports/Queue.ts'
@@ -44,6 +44,9 @@ import {
 import { CheckQueue } from './safety/Checks.ts'
 import { chatStoreOf } from './stylist/Live.ts'
 import { StylistQueue } from './stylist/Queue.ts'
+import { StylistChats } from './stylist/Service.ts'
+import type { Settled, ToolRequest } from './stylist/Agent.ts'
+import { StylistThreads } from './stylist/Threads.ts'
 import { ChatStores } from './stylist/Chats.ts'
 import { Stylist } from './stylist/StylistObject.ts'
 import { PaidAttempts } from './usage/Attempts.ts'
@@ -159,6 +162,7 @@ const kernelOf = (bindings: Bindings, providersFor: ProvidersFor, env: Readonly<
       StylistQueue.layer(yield* writers.stylist.raw),
       ImportQueue.layer(yield* writers.imports.raw),
       ChatStores.layer(chatStoreOf(bindings.stylists)),
+      StylistThreads.layer(yield* stylistThreadsOf(env)),
       Layer.succeed(CaptureMetrics, metrics),
       Layer.succeed(Auth, auth),
       Layer.succeed(Deployment, deployment),
@@ -296,7 +300,23 @@ export const styldProgram = (providersFor: ProvidersFor) =>
         ),
       ).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs)),
     )
-    return { fetch }
+    /** A call from a chat's Thread over the Thread Worker's service binding, with the application its first event
+     * built. A failure is a defect: the Thread sees the call fail and tries again. */
+    const fromThread = <A, E>(kind: string, call: (stylist: StylistChats['Service']) => Effect.Effect<A, E>) =>
+      Effect.flatMap(current, ({ context, observabilityBase }) =>
+        Effect.flatMap(StylistChats, call).pipe(
+          Effect.provide(context),
+          Effect.orDie,
+          withObservability('styld.rpc', { ...observabilityBase, kind }),
+        ),
+      ).pipe(Effect.provideService(Logger.CurrentLoggers, structuredLogs))
+    return {
+      fetch,
+      /** A tool call of a chat's Thread (`stylist/Thread.ts`), run for the Thread's account. */
+      stylistTool: (request: ToolRequest) => fromThread('rpc.stylist.tool', (stylist) => stylist.tool(request)),
+      /** A reply ended in its Thread: its credit is settled once. */
+      stylistSettled: (settled: Settled) => fromThread('rpc.stylist.settled', (stylist) => stylist.settle(settled)),
+    }
   })
 
 export default StyldWorker.make(

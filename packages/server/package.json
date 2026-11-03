@@ -10,6 +10,7 @@
   "dependencies": {
     "@alchemy.run/cloudflare": "catalog:",
     "@alchemy.run/domain": "catalog:",
+    "@effect/ai-openai-compat": "catalog:",
     "@meta-sam/parser": "catalog:",
     "@modelcontextprotocol/server": "catalog:",
     "@styld/auth": "workspace:*",
@@ -19,11 +20,14 @@
     "@styld/imaging": "workspace:*",
     "@styld/observability": "workspace:*",
     "@styld/protocol": "workspace:*",
+    "@yielded/agent": "catalog:",
+    "@yielded/agent-platform-cloudflare": "catalog:",
     "@yielded/auth": "catalog:",
     "@yielded/auth-platform-workerd": "catalog:",
     "alchemy": "catalog:",
     "drizzle-orm": "catalog:",
-    "effect": "catalog:"
+    "effect": "catalog:",
+    "effect-cf": "catalog:"
   },
   "devDependencies": {
     "@effect/vitest": "catalog:",

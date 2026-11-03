@@ -22,7 +22,7 @@ export class NativeWorker extends Cloudflare.Worker<NativeWorker, Cloudflare.Wor
 export default NativeWorker.make(
   workerOptions(import.meta.url),
   Effect.gen(function* () {
-    const { fetch } = yield* styldProgram(nativeProviders)
+    const { fetch, ...rpc } = yield* styldProgram(nativeProviders)
     const wallets = yield* Wallet
     /** Spend all but `leave` of the account's credits today, consumed at once. */
     const spend = Effect.gen(function* () {
@@ -42,6 +42,7 @@ export default NativeWorker.make(
       return HttpServerResponse.empty({ status: 204 })
     }).pipe(Effect.orDie)
     return {
+      ...rpc,
       fetch: Effect.gen(function* () {
         const request = yield* HttpServerRequest
         return new URL(request.url, 'http://local.invalid').pathname === '/api/native/spend'
