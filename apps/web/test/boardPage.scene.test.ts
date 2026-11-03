@@ -12,7 +12,9 @@ import { view } from '../src/View.ts'
 import { lenses } from '../src/Page.ts'
 import { at, withPage, withPieces } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
+import { sceneSheetOpened } from './SheetFixtures.ts'
 import { MeasurePaper } from '../src/page/Board/Commands.ts'
+import { Message as ShareMessage, ShareLink } from '../src/page/Share.ts'
 
 const boardId = `bd_${'weekend'.padEnd(22, 'x')}`
 const knit = pieceFixture('knit', { name: 'Cable knit' })
@@ -92,6 +94,37 @@ describe("a board's page", () => {
       Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
       expect(text('1 pin, 0 of them public on your profile')).not.toExist(),
       expect(text('Only you see this one until it has its own picture and passes Styld’s check')).not.toExist(),
+    )
+  })
+
+  test('Share on a public board shares its link, and says so where it was copied (T-20)', () => {
+    const shown = withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board, () =>
+      fromBoard(boardInit(boardId, true), { ...board, visibility: 'public' }),
+    )
+    scene(
+      { update, view },
+      given(shown),
+      measured,
+      click(role('button', { name: 'Share' })),
+      Command.resolve(
+        ShareLink({ path: `/boards/${boardId}`, title: 'Weekend' }),
+        ShareMessage.SucceededShareLink({ copied: true }),
+      ),
+      expect(role('status', { name: 'Link copied' })).toExist(),
+    )
+  })
+
+  test('Share on a private board opens its settings, where it can be made public', () => {
+    scene(
+      { update, view },
+      given(page),
+      measured,
+      click(role('button', { name: 'Share' })),
+      Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
+      Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+      ...sceneSheetOpened,
+      expect(role('dialog')).toExist(),
+      expect(role('switch')).toExist(),
     )
   })
 

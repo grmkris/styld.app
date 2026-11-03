@@ -90,7 +90,7 @@ const visitPage = (model: Model, lens: PageLens<Visit.Model, Visit.Message>, h: 
       h.submodel({
         ...slot(lens, visit),
         view: VisitView.view,
-        viewInputs: { locale: model.context.locale, signedIn: hasSession(model), origin: model.context.origin },
+        viewInputs: { locale: model.context.locale, signedIn: hasSession(model) },
       }),
     h,
   )

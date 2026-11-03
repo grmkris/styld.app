@@ -9,6 +9,7 @@ import { modifyFields } from 'foldkit/struct'
 import { LoadError } from '../ServerData.ts'
 import { StyldClient } from '../StyldClient.ts'
 import * as People from './People.ts'
+import * as Share from './Share.ts'
 import { awaits, PublicSearch, searchPublic, searchWords } from './Search.ts'
 
 // What anyone may see of a person: their published profile at `/@handle`, and a piece of theirs on its own page.
@@ -56,11 +57,6 @@ export type Suggestion = typeof Suggestion.Type
 /** Explore's Follow for someone nobody has tapped yet: they are not followed, or Explore would not suggest them. */
 const untouched: Suggestion = { following: false, work: People.Work.Idle() }
 
-/** Share on a profile or a piece: nothing to say (or the browser's share sheet said it), the link copied where there is
- * no share sheet, or the copy refused. */
-export const Sharing = defineTaggedUnion({ Idle: {}, Copied: {}, Failed: {} })
-export type Sharing = typeof Sharing.Type
-
 export const Model = Schema.Struct({
   target: Target,
   shown: ShownData.schema,
@@ -73,7 +69,7 @@ export const Model = Schema.Struct({
   search: PublicSearch,
   /** Explore's Follow buttons, by handle, for those tapped since Explore last loaded. */
   suggestions: Schema.Record(Schema.String, Suggestion),
-  sharing: Sharing,
+  sharing: Share.Model,
   /** On a piece's page, the board or look it was opened from, where Back returns: a piece is public only through
    * one (owner, 2026-10-31), and its owner's profile does not list pieces. */
   cameFrom: Schema.Option(Schema.String),
@@ -95,7 +91,7 @@ export const init = (target: Target, signedIn: boolean, atFollow = false): Model
   query: '',
   search: PublicSearch.Off(),
   suggestions: {},
-  sharing: Sharing.Idle(),
+  sharing: Share.init,
   cameFrom: Option.none(),
   people: People.init(
     Target.match(target, {
@@ -133,9 +129,7 @@ export const Message = defineMessageUnion({
   ClickedFollowSuggested: { handle: Schema.String, following: Schema.Boolean },
   SucceededFollowSuggested: { handle: Schema.String, following: Schema.Boolean },
   FailedFollowSuggested: { handle: Schema.String },
-  ClickedShare: { url: Schema.String, title: Schema.String },
-  SucceededShareLink: { copied: Schema.Boolean },
-  FailedShareLink: {},
+  GotShareMessage: { message: Share.Message },
 })
 export type Message = typeof Message.Type
 
@@ -230,31 +224,6 @@ export const FollowSuggested = Command.define('FollowSuggested', {
     }).pipe(Effect.orElseSucceed(() => Message.FailedFollowSuggested({ handle }))),
 })
 
-/** Closing the share sheet without sharing is the person's choice, not a failure. */
-const shareRefusal = (error: unknown): 'dismissed' | 'refused' =>
-  error instanceof DOMException && error.name === 'AbortError' ? 'dismissed' : 'refused'
-
-/** The browser's share sheet where it has one for the link, else the link copied to the clipboard; a share sheet that
- * fails for any reason but being closed copies instead.
- */
-export const ShareLink = Command.define('ShareLink', {
-  args: { url: Schema.String, title: Schema.String },
-  messages: [Message.SucceededShareLink, Message.FailedShareLink],
-  execute: ({ url, title }) => {
-    const copy = Effect.tryPromise(() => navigator.clipboard.writeText(url)).pipe(
-      Effect.as(Message.SucceededShareLink({ copied: true })),
-    )
-    const share = Effect.tryPromise({ try: () => navigator.share({ url, title }), catch: shareRefusal }).pipe(
-      Effect.as(Message.SucceededShareLink({ copied: false })),
-      Effect.catch((refusal) =>
-        refusal === 'dismissed' ? Effect.succeed(Message.SucceededShareLink({ copied: false })) : copy,
-      ),
-    )
-    const canShare = () => 'share' in navigator && 'canShare' in navigator && navigator.canShare({ url, title })
-    return Effect.suspend(() => (canShare() ? share : copy)).pipe(Effect.orElseSucceed(() => Message.FailedShareLink()))
-  },
-})
-
 /** The pages of this site a public piece is opened from: a public board or a look, Home's feed and Boards' Saved. */
 const boardOrLook = /^\/(?:(?:boards\/bd_|looks\/lk_)[\w-]{22}|boards)?$/
 
@@ -327,6 +296,7 @@ export const enterExplore = (model: Model): UpdateReturn => {
 }
 
 const foldPeople = People.foldInto<Model, Message>((message) => Message.GotPeopleMessage({ message }))
+const foldShare = Share.foldInto<Model, Message>((message) => Message.GotShareMessage({ message }))
 
 /** Reading the page again after it failed; the landing asks for it from its own Try again. */
 export const retry = readAgain
@@ -428,12 +398,5 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         work: People.Work.Failed(),
       }),
     }),
-    ClickedShare: ({ url, title }) => ({
-      model: modifyFields(model, { sharing: () => Sharing.Idle() }),
-      commands: [ShareLink({ url, title })],
-    }),
-    SucceededShareLink: ({ copied }) => ({
-      model: modifyFields(model, { sharing: () => (copied ? Sharing.Copied() : Sharing.Idle()) }),
-    }),
-    FailedShareLink: () => ({ model: modifyFields(model, { sharing: () => Sharing.Failed() }) }),
+    GotShareMessage: (got) => foldShare(model, got.message),
   })

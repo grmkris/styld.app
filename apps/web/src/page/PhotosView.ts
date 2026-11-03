@@ -11,6 +11,7 @@ import { intlLocale } from '../Locale.ts'
 import { photoRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
+import { pictureAccept } from '../Upload.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { retryView } from './Retry.ts'
 import { Adding, Message, type Model } from './Photos.ts'
@@ -63,7 +64,7 @@ const addView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
             h.input([
               h.Id('add-photo'),
               h.Type('file'),
-              h.Accept('image/*'),
+              h.Accept(pictureAccept),
               h.AriaDescribedBy('add-photo-cost'),
               h.OnFileChange((files) => Message.ChosePhoto({ files })),
               ...styled(h, visuallyHidden()),

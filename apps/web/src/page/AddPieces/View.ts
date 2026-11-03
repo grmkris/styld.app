@@ -1,5 +1,6 @@
 import { Button, FileDrop } from '@foldkit/ui'
-import { ImageType, VideoType } from '@styld/protocol'
+import { VideoType } from '@styld/protocol'
+import { pictureAccept } from '../../Upload.ts'
 import { format, type Locale, type MessageKey } from '@styld/i18n'
 import { Option } from 'effect'
 import { File, Submodel } from 'foldkit'
@@ -49,7 +50,8 @@ const retryableLink: ReadonlySet<LinkProblem> = new Set(['network', 'dailyLimit'
  * allowance stopped resumes at its next part tomorrow. */
 const retryable: ReadonlySet<SendProblem> = new Set(['network', 'dailyLimit'])
 
-const pickerTypes: ReadonlyArray<string> = [...ImageType.literals, ...VideoType.literals]
+/** Any picture, and the videos phones record. */
+const pickerTypes: ReadonlyArray<string> = [pictureAccept, ...VideoType.literals]
 
 const library = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.submodel({

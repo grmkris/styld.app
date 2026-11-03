@@ -15,6 +15,7 @@ import {
   Visibility,
 } from '@styld/protocol'
 import * as People from '../People.ts'
+import * as Share from '../Share.ts'
 import { Option, Schema } from 'effect'
 import { AsyncData } from 'foldkit'
 import { defineTaggedUnion } from 'foldkit/schema'
@@ -170,6 +171,8 @@ export const Model = Schema.Struct({
   moods: Schema.Array(Mood),
   /** Saving and reporting it, when it is someone else's. */
   people: People.Model,
+  /** Share on the owner's public board: the link shared or copied. */
+  sharing: Share.Model,
   /** The sheet that pins pieces and looks, and what is ticked in it (`piece:<id>`, `look:<id>`). */
   picker: Dialog.Model,
   piecePicker: Dialog.Model,
@@ -222,6 +225,7 @@ export const init = (boardId: string, signedIn: boolean): Model => ({
   publishing: Publishing.Idle(),
   moods: [],
   people: People.init(People.Subject.Board({ boardId })),
+  sharing: Share.init,
   picker: Dialog.init({ id: 'board-picker', isAnimated: true }),
   piecePicker: Dialog.init({ id: 'board-piece-picker', isAnimated: true }),
   maybePickerGroup: Option.none(),

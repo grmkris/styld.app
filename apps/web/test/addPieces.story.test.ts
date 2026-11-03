@@ -95,6 +95,8 @@ describe('choosing files to add', () => {
     expect(classify(rail)).toEqual({ kind: 'video' })
     // A video of any size: this device reads it and sends small parts.
     expect(classify(file('long.mp4', 'video/mp4', 200 * 1024 * 1024))).toEqual({ kind: 'video' })
+    // Any picture the device may draw: an iPhone's HEIC too (T-20); one it cannot draw is refused when drawn.
+    expect(classify(file('IMG_0001.heic', 'image/heic'))).toEqual({ kind: 'photo' })
     expect(classify(file('notes.pdf', 'application/pdf'))).toEqual({ problem: 'notSupported' })
     expect(classify(file('huge.jpg', 'image/jpeg', 15 * 1024 * 1024 + 1))).toEqual({ problem: 'tooLarge' })
     story(

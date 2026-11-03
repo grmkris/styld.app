@@ -9,10 +9,11 @@ import { cx } from 'zyzz'
 import { actionButton } from '../../ActionButton.ts'
 import { primaryAction, secondaryAction, smallAction } from '../../Actions.styles.ts'
 import { textField } from '../../Fields.styles.ts'
-import { addIcon, backIcon, loader } from '../../Icon.ts'
-import { boardsRouter, lookRouter, pieceRouter } from '../../route.ts'
+import { addIcon, backIcon, loader, shareIcon } from '../../Icon.ts'
+import { boardRouter, boardsRouter, lookRouter, pieceRouter } from '../../route.ts'
 import { styled } from '../../Styled.ts'
 import * as PeopleView from '../PeopleView.ts'
+import * as Share from '../Share.ts'
 import { publicToggle } from '../PublicToggle.ts'
 import { bottomSheet, sheetShown } from '../Sheet.ts'
 import { checkNotice } from '../CheckNotice.ts'
@@ -246,6 +247,27 @@ const removalView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Htm
     }),
   )
 
+/** Share (Eva's review, T-20): a public board's link through the share sheet; a private board has nothing to show
+ * anyone yet, so Share opens the settings, where it can be made public. */
+const shareAction = (model: Model, name: string, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  model.visibility === 'public'
+    ? h.submodel({
+        slotId: 'board-share',
+        model: model.sharing,
+        view: Share.buttonView,
+        viewInputs: { locale, path: boardRouter({ boardId: model.boardId }), title: name, look: 'small' },
+        toParentMessage: (message) => Message.GotShareMessage({ message }),
+      })
+    : actionButton(
+        {
+          label: format(locale, 'share.button', {}),
+          style: cx(secondaryAction(), smallAction()),
+          leading: shareIcon(h),
+          onClick: Message.ClickedSettings(),
+        },
+        h,
+      )
+
 /** Who sees the board: private, or public on the published profile once Styld's check lets others. */
 const sharingView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   publicToggle(
@@ -366,6 +388,7 @@ const readyView = (
         [backIcon(h), format(locale, 'studio.backToBoards', {})],
       ),
       h.div(styled(h, styles.barActions()), [
+        shareAction(model, name, locale, h),
         // Rename, public, moods and delete: a word a pencil could not say.
         h.button(
           [
@@ -383,6 +406,7 @@ const readyView = (
       // Where it stands, in one quiet line (DESIGN › Your public things), then the check's word on it.
       h.p(styled(h, styles.meta()), [statusLine(model, locale)]),
       model.visibility === 'public' ? checkNotice(Option.getOrNull(model.check), locale, h) : h.empty,
+      Share.statusView(model.sharing, locale, h),
       makeSlot('board-make-status', MakeView.statusView, model, locale, h),
     ]),
     h.div(styled(h, styles.barActions()), [

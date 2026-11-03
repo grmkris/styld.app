@@ -4,7 +4,8 @@ import { click, Command, expect, given, role, scene } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { type Model, update } from '../src/App.ts'
-import { Message as VisitMessage, ShareLink, type ShownData } from '../src/page/Visit.ts'
+import { Message as ShareMessage, ShareLink } from '../src/page/Share.ts'
+import type { ShownData } from '../src/page/Visit.ts'
 import { shownAs } from './VisitFixtures.ts'
 import { view } from '../src/View.ts'
 import { lenses } from '../src/Page.ts'
@@ -29,24 +30,24 @@ describe('a public page’s head bar and Share', () => {
       expect(role('link', { name: 'Back' })).toHaveAttr('href', '/explore'),
       click(role('button', { name: 'Share' })),
       Command.resolve(
-        ShareLink({ url: 'https://styld.test/@ana.novak', title: 'Ana Novak' }),
-        VisitMessage.SucceededShareLink({ copied: false }),
+        ShareLink({ path: '/@ana.novak', title: 'Ana Novak' }),
+        ShareMessage.SucceededShareLink({ copied: false }),
       ),
       expect(role('status')).not.toExist(),
     )
   })
 
   test('a piece goes back to whose it is, and Share copies its link where there is no share sheet', () => {
-    const share = ShareLink({ url: `https://styld.test/pieces/${scarf.id}`, title: 'Grey scarf' })
+    const share = ShareLink({ path: `/pieces/${scarf.id}`, title: 'Grey scarf' })
     scene(
       { update, view },
       given(showing(at(`/pieces/${scarf.id}`, { signedIn: false }), shownAs.Piece({ page: scarfPage(false) }))),
       expect(role('link', { name: 'Back' })).toHaveAttr('href', '/@ana.novak'),
       click(role('button', { name: 'Share' })),
-      Command.resolve(share, VisitMessage.SucceededShareLink({ copied: true })),
+      Command.resolve(share, ShareMessage.SucceededShareLink({ copied: true })),
       expect(role('status')).toHaveText('Link copied'),
       click(role('button', { name: 'Share' })),
-      Command.resolve(share, VisitMessage.FailedShareLink()),
+      Command.resolve(share, ShareMessage.FailedShareLink()),
       expect(role('alert')).toHaveText("Couldn't copy the link"),
     )
   })

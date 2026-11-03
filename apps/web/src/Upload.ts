@@ -1,4 +1,4 @@
-import { ImageType, UploadId } from '@styld/protocol'
+import { UploadId } from '@styld/protocol'
 import { Context, Data, Effect, Layer, Option, Schema } from 'effect'
 import { File } from 'foldkit'
 import { drawOperationId } from './OperationIds.ts'
@@ -37,12 +37,17 @@ export const pictureEncoderLayer = Layer.succeed(PictureEncoder, {
     }),
 })
 
-const pictureTypes: ReadonlyArray<string> = ImageType.literals
+/** What a picture picker asks the device for: any picture. A list of types makes Android open its file list instead
+ * of the photo gallery (Eva's review, T-20); whatever the device cannot draw is refused when it is drawn. */
+export const pictureAccept = 'image/*'
+
+/** A file the device may be able to draw as a picture: any image type (HEIC too, where the browser decodes it). */
+export const isPicture = (file: File.File) => File.mimeType(file).startsWith('image/')
 
 /** Send one picked picture as an upload of the person's: its id, for whatever claims it next (a capture, a gallery
  * photo, a board, a piece's back). */
 export const uploadPicture = Effect.fn('Styld.Web.uploadPicture')(function* (file: File.File) {
-  if (!pictureTypes.includes(File.mimeType(file))) return yield* new NotAPicture()
+  if (!isPicture(file)) return yield* new NotAPicture()
   const picture = yield* (yield* PictureEncoder).encode(file)
   const { api: loadApi, sendFile } = yield* StyldClient
   const created = yield* (yield* loadApi).wardrobe.createUpload({

@@ -8,6 +8,7 @@ import { linkAction, secondaryAction } from '../Actions.styles.ts'
 import { formError } from '../Fields.styles.ts'
 import { loader } from '../Icon.ts'
 import { styled } from '../Styled.ts'
+import { pictureAccept } from '../Upload.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { chip, chosen } from '../Controls.styles.ts'
 import { Message, type Model } from './PieceBack.ts'
@@ -50,7 +51,7 @@ export const actions = Submodel.defineView<Model, Message, Inputs>((model, { pie
               h.input([
                 h.Id('piece-back'),
                 h.Type('file'),
-                h.Accept('image/*'),
+                h.Accept(pictureAccept),
                 h.AriaDescribedBy('piece-back-cost'),
                 h.OnFileChange((files) => Message.ChoseBack({ files })),
                 ...styled(h, visuallyHidden()),

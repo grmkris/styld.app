@@ -40,6 +40,7 @@ import { BoardData, BoardShown, fromBoard, LookSave, type Model, Saving } from '
 import type { LoadError } from '../../ServerData.ts'
 import { closePiecePicker, pageSteps } from './Page.ts'
 import * as People from '../People.ts'
+import * as Share from '../Share.ts'
 import * as Make from './Make.ts'
 import { ReloadBoard } from './PageCommands.ts'
 
@@ -49,6 +50,7 @@ export const load = (model: Model): ReadonlyArray<Command.Command<Message, never
   model.signedIn ? [LoadBoard({ boardId: model.boardId }), MakeIds()] : [VisitBoard({ boardId: model.boardId })]
 
 const foldPeople = People.foldInto<Model, Message>((message) => Message.GotPeopleMessage({ message }))
+const foldShare = Share.foldInto<Model, Message>((message) => Message.GotShareMessage({ message }))
 
 /** Make with Styld: once an ask ends, the board reloads to show what it added. */
 const foldMake = Update.foldChild({
@@ -90,6 +92,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       model: modifyFields(model, { board: () => BoardData.Success({ data: BoardShown.Visiting({ board }) }) }),
     }),
     GotPeopleMessage: (got) => foldPeople(model, got.message),
+    GotShareMessage: (got) => foldShare(model, got.message),
     GotMakeMessage: (got) => foldMake(model, got.message),
     CompletedMakeIds: ({ ids }) => ({ model: modifyFields(model, { ids: (pool) => [...pool, ...ids] }) }),
     MeasuredPaper: ({ width }) => ({ model: modifyFields(model, { pxPerUnit: () => unitsPerPixel(width) }) }),

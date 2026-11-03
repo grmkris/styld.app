@@ -3,9 +3,8 @@ import type { Mood, PublicPiecePage, PublicProfile } from '@styld/protocol'
 import { Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
-import { actionButton } from '../ActionButton.ts'
 import { secondaryAction } from '../Actions.styles.ts'
-import { backIcon, shareIcon } from '../Icon.ts'
+import { backIcon } from '../Icon.ts'
 import { accountRouter, exploreRouter, personRouter, pieceRouter, profileRouter, publicPieceRouter } from '../route.ts'
 import { avatar } from '../Avatar.ts'
 import { block, line } from '../Skeleton.styles.ts'
@@ -13,7 +12,7 @@ import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { cx } from 'zyzz'
 import { publicPieceImage } from './Board/Table.ts'
-import { barEnd, barStart, round } from './PageBar.styles.ts'
+import { barStart, round } from './PageBar.styles.ts'
 import * as PeopleView from './PeopleView.ts'
 import { boardCard, byline, lookTile, tileGrid } from './PublicTiles.ts'
 import { exploreLoading, exploreSearchForm, exploreSections, searchView } from './ExploreView.ts'
@@ -21,7 +20,8 @@ import { head as exploreHead, page as explorePage } from './ExploreView.styles.t
 import { pageTitle } from './PageHead.ts'
 import { retryView } from './Retry.ts'
 import { PublicSearch } from './Search.ts'
-import { exploreOf, Message, type Model, type PersonTab, Sharing, Target, VisitShown } from './Visit.ts'
+import { exploreOf, Message, type Model, type PersonTab, Target, VisitShown } from './Visit.ts'
+import * as Share from './Share.ts'
 import * as styles from './VisitView.styles.ts'
 import { kindName, pieceLabel } from './WardrobeWords.ts'
 
@@ -63,8 +63,8 @@ const tabContent = (profile: PublicProfile, tab: PersonTab, locale: Locale, h: H
   )
 }
 
-/** What a visitor page takes: People's inputs, and the origin a shared link starts with. */
-export type Inputs = PeopleView.Inputs & { readonly origin: string }
+/** What a visitor page takes: People's inputs. */
+export type Inputs = PeopleView.Inputs
 
 /** One view of what the visitor can do with the person or the piece: Follow, or saving, blocking and reporting. */
 const peopleSlot = (
@@ -90,31 +90,27 @@ const backRound = (href: string, locale: Locale, h: HtmlBuilder<Message>): Html 
     [backIcon(h)],
   )
 
-/** The page's link as a share: the round at the end of a piece's head bar. */
-const shareRound = (url: string, title: string, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.button(
-    [
-      h.Type('button'),
-      h.AriaLabel(format(locale, 'share.button', {})),
-      ...styled(h, cx(round(), barEnd())),
-      h.OnClick(Message.ClickedShare({ url, title })),
-    ],
-    [shareIcon(h)],
-  )
-
-/** What Share did, where the browser had no share sheet to say it. */
-const shareStatus = (sharing: Sharing, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  Sharing.match(sharing, {
-    Idle: () => h.empty,
-    Copied: () => h.p([h.Role('status'), ...styled(h, styles.shared())], [format(locale, 'share.linkCopied', {})]),
-    Failed: () => h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'share.copyFailed', {})]),
+/** Share this site's page at `path`, as a labelled action or the round at the end of a piece's head bar. */
+const shareSlot = (
+  slotId: string,
+  share: Omit<Share.Inputs, 'locale'>,
+  model: Model,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html =>
+  h.submodel({
+    slotId,
+    model: model.sharing,
+    view: Share.buttonView,
+    viewInputs: { locale, ...share },
+    toParentMessage: (message) => Message.GotShareMessage({ message }),
   })
 
 /** A published profile's head (prototype `.person`): the avatar, the name, handle and city, the bio, then Follow and
  * Share, with blocking and reporting under them. One's own profile has nobody to follow or report: Edit profile
  * takes Follow's place. */
 const personHead = (model: Model, profile: PublicProfile, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
-  const { locale, origin } = inputs
+  const { locale } = inputs
   return h.header(styled(h, styles.person()), [
     avatar(profile.name, profile.tone, 'large', h),
     h.div(styled(h, styles.who()), [
@@ -132,20 +128,15 @@ const personHead = (model: Model, profile: PublicProfile, inputs: Inputs, h: Htm
               [format(locale, 'profile.public.editProfile', {})],
             )
           : peopleSlot('visit-follow', PeopleView.followView, model, inputs, h),
-        actionButton(
-          {
-            label: format(locale, 'share.button', {}),
-            style: secondaryAction(),
-            leading: shareIcon(h),
-            onClick: Message.ClickedShare({
-              url: `${origin}${personRouter({ handle: profile.handle })}`,
-              title: profile.name,
-            }),
-          },
+        shareSlot(
+          'visit-share-profile',
+          { path: personRouter({ handle: profile.handle }), title: profile.name, look: 'action' },
+          model,
+          locale,
           h,
         ),
       ]),
-      shareStatus(model.sharing, locale, h),
+      Share.statusView(model.sharing, locale, h),
       profile.yours ? h.empty : peopleSlot('visit-people', PeopleView.view, model, inputs, h),
     ]),
   ])
@@ -187,7 +178,7 @@ const pieceView = (
   inputs: Inputs,
   h: HtmlBuilder<Message>,
 ): Html => {
-  const { locale, origin } = inputs
+  const { locale } = inputs
   return h.div(styled(h, styles.page()), [
     h.div(styled(h, cx(styles.bar(), styles.pieceBar())), [
       // Back to the board or look it was opened from; from a shared link, to whose it is.
@@ -197,8 +188,14 @@ const pieceView = (
         h,
       ),
       h.div(styled(h, styles.barActions()), [
-        shareStatus(model.sharing, locale, h),
-        shareRound(`${origin}${publicPieceRouter({ pieceId: piece.id })}`, pieceLabel(piece, locale), locale, h),
+        Share.statusView(model.sharing, locale, h),
+        shareSlot(
+          'visit-share-piece',
+          { path: publicPieceRouter({ pieceId: piece.id }), title: pieceLabel(piece, locale), look: 'round' },
+          model,
+          locale,
+          h,
+        ),
       ]),
     ]),
     h.img([

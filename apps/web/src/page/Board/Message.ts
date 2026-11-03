@@ -16,6 +16,7 @@ import {
 } from '@styld/protocol'
 import * as Make from './Make.ts'
 import * as People from '../People.ts'
+import * as Share from '../Share.ts'
 import { Schema } from 'effect'
 import { File } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
@@ -104,6 +105,7 @@ export const Message = defineMessageUnion({
   FailedRename: {},
   ToggledPublic: { isPublic: Schema.Boolean },
   GotPeopleMessage: { message: People.Message },
+  GotShareMessage: { message: Share.Message },
   GotMakeMessage: { message: Make.Message },
   ToggledMood: { mood: Mood },
   SucceededSetBoardMoods: { board: Board },

@@ -1,11 +1,11 @@
 import { FileDrop } from '@foldkit/ui'
-import { type CaptureId, type CaptureSource, ImageType, maximumImageBytes, type Side, VideoType } from '@styld/protocol'
+import { type CaptureId, type CaptureSource, maximumImageBytes, type Side, VideoType } from '@styld/protocol'
 import { Option, Schema } from 'effect'
 import type * as Crypto from 'effect/Crypto'
 import { File, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import type { StyldClient } from '../../StyldClient.ts'
-import type { PictureEncoder } from '../../Upload.ts'
+import { isPicture, type PictureEncoder } from '../../Upload.ts'
 import { InspectVideo, SendLink, SendPhoto, SendVideo, SendVideoPart } from './Commands.ts'
 import * as HeldCamera from '../HeldCamera.ts'
 import { Message, OutMessage, type VideoPlan } from './Message.ts'
@@ -27,7 +27,6 @@ type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Serv
 /** Two files go up at once, at most one of them a video; the rest wait their turn. */
 const concurrentSends = 2
 
-const imageTypes: ReadonlyArray<string> = ImageType.literals
 const videoTypes: ReadonlyArray<string> = VideoType.literals
 
 /** What a chosen file becomes, by its own type and size; the server checks the bytes again. A video's
@@ -35,8 +34,7 @@ const videoTypes: ReadonlyArray<string> = VideoType.literals
  */
 export const classify = (file: File.File): { kind: 'photo' | 'video' } | { problem: FileProblem } => {
   const type = File.mimeType(file)
-  if (imageTypes.includes(type))
-    return File.size(file) > maximumImageBytes ? { problem: 'tooLarge' } : { kind: 'photo' }
+  if (isPicture(file)) return File.size(file) > maximumImageBytes ? { problem: 'tooLarge' } : { kind: 'photo' }
   if (videoTypes.includes(type)) return { kind: 'video' }
   return { problem: 'notSupported' }
 }
