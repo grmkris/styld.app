@@ -7,7 +7,14 @@ import { Allowance, decoded } from './CleanPictureAcceptance.ts'
 import { picturesAccount } from './PictureFixture.ts'
 import { client, signedInContext, signIn } from './Accounts.ts'
 
-const Turn = Schema.Struct({ state: Schema.String, version: Schema.Number, layout: Schema.optionalKey(Schema.Unknown) })
+const Turn = Schema.Struct({
+  state: Schema.String,
+  version: Schema.Number,
+  layout: Schema.optionalKey(Schema.Unknown),
+  media: Schema.optionalKey(
+    Schema.Struct({ video: Schema.optionalKey(Schema.String), sheet: Schema.optionalKey(Schema.String) }),
+  ),
+})
 const Piece = Schema.Struct({ turn: Schema.optionalKey(Turn) })
 
 /** A piece's clean picture turns on its hanger, made by the queue and finished in the owner's browser: the turn is
@@ -76,6 +83,17 @@ export const verifyTurn = async (
   }
   const turned = await decoded(Piece, await owner(`/api/pieces/${kept.green}`))
   expect(turned.turn).toMatchObject({ state: 'ready', layout: { frames: 30, columns: 6 } })
-  expect((await owner(`/cdn/turns/${kept.green}/sheet?v=${turned.turn?.version}`)).status).toBe(200)
+  const sheetAddress = turned.turn?.media?.sheet ?? ''
+  expect(sheetAddress.startsWith('/cdn/media/')).toBe(true)
+  expect((await fetch(new URL(sheetAddress, origin))).status).toBe(200)
+  const video = turned.turn?.media?.video ?? ''
+  const range = await fetch(new URL(video, origin), { headers: { range: 'bytes=0-31' } })
+  expect(range.status).toBe(206)
+  expect(range.headers.get('content-range')).toMatch(/^bytes 0-31\//)
+  expect((await range.arrayBuffer()).byteLength).toBe(32)
+  const suffix = await fetch(new URL(video, origin), { headers: { range: 'bytes=-16' } })
+  expect(suffix.status).toBe(206)
+  expect((await suffix.arrayBuffer()).byteLength).toBe(16)
+  expect((await fetch(new URL(video, origin), { headers: { range: 'bytes=999999999-' } })).status).toBe(416)
   expect(await remaining()).toBe(before - 5)
 }

@@ -29,6 +29,7 @@ import { verifyPublicJourney } from './SocialBrowserAcceptance.ts'
 import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
 import { verifyMcp } from './McpAcceptance.ts'
 import { verifyAccountDeletion, verifyWardrobe } from './WardrobeAcceptance.ts'
+import { verifyMediaLoad } from './MediaLoadAcceptance.ts'
 import RuntimeWorker from './RuntimeWorker.ts'
 import { LiveSchema, liveShape } from './SchemaShape.ts'
 import { snapshotShape } from './SchemaSnapshot.ts'
@@ -156,6 +157,8 @@ const overHttp = (verify: (origin: string, testUrl: string) => Promise<void>) =>
     const { url, styldUrl } = yield* stack
     yield* Effect.promise(() => verify(styldUrl, url))
   })
+
+test('loads board, Gallery and review pictures in cookie-free bursts', overHttp(verifyMediaLoad), { timeout: 120000 })
 
 test(
   'serves MCP to OAuth clients: discovery, registration, consent, both protocol eras, rotation and revocation',

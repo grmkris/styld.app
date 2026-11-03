@@ -97,10 +97,10 @@ const pinContent = (
           h,
         ),
       ],
-      PicturePin: ({ id, imageId, generated }) => [
+      PicturePin: ({ id, image, generated }) => [
         h.span(styled(h, styles.pinFrame()), [
           h.img([
-            h.Src(boardImage(imageId, 'thumb')),
+            h.Src(boardImage({ image }, 'thumb')),
             h.Alt(format(locale, 'board.picture', {})),
             h.Loading('lazy'),
             ...styled(h, styles.photo()),

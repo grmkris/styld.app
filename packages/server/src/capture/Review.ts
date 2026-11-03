@@ -1,7 +1,7 @@
 import { CurrentAccount, type Keep, NotFound, PieceId, type Review, Reviewed } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import { type ReviewDecision } from '../kernel/Metrics.ts'
-import { enqueuePicture, forgetCaptureObjects, storedAs, unavailable } from './Shared.ts'
+import { enqueuePicture, forgetCaptureObjects, storedAs } from './Shared.ts'
 
 import type { DetectionRow } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
@@ -9,7 +9,6 @@ import { newId } from '../kernel/Ids.ts'
 import { identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
 import { CaptureStore } from './Store.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
-import { Media } from '../kernel/Media.ts'
 import { CaptureMetrics } from '../kernel/Metrics.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
 import type { CaptureServices } from './Shared.ts'
@@ -225,36 +224,5 @@ export const reviewing = Effect.map(Effect.context<CaptureServices>(), (context)
     const pieceChanged = yield* PieceChanged
     yield* Effect.forEach(pieceIds, (pieceId) => pieceChanged.changed(pieceId), { discard: true })
     return { pieceIds: pieceIds.map((id) => PieceId.make(id)) }
-  }, Effect.provide(context)),
-}))
-
-/** The stored key of a detection's picture, if it has one. */
-const pictureKey = (row: DetectionRow, which: 'cutout' | 'original' | 'back') =>
-  which === 'original' ? row.sourceKey : which === 'back' ? row.backCutoutKey : (row.cutoutKey ?? row.sourceKey)
-
-/** Detections' pictures, for the review tray. */
-export const detectionPictures = Effect.map(Effect.context<CaptureServices>(), (context) => ({
-  /** The picture of a detection for its owner: its cut-out, its back, or the photo it was found in. */
-  detectionPicture: Effect.fn('Styld.Capture.detectionPicture')(function* (
-    detectionId: string,
-    which: 'cutout' | 'original' | 'back',
-  ) {
-    const { accountId } = yield* CurrentAccount
-    const row = yield* storedAs((yield* CaptureStore).findDetection(accountId, detectionId))
-    const key = Option.flatMapNullishOr(row, (detection) => pictureKey(detection, which))
-    if (Option.isNone(key)) return Option.none<{ readonly bytes: Uint8Array; readonly contentType: string }>()
-    const { bucket } = yield* Media
-    return yield* Effect.tryPromise({
-      try: async () => {
-        const object = await bucket.get(key.value)
-        return object === null
-          ? Option.none()
-          : Option.some({
-              bytes: new Uint8Array(await object.arrayBuffer()),
-              contentType: object.httpMetadata?.contentType ?? 'application/octet-stream',
-            })
-      },
-      catch: unavailable,
-    })
   }, Effect.provide(context)),
 }))

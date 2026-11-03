@@ -70,7 +70,6 @@ const services = (
         deletePiece: notUsed,
         setBack: notUsed,
         removeBack: notUsed,
-        pieceImage: notUsed,
         choosePicture: notUsed,
         processPiece: () => processPiece,
         failPiece: (pieceId) => Effect.sync(() => failed.push(pieceId)).pipe(Effect.andThen(failPiece)),

@@ -1,3 +1,4 @@
+import { imageAddresses } from '../kernel/SignedMedia.ts'
 import {
   type AddBoardImage,
   type AddPins,
@@ -24,9 +25,6 @@ import { ownLookIds } from '../looks/Store.ts'
 import { Checks } from '../safety/Checks.ts'
 import { requirePublished } from '../social/ProfileStore.ts'
 
-import { type Delivery, deliverImage } from '../wardrobe/Delivery.ts'
-import type { ShownImage } from '../wardrobe/Http.ts'
-import type { ImageSize } from '../wardrobe/Media.ts'
 import { ownPieceIds } from '../wardrobe/Store.ts'
 import { usableUpload } from '../wardrobe/Shared.ts'
 import { type BoardRow, type PinRemoval } from './Store.ts'
@@ -275,7 +273,16 @@ const replayImage = (accountId: string, imageId: string) =>
   Effect.gen(function* () {
     const image = yield* stored((yield* BoardStore).findImage(accountId, imageId))
     if (Option.isNone(image)) return yield* NotFound.make({})
-    const replayed: BoardImage = { imageId: BoardImageId.make(image.value.id) }
+    const addresses = yield* imageAddresses({
+      entityId: image.value.id,
+      key: image.value.objectKey,
+      contentType: image.value.contentType,
+      version: String(image.value.createdAt.getTime()),
+    })
+    const replayed: BoardImage = {
+      imageId: BoardImageId.make(image.value.id),
+      ...Option.match(addresses, { onNone: () => ({}), onSome: (addresses_) => ({ image: addresses_ }) }),
+    }
     return replayed
   })
 
@@ -328,17 +335,7 @@ const pictures = Effect.map(Effect.context<BoardServices>(), (context) => ({
         addImageFailure(operation, boardId, input.uploadId).pipe(Effect.map(Option.some)),
       ),
     )
-    return Option.getOrElse(committed, (): BoardImage => ({ imageId: BoardImageId.make(id) }))
-  }, Effect.provide(context)),
-  /** A board picture for its owner, resized to WebP by the Images binding; another account's reads as none.
-   * A picture never changes, so its id and size are its version. */
-  boardImage: Effect.fn('Styld.Boards.image')(function* (imageId: BoardImageId, size: ImageSize, delivery?: Delivery) {
-    const { accountId } = yield* CurrentAccount
-    const image = yield* stored((yield* BoardStore).findImage(accountId, imageId))
-    if (Option.isNone(image)) return Option.none<ShownImage>()
-    const { objectKey, contentType } = image.value
-    const delivered = yield* deliverImage(yield* Media, { key: objectKey, contentType }, size, delivery)
-    return Option.map(delivered, (shownImage): ShownImage => ({ ...shownImage, version: `${imageId}.${size}` }))
+    return Option.isSome(committed) ? committed.value : yield* replayImage(accountId, id)
   }, Effect.provide(context)),
 }))
 

@@ -55,7 +55,12 @@ export type PieceItem = typeof PieceItem.Type
 export const TextItem = Schema.TaggedStruct('TextItem', { ...placement, text: LabelText, style: TextStyle })
 export type TextItem = typeof TextItem.Type
 /** A picture the person put on the board: pasted, dropped or chosen. */
-export const ImageItem = Schema.TaggedStruct('ImageItem', { ...placement, imageId: BoardImageId })
+export const BoardImageAddresses = Schema.Struct({ thumb: Schema.String, full: Schema.String })
+export const ImageItem = Schema.TaggedStruct('ImageItem', {
+  ...placement,
+  imageId: BoardImageId,
+  image: Schema.optionalKey(BoardImageAddresses),
+})
 export type ImageItem = typeof ImageItem.Type
 
 export const BoardItem = Schema.Union([PieceItem, TextItem, ImageItem])
@@ -68,6 +73,7 @@ export type PiecePin = typeof PiecePin.Type
 export const PicturePin = Schema.TaggedStruct('PicturePin', {
   id: PinId,
   imageId: BoardImageId,
+  image: Schema.optionalKey(BoardImageAddresses),
   /** Styld made it: shown marked Generated. */
   generated: Schema.Boolean,
   addedAt: Schema.String,
@@ -197,7 +203,7 @@ export type SetTable = typeof SetTable.Type
 export const AddBoardImage = Schema.Struct({ operationId: OperationId, uploadId: UploadId })
 export type AddBoardImage = typeof AddBoardImage.Type
 
-export const BoardImage = Schema.Struct({ imageId: BoardImageId })
+export const BoardImage = Schema.Struct({ imageId: BoardImageId, image: Schema.optionalKey(BoardImageAddresses) })
 export type BoardImage = typeof BoardImage.Type
 
 /** Someone saved the board since this editor loaded it (another tab or device). */

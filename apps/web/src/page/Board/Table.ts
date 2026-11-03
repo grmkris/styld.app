@@ -32,7 +32,7 @@ export type ImageSource = (item: PieceItem | ImageItem, size: 'thumb' | 'full') 
 export const fromStyld =
   (pieces: PieceImagesById): ImageSource =>
   (item, size) =>
-    Schema.is(PieceItem)(item) ? pieces.get(item.pieceId)?.thumb : boardImage(item.imageId, size)
+    Schema.is(PieceItem)(item) ? pieces.get(item.pieceId)?.thumb : boardImage(item, size)
 
 /** What others see of a public board: its pieces' and pictures' public addresses. */
 export const publicPieceImage = (pieceId: string, size: 'thumb' | 'full' = 'thumb') => cdn.publicPiece(pieceId, size)

@@ -122,3 +122,12 @@ recognition response. Full gate: 763 unit and 29 native tests passed; four match
 review at 390×844 and 1440×844. Release `15ddaca` is deployed; exact-release preview smoke passed 3 tests / 42 assertions. F-49 is verified.
 T-01/T-05 remain partial: recognition,
 foreground extraction, review-card Front/Back preview and real-phone/provider acceptance remain open.
+
+## Eva media batch 04
+
+T-21’s local implementation covers remaining private board, Gallery, detection and turn media plus embedded MCP
+view thumbnails. `SignedMedia`/`SignedFile` unit coverage and `MediaLoadAcceptance`, `GalleryAcceptance`,
+`PhotosAcceptance`, `CaptureAcceptance`, `TurnAcceptance` and MCP native acceptance passed in the full gate
+(777 unit tests; 30 native tests / 1,453 assertions). Six matching synthetic before/after screenshot pairs passed
+17 capture assertions and visual review. Preview media readback, authenticated loading/Workers Logs and
+expiry-refresh remain open; this does not verify F-43. See the tracker’s `BATCH-04.md`.

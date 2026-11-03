@@ -79,14 +79,12 @@ const boards = Boards.of({
   addBoardImage: notUsed,
   addGeneratedImage: notUsed,
   addPhotoImage: notUsed,
-  boardImage: notUsed,
 })
 const wardrobe = Wardrobe.of({
   listPieces: () => Effect.succeed([]),
   getPiece: notUsed,
   newUpload: notUsed,
   createUpload: notUsed,
-  pieceImage: notUsed,
   once: notUsed,
   receiveUpload: notUsed,
   receiveVideoUpload: notUsed,

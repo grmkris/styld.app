@@ -75,9 +75,13 @@ const pictureSettled = (upload: Upload, problem: Option.Option<UploadProblem>): 
   return Option.match(worst, { onNone: () => Upload.Idle(), onSome: (failed) => Upload.Failed({ problem: failed }) })
 }
 
-export const addedImage = (model: Model, imageId: BoardImageId): UpdateReturn =>
+export const addedImage = (
+  model: Model,
+  imageId: BoardImageId,
+  image?: { readonly thumb: string; readonly full: string },
+): UpdateReturn =>
   added(modifyFields(model, { upload: (upload) => pictureSettled(upload, Option.none()) }), (id) =>
-    ImageItem.make({ id, imageId, ...landing(model.items, 420) }),
+    ImageItem.make({ id, imageId, ...(image === undefined ? {} : { image }), ...landing(model.items, 420) }),
   )
 
 /** A picture that did not reach the board leaves the others on their way. */

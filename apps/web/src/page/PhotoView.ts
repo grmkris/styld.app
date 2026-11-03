@@ -129,9 +129,9 @@ const matchView = (garment: PhotoGarment, inputs: Inputs, h: HtmlBuilder<Message
   ])
 }
 
-const garmentRow = (model: Model, photo: Photo, garment: PhotoGarment, inputs: Inputs, h: HtmlBuilder<Message>): Html =>
+const garmentRow = (model: Model, garment: PhotoGarment, inputs: Inputs, h: HtmlBuilder<Message>): Html =>
   h.keyed('li')(garment.id, styled(h, styles.garment()), [
-    h.img([h.Src(cdn.photoGarment(photo.id, garment.id)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.thumb())]),
+    h.img([h.Src(cdn.photoGarment(garment)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.thumb())]),
     Option.contains(model.choosing, garment.id) ? picker(garment, inputs, h) : matchView(garment, inputs, h),
   ])
 
@@ -226,7 +226,7 @@ const loadedView = (model: Model, photo: Photo, inputs: Inputs, h: HtmlBuilder<M
   const date = photoDate(photo.createdAt, inputs)
   return [
     h.img([
-      h.Src(cdn.photo(photo.id, 'full')),
+      h.Src(cdn.photo(photo, 'full')),
       h.Alt(format(locale, 'photos.open', { date })),
       ...styled(h, styles.photo()),
     ]),
@@ -259,7 +259,7 @@ const loadedView = (model: Model, photo: Photo, inputs: Inputs, h: HtmlBuilder<M
               h.h2([h.Id('photo-garments')], [format(locale, 'photo.garmentsTitle', {})]),
               h.ul(
                 styled(h, styles.garments()),
-                photo.garments.map((garment) => garmentRow(model, photo, garment, inputs, h)),
+                photo.garments.map((garment) => garmentRow(model, garment, inputs, h)),
               ),
             ],
           ),

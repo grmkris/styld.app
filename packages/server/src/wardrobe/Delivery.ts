@@ -10,6 +10,27 @@ export interface DeliveredImage {
   readonly contentType: string
 }
 
+/** The storage and transform operations needed to deliver a picture. */
+type BoundTransformer = ReturnType<Media['Service']['images']['input']>
+interface ImageTransformer {
+  readonly transform: (options: Parameters<BoundTransformer['transform']>[0]) => ImageTransformer
+  readonly output: (options: Parameters<BoundTransformer['output']>[0]) => Promise<{
+    readonly image: () => ByteStream
+    readonly contentType: () => string
+  }>
+}
+export interface ImageBindings {
+  readonly bucket: {
+    readonly get: (key: string) => Promise<{
+      readonly body: ByteStream
+      readonly httpMetadata?: { readonly contentType?: string }
+    } | null>
+  }
+  readonly images: {
+    readonly input: (bytes: Parameters<Media['Service']['images']['input']>[0]) => ImageTransformer
+  }
+}
+
 const unavailable = () => Unavailable.make({})
 
 /** What a failed transform answers: the stored bytes (the owner's own browser), or no image (anything that leaves
@@ -24,7 +45,7 @@ export const transformedOnly: Delivery = { fallback: 'none' }
 /** A stored photo resized to WebP by the Images binding, at one of the sizes the website shows. A photo the
  * binding cannot transform is served as it was stored; a photo no longer in the bucket is none. */
 export const deliverImage = Effect.fnUntraced(function* (
-  bindings: Media['Service'],
+  bindings: ImageBindings,
   stored: { readonly key: string; readonly contentType: string },
   size: ImageSize,
   options: Delivery = { fallback: 'stored' },

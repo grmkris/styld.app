@@ -1,6 +1,7 @@
+import { verifySignedImage } from './SignedMediaAcceptance.ts'
 import { expect } from 'bun:test'
 import { Schema } from 'effect'
-import { Board, PieceItem, TextItem } from '@styld/protocol'
+import { Board, BoardImage, PieceItem, TextItem } from '@styld/protocol'
 import { receivedPhoto } from './WardrobeAcceptance.ts'
 import { type Call, client, seedAccounts, send, signIn } from './Accounts.ts'
 
@@ -102,24 +103,19 @@ const addPicture = async (origin: string, owner: Call, other: Call, boardId: str
   const path = `/api/boards/${boardId}/images`
   const added = await send(owner, path, 'POST', add)
   expect(added.status).toBe(200)
-  const { imageId } = Schema.decodeUnknownSync(Schema.Struct({ imageId: Schema.String }))(await added.json())
-  expect(await (await send(owner, path, 'POST', add)).json()).toEqual({ imageId })
+  const result = Schema.decodeUnknownSync(BoardImage)(await added.json())
+  const { imageId, image } = result
+  expect(image).toBeDefined()
+  expect(await (await send(owner, path, 'POST', add)).json()).toEqual(result)
   expect((await send(owner, path, 'POST', { ...add, uploadId: await receivedPhoto(origin, owner) })).status).toBe(409)
   const again = await send(owner, path, 'POST', { ...add, operationId: 'native-board-image-2' })
   expect(await again.json()).toMatchObject({ _tag: 'UploadRefused', reason: 'alreadyUsed' })
   // Another account can neither add to the board nor use the upload.
   expect((await send(other, path, 'POST', { ...add, operationId: 'native-board-image-3' })).status).toBe(404)
 
-  const thumb = await owner(`/cdn/boards/images/${imageId}/thumb`)
-  expect(thumb.status).toBe(200)
-  expect(thumb.headers.get('content-type')).toMatch(/^image\//)
-  expect(thumb.headers.get('cache-control')).toContain('private')
-  const etag = thumb.headers.get('etag') ?? ''
-  expect((await owner(`/cdn/boards/images/${imageId}/thumb`, { headers: { 'if-none-match': etag } })).status).toBe(304)
-  expect((await other(`/cdn/boards/images/${imageId}/thumb`)).status).toBe(404)
-  expect((await other(`/cdn/boards/images/${imageId}/full`)).status).toBe(404)
-  expect((await fetch(`${origin}/cdn/boards/images/${imageId}/thumb`)).status).toBe(401)
-  return { imageId, uploadId: add.uploadId }
+  await verifySignedImage(origin, image?.thumb ?? '')
+  expect((await fetch(`${origin}/cdn/boards/images/${imageId}/thumb`)).status).toBe(404)
+  return { imageId, uploadId: add.uploadId, full: image?.full ?? '' }
 }
 
 const Pinned = Schema.Struct({
@@ -189,7 +185,7 @@ const verifyPins = async (
 
   // A second picture, placed with the second piece, then both taken off.
   const add = { operationId: 'native-pins-image', uploadId: await receivedPhoto(origin, owner) }
-  const { imageId: pictureId } = Schema.decodeUnknownSync(Schema.Struct({ imageId: Schema.String }))(
+  const { imageId: pictureId, image: picture } = Schema.decodeUnknownSync(BoardImage)(
     await (await send(owner, `/api/boards/${boardId}/images`, 'POST', add)).json(),
   )
   const table = [
@@ -206,7 +202,7 @@ const verifyPins = async (
   expect(removed.version).toBe(placed.version + 1)
   expect(held(removed)).toEqual([lookId, imageId, pieceId])
   expect(held(await pinnedOf(await send(owner, `${path}/remove`, 'POST', removal)))).toEqual(held(removed))
-  expect((await owner(`/cdn/boards/images/${pictureId}/thumb`)).status).toBe(404)
+  expect((await fetch(new URL(picture?.full ?? '', origin))).status).toBe(404)
   const key = `accounts/native-boards/uploads/${add.uploadId}`
   expect(await (await fetch(`${fixtures}/test/identity/media?key=${key}`)).json()).toEqual({ exists: false })
   expect((await send(other, `${path}/remove`, 'POST', { ...removal, operationId: 'native-pins-y' })).status).toBe(404)
@@ -295,7 +291,7 @@ const verifyBoards = async (
   const renamed = await send(owner, `/api/boards/${boardId}`, 'PATCH', { name: 'Late autumn', paper: 'sage' })
   expect(await renamed.json()).toMatchObject({ name: 'Late autumn', paper: 'sage', version: 1, items })
 
-  const { imageId, uploadId } = await addPicture(origin, owner, other, boardId)
+  const { imageId, uploadId, full } = await addPicture(origin, owner, other, boardId)
   const table = [...items, { _tag: 'ImageItem', id: itemId('c'), ...placement, z: 2, imageId }]
   const saved = await putTable(owner, boardId, 1, table)
   expect(await saved.json()).toMatchObject({ version: 2, items: table })
@@ -320,7 +316,7 @@ const verifyBoards = async (
   expect(await (await fetch(`${fixtures}/test/identity/media?key=${key}`)).json()).toEqual({ exists: true })
   expect((await owner(`/api/boards/${boardId}`, { method: 'DELETE' })).status).toBe(204)
   expect((await owner(`/api/boards/${boardId}`)).status).toBe(404)
-  expect((await owner(`/cdn/boards/images/${imageId}/thumb`)).status).toBe(404)
+  expect((await fetch(new URL(full, origin))).status).toBe(404)
   expect(await (await fetch(`${fixtures}/test/identity/media?key=${key}`)).json()).toEqual({ exists: false })
 
   // Two copies of one create at once make one board.

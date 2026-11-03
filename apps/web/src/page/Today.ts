@@ -170,7 +170,7 @@ export const ReadTray = Command.define('ReadTray', {
     const { captures } = yield* (yield* (yield* StyldClient).api).capture.tray()
     const detections = captures.flatMap((capture) => capture.detections)
     // A found piece's cut-out when it has one, else its photo, as the tray first shows it.
-    const pictures = detections.slice(0, 3).map((detection) => cdn.detection(detection.id, detection.hasCutout))
+    const pictures = detections.slice(0, 3).map((detection) => cdn.detection(detection, detection.hasCutout))
     return Message.SucceededReadTray({ tray: { waiting: detections.length, pictures } })
   }).pipe(Effect.orElseSucceed(() => Message.FailedReadTray())),
 })

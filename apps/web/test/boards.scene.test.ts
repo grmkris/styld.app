@@ -22,6 +22,7 @@ const pins = [
     _tag: 'PicturePin',
     id: `pn_${'sea'.padEnd(22, 'x')}`,
     imageId: pictureId,
+    image: { thumb: '/granted-board-thumbnail', full: '/granted-board-picture' },
     generated: false,
     addedAt: '2026-10-31T07:00:00.000Z',
   },
@@ -56,7 +57,7 @@ describe('the boards list', () => {
       { update, view },
       given(boardsPage([summary('Sea', { cover: pins, pinCount: 2 }), summary('Empty', {})])),
       expect(selector(`img[src="${knit.images?.thumb ?? ''}"]`)).toExist(),
-      expect(selector(`img[src="/cdn/boards/images/${pictureId}/thumb"]`)).toExist(),
+      expect(selector('img[src="/granted-board-thumbnail"]')).toExist(),
       expect(text('Nothing pinned yet')).toExist(),
       expect(role('link', { name: /^Empty\s*0 pins$/ })).toExist(),
     )

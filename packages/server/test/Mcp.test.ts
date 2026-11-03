@@ -1,3 +1,5 @@
+import { SignedMedia } from '../src/kernel/SignedMedia.ts'
+import { media, withThumbnail } from './McpMediaFixture.ts'
 import {
   type ArrangeBoard,
   Board,
@@ -5,7 +7,6 @@ import {
   BoardVersionConflict,
   CurrentAccount,
   Handle,
-  NotFound,
   OperationId,
   PictureRefused,
   type Piece,
@@ -13,7 +14,7 @@ import {
   type RedrawPicture,
   UploadId,
 } from '@styld/protocol'
-import { Effect, Exit, Layer, Schema } from 'effect'
+import { Effect, Exit, Layer, Redacted, Schema } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { readResource, resources, viewsUri } from '../src/mcp/Resources.ts'
 import { instructions, styldTools } from '../src/mcp/StyldTools.ts'
@@ -61,7 +62,7 @@ const notUsed = () => Effect.die('not used by these tests')
 const replayedUpload = UploadId.make(`up_${'replay'.padEnd(22, 'x')}`)
 const replayedFetch = await Effect.runPromise(fetchOperation(OperationId.make('picture-replay-1'), 'picture_pin'))
 const wardrobe = Wardrobe.of({
-  listPieces: () => Effect.succeed(pieces),
+  listPieces: () => withThumbnail(pieces, pieces[0]?.id ?? ''),
   getPiece: notUsed,
   newUpload: notUsed,
   createUpload: notUsed,
@@ -77,12 +78,6 @@ const wardrobe = Wardrobe.of({
   deletePiece: notUsed,
   setBack: notUsed,
   removeBack: notUsed,
-  // The first piece has a thumbnail, the others none; the view asks only for transformed images, never originals.
-  pieceImage: (pieceId, _size, _which, delivery) =>
-    Effect.gen(function* () {
-      if (delivery?.fallback !== 'none' || pieceId !== pieces[0]?.id) return yield* NotFound.make({})
-      return { body: new Blob(['webp']).stream(), contentType: 'image/webp', version: 'v1' }
-    }),
   choosePicture: notUsed,
   processPiece: notUsed,
   failPiece: notUsed,
@@ -143,7 +138,7 @@ const arrangements: Array<ArrangeBoard> = []
 const pinnedUploads: Array<string> = []
 const boards = Boards.of({
   listBoards: () => Effect.succeed([]),
-  getBoard: () => Effect.succeed(board),
+  getBoard: () => withThumbnail(board, pieces[0]?.id ?? ''),
   createBoard: notUsed,
   updateBoard: notUsed,
   deleteBoard: notUsed,
@@ -159,7 +154,6 @@ const boards = Boards.of({
   addGeneratedImage: notUsed,
   addPhotoImage: notUsed,
   setBoardVisibility: notUsed,
-  boardImage: notUsed,
 })
 /** The profile: Ana's, published with a handle. */
 const profiles = Profiles.of({
@@ -204,6 +198,7 @@ const links = Effect.runSync(
   ),
 )
 const tools = styldTools('https://styld.test', {
+  media,
   wardrobe,
   links,
   looks: noLooks,
@@ -224,6 +219,7 @@ const call = (name: string, args: unknown) =>
   Effect.runPromise(
     callTool(tools, name, args).pipe(
       Effect.provideService(CurrentAccount, CurrentAccount.of({ accountId: 'acc_1', via: 'assistant' })),
+      Effect.provide(SignedMedia.layer(Redacted.make('native-test-signing-secret-32-characters'))),
     ),
   )
 
@@ -524,6 +520,7 @@ describe('every MCP tool', () => {
       const exit = await Effect.runPromiseExit(
         callTool(tools, name, everyCall[name]).pipe(
           Effect.provideService(CurrentAccount, CurrentAccount.of({ accountId: 'acc_1', via: 'assistant' })),
+          Effect.provide(SignedMedia.layer(Redacted.make('native-test-signing-secret-32-characters'))),
         ),
       )
       // A fake these tests leave unused dies when reached: the arguments decoded and the tool ran.

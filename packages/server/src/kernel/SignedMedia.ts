@@ -42,6 +42,27 @@ export interface Presented {
   readonly query: Readonly<Record<string, string | ReadonlyArray<string> | undefined>>
 }
 
+/** A show-tool alone collects already-authorized thumbnails for its private UI metadata. Normal tools never
+ * install this collector and never receive media addresses. */
+class ViewThumbnails extends Context.Service<
+  ViewThumbnails,
+  { readonly add: (grant: MediaGrant) => Effect.Effect<void> }
+>()('@styld/server/kernel/ViewThumbnails') {}
+
+export const withViewThumbnails = <A, E, R>(load: Effect.Effect<A, E, R>) =>
+  Effect.suspend(() => {
+    const images = new Map<string, MediaGrant>()
+    return load.pipe(
+      Effect.provideService(ViewThumbnails, {
+        add: (grant) =>
+          Effect.sync(() => {
+            if (grant.variant === 'thumb' && !images.has(grant.entityId)) images.set(grant.entityId, grant)
+          }),
+      }),
+      Effect.map((value) => ({ value, images })),
+    )
+  })
+
 const encoder = new TextEncoder()
 
 /** The bytes the signature covers: every field of the grant, in one order, under the key's label. */
@@ -152,7 +173,12 @@ export class SignedMedia extends Context.Service<
           address: (grant) =>
             Effect.gen(function* () {
               const { accountId, via } = yield* CurrentAccount
-              if (via !== 'session') return Option.none()
+              if (!grant.key.startsWith(`accounts/${accountId}/`)) return Option.none()
+              if (via !== 'session') {
+                const collector = yield* Effect.serviceOption(ViewThumbnails)
+                if (Option.isSome(collector)) yield* collector.value.add({ ...grant, accountId })
+                return Option.none()
+              }
               const expires = expiryOf(yield* Clock.currentTimeMillis)
               return Option.some(yield* signGrant(key, { ...grant, accountId, expires }))
             }),
@@ -161,3 +187,12 @@ export class SignedMedia extends Context.Service<
       ),
     )
 }
+
+/** Two sizes of an already-authorized stored image. The underlying key and version are covered by each signature. */
+export const imageAddresses = Effect.fnUntraced(function* (grant: Omit<MediaGrant, 'accountId' | 'variant'>) {
+  const signed = yield* SignedMedia
+  return Option.all({
+    thumb: yield* signed.address({ ...grant, variant: 'thumb' }),
+    full: yield* signed.address({ ...grant, variant: 'full' }),
+  })
+})

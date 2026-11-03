@@ -1,6 +1,7 @@
 import { Dialog, FileDrop } from '@foldkit/ui'
 import {
   Board,
+  BoardImage,
   GarmentGroup,
   PieceType,
   BoardImageId,
@@ -88,7 +89,7 @@ export const Message = defineMessageUnion({
   EndedFileDrag: {},
   ClickedPaste: {},
   CompletedReadClipboard: { files: Schema.Array(File.File) },
-  SucceededAddImage: { imageId: BoardImageId },
+  SucceededAddImage: BoardImage.fields,
   FailedAddImage: { problem: UploadProblem },
 
   /** The page came back into view: another device or an assistant may have changed the board. */

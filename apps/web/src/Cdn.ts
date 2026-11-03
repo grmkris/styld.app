@@ -1,9 +1,7 @@
-import type { Piece, PieceImages } from '@styld/protocol'
+import type { Piece, PieceImages, PieceTurn, Photo, PhotoGarment, Detection } from '@styld/protocol'
 
-// Where the edge serves stored pictures and videos (`/cdn/…`), one builder per kind, so the pages name what they show
-// rather than spelling paths. A version in the query asks for a new copy once the picture changes. A piece's pictures
-// are the signed addresses the API hands over with it (`Piece.images`): they need no session, so a screen of
-// thumbnails never reads the session or D1 once per picture.
+// Private media uses addresses supplied by the containing API response. Public media retains its visibility-checked
+// routes. No browser view constructs a session-backed private image address.
 
 type Size = 'thumb' | 'full'
 
@@ -20,15 +18,15 @@ export const cdn = {
   pieceById: (pieces: PieceImagesById, pieceId: string, size: Size = 'thumb') => pieces.get(pieceId)?.[size] ?? '',
   pieceBack: (piece: Piece) => piece.images?.back ?? '',
   pieceClean: (piece: Piece) => piece.images?.clean ?? '',
-  /** A piece's turn: its video, its first frame and its frame sheet. */
-  turn: (pieceId: string, part: 'video' | 'front' | 'sheet', version: number) =>
-    `/cdn/turns/${pieceId}/${part}?v=${version}`,
-  photo: (photoId: string, size: Size) => `/cdn/photos/${photoId}/${size}`,
-  photoGarment: (photoId: string, garmentId: string) => `/cdn/photos/${photoId}/garments/${garmentId}`,
-  /** A piece found in a capture: its cut-out, or the photo it came from. */
-  detection: (detectionId: string, cutout: boolean) =>
-    `/cdn/detections/${detectionId}/${cutout ? 'cutout' : 'original'}`,
-  boardImage: (imageId: string, size: Size = 'full') => `/cdn/boards/images/${imageId}/${size}`,
+  /** The API supplies private media addresses after authorizing the containing entity once. */
+  turn: (turn: PieceTurn | undefined, part: 'video' | 'front' | 'sheet') => turn?.media?.[part] ?? '',
+  photo: (photo: Photo, size: Size) => photo.images?.[size] ?? '',
+  photoGarment: (garment: PhotoGarment) => garment.image ?? '',
+  detection: (detection: Detection, cutout: boolean) => detection.images?.[cutout ? 'cutout' : 'original'] ?? '',
+  boardImage: (
+    picture: { readonly image?: { readonly thumb: string; readonly full: string } | undefined },
+    size: Size = 'full',
+  ) => picture.image?.[size] ?? '',
   /** What others see: served only while the page it is on is public. */
   publicPiece: (pieceId: string, size: Size = 'thumb') => `/cdn/public/pieces/${pieceId}/${size}`,
   publicPicture: (imageId: string, size: Size = 'full') => `/cdn/public/pictures/${imageId}/${size}`,

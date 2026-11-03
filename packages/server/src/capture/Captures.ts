@@ -1,3 +1,4 @@
+import { SignedMedia } from '../kernel/SignedMedia.ts'
 import { once } from '../kernel/Receipts.ts'
 import {
   CaptureId,
@@ -219,23 +220,43 @@ export const creating = Effect.map(Effect.context<CaptureServices>(), (context) 
   }, Effect.provide(context)),
 }))
 
-const detectionView = (row: DetectionRow, sightings: number) => ({
-  id: row.id,
-  // A garment the wardrobe already has is offered unticked: skipping it is the likelier choice.
-  preselected: row.preselected && row.duplicateOf === null,
-  hasCutout: row.cutoutKey !== null,
-  hasBack: row.backCutoutKey !== null,
-  sightings,
-  ...(row.duplicateOf === null ? {} : { alreadyHave: row.duplicateOf }),
-  // Under the bar for one whole garment (`verdictOf`), it was offered unticked as part of one.
-  partial: row.whole !== null && verdictOf(row.whole) !== 'preselect',
-  suggestion: {
-    type: row.suggestedType,
-    colours: row.suggestedColours,
-    season: row.suggestedSeason,
-    occasions: row.suggestedOccasions,
-    pattern: row.suggestedPattern,
-  },
+const detectionView = Effect.fnUntraced(function* (row: DetectionRow, sightings: number) {
+  const signed = yield* SignedMedia
+  const images: Record<string, string> = {}
+  for (const [which, key] of Object.entries({
+    cutout: row.cutoutKey ?? row.sourceKey,
+    original: row.sourceKey,
+    back: row.backCutoutKey,
+  })) {
+    if (key === null) continue
+    const address = yield* signed.address({
+      entityId: row.id,
+      key,
+      contentType: 'image/png',
+      variant: which === 'cutout' ? 'thumb' : 'full',
+      version: key,
+    })
+    if (Option.isSome(address)) images[which] = address.value
+  }
+  return {
+    id: row.id,
+    // A garment the wardrobe already has is offered unticked: skipping it is the likelier choice.
+    preselected: row.preselected && row.duplicateOf === null,
+    hasCutout: row.cutoutKey !== null,
+    hasBack: row.backCutoutKey !== null,
+    sightings,
+    ...(row.duplicateOf === null ? {} : { alreadyHave: row.duplicateOf }),
+    // Under the bar for one whole garment (`verdictOf`), it was offered unticked as part of one.
+    partial: row.whole !== null && verdictOf(row.whole) !== 'preselect',
+    suggestion: {
+      type: row.suggestedType,
+      colours: row.suggestedColours,
+      season: row.suggestedSeason,
+      occasions: row.suggestedOccasions,
+      pattern: row.suggestedPattern,
+    },
+    ...(Object.keys(images).length === 0 ? {} : { images }),
+  }
 })
 
 /** The tray's cards: one for each garment, shown by the sighting that shows it best, with how often the import saw
@@ -253,7 +274,7 @@ const trayCards = (open: {
     const cards = own.filter((row) => !hidden(row))
     return own.length > 0 && cards.length === 0 && capture.status !== 'processing'
       ? []
-      : [{ capture, detections: cards.map((row) => detectionView(row, sightings(row))) }]
+      : [{ capture, detections: cards.map((row) => ({ row, sightings: sightings(row) })) }]
   })
 }
 
@@ -264,15 +285,20 @@ export const reading = Effect.map(Effect.context<CaptureServices>(), (context) =
     const open = yield* storedAs((yield* CaptureStore).tray(accountId))
     const remaining = yield* (yield* Holds).remaining(accountId)
     // Only the service writes these rows, through the same schemas; a row that does not decode is a bug.
+    const captures = yield* Effect.forEach(trayCards(open), ({ capture, detections }) =>
+      Effect.gen(function* () {
+        return {
+          id: capture.id,
+          // The tray tells only how a person added something: a garment offered from an outfit photo shows as picked.
+          source: capture.source === 'photos' ? 'picker' : capture.source,
+          status: capture.status,
+          createdAt: capture.createdAt.toISOString(),
+          detections: yield* Effect.forEach(detections, ({ row, sightings }) => detectionView(row, sightings)),
+        }
+      }),
+    )
     return yield* Schema.decodeUnknownEffect(Tray)({
-      captures: trayCards(open).map(({ capture, detections }) => ({
-        id: capture.id,
-        // The tray tells only how a person added something: a garment offered from an outfit photo shows as picked.
-        source: capture.source === 'photos' ? 'picker' : capture.source,
-        status: capture.status,
-        createdAt: capture.createdAt.toISOString(),
-        detections,
-      })),
+      captures,
       allowance: { remaining, daily: dailyCredits },
     }).pipe(Effect.orDie)
   }, Effect.provide(context)),

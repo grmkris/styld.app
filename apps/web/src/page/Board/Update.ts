@@ -135,7 +135,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     EndedFileDrag: () => ({ model: modifyFields(model, { isDropping: () => false }) }),
     ClickedPaste: () => ({ model: modifyFields(model, { isPasting: () => true }), commands: [ReadClipboard()] }),
     CompletedReadClipboard: ({ files }) => picturesChosen(model, files),
-    SucceededAddImage: ({ imageId }) => addedImage(model, imageId),
+    SucceededAddImage: ({ imageId, image }) => addedImage(model, imageId, image),
     FailedAddImage: ({ problem }) => imageFailed(model, problem),
     ...pageSteps(model),
     ClickedSaveLook: () => lookRequested(model),

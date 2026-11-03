@@ -237,6 +237,8 @@ const pinWrites = (db: Database) => ({
 })
 
 const imageRows = (db: Database) => ({
+  imagesById: (imageIds: ReadonlyArray<string>) =>
+    inChunks(imageIds, (chunk) => db.select().from(boardImages).where(inArray(boardImages.id, chunk))),
   /** Which of these pictures are on the board. */
   imagesOn: (boardId: string, imageIds: ReadonlyArray<string>) =>
     Effect.map(

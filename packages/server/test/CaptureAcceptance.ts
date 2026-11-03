@@ -1,3 +1,4 @@
+import { verifySignedImage } from './SignedMediaAcceptance.ts'
 import { readFileSync } from 'node:fs'
 import { expect } from 'bun:test'
 import { dailyCredits } from '@styld/protocol'
@@ -41,6 +42,11 @@ const Tray = Schema.Struct({
           preselected: Schema.Boolean,
           hasCutout: Schema.Boolean,
           hasBack: Schema.Boolean,
+          images: Schema.Struct({
+            cutout: Schema.String,
+            original: Schema.String,
+            back: Schema.optionalKey(Schema.String),
+          }),
         }),
       ),
     }),
@@ -91,12 +97,8 @@ const verifyPhoto = async (origin: string, owner: Call, other: Call) => {
   // The native pipeline cuts the photo out as it is, of a kind it cannot tell: offered unticked.
   expect(capture).toMatchObject({ status: 'review', detections: [{ preselected: false, hasCutout: true }] })
   const detectionId = capture.detections[0]?.id ?? ''
-  const picture = await owner(`/cdn/detections/${detectionId}/cutout`)
-  expect(picture.status).toBe(200)
-  expect(picture.headers.get('content-type')).toBe('image/png')
-  expect(picture.headers.get('cache-control')).toContain('private')
-
-  // Another account sees nothing of it and cannot decide it.
+  await verifySignedImage(origin, capture.detections[0]?.images.cutout ?? '')
+  // Old session-backed routes are gone. Another account's tray remains empty.
   expect((await other(`/cdn/detections/${detectionId}/cutout`)).status).toBe(404)
   expect((await tray(other)).captures).toEqual([])
   const keep = { detectionId, type: 'tops', colours: ['red'], name: 'Red tee' }
@@ -215,10 +217,8 @@ const verifyPairing = async (origin: string, fixtures: string, call: Call) => {
   const current = await paired(call, [front.captureId, second.captureId])
   expect(current.captures.map(({ id }) => id).toSorted()).toEqual([front.captureId, second.captureId].toSorted())
   expect(current.allowance.remaining).toBe(nativeDailyAllowance - 4)
-  const detectionId = current.captures.find(({ id }) => id === front.captureId)?.detections[0]?.id ?? ''
-  const picture = await call(`/cdn/detections/${detectionId}/back`)
-  expect(picture.status).toBe(200)
-  expect(new Uint8Array(await picture.arrayBuffer())).toEqual(fixture('green-shirt.png'))
+  const detection = current.captures.find(({ id }) => id === front.captureId)?.detections[0]
+  await verifySignedImage(origin, detection?.images.back ?? '')
 
   for (const [shotFront, shotBack] of [
     [front, back],

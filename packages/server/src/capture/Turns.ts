@@ -15,11 +15,11 @@ import {
 } from '@styld/imaging'
 import { CurrentAccount, NotFound, prices, SheetRefused, type TurnLayout, TurnRefused } from '@styld/protocol'
 import { Effect, Match, Option, Schema } from 'effect'
-import { turnView } from '../wardrobe/Shown.ts'
+import { shownTurn } from '../wardrobe/Images.ts'
 import { turnKept } from './CleanPicture.ts'
 import { judgedAt } from './Garments.ts'
 import { hanger } from './Hanger.ts'
-import { enqueueTurn, readObject, readPixels, storedAs, turnKey, unavailable, writeObject } from './Shared.ts'
+import { enqueueTurn, readPixels, storedAs, turnKey, unavailable, writeObject } from './Shared.ts'
 import { capturePolicy } from './Policy.ts'
 import { type Picture, type TurnStatus } from './Providers.ts'
 import type { PictureRow, TurnRow, TurnState } from './Store.ts'
@@ -49,11 +49,6 @@ const jpegOf = (picture: Rgba) =>
     const bytes = yield* (yield* PictureWork).jpeg(encodePng(picture))
     return { bytes, contentType: 'image/jpeg' } satisfies Picture
   }).pipe(Effect.orElseSucceed(() => pngPicture(picture)))
-
-interface TurnVideo {
-  readonly bytes: Uint8Array
-  readonly contentType: 'video/mp4'
-}
 
 const ends = ['ready', 'rejected', 'failed'] as const
 const hasEnded = (state: TurnState): state is (typeof ends)[number] => ends.some((end) => end === state)
@@ -263,7 +258,7 @@ const acceptSheet = (pieceId: string, layout: TurnLayout, bytes: Uint8Array) =>
     const { accountId } = yield* CurrentAccount
     const turn = yield* storedAs((yield* WardrobeStore).turnOf(accountId, pieceId))
     if (Option.isNone(turn)) return yield* NotFound.make({})
-    if (turn.value.state !== 'video-ready') return turnView(turn.value, yield* nowDate)
+    if (turn.value.state !== 'video-ready') return yield* shownTurn(turn.value, yield* nowDate)
     const { sheet, clean } = yield* sheetAndFront(pieceId, layout, bytes)
     // A check the decision model cannot answer nowDate leaves the turn waiting for the same sheet again.
     const { kept, scores } = yield* checked(sheet, layout, clean).pipe(Effect.mapError(unavailable))
@@ -276,7 +271,7 @@ const acceptSheet = (pieceId: string, layout: TurnLayout, bytes: Uint8Array) =>
     yield* move(pieceId, ['video-ready'], { state: kept ? 'ready' : 'rejected', ...(kept ? { layout } : {}) })
     yield* settleTurn(pieceId)
     const settled = yield* storedAs((yield* CaptureStore).findTurn(pieceId))
-    return turnView(
+    return yield* shownTurn(
       Option.getOrElse(settled, () => turn.value),
       yield* nowDate,
     )
@@ -348,14 +343,8 @@ const replayedTurn = (accountId: string, pieceId: string) =>
     const turn = yield* storedAs((yield* WardrobeStore).turnOf(accountId, pieceId))
     if (Option.isNone(turn)) return yield* NotFound.make({})
     if (turn.value.state === 'requested') yield* enqueueTurn(pieceId)
-    return turnView(turn.value, yield* nowDate)
+    return yield* shownTurn(turn.value, yield* nowDate)
   })
-
-const files = {
-  video: { name: 'turn.mp4', contentType: 'video/mp4' },
-  front: { name: 'front.png', contentType: 'image/png' },
-  sheet: { name: 'sheet.png', contentType: 'image/png' },
-} as const
 
 /** The owner's request for a turn, and the files it makes. */
 export const askingTurns = Effect.map(Effect.context<CaptureServices>(), (context) => ({
@@ -377,16 +366,6 @@ export const askingTurns = Effect.map(Effect.context<CaptureServices>(), (contex
       },
     )
   }, Effect.provide(context)),
-  /** One of a turn's files for its owner: the video the browser cuts into frames, the front frame the turn ends on,
-   * or the frame sheet the piece page plays. */
-  turnFile: Effect.fn('Styld.Turn.file')(function* (pieceId: string, which: keyof typeof files) {
-    const { accountId } = yield* CurrentAccount
-    const turn = yield* storedAs((yield* WardrobeStore).turnOf(accountId, pieceId))
-    if (Option.isNone(turn) || turn.value.state === 'requested') return Option.none<Picture | TurnVideo>()
-    const file = files[which]
-    const bytes = yield* readObject(turnKey(accountId, pieceId, file.name))
-    return Option.map(bytes, (stored) => ({ bytes: stored, contentType: file.contentType }))
-  }, Effect.provide(context)),
   /** Turn a piece's clean picture on its hanger, for credits held until the turn ends: consumed for one the owner can
    * play, refunded otherwise. A new turn replaces the last; repeating an operation id answers the first request. */
   makeTurn: Effect.fn('Styld.Turn.ask')(function* (pieceId: string, operationId: string) {
@@ -397,7 +376,7 @@ export const askingTurns = Effect.map(Effect.context<CaptureServices>(), (contex
       const current = yield* storedAs((yield* CaptureStore).findTurn(pieceId))
       if (Option.isSome(current) && !hasEnded(current.value.state)) return yield* TurnRefused.make({ reason: 'busy' })
       const at = yield* nowDate
-      return [turnView(yield* queueTurn({ accountId, pieceId }, current, at), at), pieceId] as const
+      return [yield* shownTurn(yield* queueTurn({ accountId, pieceId }, current, at), at), pieceId] as const
     })
     return yield* once(
       yield* WardrobeStore,

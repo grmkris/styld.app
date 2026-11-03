@@ -146,11 +146,11 @@ export const AddImage = Command.define('AddImage', {
       const uploadId = yield* uploadPicture(file)
       const api = yield* (yield* StyldClient).api
       const operationId = yield* drawOperationId()
-      const { imageId } = yield* api.board.addBoardImage({
+      const image = yield* api.board.addBoardImage({
         params: { boardId: yield* boardIdOf(boardId) },
         payload: { operationId, uploadId },
       })
-      return Message.SucceededAddImage({ imageId })
+      return Message.SucceededAddImage(image)
     }).pipe(
       Effect.catchIf(
         (error) =>

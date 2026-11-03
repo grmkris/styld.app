@@ -387,6 +387,8 @@ const shownPicture = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
       ...styled(h, styles.photo()),
     ])
   if (turn?.state !== 'ready' || turn.layout === undefined || piece.picture?.shows !== 'clean') return still(false)
+  const sheet = turn.media?.sheet
+  if (sheet === undefined) return still(false)
   // The still stays under the player until its sheet has loaded and drawn its first frame.
   return h.div(styled(h, styles.turnStack()), [
     model.turnShown ? h.empty : still(true),
@@ -401,7 +403,7 @@ const shownPicture = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
         h.canvas([
           h.Role('img'),
           h.AriaLabel(pieceLabel(piece, locale)),
-          h.OnMount(ShowTurn({ pieceId: piece.id, version: turn.version, layout: turn.layout })),
+          h.OnMount(ShowTurn({ sheet, layout: turn.layout })),
           ...styled(h, styles.photo()),
         ]),
       ],

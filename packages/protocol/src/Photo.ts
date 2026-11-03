@@ -33,6 +33,7 @@ export const PhotoGarment = Schema.Struct({
   colours: Schema.Array(Colour),
   match: GarmentMatch,
   pieceId: Schema.NullOr(PieceId),
+  image: Schema.optionalKey(Schema.String),
 })
 export type PhotoGarment = typeof PhotoGarment.Type
 
@@ -44,6 +45,7 @@ export const Photo = Schema.Struct({
   garments: Schema.Array(PhotoGarment),
   lookId: Schema.NullOr(LookId),
   hasCutout: Schema.Boolean,
+  images: Schema.optionalKey(Schema.Struct({ thumb: Schema.String, full: Schema.String })),
   createdAt: Schema.String,
 })
 export type Photo = typeof Photo.Type

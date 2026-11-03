@@ -23,10 +23,8 @@ import type { CaptureRow, DetectionRow } from '../capture/Store.ts'
 import { Boards } from '../boards/Boards.ts'
 import { Looks } from '../looks/Looks.ts'
 import { receivedUpload } from '../mcp/ImageImport.ts'
-import { deliverImage } from '../wardrobe/Delivery.ts'
+import { imageAddresses, SignedMedia } from '../kernel/SignedMedia.ts'
 import { accountPiece, usableUpload as wardrobeUpload } from '../wardrobe/Shared.ts'
-import type { ShownImage } from '../wardrobe/Http.ts'
-import type { ImageSize } from '../wardrobe/Media.ts'
 import { cutOutPerson } from './Cutout.ts'
 import { finding, type PhotoServices, photoHold, photoPrefix } from './Finding.ts'
 import { PieceQueue } from '../wardrobe/Processing.ts'
@@ -46,24 +44,45 @@ import { Holds } from '../usage/Holds.ts'
 
 /** A stored photo as the protocol shows it. A confirmed garment whose piece was deleted shows as unmatched. Only the
  * service writes rows, through the same schemas; one that does not decode is a bug. */
-const toPhoto = (row: PhotoRow, garments: ReadonlyArray<GarmentRow>) =>
-  Schema.decodeUnknownEffect(Photo)({
+const toPhoto = Effect.fnUntraced(function* (row: PhotoRow, garments: ReadonlyArray<GarmentRow>) {
+  const images = yield* imageAddresses({
+    entityId: row.id,
+    key: row.originalKey,
+    contentType: row.contentType,
+    version: String(row.updatedAt.getTime()),
+  })
+  const shownGarments = yield* Effect.forEach(
+    garments.filter(({ photoId }) => photoId === row.id),
+    (garment) =>
+      Effect.gen(function* () {
+        const image = yield* (yield* SignedMedia).address({
+          entityId: garment.id,
+          key: garment.cutoutKey,
+          contentType: 'image/png',
+          variant: 'thumb',
+          version: garment.cutoutKey,
+        })
+        return {
+          id: garment.id,
+          type: garment.type,
+          colours: garment.colours,
+          match: garment.pieceId === null && garment.state !== 'offered' ? 'unmatched' : garment.state,
+          pieceId: garment.pieceId,
+          ...Option.match(image, { onNone: () => ({}), onSome: (address) => ({ image: address }) }),
+        }
+      }),
+  )
+  return yield* Schema.decodeUnknownEffect(Photo)({
     id: row.id,
     status: row.status,
     favourite: row.favourite,
-    garments: garments
-      .filter(({ photoId }) => photoId === row.id)
-      .map((garment) => ({
-        id: garment.id,
-        type: garment.type,
-        colours: garment.colours,
-        match: garment.pieceId === null && garment.state !== 'offered' ? 'unmatched' : garment.state,
-        pieceId: garment.pieceId,
-      })),
+    garments: shownGarments,
     lookId: row.lookId,
     hasCutout: row.cutoutKey !== null,
     createdAt: row.createdAt.toISOString(),
+    ...Option.match(images, { onNone: () => ({}), onSome: (addresses) => ({ images: addresses }) }),
   }).pipe(Effect.orDie)
+})
 
 /** Photos as the protocol shows them, each with its garments. */
 const photosOf = (rows: ReadonlyArray<PhotoRow>) =>
@@ -365,26 +384,6 @@ const showing = Effect.map(Effect.context<PhotoServices>(), (context) => ({
     const { accountId } = yield* CurrentAccount
     yield* ownPiece(accountId, pieceId)
     return yield* photosOf(yield* storedAs((yield* PhotoStore).photosOfPiece(accountId, pieceId)))
-  }, Effect.provide(context)),
-  /** One of the account's photos, resized: none when it is not theirs or is gone. */
-  photoImage: Effect.fn('Styld.Photos.image')(function* (photoId: string, size: ImageSize) {
-    const { accountId } = yield* CurrentAccount
-    const photo = yield* storedAs((yield* PhotoStore).findPhoto(accountId, photoId))
-    if (Option.isNone(photo)) return Option.none<ShownImage>()
-    const { originalKey: key, contentType } = photo.value
-    const image = yield* deliverImage(yield* Media, { key, contentType }, size).pipe(Effect.mapError(unavailable))
-    return Option.map(image, (delivered): ShownImage => ({ ...delivered, version: `${photoId}.${size}` }))
-  }, Effect.provide(context)),
-  /** A garment found in one of the account's photos, at the grid's size. */
-  garmentImage: Effect.fn('Styld.Photos.garmentImage')(function* (photoId: string, garmentId: string) {
-    const { accountId } = yield* CurrentAccount
-    if (Option.isNone(yield* storedAs((yield* PhotoStore).findPhoto(accountId, photoId))))
-      return Option.none<ShownImage>()
-    const garment = (yield* storedAs((yield* PhotoStore).garmentsOf([photoId]))).find(({ id }) => id === garmentId)
-    if (garment === undefined) return Option.none<ShownImage>()
-    const stored = { key: garment.cutoutKey, contentType: 'image/png' }
-    const image = yield* deliverImage(yield* Media, stored, 'thumb').pipe(Effect.mapError(unavailable))
-    return Option.map(image, (delivered): ShownImage => ({ ...delivered, version: garmentId }))
   }, Effect.provide(context)),
 }))
 

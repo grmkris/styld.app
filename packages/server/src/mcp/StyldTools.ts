@@ -1,3 +1,5 @@
+import { Media } from '../kernel/Media.ts'
+import type { ImageBindings } from '../wardrobe/Delivery.ts'
 import { prices } from '@styld/protocol'
 import { Context, Effect, Layer, Schema } from 'effect'
 import { creditsText, tool } from './Tools.ts'
@@ -35,6 +37,7 @@ export const instructions = [
 
 /** The services the tools project. */
 export interface ToolServices {
+  readonly media: ImageBindings
   readonly wardrobe: Wardrobe['Service']
   readonly links: Links['Service']
   readonly looks: Looks['Service']
@@ -57,6 +60,7 @@ export type AssistantTools = ReturnType<typeof styldTools>
 export const styldTools = (
   origin: string,
   {
+    media,
     wardrobe,
     links,
     looks,
@@ -79,7 +83,7 @@ export const styldTools = (
     handler: () => accounts.readAccount().pipe(Effect.map((account) => ({ ...account, url: `${origin}/account` }))),
   }),
   ...wardrobeTools(wardrobe, links, origin),
-  ...viewTools(wardrobe, boards, origin),
+  ...viewTools(wardrobe, boards, origin, media),
   ...lookTools(looks, origin),
   ...outfitTools(outfits),
   ...pictureTools(captures, origin),
@@ -100,6 +104,7 @@ export class AssistantToolset extends Context.Service<AssistantToolset, Assistan
     Effect.gen(function* () {
       const { origin } = yield* Deployment
       return styldTools(origin, {
+        media: yield* Media,
         wardrobe: yield* Wardrobe,
         links: yield* Links,
         looks: yield* Looks,

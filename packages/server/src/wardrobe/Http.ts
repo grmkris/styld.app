@@ -1,18 +1,9 @@
-import {
-  maximumImageBytes,
-  maximumVideoBytes,
-  CurrentAccount,
-  StyldApi,
-  UploadId,
-  UploadRefused,
-  type Unavailable,
-} from '@styld/protocol'
+import { maximumImageBytes, maximumVideoBytes, StyldApi, UploadId, UploadRefused } from '@styld/protocol'
 import { Effect, Layer, Option, Schema } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
 import * as HttpRouter from 'effect/http/HttpRouter'
 import * as HttpServerRequest from 'effect/http/HttpServerRequest'
 import * as HttpServerResponse from 'effect/http/HttpServerResponse'
-import { type AuthHttp, sessionCookieAccount } from '../AuthHttp.ts'
 import type { DeliveredImage } from './Delivery.ts'
 import { signedImage } from './SignedImage.ts'
 import { Wardrobe } from './Wardrobe.ts'
@@ -87,42 +78,8 @@ const receiveUpload = Effect.gen(function* () {
   })
 })
 
-/** An image a route shows, and the version its ETag names. */
+/** An image a public route shows, and the version its ETag names. */
 export type ShownImage = DeliveredImage & { readonly version: string }
-
-/** A `GET` route that shows an image to its owner only, through the website's session cookie: 401 signed
- * out, and 404 for another account's image, like a missing one. */
-export const ownerImage = <A, I extends Readonly<Record<string, string | undefined>>>(
-  auth: AuthHttp,
-  target: Schema.ConstraintCodec<A, I, never, unknown>,
-  find: (target: A) => Effect.Effect<Option.Option<ShownImage>, Unavailable, CurrentAccount>,
-) =>
-  Effect.gen(function* () {
-    const account = yield* sessionCookieAccount(auth)
-    return Effect.gen(function* () {
-      const accountId = yield* account
-      if (Option.isNone(accountId)) return HttpServerResponse.empty({ status: 401 })
-      const params = yield* HttpRouter.schemaPathParams(target).pipe(Effect.option)
-      if (Option.isNone(params)) return HttpServerResponse.empty({ status: 404 })
-      const request = yield* HttpServerRequest.HttpServerRequest
-      return yield* find(params.value).pipe(
-        Effect.provideService(CurrentAccount, { accountId: accountId.value, via: 'session' }),
-        Effect.map(
-          Option.match({
-            onNone: () => HttpServerResponse.empty({ status: 404 }),
-            onSome: ({ body, contentType, version }) => {
-              const etag = `"${version}"`
-              // Revalidated every time: a processed photo replaces the image behind the same address.
-              const headers = { etag, 'cache-control': 'private, no-cache', vary: 'Cookie' }
-              return request.headers['if-none-match'] === etag
-                ? HttpServerResponse.empty({ status: 304, headers })
-                : HttpServerResponse.raw(body, { status: 200, contentType, headers })
-            },
-          }),
-        ),
-      )
-    }).pipe(Effect.catchTag('Unavailable', () => Effect.succeed(HttpServerResponse.empty({ status: 503 }))))
-  })
 
 /** The wardrobe's routes outside the typed API: photo uploads and owner-only pictures by signed address. */
 export const wardrobeRoutes = Layer.mergeAll(

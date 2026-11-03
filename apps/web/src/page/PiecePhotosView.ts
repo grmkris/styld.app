@@ -33,7 +33,7 @@ export const view = Submodel.defineView<Model, Message, { readonly locale: Local
                         [h.Href(photoRouter({ photoId: photo.id })), ...styled(h, styles.tile())],
                         [
                           h.img([
-                            h.Src(cdn.photo(photo.id, 'thumb')),
+                            h.Src(cdn.photo(photo, 'thumb')),
                             h.Alt(''),
                             h.Loading('lazy'),
                             ...styled(h, styles.tileImage()),

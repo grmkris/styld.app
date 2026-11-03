@@ -152,7 +152,7 @@ const pictures = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
                 ],
                 [
                   h.img([
-                    h.Src(boardImage(pin.imageId, 'thumb')),
+                    h.Src(boardImage(pin, 'thumb')),
                     h.Alt(''),
                     h.Loading('lazy'),
                     ...styled(h, pickerStyles.image()),

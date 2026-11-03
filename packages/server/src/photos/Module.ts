@@ -1,12 +1,11 @@
 import { Effect, Layer } from 'effect'
-import { withAuth } from '../AuthHttp.ts'
 import { CaptureStore } from '../capture/Store.ts'
 import { moving } from '../jobs/Sweeps.ts'
 import { module } from '../kernel/Module.ts'
 import { social } from '../social/Module.ts'
 import { wardrobe } from '../wardrobe/Module.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
-import { photoHandlers, photoRoutes } from './Http.ts'
+import { photoHandlers } from './Http.ts'
 import { Photos } from './Photos.ts'
 import { PhotoStore } from './Store.ts'
 
@@ -17,7 +16,6 @@ export const photos = module({
     Layer.provide([PhotoStore.layer, CaptureStore.layer, WardrobeStore.layer, social.layer, wardrobe.layer]),
   ),
   api: photoHandlers,
-  routes: withAuth(photoRoutes),
   sweeps: [
     moving(
       'photos',

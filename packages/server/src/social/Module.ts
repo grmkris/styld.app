@@ -2,7 +2,7 @@ import { Effect, Layer } from 'effect'
 import { withAuth } from '../AuthHttp.ts'
 import { Boards } from '../boards/Boards.ts'
 import { BoardStore } from '../boards/Store.ts'
-import { boardHandlers, boardRoutes } from '../boards/Http.ts'
+import { boardHandlers } from '../boards/Http.ts'
 import { consumer } from '../jobs/Jobs.ts'
 import { module } from '../kernel/Module.ts'
 import { lookHandlers } from '../looks/Http.ts'
@@ -40,7 +40,7 @@ export const social = module({
     socialHandlers,
     withAuth(publicHandlers),
   ),
-  routes: Layer.mergeAll(withAuth(boardRoutes), publicImageRoutes),
+  routes: publicImageRoutes,
   consumers: [consumer(checkJobQueue, Effect.map(Checks, checkJobs))],
   sweeps: [{ name: 'checks', run: Effect.flatMap(Checks, (checks) => checks.sweep()) }],
 })

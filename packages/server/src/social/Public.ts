@@ -96,7 +96,7 @@ const publicItems = (seen: Seen, items: ReadonlyArray<BoardItemRow>, held: Reado
   items
     .filter((item) => item.kind !== 'piece' || (item.pieceId !== null && seen.pieces.has(item.pieceId)))
     .filter((item) => item.kind !== 'image' || item.imageId === null || !held.has(item.imageId))
-    .map(shownItem)
+    .map((item) => shownItem(item))
 
 /** The stores and checks public pages read through, provided once by the `PublicPages` layer. */
 type PublicServices = Database | PublicStore | BoardStore | LookStore | SocialStore | Checks | Media

@@ -1,12 +1,11 @@
 import { Effect, Layer } from 'effect'
-import { withAuth } from '../AuthHttp.ts'
 import { before, moving, type Sweep, unbuiltAfter } from '../jobs/Sweeps.ts'
 import type { Database } from '../kernel/Db.ts'
 import { module } from '../kernel/Module.ts'
 import type { GarmentSegmenter } from './Providers.ts'
 import { social } from '../social/Module.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
-import { captureHandlers, captureRoutes } from './Http.ts'
+import { captureHandlers } from './Http.ts'
 import { providerFileSweep } from './ProviderFiles.ts'
 import { Captures } from './Service.ts'
 import { CaptureStore } from './Store.ts'
@@ -35,6 +34,5 @@ const sweeps: ReadonlyArray<Sweep<Captures | Database | GarmentSegmenter>> = [
 export const capture = module({
   layer: Captures.layer.pipe(Layer.provide([CaptureStore.layer, WardrobeStore.layer, social.layer])),
   api: captureHandlers,
-  routes: withAuth(captureRoutes),
   sweeps,
 })

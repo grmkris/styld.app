@@ -6,7 +6,7 @@ import { processing } from './Processing.ts'
 import { picturing } from './Pictures.ts'
 import { redrawing } from './Redraw.ts'
 import { askingTurns, turning } from './Turns.ts'
-import { detectionPictures, reviewing } from './Review.ts'
+import { reviewing } from './Review.ts'
 
 /** Every capture operation, each group built over the services it yields (`Shared.ts` `CaptureServices`): the
  * application's database, media and piece queue, the providers, credits, pacing and call counter. Callers provide only
@@ -17,7 +17,6 @@ const make = Effect.gen(function* () {
     ...(yield* reading),
     ...(yield* retrying),
     ...(yield* reviewing),
-    ...(yield* detectionPictures),
     ...(yield* processing),
     ...(yield* matching),
     ...(yield* picturing),

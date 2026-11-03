@@ -92,6 +92,13 @@ export const Detection = Schema.Struct({
   alreadyHave: Schema.optionalKey(PieceId),
   /** Only part of the garment shows: it needs a better look, held up or laid out, before it can be drawn. */
   partial: Schema.Boolean,
+  images: Schema.optionalKey(
+    Schema.Struct({
+      cutout: Schema.optionalKey(Schema.String),
+      original: Schema.optionalKey(Schema.String),
+      back: Schema.optionalKey(Schema.String),
+    }),
+  ),
 })
 export type Detection = typeof Detection.Type
 

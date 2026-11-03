@@ -6,7 +6,7 @@ import { OfferedRows } from '../capture/Rows.ts'
 import type { CaptureRow, DetectionRow } from '../capture/Store.ts'
 import { type ReceiptRow, spendUpload, UploadRows } from '../wardrobe/Store.ts'
 import { forgetReceipt } from '../kernel/Receipts.ts'
-import { Database, first, query } from '../kernel/Db.ts'
+import { Database, first, inChunks, query } from '../kernel/Db.ts'
 
 export type PhotoRow = typeof outfitPhotos.$inferSelect
 export type GarmentRow = typeof photoGarments.$inferSelect
@@ -64,15 +64,9 @@ const reads = (db: Db) => ({
         .limit(mostListed),
     ).pipe(Effect.map((rows) => rows.map(({ photo }) => photo))),
   garmentsOf: (photoIds: ReadonlyArray<string>) =>
-    photoIds.length === 0
-      ? Effect.succeed<ReadonlyArray<GarmentRow>>([])
-      : query(() =>
-          db
-            .select()
-            .from(photoGarments)
-            .where(inArray(photoGarments.photoId, [...photoIds]))
-            .orderBy(asc(photoGarments.position)),
-        ),
+    inChunks(photoIds, (chunk) =>
+      db.select().from(photoGarments).where(inArray(photoGarments.photoId, chunk)).orderBy(asc(photoGarments.position)),
+    ),
 })
 
 /** Changing photos and their garments. */

@@ -290,34 +290,32 @@ export const MakeTurn = Command.define('MakeTurn', {
 /** Cut the turn's video into its frame sheet here, loading the video code only then, and hand the sheet to Styld.
  */
 export const BuildTurnSheet = Command.define('BuildTurnSheet', {
-  args: { pieceId: Schema.String, version: Schema.Number },
+  args: { pieceId: Schema.String, turn: PieceTurn },
   messages: [Message.SucceededBuildTurnSheet, Message.FailedBuildTurnSheet],
-  execute: ({ pieceId, version }) =>
+  execute: ({ pieceId, turn }) =>
     Effect.gen(function* () {
       const { buildSheet } = yield* Effect.tryPromise(() => import('../turn/BuildSheet.ts'))
       const client = yield* StyldClient
-      const video = yield* client.readFile(cdn.turn(pieceId, 'video', version))
-      const front = yield* client.readFile(cdn.turn(pieceId, 'front', version))
+      const video = yield* client.readFile(cdn.turn(turn, 'video'))
+      const front = yield* client.readFile(cdn.turn(turn, 'front'))
       const built = yield* buildSheet(new Blob([new Uint8Array(video)], { type: 'video/mp4' }), front)
       const payload = { operationId: yield* drawOperationId(), ...built }
-      const turn = yield* (yield* client.api).capture.turnSheet({
+      const result = yield* (yield* client.api).capture.turnSheet({
         params: { pieceId: yield* pieceIdOf(pieceId) },
         payload,
       })
-      return Message.SucceededBuildTurnSheet({ turn })
+      return Message.SucceededBuildTurnSheet({ turn: result })
     }).pipe(Effect.orElseSucceed(() => Message.FailedBuildTurnSheet())),
 })
 
 /** Play a ready turn on the canvas it is mounted on, loading the player only then. */
 export const ShowTurn = Mount.define('ShowTurn', {
-  args: { pieceId: Schema.String, version: Schema.Number, layout: TurnLayout },
+  args: { sheet: Schema.String, layout: TurnLayout },
   messages: [Message.ShowedTurn],
-  execute: ({ element, pieceId, version, layout }) =>
+  execute: ({ element, sheet, layout }) =>
     Effect.tryPromise(() => import('../turn/Player.ts')).pipe(
       Effect.flatMap(({ playTurn }) =>
-        element instanceof HTMLCanvasElement
-          ? playTurn(element, cdn.turn(pieceId, 'sheet', version), layout)
-          : Effect.void,
+        element instanceof HTMLCanvasElement ? playTurn(element, sheet, layout) : Effect.void,
       ),
       Effect.ignore,
       Effect.as(Message.ShowedTurn()),
@@ -404,7 +402,7 @@ const shown = (model: Model, piece: Piece): UpdateReturn => {
   return build && piece.turn !== undefined
     ? {
         model: modifyFields(next, { turnWork: () => TurnWork.Building() }),
-        commands: [BuildTurnSheet({ pieceId: piece.id, version: piece.turn.version })],
+        commands: [BuildTurnSheet({ pieceId: piece.id, turn: piece.turn })],
       }
     : { model: next }
 }

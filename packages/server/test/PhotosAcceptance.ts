@@ -1,3 +1,4 @@
+import { verifySignedImage } from './SignedMediaAcceptance.ts'
 import { expect } from 'bun:test'
 import { Schema } from 'effect'
 import { idOf } from './GalleryAcceptance.ts'
@@ -12,8 +13,14 @@ const Photo = Schema.Struct({
   status: Schema.String,
   favourite: Schema.Boolean,
   hasCutout: Schema.Boolean,
+  images: Schema.Struct({ thumb: Schema.String, full: Schema.String }),
   garments: Schema.Array(
-    Schema.Struct({ id: Schema.String, match: Schema.String, pieceId: Schema.NullOr(Schema.String) }),
+    Schema.Struct({
+      id: Schema.String,
+      match: Schema.String,
+      pieceId: Schema.NullOr(Schema.String),
+      image: Schema.String,
+    }),
   ),
 })
 type Photo = typeof Photo.Type
@@ -81,15 +88,14 @@ const verifyMatching = async (origin: string, owner: Call, other: Call, photo: P
   expect((await photoOf(await send(owner, `/api/photos/${photo.id}`, 'PATCH', { favourite: true }))).favourite).toBe(
     true,
   )
-  expect((await owner(`/cdn/photos/${photo.id}/thumb`)).status).toBe(200)
-  expect((await owner(`/cdn/photos/${photo.id}/garments/${garment.id}`)).status).toBe(200)
+  await verifySignedImage(origin, photo.images.thumb)
+  await verifySignedImage(origin, garment.image)
   expect((await other(`/api/photos/${photo.id}`)).status).toBe(404)
-  expect((await other(`/cdn/photos/${photo.id}/thumb`)).status).toBe(404)
   expect((await send(other, `/api/photos/${photo.id}`, 'DELETE')).status).toBe(404)
-  expect((await fetch(`${origin}/cdn/photos/${photo.id}/thumb`)).status).toBe(401)
+  expect((await fetch(`${origin}/cdn/photos/${photo.id}/thumb`)).status).toBe(404)
   expect((await send(owner, `/api/photos/${photo.id}`, 'DELETE')).status).toBe(204)
   expect((await owner(`/api/photos/${photo.id}`)).status).toBe(404)
-  expect((await owner(`/cdn/photos/${photo.id}/thumb`)).status).toBe(404)
+  expect((await fetch(new URL(photo.images.full, origin))).status).toBe(404)
   const after = Schema.decodeUnknownSync(Photos)(await (await owner(`/api/pieces/${pieceId}/photos`)).json())
   expect(after.photos).toHaveLength(0)
 }

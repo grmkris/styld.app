@@ -262,14 +262,14 @@ describe('the piece page', () => {
     const turned = {
       ...jeans,
       picture: { state: 'ready', shows: 'clean', version: 1 },
-      turn: { state: 'ready', version: 9, layout },
+      turn: { state: 'ready', version: 9, layout, media: { sheet: '/test/turn-sheet.png' } },
     } as const
     scene(
       { update, view },
       given(piecePage(PieceData.Success({ data: turned }))),
       expect(role('button', { name: 'Turn it' })).toExist(),
       expect(text('Tap the picture to turn it.')).toExist(),
-      Mount.expectExact(ShowTurn({ pieceId: turned.id, version: 9, layout })),
+      Mount.expectExact(ShowTurn({ sheet: '/test/turn-sheet.png', layout })),
       Mount.resolve(ShowTurn, PieceMessage.ShowedTurn()),
     )
   })

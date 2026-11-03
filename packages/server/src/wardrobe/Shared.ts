@@ -5,8 +5,8 @@ import { CurrentAccount, NotFound, Piece, PieceType, Unavailable, UploadRefused 
 import { Effect, Option, Schema } from 'effect'
 import type { PieceChanged } from '../safety/PieceChanged.ts'
 import type { GarmentCutout, PieceQueue } from './Processing.ts'
-import { pictureView, turnView } from './Shown.ts'
-import { pieceImages } from './Images.ts'
+import { pictureView } from './Shown.ts'
+import { pieceImages, shownTurn } from './Images.ts'
 import { type PictureRow, type PieceRow, type TurnRow, type UploadRow, WardrobeStore } from './Store.ts'
 import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
 import { deleteAfterRows, Media } from '../kernel/Media.ts'
@@ -54,7 +54,7 @@ export const toPiece = Effect.fnUntraced(function* (row: PieceRow, picture?: Pic
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     ...(picture === undefined ? {} : { picture: pictureView(picture, at) }),
-    ...(turn === undefined ? {} : { turn: turnView(turn, at) }),
+    ...(turn === undefined ? {} : { turn: yield* shownTurn(turn, at) }),
     ...Option.match(images, { onNone: () => ({}), onSome: (shown) => ({ images: shown }) }),
     // Only the service writes rows, through the same schemas; a row that does not decode is a bug.
   }).pipe(Effect.orDie)

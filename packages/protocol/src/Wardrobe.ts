@@ -88,6 +88,14 @@ export const PieceTurn = Schema.Struct({
   /** Changes with every new turn and sheet; turn addresses carry it. */
   version: Schema.Int,
   layout: Schema.optionalKey(TurnLayout),
+  /** Signed owner-only addresses for the turn's files, when the reader is the website browser. */
+  media: Schema.optionalKey(
+    Schema.Struct({
+      video: Schema.optionalKey(Schema.String),
+      front: Schema.optionalKey(Schema.String),
+      sheet: Schema.optionalKey(Schema.String),
+    }),
+  ),
 })
 export type PieceTurn = typeof PieceTurn.Type
 

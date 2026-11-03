@@ -337,7 +337,7 @@ const pickUpView = (model: Model, data: Data, locale: Locale, h: HtmlBuilder<Mes
           'pick-up-photo',
           format(locale, 'today.lovedOutfit', {}),
           { href: photoRouter({ photoId: photo.id }), label: format(locale, 'photo.wearAgain', {}) },
-          h.img([h.Src(cdn.photo(photo.id, 'thumb')), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.photoCrop())]),
+          h.img([h.Src(cdn.photo(photo, 'thumb')), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.photoCrop())]),
           h,
         ),
       ],

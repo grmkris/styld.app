@@ -62,6 +62,17 @@ T-21 is not complete: the deployed wardrobe piece pictures use signed media, but
 review detections and turns retain per-kind session/database routes. Their migration and deployed load checks
 remain open. F-43's slow hero picture has not been remeasured on an authenticated deployed wardrobe.
 
+## Eva media batch 04 (local acceptance, 3 November)
+
+T-21 migrates board images, Gallery photos/garments, review detections and turn files to the shared signed-media
+handler, removes the private per-kind routes and removes per-image D1 reads from embedded MCP thumbnails.
+Generated turn files stream with byte ranges; user photos remain transformed. The full integration gate passed:
+670 files / zero type findings, 777 unit tests, 30 native tests / 1,453 assertions. Six matching synthetic
+before/after pairs at 390 and 1440px passed capture acceptance (17 assertions) and visual review.
+
+This batch is ready for preview deployment, not verified. Authenticated deployed load/Workers Logs, expiry-refresh
+and F-43’s hero-image timing remain open. The four-step sequence and evidence are in the tracker’s `BATCH-04.md`.
+
 ## The preview
 
 - **URL:** https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev (isolated workers.dev,

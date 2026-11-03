@@ -307,7 +307,7 @@ describe('a piece you own', () => {
       model((current) => expect(pending(current)).toEqual([piece.id])),
       message(Message.TickedPieceRefresh()),
       Command.resolve(GetPiece, Message.SucceededGetPiece({ piece: building })),
-      Command.expectExact(BuildTurnSheet({ pieceId: piece.id, version: 7 })),
+      Command.expectExact(BuildTurnSheet({ pieceId: piece.id, turn: { state: 'building', version: 7 } })),
       model(({ turnWork }) => expect(turnWork).toEqual(TurnWork.Building())),
       Command.resolve(
         BuildTurnSheet,

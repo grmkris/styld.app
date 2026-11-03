@@ -1,10 +1,6 @@
-import { BoardImageId, StyldApi } from '@styld/protocol'
-import { Effect, Layer, Schema } from 'effect'
+import { StyldApi } from '@styld/protocol'
+import { Effect } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
-import * as HttpRouter from 'effect/http/HttpRouter'
-import type { AuthHttp } from '../AuthHttp.ts'
-import { ownerImage } from '../wardrobe/Http.ts'
-import { ShownSize } from '../wardrobe/Media.ts'
 import { Boards } from './Boards.ts'
 
 /** The website's board endpoints, each the matching `Boards` operation for the session's account; changes are
@@ -25,15 +21,3 @@ export const boardHandlers = HttpApiBuilder.group(StyldApi, 'board', (handlers) 
       .handle('addBoardImage', ({ params, payload }) => boards.addBoardImage(params.boardId, payload))
   }),
 )
-
-const PictureTarget = Schema.Struct({ imageId: BoardImageId, size: ShownSize })
-
-/** `GET /cdn/boards/images/:imageId/:size`: a board's picture for its owner only. */
-export const boardRoutes = (auth: AuthHttp) =>
-  Layer.unwrap(
-    Effect.gen(function* () {
-      const boards = yield* Boards
-      const handler = yield* ownerImage(auth, PictureTarget, ({ imageId, size }) => boards.boardImage(imageId, size))
-      return HttpRouter.add('GET', '/cdn/boards/images/:imageId/:size', handler)
-    }),
-  )

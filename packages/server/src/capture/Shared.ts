@@ -1,3 +1,4 @@
+import type { SignedMedia } from '../kernel/SignedMedia.ts'
 import type { PaidAttempts } from '../usage/Attempts.ts'
 import { type Ending, type Holds, holdId } from '../usage/Holds.ts'
 import type { Pacing } from '../kernel/Pacing.ts'
@@ -23,6 +24,7 @@ export type CaptureServices =
   | CaptureStore
   | WardrobeStore
   | Media
+  | SignedMedia
   | PieceQueue
   | GarmentVision
   | PictureWork

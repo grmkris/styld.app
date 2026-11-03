@@ -12,7 +12,7 @@ import { Effect, Match, Option, Schema } from 'effect'
 import type { WardrobeStore } from '../wardrobe/Store.ts'
 import type { Database, StoreUnavailable } from '../kernel/Db.ts'
 import type { Media } from '../kernel/Media.ts'
-import type { SignedMedia } from '../kernel/SignedMedia.ts'
+import { imageAddresses, type SignedMedia } from '../kernel/SignedMedia.ts'
 import { toPiece } from '../wardrobe/Shared.ts'
 import { type BoardItemRow, type BoardPinRow, type BoardRow, BoardStore, type PinRow } from './Store.ts'
 import { newId } from '../kernel/Ids.ts'
@@ -30,12 +30,44 @@ export const stored = <A, R>(effect: Effect.Effect<A, StoreUnavailable, R>) => E
 const coverPins = 4
 
 /** A stored item as the protocol shows it. */
-export const shownItem = (row: BoardItemRow) => {
+type ImageAddresses = { readonly thumb: string; readonly full: string }
+type PictureAddresses = ReadonlyMap<string, ImageAddresses>
+
+/** Resolve picture rows in bounded batches, including table pictures outside the four cover pins. */
+const picturesOf = Effect.fnUntraced(function* (items: ReadonlyArray<BoardItemRow>, pins: ReadonlyArray<PinRow>) {
+  const ids = [
+    ...new Set(
+      [...items.map(({ imageId }) => imageId), ...pins.map(({ pin }) => pin.imageId)].filter(
+        (id): id is string => id !== null,
+      ),
+    ),
+  ]
+  const images = yield* stored((yield* BoardStore).imagesById(ids))
+  const addresses = yield* Effect.forEach(images, (row) =>
+    Effect.map(
+      imageAddresses({
+        entityId: row.id,
+        key: row.objectKey,
+        contentType: row.contentType,
+        version: String(row.createdAt.getTime()),
+      }),
+      (image) => Option.map(image, (value) => [row.id, value] as const),
+    ),
+  )
+  return new Map(addresses.flatMap(Option.toArray))
+})
+
+export const shownItem = (row: BoardItemRow, pictures: PictureAddresses = new Map()) => {
   const placement = { id: row.id, x: row.x, y: row.y, size: row.size, turn: row.turn, z: row.z, flipped: row.flipped }
   return Match.value(row.kind).pipe(
     Match.when('piece', () => ({ _tag: 'PieceItem', ...placement, pieceId: row.pieceId })),
     Match.when('text', () => ({ _tag: 'TextItem', ...placement, text: row.text, style: row.textStyle })),
-    Match.when('image', () => ({ _tag: 'ImageItem', ...placement, imageId: row.imageId })),
+    Match.when('image', () => ({
+      _tag: 'ImageItem',
+      ...placement,
+      imageId: row.imageId,
+      ...(row.imageId !== null && pictures.has(row.imageId) ? { image: pictures.get(row.imageId) } : {}),
+    })),
     Match.exhaustive,
   )
 }
@@ -78,26 +110,36 @@ const pinnedLooks = (pins: ReadonlyArray<PinRow>) =>
 
 /** A stored pin as the protocol shows it, to be decoded with its board; a pin whose piece, look or picture is
  * gone shows nothing. */
-const shownPin = (row: PinRow, looks: ReadonlyMap<string, Look>) =>
+const shownPin = (
+  row: PinRow,
+  looks: ReadonlyMap<string, Look>,
+  pictures: PictureAddresses,
+): Effect.Effect<ReadonlyArray<object>, never, CurrentAccount | SignedMedia> =>
   Effect.gen(function* () {
     const base = { id: row.pin.id, addedAt: row.pin.createdAt.toISOString() }
     const look = row.pin.lookId === null ? undefined : looks.get(row.pin.lookId)
-    const shownRow: ReadonlyArray<object> =
-      row.pin.kind === 'piece' && row.piece !== null
-        ? [{ _tag: 'PiecePin', ...base, piece: yield* toPiece(row.piece, row.picture ?? undefined) }]
-        : row.pin.kind === 'picture' && row.pin.imageId !== null
-          ? [{ _tag: 'PicturePin', ...base, imageId: row.pin.imageId, generated: row.origin === 'generated' }]
-          : row.pin.kind === 'look' && look !== undefined
-            ? [{ _tag: 'LookPin', ...base, look }]
-            : []
-    return shownRow
+    if (row.pin.kind === 'piece' && row.piece !== null)
+      return [{ _tag: 'PiecePin', ...base, piece: yield* toPiece(row.piece, row.picture ?? undefined) }]
+    if (row.pin.kind === 'picture' && row.pin.imageId !== null) {
+      const image = pictures.get(row.pin.imageId)
+      return [
+        {
+          _tag: 'PicturePin',
+          ...base,
+          imageId: row.pin.imageId,
+          generated: row.origin === 'generated',
+          ...(image === undefined ? {} : { image }),
+        },
+      ]
+    }
+    return row.pin.kind === 'look' && look !== undefined ? [{ _tag: 'LookPin', ...base, look }] : []
   })
 
-const shownPins = (pins: ReadonlyArray<PinRow>) =>
+const shownPins = (pins: ReadonlyArray<PinRow>, pictures: PictureAddresses) =>
   Effect.gen(function* () {
     const looks = yield* pinnedLooks(pins)
     const shownRows = yield* Effect.forEach(pins, (row) =>
-      Effect.map(shownPin(row, looks), (shownRow) => ({ boardId: row.pin.boardId, pins: shownRow })),
+      Effect.map(shownPin(row, looks, pictures), (shownRow) => ({ boardId: row.pin.boardId, pins: shownRow })),
     )
     return (boardId: string) => shownRows.filter((row) => row.boardId === boardId).flatMap((row) => row.pins)
   })
@@ -121,7 +163,8 @@ export const shown = (rows: ReadonlyArray<BoardRow>) =>
     const ids = rows.map(({ id }) => id)
     const items = yield* stored((yield* BoardStore).itemsOf(ids))
     const pins = yield* stored((yield* BoardStore).pinsOf(ids))
-    const pinsOf = yield* shownPins(pins)
+    const pictures = yield* picturesOf(items, pins)
+    const pinsOf = yield* shownPins(pins, pictures)
     const seen = yield* publicPinIds(rows, pins)
     const checks = yield* (yield* Checks).statuses('board', ids)
     return yield* Effect.forEach(rows, (row) =>
@@ -131,7 +174,7 @@ export const shown = (rows: ReadonlyArray<BoardRow>) =>
         name: row.name,
         paper: row.paper,
         version: row.version,
-        items: items.filter(({ boardId }) => boardId === row.id).map(shownItem),
+        items: items.filter(({ boardId }) => boardId === row.id).map((item) => shownItem(item, pictures)),
         pins: pinsOf(row.id),
         publicPins: pins.flatMap(({ pin }) => (pin.boardId === row.id && seen.has(pin.id) ? [pin.id] : [])),
         // Only the service writes moods, through the protocol's literals; others were never stored.
@@ -148,14 +191,16 @@ export const summaries = (rows: ReadonlyArray<BoardRow>) =>
   Effect.gen(function* () {
     const ids = rows.map(({ id }) => id)
     const items = yield* stored((yield* BoardStore).itemsOf(ids))
-    const coverOf = yield* shownPins(yield* stored((yield* BoardStore).coversOf(ids, coverPins)))
+    const covers = yield* stored((yield* BoardStore).coversOf(ids, coverPins))
+    const pictures = yield* picturesOf(items, covers)
+    const coverOf = yield* shownPins(covers, pictures)
     const counts = yield* stored((yield* BoardStore).pinCounts(ids))
     return yield* Effect.forEach(rows, (row) =>
       Schema.decodeUnknownEffect(BoardSummary)({
         id: row.id,
         name: row.name,
         paper: row.paper,
-        items: items.filter(({ boardId }) => boardId === row.id).map(shownItem),
+        items: items.filter(({ boardId }) => boardId === row.id).map((item) => shownItem(item, pictures)),
         cover: coverOf(row.id),
         pinCount: counts.get(row.id) ?? 0,
         visibility: row.visibility,

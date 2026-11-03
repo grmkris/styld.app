@@ -28,7 +28,7 @@ import * as styles from './ReviewView.styles.ts'
 
 /** A found piece's picture; the API Worker serves it to its owner only. */
 const picturePath = (detection: Detection, decision: Decision | undefined) =>
-  cdn.detection(detection.id, decision?.useOriginal !== true && detection.hasCutout)
+  cdn.detection(detection, decision?.useOriginal !== true && detection.hasCutout)
 
 /** What a found piece is called: the person's name for it, else what one of its kind is called ("Skirt"), else a
  * prompt to say. */

@@ -15,7 +15,6 @@ import { chmod, readFile, rm } from 'node:fs/promises'
 import { type APIRequestContext, type BrowserContext, chromium } from 'playwright'
 import { Schema } from 'effect'
 import { CaptureCreated, Piece, Reviewed, Tray, Upload } from '../packages/protocol/src/index.ts'
-import { decodePng } from '../packages/imaging/src/index.ts'
 import { csrf } from '../packages/auth/src/config.ts'
 
 const origin = process.env['STYLD_PREVIEW_URL'] ?? ''
@@ -84,12 +83,28 @@ const captured = async (request: APIRequestContext, name: string, contentType: s
 }
 
 /** The share of a cut-out's pixels that are fully transparent. */
-const transparentShare = async (request: APIRequestContext, detectionId: string) => {
-  const response = await request.get(`${origin}/cdn/detections/${detectionId}/cutout`)
-  const picture = decodePng(new Uint8Array(await response.body()))
-  let clear = 0
-  for (let at = 3; at < picture.data.length; at += 4) if (picture.data[at] === 0) clear += 1
-  return { contentType: response.headers()['content-type'], share: clear / (picture.width * picture.height) }
+const transparentShare = async (context: BrowserContext, address: string) => {
+  const page = await context.newPage()
+  try {
+    await page.goto(`${origin}/account`, { waitUntil: 'networkidle' })
+    return await page.evaluate(async (path) => {
+      const response = await fetch(path, { credentials: 'omit' })
+      if (!response.ok) throw new Error(`cutout answered ${response.status}`)
+      const picture = await createImageBitmap(await response.blob())
+      const canvas = new OffscreenCanvas(picture.width, picture.height)
+      const drawing = canvas.getContext('2d')
+      if (drawing === null) throw new Error('no canvas context')
+      drawing.drawImage(picture, 0, 0)
+      const { data } = drawing.getImageData(0, 0, picture.width, picture.height)
+      let clear = 0
+      for (let at = 3; at < data.length; at += 4) if (data[at] === 0) clear += 1
+      const share = clear / (picture.width * picture.height)
+      picture.close()
+      return { contentType: response.headers.get('content-type'), share }
+    }, address)
+  } finally {
+    await page.close()
+  }
 }
 
 const browser = await chromium.launch({ headless: true })
@@ -101,7 +116,7 @@ try {
   const single = await captured(request, 'red-tee.png', 'image/png')
   const [first] = single.capture.detections
   if (first === undefined || !first.hasCutout) throw new Error(`one garment found nothing: ${single.capture.status}`)
-  const cutout = await transparentShare(request, first.id)
+  const cutout = await transparentShare(context, first.images?.cutout ?? '')
   const kept = await request.post(`${origin}/api/captures/review`, {
     headers,
     data: {

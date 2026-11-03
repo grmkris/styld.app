@@ -1,23 +1,22 @@
 import {
   type Board,
   BoardId,
-  type BoardImageId,
   BoardView,
   type BoardViewLabels,
   type CurrentAccount,
-  type PieceId,
   type Pin,
   type ViewLabels,
   type ViewPin,
   WardrobeView,
 } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
-import { groupOf, type Piece, type ViewImages } from '@styld/protocol'
+import { groupOf, type ViewImages } from '@styld/protocol'
 import { Array, Effect, Match, Option, Record, Schema } from 'effect'
+import { withViewThumbnails, type MediaGrant } from '../kernel/SignedMedia.ts'
 import type { Boards } from '../boards/Boards.ts'
 import * as Base64 from 'effect/encoding/Base64'
 import { collect } from '../Streams.ts'
-import { transformedOnly } from '../wardrobe/Delivery.ts'
+import { deliverImage, transformedOnly, type ImageBindings } from '../wardrobe/Delivery.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { showsView } from './Resources.ts'
 import { tool, ViewResult } from './Tools.ts'
@@ -72,10 +71,26 @@ const readThumbnails = (reads: ReadonlyArray<ThumbnailRead>) =>
     (found): ViewImages => Record.fromEntries(found.flatMap(Option.toArray)),
   )
 
-/** Thumbnails of the first pieces the view shows, keyed by piece id. */
-const thumbnails = (wardrobe: Wardrobe['Service'], pieces: ReadonlyArray<Piece>) =>
+/** Deliver only objects the containing list/get already authorized. No thumbnail performs another D1 lookup. */
+const thumbnails = (
+  media: ImageBindings,
+  images: ReadonlyMap<string, MediaGrant>,
+  targets: ReadonlyArray<readonly [string, string]>,
+) =>
   readThumbnails(
-    pieces.map((piece) => [piece.id, wardrobe.pieceImage(piece.id, 'thumb', 'shown', transformedOnly)] as const),
+    targets.flatMap(([name, id]): ReadonlyArray<ThumbnailRead> => {
+      const image = images.get(id)
+      return image === undefined
+        ? []
+        : [
+            [
+              name,
+              deliverImage(media, image, 'thumb', transformedOnly).pipe(
+                Effect.flatMap(Option.match({ onNone: () => Effect.fail('missing' as const), onSome: Effect.succeed })),
+              ),
+            ],
+          ]
+    }),
   )
 
 /** A board's view words in one language, from the reviewed catalogs. */
@@ -109,17 +124,9 @@ const viewPin =
     )
 
 /** The board's thumbnails, the collage's first, each picture once. */
-const boardThumbnails = (wardrobe: Wardrobe['Service'], boards: Boards['Service'], board: Board) => {
-  const ofPiece = (pieceId: PieceId): ThumbnailRead => [
-    `piece:${pieceId}`,
-    wardrobe.pieceImage(pieceId, 'thumb', 'shown', transformedOnly),
-  ]
-  const ofPicture = (imageId: BoardImageId): ThumbnailRead => [
-    `picture:${imageId}`,
-    boards
-      .boardImage(imageId, 'thumb', transformedOnly)
-      .pipe(Effect.flatMap(Option.match({ onNone: () => Effect.fail('missing' as const), onSome: Effect.succeed }))),
-  ]
+const ofPiece = (pieceId: string): readonly [string, string] => [`piece:${pieceId}`, pieceId] as const
+const ofPicture = (imageId: string): readonly [string, string] => [`picture:${imageId}`, imageId] as const
+const boardTargets = (board: Board) => {
   const onTable = board.items
     .toSorted((a, b) => a.z - b.z)
     .flatMap((item) =>
@@ -140,11 +147,16 @@ const boardThumbnails = (wardrobe: Wardrobe['Service'], boards: Boards['Service'
       }),
     ),
   )
-  return readThumbnails(Array.dedupeWith([...onTable, ...pinned], ([left], [right]) => left === right))
+  return Array.dedupeWith([...onTable, ...pinned], ([left], [right]) => left === right)
 }
 
 /** Tools whose results a host draws with Styld's view (MCP Apps). */
-export const viewTools = (wardrobe: Wardrobe['Service'], boards: Boards['Service'], origin: string) => [
+export const viewTools = (
+  wardrobe: Wardrobe['Service'],
+  boards: Boards['Service'],
+  origin: string,
+  media: ImageBindings,
+) => [
   tool({
     name: 'wardrobe_show',
     title: 'Show your wardrobe',
@@ -155,7 +167,7 @@ export const viewTools = (wardrobe: Wardrobe['Service'], boards: Boards['Service
     meta: showsView,
     handler: () =>
       Effect.gen(function* () {
-        const pieces = yield* wardrobe.listPieces()
+        const { value: pieces, images } = yield* withViewThumbnails(wardrobe.listPieces())
         const view = WardrobeView.make({
           pieces: pieces.map((piece) => ({
             id: piece.id,
@@ -166,7 +178,13 @@ export const viewTools = (wardrobe: Wardrobe['Service'], boards: Boards['Service
           url: `${origin}/wardrobe`,
           labels: { en: labelsIn('en'), sl: labelsIn('sl') },
         })
-        return new ViewResult(view, { 'styld/images': yield* thumbnails(wardrobe, pieces) })
+        return new ViewResult(view, {
+          'styld/images': yield* thumbnails(
+            media,
+            images,
+            pieces.map(({ id }) => [id, id] as const),
+          ),
+        })
       }),
   }),
   tool({
@@ -179,7 +197,7 @@ export const viewTools = (wardrobe: Wardrobe['Service'], boards: Boards['Service
     meta: showsView,
     handler: ({ boardId }) =>
       Effect.gen(function* () {
-        const board = yield* boards.getBoard(boardId)
+        const { value: board, images } = yield* withViewThumbnails(boards.getBoard(boardId))
         const pins = board.pins.map(viewPin(origin))
         const view = BoardView.make({
           name: board.name,
@@ -189,7 +207,7 @@ export const viewTools = (wardrobe: Wardrobe['Service'], boards: Boards['Service
           url: `${origin}/boards/${board.id}`,
           labels: { en: boardLabelsIn('en'), sl: boardLabelsIn('sl') },
         })
-        return new ViewResult(view, { 'styld/images': yield* boardThumbnails(wardrobe, boards, board) })
+        return new ViewResult(view, { 'styld/images': yield* thumbnails(media, images, boardTargets(board)) })
       }),
   }),
 ]

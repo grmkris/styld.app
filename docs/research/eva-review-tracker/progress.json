@@ -209,10 +209,10 @@
       ]
     },
     "T-06": {
-      "status": "not_started",
-      "owner": "",
+      "status": "planned",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
+      "note": "Next approved batch: persist wardrobe filters and return routes, restore place, and remove redundant board/editor history entries.",
       "evidence": [],
       "criteriaDone": []
     },
@@ -280,10 +280,10 @@
       ]
     },
     "T-10": {
-      "status": "not_started",
-      "owner": "",
+      "status": "planned",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
+      "note": "Approved bounded first template after board-to-Look: One piece, six outfits. The remaining wishlist, travel and other templates stay outside this first slice.",
       "evidence": [],
       "criteriaDone": []
     },
@@ -474,10 +474,10 @@
       ]
     },
     "T-16": {
-      "status": "not_started",
-      "owner": "",
+      "status": "planned",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
+      "note": "Approved after reliability work: save one selected board outfit as a fixed Look.",
       "evidence": [],
       "criteriaDone": []
     },
@@ -514,12 +514,85 @@
       "criteriaDone": []
     },
     "T-21": {
-      "status": "not_started",
-      "owner": "",
+      "status": "ready_for_review",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "Not complete. At code review c95185b, wardrobe piece pictures already use the deployed signed /cdn/media path without per-image session/D1 reads. Board images, Gallery photos/garments, review detections and turns still use the old per-kind routes. Their signed grants, range handling, expiry recovery and deployed load/Workers Logs acceptance remain open. F-43’s hero-image timing still needs an authenticated measurement.",
-      "evidence": [],
-      "criteriaDone": []
+      "note": "Remaining board images, Gallery photos/garments, review detections and turn files now use the shared signed-media capability; old private per-kind routes are removed. Embedded MCP views use scoped, already-authorized transformed thumbnails without per-image D1 reads. Local full gate and six matching load captures passed. Preview readback, authenticated deployed load/Workers Logs and expiry-refresh acceptance remain open; F-43 is not yet verified.",
+      "evidence": [
+        {
+          "level": "unit",
+          "date": "2026-11-03",
+          "summary": "Full integration gate passed: 777 unit tests in 121 files, 670 files typechecked with zero findings; lint, static checks, generated assistant view and bundle budgets passed. Focused media tests cover signatures, assistant boundaries, byte ranges and conditional reads."
+        },
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Full gate: 30 native tests, 1,453 assertions. Signed board/photo/detection/turn delivery works without cookies; tampered grants fail. Synthetic bursts load 50 board images, 100 Gallery photos and 30 detections. Matching browser capture passed 1 test / 17 assertions at 390x844 and 1440x844 with no failed image responses or page errors. No paid providers or physical devices."
+        }
+      ],
+      "criteriaDone": [],
+      "comparisons": [
+        {
+          "title": "50-picture board media load",
+          "width": 390,
+          "height": 844,
+          "before": "batch-04/T-21-board-before-390.png",
+          "after": "batch-04/T-21-board-after-390.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching synthetic local workerd/Chromium fixtures; baseline checkout 62258e1 (application 15ddaca), after media batch 04. The layout is preserved; all fixture images loaded. Diagnostic timings include harness work and are not deployed performance evidence."
+        },
+        {
+          "title": "50-picture board media load",
+          "width": 1440,
+          "height": 844,
+          "before": "batch-04/T-21-board-before-1440.png",
+          "after": "batch-04/T-21-board-after-1440.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching synthetic local workerd/Chromium fixtures; baseline checkout 62258e1 (application 15ddaca), after media batch 04. The layout is preserved; all fixture images loaded. Diagnostic timings include harness work and are not deployed performance evidence."
+        },
+        {
+          "title": "100-photo Gallery media load",
+          "width": 390,
+          "height": 844,
+          "before": "batch-04/T-21-gallery-before-390.png",
+          "after": "batch-04/T-21-gallery-after-390.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching synthetic local workerd/Chromium fixtures; baseline checkout 62258e1 (application 15ddaca), after media batch 04. The layout is preserved; all fixture images loaded. Diagnostic timings include harness work and are not deployed performance evidence."
+        },
+        {
+          "title": "100-photo Gallery media load",
+          "width": 1440,
+          "height": 844,
+          "before": "batch-04/T-21-gallery-before-1440.png",
+          "after": "batch-04/T-21-gallery-after-1440.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching synthetic local workerd/Chromium fixtures; baseline checkout 62258e1 (application 15ddaca), after media batch 04. The layout is preserved; all fixture images loaded. Diagnostic timings include harness work and are not deployed performance evidence."
+        },
+        {
+          "title": "30-detection review media load",
+          "width": 390,
+          "height": 844,
+          "before": "batch-04/T-21-review-before-390.png",
+          "after": "batch-04/T-21-review-after-390.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching synthetic local workerd/Chromium fixtures; baseline checkout 62258e1 (application 15ddaca), after media batch 04. The layout is preserved; all fixture images loaded. Diagnostic timings include harness work and are not deployed performance evidence."
+        },
+        {
+          "title": "30-detection review media load",
+          "width": 1440,
+          "height": 844,
+          "before": "batch-04/T-21-review-before-1440.png",
+          "after": "batch-04/T-21-review-after-1440.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching synthetic local workerd/Chromium fixtures; baseline checkout 62258e1 (application 15ddaca), after media batch 04. The layout is preserved; all fixture images loaded. Diagnostic timings include harness work and are not deployed performance evidence."
+        }
+      ]
     }
   },
   "findings": {
@@ -1168,6 +1241,32 @@
     },
     {
       "date": "2026-11-03",
+      "text": "Started approved batch 04: T-21 media migration first, followed by T-06/remaining T-15 navigation and rotation, T-01/T-05 recognition with owner phone testing, then T-16 board-to-Look and one focused T-10 template. Expensive gates will be consolidated per coherent batch.",
+      "items": [
+        "T-21",
+        "T-06",
+        "T-15",
+        "T-01",
+        "T-05",
+        "T-16",
+        "T-10"
+      ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Recorded the owner-approved four-step sequence. T-21 is in local validation; T-06, T-16 and the first T-10 template are planned. Kris offered to run the physical-phone capture test. No additional completion is claimed.",
+      "items": [
+        "T-21",
+        "T-06",
+        "T-15",
+        "T-01",
+        "T-05",
+        "T-16",
+        "T-10"
+      ]
+    },
+    {
+      "date": "2026-11-03",
       "text": "Claude took T-14, T-18, T-19 and T-20 in parallel to Codex's batch 04. T-18 and T-14's analysis card first; T-19 and T-20 after Codex commits T-21, since they share files. Claude works in its own worktree and deploys its own batches from committed main.",
       "items": [
         "T-14",
@@ -1175,10 +1274,17 @@
         "T-19",
         "T-20"
       ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "T-21 implementation passed its full gate (777 unit tests; 30 native / 1,453 assertions) and six matching screenshot pairs (17 capture assertions). Remaining private media and MCP embedded thumbnails no longer read D1 per picture. Ready for review; deployed loading, Workers Logs and expiry-refresh acceptance remain open. F-43 is unchanged.",
+      "items": [
+        "T-21"
+      ]
     }
   ],
   "overview": {
-    "label": "Camera batch 03 deployed",
-    "note": "Board batch 02 remains deployed and verified. The camera countdown (F-49), covered-frame guards and explicit Back pairing are deployed with four new matching screenshot pairs. T-01/T-05 remain partial for recognition, foreground extraction and phone acceptance. T-21 remains open."
+    "label": "Media batch 04 ready for preview",
+    "note": "T-21 local validation passed with six before/after pairs. Preview and authenticated load acceptance are next, followed by T-06 navigation and T-15 rotation, recognition plus Kris’s phone test, then T-16 board-to-Look and one focused T-10 template. Claude owns T-14/T-18/T-19/T-20 in a separate worktree."
   }
 }

@@ -14,6 +14,7 @@ import * as HttpServerResponse from 'effect/http/HttpServerResponse'
 import { exerciseAttemptLimiter } from './AttemptLimiterFixture.ts'
 import { seedIdentity, disableIdentity } from './IdentityFixture.ts'
 import { pictureRoutes } from './PictureFixture.ts'
+import { mediaLoadRoutes } from './MediaLoadFixture.ts'
 import { scanRoutes } from './ScanFixture.ts'
 import { recoveryRoutes } from './RecoveryFixture.ts'
 import { socialRoutes } from './SocialFixture.ts'
@@ -84,6 +85,7 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
       auth.layer,
       yield* recoveryRoutes(database, media),
       pictureRoutes(database, media),
+      mediaLoadRoutes(database, media),
       scanRoutes(database, media, yield* pieceQueue.raw),
       socialRoutes(database, media),
       importRoutes(database, media),

@@ -28,7 +28,7 @@ const coverSource = (pin: Pin): CoverPicture => ({
   source: Match.value(pin).pipe(
     Match.tagsExhaustive({
       PiecePin: ({ piece }) => cdn.piece(piece),
-      PicturePin: ({ imageId }) => boardImage(imageId, 'thumb'),
+      PicturePin: (picture) => boardImage(picture, 'thumb'),
       LookPin: ({ look }) => (look.pieces[0] === undefined ? '' : cdn.piece(look.pieces[0])),
     }),
   ),

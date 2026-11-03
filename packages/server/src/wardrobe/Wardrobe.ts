@@ -16,8 +16,7 @@ import {
 } from '@styld/protocol'
 import { Context, DateTime, Effect, Layer, Option, Predicate } from 'effect'
 import { type ByteStream, pump } from '../Streams.ts'
-import { type Delivery, deliverImage } from './Delivery.ts'
-import { type ImageSize, isVideoContainer, piecePrefix, sniffImageType, uploadKey } from './Media.ts'
+import { isVideoContainer, piecePrefix, sniffImageType, uploadKey } from './Media.ts'
 import { backing } from './Back.ts'
 import { PieceQueue } from './Processing.ts'
 import { processing } from './Work.ts'
@@ -35,7 +34,6 @@ import {
 } from './Shared.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { admitUpload } from './Admission.ts'
-import { pictureImage, type PieceView, pictureVersion } from './Images.ts'
 import { type PieceRow, type UploadRow, WardrobeStore } from './Store.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
 import { digestOf, randomToken } from '../kernel/Ids.ts'
@@ -398,27 +396,6 @@ const editing = Effect.map(Effect.context<WardrobeServices>(), (context) => ({
   }, Effect.provide(context)),
 }))
 
-const images = Effect.map(Effect.context<WardrobeServices>(), (context) => ({
-  /** One of the piece's pictures (the one it shows unless asked), resized to WebP by the Images binding. A photo
-   * it cannot transform is served as it was stored, to its owner's browser only: `transformedOnly` answers
-   * unavailable instead. */
-  pieceImage: Effect.fn('Styld.Wardrobe.pieceImage')(function* (
-    pieceId: PieceId,
-    size: ImageSize,
-    which: PieceView = 'shown',
-    delivery?: Delivery,
-  ) {
-    const { accountId } = yield* CurrentAccount
-    const piece = yield* ownPiece(pieceId)
-    const picture = yield* pictureRow(accountId, pieceId)
-    const source = pictureImage(piece, picture, which)
-    if (Option.isNone(source)) return yield* NotFound.make({})
-    const image = yield* deliverImage(yield* Media, source.value, size, delivery)
-    if (Option.isNone(image)) return yield* NotFound.make({})
-    return { ...image.value, version: `${piece.id}.${pictureVersion(piece, picture, which)}.${size}` }
-  }, Effect.provide(context)),
-}))
-
 /** Every wardrobe operation, each group built over the services it yields (`Shared.ts` `WardrobeServices`). */
 const make = Effect.gen(function* () {
   const store = yield* WardrobeStore
@@ -429,7 +406,6 @@ const make = Effect.gen(function* () {
     ...(yield* adding),
     ...(yield* editing),
     ...(yield* backing),
-    ...(yield* images),
     ...(yield* processing),
     /** An operation of the person's whose work is not one D1 batch, answered once per operation id from the
      * receipts (`kernel/Receipts.ts`): reading a shop's page into an upload. */

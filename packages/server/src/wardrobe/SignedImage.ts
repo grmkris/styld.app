@@ -7,6 +7,7 @@ import { type SignedGrant, SignedMedia } from '../kernel/SignedMedia.ts'
 import { collect } from '../Streams.ts'
 import { deliverImage, transformedOnly } from './Delivery.ts'
 import { ShownSize } from './Media.ts'
+import { signedFile } from './SignedFile.ts'
 
 // `GET /cdn/media/:entityId/:size?…`: an owner-only picture by its signed address (`kernel/SignedMedia.ts`). The
 // signature is the only credential: no session and no D1 on the way, so a screen of eighty thumbnails is eighty reads
@@ -15,7 +16,7 @@ import { ShownSize } from './Media.ts'
 
 const SignedTarget = Schema.Struct({
   entityId: Schema.String,
-  size: ShownSize,
+  size: Schema.Literals(['thumb', 'full', 'turn-video', 'turn-front', 'turn-sheet']),
   a: Schema.optionalKey(Schema.String),
   k: Schema.optionalKey(Schema.String),
   t: Schema.optionalKey(Schema.String),
@@ -109,6 +110,11 @@ export const signedImage = Effect.gen(function* () {
     const url = HttpServerRequest.toURL(request)
     if (Option.isNone(url)) return HttpServerResponse.empty({ status: 404 })
     const maxAge = lifetimeOf(grant.value, yield* Clock.currentTimeMillis)
+    if (!Schema.is(ShownSize)(size))
+      return yield* signedFile(grant.value, request, maxAge).pipe(
+        Effect.provideService(Media, media),
+        Effect.orElseSucceed(() => HttpServerResponse.empty({ status: 503 })),
+      )
     const shown = yield* picture(grant.value, size, url.value.href, maxAge).pipe(
       Effect.provideService(Media, media),
       Effect.option,
