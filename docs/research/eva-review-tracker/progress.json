@@ -212,12 +212,18 @@
       "status": "ready_for_review",
       "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "Implemented URL-backed Wardrobe filters and selected-piece return anchors, Gallery review return origins, safe parent validation and board history replacement. Static gates and 780 unit tests passed in an isolated snapshot; the focused native journey passed both 390 and 1440px (1 test / 17 assertions). Four matching native screenshot pairs are attached. Preview smoke, authenticated preview navigation and Kris’s physical Android Back check remain open.",
+      "note": "Implemented URL-backed Wardrobe filters and selected-piece return anchors, Gallery review return origins, safe parent validation and board history replacement. Static gates and 780 unit tests passed in an isolated snapshot; focused native browser acceptance passed both 390 and 1440px (1 test / 17 assertions). Four matching native screenshot pairs are attached. Exact-release preview smoke passed 3 tests / 42 assertions and Cloudflare deployment readback matched. Authenticated preview navigation and Kris’s physical Android Back check remain open.",
       "evidence": [
         {
           "level": "native",
           "date": "2026-11-03",
           "summary": "Focused native browser journey passed at 390×844 and 1440×844: filters replace without history entries, reload restores them, visible and browser Back restore the selected piece, Gallery review returns to its photo, legacy board collage canonicalizes, settings add no history and board Back exits to the list. Synthetic local workerd/Chromium; 1 test / 17 assertions."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Committed release 50eb1bf902dcff32f92eb507e01570b20b7a0a7f deployed to the isolated preview. Exact-release smoke passed 3 tests / 42 assertions (health/release, auth and CSRF, hydration, MCP and immutable assets). Cloudflare readback confirmed API binding and 100% edge/SSR/API deployments. This is not an authenticated navigation walk or physical Android evidence.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
         }
       ],
       "criteriaDone": [],
@@ -1440,6 +1446,13 @@
         "T-18",
         "T-20",
         "T-14"
+      ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Deployed T-06 as 50eb1bf to the isolated preview. Exact-release smoke passed 3 tests / 42 assertions and Cloudflare readback matched the API binding and 100% Worker deployments. Authenticated navigation and physical Android Back remain open.",
+      "items": [
+        "T-06"
       ]
     }
   ],

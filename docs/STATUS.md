@@ -83,6 +83,12 @@ are rejected. The focused native browser journey passed at 390×844 and 1440×84
 matching before/after screenshot pairs are in the tracker. This is synthetic local workerd/Chromium evidence, not a
 physical Android or authenticated preview walk. T-06 and F-13/F-21/F-28 remain ready for review pending those checks.
 
+T-06 is deployed as `50eb1bf902dcff32f92eb507e01570b20b7a0a7f`, committed on `main` and read back on 3 November.
+Exact-release preview smoke passed 3 tests / 42 assertions. Cloudflare readback reports edge deployment
+`f116e735-6c00-4d9c-9cfd-ca7519da32d2`, SSR `1c76d6f6-02e3-4c7d-be50-26f53fe15604` and API
+`618feea6-b681-41d8-b7af-c97751514585`, each at 100%; the API release binding matches. No migrations,
+queues or Durable Object changes were planned.
+
 ## The preview
 
 - **URL:** https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev (isolated workers.dev,

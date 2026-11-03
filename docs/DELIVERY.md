@@ -140,3 +140,8 @@ board history for the legacy collage route and settings dialog. The focused nati
 1440×844 through local workerd/Chromium (1 test / 17 assertions), with four matching screenshot pairs. Preview
 smoke, an authenticated preview walk and physical Android Back remain separate acceptance levels. See
 `docs/research/eva-review-tracker/BATCH-05.md`.
+
+The navigation release `50eb1bf902dcff32f92eb507e01570b20b7a0a7f` passed exact-release preview smoke (3 tests /
+42 assertions). Cloudflare readback confirmed the API binding and 100% deployments for edge, SSR and API; no
+database, queue or Durable Object changes were planned. Signed-in preview navigation and physical Android Back
+remain open.
