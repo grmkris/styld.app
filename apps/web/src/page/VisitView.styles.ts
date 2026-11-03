@@ -43,8 +43,6 @@ export const personActions = style({
   gap: 'actions',
   '@media (min-width: 900px)': { justifyContent: 'flex-end' },
 })
-/** What Share did: the link copied, or why it wasn't. */
-export const problem = style({ margin: '0', fontSize: 'label', color: 'error' })
 /** A profile's or a piece's head bar (prototype `.head.bar`): Back at the start, what the page shares at the end. */
 /** A piece's bar keeps to its picture's width, so Share sits over the piece it shares. */
 export const pieceBar = style({ maxInlineSize: '420px' })
