@@ -595,12 +595,45 @@
       ]
     },
     "T-19": {
-      "status": "planned",
+      "status": "ready_for_review",
       "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "Claude track, starts once Codex commits T-21 (shared Today files). v2 never writes a tuck note (rules forbid a top over a one-piece); a rules test will pin that. Planned: swap a single piece while keeping the rest (locked pieces), and a \"Logged for today\" confirmation on Wear this. No repeat-avoidance promise (owner).",
-      "evidence": [],
-      "criteriaDone": []
+      "note": "Deployed 6de0434. Swap one piece: chips under Wear this (\"Swap Trainers\" etc.) ask the outfit engine for outfits that keep every other piece locked and show the first that changes only that piece; \"nothing else fits\" when none does; Wear this after a swap is recorded as edited. Wear this confirms \"Logged for today.\" in the status line (no repeat promise, owner). F-01: v2 never writes a tuck note; a rules test pins that a dress never takes a top while a coat or blazer may go over it. Known limit: a knit worn over a top cannot swap either top alone. Remaining: phone check, Slovenian copy read-through.",
+      "evidence": [
+        {
+          "level": "unit",
+          "date": "2026-11-03",
+          "summary": "Rules test (dress never takes a top); story tests for locks sent, fewest-added choice, edited flag, nothing-fits, late answer dropped, lock limit; scene tests for chips, disabled while waiting, swapped table, Logged for today."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed 6de0434; preview readback 3/3; before/after captures of Today on the signed-in preview."
+        }
+      ],
+      "criteriaDone": [],
+      "comparisons": [
+        {
+          "title": "Today with swap chips, phone",
+          "width": 780,
+          "height": 1688,
+          "before": "batch-claude-01/T-19-today-before-390.png",
+          "after": "batch-claude-01/T-19-today-after-390.png",
+          "date": "2026-11-03",
+          "level": "preview",
+          "note": "Signed-in preview (test account), Chromium. Before: 7144b03; after: 6de0434. Phone shot is 390 CSS px at 2x. Not a physical-phone check."
+        },
+        {
+          "title": "Today with swap chips, desktop",
+          "width": 1440,
+          "height": 844,
+          "before": "batch-claude-01/T-19-today-before-1440.png",
+          "after": "batch-claude-01/T-19-today-after-1440.png",
+          "date": "2026-11-03",
+          "level": "preview",
+          "note": "Signed-in preview (test account), Chromium. Before: 7144b03; after: 6de0434. Phone shot is 390 CSS px at 2x. Not a physical-phone check."
+        }
+      ]
     },
     "T-20": {
       "status": "ready_for_review",
@@ -1453,6 +1486,13 @@
       "text": "Deployed T-06 as 50eb1bf to the isolated preview. Exact-release smoke passed 3 tests / 42 assertions and Cloudflare readback matched the API binding and 100% Worker deployments. Authenticated navigation and physical Android Back remain open.",
       "items": [
         "T-06"
+      ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Claude deployed 6de0434 with T-19 (swap one piece on Today, Logged for today, dress-never-takes-a-top rules test). Ready for a phone check.",
+      "items": [
+        "T-19"
       ]
     }
   ],
