@@ -1,0 +1,915 @@
+{
+  "title": "Styld review with Eva",
+  "reviewDate": "2026-11-02",
+  "recordings": [
+    {
+      "name": "eva.styld1.mp4",
+      "duration": "47:59"
+    },
+    {
+      "name": "stly.eva2.mp4",
+      "duration": "05:12"
+    },
+    {
+      "name": "eva3.mp4",
+      "duration": "42:55"
+    },
+    {
+      "name": "eva5styld.mp4",
+      "duration": "16:16"
+    }
+  ],
+  "findings": [
+    {
+      "id": "F-01",
+      "type": "bug",
+      "title": "`\"Not tucked\"` styling pill generated when layering a sweater over a dress",
+      "timestamps": "`eva.styld1.mp4` `00:54`–`01:28`",
+      "evidence": "**Eva (`01:02`):** `\"Glede na to, da je pulover čez obleko, ga zelo težko zatakneš... mogoče je tle mišljeno, da oblečeš pulover čez oblekco, kar je dejansko ful dobra ideja\"` `[Screen: Today outfit shows white sweater + floral dress with note \"Wear it with the white top left untucked over the black dress\" and pill \"Not tucked\".]`",
+      "current": "When AI suggests layering a sweater/pullover over a dress on `Today`, it attaches the `\"Not tucked\"` pill and `\"left untucked\"` styling note.",
+      "expected": "Suppress `\"Not tucked\"` / `\"tucked\"` styling tags when a top/knitwear piece is layered over a dress or jumpsuit.",
+      "confidence": "high",
+      "disposition": "complaint"
+    },
+    {
+      "id": "F-02",
+      "type": "feature request",
+      "title": "Swap or lock individual pieces on `Today` outfit suggestion instead of regenerating entire look",
+      "timestamps": "`eva.styld1.mp4` `01:28`–`02:12`",
+      "evidence": "**Eva (`01:28`–`01:55`):** `\"Mogoče na tej točki bi jaz želela imeti opcijo, da bi lahko zamenjala samo čevlje, ali pa samo pulover... da obdržim obleko pa pulover, pa zamenjam čevlje.\"` `[Screen: Tapping the sweater opens item detail; tapping \"Try another\" regenerates the whole outfit.]`",
+      "current": "`Today` only offers `\"Try another\"`, which replaces every item in the suggested outfit at once.",
+      "expected": "Allow locking/keeping specific pieces or swapping a single piece (e.g., just shoes or just top) within a `Today` outfit recommendation.",
+      "confidence": "high",
+      "disposition": "suggestion"
+    },
+    {
+      "id": "F-03",
+      "type": "UX friction",
+      "title": "Unclear purpose of `\"Wear this\"` / `\"Wearing today\"` button on `Today`",
+      "timestamps": "`eva.styld1.mp4` `02:23`–`02:38`; `eva3.mp4` `28:16`–`28:27`",
+      "evidence": "**Eva (`eva.styld1.mp4` `02:24`):** `\"Kaj pomeni ta Wear this? A to si jaz samo označim ali gre to kam naprej?\"` / **Eva (`eva3.mp4` `28:16`):** `\"Jaz bi videla rada, da mogoče prvo stran ni tako, da ti vrže kar en outfit.\"`",
+      "current": "Tapping `\"Wear this\"` toggles the button label to `\"Wearing today\"` without explaining what it does, and launching the app immediately shows a single random outfit card on `Today`.",
+      "expected": "Clarify what `\"Wear this\"` does (logs wear history and prevents repeating the same outfit tomorrow) and revisit the `Today` home page layout so it feels more intentional.",
+      "confidence": "high",
+      "disposition": "complaint"
+    },
+    {
+      "id": "F-04",
+      "type": "UX friction",
+      "title": "Redundant secondary `\"All\"` filter pills (`All 245`, `All 22`) in `Wardrobe`",
+      "timestamps": "`eva.styld1.mp4` `02:45`–`03:20`, `05:20`–`05:28`",
+      "evidence": "**Eva (`02:46`):** `\"Zdaj ko grem na Clothing, mi spet vrže All... zakaj rabim še enkrat All? Če sem že na All 313, pa kliknem Clothing, zakaj mi spet pokaže All 245?\"` / **Eva (`05:25`):** `\"spet All izredno nepomemben\"`",
+      "current": "Selecting a top-level category (`Clothing 246`, `Shoes 22`, `Accessories 46`) spawns a second row of pills starting with another `\"All <count>\"` pill selected by default.",
+      "expected": "Remove the redundant secondary `\"All\"` pill (superseded by the broader decision to replace horizontal pills with a visual category drill-down in `F-05`).",
+      "confidence": "high",
+      "disposition": "complaint"
+    },
+    {
+      "id": "F-05",
+      "type": "feature request",
+      "title": "Replace flat horizontal category pills in `Wardrobe` with a 2-level visual category drill-down (ABOUT YOU style)",
+      "timestamps": "`eva.styld1.mp4` `03:20`–`05:15`, `07:38`–`09:05`, `21:44`–`21:46`, `25:57`–`26:15`; `eva3.mp4` `11:29`–`16:55`",
+      "evidence": "**Eva (`eva3.mp4` `11:46`–`12:15`):** `\"Takoj ko jaz odprem moj Wardrobe, bi jaz rada imela tole. Takole: da se mi naredi Oblačila, pa se mi da en kos oblačila, Šport, Obutev, Dodatki. Štiri kategorije bi rada imela. In potem, ko jaz kliknem na Oblačila, se mi pojavijo nove kategorije... In potem, ko jaz kliknem na Jakne, se mi šele pojavijo kosi!\"`",
+      "current": "Opening `Wardrobe` immediately shows all 313 pieces under a flat horizontal scrolling strip of 18+ subcategory pills (`Tops & T-shirts`, `Shirts & blouses`, ..., `Loungewear & nightwear`).",
+      "expected": "Replace the horizontal pill bar and immediate `All 313` dump with an e-commerce-style visual category hierarchy: Level 1 shows 4 main category cards with a representative item thumbnail (`Clothing`, `Sport`, `Shoes`, `Accessories`); tapping a main category opens Level 2 visual subcategory cards with item thumbnails; tapping a subcategory opens the 2-column item grid with a floating `Filter` button.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-06",
+      "type": "feature request",
+      "title": "Only display populated categories in `Wardrobe` (progressive disclosure as wardrobe grows)",
+      "timestamps": "`eva3.mp4` `12:16`–`12:40`",
+      "evidence": "**Kristjan (`12:16`):** `\"In ti bi imela samo tiste kategorije — jaz prikažem — za katere imaš cunje. Če bo recimo nekdo, ki ne bo imel nič cunj... bo samo napisalo 'Dodaj stvari v garderobo'. In potem, ko bo dodal recimo prve hlače, se mu bo pokazala kategorija 'Hlače'\"` / **Eva (`12:38`):** `\"Ja!\"`",
+      "current": "Empty categories can appear in pickers or filter bars without progressive empty-state onboarding.",
+      "expected": "Only render categories and subcategories in `Wardrobe` for which the user has at least 1 piece; show an `\"Add items to wardrobe\"` empty state when 0 pieces exist.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-07",
+      "type": "visual design",
+      "title": "Dark-grey square card backgrounds in dark mode (`\"te sivi kvadratki\"`) and single-theme preference",
+      "timestamps": "`eva.styld1.mp4` `05:30`–`07:38`",
+      "evidence": "**Kristjan (`05:31`):** `\"A to je tak sivo ozadje za čevljem? To ni dobro, a?\"` / **Eva (`07:07`–`07:28`):** `\"Jaz mislim, da bi bilo čisto kul, če si ne rabi noben nastavljat... če bi bilo eno, ker imaš potem tudi slog aplikacije isti. Samo te sivi kvadratki, če grejo stran, bo top.\"`",
+      "current": "On Android with OS dark mode enabled, wardrobe grid cards render as dark-grey squares against a black page background, whereas the item detail view has a pure black background.",
+      "expected": "Remove the muddy grey square card backgrounds in the grid and use a single consistent app theme (preferably clean/light) across devices rather than building a theme switcher.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-08",
+      "type": "bug",
+      "title": "Legacy imported item cutouts flipped 180° upside down (bikini tops and dress)",
+      "timestamps": "`eva.styld1.mp4` `09:05`–`09:38`, `16:23`–`16:57`",
+      "evidence": "**Eva (`09:06`):** `\"Vse sem isto obrnjeno slikala in kar nekatere modrce mi je okoli obrnilo\"` / **Eva (`16:49`):** `\"Drugače glej, tole tudi Bodysuit je oblekica, ki mi jo je narobe obrnil\"` `[Screen: White bikini top at 09:21 and red sleeveless dress under Bodysuits at 16:26 are upside down.]`",
+      "current": "Several items imported from the previous app version (bikini tops and a red mini dress) are stored flipped 180° upside down, which also caused the AI to misclassify the upside-down red dress as a `Bodysuit`.",
+      "expected": "Fix/re-orient upside-down item images and provide a rotation control in the item Edit screen so users can rotate misoriented cutouts.",
+      "confidence": "high",
+      "disposition": "complaint"
+    },
+    {
+      "id": "F-09",
+      "type": "bug",
+      "title": "Widespread AI garment categorization errors across `Tops & T-shirts`, `Trousers`, `Bodysuits`, `Bags`, `Hats`, and `Shoes`",
+      "timestamps": "`eva.styld1.mp4` `09:43`–`12:15`, `14:28`–`20:37`; `eva3.mp4` `30:58`–`33:25`",
+      "evidence": "**Eva (`eva.styld1.mp4` `15:40`–`16:13`):** `\"če greva samo po topih, ko imam 48 topov, od tega je 1, 2, 3... trije so modrci v bistvu, eno je šal, pa 1, 2, 3, 4, 5 — pet jih moram prestavit pod športne stvari\"` / **Eva (`19:45`–`20:00`):** `\"pod Accessories: okej, Bags — evo, obroč mi je isto vrglo pod Bags, mojo kapo z rokavicami je isto vrglo pod Bags, nogavice mi je vrglo pod Bags, trak za lase mi je vrglo pod Bags\"` / **Eva (`eva3.mp4` `31:30`):** `\"In tudi predlagal mi je pižamo. To je spodnji del pižame.\"`",
+      "current": "Out of 49 items in `Tops & T-shirts`, 10 (~20%) were misclassified (4 bikini pieces, 5 sportswear tops, 1 scarf); red ski pants were in `Trousers`; striped pajama pants were in `Trousers`; an upside-down dress was in `Bodysuits`; a lapel pin was in `Hats`; and at least 8 non-bag items (3 pairs of gloves/mittens, 3 headbands, 1 hood-hat with mittens, 1 pair of Nike socks) were dumped into `Bags`. Primarily black Sorel snow boots were also tagged as `\"black and beige boots\"`.",
+      "expected": "Audit and re-run the AI categorization pipeline (and color detection), stop using `Bags` or `Tops & T-shirts` as fallback buckets, and properly classify swimwear, sportswear, loungewear/pajamas, scarves, gloves, socks, and hair accessories.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-10",
+      "type": "UX friction",
+      "title": "Edit piece screen: users confuse the `Name` text input with the `What it is` category selector",
+      "timestamps": "`eva.styld1.mp4` `11:11`–`12:15`",
+      "evidence": "**Eva (`11:40`):** `\"Ne morem spremenit kategorije! Na Bikini lahko samo ime spremenim.\"` `[Screen: At 11:18–11:27 Eva types \"Bikini\" into the \"Name\" input and clicks Save; the item stays in Tops & T-shirts with title \"Bikini\" until Kristjan tells her to scroll down to \"What it is -> Swimwear\" at 11:45–12:07.]`",
+      "current": "On the Edit piece form, `Name` is the first field at the top (defaulting to generic category names like `\"Top\"`), while `What it is` (category pills) sits below, causing Eva to edit `Name` when trying to change the category.",
+      "expected": "Make category selection (`What it is`) visually distinct and unmistakable from `Name` on the Edit form.",
+      "confidence": "high",
+      "disposition": "complaint"
+    },
+    {
+      "id": "F-11",
+      "type": "visual design",
+      "title": "Hide item name/category text labels below thumbnails in the `Wardrobe` grid",
+      "timestamps": "`eva.styld1.mp4` `12:15`–`13:52`",
+      "evidence": "**Eva (`12:24`, `13:15`):** `\"Ta ime cunje ful nima smisla... Jaz mogoče tudi ne bi, da se mi ime pokaže, ampak bi raje videla, da se mi ime pokaže pol ko kliknem... ko si v garderobi vidiš samo slikico pa nič drugega.\"`",
+      "current": "Every card in the `Wardrobe` grid displays a text label underneath the cutout image (`Top`, `Swimwear`, `Bag`, `Bikini`).",
+      "expected": "Remove text labels from underneath item cards in the `Wardrobe` grid (show only the clean item cutout thumbnails) and display the item `Name` only on the piece detail view.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-12",
+      "type": "feature request",
+      "title": "Expand footwear & accessories taxonomy + support AI-created and user-created custom categories",
+      "timestamps": "`eva.styld1.mp4` `14:36`–`15:00`, `17:12`–`17:55`, `18:40`–`21:46`",
+      "evidence": "**Eva (`19:02`–`19:42`):** `\"Vsaj te superge bi si jaz ločila, da imam športne čevlje vsaj pod 'Sport shoes'... 4 pari od teh superg, ki so tukaj navedeni, so vsi: eni so za tečt, eni so za dvoranske športe, eni so pa pohodniški\"` / **Kristjan (`20:10`–`20:35`):** `\"eno je razširit mogoče te osnovne kategorije, pa AI-ju dat mogoče malo svobode, da se sam odloči, ko skenira nekaj novega, pa če ni ta prave kategorije, da jo pač ustvari, in pa da še uporabniku dovolim, da si naredi svoje kategorije.\"`",
+      "current": "`Shoes` only shows `Trainers`, `Boots`, `Sandals` (mixing running/court/hiking shoes into `Trainers` and snow/hiking boots into `Boots`, and lacking `Loafers`, `Oxfords`, `Mary Janes`, `Ballet flats`, `Heels`). `Accessories` lacks `Gloves`, `Socks`, and `Hair accessories / Headbands`. Users cannot add custom categories.",
+      "expected": "(1) Expand base categories (`Sport shoes`, `Snow/Hiking boots`, `Loafers`, `Oxfords`, `Mary Janes`, `Ballet flats`, `Heels`; `Gloves`, `Socks`, `Hair accessories`), (2) allow the AI to create a new subcategory when scanning an item that doesn't fit presets, and (3) allow users to create/edit custom categories.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-13",
+      "type": "bug",
+      "title": "Back navigation (`<`) from piece detail resets active `Wardrobe` category filter to `All 313`",
+      "timestamps": "`eva.styld1.mp4` `17:53`–`18:38`",
+      "evidence": "**Eva (`17:56`–`18:08`):** `\"tudi to me moti, da ko jaz grem ven iz nekega čevlja — glej, če grem na Sandals — me pol namesto da bi me vrglo nazaj na čevlje, me vrže nazaj na vse cunje!\"` / **Kristjan (`18:10`–`18:37`):** `\"ko ti izbereš ta nek filter, se mora ta izbran filter zapisat v URL, in potem ko se premikaš nazaj, mora to v URL-ju ostat.\"`",
+      "current": "Filtering `Wardrobe` (e.g., `Shoes -> Sandals`), opening an item detail view, and tapping `<` Back resets `Wardrobe` to `All 313` instead of returning to `Shoes -> Sandals`.",
+      "expected": "Persist active category/subcategory filter state in URL search params (or route path) so back navigation preserves the active filter and scroll position.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-14",
+      "type": "UX friction",
+      "title": "Android file picker on `\"Add a photo\"` in `Gallery` offers `My Files` (raw filenames) instead of opening photo gallery directly",
+      "timestamps": "`eva.styld1.mp4` `22:00`–`23:09`",
+      "evidence": "**Eva (`22:13`–`22:31`):** `\"A je tle kakšna možnost, da jaz ne bi dobila takega, ker da bi dobila direkt iz galerije? Ker tle recimo zdaj jaz vidim samo po imenu...\"` / **Kristjan (`22:58`):** `\"Bom vprašal Clauda, zakaj to tako naredi.\"`",
+      "current": "Tapping `\"Add a photo\"` on Android Chrome triggers `Choose an action: Camera | My Files | Files`; picking `My Files` shows unpreviewable raw filenames (`20261102_153423.jpg`).",
+      "expected": "Configure the HTML `<input type=\"file\" accept=\"image/*\">` attributes so Android opens the visual photo picker / gallery directly when possible.",
+      "confidence": "medium",
+      "disposition": "suggestion"
+    },
+    {
+      "id": "F-15",
+      "type": "performance",
+      "title": "Slow `\"Finding the clothes...\"` processing on Gallery photo uploads (~33s–45s)",
+      "timestamps": "`eva.styld1.mp4` `23:34`–`24:08`, `24:53`–`25:00`, `31:47`–`32:51`",
+      "evidence": "**Kristjan (`24:53`):** `\"Kar dolgo časa tole melje, se mi zdi.\"` `[Screen: Photo 1 takes ~33s (`23:35`–`24:08`) and Photo 4 takes ~64s (`31:47`–`32:51`) in \"Finding the clothes...\".]`",
+      "current": "Uploading a photo to `Gallery` stays in `\"Finding the clothes...\"` for 33 to 64 seconds.",
+      "expected": "Optimize the Gallery garment detection / cutout pipeline to reduce wait times and run cutout + detection together automatically.",
+      "confidence": "high",
+      "disposition": "complaint"
+    },
+    {
+      "id": "F-16",
+      "type": "bug",
+      "title": "Gallery `\"What you're wearing\"` fails to detect worn pieces and fails to match items already in the user's wardrobe",
+      "timestamps": "`eva.styld1.mp4` `24:08`–`24:22`, `30:15`–`30:33`, `31:26`–`33:00`, `34:16`–`34:21`, `35:18`–`35:35`",
+      "evidence": "**Eva (`24:15`):** `\"Vse je v garderobi: čevlji, pulover in majica [in plašč].\"` / **Eva (`32:41`):** `\"tle so in torbica, in čevlji, in oblekica je noter.\"` / **Eva (`34:16`):** `\"Zdaj je to dodalo v mojo garderobo. Ampak to je že v moji garderobi, Kristjan! To ni v redu\"`",
+      "current": "Across multiple uploaded photos where Eva is wearing items already in her wardrobe (coat, pullover, shirt, shoes, brown bag, black sandals, patterned dress), Styld detects only 1–2 items and marks every single one as `\"Not in your wardrobe yet\"` instead of matching existing pieces.",
+      "expected": "Improve multi-garment extraction and wardrobe similarity matching so existing wardrobe items are automatically linked (or suggested as top matches) rather than defaulting to `\"Not in your wardrobe yet\"`.",
+      "confidence": "high",
+      "disposition": "complaint"
+    },
+    {
+      "id": "F-17",
+      "type": "bug",
+      "title": "Dark/black items render as white/light-grey inverted cutouts in Gallery and Board `Your pieces` strip",
+      "timestamps": "`eva.styld1.mp4` `24:08`–`26:45`, `29:54`–`30:06`",
+      "evidence": "**Kristjan (`25:18`):** `\"Kaj je tole, nekaj čudnega je tole ven izrezal, zakaj je bele barve?\"` / **Eva (`25:49`):** `\"Po obliki ga vidim, da je to ta plašč, samo ne vem, zakaj je take barve.\"` / **Eva (`29:54`):** `\"Aja, mogoče mi črne stvari pobarva na belo, da jih kao boljše [vidiš]\"`",
+      "current": "In Gallery (`2 Nov`), Eva's dark brown suede coat is cut out as a white/light-grey ghost silhouette (and even the linked wardrobe thumbnail next to `Coat` renders white/grey, while the actual wardrobe piece in `Coats 8` is dark brown). In the Board editor's `Your pieces` strip (`29:54`), dark/black garments also appear inverted/white.",
+      "expected": "Fix the image cutout/rendering pipeline and dark-mode CSS filters so dark brown and black garments retain their true dark colors and are never inverted to white/grey.",
+      "confidence": "high",
+      "disposition": "complaint"
+    },
+    {
+      "id": "F-18",
+      "type": "bug",
+      "title": "Gallery `\"What you're wearing\"` detects random background bystanders instead of the user in the foreground",
+      "timestamps": "`eva.styld1.mp4` `27:08`–`27:43`, `30:36`–`31:06`",
+      "evidence": "**Eva (`27:13`):** `\"Tle pa sploh ni zaznal mene, ampak je zaznal tega tipa od zadaj! In je zaznal majico in hlače!\"` / **Eva (`30:43`–`30:55`):** `\"Zaznal je tega starega dedka ... pa zaznal je to punco za mano!\"` / **Kristjan (`30:53`):** `\"Ampak moje punce pa ni zaznal!\"`",
+      "current": "In two separate photos (carnival photo at `27:08` and Oktoberfest photo at `30:36`), the AI ignores Eva in the foreground and extracts the clothes of random people in the background (a man's black shirt/pants; an older man's lilac shirt with suspenders + white lederhosen and a background woman's dirndl).",
+      "expected": "Anchor `\"What you're wearing\"` person/garment detection strictly on the primary foreground subject (the user) and ignore background bystanders.",
+      "confidence": "high",
+      "disposition": "complaint"
+    },
+    {
+      "id": "F-19",
+      "type": "UX friction",
+      "title": "Remove the intermediate Board overview screen (`Pinned` list + `Make with Styld` header) and open the interactive collage editor directly",
+      "timestamps": "`eva.styld1.mp4` `27:53`–`28:57`, `36:25`–`36:44`, `38:08`–`40:12`",
+      "evidence": "**Kristjan (`28:42`):** `\"on je kar dva koraka naredil... Tukaj v bistvu Board je že ta kolaž, mora biti, a ne.\"` / **Eva (`39:44`–`40:09`):** `\"Pol ne rabim tega, mene lahko vrže direktno na ono, ne rabim tega! ... Bi bilo pa kul, da me direkt vrže na editing.\"` / **Kristjan (`40:11`):** `\"Exactly.\"`",
+      "current": "Opening a board (or clicking `\"Open\"` after `\"Save to board\"`) lands on a read-only intermediate screen with a cropped preview, `\"Make with Styld\"`, `\"Edit\"`, `\"Edit collage\"`, and a `\"Pinned\"` grid below; saved items only appear in `\"Pinned\"` and must be manually tapped again inside `\"Edit collage\"` to appear on the canvas.",
+      "expected": "Eliminate the intermediate Board overview / `\"Pinned\"` screen; opening a board (or saving an item to a board) should open the interactive collage canvas directly with added items placed directly on the canvas.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-20",
+      "type": "feature request",
+      "title": "Replace unfiltered horizontal `Your pieces` strip in Board collage editor with a filterable `Add your piece` (`+`) bottom-sheet drawer",
+      "timestamps": "`eva.styld1.mp4` `28:58`–`29:53`; `eva3.mp4` `18:12`–`18:48`",
+      "evidence": "**Eva (`eva.styld1.mp4` `29:03`):** `\"Tudi tlele spet v 'Your pieces', sorry ampak mi je ful smotano, da moram jaz tle zdaj čez vse svoje stvari it. Tle tudi rabim filtre...\"` / **Kristjan (`29:12`–`29:41`):** `\"da bi kliknila recimo tukajle gumb 'Add your piece', pa bi se ti od spodaj tak slider gor pripeljal, pa bi imela na vrhu filtre\"` / **Eva:** `\"Ja.\"`",
+      "current": "At the bottom of the Board collage editor, `Your pieces` displays all 313 wardrobe items in a single unfiltered horizontal scrolling row.",
+      "expected": "Replace the inline `Your pieces` horizontal strip with an `\"Add your piece\"` (`+`) button that opens a bottom-sheet drawer with category filters so users can quickly filter and tap items onto the canvas.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-21",
+      "type": "bug",
+      "title": "Back button (`<`) in `To review` (`Open the review tray`) resets navigation to `Wardrobe -> Pieces` instead of returning to `Gallery`",
+      "timestamps": "`eva.styld1.mp4` `33:00`–`33:41`",
+      "evidence": "**Eva (`33:25`):** `\"takoj ko grem nazaj, me vrže čisto na začetek\"` / **Kristjan (`33:31`):** `\"Spet mora, ohraniti si mora, če si bila v galeriji pa greš nazaj, da je spet nazaj v galeriji. To mora tako, da se v link shrani\"`",
+      "current": "Tapping `<` Back from `To review | Styld` after opening it from a Gallery photo detail view sends the user to `Wardrobe -> Pieces` instead of returning to the Gallery photo.",
+      "expected": "Preserve the return URL/route when navigating to `To review` so pressing `<` Back returns to the originating Gallery photo.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-22",
+      "type": "UX friction",
+      "title": "Adding a detected piece from a Gallery photo to Wardrobe requires too many clicks via the Review Tray",
+      "timestamps": "`eva.styld1.mp4` `32:58`–`34:15`",
+      "evidence": "**Kristjan (`34:10`):** `\"Tukaj se mi zdi, da je preveč klikanja, to bi moglo kar vse biti ...\"` `[Screen: Tapping \"Add to wardrobe\" changes status to \"Waiting in your review tray\" -> user must tap \"Open the review tray\" -> tap \"Add 1 to my wardrobe\".]`",
+      "current": "Tapping `\"Add to wardrobe\"` on a detected garment in Gallery puts it in `\"Waiting in your review tray\"`, requiring 2 additional screens/clicks to actually add it.",
+      "expected": "Streamline `\"Add to wardrobe\"` from Gallery so it adds directly (or with a single inline confirmation) without routing through a separate Review Tray screen.",
+      "confidence": "high",
+      "disposition": "suggestion"
+    },
+    {
+      "id": "F-23",
+      "type": "UX friction",
+      "title": "`\"Delete\"` piece action is missing from the Edit piece screen (`pencil` icon)",
+      "timestamps": "`eva.styld1.mp4` `34:23`–`34:59`",
+      "evidence": "**Eva (`34:25`–`34:56`):** `\"Deletat? ... Edit ... Ja, saj grem dol. ... Kje? ... Delete, tle! To je Delete this item, aha.\"` `[Screen: Eva twice opens Edit mode and scrolls to the bottom looking for Delete, where only Save and Cancel exist; Delete is only visible on the read-only detail view.]`",
+      "current": "Users who tap the top-right Edit pencil icon to delete a piece only find `\"Save\"` and `\"Cancel\"` at the bottom of the edit form; `\"Delete\"` is hidden at the bottom of the read-only view.",
+      "expected": "Include `\"Delete\"` inside the Edit piece view (as well as or instead of the read-only view) so users entering Edit mode to remove an item can find it immediately.",
+      "confidence": "high",
+      "disposition": "complaint"
+    },
+    {
+      "id": "F-24",
+      "type": "visual design",
+      "title": "Reduce button clutter on Gallery photo detail; make `\"Favourite\"` a heart icon overlaid on the photo",
+      "timestamps": "`eva.styld1.mp4` `35:40`–`35:56`",
+      "evidence": "**Kristjan (`35:40`):** `\"tukaj se mi zdi, da je malo preveč gumbov. Tale 'Favourite' gumb bi lahko mogoče bil samo srček na sami sliki recimo, a ne?\"` / **Eva (`35:50`):** `\"Ja.\"`",
+      "current": "Gallery photo detail displays 5 action buttons below the photo (`\"Wear it again\"`, `\"Cut out the outfit\"`, `\"Favourite\"`, `\"Delete photo\"`, `\"Save to board\"`).",
+      "expected": "Replace the `\"Favourite\"` text pill button with a heart icon overlaid directly on the photo to reduce button clutter.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-25",
+      "type": "feature request",
+      "title": "Auto-generate outfit cutout on Gallery photos and allow swiping left/right between original photo and cutout",
+      "timestamps": "`eva.styld1.mp4` `35:57`–`37:56`; `eva3.mp4` `26:43`–`27:16`",
+      "evidence": "**Kristjan (`eva.styld1.mp4` `35:57`, `37:46`):** `\"Pa ta 'Cut out the outfit', to bi lahko kar avtomatsko naredilo ... Pač levo pa desno in pol imaš originalno sliko pa cut-out, in potem bi lahko vsaka od teh bila 'Add to board'.\"` / **Eva (`37:44`):** `\"Da bi lahko tle se premikala med slikami, to bi bilo dobro, ja.\"`",
+      "current": "Users must manually click `\"Cut out the outfit\"`, and once cut out, the board only receives the cutout (`\"The outfit is cut out; a board gets it on its own\"`).",
+      "expected": "Automatically cut out the user's outfit when a photo is added to Gallery; let the user swipe left/right between the full original photo and the isolated outfit cutout (and between Gallery photos), and allow adding either version to a Board.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-26",
+      "type": "UX friction",
+      "title": "Tapping `+` on `Boards` immediately creates blank `\"My board\"` records instead of opening a Board Template chooser",
+      "timestamps": "`eva.styld1.mp4` `38:24`–`38:58`, `42:28`–`43:00`",
+      "evidence": "**Eva (`38:49`):** `\"da ko jaz kliknem na 'Boards', ta plusek meni da 'Make with Styld' template, ne da rabim pol še dvakrat klikniti.\"` / **Eva (`42:28`):** `\"ko jaz stopim na 'Boards', bi kliknila na plus, in na plusu se bi mi prikazalo, tako kakor v PowerPointu, 'Templates'\"`",
+      "current": "Tapping `+` on the `Boards` screen immediately creates an empty board named `\"My board\"` (leaving multiple empty `\"My board (0 pins)\"` cards in the list) and requires clicking `\"Make with Styld\"` inside it.",
+      "expected": "Tapping `+` on `Boards` should open a template selection screen (`Templates`) directly instead of creating an empty `\"My board\"` first.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-27",
+      "type": "feature request",
+      "title": "Add a Share button on the Board / collage view",
+      "timestamps": "`eva.styld1.mp4` `40:18`–`40:23`",
+      "evidence": "**Kristjan (`40:18`):** `\"Pa potem tukajle bi tudi moral biti nek gumb za sharat.\"` / **Eva (`40:24`):** `\"Ja\"`",
+      "current": "The board view header (`< All boards`, `Make with Styld`, `Edit`) has no direct Share button.",
+      "expected": "Add a clear Share button on the board view so users can share their boards/collages.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-28",
+      "type": "bug",
+      "title": "Android system Back button loops through intermediate board/editor history states",
+      "timestamps": "`eva.styld1.mp4` `37:16`–`37:21`, `40:15`–`40:44`; `eva3.mp4` `08:17`–`08:30`",
+      "evidence": "**Eva (`eva.styld1.mp4` `40:24`):** `\"tukaj bi moral biti en gumb, da me ne vrže nazaj na... Glej, zdaj moram jaz vse...\"` / **Kristjan (`eva3.mp4` `08:24`):** `\"saj gumb obstaja, saj mora delati, no, če je gumb na Androidu, je na Androidu.\"`",
+      "current": "Pressing the Android hardware/gesture Back button cycles repeatedly back and forth between the collage editor, board overview, and modals instead of cleanly exiting to the parent list.",
+      "expected": "Fix browser history management (use `replaceState` for editor/modal sub-states and remove the intermediate board screen) so the Android system Back button exits cleanly.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-29",
+      "type": "bug",
+      "title": "`\"Make with Styld\"` mood board AI selects inappropriate items (satin wedding dresses, bikini top, sports bra for `\"Trip to India\"`) and dumps 6 isolated pieces instead of complete outfits",
+      "timestamps": "`eva.styld1.mp4` `41:34`–`42:29`; `stly.eva2.mp4` `03:12`–`03:34`; `eva3.mp4` `02:21`–`02:42`, `07:24`–`07:52`",
+      "evidence": "**Eva (`eva.styld1.mp4` `42:09`):** `\"...pač navadne zbralo cunje iz moje garderobe. By the way, dve od teh sta satenaste obleke, ki nimata kaj delat v Indiji. To so fancy obleke za, pač, poroke in tako. In nekaj je moj modrc iz kopalk. In nekaj je moj športni modrc.\"` / **Eva (`stly.eva2.mp4` `03:12`):** `\"če se mi pokažejo samo takole kosi — kaj bom s tem? To mi nič ne pomaga, ne. Kar jaz rabim, je dejanske outfite\"`",
+      "current": "Prompting `\"Trip to india\"` in `Make with Styld -> A mood board` simply placed 6 isolated green/cream items in a 2×3 grid on a dark background—including 2 formal satin wedding dresses, 1 bikini top, and 1 sports bra—matched purely by color rather than occasion or outfit structure.",
+      "expected": "AI board generation must assemble **complete multi-piece outfits** (top/layering, bottom, shoes, 1–3 accessories) appropriate for the requested occasion/weather, rather than dropping 6 isolated garments onto a grid.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-30",
+      "type": "feature request",
+      "title": "Board Template 1: `\"One piece, six outfits\"` (hero piece in center surrounded by 6–8 complete outfits + auto-cutout for store screenshots)",
+      "timestamps": "`eva.styld1.mp4` `43:00`–`43:12`; `stly.eva2.mp4` `01:36`–`03:56`; `eva3.mp4` `00:38`–`06:27`",
+      "evidence": "**Eva (`eva3.mp4` `00:52`–`02:21`):** `\"ko jaz pač zberem ta board, me vpraša, kateri kos mojih oblačil oziroma sliko hočem... Če bi sliko iz interneta vnesla, me vpraša, če hočem cutout... Če pa je iz moje garderobe, pa že ta obrezano stvar da takole na sredino... In potem okoli tega sestavi outfite. In sicer vsak outfit mora imeti čevlje, vsaj en dodatek — po možnosti dva vsaj — am, potem pa kos, ki ga izbereva, nek jopič, neko majico oziroma nek zgornji del... in spodnji del.\"`",
+      "current": "No guided `\"One piece, six outfits\"` template exists.",
+      "expected": "Build the `\"One piece, six outfits\"` template first (highest `\"wow effect\"`): user picks 1 hero item from their wardrobe OR uploads a store screenshot (which is automatically cut out); the hero piece is placed in the center (and repeated identically inside each outfit cluster), surrounded by 6–8 complete outfits from their wardrobe (each with top/layering, bottom, shoes, and 1–3 accessories).",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-31",
+      "type": "feature request",
+      "title": "Board Template 2: `\"Wishlist board\"` (prospective purchase in center surrounded by matching wardrobe outfits)",
+      "timestamps": "`eva.styld1.mp4` `43:55`–`46:13`; `eva3.mp4` `01:21`–`01:50`",
+      "evidence": "**Eva (`eva.styld1.mp4` `45:09`–`46:05`):** `\"namesto da je 'A mood board', 'A sticker', da jaz tle dobim 'A wishlist board', kliknem na njega... in potem se mi pokaže ikonica 'Add a wishlist item'. Jaz dodam sliko česarkoli pač hočem, in ta izdelek se avtomatsko prikaže na sredini. In potem se okoli njega lahko razvrstijo stvari iz moje garderobe, ki AI misli, da bi šle zraven... da vidim, če ga bom res uporabljala\"`",
+      "current": "Users cannot test a prospective store purchase against their existing wardrobe on a dedicated Wishlist board.",
+      "expected": "Add a `\"Wishlist board\"` template (`\"Add a wishlist item\"`): user uploads a screenshot/photo of an item they are considering buying (e.g., Adidas Gazelle sneakers from ABOUT YOU), AI automatically cuts out the background, places it in the center, and builds matching outfits around it using pieces from the user's existing wardrobe.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-32",
+      "type": "feature request",
+      "title": "Additional Board Templates: `\"Seven outfits of a week\"` / `\"My trip\"`, `\"Outfit of the day\"`, and `\"Blank\"` lookbook template",
+      "timestamps": "`eva.styld1.mp4` `43:12`–`43:43`; `stly.eva2.mp4` `00:43`–`02:05`; `eva3.mp4` `06:28`–`07:35`",
+      "evidence": "**Eva (`stly.eva2.mp4` `00:43`–`01:55`):** `\"jaz rečem 'seven days worth of outfits'... in tukaj me vpraša: 'What's the weather gonna be?' In jaz rečem, ne vem, 'cold December week'... In on na to temo pripravi sedem outfitov... 'Outfit of the day', pa da mu noter napiševa, pa da on vrže kose za tisti dan.\"` / **Eva (`eva3.mp4` `06:28`–`07:10`):** `\"Pol en template bi jaz pustila prazen... da lahko recimo nekdo naredi tole: 'Office looks 2026'... Mu daš naslov, izbereš barvo in potem lahko daš cutoute sebe v različnih outfitih... in ga pol javno objavi.\"`",
+      "current": "`Make with Styld` only offers freeform `A mood board` and `A sticker`.",
+      "expected": "Provide structured templates for: (1) `\"Seven outfits of a week\"` / `\"My trip / My getaway\"` (prompts for weather/destination and generates 7 complete multi-piece outfits in a grid), (2) `\"Outfit of the day\"` / `\"Make a look\"`, and (3) a `\"Blank\"` template for custom lookbooks (e.g., full-body cutout grids like `\"Office looks 2026\"` / `\"Best looks of 2026\"` for sharing).",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-33",
+      "type": "visual design",
+      "title": "Dynamic item arrangement & thematic background colors on AI-generated Boards",
+      "timestamps": "`eva3.mp4` `03:38`–`05:22`",
+      "evidence": "**Eva (`03:44`–`05:15`):** `\"Ne rabi biti vedno isto, še boljše bi bilo, če je vsakič dinamično... In v tem bi mogoče ga prosila, da mi... da tematsko ozadje. Ne, da vsakič vrže neko drugo ozadje za moodboard. Ne rabi biti vedno bež... če bi jaz zbrala neko pikčasto črno-belo obleko, bi mi lahko dal svetlo modro ozadje\"`",
+      "current": "Generated boards use a static dark/black background and uniform grid placement.",
+      "expected": "Vary the relative positioning of shoes and accessories across outfit clusters on generated boards so the layout feels dynamic and curated, and automatically pick a complementary thematic canvas background color (`Paper`) instead of defaulting to black.",
+      "confidence": "high",
+      "disposition": "suggestion"
+    },
+    {
+      "id": "F-34",
+      "type": "bug",
+      "title": "Black viewport when switching back to Android Chrome `Wardrobe | Styld` tab from another app",
+      "timestamps": "`eva3.mp4` `14:19`–`14:30`",
+      "evidence": "`[Screen: At 14:20–14:29, after switching from H&M / ABOUT YOU back to Chrome on Android, the Wardrobe | Styld page renders a solid black viewport below the Chrome address bar for ~9 seconds.]`",
+      "current": "Returning to the Chrome tab hosting `Wardrobe | Styld` after switching to native shopping apps rendered a black screen for ~9 seconds.",
+      "expected": "Investigate and fix mobile Chrome background tab restoration / repaint so returning to the app does not show a black screen.",
+      "confidence": "medium",
+      "disposition": "unresolved"
+    },
+    {
+      "id": "F-35",
+      "type": "decision",
+      "title": "Restructure top-level IA: keep `Wardrobe` strictly for clothing inventory and rename `Boards` tab to `Laboratory` (`Boards | Gallery | Looks`)",
+      "timestamps": "`eva3.mp4` `08:55`–`11:37`, `16:55`–`17:45`, `24:39`–`24:55`",
+      "evidence": "**Eva (`10:11`):** `\"Boards je laboratorij, kjer jaz eksperimentiram s stvarmi. Moja garderoba je pa kot neke sestavine, ki jih jaz dajem v laboratorij.\"` / **Eva (`17:00`–`17:20`):** `\"Jaz bi dala Wardrobe, Laboratorij... ko grem na Boards, ne, tle se mi potem lahko odpre Laboratorij in potem namesto da bi imela tule Boards, se mi odprejo Boards, Gallery, Looks.\"` / **Kristjan (`17:27`):** `\"Mhm, bravo, ja.\"`",
+      "current": "`Wardrobe` has three sub-tabs (`Pieces | Looks | Gallery`), while the 4th bottom nav tab is `Boards`.",
+      "expected": "Remove the `Pieces | Looks | Gallery` sub-tab bar from `Wardrobe` so `Wardrobe` is purely the user's categorized clothing inventory (\"ingredients\"). Turn the 4th bottom-nav tab into `Laboratory` (`Laboratorij`), housing `Boards`, `Gallery`, and `Looks`.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-36",
+      "type": "bug",
+      "title": "Layer up / down (`↑` / `↓`) z-index buttons in Board collage editor do not work and default z-order is inconsistent",
+      "timestamps": "`eva3.mp4` `18:55`–`21:18`",
+      "evidence": "**Eva (`19:26`–`19:33`):** `\"Ja, klikam, nič se ne zgodi... Ta dva gumba ne delata. Tudi to bi bilo fajn, da jih lahko dam čez.\"` / **Kristjan (`20:55`):** `\"OK, bo Claude pogruntal, kaj se je tukaj zamučkalo. Hočeva imeti torej kontrolo, da lahko dava bring to front pa bring to back\"`",
+      "current": "In the Board collage editor, clicking the Move Layer Up (`↑`) and Move Layer Down (`↓`) toolbar buttons does nothing (trousers stay stuck behind the top, white sneakers render on top of everything, black boots render underneath everything).",
+      "expected": "Fix z-index layer ordering on the collage canvas so items can be brought to front / sent to back reliably.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-37",
+      "type": "UX friction",
+      "title": "Combine the two layer up/down (`↑` / `↓`) buttons into a single front/back toggle button in the collage editor",
+      "timestamps": "`eva3.mp4` `19:39`–`20:08`, `21:06`–`21:17`",
+      "evidence": "**Eva (`19:39`–`20:05`, `21:06`):** `\"lahko namesto da sta dve puščici, ena za gor, ena za dol, daš v isti gumb, isto kakor je tle za obrnit... da ga lahko klikam, pa daje odzadaj, odspredaj, odzadaj, odspredaj... Z enim gumbom.\"`",
+      "current": "The collage editor object toolbar has two separate buttons for layer ordering (`↑` and `↓`).",
+      "expected": "Combine the two layer arrow buttons into a single front/back toggle/cycle button (matching the combined left-right flip button).",
+      "confidence": "high",
+      "disposition": "suggestion"
+    },
+    {
+      "id": "F-38",
+      "type": "feature request",
+      "title": "`\"Export to look\"` / `\"Turn into a look\"`: save selected items from a Board as a fixed single-outfit formula in `Looks`",
+      "timestamps": "`eva3.mp4` `21:30`–`26:38`",
+      "evidence": "**Eva (`21:30`–`22:08`):** `\"dam 'Turn into a look' in potem je to na rezervi. Ker point Looksov je, da enkrat, ko sem jaz brez idej, lahko samo grem v Lookse... jaz imam neke formule, ki sem jih že sestavila z mojimi cunjami\"` / **Kristjan (`23:25`–`24:05`):** `\"bi rekla: 'OK, te štiri mi spremeni v Look.'\"` / **Eva (`24:07`, `25:24`):** `\"Jaz mislim, da lahko narediva 'Export to look'... Look bi moral biti samo en [outfit]... In je fiksen.\"`",
+      "current": "The collage editor has `+ Save as a look` for the whole board, and `Looks` in `Wardrobe` only shows a `\"Go to Boards\"` button when empty.",
+      "expected": "Define a `Look` strictly as a saved, fixed single-outfit formula. Allow selecting specific items (or an outfit cluster) on a Board and clicking `\"Export to look\"` / `\"Turn into a look\"` to save it to `Looks` (inside `Laboratory`), and allow pulling saved `Looks` back onto Boards or asking AI for variations of a `Look`.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-39",
+      "type": "decision",
+      "title": "Replace magnifying glass icon (`🔍`) with AI sparkles icon (`✨`) in bottom nav, remove intermediate `\"Search your wardrobe\"` screen, and open `Ask Styld` chat directly",
+      "timestamps": "`eva3.mp4` `28:27`–`29:57`, `33:28`–`33:58`",
+      "evidence": "**Eva (`28:34`–`28:45`, `29:06`):** `\"Meni so bile one zvezdice drugače ful všeč za AI... Namesto povečevalne lupe bi jaz dala zvezdice... mislim, da je ta Search malo obsolete.\"` / **Kristjan (`29:42`):** `\"dam povečevalno steklo stran, pa dam ikono za AI, tisto zvezdico, in te tista zvezdica lahko kar takoj semle vrže, že na tale screen [Ask Styld].\"` / **Eva (`29:56`):** `\"Tako.\"`",
+      "current": "The 2nd bottom nav tab uses a magnifying glass icon and opens an intermediate `Ask` screen with a `\"Search your wardrobe\"` keyword filter bar and a `\"Start a chat\"` button (which also caused Eva at `33:30` to type `\"analysis my wardrobe\"` into the keyword search twice by mistake).",
+      "expected": "Replace the magnifying glass icon in the bottom nav bar with the AI sparkles/stars icon, remove the intermediate `\"Search your wardrobe\"` screen, and have tapping the AI icon open the `Ask Styld` chat screen directly.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-40",
+      "type": "feature request",
+      "title": "Add `\"Analyze my wardrobe\"` starter prompt pill in `Ask Styld` and return a structured breakdown with category counts, color palette, and gaps/surpluses",
+      "timestamps": "`eva3.mp4` `30:00`–`30:22`, `35:21`–`36:47`, `38:31`–`38:37`",
+      "evidence": "**Eva (`30:00`):** `\"dodala 'Analyze my wardrobe' kot eno izmed teh osnovnih vprašanj, da lahko direkt klikneš.\"` / **Eva (`35:55`–`36:45`):** `\"mi je bilo zadnjič ful dobro, da je šel: imaš toliko pa toliko kosov tega, toliko pa toliko kosov tega... zdi se mi, da imaš premalo tega, zdi se mi, da imaš preveč tega... Raje vidim, da če ga vprašam za 'Analyze my wardrobe', da mi dejansko spiše: toliko imaš teh kosov, toliko imaš zgornjih kosov, toliko imaš spodnjih kosov, barvno vidim, da večinoma prevladuje ta barva\"`",
+      "current": "`Ask Styld` only shows 3 starter pills (`\"What should I wear today?\"`, `\"What goes well together in my wardrobe?\"`, `\"What is missing from my wardrobe?\"`), and typing `\"Analysis my wardrobe\"` returns a brief 2-paragraph prose summary.",
+      "expected": "Add `\"Analyze my wardrobe\"` as a default starter prompt pill on `Ask Styld`, and format the response as a structured breakdown with explicit item counts per category (tops, bottoms, etc.), dominant color analysis, wear patterns, and specific wardrobe gaps (`too little of X`) and surpluses (`too much of Y`).",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-41",
+      "type": "performance",
+      "title": "Slow AI response latency in `Ask Styld` (~18s for outfit prompt, ~65s for wardrobe analysis)",
+      "timestamps": "`eva3.mp4` `30:25`–`30:48`, `34:10`–`35:17`, `38:31`–`38:37`",
+      "evidence": "**Kristjan (`30:45`):** `\"To je čisto predolgo, a?\"` / **Eva (`34:33`):** `\"On je bil hitrejši, se mi zdi, no.\"` / **Kristjan (`34:41`):** `\"To, to, to bom popravil, to se da popravit.\"`",
+      "current": "`Ask Styld` takes ~18 seconds to answer `\"What should I wear today?\"` and ~65 seconds (`34:10`–`35:16`) to answer `\"Analysis my wardrobe\"`, showing only a `\"Styld is writing...\"` spinner.",
+      "expected": "Optimize/stream `Ask Styld` LLM responses so replies begin appearing much faster (matching or beating v1 latency).",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-42",
+      "type": "UX friction",
+      "title": "Piece detail view: move `\"Add the back\"` into the top of Edit mode (`pencil` icon, above `\"Name\"`), rename `\"Save to board\"` to `\"Add to board\"`, and make it a compact side icon button so metadata is visible without scrolling",
+      "timestamps": "`eva3.mp4` `40:33`–`41:52`; `eva5styld.mp4` `00:07`–`00:48`, `03:34`–`03:45`",
+      "evidence": "**Eva (`eva3.mp4` `40:44`–`41:43`):** `\"jaz bi dala ne 'Save to a board', ampak 'Add to board'... ko kliknem na svinčnik, bi jaz dala 'Add the back'... mogoče, da je samo ikonica za boarde.\"` / **Eva (`eva5styld.mp4` `00:20`–`00:45`, `03:34`):** `\"'Save to board' bova spremenila v 'Add to board', bova zmanjšala v neko ikonico, ki jo lahko na strani kliknem... In 'Add the back' bova dodala tukaj gor, kjer je svinčnik, se pravi v ta urejevalnik... čisto od zgoraj pred 'Name'-om 'Add the back'.\"`",
+      "current": "On the read-only piece detail screen, large `\"Add the back\"` (with `\"1 credit from today's free allowance.\"`) and `\"Save to board\"` buttons push the item metadata (`Colour`, `When it's worn`, `What it's for`, `Pattern`) below the fold on mobile.",
+      "expected": "Move `\"Add the back\"` inside the Edit mode (`pencil` icon, right at the top above `\"Name\"`), rename `\"Save to board\"` to `\"Add to board\"` as a compact side icon button (using the 2×2 `Boards` icon), so all item metadata is immediately visible above the fold without scrolling.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-43",
+      "type": "performance",
+      "title": "Slow piece detail hero image loading (~12s blank placeholder on `\"Sportswear\"`)",
+      "timestamps": "`eva5styld.mp4` `00:59`–`01:11`",
+      "evidence": "**Kristjan (`00:59`):** `\"Kaj pa to zdaj ne naloada? What the fuck? A je zaštekalo ali je... Aha, okej.\"` `[Screen: Tapping \"Sportswear\" at 00:59 shows an empty dark placeholder box for ~12 seconds until 01:11 when the olive bralette cutout loads.]`",
+      "current": "Navigating from the `Wardrobe` grid to the `\"Sportswear\"` piece detail view left the hero image area blank for ~12 seconds before rendering.",
+      "expected": "Preload/cache piece cutout images from the `Wardrobe` grid so piece detail views render immediately without multi-second blank placeholders.",
+      "confidence": "high",
+      "disposition": "complaint"
+    },
+    {
+      "id": "F-44",
+      "type": "decision",
+      "title": "Keep read-only piece detail view clean without inline attribute dropdowns; preserve dedicated pencil Edit mode",
+      "timestamps": "`eva5styld.mp4` `01:12`–`03:07`",
+      "evidence": "**Kristjan (`02:47`):** `\"jaz bi lahko naredil, da lahko ti klikneš na tale 'Plain' in ti pokaže dropdown z vsemi opcijami in lahko že kar tukaj mu spremeniš.\"` / **Eva (`02:57`):** `\"Ne, to je ful gumbov! Meni je všeč to. Meni je všeč, da ni gumbov, da je tle direkt to, kar je, in da imam gumb edit.\"` / **Kristjan (`03:04`):** `\"Okej, okej, okej, ti zaupam.\"`",
+      "current": "Piece detail view displays read-only attribute rows (`Colour`, `When it's worn`, `What it's for`, `Pattern`) and uses the top-right pencil icon to open the full edit form.",
+      "expected": "Do not replace the pencil Edit mode with inline attribute dropdowns on the piece detail page; keep the read-only detail view clean and button-free.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-45",
+      "type": "feature request",
+      "title": "Expand `\"When it's worn\"` options in piece editor with four seasons (`Summer`, `Autumn`, etc.) and weather resistance (`Rainy` / waterproof / windproof)",
+      "timestamps": "`eva5styld.mp4` `02:09`–`02:21`, `03:17`–`03:33`",
+      "evidence": "**Eva (`02:09`, `03:17`):** `\"tle bi jaz mogoče pri vremenu dodala še 'Summer', 'Autumn', am, da lahko označim letni čas, ne samo 'Warm weather', 'Cold weather'... Jaz bi samo pri vremenu dodala še letne čase, pa 'Rainy', se pravi, da je waterproof, a veš, ali pa windproof.\"`",
+      "current": "`\"When it's worn (optional)\"` in the piece editor only offers three pills: `\"Warm weather\"`, `\"Cold weather\"`, and `\"All year\"`.",
+      "expected": "Add specific season pills (`Summer`, `Autumn`, `Winter`, `Spring`) and weather protection tags (`Rainy` / waterproof / windproof) under `\"When it's worn\"`.",
+      "confidence": "high",
+      "disposition": "suggestion"
+    },
+    {
+      "id": "F-46",
+      "type": "decision",
+      "title": "Keep `Today | Styld` baseline layout (`MON 2`, daily outfit collage, `\"Wear this\"`, shuffle button) as-is for now; defer tombola and community challenges",
+      "timestamps": "`eva5styld.mp4` `03:46`–`04:55`",
+      "evidence": "**Eva (`04:32`–`04:53`):** `\"Zdajle, ko je to čisto osnova, jaz mislim, da bi bilo čisto kul, da ti pokaže 'Monday', am, pa outfit, 'Wear this', pa tale, ki menjava outfite, mi je čisto kul. To, to mi je perfektno, kar imaš zdaj, tako da to ne bi ful spreminjala. Zaenkrat sem srečna s tem, bova pol popravljala.\"`",
+      "current": "`Today | Styld` displays the day header (`MON 2`), an outfit collage card, a `\"Wear this\"` button, and an outfit shuffle button next to it.",
+      "expected": "Retain the current baseline `Today` page layout as-is for launch; defer the outfit tombola/roulette and community challenges (e.g., `\"30 days of wearing black\"`) to a later portal phase.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-47",
+      "type": "UX friction",
+      "title": "On `Add clothes | Styld`, user taps large `\"Photos or a video\"` card expecting the guided framing camera (`\"Lay pieces out\"` / `\"Hold pieces up\"`)",
+      "timestamps": "`eva5styld.mp4` `05:04`–`05:29`",
+      "evidence": "**Eva (`05:04`):** `\"'Photos and videos', pa bova kamero dala... Kje je zdaj un kvadratek? A jaz moram zdaj slikat?\"` / **Kristjan (`05:16`):** `\"Ne, ne, pojdi nazaj... Ti imaš tukajle, ti imaš 'Lay pieces out' ali pa 'Hold the pieces'.\"`",
+      "current": "On `Add clothes | Styld`, `\"Photos or a video / From your library\"` is the largest primary card at the top; tapping it on Android offers the native OS Camera (which has no framing overlay or Front/Back guide), while the guided modes (`\"Lay pieces out\"` and `\"Hold pieces up\"`) are smaller side-by-side cards below.",
+      "expected": "Clarify the card hierarchy and labels on `Add clothes | Styld` so users who want to scan garments with the guided camera immediately choose `\"Lay pieces out\"` or `\"Hold pieces up\"` instead of `\"Photos or a video\"`.",
+      "confidence": "high",
+      "disposition": "complaint"
+    },
+    {
+      "id": "F-48",
+      "type": "bug",
+      "title": "Guided `\"Hold pieces up\"` and `\"Lay pieces out\"` Front/Back scanner fails to attach `Back` photo to `Front` piece—auto-captures prematurely, saves `Front` and `Back` as separate `\"Top\"` pieces in `Wardrobe`, and captures black frames when phone rests on bed",
+      "timestamps": "`eva5styld.mp4` `05:38`–`06:19`, `07:53`–`11:18`, `13:03`–`15:35`",
+      "evidence": "**Eva (`08:12`, `09:06`):** `\"čeprav je tam napisal 'Back and front', mi je dodal kot dva posebna kosa... Tle 'Front'... glej, isto je zaznal, vidiš! Ni zaznal backa kot back... Zato ker tako hitro slika, da on zavzame, preden jaz obrnem, to vzame kot že slikano!\"` / **Eva (`11:00`):** `\"namesto da bi bil 'Front' in 'Back', mi dodaja kot dva različna!\"` / **Kristjan (`14:56`):** `\"Tukaj se je pa nov problem zgodil. In sicer, am, mislim, da je zaznal kot črno barvo eno sliko.\"` / **Eva (`15:10`–`15:31`):** `\"'Top', čeprav mi je [pisalo] 'Back', ne slika backa! Vidiš? Če jaz to shranim, 'Add 3 to my wardrobe', mi bo shranilo vse tri kot posebne kose! ... Tako da ta funkcija ne deluje.\"`",
+      "current": "Across 4 consecutive tests (2 in `\"Hold pieces up\"` and 2 in `\"Lay pieces out\"`): (1) auto-capture fires within ~1–3s before the user can flip the garment, saving the front photo twice (`Front` and `Back` slots showing the identical front image); (2) when `Front` and `Back` photos are captured in sequence, `To review | Styld` and `Add N to my wardrobe` create **two separate standalone `\"Top\"` items** in `Wardrobe` (each still showing `\"Add the back\"`) instead of attaching the back image to the front piece; and (3) setting the phone down on the bed while flipping the garment causes the pitch-black camera feed to trigger `\"Looking...\"` and auto-capture black frames, which both consume the `Front`/`Back` state slot and get segmented in `To review` as solid-black `\"Trousers\"` / `\"Top\"` (`Needs a better look`).",
+      "expected": "Fix the guided `Front`/`Back` capture pipeline end-to-end: (1) pair each captured `Back` photo with its preceding `Front` piece in `To review` and `Wardrobe` instead of creating a second standalone piece; (2) suppress `\"Looking...\"` / auto-capture when the camera frame is dark/covered/occluded or no garment is in view; and (3) require a clear transition/cooldown between `Front` and `Back` captures so the same side is never captured twice.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-49",
+      "type": "feature request",
+      "title": "Increase auto-capture delay in `\"Hold pieces up\"` / `\"Lay pieces out\"` and display a large central `\"3, 2, 1\"` numeric countdown overlay once stillness is detected",
+      "timestamps": "`eva5styld.mp4` `05:51`–`05:56`, `11:25`–`12:28`",
+      "evidence": "**Eva (`11:25`, `12:03`):** `\"jaz bi rabila več časa... in da preden slika, naredi: 'ena, dva, tri'... Jaz bi to na večji naredila, ker ko jaz slikam, nimam toliko cajta gledat v ekran, a veš, ker obračam kose in to.\"` / **Kristjan (`12:09`):** `\"da reče: okej, aha, zaznal sem, da si pri miru, in potem odšteva '3, 2, 1', in bi se prav te cifre na ekranu pojavile.\"` / **Eva (`12:20`):** `\"Ja, ja, no, saj to sem mislila, a veš, da je tako kakor v igrici, preden začneš!\"`",
+      "current": "Stillness auto-capture is indicated only by a small circular progress ring around the bottom shutter button over ~3 seconds, which is impossible to see from across the room while holding/flipping clothes.",
+      "expected": "Give the user more time to position/flip the garment, and once stillness is detected, display a large, high-contrast `\"3, 2, 1\"` numeric countdown in the center of the screen (\"like in a video game before you start\") before firing the shutter.",
+      "confidence": "high",
+      "disposition": "decision"
+    },
+    {
+      "id": "F-50",
+      "type": "UX friction",
+      "title": "In `\"Hold pieces up\"`, the bottom-left `\"Done\"` button is not obvious; user tries tapping the top-right `\"6 taken\"` badge to finish while camera auto-captures her face (`\"7 taken\"`)",
+      "timestamps": "`eva5styld.mp4` `06:13`–`06:21`",
+      "evidence": "**Eva (`06:13`):** `\"Zdaj pa dam '6 taken', kako dam?\"` / **Kristjan (`06:16`):** `\"Tam imaš gumb 'Done' levo dol.\"` `[Screen: While Eva leans in to tap \"6 taken\" at top right, \"Looking...\" triggers on her face and captures a 7th photo (\"7 taken\") at 06:18 before she taps \"Done\" at 06:20.]`",
+      "current": "The top-right `\"6 taken\"` pill looks like the primary review/finish button, whereas the actual `\"Done\"` button is a small thumbnail/checkmark in the bottom-left corner; leaning in to find it triggers an accidental photo of the user's face.",
+      "expected": "Make the finish/review CTA unmistakable (e.g., make the `\"N taken\"` pill tappable to finish or make `\"Done\"` more prominent) and prevent auto-capture from firing on a person's face when no garment is held up.",
+      "confidence": "high",
+      "disposition": "complaint"
+    },
+    {
+      "id": "F-51",
+      "type": "bug",
+      "title": "In `\"Hold pieces up\"`, `To review | Styld` background segmentation extracts the user's worn clothes and background closet coats (`14 pieces found` from 3 held-up garments) and shifts cards slowly as `\"Finding pieces...\"` resolves",
+      "timestamps": "`eva5styld.mp4` `06:21`–`08:07`, `10:17`–`10:56`",
+      "evidence": "**Eva (`06:34`, `08:01`):** `\"Aha, našlo je moje cunje, kar pač sem imela na sebi oblečeno... zato ker opazil je moje plašče\"` / **Kristjan (`06:48`):** `\"Aha, tukaj tale tam rabi nekaj cajta. Tole moraš še malo boljše naredit... samo traja, da se pojavijo.\"` `[Screen: On \"To review | Styld\", the count climbs from 3 -> 6 -> 8 -> 9 -> 12 -> 14 pieces found over 90 seconds, filling the grid with 9+ dark cutouts of Eva's worn black outfit and background closet coats labeled \"Trousers / Coat / Jeans / Shorts — Needs a better look\".]`",
+      "current": "When using `\"Hold pieces up\"`, the segmentation model extracts the clothes the user is wearing on their body and coats hanging in the closet behind them (`14 pieces found` from 3 held-up items; `5 pieces found` from 1 held-up item), while `\"Finding pieces...\"` placeholder cards sit at the top for 35–90s and shift the layout as they resolve.",
+      "expected": "Isolate only the held-up foreground garment in `\"Hold pieces up\"` mode (ignoring the holder's body clothing and background closet items) and stabilize/accelerate progressive card rendering on `To review | Styld`.",
+      "confidence": "high",
+      "disposition": "complaint"
+    }
+  ],
+  "tickets": [
+    {
+      "id": "T-01",
+      "originalTitle": "Fix broken `Add clothes` (`\"Hold pieces up\"` & `\"Lay pieces out\"`) Front/Back guided scanner, black-frame auto-captures, and background/body clothing segmentation (`F-48`, `F-51`)",
+      "originalPriority": "P0",
+      "findings": [
+        "F-48",
+        "F-51"
+      ],
+      "body": "- **Priority**: **P0** — Eva explicitly concluded `\"Tako da ta funkcija ne deluje\"` (`\"So this function does not work\"`) after 4 consecutive tests: the guided scanner fails to attach `Back` photos to `Front` pieces (creating 2–3 separate duplicate `\"Top\"` items in `Wardrobe` or saving the front image into both `Front` and `Back` slots), auto-captures pitch-black frames when the phone rests on the bed (`\"Trousers / Top — Needs a better look\"`), and cuts out the user's own worn clothes and background closet coats (`14 pieces found` for 3 held-up items).\n- **Affected Routes & UI Components**:\n  - `Add clothes | Styld` -> Guided camera modes (`\"Hold pieces up — Your camera takes each one\"` and `\"Lay pieces out — Your camera takes each one from above\"`)\n  - Camera state machine: top pill toggle (`Front` | `Back`), bottom instruction pill (`\"Hold one piece up, then keep still\"` / `\"Lay one piece flat, then take your hands away\"` -> `\"Now show its back, or tap the picture\"` / `\"Now turn it over, or tap the picture\"`), `\"Skip the back\"` button, `\"Looking...\"` badge, `\"Got it. Show the next piece\"` toast, `\"N taken\"` top-right counter, `\"Done\"` bottom-left button.\n  - `To review | Styld` (`\"N pieces found / They're cut out and ready. Untick anything that isn't yours.\"`, `\"Finding pieces...\"` cards, `\"No clothes found in a photo. [Remove]\"`, `\"Add N to my wardrobe\"` button).\n  - `Wardrobe | Styld` piece detail view (`Front` | `Back` toggle pills vs. `\"Add the back\"` button).\n- **Root Causes Observed on Screen (`eva5styld.mp4` `05:31`–`15:35`)**:\n  1. **Broken `Front` + `Back` pairing in `To review` and `Wardrobe`**:\n     - In Test 1 (`Hold pieces up`, `05:31`–`09:30`), Eva held up 3 garments (beige trousers, white buttoned top, white camisole top). `To review` ticked 5 items (`Add 5 to my wardrobe`): 1 `Trousers` item (where tapping `Front` and `Back` showed the **exact same front photo** because the second shutter fired before she finished turning the trousers) and **4 separate standalone `\"Top\"` items** (front of buttoned top, back of buttoned top, front of camisole, back of camisole—each saved as its own separate wardrobe piece with an `\"Add the back\"` button).\n     - In Test 2 (`Hold pieces up`, `09:34`–`11:18`), Eva carefully scanned 1 cream buttoned top (`1 taken` on Front at `09:50`, then turned it around for `2 taken` on Back at `09:54`). Even though the camera UI stepped from `Front` to `Back`, `To review | Styld` (`10:35`) created **two separate checked `\"Top\"` cards** (`Add 2 to my wardrobe`), and saving added two separate `\"Top\"` pieces to `Wardrobe` (`All 320`), neither having a `Back` attached (`11:00`–`11:08`).\n     - In Tests 3 & 4 (`Lay pieces out`, `13:03`–`15:35`), scanning 1 cream buttoned top flat on the bed again produced 2–3 separate `\"Top\"` cards in `To review` (`Add 2 to my wardrobe` at `13:54`, `Add 3 to my wardrobe` at `15:23`).\n  2. **Pitch-black camera frames auto-captured when phone is set down on the bed**:\n     - In `\"Lay pieces out\"`, the user needs both hands to flip the garment and arrange it neatly on the bed, so she sets the phone face-down on the bedsheet (`13:07`–`13:12`, `13:20`–`13:24`, `14:15`–`14:28`, `14:42`–`14:48`).\n     - Because a phone resting on a bed is completely still (`0` motion delta between frames), the stillness detector immediately triggers `\"Looking...\"` and auto-captures a pitch-black photo (`\"2 taken\"` at `13:22`, `\"3 taken\"` at `14:44`).\n     - Worse, this black frame **advances the `Front`/`Back` state machine** (consuming the `Back` slot so the actual back photo is captured as the `Front` of a new piece!) AND the segmentation backend cuts out the black rectangle as a solid-black garment (`\"Trousers — Needs a better look\"` at `14:55`, `\"Top\"` at `15:11`).\n  3. **Worn clothing and background closet segmentation in `\"Hold pieces up\"`**:\n     - When Eva stands in front of her open closet holding up a piece (`05:31`–`06:20`, `09:34`–`10:00`), the multi-item segmentation model extracts the black top/trousers/shorts she is wearing on her own body and coats hanging in the closet behind her, inflating `To review` to `\"14 pieces found\"` (with 9+ dark `\"Trousers / Coat / Jeans / Shorts — Needs a better look\"` cards) and causing `\"Finding pieces...\"` spinners to sit at the top of the grid for ~90 seconds while cards jump around.\n- **Acceptance Criteria**:\n  - [ ] **Pair `Front` and `Back` captures into a single piece**: When the guided camera captures a frame while in `Back` mode, associate that image as the `back_image` of the pending `Front` capture (grouped as a single review card with `Front | Back` preview in `To review | Styld`, and saved as a single `Wardrobe` piece with `Front | Back` toggle pills). Never create two separate `Wardrobe` pieces from a `Front` + `Back` capture pair.\n  - [ ] **Reject dark / occluded / low-variance frames before stillness countdown**: Compute frame mean luminance and edge/texture variance in the camera loop; if the camera is covered, resting on a bed/table (near-black or uniform blur), or no garment contour is inside the framing box, do not trigger `\"Looking...\"`, do not start the shutter countdown, and do not advance the `Front`/`Back` state machine.\n  - [ ] **Require motion transition between `Front` and `Back`**: After capturing `Front`, require a non-trivial visual change / motion event (the user actually moving/flipping the garment) before arming stillness detection for `Back`, preventing the same unflipped side from being captured twice.\n  - [ ] **Single-foreground garment extraction in `\"Hold pieces up\"`**: When the capture source is `\"Hold pieces up\"` (or `\"Lay pieces out\"`), restrict segmentation to the single primary foreground garment held within the framing guides (`max_pieces = 1` per guided frame) and ignore background closet garments and the holder's own worn clothes.\n\n![Hold pieces up camera UI (eva5styld.mp4 05:37)](./evidence/fig23b_hold_pieces_up_camera_ui.png)\n\n![To review: 14 pieces found from 3 held-up garments due to body/closet extraction (eva5styld.mp4 07:50)](./evidence/fig24_to_review_14_pieces_closet_false_positives.png)\n\n![Wardrobe: 2 white tops added as 4 separate standalone Top items (eva5styld.mp4 08:12)](./evidence/fig25a_wardrobe_duplicate_white_tops.png)\n\n![Trousers detail: Front and Back toggle slots both captured the identical front photo (eva5styld.mp4 09:02)](./evidence/fig25b_trousers_identical_front_and_back.png)\n\n![Lay pieces out: pitch-black camera frame on bed auto-captures \"3 taken\" (eva5styld.mp4 14:44)](./evidence/fig26a_black_camera_auto_capture_on_bed.png)\n\n![To review: 1 cream top split into 3 separate Top cards + solid black cutout from bed frame (eva5styld.mp4 15:20)](./evidence/fig26b_to_review_black_square_and_3_separate_tops.png)\n",
+      "screenshots": [
+        "fig23b_hold_pieces_up_camera_ui.png",
+        "fig24_to_review_14_pieces_closet_false_positives.png",
+        "fig25a_wardrobe_duplicate_white_tops.png",
+        "fig25b_trousers_identical_front_and_back.png",
+        "fig26a_black_camera_auto_capture_on_bed.png",
+        "fig26b_to_review_black_square_and_3_separate_tops.png"
+      ],
+      "criteria": [
+        "**Pair `Front` and `Back` captures into a single piece**: When the guided camera captures a frame while in `Back` mode, associate that image as the `back_image` of the pending `Front` capture (grouped as a single review card with `Front | Back` preview in `To review | Styld`, and saved as a single `Wardrobe` piece with `Front | Back` toggle pills). Never create two separate `Wardrobe` pieces from a `Front` + `Back` capture pair.",
+        "**Reject dark / occluded / low-variance frames before stillness countdown**: Compute frame mean luminance and edge/texture variance in the camera loop; if the camera is covered, resting on a bed/table (near-black or uniform blur), or no garment contour is inside the framing box, do not trigger `\"Looking...\"`, do not start the shutter countdown, and do not advance the `Front`/`Back` state machine.",
+        "**Require motion transition between `Front` and `Back`**: After capturing `Front`, require a non-trivial visual change / motion event (the user actually moving/flipping the garment) before arming stillness detection for `Back`, preventing the same unflipped side from being captured twice.",
+        "**Single-foreground garment extraction in `\"Hold pieces up\"`**: When the capture source is `\"Hold pieces up\"` (or `\"Lay pieces out\"`), restrict segmentation to the single primary foreground garment held within the framing guides (`max_pieces = 1` per guided frame) and ignore background closet garments and the holder's own worn clothes."
+      ]
+    },
+    {
+      "id": "T-02",
+      "originalTitle": "Audit and fix AI garment categorization, color tagging, and upside-down legacy cutouts across Wardrobe (`F-08`, `F-09`)",
+      "originalPriority": "P0",
+      "findings": [
+        "F-08",
+        "F-09"
+      ],
+      "body": "- **Priority**: **P0** — Core AI recommendations (`Today`, `Ask Styld`, and `Boards`) are actively broken because ~20% of tops, 8/22 bags, ski pants, and pajama bottoms are misclassified (causing Styld to recommend striped pajama pants, snow boots, and formal wedding dresses for everyday/travel looks).\n- **Specific Misclassifications & Orientation Bugs Observed (`eva.styld1.mp4` `09:05`–`20:37`, `eva3.mp4` `30:55`–`33:25`)**:\n  1. **180° Upside-Down Cutouts**:\n     - Multiple bikini tops in `Swimwear` (`09:06`–`09:38`, e.g., white bandeau bikini top with tie straps pointing downward in `fig05a`) and a red sleeveless mini dress (`16:23`–`16:57`, `fig06`) are stored upside-down (180° rotated). Because the red dress is upside down, the AI classifier misidentified its skirt hem + straps as a `Bodysuit` (`Bodysuits 1`).\n  2. **`Tops & T-shirts 49` (~20% error rate)**:\n     - Out of 49 items in `Tops & T-shirts`, Eva counted **10 misclassified items**: 4 bikini tops (`Swimwear`), 5 gym/sport tops (`Sportswear`), and 1 knit scarf (`Scarves`).\n  3. **`Trousers 29` (ski pants & pajamas mixed into everyday trousers)**:\n     - Red waterproof ski trousers (`15:19`) were placed in `Trousers` instead of `Sportswear`.\n     - Light-blue and white striped drawstring pajama bottoms (`eva3.mp4` `30:55`–`31:58`, `fig21b`, `fig21c`) were classified as everyday `Trousers` instead of `Loungewear & nightwear`, causing `Ask Styld` (`\"What should I wear today?\"`) to recommend wearing striped pajama bottoms with a brown coat and snow boots!\n  4. **`Accessories -> Bags 22` (used as a fallback dump bucket)**:\n     - 8 non-bag items were dumped into `Bags`: 3 pairs of winter mittens/gloves (e.g., grey fingerless gloves in row 1 col 3 of `fig01`), 3 hairbands/headbands (`obroč`, `trak za lase`), 1 knit hood-hat with attached mittens, and 1 pair of white Nike crew socks.\n     - Under `Hats 16`, a tiny decorative lapel pin/brooch was classified as a `Hat` (`20:08`).\n  5. **Color Tagging Error on Footwear**:\n     - Sorel winter snow boots that are ~90% black with a thin white/beige rubber sole trim (`eva3.mp4` `31:05`, visible in `fig21c` carousel right edge) were tagged and described by AI as `\"black and beige boots\"`.\n- **Acceptance Criteria**:\n  - [ ] Add orientation detection/correction in the cutout pipeline (and a manual `Rotate 90°/180°` button in the piece Edit screen) and fix upside-down cutouts in the wardrobe dataset.\n  - [ ] Re-run/upgrade the garment classifier prompt & schema so `Bags` and `Tops & T-shirts` are never used as catch-all fallback buckets; accurately route swimwear/bikini tops to `Swimwear`, gym/ski gear to `Sportswear`, pajama bottoms to `Loungewear & nightwear`, scarves to `Scarves`, and gloves/socks/headbands to their proper `Accessories` subcategories.\n  - [ ] Weight primary color extraction by garment surface area so small sole trims or logos do not override the dominant garment color.\n\n![Wardrobe All 313: grey mittens misclassified as \"Bag\" in row 1 col 3 (eva.styld1.mp4 02:39)](./evidence/fig01_today_not_tucked.png)\n\n![Upside-down white bikini top in Swimwear (eva.styld1.mp4 09:22)](./evidence/fig05a_upside_down_bikini.png)\n\n![Upside-down red mini dress misclassified as \"Bodysuit\" (eva.styld1.mp4 16:30)](./evidence/fig06_upside_down_dress_as_bodysuit.png)\n\n![Ask Styld recommending striped pajama bottoms (\"Trousers\") and snow boots (\"black and beige boots\") (eva3.mp4 30:55)](./evidence/fig21c_ask_styld_response_and_carousel.png)\n\n![Striped pajama bottoms classified as everyday \"Trousers\" (eva3.mp4 31:35)](./evidence/fig21b_ask_styld_pajama_snowboots_outfit.png)\n",
+      "screenshots": [
+        "fig01_today_not_tucked.png",
+        "fig05a_upside_down_bikini.png",
+        "fig06_upside_down_dress_as_bodysuit.png",
+        "fig21c_ask_styld_response_and_carousel.png",
+        "fig21b_ask_styld_pajama_snowboots_outfit.png"
+      ],
+      "criteria": [
+        "Add orientation detection/correction in the cutout pipeline (and a manual `Rotate 90°/180°` button in the piece Edit screen) and fix upside-down cutouts in the wardrobe dataset.",
+        "Re-run/upgrade the garment classifier prompt & schema so `Bags` and `Tops & T-shirts` are never used as catch-all fallback buckets; accurately route swimwear/bikini tops to `Swimwear`, gym/ski gear to `Sportswear`, pajama bottoms to `Loungewear & nightwear`, scarves to `Scarves`, and gloves/socks/headbands to their proper `Accessories` subcategories.",
+        "Weight primary color extraction by garment surface area so small sole trims or logos do not override the dominant garment color."
+      ]
+    },
+    {
+      "id": "T-03",
+      "originalTitle": "Fix Gallery person & garment detection to target the foreground user, auto-match existing wardrobe pieces, and stop inverting dark items to white (`F-16`, `F-17`, `F-18`)",
+      "originalPriority": "P0",
+      "findings": [
+        "F-16",
+        "F-17",
+        "F-18"
+      ],
+      "body": "- **Priority**: **P0** — The `Gallery` feature is currently unusable in testing because it extracts clothing from random background bystanders instead of Eva in the foreground, turns her dark brown suede coat and black items into white ghost cutouts, and fails to link items that already exist in her wardrobe.\n- **Specific Failures Observed (`eva.styld1.mp4` `23:28`–`35:35`)**:\n  1. **Background Bystander Extraction (`F-18`)**:\n     - **Carnival photo (`27:08`–`27:43`, `fig09a`)**: Eva stands in the right foreground holding cotton candy; the AI completely ignored her and extracted the black t-shirt and dark pants of a random man in a baseball cap standing in the background (`What you're wearing` -> 2 cutouts of the man's clothes).\n     - **Oktoberfest photo (`30:36`–`31:06`, `fig09b`)**: Eva stands centered in the foreground in a burgundy/pink patterned dress holding a pretzel; the AI ignored her dress and cross-body bag and extracted the lilac shirt with suspenders and white shorts/lederhosen of an older man in the background plus a background woman's dirndl!\n  2. **White/Grey Color Inversion on Dark Cutouts (`F-17`)**:\n     - **Cypress-alley photo (`24:08`–`26:45`, `fig08a` vs. `fig08b`)**: Eva's dark brown suede belted coat is cut out under `What you're wearing` as a bright white/light-grey ghost silhouette (`fig08a`). Even after Eva manually linked it via `Choose from your wardrobe` to her actual dark brown coat (`fig08b`), the thumbnail next to `Coat` on the Gallery page still rendered white/grey.\n     - **Board editor `Your pieces` strip (`29:54`–`30:06`, `fig10b`)**: Dark/black tops and dresses in the `Your pieces` bottom strip also appear washed-out/white.\n  3. **Failure to Detect All Worn Items & Failure to Match Existing Wardrobe (`F-16`)**:\n     - In Photo 1 (`24:15`), Eva is wearing 4 items that are all in her wardrobe (dark brown coat, pullover, top, shoes); Styld only found the coat and marked it `\"Not in your wardrobe yet\"`.\n     - In Photo 4 (hedge-alley dress photo, `32:41`), Eva's patterned dress, brown bag, and black sandals are all in her wardrobe; Styld only detected the dress and sandals and marked both `\"Not in your wardrobe yet\"`, causing Eva to accidentally re-add a duplicate dress to her wardrobe (`34:16`).\n- **Acceptance Criteria**:\n  - [ ] **Foreground subject selection**: In `Gallery` outfit analysis, detect the primary foreground person (largest bounding box / most central / closest to camera) and restrict garment extraction strictly to that person's bounding region.\n  - [ ] **Preserve true dark garment colors**: Fix the alpha-mask compositing / image normalization / CSS filter issue that turns dark brown and black garments into white/grey cutouts in `Gallery` and `Your pieces`.\n  - [ ] **Automatic wardrobe matching**: Compare each extracted garment embedding/attributes against the user's existing `Wardrobe` items; auto-link high-confidence matches (or show the top matching wardrobe piece with a 1-tap confirm) instead of defaulting every item to `\"Not in your wardrobe yet\"`.\n\n![Gallery 2 Nov: dark brown suede coat cut out as white ghost silhouette & marked \"Not in your wardrobe yet\" (eva.styld1.mp4 24:12)](./evidence/fig08a_gallery_white_coat_unmatched.png)\n\n![Actual dark brown suede coat in Wardrobe -> Coats 8 (eva.styld1.mp4 26:20)](./evidence/fig08b_actual_brown_coat_in_wardrobe.png)\n\n![Gallery carnival photo: ignored Eva in foreground and extracted background man's shirt & trousers (eva.styld1.mp4 27:25)](./evidence/fig09a_bystander_carnival.png)\n\n![Gallery Oktoberfest photo: extracted background grandpa's suspenders shirt, lederhosen & background woman's dirndl (eva.styld1.mp4 30:42)](./evidence/fig09b_bystander_oktoberfest.png)\n",
+      "screenshots": [
+        "fig08a_gallery_white_coat_unmatched.png",
+        "fig08b_actual_brown_coat_in_wardrobe.png",
+        "fig09a_bystander_carnival.png",
+        "fig09b_bystander_oktoberfest.png"
+      ],
+      "criteria": [
+        "**Foreground subject selection**: In `Gallery` outfit analysis, detect the primary foreground person (largest bounding box / most central / closest to camera) and restrict garment extraction strictly to that person's bounding region.",
+        "**Preserve true dark garment colors**: Fix the alpha-mask compositing / image normalization / CSS filter issue that turns dark brown and black garments into white/grey cutouts in `Gallery` and `Your pieces`.",
+        "**Automatic wardrobe matching**: Compare each extracted garment embedding/attributes against the user's existing `Wardrobe` items; auto-link high-confidence matches (or show the top matching wardrobe piece with a 1-tap confirm) instead of defaulting every item to `\"Not in your wardrobe yet\"`."
+      ]
+    },
+    {
+      "id": "T-04",
+      "originalTitle": "Fix non-functional layer up/down (`z-index`) controls in Board collage editor and combine into a single front/back toggle button (`F-36`, `F-37`)",
+      "originalPriority": "P0",
+      "findings": [
+        "F-36",
+        "F-37"
+      ],
+      "body": "- **Priority**: **P0** — Tapping the layer up/down arrow buttons in the collage editor currently does nothing at all, leaving items trapped in broken z-order layers when assembling outfits on a board.\n- **Affected Component & Observed Bug (`eva3.mp4` `18:55`–`21:18`, `fig20`)**:\n  - In `Boards | Styld` collage editor, selecting an item on the canvas displays 5 circular action buttons below the canvas: Flip Horizontal (`⇄`), Duplicate (`❐`), Layer Up (`↑`), Layer Down (`↓`), and Delete (`🗑`).\n  - When Eva placed a green long-sleeve top and burgundy wide-leg trousers on the canvas (`fig20`), the trousers rendered underneath the top even though she added the trousers second. Tapping `↑` and `↓` repeatedly had zero effect on the canvas stacking order. Later, white Fila sneakers rendered on top of all items while black boots rendered underneath all items (`20:46`).\n- **Acceptance Criteria**:\n  - [ ] Fix the collage canvas layer ordering state so items render strictly in their array/z-index order and newly added items default to the top layer.\n  - [ ] Replace the two separate `↑` and `↓` buttons in the object toolbar with **one combined Front/Back toggle/cycle button** (matching the single `⇄` flip button) so tapping it brings the selected item to the front or sends it to the back (`bring to front` / `send to back`).\n\n![Board collage editor: broken z-index layer up/down buttons with trousers stuck behind top (eva3.mp4 19:25)](./evidence/fig20_collage_broken_zindex_layer_buttons.png)\n",
+      "screenshots": [
+        "fig20_collage_broken_zindex_layer_buttons.png"
+      ],
+      "criteria": [
+        "Fix the collage canvas layer ordering state so items render strictly in their array/z-index order and newly added items default to the top layer.",
+        "Replace the two separate `↑` and `↓` buttons in the object toolbar with **one combined Front/Back toggle/cycle button** (matching the single `⇄` flip button) so tapping it brings the selected item to the front or sends it to the back (`bring to front` / `send to back`)."
+      ]
+    },
+    {
+      "id": "T-05",
+      "originalTitle": "Add a large central `\"3, 2, 1\"` stillness countdown overlay, longer flip delay, clearer `\"Done\"` action, and clearer guided-camera card hierarchy in `Add clothes` (`F-47`, `F-49`, `F-50`)",
+      "originalPriority": "P1",
+      "findings": [
+        "F-47",
+        "F-49",
+        "F-50"
+      ],
+      "body": "- **Priority**: **P1** — Users standing across the room holding/flipping garments cannot see the tiny shutter progress ring and get photographed mid-flip or while leaning in to tap `\"6 taken\"` / `\"Done\"`; both Kristjan and Eva agreed on a prominent video-game-style `\"3, 2, 1\"` numeric countdown overlay and longer stillness delay.\n- **Detailed UX & Implementation Spec (`eva5styld.mp4` `05:00`–`06:21`, `11:25`–`12:28`)**:\n  1. **Large `\"3, 2, 1\"` Countdown Overlay (`F-49`)**:\n     - Currently, when the camera detects stillness, it draws a thin white progress arc around the bottom-center shutter circle over ~3 seconds (`fig23b`). When standing 1–1.5 meters away holding up trousers or flipping a top, the user cannot see that small ring at the bottom of the screen.\n     - Increase the post-capture cooldown / stillness grace period so the user has time to flip the garment, and once stillness is confirmed, display a **large, high-contrast `\"3\"`, `\"2\"`, `\"1\"` numeric countdown overlay in the center of the camera viewport** (\"like in a video game before you start\") before firing the shutter.\n  2. **Clearer Finish / Review Action (`F-50`)**:\n     - At `06:13` (`\"Zdaj pa dam '6 taken', kako dam?\"`), Eva tried to tap the top-right `\"6 taken\"` pill badge to finish scanning, not noticing the small `\"Done\"` checkmark button in the bottom-left corner (`fig23b`). While she leaned her face close to the phone to look for the button, the camera auto-captured a 7th photo of her face (`\"7 taken\"`).\n     - Make the top-right `\"N taken\"` badge tappable to finish (navigating to `To review | Styld`) in addition to making the bottom-left `\"Done\"` button more prominent, and suppress auto-capture when a face/person without a held-up garment fills the frame.\n  3. **`Add clothes | Styld` Card Hierarchy (`F-47`)**:\n     - On `Add clothes | Styld` (`fig23a`), `\"Photos or a video / From your library\"` is the largest hero card at the top, while `\"Lay pieces out\"` and `\"Hold pieces up\"` are smaller cards below. Eva immediately tapped `\"Photos or a video\"` expecting the guided camera, which opened Android's native camera without framing guides.\n     - Make the two guided camera cards (`\"Lay pieces out\"` and `\"Hold pieces up\"`) the primary top cards (or clearly label the library card `\"Upload from photo library\"` without invoking the raw OS camera).\n\n![Add clothes card hierarchy: large \"Photos or a video\" card above \"Lay pieces out\" / \"Hold pieces up\" (eva5styld.mp4 05:03)](./evidence/fig23a_add_clothes_card_hierarchy.png)\n\n![Hold pieces up camera UI: tiny shutter ring at bottom and \"Done\" checkmark at bottom-left (eva5styld.mp4 05:37)](./evidence/fig23b_hold_pieces_up_camera_ui.png)\n",
+      "screenshots": [
+        "fig23a_add_clothes_card_hierarchy.png",
+        "fig23b_hold_pieces_up_camera_ui.png"
+      ],
+      "criteria": []
+    },
+    {
+      "id": "T-06",
+      "originalTitle": "Persist active Wardrobe category filters and Gallery return routes in URL state so Back navigation (`<` and Android system Back) does not reset or loop (`F-13`, `F-21`, `F-28`)",
+      "originalPriority": "P1",
+      "findings": [
+        "F-13",
+        "F-21",
+        "F-28"
+      ],
+      "body": "- **Priority**: **P1** — Every time the user exits an item detail view or the `To review` tray, the app loses their place and dumps them back to `All 313` (`Wardrobe -> Pieces`), or traps Android Back in an editor/board history loop.\n- **Detailed Implementation Spec**:\n  - **Wardrobe filter persistence (`F-13`, `eva.styld1.mp4` `17:53`–`18:38`)**: Sync active category and subcategory selections (e.g., `?category=shoes&subcategory=sandals` or nested routes `/wardrobe/shoes/sandals`) to the browser URL so clicking into a piece detail view and pressing `<` Back (or Android system Back) returns to the exact filtered subcategory and restores scroll position, rather than resetting to `All 313`.\n  - **Review Tray return route (`F-21`, `eva.styld1.mp4` `33:00`–`33:41`)**: When navigating to `To review | Styld` from a `Gallery` photo (`\"Open the review tray\"`), pass `?from=/gallery/<photoId>` (or use `history.back()`) so tapping `<` Back returns to that `Gallery` photo rather than `Wardrobe -> Pieces`.\n  - **Android Back button history hygiene (`F-28`, `eva.styld1.mp4` `40:15`–`40:44`, `eva3.mp4` `08:17`–`08:30`)**: Do not push redundant history entries when toggling between board/editor sub-states or closing modals; use `replaceState` so pressing the Android hardware/gesture Back button exits cleanly to the parent list.\n",
+      "screenshots": [],
+      "criteria": []
+    },
+    {
+      "id": "T-07",
+      "originalTitle": "Redesign `Wardrobe` navigation into a 2-level visual category drill-down (ABOUT YOU style) with progressive populated-only categories and label-free grid cards (`F-04`, `F-05`, `F-06`, `F-11`)",
+      "originalPriority": "P1",
+      "findings": [
+        "F-04",
+        "F-05",
+        "F-06",
+        "F-11"
+      ],
+      "body": "- **Priority**: **P1** — Eva identified the flat 18-pill horizontal scroll and immediate 313-item dump as her biggest daily browsing friction, requesting a clean 4-card top-level visual hierarchy (`Clothing`, `Sport`, `Shoes`, `Accessories`) -> visual subcategories -> label-free cutout grid so she can \"shop her own wardrobe\".\n- **Detailed UX & Implementation Spec (`eva.styld1.mp4` `02:45`–`05:28`, `07:38`–`09:05`, `12:15`–`13:52`; `eva3.mp4` `11:29`–`16:55`)**:\n  1. **Remove Flat Horizontal Pill Bars & Redundant `\"All\"` Pills (`F-04`, `F-05`)**:\n     - Currently, opening `Wardrobe` dumps all 313 items on screen beneath a 2-row horizontal scrolling strip (`Filters | All 313 | Clothing 246 | Shoes 22 | Accessories 46`, followed by `All 245` + 18 clothing subcategory pills from `Tops & T-shirts 49` to `Loungewear & nightwear`, or `All 22 | Trainers 7 | Boots 9 | Sandals 6` in `fig04`).\n     - Remove both horizontal pill rows and the immediate `\"All 313\"` item dump.\n  2. **Level 1 (`Wardrobe` Root — 4 Main Visual Categories)**:\n     - Opening `Wardrobe` displays up to **4 top-level category cards** in a clean 2-column visual grid (modeled on ABOUT YOU in `fig19a`):\n       1. **`Clothing`** (`Oblačila`)\n       2. **`Sport`** (`Šport` / `Sportswear`, including sport tops, ski pants, and sport/running/hiking shoes)\n       3. **`Shoes`** (`Obutev`)\n       4. **`Accessories`** (`Dodatki`)\n     - Each card displays the category title on the left and a representative cutout thumbnail from the user's own wardrobe on the right (`fig19a`).\n  3. **Level 2 (Visual Subcategory List)**:\n     - Tapping a Level 1 category (e.g., `Clothing`) opens a 2-column visual subcategory grid (`fig19b`: `Jeans`, `Coats`, `Trousers`, `Dresses`, `Shirts & blouses`, `Knitwear`, `Jackets`, `Skirts`, `Tops & T-shirts`, `Swimwear`, `Loungewear & nightwear`, etc.), each with a representative cutout thumbnail from the user's wardrobe.\n  4. **Progressive Populated-Only Categories (`F-06`)**:\n     - **Only render Level 1 categories and Level 2 subcategories where `item_count >= 1`**.\n     - If a new user has `0` items in their wardrobe, show a single empty-state prompt (`\"Add items to wardrobe\"` / `\"Dodaj stvari v garderobo\"`). As soon as they add their first pair of trousers, `Clothing -> Trousers` appears, so the wardrobe structure grows organically with their clothes.\n  5. **Level 3 (Label-Free Item Cutout Grid + Floating `Filter` Button, `F-11`)**:\n     - Tapping a Level 2 subcategory (e.g., `Jackets` or `Trainers`) opens the 2-column (or 3-column) item cutout grid (`fig19c`) with a single `\"Filter\"` button (for color/season/occasion filtering).\n     - **Remove all text labels (`Top`, `Trainers`, `Swimwear`, `Bag`) from beneath the item cards in the grid** (`F-11`). Show only the clean garment cutout images in the grid; display the item's `Name` and metadata only when the user taps into the piece detail screen.\n\n![Current Wardrobe grid: redundant \"All 22\" pill, dark grey squares, and repetitive \"Trainers\" text labels under every card (eva.styld1.mp4 05:32)](./evidence/fig04_wardrobe_grey_squares_darkmode.png)\n\n![Target Level 1 Reference (ABOUT YOU): 4 main categories with representative thumbnails (eva3.mp4 11:52)](./evidence/fig19a_aboutyou_level1_4categories.png)\n\n![Target Level 2 Reference (ABOUT YOU): visual subcategory cards with item thumbnails (eva3.mp4 12:02)](./evidence/fig19b_aboutyou_level2_subcategories.png)\n\n![Target Level 3 Reference (ABOUT YOU): item grid with floating Filter button (eva3.mp4 13:18)](./evidence/fig19c_aboutyou_level3_items_with_filter_btn.png)\n",
+      "screenshots": [
+        "fig04_wardrobe_grey_squares_darkmode.png",
+        "fig19a_aboutyou_level1_4categories.png",
+        "fig19b_aboutyou_level2_subcategories.png",
+        "fig19c_aboutyou_level3_items_with_filter_btn.png"
+      ],
+      "criteria": []
+    },
+    {
+      "id": "T-08",
+      "originalTitle": "Restructure top-level navigation: keep `Wardrobe` strictly for pieces and turn the 4th tab into `Laboratory` (`Boards | Gallery | Looks`) (`F-35`)",
+      "originalPriority": "P1",
+      "findings": [
+        "F-35"
+      ],
+      "body": "- **Priority**: **P1** — Agreed architectural decision to separate clothing inventory (`Wardrobe`) from outfit experimentation and curation (`Laboratory` containing `Boards`, `Gallery`, and `Looks`).\n- **Detailed IA & Navigation Spec (`eva3.mp4` `08:55`–`11:37`, `16:55`–`17:45`, `24:39`–`27:30`)**:\n  - **Mental Model Agreed by Eva & Kristjan**:\n    - **`Wardrobe`** = \"The ingredients\" (purely the user's categorized clothing inventory + `+` button to add clothes). Remove the `Pieces | Looks | Gallery` sub-tab bar from `Wardrobe` completely.\n    - **`Laboratory`** (4th bottom-nav tab, `2×2` grid icon) = \"The laboratory where you experiment with ingredients\". Tapping the 4th bottom-nav tab opens `Laboratory` with three sub-tabs at the top: **`Boards | Gallery | Looks`**:\n      1. **`Boards`**: Interactive canvas and AI board templates for experimenting with multi-outfit layouts, trips, and wishlists.\n      2. **`Gallery`**: Real-life outfit photos uploaded by the user, with automatic outfit cutouts that can be sent to `Boards` or `Looks`.\n      3. **`Looks`**: Saved, fixed single-outfit \"formulas\" exported from `Boards` (`\"Export to look\"`) for quick morning dressing when the user has no time to experiment.\n",
+      "screenshots": [],
+      "criteria": []
+    },
+    {
+      "id": "T-09",
+      "originalTitle": "Remove the intermediate Board overview / `\"Pinned\"` screen and open the interactive collage editor directly (`F-19`)",
+      "originalPriority": "P1",
+      "findings": [
+        "F-19"
+      ],
+      "body": "- **Priority**: **P1** — Both Eva and Kristjan agreed that the 2-step `Pinned` -> `Edit collage` flow is redundant and confusing; clicking a board or saving an item to a board should open the interactive collage canvas directly with the item placed on the canvas.\n- **Detailed Implementation Spec (`eva.styld1.mp4` `27:53`–`28:57`, `36:25`–`36:44`, `38:08`–`40:12`)**:\n  - Currently, clicking a board card in `Boards` (or clicking the `\"Open\"` toast after `\"Save to board\"` / `\"Add to board\"`) opens an intermediate read-only page (`fig10a`) showing:\n    - Header: `< All boards`, `Make with Styld`, `Edit`\n    - Board title (`Weekend in verona` / `My board`), `N pins, only you can see it`\n    - Cropped preview box + `\"Edit collage\"` / `\"Lay this pin on a table. [Make a collage]\"`\n    - `\"Pinned\"` section with `+ Add`\n  - Moreover, items added to a board via `\"Save to board\"` only appear in the `\"Pinned\"` list and are **not** placed on the collage canvas until the user opens `\"Edit collage\"` and taps them again from `Pinned`!\n  - **Required Change**: Remove the intermediate Board overview / `\"Pinned\"` screen completely. Tapping any board in the `Boards` list (or opening a board after `\"Add to board\"`) must open the **interactive collage canvas editor (`fig10b`) directly**, and any item added via `\"Add to board\"` must be placed directly onto the board's collage canvas.\n\n![Intermediate Board \"Pinned\" overview screen to remove (eva.styld1.mp4 28:22)](./evidence/fig10a_board_intermediate_pinned.png)\n\n![Interactive Board collage editor that should open directly (eva.styld1.mp4 29:05)](./evidence/fig10b_board_unfiltered_your_pieces.png)\n",
+      "screenshots": [
+        "fig10a_board_intermediate_pinned.png",
+        "fig10b_board_unfiltered_your_pieces.png"
+      ],
+      "criteria": []
+    },
+    {
+      "id": "T-10",
+      "originalTitle": "Build the `\"One piece, six outfits\"` and `\"Wishlist board\"` guided Board Templates (with auto-cutout for store screenshots and complete multi-piece outfits) (`F-26`, `F-29`, `F-30`, `F-31`, `F-32`, `F-33`)",
+      "originalPriority": "P1",
+      "findings": [
+        "F-26",
+        "F-29",
+        "F-30",
+        "F-31",
+        "F-32",
+        "F-33"
+      ],
+      "body": "- **Priority**: **P1** — Agreed as the highest \"wow effect\" priority for `Boards`: tapping `+` on `Boards` should open a template picker where choosing `\"One piece, six outfits\"` or `\"Wishlist board\"` places a central hero/wishlist piece (auto-cutting out store screenshots) and generates 6–8 complete outfits (top/layers, bottom, shoes, 1–3 accessories) around it on a thematic background instead of dropping 6 isolated garments.\n- **Detailed Product & Engineering Spec (`eva.styld1.mp4` `40:48`–`46:13`; `stly.eva2.mp4` `00:10`–`03:56`; `eva3.mp4` `00:38`–`07:50`)**:\n  1. **Tapping `+` on `Boards` Opens Template Chooser (`F-26`)**:\n     - Do not create a blank `\"My board (0 pins)\"` record when `+` is tapped. Instead, open a `\"Templates\"` chooser screen (`\"like in PowerPoint\"`).\n  2. **Every AI-Generated Board Must Consist of Complete Outfits (`F-29`)**:\n     - Never output 6 isolated single garments in a grid (like `\"Trip to india\"` in `fig12`, which selected 2 formal satin wedding dresses, 1 bikini top, and 1 sports bra just because they were green/cream).\n     - Every generated outfit cluster on a board must be a **complete, wearable outfit** appropriate for the occasion and weather:\n       - Top + layering piece (cardigan, blazer, sweater, jacket, or coat when appropriate; up to 2–3 upper layers like t-shirt + sweater + coat)\n       - Bottom (trousers, jeans, skirt, shorts—unless the base is a dress/jumpsuit)\n       - Shoes (`1 pair`)\n       - Accessories (`at least 1–2, up to 3`: bag, sunglasses, belt, hat, scarf, or jewellery)\n  3. **Template 1 (Build First — Highest \"Wow Effect\"): `\"One piece, six outfits\"` (`F-30`, `F-33`, `fig14`, `fig15`, `fig17`)**:\n     - **Input**: Prompts the user to pick **1 piece from their `Wardrobe`** OR **upload an external photo/screenshot** (if external, ask if they want to cut it out / auto-cutout the background).\n     - **Layout**: Places the hero piece in the center (as in `fig14` / `fig15`) or repeats the exact same hero cutout in the same orientation inside each of 6–8 outfit clusters around the board (`fig17`).\n     - **Dynamic Visual Composition & Thematic Background (`F-33`)**: Vary the relative positions of shoes, bags, and accessories across the 6–8 outfit clusters so the board looks like a curated editorial collage rather than a rigid spreadsheet, and automatically select a complementary thematic background color (`Paper`, e.g., warm beige, soft light blue for a black-and-white polka-dot dress, etc.) instead of black.\n  4. **Template 2: `\"Wishlist board\"` (`F-31`, `fig16`)**:\n     - **Input**: Shows an `\"Add a wishlist item\"` button where the user uploads a screenshot or photo of an item from an online store they are thinking of buying (e.g., green Adidas Gazelle sneakers from ABOUT YOU in `fig16`).\n     - **Behavior**: Automatically removes the background from the store screenshot, places the wishlist item in the center of the board, and generates 6 complete outfits around it using pieces **from the user's existing wardrobe** so the user can see if they already own enough matching clothes to justify buying the item.\n  5. **Template 3: `\"Seven outfits of a week\"` / `\"My trip\"` (`F-32`, `fig18b`)**:\n     - Prompts for destination/weather (e.g., `\"What's the weather gonna be?\"` -> `\"cold December week\"` or `\"rainy September week\"`) and arranges 7 complete multi-piece outfits in a clean grid (`fig18b`).\n  6. **Template 4: `\"Outfit of the day\"` (`F-32`)**:\n     - User types what they are doing today / the vibe, and AI lays out 1 complete outfit collage on the board.\n  7. **Template 5: `\"Blank\"` Lookbook Template (`F-32`, `fig18a`)**:\n     - Freeform canvas where the user can set a title (e.g., `\"Office looks 2026\"` or `\"Best looks of 2026\"`), pick a background color, arrange full-body outfit cutouts from their `Gallery` (`fig18a`), and share publicly.\n\n![Current Broken Mood Board (\"Trip to india\"): 6 isolated pieces including wedding dresses, bikini top & sports bra (eva.styld1.mp4 42:10)](./evidence/fig12_trip_to_india_moodboard_bug.png)\n\n![Target Reference 1 (\"One piece, six outfits\"): base piece in center surrounded by 6 complete assembled outfits (stly.eva2.mp4 02:35)](./evidence/fig14_pinterest_one_base_endless_outfits.png)\n\n![Target Reference 2 (\"One piece, six outfits\" radial layout): hero jeans in center with arrows to complete outfits (stly.eva2.mp4 03:53)](./evidence/fig15_pinterest_radial_jeans_outfits.png)\n\n![Target Reference 3 (Samba 8 outfits): hero piece repeated identically in each outfit with dynamic layering (eva3.mp4 05:45)](./evidence/fig17_pinterest_samba_8_outfits_dynamic.png)\n\n![Wishlist Board input example: store screenshot of Adidas Gazelle sneakers to auto-cutout (eva3.mp4 01:30)](./evidence/fig16_aboutyou_wishlist_cutout_source.png)\n\n![Target Reference 4 (\"Outfits of the week\" grid): 9 complete multi-piece outfits (eva3.mp4 07:26)](./evidence/fig18b_outfits_of_the_week_grid.png)\n\n![Target Reference 5 (\"Blank\" lookbook template): \"Office looks 2026\" full-body cutout grid (eva3.mp4 06:42)](./evidence/fig18a_office_looks_2026_blank_template.png)\n",
+      "screenshots": [
+        "fig12_trip_to_india_moodboard_bug.png",
+        "fig14_pinterest_one_base_endless_outfits.png",
+        "fig15_pinterest_radial_jeans_outfits.png",
+        "fig17_pinterest_samba_8_outfits_dynamic.png",
+        "fig16_aboutyou_wishlist_cutout_source.png",
+        "fig18b_outfits_of_the_week_grid.png",
+        "fig18a_office_looks_2026_blank_template.png"
+      ],
+      "criteria": []
+    },
+    {
+      "id": "T-11",
+      "originalTitle": "Replace the unfiltered horizontal `Your pieces` strip in the Board collage editor with a filterable `\"Add your piece\"` (`+`) bottom-sheet drawer (`F-20`)",
+      "originalPriority": "P1",
+      "findings": [
+        "F-20"
+      ],
+      "body": "- **Priority**: **P1** — Scrolling horizontally through 313 unfiltered items in `Your pieces` makes manual board creation impractical; both agreed on an `\"Add your piece\"` button that opens a category-filtered bottom sheet.\n- **Detailed Implementation Spec (`eva.styld1.mp4` `28:58`–`29:53`; `eva3.mp4` `18:12`–`18:48`, `fig10b`, `fig20`)**:\n  - Currently, the bottom of the Board collage editor displays `Your pieces` as a single unfiltered horizontal scrolling row of all 313 items (`fig10b`, `fig20`), where `Shoes` are all the way at the end (`eva3.mp4` `18:27`).\n  - Remove the inline horizontal `Your pieces` strip and replace it with an **`\"Add your piece\"` (`+`) button** below the canvas.\n  - Tapping `\"Add your piece\"` opens a slide-up bottom-sheet drawer with category/subcategory filters at the top so the user can filter (e.g., `Shoes -> Boots` or `Clothing -> Trousers`) and tap items to add them onto the collage canvas.\n",
+      "screenshots": [],
+      "criteria": []
+    },
+    {
+      "id": "T-12",
+      "originalTitle": "Expand `Shoes` and `Accessories` subcategories, expand `\"When it's worn\"` with seasons & `\"Rainy\"` / waterproof tags, and support AI-created + user-created custom categories (`F-12`, `F-45`)",
+      "originalPriority": "P1",
+      "findings": [
+        "F-12",
+        "F-45"
+      ],
+      "body": "- **Priority**: **P1** — Mixing running/court/hiking shoes into `Trainers` (4 of 7 pairs) and snow/hiking boots into `Boots`, lacking `Gloves`, `Socks`, `Hair accessories`, `Loafers`, `Ballet flats`, and `Heels`, and lacking seasonal/rainproof tags under `\"When it's worn\"` prevents accurate wardrobe organization and weather-appropriate outfit matching.\n- **Detailed Taxonomy & Metadata Spec (`eva.styld1.mp4` `14:36`–`15:00`, `17:12`–`21:46`; `eva5styld.mp4` `02:09`–`02:21`, `03:17`–`03:33`)**:\n  1. **Footwear (`Shoes` & `Sport`)**:\n     - Separate athletic/technical footwear (`Sport shoes`: running shoes, indoor court shoes, hiking shoes/boots, snow boots) from everyday fashion `Trainers` and everyday `Boots` (in `fig04`, 4 of Eva's 7 `Trainers` are running, court, and hiking shoes).\n     - Ensure `Loafers`, `Oxfords` (lace-up), `Mary Janes`, `Ballet flats` (`balerinke`), `Heels` (`pete`), and `Sandals` are supported subcategories under `Shoes`.\n  2. **Accessories (`Accessories`)**:\n     - Add `Gloves` (`Gloves & mittens`), `Socks`, and `Hair accessories` (`Headbands / Hairbands`) alongside `Bags`, `Belts`, `Scarves`, `Hats`, `Jewellery`, and `Sunglasses & glasses`.\n  3. **Dynamic AI-Created & User-Created Categories (`eva.styld1.mp4` `20:10`–`20:35`)**:\n     - Allow the AI classifier to create a new subcategory when scanning an item that does not fit existing presets, and allow the user to add/rename custom categories in the piece editor.\n  4. **`\"When it's worn (optional)\"` in Piece Editor (`F-45`, `fig22b`)**:\n     - Currently only offers 3 pills: `Warm weather`, `Cold weather`, `All year`.\n     - Add specific season pills (**`Spring`**, **`Summer`**, **`Autumn`**, **`Winter`**) and weather-resistance pills (**`Rainy` / `Waterproof` / `Windproof`**) so outer layers and footwear can be matched to rain and transitional seasons.\n\n![Piece editor \"When it's worn (optional)\" currently limited to Warm weather, Cold weather, All year (eva5styld.mp4 03:18)](./evidence/fig22b_piece_edit_when_its_worn.png)\n",
+      "screenshots": [
+        "fig22b_piece_edit_when_its_worn.png"
+      ],
+      "criteria": []
+    },
+    {
+      "id": "T-13",
+      "originalTitle": "Replace bottom-nav magnifying glass with AI sparkles icon (`✨`), remove intermediate `\"Search your wardrobe\"` screen, and open `Ask Styld` chat directly (`F-39`)",
+      "originalPriority": "P1",
+      "findings": [
+        "F-39"
+      ],
+      "body": "- **Priority**: **P1** — Agreed navigation simplification that eliminates the redundant keyword search screen (where Eva accidentally typed her AI chat prompt twice) and takes users straight to `Ask Styld`.\n- **Detailed Implementation Spec (`eva3.mp4` `28:27`–`29:57`, `33:28`–`33:58`)**:\n  - Currently, the 2nd icon in the bottom floating navigation bar is a magnifying glass (`🔍`), which opens an intermediate page (`Ask | Styld`, `fig21a`) with a `\"Search your wardrobe\"` text input, category pills, and a `\"Styld, your stylist -> Start a chat\"` card. At `33:30`–`33:48`, Eva tapped `<` Back from `Ask Styld` and twice typed `\"analysis my wardrobe\"` into `\"Search your wardrobe\"` thinking it was the AI chat input!\n  - **Required Change**:\n    1. Replace the magnifying glass icon (`🔍`) in the bottom nav bar with the **AI sparkles/stars icon (`✨`)**.\n    2. Remove the intermediate `\"Search your wardrobe\"` screen (`fig21a`) completely.\n    3. Tapping the `✨` bottom-nav icon must open the **`Ask Styld` chat screen (`fig21c`) directly**.\n\n![Obsolete intermediate \"Ask / Search your wardrobe\" screen to remove (eva3.mp4 28:35)](./evidence/fig21a_obsolete_search_screen.png)\n\n![Ask Styld chat screen that should open directly from the bottom nav AI sparkles icon (eva3.mp4 30:55)](./evidence/fig21c_ask_styld_response_and_carousel.png)\n",
+      "screenshots": [
+        "fig21a_obsolete_search_screen.png",
+        "fig21c_ask_styld_response_and_carousel.png"
+      ],
+      "criteria": []
+    },
+    {
+      "id": "T-14",
+      "originalTitle": "Add `\"Analyze my wardrobe\"` starter pill in `Ask Styld`, return structured category/color/gap analysis, and reduce chat, Gallery & piece detail image loading latency (`F-15`, `F-40`, `F-41`, `F-43`)",
+      "originalPriority": "P1",
+      "findings": [
+        "F-15",
+        "F-40",
+        "F-41",
+        "F-43"
+      ],
+      "body": "- **Priority**: **P1** — `Ask Styld` currently takes 18–65 seconds to respond (and piece detail images can stall for ~12s) and gives a brief prose summary instead of the structured category counts, color breakdown, and gap/surplus analysis Eva valued in v1.\n- **Detailed Implementation Spec (`eva3.mp4` `30:00`–`30:48`, `34:10`–`36:47`; `eva5styld.mp4` `00:59`–`01:11`)**:\n  1. **`\"Analyze my wardrobe\"` Starter Prompt Pill (`F-40`)**:\n     - On `Ask Styld`, add **`\"Analyze my wardrobe\"`** to the default starter prompt pills alongside `\"What should I wear today?\"`, `\"What goes well together in my wardrobe?\"`, and `\"What is missing from my wardrobe?\"`.\n  2. **Structured Wardrobe Analysis Output (`F-40`)**:\n     - When the user asks to analyze their wardrobe, do not return a generic 2-paragraph prose summary. Return a structured breakdown containing:\n       - Exact item counts per category and subcategory (e.g., total pieces, tops, bottoms, dresses, coats/jackets, shoes, accessories).\n       - Color palette breakdown (dominant colors vs. accent colors).\n       - Wear & style patterns.\n       - Specific **wardrobe surpluses** (`\"too much of X\"`) and **wardrobe gaps** (`\"too little of Y\"` / recommended additions).\n  3. **Latency & Image Caching (`F-15`, `F-41`, `F-43`)**:\n     - Stream `Ask Styld` responses token-by-token so the user sees immediate output instead of waiting 18s (`\"What should I wear today?\"`) to 65s (`\"Analysis my wardrobe\"`) on `\"Styld is writing...\"`.\n     - Preload/reuse cached cutout URLs when navigating from the `Wardrobe` grid to a piece detail page so hero images never stall on a blank box for 12 seconds (`eva5styld.mp4` `00:59`–`01:11`).\n",
+      "screenshots": [],
+      "criteria": []
+    },
+    {
+      "id": "T-15",
+      "originalTitle": "Clean up Piece Detail & Edit views: keep read-only detail view button-free, move `\"Add the back\"` to the top of Edit mode (above `\"Name\"`), rename `\"Save to board\"` to a compact side `\"Add to board\"` icon button, clarify `What it is` vs. `Name`, and add `\"Delete\"` + rotate in Edit mode (`F-08`, `F-10`, `F-23`, `F-42`, `F-44`)",
+      "originalPriority": "P2",
+      "findings": [
+        "F-08",
+        "F-10",
+        "F-23",
+        "F-42",
+        "F-44"
+      ],
+      "body": "- **Priority**: **P2** — Resolves direct UX traps observed across Recordings 1, 3, and 4 (scrolling required to see piece metadata, typing category names into `Name`, hunting for `Delete` inside Edit mode) while preserving the clean read-only detail layout Eva prefers.\n- **Detailed UI/UX Spec (`eva.styld1.mp4` `11:11`–`12:15`, `34:23`–`34:59`; `eva3.mp4` `40:33`–`41:52`; `eva5styld.mp4` `00:07`–`03:45`)**:\n  1. **Read-Only Piece Detail View (`fig22a`)**:\n     - **Keep read-only attributes clean without inline dropdowns (`F-44`)**: Eva explicitly rejected turning the read-only attribute rows (`Colour`, `When it's worn`, `What it's for`, `Pattern`) into inline dropdowns (`\"Ne, to je ful gumbov! Meni je všeč, da ni gumbov, da je tle direkt to, kar je, in da imam gumb edit.\"`).\n     - **Remove `\"Add the back\"` and `\"1 credit from today's free allowance.\"` from the read-only detail view** (`F-42`).\n     - **Replace the wide `\"Save to board\"` pill button with a compact `\"Add to board\"` icon button** (using the `2×2` Boards icon positioned on the side of the title row) so that `Colour`, `When it's worn`, `What it's for`, and `Pattern` are all immediately visible above the fold without scrolling.\n  2. **Piece Edit Mode (`pencil` icon, `fig05b`, `fig22b`)**:\n     - **Place `\"Add the back\"` at the very top of the Edit screen, above `\"Name\"`** (`eva5styld.mp4` `03:34`: `\"čisto od zgoraj pred 'Name'-om 'Add the back'\"`).\n     - **Clarify `\"What it is\"` (Category) vs. `\"Name\"` (`F-10`, `fig05b`)**: Clearly label/style `\"What it is\"` (or place category selection prominently) and give `\"Name (optional)\"` a placeholder like `\"e.g. Zara linen blazer\"` instead of pre-filling `\"Name\"` with the category string (`\"Top\"`), which tricked Eva into typing `\"Bikini\"` into `\"Name\"` when trying to change the category.\n     - **Include `\"Delete\"` inside the Edit screen (`F-23`)**: Add a `\"Delete piece\"` action at the bottom of the Edit form (in addition to `\"Save\"` / `\"Cancel\"`) so users who tap the Edit pencil to delete an item don't hit a dead end.\n\n![Piece detail view: \"Add the back\" + credit text + wide \"Save to board\" push metadata below the fold (eva5styld.mp4 00:05)](./evidence/fig22a_piece_detail_buttons_above_fold.png)\n\n![Edit view UX trap: Eva typing \"Bikini\" into \"Name\" instead of scrolling to \"What it is\" (eva.styld1.mp4 11:22)](./evidence/fig05b_edit_name_vs_what_it_is.png)\n",
+      "screenshots": [
+        "fig22a_piece_detail_buttons_above_fold.png",
+        "fig05b_edit_name_vs_what_it_is.png"
+      ],
+      "criteria": []
+    },
+    {
+      "id": "T-16",
+      "originalTitle": "Implement `\"Export to look\"` / `\"Turn into a look\"` to save selected items from a Board as a fixed single-outfit formula in `Looks` (`F-38`)",
+      "originalPriority": "P2",
+      "findings": [
+        "F-38"
+      ],
+      "body": "- **Priority**: **P2** — Enables the agreed workflow where experimental outfits created on `Boards` can be saved as reusable, fixed single-outfit formulas in `Looks` for quick morning dressing.\n- **Detailed Implementation Spec (`eva3.mp4` `21:30`–`26:38`)**:\n  - **Definition of a `Look`**: A `Look` is strictly **one fixed, finished outfit** (\"an outfit formula\"), whereas a `Board` can hold many outfits, mood boards, or trip packing lists.\n  - **Board -> Look (`\"Export to look\"` / `\"Turn into a look\"`)**: In the Board collage editor, allow the user to select a group of items (or a single outfit board) and tap `\"Export to look\"` / `\"Turn into a look\"` to save that outfit into `Laboratory -> Looks`.\n  - **Look -> Board**: Allow importing saved `Looks` onto a `Board` (e.g., when planning a week or trip) or asking AI to generate variations of a saved `Look`.\n",
+      "screenshots": [],
+      "criteria": []
+    },
+    {
+      "id": "T-17",
+      "originalTitle": "Auto-generate outfit cutouts on `Gallery` photo upload, allow left/right swiping between original photo and cutout, and streamline Gallery UI (`F-22`, `F-24`, `F-25`)",
+      "originalPriority": "P2",
+      "findings": [
+        "F-22",
+        "F-24",
+        "F-25"
+      ],
+      "body": "- **Priority**: **P2** — Removes manual clicking (`\"Cut out the outfit\"` and multi-step Review Tray clicks), replaces the `\"Favourite\"` button with a heart icon on the photo, and lets users swipe between the original photo and cutout.\n- **Detailed Implementation Spec (`eva.styld1.mp4` `32:58`–`34:15`, `35:40`–`37:56`; `eva3.mp4` `26:43`–`27:16`)**:\n  - **Auto-cutout on upload (`F-25`)**: When a photo is uploaded to `Gallery`, automatically run `\"Cut out the outfit\"` in the background alongside garment detection—remove the manual `\"Cut out the outfit\"` button (`fig08a`, `fig09a`).\n  - **Swipeable Original vs. Cutout (`F-25`)**: On the `Gallery` photo detail view, display a horizontal swipe carousel containing (1) the original full photo and (2) the isolated outfit cutout (plus left/right navigation between Gallery photos), and allow adding **either** the original photo or the cutout to a Board (`\"Add to board\"`).\n  - **Heart Icon for `\"Favourite\"` (`F-24`)**: Replace the text pill button `\"Favourite\"` below the photo (`fig08a`) with a compact heart icon overlaid on the corner of the photo.\n  - **1-Step `\"Add to wardrobe\"` (`F-22`)**: When tapping `\"Add to wardrobe\"` on a detected garment in `Gallery`, add it directly (or with a single inline confirmation) instead of forcing the user through `\"Waiting in your review tray\"` -> `\"Open the review tray\"` -> `\"Add 1 to my wardrobe\"`.\n\n![Gallery overview and upload flow (eva.styld1.mp4 35:45)](./evidence/fig11_gallery_buttons_and_review_tray.png)\n",
+      "screenshots": [
+        "fig11_gallery_buttons_and_review_tray.png"
+      ],
+      "criteria": []
+    },
+    {
+      "id": "T-18",
+      "originalTitle": "Fix dark-mode grey square card backgrounds in `Wardrobe` grid and enforce a cohesive default theme (`F-07`)",
+      "originalPriority": "P2",
+      "findings": [
+        "F-07"
+      ],
+      "body": "- **Priority**: **P2** — Removes the muddy dark-grey square card backgrounds (`\"te sivi kvadratki\"`) that clash with the app background on dark-mode Android devices.\n- **Detailed Implementation Spec (`eva.styld1.mp4` `05:30`–`07:38`, `fig01`, `fig04`)**:\n  - On Eva's Samsung Android phone (which has OS dark mode enabled), `Wardrobe` grid cards render with a muddy dark-grey/brownish square background (`fig01`, `fig04`), whereas opening the piece detail view (`fig05a`) renders on a pure black background.\n  - Remove the contrasting grey square card backgrounds so item cutouts sit cleanly on a uniform background, and enforce a single cohesive app theme across all devices (no user theme switcher needed).\n",
+      "screenshots": [],
+      "criteria": []
+    },
+    {
+      "id": "T-19",
+      "originalTitle": "Improve `Today` outfit card: keep baseline `Today` layout, suppress `\"Not tucked\"` on sweater-over-dress layering, allow single-piece swap/lock, and clarify `\"Wear this\"` (`F-01`, `F-02`, `F-03`, `F-46`)",
+      "originalPriority": "P2",
+      "findings": [
+        "F-01",
+        "F-02",
+        "F-03",
+        "F-46"
+      ],
+      "body": "- **Priority**: **P2** — Preserves the baseline `Today` layout (`MON 2`, daily outfit collage, `\"Wear this\"`, shuffle button) while fixing illogical styling copy on dresses and allowing users to swap a single piece without losing the rest of a recommended outfit.\n- **Detailed Implementation Spec (`eva.styld1.mp4` `00:54`–`02:38`; `eva5styld.mp4` `03:46`–`04:55`)**:\n  - **Keep baseline `Today | Styld` layout (`F-46`)**: Keep the `MON 2` header, daily outfit collage card, `\"Wear this\"` primary button, and shuffle/try-another button as-is for launch (deferring the outfit tombola/roulette and `\"30 days of wearing black\"` community challenges to a later phase).\n  - **Suppress `\"Not tucked\"` when layering over a dress (`F-01`)**: In the outfit styling note generator, never attach `\"Not tucked\"` / `\"left untucked\"` when a sweater/knit/top is paired over a `Dress` or `Jumpsuit`.\n  - **Single-piece swap / lock (`F-02`)**: Allow the user to swap a single item in the `Today` outfit (e.g., swap just the shoes or just the sweater) while keeping the remaining items locked, rather than only offering `\"Try another\"` which replaces the entire outfit.\n  - **Clarify `\"Wear this\"` (`F-03`)**: When the user taps `\"Wear this\"` and it toggles to `\"Wearing today\"`, show a brief confirmation toast/subtitle (e.g., `\"Logged for today — we won't repeat this look tomorrow\"`).\n",
+      "screenshots": [],
+      "criteria": []
+    },
+    {
+      "id": "T-20",
+      "originalTitle": "Add Share button on Boards, improve Android Gallery file picker (`accept=\"image/*\"`), and investigate Android Chrome tab-restore black screen (`F-14`, `F-27`, `F-34`)",
+      "originalPriority": "P3",
+      "findings": [
+        "F-14",
+        "F-27",
+        "F-34"
+      ],
+      "body": "- **Priority**: **P3** — Quality-of-life and platform polish items for sharing boards and smoother Android browser behavior.\n- **Detailed Implementation Spec**:\n  - **Board Share button (`F-27`, `eva.styld1.mp4` `40:18`–`40:23`)**: Add a native Web Share / export image button (`navigator.share` / download PNG) in the Board header so users can share their collages/boards directly.\n  - **Android Gallery File Picker (`F-14`, `eva.styld1.mp4` `22:00`–`23:09`)**: Ensure the `\"Add a photo\"` `<input type=\"file\">` uses `accept=\"image/*\"` (without restrictive MIME lists that force Android's `My Files` raw filename list) so Android opens the visual photo gallery picker.\n  - **Android Chrome Tab-Restore Repaint (`F-34`, `eva3.mp4` `14:19`–`14:30`)**: Check `visibilitychange` / canvas / WebGL / service-worker behavior when returning to the mobile Chrome tab from background apps so the viewport does not stay black for ~9 seconds.\n",
+      "screenshots": [],
+      "criteria": []
+    },
+    {
+      "id": "T-21",
+      "originalTitle": "Serve every remaining owner-only picture by signed address: board images, Gallery photos and their garments, `To review` detections and turns (follow-up to the 2 Nov D1 overload; relates to `F-43`, `T-14`)",
+      "originalPriority": "P1",
+      "findings": [
+        "F-43"
+      ],
+      "body": "- **Priority**: **P1**. On 2 Nov the preview answered `\"Kosov ni bilo mogoče naložiti\"` and showed placeholder squares: every thumbnail made the Worker read the session and a D1 row, so a wardrobe page of 300+ pictures overloaded D1. Wardrobe pieces moved to signed addresses (`/cdn/media/…`, release `bf8f987`, live in `d73475c`). These still check the session and D1 per picture:\n  - `GET /cdn/boards/images/:imageId/:size` (`packages/server/src/boards/Http.ts`)\n  - `GET /cdn/photos/:photoId/:size` and `/cdn/photos/:photoId/garments/:garmentId` (`packages/server/src/photos/Http.ts`)\n  - `GET /cdn/detections/:detectionId/:which` and `/cdn/turns/:pieceId/:which` (`packages/server/src/capture/Http.ts`)\n  - MCP view thumbnails\n- **Detailed Implementation Spec**:\n  - Reuse `kernel/SignedMedia.ts` as is: grants over account, object, R2 key, content type, size, version and an hour-rounded expiry (+24 h), keyed from `AUTH_SECRET` under `styld-media-v1`. Do not add a second signer.\n  - Each API that returns one of these entities returns its picture addresses already signed (`images` fields as on `Piece`). The web stops building them in `apps/web/src/Cdn.ts` (`boardImage`, `photo`, `photoGarment`, `detection`, `turn`), and those builders go.\n  - The `/cdn/media` handler serves every kind: verify the signature, read R2, transform through Images where a size is asked, then the edge Cache API, with `private, immutable`. No session and no D1. The old per-kind routes are deleted, with no redirects.\n  - Turn videos need `Range` support on the signed route (the `<video>` element seeks).\n  - Version changes whenever the object may have changed (a redraw, a new cut-out, a re-found photo), so a cached copy is never shown for a new picture.\n  - Board styles: `View.styles.ts` keys `mix-blend-mode` off the `/cdn/media/` prefix. Mark piece pictures by attribute instead, so board images keep their true colour once they share the route.\n  - Assistants (MCP) still get no picture addresses. MCP Apps views load thumbnails through the view's own signed grant if they need them, never a session cookie.\n- **Acceptance Criteria**:\n  - A board of 50+ pictures, a Gallery of 100+ photos and a `To review` tray of 30+ detections load with zero D1 queries per picture in Workers Logs, and no `D1 DB is overloaded`.\n  - A tampered, expired or other-account address answers 403. A deleted object answers 404.\n  - A redraw or new cut-out shows the new picture on the next list read, not the cached one.\n  - A tab left open past the expiry recovers on its next list refresh, with no broken pictures.\n  - Native: signed board, photo, detection and turn reads with no cookie. Preview readback of each kind.\n- **Overhead**: one HMAC-SHA256 per address when a list is answered (native Web Crypto, the key derived once per isolate). That is microseconds per address, a few milliseconds for a 300-piece wardrobe. Serving costs one HMAC verify and no D1 or session read, and repeat views come from the edge cache. It is cheaper than today on both ends.",
+      "screenshots": [],
+      "criteria": []
+    }
+  ]
+}

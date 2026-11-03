@@ -1,0 +1,281 @@
+{
+  "asOf": "2026-11-03",
+  "codeCommit": "d73475c",
+  "direction": [
+    "Balance reliability fixes with one compelling board workflow.",
+    "Treat review decisions as agreed direction; implementation details remain open to challenge."
+  ],
+  "workstreams": [
+    {
+      "id": "capture",
+      "name": "Reliable capture",
+      "description": "One garment becomes one piece, with the right front and back.",
+      "tickets": [
+        "T-01",
+        "T-05"
+      ]
+    },
+    {
+      "id": "wardrobe",
+      "name": "Wardrobe information",
+      "description": "Trust the garment types, colours and pictures behind every suggestion.",
+      "tickets": [
+        "T-02",
+        "T-12"
+      ]
+    },
+    {
+      "id": "navigation",
+      "name": "Finding your way",
+      "description": "Find a piece quickly and keep your place when you go back.",
+      "tickets": [
+        "T-06",
+        "T-07",
+        "T-08",
+        "T-13"
+      ]
+    },
+    {
+      "id": "details",
+      "name": "Everyday interface",
+      "description": "Make editing and everyday actions clear and easy to reach.",
+      "tickets": [
+        "T-15",
+        "T-18"
+      ]
+    },
+    {
+      "id": "gallery",
+      "name": "Gallery understanding",
+      "description": "Find the right person and match the clothes they already own.",
+      "tickets": [
+        "T-03",
+        "T-17"
+      ]
+    },
+    {
+      "id": "boards",
+      "name": "Board editor",
+      "description": "Make arranging, adding and saving an outfit comfortable on a phone.",
+      "tickets": [
+        "T-04",
+        "T-09",
+        "T-11",
+        "T-16"
+      ]
+    },
+    {
+      "id": "outfits",
+      "name": "Outfits and templates",
+      "description": "Turn one real piece into several useful, editable outfits.",
+      "tickets": [
+        "T-10",
+        "T-19"
+      ]
+    },
+    {
+      "id": "speed",
+      "name": "Speed and sharing",
+      "description": "Improve loading, wardrobe analysis and device-specific behaviour.",
+      "tickets": [
+        "T-14",
+        "T-20",
+        "T-21"
+      ]
+    }
+  ],
+  "tickets": {
+    "T-01": {
+      "title": "Make guided capture dependable",
+      "effort": "Large",
+      "note": "Front/back pairing already exists. The camera can reinterpret an expected back as a new front based on the model’s same-garment answer. Stillness, pairing and foreground selection need separate checks; the exact recorded failure has not been reproduced.",
+      "code": [
+        "apps/web/src/page/HeldCamera.ts:253",
+        "packages/server/src/capture/Processing.ts:43",
+        "packages/server/src/capture/Garments.ts:189"
+      ]
+    },
+    "T-02": {
+      "title": "Repair classification and image orientation",
+      "effort": "Large",
+      "note": "Separate imported-data repair from future classifier quality. The importer starts with coarse fallback types and attempts to refine them. Preserve user corrections during any later repair. Orientation needs source-image comparison; a screenshot alone does not locate the cause.",
+      "code": [
+        "tools/import-v1/Mapping.ts:38",
+        "packages/server/src/wardrobe/Work.ts:21"
+      ]
+    },
+    "T-03": {
+      "title": "Recognise the right person and clothes",
+      "effort": "Large",
+      "note": "Gallery extraction currently considers the whole photo. Matching already exists, but uses at most six candidates within an outfit slot, ranked by colour and recency. Subject selection, candidate retrieval and rendering should be investigated separately.",
+      "code": [
+        "packages/server/src/capture/Garments.ts:208",
+        "packages/server/src/photos/Finding.ts:41",
+        "packages/server/src/capture/Policy.ts:78"
+      ]
+    },
+    "T-04": {
+      "title": "Make board layering predictable",
+      "effort": "Medium",
+      "note": "Layer controls already update z-order. Darken blending and bringing an item forward when it is pressed are plausible contributors to confusing overlap. Reproduce before changing the ordering algorithm; a combined control is a separate design choice.",
+      "code": [
+        "apps/web/src/page/Board/Table.styles.ts:8",
+        "apps/web/src/page/Board/Gestures.ts:11",
+        "packages/protocol/src/Placement.ts:54"
+      ]
+    },
+    "T-05": {
+      "title": "Give the camera clear timing and controls",
+      "effort": "Medium",
+      "note": "Clear Finish and upload-source labels are small improvements. A visible cancellable countdown and a safe transition between sides belong to the capture state machine, not just its appearance. Current stillness settles in roughly 0.6–1 second before checking the frame.",
+      "code": [
+        "apps/web/src/capture/Stillness.ts:24",
+        "apps/web/src/page/HeldCamera.ts:253"
+      ]
+    },
+    "T-06": {
+      "title": "Keep filters and return destinations",
+      "effort": "Medium",
+      "note": "Wardrobe filters are local model state, while detail and review back links go to the wardrobe. Preserve filters, origin and scroll together. Replacing every history entry would lose useful navigation.",
+      "code": [
+        "apps/web/src/route.ts:67",
+        "apps/web/src/page/Wardrobe.ts:61",
+        "apps/web/src/Navigation.ts:52"
+      ]
+    },
+    "T-07": {
+      "title": "Browse the wardrobe visually",
+      "effort": "Medium",
+      "note": "Populated-only categories already exist in the current browsing code. The work is the visual drill-down, useful thumbnails and route state. Removing visible labels must preserve accessible names and processing/error states.",
+      "code": [
+        "apps/web/src/page/WardrobeView.ts:82"
+      ]
+    },
+    "T-08": {
+      "title": "Separate wardrobe and creative workspace",
+      "effort": "Medium",
+      "note": "The inventory/workspace distinction is agreed direction. Laboratory is a working label. Moving Gallery and Looks also affects active navigation, return routes and public links; it is more than renaming one tab.",
+      "code": [
+        "apps/web/src/route.ts:223",
+        "apps/web/src/page/WardrobeTabs.ts:1"
+      ]
+    },
+    "T-09": {
+      "title": "Open boards directly into editing",
+      "effort": "Medium",
+      "note": "Pins and canvas placements are separate today. Owner opening and Add to board should become one coherent editing flow; retain the read-only experience and visibility rules for visitors.",
+      "code": [
+        "apps/web/src/page/Board/PageView.ts:134",
+        "packages/server/src/boards/Tables.ts:1"
+      ]
+    },
+    "T-10": {
+      "title": "Build useful outfit-board templates",
+      "effort": "Large",
+      "note": "Split this umbrella ticket before scheduling. The mood planner picks pieces for a mood, not complete outfits. Reuse the existing anchor/lock outfit engine for an owned-piece template; shopping candidates and travel are separate extensions. Six good outfits is a target, not a reason to invent clothes or weak combinations.",
+      "code": [
+        "packages/server/src/generation/Planner.ts:53",
+        "packages/protocol/src/Outfit.ts:44",
+        "docs/ROADMAP.md:27"
+      ]
+    },
+    "T-11": {
+      "title": "Filter pieces while building a board",
+      "effort": "Medium",
+      "note": "Reuse wardrobe filtering in a focused picker. Coordinate it with the visual category work so the two ways of choosing clothes stay consistent.",
+      "code": [
+        "apps/web/src/page/Board/View.ts:292",
+        "apps/web/src/page/Wardrobe.ts:36"
+      ]
+    },
+    "T-12": {
+      "title": "Separate garment type, activity and categories",
+      "effort": "Large",
+      "note": "Heels and low shoes already exist. Add genuinely missing types separately from custom categories. Sportswear currently occupies a complete-set outfit slot: keeping shape (trousers) separate from activity (skiing) would help browsing and recommendations. AI-created categories remain open to challenge.",
+      "code": [
+        "packages/protocol/src/Garment.ts:9"
+      ]
+    },
+    "T-13": {
+      "title": "Open Ask Styld directly",
+      "effort": "Small",
+      "note": "A direct chat destination and a clearer icon are contained changes. Keep useful wardrobe search discoverable elsewhere, and decide how returning to an existing chat should work.",
+      "code": [
+        "apps/web/src/route.ts:80",
+        "apps/web/src/page/AskView.ts:1"
+      ]
+    },
+    "T-14": {
+      "title": "Improve analysis and waiting time",
+      "effort": "Mixed",
+      "note": "Split starter prompt, structured analysis, chat latency, Gallery processing and image loading. Category counts already reach the stylist, whose prompt requests short prose without headings. The model adapter buffers the answer before exposing a stream, so genuine streaming crosses several layers.",
+      "code": [
+        "packages/server/src/stylist/Prompt.ts:13",
+        "packages/server/src/stylist/Prompt.ts:89",
+        "packages/server/src/ai/LanguageModel.ts:264"
+      ]
+    },
+    "T-15": {
+      "title": "Make piece details and editing clearer",
+      "effort": "Mixed",
+      "note": "Category naming, Delete placement and moving Add the back are small improvements. Persisted image rotation is separate work affecting image versions and derived pictures. Keep read-only metadata clean.",
+      "code": [
+        "apps/web/src/page/PieceView.ts:299",
+        "apps/web/src/page/PieceFields.ts:1"
+      ]
+    },
+    "T-16": {
+      "title": "Save one board outfit as a Look",
+      "effort": "Medium",
+      "note": "Save as Look already takes pieces from the whole canvas. The missing capability is selecting one outfit group on a board containing several outfits. It should align with the template’s outfit representation.",
+      "code": [
+        "apps/web/src/page/Board/Actions.ts:203"
+      ]
+    },
+    "T-17": {
+      "title": "Simplify the Gallery workflow",
+      "effort": "Mixed",
+      "note": "The favorite heart is small. Automatic cutout, original-versus-cutout selection and inline wardrobe confirmation change asynchronous work and user choices. Avoid making duplicate creation easier before matching is dependable.",
+      "code": [
+        "packages/server/src/photos/Photos.ts:415",
+        "apps/web/src/page/PhotoView.ts:1"
+      ]
+    },
+    "T-18": {
+      "title": "Keep garment colours and surfaces consistent",
+      "effort": "Investigate",
+      "note": "The app already declares a light colour scheme. Browser-forced darkening and image blending are hypotheses to test on the affected phone; adding an app theme switcher is not needed.",
+      "code": [
+        "apps/web/src/GlobalStyles.ts:49",
+        "apps/web/src/page/Board/Table.styles.ts:8"
+      ]
+    },
+    "T-19": {
+      "title": "Improve Today without a redesign",
+      "effort": "Medium",
+      "note": "The outfit API already accepts locked pieces; Today currently sends none. Explain Wear this as recording the day, without promising tomorrow’s outfit exclusion unless implemented. Recheck the reported styling pill against the tested release.",
+      "code": [
+        "apps/web/src/page/Today.ts:196",
+        "packages/protocol/src/Outfit.ts:55"
+      ]
+    },
+    "T-20": {
+      "title": "Separate sharing and Android investigations",
+      "effort": "Mixed",
+      "note": "The Gallery input already uses image/*. Diagnose the picker and black-screen report on the affected device. Link sharing, image export and publishing are distinct actions; public photo-based lookbooks would extend the current private Gallery rules.",
+      "code": [
+        "apps/web/src/page/PhotosView.ts:66",
+        "docs/ARCHITECTURE.md:132"
+      ]
+    },
+    "T-21": {
+      "title": "Remove remaining per-image database reads",
+      "effort": "Medium",
+      "note": "Added to the source report after the first analysis. Reuse the existing signed-media mechanism and validate each media kind, expiry recovery, video ranges and image styles. Deployment assertions and timing estimates in the source ticket are not independent verification in this tracker.",
+      "code": [
+        "packages/server/src/kernel/SignedMedia.ts:1",
+        "docs/STATUS.md:30"
+      ]
+    }
+  }
+}

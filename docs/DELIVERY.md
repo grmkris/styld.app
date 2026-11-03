@@ -77,3 +77,11 @@ Each gets its rows here when it is built. `docs/ROADMAP.md` holds their decision
 Every kept row accepted at its levels; no unresolved high or medium review finding; `heavy --wait bun run check` green
 at the final commit; the preview deployed from that commit with `/api/health` reporting it; a clean owned worktree; no
 production change without the owner's go.
+
+## Review and planning document
+
+Eva's 2 November review has a separate [public tracker](https://styld-review-07c26b483ccc.pages.dev), maintained
+in `docs/research/eva-review-tracker/`. It preserves 51 findings, 21 ticket drafts and 35 screenshots, with code
+observations and shared progress. Acceptance of this document covers source completeness, navigation, mobile
+reading, screenshot delivery and repeatable publishing. Its live browser checks passed on 3 November; see
+`VALIDATION.md` in that directory. It does not mark any application feature accepted or begin implementation.

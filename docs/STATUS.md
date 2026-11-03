@@ -6,6 +6,20 @@ phone/desktop and live-provider acceptance below is still open.
 Feature work on the 31 October plan (M4–M6, M8–M9) stays frozen until testing starts. The history of every earlier
 milestone, with its evidence, is in `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`.
 
+## Eva review document (3 November)
+
+The independent [review tracker](https://styld-review-07c26b483ccc.pages.dev) is published on Cloudflare Pages.
+It contains 51 findings, 21 ticket drafts, 35 screenshots, eight workstreams and preliminary code-review notes.
+The owner approved public access, including the screenshots. Planning and implementation remain unstarted in
+this tracker; source priorities are not a committed delivery order. The code-analysis snapshot is `d73475c`.
+
+Sources and the update/deploy procedure are in `docs/research/eva-review-tracker/README.md`. Shared progress is
+stored in `progress.json` and republished to the same URL. Live Chromium checks passed search, filters, reset,
+Back, ticket/finding links, all images, JavaScript-disabled reading and layouts from 320px to 1920px, with no
+browser errors. The page returns its CSP and noindex headers. The complete repository gate also passed
+(753 unit tests, 29 native tests); document-specific evidence is in the tracker's `VALIDATION.md`.
+This document deployment changes no Styld application resources or feature acceptance.
+
 ## The preview
 
 - **URL:** https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev (isolated workers.dev,
