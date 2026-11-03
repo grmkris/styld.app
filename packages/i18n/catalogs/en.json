@@ -638,7 +638,10 @@
       "denied": "Camera access is off. Allow it in your browser's settings, or choose photos instead.",
       "unavailable": "The camera can't start here. Choose photos instead.",
       "finish": "Finish and review {count, plural, one {# piece} other {# pieces}}",
-      "finishAction": "Finish"
+      "finishAction": "Finish",
+      "countdown": "{count}",
+      "counting": "Keep still",
+      "blocked": "Uncover the camera and show one piece"
     },
     "retryFile": "Try {name} again",
     "queueSummary": "{sent} of {total} sent{failed, plural, =0 {} one {, # didn't go} other {, # didn't go}}",

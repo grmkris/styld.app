@@ -16,6 +16,28 @@ export interface Watch {
 
 export const startWatch: Watch = { previous: undefined, moved: false, still: 0, calm: 0, settles: 0 }
 
+interface FrameWatch {
+  readonly watch: Watch
+  readonly settle: Settle
+  readonly usable: boolean
+  readonly changed: boolean
+}
+
+/** A frame this dark or without any texture is a covered/resting camera, not a garment. */
+const minimumLuminance = 18
+const minimumVariance = 2
+
+const usable = (frame: Uint8Array) => {
+  if (frame.length === 0) return false
+  let total = 0
+  for (const value of frame) total += value
+  const mean = total / frame.length
+  if (mean < minimumLuminance) return false
+  let squared = 0
+  for (const value of frame) squared += (value - mean) ** 2
+  return squared / frame.length >= minimumVariance
+}
+
 /** Mean grey-level change per pixel above which the scene is moving. */
 const moving = 10
 /** Below this the scene is still. Between the two it only sways, which neither counts as still nor resets. */
@@ -44,11 +66,14 @@ const frameChange = (previous: Uint8Array, next: Uint8Array) => {
 }
 
 /** Take one frame into the watch, and say whether it settled the scene. */
-export const watchFrame = (watch: Watch, grey: Uint8Array): { readonly watch: Watch; readonly settle: Settle } => {
+export const watchFrame = (watch: Watch, grey: Uint8Array): FrameWatch => {
+  if (!usable(grey))
+    return { watch: { ...startWatch, previous: grey }, settle: undefined, usable: false, changed: true }
   if (watch.previous === undefined || watch.previous.length !== grey.length)
-    return { watch: { ...startWatch, previous: grey }, settle: undefined }
+    return { watch: { ...startWatch, previous: grey }, settle: undefined, usable: true, changed: false }
   const change = frameChange(watch.previous, grey)
-  if (change > moving) return { watch: { ...startWatch, previous: grey, moved: true }, settle: undefined }
+  if (change > moving)
+    return { watch: { ...startWatch, previous: grey, moved: true }, settle: undefined, usable: true, changed: true }
   const next = {
     ...watch,
     previous: grey,
@@ -56,9 +81,14 @@ export const watchFrame = (watch: Watch, grey: Uint8Array): { readonly watch: Wa
     calm: watch.calm + 1,
   }
   if (watch.moved && (next.still >= settleFrames || next.calm >= calmFrames))
-    return { watch: { ...next, moved: false, still: 0, calm: 0, settles: 1 }, settle: 'settled' }
+    return {
+      watch: { ...next, moved: false, still: 0, calm: 0, settles: 1 },
+      settle: 'settled',
+      usable: true,
+      changed: false,
+    }
   const lookAgain = !watch.moved && watch.settles > 0 && watch.settles < settlesWithoutMoving
   if (lookAgain && next.calm >= againFrames)
-    return { watch: { ...next, calm: 0, settles: watch.settles + 1 }, settle: 'again' }
-  return { watch: next, settle: undefined }
+    return { watch: { ...next, calm: 0, settles: watch.settles + 1 }, settle: 'again', usable: true, changed: false }
+  return { watch: next, settle: undefined, usable: true, changed: false }
 }

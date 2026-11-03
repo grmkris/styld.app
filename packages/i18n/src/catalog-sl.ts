@@ -559,6 +559,9 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.camera.unavailable': 'Kamere tukaj ni mogoče zagnati. Izberi fotografije.',
   'capture.camera.finish': 'Končaj in preglej {count, plural, one {# kos} two {# kosa} few {# kose} other {# kosov}}',
   'capture.camera.finishAction': 'Končaj',
+  'capture.camera.countdown': '{count}',
+  'capture.camera.counting': 'Ostani pri miru',
+  'capture.camera.blocked': 'Odkrij kamero in pokaži en kos',
   'capture.retryFile': 'Poskusi znova: {name}',
   'capture.queueSummary':
     'Poslano {sent} od {total}{failed, plural, =0 {} one {, # ni šla} two {, # nista šli} few {, # niso šle} other {, # jih ni šlo}}',

@@ -13,6 +13,12 @@ sources:
     sl: 153d945c3dbf06
   board.sendBack:
     sl: 14bb856cbfca86
+  capture.camera.blocked:
+    sl: a055ac323376
+  capture.camera.countdown:
+    sl: 1156bb96228b8e
+  capture.camera.counting:
+    sl: 1af6097ced7a1b
   capture.camera.finish:
     sl: b298d94ca95c4
   capture.camera.finishAction:

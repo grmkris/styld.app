@@ -1,7 +1,7 @@
 import * as Crypto from 'effect/Crypto'
 import { drawOperationId } from '../OperationIds.ts'
 import { CameraLayout, Side } from '@styld/protocol'
-import { Effect, Option, Schema, Stream } from 'effect'
+import { Duration, Effect, Option, Schema, Stream } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
 import { Command, File, Mount, type Update } from 'foldkit'
 import { DEVTOOLS_HOST_ID } from 'foldkit/devtools-host'
@@ -10,6 +10,7 @@ import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
+import type { CameraEvent } from '../capture/Camera.ts'
 
 // MODEL
 
@@ -22,7 +23,16 @@ export const Step = Schema.Literals(['front', 'back'])
 export type Step = typeof Step.Type
 
 /** What the camera panel tells the person while it watches. */
-export const Hint = Schema.Literals(['holdOne', 'checking', 'taken', 'showBack', 'notSeen', 'tapToTake'])
+export const Hint = Schema.Literals([
+  'holdOne',
+  'checking',
+  'counting',
+  'blocked',
+  'taken',
+  'showBack',
+  'notSeen',
+  'tapToTake',
+])
 export type Hint = typeof Hint.Type
 
 export const Camera = defineTaggedUnion({
@@ -54,6 +64,9 @@ export const Model = Schema.Struct({
   settle: Schema.Number,
   /** The small copy of the last photo taken, so the check can tell the back of the same garment. */
   lastCheck: Schema.Option(File.File),
+  /** The large central countdown after a checked, automatically settled frame. */
+  countdown: Schema.Option(Schema.Int),
+  countdownToken: Schema.Option(Schema.Int),
 })
 export type Model = typeof Model.Type
 
@@ -68,6 +81,8 @@ export const init = (): Model => ({
   shots: 0,
   settle: 0,
   lastCheck: Option.none(),
+  countdown: Option.none(),
+  countdownToken: Option.none(),
 })
 
 export const isOpen = (model: Model) => !Camera.guards.Closed(model.camera)
@@ -97,6 +112,10 @@ export const Message = defineMessageUnion({
     holding: Schema.Boolean,
   },
   FailedCheckHeld: { token: Schema.Number },
+  ElapsedCountdown: { token: Schema.Int, count: Schema.Int },
+  ChangedScene: { blocked: Schema.Boolean },
+  TookCountdownPhoto: { token: Schema.Int, check: File.File, still: File.File },
+  RequestedCountdownPhoto: {},
   CompletedBuzz: {},
   HeldScreen: {},
   ShowedPhoto: {},
@@ -154,12 +173,26 @@ export const ShowPhoto = Mount.define('ShowPhoto', {
 /** Run the camera in the element it is mounted on, loading the camera code only then. Code that fails
  * to load (offline, or a newer release) reports the camera as unavailable.
  */
+const cameraMessage = (event: CameraEvent) => {
+  if (event.kind === 'started') return Message.StartedCamera()
+  if (event.kind === 'failed') return Message.FailedCamera({ reason: event.reason })
+  if (event.kind === 'settling') return Message.SettlingScene({ level: event.level })
+  if (event.kind === 'changed') return Message.ChangedScene({ blocked: event.blocked })
+  if (event.kind === 'counted')
+    return Message.TookCountdownPhoto({ token: event.token, check: event.check, still: event.still })
+  const pictures = { check: event.check, still: event.still }
+  if (event.kind === 'settled') return Message.SettledScene(pictures)
+  return event.kind === 'again' ? Message.StayedStill(pictures) : Message.TappedPicture(pictures)
+}
+
 export const WatchCamera = Mount.defineStream('WatchCamera', {
   args: { facing: Facing },
   messages: [
     Message.StartedCamera,
     Message.FailedCamera,
     Message.SettlingScene,
+    Message.ChangedScene,
+    Message.TookCountdownPhoto,
     Message.SettledScene,
     Message.StayedStill,
     Message.TappedPicture,
@@ -167,18 +200,7 @@ export const WatchCamera = Mount.defineStream('WatchCamera', {
   execute: ({ element, facing }) =>
     Stream.unwrap(
       Effect.tryPromise(() => import('../capture/Camera.ts')).pipe(
-        Effect.map(({ watchCamera }) =>
-          watchCamera(element, facing).pipe(
-            Stream.map((event) => {
-              if (event.kind === 'started') return Message.StartedCamera()
-              if (event.kind === 'failed') return Message.FailedCamera({ reason: event.reason })
-              if (event.kind === 'settling') return Message.SettlingScene({ level: event.level })
-              const pictures = { check: event.check, still: event.still }
-              if (event.kind === 'settled') return Message.SettledScene(pictures)
-              return event.kind === 'again' ? Message.StayedStill(pictures) : Message.TappedPicture(pictures)
-            }),
-          ),
-        ),
+        Effect.map(({ watchCamera }) => watchCamera(element, facing).pipe(Stream.map(cameraMessage))),
         Effect.orElseSucceed(() => Stream.make(Message.FailedCamera({ reason: 'unavailable' }))),
       ),
     ),
@@ -222,6 +244,27 @@ export const Buzz = Command.define('Buzz', {
   }),
 })
 
+/** Give someone standing across the room a visible moment to hold or turn the garment before the shutter. */
+export const WaitForCountdown = Command.define('WaitForCountdown', {
+  args: { token: Schema.Int, count: Schema.Int },
+  messages: [Message.ElapsedCountdown],
+  execute: ({ token, count }) =>
+    Effect.sleep(Duration.seconds(1)).pipe(Effect.as(Message.ElapsedCountdown({ token, count }))),
+})
+
+/** Ask the live camera for a fresh frame after the count; the model accepts only its current token. */
+export const TakeCountdownPhoto = Command.define('TakeCountdownPhoto', {
+  args: { token: Schema.Int },
+  messages: [Message.RequestedCountdownPhoto],
+  execute: ({ token }) =>
+    Effect.sync(() => {
+      document
+        .querySelector(`#${screenId} video`)
+        ?.dispatchEvent(new CustomEvent('styld-countdown-photo', { detail: token, bubbles: true }))
+      return Message.RequestedCountdownPhoto()
+    }),
+})
+
 // UPDATE
 
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
@@ -242,20 +285,17 @@ const took = (model: Model, photo: File.File, check: File.File, side: Step): Upd
     shots: (shots) => shots + 1,
     settle: () => 0,
     lastCheck: () => Option.some(check),
+    countdown: () => Option.none(),
+    countdownToken: () => Option.none(),
   }),
   commands: [Buzz()],
   outMessage: OutMessage.TookPhoto({ photo, side }),
 })
 
-/** What a garment the check saw held up becomes. At the front step, a new piece. At the back step, the
- * piece's back: a plain back looks like a front to the check, so only another garment's front starts a new
- * piece instead, leaving the last one without a back. */
-const shotOf = (step: Step, side: Side, samePrevious: boolean): Step =>
-  step === 'back' && side === 'front' && !samePrevious ? 'front' : step
-
 /** A settled picture goes to the garment check, unless one is already out. */
 const settled = (model: Model, check: File.File, still: File.File): UpdateReturn => {
-  if (Option.isSome(model.pendingCheck) || !Camera.guards.Watching(model.camera)) return { model }
+  if (Option.isSome(model.pendingCheck) || Option.isSome(model.countdown) || !Camera.guards.Watching(model.camera))
+    return { model }
   const token = model.checksSent
   return {
     model: modifyFields(model, {
@@ -289,6 +329,39 @@ export const layOut = (model: Model): UpdateReturn => openAs(model, 'flat')
  * it (a garment being laid down or turned over is not taken yet). */
 const shows = (model: Model, held: boolean, holding: boolean) => held && (model.layout === 'flat' ? !holding : holding)
 
+const checked = (model: Model, token: number, held: boolean, holding: boolean): UpdateReturn => {
+  if (!awaited(model, token)) return { model }
+  if (!shows(model, held, holding))
+    return { model: modifyFields(model, { pendingCheck: () => Option.none(), camera: () => watching('notSeen') }) }
+  return {
+    model: modifyFields(model, {
+      pendingCheck: () => Option.none(),
+      countdown: () => Option.some(3),
+      countdownToken: () => Option.some(token),
+      camera: () => watching('counting'),
+    }),
+    commands: [WaitForCountdown({ token, count: 3 })],
+  }
+}
+
+const elapsed = (model: Model, token: number, count: number): UpdateReturn => {
+  if (
+    !Camera.guards.Watching(model.camera) ||
+    !Option.contains(model.countdownToken, token) ||
+    !Option.contains(model.countdown, count)
+  )
+    return { model }
+  if (count > 1)
+    return {
+      model: modifyFields(model, { countdown: () => Option.some(count - 1) }),
+      commands: [WaitForCountdown({ token, count: count - 1 })],
+    }
+  return {
+    model: modifyFields(model, { countdown: () => Option.some(0) }),
+    commands: [TakeCountdownPhoto({ token })],
+  }
+}
+
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     ClickedDone: () => ({
@@ -296,6 +369,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         camera: () => Camera.Closed(),
         step: () => 'front',
         pendingCheck: () => Option.none(),
+        countdown: () => Option.none(),
+        countdownToken: () => Option.none(),
       }),
       outMessage: OutMessage.ClosedCamera(),
     }),
@@ -306,6 +381,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
             model: modifyFields(model, {
               step: () => 'front',
               pendingCheck: () => Option.none(),
+              countdown: () => Option.none(),
+              countdownToken: () => Option.none(),
               camera: (camera) => (Camera.guards.Watching(camera) ? watching('taken') : camera),
             }),
           }
@@ -316,6 +393,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         facing: (facing) => (facing === 'user' ? 'environment' : 'user'),
         camera: () => Camera.Starting(),
         pendingCheck: () => Option.none(),
+        countdown: () => Option.none(),
+        countdownToken: () => Option.none(),
       }),
     }),
     StartedCamera: () =>
@@ -336,17 +415,32 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       Camera.guards.Watching(model.camera) ? took(model, still, check, model.step) : { model },
     // A garment shown but not held, such as clothes on the bed while the person fetches the next piece, is
     // not taken when held up.
-    SucceededCheckHeld: ({ token, check, still, held, side, samePrevious, holding }) => {
-      if (!awaited(model, token)) return { model }
-      return shows(model, held, holding)
-        ? took(model, still, check, shotOf(model.step, side, samePrevious))
-        : { model: modifyFields(model, { pendingCheck: () => Option.none(), camera: () => watching('notSeen') }) }
-    },
+    SucceededCheckHeld: ({ token, held, holding }) => checked(model, token, held, holding),
     // Without the check, the camera still takes a photo by hand.
     FailedCheckHeld: ({ token }) =>
       awaited(model, token)
         ? { model: modifyFields(model, { pendingCheck: () => Option.none(), camera: () => watching('tapToTake') }) }
         : { model },
+    ElapsedCountdown: ({ token, count }) => elapsed(model, token, count),
+    ChangedScene: ({ blocked }) =>
+      Camera.guards.Watching(model.camera)
+        ? {
+            model: modifyFields(model, {
+              pendingCheck: () => Option.none(),
+              countdown: () => Option.none(),
+              countdownToken: () => Option.none(),
+              settle: () => 0,
+              camera: () => watching(blocked ? 'blocked' : model.step === 'back' ? 'showBack' : 'holdOne'),
+            }),
+          }
+        : { model },
+    TookCountdownPhoto: ({ token, check, still }) =>
+      Camera.guards.Watching(model.camera) &&
+      Option.contains(model.countdownToken, token) &&
+      Option.contains(model.countdown, 0)
+        ? took(model, still, check, model.step)
+        : { model },
+    RequestedCountdownPhoto: () => ({ model }),
     CompletedBuzz: () => ({ model }),
     HeldScreen: () => ({ model }),
     ShowedPhoto: () => ({ model }),

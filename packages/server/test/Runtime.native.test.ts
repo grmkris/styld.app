@@ -13,6 +13,7 @@ import { verifyBrowser } from './BrowserAcceptance.ts'
 import { verifyCleanPictures } from './CleanPictureAcceptance.ts'
 import { verifyTurn } from './TurnAcceptance.ts'
 import { verifyCameraJourney, verifyCaptureJourney, verifyLongVideoJourney } from './CaptureBrowserAcceptance.ts'
+import { verifyGuidedCameraJourney } from './GuidedCameraBrowserAcceptance.ts'
 import { verifyGalleryJourney } from './GalleryBrowserAcceptance.ts'
 import { verifyCaptures } from './CaptureAcceptance.ts'
 import { verifyScan } from './ScanAcceptance.ts'
@@ -225,8 +226,10 @@ test(
 
 test(
   'opens the camera over the whole page, takes a piece front then back, and pairs them in the tray',
-  inBrowser(verifyCameraJourney),
-  { timeout: 90000 },
+  inBrowser((browser, origin, fixtures) =>
+    verifyCameraJourney(browser, origin, fixtures).then(() => verifyGuidedCameraJourney(browser, origin, fixtures)),
+  ),
+  { timeout: 150000 },
 )
 
 test(

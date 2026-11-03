@@ -1,11 +1,34 @@
 import { Option } from 'effect'
 import { Command, expectNoOutMessage, expectOutMessage, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
-import { Buzz, Camera, CheckHeld, init, layOut, Message, type Model, open, update } from '../src/page/HeldCamera.ts'
+import {
+  Buzz,
+  Camera,
+  CheckHeld,
+  init,
+  layOut,
+  Message,
+  type Model,
+  open,
+  TakeCountdownPhoto,
+  update,
+  WaitForCountdown,
+} from '../src/page/HeldCamera.ts'
 
 const shot = (name: string) => new globalThis.File(['jpeg'], name, { type: 'image/jpeg' })
 const check = shot('check-1.jpg')
 const still = shot('camera-1.jpg')
+
+const freshCheck = shot('fresh-check.jpg')
+const freshStill = shot('fresh-camera.jpg')
+const counted = (token: number) =>
+  [
+    Command.resolve(WaitForCountdown({ token, count: 3 }), Message.ElapsedCountdown({ token, count: 3 })),
+    Command.resolve(WaitForCountdown({ token, count: 2 }), Message.ElapsedCountdown({ token, count: 2 })),
+    Command.resolve(WaitForCountdown({ token, count: 1 }), Message.ElapsedCountdown({ token, count: 1 })),
+    Command.resolve(TakeCountdownPhoto({ token }), Message.RequestedCountdownPhoto()),
+    message(Message.TookCountdownPhoto({ token, check: freshCheck, still: freshStill })),
+  ] as const
 
 const watching = () => update(open(init()).model, Message.StartedCamera()).model
 const firstCheck = CheckHeld({ token: 0, check, still, previous: Option.none(), layout: 'held' })
@@ -22,7 +45,9 @@ const answered = (
 /** A front just taken: the camera waits for the garment's back. */
 const frontTaken = (): Model => {
   const checking = update(watching(), Message.SettledScene({ check, still })).model
-  return update(checking, answered(0, true, 'front')).model
+  let current = update(checking, answered(0, true, 'front')).model
+  for (const count of [3, 2, 1]) current = update(current, Message.ElapsedCountdown({ token: 0, count })).model
+  return update(current, Message.TookCountdownPhoto({ token: 0, check, still })).model
 }
 
 /** The next settled picture, its check against the front, and the check's answer. */
@@ -31,10 +56,40 @@ const turned = (token: number, side: 'front' | 'back' | 'unclear', samePrevious:
   return [
     message(Message.SettledScene({ check, still })),
     Command.resolve(sent, answered(token, true, side, samePrevious)),
+    ...counted(token),
   ] as const
 }
 
 describe('the held-up camera', () => {
+  test('movement invalidates an in-flight check; covered and changed scenes cancel countdown and shutter tokens', () => {
+    for (const blocked of [false, true]) {
+      const checking = update(watching(), Message.SettledScene({ check, still })).model
+      story(
+        update,
+        given(checking),
+        message(Message.ChangedScene({ blocked })),
+        message(answered(0, true, 'front')),
+        expectNoOutMessage(),
+        Command.expectNone(),
+        model(({ pieces }) => expect(pieces).toBe(0)),
+      )
+      const counting = update(checking, answered(0, true, 'front')).model
+      story(
+        update,
+        given(counting),
+        message(Message.ChangedScene({ blocked })),
+        message(Message.ElapsedCountdown({ token: 0, count: 3 })),
+        message(Message.TookCountdownPhoto({ token: 0, check, still })),
+        expectNoOutMessage(),
+        Command.expectNone(),
+        model(({ pieces, step }) => {
+          expect(pieces).toBe(0)
+          expect(step).toBe('front')
+        }),
+      )
+    }
+  })
+
   test('a settled picture is checked, and a garment held up is taken as a front that asks for its back', () => {
     story(
       update,
@@ -43,11 +98,12 @@ describe('the held-up camera', () => {
       Command.expectExact(firstCheck),
       model(({ pendingCheck }) => expect(pendingCheck).toEqual(Option.some(0))),
       Command.resolve(firstCheck, answered(0, true, 'front')),
-      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: 'front' }),
+      ...counted(0),
+      expectOutMessage({ _tag: 'TookPhoto', photo: freshStill, side: 'front' }),
       Command.resolve(Buzz, Message.CompletedBuzz()),
       model(({ pieces, lastCheck, camera }) => {
         expect(pieces).toBe(1)
-        expect(lastCheck).toEqual(Option.some(check))
+        expect(lastCheck).toEqual(Option.some(freshCheck))
         expect(camera).toEqual(Camera.Watching({ hint: 'showBack' }))
       }),
     )
@@ -95,7 +151,8 @@ describe('the held-up camera', () => {
       model(({ camera }) => expect(camera).toEqual(Camera.Watching({ hint: 'notSeen' }))),
       message(Message.StayedStill({ check, still })),
       Command.resolve(second, answered(1, true, 'front')),
-      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: 'front' }),
+      ...counted(1),
+      expectOutMessage({ _tag: 'TookPhoto', photo: freshStill, side: 'front' }),
       Command.resolve(Buzz, Message.CompletedBuzz()),
       message(Message.StayedStill({ check, still })),
       Command.expectNone(),
@@ -135,7 +192,7 @@ describe('the held-up camera', () => {
       Command.expectNone(),
       // The owner's printed tee, turned: the check called its plain back a front of the same garment.
       ...turned(1, 'front', true),
-      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: 'back' }),
+      expectOutMessage({ _tag: 'TookPhoto', photo: freshStill, side: 'back' }),
       Command.resolve(Buzz, Message.CompletedBuzz()),
       model(({ camera, step, pieces }) => {
         expect(camera).toEqual(Camera.Watching({ hint: 'taken' }))
@@ -163,17 +220,20 @@ describe('the held-up camera', () => {
     )
   })
 
-  test("another garment's front starts a new piece; the back can be skipped, by hand or with a tap", () => {
+  test('the Back step is paired even when recognition calls it a different front; Skip starts the next piece', () => {
     story(
       update,
       given(frontTaken()),
       ...turned(1, 'front', false),
-      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: 'front' }),
+      expectOutMessage({ _tag: 'TookPhoto', photo: freshStill, side: 'back' }),
       Command.resolve(Buzz, Message.CompletedBuzz()),
       model(({ step, pieces }) => {
-        expect(step).toBe('back')
-        expect(pieces).toBe(2)
+        expect(step).toBe('front')
+        expect(pieces).toBe(1)
       }),
+      message(Message.TappedPicture({ check, still })),
+      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: 'front' }),
+      Command.resolve(Buzz, Message.CompletedBuzz()),
       message(Message.ClickedSkipBack()),
       model(({ camera, step }) => {
         expect(camera).toEqual(Camera.Watching({ hint: 'taken' }))
@@ -202,7 +262,8 @@ describe('the held-up camera', () => {
       model(({ camera }) => expect(camera).toEqual(Camera.Watching({ hint: 'notSeen' }))),
       message(Message.SettledScene({ check, still })),
       Command.resolve(flatCheck(1), answered(1, true, 'front', false, false)),
-      expectOutMessage({ _tag: 'TookPhoto', photo: still, side: 'front' }),
+      ...counted(1),
+      expectOutMessage({ _tag: 'TookPhoto', photo: freshStill, side: 'front' }),
       Command.resolve(Buzz, Message.CompletedBuzz()),
     )
   })

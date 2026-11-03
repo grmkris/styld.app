@@ -62,6 +62,29 @@ export const guide = style({
   '&[data-hint="checking"]': { opacity: 1, transform: 'scale(0.97)' },
   '&[data-hint="notSeen"]': { opacity: 0.85 },
 })
+/** A large, high-contrast count visible from across the room before an automatic shutter. */
+export const countdown = style({
+  position: 'absolute',
+  insetBlock: 'calc(64px + env(safe-area-inset-top)) calc(236px + env(safe-area-inset-bottom))',
+  insetInline: '0',
+  margin: '0',
+  display: 'grid',
+  placeItems: 'center',
+  pointerEvents: 'none',
+  color: 'onInk',
+  fontSize: 'countdown',
+  fontWeight: 700,
+  lineHeight: 1,
+  fontVariantNumeric: 'tabular-nums',
+})
+export const countdownNumber = style({
+  display: 'grid',
+  placeItems: 'center',
+  inlineSize: '1.6em',
+  blockSize: '1.6em',
+  borderRadius: 'pill',
+  backgroundColor: 'scrim',
+})
 export const flash = style({
   position: 'absolute',
   inset: '0',

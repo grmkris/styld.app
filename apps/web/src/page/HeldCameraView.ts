@@ -13,6 +13,8 @@ import * as styles from './HeldCameraView.styles.ts'
 const hintKey: { readonly [Key in Hint]: MessageKey } = {
   holdOne: 'capture.camera.holdOne',
   checking: 'capture.camera.checking',
+  counting: 'capture.camera.counting',
+  blocked: 'capture.camera.blocked',
   taken: 'capture.camera.taken',
   showBack: 'capture.camera.showBack',
   notSeen: 'capture.camera.notSeen',
@@ -78,6 +80,18 @@ const shutter = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
       h.span(styled(h, styles.shutterDisc())),
     ],
   )
+
+const countdown = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  Option.match(model.countdown, {
+    onNone: () => h.empty,
+    onSome: (count) =>
+      count <= 0
+        ? h.empty
+        : h.p(
+            [h.Role('status'), h.AriaLive('assertive'), ...styled(h, styles.countdown())],
+            [h.span(styled(h, styles.countdownNumber()), [format(locale, 'capture.camera.countdown', { count })])],
+          ),
+  })
 
 const ringCircle = (h: HtmlBuilder<Message>) => [
   h.Attribute('cx', '40'),
@@ -174,6 +188,7 @@ const picture = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
       model.shots === 0
         ? h.empty
         : h.keyed('div')(`flash-${model.shots}`, [h.AriaHidden(true), ...styled(h, styles.flash())]),
+      countdown(model, locale, h),
       top(model, locale, h),
       bottom(model, locale, h),
     ],

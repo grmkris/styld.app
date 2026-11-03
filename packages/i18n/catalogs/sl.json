@@ -638,7 +638,10 @@
       "denied": "Dostop do kamere je izklopljen. Dovoli ga v nastavitvah brskalnika ali izberi fotografije.",
       "unavailable": "Kamere tukaj ni mogoče zagnati. Izberi fotografije.",
       "finish": "Končaj in preglej {count, plural, one {# kos} two {# kosa} few {# kose} other {# kosov}}",
-      "finishAction": "Končaj"
+      "finishAction": "Končaj",
+      "countdown": "{count}",
+      "counting": "Ostani pri miru",
+      "blocked": "Odkrij kamero in pokaži en kos"
     },
     "retryFile": "Poskusi znova: {name}",
     "queueSummary": "Poslano {sent} od {total}{failed, plural, =0 {} one {, # ni šla} two {, # nista šli} few {, # niso šle} other {, # jih ni šlo}}",

@@ -74,6 +74,8 @@ export const { style, vars } = defineConfig({
       // The landing's statement, and the Today table's headline in the logo's voice.
       display: 'clamp(46px, 34px + 3vw, 72px)',
       headline: 'clamp(52px, 40px + 4vw, 76px)',
+      // Camera countdown, read from across the room while someone holds a garment.
+      countdown: 'clamp(96px, 30vmin, 180px)',
       // H1, and an H1 inside a panel (a piece's name, a gallery's title).
       title: '30px',
       name: '28px',

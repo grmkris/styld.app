@@ -37,3 +37,38 @@ authenticated measurement; a signed wardrobe route alone does not prove that exa
 
 Before/after screenshots, focused regression results, review findings and deployment readback will be recorded
 here when available. The source report and original ticket/finding wording remain intact.
+
+## Implementation and local acceptance
+
+- A large central 3–2–1 count runs after a positive garment check. The final timer requests a new live frame;
+  it does not reuse the image sent to recognition before the count.
+- Mean luminance below 18 or variance below 2 blocks automatic settling. A covered/uniform scene clears its
+  pending check/countdown; sufficient movement invalidates stale answers and shutter tokens. Manual capture
+  remains available. These thresholds need real-phone assessment, especially with dark clothing.
+- Every accepted photo resets the motion watch. The unchanged front cannot arm the next Back photo.
+  Back remains the explicit side until taken or skipped, even when recognition calls it a different front.
+- `heavy --wait bun run check` exited 0: 664 files / zero type findings, lint green, 21 reviewed suppressions,
+  763 unit tests in 120 files, 29 native tests / 1,202 assertions. Bundle budgets passed: initial browser
+  349,566 gzip bytes, all browser 613,929, SSR 1,914,796 source bytes.
+- `GuidedCameraBrowserAcceptance` runs alongside the existing manual camera journey through Chromium/workerd:
+  blocked frames send no garment checks, covering the camera at 2 cancels the count, an unchanged front is not
+  re-shot, and the side-confused Back reaches the wardrobe as one piece with its back. Fake providers are used.
+- `EVA_CAPTURE_PHASE=after heavy --wait bun test ./.artifacts/EvaCameraCapture.native.test.ts` passed 1 test /
+  17 assertions. Both viewports sent two garment checks for their front/back pair and had no page errors.
+  Four matching before/after pairs are attached to T-01/T-05 in the tracker; all eight PNGs are in `evidence/batch-03/`.
+- Mutation receipt: temporarily removing the dark-frame guard made the covered-camera regression fail with
+  three unwanted settles; restoring it passed. The canonical unit runner is Vitest (the full gate supplies
+  catalog setup), not direct `bun test` on web Scene files.
+
+## Review rounds
+
+1. Architecture/tooling: camera acquisition and frame sampling stay within the scoped Mount; timers and fresh-frame
+   requests remain named Foldkit Commands. Refactored event mapping and transitions to pass complexity limits.
+2. Privacy/lifecycle: closing, flipping, skipping, manual capture or scene movement invalidates stale tokens.
+   No server auth, provider, database, public-media or deployment-resource behavior changes. Images stay out of logs.
+3. Product/browser: visually reviewed the four matched phone/desktop pairs. The black-frame baseline advances to
+   Back; the fixed view stays at Front with guidance. The large countdown is readable and leaves controls available.
+
+Preview deployment and exact-release readback remain to record. T-01/T-05 stay partial: no provider claim is made
+for faces, no-garment scenes, contour detection or excluding background/worn clothing; the review-card Front/Back
+preview is still open. F-49 can be verified after preview readback. T-21 is unchanged and open.

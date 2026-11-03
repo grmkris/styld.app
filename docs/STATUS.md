@@ -49,9 +49,12 @@ verified. Physical-phone and live-provider acceptance remain separate.
 
 ## Eva camera batch 03 (in progress)
 
-A bounded follow-up is implementing a central cancellable countdown, dark/uniform-frame guards, motion
+A bounded follow-up implements a central cancellable countdown, dark/uniform-frame guards, motion
 cancellation and explicit Back pairing. Baseline synthetic Chromium/workerd captures reproduced black-frame
-advancement at both 390 and 1440px. Implementation and acceptance are not complete; T-01/T-05 remain partial.
+advancement at both 390 and 1440px; matching after captures reject that frame and show the countdown. The full
+gate passed (763 unit tests; 29 native tests / 1,202 assertions), as did the screenshot harness (17 assertions).
+Four matching pairs were visually reviewed. Preview deployment/readback is pending; T-01/T-05 remain partial: foreground
+extraction, garment-contour/no-garment recognition, the review card Front/Back preview and real-phone/provider acceptance stay open.
 See the tracker's `BATCH-03.md` for the investigation and remaining provider/phone boundaries.
 
 T-21 is not complete: the deployed wardrobe piece pictures use signed media, but board pictures, Gallery photos,

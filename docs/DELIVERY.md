@@ -112,3 +112,12 @@ Six matching before/after pairs and the review boundaries are in the tracker's `
 (759 unit tests; 29 native tests / 1,284 assertions), including the signed-in board journey. Application release
 `021dabe` deployed to the isolated preview and passed exact-release smoke acceptance (3 tests / 42 assertions).
 T-04, T-09 and T-11 are verified; physical-device and live-provider acceptance remain separate.
+
+## Eva camera batch 03
+
+The central cancellable 3–2–1 count and fresh final frame are covered by `heldCamera.scene` and `heldCamera.story`;
+`Stillness` covers dark/uniform-frame rejection. `GuidedCameraBrowserAcceptance` verifies no checks on a covered
+frame, cancellation mid-count, motion between sides and one wardrobe piece with its back despite a side-confused
+recognition response. Full gate: 763 unit and 29 native tests passed; four matching screenshot pairs passed visual
+review at 390×844 and 1440×844. Preview deployment/readback is pending. T-01/T-05 remain partial: recognition,
+foreground extraction, review-card Front/Back preview and real-phone/provider acceptance remain open.

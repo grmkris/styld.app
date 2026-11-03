@@ -5,9 +5,44 @@
       "status": "in_progress",
       "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "Batch 03 is investigating dark/uniform-frame auto-captures, motion cancellation and Back being relabelled as a new Front. Full foreground extraction and real-provider recognition acceptance remain open. No completion claimed.",
-      "evidence": [],
-      "criteriaDone": []
+      "note": "Client guards and explicit Back pairing are implemented and native-validated: a covered/uniform frame never arms automatic capture; motion cancels stale checks/countdowns; an unchanged front is not re-shot; the Back step remains paired even if recognition calls it a different front. Full foreground extraction, the review card Front/Back preview, garment-contour detection and real-provider/phone acceptance remain open. Preview deployment pending.",
+      "evidence": [
+        {
+          "level": "unit",
+          "date": "2026-11-03",
+          "summary": "Camera batch 03: full repository gate passed, 763 unit tests in 120 files. Covers dark/uniform frames, stale garment answers and countdown tokens, fresh shutter frames and explicit Back pairing. A planted removal of the dark-frame guard failed its regression before restoring the fix."
+        },
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Camera batch 03: all 29 native tests passed (1,202 assertions). Chromium/workerd cancelled a countdown when covered, displayed 3–2–1, did not re-shoot the unchanged front, and saved one wardrobe piece with its back despite a side-confused positive recognition answer. Separate matching captures passed 17 assertions at 390×844 and 1440×844; no page errors. Synthetic camera and fake providers; no physical-device or real-recognition claim."
+        }
+      ],
+      "criteriaDone": [
+        2
+      ],
+      "comparisons": [
+        {
+          "title": "Covered camera stays on Front",
+          "width": 390,
+          "height": 844,
+          "before": "batch-03/T-01-dark-frame-before-390.png",
+          "after": "batch-03/T-01-dark-frame-after-390.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching synthetic canvas camera in Chromium through local workerd. Before: deployed application 021dabe; after: camera batch 03. The positive, side-confused garment answer isolates client timing from real recognition. Not physical-phone or live-provider evidence."
+        },
+        {
+          "title": "Covered camera stays on Front",
+          "width": 1440,
+          "height": 844,
+          "before": "batch-03/T-01-dark-frame-before-1440.png",
+          "after": "batch-03/T-01-dark-frame-after-1440.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching synthetic canvas camera in Chromium through local workerd. Before: deployed application 021dabe; after: camera batch 03. The positive, side-confused garment answer isolates client timing from real recognition. Not physical-phone or live-provider evidence."
+        }
+      ]
     },
     "T-02": {
       "status": "not_started",
@@ -74,7 +109,7 @@
       "status": "in_progress",
       "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "Batch 03 is adding a cancellable central 3–2–1 countdown after garment checking and a fresh shutter frame. Earlier source hierarchy and Finish controls remain deployed. Face/no-garment suppression still requires provider acceptance; this ticket remains partial.",
+      "note": "Central cancellable 3–2–1 countdown is implemented and native-validated; the shutter takes a fresh live frame after the count. Earlier source hierarchy and Finish controls remain deployed. Face/no-garment recognition still requires real-provider acceptance; this ticket remains partial. Camera batch preview deployment pending.",
       "evidence": [
         {
           "level": "unit",
@@ -91,11 +126,22 @@
           "date": "2026-11-03",
           "summary": "Deployed c05071e0351cef5bb74caf249eea808775042842. Exact-release smoke readback passed: 3 tests / 42 assertions (hydration, assets, API/auth, MCP). Authenticated product interactions are covered by native fixtures, not a real-user preview walk.",
           "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
+        },
+        {
+          "level": "unit",
+          "date": "2026-11-03",
+          "summary": "Camera batch 03: full repository gate passed, 763 unit tests in 120 files. Covers dark/uniform frames, stale garment answers and countdown tokens, fresh shutter frames and explicit Back pairing. A planted removal of the dark-frame guard failed its regression before restoring the fix."
+        },
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Camera batch 03: all 29 native tests passed (1,202 assertions). Chromium/workerd cancelled a countdown when covered, displayed 3–2–1, did not re-shoot the unchanged front, and saved one wardrobe piece with its back despite a side-confused positive recognition answer. Separate matching captures passed 17 assertions at 390×844 and 1440×844; no page errors. Synthetic camera and fake providers; no physical-device or real-recognition claim."
         }
       ],
       "criteriaDone": [
         0,
-        1
+        1,
+        2
       ],
       "comparisons": [
         {
@@ -127,6 +173,26 @@
           "date": "2026-11-03",
           "level": "native",
           "note": "Matching Chromium viewports through local workerd with synthetic wardrobe and camera fixtures. Before: c5d6f52; after: c05071e. Full-page captures; not physical-phone or live-provider proof"
+        },
+        {
+          "title": "Visible camera countdown",
+          "width": 390,
+          "height": 844,
+          "before": "batch-03/T-05-countdown-before-390.png",
+          "after": "batch-03/T-05-countdown-after-390.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching synthetic canvas camera in Chromium through local workerd. Before: deployed application 021dabe; after: camera batch 03. The positive, side-confused garment answer isolates client timing from real recognition. Not physical-phone or live-provider evidence."
+        },
+        {
+          "title": "Visible camera countdown",
+          "width": 1440,
+          "height": 844,
+          "before": "batch-03/T-05-countdown-before-1440.png",
+          "after": "batch-03/T-05-countdown-after-1440.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching synthetic canvas camera in Chromium through local workerd. Before: deployed application 021dabe; after: camera batch 03. The positive, side-confused garment answer isolates client timing from real recognition. Not physical-phone or live-provider evidence."
         }
       ]
     },
@@ -895,18 +961,40 @@
       ]
     },
     "F-48": {
-      "status": "not_started",
-      "owner": "",
+      "status": "in_progress",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
-      "evidence": []
+      "note": "Native validation passed covered-frame suppression, cancellation on scene change, no unchanged-front re-shot and one saved piece with its back despite side-confused recognition. No-garment recognition and real-phone/provider acceptance remain open; see T-01 comparisons. Preview deployment pending.",
+      "evidence": [
+        {
+          "level": "unit",
+          "date": "2026-11-03",
+          "summary": "Camera batch 03: full repository gate passed, 763 unit tests in 120 files. Covers dark/uniform frames, stale garment answers and countdown tokens, fresh shutter frames and explicit Back pairing. A planted removal of the dark-frame guard failed its regression before restoring the fix."
+        },
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Camera batch 03: all 29 native tests passed (1,202 assertions). Chromium/workerd cancelled a countdown when covered, displayed 3–2–1, did not re-shoot the unchanged front, and saved one wardrobe piece with its back despite a side-confused positive recognition answer. Separate matching captures passed 17 assertions at 390×844 and 1440×844; no page errors. Synthetic camera and fake providers; no physical-device or real-recognition claim."
+        }
+      ]
     },
     "F-49": {
-      "status": "not_started",
-      "owner": "",
+      "status": "ready_for_review",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
-      "evidence": []
+      "note": "A large central high-contrast 3–2–1 count gives three seconds after recognition and takes a fresh frame. Scene, lifecycle and native cancellation checks passed, with matching phone/desktop screenshots in T-05. Preview deployment pending.",
+      "evidence": [
+        {
+          "level": "unit",
+          "date": "2026-11-03",
+          "summary": "Camera batch 03: full repository gate passed, 763 unit tests in 120 files. Covers dark/uniform frames, stale garment answers and countdown tokens, fresh shutter frames and explicit Back pairing. A planted removal of the dark-frame guard failed its regression before restoring the fix."
+        },
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Camera batch 03: all 29 native tests passed (1,202 assertions). Chromium/workerd cancelled a countdown when covered, displayed 3–2–1, did not re-shoot the unchanged front, and saved one wardrobe piece with its back despite a side-confused positive recognition answer. Separate matching captures passed 17 assertions at 390×844 and 1440×844; no page errors. Synthetic camera and fake providers; no physical-device or real-recognition claim."
+        }
+      ]
     },
     "F-50": {
       "status": "in_progress",
@@ -1031,10 +1119,21 @@
         "T-21",
         "F-43"
       ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Camera batch 03 passed the full gate (763 unit, 29 native tests) and matching screenshot captures (17 assertions). Added four before/after pairs; reviewed phone and desktop images. T-01/T-05 remain partial; F-49 awaits preview readback. T-21 remains open.",
+      "items": [
+        "T-01",
+        "T-05",
+        "F-48",
+        "F-49",
+        "T-21"
+      ]
     }
   ],
   "overview": {
-    "label": "Camera reliability in progress",
-    "note": "Board batch 02 remains deployed and verified. Batch 03 is working on camera timing, dark-frame guards and side pairing. T-21 is still open: wardrobe pieces have signed media; the other owner media routes remain to migrate."
+    "label": "Camera batch 03 validated locally",
+    "note": "Board batch 02 remains deployed and verified. Camera countdown, covered-frame guards and explicit Back pairing passed the full gate and screenshot checks; preview deployment is next. T-01/T-05 remain partial. T-21 remains open."
   }
 }

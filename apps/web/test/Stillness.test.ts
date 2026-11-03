@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'vitest'
 import { settlingOf, startWatch, type Watch, watchFrame } from '../src/capture/Stillness.ts'
 
-const frame = (value: number) => new Uint8Array(64).fill(value)
+const frame = (value: number) => Uint8Array.from({ length: 64 }, (_pixel, at) => value + (at % 2 === 0 ? -4 : 4))
 
 /** Feed frames in order and return the indices at which the scene settled, and how. */
 const settlesWith = (frames: ReadonlyArray<Uint8Array>) => {
@@ -16,6 +16,19 @@ const settlesWith = (frames: ReadonlyArray<Uint8Array>) => {
 const settles = (frames: ReadonlyArray<Uint8Array>) => settlesWith(frames).map(([index]) => index)
 
 describe('watching for a garment held still', () => {
+  test('covering the camera never settles, even after motion and repeated dark frames', () => {
+    const black = new Uint8Array(64)
+    expect(settles([frame(100), frame(160), ...Array.from({ length: 60 }, () => black)])).toEqual([])
+    expect(settles([frame(100), ...Array.from({ length: 60 }, () => frame(8))])).toEqual([])
+  })
+
+  test('uniform frames cancel a settling scene; a textured dark garment remains usable', () => {
+    expect(
+      settles([frame(100), frame(160), ...Array.from({ length: 30 }, () => new Uint8Array(64).fill(120))]),
+    ).toEqual([])
+    expect(settles([frame(100), frame(35), ...Array.from({ length: 4 }, () => frame(35))])).toEqual([4])
+  })
+
   test('an empty, unchanging room never shoots', () => {
     expect(settles(Array.from({ length: 20 }, () => frame(100)))).toEqual([])
   })
