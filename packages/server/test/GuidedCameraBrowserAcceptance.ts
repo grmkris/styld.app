@@ -69,10 +69,12 @@ export const verifyGuidedCameraJourney = async (browser: Browser, origin: string
     await page.getByRole('button', { name: 'Done', exact: true }).click()
     await page.getByRole('button', { name: 'Add 1 to my wardrobe' }).click()
     await page.waitForURL(`${origin}/wardrobe`, { timeout: 30000 })
-    const saved = Schema.decodeUnknownSync(PiecesWithBack)(
-      await (await context.request.get(`${origin}/api/pieces`)).json(),
-    )
-    expect(saved.pieces).toEqual([{ hasBack: true }])
+    // The back may finish after the front is kept; it then goes to the piece (capture Store backOfKept).
+    const saved = async () =>
+      Schema.decodeUnknownSync(PiecesWithBack)(await (await context.request.get(`${origin}/api/pieces`)).json()).pieces
+    for (let wait = 0; wait < 40 && !(await saved()).some(({ hasBack }) => hasBack); wait += 1)
+      await page.waitForTimeout(500)
+    expect(await saved()).toEqual([{ hasBack: true }])
     expect(problems).toEqual([])
   } finally {
     await context.close()

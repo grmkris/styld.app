@@ -200,6 +200,36 @@ const trayRows = (db: Database) => ({
     ).pipe(Effect.map(first)),
 })
 
+/** A back that finished after its front was kept becomes the back of the piece the front became, when that piece
+ * has none yet; whether it did. Without it a person who keeps the front before the back is ready loses the back,
+ * which then waits in the tray on its own (the guided camera's native journey, 3 November). */
+const backOfKept = (db: Database, accountId: string, captureId: string, backKey: string) =>
+  query(() =>
+    db
+      .update(pieces)
+      .set({ backImageKey: backKey })
+      .where(
+        and(
+          eq(pieces.accountId, accountId),
+          isNull(pieces.backImageKey),
+          inArray(
+            pieces.detectionId,
+            db
+              .select({ id: detections.id })
+              .from(detections)
+              .where(
+                and(
+                  eq(detections.accountId, accountId),
+                  eq(detections.captureId, captureId),
+                  eq(detections.status, 'kept'),
+                ),
+              ),
+          ),
+        ),
+      )
+      .returning({ id: pieces.id }),
+  ).pipe(Effect.map((rows) => rows.length > 0))
+
 /** Front and back camera shots of one garment, paired once both are stored. */
 const pairRows = (db: Database) => {
   /** The back shots of `frontCaptureId` in `status`: waiting in the tray, or folded into it. */
@@ -218,8 +248,9 @@ const pairRows = (db: Database) => {
         ),
     )
   return {
-    /** Give the front shot's piece its back, if it is still open; whether it was. The piece is the ticked one,
-     * or else the surest: a front whose only cut-out came out unticked still gets its back. */
+    /** Give the front shot's piece its back: the open card's, or else the kept piece's (`backOfKept`); whether it did.
+     * The card is the ticked one, or else the surest: a front whose only cut-out came out unticked still gets its
+     * back. */
     attachBack: (accountId: string, captureId: string, backKey: string) =>
       Effect.gen(function* () {
         const front = first(
@@ -238,7 +269,7 @@ const pairRows = (db: Database) => {
               .limit(1),
           ),
         )
-        if (Option.isNone(front)) return false
+        if (Option.isNone(front)) return yield* backOfKept(db, accountId, captureId, backKey)
         const rows = yield* query(() =>
           db
             .update(detections)
@@ -246,7 +277,7 @@ const pairRows = (db: Database) => {
             .where(and(eq(detections.id, front.value.id), eq(detections.status, 'review')))
             .returning({ id: detections.id }),
         )
-        return rows.length > 0
+        return rows.length > 0 || (yield* backOfKept(db, accountId, captureId, backKey))
       }),
     /** A back shot of `frontCaptureId` that finished before its front and waits in the tray on its own, with
      * its open detections. */

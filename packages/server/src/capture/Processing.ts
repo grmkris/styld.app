@@ -51,7 +51,7 @@ const attachBack = (
       detections.find(({ preselected }) => preselected) ??
       detections.toSorted((one, other) => (other.confidence ?? 0) - (one.confidence ?? 0))[0]
     if (back === undefined) return false
-    // The front may already be decided; then the back waits in the tray on its own.
+    // The front may already be kept: its piece takes the back when it has none, else the back waits in the tray.
     return yield* storedAs(
       (yield* CaptureStore).attachBack(accountId, frontCaptureId, back.cutoutKey ?? back.sourceKey),
     )
