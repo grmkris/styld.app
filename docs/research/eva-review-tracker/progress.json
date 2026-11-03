@@ -271,10 +271,10 @@
       ]
     },
     "T-07": {
-      "status": "planned",
+      "status": "in_progress",
       "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "Claude batch 02, after T-08. Wardrobe drills down: Clothing / Sport / Shoes / Accessories cards (only those with pieces, each showing its newest piece), then subcategory cards, then a label-free grid with one Filter button. Sport follows shops: sports clothing and sports shoes; swimwear and loungewear stay in Clothing. Phone Back goes up a level.",
+      "note": "Landed on main as 1aa780d. Wardrobe opens on Clothing / Sport / Shoes / Accessories cards (only those that hold pieces, each with its newest piece), then a group's type cards, then a label-free grid with one Filter button; each step down is its own page, so the phone's Back goes a step up. Sport follows shops: sportswear and (since T-12) sports, hiking and snow shoes. Preview and phone acceptance open.",
       "evidence": [],
       "criteriaDone": []
     },
@@ -282,7 +282,7 @@
       "status": "in_progress",
       "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "Claude batch 02 (owner decisions 3 Nov). The 4th tab becomes Lab (sl Lab), header Laboratory, grid icon, opening on Boards, with Boards | Gallery | Looks sub-tabs; Wardrobe keeps only pieces. Gallery moves to /gallery; old /wardrobe/gallery links still open.",
+      "note": "Landed on main as e13f05f. The 4th tab is Lab (header Laboratory, grid icon), opening on Boards, with Boards | Gallery | Looks tabs; Wardrobe keeps only its pieces, search and Add clothes. Gallery moved to /gallery; old /wardrobe/gallery links still open and take the new address. Unit and scene tests green; the native browser journeys were updated for the Lab. Preview (deploy by styldappv2-51 tonight) and phone acceptance open.",
       "evidence": [],
       "criteriaDone": []
     },
@@ -389,10 +389,10 @@
       ]
     },
     "T-12": {
-      "status": "planned",
+      "status": "in_progress",
       "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "Claude batch 02, after Codex lands T-15 and the LiteLLM change (same files). Owner decisions 3 Nov: built-in types extended (loafers, lace-ups, sport shoes, hiking and snow boots, gloves, socks, hair accessories); existing pieces keep their type; seasons are any of spring/summer/autumn/winter plus Rainproof; custom categories sit under a built-in type, the AI suggests one in the review tray and it is created only on keep; managed from the piece editor.",
+      "note": "Types and seasons landed on main as 6f8be7f: loafers, lace-ups, sports shoes, hiking and snow boots (Sport, worn only for sport), gloves, socks, hair accessories; flats is ballet flats and Mary Janes; existing pieces keep their type (owner). When it's worn is any of spring/summer/autumn/winter (none is all year) plus Rainproof, in the editor, review, facts, filter, outfit rules and the stylist. Its migration keeps every dependent row (proven on local D1 with data, guarded by MigrationSafety.test.ts). Still open: custom categories under a built-in type (AI suggests in the review tray, created on keep), then preview and phone acceptance.",
       "evidence": [],
       "criteriaDone": []
     },
@@ -546,10 +546,10 @@
       "criteriaDone": []
     },
     "T-17": {
-      "status": "planned",
+      "status": "in_progress",
       "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "Claude batch 02. Owner decision 3 Nov: the outfit cut-out stays manual (SAM is the right tool for picking a person; auto waits for T-03). Planned: a clear working state and the cut-out shown at once, swipe between the photo and its cut-out, a heart over the photo instead of the Favourite pill, and Add to board pins whichever is showing. 1-step Add to wardrobe stays out.",
+      "note": "Landed on main as 61c7b49. Cut-out stays manual (owner): the button and a note on the photo say Cutting out the outfit…, the cut-out shows at once (signed cutoutImages), a sideways swipe or Photo | Cut-out under the picture chooses, and Save to board pins whichever is shown (the photo and its cut-out are two pictures, each placed once). Favourite is a heart in a frosted round over the photo, as on its Gallery tile; asked too soon says to wait a minute. Preview and phone acceptance open; automatic cut-outs wait for T-03.",
       "evidence": [],
       "criteriaDone": []
     },
