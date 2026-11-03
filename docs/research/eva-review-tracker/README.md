@@ -3,8 +3,8 @@
 Shared document: https://styld-review-07c26b483ccc.pages.dev
 
 This independent Cloudflare Pages document contains 51 findings, 21 original ticket drafts and 35 screenshots
-from the 2 November 2026 review. It adds eight workstreams and preliminary code-review notes. The first easy-fix
-batch is deployed to the isolated preview; `progress.json` records completed and partial scope. Priority and effort labels remain inputs to planning, not commitments.
+from the 2 November 2026 review. It adds eight workstreams and preliminary code-review notes. The easy-fix and board
+batches are deployed to the isolated preview; `progress.json` records completed and partial scope. Priority and effort labels remain inputs to planning, not commitments.
 
 The owner approved a public URL and the screenshots on 3 November. Anyone with the link can view them;
 the random project name and noindex headers are not access controls. No message has been sent to Eva.
@@ -33,8 +33,9 @@ was created once with production branch `main`; normal updates only deploy it.
   original IDs and wording. New tickets use the next ID. Add tracked checklist criteria during planning where
   the original acceptance requirements are prose. Never silently rewrite the historical draft.
 - `analysis.json`: the code snapshot, workstreams, preliminary effort, implementation observations and code
-  pointers. Refresh the snapshot and affected notes when the code changes. These notes do not establish live
-  reproduction or acceptance.
+  pointers. The overall snapshot remains `d73475c`; T-04, T-09 and T-11 explicitly identify their refresh against
+  `021dabe`. Refresh affected notes with their exact revision rather than implying untouched tickets were re-audited.
+  These notes do not establish live reproduction or acceptance.
 - `progress.json`: shared statuses, owners, notes, evidence and append-only update entries.
 - `evidence/`: the 35 original PNGs, copied so the site can be rebuilt without the untracked original report.
 - `template.html`, `styles.css`, `client.ts`, `build.py`: static document and progressive navigation/search.

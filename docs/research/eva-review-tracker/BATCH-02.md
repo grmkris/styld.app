@@ -1,6 +1,7 @@
 # Eva board batch 02 — 3 November 2026
 
-Status: local acceptance passed; isolated preview deployment/readback pending.
+Status: deployed to the isolated preview; full gate and exact-release smoke acceptance passed. T-04, T-09 and
+T-11 are verified, with physical-device and live-provider feedback kept separate.
 Tracker: https://styld-review-07c26b483ccc.pages.dev
 
 ## Scope
@@ -41,7 +42,8 @@ were added for T-09 and T-11.
 
 The completed `heavy --wait bun run check` exited 0: 759 unit tests in 119 files and 29 native tests /
 1,284 assertions. The earlier attempts stopped on stale assistant output and obsolete scene expectations;
-these were corrected before the completed run. Exact-release preview readback is pending. Browser viewports,
+these were corrected before the completed run. Exact-release preview smoke acceptance passed (3 tests / 42
+assertions) on `021dabe`. Browser viewports,
 local native fixtures, deployed smoke acceptance and physical-device/live-provider acceptance are distinct.
 
 ## Before and after
@@ -59,4 +61,25 @@ from a physical phone, a tester's private account or a live-provider run.
 
 ## Deployment
 
-Full gate passed. Application commit and isolated preview readback pending. No ticket is closed yet.
+Application commit: `021dabe15e060fe114317beffd5913b9851a0885`. Alchemy deployment completed on 3 November at 08:52 UTC:
+three successful Worker updates and two release-binding changes. D1/R2/queues and Durable Object namespaces
+were unchanged; no migrations, resource deletions or custom domains were planned or applied.
+
+Preview: https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev
+
+Exact-release smoke acceptance passed: 3 tests / 42 assertions for health/release, API/auth/CSRF, the hydrated
+website, MCP discovery/challenge/registration and immutable assets. The API Worker's release binding matches.
+Cloudflare readback confirms the edge alone exposes workers.dev, while API/SSR workers.dev and preview URLs
+are disabled; no custom domains are attached. All three deployments are at 100%:
+
+- Edge: `d73b9610-dfd2-496f-90b9-256cab9a9871`
+- SSR: `9fa94003-bd78-4f2e-a962-9d2fe95b7901`
+- API: `d7b2f396-1cf5-49d6-97c4-efdf558cd06a`
+
+The release-stamped build passed bundle budgets: initial browser 348,718 gzip bytes; all browser 612,759;
+SSR 2,035,660 source bytes. The smoke harness's outer zsh wrapper failed after the test completed because it
+used the reserved `status` variable; the test log records all 3 passing tests and zero failures. No full-suite
+rerun was needed. Signed-in board acceptance uses local native fixtures; this deployment did not inspect a real
+user's private wardrobe or call paid providers.
+
+T-04/T-09/T-11 and F-19/F-20/F-36/F-37 are independently verified in the tracker. T-05/T-15 remain partial.

@@ -117,11 +117,10 @@
     "T-04": {
       "title": "Make board layering predictable",
       "effort": "Medium",
-      "note": "Layer controls already update z-order. Darken blending and bringing an item forward when it is pressed are plausible contributors to confusing overlap. Reproduce before changing the ordering algorithm; a combined control is a separate design choice.",
+      "note": "Updated against 021dabe (3 November): one Front/Back toggle, stable selection/drag layers and normal compositing are implemented. New pieces land on top; native browser hit-order and save/reload checks passed. The baseline click diagnostic did not reproduce automatic raising, so source analysis is distinct from browser reproduction.",
       "code": [
-        "apps/web/src/page/Board/Table.styles.ts:8",
-        "apps/web/src/page/Board/Gestures.ts:11",
-        "packages/protocol/src/Placement.ts:54"
+        "packages/protocol/src/Placement.ts:42",
+        "apps/web/src/page/Board/Gestures.ts:9"
       ]
     },
     "T-05": {
@@ -163,10 +162,10 @@
     "T-09": {
       "title": "Open boards directly into editing",
       "effort": "Medium",
-      "note": "Pins and canvas placements are separate today. Owner opening and Add to board should become one coherent editing flow; retain the read-only experience and visibility rules for visitors.",
+      "note": "Updated against 021dabe (3 November): owners open directly in the editor. Add to board places missing piece/look contents atomically with pins, version and receipt; gallery photos keep private origins. Existing positions survive retries; visitor presentation and ownership checks remain enforced. Native behavior and deployed smoke acceptance passed.",
       "code": [
-        "apps/web/src/page/Board/PageView.ts:134",
-        "packages/server/src/boards/Tables.ts:1"
+        "apps/web/src/page/Board/PageView.ts:354",
+        "packages/server/src/boards/PinTable.ts:27"
       ]
     },
     "T-10": {
@@ -182,10 +181,10 @@
     "T-11": {
       "title": "Filter pieces while building a board",
       "effort": "Medium",
-      "note": "Reuse wardrobe filtering in a focused picker. Coordinate it with the visual category work so the two ways of choosing clothes stay consistent.",
+      "note": "Updated against 021dabe (3 November): a category/type Add your piece sheet replaces the inline strip. Only populated types appear and category changes clear the old type. Picking adds/selects and closes; explicit load/error/empty states remain. Native filter, placement and dismissal checks passed.",
       "code": [
-        "apps/web/src/page/Board/View.ts:292",
-        "apps/web/src/page/Wardrobe.ts:36"
+        "apps/web/src/page/Board/PiecePickerView.ts:168",
+        "apps/web/src/page/Board/Page.ts:310"
       ]
     },
     "T-12": {

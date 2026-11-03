@@ -109,5 +109,6 @@ T-04, T-09 and T-11 add stable Front/Back layering, direct owned-board editing a
 behavior. Native Gallery acceptance covers atomic pin/placement retries, preserved layouts, stale-save conflicts,
 foreign ownership and the direct browser editor; Photos acceptance checks the placed picture stays private.
 Six matching before/after pairs and the review boundaries are in the tracker's `BATCH-02.md`. The full gate passed
-(759 unit tests; 29 native tests / 1,284 assertions), including the signed-in board journey. Exact-release preview
-readback is pending; tickets remain ready for review.
+(759 unit tests; 29 native tests / 1,284 assertions), including the signed-in board journey. Application release
+`021dabe` deployed to the isolated preview and passed exact-release smoke acceptance (3 tests / 42 assertions).
+T-04, T-09 and T-11 are verified; physical-device and live-provider acceptance remain separate.

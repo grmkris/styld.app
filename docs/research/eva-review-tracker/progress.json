@@ -26,15 +26,21 @@
       "criteriaDone": []
     },
     "T-04": {
-      "status": "ready_for_review",
+      "status": "verified",
       "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "Stable Front/Back layering implemented. Full gate passed: 759 unit and 29 native tests / 1,284 assertions. Matching 390/1440px screenshots reviewed; exact-release preview deployment/readback is pending.",
+      "note": "Verified stable Front/Back layering: one control, new pieces on top, and selection/drag/reload preserve chosen layers. Full gate and 390/1440px comparison review passed; exact-release preview smoke acceptance passed on 021dabe. Physical-phone feedback remains separate.",
       "evidence": [
         {
           "level": "native",
           "date": "2026-11-03",
           "summary": "Full integration gate passed: 759 unit tests, 29 native tests / 1,284 assertions. Final screenshot harness passed 49 assertions: stacking, selection/drag/reload, category/type filtering, placement and nested-sheet dismissal. Synthetic local workerd/Chromium fixtures; not a physical-device or live-provider run."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed 021dabe15e060fe114317beffd5913b9851a0885. Exact-release smoke acceptance passed: 3 tests / 42 assertions (hydration, immutable assets, API/auth and MCP). Cloudflare confirms the API release, private API/SSR Workers and no custom domains. Signed-in board behavior is covered by synthetic native fixtures, not a real-user preview walk.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
         }
       ],
       "criteriaDone": [
@@ -50,7 +56,7 @@
           "after": "batch-02/T-04-layering-after-390.png",
           "date": "2026-11-03",
           "level": "native",
-          "note": "Matching Chromium viewports and synthetic fixtures through local workerd. Before: c05071e website artifact at e61e358; after: batch 02 final artifact. T-11 after uses a viewport capture for the fixed sheet; other captures are full-page. Not physical-device proof."
+          "note": "Matching Chromium viewports and synthetic fixtures through local workerd. Before: c05071e website artifact at e61e358; after: 021dabe final application artifact. T-11 after uses a viewport capture for the fixed sheet; other captures are full-page. Not physical-device proof."
         },
         {
           "title": "Stable Front/Back layering",
@@ -60,7 +66,7 @@
           "after": "batch-02/T-04-layering-after-1440.png",
           "date": "2026-11-03",
           "level": "native",
-          "note": "Matching Chromium viewports and synthetic fixtures through local workerd. Before: c05071e website artifact at e61e358; after: batch 02 final artifact. T-11 after uses a viewport capture for the fixed sheet; other captures are full-page. Not physical-device proof."
+          "note": "Matching Chromium viewports and synthetic fixtures through local workerd. Before: c05071e website artifact at e61e358; after: 021dabe final application artifact. T-11 after uses a viewport capture for the fixed sheet; other captures are full-page. Not physical-device proof."
         }
       ]
     },
@@ -149,15 +155,21 @@
       "criteriaDone": []
     },
     "T-09": {
-      "status": "ready_for_review",
+      "status": "verified",
       "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "Direct owned-board editing and placement implemented. Full gate passed: 759 unit and 29 native tests / 1,284 assertions. Matching 390/1440px screenshots reviewed; exact-release preview deployment/readback is pending.",
+      "note": "Verified direct owned-board editing and Add to board placement for pieces, looks and gallery photos. Native acceptance covers atomic retry, preserved positions, stale-save conflicts and private photos. Full gate, 390/1440px comparisons and exact-release preview smoke acceptance passed on 021dabe.",
       "evidence": [
         {
           "level": "native",
           "date": "2026-11-03",
           "summary": "Full integration gate passed: 759 unit tests, 29 native tests / 1,284 assertions. Final screenshot harness passed 49 assertions: stacking, selection/drag/reload, category/type filtering, placement and nested-sheet dismissal. Synthetic local workerd/Chromium fixtures; not a physical-device or live-provider run."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed 021dabe15e060fe114317beffd5913b9851a0885. Exact-release smoke acceptance passed: 3 tests / 42 assertions (hydration, immutable assets, API/auth and MCP). Cloudflare confirms the API release, private API/SSR Workers and no custom domains. Signed-in board behavior is covered by synthetic native fixtures, not a real-user preview walk.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
         }
       ],
       "criteriaDone": [
@@ -175,7 +187,7 @@
           "after": "batch-02/T-09-open-board-after-390.png",
           "date": "2026-11-03",
           "level": "native",
-          "note": "Matching Chromium viewports and synthetic fixtures through local workerd. Before: c05071e website artifact at e61e358; after: batch 02 final artifact. T-11 after uses a viewport capture for the fixed sheet; other captures are full-page. Not physical-device proof."
+          "note": "Matching Chromium viewports and synthetic fixtures through local workerd. Before: c05071e website artifact at e61e358; after: 021dabe final application artifact. T-11 after uses a viewport capture for the fixed sheet; other captures are full-page. Not physical-device proof."
         },
         {
           "title": "Direct owned-board editing and placement",
@@ -185,7 +197,7 @@
           "after": "batch-02/T-09-open-board-after-1440.png",
           "date": "2026-11-03",
           "level": "native",
-          "note": "Matching Chromium viewports and synthetic fixtures through local workerd. Before: c05071e website artifact at e61e358; after: batch 02 final artifact. T-11 after uses a viewport capture for the fixed sheet; other captures are full-page. Not physical-device proof."
+          "note": "Matching Chromium viewports and synthetic fixtures through local workerd. Before: c05071e website artifact at e61e358; after: 021dabe final application artifact. T-11 after uses a viewport capture for the fixed sheet; other captures are full-page. Not physical-device proof."
         }
       ]
     },
@@ -198,15 +210,21 @@
       "criteriaDone": []
     },
     "T-11": {
-      "status": "ready_for_review",
+      "status": "verified",
       "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "Filtered Add your piece sheet implemented. Full gate passed: 759 unit and 29 native tests / 1,284 assertions. Matching 390/1440px screenshots reviewed; exact-release preview deployment/readback is pending.",
+      "note": "Verified Add your piece bottom sheet with category/type filters, category reset, add/select/close behavior and explicit load/error/empty states. Full gate, 390/1440px comparisons and exact-release preview smoke acceptance passed on 021dabe. Physical-phone feedback remains separate.",
       "evidence": [
         {
           "level": "native",
           "date": "2026-11-03",
           "summary": "Full integration gate passed: 759 unit tests, 29 native tests / 1,284 assertions. Final screenshot harness passed 49 assertions: stacking, selection/drag/reload, category/type filtering, placement and nested-sheet dismissal. Synthetic local workerd/Chromium fixtures; not a physical-device or live-provider run."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed 021dabe15e060fe114317beffd5913b9851a0885. Exact-release smoke acceptance passed: 3 tests / 42 assertions (hydration, immutable assets, API/auth and MCP). Cloudflare confirms the API release, private API/SSR Workers and no custom domains. Signed-in board behavior is covered by synthetic native fixtures, not a real-user preview walk.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
         }
       ],
       "criteriaDone": [
@@ -224,7 +242,7 @@
           "after": "batch-02/T-11-piece-picker-after-390.png",
           "date": "2026-11-03",
           "level": "native",
-          "note": "Matching Chromium viewports and synthetic fixtures through local workerd. Before: c05071e website artifact at e61e358; after: batch 02 final artifact. T-11 after uses a viewport capture for the fixed sheet; other captures are full-page. Not physical-device proof."
+          "note": "Matching Chromium viewports and synthetic fixtures through local workerd. Before: c05071e website artifact at e61e358; after: 021dabe final application artifact. T-11 after uses a viewport capture for the fixed sheet; other captures are full-page. Not physical-device proof."
         },
         {
           "title": "Filtered Add your piece sheet",
@@ -234,7 +252,7 @@
           "after": "batch-02/T-11-piece-picker-after-1440.png",
           "date": "2026-11-03",
           "level": "native",
-          "note": "Matching Chromium viewports and synthetic fixtures through local workerd. Before: c05071e website artifact at e61e358; after: batch 02 final artifact. T-11 after uses a viewport capture for the fixed sheet; other captures are full-page. Not physical-device proof."
+          "note": "Matching Chromium viewports and synthetic fixtures through local workerd. Before: c05071e website artifact at e61e358; after: 021dabe final application artifact. T-11 after uses a viewport capture for the fixed sheet; other captures are full-page. Not physical-device proof."
         }
       ]
     },
@@ -566,18 +584,42 @@
       "evidence": []
     },
     "F-19": {
-      "status": "not_started",
-      "owner": "",
+      "status": "verified",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
-      "evidence": []
+      "note": "Owned boards now open directly in the editor. Add to board atomically places missing pieces/look pieces and private gallery photos while preserving layouts. Native behavior and exact-release preview smoke acceptance passed; matching screenshots are attached to T-09.",
+      "evidence": [
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Full integration gate passed: 759 unit tests, 29 native tests / 1,284 assertions. Final screenshot harness passed 49 assertions: stacking, selection/drag/reload, category/type filtering, placement and nested-sheet dismissal. Synthetic local workerd/Chromium fixtures; not a physical-device or live-provider run."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed 021dabe15e060fe114317beffd5913b9851a0885. Exact-release smoke acceptance passed: 3 tests / 42 assertions (hydration, immutable assets, API/auth and MCP). Cloudflare confirms the API release, private API/SSR Workers and no custom domains. Signed-in board behavior is covered by synthetic native fixtures, not a real-user preview walk.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
+        }
+      ]
     },
     "F-20": {
-      "status": "not_started",
-      "owner": "",
+      "status": "verified",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
-      "evidence": []
+      "note": "Add your piece replaces the horizontal strip with a category/type bottom sheet. Shoes → Boots, category reset, add/select/close and retained placement passed native checks; exact-release preview smoke acceptance passed. Matching screenshots are attached to T-11.",
+      "evidence": [
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Full integration gate passed: 759 unit tests, 29 native tests / 1,284 assertions. Final screenshot harness passed 49 assertions: stacking, selection/drag/reload, category/type filtering, placement and nested-sheet dismissal. Synthetic local workerd/Chromium fixtures; not a physical-device or live-provider run."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed 021dabe15e060fe114317beffd5913b9851a0885. Exact-release smoke acceptance passed: 3 tests / 42 assertions (hydration, immutable assets, API/auth and MCP). Cloudflare confirms the API release, private API/SSR Workers and no custom domains. Signed-in board behavior is covered by synthetic native fixtures, not a real-user preview walk.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
+        }
+      ]
     },
     "F-21": {
       "status": "not_started",
@@ -697,18 +739,42 @@
       "evidence": []
     },
     "F-36": {
-      "status": "not_started",
-      "owner": "",
+      "status": "verified",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
-      "evidence": []
+      "note": "Front/back order and new top-layer placement passed native browser checks, including selection/drag/reload stability and normal compositing. The baseline click diagnostic did not reproduce automatic raising; that cause was identified in source and regression-tested. Exact-release preview smoke acceptance passed; comparisons are attached to T-04.",
+      "evidence": [
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Full integration gate passed: 759 unit tests, 29 native tests / 1,284 assertions. Final screenshot harness passed 49 assertions: stacking, selection/drag/reload, category/type filtering, placement and nested-sheet dismissal. Synthetic local workerd/Chromium fixtures; not a physical-device or live-provider run."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed 021dabe15e060fe114317beffd5913b9851a0885. Exact-release smoke acceptance passed: 3 tests / 42 assertions (hydration, immutable assets, API/auth and MCP). Cloudflare confirms the API release, private API/SSR Workers and no custom domains. Signed-in board behavior is covered by synthetic native fixtures, not a real-user preview walk.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
+        }
+      ]
     },
     "F-37": {
-      "status": "not_started",
-      "owner": "",
+      "status": "verified",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
-      "evidence": []
+      "note": "One dynamic Bring to front / Send to back control replaces the two layer arrows. Both directions passed native browser checks at 390 and 1440px; exact-release preview smoke acceptance passed. Comparisons are attached to T-04.",
+      "evidence": [
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Full integration gate passed: 759 unit tests, 29 native tests / 1,284 assertions. Final screenshot harness passed 49 assertions: stacking, selection/drag/reload, category/type filtering, placement and nested-sheet dismissal. Synthetic local workerd/Chromium fixtures; not a physical-device or live-provider run."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed 021dabe15e060fe114317beffd5913b9851a0885. Exact-release smoke acceptance passed: 3 tests / 42 assertions (hydration, immutable assets, API/auth and MCP). Cloudflare confirms the API release, private API/SSR Workers and no custom domains. Signed-in board behavior is covered by synthetic native fixtures, not a real-user preview walk.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
+        }
+      ]
     },
     "F-38": {
       "status": "not_started",
@@ -942,10 +1008,23 @@
         "T-09",
         "T-11"
       ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Deployed board batch 021dabe to the isolated preview and passed exact-release smoke acceptance (3 tests / 42 assertions). Closed T-04, T-09 and T-11; independently verified F-19, F-20, F-36 and F-37. Six comparison pairs are attached, bringing the tracker to 15 pairs. Camera recognition/countdown and piece rotation remain open in T-05/T-15.",
+      "items": [
+        "T-04",
+        "T-09",
+        "T-11",
+        "F-19",
+        "F-20",
+        "F-36",
+        "F-37"
+      ]
     }
   ],
   "overview": {
-    "label": "Board workflow verified locally",
-    "note": "T-04, T-09 and T-11 passed the full gate and matching phone/desktop screenshot review. Their isolated preview deployment/readback is pending. Batch 01 remains deployed; its T-05 and T-15 follow-ups stay open."
+    "label": "Board workflow deployed",
+    "note": "T-04, T-09 and T-11 are verified on isolated preview release 021dabe after the full gate and exact-release smoke acceptance. Six new phone/desktop before-and-after pairs are attached. Four tickets and nine findings are verified overall; T-05 and T-15 remain partial. Physical-phone and live-provider acceptance remain separate."
   }
 }

@@ -37,29 +37,30 @@ Nine matching before/after pairs are published in the tracker. The full gate and
 passed on `c05071e`; T-13 is verified, while T-15 and T-05 remain partial. This is not physical-phone or
 live-provider acceptance. The tracker retains partial tickets and records evidence separately for each finding.
 
-## Eva board batch 02 (preview deployment pending)
+## Eva board batch 02 (deployed 3 November)
 
 T-04, T-09 and T-11 are implemented together: one Front/Back control with stable selection layers, direct owned-board
 editing, Add to board canvas placement, and a category/type piece sheet. Placement uses a versioned D1 batch with
 pins and its operation receipt; pin controls wait for pending table saves and uploads. Public board visitors retain
 their read-only presentation, and gallery photos remain private. The completed full gate passed (759 unit tests; 29 native tests / 1,284 assertions), as did the final
-screenshot harness (49 assertions). Six matching pairs were visually reviewed at 390 and 1440px. The preview
-below still serves batch 01 until deployment and exact-release readback; tickets await that final step.
+screenshot harness (49 assertions). Six matching pairs were visually reviewed at 390 and 1440px. Release `021dabe`
+is deployed below and passed exact-release smoke acceptance (3 tests / 42 assertions). T-04, T-09 and T-11 are
+verified. Physical-phone and live-provider acceptance remain separate.
 
 ## The preview
 
 - **URL:** https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev (isolated workers.dev,
   noindex, no custom domain). `/api/health` names the running release.
-- **Release:** `c05071e0351cef5bb74caf249eea808775042842`, committed on `main` and deployed on 3 November at
-  04:42 UTC. `/api/health` and the API Worker's release binding match. This adds Eva batch 01 to C8 and the signed-picture
-  fixes. Later documentation receipts do not change the deployed application SHA.
+- **Release:** `021dabe15e060fe114317beffd5913b9851a0885`, committed on `main` and deployed on 3 November at
+  08:52 UTC. `/api/health` and the API Worker's release binding match. This adds Eva board batch 02 to batch 01, C8
+  and the signed-picture fixes. Later documentation receipts do not change the deployed application SHA.
 - **Deployment:** Alchemy reported three successful Worker updates and two release-binding changes; D1, R2, queues
   and Durable Object namespaces were unchanged. The four migrations through `20261102202631_c8_durability` were
   recorded by the preceding preview readback; this batch planned no migration or storage changes.
 - **Cloudflare readback:** the edge alone exposes workers.dev; the API and SSR Workers have both workers.dev and
   preview URLs disabled. No custom domains are attached.
-  Deployment ids: edge `1bbd071b-826e-4bda-a0e3-2a1d78de0c37`, SSR `f687a6fd-3389-4e91-bd08-65a45b4385ee`,
-  API `ea7695d7-dc27-4058-ae21-2cc1c74fc330` (each at 100%).
+  Deployment ids: edge `d73b9610-dfd2-496f-90b9-256cab9a9871`, SSR `9fa94003-bd78-4f2e-a962-9d2fe95b7901`,
+  API `d7b2f396-1cf5-49d6-97c4-efdf558cd06a` (each at 100%).
 - **Rebuilt from scratch** (C5): stage `preview` destroyed and deployed again on the one baseline migration, with
   Alchemy's state in the Cloudflare account's state store (`docs/DEPLOYMENT.md` › Rebuild and import).
 - **Testers' wardrobes, last recorded 2 November** (owner-approved, `docs/ARCHITECTURE.md` › Delivery boundary): the owner's 74 v1 pieces were
@@ -72,16 +73,18 @@ below still serves batch 01 until deployment and exact-release readback; tickets
 
 ## Gate results
 
-`heavy --wait bun run check` exited 0 on `c05071e` (3 November): effect-tsrs 659 files, 0 findings; lint green;
-21 reviewed suppressions; 755 unit tests in 119 files; native 29 pass, 0 fail, 1,276 assertions. The gate's build
-measured initial browser 349,191 gzip bytes, all browser 613,255 and SSR 1,909,788 source bytes. The deployment's
-release-stamped build also passed bundle budgets: initial 349,192, all 613,293 gzip bytes, SSR 2,036,836 source bytes.
+`heavy --wait bun run check` exited 0 on `021dabe` (3 November): effect-tsrs 661 files, 0 findings; lint green;
+21 reviewed suppressions; 759 unit tests in 119 files; native 29 pass, 0 fail, 1,284 assertions. The gate's build
+measured initial browser 348,711 gzip bytes, all browser 612,716 and SSR 1,908,530 source bytes. The deployment's
+release-stamped build also passed bundle budgets: initial 348,718, all 612,759 gzip bytes, SSR 2,035,660 source bytes.
 
-Deployed acceptance (`STYLD_PREVIEW_URL=<above> STYLD_EXPECTED_RELEASE=c05071e0351cef5bb74caf249eea808775042842
-heavy --wait bun test tools/preview.native.test.ts`) exited 0: 3 pass, 0 fail, 42 assertions. It verified the exact
+Deployed acceptance (`STYLD_PREVIEW_URL=<above> STYLD_EXPECTED_RELEASE=021dabe15e060fe114317beffd5913b9851a0885
+heavy --wait bun test tools/preview.native.test.ts`) passed: 3 pass, 0 fail, 42 assertions. It verified the exact
 health/release, auth and CSRF contracts, hydrated website, MCP discovery/challenge/registration and immutable static
 assets. Native tests use fake providers; this is not acceptance of real paid-provider outcomes or every signed-in
-preview journey. Batch screenshots, scope and review notes are in the tracker's `BATCH-01.md`.
+preview journey. The outer zsh wrapper failed after the passing test run on the reserved `status` variable;
+the test log has 3 pass and 0 fail. Batch screenshots, scope and review notes are in the tracker's
+`BATCH-01.md` and `BATCH-02.md`.
 
 ## Incident: D1 overloaded by the wardrobe's thumbnails (2 November, fix deployed 3 November)
 

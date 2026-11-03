@@ -56,3 +56,17 @@ physical-phone or acceptance evidence for any of the findings. No message was se
   isolated preview, and passed release smoke readback (3 tests / 42 assertions). See `BATCH-01.md` for exact scope,
   screenshots, Worker deployment ids and evidence boundaries. Physical-phone and real-provider acceptance are
   separate. This publication adds no application changes beyond that tested release.
+
+## Board batch 02 publication — 3 November 2026
+
+- Tracker source commit: `021dabe15e060fe114317beffd5913b9851a0885` application release; this documentation update
+  records its receipt. Stable URL remains https://styld-review-07c26b483ccc.pages.dev.
+- The public document now contains 51 findings, 21 tickets, 35 original screenshots and 15 before/after pairs.
+  T-04, T-09 and T-11 are verified; F-19, F-20, F-36 and F-37 are independently verified. T-05 and T-15 remain
+  partial with their open follow-ups.
+- Local build passed with all IDs, criteria, evidence and 15 comparison pairs. `bun run format:check` and
+  `git diff --check` passed. The original report and ticket bodies remain unchanged.
+- Application release `021dabe15e060fe114317beffd5913b9851a0885` deployed to the isolated preview. Exact-release smoke
+  acceptance passed: 3 tests / 42 assertions. Cloudflare readback found the edge public, API/SSR private, no custom
+  domains and 100% traffic on each deployment. This is not authenticated real-user, physical-phone or paid-provider
+  acceptance.
