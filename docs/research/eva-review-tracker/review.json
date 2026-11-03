@@ -744,7 +744,12 @@
         "fig10a_board_intermediate_pinned.png",
         "fig10b_board_unfiltered_your_pieces.png"
       ],
-      "criteria": []
+      "criteria": [
+        "Owned board cards and Open after Add to board lead directly to the interactive canvas; visitors retain a read-only public presentation.",
+        "Adding a piece or look to a board places missing pieces on its canvas immediately, preserving existing positions and avoiding duplicates on retry.",
+        "Adding a gallery photo places its picture on the owner canvas; public visitors cannot see that private photo.",
+        "Existing pins, sharing, rename and removal remain accessible from Edit; pin changes wait for pending local table saves."
+      ]
     },
     {
       "id": "T-10",
@@ -779,7 +784,12 @@
       ],
       "body": "- **Priority**: **P1** — Scrolling horizontally through 313 unfiltered items in `Your pieces` makes manual board creation impractical; both agreed on an `\"Add your piece\"` button that opens a category-filtered bottom sheet.\n- **Detailed Implementation Spec (`eva.styld1.mp4` `28:58`–`29:53`; `eva3.mp4` `18:12`–`18:48`, `fig10b`, `fig20`)**:\n  - Currently, the bottom of the Board collage editor displays `Your pieces` as a single unfiltered horizontal scrolling row of all 313 items (`fig10b`, `fig20`), where `Shoes` are all the way at the end (`eva3.mp4` `18:27`).\n  - Remove the inline horizontal `Your pieces` strip and replace it with an **`\"Add your piece\"` (`+`) button** below the canvas.\n  - Tapping `\"Add your piece\"` opens a slide-up bottom-sheet drawer with category/subcategory filters at the top so the user can filter (e.g., `Shoes -> Boots` or `Clothing -> Trousers`) and tap items to add them onto the collage canvas.\n",
       "screenshots": [],
-      "criteria": []
+      "criteria": [
+        "Replace the inline Your pieces strip with Add your piece below the canvas and a dismissible bottom sheet.",
+        "Filter ready pieces by category and populated garment type; changing category clears the previous type.",
+        "Tapping a piece adds and selects it, closes the sheet and saves; selecting an existing piece preserves its placement and layer.",
+        "Loading, failure and empty wardrobe states remain explicit; off-table pinned pictures can be placed again."
+      ]
     },
     {
       "id": "T-12",

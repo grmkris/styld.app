@@ -26,10 +26,10 @@
       "criteriaDone": []
     },
     "T-04": {
-      "status": "not_started",
-      "owner": "",
+      "status": "in_progress",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
+      "note": "Batch 02 in progress: strict stacking, selection preserves layers, one Front/Back action. Synthetic before captures recorded; implementation and acceptance pending.",
       "evidence": [],
       "criteriaDone": []
     },
@@ -118,10 +118,10 @@
       "criteriaDone": []
     },
     "T-09": {
-      "status": "not_started",
-      "owner": "",
+      "status": "in_progress",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
+      "note": "Batch 02 in progress: owners enter the canvas directly; Save to board places pieces and looks with versioned, idempotent writes. Gallery photos also need canvas placement. Browser and durable acceptance pending.",
       "evidence": [],
       "criteriaDone": []
     },
@@ -134,10 +134,10 @@
       "criteriaDone": []
     },
     "T-11": {
-      "status": "not_started",
-      "owner": "",
+      "status": "in_progress",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
+      "note": "Batch 02 in progress: replace the unfiltered strip with Add your piece and a category/type bottom sheet, using wardrobe terminology. Browser acceptance pending.",
       "evidence": [],
       "criteriaDone": []
     },
@@ -827,10 +827,19 @@
         "F-44",
         "F-47"
       ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Started board batch 02: T-04 layering, T-09 direct editing and canvas placement, T-11 filtered piece sheet. Matching synthetic baseline screenshots captured at 390 and 1440 px. No ticket is marked complete.",
+      "items": [
+        "T-04",
+        "T-09",
+        "T-11"
+      ]
     }
   ],
   "overview": {
-    "label": "First easy fixes deployed",
-    "note": "T-13 is complete. T-15 and T-05 have delivered subsets with explicit open follow-ups. Five findings are verified; nine before/after comparisons show the changes. Rotation, countdown, recognition and denser metadata/physical-phone review remain open. This is the isolated v2 preview, with native fixture and release smoke evidence."
+    "label": "Board workflow batch in progress",
+    "note": "Batch 01 remains deployed. T-04, T-09 and T-11 are being implemented together: predictable layers, direct owned-board editing and a filtered piece sheet. API placement/privacy checks have passed; browser screenshots, the completed full gate and preview readback remain pending. Tickets are open."
   }
 }
