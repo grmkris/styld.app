@@ -455,6 +455,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'safety.reportDialog.sent': Readonly<Record<string, never>>
   'safety.reportDialog.tooMany': Readonly<Record<string, never>>
   'saveToBoard.action': Readonly<Record<string, never>>
+  'saveToBoard.add': Readonly<Record<string, never>>
   'saveToBoard.boardsLabel': Readonly<Record<string, never>>
   'saveToBoard.failed': Readonly<Record<string, never>>
   'saveToBoard.loadFailed': Readonly<Record<string, never>>
@@ -621,6 +622,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.itemProcessFailed': Readonly<Record<string, never>>
   'wardrobe.nameLabel': Readonly<Record<string, never>>
   'wardrobe.nameOptionalLabel': Readonly<Record<string, never>>
+  'wardrobe.namePlaceholder': Readonly<Record<string, never>>
   'wardrobe.needsType': Readonly<Record<string, never>>
   'wardrobe.noneFiltered': Readonly<Record<string, never>>
   'wardrobe.notesLabel': Readonly<Record<string, never>>
@@ -783,4 +785,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '63e7ec8dccdd24c227ec60311cdaee08322b838aa4bd8c6b631820ceeed49ba8'
+export const catalogVersion = '3b2a9041abfc78dfa953ca35e058a82fa5322f151db958989e5ab1f7ee3e34a9'

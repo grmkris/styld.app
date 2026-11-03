@@ -5,9 +5,17 @@ sources:
     sl: 133375c41998fb
   ask.title:
     sl: 25151b7829ac9
+  saveToBoard.add:
+    sl: 1607b6b648f427
   today.wornUnread:
     sl: ecfc9a548ec3e
   wardrobe.addPieceColorsLabel:
     sl: 6b42de829fd1b
   wardrobe.colorsLabel:
     sl: 14fa0a8fb57d83
+  wardrobe.nameLabel:
+    sl: e6fc8ec64fb21
+  wardrobe.namePlaceholder:
+    sl: 18fa4932302e5d
+  wardrobe.typeLabel:
+    sl: 1cd3f1615a304b

@@ -77,7 +77,7 @@
     "backToWardrobe": "Back to wardrobe",
     "saveAction": "Save",
     "addingPieces": "Adding…",
-    "nameLabel": "Name",
+    "nameLabel": "Name (optional)",
     "nameOptionalLabel": "Name (optional)",
     "deleteLabel": "Delete",
     "failedDelete": "Failed to delete",
@@ -251,7 +251,7 @@
       "shoes": "Shoes",
       "accessories": "Accessories"
     },
-    "typeLabel": "What it is",
+    "typeLabel": "Category",
     "needsType": "Choose what it is to add it.",
     "typePlaceholder": "Choose what it is",
     "seasonLabel": "When it’s worn (optional)",
@@ -298,7 +298,8 @@
     "backCost": "{credits, plural, one {# credit} other {# credits}} from today’s free allowance.",
     "patternFact": "Pattern",
     "shopLink": "Open the shop’s page",
-    "shopFact": "Shop"
+    "shopFact": "Shop",
+    "namePlaceholder": "e.g. Zara linen blazer"
   },
   "landing": {
     "feedDescription": "Public boards from Styld and the people using it.",
@@ -466,7 +467,8 @@
     "failed": "Couldn't save to the board",
     "loadFailed": "Your boards didn't load.",
     "retry": "Try again",
-    "pins": "{count, plural, one {# pin} other {# pins}}"
+    "pins": "{count, plural, one {# pin} other {# pins}}",
+    "add": "Add to board"
   },
   "follow": {
     "follow": "Follow",

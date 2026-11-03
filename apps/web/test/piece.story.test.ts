@@ -106,6 +106,7 @@ describe('a piece you own', () => {
     story(
       update,
       given(opened()),
+      message(Message.ClickedEdit()),
       message(Message.ClickedDelete()),
       Command.expectNone(),
       message(Message.ClickedConfirmDelete()),
@@ -117,7 +118,8 @@ describe('a piece you own', () => {
   })
 
   test('a second confirmation while the piece is being deleted deletes nothing more', () => {
-    const deleting = update(update(opened(), Message.ClickedDelete()).model, Message.ClickedConfirmDelete()).model
+    const editing = update(opened(), Message.ClickedEdit()).model
+    const deleting = update(update(editing, Message.ClickedDelete()).model, Message.ClickedConfirmDelete()).model
     story(
       update,
       given(deleting),
@@ -343,6 +345,11 @@ describe('a piece you own', () => {
   })
 
   test('a save that fails keeps the form and says so', () => {
+    const editing = update(opened(), Message.ClickedEdit()).model
+    const saving = update(editing, Message.SubmittedEdit()).model
+    const deletionAttempt = update(saving, Message.ClickedDelete())
+    expect(deletionAttempt.commands ?? []).toEqual([])
+    expect(deletionAttempt.model.deletion).toEqual(Deletion.Idle())
     story(
       update,
       given(opened()),

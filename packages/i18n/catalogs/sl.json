@@ -77,7 +77,7 @@
     "backToWardrobe": "Nazaj v omaro",
     "saveAction": "Shrani",
     "addingPieces": "Dodajam…",
-    "nameLabel": "Ime",
+    "nameLabel": "Ime (neobvezno)",
     "nameOptionalLabel": "Ime (neobvezno)",
     "deleteLabel": "Izbriši",
     "failedDelete": "Brisanje ni uspelo",
@@ -251,7 +251,7 @@
       "shoes": "Obutev",
       "accessories": "Dodatki"
     },
-    "typeLabel": "Kaj je",
+    "typeLabel": "Kategorija",
     "needsType": "Izberi, kaj je, da ga dodaš.",
     "typePlaceholder": "Izberi, kaj je",
     "seasonLabel": "Kdaj ga nosiš (neobvezno)",
@@ -298,7 +298,8 @@
     "backCost": "{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} od današnjih brezplačnih.",
     "patternFact": "Vzorec",
     "shopLink": "Odpri stran v trgovini",
-    "shopFact": "Trgovina"
+    "shopFact": "Trgovina",
+    "namePlaceholder": "npr. laneni suknjič Zara"
   },
   "landing": {
     "feedDescription": "Javne zbirke Stylda in ljudi, ki ga uporabljajo.",
@@ -466,7 +467,8 @@
     "failed": "Shranjevanje v zbirko ni uspelo",
     "loadFailed": "Tvoje zbirke se niso naložile.",
     "retry": "Poskusi znova",
-    "pins": "{count, plural, one {# kartica} two {# kartici} few {# kartice} other {# kartic}}"
+    "pins": "{count, plural, one {# kartica} two {# kartici} few {# kartice} other {# kartic}}",
+    "add": "Dodaj na tablo"
   },
   "follow": {
     "follow": "Sledi",

@@ -19,7 +19,7 @@ export const pageBar = style({
   gap: 'actions',
   gridColumn: '1 / -1',
 })
-/** Delete as a quiet text action after the facts; it asks before it deletes. */
+/** Delete as a quiet text action after the edit form; it asks before it deletes. */
 export const quietDelete = style({ justifySelf: 'start', color: 'ink2', textDecorationColor: 'rule' })
 /** While the piece loads: its picture, its name (26px at 1.08 over `line`) and its line, as `photo` and `pieceName`. */
 export const photoSkeleton = style({
@@ -44,6 +44,12 @@ export const photo = style({
   '@media (min-width: 900px)': { aspectRatio: 'auto', blockSize: 'min(520px, 60vh)' },
 })
 export const details = style({ display: 'grid', gap: 'actions', alignContent: 'start', maxInlineSize: '30rem' })
+export const titleRow = style({
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  gap: 'actions',
+})
 export const pieceName = style({ fontSize: 'panelTitle', lineHeight: 1.08, fontWeight: 600, letterSpacing: '-0.02em' })
 export const meta = style({ color: 'ink2' })
 export const actions = style({ display: 'flex', flexWrap: 'wrap', gap: 'actions', marginBlock: '12px' })

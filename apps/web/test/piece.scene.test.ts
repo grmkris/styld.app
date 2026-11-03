@@ -14,6 +14,7 @@ import {
   PieceData,
   Message as PieceMessage,
   RedrawPicture,
+  SavePiece,
   ShowTurn,
   TurnWork,
 } from '../src/page/Piece.ts'
@@ -42,7 +43,7 @@ describe('the piece page', () => {
     scene(
       { update, view },
       given(piecePage(PieceData.Success({ data: jeans }))),
-      click(role('button', { name: 'Save to board' })),
+      click(role('button', { name: 'Add to board' })),
       Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
       Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
       ...sceneSheetOpened,
@@ -94,6 +95,8 @@ describe('the piece page', () => {
       expect(role('button', { name: 'Front' })).toHaveAttr('aria-pressed', 'true'),
       click(role('button', { name: 'Back' })),
       expect(role('img', { name: 'Coat, back' })).toExist(),
+      expect(text('Replace the back')).not.toExist(),
+      click(role('button', { name: 'Edit' })),
       expect(text('Replace the back')).toExist(),
       expect(role('button', { name: 'Remove the back' })).toExist(),
     )
@@ -138,6 +141,8 @@ describe('the piece page', () => {
     scene(
       { update, view },
       given(piecePage(PieceData.Success({ data: jeans }))),
+      expect(role('button', { name: 'Delete' })).not.toExist(),
+      click(role('button', { name: 'Edit' })),
       click(role('button', { name: 'Delete' })),
       expect(role('heading', { name: 'Delete this item?' })).toExist(),
       click(role('button', { name: 'Delete' })),
@@ -145,6 +150,26 @@ describe('the piece page', () => {
       Command.resolve(DeletePiece, PieceMessage.SucceededDeletePiece()),
       Command.expectExact(Navigate({ href: '/wardrobe' })),
       Command.resolve(Navigate({ href: '/wardrobe' }), Message.CompletedNavigate()),
+    )
+  })
+
+  test('back-photo actions and deletion live in Edit, and cancelling deletion keeps the draft', () => {
+    scene(
+      { update, view },
+      given(piecePage(PieceData.Success({ data: jeans }))),
+      expect(text('Add the back')).not.toExist(),
+      expect(text('1 credit from today’s free allowance.')).not.toExist(),
+      click(role('button', { name: 'Edit' })),
+      expect(text('Add the back')).toExist(),
+      expect(role('textbox', { name: 'Name (optional)' })).toHaveValue(''),
+      type(role('textbox', { name: 'Name (optional)' }), 'Weekend denim'),
+      click(role('button', { name: 'Delete' })),
+      click(role('button', { name: 'Cancel' })),
+      expect(role('textbox', { name: 'Name (optional)' })).toHaveValue('Weekend denim'),
+      click(role('button', { name: 'Save' })),
+      expect(role('button', { name: 'Delete' })).toBeDisabled(),
+      Command.resolve(SavePiece, PieceMessage.FailedUpdatePiece()),
+      expect(role('textbox', { name: 'Name (optional)' })).toHaveValue('Weekend denim'),
     )
   })
 

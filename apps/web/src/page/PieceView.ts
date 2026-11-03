@@ -113,6 +113,7 @@ const editForm = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Html =
         h.Name('name'),
         h.Type('text'),
         h.Maxlength(textLength.name),
+        h.Placeholder(format(locale, 'wardrobe.namePlaceholder', {})),
         h.Value(draft.name),
         h.OnInput((value) => Message.UpdatedName({ value })),
         ...styled(h, textField()),
@@ -302,7 +303,18 @@ const pieceDetails = (
   h: HtmlBuilder<Message>,
 ): Html =>
   h.div(styled(h, styles.details()), [
-    h.h1(styled(h, styles.pieceName()), [pieceLabel(piece, locale)]),
+    h.div(styled(h, styles.titleRow()), [
+      h.h1(styled(h, styles.pieceName()), [pieceLabel(piece, locale)]),
+      piece.status === 'ready'
+        ? h.submodel({
+            slotId: 'piece-save-to-board',
+            model: model.saveToBoard,
+            view: SaveToBoardView.compactView,
+            viewInputs: { locale, boards },
+            toParentMessage: (message) => Message.GotSaveToBoardMessage({ message }),
+          })
+        : h.empty,
+    ]),
     // What one of its kind is, as its public page says; an unnamed piece's title already says it.
     piece.name === null ? h.empty : h.p(styled(h, styles.meta()), [format(locale, kindName(piece), {})]),
     piece.status === 'processing'
@@ -316,16 +328,6 @@ const pieceDetails = (
       : h.empty,
     picturePanel(piece, model, locale, h),
     turnLine(piece, model, locale, h),
-    backSlot('piece-back', PieceBackView.actions, piece, model, locale, h),
-    piece.status === 'ready'
-      ? h.submodel({
-          slotId: 'piece-save-to-board',
-          model: model.saveToBoard,
-          view: SaveToBoardView.view,
-          viewInputs: { locale, boards },
-          toParentMessage: (message) => Message.GotSaveToBoardMessage({ message }),
-        })
-      : h.empty,
     factsView(piece, locale, h),
     h.submodel({
       slotId: 'piece-photos',
@@ -341,17 +343,6 @@ const pieceDetails = (
       viewInputs: { locale },
       toParentMessage: (message) => Message.GotLooksMessage({ message }),
     }),
-    // Save to board is the page's one action; Delete is quiet, at the end, and asks first.
-    Deletion.guards.Idle(model.deletion)
-      ? actionButton(
-          {
-            label: format(locale, 'wardrobe.deleteLabel', {}),
-            style: cx(linkAction(), styles.quietDelete()),
-            onClick: Message.ClickedDelete(),
-          },
-          h,
-        )
-      : confirmDelete(model, locale, h),
   ])
 
 /** Edit, at the bar's end while the piece is shown and not being edited or deleted (Gallery `item.html` › head). */
@@ -491,7 +482,21 @@ const loadedView = (
       onSome: (draft) =>
         h.div(styled(h, styles.details()), [
           h.h1(styled(h, styles.pieceName()), [pieceLabel(piece, locale)]),
-          editForm(draft, locale, h),
+          ...(Deletion.guards.Idle(model.deletion)
+            ? [
+                backSlot('piece-back', PieceBackView.actions, piece, model, locale, h),
+                editForm(draft, locale, h),
+                actionButton(
+                  {
+                    label: format(locale, 'wardrobe.deleteLabel', {}),
+                    style: cx(linkAction(), styles.quietDelete()),
+                    onClick: Message.ClickedDelete(),
+                    isDisabled: DraftSave.guards.Saving(draft.save),
+                  },
+                  h,
+                ),
+              ]
+            : [confirmDelete(model, locale, h)]),
         ]),
     }),
   ]

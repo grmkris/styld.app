@@ -519,10 +519,13 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     }),
     TickedPieceRefresh: () => pieceCache(AsyncData.revalidate)(model),
     ClickedRetry: () => pieceCache(AsyncData.revalidateOrLoad)(modifyFields(model, { misses: () => 0 })),
-    ClickedDelete: () => ({ model: modifyFields(model, { deletion: () => Deletion.Confirming() }) }),
+    ClickedDelete: () =>
+      Option.isSome(model.draft) && !DraftSave.guards.Saving(model.draft.value.save)
+        ? { model: modifyFields(model, { deletion: () => Deletion.Confirming() }) }
+        : { model },
     ClickedCancelDelete: () => ({ model: modifyFields(model, { deletion: () => Deletion.Idle() }) }),
     ClickedConfirmDelete: () =>
-      Deletion.guards.Deleting(model.deletion)
+      !Deletion.guards.Confirming(model.deletion) && !Deletion.guards.Failed(model.deletion)
         ? { model }
         : {
             model: modifyFields(model, { deletion: () => Deletion.Deleting() }),

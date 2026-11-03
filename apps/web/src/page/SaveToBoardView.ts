@@ -7,7 +7,8 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { textField } from '../Fields.styles.ts'
-import { addIcon, loader } from '../Icon.ts'
+import { addIcon, loader, boardsTabIcon } from '../Icon.ts'
+import { round } from './PageBar.styles.ts'
 import { boardRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { bottomSheet, sheetShown } from './Sheet.ts'
@@ -147,6 +148,26 @@ export const view = Submodel.defineView<Model, Message, ViewInputs>((model, { lo
       actionButton(
         { label: format(locale, 'saveToBoard.action', {}), style: secondaryAction(), onClick: Message.ClickedSave() },
         h,
+      ),
+      sheetShown(model.sheet) ? sheetView(model, boards, locale, h) : h.empty,
+    ],
+  ),
+)
+
+/** A compact board action beside a piece's name, with the same board picker. */
+export const compactView = Submodel.defineView<Model, Message, ViewInputs>((model, { locale, boards }, h) =>
+  h.div(
+    [],
+    [
+      h.button(
+        [
+          h.Type('button'),
+          h.AriaLabel(format(locale, 'saveToBoard.add', {})),
+          h.Title(format(locale, 'saveToBoard.add', {})),
+          h.OnClick(Message.ClickedSave()),
+          ...styled(h, round()),
+        ],
+        [boardsTabIcon(h)],
       ),
       sheetShown(model.sheet) ? sheetView(model, boards, locale, h) : h.empty,
     ],
