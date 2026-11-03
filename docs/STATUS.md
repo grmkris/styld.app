@@ -46,8 +46,10 @@ store of Styld's own. The store is untouched. The preview still serves `6de0434`
   - jscpd clean: shared fakes for the outfit, language-model and garment tests, and Today's Fast requests.
   - Four native journeys that had drifted from T-07, T-08, T-15 and T-21 now follow the product. Navigation,
     photos and capture pass natively.
-  - The Gallery journey passes its fixed steps but ran out of its 120 s budget on a box loaded at 21; rerun once
-    the box is calmer.
+  - The Gallery journey passes too, once its Filters step opens a type's grid (149bd3f).
+  - Full native suite on 149bd3f: 30 of 31. The guided camera no longer pairs a back with its front (`hasBack`
+    false). Bisected to 6f8be7f (T-12 types and seasons): it passes on c4c72a9 and fails on 6f8be7f, alone and
+    deterministically. Handed to the T-12 session; the deploy waits for the fix.
   - Every gate before native passed on `5fc1311`.
 
 ## Ask Styld on Yielded Agent (T-14 streaming, M1–M6, 3 November, not deployed)
