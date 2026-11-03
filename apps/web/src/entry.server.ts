@@ -76,7 +76,9 @@ const facePreloads = (lang: string | undefined) =>
     .map((href) => `<link rel="preload" href="${href}" as="font" type="font/woff2" crossorigin>`)
     .join('')
 
-const documentHead = '<meta name="theme-color" content="#f1eee7"><link rel="icon" href="/favicon.svg">'
+/** Light only, and no forced dark (`GlobalStyles.ts` `:root`): the meta lets the browser know before any style loads. */
+const documentHead =
+  '<meta name="color-scheme" content="only light"><meta name="theme-color" content="#f1eee7"><link rel="icon" href="/favicon.svg">'
 
 export const renderDocument: Server.DocumentRenderer = (renderedApplication, assets) =>
   Server.renderDocument(renderedApplication, assets, {

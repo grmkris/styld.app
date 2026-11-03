@@ -46,7 +46,9 @@ fontFace({
 // Document defaults (DESIGN.md › Type). Component styles live beside the views that use them.
 global({
   ':root': {
-    colorScheme: 'light',
+    // `only light` (not `light`) also refuses the browser's forced dark: Chrome on a dark-mode Android phone otherwise
+    // repaints the paper dark and the cut-outs' darken blend sinks them into grey squares (Eva, 2 Nov; DESIGN.md).
+    colorScheme: 'only light',
     fontFamily: vars.fontFamily.body,
     fontSize: vars.fontSize.body,
     backgroundColor: vars.color.paper,

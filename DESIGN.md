@@ -16,7 +16,8 @@ prototype's layout and this file's rules; where they disagree, ask. Change this 
 
 Things you own are cutouts on paper. One sans face, plus the logo's condensed face in exactly two places (Type). Warm
 paper, umber ink, one slate signal. Pill-shaped actions, soft panels and sheets, photos with small corners. Light mode
-only.
+only, also on a phone set to dark: the document says `color-scheme: only light`, so the browser never forces dark
+on it (forced dark sank the cut-outs into grey squares on Eva's Android, 2 November 2026).
 
 ## Tokens
 

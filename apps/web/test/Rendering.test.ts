@@ -43,6 +43,8 @@ test('concurrent server renders isolate locales and carry the exact catalog into
     expect(html).toContain(catalogVersion)
     expect(html).toContain('test-release')
     expect(html).toContain('viewport-fit=cover')
+    // Light only: a dark-mode phone's browser is told not to force dark on the paper (T-18).
+    expect(html).toContain('<meta name="color-scheme" content="only light">')
   }
 })
 
