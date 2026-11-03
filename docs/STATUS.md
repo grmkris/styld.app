@@ -1,7 +1,8 @@
 # Delivery status
 
-Status as of 2 November 2026. The whole-repository cleanup (milestones C0–C6) is done and the preview was rebuilt from
-scratch on its baseline; C7 (gates and docs) closes now and C8 (review rounds and the release candidate) is next.
+Status as of 3 November 2026. The whole-repository cleanup (milestones C0–C7) is done. C8's review fixes and the
+signed-picture follow-up passed the full gate and are deployed to the isolated preview; the remaining authenticated,
+phone/desktop and live-provider acceptance below is still open.
 Feature work on the 31 October plan (M4–M6, M8–M9) stays frozen until testing starts. The history of every earlier
 milestone, with its evidence, is in `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`.
 
@@ -9,25 +10,42 @@ milestone, with its evidence, is in `docs/archive/STATUS-2026-10-28-to-2026-11-0
 
 - **URL:** https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev (isolated workers.dev,
   noindex, no custom domain). `/api/health` names the running release.
-- **Release:** `54a6601` (read back from `/api/health`). Later commits on `main` (the R2 REST importer, C7's gates and
-  docs) are not deployed yet.
+- **Release:** `8ff72e7cb83ba6636526d95a830d126204a484a3`, pushed to `main` and deployed on 3 November at
+  02:53 UTC. `/api/health` and the API Worker's release binding match. This includes C8 (`395549c`), the signed-picture
+  merge (`d73475c`), regenerated assistant views and test-only export annotations. The later documentation receipt
+  does not change the deployed code SHA.
+- **Deployment:** Alchemy reported three successful Worker updates and two release-binding changes; D1, R2, queues
+  and Durable Object namespaces were unchanged. All four migrations, through `20261102202631_c8_durability`, are
+  recorded in preview D1 (the last was already applied at 01:08:45 UTC). No rebuild was needed.
+- **Cloudflare readback:** the edge alone exposes workers.dev; the API and SSR Workers have both workers.dev and
+  preview URLs disabled. No custom domains are attached; query-string redaction remains enabled on all three.
+  Deployment ids: edge `ebdcb6d9-3932-4de7-bc37-01b16b86563b`, SSR `25d81e66-1753-43ee-95ba-bc54b2298a46`,
+  API `348b5497-255c-4608-887c-72520858ebeb` (each at 100%).
 - **Rebuilt from scratch** (C5): stage `preview` destroyed and deployed again on the one baseline migration, with
   Alchemy's state in the Cloudflare account's state store (`docs/DEPLOYMENT.md` › Rebuild and import).
-- **Testers' wardrobes** (owner-approved, `docs/ARCHITECTURE.md` › Delivery boundary): the owner's 74 v1 pieces were
+- **Testers' wardrobes, last recorded 2 November** (owner-approved, `docs/ARCHITECTURE.md` › Delivery boundary): the owner's 74 v1 pieces were
   imported by the operator importer as 73 pieces plus 1 refused (a 1×1 placeholder picture in v1). The second
   tester's 313 v1 pieces were still importing when this was written; their reconciliation (`exported = ready +
   refused`) is pending.
 - **Readback still to record for this release:** the second import's report, every wardrobe row decoding, no
-  pending credit holds and idle sweeps in Workers Logs, and `tools/preview.native.test.ts` with the release check.
+  pending credit holds and idle sweeps in Workers Logs. The automated preview/release check passed as recorded below;
+  this deployment did not inspect private wardrobe data or run paid provider probes.
 
 ## Gate results
 
-`heavy --wait bun run check` exit 0 on `26aa13a` (C7, 2 November): effect-tsrs 628 files, 0 findings; 17 reviewed
-suppressions; unit 663 tests in 106 files; native 29 pass, 0 fail; bundle initial 346,504 gzip bytes (budget 357,677),
-all 610,441, SSR 1,891,364. Preview readback of release `54a6601` (`tools/preview.native.test.ts` with
-`STYLD_EXPECTED_RELEASE`): 3 pass.
+`heavy --wait bun run check` exit 0 on the exact source committed as `8ff72e7` (3 November): effect-tsrs 659 files,
+0 findings; lint green; 21 reviewed suppressions; unit 753 tests in 119 files; native 29 pass, 0 fail, 1,274 assertions.
+The gate's build measured initial browser 348,527 gzip bytes (budget 357,677), all browser 612,542 and SSR 1,906,548
+source bytes. `bun run bundle:check` also passed on the deployment's release-stamped build: initial 348,522, all
+612,577 gzip bytes, SSR 2,033,643 source bytes.
 
-## Incident: D1 overloaded by the wardrobe's thumbnails (2 November, not deployed)
+Deployed acceptance (`STYLD_PREVIEW_URL=<above> STYLD_EXPECTED_RELEASE=8ff72e7cb83ba6636526d95a830d126204a484a3
+heavy --wait bun test tools/preview.native.test.ts`) exited 0: 3 pass, 0 fail, 42 assertions. It verified the exact
+health/release, auth and CSRF contracts, hydrated website, MCP discovery/challenge/registration and immutable static
+assets. Native tests use fake providers; this is not acceptance of real paid-provider outcomes or every signed-in
+product journey.
+
+## Incident: D1 overloaded by the wardrobe's thumbnails (2 November, fix deployed 3 November)
 
 Workers Logs on `b9cfffe` showed 66 `d1_all` errors "D1 DB is overloaded. Requests queued for too long" and 500s on
 `/cdn/pieces/:id/thumb`, `/api/pieces` and `/api/auth/getSession`: each owner picture read the session, the piece and its
@@ -46,15 +64,16 @@ picture row from D1, and a wardrobe screen loads 60–80 at once (one account ha
   have") looks it up in the person's pieces, so Boards and Review now load them too.
 - **Evidence:** unit (`SignedMedia.test.ts`: tamper, expiry, other account, other secret, assistant gets none; web
   scenes); native `WardrobeAcceptance`, `CaptureAcceptance` and `CleanPictureAcceptance` updated to load the
-  addresses without a cookie and to refuse altered ones, not run yet.
+  addresses without a cookie and to refuse altered ones; all passed in the full gate. The deployed load improvement
+  still needs an authenticated wardrobe readback and Workers Logs.
 - **Still per image through D1 (follow-ups):** board pictures `/cdn/boards/images`, gallery photos `/cdn/photos`,
   tray detections `/cdn/detections`, turns `/cdn/turns`, and the MCP views' server-side thumbnails
   (`wardrobe.pieceImage`, `boards.boardImage`).
 
-## C8 fixes: credits, paid work and durability (2 November, not deployed)
+## C8 fixes: credits, paid work and durability (deployed 3 November)
 
-The follow-up remediation is implemented locally; final integration validation is in progress. No deployment or
-live-provider acceptance was run in this pass. The forward migration `20261102202631_c8_durability` follows
+The follow-up remediation passed final integration validation and deployed preview acceptance. Live-provider and
+authenticated product acceptance remain open. The forward migration `20261102202631_c8_durability` follows
 `credits_paid_work_imports`; it preserves existing generation picks and pictures while rebuilding their parent with
 foreign keys enabled (rehearsed by `DurabilityMigration.test.ts`).
 
@@ -168,7 +187,8 @@ Each line is a kept feature; `docs/DELIVERY.md` maps it to the tests and readbac
 
 ## C8 review fixes (safety, contracts, deletion, privacy, gates)
 
-From the two reviews of `56a619b`; not deployed yet (the next deploy applies migration `20261102150114_deletions`).
+From the two reviews of `56a619b`; included in release `8ff72e7`. Preview D1 records migration
+`20261102150114_deletions` and the subsequent credit/durability migrations as applied.
 
 - **Safety judge fails closed:** a Llama Guard answer in neither of its formats, or an empty one, is Broken and leaves
   the check pending (re-queued, then swept); Workers AI's answer schema refuses `{}` and empty messages.
@@ -190,7 +210,7 @@ From the two reviews of `56a619b`; not deployed yet (the next deploy applies mig
 ## C8 browser review fixes
 
 From the live browser review of 2 November (`meta-hackathon/out/styld-c8/browser/findings.md`, F1–F9); unit, scene
-and native evidence, not deployed yet.
+and native evidence, now deployed in `8ff72e7`. The provider-specific readbacks below are still pending.
 
 - **F1 Styld's replies:** the reply's language is decided in code from the person's latest message (the app's when its
   words do not tell) and stated once, so the model never weighs it aloud; earlier shown pieces and saved looks go back
@@ -214,7 +234,7 @@ and native evidence, not deployed yet.
 
 ## Open items
 
-From C8's browser review: deploy and read back F1 (a Slovenian then English chat on the preview) and F7 (POST
+From C8's browser review: read back F1 (a Slovenian then English chat on the preview) and F7 (POST
 `/api/outfits` timing on a cold visit).
 
 From C8's review fixes:
@@ -228,8 +248,9 @@ From the cleanup's milestones, still open after the later ones:
 
 - No tool lists pending Wallet holds; `pending_settlements` holds every one the Wallet has not confirmed settled (a
   D1 query reads them), and the `settlements` sweep logs how many it settled.
-- C8's credit and durability fixes are not deployed: the preview needs the forward migrations `credits_paid_work_imports` and `c8_durability`, and a
-  readback of a redraw, a turn, a capture retry, a gallery photo and a cut-out under concurrent requests.
+- C8's credit and durability fixes and migrations are deployed. A live authenticated readback of a redraw, a turn,
+  a capture retry, a gallery photo and a cut-out under concurrent requests remains pending; native acceptance with
+  fake providers passed.
 - The website words a refused upload path (`LimitReached` `uploads`, `SlowDown`) as its generic limit message; the
   catalogs have no upload-specific wording yet.
 - The native suite's shared local D1 answers `SQLITE_BUSY` under load; the gallery browser journey ("sideways
@@ -275,6 +296,6 @@ From the product (carried from 31 October – 1 November):
 
 ## Next
 
-C8: reviewer rounds (architecture and tooling; security, privacy and durability; the browser product in en and sl at
-phone and desktop), fixes, the full gate, deploy and read back every `docs/DELIVERY.md` row, then hand the preview to
-the testers with `docs/TESTING-GUIDE.md`.
+Finish C8's remaining preview acceptance: signed-in browser walks in en and sl on phone and desktop, the explicit
+provider/readback gaps above, and each outstanding `docs/DELIVERY.md` row. The review fixes, full integration gate,
+preview deployment and automated release readback are recorded above. Use `docs/TESTING-GUIDE.md` for the testers.
