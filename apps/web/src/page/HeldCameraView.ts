@@ -102,7 +102,7 @@ const stack = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
             ]),
         }),
       ]),
-      h.span([], [format(locale, 'capture.done', {})]),
+      h.span([], [format(locale, 'capture.camera.finishAction', {})]),
     ],
   )
 

@@ -609,7 +609,7 @@
     "addCount": "{count, plural, one {Add # to my wardrobe} other {Add # to my wardrobe}}",
     "addFailed": "Couldn't add them. Try again.",
     "addMore": "Add more",
-    "done": "Finish",
+    "done": "Done",
     "holdUpTitle": "Hold pieces up",
     "holdUpHint": "Your camera takes each one",
     "layOutTitle": "Lay pieces out",
@@ -641,7 +641,8 @@
       "skipBack": "Skip the back",
       "denied": "Camera access is off. Allow it in your browser's settings, or choose photos instead.",
       "unavailable": "The camera can't start here. Choose photos instead.",
-      "finish": "Finish and review {count, plural, one {# piece} other {# pieces}}"
+      "finish": "Finish and review {count, plural, one {# piece} other {# pieces}}",
+      "finishAction": "Finish"
     },
     "retryFile": "Try {name} again",
     "queueSummary": "{sent} of {total} sent{failed, plural, =0 {} one {, # didn't go} other {, # didn't go}}",

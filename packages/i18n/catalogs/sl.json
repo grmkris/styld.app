@@ -609,7 +609,7 @@
     "addCount": "{count, plural, one {Dodaj # v garderobo} two {Dodaj # v garderobo} few {Dodaj # v garderobo} other {Dodaj # v garderobo}}",
     "addFailed": "Ni jih bilo mogoče dodati. Poskusi znova.",
     "addMore": "Dodaj še",
-    "done": "Končaj",
+    "done": "Končano",
     "holdUpTitle": "Pokaži kose kameri",
     "holdUpHint": "Kamera vsakega fotografira sama",
     "layOutTitle": "Razporedi kose",
@@ -641,7 +641,8 @@
       "skipBack": "Brez hrbtne strani",
       "denied": "Dostop do kamere je izklopljen. Dovoli ga v nastavitvah brskalnika ali izberi fotografije.",
       "unavailable": "Kamere tukaj ni mogoče zagnati. Izberi fotografije.",
-      "finish": "Končaj in preglej {count, plural, one {# kos} two {# kosa} few {# kose} other {# kosov}}"
+      "finish": "Končaj in preglej {count, plural, one {# kos} two {# kosa} few {# kose} other {# kosov}}",
+      "finishAction": "Končaj"
     },
     "retryFile": "Poskusi znova: {name}",
     "queueSummary": "Poslano {sent} od {total}{failed, plural, =0 {} one {, # ni šla} two {, # nista šli} few {, # niso šle} other {, # jih ni šlo}}",
