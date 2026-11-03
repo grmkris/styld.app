@@ -51,8 +51,10 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // subscription and settling, 570; Schema and Stream shared with the lazy decoder chunk, 399), the decoder itself
 // loading only while a reply is written. Styld's own dark theme (T-18, 3 November 2026) adds 1,475: every colour a
 // light/dark token pair in the first stylesheet. With main's Gallery photo work (T-17, 6e5c21d alone measures 358,117)
-// the three measure 361,785, so 362,500.
-if (initialGzip > 362500) throw new Error(`Initial browser assets exceed the 362,500-byte gzip budget: ${initialGzip}`)
+// the three measure 361,785, so 362,500. Raised to 363,500 on 2026-11-04: main measured 362,480 before the person's
+// own categories (T-12, b210567), which add 782 (the category field, its chips and their cards), and the add page's
+// own words for a refused upload (3ba3213) add 98, for 363,360.
+if (initialGzip > 363500) throw new Error(`Initial browser assets exceed the 363,500-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(
