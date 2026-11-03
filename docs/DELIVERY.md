@@ -133,6 +133,15 @@ view thumbnails. `SignedMedia`/`SignedFile` unit coverage and `MediaLoadAcceptan
 42 assertions. Signed-in preview media readback, authenticated loading/Workers Logs and
 expiry-refresh remain open; this does not verify F-43. See the tracker’s `BATCH-04.md`.
 
+## Eva browse batch, Claude batch 02
+
+T-08 (Lab tab, `e13f05f`), T-07 (wardrobe drill-down, `1aa780d`), T-17 (Gallery photo cut-out, swipe, heart and board
+source, `61c7b49`) and T-12 (new types, four seasons and Rainproof, `6f8be7f`; categories, `b210567`) are on `main` with
+unit, story and scene acceptance and updated native browser journeys (Navigation, Gallery, Layout, Photos). The T-12
+migration's row preservation is proven on local D1 and in `MigrationSafety.test.ts`. Preview readback, the native suite
+on the batch and phone acceptance are open; so are the editor's rename/delete buttons and the review tray's category
+suggestion (see `STATUS.md`).
+
 ## Eva navigation batch 05
 
 T-06 adds URL-backed Wardrobe filters and selected-piece anchors, safe Gallery-to-review return paths, and clean

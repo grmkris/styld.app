@@ -136,6 +136,34 @@ Release `ac535e1` is deployed; exact-release smoke passed 3 tests / 42 assertion
 readback returned 401 with the available session. Authenticated deployed load/Workers Logs, expiry-refresh
 and F-43’s hero-image timing remain open. The four-step sequence and evidence are in the tracker’s `BATCH-04.md`.
 
+## Eva browse batch, Claude batch 02 (on main, 3 November, preview deploy by styldappv2-51)
+
+Committed on `main`; the preview deploy and its readback belong to the evening's single deploy. No phone acceptance yet.
+
+- **T-08 Lab** (`e13f05f`): the fourth tab is Lab (Laboratory) with Boards | Gallery | Looks, opening on Boards;
+  Wardrobe holds only pieces. Gallery moved to `/gallery`; old `/wardrobe/gallery` links open and take the new address.
+- **T-07 Wardrobe drill-down** (`1aa780d`): group cards (Clothing, Sport, Shoes, Accessories, only those holding
+  pieces, each with its newest piece), then type cards, then a label-free grid with one Filter button; each step down
+  is a page of its own (phone Back goes up a level). Sportswear moved to the new Sport group.
+- **T-17 Gallery photo** (`61c7b49`): manual cut-out with a working state, the cut-out shown at once (signed
+  `cutoutImages`), swipe or Photo | Cut-out to choose, Save to board pins the one shown, favourite as a heart.
+- **T-12 types and seasons** (`6f8be7f`): loafers, lace-ups, sports shoes, hiking and snow boots (Sport, sport outfits
+  only), gloves, socks, hair accessories; flats is ballet flats and Mary Janes; existing pieces keep their type. Any of
+  four seasons (none is all year) plus Rainproof, through Clef (warm → spring+summer, cold → autumn+winter), the
+  editor, review, facts, filter, outfit rules and the stylist.
+- **T-12 categories** (`b210567`): a category of the person's own under a type, typed or chosen in the editor and the
+  review card, a card of its own in the wardrobe; rename and delete exist in the API (`Categories` service).
+- **D1 migrations:** drizzle-kit's table rebuild deletes every cascading child row on D1 (`PRAGMA foreign_keys=OFF`
+  and `defer_foreign_keys` are ignored inside a migration batch; reproduced with `wrangler d1 execute --local`). The
+  rotation migration (`3de5af3`) now adds its column instead; T-12's rebuild keeps and restores every dependent row
+  (proven on local D1 with data); `MigrationSafety.test.ts` guards every migration from 3 November on. The C8 migration
+  deployed on 2 November rebuilt `generation_jobs` the old way, so the preview lost its generation picks and pictures
+  then; not repaired.
+- **Still open:** rename and delete buttons in the piece editor (`Piece.ts` is at its size limit; needs a small
+  submodel); the review tray suggesting one of the person's categories (Clef choosing among them) and a new category
+  name (a language-model call when Clef answers none; Clef is confidently wrong between near-synonyms, so this needs
+  care); preview walk and phone acceptance of T-07, T-08, T-12 and T-17; the full gate and native suite on the batch.
+
 ## Eva navigation batch 05 (ready for review, 3 November)
 
 T-06 now keeps Wardrobe filters, selected-piece return anchors and Gallery review origins in the URL. Filter chips
