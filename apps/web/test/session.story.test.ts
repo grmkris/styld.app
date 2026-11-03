@@ -183,13 +183,16 @@ describe('the wardrobe pages', () => {
     expect(opening('/wardrobe/review')).toEqual(['ReadSession', 'ReadTimeZone', 'LoadTray', 'ListPieces'])
     expect(opening('/looks')).toEqual(['ReadSession', 'ReadTimeZone', 'ListLooks'])
     expect(opening(`/looks/lk_${'a'.repeat(22)}`)).toEqual(['ReadSession', 'ReadTimeZone', 'GetLook'])
-    expect(opening('/wardrobe/gallery')).toEqual(['ReadSession', 'ReadTimeZone', 'ListPhotos'])
-    expect(opening(`/wardrobe/gallery/ph_${'a'.repeat(22)}`)).toEqual([
-      'ReadSession',
-      'ReadTimeZone',
-      'GetPhoto',
-      'ListPieces',
-    ])
+    expect(opening('/gallery')).toEqual(['ReadSession', 'ReadTimeZone', 'ListPhotos'])
+    expect(opening(`/gallery/ph_${'a'.repeat(22)}`)).toEqual(['ReadSession', 'ReadTimeZone', 'GetPhoto', 'ListPieces'])
+  })
+
+  test('the Gallery’s former address under the wardrobe still opens it, and the address becomes its own', () => {
+    const photoId = `ph_${'a'.repeat(22)}`
+    const opened = init(flags(false), urlOf(`/wardrobe/gallery/${photoId}`))
+    expect(opened.model.route).toEqual(AppRoute.Photo({ photoId }))
+    expect(opened.commands?.map(({ name }) => name)).toContain('ReplaceInternal')
+    expect(opening('/wardrobe/gallery')).toEqual(['ReadSession', 'ReadTimeZone', 'ReplaceInternal', 'ListPhotos'])
   })
 
   test('the review tray opens once the files are sent, and the wardrobe once pieces are kept', () => {

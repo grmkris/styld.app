@@ -194,8 +194,8 @@ const youLink = (model: Model, initial: string, h: HtmlBuilder<Message>): Html =
     ],
   )
 
-/** The navigation (owner, 2026-10-31): Home, Ask, Wardrobe and Boards; you are in the masthead, and Explore is a link
- * in Home's head. A floating glass pill on the phone, a rail on the desktop's left edge; it keeps its place while a
+/** The navigation (owner, 2026-10-31; the Lab 2026-11-03): Home, Ask, Wardrobe and the Lab (boards, gallery and looks);
+ * you are in the masthead, and Explore is a link in Home's head. A floating glass pill on the phone, a rail on the desktop's left edge; it keeps its place while a
  * page cross-fades. */
 const appNavigation = (model: Model, initial: string, h: HtmlBuilder<Message>): Html => {
   const { locale } = model.context
@@ -226,7 +226,7 @@ const appNavigation = (model: Model, initial: string, h: HtmlBuilder<Message>): 
       // Ask opens the stylist directly; wardrobe search has its own entry in Wardrobe.
       item('ask', stylistRouter({ q: Option.none() }), format(locale, 'nav.ask', {}), askTabIcon(h), true),
       item('wardrobe', wardrobeRouter({}), format(locale, 'nav.wardrobe', {}), wardrobeTabIcon(h)),
-      item('boards', boardsRouter({}), format(locale, 'nav.boards', {}), boardsTabIcon(h)),
+      item('lab', boardsRouter({}), format(locale, 'nav.lab', {}), boardsTabIcon(h)),
     ],
   )
 }

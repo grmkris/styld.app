@@ -19,7 +19,7 @@ import { groupName, occasionName, pieceLabel, seasonName, typeName } from './War
 import { chipPicker, colourPicker } from './PieceFields.ts'
 import { bottomSheet, sheetShown } from './Sheet.ts'
 import * as styles from './WardrobeView.styles.ts'
-import { wardrobeMain } from './WardrobeTabs.ts'
+import { wardrobeMain } from './SectionMain.ts'
 import { chip, chipSkeleton, chosen } from '../Controls.styles.ts'
 import { sheetBody } from './Sheet.styles.ts'
 
@@ -343,7 +343,6 @@ const failedView = (locale: Locale, h: HtmlBuilder<Message>): Html =>
 export const view = Submodel.defineView<Model, Message, { readonly locale: Locale; readonly pieces: PiecesData }>(
   (model, { locale, pieces }, h) =>
     wardrobeMain(
-      'pieces',
       styles.wardrobePage(),
       [
         AsyncData.matchData(pieces, {

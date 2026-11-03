@@ -44,6 +44,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'nav.ask': 'Vprašaj',
   'nav.boards': 'Zbirke',
   'nav.sessionUnavailable': 'Računa ni bilo mogoče doseči. Poskusi znova',
+  'nav.lab': 'Lab',
   'account.title': 'Račun',
   'account.assistants.title': 'Uporabi Styld v ChatGPT ali Claudu',
   'account.assistants.description':
@@ -99,7 +100,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.shelves.loadFailed': 'Kosov ni bilo mogoče naložiti. Poskusi znova.',
   'wardrobe.shelves.retry': 'Poskusi znova',
   'wardrobe.deletePieceConfirmBody': 'S tem ga odstraniš iz garderobe. Tega ni mogoče razveljaviti.',
-  'wardrobe.tabPieces': 'Kosi',
   'wardrobe.tabGallery': 'Galerija',
   'wardrobe.picture.cleaned': 'Slika, očiščena z umetno inteligenco',
   'wardrobe.picture.drawing': 'Rišem čisto sliko …',
@@ -825,4 +825,5 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'photo.cutOut': 'Izreži opravo',
   'photo.cutOutDone': 'Oprava je izrezana: na tablo gre sama.',
   'photo.noPerson': 'Na tej fotografiji ni bilo mogoče najti osebe.',
+  'lab.title': 'Laboratorij',
 }

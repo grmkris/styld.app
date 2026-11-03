@@ -44,6 +44,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'nav.ask': 'Ask',
   'nav.boards': 'Boards',
   'nav.sessionUnavailable': 'Your account could not be reached. Try again',
+  'nav.lab': 'Lab',
   'account.title': 'Account',
   'account.assistants.title': 'Use Styld in ChatGPT or Claude',
   'account.assistants.description':
@@ -99,7 +100,6 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.shelves.loadFailed': 'Could not load pieces. Try again.',
   'wardrobe.shelves.retry': 'Try again',
   'wardrobe.deletePieceConfirmBody': "This removes it from your wardrobe. This can't be undone.",
-  'wardrobe.tabPieces': 'Pieces',
   'wardrobe.tabGallery': 'Gallery',
   'wardrobe.picture.cleaned': 'AI-cleaned picture',
   'wardrobe.picture.drawing': 'Drawing a clean picture…',
@@ -806,4 +806,5 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'photo.cutOut': 'Cut out the outfit',
   'photo.cutOutDone': 'The outfit is cut out: a board gets it on its own.',
   'photo.noPerson': 'Styld found no one to cut out of this photo.',
+  'lab.title': 'Laboratory',
 }

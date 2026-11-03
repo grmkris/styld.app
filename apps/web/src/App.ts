@@ -46,6 +46,7 @@ import {
   homeRouter,
   isSameTab,
   looksRouter,
+  addressInPlace,
   photosRouter,
   reviewRouter,
   routeFromUrl,
@@ -253,9 +254,7 @@ export const init = (context: Flags, url: Url): UpdateReturn => {
     commands: [
       ReadSession(),
       ReadTimeZone(),
-      ...(AppRoute.guards.BoardCollage(route)
-        ? [ReplaceInternal({ href: boardRouter({ boardId: route.boardId }) })]
-        : []),
+      ...Option.toArray(Option.map(addressInPlace(url.pathname, route), (href) => ReplaceInternal({ href }))),
       ...(page.commands ?? []),
       ...(entered.commands ?? []),
     ],

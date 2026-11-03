@@ -47,7 +47,8 @@
     "navigation": "Navigation",
     "ask": "Ask",
     "boards": "Boards",
-    "sessionUnavailable": "Your account could not be reached. Try again"
+    "sessionUnavailable": "Your account could not be reached. Try again",
+    "lab": "Lab"
   },
   "account": {
     "title": "Account",
@@ -110,7 +111,6 @@
       "retry": "Try again"
     },
     "deletePieceConfirmBody": "This removes it from your wardrobe. This can't be undone.",
-    "tabPieces": "Pieces",
     "tabGallery": "Gallery",
     "picture": {
       "cleaned": "AI-cleaned picture",
@@ -920,5 +920,8 @@
     "cutOut": "Cut out the outfit",
     "cutOutDone": "The outfit is cut out: a board gets it on its own.",
     "noPerson": "Styld found no one to cut out of this photo."
+  },
+  "lab": {
+    "title": "Laboratory"
   }
 }

@@ -53,7 +53,7 @@ test('piece and review return links use their expected parent and reject externa
   }
   scene(
     { update, view },
-    given(at('/wardrobe/review?from=%2Fwardrobe%2Fgallery%2Fph_test', { signedIn: true })),
-    expect(role('link', { name: 'Back' })).toHaveAttr('href', '/wardrobe/gallery/ph_test'),
+    given(at('/wardrobe/review?from=%2Fgallery%2Fph_test', { signedIn: true })),
+    expect(role('link', { name: 'Back' })).toHaveAttr('href', '/gallery/ph_test'),
   )
 })

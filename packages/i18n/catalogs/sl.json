@@ -47,7 +47,8 @@
     "navigation": "Navigacija",
     "ask": "Vprašaj",
     "boards": "Zbirke",
-    "sessionUnavailable": "Računa ni bilo mogoče doseči. Poskusi znova"
+    "sessionUnavailable": "Računa ni bilo mogoče doseči. Poskusi znova",
+    "lab": "Lab"
   },
   "account": {
     "title": "Račun",
@@ -110,7 +111,6 @@
       "retry": "Poskusi znova"
     },
     "deletePieceConfirmBody": "S tem ga odstraniš iz garderobe. Tega ni mogoče razveljaviti.",
-    "tabPieces": "Kosi",
     "tabGallery": "Galerija",
     "picture": {
       "cleaned": "Slika, očiščena z umetno inteligenco",
@@ -920,5 +920,8 @@
     "cutOut": "Izreži opravo",
     "cutOutDone": "Oprava je izrezana: na tablo gre sama.",
     "noPerson": "Na tej fotografiji ni bilo mogoče najti osebe."
+  },
+  "lab": {
+    "title": "Laboratorij"
   }
 }

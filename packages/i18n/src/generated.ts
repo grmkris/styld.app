@@ -309,6 +309,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'follow.failed': Readonly<Record<string, never>>
   'follow.follow': Readonly<Record<string, never>>
   'follow.following': Readonly<Record<string, never>>
+  'lab.title': Readonly<Record<string, never>>
   'landing.browse': Readonly<Record<string, never>>
   'landing.contact': Readonly<Record<string, never>>
   'landing.description': Readonly<Record<string, never>>
@@ -339,6 +340,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'nav.ask': Readonly<Record<string, never>>
   'nav.boards': Readonly<Record<string, never>>
   'nav.home': Readonly<Record<string, never>>
+  'nav.lab': Readonly<Record<string, never>>
   'nav.navigation': Readonly<Record<string, never>>
   'nav.sessionUnavailable': Readonly<Record<string, never>>
   'nav.wardrobe': Readonly<Record<string, never>>
@@ -683,7 +685,6 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.sides': Readonly<Record<string, never>>
   'wardrobe.statusProcessing': Readonly<Record<string, never>>
   'wardrobe.tabGallery': Readonly<Record<string, never>>
-  'wardrobe.tabPieces': Readonly<Record<string, never>>
   'wardrobe.title': Readonly<Record<string, never>>
   'wardrobe.turn.building': Readonly<Record<string, never>>
   'wardrobe.turn.cost': { readonly credits: number }
@@ -790,4 +791,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'af9c7b5a51fd3a9300b9b476ec7a1f3ad1bb69cfa86c3c4f70d93600b5145411'
+export const catalogVersion = 'c3079883bf16f51b288239a585e08394b9b712084ef4c1d9d4a3d98284e716fb'

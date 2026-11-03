@@ -34,7 +34,7 @@ const photo = Schema.decodeUnknownSync(PhotoContract)({
 
 /** The photo's page with the wardrobe read. */
 const onPhoto = () =>
-  withPage(withPieces(at(`/wardrobe/gallery/${photo.id}`, { signedIn: true }), [tee, shirt, jeans]), lenses.photo, () =>
+  withPage(withPieces(at(`/gallery/${photo.id}`, { signedIn: true }), [tee, shirt, jeans]), lenses.photo, () =>
     modifyFields(Photo.init(photo.id), {
       photo: () => Photo.PhotoData.Success({ data: photo }),
       choosing: () => Option.none(),
@@ -76,12 +76,15 @@ describe('an outfit photo’s page', () => {
     )
   })
 
-  test('the wardrobe’s tabs lead to the gallery', () => {
+  test('the Lab’s tabs lead to the gallery, and the Lab marks the navigation', () => {
     scene(
       { update, view },
-      given(at('/wardrobe/gallery', { signedIn: true })),
+      given(at('/gallery', { signedIn: true })),
       expect(role('link', { name: 'Gallery' })).toHaveAttr('aria-current', 'page'),
-      expect(role('link', { name: 'Gallery' })).toHaveAttr('href', '/wardrobe/gallery'),
+      expect(role('link', { name: 'Gallery' })).toHaveAttr('href', '/gallery'),
+      expect(role('link', { name: 'Boards' })).toHaveAttr('href', '/boards'),
+      expect(role('link', { name: 'Looks' })).toHaveAttr('href', '/looks'),
+      expect(role('link', { name: 'Lab' })).toHaveAttr('aria-current', 'page'),
     )
   })
 })

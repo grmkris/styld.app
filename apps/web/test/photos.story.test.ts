@@ -205,7 +205,7 @@ const galleryPolled = (path: string) =>
 
 describe('My Gallery follows its photos only while it shows', () => {
   test('on My Gallery the poll runs; on another tab, which keeps the gallery as it was, it does not', () => {
-    expect(galleryPolled('/wardrobe/gallery')).toEqual(Option.some({ pendingIds: [finding.id] }))
+    expect(galleryPolled('/gallery')).toEqual(Option.some({ pendingIds: [finding.id] }))
     expect(galleryPolled('/wardrobe')).toEqual(Option.none())
   })
 })

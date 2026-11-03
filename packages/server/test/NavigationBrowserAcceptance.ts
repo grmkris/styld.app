@@ -47,11 +47,11 @@ export const verifyNavigationJourney = async (browser: Browser, origin: string, 
     await page.goBack({ waitUntil: 'networkidle' })
     await returnedToPiece(page)
 
-    await page.goto(`${origin}/wardrobe/gallery/${navigationPhoto}`, { waitUntil: 'networkidle' })
+    await page.goto(`${origin}/gallery/${navigationPhoto}`, { waitUntil: 'networkidle' })
     await page.getByRole('link', { name: 'Open the review tray', exact: true }).click()
     await page.getByRole('heading', { name: 'To review', exact: true }).waitFor()
     await page.getByRole('link', { name: 'Back', exact: true }).click()
-    await page.waitForURL(`**/wardrobe/gallery/${navigationPhoto}`)
+    await page.waitForURL(`**/gallery/${navigationPhoto}`)
     await page.getByRole('link', { name: 'Open the review tray', exact: true }).waitFor()
     await page.evaluate(() => document.fonts.ready)
     await shoot(page, 'gallery-return', width)

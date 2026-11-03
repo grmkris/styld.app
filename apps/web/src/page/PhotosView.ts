@@ -2,6 +2,7 @@ import { cdn } from '../Cdn.ts'
 import { prices } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import type { Photo } from '@styld/protocol'
+import { Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
@@ -16,7 +17,7 @@ import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { retryView } from './Retry.ts'
 import { Adding, Message, type Model } from './Photos.ts'
 import * as styles from './PhotosView.styles.ts'
-import { wardrobeMain } from './WardrobeTabs.ts'
+import { labMain } from './SectionMain.ts'
 import { message as messageSection, messageTitle } from './WardrobeView.styles.ts'
 
 interface Inputs {
@@ -96,9 +97,10 @@ const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Htm
 
 const photosPage = (model: Model, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
   const { locale } = inputs
-  return wardrobeMain(
+  return labMain(
     'gallery',
     styles.photosPage(),
+    Option.none(),
     AsyncData.matchData(model.photos, {
       onEmpty: () => loadingView(locale, h),
       onFailure: () => [retryView(format(locale, 'photos.loadFailed', {}), locale, Message.ClickedRetry(), h)],

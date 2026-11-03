@@ -81,13 +81,25 @@ export const pieceRouter = pipe(
   mapTo(AppRoute.Piece),
 )
 export const looksRouter = pipe(literal('looks'), mapTo(AppRoute.Looks))
-export const photosRouter = pipe(literal('wardrobe'), slash(literal('gallery')), mapTo(AppRoute.Photos))
-export const photoRouter = pipe(
+export const photosRouter = pipe(literal('gallery'), mapTo(AppRoute.Photos))
+export const photoRouter = pipe(literal('gallery'), slash(string('photoId')), mapTo(AppRoute.Photo))
+// The Gallery lived at `/wardrobe/gallery` until it moved to the Lab (T-08, 3 November): old links still open it, and
+// the app replaces the address with the new one (`App.ts` › init).
+const formerPhotosRouter = pipe(literal('wardrobe'), slash(literal('gallery')), mapTo(AppRoute.Photos))
+const formerPhotoRouter = pipe(
   literal('wardrobe'),
   slash(literal('gallery')),
   slash(string('photoId')),
   mapTo(AppRoute.Photo),
 )
+
+/** The address the app puts in place of the one a page opened at: a board's collage address becomes the board's (its
+ * editor opens on the board's own page), and the Gallery's former addresses its current one. */
+export const addressInPlace = (pathname: string, route: AppRoute): Option.Option<string> => {
+  if (AppRoute.guards.BoardCollage(route)) return Option.some(boardRouter({ boardId: route.boardId }))
+  if (pathname !== '/wardrobe/gallery' && !pathname.startsWith('/wardrobe/gallery/')) return Option.none()
+  return Option.some(AppRoute.guards.Photo(route) ? photoRouter({ photoId: route.photoId }) : photosRouter({}))
+}
 export const lookRouter = pipe(literal('looks'), slash(string('lookId')), mapTo(AppRoute.Look))
 export const askRouter = pipe(
   literal('ask'),
@@ -124,8 +136,8 @@ export const personRouter = pipe(atHandle, mapTo(AppRoute.Person))
 export const publicPieceRouter = pipe(literal('pieces'), slash(string('pieceId')), mapTo(AppRoute.PublicPiece))
 export const exploreRouter = pipe(literal('explore'), mapTo(AppRoute.Explore))
 
-// `/wardrobe/add`, `/wardrobe/review` and `/wardrobe/gallery` are declared before `/wardrobe/:pieceId`, which would
-// otherwise take them.
+// `/wardrobe/add`, `/wardrobe/review` and the former `/wardrobe/gallery` are declared before `/wardrobe/:pieceId`,
+// which would otherwise take them.
 const parser = oneOf(
   loginForConnectionRouter,
   loginRouter,
@@ -133,12 +145,14 @@ const parser = oneOf(
   profileRouter,
   addPiecesRouter,
   reviewRouter,
-  photoRouter,
-  photosRouter,
+  formerPhotoRouter,
+  formerPhotosRouter,
   pieceRouter,
   wardrobeRouter,
   lookRouter,
   looksRouter,
+  photoRouter,
+  photosRouter,
   stylistRouter,
   askRouter,
   boardCollageRouter,
@@ -207,7 +221,7 @@ export const Tab = Schema.Literals(['Home', 'Explore', 'Wardrobe', 'Looks', 'Pho
 export type Tab = typeof Tab.Type
 
 /** The navigation's sections; a page marks the one it belongs to. */
-export type Section = 'home' | 'wardrobe' | 'ask' | 'boards' | 'you'
+export type Section = 'home' | 'wardrobe' | 'ask' | 'lab' | 'you'
 
 /** What the app knows about a page besides its address: its route as a template (no ids or handles, so telemetry
  * names a slow page without naming whose it was), whether it needs a session, the tab it is, its title and the
@@ -244,16 +258,15 @@ export const routeMeta = AppRoute.match<RouteMeta>({
   AddPieces: () => meta('/wardrobe/add', 'capture.addTitle', { session: required, section: 'wardrobe' }),
   Review: () => meta('/wardrobe/review', 'scan.toReview', { session: required, section: 'wardrobe' }),
   Piece: () => meta('/wardrobe/:piece', 'wardrobe.title', { session: required, section: 'wardrobe' }),
-  Looks: () => meta('/looks', 'looks.title', { session: required, tab: 'Looks', section: 'wardrobe' }),
-  Look: () => meta('/looks/:look', 'looks.title', { section: 'wardrobe' }),
-  Photos: () =>
-    meta('/wardrobe/gallery', 'wardrobe.tabGallery', { session: required, tab: 'Photos', section: 'wardrobe' }),
-  Photo: () => meta('/wardrobe/gallery/:photo', 'wardrobe.tabGallery', { session: required, section: 'wardrobe' }),
+  Looks: () => meta('/looks', 'looks.title', { session: required, tab: 'Looks', section: 'lab' }),
+  Look: () => meta('/looks/:look', 'looks.title', { section: 'lab' }),
+  Photos: () => meta('/gallery', 'wardrobe.tabGallery', { session: required, tab: 'Photos', section: 'lab' }),
+  Photo: () => meta('/gallery/:photo', 'wardrobe.tabGallery', { session: required, section: 'lab' }),
   Ask: () => meta('/ask', 'ask.title', { session: required, tab: 'Ask', section: 'wardrobe' }),
   Stylist: () => meta('/ask/stylist', 'stylist.title', { session: required, section: 'ask' }),
-  Boards: () => meta('/boards', 'boards.title', { session: required, tab: 'Boards', section: 'boards' }),
-  Board: () => meta('/boards/:board', 'boards.title', { section: 'boards' }),
-  BoardCollage: () => meta('/boards/:board/collage', 'boards.title', { session: required, section: 'boards' }),
+  Boards: () => meta('/boards', 'boards.title', { session: required, tab: 'Boards', section: 'lab' }),
+  Board: () => meta('/boards/:board', 'boards.title', { section: 'lab' }),
+  BoardCollage: () => meta('/boards/:board/collage', 'boards.title', { session: required, section: 'lab' }),
   Person: () => meta('/@:handle', 'profile.public.people'),
   PublicPiece: () => meta('/pieces/:piece', 'profile.public.pieces'),
   // Explore is reached from Home's head (owner, 2026-10-31), so Home stays marked there.

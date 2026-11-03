@@ -2,7 +2,7 @@ import { expect } from 'bun:test'
 import type { BrowserContext, Page } from 'playwright'
 
 /** The signed-in pages the navigation moves between. */
-const tabPaths = ['/', '/wardrobe', '/looks', '/boards', '/ask', '/account'] as const
+const tabPaths = ['/', '/wardrobe', '/looks', '/boards', '/gallery', '/ask', '/account'] as const
 
 /** Where the page's title starts, once it is drawn. */
 const titleTop = async (page: Page) => {

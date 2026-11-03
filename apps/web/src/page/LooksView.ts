@@ -1,6 +1,7 @@
 import { cdn } from '../Cdn.ts'
 import type { Look } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
+import { Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
@@ -10,7 +11,7 @@ import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { retryView } from './Retry.ts'
-import { wardrobeMain } from './WardrobeTabs.ts'
+import { labMain } from './SectionMain.ts'
 import { Message, type Model } from './Looks.ts'
 import { message as messageSection, messageTitle } from './WardrobeView.styles.ts'
 import * as styles from './LooksView.styles.ts'
@@ -67,9 +68,10 @@ const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Htm
 ]
 
 const looksPage = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  wardrobeMain(
+  labMain(
     'looks',
     styles.looksPage(),
+    Option.none(),
     AsyncData.matchData(model.saved, {
       onEmpty: () => loadingView(locale, h),
       onFailure: () => [retryView(format(locale, 'looks.loadFailed', {}), locale, Message.ClickedRetry(), h)],

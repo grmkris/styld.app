@@ -138,7 +138,7 @@ const verifyHome = async (page: Page, origin: string) => {
 /** The round + opens a new board directly on its table; Edit still renames it. */
 const openNewBoard = async (page: Page, origin: string) => {
   await page.goto(`${origin}/boards`, { waitUntil: 'networkidle' })
-  await page.getByRole('heading', { name: 'Boards', level: 1 }).waitFor({ state: 'visible' })
+  await page.getByRole('heading', { name: 'Laboratory', level: 1 }).waitFor({ state: 'visible' })
   await page.getByRole('button', { name: 'New board' }).click()
   await page.waitForURL(/\/boards\/bd_[^/]+$/)
   await page.getByRole('heading', { name: 'My board', level: 1 }).waitFor({ state: 'visible' })
@@ -285,10 +285,13 @@ const verifyAskAndWardrobe = async (page: Page, origin: string) => {
   await page.getByRole('link', { name: /Add clothes/ }).waitFor({ state: 'visible' })
   await expectNoSidewaysScroll(page)
   await shoot(page, 'phone-ask')
+  // The Lab opens on Boards; its tabs lead to Looks (T-08).
   await page.goto(`${origin}/wardrobe`, { waitUntil: 'networkidle' })
+  await page.getByRole('navigation', { name: 'Navigation' }).getByRole('link', { name: 'Lab', exact: true }).click()
+  await page.waitForURL(`${origin}/boards`)
   await page.getByRole('link', { name: 'Looks', exact: true }).click()
   await page.waitForURL(`${origin}/looks`)
-  await page.getByRole('link', { name: 'Pieces', exact: true }).waitFor({ state: 'visible' })
+  await page.getByRole('link', { name: 'Gallery', exact: true }).waitFor({ state: 'visible' })
 }
 
 /** Styld from Ask: what was typed goes to Styld, whose reply is written on the queue by the real turn with the

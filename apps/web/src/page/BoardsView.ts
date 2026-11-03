@@ -17,9 +17,9 @@ import { boardImage, fromStyld, type ImageSource } from './Board/Table.ts'
 import { boardFace, type CoverPicture } from './BoardFace.ts'
 import { Creating, Message, type Model } from './Boards.ts'
 import * as styles from './BoardsView.styles.ts'
-import { pageHead, pageTitle } from './PageHead.ts'
 import { roundAction, wideAction, wideLabel } from './PageHead.styles.ts'
 import { savedView } from './SavedView.ts'
+import { labMain } from './SectionMain.ts'
 import type { BoardsData, PiecesData } from '../ServerData.ts'
 
 /** Where a pin's picture comes from on its board's tile: a look shows its first piece. */
@@ -120,11 +120,12 @@ export const view = Submodel.defineView<
   Message,
   { readonly locale: Locale; readonly boards: BoardsData; readonly pieces: PiecesData }
 >((model, { locale, boards, pieces }, h) =>
-  h.main(
-    [h.Id('main'), ...styled(h, styles.page())],
+  labMain(
+    'boards',
+    styles.page(),
+    Option.some(newBoardAction(model, locale, h)),
     [
       h.div(styled(h, styles.head()), [
-        pageHead(pageTitle(format(locale, 'boards.title', {}), h), Option.some(newBoardAction(model, locale, h)), h),
         h.p(styled(h, styles.intro()), [format(locale, 'boards.intro', {})]),
         Creating.guards.Failed(model.creating)
           ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'boards.createFailed', {})])
@@ -133,5 +134,7 @@ export const view = Submodel.defineView<
       listView(boards, fromStyld(piecesById(Option.getOrElse(AsyncData.getData(pieces), () => []))), locale, h),
       savedView(model.saved, locale, Message.ClickedRetrySaved(), h),
     ],
+    locale,
+    h,
   ),
 )
