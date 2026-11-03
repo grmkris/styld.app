@@ -10,6 +10,7 @@ export default {
         'tools/ai-usage-report.ts',
         'tools/preview-capture.ts',
         'tools/provider-live.ts',
+        'tools/retype-pieces.ts',
         // Prints the verified binary's path for an editor's type-aware lint (.vscode/settings.json).
         'tools/tsrs-lint.ts',
         'tools/import-v1/{Import,Export}.ts',

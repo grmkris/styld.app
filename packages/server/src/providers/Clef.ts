@@ -55,7 +55,7 @@ export const noulOf = (answer: ClefAnswer, id: string) =>
 
 /** Each garment type as a shop names it, so the model sorts a piece the way a person browsing would look for it. */
 const typeCriteria: { readonly [Type in PieceType]: string } & { readonly none: string } = {
-  tops: 'A t-shirt, tank top, camisole or casual top',
+  tops: 'A t-shirt, tank top, camisole or casual top, not made for sport or swimming',
   shirts: 'A shirt or blouse, with a collar or buttons, or a dressy woven top',
   bodysuits: 'A bodysuit',
   knitwear: 'A knitted jumper, sweater or cardigan',
@@ -67,14 +67,15 @@ const typeCriteria: { readonly [Type in PieceType]: string } & { readonly none: 
   dresses: 'A dress of any length',
   jumpsuits: 'A jumpsuit, playsuit or dungarees',
   jeans: 'Jeans: denim trousers',
-  trousers: 'Trousers, chinos, joggers or leggings',
+  trousers: 'Everyday trousers, chinos, joggers or leggings, not pyjama bottoms or ski trousers',
   shorts: 'Shorts',
   skirts: 'A skirt',
   sportswear: 'Sportswear for exercise: sports top, sports bra, sports leggings, tracksuit or ski trousers',
   sportShoes: 'Shoes made for sport: running shoes, training shoes or indoor court shoes',
   outdoorShoes: 'Hiking boots, walking boots or snow boots',
-  swimwear: 'Swimwear: swimsuit, bikini or swim shorts',
-  loungewear: 'Loungewear or nightwear: pyjamas, nightdress or robe',
+  swimwear: 'Swimwear: a swimsuit, a bikini top or bottom, or swim shorts',
+  loungewear:
+    'Loungewear or nightwear: pyjama tops or bottoms, often striped or with a drawstring, a nightdress or a robe',
   trainers: 'Everyday trainers or sneakers, worn for style rather than sport',
   boots: 'Everyday boots or ankle boots, not hiking or snow boots',
   heels: 'Shoes with heels',
@@ -82,14 +83,14 @@ const typeCriteria: { readonly [Type in PieceType]: string } & { readonly none: 
   loafers: 'Loafers or moccasins',
   laceUps: 'Lace-up shoes: oxfords, derbies or brogues',
   sandals: 'Sandals, sliders or flip-flops',
-  bags: 'A bag, backpack or purse',
+  bags: 'A bag, backpack or purse: something made to carry things in',
   belts: 'A belt',
   scarves: 'A scarf or shawl',
-  hats: 'A hat, cap or beanie',
+  hats: 'A hat, cap, beanie or hood worn on the head',
   gloves: 'Gloves or mittens',
   socks: 'Socks or tights',
   hairAccessories: 'A hair accessory: hair clip, headband, hairband or scrunchie',
-  jewellery: 'Jewellery or a watch',
+  jewellery: 'Jewellery or a watch: a necklace, earrings, a ring, a bracelet, a brooch or a pin',
   eyewear: 'Sunglasses or glasses',
   none: 'Not a garment, shoe or accessory',
 }
@@ -156,10 +157,17 @@ const suggestQuestions = {
       printed: 'Printed: floral, animal, graphic, dots or logo',
     },
   },
-  colour: { type: 'choice', instructions: 'What is its main colour?', criteria: colourCriteria },
+  // By surface, not by what catches the eye: a black snow boot with a beige rubber trim is black (Eva's review, T-02).
+  colour: {
+    type: 'choice',
+    instructions:
+      'What colour covers most of its surface? Ignore soles, trims, stitching, logos, buttons and hardware.',
+    criteria: colourCriteria,
+  },
   secondColour: {
     type: 'choice',
-    instructions: 'Does it have a clear second colour? Pick none if not.',
+    instructions:
+      'Does a second colour cover a large part of its surface, at least a fifth? Soles, trims, stitching, logos, buttons and hardware do not count. Pick none if not.',
     criteria: { ...colourCriteria, none: 'No second colour' },
   },
   whole: {
