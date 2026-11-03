@@ -394,10 +394,10 @@
       ]
     },
     "T-14": {
-      "status": "planned",
+      "status": "in_progress",
       "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "Claude track (parallel to Codex). Planned: an \"Analyze my wardrobe\" starter answered by an exact server-side analysis card (counts per group/slot/type, colours, wear, surpluses and gaps) plus one short model comment; then real streaming replies instead of 800 ms polling, after a reference study of DO WebSocket streaming that the owner reviews before it is built.",
+      "note": "Claude. Analyze my wardrobe card: built and gated, landing with batch A. Streaming replies (owner decision 3 Nov): Ask Styld moves to Yielded Agent (a chat Thread Durable Object in its own Worker, tools over a service binding, provisional live text with snapshot, Alchemy's streaming Workers AI model wrapped in providerCall). Spike passed in workerd. Milestones M0 stack upgrade to Effect 4.1 (Alchemy beta.85, Foldkit 0.170, Yielded Auth beta.47; touches the lockfile and every package, landed in a quiet window), M1 chat Worker, M2 streaming model, M3 credits, M4 routes, M5 browser live text, M6 remove the stylist queue/StylistObject/polling and accept on the preview.",
       "evidence": [],
       "criteriaDone": []
     },
@@ -1294,6 +1294,13 @@
       "items": [
         "T-21",
         "T-06"
+      ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Owner approved moving Ask Styld onto Yielded Agent with real streaming (T-14, milestones M0-M6, Claude). M0 upgrades the whole stack to Effect 4.1 and touches the lockfile and every package: Claude will land it in a quiet window between Codex commits and announce it here first.",
+      "items": [
+        "T-14"
       ]
     }
   ],
