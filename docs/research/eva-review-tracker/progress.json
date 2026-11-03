@@ -544,10 +544,10 @@
       "criteriaDone": []
     },
     "T-18": {
-      "status": "ready_for_review",
+      "status": "in_progress",
       "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "Deployed 7144b03. The page now says color-scheme 'only light' (meta and :root), so Chrome's forced dark no longer repaints it: before, cut-outs sank into dark grey tiles and nearly vanished; after, the paper and cut-outs are unchanged. Owner decision: light only for v1. Remaining: a look on a dark-mode Android phone (Eva or Kris).",
+      "note": "Phone check by Eva (3 Nov, 19:40): Samsung Internet's Dark mode still darkens the wardrobe; it ignores color-scheme 'only light' (Chrome honours it). Owner decision: Styld gets its own proper dark theme (light/dark token pairs selected by the device's preference, cut-outs not blended on dark paper), which also stops every browser's forced darkening. In progress (Claude).",
       "evidence": [
         {
           "level": "unit",
@@ -1493,6 +1493,13 @@
       "text": "Claude deployed 6de0434 with T-19 (swap one piece on Today, Logged for today, dress-never-takes-a-top rules test). Ready for a phone check.",
       "items": [
         "T-19"
+      ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "T-18 reopened after Eva's phone check on Samsung Internet; a proper dark theme is in progress.",
+      "items": [
+        "T-18"
       ]
     }
   ],
