@@ -4,6 +4,8 @@ import {
   BoardItem,
   BoardItemId,
   CheckStatus,
+  GarmentGroup,
+  PieceType,
   Look,
   LookId,
   Mood,
@@ -170,6 +172,9 @@ export const Model = Schema.Struct({
   people: People.Model,
   /** The sheet that pins pieces and looks, and what is ticked in it (`piece:<id>`, `look:<id>`). */
   picker: Dialog.Model,
+  piecePicker: Dialog.Model,
+  maybePickerGroup: Schema.Option(GarmentGroup),
+  maybePickerType: Schema.Option(PieceType),
   picks: Schema.Array(Schema.String),
   looks: LooksData.schema,
   /** Items on their way out, kept on the page until their exit animation ends. */
@@ -218,6 +223,9 @@ export const init = (boardId: string, signedIn: boolean): Model => ({
   moods: [],
   people: People.init(People.Subject.Board({ boardId })),
   picker: Dialog.init({ id: 'board-picker', isAnimated: true }),
+  piecePicker: Dialog.init({ id: 'board-piece-picker', isAnimated: true }),
+  maybePickerGroup: Option.none(),
+  maybePickerType: Option.none(),
   picks: [],
   looks: AsyncData.Idle(),
   leaving: [],
@@ -260,3 +268,11 @@ export const fromBoard = (model: Model, board: Board): Model =>
     items: () => board.items,
     pins: () => board.pins,
   })
+
+/** Pin changes replace the saved table, so wait for every local edit and upload to settle first. */
+export const canChangePins = (model: Model): boolean =>
+  (Saving.guards.Saved(model.saving) || Saving.guards.Replaced(model.saving)) &&
+  Gesture.guards.Idle(model.gesture) &&
+  !PinWork.guards.Sending(model.pinWork) &&
+  !Upload.guards.Sending(model.upload) &&
+  !model.isPasting

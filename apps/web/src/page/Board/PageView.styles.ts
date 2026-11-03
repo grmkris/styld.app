@@ -6,13 +6,13 @@ export const page = style({ display: 'grid', gap: 'grid', paddingBlock: '8px 40p
 /** The way back and the board's actions, kept to the collage's width on a wide screen, near what they act on. */
 export const bar = style({
   display: 'flex',
+  flexWrap: 'wrap',
   alignItems: 'center',
   justifyContent: 'space-between',
   gap: 'actions',
-  '@media (min-width: 900px)': { maxInlineSize: '560px' },
 })
 /** The page's own actions, at the end of the bar. */
-export const barActions = style({ display: 'flex', alignItems: 'center', gap: 'actions' })
+export const barActions = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'actions' })
 export const back = style({ display: 'inline-flex', alignItems: 'center', gap: 'tight', minBlockSize: '44px' })
 export const head = style({ display: 'grid', gap: 'tight' })
 export const meta = style({ fontSize: 'label', color: 'ink2' })
@@ -35,22 +35,6 @@ export const collage = style({
   '&[href]:active': { transform: 'scale(0.98)' },
   '@media (hover: hover) and (pointer: fine)': { '&[href]:hover': { translate: '0 -2px' } },
 })
-export const collageLabel = style({ paddingInline: '4px', fontSize: 'label', fontWeight: 600 })
-/** With nothing on the table yet: a line and Make a collage, on stock after the pins. */
-export const collageStart = style({
-  display: 'flex',
-  flexWrap: 'wrap',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 'related',
-  maxInlineSize: '560px',
-  paddingBlock: '12px',
-  paddingInline: '16px 12px',
-  borderRadius: 'panel',
-  backgroundColor: 'stock',
-})
-export const collageStartText = style({ flex: '1 1 14rem', fontSize: 'label', color: 'ink2', textWrap: 'pretty' })
-
 export const pinsHead = style({
   display: 'flex',
   alignItems: 'center',

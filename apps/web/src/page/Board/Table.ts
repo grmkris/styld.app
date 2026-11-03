@@ -1,12 +1,11 @@
-import { cdn, type PieceImagesById, piecesById } from '../../Cdn.ts'
-import type { BoardItem, ImageItem, Paper, Pin } from '@styld/protocol'
+import { cdn, type PieceImagesById } from '../../Cdn.ts'
+import type { BoardItem, ImageItem, Paper } from '@styld/protocol'
 import { PieceItem, TextItem } from '@styld/protocol'
-import { Array, Match, Schema } from 'effect'
+import { Array, Schema } from 'effect'
 import type { Attribute, Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { styled } from '../../Styled.ts'
 import { baseSize } from './Geometry.ts'
-import { pieceFrame } from './Table.styles.ts'
 import * as styles from './View.styles.ts'
 
 // The table as a picture: pieces, text and pictures laid on paper. The board editor adds hands to it; Boards
@@ -35,20 +34,6 @@ export const fromStyld =
   (item, size) =>
     Schema.is(PieceItem)(item) ? pieces.get(item.pieceId)?.thumb : boardImage(item.imageId, size)
 
-/** The pieces a board's pins hold, a look's too: every piece its table places is pinned. */
-export const pinnedPieces = (pins: ReadonlyArray<Pin>): PieceImagesById =>
-  piecesById(
-    pins.flatMap((pin) =>
-      Match.value(pin).pipe(
-        Match.tagsExhaustive({
-          PiecePin: ({ piece }) => [piece],
-          LookPin: ({ look }) => look.pieces,
-          PicturePin: () => [],
-        }),
-      ),
-    ),
-  )
-
 /** What others see of a public board: its pieces' and pictures' public addresses. */
 export const publicPieceImage = (pieceId: string, size: 'thumb' | 'full' = 'thumb') => cdn.publicPiece(pieceId, size)
 export const publicPicture = (imageId: string, size: 'thumb' | 'full' = 'full') => cdn.publicPicture(imageId, size)
@@ -73,13 +58,10 @@ export const itemContent = <Message>(
   ])
 }
 
-/** An item's frame: square for a piece or a picture, the text's own shape for a label. A piece's frame blends
- * with the paper; a picture keeps its true colour. */
+/** An item's frame: square for a piece or picture, fitted to the words for a label. */
 export const itemStyle = (item: BoardItem) => {
   if (Schema.is(TextItem)(item)) return cx(styles.item(), styles.words())
-  return Schema.is(PieceItem)(item)
-    ? cx(styles.item(), styles.square(), pieceFrame())
-    : cx(styles.item(), styles.square())
+  return cx(styles.item(), styles.square())
 }
 
 /** A still table: its paper and items, with no hands on it. `attributes` must not carry a class: an element

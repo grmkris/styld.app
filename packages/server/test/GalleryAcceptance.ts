@@ -1,5 +1,6 @@
 import { expect } from 'bun:test'
 import { Schema } from 'effect'
+import { Board, PieceItem, TextItem } from '@styld/protocol'
 import { receivedPhoto } from './WardrobeAcceptance.ts'
 import { type Call, client, seedAccounts, send, signIn } from './Accounts.ts'
 
@@ -212,6 +213,65 @@ const verifyPins = async (
   expect(await (await owner('/api/boards')).json()).toMatchObject({ boards: [{ id: boardId, pinCount: 3 }] })
 }
 
+/** Saving from elsewhere places pieces immediately and preserves the existing layout, even on retry. */
+const verifyPlacedPins = async (
+  owner: Call,
+  other: Call,
+  boardId: string,
+  pieceId: string,
+  secondPieceId: string,
+  strangerPieceId: string,
+) => {
+  const before = Schema.decodeUnknownSync(Board)(await (await owner(`/api/boards/${boardId}`)).json())
+  const label = { _tag: 'TextItem', id: itemId('s'), ...placement, z: 1, text: 'Keep this layout', style: 'label' }
+  const initial = Schema.decodeUnknownSync(Board)(
+    await (await putTable(owner, boardId, before.version, [label])).json(),
+  )
+  const lookId = await idOf(
+    await send(owner, '/api/looks', 'POST', { name: 'Board placement', pieceIds: [pieceId, secondPieceId] }),
+  )
+  const input = { operationId: 'native-place-pins-1', pieceIds: [pieceId], lookIds: [lookId], placeOnTable: true }
+  const path = `/api/boards/${boardId}/pins`
+  const answers = await Promise.all([send(owner, path, 'POST', input), send(owner, path, 'POST', input)])
+  expect(answers.map((answer) => answer.status)).toEqual([200, 200])
+  const placed = Schema.decodeUnknownSync(Board)(await answers[0]?.json())
+  expect(placed.version).toBe(initial.version + 1)
+  expect(placed.items).toHaveLength(3)
+  expect(Schema.decodeUnknownSync(TextItem)(placed.items[0])).toEqual(Schema.decodeUnknownSync(TextItem)(label))
+  expect(
+    placed.items
+      .filter(Schema.is(PieceItem))
+      .map((item) => String(item.pieceId))
+      .toSorted(),
+  ).toEqual([pieceId, secondPieceId].toSorted())
+  expect(placed.items.map((item) => item.z)).toEqual([1, 2, 3])
+  expect(
+    (
+      await send(owner, `/api/boards/${boardId}/items`, 'PUT', {
+        operationId: 'native-place-stale',
+        version: initial.version,
+        items: [],
+      })
+    ).status,
+  ).toBe(409)
+  const again = Schema.decodeUnknownSync(Board)(
+    await (await send(owner, path, 'POST', { ...input, operationId: 'native-place-pins-2' })).json(),
+  )
+  expect(again.items).toEqual(placed.items)
+  expect(
+    (
+      await send(owner, path, 'POST', {
+        ...input,
+        operationId: 'native-place-foreign-piece',
+        pieceIds: [strangerPieceId],
+        lookIds: [],
+      })
+    ).status,
+  ).toBe(422)
+  expect((await send(other, path, 'POST', input)).status).toBe(404)
+  expect((await send(owner, path, 'POST', { ...input, placeOnTable: false })).status).toBe(409)
+}
+
 /** Boards: created once per operation, listed, saved whole with a version, renamed, given pictures, private to
  * their owner, and deleted with their pictures' bytes. */
 const verifyBoards = async (
@@ -243,6 +303,8 @@ const verifyBoards = async (
   await raceSaves(owner, boardId, 2, [table, items])
   await raceSaves(owner, boardId, 3, [[], []])
   await verifyPins(origin, fixtures, { owner, other }, boardId, { ...pieces, imageId })
+
+  await verifyPlacedPins(owner, other, boardId, pieces.pieceId, pieces.secondPieceId, pieces.strangerPieceId)
 
   // Another account cannot see, change or delete the board.
   expect(await (await other('/api/boards')).json()).toEqual({ boards: [] })

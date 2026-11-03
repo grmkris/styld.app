@@ -11,8 +11,7 @@ import {
   PieceId,
   PieceItem,
   piecesOnTable,
-  raised,
-  stepped,
+  toggledLayer,
   TableLabel,
   TablePiece,
   TextItem,
@@ -106,15 +105,12 @@ describe('tidying a table', () => {
 })
 
 describe('the stack', () => {
-  test('raising an item puts it on top and keeps the stack numbered from one', () => {
+  test('the layer action brings an item to the front, then sends it behind every other item', () => {
     const items = [piece('a', 5), piece('b', 9), piece('c', 7)]
-    expect(raised(items, itemId('a')).map(({ z }) => z)).toEqual([3, 2, 1])
-  })
-
-  test('stepping an item swaps it with its neighbour and stops at the ends', () => {
-    const items = [piece('a', 1), piece('b', 2), piece('c', 3)]
-    expect(stepped(items, itemId('a'), 'forward').map(({ z }) => z)).toEqual([2, 1, 3])
-    expect(stepped(items, itemId('c'), 'forward')).toBe(items)
+    const front = toggledLayer(items, itemId('a'))
+    expect(front.map(({ z }) => z)).toEqual([3, 2, 1])
+    expect(toggledLayer(front, itemId('a')).map(({ z }) => z)).toEqual([1, 3, 2])
+    expect(toggledLayer(items, itemId('missing'))).toBe(items)
   })
 
   test('a look made from the table lists its pieces from the top down', () => {

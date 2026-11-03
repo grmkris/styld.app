@@ -11,7 +11,7 @@ import {
   landing,
   piecesOnTable,
   settle,
-  stepped,
+  toggledLayer,
   TextItem,
   type TextStyle,
   topZ,
@@ -59,7 +59,7 @@ export const addedPiece = (model: Model, pieceId: string): UpdateReturn => {
       added(model, (id) =>
         PieceItem.make({ id, pieceId: Schema.decodeUnknownSync(PieceId)(pieceId), ...landing(model.items, 380) }),
       ),
-    onNonEmpty: ([first]) => removed(model, first.id),
+    onNonEmpty: ([first]) => ({ model: modifyFields(model, { maybeSelectedId: () => Option.some(first.id) }) }),
   })
 }
 
@@ -106,8 +106,7 @@ export const textUpdated = (model: Model, id: string, text: string) =>
 export const styleSelected = (model: Model, id: string, style: TextStyle) =>
   changed(model, id, (item) => (Schema.is(TextItem)(item) ? { ...item, style } : item))
 
-export const layered = (model: Model, id: string, direction: 'forward' | 'backward') =>
-  committed(model, model.items, stepped(model.items, id, direction))
+export const layered = (model: Model, id: string) => committed(model, model.items, toggledLayer(model.items, id))
 
 export const duplicated = (model: Model, id: string): UpdateReturn =>
   Option.match(findItem(model.items, id), {

@@ -1,4 +1,3 @@
-import { raised } from '@styld/protocol'
 import { Match, Option } from 'effect'
 import { modifyFields } from 'foldkit/struct'
 import { committed, findItem, type UpdateReturn, withItem } from './Edits.ts'
@@ -6,17 +5,14 @@ import { dragged, nudged, type Placement, type Pointer, pinched, turned } from '
 import type { KeyStep } from './Message.ts'
 import { Gesture, type Model } from './Model.ts'
 
-/** A press on an item picks it up: it comes to the top and follows the pointer. A second finger while one
- * is already moving it turns the move into a pinch. */
+/** A press selects and moves an item without changing its layer. A second finger starts a pinch. */
 export const pressedItem = (model: Model, id: string, pointer: Pointer, isTouch: boolean): UpdateReturn =>
   Gesture.match(model.gesture, {
     Idle: () => {
-      const items = raised(model.items, id)
-      return Option.match(findItem(items, id), {
+      return Option.match(findItem(model.items, id), {
         onNone: () => ({ model }),
         onSome: (from) => ({
           model: modifyFields(model, {
-            items: () => items,
             maybeSelectedId: () => Option.some(id),
             gesture: () => Gesture.Dragging({ id, isTouch, start: pointer, now: pointer, from, before: model.items }),
           }),

@@ -135,23 +135,20 @@ const verifyHome = async (page: Page, origin: string) => {
   await page.getByRole('button', { name: 'Worn today' }).waitFor({ state: 'visible' })
 }
 
-/** The round + on Boards opens a new board on its page under the default name: an empty collage above nothing
- * pinned yet, with the navigation; its settings rename it, and its collage opens the editor. */
+/** The round + opens a new board directly on its table; Edit still renames it. */
 const openNewBoard = async (page: Page, origin: string) => {
   await page.goto(`${origin}/boards`, { waitUntil: 'networkidle' })
   await page.getByRole('heading', { name: 'Boards', level: 1 }).waitFor({ state: 'visible' })
   await page.getByRole('button', { name: 'New board' }).click()
   await page.waitForURL(/\/boards\/bd_[^/]+$/)
   await page.getByRole('heading', { name: 'My board', level: 1 }).waitFor({ state: 'visible' })
-  await page.getByText('Nothing pinned yet').waitFor({ state: 'visible' })
-  expect(await page.getByRole('navigation', { name: 'Navigation' }).isVisible()).toBe(true)
+  await page.getByRole('region', { name: 'The table' }).waitFor({ state: 'visible' })
+  expect(await page.getByRole('navigation', { name: 'Navigation' }).isVisible()).toBe(false)
   await expectNoSidewaysScroll(page)
   await page.getByRole('button', { name: 'Edit', exact: true }).click()
   await page.getByLabel('Board name').fill('Weekend')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
   await page.getByRole('heading', { name: 'Weekend', level: 1 }).waitFor({ state: 'visible' })
-  await page.getByRole('link', { name: 'Make a collage' }).click()
-  await page.waitForURL(/\/boards\/bd_[^/]+\/collage$/)
   await page.getByRole('heading', { name: 'Weekend' }).waitFor({ state: 'visible' })
 }
 
@@ -160,8 +157,11 @@ const verifyBoard = async (context: BrowserContext, page: Page, origin: string) 
   // The editor has the whole phone screen: the navigation pill would sit over the tray of pieces.
   expect(await page.getByRole('navigation', { name: 'Navigation' }).isVisible()).toBe(false)
   await expectNoSidewaysScroll(page)
-  for (const name of ['Cable knit', 'Denim shorts', 'Derby shoes'])
+  for (const name of ['Cable knit', 'Denim shorts', 'Derby shoes']) {
+    await page.getByRole('button', { name: 'Add your piece', exact: true }).click()
     await page.getByRole('button', { name: `Put ${name} on the table` }).click()
+    await page.getByRole('dialog').waitFor({ state: 'hidden' })
+  }
   const knit = page.getByRole('button', { name: 'Cable knit', exact: true })
   await knit.waitFor({ state: 'visible' })
 
@@ -247,6 +247,7 @@ const verifyBoardPage = async (page: Page, origin: string) => {
   await page.getByRole('link', { name: /^Weekend/ }).click()
   await page.getByRole('heading', { name: 'Weekend', level: 1 }).waitFor({ state: 'visible' })
   await page.getByText('4 pins').waitFor({ state: 'visible' })
+  await page.getByRole('button', { name: 'Edit', exact: true }).click()
   for (const name of ['Cable knit', 'Denim shorts', 'Derby shoes', 'A picture'])
     await page.getByRole('img', { name, exact: true }).first().waitFor({ state: 'visible' })
   await page.getByRole('button', { name: 'Take Derby shoes off the board' }).click()
@@ -254,7 +255,6 @@ const verifyBoardPage = async (page: Page, origin: string) => {
   await page.getByText('3 pins').waitFor({ state: 'visible' })
   await shoot(page, 'phone-board-page')
 
-  await page.getByRole('button', { name: 'Edit', exact: true }).click()
   const name = page.getByLabel('Board name')
   await name.fill('Weekend away')
   await page.getByRole('button', { name: 'Save', exact: true }).click()
@@ -271,6 +271,8 @@ const verifyBoardPage = async (page: Page, origin: string) => {
   await page.getByText('Saved to Weekend away').waitFor({ state: 'visible' })
   await page.getByRole('link', { name: 'Open', exact: true }).click()
   await page.getByText('4 pins').waitFor({ state: 'visible' })
+  await page.getByRole('button', { name: 'Derby shoes', exact: true }).waitFor({ state: 'visible' })
+  expect(await page.locator('[data-item]').count()).toBe(5)
 }
 
 const verifyAskAndWardrobe = async (page: Page, origin: string) => {
@@ -431,7 +433,6 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
     await page.getByRole('link', { name: /^Weekend away/ }).click()
     await page.getByRole('heading', { name: 'Weekend away', level: 1 }).waitFor({ state: 'visible' })
     await shoot(page, 'desktop-board-page')
-    await page.getByRole('link', { name: 'Edit collage' }).click()
     await page.getByRole('button', { name: 'Text: Weekend in Piran' }).waitFor({ state: 'visible' })
     await shoot(page, 'desktop-board')
     // Beside the rail the heads that carry a named action (Add clothes) or a search keep the title level with Boards'.
@@ -447,7 +448,7 @@ export const verifyGalleryJourney = async (browser: Browser, origin: string, fix
     await page.getByRole('link', { name: /^Weekend away/ }).click()
     // Four pins: the piece taken off was saved back from its own page.
     await page.getByText('4 kartice').waitFor({ state: 'visible' })
-    await page.getByRole('link', { name: 'Uredi kolaž' }).click()
+    await page.getByRole('region', { name: 'Miza' }).waitFor({ state: 'visible' })
     await page.getByRole('button', { name: 'Besedilo: Weekend in Piran' }).waitFor({ state: 'visible' })
     await page.getByRole('button', { name: 'Shrani kot videz' }).waitFor({ state: 'visible' })
     await shoot(page, 'desktop-board-sl')

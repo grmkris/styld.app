@@ -72,13 +72,13 @@ export interface MessageArgumentsByKey<_T = string> {
   'board.addPicture': Readonly<Record<string, never>>
   'board.addPiece': { readonly name: string | number }
   'board.addText': Readonly<Record<string, never>>
-  'board.backward': Readonly<Record<string, never>>
+  'board.addYourPiece': Readonly<Record<string, never>>
+  'board.bringFront': Readonly<Record<string, never>>
   'board.dropHere': Readonly<Record<string, never>>
   'board.duplicate': Readonly<Record<string, never>>
   'board.empty': Readonly<Record<string, never>>
   'board.failed': Readonly<Record<string, never>>
   'board.flip': Readonly<Record<string, never>>
-  'board.forward': Readonly<Record<string, never>>
   'board.generated': Readonly<Record<string, never>>
   'board.heldBack': Readonly<Record<string, never>>
   'board.heldBackCheck': Readonly<Record<string, never>>
@@ -146,11 +146,12 @@ export interface MessageArgumentsByKey<_T = string> {
   'board.saveLook': Readonly<Record<string, never>>
   'board.saved': Readonly<Record<string, never>>
   'board.saving': Readonly<Record<string, never>>
+  'board.selectPiece': { readonly name: string | number }
   'board.selected': Readonly<Record<string, never>>
+  'board.sendBack': Readonly<Record<string, never>>
   'board.sending': { readonly count: number }
   'board.styleHeadline': Readonly<Record<string, never>>
   'board.styleLabel': Readonly<Record<string, never>>
-  'board.takePiece': { readonly name: string | number }
   'board.text': Readonly<Record<string, never>>
   'board.textItem': { readonly text: string | number }
   'board.textStyle': Readonly<Record<string, never>>
@@ -165,7 +166,6 @@ export interface MessageArgumentsByKey<_T = string> {
   'board.unpinKeep': Readonly<Record<string, never>>
   'board.unpinPicture': Readonly<Record<string, never>>
   'board.unpinPictureAsk': Readonly<Record<string, never>>
-  'board.wardrobe': Readonly<Record<string, never>>
   'board.wardrobeEmpty': Readonly<Record<string, never>>
   'board.wardrobeFailed': Readonly<Record<string, never>>
   'boards.createFailed': Readonly<Record<string, never>>
@@ -504,7 +504,6 @@ export interface MessageArgumentsByKey<_T = string> {
   'studio.addFailed': Readonly<Record<string, never>>
   'studio.addMenuLooks': Readonly<Record<string, never>>
   'studio.addMenuPieces': Readonly<Record<string, never>>
-  'studio.backToBoard': Readonly<Record<string, never>>
   'studio.backToBoards': Readonly<Record<string, never>>
   'studio.boardName': Readonly<Record<string, never>>
   'studio.boardSettings': Readonly<Record<string, never>>
@@ -516,10 +515,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'studio.deleteBoard': Readonly<Record<string, never>>
   'studio.deleteConfirm': Readonly<Record<string, never>>
   'studio.deleteFailed': Readonly<Record<string, never>>
-  'studio.editCollage': Readonly<Record<string, never>>
-  'studio.emptyCollageHint': { readonly count: number }
   'studio.emptyGridTitle': Readonly<Record<string, never>>
-  'studio.makeCollage': Readonly<Record<string, never>>
   'studio.pinCount': { readonly count: number }
   'studio.pinning': Readonly<Record<string, never>>
   'studio.removeFailed': Readonly<Record<string, never>>
@@ -787,4 +783,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '02f5288a89c0aee6e462f9b9ccc404f1ecb3a8152c1f1d1b23a5202f4b234837'
+export const catalogVersion = 'eee5624d9920c73694515545ce37267797cfa51e02a3ed8bb580bce8fd35d463'

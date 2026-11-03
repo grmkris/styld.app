@@ -1,6 +1,6 @@
 import { Board, BoardItemId, PieceItem } from '@styld/protocol'
 import { Option, Schema } from 'effect'
-import { expect, given, inside, Mount, role, scene, text } from 'foldkit/scene'
+import { click, Command, expect, given, Mount, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
@@ -11,6 +11,8 @@ import { Message as BoardMessage } from '../src/page/Board/Message.ts'
 import { fromBoard, init as boardInit } from '../src/page/Board/Model.ts'
 import { view } from '../src/View.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
+import { Dialog } from '@foldkit/ui'
+import { sceneSheetOpened } from './SheetFixtures.ts'
 
 const boardId = `bd_${'weekend'.padEnd(22, 'x')}`
 const knit = PieceItem.make({
@@ -62,7 +64,9 @@ describe('the collage editor', () => {
         ),
       ),
       measured,
-      inside(role('region', { name: 'Your pieces' }), expect(role('toolbar', { name: 'Selected' })).toExist()),
+      expect(role('toolbar', { name: 'Selected' })).toExist(),
+      expect(role('button', { name: 'Send to back' })).toExist(),
+      expect(role('button', { name: 'Forward' })).not.toExist(),
       expect(role('group', { name: 'Paper' })).not.toExist(),
     )
   })
@@ -79,7 +83,7 @@ describe('the collage editor', () => {
       expect(role('button', { name: 'Save as a look' })).toHaveAttr('aria-disabled', 'true'),
       expect(role('button', { name: 'Save as a look' })).toHaveAttr('aria-describedby', 'board-look-hint'),
       expect(text('Put some of your pieces on the table first.')).toExist(),
-      expect(text('Loading…')).toExist(),
+      expect(role('button', { name: 'Add your piece' })).toExist(),
     )
     scene(
       { update, view },
@@ -101,7 +105,11 @@ describe('the collage editor', () => {
       { update, view },
       given(withPieces(editing([knit]), wardrobe)),
       measured,
-      expect(role('button', { name: 'Take Knit (white and navy) off the table' })).toExist(),
+      click(role('button', { name: 'Add your piece' })),
+      Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
+      Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+      ...sceneSheetOpened,
+      expect(role('button', { name: 'Select Knit (white and navy)' })).toExist(),
       expect(role('button', { name: 'Put Shirt (black) on the table' })).toExist(),
       expect(role('button', { name: 'Put Shirt on the table' })).toExist(),
       expect(role('button', { name: 'Put Navy wool coat on the table' })).toExist(),
@@ -110,9 +118,37 @@ describe('the collage editor', () => {
       { update, view },
       given(withPieces(editing([knit], 'sl'), wardrobe)),
       measured,
-      expect(role('button', { name: 'Umakni z mize: Pletenina (bela in mornarsko modra)' })).toExist(),
+      click(role('button', { name: 'Dodaj svoj kos' })),
+      Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
+      Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+      ...sceneSheetOpened,
+      expect(role('button', { name: 'Izberi: Pletenina (bela in mornarsko modra)' })).toExist(),
       expect(role('button', { name: 'Položi na mizo: Srajca (črna)' })).toExist(),
       expect(role('button', { name: 'Položi na mizo: Navy wool coat' })).toExist(),
+    )
+  })
+  test('filters the sheet by category and type, and clears the type when the category changes', () => {
+    const wardrobe = [
+      pieceFixture('boot', { type: 'boots', name: 'Walking boots' }),
+      pieceFixture('heel', { type: 'heels', name: 'Evening heels' }),
+      pieceFixture('pants', { type: 'trousers', name: 'Blue trousers' }),
+    ]
+    scene(
+      { update, view },
+      given(withPieces(editing([]), wardrobe)),
+      measured,
+      click(role('button', { name: 'Add your piece' })),
+      Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
+      Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+      ...sceneSheetOpened,
+      click(role('button', { name: 'Shoes' })),
+      expect(role('button', { name: 'Put Blue trousers on the table' })).not.toExist(),
+      click(role('button', { name: 'Boots' })),
+      expect(role('button', { name: 'Put Walking boots on the table' })).toExist(),
+      expect(role('button', { name: 'Put Evening heels on the table' })).not.toExist(),
+      click(role('button', { name: 'Clothing' })),
+      expect(role('button', { name: 'Put Blue trousers on the table' })).toExist(),
+      expect(role('button', { name: 'Put Walking boots on the table' })).not.toExist(),
     )
   })
 })

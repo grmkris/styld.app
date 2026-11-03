@@ -12,6 +12,7 @@ import { view } from '../src/View.ts'
 import { lenses } from '../src/Page.ts'
 import { at, withPage, withPieces } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
+import { MeasurePaper } from '../src/page/Board/Commands.ts'
 
 const boardId = `bd_${'weekend'.padEnd(22, 'x')}`
 const knit = pieceFixture('knit', { name: 'Cable knit' })
@@ -45,6 +46,12 @@ const picking = (locale: 'en' | 'sl') =>
     ],
   )
 
+const measured = Mount.resolve(MeasurePaper, BoardMessage.MeasuredPaper({ width: 500 }))
+const withSettings = (state: typeof page) =>
+  withPage(state, lenses.board, (currentBoard) =>
+    modifyFields(currentBoard, { settings: (settings) => ({ ...settings, isOpen: true }) }),
+  )
+
 describe("a board's page", () => {
   test('keeps the way back and says what it is doing while the board loads', () => {
     scene(
@@ -62,7 +69,9 @@ describe("a board's page", () => {
     )
     scene(
       { update, view },
-      given(shown),
+      given(withSettings(shown)),
+      measured,
+      Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
       expect(text('1 pin, 0 of them public on your profile')).toExist(),
       expect(text('Only you see this one until it has its own picture and passes Styld’s check')).toExist(),
     )
@@ -78,19 +87,23 @@ describe("a board's page", () => {
     )
     scene(
       { update, view },
-      given(shown),
+      given(withSettings(shown)),
+      measured,
+      Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
       expect(text('1 pin, 0 of them public on your profile')).not.toExist(),
       expect(text('Only you see this one until it has its own picture and passes Styld’s check')).not.toExist(),
     )
   })
 
-  test('says where it stands under its name, and offers a collage after the pins while there is none', () => {
+  test('opens the interactive canvas directly with a way back and its tools', () => {
     scene(
       { update, view },
       given(page),
+      measured,
       expect(text('1 pin, only you can see it')).toExist(),
-      expect(text('Lay this pin out on a table.')).toExist(),
-      expect(role('link', { name: 'Make a collage' })).toHaveAttr('href', `/boards/${boardId}/collage`),
+      expect(role('region', { name: 'The table' })).toExist(),
+      expect(role('button', { name: 'Add your piece' })).toExist(),
+      expect(role('link', { name: 'All boards' })).toHaveAttr('href', '/boards'),
       expect(role('link', { name: 'Edit collage' })).not.toExist(),
     )
   })
@@ -98,7 +111,9 @@ describe("a board's page", () => {
   test('asks before a pin comes off, since it leaves the collage too', () => {
     scene(
       { update, view },
-      given(page),
+      given(withSettings(page)),
+      measured,
+      Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
       click(role('button', { name: 'Take Cable knit off the board' })),
       Command.resolve(FocusPin, BoardMessage.CompletedFocusPin()),
       expect(role('group', { name: 'Take Cable knit off the board' })).toHaveText(
@@ -120,6 +135,7 @@ describe("a board's page", () => {
     scene(
       { update, view },
       given(picking('en')),
+      measured,
       Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
       expect(role('button', { name: 'Shirt (white and blue)' })).toExist(),
       expect(role('button', { name: 'Low shoes (black)' })).toExist(),
@@ -127,6 +143,7 @@ describe("a board's page", () => {
     scene(
       { update, view },
       given(picking('sl')),
+      measured,
       Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
       expect(role('button', { name: 'Srajca (bela in modra)' })).toExist(),
       expect(role('button', { name: 'Nizki čevlji (črna)' })).toExist(),

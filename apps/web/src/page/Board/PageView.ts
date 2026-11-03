@@ -1,16 +1,16 @@
 import { cdn } from '../../Cdn.ts'
 import { Dialog } from '@foldkit/ui'
 import { format, type Locale, type MessageKey } from '@styld/i18n'
-import { Mood, type Paper, type Piece, type Pin, type PublicBoard, textLength } from '@styld/protocol'
+import { Mood, type Paper, type Pin, type PublicBoard, textLength } from '@styld/protocol'
 import { Array, Match, Option } from 'effect'
-import { Submodel } from 'foldkit'
+import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../../ActionButton.ts'
 import { primaryAction, secondaryAction, smallAction } from '../../Actions.styles.ts'
 import { textField } from '../../Fields.styles.ts'
 import { addIcon, backIcon, loader } from '../../Icon.ts'
-import { boardCollageRouter, boardsRouter, lookRouter, pieceRouter } from '../../route.ts'
+import { boardsRouter, lookRouter, pieceRouter } from '../../route.ts'
 import { styled } from '../../Styled.ts'
 import * as PeopleView from '../PeopleView.ts'
 import { publicToggle } from '../PublicToggle.ts'
@@ -22,21 +22,31 @@ import { boardStateView } from './Unready.ts'
 import { lookMosaic, pickerBody } from './PickerView.ts'
 import { pieceDescription } from '../WardrobeWords.ts'
 import { visitingView } from './Visiting.ts'
-import { type Model, PinWork, Publishing, Removal, Rename } from './Model.ts'
+import { type Model, canChangePins, PinWork, Publishing, Removal, Rename } from './Model.ts'
 import { chip, chosen } from '../../Controls.styles.ts'
 import * as MakeView from './MakeView.ts'
 import { generatedMark } from './MakeView.ts'
 import * as styles from './PageView.styles.ts'
-import { boardImage, fromStyld, pinnedPieces, stillTable } from './Table.ts'
+import { boardImage } from './Table.ts'
+import { editorView } from './View.ts'
+import { saveLookView } from './ViewTools.ts'
+import type { PiecesData } from '../../ServerData.ts'
 
 /** A pinned thing on the board; one the board shows others without (no picture of its own yet, or Styld's check held
  * it back) says so under it. */
-const pinView = (pin: Pin, asking: boolean, heldBack: boolean, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const pinView = (
+  pin: Pin,
+  asking: boolean,
+  heldBack: boolean,
+  disabled: boolean,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): Html =>
   h.keyed('li')(
     pin.id,
     [...styled(h, styles.pin())],
     [
-      ...pinContent(pin, asking, locale, h),
+      ...pinContent(pin, asking, disabled, locale, h),
       heldBack ? h.p(styled(h, styles.heldBack()), [format(locale, heldBackReason(pin), {})]) : h.empty,
     ],
   )
@@ -52,7 +62,13 @@ const heldBackReason = (pin: Pin): MessageKey =>
     }),
   )
 
-const pinContent = (pin: Pin, asking: boolean, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> =>
+const pinContent = (
+  pin: Pin,
+  asking: boolean,
+  disabled: boolean,
+  locale: Locale,
+  h: HtmlBuilder<Message>,
+): ReadonlyArray<Html> =>
   Match.value(pin).pipe(
     Match.tagsExhaustive({
       PiecePin: ({ id, piece }) => [
@@ -76,6 +92,7 @@ const pinContent = (pin: Pin, asking: boolean, locale: Locale, h: HtmlBuilder<Me
             question: 'board.unpinAsk',
           },
           asking,
+          disabled,
           locale,
           h,
         ),
@@ -93,6 +110,7 @@ const pinContent = (pin: Pin, asking: boolean, locale: Locale, h: HtmlBuilder<Me
         unpinButton(
           { pinId: id, label: format(locale, 'board.unpinPicture', {}), question: 'board.unpinPictureAsk' },
           asking,
+          disabled,
           locale,
           h,
         ),
@@ -108,6 +126,7 @@ const pinContent = (pin: Pin, asking: boolean, locale: Locale, h: HtmlBuilder<Me
         unpinButton(
           { pinId: id, label: format(locale, 'board.unpin', { name: look.name }), question: 'board.unpinAsk' },
           asking,
+          disabled,
           locale,
           h,
         ),
@@ -128,28 +147,6 @@ const statusLine = (model: Model, locale: Locale) => {
     : format(locale, 'studio.boardStatus', { count, visibility: model.visibility })
 }
 
-/** The collage as a card that opens the editor, named by its visible words. */
-const collageView = (model: Model, paper: Paper, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.a(
-    [h.Href(boardCollageRouter({ boardId: model.boardId })), ...styled(h, styles.collage())],
-    [
-      stillTable(model.items, paper, [], h, fromStyld(pinnedPieces(model.pins))),
-      h.span(styled(h, styles.collageLabel()), [format(locale, 'studio.editCollage', {})]),
-    ],
-  )
-
-/** Nothing laid out yet: one line after the pins and the way into the editor, instead of a blank table above them. */
-const collageStartView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.div(styled(h, styles.collageStart()), [
-    h.p(styled(h, styles.collageStartText()), [
-      format(locale, 'studio.emptyCollageHint', { count: model.pins.length }),
-    ]),
-    h.a(
-      [h.Href(boardCollageRouter({ boardId: model.boardId })), ...styled(h, cx(secondaryAction(), smallAction()))],
-      [format(locale, 'studio.makeCollage', {})],
-    ),
-  ])
-
 const pinsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.section(
     [h.AriaLabelledBy('board-pins'), ...styled(h, styles.head())],
@@ -162,6 +159,7 @@ const pinsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
             style: secondaryAction(),
             leading: addIcon(h),
             onClick: Message.ClickedAddPins(),
+            isDisabled: !canChangePins(model),
           },
           h,
         ),
@@ -179,7 +177,14 @@ const pinsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
           h.ul(
             styled(h, styles.grid()),
             Array.map(pins, (pin) =>
-              pinView(pin, Option.contains(model.unpinning, pin.id), heldBack(model, pin.id), locale, h),
+              pinView(
+                pin,
+                Option.contains(model.unpinning, pin.id),
+                heldBack(model, pin.id),
+                !canChangePins(model),
+                locale,
+                h,
+              ),
             ),
           ),
       }),
@@ -323,6 +328,7 @@ const settingsBody = (
         ]),
       ],
     ),
+    pinsView(model, locale, h),
     sharingView(model, locale, h),
     moodsView(model, locale, h),
     removalView(model, locale, h),
@@ -347,7 +353,7 @@ const makeSlot = (
 
 const readyView = (
   model: Model,
-  wardrobe: ReadonlyArray<Piece>,
+  pieces: PiecesData,
   name: string,
   paper: Paper,
   locale: Locale,
@@ -360,7 +366,6 @@ const readyView = (
         [backIcon(h), format(locale, 'studio.backToBoards', {})],
       ),
       h.div(styled(h, styles.barActions()), [
-        makeSlot('board-make-button', MakeView.buttonView, model, locale, h),
         // Rename, public, moods and delete: a word a pencil could not say.
         h.button(
           [
@@ -380,9 +385,11 @@ const readyView = (
       model.visibility === 'public' ? checkNotice(Option.getOrNull(model.check), locale, h) : h.empty,
       makeSlot('board-make-status', MakeView.statusView, model, locale, h),
     ]),
-    model.items.length === 0 ? h.empty : collageView(model, paper, locale, h),
-    pinsView(model, locale, h),
-    model.items.length === 0 ? collageStartView(model, locale, h) : h.empty,
+    h.div(styled(h, styles.barActions()), [
+      saveLookView(model, locale, h),
+      makeSlot('board-make-button', MakeView.buttonView, model, locale, h),
+    ]),
+    editorView(model, pieces, paper, locale, h),
     sheetShown(model.settings)
       ? bottomSheet(
           {
@@ -400,7 +407,17 @@ const readyView = (
           {
             dialog: model.picker,
             title: format(locale, 'board.pickerTitle', { name }),
-            body: () => [h.div(styled(h, styles.sheetBody()), pickerBody(model, wardrobe, locale, h))],
+            body: () => [
+              h.div(
+                styled(h, styles.sheetBody()),
+                pickerBody(
+                  model,
+                  Option.getOrElse(AsyncData.getData(pieces), () => []),
+                  locale,
+                  h,
+                ),
+              ),
+            ],
             toParentMessage: (message) => Message.GotPickerMessage({ message }),
             locale,
           },
@@ -410,8 +427,8 @@ const readyView = (
     makeSlot('board-make-sheet', MakeView.sheetView, model, locale, h),
   ])
 
-/** A board's page: its collage as a card that opens the editor, then its pins, newest first. */
-export const view = Submodel.defineView<Model, Message, PeopleView.Inputs & { readonly pieces: ReadonlyArray<Piece> }>(
+/** Owners edit the board immediately; visitors see its public presentation. */
+export const view = Submodel.defineView<Model, Message, PeopleView.Inputs & { readonly pieces: PiecesData }>(
   (model, { locale, signedIn, pieces }, h) => {
     const actions = h.submodel({
       slotId: 'board-people',

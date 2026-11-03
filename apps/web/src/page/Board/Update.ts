@@ -38,7 +38,7 @@ import {
 import { Message } from './Message.ts'
 import { BoardData, BoardShown, fromBoard, LookSave, type Model, Saving } from './Model.ts'
 import type { LoadError } from '../../ServerData.ts'
-import { pageSteps } from './Page.ts'
+import { closePiecePicker, pageSteps } from './Page.ts'
 import * as People from '../People.ts'
 import * as Make from './Make.ts'
 import { ReloadBoard } from './PageCommands.ts'
@@ -108,12 +108,13 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     ClickedRedo: () => redone(model),
     ClickedTidy: () => committed(model, model.items, tidied(model.items)),
     ClickedAddText: ({ text }) => addedText(model, text),
-    ClickedWardrobePiece: ({ pieceId }) => addedPiece(model, pieceId),
-    ClickedPinnedPicture: ({ imageId }) => placedPicture(model, imageId),
+    ClickedWardrobePiece: ({ pieceId }) =>
+      Update.combine(model, [(stepModel) => addedPiece(stepModel, pieceId), closePiecePicker]),
+    ClickedPinnedPicture: ({ imageId }) =>
+      Update.combine(model, [(stepModel) => placedPicture(stepModel, imageId), closePiecePicker]),
     ClickedFlip: ({ id }) => flipped(model, id),
     ClickedDuplicate: ({ id }) => duplicated(model, id),
-    ClickedForward: ({ id }) => layered(model, id, 'forward'),
-    ClickedBackward: ({ id }) => layered(model, id, 'backward'),
+    ClickedLayer: ({ id }) => layered(model, id),
     ClickedRemove: ({ id }) => removed(model, id),
     ClickedUndoRemove: () => undoRemove(model),
     ElapsedToast: ({ generation }) => toastElapsed(model, generation),

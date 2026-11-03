@@ -85,7 +85,7 @@ export const Board = Schema.Struct({
   id: BoardId,
   name: Schema.String,
   paper: Paper,
-  /** Bumped by every save of the table; a save names the version it started from. Pinning leaves it. */
+  /** Bumped by every save of the table; a save names the version it started from. Placing pins also advances it. */
   version: Schema.Int,
   items: Schema.Array(BoardItem),
   pins: Schema.Array(Pin),
@@ -142,6 +142,8 @@ export const AddPins = Schema.Struct({
   operationId: OperationId,
   pieceIds: Schema.optionalKey(Schema.Array(PieceId).check(Schema.isMaxLength(pinsAtOnce))),
   lookIds: Schema.optionalKey(Schema.Array(LookId).check(Schema.isMaxLength(pinsAtOnce))),
+  /** Also place missing pieces on the canvas, preserving the existing layout. */
+  placeOnTable: Schema.optionalKey(Schema.Boolean),
 })
 export type AddPins = typeof AddPins.Type
 

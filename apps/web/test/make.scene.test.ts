@@ -20,6 +20,7 @@ import { Message, update } from '../src/App.ts'
 import { AskToMake, Message as MakeMessage, ReadGeneration } from '../src/page/Board/Make.ts'
 import { Message as BoardMessage } from '../src/page/Board/Message.ts'
 import { fromBoard, init as boardInit } from '../src/page/Board/Model.ts'
+import { MeasurePaper } from '../src/page/Board/Commands.ts'
 import { ReloadBoard } from '../src/page/Board/PageCommands.ts'
 import { view } from '../src/View.ts'
 import { lenses } from '../src/Page.ts'
@@ -67,7 +68,10 @@ const page = withPage(at(`/boards/${boardId}`, { signedIn: true }), lenses.board
 
 const resolveFocus = Command.resolve(RadioGroup.FocusOption, RadioGroup.Message.CompletedFocusOption())
 
+const measured = Mount.resolve(MeasurePaper, BoardMessage.MeasuredPaper({ width: 500 }))
+
 const openSheet = [
+  measured,
   click(role('button', { name: 'Make with Styld' })),
   Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
   Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
@@ -126,11 +130,24 @@ describe('Make with Styld on a board', () => {
     )
   })
 
-  test('marks a generated sticker, and makes a mood board of the person’s pieces from their words', () => {
+  test('marks a generated sticker in the board settings', () => {
     scene(
       { update, view },
       given(page),
+      measured,
+      click(role('button', { name: 'Edit' })),
+      Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
+      Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+      ...sceneSheetOpened,
       expect(text('Generated')).toExist(),
+    )
+  })
+
+  test('makes a mood board of the person’s pieces from their words', () => {
+    scene(
+      { update, view },
+      given(page),
+      measured,
       click(role('button', { name: 'Make with Styld' })),
       Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
       Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),

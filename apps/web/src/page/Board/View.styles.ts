@@ -17,24 +17,8 @@ export const loadingPins = style({
   marginBlockStart: '20px',
 })
 export const pinSkeleton = style({ aspectRatio: '1 / 1', borderRadius: 'panel' })
-export const header = style({
-  display: 'flex',
-  flexWrap: 'wrap',
-  alignItems: 'center',
-  rowGap: 'actions',
-  columnGap: 'grid',
-})
-/** The way back and Save as a look, at the two ends of the editor's first row. */
-export const headerBar = style({
-  display: 'flex',
-  flexBasis: '100%',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  gap: 'related',
-})
 export const saveLook = style({ display: 'contents' })
 export const back = style({ display: 'inline-flex', alignItems: 'center', gap: 'tight', minBlockSize: '44px' })
-export const title = style({ flex: '1 1 12rem', minInlineSize: '0' })
 export const status = style({ fontSize: 'small', color: 'ink3', '&[data-tone="error"]': { color: 'error' } })
 
 export const stage = style({
@@ -357,61 +341,4 @@ export const tray = style({
     gap: 'related',
     '& h2': { fontSize: 'heading' },
   },
-})
-/** One scrolling row of pieces on a phone; a grid beside the table on a desktop. */
-export const trayList = style({
-  display: 'flex',
-  gap: 'actions',
-  margin: '0',
-  marginInline: 'calc(-1 * max(20px, env(safe-area-inset-left)))',
-  paddingInline: 'max(20px, env(safe-area-inset-left))',
-  paddingBlockEnd: '4px',
-  overflowX: 'auto',
-  scrollSnapType: 'x proximity',
-  // Snapping lines the first piece up on the gutter, not the screen's edge.
-  scrollPaddingInline: 'max(20px, env(safe-area-inset-left))',
-  listStyle: 'none',
-  '& > li': { flex: '0 0 76px', scrollSnapAlign: 'start' },
-  '@media (min-width: 900px)': {
-    display: 'grid',
-    gridTemplateColumns: 'repeat(auto-fill, minmax(88px, 1fr))',
-    marginInline: '0',
-    paddingInline: '0',
-    overflowX: 'visible',
-    '& > li': { flex: 'none' },
-  },
-})
-export const traySkeleton = style({ aspectRatio: '1 / 1', borderRadius: 'panel' })
-export const trayPiece = style({
-  display: 'grid',
-  // One track the size of the tile, so a tall piece is fitted to the tile instead of growing it.
-  gridTemplateColumns: 'minmax(0, 1fr)',
-  gridTemplateRows: 'minmax(0, 1fr)',
-  placeItems: 'center',
-  inlineSize: '100%',
-  minBlockSize: '0',
-  aspectRatio: '1 / 1',
-  padding: '6px',
-  borderWidth: '0',
-  borderRadius: 'panel',
-  // Paper-2, not stock: a piece's photo blends into it (trayImage), as it does into the table.
-  backgroundColor: 'paper2',
-  cursor: 'pointer',
-  transitionProperty: 'transform, box-shadow, background-color',
-  transitionDuration: 'press',
-  transitionTimingFunction: 'standard',
-  ':active': { transform: 'scale(0.96)' },
-  '&[aria-pressed="true"]': { boxShadow: 'chosen' },
-  '@media (hover: hover) and (pointer: fine)': { ':hover': { backgroundColor: 'paper2Hover' } },
-})
-export const trayImage = style({
-  inlineSize: '100%',
-  blockSize: '100%',
-  minInlineSize: '0',
-  minBlockSize: '0',
-  objectFit: 'contain',
-  pointerEvents: 'none',
-  // A piece's picture that is still its photo lets the pale backdrop give way to the tile; a picture pinned on the
-  // board (`/cdn/boards/…`) keeps its true colour. A piece's picture is its signed address (`/cdn/media/…`).
-  '&[src^="/cdn/media/"]': { mixBlendMode: 'darken' },
 })

@@ -19,6 +19,7 @@ type Unpin = { readonly pinId: Pin['id']; readonly label: string; readonly quest
 export const unpinButton = (
   { pinId, label, question }: Unpin,
   asking: boolean,
+  disabled: boolean,
   locale: Locale,
   h: HtmlBuilder<Message>,
 ): Html =>
@@ -32,6 +33,7 @@ export const unpinButton = (
               label: format(locale, 'board.unpinConfirm', {}),
               style: cx(primaryAction(), smallAction()),
               onClick: Message.ClickedConfirmUnpin({ pinId }),
+              isDisabled: disabled,
             },
             h,
           ),
@@ -50,6 +52,7 @@ export const unpinButton = (
         [
           h.Type('button'),
           h.Id(unpinId(pinId)),
+          h.Disabled(disabled),
           h.AriaLabel(label),
           ...styled(h, styles.unpin()),
           h.OnClick(Message.ClickedUnpin({ pinId })),

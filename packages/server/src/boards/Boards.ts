@@ -31,6 +31,7 @@ import { ownPieceIds } from '../wardrobe/Store.ts'
 import { usableUpload } from '../wardrobe/Shared.ts'
 import { type BoardRow, type PinRemoval } from './Store.ts'
 import { tables } from './Tables.ts'
+import { placePins } from './PinTable.ts'
 import {
   lookTarget,
   newPins,
@@ -160,6 +161,7 @@ const pinRefusal = (
   boardId: string,
   pieceIds: ReadonlyArray<string>,
   lookIds: ReadonlyArray<string>,
+  placeOnTable: boolean,
 ) =>
   Effect.gen(function* () {
     if (pieceIds.length + lookIds.length === 0) return Option.some('nothingToPin' as const)
@@ -167,6 +169,8 @@ const pinRefusal = (
     if (pieceIds.some((id) => !owned.has(id))) return Option.some('pieceNotFound' as const)
     const ownLooks = yield* stored(ownLookIds(yield* Database, accountId, lookIds))
     if (lookIds.some((id) => !ownLooks.has(id))) return Option.some('lookNotFound' as const)
+    // Canvas placement checks only newly added pins against capacity inside its versioned retry.
+    if (placeOnTable) return Option.none()
     const held = (yield* stored((yield* BoardStore).pinCounts([boardId]))).get(boardId) ?? 0
     if (held + pieceIds.length + lookIds.length > maximumBoardPins) return Option.some('boardFull' as const)
     return Option.none()
@@ -183,12 +187,13 @@ const pinning = Effect.map(Effect.context<BoardServices>(), (context) => ({
       accountId,
       operationId: input.operationId,
       command: 'addPins',
-      input: [boardId, pieceIds, lookIds],
+      input: [boardId, pieceIds, lookIds, ...(input.placeOnTable ? [true] : [])],
     })
     if (Option.isSome(yield* priorOf(operation))) return yield* one(accountId, boardId)
     yield* ownBoard(accountId, boardId)
-    const refusal = yield* pinRefusal(accountId, boardId, pieceIds, lookIds)
+    const refusal = yield* pinRefusal(accountId, boardId, pieceIds, lookIds, input.placeOnTable ?? false)
     if (Option.isSome(refusal)) return yield* PinRefused.make({ reason: refusal.value })
+    if (input.placeOnTable) return yield* placePins(boardId, pieceIds, lookIds, operation)
     const at = yield* nowDate
     const pins = yield* newPins(boardId, [...pieceIds.map(pieceTarget), ...lookIds.map(lookTarget)], at)
     const receipt = yield* receiptRow(operation, boardId)

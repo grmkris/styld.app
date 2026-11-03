@@ -5,6 +5,14 @@ sources:
     sl: 133375c41998fb
   ask.title:
     sl: 25151b7829ac9
+  board.addYourPiece:
+    sl: 4f000d5544291
+  board.bringFront:
+    sl: ed71fc904db54
+  board.selectPiece:
+    sl: 153d945c3dbf06
+  board.sendBack:
+    sl: 14bb856cbfca86
   capture.camera.finish:
     sl: b298d94ca95c4
   capture.camera.finishAction:

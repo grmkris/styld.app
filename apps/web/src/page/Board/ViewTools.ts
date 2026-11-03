@@ -1,6 +1,6 @@
 import { Button, FileDrop } from '@foldkit/ui'
 import { format, type Locale, type MessageKey } from '@styld/i18n'
-import { type BoardItem, ImageType, Paper, PieceItem, TextItem, TextStyle, textLength } from '@styld/protocol'
+import { type BoardItem, ImageType, Paper, PieceItem, TextItem, TextStyle, textLength, topZ } from '@styld/protocol'
 import { Array, Option, Schema } from 'effect'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../../ActionButton.ts'
@@ -162,14 +162,19 @@ const textEditor = (item: typeof TextItem.Type, locale: Locale, h: HtmlBuilder<M
     ),
   ])
 
-const itemActions = (item: BoardItem, locale: Locale, h: HtmlBuilder<Message>): Html =>
+const itemActions = (item: BoardItem, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(
     [h.Role('toolbar'), h.AriaLabel(format(locale, 'board.selected', {})), ...styled(h, styles.selectionRow())],
     [
       tool(format(locale, 'board.flip', {}), flipIcon(h), Message.ClickedFlip({ id: item.id }), false, h),
       tool(format(locale, 'board.duplicate', {}), copyIcon(h), Message.ClickedDuplicate({ id: item.id }), false, h),
-      tool(format(locale, 'board.forward', {}), forwardIcon(h), Message.ClickedForward({ id: item.id }), false, h),
-      tool(format(locale, 'board.backward', {}), backwardIcon(h), Message.ClickedBackward({ id: item.id }), false, h),
+      tool(
+        format(locale, item.z === topZ(model.items) ? 'board.sendBack' : 'board.bringFront', {}),
+        item.z === topZ(model.items) ? backwardIcon(h) : forwardIcon(h),
+        Message.ClickedLayer({ id: item.id }),
+        model.items.length < 2,
+        h,
+      ),
       tool(format(locale, 'board.remove', {}), deleteIcon(h), Message.ClickedRemove({ id: item.id }), false, h),
     ],
   )
@@ -210,7 +215,7 @@ export const selectedView = (model: Model, locale: Locale, h: HtmlBuilder<Messag
     onNone: () => h.empty,
     onSome: (item) =>
       h.div(styled(h, styles.selection()), [
-        itemActions(item, locale, h),
+        itemActions(item, model, locale, h),
         Schema.is(TextItem)(item) ? textEditor(item, locale, h) : h.empty,
       ]),
   })

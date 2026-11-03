@@ -7,6 +7,7 @@ import type { UpdateReturn } from './Edits.ts'
 import { Message } from './Message.ts'
 import {
   BoardData,
+  canChangePins,
   boardName,
   BoardShown,
   fromBoard,
@@ -50,6 +51,13 @@ const pickerSheet = sheetFolds<Model, Message>({
   write: (model, nextPicker) => modifyFields(model, { picker: () => nextPicker }),
   toParentMessage: (message) => Message.GotPickerMessage({ message }),
 })
+
+const piecePickerSheet = sheetFolds<Model, Message>({
+  read: (model) => model.piecePicker,
+  write: (model, nextPiecePicker) => modifyFields(model, { piecePicker: () => nextPiecePicker }),
+  toParentMessage: (message) => Message.GotPiecePickerMessage({ message }),
+})
+export const closePiecePicker = piecePickerSheet.close
 
 const foldSettings = settingsSheet.update
 const foldPicker = pickerSheet.update
@@ -133,10 +141,13 @@ const unpinAsked = (model: Model, pinId: string): UpdateReturn => ({
   commands: [FocusPin({ selector: `#${keepPinId(pinId)}` })],
 })
 
-const unpinned = (model: Model, pinId: string): UpdateReturn => ({
-  model: modifyFields(model, { pinWork: () => PinWork.Sending(), unpinning: () => Option.none() }),
-  commands: [UnpinThings({ boardId: model.boardId, pinIds: [pinId] })],
-})
+const unpinned = (model: Model, pinId: string): UpdateReturn =>
+  canChangePins(model)
+    ? {
+        model: modifyFields(model, { pinWork: () => PinWork.Sending(), unpinning: () => Option.none() }),
+        commands: [UnpinThings({ boardId: model.boardId, pinIds: [pinId] })],
+      }
+    : { model }
 
 const pinKept = (model: Model, pinId: string): UpdateReturn => ({
   model: modifyFields(model, { unpinning: () => Option.none() }),
@@ -145,6 +156,7 @@ const pinKept = (model: Model, pinId: string): UpdateReturn => ({
 
 /** The picker opens with nothing ticked, and asks for the person's looks the first time. */
 const pickerOpened = (model: Model): UpdateReturn => {
+  if (!canChangePins(model)) return { model }
   const next = modifyFields(model, { picks: () => [], pinWork: () => PinWork.Idle() })
   const opened = openPicker(next)
   return AsyncData.isIdle(model.looks)
@@ -166,32 +178,34 @@ const picked = (picks: ReadonlyArray<string>, kind: 'piece' | 'look') =>
   Array.flatMap(picks, (pick) => (pick.startsWith(`${kind}:`) ? [pick.slice(kind.length + 1)] : []))
 
 const picksSubmitted = (model: Model): UpdateReturn =>
-  model.picks.length === 0
-    ? closePicker(model)
-    : {
-        model: modifyFields(model, { pinWork: () => PinWork.Sending() }),
-        commands: [
-          PinThings({
-            boardId: model.boardId,
-            pieceIds: picked(model.picks, 'piece'),
-            lookIds: picked(model.picks, 'look'),
-          }),
-        ],
-      }
+  !canChangePins(model)
+    ? { model }
+    : model.picks.length === 0
+      ? closePicker(model)
+      : {
+          model: modifyFields(model, { pinWork: () => PinWork.Sending() }),
+          commands: [
+            PinThings({
+              boardId: model.boardId,
+              pieceIds: picked(model.picks, 'piece'),
+              lookIds: picked(model.picks, 'look'),
+            }),
+          ],
+        }
 
 /** The board after pinning or unpinning. Unpinning can take things off the table, which moves its version on. */
-const pinsChanged = (model: Model, board: Board): UpdateReturn =>
-  closePicker(
-    modifyFields(
-      board.version === model.version
-        ? modifyFields(withSharing(model, board), { pins: () => board.pins })
-        : fromBoard(model, board),
-      {
-        pinWork: () => PinWork.Idle(),
-        picks: () => [],
-      },
-    ),
-  )
+const pinsChanged = (model: Model, board: Board): UpdateReturn => {
+  const next: Model =
+    board.version === model.version
+      ? modifyFields(withSharing(model, board), { pins: () => board.pins })
+      : modifyFields(fromBoard(model, board), {
+          past: () => [],
+          future: () => [],
+          maybeSelectedId: () => Option.none(),
+          saving: () => Saving.Saved(),
+        })
+  return closePicker(modifyFields(next, { pinWork: () => PinWork.Idle(), picks: () => [] }))
+}
 
 const looksLoaded = (model: Model, looks: ReadonlyArray<Look>): UpdateReturn => ({
   model: modifyFields(model, { looks: () => LooksData.Success({ data: looks }) }),
@@ -245,6 +259,10 @@ type PageTag =
   | 'ClickedConfirmUnpin'
   | 'ClickedKeepPin'
   | 'CompletedFocusPin'
+  | 'ClickedAddYourPiece'
+  | 'GotPiecePickerMessage'
+  | 'SelectedPickerGroup'
+  | 'SelectedPickerType'
   | 'ClickedAddPins'
   | 'GotPickerMessage'
   | 'ToggledPick'
@@ -287,6 +305,15 @@ export const pageSteps = (
   ClickedConfirmUnpin: ({ pinId }) => unpinned(model, pinId),
   ClickedKeepPin: ({ pinId }) => pinKept(model, pinId),
   CompletedFocusPin: () => ({ model }),
+  ClickedAddYourPiece: () => piecePickerSheet.open(model),
+  GotPiecePickerMessage: ({ message }) => piecePickerSheet.update(model, message),
+  SelectedPickerGroup: ({ group }) => ({
+    model: modifyFields(model, {
+      maybePickerGroup: () => group,
+      maybePickerType: () => Option.none(),
+    }),
+  }),
+  SelectedPickerType: ({ type }) => ({ model: modifyFields(model, { maybePickerType: () => type }) }),
   ClickedAddPins: () => pickerOpened(model),
   GotPickerMessage: (got) => foldPicker(model, got.message),
   ToggledPick: ({ pick }) => pickToggled(model, pick),

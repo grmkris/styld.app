@@ -23,6 +23,8 @@ import * as Ask from './page/Ask.ts'
 import * as Today from './page/Today.ts'
 import * as BoardSubscription from './page/Board/Subscription.ts'
 import * as Board from './page/Board/Update.ts'
+import { ownBoard, PinWork } from './page/Board/Model.ts'
+import { sheetShown } from './page/Sheet.ts'
 import * as Boards from './page/Boards.ts'
 import * as Login from './page/Login.ts'
 import * as Look from './page/Look.ts'
@@ -430,7 +432,7 @@ const retryLanding = Update.foldChildStep({ update: Visit.retry, ...at(lenses.ex
 /** The pages that show the pieces, which are asked for again while one is settling. */
 const showsPieces = (model: Model) =>
   Match.value(model.route).pipe(
-    Match.tag('Wardrobe', 'Ask', 'BoardCollage', 'Photo', () => true),
+    Match.tag('Wardrobe', 'Ask', 'Board', 'BoardCollage', 'Photo', () => true),
     Match.tag('Home', () => hasSession(model)),
     Match.orElse(() => false),
   )
@@ -453,7 +455,17 @@ export const subscriptions = Subscription.aggregate(
   Subscription.lift(BoardSubscription.pageSubscriptions)<Model, Message>(at(lenses.board)),
   Subscription.lift(BoardSubscription.subscriptions)<Model, Message>({
     ...at(lenses.board),
-    when: (model) => AppRoute.guards.BoardCollage(model.route),
+    when: (model) =>
+      Option.exists(
+        lenses.board.read(model.page),
+        (board) =>
+          Option.isSome(ownBoard(board.board)) &&
+          !sheetShown(board.settings) &&
+          !sheetShown(board.picker) &&
+          !sheetShown(board.piecePicker) &&
+          !sheetShown(board.make.sheet) &&
+          !PinWork.guards.Sending(board.pinWork),
+      ),
   }),
 )
 

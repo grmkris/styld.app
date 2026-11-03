@@ -9,7 +9,7 @@ import { primaryAction } from '../../Actions.styles.ts'
 import { addIcon, checkIcon, loader } from '../../Icon.ts'
 import { styled } from '../../Styled.ts'
 import { Message } from './Message.ts'
-import { type Model, PinWork } from './Model.ts'
+import { type Model, PinWork, canChangePins } from './Model.ts'
 import * as styles from './PageView.styles.ts'
 import { pieceDescription } from '../WardrobeWords.ts'
 
@@ -99,7 +99,7 @@ export const pickerBody = (
           ? format(locale, 'studio.pinning', {})
           : format(locale, 'board.pickSelected', { count: model.picks.length }),
         style: primaryAction(),
-        isDisabled: sending || model.picks.length === 0,
+        isDisabled: !canChangePins(model) || model.picks.length === 0,
         leading: sending ? loader(h) : addIcon(h),
         onClick: Message.SubmittedPicks(),
       },

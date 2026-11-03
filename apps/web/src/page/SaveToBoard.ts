@@ -104,7 +104,11 @@ const pinned = (target: Target, boardId: BoardId, operationId: OperationId) =>
         params: { photoId: yield* Schema.decodeUnknownEffect(PhotoId)(target.id) },
         payload: { operationId, boardId },
       })
-    else yield* api.board.addPins({ params: { boardId }, payload: { operationId, ...(yield* pinsOf(target)) } })
+    else
+      yield* api.board.addPins({
+        params: { boardId },
+        payload: { operationId, placeOnTable: true, ...(yield* pinsOf(target)) },
+      })
   })
 
 /** Pin the target on a board, a new one first when it has only a name. A failure carries back what the next try to

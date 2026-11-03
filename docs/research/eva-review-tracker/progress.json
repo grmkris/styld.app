@@ -26,12 +26,43 @@
       "criteriaDone": []
     },
     "T-04": {
-      "status": "in_progress",
+      "status": "ready_for_review",
       "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "Batch 02 in progress: strict stacking, selection preserves layers, one Front/Back action. Synthetic before captures recorded; implementation and acceptance pending.",
-      "evidence": [],
-      "criteriaDone": []
+      "note": "Stable Front/Back layering implemented. Full gate passed: 759 unit and 29 native tests / 1,284 assertions. Matching 390/1440px screenshots reviewed; exact-release preview deployment/readback is pending.",
+      "evidence": [
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Full integration gate passed: 759 unit tests, 29 native tests / 1,284 assertions. Final screenshot harness passed 49 assertions: stacking, selection/drag/reload, category/type filtering, placement and nested-sheet dismissal. Synthetic local workerd/Chromium fixtures; not a physical-device or live-provider run."
+        }
+      ],
+      "criteriaDone": [
+        0,
+        1
+      ],
+      "comparisons": [
+        {
+          "title": "Stable Front/Back layering",
+          "width": 390,
+          "height": 844,
+          "before": "batch-02/T-04-layering-before-390.png",
+          "after": "batch-02/T-04-layering-after-390.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching Chromium viewports and synthetic fixtures through local workerd. Before: c05071e website artifact at e61e358; after: batch 02 final artifact. T-11 after uses a viewport capture for the fixed sheet; other captures are full-page. Not physical-device proof."
+        },
+        {
+          "title": "Stable Front/Back layering",
+          "width": 1440,
+          "height": 844,
+          "before": "batch-02/T-04-layering-before-1440.png",
+          "after": "batch-02/T-04-layering-after-1440.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching Chromium viewports and synthetic fixtures through local workerd. Before: c05071e website artifact at e61e358; after: batch 02 final artifact. T-11 after uses a viewport capture for the fixed sheet; other captures are full-page. Not physical-device proof."
+        }
+      ]
     },
     "T-05": {
       "status": "in_progress",
@@ -118,12 +149,45 @@
       "criteriaDone": []
     },
     "T-09": {
-      "status": "in_progress",
+      "status": "ready_for_review",
       "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "Batch 02 in progress: owners enter the canvas directly; Save to board places pieces and looks with versioned, idempotent writes. Gallery photos also need canvas placement. Browser and durable acceptance pending.",
-      "evidence": [],
-      "criteriaDone": []
+      "note": "Direct owned-board editing and placement implemented. Full gate passed: 759 unit and 29 native tests / 1,284 assertions. Matching 390/1440px screenshots reviewed; exact-release preview deployment/readback is pending.",
+      "evidence": [
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Full integration gate passed: 759 unit tests, 29 native tests / 1,284 assertions. Final screenshot harness passed 49 assertions: stacking, selection/drag/reload, category/type filtering, placement and nested-sheet dismissal. Synthetic local workerd/Chromium fixtures; not a physical-device or live-provider run."
+        }
+      ],
+      "criteriaDone": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "comparisons": [
+        {
+          "title": "Direct owned-board editing and placement",
+          "width": 390,
+          "height": 844,
+          "before": "batch-02/T-09-open-board-before-390.png",
+          "after": "batch-02/T-09-open-board-after-390.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching Chromium viewports and synthetic fixtures through local workerd. Before: c05071e website artifact at e61e358; after: batch 02 final artifact. T-11 after uses a viewport capture for the fixed sheet; other captures are full-page. Not physical-device proof."
+        },
+        {
+          "title": "Direct owned-board editing and placement",
+          "width": 1440,
+          "height": 844,
+          "before": "batch-02/T-09-open-board-before-1440.png",
+          "after": "batch-02/T-09-open-board-after-1440.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching Chromium viewports and synthetic fixtures through local workerd. Before: c05071e website artifact at e61e358; after: batch 02 final artifact. T-11 after uses a viewport capture for the fixed sheet; other captures are full-page. Not physical-device proof."
+        }
+      ]
     },
     "T-10": {
       "status": "not_started",
@@ -134,12 +198,45 @@
       "criteriaDone": []
     },
     "T-11": {
-      "status": "in_progress",
+      "status": "ready_for_review",
       "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "Batch 02 in progress: replace the unfiltered strip with Add your piece and a category/type bottom sheet, using wardrobe terminology. Browser acceptance pending.",
-      "evidence": [],
-      "criteriaDone": []
+      "note": "Filtered Add your piece sheet implemented. Full gate passed: 759 unit and 29 native tests / 1,284 assertions. Matching 390/1440px screenshots reviewed; exact-release preview deployment/readback is pending.",
+      "evidence": [
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Full integration gate passed: 759 unit tests, 29 native tests / 1,284 assertions. Final screenshot harness passed 49 assertions: stacking, selection/drag/reload, category/type filtering, placement and nested-sheet dismissal. Synthetic local workerd/Chromium fixtures; not a physical-device or live-provider run."
+        }
+      ],
+      "criteriaDone": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "comparisons": [
+        {
+          "title": "Filtered Add your piece sheet",
+          "width": 390,
+          "height": 844,
+          "before": "batch-02/T-11-piece-picker-before-390.png",
+          "after": "batch-02/T-11-piece-picker-after-390.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching Chromium viewports and synthetic fixtures through local workerd. Before: c05071e website artifact at e61e358; after: batch 02 final artifact. T-11 after uses a viewport capture for the fixed sheet; other captures are full-page. Not physical-device proof."
+        },
+        {
+          "title": "Filtered Add your piece sheet",
+          "width": 1440,
+          "height": 844,
+          "before": "batch-02/T-11-piece-picker-before-1440.png",
+          "after": "batch-02/T-11-piece-picker-after-1440.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching Chromium viewports and synthetic fixtures through local workerd. Before: c05071e website artifact at e61e358; after: batch 02 final artifact. T-11 after uses a viewport capture for the fixed sheet; other captures are full-page. Not physical-device proof."
+        }
+      ]
     },
     "T-12": {
       "status": "not_started",
@@ -836,10 +933,19 @@
         "T-09",
         "T-11"
       ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Board batch 02 passed the completed full gate: 759 unit tests and 29 native tests / 1,284 assertions. Six matching before/after pairs are attached. T-04, T-09 and T-11 await exact-release preview readback before closure.",
+      "items": [
+        "T-04",
+        "T-09",
+        "T-11"
+      ]
     }
   ],
   "overview": {
-    "label": "Board workflow batch in progress",
-    "note": "Batch 01 remains deployed. T-04, T-09 and T-11 are being implemented together: predictable layers, direct owned-board editing and a filtered piece sheet. API placement/privacy checks have passed; browser screenshots, the completed full gate and preview readback remain pending. Tickets are open."
+    "label": "Board workflow verified locally",
+    "note": "T-04, T-09 and T-11 passed the full gate and matching phone/desktop screenshot review. Their isolated preview deployment/readback is pending. Batch 01 remains deployed; its T-05 and T-15 follow-ups stay open."
   }
 }

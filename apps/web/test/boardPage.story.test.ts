@@ -75,6 +75,33 @@ const withPins = (pins: ReadonlyArray<object>, changes: object = {}) =>
   Schema.decodeUnknownSync(Board)({ ...board, pins, ...changes })
 
 describe('a board page', () => {
+  test('pin mutations wait for the local table save, then discard history of removed pins', () => {
+    const edited: Model = modifyFields(open, {
+      saving: () => Saving.Waiting({ generation: 1 }),
+      past: () => [board.items],
+      maybeSelectedId: () => Option.some(knitOnTable.id),
+    })
+    const waiting = update(edited, Message.ClickedConfirmUnpin({ pinId: knitPin.id }))
+    expect(waiting.model).toEqual(edited)
+    expect(waiting.commands ?? []).toEqual([])
+    expect(update(edited, Message.ClickedAddPins()).commands ?? []).toEqual([])
+    const settled = modifyFields(edited, { saving: () => Saving.Saved() })
+    const sending = update(settled, Message.ClickedConfirmUnpin({ pinId: knitPin.id }))
+    expect(PinWork.guards.Sending(sending.model.pinWork)).toBe(true)
+    expect(update(sending.model, Message.ClickedConfirmUnpin({ pinId: knitPin.id })).commands ?? []).toEqual([])
+    const removed = update(
+      sending.model,
+      Message.SucceededPins({
+        board: withPins([], { version: 3, items: [] }),
+      }),
+    ).model
+    expect(removed.items).toEqual([])
+    expect(removed.past).toEqual([])
+    expect(removed.future).toEqual([])
+    expect(removed.maybeSelectedId).toEqual(Option.none())
+    expect(removed.version).toBe(3)
+  })
+
   test('renaming from its settings sends the typed name and shows it once saved', () => {
     story(
       update,

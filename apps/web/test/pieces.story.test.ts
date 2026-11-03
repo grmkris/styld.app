@@ -86,8 +86,8 @@ describe('the pieces every page shows are read once and kept current', () => {
 })
 
 describe('only a page that shows the pieces follows them', () => {
-  test('the wardrobe, Home, Ask, a photo and a collage poll while a piece processes', () => {
-    for (const path of ['/wardrobe', '/', '/ask', '/wardrobe/gallery/ph_1', '/boards/bd_1/collage'])
+  test('the wardrobe, Home, Ask, a photo and both board addresses poll while a piece processes', () => {
+    for (const path of ['/wardrobe', '/', '/ask', '/wardrobe/gallery/ph_1', '/boards/bd_1', '/boards/bd_1/collage'])
       expect(polled(path)).toEqual(Option.some({ pendingIds: [processing.id] }))
   })
 

@@ -38,30 +38,12 @@ const stackOrder = (items: ReadonlyArray<BoardItem>): ReadonlyArray<string> =>
 const restacked = (items: ReadonlyArray<BoardItem>, order: ReadonlyArray<string>): ReadonlyArray<BoardItem> =>
   Array.map(items, (item) => ({ ...item, z: order.indexOf(item.id) + 1 }))
 
-/** Put one item on top of the others. */
-export const raised = (items: ReadonlyArray<BoardItem>, id: string): ReadonlyArray<BoardItem> => {
+/** Send the top item to the back; bring any other item to the front, keeping the other layers in order. */
+export const toggledLayer = (items: ReadonlyArray<BoardItem>, id: string): ReadonlyArray<BoardItem> => {
   const order = stackOrder(items)
-  return restacked(
-    items,
-    Array.appendAll(
-      Array.filter(order, (other) => other !== id),
-      Array.filter(order, (other) => other === id),
-    ),
-  )
-}
-
-/** Move one item a step up or down the stack. */
-export const stepped = (
-  items: ReadonlyArray<BoardItem>,
-  id: string,
-  direction: 'forward' | 'backward',
-): ReadonlyArray<BoardItem> => {
-  const order = [...stackOrder(items)]
-  const at = order.indexOf(id)
-  const to = direction === 'forward' ? at + 1 : at - 1
-  if (at < 0 || to < 0 || to >= order.length) return items
-  const swapped = order.map((other, index) => (index === at ? (order[to] ?? other) : index === to ? id : other))
-  return restacked(items, swapped)
+  if (!order.includes(id) || order.length < 2) return items
+  const others = order.filter((other) => other !== id)
+  return restacked(items, order.at(-1) === id ? [id, ...others] : [...others, id])
 }
 
 export const topZ = (items: ReadonlyArray<BoardItem>): number =>

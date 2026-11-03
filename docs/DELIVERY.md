@@ -101,3 +101,13 @@ viewports, deployed smoke acceptance, physical devices and paid-provider behavio
 Batch `c05071e` passed the full gate on 3 November (755 unit tests, 29 native tests / 1,276 assertions), deployed
 to the isolated preview, and passed exact-release smoke acceptance (3 tests / 42 assertions). Nine before/after
 pairs are attached to T-13, T-15 and T-05. T-13 is verified; T-15/T-05 remain partial. See the tracker’s `BATCH-01.md`.
+
+## Eva board batch 02
+
+T-04, T-09 and T-11 add stable Front/Back layering, direct owned-board editing and a category/type piece sheet.
+`board.story`, `boardPage.story/scene`, `collage.scene`, `make.scene` and protocol `Placement` cover the local
+behavior. Native Gallery acceptance covers atomic pin/placement retries, preserved layouts, stale-save conflicts,
+foreign ownership and the direct browser editor; Photos acceptance checks the placed picture stays private.
+Six matching before/after pairs and the review boundaries are in the tracker's `BATCH-02.md`. The full gate passed
+(759 unit tests; 29 native tests / 1,284 assertions), including the signed-in board journey. Exact-release preview
+readback is pending; tickets remain ready for review.

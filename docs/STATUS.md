@@ -37,6 +37,15 @@ Nine matching before/after pairs are published in the tracker. The full gate and
 passed on `c05071e`; T-13 is verified, while T-15 and T-05 remain partial. This is not physical-phone or
 live-provider acceptance. The tracker retains partial tickets and records evidence separately for each finding.
 
+## Eva board batch 02 (preview deployment pending)
+
+T-04, T-09 and T-11 are implemented together: one Front/Back control with stable selection layers, direct owned-board
+editing, Add to board canvas placement, and a category/type piece sheet. Placement uses a versioned D1 batch with
+pins and its operation receipt; pin controls wait for pending table saves and uploads. Public board visitors retain
+their read-only presentation, and gallery photos remain private. The completed full gate passed (759 unit tests; 29 native tests / 1,284 assertions), as did the final
+screenshot harness (49 assertions). Six matching pairs were visually reviewed at 390 and 1440px. The preview
+below still serves batch 01 until deployment and exact-release readback; tickets await that final step.
+
 ## The preview
 
 - **URL:** https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev (isolated workers.dev,

@@ -60,6 +60,8 @@ import { initials } from './Avatar.ts'
 import { You } from './You.ts'
 import { avatar as avatarStyle } from './Avatar.styles.ts'
 import { pageView } from './PageViews.ts'
+import { lenses } from './Page.ts'
+import { ownBoard } from './page/Board/Model.ts'
 
 /** The languages the menu offers, each in its own words: the reviewed ones only (`parseLocale`). */
 const languages: ReadonlyArray<Readonly<{ locale: Language; label: string }>> = [
@@ -212,7 +214,12 @@ const appNavigation = (model: Model, initial: string, h: HtmlBuilder<Message>): 
   return h.nav(
     [
       h.AriaLabel(format(locale, 'nav.navigation', {})),
-      ...styled(h, AppRoute.guards.BoardCollage(model.route) ? cx(appNav(), navBesideTable()) : appNav()),
+      ...styled(
+        h,
+        Option.isSome(Option.flatMap(lenses.board.read(model.page), (board) => ownBoard(board.board)))
+          ? cx(appNav(), navBesideTable())
+          : appNav(),
+      ),
     ],
     [
       item('home', homeRouter({}), format(locale, 'nav.home', {}), homeTabIcon(h)),

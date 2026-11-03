@@ -177,6 +177,7 @@ const verifyOnBoard = async (origin: string, owner: Call, photoId: string) => {
   const own = Schema.decodeUnknownSync(BoardPins)(await (await owner(`/api/boards/${boardId}`)).json())
   const pictures = own.pins.filter(({ _tag }) => _tag === 'PicturePin')
   expect(pictures).toHaveLength(1)
+  expect(own.items).toEqual([{ _tag: 'ImageItem' }])
   expect(own.pins.some(({ _tag }) => _tag === 'LookPin')).toBe(true)
   const visibility = await send(owner, `/api/boards/${boardId}/visibility`, 'PUT', { visibility: 'public' })
   expect(visibility.status).toBe(200)

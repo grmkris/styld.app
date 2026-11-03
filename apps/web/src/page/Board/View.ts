@@ -1,34 +1,23 @@
-import { cdn, piecesById } from '../../Cdn.ts'
+import { piecesById } from '../../Cdn.ts'
 import { format, type Locale } from '@styld/i18n'
-import {
-  type BoardItem,
-  ImageItem,
-  type Paper,
-  type Piece,
-  PieceItem,
-  PicturePin,
-  PiecePin,
-  TextItem,
-} from '@styld/protocol'
+import { type BoardItem, type Paper, type Piece, PieceItem, TextItem } from '@styld/protocol'
 import { Array, Option, Schema } from 'effect'
-import { AsyncData, Submodel } from 'foldkit'
+import { AsyncData } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { actionButton } from '../../ActionButton.ts'
-import { backIcon } from '../../Icon.ts'
-import { boardRouter, lookRouter } from '../../route.ts'
-import { block } from '../../Skeleton.styles.ts'
+import { addIcon } from '../../Icon.ts'
+import { lookRouter } from '../../route.ts'
 import { styled } from '../../Styled.ts'
-import { visuallyHidden } from '../../VisuallyHidden.styles.ts'
-import { cx } from 'zyzz'
 import type { PiecesData } from '../../ServerData.ts'
 import { MeasurePaper } from './Commands.ts'
-import { boardImage, fromStyld, type ImageSource, itemContent, itemStyle, placement } from './Table.ts'
+import { fromStyld, type ImageSource, itemContent, itemStyle, placement } from './Table.ts'
 import { type KeyStep, Message } from './Message.ts'
 import { Gesture, LookSave, type Model, Saving, Toast, Upload } from './Model.ts'
-import { boardStateView } from './Unready.ts'
 import * as styles from './View.styles.ts'
+import { secondaryAction } from '../../Actions.styles.ts'
+import { piecePickerView } from './PiecePickerView.ts'
 import { pieceDescription } from '../WardrobeWords.ts'
-import { paperChoiceView, saveLookView, selectedView, toolbarView } from './ViewTools.ts'
+import { paperChoiceView, selectedView, toolbarView } from './ViewTools.ts'
 
 const primaryButton = 0
 
@@ -233,135 +222,36 @@ const lookView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
     NoPieces: () => h.p([h.Role('status'), ...styled(h, styles.fine())], [format(locale, 'board.lookNoPieces', {})]),
   })
 
-const trayPiece = (piece: Piece, isOn: boolean, locale: Locale, h: HtmlBuilder<Message>): Html => {
-  const name = pieceDescription(piece, locale)
-  return h.keyed('li')(
-    piece.id,
-    [],
-    [
-      h.button(
-        [
-          h.Type('button'),
-          h.AriaPressed(isOn ? 'true' : 'false'),
-          h.AriaLabel(format(locale, isOn ? 'board.takePiece' : 'board.addPiece', { name })),
-          ...styled(h, styles.trayPiece()),
-          h.OnClick(Message.ClickedWardrobePiece({ pieceId: piece.id })),
-        ],
-        [h.img([h.Src(cdn.piece(piece)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.trayImage())])],
-      ),
-    ],
-  )
-}
-
-/** A picture pinned on the board but off its table: a tap lays it back. */
-const trayPicture = (imageId: PicturePin['imageId'], locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.keyed('li')(
-    imageId,
-    [],
-    [
-      h.button(
-        [
-          h.Type('button'),
-          h.AriaPressed('false'),
-          h.AriaLabel(format(locale, 'board.placePicture', {})),
-          ...styled(h, styles.trayPiece()),
-          h.OnClick(Message.ClickedPinnedPicture({ imageId })),
-        ],
-        [h.img([h.Src(boardImage(imageId, 'thumb')), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.trayImage())])],
-      ),
-    ],
-  )
-
-/** The tray's tiles in shape while the wardrobe loads, and what is loading for assistive technology. */
-const trayLoading = (locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.div(
-    [],
-    [
-      h.ul(
-        [h.AriaHidden(true), ...styled(h, styles.trayList())],
-        [0, 1, 2, 3, 4].map((index) =>
-          h.keyed('li')(String(index), [], [h.span(styled(h, cx(block(), styles.traySkeleton())))]),
-        ),
-      ),
-      h.p([h.Role('status'), ...styled(h, visuallyHidden())], [format(locale, 'common.loading', {})]),
-    ],
-  )
-
-/** The tray: what is pinned on the board first, then the rest of the wardrobe. */
-const trayView = (model: Model, pieces: PiecesData, locale: Locale, h: HtmlBuilder<Message>, top: Html): Html => {
-  const onTable = new Set(Array.flatMap(model.items, (item) => (Schema.is(PieceItem)(item) ? [item.pieceId] : [])))
-  const picturesOnTable = new Set(
-    Array.flatMap(model.items, (item) => (Schema.is(ImageItem)(item) ? [item.imageId] : [])),
-  )
-  const pinnedPieces = Array.flatMap(model.pins, (pin) =>
-    Schema.is(PiecePin)(pin) && pin.piece.status === 'ready' ? [pin.piece] : [],
-  )
-  const pinnedIds = new Set(pinnedPieces.map(({ id }) => id))
-  const offTable = Array.flatMap(model.pins, (pin) =>
-    Schema.is(PicturePin)(pin) && !picturesOnTable.has(pin.imageId) ? [pin.imageId] : [],
-  )
-  const body = AsyncData.matchData(pieces, {
-    onEmpty: () => trayLoading(locale, h),
-    onFailure: () => h.p([h.Role('alert'), ...styled(h, styles.fine())], [format(locale, 'board.wardrobeFailed', {})]),
-    onData: (wardrobe) => {
-      const rest = Array.filter(wardrobe, (piece) => piece.status === 'ready' && !pinnedIds.has(piece.id))
-      const offered = [...pinnedPieces, ...rest]
-      return offered.length + offTable.length === 0
-        ? h.p(styled(h, styles.fine()), [format(locale, 'board.wardrobeEmpty', {})])
-        : h.ul(styled(h, styles.trayList()), [
-            ...Array.map(offTable, (imageId) => trayPicture(imageId, locale, h)),
-            ...Array.map(offered, (piece) => trayPiece(piece, onTable.has(piece.id), locale, h)),
-          ])
-    },
-  })
-  return h.section(
-    [h.AriaLabelledBy('board-tray'), h.DataAttribute('tray', ''), ...styled(h, styles.tray())],
-    [top, h.h2([h.Id('board-tray')], [format(locale, 'board.wardrobe', {})]), body],
-  )
-}
-
-const readyView = (
+/** The editable canvas, its controls and the piece sheet, shared by both board addresses. */
+export const editorView = (
   model: Model,
   pieces: PiecesData,
-  name: string,
   paper: Paper,
   locale: Locale,
   h: HtmlBuilder<Message>,
 ): Html =>
-  h.div(styled(h, styles.page()), [
-    h.header(styled(h, styles.header()), [
-      h.div(styled(h, styles.headerBar()), [
-        h.a(
-          [h.Href(boardRouter({ boardId: model.boardId })), ...styled(h, styles.back())],
-          [backIcon(h), format(locale, 'studio.backToBoard', {})],
+  h.div(styled(h, styles.stage()), [
+    toolbarView(model, locale, h),
+    statusView(model, locale, h),
+    lookView(model, locale, h),
+    paperView(model, pieces, paper, locale, h),
+    toastView(model, locale, h),
+    h.div(
+      [h.DataAttribute('tray', ''), ...styled(h, styles.tray())],
+      [
+        selectedView(model, locale, h),
+        actionButton(
+          {
+            label: format(locale, 'board.addYourPiece', {}),
+            leading: addIcon(h),
+            style: secondaryAction(),
+            onClick: Message.ClickedAddYourPiece(),
+          },
+          h,
         ),
-        saveLookView(model, locale, h),
-      ]),
-      h.h1(styled(h, styles.title()), [name]),
-      statusView(model, locale, h),
-    ]),
-    // The table, then what can be done to the selected item, then the tray: on a phone the tray holds the bottom of
-    // the screen, so a piece is one tap from the table; on a desktop it takes the column beside the table.
-    h.div(styled(h, styles.stage()), [
-      toolbarView(model, locale, h),
-      lookView(model, locale, h),
-      paperView(model, pieces, paper, locale, h),
-      toastView(model, locale, h),
-      trayView(model, pieces, locale, h, selectedView(model, locale, h)),
-      // After the tray: on a phone the table runs straight into the tray, and the paper is a scroll below.
-      paperChoiceView(model, paper, locale, h),
-      h.p([h.Id('board-keys'), ...styled(h, styles.fine())], [format(locale, 'board.keys', {})]),
-    ]),
-  ])
-
-export const view = Submodel.defineView<Model, Message, { readonly locale: Locale; readonly pieces: PiecesData }>(
-  (model, { locale, pieces }, h) =>
-    boardStateView(
-      model.board,
-      (name, paper) => readyView(model, pieces, name, paper, locale, h),
-      locale,
-      h,
-      Option.none(),
-      model.signedIn,
+      ],
     ),
-)
+    paperChoiceView(model, paper, locale, h),
+    h.p([h.Id('board-keys'), ...styled(h, styles.fine())], [format(locale, 'board.keys', {})]),
+    piecePickerView(model, pieces, locale, h),
+  ])

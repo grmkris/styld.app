@@ -108,6 +108,7 @@ export const PinThings = Command.define('PinThings', {
         params: { boardId: yield* boardIdOf(boardId) },
         payload: {
           operationId: yield* drawOperationId(),
+          placeOnTable: true,
           pieceIds: yield* Schema.decodeUnknownEffect(Schema.Array(PieceId))(pieceIds),
           lookIds: yield* Schema.decodeUnknownEffect(Schema.Array(LookId))(lookIds),
         },

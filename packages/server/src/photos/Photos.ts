@@ -1,6 +1,7 @@
 import {
   type AddPhoto,
   type AddPhotoToBoard,
+  BoardImageId,
   CurrentAccount,
   ImageType,
   LookId,
@@ -393,6 +394,7 @@ const showing = Effect.map(Effect.context<PhotoServices>(), (context) => ({
 const boardOperations = (photoId: string, boardId: string) => ({
   image: OperationId.make(`pi-${photoId}-${boardId}`.slice(0, 64)),
   look: OperationId.make(`pl-${photoId}-${boardId}`.slice(0, 64)),
+  table: OperationId.make(`pt-${photoId}-${boardId}`.slice(0, 64)),
 })
 
 /** The photo's picture for a board (the person cut out of it once there is one) as a received upload. */
@@ -434,6 +436,18 @@ const boarding = Effect.map(Effect.context<PhotoServices>(), (context) => ({
         const uploadId = yield* photoUpload(photo)
         yield* onBoard((yield* Boards).addPhotoImage(input.boardId, { operationId: operations.image, uploadId }))
       }
+      const imageReceipt = yield* storedAs((yield* WardrobeStore).findReceipt(accountId, operations.image))
+      if (Option.isNone(imageReceipt)) return yield* unavailable()
+      const imageId = yield* Schema.decodeUnknownEffect(BoardImageId)(imageReceipt.value.result).pipe(
+        Effect.mapError(unavailable),
+      )
+      yield* onBoard(
+        (yield* Boards).arrangeBoard(input.boardId, {
+          operationId: operations.table,
+          layout: 'keep',
+          add: [{ _tag: 'TablePicture', imageId }],
+        }),
+      )
       if (photo.lookId !== null)
         yield* onBoard(
           (yield* Boards).addPins(input.boardId, {

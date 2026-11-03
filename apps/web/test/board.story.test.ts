@@ -69,7 +69,7 @@ describe('the board editor', () => {
       model((current) => {
         expect(itemIn(current, knit.id).x).toBe(knit.x + 100)
         expect(itemIn(current, knit.id).y).toBe(knit.y + 40)
-        expect(itemIn(current, knit.id).z).toBe(2)
+        expect(itemIn(current, knit.id).z).toBe(1)
       }),
       message(Message.ReleasedPointer({ pointerId: 1 })),
       Command.expectExact(WaitToSave),
@@ -82,6 +82,25 @@ describe('the board editor', () => {
         expect(current.past).toHaveLength(1)
       }),
     )
+  })
+
+  test('a chosen layer survives a press, move and save, and undo restores the previous order', () => {
+    const front = update(open, Message.ClickedLayer({ id: knit.id })).model
+    expect(itemIn(front, knit.id).z).toBe(2)
+    const back = update(front, Message.ClickedLayer({ id: knit.id })).model
+    expect(itemIn(back, knit.id).z).toBe(1)
+    const held = update(back, Message.PressedItem({ id: knit.id, pointer: at(1, 100, 100), isTouch: false })).model
+    expect(itemIn(held, knit.id).z).toBe(1)
+    const moved = update(held, Message.MovedPointer({ pointer: at(1, 150, 120) })).model
+    const released = update(moved, Message.ReleasedPointer({ pointerId: 1 })).model
+    const saved = update(
+      released,
+      Message.SucceededSaveItems({ board: { ...board, version: 4, items: released.items } }),
+    ).model
+    expect(itemIn(saved, knit.id)).toMatchObject({ z: 1, x: 400, y: 360 })
+    const undoMove = update(saved, Message.ClickedUndo()).model
+    const undoLayer = update(undoMove, Message.ClickedUndo()).model
+    expect(itemIn(undoLayer, knit.id).z).toBe(2)
   })
 
   test('a second finger turns the move into a pinch that resizes the item, and lifting it carries on as a move', () => {
@@ -153,6 +172,14 @@ describe('the board editor', () => {
         expect(Toast.guards.Hidden(current.toast)).toBe(true)
       }),
     )
+  })
+
+  test('a new wardrobe piece lands above the existing stack, and selecting it again does not remove it', () => {
+    const fresh = pieceFixture('boots', { type: 'boots' })
+    const added = update(open, Message.ClickedWardrobePiece({ pieceId: fresh.id })).model
+    expect(added.items).toHaveLength(3)
+    expect(added.items.at(-1)).toMatchObject({ pieceId: fresh.id, z: 3 })
+    expect(update(added, Message.ClickedWardrobePiece({ pieceId: fresh.id })).model.items).toEqual(added.items)
   })
 
   test('a label added from the toolbar is selected, with a fresh id', () => {

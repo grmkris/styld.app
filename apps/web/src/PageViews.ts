@@ -9,7 +9,6 @@ import * as AddPiecesView from './page/AddPieces/View.ts'
 import { accountView } from './page/AccountView.ts'
 import * as AskView from './page/AskView.ts'
 import * as BoardPageView from './page/Board/PageView.ts'
-import * as BoardView from './page/Board/View.ts'
 import * as Boards from './page/Boards.ts'
 import * as BoardsView from './page/BoardsView.ts'
 import * as LoginView from './page/LoginView.ts'
@@ -251,7 +250,6 @@ const wardrobePages = (model: Model, h: HtmlBuilder<Message>) => {
 const otherPages = (model: Model, h: HtmlBuilder<Message>) => {
   const { locale, timeZone } = model.context
   const signedIn = hasSession(model)
-  const pieces = piecesOf(model.data)
   return {
     Stylist: () =>
       onPage(
@@ -279,7 +277,7 @@ const otherPages = (model: Model, h: HtmlBuilder<Message>) => {
           h.submodel({
             ...slot(lenses.board, board),
             view: BoardPageView.view,
-            viewInputs: { locale, signedIn, pieces },
+            viewInputs: { locale, signedIn, pieces: model.data.pieces },
           }),
         h,
       ),
@@ -291,8 +289,8 @@ const otherPages = (model: Model, h: HtmlBuilder<Message>) => {
           h.submodel({
             ...slot(lenses.board, board),
             slotId: 'board-collage',
-            view: BoardView.view,
-            viewInputs: { locale, pieces: model.data.pieces },
+            view: BoardPageView.view,
+            viewInputs: { locale, signedIn, pieces: model.data.pieces },
           }),
         h,
       ),
