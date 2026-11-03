@@ -1514,6 +1514,14 @@
         "T-15",
         "F-08"
       ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Closed the shared-media edge in the rotation follow-up: public piece images now apply the saved orientation and include it in their cache version, so owner, assistant thumbnail and shared/public views agree. Focused typecheck and media tests remain green; screenshot and deployed acceptance are still open.",
+      "items": [
+        "T-15",
+        "F-08"
+      ]
     }
   ],
   "overview": {
