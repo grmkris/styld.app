@@ -51,18 +51,18 @@
       ]
     },
     "T-02": {
-      "status": "not_started",
-      "owner": "",
-      "updatedAt": "2026-11-03",
-      "note": "",
+      "status": "in_progress",
+      "owner": "Claude",
+      "updatedAt": "2026-11-04",
+      "note": "On main (cf7c8a6), not deployed. Clef reads colour by surface, ignoring soles and trims (the Sorel boot reads black), and the type criteria name the catch-alls. tools/retype-pieces.ts was read against Eva's 310 pieces: it will re-type 11 into the new types (gloves, socks, hairbands, hiking and sport shoes, all checked by eye) and drop a trim colour on 15 shoes, after the deploy. Clef cannot tell sport or pyjamas from everyday clothes on clean pictures, so those stay Eva's to correct; rotation stays the Edit control (T-15).",
       "evidence": [],
       "criteriaDone": []
     },
     "T-03": {
-      "status": "not_started",
-      "owner": "",
-      "updatedAt": "2026-11-03",
-      "note": "",
+      "status": "in_progress",
+      "owner": "Claude",
+      "updatedAt": "2026-11-04",
+      "note": "On main (f89776b, 62fd779), not deployed. Gallery asks SAM for people beside the garments and offers only what the person nearest the camera wears or carries; a bystander's clothes are left out. Matching a worn garment compares pieces of its own type first, up to 12, and no longer fails for a garment without a colour. Dark items turning white: the server keeps their pixels; it fits the phone's forced dark mode, which T-18's dark theme addresses. Open: readback on Eva's real photos once the preview is redeployed (deploy waits on the owner's Alchemy state-store decision).",
       "evidence": [],
       "criteriaDone": []
     },
@@ -451,7 +451,7 @@
       "status": "in_progress",
       "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "Landed on main at 7f1db11 (not deployed; styldappv2-51 deploys). Analyze my wardrobe: exact server counts as a card plus a short comment (wardrobe_analyze tool). Ask Styld now runs on Yielded Agent: one Thread per chat in its own Worker, words stream to the page live (polling gone), tools run in the API Worker over RPC, credits held before and settled once from the Thread's outbox, the model streams through the LiteLLM text transport with deadlines, classification and cost per call. Old StylistObject, stylist queue and stylist_turns removed (migration 20261103200008_stylist_threads: create stylist_chats, drop stylist_turns; no table rebuild). Native: stylist acceptance passes; streamed words seen in the browser before the final reply. Remaining: live readback on the preview with the real LiteLLM route.",
+      "note": "Landed on main (7f1db11). Deploy blocked: Alchemy beta.85 needs the shared state store at v8; waiting on the owner. Landed on main at 7f1db11 (not deployed; styldappv2-51 deploys). Analyze my wardrobe: exact server counts as a card plus a short comment (wardrobe_analyze tool). Ask Styld now runs on Yielded Agent: one Thread per chat in its own Worker, words stream to the page live (polling gone), tools run in the API Worker over RPC, credits held before and settled once from the Thread's outbox, the model streams through the LiteLLM text transport with deadlines, classification and cost per call. Old StylistObject, stylist queue and stylist_turns removed (migration 20261103200008_stylist_threads: create stylist_chats, drop stylist_turns; no table rebuild). Native: stylist acceptance passes; streamed words seen in the browser before the final reply. Remaining: live readback on the preview with the real LiteLLM route.",
       "evidence": [],
       "criteriaDone": []
     },
@@ -557,7 +557,7 @@
       "status": "in_progress",
       "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "Landed on main at 7f1db11 (not deployed; styldappv2-51 deploys). Styld now has its own dark theme when the device prefers dark (every colour a light/dark token pair, color-scheme light dark, theme-color per scheme, cut-outs unblended with a faint glow), so Samsung Internet's forced dark no longer applies. Remaining: deploy, then Eva's check on her Samsung in dark mode.",
+      "note": "Landed on main (7f1db11). Deploy blocked: Alchemy beta.85 needs the shared state store at v8; waiting on the owner. Landed on main at 7f1db11 (not deployed; styldappv2-51 deploys). Styld now has its own dark theme when the device prefers dark (every colour a light/dark token pair, color-scheme light dark, theme-color per scheme, cut-outs unblended with a faint glow), so Samsung Internet's forced dark no longer applies. Remaining: deploy, then Eva's check on her Samsung in dark mode.",
       "evidence": [
         {
           "level": "unit",

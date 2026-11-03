@@ -6,6 +6,50 @@ phone/desktop and live-provider acceptance below is still open.
 Feature work on the 31 October plan (M4–M6, M8–M9) stays frozen until testing starts. The history of every earlier
 milestone, with its evidence, is in `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`.
 
+## Overnight 3–4 November: Gallery person (T-03), types and colours (T-02), main's gate (on main, not deployed)
+
+**The preview is not redeployed.** Everything below and every stack above it (Effect 4.1, T-14 streaming, the dark
+theme, T-07/08/12/17) waits for one deploy, which is blocked on an owner decision: Alchemy beta.85 needs the
+account's shared `alchemy-state-store` at v8. It is at v7, and myapps, goblin and swarmm (beta.84) and agent-jobs
+(beta.81) use it too. A beta.84 client takes any other version as out of date and redeploys its own v7 over it.
+The Cloudflare store has no store-to-store migrate, though `Cloudflare.state({ workerName })` can name a
+store of Styld's own. The store is untouched. The preview still serves `6de0434`.
+
+- **T-03, the person in a Gallery photo (F-16):** SAM is asked for people beside the garments, in parallel and as a
+  best effort. The person nearest the camera wins (`foregroundPerson`: tallest in the frame, largest, feet lowest,
+  a little favoured near the middle; SAM's confidence breaks a tie). Only what they wear (half a mask on theirs) or
+  carry (a bag within a quarter of their width) is offered, and specks are measured against them, so their shoes
+  survive in a wide scene. With nobody found, every garment counts, as before. "Cut out the outfit" picks the same
+  person. Unit tests cover the carnival and Oktoberfest layouts (`GalleryPerson.test.ts`). **Open:** a readback
+  on Eva's real photos through SAM, and the extra SAM call's cost per photo (one more `person` prompt, in parallel).
+- **T-03, matching a worn garment (F-17):** wardrobe candidates are ordered by the garment's own type, then its
+  colour, then the newest, and a photo's garment is compared with up to 12 (`matching.photoPieces`). The bar stays
+  0.8 until it is calibrated on real photos. **Fixed on the way:** with no colour the query ordered by the constant
+  `0`, which SQLite refuses, so every garment Clef gave no colour failed its match as `StoreUnavailable`
+  (`WardrobeCandidates.test.ts` covers it).
+- **T-03, dark garments turning white (F-18):** the server keeps a cut-out's own pixels (`Matte.ts` changes only
+  alpha). The white thumbnails on Eva's phone fit the browser's forced dark mode inverting small transparent
+  pictures. T-18's dark theme (`color-scheme: light dark`) is the fix to verify on her phone.
+- **T-02, colours:** Clef is asked for the colour covering most of a piece's surface, ignoring soles, trims,
+  stitching, logos and hardware, and for a second colour only when it covers at least a fifth. Eva's Sorel snow boot
+  reads black. The type criteria say what tops, trousers, swimwear, loungewear, bags, hats and jewellery are not.
+- **T-02, Eva's stored pieces:** `tools/retype-pieces.ts` runs the Worker's `suggest` on each stored cut-out over the
+  Cloudflare REST API. A read-only run on Eva's 310 pieces decided its rules. It writes only moves into T-12's new
+  types (11, all checked by eye: gloves, socks, hairbands, hiking boots, sport shoes) and a shoe's trim colour
+  (15), and reports the rest: on clean pictures Clef confidently moved race shirts and pyjama trousers (0.92) out
+  of sportswear and loungewear, the wrong way. An upside-down check was tried and dropped (4 sandals flagged, none
+  upside down); turning a piece stays the Edit control (T-15). **Open:** `--apply` on the preview after the deploy
+  applies T-12's migrations; then the remaining tops, bags and trousers Eva named need her own corrections or a
+  better signal than Clef on clean pictures.
+- **Main's gate:**
+  - Lint debt cleared: PieceView split into PiecePictureView, a needless cast, the census form of a SAFETY note.
+  - jscpd clean: shared fakes for the outfit, language-model and garment tests, and Today's Fast requests.
+  - Four native journeys that had drifted from T-07, T-08, T-15 and T-21 now follow the product. Navigation,
+    photos and capture pass natively.
+  - The Gallery journey passes its fixed steps but ran out of its 120 s budget on a box loaded at 21; rerun once
+    the box is calmer.
+  - Every gate before native passed on `5fc1311`.
+
 ## Ask Styld on Yielded Agent (T-14 streaming, M1–M6, 3 November, not deployed)
 
 Built on the M0 upgrade in its own worktree; the vertical slice works natively, nothing is deployed.
