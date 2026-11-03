@@ -6,6 +6,39 @@ phone/desktop and live-provider acceptance below is still open.
 Feature work on the 31 October plan (M4–M6, M8–M9) stays frozen until testing starts. The history of every earlier
 milestone, with its evidence, is in `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`.
 
+## Ask Styld on Yielded Agent (T-14 streaming, M1 and M3–M5, 3 November, not deployed)
+
+Built on the M0 upgrade in its own worktree; the vertical slice works natively, nothing is deployed.
+
+- **Host:** each chat is a Yielded Agent Thread (`@yielded/agent` 0.1.0-beta.191, `effect-cf` 0.59.0) in the Thread
+  Worker (`stylist/ThreadWorker.ts`, its own plain-module Worker); its id is `<accountId>--<chatId>`, joined by the
+  Workers from the session. The API Worker reaches the Threads through the Thread Worker's entrypoint (service
+  binding `STYLIST_THREADS`); the Thread Worker reaches the API Worker as `STYLD_API`.
+- **Tools:** the catalogue lists piece_search, piece_get, outfit_make, look_list, look_get and look_create from the
+  same specs MCP lists, plus pieces_show and wardrobe_analyze; every call runs in the API Worker. Reads are readonly,
+  look_create idempotent with operation id `sq_` + digest(submission, tool, parameters).
+- **Credits:** one per message, held before admission; settled once from the Thread's lifecycle outbox
+  (`SubmissionSettled`/`SubmissionUnknown` → `stylistSettled`): consumed on a completed reply, refunded otherwise. A
+  refused admission refunds at once; a hold whose admission was lost is refunded by the settlements sweep (6 hours).
+- **Reads:** the chat list is D1 `stylist_chats` (new migration `20261103180949_stylist_chats`); a chat's messages and
+  cards are read from its Thread's canonical records; `GET /api/stylist/chats/:chatId/live` forwards LiveText NDJSON
+  to the chat's owner. The page follows a reply with a Subscription over that stream (decoder in a lazy chunk),
+  with no polling; the reply's cards appear when the chat is read at the attempt's end.
+- **Model:** Effect's OpenAI-compatible client over `STYLD_LITELLM_URL`/`STYLD_LITELLM_KEY`, model alias
+  `styld-deepseek-v4.1-flash` (the names of the LiteLLM route being prepared beside this work). Not yet wrapped in
+  `providerCall` (no per-call deadline, Analytics Engine count or cost row); the agent's `maxDuration` is 3 minutes.
+- **Evidence:** native `lets Styld answer about the person's own wardrobe…` passed (streamed deltas arrive before the
+  reply is in the chat and equal its words; pieces card from the recorded pieces_show; one credit per message
+  however often sent; refunded when the model fails; analysis card; another account gets 404 for the chat and its
+  live words), and the Gallery browser journey shows the words before the whole reply, then the card. Unit tests,
+  typecheck, lint of touched files, patterns, graph, Knip (one existing finding in `VisitView.styles.ts`),
+  suppressions, x18n and bundle budgets (initial 356,885 of 357,677 gzip bytes) passed. The full `bun run check` has
+  not run on this batch.
+- **Still open:** account deletion does not erase the account's Threads (their Objects keep the chats; the D1 index
+  goes with the account); M6 removal of `StylistObject`, the stylist queue and `stylist_turns`; `providerCall`
+  semantics and a live model readback once the LiteLLM route and its secrets exist; the Thread Worker needs
+  `STYLD_LITELLM_URL`/`STYLD_LITELLM_KEY` in the preview's environment before a deploy.
+
 ## Eva review document (3 November)
 
 The independent [review tracker](https://styld-review-07c26b483ccc.pages.dev) is published on Cloudflare Pages.

@@ -87,6 +87,21 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 - **Media goes with its owner:** rows first, then every object nothing else shows (one in-use check, paginated
   deletes).
 
+## Styld's chat
+
+- **Yielded Agent hosts the stylist** (owner, 3 November 2026): one Thread per chat, id `<accountId>--<chatId>`, which
+  owns the chat's canonical history, admission idempotency (key = the message's operation id, principal = the account),
+  recovery and live text. Durable reactions are Yielded's, not a queue's: the reply loop, its retries and its
+  unknown-outcome handling are the Thread's.
+- **Its own Worker** (`stylist/ThreadWorker.ts`): Alchemy's Effect Worker cannot export effect-cf's Thread Object
+  class, and hosting it inside an Alchemy Durable Object would give the alarm two owners. The API Worker calls the
+  Thread Worker's entrypoint (admit, chat, live) rather than binding its Objects: an Object reached through another
+  script's namespace binding does not know its name, which Yielded requires.
+- **One place runs tools and settles credits:** every tool call of a Thread runs in the API Worker (`stylistTool`), the
+  same assistants' tools MCP serves; the Thread's lifecycle outbox reports each reply's ending to `stylistSettled`,
+  which settles the message's hold once. The chat list per account is D1 (`stylist_chats`); messages and cards are
+  read from the Thread's records, never stored twice.
+
 ## Providers and configuration
 
 - **Providers** (`server/src/providers/`): Clef (Workers AI) routes, describes, judges and ranks; Cloudflare Images
