@@ -47,9 +47,11 @@ store of Styld's own. The store is untouched. The preview still serves `6de0434`
   - Four native journeys that had drifted from T-07, T-08, T-15 and T-21 now follow the product. Navigation,
     photos and capture pass natively.
   - The Gallery journey passes too, once its Filters step opens a type's grid (149bd3f).
-  - Full native suite on 149bd3f: 30 of 31. The guided camera no longer pairs a back with its front (`hasBack`
-    false). Bisected to 6f8be7f (T-12 types and seasons): it passes on c4c72a9 and fails on 6f8be7f, alone and
-    deterministically. Handed to the T-12 session; the deploy waits for the fix.
+  - The guided camera's lost back was a race exposed by 6f8be7f: a back that finished after its front was kept
+    stayed alone in the tray. Fixed by the T-12 session (a805525, the piece write moved to the wardrobe's owner in
+    9e5f08b). The bundle budget is raised to 363,500, measured: the person's own categories add 782 bytes, the
+    refused-upload words 98 (3f92933).
+  - **The full gate passes on 3f92933** (4 November): every gate, 845 unit tests and 31 of 31 native journeys.
   - Every gate before native passed on `5fc1311`.
 
 ## Ask Styld on Yielded Agent (T-14 streaming, M1–M6, 3 November, not deployed)
