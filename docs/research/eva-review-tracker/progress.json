@@ -538,12 +538,55 @@
       "criteriaDone": []
     },
     "T-18": {
-      "status": "planned",
+      "status": "ready_for_review",
       "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "Claude track. Owner decision 3 Nov: light only for v1. Planned: opt out of Chrome Android forced dark (color-scheme only light, meta and CSS), which repaints the page and leaves grey squares and inverted colours; drop the tile backgrounds behind cut-outs. Force-dark before/after screenshots, then a real phone check.",
-      "evidence": [],
-      "criteriaDone": []
+      "note": "Deployed 7144b03. The page now says color-scheme 'only light' (meta and :root), so Chrome's forced dark no longer repaints it: before, cut-outs sank into dark grey tiles and nearly vanished; after, the paper and cut-outs are unchanged. Owner decision: light only for v1. Remaining: a look on a dark-mode Android phone (Eva or Kris).",
+      "evidence": [
+        {
+          "level": "unit",
+          "date": "2026-11-03",
+          "summary": "Rendering test asserts the color-scheme only-light meta in the served document."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed 7144b03; preview readback 3/3; forced-dark before/after captures on the signed-in preview."
+        }
+      ],
+      "criteriaDone": [],
+      "comparisons": [
+        {
+          "title": "Wardrobe under forced dark, phone",
+          "width": 780,
+          "height": 1688,
+          "before": "batch-claude-01/T-18-wardrobe-before-390.png",
+          "after": "batch-claude-01/T-18-wardrobe-after-390.png",
+          "date": "2026-11-03",
+          "level": "preview",
+          "note": "Signed-in preview (test account) in Chromium with Blink forced dark (forceDarkModeEnabled), the mode Chrome on a dark-mode Android phone applies. Before: release d73475c line; after: 7144b03. Phone shots are 390 CSS px at 2x. Not a physical-phone check."
+        },
+        {
+          "title": "Wardrobe under forced dark, desktop",
+          "width": 1440,
+          "height": 844,
+          "before": "batch-claude-01/T-18-wardrobe-before-1440.png",
+          "after": "batch-claude-01/T-18-wardrobe-after-1440.png",
+          "date": "2026-11-03",
+          "level": "preview",
+          "note": "Signed-in preview (test account) in Chromium with Blink forced dark (forceDarkModeEnabled), the mode Chrome on a dark-mode Android phone applies. Before: release d73475c line; after: 7144b03. Phone shots are 390 CSS px at 2x. Not a physical-phone check."
+        },
+        {
+          "title": "Piece under forced dark, phone",
+          "width": 780,
+          "height": 1688,
+          "before": "batch-claude-01/T-18-piece-before-390.png",
+          "after": "batch-claude-01/T-18-piece-after-390.png",
+          "date": "2026-11-03",
+          "level": "preview",
+          "note": "Signed-in preview (test account) in Chromium with Blink forced dark (forceDarkModeEnabled), the mode Chrome on a dark-mode Android phone applies. Before: release d73475c line; after: 7144b03. Phone shots are 390 CSS px at 2x. Not a physical-phone check."
+        }
+      ]
     },
     "T-19": {
       "status": "planned",
@@ -554,11 +597,22 @@
       "criteriaDone": []
     },
     "T-20": {
-      "status": "planned",
+      "status": "ready_for_review",
       "owner": "Claude",
       "updatedAt": "2026-11-03",
-      "note": "Claude track, starts once Codex commits T-21 (shared board and Gallery files). Planned: Share on a board using the existing share-link command (public URL; private boards are offered the visibility toggle; no PNG export); every image picker accept=image/* with client re-encode; the tab-restore black screen is probably forced dark, addressed by T-18.",
-      "evidence": [],
+      "note": "Deployed 7144b03. Share on a board: a public board shares its link through the phone's share sheet (copied where there is none); a private board's Share opens its settings to make it public. Profiles, pieces and boards share through one Share submodel. Every picture picker asks for image/* (a type list made Android open its file list instead of the gallery), and any picture the device can draw, HEIC included, is accepted and re-encoded. Tab-restore black screen (F-34): most likely Chrome's forced dark repaint, removed by T-18; recheck on the phone. Remaining: phone check of the share sheet and the gallery picker.",
+      "evidence": [
+        {
+          "level": "unit",
+          "date": "2026-11-03",
+          "summary": "Scene tests: public board shares /boards/<id>, private board opens settings with the public switch, profile and piece sharing unchanged; HEIC classified as a photo."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed 7144b03; preview readback 3/3."
+        }
+      ],
       "criteriaDone": []
     },
     "T-21": {
@@ -1377,6 +1431,15 @@
         "F-13",
         "F-21",
         "F-28"
+      ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Claude deployed 7144b03 with T-18 (light only, no forced dark) and T-20 (Share on boards, gallery pickers, HEIC). Both ready for a phone check. T-14's analysis card waits for Codex's stylist commit (shared files). Per owner, automated native runs move to the end of each batch.",
+      "items": [
+        "T-18",
+        "T-20",
+        "T-14"
       ]
     }
   ],
