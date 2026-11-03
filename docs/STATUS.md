@@ -156,9 +156,8 @@ Committed on `main`; the preview deploy and its readback belong to the evening's
 - **D1 migrations:** drizzle-kit's table rebuild deletes every cascading child row on D1 (`PRAGMA foreign_keys=OFF`
   and `defer_foreign_keys` are ignored inside a migration batch; reproduced with `wrangler d1 execute --local`). The
   rotation migration (`3de5af3`) now adds its column instead; T-12's rebuild keeps and restores every dependent row
-  (proven on local D1 with data); `MigrationSafety.test.ts` guards every migration from 3 November on. The C8 migration
-  deployed on 2 November rebuilt `generation_jobs` the old way, so the preview lost its generation picks and pictures
-  then; not repaired.
+  (proven on local D1 with data); `MigrationSafety.test.ts` guards every migration from 3 November on. The C8 migration rebuilt `generation_jobs` the old way, so its deploy will have deleted
+  the preview's generation picks and pictures that existed then; inferred from the migration, not checked on the preview.
 - **Still open:** rename and delete buttons in the piece editor (`Piece.ts` is at its size limit; needs a small
   submodel); the review tray suggesting one of the person's categories (Clef choosing among them) and a new category
   name (a language-model call when Clef answers none; Clef is confidently wrong between near-synonyms, so this needs
