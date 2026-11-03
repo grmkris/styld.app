@@ -1,10 +1,11 @@
 import { encodePng } from '@styld/imaging'
-import { Effect, Layer } from 'effect'
+import { Effect } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { Garments } from '../src/capture/Garments.ts'
 import { foregroundPerson, wornBy } from '../src/capture/GarmentRules.ts'
 import { maskArea } from '../src/capture/Pixels.ts'
-import { GarmentSegmenter, GarmentVision, PictureWork, type Suggestion } from '../src/capture/Providers.ts'
+import type { Suggestion } from '../src/capture/Providers.ts'
+import { scriptedGarments } from './fakes/GarmentPipeline.ts'
 import type { Found } from '../src/providers/SamStream.ts'
 
 // T-03 (Eva's review, 2 November, F-16): an outfit photo is of the person nearest the camera, and only what they wear
@@ -20,7 +21,6 @@ const rect = (left: number, top: number, right: number, bottom: number, track: s
 })
 const withArea = (found: Found) => ({ ...found, area: maskArea(found) })
 const size = { width: 400, height: 300 }
-const unused = () => Effect.die('not asked')
 
 describe('the person an outfit photo is of', () => {
   test('the person standing to one side, nearest the camera, beats a smaller bystander in the middle', () => {
@@ -85,47 +85,16 @@ describe('the Gallery pipeline on a photo with a bystander', () => {
     Effect.runPromise(
       Effect.flatMap(Garments, (pipeline) => pipeline.find(photo, { for: 'gallery' })).pipe(
         Effect.provide(
-          Garments.layer.pipe(
-            Layer.provide(
-              Layer.mergeAll(
-                Layer.succeed(
-                  PictureWork,
-                  PictureWork.of({
-                    workingCopies: () => Effect.succeed(copies),
-                    foreground: unused,
-                    thumbnail: unused,
-                    jpeg: unused,
-                  }),
-                ),
-                Layer.succeed(
-                  GarmentVision,
-                  GarmentVision.of({
-                    route: unused,
-                    suggest: () => Effect.succeed(suggestion),
-                    checkHeld: unused,
-                    judge: unused,
-                    compare: unused,
-                    sameGarment: unused,
-                    compareTurn: unused,
-                  }),
-                ),
-                Layer.succeed(
-                  GarmentSegmenter,
-                  GarmentSegmenter.of({
-                    still: (_picture, prompt) => {
-                      prompts.push(prompt)
-                      if (prompt === 'person') return Effect.succeed(people)
-                      if (prompt === 'clothing') return Effect.succeed([dress, shirt])
-                      return Effect.succeed(prompt === 'shoes' ? [shoes] : [])
-                    },
-                    upload: unused,
-                    track: unused,
-                    forget: () => Effect.void,
-                  }),
-                ),
-              ),
-            ),
-          ),
+          scriptedGarments({
+            copies,
+            suggestion,
+            still: (_picture, prompt) => {
+              prompts.push(prompt)
+              if (prompt === 'person') return Effect.succeed(people)
+              if (prompt === 'clothing') return Effect.succeed([dress, shirt])
+              return Effect.succeed(prompt === 'shoes' ? [shoes] : [])
+            },
+          }),
         ),
       ),
     )

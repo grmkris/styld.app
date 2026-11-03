@@ -13,6 +13,7 @@ import {
   OutfitProposals,
   OutfitSession,
   Photo,
+  type MakeOutfit,
   type Piece,
   PieceId,
   ProposalRef,
@@ -200,6 +201,14 @@ export const ReadTray = Command.define('ReadTray', {
 const batchSize = 6
 const refillAt = 2
 
+/** Outfits of the day by the engine's Fast way, asked under a fresh operation. */
+const fastOutfits = (request: Omit<MakeOutfit, 'operationId' | 'mode'>) =>
+  Effect.gen(function* () {
+    return yield* (yield* (yield* StyldClient).api).outfit.makeOutfit({
+      payload: { operationId: yield* drawOperationId(), mode: 'fast', ...request },
+    })
+  })
+
 /** Today's outfits, made by the engine's Fast way, as a new run or more of one.
  */
 export const MakeOutfits = Command.define('MakeOutfits', {
@@ -207,17 +216,13 @@ export const MakeOutfits = Command.define('MakeOutfits', {
   messages: [Message.SucceededMakeOutfits, Message.FailedMakeOutfits],
   execute: ({ day, brief, session, seen }) =>
     Effect.gen(function* () {
-      const batch = yield* (yield* (yield* StyldClient).api).outfit.makeOutfit({
-        payload: {
-          operationId: yield* drawOperationId(),
-          mode: 'fast',
-          day,
-          brief,
-          ...Option.match(session, { onNone: () => ({}), onSome: (value) => ({ session: value }) }),
-          lockedPieceIds: [],
-          seen,
-          count: batchSize,
-        },
+      const batch = yield* fastOutfits({
+        day,
+        brief,
+        ...Option.match(session, { onNone: () => ({}), onSome: (value) => ({ session: value }) }),
+        lockedPieceIds: [],
+        seen,
+        count: batchSize,
       })
       return Message.SucceededMakeOutfits({ batch })
     }).pipe(Effect.orElseSucceed(() => Message.FailedMakeOutfits())),
@@ -241,18 +246,7 @@ export const SwapPiece = Command.define('SwapPiece', {
   messages: [Message.SucceededSwapPiece, Message.FailedSwapPiece],
   execute: ({ day, brief, session, lockedPieceIds, seen, pieceId, from }) =>
     Effect.gen(function* () {
-      const batch = yield* (yield* (yield* StyldClient).api).outfit.makeOutfit({
-        payload: {
-          operationId: yield* drawOperationId(),
-          mode: 'fast',
-          day,
-          brief,
-          session,
-          lockedPieceIds,
-          seen,
-          count: swapCount,
-        },
-      })
+      const batch = yield* fastOutfits({ day, brief, session, lockedPieceIds, seen, count: swapCount })
       return Message.SucceededSwapPiece({ pieceId, from, proposals: batch.proposals })
     }).pipe(Effect.orElseSucceed(() => Message.FailedSwapPiece({ pieceId, from }))),
 })

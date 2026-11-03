@@ -1,9 +1,10 @@
 import { encodePng, readPng } from '@styld/imaging'
-import { Effect, Layer, Option } from 'effect'
+import { Effect, Option } from 'effect'
 import { describe, expect, test } from 'vitest'
 import { Garments } from '../src/capture/Garments.ts'
 import { type Cut, joined, pairsOf, promptsFor } from '../src/capture/GarmentRules.ts'
-import { GarmentSegmenter, GarmentVision, PictureWork, type Suggestion } from '../src/capture/Providers.ts'
+import type { Suggestion } from '../src/capture/Providers.ts'
+import { scriptedGarments } from './fakes/GarmentPipeline.ts'
 import type { Found } from '../src/providers/SamStream.ts'
 
 /** A cut of `area` opaque pixels, `track` named. */
@@ -71,7 +72,6 @@ const solid = (left: number, track: string): Found => ({
   frame: 0,
   confidence: 0.9,
 })
-const unused = () => Effect.die('not asked')
 const wide = (picture: { readonly width: number }) => picture.width > 100
 
 describe('the pipeline on two shoes', () => {
@@ -89,43 +89,19 @@ describe('the pipeline on two shoes', () => {
     pattern: undefined,
     whole: 0.8,
   }
-  const providers = (person: number) =>
-    Layer.mergeAll(
-      Layer.succeed(
-        PictureWork,
-        PictureWork.of({
-          workingCopies: () => Effect.succeed(copies),
-          foreground: unused,
-          thumbnail: unused,
-          jpeg: unused,
-        }),
-      ),
-      Layer.succeed(
-        GarmentVision,
-        GarmentVision.of({
-          route: () => Effect.succeed({ garments: 'several', confidence: 0.9, person }),
-          suggest: () => Effect.succeed(suggestion),
-          checkHeld: unused,
-          judge: unused,
-          compare: unused,
-          sameGarment: unused,
-          compareTurn: unused,
-        }),
-      ),
-      Layer.succeed(
-        GarmentSegmenter,
-        GarmentSegmenter.of({
-          // Clothing misses the shoes; the shoes prompt finds both.
-          still: (_picture, prompt) => Effect.succeed(prompt === 'shoes' ? [solid(20, '0'), solid(120, '1')] : []),
-          upload: unused,
-          track: unused,
-          forget: () => Effect.void,
-        }),
-      ),
-    )
   const run = <A, E>(use: (pipeline: Garments['Service']) => Effect.Effect<A, E>, person = 0) =>
     Effect.runPromise(
-      Effect.flatMap(Garments, use).pipe(Effect.provide(Garments.layer.pipe(Layer.provide(providers(person))))),
+      Effect.flatMap(Garments, use).pipe(
+        Effect.provide(
+          scriptedGarments({
+            copies,
+            suggestion,
+            route: { garments: 'several', confidence: 0.9, person },
+            // Clothing misses the shoes; the shoes prompt finds both.
+            still: (_picture, prompt) => Effect.succeed(prompt === 'shoes' ? [solid(20, '0'), solid(120, '1')] : []),
+          }),
+        ),
+      ),
     )
 
   test('the tray offers a pair of trainers as one piece, both shoes in its cut-out', async () => {
