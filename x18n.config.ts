@@ -92,6 +92,8 @@ export default defineConfig({
       // model speaks the Chat Completions protocol; no person reads any of it. The person reads only the model's reply.
       'packages/server/src/stylist/Prompt.ts': ['/[\\s\\S]*/'],
       'packages/server/src/stylist/Tools.ts': ['/[\\s\\S]*/'],
+      'packages/server/src/stylist/Catalogue.ts': ['/[\\s\\S]*/'],
+      'packages/server/src/stylist/Thread.ts': ['/[\\s\\S]*/'],
       'packages/server/src/stylist/StylistObject.ts': ['/[\\s\\S]*/'],
       'packages/server/src/ai/LanguageModel.ts': ['/[\\s\\S]*/'],
       // The questions the outfit engine puts to Clef, and Thinking's instructions to its text model.
