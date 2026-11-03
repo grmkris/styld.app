@@ -1,5 +1,5 @@
 import { cdn } from '../Cdn.ts'
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { drawOperationId } from '../OperationIds.ts'
 import {
   Day,
@@ -276,7 +276,7 @@ export const Wear = Command.define('Wear', {
 
 // UPDATE
 
-type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | SecureRandom.SecureRandom>
 
 const unavailable = Result.fail('Unavailable' as const)
 

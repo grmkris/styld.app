@@ -12,7 +12,8 @@ import * as D1 from '@yielded/auth-persistence-drizzle/D1'
 import { sql, type SQL } from 'drizzle-orm'
 import * as Drizzle from 'drizzle-orm/effect-d1'
 import { Effect, Layer, Schema } from 'effect'
-import * as Crypto from 'effect/Crypto'
+import * as Digest from 'effect/crypto/Digest'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import * as Struct from 'effect/Struct'
 import { accounts } from '@styld/db'
@@ -22,7 +23,7 @@ import type { EmailRegistration } from './EmailEntry.ts'
 import { AppAuth, credentials, emailCredentials, identifiers, proofs } from './storage.ts'
 
 /** Explicit D1 services for email code sign-in, email registration and proofs.
- * Requires: D1.Database, SqlClient, Crypto, LifecycleHooks. */
+ * Requires: D1.Database, SqlClient, SecureRandom, Digest, LifecycleHooks. */
 
 const mappingError = (operation: string) => (cause: unknown) => PersistenceMappingError.make({ operation, cause })
 const encoder = new TextEncoder()
@@ -215,11 +216,12 @@ const registrationCredential = {
   }),
 } as const
 
-/** Registration mapping; needs Crypto (allocation, fingerprint) and the D1 client (eligibility read). */
+/** Registration mapping; needs SecureRandom (allocation), Digest (fingerprint) and the D1 client (eligibility read). */
 const makeRegistrationMapping = Effect.gen(function* () {
-  const crypto = yield* Crypto.Crypto
+  const random = yield* SecureRandom.SecureRandom
+  const digest = yield* Digest.Digest
   const drizzle = yield* Drizzle.makeWithDefaults({})
-  const randomId = crypto.randomBytes(32).pipe(Effect.map(Base64Url.encode), Effect.mapError(mappingError('allocate')))
+  const randomId = random.randomBytes(32).pipe(Effect.map(Base64Url.encode))
 
   // Never displace or adopt an existing address: any identifier row (verified, unverified,
   // disabled account, password-only account) makes the registration ineligible. The request then
@@ -237,8 +239,8 @@ const makeRegistrationMapping = Effect.gen(function* () {
           sql`${sql.identifier('namespace')} = ${input.identifier.namespace} and ${sql.identifier('value')} = ${input.identifier.value}`,
         )
         .limit(1)
-      const bytes = yield* crypto.digest(
-        'SHA-256',
+      const bytes = yield* digest.digest(
+        Digest.sha256,
         encoder.encode(
           JSON.stringify(['styld/email-registration/v1', input.identifier.value, input.registration.displayName]),
         ),

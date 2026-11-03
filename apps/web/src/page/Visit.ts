@@ -1,4 +1,4 @@
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { drawOperationId } from '../OperationIds.ts'
 import { Explore, Handle, Mood, PieceId, PublicPiecePage, PublicProfile, SearchResults } from '@styld/protocol'
 import { Effect, Option, Predicate, Record, Result, Schema } from 'effect'
@@ -243,7 +243,7 @@ const ReadCameFrom = Command.define('ReadCameFrom', {
   ),
 })
 
-const loadTarget = (target: Target): Command.Command<Message, never, StyldClient | Crypto.Crypto> =>
+const loadTarget = (target: Target): Command.Command<Message, never, StyldClient | SecureRandom.SecureRandom> =>
   Target.match(target, {
     Person: ({ handle }) => LoadPerson({ handle }),
     Piece: ({ pieceId }) => LoadPublicPiece({ pieceId }),
@@ -251,7 +251,9 @@ const loadTarget = (target: Target): Command.Command<Message, never, StyldClient
   })
 
 /** The Commands that open the page; where the visitor stands with the person is read once the profile is in. */
-export const load = (model: Model): ReadonlyArray<Command.Command<Message, never, StyldClient | Crypto.Crypto>> => [
+export const load = (
+  model: Model,
+): ReadonlyArray<Command.Command<Message, never, StyldClient | SecureRandom.SecureRandom>> => [
   loadTarget(model.target),
   ...(Target.guards.Piece(model.target) ? [ReadCameFrom()] : []),
 ]
@@ -269,7 +271,7 @@ const withRelation = (model: Model, profile: PublicProfile): UpdateReturn => {
 
 // UPDATE
 
-type UpdateReturn = Update.Return<Model, Message, StyldClient | Crypto.Crypto>
+type UpdateReturn = Update.Return<Model, Message, StyldClient | SecureRandom.SecureRandom>
 
 /** The tab a profile opens on: Looks when only looks are public, so a visitor never lands on an empty Boards while
  * the person's looks wait behind the next tab. */

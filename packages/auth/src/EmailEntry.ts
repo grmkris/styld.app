@@ -1,7 +1,7 @@
 import { Auth, Email, Hooks, Identity, Operations, Proofs, Schema as AuthSchema, Sessions } from '@yielded/auth'
 import { hooksLayer } from '@yielded/auth/Persistence'
 import { Context, DateTime, Effect, Layer, Option, Predicate, Schema } from 'effect'
-import * as Crypto from 'effect/Crypto'
+import * as Digest from 'effect/crypto/Digest'
 import * as Base64Url from 'effect/encoding/Base64Url'
 
 import {
@@ -91,10 +91,11 @@ const CompleteInput = Schema.Struct({
 type CompleteInput = typeof CompleteInput.Type
 
 const bindingDigest = Effect.fn('Styld.EmailEntry.bindingDigest')(function* (parts: ReadonlyArray<string>) {
-  const crypto = yield* Crypto.Crypto
-  const bytes = yield* crypto
-    .digest('SHA-256', encoder.encode(JSON.stringify(['styld/email-entry/registration-session/v1', ...parts])))
-    .pipe(Effect.mapError(() => Email.EmailUnavailable.make({})))
+  const digest = yield* Digest.Digest
+  const bytes = yield* digest.digest(
+    Digest.sha256,
+    encoder.encode(JSON.stringify(['styld/email-entry/registration-session/v1', ...parts])),
+  )
   return AuthSchema.TokenDigest.make(Base64Url.encode(bytes))
 })
 

@@ -4,11 +4,11 @@ import * as DomainCloudflare from '@alchemy.run/cloudflare/Domain'
 import { Layer } from 'effect'
 
 test('the published Cloudflare Domain adapter resolves under Node and Bun', () => {
-  expect(Layer.isLayer(DomainCloudflare.DurableObjects)).toBe(true)
+  expect(Layer.isLayer(DomainCloudflare.layerDurableObjects())).toBe(true)
   const source = `
-    import { DurableObjects } from '@alchemy.run/cloudflare/Domain';
+    import { layerDurableObjects } from '@alchemy.run/cloudflare/Domain';
     import { Layer } from 'effect';
-    if (!Layer.isLayer(DurableObjects)) process.exit(1);
+    if (!Layer.isLayer(layerDurableObjects())) process.exit(1);
   `
   expect(() =>
     execFileSync('bun', ['-e', source], {

@@ -67,7 +67,7 @@ const sendPhoto = (sent: Array<Sent>) =>
         styldClientLayer(origin).pipe(Layer.provide(Layer.succeed(HttpClient.HttpClient, server(sent)))),
         Layer.succeed(PictureEncoder, { encode: () => Effect.succeed(drawn) }),
         // @effect-diagnostics-next-line unstableApiUsage:off -- the browser Web Crypto layer draws operation ids, as entry.ts does
-        BrowserCrypto.layer,
+        BrowserCrypto.layerSecureRandom,
       ),
     ),
   )

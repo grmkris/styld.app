@@ -1,7 +1,7 @@
 import * as D1Client from '@effect/sql-d1/D1Client'
 import { Auth, Email, Operations, Password, Proofs, Schema as AuthSchema } from '@yielded/auth'
 import { hooksLayer } from '@yielded/auth/Persistence'
-import * as WorkerdServices from '@yielded/auth/WorkerdServices'
+import * as WorkerdServices from '@yielded/auth-platform-workerd'
 import { databaseLayer } from '@yielded/auth-persistence-drizzle/D1'
 import * as Drizzle from 'drizzle-orm/effect-d1'
 import { DateTime, Effect, Layer, Redacted, Schema } from 'effect'

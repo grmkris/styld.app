@@ -1,7 +1,7 @@
 import { drawOperationId } from '../OperationIds.ts'
 import { Photo, PhotoId } from '@styld/protocol'
 import { Array, Effect, Number, Option, Predicate, Result, Schema } from 'effect'
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { AsyncData, Command, File, Subscription, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
@@ -77,7 +77,7 @@ export const AddPhoto = Command.define('AddPhoto', {
 
 // UPDATE
 
-type UpdateReturn = Update.Return<Model, Message, StyldClient | Crypto.Crypto | PictureEncoder>
+type UpdateReturn = Update.Return<Model, Message, StyldClient | SecureRandom.SecureRandom | PictureEncoder>
 
 const photosCache = (revalidate: (photos: PhotosData) => Option.Option<PhotosData>) =>
   Update.refresh<Model, Message, ReadonlyArray<Photo>, 'Unavailable', StyldClient>({

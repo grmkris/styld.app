@@ -1,7 +1,7 @@
 import { drawOperationId } from '../../OperationIds.ts'
 import { BoardId, BoardItem, BoardItemId, boardWidth, Paper, PieceId } from '@styld/protocol'
 import { Array, Duration, Effect, Option, Predicate, Queue, Schema, Stream } from 'effect'
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { Command, File, Mount } from 'foldkit'
 import { uploadPicture } from '../../Upload.ts'
@@ -70,11 +70,11 @@ export const VisitBoard = Command.define('VisitBoard', {
 export const MakeIds = Command.define('MakeIds', {
   messages: [Message.CompletedMakeIds],
   execute: Effect.gen(function* () {
-    const crypto = yield* Crypto.Crypto
+    const random = yield* SecureRandom.SecureRandom
     const ids = yield* Effect.forEach(
       Array.makeBy(12, () => undefined),
       () =>
-        crypto
+        random
           .randomBytes(16)
           .pipe(Effect.flatMap((bytes) => Schema.decodeUnknownEffect(BoardItemId)(`bi_${Base64Url.encode(bytes)}`))),
     )

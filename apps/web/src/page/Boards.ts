@@ -1,7 +1,7 @@
 import { drawOperationId } from '../OperationIds.ts'
 import { Board, BoardName, OperationId, SavedThing } from '@styld/protocol'
 import { Effect, Option, Result, Schema } from 'effect'
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { AsyncData, Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
@@ -80,7 +80,7 @@ export const CreateBoard = Command.define('CreateBoard', {
 
 // UPDATE
 
-type Services = StyldClient | Crypto.Crypto
+type Services = StyldClient | SecureRandom.SecureRandom
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Services>
 
 const refreshSaved = Update.refresh<Model, Message, ReadonlyArray<SavedThing>, 'Unavailable', StyldClient>({

@@ -26,7 +26,7 @@ import * as Wardrobe from './page/Wardrobe.ts'
 import { AppRoute } from './route.ts'
 import type { StyldClient } from './StyldClient.ts'
 import type { PictureEncoder } from './Upload.ts'
-import type * as Crypto from 'effect/Crypto'
+import type * as SecureRandom from 'effect/crypto/SecureRandom'
 
 // The page a document shows. Tab pages switch inside the document and keep their place, so they live together; every
 // other page loads whole (Navigation.ts), so it is the only one there is. A page's Model exists only while it is
@@ -257,7 +257,7 @@ const tabs = (signedIn: boolean, route: AppRoute): Page =>
   })
 
 /** What opening a page needs from the browser. */
-type PageServices = StyldClient | Crypto.Crypto | PictureEncoder
+type PageServices = StyldClient | SecureRandom.SecureRandom | PictureEncoder
 type Opened = Update.Return<Page, Message, PageServices>
 
 /** A page opened with what it asks for first, through its lens. */

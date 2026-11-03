@@ -1,4 +1,4 @@
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { drawOperationId } from '../OperationIds.ts'
 import { Profile } from '@styld/protocol'
 import { Effect, Option, Result, Schema } from 'effect'
@@ -81,7 +81,7 @@ export const enter = (model: Model): Update.Return<Model, Message, StyldClient> 
 
 // UPDATE
 
-type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | SecureRandom.SecureRandom>
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {

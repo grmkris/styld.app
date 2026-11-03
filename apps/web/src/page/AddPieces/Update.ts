@@ -1,7 +1,7 @@
 import { FileDrop } from '@foldkit/ui'
 import { type CaptureId, type CaptureSource, maximumImageBytes, type Side, VideoType } from '@styld/protocol'
 import { Option, Schema } from 'effect'
-import type * as Crypto from 'effect/Crypto'
+import type * as SecureRandom from 'effect/crypto/SecureRandom'
 import { File, Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import type { StyldClient } from '../../StyldClient.ts'
@@ -21,7 +21,7 @@ import {
 
 // UPDATE
 
-type Services = StyldClient | Crypto.Crypto | PictureEncoder
+type Services = StyldClient | SecureRandom.SecureRandom | PictureEncoder
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Services>
 
 /** Two files go up at once, at most one of them a video; the rest wait their turn. */

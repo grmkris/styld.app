@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@effect/vitest'
 import { CurrentAccount, NotFound } from '@styld/protocol'
-import { layerCryptoWeb } from '@yielded/auth/WebCrypto'
+import * as WebCrypto from '@yielded/auth/WebCrypto'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect } from 'effect'
 import { AccountLifecycle, makeAccountLifecycle } from '../src/AccountLifecycle.ts'
@@ -25,7 +25,7 @@ const accounts = () => {
   return makeAccountLifecycle(
     { database: drizzle(database), bucket: { list: notUsed, delete: notUsed }, queue: { send: notUsed } },
     { chats: () => Effect.void, providerFiles: () => Effect.void },
-  ).pipe(Effect.provide(layerCryptoWeb))
+  ).pipe(Effect.provide(WebCrypto.layer))
 }
 
 const readAs = (accountId: string) =>

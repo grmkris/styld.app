@@ -1,4 +1,4 @@
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { Dialog } from '@foldkit/ui'
 import { Colour, GarmentGroup, groupOf, Occasion, Piece, PieceType, Season } from '@styld/protocol'
 import { Array, Option, Order, Schema } from 'effect'
@@ -133,7 +133,7 @@ export type OutMessage = typeof OutMessage.Type
 
 // UPDATE
 
-type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | SecureRandom.SecureRandom>
 
 const filterSheet = sheetFolds<Model, Message>({
   read: (model) => model.filterSheet,

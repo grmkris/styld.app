@@ -1,5 +1,7 @@
 import { provideAllCatalogs } from '@styld/i18n/all'
 import * as Cloudflare from '@alchemy.run/cloudflare'
+import * as AlchemyHttp from 'alchemy/Http'
+import { RuntimeContext } from 'alchemy/RuntimeContext'
 import { UserId, OperationId } from '@styld/domain/Identity'
 import { ReserveCredits } from '@styld/domain/Wallet/ReserveCredits.command'
 import { SettleCredits } from '@styld/domain/Wallet/SettleCredits.command'
@@ -158,7 +160,9 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
     )
     // Built on the first request, like the API Worker: auth validates its tables against D1, which
     // Alchemy migrates only after it has evaluated this constructor.
-    const authHandle = yield* onFirstUse(() => HttpRouter.toHttpEffect(identityRoutes).pipe(Effect.orDie))
+    const authHandle = yield* onFirstUse(() =>
+      HttpRouter.toHttpEffect(identityRoutes.pipe(Layer.provide(AlchemyHttp.Platform))).pipe(Effect.orDie),
+    )
     const wallets = yield* Wallet
     const exercise = Effect.fn('Styld.acceptance.wallet')(function* () {
       const owner = UserId.make('native-test-owner')
@@ -221,6 +225,7 @@ export default class RuntimeWorker extends Cloudflare.Worker<RuntimeWorker>()(
   }).pipe(
     Effect.provide(
       Layer.mergeAll(
+        Layer.effect(RuntimeContext, Cloudflare.Worker),
         DomainLive,
         Cloudflare.Telemetry(),
         Cloudflare.D1.QueryDatabaseBinding,

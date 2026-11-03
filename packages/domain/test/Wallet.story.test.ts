@@ -1,3 +1,4 @@
+import * as Domain from '@alchemy.run/domain'
 import { Story } from '@alchemy.run/domain/Story'
 import { it } from '@effect/vitest'
 import { expect } from 'vitest'
@@ -26,7 +27,8 @@ const reservedFour = new CreditsReserved({ operationId, day: today, amount: 4, d
 const refund = new SettleCredits({ operationId, outcome: 'refunded' })
 const consume = new SettleCredits({ operationId, outcome: 'consumed' })
 
-// beta.84 has no Domain.verify export. Building the real model exercises its kernel validation.
+it('the declared model is well defined', () => expect(Domain.verify(Styld)).toEqual([]))
+
 it.effect('builds the complete declared model', () => story())
 
 it.effect('derived command IDs keep a settled operation from being reserved again', () =>

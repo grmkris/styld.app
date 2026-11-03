@@ -1,5 +1,5 @@
 import { OAuthServer } from '@yielded/auth'
-import * as WorkerdServices from '@yielded/auth/WorkerdServices'
+import * as WorkerdServices from '@yielded/auth-platform-workerd'
 import { Clock, Effect, Layer, Option, Schema } from 'effect'
 import { publicWebTransport } from './providers/PublicWeb.ts'
 import * as HttpRouter from 'effect/http/HttpRouter'

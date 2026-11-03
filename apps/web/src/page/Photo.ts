@@ -1,7 +1,7 @@
 import { drawOperationId } from '../OperationIds.ts'
 import { Look, Photo as PhotoContract, PhotoGarmentId, PhotoId, PhotoPicture, PieceId } from '@styld/protocol'
 import { Effect, Number, Option, Predicate, Result, Schema } from 'effect'
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { AsyncData, Command, Subscription, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
@@ -224,7 +224,7 @@ export const DeletePhoto = Command.define('DeletePhoto', {
 
 // UPDATE
 
-type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | SecureRandom.SecureRandom>
 
 /** What opening the page asks for: the photo. */
 export const load = (model: Model) => [GetPhoto({ photoId: model.photoId })]
@@ -234,7 +234,7 @@ const busy = (work: Work) => Work.guards.Sending(work) || Work.guards.CuttingOut
 /** A change sent, unless one is already on its way; `work` says what is on its way. */
 const sending = (
   model: Model,
-  command: Command.Command<Message, never, StyldClient | Crypto.Crypto>,
+  command: Command.Command<Message, never, StyldClient | SecureRandom.SecureRandom>,
   work: Work = Work.Sending(),
 ): UpdateReturn =>
   busy(model.work)

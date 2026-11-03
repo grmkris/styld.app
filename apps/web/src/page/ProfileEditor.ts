@@ -1,4 +1,4 @@
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { drawOperationId } from '../OperationIds.ts'
 import { Handle, Profile, Tone } from '@styld/protocol'
 import { Effect, Match, Option, Predicate, Result, Schema } from 'effect'
@@ -155,7 +155,7 @@ export const load = () => [LoadProfile()]
 export const OutMessage = defineMessageUnion({ SavedProfile: { profile: Profile } })
 export type OutMessage = typeof OutMessage.Type
 
-type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | SecureRandom.SecureRandom>
 
 /** A field of the draft as typed. */
 const typed =

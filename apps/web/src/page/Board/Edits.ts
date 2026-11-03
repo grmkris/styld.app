@@ -1,6 +1,6 @@
 import type { Board, BoardItem } from '@styld/protocol'
 import { Array, Option } from 'effect'
-import type * as Crypto from 'effect/Crypto'
+import type * as SecureRandom from 'effect/crypto/SecureRandom'
 import type { Update } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import type { StyldClient } from '../../StyldClient.ts'
@@ -9,7 +9,7 @@ import { MakeIds, SaveItems, WaitToSave } from './Commands.ts'
 import type { Message } from './Message.ts'
 import { fromBoard, Gesture, type Model, Saving } from './Model.ts'
 
-export type Services = StyldClient | Crypto.Crypto | PictureEncoder
+export type Services = StyldClient | SecureRandom.SecureRandom | PictureEncoder
 export type UpdateReturn = Update.Return<Model, Message, Services>
 
 const historyLimit = 40

@@ -1,7 +1,7 @@
 import type { QueryDatabaseClient } from '@alchemy.run/cloudflare/D1/QueryDatabase'
 import { AppAuth } from '@styld/auth/storage'
 import { Password } from '@yielded/auth'
-import * as WorkerdServices from '@yielded/auth/WorkerdServices'
+import * as WorkerdServices from '@yielded/auth-platform-workerd'
 import { Clock, Effect, Redacted } from 'effect'
 
 /** The password every seeded account has. */

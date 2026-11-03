@@ -1,7 +1,7 @@
 import { drawOperationId } from '../OperationIds.ts'
 import { Chat, ChatId, Language, ChatSummary, OperationId } from '@styld/protocol'
 import { Duration, Effect, Number, Option, Schema } from 'effect'
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { AsyncData, Command, Dom, Render, Subscription, type Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
@@ -173,7 +173,7 @@ export const load = () => [LoadChats()]
 
 // UPDATE
 
-type UpdateReturn = Update.Return<Model, Message, StyldClient | Crypto.Crypto>
+type UpdateReturn = Update.Return<Model, Message, StyldClient | SecureRandom.SecureRandom>
 
 /** Whether Styld is writing the open chat's reply. */
 export const isWriting = (model: Model) => Option.exists(model.open, (chat) => chat.replying?.state === 'writing')

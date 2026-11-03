@@ -1,6 +1,6 @@
 import { describe, expect, it } from '@effect/vitest'
 import { CurrentAccount } from '@styld/protocol'
-import { layerCryptoWeb } from '@yielded/auth/WebCrypto'
+import * as WebCrypto from '@yielded/auth/WebCrypto'
 import { drizzle } from 'drizzle-orm/d1'
 import { Effect, Option } from 'effect'
 import { TestClock } from 'effect/testing'
@@ -53,7 +53,7 @@ const lifecycleOver = (database: ReturnType<typeof localD1>, outside: ReturnType
   makeAccountLifecycle(
     { database: drizzle(database), bucket: outside.bucket, queue: outside.queue },
     outside.outside,
-  ).pipe(Effect.provide(layerCryptoWeb))
+  ).pipe(Effect.provide(WebCrypto.layer))
 
 const deletions = (database: ReturnType<typeof localD1>) =>
   database.sqlite.prepare('SELECT account_id, purged_at FROM account_deletions').all()

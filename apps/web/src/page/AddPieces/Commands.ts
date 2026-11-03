@@ -10,7 +10,7 @@ import {
   OperationId,
 } from '@styld/protocol'
 import { Effect, Option, Predicate, Result, Schema } from 'effect'
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { Command, File } from 'foldkit'
 import { FileNotSent, StyldClient } from '../../StyldClient.ts'
 import { uploadPictureOnce } from '../../Upload.ts'
@@ -231,7 +231,7 @@ const failedVideo = (index: number, error: unknown, kept: Option.Option<CreateVi
 const sendVideoCapture = <Succeeded extends Message, E>(
   index: number,
   prepared: Option.Option<CreateVideoCapture>,
-  prepare: Effect.Effect<CreateVideoCapture, E, StyldClient | Crypto.Crypto>,
+  prepare: Effect.Effect<CreateVideoCapture, E, StyldClient | SecureRandom.SecureRandom>,
   succeeded: (captureId: CaptureId) => Succeeded,
 ) =>
   Effect.gen(function* () {

@@ -33,7 +33,7 @@ import * as PiecePhotos from './PiecePhotos.ts'
 import { changeDetails, type Details } from './PieceFields.ts'
 import { changesOf, Draft, DraftSave, draftOf, shopUrlSendable } from './PieceDraft.ts'
 import * as SaveToBoard from './SaveToBoard.ts'
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 
 // MODEL
 
@@ -333,7 +333,7 @@ export const load = (model: Model): ReadonlyArray<Command.Command<Message, never
 
 // UPDATE
 
-type Services = StyldClient | Crypto.Crypto | PictureEncoder
+type Services = StyldClient | SecureRandom.SecureRandom | PictureEncoder
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Services>
 
 /** Asking for the piece again unless a read is on its way. */

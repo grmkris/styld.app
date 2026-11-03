@@ -15,7 +15,7 @@ import * as NavigationState from './NavigationState.ts'
 import { at, data } from './AppLens.ts'
 import { lenses, openPage, Page } from './Page.ts'
 import * as ServerData from './ServerData.ts'
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { ReadYou, You, youOf } from './You.ts'
 import * as AddPiecesMessage from './page/AddPieces/Message.ts'
 import * as AddPiecesSubscription from './page/AddPieces/Subscription.ts'
@@ -167,7 +167,7 @@ type Services =
   | Login.EmailSignIn
   | TelemetryConsentControl
   | StyldClient
-  | Crypto.Crypto
+  | SecureRandom.SecureRandom
   | PictureEncoder
 type UpdateReturn = Update.Return<Model, Message, Services>
 type Step = Update.Step<Model, Message, Services>

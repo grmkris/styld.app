@@ -1,4 +1,4 @@
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { drawOperationId } from '../OperationIds.ts'
 import { Dialog } from '@foldkit/ui'
 import { BoardId, Handle, LookId, PieceId, Relation, ReportReason, textLength } from '@styld/protocol'
@@ -237,11 +237,14 @@ export const readRelation = (model: Model): Update.Return<Model, Message, StyldC
 
 // UPDATE
 
-type UpdateReturn = Update.Return<Model, Message, StyldClient | Crypto.Crypto>
+type UpdateReturn = Update.Return<Model, Message, StyldClient | SecureRandom.SecureRandom>
 
 const handleOfSubject = (model: Model) => (Subject.guards.Person(model.subject) ? model.subject.handle : '')
 
-const sending = (model: Model, command: Command.Command<Message, never, StyldClient | Crypto.Crypto>): UpdateReturn =>
+const sending = (
+  model: Model,
+  command: Command.Command<Message, never, StyldClient | SecureRandom.SecureRandom>,
+): UpdateReturn =>
   Work.guards.Sending(model.work)
     ? { model }
     : { model: modifyFields(model, { work: () => Work.Sending(), confirmingBlock: () => false }), commands: [command] }

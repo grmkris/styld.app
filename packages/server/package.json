@@ -20,6 +20,7 @@
     "@styld/observability": "workspace:*",
     "@styld/protocol": "workspace:*",
     "@yielded/auth": "catalog:",
+    "@yielded/auth-platform-workerd": "catalog:",
     "alchemy": "catalog:",
     "drizzle-orm": "catalog:",
     "effect": "catalog:"

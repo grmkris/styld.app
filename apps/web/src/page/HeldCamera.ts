@@ -1,4 +1,4 @@
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { drawOperationId } from '../OperationIds.ts'
 import { CameraLayout, Side } from '@styld/protocol'
 import { Duration, Effect, Option, Schema, Stream } from 'effect'
@@ -267,7 +267,7 @@ export const TakeCountdownPhoto = Command.define('TakeCountdownPhoto', {
 
 // UPDATE
 
-type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | SecureRandom.SecureRandom>
 
 const watching = (hint: Hint) => Camera.Watching({ hint })
 

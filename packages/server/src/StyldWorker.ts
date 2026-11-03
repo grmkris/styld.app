@@ -5,7 +5,7 @@ import { ProofDispatchSink } from '@styld/auth'
 import { Proofs } from '@yielded/auth'
 import type { HttpBodyError } from 'effect/http/HttpBody'
 import { RuntimeContext } from 'alchemy/RuntimeContext'
-import { layerCryptoWeb } from '@yielded/auth/WebCrypto'
+import * as WebCrypto from '@yielded/auth/WebCrypto'
 import { Context, Effect, Layer, Logger, Record } from 'effect'
 import { HttpServerRequest } from 'effect/http/HttpServerRequest'
 import * as HttpRouter from 'effect/http/HttpRouter'
@@ -59,6 +59,9 @@ provideAllCatalogs()
 
 /** The Cloudflare and Domain services the API Worker runs on. */
 export const Runtime = Layer.mergeAll(
+  // The Worker instance is the runtime context its init runs in; the application, built on the first request, keeps
+  // it for the isolate (`onFirstUse`).
+  Layer.effect(RuntimeContext, Cloudflare.Worker),
   DomainLive,
   Cloudflare.Telemetry({ headSamplingRate: 1 }),
   Cloudflare.D1.QueryDatabaseBinding,
@@ -159,7 +162,7 @@ const kernelOf = (bindings: Bindings, providersFor: ProvidersFor, env: Readonly<
       Layer.succeed(CaptureMetrics, metrics),
       Layer.succeed(Auth, auth),
       Layer.succeed(Deployment, deployment),
-      layerCryptoWeb,
+      WebCrypto.layer,
     )
     return { kernel, auth, observabilityBase }
   })

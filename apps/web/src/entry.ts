@@ -49,8 +49,8 @@ const config = {
     }),
     pictureEncoderLayer,
   ).pipe(
-    // @effect-diagnostics-next-line unstableApiUsage:off -- Effect's platform Web Crypto layer is the browser's only Crypto provider.
-    Layer.provideMerge(BrowserCrypto.layer),
+    // @effect-diagnostics-next-line unstableApiUsage:off -- Effect's platform Web Crypto layer is the browser's only SecureRandom provider.
+    Layer.provideMerge(BrowserCrypto.layerSecureRandom),
   ),
 }
 

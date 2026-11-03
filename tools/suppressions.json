@@ -9,7 +9,7 @@
   },
   {
     "file": "apps/web/src/entry.ts",
-    "comment": "@effect-diagnostics-next-line unstableApiUsage:off -- Effect's platform Web Crypto layer is the browser's only Crypto provider."
+    "comment": "@effect-diagnostics-next-line unstableApiUsage:off -- Effect's platform Web Crypto layer is the browser's only SecureRandom provider."
   },
   {
     "file": "apps/web/test/upload.test.ts",

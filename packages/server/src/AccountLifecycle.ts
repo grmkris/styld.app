@@ -4,7 +4,7 @@ import { CurrentAccount, NotFound, Unavailable } from '@styld/protocol'
 import { and, asc, eq, isNull, lt, or, sql } from 'drizzle-orm'
 import type { SQLiteTable } from 'drizzle-orm/sqlite-core'
 import { Context, DateTime, Duration, Effect, Layer, Schema } from 'effect'
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import * as Base64Url from 'effect/encoding/Base64Url'
 import { forgetFilesOf } from './capture/ProviderFiles.ts'
 import { GarmentSegmenter } from './capture/Providers.ts'
@@ -82,8 +82,8 @@ const purgeOutside = Effect.fnUntraced(function* (bucket: Listing, outside: Outs
 /** Access ends at once, and the deletion is recorded in the same batch: disabled, a new security revision, no
  * sessions, no assistant grants. */
 const closeAccount = Effect.fnUntraced(function* (db: Drizzle, accountId: string) {
-  const crypto = yield* Crypto.Crypto
-  const revision = Base64Url.encode(yield* crypto.randomBytes(16).pipe(Effect.mapError(unavailable)))
+  const random = yield* SecureRandom.SecureRandom
+  const revision = Base64Url.encode(yield* random.randomBytes(16))
   const requestedAt = yield* nowDate
   yield* attempt(() =>
     db.batch([
@@ -140,7 +140,7 @@ const dueDeletions = (db: Drizzle, queued: Date, drained: Date) =>
 
 const make = (bindings: LifecycleBindings, outside: OutsideStores) =>
   Effect.gen(function* () {
-    const crypto = yield* Crypto.Crypto
+    const random = yield* SecureRandom.SecureRandom
     const db = bindings.database
     const { bucket } = bindings
 
@@ -159,7 +159,7 @@ const make = (bindings: LifecycleBindings, outside: OutsideStores) =>
     /** Delete an account and everything it owns. Once access has ended and the deletion is recorded, the rest is
      * queued as well as tried at once; what neither finishes, the sweep does. */
     const deleteAccount = Effect.fn('Styld.Account.delete')(function* (accountId: string) {
-      yield* closeAccount(db, accountId).pipe(Effect.provideService(Crypto.Crypto, crypto))
+      yield* closeAccount(db, accountId).pipe(Effect.provideService(SecureRandom.SecureRandom, random))
       yield* attempt(() => bindings.queue.send({ _tag: 'FinishDeletion', accountId })).pipe(Effect.ignore)
       yield* finishDeletion(accountId).pipe(Effect.ignore)
     })

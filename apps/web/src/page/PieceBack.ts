@@ -1,7 +1,7 @@
 import { drawOperationId } from '../OperationIds.ts'
 import { Piece, PieceId } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { Command, File, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { modifyFields } from 'foldkit/struct'
@@ -86,12 +86,12 @@ type UpdateReturn = Update.ReturnWithOutMessage<
   Model,
   Message,
   OutMessage,
-  StyldClient | Crypto.Crypto | PictureEncoder
+  StyldClient | SecureRandom.SecureRandom | PictureEncoder
 >
 
 const sending = (
   model: Model,
-  command: Command.Command<Message, never, StyldClient | Crypto.Crypto | PictureEncoder>,
+  command: Command.Command<Message, never, StyldClient | SecureRandom.SecureRandom | PictureEncoder>,
 ) =>
   model.work === 'sending'
     ? { model }

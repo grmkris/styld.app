@@ -2,7 +2,7 @@ import { drawOperationId } from '../OperationIds.ts'
 import { Dialog } from '@foldkit/ui'
 import { BoardId, BoardName, LookId, OperationId, PhotoId, PieceId } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
@@ -135,7 +135,7 @@ export const SaveTo = Command.define('SaveTo', {
 
 // UPDATE
 
-type Services = StyldClient | Crypto.Crypto
+type Services = StyldClient | SecureRandom.SecureRandom
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Services>
 
 const sheet = sheetFolds<Model, Message>({

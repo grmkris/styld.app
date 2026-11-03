@@ -1,7 +1,7 @@
 import { expect } from 'bun:test'
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import * as Alchemy from 'alchemy'
-import * as Test from 'alchemy/Test/Bun'
+import * as Test from '@alchemy.run/test/Bun'
 import { Effect, Schedule, Schema } from 'effect'
 import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import * as HttpBody from 'effect/http/HttpBody'

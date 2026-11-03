@@ -187,5 +187,5 @@ vendored hashes `vendor:check` (skills: repoagents), `any` and `!` lint, catalog
   preview, private to those accounts and never public. Nothing else from production is copied, and no other person's
   data. Exports stay in a private folder outside the repository.
 - The production cutover re-runs the same rebuild and importer against `--stage production` on the owner's go.
-- The pinned Domain `2.0.0-beta.84` does not export `Domain.verify(Model)`; building the real model validates
-  definitions and a story test checks construction.
+- The Domain model is checked by `Domain.verify(Styld)` (exported since `2.0.0-beta.85`) and by building the real
+  model in a story test.

@@ -2,7 +2,7 @@ import { drawOperationId } from '../../OperationIds.ts'
 import { Dialog, RadioGroup } from '@foldkit/ui'
 import { BoardId, Generation, GenerationKind, OperationId } from '@styld/protocol'
 import { Duration, Effect, Option, Predicate, Schema } from 'effect'
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { Command, Subscription, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
@@ -165,7 +165,7 @@ export const resume = (model: Model): ReadonlyArray<Command.Command<Message, nev
 
 // UPDATE
 
-type Services = StyldClient | Crypto.Crypto
+type Services = StyldClient | SecureRandom.SecureRandom
 type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Services>
 
 const finished = (generation: Generation) => ['done', 'refused', 'failed'].includes(generation.status)

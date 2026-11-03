@@ -16,6 +16,7 @@
     "@yielded/auth": "catalog:",
     "@yielded/auth-persistence": "catalog:",
     "@yielded/auth-persistence-drizzle": "catalog:",
+    "@yielded/auth-platform-workerd": "catalog:",
     "drizzle-orm": "catalog:",
     "effect": "catalog:"
   }

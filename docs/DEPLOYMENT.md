@@ -18,7 +18,7 @@ URL, the edge Worker owns the workers.dev URL, and no custom domain is attached.
 
 ## State
 
-Alchemy keeps the stack's state in the Cloudflare account's state store (`Cloudflare.state()`, Alchemy beta.84): a
+Alchemy keeps the stack's state in the Cloudflare account's state store (`Cloudflare.state()`, Alchemy beta.85): a
 Worker named `alchemy-state-store` with its token and encryption key in the account's Secrets Store, made on the first
 deploy that uses it. Every operator's checkout plans against the same state; nothing is kept under `.alchemy/`. The
 API token needs Workers, D1, R2, Queues, Secrets Store and Account Analytics permissions.

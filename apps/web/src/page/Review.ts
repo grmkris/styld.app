@@ -12,7 +12,7 @@ import {
   Tray as TrayContract,
 } from '@styld/protocol'
 import { Effect, Number, Option, Record, Result, Schema } from 'effect'
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { AsyncData, Command, Subscription, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
@@ -215,7 +215,7 @@ export const load = () => [LoadTray()]
 
 // UPDATE
 
-type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | SecureRandom.SecureRandom>
 
 /** Every found piece the tray shows, in the order it shows them. */
 const detectionsOf = (model: Model) =>

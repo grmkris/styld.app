@@ -1,7 +1,7 @@
 import { drawOperationId } from '../OperationIds.ts'
 import { Look as LookContract, LookId, PublicLookPage } from '@styld/protocol'
 import { Effect, Option, Result, Schema } from 'effect'
-import type * as Crypto from 'effect/Crypto'
+import type * as SecureRandom from 'effect/crypto/SecureRandom'
 import { AsyncData, Command, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
@@ -142,7 +142,7 @@ export const load = (model: Model) => [GetLook({ lookId: model.lookId })]
 
 // UPDATE
 
-type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | Crypto.Crypto>
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | SecureRandom.SecureRandom>
 
 const foldPeople = People.foldInto<Model, Message>((message) => Message.GotPeopleMessage({ message }))
 

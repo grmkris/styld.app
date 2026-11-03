@@ -1,6 +1,6 @@
 import { BrowserAuth } from '@styld/auth/client'
 import { Effect, Layer, Option, Predicate, Redacted } from 'effect'
-import * as Crypto from 'effect/Crypto'
+import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { codeFormId, EmailSignIn, type Problem, SignInRefused } from './page/Login.ts'
 
 /** Sign-in always returns to the website; the page then decides where the person belongs. */
@@ -38,9 +38,9 @@ export const emailSignInLayer = (document: Document) =>
     EmailSignIn,
     Effect.gen(function* () {
       const { auth } = yield* BrowserAuth
-      const crypto = yield* Crypto.Crypto
+      const random = yield* SecureRandom.SecureRandom
       const openFlow = Effect.gen(function* () {
-        const flowId = yield* crypto.randomUUIDv4()
+        const flowId = yield* random.uuidV4()
         yield* auth.beginEmail({ flowId })
         return flowId
       })
@@ -52,7 +52,7 @@ export const emailSignInLayer = (document: Document) =>
               flowId: flow,
               email,
               returnTarget,
-              requestId: yield* crypto.randomUUIDv4(),
+              requestId: yield* random.uuidV4(),
               locale: pageLocale(document),
             })
             return { flowId: flow, requestId: receipt.requestId, proofId: receipt.proofId, keyId: receipt.keyId }

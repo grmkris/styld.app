@@ -60,7 +60,7 @@
           "effect/http",
           "effect/http-api",
           "effect/rpc",
-          "effect/Crypto",
+          "effect/crypto",
           "effect/ai"
         ],
         "overrides": [
