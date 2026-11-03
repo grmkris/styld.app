@@ -9,6 +9,7 @@ import {
   cutterFor,
   distinctMasks,
   foregroundCut,
+  foregroundPerson,
   heldOf,
   holding,
   kindPrompt,
@@ -16,8 +17,9 @@ import {
   promptsFor,
   verdictOf,
   withPairsJoined,
+  wornBy,
 } from './GarmentRules.ts'
-import { decodedPng } from './Pixels.ts'
+import { decodedPng, maskArea } from './Pixels.ts'
 import { capturePolicy } from './Policy.ts'
 import {
   GarmentSegmenter,
@@ -118,8 +120,9 @@ export class Garments extends Context.Service<
 type GarmentProviders = GarmentVision | PictureWork | GarmentSegmenter
 
 /** SAM on a working copy for each prompt: the first is the picture's answer; a later one is a best effort, whose
- * failure leaves its pieces out rather than paying for the first again. The cuts, largest first. */
-const samCuts = Effect.fnUntraced(function* (
+ * failure leaves its pieces out rather than paying for the first again. Each garment's mask once, in the copy's
+ * pixels. */
+const samMasks = Effect.fnUntraced(function* (
   copies: WorkingCopies,
   [first, ...more]: readonly [string, ...Array<string>],
 ) {
@@ -140,9 +143,24 @@ const samCuts = Effect.fnUntraced(function* (
     ],
     { concurrency: 'unbounded' },
   )
-  const picture = yield* decodedPng(copies.png)
-  return cutsOf(picture, distinctMasks([{ prompt: first, found }, ...others]), picture)
+  return distinctMasks([{ prompt: first, found }, ...others])
 })
+
+/** SAM's cuts for the prompts, largest first. */
+const samCuts = Effect.fnUntraced(function* (copies: WorkingCopies, prompts: readonly [string, ...Array<string>]) {
+  const masks = yield* samMasks(copies, prompts)
+  const picture = yield* decodedPng(copies.png)
+  return cutsOf(picture, masks, picture)
+})
+
+/** The people SAM finds in a working copy, each with its mask's area; a best effort, so a failure finds nobody. */
+const peopleIn = (copies: WorkingCopies) =>
+  Effect.flatMap(GarmentSegmenter, (segmenter) =>
+    segmenter.still({ bytes: copies.jpeg, contentType: 'image/jpeg' }, promptsFor('person')[0]),
+  ).pipe(
+    Effect.map((found) => found.map((person) => ({ ...person, area: maskArea(person) }))),
+    Effect.orElseSucceed(() => []),
+  )
 
 /** Background removal: the whole foreground as one cut, none when nothing is in front. */
 const foregroundOf = Effect.fnUntraced(function* (original: Uint8Array) {
@@ -204,10 +222,19 @@ const forTray = Effect.fnUntraced(function* (original: Uint8Array, camera: boole
   } satisfies Finding
 })
 
-/** An outfit photo: every garment the person wears counts, so there is no route and no held piece. */
+/** An outfit photo: every garment the person nearest the camera wears or carries counts, so there is no route and no
+ * held piece. SAM looks for the people beside the garments, at once; when it finds nobody every garment counts. */
 const forGallery = Effect.fnUntraced(function* (original: Uint8Array) {
   const copies = yield* (yield* PictureWork).workingCopies(original)
-  const cuts = yield* samCuts(copies, promptsFor('gallery'))
+  const [masks, people] = yield* Effect.all([samMasks(copies, promptsFor('gallery')), peopleIn(copies)], {
+    concurrency: 'unbounded',
+  })
+  const picture = yield* decodedPng(copies.png)
+  const person = foregroundPerson(people, picture)
+  const cuts =
+    person === undefined
+      ? cutsOf(picture, masks, picture)
+      : cutsOf(picture, wornBy(masks, person), picture, person.bounds)
   const pieces = yield* describedPieces(cuts, capturePolicy.garments.pieces.gallery)
   return {
     garments: pieces.map((piece) => garmentOf(piece, true)),
@@ -233,10 +260,10 @@ const pieceIn = Effect.fnUntraced(function* (original: Uint8Array, type: PieceTy
   return Option.map(pieceOfKind(pairs, kind), ({ picture }) => encodePng(picture))
 })
 
-/** The person in an outfit photo: the largest SAM finds. */
+/** The person in an outfit photo: the one nearest the camera of those SAM finds. */
 const personIn = Effect.fnUntraced(function* (original: Uint8Array) {
   const copies = yield* (yield* PictureWork).workingCopies(original)
-  const [person] = yield* samCuts(copies, promptsFor('person'))
+  const person = foregroundPerson(yield* samCuts(copies, promptsFor('person')), copies)
   return Option.map(Option.fromNullishOr(person), ({ picture }) => encodePng(picture))
 })
 
@@ -262,7 +289,7 @@ const inVideo = Effect.fnUntraced(function* (video: VideoToTrack) {
     track: found.track,
     frame: found.frame,
     bounds: found.bounds,
-    area: found.raster.reduce((total, value) => total + (value === 0 ? 0 : 1), 0),
+    area: maskArea(found),
     confidence: found.confidence,
   }))
   const masks = new Map(tracked.found.map((found) => [`${found.track}@${found.frame}`, found]))

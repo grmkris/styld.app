@@ -95,13 +95,18 @@ export const distinctMasks = (
 }
 
 /** Each mask, in `from` coordinates (SAM's frame, or the picture itself), cut from the picture's real pixels with its
- * edge refined against the photo, less specks; the largest first. */
+ * edge refined against the photo, less specks; the largest first. A speck is measured against `within` (in `from`
+ * coordinates) when given: an outfit photo's person, whose shoes are small beside the whole scene. */
 export const cutsOf = (
   picture: Rgba,
   found: ReadonlyArray<Mask & { readonly track: string; readonly confidence: number }>,
   from: { readonly width: number; readonly height: number },
+  within?: Box,
 ): ReadonlyArray<Cut> => {
-  const smallest = bars.minimumShare * picture.width * picture.height
+  const scale = (picture.width * picture.height) / (from.width * from.height)
+  const region =
+    within === undefined ? from.width * from.height : (within.right - within.left) * (within.bottom - within.top)
+  const smallest = bars.minimumShare * region * scale
   return found
     .flatMap(({ track, confidence, ...mask }): ReadonlyArray<Cut> => {
       const { piece, bounds, area } = refinedCutOut(picture, mask, from)
@@ -134,6 +139,44 @@ export const heldOf = <A extends Pick<Cut, 'bounds' | 'area'>>(
   return pieces.reduce<A | undefined>(
     (best, piece) => (best === undefined || score(piece) > score(best) ? piece : best),
     undefined,
+  )
+}
+
+/** The person an outfit photo is of: the one nearest the camera, who stands tallest in the frame, covers the most of
+ * it and whose feet reach lowest, a little favoured near the middle; SAM's confidence breaks a tie. Centrality alone
+ * picks a bystander when the person stands to one side (Eva's carnival photo, 2 November). None when nobody is found. */
+export const foregroundPerson = <A extends Pick<Cut, 'bounds' | 'area' | 'confidence'>>(
+  people: ReadonlyArray<A>,
+  size: { readonly width: number; readonly height: number },
+): A | undefined => {
+  const { width, height } = size
+  const score = ({ bounds, area }: A) =>
+    (bounds.bottom - bounds.top) / height +
+    area / (width * height) +
+    bounds.bottom / height / 2 -
+    Math.abs((bounds.left + bounds.right) / 2 - width / 2) / width / 2
+  return people.reduce<A | undefined>((best, person) => {
+    if (best === undefined) return person
+    const ahead = score(person) - score(best)
+    return ahead > 0 || (ahead === 0 && person.confidence > best.confidence) ? person : best
+  }, undefined)
+}
+
+/** The masks of what `person` wears or carries (`capturePolicy.garments.worn`, `.carried`): a garment mostly on the
+ * person's mask, or a bag (tracked under its prompt's name) hanging within reach of their body. */
+export const wornBy = <A extends Mask & { readonly track: string }>(
+  masks: ReadonlyArray<A>,
+  person: Mask,
+): ReadonlyArray<A> => {
+  const { left, right, top, bottom } = person.bounds
+  const reach = (right - left) * bars.carried
+  const carried = ({ bounds }: Mask) => {
+    const column = (bounds.left + bounds.right) / 2
+    const row = (bounds.top + bounds.bottom) / 2
+    return column >= left - reach && column <= right + reach && row >= top && row <= bottom
+  }
+  return masks.filter(
+    (mask) => overlapShare(mask, person) >= bars.worn || (mask.track.startsWith('bag-') && carried(mask)),
   )
 }
 

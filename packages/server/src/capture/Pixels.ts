@@ -12,9 +12,12 @@ export interface Mask {
 const covers = (mask: Mask, column: number, row: number) =>
   (mask.raster[(row - mask.bounds.top) * (mask.bounds.right - mask.bounds.left) + column - mask.bounds.left] ?? 0) !== 0
 
+/** How many of a picture's pixels `mask` covers. */
+export const maskArea = (mask: Mask) => mask.raster.reduce((sum, value) => sum + (value === 0 ? 0 : 1), 0)
+
 /** How much of `mask` `other` covers too (0–1): the share of its pixels inside both. */
 export const overlapShare = (mask: Mask, other: Mask) => {
-  const inside = mask.raster.reduce((sum, value) => sum + (value === 0 ? 0 : 1), 0)
+  const inside = maskArea(mask)
   if (inside === 0) return 0
   let shared = 0
   const right = Math.min(mask.bounds.right, other.bounds.right)

@@ -32,6 +32,12 @@ export interface CapturePolicy {
     /** At most this many pieces from one picture, the largest first: each costs a description and a store. A photo
      * or video for the tray holds a whole rail; an outfit photo shows what one person wears. */
     readonly pieces: { readonly tray: number; readonly video: number; readonly gallery: number }
+    /** An outfit photo is of the person nearest the camera; a garment is theirs when at least `worn` of its mask lies
+     * on the person's mask, or, for a bag, when its middle lies inside the person's box widened by `carried` of its
+     * width on each side (a bag on a strap hangs beside the body). Eva's review (2 November, F-16): with no person
+     * chosen, a bystander's unblocked shirt outscored her half-hidden dress. */
+    readonly worn: number
+    readonly carried: number
   }
   /** Clean pictures drawn from kept cut-outs (owner, 30 October): a drawing at least `show` like the cut-out is shown;
    * below `reject` it is dropped; between, the person chooses. A cut-out at least `face` likely to show a face is
@@ -73,6 +79,8 @@ export const capturePolicy: CapturePolicy = {
     whole: { drop: 0.2, preselect: 0.5 },
     pairArea: 0.5,
     pieces: { tray: 20, video: 20, gallery: 8 },
+    worn: 0.5,
+    carried: 0.25,
   },
   pictures: { show: 0.8, reject: 0.5, face: 0.3 },
   matching: { same: 0.8, sightings: 10, pieces: 6 },
