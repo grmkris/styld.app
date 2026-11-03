@@ -2,10 +2,10 @@
   "updatedAt": "2026-11-03",
   "tickets": {
     "T-01": {
-      "status": "not_started",
-      "owner": "",
+      "status": "in_progress",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
+      "note": "Batch 03 is investigating dark/uniform-frame auto-captures, motion cancellation and Back being relabelled as a new Front. Full foreground extraction and real-provider recognition acceptance remain open. No completion claimed.",
       "evidence": [],
       "criteriaDone": []
     },
@@ -74,7 +74,7 @@
       "status": "in_progress",
       "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "Partial delivery: guided cameras are first, library upload is explicit, the taken count finishes scanning, and Finish is prominent. Native acceptance confirms front/back photos survive finishing and reach review. Countdown, longer flipping delay and no-garment/face recognition changes remain open. The file picker remains subject to OS behavior.",
+      "note": "Batch 03 is adding a cancellable central 3–2–1 countdown after garment checking and a fresh shutter frame. Earlier source hierarchy and Finish controls remain deployed. Face/no-garment suppression still requires provider acceptance; this ticket remains partial.",
       "evidence": [
         {
           "level": "unit",
@@ -439,7 +439,7 @@
       "status": "not_started",
       "owner": "",
       "updatedAt": "2026-11-03",
-      "note": "",
+      "note": "Not complete. At code review c95185b, wardrobe piece pictures already use the deployed signed /cdn/media path without per-image session/D1 reads. Board images, Gallery photos/garments, review detections and turns still use the old per-kind routes. Their signed grants, range handling, expiry recovery and deployed load/Workers Logs acceptance remain open. F-43’s hero-image timing still needs an authenticated measurement.",
       "evidence": [],
       "criteriaDone": []
     }
@@ -1021,10 +1021,20 @@
         "F-36",
         "F-37"
       ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Started camera batch 03 after owner approval: visible countdown, dark/uniform-frame guard, motion cancellation and explicit Back pairing. T-21 reviewed at c95185b: wardrobe signed pictures are deployed, but remaining media kinds and authenticated performance acceptance are open.",
+      "items": [
+        "T-01",
+        "T-05",
+        "T-21",
+        "F-43"
+      ]
     }
   ],
   "overview": {
-    "label": "Board workflow deployed",
-    "note": "T-04, T-09 and T-11 are verified on isolated preview release 021dabe after the full gate and exact-release smoke acceptance. Six new phone/desktop before-and-after pairs are attached. Four tickets and nine findings are verified overall; T-05 and T-15 remain partial. Physical-phone and live-provider acceptance remain separate."
+    "label": "Camera reliability in progress",
+    "note": "Board batch 02 remains deployed and verified. Batch 03 is working on camera timing, dark-frame guards and side pairing. T-21 is still open: wardrobe pieces have signed media; the other owner media routes remain to migrate."
   }
 }

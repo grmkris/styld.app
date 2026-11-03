@@ -270,10 +270,12 @@
     "T-21": {
       "title": "Remove remaining per-image database reads",
       "effort": "Medium",
-      "note": "Added to the source report after the first analysis. Reuse the existing signed-media mechanism and validate each media kind, expiry recovery, video ranges and image styles. Deployment assertions and timing estimates in the source ticket are not independent verification in this tracker.",
+      "note": "Reviewed at c95185b (3 November): incomplete. Wardrobe piece pictures use signed media, while Board.boardImage, Photos.photoImage and capture ownerFile still read owner/session rows per image. Range/video support, all remaining grants and load/expiry readbacks are still open. F-43’s 12-second hero delay has not been remeasured on an authenticated deployed wardrobe.",
       "code": [
-        "packages/server/src/kernel/SignedMedia.ts:1",
-        "docs/STATUS.md:30"
+        "apps/web/src/Cdn.ts:24",
+        "packages/server/src/boards/Boards.ts:335",
+        "packages/server/src/photos/Photos.ts:370",
+        "packages/server/src/capture/Http.ts:59"
       ]
     }
   }

@@ -47,6 +47,17 @@ screenshot harness (49 assertions). Six matching pairs were visually reviewed at
 is deployed below and passed exact-release smoke acceptance (3 tests / 42 assertions). T-04, T-09 and T-11 are
 verified. Physical-phone and live-provider acceptance remain separate.
 
+## Eva camera batch 03 (in progress)
+
+A bounded follow-up is implementing a central cancellable countdown, dark/uniform-frame guards, motion
+cancellation and explicit Back pairing. Baseline synthetic Chromium/workerd captures reproduced black-frame
+advancement at both 390 and 1440px. Implementation and acceptance are not complete; T-01/T-05 remain partial.
+See the tracker's `BATCH-03.md` for the investigation and remaining provider/phone boundaries.
+
+T-21 is not complete: the deployed wardrobe piece pictures use signed media, but board pictures, Gallery photos,
+review detections and turns retain per-kind session/database routes. Their migration and deployed load checks
+remain open. F-43's slow hero picture has not been remeasured on an authenticated deployed wardrobe.
+
 ## The preview
 
 - **URL:** https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev (isolated workers.dev,
