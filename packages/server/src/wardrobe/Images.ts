@@ -48,6 +48,7 @@ const addressOf = (piece: PieceRow, picture: PictureRow | undefined, which: Piec
           contentType,
           variant: size,
           version: pictureVersion(piece, picture, which),
+          rotation: piece.rotation,
         }),
     }),
   )

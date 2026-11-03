@@ -1,5 +1,15 @@
-import { ImageType, Pattern, PieceSource, PieceStatus, PieceType, Season, VideoType } from '@styld/protocol'
-import { type AnySQLiteColumn, index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import {
+  ImageType,
+  Pattern,
+  PieceRotation,
+  PieceSource,
+  PieceStatus,
+  PieceType,
+  Season,
+  VideoType,
+} from '@styld/protocol'
+import { sql } from 'drizzle-orm'
+import { type AnySQLiteColumn, check, index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
 import { jsonArray, oneOf } from './checks.ts'
 import { detections } from './capture.ts'
 import { accounts } from './identity.ts'
@@ -65,6 +75,8 @@ export const pieces = sqliteTable(
       .references((): AnySQLiteColumn => detections.id, { onDelete: 'set null' }),
     /** The back of the garment, when the camera saw it. */
     backImageKey: text('back_image_key'),
+    /** A durable clockwise quarter-turn for legacy photos whose orientation is wrong. */
+    rotation: integer('rotation').$type<PieceRotation>().notNull().default(0),
     /** The photo as it arrived; the shown image once the cut-out step has run. */
     originalKey: text('original_key').notNull(),
     imageKey: text('image_key'),
@@ -80,6 +92,7 @@ export const pieces = sqliteTable(
     oneOf('pieces_pattern', table.pattern, Pattern.literals),
     oneOf('pieces_status', table.status, PieceStatus.literals),
     oneOf('pieces_source', table.source, PieceSource.literals),
+    check('pieces_rotation', sql`${table.rotation} IN (0, 90, 180, 270)`),
     jsonArray('pieces_colours', table.colours),
     jsonArray('pieces_occasions', table.occasions),
   ],

@@ -177,6 +177,7 @@ describe('a piece you own', () => {
             pattern: null,
             brand: 'Levi’s',
             shopUrl: null,
+            rotation: 0,
           },
         }),
       ),
@@ -188,6 +189,36 @@ describe('a piece you own', () => {
         expect(Option.isNone(current.draft)).toBe(true)
         expect(shownPiece(current)?.name).toBe('Dark jeans')
       }),
+    )
+  })
+
+  test('rotation is a durable quarter-turn saved with the piece', () => {
+    story(
+      update,
+      given(opened()),
+      message(Message.ClickedEdit()),
+      message(Message.ClickedRotate()),
+      model((current) => expect(Option.map(current.draft, ({ rotation }) => rotation)).toEqual(Option.some(90))),
+      message(Message.SubmittedEdit()),
+      Command.expectExact(
+        SavePiece({
+          pieceId: piece.id,
+          changes: {
+            name: null,
+            notes: 'Hem taken up',
+            type: 'jeans',
+            colours: ['navy'],
+            season: null,
+            occasions: [],
+            pattern: null,
+            brand: null,
+            shopUrl: null,
+            rotation: 90,
+          },
+        }),
+      ),
+      Command.resolve(SavePiece, Message.SucceededUpdatePiece({ piece: pieceFixture('jeans', { rotation: 90 }) })),
+      model((current) => expect(shownPiece(current)?.rotation).toBe(90)),
     )
   })
 

@@ -40,6 +40,7 @@ const rowsFor = (id: string) => {
     uploadId: upload.id,
     detectionId: null,
     backImageKey: null,
+    rotation: 0,
     originalKey: upload.objectKey,
     imageKey: null,
     contentType: 'image/jpeg',

@@ -1,4 +1,4 @@
-import { CurrentAccount } from '@styld/protocol'
+import { CurrentAccount, type PieceRotation } from '@styld/protocol'
 import { Clock, Context, Effect, Layer, Option, Redacted, Result } from 'effect'
 import * as Base64Url from 'effect/encoding/Base64Url'
 
@@ -28,6 +28,8 @@ export interface MediaGrant {
   readonly variant: string
   /** Changes whenever the object behind the grant may have, so a cached copy is never shown for a new one. */
   readonly version: string
+  /** A clockwise quarter-turn for a piece image; omitted means the legacy orientation (zero degrees). */
+  readonly rotation?: PieceRotation
 }
 
 /** A grant with the instant it ends, in seconds since the epoch. */
@@ -77,6 +79,7 @@ const signedBytes = (grant: SignedGrant) =>
       grant.variant,
       grant.version,
       grant.expires,
+      ...(grant.rotation === undefined || grant.rotation === 0 ? [] : [grant.rotation]),
     ]),
   )
 
@@ -109,6 +112,7 @@ export const signGrant = (key: CryptoKey, grant: SignedGrant) =>
         t: grant.contentType,
         v: grant.version,
         e: String(grant.expires),
+        ...(grant.rotation === undefined || grant.rotation === 0 ? {} : { r: String(grant.rotation) }),
         s: Base64Url.encode(new Uint8Array(signature)),
       }).toString()}`,
   )
@@ -120,9 +124,15 @@ const one = (value: string | ReadonlyArray<string> | undefined) => (typeof value
  * @internal Exported for its tamper and expiry tests. */
 export const verifyGrant = Effect.fnUntraced(function* (key: CryptoKey, presented: Presented, nowMillis: number) {
   const { query } = presented
-  const [accountId, objectKey, contentType, version, expiresText, signature] = ['a', 'k', 't', 'v', 'e', 's'].map(
-    (name) => one(query[name]),
-  )
+  const [accountId, objectKey, contentType, version, expiresText, signature, rotationText] = [
+    'a',
+    'k',
+    't',
+    'v',
+    'e',
+    's',
+    'r',
+  ].map((name) => one(query[name]))
   if (
     accountId === undefined ||
     objectKey === undefined ||
@@ -132,6 +142,8 @@ export const verifyGrant = Effect.fnUntraced(function* (key: CryptoKey, presente
   )
     return Option.none<SignedGrant>()
   const expires = Number(expiresText)
+  const rotation = rotationText === undefined ? 0 : Number(rotationText)
+  if (rotation !== 0 && rotation !== 90 && rotation !== 180 && rotation !== 270) return Option.none<SignedGrant>()
   const nowSeconds = nowMillis / 1000
   if (!Number.isSafeInteger(expires) || expires <= nowSeconds || expires > expiryOf(nowMillis))
     return Option.none<SignedGrant>()
@@ -146,6 +158,7 @@ export const verifyGrant = Effect.fnUntraced(function* (key: CryptoKey, presente
     variant: presented.variant,
     version,
     expires,
+    rotation: rotation as PieceRotation,
   }
   const signatureBytes = Uint8Array.from(decoded.success)
   const valid = yield* Effect.promise(() => crypto.subtle.verify('HMAC', key, signatureBytes, signedBytes(grant)))

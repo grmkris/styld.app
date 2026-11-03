@@ -287,6 +287,7 @@ const newPiece = (
   shopUrl: input.shopUrl ?? null,
   detectionId: null,
   backImageKey: null,
+  rotation: 0,
   status: 'processing',
   source: context.via === 'assistant' ? 'assistant' : 'website',
   uploadId: upload.id,

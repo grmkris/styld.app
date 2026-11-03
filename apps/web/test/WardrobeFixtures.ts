@@ -24,6 +24,7 @@ export const pieceFixture = (seed: string, fields: Partial<Record<keyof typeof P
     brand: null,
     shopUrl: null,
     hasBack: false,
+    rotation: 0,
     status: 'ready',
     source: 'website',
     createdAt: '2026-10-29T00:00:00.000Z',

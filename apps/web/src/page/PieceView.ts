@@ -1,6 +1,6 @@
 import { cdn } from '../Cdn.ts'
 import { textLength, prices } from '@styld/protocol'
-import type { Piece, PiecePicture } from '@styld/protocol'
+import type { Piece, PiecePicture, PieceRotation } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import { Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
@@ -106,6 +106,18 @@ const editForm = (draft: Draft, locale: Locale, h: HtmlBuilder<Message>): Html =
       ...styled(h, styles.editForm()),
     ],
     [
+      h.div(styled(h, styles.rotationControl()), [
+        actionButton(
+          {
+            label: format(locale, 'wardrobe.rotateImage', {}),
+            style: secondaryAction(),
+            type: 'button',
+            onClick: Message.ClickedRotate(),
+            isDisabled: DraftSave.guards.Saving(draft.save),
+          },
+          h,
+        ),
+      ]),
       h.label([h.For('piece-name'), ...styled(h, fieldLabel())], [format(locale, 'wardrobe.nameLabel', {})]),
       h.input([
         h.Id('piece-name'),
@@ -371,11 +383,26 @@ const loadingView = (locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Htm
 /** The piece's picture: its back when that side is chosen, its turn, played on tap, once the clean picture it shows
  * has one ready; else the image. */
 const shownPicture = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  const rotation = Option.match(model.draft, {
+    onNone: () => piece.rotation,
+    onSome: (draft) => draft.rotation,
+  })
+  const pictureStyle = () =>
+    cx(
+      styles.photo(),
+      rotation === 0
+        ? styles.photoRotation0()
+        : rotation === 90
+          ? styles.photoRotation90()
+          : rotation === 180
+            ? styles.photoRotation180()
+            : styles.photoRotation270(),
+    )
   if (piece.hasBack && model.back.side === 'back')
     return h.img([
       h.Src(backPath(piece)),
       h.Alt(format(locale, 'wardrobe.backAlt', { name: pieceLabel(piece, locale) })),
-      ...styled(h, styles.photo()),
+      ...styled(h, pictureStyle()),
     ])
   const turn = piece.turn
   const still = (underPlayer: boolean) =>
@@ -383,7 +410,7 @@ const shownPicture = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
       h.Src(fullPath(piece)),
       h.Alt(pieceLabel(piece, locale)),
       ...(underPlayer ? [h.AriaHidden(true)] : []),
-      ...styled(h, styles.photo()),
+      ...styled(h, pictureStyle()),
     ])
   if (turn?.state !== 'ready' || turn.layout === undefined || piece.picture?.shows !== 'clean') return still(false)
   const sheet = turn.media?.sheet
@@ -403,7 +430,7 @@ const shownPicture = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
           h.Role('img'),
           h.AriaLabel(pieceLabel(piece, locale)),
           h.OnMount(ShowTurn({ sheet, layout: turn.layout })),
-          ...styled(h, styles.photo()),
+          ...styled(h, pictureStyle()),
         ]),
       ],
     ),

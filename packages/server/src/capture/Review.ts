@@ -46,6 +46,7 @@ const pieceOf = (
     uploadId: null,
     detectionId: detection.id,
     backImageKey: original ? null : (detection.backCutoutKey ?? source.back),
+    rotation: 0 as const,
     originalKey: detection.sourceKey,
     imageKey: original ? detection.sourceKey : detection.cutoutKey,
     contentType: source.type,

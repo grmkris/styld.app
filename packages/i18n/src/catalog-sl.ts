@@ -68,6 +68,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.uploadingImage': 'Nalaganje …',
   'wardrobe.backToWardrobe': 'Nazaj v omaro',
   'wardrobe.saveAction': 'Shrani',
+  'wardrobe.rotateImage': 'Zavrti sliko za 90°',
   'wardrobe.addingPieces': 'Dodajam…',
   'wardrobe.nameLabel': 'Ime (neobvezno)',
   'wardrobe.nameOptionalLabel': 'Ime (neobvezno)',

@@ -43,6 +43,10 @@ export type VideoType = typeof VideoType.Type
 export const PieceStatus = Schema.Literals(['processing', 'ready', 'failed'])
 export type PieceStatus = typeof PieceStatus.Type
 
+/** A piece image's durable quarter-turn correction. Legacy imports default to the original orientation. */
+export const PieceRotation = Schema.Literals([0, 90, 180, 270])
+export type PieceRotation = typeof PieceRotation.Type
+
 /** Who added the piece: the person on the website, an assistant on their behalf, or Styld bringing their wardrobe over
  * from the first Styld (`tools/import-v1`). */
 export const PieceSource = Schema.Literals(['website', 'assistant', 'import'])
@@ -149,6 +153,8 @@ export const Piece = Schema.Struct({
   shopUrl: Schema.NullOr(ShopUrl),
   /** Whether a picture of its back is kept: the held camera's back shot, or one the person added. */
   hasBack: Schema.Boolean,
+  /** A clockwise quarter-turn applied while delivering every picture of the piece. */
+  rotation: PieceRotation,
   status: PieceStatus,
   source: PieceSource,
   /** ISO 8601 instants. */
@@ -212,6 +218,7 @@ export const PieceChanges = Schema.Struct({
   pattern: Schema.optionalKey(Schema.NullOr(Pattern)),
   brand: Schema.optionalKey(Schema.NullOr(Brand)),
   shopUrl: Schema.optionalKey(Schema.NullOr(ShopUrl)),
+  rotation: Schema.optionalKey(PieceRotation),
 })
 export type PieceChanges = typeof PieceChanges.Type
 

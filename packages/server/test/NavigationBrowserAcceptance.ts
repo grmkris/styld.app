@@ -4,8 +4,13 @@ import { signedInContext } from './Accounts.ts'
 import { navigationAccount, navigationBoard, navigationPhoto, navigationPiece } from './NavigationFixture.ts'
 
 const shots = process.env['STYLD_NAVIGATION_SHOTS']
+const pieceShots = process.env['STYLD_T15_SHOTS']
 const shoot = async (page: Page, name: string, width: number) => {
   if (shots !== undefined) await page.screenshot({ path: `${shots}/T-06-${name}-after-${width}.png` })
+}
+const shootPiece = async (page: Page, name: string, width: number) => {
+  if (pieceShots !== undefined)
+    await page.screenshot({ path: `${pieceShots}/T-15-piece-rotation-${name}-${width}.png` })
 }
 
 const returnedToPiece = async (page: Page) => {
@@ -46,6 +51,9 @@ export const verifyNavigationJourney = async (browser: Browser, origin: string, 
     await shoot(page, 'wardrobe-return', width)
     await page.getByRole('link', { name: 'Navigation flats 20', exact: true }).click()
     await page.getByRole('button', { name: 'Edit', exact: true }).waitFor()
+    await shootPiece(page, 'before', width)
+    await page.getByRole('button', { name: 'Rotate image 90°', exact: true }).click()
+    await shootPiece(page, 'after', width)
     await page.goBack({ waitUntil: 'networkidle' })
     await returnedToPiece(page)
 

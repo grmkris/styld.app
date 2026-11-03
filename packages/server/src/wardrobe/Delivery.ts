@@ -1,4 +1,4 @@
-import { Unavailable } from '@styld/protocol'
+import { Unavailable, type PieceRotation } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import type { Media } from '../kernel/Media.ts'
 import type { ByteStream } from '../Streams.ts'
@@ -37,6 +37,7 @@ const unavailable = () => Unavailable.make({})
  * Styld: others' pages, an assistant's host), since the stored bytes may be an original photo with its metadata. */
 export interface Delivery {
   readonly fallback: 'stored' | 'none'
+  readonly rotation?: PieceRotation | undefined
 }
 
 /** Only what the Images binding transformed: no original bytes, so no EXIF or GPS. */
@@ -59,7 +60,7 @@ export const deliverImage = Effect.fnUntraced(function* (
       const bytes = object.body as Parameters<Media['Service']['images']['input']>[0]
       const result = await bindings.images
         .input(bytes)
-        .transform({ width: imageSizes[size], fit: 'scale-down' })
+        .transform({ width: imageSizes[size], fit: 'scale-down', rotate: options.rotation ?? 0 })
         .output({ format: 'image/webp', quality: 82 })
       return Option.some<DeliveredImage>({ body: result.image(), contentType: result.contentType() })
     },

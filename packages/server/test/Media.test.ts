@@ -73,4 +73,23 @@ describe('delivered images', () => {
       expect(failed).toMatchObject({ _tag: 'Unavailable' })
     }),
   )
+
+  it.effect('passes a durable piece rotation to Cloudflare Images', () => {
+    let options: unknown
+    const transformer = {
+      transform: (value: unknown) => {
+        options = value
+        return transformer
+      },
+      output: async () => ({ image: () => new Blob(['webp']).stream(), contentType: () => 'image/webp' }),
+    }
+    const media = Media.of({
+      bucket: { get: async () => ({ body: new Blob(['photo']).stream() }) },
+      images: { input: () => transformer },
+    } as never)
+    return Effect.gen(function* () {
+      yield* deliverImage(media, stored, 'full', { fallback: 'none', rotation: 270 })
+      expect(options).toEqual({ width: 1600, fit: 'scale-down', rotate: 270 })
+    })
+  })
 })

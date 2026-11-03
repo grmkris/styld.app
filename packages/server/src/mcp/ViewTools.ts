@@ -86,7 +86,7 @@ const thumbnails = (
         : [
             [
               name,
-              deliverImage(media, image, 'thumb', transformedOnly).pipe(
+              deliverImage(media, image, 'thumb', { ...transformedOnly, rotation: image.rotation }).pipe(
                 Effect.flatMap(Option.match({ onNone: () => Effect.fail('missing' as const), onSome: Effect.succeed })),
               ),
             ],

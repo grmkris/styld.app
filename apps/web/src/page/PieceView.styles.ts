@@ -43,6 +43,11 @@ export const photo = style({
   borderRadius: 'photo',
   '@media (min-width: 900px)': { aspectRatio: 'auto', blockSize: 'min(520px, 60vh)' },
 })
+export const photoRotation0 = style({ rotate: '0deg' })
+export const photoRotation90 = style({ rotate: '90deg' })
+export const photoRotation180 = style({ rotate: '180deg' })
+export const photoRotation270 = style({ rotate: '270deg' })
+export const rotationControl = style({ display: 'flex', alignItems: 'center', gap: 'actions', marginBlock: '8px' })
 export const details = style({ display: 'grid', gap: 'actions', alignContent: 'start', maxInlineSize: '30rem' })
 export const titleRow = style({
   display: 'flex',

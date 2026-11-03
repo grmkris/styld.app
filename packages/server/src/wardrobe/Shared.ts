@@ -49,6 +49,7 @@ export const toPiece = Effect.fnUntraced(function* (row: PieceRow, picture?: Pic
     brand: row.brand,
     shopUrl: row.shopUrl,
     hasBack: row.backImageKey !== null,
+    rotation: row.rotation,
     status: row.status,
     source: row.source,
     createdAt: row.createdAt.toISOString(),

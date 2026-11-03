@@ -111,4 +111,16 @@ describe('signed media addresses', () => {
         expect(Option.map(verified, ({ accountId }) => accountId)).toEqual(Option.some('acc_1'))
       }).pipe(Effect.provide(SignedMedia.layer(secret))),
     ))
+
+  test('carries a non-zero piece rotation in the signed capability', () =>
+    Effect.runPromise(
+      Effect.gen(function* () {
+        const key = yield* mediaKey(secret)
+        const address = yield* signed(key, now, { ...grant, rotation: 90 })
+        expect(new URL(address, 'https://styld.test').searchParams.get('r')).toBe('90')
+        expect(Option.map(yield* verifyGrant(key, presented(address), now), ({ rotation }) => rotation)).toEqual(
+          Option.some(90),
+        )
+      }),
+    ))
 })

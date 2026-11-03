@@ -137,6 +137,7 @@ const rowsOf = Effect.fnUntraced(function* (accountId: string, piece: ImportPiec
     uploadId,
     detectionId: null,
     backImageKey: null,
+    rotation: 0,
     originalKey: upload.objectKey,
     imageKey: null,
     contentType: piece.contentType,

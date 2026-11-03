@@ -23,6 +23,7 @@ const SignedTarget = Schema.Struct({
   v: Schema.optionalKey(Schema.String),
   e: Schema.optionalKey(Schema.String),
   s: Schema.optionalKey(Schema.String),
+  r: Schema.optionalKey(Schema.String),
 })
 
 /** How long the browser and the edge keep the picture: until its address expires. */
@@ -89,7 +90,7 @@ const picture = Effect.fnUntraced(function* (grant: SignedGrant, size: ShownSize
     return Option.some({ bytes, contentType: cached.value.headers.get('content-type') ?? 'image/webp' })
   }
   const stored = { key: grant.key, contentType: grant.contentType }
-  const delivered = yield* deliverImage(yield* Media, stored, size, transformedOnly)
+  const delivered = yield* deliverImage(yield* Media, stored, size, { ...transformedOnly, rotation: grant.rotation })
   if (Option.isNone(delivered)) return Option.none()
   const { body, contentType } = delivered.value
   const bytes = yield* Effect.tryPromise(() => collect(body))

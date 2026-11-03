@@ -14,6 +14,7 @@ export const Draft = Schema.Struct({
   name: Schema.String,
   notes: Schema.String,
   details: Details,
+  rotation: Schema.Literals([0, 90, 180, 270]),
   brand: Schema.String,
   shopUrl: Schema.String,
   save: DraftSave,
@@ -27,6 +28,7 @@ export const draftOf = (piece: Piece): Draft => ({
   name: piece.name ?? '',
   notes: piece.notes ?? '',
   details: detailsOf(piece),
+  rotation: piece.rotation,
   brand: piece.brand ?? '',
   shopUrl: piece.shopUrl ?? '',
   save: DraftSave.Editing(),
@@ -50,6 +52,7 @@ export const changesOf = (draft: Draft): PieceChanges => ({
   pattern: Option.getOrNull(draft.details.pattern),
   brand: given(draft.brand),
   shopUrl: given(draft.shopUrl),
+  rotation: draft.rotation,
 })
 
 /** Whether a shop link can be sent: none, or an https address. */

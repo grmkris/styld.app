@@ -9,6 +9,7 @@ import {
   Piece,
   PieceId,
   PiecePicture,
+  PieceRotation,
   PieceTurn,
   PieceType,
   Season,
@@ -132,6 +133,7 @@ export const Message = defineMessageUnion({
   ChosePattern: { pattern: Pattern },
   UpdatedBrand: { value: Schema.String },
   UpdatedShopUrl: { value: Schema.String },
+  ClickedRotate: {},
   SubmittedEdit: {},
   SucceededUpdatePiece: { piece: Piece },
   GotBackMessage: { message: PieceBack.Message },
@@ -373,6 +375,9 @@ const editDraft = (model: Model, change: (draft: Draft) => Draft): UpdateReturn 
 const editDetails = (model: Model, change: (details: Details) => Details): UpdateReturn =>
   editDraft(model, (draft) => modifyFields(draft, { details: change }))
 
+const nextRotation = (rotation: PieceRotation): PieceRotation =>
+  rotation === 0 ? 90 : rotation === 90 ? 180 : rotation === 180 ? 270 : 0
+
 const submittedEdit = (model: Model): UpdateReturn =>
   Option.match(model.draft, {
     onNone: () => ({ model }),
@@ -547,6 +552,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     UpdatedBrand: ({ value }) => editDraft(model, (draft) => modifyFields(draft, { brand: () => value })),
     UpdatedShopUrl: ({ value }) =>
       editDraft(model, (draft) => modifyFields(draft, { shopUrl: () => value, shopUrlInvalid: () => false })),
+    ClickedRotate: () => editDraft(model, (draft) => modifyFields(draft, { rotation: nextRotation })),
     SubmittedEdit: () => submittedEdit(model),
     SucceededUpdatePiece: ({ piece }) => ({
       model: modifyFields(model, { piece: () => PieceData.Success({ data: piece }), draft: () => Option.none() }),

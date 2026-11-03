@@ -68,6 +68,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'wardrobe.uploadingImage': 'Uploading…',
   'wardrobe.backToWardrobe': 'Back to wardrobe',
   'wardrobe.saveAction': 'Save',
+  'wardrobe.rotateImage': 'Rotate image 90°',
   'wardrobe.addingPieces': 'Adding…',
   'wardrobe.nameLabel': 'Name (optional)',
   'wardrobe.nameOptionalLabel': 'Name (optional)',

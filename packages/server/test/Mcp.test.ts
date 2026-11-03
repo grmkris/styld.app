@@ -37,7 +37,15 @@ const accounts = {
   readAccount: () => Effect.succeed({ accountId: 'acc_1', displayName: 'Ana Novak', email: 'ana@example.com' }),
 }
 /** A piece no one has described yet: no season, occasions, pattern, brand, shop link or back. */
-const undescribed = { season: null, occasions: [], pattern: null, brand: null, shopUrl: null, hasBack: false } as const
+const undescribed = {
+  season: null,
+  occasions: [],
+  pattern: null,
+  brand: null,
+  shopUrl: null,
+  hasBack: false,
+  rotation: 0,
+} as const
 const piece = (id: string, fields: Partial<Piece>): Piece => ({
   ...undescribed,
   id: PieceId.make(`pc_${id.padEnd(22, '0')}`),
