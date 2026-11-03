@@ -49,8 +49,9 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // to the measured 347,259 bytes plus 3%, once the telemetry SDK loaded only after consent. Raised to 359,000 on
 // 2026-11-03 for Ask Styld's live replies: main measured 357,238; following a reply's LiveText adds 963 (the page's
 // subscription and settling, 570; Schema and Stream shared with the lazy decoder chunk, 399), the decoder itself
-// loading only while a reply is written.
-if (initialGzip > 359000) throw new Error(`Initial browser assets exceed the 359,000-byte gzip budget: ${initialGzip}`)
+// loading only while a reply is written. Styld's own dark theme (T-18, 3 November 2026) adds 1,475: every colour a
+// light/dark token pair in the first stylesheet. 359,676 measured with both, so 360,500.
+if (initialGzip > 360500) throw new Error(`Initial browser assets exceed the 360,500-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(
