@@ -59,8 +59,9 @@ physical-phone or acceptance evidence for any of the findings. No message was se
 
 ## Board batch 02 publication — 3 November 2026
 
-- Tracker source commit: `021dabe15e060fe114317beffd5913b9851a0885` application release; this documentation update
-  records its receipt. Stable URL remains https://styld-review-07c26b483ccc.pages.dev.
+- Tracker source commit: `7a3371c`; deployment https://6b8a9b00.styld-review-07c26b483ccc.pages.dev.
+  Stable URL remains https://styld-review-07c26b483ccc.pages.dev. Pages uploaded 10 changed/new files and reused
+  66 (76 static files plus headers).
 - The public document now contains 51 findings, 21 tickets, 35 original screenshots and 15 before/after pairs.
   T-04, T-09 and T-11 are verified; F-19, F-20, F-36 and F-37 are independently verified. T-05 and T-15 remain
   partial with their open follow-ups.
@@ -70,3 +71,7 @@ physical-phone or acceptance evidence for any of the findings. No message was se
   acceptance passed: 3 tests / 42 assertions. Cloudflare readback found the edge public, API/SSR private, no custom
   domains and 100% traffic on each deployment. This is not authenticated real-user, physical-phone or paid-provider
   acceptance.
+- Public Chromium readback passed T-04/T-09/T-11 verified statuses, all 12 new comparison images decoded at
+  320/390/1440px, no document overflow, search/reset and JavaScript-disabled comparisons. CSP/noindex headers
+  were present; no page or console errors occurred. The first harness waited indefinitely on a lazy image;
+  scrolling images into view and bounding the decode wait fixed the harness. No site change was needed.
