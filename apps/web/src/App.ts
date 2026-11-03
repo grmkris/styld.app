@@ -1,4 +1,4 @@
-import { Effect, Match, Option, Schema } from 'effect'
+import { Effect, Match, Option, Predicate, Schema } from 'effect'
 import type { Tone } from '@styld/protocol'
 import { BrowserAuth } from '@styld/auth/client'
 import { AccountClaims } from '@styld/auth/config'
@@ -10,8 +10,10 @@ import { modifyFields } from 'foldkit/struct'
 import { catalogVersion, loadCatalog } from '@styld/i18n'
 import { Locale, localeEndpoint, parseLocale } from './Locale.ts'
 import { Message } from './Message.ts'
-import { arrive, followLink, Navigate, returnAfterSignIn } from './Navigation.ts'
-import { lenses, openPage, Page, type PageLens } from './Page.ts'
+import { arrive, followLink, Navigate, ReplaceInternal, returnAfterSignIn } from './Navigation.ts'
+import * as NavigationState from './NavigationState.ts'
+import { at, data } from './AppLens.ts'
+import { lenses, openPage, Page } from './Page.ts'
 import * as ServerData from './ServerData.ts'
 import * as Crypto from 'effect/Crypto'
 import { ReadYou, You, youOf } from './You.ts'
@@ -88,6 +90,7 @@ export const Session = defineTaggedUnion({
 export const Model = Schema.Struct({
   context: Flags,
   route: AppRoute,
+  maybeWardrobeAnchor: Schema.Option(Schema.String),
   localeSave: LocaleSave,
   session: Session,
   you: You,
@@ -170,31 +173,13 @@ type Step = Update.Step<Model, Message, Services>
 
 // LENS
 
-/** A page's lens (Page.ts) from the app's Model. */
-const at = <Child, ChildMessage>(lens: PageLens<Child, ChildMessage>) => ({
-  read: (model: Model) => lens.read(model.page),
-  write: (model: Model, child: Child) => modifyFields(model, { page: (page) => lens.write(page, child) }),
-  toParentMessage: lens.toParentMessage,
-})
-
-const data = {
-  read: (model: Model) => Option.some(model.data),
-  write: (model: Model, nextData: ServerData.Model) => modifyFields(model, { data: () => nextData }),
-  toParentMessage: (message: ServerData.Message) => Message.GotServerDataMessage({ message }),
-}
-
 const revisitPieces = Update.foldChildStep({ update: ServerData.revisitPieces, ...data })
 const revisitBoards = Update.foldChildStep({ update: ServerData.revisitBoards, ...data })
-
-/** Each page's Message folded through its lens, with what its OutMessages mean for the app. */
-const navigateTo =
-  (href: string): Step =>
-  (stepModel) => ({ model: stepModel, commands: [Navigate({ href })] })
 
 const foldBoards = {
   ...at(lenses.boards),
   foldOutMessage: Boards.OutMessage.match<Step>({
-    CreatedBoard: ({ boardId }) => navigateTo(boardRouter({ boardId })),
+    CreatedBoard: ({ boardId }) => NavigationState.navigateTo(boardRouter({ boardId })),
     RequestedBoards: () => revisitBoards,
   }),
 }
@@ -253,6 +238,7 @@ export const init = (context: Flags, url: Url): UpdateReturn => {
     {
       context,
       route,
+      maybeWardrobeAnchor: AppRoute.guards.Wardrobe(route) ? url.hash : Option.none(),
       localeSave: LocaleSave.Saved(),
       session: Session.Checking(),
       you: You.Unknown(),
@@ -264,7 +250,15 @@ export const init = (context: Flags, url: Url): UpdateReturn => {
   )
   return {
     model: entered.model,
-    commands: [ReadSession(), ReadTimeZone(), ...(page.commands ?? []), ...(entered.commands ?? [])],
+    commands: [
+      ReadSession(),
+      ReadTimeZone(),
+      ...(AppRoute.guards.BoardCollage(route)
+        ? [ReplaceInternal({ href: boardRouter({ boardId: route.boardId }) })]
+        : []),
+      ...(page.commands ?? []),
+      ...(entered.commands ?? []),
+    ],
   }
 }
 
@@ -275,8 +269,10 @@ const foldTodayOut = Today.OutMessage.match<Step>({ RequestedPieces: () => revis
 /** The address changed in the page: its tab opens with what the app has, refreshed behind; any other page loads. */
 const changedUrl = (model: Model, url: Url): UpdateReturn => {
   const route = routeFromUrl(url)
+  const sameBoard = NavigationState.sameBoardArrival(model, route)
+  if (Option.isSome(sameBoard)) return sameBoard.value
   if (Option.isNone(tabOf(route))) return { model, commands: [Navigate({ href: urlToString(url) })] }
-  const moved = modifyFields(model, { route: () => route })
+  const moved = NavigationState.restoreBrowsing(model, route, url.hash)
   if (AppRoute.guards.Ask(route) && AppRoute.guards.Ask(model.route))
     return Update.combine<Model, Message, Services>(moved, [
       Update.foldChildStep({ update: Ask.changedQuery(route.q), ...at(lenses.ask) }),
@@ -349,14 +345,19 @@ const foldAccount = Update.foldChild({
 const foldWardrobe = Update.foldChild({
   update: Wardrobe.update,
   ...at(lenses.wardrobe),
-  foldOutMessage: Wardrobe.OutMessage.match<Step>({ RequestedPieces: () => revisitPieces }),
+  foldOutMessage: Wardrobe.OutMessage.match<Step>({
+    RequestedPieces: () => revisitPieces,
+    ChangedBrowse:
+      ({ query }) =>
+      (model) => ({ model, commands: [ReplaceInternal({ href: wardrobeRouter(query) })] }),
+  }),
 })
 
 const foldPiece = Update.foldChild({
   update: Piece.update,
   ...at(lenses.piece),
   foldOutMessage: Piece.OutMessage.match<Step>({
-    DeletedPiece: () => navigateTo(wardrobeRouter({})),
+    DeletedPiece: () => NavigationState.returnFromPiece,
     RequestedBoards: () => revisitBoards,
   }),
 })
@@ -386,20 +387,24 @@ const foldAsk = Update.foldChild({
 const foldAddPieces = Update.foldChild({
   update: AddPieces.update,
   ...at(lenses.addPieces),
-  foldOutMessage: AddPiecesMessage.OutMessage.match<Step>({ FinishedSending: () => navigateTo(reviewRouter({})) }),
+  foldOutMessage: AddPiecesMessage.OutMessage.match<Step>({
+    FinishedSending: () => NavigationState.navigateTo(reviewRouter({})),
+  }),
 })
 
 const foldReview = Update.foldChild({
   update: Review.update,
   ...at(lenses.review),
-  foldOutMessage: Review.OutMessage.match<Step>({ AddedPieces: () => navigateTo(wardrobeRouter({})) }),
+  foldOutMessage: Review.OutMessage.match<Step>({
+    AddedPieces: () => NavigationState.returnFromReview,
+  }),
 })
 
 const foldLook = Update.foldChild({
   update: Look.update,
   ...at(lenses.look),
   foldOutMessage: Look.OutMessage.match<Step>({
-    DeletedLook: () => navigateTo(looksRouter({})),
+    DeletedLook: () => NavigationState.navigateTo(looksRouter({})),
     RequestedBoards: () => revisitBoards,
   }),
 })
@@ -408,7 +413,7 @@ const foldPhoto = Update.foldChild({
   update: Photo.update,
   ...at(lenses.photo),
   foldOutMessage: Photo.OutMessage.match<Step>({
-    DeletedPhoto: () => navigateTo(photosRouter({})),
+    DeletedPhoto: () => NavigationState.navigateTo(photosRouter({})),
     RequestedBoards: () => revisitBoards,
   }),
 })
@@ -569,6 +574,13 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     GotBoardMessage: (got) => foldPages.board(model, got.message),
     GotVisitMessage: (got) => foldPages.visit(model, got.message),
     GotExploreMessage: (got) => foldPages.explore(model, got.message),
-    GotServerDataMessage: (got) => foldPages.data(model, got.message),
+    GotServerDataMessage: (got) =>
+      Update.combine<Model, Message, Services>(model, [
+        (stepModel) => foldPages.data(stepModel, got.message),
+        (stepModel) =>
+          Predicate.isTagged(got.message, 'SucceededListPieces')
+            ? NavigationState.restoreWardrobePosition(stepModel)
+            : { model: stepModel },
+      ]),
     ClickedRetryLanding: () => retryLanding(model),
   })

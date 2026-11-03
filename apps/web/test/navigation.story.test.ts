@@ -33,7 +33,7 @@ const tee = pieceFixture('tee', { name: 'White tee' })
 
 describe('following a link', () => {
   test('between tab pages the page stays and only the address changes', () => {
-    expect(names(followLink(AppRoute.Wardrobe(), true, internal('/ask')))).toEqual(['NavigateInternal'])
+    expect(names(followLink(AppRoute.Wardrobe({}), true, internal('/ask')))).toEqual(['NavigateInternal'])
     expect(names(followLink(AppRoute.Home(), true, internal('/account')))).toEqual(['NavigateInternal'])
   })
 
@@ -44,7 +44,7 @@ describe('following a link', () => {
       `/looks/lk_${'a'.repeat(22)}`,
       '/wardrobe/add',
     ])
-      expect({ path, commands: names(followLink(AppRoute.Wardrobe(), true, internal(path))) }).toEqual({
+      expect({ path, commands: names(followLink(AppRoute.Wardrobe({}), true, internal(path))) }).toEqual({
         path,
         commands: ['Navigate'],
       })
@@ -70,12 +70,12 @@ describe('following a link', () => {
 
   test('someone signed out loads whole; the current tab scrolls back up; a section of it is scrolled to', () => {
     expect(names(followLink(AppRoute.Home(), false, internal('/wardrobe')))).toEqual(['Navigate'])
-    expect(names(followLink(AppRoute.Wardrobe(), true, internal('/wardrobe')))).toEqual(['ScrollToTop'])
+    expect(names(followLink(AppRoute.Wardrobe({}), true, internal('/wardrobe')))).toEqual(['ScrollToTop'])
     expect(names(followLink(AppRoute.Home(), false, internal('/#inspiration')))).toEqual(['NavigateInternal'])
   })
 
   test('only a change of tab cross-fades', () => {
-    expect(isTabChange(AppRoute.Home(), AppRoute.Wardrobe())).toBe(true)
+    expect(isTabChange(AppRoute.Home(), AppRoute.Wardrobe({}))).toBe(true)
     expect(isTabChange(AppRoute.Ask({ q: Option.none() }), AppRoute.Ask({ q: Option.none() }))).toBe(false)
   })
 })

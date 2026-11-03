@@ -1,9 +1,9 @@
 import { Effect, Option, Schema } from 'effect'
 import { Command, Dom, Render } from 'foldkit'
-import { load, pushUrl, UrlRequest } from 'foldkit/navigation'
+import { back, load, pushUrl, replaceUrl, UrlRequest } from 'foldkit/navigation'
 import { type Url, toString as urlToString } from 'foldkit/url'
 import { Message } from './Message.ts'
-import { accountRouter, AppRoute, isSameTab, returnPath, routeFromUrl, tabOf } from './route.ts'
+import { accountRouter, AppRoute, isSameTab, parentReturn, returnPath, routeFromUrl, tabOf } from './route.ts'
 import { noteReturn } from './SignInReturn.ts'
 
 // How the website moves between pages, after Foldkit's own website (repos/foldkit/packages/website/src/main.ts):
@@ -38,6 +38,40 @@ export const NavigateInternal = Command.define('NavigateInternal', {
   args: { href: Schema.String },
   messages: [Message.CompletedNavigateInternal],
   execute: ({ href }) => pushUrl(href).pipe(Effect.as(Message.CompletedNavigateInternal())),
+})
+
+export const ReplaceInternal = Command.define('ReplaceInternal', {
+  args: { href: Schema.String },
+  messages: [Message.CompletedNavigateInternal],
+  execute: ({ href }) => replaceUrl(href).pipe(Effect.as(Message.CompletedNavigateInternal())),
+})
+
+/** The source list keeps its selected item as an anchor for both browser Back and its visible return link. */
+export const OpenWardrobePiece = Command.define('OpenWardrobePiece', {
+  args: { href: Schema.String, returnTo: Schema.String },
+  messages: [Message.CompletedNavigate],
+  execute: ({ href, returnTo }) =>
+    replaceUrl(returnTo).pipe(Effect.andThen(load(href)), Effect.as(Message.CompletedNavigate())),
+})
+
+export const ReturnToParent = Command.define('ReturnToParent', {
+  args: { href: Schema.String },
+  messages: [Message.CompletedNavigate],
+  execute: ({ href }) =>
+    Effect.gen(function* () {
+      const target = new URL(href, window.location.href)
+      const previous = Option.flatMap(
+        Option.fromNullishOr(document.referrer || undefined),
+        Option.liftThrowable((referrer) => new URL(referrer)),
+      )
+      const cameFromParent = Option.exists(
+        previous,
+        (url) => url.origin === target.origin && url.pathname === target.pathname && url.search === target.search,
+      )
+      if (cameFromParent && window.history.length > 1) yield* back()
+      else window.location.replace(href)
+      return Message.CompletedNavigate()
+    }),
 })
 
 /** To the top of the new page, once it is drawn, so it wins over the browser's own restore on Back.
@@ -85,23 +119,44 @@ export const routing = {
 /** A return that finishes a Follow (`#follow`, People › FollowArrival). */
 const followsOnReturn = (path: string) => path.endsWith('#follow')
 
+const specialNavigation = (route: AppRoute, target: AppRoute, href: string) => {
+  const parent = AppRoute.guards.Piece(route)
+    ? parentReturn(route.from, 'Wardrobe')
+    : AppRoute.guards.Review(route)
+      ? parentReturn(route.from, 'Photo')
+      : Option.none()
+  if (Option.exists(parent, (path) => new URL(path, href).href === href)) return [ReturnToParent({ href })]
+  const wardrobeReturn =
+    AppRoute.guards.Wardrobe(route) && AppRoute.guards.Piece(target)
+      ? parentReturn(target.from, 'Wardrobe')
+      : Option.none()
+  return Option.match(wardrobeReturn, {
+    onNone: () => [],
+    onSome: (returnTo) => [OpenWardrobePiece({ href, returnTo })],
+  })
+}
+
 /** A followed link. Between tab pages, for someone signed in, the page stays and only the address changes; the
  * current tab scrolls back to its top; a section of the same page is scrolled to; everything else loads whole, and
  * a Follow pressed signed out notes where sign-in returns first. */
+const internalLink = (route: AppRoute, isSignedIn: boolean, url: Url) => {
+  const target = routeFromUrl(url)
+  const href = urlToString(url)
+  const toFollow = AppRoute.guards.Login(target)
+    ? Option.filter(returnPath(target.next), followsOnReturn)
+    : Option.none()
+  if (Option.isSome(toFollow)) return [SignInToFollow({ href, returnTo: toFollow.value })]
+  const special = specialNavigation(route, target, href)
+  if (special.length > 0) return special
+  const bothTabs = Option.isSome(tabOf(route)) && Option.isSome(tabOf(target))
+  if (bothTabs && isSameTab(route, target))
+    return Option.isSome(url.hash) ? [NavigateInternal({ href })] : [ScrollToTop()]
+  return bothTabs && isSignedIn ? [NavigateInternal({ href })] : [Navigate({ href })]
+}
+
 export const followLink = (route: AppRoute, isSignedIn: boolean, request: UrlRequest) =>
   UrlRequest.match(request, {
-    Internal: ({ url }) => {
-      const target = routeFromUrl(url)
-      const href = urlToString(url)
-      const toFollow = AppRoute.guards.Login(target)
-        ? Option.filter(returnPath(target.next), followsOnReturn)
-        : Option.none()
-      if (Option.isSome(toFollow)) return [SignInToFollow({ href, returnTo: toFollow.value })]
-      const bothTabs = Option.isSome(tabOf(route)) && Option.isSome(tabOf(target))
-      if (bothTabs && isSameTab(route, target))
-        return Option.isSome(url.hash) ? [NavigateInternal({ href })] : [ScrollToTop()]
-      return bothTabs && isSignedIn ? [NavigateInternal({ href })] : [Navigate({ href })]
-    },
+    Internal: ({ url }) => internalLink(route, isSignedIn, url),
     External: ({ href }) => [Navigate({ href })],
   })
 

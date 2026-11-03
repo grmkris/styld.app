@@ -19,7 +19,7 @@ import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { piecePickers } from './PieceFields.ts'
 import { type Decision, keptOf, Message, type Model, Saving } from './Review.ts'
 import { kindName } from './WardrobeWords.ts'
-import { backToWardrobe } from './PageBar.ts'
+import { backTo, backToWardrobe } from './PageBar.ts'
 import { barStart, round } from './PageBar.styles.ts'
 import { hasStopped } from '../Polling.ts'
 import { retryView } from './Retry.ts'
@@ -123,7 +123,12 @@ const pendingTile = (capture: TrayCapture, locale: Locale, h: HtmlBuilder<Messag
 
 /** What the page knows besides the tray: the language, and the person's time zone for the times it shows. */
 /** The language, the time zone, and the person's pieces' pictures for a garment taken for one of them. */
-type Inputs = { readonly locale: Locale; readonly timeZone: string; readonly images: PieceImagesById }
+type Inputs = {
+  readonly locale: Locale
+  readonly timeZone: string
+  readonly images: PieceImagesById
+  readonly returnTo?: Option.Option<string>
+}
 
 /** When a capture was added, as the time of day in the person's time zone ("14:05"). */
 const addedAt = (capture: TrayCapture, { locale, timeZone }: Inputs) =>
@@ -368,7 +373,10 @@ export const view = Submodel.defineView<Model, Message, Inputs>((model, inputs, 
               },
               h,
             )
-          : backToWardrobe(locale, h),
+          : Option.match(inputs.returnTo ?? Option.none(), {
+              onNone: () => backToWardrobe(locale, h),
+              onSome: (href) => backTo(href, format(locale, 'common.back', {}), h),
+            }),
         h.a([h.Href(addPiecesRouter({})), ...styled(h, styles.addMore())], [format(locale, 'capture.addMore', {})]),
       ]),
       ...Option.match(open, {

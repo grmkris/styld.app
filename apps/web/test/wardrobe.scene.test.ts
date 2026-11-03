@@ -3,7 +3,8 @@ import { Dialog } from '@foldkit/ui'
 import { Command, Mount, click, expect, given, role, scene, selector, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
-import { update } from '../src/App.ts'
+import { Message, update } from '../src/App.ts'
+import { ReplaceInternal } from '../src/Navigation.ts'
 import { at } from './AppFixtures.ts'
 import { AsyncData } from 'foldkit'
 import { ListPieces, Message as PiecesMessage, PiecesData } from '../src/ServerData.ts'
@@ -31,9 +32,15 @@ describe('the wardrobe page', () => {
     scene(
       { update, view },
       given(loaded(tee, jeans, boots)),
-      expect(role('link', { name: 'White tee' })).toHaveAttr('href', `/wardrobe/${tee.id}`),
+      expect(role('link', { name: 'White tee' })).toHaveAttr(
+        'href',
+        `/wardrobe/${tee.id}?from=%2Fwardrobe%23piece-${tee.id}`,
+      ),
       // The caption names a piece once; its picture is decoration inside the link.
-      expect(role('link', { name: 'Jeans' })).toHaveAttr('href', `/wardrobe/${jeans.id}`),
+      expect(role('link', { name: 'Jeans' })).toHaveAttr(
+        'href',
+        `/wardrobe/${jeans.id}?from=%2Fwardrobe%23piece-${jeans.id}`,
+      ),
       expect(selector(`img[src="${jeans.images?.thumb ?? ''}"]`)).toHaveAttr('alt', ''),
       expect(role('button', { name: 'All 3' })).toHaveAttr('aria-pressed', 'true'),
       expect(role('button', { name: 'Clothing 2' })).toExist(),
@@ -41,10 +48,12 @@ describe('the wardrobe page', () => {
       expect(role('button', { name: 'Accessories 0' })).not.toExist(),
       expect(role('group', { name: 'Clothing' })).not.toExist(),
       click(role('button', { name: 'Clothing 2' })),
+      Command.resolve(ReplaceInternal, Message.CompletedNavigateInternal()),
       expect(role('button', { name: 'Clothing 2' })).toHaveAttr('aria-pressed', 'true'),
       expect(role('link', { name: 'Boots' })).not.toExist(),
       expect(role('group', { name: 'Clothing' })).toExist(),
       click(role('button', { name: 'Jeans 1' })),
+      Command.resolve(ReplaceInternal, Message.CompletedNavigateInternal()),
       expect(role('link', { name: 'White tee' })).not.toExist(),
       expect(role('link', { name: 'Jeans' })).toExist(),
     )
@@ -63,6 +72,7 @@ describe('the wardrobe page', () => {
       ...sceneSheetOpened,
       expect(role('heading', { name: 'Filter your wardrobe' })).toExist(),
       click(role('button', { name: 'Cold weather' })),
+      Command.resolve(ReplaceInternal, Message.CompletedNavigateInternal()),
       expect(role('button', { name: 'Show 1 piece' })).toExist(),
       expect(role('button', { name: 'COS' })).toExist(),
       expect(role('link', { name: 'White tee' })).not.toExist(),

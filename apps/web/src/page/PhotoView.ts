@@ -9,7 +9,7 @@ import { actionButton } from '../ActionButton.ts'
 import { linkAction, primaryAction, quietLinkAction, secondaryAction } from '../Actions.styles.ts'
 import { formError } from '../Fields.styles.ts'
 import { loader } from '../Icon.ts'
-import { lookRouter, reviewRouter } from '../route.ts'
+import { lookRouter, photoRouter, reviewRouter } from '../route.ts'
 import { styled } from '../Styled.ts'
 import { backToGallery } from './PageBar.ts'
 import { hasStopped } from '../Polling.ts'
@@ -85,7 +85,7 @@ const choose = (
   )
 
 /** What a garment is in the wardrobe, and what the person can do about it. */
-const matchView = (garment: PhotoGarment, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
+const matchView = (garment: PhotoGarment, photoId: string, inputs: Inputs, h: HtmlBuilder<Message>): Html => {
   const { locale, pieces } = inputs
   const piece = Option.fromNullishOr(pieces.find(({ id }) => id === garment.pieceId))
   const named = (found: Piece) =>
@@ -93,7 +93,10 @@ const matchView = (garment: PhotoGarment, inputs: Inputs, h: HtmlBuilder<Message
   if (garment.match === 'offered')
     return h.div(styled(h, styles.match()), [
       h.p([], [format(locale, 'photo.offered', {})]),
-      h.a([h.Href(reviewRouter({})), ...styled(h, linkAction())], [format(locale, 'photo.toReview', {})]),
+      h.a(
+        [h.Href(reviewRouter({ from: photoRouter({ photoId }) })), ...styled(h, linkAction())],
+        [format(locale, 'photo.toReview', {})],
+      ),
     ])
   if (garment.match === 'suggested' && Option.isSome(piece))
     return h.div(styled(h, styles.match()), [
@@ -132,7 +135,9 @@ const matchView = (garment: PhotoGarment, inputs: Inputs, h: HtmlBuilder<Message
 const garmentRow = (model: Model, garment: PhotoGarment, inputs: Inputs, h: HtmlBuilder<Message>): Html =>
   h.keyed('li')(garment.id, styled(h, styles.garment()), [
     h.img([h.Src(cdn.photoGarment(garment)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.thumb())]),
-    Option.contains(model.choosing, garment.id) ? picker(garment, inputs, h) : matchView(garment, inputs, h),
+    Option.contains(model.choosing, garment.id)
+      ? picker(garment, inputs, h)
+      : matchView(garment, model.photoId, inputs, h),
   ])
 
 /** Favourite, Wear it again (or the look it made), and Delete. */

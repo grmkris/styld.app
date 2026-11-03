@@ -9,7 +9,6 @@ import { actionButton } from '../ActionButton.ts'
 import { linkAction, primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { fieldLabel, formError, textField } from '../Fields.styles.ts'
 import { editIcon, loader } from '../Icon.ts'
-import { wardrobeRouter } from '../route.ts'
 import { confirmActions } from '../Confirm.ts'
 import { styled } from '../Styled.ts'
 import { Choosing, Deletion, Message, type Model, type Redraw, RedrawSend, ShowTurn, TurnWork } from './Piece.ts'
@@ -18,7 +17,7 @@ import { piecePickers } from './PieceFields.ts'
 import { kindName, pieceLabel } from './WardrobeWords.ts'
 import { backToWardrobe } from './PageBar.ts'
 import { hasStopped } from '../Polling.ts'
-import { retryView } from './Retry.ts'
+import { missingPiece, failedPiece } from './PieceStatusView.ts'
 import { barEnd, round } from './PageBar.styles.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
@@ -504,31 +503,27 @@ const loadedView = (
   ]
 }
 
-/** A piece that is not the person's, or no longer exists, with the way back. */
-const missingView = (locale: Locale, h: HtmlBuilder<Message>) =>
-  h.div(styled(h, styles.details()), [
-    h.p([h.Role('alert')], [format(locale, 'wardrobe.itemNotFound', {})]),
-    h.a([h.Href(wardrobeRouter({})), ...styled(h, secondaryAction())], [format(locale, 'wardrobe.backToWardrobe', {})]),
-  ])
-
-/** The piece could not be read, or stopped being followed while it settled. */
-const failedView = (locale: Locale, h: HtmlBuilder<Message>) =>
-  retryView(format(locale, 'wardrobe.shelves.loadFailed', {}), locale, Message.ClickedRetry(), h)
-
 /** One piece you own: its photo, what it is, its colours and notes (Gallery `item.html`); Save to board lists the
  * person's boards as the app last read them. */
-export const view = Submodel.defineView<Model, Message, SaveToBoardView.ViewInputs>((model, inputs, h) => {
+export const view = Submodel.defineView<
+  Model,
+  Message,
+  SaveToBoardView.ViewInputs & { readonly returnTo?: Option.Option<string> }
+>((model, inputs, h) => {
   const { locale } = inputs
   return h.main(
     [h.Id('main'), ...styled(h, styles.piecePage())],
     [
-      h.div(styled(h, styles.pageBar()), [backToWardrobe(locale, h), editRound(model, locale, h)]),
+      h.div(styled(h, styles.pageBar()), [
+        backToWardrobe(locale, h, Option.getOrUndefined(inputs.returnTo ?? Option.none())),
+        editRound(model, locale, h),
+      ]),
       ...AsyncData.matchData(model.piece, {
         onEmpty: () => loadingView(locale, h),
-        onFailure: (error) => [error === 'NotFound' ? missingView(locale, h) : failedView(locale, h)],
+        onFailure: (error) => [error === 'NotFound' ? missingPiece(locale, h) : failedPiece(locale, h)],
         onData: (piece) => [
           ...loadedView(piece, model, inputs, h),
-          hasStopped(model.misses) ? failedView(locale, h) : h.empty,
+          hasStopped(model.misses) ? failedPiece(locale, h) : h.empty,
         ],
       }),
     ],

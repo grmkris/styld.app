@@ -7,6 +7,7 @@ import { defineMessageUnion } from 'foldkit/message'
 import { modifyFields } from 'foldkit/struct'
 import { sheetFolds } from './Sheet.ts'
 import { StyldClient } from '../StyldClient.ts'
+import { browseColours, BrowseQuery } from '../WardrobeBrowse.ts'
 
 // The wardrobe tab: the person's pieces (the app's, read once for every page that shows them) browsed by group and
 // type and narrowed by the filter sheet.
@@ -64,11 +65,41 @@ export const Model = Schema.Struct({
 })
 export type Model = typeof Model.Type
 
-export const init = (): Model => ({
-  group: Option.none(),
-  type: Option.none(),
-  filters: noFilters,
+export const init = (query: BrowseQuery = {}): Model => ({
+  ...browsing(query),
   filterSheet: Dialog.init({ id: 'wardrobe-filters', isAnimated: true }),
+})
+
+const browsing = (query: BrowseQuery) => ({
+  group: Option.fromNullishOr(query.group),
+  type: Option.filter(
+    Option.fromNullishOr(query.type),
+    (type) => query.group === undefined || groupOf(type) === query.group,
+  ),
+  filters: {
+    colours: Option.getOrElse(browseColours(query.colours?.split(',') ?? []), () => []),
+    season: Option.fromNullishOr(query.season),
+    occasion: Option.fromNullishOr(query.occasion),
+    brand: Option.fromNullishOr(query.brand),
+  },
+})
+
+export const restore = (model: Model, query: BrowseQuery): Model => {
+  const restored = browsing(query)
+  return modifyFields(model, {
+    group: () => restored.group,
+    type: () => restored.type,
+    filters: () => restored.filters,
+  })
+}
+
+export const queryOf = (model: Model): BrowseQuery => ({
+  ...Option.match(model.group, { onNone: () => ({}), onSome: (group) => ({ group }) }),
+  ...Option.match(model.type, { onNone: () => ({}), onSome: (type) => ({ type }) }),
+  ...(model.filters.colours.length === 0 ? {} : { colours: model.filters.colours.join(',') }),
+  ...Option.match(model.filters.season, { onNone: () => ({}), onSome: (season) => ({ season }) }),
+  ...Option.match(model.filters.occasion, { onNone: () => ({}), onSome: (occasion) => ({ occasion }) }),
+  ...Option.match(model.filters.brand, { onNone: () => ({}), onSome: (brand) => ({ brand }) }),
 })
 
 // MESSAGE
@@ -89,7 +120,7 @@ export const Message = defineMessageUnion({
 export type Message = typeof Message.Type
 
 /** The pieces are the app's: the page asks for them again after a failure. */
-export const OutMessage = defineMessageUnion({ RequestedPieces: {} })
+export const OutMessage = defineMessageUnion({ RequestedPieces: {}, ChangedBrowse: { query: BrowseQuery } })
 export type OutMessage = typeof OutMessage.Type
 
 // UPDATE
@@ -109,15 +140,19 @@ const closeFilterSheet = filterSheet.close
 const chosenAgain = <A>(value: A, chosen: Option.Option<A>): Option.Option<A> =>
   Option.contains(chosen, value) ? Option.none() : Option.some(value)
 
-const filtered = (model: Model, change: (filters: Filters) => Filters): UpdateReturn => ({
-  model: modifyFields(model, { filters: change }),
+const browsed = (model: Model): UpdateReturn => ({
+  model,
+  outMessage: OutMessage.ChangedBrowse({ query: queryOf(model) }),
 })
+
+const filtered = (model: Model, change: (filters: Filters) => Filters): UpdateReturn =>
+  browsed(modifyFields(model, { filters: change }))
 
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     // Another group starts from all of its types.
-    ClickedGroup: ({ group }) => ({ model: modifyFields(model, { group: () => group, type: () => Option.none() }) }),
-    ClickedType: ({ type }) => ({ model: modifyFields(model, { type: () => type }) }),
+    ClickedGroup: ({ group }) => browsed(modifyFields(model, { group: () => group, type: () => Option.none() })),
+    ClickedType: ({ type }) => browsed(modifyFields(model, { type: () => type })),
     ClickedFilters: () => openFilterSheet(model),
     GotFilterSheetMessage: ({ message: sheetMessage }) => foldFilterSheet(model, sheetMessage),
     ToggledFilterColour: ({ colour }) =>

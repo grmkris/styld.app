@@ -209,12 +209,60 @@
       ]
     },
     "T-06": {
-      "status": "in_progress",
+      "status": "ready_for_review",
       "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "Approved next batch started after T-21 deployment. Investigating URL-backed filters, matching return links/position, Gallery-to-review origin and board/editor history hygiene.",
-      "evidence": [],
-      "criteriaDone": []
+      "note": "Implemented URL-backed Wardrobe filters and selected-piece return anchors, Gallery review return origins, safe parent validation and board history replacement. Static gates and 780 unit tests passed in an isolated snapshot; the focused native journey passed both 390 and 1440px (1 test / 17 assertions). Four matching native screenshot pairs are attached. Preview smoke, authenticated preview navigation and Kris’s physical Android Back check remain open.",
+      "evidence": [
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Focused native browser journey passed at 390×844 and 1440×844: filters replace without history entries, reload restores them, visible and browser Back restore the selected piece, Gallery review returns to its photo, legacy board collage canonicalizes, settings add no history and board Back exits to the list. Synthetic local workerd/Chromium; 1 test / 17 assertions."
+        }
+      ],
+      "criteriaDone": [],
+      "comparisons": [
+        {
+          "title": "Wardrobe return restores filters and selected piece",
+          "width": 390,
+          "height": 844,
+          "before": "batch-05/T-06-wardrobe-return-before-390.png",
+          "after": "batch-05/T-06-wardrobe-return-after-390.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching synthetic local workerd/Chromium viewport capture. Before shows the old Wardrobe reset; after shows the URL-backed filtered list and selected item."
+        },
+        {
+          "title": "Wardrobe return restores filters and selected piece",
+          "width": 1440,
+          "height": 844,
+          "before": "batch-05/T-06-wardrobe-return-before-1440.png",
+          "after": "batch-05/T-06-wardrobe-return-after-1440.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching synthetic local workerd/Chromium viewport capture. Before shows the old Wardrobe reset; after shows the URL-backed filtered list and selected item."
+        },
+        {
+          "title": "Gallery review return restores originating photo",
+          "width": 390,
+          "height": 844,
+          "before": "batch-05/T-06-gallery-return-before-390.png",
+          "after": "batch-05/T-06-gallery-return-after-390.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching synthetic local workerd/Chromium viewport capture. Before shows review returning to Wardrobe; after shows the originating Gallery photo. Not physical-phone or authenticated-preview evidence."
+        },
+        {
+          "title": "Gallery review return restores originating photo",
+          "width": 1440,
+          "height": 844,
+          "before": "batch-05/T-06-gallery-return-before-1440.png",
+          "after": "batch-05/T-06-gallery-return-after-1440.png",
+          "date": "2026-11-03",
+          "level": "native",
+          "note": "Matching synthetic local workerd/Chromium viewport capture. Before shows review returning to Wardrobe; after shows the originating Gallery photo. Not physical-phone or authenticated-preview evidence."
+        }
+      ]
     },
     "T-07": {
       "status": "not_started",
@@ -699,11 +747,17 @@
       "evidence": []
     },
     "F-13": {
-      "status": "not_started",
-      "owner": "",
+      "status": "ready_for_review",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
-      "evidence": []
+      "note": "Native navigation acceptance restores the URL-backed Shoes/Low shoes filter and selected piece after visible and browser Back. Physical Android and authenticated preview checks remain open.",
+      "evidence": [
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Covered by the focused T-06 native browser journey at 390×844 and 1440×844 through local workerd/Chromium. This is not physical-device or preview evidence."
+        }
+      ]
     },
     "F-14": {
       "status": "not_started",
@@ -779,11 +833,17 @@
       ]
     },
     "F-21": {
-      "status": "not_started",
-      "owner": "",
+      "status": "ready_for_review",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
-      "evidence": []
+      "note": "Native navigation acceptance carries Gallery photo origin into review and returns to that photo. Physical Android and authenticated preview checks remain open.",
+      "evidence": [
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Covered by the focused T-06 native browser journey at 390×844 and 1440×844 through local workerd/Chromium. This is not physical-device or preview evidence."
+        }
+      ]
     },
     "F-22": {
       "status": "not_started",
@@ -840,11 +900,17 @@
       "evidence": []
     },
     "F-28": {
-      "status": "not_started",
-      "owner": "",
+      "status": "ready_for_review",
+      "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "",
-      "evidence": []
+      "note": "Native navigation acceptance replaces legacy collage arrival and keeps board settings out of history, with browser Back returning to Boards. Physical Android Back remains open.",
+      "evidence": [
+        {
+          "level": "native",
+          "date": "2026-11-03",
+          "summary": "Covered by the focused T-06 native browser journey at 390×844 and 1440×844 through local workerd/Chromium. This is not physical-device or preview evidence."
+        }
+      ]
     },
     "F-29": {
       "status": "not_started",
@@ -1302,10 +1368,20 @@
       "items": [
         "T-14"
       ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "T-06 navigation is ready for review: Wardrobe filters and selected-item return anchors persist in the URL, Gallery review returns to its photo, and board history is cleaned up. Focused native acceptance passed at both widths (1 test / 17 assertions), with four matching screenshot pairs. Preview, authenticated navigation and physical Android Back remain open. A concurrent full native run hit existing local SQLite/port contention and is not counted as T-06 acceptance.",
+      "items": [
+        "T-06",
+        "F-13",
+        "F-21",
+        "F-28"
+      ]
     }
   ],
   "overview": {
-    "label": "Media batch 04 deployed; navigation next",
-    "note": "T-21 is deployed with full local validation, exact-release smoke and six screenshot pairs; signed-in media/load acceptance remains open. Next: T-06 navigation and T-15 rotation, recognition plus Kris’s phone test, then T-16 board-to-Look and the first T-10 template. Claude owns T-14/T-18/T-19/T-20."
+    "label": "Navigation batch 05 ready for review",
+    "note": "T-06 is ready for review with native browser evidence and four matching screenshot pairs; preview and phone acceptance remain open. T-21 remains ready for review with authenticated media/load acceptance open. Next: T-15 rotation, recognition plus Kris’s phone test, then T-16 board-to-Look and the first T-10 template. Claude owns T-14/T-18/T-19/T-20."
   }
 }

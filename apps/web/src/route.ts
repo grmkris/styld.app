@@ -1,4 +1,5 @@
 import type { MessageKey } from '@styld/i18n'
+import { BrowseQuery } from './WardrobeBrowse.ts'
 import { Effect, Equivalence, Option, Schema, pipe } from 'effect'
 import {
   defineRouteUnion,
@@ -24,11 +25,11 @@ export const AppRoute = defineRouteUnion({
   Account: {},
   /** The person's public profile, edited. */
   Profile: {},
-  Wardrobe: {},
+  Wardrobe: BrowseQuery.fields,
   AddPieces: {},
   /** Pieces found in the person's photos and videos, waiting for them to keep or drop. */
-  Review: {},
-  Piece: { pieceId: Schema.String },
+  Review: { from: Schema.optionalKey(Schema.String) },
+  Piece: { pieceId: Schema.String, from: Schema.optionalKey(Schema.String) },
   Looks: {},
   /** My Gallery: the person's own outfit photos, a tab of the wardrobe. */
   Photos: {},
@@ -64,10 +65,21 @@ const loginRouter = pipe(
 const loginForConnectionRouter = pipe(literal('login'), slash(literal('connect')), mapTo(AppRoute.LoginForConnection))
 export const accountRouter = pipe(literal('account'), mapTo(AppRoute.Account))
 export const profileRouter = pipe(literal('profile'), mapTo(AppRoute.Profile))
-export const wardrobeRouter = pipe(literal('wardrobe'), mapTo(AppRoute.Wardrobe))
+export const wardrobeRouter = pipe(literal('wardrobe'), query(BrowseQuery), mapTo(AppRoute.Wardrobe))
 export const addPiecesRouter = pipe(literal('wardrobe'), slash(literal('add')), mapTo(AppRoute.AddPieces))
-export const reviewRouter = pipe(literal('wardrobe'), slash(literal('review')), mapTo(AppRoute.Review))
-export const pieceRouter = pipe(literal('wardrobe'), slash(string('pieceId')), mapTo(AppRoute.Piece))
+const returnQuery = Schema.Struct({ from: Schema.optionalKey(Schema.String) })
+export const reviewRouter = pipe(
+  literal('wardrobe'),
+  slash(literal('review')),
+  query(returnQuery),
+  mapTo(AppRoute.Review),
+)
+export const pieceRouter = pipe(
+  literal('wardrobe'),
+  slash(string('pieceId')),
+  query(returnQuery),
+  mapTo(AppRoute.Piece),
+)
 export const looksRouter = pipe(literal('looks'), mapTo(AppRoute.Looks))
 export const photosRouter = pipe(literal('wardrobe'), slash(literal('gallery')), mapTo(AppRoute.Photos))
 export const photoRouter = pipe(
@@ -180,6 +192,14 @@ export const returnPath = (next: Option.Option<string>): Option.Option<string> =
     }),
     Option.map((url) => `${url.pathname}${url.search}${url.hash}`),
   )
+
+/** Return links keep only the expected parent, even when their query is supplied by someone else. */
+export const parentReturn = (from: string | undefined, parent: 'Wardrobe' | 'Photo') =>
+  Option.filter(returnPath(Option.fromNullishOr(from)), (path) => {
+    const url = new URL(path, returnBase)
+    const route = routeFromPathname(url.pathname)
+    return parent === 'Wardrobe' ? AppRoute.guards.Wardrobe(route) : AppRoute.guards.Photo(route)
+  })
 
 /** The pages the navigation moves between. They keep their place: each opens at once from what the app already
  * has, while every other page loads whole. */

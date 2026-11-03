@@ -25,7 +25,7 @@ import type * as Visit from './page/Visit.ts'
 import * as VisitView from './page/VisitView.ts'
 import * as WardrobeView from './page/WardrobeView.ts'
 import { pieceLabel } from './page/WardrobeWords.ts'
-import { AppRoute, homeRouter } from './route.ts'
+import { AppRoute, homeRouter, parentReturn } from './route.ts'
 import { piecesOf } from './ServerData.ts'
 import { styled } from './Styled.ts'
 import { intro } from './View.styles.ts'
@@ -195,7 +195,7 @@ const wardrobePages = (model: Model, h: HtmlBuilder<Message>) => {
           h.submodel({ ...slot(lenses.addPieces, addPieces), view: AddPiecesView.view, viewInputs: { locale } }),
         h,
       ),
-    Review: () =>
+    Review: ({ from }: Extract<AppRoute, { readonly _tag: 'Review' }>) =>
       onPage(
         model,
         lenses.review,
@@ -203,11 +203,16 @@ const wardrobePages = (model: Model, h: HtmlBuilder<Message>) => {
           h.submodel({
             ...slot(lenses.review, review),
             view: ReviewView.view,
-            viewInputs: { locale, timeZone, images: piecesById(piecesOf(model.data)) },
+            viewInputs: {
+              locale,
+              timeZone,
+              images: piecesById(piecesOf(model.data)),
+              returnTo: parentReturn(from, 'Photo'),
+            },
           }),
         h,
       ),
-    Piece: () =>
+    Piece: ({ from }: Extract<AppRoute, { readonly _tag: 'Piece' }>) =>
       onPage(
         model,
         lenses.piece,
@@ -215,7 +220,7 @@ const wardrobePages = (model: Model, h: HtmlBuilder<Message>) => {
           h.submodel({
             ...slot(lenses.piece, piece),
             view: PieceView.view,
-            viewInputs: { locale, boards: model.data.boards },
+            viewInputs: { locale, boards: model.data.boards, returnTo: parentReturn(from, 'Wardrobe') },
           }),
         h,
       ),

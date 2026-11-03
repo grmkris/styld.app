@@ -74,6 +74,15 @@ Release `ac535e1` is deployed; exact-release smoke passed 3 tests / 42 assertion
 readback returned 401 with the available session. Authenticated deployed load/Workers Logs, expiry-refresh
 and F-43’s hero-image timing remain open. The four-step sequence and evidence are in the tracker’s `BATCH-04.md`.
 
+## Eva navigation batch 05 (ready for review, 3 November)
+
+T-06 now keeps Wardrobe filters, selected-piece return anchors and Gallery review origins in the URL. Filter chips
+replace the current address entry. Visible Back and browser Back restore the filtered list; the old board collage route
+canonicalizes with replacement, and board settings do not add history entries. External or unrelated `from` values
+are rejected. The focused native browser journey passed at 390×844 and 1440×844 (1 test / 17 assertions), and four
+matching before/after screenshot pairs are in the tracker. This is synthetic local workerd/Chromium evidence, not a
+physical Android or authenticated preview walk. T-06 and F-13/F-21/F-28 remain ready for review pending those checks.
+
 ## The preview
 
 - **URL:** https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev (isolated workers.dev,

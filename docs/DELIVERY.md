@@ -132,3 +132,11 @@ view thumbnails. `SignedMedia`/`SignedFile` unit coverage and `MediaLoadAcceptan
 17 capture assertions and visual review. Release `ac535e1` is deployed; exact-release smoke passed three tests /
 42 assertions. Signed-in preview media readback, authenticated loading/Workers Logs and
 expiry-refresh remain open; this does not verify F-43. See the tracker’s `BATCH-04.md`.
+
+## Eva navigation batch 05
+
+T-06 adds URL-backed Wardrobe filters and selected-piece anchors, safe Gallery-to-review return paths, and clean
+board history for the legacy collage route and settings dialog. The focused native journey covers 390×844 and
+1440×844 through local workerd/Chromium (1 test / 17 assertions), with four matching screenshot pairs. Preview
+smoke, an authenticated preview walk and physical Android Back remain separate acceptance levels. See
+`docs/research/eva-review-tracker/BATCH-05.md`.

@@ -9,12 +9,12 @@ import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { filtersIcon, loader } from '../Icon.ts'
-import { addPiecesRouter, pieceRouter } from '../route.ts'
+import { addPiecesRouter, pieceRouter, wardrobeRouter } from '../route.ts'
 import { block, line } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import type { PiecesData } from '../ServerData.ts'
-import { brandsOf, filterCount, Message, type Model, shownPieces } from './Wardrobe.ts'
+import { brandsOf, filterCount, Message, type Model, queryOf, shownPieces } from './Wardrobe.ts'
 import { groupName, occasionName, pieceLabel, seasonName, typeName } from './WardrobeWords.ts'
 import { chipPicker, colourPicker } from './PieceFields.ts'
 import { bottomSheet, sheetShown } from './Sheet.ts'
@@ -151,14 +151,17 @@ const pieceState = (piece: Piece, locale: Locale, h: HtmlBuilder<Message>): Html
   return h.empty
 }
 
-const pieceTile = (piece: Piece, locale: Locale, h: HtmlBuilder<Message>): Html => {
+const pieceTile = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
   const label = pieceLabel(piece, locale)
   return h.keyed('li')(
     piece.id,
-    [],
+    [h.Id(`piece-${piece.id}`)],
     [
       h.a(
-        [h.Href(pieceRouter({ pieceId: piece.id })), ...styled(h, styles.cut())],
+        [
+          h.Href(pieceRouter({ pieceId: piece.id, from: `${wardrobeRouter(queryOf(model))}#piece-${piece.id}` })),
+          ...styled(h, styles.cut()),
+        ],
         [
           // The caption names the piece; the picture would only say it twice.
           h.img([h.Src(thumbnailPath(piece)), h.Alt(''), h.Loading('lazy'), ...styled(h, styles.cutImage())]),
@@ -296,7 +299,7 @@ const loadedView = (pieces: ReadonlyArray<Piece>, model: Model, locale: Locale, 
       ? h.p(styled(h, styles.message()), [format(locale, 'wardrobe.noneFiltered', {})])
       : h.ul(
           styled(h, styles.grid()),
-          shown.map((piece) => pieceTile(piece, locale, h)),
+          shown.map((piece) => pieceTile(piece, model, locale, h)),
         ),
     sheetShown(model.filterSheet) ? filterSheet(pieces, model, locale, h) : h.empty,
   ])

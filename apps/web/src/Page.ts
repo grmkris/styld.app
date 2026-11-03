@@ -23,7 +23,7 @@ import * as Stylist from './page/Stylist.ts'
 import * as Today from './page/Today.ts'
 import * as Visit from './page/Visit.ts'
 import * as Wardrobe from './page/Wardrobe.ts'
-import type { AppRoute } from './route.ts'
+import { AppRoute } from './route.ts'
 import type { StyldClient } from './StyldClient.ts'
 import type { PictureEncoder } from './Upload.ts'
 import type * as Crypto from 'effect/Crypto'
@@ -242,11 +242,11 @@ export const lenses = {
 // INIT
 
 /** The tab pages as they first open: each tab asks for its own when it is entered. */
-const tabs = (signedIn: boolean): Page =>
+const tabs = (signedIn: boolean, route: AppRoute): Page =>
   Page.Tabs({
     tabs: {
       today: Today.init(),
-      wardrobe: Wardrobe.init(),
+      wardrobe: Wardrobe.init(AppRoute.guards.Wardrobe(route) ? route : {}),
       looks: Looks.init(),
       photos: Photos.init(),
       ask: Ask.init(),
@@ -274,7 +274,7 @@ export const openPage = (route: AppRoute, signedIn: boolean, atFollow: boolean):
   Match.value(route).pipe(
     Match.withReturnType<Opened>(),
     Match.tag('Home', 'Explore', 'Wardrobe', 'Looks', 'Photos', 'Ask', 'Boards', 'Account', () => ({
-      model: tabs(signedIn),
+      model: tabs(signedIn, route),
     })),
     Match.tag('Login', 'LoginForConnection', () => opened(lenses.login, Login.init(), [])),
     Match.tag('Profile', () => opened(lenses.profile, ProfileEditor.init(), ProfileEditor.load())),

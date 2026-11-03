@@ -2,7 +2,7 @@ import { expect } from 'bun:test'
 import * as Cloudflare from '@alchemy.run/cloudflare'
 import * as Alchemy from 'alchemy'
 import * as Test from 'alchemy/Test/Bun'
-import { Effect, Redacted, Schedule, Schema } from 'effect'
+import { Effect, Schedule, Schema } from 'effect'
 import * as FetchHttpClient from 'effect/http/FetchHttpClient'
 import * as HttpBody from 'effect/http/HttpBody'
 import * as HttpClient from 'effect/http/HttpClient'
@@ -30,72 +30,11 @@ import { verifyBrowserIdentity } from './IdentityBrowserAcceptance.ts'
 import { verifyMcp } from './McpAcceptance.ts'
 import { verifyAccountDeletion, verifyWardrobe } from './WardrobeAcceptance.ts'
 import { verifyMediaLoad } from './MediaLoadAcceptance.ts'
-import RuntimeWorker from './RuntimeWorker.ts'
+import { verifyNavigationJourney } from './NavigationBrowserAcceptance.ts'
 import { LiveSchema, liveShape } from './SchemaShape.ts'
 import { snapshotShape } from './SchemaSnapshot.ts'
-import NativeWorkerLive, { NativeWorker } from './NativeWorker.ts'
+import { makeStack } from './RuntimeStack.ts'
 import { csrf } from '@styld/auth/config'
-
-const makeStack = (generation: string) =>
-  Alchemy.Stack(
-    'StyldLocalAcceptance',
-    {
-      providers: Cloudflare.providers(),
-      state: Alchemy.localState(),
-    },
-    Effect.gen(function* () {
-      const worker = yield* RuntimeWorker
-      yield* worker.bind('AcceptanceGeneration', { env: { TEST_GENERATION: generation } })
-      const styld = yield* NativeWorker
-      // Execute the production SSR artifact in workerd. Website.Foldkit's dev
-      // mode runs Vite in Node, which cannot prove the deployed Worker behavior.
-      const website = yield* Cloudflare.Worker('NativeWebsite', {
-        main: 'apps/web/dist/server/fetch.js',
-        assets: { directory: 'apps/web/dist/client' },
-        compatibility: { date: '2026-10-19' },
-      })
-      const edge = yield* Cloudflare.Worker('NativeEdge', {
-        main: 'packages/server/src/EdgeWorker.ts',
-        env: { API: styld, WEBSITE: website, ROBOTS: 'noindex' },
-        assets: { directory: 'apps/web/dist/client' },
-        compatibility: { date: '2026-10-19' },
-      })
-      // Native acceptance binds the same secret-text contract used by Alchemy's
-      // preview stack. Values are test-only and never leave this process.
-      yield* styld.bind('RuntimeConfiguration', {
-        env: {
-          AUTH_ORIGIN: edge.url,
-          STYLD_ENV: 'local',
-          STYLD_RELEASE: `native-${generation}`,
-          // The import journey's admin (`ImportAcceptance.ts`).
-          STYLD_ADMIN_EMAILS: 'native-import-admin@example.invalid',
-          // The fakes' providers ask the fixture Worker in Meta's, Veo's and Clef's place (`test/fakes/`).
-          TEST_FIXTURES: worker.url,
-          META_API_KEY: Redacted.make('native-test-meta-key'),
-          VIDEO_GATEWAY_API_KEY: Redacted.make('native-test-gateway-key'),
-          AUTH_SECRET: Redacted.make('native-test-auth-secret-012345678901234567890123'),
-          AUTH_SESSION_KEYS: Redacted.make(
-            JSON.stringify({
-              activeKeyId: 'native-test',
-              keys: [{ id: 'native-test', material: 'a'.repeat(43) }],
-            }),
-          ),
-          AUTH_PROOF_KEYS: Redacted.make(
-            JSON.stringify({ activeKeyId: 'native-test', keys: [{ id: 'native-test', material: 'd'.repeat(43) }] }),
-          ),
-          AUTH_REQUEST_BINDING_KEYS: Redacted.make(
-            JSON.stringify({ activeKeyId: 'native-test', keys: [{ id: 'native-test', material: 'e'.repeat(43) }] }),
-          ),
-        },
-      })
-      return {
-        url: worker.url.as<string>(),
-        styldUrl: edge.url.as<string>(),
-        apiUrl: styld.url.as<string>(),
-        websiteUrl: website.url.as<string>(),
-      }
-    }).pipe(Effect.provide(NativeWorkerLive)),
-  )
 
 const Stack = makeStack('before')
 
@@ -159,6 +98,10 @@ const overHttp = (verify: (origin: string, testUrl: string) => Promise<void>) =>
   })
 
 test('loads board, Gallery and review pictures in cookie-free bursts', overHttp(verifyMediaLoad), { timeout: 120000 })
+
+test('keeps wardrobe filters, return destinations and clean board history', inBrowser(verifyNavigationJourney), {
+  timeout: 120000,
+})
 
 test(
   'serves MCP to OAuth clients: discovery, registration, consent, both protocol eras, rotation and revocation',
