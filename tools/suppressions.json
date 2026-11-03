@@ -82,5 +82,9 @@
   {
     "file": "packages/server/src/providers/Text.ts",
     "comment": "@effect-diagnostics-next-line unstableApiUsage:off -- Effect's Server-Sent Events parser reads the streamed completion"
+  },
+  {
+    "file": "packages/server/test/Media.test.ts",
+    "comment": "SAFETY: the stubs implement bucket.get and images.input -- the transform under test calls nothing else of R2 or Images"
   }
 ]
