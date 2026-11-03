@@ -39,16 +39,11 @@ import {
   StyldImportQueue,
   StyldMedia,
   StyldPieceQueue,
-  StyldStylistQueue,
 } from './Resources.ts'
 import { CheckQueue } from './safety/Checks.ts'
-import { chatStoreOf } from './stylist/Live.ts'
-import { StylistQueue } from './stylist/Queue.ts'
 import { StylistChats } from './stylist/Service.ts'
 import type { Settled, ToolRequest } from './stylist/Agent.ts'
 import { StylistThreads } from './stylist/Threads.ts'
-import { ChatStores } from './stylist/Chats.ts'
-import { Stylist } from './stylist/StylistObject.ts'
 import { PaidAttempts } from './usage/Attempts.ts'
 import { Holds } from './usage/Holds.ts'
 import { PieceQueue } from './wardrobe/Processing.ts'
@@ -102,7 +97,6 @@ const declareBindings = Effect.gen(function* () {
     pieces: yield* StyldPieceQueue,
     checks: yield* StyldChecksQueue,
     generation: yield* StyldGenerationQueue,
-    stylist: yield* StyldStylistQueue,
     imports: yield* StyldImportQueue,
   }
   return {
@@ -112,8 +106,6 @@ const declareBindings = Effect.gen(function* () {
     images: yield* Cloudflare.Images.Images('STYLD_IMAGES'),
     queues,
     writers: yield* Effect.all(Record.map(queues, (queue) => Cloudflare.Queues.WriteQueue(queue))),
-    // Styld's chats, one Durable Object per account.
-    stylists: yield* Stylist,
     // Clef-flash (Workers AI); provider calls are counted in Analytics Engine.
     ai: yield* Cloudflare.Workers.AI('AI'),
     calls: yield* Cloudflare.AnalyticsEngine.WriteDataset(yield* StyldAiCalls),
@@ -159,9 +151,7 @@ const kernelOf = (bindings: Bindings, providersFor: ProvidersFor, env: Readonly<
       PieceQueue.layer(yield* writers.pieces.raw),
       CheckQueue.layer(yield* writers.checks.raw),
       GenerationQueue.layer(yield* writers.generation.raw),
-      StylistQueue.layer(yield* writers.stylist.raw),
       ImportQueue.layer(yield* writers.imports.raw),
-      ChatStores.layer(chatStoreOf(bindings.stylists)),
       StylistThreads.layer(yield* stylistThreadsOf(env)),
       Layer.succeed(CaptureMetrics, metrics),
       Layer.succeed(Auth, auth),

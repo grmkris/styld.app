@@ -11,7 +11,8 @@ import { GarmentSegmenter } from './capture/Providers.ts'
 import { accountPrefix } from './wardrobe/Media.ts'
 import { Database, nowDate } from './kernel/Db.ts'
 import { deletePrefix, type Listing, Media } from './kernel/Media.ts'
-import { ChatStores } from './stylist/Chats.ts'
+import { chatIndex } from './stylist/Index.ts'
+import { StylistThreads } from './stylist/Threads.ts'
 import { PieceQueue } from './wardrobe/Processing.ts'
 
 // Deleting an account is durable: the batch that closes access also records the deletion (`account_deletions`), and
@@ -215,12 +216,14 @@ export class AccountLifecycle extends Context.Service<AccountLifecycle, Effect.S
   static readonly layer = Layer.effect(
     this,
     Effect.gen(function* () {
-      const chats = yield* ChatStores
+      const threads = yield* StylistThreads
       const database = yield* Database
+      const chats = chatIndex(database)
       const segmenter = yield* GarmentSegmenter
       const bindings = { database, bucket: (yield* Media).bucket, queue: yield* PieceQueue }
       return yield* makeAccountLifecycle(bindings, {
-        chats: (accountId) => chats.of(accountId).erase(),
+        // Every chat's Thread, from the account's list, which goes with its rows after this.
+        chats: (accountId) => Effect.flatMap(chats.all(accountId), (chatIds) => threads.erase(accountId, chatIds)),
         providerFiles: (accountId) =>
           forgetFilesOf(accountId).pipe(
             Effect.provideService(Database, database),

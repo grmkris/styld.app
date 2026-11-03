@@ -74,7 +74,6 @@ const owners: Readonly<Record<string, ReadonlyArray<string>>> = {
   generationPicks: ['generation/'],
   thinkingDays: ['outfits/'],
   wornPieces: ['worn/'],
-  stylistTurns: ['stylist/'],
   stylistChats: ['stylist/'],
   pendingSettlements: ['usage/'],
   paidAttempts: ['usage/'],

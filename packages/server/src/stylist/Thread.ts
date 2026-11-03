@@ -48,9 +48,14 @@ declare global {
   namespace Cloudflare {
     interface Env {
       readonly STYLD_API: StyldApi
-      readonly STYLIST_THREADS: DurableObjectNamespace<ThreadObjectRpc>
+      readonly STYLIST_THREADS: DurableObjectNamespace<ThreadObjectRpc & Erasable>
     }
   }
+}
+
+/** A Thread Object that can forget its chat (`makeStylistThread`). */
+interface Erasable {
+  readonly erase: () => Promise<void>
 }
 
 /** The Thread Objects' binding name in the Thread Worker, the namespace they reach each other through. */
@@ -149,7 +154,7 @@ const settlements = Layer.effect(
 /** The Thread Object class over a language model: the Worker's own asks Styld's model (`ThreadWorker.ts`); the native
  * suite's a streaming fake. */
 export const makeStylistThread = (model: Layer.Layer<LanguageModel.LanguageModel, never, WorkerEnvironment>) =>
-  ThreadObject.make(
+  class extends ThreadObject.make(
     ThreadObject.layer(
       [
         {
@@ -162,7 +167,16 @@ export const makeStylistThread = (model: Layer.Layer<LanguageModel.LanguageModel
       { lifecyclePublication: settlements },
     ),
     { namespaceBinding: threadsBinding, deploymentId: 'styld', producerPrefix: 'styld' },
-  )
+  ) {
+    /** Forget the chat for good, its account being deleted: Yielded Agent (0.1.0-beta.191) has no way to delete a
+     * Thread, so its Object's own storage goes (every record, the ledger and the outbox) with its alarm, and the
+     * incarnation ends so nothing it held in memory writes again. */
+    async erase() {
+      await this.ctx.storage.deleteAlarm()
+      await this.ctx.storage.deleteAll()
+      this.ctx.abort('erased')
+    }
+  }
 
 /** The definitions' digests, as admission checks them. */
 const digests = digestDefinitions(stylistDefinitions).pipe(Effect.provide(Digest.layerWebCrypto), Effect.orDie)
@@ -254,5 +268,13 @@ export class StylistThreads extends WorkerEntrypoint implements StylistThreadsAp
   }
   live(accountId: string, chatId: string) {
     return Promise.resolve(live(this.env, accountId, chatId))
+  }
+  async erase(accountId: string, chatIds: ReadonlyArray<string>) {
+    for (const chatId of chatIds) {
+      // An Object that aborts as it ends its incarnation fails the call that asked it to; its storage is gone.
+      await this.env.STYLIST_THREADS.getByName(threadIdOf(accountId, chatId))
+        .erase()
+        .catch(() => undefined)
+    }
   }
 }

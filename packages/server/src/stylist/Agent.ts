@@ -93,4 +93,6 @@ export interface StylistThreadsApi {
   readonly chat: (accountId: string, chatId: string) => Promise<ChatRead>
   /** The chat's live words (LiveText NDJSON), as its Thread writes them. */
   readonly live: (accountId: string, chatId: string) => Promise<ReadableStream<Uint8Array>>
+  /** Forget the account's chats for good: each Thread's storage and alarm (account deletion). */
+  readonly erase: (accountId: string, chatIds: ReadonlyArray<string>) => Promise<void>
 }

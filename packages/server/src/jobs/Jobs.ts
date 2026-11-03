@@ -9,7 +9,7 @@ import { Cause, Effect, Exit, Option, Predicate, Schema, Stream } from 'effect'
 // Each delivery writes one structured log line, and is its own span with the job it carries.
 
 /** The queues the API Worker consumes. */
-type QueueName = 'pieces' | 'checks' | 'generation' | 'stylist' | 'imports'
+type QueueName = 'pieces' | 'checks' | 'generation' | 'imports'
 
 /** A queue body: one tagged case of its union. */
 export interface Tagged {

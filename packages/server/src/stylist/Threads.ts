@@ -38,6 +38,8 @@ const make = (threads: StylistThreadsApi) => ({
     call(() => threads.chat(accountId, chatId)).pipe(
       Effect.flatMap((answer) => Effect.mapError(decodeChat(answer), unavailable)),
     ),
+  /** Forget the account's chats for good, each Thread's storage with it (account deletion). */
+  erase: (accountId: string, chatIds: ReadonlyArray<string>) => call(() => threads.erase(accountId, chatIds)),
   /** The chat's live words as its Thread writes them (NDJSON), forwarded without decoding. */
   live: (accountId: string, chatId: string) =>
     Stream.unwrap(

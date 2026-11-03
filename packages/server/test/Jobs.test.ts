@@ -3,7 +3,6 @@ import { describe, expect, test } from 'vitest'
 import { consume, consumerSettings, defineQueue, type JobsOf } from '../src/jobs/Jobs.ts'
 import { generationJobQueue } from '../src/generation/Queue.ts'
 import { checkJobQueue } from '../src/safety/Queue.ts'
-import { stylistJobQueue } from '../src/stylist/Queue.ts'
 import { pieceJobQueue } from '../src/wardrobe/Queue.ts'
 
 const base = { environment: 'preview', release: 'cb10b19', component: 'server' } as const
@@ -113,7 +112,6 @@ describe('a queue delivery', () => {
 describe('the queues', () => {
   test('name the job each delivery carries; a piece keeps the message id', () => {
     expect(generationJobQueue.jobOf({ _tag: 'TakeJob', jobId: 'gj_1' })).toEqual(Option.some('gj_1'))
-    expect(stylistJobQueue.jobOf({ _tag: 'WriteReply', turnId: 'tn_1', accountId: 'ac' })).toEqual(Option.some('tn_1'))
     expect(checkJobQueue.jobOf({ _tag: 'CheckContent', target: { kind: 'board', id: 'bd_1' } })).toEqual(
       Option.some('board:bd_1'),
     )

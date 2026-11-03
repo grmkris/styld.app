@@ -1,4 +1,4 @@
-import { captures, outfitPhotos, piecePictures, pieces, pieceTurns, stylistTurns } from '@styld/db'
+import { captures, outfitPhotos, piecePictures, pieces, pieceTurns } from '@styld/db'
 import { and, asc, eq, inArray, lt, or } from 'drizzle-orm'
 import { Cause, DateTime, Duration, Effect } from 'effect'
 import { Database, query } from '../kernel/Db.ts'
@@ -114,16 +114,6 @@ export const stuckRows = (db: Database['Service']) => ({
         .from(outfitPhotos)
         .where(and(inArray(outfitPhotos.status, ['finding']), lt(outfitPhotos.updatedAt, until)))
         .orderBy(asc(outfitPhotos.updatedAt))
-        .limit(sweepBatch),
-    ).pipe(Effect.map(ids)),
-  /** Styld's turns whose credit is still held: every turn settles within its patience, well inside this. */
-  stylistTurns: (until: Date) =>
-    query(() =>
-      db
-        .select({ id: stylistTurns.id })
-        .from(stylistTurns)
-        .where(lt(stylistTurns.createdAt, until))
-        .orderBy(asc(stylistTurns.createdAt))
         .limit(sweepBatch),
     ).pipe(Effect.map(ids)),
 })

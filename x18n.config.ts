@@ -94,7 +94,6 @@ export default defineConfig({
       'packages/server/src/stylist/Tools.ts': ['/[\\s\\S]*/'],
       'packages/server/src/stylist/Catalogue.ts': ['/[\\s\\S]*/'],
       'packages/server/src/stylist/Thread.ts': ['/[\\s\\S]*/'],
-      'packages/server/src/stylist/StylistObject.ts': ['/[\\s\\S]*/'],
       'packages/server/src/ai/LanguageModel.ts': ['/[\\s\\S]*/'],
       // The questions the outfit engine puts to Clef, and Thinking's instructions to its text model.
       'packages/server/src/outfits/Judge.ts': ['/[\\s\\S]*/'],
