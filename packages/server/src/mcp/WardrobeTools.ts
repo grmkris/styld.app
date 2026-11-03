@@ -24,7 +24,7 @@ import {
 } from '@styld/protocol'
 import { Effect, Schema } from 'effect'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
-import { tool, ToolError } from './Tools.ts'
+import { tool, ToolError, toolSpec } from './Tools.ts'
 import { fetchOperation, type Links } from '../links/Links.ts'
 
 /** A piece as assistants see it: its fields and its page on the website, never an image address. */
@@ -74,18 +74,30 @@ const PieceAdd = Schema.Struct({
   ...PieceFields,
 })
 
+export const pieceSearch = toolSpec({
+  name: 'piece_search',
+  title: 'Search the wardrobe',
+  description:
+    'Pieces in the wardrobe, newest first, filtered by words (`q`) in their name, notes or brand, and by garment type, group, colour, season, occasion, pattern or brand. Returns up to `limit` pieces and a `nextCursor` for the next page (null on the last page).',
+  parameters: Schema.Struct({
+    ...SearchFilter.fields,
+    limit: Schema.optionalKey(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 }))),
+    cursor: Schema.optionalKey(Schema.String.check(Schema.isPattern(/^[0-9]{1,6}$/))),
+  }),
+  annotations: { readOnlyHint: true, openWorldHint: false },
+})
+
+export const pieceGet = toolSpec({
+  name: 'piece_get',
+  title: 'One piece',
+  description: 'One piece of the wardrobe by its id, with its link on the website.',
+  parameters: Schema.Struct({ pieceId: PieceId }),
+  annotations: { readOnlyHint: true, openWorldHint: false },
+})
+
 const readTools = (wardrobe: Wardrobe['Service'], show: ReturnType<typeof shown>) => [
   tool({
-    name: 'piece_search',
-    title: 'Search the wardrobe',
-    description:
-      'Pieces in the wardrobe, newest first, filtered by words (`q`) in their name, notes or brand, and by garment type, group, colour, season, occasion, pattern or brand. Returns up to `limit` pieces and a `nextCursor` for the next page (null on the last page).',
-    parameters: Schema.Struct({
-      ...SearchFilter.fields,
-      limit: Schema.optionalKey(Schema.Int.check(Schema.isBetween({ minimum: 1, maximum: 50 }))),
-      cursor: Schema.optionalKey(Schema.String.check(Schema.isPattern(/^[0-9]{1,6}$/))),
-    }),
-    annotations: { readOnlyHint: true, openWorldHint: false },
+    ...pieceSearch,
     handler: (input) =>
       wardrobe.listPieces().pipe(
         Effect.map((pieces) => {
@@ -96,14 +108,7 @@ const readTools = (wardrobe: Wardrobe['Service'], show: ReturnType<typeof shown>
         }),
       ),
   }),
-  tool({
-    name: 'piece_get',
-    title: 'One piece',
-    description: 'One piece of the wardrobe by its id, with its link on the website.',
-    parameters: Schema.Struct({ pieceId: PieceId }),
-    annotations: { readOnlyHint: true, openWorldHint: false },
-    handler: ({ pieceId }) => wardrobe.getPiece(pieceId).pipe(Effect.map(show)),
-  }),
+  tool({ ...pieceGet, handler: ({ pieceId }) => wardrobe.getPiece(pieceId).pipe(Effect.map(show)) }),
 ]
 
 const writeTools = (

@@ -128,16 +128,32 @@ const describeIssue = (issue: SchemaIssue.Issue) =>
     .slice(0, 12)
     .join('\n')
 
-/** Declare a tool. The handler receives decoded input; refusals name the bad argument, never its value. */
-export const tool = <A, R>(definition: {
+/** What a tool is, apart from what it does: its name, words, parameters and hints. Styld's chat lists some of the
+ * assistants' tools from these alone (`stylist/Catalogue.ts`), so both read the same words and schemas. */
+export interface ToolSpec<A> {
   readonly name: string
   readonly title: string
   readonly description: string
   readonly parameters: Schema.Codec<A, unknown>
   readonly annotations: ToolAnnotations
   readonly meta?: Readonly<Record<string, unknown>>
-  readonly handler: (input: A) => Effect.Effect<unknown, Refusal, R>
-}): Tool<R> => {
+}
+
+/** Declare what a tool is, for `tool` and the chat's catalogue. */
+export const toolSpec = <A>(spec: ToolSpec<A>) => spec
+
+/** A tool as it is listed, from what it is: its JSON input schema from its parameters. */
+export const listed = <A>(spec: ToolSpec<A>) => ({
+  name: spec.name,
+  description: spec.description,
+  inputSchema: inputSchema(spec.parameters),
+  annotations: spec.annotations,
+})
+
+/** Declare a tool. The handler receives decoded input; refusals name the bad argument, never its value. */
+export const tool = <A, R>(
+  definition: ToolSpec<A> & { readonly handler: (input: A) => Effect.Effect<unknown, Refusal, R> },
+): Tool<R> => {
   const { parameters, handler, ...rest } = definition
   const decode = (args: unknown): Effect.Effect<A, ToolError> => {
     if (!takesNoArguments(parameters))
