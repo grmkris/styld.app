@@ -1,6 +1,6 @@
 # Eva camera batch 03 — 3 November 2026
 
-Status: in progress. T-01 and T-05 remain partial; T-21 remains open.
+Status: bounded client camera changes deployed at `15ddaca`; F-49 verified. T-01 and T-05 remain partial; T-21 remains open.
 Baseline: checkout `c95185b`, built website from deployed application `021dabe`.
 
 ## Bounded scope
@@ -69,6 +69,19 @@ here when available. The source report and original ticket/finding wording remai
 3. Product/browser: visually reviewed the four matched phone/desktop pairs. The black-frame baseline advances to
    Back; the fixed view stays at Front with guidance. The large countdown is readable and leaves controls available.
 
-Preview deployment and exact-release readback remain to record. T-01/T-05 stay partial: no provider claim is made
+Preview deployment and exact-release readback passed on `15ddaca`. T-01/T-05 stay partial: no provider claim is made
 for faces, no-garment scenes, contour detection or excluding background/worn clothing; the review-card Front/Back
-preview is still open. F-49 can be verified after preview readback. T-21 is unchanged and open.
+preview is still open. F-49 is verified at the native-viewport plus preview-smoke boundary. T-21 is unchanged and open.
+
+## Preview receipt
+
+- Commit: `15ddacaca5105bf0f7c7b8b33cb2ba396a24deeb`, deployed 3 November at 11:11 UTC (12:11 CET).
+- Alchemy plan and application: three Worker updates, two release-binding changes. No storage, migration,
+  queue or Durable Object resource changes. All three Worker updates succeeded.
+- `STYLD_PREVIEW_URL=<preview> STYLD_EXPECTED_RELEASE=15ddacaca5105bf0f7c7b8b33cb2ba396a24deeb
+  heavy --wait bun test tools/preview.native.test.ts` exited 0: 3 tests / 42 assertions. This checks the exact
+  release and public smoke contracts, not authenticated camera or paid-provider outcomes.
+- Cloudflare readback: edge deployment `e3768f81-6db4-4926-aa3d-7ce14c82fba9`, SSR
+  `789603a5-416d-469d-9e4f-4db4c9a3ff50`, API `4735ab71-ece6-4912-84d3-1471da5a2b9b`, each at 100%.
+  API `STYLD_RELEASE` and SSR `VITE_STYLD_RELEASE` match the commit. Only the edge exposes workers.dev;
+  API and SSR workers.dev and preview URLs are disabled. No custom-domain changes were planned.

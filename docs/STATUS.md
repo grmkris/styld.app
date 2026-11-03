@@ -44,16 +44,17 @@ editing, Add to board canvas placement, and a category/type piece sheet. Placeme
 pins and its operation receipt; pin controls wait for pending table saves and uploads. Public board visitors retain
 their read-only presentation, and gallery photos remain private. The completed full gate passed (759 unit tests; 29 native tests / 1,284 assertions), as did the final
 screenshot harness (49 assertions). Six matching pairs were visually reviewed at 390 and 1440px. Release `021dabe`
-is deployed below and passed exact-release smoke acceptance (3 tests / 42 assertions). T-04, T-09 and T-11 are
+was deployed and passed exact-release smoke acceptance (3 tests / 42 assertions). T-04, T-09 and T-11 are
 verified. Physical-phone and live-provider acceptance remain separate.
 
-## Eva camera batch 03 (in progress)
+## Eva camera batch 03 (bounded client fixes deployed 3 November)
 
 A bounded follow-up implements a central cancellable countdown, dark/uniform-frame guards, motion
 cancellation and explicit Back pairing. Baseline synthetic Chromium/workerd captures reproduced black-frame
 advancement at both 390 and 1440px; matching after captures reject that frame and show the countdown. The full
 gate passed (763 unit tests; 29 native tests / 1,202 assertions), as did the screenshot harness (17 assertions).
-Four matching pairs were visually reviewed. Preview deployment/readback is pending; T-01/T-05 remain partial: foreground
+Four matching pairs were visually reviewed. Release `15ddaca` is deployed; exact-release preview smoke passed
+(3 tests / 42 assertions), and F-49 is verified. T-01/T-05 remain partial: foreground
 extraction, garment-contour/no-garment recognition, the review card Front/Back preview and real-phone/provider acceptance stay open.
 See the tracker's `BATCH-03.md` for the investigation and remaining provider/phone boundaries.
 
@@ -65,16 +66,16 @@ remain open. F-43's slow hero picture has not been remeasured on an authenticate
 
 - **URL:** https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev (isolated workers.dev,
   noindex, no custom domain). `/api/health` names the running release.
-- **Release:** `021dabe15e060fe114317beffd5913b9851a0885`, committed on `main` and deployed on 3 November at
-  08:52 UTC. `/api/health` and the API Worker's release binding match. This adds Eva board batch 02 to batch 01, C8
-  and the signed-picture fixes. Later documentation receipts do not change the deployed application SHA.
+- **Release:** `15ddacaca5105bf0f7c7b8b33cb2ba396a24deeb`, committed on `main` and deployed on 3 November at
+  11:11 UTC. `/api/health`, the API Worker's release binding and the SSR release binding match. This adds bounded
+  camera batch 03 to board batch 02, batch 01, C8 and the signed-picture fixes. Later documentation receipts do not change the deployed application SHA.
 - **Deployment:** Alchemy reported three successful Worker updates and two release-binding changes; D1, R2, queues
   and Durable Object namespaces were unchanged. The four migrations through `20261102202631_c8_durability` were
   recorded by the preceding preview readback; this batch planned no migration or storage changes.
 - **Cloudflare readback:** the edge alone exposes workers.dev; the API and SSR Workers have both workers.dev and
   preview URLs disabled. No custom domains are attached.
-  Deployment ids: edge `d73b9610-dfd2-496f-90b9-256cab9a9871`, SSR `9fa94003-bd78-4f2e-a962-9d2fe95b7901`,
-  API `d7b2f396-1cf5-49d6-97c4-efdf558cd06a` (each at 100%).
+  Deployment ids: edge `e3768f81-6db4-4926-aa3d-7ce14c82fba9`, SSR `789603a5-416d-469d-9e4f-4db4c9a3ff50`,
+  API `4735ab71-ece6-4912-84d3-1471da5a2b9b` (each at 100%).
 - **Rebuilt from scratch** (C5): stage `preview` destroyed and deployed again on the one baseline migration, with
   Alchemy's state in the Cloudflare account's state store (`docs/DEPLOYMENT.md` › Rebuild and import).
 - **Testers' wardrobes, last recorded 2 November** (owner-approved, `docs/ARCHITECTURE.md` › Delivery boundary): the owner's 74 v1 pieces were
@@ -87,18 +88,17 @@ remain open. F-43's slow hero picture has not been remeasured on an authenticate
 
 ## Gate results
 
-`heavy --wait bun run check` exited 0 on `021dabe` (3 November): effect-tsrs 661 files, 0 findings; lint green;
-21 reviewed suppressions; 759 unit tests in 119 files; native 29 pass, 0 fail, 1,284 assertions. The gate's build
-measured initial browser 348,711 gzip bytes, all browser 612,716 and SSR 1,908,530 source bytes. The deployment's
-release-stamped build also passed bundle budgets: initial 348,718, all 612,759 gzip bytes, SSR 2,035,660 source bytes.
+`heavy --wait bun run check` exited 0 for camera commit `15ddaca` (3 November): effect-tsrs 664 files,
+0 findings; lint green; 21 reviewed suppressions; 763 unit tests in 120 files; native 29 pass, 0 fail,
+1,202 assertions. Gate build budgets passed: initial browser 349,566 gzip bytes, all browser 613,929 and
+SSR 1,914,796 source bytes. The release-stamped deployment build also passed the bundle budget check.
 
-Deployed acceptance (`STYLD_PREVIEW_URL=<above> STYLD_EXPECTED_RELEASE=021dabe15e060fe114317beffd5913b9851a0885
-heavy --wait bun test tools/preview.native.test.ts`) passed: 3 pass, 0 fail, 42 assertions. It verified the exact
+Deployed acceptance (`STYLD_PREVIEW_URL=<above> STYLD_EXPECTED_RELEASE=15ddacaca5105bf0f7c7b8b33cb2ba396a24deeb
+heavy --wait bun test tools/preview.native.test.ts`) exited 0: 3 pass, 0 fail, 42 assertions. It verified the exact
 health/release, auth and CSRF contracts, hydrated website, MCP discovery/challenge/registration and immutable static
 assets. Native tests use fake providers; this is not acceptance of real paid-provider outcomes or every signed-in
-preview journey. The outer zsh wrapper failed after the passing test run on the reserved `status` variable;
-the test log has 3 pass and 0 fail. Batch screenshots, scope and review notes are in the tracker's
-`BATCH-01.md` and `BATCH-02.md`.
+preview journey. Batch screenshots, scope and review notes are in the tracker's `BATCH-01.md`, `BATCH-02.md` and
+`BATCH-03.md`. T-21's remaining media migration and authenticated load measurement are still open.
 
 ## Incident: D1 overloaded by the wardrobe's thumbnails (2 November, fix deployed 3 November)
 

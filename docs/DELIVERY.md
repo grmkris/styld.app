@@ -119,5 +119,6 @@ The central cancellable 3–2–1 count and fresh final frame are covered by `he
 `Stillness` covers dark/uniform-frame rejection. `GuidedCameraBrowserAcceptance` verifies no checks on a covered
 frame, cancellation mid-count, motion between sides and one wardrobe piece with its back despite a side-confused
 recognition response. Full gate: 763 unit and 29 native tests passed; four matching screenshot pairs passed visual
-review at 390×844 and 1440×844. Preview deployment/readback is pending. T-01/T-05 remain partial: recognition,
+review at 390×844 and 1440×844. Release `15ddaca` is deployed; exact-release preview smoke passed 3 tests / 42 assertions. F-49 is verified.
+T-01/T-05 remain partial: recognition,
 foreground extraction, review-card Front/Back preview and real-phone/provider acceptance remain open.

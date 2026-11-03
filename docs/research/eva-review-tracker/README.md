@@ -3,7 +3,7 @@
 Shared document: https://styld-review-07c26b483ccc.pages.dev
 
 This independent Cloudflare Pages document contains 51 findings, 21 original ticket drafts and 35 screenshots
-from the 2 November 2026 review. It adds eight workstreams and preliminary code-review notes. The easy-fix and board
+from the 2 November 2026 review. It adds eight workstreams and preliminary code-review notes. The easy-fix, board and bounded camera
 batches are deployed to the isolated preview; `progress.json` records completed and partial scope. Priority and effort labels remain inputs to planning, not commitments.
 
 The owner approved a public URL and the screenshots on 3 November. Anyone with the link can view them;
@@ -34,7 +34,7 @@ was created once with production branch `main`; normal updates only deploy it.
   the original acceptance requirements are prose. Never silently rewrite the historical draft.
 - `analysis.json`: the code snapshot, workstreams, preliminary effort, implementation observations and code
   pointers. The overall snapshot remains `d73475c`; T-04, T-09 and T-11 explicitly identify their refresh against
-  `021dabe`. Refresh affected notes with their exact revision rather than implying untouched tickets were re-audited.
+  `021dabe`, and T-01/T-05 against `15ddaca`. Refresh affected notes with their exact revision rather than implying untouched tickets were re-audited.
   These notes do not establish live reproduction or acceptance.
 - `progress.json`: shared statuses, owners, notes, evidence and append-only update entries.
 - `evidence/`: the 35 original PNGs, copied so the site can be rebuilt without the untracked original report.

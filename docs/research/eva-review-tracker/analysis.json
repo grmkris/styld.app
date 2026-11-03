@@ -88,7 +88,7 @@
     "T-01": {
       "title": "Make guided capture dependable",
       "effort": "Large",
-      "note": "Front/back pairing already exists. The camera can reinterpret an expected back as a new front based on the model’s same-garment answer. Stillness, pairing and foreground selection need separate checks; the exact recorded failure has not been reproduced.",
+      "note": "Refreshed against deployed 15ddaca (3 November): native evidence reproduced and then rejected covered-frame advancement. Client motion/countdown invalidation and explicit Back pairing are implemented, including one saved piece with a back despite a side-confused answer. Foreground extraction, review-card Front/Back preview, contour/no-garment recognition and real-phone/provider acceptance remain open; the large ticket stays partial.",
       "code": [
         "apps/web/src/page/HeldCamera.ts:253",
         "packages/server/src/capture/Processing.ts:43",
@@ -126,7 +126,7 @@
     "T-05": {
       "title": "Give the camera clear timing and controls",
       "effort": "Medium",
-      "note": "Clear Finish and upload-source labels are small improvements. A visible cancellable countdown and a safe transition between sides belong to the capture state machine, not just its appearance. Current stillness settles in roughly 0.6–1 second before checking the frame.",
+      "note": "Refreshed against deployed 15ddaca (3 November): source hierarchy and Finish controls remain deployed; a large central cancellable 3–2–1 countdown now follows garment checking and requests a fresh frame after the count. Motion cancels stale checks/counts. Native phone/desktop screenshots and the full gate passed; face/no-garment suppression still needs real-recognition acceptance, so the ticket stays partial.",
       "code": [
         "apps/web/src/capture/Stillness.ts:24",
         "apps/web/src/page/HeldCamera.ts:253"

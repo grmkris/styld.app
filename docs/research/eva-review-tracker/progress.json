@@ -5,7 +5,7 @@
       "status": "in_progress",
       "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "Client guards and explicit Back pairing are implemented and native-validated: a covered/uniform frame never arms automatic capture; motion cancels stale checks/countdowns; an unchanged front is not re-shot; the Back step remains paired even if recognition calls it a different front. Full foreground extraction, the review card Front/Back preview, garment-contour detection and real-provider/phone acceptance remain open. Preview deployment pending.",
+      "note": "Client guards and explicit Back pairing are implemented and native-validated: a covered/uniform frame never arms automatic capture; motion cancels stale checks/countdowns; an unchanged front is not re-shot; the Back step remains paired even if recognition calls it a different front. Full foreground extraction, the review card Front/Back preview, garment-contour detection and real-provider/phone acceptance remain open. Deployed 15ddaca; exact-release smoke passed.",
       "evidence": [
         {
           "level": "unit",
@@ -16,6 +16,12 @@
           "level": "native",
           "date": "2026-11-03",
           "summary": "Camera batch 03: all 29 native tests passed (1,202 assertions). Chromium/workerd cancelled a countdown when covered, displayed 3–2–1, did not re-shoot the unchanged front, and saved one wardrobe piece with its back despite a side-confused positive recognition answer. Separate matching captures passed 17 assertions at 390×844 and 1440×844; no page errors. Synthetic camera and fake providers; no physical-device or real-recognition claim."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed 15ddacaca5105bf0f7c7b8b33cb2ba396a24deeb. Exact-release preview smoke passed 3 tests / 42 assertions (health/release, hydrated website, static assets, auth contracts and MCP). Cloudflare API confirms API/SSR release bindings match; only the edge exposes workers.dev. Camera behavior and screenshots use synthetic native fixtures; real-phone and live-provider recognition remain open.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
         }
       ],
       "criteriaDone": [
@@ -109,7 +115,7 @@
       "status": "in_progress",
       "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "Central cancellable 3–2–1 countdown is implemented and native-validated; the shutter takes a fresh live frame after the count. Earlier source hierarchy and Finish controls remain deployed. Face/no-garment recognition still requires real-provider acceptance; this ticket remains partial. Camera batch preview deployment pending.",
+      "note": "Central cancellable 3–2–1 countdown is implemented and native-validated; the shutter takes a fresh live frame after the count. Earlier source hierarchy and Finish controls remain deployed. Face/no-garment recognition still requires real-provider acceptance; this ticket remains partial. Camera batch 15ddaca is deployed; exact-release smoke passed.",
       "evidence": [
         {
           "level": "unit",
@@ -136,6 +142,12 @@
           "level": "native",
           "date": "2026-11-03",
           "summary": "Camera batch 03: all 29 native tests passed (1,202 assertions). Chromium/workerd cancelled a countdown when covered, displayed 3–2–1, did not re-shoot the unchanged front, and saved one wardrobe piece with its back despite a side-confused positive recognition answer. Separate matching captures passed 17 assertions at 390×844 and 1440×844; no page errors. Synthetic camera and fake providers; no physical-device or real-recognition claim."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed 15ddacaca5105bf0f7c7b8b33cb2ba396a24deeb. Exact-release preview smoke passed 3 tests / 42 assertions (health/release, hydrated website, static assets, auth contracts and MCP). Cloudflare API confirms API/SSR release bindings match; only the edge exposes workers.dev. Camera behavior and screenshots use synthetic native fixtures; real-phone and live-provider recognition remain open.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
         }
       ],
       "criteriaDone": [
@@ -964,7 +976,7 @@
       "status": "in_progress",
       "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "Native validation passed covered-frame suppression, cancellation on scene change, no unchanged-front re-shot and one saved piece with its back despite side-confused recognition. No-garment recognition and real-phone/provider acceptance remain open; see T-01 comparisons. Preview deployment pending.",
+      "note": "Native validation passed covered-frame suppression, cancellation on scene change, no unchanged-front re-shot and one saved piece with its back despite side-confused recognition. No-garment recognition and real-phone/provider acceptance remain open; see T-01 comparisons. Deployed 15ddaca; exact-release smoke passed.",
       "evidence": [
         {
           "level": "unit",
@@ -975,14 +987,20 @@
           "level": "native",
           "date": "2026-11-03",
           "summary": "Camera batch 03: all 29 native tests passed (1,202 assertions). Chromium/workerd cancelled a countdown when covered, displayed 3–2–1, did not re-shoot the unchanged front, and saved one wardrobe piece with its back despite a side-confused positive recognition answer. Separate matching captures passed 17 assertions at 390×844 and 1440×844; no page errors. Synthetic camera and fake providers; no physical-device or real-recognition claim."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed 15ddacaca5105bf0f7c7b8b33cb2ba396a24deeb. Exact-release preview smoke passed 3 tests / 42 assertions (health/release, hydrated website, static assets, auth contracts and MCP). Cloudflare API confirms API/SSR release bindings match; only the edge exposes workers.dev. Camera behavior and screenshots use synthetic native fixtures; real-phone and live-provider recognition remain open.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
         }
       ]
     },
     "F-49": {
-      "status": "ready_for_review",
+      "status": "verified",
       "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "A large central high-contrast 3–2–1 count gives three seconds after recognition and takes a fresh frame. Scene, lifecycle and native cancellation checks passed, with matching phone/desktop screenshots in T-05. Preview deployment pending.",
+      "note": "A large central high-contrast 3–2–1 count gives three seconds after recognition and takes a fresh frame. Scene, lifecycle and native cancellation checks passed, with matching phone/desktop screenshots in T-05. Deployed 15ddaca; exact-release smoke passed.",
       "evidence": [
         {
           "level": "unit",
@@ -993,6 +1011,12 @@
           "level": "native",
           "date": "2026-11-03",
           "summary": "Camera batch 03: all 29 native tests passed (1,202 assertions). Chromium/workerd cancelled a countdown when covered, displayed 3–2–1, did not re-shoot the unchanged front, and saved one wardrobe piece with its back despite a side-confused positive recognition answer. Separate matching captures passed 17 assertions at 390×844 and 1440×844; no page errors. Synthetic camera and fake providers; no physical-device or real-recognition claim."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed 15ddacaca5105bf0f7c7b8b33cb2ba396a24deeb. Exact-release preview smoke passed 3 tests / 42 assertions (health/release, hydrated website, static assets, auth contracts and MCP). Cloudflare API confirms API/SSR release bindings match; only the edge exposes workers.dev. Camera behavior and screenshots use synthetic native fixtures; real-phone and live-provider recognition remain open.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
         }
       ]
     },
@@ -1130,10 +1154,21 @@
         "F-49",
         "T-21"
       ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Camera batch 03 deployed at 15ddaca; exact-release preview readback passed 3 tests / 42 assertions, with Cloudflare deployment/release/public-access settings checked. F-49 countdown verified. T-01/T-05 remain partial; T-21 remains open. Four matching before/after pairs are attached to T-01/T-05.",
+      "items": [
+        "T-01",
+        "T-05",
+        "F-48",
+        "F-49",
+        "T-21"
+      ]
     }
   ],
   "overview": {
-    "label": "Camera batch 03 validated locally",
-    "note": "Board batch 02 remains deployed and verified. Camera countdown, covered-frame guards and explicit Back pairing passed the full gate and screenshot checks; preview deployment is next. T-01/T-05 remain partial. T-21 remains open."
+    "label": "Camera batch 03 deployed",
+    "note": "Board batch 02 remains deployed and verified. The camera countdown (F-49), covered-frame guards and explicit Back pairing are deployed with four new matching screenshot pairs. T-01/T-05 remain partial for recognition, foreground extraction and phone acceptance. T-21 remains open."
   }
 }
