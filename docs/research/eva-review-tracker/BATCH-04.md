@@ -1,6 +1,6 @@
 # Eva media batch 04 — 3 November 2026
 
-Status: local implementation accepted; ready for preview and authenticated load review. Not verified.
+Status: deployed at `ac535e1`; authenticated media/load acceptance remains open. Not verified.
 Baseline: checkout `62258e1`, application build from `15ddaca`.
 
 ## Approved sequence
@@ -65,3 +65,16 @@ range reads; (3) native browser products and all six matching screenshot pairs. 
 
 T-21 remains ready for review until preview media readback, authenticated load/Workers Logs and expiry-refresh
 requirements are accepted. F-43’s hero-picture delay remains independently unverified.
+
+## Preview readback
+
+Release `ac535e105803a92d1290321cb1cb87221ceb813a` deployed on 3 November at 14:27 UTC. The reviewed plan
+updated three Workers and two release bindings, with no storage/migration changes. Alchemy reported all three
+updates successful. Exact-release smoke passed three tests / 42 assertions. API and SSR release bindings match;
+only the edge exposes workers.dev, and no preview custom domains are attached. Deployment IDs:
+edge `0c266c3b-bff3-4afb-81f9-71a7a6ffc6cc`, SSR `7ddd2560-4efa-46b7-b926-993b876ec0d0`,
+API `49efd079-16c5-4169-881a-be471376547e` (each at 100%).
+
+Existing browser auth state returned 401 on all four media inventory reads. This is an authentication coverage
+gap, not a media failure. Authenticated preview reads of every kind, load/Workers Logs and expiry-refresh
+acceptance remain open. No paid providers or production resources were used.

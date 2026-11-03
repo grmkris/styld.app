@@ -129,5 +129,6 @@ T-21’s local implementation covers remaining private board, Gallery, detection
 view thumbnails. `SignedMedia`/`SignedFile` unit coverage and `MediaLoadAcceptance`, `GalleryAcceptance`,
 `PhotosAcceptance`, `CaptureAcceptance`, `TurnAcceptance` and MCP native acceptance passed in the full gate
 (777 unit tests; 30 native tests / 1,453 assertions). Six matching synthetic before/after screenshot pairs passed
-17 capture assertions and visual review. Preview media readback, authenticated loading/Workers Logs and
+17 capture assertions and visual review. Release `ac535e1` is deployed; exact-release smoke passed three tests /
+42 assertions. Signed-in preview media readback, authenticated loading/Workers Logs and
 expiry-refresh remain open; this does not verify F-43. See the tracker’s `BATCH-04.md`.

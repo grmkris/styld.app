@@ -58,11 +58,11 @@ Four matching pairs were visually reviewed. Release `15ddaca` is deployed; exact
 extraction, garment-contour/no-garment recognition, the review card Front/Back preview and real-phone/provider acceptance stay open.
 See the tracker's `BATCH-03.md` for the investigation and remaining provider/phone boundaries.
 
-T-21 is not complete: the deployed wardrobe piece pictures use signed media, but board pictures, Gallery photos,
-review detections and turns retain per-kind session/database routes. Their migration and deployed load checks
-remain open. F-43's slow hero picture has not been remeasured on an authenticated deployed wardrobe.
+T-21 remains ready for review: all remaining private media routes are migrated and deployed as batch 04 below.
+Authenticated deployed media/load, Workers Logs and expiry-refresh acceptance remain open. F-43's slow hero
+picture has not been remeasured on an authenticated deployed wardrobe.
 
-## Eva media batch 04 (local acceptance, 3 November)
+## Eva media batch 04 (deployed, 3 November)
 
 T-21 migrates board images, Gallery photos/garments, review detections and turn files to the shared signed-media
 handler, removes the private per-kind routes and removes per-image D1 reads from embedded MCP thumbnails.
@@ -70,23 +70,24 @@ Generated turn files stream with byte ranges; user photos remain transformed. Th
 670 files / zero type findings, 777 unit tests, 30 native tests / 1,453 assertions. Six matching synthetic
 before/after pairs at 390 and 1440px passed capture acceptance (17 assertions) and visual review.
 
-This batch is ready for preview deployment, not verified. Authenticated deployed load/Workers Logs, expiry-refresh
+Release `ac535e1` is deployed; exact-release smoke passed 3 tests / 42 assertions. Not verified: signed-in media
+readback returned 401 with the available session. Authenticated deployed load/Workers Logs, expiry-refresh
 and F-43’s hero-image timing remain open. The four-step sequence and evidence are in the tracker’s `BATCH-04.md`.
 
 ## The preview
 
 - **URL:** https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev (isolated workers.dev,
   noindex, no custom domain). `/api/health` names the running release.
-- **Release:** `15ddacaca5105bf0f7c7b8b33cb2ba396a24deeb`, committed on `main` and deployed on 3 November at
-  11:11 UTC. `/api/health`, the API Worker's release binding and the SSR release binding match. This adds bounded
-  camera batch 03 to board batch 02, batch 01, C8 and the signed-picture fixes. Later documentation receipts do not change the deployed application SHA.
+- **Release:** `ac535e105803a92d1290321cb1cb87221ceb813a`, committed on `main` and deployed on 3 November at
+  14:27 UTC. `/api/health`, the API Worker's release binding and the SSR release binding match. This adds media
+  batch 04 to bounded camera batch 03, board batch 02, batch 01, C8 and the signed-picture fixes. Later documentation receipts do not change the deployed application SHA.
 - **Deployment:** Alchemy reported three successful Worker updates and two release-binding changes; D1, R2, queues
   and Durable Object namespaces were unchanged. The four migrations through `20261102202631_c8_durability` were
   recorded by the preceding preview readback; this batch planned no migration or storage changes.
 - **Cloudflare readback:** the edge alone exposes workers.dev; the API and SSR Workers have both workers.dev and
   preview URLs disabled. No custom domains are attached.
-  Deployment ids: edge `e3768f81-6db4-4926-aa3d-7ce14c82fba9`, SSR `789603a5-416d-469d-9e4f-4db4c9a3ff50`,
-  API `4735ab71-ece6-4912-84d3-1471da5a2b9b` (each at 100%).
+  Deployment ids: edge `0c266c3b-bff3-4afb-81f9-71a7a6ffc6cc`, SSR `7ddd2560-4efa-46b7-b926-993b876ec0d0`,
+  API `49efd079-16c5-4169-881a-be471376547e` (each at 100%).
 - **Rebuilt from scratch** (C5): stage `preview` destroyed and deployed again on the one baseline migration, with
   Alchemy's state in the Cloudflare account's state store (`docs/DEPLOYMENT.md` › Rebuild and import).
 - **Testers' wardrobes, last recorded 2 November** (owner-approved, `docs/ARCHITECTURE.md` › Delivery boundary): the owner's 74 v1 pieces were
@@ -99,17 +100,17 @@ and F-43’s hero-image timing remain open. The four-step sequence and evidence 
 
 ## Gate results
 
-`heavy --wait bun run check` exited 0 for camera commit `15ddaca` (3 November): effect-tsrs 664 files,
-0 findings; lint green; 21 reviewed suppressions; 763 unit tests in 120 files; native 29 pass, 0 fail,
-1,202 assertions. Gate build budgets passed: initial browser 349,566 gzip bytes, all browser 613,929 and
-SSR 1,914,796 source bytes. The release-stamped deployment build also passed the bundle budget check.
+`heavy --wait bun run check` exited 0 for media batch `ac535e1` (3 November): effect-tsrs 670 files,
+0 findings; lint and static gates green; 777 unit tests in 121 files; native 30 pass, 0 fail,
+1,453 assertions. Gate build budgets passed: initial browser 349,617 gzip bytes, all browser 613,980 and
+SSR 1,915,464 source bytes. The release-stamped deployment build also passed the bundle budget check.
 
-Deployed acceptance (`STYLD_PREVIEW_URL=<above> STYLD_EXPECTED_RELEASE=15ddacaca5105bf0f7c7b8b33cb2ba396a24deeb
+Deployed acceptance (`STYLD_PREVIEW_URL=<above> STYLD_EXPECTED_RELEASE=ac535e105803a92d1290321cb1cb87221ceb813a
 heavy --wait bun test tools/preview.native.test.ts`) exited 0: 3 pass, 0 fail, 42 assertions. It verified the exact
 health/release, auth and CSRF contracts, hydrated website, MCP discovery/challenge/registration and immutable static
 assets. Native tests use fake providers; this is not acceptance of real paid-provider outcomes or every signed-in
 preview journey. Batch screenshots, scope and review notes are in the tracker's `BATCH-01.md`, `BATCH-02.md` and
-`BATCH-03.md`. T-21's remaining media migration and authenticated load measurement are still open.
+`BATCH-03.md` and `BATCH-04.md`. T-21’s authenticated media/load and expiry-refresh acceptance are still open.
 
 ## Incident: D1 overloaded by the wardrobe's thumbnails (2 November, fix deployed 3 November)
 
@@ -132,9 +133,8 @@ picture row from D1, and a wardrobe screen loads 60–80 at once (one account ha
   scenes); native `WardrobeAcceptance`, `CaptureAcceptance` and `CleanPictureAcceptance` updated to load the
   addresses without a cookie and to refuse altered ones; all passed in the full gate. The deployed load improvement
   still needs an authenticated wardrobe readback and Workers Logs.
-- **Still per image through D1 (follow-ups):** board pictures `/cdn/boards/images`, gallery photos `/cdn/photos`,
-  tray detections `/cdn/detections`, turns `/cdn/turns`, and the MCP views' server-side thumbnails
-  (`wardrobe.pieceImage`, `boards.boardImage`).
+- **Media follow-up deployed:** batch 04 removed the remaining private per-kind routes and per-thumbnail MCP
+  database reads. Authenticated deployed media/load, Workers Logs and expiry-refresh acceptance remain open.
 
 ## C8 fixes: credits, paid work and durability (deployed 3 November)
 

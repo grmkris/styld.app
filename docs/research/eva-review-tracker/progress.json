@@ -209,10 +209,10 @@
       ]
     },
     "T-06": {
-      "status": "planned",
+      "status": "in_progress",
       "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "Next approved batch: persist wardrobe filters and return routes, restore place, and remove redundant board/editor history entries.",
+      "note": "Approved next batch started after T-21 deployment. Investigating URL-backed filters, matching return links/position, Gallery-to-review origin and board/editor history hygiene.",
       "evidence": [],
       "criteriaDone": []
     },
@@ -517,7 +517,7 @@
       "status": "ready_for_review",
       "owner": "Codex",
       "updatedAt": "2026-11-03",
-      "note": "Remaining board images, Gallery photos/garments, review detections and turn files now use the shared signed-media capability; old private per-kind routes are removed. Embedded MCP views use scoped, already-authorized transformed thumbnails without per-image D1 reads. Local full gate and six matching load captures passed. Preview readback, authenticated deployed load/Workers Logs and expiry-refresh acceptance remain open; F-43 is not yet verified.",
+      "note": "Remaining board images, Gallery photos/garments, review detections and turn files now use the shared signed-media capability; old private per-kind routes are removed. Embedded MCP views use scoped, already-authorized transformed thumbnails without per-image D1 reads. Local full gate and six matching load captures passed. Deployed ac535e105803a92d1290321cb1cb87221ceb813a; exact-release smoke passed 3 tests / 42 assertions. Authenticated deployed media/load/Workers Logs and expiry-refresh acceptance remain open; F-43 is not yet verified.",
       "evidence": [
         {
           "level": "unit",
@@ -528,6 +528,12 @@
           "level": "native",
           "date": "2026-11-03",
           "summary": "Full gate: 30 native tests, 1,453 assertions. Signed board/photo/detection/turn delivery works without cookies; tampered grants fail. Synthetic bursts load 50 board images, 100 Gallery photos and 30 detections. Matching browser capture passed 1 test / 17 assertions at 390x844 and 1440x844 with no failed image responses or page errors. No paid providers or physical devices."
+        },
+        {
+          "level": "preview",
+          "date": "2026-11-03",
+          "summary": "Deployed ac535e105803a92d1290321cb1cb87221ceb813a. Exact-release smoke passed 3 tests / 42 assertions. Cloudflare confirms API/SSR release bindings and only edge workers.dev exposure; no preview custom domains. Existing browser auth state returned 401 for all inventory reads, so signed-in media readback and Workers Logs load acceptance remain open.",
+          "url": "https://styldappv2-styldedge-preview-le7xsbk4pgfxkm7o.kristjan-grm11775.workers.dev"
         }
       ],
       "criteriaDone": [],
@@ -1281,10 +1287,18 @@
       "items": [
         "T-21"
       ]
+    },
+    {
+      "date": "2026-11-03",
+      "text": "Deployed media batch ac535e1 to the isolated preview. Exact-release smoke passed 3 tests / 42 assertions; API/SSR releases and public-access settings checked. T-21 remains ready for review: available browser session returned 401, so no signed-in deployed media/load or Workers Logs acceptance is claimed. T-06 navigation is next.",
+      "items": [
+        "T-21",
+        "T-06"
+      ]
     }
   ],
   "overview": {
-    "label": "Media batch 04 ready for preview",
-    "note": "T-21 local validation passed with six before/after pairs. Preview and authenticated load acceptance are next, followed by T-06 navigation and T-15 rotation, recognition plus Kris’s phone test, then T-16 board-to-Look and one focused T-10 template. Claude owns T-14/T-18/T-19/T-20 in a separate worktree."
+    "label": "Media batch 04 deployed; navigation next",
+    "note": "T-21 is deployed with full local validation, exact-release smoke and six screenshot pairs; signed-in media/load acceptance remains open. Next: T-06 navigation and T-15 rotation, recognition plus Kris’s phone test, then T-16 board-to-Look and the first T-10 template. Claude owns T-14/T-18/T-19/T-20."
   }
 }
