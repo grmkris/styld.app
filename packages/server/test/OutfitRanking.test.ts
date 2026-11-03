@@ -11,18 +11,11 @@ import { Thinking } from '../src/outfits/Proposer.ts'
 import { WardrobeStore } from '../src/wardrobe/Store.ts'
 import { unlimited } from './fakes/Pacing.ts'
 import { localD1 } from './LocalD1.ts'
-import { PaidAttempts } from '../src/usage/Attempts.ts'
+import { freeAttempts, photoPiece as piece } from './fakes/Outfits.ts'
 
 // How long Fast's first outfit takes (browser review, 2 November 2026: POST /api/outfits answered in 11.3 s on a cold
 // visit). Fast draws 12 candidates and Clef judges each; they used to be judged six at a time, two waves of Clef's
 // latency, with no bound when Clef was slow. Now all twelve go at once, and ranking stops at `judgingBudget`.
-
-/** One of Ana's ready pieces, with only its photo. */
-const piece = (id: string, type: string) =>
-  `INSERT INTO pieces (id, account_id, name, type, colours, occasions, status, source, original_key, image_key,
-      content_type, created_at, updated_at)
-    VALUES ('${id}', 'ac_1', NULL, '${type}', '[]', '[]', 'ready', 'website', 'ac_1/${id}.jpg', NULL, 'image/jpeg',
-      0, 0);`
 
 /** Ana's wardrobe: four tops, three jeans and two trainers, far more than twelve outfits. */
 const seeded = () => {
@@ -72,15 +65,7 @@ const engine = (latency: Duration.Input, calls: { now: number; most: number }) =
         Layer.succeed(Media, Media.of({ bucket: kept, images: {} } as never)),
         Layer.succeed(OutfitJudge, judge),
         Layer.succeed(Thinking, Thinking.of({ propose: () => Effect.die('not asked') })),
-        Layer.succeed(
-          PaidAttempts,
-          PaidAttempts.of({
-            run: (_work, effect) => effect,
-            charged: () => Effect.die('not used by this test'),
-            abandon: () => Effect.die('not used by this test'),
-            forget: () => Effect.void,
-          }),
-        ),
+        freeAttempts,
         unlimited,
         CaptureMetrics.discard,
       ),

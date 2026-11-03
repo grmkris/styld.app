@@ -11,17 +11,10 @@ import { Thinking } from '../src/outfits/Proposer.ts'
 import { proposed } from '../src/outfits/Rules.ts'
 import { unlimited } from './fakes/Pacing.ts'
 import { localD1 } from './LocalD1.ts'
-import { PaidAttempts } from '../src/usage/Attempts.ts'
+import { freeAttempts, photoPiece as piece } from './fakes/Outfits.ts'
 
 // The outfit engine as a service over SQLite with every migration: a repeated request answers the same batch from its
 // receipt and is counted against Thinking's day once; another request under the same operation is a conflict.
-
-/** One of Ana's ready pieces, with only its photo. */
-const piece = (id: string, type: string) =>
-  `INSERT INTO pieces (id, account_id, name, type, colours, occasions, status, source, original_key, image_key,
-      content_type, created_at, updated_at)
-    VALUES ('${id}', 'ac_1', NULL, '${type}', '[]', '[]', 'ready', 'website', 'ac_1/${id}.jpg', NULL, 'image/jpeg',
-      0, 0);`
 
 /** Ana's wardrobe: a tee, jeans and trainers. */
 const seeded = () => {
@@ -55,15 +48,7 @@ const engine = (database: ReturnType<typeof localD1>, thought: Array<number>) =>
               }),
           }),
         ),
-        Layer.succeed(
-          PaidAttempts,
-          PaidAttempts.of({
-            run: (_work, effect) => effect,
-            charged: () => Effect.die('not used by this test'),
-            abandon: () => Effect.die('not used by this test'),
-            forget: () => Effect.void,
-          }),
-        ),
+        freeAttempts,
         unlimited,
         CaptureMetrics.discard,
       ),

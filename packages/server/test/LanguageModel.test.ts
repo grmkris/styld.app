@@ -61,6 +61,16 @@ const object = Effect.flatMap(LanguageModel.LanguageModel, (model) =>
 )
 const text = Effect.flatMap(LanguageModel.LanguageModel, (model) => model.generateText({ prompt: 'Hello' }))
 
+/** A paid call the gateway answered `answers`: refused as an unknown outcome, sent once and recorded unknown. */
+const unknownOnce = (answers: ReadonlyArray<unknown>) => {
+  const { asked, calls, layer } = gateway(answers)
+  return Effect.gen(function* () {
+    expect(providerErrorOf(yield* Effect.flip(text))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
+    expect(asked).toHaveLength(1)
+    expect(calls.map(({ outcome }) => outcome)).toEqual(['unknown'])
+  }).pipe(Effect.provide(layer))
+}
+
 describe('the paid text route', () => {
   for (const content of ['{"ok":true}', '```json\n{"ok":true}\n```'])
     it.effect('validates JSON locally and counts the gateway model and its usage', () => {
@@ -153,23 +163,11 @@ describe('the paid text route', () => {
     })
 
   for (const status of [408, 500, 502, 503, 504])
-    it.effect(`does not resubmit an ambiguous HTTP ${status} gateway failure`, () => {
-      const { asked, calls, layer } = gateway([Response.json({}, { status })])
-      return Effect.gen(function* () {
-        expect(providerErrorOf(yield* Effect.flip(text))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
-        expect(asked).toHaveLength(1)
-        expect(calls.map(({ outcome }) => outcome)).toEqual(['unknown'])
-      }).pipe(Effect.provide(layer))
-    })
+    it.effect(`does not resubmit an ambiguous HTTP ${status} gateway failure`, () =>
+      unknownOnce([Response.json({}, { status })]),
+    )
 
-  it.effect('a lost paid response is unknown and never sent twice', () => {
-    const { asked, calls, layer } = gateway([new Error('connection reset')])
-    return Effect.gen(function* () {
-      expect(providerErrorOf(yield* Effect.flip(text))).toMatchObject({ reason: { _tag: 'OutcomeUnknown' } })
-      expect(asked).toHaveLength(1)
-      expect(calls.map(({ outcome }) => outcome)).toEqual(['unknown'])
-    }).pipe(Effect.provide(layer))
-  })
+  it.effect('a lost paid response is unknown and never sent twice', () => unknownOnce([new Error('connection reset')]))
 
   it.effect('aborts a timed-out request and never resends its unknown outcome', () => {
     const { asked, signals, calls, layer } = gateway(['never'])
