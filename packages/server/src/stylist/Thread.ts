@@ -12,8 +12,9 @@ import {
 } from '@yielded/agent/lifecycle-publication'
 import { WorkerEnvironment } from 'effect-cf'
 import { digestDefinitions } from '@yielded/agent/digest'
+import type { CanonicalRecordEnvelope } from '@yielded/agent/records'
 import { IdempotencyKey, Principal } from '@yielded/agent/submission-ledger'
-import { Effect, Layer, Match, Schema, Stream } from 'effect'
+import { Duration, Effect, Layer, Match, Predicate, Schedule, Schema, Stream } from 'effect'
 import * as Digest from 'effect/crypto/Digest'
 import { type LanguageModel, Model, Tool, Toolkit } from 'effect/ai'
 import {
@@ -179,15 +180,36 @@ const withThreads = <A, E>(
   }).pipe(Effect.provide(threadsOf(env)))
 
 /** Admit one message to its chat's Thread: the same operation id is the same message, however often it comes. */
+/** How long an admission waits for its message to be in the chat's history, where the next read of the chat finds it
+ * being answered. A reply admitted behind another starts later; the page shows it once it does. */
+const recordedWithin = Duration.seconds(5)
+
+/** Whether the Thread has recorded the message as the input it answers. */
+const isRecorded = (records: ReadonlyArray<CanonicalRecordEnvelope>, submissionId: string) =>
+  records.some(
+    ({ record }) =>
+      Predicate.isTagged(record.payload, 'UserInputRecorded') && record.payload.submissionId === submissionId,
+  )
+
 const admit = (env: Cloudflare.Env, request: Admit) =>
   withThreads(env, (client) =>
     Effect.gen(function* () {
-      return yield* client.submit(stylistSubmitAgent, request.input, {
-        threadId: threadIdOf(request.accountId, request.chatId),
+      const threadId = threadIdOf(request.accountId, request.chatId)
+      const receipt = yield* client.submit(stylistSubmitAgent, request.input, {
+        threadId,
         principal: Principal.make(request.accountId),
         idempotencyKey: IdempotencyKey.make(request.operationId),
         definitions: yield* digests,
       })
+      // The run records its input as it starts, a moment after admission.
+      yield* client.readAll(threadId).pipe(
+        Effect.orElseSucceed((): ReadonlyArray<CanonicalRecordEnvelope> => []),
+        Effect.repeat({
+          until: (records) => isRecorded(records, receipt.submissionId),
+          schedule: Schedule.spaced('50 millis'),
+        }),
+        Effect.timeoutOption(recordedWithin),
+      )
     }),
   ).pipe(
     Effect.as<Admission>('admitted'),
