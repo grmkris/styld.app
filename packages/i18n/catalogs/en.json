@@ -608,6 +608,8 @@
       "videoTooLong": "Videos can be up to 15 minutes long",
       "videoUnreadable": "This video can't be read here",
       "refused": "This file can't be used",
+      "uploadsWaiting": "Too many of your uploads are still waiting. Add them to your wardrobe first, or try again tomorrow.",
+      "slowDown": "Too many photos at once. Try again in a minute.",
       "network": "Didn't send",
       "videoPartial": "Today's free allowance covered {sent} of {parts} parts. Send the rest tomorrow."
     },

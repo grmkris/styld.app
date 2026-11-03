@@ -6,7 +6,7 @@ import { update } from '../src/App.ts'
 import { at } from './AppFixtures.ts'
 import { Message as AppMessage } from '../src/Message.ts'
 import { Navigate } from '../src/Navigation.ts'
-import { InspectVideo, SendLink, SendVideoPart } from '../src/page/AddPieces/Commands.ts'
+import { InspectVideo, SendLink, SendPhoto, SendVideoPart } from '../src/page/AddPieces/Commands.ts'
 import { Message, type VideoPlan } from '../src/page/AddPieces/Message.ts'
 import { view } from '../src/View.ts'
 
@@ -100,6 +100,30 @@ describe('adding from a shop’s page', () => {
       // Everything chosen went: the review tray takes over.
       Command.expectExact(Navigate({ href: '/wardrobe/review' })),
       Command.resolve(Navigate({ href: '/wardrobe/review' }), AppMessage.CompletedNavigate()),
+    )
+  })
+})
+
+describe('a refused upload on the add page', () => {
+  test('says uploads are waiting, in words of their own, not that credits are spent', () => {
+    const tee = new globalThis.File([new Uint8Array(8)], 'tee.jpg', { type: 'image/jpeg' })
+    scene(
+      { update, view },
+      given(addPage),
+      changeFiles(selector('input[type="file"]'), [tee]),
+      Command.resolve(
+        SendPhoto,
+        Message.FailedSend({
+          index: 0,
+          problem: 'uploadsWaiting',
+          operationId: Option.none(),
+          uploadId: Option.none(),
+          prepared: Option.none(),
+        }),
+      ),
+      expect(
+        text('Too many of your uploads are still waiting. Add them to your wardrobe first, or try again tomorrow.'),
+      ).toExist(),
     )
   })
 })

@@ -473,8 +473,8 @@ From the cleanup's milestones, still open after the later ones:
 - C8's credit and durability fixes and migrations are deployed. A live authenticated readback of a redraw, a turn,
   a capture retry, a gallery photo and a cut-out under concurrent requests remains pending; native acceptance with
   fake providers passed.
-- The website words a refused upload path (`LimitReached` `uploads`, `SlowDown`) as its generic limit message; the
-  catalogs have no upload-specific wording yet.
+- A refused upload path is worded on its own (4 November): uploads waiting unused (`LimitReached` `uploads`) and a
+  paced send (`SlowDown`, worth trying again) no longer read as spent credits on the add page.
 - The native suite's shared local D1 answers `SQLITE_BUSY` under load; the gallery browser journey ("sideways
   scroll") flakes under box load (rerun alone with `-t "lays out today"`).
 - `AccountLifecycle` still takes its bindings as a record (`makeAccountLifecycle`, its tests' seam over a listing

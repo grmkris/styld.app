@@ -17,9 +17,12 @@ import { uploadPictureOnce } from '../../Upload.ts'
 import type { SampledStill } from '../../capture/Frames.ts'
 import { type LinkProblem, Message, type SendProblem, VideoPart } from './Message.ts'
 
-/** What a failed send means for the person, from the error the API or the sampler answered. */
-const problemOf = (error: unknown): SendProblem => {
-  if (Predicate.isTagged(error, 'LimitReached')) return 'dailyLimit'
+/** What a failed send means for the person, from the error the API or the sampler answered.
+ * @internal Exported for its tests. */
+export const problemOf = (error: unknown): SendProblem => {
+  if (Predicate.isTagged(error, 'LimitReached'))
+    return Predicate.hasProperty(error, 'limit') && error.limit === 'uploads' ? 'uploadsWaiting' : 'dailyLimit'
+  if (Predicate.isTagged(error, 'SlowDown')) return 'slowDown'
   if (Predicate.isTagged(error, 'VideoNotSampled'))
     return Predicate.hasProperty(error, 'reason') && error.reason === 'tooLong' ? 'videoTooLong' : 'videoUnreadable'
   if (

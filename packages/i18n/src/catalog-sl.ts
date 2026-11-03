@@ -524,6 +524,9 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.problem.videoTooLong': 'Video je lahko dolg največ 15 minut',
   'capture.problem.videoUnreadable': 'Tega videa tukaj ni mogoče prebrati',
   'capture.problem.refused': 'Te datoteke ni mogoče uporabiti',
+  'capture.problem.uploadsWaiting':
+    'Preveč tvojih nalaganj še čaka. Najprej jih dodaj v garderobo ali poskusi znova jutri.',
+  'capture.problem.slowDown': 'Preveč fotografij naenkrat. Poskusi znova čez minuto.',
   'capture.problem.network': 'Ni poslano',
   'capture.problem.videoPartial':
     'Današnji brezplačni krediti so pokrili {sent} od {parts} delov. Preostanek pošlji jutri.',

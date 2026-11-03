@@ -4,9 +4,18 @@ import { Schema } from 'effect'
 import { defineMessageUnion } from 'foldkit/message'
 import * as HeldCamera from '../HeldCamera.ts'
 
-/** Why sending a file stopped: today's free allowance is spent, the video is too long or cannot be
- * read here, the server refused the bytes, or the network failed (worth trying again). */
-export const SendProblem = Schema.Literals(['dailyLimit', 'videoTooLong', 'videoUnreadable', 'refused', 'network'])
+/** Why sending a file stopped: today's free allowance is spent, too many uploads wait unused, too many came at once,
+ * the video is too long or cannot be read here, the server refused the bytes, or the network failed (worth trying
+ * again). */
+export const SendProblem = Schema.Literals([
+  'dailyLimit',
+  'uploadsWaiting',
+  'slowDown',
+  'videoTooLong',
+  'videoUnreadable',
+  'refused',
+  'network',
+])
 export type SendProblem = typeof SendProblem.Type
 
 /** Why a product page went nowhere: the page's own refusals (from `LinkRefused`), too many links at once, or what

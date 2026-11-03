@@ -516,6 +516,9 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'capture.problem.videoTooLong': 'Videos can be up to 15 minutes long',
   'capture.problem.videoUnreadable': "This video can't be read here",
   'capture.problem.refused': "This file can't be used",
+  'capture.problem.uploadsWaiting':
+    'Too many of your uploads are still waiting. Add them to your wardrobe first, or try again tomorrow.',
+  'capture.problem.slowDown': 'Too many photos at once. Try again in a minute.',
   'capture.problem.network': "Didn't send",
   'capture.problem.videoPartial': "Today's free allowance covered {sent} of {parts} parts. Send the rest tomorrow.",
   'capture.seeFound': "{count, plural, one {See what's in # file} other {See what's in # files}}",

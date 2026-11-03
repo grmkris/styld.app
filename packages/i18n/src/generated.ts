@@ -242,6 +242,8 @@ export interface MessageArgumentsByKey<_T = string> {
   'capture.problem.dailyLimit': Readonly<Record<string, never>>
   'capture.problem.network': Readonly<Record<string, never>>
   'capture.problem.refused': Readonly<Record<string, never>>
+  'capture.problem.slowDown': Readonly<Record<string, never>>
+  'capture.problem.uploadsWaiting': Readonly<Record<string, never>>
   'capture.problem.videoPartial': { readonly sent: string | number; readonly parts: string | number }
   'capture.problem.videoTooLong': Readonly<Record<string, never>>
   'capture.problem.videoUnreadable': Readonly<Record<string, never>>
@@ -844,4 +846,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '98acfc1c9c707f8041765bc28f3e5c928428c2843ddb8bbf45faf72fd00f68a2'
+export const catalogVersion = 'e400bf65d80dbcb1fc7632022c053a998d7261fefb848d16544a8981cb232f12'

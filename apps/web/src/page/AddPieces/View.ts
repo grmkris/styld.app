@@ -25,6 +25,8 @@ const fileProblemKey: { readonly [Problem in FileProblem]: MessageKey } = {
 
 const sendProblemKey: { readonly [Problem in SendProblem]: MessageKey } = {
   dailyLimit: 'capture.problem.dailyLimit',
+  uploadsWaiting: 'capture.problem.uploadsWaiting',
+  slowDown: 'capture.problem.slowDown',
   videoTooLong: 'capture.problem.videoTooLong',
   videoUnreadable: 'capture.problem.videoUnreadable',
   refused: 'capture.problem.refused',
@@ -47,8 +49,8 @@ const linkProblemKey: { readonly [Problem in LinkProblem]: MessageKey } = {
 const retryableLink: ReadonlySet<LinkProblem> = new Set(['network', 'dailyLimit', 'slowDown', 'notReached'])
 
 /** Problems that trying again can fix: an unreadable video reads the same way twice. A video the day's
- * allowance stopped resumes at its next part tomorrow. */
-const retryable: ReadonlySet<SendProblem> = new Set(['network', 'dailyLimit'])
+ * allowance stopped resumes at its next part tomorrow; a send paced back goes in a minute. */
+const retryable: ReadonlySet<SendProblem> = new Set(['network', 'dailyLimit', 'slowDown'])
 
 /** Any picture, and the videos phones record. */
 const pickerTypes: ReadonlyArray<string> = [pictureAccept, ...VideoType.literals]
