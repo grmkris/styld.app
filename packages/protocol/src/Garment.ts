@@ -6,10 +6,25 @@ import { Schema } from 'effect'
 // the wardrobe browses like a shop. A piece stores its type alone; its group and its place in an outfit follow from
 // the type, so they can never disagree with it.
 
-/** The groups, in the order the wardrobe shows them. Sport holds what is worn for sport, as a shop's Sport section
- * does (owner, 2026-11-03, T-07); swimwear and loungewear stay with the clothes. */
-export const GarmentGroup = Schema.Literals(['clothing', 'sport', 'shoes', 'accessories'])
+/** The groups, in the order the wardrobe shows them: a shop's sections, so the wardrobe opens on Tops and Bottoms and a
+ * tap shows their types (Eva, 5 November: "ko kliknes na tops mas kratke majce/majce brez rokavov/dolge majce…"). Sport
+ * holds what is worn for sport, as a shop's Sport section does (owner, 2026-11-03, T-07). */
+export const GarmentGroup = Schema.Literals([
+  'tops',
+  'bottoms',
+  'dresses',
+  'outerwear',
+  'sport',
+  'swimLounge',
+  'shoes',
+  'accessories',
+])
 export type GarmentGroup = typeof GarmentGroup.Type
+
+/** The coarse family a group belongs to: everyday clothes, sport, shoes or accessories. What a decision needs that asks
+ * "the same kind of thing?" (how sure Clef is of a piece's kind, whether an import keeps its mapped type), so splitting
+ * the wardrobe's sections never moves those thresholds. Never shown to people. */
+export type GarmentFamily = 'clothing' | 'sport' | 'shoes' | 'accessories'
 
 /** Every garment type, keyed in English, in the order the wardrobe shows them. */
 export const PieceType = Schema.Literals([
@@ -64,23 +79,23 @@ export type Slot = typeof Slot.Type
 
 const kinds: { readonly [Type in PieceType]: { readonly group: GarmentGroup; readonly slot: Slot } } = {
   // Tops by sleeve (Eva's review, 4 November: "I'd split tops and T-shirts into short, long and sleeveless").
-  shortSleeveTops: { group: 'clothing', slot: 'top' },
-  longSleeveTops: { group: 'clothing', slot: 'top' },
-  sleevelessTops: { group: 'clothing', slot: 'top' },
-  shirts: { group: 'clothing', slot: 'top' },
-  bodysuits: { group: 'clothing', slot: 'top' },
-  knitwear: { group: 'clothing', slot: 'top' },
-  hoodies: { group: 'clothing', slot: 'top' },
-  blazers: { group: 'clothing', slot: 'layer' },
-  jackets: { group: 'clothing', slot: 'layer' },
-  coats: { group: 'clothing', slot: 'layer' },
-  gilets: { group: 'clothing', slot: 'layer' },
-  dresses: { group: 'clothing', slot: 'onePiece' },
-  jumpsuits: { group: 'clothing', slot: 'onePiece' },
-  jeans: { group: 'clothing', slot: 'bottom' },
-  trousers: { group: 'clothing', slot: 'bottom' },
-  shorts: { group: 'clothing', slot: 'bottom' },
-  skirts: { group: 'clothing', slot: 'bottom' },
+  shortSleeveTops: { group: 'tops', slot: 'top' },
+  longSleeveTops: { group: 'tops', slot: 'top' },
+  sleevelessTops: { group: 'tops', slot: 'top' },
+  shirts: { group: 'tops', slot: 'top' },
+  bodysuits: { group: 'tops', slot: 'top' },
+  knitwear: { group: 'tops', slot: 'top' },
+  hoodies: { group: 'tops', slot: 'top' },
+  blazers: { group: 'outerwear', slot: 'layer' },
+  jackets: { group: 'outerwear', slot: 'layer' },
+  coats: { group: 'outerwear', slot: 'layer' },
+  gilets: { group: 'outerwear', slot: 'layer' },
+  dresses: { group: 'dresses', slot: 'onePiece' },
+  jumpsuits: { group: 'dresses', slot: 'onePiece' },
+  jeans: { group: 'bottoms', slot: 'bottom' },
+  trousers: { group: 'bottoms', slot: 'bottom' },
+  shorts: { group: 'bottoms', slot: 'bottom' },
+  skirts: { group: 'bottoms', slot: 'bottom' },
   // Sport by shape (owner, 4 November: Eva found leggings and sports bras sorted among everyday clothes): worn only
   // when an outfit is for sport (outfits/Rules.ts › suits), as separates or as a tracksuit set.
   sportsBras: { group: 'sport', slot: 'top' },
@@ -90,8 +105,8 @@ const kinds: { readonly [Type in PieceType]: { readonly group: GarmentGroup; rea
   // Shoes made for sport: worn only when an outfit is for sport (outfits/Rules.ts › suits).
   sportShoes: { group: 'sport', slot: 'shoes' },
   outdoorShoes: { group: 'sport', slot: 'shoes' },
-  swimwear: { group: 'clothing', slot: 'set' },
-  loungewear: { group: 'clothing', slot: 'set' },
+  swimwear: { group: 'swimLounge', slot: 'set' },
+  loungewear: { group: 'swimLounge', slot: 'set' },
   trainers: { group: 'shoes', slot: 'shoes' },
   boots: { group: 'shoes', slot: 'shoes' },
   heels: { group: 'shoes', slot: 'shoes' },
@@ -112,6 +127,10 @@ const kinds: { readonly [Type in PieceType]: { readonly group: GarmentGroup; rea
 
 export const groupOf = (type: PieceType): GarmentGroup => kinds[type].group
 export const slotOf = (type: PieceType): Slot => kinds[type].slot
+export const familyOf = (type: PieceType): GarmentFamily => {
+  const group = groupOf(type)
+  return group === 'sport' || group === 'shoes' || group === 'accessories' ? group : 'clothing'
+}
 
 /** The types of a group, in the wardrobe's order. */
 export const typesIn = (group: GarmentGroup): ReadonlyArray<PieceType> =>

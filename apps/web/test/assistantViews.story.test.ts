@@ -3,15 +3,25 @@ import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
 import { Message, OpenLink, Showing, init, update } from '../src/assistant/Views.ts'
 
+const groups = {
+  tops: 'Tops',
+  bottoms: 'Bottoms',
+  dresses: 'Dresses & jumpsuits',
+  outerwear: 'Outerwear',
+  sport: 'Sport',
+  swimLounge: 'Swim & lounge',
+  shoes: 'Shoes',
+  accessories: 'Accessories',
+}
 const labels = {
   wardrobeTitle: 'Wardrobe',
   empty: 'Your wardrobe is empty',
   openInStyld: 'Open in Styld',
-  groups: { clothing: 'Clothing', sport: 'Sport', shoes: 'Shoes', accessories: 'Accessories' },
+  groups,
 }
 const wardrobe = WardrobeView.make({
   pieces: [
-    { id: PieceId.make(`pc_${'a'.repeat(22)}`), name: 'Navy knit', group: 'clothing', url: 'https://styld.test/w/1' },
+    { id: PieceId.make(`pc_${'a'.repeat(22)}`), name: 'Navy knit', group: 'tops', url: 'https://styld.test/w/1' },
   ],
   url: 'https://styld.test/wardrobe',
   labels: { en: labels, sl: { ...labels, openInStyld: 'Odpri v Styldu' } },
@@ -97,11 +107,10 @@ describe('the assistant view', () => {
   })
 })
 
-const groups = { clothing: 'Clothing', sport: 'Sport', shoes: 'Shoes', accessories: 'Accessories' }
 const knit = {
   id: PieceId.make(`pc_${'a'.repeat(22)}`),
   name: 'Navy knit',
-  group: 'clothing' as const,
+  group: 'tops' as const,
   url: 'https://styld.test/w/1',
 }
 const tryOnLabels = {

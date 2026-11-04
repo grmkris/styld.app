@@ -120,7 +120,7 @@ describe('the wardrobe page with select mode', () => {
       filters: (filters) => modifyFields(filters, { season: () => Option.some('winter' as const) }),
     })
     expect(Model.guards.On(Wardrobe.reflectBrowse(Option.some(tops), winter)(selecting.model).selection)).toBe(true)
-    expect(Wardrobe.reflectBrowse(Option.some(tops), browseGroup('clothing'))(selecting.model).selection).toEqual(
+    expect(Wardrobe.reflectBrowse(Option.some(tops), browseGroup('tops'))(selecting.model).selection).toEqual(
       Model.Off(),
     )
   })

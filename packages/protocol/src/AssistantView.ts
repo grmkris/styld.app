@@ -9,12 +9,8 @@ export const ViewLabels = Schema.Struct({
   wardrobeTitle: Schema.String,
   empty: Schema.String,
   openInStyld: Schema.String,
-  groups: Schema.Struct({
-    clothing: Schema.String,
-    sport: Schema.String,
-    shoes: Schema.String,
-    accessories: Schema.String,
-  }),
+  /** Each group's name, for a piece the person did not name. */
+  groups: Schema.Record(GarmentGroup, Schema.String),
 })
 export type ViewLabels = typeof ViewLabels.Type
 

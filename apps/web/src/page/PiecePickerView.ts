@@ -161,7 +161,18 @@ const body = <M>(pieces: ReadonlyArray<Piece>, config: PickerConfig<M>, h: HtmlB
   const shown = searching ? matching(ready, picker.query, [locale]) : ofType
   return h.div(styled(h, boardStyles.head()), [
     searchField(config, h),
-    searching ? h.empty : groupFilters(GarmentGroup.literals, picker.group, config.messages.group, locale, h),
+    // Eight shop groups: only those holding a ready piece get a chip, and the one the sheet opened on.
+    searching
+      ? h.empty
+      : groupFilters(
+          GarmentGroup.literals.filter(
+            (group) => Option.contains(picker.group, group) || ready.some((piece) => groupOf(piece.type) === group),
+          ),
+          picker.group,
+          config.messages.group,
+          locale,
+          h,
+        ),
     searching
       ? h.empty
       : Option.match(picker.group, {

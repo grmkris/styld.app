@@ -162,7 +162,7 @@ describe('the collage editor', () => {
       click(role('button', { name: 'Boots' })),
       expect(role('button', { name: 'Put Walking boots on the table' })).toExist(),
       expect(role('button', { name: 'Put Evening heels on the table' })).not.toExist(),
-      click(role('button', { name: 'Clothing' })),
+      click(role('button', { name: 'Bottoms' })),
       expect(role('button', { name: 'Put Blue trousers on the table' })).toExist(),
       expect(role('button', { name: 'Put Walking boots on the table' })).not.toExist(),
     )

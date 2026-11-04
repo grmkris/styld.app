@@ -7,6 +7,28 @@ listed below stays open. The history of 2 to 4 November (the cleanup's C8 fixes,
 `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`. The Eva review tracker was retired on 4 November; what it still
 held open is the section below.
 
+## The wardrobe opens on a shop's sections: Tops, Bottoms and the rest (5 November, on a branch, not deployed)
+
+Eva (5 November): "ko odpres main omaro bova nardila tops in pol k kliknes na tops mas kratke majce/majce brez
+rokavov/dolge majce/pullover/srajce… isto k kliknes na bottoms" ("bi bolj pregledno"). Clothing is split into the
+sections a shop shows; Kris approved it the same night.
+
+- **Groups** (`packages/protocol/src/Garment.ts`), in this order: Tops (the three sleeve types, shirts, bodysuits,
+  knitwear, hoodies), Bottoms (jeans, trousers, shorts, skirts), Dresses & jumpsuits, Outerwear (blazers, jackets,
+  coats, gilets), Sport (unchanged), Swim & lounge, Shoes, Accessories. In sl: Zgornji deli, Spodnji deli, Obleke in
+  kombinezoni, Jakne in plašči, Šport, Kopalke in domača oblačila, Obutev, Dodatki. Derived from the type, so no
+  migration; a stored `?group=clothing` link is left out as any bad param is, and opens the wardrobe's groups.
+- **Kept coarse where a decision depends on it** (`familyOf`: everyday clothes, sport, shoes, accessories): how sure
+  Clef is of a piece's kind (the sum over the chosen type's family, so preselection thresholds do not move), whether an
+  import keeps its mapped type (`wardrobe/Work.ts`), and the house seed's "read as another kind" check. Outfit rules,
+  the tombola and Analyze my wardrobe already asked only "is it Sport", which is unchanged.
+- **Shown by group**: the wardrobe's cards (only groups that hold pieces, as before), the piece form's type headings,
+  Analyze my wardrobe's counts, the assistants' views (one label map for every group) and `piece_search`'s `group`.
+  The piece picker (photo and board sheets) shows a chip only for groups holding a ready piece, and the one it opened on.
+- Tests: protocol `Garment.test.ts` (order, every type in exactly one group, the families), the wardrobe, select-mode,
+  collage, stylist, assistant-view, photo, MCP and analysis tests; the two browser acceptance journeys' links.
+- Open: Eva's look on her phone.
+
 ## Shop-style pictures on a gentle ghost mannequin, and free redraws that correct them (4 November, on main, not deployed)
 
 Eva's pieces added on styld.app after 19:01 UTC came back "just stretched": 813559ff's "keep the garment's own shape

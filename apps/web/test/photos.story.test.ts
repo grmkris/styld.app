@@ -175,7 +175,7 @@ describe('an outfit photo', () => {
     const sheet = Photo.update(loaded, Photo.Message.ClickedChoose({ garmentId })).model
     expect(sheet.choosing).toEqual(Option.some(Photo.Choosing.ForGarment({ garmentId })))
     expect(sheet.picker).toMatchObject({
-      group: Option.some('clothing'),
+      group: Option.some('tops'),
       type: Option.some('shortSleeveTops'),
       query: '',
     })
@@ -183,7 +183,7 @@ describe('an outfit photo', () => {
     const widened = Photo.update(typed, Photo.Message.SelectedPickerGroup({ group: Option.some('shoes') })).model
     expect(widened.picker).toMatchObject({ group: Option.some('shoes'), type: Option.none(), query: 'grey' })
     expect(Photo.update(widened, Photo.Message.ClickedChoose({ garmentId })).model.picker).toMatchObject({
-      group: Option.some('clothing'),
+      group: Option.some('tops'),
       type: Option.some('shortSleeveTops'),
       query: '',
     })

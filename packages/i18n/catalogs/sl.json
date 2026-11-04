@@ -317,7 +317,11 @@
       "hairAccessories": "sponka, obroč za lase, trak za lase, elastika"
     },
     "groups": {
-      "clothing": "Oblačila",
+      "tops": "Zgornji deli",
+      "bottoms": "Spodnji deli",
+      "dresses": "Obleke in kombinezoni",
+      "outerwear": "Jakne in plašči",
+      "swimLounge": "Kopalke in domača oblačila",
       "shoes": "Obutev",
       "accessories": "Dodatki",
       "sport": "Šport"

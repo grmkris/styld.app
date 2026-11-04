@@ -32,8 +32,11 @@ describe('the wardrobe page', () => {
     scene(
       { update, view },
       given(loaded(tee, jeans, boots)),
-      expect(role('link', { name: 'Clothing' })).toHaveAttr('href', '/wardrobe?group=clothing'),
+      // A shop's sections (Eva, 5 November): Tops and Bottoms apart, in that order.
+      expect(role('link', { name: 'Tops' })).toHaveAttr('href', '/wardrobe?group=tops'),
+      expect(role('link', { name: 'Bottoms' })).toHaveAttr('href', '/wardrobe?group=bottoms'),
       expect(role('link', { name: 'Shoes' })).toHaveAttr('href', '/wardrobe?group=shoes'),
+      expect(role('link', { name: 'Outerwear' })).not.toExist(),
       expect(role('link', { name: 'Accessories' })).not.toExist(),
       expect(role('link', { name: 'Sport' })).not.toExist(),
       expect(selector(`img[src="${boots.images?.thumb ?? ''}"]`)).toHaveAttr('alt', ''),
@@ -45,14 +48,15 @@ describe('the wardrobe page', () => {
   test('a group shows its types that hold pieces, and goes back to the groups', () => {
     scene(
       { update, view },
-      given(loadedAt('/wardrobe?group=clothing', tee, jeans, boots)),
-      expect(role('heading', { name: 'Clothing' })).toExist(),
+      given(loadedAt('/wardrobe?group=tops', tee, jeans, boots)),
+      expect(role('heading', { name: 'Tops' })).toExist(),
       expect(role('link', { name: 'Back to wardrobe' })).toHaveAttr('href', '/wardrobe'),
       expect(role('link', { name: 'T-shirts & short-sleeve tops' })).toHaveAttr(
         'href',
-        '/wardrobe?group=clothing&type=shortSleeveTops',
+        '/wardrobe?group=tops&type=shortSleeveTops',
       ),
-      expect(role('link', { name: 'Jeans' })).toHaveAttr('href', '/wardrobe?group=clothing&type=jeans'),
+      // Jeans are a bottom: Tops holds only its own types.
+      expect(role('link', { name: 'Jeans' })).not.toExist(),
       expect(role('link', { name: 'Boots' })).not.toExist(),
       expect(role('link', { name: 'Coats' })).not.toExist(),
     )
@@ -113,12 +117,12 @@ describe('the wardrobe page', () => {
     const shirt = pieceFixture('shirt', { name: 'Linen shirt' })
     scene(
       { update, view },
-      given(loadedAt('/wardrobe?group=clothing&type=shortSleeveTops', tee, shirt, jeans)),
+      given(loadedAt('/wardrobe?group=tops&type=shortSleeveTops', tee, shirt, jeans)),
       expect(role('heading', { name: 'T-shirts & short-sleeve tops' })).toExist(),
-      expect(role('link', { name: 'Back to Clothing' })).toHaveAttr('href', '/wardrobe?group=clothing'),
+      expect(role('link', { name: 'Back to Tops' })).toHaveAttr('href', '/wardrobe?group=tops'),
       expect(role('link', { name: 'White tee' })).toHaveAttr(
         'href',
-        `/wardrobe/${tee.id}?from=%2Fwardrobe%3Fgroup%3Dclothing%26type%3DshortSleeveTops%23piece-${tee.id}`,
+        `/wardrobe/${tee.id}?from=%2Fwardrobe%3Fgroup%3Dtops%26type%3DshortSleeveTops%23piece-${tee.id}`,
       ),
       expect(role('link', { name: 'Linen shirt' })).toExist(),
       expect(text('White tee')).not.toExist(),
@@ -137,7 +141,7 @@ describe('the wardrobe page', () => {
     const mac = pieceFixture('mac', { name: 'Light mac', type: 'coats', seasons: ['spring'] })
     scene(
       { update, view },
-      given(loadedAt('/wardrobe?group=clothing&type=coats', coat, mac, tee)),
+      given(loadedAt('/wardrobe?group=outerwear&type=coats', coat, mac, tee)),
       expect(role('button', { name: 'Filters' })).not.toHaveAttr('data-set'),
       expect(role('button', { name: 'Filters' })).toHaveAttr('aria-expanded', 'false'),
       click(role('button', { name: 'Filters' })),
@@ -146,7 +150,7 @@ describe('the wardrobe page', () => {
       ...sceneSheetOpened,
       expect(role('heading', { name: 'Filter your wardrobe' })).toExist(),
       click(role('button', { name: 'Winter' })),
-      ...sceneReplacedBrowse('/wardrobe?group=clothing&type=coats&season=winter'),
+      ...sceneReplacedBrowse('/wardrobe?group=outerwear&type=coats&season=winter'),
       expect(role('button', { name: 'Show 1 piece' })).toExist(),
       expect(role('button', { name: 'COS' })).toExist(),
       expect(role('link', { name: 'Light mac' })).not.toExist(),

@@ -959,9 +959,13 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.filters': Readonly<Record<string, never>>
   'wardrobe.filtersTitle': Readonly<Record<string, never>>
   'wardrobe.groups.accessories': Readonly<Record<string, never>>
-  'wardrobe.groups.clothing': Readonly<Record<string, never>>
+  'wardrobe.groups.bottoms': Readonly<Record<string, never>>
+  'wardrobe.groups.dresses': Readonly<Record<string, never>>
+  'wardrobe.groups.outerwear': Readonly<Record<string, never>>
   'wardrobe.groups.shoes': Readonly<Record<string, never>>
   'wardrobe.groups.sport': Readonly<Record<string, never>>
+  'wardrobe.groups.swimLounge': Readonly<Record<string, never>>
+  'wardrobe.groups.tops': Readonly<Record<string, never>>
   'wardrobe.itemNotFound': Readonly<Record<string, never>>
   'wardrobe.itemProcessFailed': Readonly<Record<string, never>>
   'wardrobe.nameLabel': Readonly<Record<string, never>>
@@ -1175,4 +1179,4 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
 export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '501bc4922b4f780a1f5408116678e32dfa8b349ee482c471a15731af0b51eccd'
+export const catalogVersion = '8979b62037b3dc396c7bc82b9c27970aef381f1c1310bdf5f8c5ea92b7238df6'

@@ -67,12 +67,12 @@ export const verifyCaptureJourney = async (browser: Browser, origin: string, fix
     await page.waitForURL(`${origin}/wardrobe`, { timeout: 30000 })
     // The wardrobe opens on its groups, then a group's types, then a type's pieces (T-07). A tile is named by its
     // picture and its caption, both what one of its kind is.
-    await page.getByRole('link', { name: 'Clothing', exact: true }).waitFor({ state: 'visible' })
-    for (const [type, tile] of [
-      ['shortSleeveTops', /^T-shirt\b/],
-      ['dresses', /^Dress\b/],
+    await page.getByRole('link', { name: 'Tops', exact: true }).waitFor({ state: 'visible' })
+    for (const [group, type, tile] of [
+      ['tops', 'shortSleeveTops', /^T-shirt\b/],
+      ['dresses', 'dresses', /^Dress\b/],
     ] as const) {
-      await page.goto(`${origin}/wardrobe?group=clothing&type=${type}`, { waitUntil: 'networkidle' })
+      await page.goto(`${origin}/wardrobe?group=${group}&type=${type}`, { waitUntil: 'networkidle' })
       await page.getByRole('link', { name: tile }).waitFor({ state: 'visible' })
       expect(await page.locator('a[href^="/wardrobe/pc_"]').count()).toBe(1)
     }

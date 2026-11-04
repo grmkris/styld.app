@@ -273,9 +273,9 @@ describe('MCP tools', () => {
       _tag: 'WardrobeView',
       url: 'https://styld.test/wardrobe',
       pieces: [
-        { name: 'Navy cable knit', group: 'clothing', url: `https://styld.test/wardrobe/${pieces[0]?.id}` },
+        { name: 'Navy cable knit', group: 'tops', url: `https://styld.test/wardrobe/${pieces[0]?.id}` },
         { name: 'White tee' },
-        { name: 'Jeans', group: 'clothing' },
+        { name: 'Jeans', group: 'bottoms' },
       ],
       labels: {
         en: { wardrobeTitle: 'Wardrobe', openInStyld: 'Open in Styld', groups: { shoes: 'Shoes' } },

@@ -24,7 +24,8 @@ describe('the wardrobe’s analysis', () => {
     const analysis = analysisOf(pieces, { days: 60, pieceIds: [] })
     expect(analysis.pieces).toBe(5)
     expect(analysis.groups).toEqual([
-      { group: 'clothing', count: 3 },
+      { group: 'tops', count: 2 },
+      { group: 'bottoms', count: 1 },
       { group: 'shoes', count: 1 },
       { group: 'accessories', count: 1 },
     ])
