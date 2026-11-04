@@ -39,6 +39,8 @@ export const AppRoute = defineRouteUnion({
   Photo: { photoId: Schema.String },
   /** Try on: the person's own photos drawn again wearing their pieces, a tab of the Lab. */
   TryOn: {},
+  /** One try-on beside its photo. */
+  TryOnPage: { tryOnId: Schema.String },
   /** What the person wants one like: a tab of the wardrobe. */
   Look: { lookId: Schema.String },
   /** Search your wardrobe, ask the stylist through an assistant, or add clothes (Gallery 2's middle button). The
@@ -101,6 +103,7 @@ export const looksRouter = pipe(literal('looks'), mapTo(AppRoute.Looks))
 export const photosRouter = pipe(literal('gallery'), mapTo(AppRoute.Photos))
 export const photoRouter = pipe(literal('gallery'), slash(string('photoId')), mapTo(AppRoute.Photo))
 export const tryOnRouter = pipe(literal('try-on'), mapTo(AppRoute.TryOn))
+export const tryOnPageRouter = pipe(literal('try-on'), slash(string('tryOnId')), mapTo(AppRoute.TryOnPage))
 // The Gallery lived at `/wardrobe/gallery` until it moved to the Lab (T-08, 3 November): old links still open it, and
 // the app replaces the address with the new one (`App.ts` › init).
 const formerPhotosRouter = pipe(literal('wardrobe'), slash(literal('gallery')), mapTo(AppRoute.Photos))
@@ -178,6 +181,7 @@ const parser = oneOf(
   looksRouter,
   photoRouter,
   photosRouter,
+  tryOnPageRouter,
   tryOnRouter,
   stylistRouter,
   askRouter,
@@ -291,6 +295,7 @@ export const routeMeta = AppRoute.match<RouteMeta>({
   Photos: () => meta('/gallery', 'wardrobe.tabGallery', { session: required, tab: 'Photos', section: 'lab' }),
   Photo: () => meta('/gallery/:photo', 'wardrobe.tabGallery', { session: required, section: 'lab' }),
   TryOn: () => meta('/try-on', 'tryOn.title', { session: required, tab: 'TryOn', section: 'lab' }),
+  TryOnPage: () => meta('/try-on/:tryOn', 'tryOn.title', { session: required, section: 'lab' }),
   Ask: () => meta('/ask', 'ask.title', { session: required, tab: 'Ask', section: 'wardrobe' }),
   Stylist: () => meta('/ask/stylist', 'stylist.title', { session: required, section: 'ask' }),
   Boards: () => meta('/boards', 'boards.title', { session: required, tab: 'Boards', section: 'lab' }),

@@ -1,3 +1,4 @@
+import { TryOnId } from '@styld/protocol'
 import { Match, Option, Schema } from 'effect'
 import { type Command, Update } from 'foldkit'
 import { defineTaggedUnion } from 'foldkit/schema'
@@ -60,6 +61,8 @@ export const Page = defineTaggedUnion({
   Piece: { piece: Piece.Model },
   Look: { look: Look.Model },
   Photo: { photo: Photo.Model },
+  /** One try-on beside its photo. */
+  TryOnPage: { tryOnPage: TryOn.Model },
   Stylist: { stylist: Stylist.Model },
   /** A board's page and its collage editor. */
   Board: { board: BoardModel.Model },
@@ -222,6 +225,15 @@ export const lenses = {
     (photo) => Page.Photo({ photo }),
     (message: Photo.Message) => Message.GotPhotoMessage({ message }),
   ),
+  tryOnPage: onlyPage(
+    'try-on-page',
+    Match.type<Page>().pipe(
+      Match.tag('TryOnPage', ({ tryOnPage }) => tryOnPage),
+      Match.option,
+    ),
+    (tryOnPage) => Page.TryOnPage({ tryOnPage }),
+    (message: TryOn.Message) => Message.GotTryOnPageMessage({ message }),
+  ),
   stylist: onlyPage(
     'stylist',
     Match.type<Page>().pipe(
@@ -305,6 +317,12 @@ export const openPage = (route: AppRoute, signedIn: boolean, atFollow: boolean):
       const photo = Photo.init(photoId)
       return opened(lenses.photo, photo, Photo.load(photo))
     }),
+    Match.tag('TryOnPage', ({ tryOnId }) =>
+      Option.match(Schema.decodeUnknownOption(TryOnId)(tryOnId), {
+        onNone: () => ({ model: Page.NotFound() }),
+        onSome: (id) => opened(lenses.tryOnPage, TryOn.initOpen(id), TryOn.load()),
+      }),
+    ),
     Match.tag('Stylist', ({ q }) => opened(lenses.stylist, Stylist.init(q), Stylist.load())),
     Match.tag('Board', 'BoardCollage', ({ boardId }) => {
       const board = BoardModel.init(boardId, signedIn)

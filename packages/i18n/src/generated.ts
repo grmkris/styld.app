@@ -792,6 +792,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'tryOn.back': Readonly<Record<string, never>>
   'tryOn.before': Readonly<Record<string, never>>
   'tryOn.beforeAlt': Readonly<Record<string, never>>
+  'tryOn.choosePhoto': { readonly date: string | number }
   'tryOn.chosen': { readonly count: string | number; readonly most: string | number }
   'tryOn.cost': { readonly credits: number }
   'tryOn.delete': Readonly<Record<string, never>>
@@ -802,16 +803,21 @@ export interface MessageArgumentsByKey<_T = string> {
   'tryOn.emptyTitle': Readonly<Record<string, never>>
   'tryOn.failed': Readonly<Record<string, never>>
   'tryOn.fromLook': Readonly<Record<string, never>>
+  'tryOn.gone': Readonly<Record<string, never>>
   'tryOn.loadFailed': Readonly<Record<string, never>>
   'tryOn.making': Readonly<Record<string, never>>
   'tryOn.new': Readonly<Record<string, never>>
   'tryOn.noPhotos': Readonly<Record<string, never>>
+  'tryOn.noPieces': Readonly<Record<string, never>>
   'tryOn.notDrawn': Readonly<Record<string, never>>
   'tryOn.open': { readonly date: string | number }
   'tryOn.openGallery': Readonly<Record<string, never>>
   'tryOn.photoTitle': Readonly<Record<string, never>>
+  'tryOn.piecesFailed': Readonly<Record<string, never>>
   'tryOn.refused': Readonly<Record<string, never>>
+  'tryOn.sides': Readonly<Record<string, never>>
   'tryOn.startFailed': Readonly<Record<string, never>>
+  'tryOn.startRefused': Readonly<Record<string, never>>
   'tryOn.thisIsMe': Readonly<Record<string, never>>
   'tryOn.thisIsMeNote': Readonly<Record<string, never>>
   'tryOn.title': Readonly<Record<string, never>>
@@ -1076,4 +1082,4 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
 export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '96e20183b0464089d5b47bde0cdc546f13c83af4c60363b5230596cd4a573807'
+export const catalogVersion = '542974e46655710f51f690c3decca603c4f91f69a81c268b02ee97dca1d6a1f9'

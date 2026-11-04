@@ -20,6 +20,18 @@ export const photo = Schema.decodeUnknownSync(Photo)({
   createdAt: '2026-10-31T10:00:00.000Z',
 })
 
+/** A second Gallery photo, tried on before in one test. */
+export const otherPhoto = Schema.decodeUnknownSync(Photo)({
+  id: `ph_${'window'.padEnd(22, 'x')}`,
+  status: 'ready',
+  favourite: false,
+  garments: [],
+  lookId: null,
+  hasCutout: false,
+  images: { thumb: '/cdn/signed/other-thumb', full: '/cdn/signed/other-full' },
+  createdAt: '2026-10-30T10:00:00.000Z',
+})
+
 export const tryOnOf = (fields: object = {}) =>
   Schema.decodeUnknownSync(TryOn)({
     id: `to_${'first'.padEnd(22, 'x')}`,
@@ -42,5 +54,5 @@ export const lostOperation = Schema.decodeUnknownSync(OperationId)('lost-answer-
 export const loaded = (tryOns: ReadonlyArray<TryOn>, model: TryOnPage.Model = TryOnPage.init()): TryOnPage.Model =>
   modifyFields(model, {
     tryOns: () => TryOnPage.TryOnsData.Success({ data: tryOns }),
-    choices: () => TryOnPage.ChoicesData.Success({ data: { photos: [photo], looks: [] } }),
+    choices: () => TryOnPage.ChoicesData.Success({ data: { photos: [photo, otherPhoto], looks: [] } }),
   })

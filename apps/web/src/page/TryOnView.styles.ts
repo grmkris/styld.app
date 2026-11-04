@@ -10,7 +10,13 @@ export const tileButton = style({
   borderWidth: '0',
   cursor: 'pointer',
   ':active': { transform: 'scale(0.98)' },
-  '&[aria-pressed="true"]': { outlineWidth: '3px', outlineStyle: 'solid', outlineColor: 'ink', outlineOffset: '2px' },
+  // The chosen ring gives way to the focus ring while the tile has the keyboard's focus.
+  '&[aria-pressed="true"]:not(:focus-visible)': {
+    outlineWidth: '3px',
+    outlineStyle: 'solid',
+    outlineColor: 'ink',
+    outlineOffset: '2px',
+  },
 })
 export const step = style({ display: 'grid', gap: 'related', justifyItems: 'start' })
 export const stepTitle = style({ fontSize: 'subheading' })
@@ -25,7 +31,25 @@ export const photoGrid = style({
   '@media (min-width: 900px)': { gridTemplateColumns: 'repeat(6, minmax(0, 1fr))' },
 })
 export const looks = style({ display: 'flex', flexWrap: 'wrap', gap: 'actions' })
+export const consent = style({ display: 'grid', gap: 'related' })
 export const thisIsMe = style({ display: 'inline-flex', alignItems: 'center', gap: 'actions', fontWeight: 600 })
+/** The "This is me" box: a square that holds a tick when checked. */
+export const box = style({
+  display: 'inline-grid',
+  placeItems: 'center',
+  inlineSize: '24px',
+  blockSize: '24px',
+  padding: '0',
+  borderWidth: '2px',
+  borderStyle: 'solid',
+  borderColor: 'ink',
+  borderRadius: 'photo',
+  backgroundColor: 'transparent !custom',
+  color: 'ink',
+  cursor: 'pointer',
+  '&[aria-disabled="true"]': { opacity: 0.5, cursor: 'default' },
+})
+export const caption = style({ marginBlockStart: '8px', fontSize: 'label', color: 'ink2', textAlign: 'center' })
 export const compare = style({ display: 'grid', gap: 'related' })
 /** Before and After, chosen on a phone; a wide screen shows both. */
 export const sides = style({

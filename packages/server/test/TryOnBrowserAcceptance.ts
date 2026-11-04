@@ -7,8 +7,9 @@ import { addedPiece, idOf } from './GalleryAcceptance.ts'
 import { receivedPhoto, waitUntilReady } from './WardrobeAcceptance.ts'
 
 /** Test-only acceptance: Try on in the Lab on a phone (owner, 4 November 2026). A Gallery photo and a piece are
- * chosen, the person says the photo shows them, the cost is read before Try on, the drawing comes back beside its
- * photo (Before or After), and Delete takes it away after asking once. Muse is the fixture Worker's stand-in. */
+ * chosen, the person says the photo shows them, the cost is read before Try on, the try-on opens at its own address
+ * and its drawing comes back beside its photo (Before or After), and Delete takes it away after asking once and goes
+ * back to the list. Muse is the fixture Worker's stand-in. */
 
 const accountId = 'native-try-on-browser'
 
@@ -16,7 +17,7 @@ const accountId = 'native-try-on-browser'
 const choose = async (page: Page) => {
   await page.getByRole('button', { name: 'New try-on' }).click()
   await page
-    .getByRole('button', { name: /^Outfit photo from / })
+    .getByRole('button', { name: /^Photo from / })
     .first()
     .click()
   await page
@@ -31,6 +32,7 @@ const choose = async (page: Page) => {
   await page.getByRole('checkbox', { name: 'This is me' }).check()
   expect(await tryOn.getAttribute('aria-disabled')).not.toBe('true')
   await tryOn.click()
+  await page.waitForURL(/\/try-on\/to_[A-Za-z0-9_-]{22}$/u)
 }
 
 /** The drawing beside its photo: After first on a phone, Before one tap away; then Delete, asked once more. */
@@ -44,8 +46,10 @@ const compareAndDelete = async (page: Page) => {
   await after.waitFor({ state: 'hidden' })
   await page.getByRole('button', { name: 'Save to board' }).waitFor({ state: 'visible' })
   await page.getByRole('button', { name: 'Delete try-on' }).click()
-  await page.getByText('Delete this try-on? Your photo stays in your Gallery.').waitFor({ state: 'visible' })
-  await page.getByRole('button', { name: 'Delete try-on' }).click()
+  const question = page.getByRole('alertdialog', { name: 'Delete try-on' })
+  await question.getByText('Delete this try-on? Your photo stays in your Gallery.').waitFor({ state: 'visible' })
+  await question.getByRole('button', { name: 'Delete try-on' }).click()
+  await page.waitForURL(/\/try-on$/u)
   await page.getByRole('heading', { name: 'See yourself in your clothes' }).waitFor({ state: 'visible' })
 }
 
