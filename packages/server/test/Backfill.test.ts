@@ -19,7 +19,7 @@ const seeded = () => {
     database.sqlite.exec(
       `INSERT INTO pieces (id, account_id, type, colours, occasions, status, source, original_key, image_key,
          content_type, created_at, updated_at)
-       VALUES ('${id}', '${account}', 'tops', '[]', '[]', '${status}', 'import', 'k/${id}', '${cutOut ? `c/${id}` : `k/${id}`}',
+       VALUES ('${id}', '${account}', 'shortSleeveTops', '[]', '[]', '${status}', 'import', 'k/${id}', '${cutOut ? `c/${id}` : `k/${id}`}',
          'image/png', ${createdAt}, 0)`,
     )
   piece('pc_old', 'ac_1', 'ready', true, 1)

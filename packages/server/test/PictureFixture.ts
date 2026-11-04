@@ -65,7 +65,7 @@ const seedBackfill = (database: QueryDatabaseClient, media: ReadWriteBucketClien
         const image = `${prefix}/${piece.id}/image.png`
         return database
           .prepare(
-            "INSERT INTO pieces (id, account_id, type, colours, occasions, status, source, original_key, image_key, content_type, created_at, updated_at) VALUES (?, ?, 'tops', ?, '[]', ?, 'import', ?, ?, 'image/png', ?, ?)",
+            "INSERT INTO pieces (id, account_id, type, colours, occasions, status, source, original_key, image_key, content_type, created_at, updated_at) VALUES (?, ?, 'shortSleeveTops', ?, '[]', ?, 'import', ?, ?, 'image/png', ?, ?)",
           )
           .bind(
             piece.id,
