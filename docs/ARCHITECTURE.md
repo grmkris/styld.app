@@ -112,6 +112,18 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
   which settles the message's hold once. The chat list per account is D1 (`stylist_chats`); messages and cards are
   read from the Thread's records, never stored twice.
 
+- **What Styld knows about the person** (owner, 4 November 2026; `server/src/taste/`): told and learned, private, all
+  of it shown on Account › What Styld knows about you. Told: the occasions they dress for and when the first run was
+  behind them (`taste_answers`), and the notes they said yes to keeping (`style_notes`, at most 30, removable), beside
+  Show me (`viewer_preferences`, the social module's). Learned is a query, never stored, so every delete reaches it:
+  the strongest colours and kinds in 90 days of worn days, kept looks and favourite Gallery photos, and the aesthetics
+  of saved boards' tags, positive only (avoiding comes only from notes). Each reply's instructions carry it as data,
+  Show me as which boards come first and never who the person is; Styld asks before it remembers and writes a note
+  with `note_add` only after a yes. Thinking hears likes and notes; a day's outfits asked for no occasion take the day's
+  occasion from the occasions they dress for (in the engine, so Home sends nothing new); What's new puts what shares
+  their saved boards' aesthetics first on each page, within Show me's bands. A taste that cannot be read just now is
+  left out, never waited on.
+
 ## Providers and configuration
 
 - **Providers** (`server/src/providers/`): Clef (Workers AI) routes, describes, judges and ranks; Cloudflare Images

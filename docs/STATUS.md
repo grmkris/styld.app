@@ -7,6 +7,41 @@ listed below stays open. The history of 2 to 4 November (the cleanup's C8 fixes,
 `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`. The Eva review tracker was retired on 4 November; what it still
 held open is the section below.
 
+## Styld learns the person: taste, memory, first run (4 November, on main)
+
+Kris's plan of 4 November (`~/.claude/plans/okay-so-please-look-sprightly-brook.md`), built as a track of its own
+beside the house boards, after reviewing the Grokbot inspiration-boards research.
+
+- **Taste** (`89f4a292`, migration `20261104174849_taste`, two new tables): the occasions a person dresses for, the
+  first run's end and the notes they asked Styld to remember (at most 30); what Styld learned is read on demand (90
+  days of worn days, kept looks, favourite Gallery photos, saved boards' aesthetics). `/api/me/taste*` and the MCP tools
+  `taste_get`, `note_add`, `note_list`, `note_delete`, `occasions_set`. Deployed to the preview by styldappv2-51 and in
+  production through `4361388e` (styldappv2-0f).
+- **Styld** (`668fb7ee`): each reply is told what Styld knows, as data (Show me as which boards come first, never who
+  the person is); it asks before remembering and calls `note_add` only after a yes; `saved_list` and the notes are in
+  its catalogue.
+- **Outfits** (`6e6e2e5d`): a day's outfits asked for no occasion take the day's (smart on weekdays for someone who
+  dresses smart, else casual); Thinking hears what they wear most and their notes.
+- **Account › What Styld knows about you** (`1c904c9f`): occasions as chips, the notes with Remove, the learned line.
+- **What's new by taste** (`58969964`): on each page, inside Show me's bands, boards sharing the reader's saved boards'
+  aesthetics come first; nothing is hidden and the cursor is unchanged.
+- **Challenges** (`4361388e`): Eva's three cards open the seeded house boards (`u-30-days-red`, `w-witch-october`,
+  `u-one-coat-6`) through `seeded_boards`; "Coming soon" until one exists.
+- **First run** (`66f99166`): a modal over Home, once for every account (testers included): Show me (through the
+  preferences the card writes), up to 12 house boards to save, the five occasions, then Done onto Home's first-piece
+  card (Kris: one way into Add clothes). Each answer saves as given; reaching the last step or Skip all marks it done.
+- **Add these** (`f4f96260`): Try with my wardrobe's answer names the kinds the wardrobe lacked, listed under the result
+  with the way to Add clothes.
+- **Evidence:** unit, story and scene tests for each (taste store on local D1 with cascade and CHECKs, `tasteOf` and
+  the day rule's truth tables, the prompt paragraph and memory rule, the engine's occasion and Thinking lines over D1,
+  `byTaste`, the Account section, the first run's steps and screen, Challenges' cards, Try's `missing`); the native
+  stylist journey gains "Yes, remember: Never heels" → kept → listed → a new chat is told it (written, not run here).
+  Cheap checks green on every commit; the initial bundle rose by measured amounts (403,152, budget 403,200).
+- **Open:** the native suite and a preview walk of the first run, the Account section and Styld's memory in en and sl;
+  Challenges and the first run's boards show real boards only after the seed's `--full` run; funnel metrics (Kris: not
+  now); no type preset on Add clothes (the capture types each piece); aesthetics show as the catalogue's slugs
+  (`city break`) in both languages; a Discovery test of `challenges` over D1.
+
 ## Addresses as the only copy: the wardrobe's filters, Ask's search, Styld's question (4 November, on main, not deployed)
 
 The wardrobe's filters (T-06) were kept twice, in the page's Model and in the address, and one bad parameter made the

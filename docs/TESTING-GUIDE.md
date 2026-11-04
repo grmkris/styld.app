@@ -92,6 +92,17 @@ the phone and on a computer.
 - Ask about your own clothes: "What should I wear today?", "What goes well together?", "Save that as a look". Styld
   shows pieces in its answers. Try it in Slovenian too. Replies can take up to a minute.
 
+**What Styld knows about you** (the first run, Account, Styld)
+
+- The first time you open Home you are asked four short things: what to show first, boards you like (they go into
+  Saved), the occasions you dress for, and your clothes. Every step can be skipped, and it is asked only once.
+- On Account › What Styld knows about you, change your occasions, remove what Styld remembers, and see what it learned
+  from what you wear and save. With "Smart" chosen, Home's outfit on a weekday should be smarter.
+- In a chat with Styld, tell it something lasting ("I never wear heels"): it should ask before it remembers it, and a
+  new chat should know it.
+- Home's Challenges open their boards once the house boards are there; on a house board, Try with my wardrobe says what
+  your wardrobe lacked and how to add it.
+
 **Your public page and What's new**
 
 - In Account › Public profile, choose a username, add a name, city and bio, and **Make it public**. Then make a board

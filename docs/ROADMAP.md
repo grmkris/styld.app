@@ -69,12 +69,21 @@ reading a product's brand.
 - **Challenges** (Eva's Home sketch, 4 November): shown on Home as coming soon ("30 days of red", "Witch October",
   "One piece for a whole week"); joining one and posting an outfit to it, private or public, is not built.
 
+## Styld learns the person (owner, 4 November 2026)
+
+Built on main: what Styld knows about a person (the occasions they dress for, the notes they asked it to remember, and
+what it learned from what they save and wear), shown and removable on the Account page; Styld asks before it remembers;
+Today's outfits take the person's weekday occasion; Thinking and What's new use it; a first run over Home, once for
+everyone (Show me, boards to save, occasions, then Home's first-piece card); Challenges open their house boards; Try
+with my wardrobe says what to add. Not built: funnel metrics (Kris: not now), a type preset on Add clothes, tags derived
+for people's own boards. `docs/STATUS.md` has the evidence.
+
 ## Parked (not built unless real demand appears)
 
 - the Slovenian shop catalog and its shop directory;
 - fit badges ("Goes with 4 of yours", "You own 2 like these");
 - referrals, the calendar and v1's onboarding funnels (the daily wheel came back as Home's What to wear today, 4
-  November);
+  November; a short first run came back the same day, below);
 - favourites and archive for pieces (favourite outfit photos are kept, in My Gallery);
 - Jev outfit ideas.
 
