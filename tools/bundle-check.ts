@@ -81,7 +81,7 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // their words in both catalogs) add 2,164, for 377,987.
 // Raised to 379,600 the same day for the piece's picture carousel (P3): its slides, the swipe, the dots and "Use as
 // the main picture", and their words, add 1,583; with the seated-person fallback beside it main measured 379,609.
-// Raised to 383,200 the same day for Eva's Home (docs/PLAN-home-2026-11-04.md): taking Explore's page out saved 4,495
+// Raised to 383,200 the same day for Eva's Home (docs/archive/PLAN-home-2026-11-04.md): taking Explore's page out saved 4,495
 // (379,609 to 375,114 at dcef50c); What's new, Challenges and the Home layout brought it to 379,531 (M5); the tombola
 // (its submodel, the wheel, the screen and its Mounts, the dice and their words) adds 3,627, for 383,158.
 // Raised to 383,700 the same day for Wear it today (M7): the anchor through Today's outfit run, the swap around it,

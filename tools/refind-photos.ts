@@ -1,7 +1,7 @@
 /**
  * Find an account's Gallery photos again with the detector as it is now, at Styld's cost (Eva, 4 November: her photos
  * were found before the detector looked for the person nearest the camera). What the person confirmed, sent to the
- * review tray or added by hand stays; only Styld's own guesses are replaced. docs/PLAN-gallery-delete-2026-11-04.md › G4.
+ * review tray or added by hand stays; only Styld's own guesses are replaced. docs/archive/PLAN-gallery-delete-2026-11-04.md › G4.
  *
  *   STYLD_URL=https://… bun --env-file=.env.preview.local tools/refind-photos.ts <email> [--counts] [--minutes N]
  *
