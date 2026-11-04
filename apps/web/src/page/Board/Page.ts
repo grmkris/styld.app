@@ -28,50 +28,50 @@ import {
   RenameBoard,
   SetBoardMoods,
   SetBoardVisibility,
+  FocusName,
   FocusPin,
   keepPinId,
   UnpinThings,
   unpinId,
 } from './PageCommands.ts'
 
-// The board page's own steps: its settings sheet, its pins, and catching up when the page comes back into view.
+// The board page's own steps: its name, its ⋯ sheet, its pins, and catching up when the page comes back into view.
 
-const settingsSheet = sheetFolds<Model, Message>({
-  read: (model) => model.settings,
-  write: (model, nextSettings) => modifyFields(model, { settings: () => nextSettings }),
-  toParentMessage: (message) => Message.GotSettingsMessage({ message }),
+const moreSheet = sheetFolds<Model, Message>({
+  read: (model) => model.more,
+  write: (model, nextMore) => modifyFields(model, { more: () => nextMore }),
+  toParentMessage: (message) => Message.GotMoreMessage({ message }),
 })
 
-const foldSettings = settingsSheet.update
-const openSettings = settingsSheet.open
-const closeSettings = settingsSheet.close
+/** Closing the ⋯ sheet, for a row whose action follows. */
+export const closeMore = moreSheet.close
 
-/** The settings sheet opens on the board's name, with nothing pending. */
-const settingsOpened = (model: Model): UpdateReturn =>
-  openSettings(
-    modifyFields(model, {
-      nameDraft: () => boardName(model.board),
-      rename: () => Rename.Idle(),
-      removal: () => Removal.Idle(),
-    }),
-  )
+/** The ⋯ sheet opens with nothing pending. */
+const moreOpened = (model: Model): UpdateReturn =>
+  moreSheet.open(modifyFields(model, { removal: () => Removal.Idle() }))
+
+/** The title becomes a field holding the board's name, focused. */
+export const renameStarted = (model: Model): UpdateReturn => ({
+  model: modifyFields(model, { nameDraft: () => boardName(model.board), rename: () => Rename.Editing() }),
+  commands: [FocusName()],
+})
 
 const renameSubmitted = (model: Model): UpdateReturn => {
   const name = model.nameDraft.trim()
-  if (name.length === 0 || name === boardName(model.board)) return closeSettings(model)
+  if (name.length === 0 || name === boardName(model.board))
+    return { model: modifyFields(model, { rename: () => Rename.Idle() }) }
   return {
     model: modifyFields(model, { rename: () => Rename.Saving() }),
     commands: [RenameBoard({ boardId: model.boardId, name })],
   }
 }
 
-const renamed = (model: Model, board: Board): UpdateReturn =>
-  closeSettings(
-    modifyFields(model, {
-      board: () => BoardData.Success({ data: BoardShown.Own({ name: board.name, paper: board.paper }) }),
-      rename: () => Rename.Idle(),
-    }),
-  )
+const renamed = (model: Model, board: Board): UpdateReturn => ({
+  model: modifyFields(model, {
+    board: () => BoardData.Success({ data: BoardShown.Own({ name: board.name, paper: board.paper }) }),
+    rename: () => Rename.Idle(),
+  }),
+})
 
 /** A mood on or off, saved at once; a fourth waits until one is taken off. */
 const moodToggled = (model: Model, mood: Mood): UpdateReturn => {
@@ -99,7 +99,7 @@ const moodsFailed = (model: Model, attempted: ReadonlyArray<Mood>, previous: Rea
 const moodsSaved = (model: Model, board: Board): UpdateReturn =>
   sameMoods(model.moods, board.moods) ? { model: withChecked(model, board) } : { model }
 
-/** Public or private, from the settings; the sheet stays open to show what Styld's check says. */
+/** Public or private, from the switch beside Share; the check's word on it shows under the title. */
 const publicToggled = (model: Model, isPublic: boolean): UpdateReturn =>
   Publishing.guards.Sending(model.publishing)
     ? { model }
@@ -174,8 +174,11 @@ const reloaded = (model: Model, board: Board): UpdateReturn => {
 type PageTag =
   | 'BecameVisible'
   | 'CompletedReloadBoard'
-  | 'ClickedSettings'
-  | 'GotSettingsMessage'
+  | 'ClickedMore'
+  | 'GotMoreMessage'
+  | 'ClickedRename'
+  | 'ClickedCancelRename'
+  | 'CompletedFocusName'
   | 'UpdatedNameDraft'
   | 'SubmittedRename'
   | 'SucceededRename'
@@ -206,8 +209,11 @@ export const pageSteps = (
   BecameVisible: () => becameVisible(model),
   CompletedReloadBoard: ({ maybeBoard }) =>
     Option.match(maybeBoard, { onNone: () => ({ model }), onSome: (board) => reloaded(model, board) }),
-  ClickedSettings: () => settingsOpened(model),
-  GotSettingsMessage: (got) => foldSettings(model, got.message),
+  ClickedMore: () => moreOpened(model),
+  GotMoreMessage: (got) => moreSheet.update(model, got.message),
+  ClickedRename: () => renameStarted(model),
+  ClickedCancelRename: () => ({ model: modifyFields(model, { rename: () => Rename.Idle() }) }),
+  CompletedFocusName: () => ({ model }),
   UpdatedNameDraft: ({ value }) => ({ model: modifyFields(model, { nameDraft: () => value }) }),
   SubmittedRename: () => renameSubmitted(model),
   SucceededRename: ({ board }) => renamed(model, board),

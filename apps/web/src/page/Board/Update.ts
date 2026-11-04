@@ -39,7 +39,7 @@ import { Message } from './Message.ts'
 import { BoardData, BoardShown, fromBoard, Gesture, LookSave, type Model, Saving, Ticks } from './Model.ts'
 import type { LoadError } from '../../ServerData.ts'
 import { addSteps, closeAddSheet } from './AddSheet.ts'
-import { pageSteps } from './Page.ts'
+import { closeMore, pageSteps, renameStarted } from './Page.ts'
 import * as People from '../People.ts'
 import * as TryIt from './TryIt.ts'
 import * as Share from '../Share.ts'
@@ -114,6 +114,22 @@ const foldDrop = Update.foldChild({
   }),
 })
 
+const tidy = (model: Model): UpdateReturn => committed(model, model.items, tidied(model.items))
+
+/** Paste asks the browser for the clipboard's pictures; a phone's browser shares them only on a tap. */
+const pasted = (model: Model): UpdateReturn => ({
+  model: modifyFields(model, { isPasting: () => true }),
+  commands: [ReadClipboard()],
+})
+
+/** A row of the ⋯ sheet: the sheet closes, then the board renames, tidies or pastes. */
+const moreAction = (model: Model, action: 'rename' | 'tidy' | 'paste'): UpdateReturn =>
+  Update.combine(model, [
+    closeMore,
+    (stepModel) =>
+      action === 'rename' ? renameStarted(stepModel) : action === 'tidy' ? tidy(stepModel) : pasted(stepModel),
+  ])
+
 const loadFailed = (model: Model, error: LoadError): UpdateReturn => ({
   model: modifyFields(model, { board: (board) => AsyncData.settle(board, Result.fail(error)) }),
 })
@@ -151,7 +167,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     PressedEscape: () => pressedEscape(model),
     ClickedUndo: () => undone(model),
     ClickedRedo: () => redone(model),
-    ClickedTidy: () => committed(model, model.items, tidied(model.items)),
+    ClickedTidy: () => tidy(model),
     ClickedAddText: ({ text }) => addedText(model, text),
     ClickedWardrobePiece: ({ pieceId }) =>
       Update.combine(model, [(stepModel) => addedPiece(stepModel, pieceId), closeAddSheet]),
@@ -176,7 +192,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     DroppedFiles: ({ files }) => picturesChosen(modifyFields(model, { isDropping: () => false }), files),
     DraggedFilesOver: () => (model.isDropping ? { model } : { model: modifyFields(model, { isDropping: () => true }) }),
     EndedFileDrag: () => ({ model: modifyFields(model, { isDropping: () => false }) }),
-    ClickedPaste: () => ({ model: modifyFields(model, { isPasting: () => true }), commands: [ReadClipboard()] }),
+    ClickedPaste: () => pasted(model),
+    ClickedMoreAction: ({ action }) => moreAction(model, action),
     CompletedReadClipboard: ({ files }) => picturesChosen(model, files),
     SucceededAddImage: ({ imageId, image }) => addedImage(model, imageId, image),
     FailedAddImage: ({ problem }) => imageFailed(model, problem),

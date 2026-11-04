@@ -206,7 +206,6 @@ export const picked = style({
   backgroundColor: 'ink',
   color: 'onInk',
 })
-export const field = style({ display: 'grid', gap: 'snug', fontSize: 'label', fontWeight: 600 })
 export const actions = style({ display: 'flex', flexWrap: 'wrap', gap: 'actions' })
 export const sharing = style({ display: 'grid', gap: 'snug', paddingBlockStart: '12px' })
 export const moodsLabel = style({ margin: '0', fontSize: 'control', fontWeight: 600 })
@@ -217,4 +216,64 @@ export const danger = style({
   paddingBlockStart: '12px',
   color: 'ink2',
   fontSize: 'label',
+})
+
+/** The title, which renames the board when tapped: it reads as the heading, with a quiet pencil after it. */
+export const titleButton = style({
+  display: 'inline-flex',
+  alignItems: 'baseline',
+  gap: 'actions',
+  maxInlineSize: '100%',
+  padding: '0',
+  borderWidth: '0',
+  backgroundColor: 'transparent !custom',
+  color: 'inherit !custom',
+  font: 'inherit',
+  letterSpacing: 'inherit',
+  textAlign: 'start',
+  cursor: 'text',
+  '& > svg': { flex: 'none', inlineSize: '0.6em', blockSize: '0.6em', color: 'ink3' },
+  '@media (hover: hover) and (pointer: fine)': { ':hover > svg': { color: 'ink' } },
+})
+/** The title as a field while it is renamed: the heading's size and weight, on a hairline. */
+export const nameForm = style({ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 'actions' })
+export const nameField = style({
+  flex: '1 1 12ch',
+  minInlineSize: '0',
+  paddingBlock: '2px',
+  paddingInline: '0',
+  borderWidth: '0',
+  borderBlockEnd: '1.5px solid',
+  borderColor: 'ink',
+  backgroundColor: 'transparent !custom',
+  color: 'ink',
+  fontSize: 'title',
+  fontWeight: 600,
+  lineHeight: 1.08,
+  letterSpacing: '-0.02em',
+  outlineWidth: '0',
+})
+/** A row of the ⋯ sheet: an icon and what it does. */
+export const moreRows = style({ display: 'grid', gap: 'tight', margin: '0', padding: '0', listStyle: 'none' })
+export const moreRow = style({
+  display: 'flex',
+  alignItems: 'center',
+  gap: 'related',
+  inlineSize: '100%',
+  minBlockSize: '48px',
+  paddingInline: '12px',
+  borderWidth: '0',
+  borderRadius: 'field',
+  backgroundColor: 'paper2',
+  color: 'ink',
+  fontSize: 'control',
+  fontWeight: 500,
+  textAlign: 'start',
+  cursor: 'pointer',
+  transitionProperty: 'transform, background-color',
+  transitionDuration: 'press',
+  transitionTimingFunction: 'standard',
+  ':active': { transform: 'scale(0.96)' },
+  ':disabled': { color: 'ink3', cursor: 'default' },
+  '@media (hover: hover) and (pointer: fine)': { ':hover:not(:disabled)': { backgroundColor: 'paper2Hover' } },
 })

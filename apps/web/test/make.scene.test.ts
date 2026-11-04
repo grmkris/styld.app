@@ -130,12 +130,12 @@ describe('Make with Styld on a board', () => {
     )
   })
 
-  test('marks a generated sticker in the board settings', () => {
+  test('marks a generated sticker among the board’s pins', () => {
     scene(
       { update, view },
       given(page),
       measured,
-      click(role('button', { name: 'Edit' })),
+      click(role('button', { name: 'Board options' })),
       Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
       Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
       ...sceneSheetOpened,

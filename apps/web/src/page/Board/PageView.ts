@@ -1,5 +1,4 @@
 import { cdn } from '../../Cdn.ts'
-import { Dialog } from '@foldkit/ui'
 import { format, type Locale, type MessageKey } from '@styld/i18n'
 import { Mood, type Paper, type Pin, type PublicBoard, textLength } from '@styld/protocol'
 import { Array, Match, Option } from 'effect'
@@ -8,8 +7,7 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../../ActionButton.ts'
 import { primaryAction, secondaryAction, smallAction } from '../../Actions.styles.ts'
-import { textField } from '../../Fields.styles.ts'
-import { backIcon, loader, shareIcon } from '../../Icon.ts'
+import { backIcon, editIcon, loader, moreIcon, pasteIcon, tidyIcon } from '../../Icon.ts'
 import { boardRouter, boardsRouter, lookRouter, pieceRouter } from '../../route.ts'
 import { styled } from '../../Styled.ts'
 import * as PeopleView from '../PeopleView.ts'
@@ -24,7 +22,9 @@ import { lookMosaic } from './PickerView.ts'
 import { pieceDescription } from '../WardrobeWords.ts'
 import { visitingView } from './Visiting.ts'
 import * as TryItView from './TryItView.ts'
-import { type Model, canChangePins, PinWork, Publishing, Removal, Rename } from './Model.ts'
+import { type Model, canChangePins, PinWork, Publishing, Removal, Rename, Upload } from './Model.ts'
+import { nameFieldId } from './PageCommands.ts'
+import { round } from '../PageBar.styles.ts'
 import { chip, chosen } from '../../Controls.styles.ts'
 import * as MakeView from './MakeView.ts'
 import * as OutfitsView from './OutfitsView.ts'
@@ -239,8 +239,8 @@ const removalView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Htm
     }),
   )
 
-/** Share (Eva's review, T-20): a public board's link through the share sheet; a private board has nothing to show
- * anyone yet, so Share opens the settings, where it can be made public. */
+/** Share (Eva's review, T-20): a public board's link through the share sheet. A private board has nothing to show
+ * anyone yet; the switch beside it makes it public. */
 const shareAction = (model: Model, name: string, locale: Locale, h: HtmlBuilder<Message>): Html =>
   model.visibility === 'public'
     ? h.submodel({
@@ -250,15 +250,7 @@ const shareAction = (model: Model, name: string, locale: Locale, h: HtmlBuilder<
         viewInputs: { locale, path: boardRouter({ boardId: model.boardId }), title: name, look: 'small' },
         toParentMessage: (message) => Message.GotShareMessage({ message }),
       })
-    : actionButton(
-        {
-          label: format(locale, 'share.button', {}),
-          style: cx(secondaryAction(), smallAction()),
-          leading: shareIcon(h),
-          onClick: Message.ClickedSettings(),
-        },
-        h,
-      )
+    : h.empty
 
 /** Who sees the board: private, or public on the published profile once Styld's check lets others. */
 const sharingView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
@@ -272,7 +264,8 @@ const sharingView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Htm
         Sending: () => 'sending' as const,
         Failed: ({ needsProfile }) => (needsProfile ? ('needsProfile' as const) : ('failed' as const)),
       }),
-      describe: true,
+      // The title's status line says who sees it, and the check's word shows under it.
+      describe: false,
       onToggle: (isPublic) => Message.ToggledPublic({ isPublic }),
     },
     locale,
@@ -299,54 +292,108 @@ const moodsView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html 
     ),
   ])
 
-const settingsBody = (
-  model: Model,
-  locale: Locale,
-  h: HtmlBuilder<Message>,
-  info: Dialog.RenderInfo,
-): ReadonlyArray<Html> => {
-  const saving = Rename.guards.Saving(model.rename)
-  return [
-    h.form(
-      [h.OnSubmit(Message.SubmittedRename()), h.Attribute('novalidate', ''), ...styled(h, styles.head())],
-      [
-        h.label(
-          [h.For('board-rename'), ...styled(h, styles.field())],
-          [
-            format(locale, 'studio.boardName', {}),
-            h.input([
-              h.Id('board-rename'),
-              ...info.initialFocus,
-              ...styled(h, textField()),
-              h.Value(model.nameDraft),
-              h.Maxlength(textLength.boardName),
-              h.Readonly(saving),
-              h.OnInput((value) => Message.UpdatedNameDraft({ value })),
-            ]),
-          ],
-        ),
-        Rename.guards.Failed(model.rename)
-          ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'studio.renameFailed', {})])
-          : h.empty,
-        h.div(styled(h, styles.actions()), [
-          actionButton(
-            {
-              label: format(locale, saving ? 'saveToBoard.saving' : 'studio.save', {}),
-              style: primaryAction(),
-              type: 'submit',
-              isDisabled: saving,
-              leading: saving ? loader(h) : h.empty,
-            },
-            h,
-          ),
-        ]),
-      ],
+/** A row of the ⋯ sheet. */
+const moreRow = (label: string, icon: Html, message: Message, isDisabled: boolean, h: HtmlBuilder<Message>): Html =>
+  h.li(
+    [],
+    [
+      h.button(
+        [h.Type('button'), h.Disabled(isDisabled), h.OnClick(message), ...styled(h, styles.moreRow())],
+        [icon, label],
+      ),
+    ],
+  )
+
+/** The ⋯ sheet: what is done to the board rather than on its table, then its moods, its pins and deleting it. */
+const moreBody = (model: Model, locale: Locale, h: HtmlBuilder<Message>): ReadonlyArray<Html> => [
+  h.ul(styled(h, styles.moreRows()), [
+    moreRow(
+      format(locale, 'board.more.rename', {}),
+      editIcon(h),
+      Message.ClickedMoreAction({ action: 'rename' }),
+      false,
+      h,
     ),
-    pinsView(model, locale, h),
-    sharingView(model, locale, h),
-    moodsView(model, locale, h),
-    removalView(model, locale, h),
-  ]
+    moreRow(
+      format(locale, 'board.tidy', {}),
+      tidyIcon(h),
+      Message.ClickedMoreAction({ action: 'tidy' }),
+      Array.isReadonlyArrayEmpty(model.items),
+      h,
+    ),
+    moreRow(
+      format(locale, 'board.paste', {}),
+      pasteIcon(h),
+      Message.ClickedMoreAction({ action: 'paste' }),
+      model.isPasting || Upload.guards.Sending(model.upload),
+      h,
+    ),
+  ]),
+  moodsView(model, locale, h),
+  pinsView(model, locale, h),
+  removalView(model, locale, h),
+]
+
+/** The board's name, which a tap turns into a field to rename it; Escape or Cancel leaves it as it was. */
+const titleView = (model: Model, name: string, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  if (Rename.guards.Idle(model.rename))
+    return h.h1(
+      [],
+      [
+        h.button(
+          [
+            h.Type('button'),
+            h.AriaLabel(format(locale, 'board.more.renameNamed', { name })),
+            h.OnClick(Message.ClickedRename()),
+            ...styled(h, styles.titleButton()),
+          ],
+          [h.span([], [name]), editIcon(h)],
+        ),
+      ],
+    )
+  const saving = Rename.guards.Saving(model.rename)
+  return h.form(
+    [h.OnSubmit(Message.SubmittedRename()), h.Attribute('novalidate', ''), ...styled(h, styles.head())],
+    [
+      h.div(styled(h, styles.nameForm()), [
+        h.input([
+          h.Id(nameFieldId),
+          h.AriaLabel(format(locale, 'studio.boardName', {})),
+          h.Value(model.nameDraft),
+          h.Maxlength(textLength.boardName),
+          h.Readonly(saving),
+          h.Attribute('enterkeyhint', 'done'),
+          h.OnInput((value) => Message.UpdatedNameDraft({ value })),
+          h.OnKeyDownPreventDefault((key) =>
+            key === 'Escape' ? Option.some(Message.ClickedCancelRename()) : Option.none(),
+          ),
+          ...styled(h, styles.nameField()),
+        ]),
+        actionButton(
+          {
+            label: format(locale, saving ? 'saveToBoard.saving' : 'studio.save', {}),
+            style: cx(primaryAction(), smallAction()),
+            type: 'submit',
+            isDisabled: saving,
+            leading: saving ? loader(h) : h.empty,
+          },
+          h,
+        ),
+        actionButton(
+          {
+            label: format(locale, 'common.cancel', {}),
+            style: cx(secondaryAction(), smallAction()),
+            onClick: Message.ClickedCancelRename(),
+            isDisabled: saving,
+          },
+          h,
+        ),
+      ]),
+      Rename.guards.Failed(model.rename)
+        ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'studio.renameFailed', {})])
+        : h.empty,
+    ],
+  )
 }
 
 /** One part of Make with Styld on the page: its button, its status or its sheet. */
@@ -390,21 +437,22 @@ const readyView = (
         [backIcon(h), format(locale, 'studio.backToBoards', {})],
       ),
       h.div(styled(h, styles.barActions()), [
+        sharingView(model, locale, h),
         shareAction(model, name, locale, h),
-        // Rename, public, moods and delete: a word a pencil could not say.
         h.button(
           [
             h.Type('button'),
             h.AriaHasPopup('dialog'),
-            ...styled(h, cx(secondaryAction(), smallAction())),
-            h.OnClick(Message.ClickedSettings()),
+            h.AriaLabel(format(locale, 'board.more.title', {})),
+            h.OnClick(Message.ClickedMore()),
+            ...styled(h, round()),
           ],
-          [format(locale, 'common.edit', {})],
+          [moreIcon(h)],
         ),
       ]),
     ]),
     h.div(styled(h, styles.head()), [
-      h.h1([], [name]),
+      titleView(model, name, locale, h),
       // Where it stands, in one quiet line (DESIGN › Your public things), then the check's word on it.
       h.p(styled(h, styles.meta()), [statusLine(model, locale)]),
       model.visibility === 'public' ? checkNotice(Option.getOrNull(model.check), locale, h) : h.empty,
@@ -417,13 +465,13 @@ const readyView = (
     ]),
     editorView(model, pieces, paper, locale, h),
     outfitsSlot(model, name, paper, locale, h),
-    sheetShown(model.settings)
+    sheetShown(model.more)
       ? bottomSheet(
           {
-            dialog: model.settings,
-            title: format(locale, 'studio.boardSettings', {}),
-            body: (info) => [h.div(styled(h, styles.sheetBody()), settingsBody(model, locale, h, info))],
-            toParentMessage: (message) => Message.GotSettingsMessage({ message }),
+            dialog: model.more,
+            title: format(locale, 'board.more.title', {}),
+            body: () => [h.div(styled(h, styles.sheetBody()), moreBody(model, locale, h))],
+            toParentMessage: (message) => Message.GotMoreMessage({ message }),
             locale,
           },
           h,

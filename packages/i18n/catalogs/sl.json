@@ -461,7 +461,6 @@
     "renameFailed": "Zbirke ni bilo mogoče preimenovati",
     "save": "Shrani",
     "pinCount": "{count, plural, one {# kartica} two {# kartici} few {# kartice} other {# kartic}}",
-    "boardSettings": "Nastavitve zbirke",
     "emptyGridTitle": "Tu še ni ničesar",
     "retry": "Poskusi znova",
     "backToBoards": "Vse zbirke",
@@ -880,6 +879,11 @@
       "offTable": "V zbirki, a ne na mizi",
       "search": "Išči kose, videze in fotografije",
       "noneFound": "Nič se ne ujema."
+    },
+    "more": {
+      "title": "Možnosti zbirke",
+      "rename": "Preimenuj",
+      "renameNamed": "Preimenuj: {name}"
     },
     "wardrobeEmpty": "Dodaj oblačila v garderobo, da jih položiš sem.",
     "pieceFallback": "Kos",

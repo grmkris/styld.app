@@ -104,8 +104,13 @@ export const Message = defineMessageUnion({
   BecameVisible: {},
   CompletedReloadBoard: { maybeBoard: Schema.Option(Board) },
 
-  ClickedSettings: {},
-  GotSettingsMessage: { message: Dialog.Message },
+  ClickedMore: {},
+  GotMoreMessage: { message: Dialog.Message },
+  /** A row of the ⋯ sheet: the sheet closes, then the board does it. */
+  ClickedMoreAction: { action: Schema.Literals(['rename', 'tidy', 'paste']) },
+  ClickedRename: {},
+  ClickedCancelRename: {},
+  CompletedFocusName: {},
   UpdatedNameDraft: { value: Schema.String },
   SubmittedRename: {},
   SucceededRename: { board: Board },

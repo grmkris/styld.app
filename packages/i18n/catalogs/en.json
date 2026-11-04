@@ -461,7 +461,6 @@
     "renameFailed": "Could not rename the board",
     "save": "Save",
     "pinCount": "{count, plural, one {# pin} other {# pins}}",
-    "boardSettings": "Board settings",
     "emptyGridTitle": "Nothing pinned yet",
     "retry": "Try again",
     "backToBoards": "All boards",
@@ -880,6 +879,11 @@
       "offTable": "On this board, off the table",
       "search": "Search pieces, looks and photos",
       "noneFound": "Nothing matches that."
+    },
+    "more": {
+      "title": "Board options",
+      "rename": "Rename",
+      "renameNamed": "Rename {name}"
     },
     "wardrobeEmpty": "Add clothes to your wardrobe to lay them here.",
     "pieceFallback": "A piece",

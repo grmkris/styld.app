@@ -7,12 +7,11 @@ import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
 import { Message as BoardMessage } from '../src/page/Board/Message.ts'
 import { fromBoard, init as boardInit, LooksData } from '../src/page/Board/Model.ts'
-import { FocusPin, UnpinThings } from '../src/page/Board/PageCommands.ts'
+import { FocusName, FocusPin, UnpinThings } from '../src/page/Board/PageCommands.ts'
 import { view } from '../src/View.ts'
 import { lenses } from '../src/Page.ts'
 import { at, withPage, withPieces } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
-import { sceneSheetOpened } from './SheetFixtures.ts'
 import { MeasurePaper } from '../src/page/Board/Commands.ts'
 import { KeepOutfit, Message as OutfitsMessage, RelayOut } from '../src/page/Board/Outfits.ts'
 import { Message as ShareMessage, ShareLink } from '../src/page/Share.ts'
@@ -54,7 +53,7 @@ const picking = (locale: 'en' | 'sl') =>
 const measured = Mount.resolve(MeasurePaper, BoardMessage.MeasuredPaper({ width: 500 }))
 const withSettings = (state: typeof page) =>
   withPage(state, lenses.board, (currentBoard) =>
-    modifyFields(currentBoard, { settings: (settings) => ({ ...settings, isOpen: true }) }),
+    modifyFields(currentBoard, { more: (more) => ({ ...more, isOpen: true }) }),
   )
 
 describe("a board's page", () => {
@@ -117,17 +116,29 @@ describe("a board's page", () => {
     )
   })
 
-  test('Share on a private board opens its settings, where it can be made public', () => {
+  test('a private board has its public switch beside ⋯ and nothing to share yet', () => {
     scene(
       { update, view },
       given(page),
       measured,
-      click(role('button', { name: 'Share' })),
-      Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
-      Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
-      ...sceneSheetOpened,
-      expect(role('dialog')).toExist(),
-      expect(role('switch')).toExist(),
+      expect(role('switch', { name: 'Public' })).toHaveAttr('aria-checked', 'false'),
+      expect(role('button', { name: 'Share' })).toBeAbsent(),
+      expect(role('button', { name: 'Board options' })).toExist(),
+      expect(role('button', { name: 'Edit' })).toBeAbsent(),
+    )
+  })
+
+  test('the title renames the board in place, and Cancel leaves the name as it was', () => {
+    scene(
+      { update, view },
+      given(page),
+      measured,
+      click(role('button', { name: 'Rename Weekend' })),
+      Command.resolve(FocusName, BoardMessage.CompletedFocusName()),
+      expect(role('textbox', { name: 'Board name' })).toHaveValue('Weekend'),
+      click(role('button', { name: 'Cancel' })),
+      expect(role('textbox', { name: 'Board name' })).toBeAbsent(),
+      expect(role('button', { name: 'Rename Weekend' })).toExist(),
     )
   })
 

@@ -15,12 +15,14 @@ import {
   PinWork,
   Publishing,
   Removal,
+  Rename,
   Saving,
   Upload,
 } from '../src/page/Board/Model.ts'
 import { AddGalleryPicture, AddTryOnPicture, MakeIds, WaitToSave } from '../src/page/Board/Commands.ts'
 import {
   DeleteBoard,
+  FocusName,
   FocusPin,
   LeaveBoard,
   LoadLooks,
@@ -111,27 +113,40 @@ describe('a board page', () => {
     expect(removed.version).toBe(3)
   })
 
-  test('renaming from its settings sends the typed name and shows it once saved', () => {
+  test('renaming on the title sends the typed name and shows it once saved', () => {
     story(
       update,
       given(open),
-      message(Message.ClickedSettings()),
-      model(({ settings, nameDraft }) => {
-        expect(settings.isOpen).toBe(true)
+      message(Message.ClickedRename()),
+      Command.expectExact(FocusName),
+      Command.resolve(FocusName, Message.CompletedFocusName()),
+      model(({ rename, nameDraft }) => {
+        expect(Rename.guards.Editing(rename)).toBe(true)
         expect(nameDraft).toBe('Autumn')
       }),
-      Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
-      ...storySheetMoved(1),
       message(Message.UpdatedNameDraft({ value: '  Late autumn ' })),
       message(Message.SubmittedRename()),
       Command.expectExact(RenameBoard),
       Command.resolve(RenameBoard, Message.SucceededRename({ board: withPins([knitPin], { name: 'Late autumn' }) })),
-      model(({ board: state, settings }) => {
+      model(({ board: state, rename }) => {
         expect(state).toEqual(BoardData.Success({ data: BoardShown.Own({ name: 'Late autumn', paper: 'paper' }) }))
-        expect(settings.isOpen).toBe(false)
+        expect(Rename.guards.Idle(rename)).toBe(true)
       }),
+    )
+  })
+
+  test('the ⋯ sheet closes before the board tidies its table', () => {
+    story(
+      update,
+      given(open),
+      message(Message.ClickedMore()),
+      Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+      ...storySheetMoved(1),
+      message(Message.ClickedMoreAction({ action: 'tidy' })),
+      model(({ more }) => expect(more.isOpen).toBe(false)),
       ...storySheetMoved(2),
       Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
+      Command.resolve(WaitToSave, Message.ElapsedSaveWait({ generation: -1 })),
     )
   })
 

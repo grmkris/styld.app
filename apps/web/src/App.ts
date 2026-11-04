@@ -463,7 +463,7 @@ export const subscriptions = Subscription.aggregate(
         lenses.board.read(model.page),
         (board) =>
           Option.isSome(ownBoard(board.board)) &&
-          !sheetShown(board.settings) &&
+          !sheetShown(board.more) &&
           !sheetShown(board.piecePicker.sheet) &&
           !sheetShown(board.make.sheet) &&
           !PinWork.guards.Sending(board.pinWork),

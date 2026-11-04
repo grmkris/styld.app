@@ -129,11 +129,11 @@ export type Ticks = typeof Ticks.Type
 export const PinWork = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: {} })
 export type PinWork = typeof PinWork.Type
 
-/** Renaming the board from its settings. */
-export const Rename = defineTaggedUnion({ Idle: {}, Saving: {}, Failed: {} })
+/** Renaming the board in place, on its title: not asked, the name being typed, sent, or refused (the field stays). */
+export const Rename = defineTaggedUnion({ Idle: {}, Editing: {}, Saving: {}, Failed: {} })
 export type Rename = typeof Rename.Type
 
-/** Making the board public or private from its settings; a board goes public only from a published profile. */
+/** Making the board public or private with the switch beside Share; a board goes public only from a published profile. */
 export const Publishing = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: { needsProfile: Schema.Boolean } })
 export type Publishing = typeof Publishing.Type
 
@@ -178,8 +178,8 @@ export const Model = Schema.Struct({
   publicPins: Schema.Array(Schema.String),
   /** The pin whose × was pressed: it asks once more, since it comes off the table too (and a picture is deleted). */
   unpinning: Schema.Option(Schema.String),
-  /** The settings sheet: the name being typed, a rename and a deletion. */
-  settings: Dialog.Model,
+  /** The board's ⋯ sheet: tidying, pasting, its moods, its pins and deleting it. */
+  more: Dialog.Model,
   nameDraft: Schema.String,
   rename: Rename,
   removal: Removal,
@@ -240,7 +240,7 @@ export const init = (boardId: string, signedIn: boolean): Model => ({
   pinWork: PinWork.Idle(),
   unpinning: Option.none(),
   publicPins: [],
-  settings: Dialog.init({ id: 'board-settings', isAnimated: true }),
+  more: Dialog.init({ id: 'board-more', isAnimated: true }),
   nameDraft: '',
   rename: Rename.Idle(),
   removal: Removal.Idle(),

@@ -185,11 +185,15 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // refused as a PNG declared WebP), 88 more (422,223 to 422,311).
 // Raised to 424,300 on 5 November: the board's one Add sheet (pieces, looks, Gallery photos and try-ons with one search,
 // replacing the pins picker), its two list reads and its words in both languages, 1,865 more (422,315 to 424,180).
-if (initialGzip > 424300) throw new Error(`Initial browser assets exceed the 424,300-byte gzip budget: ${initialGzip}`)
+// Raised to 425,100 the same day: the board is edited in place (its title renames it, the public switch sits beside
+// Share, and ⋯ opens tidy, paste, moods, pins and delete) instead of in an Edit sheet, 881 more (424,180 to 425,061
+// on 07ea7c63; 424,714 with the landing's rail player on 62f918e5).
+if (initialGzip > 425100) throw new Error(`Initial browser assets exceed the 425,100-byte gzip budget: ${initialGzip}`)
 // All browser assets were held at 700 KiB until 5 November, when the landing's rail got its own player back (the
 // owner: hover to turn on a wide screen, swipe with momentum on a phone): it loads as its own chunk once the rail is in
 // the page, 3,851 gzip bytes, and the whole build grows by 3,547 (716,352 to 719,899 on main at 10730bc0).
-if (totalGzip > 720000) throw new Error(`All browser assets exceed the 720,000-byte gzip budget: ${totalGzip}`)
+// Raised to 720,900 the same day with the board edited in place, 903 more on 07ea7c63; 720,875 with it on 62f918e5.
+if (totalGzip > 720900) throw new Error(`All browser assets exceed the 720,900-byte gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(
   `Bundle budgets: initial browser ${initialGzip} gzip bytes; all browser ${totalGzip}; SSR ${server.byteLength} source bytes`,

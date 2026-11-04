@@ -177,6 +177,9 @@ export interface MessageArgumentsByKey<_T = string> {
   'board.make.wordsLabel': Readonly<Record<string, never>>
   'board.make.wordsPlaceholder': Readonly<Record<string, never>>
   'board.missing': Readonly<Record<string, never>>
+  'board.more.rename': Readonly<Record<string, never>>
+  'board.more.renameNamed': { readonly name: string | number }
+  'board.more.title': Readonly<Record<string, never>>
   'board.newText': Readonly<Record<string, never>>
   'board.openLook': Readonly<Record<string, never>>
   'board.paper': Readonly<Record<string, never>>
@@ -736,7 +739,6 @@ export interface MessageArgumentsByKey<_T = string> {
   'showMe.women': Readonly<Record<string, never>>
   'studio.backToBoards': Readonly<Record<string, never>>
   'studio.boardName': Readonly<Record<string, never>>
-  'studio.boardSettings': Readonly<Record<string, never>>
   'studio.boardStatus': { readonly count: number; readonly visibility: string | number }
   'studio.boardStatusPartly': { readonly count: number; readonly shown: number }
   'studio.cancel': Readonly<Record<string, never>>
@@ -1185,4 +1187,4 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
 export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '49cf498a0e64a981f4a53f1d4543502cd633534912f4e1558e67ae6b0c09d0da'
+export const catalogVersion = '19da635b7e1a398cd59047d0bfe9e8026e1af3cff709add55b48f297c3223052'

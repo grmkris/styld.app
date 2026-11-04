@@ -97,7 +97,7 @@ describe('a public profile', () => {
       expect(role('heading', { name: 'Coats' })).toExist(),
       expect(role('link', { name: /By Nika Kovač/ })).toHaveAttr('href', '/@nika.kovac'),
       expect(role('link', { name: 'Navy knit' })).toHaveAttr('href', `/pieces/${knit.id}`),
-      expect(role('button', { name: 'Board settings' })).toBeAbsent(),
+      expect(role('button', { name: 'Board options' })).toBeAbsent(),
       expect(role('button', { name: 'Save' })).toHaveAttr('aria-pressed', 'false'),
       click(role('button', { name: 'Save' })),
       Command.resolve(

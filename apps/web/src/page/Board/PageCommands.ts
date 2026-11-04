@@ -10,8 +10,11 @@ import { Message } from './Message.ts'
 
 // COMMAND
 
-// The board page's Commands: its settings, its pins and the looks its picker offers. The table's own are in
+// The board page's Commands: its name, visibility, moods and pins, and what the Add sheet reads. The table's own are in
 // Commands.ts.
+
+/** The id of the field the title turns into for a rename. */
+export const nameFieldId = 'board-name'
 
 const boardIdOf = (id: string) => Schema.decodeUnknownEffect(BoardId)(id)
 /** The board as it is now, read again when the page comes back into view; none when it could not be read, and the
@@ -103,6 +106,12 @@ export const FocusPin = Command.define('FocusPin', {
   args: { selector: Schema.String },
   messages: [Message.CompletedFocusPin],
   execute: ({ selector }) => Dom.focus(selector).pipe(Effect.ignore, Effect.as(Message.CompletedFocusPin())),
+})
+
+/** The board's name field takes focus as the title turns into it. */
+export const FocusName = Command.define('FocusName', {
+  messages: [Message.CompletedFocusName],
+  execute: Dom.focus(`#${nameFieldId}`).pipe(Effect.ignore, Effect.as(Message.CompletedFocusName())),
 })
 
 /** The ids the pin's × and its Keep carry, so focus can move between them. */
