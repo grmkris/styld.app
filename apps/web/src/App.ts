@@ -274,7 +274,7 @@ const foldTodayOut = Today.OutMessage.match<Step>({ RequestedPieces: () => revis
 /** The address changed in the page: its tab opens with what the app has, refreshed behind; any other page loads. */
 const changedUrl = (model: Model, url: Url): UpdateReturn => {
   const route = routeFromUrl(url)
-  const sameBoard = NavigationState.sameBoardArrival(model, route)
+  const sameBoard = NavigationState.samePageArrival(model, route)
   if (Option.isSome(sameBoard)) return sameBoard.value
   if (Option.isNone(tabOf(route))) return { model, commands: [Navigate({ href: urlToString(url) })] }
   const moved = NavigationState.restoreBrowsing(model, route, url.hash)

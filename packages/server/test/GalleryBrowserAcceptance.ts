@@ -355,7 +355,8 @@ const verifyStylist = async (page: Page, origin: string) => {
   await page.goto(`${origin}/ask`, { waitUntil: 'networkidle' })
   await page.getByRole('searchbox', { name: 'Search your wardrobe' }).fill(question)
   await page.getByRole('link', { name: `Ask Styld about “${question}”` }).click()
-  await page.waitForURL(`${origin}/ask/stylist?q=what+goes+with+the+knit`)
+  // Styld takes Ask's question into its draft once, and its address drops it, so a reload starts empty.
+  await page.waitForURL(`${origin}/ask/stylist`)
   expect(await page.getByRole('textbox', { name: 'Message to Styld' }).inputValue()).toBe(question)
   await page.getByRole('button', { name: 'Send', exact: true }).click()
   await page.getByRole('list', { name: question }).waitFor({ state: 'visible' })

@@ -101,10 +101,12 @@ const formerPhotoRouter = pipe(
 )
 
 /** The address the app puts in place of the one a page opened at: a board's collage address becomes the board's (its
- * editor opens on the board's own page), Explore's former address Home's, and the Gallery's former addresses its
- * current one. */
+ * editor opens on the board's own page), Styld's with Ask's question its own once the draft holds it, Explore's former
+ * address Home's, and the Gallery's former addresses its current one. */
 export const addressInPlace = (pathname: string, route: AppRoute): Option.Option<string> => {
   if (AppRoute.guards.BoardCollage(route)) return Option.some(boardRouter({ boardId: route.boardId }))
+  // Ask's question is handed to Styld's draft once: kept in the address, a reload would bring a sent message back.
+  if (AppRoute.guards.Stylist(route) && Option.isSome(route.q)) return Option.some(stylistRouter({ q: Option.none() }))
   if (pathname === '/explore') return Option.some(homeRouter({}))
   if (pathname !== '/wardrobe/gallery' && !pathname.startsWith('/wardrobe/gallery/')) return Option.none()
   return Option.some(AppRoute.guards.Photo(route) ? photoRouter({ photoId: route.photoId }) : photosRouter({}))

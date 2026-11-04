@@ -19,7 +19,11 @@ export const navigateTo =
   (href: string) =>
   (model: Model): NavigationUpdate => ({ model, commands: [Navigate({ href })] })
 
-export const sameBoardArrival = (model: Model, route: AppRoute): Option.Option<NavigationUpdate> => {
+/** An address replaced on the page it was already on (a board's collage address, Styld's once its question is in the
+ * draft): the route follows in place, with no new page load. */
+export const samePageArrival = (model: Model, route: AppRoute): Option.Option<NavigationUpdate> => {
+  if (AppRoute.guards.Stylist(model.route) && AppRoute.guards.Stylist(route))
+    return Option.some({ model: modifyFields(model, { route: () => route }) })
   if (AppRoute.guards.Board(model.route) || AppRoute.guards.BoardCollage(model.route)) {
     if (AppRoute.guards.BoardCollage(route) && route.boardId === model.route.boardId)
       return Option.some({ model, commands: [ReplaceInternal({ href: boardRouter({ boardId: route.boardId }) })] })

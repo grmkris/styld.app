@@ -4,7 +4,7 @@ import { UrlRequest } from 'foldkit/navigation'
 import { modifyFields } from 'foldkit/struct'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { describe, expect, test } from 'vitest'
-import { Message, update } from '../src/App.ts'
+import { init, Message, update } from '../src/App.ts'
 import { lenses } from '../src/Page.ts'
 import { ListPieces, Message as PiecesMessage, PiecesData } from '../src/ServerData.ts'
 import {
@@ -23,7 +23,7 @@ import * as ShowMe from '../src/page/ShowMe.ts'
 import { ListLooks, Message as LooksMessage } from '../src/page/Looks.ts'
 import { AppRoute } from '../src/route.ts'
 import { browseGroup, unfiltered } from '../src/WardrobeBrowse.ts'
-import { at, pageOf, urlOf } from './AppFixtures.ts'
+import { at, flags, pageOf, urlOf } from './AppFixtures.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const internal = (path: string) => UrlRequest.Internal({ url: urlOf(path) })
@@ -163,5 +163,24 @@ describe('opening a tab page inside the page', () => {
       model(({ route }) => expect(route).toEqual(AppRoute.Ask({ q: Option.none() }))),
     )
     expect(NavigateInternal.name).toBe('NavigateInternal')
+  })
+})
+
+describe("Styld takes Ask's question once", () => {
+  const opened = init(flags(true), urlOf('/ask/stylist?q=What%20goes%20with%20jeans%3F'))
+
+  test('the question goes into the draft and the address drops it, so a reload starts empty', () => {
+    expect(opened.commands?.filter(({ name }) => name === 'ReplaceInternal').map(({ args }) => args)).toEqual([
+      { href: '/ask/stylist' },
+    ])
+    expect(pageOf(opened.model, lenses.stylist).draft).toBe('What goes with jeans?')
+    expect(pageOf(at('/ask/stylist', { signedIn: true }), lenses.stylist).draft).toBe('')
+  })
+
+  test('the replaced address keeps the page and its draft: the route follows, nothing loads again', () => {
+    const moved = update(opened.model, Message.ChangedUrl({ url: urlOf('/ask/stylist') }))
+    expect(moved.model.route).toEqual(AppRoute.Stylist({ q: Option.none() }))
+    expect(moved.commands ?? []).toEqual([])
+    expect(pageOf(moved.model, lenses.stylist).draft).toBe('What goes with jeans?')
   })
 })
