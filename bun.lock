@@ -42,7 +42,7 @@
         "typescript": "7.0.2",
         "vite": "catalog:",
         "vitest": "catalog:",
-        "zyzz": "0.0.44",
+        "zyzz": "catalog:",
       },
     },
     "apps/web": {
