@@ -284,8 +284,21 @@ session builds; `styldappv2-51` deploys and runs the native suite after each dep
   boards (26 women's, 16 men's, 11 everyone's; 31 and 22 by account). It also checks that every garment is used and
   that the Slovenian addresses one person. The dry run expects $2.89 to generate the remaining 156 garments; the worst
   case is above the $5 cap, which stops the run there.
+- **The look** (f7bb710e, 819c9ec4, after Eva's Pinterest references, owner 4 November): each outfit a dense stack
+  filling its cell (layer over top, bottom beside, shoes at the hem), up to three across; packing lists and collages
+  in rows at one scale (shoes and small things larger than life); the board's name as its headline (not on one-piece
+  boards, whose table is the app's template). A board's paper stays light in dark mode, for every board.
+- **Clef reports, never blocks** (c7b6e51d): every house garment passed the seed's own judge (Muse Spark: one whole
+  garment of its type and colour), and the owner chose the catalogue's type, so Clef's reading is listed in the
+  report and only a garment not ready or not cut out holds a board back. The judge takes any shape for sportswear
+  and loungewear (3bdd9308).
+- **Seeded (4 November evening):** all 166 garments generated and judged, $3.44 of the $5 cap with cut-outs (pages
+  `styld-house-garments`, `styld-boards-live`). Preview: 53 boards, 52 public and passed; `w-witch-october`'s check
+  says unsure. Production (styld.app): 173 garments imported and 37 boards created on the first pass; the other 16
+  followed once c7b6e51d was live; checks pending at the time of writing (see Open).
 - **Runbook:** `docs/DEPLOYMENT.md` › House inspiration boards.
-- **Bundle budget** 388,000: Show me +2,284 and Try +808, each measured in a clean worktree.
+- **Bundle budget** 388,200: Show me +2,284, Try +808 and the card's first paint +203, each measured in a clean
+  worktree.
 - **Evidence:**
   - Unit: `HouseSeedTables`, `SeedPlans`, `Translated`, `Checks`, `PublicGenerated`, `Feed`, `ShowMe`, `TryBoard`,
     and the `tools/seed` tests.
@@ -295,8 +308,9 @@ session builds; `styldappv2-51` deploys and runs the native suite after each dep
   - Preview: the fixture run of two boards passed its checks and read back in en and sl, a rerun changed nothing,
     and the boards were pruned.
 - **Open:**
-  - `--full`, which waits for Kris's approval of the test batch.
-  - The photo swap endpoint (`PUT /operator/seed/pieces/:manifestId/picture`), not built yet.
+  - Production: the boards' content checks were still pending after ten minutes; they show on styld.app once passed.
+  - The admin calls on production: `curation_house` for both handles and the report's `curation_feature` calls.
+  - `w-witch-october`'s unsure check, for a person to look at (a Challenges card opens it).
   - Eva's review of the Slovenian copy, and her call on the sl chip ("Ustvarjeno" or "Ustvarjeno z UI").
   - On the preview: a readback of Show me's order and of a try with a test account.
 
