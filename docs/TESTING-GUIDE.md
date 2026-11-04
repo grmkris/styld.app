@@ -116,7 +116,7 @@ the phone and on a computer.
 - Board templates (an outfit built around one piece, "before you buy", travel) and saving a board as a picture.
 - Trying clothes on yourself.
 - Recording a video inside Styld (choose one from your phone instead).
-- Sign in with Google, notifications, lists of who you follow or blocked, payments.
+- Notifications, lists of who you follow or blocked, payments.
 - Styld's chat does not take or make pictures yet.
 - The first outfit on Home can take a few seconds to appear.
 

@@ -7,6 +7,22 @@ listed below stays open. The history of 2 to 4 November (the cleanup's C8 fixes,
 `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`. The Eva review tracker was retired on 4 November; what it still
 held open is the section below.
 
+## Sign in with Google (4 November, on main, not deployed)
+
+The owner chose Google sign-in with v1's OAuth client and v1's linking, from Grok's competitor onboarding report.
+
+- **Built:** `94dc82d6` (server: the `google` strategy, migration `20261104172833_google_sign_in` with three plain
+  CREATE TABLEs, `GoogleEntry.ts` linking by verified address, the callback at `/api/auth/callback/google`, deletion
+  purge, a sweep for unfinished sign-ins) and `9b5e923a` (Continue with Google on the sign-in page, `next` noted for the
+  tab, `/login?problem=google`).
+- **Open:**
+  - The preview needs `STYLD_GOOGLE_CLIENT_ID` and `STYLD_GOOGLE_CLIENT_SECRET` (v1's, from Railway) in
+    `.env.preview.local`; `STYLD_AUTH_OAUTH_KEYS` is there. The preview's callback must be added to v1's client in
+    Google Cloud.
+  - Unit (`GoogleEntry.test`), the batch's native run, and a live sign-in on the preview.
+  - The first Google sign-in of an existing account signs its other sessions out once (Yielded's import advances the
+    security revision).
+
 ## Pictures that look like a shop's, and a piece turned to its back (4 November)
 
 Eva saw her shop-style pictures as plain cut-outs, and found swiping through three pictures of the front pointless.
@@ -310,7 +326,7 @@ From the product (carried from 31 October – 1 November):
 - **Styld:** the model and the price per message.
 - **Order of M4–M9** after the testers' findings.
 - **Screen review topics:** where Styld lives, what Home is for, credits and settings on Account, Mine/Saved on
-  boards, the landing's lead, Sign in with Google.
+  boards, the landing's lead.
 - **Production:** billing's planning round, legal pages and the cutover to styld.app, each on the owner's go.
 
 ## Next

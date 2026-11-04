@@ -101,15 +101,17 @@ behind these decisions.
   - Evidence: native Chromium, plus real mail on the preview.
   - Not carried over: the sign-in link in the email, and return paths other than `/login/connect`.
 
-**ID-02 Google sign-in with automatic linking** · v1 shipped (config) · v2 pending
+**ID-02 Google sign-in with automatic linking** · v1 shipped (config) · v2 built (`94dc82d6`, `9b5e923a`), acceptance open
 
 - **v1:**
   - "Continue with Google". A verified Google email links to the existing account with that email.
   - Shown only when `NEXT_PUBLIC_AUTH_GOOGLE=true` and both `GOOGLE_CLIENT_*` are set.
   - There is no manual link/unlink UI, and the live check was still an owner task.
 - **v2:**
-  - Not built; no credentials yet.
-  - Yielded refuses linking by email, so the owner has to decide how Google and email accounts relate.
+  - The owner decided (4 November 2026) to keep v1's linking: a verified Google address signs into the account of that
+    address, or makes one. Built in `packages/auth/src/GoogleEntry.ts` over Yielded's `IdentityImports`, with v1's
+    OAuth client and v1's callback path `/api/auth/callback/google`.
+  - Open: unit and native runs, and a live sign-in on the preview once its callback is registered.
 
 **ID-03 Password sign-in** · v1 shipped (limited) · v2 partial
 

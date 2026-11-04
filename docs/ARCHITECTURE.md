@@ -142,6 +142,15 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
   public content is hidden from that moment, and the queue and then the account sweep purge the prefix, the chats, the
   videos at Meta and the rows until done; the record waits a day for writers admitted before it, purges the prefix a
   last time and goes. The Wallet's Durable Object is not purged yet (STATUS › Open items).
+- **Sign in with Google** (owner, 4 November 2026, as on v1): a Google address Google verified is the same person as
+  the Styld account of that address. Yielded never links by email, so `packages/auth/src/GoogleEntry.ts` wraps its
+  Google preset: before Yielded resolves an unknown Google identity, it is attached (managed persistence's
+  `IdentityImports`) to the account of the verified address, or to an account made for it the way email-code
+  registration makes one; an unverified address is refused. Claims carry the account's own verified address, never
+  Google's current one (admin and house checks read it). Google returns to `/api/auth/callback/google`, v1's path, so
+  styld.app's registered redirect carries over; the edge turns a refused callback into `/login?problem=google`. Without
+  `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET` and `AUTH_OAUTH_KEYS`, or when Google cannot be reached as an isolate sets
+  up, Google is not offered and email sign-in is untouched.
 - **MCP** at `/mcp`: Styld is its own OAuth issuer (one scope, `styld`), bearer-only, CIMD first with compatible DCR,
   HTTPS or loopback redirects, consent re-read and immediate revoke. Tools are `noun_verb` projections of the same
   operations, inputs are the protocol's payloads, closed, and refusals name the bad argument without its value. Admin

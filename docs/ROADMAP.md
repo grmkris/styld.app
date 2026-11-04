@@ -66,7 +66,6 @@ reading a product's brand.
   search filter.
 - **Styld:** pictures in or out of the chat, renaming or deleting chats; the model and price are the owner's to
   confirm.
-- **Sign in with Google** (an owner topic from the screen review).
 - **Challenges** (Eva's Home sketch, 4 November): shown on Home as coming soon ("30 days of red", "Witch October",
   "One piece for a whole week"); joining one and posting an outfit to it, private or public, is not built.
 

@@ -34,7 +34,10 @@ The ignored `.env.preview.local` file (mode 600) holds the stage's secrets: `STY
 `STYLD_AI_GATEWAY_API_KEY` (or `AI_GATEWAY_API_KEY`), `STYLD_LITELLM_URL`, `STYLD_LITELLM_KEY` and
 `STYLD_ADMIN_EMAILS` (the admins' sign-in emails,
 comma-separated: their assistants get the curation tools), `STYLD_HOUSE_EMAILS` (the house accounts' sign-in emails,
-comma-separated; only they can be seeded, and unset means none can), and `STYLD_OPERATOR_TOKEN`, the operator's token for
+comma-separated; only they can be seeded, and unset means none can), `STYLD_GOOGLE_CLIENT_ID`, `STYLD_GOOGLE_CLIENT_SECRET` and `STYLD_AUTH_OAUTH_KEYS` (Sign in with Google: the owner
+chose to reuse v1's OAuth client, the one exception to the rule below, and a dedicated keyring whose material is exactly
+32 bytes; Google is offered only when all three are set, and the stage's `<origin>/api/auth/callback/google` must be
+an authorised redirect on that client), and `STYLD_OPERATOR_TOKEN`, the operator's token for
 administrative tasks from the operator's own tools, such as the v1 importer (`@styld/protocol` › Operator; at least 32
 random bytes, made with `openssl rand -base64 48 | tr '+/' '-_' | tr -d '=\n'`). `alchemy.run.ts` reads them at deploy
 and binds them to the API Worker; `STYLD_ADMIN_EMAILS` unset means no admins, and `STYLD_OPERATOR_TOKEN` unset means no
