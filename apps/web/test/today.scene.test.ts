@@ -5,7 +5,8 @@ import { AsyncData } from 'foldkit'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
-import { FavouriteData, Message, OutfitsData, ReadWorn, SwapPiece, TrayData, Wear, Worn } from '../src/page/Today.ts'
+import { FavouriteData, TrayData } from '../src/page/PickUp.ts'
+import { Message, OutfitsData, ReadWorn, SwapPiece, Wear, Worn } from '../src/page/Today.ts'
 import { view } from '../src/View.ts'
 import { lenses } from '../src/Page.ts'
 import { at, withBoards, withPage, withPieces } from './AppFixtures.ts'
@@ -42,8 +43,10 @@ const home = (waiting: number, maybeBoard: Option.Option<BoardSummary>, pictures
     lenses.today,
     (today) =>
       modifyFields(today, {
-        tray: () => TrayData.Success({ data: { waiting, pictures } }),
-        favourite: () => FavouriteData.Success({ data: Option.none() }),
+        pickUp: () => ({
+          tray: TrayData.Success({ data: { waiting, pictures } }),
+          favourite: FavouriteData.Success({ data: Option.none() }),
+        }),
       }),
   )
 

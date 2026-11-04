@@ -1,4 +1,3 @@
-import { cdn } from '../Cdn.ts'
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { drawOperationId } from '../OperationIds.ts'
 import {
@@ -12,7 +11,6 @@ import {
   OutfitProposal,
   OutfitProposals,
   OutfitSession,
-  Photo,
   type MakeOutfit,
   type Piece,
   PieceId,
@@ -25,6 +23,7 @@ import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
+import * as PickUp from './PickUp.ts'
 
 // MODEL
 
@@ -52,17 +51,9 @@ export type Swap = typeof Swap.Type
 /** Whether the table was just spun: only then do its pieces drop in. Opening Home shows the table as it lies. */
 export const TableMotion = defineTaggedUnion({ Still: {}, Spun: {} })
 
-/** The newest favourite photo of My Gallery, for "Wear it again". */
-export const FavouriteData = AsyncData.Schema(Schema.Option(Photo), Schema.Literal('Unavailable'))
-export type FavouriteData = typeof FavouriteData.schema.Type
 /** What people the person follows made public lately. */
 export const FeedData = AsyncData.Schema(Feed, Schema.Literal('Unavailable'))
 export type FeedData = typeof FeedData.schema.Type
-/** The review tray as Home shows it: how many found pieces wait, and the first three's pictures. */
-export const Tray = Schema.Struct({ waiting: Schema.Int, pictures: Schema.Array(Schema.String) })
-export type Tray = typeof Tray.Type
-export const TrayData = AsyncData.Schema(Tray, Schema.Literal('Unavailable'))
-export type TrayData = typeof TrayData.schema.Type
 
 /** Today's outfits from the engine (Fast): every proposal of the run so far, best first within each batch, which one
  * is on the table, what the wardrobe lacks, and whether the rules have more and more are on their way. */
@@ -91,8 +82,7 @@ export const Model = Schema.Struct({
   maybeSwapped: Schema.Option(Schema.Array(PieceId)),
   swap: Swap,
   worn: Worn,
-  favourite: FavouriteData.schema,
-  tray: TrayData.schema,
+  pickUp: PickUp.Model,
   feed: FeedData.schema,
 })
 export type Model = typeof Model.Type
@@ -105,8 +95,7 @@ export const init = (): Model => ({
   maybeSwapped: Option.none(),
   swap: Swap.Idle(),
   worn: Worn.NotYet(),
-  favourite: AsyncData.Idle(),
-  tray: AsyncData.Idle(),
+  pickUp: PickUp.init(),
   feed: AsyncData.Idle(),
 })
 
@@ -116,10 +105,7 @@ export const Message = defineMessageUnion({
   CompletedDetermineDay: { day: Day },
   SucceededReadWorn: { pieceIds: Schema.Array(PieceId) },
   FailedReadWorn: {},
-  SucceededReadFavourite: { maybePhoto: Schema.Option(Photo) },
-  FailedReadFavourite: {},
-  SucceededReadTray: { tray: Tray },
-  FailedReadTray: {},
+  GotPickUpMessage: { message: PickUp.Message },
   SucceededReadFeed: { feed: Feed },
   FailedReadFeed: {},
   SucceededMakeOutfits: { batch: OutfitProposals },
@@ -175,26 +161,6 @@ export const ReadFeed = Command.define('ReadFeed', {
     const api = yield* (yield* StyldClient).api
     return Message.SucceededReadFeed({ feed: yield* api.social.feed({ query: {} }) })
   }).pipe(Effect.orElseSucceed(() => Message.FailedReadFeed())),
-})
-
-export const ReadFavourite = Command.define('ReadFavourite', {
-  messages: [Message.SucceededReadFavourite, Message.FailedReadFavourite],
-  execute: Effect.gen(function* () {
-    const { photos } = yield* (yield* (yield* StyldClient).api).photo.listPhotos()
-    const maybePhoto = Array.findFirst(photos, (photo) => photo.favourite && photo.status === 'ready')
-    return Message.SucceededReadFavourite({ maybePhoto })
-  }).pipe(Effect.orElseSucceed(() => Message.FailedReadFavourite())),
-})
-
-export const ReadTray = Command.define('ReadTray', {
-  messages: [Message.SucceededReadTray, Message.FailedReadTray],
-  execute: Effect.gen(function* () {
-    const { captures } = yield* (yield* (yield* StyldClient).api).capture.tray()
-    const detections = captures.flatMap((capture) => capture.detections)
-    // A found piece's cut-out when it has one, else its photo, as the tray first shows it.
-    const pictures = detections.slice(0, 3).map((detection) => cdn.detection(detection, detection.hasCutout))
-    return Message.SucceededReadTray({ tray: { waiting: detections.length, pictures } })
-  }).pipe(Effect.orElseSucceed(() => Message.FailedReadTray())),
 })
 
 /** How many outfits one request asks for, and how few left on the table ask for more. */
@@ -274,6 +240,14 @@ type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, Styl
 
 const unavailable = Result.fail('Unavailable' as const)
 
+const pickUpFold = {
+  read: (model: Model) => Option.some(model.pickUp),
+  write: (model: Model, pickUp: PickUp.Model) => modifyFields(model, { pickUp: () => pickUp }),
+  toParentMessage: (message: PickUp.Message) => Message.GotPickUpMessage({ message }),
+}
+const foldPickUp = Update.foldChild({ update: PickUp.update, ...pickUpFold })
+const enterPickUp = Update.foldChildStep({ update: PickUp.enter, ...pickUpFold })
+
 /** Opening Home: today is read again, and where they left off is kept on screen while it is asked for again. */
 export const enter = (model: Model): Update.Return<Model, Message, StyldClient> =>
   Update.combine<Model, Message, StyldClient>(model, [
@@ -281,18 +255,7 @@ export const enter = (model: Model): Update.Return<Model, Message, StyldClient> 
       model: modifyFields(current, { motion: () => TableMotion.Still() }),
       commands: [DetermineDay()],
     }),
-    Update.refresh<Model, Message, Option.Option<Photo>, 'Unavailable', StyldClient>({
-      read: (current: Model) => Option.some(current.favourite),
-      revalidate: AsyncData.revalidateOrLoad,
-      write: (current: Model, favourite: FavouriteData) => modifyFields(current, { favourite: () => favourite }),
-      load: ReadFavourite(),
-    }),
-    Update.refresh<Model, Message, Tray, 'Unavailable', StyldClient>({
-      read: (current: Model) => Option.some(current.tray),
-      revalidate: AsyncData.revalidateOrLoad,
-      write: (current: Model, tray: TrayData) => modifyFields(current, { tray: () => tray }),
-      load: ReadTray(),
-    }),
+    enterPickUp,
     Update.refresh<Model, Message, Feed, 'Unavailable', StyldClient>({
       read: (current: Model) => Option.some(current.feed),
       revalidate: AsyncData.revalidateOrLoad,
@@ -513,14 +476,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     FailedReadWorn: () => ({ model: modifyFields(model, { worn: () => Worn.Unread() }) }),
     SucceededReadFeed: ({ feed }) => ({ model: modifyFields(model, { feed: () => FeedData.Success({ data: feed }) }) }),
     FailedReadFeed: () => ({ model: modifyFields(model, { feed: (feed) => AsyncData.settle(feed, unavailable) }) }),
-    SucceededReadFavourite: ({ maybePhoto }) => ({
-      model: modifyFields(model, { favourite: () => FavouriteData.Success({ data: maybePhoto }) }),
-    }),
-    FailedReadFavourite: () => ({
-      model: modifyFields(model, { favourite: (favourite) => AsyncData.settle(favourite, unavailable) }),
-    }),
-    SucceededReadTray: ({ tray }) => ({ model: modifyFields(model, { tray: () => TrayData.Success({ data: tray }) }) }),
-    FailedReadTray: () => ({ model: modifyFields(model, { tray: (tray) => AsyncData.settle(tray, unavailable) }) }),
+    GotPickUpMessage: (got) => foldPickUp(model, got.message),
     SucceededMakeOutfits: ({ batch }) => ({
       model: modifyFields(model, { outfits: (outfits) => OutfitsData.Success({ data: withBatch(outfits, batch) }) }),
     }),

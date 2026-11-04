@@ -9,6 +9,7 @@ import { ReadYou, You } from '../src/You.ts'
 import { Navigate } from '../src/Navigation.ts'
 import { Message as AddPiecesMessage } from '../src/page/AddPieces/Message.ts'
 import { Message as ReviewMessage } from '../src/page/Review.ts'
+import * as PickUp from '../src/page/PickUp.ts'
 import * as Today from '../src/page/Today.ts'
 import { AppRoute } from '../src/route.ts'
 import { lenses } from '../src/Page.ts'
@@ -105,8 +106,8 @@ describe('the session decides where a visitor belongs', () => {
       // The table is laid from the wardrobe's pieces, which every page shares.
       Command.expectExact(
         Today.DetermineDay,
-        Today.ReadFavourite,
-        Today.ReadTray,
+        PickUp.ReadFavourite,
+        PickUp.ReadTray,
         Today.ReadFeed,
         ListPieces,
         ListBoards,
@@ -115,8 +116,8 @@ describe('the session decides where a visitor belongs', () => {
       Command.resolve(ReadYou, Message.FailedReadYou()),
       Command.resolve(ListPieces, DataMessage.FailedListPieces()),
       Command.resolve(ListBoards, DataMessage.FailedListBoards()),
-      Command.resolve(Today.ReadFavourite, Today.Message.FailedReadFavourite()),
-      Command.resolve(Today.ReadTray, Today.Message.FailedReadTray()),
+      Command.resolve(PickUp.ReadFavourite, PickUp.Message.FailedReadFavourite()),
+      Command.resolve(PickUp.ReadTray, PickUp.Message.FailedReadTray()),
       Command.resolve(Today.ReadFeed, Today.Message.FailedReadFeed()),
       Command.resolve(Today.DetermineDay, Today.Message.CompletedDetermineDay({ day: thursday })),
       // Knowing the day, Home asks the outfit engine for today's outfits and what was worn on it.

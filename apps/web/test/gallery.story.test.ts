@@ -18,7 +18,8 @@ import { matching } from '../src/page/AskSearch.ts'
 import * as Boards from '../src/page/Boards.ts'
 import * as BoardStart from '../src/page/BoardStart.ts'
 import * as Today from '../src/page/Today.ts'
-import { cropFrom, headline } from '../src/page/TodayView.ts'
+import { cropFrom } from '../src/page/PickUpView.ts'
+import { headline } from '../src/page/TodayView.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
 
 const redTop = pieceFixture('red-top', { type: 'shortSleeveTops', colours: ['red'], name: 'Red shirt' })
