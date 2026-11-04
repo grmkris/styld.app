@@ -197,7 +197,7 @@
     "@foldkit/ui": "0.170.0",
     "@foldkit/vite-plugin": "0.29.0",
     "@formatjs/icu-messageformat-parser": "3.5.22",
-    "@maple-dev/effect-sdk": "0.12.1",
+    "@maple-dev/effect-sdk": "0.13.1",
     "@meta-sam/parser": "0.1.0",
     "@modelcontextprotocol/client": "2.4.0",
     "@modelcontextprotocol/sdk": "1.32.2",
@@ -444,7 +444,7 @@
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
 
-    "@maple-dev/effect-sdk": ["@maple-dev/effect-sdk@0.12.1", "", { "dependencies": { "std-env": "^4.0.0" }, "peerDependencies": { "effect": "^4.0.0" } }, "sha512-c1rImIAWvJTPUPwEXDQ3xE3bf89ZvJ2VUaj7lS5KxB3yUUUQtYIFaTKlNSEVKnLUxL5lRUUgxmU8r6BbdILbUQ=="],
+    "@maple-dev/effect-sdk": ["@maple-dev/effect-sdk@0.13.1", "", { "dependencies": { "std-env": "^4.0.0" }, "peerDependencies": { "effect": "^4.0.0" } }, "sha512-1hmLKRQDm3Td4LNBj/Lmnsn6kizc67mX0GH43ujUSSKU2ngf2dg6HeOidzkNWkgK3JThDweY3gnZB9iAi2WKEA=="],
 
     "@meta-sam/parser": ["@meta-sam/parser@0.1.0", "", {}, "sha512-099xq4EhULxm7gV+kEllQ9WTaNgwYumGRvCX5WAT2bny/SEh+U9tVT9bAzN1mISOC7TO6mgOt3MJmZ2Mv2RTmw=="],
 
