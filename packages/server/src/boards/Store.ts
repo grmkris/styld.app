@@ -304,7 +304,21 @@ const writeItems = (db: Database, save: TableSave, outfitOf: ReadonlyMap<string,
         db.insert(boardItems).values({ ...item, outfitId: outfitOf.get(item.id) ?? null, boardId: boardAtVersion }),
       ),
       ...save.pins.map((pin) => db.insert(boardPins).values(pin).onConflictDoNothing()),
-      db.insert(operationReceipts).values({ ...save.receipt, result: boardAtVersion }),
+      // The receipt is written only while the board is at the loaded version: receipts may be pending (a null
+      // result), so a null no longer fails the batch, and an empty table that lost would leave a pending receipt.
+      db.insert(operationReceipts).select(
+        db
+          .select({
+            accountId: boards.accountId,
+            operationId: sql`${save.receipt.operationId}`.as('operation_id'),
+            command: sql`${save.receipt.command}`.as('command'),
+            inputDigest: sql`${save.receipt.inputDigest}`.as('input_digest'),
+            result: boards.id,
+            createdAt: sql`${save.receipt.createdAt.getTime()}`.as('created_at'),
+          })
+          .from(boards)
+          .where(loaded),
+      ),
       db
         .update(boards)
         .set({ version: save.version + 1, updatedAt: save.at })
