@@ -91,18 +91,22 @@ const anchorButton = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder
   )
 }
 
-const problemView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  Making.guards.Failed(model.making)
+/** Why an outfit board was not made, and what the wardrobe lacks when that is why: the sheet's, and the tombola's. */
+export const makingProblem = <ParentMessage>(making: Making, locale: Locale, h: HtmlBuilder<ParentMessage>): Html =>
+  Making.guards.Failed(making)
     ? h.div(
         [h.Role('alert'), ...styled(h, askStyles.optionProblem())],
         [
-          format(locale, `boards.outfits_${model.making.problem}`, {}),
-          ...model.making.missing.flatMap((slot) =>
+          format(locale, `boards.outfits_${making.problem}`, {}),
+          ...making.missing.flatMap((slot) =>
             Option.toArray(Option.map(Option.fromNullishOr(addKeys[slot]), (key) => ` ${format(locale, key, {})}.`)),
           ),
         ],
       )
     : h.empty
+
+const problemView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  makingProblem(model.making, locale, h)
 
 /** The garment groups the person has pieces in, to narrow the pieces offered. */
 const groupsView = (model: Model, ready: ReadonlyArray<Piece>, locale: Locale, h: HtmlBuilder<Message>): Html =>

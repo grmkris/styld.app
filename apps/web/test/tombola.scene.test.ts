@@ -17,6 +17,7 @@ import {
   wheelOf,
 } from '../src/page/Tombola.ts'
 import { MakeOutfits, Message as TodayMessage } from '../src/page/Today.ts'
+import { CreateOutfitBoard, Message as StartMessage } from '../src/page/BoardStart.ts'
 import { view } from '../src/View.ts'
 import { at, withPage, withPieces } from './AppFixtures.ts'
 import { settled } from './HomeFixtures.ts'
@@ -32,6 +33,18 @@ const day = Schema.decodeUnknownSync(Day)('2026-11-04')
 const home = (pieces: ReadonlyArray<typeof skirt>) =>
   withPage(withPieces(at('/', { signedIn: true }), pieces), lenses.today, (today) =>
     modifyFields(settled(today), { maybeDay: () => Option.some(day) }),
+  )
+
+/** Home with the tombola stopped on the skirt. */
+const drawnSkirt = (pieces: ReadonlyArray<typeof skirt>) =>
+  withPage(home(pieces), lenses.today, (today) =>
+    modifyFields(today, {
+      tombola: () => ({
+        ...init(),
+        round: 1,
+        stage: Stage.Landed({ round: 1, slots: wheelOf([skirt.id, tee.id], 0), landing: 0 }),
+      }),
+    }),
   )
 
 describe('What to wear today', () => {
@@ -69,15 +82,7 @@ describe('What to wear today', () => {
 
   test('Wear it today makes today’s outfits around the drawn piece, without a swap for it, with a way back', () => {
     const boots = pieceFixture('boots', { type: 'boots', name: 'Black boots' })
-    const drawn = withPage(home([skirt, tee, boots]), lenses.today, (today) =>
-      modifyFields(today, {
-        tombola: () => ({
-          ...init(),
-          round: 1,
-          stage: Stage.Landed({ round: 1, slots: wheelOf([skirt.id, tee.id], 0), landing: 0 }),
-        }),
-      }),
-    )
+    const drawn = drawnSkirt([skirt, tee, boots])
     const run = Schema.decodeUnknownSync(OutfitProposals)({
       session: `os_${'c'.repeat(22)}`,
       mode: 'fast',
@@ -101,6 +106,26 @@ describe('What to wear today', () => {
       click(role('button', { name: 'Back to today’s outfits' })),
       Command.resolve(MakeOutfits, TodayMessage.FailedMakeOutfits()),
       expect(text('Outfits around Black skirt')).not.toExist(),
+    )
+  })
+
+  test('Make outfits with it says what the wardrobe lacks when no outfit can be made around the piece', () => {
+    const drawn = drawnSkirt([skirt, tee])
+    scene(
+      { update, view },
+      given(drawn),
+      Mount.resolve(HoldTombola, Message.CompletedHoldTombola()),
+      click(role('button', { name: 'Make outfits with it' })),
+      expect(role('button', { name: 'Putting outfits together…' })).toBeDisabled(),
+      Command.resolve(
+        CreateOutfitBoard,
+        StartMessage.FailedCreateOutfitBoard({ problem: 'noOutfits', missing: ['top'], operationId: Option.none() }),
+      ),
+      inside(
+        role('dialog', { name: 'What to wear today' }),
+        expect(role('alert')).toHaveText('Your wardrobe has no complete outfit around this piece yet. Add a top.'),
+        expect(role('button', { name: 'Make outfits with it' })).not.toBeDisabled(),
+      ),
     )
   })
 })

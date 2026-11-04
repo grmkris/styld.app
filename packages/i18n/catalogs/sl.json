@@ -939,7 +939,12 @@
       "drawn": "Današnja izbira: {piece}",
       "again": "Zavrti znova",
       "openPiece": "Odpri kos",
-      "wearIt": "Oblečem danes"
+      "wearIt": "Oblečem danes",
+      "makeOutfits": "Sestavi oprave s tem kosom",
+      "buildOwn": "Sestavim po svoje",
+      "ownBoardName": "{piece}: moja zbirka",
+      "sending": "Ustvarjam zbirko …",
+      "buildFailed": "Zbirka ni nastala. Poskusi znova."
     },
     "around": "Oprave okoli kosa: {piece}",
     "usualOutfits": "Nazaj na današnje oprave"

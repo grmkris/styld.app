@@ -152,6 +152,25 @@ const verifyHome = async (page: Page, origin: string) => {
   await page.getByText('Logged for today.').waitFor({ state: 'visible' })
   await page.reload({ waitUntil: 'networkidle' })
   await page.getByRole('button', { name: 'Worn today' }).waitFor({ state: 'visible' })
+  await verifyTombolaBoards(page, origin)
+}
+
+/** From the drawn piece: Make outfits with it opens the outfit board around it, and Build my own a board of its own. */
+const verifyTombolaBoards = async (page: Page, origin: string) => {
+  const draw = async () => {
+    await page.goto(`${origin}/`, { waitUntil: 'networkidle' })
+    await page.getByRole('button', { name: 'What to wear today' }).click()
+    const pick = page.getByRole('heading', { name: /^Today’s pick: / })
+    await pick.waitFor({ state: 'visible', timeout: 10_000 })
+    return ((await pick.textContent()) ?? '').replace('Today’s pick: ', '')
+  }
+  await draw()
+  await page.getByRole('button', { name: 'Make outfits with it' }).click()
+  await page.waitForURL(/\/boards\/bd_/, { timeout: 30_000 })
+  const drawn = await draw()
+  await page.getByRole('button', { name: 'Build my own' }).click()
+  await page.waitForURL(/\/boards\/bd_/, { timeout: 15_000 })
+  await page.getByRole('heading', { name: `${drawn}: my board`, level: 1 }).waitFor({ state: 'visible' })
 }
 
 /** The round + opens a new board directly on its table; Edit still renames it. */

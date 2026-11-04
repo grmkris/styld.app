@@ -5,13 +5,15 @@ import { Array, Option } from 'effect'
 import { AsyncData, Submodel } from 'foldkit'
 import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
-import { primaryAction, secondaryAction } from '../Actions.styles.ts'
-import { closeIcon, diceIcon } from '../Icon.ts'
+import { actionButton } from '../ActionButton.ts'
+import { linkAction, primaryAction, secondaryAction } from '../Actions.styles.ts'
+import { closeIcon, diceIcon, loader } from '../Icon.ts'
 import { pieceRouter } from '../route.ts'
 import type { PiecesData } from '../ServerData.ts'
 import { block } from '../Skeleton.styles.ts'
 import { styled } from '../Styled.ts'
 import {
+  Building,
   dialogId,
   HoldTombola,
   landedPiece,
@@ -25,6 +27,8 @@ import {
   wheelId,
 } from './Tombola.ts'
 import * as styles from './TombolaView.styles.ts'
+import { Making } from './BoardStart.ts'
+import { makingProblem } from './BoardStartView.ts'
 import { round as roundButton } from './PageBar.styles.ts'
 import { pieceLabel } from './WardrobeWords.ts'
 
@@ -91,44 +95,102 @@ const wheelView = (
 }
 
 /** The piece drawn: its picture large, what it is, and the ways on. */
-const resultView = (piece: Piece, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.div(styled(h, styles.result()), [
+/** A text button of the result: its label, or its loader and what it is doing while that is on its way. */
+const resultButton = (
+  label: string,
+  sending: Option.Option<string>,
+  onClick: Message,
+  isDisabled: boolean,
+  style: 'primary' | 'secondary',
+  h: HtmlBuilder<Message>,
+): Html =>
+  actionButton(
+    {
+      label: Option.getOrElse(sending, () => label),
+      leading: Option.isSome(sending) ? loader(h) : h.empty,
+      style: style === 'primary' ? primaryAction() : secondaryAction(),
+      onClick,
+      isDisabled,
+    },
+    h,
+  )
+
+/** The piece drawn: its picture large, what it is, and the ways on. Make outfits with it carries the ink; one board
+ * is on its way at a time. */
+const resultView = (model: Model, piece: Piece, locale: Locale, h: HtmlBuilder<Message>): Html => {
+  const name = pieceLabel(piece, locale)
+  const making = Making.guards.Sending(model.making)
+  const building = Building.guards.Sending(model.building)
+  return h.div(styled(h, styles.result()), [
     h.img([h.Src(cdn.piece(piece, 'full')), h.Alt(''), ...styled(h, styles.resultPicture())]),
     h.h3(
       [h.Id(resultId), ...styled(h, styles.resultTitle())],
-      [format(locale, 'today.tombola.drawn', { piece: pieceLabel(piece, locale) })],
+      [format(locale, 'today.tombola.drawn', { piece: name })],
     ),
     h.div(styled(h, styles.actions()), [
-      h.button(
-        [h.Type('button'), h.OnClick(Message.ClickedWearIt()), ...styled(h, primaryAction())],
-        [format(locale, 'today.tombola.wearIt', {})],
+      resultButton(
+        format(locale, 'today.tombola.makeOutfits', {}),
+        making ? Option.some(format(locale, 'boards.making', {})) : Option.none(),
+        Message.ClickedMakeOutfits({ name: format(locale, 'boards.outfitsBoardName', { piece: name }) }),
+        making || building,
+        'primary',
+        h,
       ),
-      h.a(
-        [h.Href(pieceRouter({ pieceId: piece.id })), ...styled(h, secondaryAction())],
-        [format(locale, 'today.tombola.openPiece', {})],
-      ),
-      h.button(
-        [h.Type('button'), h.OnClick(Message.ClickedSpinAgain()), ...styled(h, secondaryAction())],
-        [format(locale, 'today.tombola.again', {})],
-      ),
+      makingProblem(model.making, locale, h),
+      h.div(styled(h, styles.pair()), [
+        resultButton(
+          format(locale, 'today.tombola.wearIt', {}),
+          Option.none(),
+          Message.ClickedWearIt(),
+          making || building,
+          'secondary',
+          h,
+        ),
+        resultButton(
+          format(locale, 'today.tombola.buildOwn', {}),
+          building ? Option.some(format(locale, 'today.tombola.sending', {})) : Option.none(),
+          Message.ClickedBuildOwn({ name: format(locale, 'today.tombola.ownBoardName', { piece: name }) }),
+          making || building,
+          'secondary',
+          h,
+        ),
+      ]),
+      Building.guards.Failed(model.building)
+        ? h.p([h.Role('alert'), ...styled(h, styles.problem())], [format(locale, 'today.tombola.buildFailed', {})])
+        : h.empty,
+      h.div(styled(h, styles.links()), [
+        h.a(
+          [h.Href(pieceRouter({ pieceId: piece.id })), ...styled(h, linkAction())],
+          [format(locale, 'today.tombola.openPiece', {})],
+        ),
+        actionButton(
+          {
+            label: format(locale, 'today.tombola.again', {}),
+            style: linkAction(),
+            onClick: Message.ClickedSpinAgain(),
+          },
+          h,
+        ),
+      ]),
     ]),
   ])
+}
 
 const spinning = (locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.p([h.Role('status'), ...styled(h, styles.status())], [format(locale, 'today.tombola.spinning', {})])
 
-const stageView = (stage: Stage, pieces: ReadonlyArray<Piece>, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  Stage.match(stage, {
+const stageView = (model: Model, pieces: ReadonlyArray<Piece>, locale: Locale, h: HtmlBuilder<Message>): Html =>
+  Stage.match(model.stage, {
     Closed: () => h.empty,
     Drawing: () => h.div(styled(h, styles.stage()), [spinning(locale, h)]),
     Turning: ({ round, slots, landing }) =>
       h.div(styled(h, styles.stage()), [wheelView(round, slots, landing, pieces, h), spinning(locale, h)]),
     Landed: () =>
       Option.match(
-        Option.flatMap(landedPiece(stage), (pieceId) => Array.findFirst(pieces, (piece) => piece.id === pieceId)),
+        Option.flatMap(landedPiece(model.stage), (pieceId) => Array.findFirst(pieces, (piece) => piece.id === pieceId)),
         {
           onNone: () => h.div(styled(h, styles.stage()), [spinning(locale, h)]),
-          onSome: (piece) => h.div(styled(h, styles.stage()), [resultView(piece, locale, h)]),
+          onSome: (piece) => h.div(styled(h, styles.stage()), [resultView(model, piece, locale, h)]),
         },
       ),
   })
@@ -159,7 +221,7 @@ const screenView = (model: Model, pieces: ReadonlyArray<Piece>, locale: Locale, 
               [closeIcon(h)],
             ),
           ]),
-          stageView(model.stage, pieces, locale, h),
+          stageView(model, pieces, locale, h),
         ],
       )
 

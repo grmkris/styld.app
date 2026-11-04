@@ -1,5 +1,7 @@
 import { Option, Struct } from 'effect'
 import { describe, expect, test } from 'vitest'
+import { OperationId } from '@styld/protocol'
+import { CreateOutfitBoard } from '../src/page/BoardStart.ts'
 import {
   DrawPiece,
   FocusOpener,
@@ -7,6 +9,7 @@ import {
   init,
   landedPiece,
   Message,
+  OpenBoard,
   Stage,
   tombolaPool,
   update,
@@ -78,5 +81,64 @@ describe('a spin', () => {
     const late = update(opened, Message.CompletedDrawPiece({ round: 0, slots: wheelOf(pool, 0), landing: 0 }))
     expect(late.model).toEqual(opened)
     expect(update(opened, Message.CompletedTurnWheel({ round: 1 })).model).toEqual(opened)
+  })
+})
+
+describe('the ways on from the drawn piece', () => {
+  const drawn = {
+    ...init(),
+    round: 1,
+    maybeSeason: Option.some('autumn' as const),
+    stage: Stage.Landed({ round: 1, slots: wheelOf([tee.id, coat.id], 0), landing: 0 }),
+  }
+  const operationId = OperationId.make(`op_${'m'.repeat(22)}`)
+
+  test('Make outfits with it asks for the outfit board around it, once; a failure is asked for again under its id', () => {
+    const making = update(drawn, Message.ClickedMakeOutfits({ name: 'White tee: outfits' }))
+    expect(making.commands?.map(({ name, args }) => ({ name, args }))).toEqual([
+      {
+        name: CreateOutfitBoard.name,
+        args: {
+          name: 'White tee: outfits',
+          anchorPieceId: tee.id,
+          maybeSeason: Option.some('autumn'),
+          maybeOperationId: Option.none(),
+        },
+      },
+    ])
+    expect(update(making.model, Message.ClickedBuildOwn({ name: 'White tee: my board' })).commands ?? []).toEqual([])
+    const failed = update(
+      making.model,
+      Message.FailedMakeOutfits({ problem: 'failed', missing: [], operationId: Option.some(operationId) }),
+    ).model
+    expect(
+      update(failed, Message.ClickedMakeOutfits({ name: 'White tee: outfits' })).commands?.[0]?.args,
+    ).toMatchObject({ maybeOperationId: Option.some(operationId) })
+    const made = update(making.model, Message.SucceededMakeOutfits({ boardId: 'bd_made' }))
+    expect(made.commands?.map(({ name, args }) => ({ name, args }))).toEqual([
+      { name: OpenBoard.name, args: { boardId: 'bd_made' } },
+    ])
+  })
+
+  test('Build my own saves the piece to a new board by its name, resuming a failed try, and opens it', () => {
+    const building = update(drawn, Message.ClickedBuildOwn({ name: 'White tee: my board' }))
+    expect(building.commands?.[0]?.args).toEqual({
+      target: { kind: 'piece', id: tee.id },
+      destination: { boardId: Option.none(), boardName: 'White tee: my board' },
+      resume: Option.none(),
+    })
+    const resume = {
+      destination: { boardId: Option.none(), boardName: 'White tee: my board' },
+      createOperationId: operationId,
+      pinOperationId: operationId,
+      createdBoardId: Option.some('bd_half'),
+    }
+    const failed = update(building.model, Message.FailedBuildOwn({ resume })).model
+    expect(update(failed, Message.ClickedBuildOwn({ name: 'White tee: my board' })).commands?.[0]?.args).toMatchObject({
+      resume: Option.some(resume),
+    })
+    expect(
+      update(building.model, Message.SucceededBuildOwn({ boardId: 'bd_own' })).commands?.map(({ name }) => name),
+    ).toEqual([OpenBoard.name])
   })
 })

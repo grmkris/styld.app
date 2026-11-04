@@ -1,11 +1,16 @@
-import { groupOf, type Piece, PieceId, Season, slotOf } from '@styld/protocol'
-import { Array, Effect, Option, Schema } from 'effect'
+import { groupOf, OperationId, type Piece, PieceId, Season, Slot, slotOf } from '@styld/protocol'
+import { Array, Effect, Match, Option, Schema } from 'effect'
 import * as SecureRandom from 'effect/crypto/SecureRandom'
 import { Command, Dom, Mount, Update } from 'foldkit'
 import { DEVTOOLS_HOST_ID } from 'foldkit/devtools-host'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
+import { load } from 'foldkit/navigation'
 import { modifyFields } from 'foldkit/struct'
+import { boardRouter } from '../route.ts'
+import type { StyldClient } from '../StyldClient.ts'
+import { CreateOutfitBoard, Making, StartProblem, type Message as StartMessage } from './BoardStart.ts'
+import { Resume, SaveTo, type Message as SaveMessage } from './SaveToBoard.ts'
 
 // "What to wear today" (Eva's sketch, owner 4 November): a wheel of the person's pieces turns over the whole screen
 // and stops on one, today's pick, from which they build. Free, and spun again as often as they like. v1 had the same
@@ -26,8 +31,16 @@ export const Stage = defineTaggedUnion({
 })
 export type Stage = typeof Stage.Type
 
+/** Build my own: a board with the drawn piece on its table, on its way, or failed with what a try again resumes. */
+export const Building = defineTaggedUnion({ Idle: {}, Sending: {}, Failed: { resume: Resume } })
+export type Building = typeof Building.Type
+
 export const Model = Schema.Struct({
   stage: Stage,
+  /** Make outfits with it: the "One piece, many outfits" board around the drawn piece, as the new-board sheet makes
+   * it. */
+  making: Making,
+  building: Building,
   round: Schema.Int,
   /** The pieces a spin may land on, as the button found them when it was tapped. */
   pool: Schema.Array(PieceId),
@@ -36,7 +49,14 @@ export const Model = Schema.Struct({
 })
 export type Model = typeof Model.Type
 
-export const init = (): Model => ({ stage: Stage.Closed(), round: 0, pool: [], maybeSeason: Option.none() })
+export const init = (): Model => ({
+  stage: Stage.Closed(),
+  making: Making.Idle(),
+  building: Building.Idle(),
+  round: 0,
+  pool: [],
+  maybeSeason: Option.none(),
+})
 
 /** A piece the wheel may land on: ready with a picture, and something to build a day around (not sportswear, swimwear
  * or loungewear, not sport or outdoor shoes, not socks). */
@@ -86,6 +106,13 @@ export const Message = defineMessageUnion({
   CompletedTurnWheel: { round: Schema.Int },
   ClickedSpinAgain: {},
   ClickedWearIt: {},
+  ClickedMakeOutfits: { name: Schema.String },
+  SucceededMakeOutfits: { boardId: Schema.String },
+  FailedMakeOutfits: { problem: StartProblem, missing: Schema.Array(Slot), operationId: Schema.Option(OperationId) },
+  ClickedBuildOwn: { name: Schema.String },
+  SucceededBuildOwn: { boardId: Schema.String },
+  FailedBuildOwn: { resume: Resume },
+  CompletedOpenBoard: {},
   ClickedClose: {},
   CompletedFocusResult: {},
   CompletedFocusOpener: {},
@@ -126,6 +153,31 @@ export const FocusOpener = Command.define('FocusOpener', {
   execute: Dom.focus(`#${openerId}`).pipe(Effect.ignore, Effect.as(Message.CompletedFocusOpener())),
 })
 
+/** The board made from the drawn piece opens in its own page. */
+export const OpenBoard = Command.define('OpenBoard', {
+  args: { boardId: Schema.String },
+  messages: [Message.CompletedOpenBoard],
+  execute: ({ boardId }) => load(boardRouter({ boardId })).pipe(Effect.as(Message.CompletedOpenBoard())),
+})
+
+/** What the new-board sheet's request answers, as the tombola's own facts. */
+const fromMaking = (message: StartMessage): Message =>
+  Match.value(message).pipe(
+    Match.tag('SucceededCreateOutfitBoard', ({ board }) => Message.SucceededMakeOutfits({ boardId: board.id })),
+    Match.tag('FailedCreateOutfitBoard', ({ problem, missing, operationId }) =>
+      Message.FailedMakeOutfits({ problem, missing, operationId }),
+    ),
+    Match.orElse(() => Message.FailedMakeOutfits({ problem: 'failed', missing: [], operationId: Option.none() })),
+  )
+
+/** What Save to board's request answers, as the tombola's own facts. */
+const fromSaving = (message: SaveMessage): Message =>
+  Match.value(message).pipe(
+    Match.tag('SucceededSave', ({ boardId }) => Message.SucceededBuildOwn({ boardId })),
+    Match.tag('FailedSave', ({ resume }) => Message.FailedBuildOwn({ resume })),
+    Match.orElse(() => Message.CompletedOpenBoard()),
+  )
+
 // MOUNT
 
 /** Hold the screen as modal while it is in the page: the page behind goes inert and stops scrolling, focus starts on
@@ -156,7 +208,7 @@ export const TurnWheel = Mount.define('TurnWheel', {
 
 // UPDATE
 
-type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, SecureRandom.SecureRandom>
+type UpdateReturn = Update.ReturnWithOutMessage<Model, Message, OutMessage, StyldClient | SecureRandom.SecureRandom>
 
 const roundOf = (stage: Stage) =>
   Stage.match(stage, {
@@ -170,7 +222,12 @@ const roundOf = (stage: Stage) =>
 const spin = (model: Model): UpdateReturn => {
   const round = model.round + 1
   return {
-    model: modifyFields(model, { stage: () => Stage.Drawing({ round }), round: () => round }),
+    model: modifyFields(model, {
+      stage: () => Stage.Drawing({ round }),
+      round: () => round,
+      making: () => Making.Idle(),
+      building: () => Building.Idle(),
+    }),
     commands: [DrawPiece({ pool: model.pool, round })],
   }
 }
@@ -185,6 +242,55 @@ const landed = (model: Model, round: number): UpdateReturn => {
     commands: [FocusResult()],
   }
 }
+
+/** Whether a board is on its way from the drawn piece: one at a time. */
+const busy = (model: Model) => Making.guards.Sending(model.making) || Building.guards.Sending(model.building)
+
+/** Make outfits with it: the outfit board around the drawn piece, for the day's season; a failure that may have
+ * reached Styld is asked for again under its operation id. */
+const makeOutfits = (model: Model, name: string): UpdateReturn =>
+  Option.match(landedPiece(model.stage), {
+    onNone: () => ({ model }),
+    onSome: (anchorPieceId) =>
+      busy(model)
+        ? { model }
+        : {
+            model: modifyFields(model, { making: () => Making.Sending() }),
+            commands: [
+              Command.mapMessage(
+                CreateOutfitBoard({
+                  name,
+                  anchorPieceId,
+                  maybeSeason: model.maybeSeason,
+                  maybeOperationId: Making.guards.Failed(model.making) ? model.making.operationId : Option.none(),
+                }),
+                fromMaking,
+              ),
+            ],
+          },
+  })
+
+/** Build my own: a new board with the drawn piece on its table; a failure resumes where it stopped. */
+const buildOwn = (model: Model, name: string): UpdateReturn =>
+  Option.match(landedPiece(model.stage), {
+    onNone: () => ({ model }),
+    onSome: (pieceId) =>
+      busy(model)
+        ? { model }
+        : {
+            model: modifyFields(model, { building: () => Building.Sending() }),
+            commands: [
+              Command.mapMessage(
+                SaveTo({
+                  target: { kind: 'piece', id: pieceId },
+                  destination: { boardId: Option.none(), boardName: name },
+                  resume: Building.guards.Failed(model.building) ? Option.some(model.building.resume) : Option.none(),
+                }),
+                fromSaving,
+              ),
+            ],
+          },
+  })
 
 /** Opening Home again shuts the screen: it is never left open behind a page the person came back to. */
 export const shut = (model: Model): Model => modifyFields(model, { stage: () => Stage.Closed() })
@@ -207,6 +313,15 @@ export const update = (model: Model, message: Message): UpdateReturn =>
         onNone: () => ({ model }),
         onSome: (pieceId) => ({ model: shut(model), outMessage: OutMessage.ChoseWearIt({ pieceId }) }),
       }),
+    ClickedMakeOutfits: ({ name }) => makeOutfits(model, name),
+    SucceededMakeOutfits: ({ boardId }) => ({ model, commands: [OpenBoard({ boardId })] }),
+    FailedMakeOutfits: ({ problem, missing, operationId }) => ({
+      model: modifyFields(model, { making: () => Making.Failed({ problem, missing, operationId }) }),
+    }),
+    ClickedBuildOwn: ({ name }) => buildOwn(model, name),
+    SucceededBuildOwn: ({ boardId }) => ({ model, commands: [OpenBoard({ boardId })] }),
+    FailedBuildOwn: ({ resume }) => ({ model: modifyFields(model, { building: () => Building.Failed({ resume }) }) }),
+    CompletedOpenBoard: () => ({ model }),
     ClickedClose: () =>
       Option.isNone(roundOf(model.stage)) ? { model } : { model: shut(model), commands: [FocusOpener()] },
     CompletedFocusResult: () => ({ model }),

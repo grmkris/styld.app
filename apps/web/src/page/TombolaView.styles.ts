@@ -121,3 +121,7 @@ export const resultPicture = style({
 })
 export const resultTitle = style({ margin: '0', fontSize: 'subheading', fontWeight: 600, textAlign: 'center' })
 export const actions = style({ display: 'grid', gap: 'actions', inlineSize: '100%' })
+/** Wear it today and Build my own, side by side under Make outfits with it. */
+export const pair = style({ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: 'actions' })
+export const links = style({ display: 'flex', justifyContent: 'center', gap: 'section' })
+export const problem = style({ margin: '0', fontSize: 'small', color: 'error' })

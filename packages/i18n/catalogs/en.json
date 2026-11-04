@@ -939,7 +939,12 @@
       "drawn": "Today’s pick: {piece}",
       "again": "Spin again",
       "openPiece": "Open the piece",
-      "wearIt": "Wear it today"
+      "wearIt": "Wear it today",
+      "makeOutfits": "Make outfits with it",
+      "buildOwn": "Build my own",
+      "ownBoardName": "{piece}: my board",
+      "sending": "Making the board…",
+      "buildFailed": "The board wasn’t made. Try again."
     },
     "around": "Outfits around {piece}",
     "usualOutfits": "Back to today’s outfits"
