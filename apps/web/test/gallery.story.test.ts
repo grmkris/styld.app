@@ -16,6 +16,7 @@ import { describe, expect, test } from 'vitest'
 import * as Ask from '../src/page/Ask.ts'
 import { matching } from '../src/page/AskSearch.ts'
 import * as Boards from '../src/page/Boards.ts'
+import * as BoardStart from '../src/page/BoardStart.ts'
 import * as Today from '../src/page/Today.ts'
 import { cropFrom, headline } from '../src/page/TodayView.ts'
 import { pieceFixture } from './WardrobeFixtures.ts'
@@ -296,26 +297,40 @@ describe('boards', () => {
     updatedAt: '2026-10-30T08:00:00.000Z',
   })
 
-  test('a new board takes the default name, and opens once it exists', () => {
-    story(
-      Boards.update,
-      given(Boards.init()),
-      message(Boards.Message.ClickedNewBoard({ defaultName: 'My board' })),
-      Command.expectExact(Boards.CreateBoard({ name: 'My board', maybeOperationId: Option.none() })),
-      Command.resolve(Boards.CreateBoard, Boards.Message.SucceededCreateBoard({ board: created })),
-      expectOutMessage(Boards.OutMessage.CreatedBoard({ boardId: created.id })),
-      model(({ creating }) => expect(Boards.Creating.guards.Idle(creating)).toBe(true)),
+  test('New board opens the new-board sheet instead of making a board (F-26)', () => {
+    const opened = Boards.update(Boards.init(), Boards.Message.ClickedNewBoard())
+    expect(opened.model.start.sheet.isOpen).toBe(true)
+    expect(Boards.Creating.guards.Idle(opened.model.creating)).toBe(true)
+    expect((opened.commands ?? []).map(({ name }) => name)).not.toContain('CreateBoard')
+  })
+
+  test('Blank in the sheet takes the default name, and the board opens once it exists', () => {
+    const opened = Boards.update(Boards.init(), Boards.Message.ClickedNewBoard()).model
+    const blank = Boards.update(
+      opened,
+      Boards.Message.GotStartMessage({ message: BoardStart.Message.ClickedBlank({ defaultName: 'My board' }) }),
     )
+    expect(blank.model.start.sheet.isOpen).toBe(false)
+    expect((blank.commands ?? []).find(({ name }) => name === 'CreateBoard')?.args).toEqual(
+      Boards.CreateBoard({ name: 'My board', maybeOperationId: Option.none() }).args,
+    )
+    const made = Boards.update(blank.model, Boards.Message.SucceededCreateBoard({ board: created }))
+    expect(made.outMessage).toEqual(Boards.OutMessage.CreatedBoard({ boardId: created.id }))
+    expect(Boards.Creating.guards.Idle(made.model.creating)).toBe(true)
+  })
+
+  test('Start a board in Ask opens the sheet once Boards is entered, and only then (F-26)', () => {
+    const asked = Boards.startOnEnter(Boards.init()).model
+    expect(asked.start.sheet.isOpen).toBe(false)
+    const entered = Boards.revisit(asked).model
+    expect(entered.start.sheet.isOpen).toBe(true)
+    expect(entered.startOnEnter).toBe(false)
+    expect(Boards.revisit(Boards.init()).model.start.sheet.isOpen).toBe(false)
   })
 
   test('a board already being made is not asked for again', () => {
-    story(
-      Boards.update,
-      given(modifyFields(Boards.init(), { creating: () => Boards.Creating.Sending() })),
-      message(Boards.Message.ClickedNewBoard({ defaultName: 'My board' })),
-      Command.expectNone(),
-      model(({ creating }) => expect(Boards.Creating.guards.Sending(creating)).toBe(true)),
-    )
+    const sending = modifyFields(Boards.init(), { creating: () => Boards.Creating.Sending() })
+    expect(Boards.startBoard('My board')(sending).commands ?? []).toEqual([])
   })
 
   test('a list that did not load is asked of the app again', () => {

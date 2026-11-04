@@ -17,7 +17,7 @@ const fixture = (name: string) => fileURLToPath(new URL(`fixtures/gallery/${name
 /** Set to a folder to keep the journey's screenshots for a person to look at. */
 const shots = process.env['STYLD_GALLERY_SHOTS']
 
-const shoot = async (page: Page, name: string) => {
+export const shoot = async (page: Page, name: string) => {
   if (shots !== undefined) await page.screenshot({ path: `${shots}/${name}.png`, fullPage: true })
 }
 
@@ -45,7 +45,7 @@ const IdOf = Schema.Struct({ id: Schema.String, status: Schema.String })
 const UploadOf = Schema.Struct({ uploadId: Schema.String, path: Schema.String })
 
 /** A real cut-out from the owner's wardrobe, sent and added as a piece, then processed until ready. */
-const addPiece = async (origin: string, call: Call, file: string, piece: Record<string, unknown>) => {
+export const addPiece = async (origin: string, call: Call, file: string, piece: Record<string, unknown>) => {
   const bytes = new Uint8Array(await readFile(fixture(file)))
   const created = await call('/api/uploads', {
     method: 'POST',
@@ -139,7 +139,10 @@ const verifyHome = async (page: Page, origin: string) => {
 const openNewBoard = async (page: Page, origin: string) => {
   await page.goto(`${origin}/boards`, { waitUntil: 'networkidle' })
   await page.getByRole('heading', { name: 'Laboratory', level: 1 }).waitFor({ state: 'visible' })
+  // + opens the new-board sheet (F-26); Blank makes a board under the default name.
   await page.getByRole('button', { name: 'New board' }).click()
+  await page.getByRole('dialog', { name: 'New board' }).waitFor({ state: 'visible' })
+  await page.getByRole('button', { name: /^Blank board/ }).click()
   await page.waitForURL(/\/boards\/bd_[^/]+$/)
   await page.getByRole('heading', { name: 'My board', level: 1 }).waitFor({ state: 'visible' })
   await page.getByRole('region', { name: 'The table' }).waitFor({ state: 'visible' })

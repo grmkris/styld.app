@@ -8,10 +8,9 @@ import type { Html, HtmlBuilder } from 'foldkit/html'
 import { cx } from 'zyzz'
 import { actionButton } from '../ActionButton.ts'
 import { linkAction, primaryAction, secondaryAction } from '../Actions.styles.ts'
-import { addIcon, boardsTabIcon, cameraIcon, closeIcon, linkIcon, loader, searchIcon, stylistIcon } from '../Icon.ts'
+import { addIcon, boardsTabIcon, cameraIcon, closeIcon, linkIcon, searchIcon, stylistIcon } from '../Icon.ts'
 import { accountRouter, addPiecesRouter, assistantsSection, pieceRouter, stylistRouter } from '../route.ts'
 import { block } from '../Skeleton.styles.ts'
-import { Creating } from './Boards.ts'
 import { bottomSheet, sheetShown } from './Sheet.ts'
 import { PublicSearch } from './Search.ts'
 import { styled } from '../Styled.ts'
@@ -314,37 +313,25 @@ const option = (
 
 /** The + sheet rises from the bottom edge: add clothes, or start a board. Escape, the scrim and the close button
  * shut it; focus moves in and back. Drawn only while open: the dialog's own layout is set in the browser. */
-/** Start a board: makes one under the default name through Boards, as its + does, and says so while it is made and
- * if it was refused. */
-const startBoardOption = (start: Creating, locale: Locale, h: HtmlBuilder<Message>): Html =>
-  h.div(
-    [],
-    [
-      Button.view(
-        {
-          onClick: Message.ClickedNewBoard({ defaultName: format(locale, 'boards.defaultName', {}) }),
-          isDisabled: Creating.guards.Sending(start),
-          toView: (attributes) =>
-            h.button(
-              [...attributes.button, h.AriaBusy(Creating.guards.Sending(start)), ...styled(h, styles.option())],
-              [
-                h.span(styled(h, styles.optionIcon()), [Creating.guards.Sending(start) ? loader(h) : boardsTabIcon(h)]),
-                h.span([], [format(locale, 'ask.newBoard', {})]),
-                h.span(styled(h, styles.optionHint()), [
-                  format(locale, Creating.guards.Sending(start) ? 'boards.creating' : 'ask.newBoardHint', {}),
-                ]),
-              ],
-            ),
-        },
-        h,
-      ),
-      Creating.guards.Failed(start)
-        ? h.p([h.Role('alert'), ...styled(h, styles.optionProblem())], [format(locale, 'boards.createFailed', {})])
-        : h.empty,
-    ],
+/** Start a board: Boards opens with its new-board sheet, where Blank or a template is chosen (F-26). */
+const startBoardOption = (locale: Locale, h: HtmlBuilder<Message>): Html =>
+  Button.view(
+    {
+      onClick: Message.ClickedNewBoard(),
+      toView: (attributes) =>
+        h.button(
+          [...attributes.button, ...styled(h, styles.option())],
+          [
+            h.span(styled(h, styles.optionIcon()), [boardsTabIcon(h)]),
+            h.span([], [format(locale, 'ask.newBoard', {})]),
+            h.span(styled(h, styles.optionHint()), [format(locale, 'ask.newBoardHint', {})]),
+          ],
+        ),
+    },
+    h,
   )
 
-const addSheetView = (model: Model, locale: Locale, h: HtmlBuilder<Message>, start: Creating): Html =>
+const addSheetView = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   bottomSheet(
     {
       dialog: model.addSheet,
@@ -366,7 +353,7 @@ const addSheetView = (model: Model, locale: Locale, h: HtmlBuilder<Message>, sta
           [],
           h,
         ),
-        startBoardOption(start, locale, h),
+        startBoardOption(locale, h),
       ],
       toParentMessage: (message) => Message.GotAddSheetMessage({ message }),
       locale,
@@ -374,20 +361,17 @@ const addSheetView = (model: Model, locale: Locale, h: HtmlBuilder<Message>, sta
     h,
   )
 
-export const view = Submodel.defineView<
-  Model,
-  Message,
-  { readonly locale: Locale; readonly pieces: PiecesData; readonly boardStart: Creating }
->((model, { locale, pieces, boardStart }, h) =>
-  h.main(
-    [h.Id('main'), ...styled(h, styles.page())],
-    [
-      pageHead(pageTitle(format(locale, 'ask.title', {}), h), Option.none(), h),
-      searchForm(model, locale, h),
-      wardrobeView(model, pieces, locale, h),
-      // While searching, Styld is the one row under the results; the card would ask the same thing twice.
-      String.isNonEmpty(model.query.trim()) ? h.empty : stylistView(locale, h),
-      sheetShown(model.addSheet) ? addSheetView(model, locale, h, boardStart) : h.empty,
-    ],
-  ),
+export const view = Submodel.defineView<Model, Message, { readonly locale: Locale; readonly pieces: PiecesData }>(
+  (model, { locale, pieces }, h) =>
+    h.main(
+      [h.Id('main'), ...styled(h, styles.page())],
+      [
+        pageHead(pageTitle(format(locale, 'ask.title', {}), h), Option.none(), h),
+        searchForm(model, locale, h),
+        wardrobeView(model, pieces, locale, h),
+        // While searching, Styld is the one row under the results; the card would ask the same thing twice.
+        String.isNonEmpty(model.query.trim()) ? h.empty : stylistView(locale, h),
+        sheetShown(model.addSheet) ? addSheetView(model, locale, h) : h.empty,
+      ],
+    ),
 )

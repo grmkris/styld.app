@@ -17,7 +17,8 @@ import * as styles from './PageView.styles.ts'
 import * as pickerStyles from './PiecePickerView.styles.ts'
 import { boardImage } from './Table.ts'
 
-const filterButton = (label: string, pressed: boolean, message: Message, h: HtmlBuilder<Message>): Html =>
+/** A chip that filters what a sheet offers, pressed while it applies; the new-board sheet's chips are these too. */
+export const filterButton = <M>(label: string, pressed: boolean, message: M, h: HtmlBuilder<M>): Html =>
   h.button(
     [
       h.Type('button'),
@@ -26,6 +27,33 @@ const filterButton = (label: string, pressed: boolean, message: Message, h: Html
       ...styled(h, cx(chip(), chosen(), pickerStyles.filter())),
     ],
     [label],
+  )
+
+/** All the pieces, or one garment group's: a chip each, the chosen one pressed. The new-board sheet's are these too. */
+export const groupFilters = <M>(
+  groups: ReadonlyArray<GarmentGroup>,
+  current: Option.Option<GarmentGroup>,
+  toMessage: (group: Option.Option<GarmentGroup>) => M,
+  locale: Locale,
+  h: HtmlBuilder<M>,
+): Html =>
+  h.div(
+    [
+      h.Role('group'),
+      h.AriaLabel(format(locale, 'wardrobe.filterCategories', {})),
+      ...styled(h, pickerStyles.filters()),
+    ],
+    [
+      filterButton(format(locale, 'wardrobe.allItems', {}), Option.isNone(current), toMessage(Option.none()), h),
+      ...groups.map((group) =>
+        filterButton(
+          format(locale, groupName(group), {}),
+          Option.contains(current, group),
+          toMessage(Option.some(group)),
+          h,
+        ),
+      ),
+    ],
   )
 
 const pieceButton = (piece: Piece, model: Model, locale: Locale, h: HtmlBuilder<Message>): Html => {
@@ -67,28 +95,12 @@ const body = (model: Model, pieces: ReadonlyArray<Piece>, locale: Locale, h: Htm
     }),
   )
   return h.div(styled(h, styles.head()), [
-    h.div(
-      [
-        h.Role('group'),
-        h.AriaLabel(format(locale, 'wardrobe.filterCategories', {})),
-        ...styled(h, pickerStyles.filters()),
-      ],
-      [
-        filterButton(
-          format(locale, 'wardrobe.allItems', {}),
-          Option.isNone(model.maybePickerGroup),
-          Message.SelectedPickerGroup({ group: Option.none() }),
-          h,
-        ),
-        ...GarmentGroup.literals.map((group) =>
-          filterButton(
-            format(locale, groupName(group), {}),
-            Option.contains(model.maybePickerGroup, group),
-            Message.SelectedPickerGroup({ group: Option.some(group) }),
-            h,
-          ),
-        ),
-      ],
+    groupFilters(
+      GarmentGroup.literals,
+      model.maybePickerGroup,
+      (group) => Message.SelectedPickerGroup({ group }),
+      locale,
+      h,
     ),
     Option.match(model.maybePickerGroup, {
       onNone: () => h.empty,

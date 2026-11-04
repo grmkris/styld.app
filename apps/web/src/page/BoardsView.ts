@@ -16,6 +16,7 @@ import { visuallyHidden } from '../VisuallyHidden.styles.ts'
 import { boardImage, fromStyld, type ImageSource } from './Board/Table.ts'
 import { boardFace, type CoverPicture } from './BoardFace.ts'
 import { Creating, Message, type Model } from './Boards.ts'
+import * as BoardStartView from './BoardStartView.ts'
 import * as styles from './BoardsView.styles.ts'
 import { roundAction, wideAction, wideLabel } from './PageHead.styles.ts'
 import { savedView } from './SavedView.ts'
@@ -56,7 +57,7 @@ const newBoardAction = (model: Model, locale: Locale, h: HtmlBuilder<Message>): 
   const sending = Creating.guards.Sending(model.creating)
   return Button.view(
     {
-      onClick: Message.ClickedNewBoard({ defaultName: format(locale, 'boards.defaultName', {}) }),
+      onClick: Message.ClickedNewBoard(),
       isDisabled: sending,
       toView: (attributes) =>
         h.button(
@@ -133,6 +134,13 @@ export const view = Submodel.defineView<
       ]),
       listView(boards, fromStyld(piecesById(Option.getOrElse(AsyncData.getData(pieces), () => []))), locale, h),
       savedView(model.saved, locale, Message.ClickedRetrySaved(), h),
+      h.submodel({
+        slotId: 'boards-start',
+        model: model.start,
+        view: BoardStartView.view,
+        viewInputs: { locale, pieces },
+        toParentMessage: (message) => Message.GotStartMessage({ message }),
+      }),
     ],
     locale,
     h,

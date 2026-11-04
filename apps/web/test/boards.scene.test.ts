@@ -1,12 +1,15 @@
 import { Board, BoardSummary, OperationId } from '@styld/protocol'
 import { Option, Schema } from 'effect'
-import { click, Command, expect, given, role, scene, selector, text } from 'foldkit/scene'
+import { click, Command, expect, given, Mount, role, scene, selector, text } from 'foldkit/scene'
 import { describe, test } from 'vitest'
 import { Message as AppMessage, update } from '../src/App.ts'
-import { at, withBoards } from './AppFixtures.ts'
+import { at, withBoards, withPieces } from './AppFixtures.ts'
 import { CreateBoard, Message as BoardsMessage } from '../src/page/Boards.ts'
+import { CreateOutfitBoard, Message as StartMessage } from '../src/page/BoardStart.ts'
+import { Dialog } from '@foldkit/ui'
+import { sceneSheetMoved, sceneSheetOpened } from './SheetFixtures.ts'
 import { Navigate } from '../src/Navigation.ts'
-import { BoardsData, ListBoards, Message as DataMessage } from '../src/ServerData.ts'
+import { BoardsData, ListBoards, ListPieces, Message as DataMessage } from '../src/ServerData.ts'
 import { modifyFields } from 'foldkit/struct'
 import { view } from '../src/View.ts'
 import { boardSummaryFixture } from './BoardFixtures.ts'
@@ -27,6 +30,18 @@ const pins = [
     addedAt: '2026-10-31T07:00:00.000Z',
   },
 ]
+/** The new-board sheet opening on a click, and closing. */
+const sheetOpening = [
+  Mount.resolve(Dialog.AcquireResources, Dialog.Message.SucceededAcquireResources()),
+  Command.resolve(Dialog.ShowDialog, Dialog.Message.SucceededShowDialog()),
+  ...sceneSheetOpened,
+]
+const sheetClosing = [
+  ...sceneSheetMoved(2),
+  Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
+  Mount.expectEnded(Dialog.AcquireResources),
+]
+
 const created = Schema.decodeUnknownSync(Board)({
   id: boardId('new'),
   name: 'My board',
@@ -78,13 +93,16 @@ describe('the boards list', () => {
     )
   })
 
-  test('starts a new board from the round + at the top, under the default name, and opens it', () => {
+  test('the round + opens the new-board sheet; Blank makes a board under the default name and opens it (F-26)', () => {
     scene(
       { update, view },
       given(boardsPage([summary('Sea', {})])),
-      expect(role('textbox')).toBeAbsent(),
       click(role('button', { name: 'New board' })),
-      expect(role('button', { name: 'Creating…' })).toBeDisabled(),
+      ...sheetOpening,
+      expect(role('dialog', { name: 'New board' })).toExist(),
+      expect(role('button', { name: /^One piece, six outfits/ })).toExist(),
+      click(role('button', { name: /^Blank board/ })),
+      ...sheetClosing,
       Command.resolve(
         CreateBoard({ name: 'My board', maybeOperationId: Option.none() }),
         BoardsMessage.SucceededCreateBoard({ board: created }),
@@ -93,24 +111,59 @@ describe('the boards list', () => {
     )
   })
 
-  test('says when a new board was not made, and the + asks again', () => {
+  test('says when a blank board was not made, and asks again under the same operation', () => {
     scene(
       { update, view },
       given(boardsPage([])),
       click(role('button', { name: 'New board' })),
+      ...sheetOpening,
+      click(role('button', { name: /^Blank board/ })),
+      ...sheetClosing,
       Command.resolve(
         CreateBoard,
         BoardsMessage.FailedCreateBoard({ operationId: OperationId.make('create-board-1'), name: 'My board' }),
       ),
       expect(role('alert')).toHaveText('The board wasn’t created. Try again.'),
-      expect(role('button', { name: 'New board' })).toBeEnabled(),
       expect(text('No boards yet. Make one and lay out an outfit, a trip or a season.')).toExist(),
+      Mount.expectEnded(Dialog.AcquireResources),
+    )
+  })
+
+  test('One piece, six outfits: a piece and a season make the board, and a wardrobe with no outfit says what to add', () => {
+    const jeans = pieceFixture('jeans', { type: 'jeans', name: 'Dark jeans' })
+    scene(
+      { update, view },
+      given(withPieces(boardsPage([]), [jeans])),
       click(role('button', { name: 'New board' })),
-      Command.expectExact(
-        CreateBoard({ name: 'My board', maybeOperationId: Option.some(OperationId.make('create-board-1')) }),
+      ...sheetOpening,
+      click(role('button', { name: /^One piece, six outfits/ })),
+      Command.resolve(ListPieces, DataMessage.SucceededListPieces({ pieces: [jeans] })),
+      expect(text('Pick the piece to build outfits around.')).toExist(),
+      expect(role('button', { name: 'Make six outfits' })).toHaveAttr('aria-disabled', 'true'),
+      click(role('button', { name: /Dark jeans/ })),
+      click(role('button', { name: 'Summer' })),
+      click(role('button', { name: 'Make six outfits' })),
+      Command.resolve(
+        CreateOutfitBoard({
+          name: 'Dark jeans: six outfits',
+          anchorPieceId: jeans.id,
+          maybeSeason: Option.some('summer'),
+          maybeOperationId: Option.none(),
+        }),
+        StartMessage.FailedCreateOutfitBoard({
+          problem: 'noOutfits',
+          missing: ['top', 'shoes'],
+          operationId: Option.none(),
+        }),
       ),
-      Command.resolve(CreateBoard, BoardsMessage.SucceededCreateBoard({ board: created })),
-      Command.resolve(Navigate, AppMessage.CompletedNavigate()),
+      expect(role('alert')).toHaveText(
+        'Your wardrobe has no complete outfit around this piece yet. Add a top. Add shoes.',
+      ),
+      click(role('button', { name: 'Make six outfits' })),
+      Command.resolve(CreateOutfitBoard, StartMessage.SucceededCreateOutfitBoard({ board: created })),
+      ...sheetClosing,
+      Command.resolve(Navigate({ href: `/boards/${created.id}` }), AppMessage.CompletedNavigate()),
+      Mount.expectEnded(Dialog.AcquireResources),
     )
   })
 })

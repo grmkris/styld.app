@@ -7,6 +7,7 @@ import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
 import { StyldClient } from '../StyldClient.ts'
+import * as BoardStart from './BoardStart.ts'
 
 // MODEL
 
@@ -26,12 +27,19 @@ export type Creating = typeof Creating.Type
 export const Model = Schema.Struct({
   creating: Creating,
   saved: SavedData.schema,
+  /** The new-board sheet: Blank, or "One piece, six outfits" (T-10). */
+  start: BoardStart.Model,
+  /** Ask's Start a board asked for the sheet: it opens once Boards is on screen, since a sheet shown before its page
+   * is drawn closes again. */
+  startOnEnter: Schema.Boolean,
 })
 export type Model = typeof Model.Type
 
 export const init = (): Model => ({
   creating: Creating.Idle(),
   saved: AsyncData.Idle(),
+  start: BoardStart.init(),
+  startOnEnter: false,
 })
 
 // MESSAGE
@@ -39,7 +47,8 @@ export const init = (): Model => ({
 export const Message = defineMessageUnion({
   ClickedRetry: {},
   ClickedRetrySaved: {},
-  ClickedNewBoard: { defaultName: Schema.String },
+  ClickedNewBoard: {},
+  GotStartMessage: { message: BoardStart.Message },
   SucceededCreateBoard: { board: Board },
   FailedCreateBoard: { operationId: OperationId, name: Schema.String },
   SucceededListSaved: { saved: Schema.Array(SavedThing) },
@@ -47,9 +56,13 @@ export const Message = defineMessageUnion({
 })
 export type Message = typeof Message.Type
 
-/** A new board opens straight away, under the default name; its page renames it. The boards that did not load are
- * asked for again by the app. */
-export const OutMessage = defineMessageUnion({ CreatedBoard: { boardId: Schema.String }, RequestedBoards: {} })
+/** A new board opens straight away; a blank one under the default name, which its page renames. The boards that did
+ * not load, and the pieces a template board is built from, are asked for by the app. */
+export const OutMessage = defineMessageUnion({
+  CreatedBoard: { boardId: Schema.String },
+  RequestedBoards: {},
+  RequestedPieces: {},
+})
 export type OutMessage = typeof OutMessage.Type
 
 // COMMAND
@@ -90,17 +103,13 @@ const refreshSaved = Update.refresh<Model, Message, ReadonlyArray<SavedThing>, '
   load: ListSaved(),
 })
 
-/** Opening the page: the saves already here stay while they are asked for again; a first visit asks. The app reads
- * the boards. */
-export const revisit = refreshSaved
-
 /** A board made opens its own page, which loads whole; the list reads it from then on. */
 const created = (model: Model, board: Board): UpdateReturn => ({
   model: modifyFields(model, { creating: () => Creating.Idle() }),
   outMessage: OutMessage.CreatedBoard({ boardId: board.id }),
 })
 
-/** Make a board under the default name; once made it opens (`CreatedBoard`). Ask's + sheet starts one this way too. */
+/** Make a blank board under the default name; once made it opens (`CreatedBoard`). */
 export const startBoard =
   (defaultName: string) =>
   (model: Model): UpdateReturn =>
@@ -118,6 +127,50 @@ export const startBoard =
           ],
         }
 
+const foldStart = Update.foldChild({
+  update: BoardStart.update,
+  read: (model: Model) => Option.some(model.start),
+  write: (model: Model, start: BoardStart.Model) => modifyFields(model, { start: () => start }),
+  toParentMessage: (message: BoardStart.Message) => Message.GotStartMessage({ message }),
+  foldOutMessage: BoardStart.OutMessage.match<Update.StepWithOutMessage<Model, Message, OutMessage, Services>>({
+    ChoseBlank:
+      ({ defaultName }) =>
+      (model) =>
+        startBoard(defaultName)(model),
+    RequestedPieces: () => (model) => ({ model, outMessage: OutMessage.RequestedPieces() }),
+    CreatedBoard:
+      ({ boardId }) =>
+      (model) => ({ model, outMessage: OutMessage.CreatedBoard({ boardId }) }),
+  }),
+})
+
+/** Open the new-board sheet (Eva's review, F-26): + on Boards, and Start a board in Ask's sheet. */
+export const openStart = Update.foldChildStep({
+  update: BoardStart.open,
+  read: (model: Model) => Option.some(model.start),
+  write: (model: Model, start: BoardStart.Model) => modifyFields(model, { start: () => start }),
+  toParentMessage: (message: BoardStart.Message) => Message.GotStartMessage({ message }),
+  foldOutMessage: BoardStart.OutMessage.match<Update.StepWithOutMessage<Model, Message, OutMessage, Services>>({
+    ChoseBlank: () => (model) => ({ model }),
+    RequestedPieces: () => (model) => ({ model }),
+    CreatedBoard: () => (model) => ({ model }),
+  }),
+})
+
+/** Ask's Start a board: the sheet opens when Boards is next entered. */
+export const startOnEnter = (model: Model): UpdateReturn => ({
+  model: modifyFields(model, { startOnEnter: () => true }),
+})
+
+/** Opening the page: the saves already here stay while they are asked for again; a first visit asks. The app reads
+ * the boards. The new-board sheet opens if Ask asked for it. */
+export const revisit = (model: Model): UpdateReturn => {
+  const refreshed = refreshSaved(modifyFields(model, { startOnEnter: () => false }))
+  if (!model.startOnEnter) return refreshed
+  const opened = openStart(refreshed.model)
+  return { model: opened.model, commands: [...(refreshed.commands ?? []), ...(opened.commands ?? [])] }
+}
+
 export const update = (model: Model, message: Message): UpdateReturn =>
   Message.match<UpdateReturn>(message, {
     ClickedRetry: () => ({ model, outMessage: OutMessage.RequestedBoards() }),
@@ -128,7 +181,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     FailedListSaved: () => ({
       model: modifyFields(model, { saved: (saved) => AsyncData.settle(saved, Result.fail('Unavailable' as const)) }),
     }),
-    ClickedNewBoard: ({ defaultName }) => startBoard(defaultName)(model),
+    ClickedNewBoard: () => openStart(model),
+    GotStartMessage: (got) => foldStart(model, got.message),
     SucceededCreateBoard: ({ board }) => created(model, board),
     FailedCreateBoard: ({ operationId, name }) => ({
       model: modifyFields(model, { creating: () => Creating.Failed({ operationId, name }) }),

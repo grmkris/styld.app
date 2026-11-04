@@ -1,13 +1,12 @@
-import { Option } from 'effect'
-import { type Piece, OperationId } from '@styld/protocol'
-import { Dialog } from '@foldkit/ui'
+import type { Piece } from '@styld/protocol'
+import { Animation, Dialog } from '@foldkit/ui'
 import { click, Command, expect, given, Mount, role, scene, Subscription, text, type } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { Message as AppMessage, update } from '../src/App.ts'
 import { lenses } from '../src/Page.ts'
 import * as Ask from '../src/page/Ask.ts'
-import { CreateBoard, Message as BoardsMessage } from '../src/page/Boards.ts'
+import { Navigate } from '../src/Navigation.ts'
 import { view } from '../src/View.ts'
 import { sceneSheetMoved } from './SheetFixtures.ts'
 import { at, urlOf, withPage, withPieces } from './AppFixtures.ts'
@@ -56,13 +55,18 @@ describe('Ask', () => {
       ...sceneSheetMoved(1),
       expect(role('link', { name: /^Add clothes/ })).toHaveAttr('href', '/wardrobe/add'),
       expect(role('link', { name: /^Add from a link/ })).toHaveAttr('href', '/wardrobe/add#link'),
-      // Start a board makes one under the default name, as Boards' + does; the sheet stays and says if it was refused.
+      // Start a board opens Boards with its new-board sheet, where Blank or a template is chosen (F-26).
       click(role('button', { name: /^Start a board/ })),
+      Command.resolve(Navigate({ href: '/boards' }), AppMessage.CompletedNavigate()),
       Command.resolve(
-        CreateBoard({ name: 'My board', maybeOperationId: Option.none() }),
-        BoardsMessage.FailedCreateBoard({ operationId: OperationId.make('create-board-1'), name: 'My board' }),
+        Animation.WaitForPaint({ generation: 2 }),
+        Animation.Message.CompletedWaitForPaint({ generation: 2 }),
       ),
-      expect(role('alert')).toHaveText('The board wasn’t created. Try again.'),
+      Command.resolve(Animation.WaitForAnimationSettled, Animation.Message.EndedAnimation({ generation: 2 })),
+      Command.resolve(Dialog.CloseDialog, Dialog.Message.CompletedCloseDialog()),
+      Mount.expectEnded(Dialog.AcquireResources),
+      // Boards, once entered, opens its sheet (gallery.story covers it).
+      expect(role('dialog')).not.toExist(),
     )
   })
 

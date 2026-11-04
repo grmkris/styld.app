@@ -9,7 +9,6 @@ import * as AddPiecesView from './page/AddPieces/View.ts'
 import { accountView } from './page/AccountView.ts'
 import * as AskView from './page/AskView.ts'
 import * as BoardPageView from './page/Board/PageView.ts'
-import * as Boards from './page/Boards.ts'
 import * as BoardsView from './page/BoardsView.ts'
 import * as LoginView from './page/LoginView.ts'
 import * as LooksView from './page/LooksView.ts'
@@ -143,17 +142,12 @@ const tabPages = (model: Model, h: HtmlBuilder<Message>) => {
       onPage(
         model,
         lenses.ask,
-        (ask) => {
-          const boardStart = Option.match(lenses.boards.read(model.page), {
-            onNone: () => Boards.Creating.Idle(),
-            onSome: (boards) => boards.creating,
-          })
-          return h.submodel({
+        (ask) =>
+          h.submodel({
             ...slot(lenses.ask, ask),
             view: AskView.view,
-            viewInputs: { locale, pieces, boardStart },
-          })
-        },
+            viewInputs: { locale, pieces },
+          }),
         h,
       ),
     Boards: () =>

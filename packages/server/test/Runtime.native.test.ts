@@ -20,6 +20,7 @@ import { verifyScan } from './ScanAcceptance.ts'
 import { verifyStylist } from './StylistAcceptance.ts'
 import { verifyGallery } from './GalleryAcceptance.ts'
 import { verifyBoardOutfits } from './BoardOutfitsAcceptance.ts'
+import { verifyOutfitBoardJourney } from './BoardOutfitsBrowserAcceptance.ts'
 import { verifySocial } from './SocialAcceptance.ts'
 import { verifyGeneration } from './GenerationAcceptance.ts'
 import { verifyOutfits } from './OutfitAcceptance.ts'
@@ -134,6 +135,12 @@ test(
 test(
   'keeps outfits put together on a board as looks pinned on it, and builds six complete outfits around one piece',
   overHttp(verifyBoardOutfits),
+  { timeout: 120000 },
+)
+
+test(
+  'starts a board from the new-board sheet around one piece, keeps an outfit as a look and says when there is no other',
+  inBrowser(verifyOutfitBoardJourney),
   { timeout: 120000 },
 )
 

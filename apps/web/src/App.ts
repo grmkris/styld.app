@@ -42,6 +42,7 @@ import * as Wardrobe from './page/Wardrobe.ts'
 import {
   AppRoute,
   boardRouter,
+  boardsRouter,
   connectionAuthorizePath,
   homeRouter,
   isSameTab,
@@ -182,12 +183,12 @@ const foldBoards = {
   foldOutMessage: Boards.OutMessage.match<Step>({
     CreatedBoard: ({ boardId }) => NavigationState.navigateTo(boardRouter({ boardId })),
     RequestedBoards: () => revisitBoards,
+    RequestedPieces: () => revisitPieces,
   }),
 }
 
-/** Start a board from outside Boards (Ask's + sheet), through Boards' own step. */
-const startBoard = (defaultName: string) =>
-  Update.foldChildStep({ update: Boards.startBoard(defaultName), ...foldBoards })
+/** Start a board from outside Boards (Ask's + sheet): Boards opens with its new-board sheet, as its own + does. */
+const startOnEnter = Update.foldChildStep({ update: Boards.startOnEnter, ...foldBoards })
 
 // INIT
 
@@ -214,7 +215,7 @@ const entering = (route: AppRoute, signedIn: boolean): ReadonlyArray<Step> =>
     Match.tag('Boards', () => [
       revisitBoards,
       revisitPieces,
-      Update.foldChildStep({ update: Boards.revisit, ...at(lenses.boards) }),
+      Update.foldChildStep({ update: Boards.revisit, ...foldBoards }),
     ]),
     Match.tag('Explore', () => [Update.foldChildStep({ update: Visit.enterExplore, ...at(lenses.explore) })]),
     // The account needs a session; signed out the page sends the visitor to sign in.
@@ -379,7 +380,8 @@ const foldAsk = Update.foldChild({
   ...at(lenses.ask),
   foldOutMessage: Ask.OutMessage.match<Step>({
     RequestedPieces: () => revisitPieces,
-    RequestedNewBoard: ({ defaultName }) => startBoard(defaultName),
+    RequestedNewBoard: () => (model) =>
+      Update.combine(model, [startOnEnter, NavigationState.navigateTo(boardsRouter({}))]),
   }),
 })
 

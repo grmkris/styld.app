@@ -172,6 +172,8 @@ export interface MessageArgumentsByKey<_T = string> {
   'board.unpinPictureAsk': Readonly<Record<string, never>>
   'board.wardrobeEmpty': Readonly<Record<string, never>>
   'board.wardrobeFailed': Readonly<Record<string, never>>
+  'boards.addTop': Readonly<Record<string, never>>
+  'boards.chooserTitle': Readonly<Record<string, never>>
   'boards.createFailed': Readonly<Record<string, never>>
   'boards.creating': Readonly<Record<string, never>>
   'boards.defaultName': Readonly<Record<string, never>>
@@ -179,8 +181,22 @@ export interface MessageArgumentsByKey<_T = string> {
   'boards.failed': Readonly<Record<string, never>>
   'boards.intro': Readonly<Record<string, never>>
   'boards.loading': Readonly<Record<string, never>>
+  'boards.makeOutfits': Readonly<Record<string, never>>
+  'boards.making': Readonly<Record<string, never>>
   'boards.new': Readonly<Record<string, never>>
+  'boards.outfitsBoardName': { readonly piece: string | number }
+  'boards.outfits_failed': Readonly<Record<string, never>>
+  'boards.outfits_noOutfits': Readonly<Record<string, never>>
+  'boards.outfits_slowDown': Readonly<Record<string, never>>
+  'boards.pickAnchor': Readonly<Record<string, never>>
   'boards.retry': Readonly<Record<string, never>>
+  'boards.season': Readonly<Record<string, never>>
+  'boards.seasonAny': Readonly<Record<string, never>>
+  'boards.templateBlank': Readonly<Record<string, never>>
+  'boards.templateBlankHint': Readonly<Record<string, never>>
+  'boards.templateOutfits': Readonly<Record<string, never>>
+  'boards.templateOutfitsHint': Readonly<Record<string, never>>
+  'boards.templates': Readonly<Record<string, never>>
   'boards.title': Readonly<Record<string, never>>
   'capture.actionFailed': Readonly<Record<string, never>>
   'capture.addCount': { readonly count: number }
@@ -864,4 +880,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '85666f48f1e19f99eb94cb73dbd806c0d67d64c4d7df6184c386eba6fd75f4d3'
+export const catalogVersion = '9955576e0fc875126fa92f6540ddbfac7dee7bf2201512c2d09d62151e3e05ba'

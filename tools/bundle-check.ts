@@ -59,7 +59,10 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // Raised to 367,700 the same day for T-10: the board's outfits, the two outfit-board endpoints and the complete flag in
 // the client's contract add 279 (364,752 on main at ac0e345), and the outfit cards 2,926 (their submodel with its card
 // states and two Commands, the cards' view and styles, and their words in both catalogs), for 367,678.
-if (initialGzip > 367700) throw new Error(`Initial browser assets exceed the 367,700-byte gzip budget: ${initialGzip}`)
+// Raised to 370,300 the same day for F-26 and T-10's chooser: main measured 367,690 at 0eedb27; the new-board sheet
+// adds 2,594 (its submodel with the outfit board's Command, the templates, the piece and season steps, and their words),
+// for 370,284.
+if (initialGzip > 370300) throw new Error(`Initial browser assets exceed the 370,300-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

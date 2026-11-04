@@ -54,7 +54,7 @@ export const Message = defineMessageUnion({
   SubmittedSearch: {},
   CompletedFocus: {},
   ClickedAdd: {},
-  ClickedNewBoard: { defaultName: Schema.String },
+  ClickedNewBoard: {},
   GotAddSheetMessage: { message: Dialog.Message },
   ClickedRetry: {},
   SucceededLoadSearchLanguages: {},
@@ -69,7 +69,7 @@ export type Message = typeof Message.Type
 export const OutMessage = defineMessageUnion({
   RequestedPieces: {},
   /** Start a board from the + sheet: Boards makes it under the default name and opens it. */
-  RequestedNewBoard: { defaultName: Schema.String },
+  RequestedNewBoard: {},
 })
 export type OutMessage = typeof OutMessage.Type
 
@@ -211,8 +211,8 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SubmittedSearch: () => ({ model, commands: [WriteQuery({ query: model.query }), FocusResults()] }),
     CompletedFocus: () => ({ model }),
     ClickedAdd: () => openAddSheet(model),
-    // The sheet stays open while the board is made, saying so; once made the board opens in its place.
-    ClickedNewBoard: ({ defaultName }) => ({ model, outMessage: OutMessage.RequestedNewBoard({ defaultName }) }),
+    // Boards opens with its new-board sheet, where the template is chosen (F-26).
+    ClickedNewBoard: () => Update.withOutMessage(closeAddSheet(model), OutMessage.RequestedNewBoard()),
     GotAddSheetMessage: (got) => foldAddSheet(model, got.message),
     ClickedRetry: () => ({ model, outMessage: OutMessage.RequestedPieces() }),
     SucceededLoadSearchLanguages: () => ({ model: modifyFields(model, { languages: () => SearchLanguages.Both() }) }),
