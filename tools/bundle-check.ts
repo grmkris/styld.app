@@ -178,8 +178,10 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // en and sl in place of Clothing, and the picker's chips for groups that hold pieces, add 85 (418,329 to 418,414).
 // Raised to 421,600 on 4 November for the landing's screens (owner's phone review): one full screen per feature, the
 // turning rail with its tour and Styld's answer, in en and sl, add 3,156 (418,328 to 421,484 on a clean main).
-// Raised to 422,100 with the landing, the review card's chip and the shop sections merged: the build measures 422,055.
-if (initialGzip > 422100) throw new Error(`Initial browser assets exceed the 422,100-byte gzip budget: ${initialGzip}`)
+// Raised to 421,800 the same night: the landing's screens declare their grid columns (the rail's row had widened the
+// phone's column past the screen) and the chat's rise ends visible, 179 more (421,478 to 421,657).
+// Raised to 422,300 with the landing, the review card's chip and the shop sections merged: the build measures 422,223.
+if (initialGzip > 422300) throw new Error(`Initial browser assets exceed the 422,300-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

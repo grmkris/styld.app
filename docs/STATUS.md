@@ -7,7 +7,7 @@ listed below stays open. The history of 2 to 4 November (the cleanup's C8 fixes,
 `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`. The Eva review tracker was retired on 4 November; what it still
 held open is the section below.
 
-## Pre-demo fixes from Eva's bug report #1 (4 November, on main, not deployed)
+## Pre-demo fixes from Eva's bug report #1 (4 November, live on styld.app since 74aa35d4)
 
 Eva's screen recording of 4 November (`~/code/styldappv2-feedback/eva-bugs-1/`). Only what shows in the feature videos
 went in before the demo.
@@ -23,9 +23,14 @@ went in before the demo.
   Outfit pieces moved by hand go back to their places (owner: accepted).
 - **Evidence:** unit `OutfitLayout.test` (a lean outfit centred in every layout), `Api.test`; the native board-outfits
   journey (relayout, repeat, operator only) passed in a clean worktree. The full gate and the browser walk were not run.
+- **Production** (deployed by `styldappv2-0f`, `/api/health` reads 74aa35d4): the relayout laid out Eva's 4 of 4
+  outfit boards again, and Kris's and one imported account's 1 each; two accounts had none. A repeat skips them.
 - **Open:**
-  - Deploy to production, then run the relayout for Eva and the other accounts. Walk the three screens on a phone.
+  - Walk the three screens on a phone as Eva or Kris: the Make button in view, the sparkle and the tinted wheel, and
+    boards without holes.
   - Check the blank beige tiles under Home › What's new in her recording.
+  - `tools/relayout-boards.ts` with several emails answered 404 for the first; one email per run works. Not
+    reproduced yet.
 - **After the demo (from the same report):**
   - Clothing › Tops / Bottoms / … before the subcategories (#6).
   - A simpler Home (#5): Eva to name the sections.

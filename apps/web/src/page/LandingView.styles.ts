@@ -25,6 +25,8 @@ export const site = style({
 export const screen = style({
   position: 'relative',
   display: 'grid',
+  // One column that may shrink below its content: the rail's row is wider than the screen and scrolls inside it.
+  gridTemplateColumns: 'minmax(0, 1fr)',
   gridTemplateRows: '1fr auto',
   blockSize: '100svh',
   minBlockSize: '560px',
@@ -45,7 +47,16 @@ export const hero = style({
   '@media (min-aspect-ratio: 4/5)': { paddingBlockEnd: '56px' },
 })
 /** The rail's and the chat's screens: on the page's own paper, in its ink. */
-export const paperScreen = style({ backgroundColor: 'paper', color: 'ink' })
+export const paperScreen = style({
+  backgroundColor: 'paper',
+  color: 'ink',
+  // Wide: the words on the left, the rail or the chat beside them.
+  '@media (min-aspect-ratio: 4/5)': {
+    gridTemplateColumns: 'minmax(0, 28rem) minmax(0, 1fr)',
+    gridTemplateRows: 'minmax(0, 1fr)',
+    columnGap: 'columns',
+  },
+})
 
 /** The poster and the film fill the screen; a shade under the words keeps them legible on any frame. */
 export const film = style({
@@ -124,7 +135,11 @@ export const line = style({
   '@media (min-aspect-ratio: 4/5)': { maxInlineSize: '34ch' },
 })
 /** On paper the words are ink and need no edge. */
-export const paperWords = style({ '& h2': { textShadow: 'none' }, '& p': { color: 'ink2', textShadow: 'none' } })
+export const paperWords = style({
+  '& h2': { textShadow: 'none' },
+  '& p': { color: 'ink2', textShadow: 'none' },
+  '@media (min-aspect-ratio: 4/5)': { gridRow: '1', gridColumn: '1', alignSelf: 'center' },
+})
 
 /** Start free and Sign in, in the thumb zone. */
 export const actions = style({
@@ -165,7 +180,7 @@ export const railStage = style({
   alignSelf: 'center',
   marginInline: 'calc(-1 * max(20px, env(safe-area-inset-left), env(safe-area-inset-right)))',
   paddingBlockStart: '28px',
-  '@media (min-aspect-ratio: 4/5)': { gridRow: '1 / -1', gridColumn: '2', marginInline: '0' },
+  '@media (min-aspect-ratio: 4/5)': { gridRow: '1', gridColumn: '2', marginInline: '0' },
 })
 export const railRod = style({
   position: 'absolute',
@@ -221,7 +236,11 @@ export const topStripe = style({ backgroundImage: "url('/cdn/landing/turn-top-st
 
 // Ask Styld: the question, then Styld's answer with its four pieces, played in each time the chat comes into view.
 
-const rise = keyframes({ from: { opacity: 0, transform: 'translateY(10px)' } }, { id: 'styld-landing-rise' })
+// It ends visible: the chat's children wait at opacity 0, so the end state cannot be left to the element.
+const rise = keyframes(
+  { from: { opacity: 0, transform: 'translateY(10px)' }, to: { opacity: 1, transform: 'none' } },
+  { id: 'styld-landing-rise' },
+)
 export const chat = style({
   gridRow: '1',
   alignSelf: 'center',
@@ -229,7 +248,7 @@ export const chat = style({
   display: 'grid',
   gap: 'related',
   inlineSize: 'min(100%, 26rem)',
-  '@media (min-aspect-ratio: 4/5)': { gridRow: '1 / -1', gridColumn: '2' },
+  '@media (min-aspect-ratio: 4/5)': { gridRow: '1', gridColumn: '2' },
   // Waiting to play: hidden only where motion is allowed, so reduced motion shows the answer at once. The question
   // comes at once, Styld's answer with its pieces a moment later.
   '@media (prefers-reduced-motion: no-preference)': {
