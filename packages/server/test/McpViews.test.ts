@@ -14,7 +14,7 @@ import {
   ViewImages,
 } from '@styld/protocol'
 import { it } from '@effect/vitest'
-import { Effect, Fiber, Option, Redacted, Schema } from 'effect'
+import { type Duration, Effect, Fiber, Option, Redacted, Schema } from 'effect'
 import { TestClock } from 'effect/testing'
 import { describe, expect, test } from 'vitest'
 import { mediaViewTools, type MediaServices } from '../src/mcp/MediaViewTools.ts'
@@ -180,7 +180,7 @@ const drawnAfter = (statuses: ReadonlyArray<TryOn['status']>) => {
   return { services, reads }
 }
 
-const shownAfter = (services: MediaServices, wait: string) =>
+const shownAfter = (services: MediaServices, wait: Duration.Input) =>
   Effect.gen(function* () {
     const fiber = yield* Effect.forkChild(calling(services, 'tryon_show', { tryOnId }))
     yield* TestClock.adjust(wait)
