@@ -1,6 +1,7 @@
 import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { groupOf, OperationId, type SeedPiece } from '@styld/protocol'
+import { capturePolicy } from '../../packages/server/src/capture/Policy.ts'
 import { operatorStage, required } from '../OperatorStage.ts'
 import { r2Bucket } from '../R2Rest.ts'
 import type { Catalogue } from './Catalogue.ts'
@@ -17,11 +18,12 @@ import { operatorApi } from './Stage.ts'
 // file: `STYLD_URL`, `STYLD_OPERATOR_TOKEN`, and `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `R2_BUCKET` for the
 // bundle.
 
-/** A house garment Clef read as not one whole garment of its kind, or one not cut out or not ready. */
+/** A house garment Clef read as a scrap or another kind of garment, or one not cut out or not ready: the server
+ * refuses the boards that need it (`seed/Seeding.ts`). */
 const needsALook = (piece: SeedPiece) =>
   piece.status !== 'ready' ||
   !piece.cutOut ||
-  (piece.describedWhole !== null && piece.describedWhole < 0.5) ||
+  (piece.describedWhole !== null && piece.describedWhole < capturePolicy.garments.whole.drop) ||
   (piece.describedType !== null && groupOf(piece.describedType) !== groupOf(piece.type))
 
 /** The stage the operator's env file names, as the seed reaches it. */

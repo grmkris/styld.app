@@ -16,6 +16,7 @@ import {
 } from '@styld/protocol'
 import { Context, Effect, Layer, Option, Schema } from 'effect'
 import { Boards } from '../boards/Boards.ts'
+import { capturePolicy } from '../capture/Policy.ts'
 import { Deployment } from '../Config.ts'
 import { ImportStore } from '../imports/Store.ts'
 import { Database, nowDate, query, StoreUnavailable } from '../kernel/Db.ts'
@@ -53,12 +54,14 @@ const as = (accountId: string) => Effect.provideService(CurrentAccount, { accoun
 
 type GarmentRow = Effect.Success<ReturnType<SeedStore['Service']['houseGarments']>>[number]
 
-/** Whether a house garment can go on a board: ready, cut out, and read by Clef as one whole garment of its kind. */
+/** Whether a house garment can go on a board: ready, cut out, and read by Clef as a garment of its kind that is not
+ * a scrap (the capture's own drop bar: a pair of shoes, a bag or a folded scarf scores low on "one whole garment" by
+ * nature, and the seed's judge already saw one whole garment in its picture). */
 const usable = (row: GarmentRow) =>
   row.status === 'ready' &&
   row.imageKey !== null &&
   row.imageKey !== row.originalKey &&
-  (row.describedWhole === null || row.describedWhole >= 0.5) &&
+  (row.describedWhole === null || row.describedWhole >= capturePolicy.garments.whole.drop) &&
   (row.describedType === null || groupOf(row.describedType) === groupOf(row.type))
 
 /** The account's house garments by manifest id. */
