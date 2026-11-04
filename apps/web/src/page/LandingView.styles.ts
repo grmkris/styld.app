@@ -133,13 +133,21 @@ export const page = style({
 export const feature = style({
   display: 'grid',
   gridTemplateColumns: 'repeat(auto-fit, minmax(min(100%, 22rem), 1fr))',
-  alignItems: 'center',
+  alignItems: 'start',
   alignContent: 'center',
   gap: 'column',
   minBlockSize: 'min(100svh, 52rem)',
   paddingBlock: '48px',
 })
-export const featureWords = style({ display: 'grid', alignContent: 'start', gap: 'related', maxInlineSize: '46ch' })
+/** The words at the top of their block; beside the media on a wide screen they stay in view while it scrolls by. */
+export const featureWords = style({
+  display: 'grid',
+  alignSelf: 'start',
+  alignContent: 'start',
+  gap: 'related',
+  maxInlineSize: '46ch',
+  '@media (min-width: 760px)': { position: 'sticky', insetBlockStart: '96px' },
+})
 export const heading = style({
   margin: '0',
   fontSize: 'title',
@@ -178,9 +186,13 @@ export const tableClip = style({
 /** The shop: the chips over the grid of cut-outs on paper. */
 export const shop = style({ display: 'grid', gap: 'section', alignContent: 'start' })
 export const chips = style({ display: 'flex', flexWrap: 'wrap', gap: 'actions', margin: '0', padding: '0' })
+/** A chip as tall as its target: 44px, so neighbouring rows' targets never overlap. */
+export const shopChip = style({ minBlockSize: '44px', '::after': { insetBlock: '0' } })
 export const grid = style({
   display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fill, minmax(min(42%, 8.5rem), 1fr))',
+  // Six pieces: three rows of two on a phone, two rows of three once there is room.
+  gridTemplateColumns: 'repeat(2, minmax(0, 1fr))',
+  '@media (min-width: 760px)': { gridTemplateColumns: 'repeat(3, minmax(0, 1fr))' },
   rowGap: 'section',
   columnGap: 'grid',
   margin: '0',

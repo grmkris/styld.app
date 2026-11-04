@@ -1,4 +1,3 @@
-import { landingShopPieces } from '@styld/protocol'
 import { Effect, Schema } from 'effect'
 import { Command, Mount, Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
@@ -25,10 +24,7 @@ export const ShopFilter = Schema.Literals(['all', 'top', 'bottom', 'dress', 'out
 export type ShopFilter = typeof ShopFilter.Type
 
 /** The chips in the order they read: All, then each category the grid has. */
-export const shopFilters: ReadonlyArray<ShopFilter> = [
-  'all',
-  ...new Set(landingShopPieces.map(({ category }) => category)),
-]
+export const shopFilters: ReadonlyArray<ShopFilter> = ShopFilter.literals
 
 export const Model = Schema.Struct({
   film: Film,

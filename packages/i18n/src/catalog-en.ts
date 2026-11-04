@@ -334,9 +334,8 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'landing.start': 'Start free',
   'landing.signIn': 'Sign in',
   'landing.contact': 'Contact',
-  'landing.hero.mirror.title': 'Try it on before you get dressed.',
-  'landing.hero.mirror.lede':
-    'See outfits from your own wardrobe on you, in the mirror, before a single piece leaves its hanger.',
+  'landing.hero.mirror.title': 'Know the outfit before you open the wardrobe.',
+  'landing.hero.mirror.lede': 'Styld lays out outfits from what you already own, so you choose in a minute.',
   'landing.hero.mirror.film':
     'A woman in a robe stands with her back to the camera before a tall mirror; her reflection, below the shoulders, wears one outfit after another.',
   'landing.hero.coat.title': 'One coat, six outfits.',

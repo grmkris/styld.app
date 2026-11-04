@@ -40,7 +40,7 @@ const clipsWait = [
 ]
 
 const headlines: Record<Hero, { readonly en: string; readonly sl: string }> = {
-  mirror: { en: 'Try it on before you get dressed.', sl: 'Pomerjaj, preden se oblečeš.' },
+  mirror: { en: 'Know the outfit before you open the wardrobe.', sl: 'Poznaj videz, še preden odpreš omaro.' },
   coat: { en: 'One coat, six outfits.', sl: 'En plašč, šest videzov.' },
   wardrobe: { en: 'Every outfit starts in your wardrobe.', sl: 'Vsak videz se začne v tvoji garderobi.' },
 }
@@ -75,12 +75,12 @@ describe('the landing', () => {
     })
   }
 
-  test('the mirror hero still says Start free: try-on is not built', () => {
+  test('the mirror hero promises only what ships: no try-on, and Start free', () => {
     scene(
       { update, view },
       given(landing('mirror')),
       expect(role('link', { name: 'Start free' })).toExist(),
-      expect(role('link', { name: /try/i })).not.toExist(),
+      expect(text(/try|on you/i)).not.toExist(),
       Mount.resolve(StartFilm, LandingMessage.CheckedMotion({ moving: true })),
       ...clipsWait,
     )
@@ -148,7 +148,7 @@ describe('the landing', () => {
     )
   })
 
-  test('the shop: every piece is already yours, and a chip shows only its category', () => {
+  test('the shop: six pieces at most, each already yours, and a chip finds its category among all of them', () => {
     scene(
       { update, view },
       given(landing('coat')),
@@ -157,12 +157,15 @@ describe('the landing', () => {
       inside(
         role('region', { name: 'Your wardrobe, as a shop' }),
         expect(role('button', { name: 'All' })).toHaveAttr('aria-pressed', 'true'),
-        expect(nth(all.role('listitem'), 12)).toContainText('Already yours'),
+        expect(nth(all.role('listitem'), 5)).toContainText('Already yours'),
+        expect(nth(all.role('listitem'), 6)).not.toExist(),
         expect(selector('img[src="/cdn/landing/shop-coat-camel.webp"]')).toExist(),
+        // Tan loafers are past the six All shows; Shoes finds them.
+        expect(text('Tan loafers')).not.toExist(),
         click(role('button', { name: 'Shoes' })),
         expect(role('button', { name: 'Shoes' })).toHaveAttr('aria-pressed', 'true'),
         expect(role('button', { name: 'All' })).toHaveAttr('aria-pressed', 'false'),
-        expect(nth(all.role('listitem'), 2)).toContainText('Tan loafers'),
+        expect(text('Tan loafers')).toExist(),
         expect(nth(all.role('listitem'), 3)).not.toExist(),
         expect(selector('img[src="/cdn/landing/shop-coat-camel.webp"]')).not.toExist(),
       ),

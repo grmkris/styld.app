@@ -12,7 +12,7 @@ import { heroInCookies } from '../src/server/LandingHero.ts'
 const assets = { entryScript: '/entry.js', stylesheets: [], modulePreloads: [] }
 
 const headlines = {
-  mirror: 'Try it on before you get dressed.',
+  mirror: 'Know the outfit before you open the wardrobe.',
   coat: 'One coat, six outfits.',
   wardrobe: 'Every outfit starts in your wardrobe.',
 } as const

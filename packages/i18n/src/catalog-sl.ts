@@ -340,9 +340,8 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'landing.start': 'Začni brezplačno',
   'landing.signIn': 'Prijava',
   'landing.contact': 'Kontakt',
-  'landing.hero.mirror.title': 'Pomerjaj, preden se oblečeš.',
-  'landing.hero.mirror.lede':
-    'Poglej videze iz svoje garderobe na sebi, v ogledalu, še preden kateri koli kos zapusti obešalnik.',
+  'landing.hero.mirror.title': 'Poznaj videz, še preden odpreš omaro.',
+  'landing.hero.mirror.lede': 'Styld sestavi videze iz tega, kar že imaš, da izbereš v minuti.',
   'landing.hero.mirror.film':
     'Ženska v kopalnem plašču stoji s hrbtom proti kameri pred visokim ogledalom; njen odsev pod rameni nosi videz za videzom.',
   'landing.hero.coat.title': 'En plašč, šest videzov.',

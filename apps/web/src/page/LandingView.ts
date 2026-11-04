@@ -157,6 +157,9 @@ const pieceNames = {
 
 const filterLabel = (filter: ShopFilter, locale: Locale) => format(locale, `landing.shop.${filter}`, {})
 
+/** The grid shows at most this many pieces: two rows on a desktop, three on a phone. */
+const shopShown = 6
+
 /** The wardrobe as a shop: category chips over the cut-outs, each "Already yours" where a price would be. */
 const shopGrid = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =>
   h.div(styled(h, styles.shop()), [
@@ -168,7 +171,7 @@ const shopGrid = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
             h.Type('button'),
             h.AriaPressed(String(model.shop === filter)),
             h.OnClick(Message.ClickedShopFilter({ filter })),
-            ...styled(h, cx(chip(), chosen())),
+            ...styled(h, cx(chip(), chosen(), styles.shopChip())),
           ],
           [filterLabel(filter, locale)],
         ),
@@ -178,6 +181,7 @@ const shopGrid = (model: Model, locale: Locale, h: HtmlBuilder<Message>): Html =
       styled(h, styles.grid()),
       landingShopPieces
         .filter(({ category }) => model.shop === 'all' || category === model.shop)
+        .slice(0, shopShown)
         .map(({ piece }) =>
           h.keyed('li')(piece, styled(h, styles.piece()), [
             h.img([

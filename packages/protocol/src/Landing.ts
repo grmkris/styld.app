@@ -19,19 +19,20 @@ export const landingHeroCookieSeconds = 60 * 60 * 24 * 182
 
 /** The cut-outs the shop grid shows, by the category the grid sorts them under. */
 export const landingShopPieces = [
+  // The first six are what All shows, one of each kind; a chip finds the rest.
+  { piece: 'coat-camel', category: 'outerwear' },
   { piece: 'sweater-cream', category: 'top' },
+  { piece: 'jeans-light', category: 'bottom' },
+  { piece: 'dress-sage', category: 'dress' },
+  { piece: 'boots-black', category: 'shoes' },
+  { piece: 'bag-cognac', category: 'accessory' },
   { piece: 'shirt-white', category: 'top' },
   { piece: 'top-stripe', category: 'top' },
   { piece: 'turtleneck-black', category: 'top' },
-  { piece: 'jeans-light', category: 'bottom' },
   { piece: 'trousers-brown', category: 'bottom' },
   { piece: 'skirt-ivory', category: 'bottom' },
-  { piece: 'dress-sage', category: 'dress' },
-  { piece: 'coat-camel', category: 'outerwear' },
   { piece: 'sneakers-white', category: 'shoes' },
-  { piece: 'boots-black', category: 'shoes' },
   { piece: 'loafers-tan', category: 'shoes' },
-  { piece: 'bag-cognac', category: 'accessory' },
 ] as const
 
 export type LandingShopPiece = (typeof landingShopPieces)[number]['piece']
