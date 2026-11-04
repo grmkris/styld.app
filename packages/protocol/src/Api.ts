@@ -67,8 +67,7 @@ import {
 import { CreateLook, Look, LookId, Looks } from './Look.ts'
 import { OutfitApi } from './Outfit.ts'
 import { PhotoApi } from './Photo.ts'
-import { Day } from './Day.ts'
-import { WearPieces, WornDay, WornDays, WornRange } from './Worn.ts'
+import { WornApi } from './WornApi.ts'
 import {
   AddPiece,
   ChoosePicture,
@@ -345,34 +344,6 @@ class BoardApi extends HttpApiGroup.make('board')
       payload: AddBoardImage,
       success: BoardImage,
       error: [NotFound, UploadRefused, OperationConflict, Unavailable],
-    }),
-  )
-  .middleware(SessionAccount)
-  .middleware(SessionHttp.RequireSession) {}
-
-/** What the person wore, by day: "Wear this" on today's table records it. */
-class WornApi extends HttpApiGroup.make('worn')
-  .add(
-    HttpApiEndpoint.get('listWorn', '/worn', {
-      query: WornRange,
-      success: WornDays,
-      error: Unavailable,
-    }),
-  )
-  .add(
-    HttpApiEndpoint.put('wearPieces', '/worn/:day', {
-      params: { day: Day },
-      payload: WearPieces,
-      success: WornDay,
-      error: [NotFound, OperationConflict, Unavailable],
-    }),
-  )
-  .add(
-    HttpApiEndpoint.delete('clearWorn', '/worn/:day', {
-      params: { day: Day },
-      payload: Operation,
-      success: HttpApiSchema.NoContent,
-      error: [OperationConflict, Unavailable],
     }),
   )
   .middleware(SessionAccount)
