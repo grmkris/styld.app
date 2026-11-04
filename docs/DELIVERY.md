@@ -61,6 +61,7 @@ names passes at the release under test and the preview readback is recorded in S
 | House boards: seed, Generated  | `HouseSeedTables`, `SeedPlans`, `Translated`, `PublicGenerated`, `tools/seed` (`Prompt`, `Ledger`, `Garments`, `Run`, `Plan`)                              | `SeedAcceptance` (operator and house only, once, sl, Generated)                      | fixture boards seeded, read back en/sl, pruned |
 | Show me                        | `ShowMe`, `Feed` (bands), `showMe.story/scene`, `session.story`                                                                                            | `IdentityBrowserAcceptance` (lands on Home, the card)                                | a new account's What's new under each choice   |
 | Try with my wardrobe           | `TryBoard` (swaps, labels en/sl, once, nothing written), `tryBoard.scene`                                                                                  | `SeedAcceptance` (try, again, signed out)                                            | a try on a seeded board with a test account    |
+| Try on                         | `TryOnPrompt` (request, privacy rule, contract), `TryOn` (hold, refund, once, ownership, delete), `tryOn.story/scene`                                      | `TryOnAcceptance`, `TryOnBrowserAcceptance`                                          | a try-on with the owner's photos               |
 | v1 import                      | `Mapping`, `Report` (`tools/import-v1/`)                                                                                                                   | `ImportAcceptance` (existing and made account, twice)                                | reports reconciled (74, 313)                   |
 | Schema baseline and migrations | `Schema`, `DurabilityMigration`                                                                                                                            | D1 schema equals its snapshot                                                        | migrations applied; every wardrobe row decodes |
 | en/sl and rendering            | `i18n`, `catalog`, `Rendering`, `masthead.scene`, `controls.scene`                                                                                         | locale persists in a browser; Slovenian `Intl` in workerd                            | walk in sl                                     |
@@ -80,7 +81,7 @@ does not close those rows.
 ## Kept, not built
 
 Template boards beyond "One piece, many outfits" (Before you buy and the Wishlist board, Travel, the week, the outfit of
-the day, a blank lookbook), board export, the try-on quality test and try-on (M5–M6, M8–M9, frozen); billing; go-live (legal pages, the reviewer account, the ChatGPT directory, the cutover).
+the day, a blank lookbook), board export (M5–M6, frozen); billing; go-live (legal pages, the reviewer account, the ChatGPT directory, the cutover).
 Each gets its rows here when it is built. `docs/ROADMAP.md` holds their decisions.
 
 ## Completion conditions

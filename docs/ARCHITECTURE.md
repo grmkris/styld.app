@@ -123,8 +123,8 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 - **No compatibility code:** no tolerant decoders for older shapes, no re-exports or aliases, no legacy routes. The
   MCP SDK's older protocol era stays served for external assistant hosts.
 - **The real photo is the source.** Generated pictures (clean pictures, turns, stickers) are presentation beside it
-  and marked. Cut-outs are sent to Muse without a face check (owner, 4 November); original photos never leave Styld (try-on's
-  exception in ROADMAP is not built).
+  and marked. Cut-outs are sent to Muse without a face check (owner, 4 November); original photos never leave Styld except a
+  try-on's: the person's own My Gallery photo they said shows them (`generation/TryOnShared.ts` `sendable`).
 - **The house accounts' exception** (owner, 4 November; ROADMAP `#house-boards`): `@styld.women` and `@styld.men`
   show garments generated with Muse Image, one picture per piece, imported with `piece_provenance` marking them
   generated. They are never redrawn, are shown marked Generated wherever others see them, and never touch a person's

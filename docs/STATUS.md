@@ -23,6 +23,56 @@ The owner chose Google sign-in with v1's OAuth client and v1's linking, from Gro
   - The first Google sign-in of an existing account signs its other sessions out once (Yielded's import advances the
     security revision).
 
+## Try on in the Lab (4 November, for the Meta hackathon)
+
+A signed-in person picks one of their own My Gallery photos and a look or pieces of their wardrobe, says the photo
+shows them, and Meta Muse Image redraws the photo with them wearing those pieces. This session built it as a track:
+cheap checks only; the coordinator merges, deploys and runs native.
+
+- **Spike (go, owner 4 November).** Kris's three full-body photos (a mirror selfie, standing in a room, outdoors with a
+  hat, sunglasses and backpack) × three outfits from his wardrobe × three prompts: 30 of 30 edits came back, no
+  refusals, $0.01 each, median 13 s, slowest 28 s; $0.49 spent of the $2 cap. Face, hair, body, pose, hands, phone,
+  accessories, shadows and background stay; garments, layering and shoes come through. Muse takes at most 10 images
+  (a request with 16 answers 400 `invalid_array_length`) and draws 3:4, 2:3, 9:16, square and landscape canvases.
+  Separate piece pictures beat one flat-lay sheet; the prompt that names each image by colour and type only is best
+  (a styling hint, "zipped halfway", made Muse invent an undershirt). WebP and RGBA PNG inputs both work. The private
+  sheet and harness: `~/code/meta-hackathon/out/styld-tryon/` (`preview --name styld-tryon-spike`). Pruna's try-on
+  model on Workers AI was not tried.
+- **Owner decisions (4 November):** price 2 credits (`prices.tryOn`); results are shareable through a board and need no
+  Generated mark of their own (a board picture from a try-on is marked Generated like a sticker); Kris's three photos
+  were written into his preview My Gallery by the operator (R2 objects and rows, his account only, no credit, nothing
+  found in them).
+- **Privacy:** the one exception to "original photos never leave Styld" (ROADMAP › Privacy exception). Only the
+  account's own My Gallery photo is sent, and only for a try-on the person started with `thisIsMe: true` (the contract
+  refuses one without it; the row keeps `confirmed_at`). The queue checks the photo's account again before sending
+  (`TryOnShared.sendable`). The photo goes as Cloudflare Images' re-encoded JPEG (no EXIF or location), each piece as
+  its shown picture (drawing, else cut-out, turned as its owner turned it) at most 1024 px WebP. Spans carry the try-on
+  id only; no prompt, image or signed address is logged.
+- **Server (`generation/TryOn*.ts`):** migration `20261104175353_try_ons` only creates `try_ons` and
+  `try_on_pieces` (owner: generation). `POST /api/try-ons` claims its operation id, paces like stickers, holds 2
+  credits through the Wallet (`holdId('tryOn', id, 0)`), then the generation queue's `TakeTryOn` draws once: a claimed
+  drawing (`started_at`) whose answer was lost is never drawn again; a refusal or a lost answer gives the credits back;
+  a result is stored under the photo's prefix, so deleting the photo deletes it. `GET /api/try-ons`,
+  `GET /api/try-ons/:id` (both send a stalled one again), `DELETE` (a try-on deleted before it ended is refunded) and
+  `POST /api/try-ons/:id/board` (the result as a Generated picture on one of the person's boards, keyed by try-on and
+  board). The `tryOns` sweep re-sends stalled try-ons every run. Muse's `tryOn` call is counted as kind `tryOn`.
+- **Web (Lab › Try on, `/try-on`, `page/TryOn.ts`):** the person's try-ons; a new one from a Gallery photo, a look's
+  pieces in one tap or up to nine pieces, a required "This is me" tick, the 2-credit cost; the page follows it by
+  reading the list every 2 s; before and after side by side on a wide screen, a toggle on a phone; Delete after a
+  question; Add to board through Save to board's `tryOn` target. A lost answer is retried under the same operation
+  id. en and sl copy. Bundle budget 397,200: the page adds 5,773 gzip over the contract's 391,342 (clean worktree).
+  Story and scene tests `tryOn.story/scene`; native `TryOnBrowserAcceptance` written, not run.
+- **Evidence:** unit `TryOnPrompt.test` (words, numbering, canvas, Muse body order and model, the privacy rule, the
+  `thisIsMe` and nine-piece contract) and `TryOn.test` over real SQLite and the in-memory Wallet (2 credits held and
+  spent once the result is kept; refunded on a refusal and on a lost answer, never drawn twice; a repeat answers the
+  same try-on, another under the same id conflicts; another account's photo or pieces are NotFound and nothing is sent;
+  past the day's credits the try-on is undone; delete takes the result and refunds an unfinished one). Native
+  `TryOnAcceptance` written, not run here. `test:unit` at this commit: every try-on test passes; four sign-in tests
+  (`GoogleEntry`, `controls.scene`, `session.story`) fail at d1ccf0b6 already, from the Google sign-in work.
+- **Open:** the coordinator's merge, deploy, migration and native run; a live try-on on the preview with Kris's photos;
+  MCP tools for try-on (the operation is shared, the tools are not written); a remembered default photo (the person
+  picks a photo each time).
+
 ## Pictures that look like a shop's, and a piece turned to its back (4 November)
 
 Eva saw her shop-style pictures as plain cut-outs, and found swiping through three pictures of the front pointless.
@@ -285,6 +335,8 @@ Each line is a kept feature; `docs/DELIVERY.md` maps it to the tests and readbac
   discovery, failed is hidden with a notice; three reports hide; admin MCP tools hide, restore and feature.
 - **ChatGPT and Claude (MCP):** OAuth (CIMD and DCR), consent and immediate revoke at `/mcp`; noun_verb tools over
   the same operations; MCP Apps views (the wardrobe and a board) inside the host.
+- **Try on:** one of the person's own Gallery photos redrawn by Muse wearing their pieces (2 credits), in the Lab; the
+  result can go on a board.
 - **Credits:** 100 a day per account (`protocol/Prices.ts`), held before paid work and settled once; a lost provider
   answer refunds.
 - **Languages and telemetry:** English and Slovenian everywhere; browser telemetry only after consent.
@@ -346,7 +398,6 @@ From the product (carried from 31 October – 1 November):
 ## Owner decisions pending
 
 - **Gate 1:** rate the ~60 calibration outfits (Fast against Thinking) on the rating page; feeds M4.
-- **Try-on test (M8):** 2–3 full-body photos of the owner; then go or no-go, provider and price.
 - **My Gallery readback:** a worn outfit photo.
 - **Labels:** Flats against heels (the owner's Derby shoes are typed heels).
 - **Styld:** the model and the price per message.

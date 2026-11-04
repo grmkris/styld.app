@@ -40,11 +40,9 @@ Thinking).
 - **M6 — Travel.** Destination, dates and activities; the forecast or usual weather, correctable; a small set of
   pieces and one outfit per day, up to seven, showing reuse (1 credit). Open-Meteo's free API is non-commercial: going
   live needs its paid plan or another provider.
-- **M8 — Try-on quality test.** Meta Muse image edits against Pruna's try-on model on Workers AI, on the owner's own
-  photos (another person's only with explicit consent), for at most $5. Needs 2–3 full-body photos from the owner.
-  Then the owner decides go or no-go, provider and price.
-- **M9 — Try-on** (only on the owner's go): a remembered, deletable default full-body photo; try on from a look, a kept
-  outfit or a Before you buy board; results under Wardrobe › Try-ons, marked Generated, held back from visitors.
+- **M8 — Try-on quality test (done, 4 November).** Muse Image on the owner's three photos: go. Pruna was not tried.
+- **M9 — Try-on (built 4 November, owner's go):** Lab › Try on; a My Gallery photo picked each time, with "This is
+  me"; pieces or a look; 2 credits; the result is the person's and may go on a board, which shows it as Generated.
   **Privacy exception (owner, 2026-10-31):** try-on may send the person's own photo to the try-on provider, never
   anyone else's; every other picture rule stays.
 - **M10 — Review rounds** after the milestones built.
@@ -90,4 +88,4 @@ pages (Analytics Engine and `tools/ai-usage-report.ts` carry the numbers).
 Daily allowance 100 per account (`packages/protocol/src/Prices.ts`): a photo or a back photo 1, a video 5 per started
 half-minute, a redraw 1, a turn 5, a message to Styld 1, a sticker 1, a mood board 1, a My Gallery photo 1. Making an
 outfit, Shuffle, Keep and Spin are free; Thinking at most 50 a day per account. Frozen milestones add: a candidate's
-cut-out 1, a trip plan 1, try-on priced after its test.
+cut-out 1, a trip plan 1, try-on 2.
