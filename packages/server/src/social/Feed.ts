@@ -22,7 +22,7 @@ const unavailable = () => Unavailable.make({})
 /** A D1 read; a store that does not answer is unavailable. */
 const read = <A>(run: () => Promise<A>) => query(run).pipe(Effect.mapError(unavailable))
 
-export interface Candidate {
+interface Candidate {
   readonly kind: 'board' | 'pin' | 'look'
   readonly id: string
   readonly boardId: string
@@ -45,7 +45,8 @@ const interleaved = <A>(items: ReadonlyArray<A>, personOf: (item: A) => string, 
 }
 
 /** A page in reading order: the followed people's items first, then everyone else's, each part newest first as it
- * came and interleaved on its own, so following someone puts their new things at the top. */
+ * came and interleaved on its own, so following someone puts their new things at the top.
+ * @internal Exported for its tests. */
 export const followedFirst = <A>(
   items: ReadonlyArray<A>,
   followed: ReadonlySet<string>,
@@ -57,7 +58,8 @@ export const followedFirst = <A>(
 }
 
 /** The newest things anyone but the reader made public before `before`: boards that went public, pins added to a
- * board after it went public (a board's own pins come with it, not one by one), and shared looks. */
+ * board after it went public (a board's own pins come with it, not one by one), and shared looks.
+ * @internal Exported for its tests. */
 export const candidates = (db: Database['Service'], viewer: string, before: Date) =>
   Effect.gen(function* () {
     const went = yield* read(() =>
