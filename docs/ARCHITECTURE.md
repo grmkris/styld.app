@@ -20,13 +20,17 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 
 - **Modules** (`server/src/Modules.ts`): platform, account, social, wardrobe, capture, photos, generation, outfits,
   links, stylist, mcp, imports, seed. Each is one value (`kernel/Module.ts`): `{ layer, api?, routes?, consumers?, sweeps? }`.
-  `StyldWorker.ts` builds the kernel once per runtime from the Worker's bindings and every module over it, and checks
+  `Application.ts` builds the kernel once per runtime from the Worker's bindings and every module over it, and checks
   at the type level that no module needs a service nobody provides. Adding a module is one entry in that list. A
-  module provides the layers of the modules it uses by reference; Effect builds each layer once.
+  module provides the layers of the modules it uses by reference; Effect builds each layer once. The entry,
+  `StyldWorker.ts`, keeps only the runtime, the bindings (`Bindings.ts`) and the deployment, and imports
+  `Application.ts` and the live providers on the Worker's first event: evaluating the whole module graph at startup
+  took about a second of CPU, Cloudflare's startup limit (`ScriptStartupError`, 4 November 2026). That shared import
+  only evaluates code; everything that does I/O is built per request by `onFirstUse`.
 - **Kernel** (`server/src/kernel/`): `Db.ts` (the one drizzle over D1, `query`, `first`, `chunked`, failures as
   `StoreUnavailable` → protocol `Unavailable`), `Ids.ts` (`newId`, `randomToken`, `digestOf`), `Receipts.ts` (operation
-  receipts), `Media.ts` (bucket and Images, key listing, paginated deletes, `deleteAfterRows`), `Pacing.ts` (one table
-  of paces over RateLimit bindings; a failing limiter refuses), `Metrics.ts` (the provider call counter).
+  receipts), `Media.ts` (bucket and Images, key listing, paginated deletes, `deleteAfterRows`), `Paces.ts` (one table
+  of paces over RateLimit bindings) and `Pacing.ts` (their service; a failing limiter refuses), `Metrics.ts` (the provider call counter).
 - **Services, not records.** Every module's operations are `Context.Service`s with layers over the kernel; large
   operation groups are built over the services they yield (`Effect.context`), never over hand-rolled dependency
   records. Domain `decide`/`evolve` are pure.
@@ -197,7 +201,7 @@ reasoning trail are in `docs/archive/ARCHITECTURE-2026-11-02.md`; product scope 
 - **What's new is a query over everyone's public things** (followed people first on each page), not a written activity
   table. Public media has its own routes; visibility is
   checked before any cache, the stored original is never served, a failed transform answers 503.
-- **Rate limits** are Workers RateLimit bindings (10 or 60 second periods), one pace table (`kernel/Pacing.ts`).
+- **Rate limits** are Workers RateLimit bindings (10 or 60 second periods), one pace table (`kernel/Paces.ts`, which the entry declares; `kernel/Pacing.ts` checks them).
 
 ## Wardrobe, outfits and boards
 

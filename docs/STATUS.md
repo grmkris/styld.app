@@ -7,6 +7,26 @@ listed below stays open. The history of 2 to 4 November (the cleanup's C8 fixes,
 `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`. The Eva review tracker was retired on 4 November; what it still
 held open is the section below.
 
+## The API Worker's startup under Cloudflare's CPU limit (4 November, on a branch, not deployed)
+
+On the night of 4 November, 4 of 7 production deploys failed with `ScriptStartupError: Script startup exceeded CPU
+time limit` on `StyldWorker`. Unchanged retries sometimes passed. The Worker was built as Alchemy builds it (its
+`WorkerBundle`, minified, `strictExecutionOrder`). The entry chunk was 3.36 MB, and its top level took 909 ms of CPU
+(median of 9, node). There was no single hot spot: the whole static module graph was evaluated at startup. Yielded
+Auth's persistence and drizzle took about 310 ms, `Modules.ts` 185 ms, the API 43 ms, and Alchemy's own bridge 80 ms.
+
+- `StyldWorker.ts` now keeps the runtime, the bindings (`Bindings.ts`, with the pace table split into
+  `kernel/Paces.ts`) and the deployment. It imports `Application.ts` (the kernel, the modules, the handlers) in the
+  Worker's init, on the first event, and imports the live providers inside the application's per-request first build.
+- After: the entry is 175 KB, with 650 KB of static shared chunks. Its top level takes 250 ms of CPU. The first event
+  now pays the Application chunk's evaluation (640–780 ms of CPU) under the request's CPU limit, so a cold visitor
+  waits about as long as before.
+- The shared import only evaluates code. I/O setup (cb10b19's `sessionsReady`) stays in `onFirstUse`'s per-request
+  build. A synthetic copy of the pattern in workerd answered 24 requests sent together at a cold isolate, with none
+  hung.
+- Open: deploy to the preview, then `cold.ts` and Workers Logs (no "hung", no startup errors), then production. No gate
+  yet keeps the entry's static graph small.
+
 ## Styld learns the person: taste, memory, first run (4 November, on main)
 
 Kris's plan of 4 November (`~/.claude/plans/okay-so-please-look-sprightly-brook.md`), built as a track of its own
