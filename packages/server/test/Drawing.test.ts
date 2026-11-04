@@ -97,6 +97,7 @@ const frontWith = (photo: Option.Option<Rgba>) =>
       Effect.flatMap(CaptureStore, (store) => storedAs(store.movePicture(pieceId, from, changes))),
     keyOf: (picture, version) => pictureKey(picture.accountId, picture.pieceId, version),
     cutouts: () => Effect.succeed({ subject: Option.some(cutout), other: Option.none() }),
+    drawnWith: (piece) => ({ drawnRotation: piece.rotation }),
     plan: () => Effect.succeed('draw'),
     photo: () => Effect.succeed(photo),
     hint: () => Option.none(),
@@ -110,6 +111,17 @@ const pictureOf = (database: ReturnType<typeof localD1>) =>
   database.sqlite.prepare('SELECT state, clean_key AS cleanKey, version FROM piece_pictures').get()
 
 describe("a piece's drawing", () => {
+  it.effect('records the rotation it was drawn at, so it turns only by a rotation set after it', () => {
+    const { database, layer } = over('queued', drawnTee)
+    database.sqlite.exec(`UPDATE pieces SET rotation = 90`)
+    return Effect.gen(function* () {
+      yield* front.process('pc_1')
+      expect(
+        database.sqlite.prepare('SELECT state, drawn_rotation AS drawnRotation FROM piece_pictures').get(),
+      ).toEqual({ state: 'ready', drawnRotation: 90 })
+    }).pipe(Effect.provide(layer))
+  })
+
   it.effect('is shown as soon as Muse draws it and it keys cleanly, never compared with its cut-out', () => {
     const { database, stored, drawn, layer } = over('queued', drawnTee)
     return Effect.gen(function* () {

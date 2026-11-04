@@ -42,7 +42,10 @@ export type Drawing = Pick<
   PictureRow,
   'pieceId' | 'accountId' | 'state' | 'cleanKey' | 'version' | 'keyColour' | 'provider' | 'claimedAt'
 >
-type Changes = Partial<Omit<Drawing, 'pieceId' | 'accountId'>> & { readonly updatedAt?: Date }
+type Changes = Partial<Omit<Drawing, 'pieceId' | 'accountId'>> & {
+  readonly updatedAt?: Date
+  readonly drawnRotation?: PictureRow['drawnRotation']
+}
 
 /** What a side of a piece brings to its drawing. */
 export interface Slot<Row extends Drawing, E, R> {
@@ -59,6 +62,8 @@ export interface Slot<Row extends Drawing, E, R> {
   readonly cutouts: (
     piece: PieceRow,
   ) => Effect.Effect<{ readonly subject: Option.Option<Rgba>; readonly other: Option.Option<Rgba> }, E, R>
+  /** What its claim records of the piece it is drawn from: the front, the rotation its cut-out is turned by. */
+  readonly drawnWith: (piece: PieceRow) => Pick<Changes, 'drawnRotation'>
   /** Whether to draw it from its cut-out, or ask for a retake. */
   readonly plan: (row: Row, subject: Rgba) => Effect.Effect<'draw' | 'retake', ProviderError, GarmentVision>
   /** The photo the side's cut-out came from, asked for only once Muse refused the cut-out alone (`photoOf`). */
@@ -237,6 +242,7 @@ const start = <Row extends Drawing, E, R>(slot: Slot<Row, E, R>, row: Row) =>
       provider: (yield* ImageGenerator).provider,
       claimedAt: yield* nowDate,
       cleanKey: null,
+      ...slot.drawnWith(piece.value),
     }
     if (!(yield* move(slot, row, ['queued'], claim))) return
     yield* removeObject(row.cleanKey)

@@ -67,6 +67,9 @@ export const PiecePicture = Schema.Struct({
   shows: PictureChoice,
   /** Counts drawings; image addresses carry it, so a new drawing is never served from a cache. */
   version: Schema.Int.check(Schema.isGreaterThanOrEqualTo(0)),
+  /** The clockwise quarter-turn the drawing is served with, the piece's rotation past the one it was drawn at; the
+   * browser gives it to the turn made from the drawing, served as it was made. None is 0. */
+  rotation: Schema.optionalKey(PieceRotation),
 })
 export type PiecePicture = typeof PiecePicture.Type
 
@@ -163,7 +166,8 @@ export const Piece = Schema.Struct({
   shopUrl: Schema.NullOr(ShopUrl),
   /** Whether a picture of its back is kept: the held camera's back shot, or one the person added. */
   hasBack: Schema.Boolean,
-  /** A clockwise quarter-turn applied while delivering every picture of the piece. */
+  /** A clockwise quarter-turn the person's photo and cut-out are delivered with; the drawing, made from the turned
+   * cut-out, turns by what it is past the rotation it was drawn at (`PiecePicture.rotation`); the back never turns. */
   rotation: PieceRotation,
   status: PieceStatus,
   source: PieceSource,

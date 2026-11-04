@@ -24,6 +24,8 @@ const back = drawingOf<BackPictureRow, Unavailable, CaptureServices>({
     Effect.flatMap(CaptureStore, (store) => storedAs(store.moveBackPicture(pieceId, from, changes))),
   keyOf: (row, version) => backPictureKey(row.accountId, row.pieceId, version),
   cutouts: (piece) => Effect.all({ subject: cutoutAt(piece.backImageKey), other: frontOf(piece) }),
+  // A back is its own photo, never turned by the front's rotation.
+  drawnWith: () => ({}),
   plan: () => Effect.succeed('draw'),
   // A back is its own photo, with no wider one kept beside it: a refused back fails.
   photo: () => Effect.succeed(Option.none()),

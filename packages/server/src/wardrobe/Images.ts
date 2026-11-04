@@ -2,7 +2,7 @@ import type { PieceImages, PiecePictureKind, PieceTurn } from '@styld/protocol'
 import { Effect, Option } from 'effect'
 import { SignedMedia } from '../kernel/SignedMedia.ts'
 import type { ImageSize } from './Media.ts'
-import { isDrawn, shownImage, shows, turnView } from './Shown.ts'
+import { drawingTurn, isDrawn, shownImage, shows, turnView } from './Shown.ts'
 import { piecePrefix } from './Media.ts'
 import type { PictureRow, PieceRow, TurnRow } from './Store.ts'
 import type { BackPictureRow } from '../capture/BackPictureStore.ts'
@@ -22,8 +22,9 @@ export interface Drawings {
 }
 
 /** The stored image behind one of a piece's pictures, if it has that picture, and the quarter turn it is delivered
- * with: the owner's rotation turns their own photo and cut-out (`shownImage`), never the drawing, which is drawn
- * upright, or the back, a photo of its own. The stored object's own type is what is served (`deliverImage`). */
+ * with: the owner's rotation turns their own photo and cut-out, and the drawing by what it is past the rotation it
+ * was drawn at (`drawingTurn`); never the back, a photo of its own. The stored object's own type is what is served
+ * (`deliverImage`). */
 const pictureImage = (piece: PieceRow, { picture, back }: Drawings, which: PieceView) => {
   const { contentType, rotation } = piece
   if (which === 'backClean')
@@ -39,7 +40,7 @@ const pictureImage = (piece: PieceRow, { picture, back }: Drawings, which: Piece
   if (which === 'back')
     return Option.map(Option.fromNullishOr(piece.backImageKey), (key) => ({ key, contentType, rotation: 0 as const }))
   return isDrawn(picture)
-    ? Option.some({ key: picture.cleanKey, contentType: 'image/png', rotation: 0 as const })
+    ? Option.some({ key: picture.cleanKey, contentType: 'image/png', rotation: drawingTurn(piece, picture) })
     : Option.none()
 }
 

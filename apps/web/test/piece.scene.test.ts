@@ -341,6 +341,38 @@ describe('the piece page', () => {
     )
   })
 
+  test('Rotate turns the shop-style picture too, and its turn by the drawing’s own turn and what is not saved yet', () => {
+    // Eva, 4 November: Rotate turned the cut-out but never the shop-style picture.
+    const images = { thumb: '/test/thumb', full: '/test/full', clean: '/test/clean' }
+    const drawn = { ...jeans, images, picture: { state: 'ready', shows: 'clean', version: 1 } } as const
+    scene(
+      { update, view },
+      given(piecePage(PieceData.Success({ data: drawn }))),
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('src', images.clean),
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('data-rotation', '0'),
+      click(role('button', { name: 'Edit' })),
+      click(role('button', { name: 'Rotate image 90°' })),
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('data-rotation', '90'),
+    )
+    // The turn's frames are served as they were made: the browser turns them by the drawing's turn.
+    const layout = { frames: 30, columns: 6, width: 288, height: 384, pivot: [0.5, 0.027] } as const
+    const turning = {
+      ...drawn,
+      rotation: 180,
+      picture: { state: 'ready', shows: 'clean', version: 1, rotation: 180 },
+      turn: { state: 'ready', version: 9, layout, media: { sheet: '/test/turn-sheet.png' } },
+    } as const
+    scene(
+      { update, view },
+      given(piecePage(PieceData.Success({ data: turning }))),
+      Mount.resolve(ShowTurn, PieceMessage.ShowedTurn()),
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('data-rotation', '180'),
+      click(role('button', { name: 'Edit' })),
+      click(role('button', { name: 'Rotate image 90°' })),
+      expect(role('img', { name: 'Jeans' })).toHaveAttr('data-rotation', '270'),
+    )
+  })
+
   test('redrawing asks what the piece is, and says what a credit buys', () => {
     const shown = pieceFixture('jeans', { picture: { state: 'retake', shows: 'photo', version: 0 } })
     scene(
