@@ -515,9 +515,9 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'capture.addTitle': 'Add clothes',
   'capture.addHint':
     'Photos, or a video up to 15 minutes filmed slowly from about a metre away. Every piece is cut out for you to keep or drop.',
-  'capture.cost': '{photo, plural, one {# credit} other {# credits}} a photo · {video} for 30 s of video',
+  'capture.cost': 'A photo costs {photo, plural, one {# credit} other {# credits}}, and 30 seconds of video {video}.',
   'capture.costLeft':
-    '{photo, plural, one {# credit} other {# credits}} a photo · {video} for 30 s of video · {remaining} left today',
+    'A photo costs {photo, plural, one {# credit} other {# credits}}, and 30 seconds of video {video}. You have {remaining} left today.',
   'capture.chooseTitle': 'Upload from library',
   'capture.chooseHint': 'Photos or a video',
   'capture.notSupported': "{name} isn't a photo or video Styld can use",
@@ -816,9 +816,9 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'today.addClothes': 'Add clothes',
   'today.firstTitle': 'Add your first piece',
   'today.firstHint': 'Photograph a piece, or a few laid out, and Styld cuts each one out.',
-  'today.photoCost': '{credits, plural, one {# credit} other {# credits}} a photo',
+  'today.photoCost': 'A photo costs {credits, plural, one {# credit} other {# credits}}.',
   'today.photoCostLeft':
-    '{credits, plural, one {# credit} other {# credits}} a photo · {remaining} of {daily} left today',
+    'A photo costs {credits, plural, one {# credit} other {# credits}}. You have {remaining} of {daily} left today.',
   'today.cutting': 'Your first pieces are being cut out.',
   'today.moreForOutfit':
     '{count, plural, one {Add # more piece for a whole outfit.} other {Add # more pieces for a whole outfit.}}',

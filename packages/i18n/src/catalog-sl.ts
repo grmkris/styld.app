@@ -525,9 +525,9 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'capture.addHint':
     'Fotografije ali video do 15 minut, posnet počasi z razdalje približno enega metra. Vsak kos izrežemo, ti pa ga obdržiš ali zavržeš.',
   'capture.cost':
-    '{photo, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} na fotografijo · {video} za 30 s videa',
+    'Fotografija stane {photo, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}}, 30 sekund videa pa {video}.',
   'capture.costLeft':
-    '{photo, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} na fotografijo · {video} za 30 s videa · danes še {remaining}',
+    'Fotografija stane {photo, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}}, 30 sekund videa pa {video}. Danes jih imaš še {remaining}.',
   'capture.chooseTitle': 'Naloži iz galerije',
   'capture.chooseHint': 'Fotografije ali video',
   'capture.notSupported': '{name} ni fotografija ali video, ki ga Styld lahko uporabi',
@@ -835,9 +835,9 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'today.firstTitle': 'Dodaj svoj prvi kos',
   'today.firstHint': 'Fotografiraj kos ali več razloženih in Styld izreže vsakega posebej.',
   'today.photoCost':
-    '{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} na fotografijo',
+    'Fotografija stane {credits, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}}.',
   'today.photoCostLeft':
-    '{credits, plural, one {# kredit} two {# kredita} few {# krediti} other {# kreditov}} na fotografijo · danes še {remaining} od {daily}',
+    'Fotografija stane {credits, plural, one {# kredit} two {# kredita} few {# kredite} other {# kreditov}}. Danes jih imaš še {remaining} od {daily}.',
   'today.cutting': 'Tvoji prvi kosi se izrezujejo.',
   'today.moreForOutfit':
     '{count, plural, one {Dodaj še # kos za celo opravo.} two {Dodaj še # kosa za celo opravo.} few {Dodaj še # kose za celo opravo.} other {Dodaj še # kosov za celo opravo.}}',

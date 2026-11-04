@@ -132,7 +132,10 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // Raised to 398,600 on 4 November for Challenges' boards on Home (taste, L7): the challenges' read and its submodel,
 // and a card opening its house board with its style, add 524: main measured 398,065 in a clean worktree at 784e2011
 // and 398,589 with them.
-if (initialGzip > 398600) throw new Error(`Initial browser assets exceed the 398,600-byte gzip budget: ${initialGzip}`)
+// Raised to 399,700 the same day for the first run's fixes from the preview walk: the empty Home's first piece ahead of
+// the rest, the diagnostics prompt waiting for a piece, Show me pressing nothing it was not told, Google's refusal under
+// Google, and the costs as sentences in en and sl add about 1,000 (396,400 against 395,366 before the merge).
+if (initialGzip > 399700) throw new Error(`Initial browser assets exceed the 399,700-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

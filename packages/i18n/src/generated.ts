@@ -1033,4 +1033,4 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
 export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = 'b9e0ac8ec76d01f37edb4db84a2156c7dcca2b1e2d918e955ab0b51c63449b4c'
+export const catalogVersion = '940fdd4fc630026889f7d292e8c0e38e1be99c911b862200dcb7907cb3c50c5f'
