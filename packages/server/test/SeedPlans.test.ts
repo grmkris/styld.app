@@ -116,6 +116,44 @@ describe('a house board’s table', () => {
   })
 })
 
+/** Where a thing's top edge lies: a label's at most one and a half of its lines above its centre. */
+const top = ({ thing, y, size }: { thing: unknown; y: number; size: number }) =>
+  isLabel(thing) ? y - (size / 400) * (thing.style === 'headline' ? 120 : 70) * 1.5 : y - size / 2
+
+describe('a house board’s look (Eva’s references, 4 November 2026)', () => {
+  const titled = [
+    { text: 'One white shirt, five days in the city', style: 'headline' as const, sl: 'Ena bela srajca' },
+    { text: '12 pieces · 8 outfits · one carry-on', style: 'label' as const, sl: '12 kosov' },
+  ]
+
+  it('keeps the headline and its line on the sheet, above every piece', () => {
+    for (const things of [
+      tableOf('pack', wardrobe, [], titled),
+      tableOf('outfits', wardrobe, [wardrobe.slice(0, 5)], titled),
+    ]) {
+      const labels = things.filter(({ thing }) => isLabel(thing))
+      expect(labels.map(({ thing }) => (isLabel(thing) ? thing.text : ''))).toEqual(titled.map(({ text }) => text))
+      expect(labels.every((label) => top(label) >= 0)).toBe(true)
+      const lowestLabel = Math.max(...labels.map(({ y }) => y))
+      const highestPiece = Math.min(...things.filter(({ thing }) => isPiece(thing)).map(({ y, size }) => y - size / 2))
+      expect(lowestLabel).toBeLessThan(highestPiece + 60)
+    }
+  })
+
+  it('places every piece of every outfit once, and keeps a coat taller than a jumper in a packing list', () => {
+    const coat = garment('coats')
+    const knit = garment('knitwear')
+    const things = tableOf('pack', [coat, knit, ...wardrobe.slice(3, 6)], [], titled)
+    const sizeOf = (id: string) => things.find(({ thing }) => isPiece(thing) && thing.pieceId === id)?.size ?? 0
+    // A coat stands about 105 cm and a jumper 62: the coat's frame (its height) beats the jumper's (its width).
+    expect(sizeOf(coat.id)).toBeGreaterThan(sizeOf(knit.id))
+    const outfits = [wardrobe.slice(0, 5), wardrobe.slice(5, 10), wardrobe.slice(2, 7)]
+    const laid = tableOf('outfits', wardrobe, outfits, titled).filter(({ thing }) => isPiece(thing))
+    expect(laid).toHaveLength(15)
+    expect(laid.every(onTable)).toBe(true)
+  })
+})
+
 describe('a house board’s plan', () => {
   it.effect('an outfits board gets as many outfits as it asks for', () =>
     Effect.gen(function* () {

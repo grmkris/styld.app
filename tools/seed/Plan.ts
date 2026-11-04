@@ -51,9 +51,13 @@ const tagsOf = (board: CatalogueBoard): ReadonlyArray<BoardTag> => [
   ...board.tags.aesthetic.map((value) => ({ kind: 'aesthetic' as const, value })),
 ]
 
+/** The board's labels on its table: its name as the headline (owner, 4 November 2026: the board says what it is, as
+ * the references do), then its line and its credit. A label is at most 120 characters: a long name is too. */
 const labelsOf = (board: CatalogueBoard): ReadonlyArray<SeedLabel> => {
   const sl = board.translations.sl
   return [
+    // A one-piece board's table is its template's, with no words on it.
+    ...(board.template === 'onePiece' ? [] : [{ text: board.name, style: 'headline' as const, sl: sl.name }]),
     ...(board.label === undefined ? [] : [{ text: board.label, style: 'label' as const, sl: sl.label ?? board.label }]),
     ...(board.credit === undefined
       ? []
