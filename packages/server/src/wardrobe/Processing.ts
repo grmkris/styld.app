@@ -15,6 +15,8 @@ export const WorkMessage = Schema.TaggedUnion({
   ProcessCapture: { captureId: Schema.String },
   /** Draw a kept piece's clean picture, or carry on with one a delivery left. */
   DrawPicture: { pieceId: Schema.String },
+  /** Bring a piece's back picture in line with its back (drawn, drawn again or forgotten), and carry it on. */
+  DrawBackPicture: { accountId: Schema.String, pieceId: Schema.String },
   /** Carry a piece's turn on a hanger a step further. */
   MakeTurn: { pieceId: Schema.String },
   /** Compare a capture's new sightings with the rest of its import and with the wardrobe. */

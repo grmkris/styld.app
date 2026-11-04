@@ -10,10 +10,18 @@ import {
   usableUpload,
   type WardrobeServices,
 } from './Shared.ts'
-import { GarmentCutout } from './Processing.ts'
+import { GarmentCutout, PieceQueue } from './Processing.ts'
 import { WardrobeStore } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { identify, priorResult, receiptRow } from '../kernel/Receipts.ts'
+
+/** Ask the back picture job to bring the piece's back picture in line with its back (owner, 4 November: a pressed back
+ * drawn from the real one): drawn, drawn again or forgotten. The back stands whether or not the queue takes it now; a
+ * repeat of the operation asks again, and the operator's backfill finds any left behind. */
+const backPicture = (accountId: string, pieceId: string) =>
+  Effect.flatMap(PieceQueue, (queue) =>
+    Effect.tryPromise({ try: () => queue.send({ _tag: 'DrawBackPicture', accountId, pieceId }), catch: unavailable }),
+  ).pipe(Effect.ignore({ log: true, message: 'Styld.Wardrobe.backPicture could not reach the queue' }))
 
 /** A back of the piece: the person's photo of it, cut out like the front (owner, 2026-10-31), free since 4 November.
  * Repeating the operation answers the piece again; a cut-out that could not be made keeps the photo. */
@@ -29,7 +37,10 @@ export const backing = Effect.map(Effect.context<WardrobeServices>(), (context) 
       input: [pieceId, input.uploadId],
     })
     const prior = yield* priorResult(operation, yield* stored(store.findReceipt(accountId, input.operationId)))
-    if (Option.isSome(prior)) return yield* ownerPiece(accountId, piece)
+    if (Option.isSome(prior)) {
+      yield* backPicture(accountId, pieceId)
+      return yield* ownerPiece(accountId, piece)
+    }
     const upload = yield* usableUpload(accountId, input.uploadId)
     const of = { side: 'back' as const, uploadId: upload.id }
     const type = yield* typeOf(piece)
@@ -49,6 +60,7 @@ export const backing = Effect.map(Effect.context<WardrobeServices>(), (context) 
     // The back it replaced goes, and the upload's own photo once a cut-out stands for it.
     const replaced = [piece.backImageKey, imageKey === upload.objectKey ? null : upload.objectKey]
     yield* forgetObjects(accountId, replaced.filter(Predicate.isNotNull), 'back')
+    yield* backPicture(accountId, pieceId)
     return yield* ownerPiece(accountId, updated.value)
   }, Effect.provide(context)),
   /** Forget the back, and its picture unless a tray card still shows it. The receipt keeps the picture's key, so a
@@ -68,6 +80,7 @@ export const backing = Effect.map(Effect.context<WardrobeServices>(), (context) 
         answer: (removed) =>
           Effect.gen(function* () {
             if (removed !== '') yield* forgetObjects(accountId, [removed], 'back')
+            yield* backPicture(accountId, pieceId)
             return yield* ownerPiece(accountId, yield* ownPiece(pieceId))
           }),
       },

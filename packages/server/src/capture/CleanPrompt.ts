@@ -12,18 +12,26 @@ const tidied = (hint: string) => hint.replaceAll(/\s+/g, ' ').trim().slice(0, 80
 
 const keyColours = { green: 'green #00ff00', magenta: 'magenta #ff00ff' } as const
 
+/** The second image's line: the side not shown, for reference only. */
+const otherSide = {
+  front: 'The second image is the back of the same garment, for reference only; show the front.',
+  back: 'The second image is the front of the same garment, for its colours and identity only; show the back, as the first image shows it.',
+} as const
+
 export const cleanPrompt = (input: {
   readonly key: 'green' | 'magenta'
-  readonly hasBack: boolean
+  /** The side the picture shows: a back is drawn only from a real one (owner, 4 November). */
+  readonly side: 'front' | 'back'
+  readonly hasOther: boolean
   readonly hint: string | undefined
 }) =>
   [
-    'Create a clean e-commerce product photo of this garment, shown whole from the front, laid out evenly as if on an invisible form, centred with clearance on every side.',
+    `Create a clean e-commerce product photo of this garment, shown whole from the ${input.side}, laid out evenly as if on an invisible form, centred with clearance on every side.`,
     'Keep the identity of the item exactly: the same colours (gold stays gold, black stays black), the same pattern, stripe width and spacing, the same cut, length, neckline, collar, buttons, pockets, seams, labels, logos and print.',
     'Do not add details the reference does not show: no new prints, logos, pockets, hoods, zips or trims.',
     'Parts hidden by hands, folds or the edge of the photo are completed plainly, matching the rest.',
     'The garment is freshly steamed and pressed: the fabric is smooth with no wrinkles, creases, crumples or folds, and the sleeves, sides and hem fall straight and symmetrically. The reference is a quick snapshot of a worn garment: do not copy its wrinkles, crumpled shape, uneven outline, shadows or lighting.',
-    input.hasBack ? 'The second image is the back of the same garment, for reference only; show the front.' : '',
+    input.hasOther ? otherSide[input.side] : '',
     input.hint === undefined || tidied(input.hint) === '' ? '' : `Its owner describes it as: ${tidied(input.hint)}.`,
     `Show no person, hands, body, mannequin, hanger, props or text. Soft, even studio light. One completely flat bright ${keyColours[input.key]} background with no gradient, shadow or reflection.`,
   ]

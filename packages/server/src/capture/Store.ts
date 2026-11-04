@@ -12,6 +12,7 @@ import { and, desc, eq, inArray, isNull, ne, exists } from 'drizzle-orm'
 import { Array, Context, Effect, Layer, Option } from 'effect'
 import { insertWhen } from '../kernel/Conditional.ts'
 import { backfillRows } from './BackfillStore.ts'
+import { backPictureRows } from './BackPictureStore.ts'
 import { matchRows } from './MatchStore.ts'
 import { fileRecord } from './ProviderFiles.ts'
 import { chunked, Database as Db, first, query } from '../kernel/Db.ts'
@@ -541,6 +542,7 @@ export const makeCaptureStore = (db: Database) => ({
   ...reviewRows(db),
   ...transitionRows(db),
   ...pictureRows(db),
+  ...backPictureRows(db),
   ...backfillRows(db),
   ...turnRows(db),
   ...matchRows(db),

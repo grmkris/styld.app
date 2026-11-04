@@ -1,5 +1,5 @@
 import { Effect, Option } from 'effect'
-import { captureHold, endingOf, enqueueMatch, forgetCaptureObjects, storedAs } from './Shared.ts'
+import { captureHold, endingOf, enqueueBackPicture, enqueueMatch, forgetCaptureObjects, storedAs } from './Shared.ts'
 import type { CaptureRow, DetectionRow } from './Store.ts'
 import { Found, type Found as Result, processPhoto } from './Detections.ts'
 import { processVideo } from './VideoPipeline.ts'
@@ -52,9 +52,14 @@ const attachBack = (
       detections.toSorted((one, other) => (other.confidence ?? 0) - (one.confidence ?? 0))[0]
     if (back === undefined) return false
     // The front may already be kept: its piece takes the back when it has none, else the back waits in the tray.
-    return yield* storedAs(
-      (yield* CaptureStore).attachBack(accountId, frontCaptureId, back.cutoutKey ?? back.sourceKey),
-    )
+    const store = yield* CaptureStore
+    const attached = yield* storedAs(store.attachBack(accountId, frontCaptureId, back.cutoutKey ?? back.sourceKey))
+    // A kept piece that took the back has its back drawn (owner, 4 November); a card's back is drawn once kept.
+    if (attached) {
+      const backed = yield* storedAs(store.backedPiecesOf(accountId, frontCaptureId))
+      yield* Effect.forEach(backed, (pieceId) => enqueueBackPicture(accountId, pieceId), { discard: true })
+    }
+    return attached
   })
 
 /** A back shot waiting in the tray becomes its front's back, if the front is in the tray too. Both

@@ -1,211 +1,14 @@
-import { ProviderError } from '../providers/Errors.ts'
-import { chromaKey, framed, keyColourFor, modelPicture, readPng, shrink, turned } from '@styld/imaging'
-import { Effect, Option, Schedule } from 'effect'
-import { gateFor, planFor } from './CleanPicture.ts'
-import { judgedAt } from './Garments.ts'
-import { pictureKey, readPixels, storedAs, unavailable, writeObject } from './Shared.ts'
-import { encodePng, type Rgba } from '@styld/imaging'
-import { opaqueShare } from './Pixels.ts'
+import { Effect, Option } from 'effect'
+import { planFor } from './CleanPicture.ts'
+import { cutoutAt, drawingOf, frontOf, hasEnded } from './Drawing.ts'
+import { pictureKey, storedAs } from './Shared.ts'
 import { capturePolicy } from './Policy.ts'
-import { type Picture } from './Providers.ts'
-import type { PictureRow, PictureState } from './Store.ts'
-import type { PieceRow } from '../wardrobe/Store.ts'
+import type { PictureRow } from './Store.ts'
 import { holdId } from '../usage/Holds.ts'
-import { isStale } from '../wardrobe/Shown.ts'
-import { nowDate } from '../kernel/Db.ts'
 import { CaptureStore } from './Store.ts'
-import { WardrobeStore } from '../wardrobe/Store.ts'
-import { Media } from '../kernel/Media.ts'
-import { GarmentVision, ImageGenerator } from './Providers.ts'
 import { Holds } from '../usage/Holds.ts'
-import { CaptureMetrics } from '../kernel/Metrics.ts'
-import { PieceChanged } from '../safety/PieceChanged.ts'
 import type { CaptureServices } from './Shared.ts'
-
-// What each provider sees: the decision model a 512 px copy (`judgedAt`), Muse a 1024 px one; the drawing is keyed at
-// 1280 px, enough for the piece page at twice the pixel density, and about a million pixels of CPU.
-const drawnFrom = 1024
-const keyedAt = 1280
-// The room left around a keyed garment, as a share of its longer side.
-const margin = 0.03
-
-/** A stored cut-out's pixels: none when it is gone, or is a photo rather than a cut-out (no transparency), which
- * never leaves Styld. */
-const cutoutAt = (key: string | null) =>
-  key === null
-    ? Effect.succeed(Option.none<Rgba>())
-    : readPixels(key).pipe(Effect.map(Option.filter((picture) => opaqueShare(picture) < 0.98)))
-
-/** A piece's front cut-out as its owner sees it: turned by the rotation they set, so Clef judges and Muse draws the
- * garment upright. An upside-down skirt was once judged and drawn as it was stored (Eva, 4 November). Its back is a
- * photo of its own, never turned by the front's rotation. */
-const frontOf = (piece: Pick<PieceRow, 'imageKey' | 'rotation'>) =>
-  Effect.map(
-    cutoutAt(piece.imageKey),
-    Option.map((front) => turned(front, piece.rotation)),
-  )
-
-const ends = ['ready', 'proposed', 'rejected', 'retake', 'kept-real', 'failed'] as const
-
-/** Whether a picture has ended: shown, offered, dropped, sent for a retake, kept as its photo or failed. */
-const hasEnded = (state: PictureState): state is (typeof ends)[number] => ends.some((end) => end === state)
-
-/** Move a picture on from one of `from`; whether it moved. Every write goes through here, so two deliveries never
- * both act on one state, and each picture's end is counted once. */
-const move = (
-  picture: Pick<PictureRow, 'pieceId' | 'provider' | 'paid'>,
-  from: ReadonlyArray<PictureState>,
-  changes: Partial<PictureRow>,
-) =>
-  Effect.gen(function* () {
-    const { state } = changes
-    const moved = yield* storedAs(
-      (yield* CaptureStore).movePicture(picture.pieceId, from, { ...changes, updatedAt: yield* nowDate }),
-    )
-    // A drawing that shows, stops showing or is dropped changes what others see of a public piece.
-    if (moved) yield* (yield* PieceChanged).changed(picture.pieceId)
-    if (!moved || state === undefined) return moved
-    yield* Effect.annotateCurrentSpan('styld.picture.state', state)
-    if (hasEnded(state))
-      yield* (yield* CaptureMetrics).picture({
-        state,
-        provider: changes.provider ?? picture.provider ?? 'none',
-        asked: picture.paid,
-      })
-    return moved
-  })
-
-const remove = (key: string | null) =>
-  key === null
-    ? Effect.void
-    : Effect.flatMap(Media, ({ bucket }) => Effect.tryPromise({ try: () => bucket.delete(key), catch: unavailable }))
-
-/** A drawing that cannot finish: the photo stays the piece's picture. Why is on the span, not in the row. */
-const end = (picture: PictureRow, from: PictureState, why: string) =>
-  Effect.andThen(Effect.annotateCurrentSpan('styld.picture.failed', why), move(picture, [from], { state: 'failed' }))
-
-/** A stored drawing that cannot be checked ends, and its file goes. */
-const endChecking = (picture: PictureRow, why: string) =>
-  Effect.gen(function* () {
-    yield* Effect.annotateCurrentSpan('styld.picture.failed', why)
-    if (yield* move(picture, ['checking'], { state: 'failed', cleanKey: null })) yield* remove(picture.cleanKey)
-  })
-
-/** Ask the decision model how like the real cut-out the drawing is, and show it, offer it or drop it. */
-const check = (picture: PictureRow, drawn: Rgba, real: Rgba) =>
-  Effect.gen(function* () {
-    const policy = capturePolicy.pictures
-    const comparison = yield* (yield* GarmentVision).compare(
-      modelPicture(drawn, judgedAt),
-      modelPicture(real, judgedAt),
-    )
-    yield* Effect.annotateCurrentSpan({
-      'styld.picture.same': comparison.same,
-      'styld.picture.faithful': comparison.faithful,
-    })
-    const gate = gateFor(comparison, policy)
-    if (gate !== 'rejected') return yield* move(picture, ['checking'], { state: gate })
-    if (yield* move(picture, ['checking'], { state: 'rejected', cleanKey: null })) yield* remove(picture.cleanKey)
-    return true
-  })
-
-/** Draw a claimed picture, key its background out and store it. Muse refusing ends it; Muse busy hands it back to
- * the queue; an answer lost on the way ends it as unknown, never drawn again. The stored drawing and the picture nowDate
- * checking it, or none when it ended. */
-const draw = (claimed: PictureRow, front: Rgba, back: Option.Option<Rgba>) =>
-  Effect.gen(function* () {
-    const { pieceId } = claimed
-    const key = claimed.keyColour ?? 'green'
-    const answer = yield* (yield* ImageGenerator)
-      .draw({
-        front: modelPicture(front, drawnFrom),
-        back: Option.map(back, (side) => modelPicture(side, drawnFrom)),
-        key,
-        hint: Option.fromNullishOr(claimed.hint),
-      })
-      .pipe(
-        Effect.map(Option.some),
-        Effect.catchReasons('ProviderError', {
-          OutcomeUnknown: () => Effect.as(end(claimed, 'generating', 'unknown'), Option.none<Picture>()),
-          // Busy: the claim goes back for the queue's next try.
-          Busy: (reason) =>
-            Effect.andThen(
-              move(claimed, ['generating'], { state: 'queued', version: claimed.version - 1, claimedAt: null }),
-              Effect.fail(ProviderError.make({ provider: 'meta-muse', reason })),
-            ),
-          Refused: () => Effect.as(end(claimed, 'generating', 'refused'), Option.none<Picture>()),
-          Broken: () => Effect.as(end(claimed, 'generating', 'refused'), Option.none<Picture>()),
-        }),
-      )
-    const ended = Option.none<{ readonly clean: Rgba; readonly checking: PictureRow }>()
-    if (Option.isNone(answer)) return ended
-    const keyed = Option.flatMap(readPng(answer.value.bytes), (drawn) => chromaKey(shrink(drawn, keyedAt), key))
-    if (Option.isNone(keyed)) {
-      yield* end(claimed, 'generating', 'key')
-      return ended
-    }
-    const clean = framed(keyed.value, margin)
-    const cleanKey = pictureKey(claimed.accountId, pieceId, claimed.version)
-    const written = yield* writeObject(cleanKey, encodePng(clean), 'image/png').pipe(
-      Effect.retry({ times: 2, schedule: Schedule.exponential('200 millis') }),
-      Effect.as(true),
-      Effect.orElseSucceed(() => false),
-    )
-    if (!written) {
-      yield* end(claimed, 'generating', 'unavailable')
-      return ended
-    }
-    // A delivery that gave up on the picture meanwhile has ended it; its drawing goes.
-    if (!(yield* move(claimed, ['generating'], { state: 'checking', cleanKey }))) {
-      yield* remove(cleanKey)
-      return ended
-    }
-    return Option.some({ clean, checking: { ...claimed, state: 'checking' as const, cleanKey } })
-  })
-
-/** A queued picture: judge the cut-out, then keep the photo (a face may show), ask for a retake (a fragment), or claim
- * and draw it. A redraw the owner asked for (it holds a credit) is drawn whatever the verdict, unless a face may show.
- * The claim drops the last drawing: a redraw replaces it. */
-const start = (picture: PictureRow) =>
-  Effect.gen(function* () {
-    const policy = capturePolicy.pictures
-    const { pieceId } = picture
-    const piece = yield* storedAs((yield* WardrobeStore).findPiece(picture.accountId, pieceId))
-    if (Option.isNone(piece)) return
-    const front = yield* frontOf(piece.value)
-    if (Option.isNone(front)) return yield* move(picture, ['queued'], { state: 'kept-real' })
-    const judgement = yield* (yield* GarmentVision).judge(modelPicture(front.value, judgedAt))
-    yield* Effect.annotateCurrentSpan('styld.picture.verdict', judgement.verdict)
-    const judged = { face: judgement.face }
-    const asked = picture.paid && judgement.face < policy.face
-    const { plan } = asked ? { plan: 'draw' as const } : planFor(judgement, policy)
-    if (plan !== 'draw') return yield* move(picture, ['queued'], { ...judged, state: plan })
-    const generator = yield* ImageGenerator
-    const claim = {
-      ...judged,
-      state: 'generating' as const,
-      version: picture.version + 1,
-      keyColour: keyColourFor(front.value),
-      provider: generator.provider,
-      claimedAt: yield* nowDate,
-      cleanKey: null,
-    }
-    if (!(yield* move(picture, ['queued'], claim))) return
-    yield* remove(picture.cleanKey)
-    const back = yield* cutoutAt(piece.value.backImageKey)
-    const drawn = yield* draw({ ...picture, ...claim }, front.value, back)
-    if (Option.isSome(drawn)) yield* check(drawn.value.checking, drawn.value.clean, front.value)
-  })
-
-/** A drawing stored before its check finished: read both pictures back and check it. */
-const checkStored = (picture: PictureRow) =>
-  Effect.gen(function* () {
-    const piece = yield* storedAs((yield* WardrobeStore).findPiece(picture.accountId, picture.pieceId))
-    const drawn = picture.cleanKey === null ? Option.none<Rgba>() : yield* cutoutAt(picture.cleanKey)
-    const real = Option.isNone(piece) ? Option.none<Rgba>() : yield* frontOf(piece.value)
-    if (Option.isNone(drawn) || Option.isNone(real)) return yield* endChecking(picture, 'missing')
-    yield* check(picture, drawn.value, real.value)
-  })
+import type { Unavailable } from '@styld/protocol'
 
 /** The hold paying for a piece's latest redraw. */
 export const redrawHold = (picture: Pick<PictureRow, 'pieceId' | 'redraws'>) =>
@@ -225,28 +28,32 @@ export const settleHold = (pieceId: string) =>
     )
   })
 
+/** A piece's clean picture, its front drawn shop-style (`Drawing.ts`). A redraw the owner asked for (it holds a
+ * credit) is drawn whatever the verdict, unless a face may show; their words go with it. */
+const front = drawingOf<PictureRow, Unavailable, CaptureServices>({
+  side: 'front',
+  kind: (picture: PictureRow) => (picture.paid ? 'redraw' : 'first'),
+  find: (pieceId) => Effect.flatMap(CaptureStore, (store) => storedAs(store.findPicture(pieceId))),
+  write: (pieceId, from, changes) =>
+    Effect.flatMap(CaptureStore, (store) => storedAs(store.movePicture(pieceId, from, changes))),
+  keyOf: (picture, version) => pictureKey(picture.accountId, picture.pieceId, version),
+  cutouts: (piece) => Effect.all({ subject: frontOf(piece), other: cutoutAt(piece.backImageKey) }),
+  plan: (picture, judgement) =>
+    picture.paid && judgement.face < capturePolicy.pictures.face
+      ? 'draw'
+      : planFor(judgement, capturePolicy.pictures).plan,
+  hint: (picture) => Option.fromNullishOr(picture.hint),
+  after: settleHold,
+})
+
 /** The queue side of clean pictures. */
 export const picturing = Effect.map(Effect.context<CaptureServices>(), (context) => ({
-  /** Carry a piece's clean picture as far as it goes. A drawing claimed by a delivery still within its patience is
-   * left to it; a finished one only has a redraw's credit settled. */
+  /** Carry a piece's clean picture as far as it goes; a finished one only has a redraw's credit settled. */
   processPicture: Effect.fn('Styld.Picture.process')(function* (pieceId: string) {
-    const found = yield* storedAs((yield* CaptureStore).findPicture(pieceId))
-    if (Option.isNone(found)) return
-    const picture = found.value
-    if (!(yield* storedAs((yield* WardrobeStore).accountEnabled(picture.accountId)))) return
-    if (picture.state === 'queued') yield* start(picture)
-    else if (picture.state === 'checking') yield* checkStored(picture)
-    else if (isStale(picture, yield* nowDate)) yield* end(picture, 'generating', 'unknown')
-    yield* settleHold(pieceId)
+    yield* front.process(pieceId)
   }, Effect.provide(context)),
   /** The last attempt failed: the photo stays. A drawing that may have been made counts as unknown. */
   failPicture: Effect.fn('Styld.Picture.fail')(function* (pieceId: string) {
-    const found = yield* storedAs((yield* CaptureStore).findPicture(pieceId))
-    if (Option.isNone(found)) return
-    const picture = found.value
-    if (picture.state === 'queued') yield* end(picture, 'queued', 'gave-up')
-    else if (picture.state === 'generating') yield* end(picture, 'generating', 'unknown')
-    else if (picture.state === 'checking') yield* endChecking(picture, 'gave-up')
-    yield* settleHold(pieceId)
+    yield* front.fail(pieceId)
   }, Effect.provide(context)),
 }))

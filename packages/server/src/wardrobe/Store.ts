@@ -1,5 +1,15 @@
-import { accounts, detections, operationReceipts, piecePictures, pieceTurns, pieces, uploads } from '@styld/db'
+import {
+  accounts,
+  detections,
+  operationReceipts,
+  pieceBackPictures,
+  piecePictures,
+  pieceTurns,
+  pieces,
+  uploads,
+} from '@styld/db'
 import { and, asc, desc, eq, gt, inArray, isNull, lt, ne, or, sql, type SQL } from 'drizzle-orm'
+import type { SQLiteColumn } from 'drizzle-orm/sqlite-core'
 import type { PieceType } from '@styld/protocol'
 import { Array, Context, Effect, Layer } from 'effect'
 import { receiptRows, recordedWrites } from '../kernel/Receipts.ts'
@@ -231,6 +241,13 @@ const uploadQueries = (db: Database['Service']) => ({
     ).pipe(Effect.asVoid),
 })
 
+/** The row of a piece's own table (its clean picture, back picture or turn) that is the account's. */
+const ownedBy = (
+  table: { readonly pieceId: SQLiteColumn; readonly accountId: SQLiteColumn },
+  accountId: string,
+  pieceId: string,
+) => and(eq(table.pieceId, pieceId), eq(table.accountId, accountId))
+
 /** Pieces' clean pictures as their owner reads and chooses them. The picture job writes everything else. */
 const pictureQueries = (db: Database['Service']) => ({
   picturesOf: (accountId: string) =>
@@ -241,7 +258,7 @@ const pictureQueries = (db: Database['Service']) => ({
       db
         .select()
         .from(pieceTurns)
-        .where(and(eq(pieceTurns.pieceId, pieceId), eq(pieceTurns.accountId, accountId)))
+        .where(ownedBy(pieceTurns, accountId, pieceId))
         .limit(1),
     ).pipe(Effect.map(first)),
   pictureOf: (accountId: string, pieceId: string) =>
@@ -249,7 +266,16 @@ const pictureQueries = (db: Database['Service']) => ({
       db
         .select()
         .from(piecePictures)
-        .where(and(eq(piecePictures.pieceId, pieceId), eq(piecePictures.accountId, accountId)))
+        .where(ownedBy(piecePictures, accountId, pieceId))
+        .limit(1),
+    ).pipe(Effect.map(first)),
+  /** The piece's pressed back picture, drawn from its back (owner, 4 November). */
+  backPictureOf: (accountId: string, pieceId: string) =>
+    query(() =>
+      db
+        .select()
+        .from(pieceBackPictures)
+        .where(ownedBy(pieceBackPictures, accountId, pieceId))
         .limit(1),
     ).pipe(Effect.map(first)),
   /** The statement that shows the drawing or the photo, capture's (`PictureRows`), for its operation's batch. */

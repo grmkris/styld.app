@@ -5,6 +5,7 @@ import { describe, expect, test } from 'vitest'
 import { type MediaGrant, SignedMedia } from '../src/kernel/SignedMedia.ts'
 import { pieceImages } from '../src/wardrobe/Images.ts'
 import type { PictureRow, PieceRow } from '../src/wardrobe/Store.ts'
+import type { BackPictureRow } from '../src/capture/BackPictureStore.ts'
 
 // The signed addresses of a piece's pictures, and the quarter turn each is delivered with: the owner's rotation turns
 // their own photo and cut-out, never the drawing (drawn upright) or the back (a photo of its own). A rotation applied
@@ -58,8 +59,24 @@ const drawn = (shown: PictureRow['shown']): PictureRow => ({
   updatedAt: at,
 })
 
+/** The back's pressed drawing, in `state`. */
+const backDrawn = (state: BackPictureRow['state']): BackPictureRow => ({
+  pieceId: 'pc_1',
+  accountId: 'ac_1',
+  state,
+  sourceKey: 'accounts/ac_1/pieces/pc_1/back.png',
+  cleanKey: 'accounts/ac_1/pieces/pc_1/back-clean-1.png',
+  version: 1,
+  keyColour: 'green',
+  provider: 'meta-muse',
+  face: 0.01,
+  claimedAt: at,
+  createdAt: at,
+  updatedAt: at,
+})
+
 /** The grants the page's addresses were signed for, by stored key. */
-const grantsOf = (picture: PictureRow) => {
+const grantsOf = (picture: PictureRow, back?: BackPictureRow) => {
   const grants = new Map<string, Omit<MediaGrant, 'accountId'>>()
   const signed = SignedMedia.of({
     address: (grant) =>
@@ -70,7 +87,7 @@ const grantsOf = (picture: PictureRow) => {
     verify: () => Effect.succeed(Option.none()),
   })
   Effect.runSync(
-    pieceImages(piece, picture, true).pipe(
+    pieceImages(piece, { picture, back }, true).pipe(
       Effect.provideService(SignedMedia, signed),
       Effect.provideService(CurrentAccount, CurrentAccount.of({ accountId: 'ac_1', via: 'session' })),
     ),
@@ -85,6 +102,18 @@ describe('the turn a piece’s pictures are delivered with', () => {
     expect(grants.get('accounts/ac_1/pieces/pc_1/back.png')?.rotation).toBe(0)
     expect(grants.get('accounts/ac_1/pieces/pc_1/image.png')?.rotation).toBe(180)
     expect(grants.get('accounts/ac_1/uploads/photo.jpg')?.rotation).toBe(180)
+  })
+
+  test('the back’s drawing comes upright on the page once it passed its check, and not before', () => {
+    expect(
+      grantsOf(drawn('clean'), backDrawn('ready')).get('accounts/ac_1/pieces/pc_1/back-clean-1.png'),
+    ).toMatchObject({
+      rotation: 0,
+      contentType: 'image/png',
+    })
+    expect(grantsOf(drawn('clean'), backDrawn('checking')).has('accounts/ac_1/pieces/pc_1/back-clean-1.png')).toBe(
+      false,
+    )
   })
 
   test('the cut-out the piece shows instead of its drawing keeps the owner’s rotation', () => {

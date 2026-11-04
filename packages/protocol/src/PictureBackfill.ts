@@ -18,6 +18,8 @@ export const PictureBackfill = Schema.Struct({
   operationId: OperationId,
   email: Schema.String.check(Schema.isMinLength(3), Schema.isMaxLength(320)),
   redrawBefore: Schema.optionalKey(Schema.Int.check(Schema.isGreaterThan(0))),
+  /** Draw the backs instead (owner, 4 November): each piece with a photographed back and no drawing of it yet. */
+  backs: Schema.optionalKey(Schema.Boolean),
 })
 export type PictureBackfill = typeof PictureBackfill.Type
 

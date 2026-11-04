@@ -1,4 +1,4 @@
-import { captures, outfitPhotos, piecePictures, pieces, pieceTurns } from '@styld/db'
+import { captures, outfitPhotos, pieceBackPictures, piecePictures, pieces, pieceTurns } from '@styld/db'
 import { and, asc, eq, inArray, lt, or } from 'drizzle-orm'
 import { Cause, DateTime, Duration, Effect } from 'effect'
 import { Database, query } from '../kernel/Db.ts'
@@ -62,6 +62,17 @@ const ids = (rows: ReadonlyArray<{ readonly id: string }>) => rows.map(({ id }) 
 
 /** The rows stuck in a working state since before a moment, oldest first: read here, moved by their owners.
  * @internal Exported for its tests. */
+/** Drawings of either side of a piece stuck on their way: the two tables share the drawing's columns. */
+const stuckDrawings = (db: Database['Service'], table: typeof piecePictures | typeof pieceBackPictures, until: Date) =>
+  query(() =>
+    db
+      .select({ id: table.pieceId })
+      .from(table)
+      .where(and(inArray(table.state, ['queued', 'generating', 'checking']), lt(table.updatedAt, until)))
+      .orderBy(asc(table.updatedAt))
+      .limit(sweepBatch),
+  ).pipe(Effect.map(ids))
+
 export const stuckRows = (db: Database['Service']) => ({
   pieces: (until: Date) =>
     query(() =>
@@ -81,17 +92,9 @@ export const stuckRows = (db: Database['Service']) => ({
         .orderBy(asc(captures.updatedAt))
         .limit(sweepBatch),
     ).pipe(Effect.map(ids)),
-  pictures: (until: Date) =>
-    query(() =>
-      db
-        .select({ id: piecePictures.pieceId })
-        .from(piecePictures)
-        .where(
-          and(inArray(piecePictures.state, ['queued', 'generating', 'checking']), lt(piecePictures.updatedAt, until)),
-        )
-        .orderBy(asc(piecePictures.updatedAt))
-        .limit(sweepBatch),
-    ).pipe(Effect.map(ids)),
+  pictures: (until: Date) => stuckDrawings(db, piecePictures, until),
+  /** Back pictures stuck on their way (owner, 4 November). */
+  backPictures: (until: Date) => stuckDrawings(db, pieceBackPictures, until),
   /** Turns stuck on their way, and videos the owner's browser never cut into frames. */
   turns: (until: Date, unbuilt: Date) =>
     query(() =>

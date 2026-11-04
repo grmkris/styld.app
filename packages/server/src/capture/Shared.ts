@@ -89,6 +89,10 @@ export const forgetCaptureObjects = (
 export const pictureKey = (accountId: string, pieceId: string, version: number) =>
   `${piecePrefix(accountId, pieceId)}clean-${version}.png`
 
+/** Where a piece's pressed back picture is stored, one file per version. */
+export const backPictureKey = (accountId: string, pieceId: string, version: number) =>
+  `${piecePrefix(accountId, pieceId)}back-clean-${version}.png`
+
 /** Where a piece's turn keeps its files: its two anchor frames, its video and its frame sheet. */
 export const turnKey = (
   accountId: string,
@@ -111,6 +115,10 @@ export const enqueueTurn = (pieceId: string, delaySeconds?: number) =>
 
 /** Tell the queue a piece's clean picture is waiting to be drawn. */
 export const enqueuePicture = (pieceId: string) => enqueue({ _tag: 'DrawPicture', pieceId })
+
+/** Tell the queue a piece's back changed, or may have: its back picture is drawn, drawn again or forgotten. */
+export const enqueueBackPicture = (accountId: string, pieceId: string) =>
+  enqueue({ _tag: 'DrawBackPicture', accountId, pieceId })
 
 /** Tell the queue a capture's sightings wait to be compared, now or after `delaySeconds` (another delivery has the
  * import's next one). */

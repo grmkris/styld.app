@@ -24,6 +24,11 @@ const sweeps: ReadonlyArray<Sweep<Captures | Database | GarmentSegmenter>> = [
     (pieceId) => Effect.flatMap(Captures, (owner) => owner.failPicture(pieceId)),
   ),
   moving(
+    'backPictures',
+    (stuck, until) => stuck.backPictures(until),
+    (pieceId) => Effect.flatMap(Captures, (owner) => owner.failBackPicture(pieceId)),
+  ),
+  moving(
     'turns',
     (stuck, until) => Effect.flatMap(before(unbuiltAfter), (unbuilt) => stuck.turns(until, unbuilt)),
     (pieceId) => Effect.flatMap(Captures, (owner) => owner.failTurn(pieceId)),

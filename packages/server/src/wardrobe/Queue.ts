@@ -27,6 +27,8 @@ export const pieceJobs = (services: {
     | 'failCapture'
     | 'processPicture'
     | 'failPicture'
+    | 'processBackPicture'
+    | 'failBackPicture'
     | 'processTurn'
     | 'failTurn'
     | 'processMatch'
@@ -50,6 +52,10 @@ export const pieceJobs = (services: {
   DrawPicture: {
     run: ({ pieceId }) => services.captures.processPicture(pieceId),
     giveUp: ({ pieceId }) => services.captures.failPicture(pieceId),
+  },
+  DrawBackPicture: {
+    run: ({ accountId, pieceId }) => services.captures.processBackPicture(accountId, pieceId),
+    giveUp: ({ pieceId }) => services.captures.failBackPicture(pieceId),
   },
   MakeTurn: {
     run: ({ pieceId }) => services.captures.processTurn(pieceId),

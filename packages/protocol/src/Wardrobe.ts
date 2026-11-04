@@ -139,6 +139,8 @@ export const PieceImages = Schema.Struct({
   full: Schema.String,
   clean: Schema.optionalKey(Schema.String),
   back: Schema.optionalKey(Schema.String),
+  /** Its back drawn pressed from the back the person photographed, on its own page (owner, 4 November). */
+  backClean: Schema.optionalKey(Schema.String),
   photo: Schema.optionalKey(Schema.String),
   cutout: Schema.optionalKey(Schema.String),
 })

@@ -74,6 +74,48 @@ const keptPieces = async (origin: string, owner: Call) => {
   return { red: redPiece, green: greenPiece, blue: bluePiece, photo: photoPiece }
 }
 
+const BackImages = Schema.Struct({ images: Schema.Struct({ backClean: Schema.optionalKey(Schema.String) }) })
+
+/** The piece's page once its back's drawing shows. */
+const backDrawn = async (call: Call, pieceId: string) => {
+  for (let attempt = 0; attempt < 120; attempt += 1) {
+    const { images } = await decoded(BackImages, await call(`/api/pieces/${pieceId}`))
+    if (images.backClean !== undefined) return images.backClean
+    await Bun.sleep(250)
+  }
+  throw new Error(`the back of ${pieceId} was not drawn`)
+}
+
+/** A back added on the piece's page is free and drawn pressed, as the back, with the front for reference (owner, 4
+ * November): signed on the piece's page once it passes its check; removing the back forgets its drawing. */
+const verifyBackPicture = async (
+  origin: string,
+  fixtures: string,
+  owner: Call,
+  pieceId: string,
+  prompts: () => Promise<ReadonlyArray<string>>,
+) => {
+  const before = await decoded(Allowance, await owner('/api/captures/tray'))
+  const asked = (await prompts()).length
+  const back = {
+    operationId: 'native-back-picture-0001',
+    uploadId: await uploaded(owner, origin, cutout(colours.red), 'image/png'),
+  }
+  expect((await send(owner, `/api/pieces/${pieceId}/back`, 'PUT', back)).status).toBe(200)
+  const address = await backDrawn(owner, pieceId)
+  expect((await fetch(`${origin}${address}`)).status).toBe(200)
+  const sent = (await prompts()).slice(asked)
+  expect(sent).toHaveLength(1)
+  expect(sent[0]).toContain('shown whole from the back')
+  const drawing = `accounts/${picturesAccount}/pieces/${pieceId}/back-clean-1.png`
+  expect(await exists(fixtures, drawing)).toBe(true)
+  expect(await decoded(Allowance, await owner('/api/captures/tray'))).toEqual(before)
+  expect((await owner(`/api/pieces/${pieceId}/back`, { method: 'DELETE' })).status).toBe(200)
+  for (let attempt = 0; attempt < 120 && (await exists(fixtures, drawing)); attempt += 1) await Bun.sleep(250)
+  expect(await exists(fixtures, drawing)).toBe(false)
+  expect((await decoded(BackImages, await owner(`/api/pieces/${pieceId}`))).images.backClean).toBeUndefined()
+}
+
 /** Kept cut-outs get clean pictures through the queue: Clef judges each, Muse draws the ones worth drawing on their
  * key colour, the drawing is keyed, stored and checked, then shown or dropped; the owner's choice of their photo sticks. A redraw costs a credit once,
  * however often it is asked; a photo is never sent; deleting a piece deletes its drawings. Clef and Muse are the
@@ -157,6 +199,8 @@ export const verifyCleanPictures = async (origin: string, fixtures: string) => {
   expect(await exists(fixtures, `${tee}/clean-2.png`)).toBe(true)
   // A photo never leaves Styld.
   expect((await redraw(owner, kept.photo, { operationId: 'native-redraw-0002' })).status).toBe(409)
+
+  await verifyBackPicture(origin, fixtures, owner, kept.blue, prompts)
 
   // Deleting the piece deletes its drawing.
   expect((await owner(`/api/pieces/${kept.red}`, { method: 'DELETE' })).status).toBe(204)

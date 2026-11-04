@@ -1,5 +1,5 @@
-import { piecePictures, pieces } from '@styld/db'
-import { and, desc, eq, inArray, isNotNull, isNull, lt, ne } from 'drizzle-orm'
+import { pieceBackPictures, piecePictures, pieces } from '@styld/db'
+import { and, desc, eq, inArray, isNotNull, isNull, lt, ne, or } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
 import { Array, Effect, Schema } from 'effect'
 import { type Database as Db, query } from '../kernel/Db.ts'
@@ -83,6 +83,23 @@ export const backfillRows = (db: Database) => ({
             isNotNull(pieces.imageKey),
             ne(pieces.imageKey, pieces.originalKey),
             isNull(piecePictures.pieceId),
+          ),
+        )
+        .orderBy(desc(pieces.createdAt)),
+    ).pipe(Effect.map((rows) => rows.map(({ id }) => id))),
+  /** The account's ready pieces with a photographed back that has no drawing of its own yet, newest first. */
+  undrawnBacks: (accountId: string) =>
+    query(() =>
+      db
+        .select({ id: pieces.id })
+        .from(pieces)
+        .leftJoin(pieceBackPictures, eq(pieceBackPictures.pieceId, pieces.id))
+        .where(
+          and(
+            eq(pieces.accountId, accountId),
+            eq(pieces.status, 'ready'),
+            isNotNull(pieces.backImageKey),
+            or(isNull(pieceBackPictures.pieceId), ne(pieceBackPictures.sourceKey, pieces.backImageKey)),
           ),
         )
         .orderBy(desc(pieces.createdAt)),

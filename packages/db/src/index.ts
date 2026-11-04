@@ -12,7 +12,15 @@ export {
 } from './identity.ts'
 export { operationReceipts } from './receipts.ts'
 export { pieceProvenance, pieces, uploads } from './wardrobe.ts'
-export { captureFrames, captures, detections, piecePictures, pieceTurns, providerFiles } from './capture.ts'
+export {
+  captureFrames,
+  captures,
+  detections,
+  pieceBackPictures,
+  piecePictures,
+  pieceTurns,
+  providerFiles,
+} from './capture.ts'
 export { outfitPhotos, photoGarments } from './photos.ts'
 export { lookPieces, looks } from './looks.ts'
 export {

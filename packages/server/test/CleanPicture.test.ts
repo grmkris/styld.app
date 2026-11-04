@@ -13,8 +13,9 @@ import type { DrawRequest } from '../src/capture/Providers.ts'
 const fixture = (name: string) => readFileSync(new URL(`fixtures/capture/${name}`, import.meta.url))
 const cutout = { bytes: new Uint8Array(fixture('red-tee.png')), contentType: 'image/png' } as const
 const request = (changes: Partial<DrawRequest> = {}): DrawRequest => ({
-  front: cutout,
-  back: Option.none(),
+  side: 'front',
+  subject: cutout,
+  other: Option.none(),
   key: 'green',
   hint: Option.none(),
   ...changes,
@@ -47,14 +48,27 @@ const sentBody = (init: RequestInit | undefined): unknown =>
 
 describe('the clean picture prompt', () => {
   test('names the key colour, the back when there is one, and the owner’s words, kept to one short line', () => {
-    const plain = cleanPrompt({ key: 'magenta', hasBack: false, hint: undefined })
+    const plain = cleanPrompt({ key: 'magenta', side: 'front', hasOther: false, hint: undefined })
     expect(plain).toContain('magenta #ff00ff')
     expect(plain).not.toContain('second image')
     expect(plain).toContain('no person, hands, body, mannequin, hanger')
-    const hinted = cleanPrompt({ key: 'green', hasBack: true, hint: '  a black\n wool   beanie ' + 'x'.repeat(200) })
+    const hinted = cleanPrompt({
+      key: 'green',
+      side: 'front',
+      hasOther: true,
+      hint: '  a black\n wool   beanie ' + 'x'.repeat(200),
+    })
     expect(hinted).toContain('The second image is the back of the same garment')
     expect(hinted).toContain('Its owner describes it as: a black wool beanie x')
     expect(hinted).not.toContain('x'.repeat(80))
+  })
+
+  test('a back is drawn as the back, with its front for colour and identity only (owner, 4 November)', () => {
+    const back = cleanPrompt({ key: 'green', side: 'back', hasOther: true, hint: undefined })
+    expect(back).toContain('shown whole from the back')
+    expect(back).toContain('The second image is the front of the same garment, for its colours and identity only')
+    expect(back).toContain('freshly steamed and pressed')
+    expect(cleanPrompt({ key: 'green', side: 'back', hasOther: false, hint: undefined })).not.toContain('second image')
   })
 })
 
@@ -63,7 +77,7 @@ describe('Meta Muse Image', () => {
     const { generator, seen } = muse(recorded)
     const back = { bytes: new Uint8Array([1, 2, 3]), contentType: 'image/jpeg' } as const
     const drawn = await Effect.runPromise(
-      generator.draw(request({ back: Option.some(back), hint: Option.some('linen') })),
+      generator.draw(request({ other: Option.some(back), hint: Option.some('linen') })),
     )
     const picture = decodePng(drawn.bytes)
     expect([picture.width, picture.height, drawn.contentType]).toEqual([240, 360, 'image/png'])

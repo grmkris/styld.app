@@ -156,8 +156,12 @@ export class GarmentSegmenter extends Context.Service<
 /** What a clean picture is drawn from: the front's cut-out, the back's when the camera took one, the colour to draw
  * it on, and the person's own words on a redraw. Cut-outs only: never a photo of a person. */
 export interface DrawRequest {
-  readonly front: Picture
-  readonly back: Option.Option<Picture>
+  /** Which side of the garment the picture shows: its front, or its back (owner, 4 November: only from a real back). */
+  readonly side: 'front' | 'back'
+  /** The cut-out of that side, the picture is drawn from. */
+  readonly subject: Picture
+  /** The garment's other side, for reference only. */
+  readonly other: Option.Option<Picture>
   readonly key: 'green' | 'magenta'
   readonly hint: Option.Option<string>
 }

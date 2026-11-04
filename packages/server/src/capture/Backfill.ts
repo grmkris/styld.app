@@ -1,6 +1,6 @@
 import { CurrentOperator, type PictureBackfilled } from '@styld/protocol'
 import { Array, DateTime, Duration, Effect, Option } from 'effect'
-import { PieceQueue } from '../wardrobe/Processing.ts'
+import { PieceQueue, type WorkMessage } from '../wardrobe/Processing.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
 import { storedAs, unavailable } from './Shared.ts'
 import { CaptureStore } from './Store.ts'
@@ -30,21 +30,33 @@ const overdueAfter = Duration.minutes(2)
 /** The seconds a picture waits for its turn: the `index`th of a run goes in minute `index / perMinute`. */
 const delayOf = (index: number) => Math.floor(index / perMinute) * 60
 
-/** Send each piece's picture to the queue in its turn. */
-const send = (pieceIds: ReadonlyArray<string>) =>
+/** Send each message to the queue in its turn. */
+const sendPaced = (bodies: ReadonlyArray<WorkMessage>) =>
   Effect.gen(function* () {
     const queue = yield* PieceQueue
     yield* Effect.forEach(
       Array.chunksOf(
-        pieceIds.map((pieceId, index) => ({
-          body: { _tag: 'DrawPicture' as const, pieceId },
-          delaySeconds: delayOf(index),
-        })),
+        bodies.map((body, index) => ({ body, delaySeconds: delayOf(index) })),
         sendBatch,
       ),
       (chunk) => Effect.tryPromise({ try: () => queue.sendBatch(chunk), catch: unavailable }),
       { discard: true },
     )
+  })
+
+/** Send each piece's picture to the queue in its turn. */
+const send = (pieceIds: ReadonlyArray<string>) =>
+  sendPaced(pieceIds.map((pieceId) => ({ _tag: 'DrawPicture' as const, pieceId })))
+
+/** The account's photographed backs that have no drawing yet, each asked of the back picture job in its turn (owner,
+ * 4 November), at most `perRun`; the job brings each piece's row in line, so a repeat draws nothing twice. */
+const backfillBacks = (accountId: string) =>
+  Effect.gen(function* () {
+    const undrawn = yield* storedAs((yield* CaptureStore).undrawnBacks(accountId))
+    const chosen = undrawn.slice(0, perRun)
+    yield* sendPaced(chosen.map((pieceId) => ({ _tag: 'DrawBackPicture' as const, accountId, pieceId })))
+    yield* Effect.annotateCurrentSpan('styld.backfill.backs', chosen.length)
+    return { queued: chosen.length, shown: 0, remaining: undrawn.length - chosen.length }
   })
 
 /** The operator's backfill of clean pictures. */
@@ -55,8 +67,10 @@ export const backfilling = Effect.map(Effect.context<CaptureServices>(), (contex
   backfillPictures: Effect.fn('Styld.Picture.backfill')(function* (
     accountId: string,
     redrawBefore: Option.Option<Date> = Option.none(),
+    backs = false,
   ) {
     yield* CurrentOperator
+    if (backs) return yield* backfillBacks(accountId)
     const store = yield* CaptureStore
     const now = yield* DateTime.now
     const at = DateTime.toDateUtc(now)

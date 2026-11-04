@@ -1,7 +1,7 @@
 import { CurrentAccount, type Keep, NotFound, PieceId, type Review, Reviewed } from '@styld/protocol'
 import { Effect, Option, Schema } from 'effect'
 import { type ReviewDecision } from '../kernel/Metrics.ts'
-import { enqueuePicture, forgetCaptureObjects, storedAs } from './Shared.ts'
+import { enqueueBackPicture, enqueuePicture, forgetCaptureObjects, storedAs } from './Shared.ts'
 
 import type { DetectionRow } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
@@ -78,6 +78,11 @@ const picturesFor = (pieces: ReadonlyArray<ReturnType<typeof pieceOf>>, at: Date
  * sent. */
 const sendPictures = (pieceIds: ReadonlyArray<string>) =>
   Effect.forEach(pieceIds, (pieceId) => enqueuePicture(pieceId), { discard: true })
+
+/** Hand each kept piece with a back to the back picture job (owner, 4 November): it draws the back, once. A replayed
+ * review sends them all again; a piece without a back is left as it is. */
+const sendBacks = (accountId: string, pieceIds: ReadonlyArray<string>) =>
+  Effect.forEach(pieceIds, (pieceId) => enqueueBackPicture(accountId, pieceId), { discard: true })
 
 /** Where each detection came from: its source photo's content type (the upload of a photo capture or of a video's
  * still, as it was received; a garment offered from an outfit photo is its capture's own copy) and how its capture was
@@ -172,6 +177,7 @@ export const reviewing = Effect.map(Effect.context<CaptureServices>(), (context)
     if (Option.isSome(prior)) {
       const reviewed = yield* decodeReviewed(prior.value).pipe(Effect.orDie)
       yield* sendPictures(yield* storedAs((yield* CaptureStore).waitingPictures(reviewed.pieceIds)))
+      yield* sendBacks(accountId, reviewed.pieceIds)
       return reviewed
     }
     const ids: ReadonlyArray<string> = [...input.keep.map(({ detectionId }) => detectionId), ...input.discard]
@@ -224,6 +230,10 @@ export const reviewing = Effect.map(Effect.context<CaptureServices>(), (context)
     yield* forgetFinished(accountId, finished)
     yield* countDecisions(input, open, originOf)
     yield* sendPictures(pictures.map(({ pieceId }) => pieceId))
+    yield* sendBacks(
+      accountId,
+      pieces.filter(({ backImageKey }) => backImageKey !== null).map(({ id }) => id),
+    )
     const pieceChanged = yield* PieceChanged
     yield* Effect.forEach(pieceIds, (pieceId) => pieceChanged.changed(pieceId), { discard: true })
     return { pieceIds: pieceIds.map((id) => PieceId.make(id)) }

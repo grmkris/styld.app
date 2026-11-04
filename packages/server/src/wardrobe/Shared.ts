@@ -8,6 +8,7 @@ import type { GarmentCutout, PieceQueue } from './Processing.ts'
 import { pictureView } from './Shown.ts'
 import { pieceImages, shownTurn } from './Images.ts'
 import { type PictureRow, type PieceRow, type TurnRow, type UploadRow, WardrobeStore } from './Store.ts'
+import type { BackPictureRow } from '../capture/BackPictureStore.ts'
 import { nowDate, type StoreUnavailable } from '../kernel/Db.ts'
 import { deleteAfterRows, Media } from '../kernel/Media.ts'
 import type { SignedMedia } from '../kernel/SignedMedia.ts'
@@ -34,9 +35,15 @@ export const stored = <A, R>(effect: Effect.Effect<A, StoreUnavailable, R>) => E
 
 /** A stored piece as the protocol shows it, with its clean picture and its turn when they were asked for, and, for the
  * owner's browser, the signed addresses of its pictures (`Images.ts`): all of them on its own `page`. */
-export const toPiece = Effect.fnUntraced(function* (row: PieceRow, picture?: PictureRow, turn?: TurnRow, page = false) {
+export const toPiece = Effect.fnUntraced(function* (
+  row: PieceRow,
+  picture?: PictureRow,
+  turn?: TurnRow,
+  page = false,
+  back?: BackPictureRow,
+) {
   const at = yield* nowDate
-  const images = yield* pieceImages(row, picture, page)
+  const images = yield* pieceImages(row, { picture, back }, page)
   return yield* Schema.decodeUnknownEffect(Piece)({
     id: row.id,
     name: row.name,
@@ -88,12 +95,15 @@ export const pictureRow = (accountId: string, pieceId: string) =>
     Option.getOrUndefined,
   )
 
-/** A piece as its owner sees it on its page, with its clean picture, its turn and every picture of it. */
+/** A piece as its owner sees it on its page, with its clean picture, its turn and every picture of it, its back's
+ * drawing included. */
 export const ownerPiece = (accountId: string, row: PieceRow) =>
   Effect.gen(function* () {
+    const store = yield* WardrobeStore
     const picture = yield* pictureRow(accountId, row.id)
-    const turn = Option.getOrUndefined(yield* stored((yield* WardrobeStore).turnOf(accountId, row.id)))
-    return yield* toPiece(row, picture, turn, true)
+    const turn = Option.getOrUndefined(yield* stored(store.turnOf(accountId, row.id)))
+    const back = Option.getOrUndefined(yield* stored(store.backPictureOf(accountId, row.id)))
+    return yield* toPiece(row, picture, turn, true, back)
   })
 
 /** Why an upload cannot make something, if it cannot. */

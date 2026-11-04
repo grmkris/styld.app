@@ -234,6 +234,36 @@ export const piecePictures = sqliteTable(
   ],
 )
 
+/** A pressed picture of a piece's back, drawn from the back the person photographed and checked against it (owner,
+ * 4 November 2026: a back is drawn only from a real one, never invented). One row per piece with a back, written only by
+ * the back picture job (`capture/BackPicture.ts`) and by a back being set or removed; it shares `piece_pictures`'
+ * columns and states (never `proposed` or `retake`), so one drawing lifecycle serves both. `sourceKey` is the back
+ * cut-out it was drawn from: a new back draws again. */
+export const pieceBackPictures = sqliteTable(
+  'piece_back_pictures',
+  {
+    ...pieceOwned(),
+    state: text('state', { enum: pictureStates }).notNull(),
+    /** The back cut-out this picture is drawn from. */
+    sourceKey: text('source_key').notNull(),
+    /** The keyed drawing, `accounts/<a>/pieces/<id>/back-clean-<version>.png`. */
+    cleanKey: text('clean_key'),
+    version: integer('version').notNull(),
+    keyColour: text('key_colour', { enum: keyColours }),
+    provider: text('provider'),
+    face: real('face'),
+    claimedAt: integer('claimed_at', { mode: 'timestamp_ms' }),
+    createdAt: integer('created_at', { mode: 'timestamp_ms' }).notNull(),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    index('piece_back_pictures_account').on(table.accountId),
+    index('piece_back_pictures_state_updated').on(table.state, table.updatedAt),
+    oneOf('piece_back_pictures_state', table.state, pictureStates),
+    oneOf('piece_back_pictures_key_colour', table.keyColour, keyColours),
+  ],
+)
+
 const turnStates = ['requested', 'anchoring', 'generating', 'video-ready', 'ready', 'rejected', 'failed'] as const
 
 /** A piece's turn: its clean picture on a hanger turning a quarter-turn, made on request for credits (owner,

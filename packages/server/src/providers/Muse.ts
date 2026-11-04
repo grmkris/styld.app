@@ -34,11 +34,16 @@ const body = (prompt: string, pictures: ReadonlyArray<Picture>, size: string) =>
   tool_enablement: { enable_image_search: false, enable_web_search: false, enable_shell: false },
 })
 
-/** The clean picture's request: the front first and the back second, 2:3. */
+/** The clean picture's request: the side it shows first and the other side second, 2:3. */
 const drawBody = (request: DrawRequest) =>
   body(
-    cleanPrompt({ key: request.key, hasBack: Option.isSome(request.back), hint: Option.getOrUndefined(request.hint) }),
-    [request.front, ...Option.toArray(request.back)],
+    cleanPrompt({
+      key: request.key,
+      side: request.side,
+      hasOther: Option.isSome(request.other),
+      hint: Option.getOrUndefined(request.hint),
+    }),
+    [request.subject, ...Option.toArray(request.other)],
     '1024x1536',
   )
 
@@ -89,9 +94,13 @@ export const makeMuseGenerator = (settings: MuseSettings) => ({
   }),
 })
 
-/** Meta Muse Image as the painter of a board's stickers: from the words alone, square, on a flat key colour. */
+/** The sizes Muse draws from words at: square for a sticker, 2:3 for a long house garment. */
+export type PaintSize = '1024x1024' | '1024x1536'
+
+/** Meta Muse Image as the painter of a board's stickers (from the words alone, square, on a flat key colour), and of
+ * the house garments the operator's seed generates (`tools/seed/`), one per picture. */
 export const makeMusePainter = (settings: MuseSettings) => ({
-  paint: Effect.fn('Styld.Generation.paint')(function* (request: PaintRequest) {
-    return yield* edit(settings, body(request.prompt, [], '1024x1024'), 'paint', 'generations')
+  paint: Effect.fn('Styld.Generation.paint')(function* (request: PaintRequest, size: PaintSize = '1024x1024') {
+    return yield* edit(settings, body(request.prompt, [], size), 'paint', 'generations')
   }),
 })

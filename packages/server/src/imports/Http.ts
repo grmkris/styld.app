@@ -25,6 +25,7 @@ export const pictureBackfillHandlers = HttpApiBuilder.group(StyldApi, 'pictureBa
           captures.backfillPictures(
             accountId,
             Option.map(Option.fromUndefinedOr(payload.redrawBefore), (millis) => new Date(millis)),
+            payload.backs ?? false,
           ),
           (done) => ({ accountId, ...done }),
         ),

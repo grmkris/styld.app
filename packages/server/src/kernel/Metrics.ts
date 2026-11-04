@@ -42,7 +42,8 @@ export interface ReviewDecision {
 export interface PictureOutcome {
   readonly state: 'ready' | 'proposed' | 'rejected' | 'retake' | 'kept-real' | 'failed'
   readonly provider: string
-  readonly asked: boolean
+  /** A first drawing of the front, one the person asked to redraw, or a back's (from 4 November). */
+  readonly kind: 'first' | 'redraw' | 'back'
 }
 
 /** The outfit engine's experiment (owner, 2026-10-31): each batch made, and each proposal kept (worn today or kept on a
@@ -158,13 +159,7 @@ export const analyticsEngine = (
     Effect.try(() =>
       dataset.writeDataPoint({
         indexes: [`picture.${outcome.state}`],
-        blobs: [
-          origin.environment,
-          origin.release,
-          outcome.state,
-          outcome.provider,
-          outcome.asked ? 'redraw' : 'first',
-        ],
+        blobs: [origin.environment, origin.release, outcome.state, outcome.provider, outcome.kind],
         doubles: [1],
       }),
     ).pipe(Effect.ignore),

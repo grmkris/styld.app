@@ -87,6 +87,8 @@ const services = (
         failCapture: notUsed,
         processPicture: notUsed,
         failPicture: notUsed,
+        processBackPicture: notUsed,
+        failBackPicture: notUsed,
         processTurn: notUsed,
         failTurn: notUsed,
         processMatch: notUsed,
@@ -139,6 +141,8 @@ describe('the processing queue', () => {
         processPicture: (pieceId: string) =>
           Effect.sync(() => seen.push(`draw ${pieceId}`)).pipe(Effect.andThen(Unavailable.make({}))),
         failPicture: (pieceId: string) => Effect.sync(() => seen.push(`give up ${pieceId}`)),
+        processBackPicture: notUsed,
+        failBackPicture: notUsed,
         processTurn: notUsed,
         failTurn: notUsed,
         processMatch: notUsed,
@@ -304,6 +308,8 @@ describe("a piece's turn", () => {
         failCapture: notUsed,
         processPicture: notUsed,
         failPicture: notUsed,
+        processBackPicture: notUsed,
+        failBackPicture: notUsed,
         processTurn: (pieceId: string) =>
           Effect.sync(() => seen.push(`turn ${pieceId}`)).pipe(Effect.andThen(Unavailable.make({}))),
         failTurn: (pieceId: string) => Effect.sync(() => seen.push(`give up ${pieceId}`)),
