@@ -974,7 +974,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'showMe.women': 'Ženska oblačila',
   'showMe.men': 'Moška oblačila',
   'showMe.all': 'Vse',
-  'showMe.reason': 'Novosti se začnejo s tem. Nič ni skrito in kadar koli lahko spremeniš na strani Račun.',
+  'showMe.reason':
+    'To vidiš samo ti. Novosti se začnejo s tem; nič ni skrito in kadar koli lahko spremeniš na strani Račun.',
   'showMe.accountReason': 'Novosti se začnejo s tem. Nič ni skrito.',
   'showMe.notNow': 'Ne zdaj',
   'showMe.failed': 'Ni se shranilo. Poskusi znova.',

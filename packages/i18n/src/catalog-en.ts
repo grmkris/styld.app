@@ -952,7 +952,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'showMe.men': "Men's",
   'showMe.all': 'Everything',
   'showMe.reason':
-    "What's new starts with these. Nothing is hidden, and you can change it any time on your Account page.",
+    "Only you see this. What's new starts with these; nothing is hidden, and you can change it any time on your Account page.",
   'showMe.accountReason': "What's new starts with these. Nothing is hidden.",
   'showMe.notNow': 'Not now',
   'showMe.failed': "That didn't save. Try again.",

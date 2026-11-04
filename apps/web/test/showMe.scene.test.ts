@@ -1,5 +1,5 @@
 import type { Audience } from '@styld/protocol'
-import { click, Command, expect, given, role, scene } from 'foldkit/scene'
+import { click, Command, expect, given, role, scene, text } from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { update } from '../src/App.ts'
@@ -34,6 +34,11 @@ describe('Show me on Home', () => {
       { update, view },
       given(home(preferences(null, false))),
       expect(role('heading', { name: 'What should we show you first?' })).toExist(),
+      expect(
+        text(
+          "Only you see this. What's new starts with these; nothing is hidden, and you can change it any time on your Account page.",
+        ),
+      ).toExist(),
       expect(role('button', { name: 'Everything' })).toHaveAttr('aria-pressed', 'true'),
       click(role('button', { name: "Men's" })),
       Command.resolve(
