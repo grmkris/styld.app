@@ -116,7 +116,9 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // Raised to 392,900 the same day for the wardrobe's address as its only copy (Foldkit's query-sync): the lenient
 // per-parameter codecs, the browse's normalising and ReplaceBrowse add 444 (main 392,390 at 89f4a29 and 392,834 with
 // it, each measured in a clean worktree).
-if (initialGzip > 392900) throw new Error(`Initial browser assets exceed the 392,900-byte gzip budget: ${initialGzip}`)
+// Raised to 393,000 the same day for Styld taking Ask's question once (addressInPlace and samePageArrival): 49 more,
+// 392,864 to 392,913 on main.
+if (initialGzip > 393000) throw new Error(`Initial browser assets exceed the 393,000-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(
