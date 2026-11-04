@@ -624,6 +624,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'capture.alreadyHave': 'Že v tvoji garderobi?',
   'capture.alreadyHaveHint': 'Videti je kot ta kos, ki ga že imaš. Označi ga, da obdržiš oba.',
   'capture.alreadyHaveImage': 'Kos, ki ga že imaš',
+  'capture.orType': 'Ali {type}?',
   'capture.betterLook': 'Potrebuje boljši posnetek',
   'capture.betterLookHint': 'Viden je le del. Dvigni ga ali ga položi in ga dodaj znova.',
   'capture.foundTitle':

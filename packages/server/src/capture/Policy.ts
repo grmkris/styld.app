@@ -68,6 +68,10 @@ export interface CapturePolicy {
     readonly colour: number
     readonly print: number
   }
+  /** When the decision model is torn between two garment types for a new piece, the review offers the second as a
+   * one-tap choice instead of picking silently (owner, 5 November, after Eva's leggings, sports bras and skirts): the
+   * first type's own share is under `torn` and the runner-up's at least `runnerUp`. */
+  readonly alternative: { readonly torn: number; readonly runnerUp: number }
 }
 
 /** The policy the Worker runs. */
@@ -87,4 +91,5 @@ export const capturePolicy: CapturePolicy = {
   },
   matching: { same: 0.8, sightings: 10, pieces: 6, photoPieces: 12 },
   turns: { colour: 0.8, print: 0.6 },
+  alternative: { torn: 0.75, runnerUp: 0.25 },
 }

@@ -26,6 +26,8 @@ export interface Route {
 /** What the decision model suggests for one cut-out piece. */
 export interface Suggestion {
   readonly type: PieceType | undefined
+  /** The type the model was torn with, offered beside `type` as one tap (`GarmentRules.alternativeOf`). */
+  readonly alternative?: PieceType | undefined
   /** How sure the model is of the kind of thing it is: the share of its answer on the type's group. */
   readonly confidence: number
   readonly colours: ReadonlyArray<Colour>

@@ -5,6 +5,7 @@ import { Colour, groupOf, Occasion, Pattern, PieceType, Season } from '@styld/pr
 import { Effect, Option, Schema } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
 import type { CaptureMetrics } from '../kernel/Metrics.ts'
+import { alternativeOf } from '../capture/GarmentRules.ts'
 import {
   type HeldCheck,
   type Judgement,
@@ -448,6 +449,14 @@ const suggestionOf = (answer: ClefAnswer): Suggestion => {
         .filter(([name]) => Option.exists(decodeType(name), (other) => groupOf(other) === groupOf(chosen)))
         .reduce((sum, [, probability]) => sum + probability, 0),
   })
+  const alternative = Option.flatMap(Option.all([typed, type]), ([{ probabilities }, chosen]) =>
+    alternativeOf(
+      chosen,
+      Object.entries(probabilities).flatMap(([name, share]) =>
+        Option.toArray(Option.map(decodeType(name), (other) => [other, share] as const)),
+      ),
+    ),
+  )
   const main = Option.flatMap(choiceOf(answer, 'colour'), ({ choice }) => decodeColour(choice))
   const second = Option.flatMap(choiceOf(answer, 'secondColour'), ({ choice, probabilities }) =>
     (probabilities[choice] ?? 0) >= 0.35 ? decodeColour(choice) : Option.none(),
@@ -462,6 +471,7 @@ const suggestionOf = (answer: ClefAnswer): Suggestion => {
   })
   return {
     type: Option.getOrUndefined(type),
+    alternative: Option.getOrUndefined(alternative),
     confidence,
     colours: [...Option.toArray(main), ...Option.toArray(second)],
     seasons: Option.match(choiceOf(answer, 'season'), {

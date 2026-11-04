@@ -19,6 +19,8 @@ const FoundDetection = Schema.Struct({
   confidence: Schema.NullOr(Schema.Number),
   preselected: Schema.Boolean,
   suggestedType: Schema.NullOr(PieceType),
+  // A delivery recorded before the column existed carries none.
+  suggestedAlternative: Schema.NullOr(PieceType).pipe(Schema.withDecodingDefaultKey(Effect.succeed(null))),
   suggestedColours: Schema.Array(Schema.String),
   suggestedSeasons: Schema.Array(Season),
   suggestedRainproof: Schema.Boolean,
@@ -76,6 +78,7 @@ export const detectionsOf = (
           confidence: garment.confidence,
           preselected: garment.preselect,
           suggestedType: suggestion.type ?? null,
+          suggestedAlternative: suggestion.alternative ?? null,
           suggestedColours: suggestion.colours,
           suggestedSeasons: suggestion.seasons,
           suggestedRainproof: suggestion.rainproof,

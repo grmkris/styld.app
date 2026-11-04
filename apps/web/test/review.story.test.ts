@@ -4,6 +4,7 @@ import { Command, expectOutMessage, given, message, model, story } from 'foldkit
 import { describe, expect, test } from 'vitest'
 import {
   keptOf,
+  otherTypeOf,
   LoadTray,
   Message,
   type Model,
@@ -37,7 +38,10 @@ const detection = (n: number, type: 'shortSleeveTops' | 'jeans' | null, preselec
 })
 
 const tray = (
-  captures: ReadonlyArray<{ status: 'processing' | 'review'; detections: ReadonlyArray<ReturnType<typeof detection>> }>,
+  captures: ReadonlyArray<{
+    status: 'processing' | 'review'
+    detections: TrayContract['captures'][number]['detections']
+  }>,
 ): TrayContract => ({
   captures: captures.map((capture, n) => ({
     id: CaptureId.make(id('cp', n)),
@@ -90,6 +94,33 @@ describe('the review tray', () => {
         expect(current.editing).toEqual(Option.none())
         expect(keptOf(current)).toHaveLength(3)
       }),
+    )
+  })
+
+  test('a piece the model was torn about offers the other type as one tap, which keeps it and swaps back', () => {
+    const torn = {
+      ...detection(4, null, false),
+      suggestion: { ...detection(4, null).suggestion, type: 'trousers' as const, alternative: 'sportBottoms' as const },
+    }
+    const leggings = tray([{ status: 'review', detections: [torn] }])
+    const offered = (current: Model) => otherTypeOf(torn, current.decisions[id('dt', 4)])
+    story(
+      update,
+      given(init()),
+      message(Message.SucceededLoadTray({ tray: leggings })),
+      model((current) => {
+        expect(offered(current)).toEqual(Option.some('sportBottoms'))
+        expect(keptOf(current)).toEqual([])
+      }),
+      message(Message.ChoseOtherType({ detectionId: id('dt', 4), type: 'sportBottoms' })),
+      model((current) => {
+        expect(keptOf(current).map(({ type }) => type)).toEqual(['sportBottoms'])
+        expect(offered(current)).toEqual(Option.some('trousers'))
+      }),
+      message(Message.ClickedEdit({ detectionId: id('dt', 4) })),
+      message(Message.ChoseType({ type: 'jeans' })),
+      // A type the person chose themselves leaves nothing to offer.
+      model((current) => expect(offered(current)).toEqual(Option.none())),
     )
   })
 

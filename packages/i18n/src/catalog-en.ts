@@ -614,6 +614,7 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'capture.alreadyHave': 'Already in your wardrobe?',
   'capture.alreadyHaveHint': 'It looks like this piece you have. Tick it to keep both.',
   'capture.alreadyHaveImage': 'The piece you have',
+  'capture.orType': 'Or {type}?',
   'capture.betterLook': 'Needs a better look',
   'capture.betterLookHint': 'Only part of it shows. Hold it up or lay it out flat, and add it again.',
   'capture.foundTitle': '{count, plural, =0 {Nothing found yet} one {# piece found} other {# pieces found}}',

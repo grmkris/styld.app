@@ -256,3 +256,17 @@ export const joined = <A extends Cut>(one: A, other: A): A => {
 /** The pieces with each pair joined into one. */
 export const withPairsJoined = <A extends Cut>(pieces: ReadonlyArray<A>, kindOf: (piece: A) => Option.Option<string>) =>
   pairsOf(pieces, kindOf).map((group) => (group.length === 1 ? group[0] : joined(group[0], group[1])))
+
+/** The type the review offers beside the one chosen when the decision model is torn between two
+ * (`capturePolicy.alternative`): the runner-up of its answer, when the first type's own share is under `torn` and the
+ * runner-up's at least `runnerUp`. A sure answer, or a spread one, offers none. */
+export const alternativeOf = (
+  chosen: PieceType,
+  shares: ReadonlyArray<readonly [PieceType, number]>,
+): Option.Option<PieceType> => {
+  const { torn, runnerUp } = capturePolicy.alternative
+  const own = shares.find(([type]) => type === chosen)?.[1] ?? 0
+  if (own >= torn) return Option.none()
+  const [second] = shares.filter(([type]) => type !== chosen).toSorted(([, left], [, right]) => right - left)
+  return second !== undefined && second[1] >= runnerUp ? Option.some(second[0]) : Option.none()
+}
