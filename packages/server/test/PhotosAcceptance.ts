@@ -3,7 +3,8 @@ import { expect } from 'bun:test'
 import { Schema } from 'effect'
 import { idOf } from './GalleryAcceptance.ts'
 import { receivedPhoto, waitUntilReady } from './WardrobeAcceptance.ts'
-import { type Call, client, seedAccounts, send, signIn } from './Accounts.ts'
+import { type Call, client, emailOf, seedAccounts, send, signIn } from './Accounts.ts'
+import { nativeOperatorToken, operatorClient } from './OperatorToken.ts'
 
 /** Test-only acceptance: My Gallery through the public edge. Natively a photo shows one garment, cut out as the photo
  * itself, of a kind nobody told, so it stays unmatched until the person matches it (`test/fakes/Garments.ts`). */
@@ -246,6 +247,57 @@ const verifyOnBoard = async (origin: string, owner: Call, photoId: string) => {
 }
 
 /** My Gallery for the website. */
+const Counts = Schema.Struct({
+  photos: Schema.Number,
+  ready: Schema.Number,
+  garments: Schema.Number,
+  queued: Schema.Number,
+})
+
+/** The operator finds a photo again (Eva, 4 November): Styld's guess is replaced by what is found now, a piece added by
+ * hand stays, no credit is spent, and the same operation again queues nothing new. Only the operator's token reaches it. */
+const verifyRefinding = async (origin: string, owner: Call) => {
+  const add = { operationId: 'native-photo-add-3', uploadId: await receivedPhoto(origin, owner) }
+  const photo = await found(owner, (await photoOf(await send(owner, '/api/photos', 'POST', add))).id)
+  const [guess] = photo.garments
+  if (guess === undefined) throw new Error('no garment')
+  const pieceId = await idOf(
+    await send(owner, '/api/pieces', 'POST', {
+      operationId: 'native-photo-piece-refind',
+      uploadId: await receivedPhoto(origin, owner),
+      type: 'jeans',
+    }),
+  )
+  expect(await waitUntilReady(owner, pieceId)).toBe('ready')
+  const byHand = { operationId: 'native-photo-hand-refind', pieceId }
+  await photoOf(await send(owner, `/api/photos/${photo.id}/pieces`, 'POST', byHand))
+  const before = await remaining(owner)
+  const email = emailOf('native-photos')
+  const operator = operatorClient(origin, nativeOperatorToken)
+  expect((await owner(`/api/operator/photos?email=${encodeURIComponent(email)}`)).status).toBe(404)
+  const refind = { operationId: 'native-photo-refind-1', email }
+  expect((await send(owner, '/api/operator/photos/refind', 'POST', refind)).status).toBe(404)
+  const sent = await send(operator, '/api/operator/photos/refind', 'POST', refind)
+  expect(sent.status).toBe(200)
+  const counts = Schema.decodeUnknownSync(Counts)(await sent.json())
+  expect(counts.queued).toBe(counts.ready)
+  const again = await send(operator, '/api/operator/photos/refind', 'POST', refind)
+  expect(Schema.decodeUnknownSync(Counts)(await again.json())).toEqual(counts)
+  for (let attempt = 0; attempt < 80; attempt += 1) {
+    const now = await photoOf(await owner(`/api/photos/${photo.id}`))
+    if (!now.garments.some(({ id }) => id === guess.id)) {
+      expect(now.garments.filter(({ match }) => match === 'unmatched')).toHaveLength(1)
+      expect(now.garments.filter(({ pieceId: piece }) => piece === pieceId)).toHaveLength(1)
+      expect(await remaining(owner)).toBe(before)
+      const read = await operator(`/api/operator/photos?email=${encodeURIComponent(email)}`)
+      expect(Schema.decodeUnknownSync(Counts)(await read.json()).queued).toBe(0)
+      return
+    }
+    await Bun.sleep(250)
+  }
+  throw new Error(`photo ${photo.id} was never found again`)
+}
+
 export const verifyPhotos = async (origin: string, fixtures: string): Promise<void> => {
   await seedAccounts(fixtures, 'native-photos', 'native-photos-other')
   const owner = client(origin, await signIn(origin, 'native-photos'))
@@ -256,4 +308,5 @@ export const verifyPhotos = async (origin: string, fixtures: string): Promise<vo
   expect(listed.photos.map(({ id }) => id)).toEqual([photo.id])
   await verifyMatching(origin, owner, other, photo)
   await verifyOffering(origin, owner)
+  await verifyRefinding(origin, owner)
 }

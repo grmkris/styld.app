@@ -11,6 +11,8 @@ import type { Boards } from '../boards/Boards.ts'
 import type { Looks } from '../looks/Looks.ts'
 import type { Wardrobe } from '../wardrobe/Wardrobe.ts'
 import { accountPrefix } from '../wardrobe/Media.ts'
+import { deleteAfterRows, Media } from '../kernel/Media.ts'
+import { mergedWith } from './Merge.ts'
 import { type GarmentRow, PhotoStore, type PhotoRow } from './Store.ts'
 import { nowDate } from '../kernel/Db.ts'
 import { newId } from '../kernel/Ids.ts'
@@ -149,6 +151,40 @@ export const finding = Effect.map(Effect.context<PhotoServices>(), (context) => 
     }
     // Settled after the status moved, and again by any later delivery: the first settlement stands.
     yield* settleFound(photo.value, photoId)
+  }, Effect.provide(context)),
+  /** Find a ready photo's garments again for the operator's re-find `round` (its operation id), at Styld's cost: no
+   * credit is held. The round's attempt is its own (`PaidAttempts`), so a redelivery merges what the first found and
+   * never asks SAM twice; the photo stays ready throughout and keeps what the person confirmed, offered or added. */
+  refindGarments: Effect.fn('Styld.Photos.refind')(function* (photoId: string, round: string) {
+    const photo = yield* storedAs((yield* PhotoStore).photoForWork(photoId))
+    if (Option.isNone(photo) || photo.value.status !== 'ready') return
+    const original = yield* readObject(photo.value.originalKey)
+    if (Option.isNone(original)) return
+    const work = {
+      key: `photo/${photoId}/refind/${round}`,
+      accountId: photo.value.accountId,
+      provider: 'meta-sam',
+      result: FoundGarments,
+    }
+    const found = yield* (yield* PaidAttempts).run(work, garmentsIn(photo.value, original.value)).pipe(
+      Effect.map(Option.some),
+      // A refusal or an outcome lost with its delivery leaves the photo as it was.
+      Effect.catchTag('ProviderError', (error) => (isBusy(error) ? Effect.fail(error) : Effect.succeed(Option.none()))),
+      Effect.catchTag('AttemptElsewhere', () => Effect.succeed(Option.none())),
+    )
+    if (Option.isNone(found)) return
+    const store = yield* PhotoStore
+    const { added, replaced } = mergedWith(yield* storedAs(store.garmentsOf([photoId])), found.value)
+    yield* storedAs(store.replaceGuesses(photoId, added))
+    yield* deleteAfterRows(
+      (yield* Media).bucket,
+      replaced.flatMap(({ cutoutKey }) => (cutoutKey === null ? [] : [cutoutKey])),
+      'photo',
+    )
+    yield* Effect.annotateCurrentSpan({
+      'styld.photo.found': found.value.length,
+      'styld.photo.replaced': replaced.length,
+    })
   }, Effect.provide(context)),
   /** The last attempt failed: the photo shows as failed, and its credit comes back once. */
   failFinding: Effect.fn('Styld.Photos.failFinding')(function* (photoId: string) {

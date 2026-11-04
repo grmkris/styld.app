@@ -28,6 +28,7 @@ import { receivedUpload } from '../mcp/ImageImport.ts'
 import { imageAddresses, SignedMedia } from '../kernel/SignedMedia.ts'
 import { accountPiece, usableUpload as wardrobeUpload } from '../wardrobe/Shared.ts'
 import { cutOutPerson } from './Cutout.ts'
+import { refinding } from './Refind.ts'
 import { finding, type PhotoServices, photoHold, photoPrefix } from './Finding.ts'
 import { PieceQueue } from '../wardrobe/Processing.ts'
 import { Wardrobe } from '../wardrobe/Wardrobe.ts'
@@ -537,6 +538,7 @@ const make = Effect.gen(function* () {
     ...(yield* reading),
     ...(yield* changing),
     ...(yield* matching),
+    ...(yield* refinding),
     ...(yield* showing),
     ...(yield* boarding),
   }

@@ -27,3 +27,12 @@ export const photoHandlers = HttpApiBuilder.group(StyldApi, 'photo', (handlers) 
       )
   }),
 )
+
+/** The operator's endpoints on an account's photos, by the stage's operator token. */
+export const galleryOperatorHandlers = HttpApiBuilder.group(StyldApi, 'galleryOperator', (handlers) =>
+  Effect.map(Photos, (photos) =>
+    handlers
+      .handle('photoCounts', ({ query }) => photos.photoCounts(query.email))
+      .handle('refindPhotos', ({ payload }) => photos.refindPhotos(payload.email, payload.operationId)),
+  ),
+)

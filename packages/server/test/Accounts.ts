@@ -7,7 +7,7 @@ import { csrf } from '@styld/auth/config'
 // edge. One place for the seed call, the sign-in and the signed-in browser, so every test does them the same way.
 
 /** A seeded account's sign-in email. */
-const emailOf = (id: string) => `${id}@example.invalid`
+export const emailOf = (id: string) => `${id}@example.invalid`
 
 /** The sign-in request's body for a seeded account. */
 export const signInBody = (id: string, password = testPassword) => ({ payload: { email: emailOf(id), password } })

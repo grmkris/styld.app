@@ -1,5 +1,6 @@
 import { operationReceipts, outfitPhotos, photoGarments } from '@styld/db'
-import { and, asc, desc, eq, inArray, exists, isNull, ne } from 'drizzle-orm'
+import { accountOfEmail } from '@styld/auth/provisioning'
+import { and, asc, desc, eq, inArray, exists, isNotNull, isNull, ne, notExists } from 'drizzle-orm'
 import { Context, Effect, Layer } from 'effect'
 import { insertWhen } from '../kernel/Conditional.ts'
 import { OfferedRows } from '../capture/Rows.ts'
@@ -63,6 +64,8 @@ const reads = (db: Db) => ({
         .orderBy(desc(outfitPhotos.createdAt))
         .limit(mostListed),
     ).pipe(Effect.map((rows) => rows.map(({ photo }) => photo))),
+  /** The account an email signs in to, for the operator, who names accounts by email. */
+  accountOf: (email: string) => query(() => accountOfEmail(db, email)).pipe(Effect.map(first)),
   garmentsOf: (photoIds: ReadonlyArray<string>) =>
     inChunks(photoIds, (chunk) =>
       db.select().from(photoGarments).where(inArray(photoGarments.photoId, chunk)).orderBy(asc(photoGarments.position)),
@@ -127,6 +130,34 @@ const writes = (db: Db) => ({
 
 /** Changing a photo's garments: matched, offered to the review tray, or added and taken off by hand. */
 const garmentWrites = (db: Db) => ({
+  /** A photo found again (the operator's re-find): Styld's own guesses, suggested or unmatched, give way to what was
+   * found now, in one batch and only while the photo is ready. What the person confirmed, offered or added by hand
+   * stays, and a found garment already on the photo (a repeated delivery) is not written twice. */
+  replaceGuesses: (photoId: string, found: ReadonlyArray<GarmentRow>) => {
+    const ready = exists(
+      db
+        .select({ id: outfitPhotos.id })
+        .from(outfitPhotos)
+        .where(and(eq(outfitPhotos.id, photoId), eq(outfitPhotos.status, 'ready'))),
+    )
+    const absent = (id: string) =>
+      notExists(db.select({ id: photoGarments.id }).from(photoGarments).where(eq(photoGarments.id, id)))
+    return query(() =>
+      db.batch([
+        db
+          .delete(photoGarments)
+          .where(
+            and(
+              eq(photoGarments.photoId, photoId),
+              inArray(photoGarments.state, ['suggested', 'unmatched']),
+              isNotNull(photoGarments.cutoutKey),
+              ready,
+            ),
+          ),
+        ...found.map((garment) => insertWhen(db, photoGarments, garment, and(ready, absent(garment.id)) ?? ready)),
+      ]),
+    ).pipe(Effect.asVoid)
+  },
   /** A garment offered to the review tray: its capture and detection, and the garment marked offered, in one batch. */
   offerGarment: (garmentId: string, capture: CaptureRow, detection: DetectionRow) =>
     query(() =>

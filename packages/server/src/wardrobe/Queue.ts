@@ -32,7 +32,7 @@ export const pieceJobs = (services: {
     | 'processMatch'
     | 'failMatch'
   >
-  readonly photos: Pick<Photos['Service'], 'findGarments' | 'failFinding'>
+  readonly photos: Pick<Photos['Service'], 'findGarments' | 'failFinding' | 'refindGarments'>
 }): JobsOf<typeof WorkMessage.Type> => ({
   ProcessPiece: {
     run: ({ pieceId }) => services.wardrobe.processPiece(pieceId),
@@ -62,5 +62,10 @@ export const pieceJobs = (services: {
   FindGarments: {
     run: ({ photoId }) => services.photos.findGarments(photoId),
     giveUp: ({ photoId }) => services.photos.failFinding(photoId),
+  },
+  RefindGarments: {
+    run: ({ photoId, round }) => services.photos.refindGarments(photoId, round),
+    // The photo keeps what it had: a re-find that never went through changes nothing.
+    giveUp: () => Effect.void,
   },
 })

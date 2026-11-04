@@ -18,6 +18,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { ImportStarted, ImportStatus, type ImportManifest, type ImportPiece } from '@styld/protocol'
 import { Match, Schema } from 'effect'
+import { operatorStage, required } from '../OperatorStage.ts'
 import { mapPiece, V1Export } from './Mapping.ts'
 import { reportOf, summaryOf, type ImportReport } from './Report.ts'
 
@@ -25,14 +26,7 @@ const [folder, ...flags] = process.argv.slice(2)
 if (folder === undefined)
   throw new Error('Usage: bun tools/import-v1/Import.ts <folder> [--keep-bundle] [--retry-failed]')
 
-const required = (name: string) => {
-  const value = process.env[name]
-  if (value === undefined || value.length === 0) throw new Error(`Set ${name}`)
-  return value
-}
-
-const origin = new URL(required('STYLD_URL')).origin
-const operatorToken = required('STYLD_OPERATOR_TOKEN')
+const { origin, operatorToken } = operatorStage()
 /** The stage's media bucket through the R2 REST API: write and delete one object. */
 const objects = `https://api.cloudflare.com/client/v4/accounts/${required('CLOUDFLARE_ACCOUNT_ID')}/r2/buckets/${required('R2_BUCKET')}/objects`
 const r2 = { authorization: `Bearer ${required('CLOUDFLARE_API_TOKEN')}`, 'cf-r2-jurisdiction': 'eu' }

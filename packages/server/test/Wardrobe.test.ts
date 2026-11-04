@@ -92,7 +92,7 @@ const services = (
         processMatch: notUsed,
         failMatch: notUsed,
       },
-      photos: { findGarments: notUsed, failFinding: notUsed },
+      photos: { findGarments: notUsed, failFinding: notUsed, refindGarments: notUsed },
     },
   }
 }

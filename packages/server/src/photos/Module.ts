@@ -5,7 +5,7 @@ import { module } from '../kernel/Module.ts'
 import { social } from '../social/Module.ts'
 import { wardrobe } from '../wardrobe/Module.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
-import { photoHandlers } from './Http.ts'
+import { galleryOperatorHandlers, photoHandlers } from './Http.ts'
 import { Photos } from './Photos.ts'
 import { PhotoStore } from './Store.ts'
 
@@ -15,7 +15,7 @@ export const photos = module({
   layer: Photos.layer.pipe(
     Layer.provide([PhotoStore.layer, CaptureStore.layer, WardrobeStore.layer, social.layer, wardrobe.layer]),
   ),
-  api: photoHandlers,
+  api: Layer.mergeAll(photoHandlers, galleryOperatorHandlers),
   sweeps: [
     moving(
       'photos',

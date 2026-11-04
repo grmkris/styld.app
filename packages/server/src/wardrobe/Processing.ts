@@ -21,6 +21,8 @@ export const WorkMessage = Schema.TaggedUnion({
   MatchCapture: { captureId: Schema.String },
   /** Find the garments in an outfit photo (My Gallery). */
   FindGarments: { photoId: Schema.String },
+  /** Find a ready outfit photo's garments again, for the operator's re-find `round`, at Styld's cost. */
+  RefindGarments: { photoId: Schema.String, round: Schema.String },
 })
 export type WorkMessage = typeof WorkMessage.Type
 

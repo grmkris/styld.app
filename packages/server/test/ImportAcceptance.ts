@@ -4,7 +4,7 @@ import { ImportStarted, ImportStatus } from '@styld/protocol'
 import { Schema } from 'effect'
 import * as Base64 from 'effect/encoding/Base64'
 import { type Call, client, seedAccounts, send, signIn } from './Accounts.ts'
-import { nativeOperatorToken } from './OperatorToken.ts'
+import { nativeOperatorToken, operatorClient } from './OperatorToken.ts'
 
 // Test-only acceptance: a v1 wardrobe imported through the public edge, as the operator's importer runs it. The
 // operator starts it with the stage's operator token; the pieces land in the account the bundle's email signs in to,
@@ -48,15 +48,6 @@ const bundle = async (testUrl: string, importId: string, email: string, v1 = imp
   })
   expect(response.status).toBe(204)
 }
-
-/** Requests as the operator's importer makes them: a bearer token, no cookie. */
-const operatorClient =
-  (origin: string, token: string): Call =>
-  (path, init) => {
-    const headers = new Headers({ origin, authorization: `Bearer ${token}`, 'content-type': 'application/json' })
-    for (const [name, value] of new Headers(init?.headers)) headers.set(name, value)
-    return fetch(`${origin}${path}`, { ...init, headers })
-  }
 
 const start = async (operator: Call, importId: string) => {
   const response = await send(operator, `/api/operator/imports/${importId}`, 'POST', {
