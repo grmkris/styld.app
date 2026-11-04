@@ -44,6 +44,11 @@ export const toolNames = [
   'feed_get',
   'explore_get',
   'search_public',
+  'taste_get',
+  'note_add',
+  'note_list',
+  'note_delete',
+  'occasions_set',
 ] as const
 
 /** The unit fakes' first piece and board (Mcp.test.ts). */
@@ -96,4 +101,9 @@ export const everyCall: Readonly<Record<(typeof toolNames)[number], Record<strin
   feed_get: {},
   explore_get: {},
   search_public: { q: 'rain' },
+  taste_get: {},
+  note_add: { operationId: opId('note'), text: 'Never heels; flats or trainers' },
+  note_list: {},
+  note_delete: { noteId: `sn_${'every'.padEnd(22, 'x')}`, operationId: opId('note_delete') },
+  occasions_set: { operationId: opId('occasions'), occasions: ['smart', 'casual'] },
 }

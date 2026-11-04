@@ -89,6 +89,8 @@ const owners: Readonly<Record<string, ReadonlyArray<string>>> = {
   importedPieces: ['imports/'],
   importCopies: ['imports/'],
   seededBoards: ['seed/'],
+  tasteAnswers: ['taste/'],
+  styleNotes: ['taste/'],
   // Every operation writes its receipt in its own batch (`kernel/Receipts.ts`).
   operationReceipts: ['*'],
 }

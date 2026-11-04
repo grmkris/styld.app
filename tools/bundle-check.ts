@@ -110,7 +110,10 @@ const server = await readFile('apps/web/dist/server/fetch.js')
 // countdown (its Subscription and seconds), the diagnostics prompt waiting for sign-in, Home's first piece, cutting and
 // how-many-more lines with the tray's allowance, the add page's cost line with its allowance read, and their words
 // add 887: main measured 391,351 in a clean worktree at 9b5e923a and 392,238 with them.
-if (initialGzip > 392300) throw new Error(`Initial browser assets exceed the 392,300-byte gzip budget: ${initialGzip}`)
+// Raised to 392,400 on 4 November for what Styld knows about the person (taste, L1): the client's contract gains the
+// taste group (its read, the occasions, notes and first-run writes, their schemas and the notes' limit) and adds 87:
+// main measured 392,238 at 03299488 and 392,325 with it.
+if (initialGzip > 392400) throw new Error(`Initial browser assets exceed the 392,400-byte gzip budget: ${initialGzip}`)
 if (totalGzip > 716800) throw new Error(`All browser assets exceed the 700 KiB gzip budget: ${totalGzip}`)
 if (server.byteLength > 3145728) throw new Error(`SSR Worker exceeds the 3 MiB source budget: ${server.byteLength}`)
 console.log(

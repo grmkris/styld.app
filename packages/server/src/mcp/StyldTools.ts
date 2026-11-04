@@ -25,6 +25,8 @@ import { Captures } from '../capture/Service.ts'
 import { pictureTools } from './PictureTools.ts'
 import { Generations } from '../generation/Service.ts'
 import { generationTools } from './GenerationTools.ts'
+import { Tastes } from '../taste/Taste.ts'
+import { tasteTools } from './TasteTools.ts'
 
 /** What assistants read first: what Styld is and how to treat tool output. The first paragraph
  * stays under 512 characters, the part hosts show. */
@@ -49,6 +51,7 @@ export interface ToolServices {
   readonly generations: Pick<Generations['Service'], 'admit' | 'get'>
   readonly outfits: Outfits['Service']
   readonly accounts: Pick<AccountLifecycle['Service'], 'readAccount'>
+  readonly tastes: Tastes['Service']
 }
 
 /** The assistants' tools, as `styldTools` builds them once for the Worker: MCP serves them, and Styld's chat uses a
@@ -72,6 +75,7 @@ export const styldTools = (
     generations,
     outfits,
     accounts,
+    tastes,
   }: ToolServices,
 ) => [
   tool({
@@ -92,6 +96,7 @@ export const styldTools = (
   ...profileTools(profiles, origin),
   ...socialTools(social),
   ...discoveryTools(discovery, origin),
+  ...tasteTools(tastes),
 ]
 
 /** The assistants' tools, built once per runtime over the application's services: MCP serves them, and Styld answers
@@ -116,6 +121,7 @@ export class AssistantToolset extends Context.Service<AssistantToolset, Assistan
         generations: yield* Generations,
         outfits: yield* Outfits,
         accounts: yield* AccountLifecycle,
+        tastes: yield* Tastes,
       })
     }),
   )

@@ -32,6 +32,7 @@ import { Curation, emailListOf, isAdmin } from '../src/social/Curation.ts'
 import { fetchOperation, Links } from '../src/links/Links.ts'
 import { unlimited } from './fakes/Pacing.ts'
 import { unusedBoards } from './fakes/Boards.ts'
+import { unusedTastes } from './fakes/Tastes.ts'
 
 /** The account service: Ana, with her verified email. */
 const accounts = {
@@ -214,6 +215,7 @@ const tools = styldTools('https://styld.test', {
   generations,
   outfits,
   accounts,
+  tastes: unusedTastes,
 })
 /** The JSON of a result's first text block. */
 const jsonOf = (result: {

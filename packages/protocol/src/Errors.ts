@@ -93,11 +93,11 @@ export class NotFound extends Schema.TaggedError<NotFound>()(
 ) {}
 
 /** Which of the account's allowances is spent. */
-export const Limit = Schema.Literals(['dailyCredits', 'thinking', 'reports', 'uploads'])
+export const Limit = Schema.Literals(['dailyCredits', 'thinking', 'reports', 'uploads', 'styleNotes'])
 export type Limit = typeof Limit.Type
 
 /** One of the account's allowances is spent: today's credits (back at `resetsAt`), today's Thinking outfits, this
- * hour's reports, or the uploads that may wait unused. */
+ * hour's reports, the uploads that may wait unused, or the notes Styld keeps. */
 export class LimitReached extends Schema.TaggedError<LimitReached>()(
   'LimitReached',
   { limit: Limit, resetsAt: Schema.optionalKey(Schema.String) },
@@ -126,6 +126,12 @@ export class LimitReached extends Schema.TaggedError<LimitReached>()(
         code: 'too_many_uploads',
         message: 'Too many uploads are waiting unused.',
         recovery: 'Use the photos and videos already uploaded, or try again tomorrow.',
+        retryable: false,
+      },
+      styleNotes: {
+        code: 'too_many_style_notes',
+        message: 'Styld already remembers as many notes as it keeps.',
+        recovery: 'Remove a note with note_delete, then add the new one.',
         retryable: false,
       },
     }),

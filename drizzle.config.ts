@@ -19,6 +19,7 @@ const modules = [
   'usage',
   'imports',
   'seed',
+  'taste',
 ]
 
 export default defineConfig({

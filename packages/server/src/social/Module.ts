@@ -13,6 +13,8 @@ import { Checks } from '../safety/Checks.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
 import { checkJobQueue, checkJobs } from '../safety/Queue.ts'
 import { WardrobeStore } from '../wardrobe/Store.ts'
+import { tasteHandlers } from '../taste/Http.ts'
+import { Tastes } from '../taste/Taste.ts'
 import { wornHandlers } from '../worn/Http.ts'
 import { Worn } from '../worn/Worn.ts'
 import { Curation } from './Curation.ts'
@@ -39,6 +41,7 @@ export const social = module({
         Worn.layer,
         PieceChanged.layer,
         ShowMe.layer,
+        Tastes.layer,
       ),
     ),
     Layer.provideMerge(Checks.layer),
@@ -51,6 +54,7 @@ export const social = module({
     wornHandlers,
     profileHandlers,
     preferencesHandlers,
+    tasteHandlers,
     socialHandlers,
     withAuth(publicHandlers),
   ),
