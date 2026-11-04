@@ -202,7 +202,9 @@ const verifyOffering = async (origin: string, owner: Call) => {
 }
 
 const BoardPins = Schema.Struct({
-  pins: Schema.Array(Schema.Struct({ _tag: Schema.String, imageId: Schema.optionalKey(Schema.String) })),
+  pins: Schema.Array(
+    Schema.Struct({ _tag: Schema.String, id: Schema.String, imageId: Schema.optionalKey(Schema.String) }),
+  ),
   items: Schema.Array(Schema.Struct({ _tag: Schema.String })),
 })
 
@@ -216,6 +218,13 @@ const publicBoard = async (origin: string, boardId: string) => {
   throw new Error('The board never became public')
 }
 
+/** The picture an add to board answers. */
+const PictureAnswer = Schema.Struct({ imageId: Schema.String })
+const pictureOf = async (response: Response) => {
+  expect(response.status).toBe(200)
+  return Schema.decodeUnknownSync(PictureAnswer)(await response.json()).imageId
+}
+
 /** Add to board: the picture the page shows (the cut-out, then the photo itself; T-17) and the look worn from it go on
  * the person's own board, each once; a visitor to the public board sees neither the photo's pins nor its pictures. */
 const verifyOnBoard = async (origin: string, owner: Call, photoId: string) => {
@@ -224,26 +233,47 @@ const verifyOnBoard = async (origin: string, owner: Call, photoId: string) => {
   const board = await send(owner, '/api/boards', 'POST', { operationId: 'native-photo-board-1', name: 'Saturday' })
   const { id: boardId } = Schema.decodeUnknownSync(Schema.Struct({ id: Schema.String }))(await board.json())
   const cutoutToBoard = { operationId: 'native-photo-to-board-1', boardId, picture: 'cutout' }
-  expect((await send(owner, `/api/photos/${photoId}/board`, 'POST', cutoutToBoard)).status).toBe(204)
-  expect((await send(owner, `/api/photos/${photoId}/board`, 'POST', cutoutToBoard)).status).toBe(204)
+  const cutout = await pictureOf(await send(owner, `/api/photos/${photoId}/board`, 'POST', cutoutToBoard))
+  expect(await pictureOf(await send(owner, `/api/photos/${photoId}/board`, 'POST', cutoutToBoard))).toBe(cutout)
   const withCutout = Schema.decodeUnknownSync(BoardPins)(await (await owner(`/api/boards/${boardId}`)).json())
   expect(withCutout.pins.filter(({ _tag }) => _tag === 'PicturePin')).toHaveLength(1)
   // The photo itself is another picture; the same request again, under another id, places nothing more.
   const photoToBoard = { operationId: 'native-photo-to-board-2', boardId, picture: 'photo' }
-  expect((await send(owner, `/api/photos/${photoId}/board`, 'POST', photoToBoard)).status).toBe(204)
+  const photo = await pictureOf(await send(owner, `/api/photos/${photoId}/board`, 'POST', photoToBoard))
   const again = { ...photoToBoard, operationId: 'native-photo-to-board-3' }
-  expect((await send(owner, `/api/photos/${photoId}/board`, 'POST', again)).status).toBe(204)
+  expect(await pictureOf(await send(owner, `/api/photos/${photoId}/board`, 'POST', again))).toBe(photo)
   const own = Schema.decodeUnknownSync(BoardPins)(await (await owner(`/api/boards/${boardId}`)).json())
   const pictures = own.pins.filter(({ _tag }) => _tag === 'PicturePin')
   expect(pictures).toHaveLength(2)
   expect(own.items).toEqual([{ _tag: 'ImageItem' }, { _tag: 'ImageItem' }])
   expect(own.pins.some(({ _tag }) => _tag === 'LookPin')).toBe(true)
+  await verifyPinnedOnly(owner, photoId)
   const visibility = await send(owner, `/api/boards/${boardId}/visibility`, 'PUT', { visibility: 'public' })
   expect(visibility.status).toBe(200)
   const seen = await publicBoard(origin, boardId)
   expect(seen.pins.map(({ _tag }) => _tag)).not.toContain('PublicPicturePin')
   expect(seen.items.map(({ _tag }) => _tag)).not.toContain('ImageItem')
   expect((await fetch(`${origin}/cdn/public/pictures/${pictures[0]?.imageId ?? ''}/thumb`)).status).toBe(404)
+}
+
+/** From the board's own page: the picture is pinned and answered, the table left to the page; one taken off the board
+ * goes back on as a new picture. */
+const verifyPinnedOnly = async (owner: Call, photoId: string) => {
+  const board = await send(owner, '/api/boards', 'POST', { operationId: 'native-photo-board-2', name: 'Sunday' })
+  const { id: boardId } = Schema.decodeUnknownSync(Schema.Struct({ id: Schema.String }))(await board.json())
+  const add = { operationId: 'native-photo-to-board-4', boardId, picture: 'photo', placeOnTable: false }
+  const first = await pictureOf(await send(owner, `/api/photos/${photoId}/board`, 'POST', add))
+  const pinned = Schema.decodeUnknownSync(BoardPins)(await (await owner(`/api/boards/${boardId}`)).json())
+  expect(pinned.items).toEqual([])
+  const pin = pinned.pins.find(({ imageId }) => imageId === first)
+  expect(pin).toBeDefined()
+  const removal = { operationId: 'native-photo-unpin-1', pinIds: [pin?.id ?? ''] }
+  expect((await send(owner, `/api/boards/${boardId}/pins/remove`, 'POST', removal)).status).toBe(200)
+  const back = { ...add, operationId: 'native-photo-to-board-5' }
+  const second = await pictureOf(await send(owner, `/api/photos/${photoId}/board`, 'POST', back))
+  expect(second).not.toBe(first)
+  const repinned = Schema.decodeUnknownSync(BoardPins)(await (await owner(`/api/boards/${boardId}`)).json())
+  expect(repinned.pins.filter(({ _tag }) => _tag === 'PicturePin').map(({ imageId }) => imageId)).toEqual([second])
 }
 
 /** My Gallery for the website. */

@@ -22,6 +22,9 @@ const Pins = Schema.Struct({
   pins: Schema.Array(Schema.Struct({ _tag: Schema.String, generated: Schema.optionalKey(Schema.Boolean) })),
 })
 
+/** The picture putting a try-on on a board answers. */
+const Picture = Schema.Struct({ imageId: Schema.String })
+
 const tryOnOf = async (response: Response) => decoded(TryOn, response)
 const remaining = async (call: Call) => (await decoded(Allowance, await call('/api/captures/tray'))).allowance.remaining
 
@@ -89,7 +92,10 @@ export const verifyTryOn = async (origin: string, fixtures: string): Promise<voi
     await send(owner, '/api/boards', 'POST', { operationId: 'native-try-on-board', name: 'Me' }),
   )
   const toBoard = { operationId: 'native-try-on-to-board', boardId }
-  expect((await send(owner, `/api/try-ons/${started.id}/board`, 'POST', toBoard)).status).toBe(204)
+  const onBoard = await decoded(Picture, await send(owner, `/api/try-ons/${started.id}/board`, 'POST', toBoard))
+  const sameAgain = { operationId: 'native-try-on-to-board-2', boardId }
+  const repeated = await decoded(Picture, await send(owner, `/api/try-ons/${started.id}/board`, 'POST', sameAgain))
+  expect(repeated.imageId).toBe(onBoard.imageId)
   expect((await send(other, `/api/try-ons/${started.id}/board`, 'POST', toBoard)).status).toBe(404)
   const { pins } = await decoded(Pins, await owner(`/api/boards/${boardId}`))
   expect(pins.filter((pin) => Predicate.isTagged(pin, 'PicturePin')).length).toBe(1)

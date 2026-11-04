@@ -24,5 +24,7 @@ export const unusedBoards: Boards['Service'] = {
   addBoardImage: notUsed,
   addGeneratedImage: notUsed,
   addPhotoImage: notUsed,
+  pictureSpot: notUsed,
+  boardPicture: notUsed,
   setBoardVisibility: notUsed,
 }

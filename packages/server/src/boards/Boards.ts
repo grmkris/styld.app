@@ -19,6 +19,7 @@ import {
   searchText,
   type SetVisibility,
   type UpdateBoard,
+  type Unavailable,
   UploadRefused,
 } from '@styld/protocol'
 import { Context, Effect, Layer, Option } from 'effect'
@@ -344,7 +345,46 @@ const pictures = Effect.map(Effect.context<BoardServices>(), (context) => ({
     )
     return Option.isSome(committed) ? committed.value : yield* replayImage(accountId, id)
   }, Effect.provide(context)),
+  /** Where a picture from elsewhere in the account (an outfit photo, a try-on) goes on a board: the picture one of
+   * `operationIds` already put on this board and that is still there, or else the first of them no picture took yet,
+   * to add it under. Callers key the first id by the picture and the board, so putting it on again answers the same
+   * picture, and derive the next from the request, for a picture taken off the board since. */
+  pictureSpot: Effect.fn('Styld.Boards.pictureSpot')(function* (
+    boardId: BoardId,
+    operationIds: ReadonlyArray<OperationId>,
+  ): Effect.fn.Return<PictureSpot, NotFound | OperationConflict | Unavailable, BoardServices | CurrentAccount> {
+    const { accountId } = yield* CurrentAccount
+    yield* ownBoard(accountId, boardId)
+    const store = yield* BoardStore
+    for (const operationId of operationIds) {
+      const receipt = yield* stored(store.findReceipt(accountId, operationId))
+      if (Option.isNone(receipt)) return { _tag: 'Free', operationId }
+      const held = yield* heldImage(accountId, boardId, receipt.value.result)
+      if (receipt.value.command === 'addBoardImage' && Option.isSome(held)) return { _tag: 'Held', image: held.value }
+    }
+    return yield* OperationConflict.make({})
+  }, Effect.provide(context)),
+  /** A picture that is on the board, as `addBoardImage` answered it; one taken off since is not found. */
+  boardPicture: Effect.fn('Styld.Boards.picture')(function* (boardId: BoardId, imageId: string) {
+    const { accountId } = yield* CurrentAccount
+    const held = yield* heldImage(accountId, boardId, imageId)
+    return Option.isSome(held) ? held.value : yield* NotFound.make({})
+  }, Effect.provide(context)),
 }))
+
+/** The board's picture under the id, if it is still on that board. */
+const heldImage = (accountId: string, boardId: string, imageId: string | null) =>
+  Effect.gen(function* () {
+    if (imageId === null) return Option.none<BoardImage>()
+    const row = yield* stored((yield* BoardStore).findImage(accountId, imageId))
+    if (Option.isNone(row) || row.value.boardId !== boardId) return Option.none<BoardImage>()
+    return Option.some(yield* replayImage(accountId, row.value.id))
+  })
+
+/** Where a picture from elsewhere goes on a board (`pictureSpot`): it is there already, or it goes under this id. */
+type PictureSpot =
+  | { readonly _tag: 'Held'; readonly image: BoardImage }
+  | { readonly _tag: 'Free'; readonly operationId: OperationId }
 
 const make = Effect.gen(function* () {
   const context = yield* Effect.context<BoardServices>()

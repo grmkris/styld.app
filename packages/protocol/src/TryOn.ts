@@ -4,7 +4,7 @@ import { SessionHttp } from '@styld/auth/config'
 import { SessionAccount } from './Session.ts'
 import { Schema } from 'effect'
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
-import { BoardId } from './Board.ts'
+import { BoardId, BoardImage } from './Board.ts'
 import { PhotoId } from './Photo.ts'
 import { PieceId } from './Wardrobe.ts'
 
@@ -83,7 +83,7 @@ export class TryOnApi extends HttpApiGroup.make('tryOn')
     HttpApiEndpoint.post('addTryOnToBoard', '/try-ons/:tryOnId/board', {
       params: tryOnPath,
       payload: AddTryOnToBoard,
-      success: HttpApiSchema.NoContent,
+      success: BoardImage,
       error: [NotFound, OperationConflict, Unavailable],
     }),
   )

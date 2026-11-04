@@ -4,7 +4,7 @@ import { SessionHttp } from '@styld/auth/config'
 import { SessionAccount } from './Session.ts'
 import { Schema } from 'effect'
 import { HttpApiEndpoint, HttpApiGroup, HttpApiSchema } from 'effect/http-api'
-import { BoardId } from './Board.ts'
+import { BoardId, BoardImage } from './Board.ts'
 import { PieceType } from './Garment.ts'
 import { CreateLook, Look, LookId } from './Look.ts'
 import { Colour, PieceId, UploadId, UploadRefused } from './Wardrobe.ts'
@@ -85,7 +85,14 @@ export type WearAgain = typeof WearAgain.Type
 export const PhotoPicture = Schema.Literals(['photo', 'cutout'])
 export type PhotoPicture = typeof PhotoPicture.Type
 
-export const AddPhotoToBoard = Schema.Struct({ operationId: OperationId, boardId: BoardId, picture: PhotoPicture })
+/** `placeOnTable` (true unless false) also lays the picture on the board's table; the board's own page sends false and
+ * places the answered picture in the table it is editing. */
+export const AddPhotoToBoard = Schema.Struct({
+  operationId: OperationId,
+  boardId: BoardId,
+  picture: PhotoPicture,
+  placeOnTable: Schema.optionalKey(Schema.Boolean),
+})
 export type AddPhotoToBoard = typeof AddPhotoToBoard.Type
 
 /** Styld found no person to cut out of the photo. */
@@ -186,7 +193,7 @@ export class PhotoApi extends HttpApiGroup.make('photo')
     HttpApiEndpoint.post('addToBoard', '/photos/:photoId/board', {
       params: photoPath,
       payload: AddPhotoToBoard,
-      success: HttpApiSchema.NoContent,
+      success: BoardImage,
       error: [NotFound, OperationConflict, Unavailable],
     }),
   )

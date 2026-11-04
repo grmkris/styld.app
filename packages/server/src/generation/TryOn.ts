@@ -164,21 +164,37 @@ const remove = Effect.fn('Styld.TryOn.delete')(function* (tryOnId: string, opera
   )
 })
 
-/** Put a try-on's result on one of the person's boards, as a picture of its own. The board operation is keyed by the
- * try-on and the board, so putting it on the same board again, whatever the request's id, answers the same picture. */
+/** A board's refusal as the try-on's: not found or a conflict stays so, anything else is unavailable. */
+const onBoard = <A, E, R>(effect: Effect.Effect<A, E, R>) =>
+  effect.pipe(
+    Effect.mapError((error) =>
+      Predicate.isTagged(error, 'NotFound') || Predicate.isTagged(error, 'OperationConflict') ? error : unavailable(),
+    ),
+  )
+
+/** Put a try-on's result on one of the person's boards, as a picture of its own, and answer the picture. The board
+ * operation is keyed by the try-on and the board, so putting it on the same board again, whatever the request's id,
+ * answers the same picture; one taken off the board since goes back under an id of the request's. The result is read
+ * and uploaded only when the board does not hold it. */
 const toBoard = Effect.fn('Styld.TryOn.toBoard')(function* (tryOnId: string, input: AddTryOnToBoard) {
   const { accountId } = yield* CurrentAccount
   const row = yield* stored((yield* TryOnStore).findTryOn(accountId, tryOnId))
   if (Option.isNone(row) || row.value.resultKey === null) return yield* NotFound.make({})
-  const bytes = yield* readObject(row.value.resultKey)
+  const resultKey = row.value.resultKey
+  const boards = yield* Boards
+  const spot = yield* onBoard(
+    boards.pictureSpot(input.boardId, [
+      OperationId.make(`tb-${tryOnId}-${input.boardId}`.slice(0, 64)),
+      OperationId.make(`tr-${input.operationId}`.slice(0, 64)),
+    ]),
+  )
+  if (Predicate.isTagged(spot, 'Held')) return spot.image
+  const bytes = yield* readObject(resultKey)
   if (Option.isNone(bytes)) return yield* unavailable()
   const uploadId = yield* receivedUpload(yield* Wardrobe, { contentType: 'image/png', bytes: bytes.value }).pipe(
     Effect.mapError(unavailable),
   )
-  const operationId = OperationId.make(`tb-${tryOnId}-${input.boardId}`.slice(0, 64))
-  yield* (yield* Boards)
-    .addGeneratedImage(input.boardId, { operationId, uploadId })
-    .pipe(Effect.mapError((error) => (Predicate.isTagged(error, 'NotFound') ? error : unavailable())))
+  return yield* onBoard(boards.addGeneratedImage(input.boardId, { operationId: spot.operationId, uploadId }))
 })
 
 /** Every try-on operation over the services it yields (`TryOnShared.ts` `TryOnServices`). */

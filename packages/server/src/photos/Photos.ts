@@ -1,7 +1,6 @@
 import {
   type AddPhoto,
   type AddPhotoToBoard,
-  BoardImageId,
   CurrentAccount,
   ImageType,
   LookId,
@@ -389,12 +388,13 @@ const showing = Effect.map(Effect.context<PhotoServices>(), (context) => ({
 
 /** The board operations a photo's picture goes on a board under: keyed by the photo, the picture and the board, so
  * putting the same picture on the same board again, whatever the request's id, answers the same picture; the photo and
- * its cut-out are two pictures, and the look pin is the photo's either way. Ids are at most 64 characters: the
- * photo's and the board's are 25 each. */
+ * its cut-out are two pictures, and the look pin is the photo's either way. The table's is keyed by the picture on the
+ * board, so a picture taken off and put back is laid out again. Ids are at most 64 characters: the photo's and the
+ * board's are 25 each. */
 const boardOperations = (photoId: string, picture: PhotoPicture, boardId: string) => ({
   image: OperationId.make(`${picture === 'cutout' ? 'pc' : 'pi'}-${photoId}-${boardId}`.slice(0, 64)),
   look: OperationId.make(`pl-${photoId}-${boardId}`.slice(0, 64)),
-  table: OperationId.make(`${picture === 'cutout' ? 'pu' : 'pt'}-${photoId}-${boardId}`.slice(0, 64)),
+  table: (imageId: string) => OperationId.make(`pt-${imageId}`.slice(0, 64)),
 })
 
 /** One of the photo's pictures for a board, the photo or the person cut out of it, as a received upload. A photo
@@ -427,42 +427,50 @@ const boarding = Effect.map(Effect.context<PhotoServices>(), (context) => ({
     const change = Effect.flatMap(ownPhoto(accountId, photoId), cutOutPerson)
     return yield* changedOnce({ operationId, command: 'cutOutPerson', input: photoId }, photoId, change)
   }, Effect.provide(context)),
-  /** Put the photo on one of the person's boards, once: a repeat of the operation answers done, and the photo's
-   * picture is uploaded only until the board holds it. */
+  /** Put the photo on one of the person's boards, once, and answer its picture: a repeat of the operation answers the
+   * same picture, and the photo's picture is uploaded only until the board holds it. Unless the request says not to,
+   * the picture is laid on the board's table too (the board's own page lays it in the table it edits). */
   addToBoard: Effect.fn('Styld.Photos.addToBoard')(function* (photoId: string, input: AddPhotoToBoard) {
     const { accountId } = yield* CurrentAccount
     const photo = yield* ownPhoto(accountId, photoId)
+    const placeOnTable = input.placeOnTable !== false
+    const boards = yield* Boards
+    const operations = boardOperations(photo.id, input.picture, input.boardId)
     const onBoardOnce = Effect.gen(function* () {
-      const operations = boardOperations(photo.id, input.picture, input.boardId)
-      const placed = yield* storedAs((yield* WardrobeStore).findReceipt(accountId, operations.image))
-      if (Option.isNone(placed)) {
-        const uploadId = yield* photoUpload(photo, input.picture)
-        yield* onBoard((yield* Boards).addPhotoImage(input.boardId, { operationId: operations.image, uploadId }))
-      }
-      const imageReceipt = yield* storedAs((yield* WardrobeStore).findReceipt(accountId, operations.image))
-      if (Option.isNone(imageReceipt)) return yield* unavailable()
-      const imageId = yield* Schema.decodeUnknownEffect(BoardImageId)(imageReceipt.value.result).pipe(
-        Effect.mapError(unavailable),
+      const spot = yield* onBoard(
+        boards.pictureSpot(input.boardId, [operations.image, OperationId.make(`pr-${input.operationId}`.slice(0, 64))]),
       )
-      yield* onBoard(
-        (yield* Boards).arrangeBoard(input.boardId, {
-          operationId: operations.table,
-          layout: 'keep',
-          add: [{ _tag: 'TablePicture', imageId }],
-        }),
-      )
-      if (photo.lookId !== null)
+      const image = Predicate.isTagged(spot, 'Held')
+        ? spot.image
+        : yield* onBoard(
+            boards.addPhotoImage(input.boardId, {
+              operationId: spot.operationId,
+              uploadId: yield* photoUpload(photo, input.picture),
+            }),
+          )
+      if (placeOnTable)
         yield* onBoard(
-          (yield* Boards).addPins(input.boardId, {
-            operationId: operations.look,
-            lookIds: [LookId.make(photo.lookId)],
+          boards.arrangeBoard(input.boardId, {
+            operationId: operations.table(image.imageId),
+            layout: 'keep',
+            add: [{ _tag: 'TablePicture', imageId: image.imageId }],
           }),
         )
+      if (photo.lookId !== null)
+        yield* onBoard(
+          boards.addPins(input.boardId, { operationId: operations.look, lookIds: [LookId.make(photo.lookId)] }),
+        )
+      return [image, image.imageId] as const
     })
-    yield* once(
+    return yield* once(
       yield* WardrobeStore,
-      { accountId, operationId: input.operationId, command: 'addPhotoToBoard', input: [photoId, input.boardId] },
-      { replay: () => Effect.void, run: Effect.as(onBoardOnce, [undefined, photoId] as const) },
+      {
+        accountId,
+        operationId: input.operationId,
+        command: 'addPhotoToBoard',
+        input: placeOnTable ? [photoId, input.boardId] : [photoId, input.boardId, 'pinOnly'],
+      },
+      { replay: (imageId) => onBoard(boards.boardPicture(input.boardId, imageId)), run: onBoardOnce },
     )
   }, Effect.provide(context)),
 }))
