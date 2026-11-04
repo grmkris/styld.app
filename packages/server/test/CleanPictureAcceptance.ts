@@ -117,7 +117,7 @@ const verifyBackPicture = async (
 }
 
 /** Kept cut-outs get clean pictures through the queue: Clef judges each, Muse draws the ones worth drawing on their
- * key colour, the drawing is keyed, stored and shown, never compared with its cut-out (owner, 4 November); the owner's choice of their photo sticks. A redraw costs a credit once,
+ * key colour, the drawing is keyed, stored and shown, never compared with its cut-out (owner, 4 November); the owner's choice of their photo sticks. A redraw is free,
  * however often it is asked; a photo is never sent; deleting a piece deletes its drawings. Clef and Muse are the
  * fixture's stand-ins (PictureFixture.ts). The pieces it leaves are what `verifyTurn` turns. */
 export const verifyCleanPictures = async (origin: string, fixtures: string) => {
@@ -174,9 +174,10 @@ export const verifyCleanPictures = async (origin: string, fixtures: string) => {
   })
   expect((await choose(kept.blue, 'clean')).status).toBe(409)
 
-  // A redraw holds a credit, sends the owner's words, replaces the drawing and consumes the credit once.
+  // A redraw is free (owner, 4 November): it holds its zero credits, sends the owner's correction, replaces the drawing
+  // and leaves the day's credits as they were.
   const before = (await decoded(Allowance, await owner('/api/captures/tray'))).allowance.remaining
-  // Two redraws asked at once: one claims the drawing and holds its credit; the other holds nothing and is told the
+  // Two redraws asked at once: one claims the drawing and holds its hold; the other holds nothing and is told the
   // picture is busy, so it never settles the winner's hold.
   const hint = 'a red cotton tee'
   const ask = (operationId: string) => redraw(owner, kept.red, { operationId, hint })
@@ -193,8 +194,10 @@ export const verifyCleanPictures = async (origin: string, fixtures: string) => {
   expect((await settled(owner, kept.red)).picture).toEqual({ state: 'ready', shows: 'clean', version: 2 })
   const sent = await prompts()
   expect(sent).toHaveLength(3)
-  expect(sent.at(-1)).toContain('Its owner describes it as: a red cotton tee.')
-  expect((await decoded(Allowance, await owner('/api/captures/tray'))).allowance.remaining).toBe(before - 1)
+  expect(sent.at(-1)).toContain(
+    'Its owner says what to correct, and this comes before everything else: a red cotton tee.',
+  )
+  expect((await decoded(Allowance, await owner('/api/captures/tray'))).allowance.remaining).toBe(before)
   expect(await exists(fixtures, `${tee}/clean-1.png`)).toBe(false)
   expect(await exists(fixtures, `${tee}/clean-2.png`)).toBe(true)
   // A photo never leaves Styld.

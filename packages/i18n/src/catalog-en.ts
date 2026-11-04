@@ -141,10 +141,9 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'wardrobe.picture.failed': 'No clean picture came of it, so your photo stays.',
   'wardrobe.picture.chooseFailed': 'The picture could not be changed. Try again.',
   'wardrobe.picture.redraw': 'Redraw',
-  'wardrobe.picture.hintLabel': 'What is it? (optional)',
-  'wardrobe.picture.hintPlaceholder': 'a black wool beanie',
-  'wardrobe.picture.redrawCost':
-    'Costs {credits, plural, one {# credit} other {# credits}}, refunded if no picture comes of it.',
+  'wardrobe.picture.hintLabel': 'What should change? (optional)',
+  'wardrobe.picture.hintPlaceholder': 'keep the crossed straps on the back',
+  'wardrobe.picture.redrawFree': 'Free. Your words tell Styld what to fix.',
   'wardrobe.picture.problem.busy': 'A clean picture of this piece is already being drawn.',
   'wardrobe.picture.problem.photo': 'This piece shows your original photo, which is never sent to be drawn.',
   'wardrobe.picture.problem.dailyLimit': 'Your 3 free cut-outs are used.',

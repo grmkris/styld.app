@@ -63,14 +63,16 @@ const sentBody = (init: RequestInit | undefined): unknown =>
   typeof init?.body === 'string' ? JSON.parse(init.body) : undefined
 
 describe('the clean picture prompt', () => {
-  test('names the key colour, the back when there is one, and the owner’s words, kept to one short line', () => {
+  test('names the key colour, the back when there is one, and the owner’s correction first, kept to one short line', () => {
     const plain = frontPrompt('shortSleeveTops', { key: 'magenta' })
     expect(plain).toContain('magenta #ff00ff')
     expect(plain).not.toContain('second image')
-    expect(plain).toContain('no person, hands, body, mannequin, hanger')
+    expect(plain).toContain('no person, hands, body, visible mannequin, hanger')
     const hinted = frontPrompt('hats', { hasOther: true, hint: '  a black\n wool   beanie ' + 'x'.repeat(200) })
     expect(hinted).toContain('The second image is the back of the same garment')
-    expect(hinted).toContain('Its owner describes it as: a black wool beanie x')
+    expect(hinted).toContain(
+      'Its owner says what to correct, and this comes before everything else: a black wool beanie x',
+    )
     expect(hinted).not.toContain('x'.repeat(80))
   })
 
@@ -78,18 +80,23 @@ describe('the clean picture prompt', () => {
     const back = frontPrompt('knitwear', { side: 'back', hasOther: true })
     expect(back).toContain('shown whole from the back')
     expect(back).toContain('The second image is the front of the same garment, for its colours and identity only')
-    expect(back).toContain('freshly steamed and pressed')
+    expect(back).toContain('freshly steamed')
     expect(frontPrompt('knitwear', { side: 'back' })).not.toContain('second image')
   })
 
-  test('pressing smooths the fabric and keeps the garment’s own shape and details (owner, 4 November)', () => {
+  test('a garment is a gentle ghost mannequin: its snapshot outline never traced, its cut and details kept (owner, 4 November)', () => {
     const knit = frontPrompt('knitwear')
-    expect(knit).toContain('freshly steamed and pressed')
-    expect(knit).toContain('keep the garment’s own shape and every detail')
+    expect(knit).toMatch(
+      /^Create a ghost-mannequin e-commerce product photo of this garment: shown whole from the front/,
+    )
+    expect(knit).toContain('Keep the garment’s own cut, width, length and proportions exactly: do not add bust shaping')
+    expect(knit).toContain('accidents of how it lay, not its design. Never trace its silhouette.')
+    expect(knit).toContain('freshly steamed')
+    expect(knit).toContain('unless the garment is asymmetric by design')
     expect(knit).toContain('crossed or twisted straps')
-    // The line that straightened ties, straps and uneven hems is gone.
-    expect(knit).not.toContain('straight and symmetrically')
-    expect(knit).toContain('shown whole from the front, laid out evenly')
+    // The wording that let Muse trace a crumpled snapshot is gone.
+    expect(knit).not.toContain('exactly as the reference shows them, such as ties')
+    expect(knit).not.toContain('laid out evenly')
   })
 
   test('shoes and bags are drawn from the angle their cut-out shows, never turned to face the front', () => {
@@ -97,7 +104,7 @@ describe('the clean picture prompt', () => {
       const prompt = frontPrompt(type)
       expect(prompt).toContain('from the same angle as the reference shows it (a side view stays a side view)')
       expect(prompt).not.toContain('from the front')
-      expect(prompt).not.toContain('steamed and pressed')
+      expect(prompt).not.toContain('ghost-mannequin')
     }
     expect(frontPrompt('bags')).toContain('a soft or slouchy shape stays soft and slouchy')
     expect(frontPrompt('scarves')).toContain('shown whole from the front')
@@ -108,7 +115,9 @@ describe('the clean picture prompt', () => {
     expect(prompt).toMatch(
       /^The first image is a photo that may show a person or several things; the second image is a rough cut-out of the grey sleeveless top from it/,
     )
-    expect(prompt).toContain('Create a clean e-commerce product photo of the grey sleeveless top from the first image')
+    expect(prompt).toContain(
+      'Create a ghost-mannequin e-commerce product photo of the grey sleeveless top from the first image:',
+    )
     expect(frontPrompt('jeans', { fromPhoto: true, colours: [] })).toContain('a rough cut-out of the jeans from it')
     expect(frontPrompt('jeans')).not.toContain('first image is a photo')
   })
@@ -140,7 +149,7 @@ describe('Meta Muse Image', () => {
       'data:image/png;base64,',
       'data:image/jpeg;base64',
     ])
-    expect(edit.prompt).toContain('Its owner describes it as: linen.')
+    expect(edit.prompt).toContain('Its owner says what to correct, and this comes before everything else: linen.')
   })
 
   test('after a refusal, sends the photo first and the cut-out second, without the back', async () => {

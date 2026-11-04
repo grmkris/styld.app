@@ -1000,7 +1000,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'wardrobe.picture.problem.network': Readonly<Record<string, never>>
   'wardrobe.picture.problem.photo': Readonly<Record<string, never>>
   'wardrobe.picture.redraw': Readonly<Record<string, never>>
-  'wardrobe.picture.redrawCost': { readonly credits: number }
+  'wardrobe.picture.redrawFree': Readonly<Record<string, never>>
   'wardrobe.picture.retake': Readonly<Record<string, never>>
   'wardrobe.picture.slideAlt': { readonly name: string | number; readonly picture: string | number }
   'wardrobe.picture.useAsMain': Readonly<Record<string, never>>
@@ -1175,4 +1175,4 @@ export type MessageKey = keyof MessageArgumentsByKey
 export type LegalKey = Extract<MessageKey, `legal.privacy.${string}` | `legal.terms.${string}`>
 export type MainKey = Exclude<MessageKey, LegalKey>
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '75ecbfbe2cd281af6414d8b4f3b767859fe1a03d3592ee54a8588abf135cf98e'
+export const catalogVersion = '501bc4922b4f780a1f5408116678e32dfa8b349ee482c471a15731af0b51eccd'

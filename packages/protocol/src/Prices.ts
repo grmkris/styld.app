@@ -27,8 +27,10 @@ export const prices = {
   photo: 1,
   /** Each started half-minute of a video, about 10 credits a minute. */
   videoHalfMinute: 5,
-  /** A clean picture drawn again; the first drawing is free (owner, 30 October). */
-  redraw: 1,
+  /** A clean picture drawn again, with the owner's words on what to correct: free, like the first drawing, while the
+   * drawings still miss details (owner, 4 November; it was 1 credit). It still holds its zero credits, so the hold's
+   * lifecycle is unchanged. */
+  redraw: 0,
   /** A clean picture turning on its hanger (owner, 30 October). */
   turn: 5,
   /** One message to Styld, the stylist in the app (owner, 31 October). */

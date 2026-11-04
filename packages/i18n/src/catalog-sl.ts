@@ -143,10 +143,9 @@ export const catalog: Readonly<Record<MainKey, string>> = {
   'wardrobe.picture.failed': 'Čista slika ni nastala, zato ostane tvoja fotografija.',
   'wardrobe.picture.chooseFailed': 'Slike ni bilo mogoče zamenjati. Poskusi znova.',
   'wardrobe.picture.redraw': 'Nariši znova',
-  'wardrobe.picture.hintLabel': 'Kaj je to? (neobvezno)',
-  'wardrobe.picture.hintPlaceholder': 'črna volnena kapa',
-  'wardrobe.picture.redrawCost':
-    'Stane {credits, plural, one {# kredit, ki ga} two {# kredita, ki ju} few {# kredite, ki jih} other {# kreditov, ki jih}} vrnemo, če slika ne nastane.',
+  'wardrobe.picture.hintLabel': 'Kaj naj popravimo? (neobvezno)',
+  'wardrobe.picture.hintPlaceholder': 'ohrani prekrižane naramnice na hrbtu',
+  'wardrobe.picture.redrawFree': 'Brezplačno. Tvoje besede Styldu povedo, kaj naj popravi.',
   'wardrobe.picture.problem.busy': 'Čista slika tega kosa se že riše.',
   'wardrobe.picture.problem.photo': 'Ta kos kaže tvojo izvirno fotografijo, ki je nikoli ne pošljemo v risanje.',
   'wardrobe.picture.problem.dailyLimit': 'Tvoji 3 brezplačni izrezi so porabljeni.',

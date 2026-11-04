@@ -157,9 +157,9 @@
       "failed": "No clean picture came of it, so your photo stays.",
       "chooseFailed": "The picture could not be changed. Try again.",
       "redraw": "Redraw",
-      "hintLabel": "What is it? (optional)",
-      "hintPlaceholder": "a black wool beanie",
-      "redrawCost": "Costs {credits, plural, one {# credit} other {# credits}}, refunded if no picture comes of it.",
+      "hintLabel": "What should change? (optional)",
+      "hintPlaceholder": "keep the crossed straps on the back",
+      "redrawFree": "Free. Your words tell Styld what to fix.",
       "problem": {
         "busy": "A clean picture of this piece is already being drawn.",
         "photo": "This piece shows your original photo, which is never sent to be drawn.",

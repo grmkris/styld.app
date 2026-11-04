@@ -37,7 +37,7 @@ export const CategoryName = trimmedText(textLength.category)
 
 export const Notes = Schema.String.check(Schema.isMaxLength(textLength.notes))
 
-/** The owner's own words about a piece for its next drawing, such as "a black wool beanie". */
+/** The owner's own words about a piece for its next drawing, such as "keep the crossed straps on the back". */
 export const Hint = trimmedText(textLength.hint)
 
 /** A web address as given: what it points at is checked where it is read. */

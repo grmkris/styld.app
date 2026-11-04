@@ -373,15 +373,15 @@ describe('the piece page', () => {
     )
   })
 
-  test('redrawing asks what the piece is, and says what a credit buys', () => {
+  test('redrawing asks what should change, and says it is free', () => {
     const shown = pieceFixture('jeans', { picture: { state: 'retake', shows: 'photo', version: 0 } })
     scene(
       { update, view },
       given(piecePage(PieceData.Success({ data: shown }))),
       expect(text(/Too little of this piece showed/)).toExist(),
       click(role('button', { name: 'Redraw' })),
-      type(role('textbox', { name: 'What is it? (optional)' }), 'a navy wool scarf'),
-      expect(text('Costs 1 credit, refunded if no picture comes of it.')).toExist(),
+      type(role('textbox', { name: 'What should change? (optional)' }), 'a navy wool scarf'),
+      expect(text('Free. Your words tell Styld what to fix.')).toExist(),
       submit(role('form')),
       expect(role('button', { name: 'Redraw' })).toBeDisabled(),
       Command.resolve(

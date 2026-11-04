@@ -157,9 +157,9 @@
       "failed": "Čista slika ni nastala, zato ostane tvoja fotografija.",
       "chooseFailed": "Slike ni bilo mogoče zamenjati. Poskusi znova.",
       "redraw": "Nariši znova",
-      "hintLabel": "Kaj je to? (neobvezno)",
-      "hintPlaceholder": "črna volnena kapa",
-      "redrawCost": "Stane {credits, plural, one {# kredit, ki ga} two {# kredita, ki ju} few {# kredite, ki jih} other {# kreditov, ki jih}} vrnemo, če slika ne nastane.",
+      "hintLabel": "Kaj naj popravimo? (neobvezno)",
+      "hintPlaceholder": "ohrani prekrižane naramnice na hrbtu",
+      "redrawFree": "Brezplačno. Tvoje besede Styldu povedo, kaj naj popravi.",
       "problem": {
         "busy": "Čista slika tega kosa se že riše.",
         "photo": "Ta kos kaže tvojo izvirno fotografijo, ki je nikoli ne pošljemo v risanje.",

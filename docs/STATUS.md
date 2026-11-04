@@ -7,6 +7,42 @@ listed below stays open. The history of 2 to 4 November (the cleanup's C8 fixes,
 `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`. The Eva review tracker was retired on 4 November; what it still
 held open is the section below.
 
+## Shop-style pictures on a gentle ghost mannequin, and free redraws that correct them (4 November, on main, not deployed)
+
+Eva's pieces added on styld.app after 19:01 UTC came back "just stretched": 813559ff's "keep the garment's own shape
+exactly as the reference shows" made Muse trace her crumpled bed-sheet snapshots. Her older pieces looked right because
+310 of them came from v1, whose main picture was already a Gemini product shot.
+
+- **Search (owner, 4 November):** about 900 drawings of 55 of Eva's pieces, the 20 hardest drawn three times per
+  recipe, scored blind by two independent judges (agreement r = 0.83). Harness, sheets and scores:
+  `~/code/meta-hackathon/out/styld-prompt-search/`. On her 10 bed-sheet snapshots:
+  - Gentle ghost mannequin: 0% still crumpled, 10% bad, 6.9/10.
+  - Best flat wording: 25% crumpled, 25% bad, 6.1/10.
+  - v1's exact recipe (Gemini 3.1 Flash Lite Image, the whole photo, v1's prompt): 37% crumpled, 41% bad, 4.7/10. It
+    also refused one tee and left 4 drawings that could not be keyed.
+  - v1's prompt on Muse, from the photo or the cut-out: 100% crumpled.
+  - The photo beside the cut-out raised crumpling from 27% to 47–57%.
+- **Prompt (`CleanPrompt.ts`):** clothes are drawn as a ghost mannequin that keeps the garment's own cut. The
+  snapshot's outline is named as an accident and never traced. Shoes and bags keep their angle. The refusal fallback
+  is unchanged.
+  - The trade: a crossed or Y-shaped back strap or a tie is sometimes drawn plain, and a back photo is drawn as a front.
+- **The front drawing sends only the front** (`Pictures.ts`). The back added nothing to it and could carry a back print
+  onto the front.
+- **Redraws are free and correct the drawing** (`prices.redraw` is 0; the zero hold keeps the hold's lifecycle).
+  - The person's words now come first in the prompt as a correction: "keep the crossed straps on the back".
+  - The page asks "What should change?" and says the redraw is free (en, sl). The MCP tool says the same.
+- **Evidence:** unit `CleanPicture.test` (the ghost-mannequin lines, the correction first, shoes keep their angle) and
+  `piece.scene` (the free redraw form). Native `CleanPictureAcceptance` now expects a redraw to spend no credits; it
+  was written for the coordinator's native round and not run here.
+- **Open:**
+  - Deploy to production.
+  - Redraw Eva's account with `tools/backfill-pictures.ts <email> --redraw`, so every picture shares one style.
+  - Eva's review of the comparison page, which is public on Kris's personal Cloudflare account
+    (`sp-5693ef40dbde.kristjan-grm11775.workers.dev`). Take it down after her review.
+  - Two input problems the search found:
+    - Cut-outs stored upside down without a rotation get their print moved to the hem.
+    - A bodysuit was typed "trousers" at 50% confidence.
+
 ## The API Worker's startup under Cloudflare's CPU limit (4 November, on a branch, not deployed)
 
 On the night of 4 November, 4 of 7 production deploys failed with `ScriptStartupError: Script startup exceeded CPU

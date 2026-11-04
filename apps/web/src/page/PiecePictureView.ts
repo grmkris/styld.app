@@ -1,4 +1,4 @@
-import { textLength, prices } from '@styld/protocol'
+import { textLength } from '@styld/protocol'
 import type { Piece, PiecePicture } from '@styld/protocol'
 import { format, type Locale } from '@styld/i18n'
 import { Option } from 'effect'
@@ -30,7 +30,7 @@ const redrawForm = (redraw: Redraw, locale: Locale, h: HtmlBuilder<Message>): Ht
         h.OnInput((value) => Message.UpdatedHint({ value })),
         ...styled(h, textField()),
       ]),
-      h.p(styled(h, styles.pictureNote()), [format(locale, 'wardrobe.picture.redrawCost', { credits: prices.redraw })]),
+      h.p(styled(h, styles.pictureNote()), [format(locale, 'wardrobe.picture.redrawFree', {})]),
       RedrawSend.guards.Failed(redraw.send)
         ? h.p(
             [h.Role('alert'), ...styled(h, formError())],

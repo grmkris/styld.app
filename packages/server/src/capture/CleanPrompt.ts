@@ -15,7 +15,16 @@
  * their cut-out shows. Redrawn with this wording the boot kept its side view, the bag its slouch and a pair of trainers
  * its three-quarter view, and five plain pieces came back as before. The lace-up knit, the cross-strap top and the
  * printed tee still came back plain: their cut-outs show the garment's back, and asked for the front Muse draws a
- * plain front (`framing`; `docs/STATUS.md`). */
+ * plain front (`framing`; `docs/STATUS.md`).
+ *
+ * That evening the tester saw her new pieces "just stretched": "keep the garment's own shape exactly as the reference
+ * shows" made Muse trace a crumpled snapshot's outline. A blind search on 55 of her pieces (about 900 drawings, three
+ * draws of each of the 20 hardest, two independent judges; `~/code/meta-hackathon/out/styld-prompt-search/`) found
+ * Muse varies more between draws than between most wordings, and only one framing pressed every drawing of her
+ * bed-sheet snapshots: a gentle ghost mannequin that keeps the garment's own cut (0% still crumpled and 10% bad, against
+ * 25% and 25% for the best flat wording, 41% bad for Styld v1's Gemini recipe, and 100% for v1's prompt on Muse). Its
+ * cost is details (a crossed back strap drawn plain); the owner chose it with a free redraw whose words correct the
+ * drawing (owner, 4 November). Shoes and bags keep their own angle and shape. */
 
 import { slotOf, type PieceType } from '@styld/protocol'
 
@@ -88,24 +97,41 @@ const otherSide = {
 /** What the drawing is of: the cut-out, or, after Muse refused the cut-out alone, the garment the cut-out marks in the
  * piece's photo, named (owner, 4 November: the spike's variant C drew a bodysuit Muse had refused from its cut-out;
  * asked for "one garment" instead of its name, Muse refused it twice more). */
-const subject = (fromPhoto: boolean, garment: string) =>
-  fromPhoto
-    ? `The first image is a photo that may show a person or several things; the second image is a rough cut-out of ${garment} from it, showing which garment to draw. Create a clean e-commerce product photo of ${garment} from the first image,`
-    : 'Create a clean e-commerce product photo of this garment,'
+const subject = (fromPhoto: boolean, garment: string, angle: boolean) => {
+  const kind = angle ? 'clean e-commerce product photo' : 'ghost-mannequin e-commerce product photo'
+  const end = angle ? ',' : ':'
+  return fromPhoto
+    ? `The first image is a photo that may show a person or several things; the second image is a rough cut-out of ${garment} from it, showing which garment to draw. Create a ${kind} of ${garment} from the first image${end}`
+    : `Create a ${kind} of this garment${end}`
+}
 
-/** How the drawing is framed: a shoe or bag as its cut-out shows it; a garment laid out whole from its side. Asking
- * for "the side the reference shows (when it shows the back, draw the back)" kept the three backs' details but drew
- * the back of plain trousers and jeans photographed from the front (the redraw, 4 November), so it was not kept. */
+/** How the drawing is framed: a shoe or bag as its cut-out shows it; a garment whole from its side on a gentle ghost
+ * mannequin. "Laid out evenly" let Muse trace the snapshot; the ghost mannequin is the one framing that pressed every
+ * crumpled snapshot in the owner's search, and the cut it must keep stops it narrowing or reshaping the garment. */
 const framing = (side: 'front' | 'back', angle: boolean) =>
   angle
     ? 'shown whole from the same angle as the reference shows it (a side view stays a side view), in its own natural shape, centred with clearance on every side.'
-    : `shown whole from the ${side}, laid out evenly as if on an invisible form, centred with clearance on every side.`
+    : `shown whole from the ${side}, filled out lightly as if on an invisible form, centred with clearance on every side. Keep the garment’s own cut, width, length and proportions exactly: do not add bust shaping, do not narrow or fit it to a body, do not change a loose or boxy cut, and keep hoods, collars and straps as they are.`
 
-/** How the drawing treats the reference's wear: the fabric smoothed, the garment's own shape and every detail kept. */
+/** How the drawing treats the reference's wear: a shoe or bag cleaned with its shape kept; a garment's snapshot outline
+ * named as an accident, never traced, its fabric steamed and its design details kept. */
 const pressed = (angle: boolean) =>
   angle
-    ? 'The item looks clean and cared for. Keep its own shape and every detail exactly as the reference shows them: laces, straps, buckles, panels, soles, flaps and tabs; a soft or slouchy shape stays soft and slouchy.'
-    : 'The garment is freshly steamed and pressed: the fabric is smooth with no wrinkles, creases or crumples. Pressing smooths only the fabric: keep the garment’s own shape and every detail exactly as the reference shows them, such as ties, laces, crossed or twisted straps, cut-outs, gathers, and an uneven or asymmetric hem.'
+    ? [
+        'The item looks clean and cared for. Keep its own shape and every detail exactly as the reference shows them: laces, straps, buckles, panels, soles, flaps and tabs; a soft or slouchy shape stays soft and slouchy.',
+        'The reference is a quick snapshot of a worn piece: do not copy its wrinkles, crumpled folds, the rough edges of its cut-out, shadows or lighting.',
+      ]
+    : [
+        'The reference is a quick snapshot of a worn garment dropped on a surface: its outline, bunched or twisted sleeves, skewed sides, crumpled hem, wrinkles, shadows and lighting are accidents of how it lay, not its design. Never trace its silhouette.',
+        'The garment is freshly steamed: smooth fabric with no wrinkles or creases, sleeves, sides and hem hanging evenly and symmetrically, unless the garment is asymmetric by design.',
+        'Keep every design detail exactly as the reference shows it: ties, laces, crossed or twisted straps, cut-outs, gathers, ruffles, pleats, embroidery, lace trims, and a hem cut uneven or asymmetric by design.',
+      ]
+
+/** The owner's words on a redraw: what is wrong with the last drawing, which comes before every other line. */
+const correction = (hint: string | undefined) =>
+  hint === undefined || tidied(hint) === ''
+    ? ''
+    : `Its owner says what to correct, and this comes before everything else: ${tidied(hint)}.`
 
 export const cleanPrompt = (input: {
   readonly key: 'green' | 'magenta'
@@ -120,15 +146,14 @@ export const cleanPrompt = (input: {
   readonly hint: string | undefined
 }) =>
   [
-    `${subject(input.fromPhoto, named(input.type, input.colours))} ${framing(input.side, keepsAngle(input.type))}`,
+    `${subject(input.fromPhoto, named(input.type, input.colours), keepsAngle(input.type))} ${framing(input.side, keepsAngle(input.type))}`,
     'Keep the identity of the item exactly: the same colours (gold stays gold, black stays black), the same pattern, stripe width and spacing, the same cut, length, neckline, collar, buttons, pockets, seams, labels, logos and prints, however small.',
     'Do not add details the reference does not show: no new prints, logos, pockets, hoods, zips or trims.',
     'Parts hidden by hands, folds or the edge of the photo are completed plainly, matching the rest.',
-    pressed(keepsAngle(input.type)),
-    'The reference is a quick snapshot of a worn piece: do not copy its wrinkles, crumpled folds, the rough edges of its cut-out, shadows or lighting.',
+    ...pressed(keepsAngle(input.type)),
     input.hasOther ? otherSide[input.side] : '',
-    input.hint === undefined || tidied(input.hint) === '' ? '' : `Its owner describes it as: ${tidied(input.hint)}.`,
-    `Show no person, hands, body, mannequin, hanger, props or text. Soft, even studio light. One completely flat bright ${keyColours[input.key]} background with no gradient, shadow or reflection.`,
+    correction(input.hint),
+    `Show no person, hands, body, visible mannequin, hanger, props or text. Soft, even studio light. One completely flat bright ${keyColours[input.key]} background with no gradient, shadow or reflection.`,
   ]
     .filter((line) => line !== '')
     .join(' ')
