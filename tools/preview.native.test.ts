@@ -5,8 +5,12 @@ import { verifyBrowser } from '../packages/server/test/BrowserAcceptance.ts'
 import { csrf } from '../packages/auth/src/config.ts'
 
 const origin = new URL(process.env.STYLD_PREVIEW_URL ?? '')
-if (!origin.hostname.startsWith('styldappv2-styldedge-preview-') || !origin.hostname.endsWith('.workers.dev')) {
-  throw new Error('Acceptance requires the isolated v2 preview URL')
+/** The v2 stages this readback may run against: the preview and production on their workers.dev URLs, and styld.app. */
+const isStageEdge = (hostname: string) =>
+  hostname === 'styld.app' ||
+  (/^styldappv2-styldedge-(preview|production)-/.test(hostname) && hostname.endsWith('.workers.dev'))
+if (!isStageEdge(origin.hostname)) {
+  throw new Error('Acceptance requires a v2 stage URL: the preview, production, or styld.app')
 }
 /** The release being read back: `STYLD_EXPECTED_RELEASE`, or the checkout's HEAD (what the deploy passes as `STYLD_RELEASE`). */
 const expectedRelease = (() => {
