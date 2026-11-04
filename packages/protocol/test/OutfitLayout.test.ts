@@ -165,7 +165,8 @@ describe.each(OutfitLayout.literals)('a "One piece, many outfits" board laid out
     }
     // The first outfit's shoes dragged to the other side of the table: that outfit's arrow goes.
     const moved = placed.map((piece) =>
-      piece.outfit === 0 && slotOf(outfits[0]?.find(({ id }) => id === piece.pieceId)?.type ?? 'shortSleeveTops') === 'shoes'
+      piece.outfit === 0 &&
+      slotOf(outfits[0]?.find(({ id }) => id === piece.pieceId)?.type ?? 'shortSleeveTops') === 'shoes'
         ? { ...piece, x: boardWidth - piece.x, y: boardHeight - piece.y }
         : piece,
     )

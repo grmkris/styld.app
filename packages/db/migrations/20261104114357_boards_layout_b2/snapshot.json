@@ -1,8 +1,8 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "c582c557-d872-492b-9996-b726cae42f9c",
-  "prevIds": ["1a28744d-91fb-49a2-a3c1-60317077d03c"],
+  "id": "366aee16-e0ab-454d-9b55-b52b3f96d181",
+  "prevIds": ["5f4e0c99-7ab3-41b6-a569-52a03b323089"],
   "ddl": [
     {
       "name": "account_deletions",
@@ -1790,7 +1790,7 @@
       "table": "photo_garments",
       "name": "cutout_key",
       "type": "text",
-      "notNull": true,
+      "notNull": false,
       "autoincrement": false,
       "default": null,
       "generated": null,
@@ -6544,7 +6544,7 @@
     {
       "table": "pieces",
       "name": "pieces_type",
-      "value": "\"type\" IN ('tops', 'shirts', 'bodysuits', 'knitwear', 'hoodies', 'blazers', 'jackets', 'coats', 'gilets', 'dresses', 'jumpsuits', 'jeans', 'trousers', 'shorts', 'skirts', 'sportswear', 'sportShoes', 'outdoorShoes', 'swimwear', 'loungewear', 'trainers', 'boots', 'heels', 'flats', 'loafers', 'laceUps', 'sandals', 'bags', 'belts', 'scarves', 'hats', 'gloves', 'socks', 'hairAccessories', 'jewellery', 'eyewear')",
+      "value": "\"type\" IN ('shortSleeveTops', 'longSleeveTops', 'sleevelessTops', 'shirts', 'bodysuits', 'knitwear', 'hoodies', 'blazers', 'jackets', 'coats', 'gilets', 'dresses', 'jumpsuits', 'jeans', 'trousers', 'shorts', 'skirts', 'sportswear', 'sportShoes', 'outdoorShoes', 'swimwear', 'loungewear', 'trainers', 'boots', 'heels', 'flats', 'loafers', 'laceUps', 'sandals', 'bags', 'belts', 'scarves', 'hats', 'gloves', 'socks', 'hairAccessories', 'jewellery', 'eyewear')",
       "entityType": "checks"
     },
     {
@@ -6652,7 +6652,7 @@
     {
       "table": "detections",
       "name": "detections_suggested_type",
-      "value": "\"suggested_type\" IN ('tops', 'shirts', 'bodysuits', 'knitwear', 'hoodies', 'blazers', 'jackets', 'coats', 'gilets', 'dresses', 'jumpsuits', 'jeans', 'trousers', 'shorts', 'skirts', 'sportswear', 'sportShoes', 'outdoorShoes', 'swimwear', 'loungewear', 'trainers', 'boots', 'heels', 'flats', 'loafers', 'laceUps', 'sandals', 'bags', 'belts', 'scarves', 'hats', 'gloves', 'socks', 'hairAccessories', 'jewellery', 'eyewear')",
+      "value": "\"suggested_type\" IN ('shortSleeveTops', 'longSleeveTops', 'sleevelessTops', 'shirts', 'bodysuits', 'knitwear', 'hoodies', 'blazers', 'jackets', 'coats', 'gilets', 'dresses', 'jumpsuits', 'jeans', 'trousers', 'shorts', 'skirts', 'sportswear', 'sportShoes', 'outdoorShoes', 'swimwear', 'loungewear', 'trainers', 'boots', 'heels', 'flats', 'loafers', 'laceUps', 'sandals', 'bags', 'belts', 'scarves', 'hats', 'gloves', 'socks', 'hairAccessories', 'jewellery', 'eyewear')",
       "entityType": "checks"
     },
     {
@@ -6724,7 +6724,7 @@
     {
       "table": "photo_garments",
       "name": "photo_garments_type",
-      "value": "\"type\" IN ('tops', 'shirts', 'bodysuits', 'knitwear', 'hoodies', 'blazers', 'jackets', 'coats', 'gilets', 'dresses', 'jumpsuits', 'jeans', 'trousers', 'shorts', 'skirts', 'sportswear', 'sportShoes', 'outdoorShoes', 'swimwear', 'loungewear', 'trainers', 'boots', 'heels', 'flats', 'loafers', 'laceUps', 'sandals', 'bags', 'belts', 'scarves', 'hats', 'gloves', 'socks', 'hairAccessories', 'jewellery', 'eyewear')",
+      "value": "\"type\" IN ('shortSleeveTops', 'longSleeveTops', 'sleevelessTops', 'shirts', 'bodysuits', 'knitwear', 'hoodies', 'blazers', 'jackets', 'coats', 'gilets', 'dresses', 'jumpsuits', 'jeans', 'trousers', 'shorts', 'skirts', 'sportswear', 'sportShoes', 'outdoorShoes', 'swimwear', 'loungewear', 'trainers', 'boots', 'heels', 'flats', 'loafers', 'laceUps', 'sandals', 'bags', 'belts', 'scarves', 'hats', 'gloves', 'socks', 'hairAccessories', 'jewellery', 'eyewear')",
       "entityType": "checks"
     },
     {

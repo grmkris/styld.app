@@ -33,7 +33,7 @@ milestone, with its evidence, is in `docs/archive/STATUS-2026-10-28-to-2026-11-0
 
 From `docs/PLAN-eva-feedback-2026-11-04.md` (B1–B3; her words: "every outfit needs shoes", "the piece I pick should
 appear big in the middle", "it has to lay them out together better"). Not deployed; the deploy applies the migration
-`20261104111400_boards_layout_b2` (one ADD COLUMN, `boards.layout`; no rebuild).
+`20261104114357_boards_layout_b2` (one ADD COLUMN, `boards.layout`; no rebuild).
 
 - **Shoes in every outfit (B1, `ba45e969`):** when no shoes suit the brief's season and occasion, the rules fall back to every
   everyday pair and only then to sport shoes, so an outfit is never barefoot while the wardrobe holds shoes and wears
