@@ -1,5 +1,5 @@
 import { CurrentOperator, type PictureBackfilled } from '@styld/protocol'
-import { Array, DateTime, Duration, Effect } from 'effect'
+import { Array, DateTime, Duration, Effect, Option } from 'effect'
 import { PieceQueue } from '../wardrobe/Processing.ts'
 import { PieceChanged } from '../safety/PieceChanged.ts'
 import { storedAs, unavailable } from './Shared.ts'
@@ -10,13 +10,17 @@ import type { CaptureServices } from './Shared.ts'
 // were drawn, or came over from v1, and never had one; the operator asks for them, one account at a time. Each piece
 // with none gets a picture queued as if it had just been kept: drawn on the piece queue by the same job, at the same
 // bars (`Policy.ts`), and paid by Styld (a backfilled picture is not `paid`, so it holds none of the person's credits).
-// A piece is drawn once: its picture row is the receipt, so running again queues nothing twice.
+// A piece is drawn once: its picture row is the receipt, so running again queues nothing twice. When the prompt changes
+// (owner, 4 November: the pressed prompt), a run given a moment draws again the drawings that ended before it.
 
 /** How many backfilled pictures reach the queue a minute: one delivery batch of the piece queue, so a whole wardrobe
  * never lands on Muse at once beside the pictures of new captures. */
 const perMinute = 10
 /** The most pictures one run queues, an hour of them at that pace; a run says how many remain for the next. */
 const perRun = 600
+/** The most drawings one run queues to be drawn again: a minute's worth, since a piece waiting for its new drawing shows
+ * its cut-out, and the operator's script runs again each minute until none remain (`tools/backfill-pictures.ts`). */
+const perRedraw = perMinute
 /** Queues take at most this many messages a call. */
 const sendBatch = 100
 /** A backfilled picture still waiting this long after its turn lost its message; a run sends it again (the job draws
@@ -45,9 +49,13 @@ const send = (pieceIds: ReadonlyArray<string>) =>
 
 /** The operator's backfill of clean pictures. */
 export const backfilling = Effect.map(Effect.context<CaptureServices>(), (context) => ({
-  /** Queue a clean picture for each of the account's ready cut-outs that has none, newest first and at most `perRun`;
+  /** Queue a clean picture for each of the account's ready cut-outs that has none, newest first and at most `perRun`,
+   * or, given `redrawBefore`, draw again at most `perRedraw` of its drawings that ended before then (a changed prompt);
    * show the drawings it was proposed before 4 November; and send again any of its pictures whose message was lost. */
-  backfillPictures: Effect.fn('Styld.Picture.backfill')(function* (accountId: string) {
+  backfillPictures: Effect.fn('Styld.Picture.backfill')(function* (
+    accountId: string,
+    redrawBefore: Option.Option<Date> = Option.none(),
+  ) {
     yield* CurrentOperator
     const store = yield* CaptureStore
     const now = yield* DateTime.now
@@ -59,6 +67,25 @@ export const backfilling = Effect.map(Effect.context<CaptureServices>(), (contex
     const overdue = yield* storedAs(
       store.overduePictures(accountId, DateTime.toDateUtc(DateTime.subtractDuration(now, overdueAfter))),
     )
+    const turnOf = (index: number) =>
+      DateTime.toDateUtc(DateTime.addDuration(now, Duration.seconds(delayOf(overdue.length + index))))
+    if (Option.isSome(redrawBefore)) {
+      const stale = yield* storedAs(store.staleDrawings(accountId, redrawBefore.value))
+      const again = stale.slice(0, perRedraw)
+      const requeued = yield* storedAs(
+        store.requeueDrawings(
+          again.map((pieceId, index) => ({ pieceId, turn: turnOf(index) })),
+          redrawBefore.value,
+        ),
+      )
+      yield* send([...overdue, ...requeued])
+      yield* Effect.annotateCurrentSpan({
+        'styld.backfill.redrawn': requeued.length,
+        'styld.backfill.shown': shown.length,
+        'styld.backfill.overdue': overdue.length,
+      })
+      return { queued: requeued.length, shown: shown.length, remaining: stale.length - again.length }
+    }
     const undrawn = yield* storedAs(store.undrawnPieces(accountId))
     const chosen = undrawn.slice(0, perRun)
     // A picture's turn is when it was last moved: the sweep gives up on one still queued half an hour after its turn,
@@ -73,7 +100,7 @@ export const backfilling = Effect.map(Effect.context<CaptureServices>(), (contex
           redraws: 0,
           paid: false,
           createdAt: at,
-          updatedAt: DateTime.toDateUtc(DateTime.addDuration(now, Duration.seconds(delayOf(overdue.length + index)))),
+          updatedAt: turnOf(index),
         })),
       ),
     )

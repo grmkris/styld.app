@@ -1,5 +1,5 @@
 import { StyldApi } from '@styld/protocol'
-import { Effect } from 'effect'
+import { Effect, Option } from 'effect'
 import { HttpApiBuilder } from 'effect/http-api'
 import { Captures } from '../capture/Service.ts'
 import { Imports } from './Imports.ts'
@@ -21,7 +21,13 @@ export const pictureBackfillHandlers = HttpApiBuilder.group(StyldApi, 'pictureBa
     const captures = yield* Captures
     return handlers.handle('backfillPictures', ({ payload }) =>
       Effect.flatMap(imports.accountOf(payload.email), (accountId) =>
-        Effect.map(captures.backfillPictures(accountId), (done) => ({ accountId, ...done })),
+        Effect.map(
+          captures.backfillPictures(
+            accountId,
+            Option.map(Option.fromUndefinedOr(payload.redrawBefore), (millis) => new Date(millis)),
+          ),
+          (done) => ({ accountId, ...done }),
+        ),
       ),
     )
   }),

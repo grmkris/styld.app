@@ -224,5 +224,24 @@ export const verifyBackfill = async (origin: string, fixtures: string) => {
   expect(second).toEqual({ accountId: backfillAccount, queued: 0, shown: 0, remaining: 0 })
   const drawn = (await decoded(Prompts, await fetch(`${fixtures}/test/pictures/prompts`))).prompts.slice(earlier)
   expect(drawn).toHaveLength(1)
+
+  // The prompt changed (4 November, pressed): the drawings that ended before a moment are drawn again, newest piece
+  // first, each once however often the run is repeated with that moment, and still never on the person's credits.
+  const moment = Date.now()
+  const again = await decoded(
+    PictureBackfilled,
+    await asOperator(origin, nativeOperatorToken, { ...email, redrawBefore: moment }),
+  )
+  expect(again).toEqual({ accountId: backfillAccount, queued: 2, shown: 0, remaining: 0 })
+  for (const pieceId of [backfilled.undrawn, backfilled.proposed])
+    expect((await settled(owner, pieceId)).picture).toEqual({ state: 'ready', shows: 'clean', version: 2 })
+  const repeated = await decoded(
+    PictureBackfilled,
+    await asOperator(origin, nativeOperatorToken, { ...email, redrawBefore: moment }),
+  )
+  expect(repeated).toEqual({ accountId: backfillAccount, queued: 0, shown: 0, remaining: 0 })
+  expect(
+    (await decoded(Prompts, await fetch(`${fixtures}/test/pictures/prompts`))).prompts.slice(earlier),
+  ).toHaveLength(3)
   expect((await decoded(Allowance, await owner('/api/captures/tray'))).allowance.remaining).toBe(before)
 }

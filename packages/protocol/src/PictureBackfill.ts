@@ -10,17 +10,22 @@ import { OperatorAuth } from './Operator.ts'
 // the operator, by the stage's operator token (`Operator.ts`), may ask; to anyone else it is not there.
 
 /** Whose pieces to draw: the account the email signs in to. Its operation id is not kept: each run queues what is
- * still missing, and a piece's picture row is its receipt, so a repeat queues nothing twice. */
+ * still missing, and a piece's picture row is its receipt, so a repeat queues nothing twice. With `redrawBefore`
+ * (milliseconds since the epoch) a run draws again the drawings that ended before that moment instead, when the prompt
+ * changed (owner, 4 November: the pressed prompt for every tester's pictures); a drawing made since is newer than it,
+ * so a repeat with the same moment draws nothing twice. */
 export const PictureBackfill = Schema.Struct({
   operationId: OperationId,
   email: Schema.String.check(Schema.isMinLength(3), Schema.isMaxLength(320)),
+  redrawBefore: Schema.optionalKey(Schema.Int.check(Schema.isGreaterThan(0))),
 })
 export type PictureBackfill = typeof PictureBackfill.Type
 
 const Count = Schema.Int.check(Schema.isGreaterThanOrEqualTo(0))
 
 /** What one run did, in counts: pictures queued now, drawings proposed before 4 November now shown, and the pieces
- * that still have none because one run queues at most so many (run it again once these are drawn). */
+ * that still have none, or still wait to be drawn again, because one run queues at most so many (run it again once
+ * these are drawn). */
 export const PictureBackfilled = Schema.Struct({
   accountId: Schema.String,
   queued: Count,

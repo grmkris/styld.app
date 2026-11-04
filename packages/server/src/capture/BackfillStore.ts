@@ -1,13 +1,63 @@
 import { piecePictures, pieces } from '@styld/db'
-import { and, desc, eq, isNotNull, isNull, lt, ne } from 'drizzle-orm'
+import { and, desc, eq, inArray, isNotNull, isNull, lt, ne } from 'drizzle-orm'
 import { Array, Effect } from 'effect'
 import { type Database as Db, query } from '../kernel/Db.ts'
 
 type Database = Db['Service']
 type NewPicture = typeof piecePictures.$inferInsert
 
+/** The drawings a changed prompt draws again: shown, dropped by the check, or failed. A retake and a piece kept as its
+ * photo were the judge's call on the cut-out, not the prompt's, and stay; a picture on its way is left to its job. */
+const redrawable = ['ready', 'proposed', 'rejected', 'failed'] as const
+
+/** Drawings made before a prompt changed, queued again (owner, 4 November: the pressed prompt). */
+const redrawRows = (db: Database) => ({
+  /** The account's ready pieces whose drawing ended before `before`, newest piece first. */
+  staleDrawings: (accountId: string, before: Date) =>
+    query(() =>
+      db
+        .select({ pieceId: piecePictures.pieceId })
+        .from(piecePictures)
+        .innerJoin(pieces, eq(pieces.id, piecePictures.pieceId))
+        .where(
+          and(
+            eq(piecePictures.accountId, accountId),
+            eq(pieces.status, 'ready'),
+            inArray(piecePictures.state, [...redrawable]),
+            lt(piecePictures.updatedAt, before),
+          ),
+        )
+        .orderBy(desc(pieces.createdAt)),
+    ).pipe(Effect.map((rows) => rows.map(({ pieceId }) => pieceId))),
+  /** Queue these drawings again at their turn, paid by Styld, each only while it still ended before `before`, so a
+   * picture moved meanwhile keeps its own way; the pieces queued. Until the new drawing passes its check the piece shows
+   * its cut-out, so a run queues only a minute's worth (`Backfill.ts`). */
+  requeueDrawings: (pictures: ReadonlyArray<{ readonly pieceId: string; readonly turn: Date }>, before: Date) =>
+    Effect.map(
+      Effect.forEach(Array.chunksOf(pictures, 50), (chunk) =>
+        query(() => {
+          const [head, ...rest] = Array.map(chunk, ({ pieceId, turn }) =>
+            db
+              .update(piecePictures)
+              .set({ state: 'queued', paid: false, claimedAt: null, updatedAt: turn })
+              .where(
+                and(
+                  eq(piecePictures.pieceId, pieceId),
+                  inArray(piecePictures.state, [...redrawable]),
+                  lt(piecePictures.updatedAt, before),
+                ),
+              )
+              .returning({ pieceId: piecePictures.pieceId }),
+          )
+          return db.batch([head, ...rest])
+        }),
+      ),
+      (results) => results.flat(2).map(({ pieceId }) => pieceId),
+    ),
+})
+
 /** The operator's backfill of clean pictures (`Backfill.ts`): which of an account's pieces have none, adding theirs,
- * and the drawings proposed before 4 November. */
+ * the drawings proposed before 4 November, and drawings made before a prompt changed, queued again. */
 export const backfillRows = (db: Database) => ({
   /** The account's ready pieces shown as a cut-out that have no clean picture, newest first. A photo never leaves
    * Styld, so a piece kept as its photo is not among them. */
@@ -70,4 +120,5 @@ export const backfillRows = (db: Database) => ({
         .where(and(eq(piecePictures.accountId, accountId), eq(piecePictures.state, 'proposed')))
         .returning({ pieceId: piecePictures.pieceId }),
     ).pipe(Effect.map((rows) => rows.map(({ pieceId }) => pieceId))),
+  ...redrawRows(db),
 })

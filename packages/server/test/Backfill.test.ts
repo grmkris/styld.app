@@ -88,4 +88,40 @@ describe("the operator's backfill of clean pictures", () => {
       expect(yield* rows.overduePictures('ac_1', before)).toEqual(['pc_old'])
     }),
   )
+
+  it.effect(
+    'queues again the ready pieces’ drawings that ended before a moment, once, leaving retakes and newer ones',
+    () =>
+      Effect.gen(function* () {
+        const database = seeded()
+        database.sqlite.exec(`
+        INSERT INTO piece_pictures (piece_id, account_id, state, clean_key, version, redraws, paid, created_at, updated_at)
+        VALUES ('pc_old', 'ac_1', 'retake', NULL, 0, 0, 0, 0, 0),
+               ('pc_new', 'ac_1', 'rejected', NULL, 1, 0, 1, 0, 9000),
+               ('pc_processing', 'ac_1', 'failed', NULL, 1, 0, 0, 0, 0),
+               ('pc_bob', 'ac_2', 'ready', 'c/bob', 1, 0, 0, 0, 0);
+      `)
+        const rows = backfillRows(drizzle(database))
+        expect(yield* rows.staleDrawings('ac_1', before)).toEqual(['pc_proposed', 'pc_drawn'])
+        expect(yield* rows.staleDrawings('ac_1', later)).toEqual(['pc_proposed', 'pc_drawn', 'pc_new'])
+        const turn = at(6_000)
+        expect(
+          yield* rows.requeueDrawings(
+            [
+              { pieceId: 'pc_drawn', turn },
+              { pieceId: 'pc_new', turn },
+            ],
+            before,
+          ),
+        ).toEqual(['pc_drawn'])
+        const drawn = database.sqlite
+          .prepare(
+            "SELECT state, paid, claimed_at, updated_at, clean_key FROM piece_pictures WHERE piece_id = 'pc_drawn'",
+          )
+          .get()
+        expect(drawn).toEqual({ state: 'queued', paid: 0, claimed_at: null, updated_at: 6_000, clean_key: 'c/drawn' })
+        expect(yield* rows.staleDrawings('ac_1', before)).toEqual(['pc_proposed'])
+        expect(yield* rows.requeueDrawings([{ pieceId: 'pc_drawn', turn }], before)).toEqual([])
+      }),
+  )
 })
