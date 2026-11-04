@@ -37,7 +37,7 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'auth.problem.tooManyRequests': 'You asked for several codes in a row. Wait a minute, then try again.',
   'auth.problem.unavailable': "Styld can't send or check codes right now. Try again in a moment.",
   'auth.problem.google': "Google sign-in didn't finish. Try again, or sign in with a code.",
-  'auth.resendSoon': 'You can ask for a new code 30 seconds after the last one.',
+  'auth.resendIn': 'You can get a new code in {seconds, plural, one {# second} other {# seconds}}.',
   'auth.or': 'or',
   'auth.continueWithGoogle': 'Continue with Google',
   'nav.home': 'Home',

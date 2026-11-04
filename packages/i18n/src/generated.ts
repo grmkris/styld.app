@@ -56,7 +56,7 @@ export interface MessageArgumentsByKey<_T = string> {
   'auth.problem.unavailable': Readonly<Record<string, never>>
   'auth.problem.wrongCode': Readonly<Record<string, never>>
   'auth.resendCode': Readonly<Record<string, never>>
-  'auth.resendSoon': Readonly<Record<string, never>>
+  'auth.resendIn': { readonly seconds: number }
   'auth.sendCode': Readonly<Record<string, never>>
   'auth.sendingCode': Readonly<Record<string, never>>
   'auth.signInDescription': Readonly<Record<string, never>>
@@ -935,4 +935,4 @@ export interface MessageArgumentsByKey<_T = string> {
 }
 export type MessageKey = keyof MessageArgumentsByKey
 export type MessageValues<K extends MessageKey, T = string> = MessageArgumentsByKey<T>[K]
-export const catalogVersion = '51d7ca3185e15f96d2d25196db288413da86df6321d86c2fa74bc5966029d15f'
+export const catalogVersion = 'd5e11096e7b7572e3848e7448de728487a85e02459dc5b4bd15ddbc73efb1955'

@@ -441,8 +441,7 @@ const retryLanding = Update.foldChildStep({ update: LandingBoards.retry, ...at(l
 const showsPieces = (model: Model) =>
   Match.value(model.route).pipe(
     Match.tag('Wardrobe', 'Ask', 'Board', 'BoardCollage', 'Photo', () => true),
-    Match.tag('Home', () => hasSession(model)),
-    Match.orElse(() => false),
+    Match.orElse((route) => AppRoute.guards.Home(route) && hasSession(model)),
   )
 
 /** Ongoing work the open page asks for: each runs only while its page is open. */
@@ -455,6 +454,7 @@ export const subscriptions = Subscription.aggregate(
     when: (model) => AppRoute.guards.Photos(model.route),
   }),
   Subscription.lift(Photo.subscriptions)<Model, Message>(at(lenses.photo)),
+  Subscription.lift(Login.subscriptions)<Model, Message>(at(lenses.login)),
   Subscription.lift(Piece.subscriptions)<Model, Message>(at(lenses.piece)),
   Subscription.lift(Review.subscriptions)<Model, Message>(at(lenses.review)),
   Subscription.lift(Stylist.subscriptions)<Model, Message>(at(lenses.stylist)),

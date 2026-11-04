@@ -1,6 +1,6 @@
 import { AccountClaims } from '@styld/auth/config'
-import { Context, Duration, Effect, Option, Schema } from 'effect'
-import { Command, type Update } from 'foldkit'
+import { Context, Duration, Effect, Option, Schema, Stream } from 'effect'
+import { Command, Subscription, type Update } from 'foldkit'
 import { defineMessageUnion } from 'foldkit/message'
 import { defineTaggedUnion } from 'foldkit/schema'
 import { modifyFields } from 'foldkit/struct'
@@ -33,8 +33,10 @@ export type CodeSent = typeof CodeSent.Type
  * answer as a wrong one, so the page keeps both rules to say which it was. */
 const codeLifetime = Duration.minutes(5)
 const codeAttempts = 3
-/** The server sends no new code within 30 seconds of the last one. */
-const resendPause = Duration.seconds(30)
+/** The server sends no new code within 30 seconds of the last one; the page counts them down. */
+const resendPauseSeconds = 30
+/** A code is six digits; a full one is sent without waiting for the button. */
+const codeShape = /^\d{6}$/
 
 const CodeUse = Schema.Literals(['open', 'expired', 'exhausted'])
 
@@ -44,8 +46,8 @@ export const Code = Schema.Struct({
   rejections: Schema.Number,
   /** The last send was a resend, which the page announces. */
   resent: Schema.Boolean,
-  /** The resend pause after the last send has passed. */
-  canResend: Schema.Boolean,
+  /** Seconds left of the resend pause after the last send; none left means a new code can be asked for. */
+  resendIn: Schema.Number,
 })
 export type Code = typeof Code.Type
 
@@ -86,12 +88,14 @@ export const Message = defineMessageUnion({
   SucceededRequestCode: { sent: CodeSent },
   FailedRequestCode: { problem: Problem },
   SubmittedCode: {},
+  /** The code field changed. It says only whether six digits are in it: the code itself stays in the field. */
+  UpdatedCode: { isComplete: Schema.Boolean },
   SucceededVerifyCode: { claims: AccountClaims },
   FailedVerifyCode: { problem: Problem },
   ClickedResendCode: {},
   SucceededResendCode: { sent: CodeSent },
   FailedResendCode: { problem: Problem },
-  ElapsedResendPause: { requestId: Schema.String },
+  TickedResendCountdown: { requestId: Schema.String },
   ElapsedCodeLifetime: { requestId: Schema.String },
   ClickedUseDifferentEmail: {},
   ClickedContinueWithGoogle: { forConnection: Schema.Boolean },
@@ -166,17 +170,17 @@ export const StartGoogle = Command.define('StartGoogle', {
     }).pipe(Effect.catchTag('SignInRefused', ({ problem }) => Effect.succeed(Message.FailedStartGoogle({ problem })))),
 })
 
-export const WaitToResend = Command.define('WaitToResend', {
-  args: { requestId: Schema.String },
-  messages: [Message.ElapsedResendPause],
-  execute: ({ requestId }) => Effect.sleep(resendPause).pipe(Effect.as(Message.ElapsedResendPause({ requestId }))),
-})
-
 export const WaitForCodeExpiry = Command.define('WaitForCodeExpiry', {
   args: { requestId: Schema.String },
   messages: [Message.ElapsedCodeLifetime],
   execute: ({ requestId }) => Effect.sleep(codeLifetime).pipe(Effect.as(Message.ElapsedCodeLifetime({ requestId }))),
 })
+
+/** Whether the field holds a whole code, spaces aside. */
+export const isCompleteCode = (value: string) => codeShape.test(value.replace(/\s/g, ''))
+
+/** The resend pause after the last send has passed. */
+export const canResend = (code: Code) => code.resendIn <= 0
 
 // UPDATE
 
@@ -195,10 +199,10 @@ export const currentCode = (step: Step): Option.Option<Code> =>
 const codeArrived = (model: Model, sent: CodeSent, resent: boolean): UpdateReturn => ({
   model: modifyFields(model, {
     flowId: () => Option.some(sent.flowId),
-    step: () => Step.EnterCode({ code: { sent, use: 'open', rejections: 0, resent, canResend: false } }),
+    step: () => Step.EnterCode({ code: { sent, use: 'open', rejections: 0, resent, resendIn: resendPauseSeconds } }),
     problem: () => Option.none(),
   }),
-  commands: [WaitToResend({ requestId: sent.requestId }), WaitForCodeExpiry({ requestId: sent.requestId })],
+  commands: [WaitForCodeExpiry({ requestId: sent.requestId })],
 })
 
 /** The same step, holding a changed code. */
@@ -264,7 +268,7 @@ const failedVerifyCode = (model: Model, problem: Problem): UpdateReturn => {
 
 const clickedResendCode = (model: Model): UpdateReturn => {
   const { step } = model
-  if (!Step.guards.EnterCode(step) || !step.code.canResend) return { model }
+  if (!Step.guards.EnterCode(step) || !canResend(step.code)) return { model }
   return {
     model: modifyFields(model, { step: () => Step.ResendingCode({ code: step.code }), problem: () => Option.none() }),
     commands: [ResendCode({ email: model.email, flowId: step.code.sent.flowId })],
@@ -282,11 +286,13 @@ const failedResendCode = (model: Model, problem: Problem): UpdateReturn => {
   }
 }
 
-const elapsedResendPause = (model: Model, requestId: string): UpdateReturn =>
+const tickedResendCountdown = (model: Model, requestId: string): UpdateReturn =>
   Option.match(timedCode(model, requestId), {
     onNone: () => ({ model }),
     onSome: (code) => ({
-      model: modifyFields(model, { step: (step) => withCode(step, modifyFields(code, { canResend: () => true })) }),
+      model: modifyFields(model, {
+        step: (step) => withCode(step, modifyFields(code, { resendIn: (seconds) => Math.max(0, seconds - 1) })),
+      }),
     }),
   })
 
@@ -319,6 +325,7 @@ export const update = (model: Model, message: Message): UpdateReturn =>
       }),
     }),
     SubmittedCode: () => submittedCode(model),
+    UpdatedCode: ({ isComplete }) => (isComplete ? submittedCode(model) : { model }),
     SucceededVerifyCode: ({ claims }) => ({ model: init(), outMessage: OutMessage.SignedIn({ claims }) }),
     FailedVerifyCode: ({ problem }) => failedVerifyCode(model, problem),
     ClickedResendCode: () => clickedResendCode(model),
@@ -335,10 +342,38 @@ export const update = (model: Model, message: Message): UpdateReturn =>
     SucceededResendCode: ({ sent }) =>
       Step.guards.ResendingCode(model.step) ? codeArrived(model, sent, true) : { model },
     FailedResendCode: ({ problem }) => failedResendCode(model, problem),
-    ElapsedResendPause: ({ requestId }) => elapsedResendPause(model, requestId),
+    TickedResendCountdown: ({ requestId }) => tickedResendCountdown(model, requestId),
     ElapsedCodeLifetime: ({ requestId }) => elapsedCodeLifetime(model, requestId),
     // The flow stays: a new flow sends nothing while a code from this one is still live.
     ClickedUseDifferentEmail: () => ({
       model: modifyFields(init(), { email: () => model.email, flowId: () => model.flowId }),
     }),
   })
+
+// SUBSCRIPTION
+
+const resendTick = Duration.seconds(1)
+
+/** The resend countdown ticks once a second, only while the newest code's pause runs; a new code starts it over. */
+export const subscriptions = Subscription.make<Model, Message>()((entry) => ({
+  resendCountdown: entry(
+    { maybeCountingFor: Schema.Option(Schema.String) },
+    {
+      modelToDependencies: (model) => ({
+        maybeCountingFor: Option.map(
+          Option.filter(currentCode(model.step), (code) => !canResend(code)),
+          (code) => code.sent.requestId,
+        ),
+      }),
+      dependenciesToStream: ({ maybeCountingFor }) =>
+        Option.match(maybeCountingFor, {
+          onNone: () => Stream.empty,
+          onSome: (requestId) =>
+            Stream.tick(resendTick).pipe(
+              Stream.drop(1),
+              Stream.map(() => Message.TickedResendCountdown({ requestId })),
+            ),
+        }),
+    },
+  ),
+}))

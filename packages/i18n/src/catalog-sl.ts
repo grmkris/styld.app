@@ -37,7 +37,8 @@ export const catalog: Readonly<Record<MessageKey, string>> = {
   'auth.problem.tooManyRequests': 'Zapored je bilo zahtevanih preveč kod. Počakaj minuto in poskusi znova.',
   'auth.problem.unavailable': 'Styld trenutno ne more poslati ali preveriti kod. Poskusi znova čez trenutek.',
   'auth.problem.google': 'Prijava z Googlom se ni končala. Poskusi znova ali se prijavi s kodo.',
-  'auth.resendSoon': 'Novo kodo lahko zahtevaš 30 sekund po zadnji.',
+  'auth.resendIn':
+    'Novo kodo lahko dobiš čez {seconds, plural, one {# sekundo} two {# sekundi} few {# sekunde} other {# sekund}}.',
   'auth.or': 'ali',
   'auth.continueWithGoogle': 'Nadaljuj z Googlom',
   'nav.home': 'Domov',

@@ -39,7 +39,7 @@
       "unavailable": "Styld can't send or check codes right now. Try again in a moment.",
       "google": "Google sign-in didn't finish. Try again, or sign in with a code."
     },
-    "resendSoon": "You can ask for a new code 30 seconds after the last one.",
+    "resendIn": "You can get a new code in {seconds, plural, one {# second} other {# seconds}}.",
     "or": "or",
     "continueWithGoogle": "Continue with Google"
   },

@@ -7,7 +7,16 @@ import { actionButton } from '../ActionButton.ts'
 import { primaryAction, secondaryAction } from '../Actions.styles.ts'
 import { googleIcon, loader } from '../Icon.ts'
 import { styled } from '../Styled.ts'
-import { type Code, codeFormId, Message as LoginMessage, type Model, type Problem, Step } from './Login.ts'
+import {
+  canResend,
+  type Code,
+  codeFormId,
+  isCompleteCode,
+  Message as LoginMessage,
+  type Model,
+  type Problem,
+  Step,
+} from './Login.ts'
 import { fieldLabel, formError, textField } from '../Fields.styles.ts'
 import {
   authForm,
@@ -151,6 +160,7 @@ const codeStep = (model: Model, step: Step, code: Code, locale: Locale, h: HtmlB
           h.Readonly(busy || code.use !== 'open'),
           h.AriaInvalid(Option.isSome(model.problem)),
           ...(Option.isSome(model.problem) ? [h.AriaDescribedBy('login-problem')] : []),
+          h.OnInput((value) => LoginMessage.UpdatedCode({ isComplete: isCompleteCode(value) })),
         ]),
         problemView(model, locale, h),
         code.resent && Step.guards.EnterCode(step)
@@ -174,15 +184,18 @@ const codeStep = (model: Model, step: Step, code: Code, locale: Locale, h: HtmlB
           label: format(locale, 'auth.resendCode', {}),
           style: secondaryAction(),
           onClick: LoginMessage.ClickedResendCode(),
-          isDisabled: busy || !code.canResend,
+          isDisabled: busy || !canResend(code),
           leading: resending ? loader(h) : h.empty,
-          ...(code.canResend ? {} : { describedBy: resendHintId }),
+          ...(canResend(code) ? {} : { describedBy: resendHintId }),
         },
         h,
       ),
-      code.canResend
+      canResend(code)
         ? h.empty
-        : h.p([h.Id(resendHintId), ...styled(h, notice())], [format(locale, 'auth.resendSoon', {})]),
+        : h.p(
+            [h.Id(resendHintId), ...styled(h, notice())],
+            [format(locale, 'auth.resendIn', { seconds: code.resendIn })],
+          ),
       actionButton(
         {
           label: format(locale, 'auth.useDifferentEmail', {}),

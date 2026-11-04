@@ -49,7 +49,6 @@ const signIn = async (context: BrowserContext) => {
   await page.getByRole('heading', { name: 'Check your email' }).waitFor({ state: 'visible' })
   console.log(`code requested; write it to ${codeFile}`)
   await page.getByLabel('Enter verification code').fill(await awaitCode())
-  await page.getByRole('button', { name: 'Verify code' }).click()
   await page.waitForURL(`${origin}/`)
   await context.storageState({ path: stateFile })
   await chmod(stateFile, 0o600)

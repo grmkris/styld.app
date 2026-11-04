@@ -2,10 +2,20 @@ import { Option } from 'effect'
 import { Command, given, message, model, story } from 'foldkit/story'
 import { modifyFields } from 'foldkit/struct'
 import { describe, expect, test } from 'vitest'
-import { type Code, Message, RequestCode, Step, currentCode, init, update } from '../src/page/Login.ts'
+import {
+  type Code,
+  Message,
+  RequestCode,
+  Step,
+  VerifyCode,
+  canResend,
+  currentCode,
+  init,
+  update,
+} from '../src/page/Login.ts'
 
 const sent = { flowId: 'flow_1', requestId: 'req_1', proofId: 'proof_1', keyId: 'key_1' }
-const open: Code = { sent, use: 'open', rejections: 0, resent: false, canResend: false }
+const open: Code = { sent, use: 'open', rejections: 0, resent: false, resendIn: 30 }
 
 const at = (step: Step) =>
   modifyFields(init(), { email: () => 'ana@example.com', flowId: () => Option.some('flow_1'), step: () => step })
@@ -65,28 +75,48 @@ describe('a code lasts five minutes', () => {
   })
 })
 
-describe('resending', () => {
-  test('opens after the pause for the newest code only', () => {
+describe('a whole code sends itself', () => {
+  test('six digits verify once; more input while checking sends nothing', () => {
     story(
       update,
       given(at(Step.EnterCode({ code: open }))),
+      message(Message.UpdatedCode({ isComplete: false })),
+      Command.expectNone(),
+      message(Message.UpdatedCode({ isComplete: true })),
+      Command.expectExact(VerifyCode({ email: 'ana@example.com', sent })),
+      model(({ step }) => expect(Step.guards.VerifyingCode(step)).toBe(true)),
+      Command.resolve(VerifyCode, Message.FailedVerifyCode({ problem: 'wrongCode' })),
+    )
+    story(
+      update,
+      given(at(Step.VerifyingCode({ code: open }))),
+      message(Message.UpdatedCode({ isComplete: true })),
+      message(Message.SubmittedCode()),
+      Command.expectNone(),
+    )
+  })
+})
+
+describe('resending', () => {
+  test('opens after the countdown for the newest code only', () => {
+    story(
+      update,
+      given(at(Step.EnterCode({ code: modifyFields(open, { resendIn: () => 1 }) }))),
       message(Message.ClickedResendCode()),
       Command.expectNone(),
-      message(Message.ElapsedResendPause({ requestId: 'req_0' })),
-      model(({ step }) =>
-        expect(Option.map(currentCode(step), ({ canResend }) => canResend)).toEqual(Option.some(false)),
-      ),
-      message(Message.ElapsedResendPause({ requestId: 'req_1' })),
-      model(({ step }) =>
-        expect(Option.map(currentCode(step), ({ canResend }) => canResend)).toEqual(Option.some(true)),
-      ),
+      message(Message.TickedResendCountdown({ requestId: 'req_0' })),
+      model(({ step }) => expect(Option.map(currentCode(step), canResend)).toEqual(Option.some(false))),
+      message(Message.TickedResendCountdown({ requestId: 'req_1' })),
+      model(({ step }) => expect(Option.map(currentCode(step), canResend)).toEqual(Option.some(true))),
+      message(Message.TickedResendCountdown({ requestId: 'req_1' })),
+      model(({ step }) => expect(Option.map(currentCode(step), ({ resendIn }) => resendIn)).toEqual(Option.some(0))),
     )
   })
 
   test('a failed resend keeps the code the person already has', () => {
     story(
       update,
-      given(at(Step.ResendingCode({ code: modifyFields(open, { canResend: () => true }) }))),
+      given(at(Step.ResendingCode({ code: modifyFields(open, { resendIn: () => 0 }) }))),
       message(Message.FailedResendCode({ problem: 'tooManyRequests' })),
       model(({ step, problem }) => {
         expect(Option.map(currentCode(step), ({ sent: { proofId } }) => proofId)).toEqual(Option.some('proof_1'))

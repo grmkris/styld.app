@@ -39,7 +39,7 @@
       "unavailable": "Styld trenutno ne more poslati ali preveriti kod. Poskusi znova čez trenutek.",
       "google": "Prijava z Googlom se ni končala. Poskusi znova ali se prijavi s kodo."
     },
-    "resendSoon": "Novo kodo lahko zahtevaš 30 sekund po zadnji.",
+    "resendIn": "Novo kodo lahko dobiš čez {seconds, plural, one {# sekundo} two {# sekundi} few {# sekunde} other {# sekund}}.",
     "or": "ali",
     "continueWithGoogle": "Nadaljuj z Googlom"
   },

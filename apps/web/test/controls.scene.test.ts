@@ -1,5 +1,19 @@
-import { Option } from 'effect'
-import { Command, click, expect, given, label, role, scene, selector, submit, text, type, within } from 'foldkit/scene'
+import { Array, Option } from 'effect'
+import {
+  Command,
+  Subscription,
+  click,
+  expect,
+  given,
+  label,
+  role,
+  scene,
+  selector,
+  submit,
+  text,
+  type,
+  within,
+} from 'foldkit/scene'
 import { modifyFields } from 'foldkit/struct'
 import { describe, test } from 'vitest'
 import { LocaleSave, Message, Session, SignOut, update } from '../src/App.ts'
@@ -12,7 +26,6 @@ import {
   Step,
   VerifyCode,
   WaitForCodeExpiry,
-  WaitToResend,
 } from '../src/page/Login.ts'
 import { CopyServerUrl, DeleteAccount, Message as AccountMessage } from '../src/page/Account.ts'
 import { AppRoute } from '../src/route.ts'
@@ -31,10 +44,12 @@ const awaitingCode = (pathname: string, code: Partial<Code> = {}) =>
   withPage(page(pathname), lenses.login, (login) =>
     modifyFields(login, {
       email: () => 'ana@example.com',
-      step: () =>
-        Step.EnterCode({ code: { sent, use: 'open', rejections: 0, resent: false, canResend: false, ...code } }),
+      step: () => Step.EnterCode({ code: { sent, use: 'open', rejections: 0, resent: false, resendIn: 30, ...code } }),
     }),
   )
+
+const tick = (requestId: string) =>
+  Subscription.emit(Message.GotLoginMessage({ message: LoginMessage.TickedResendCountdown({ requestId }) }))
 
 const codeField = label('Enter verification code')
 const verifyButton = role('button', { name: 'Verify code' })
@@ -84,15 +99,12 @@ describe('email code sign-in', () => {
       submit(role('form')),
       Command.expectExact(RequestCode({ email: 'ana@example.com', flowId: Option.none() })),
       Command.resolve(RequestCode, LoginMessage.SucceededRequestCode({ sent })),
-      Command.expectExact(WaitToResend({ requestId: 'req_1' }), WaitForCodeExpiry({ requestId: 'req_1' })),
+      Command.expectExact(WaitForCodeExpiry({ requestId: 'req_1' })),
       expect(role('heading', { name: 'Check your email' })).toExist(),
       expect(selector('strong')).toHaveText('ana@example.com'),
       expect(codeField).toHaveAttr('autocomplete', 'one-time-code'),
       // Scenes settle every Command before moving on; the lifetime settles as an older code's.
-      Command.resolveAll(
-        [WaitToResend, LoginMessage.ElapsedResendPause({ requestId: 'req_1' })],
-        [WaitForCodeExpiry, LoginMessage.ElapsedCodeLifetime({ requestId: 'req_0' })],
-      ),
+      Command.resolve(WaitForCodeExpiry, LoginMessage.ElapsedCodeLifetime({ requestId: 'req_0' })),
     )
     scene(
       { update, view },
@@ -103,6 +115,21 @@ describe('email code sign-in', () => {
       Command.expectExact(Navigate({ href: '/' })),
       Command.resolve(Navigate({ href: '/' }), Message.CompletedNavigate()),
       expect(role('link', { name: 'Account' })).toHaveAttr('href', '/account'),
+    )
+  })
+
+  test('the sixth digit sends the code without the button, once', () => {
+    scene(
+      { update, view },
+      given(awaitingCode('/login')),
+      type(codeField, '12345'),
+      Command.expectNone(),
+      type(codeField, '123 456'),
+      Command.expectExact(VerifyCode({ email: 'ana@example.com', sent })),
+      expect(verifyButton).not.toExist(),
+      expect(role('button', { name: 'Verifying...' })).toBeDisabled(),
+      Command.resolve(VerifyCode, LoginMessage.FailedVerifyCode({ problem: 'wrongCode' })),
+      expect(role('alert')).toHaveText("That code isn't right. Check the email and try again."),
     )
   })
 
@@ -133,18 +160,22 @@ describe('email code sign-in', () => {
       given(awaitingCode('/login')),
       expect(resendButton).toBeDisabled(),
       expect(resendButton).toHaveAttr('aria-describedby', 'login-resend-hint'),
-      expect(selector('#login-resend-hint')).toHaveText('You can ask for a new code 30 seconds after the last one.'),
+      expect(selector('#login-resend-hint')).toHaveText('You can get a new code in 30 seconds.'),
+      tick('req_1'),
+      expect(selector('#login-resend-hint')).toHaveText('You can get a new code in 29 seconds.'),
     )
     scene(
       { update, view },
-      given(awaitingCode('/login', { canResend: true })),
+      given(awaitingCode('/login', { resendIn: 1 })),
+      expect(selector('#login-resend-hint')).toHaveText('You can get a new code in 1 second.'),
+      tick('req_1'),
+      expect(selector('#login-resend-hint')).not.toExist(),
       click(resendButton),
       Command.expectExact(ResendCode({ email: 'ana@example.com', flowId: 'flow_1' })),
       Command.resolve(ResendCode, LoginMessage.SucceededResendCode({ sent: resent })),
-      Command.resolveAll(
-        [WaitToResend, LoginMessage.ElapsedResendPause({ requestId: 'req_2' })],
-        [WaitForCodeExpiry, LoginMessage.ElapsedCodeLifetime({ requestId: 'req_2' })],
-      ),
+      Command.resolve(WaitForCodeExpiry, LoginMessage.ElapsedCodeLifetime({ requestId: 'req_2' })),
+      expect(selector('#login-resend-hint')).toHaveText('You can get a new code in 30 seconds.'),
+      ...Array.makeBy(30, () => tick('req_2')),
       expect(role('alert')).toHaveText('This code has expired. Ask for a new one.'),
       expect(verifyButton).toBeDisabled(),
       expect(resendButton).toBeEnabled(),

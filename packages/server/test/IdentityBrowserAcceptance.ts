@@ -39,9 +39,9 @@ const requestCode = async (page: Page, email: string) => {
   return codeSentSince(before)
 }
 
+/** A whole code sends itself: filling the field is the person's last step. */
 const enterCode = async (page: Page, code: string) => {
   await page.getByLabel('Enter verification code').fill(code)
-  await page.getByRole('button', { name: 'Verify code' }).click()
 }
 
 /** A new email creates its account with one code, and the same email signs in again later. */
