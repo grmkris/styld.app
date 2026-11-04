@@ -1,4 +1,4 @@
-import { accounts, profiles } from '@styld/db'
+import { accounts, profiles, profileTranslations } from '@styld/db'
 import { ProfileNotPublished, Unavailable } from '@styld/protocol'
 import { and, eq, exists } from 'drizzle-orm'
 import { Effect, Option } from 'effect'
@@ -54,3 +54,20 @@ export const requirePublished = (db: Database['Service'], accountId: string) =>
   Effect.flatMap(profileOf(db, accountId).pipe(Effect.mapError(() => Unavailable.make({}))), (profile) =>
     Option.isSome(profile) && profile.value.published ? Effect.void : Effect.fail(ProfileNotPublished.make({})),
   )
+
+/** A profile's name and bio in another language, as the profiles' module keeps it (the house profiles, owner
+ * 4 November 2026), for the seed's batch. */
+export const profileTranslationWrite = (db: Database['Service'], row: typeof profileTranslations.$inferInsert) =>
+  db
+    .insert(profileTranslations)
+    .values(row)
+    .onConflictDoUpdate({
+      target: [profileTranslations.accountId, profileTranslations.locale],
+      set: {
+        name: row.name,
+        bio: row.bio,
+        sourceDigest: row.sourceDigest,
+        review: row.review,
+        updatedAt: row.updatedAt,
+      },
+    })

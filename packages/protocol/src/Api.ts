@@ -19,6 +19,7 @@ import {
 import { GenerationApi } from './Generation.ts'
 import { LinkApi } from './Link.ts'
 import { GalleryOperatorApi } from './GalleryOperator.ts'
+import { SeedApi } from './Seed.ts'
 import { ImportApi } from './Import.ts'
 import { PictureBackfillApi } from './PictureBackfill.ts'
 import {
@@ -508,4 +509,5 @@ export class StyldApi extends HttpApi.make('styld')
   .add(ImportApi)
   .add(PictureBackfillApi)
   .add(GalleryOperatorApi)
+  .add(SeedApi)
   .prefix('/api') {}

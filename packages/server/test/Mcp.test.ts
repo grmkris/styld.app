@@ -28,7 +28,7 @@ import { everyCall, toolNames } from './ToolNames.ts'
 import { Discovery } from '../src/social/Discovery.ts'
 import { Social } from '../src/social/Social.ts'
 import { curationTools } from '../src/mcp/CurationTools.ts'
-import { adminEmails, Curation, isAdmin } from '../src/social/Curation.ts'
+import { Curation, emailListOf, isAdmin } from '../src/social/Curation.ts'
 import { fetchOperation, Links } from '../src/links/Links.ts'
 import { unlimited } from './fakes/Pacing.ts'
 import { unusedBoards } from './fakes/Boards.ts'
@@ -512,12 +512,12 @@ describe('curation for admins', () => {
   })
 
   test('knows an admin by the email they sign in with, in any case', () => {
-    const admins = adminEmails(' Kris@Styld.app , ,ops@styld.app')
+    const admins = emailListOf(' Kris@Styld.app , ,ops@styld.app')
     expect([...admins]).toEqual(['kris@styld.app', 'ops@styld.app'])
     expect(isAdmin(admins, { email: 'KRIS@styld.app' })).toBe(true)
     expect(isAdmin(admins, { email: 'someone@styld.app' })).toBe(false)
     expect(isAdmin(admins, { email: null })).toBe(false)
-    expect(isAdmin(adminEmails(undefined), { email: 'kris@styld.app' })).toBe(false)
+    expect(isAdmin(emailListOf(undefined), { email: 'kris@styld.app' })).toBe(false)
   })
 })
 

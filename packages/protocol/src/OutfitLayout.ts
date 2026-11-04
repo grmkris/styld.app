@@ -180,7 +180,7 @@ const clusterZ = 20
  * mirrored and its accessories take another arrangement; the anchor keeps one size and turn in every cluster, so it
  * reads as the same piece in each. */
 const clusterOf = (
-  anchorId: PieceId,
+  anchorId: PieceId | null,
   outfit: ReadonlyArray<OutfitPiece>,
   index: number,
   target: Box,
@@ -237,6 +237,37 @@ export const outfitsLaidOut = (
       return target === undefined ? [] : clusterOf(anchorId, outfit, index, target, scale, shift)
     }),
   ]
+}
+
+/** The boxes of `count` outfits on a grid below `top`: two columns up to six, three beyond, row by row, a last row
+ * that is not full centred. */
+const gridBoxes = (count: number, top: number): ReadonlyArray<Box> => {
+  const columns = count <= 1 ? 1 : count <= 6 ? 2 : 3
+  const rowCount = Math.ceil(count / columns)
+  const width = (boardWidth - 2 * margin - (columns - 1) * gap) / columns
+  const height = (boardHeight - margin - Math.max(top, margin) - (rowCount - 1) * gap) / rowCount
+  return Array.from({ length: count }, (_, index) => {
+    const row = Math.floor(index / columns)
+    const inRow = Math.min(columns, count - row * columns)
+    const left = margin + ((columns - inRow) * (width + gap)) / 2 + (index % columns) * (width + gap)
+    const boxTop = Math.max(top, margin) + row * (height + gap)
+    return box(left, boxTop, left + width, boxTop + height)
+  })
+}
+
+/** The table of outfits with no piece at their centre (the house boards of outfits, owner 4 November 2026): each
+ * outfit a flat-lay of its own, as the template board's clusters are, in a grid of boxes below `top` (labels go above
+ * it), all at the one scale that fits the smallest box. */
+export const outfitsInGrid = (
+  outfits: ReadonlyArray<ReadonlyArray<OutfitPiece>>,
+  top = 0,
+): ReadonlyArray<PlacedOutfitPiece> => {
+  const boxes = gridBoxes(outfits.length, top)
+  const scale = Math.min(...boxes.map((cluster) => Math.min(cluster.width / sheetWidth, cluster.height / sheetHeight)))
+  return outfits.flatMap((outfit, index) => {
+    const target = boxes[index]
+    return target === undefined ? [] : clusterOf(null, outfit, index, target, scale, 0)
+  })
 }
 
 /** Only one of a cluster's places: the outfit at `index` laid out as it would be among the others. */

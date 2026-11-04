@@ -8,7 +8,7 @@ import {
   decodeProofKeyring,
   decodeRequestBindingKeyring,
 } from './AuthConfiguration.ts'
-import { adminEmails } from './social/Curation.ts'
+import { emailListOf } from './social/Curation.ts'
 
 // What the API Worker is told about its deployment, and nothing else: which stage and release it is, its public origin,
 // its secrets, and who administers it. Decoded once, when the application is built; a missing or malformed value stops
@@ -25,6 +25,8 @@ const deploymentConfig = Config.all({
   requestBindingKeys: Config.String('AUTH_REQUEST_BINDING_KEYS'),
   /** Accounts whose assistants get the curation tools: their sign-in emails, comma-separated. */
   adminEmails: Config.String('STYLD_ADMIN_EMAILS').pipe(Config.withDefault('')),
+  /** The house accounts the operator's seed may write boards into: their sign-in emails, comma-separated. */
+  houseEmails: Config.String('STYLD_HOUSE_EMAILS').pipe(Config.withDefault('')),
   /** Meta's key, for SAM and Muse Image. */
   metaApiKey: Config.Redacted('META_API_KEY'),
   /** The Vercel AI Gateway's key, for Veo. */
@@ -43,7 +45,8 @@ export const deploymentOf = Effect.fn('Styld.Config.deployment')(function* (env:
     environment: raw.environment,
     release: raw.release,
     origin: raw.origin,
-    admins: adminEmails(raw.adminEmails),
+    admins: emailListOf(raw.adminEmails),
+    house: emailListOf(raw.houseEmails),
     auth: {
       origin: raw.origin,
       secret: yield* decodeAuthSecret(raw.authSecret).pipe(Effect.orDie),

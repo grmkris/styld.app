@@ -144,8 +144,9 @@ export class Curation extends Context.Service<Curation, Effect.Success<typeof ma
   )
 }
 
-/** The admin list: lowercased emails, from the Worker's `STYLD_ADMIN_EMAILS` (comma-separated). */
-export const adminEmails = (configured: unknown): ReadonlySet<string> =>
+/** A list of sign-in emails from a comma-separated deployment fact, lowercased: the admins (`STYLD_ADMIN_EMAILS`) and
+ * the house accounts (`STYLD_HOUSE_EMAILS`). */
+export const emailListOf = (configured: unknown): ReadonlySet<string> =>
   new Set(
     (typeof configured === 'string' ? configured : '')
       .split(',')

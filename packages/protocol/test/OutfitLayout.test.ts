@@ -12,6 +12,7 @@ import {
   OutfitLayout,
   type OutfitPiece,
   outfitsIn,
+  outfitsInGrid,
   outfitsLaidOut,
   PieceId,
   type PlacedOutfitPiece,
@@ -196,5 +197,27 @@ describe('choosing a layout', () => {
     const two = outfitsLaidOut('around', anchor.id, [outfit('a'), outfit('b')])
     expect(new Set(two.map(({ outfit: place }) => place))).toEqual(new Set([null, 0, 1]))
     expect(outfitsLaidOut('ring', anchor.id, [])).toHaveLength(1)
+  })
+})
+
+describe.each([1, 3, 4, 6, 8])('%i outfits with no piece at their centre, on a grid', (count) => {
+  const outfits = Array.from({ length: count }, (_, index) => outfit(String.fromCharCode(97 + index)))
+  const top = 120
+  const placed = outfitsInGrid(outfits, top)
+  const clusters = outfits.map((_, index) => placed.filter((piece) => piece.outfit === index))
+
+  test('places every piece of every outfit, wholly on the board and below the texts', () => {
+    expect(placed).toHaveLength(outfits.flat().length)
+    expect(clusters.every((cluster, index) => cluster.length === outfits[index]?.length)).toBe(true)
+    for (const piece of placed) {
+      expect(contains(sheet, squareOf(piece))).toBe(true)
+      expect(piece.y - piece.size / 2).toBeGreaterThanOrEqual(top - 1e-6)
+    }
+  })
+
+  test('keeps the outfits apart, each in its own part of the board', () => {
+    const hulls = clusters.map(hull)
+    for (const [index, one] of hulls.entries())
+      for (const other of hulls.slice(index + 1)) expect(overlaps(one, other)).toBe(false)
   })
 })

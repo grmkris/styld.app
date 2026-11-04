@@ -12,6 +12,7 @@ import {
   NotFound,
   OperationConflict,
   OperationId,
+  type OutfitProposals,
   OutfitSession,
   type OutfitPiece,
   OutfitRefused,
@@ -127,7 +128,9 @@ const outfitBoardOf = Effect.fnUntraced(function* (
   operation: Identified,
   input: CreateOutfitBoard,
   layout: OutfitLayout,
-  batch: Effect.Success<ReturnType<typeof madeOutfits>>,
+  batch: Pick<OutfitProposals, 'session' | 'mode'> & {
+    readonly proposals: ReadonlyArray<Pick<OutfitProposals['proposals'][number], 'pieceIds'>>
+  },
 ) {
   const { accountId } = operation
   const pieceIds = batch.proposals.map(({ pieceIds: worn }) => worn)
@@ -180,6 +183,15 @@ const outfitBoardOf = Effect.fnUntraced(function* (
     receipt: yield* receiptRow(operation, boardId),
   }
   return made
+})
+
+/** A new outfit board saved, as the account reads it; a concurrent repeat of the operation may have committed first,
+ * and its board answers. */
+const savedOutfitBoard = Effect.fnUntraced(function* (operation: Identified, made: OutfitBoard) {
+  const committed = yield* Effect.option((yield* BoardStore).createOutfitBoard(made))
+  if (Option.isSome(committed)) return yield* one(operation.accountId, made.board.id)
+  const repeat = yield* madeBefore(operation)
+  return Option.isSome(repeat) ? repeat.value : yield* unavailable()
 })
 
 /** The account's template board with its anchor and outfits: not found unless it is one, refused once its anchor is
@@ -371,12 +383,31 @@ export const template = Effect.map(Effect.context<BoardServices | Outfits>(), (c
       seen: [],
       count: outfitsIn(layout),
     })
-    const made = yield* outfitBoardOf(operation, input, layout, batch)
-    const committed = yield* Effect.option((yield* BoardStore).createOutfitBoard(made))
-    if (Option.isSome(committed)) return yield* one(accountId, made.board.id)
-    // A concurrent repeat of the operation may have committed first; its board answers.
-    const repeat = yield* madeBefore(operation)
-    return Option.isSome(repeat) ? repeat.value : yield* unavailable()
+    return yield* savedOutfitBoard(operation, yield* outfitBoardOf(operation, input, layout, batch))
+  }, Effect.provide(context)),
+  /** A "One piece, many outfits" board whose layout and outfits were chosen already: the house boards' seed (owner,
+   * 4 November 2026) picks them from the board's own pieces by Fast's rules, so the board shows the catalogue's
+   * pieces only. Laid out, pinned and answered as `createOutfitBoard`'s, once per operation id. */
+  seededOutfitBoard: Effect.fn('Styld.Boards.seededOutfitBoard')(function* (
+    input: CreateOutfitBoard,
+    layout: OutfitLayout,
+    outfits: ReadonlyArray<ReadonlyArray<PieceId>>,
+  ) {
+    const { accountId } = yield* CurrentAccount
+    const operation = yield* identify({
+      accountId,
+      operationId: input.operationId,
+      command: 'seededOutfitBoard',
+      input: [input.name, input.anchorPieceId, layout, outfits],
+    })
+    const earlier = yield* madeBefore(operation)
+    if (Option.isSome(earlier)) return earlier.value
+    const session = OutfitSession.make(yield* newId('os'))
+    const proposals = outfits.map((pieceIds) => ({ pieceIds }))
+    return yield* savedOutfitBoard(
+      operation,
+      yield* outfitBoardOf(operation, input, layout, { session, mode: 'fast', proposals }),
+    )
   }, Effect.provide(context)),
   /** Another complete outfit in place of one not kept yet, none of those shown, laid out where its cluster was; the
    * board's version moves on, so an editor open on it reloads. Once per operation id. */

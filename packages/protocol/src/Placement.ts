@@ -90,6 +90,13 @@ export const widestLabel = 400
 const labelLine = 120
 const labelsReach = boardHeight / 3
 
+/** Where `count` labels go across the top of a laid-out table: the centre line of each, and where the rest of the
+ * table starts below them. */
+export const labelRows = (count: number) => {
+  const line = count === 0 ? 0 : Math.min(labelLine, labelsReach / count)
+  return { top: count * line, y: (index: number) => line * (index + 0.5) }
+}
+
 /** Lay the items out in stacking order: labels centred across the top, a line each and never larger than
  * `widestLabel`, so their words stay on the sheet (a label put in a grid cell near an edge ran off it, browser review
  * 2 November 2026); everything else on an even grid below them, each with a small tilt. */
@@ -97,8 +104,7 @@ export const tidied = (items: ReadonlyArray<BoardItem>): ReadonlyArray<BoardItem
   const stacked = Array.sort(items, byZ)
   const labels = stacked.filter(isTextItem)
   const things = stacked.filter((item) => !isTextItem(item))
-  const line = labels.length === 0 ? 0 : Math.min(labelLine, labelsReach / labels.length)
-  const top = labels.length * line
+  const { top, y: labelY } = labelRows(labels.length)
   const columns = Math.max(1, Math.ceil(Math.sqrt(things.length * 0.8)))
   const rows = Math.max(1, Math.ceil(things.length / columns))
   const height = boardHeight - top
@@ -109,7 +115,7 @@ export const tidied = (items: ReadonlyArray<BoardItem>): ReadonlyArray<BoardItem
       settle({
         ...label,
         x: boardWidth / 2,
-        y: line * (index + 0.5),
+        y: labelY(index),
         size: Math.min(label.size, widestLabel),
         turn: 0,
       }),

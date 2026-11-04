@@ -86,6 +86,9 @@ export default Alchemy.Stack(
         // Accounts whose assistants get the curation tools (feature, house, hide, reports, checks): their sign-in
         // emails, comma-separated, from the owner's `.env.preview.local`; none when unset.
         STYLD_ADMIN_EMAILS: yield* Config.String('STYLD_ADMIN_EMAILS').pipe(Config.orElse(() => Config.succeed(''))),
+        // The house accounts the operator's seed writes the inspiration boards into (`server/src/seed/`): their sign-in
+        // emails, comma-separated; none when unset, so the seed refuses every account.
+        STYLD_HOUSE_EMAILS: yield* Config.String('STYLD_HOUSE_EMAILS').pipe(Config.orElse(() => Config.succeed(''))),
         // Turns on a hanger: Veo 3.1 Lite through the Vercel AI Gateway. Until Styld has a gateway key of its own,
         // the owner chose the existing one (30 October); STYLD_AI_GATEWAY_API_KEY takes over once it is set.
         VIDEO_GATEWAY_API_KEY: yield* Config.Redacted('STYLD_AI_GATEWAY_API_KEY').pipe(

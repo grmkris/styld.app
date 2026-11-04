@@ -17,6 +17,7 @@ export const unusedBoards: Boards['Service'] = {
   removePins: notUsed,
   keepLook: notUsed,
   createOutfitBoard: notUsed,
+  seededOutfitBoard: notUsed,
   anotherOutfit: notUsed,
   anotherLayout: notUsed,
   addBoardImage: notUsed,

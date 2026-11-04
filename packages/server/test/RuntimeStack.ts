@@ -46,6 +46,8 @@ export const makeStack = (generation: string) =>
           STYLD_RELEASE: `native-${generation}`,
           // The import journey's operator (`ImportAcceptance.ts`).
           STYLD_OPERATOR_TOKEN: Redacted.make(nativeOperatorToken),
+          // The seed journey's house account (`SeedAcceptance.ts`).
+          STYLD_HOUSE_EMAILS: 'house-native@styld.test',
           // The fakes' providers ask the fixture Worker in Meta's, Veo's and Clef's place (`test/fakes/`).
           TEST_FIXTURES: worker.url,
           META_API_KEY: Redacted.make('native-test-meta-key'),
