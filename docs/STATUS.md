@@ -6,6 +6,41 @@ phone/desktop and live-provider acceptance below is still open.
 Feature work on the 31 October plan (M4–M6, M8–M9) stays frozen until testing starts. The history of every earlier
 milestone, with its evidence, is in `docs/archive/STATUS-2026-10-28-to-2026-11-02.md`.
 
+## Pictures that look like a shop's, and a piece turned to its back (4 November)
+
+Eva saw her shop-style pictures as plain cut-outs, and found swiping through three pictures of the front pointless.
+
+- **Pressed prompt (deployed, `ddc35b45`).** Muse really drew each picture, but the prompt asked for "this exact
+  garment … its real fabric", so it copied every crease. The owner chose "pressed" from six prompts tried on 23
+  testers' pieces. The comparison page is private, its harness in `~/code/meta-hackathon/out/styld-shop-picture/`.
+  Text and logos stayed legible on all 12 printed pieces, and production's Clef check passed 22 of 23 drawings
+  under every prompt; the boots always fail.
+- **Redraw of existing drawings (deployed, `42911477`).** `tools/backfill-pictures.ts <email> --redraw` draws again
+  every drawing made before its start, a minute's worth at a time. The coordinator started it for Eva, Andraž and Ivona.
+- **Backs free (deployed at f7852a6f, `b4e8e768`).** A camera back shot and "Add the back" hold no credits; a front
+  with its back now costs 1 credit, not 2. Of 13 camera fronts on the preview, 10 backs had been skipped.
+- **A pressed back from the real one (deployed at f7852a6f, `bc845983`).**
+  - The owner's rule: a back is drawn only from a back the person photographed, never invented.
+  - One drawing lifecycle (`capture/Drawing.ts`) serves the front (`Pictures.ts`) and the back (`BackPicture.ts`).
+  - The back's rows are in `piece_back_pictures`, created by migration `20261104150713`, a plain CREATE TABLE.
+  - `DrawBackPicture` brings the row in line with the piece's back: drawn, drawn again, or forgotten with its file.
+  - The page signs `images.backClean`.
+  - Gate fixes followed in `1aded4f5`: the patterns owner and `stuckRows`' `@internal` tag.
+- **Angles first in the carousel (on main, `36a1c027`, not deployed).** The front, then its back (drawn, else the
+  photo of it), then the person's own photo, cut-out and photo of the back.
+- **Evidence:**
+  - Unit: `BackPictureStore`, `PieceImages`, `CleanPicture` (the back prompt), `PieceCutout` (a back holds
+    nothing); the server's unit suite passes.
+  - Story and scene: `piece.story` and `piece.scene` cover the swipe order and the drawn back.
+  - Native, written for the coordinator's run: `CleanPictureAcceptance` › `verifyBackPicture`;
+    `CaptureAcceptance` (a front and its back cost 1); `WardrobeAcceptance` (PUT /back is free).
+- **Open:**
+  - The coordinator's native run on the deployed release.
+  - `--backs` for the testers' 1–3 pieces with a back, which waits for the owner's go.
+  - A phone walk of the carousel in light and dark.
+  - The bundle budget: 36a1c027 measures 384,875 gzip against 384,600.
+  - Out of scope: drawn side views, backs from video scans, a paid redraw of the back.
+
 ## Eva's Home: What to wear today, What's new, Challenges soon, and no Explore page (4 November, on main, not deployed)
 
 Built from `docs/PLAN-home-2026-11-04.md` (owner-approved 4 November) after Eva's paper sketch and voice note. This
