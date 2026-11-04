@@ -79,6 +79,7 @@
     "assistant-views:check": "bun tools/assistant-views.ts",
     "assistant-views:generate": "bun tools/assistant-views.ts --write",
     "icons:generate": "bun tools/icons.ts --write",
+    "deps:outdated": "bun tools/outdated.ts",
     "translations:check": "x18n check --strict"
   },
   "devDependencies": {

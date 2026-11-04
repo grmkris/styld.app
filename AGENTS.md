@@ -23,6 +23,7 @@ heavy --wait bun run test:native    # builds, then workerd + Chromium acceptance
 STYLD_PREVIEW_URL=… heavy --wait bun test tools/preview.native.test.ts  # deployed readback; release must be HEAD
 bun run translations:check          # x18n; bun run i18n:generate after catalog edits
 bun run icons:generate              # after editing apps/web/src/icons.json (Phosphor, DESIGN.md › Icons)
+bun run deps:outdated               # which pins are behind (npm by channel, Bun, tsrs-lint); a report, not a gate
 bun run --cwd apps/web dev          # Vite dev server; with the page open, foldkit_* MCP tools inspect it
 ```
 
