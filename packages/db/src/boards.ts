@@ -1,4 +1,15 @@
-import { BoardTemplate, OutfitLayout, OutfitMode, Paper, Season, TextStyle, Visibility } from '@styld/protocol'
+import {
+  BoardTemplate,
+  OutfitLayout,
+  OutfitMode,
+  Paper,
+  ReviewState,
+  Season,
+  TagKind,
+  TextStyle,
+  TranslatedLocale,
+  Visibility,
+} from '@styld/protocol'
 import { sql } from 'drizzle-orm'
 import {
   type AnySQLiteColumn,
@@ -196,5 +207,48 @@ export const boardOutfitPieces = sqliteTable(
   (table) => [
     primaryKey({ columns: [table.outfitId, table.pieceId] }),
     index('board_outfit_pieces_piece').on(table.pieceId),
+  ],
+)
+
+/** What a board is about (the house boards, owner 4 November 2026): one row per tag. Only the operator's seeding writes
+ * tags for now; "Show me" ranks by the `audience` tag. */
+export const boardTags = sqliteTable(
+  'board_tags',
+  {
+    boardId: text('board_id')
+      .notNull()
+      .references(() => boards.id, { onDelete: 'cascade' }),
+    kind: text('kind', { enum: TagKind.literals }).notNull(),
+    /** Checked by its kind in the protocol's `BoardTag`. */
+    value: text('value').notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.boardId, table.kind, table.value] }),
+    index('board_tags_kind_value').on(table.kind, table.value, table.boardId),
+    oneOf('board_tags_kind', table.kind, TagKind.literals),
+  ],
+)
+
+/** The board in another language: its name and its table's labels, by the item each translates. The board's own
+ * columns stay the original; `source_digest` is the original's digest when it was translated, so a translation of text
+ * the owner has since changed is never shown. */
+export const boardTranslations = sqliteTable(
+  'board_translations',
+  {
+    boardId: text('board_id')
+      .notNull()
+      .references(() => boards.id, { onDelete: 'cascade' }),
+    locale: text('locale', { enum: TranslatedLocale.literals }).notNull(),
+    name: text('name').notNull(),
+    labels: text('labels', { mode: 'json' }).notNull().$type<Readonly<Record<string, string>>>(),
+    sourceDigest: text('source_digest').notNull(),
+    review: text('review', { enum: ReviewState.literals }).notNull().default('pending'),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.boardId, table.locale] }),
+    oneOf('board_translations_locale', table.locale, TranslatedLocale.literals),
+    oneOf('board_translations_review', table.review, ReviewState.literals),
+    check('board_translations_labels', sql`json_type(${table.labels}) = 'object'`),
   ],
 )

@@ -18,6 +18,7 @@ const modules = [
   'stylist',
   'usage',
   'imports',
+  'seed',
 ]
 
 export default defineConfig({

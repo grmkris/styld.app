@@ -1,4 +1,4 @@
-import { ReportReason, Tone } from '@styld/protocol'
+import { Audience, ReportReason, ReviewState, Tone, TranslatedLocale } from '@styld/protocol'
 import { sql } from 'drizzle-orm'
 import { check, index, integer, primaryKey, sqliteTable, text, uniqueIndex } from 'drizzle-orm/sqlite-core'
 import { boards } from './boards.ts'
@@ -130,4 +130,40 @@ export const reports = sqliteTable(
     oneOf('reports_target_kind', table.targetKind, reportTargets),
     oneOf('reports_reason', table.reason, ReportReason.literals),
   ],
+)
+
+/** A profile's name and bio in another language (only the house profiles have one for now). `source_digest` is the
+ * digest of the name and bio it translated: once the owner changes them, the original is shown. */
+export const profileTranslations = sqliteTable(
+  'profile_translations',
+  {
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    locale: text('locale', { enum: TranslatedLocale.literals }).notNull(),
+    name: text('name').notNull(),
+    bio: text('bio').notNull(),
+    sourceDigest: text('source_digest').notNull(),
+    review: text('review', { enum: ReviewState.literals }).notNull().default('pending'),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    primaryKey({ columns: [table.accountId, table.locale] }),
+    oneOf('profile_translations_locale', table.locale, TranslatedLocale.literals),
+    oneOf('profile_translations_review', table.review, ReviewState.literals),
+  ],
+)
+
+/** The person's own reading preferences. Private: never on the public profile, never inferred. No choice is
+ * Everything; `show_me_asked_at` is when Home's card was answered or put away. */
+export const viewerPreferences = sqliteTable(
+  'viewer_preferences',
+  {
+    accountId: text('account_id')
+      .primaryKey()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    showMe: text('show_me', { enum: Audience.literals }),
+    showMeAskedAt: integer('show_me_asked_at', { mode: 'timestamp_ms' }),
+  },
+  (table) => [oneOf('viewer_preferences_show_me', table.showMe, Audience.literals)],
 )

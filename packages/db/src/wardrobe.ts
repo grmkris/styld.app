@@ -1,6 +1,24 @@
-import { ImageType, Pattern, PieceRotation, PieceSource, PieceStatus, PieceType, VideoType } from '@styld/protocol'
+import {
+  ImageType,
+  Pattern,
+  PieceOrigin,
+  PieceRotation,
+  PieceSource,
+  PieceStatus,
+  PieceType,
+  VideoType,
+} from '@styld/protocol'
 import { sql } from 'drizzle-orm'
-import { type AnySQLiteColumn, check, index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core'
+import {
+  type AnySQLiteColumn,
+  check,
+  index,
+  integer,
+  real,
+  sqliteTable,
+  text,
+  uniqueIndex,
+} from 'drizzle-orm/sqlite-core'
 import { jsonArray, oneOf } from './checks.ts'
 import { detections } from './capture.ts'
 import { accounts } from './identity.ts'
@@ -93,5 +111,35 @@ export const pieces = sqliteTable(
     check('pieces_rotation', sql`${table.rotation} IN (0, 90, 180, 270)`),
     jsonArray('pieces_colours', table.colours),
     jsonArray('pieces_occasions', table.occasions),
+  ],
+)
+
+/** Where a house piece's picture came from (owner, 4 November 2026): only the house accounts' seeded pieces have a
+ * row; no row is the person's own piece from their own photo. Written with the piece by the import, and by the photo
+ * that later replaces a drawing. `manifest_id` is the seed manifest's permanent key; the model and the prompt's digest
+ * are a generated picture's. Clef's own reading of the picture on import is kept beside it, for the operator. */
+export const pieceProvenance = sqliteTable(
+  'piece_provenance',
+  {
+    pieceId: text('piece_id')
+      .primaryKey()
+      .references(() => pieces.id, { onDelete: 'cascade' }),
+    accountId: text('account_id')
+      .notNull()
+      .references(() => accounts.id, { onDelete: 'cascade' }),
+    origin: text('origin', { enum: PieceOrigin.literals }).notNull(),
+    manifestId: text('manifest_id').notNull(),
+    model: text('model'),
+    promptDigest: text('prompt_digest'),
+    /** The type Clef read from the picture on import, none until it has. */
+    describedType: text('described_type', { enum: PieceType.literals }),
+    /** Clef's 0–1 score that the picture shows one whole garment. */
+    describedWhole: real('described_whole'),
+    updatedAt: integer('updated_at', { mode: 'timestamp_ms' }).notNull(),
+  },
+  (table) => [
+    uniqueIndex('piece_provenance_manifest').on(table.accountId, table.manifestId),
+    oneOf('piece_provenance_origin', table.origin, PieceOrigin.literals),
+    oneOf('piece_provenance_described_type', table.describedType, PieceType.literals),
   ],
 )
