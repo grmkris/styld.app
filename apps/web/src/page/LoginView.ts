@@ -62,7 +62,13 @@ interface EmailInputs {
 
 const emailStep = (model: Model, { sending, forConnection, locale }: EmailInputs, h: HtmlBuilder<LoginMessage>): Html =>
   h.div(styled(h, authForm()), [
-    emailForm(model, sending, locale, h),
+    // Google's refusal belongs under Google, not on the address field.
+    emailForm(
+      { ...model, problem: Option.filter(model.problem, (problem) => problem !== 'google') },
+      sending,
+      locale,
+      h,
+    ),
     googleEntry(model, sending, forConnection, locale, h),
   ])
 
@@ -87,6 +93,9 @@ const googleEntry = (
       },
       h,
     ),
+    Option.contains(model.problem, 'google')
+      ? h.p([h.Role('alert'), ...styled(h, formError())], [format(locale, 'auth.problem.google', {})])
+      : h.empty,
   ])
 
 const emailForm = (model: Model, sending: boolean, locale: Locale, h: HtmlBuilder<LoginMessage>): Html =>
