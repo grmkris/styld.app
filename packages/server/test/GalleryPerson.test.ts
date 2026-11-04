@@ -110,4 +110,10 @@ describe('the Gallery pipeline on a photo with a bystander', () => {
     const { garments } = await run([])
     expect(garments.map(({ track }) => track).toSorted()).toEqual(['0', '1'])
   })
+
+  test('a person found who wears none of the garments, seated or cut off by the frame, leaves every garment counting', async () => {
+    // SAM's person reaches only over the top of the frame here, so neither the dress nor the shirt is half on her.
+    const { garments } = await run([rect(250, 20, 390, 70, 'eva')])
+    expect(garments.map(({ track }) => track).toSorted()).toEqual(['0', '1'])
+  })
 })

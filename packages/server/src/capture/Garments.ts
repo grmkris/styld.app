@@ -223,7 +223,9 @@ const forTray = Effect.fnUntraced(function* (original: Uint8Array, camera: boole
 })
 
 /** An outfit photo: every garment the person nearest the camera wears or carries counts, so there is no route and no
- * held piece. SAM looks for the people beside the garments, at once; when it finds nobody every garment counts. */
+ * held piece. SAM looks for the people beside the garments, at once; when it finds nobody, or nothing it found counts as
+ * worn by the person (a seated or cropped person whose clothes reach past their own mask: one of Eva's photos found
+ * nothing, 4 November), every garment counts, so a photo never ends empty because the person filter was too strict. */
 const forGallery = Effect.fnUntraced(function* (original: Uint8Array) {
   const copies = yield* (yield* PictureWork).workingCopies(original)
   const [masks, people] = yield* Effect.all([samMasks(copies, promptsFor('gallery')), peopleIn(copies)], {
@@ -231,10 +233,11 @@ const forGallery = Effect.fnUntraced(function* (original: Uint8Array) {
   })
   const picture = yield* decodedPng(copies.png)
   const person = foregroundPerson(people, picture)
+  const worn = person === undefined ? [] : wornBy(masks, person)
   const cuts =
-    person === undefined
+    person === undefined || worn.length === 0
       ? cutsOf(picture, masks, picture)
-      : cutsOf(picture, wornBy(masks, person), picture, person.bounds)
+      : cutsOf(picture, worn, picture, person.bounds)
   const pieces = yield* describedPieces(cuts, capturePolicy.garments.pieces.gallery)
   return {
     garments: pieces.map((piece) => garmentOf(piece, true)),
