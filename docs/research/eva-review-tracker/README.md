@@ -42,8 +42,10 @@ was created once with production branch `main`; normal updates only deploy it.
   TypeScript is transpiled by Bun. `hanken.woff2` is Hanken Grotesk 5.3.0's Latin subset; see `FONT-LICENSE.txt`.
 - `deployment.json`, `deploy.py`: isolated Pages destination and reproducible publishing command.
 
-The source report is `../eva-product-review-2026-11-02/README.md`. Its introductory personal email and
-machine-local recording paths are omitted. The original report remains untracked and is not uploaded.
+The source report and its 35 screenshots are kept privately on the build box, outside the repository
+(`~/private/styld-research/eva-product-review-2026-11-02/`, moved there on 4 November): they hold Eva's address,
+her words and her phone's screens. Its introductory personal email and machine-local recording paths are omitted
+here, and the original is never uploaded.
 
 ## Progress and evidence
 
